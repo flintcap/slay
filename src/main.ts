@@ -71,7 +71,13 @@ async function main(): Promise<void> {
   }
 
   // Expose for debugging and for the Playwright screenshot harness.
-  (window as unknown as Record<string, unknown>).SLAY = { engine, save, events };
+  const { installDebug } = await import('./scenes/debug');
+  (window as unknown as Record<string, unknown>).SLAY = {
+    engine,
+    save,
+    events,
+    debug: installDebug(engine),
+  };
 }
 
 main().catch((err) => {
