@@ -38,7 +38,15 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + String(e)));
 
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load', timeout: 60000 });
-await page.waitForFunction(() => window.SLAY?.engine, { timeout: 180000 }).catch(() => {});
+const booted = await page
+  .waitForFunction(() => window.SLAY?.debug && window.SLAY?.engine?.currentSceneId, { timeout: 300000 })
+  .then(() => true)
+  .catch(() => false);
+console.log(booted ? 'booted ok' : 'BOOT TIMED OUT');
+if (!booted) {
+  const st = await page.textContent('#boot-status').catch(() => null);
+  console.log('boot status:', st);
+}
 
 /** Walks the active scene and summarises what would actually draw. */
 const probe = async (label) => {
@@ -90,6 +98,16 @@ const probe = async (label) => {
       bbox: meshes ? { min: bbox.min.map((v) => +v.toFixed(1)), max: bbox.max.map((v) => +v.toFixed(1)) } : null,
       drawCalls: window.SLAY.engine.renderer.gl.info.render.calls,
       triesRendered: window.SLAY.engine.renderer.gl.info.render.triangles,
+      // Builder internals: an unlit dungeon is almost always zero torches.
+      torches: s.mesh?.torches?.length ?? 'n/a',
+      lightPool: s.mesh?.lights?.length ?? 'n/a',
+      props: s.level?.props?.length ?? 'n/a',
+      spawns: s.level?.spawns?.length ?? 'n/a',
+      enemies: s.enemies?.length ?? 'n/a',
+      biome: s.biome?.id ?? 'n/a',
+      ambientIntensity: s.biome?.ambientIntensity ?? 'n/a',
+      keyIntensity: s.biome?.keyIntensity ?? 'n/a',
+      nonZeroLights: (() => { let n = 0; s.scene.traverse((o) => { if (o.isLight && o.intensity > 0.01 && o.visible) n++; }); return n; })(),
     };
   });
   console.log(`\n=== ${label} ===`);
