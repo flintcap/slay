@@ -27,6 +27,7 @@ import { DungeonMesh, applyBiomeLighting } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
 import { rollDrops } from '../sim/Loot';
 import { buildDropModel } from '../art/ItemModels';
+import { emissiveMaterial } from '../art/Materials';
 import { grantXp } from '../sim/Character';
 import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
@@ -78,6 +79,9 @@ export class DungeonScene extends GameScene {
   private offs: Array<() => void> = [];
   private aiCursor = 0;
   private exitPos = new THREE.Vector3();
+  /** On a boss floor the way home stays shut until the boss falls. */
+  private exitOpen = true;
+  private returnPortal: THREE.Object3D | null = null;
   private transitioning = false;
   private runTime = 0;
   private godMode = false;
@@ -180,13 +184,20 @@ export class DungeonScene extends GameScene {
       this.enemies.push(enemy);
     }
 
-    // Boss floor.
+    // Boss floor: the fight owns the arena, and the exit stays sealed until
+    // the boss dies — otherwise killing it on the stairs would end the run
+    // before the player can pick up what it dropped.
+    this.exitOpen = !this.level.isBossLevel;
+    this.returnPortal = null;
     if (this.level.isBossLevel) {
       const def = BOSSES.find((b) => b.id === this.run.bossId) ?? BOSSES[0];
       if (def) {
         this.boss = new Boss(def, this.run.depth, levelRng.fork('boss'));
-        const bp = this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y);
-        this.boss.root.position.copy(bp);
+        const arena = this.level.rooms.find((r) => r.kind === 'boss');
+        const centre = arena
+          ? this.mesh.tileToWorld(Math.round(arena.center.x), Math.round(arena.center.y))
+          : this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y);
+        this.boss.root.position.copy(centre);
         this.scene.add(this.boss.root);
       }
     }
@@ -261,6 +272,11 @@ export class DungeonScene extends GameScene {
     this.checkExit();
 
     onSurviveTick(this.run.quest, dt);
+
+    if (this.returnPortal) {
+      this.returnPortal.rotation.y += dt * 0.55;
+      this.returnPortal.position.y = Math.sin(elapsed * 1.7) * 0.07;
+    }
 
     this.skills.update(dt);
     this.effects.update(dt, elapsed);
@@ -345,6 +361,7 @@ export class DungeonScene extends GameScene {
       const drops = rollDrops(this.run.depth + 8, 'boss', this.rng, this.player.stats.magicFind, this.player.stats.goldFind);
       for (const item of drops.items) this.dropItem(item, b.root.position);
       this.awardQuestIfComplete();
+      this.openReturnPortal(b.root.position);
       b.root.removeFromParent();
       b.dispose();
     }
@@ -420,7 +437,7 @@ export class DungeonScene extends GameScene {
 
   private checkExit(): void {
     if (this.transitioning) return;
-    if (this.level.isBossLevel && this.boss) return; // gate the exit behind the boss
+    if (!this.exitOpen) return;
     if (this.player.position.distanceTo(this.exitPos) > 1.6) return;
 
     if (this.levelIndex + 1 < this.run.levels.length) {
@@ -444,6 +461,50 @@ export class DungeonScene extends GameScene {
       toast(`Depth ${this.run.depth} cleared.`, 'epic');
       void this.engine.goTo('town');
     }
+  }
+
+  /**
+   * Spawns the way home a few metres off the boss's corpse — far enough that
+   * the player has to step away from the loot pile deliberately, so nobody
+   * gets yanked to town mid-pickup.
+   */
+  private openReturnPortal(near: THREE.Vector3): void {
+    const offset = new THREE.Vector3(near.x - this.player.position.x, 0, near.z - this.player.position.z);
+    if (offset.lengthSq() < 0.01) offset.set(0, 0, 1);
+    offset.normalize().multiplyScalar(4.5);
+    const at = new THREE.Vector3(near.x + offset.x, 0, near.z + offset.z);
+
+    const group = new THREE.Group();
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(1.15, 0.11, 14, 48),
+      emissiveMaterial(0x8fd8ff, 4.2)
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 1.25;
+    group.add(ring);
+
+    const veil = new THREE.Mesh(
+      new THREE.CircleGeometry(1.1, 40),
+      emissiveMaterial(0x4aa8ff, 1.6)
+    );
+    veil.rotation.x = -Math.PI / 2;
+    veil.position.y = 0.06;
+    group.add(veil);
+
+    const light = new THREE.PointLight(0x7ec8ff, 14, 16, 2);
+    light.position.set(0, 1.4, 0);
+    group.add(light);
+
+    group.position.copy(at);
+    this.scene.add(group);
+    this.returnPortal = group;
+
+    this.exitPos.copy(at);
+    this.exitOpen = true;
+
+    this.fx.burst('portal', at.x, 1.0, at.z, { count: 120, color: 0x7ec8ff, scale: 1.6 });
+    audio.play('portal');
+    toast('The way home has opened.', 'epic');
   }
 
   private awardQuestIfComplete(): void {
