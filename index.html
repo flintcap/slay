@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>SLAY — Descend. Die. Descend Again.</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>⚔️</text></svg>" />
+    <link rel="stylesheet" href="/src/ui/styles.css" />
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+
+    <!-- UI root: every panel mounts here, above the canvas. -->
+    <div id="ui"></div>
+
+    <!-- Scene transition curtain, driven by Engine.fadeTo(). -->
+    <div id="fade"></div>
+
+    <!-- Boot screen. Removed by main.ts once the first scene is live. -->
+    <div id="boot">
+      <div class="boot-inner">
+        <h1 class="boot-title">SLAY</h1>
+        <p class="boot-sub">Descend. Die. Descend again.</p>
+        <div class="boot-bar"><div class="boot-bar-fill" id="boot-fill"></div></div>
+        <p class="boot-status" id="boot-status">Forging the world…</p>
+      </div>
+      <div class="boot-vignette"></div>
+    </div>
+
+    <noscript>
+      <div style="color:#e8ddc8;font:16px system-ui;padding:40px">SLAY requires JavaScript and WebGL 2.</div>
+    </noscript>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "name": "slay",
+  "private": true,
+  "version": "1.0.0",
+  "description": "An endless dungeon RPG roguelike rendered in Three.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --port 4173 --strictPort",
+    "shots": "node tools/screenshot.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:41729/git/flintcap/slay"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.0",
+    "@types/three": "^0.185.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5"
+  }
+}
