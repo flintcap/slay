@@ -8,6 +8,7 @@ import type {
   Item,
   DamagePacket,
   MonsterRank,
+  MonsterFamily,
 } from '../types';
 import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
@@ -16,6 +17,7 @@ import { Random, randomSeed } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
 import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
+import { EffectSystem } from '../fx/Effects';
 import { Player } from '../entities/Player';
 import { Enemy, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
@@ -55,6 +57,7 @@ export class DungeonScene extends GameScene {
   private fx: FXSystem;
   private decals: DecalSystem;
   private rig: CameraRig;
+  private effects: EffectSystem;
   private skills: SkillRunner;
 
   private run!: DungeonRun;
@@ -86,6 +89,10 @@ export class DungeonScene extends GameScene {
     this.camera = this.rig.camera;
     this.fx = new FXSystem(this.scene, engine.renderer.quality);
     this.decals = new DecalSystem(this.scene, engine.renderer.quality);
+    this.effects = new EffectSystem(this.scene, this.fx, this.decals, engine.renderer.quality);
+    this.effects.setRig(this.rig);
+    this.effects.setCamera(this.camera);
+    this.skills = new SkillRunner(this.effects);
   }
 
   async enter(payload?: unknown): Promise<void> {
@@ -255,7 +262,8 @@ export class DungeonScene extends GameScene {
 
     onSurviveTick(this.run.quest, dt);
 
-    this.skills.update(dt, ctx, this.enemies, this.boss);
+    this.skills.update(dt);
+    this.effects.update(dt, elapsed);
     this.mesh.update(dt, elapsed, this.player.position);
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
@@ -345,7 +353,7 @@ export class DungeonScene extends GameScene {
   private grantKill(
     monsterId: string,
     rank: MonsterRank,
-    family: string,
+    family: MonsterFamily,
     pos: THREE.Vector3,
     ilvl: number
   ): void {
@@ -496,6 +504,7 @@ export class DungeonScene extends GameScene {
     this.lighting?.dispose();
     this.player?.dispose();
     this.skills.dispose();
+    this.effects.dispose();
     this.fx.dispose();
     this.decals.dispose();
     this.engine.renderer.setLowLife(0);

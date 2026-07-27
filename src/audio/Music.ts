@@ -133,7 +133,7 @@ const TRACKS: Record<string, TrackDef> = {
     layers: ['drone', 'pad', 'bass', 'bell', 'air', 'lead'],
     gain: { drone: 0.46, pad: 0.36, bass: 0.28, bell: 0.26, air: 0.18, lead: 0.2 },
     gate: { bass: 0.15, bell: 0, perc: 0.5, lead: 0.6 },
-    perc: 'tribal', space: 0.72, cutoff: 760, spread: 16, seed: 0xcave, leadWave: 'triangle', flavor: 'glass',
+    perc: 'tribal', space: 0.72, cutoff: 760, spread: 16, seed: 0xcafe, leadWave: 'triangle', flavor: 'glass',
   }),
   forge: T({ // foundry
     bpm: 96, root: 40, scale: 'phrygian', progression: [0, 1, 0, 4], barsPerChord: 2,
@@ -147,7 +147,7 @@ const TRACKS: Record<string, TrackDef> = {
     layers: ['drone', 'pad', 'bell', 'air', 'lead'],
     gain: { drone: 0.5, pad: 0.44, bell: 0.28, air: 0.22, lead: 0.2 },
     gate: { bell: 0, lead: 0.45, perc: 0.6 },
-    perc: 'none', space: 0.9, cutoff: 640, spread: 26, seed: 0x5ub3, leadWave: 'sine', flavor: 'choir',
+    perc: 'none', space: 0.9, cutoff: 640, spread: 26, seed: 0x5ab3, leadWave: 'sine', flavor: 'choir',
   }),
   chitter: T({ // hive
     bpm: 108, root: 41, scale: 'phrygian', progression: [0, 1, 5, 1], barsPerChord: 1,
@@ -175,7 +175,7 @@ const TRACKS: Record<string, TrackDef> = {
     layers: ['drone', 'pad', 'bass', 'arp', 'lead', 'bell'],
     gain: { drone: 0.52, pad: 0.34, bass: 0.32, arp: 0.2, lead: 0.26, bell: 0.2 },
     gate: { bass: 0.1, arp: 0.3, perc: 0.35, lead: 0.45 },
-    perc: 'pulse', space: 0.75, cutoff: 900, spread: 30, seed: 0x0v01, leadWave: 'sawtooth', flavor: 'ring',
+    perc: 'pulse', space: 0.75, cutoff: 900, spread: 30, seed: 0x0b01, leadWave: 'sawtooth', flavor: 'ring',
   }),
 
   // --- states --------------------------------------------------------------
