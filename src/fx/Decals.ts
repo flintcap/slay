@@ -494,18 +494,18 @@ const TELEGRAPH_FRAG = /* glsl */ `
       // circle
       return length(p) - 1.0;
     } else if (shape < 1.5) {
-      // cone: wedge opening along +Y with half-angle `param`
+      // cone: wedge opening along +Y with half-angle 'param'
       float r = length(p);
       float a = abs(atan(p.x, p.y));
       float ang = a - param;
       // Approximate the angular distance in linear units.
       return max(r - 1.0, ang * max(r, 0.08));
     } else if (shape < 2.5) {
-      // line: a rectangle from the origin along +Y, half-width `param`
+      // line: a rectangle from the origin along +Y, half-width 'param'
       vec2 d = vec2(abs(p.x) - param, abs(p.y - 0.5) - 0.5);
       return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
     }
-    // ring: annulus of thickness `param` at radius 1
+    // ring: annulus of thickness 'param' at radius 1
     return abs(length(p) - (1.0 - param)) - param;
   }
 

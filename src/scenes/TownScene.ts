@@ -43,10 +43,10 @@ export class TownScene extends GameScene {
   constructor(engine: Engine) {
     super();
     this.engine = engine;
-    this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 260);
+    this.rig = new CameraRig({ distance: 15.5, pitch: 0.9 });
+    this.camera = this.rig.camera;
     this.fx = new FXSystem(this.scene, engine.renderer.quality);
     this.decals = new DecalSystem(this.scene, engine.renderer.quality);
-    this.rig = new CameraRig(this.camera);
   }
 
   enter(): void {
@@ -83,7 +83,8 @@ export class TownScene extends GameScene {
       { id: 'portal', label: 'The Descent — Enter the Dungeon', panel: 'descend', pos: this.town.portalSpot.clone(), radius: 2.8 },
     ];
 
-    this.rig.snapTo(this.player.position);
+    this.rig.follow(this.player.root);
+    this.rig.snap();
     audio.music('town', 2.0);
     events.emit('ui:open', { panel: 'hud' });
     events.emit('depth:changed', { depth: 0, level: 0, of: 0 });
@@ -151,7 +152,9 @@ export class TownScene extends GameScene {
     }
 
     this.town.update(dt, elapsed);
-    this.rig.follow(this.player.position, dt, input);
+    this.rig.follow(this.player.root);
+    this.rig.setCursor(input.worldPoint);
+    this.rig.update(dt, elapsed);
     this.fx.update(dt, elapsed);
     this.decals.update(dt);
     audio.setListener(this.player.position.x, this.player.position.z, this.player.root.rotation.y);

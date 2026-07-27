@@ -82,11 +82,10 @@ export class DungeonScene extends GameScene {
   constructor(engine: Engine) {
     super();
     this.engine = engine;
-    this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 240);
+    this.rig = new CameraRig({ distance: 15.5, pitch: 0.92 });
+    this.camera = this.rig.camera;
     this.fx = new FXSystem(this.scene, engine.renderer.quality);
     this.decals = new DecalSystem(this.scene, engine.renderer.quality);
-    this.rig = new CameraRig(this.camera);
-    this.skills = new SkillRunner();
   }
 
   async enter(payload?: unknown): Promise<void> {
@@ -155,7 +154,8 @@ export class DungeonScene extends GameScene {
     const entry = this.mesh.tileToWorld(this.level.entry.x, this.level.entry.y);
     this.player.position.copy(entry);
     this.player.stop();
-    this.rig.snapTo(this.player.position);
+    this.rig.follow(this.player.root);
+    this.rig.snap();
 
     this.exitPos.copy(this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y));
 
@@ -257,7 +257,9 @@ export class DungeonScene extends GameScene {
 
     this.skills.update(dt, ctx, this.enemies, this.boss);
     this.mesh.update(dt, elapsed, this.player.position);
-    this.rig.follow(this.player.position, dt, input);
+    this.rig.follow(this.player.root);
+    this.rig.setCursor(input.worldPoint);
+    this.rig.update(dt, elapsed);
     this.fx.update(dt, elapsed);
     this.decals.update(dt);
 
@@ -474,7 +476,8 @@ export class DungeonScene extends GameScene {
     if (this.boss) {
       const p = this.boss.root.position;
       this.player.position.set(p.x, 0, p.z + 7);
-      this.rig.snapTo(this.player.position);
+      this.rig.follow(this.player.root);
+    this.rig.snap();
     }
   }
 

@@ -77,11 +77,11 @@ function u(
 }
 
 const m = (id: string, name: string, baseId: string, ilvl: number, levelReq: number, flavor: string,
-  mods: Array<[StatKey, number, number]>, o: Parameters<typeof u>[6] = {}) =>
+  mods: Array<[StatKey, number, number]>, o: Parameters<typeof u>[7] = {}) =>
   u(id, name, baseId, ilvl, levelReq, flavor, mods, { ...o, rarity: 'mythic', weight: o.weight ?? 60 });
 
 const a = (id: string, name: string, baseId: string, ilvl: number, levelReq: number, flavor: string,
-  mods: Array<[StatKey, number, number]>, o: Parameters<typeof u>[6] = {}) =>
+  mods: Array<[StatKey, number, number]>, o: Parameters<typeof u>[7] = {}) =>
   u(id, name, baseId, ilvl, levelReq, flavor, mods, { ...o, rarity: 'ancient', weight: o.weight ?? 30 });
 
 export const UNIQUES: UniqueDef[] = [

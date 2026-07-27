@@ -25,7 +25,7 @@ import type {
 } from '../types';
 import type { NavGrid } from '../world/Nav';
 import type { FXSystem } from '../fx/Particles';
-import type { DecalSystem } from '../fx/Effects';
+import type { DecalSystem } from '../fx/Decals';
 import type { Enemy } from './Enemy';
 
 // ---------------------------------------------------------------------------

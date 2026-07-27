@@ -959,7 +959,7 @@ function layoutCaves(o: LayoutOpts): LayoutOut {
   resetRoomIds();
   const { width, height, rng } = o;
   const g = new Grid(width, height);
-  const noise = new Noise(o.seed ^ 0x0cave);
+  const noise = new Noise(o.seed ^ 0x0cafe);
 
   const fill = 0.455;
   for (let y = 3; y < height - 3; y++) {

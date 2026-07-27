@@ -125,7 +125,7 @@ export class Synth {
   readonly delaySendBus: GainNode;
 
   private noiseCache = new Map<NoiseColor, AudioBuffer>();
-  private shaperCache = new Map<number, WaveShaperNode['curve']>();
+  private shaperCache = new Map<number, Float32Array<ArrayBuffer>>();
   private rng: Rng = new Random(0x5ec0de);
 
   /** Nodes that are still sounding, so `stopAll` can silence them. */
@@ -292,10 +292,10 @@ export class Synth {
   }
 
   /** Cached tanh-ish waveshaper curves for distortion / saturation. */
-  private shaperCurve(amount: number): Float32Array {
+  private shaperCurve(amount: number): Float32Array<ArrayBuffer> {
     const key = Math.round(amount * 20);
     const cached = this.shaperCache.get(key);
-    if (cached) return cached as Float32Array;
+    if (cached) return cached;
     const n = 1024;
     const curve = new Float32Array(n);
     const k = 1 + amount * 60;

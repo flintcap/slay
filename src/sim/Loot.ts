@@ -476,7 +476,7 @@ function buildSetItem(piece: SetPieceDef, ilvl: number, rng: Rng): Item {
   item.setId = piece.setId;
   item.uniqueId = piece.id;
   item.mods = rollImplicits(base, rng);
-  piece.mods.forEach((mod, i) => {
+  piece.mods.forEach((mod: { stat: StatKey; min: number; max: number }, i: number) => {
     item.mods.push({
       affixId: `set.${piece.id}.${i}`,
       stat: mod.stat,
@@ -563,7 +563,7 @@ export function rollItem(
   }
 
   if (rarity === 'set') {
-    const pool = setPool(lvl).filter((p) => {
+    const pool = setPool(lvl).filter((p: SetPieceDef) => {
       if (opts.category && getBase(p.baseId).category !== opts.category) return false;
       return setPieceDropWeight(p, lvl) > 0;
     });

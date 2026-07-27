@@ -768,7 +768,7 @@ class ParticlePool {
     this.dirtyHi = -Infinity;
   }
 
-  setFog(fog: THREE.FogBase | null): void {
+  setFog(fog: THREE.Fog | THREE.FogExp2 | null): void {
     const u = this.mat.uniforms;
     if (fog instanceof THREE.FogExp2) {
       u.uFogMode!.value = 2;
