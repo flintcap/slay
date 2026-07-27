@@ -59,6 +59,46 @@ async function main(): Promise<void> {
     }
   });
 
+  // Hand the world generator the real bestiary. Without this it falls back to
+  // a structurally-valid placeholder catalogue whose ids match no real monster,
+  // and every spawn is silently discarded at load time.
+  const [{ setMonsterCatalog }, { MONSTERS, pickMonstersForDepth }, { MONSTER_AFFIXES }, { pickBossForDepth }] =
+    await Promise.all([
+      import('./world/DungeonGen'),
+      import('./data/monsters'),
+      import('./data/monsterAffixes'),
+      import('./data/bosses'),
+    ]);
+  setMonsterCatalog({
+    pick: (depth, biome, rng, count) => {
+      const picked = pickMonstersForDepth(depth, biome, rng, count).map((m) => m.id);
+      // Never hand back an empty pool — a floor with no monsters is worse than
+      // a slightly off-theme one.
+      if (picked.length === 0 && MONSTERS.length > 0) {
+        for (let i = 0; i < count; i++) picked.push(rng.pick(MONSTERS).id);
+      }
+      return picked;
+    },
+    affixes: (depth, rng, count) => {
+      const eligible = MONSTER_AFFIXES.filter((a) => a.minDepth <= depth);
+      const pool = eligible.length ? eligible : MONSTER_AFFIXES;
+      const out: string[] = [];
+      const taken = new Set<string>();
+      for (let i = 0; i < count && taken.size < pool.length; i++) {
+        // Respect each affix's own exclusion list so packs stay coherent.
+        const legal = pool.filter(
+          (a) => !taken.has(a.id) && !(a.excludes ?? []).some((x) => taken.has(x))
+        );
+        if (legal.length === 0) break;
+        const chosen = rng.weighted(legal, (a) => a.weight);
+        taken.add(chosen.id);
+        out.push(chosen.id);
+      }
+      return out;
+    },
+    bossFor: (depth, biome, rng) => pickBossForDepth(depth, biome, rng).id,
+  });
+
   boot(0.74, 'Tuning the instruments…');
   await tick();
   audio.init(save.settings);
