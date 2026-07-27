@@ -934,7 +934,6 @@ input.slider::-moz-range-thumb {
   color: var(--ink);
   background:
     linear-gradient(180deg, rgba(52, 43, 30, 0.96) 0%, rgba(26, 21, 15, 0.98) 14%, rgba(19, 15, 11, 0.985) 100%);
-  border: 1px solid #443venue;
   border: 1px solid #443524;
   border-radius: var(--radius-lg);
   box-shadow:

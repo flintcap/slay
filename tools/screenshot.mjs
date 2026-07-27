@@ -73,7 +73,12 @@ if (!up) {
   process.exit(1);
 }
 
+// The container ships a pinned Chromium that will not match whatever build our
+// @playwright/test version wants. Use the installed one rather than downloading.
+const CHROME = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium';
+
 const browser = await chromium.launch({
+  executablePath: existsSync(CHROME) ? CHROME : undefined,
   args: [
     '--use-gl=angle',
     '--use-angle=swiftshader',

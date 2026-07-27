@@ -109,7 +109,9 @@ function probeScene(scene: object): SceneProbe {
     }
   };
   visit(scene, 0);
-  probes.set(scene, p);
+  // Only cache once we actually found the player — probing during a scene
+  // transition can otherwise freeze a half-empty result in place forever.
+  if (p.player) probes.set(scene, p);
   return p;
 }
 
@@ -642,13 +644,16 @@ export class HUD {
 
     // Minimap at 8Hz — a full grid redraw every frame is pure waste.
     if (probe?.level) runtime.level = probe.level;
-    if (probe?.worldToTile && pl) {
+    if (pl) {
       const pos = pl.position as { x: number; z: number } | undefined;
-      if (pos) {
+      if (pos && probe?.worldToTile) {
         const t = probe.worldToTile(pos.x, pos.z);
         runtime.playerTileX = t.x;
         runtime.playerTileY = t.y;
       }
+      // Minimap arrow heading — the model's yaw, if the avatar exposes one.
+      const root = pl.root as { rotation?: { y: number } } | undefined;
+      if (root?.rotation) runtime.facing = -root.rotation.y;
     }
     this.minimapAccum += dt;
     if (this.minimapAccum > 0.125) {
