@@ -683,8 +683,8 @@ function tickProjectiles(dt: number, ctx: CombatContext): void {
       p.mesh.lookAt(p.x + p.vx, p.y + p.vy, p.z + p.vz);
     }
 
-    if (p.trail && Math.random === undefined) {
-      // (unreachable — kept so the trail field stays meaningful without RNG cost)
+    if (p.trail && ctx.rng.next() < dt * 22) {
+      ctx.fx.burst(p.trail, p.x, p.y, p.z, { count: 2, color: (p.mesh.material as THREE.MeshBasicMaterial).color.getHex() });
     }
 
     // Ground / wall collision.

@@ -6,6 +6,7 @@ import { events } from '../core/Events';
 import { buildPlayerModel, attachToSocket } from '../art/CharacterModels';
 import { Animator } from '../art/Animation';
 import { buildItemModel } from '../art/ItemModels';
+import { getBase } from '../sim/Loot';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 
@@ -95,11 +96,8 @@ export class Player {
       const item = eq[slot];
       if (!item) continue;
       try {
-        const mesh = buildItemModel(
-          { shape: 'auto', palette: 'metal.steel' },
-          this.rng,
-          item.rarity
-        );
+        const visual = getBase(item.baseId)?.visual ?? { shape: 'auto', palette: 'metal.steel' };
+        const mesh = buildItemModel(visual, this.rng, item.rarity);
         attachToSocket(this.root, this.bones, slot, mesh);
         this.equipMeshes.set(slot, mesh);
       } catch {

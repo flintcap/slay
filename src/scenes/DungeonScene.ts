@@ -418,9 +418,23 @@ export class DungeonScene extends GameScene {
         const t = age / 0.45;
         l.root.position.y = Math.sin(t * Math.PI) * 0.9;
       } else {
-        l.root.position.y = 0.28 + Math.sin(elapsed * 2.1 + l.pos.x) * 0.06;
+        l.root.position.y = 0.28;
       }
-      l.root.rotation.y += dt * 1.1;
+      // Drop models declare their own motion rather than animating themselves.
+      l.root.traverse((o) => {
+        const d = o.userData as {
+          spin?: number;
+          bobAmplitude?: number;
+          bobSpeed?: number;
+          orbit?: { radius: number; phase: number; y: number };
+        };
+        if (d.spin) o.rotation.y += dt * d.spin;
+        if (d.bobAmplitude) o.position.y = Math.sin(elapsed * (d.bobSpeed ?? 1.6) + l.pos.x) * d.bobAmplitude;
+        if (d.orbit) {
+          const a = elapsed * 0.9 + d.orbit.phase;
+          o.position.set(Math.cos(a) * d.orbit.radius, d.orbit.y, Math.sin(a) * d.orbit.radius);
+        }
+      });
 
       if (l.pos.distanceTo(this.player.position) < pickupRadius) {
         const ok = addItemToInventory(this.player.character, l.item);

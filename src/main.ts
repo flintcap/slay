@@ -44,6 +44,21 @@ async function main(): Promise<void> {
   const { warmMaterials } = await import('./art/Materials');
   await warmMaterials((p, label) => boot(0.34 + p * 0.36, label));
 
+  // Teach the item-model builder how to find a base's authored visual. Done
+  // here rather than inside art/ so the art layer keeps no compile-time
+  // dependency on the item simulation.
+  const [{ setItemVisualResolver }, { getBase }] = await Promise.all([
+    import('./art/ItemModels'),
+    import('./sim/Loot'),
+  ]);
+  setItemVisualResolver((item) => {
+    try {
+      return getBase(item.baseId)?.visual;
+    } catch {
+      return undefined;
+    }
+  });
+
   boot(0.74, 'Tuning the instruments…');
   await tick();
   audio.init(save.settings);
