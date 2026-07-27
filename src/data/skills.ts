@@ -3980,4 +3980,354 @@ const GRAVEPACT = build('gravepact', [
   },
 ]);
 
-// <<APPEND>>
+// ===========================================================================
+// Assembly
+// ===========================================================================
+
+export const SKILLS: SkillDef[] = [
+  ...BULWARK,
+  ...CARNAGE,
+  ...OATH,
+  ...CONFLAGRATION,
+  ...CINDERS,
+  ...SUNFIRE,
+  ...VENOM,
+  ...SHADOWCRAFT,
+  ...BLADEWORK,
+  ...TEMPEST,
+  ...GALEWALK,
+  ...CONDUIT,
+  ...OSSUARY,
+  ...BLIGHT,
+  ...GRAVEPACT,
+];
+
+export const SKILL_BY_ID: Record<string, SkillDef> = Object.create(null);
+for (const s of SKILLS) {
+  if (SKILL_BY_ID[s.id]) console.warn(`[skills] duplicate skill id "${s.id}"`);
+  SKILL_BY_ID[s.id] = s;
+}
+
+export function getSkill(id: string): SkillDef | undefined {
+  return SKILL_BY_ID[id];
+}
+
+export function skillsForTree(treeId: string): SkillDef[] {
+  return SKILLS.filter((s) => s.treeId === treeId);
+}
+
+export function treesForClass(classId: CharClassId): SkillTreeDef[] {
+  return SKILL_TREES.filter((t) => t.classId === classId);
+}
+
+export function skillsForClass(classId: CharClassId): SkillDef[] {
+  const ids = new Set(treesForClass(classId).map((t) => t.id));
+  return SKILLS.filter((s) => ids.has(s.treeId));
+}
+
+/** The class that owns a skill, or undefined for an unknown id. */
+export function classOfSkill(id: string): CharClassId | undefined {
+  const s = SKILL_BY_ID[id];
+  if (!s) return undefined;
+  return TREE_BY_ID[s.treeId]?.classId;
+}
+
+/** Points that must be spent in the tree before a skill's tier opens. */
+export function tierPointRequirement(tier: number): number {
+  return TIER_POINTS[Math.max(0, Math.min(TIER_POINTS.length - 1, tier))] ?? 0;
+}
+
+export function tierLevelRequirement(tier: number): number {
+  return TIER_LEVEL[Math.max(0, Math.min(TIER_LEVEL.length - 1, tier))] ?? 1;
+}
+
+// ---------------------------------------------------------------------------
+// Synergies
+// ---------------------------------------------------------------------------
+
+/**
+ * `target` gains `pctPerRank`% damage (or effect strength, for skills without a
+ * damage roll) for every rank invested in `source`. Both must live in the same
+ * tree. This is the D2 mechanic that turns 20 points into a build.
+ */
+export interface SynergyLink {
+  target: string;
+  source: string;
+  pctPerRank: number;
+}
+
+const syn = (target: string, source: string, pctPerRank: number): SynergyLink => ({
+  target,
+  source,
+  pctPerRank,
+});
+
+export const SYNERGIES: SynergyLink[] = [
+  // Bulwark
+  syn('shieldBash', 'braced', 8),
+  syn('shieldBash', 'shieldWall', 6),
+  syn('shieldCharge', 'shieldBash', 8),
+  syn('shieldCharge', 'ironSkin', 4),
+  syn('shieldThrow', 'shieldBash', 10),
+  syn('shieldThrow', 'bulwarkMastery', 6),
+  syn('riposte', 'deflect', 10),
+  syn('retribution', 'braced', 6),
+  syn('retribution', 'phalanx', 8),
+  syn('retribution', 'ironSkin', 4),
+  // Carnage
+  syn('rend', 'butchery', 12),
+  syn('rend', 'bloodScent', 8),
+  syn('gash', 'rend', 10),
+  syn('gash', 'arterialStrike', 12),
+  syn('whirlwind', 'cleave', 10),
+  syn('whirlwind', 'reaver', 6),
+  syn('massacre', 'whirlwind', 8),
+  syn('massacre', 'butchery', 6),
+  syn('ruin', 'overhead', 12),
+  syn('ruin', 'sunder', 8),
+  syn('gorefeast', 'rend', 10),
+  syn('gorefeast', 'bloodDrinker', 8),
+  syn('bloodTide', 'butchery', 6),
+  syn('bloodTide', 'unrelenting', 8),
+  // Oaths
+  syn('battleCry', 'oathOfMight', 8),
+  syn('warStomp', 'earthshatter', 10),
+  syn('warStomp', 'oathOfIron', 6),
+  syn('earthshatter', 'warStomp', 12),
+  syn('heraldOfRuin', 'battleCry', 10),
+  syn('heraldOfRuin', 'intimidate', 8),
+  syn('swornBrother', 'oathOfMight', 8),
+  syn('swornBrother', 'bannerOfTheGate', 10),
+  // Conflagration
+  syn('firebolt', 'fireMastery', 8),
+  syn('firebolt', 'fireball', 6),
+  syn('fireball', 'firebolt', 8),
+  syn('fireball', 'emberNova', 6),
+  syn('flameLance', 'firebolt', 10),
+  syn('flameLance', 'infernoStream', 6),
+  syn('infernoStream', 'flameLance', 8),
+  syn('infernoStream', 'scorch', 6),
+  syn('pyroclasm', 'fireball', 10),
+  syn('pyroclasm', 'firestorm', 6),
+  syn('firestorm', 'pyroclasm', 8),
+  syn('firestorm', 'blastWave', 5),
+  syn('dragonsBreath', 'infernoStream', 10),
+  syn('annihilate', 'fireball', 8),
+  syn('annihilate', 'dragonsBreath', 10),
+  syn('annihilate', 'searingCore', 6),
+  syn('cataclysm', 'combustion', 8),
+  syn('cataclysm', 'kindling', 6),
+  // Cinders
+  syn('ignite', 'cinderTouch', 10),
+  syn('ignite', 'pyreMastery', 8),
+  syn('wallOfFlame', 'ignite', 8),
+  syn('wallOfFlame', 'emberField', 6),
+  syn('emberField', 'wallOfFlame', 10),
+  syn('emberField', 'scorchedEarth', 8),
+  syn('immolate', 'ignite', 8),
+  syn('immolate', 'pyreMastery', 6),
+  syn('livingFlame', 'ignite', 6),
+  syn('livingFlame', 'ashCloud', 5),
+  syn('funeralPyre', 'emberField', 10),
+  syn('funeralPyre', 'livingFlame', 6),
+  syn('theLongBurn', 'smolder', 6),
+  syn('theLongBurn', 'everburning', 8),
+  // Sunfire
+  syn('arcaneBolt', 'solarMastery', 8),
+  syn('arcaneBolt', 'manaWell', 4),
+  syn('radiance', 'arcaneBolt', 6),
+  syn('meteor', 'sunbrand', 8),
+  syn('meteor', 'supernova', 6),
+  syn('supernova', 'meteor', 10),
+  syn('supernova', 'radiance', 6),
+  syn('heliosLance', 'radiance', 8),
+  syn('heliosLance', 'starfire', 6),
+  syn('heliosLance', 'sunsAnvil', 8),
+  syn('secondSun', 'sunsAnvil', 8),
+  syn('secondSun', 'eclipse', 6),
+  // Venom
+  syn('viperStrike', 'toxicology', 10),
+  syn('viperStrike', 'coatBlades', 8),
+  syn('venomDart', 'viperStrike', 8),
+  syn('venomDart', 'toxicology', 8),
+  syn('noxiousCloud', 'plagueVial', 8),
+  syn('noxiousCloud', 'toxicology', 6),
+  syn('plagueVial', 'noxiousCloud', 8),
+  syn('plagueVial', 'cultivate', 6),
+  syn('envenomBurst', 'cultivate', 10),
+  syn('envenomBurst', 'hemotoxin', 8),
+  syn('deathLotus', 'viperStrike', 8),
+  syn('deathLotus', 'coatBlades', 6),
+  syn('viperGod', 'deathLotus', 8),
+  syn('viperGod', 'toxicMastery', 6),
+  syn('apexPredator', 'cultivate', 6),
+  syn('apexPredator', 'bloodToxin', 6),
+  // Shadowcraft
+  syn('shadowStep', 'nightEyes', 8),
+  syn('shadowStep', 'voidWalk', 6),
+  syn('umbralAmbush', 'veil', 10),
+  syn('umbralAmbush', 'nightEyes', 8),
+  syn('voidWalk', 'shadowStep', 10),
+  syn('voidWalk', 'darkPact', 5),
+  syn('assassinate', 'umbralAmbush', 10),
+  syn('assassinate', 'voidWalk', 8),
+  syn('shadowClone', 'shadowLegion', 8),
+  syn('shadowClone', 'mirrorGambit', 6),
+  // Bladework
+  syn('preciseCut', 'bladeMastery', 8),
+  syn('preciseCut', 'deadlyAim', 6),
+  syn('doubleStrike', 'preciseCut', 8),
+  syn('doubleStrike', 'flurry', 6),
+  syn('fanOfKnives', 'throwingSpree', 8),
+  syn('fanOfKnives', 'bladeMastery', 6),
+  syn('throwingSpree', 'fanOfKnives', 10),
+  syn('whirlingBlades', 'doubleStrike', 8),
+  syn('whirlingBlades', 'momentum', 6),
+  syn('phantomBlades', 'lethality', 8),
+  syn('phantomBlades', 'bladeMastery', 5),
+  syn('riposteBlade', 'lethality', 8),
+  syn('riposteBlade', 'preciseCut', 6),
+  syn('thousandCuts', 'deadlyAim', 6),
+  syn('thousandCuts', 'lethality', 6),
+  // Tempest
+  syn('sparkbolt', 'lightningMastery', 8),
+  syn('sparkbolt', 'forkedBolt', 6),
+  syn('chainLightning', 'sparkbolt', 8),
+  syn('chainLightning', 'conductance', 6),
+  syn('thunderclap', 'shockNova', 8),
+  syn('lightningStrike', 'chainLightning', 8),
+  syn('lightningStrike', 'thunderstorm', 6),
+  syn('thunderstorm', 'lightningStrike', 10),
+  syn('thunderstorm', 'ionize', 6),
+  syn('tempestOrb', 'ballLightning', 8),
+  syn('tempestOrb', 'shockNova', 6),
+  syn('ballLightning', 'tempestOrb', 8),
+  syn('ballLightning', 'stormFury', 5),
+  syn('skyLance', 'lightningStrike', 8),
+  syn('skyLance', 'overload', 6),
+  syn('heavensGate', 'skyLance', 10),
+  syn('heavensGate', 'thunderclap', 6),
+  syn('eyeOfTheStorm', 'conductance', 6),
+  syn('eyeOfTheStorm', 'ionize', 8),
+  // Galewalk
+  syn('gust', 'shear', 8),
+  syn('gust', 'cyclone', 6),
+  syn('shear', 'gust', 8),
+  syn('cyclone', 'maelstrom', 8),
+  syn('cyclone', 'hurricane', 6),
+  syn('hurricane', 'cyclone', 8),
+  syn('hurricane', 'shear', 5),
+  syn('updraft', 'skyfall', 8),
+  syn('updraft', 'windStep', 6),
+  syn('skyfall', 'updraft', 10),
+  syn('skyfall', 'tempestDance', 6),
+  syn('maelstrom', 'cyclone', 10),
+  syn('maelstrom', 'hurricane', 8),
+  syn('tempestDance', 'windStep', 8),
+  syn('tempestDance', 'thunderRun', 8),
+  // Conduit
+  syn('chargeUp', 'conduitMastery', 8),
+  syn('chargeUp', 'staticField', 5),
+  syn('staticField', 'capacitor', 5),
+  syn('staticField', 'arcWeave', 6),
+  syn('dischargeStrike', 'chargeUp', 10),
+  syn('dischargeStrike', 'conduitMastery', 8),
+  syn('staticBurst', 'dischargeStrike', 10),
+  syn('staticBurst', 'chargeUp', 8),
+  syn('teslaCoil', 'lightningRod', 10),
+  syn('teslaCoil', 'arcWeave', 6),
+  syn('theGreatArc', 'superconductor', 8),
+  syn('theGreatArc', 'conduitMastery', 6),
+  // Ossuary
+  syn('boneSpear', 'boneSpirit', 8),
+  syn('boneSpear', 'boneMastery', 5),
+  syn('boneSpirit', 'boneSpear', 10),
+  syn('boneSpirit', 'boneMastery', 5),
+  syn('boneCage', 'boneArmor', 8),
+  syn('boneNova', 'boneArmor', 10),
+  syn('boneNova', 'boneCage', 8),
+  syn('boneStorm', 'boneSpear', 6),
+  syn('boneStorm', 'boneSpirit', 6),
+  syn('theBoneChoir', 'boneMastery', 6),
+  syn('theBoneChoir', 'marrowFeast', 6),
+  // Blight
+  syn('blightBolt', 'poisonNova', 8),
+  syn('blightBolt', 'blightMastery', 6),
+  syn('poisonNova', 'blightBolt', 10),
+  syn('poisonNova', 'pestilence', 6),
+  syn('corpseExplosion', 'poisonNova', 8),
+  syn('corpseExplosion', 'blightMastery', 6),
+  syn('doomBrand', 'decay', 8),
+  syn('doomBrand', 'amplifyDamage', 6),
+  syn('pestilence', 'poisonNova', 8),
+  syn('pestilence', 'wither', 6),
+  syn('theLongDecline', 'decay', 8),
+  syn('theLongDecline', 'curseMastery', 6),
+  // Grave Pact
+  syn('siphonLife', 'vampiricTouch', 10),
+  syn('siphonLife', 'spiritWard', 5),
+  syn('exsanguinate', 'siphonLife', 10),
+  syn('exsanguinate', 'vampiricTouch', 6),
+  syn('sanguineNova', 'bloodPact', 10),
+  syn('sanguineNova', 'deathsEmbrace', 6),
+  syn('soulTether', 'soulCage', 8),
+  syn('reaping', 'reapSoul', 6),
+  syn('reaping', 'harvestMastery', 8),
+  syn('theSecondDeath', 'harvestMastery', 6),
+  syn('theSecondDeath', 'undying', 8),
+];
+
+const SYNERGIES_BY_TARGET: Record<string, SynergyLink[]> = Object.create(null);
+for (const link of SYNERGIES) {
+  (SYNERGIES_BY_TARGET[link.target] ??= []).push(link);
+}
+
+export function synergiesFor(skillId: string): SynergyLink[] {
+  return SYNERGIES_BY_TARGET[skillId] ?? [];
+}
+
+/**
+ * Total synergy bonus for a skill, as a percentage. `ranks` is the character's
+ * skill map (hard ranks; +skills gear does not feed synergies, exactly as D2).
+ */
+export function synergyPct(skillId: string, ranks: Record<string, number>): number {
+  const links = SYNERGIES_BY_TARGET[skillId];
+  if (!links) return 0;
+  let total = 0;
+  for (const link of links) {
+    const r = ranks[link.source] ?? 0;
+    if (r > 0) total += link.pctPerRank * r;
+  }
+  return total;
+}
+
+/**
+ * Final damage multiplier for a skill at a given effective rank, including
+ * synergies. `effectiveRank` may exceed `maxRank` thanks to +skills.
+ */
+export function effectiveDamageScale(
+  skillId: string,
+  effectiveRank: number,
+  ranks: Record<string, number>,
+): number {
+  const def = SKILL_BY_ID[skillId];
+  if (!def || !def.damageScale || effectiveRank <= 0) return 0;
+  const base = def.damageScale(Math.min(effectiveRank, HARD_SKILL_RANK_CAP));
+  return base * (1 + synergyPct(skillId, ranks) / 100);
+}
+
+/** Convenience for the UI: every skill grouped by tier for one tree. */
+export function treeGrid(treeId: string): SkillDef[][] {
+  const rows: SkillDef[][] = [[], [], [], [], [], []];
+  for (const s of skillsForTree(treeId)) {
+    const row = rows[s.tier - 1];
+    if (row) row.push(s);
+  }
+  for (const row of rows) row.sort((a, b) => a.column - b.column);
+  return rows;
+}
+
+/** Every capstone id — tier 6, column 0. Used by the UI to highlight them. */
+export const CAPSTONES: readonly string[] = SKILLS.filter((s) => s.tier === 6 && s.column === 0).map(
+  (s) => s.id,
+);
