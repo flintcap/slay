@@ -13,12 +13,17 @@
 
 import type { BiomeId, MonsterDef, MonsterFamily, MonsterRole, Rng } from '../types';
 
+// Convenience re-exports: the scene layer pulls the whole monster surface from
+// one module rather than three.
+export { MONSTER_AFFIXES, getAffix, rollAffixes, affixCountForRank } from './monsterAffixes';
+export { BOSSES, getBoss, pickBossForDepth } from './bosses';
+
 // ---------------------------------------------------------------------------
 // Palettes — six texture sets from the art library, tinted per creature.
 // ---------------------------------------------------------------------------
 
 const BONE = 'stone.crypt|0xd6cfb4';
-const OLDBONE = 'stone.crypt|0x9d9madjust'.replace('madjust', '478a'); // 0x9d9478
+const OLDBONE = 'stone.crypt|0x9d9478';
 const STONE = 'stone.crypt|0x8c8577';
 const BASALT = 'stone.crypt|0x4a4348';
 const IRON = 'metal.iron|0x8b8f96';
