@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/data/quests.ts", "src/data/lore.ts", "src/sim/Quests.ts"]
+}
