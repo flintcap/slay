@@ -110,6 +110,25 @@ export type GeneratedLevel = DungeonLevel & LevelExtras;
 /** World units per height step. Shared with the builder. */
 export const STEP_HEIGHT = 0.45;
 
+/** World units per tile. The single source of truth for tile<->world mapping. */
+export const TILE_SIZE = 2.0;
+
+/** World position of a tile centre (y excluded — the builder adds height). */
+export function tileToWorldXZ(level: DungeonLevel, x: number, y: number): { x: number; z: number } {
+  return {
+    x: (x - level.width / 2 + 0.5) * TILE_SIZE,
+    z: (y - level.height / 2 + 0.5) * TILE_SIZE,
+  };
+}
+
+/** Tile containing a world position. */
+export function worldToTileXZ(level: DungeonLevel, wx: number, wz: number): { x: number; y: number } {
+  return {
+    x: Math.floor(wx / TILE_SIZE + level.width / 2),
+    y: Math.floor(wz / TILE_SIZE + level.height / 2),
+  };
+}
+
 export function levelExtras(level: DungeonLevel): LevelExtras | null {
   const l = level as Partial<GeneratedLevel>;
   return l.heights && l.roomOf && l.audit
