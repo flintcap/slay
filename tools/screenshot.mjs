@@ -105,10 +105,12 @@ await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load', timeout: 60000
 
 // Wait for the boot sequence to hand off to the title scene.
 try {
+  // Boot bakes the texture library, which takes minutes under SwiftShader.
+  // Wait on the debug surface — it is the last thing main() installs.
   await page.waitForFunction(() => {
     const s = window.SLAY;
-    return !!s && !!s.engine && s.engine.currentSceneId !== null;
-  }, { timeout: 120000 });
+    return !!s && !!s.debug && !!s.engine && s.engine.currentSceneId !== null;
+  }, { timeout: 300000 });
 } catch {
   console.error('game never reached a live scene');
   const status = await page.textContent('#boot-status').catch(() => null);
