@@ -28,7 +28,7 @@ const DEFAULT_BINDS: Record<string, ActionName> = {
   Digit5: 'skill5',
   Digit6: 'skill6',
   KeyQ: 'potionLife',
-  KeyW: 'potionMana',
+  KeyF: 'potionMana',
   KeyI: 'inventory',
   KeyC: 'character',
   KeyT: 'skills',
@@ -79,6 +79,12 @@ export class Input {
     el.addEventListener('pointermove', this.onPointerMove);
     el.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointerup', this.onPointerUp);
+    // A drag that ends outside the window, or a cancelled pointer, never
+    // delivers pointerup on the canvas — without these the button latches down
+    // and the player keeps running forever.
+    window.addEventListener('pointercancel', this.onPointerUp);
+    document.addEventListener('pointerleave', this.onPointerLost);
+    window.addEventListener('contextmenu', this.onPointerLost);
     el.addEventListener('wheel', this.onWheel, { passive: true });
     el.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('blur', this.onBlur);
@@ -124,6 +130,12 @@ export class Input {
   private onPointerUp = (e: PointerEvent): void => {
     if (e.button === 0) this.mouseLeft = false;
     if (e.button === 2) this.mouseRight = false;
+  };
+
+  /** Drop all mouse state — used when the pointer leaves or is taken away. */
+  private onPointerLost = (): void => {
+    this.mouseLeft = false;
+    this.mouseRight = false;
   };
 
   private onWheel = (e: WheelEvent): void => {
@@ -180,6 +192,9 @@ export class Input {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerUp);
+    document.removeEventListener('pointerleave', this.onPointerLost);
+    window.removeEventListener('contextmenu', this.onPointerLost);
     window.removeEventListener('blur', this.onBlur);
   }
 }

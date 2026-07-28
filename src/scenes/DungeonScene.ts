@@ -314,7 +314,9 @@ export class DungeonScene extends GameScene {
       const target = input.worldPoint;
       if (primary) {
         this.skills.cast(primary, this.player, target, ctx, this.enemies, this.boss);
-      } else {
+      } else if (this.keyDir.lengthSq() === 0) {
+        // Keyboard wins; a move order issued while a key is held leaves a stale
+        // destination the player resumes running to after releasing the key.
         this.player.moveTo(target.x, target.z);
       }
     }

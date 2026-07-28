@@ -118,9 +118,27 @@ export class Player {
     return this.actionLock > 0;
   }
 
-  /** Issue a click-to-move order. */
+  /**
+   * Issue a click-to-move order.
+   *
+   * The destination is clamped to a sane radius: the cursor is projected onto
+   * the ground plane, so a click near the horizon lands hundreds of units away
+   * and reads to the player as "it never stops running".
+   */
   moveTo(x: number, z: number): void {
     if (this.frozen || this.actionLock > 0) return;
+    const dx = x - this.root.position.x;
+    const dz = z - this.root.position.z;
+    const d = Math.hypot(dx, dz);
+    const MAX = 30;
+    if (d > MAX) {
+      this.moveTarget = new THREE.Vector3(
+        this.root.position.x + (dx / d) * MAX,
+        0,
+        this.root.position.z + (dz / d) * MAX
+      );
+      return;
+    }
     this.moveTarget = new THREE.Vector3(x, 0, z);
   }
 

@@ -110,7 +110,7 @@ try {
   await page.waitForFunction(() => {
     const s = window.SLAY;
     return !!s && !!s.debug && !!s.engine && s.engine.currentSceneId !== null;
-  }, { timeout: 300000 });
+  }, null, { timeout: 300000 });
 } catch {
   console.error('game never reached a live scene');
   const status = await page.textContent('#boot-status').catch(() => null);

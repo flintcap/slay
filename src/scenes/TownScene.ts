@@ -123,7 +123,10 @@ export class TownScene extends GameScene {
       this.keyDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.rig.yaw);
     }
 
-    if (input.mouseLeft && !input.pointerOverUI) {
+    // Keyboard wins. Issuing a move order while a key is held leaves a stale
+    // destination that the player resumes running to after the key is released.
+    const steering = this.keyDir.lengthSq() > 0;
+    if (input.mouseLeft && !input.pointerOverUI && !steering) {
       this.player.moveTo(input.worldPoint.x, input.worldPoint.z);
     }
 

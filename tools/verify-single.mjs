@@ -34,7 +34,7 @@ page.on('console', (m) => {
 await page.goto('http://127.0.0.1:4195/', { waitUntil: 'load', timeout: 60000 });
 
 const ok = await page
-  .waitForFunction(() => window.SLAY?.debug && window.SLAY?.engine?.currentSceneId, { timeout: 420000 })
+  .waitForFunction(() => window.SLAY?.debug && window.SLAY?.engine?.currentSceneId, null, { timeout: 420000 })
   .then(() => true)
   .catch(() => false);
 

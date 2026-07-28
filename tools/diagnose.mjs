@@ -39,7 +39,7 @@ page.on('pageerror', (e) => errors.push('PAGEERROR: ' + String(e)));
 
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load', timeout: 60000 });
 const booted = await page
-  .waitForFunction(() => window.SLAY?.debug && window.SLAY?.engine?.currentSceneId, { timeout: 300000 })
+  .waitForFunction(() => window.SLAY?.debug && window.SLAY?.engine?.currentSceneId, null, { timeout: 300000 })
   .then(() => true)
   .catch(() => false);
 console.log(booted ? 'booted ok' : 'BOOT TIMED OUT');

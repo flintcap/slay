@@ -28,7 +28,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 200)));
 
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
-await page.waitForFunction(() => window.SLAY?.debug, { timeout: 300000 });
+await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 300000 });
 
 await page.evaluate(async () => {
   window.SLAY.debug.makeCharacter('warden', 12);
