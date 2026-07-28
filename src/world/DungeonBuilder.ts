@@ -893,14 +893,18 @@ export class DungeonMesh {
   private buildLightPool(): void {
     for (let i = 0; i < MAX_TORCH_LIGHTS; i++) {
       const l = new THREE.PointLight(0xffffff, 0, 10, 2);
-      l.castShadow = i < SHADOW_LIGHTS;
-      if (l.castShadow) {
-        l.shadow.mapSize.set(512, 512);
-        l.shadow.camera.near = 0.4;
-        l.shadow.camera.far = 22;
-        l.shadow.bias = -0.004;
-        l.shadow.normalBias = 0.05;
-      }
+      // No shadows from the torch pool.
+      //
+      // A shadow-casting point light renders the scene six times, once per cube
+      // face. These lights re-target the nearest torches several times a second
+      // as the player walks, so every re-target re-rendered the dungeon six
+      // times over. Profiling caught multi-second frames from this alone, with
+      // no enemies on screen at all — it is the walking stutter.
+      //
+      // The atmosphere survives: flames are emissive and bloom, the biome key
+      // light still casts, and the player carries their own aura.
+      l.castShadow = false;
+      void SHADOW_LIGHTS;
       // Stays visible for the renderer's whole life. Toggling a light's
       // `visible` flag changes the scene's light count, and three.js keys the
       // shader program cache on that count, so every material in the scene
