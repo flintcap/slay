@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import type { Character, EquipSlot } from '../types';
 import { Random } from '../core/RNG';
 import { disposeObject } from '../core/Engine';
-import { buildPlayerModel, attachToSocket, clearSocket } from '../art/CharacterModels';
+import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots } from '../art/CharacterModels';
 import { buildItemModel } from '../art/ItemModels';
 import { Animator } from '../art/Animation';
 import { getBase } from '../sim/Loot';
@@ -159,6 +159,11 @@ export class PaperdollView {
     }).join('|');
     if (sig === this.equipSig) return;
     this.equipSig = sig;
+
+    // Gear replaces the class's own covering rather than clipping through it.
+    const worn = new Set<EquipSlot>();
+    for (const slot of VISUAL_SLOTS) if (eq[slot]) worn.add(slot);
+    if (this.model) applyWornSlots(this.model, worn);
 
     const rng = new Random(0x17ea55);
     for (const slot of VISUAL_SLOTS) {

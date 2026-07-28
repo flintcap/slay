@@ -30,6 +30,7 @@ import {
   limb,
   mergeGeometries,
   normalizeGeometry,
+  ring,
   shell,
   spike,
   taperedBox,
@@ -370,6 +371,14 @@ interface Part {
   mat: string;
   /** Restrict which bones may claim this part. */
   bind?: string[];
+  /**
+   * The equipment slot whose item replaces this piece. A part tagged `chest`
+   * is the class's own default chest covering; the moment real chest armour is
+   * equipped the item model takes over and this is hidden. Untagged parts are
+   * the character themself — body, undergarments, hair, capes — and are always
+   * visible.
+   */
+  cover?: EquipSlot;
 }
 
 const ARM_L = ['chest', 'shoulderL', 'elbowL', 'handL'];
@@ -397,16 +406,25 @@ interface BuildCtx {
   rng: Rng;
   parts: Part[];
   /** Non-skinned decorations parented to a bone. */
-  props: Array<{ bone: string; obj: THREE.Object3D }>;
+  props: Array<{ bone: string; obj: THREE.Object3D; cover?: EquipSlot }>;
   accent: number;
 }
 
-/** Shared underlying body: torso block, limbs, hands, feet, neck. */
+/**
+ * Shared underlying body: torso, limbs, hands, feet, neck.
+ *
+ * This is the person, not the outfit. Everything here is skin (or bone, for the
+ * revenant) so that a character with an empty equipment sheet reads as someone
+ * standing in their underclothes rather than as a suit of armour with no one
+ * inside it. Armour arrives from the equipment sockets and from the class's own
+ * cover pieces, which step aside when real gear replaces them.
+ */
 function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: string; gloves?: string }): void {
   const { j, p, parts } = ctx;
   const H = p.height;
   const t = p.thick;
-  const armourMat = opts.armour;
+  void opts.armour;
+  const bodyMat = opts.skin;
 
   // Pelvis + torso: two chamfered, tapered slabs rather than one box, so the
   // waist actually narrows and the chest reads as a separate mass.
@@ -416,7 +434,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
       taperedBox(pelvisW, H * 0.115 * p.depth, pelvisW * 0.86, H * 0.1 * p.depth, H * 0.1, H * 0.012),
       { pos: [0, H * 0.535, 0] },
     ),
-    mat: armourMat,
+    mat: bodyMat,
     bind: ['hips', 'spine'],
   });
   parts.push({
@@ -424,7 +442,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
       taperedBox(pelvisW * 0.86, H * 0.1 * p.depth, p.shoulder * H * 1.9, H * 0.125 * p.depth, H * 0.19, H * 0.014),
       { pos: [0, H * 0.685, 0] },
     ),
-    mat: armourMat,
+    mat: bodyMat,
     bind: TORSO,
   });
 
@@ -449,7 +467,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
     void s;
     parts.push({
       geo: limbBetween(j[sh], j[el], H * 0.042 * t, H * 0.034 * t),
-      mat: armourMat,
+      mat: bodyMat,
       bind: bindArm,
     });
     parts.push({
@@ -460,7 +478,10 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
     // Hand. A single box reads as a mitten, so the fist is built as a palm
     // mass with a knuckle ridge and a thumb — the two shapes that make a hand
     // legible at gameplay distance.
-    const handMat = opts.gloves ?? opts.skin;
+    // Bare hands by default; the class's own gloves are a cover piece.
+    const gloved = opts.gloves && opts.gloves !== opts.skin;
+    const handMat = gloved ? opts.gloves! : opts.skin;
+    const handCover: EquipSlot | undefined = gloved ? 'gloves' : undefined;
     const hx = j[hd].x;
     const hy = j[hd].y - H * 0.02;
     const hz = j[hd].z;
@@ -473,6 +494,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
         pos: [hx, hy, hz],
       }),
       mat: handMat,
+      cover: handCover,
       bind: bindArm,
     });
     // Knuckle ridge across the top of the fist.
@@ -481,6 +503,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
         pos: [hx, hy - H * 0.026 * t, hz + hw * 0.1],
       }),
       mat: handMat,
+      cover: handCover,
       bind: bindArm,
     });
     // Thumb, angled across the grip.
@@ -490,6 +513,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
         rot: [0.5, 0, side * 0.7],
       }),
       mat: handMat,
+      cover: handCover,
       bind: bindArm,
     });
   }
@@ -501,24 +525,134 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
   ] as Array<[string, string, string, string[]]>) {
     parts.push({
       geo: limbBetween(j[hp], j[kn], H * 0.055 * t, H * 0.042 * t),
-      mat: armourMat,
+      mat: bodyMat,
       bind: bindLeg,
     });
     parts.push({
       geo: limbBetween(j[kn], j[ft], H * 0.04 * t, H * 0.03 * t),
-      mat: armourMat,
+      mat: bodyMat,
       bind: bindLeg,
     });
-    // Boot: forward-projecting so the foot silhouette reads from above.
+    // Bare foot: forward-projecting so the silhouette reads from above.
     parts.push({
-      geo: transformed(beveledBox(H * 0.062 * t, H * 0.045, H * 0.13, H * 0.012), {
-        pos: [j[ft].x, j[ft].y + H * 0.012, j[ft].z + H * 0.026],
+      geo: transformed(beveledBox(H * 0.056 * t, H * 0.038, H * 0.12, H * 0.012), {
+        pos: [j[ft].x, j[ft].y + H * 0.01, j[ft].z + H * 0.024],
       }),
-      mat: opts.boots ?? armourMat,
+      mat: opts.skin,
+      bind: bindLeg,
+    });
+    // The class's own boot, slightly larger so it wraps the foot instead of
+    // fighting it for the same surface. Hidden once real boots are equipped.
+    if (opts.boots && opts.boots !== opts.skin) {
+      parts.push({
+        geo: transformed(beveledBox(H * 0.066 * t, H * 0.05, H * 0.135, H * 0.012), {
+          pos: [j[ft].x, j[ft].y + H * 0.014, j[ft].z + H * 0.028],
+        }),
+        mat: opts.boots,
+        cover: 'boots',
+        bind: bindLeg,
+      });
+    }
+  }
+}
+
+/**
+ * Linen undershirt and braies — what every character has on before they own
+ * anything. Deliberately plain: this is the layer armour goes over, and it has
+ * to survive being seen under a half-equipped character without competing.
+ */
+function underGarments(ctx: BuildCtx, mat = 'linen'): void {
+  const { j, p, parts } = ctx;
+  const H = p.height;
+  const t = p.thick;
+  const pelvisW = p.hip * H * 2.5;
+  const chestW = p.shoulder * H * 1.9;
+
+  // Sleeveless shirt. Built as a slightly inflated copy of the torso itself
+  // rather than as a curved panel in front of it: a panel reads as a sandwich
+  // board, and cloth on a body is just the body one layer out.
+  const grow = 1.06;
+  parts.push({
+    geo: transformed(
+      taperedBox(
+        pelvisW * 0.9 * grow,
+        H * 0.1 * p.depth * grow,
+        chestW * grow,
+        H * 0.128 * p.depth * grow,
+        H * 0.205,
+        H * 0.016,
+      ),
+      { pos: [0, H * 0.688, 0] },
+    ),
+    mat,
+    bind: TORSO,
+  });
+  // Hem flaring below the waist, so the shirt ends in cloth rather than a cut.
+  parts.push({
+    geo: transformed(
+      taperedBox(pelvisW * 1.08, H * 0.108 * p.depth, pelvisW * 0.92 * grow, H * 0.102 * p.depth, H * 0.075, H * 0.012),
+      { pos: [0, H * 0.565, 0] },
+    ),
+    mat,
+    bind: SKIRT,
+  });
+
+  // Braies: a waistband plus two short legs, cut mid-thigh.
+  parts.push({
+    geo: transformed(
+      taperedBox(pelvisW * 1.05, H * 0.112 * p.depth, pelvisW * 1.02, H * 0.104 * p.depth, H * 0.085, H * 0.012),
+      { pos: [0, H * 0.5, 0] },
+    ),
+    mat,
+    bind: SKIRT,
+  });
+  for (const [hp, kn, bindLeg] of [
+    ['hipL', 'kneeL', LEG_L],
+    ['hipR', 'kneeR', LEG_R],
+  ] as Array<[string, string, string[]]>) {
+    const cuff = j[hp].clone().lerp(j[kn], 0.34);
+    parts.push({
+      geo: limbBetween(j[hp], cuff, H * 0.058 * t, H * 0.05 * t),
+      mat,
       bind: bindLeg,
     });
   }
+
+  // Waist cord. A torus, because a box here reads as a second belt buckle.
+  const cord = ring(pelvisW * 0.56, H * 0.009, 16, 6);
+  cord.rotateX(Math.PI * 0.5);
+  cord.scale(1, 1, (H * 0.112 * p.depth) / (pelvisW * 1.12));
+  cord.translate(0, H * 0.545, 0);
+  parts.push({ geo: cord, mat: 'leather', bind: ['hips'] });
+  parts.push({
+    geo: transformed(limb(H * 0.05, H * 0.007, H * 0.005, 5), {
+      pos: [H * 0.014, H * 0.515, H * 0.058 * p.depth],
+      rot: [0.2, 0, 0.3],
+    }),
+    mat: 'leather',
+    bind: ['hips'],
+  });
+
+  // Foot wraps: strips crossing the instep, so bare feet read as bound rather
+  // than as naked feet in a dungeon.
+  for (const [ft, bindLeg] of [
+    ['footL', LEG_L],
+    ['footR', LEG_R],
+  ] as Array<[string, string[]]>) {
+    const f = j[ft];
+    for (let i = 0; i < 2; i++) {
+      parts.push({
+        geo: transformed(beveledBox(H * 0.062 * t, H * 0.014, H * 0.03, H * 0.005), {
+          pos: [f.x, f.y + H * 0.03 - i * H * 0.016, f.z + H * 0.006 + i * H * 0.028],
+          rot: [i * 0.35, 0, 0],
+        }),
+        mat,
+        bind: bindLeg,
+      });
+    }
+  }
 }
+
 
 /**
  * A head with actual structure.
@@ -596,16 +730,34 @@ function pauldron(size: number, curve: number, rng: Rng): THREE.BufferGeometry {
   return g;
 }
 
+/**
+ * Texture density per material bucket, in tiles across the body.
+ *
+ * A single figure-wide repeat gave a linen weave with threads the width of a
+ * hand. Cloth and leather need many more tiles than plate does, and skin needs
+ * barely any — its texture is pores, and pores should be invisible.
+ */
+const MAT_REPEAT: Record<string, number> = {
+  skin: 1.4,
+  shadow: 1,
+  linen: 13,
+  cloth: 9,
+  leather: 8,
+  armour: 3,
+  trim: 4,
+};
+
 const CLASSES: Record<CharClassId, ClassBuild> = {
   // ---------------------------------------------------------------- WARDEN --
   warden: {
     profile: { height: 1.86, shoulder: 0.135, hip: 0.062, thick: 1.28, depth: 1.25, head: 1.0, lean: 0.03 },
     palettes: {
-      skin: 'flesh.pale',
+      skin: 'skin.tan',
       shadow: 'metal.dark',
       armour: 'metal.steel',
       trim: 'metal.gold',
       cloth: 'cloth.banner',
+      linen: 'cloth.undyed',
       leather: 'leather.worn',
     },
     accent: 0xd8b45a,
@@ -613,67 +765,51 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       const { j, p, rng, parts, props } = ctx;
       const H = p.height;
       baseBody(ctx, { skin: 'skin', armour: 'armour', boots: 'armour', gloves: 'armour' });
+      baseHead(ctx, 'skin', 1.0);
+      underGarments(ctx);
 
-      // Breastplate: a second, larger shell over the torso. The overlap is what
-      // makes plate armour read as plate and not as a painted body.
-      const bp = shell(p.shoulder * H * 2.05, H * 0.26, H * 0.075, 9, 9, H * 0.02, (u, v) =>
-        0.7 + 0.3 * Math.sin(Math.PI * (0.2 + v * 0.7)) * (1 - 0.25 * Math.abs(u - 0.5)),
-      );
-      bp.translate(0, H * 0.7, H * 0.028 * p.depth);
-      parts.push({ geo: bp, mat: 'armour', bind: TORSO });
+      // Surcoat: a heavy wool tabard over the shirt, the order's colours. Cloth,
+      // not plate — plate is something you find, and the point of the paperdoll
+      // is that you can see the difference.
+      const tab = clothPanel(p.hip * H * 1.72, H * 0.36, rng, { segsX: 5, segsY: 8, ripple: 0.03, flare: 0.15 });
+      tab.translate(0, H * 0.715, H * 0.055 * p.depth);
+      parts.push({ geo: tab, mat: 'cloth', cover: 'chest', bind: SKIRT });
+      const tabBack = clothPanel(p.hip * H * 1.6, H * 0.32, rng, { segsX: 5, segsY: 7, ripple: 0.03, flare: 0.12 });
+      tabBack.rotateY(Math.PI);
+      tabBack.translate(0, H * 0.715, -H * 0.05 * p.depth);
+      parts.push({ geo: tabBack, mat: 'cloth', cover: 'chest', bind: SKIRT });
 
-      // Gorget
-      const gorget = shell(p.shoulder * H * 1.2, H * 0.05, H * 0.05, 8, 4, H * 0.016);
-      gorget.translate(0, H * 0.815, H * 0.02);
-      parts.push({ geo: gorget, mat: 'trim', bind: ['chest'] });
-
-      // Faulds — overlapping skirt plates that swing with the hips.
-      for (let i = 0; i < 3; i++) {
-        const w = p.hip * H * (2.6 - i * 0.18);
-        const plate = shell(w, H * 0.055, H * 0.03, 6, 3, H * 0.014);
-        plate.translate(0, H * 0.5 - i * H * 0.042, H * 0.012);
-        parts.push({ geo: plate, mat: 'armour', bind: SKIRT });
-        const back = plate.clone();
-        back.rotateY(Math.PI);
-        parts.push({ geo: back, mat: 'armour', bind: SKIRT });
-      }
-
-      // Tabard
-      const tab = clothPanel(p.hip * H * 1.7, H * 0.34, rng, { segsX: 5, segsY: 8, ripple: 0.03, flare: 0.15 });
-      tab.translate(0, H * 0.71, H * 0.075 * p.depth);
-      parts.push({ geo: tab, mat: 'cloth', bind: SKIRT });
-
-      // Great helm with a raised brow and a vision slit.
-      const helm = dome(H * 0.062, 1.3, 14, 7);
-      helm.translate(j.head.x, j.head.y - H * 0.012, j.head.z);
-      parts.push({ geo: helm, mat: 'armour', bind: ['head'] });
-      const brow = transformed(beveledBox(H * 0.115, H * 0.02, H * 0.115, H * 0.006), {
-        pos: [0, j.head.y + H * 0.026, 0],
+      // Wide campaign belt that carries the surcoat's weight.
+      parts.push({
+        geo: transformed(beveledBox(p.hip * H * 2.72, H * 0.05, p.hip * H * 2.5, H * 0.01), {
+          pos: [0, H * 0.552, 0],
+        }),
+        mat: 'leather',
+        cover: 'belt',
+        bind: ['hips'],
       });
-      parts.push({ geo: brow, mat: 'trim', bind: ['head'] });
-      const cheek = transformed(beveledBox(H * 0.095, H * 0.06, H * 0.1, H * 0.012), {
-        pos: [0, j.head.y - H * 0.032, H * 0.006],
-      });
-      parts.push({ geo: cheek, mat: 'armour', bind: ['head'] });
 
-      // Pauldrons: bolted to the shoulder bones, not skinned — they should
-      // stay rigid as the arm swings, which is exactly what plate does.
+      // Padded arming cap: what goes under a helm, and what you see without one.
+      const cap = dome(H * 0.058, 1.1, 12, 6);
+      cap.translate(j.head.x, j.head.y - H * 0.004, j.head.z - H * 0.002);
+      parts.push({ geo: cap, mat: 'linen', cover: 'helm', bind: ['head'] });
+
+      // Leather shoulder rolls — the strapping a pauldron would buckle onto.
       for (const [side, s] of [
         ['shoulderL', 1],
         ['shoulderR', -1],
       ] as Array<[string, number]>) {
-        const g = pauldron(H * 0.17, H * 0.06, rng);
-        const mesh = new THREE.Mesh(g, surface('metal.steel', { repeat: 3, seed: 5 }));
-        mesh.rotation.set(-0.25, 0, s * 0.5);
-        mesh.position.set(s * H * 0.018, H * 0.022, 0);
-        mesh.castShadow = true;
-        props.push({ bone: side, obj: mesh });
-        // A spike ridge on the crown of each pauldron.
-        const sp = new THREE.Mesh(spike(H * 0.075, H * 0.016, 5, 0.35), surface('metal.gold', { repeat: 4 }));
-        sp.position.set(s * H * 0.06, H * 0.04, -H * 0.01);
-        sp.rotation.z = s * 0.9;
-        props.push({ bone: side, obj: sp });
+        const roll = new THREE.Mesh(
+          limb(H * 0.1, H * 0.028, H * 0.024, 8),
+          surface('leather.worn', { repeat: 4, seed: 5 }),
+        );
+        roll.rotation.set(0, 0, Math.PI * 0.5 + s * 0.25);
+        roll.position.set(s * H * 0.012, H * 0.014, 0);
+        roll.castShadow = true;
+        props.push({ bone: side, obj: roll, cover: 'chest' });
       }
+      void spike;
+      void pauldron;
     },
   },
 
@@ -681,10 +817,11 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
   pyromancer: {
     profile: { height: 1.76, shoulder: 0.098, hip: 0.05, thick: 0.94, depth: 0.92, head: 1.0, lean: 0.06 },
     palettes: {
-      skin: 'flesh.pale',
+      skin: 'skin.fair',
       shadow: 'metal.dark',
       armour: 'cloth.silk',
       cloth: 'cloth.linen',
+      linen: 'cloth.undyed',
       trim: 'metal.gold',
       leather: 'leather.fine',
     },
@@ -694,6 +831,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       const H = p.height;
       baseBody(ctx, { skin: 'skin', armour: 'armour', boots: 'leather', gloves: 'skin' });
       baseHead(ctx, 'skin', 0.95);
+      underGarments(ctx);
 
       // The robe: a bell that swallows the legs. This is the whole silhouette —
       // no legs visible from the play camera, just a widening cone.
@@ -740,7 +878,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       }
       const robe = mergeGeometries(robeGeos);
       for (const g of robeGeos) g.dispose();
-      parts.push({ geo: robe, mat: 'armour', bind: SKIRT });
+      parts.push({ geo: robe, mat: 'armour', cover: 'chest', bind: SKIRT });
 
       // Wide sleeves hanging from the elbows.
       for (const [el, hd, bindArm] of [
@@ -750,24 +888,24 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
         const len = j[el].distanceTo(j[hd]) * 1.15;
         const sleeve = limb(len, H * 0.055, H * 0.03, 9);
         spanTo(sleeve, j[el], j[hd].clone().sub(j[el]).multiplyScalar(1.15).add(j[el]));
-        parts.push({ geo: sleeve, mat: 'armour', bind: bindArm });
+        parts.push({ geo: sleeve, mat: 'armour', cover: 'chest', bind: bindArm });
       }
 
       // Hood: a cowl that reads as a pointed hood in outline, plus a shadowed
       // opening so the face is suggested rather than modelled.
       const hood = dome(H * 0.078, 1.5, 14, 8);
       hood.translate(j.head.x, j.head.y - H * 0.03, j.head.z - H * 0.012);
-      parts.push({ geo: hood, mat: 'cloth', bind: ['head'] });
+      parts.push({ geo: hood, mat: 'cloth', cover: 'helm', bind: ['head'] });
       const cowl = shell(H * 0.2, H * 0.16, H * 0.05, 8, 6, H * 0.014);
       cowl.rotateX(-0.35);
       cowl.translate(0, j.head.y - H * 0.045, -H * 0.01);
-      parts.push({ geo: cowl, mat: 'cloth', bind: ['head', 'chest'] });
+      parts.push({ geo: cowl, mat: 'cloth', cover: 'helm', bind: ['head', 'chest'] });
 
       // Shoulder mantle
       const mantle = shell(p.shoulder * H * 2.6, H * 0.13, H * 0.06, 10, 5, H * 0.014);
       mantle.rotateX(0.5);
       mantle.translate(0, H * 0.79, 0);
-      parts.push({ geo: mantle, mat: 'cloth', bind: ['chest'] });
+      parts.push({ geo: mantle, mat: 'cloth', cover: 'chest', bind: ['chest'] });
 
       // A floating ember mote at the sternum — instantly says "caster".
       const core = new THREE.Mesh(gem(H * 0.022, 8, 0.5), surface('crystal.arcane', { emissive: ctx.accent, emissiveIntensity: 2.2 }));
@@ -781,10 +919,11 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
   shadowblade: {
     profile: { height: 1.78, shoulder: 0.105, hip: 0.052, thick: 0.88, depth: 0.86, head: 0.96, lean: 0.11 },
     palettes: {
-      skin: 'flesh.pale',
+      skin: 'skin.deep',
       shadow: 'metal.dark',
       armour: 'leather.fine',
       cloth: 'cloth.tattered',
+      linen: 'cloth.undyed',
       trim: 'metal.dark',
       leather: 'leather.studded',
     },
@@ -794,29 +933,30 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       const H = p.height;
       baseBody(ctx, { skin: 'skin', armour: 'armour', boots: 'leather', gloves: 'leather' });
       baseHead(ctx, 'skin', 0.94);
+      underGarments(ctx);
 
-      // Harness straps across the chest: thin, crossing, catching a highlight.
+      // Harness straps across the shirt: thin, crossing, catching a highlight.
       for (const s of [-1, 1]) {
         const strap = taperedBox(H * 0.032, H * 0.012, H * 0.026, H * 0.012, H * 0.3, H * 0.004);
         strap.rotateZ(s * 0.42);
         strap.rotateX(-0.12);
-        strap.translate(0, H * 0.7, H * 0.05 * p.depth);
-        parts.push({ geo: strap, mat: 'leather', bind: TORSO });
+        strap.translate(0, H * 0.7, H * 0.055 * p.depth);
+        parts.push({ geo: strap, mat: 'leather', cover: 'chest', bind: TORSO });
       }
-      const belt = transformed(beveledBox(p.hip * H * 2.6, H * 0.035, H * 0.16, H * 0.008), {
-        pos: [0, H * 0.555, 0],
+      const belt = transformed(beveledBox(p.hip * H * 2.66, H * 0.038, H * 0.165, H * 0.008), {
+        pos: [0, H * 0.556, 0],
       });
-      parts.push({ geo: belt, mat: 'leather', bind: ['hips'] });
+      parts.push({ geo: belt, mat: 'leather', cover: 'belt', bind: ['hips'] });
 
       // Hood, pulled low and forward — the classic assassin read.
       const hood = dome(H * 0.07, 1.42, 14, 8);
       hood.scale(1, 1, 1.18);
       hood.translate(j.head.x, j.head.y - H * 0.026, j.head.z - H * 0.016);
-      parts.push({ geo: hood, mat: 'cloth', bind: ['head'] });
+      parts.push({ geo: hood, mat: 'cloth', cover: 'helm', bind: ['head'] });
       const peak = spike(H * 0.1, H * 0.03, 5, -0.55);
       peak.rotateX(1.35);
       peak.translate(0, j.head.y + H * 0.03, -H * 0.03);
-      parts.push({ geo: peak, mat: 'cloth', bind: ['head'] });
+      parts.push({ geo: peak, mat: 'cloth', cover: 'helm', bind: ['head'] });
 
       // Short shoulder cape, torn at the hem.
       const cape = clothPanel(H * 0.3, H * 0.34, rng, {
@@ -851,10 +991,11 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
   stormcaller: {
     profile: { height: 1.8, shoulder: 0.115, hip: 0.055, thick: 1.0, depth: 1.0, head: 1.0, lean: 0.05 },
     palettes: {
-      skin: 'flesh.pale',
+      skin: 'skin.fair',
       shadow: 'metal.dark',
       armour: 'metal.silver',
       cloth: 'cloth.silk',
+      linen: 'cloth.undyed',
       trim: 'metal.gold',
       leather: 'leather.studded',
     },
@@ -864,16 +1005,18 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       const H = p.height;
       baseBody(ctx, { skin: 'skin', armour: 'armour', boots: 'leather', gloves: 'leather' });
       baseHead(ctx, 'skin', 0.98);
+      underGarments(ctx);
 
-      // Light cuirass with a raised sternum ridge.
-      const cui = shell(p.shoulder * H * 1.75, H * 0.2, H * 0.06, 8, 8, H * 0.016, (u, v) =>
-        0.75 + 0.25 * Math.sin(Math.PI * (0.25 + v * 0.65)) * (1 - 0.2 * Math.abs(u - 0.5)),
+      // Silk over-tunic with a woven sash. Light, layered, unarmoured.
+      const tunic = shell(p.shoulder * H * 1.96, H * 0.25, H * 0.066 * p.depth, 9, 8, H * 0.015, (u, v) =>
+        0.74 + 0.26 * Math.sin(Math.PI * (0.18 + v * 0.72)) * (1 - 0.2 * Math.abs(u - 0.5)),
       );
-      cui.translate(0, H * 0.715, H * 0.026 * p.depth);
-      parts.push({ geo: cui, mat: 'armour', bind: TORSO });
-      const ridge = taperedBox(H * 0.03, H * 0.03, H * 0.012, H * 0.02, H * 0.2, H * 0.005);
-      ridge.translate(0, H * 0.715, H * 0.07 * p.depth);
-      parts.push({ geo: ridge, mat: 'trim', bind: TORSO });
+      tunic.translate(0, H * 0.7, H * 0.014 * p.depth);
+      parts.push({ geo: tunic, mat: 'cloth', cover: 'chest', bind: TORSO });
+      const sash = transformed(beveledBox(p.hip * H * 2.6, H * 0.055, p.hip * H * 2.4, H * 0.012), {
+        pos: [0, H * 0.566, 0],
+      });
+      parts.push({ geo: sash, mat: 'trim', cover: 'belt', bind: ['hips'] });
 
       // A long cape: the single most legible silhouette cue at distance.
       const cape = clothPanel(H * 0.36, H * 0.86, rng, {
@@ -896,7 +1039,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       );
       circlet.rotation.x = Math.PI * 0.5;
       circlet.position.set(0, H * 0.012, 0);
-      props.push({ bone: 'head', obj: circlet });
+      props.push({ bone: 'head', obj: circlet, cover: 'helm' });
       for (const s of [-1, 1]) {
         const wing = new THREE.Mesh(
           shell(H * 0.09, H * 0.05, H * 0.014, 5, 3, H * 0.006, (u) => 1 - u * 0.7),
@@ -904,16 +1047,16 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
         );
         wing.position.set(s * H * 0.055, H * 0.035, -H * 0.01);
         wing.rotation.set(0.2, s * 1.2, s * 0.55);
-        props.push({ bone: 'head', obj: wing });
+        props.push({ bone: 'head', obj: wing, cover: 'helm' });
       }
 
       // Asymmetric pauldron — asymmetry alone separates a silhouette.
-      const pl = pauldron(H * 0.14, H * 0.05, rng);
-      const plMesh = new THREE.Mesh(pl, surface('metal.silver', { repeat: 3, seed: 6 }));
+      const pl = pauldron(H * 0.12, H * 0.045, rng);
+      const plMesh = new THREE.Mesh(pl, surface('leather.studded', { repeat: 3, seed: 6 }));
       plMesh.rotation.set(-0.2, 0, 0.45);
       plMesh.position.set(H * 0.014, H * 0.018, 0);
       plMesh.castShadow = true;
-      props.push({ bone: 'shoulderL', obj: plMesh });
+      props.push({ bone: 'shoulderL', obj: plMesh, cover: 'chest' });
 
       // Arcing conductor rods on the back.
       for (const s of [-1, 1]) {
@@ -936,6 +1079,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       shadow: 'metal.dark',
       armour: 'bone.old',
       cloth: 'cloth.tattered',
+      linen: 'cloth.tattered',
       trim: 'metal.dark',
       leather: 'leather.worn',
     },
@@ -944,6 +1088,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       const { j, p, rng, parts, props } = ctx;
       const H = p.height;
       baseBody(ctx, { skin: 'skin', armour: 'armour', boots: 'leather', gloves: 'skin' });
+      underGarments(ctx, 'cloth');
 
       // Ribcage: individual ribs, not a torso block. Gaps in a silhouette read
       // as "undead" faster than any texture can.
@@ -1007,8 +1152,8 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
         flare: 0.3,
         tatter: 0.6,
       });
-      frontRag.translate(0, H * 0.7, H * 0.055 * p.depth);
-      parts.push({ geo: frontRag, mat: 'cloth', bind: SKIRT });
+      frontRag.translate(0, H * 0.7, H * 0.058 * p.depth);
+      parts.push({ geo: frontRag, mat: 'cloth', cover: 'chest', bind: SKIRT });
 
       // Bone shards orbiting the shoulders — floating geometry reads as magic
       // and costs nothing to animate.
@@ -1047,7 +1192,7 @@ export interface PlayerModel {
  * drive any class: 'root','hips','spine','chest','head','shoulderL/R',
  * 'elbowL/R','handL/R','hipL/R','kneeL/R','footL/R'.
  */
-export function buildPlayerModel(classId: CharClassId, rng: Rng): PlayerModel {
+export function buildPlayerModel(classId: CharClassId, rng: Rng, worn?: Iterable<EquipSlot>): PlayerModel {
   const def = CLASSES[classId] ?? CLASSES.warden;
   const p = def.profile;
   const joints = jointsFor(p);
@@ -1063,27 +1208,32 @@ export function buildPlayerModel(classId: CharClassId, rng: Rng): PlayerModel {
 
   const skeleton = new THREE.Skeleton(order);
 
-  // Bucket parts by material so the whole character is 3-5 draw calls.
+  // Bucket parts by material so the whole character is a handful of draw calls.
+  // The cover slot joins the key: pieces that gear replaces have to live in
+  // their own mesh to be hideable independently of the body they sit on.
   const buckets = new Map<string, THREE.BufferGeometry[]>();
   for (const part of ctx.parts) {
     normalizeGeometry(part.geo);
     skinGeometry(part.geo, segs, part.bind);
-    let list = buckets.get(part.mat);
+    const key = `${part.mat}#${part.cover ?? ''}`;
+    let list = buckets.get(key);
     if (!list) {
       list = [];
-      buckets.set(part.mat, list);
+      buckets.set(key, list);
     }
     list.push(part.geo);
   }
 
   let seedTick = 1;
-  for (const [matKey, list] of buckets) {
+  for (const [key, list] of buckets) {
+    const [matKey, coverKey] = key.split('#');
     const geo = mergeSkinned(list);
     for (const g of list) g.dispose();
     const paletteKey = def.palettes[matKey] ?? 'metal.iron';
-    const mat = surface(paletteKey, { repeat: 2.5, seed: seedTick++ });
+    const mat = surface(paletteKey, { repeat: MAT_REPEAT[matKey] ?? 2.5, seed: seedTick++ });
     const mesh = new THREE.SkinnedMesh(geo, mat);
     mesh.name = `${classId}:${matKey}`;
+    if (coverKey) mesh.userData.coverSlot = coverKey;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     // Skinned bounds are computed from the bind pose and go stale the moment a
@@ -1094,8 +1244,9 @@ export function buildPlayerModel(classId: CharClassId, rng: Rng): PlayerModel {
   }
 
   // Rigid decorations ride their bone directly.
-  for (const { bone, obj } of ctx.props) {
+  for (const { bone, obj, cover } of ctx.props) {
     obj.castShadow = true;
+    if (cover) obj.userData.coverSlot = cover;
     bones[bone]?.add(obj);
   }
 
@@ -1103,7 +1254,25 @@ export function buildPlayerModel(classId: CharClassId, rng: Rng): PlayerModel {
   root.userData.accent = def.accent;
   root.userData.height = p.height;
 
+  applyWornSlots(root, worn ?? []);
+
   return { root, skeleton, bones };
+}
+
+/**
+ * Hides the class's own covering for every slot that has real gear in it.
+ *
+ * This is what makes equipment change how you look. A fresh character wears
+ * nothing but linen, so every default piece is on show; equip a breastplate and
+ * the class's own chest covering steps aside for it rather than clipping
+ * through it. Cheap enough to call on every equip — it only flips `visible`.
+ */
+export function applyWornSlots(root: THREE.Object3D, worn: Iterable<EquipSlot>): void {
+  const set = worn instanceof Set ? (worn as Set<string>) : new Set<string>(worn as Iterable<string>);
+  root.traverse((o) => {
+    const slot = o.userData?.coverSlot as string | undefined;
+    if (slot) o.visible = !set.has(slot);
+  });
 }
 
 /** The class accent colour, for rim lights and UI tinting. */

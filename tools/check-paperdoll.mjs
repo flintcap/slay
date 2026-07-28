@@ -39,9 +39,14 @@ const list = classes.length ? classes : ['warden', 'shadowblade', 'stormcaller',
 mkdirSync('shots', { recursive: true });
 
 for (const cls of list) {
-  const made = await page.evaluate(async (c) => {
+  const strip = cls.endsWith(':bare');
+  const made = await page.evaluate(async ([c, bare]) => {
     try {
-      window.SLAY.debug.makeCharacter(c, 30);
+      window.SLAY.debug.makeCharacter(c, bare ? 1 : 30);
+      if (bare) {
+        const ch = window.SLAY.save.account.current;
+        for (const k of Object.keys(ch.equipment)) ch.equipment[k] = null;
+      }
       window.SLAY.debug.fillInventory();
       window.SLAY.events.emit('ui:refresh', {});
       window.SLAY.events.emit('ui:open', { panel: 'inventory' });
@@ -53,13 +58,14 @@ for (const cls of list) {
     } catch (e) {
       return 'ERROR ' + String(e).slice(0, 120);
     }
-  }, cls);
+  }, [cls.replace(':bare', ''), strip]);
   console.log(cls, '->', made);
   await page.waitForSelector('[data-panel="inventory"].is-open', { timeout: 120000 });
   await page.waitForTimeout(4000);
   const panel = await page.$('[data-panel="inventory"] .panel');
-  await panel.screenshot({ path: `shots/paperdoll-${cls}.png` });
-  console.log(`wrote shots/paperdoll-${cls}.png`);
+  const name = cls.replace(':', '-');
+  await panel.screenshot({ path: `shots/paperdoll-${name}.png` });
+  console.log(`wrote shots/paperdoll-${name}.png`);
 }
 
 await browser.close();

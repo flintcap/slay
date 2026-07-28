@@ -5,7 +5,7 @@ import { mitigate } from '../sim/Combat';
 import { StatusContainer } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
-import { buildPlayerModel, attachToSocket, clearSocket } from '../art/CharacterModels';
+import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots } from '../art/CharacterModels';
 import { disposeObject } from '../core/Engine';
 import { Animator } from '../art/Animation';
 import { buildItemModel } from '../art/ItemModels';
@@ -27,6 +27,13 @@ const TMP2 = new THREE.Vector3();
  * off: at gameplay camera distance they cost a draw call and show nothing.
  */
 const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt'];
+
+/** Which body-covering slots currently hold an item. */
+export function wornSlots(c: Character): Set<EquipSlot> {
+  const out = new Set<EquipSlot>();
+  for (const slot of VISUAL_SLOTS) if (c.equipment[slot]) out.add(slot);
+  return out;
+}
 
 /**
  * The player avatar: movement, collision, resources, and animation state.
@@ -67,6 +74,8 @@ export class Player {
   private equipMeshes = new Map<EquipSlot, THREE.Object3D>();
   /** Last-built item identity per slot, so unchanged gear is never rebuilt. */
   private equipKeys = new Map<EquipSlot, string>();
+  /** The class model, kept so its cover pieces can be toggled on equip. */
+  private body!: THREE.Object3D;
 
   /** Set by DungeonScene when the player has no business moving (dead, cutscene). */
   frozen = false;
@@ -76,7 +85,8 @@ export class Player {
     this.character = character;
     this.rng = new Random(seed);
 
-    const built = buildPlayerModel(character.classId, this.rng);
+    const built = buildPlayerModel(character.classId, this.rng, wornSlots(character));
+    this.body = built.root;
     this.root.add(built.root);
     this.bones = built.bones;
     this.animator = new Animator(built.bones);
@@ -107,6 +117,8 @@ export class Player {
    */
   private refreshEquipmentVisuals(): void {
     const eq = this.character.equipment;
+    // Gear replaces the class's own covering rather than clipping through it.
+    applyWornSlots(this.body, wornSlots(this.character));
     for (const slot of VISUAL_SLOTS) {
       const item = eq[slot];
       // baseId alone is not enough: rarity drives the dressing, and two items
