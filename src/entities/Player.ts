@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Character, Stats, DamagePacket, EquipSlot } from '../types';
 import { computeStats } from '../sim/Stats';
 import { mitigate } from '../sim/Combat';
+import { StatusContainer } from '../sim/Status';
 import { events } from '../core/Events';
 import { buildPlayerModel, attachToSocket } from '../art/CharacterModels';
 import { Animator } from '../art/Animation';
@@ -51,6 +52,8 @@ export class Player {
   /** Cooldowns by skill id. */
   readonly cooldowns = new Map<string, number>();
 
+  /** Buffs and debuffs currently on the player. */
+  readonly status = new StatusContainer('player');
   private regenAccum = 0;
   private rng: Rng;
   private equipMeshes = new Map<EquipSlot, THREE.Object3D>();
@@ -104,6 +107,26 @@ export class Player {
         // A missing visual must never break the run.
       }
     }
+  }
+
+  /**
+   * Live buff/debuff list in the shape the HUD reads. `duration` is what the
+   * application granted, so the timer sweep has something to divide by.
+   */
+  get statuses(): Array<{ id: string; remaining: number; duration: number; stacks: number }> {
+    return this.status.list().map((a) => ({
+      id: a.id,
+      remaining: a.remaining,
+      duration: a.duration,
+      stacks: a.stacks,
+    }));
+  }
+
+  /** Applies a buff or debuff and refreshes the stat sheet. */
+  applyStatus(id: string, duration: number, magnitude = 1, stacks = 1): boolean {
+    const ok = this.status.apply({ id, duration, magnitude, stacks }, 'player');
+    if (ok) this.refreshStats();
+    return ok;
   }
 
   get position(): THREE.Vector3 {
@@ -237,6 +260,24 @@ export class Player {
     }
 
     if (this.actionLock > 0) this.actionLock = Math.max(0, this.actionLock - dt);
+
+    // Statuses tick before regen so a heal-over-time lands this frame.
+    const res = this.status.update(dt, this.stats.life);
+    if (res.heal > 0) this.heal(res.heal);
+    if (res.mana > 0) this.restoreMana(res.mana);
+    for (const d of res.damage) {
+      this.life -= d.amount;
+      events.emit('player:damaged', {
+        amount: d.amount,
+        type: d.type,
+        life: Math.max(0, this.life),
+        maxLife: this.stats.life,
+      });
+    }
+    if (res.dirty) this.refreshStats();
+    if (this.life <= 0 && this.alive === false) {
+      /* death is handled below by the damage path */
+    }
 
     this.regenAccum += dt;
     if (this.regenAccum >= 0.25) {

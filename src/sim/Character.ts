@@ -116,6 +116,9 @@ export function createCharacter(name: string, classId: CharClassId, rng: Rng): C
   if (starter) {
     c.skills[starter] = 1;
     c.hotbar[0] = starter;
+    // Right click is the attack button; point it at the class opener so a new
+    // character can fight without visiting a menu first.
+    c.primaryAttack = starter;
   }
 
   // Anything else the class recommends is bound only once it has a rank, so the
@@ -131,6 +134,22 @@ export function createCharacter(name: string, classId: CharClassId, rng: Rng): C
 }
 
 /**
+ * Assigns the right-click attack. Pass null for the free basic attack.
+ * Returns false if the skill is not learned or is a passive.
+ */
+export function setPrimaryAttack(c: Character, skillId: string | null): boolean {
+  if (skillId === null) {
+    c.primaryAttack = null;
+    return true;
+  }
+  const def = SKILL_BY_ID[skillId];
+  if (!def || def.targeting === 'passive') return false;
+  if ((c.skills[skillId] ?? 0) <= 0) return false;
+  c.primaryAttack = skillId;
+  return true;
+}
+
+/**
  * Repairs a character loaded from an older save: strips hotbar entries the
  * player cannot actually cast, and grants the free opening attack if they have
  * none. Without this, a save made before the starter skill existed loads with a
@@ -138,6 +157,16 @@ export function createCharacter(name: string, classId: CharClassId, rng: Rng): C
  */
 export function repairCharacter(c: Character): boolean {
   let changed = false;
+
+  // Right click must always point at something castable, or the basic attack.
+  if (c.primaryAttack && (c.skills[c.primaryAttack] ?? 0) <= 0) {
+    c.primaryAttack = null;
+    changed = true;
+  }
+  if (c.primaryAttack === undefined) {
+    c.primaryAttack = null;
+    changed = true;
+  }
 
   for (let i = 0; i < c.hotbar.length; i++) {
     const id = c.hotbar[i];
@@ -154,6 +183,7 @@ export function repairCharacter(c: Character): boolean {
     const starter = startingSkillFor(c.classId);
     if (starter) {
       c.skills[starter] = Math.max(1, c.skills[starter] ?? 0);
+      if (!c.primaryAttack) c.primaryAttack = starter;
       changed = true;
     }
   }

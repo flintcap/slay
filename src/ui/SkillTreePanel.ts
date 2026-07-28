@@ -12,7 +12,7 @@
 import type { Character, SkillDef, StatKey } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
-import { allocateSkill, canAllocateSkill } from '../sim/Character';
+import { allocateSkill, canAllocateSkill, setPrimaryAttack } from '../sim/Character';
 import {
   Panel,
   Tabs,
@@ -547,10 +547,28 @@ export class SkillTreePanel {
     }
 
     if (s.targeting !== 'passive' && rank > 0) {
+      const isPrimary = c.primaryAttack === s.id;
+      const rc = document.createElement('button');
+      rc.type = 'button';
+      rc.className = `btn btn-wide btn-sm ${isPrimary ? 'btn-primary' : 'btn-ghost'}`;
+      rc.innerHTML = `<span class="btn-label">${
+        isPrimary ? 'On right click' : 'Set as right click attack'
+      }</span>`;
+      rc.disabled = isPrimary;
+      rc.addEventListener('click', () => {
+        if (setPrimaryAttack(c, s.id)) {
+          save.touch();
+          events.emit('toast', { text: `${s.name} bound to right click.`, kind: 'good' });
+          events.emit('ui:refresh', {});
+          this.refresh();
+        }
+      });
+      actions.appendChild(rc);
+
       const bind = document.createElement('button');
       bind.type = 'button';
       bind.className = 'btn btn-ghost btn-wide btn-sm';
-      bind.innerHTML = '<span class="btn-label">Bind to hotbar</span>';
+      bind.innerHTML = '<span class="btn-label">Bind to a number key</span>';
       bind.addEventListener('click', () => this.bindToHotbar(s.id));
       actions.appendChild(bind);
       actions.appendChild(div('skdetail-draghint', 'or drag the node onto a hotbar slot'));

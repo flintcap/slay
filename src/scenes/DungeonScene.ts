@@ -80,6 +80,7 @@ export class DungeonScene extends GameScene {
   /** Hoisted out of the per-frame path; these ran every single frame. */
   private static readonly UP = new THREE.Vector3(0, 1, 0);
   private tmpDir = new THREE.Vector3();
+  private aimPoint = new THREE.Vector3();
   private offs: Array<() => void> = [];
   private aiCursor = 0;
   private exitPos = new THREE.Vector3();
@@ -363,45 +364,38 @@ export class DungeonScene extends GameScene {
 
     if (input.pointerOverUI) return;
 
-    // Left click behaves the way every ARPG player expects: click a monster to
-    // attack it, click the floor to walk there. Casting on every click meant
-    // click-to-move never worked and a click at empty ground swung at nothing,
-    // which reads as "attacking is broken".
-    if (input.mouseLeft) {
-      const aimed = this.enemyUnderCursor(input.worldPoint);
-      const forceAttack = input.keyDown('ShiftLeft') || input.keyDown('ShiftRight');
-
-      if (aimed || forceAttack) {
-        // Aim at the target itself, not the ground under the cursor, so melee
-        // arcs and projectiles both converge on the thing being clicked.
-        const target = aimed ? aimed.root.position.clone().setY(0) : input.worldPoint;
-        const primary = this.player.character.hotbar[0];
-        let acted = false;
-        if (primary) {
-          acted = this.skills.cast(primary, this.player, target, ctx, this.enemies, this.boss);
-        }
-        if (!acted && this.skills.hasTargetInReach(this.player, this.enemies, this.boss)) {
-          this.skills.basicAttack(this.player, target, ctx, this.enemies, this.boss);
-        }
-      } else if (this.keyDir.lengthSq() === 0) {
-        // Keyboard wins; a move order issued while a key is held leaves a stale
-        // destination the player resumes running to after releasing the key.
-        this.player.moveTo(input.worldPoint.x, input.worldPoint.z);
-      }
+    // Left click is movement, full stop.
+    if (input.mouseLeft && this.keyDir.lengthSq() === 0) {
+      // Keyboard wins; a move order issued while a key is held leaves a stale
+      // destination the player resumes running to after releasing the key.
+      this.player.moveTo(input.worldPoint.x, input.worldPoint.z);
     }
 
-    // Right click: secondary skill.
+    // Right click is the attack button. It runs whatever the player assigned,
+    // falling back to the free basic attack.
     if (input.mouseRight) {
-      const secondary = this.player.character.hotbar[1];
-      if (secondary) this.skills.cast(secondary, this.player, input.worldPoint, ctx, this.enemies, this.boss);
+      const aimed = this.enemyUnderCursor(input.worldPoint);
+      // Aim at the target itself rather than the ground under the cursor, so
+      // melee arcs and projectiles both converge on what is being clicked.
+      const target = aimed ? this.aimPoint.copy(aimed.root.position).setY(0) : input.worldPoint;
+      const assigned = this.player.character.primaryAttack;
+      let acted = false;
+      if (assigned) {
+        acted = this.skills.cast(assigned, this.player, target, ctx, this.enemies, this.boss);
+      }
+      if (!acted && !assigned) {
+        this.skills.basicAttack(this.player, target, ctx, this.enemies, this.boss);
+      }
     }
 
-    // Number keys 1-6 map to hotbar slots.
+    // Number keys 1-6 fire the matching hotbar slot.
     for (let i = 0; i < 6; i++) {
-      if (input.keyPressed(`Digit${i + 1}`)) {
-        const id = this.player.character.hotbar[i];
-        if (id) this.skills.cast(id, this.player, input.worldPoint, ctx, this.enemies, this.boss);
-      }
+      if (!input.keyPressed(`Digit${i + 1}`)) continue;
+      const id = this.player.character.hotbar[i];
+      if (!id) continue;
+      const aimed = this.enemyUnderCursor(input.worldPoint);
+      const target = aimed ? this.aimPoint.copy(aimed.root.position).setY(0) : input.worldPoint;
+      this.skills.cast(id, this.player, target, ctx, this.enemies, this.boss);
     }
 
     if (input.wasPressed('dodge')) {
@@ -489,6 +483,9 @@ export class DungeonScene extends GameScene {
     const xp = Math.round((8 + this.run.depth * 6) * xpMul);
     if (grantXp(c, xp)) {
       this.player.refreshStats();
+      // Levelling up is a full heal, as the genre expects.
+      this.player.life = this.player.stats.life;
+      this.player.mana = this.player.stats.mana;
       this.fx.burst('levelup', pos.x, 1, pos.z, { count: 90 });
       audio.play('levelup');
     }

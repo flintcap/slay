@@ -69,6 +69,18 @@ export class Engine {
   elapsed = 0;
   paused = false;
 
+  /**
+   * Ring buffer of recent frame costs, split into simulation and render. Lets a
+   * stutter be attributed instead of guessed at. Read via window.SLAY.perf.
+   */
+  readonly perf = {
+    upd: new Float32Array(600),
+    ren: new Float32Array(600),
+    total: new Float32Array(600),
+    i: 0,
+    count: 0,
+  };
+
   /** Rolling average frame time in ms, for the perf readout. */
   frameMs = 16.7;
   fps = 60;
@@ -197,10 +209,20 @@ export class Engine {
 
     const scene = this.active;
     if (scene) {
+      const tu0 = performance.now();
       if (!this.paused && !this.transitioning) {
         scene.update(dt, this.elapsed);
       }
+      const tu1 = performance.now();
       this.renderer.render(scene.scene, scene.camera, dt, this.elapsed);
+      const tr1 = performance.now();
+
+      const p = this.perf;
+      p.upd[p.i] = tu1 - tu0;
+      p.ren[p.i] = tr1 - tu1;
+      p.total[p.i] = tr1 - tu0;
+      p.i = (p.i + 1) % p.upd.length;
+      if (p.count < p.upd.length) p.count++;
     }
 
     this.input.endFrame();

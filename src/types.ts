@@ -371,8 +371,13 @@ export interface Character {
   allocated: Pick<Stats, 'strength' | 'dexterity' | 'vitality' | 'energy'>;
   /** skillId -> rank */
   skills: Record<string, number>;
-  /** Skills bound to action slots 0..5. */
+  /** Skills bound to number keys 1..6. */
   hotbar: (string | null)[];
+  /**
+   * The skill on right click. `null` means the free basic attack.
+   * Optional so saves written before this existed still load.
+   */
+  primaryAttack?: string | null;
   equipment: Partial<Record<EquipSlot, Item>>;
   inventory: (Item | null)[];
   gold: number;
