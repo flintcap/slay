@@ -174,10 +174,29 @@ export function repairCharacter(c: Character): boolean {
 }
 
 /**
- * The free opening attack: the cheapest tier-1 active in the class's first
- * tree, preferring a melee/projectile basic over a situational cooldown.
+ * Each class opens with its own signature attack. These are hand-picked rather
+ * than derived so the first thirty seconds of a Pyromancer and a Warden feel
+ * like different games, which is the whole point of picking a class.
+ */
+const STARTING_SKILL: Record<CharClassId, string> = {
+  warden: 'cleave',        // wide arc, hits the whole pack
+  pyromancer: 'firebolt',  // ranged fire dart
+  shadowblade: 'preciseCut', // fast single-target crit strike
+  stormcaller: 'sparkbolt',  // erratic piercing lightning
+  revenant: 'boneSpear',   // piercing bone shard
+};
+
+/**
+ * The free opening attack. Falls back to the cheapest tier-1 active in the
+ * class's trees if the authored pick ever goes missing from the data.
  */
 export function startingSkillFor(classId: CharClassId): string | null {
+  const authored = STARTING_SKILL[classId];
+  if (authored && SKILL_BY_ID[authored]) return authored;
+  return derivedStartingSkill(classId);
+}
+
+function derivedStartingSkill(classId: CharClassId): string | null {
   const cls = CLASS_BY_ID[classId] ? getClass(classId) : getClass('warden');
   const candidates = SKILLS.filter(
     (sk) =>
