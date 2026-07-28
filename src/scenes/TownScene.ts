@@ -44,11 +44,14 @@ export class TownScene extends GameScene {
   private tmpDir = new THREE.Vector3();
   private heroLight: THREE.PointLight | null = null;
   private offs: Array<() => void> = [];
+  private smokeSpots: THREE.Vector3[] = [];
+  private smokeAccum = 0;
 
   constructor(engine: Engine) {
     super();
     this.engine = engine;
-    this.rig = new CameraRig({ distance: 15.5, pitch: 0.9 });
+    // Pulled back from the dungeon framing: the camp is worth looking at.
+    this.rig = new CameraRig({ distance: 19.5, pitch: 0.95 });
     this.camera = this.rig.camera;
     this.fx = new FXSystem(this.scene, engine.renderer.quality);
     this.decals = new DecalSystem(this.scene, engine.renderer.quality);
@@ -68,16 +71,33 @@ export class TownScene extends GameScene {
     this.town = buildTown(rng);
     this.scene.add(this.town.root);
 
-    this.engine.renderer.applyEnvironment(this.scene, 0.5);
-    this.scene.fog = new THREE.FogExp2(0x141019, 0.016);
-    this.scene.background = new THREE.Color(0x0b0a12);
+    this.engine.renderer.applyEnvironment(this.scene, 0.9);
+    // The camp is a night exterior with no ceiling to bounce off, so it lands
+    // much lower on the curve than the dungeon does. Open the grade up while
+    // we are here and put it back on the way out.
+    this.engine.renderer.setExposure(1.5);
+    // Cold, damp night air. Denser than the old town fog so the tree line goes
+    // soft and the camp reads as a lit clearing rather than an object on a plane.
+    this.scene.fog = new THREE.FogExp2(0x131a26, 0.017);
+    this.scene.background = new THREE.Color(0x080b12);
 
     this.player = new Player(character, 12345);
-    this.player.position.set(0, 0, 6);
+    // Arrive on the south path, facing the fire and the gate beyond it.
+    this.player.position.set(0, 0, 8);
     this.scene.add(this.player.root);
 
     this.heroLight = new THREE.PointLight(0xffdcb0, 12, 16, 2);
     this.scene.add(this.heroLight);
+
+    // Smoke from the cook fire and the forge chimney, and midges over the camp.
+    for (const p of this.town.smokeSpots) {
+      this.smokeSpots.push(p);
+      this.fx.burst('smoke', p.x, p.y, p.z, { count: 6, scale: 1.5 });
+    }
+    this.fx.setAmbient('embers', new THREE.Box3(
+      new THREE.Vector3(-24, 0, -24),
+      new THREE.Vector3(24, 10, 24),
+    ));
 
     const spots = this.town.npcSpots;
     const at = (k: string, dx = 0, dz = 1.6) => {
@@ -148,7 +168,8 @@ export class TownScene extends GameScene {
 
     this.player.update(dt, {
       colliders: this.town.colliders,
-      walkableAt: (x, z) => Math.hypot(x, z) < 34,
+      // Inside the palisade, plus the ramp out through the gate.
+      walkableAt: (x, z) => Math.hypot(x, z) < 21.4 || (z < -15 && z > -24 && Math.abs(x) < 5.5),
     }, this.keyDir.lengthSq() > 0 ? this.keyDir : null);
 
     // Proximity prompt for the nearest service.
@@ -173,6 +194,14 @@ export class TownScene extends GameScene {
     if (this.heroLight) {
       this.heroLight.position.set(this.player.position.x, 2.3, this.player.position.z);
     }
+    // Keep the columns going. Bursting on a timer rather than every frame keeps
+    // the particle budget where the combat scenes expect it.
+    this.smokeAccum += dt;
+    if (this.smokeAccum > 0.55) {
+      this.smokeAccum = 0;
+      for (const p of this.smokeSpots) this.fx.burst('smoke', p.x, p.y, p.z, { count: 4, scale: 1.6 });
+    }
+
     this.town.update(dt, elapsed);
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
@@ -184,7 +213,9 @@ export class TownScene extends GameScene {
 
   override dispose(): void {
     // Drop the proximity prompt so it does not follow the player downstairs.
+    this.engine.renderer.setExposure(1.0);
     this.nearby = null;
+    this.smokeSpots = [];
     events.emit('toast', { text: '', kind: 'info' });
     for (const off of this.offs) off();
     this.offs = [];
