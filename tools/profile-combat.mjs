@@ -52,13 +52,15 @@ await reset(); await frames(120); await stats('idle');
 // Drag a pack next to the player, then attack continuously.
 await page.evaluate(()=>{
   const s = window.SLAY.engine.currentScene;
-  const live = s.enemies.filter(e=>e.life>0).slice(0,12);
+  const live = s.enemies.filter(e=>e.life>0);
   live.forEach((e,i)=>{
     const a = (i/live.length)*Math.PI*2;
-    e.root.position.set(s.player.position.x+Math.cos(a)*2.2, 0, s.player.position.z+Math.sin(a)*2.2);
+    const ring = 2.0 + Math.floor(i/8)*1.5;
+    e.root.position.set(s.player.position.x+Math.cos(a)*ring, 0, s.player.position.z+Math.sin(a)*ring);
   });
 });
-await reset(); await frames(90); await stats('pack nearby, idle');
+await reset(); await frames(90); await stats('FULL pack nearby');
+console.log('enemy count:', await page.evaluate(()=>window.SLAY.engine.currentScene.enemies.filter(e=>e.life>0).length));
 
 await page.mouse.move(640,300);
 await page.mouse.down({button:'right'});

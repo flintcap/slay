@@ -45,6 +45,12 @@ export interface CombatContext {
   elapsed: number;
   enemies: Enemy[];
   scene: THREE.Scene;
+  /**
+   * Solid props (pillars, sarcophagi, crates). The nav grid only knows about
+   * wall tiles, so without these a projectile sails straight through a pillar
+   * the player is quite reasonably hiding behind.
+   */
+  blockers?: Array<{ x: number; z: number; w: number; d: number }>;
 }
 
 /**
@@ -687,8 +693,23 @@ function tickProjectiles(dt: number, ctx: CombatContext): void {
       ctx.fx.burst(p.trail, p.x, p.y, p.z, { count: 2, color: (p.mesh.material as THREE.MeshBasicMaterial).color.getHex() });
     }
 
-    // Ground / wall collision.
-    if (p.y <= 0.12 || !ctx.nav.lineOfSight(p.x - p.vx * dt, p.z - p.vz * dt, p.x, p.z)) {
+    // Ground, wall, and prop collision.
+    let blocked = false;
+    const bl = ctx.blockers;
+    if (bl) {
+      // Props are axis-aligned boxes; expand by the projectile radius so a
+      // shot clips the edge of a pillar rather than passing through its corner.
+      for (let bi = 0; bi < bl.length; bi++) {
+        const b = bl[bi]!;
+        const hw = b.w * 0.5 + p.radius * 0.5;
+        const hd = b.d * 0.5 + p.radius * 0.5;
+        if (Math.abs(p.x - b.x) < hw && Math.abs(p.z - b.z) < hd) {
+          blocked = true;
+          break;
+        }
+      }
+    }
+    if (p.y <= 0.12 || blocked || !ctx.nav.lineOfSight(p.x - p.vx * dt, p.z - p.vz * dt, p.x, p.z)) {
       if (p.onImpact) p.onImpact(p.x, p.z, ctx, p.owner);
       else impactFx(ctx, p.type, p.x, 0.3, p.z, 10);
       retireProjectile(p, ctx);

@@ -286,6 +286,7 @@ export class DungeonScene extends GameScene {
       elapsed: this.runTime,
       enemies: this.enemies,
       scene: this.scene,
+      blockers: this.mesh?.colliders,
     };
   }
 

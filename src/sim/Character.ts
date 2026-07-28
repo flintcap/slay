@@ -120,6 +120,12 @@ export function createCharacter(
   // character that cannot attack until it finds the skill tree is the single
   // worst first impression the game can make, and a hotbar full of skills at
   // rank 0 just looks broken.
+  // One of each potion, so the first fight has an out.
+  for (const potionId of ['potion.heal.minor', 'potion.mana.minor']) {
+    const potion = makeStartingItem(potionId, rng);
+    if (potion) addToInventory(c, potion);
+  }
+
   const starter = startingSkillFor(cls.id);
   if (starter) {
     c.skills[starter] = 1;
