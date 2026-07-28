@@ -1229,6 +1229,236 @@ const MOTIFS: Record<string, Motif> = {
       glowStroke(x, e, 7 - i);
     }
   },
+  // --- families the skill data actually uses -----------------------------
+  strike: (x, e) => {
+    // A single committed thrust.
+    x.beginPath();
+    x.moveTo(24, 104);
+    x.lineTo(100, 28);
+    glowStroke(x, e, 10);
+    poly(x, [[104, 24], [110, 46], [88, 40]]);
+    x.fillStyle = rgba(e.core, 0.95);
+    x.shadowColor = rgba(e.glow, 1);
+    x.shadowBlur = 14;
+    x.fill();
+    x.shadowBlur = 0;
+  },
+  heavy: (x, e) => {
+    // Overhead smash: a steep arc into a hard stop.
+    x.beginPath();
+    x.moveTo(30, 20);
+    x.quadraticCurveTo(96, 40, 74, 96);
+    glowStroke(x, e, 12);
+    x.beginPath();
+    x.ellipse(70, 104, 30, 8, 0, 0, Math.PI * 2);
+    x.fillStyle = rgba(e.glow, 0.5);
+    x.fill();
+  },
+  ground: (x, e) => {
+    // A field on the floor: ellipse plus rising wisps.
+    x.beginPath();
+    x.ellipse(64, 86, 44, 18, 0, 0, Math.PI * 2);
+    glowStroke(x, e, 7);
+    x.beginPath();
+    x.ellipse(64, 86, 26, 10, 0, 0, Math.PI * 2);
+    glowStroke(x, e, 4);
+    for (let i = 0; i < 4; i++) {
+      const px = 36 + i * 19;
+      x.beginPath();
+      x.moveTo(px, 78);
+      x.quadraticCurveTo(px + (i % 2 ? 9 : -9), 54, px, 32);
+      glowStroke(x, e, 4);
+    }
+  },
+  cloud: (x, e, rnd) => {
+    for (let i = 0; i < 6; i++) {
+      const cx = 36 + rnd() * 56;
+      const cy = 44 + rnd() * 40;
+      const r = 12 + rnd() * 14;
+      const g = x.createRadialGradient(cx, cy, 1, cx, cy, r);
+      g.addColorStop(0, rgba(e.core, 0.5));
+      g.addColorStop(1, rgba(e.glow, 0));
+      x.fillStyle = g;
+      x.beginPath();
+      x.arc(cx, cy, r, 0, Math.PI * 2);
+      x.fill();
+    }
+    x.beginPath();
+    x.ellipse(64, 70, 38, 22, 0, 0, Math.PI * 2);
+    glowStroke(x, e, 4);
+  },
+  aura: (x, e) => {
+    // Radiating field centred on the caster.
+    for (const [r, w, a] of [[20, 6, 1], [34, 4.5, 0.75], [48, 3.5, 0.5]] as const) {
+      x.beginPath();
+      x.arc(64, 64, r, 0, Math.PI * 2);
+      x.shadowColor = rgba(e.glow, a);
+      x.shadowBlur = 12;
+      x.strokeStyle = rgba(e.glow, a);
+      x.lineWidth = w;
+      x.stroke();
+      x.shadowBlur = 0;
+    }
+    x.beginPath();
+    x.arc(64, 64, 9, 0, Math.PI * 2);
+    x.fillStyle = rgba(e.core, 0.95);
+    x.fill();
+  },
+  summon: (x, e) => {
+    // A skull over a summoning ring.
+    x.beginPath();
+    x.ellipse(64, 84, 34, 12, 0, 0, Math.PI * 2);
+    glowStroke(x, e, 5);
+    x.beginPath();
+    x.moveTo(46, 66);
+    x.quadraticCurveTo(46, 34, 64, 34);
+    x.quadraticCurveTo(82, 34, 82, 66);
+    x.lineTo(76, 76);
+    x.lineTo(52, 76);
+    x.closePath();
+    x.fillStyle = rgba(e.core, 0.9);
+    x.shadowColor = rgba(e.glow, 0.9);
+    x.shadowBlur = 14;
+    x.fill();
+    x.shadowBlur = 0;
+    x.fillStyle = 'rgba(0,0,0,.75)';
+    x.beginPath();
+    x.arc(56, 58, 6, 0, Math.PI * 2);
+    x.arc(72, 58, 6, 0, Math.PI * 2);
+    x.fill();
+    x.fillRect(60, 68, 8, 8);
+  },
+  curse: (x, e) => {
+    // Downward-pointing sigil: the visual opposite of a buff.
+    for (let i = 0; i < 3; i++) {
+      const y = 36 + i * 24;
+      x.beginPath();
+      x.moveTo(38, y);
+      x.lineTo(64, y + 20);
+      x.lineTo(90, y);
+      glowStroke(x, e, 7 - i);
+    }
+    x.beginPath();
+    x.arc(64, 30, 7, 0, Math.PI * 2);
+    x.fillStyle = rgba(e.core, 0.9);
+    x.fill();
+  },
+  shout: (x, e) => {
+    // Expanding sound arcs from a point on the left.
+    for (let i = 0; i < 4; i++) {
+      x.beginPath();
+      x.arc(34, 64, 16 + i * 16, -0.85, 0.85);
+      glowStroke(x, e, 6 - i * 0.9);
+    }
+    x.beginPath();
+    x.arc(30, 64, 9, 0, Math.PI * 2);
+    x.fillStyle = rgba(e.core, 0.95);
+    x.fill();
+  },
+  channel: (x, e) => {
+    // A sustained stream with pulses travelling along it.
+    x.beginPath();
+    x.moveTo(22, 92);
+    x.quadraticCurveTo(64, 76, 106, 34);
+    glowStroke(x, e, 9);
+    for (const t of [0.3, 0.55, 0.8]) {
+      const px = 22 + (106 - 22) * t;
+      const py = 92 - (92 - 34) * t * t;
+      x.beginPath();
+      x.arc(px, py, 6 - t * 2, 0, Math.PI * 2);
+      x.fillStyle = rgba(e.core, 0.9);
+      x.fill();
+    }
+  },
+  teleport: (x, e) => {
+    // Fading out on the left, arriving on the right.
+    for (let i = 0; i < 3; i++) {
+      x.globalAlpha = 0.25 + i * 0.1;
+      x.beginPath();
+      x.ellipse(34 + i * 6, 64, 12, 26, 0, 0, Math.PI * 2);
+      x.strokeStyle = rgba(e.glow, 0.9);
+      x.lineWidth = 3;
+      x.stroke();
+    }
+    x.globalAlpha = 1;
+    x.beginPath();
+    x.ellipse(94, 64, 14, 30, 0, 0, Math.PI * 2);
+    glowStroke(x, e, 6);
+    for (let i = 0; i < 5; i++) {
+      x.beginPath();
+      x.arc(58 + i * 8, 64 + (i % 2 ? -8 : 8), 2.4, 0, Math.PI * 2);
+      x.fillStyle = rgba(e.core, 0.8);
+      x.fill();
+    }
+  },
+  wave: (x, e) => {
+    // A travelling front.
+    for (let i = 0; i < 3; i++) {
+      x.beginPath();
+      x.moveTo(30 + i * 18, 22);
+      x.quadraticCurveTo(58 + i * 18, 64, 30 + i * 18, 106);
+      glowStroke(x, e, 8 - i * 1.6);
+    }
+  },
+  leap: (x, e) => {
+    // An arc from a launch point to a landing crater.
+    x.beginPath();
+    x.moveTo(22, 100);
+    x.quadraticCurveTo(64, 12, 104, 92);
+    glowStroke(x, e, 7);
+    x.beginPath();
+    x.ellipse(104, 100, 20, 7, 0, 0, Math.PI * 2);
+    x.fillStyle = rgba(e.glow, 0.55);
+    x.fill();
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI + (i / 3) * Math.PI;
+      x.beginPath();
+      x.moveTo(104, 98);
+      x.lineTo(104 + Math.cos(a) * 26, 98 + Math.sin(a) * 14);
+      glowStroke(x, e, 3);
+    }
+  },
+  detonate: (x, e, rnd) => {
+    const g = x.createRadialGradient(64, 64, 4, 64, 64, 46);
+    g.addColorStop(0, rgba(e.core, 1));
+    g.addColorStop(0.45, rgba(e.glow, 0.8));
+    g.addColorStop(1, rgba(e.glow, 0));
+    x.fillStyle = g;
+    x.beginPath();
+    x.arc(64, 64, 46, 0, Math.PI * 2);
+    x.fill();
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + rnd() * 0.2;
+      x.beginPath();
+      x.moveTo(64 + Math.cos(a) * 18, 64 + Math.sin(a) * 18);
+      x.lineTo(64 + Math.cos(a) * (44 + rnd() * 14), 64 + Math.sin(a) * (44 + rnd() * 14));
+      glowStroke(x, e, 4);
+    }
+  },
+  capstone: (x, e, rnd) => {
+    // Deliberately the most ornate icon in the tree — these change how a class
+    // is played, and should look like it.
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const r = i % 2 === 0 ? 52 : 30;
+      x.beginPath();
+      x.moveTo(64, 64);
+      x.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r);
+      glowStroke(x, e, i % 2 === 0 ? 6 : 3.5);
+    }
+    x.beginPath();
+    x.arc(64, 64, 22, 0, Math.PI * 2);
+    glowStroke(x, e, 5);
+    const g = x.createRadialGradient(64, 64, 2, 64, 64, 20);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.4, rgba(e.core, 0.95));
+    g.addColorStop(1, rgba(e.glow, 0.1));
+    x.fillStyle = g;
+    x.beginPath();
+    x.arc(64, 64, 20, 0, Math.PI * 2);
+    x.fill();
+    void rnd;
+  },
   heal: (x, e) => {
     x.beginPath();
     x.moveTo(64, 30);
@@ -1248,15 +1478,50 @@ const MOTIFS: Record<string, Motif> = {
   },
 };
 
-/** Effect id → motif, with sensible aliasing. */
+/**
+ * Effect id → motif. The skill data uses dotted family ids ('melee.strike',
+ * 'ground.cloud'), so resolve the specific sub-type first, then the family,
+ * then a small alias table. Collapsing everything to one fallback is what made
+ * a whole tree look like the same icon repeated.
+ */
 function motifFor(effect: string | undefined): Motif {
-  const k = (effect ?? 'melee').toLowerCase();
-  if (MOTIFS[k]) return MOTIFS[k]!;
-  if (k === 'bolt') return MOTIFS.projectile!;
-  if (k === 'explosion' || k === 'blast') return MOTIFS.nova!;
-  if (k === 'aura' || k === 'shield' || k === 'summon') return MOTIFS.buff!;
-  if (k === 'drain' || k === 'curse') return MOTIFS.beam!;
-  if (k === 'trap' || k === 'totem') return MOTIFS.slam!;
+  const raw = (effect ?? 'melee').toLowerCase();
+  const [family, sub] = raw.split('.');
+
+  // Most specific first: 'melee.strike' prefers the `strike` motif.
+  if (sub && MOTIFS[sub]) return MOTIFS[sub]!;
+  if (MOTIFS[raw]) return MOTIFS[raw]!;
+  if (family && MOTIFS[family]) return MOTIFS[family]!;
+
+  const alias: Record<string, string> = {
+    bolt: 'projectile',
+    orb: 'projectile',
+    explode: 'detonate',
+    explosion: 'detonate',
+    blast: 'detonate',
+    aoe: 'detonate',
+    point: 'slam',
+    sky: 'meteor',
+    minion: 'summon',
+    corpse: 'summon',
+    totem: 'summon',
+    banner: 'buff',
+    stance: 'buff',
+    self: 'buff',
+    absorb: 'buff',
+    debuff: 'curse',
+    apply: 'curse',
+    drain: 'beam',
+    multislash: 'cleave',
+    line: 'wave',
+    damage: 'aura',
+    dash: 'dash',
+  };
+  const bySub = sub ? alias[sub] : undefined;
+  if (bySub && MOTIFS[bySub]) return MOTIFS[bySub]!;
+  const byFamily = family ? alias[family] : undefined;
+  if (byFamily && MOTIFS[byFamily]) return MOTIFS[byFamily]!;
+
   return MOTIFS.melee!;
 }
 

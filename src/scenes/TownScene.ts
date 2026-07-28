@@ -170,6 +170,9 @@ export class TownScene extends GameScene {
   }
 
   override dispose(): void {
+    // Drop the proximity prompt so it does not follow the player downstairs.
+    this.nearby = null;
+    events.emit('toast', { text: '', kind: 'info' });
     for (const off of this.offs) off();
     this.offs = [];
     this.player?.dispose();

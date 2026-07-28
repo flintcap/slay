@@ -75,11 +75,40 @@ export class Engine {
   private fpsAccum = 0;
   private fpsFrames = 0;
 
+  /** True only for a pause the engine applied itself when the tab went away. */
+  private autoPaused = false;
+
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new Renderer(canvas);
     this.input = new Input(canvas);
+
+    // Pause when the tab is hidden, and — critically — resume when it comes
+    // back. Only ever undo a pause we applied ourselves, so a player who opened
+    // the pause menu and then switched tabs stays paused.
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) this.setPaused(true);
+      if (document.hidden) {
+        if (!this.paused) {
+          this.autoPaused = true;
+          this.setPaused(true);
+        }
+      } else if (this.autoPaused) {
+        this.autoPaused = false;
+        this.setPaused(false);
+      }
+    });
+
+    // Alt-tabbing to another application does not always fire visibilitychange.
+    window.addEventListener('blur', () => {
+      if (!this.paused) {
+        this.autoPaused = true;
+        this.setPaused(true);
+      }
+    });
+    window.addEventListener('focus', () => {
+      if (this.autoPaused) {
+        this.autoPaused = false;
+        this.setPaused(false);
+      }
     });
   }
 

@@ -574,6 +574,11 @@ export class HUD {
         this.renderQuest();
       }
     });
+    // The interact prompt is anchored, not transient: without an explicit clear
+    // it survives the walk from town into the dungeon and sits there forever.
+    on('scene:change', () => {
+      this.setPrompt('');
+    });
     on('toast', (p) => {
       const text = p.text ?? '';
       // The town's proximity prompts come through the toast channel; they are a
