@@ -24,6 +24,8 @@ await page.evaluate(async()=>{
   await window.SLAY.engine.goTo('dungeon',{depth:5});
 });
 await page.waitForFunction(()=>window.SLAY.engine.currentSceneId==='dungeon',null,{timeout:180000,polling:500});
+// Immortal, or the full-pack test kills the player and swaps to the death scene.
+await page.evaluate(()=>window.SLAY.debug.godMode(true));
 
 const frames = n => page.evaluate(k=>new Promise(r=>{let i=0;const s=()=>(++i>=k?r():requestAnimationFrame(s));requestAnimationFrame(s);}),n);
 
@@ -60,7 +62,7 @@ await page.evaluate(()=>{
   });
 });
 await reset(); await frames(90); await stats('FULL pack nearby');
-console.log('enemy count:', await page.evaluate(()=>window.SLAY.engine.currentScene.enemies.filter(e=>e.life>0).length));
+console.log('enemy count:', await page.evaluate(()=>window.SLAY.engine.currentScene?.enemies?.filter(e=>e.life>0).length ?? 'n/a'));
 
 await page.mouse.move(640,300);
 await page.mouse.down({button:'right'});
