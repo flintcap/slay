@@ -21,7 +21,7 @@ import type {
 } from '../types';
 import { events } from '../core/Events';
 import { INVENTORY_SIZE } from '../core/Save';
-import { CLASS_BY_ID, getClass, STARTING_SKILL_HINTS } from '../data/classes';
+import { CLASS_BY_ID, getClass, STARTING_SKILL_HINTS, equipRules } from '../data/classes';
 import { getDifficulty, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulties';
 import {
   SKILLS,
@@ -34,6 +34,7 @@ import {
 import { MAX_LEVEL, computeStats, effectiveRank, xpForLevel } from './Stats';
 import { skillPointsForLevel, statPointsForLevel } from './Progression';
 import { getBase } from './Loot';
+import { ONE_HAND_MELEE } from '../data/itemBases';
 
 // ---------------------------------------------------------------------------
 // Creation
@@ -518,12 +519,23 @@ function isTwoHanded(item: Item): boolean {
 }
 
 /** The slot(s) an item is legally allowed to occupy. */
-export function slotsFor(item: Item): EquipSlot[] {
+export function slotsFor(item: Item, classId?: CharClassId): EquipSlot[] {
   const base = baseOf(item);
   if (!base) return [];
   if (base.slot === 'twoHand') return ['mainHand'];
   if (base.slot === 'consumable' || base.slot === 'none') return [];
   if (base.category === 'ring') return [...RING_SLOTS];
+
+  // Dual-wielding classes may put a one-handed melee weapon in the off hand.
+  if (
+    classId &&
+    base.slot === 'mainHand' &&
+    ONE_HAND_MELEE.has(base.category) &&
+    equipRules(classId).dualWield
+  ) {
+    return ['mainHand', 'offHand'];
+  }
+
   return [base.slot];
 }
 
@@ -531,6 +543,10 @@ export function slotsFor(item: Item): EquipSlot[] {
 export function meetsRequirements(c: Character, item: Item, stats?: Stats): { ok: boolean; reason?: string } {
   const base = baseOf(item);
   if (!base) return { ok: false, reason: 'Unknown item base.' };
+  const rules = equipRules(c.classId);
+  if (rules.denied.includes(base.category)) {
+    return { ok: false, reason: rules.note };
+  }
   if (base.classes && base.classes.length > 0 && !base.classes.includes(c.classId)) {
     return { ok: false, reason: 'Your class cannot use this.' };
   }
@@ -562,7 +578,7 @@ export function equipItem(
   item: Item,
   slot?: EquipSlot,
 ): { ok: boolean; reason?: string; displaced?: Item[] } {
-  const legal = slotsFor(item);
+  const legal = slotsFor(item, c.classId);
   if (legal.length === 0) return { ok: false, reason: 'This item cannot be equipped.' };
 
   let target: EquipSlot;
@@ -592,6 +608,11 @@ export function equipItem(
   if (target === 'offHand') {
     const main = c.equipment.mainHand;
     if (main && isTwoHanded(main) && !displaced.includes(main)) displaced.push(main);
+    // An off-hand weapon needs a main-hand weapon to pair with.
+    const offBase = baseOf(item);
+    if (offBase && ONE_HAND_MELEE.has(offBase.category) && !c.equipment.mainHand) {
+      return { ok: false, reason: 'Equip a weapon in your main hand first.' };
+    }
   }
 
   // The incoming item may already be sitting in the inventory; that slot frees

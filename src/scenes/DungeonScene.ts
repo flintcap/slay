@@ -96,6 +96,7 @@ export class DungeonScene extends GameScene {
   private returnPortal: THREE.Object3D | null = null;
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
+  private heroAura: THREE.Mesh | null = null;
   private plates: NameplateLayer | null = null;
   private groundLabels: GroundLabelLayer | null = null;
   private transitioning = false;
@@ -375,13 +376,15 @@ export class DungeonScene extends GameScene {
     onSurviveTick(this.run.quest, dt);
 
     if (this.heroLight) {
-      this.heroLight.position.set(
-        this.player.position.x,
-        2.3,
-        this.player.position.z
-      );
-      // Breathe very slightly so it reads as carried flame, not a spotlight.
-      this.heroLight.intensity = 14 + Math.sin(elapsed * 3.1) * 0.7;
+      // Chest height, not overhead.
+      this.heroLight.position.set(this.player.position.x, 1.15, this.player.position.z);
+      // Breathe very slightly so it reads as carried flame, not a fixed lamp.
+      this.heroLight.intensity = 7.5 + Math.sin(elapsed * 3.1) * 0.5;
+    }
+    if (this.heroAura) {
+      this.heroAura.position.set(this.player.position.x, 0.045, this.player.position.z);
+      const m = this.heroAura.material as THREE.MeshBasicMaterial;
+      m.opacity = 0.3 + Math.sin(elapsed * 3.1) * 0.03;
     }
 
     if (this.groundLabels) {
@@ -825,6 +828,11 @@ export class DungeonScene extends GameScene {
     this.player?.dispose();
     this.heroLight?.removeFromParent();
     this.heroLight = null;
+    if (this.heroAura) {
+      this.heroAura.removeFromParent();
+      disposeObject(this.heroAura);
+      this.heroAura = null;
+    }
     this.plates?.dispose();
     this.plates = null;
     this.groundLabels?.dispose();
@@ -836,4 +844,29 @@ export class DungeonScene extends GameScene {
     this.engine.renderer.setLowLife(0);
     events.emit('ui:close', { panel: 'hud' });
   }
+}
+
+
+/**
+ * Soft radial falloff used for the player's ground aura. Generated once and
+ * shared; a texture beats a shader here because it is drawn exactly once.
+ */
+let auraTexture: THREE.Texture | null = null;
+function makeAuraTexture(): THREE.Texture {
+  if (auraTexture) return auraTexture;
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const x = c.getContext('2d')!;
+  const g = x.createRadialGradient(size / 2, size / 2, 2, size / 2, size / 2, size / 2);
+  g.addColorStop(0, 'rgba(255,214,166,0.85)');
+  g.addColorStop(0.35, 'rgba(255,196,140,0.35)');
+  g.addColorStop(0.7, 'rgba(255,180,120,0.10)');
+  g.addColorStop(1, 'rgba(255,170,110,0)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, size, size);
+  auraTexture = new THREE.CanvasTexture(c);
+  auraTexture.colorSpace = THREE.SRGBColorSpace;
+  return auraTexture;
 }

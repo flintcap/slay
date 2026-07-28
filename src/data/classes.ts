@@ -139,3 +139,64 @@ export const CLASS_TAGLINES: Record<CharClassId, string[]> = {
   stormcaller: ['Never stand still.', 'The chain is the build.', 'Charge, discharge, repeat.'],
   revenant: ['The army is the weapon.', 'Corpses are ammunition.', 'Steal what you cannot survive.'],
 };
+
+
+// ---------------------------------------------------------------------------
+// Equipment restrictions
+// ---------------------------------------------------------------------------
+
+import type { ItemCategory } from '../types';
+
+export interface ClassEquipRules {
+  /** Categories this class can never equip. */
+  denied: ItemCategory[];
+  /** True if the class may hold a second one-handed melee weapon. */
+  dualWield: boolean;
+  /** Extra categories allowed in the off hand beyond shields and orbs. */
+  offHandExtra: ItemCategory[];
+  /** One-line explanation shown when an equip is refused. */
+  note: string;
+}
+
+/**
+ * What each class may hold. These are identity, not balance: a Shadowblade
+ * fighting from behind a kite shield is not a Shadowblade, and a Warden who
+ * cannot plant a shield loses the whole point of the class.
+ */
+export const CLASS_EQUIP: Record<CharClassId, ClassEquipRules> = {
+  warden: {
+    denied: ['bow', 'crossbow', 'wand', 'staff', 'orb'],
+    dualWield: false,
+    offHandExtra: [],
+    note: 'Wardens fight with a blade and a planted shield.',
+  },
+  pyromancer: {
+    denied: ['bow', 'crossbow', 'spear', 'shield'],
+    dualWield: false,
+    offHandExtra: ['orb'],
+    note: 'Pyromancers channel through a focus, not a shield.',
+  },
+  shadowblade: {
+    // No shields, ever. Two blades instead.
+    denied: ['shield', 'staff', 'mace', 'crossbow'],
+    dualWield: true,
+    offHandExtra: ['sword', 'axe', 'dagger', 'quiver'],
+    note: 'Shadowblades carry a second blade where a shield would go.',
+  },
+  stormcaller: {
+    denied: ['crossbow', 'mace', 'shield'],
+    dualWield: false,
+    offHandExtra: ['orb'],
+    note: 'Stormcallers keep one hand free to conduct.',
+  },
+  revenant: {
+    denied: ['bow', 'crossbow', 'spear'],
+    dualWield: false,
+    offHandExtra: ['orb', 'shield'],
+    note: 'Revenants bind their dead through a focus or a warding shield.',
+  },
+};
+
+export function equipRules(classId: CharClassId): ClassEquipRules {
+  return CLASS_EQUIP[classId] ?? CLASS_EQUIP.warden;
+}

@@ -1,4 +1,7 @@
 import { itemIconUri } from '../art/Icons';
+import { ONE_HAND_MELEE } from '../data/itemBases';
+import { equipRules } from '../data/classes';
+import { save } from '../core/Save';
 /**
  * SLAY — UI widget kit.
  *
@@ -576,6 +579,13 @@ export function slotsFor(item: Item | null): EquipSlot[] {
   if (s === 'none' || s === 'consumable') return [];
   if (s === 'twoHand') return ['mainHand'];
   if (s === 'ring1' || s === 'ring2') return ['ring1', 'ring2'];
+
+  // Dual-wielding classes can drop a one-handed melee weapon in the off hand,
+  // so the drag target has to light up for it.
+  const c = save.account.current;
+  if (c && s === 'mainHand' && ONE_HAND_MELEE.has(base.category) && equipRules(c.classId).dualWield) {
+    return ['mainHand', 'offHand'];
+  }
   return [s];
 }
 

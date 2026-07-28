@@ -1200,6 +1200,50 @@ for (const mat of MATERIALS) {
 // Exports and lookup helpers
 // ===========================================================================
 
+/**
+ * Handedness normalisation.
+ *
+ * Nothing in the authored data was ever marked two-handed, so every greatsword,
+ * maul, bow and staff behaved as a one-hander and could be paired with a
+ * shield. Rather than hand-editing 150 entries, handedness is derived once here
+ * from the category and the base's own name, which is where the information
+ * actually lives.
+ */
+const ALWAYS_TWO_HANDED = new Set<ItemCategory>(['bow', 'crossbow', 'staff', 'spear']);
+
+/** Name fragments that mark an otherwise one-handed weapon family as a two-hander. */
+const TWO_HANDED_WORDS = [
+  'great', 'giant', 'huge', 'massive', 'maul', 'two-hand', 'twohand', 'zweihander',
+  'claymore', 'flamberge', 'bardiche', 'halberd', 'poleaxe', 'glaive', 'pike',
+  'warhammer', 'battle staff', 'longstaff', 'executioner', 'colossus', 'titan',
+];
+
+const ONE_HANDED_CATEGORIES = new Set<ItemCategory>([
+  'sword', 'axe', 'mace', 'dagger', 'wand', 'scepter',
+]);
+
+/** True when this base needs both hands. */
+export function isTwoHandedBase(base: ItemBase): boolean {
+  if (base.slot === 'twoHand') return true;
+  if (ALWAYS_TWO_HANDED.has(base.category)) return true;
+  if (!ONE_HANDED_CATEGORIES.has(base.category)) return false;
+  const hay = `${base.id} ${base.name}`.toLowerCase();
+  return TWO_HANDED_WORDS.some((w) => hay.includes(w));
+}
+
+/** Melee categories that a dual-wielding class may hold in either hand. */
+export const ONE_HAND_MELEE = new Set<ItemCategory>(['sword', 'axe', 'mace', 'dagger']);
+
+for (const b of bases) {
+  if (b.slot === 'mainHand' && isTwoHandedBase(b)) {
+    b.slot = 'twoHand';
+    // Two-handers hit harder and demand more of the wielder.
+    if (b.baseMinDamage !== undefined) b.baseMinDamage = Math.round(b.baseMinDamage * 1.45);
+    if (b.baseMaxDamage !== undefined) b.baseMaxDamage = Math.round(b.baseMaxDamage * 1.5);
+    if (b.strReq) b.strReq = Math.round(b.strReq * 1.15);
+  }
+}
+
 export const ITEM_BASES: ItemBase[] = bases;
 
 const BY_ID = new Map<string, ItemBase>(bases.map((b) => [b.id, b]));
