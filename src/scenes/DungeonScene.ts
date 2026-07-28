@@ -86,6 +86,8 @@ export class DungeonScene extends GameScene {
   private static readonly UP = new THREE.Vector3(0, 1, 0);
   private tmpDir = new THREE.Vector3();
   private aimPoint = new THREE.Vector3();
+  /** Reused each frame; ground loot can number in the dozens. */
+  private labelScratch: Array<{ item: Item; root: THREE.Object3D; pos: THREE.Vector3 }> = [];
   private offs: Array<() => void> = [];
   private aiCursor = 0;
   private exitPos = new THREE.Vector3();
@@ -345,14 +347,24 @@ export class DungeonScene extends GameScene {
       },
     }, this.keyDir.lengthSq() > 0 ? this.keyDir : null);
 
-    // Stagger AI: every enemy moves every frame, but only a slice re-plans.
-    // Full pathfinding for 60 enemies per frame would blow the budget.
-    const slice = Math.max(1, Math.ceil(this.enemies.length / 4));
+    // Only monsters near the player think. Aggro persists for the whole floor,
+    // so without a leash every monster the player has ever disturbed keeps
+    // pathing forever and the cost grows the further you explore — which is
+    // exactly the "it gets worse as I go" the profiler could not see in a
+    // stationary test.
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const LEASH = 38;
+    const LEASH2 = LEASH * LEASH;
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i]!;
+      const dx = e.root.position.x - px;
+      const dz = e.root.position.z - pz;
+      // Far away: leave it in the world and visible (frustum culling already
+      // handles the draw cost), just stop simulating it.
+      if (dx * dx + dz * dz > LEASH2) continue;
       e.update(dt, ctx);
     }
-    this.aiCursor = (this.aiCursor + slice) % Math.max(1, this.enemies.length);
 
     this.boss?.update(dt, ctx);
 
@@ -374,9 +386,13 @@ export class DungeonScene extends GameScene {
 
     if (this.groundLabels) {
       const shift = this.engine.input.keyDown('ShiftLeft') || this.engine.input.keyDown('ShiftRight');
+      this.labelScratch.length = 0;
+      for (const l of this.loot) {
+        if (l.item) this.labelScratch.push(l as { item: Item; root: THREE.Object3D; pos: THREE.Vector3 });
+      }
       this.groundLabels.update(
         this.camera,
-        this.loot.filter((l) => l.item !== null) as Array<{ item: Item; root: THREE.Object3D; pos: THREE.Vector3 }>,
+        this.labelScratch,
         this.player.position,
         window.innerWidth,
         window.innerHeight,
@@ -610,10 +626,6 @@ export class DungeonScene extends GameScene {
       c.rotation.set(rng.range(-0.2, 0.2), rng.range(0, 3), rng.range(-0.2, 0.2));
       group.add(c);
     }
-    const glow = new THREE.PointLight(0xffc040, 2.2, 3.2, 2);
-    glow.position.y = 0.35;
-    group.add(glow);
-
     group.position.copy(pos);
     this.scene.add(group);
     this.loot.push({ item: null, gold: amount, root: group, pos, bornAt: this.runTime });

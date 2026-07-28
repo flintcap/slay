@@ -901,7 +901,14 @@ export class DungeonMesh {
         l.shadow.bias = -0.004;
         l.shadow.normalBias = 0.05;
       }
-      l.visible = false;
+      // Stays visible for the renderer's whole life. Toggling a light's
+      // `visible` flag changes the scene's light count, and three.js keys the
+      // shader program cache on that count, so every material in the scene
+      // recompiles. The pool re-targets several times a second as the player
+      // walks, which turned into a constant micro-stutter. Unused lights are
+      // parked at zero intensity instead.
+      l.visible = true;
+      l.intensity = 0;
       this.lights.push(l);
       this.root.add(l);
     }
@@ -1116,12 +1123,12 @@ export class DungeonMesh {
         const l = this.lights[i];
         const pick = order[i];
         if (!pick) {
-          l.visible = false;
+          // Park it rather than hide it: see the note where the pool is built.
+          l.intensity = 0;
           l.userData.torch = -1;
           continue;
         }
         const t = this.torches[pick.idx];
-        l.visible = true;
         l.position.copy(t.pos);
         l.color.copy(t.color);
         l.distance = t.distance;
@@ -1132,9 +1139,11 @@ export class DungeonMesh {
 
     // Flicker every frame on whichever torches currently own a light.
     for (const l of this.lights) {
-      if (!l.visible) continue;
       const ti = (l.userData.torch as number) ?? -1;
-      if (ti < 0) continue;
+      if (ti < 0) {
+        l.intensity = 0;
+        continue;
+      }
       const t = this.torches[ti];
       l.intensity = t.intensity * this.flickerAt(t, elapsed);
     }
