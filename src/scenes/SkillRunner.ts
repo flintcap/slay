@@ -9,6 +9,7 @@ import type { Player } from '../entities/Player';
 import type { Enemy, CombatContext } from '../entities/Enemy';
 import type { Boss } from '../entities/Boss';
 import { EffectSystem, ELEMENTS } from '../fx/Effects';
+import { getStatus, synthesizeSkillBuff } from '../data/statuses';
 
 /** Anything the player can hit. Enemy and Boss both satisfy this. */
 type Target = Enemy | Boss;
@@ -83,11 +84,16 @@ export class SkillRunner {
     const origin = player.position.clone().setY(1.05);
     const dir = this.tmp.copy(target).sub(player.position).setY(0).normalize().clone();
 
-    switch (def.effect ?? 'melee') {
+    // Skill effects are dotted families ('buff.self', 'aura.damage'); switch on
+    // the family so every variant lands on the right handler.
+    const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
+
+    switch (family) {
       case 'melee':
       case 'cleave': {
         player.beginAction('attack1', attackTime);
-        this.meleeSwing(player, dir, num('arc', def.effect === 'cleave' ? 2.2 : 1.3), num('reach', 2.3), makePacket, ctx, enemies, boss, type);
+        const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
+        this.meleeSwing(player, dir, num('arc', wide ? 2.2 : 1.3), num('reach', 2.3), makePacket, ctx, enemies, boss, type);
         break;
       }
 
@@ -218,8 +224,15 @@ export class SkillRunner {
         break;
       }
 
-      case 'buff': {
+      case 'buff':
+      case 'aura':
+      case 'stance':
+      case 'shout':
+      case 'banner':
+      case 'self':
+      case 'absorb': {
         player.beginAction('cast', castTime * 0.7);
+        this.applyBuff(player, def, rank, num, color);
         this.effects.impact(type, player.position.x, 1.0, player.position.z, {
           color,
           decal: false,
@@ -295,6 +308,30 @@ export class SkillRunner {
       if (dx * dx + dz * dz <= r * r) return true;
     }
     return false;
+  }
+
+  /**
+   * Applies a skill's buff so it shows on the HUD with a running timer.
+   * Most buff skills declare their duration in `params.duration`; anything
+   * without one gets a sensible default rather than no feedback at all.
+   */
+  private applyBuff(
+    player: Player,
+    def: { id: string; name: string; params?: Record<string, number | number[]> },
+    rank: number,
+    num: (k: string, d: number) => number,
+    color: number
+  ): void {
+    const duration = num('duration', 10) + num('durationPerRank', 0) * (rank - 1);
+
+    // Prefer an authored status if the skill names one, else synthesize one
+    // carrying the skill's own name so the tooltip reads correctly.
+    const authored = typeof def.params?.statusId === 'string' ? (def.params.statusId as string) : null;
+    const id = authored && getStatus(authored) ? authored : `skill.${def.id}`;
+    if (!getStatus(id)) {
+      synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);
+    }
+    player.applyStatus(id, Math.max(1, duration), 1, 1);
   }
 
   /** Distance along `dir` to the nearest target, or `max` if nothing is hit. */

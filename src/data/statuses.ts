@@ -748,6 +748,39 @@ export function getStatus(id: string): StatusDef | undefined {
   return STATUS_BY_ID[id];
 }
 
+/**
+ * Registers a status at runtime. Used for skill-granted buffs so the icon and
+ * timer on the HUD carry the skill's own name instead of a generic label.
+ * Never overwrites an authored status.
+ */
+export function registerStatus(d: StatusDef): StatusDef {
+  const existing = STATUS_BY_ID[d.id];
+  if (existing) return existing;
+  STATUS_BY_ID[d.id] = d;
+  STATUSES.push(d);
+  return d;
+}
+
+/** Builds a buff definition for a skill that has no authored status. */
+export function synthesizeSkillBuff(
+  skillId: string,
+  name: string,
+  color: number,
+  icon: string,
+  baseDuration: number,
+): StatusDef {
+  return registerStatus(
+    def(`skill.${skillId}`, name, 1, {
+      desc: `Granted by ${name}.`,
+      color,
+      icon,
+      tags: ['buff'],
+      baseDuration,
+      stacking: 'refresh',
+    }),
+  );
+}
+
 /** All ids carrying a given tag — used to build immunity sets. */
 export function statusesWithTag(tag: StatusTag): StatusDef[] {
   return STATUSES.filter((s) => s.tags.includes(tag));
