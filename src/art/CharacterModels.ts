@@ -493,20 +493,71 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
   }
 }
 
-/** Rounded skull with a jaw mass — a sphere alone reads as a lollipop. */
+/**
+ * A head with actual structure.
+ *
+ * A dome plus a jaw box reads as a potato at any distance — and the head is
+ * where the eye goes first, so it is the worst place to be vague. This builds
+ * the landmarks that make a head read as a head even at 40 pixels: a brow that
+ * casts a shadow over recessed sockets, a nose bridge catching the key light,
+ * cheekbones, a tapered chin, and a neck joining it to the chest.
+ */
 function baseHead(ctx: BuildCtx, mat: string, scale = 1): void {
   const { j, p, parts } = ctx;
   const H = p.height;
   const r = H * 0.055 * p.head * scale;
   const c = j.head;
-  const skull = dome(r, 1.15, 14, 7);
-  skull.scale(1, 1, 1.06);
-  skull.translate(c.x, c.y + r * 0.05, c.z);
+
+  // Cranium: taller than wide, flattened at the back.
+  const skull = dome(r, 1.2, 18, 9);
+  skull.scale(0.94, 1.06, 1.02);
+  skull.translate(c.x, c.y + r * 0.08, c.z - r * 0.04);
   parts.push({ geo: skull, mat, bind: ['head', 'chest'] });
-  const jaw = transformed(beveledBox(r * 1.35, r * 0.95, r * 1.5, r * 0.22), {
-    pos: [c.x, c.y - r * 0.35, c.z + r * 0.12],
+
+  // Brow ridge. The single most valuable feature: it throws the sockets into
+  // shadow, which is what reads as "a face" from across a room.
+  const brow = transformed(beveledBox(r * 1.32, r * 0.3, r * 0.5, r * 0.1), {
+    pos: [c.x, c.y + r * 0.28, c.z + r * 0.72],
+    rot: [-0.16, 0, 0],
+  });
+  parts.push({ geo: brow, mat, bind: ['head'] });
+
+  // Recessed eye sockets, cut as small dark boxes set back under the brow.
+  for (const side of [-1, 1]) {
+    const socket = transformed(beveledBox(r * 0.42, r * 0.26, r * 0.2, r * 0.05), {
+      pos: [c.x + side * r * 0.36, c.y + r * 0.1, c.z + r * 0.62],
+    });
+    parts.push({ geo: socket, mat: 'shadow', bind: ['head'] });
+  }
+
+  // Nose bridge: a narrow wedge that catches the key light and gives the face
+  // a centre line.
+  const nose = transformed(taperedBox(r * 0.3, r * 0.34, r * 0.16, r * 0.2, r * 0.5, r * 0.04), {
+    pos: [c.x, c.y - r * 0.05, c.z + r * 0.78],
+    rot: [0.22, 0, 0],
+  });
+  parts.push({ geo: nose, mat, bind: ['head'] });
+
+  // Cheekbones, angled outward.
+  for (const side of [-1, 1]) {
+    const cheek = transformed(beveledBox(r * 0.42, r * 0.3, r * 0.42, r * 0.12), {
+      pos: [c.x + side * r * 0.52, c.y - r * 0.16, c.z + r * 0.5],
+      rot: [0, side * 0.3, side * 0.14],
+    });
+    parts.push({ geo: cheek, mat, bind: ['head'] });
+  }
+
+  // Jaw, narrowing to a chin rather than a slab.
+  const jaw = transformed(taperedBox(r * 1.18, r * 1.24, r * 0.72, r * 0.9, r * 0.72, r * 0.1), {
+    pos: [c.x, c.y - r * 0.46, c.z + r * 0.16],
   });
   parts.push({ geo: jaw, mat, bind: ['head'] });
+
+  // Neck — without it the head floats.
+  const neck = transformed(limb(r * 0.7, r * 0.44, r * 0.5, 10), {
+    pos: [c.x, c.y - r * 0.95, c.z - r * 0.06],
+  });
+  parts.push({ geo: neck, mat, bind: ['head', 'chest'] });
 }
 
 function pauldron(size: number, curve: number, rng: Rng): THREE.BufferGeometry {
@@ -524,6 +575,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
     profile: { height: 1.86, shoulder: 0.135, hip: 0.062, thick: 1.28, depth: 1.25, head: 1.0, lean: 0.03 },
     palettes: {
       skin: 'flesh.pale',
+      shadow: 'metal.dark',
       armour: 'metal.steel',
       trim: 'metal.gold',
       cloth: 'cloth.banner',
@@ -603,6 +655,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
     profile: { height: 1.76, shoulder: 0.098, hip: 0.05, thick: 0.94, depth: 0.92, head: 1.0, lean: 0.06 },
     palettes: {
       skin: 'flesh.pale',
+      shadow: 'metal.dark',
       armour: 'cloth.silk',
       cloth: 'cloth.linen',
       trim: 'metal.gold',
@@ -702,6 +755,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
     profile: { height: 1.78, shoulder: 0.105, hip: 0.052, thick: 0.88, depth: 0.86, head: 0.96, lean: 0.11 },
     palettes: {
       skin: 'flesh.pale',
+      shadow: 'metal.dark',
       armour: 'leather.fine',
       cloth: 'cloth.tattered',
       trim: 'metal.dark',
@@ -771,6 +825,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
     profile: { height: 1.8, shoulder: 0.115, hip: 0.055, thick: 1.0, depth: 1.0, head: 1.0, lean: 0.05 },
     palettes: {
       skin: 'flesh.pale',
+      shadow: 'metal.dark',
       armour: 'metal.silver',
       cloth: 'cloth.silk',
       trim: 'metal.gold',
@@ -851,6 +906,7 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
     profile: { height: 1.84, shoulder: 0.12, hip: 0.05, thick: 0.72, depth: 0.78, head: 1.02, lean: 0.14 },
     palettes: {
       skin: 'bone.pale',
+      shadow: 'metal.dark',
       armour: 'bone.old',
       cloth: 'cloth.tattered',
       trim: 'metal.dark',

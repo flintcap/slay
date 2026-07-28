@@ -404,20 +404,23 @@ function buildHilt(
 
 function buildSword(kit: Kit, g: THREE.Group): void {
   const rng = kit.rng;
-  const len = rng.range(0.78, 0.98);
-  const width = rng.range(0.085, 0.115);
-  const gripLen = 0.17;
+  // Blades were long and narrow enough to read as spikes rather than swords,
+  // especially seen edge-on. Shorter, wider, thicker, with a guard and pommel
+  // big enough to register — heroic-fantasy proportions, not historical ones.
+  const len = rng.range(0.70, 0.86);
+  const width = rng.range(0.115, 0.155);
+  const gripLen = 0.19;
 
   buildHilt(g, kit, {
     gripLen,
-    gripR: 0.019,
-    guardW: width * 2.5,
-    guardH: 0.036,
-    guardD: 0.026,
-    pommel: 0.032,
+    gripR: 0.023,
+    guardW: width * 2.9,
+    guardH: 0.05,
+    guardD: 0.036,
+    pommel: 0.045,
   });
 
-  const bl = blade(len, width, 0.022, { taper: 0.62, fuller: 0.55, tip: 0.8, edges: 10 });
+  const bl = blade(len, width, 0.036, { taper: 0.72, fuller: 0.55, tip: 0.74, edges: 10 });
   const bm = mesh(bl, kit.metal);
   bm.position.y = 0.05;
   g.add(bm);
@@ -452,8 +455,8 @@ function buildSword(kit: Kit, g: THREE.Group): void {
 
 function buildDagger(kit: Kit, g: THREE.Group): void {
   const rng = kit.rng;
-  const len = rng.range(0.3, 0.4);
-  const width = 0.06;
+  const len = rng.range(0.32, 0.42);
+  const width = 0.082;
   const gripLen = 0.1;
 
   buildHilt(g, kit, {
