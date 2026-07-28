@@ -457,12 +457,39 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
       mat: opts.skin,
       bind: bindArm,
     });
-    // Fist
+    // Hand. A single box reads as a mitten, so the fist is built as a palm
+    // mass with a knuckle ridge and a thumb — the two shapes that make a hand
+    // legible at gameplay distance.
+    const handMat = opts.gloves ?? opts.skin;
+    const hx = j[hd].x;
+    const hy = j[hd].y - H * 0.02;
+    const hz = j[hd].z;
+    const side = hx < 0 ? -1 : 1;
+    const hw = H * 0.05 * t;
+
+    // Palm: narrower at the wrist, wider across the knuckles.
     parts.push({
-      geo: transformed(beveledBox(H * 0.055 * t, H * 0.06 * t, H * 0.05 * t, H * 0.012), {
-        pos: [j[hd].x, j[hd].y - H * 0.02, j[hd].z],
+      geo: transformed(taperedBox(hw * 0.78, hw * 0.72, hw * 1.02, hw * 0.86, H * 0.055 * t, H * 0.008), {
+        pos: [hx, hy, hz],
       }),
-      mat: opts.gloves ?? opts.skin,
+      mat: handMat,
+      bind: bindArm,
+    });
+    // Knuckle ridge across the top of the fist.
+    parts.push({
+      geo: transformed(beveledBox(hw * 1.04, hw * 0.34, hw * 0.8, hw * 0.14), {
+        pos: [hx, hy - H * 0.026 * t, hz + hw * 0.1],
+      }),
+      mat: handMat,
+      bind: bindArm,
+    });
+    // Thumb, angled across the grip.
+    parts.push({
+      geo: transformed(limb(H * 0.036 * t, hw * 0.2, hw * 0.16, 6), {
+        pos: [hx + side * hw * 0.46, hy - H * 0.008 * t, hz + hw * 0.24],
+        rot: [0.5, 0, side * 0.7],
+      }),
+      mat: handMat,
       bind: bindArm,
     });
   }

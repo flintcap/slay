@@ -1059,8 +1059,14 @@ function buildPrototype(v: MonsterVisual, rng: Rng): Prototype {
   }
 
   const isOoze = archetype === 'ooze';
-  const isConstruct = v.palette.startsWith('metal') || v.palette.startsWith('stone');
-  const bodyMat = bodyMaterial(v.palette, isOoze ? 0.28 : isConstruct ? 0.55 : 0.82, isConstruct ? 0.65 : 0.03);
+  // Only actual metal is metal. Treating 'stone' as a construct put every
+  // skeleton, bone and rock creature at 0.65 metalness — and a metal surface
+  // with nothing to reflect renders black, which is why the whole bestiary came
+  // out as identical dark lumps regardless of its palette tint.
+  const isMetal = v.palette.startsWith('metal');
+  const isStone = v.palette.startsWith('stone');
+  const rough = isOoze ? 0.28 : isMetal ? 0.5 : isStone ? 0.78 : 0.85;
+  const bodyMat = bodyMaterial(v.palette, rough, isMetal ? 0.7 : 0.02);
   const glowMat = glowMaterial(v.glow ?? 0xff6030, v.glow === undefined ? 0.6 : 2.2);
 
   for (const [boneName, entry] of byBone) {
