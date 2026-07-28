@@ -136,12 +136,37 @@ function buildStainAtlas(): THREE.Texture {
     return [0.1 + line * 0.35, line * falloff];
   });
 
-  // 5 splatter — a scatter of droplets rather than one blob.
+  // 5 splatter — thrown blood.
+  //
+  // Real splatter is a torn central mass with fingers reaching out of it and
+  // satellite droplets beyond, and the droplets get smaller and sparser the
+  // further out they land. A radially symmetric scatter reads as a circle no
+  // matter how much noise is in it, so the structure here is angular: the reach
+  // of the mass varies with direction, which is what breaks the disc.
   paint(DECAL.splatter, (u, v, r) => {
-    const w = noise.worley(u * 4.6 + 30, v * 4.6 + 30, 1.0);
-    const drop = 1 - smoothstep(0.06, 0.3, w.f1 * (0.5 + (w.id / 255) * 0.9));
-    const falloff = smoothstep(1.05, 0.2, r);
-    return [0.3, drop * falloff];
+    const ang = Math.atan2(v, u);
+    const ca = Math.cos(ang);
+    const sa = Math.sin(ang);
+
+    // Torn central mass: how far it reaches depends on which way you look.
+    const reach = 0.16 + noise.fbm(ca * 2.1 + 11, sa * 2.1 - 4, 4) * 0.46;
+    const core = smoothstep(reach, reach * 0.35, r);
+
+    // Fingers: narrow spikes of the mass thrown further than the rest.
+    const spikes = Math.pow(clamp01(noise.fbm(ca * 5.4 - 2, sa * 5.4 + 7, 3)), 2.6);
+    const finger = smoothstep(reach + spikes * 0.55, reach, r) * spikes * 1.5;
+
+    // Satellites: droplets, stretched along the throw direction and thinning
+    // out with distance.
+    const w = noise.worley(u * 6.4 + 30, (v - r * 0.35) * 5.2 + 30, 1.0);
+    const size = 0.05 + (w.id / 255) * 0.16 * (1 - r * 0.7);
+    const drop = 1 - smoothstep(size * 0.6, size, w.f1);
+    const sparse = smoothstep(1.15, 0.25, r) * (0.35 + noise.fbm(ca * 3.3, sa * 3.3, 2) * 0.8);
+
+    const m = clamp01(Math.max(core, Math.max(finger, drop * sparse)));
+    // Wet centre, drier at the edges, so it does not read as flat paint.
+    const wet = 0.2 + smoothstep(reach * 1.2, 0, r) * 0.45;
+    return [wet, m];
   });
 
   // 6 ring — a soft annulus used for shockwaves and area markers.
@@ -187,12 +212,35 @@ function buildStainAtlas(): THREE.Texture {
     return [0.75 + spokes * 0.25, clamp01(a)];
   });
 
-  // 12 gore — blood plus chunks.
+  // 12 gore — the pool left where something died.
+  //
+  // A pool spreads: it is broadly round but its edge is a run of lobes where
+  // the liquid found low ground, with a dark wet centre and thin drying margins.
+  // The old one was a soft disc with speckle on it, which at any size reads as
+  // a red circle painted on the floor.
   paint(DECAL.gore, (u, v, r) => {
-    const m = blobMask(u, v, r, 2.0, 0.34, 77.0);
-    const w = noise.worley(u * 5.5 + 3, v * 5.5 - 8, 1.0);
-    const chunk = 1 - smoothstep(0.1, 0.22, w.f1);
-    return [0.2 + chunk * 0.35, clamp01(m + chunk * smoothstep(1.0, 0.3, r) * 0.8)];
+    const ang = Math.atan2(v, u);
+    const ca = Math.cos(ang);
+    const sa = Math.sin(ang);
+
+    // Lobed edge: the pool's radius varies with direction, at two scales.
+    const lobes =
+      0.42 + noise.fbm(ca * 1.7 + 41, sa * 1.7 - 13, 3) * 0.34
+           + noise.fbm(ca * 5.1 - 7, sa * 5.1 + 22, 2) * 0.12;
+    const pool = smoothstep(lobes, lobes * 0.72, r);
+
+    // Runs: thin trails of blood escaping the pool downhill.
+    const runNoise = Math.pow(clamp01(noise.fbm(ca * 4.2 + 3, sa * 4.2 - 9, 3)), 3.2);
+    const run = smoothstep(lobes + runNoise * 0.5, lobes * 0.95, r) * runNoise * 1.8;
+
+    // Chunks scattered around the edge.
+    const w = noise.worley(u * 6.0 + 3, v * 6.0 - 8, 1.0);
+    const chunk = (1 - smoothstep(0.08, 0.19, w.f1)) * smoothstep(1.1, 0.35, r);
+
+    const m = clamp01(Math.max(pool, Math.max(run, chunk * 0.85)));
+    // Wet and near-black in the middle, thinner and browner at the margin.
+    const wet = 0.12 + smoothstep(lobes, 0, r) * 0.5 + chunk * 0.25;
+    return [wet, m];
   });
 
   // 13 water — thin sheen with concentric ripples.
@@ -694,11 +742,22 @@ export class DecalSystem {
   /** Convenience: a cluster of splatter decals for a kill or a heavy hit. */
   splatter(kind: string, x: number, z: number, radius: number, count = 4): void {
     const n = Math.max(1, Math.round(count * Math.max(0.4, this.quality.fxScale)));
-    this.add(kind, x, z, radius, undefined, undefined);
+    // Every piece gets its own rotation. Stamping the same texture unrotated at
+    // several positions produces a visibly repeated motif, which is most of what
+    // made blood read as "the circle decal, again".
+    this.add(kind, x, z, radius, this.rng.range(0, Math.PI * 2), undefined);
+    // Throws land along one direction rather than evenly all round.
+    const throwDir = this.rng.range(0, Math.PI * 2);
     for (let i = 0; i < n; i++) {
-      const a = this.rng.range(0, Math.PI * 2);
-      const d = this.rng.range(0.2, 1.4) * radius;
-      this.add(kind, x + Math.cos(a) * d, z + Math.sin(a) * d, radius * this.rng.range(0.25, 0.6));
+      const a = throwDir + this.rng.range(-1.1, 1.1);
+      const d = this.rng.range(0.25, 1.6) * radius;
+      this.add(
+        kind,
+        x + Math.cos(a) * d,
+        z + Math.sin(a) * d,
+        radius * this.rng.range(0.2, 0.55),
+        this.rng.range(0, Math.PI * 2),
+      );
     }
   }
 

@@ -1269,6 +1269,35 @@ mon({
 // Exports & selection
 // ---------------------------------------------------------------------------
 
+/**
+ * Put a weapon in the hand of anything shaped like it could hold one.
+ *
+ * A "Bone Archer" that shoots arrows out of an empty fist reads as a bug, and
+ * with a hundred-odd monsters this cannot be authored per entry without it
+ * drifting out of date the moment a role changes. Derived from role and body
+ * instead, so it stays true by construction.
+ */
+const HANDED_BODIES = new Set(['humanoid', 'skeleton', 'zombie', 'armored', 'brute']);
+const ROLE_WEAPON: Partial<Record<MonsterDef['role'], string[]>> = {
+  ranged: ['bow'],
+  caster: ['staff'],
+  melee: ['sword', 'axe', 'dagger'],
+  brute: ['mace', 'axe'],
+  support: ['staff'],
+  ambusher: ['dagger', 'sword'],
+};
+for (const m of ALL) {
+  if (m.visual.weapon !== undefined) continue;
+  if (!HANDED_BODIES.has(m.visual.body)) continue;
+  const choices = ROLE_WEAPON[m.role];
+  if (!choices) continue;
+  // Deterministic pick from the id, so the same monster always carries the
+  // same thing across runs and across machines.
+  let h = 0;
+  for (let i = 0; i < m.id.length; i++) h = (h * 31 + m.id.charCodeAt(i)) >>> 0;
+  m.visual.weapon = choices[h % choices.length];
+}
+
 export const MONSTERS: MonsterDef[] = ALL;
 
 const BY_ID = new Map<string, MonsterDef>();

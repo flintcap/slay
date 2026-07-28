@@ -194,6 +194,8 @@ export class Enemy implements Combatant {
   maxLife: number;
   alive = true;
   readyToRemove = false;
+  /** Set once the scene has paid out XP and loot, so it never pays twice. */
+  lootGranted = false;
   facing = 0;
   shield = 0;
   rootTimer = 0;
@@ -848,6 +850,16 @@ export class Enemy implements Combatant {
       count: working.crit ? 20 : 10,
       color: typeColor(type),
     });
+    // Mark the floor. Hits used to be pure particles, so a fight left no trace
+    // and the only blood on the ground was one pool where something died.
+    if (type === 'physical' && this.family !== 'construct' && ctx.rng.chance(working.crit ? 0.9 : 0.45)) {
+      ctx.decals.splatter(
+        'bloodSplatter',
+        this.root.position.x, this.root.position.z,
+        (working.crit ? 0.55 : 0.36) * this.sizeScale,
+        working.crit ? 3 : 1,
+      );
+    }
 
     // Reactions -------------------------------------------------------------
     this.ai?.onDamaged(ctx);
@@ -920,6 +932,13 @@ export class Enemy implements Combatant {
       count: 26,
       color: this.def.visual.glow ?? 0xaa2020,
     });
+    if (this.family === 'construct') {
+      ctx.decals.splatter('ash', p.x, p.z, 0.7 * this.sizeScale, 3);
+    } else {
+      // A pool where the body fell, and thrown blood around it.
+      ctx.decals.splatter('gore', p.x, p.z, 0.62 * this.sizeScale, 2);
+      ctx.decals.splatter('bloodSplatter', p.x, p.z, 0.85 * this.sizeScale, 5);
+    }
 
     // On-death abilities and affixes.
     for (const id of this.abilityIds) {
@@ -1028,7 +1047,17 @@ export class Enemy implements Combatant {
       this.root.position.y = -(1 - s) * 1.4 * this.sizeScale;
       if (this.aura) this.aura.visible = false;
     }
-    if (this.deathT >= 1.9) this.readyToRemove = true;
+    if (this.deathT >= 1.45) this.readyToRemove = true;
+  }
+
+  /**
+   * Loot is owed as soon as the body starts falling, not when it finishes
+   * sinking. Waiting for the full death animation meant a two second gap
+   * between the kill and anything hitting the floor, which reads as the game
+   * having forgotten about you.
+   */
+  get readyToLoot(): boolean {
+    return !this.alive && this.deathT >= 0.25;
   }
 
   // --- affix behaviours ----------------------------------------------------

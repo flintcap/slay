@@ -98,6 +98,13 @@ export class DungeonScene extends GameScene {
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   private heroAura: THREE.Mesh | null = null;
+  /** Render layer the player's own torch is allowed to touch. */
+  private static readonly HERO_LAYER = 1;
+
+  /** Opt an object and its children into being lit by the hero light. */
+  private litByHero(obj: THREE.Object3D): void {
+    obj.traverse((o) => o.layers.enable(DungeonScene.HERO_LAYER));
+  }
   private plates: NameplateLayer | null = null;
   private groundLabels: GroundLabelLayer | null = null;
   private transitioning = false;
@@ -156,8 +163,17 @@ export class DungeonScene extends GameScene {
     this.plates = new NameplateLayer();
     this.groundLabels = new GroundLabelLayer();
     this.groundLabels.onPickUp = (uid) => this.pickUpByUid(uid);
+    // The hero light lives on its own render layer.
+    //
+    // It is meant to light the ground around you, and a point light sitting at
+    // chest height lights the chest it is sitting in — the character came out
+    // glowing from the inside. Three.js only applies a light to objects that
+    // share one of its layers, so putting this light on HERO_LAYER and opting
+    // the world into that layer (but never the player) gives a pool of light
+    // with the player standing in it, unlit by it.
     this.heroLight = new THREE.PointLight(0xffd9a8, 14, 17, 2);
     this.heroLight.castShadow = false;
+    this.heroLight.layers.set(DungeonScene.HERO_LAYER);
     this.scene.add(this.heroLight);
 
     this.loadLevel(0);
@@ -211,6 +227,7 @@ export class DungeonScene extends GameScene {
     const levelRng = this.rng.fork(`level:${index}`) as Random;
     this.mesh = new DungeonMesh(this.level, this.biome, levelRng);
     this.scene.add(this.mesh.root);
+    this.litByHero(this.mesh.root);
     this.nav = new NavGrid(this.level);
     this.lighting = applyBiomeLighting(this.scene, this.biome);
 
@@ -238,6 +255,7 @@ export class DungeonScene extends GameScene {
       const wp = this.mesh.tileToWorld(spawn.x, spawn.y);
       enemy.root.position.copy(wp);
       this.scene.add(enemy.root);
+      this.litByHero(enemy.root);
       this.enemies.push(enemy);
     }
 
@@ -256,6 +274,7 @@ export class DungeonScene extends GameScene {
           : this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y);
         this.boss.root.position.copy(centre);
         this.scene.add(this.boss.root);
+        this.litByHero(this.boss.root);
       }
     }
 
@@ -404,10 +423,11 @@ export class DungeonScene extends GameScene {
     onSurviveTick(this.run.quest, dt);
 
     if (this.heroLight) {
-      // Chest height, not overhead.
-      this.heroLight.position.set(this.player.position.x, 1.15, this.player.position.z);
+      // Above head height. Nothing here lights the player, so the only job left
+      // is throwing a wide, even pool onto the floor around them.
+      this.heroLight.position.set(this.player.position.x, 2.4, this.player.position.z);
       // Breathe very slightly so it reads as carried flame, not a fixed lamp.
-      this.heroLight.intensity = 7.5 + Math.sin(elapsed * 3.1) * 0.5;
+      this.heroLight.intensity = 11 + Math.sin(elapsed * 3.1) * 0.7;
     }
     if (this.heroAura) {
       this.heroAura.position.set(this.player.position.x, 0.045, this.player.position.z);
@@ -558,9 +578,14 @@ export class DungeonScene extends GameScene {
   private reapDead(ctx: CombatContext): void {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i]!;
+      // Pay out the moment the body starts to fall, separately from removing
+      // it. The corpse can take its time sinking; the loot should not.
+      if (!e.lootGranted && e.readyToLoot) {
+        e.lootGranted = true;
+        this.grantKill(e.monsterId, e.rank, e.family, e.root.position, e.ilvl);
+      }
       if (e.life > 0 || !e.readyToRemove) continue;
       this.enemies.splice(i, 1);
-      this.grantKill(e.monsterId, e.rank, e.family, e.root.position, e.ilvl);
       e.root.removeFromParent();
       e.dispose();
     }
@@ -634,6 +659,7 @@ export class DungeonScene extends GameScene {
     const pos = new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d);
     model.position.copy(pos);
     this.scene.add(model);
+    this.litByHero(model);
     this.loot.push({ item, gold: 0, root: model, pos, bornAt: this.runTime });
     events.emit('loot:dropped', { item, x: pos.x, z: pos.z });
   }
@@ -659,6 +685,7 @@ export class DungeonScene extends GameScene {
     }
     group.position.copy(pos);
     this.scene.add(group);
+    this.litByHero(group);
     this.loot.push({ item: null, gold: amount, root: group, pos, bornAt: this.runTime });
   }
 
@@ -787,6 +814,7 @@ export class DungeonScene extends GameScene {
 
     group.position.copy(at);
     this.scene.add(group);
+    this.litByHero(group);
     this.returnPortal = group;
 
     this.exitPos.copy(at);

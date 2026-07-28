@@ -28,6 +28,7 @@ import type { MonsterVisual, Rng } from '../types';
 import { surface, surfaceVariant, emissiveMaterial } from '../art/Materials';
 import { beveledBox, displace, lathe, mergeGeometries } from '../art/Meshes';
 import { Noise } from '../art/Noise';
+import { buildItemModel } from '../art/ItemModels';
 
 // ---------------------------------------------------------------------------
 // Archetypes
@@ -400,6 +401,10 @@ interface BuildResult {
 
 function buildHumanoid(v: MonsterVisual, rng: Rng, colossal: boolean): BuildResult {
   const bulk = colossal ? 1.55 : 1;
+  // Skeletons are humanoid in rig but not in mass: what makes one read as
+  // undead is the gaps. A solid torso with a round head is a person, and every
+  // skeleton in the game was getting exactly that.
+  const bony = v.body === 'skeleton';
   const ornate = v.ornate ?? 0.3;
   const hipY = 0.92 * (colossal ? 1.18 : 1);
   const chestY = 0.52 * bulk;
@@ -464,8 +469,39 @@ function buildHumanoid(v: MonsterVisual, rng: Rng, colossal: boolean): BuildResu
         0.025 * bulk,
         4.5,
       );
-      place(torso, 0, 0.04 * bulk, 0, 0, 0, 0, 1, 1, 0.78);
-      b.add('chest', torso);
+      if (bony) {
+        // A ribcage instead of a torso: individual ribs with daylight between
+        // them, a visible spine, and a sternum so it is not hollow from the
+        // front. Gaps in the silhouette say "undead" faster than any texture.
+        torso.dispose();
+        for (let i = 0; i < 5; i++) {
+          const t = i / 4;
+          const rw = 0.22 * bulk * (1 - t * 0.28);
+          const rib = new THREE.TorusGeometry(rw, 0.016 * bulk, 4, 12, Math.PI * 1.2);
+          rib.rotateY(Math.PI * 0.5);
+          rib.rotateZ(Math.PI * 0.5);
+          rib.scale(1, 0.6, 1);
+          place(rib, 0, -0.1 * bulk + t * 0.3 * bulk, 0, 0.12, 0, 0);
+          b.add('chest', rib);
+        }
+        for (let i = 0; i < 6; i++) {
+          const vert = safeBevelBox(0.05 * bulk, 0.045 * bulk, 0.05 * bulk, 0.01);
+          place(vert, 0, -0.14 * bulk + i * 0.076 * bulk, -0.09 * bulk);
+          b.add('chest', vert);
+        }
+        const stern = safeBevelBox(0.07 * bulk, 0.26 * bulk, 0.03 * bulk, 0.012);
+        place(stern, 0, 0.03 * bulk, 0.12 * bulk);
+        b.add('chest', stern);
+        // Collarbones.
+        for (const side of [-1, 1]) {
+          const cl = limbGeo(0.17 * bulk, 0.018 * bulk, 0.022 * bulk, 4);
+          place(cl, side * 0.02 * bulk, 0.24 * bulk, 0.06 * bulk, 0, 0, side * 1.35);
+          b.add('chest', cl);
+        }
+      } else {
+        place(torso, 0, 0.04 * bulk, 0, 0, 0, 0, 1, 1, 0.78);
+        b.add('chest', torso);
+      }
 
       // Shoulder pauldrons scale with ornate — armoured lines read heavier.
       if (ornate > 0.25) {
@@ -485,12 +521,30 @@ function buildHumanoid(v: MonsterVisual, rng: Rng, colossal: boolean): BuildResu
       }
 
       // --- head -------------------------------------------------------------
-      const skull = safeDisplace(sphereGeo(0.17 * bulk, 1), rng, 0.022 * bulk, 6);
-      place(skull, 0, 0.08 * bulk, 0.01, 0, 0, 0, 0.92, 1.05, 1);
-      b.add('head', skull);
-      const jaw = safeBevelBox(0.15 * bulk, 0.07 * bulk, 0.15 * bulk, 0.02);
-      place(jaw, 0, -0.02 * bulk, 0.06 * bulk);
-      b.add('head', jaw);
+      if (bony) {
+        // Cranium: wide at the back, narrowing to the brow.
+        const cran = safeDisplace(sphereGeo(0.155 * bulk, 1), rng, 0.01 * bulk, 7);
+        place(cran, 0, 0.09 * bulk, -0.01, 0, 0, 0, 0.9, 1.0, 1.05);
+        b.add('head', cran);
+        // Cheekbones and a hanging mandible, with the gap between them showing.
+        const zyg = safeBevelBox(0.17 * bulk, 0.045 * bulk, 0.1 * bulk, 0.015);
+        place(zyg, 0, 0.03 * bulk, 0.05 * bulk);
+        b.add('head', zyg);
+        const mand = safeBevelBox(0.12 * bulk, 0.055 * bulk, 0.1 * bulk, 0.02);
+        place(mand, 0, -0.05 * bulk, 0.045 * bulk, 0.22, 0, 0);
+        b.add('head', mand);
+        // Brow, so the sockets sit in shadow.
+        const brow = safeBevelBox(0.16 * bulk, 0.03 * bulk, 0.05 * bulk, 0.01);
+        place(brow, 0, 0.08 * bulk, 0.1 * bulk, -0.2, 0, 0);
+        b.add('head', brow);
+      } else {
+        const skull = safeDisplace(sphereGeo(0.17 * bulk, 1), rng, 0.022 * bulk, 6);
+        place(skull, 0, 0.08 * bulk, 0.01, 0, 0, 0, 0.92, 1.05, 1);
+        b.add('head', skull);
+        const jaw = safeBevelBox(0.15 * bulk, 0.07 * bulk, 0.15 * bulk, 0.02);
+        place(jaw, 0, -0.02 * bulk, 0.06 * bulk);
+        b.add('head', jaw);
+      }
 
       if (ornate > 0.35) addHorns(b, 'head', ornate > 0.7 ? 4 : 2, 0.3 * bulk * ornate, 0.11 * bulk, rng);
       addEyes(b, 'head', v.eyes ?? 2, 0.032 * bulk, 0.18 * bulk, v.glow !== undefined);
@@ -502,12 +556,19 @@ function buildHumanoid(v: MonsterVisual, rng: Rng, colossal: boolean): BuildResu
         ['shoulderL', 'elbowL', 'handL', 1],
         ['shoulderR', 'elbowR', 'handR', -1],
       ] as Array<[string, string, string, number]>) {
-        const a1 = limbGeo(upperArm, 0.075 * bulk, 0.06 * bulk, 6);
+        const thin = bony ? 0.5 : 1;
+        const a1 = limbGeo(upperArm, 0.075 * bulk * thin, 0.06 * bulk * thin, 6);
         b.add(up, a1);
-        const a2 = limbGeo(foreArm, 0.062 * bulk, 0.05 * bulk, 6);
+        const a2 = limbGeo(foreArm, 0.062 * bulk * thin, 0.05 * bulk * thin, 6);
         b.add(lo, a2);
-        const fist = safeDisplace(sphereGeo(0.075 * bulk, 0), rng, 0.012, 8);
+        const fist = safeDisplace(sphereGeo(0.075 * bulk * (bony ? 0.7 : 1), 0), rng, 0.012, 8);
         b.add(hand, fist);
+        if (bony) {
+          // Knobbed joints: the shoulder ball and the elbow, which is what makes
+          // a thin limb read as bone rather than as a stick.
+          b.add(up, place(sphereGeo(0.055 * bulk, 0), 0, 0, 0));
+          b.add(lo, place(sphereGeo(0.045 * bulk, 0), 0, 0, 0));
+        }
         if (ornate > 0.45) {
           for (let c = 0; c < 3; c++) {
             const claw = spikeGeo(0.13 * bulk * ornate, 0.02 * bulk, 4);
@@ -531,9 +592,14 @@ function buildHumanoid(v: MonsterVisual, rng: Rng, colossal: boolean): BuildResu
         ['hipL', 'kneeL', 'footL'],
         ['hipR', 'kneeR', 'footR'],
       ] as Array<[string, string, string]>) {
-        b.add(hip, limbGeo(thigh, 0.09 * bulk, 0.07 * bulk, 6));
-        b.add(knee, limbGeo(shin, 0.07 * bulk, 0.055 * bulk, 6));
-        const boot = safeBevelBox(0.11 * bulk, 0.07, 0.2 * bulk, 0.02);
+        const thin = bony ? 0.52 : 1;
+        b.add(hip, limbGeo(thigh, 0.09 * bulk * thin, 0.07 * bulk * thin, 6));
+        b.add(knee, limbGeo(shin, 0.07 * bulk * thin, 0.055 * bulk * thin, 6));
+        if (bony) {
+          b.add(hip, place(sphereGeo(0.06 * bulk, 0), 0, 0, 0));
+          b.add(knee, place(sphereGeo(0.05 * bulk, 0), 0, 0, 0));
+        }
+        const boot = safeBevelBox(0.11 * bulk * (bony ? 0.75 : 1), 0.07, 0.2 * bulk * (bony ? 0.8 : 1), 0.02);
         place(boot, 0, -0.02, 0.05 * bulk);
         b.add(foot, boot);
       }
@@ -999,6 +1065,7 @@ function cacheKey(v: MonsterVisual): string {
     v.tail ? 1 : 0,
     v.wings ? 1 : 0,
     v.eyes ?? -1,
+    v.weapon ?? '-',
   ].join('/');
 }
 
@@ -1087,9 +1154,52 @@ function buildPrototype(v: MonsterVisual, rng: Rng): Prototype {
     }
   }
 
+  // --- weapon -------------------------------------------------------------
+  //
+  // Built into the prototype rather than attached per instance, so a pack of
+  // twelve archers still costs one bow's worth of geometry.
+  if (v.weapon) {
+    const hand = bones.handR ?? bones.handL;
+    if (hand) {
+      try {
+        const model = buildItemModel(
+          { shape: v.weapon, palette: WEAPON_PALETTE[v.weapon] ?? 'metal.iron' },
+          rng.fork('weapon'),
+          'normal',
+        );
+        // Item models are authored with the grip at the origin and the business
+        // end along +Y, the same convention the player's hand sockets use.
+        model.rotation.set(Math.PI * 0.92, 0, 0);
+        model.position.set(0, -0.04, 0.03);
+        model.scale.setScalar(v.weapon === 'bow' ? 1.5 : 1.25);
+        model.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.isMesh) {
+            m.castShadow = true;
+            m.receiveShadow = true;
+          }
+        });
+        hand.add(model);
+      } catch {
+        // An unbuildable weapon must never cost us the monster.
+      }
+    }
+  }
+
   root.updateMatrixWorld(true);
   return { root, boneNames: plan.specs.map((s) => s.name), archetype };
 }
+
+/** What each monster weapon is made of. Cheap gear: iron, wood, bone. */
+const WEAPON_PALETTE: Record<string, string> = {
+  bow: 'wood.oak',
+  staff: 'wood.rotted',
+  sword: 'metal.rusted',
+  axe: 'metal.rusted',
+  mace: 'metal.dark',
+  dagger: 'metal.rusted',
+  spear: 'wood.oak',
+};
 
 /**
  * Builds a monster model. Repeat calls for the same visual reuse one of a small

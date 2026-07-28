@@ -1151,14 +1151,22 @@ function buildGlyphAtlas(): GlyphAtlas {
     ctx.strokeText(ch, cx, cy);
     ctx.fillStyle = '#ffffff';
     ctx.fillText(ch, cx, cy);
-    advance[i] = Math.min(1, (ctx.measureText(ch).width + GLYPH_CELL * 0.1) / GLYPH_CELL);
+    advance[i] = Math.min(1, (ctx.measureText(ch).width + GLYPH_CELL * 0.08) / GLYPH_CELL);
   }
 
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  // flipY must be off. The atlas is drawn top-down — glyph 0 in the top-left
+  // cell — and three.js flips canvas textures by default, so row 0 was being
+  // sampled from the bottom of the sheet. Every digit came back as whatever
+  // letter happened to sit in the mirrored row, which is why damage read as
+  // random symbols.
+  tex.flipY = false;
+  // No mipmaps: at distance a mip blends neighbouring cells together and a 7
+  // picks up the edge of the 8 beside it.
+  tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = true;
+  tex.generateMipmaps = false;
   tex.needsUpdate = true;
 
   glyphAtlas = { texture: tex, advance, index };
@@ -1204,7 +1212,7 @@ const TEXT_VERT = /* glsl */ `
       corner.x * cos(wob) - corner.y * sin(wob),
       corner.x * sin(wob) + corner.y * cos(wob)
     );
-    vec3 local = camRight * (rc.x + iCell.z) * scale * alive
+    vec3 local = camRight * (rc.x * 1.0 + iCell.z) * scale * alive
                + camUp    * rc.y * scale * alive;
 
     vec4 mv = modelViewMatrix * vec4(wpos, 1.0);
@@ -1215,7 +1223,11 @@ const TEXT_VERT = /* glsl */ `
     float flashIn = smoothstep(0.0, 0.05, t);
     vColor = vec4(iColor, fade * flashIn * alive);
 
-    vUv = (uv * vec2(iCell.w, 1.0) + vec2(iCell.x, iCell.y)) * uCell;
+    // Sample the whole cell. Narrowing the window to the glyph's advance width
+    // sliced the right-hand side off every character, because glyphs are drawn
+    // centred in their cell rather than flush left. Advance only decides where
+    // the next glyph starts, never how much of this one is visible.
+    vUv = (uv + vec2(iCell.x, iCell.y)) * uCell;
   }
 `;
 

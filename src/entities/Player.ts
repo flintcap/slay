@@ -63,6 +63,9 @@ export class Player {
   private actionLock = 0;
   private dodgeTime = 0;
   private dodgeDir = new THREE.Vector3();
+  /** Seconds until the dash is available again, and the full period. */
+  private dodgeCd = 0;
+  readonly dodgeCdMax = 3.5;
 
   /** Cooldowns by skill id. */
   readonly cooldowns = new Map<string, number>();
@@ -219,12 +222,21 @@ export class Player {
     this.animator.play(clip, { fade: 0.08, speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)) });
   }
 
+  /** 0 when the dash is ready, 1 the instant it is spent. */
+  get dodgeCooldown(): number {
+    return this.dodgeCdMax > 0 ? Math.max(0, this.dodgeCd) / this.dodgeCdMax : 0;
+  }
+
   dodge(dirX: number, dirZ: number): boolean {
-    if (this.frozen || this.dodgeTime > 0 || this.actionLock > 0) return false;
+    // A real cooldown. Without one the dash was limited only by its own 0.32s
+    // animation, so holding the key was simply a faster way to move and there
+    // was never a moment where committing to it cost anything.
+    if (this.frozen || this.dodgeTime > 0 || this.actionLock > 0 || this.dodgeCd > 0) return false;
     const len = Math.hypot(dirX, dirZ) || 1;
     this.dodgeDir.set(dirX / len, 0, dirZ / len);
     this.dodgeTime = 0.32;
     this.actionLock = 0.32;
+    this.dodgeCd = this.dodgeCdMax;
     this.animator.play('dodge', { fade: 0.05 });
     this.targetFacing = Math.atan2(this.dodgeDir.x, this.dodgeDir.z);
     events.emit('sfx', { id: 'dodge' });
@@ -347,6 +359,7 @@ export class Player {
     const speedStat = 1 + this.stats.moveSpeed / 100;
     const baseSpeed = 4.6 * speedStat;
 
+    if (this.dodgeCd > 0) this.dodgeCd = Math.max(0, this.dodgeCd - dt);
     if (this.dodgeTime > 0) {
       this.dodgeTime -= dt;
       const t = Math.max(0, this.dodgeTime / 0.32);

@@ -266,6 +266,7 @@ export class HUD {
   private hotIcons: HTMLDivElement[] = [];
   private potionLife: HTMLDivElement;
   private potionMana: HTMLDivElement;
+  private dashSlot!: HTMLDivElement;
   private buffStrip: HTMLDivElement;
   private rmbSlot!: HTMLDivElement;
   private rmbArt!: HTMLDivElement;
@@ -464,6 +465,16 @@ export class HUD {
       add(node, art, count, k);
     }
     add(potions, this.potionLife, this.potionMana);
+
+    // Dash slot. It has a cooldown now, and a cooldown the player cannot see is
+    // just the button randomly not working.
+    this.dashSlot = div('potslot pot-dash ui-interactive');
+    const dashArt = div('potslot-art');
+    dashArt.innerHTML = iconSvg('dash', { size: 24 });
+    const dashCd = div('hotslot-cd');
+    const dashKey = div('potslot-key', 'SPC');
+    add(this.dashSlot, dashArt, dashCd, dashKey);
+    potions.appendChild(this.dashSlot);
 
     const skillRow = div('skillrow');
     add(skillRow, slots, potions);
@@ -692,6 +703,11 @@ export class HUD {
       runtime.cooldowns = cds as Map<string, number>;
     }
     this.updateHotbarRuntime(mana);
+
+    // Dash cooldown, drawn with the same sweep the hotbar uses.
+    const dashCd = typeof pl?.dodgeCooldown === 'number' ? (pl.dodgeCooldown as number) : 0;
+    this.dashSlot.style.setProperty('--cd', String(dashCd));
+    this.dashSlot.classList.toggle('on-cd', dashCd > 0.001);
     this.updateStatuses(pl);
 
     // Minimap at 8Hz — a full grid redraw every frame is pure waste.

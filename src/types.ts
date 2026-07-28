@@ -489,6 +489,12 @@ export interface MonsterVisual {
   tail?: boolean;
   wings?: boolean;
   eyes?: number;
+  /**
+   * Weapon put in the creature's hand: 'bow', 'staff', 'sword', 'axe', 'spear',
+   * 'mace', 'dagger'. Derived from the monster's role at load time, so an
+   * archer visibly carries the thing it is shooting you with.
+   */
+  weapon?: string;
 }
 
 /** Elite/rare modifiers layered onto a monster pack. */
