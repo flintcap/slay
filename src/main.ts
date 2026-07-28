@@ -30,6 +30,12 @@ async function main(): Promise<void> {
   boot(0.05, 'Reading the ledger of the fallen…');
   await tick();
   save.load();
+  // Saves made before the starter-skill change load with a bar full of skills
+  // at rank 0 and no way to attack; repair them in place.
+  if (save.account.current) {
+    const { repairCharacter } = await import('./sim/Character');
+    if (repairCharacter(save.account.current)) save.touch();
+  }
 
   boot(0.18, 'Kindling the forge…');
   await tick();

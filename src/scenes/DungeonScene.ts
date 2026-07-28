@@ -319,13 +319,21 @@ export class DungeonScene extends GameScene {
 
     if (input.pointerOverUI) return;
 
-    // Left click: primary skill (hotbar 0) or move if nothing bound.
+    // Left click falls through three ways so it always does *something*:
+    // the bound skill, then a free swing if a target is in reach, then move.
+    // A bound-but-uncastable skill used to swallow the click entirely.
     if (input.mouseLeft) {
       const primary = this.player.character.hotbar[0];
       const target = input.worldPoint;
+      let acted = false;
+
       if (primary) {
-        this.skills.cast(primary, this.player, target, ctx, this.enemies, this.boss);
-      } else if (this.keyDir.lengthSq() === 0) {
+        acted = this.skills.cast(primary, this.player, target, ctx, this.enemies, this.boss);
+      }
+      if (!acted && this.skills.hasTargetInReach(this.player, this.enemies, this.boss)) {
+        acted = this.skills.basicAttack(this.player, target, ctx, this.enemies, this.boss);
+      }
+      if (!acted && this.keyDir.lengthSq() === 0) {
         // Keyboard wins; a move order issued while a key is held leaves a stale
         // destination the player resumes running to after releasing the key.
         this.player.moveTo(target.x, target.z);

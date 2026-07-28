@@ -241,6 +241,45 @@ export class SkillRunner {
     return true;
   }
 
+  /**
+   * The free basic attack. No rank, no mana, no cooldown — this is the floor
+   * that guarantees left click always does something, whatever the player has
+   * (or has not) bound.
+   */
+  basicAttack(
+    player: Player,
+    target: THREE.Vector3,
+    ctx: CombatContext,
+    enemies: Enemy[],
+    boss: Boss | null
+  ): boolean {
+    if (player.isBusy || !player.alive) return false;
+
+    player.faceTowards(target.x, target.z);
+    const dir = this.tmp.copy(target).sub(player.position).setY(0).normalize().clone();
+    const attackTime = 0.42 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
+    player.beginAction('attack1', attackTime);
+
+    const packet = (mult = 1): DamagePacket =>
+      rollDamage(player.stats, ctx.rng, {
+        scale: mult,
+        type: 'physical',
+        ability: 'Attack',
+        source: 'player',
+      });
+
+    this.meleeSwing(player, dir, 1.5, 2.4, packet, ctx, enemies, boss, 'physical');
+    return true;
+  }
+
+  /** True when something is close enough for a basic swing to connect. */
+  hasTargetInReach(player: Player, enemies: Enemy[], boss: Boss | null, reach = 2.4): boolean {
+    for (const t of this.allTargets(enemies, boss)) {
+      if (t.root.position.distanceTo(player.position) <= reach + t.hitRadius) return true;
+    }
+    return false;
+  }
+
   /** Distance along `dir` to the nearest target, or `max` if nothing is hit. */
   private firstHitAlong(
     from: THREE.Vector3,

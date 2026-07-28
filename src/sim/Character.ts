@@ -131,6 +131,49 @@ export function createCharacter(name: string, classId: CharClassId, rng: Rng): C
 }
 
 /**
+ * Repairs a character loaded from an older save: strips hotbar entries the
+ * player cannot actually cast, and grants the free opening attack if they have
+ * none. Without this, a save made before the starter skill existed loads with a
+ * bar full of rank-0 skills and no way to fight.
+ */
+export function repairCharacter(c: Character): boolean {
+  let changed = false;
+
+  for (let i = 0; i < c.hotbar.length; i++) {
+    const id = c.hotbar[i];
+    if (id && (c.skills[id] ?? 0) <= 0) {
+      c.hotbar[i] = null;
+      changed = true;
+    }
+  }
+
+  const hasAnyActive = Object.entries(c.skills).some(
+    ([id, rank]) => rank > 0 && SKILL_BY_ID[id]?.targeting !== 'passive'
+  );
+  if (!hasAnyActive) {
+    const starter = startingSkillFor(c.classId);
+    if (starter) {
+      c.skills[starter] = Math.max(1, c.skills[starter] ?? 0);
+      changed = true;
+    }
+  }
+
+  // Make sure every ranked active is reachable from the bar.
+  const ranked = Object.entries(c.skills)
+    .filter(([id, rank]) => rank > 0 && SKILL_BY_ID[id]?.targeting !== 'passive')
+    .map(([id]) => id);
+  for (const id of ranked) {
+    if (c.hotbar.includes(id)) continue;
+    const free = c.hotbar.indexOf(null);
+    if (free < 0) break;
+    c.hotbar[free] = id;
+    changed = true;
+  }
+
+  return changed;
+}
+
+/**
  * The free opening attack: the cheapest tier-1 active in the class's first
  * tree, preferring a melee/projectile basic over a situational cooldown.
  */
