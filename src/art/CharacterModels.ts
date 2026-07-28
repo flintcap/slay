@@ -119,10 +119,13 @@ function jointsFor(p: BodyProfile): JointMap {
   j.head = new THREE.Vector3(0, H * 0.885, 0);
   j.shoulderL = new THREE.Vector3(p.shoulder * H, H * 0.8, 0);
   j.shoulderR = new THREE.Vector3(-p.shoulder * H, H * 0.8, 0);
-  j.elbowL = new THREE.Vector3(p.shoulder * H * 1.06, H * 0.645, 0);
-  j.elbowR = new THREE.Vector3(-p.shoulder * H * 1.06, H * 0.645, 0);
-  j.handL = new THREE.Vector3(p.shoulder * H * 1.1, H * 0.5, 0);
-  j.handR = new THREE.Vector3(-p.shoulder * H * 1.1, H * 0.5, 0);
+  // Arms hang, they do not splay. Running the elbow and hand further out than
+  // the shoulder held them off the body like a scarecrow's; a resting arm
+  // actually comes slightly inward as it drops.
+  j.elbowL = new THREE.Vector3(p.shoulder * H * 0.94, H * 0.64, H * 0.006);
+  j.elbowR = new THREE.Vector3(-p.shoulder * H * 0.94, H * 0.64, H * 0.006);
+  j.handL = new THREE.Vector3(p.shoulder * H * 0.88, H * 0.49, H * 0.014);
+  j.handR = new THREE.Vector3(-p.shoulder * H * 0.88, H * 0.49, H * 0.014);
   j.hipL = new THREE.Vector3(p.hip * H, H * 0.5, 0);
   j.hipR = new THREE.Vector3(-p.hip * H, H * 0.5, 0);
   j.kneeL = new THREE.Vector3(p.hip * H * 1.02, H * 0.268, 0);
@@ -557,7 +560,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
     // Deltoid: a ball capping the joint. Without it the arm looks socketed
     // straight into the ribcage.
     parts.push({
-      geo: transformed(blob(H * 0.052 * t, H * 0.058 * t, H * 0.05 * t, 12), {
+      geo: transformed(blob(H * 0.05 * t, H * 0.055 * t, H * 0.048 * t, 12), {
         pos: [S.x + side * H * 0.004, S.y - H * 0.004, S.z],
       }),
       mat: skin,
@@ -565,17 +568,17 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
     });
 
     // Upper arm: thick under the deltoid, tapering into a narrow elbow.
-    parts.push({ geo: limbBetween(S, E, H * 0.043 * t, H * 0.028 * t), mat: skin, bind: bindArm });
+    parts.push({ geo: limbBetween(S, E, H * 0.037 * t, H * 0.025 * t), mat: skin, bind: bindArm });
     // Elbow, as a small hinge mass.
     parts.push({
-      geo: transformed(blob(H * 0.03 * t, H * 0.032 * t, H * 0.031 * t, 10), { pos: [E.x, E.y, E.z] }),
+      geo: transformed(blob(H * 0.027 * t, H * 0.029 * t, H * 0.028 * t, 10), { pos: [E.x, E.y, E.z] }),
       mat: skin,
       bind: bindArm,
     });
     // Forearm: the brachioradialis swells just below the elbow, then runs down
     // to a wrist that is genuinely thin — this contrast is most of the read.
     const wrist = E.clone().lerp(D, 0.82);
-    parts.push({ geo: limbBetween(E, wrist, H * 0.034 * t, H * 0.019 * t), mat: skin, bind: bindArm });
+    parts.push({ geo: limbBetween(E, wrist, H * 0.03 * t, H * 0.017 * t), mat: skin, bind: bindArm });
 
     // --- hand ---
     const gloved = opts.gloves && opts.gloves !== skin;
@@ -632,7 +635,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
     const F = j[ft];
 
     // Thigh: heaviest mass on the body, tapering hard into the knee.
-    parts.push({ geo: limbBetween(P, K, H * 0.062 * t, H * 0.036 * t), mat: skin, bind: bindLeg });
+    parts.push({ geo: limbBetween(P, K, H * 0.056 * t, H * 0.033 * t), mat: skin, bind: bindLeg });
     // Kneecap.
     parts.push({
       geo: transformed(blob(H * 0.036 * t, H * 0.036 * t, H * 0.038 * t, 10), {
@@ -643,7 +646,7 @@ function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: s
     });
     // Calf: bulges high and behind, then a genuinely thin ankle.
     const ankle = K.clone().lerp(F, 0.86);
-    parts.push({ geo: limbBetween(K, ankle, H * 0.042 * t, H * 0.019 * t), mat: skin, bind: bindLeg });
+    parts.push({ geo: limbBetween(K, ankle, H * 0.038 * t, H * 0.017 * t), mat: skin, bind: bindLeg });
     parts.push({
       geo: transformed(blob(H * 0.03 * t, H * 0.05 * t, H * 0.032 * t, 10), {
         pos: [K.x, K.y - H * 0.055, K.z - H * 0.016],
@@ -701,15 +704,15 @@ function underGarments(ctx: BuildCtx, mat = 'linen'): void {
   const dep = p.depth;
   // Cloth sits a fixed distance off the body rather than a fixed percentage,
   // so it does not balloon at the chest and shrink-wrap at the waist.
-  const g = H * 0.011;
+  const g = H * 0.0065;
 
   // Sleeveless shirt, following the same rings as the torso underneath. A
   // tapered box here reads as a sandwich board, because a box cannot pinch at
   // the waist and a body does.
   parts.push({
     geo: ringStack([
-      { y: H * 0.545, w: hipW * 1.06 + g, d: hipW * 0.84 * dep + g },
-      { y: H * 0.575, w: hipW * 1.02 + g, d: hipW * 0.8 * dep + g },
+      { y: H * 0.598, w: hipW * 1.04 + g, d: hipW * 0.82 * dep + g },
+      { y: H * 0.612, w: hipW * 1.06 + g, d: hipW * 0.84 * dep + g },
       { y: H * 0.625, w: hipW * 1.12 + g, d: hipW * 0.88 * dep + g },
       { y: H * 0.685, w: shW * 0.82 + g, d: hipW * 1.1 * dep + g },
       { y: H * 0.735, w: shW * 0.94 + g, d: hipW * 1.18 * dep + g },
@@ -723,10 +726,11 @@ function underGarments(ctx: BuildCtx, mat = 'linen'): void {
   // Braies: a waistband and two short legs, cut mid-thigh.
   parts.push({
     geo: ringStack([
-      { y: H * 0.44, w: hipW * 0.96 + g, d: hipW * 0.76 * dep + g },
-      { y: H * 0.475, w: hipW * 1.3 + g, d: hipW * 0.98 * dep + g },
-      { y: H * 0.515, w: hipW * 1.38 + g, d: hipW * 1.04 * dep + g },
-      { y: H * 0.552, w: hipW * 1.2 + g, d: hipW * 0.92 * dep + g },
+      { y: H * 0.452, w: hipW * 0.94 + g, d: hipW * 0.74 * dep + g },
+      { y: H * 0.48, w: hipW * 1.28 + g, d: hipW * 0.96 * dep + g },
+      { y: H * 0.515, w: hipW * 1.36 + g, d: hipW * 1.02 * dep + g },
+      { y: H * 0.558, w: hipW * 1.08 + g, d: hipW * 0.84 * dep + g },
+      { y: H * 0.576, w: hipW * 1.0 + g, d: hipW * 0.78 * dep + g },
     ], 16),
     mat,
     bind: SKIRT,
@@ -735,23 +739,23 @@ function underGarments(ctx: BuildCtx, mat = 'linen'): void {
     ['hipL', 'kneeL', LEG_L],
     ['hipR', 'kneeR', LEG_R],
   ] as Array<[string, string, string[]]>) {
-    const cuff = j[hp].clone().lerp(j[kn], 0.36);
+    const cuff = j[hp].clone().lerp(j[kn], 0.26);
     parts.push({
-      geo: limbBetween(j[hp], cuff, H * 0.066 * t, H * 0.05 * t),
+      geo: limbBetween(j[hp], cuff, H * 0.064 * t, H * 0.05 * t),
       mat,
       bind: bindLeg,
     });
   }
 
   // Waist cord. A torus, because a box here reads as a second belt buckle.
-  const cord = ring(hipW * 1.22, H * 0.009, 18, 6);
+  const cord = ring(hipW * 1.06, H * 0.009, 18, 6);
   cord.rotateX(Math.PI * 0.5);
-  cord.scale(1, 1, (hipW * 0.94 * dep) / (hipW * 1.22));
-  cord.translate(0, H * 0.552, 0);
+  cord.scale(1, 1, (hipW * 0.82 * dep) / (hipW * 1.06));
+  cord.translate(0, H * 0.578, 0);
   parts.push({ geo: cord, mat: 'leather', bind: ['hips'] });
   parts.push({
     geo: transformed(limb(H * 0.05, H * 0.007, H * 0.005, 5), {
-      pos: [H * 0.014, H * 0.52, hipW * 0.96 * dep],
+      pos: [H * 0.014, H * 0.548, hipW * 0.86 * dep],
       rot: [0.2, 0, 0.3],
     }),
     mat: 'leather',
