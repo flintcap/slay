@@ -43,6 +43,7 @@ import {
   type DragKind,
   type DragPayload,
 } from './Widgets';
+import { PaperdollView } from './PaperdollView';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -212,6 +213,9 @@ const PAPERDOLL: EquipSlot[] = [
   'ring2',
 ];
 
+/** Set on the panel while the character view is being dragged to spin. */
+const SPIN_HINT = 'Drag to turn';
+
 export class InventoryPanel {
   readonly panel: Panel;
   private grid: ItemGrid;
@@ -220,6 +224,7 @@ export class InventoryPanel {
   private capacityEl: HTMLSpanElement;
   private crest: HTMLDivElement;
   private statRail: HTMLDivElement;
+  private view = new PaperdollView();
 
   constructor() {
     this.panel = new Panel({
@@ -227,7 +232,9 @@ export class InventoryPanel {
       title: 'Equipment',
       subtitle: 'What you carry is what you lose',
       icon: 'bag',
-      width: 900,
+      width: 1010,
+      // The figure animates, so it must not keep drawing behind a closed panel.
+      onClose: () => this.view.stop(),
     });
     this.panel.frame.classList.add('panel-inventory');
 
@@ -238,7 +245,12 @@ export class InventoryPanel {
     const doll = div('paperdoll');
     this.crest = div('paperdoll-crest');
     doll.appendChild(this.crest);
-    doll.appendChild(div('paperdoll-figure'));
+
+    // The live figure sits in the middle column, with the slots down each side.
+    const stage = div('paperdoll-figure');
+    stage.appendChild(this.view.root);
+    stage.appendChild(div('pd-view-hint', SPIN_HINT));
+    doll.appendChild(stage);
 
     for (const s of PAPERDOLL) {
       const slot = new ItemSlot({
@@ -324,6 +336,11 @@ export class InventoryPanel {
   open(): void {
     this.refresh();
     this.panel.open();
+    this.view.start();
+  }
+
+  close(): void {
+    this.panel.close();
   }
 
   private onRightClick(item: Item | null, ev: MouseEvent): void {
@@ -427,6 +444,9 @@ export class InventoryPanel {
     const used = invCount(c);
     this.capacityEl.textContent = `${used} / ${c.inventory.length}`;
     this.capacityEl.parentElement?.classList.toggle('is-full', used >= c.inventory.length);
+
+    this.view.setCharacter(c);
+    if (this.panel.isOpen) this.view.start();
 
     const def = classById(c.classId);
     this.crest.innerHTML = classCrestSvg(c.classId, classAccent(c.classId), 190);
