@@ -53,6 +53,11 @@ const D_CELL = 160;
 
 let stainAtlas: THREE.Texture | null = null;
 
+/** The baked stain atlas, exposed so tooling can look at what it produced. */
+export function decalAtlasTexture(): THREE.Texture {
+  return buildStainAtlas();
+}
+
 function buildStainAtlas(): THREE.Texture {
   if (stainAtlas) return stainAtlas;
   const size = D_GRID * D_CELL;
