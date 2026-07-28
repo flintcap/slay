@@ -319,24 +319,30 @@ export class DungeonScene extends GameScene {
 
     if (input.pointerOverUI) return;
 
-    // Left click falls through three ways so it always does *something*:
-    // the bound skill, then a free swing if a target is in reach, then move.
-    // A bound-but-uncastable skill used to swallow the click entirely.
+    // Left click behaves the way every ARPG player expects: click a monster to
+    // attack it, click the floor to walk there. Casting on every click meant
+    // click-to-move never worked and a click at empty ground swung at nothing,
+    // which reads as "attacking is broken".
     if (input.mouseLeft) {
-      const primary = this.player.character.hotbar[0];
-      const target = input.worldPoint;
-      let acted = false;
+      const aimed = this.enemyUnderCursor(input.worldPoint);
+      const forceAttack = input.keyDown('ShiftLeft') || input.keyDown('ShiftRight');
 
-      if (primary) {
-        acted = this.skills.cast(primary, this.player, target, ctx, this.enemies, this.boss);
-      }
-      if (!acted && this.skills.hasTargetInReach(this.player, this.enemies, this.boss)) {
-        acted = this.skills.basicAttack(this.player, target, ctx, this.enemies, this.boss);
-      }
-      if (!acted && this.keyDir.lengthSq() === 0) {
+      if (aimed || forceAttack) {
+        // Aim at the target itself, not the ground under the cursor, so melee
+        // arcs and projectiles both converge on the thing being clicked.
+        const target = aimed ? aimed.root.position.clone().setY(0) : input.worldPoint;
+        const primary = this.player.character.hotbar[0];
+        let acted = false;
+        if (primary) {
+          acted = this.skills.cast(primary, this.player, target, ctx, this.enemies, this.boss);
+        }
+        if (!acted && this.skills.hasTargetInReach(this.player, this.enemies, this.boss)) {
+          this.skills.basicAttack(this.player, target, ctx, this.enemies, this.boss);
+        }
+      } else if (this.keyDir.lengthSq() === 0) {
         // Keyboard wins; a move order issued while a key is held leaves a stale
         // destination the player resumes running to after releasing the key.
-        this.player.moveTo(target.x, target.z);
+        this.player.moveTo(input.worldPoint.x, input.worldPoint.z);
       }
     }
 
@@ -359,6 +365,31 @@ export class DungeonScene extends GameScene {
       if (this.keyDir.lengthSq() > 0) d.copy(this.keyDir);
       if (this.player.dodge(d.x, d.z)) this.rig.addTrauma(0.08);
     }
+  }
+
+  /**
+   * The enemy the cursor is over, if any. Uses a generous radius around the
+   * ground point rather than exact mesh picking: at this camera angle a monster
+   * stands *above* the tile the cursor projects onto, so strict picking makes
+   * players feel like they are missing clicks.
+   */
+  private enemyUnderCursor(groundPoint: THREE.Vector3): Enemy | Boss | null {
+    let best: Enemy | Boss | null = null;
+    let bestD = Infinity;
+    const consider = (t: Enemy | Boss) => {
+      if (t.life <= 0) return;
+      const dx = t.root.position.x - groundPoint.x;
+      const dz = t.root.position.z - groundPoint.z;
+      const d = Math.hypot(dx, dz);
+      const grab = t.hitRadius + 1.1;
+      if (d < grab && d < bestD) {
+        bestD = d;
+        best = t;
+      }
+    };
+    for (const e of this.enemies) consider(e);
+    if (this.boss) consider(this.boss);
+    return best;
   }
 
   /** Handles kills: XP, loot, quest progress, FX. */
