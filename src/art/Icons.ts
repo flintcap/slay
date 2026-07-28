@@ -1600,3 +1600,235 @@ export function clearIconCaches(): void {
   itemCache.clear();
   skillCache.clear();
 }
+
+
+// ---------------------------------------------------------------------------
+// Public: monster affix badges
+// ---------------------------------------------------------------------------
+
+type Glyph = (x: CanvasRenderingContext2D, c: string) => void;
+
+/** Bold, high-contrast marks — these are read at ~14px on a nameplate. */
+const GLYPHS: Record<string, Glyph> = {
+  flame: (x, c) => {
+    x.beginPath();
+    x.moveTo(32, 6);
+    x.quadraticCurveTo(52, 30, 44, 44);
+    x.quadraticCurveTo(40, 58, 32, 58);
+    x.quadraticCurveTo(24, 58, 20, 44);
+    x.quadraticCurveTo(12, 30, 32, 6);
+    x.fillStyle = c;
+    x.fill();
+  },
+  flake: (x, c) => {
+    x.strokeStyle = c;
+    x.lineWidth = 6;
+    x.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI;
+      x.beginPath();
+      x.moveTo(32 - Math.cos(a) * 24, 32 - Math.sin(a) * 24);
+      x.lineTo(32 + Math.cos(a) * 24, 32 + Math.sin(a) * 24);
+      x.stroke();
+    }
+  },
+  bolt: (x, c) => {
+    x.beginPath();
+    x.moveTo(38, 4);
+    x.lineTo(18, 34);
+    x.lineTo(30, 34);
+    x.lineTo(24, 60);
+    x.lineTo(46, 28);
+    x.lineTo(33, 28);
+    x.closePath();
+    x.fillStyle = c;
+    x.fill();
+  },
+  drop: (x, c) => {
+    x.beginPath();
+    x.moveTo(32, 6);
+    x.quadraticCurveTo(52, 34, 32, 58);
+    x.quadraticCurveTo(12, 34, 32, 6);
+    x.fillStyle = c;
+    x.fill();
+  },
+  shield: (x, c) => {
+    x.beginPath();
+    x.moveTo(32, 6);
+    x.lineTo(52, 16);
+    x.lineTo(52, 34);
+    x.quadraticCurveTo(52, 50, 32, 58);
+    x.quadraticCurveTo(12, 50, 12, 34);
+    x.lineTo(12, 16);
+    x.closePath();
+    x.fillStyle = c;
+    x.fill();
+  },
+  spikes: (x, c) => {
+    x.fillStyle = c;
+    for (let i = 0; i < 4; i++) {
+      const px = 10 + i * 15;
+      x.beginPath();
+      x.moveTo(px, 54);
+      x.lineTo(px + 7, 12);
+      x.lineTo(px + 14, 54);
+      x.closePath();
+      x.fill();
+    }
+  },
+  wings: (x, c) => {
+    x.fillStyle = c;
+    x.beginPath();
+    x.moveTo(32, 20);
+    x.quadraticCurveTo(6, 12, 4, 40);
+    x.quadraticCurveTo(20, 34, 32, 44);
+    x.quadraticCurveTo(44, 34, 60, 40);
+    x.quadraticCurveTo(58, 12, 32, 20);
+    x.fill();
+  },
+  chain: (x, c) => {
+    x.strokeStyle = c;
+    x.lineWidth = 6;
+    for (const [cx, cy] of [[22, 24], [42, 40]] as const) {
+      x.beginPath();
+      x.ellipse(cx, cy, 12, 9, -0.7, 0, Math.PI * 2);
+      x.stroke();
+    }
+  },
+  skull: (x, c) => {
+    x.fillStyle = c;
+    x.beginPath();
+    x.moveTo(14, 34);
+    x.quadraticCurveTo(14, 6, 32, 6);
+    x.quadraticCurveTo(50, 6, 50, 34);
+    x.lineTo(44, 46);
+    x.lineTo(20, 46);
+    x.closePath();
+    x.fill();
+    x.fillRect(24, 50, 16, 8);
+    x.fillStyle = 'rgba(0,0,0,.8)';
+    x.beginPath();
+    x.arc(25, 30, 6, 0, Math.PI * 2);
+    x.arc(39, 30, 6, 0, Math.PI * 2);
+    x.fill();
+  },
+  eye: (x, c) => {
+    x.beginPath();
+    x.ellipse(32, 32, 26, 15, 0, 0, Math.PI * 2);
+    x.fillStyle = c;
+    x.fill();
+    x.beginPath();
+    x.arc(32, 32, 9, 0, Math.PI * 2);
+    x.fillStyle = 'rgba(0,0,0,.85)';
+    x.fill();
+  },
+  swirl: (x, c) => {
+    x.strokeStyle = c;
+    x.lineWidth = 6;
+    x.lineCap = 'round';
+    x.beginPath();
+    for (let i = 0; i <= 60; i++) {
+      const t = i / 60;
+      const a = t * Math.PI * 3;
+      const r = 4 + t * 24;
+      const px = 32 + Math.cos(a) * r;
+      const py = 32 + Math.sin(a) * r;
+      if (i === 0) x.moveTo(px, py);
+      else x.lineTo(px, py);
+    }
+    x.stroke();
+  },
+  arrows: (x, c) => {
+    x.fillStyle = c;
+    for (let i = 0; i < 3; i++) {
+      x.beginPath();
+      x.moveTo(8 + i * 16, 16);
+      x.lineTo(24 + i * 16, 32);
+      x.lineTo(8 + i * 16, 48);
+      x.closePath();
+      x.fill();
+    }
+  },
+  wall: (x, c) => {
+    x.fillStyle = c;
+    for (let r = 0; r < 3; r++) {
+      for (let i = 0; i < 3; i++) {
+        x.fillRect(6 + i * 18 + (r % 2 ? 9 : 0), 12 + r * 15, 15, 11);
+      }
+    }
+  },
+  heart: (x, c) => {
+    x.beginPath();
+    x.moveTo(32, 56);
+    x.bezierCurveTo(2, 34, 14, 6, 32, 22);
+    x.bezierCurveTo(50, 6, 62, 34, 32, 56);
+    x.fillStyle = c;
+    x.fill();
+  },
+  star: (x, c) => {
+    x.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+      const r = i % 2 === 0 ? 27 : 12;
+      const px = 32 + Math.cos(a) * r;
+      const py = 32 + Math.sin(a) * r;
+      if (i === 0) x.moveTo(px, py);
+      else x.lineTo(px, py);
+    }
+    x.closePath();
+    x.fillStyle = c;
+    x.fill();
+  },
+};
+
+/** Affix behaviour → glyph. Anything unmapped falls back to a star. */
+const AFFIX_GLYPH: Record<string, string> = {
+  fire_enchanted: 'flame', molten_trail: 'flame', unstable: 'flame', storm_death: 'bolt',
+  cold_enchanted: 'flake', frozen_ground: 'flake', frozen_pulse: 'flake', chilling_death: 'flake',
+  lightning_enchanted: 'bolt', electrified: 'bolt', arcane_enchanted: 'swirl', arcane_sentry: 'swirl',
+  poison_aura: 'drop', plagued: 'drop', mana_burn: 'drop',
+  shielded: 'shield', stoneskin: 'shield', missile_dampening: 'shield', juggernaut: 'shield',
+  thorns: 'spikes', reflect_damage: 'spikes',
+  teleporter: 'wings', phasing: 'wings', wormhole: 'wings', gravity: 'swirl', vortex: 'swirl',
+  jailer: 'chain', entangling: 'chain', waller: 'wall', knockback: 'arrows', hasted_pack: 'arrows',
+  berserker: 'arrows', empowered: 'star', avenger: 'star', nightmarish: 'eye', illusionist: 'eye',
+  summoner: 'skull', soul_bound: 'skull', blood_thirsty: 'heart', vampiric: 'heart',
+  life_leech: 'heart', regenerating: 'heart', health_link: 'chain', orbiter: 'swirl',
+  mortar: 'arrows',
+};
+
+const affixCache = new Map<string, string>();
+
+/** Small badge for a monster affix, drawn from its behaviour and colour. */
+export function affixIconUri(behavior: string | undefined, color: number): string {
+  const key = `${behavior ?? 'none'}|${color}`;
+  const hit = affixCache.get(key);
+  if (hit) return hit;
+
+  const glyphName = AFFIX_GLYPH[behavior ?? ''] ?? 'star';
+  const glyph = GLYPHS[glyphName] ?? GLYPHS.star!;
+
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const x = c.getContext('2d')!;
+
+  // Dark disc so the mark reads against any dungeon background.
+  x.beginPath();
+  x.arc(32, 32, 31, 0, Math.PI * 2);
+  x.fillStyle = 'rgba(8,8,12,.88)';
+  x.fill();
+  x.strokeStyle = rgba(color, 0.9);
+  x.lineWidth = 4;
+  x.stroke();
+
+  x.save();
+  x.shadowColor = rgba(color, 0.9);
+  x.shadowBlur = 8;
+  glyph(x, hexStr(color));
+  x.restore();
+
+  const uri = c.toDataURL('image/png');
+  affixCache.set(key, uri);
+  return uri;
+}

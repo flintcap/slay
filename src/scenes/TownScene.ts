@@ -38,6 +38,9 @@ export class TownScene extends GameScene {
   private interactables: Interactable[] = [];
   private nearby: Interactable | null = null;
   private keyDir = new THREE.Vector3();
+  /** Hoisted out of the per-frame path; these ran every single frame. */
+  private static readonly UP = new THREE.Vector3(0, 1, 0);
+  private tmpDir = new THREE.Vector3();
   private heroLight: THREE.PointLight | null = null;
   private offs: Array<() => void> = [];
 
@@ -130,7 +133,7 @@ export class TownScene extends GameScene {
     if (input.keyDown('KeyD') || input.keyDown('ArrowRight')) this.keyDir.x += 1;
     if (this.keyDir.lengthSq() > 0) {
       // Camera-relative so "up" always means away from the viewer.
-      this.keyDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.rig.yaw);
+      this.keyDir.applyAxisAngle(TownScene.UP, this.rig.yaw);
     }
 
     // Keyboard wins. Issuing a move order while a key is held leaves a stale

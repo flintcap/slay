@@ -32,6 +32,7 @@ import { grantXp } from '../sim/Character';
 import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
 import { SkillRunner } from './SkillRunner';
+import { NameplateLayer } from '../ui/Nameplates';
 
 export interface DungeonPayload {
   depth: number;
@@ -76,6 +77,9 @@ export class DungeonScene extends GameScene {
   private rng!: Random;
 
   private keyDir = new THREE.Vector3();
+  /** Hoisted out of the per-frame path; these ran every single frame. */
+  private static readonly UP = new THREE.Vector3(0, 1, 0);
+  private tmpDir = new THREE.Vector3();
   private offs: Array<() => void> = [];
   private aiCursor = 0;
   private exitPos = new THREE.Vector3();
@@ -84,6 +88,7 @@ export class DungeonScene extends GameScene {
   private returnPortal: THREE.Object3D | null = null;
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
+  private plates: NameplateLayer | null = null;
   private transitioning = false;
   private runTime = 0;
   private godMode = false;
@@ -119,6 +124,7 @@ export class DungeonScene extends GameScene {
 
     // A light on the hero is standard for the genre: torch placement is
     // procedural, so without it the player regularly ends up in pitch black.
+    this.plates = new NameplateLayer();
     this.heroLight = new THREE.PointLight(0xffd9a8, 14, 17, 2);
     this.heroLight.castShadow = false;
     this.scene.add(this.heroLight);
@@ -223,6 +229,15 @@ export class DungeonScene extends GameScene {
 
     this.fx.setAmbient(this.biome.particles ?? null, new THREE.Box3().setFromObject(this.mesh.root));
 
+    // Compile everything now, behind the loading fade. Otherwise each newly
+    // visible material compiles its shader mid-fight, which is exactly the
+    // micro-stutter players feel when a pack first comes into view.
+    try {
+      this.engine.renderer.gl.compile(this.scene, this.camera);
+    } catch {
+      // Compilation is an optimisation; never let it block the run starting.
+    }
+
     events.emit('depth:changed', {
       depth: this.run.depth,
       level: index + 1,
@@ -302,6 +317,17 @@ export class DungeonScene extends GameScene {
       this.heroLight.intensity = 14 + Math.sin(elapsed * 3.1) * 0.7;
     }
 
+    if (this.plates) {
+      const targets = this.boss ? [...this.enemies, this.boss] : this.enemies;
+      this.plates.update(
+        this.camera,
+        targets,
+        this.player.position,
+        window.innerWidth,
+        window.innerHeight
+      );
+    }
+
     if (this.returnPortal) {
       this.returnPortal.rotation.y += dt * 0.55;
       this.returnPortal.position.y = Math.sin(elapsed * 1.7) * 0.07;
@@ -332,7 +358,7 @@ export class DungeonScene extends GameScene {
     if (input.keyDown('KeyA') || input.keyDown('ArrowLeft')) this.keyDir.x -= 1;
     if (input.keyDown('KeyD') || input.keyDown('ArrowRight')) this.keyDir.x += 1;
     if (this.keyDir.lengthSq() > 0) {
-      this.keyDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.rig.yaw);
+      this.keyDir.applyAxisAngle(DungeonScene.UP, this.rig.yaw);
     }
 
     if (input.pointerOverUI) return;
@@ -379,7 +405,7 @@ export class DungeonScene extends GameScene {
     }
 
     if (input.wasPressed('dodge')) {
-      const d = new THREE.Vector3().subVectors(input.worldPoint, this.player.position);
+      const d = this.tmpDir.subVectors(input.worldPoint, this.player.position);
       if (this.keyDir.lengthSq() > 0) d.copy(this.keyDir);
       if (this.player.dodge(d.x, d.z)) this.rig.addTrauma(0.08);
     }
@@ -392,21 +418,32 @@ export class DungeonScene extends GameScene {
    * players feel like they are missing clicks.
    */
   private enemyUnderCursor(groundPoint: THREE.Vector3): Enemy | Boss | null {
+    // Runs every frame the attack button is held: no closures, no allocation.
     let best: Enemy | Boss | null = null;
     let bestD = Infinity;
-    const consider = (t: Enemy | Boss) => {
-      if (t.life <= 0) return;
-      const dx = t.root.position.x - groundPoint.x;
-      const dz = t.root.position.z - groundPoint.z;
-      const d = Math.hypot(dx, dz);
+    const gx = groundPoint.x;
+    const gz = groundPoint.z;
+
+    for (let i = 0; i < this.enemies.length; i++) {
+      const t = this.enemies[i]!;
+      if (t.life <= 0) continue;
+      const dx = t.root.position.x - gx;
+      const dz = t.root.position.z - gz;
+      const d2 = dx * dx + dz * dz;
       const grab = t.hitRadius + 1.1;
-      if (d < grab && d < bestD) {
-        bestD = d;
+      if (d2 < grab * grab && d2 < bestD) {
+        bestD = d2;
         best = t;
       }
-    };
-    for (const e of this.enemies) consider(e);
-    if (this.boss) consider(this.boss);
+    }
+    const b = this.boss;
+    if (b && b.life > 0) {
+      const dx = b.root.position.x - gx;
+      const dz = b.root.position.z - gz;
+      const d2 = dx * dx + dz * dz;
+      const grab = b.hitRadius + 1.4;
+      if (d2 < grab * grab && d2 < bestD) best = b;
+    }
     return best;
   }
 
@@ -650,6 +687,8 @@ export class DungeonScene extends GameScene {
     this.player?.dispose();
     this.heroLight?.removeFromParent();
     this.heroLight = null;
+    this.plates?.dispose();
+    this.plates = null;
     this.skills.dispose();
     this.effects.dispose();
     this.fx.dispose();

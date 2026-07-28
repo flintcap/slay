@@ -272,10 +272,27 @@ export class SkillRunner {
     return true;
   }
 
-  /** True when something is close enough for a basic swing to connect. */
+  /**
+   * True when something is close enough for a basic swing to connect. Called
+   * every frame the attack button is held, so it walks the arrays directly and
+   * compares squared distances rather than building a target list.
+   */
   hasTargetInReach(player: Player, enemies: Enemy[], boss: Boss | null, reach = 2.4): boolean {
-    for (const t of this.allTargets(enemies, boss)) {
-      if (t.root.position.distanceTo(player.position) <= reach + t.hitRadius) return true;
+    const px = player.position.x;
+    const pz = player.position.z;
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i]!;
+      if (e.life <= 0) continue;
+      const r = reach + e.hitRadius;
+      const dx = e.root.position.x - px;
+      const dz = e.root.position.z - pz;
+      if (dx * dx + dz * dz <= r * r) return true;
+    }
+    if (boss && boss.life > 0) {
+      const r = reach + boss.hitRadius;
+      const dx = boss.root.position.x - px;
+      const dz = boss.root.position.z - pz;
+      if (dx * dx + dz * dz <= r * r) return true;
     }
     return false;
   }

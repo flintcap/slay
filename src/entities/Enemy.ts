@@ -351,6 +351,8 @@ export class Enemy implements Combatant {
     maxLife: number;
     color: number;
     level: number;
+    affixBehaviors: string[];
+    affixColors: number[];
   } {
     return {
       name: this.name,
@@ -360,6 +362,9 @@ export class Enemy implements Combatant {
       maxLife: this.maxLife,
       color: RANK_COLOR[this.rank],
       level: this.level,
+      // Parallel arrays so the nameplate can pick a glyph and tint per affix.
+      affixBehaviors: this.affixes.map((a) => a.behavior ?? 'none'),
+      affixColors: this.affixes.map((a) => a.color),
     };
   }
 

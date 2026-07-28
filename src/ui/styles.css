@@ -4504,3 +4504,100 @@ input.slider::-moz-range-thumb {
   object-fit: contain;
   pointer-events: none;
 }
+
+/* Enemy nameplates ---------------------------------------------------------- */
+.nameplates {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  contain: layout style;
+}
+.nameplate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 168px;
+  margin-top: -6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-ui, system-ui, sans-serif);
+  will-change: transform;
+  pointer-events: none;
+}
+.np-title {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  max-width: 100%;
+  text-shadow: 0 1px 3px #000, 0 0 6px #000;
+}
+.np-level {
+  font-size: 10px;
+  font-weight: 700;
+  color: #cbb98a;
+  background: rgba(8, 8, 12, 0.75);
+  border: 1px solid rgba(203, 185, 138, 0.45);
+  border-radius: 3px;
+  padding: 0 3px;
+  font-variant-numeric: tabular-nums;
+}
+.np-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--np-color, #d8d8d8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-rank {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--np-color, #d8d8d8);
+  opacity: 0.85;
+}
+.np-bar {
+  width: 92px;
+  height: 5px;
+  background: rgba(10, 8, 8, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.9);
+  border-radius: 2px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.np-bar-fill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(180deg, #e0503c, #a3241c);
+  transition: transform 120ms linear;
+}
+.nameplate[data-rank='champion'] .np-bar { width: 108px; height: 6px; }
+.nameplate[data-rank='elite'] .np-bar { width: 118px; height: 6px; }
+.nameplate[data-rank='rare'] .np-bar { width: 126px; height: 7px; }
+.nameplate[data-rank='boss'] { display: none; }
+.nameplate[data-rank='champion'] .np-bar-fill,
+.nameplate[data-rank='elite'] .np-bar-fill,
+.nameplate[data-rank='rare'] .np-bar-fill {
+  background: linear-gradient(180deg, #f2664a, #b02a1c);
+}
+.np-chips {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.np-chip {
+  width: 15px;
+  height: 15px;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+.np-more {
+  font-size: 9px;
+  color: #b9a97e;
+  text-shadow: 0 1px 2px #000;
+}
