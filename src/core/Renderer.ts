@@ -180,6 +180,13 @@ export class Renderer {
     const w = window.innerWidth;
     const h = window.innerHeight;
 
+    // Drop references to the previous chain. Without this, switching to a
+    // preset that has no AO leaves `gtao` pointing at a disposed pass, and the
+    // next resize calls setSize() on it.
+    this.gtao = undefined;
+    this.bloom = undefined;
+    this.smaa = undefined;
+
     // HDR float target so bloom has real headroom above 1.0.
     const target = new THREE.WebGLRenderTarget(w, h, {
       type: THREE.HalfFloatType,
@@ -244,6 +251,14 @@ export class Renderer {
     this.gl.shadowMap.enabled = this.quality.shadows;
     this.composer.dispose();
     this.buildComposer();
+
+    // buildComposer() wires the new passes to a placeholder scene and camera.
+    // render() only rebinds them when it sees a *different* scene than last
+    // frame, so without clearing these the freshly built passes keep rendering
+    // the empty placeholder — a black screen until the next scene change.
+    this.currentScene = null;
+    this.currentCamera = null;
+
     this.onResize();
   }
 
