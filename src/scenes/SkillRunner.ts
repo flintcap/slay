@@ -10,6 +10,49 @@ import type { Enemy, CombatContext } from '../entities/Enemy';
 import type { Boss } from '../entities/Boss';
 import { EffectSystem, ELEMENTS } from '../fx/Effects';
 import { getStatus, synthesizeSkillBuff } from '../data/statuses';
+import { getBase } from '../sim/Loot';
+import type { ItemCategory } from '../types';
+
+/** How the equipped main hand wants to be fought with. */
+export type WeaponStyle = 'melee' | 'ranged' | 'caster' | 'unarmed';
+
+const MELEE_CATEGORIES: ItemCategory[] = ['sword', 'axe', 'mace', 'dagger', 'spear'];
+const RANGED_CATEGORIES: ItemCategory[] = ['bow', 'crossbow'];
+const CASTER_CATEGORIES: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
+
+/** Resolves the style of whatever is in the character's main hand. */
+export function weaponStyle(player: Player): WeaponStyle {
+  const item = player.character.equipment.mainHand;
+  if (!item) return 'unarmed';
+  try {
+    const cat = getBase(item.baseId)?.category;
+    if (!cat) return 'unarmed';
+    if (RANGED_CATEGORIES.includes(cat)) return 'ranged';
+    if (CASTER_CATEGORIES.includes(cat)) return 'caster';
+    if (MELEE_CATEGORIES.includes(cat)) return 'melee';
+  } catch {
+    /* fall through */
+  }
+  return 'unarmed';
+}
+
+/** Effect families that swing a weapon and therefore need one in hand. */
+const MELEE_EFFECTS = new Set([
+  'melee', 'cleave', 'whirlwind', 'strike', 'heavy', 'multislash', 'leap', 'dash',
+]);
+
+/**
+ * True when a skill physically swings the main hand. Spells are deliberately
+ * exempt: a caster with a bow can still cast, the same way Diablo II allowed.
+ */
+export function needsMeleeWeapon(effect: string | undefined, damageType: string | undefined): boolean {
+  const raw = (effect ?? 'melee').toLowerCase();
+  const [family, sub] = raw.split('.');
+  const hit = MELEE_EFFECTS.has(family ?? '') || MELEE_EFFECTS.has(sub ?? '');
+  // Only physical swings are gated; an elemental "cleave" is a spell shaped
+  // like a swing and should not demand a sword.
+  return hit && (damageType ?? 'physical') === 'physical';
+}
 
 /** Anything the player can hit. Enemy and Boss both satisfy this. */
 type Target = Enemy | Boss;
@@ -48,6 +91,20 @@ export class SkillRunner {
     const rank = skillRank(player.character, skillId);
     if (rank <= 0) return false;
     if (player.isOnCooldown(skillId)) return false;
+
+    // A bow cannot swing. Blocking this here is what makes weapon choice a
+    // real decision rather than a stat stick.
+    if (needsMeleeWeapon(def.effect, def.damageType)) {
+      const style = weaponStyle(player);
+      if (style === 'ranged' || style === 'caster') {
+        events.emit('toast', {
+          text: `${def.name} needs a melee weapon.`,
+          kind: 'bad',
+        });
+        audio.play('ui.error');
+        return false;
+      }
+    }
 
     const cost = def.manaCost ? def.manaCost(rank) : 0;
     if (cost > 0 && !player.spendMana(cost)) {
@@ -270,8 +327,7 @@ export class SkillRunner {
 
     player.faceTowards(target.x, target.z);
     const dir = this.tmp.copy(target).sub(player.position).setY(0).normalize().clone();
-    const attackTime = 0.42 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
-    player.beginAction('attack1', attackTime);
+    const style = weaponStyle(player);
 
     const packet = (mult = 1): DamagePacket =>
       rollDamage(player.stats, ctx.rng, {
@@ -281,6 +337,31 @@ export class SkillRunner {
         source: 'player',
       });
 
+    // The weapon decides what a basic attack even is.
+    if (style === 'ranged' || style === 'caster') {
+      const castTime = 0.46 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
+      player.beginAction('cast', castTime);
+
+      const type: DamageType = style === 'ranged' ? 'physical' : 'arcane';
+      const colour = style === 'ranged' ? 0xd8c9a0 : (ELEMENTS.arcane?.core ?? 0xff7de8);
+      const from = player.position.clone().setY(1.05);
+      const range = style === 'ranged' ? 20 : 16;
+      const stop = this.firstHitAlong(from, dir, range, enemies, boss, 0.4);
+      const to = from.clone().addScaledVector(dir, stop);
+
+      this.effects.projectile(from, to, {
+        element: type,
+        color: colour,
+        speed: style === 'ranged' ? 30 : 19,
+        size: style === 'ranged' ? 0.24 : 0.4,
+        onHit: (p) => this.pointDamage(p, 0.5, packet, ctx, enemies, boss),
+      });
+      audio.play(style === 'ranged' ? 'cast.physical' : 'cast.arcane');
+      return true;
+    }
+
+    const attackTime = 0.42 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
+    player.beginAction('attack1', attackTime);
     this.meleeSwing(player, dir, 1.5, 2.4, packet, ctx, enemies, boss, 'physical');
     return true;
   }
@@ -291,6 +372,9 @@ export class SkillRunner {
    * compares squared distances rather than building a target list.
    */
   hasTargetInReach(player: Player, enemies: Enemy[], boss: Boss | null, reach = 2.4): boolean {
+    // Bows and staves reach across the room; they always have a shot.
+    const style = weaponStyle(player);
+    if (style === 'ranged' || style === 'caster') return true;
     const px = player.position.x;
     const pz = player.position.z;
     for (let i = 0; i < enemies.length; i++) {
