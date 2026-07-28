@@ -34,6 +34,7 @@ import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '.
 import { SkillRunner } from './SkillRunner';
 import { NameplateLayer } from '../ui/Nameplates';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
+import { affixIconUri } from '../art/Icons';
 
 export interface DungeonPayload {
   depth: number;
@@ -235,13 +236,26 @@ export class DungeonScene extends GameScene {
 
     this.fx.setAmbient(this.biome.particles ?? null, new THREE.Box3().setFromObject(this.mesh.root));
 
-    // Compile everything now, behind the loading fade. Otherwise each newly
-    // visible material compiles its shader mid-fight, which is exactly the
-    // micro-stutter players feel when a pack first comes into view.
+    // Everything below is one-time work that would otherwise land on the frame
+    // a pack first comes into view. Profiling a fight showed a single 3.4s
+    // frame there against a 1.3ms median, so it all moves behind the fade.
     try {
+      // Affix badges encode a PNG per icon; doing 60 of those mid-fight stalls.
+      const seen = new Set<string>();
+      for (const e of this.enemies) {
+        const np = e.nameplate;
+        for (let i = 0; i < np.affixBehaviors.length; i++) {
+          const b = np.affixBehaviors[i] ?? 'none';
+          const c = np.affixColors[i] ?? np.color;
+          const k = `${b}|${c}`;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          affixIconUri(b, c);
+        }
+      }
       this.engine.renderer.gl.compile(this.scene, this.camera);
     } catch {
-      // Compilation is an optimisation; never let it block the run starting.
+      // Warm-up is an optimisation; never let it block the run starting.
     }
 
     events.emit('depth:changed', {

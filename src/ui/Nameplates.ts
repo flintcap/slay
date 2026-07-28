@@ -75,6 +75,13 @@ export class NameplateLayer {
     this.container = document.createElement('div');
     this.container.className = 'nameplates';
     host.appendChild(this.container);
+    // Build the pool up front. Creating a dozen plates in the frame a pack
+    // first comes into view is a visible hitch.
+    for (let i = 0; i < 16; i++) this.acquire();
+    for (const p of this.pool) {
+      p.inUse = false;
+      p.root.style.display = 'none';
+    }
   }
 
   private acquire(): Plate {
