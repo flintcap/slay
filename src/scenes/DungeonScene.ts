@@ -254,6 +254,34 @@ export class DungeonScene extends GameScene {
         }
       }
       this.engine.renderer.gl.compile(this.scene, this.camera);
+
+      // Compiling programs is not enough: every generated PBR texture is
+      // uploaded to the GPU lazily, on the first frame the material is actually
+      // drawn. A dozen monsters coming into view at once therefore uploads
+      // dozens of 1024px maps in a single frame, which profiling measured as a
+      // 3.3 second render spike. Force the uploads now instead.
+      const gl = this.engine.renderer.gl;
+      const uploaded = new Set<THREE.Texture>();
+      const MAPS = [
+        'map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap',
+        'emissiveMap', 'alphaMap', 'bumpMap', 'displacementMap', 'envMap',
+      ] as const;
+      this.scene.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        const mat = mesh.material as THREE.Material | THREE.Material[] | undefined;
+        if (!mat) return;
+        const list = Array.isArray(mat) ? mat : [mat];
+        for (const m of list) {
+          const rec = m as unknown as Record<string, unknown>;
+          for (const key of MAPS) {
+            const tex = rec[key];
+            if (tex instanceof THREE.Texture && !uploaded.has(tex)) {
+              uploaded.add(tex);
+              gl.initTexture(tex);
+            }
+          }
+        }
+      });
     } catch {
       // Warm-up is an optimisation; never let it block the run starting.
     }
