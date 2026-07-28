@@ -40,6 +40,7 @@ import {
   type MinimapPip,
 } from './Widgets';
 import { skillIconUri } from '../art/Icons';
+import { setPrimaryAttack } from '../sim/Character';
 import { SKILL_BY_ID } from '../data/skills';
 
 // Tile ids as stored in DungeonLevel.tiles (mirrors world/Layouts TILE_VALUES).
@@ -266,6 +267,9 @@ export class HUD {
   private potionLife: HTMLDivElement;
   private potionMana: HTMLDivElement;
   private buffStrip: HTMLDivElement;
+  private rmbSlot!: HTMLDivElement;
+  private rmbArt!: HTMLDivElement;
+  private rmbCd!: HTMLDivElement;
   private minimapCanvas: HTMLCanvasElement;
   private minimapCtx: CanvasRenderingContext2D | null;
   private minimapLabel: HTMLDivElement;
@@ -368,6 +372,44 @@ export class HUD {
     add(xpRow, this.levelBadge, xpTrack);
 
     const slots = div('hotbar');
+
+    // The attack button gets its own slot at the head of the bar so it is
+    // obvious what right click does, and so a skill can be dragged onto it.
+    this.rmbSlot = div('hotslot hotslot-rmb ui-interactive');
+    this.rmbArt = div('hotslot-art');
+    const rmbCd = div('hotslot-cd');
+    const rmbKey = div('hotslot-key', 'RMB');
+    add(this.rmbSlot, this.rmbArt, rmbCd, rmbKey);
+    slots.appendChild(this.rmbSlot);
+    this.rmbCd = rmbCd;
+
+    registerDrop(
+      this.rmbSlot,
+      (p) => p.kind === 'skill' && !!p.skillId,
+      (p) => {
+        const c = save.account.current;
+        if (!c || !p.skillId) return false;
+        if (!setPrimaryAttack(c, p.skillId)) return false;
+        save.touch();
+        this.buildHotbar(true);
+        events.emit('toast', {
+          text: `${skillById(p.skillId)?.name ?? 'Skill'} bound to right click`,
+          kind: 'good',
+        });
+        return true;
+      }
+    );
+    // Right-clicking the slot clears it back to the plain basic attack.
+    this.rmbSlot.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const c = save.account.current;
+      if (!c || !c.primaryAttack) return;
+      setPrimaryAttack(c, null);
+      save.touch();
+      this.buildHotbar(true);
+      events.emit('toast', { text: 'Right click set to basic attack', kind: 'info' });
+    });
+
     for (let i = 0; i < 6; i++) {
       const s = div('hotslot ui-interactive');
       s.dataset.index = String(i);
@@ -700,10 +742,31 @@ export class HUD {
     const c = save.account.current;
     if (!c) return;
     while (c.hotbar.length < 6) c.hotbar.push(null);
-    const key = c.hotbar.slice(0, 6).join('|') + '#' + c.classId;
+    const key = c.hotbar.slice(0, 6).join('|') + '#' + c.classId + '#' + (c.primaryAttack ?? 'basic');
     if (!force && key === this.lastHotbarKey) return;
     this.lastHotbarKey = key;
     const accent = classAccent(c.classId);
+
+    // Right-click slot: the assigned skill, or the plain basic attack.
+    const rmb = c.primaryAttack ?? null;
+    clear(this.rmbArt);
+    this.rmbSlot.classList.toggle('is-basic', !rmb);
+    if (rmb) {
+      const d = skillDefFor(rmb);
+      this.rmbArt.innerHTML =
+        `<img class="skill-img" src="${skillIconUri(rmb, d?.effect, d?.damageType, d?.targeting === 'passive')}" ` +
+        `alt="" style="width:40px;height:40px" draggable="false">`;
+      this.rmbSlot.dataset.skill = rmb;
+      this.rmbSlot.title = `${skillById(rmb)?.name ?? 'Skill'} — right click to attack. Right-click this slot to clear it.`;
+    } else {
+      // A crossed-swords mark reads as "plain attack" without needing words.
+      this.rmbArt.innerHTML =
+        '<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">' +
+        '<path d="M3 3l7.5 7.5M21 3l-7.5 7.5M12 12l9 9M12 12l-9 9" fill="none" ' +
+        'stroke="#cbb98a" stroke-width="2" stroke-linecap="round"/></svg>';
+      delete this.rmbSlot.dataset.skill;
+      this.rmbSlot.title = 'Basic attack — drag a skill here to replace it.';
+    }
 
     for (let i = 0; i < 6; i++) {
       const slotEl = this.hotSlots[i];
