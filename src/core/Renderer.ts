@@ -6,6 +6,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { PMREMGenerator } from 'three';
 import type { GameSettings } from '../types';
 
 /**
@@ -147,6 +148,13 @@ export class Renderer {
   quality: QualityProfile = QUALITY.high;
   private qualityName: GameSettings['quality'] = 'high';
 
+  /**
+   * Prefiltered environment for image-based lighting. Without one, metal has
+   * nothing to reflect: it goes flat black in shadow and blows to white in the
+   * key light, which is exactly what plate armour was doing.
+   */
+  private envMap: THREE.Texture | null = null;
+
   /** Transient grade state driven by gameplay. */
   private hurt = 0;
   private lowLife = 0;
@@ -173,7 +181,70 @@ export class Renderer {
     this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.buildComposer();
+    this.buildEnvironment();
     window.addEventListener('resize', this.onResize);
+  }
+
+  /**
+   * A small procedural sky used only as a reflection source: cool zenith, warm
+   * bounce near the floor, and a couple of bright patches so curved metal picks
+   * up moving highlights as it turns.
+   */
+  private buildEnvironment(): void {
+    const scene = new THREE.Scene();
+
+    const sky = new THREE.Mesh(
+      new THREE.SphereGeometry(50, 24, 16),
+      new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {},
+        vertexShader: `
+          varying vec3 vDir;
+          void main() {
+            vDir = normalize(position);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vDir;
+          void main() {
+            float up = vDir.y * 0.5 + 0.5;
+            vec3 zenith = vec3(0.10, 0.13, 0.20);
+            vec3 horizon = vec3(0.26, 0.23, 0.21);
+            vec3 ground = vec3(0.09, 0.07, 0.06);
+            vec3 col = up > 0.5
+              ? mix(horizon, zenith, (up - 0.5) * 2.0)
+              : mix(ground, horizon, up * 2.0);
+            // Two warm patches so turning metal catches a travelling highlight.
+            float a = max(0.0, dot(normalize(vDir), normalize(vec3(0.6, 0.5, 0.4))));
+            float b = max(0.0, dot(normalize(vDir), normalize(vec3(-0.5, 0.3, -0.6))));
+            col += vec3(0.55, 0.40, 0.26) * pow(a, 26.0);
+            col += vec3(0.22, 0.30, 0.45) * pow(b, 18.0);
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `,
+      })
+    );
+    scene.add(sky);
+
+    const pmrem = new PMREMGenerator(this.gl);
+    pmrem.compileEquirectangularShader();
+    try {
+      this.envMap = pmrem.fromScene(scene, 0.04).texture;
+    } catch {
+      this.envMap = null;
+    }
+    pmrem.dispose();
+    sky.geometry.dispose();
+    (sky.material as THREE.Material).dispose();
+  }
+
+  /** Applies the reflection environment to a scene. Scenes call this on enter. */
+  applyEnvironment(scene: THREE.Scene, intensity = 0.55): void {
+    if (!this.envMap) return;
+    scene.environment = this.envMap;
+    scene.environmentIntensity = intensity;
   }
 
   private buildComposer(): void {

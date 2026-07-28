@@ -46,6 +46,7 @@ export class ShowcaseScene extends GameScene {
     const page = p.page ?? 0;
     const rng = new Random(0x5140 + page);
 
+    this.engine.renderer.applyEnvironment(this.scene, 0.75);
     this.scene.background = new THREE.Color(0x14161c);
     this.scene.fog = null;
 

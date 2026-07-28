@@ -199,6 +199,7 @@ export class DungeonScene extends GameScene {
     this.nav = new NavGrid(this.level);
     this.lighting = applyBiomeLighting(this.scene, this.biome);
 
+    this.engine.renderer.applyEnvironment(this.scene, 0.4);
     this.scene.fog = new THREE.FogExp2(this.biome.fogColor, this.biome.fogDensity);
     this.scene.background = new THREE.Color(this.biome.fogColor).multiplyScalar(0.4);
 

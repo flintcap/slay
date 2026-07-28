@@ -32,6 +32,7 @@ export class TitleScene extends GameScene {
     const rng = new Random(0xa11ce);
     const scene = this.scene;
 
+    this.engine.renderer.applyEnvironment(scene, 0.5);
     scene.fog = new THREE.FogExp2(0x0a0910, 0.038);
     scene.background = new THREE.Color(0x06060b);
 

@@ -1014,9 +1014,26 @@ export function generateRawMaps(paletteKey: string, seed: number, size: number):
       albedo[o + 2] = (clamp01(fin.b) * 255) | 0;
       albedo[o + 3] = 255;
 
+      // Guard rails on the two channels that decide whether a surface reads as
+      // the material it claims to be.
+      //
+      // Roughness: stone, wood, cloth and leather were baking as low as 0.42,
+      // which is polished-marble territory. Under a bright key light the floor
+      // came out looking like wet metal. Real dressed stone sits around
+      // 0.75-0.95; only metal and crystal belong below that.
+      //
+      // Metalness: a stray `metal` contribution from a history pass turned
+      // non-metals partly metallic, which is what actually produced the mirror.
+      // Anything that is not a metal or a crystal is pinned to dielectric.
+      const isMetal = pal.family === 'metal';
+      const isShiny = isMetal || pal.family === 'crystal';
+      const roughFloor = isShiny ? 0.14 : 0.62;
+      const rOut = Math.max(roughFloor, clamp01(rough));
+      const mOut = isMetal ? clamp01(metal) : Math.min(clamp01(metal), 0.04);
+
       orm[o] = (ao * 255) | 0;
-      orm[o + 1] = (clamp01(rough) * 255) | 0;
-      orm[o + 2] = (clamp01(metal) * 255) | 0;
+      orm[o + 1] = (rOut * 255) | 0;
+      orm[o + 2] = (mOut * 255) | 0;
       orm[o + 3] = 255;
 
       if (emissive) {

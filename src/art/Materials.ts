@@ -95,7 +95,10 @@ function applySet(mat: THREE.MeshStandardMaterial, set: TextureSet, pal: Palette
   mat.roughness = o.roughness ?? 1.0;
   mat.metalness = o.metalness ?? 1.0;
 
-  const bump = o.bump ?? 1;
+  // Normal maps were bound at full strength. On a floor tiled ten times across
+  // the view that reads as a rippling liquid rather than surface relief, so the
+  // default is pulled well back; callers can still push it up per surface.
+  const bump = (o.bump ?? 1) * 0.55;
   mat.normalScale = new THREE.Vector2(bump, bump);
 
   if (set.emissive || pal.emissive !== undefined) {

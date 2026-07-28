@@ -68,6 +68,7 @@ export class TownScene extends GameScene {
     this.town = buildTown(rng);
     this.scene.add(this.town.root);
 
+    this.engine.renderer.applyEnvironment(this.scene, 0.5);
     this.scene.fog = new THREE.FogExp2(0x141019, 0.016);
     this.scene.background = new THREE.Color(0x0b0a12);
 

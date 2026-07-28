@@ -39,6 +39,7 @@ export class CharSelectScene extends GameScene {
   enter(): void {
     const rng = new Random(0xc1a55);
     const scene = this.scene;
+    this.engine.renderer.applyEnvironment(scene, 0.6);
     scene.fog = new THREE.FogExp2(0x07070c, 0.055);
     scene.background = new THREE.Color(0x05050a);
 
