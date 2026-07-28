@@ -199,6 +199,30 @@ const drivers = {
       s.events.emit('ui:open', { panel: 'skills' });
     });
   },
+  artItems: async () => {
+    await page.evaluate(() => window.SLAY.debug.showcase('items', 0));
+    await settle(90);
+  },
+  artItems2: async () => {
+    await page.evaluate(() => window.SLAY.debug.showcase('items', 3));
+    await settle(90);
+  },
+  artRarity: async () => {
+    await page.evaluate(() => window.SLAY.debug.showcase('rarity', 0));
+    await settle(90);
+  },
+  artMonsters: async () => {
+    await page.evaluate(() => window.SLAY.debug.showcase('monsters', 0));
+    await settle(90);
+  },
+  artMonsters2: async () => {
+    await page.evaluate(() => window.SLAY.debug.showcase('monsters', 4));
+    await settle(90);
+  },
+  artClasses: async () => {
+    await page.evaluate(() => window.SLAY.debug.showcase('classes', 0));
+    await settle(90);
+  },
   stash: async () => {
     await page.evaluate(() => window.SLAY.events.emit('ui:open', { panel: 'stash' }));
   },

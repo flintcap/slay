@@ -83,6 +83,11 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       if (s instanceof DungeonScene) s.debugGodMode(on);
     },
 
+    /** Opens the art studio. kind: items | monsters | classes | rarity. */
+    showcase(kind = 'items', page = 0): void {
+      void engine.goTo('boot', { kind, page });
+    },
+
     setDepth(n: number): void {
       const c = save.account.current;
       if (c) {

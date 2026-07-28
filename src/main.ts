@@ -127,6 +127,10 @@ async function main(): Promise<void> {
   engine.register('dungeon', () => new DungeonScene(engine));
   engine.register('death', () => new DeathScene(engine));
 
+  // Art review only: a neutral studio for judging models and materials.
+  const { ShowcaseScene } = await import('./scenes/ShowcaseScene');
+  engine.register('boot', () => new ShowcaseScene(engine));
+
   boot(0.95, 'Opening the gate…');
   await tick();
 
