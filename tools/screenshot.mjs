@@ -134,31 +134,13 @@ async function shoot(name) {
   await settle(60);
   const file = path.join(OUT, `${name}.png`);
   await page.screenshot({ path: file });
-  // A frame that is essentially one flat colour means the scene failed to
-  // render; surface that instead of handing a black PNG to the critic.
-  const stats = await page.evaluate(() => {
-    const c = document.getElementById('view');
-    const g = document.createElement('canvas');
-    g.width = 64;
-    g.height = 36;
-    const ctx = g.getContext('2d');
-    ctx.drawImage(c, 0, 0, 64, 36);
-    const d = ctx.getImageData(0, 0, 64, 36).data;
-    let min = 255;
-    let max = 0;
-    let sum = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      const l = (d[i] + d[i + 1] + d[i + 2]) / 3;
-      min = Math.min(min, l);
-      max = Math.max(max, l);
-      sum += l;
-    }
-    return { min, max, mean: sum / (d.length / 4) };
-  });
-  const flat = stats.max - stats.min < 6;
-  console.log(
-    `${flat ? 'BLANK' : 'ok   '} ${name.padEnd(14)} ${file}  mean=${stats.mean.toFixed(1)} range=${(stats.max - stats.min).toFixed(1)}`
-  );
+  // Judge the written PNG, not the live canvas: without preserveDrawingBuffer
+  // the WebGL buffer is already cleared by the time script code can read it,
+  // which reports every frame as black.
+  const { statSync } = await import('node:fs');
+  const kb = Math.round(statSync(file).size / 1024);
+  const flat = kb < 25;
+  console.log(`${flat ? 'BLANK' : 'ok   '} ${name.padEnd(14)} ${file}  ${kb} KB`);
   return !flat;
 }
 

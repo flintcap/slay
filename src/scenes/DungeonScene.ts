@@ -33,6 +33,7 @@ import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
 import { SkillRunner } from './SkillRunner';
 import { NameplateLayer } from '../ui/Nameplates';
+import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
 import { affixIconUri } from '../art/Icons';
 
@@ -42,7 +43,9 @@ export interface DungeonPayload {
 }
 
 interface GroundLoot {
-  item: Item;
+  /** Null for a gold pile. */
+  item: Item | null;
+  gold: number;
   root: THREE.Object3D;
   pos: THREE.Vector3;
   bornAt: number;
@@ -92,6 +95,7 @@ export class DungeonScene extends GameScene {
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   private plates: NameplateLayer | null = null;
+  private groundLabels: GroundLabelLayer | null = null;
   private transitioning = false;
   private runTime = 0;
   private godMode = false;
@@ -132,6 +136,8 @@ export class DungeonScene extends GameScene {
     // A light on the hero is standard for the genre: torch placement is
     // procedural, so without it the player regularly ends up in pitch black.
     this.plates = new NameplateLayer();
+    this.groundLabels = new GroundLabelLayer();
+    this.groundLabels.onPickUp = (uid) => this.pickUpByUid(uid);
     this.heroLight = new THREE.PointLight(0xffd9a8, 14, 17, 2);
     this.heroLight.castShadow = false;
     this.scene.add(this.heroLight);
@@ -366,6 +372,18 @@ export class DungeonScene extends GameScene {
       this.heroLight.intensity = 14 + Math.sin(elapsed * 3.1) * 0.7;
     }
 
+    if (this.groundLabels) {
+      const shift = this.engine.input.keyDown('ShiftLeft') || this.engine.input.keyDown('ShiftRight');
+      this.groundLabels.update(
+        this.camera,
+        this.loot.filter((l) => l.item !== null) as Array<{ item: Item; root: THREE.Object3D; pos: THREE.Vector3 }>,
+        this.player.position,
+        window.innerWidth,
+        window.innerHeight,
+        shift
+      );
+    }
+
     if (this.plates) {
       const targets = this.boss ? [...this.enemies, this.boss] : this.enemies;
       this.plates.update(
@@ -556,8 +574,7 @@ export class DungeonScene extends GameScene {
       }
     }
     if (drops.gold > 0) {
-      c.gold += Math.round(drops.gold * dif.goldFind);
-      events.emit('loot:gold', { amount: drops.gold });
+      this.dropGold(Math.round(drops.gold * dif.goldFind), pos);
     }
     for (const [id, n] of Object.entries(drops.materials)) save.addMaterial(id, n);
   }
@@ -570,8 +587,58 @@ export class DungeonScene extends GameScene {
     const pos = new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d);
     model.position.copy(pos);
     this.scene.add(model);
-    this.loot.push({ item, root: model, pos, bornAt: this.runTime });
+    this.loot.push({ item, gold: 0, root: model, pos, bornAt: this.runTime });
     events.emit('loot:dropped', { item, x: pos.x, z: pos.z });
+  }
+
+  /** Scatters a gold pile that the player collects by walking over it. */
+  private dropGold(amount: number, at: THREE.Vector3): void {
+    if (amount <= 0) return;
+    const rng = this.rng;
+    const a = rng.range(0, Math.PI * 2);
+    const d = rng.range(0.2, 1.1);
+    const pos = new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d);
+
+    const group = new THREE.Group();
+    const coins = Math.min(7, 2 + Math.floor(Math.log10(Math.max(10, amount))));
+    for (let i = 0; i < coins; i++) {
+      const c = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.075, 0.075, 0.022, 10),
+        emissiveMaterial(0xffc63a, 0.5)
+      );
+      c.position.set(rng.range(-0.16, 0.16), 0.012 + i * 0.016, rng.range(-0.16, 0.16));
+      c.rotation.set(rng.range(-0.2, 0.2), rng.range(0, 3), rng.range(-0.2, 0.2));
+      group.add(c);
+    }
+    const glow = new THREE.PointLight(0xffc040, 2.2, 3.2, 2);
+    glow.position.y = 0.35;
+    group.add(glow);
+
+    group.position.copy(pos);
+    this.scene.add(group);
+    this.loot.push({ item: null, gold: amount, root: group, pos, bornAt: this.runTime });
+  }
+
+  /** Picks up a specific ground item, used by the label click handler. */
+  private pickUpByUid(uid: string): boolean {
+    const i = this.loot.findIndex((l) => l.item?.uid === uid);
+    if (i < 0) return false;
+    const l = this.loot[i]!;
+    if (l.pos.distanceTo(this.player.position) > 4.5) {
+      toast('Too far away.', 'bad');
+      return false;
+    }
+    if (!l.item || !addItemToInventory(this.player.character, l.item)) {
+      toast('Your pack is full.', 'bad');
+      return false;
+    }
+    this.loot.splice(i, 1);
+    l.root.removeFromParent();
+    disposeObject(l.root);
+    events.emit('loot:pickedUp', { item: l.item });
+    this.fx.burst('pickup', l.pos.x, 0.5, l.pos.z, { count: 14 });
+    audio.play('pickup');
+    return true;
   }
 
   private updateLoot(dt: number, elapsed: number, input: Engine['input']): void {
@@ -602,15 +669,15 @@ export class DungeonScene extends GameScene {
         }
       });
 
-      if (l.pos.distanceTo(this.player.position) < pickupRadius) {
-        const ok = addItemToInventory(this.player.character, l.item);
-        if (ok) {
-          this.loot.splice(i, 1);
-          l.root.removeFromParent();
-          disposeObject(l.root);
-          events.emit('loot:pickedUp', { item: l.item });
-          this.fx.burst('pickup', l.pos.x, 0.5, l.pos.z, { count: 14 });
-        }
+      // Gold is collected by walking over it; items wait to be clicked.
+      if (l.gold > 0 && l.pos.distanceTo(this.player.position) < pickupRadius + 0.4) {
+        this.player.character.gold += l.gold;
+        events.emit('loot:gold', { amount: l.gold });
+        this.loot.splice(i, 1);
+        l.root.removeFromParent();
+        disposeObject(l.root);
+        this.fx.burst('pickup', l.pos.x, 0.4, l.pos.z, { count: 10, color: 0xffc63a });
+        audio.play('gold');
       }
     }
   }
@@ -748,6 +815,8 @@ export class DungeonScene extends GameScene {
     this.heroLight = null;
     this.plates?.dispose();
     this.plates = null;
+    this.groundLabels?.dispose();
+    this.groundLabels = null;
     this.skills.dispose();
     this.effects.dispose();
     this.fx.dispose();

@@ -314,7 +314,7 @@ export class HUD {
 
     this.buffStrip = div('hud-buffs');
     const topLeft = div('hud-topleft');
-    add(topLeft, header, this.buffStrip);
+    add(topLeft, header);
 
     // --- top-right: minimap + quest --------------------------------------
     const topRight = div('hud-topright');
@@ -480,6 +480,9 @@ export class HUD {
     this.floatLayer = div('float-layer');
     this.centerLayer = div('center-layer');
 
+    // Buffs live directly above the hotbar: that is where the player's eyes
+    // already are during a fight, not the top-left corner.
+    bar.insertBefore(this.buffStrip, bar.firstChild);
     add(this.root, topLeft, topRight, this.bossBar, this.centerLayer, this.promptBox, goldBox, bar, this.floatLayer);
     this.root.style.display = 'none';
   }

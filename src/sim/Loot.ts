@@ -619,8 +619,10 @@ interface RankProfile {
 }
 
 const RANK_PROFILE: Record<MonsterRank, RankProfile> = {
-  normal: { items: 0, bonusChance: 0.17, goldMul: 1, socketableChance: 0.035, materialRolls: 0, mfBonus: 0 },
-  champion: { items: 0, bonusChance: 0.62, goldMul: 2.4, socketableChance: 0.1, materialRolls: 1, mfBonus: 15 },
+  // Normals dropped once every six kills, which reads as "loot is broken"
+  // long before it reads as "loot is rare".
+  normal: { items: 0, bonusChance: 0.38, goldMul: 1, socketableChance: 0.06, materialRolls: 0, mfBonus: 0 },
+  champion: { items: 1, bonusChance: 0.45, goldMul: 2.4, socketableChance: 0.12, materialRolls: 1, mfBonus: 15 },
   elite: { items: 1, bonusChance: 0.5, goldMul: 4.2, socketableChance: 0.17, materialRolls: 1, mfBonus: 35 },
   rare: { items: 2, bonusChance: 0.55, goldMul: 7, socketableChance: 0.26, materialRolls: 2, mfBonus: 60 },
   boss: { items: 4, bonusChance: 0.9, goldMul: 22, socketableChance: 0.85, materialRolls: 4, mfBonus: 120 },

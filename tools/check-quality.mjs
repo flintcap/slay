@@ -17,16 +17,11 @@ await page.waitForFunction(()=>window.SLAY.engine.currentSceneId==='dungeon',nul
 const frames=n=>page.evaluate(k=>new Promise(r=>{let i=0;const s=()=>(++i>=k?r():requestAnimationFrame(s));requestAnimationFrame(s);}),n);
 const sample=async(label)=>{
   await frames(40);
-  const st=await page.evaluate(()=>{
-    const c=document.getElementById('view');
-    const g=document.createElement('canvas');g.width=48;g.height=27;
-    const x=g.getContext('2d');x.drawImage(c,0,0,48,27);
-    const d=x.getImageData(0,0,48,27).data;
-    let min=255,max=0,sum=0;
-    for(let i=0;i<d.length;i+=4){const l=(d[i]+d[i+1]+d[i+2])/3;min=Math.min(min,l);max=Math.max(max,l);sum+=l;}
-    return {mean:+(sum/(d.length/4)).toFixed(1), range:+(max-min).toFixed(1)};
-  });
-  console.log(label.padEnd(10), JSON.stringify(st), st.range<4?'  <-- BLACK':'');
+  // A screenshot goes through the compositor, so it sees what the player sees.
+  // A featureless frame compresses to almost nothing, which is the tell.
+  const buf = await page.screenshot({ clip: { x: 0, y: 0, width: 900, height: 430 } });
+  const kb = Math.round(buf.length / 1024);
+  console.log(label.padEnd(10), String(kb).padStart(5) + ' KB', kb < 12 ? '  <-- LIKELY BLACK' : '');
 };
 await sample('baseline');
 for (const q of ['low','medium','ultra','high','low']) {

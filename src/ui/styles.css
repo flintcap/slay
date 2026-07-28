@@ -4679,3 +4679,78 @@ input.slider::-moz-range-thumb {
 .cs-diflist.bad .cs-difmark { color: #e07a6a; }
 .cs-diflist.good .cs-diftext { color: #b8c9ad; }
 .cs-diflist.bad .cs-diftext { color: #c9a9a0; }
+
+/* Buff strip, centred above the hotbar ------------------------------------- */
+.hud-buffs {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 0;
+  margin: 0 auto 6px;
+  pointer-events: none;
+}
+.hud-buffs:empty { display: none; }
+
+/* Ground loot labels -------------------------------------------------------- */
+.groundlabels {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 38;
+  contain: layout style;
+}
+.glabel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  will-change: transform;
+}
+.glabel-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--gc, #d8d8d8);
+  background: rgba(6, 6, 9, 0.82);
+  border: 1px solid color-mix(in srgb, var(--gc, #888) 55%, transparent);
+  border-radius: 3px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.glabel.is-hover .glabel-name {
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px -2px var(--gc, #888);
+  background: rgba(14, 12, 10, 0.95);
+}
+.glabel-detail {
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  background: rgba(6, 6, 9, 0.94);
+  border: 1px solid color-mix(in srgb, var(--gc, #888) 40%, transparent);
+  border-radius: 3px;
+  padding: 5px 8px;
+  max-width: 260px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+.glabel.is-hover .glabel-detail { display: flex; }
+.glabel-line { font-size: 11px; line-height: 1.35; white-space: nowrap; }
+.glabel-detail.is-full { max-width: 320px; }
+.glabel[data-rarity='mythic'] .glabel-name,
+.glabel[data-rarity='ancient'] .glabel-name,
+.glabel[data-rarity='unique'] .glabel-name { animation: glabelPulse 2.4s ease-in-out infinite; }
+@keyframes glabelPulse {
+  0%, 100% { box-shadow: 0 0 8px -3px var(--gc); }
+  50% { box-shadow: 0 0 16px -1px var(--gc); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glabel[data-rarity] .glabel-name { animation: none; }
+}
