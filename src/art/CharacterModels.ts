@@ -365,6 +365,70 @@ function limbBetween(a: THREE.Vector3, b: THREE.Vector3, rA: number, rB: number,
   return spanTo(limb(len, rB, rA, seg), a, b);
 }
 
+/**
+ * Builds a closed surface from a stack of elliptical rings.
+ *
+ * A human torso is not a box and it is not a cylinder: it is wide and deep at
+ * the ribcage, pinched at the waist, and wide again at the pelvis, and the
+ * cross-section is an ellipse rather than a circle. Two tapered boxes cannot
+ * express that, which is why the old bodies read as slabs with tubes stuck on.
+ */
+function ringStack(
+  rings: Array<{ y: number; w: number; d: number; z?: number }>,
+  cols = 16,
+): THREE.BufferGeometry {
+  const rows = rings.length;
+  const verts: number[] = [];
+  const uvs: number[] = [];
+  const idx: number[] = [];
+
+  for (let r = 0; r < rows; r++) {
+    const ring = rings[r];
+    for (let c = 0; c <= cols; c++) {
+      const t = c / cols;
+      const ang = t * Math.PI * 2;
+      verts.push(Math.cos(ang) * ring.w, ring.y, Math.sin(ang) * ring.d + (ring.z ?? 0));
+      uvs.push(t, r / (rows - 1));
+    }
+  }
+  for (let r = 0; r < rows - 1; r++) {
+    for (let c = 0; c < cols; c++) {
+      const a0 = r * (cols + 1) + c;
+      const b0 = a0 + 1;
+      const c0 = a0 + cols + 1;
+      const d0 = c0 + 1;
+      idx.push(a0, c0, d0, a0, d0, b0);
+    }
+  }
+  // Caps, so the shape is solid from any angle.
+  const capTop = verts.length / 3;
+  const top = rings[rows - 1];
+  verts.push(0, top.y, top.z ?? 0);
+  uvs.push(0.5, 1);
+  for (let c = 0; c < cols; c++) {
+    idx.push(capTop, (rows - 1) * (cols + 1) + c + 1, (rows - 1) * (cols + 1) + c);
+  }
+  const capBot = verts.length / 3;
+  const bot = rings[0];
+  verts.push(0, bot.y, bot.z ?? 0);
+  uvs.push(0.5, 0);
+  for (let c = 0; c < cols; c++) idx.push(capBot, c, c + 1);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** An ellipsoid — skulls, deltoids, knees, calves. Cheap and always readable. */
+function blob(w: number, h: number, d: number, seg = 12): THREE.BufferGeometry {
+  const g = new THREE.SphereGeometry(1, seg, Math.max(6, seg - 4));
+  g.scale(w, h, d);
+  return g;
+}
+
 interface Part {
   geo: THREE.BufferGeometry;
   /** Material bucket key. */

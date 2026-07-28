@@ -9,7 +9,8 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 4173 --strictPort",
-    "shots": "node tools/screenshot.mjs"
+    "shots": "node tools/screenshot.mjs",
+    "build:single": "vite build --config vite.config.single.ts"
   },
   "repository": {
     "type": "git",

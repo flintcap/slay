@@ -6,10 +6,41 @@
  * so this emits page content only — a <title>, the inlined stylesheet, the
  * game's markup, and the inlined module script.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+
+// Run the single-file build here rather than trusting whatever is on disk.
+//
+// This script reads dist-single/bundle.*, which come from vite.config.single.ts
+// — a different config from the plain `npm run build` that produces dist/. That
+// difference silently shipped a days-old build to the artifact: everything
+// typechecked, everything built, the bundle was written, and none of the new
+// work was in it. Building here makes that impossible.
+console.log('building single-file bundle...');
+execFileSync('npx', ['vite', 'build', '--config', 'vite.config.single.ts'], {
+  stdio: ['ignore', 'ignore', 'inherit'],
+});
 
 const css = readFileSync('dist-single/bundle.css', 'utf8');
 let js = readFileSync('dist-single/bundle.js', 'utf8');
+
+// Belt and braces: refuse to publish a bundle older than the newest source
+// file, whatever the reason.
+function newestSource(dir) {
+  let newest = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    newest = Math.max(newest, entry.isDirectory() ? newestSource(full) : statSync(full).mtimeMs);
+  }
+  return newest;
+}
+const builtAt = statSync('dist-single/bundle.js').mtimeMs;
+const srcAt = newestSource('src');
+if (builtAt < srcAt) {
+  console.error('bundle.js is older than src/ — refusing to publish a stale artifact.');
+  process.exit(1);
+}
 
 // A literal </script> anywhere in the bundle's string data would close the tag
 // early. Neutralise it without changing what the JS evaluates to.

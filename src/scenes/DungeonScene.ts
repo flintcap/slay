@@ -36,6 +36,7 @@ import { NameplateLayer } from '../ui/Nameplates';
 import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
 import { affixIconUri } from '../art/Icons';
+import { typeColor } from '../entities/Abilities';
 
 export interface DungeonPayload {
   depth: number;
@@ -138,6 +139,20 @@ export class DungeonScene extends GameScene {
 
     // A light on the hero is standard for the genre: torch placement is
     // procedural, so without it the player regularly ends up in pitch black.
+    // Floating combat text. The particle system has always been able to draw
+    // these; nothing ever asked it to, so every hit in the game landed silently.
+    this.offs.push(
+      events.on('enemy:damaged', (e) => {
+        if (!save.settings.showDamageNumbers) return;
+        this.fx.damageNumber(
+          String(Math.max(1, Math.round(e.amount))),
+          e.x, e.y + 0.35, e.z,
+          typeColor(e.type),
+          !!e.crit,
+        );
+      }),
+    );
+
     this.plates = new NameplateLayer();
     this.groundLabels = new GroundLabelLayer();
     this.groundLabels.onPickUp = (uid) => this.pickUpByUid(uid);
@@ -312,6 +327,18 @@ export class DungeonScene extends GameScene {
       damagePlayer: (packet: DamagePacket) => {
         if (this.godMode) return;
         const taken = this.player.takeDamage(packet, this.rng);
+        if (taken > 0 && save.settings.showDamageNumbers) {
+          // Player damage in the packet's own colour, so a big fire hit is
+          // readable as fire without reading the number.
+          this.fx.damageNumber(
+            String(Math.max(1, Math.round(taken))),
+            this.player.position.x,
+            1.9,
+            this.player.position.z,
+            typeColor(packet.type),
+            false,
+          );
+        }
         if (taken > 0) {
           this.engine.renderer.flashHurt(Math.min(1, taken / Math.max(1, this.player.stats.life * 0.25)));
           this.rig.addTrauma(Math.min(0.5, taken / Math.max(1, this.player.stats.life * 0.4)));
