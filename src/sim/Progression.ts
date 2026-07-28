@@ -42,8 +42,11 @@ const STAT_MILESTONES: Record<number, number> = {
   99: 15,
 };
 
+import { activeDifficulty } from '../data/difficulties';
+
 export function statPointsForLevel(level: number): number {
-  return STAT_POINTS_PER_LEVEL + (STAT_MILESTONES[level] ?? 0);
+  // Harder tiers hand out extra attribute points every level.
+  return (STAT_POINTS_PER_LEVEL + (STAT_MILESTONES[level] ?? 0)) + activeDifficulty().statPointsPerLevel;
 }
 
 export function skillPointsForLevel(level: number): number {

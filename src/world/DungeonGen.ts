@@ -35,6 +35,7 @@ import type {
   Vec2,
 } from '../types';
 import { Random, streamFor } from '../core/RNG';
+import { activeDifficulty } from '../data/difficulties';
 import { clamp } from '../art/Noise';
 import { BIOMES as BIOME_LIST, biomeForDepth, getBiome, layoutForBiome } from './Biomes';
 import {
@@ -500,19 +501,29 @@ export function monsterBudget(depth: number, floorTiles: number, levelIndex: num
   const byArea = floorTiles / 14;
   // Later floors of a run are hotter than the first.
   const rampe = 0.85 + 0.3 * (levelIndex / Math.max(1, levelsTotal - 1));
-  return Math.max(8, Math.round(Math.min(soft, byArea) * rampe));
+  // Difficulty widens or thins every floor.
+  return Math.max(3, Math.round((Math.max(8, Math.round(Math.min(soft, byArea) * rampe))) * activeDifficulty().packSize));
 }
 
 export function eliteDensity(depth: number): number {
-  return clamp(0.06 + depth * 0.0042, 0.06, 0.44);
+  const dif = activeDifficulty();
+  // Below the tier's elite floor there are no elite packs at all. This is the
+  // single most important early-game lever: a level 1 character meeting a
+  // 4.5x-life elite pack on floor 1 simply dies.
+  if (depth < dif.eliteFloor) return 0;
+  return clamp((0.05 + depth * 0.0038) * dif.eliteDensity, 0, 0.5);
 }
 
 export function championDensity(depth: number): number {
-  return clamp(0.12 + depth * 0.006, 0.12, 0.5);
+  const dif = activeDifficulty();
+  // Champions are the gentler step up, so they arrive one floor earlier.
+  if (depth < dif.eliteFloor - 1) return 0;
+  return clamp((0.09 + depth * 0.0055) * dif.eliteDensity, 0, 0.55);
 }
 
 export function affixCountFor(rank: MonsterRank, depth: number): number {
-  const base = 1 + Math.floor(depth / 16);
+  const extra = activeDifficulty().extraAffixes;
+  const base = 1 + Math.floor(depth / 16) + extra;
   if (rank === 'champion') return clamp(base - 1, 1, 3);
   if (rank === 'elite') return clamp(base, 1, 4);
   if (rank === 'rare') return clamp(base + 1, 2, 5);

@@ -26,6 +26,7 @@ import type {
   Stats,
 } from '../types';
 import { events } from '../core/Events';
+import { activeDifficulty } from '../data/difficulties';
 import { emptyStats } from '../sim/Stats';
 import { rollDamage, mitigate } from '../sim/Combat';
 import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from './MonsterModels';
@@ -86,10 +87,18 @@ export interface DepthCurve {
  */
 export function depthCurve(depth: number): DepthCurve {
   const d = Math.max(1, depth);
+  const dif = activeDifficulty();
+
+  // The early floors were tuned far too hot: a fresh level 1 character met
+  // depth-1 damage it could not survive once two monsters connected. The base
+  // damage term is lower and ramps in over the first few floors, which leaves
+  // the late curve untouched — by depth 10 the eased term is ~1.
+  const ease = 0.55 + 0.45 * Math.min(1, (d - 1) / 8);
+
   return {
-    life: 26 * Math.pow(1.155, d - 1) + d * 12,
-    damage: 4.2 * Math.pow(1.118, d - 1) + d * 1.4,
-    defense: 8 * Math.pow(1.095, d - 1) + d * 3,
+    life: (24 * Math.pow(1.155, d - 1) + d * 11) * dif.monsterLife,
+    damage: (3.1 * Math.pow(1.118, d - 1) + d * 1.15) * ease * dif.monsterDamage,
+    defense: (8 * Math.pow(1.095, d - 1) + d * 3) * dif.monsterDefense,
     attackRating: 30 * Math.pow(1.1, d - 1) + d * 12,
     xp: 9 * Math.pow(1.105, d - 1) + d * 4,
     level: Math.max(1, Math.round(d * 1.05)),

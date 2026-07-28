@@ -362,6 +362,8 @@ export interface Character {
   id: string;
   name: string;
   classId: CharClassId;
+  /** Chosen at creation, fixed for the character's life. */
+  difficulty?: string;
   level: number;
   xp: number;
   /** Unspent points. */

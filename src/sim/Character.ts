@@ -22,6 +22,7 @@ import type {
 import { events } from '../core/Events';
 import { INVENTORY_SIZE } from '../core/Save';
 import { CLASS_BY_ID, getClass, STARTING_SKILL_HINTS } from '../data/classes';
+import { getDifficulty, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulties';
 import {
   SKILLS,
   SKILL_BY_ID,
@@ -80,22 +81,29 @@ function makeStartingItem(baseId: string, rng: Rng): Item | null {
   };
 }
 
-export function createCharacter(name: string, classId: CharClassId, rng: Rng): Character {
+export function createCharacter(
+  name: string,
+  classId: CharClassId,
+  rng: Rng,
+  difficulty: DifficultyId = DEFAULT_DIFFICULTY
+): Character {
+  const dif = getDifficulty(difficulty);
   const cls = CLASS_BY_ID[classId] ? getClass(classId) : getClass('warden');
   const c: Character = {
     id: uid(rng, 'char'),
     name: name.trim() || cls.name,
     classId: cls.id,
+    difficulty,
     level: 1,
     xp: 0,
-    statPoints: 0,
-    skillPoints: 1,
+    statPoints: dif.startStatPoints,
+    skillPoints: 1 + dif.startSkillPoints,
     allocated: { strength: 0, dexterity: 0, vitality: 0, energy: 0 },
     skills: {},
     hotbar: [null, null, null, null, null, null],
     equipment: {},
     inventory: new Array<Item | null>(INVENTORY_SIZE).fill(null),
-    gold: 0,
+    gold: dif.startGold,
     depthRecord: 0,
     playtime: 0,
     createdAt: Date.now(),

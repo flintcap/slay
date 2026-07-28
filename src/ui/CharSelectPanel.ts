@@ -12,6 +12,7 @@ import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { createCharacter } from '../sim/Character';
+import { DIFFICULTIES, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulties';
 import { Random, randomSeed } from '../core/RNG';
 import {
   Panel,
@@ -70,6 +71,9 @@ export class CharSelectPanel {
   private cards = new Map<CharClassId, HTMLDivElement>();
   private selected: CharClassId | null = null;
   private nameInput: HTMLInputElement;
+  private difficulty: DifficultyId = DEFAULT_DIFFICULTY;
+  private difficultyCards = new Map<DifficultyId, HTMLDivElement>();
+  private difficultyDetail!: HTMLDivElement;
   private memorialList: HTMLDivElement;
   private beginBtn: Button;
   private rng = new Random(randomSeed());
@@ -100,6 +104,26 @@ export class CharSelectPanel {
 
     // --- side rail --------------------------------------------------------
     const side = div('cs-side');
+
+    // --- difficulty ------------------------------------------------------
+    const difbox = div('cs-difbox');
+    difbox.appendChild(div('goldbank-label', 'Choose your difficulty'));
+    const difRow = div('cs-difrow');
+    for (const d of DIFFICULTIES) {
+      const card = div('cs-difcard');
+      card.dataset.id = d.id;
+      card.style.setProperty('--dc', '#' + d.color.toString(16).padStart(6, '0'));
+      card.appendChild(span('cs-difpip', String(d.rank)));
+      card.appendChild(span('cs-difname', d.name));
+      card.title = d.guidance;
+      card.addEventListener('click', () => this.setDifficulty(d.id));
+      this.difficultyCards.set(d.id, card);
+      difRow.appendChild(card);
+    }
+    difbox.appendChild(difRow);
+    this.difficultyDetail = div('cs-difdetail');
+    difbox.appendChild(this.difficultyDetail);
+    side.appendChild(difbox);
 
     const namebox = div('cs-namebox');
     namebox.appendChild(div('goldbank-label', 'Name your character'));
@@ -144,6 +168,7 @@ export class CharSelectPanel {
     this.memorialList = div('cs-memorial-list');
     memorial.appendChild(this.memorialList);
     side.appendChild(memorial);
+    this.setDifficulty(DEFAULT_DIFFICULTY);
 
     body.appendChild(side);
     wrap.appendChild(body);
@@ -252,6 +277,36 @@ export class CharSelectPanel {
     }
   }
 
+  /** Selects a tier and rewrites the pros/cons panel beneath the row. */
+  private setDifficulty(id: DifficultyId): void {
+    this.difficulty = id;
+    for (const [key, el] of this.difficultyCards) {
+      el.classList.toggle('is-on', key === id);
+    }
+    const d = DIFFICULTIES.find((x) => x.id === id);
+    clear(this.difficultyDetail);
+    if (!d) return;
+
+    this.difficultyDetail.appendChild(span('cs-difblurb', d.blurb));
+    this.difficultyDetail.appendChild(span('cs-difguide', d.guidance));
+
+    const good = div('cs-diflist good');
+    for (const line of d.pros) {
+      const r = div('cs-difline');
+      r.appendChild(span('cs-difmark', '+'));
+      r.appendChild(span('cs-diftext', line));
+      good.appendChild(r);
+    }
+    const bad = div('cs-diflist bad');
+    for (const line of d.cons) {
+      const r = div('cs-difline');
+      r.appendChild(span('cs-difmark', '-'));
+      r.appendChild(span('cs-diftext', line));
+      bad.appendChild(r);
+    }
+    add(this.difficultyDetail, good, bad);
+  }
+
   // -- start a run ---------------------------------------------------------
 
   private begin(): void {
@@ -259,7 +314,10 @@ export class CharSelectPanel {
     if (!id) return;
     const name = (this.nameInput.value || '').trim() || rollName(this.rng);
 
-    const created = attempt(() => createCharacter(name, id, new Random(randomSeed())), null);
+    const created = attempt(
+      () => createCharacter(name, id, new Random(randomSeed()), this.difficulty),
+      null
+    );
     if (!created) {
       events.emit('toast', { text: 'Could not forge that character.', kind: 'bad' });
       return;

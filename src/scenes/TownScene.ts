@@ -10,6 +10,7 @@ import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { Player } from '../entities/Player';
 import { buildTown, type TownBuild } from '../world/Town';
+import { setActiveDifficulty } from '../data/difficulties';
 
 /** Interaction points the player can walk up to and press E on. */
 interface Interactable {
@@ -62,6 +63,7 @@ export class TownScene extends GameScene {
       return;
     }
 
+    setActiveDifficulty(character.difficulty as never);
     const rng = new Random(0x70b6);
     this.town = buildTown(rng);
     this.scene.add(this.town.root);

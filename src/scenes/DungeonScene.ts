@@ -33,6 +33,7 @@ import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
 import { SkillRunner } from './SkillRunner';
 import { NameplateLayer } from '../ui/Nameplates';
+import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
 
 export interface DungeonPayload {
   depth: number;
@@ -118,6 +119,10 @@ export class DungeonScene extends GameScene {
     const depth = Math.max(1, p.depth ?? 1);
     const seed = p.seed ?? randomSeed();
     this.rng = new Random(seed);
+
+    // Must be set before anything generates: world gen and monster stats both
+    // read the active tier.
+    setActiveDifficulty(character.difficulty as never);
 
     this.run = generateRun(depth, seed, character.classId);
     this.player = new Player(character, seed);
@@ -479,8 +484,9 @@ export class DungeonScene extends GameScene {
     onKill(this.run.quest, monsterId, family, rank);
 
     const c = this.player.character;
+    const dif = activeDifficulty();
     const xpMul = rank === 'boss' ? 22 : rank === 'rare' ? 5 : rank === 'elite' ? 3.2 : rank === 'champion' ? 1.9 : 1;
-    const xp = Math.round((8 + this.run.depth * 6) * xpMul);
+    const xp = Math.round((8 + this.run.depth * 6) * xpMul * dif.xp);
     if (grantXp(c, xp)) {
       this.player.refreshStats();
       // Levelling up is a full heal, as the genre expects.
@@ -491,10 +497,23 @@ export class DungeonScene extends GameScene {
     }
     events.emit('player:xp', { gained: xp, total: c.xp, toNext: 0 });
 
-    const drops = rollDrops(ilvl, rank, this.rng, this.player.stats.magicFind, this.player.stats.goldFind);
+    const drops = rollDrops(
+      ilvl,
+      rank,
+      this.rng,
+      this.player.stats.magicFind * dif.magicFind + (dif.magicFind - 1) * 100,
+      this.player.stats.goldFind * dif.goldFind
+    );
     for (const item of drops.items) this.dropItem(item, pos);
+    // Harder tiers guarantee extra drops from anything above a normal monster.
+    if (dif.bonusDrops > 0 && rank !== 'normal') {
+      for (let i = 0; i < dif.bonusDrops; i++) {
+        const extra = rollDrops(ilvl, rank, this.rng, this.player.stats.magicFind * dif.magicFind, 0);
+        for (const item of extra.items.slice(0, 1)) this.dropItem(item, pos);
+      }
+    }
     if (drops.gold > 0) {
-      c.gold += drops.gold;
+      c.gold += Math.round(drops.gold * dif.goldFind);
       events.emit('loot:gold', { amount: drops.gold });
     }
     for (const [id, n] of Object.entries(drops.materials)) save.addMaterial(id, n);

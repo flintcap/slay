@@ -3,6 +3,7 @@ import type { Character, Stats, DamagePacket, EquipSlot } from '../types';
 import { computeStats } from '../sim/Stats';
 import { mitigate } from '../sim/Combat';
 import { StatusContainer } from '../sim/Status';
+import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
 import { buildPlayerModel, attachToSocket } from '../art/CharacterModels';
 import { Animator } from '../art/Animation';
@@ -220,6 +221,8 @@ export class Player {
       this.animator.play('hurt', { fade: 0.05, once: true });
       return 0;
     }
+    // Harder tiers make every hit land heavier, after mitigation.
+    result.amount *= activeDifficulty().damageTaken;
     this.life -= result.amount;
     events.emit('player:damaged', {
       amount: result.amount,
@@ -284,8 +287,9 @@ export class Player {
       const step = this.regenAccum;
       this.regenAccum = 0;
       if (this.alive) {
-        this.life = Math.min(this.stats.life, this.life + this.stats.lifeRegen * step);
-        this.mana = Math.min(this.stats.mana, this.mana + this.stats.manaRegen * step);
+        const regen = activeDifficulty().regen;
+        this.life = Math.min(this.stats.life, this.life + this.stats.lifeRegen * step * regen);
+        this.mana = Math.min(this.stats.mana, this.mana + this.stats.manaRegen * step * regen);
       }
     }
 

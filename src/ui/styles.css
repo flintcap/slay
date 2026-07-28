@@ -4625,3 +4625,57 @@ input.slider::-moz-range-thumb {
 }
 .hotslot-rmb.is-basic .hotslot-art { opacity: 0.75; }
 .hotslot-rmb.drop-ok { outline: 2px solid #7dd87d; }
+
+/* Difficulty picker --------------------------------------------------------- */
+.cs-difbox {
+  background: linear-gradient(180deg, rgba(24, 21, 18, 0.9), rgba(16, 14, 12, 0.9));
+  border: 1px solid rgba(203, 185, 138, 0.22);
+  border-radius: 5px;
+  padding: 11px 12px 12px;
+  margin-bottom: 12px;
+}
+.cs-difrow { display: flex; gap: 5px; margin-top: 8px; }
+.cs-difcard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+.cs-difcard:hover { border-color: var(--dc); transform: translateY(-1px); }
+.cs-difcard.is-on {
+  border-color: var(--dc);
+  background: color-mix(in srgb, var(--dc) 16%, rgba(0, 0, 0, 0.5));
+  box-shadow: 0 0 12px -2px var(--dc);
+}
+.cs-difpip {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dc);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.cs-difname {
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #b6ab92;
+  white-space: nowrap;
+}
+.cs-difcard.is-on .cs-difname { color: #efe6d0; }
+.cs-difdetail { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+.cs-difblurb { font-size: 12px; font-style: italic; color: #d9cdb2; }
+.cs-difguide { font-size: 11px; color: #8e846f; line-height: 1.4; margin-bottom: 5px; }
+.cs-diflist { display: flex; flex-direction: column; gap: 2px; }
+.cs-difline { display: flex; gap: 6px; align-items: baseline; font-size: 11px; line-height: 1.35; }
+.cs-difmark { width: 8px; font-weight: 700; flex: none; }
+.cs-diflist.good .cs-difmark { color: #7dd87d; }
+.cs-diflist.bad .cs-difmark { color: #e07a6a; }
+.cs-diflist.good .cs-diftext { color: #b8c9ad; }
+.cs-diflist.bad .cs-diftext { color: #c9a9a0; }
