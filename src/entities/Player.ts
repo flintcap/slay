@@ -5,7 +5,8 @@ import { mitigate } from '../sim/Combat';
 import { StatusContainer } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
-import { buildPlayerModel, attachToSocket } from '../art/CharacterModels';
+import { buildPlayerModel, attachToSocket, clearSocket } from '../art/CharacterModels';
+import { disposeObject } from '../core/Engine';
 import { Animator } from '../art/Animation';
 import { buildItemModel } from '../art/ItemModels';
 import { getBase } from '../sim/Loot';
@@ -20,6 +21,12 @@ export interface PlayerContext {
 
 const TMP = new THREE.Vector3();
 const TMP2 = new THREE.Vector3();
+
+/**
+ * Equipment slots that put geometry on the body. Rings and amulets are left
+ * off: at gameplay camera distance they cost a draw call and show nothing.
+ */
+const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt'];
 
 /**
  * The player avatar: movement, collision, resources, and animation state.
@@ -58,6 +65,8 @@ export class Player {
   private regenAccum = 0;
   private rng: Rng;
   private equipMeshes = new Map<EquipSlot, THREE.Object3D>();
+  /** Last-built item identity per slot, so unchanged gear is never rebuilt. */
+  private equipKeys = new Map<EquipSlot, string>();
 
   /** Set by DungeonScene when the player has no business moving (dead, cutscene). */
   frozen = false;
@@ -89,16 +98,31 @@ export class Player {
     this.refreshEquipmentVisuals();
   }
 
-  /** Rebuilds attached weapon/armor meshes from current equipment. */
+  /**
+   * Rebuilds attached weapon/armor meshes from current equipment.
+   *
+   * Only slots whose item actually changed are rebuilt. `refreshStats` calls
+   * this, and `applyStatus` calls `refreshStats`, so a naive full rebuild threw
+   * away and re-authored every equipped model on every buff tick.
+   */
   private refreshEquipmentVisuals(): void {
-    for (const [slot, mesh] of this.equipMeshes) {
-      mesh.removeFromParent();
-      this.equipMeshes.delete(slot);
-    }
     const eq = this.character.equipment;
-    for (const slot of ['mainHand', 'offHand', 'helm', 'chest'] as EquipSlot[]) {
+    for (const slot of VISUAL_SLOTS) {
       const item = eq[slot];
+      // baseId alone is not enough: rarity drives the dressing, and two items
+      // can share a base with different rolls.
+      const key = item ? `${item.uid}|${item.baseId}|${item.rarity}|${item.upgrade}` : '';
+      if (this.equipKeys.get(slot) === key) continue;
+      this.equipKeys.set(slot, key);
+
+      const prev = this.equipMeshes.get(slot);
+      if (prev) {
+        clearSocket(this.bones, slot);
+        disposeObject(prev);
+        this.equipMeshes.delete(slot);
+      }
       if (!item) continue;
+
       try {
         const visual = getBase(item.baseId)?.visual ?? { shape: 'auto', palette: 'metal.steel' };
         const mesh = buildItemModel(visual, this.rng, item.rarity);

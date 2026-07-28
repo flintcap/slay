@@ -1142,8 +1142,13 @@ const SOCKETS: Record<string, Socket> = {
   ring2: { bone: 'handL', pos: [-0.015, -0.05, 0.01], rot: [Math.PI * 0.5, 0, 0] },
 };
 
-/** Removes anything previously socketed into `slot`, across every bone. */
-function clearSocket(bones: Record<string, THREE.Bone>, slot: EquipSlot): void {
+/**
+ * Removes anything previously socketed into `slot`, across every bone.
+ *
+ * Sweeping every bone rather than just the socket's own bone is what clears the
+ * mirrored twin that paired slots (gloves, boots) put on the opposite limb.
+ */
+export function clearSocket(bones: Record<string, THREE.Bone>, slot: EquipSlot): void {
   for (const name of Object.keys(bones)) {
     const bone = bones[name];
     for (let i = bone.children.length - 1; i >= 0; i--) {

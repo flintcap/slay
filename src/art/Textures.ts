@@ -392,18 +392,29 @@ function buildStructure(pal: Palette, noise: Noise, N: number, seed: number): St
     case 'plank':
       fAux = bakeField(MID, (u, v) => vfbm(u * 3, v * cells * 6, 3, cells * 6, 4, salt + 41));
       break;
-    case 'weave':
-      fAux = bakeField(MID, (u, v) => vfbm(u * cells * 3, v * cells * 3, cells * 3, cells * 3, 3, salt + 61));
+    case 'weave': {
+      // Fuzz on top of the threads, but never finer than the texel grid can
+      // hold. At cells*3 a 30-cell weave asked for 90 cycles across a 256px
+      // field — under three pixels a cycle, which samples as static rather
+      // than as nap on a fibre.
+      const fz = Math.min(cells * 2, 22);
+      fAux = bakeField(MID, (u, v) => vfbm(u * fz, v * fz, fz, fz, 3, salt + 61));
       break;
+    }
     case 'organic':
       fAux = bakeField(MID, (u, v) => vfbm(u * 6, v * 6, 6, 6, 3, salt + 19));
       break;
     case 'granular':
       fAux = bakeField(N, (u, v) => vfbm(u * 110, v * 110, 110, 110, 2, salt + 7));
       break;
-    case 'fiber':
-      fAux = bakeField(N, (u, v) => vfbm(u * 3, v * 180, 3, 180, 4, salt + 101));
+    case 'fiber': {
+      // Long strands down v. 180 cycles across the field put each strand on
+      // roughly two pixels, so the weft aliased into speckle instead of
+      // reading as thread. Cap it at a frequency the texel grid can resolve.
+      const fy2 = Math.min(3 * Math.max(1, Math.round(R.stretch ?? 8)) * 4, 96);
+      fAux = bakeField(N, (u, v) => vfbm(u * 3, v * fy2, 3, fy2, 4, salt + 101));
       break;
+    }
     default:
       break;
   }
@@ -509,12 +520,21 @@ function buildStructure(pal: Palette, noise: Noise, N: number, seed: number): St
           const ix = Math.floor(gx);
           const iy = Math.floor(gy);
           const over = ((ix + iy) & 1) === 0;
-          const tx = Math.abs(Math.sin((gx - ix) * Math.PI));
-          const ty = Math.abs(Math.sin((gy - iy) * Math.PI));
-          const thread = over ? tx * 0.85 + ty * 0.15 : ty * 0.85 + tx * 0.15;
+          // Flattened thread profile. A raw sine gives a round tube, and a
+          // lattice of tubes reads as knitted rope rather than woven fabric —
+          // a real thread is pressed nearly flat by the one crossing it.
+          const tx = Math.pow(Math.abs(Math.sin((gx - ix) * Math.PI)), 0.5);
+          const ty = Math.pow(Math.abs(Math.sin((gy - iy) * Math.PI)), 0.5);
+          const thread = over ? tx * 0.78 + ty * 0.22 : ty * 0.78 + tx * 0.22;
           const fuzz = fAux ? fAux.sample(u, v) : mic;
-          height = 0.26 + thread * 0.5 + fuzz * 0.16 + detail * 0.1;
-          ed = clamp01(1 - thread * 1.4);
+          // Weight the lattice, not the noise. Fuzz and fine detail used to
+          // carry a quarter of the height and buried the over/under pattern
+          // that makes cloth read as woven.
+          height = 0.3 + thread * 0.5 + fuzz * 0.08 + detail * 0.06;
+          // Thread gaps, not grout lines. The old curve pushed most of the
+          // tile into the edge mask, and every edge-driven pass then drew a
+          // dark grid over the cloth.
+          ed = clamp01((1 - thread) * 0.8);
           cid = vhash(((ix % c) + c) % c, ((iy % c) + c) % c, salt + 12);
           cid2 = fuzz;
           break;
@@ -588,10 +608,13 @@ function buildStructure(pal: Palette, noise: Noise, N: number, seed: number): St
           worleyW(u * cells, v * cells, cells, jitter, salt + 91, WORK);
           cid = vhash(WORK.id, 0, salt + 92);
           cid2 = vhash(WORK.id, 1, salt + 93);
-          ed = 1 - smoothstep(0.0, 0.15, WORK.f2 - WORK.f1);
-          const pebble = smoothstep(0.72, 0.05, WORK.f1);
-          height = 0.36 + pebble * 0.32 + detail * 0.18 + mic * 0.12;
-          height = lerp(height, height - 0.13, ed);
+          ed = 1 - smoothstep(0.0, 0.22, WORK.f2 - WORK.f1);
+          // Hide is soft grain, not gravel. A tight smoothstep turned every
+          // cell into a rounded river stone; widening it flattens the pores
+          // into grain and leaves only the creases between them deep.
+          const pebble = smoothstep(0.95, 0.18, WORK.f1);
+          height = 0.46 + pebble * 0.2 + detail * 0.12 + mic * 0.04;
+          height = lerp(height, height - 0.2, ed);
           break;
         }
         case 'fiber': {
