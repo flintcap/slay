@@ -1,3 +1,4 @@
+import { itemIconUri } from '../art/Icons';
 /**
  * SLAY — UI widget kit.
  *
@@ -1456,7 +1457,7 @@ export class ItemSlot {
       const item = this.item;
       const ghost =
         `<div class="islot islot-ghost" data-rarity="${item.rarity}" style="--rc:${rarityHex(item.rarity)}">` +
-        `<div class="islot-inner">${iconSvg(itemIconName(item), { size: 30 })}</div></div>`;
+        `<div class="islot-inner"><img class="islot-img" src="${itemIconUri(item)}" alt="" draggable="false"></div></div>`;
       this.root.classList.add('is-source');
       drag.begin(
         {
@@ -1509,7 +1510,10 @@ export class ItemSlot {
     this.root.style.setProperty('--rc', rc);
 
     const art = div('islot-art');
-    art.innerHTML = iconSvg(itemIconName(item), { size: Math.round((this.opts.size ?? 52) * 0.62) });
+    const px = Math.round((this.opts.size ?? 52) * 0.78);
+    art.innerHTML =
+      `<img class="islot-img" src="${itemIconUri(item)}" alt="" draggable="false" ` +
+      `style="width:${px}px;height:${px}px">`;
     this.inner.appendChild(art);
 
     if (item.upgrade > 0) this.inner.appendChild(span('islot-upg', `+${item.upgrade}`));

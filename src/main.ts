@@ -51,6 +51,14 @@ async function main(): Promise<void> {
     import('./art/ItemModels'),
     import('./sim/Loot'),
   ]);
+  const { setIconBaseResolver } = await import('./art/Icons');
+  setIconBaseResolver((baseId) => {
+    try {
+      return getBase(baseId);
+    } catch {
+      return undefined;
+    }
+  });
   setItemVisualResolver((item) => {
     try {
       return getBase(item.baseId)?.visual;

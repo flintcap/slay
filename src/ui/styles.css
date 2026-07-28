@@ -4486,3 +4486,21 @@ input.slider::-moz-range-thumb {
     grid-template-columns: 260px 1fr 240px;
   }
 }
+
+/* Generated item and skill icons ------------------------------------------ */
+.islot-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+}
+.islot-art { display: grid; place-items: center; }
+.skill-img {
+  display: block;
+  border-radius: 50%;
+  object-fit: contain;
+  pointer-events: none;
+}

@@ -118,8 +118,19 @@ export class DungeonScene extends GameScene {
     this.loadLevel(0);
 
     events.emit('ui:open', { panel: 'hud' });
+
+    // First descent: say plainly how to fight. Discovering the attack button by
+    // accident is not a puzzle worth having.
+    if (!save.hasUnlock('tutorial.controls')) {
+      save.unlock('tutorial.controls');
+      toast('Left click to attack. Move with WASD.', 'info');
+      setTimeout(() => toast('Keys 1-6 cast your other skills.', 'info'), 3200);
+      setTimeout(() => toast('Press T to spend skill points.', 'info'), 6400);
+      setTimeout(() => toast('Space dodges. Q drinks a health potion.', 'info'), 9600);
+    }
+
     if (this.run.quest) {
-      toast(this.run.quest.name, 'epic');
+      setTimeout(() => toast(this.run.quest.name, 'epic'), 800);
     }
     audio.music(this.biome.music, 2.0);
   }

@@ -39,6 +39,8 @@ import {
   runtime,
   type MinimapPip,
 } from './Widgets';
+import { skillIconUri } from '../art/Icons';
+import { SKILL_BY_ID } from '../data/skills';
 
 // Tile ids as stored in DungeonLevel.tiles (mirrors world/Layouts TILE_VALUES).
 const T_VOID = 0;
@@ -713,7 +715,7 @@ export class HUD {
         continue;
       }
       const def = skillById(id);
-      art.innerHTML = sigilSvg(id, accent, 40);
+      art.innerHTML = `<img class="skill-img" src="${skillIconUri(id, skillDefFor(id)?.effect, skillDefFor(id)?.damageType, skillDefFor(id)?.targeting === 'passive')}" alt="" style="width:40px;height:40px" draggable="false">`;
       const rank = c.skills[id] ?? 0;
       if (rankEl) rankEl.textContent = rank > 0 ? String(rank) : '';
       const cost = def?.manaCost ? attempt(() => def.manaCost?.(rank) ?? 0, 0) : 0;
@@ -1162,4 +1164,10 @@ function statusIcon(id: string, hint?: string): string {
   if (/stun|freeze|root|snare/.test(s)) return 'lock';
   if (/rage|fury|might|str/.test(s)) return 'strength';
   return 'sparkle';
+}
+
+
+/** Look up a skill definition by id for icon generation. */
+function skillDefFor(id: string) {
+  return SKILL_BY_ID?.[id];
 }

@@ -23,6 +23,7 @@ import { events } from '../core/Events';
 import { INVENTORY_SIZE } from '../core/Save';
 import { CLASS_BY_ID, getClass, STARTING_SKILL_HINTS } from '../data/classes';
 import {
+  SKILLS,
   SKILL_BY_ID,
   TREE_BY_ID,
   tierLevelRequirement,
@@ -107,14 +108,48 @@ export function createCharacter(name: string, classId: CharClassId, rng: Rng): C
     if (!res.ok) addToInventory(c, item);
   }
 
-  // Pre-fill the hotbar with the class's recommended openers so a fresh
-  // character has something bound the moment the first point is spent.
-  const hints = STARTING_SKILL_HINTS[cls.id] ?? [];
-  for (let i = 0; i < Math.min(hints.length, c.hotbar.length); i++) {
-    c.hotbar[i] = hints[i] ?? null;
+  // Grant the class's opening attack for free and bind it. A brand new
+  // character that cannot attack until it finds the skill tree is the single
+  // worst first impression the game can make, and a hotbar full of skills at
+  // rank 0 just looks broken.
+  const starter = startingSkillFor(cls.id);
+  if (starter) {
+    c.skills[starter] = 1;
+    c.hotbar[0] = starter;
+  }
+
+  // Anything else the class recommends is bound only once it has a rank, so the
+  // bar never shows a skill the player cannot actually cast.
+  const hints = (STARTING_SKILL_HINTS[cls.id] ?? []).filter((id) => id !== starter);
+  let slot = 1;
+  for (const id of hints) {
+    if (slot >= c.hotbar.length) break;
+    if ((c.skills[id] ?? 0) > 0) c.hotbar[slot++] = id;
   }
 
   return c;
+}
+
+/**
+ * The free opening attack: the cheapest tier-1 active in the class's first
+ * tree, preferring a melee/projectile basic over a situational cooldown.
+ */
+export function startingSkillFor(classId: CharClassId): string | null {
+  const cls = CLASS_BY_ID[classId] ? getClass(classId) : getClass('warden');
+  const candidates = SKILLS.filter(
+    (sk) =>
+      cls.trees.includes(sk.treeId) &&
+      sk.tier === 1 &&
+      sk.targeting !== 'passive' &&
+      !sk.requires?.length
+  );
+  if (candidates.length === 0) return null;
+  // Prefer a skill with no cooldown — a spammable basic attack.
+  const spammable = candidates.filter((sk) => !sk.cooldown || sk.cooldown(1) <= 0);
+  const pool = spammable.length ? spammable : candidates;
+  // Prefer the cheapest to cast so level 1 can actually use it repeatedly.
+  pool.sort((a, b) => (a.manaCost?.(1) ?? 0) - (b.manaCost?.(1) ?? 0));
+  return pool[0]?.id ?? null;
 }
 
 // ---------------------------------------------------------------------------
