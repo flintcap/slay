@@ -212,11 +212,18 @@ export function applyBiomeLighting(
 
   // Hemisphere fill: a cool sky term over a warmer bounce term is what stops
   // shadowed geometry from going flat black without washing the scene out.
-  const ambient = new THREE.HemisphereLight(biome.ambientColor, art.bounceColor, biome.ambientIntensity);
+  // Authored biome values were tuned darker than plays well: enclosed floors
+  // ended up readable only inside a torch pool. Lift the floor here rather than
+  // editing 8 biome definitions, so their relative moods are preserved.
+  const ambient = new THREE.HemisphereLight(
+    biome.ambientColor,
+    art.bounceColor,
+    biome.ambientIntensity * 2.2 + 0.35
+  );
   ambient.position.set(0, 40, 0);
   scene.add(ambient);
 
-  const key = new THREE.DirectionalLight(biome.keyColor, biome.keyIntensity);
+  const key = new THREE.DirectionalLight(biome.keyColor, biome.keyIntensity * 1.9 + 0.12);
   key.position.set(28, 52, 18);
   key.target.position.set(0, 0, 0);
   scene.add(key.target);

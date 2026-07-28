@@ -383,12 +383,9 @@ export class SkillTreePanel {
     const ok = attempt(() => allocateSkill(c, s.id), false);
     if (!ok) return;
 
-    // First rank auto-binds to a free hotbar slot; nobody wants to hunt for it.
-    if ((c.skills[s.id] ?? 0) === 1 && s.targeting !== 'passive') {
-      while (c.hotbar.length < 6) c.hotbar.push(null);
-      const free = c.hotbar.findIndex((h) => !h);
-      if (free >= 0) c.hotbar[free] = s.id;
-    }
+    // allocateSkill already binds the first rank to a free slot. Binding again
+    // here put the same skill in two slots at once.
+    while (c.hotbar.length < 6) c.hotbar.push(null);
     save.touch();
     events.emit('sfx', { id: 'ui.levelup' });
     events.emit('ui:refresh', {});

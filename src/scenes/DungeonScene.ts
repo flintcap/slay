@@ -82,6 +82,8 @@ export class DungeonScene extends GameScene {
   /** On a boss floor the way home stays shut until the boss falls. */
   private exitOpen = true;
   private returnPortal: THREE.Object3D | null = null;
+  /** Travels with the player so they are never standing in the dark. */
+  private heroLight: THREE.PointLight | null = null;
   private transitioning = false;
   private runTime = 0;
   private godMode = false;
@@ -114,6 +116,12 @@ export class DungeonScene extends GameScene {
     this.run = generateRun(depth, seed, character.classId);
     this.player = new Player(character, seed);
     this.scene.add(this.player.root);
+
+    // A light on the hero is standard for the genre: torch placement is
+    // procedural, so without it the player regularly ends up in pitch black.
+    this.heroLight = new THREE.PointLight(0xffd9a8, 14, 17, 2);
+    this.heroLight.castShadow = false;
+    this.scene.add(this.heroLight);
 
     this.loadLevel(0);
 
@@ -283,6 +291,16 @@ export class DungeonScene extends GameScene {
     this.checkExit();
 
     onSurviveTick(this.run.quest, dt);
+
+    if (this.heroLight) {
+      this.heroLight.position.set(
+        this.player.position.x,
+        2.3,
+        this.player.position.z
+      );
+      // Breathe very slightly so it reads as carried flame, not a spotlight.
+      this.heroLight.intensity = 14 + Math.sin(elapsed * 3.1) * 0.7;
+    }
 
     if (this.returnPortal) {
       this.returnPortal.rotation.y += dt * 0.55;
@@ -630,6 +648,8 @@ export class DungeonScene extends GameScene {
     this.mesh?.dispose();
     this.lighting?.dispose();
     this.player?.dispose();
+    this.heroLight?.removeFromParent();
+    this.heroLight = null;
     this.skills.dispose();
     this.effects.dispose();
     this.fx.dispose();

@@ -38,6 +38,7 @@ export class TownScene extends GameScene {
   private interactables: Interactable[] = [];
   private nearby: Interactable | null = null;
   private keyDir = new THREE.Vector3();
+  private heroLight: THREE.PointLight | null = null;
   private offs: Array<() => void> = [];
 
   constructor(engine: Engine) {
@@ -68,6 +69,9 @@ export class TownScene extends GameScene {
     this.player = new Player(character, 12345);
     this.player.position.set(0, 0, 6);
     this.scene.add(this.player.root);
+
+    this.heroLight = new THREE.PointLight(0xffdcb0, 12, 16, 2);
+    this.scene.add(this.heroLight);
 
     const spots = this.town.npcSpots;
     const at = (k: string, dx = 0, dz = 1.6) => {
@@ -160,6 +164,9 @@ export class TownScene extends GameScene {
       events.emit('ui:open', { panel: best.panel });
     }
 
+    if (this.heroLight) {
+      this.heroLight.position.set(this.player.position.x, 2.3, this.player.position.z);
+    }
     this.town.update(dt, elapsed);
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
@@ -175,6 +182,8 @@ export class TownScene extends GameScene {
     events.emit('toast', { text: '', kind: 'info' });
     for (const off of this.offs) off();
     this.offs = [];
+    this.heroLight?.removeFromParent();
+    this.heroLight = null;
     this.player?.dispose();
     this.town?.dispose();
     this.fx.dispose();
