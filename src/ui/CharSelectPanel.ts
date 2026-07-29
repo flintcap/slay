@@ -78,6 +78,7 @@ export class CharSelectPanel {
   private difficultyCards = new Map<DifficultyId, HTMLDivElement>();
   private difficultyDetail!: HTMLDivElement;
   private memorialList: HTMLDivElement;
+  private headSub!: HTMLDivElement;
   private rosterBox!: HTMLDivElement;
   private rosterList!: HTMLDivElement;
   private beginBtn: Button;
@@ -99,7 +100,8 @@ export class CharSelectPanel {
 
     const head = div('cs-head');
     head.appendChild(div('cs-title', 'Choose Your Ruin'));
-    head.appendChild(div('cs-sub', 'One life. One build. The vault is all that follows you down.'));
+    this.headSub = div('cs-sub', 'One life. One build. The vault is all that follows you down.');
+    head.appendChild(this.headSub);
     wrap.appendChild(head);
 
     const body = div('cs-body');
@@ -131,7 +133,7 @@ export class CharSelectPanel {
     side.appendChild(difbox);
 
     const namebox = div('cs-namebox');
-    namebox.appendChild(div('goldbank-label', 'Name your character'));
+    namebox.appendChild(div('goldbank-label', 'Or forge a new character'));
     const nameRow = div('cs-nameinput');
     this.nameInput = document.createElement('input');
     this.nameInput.type = 'text';
@@ -154,7 +156,7 @@ export class CharSelectPanel {
     namebox.appendChild(nameRow);
 
     this.beginBtn = new Button({
-      label: 'Begin the Descent',
+      label: 'Create & Descend',
       variant: 'primary',
       icon: 'descend',
       wide: true,
@@ -279,6 +281,10 @@ export class CharSelectPanel {
     clear(this.rosterList);
     const roster = save.roster;
     this.rosterBox.style.display = roster.length ? '' : 'none';
+    // Say which of the two things this screen is for right now.
+    this.headSub.textContent = roster.length
+      ? 'Take up an old torch, or forge a new one. Both live on the same vault.'
+      : 'One life. One build. The vault is all that follows you down.';
     for (const c of roster) {
       const row = div('roster-row');
       row.style.setProperty('--accent', String(classAccent(c.classId)));

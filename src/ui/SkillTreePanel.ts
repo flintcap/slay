@@ -123,6 +123,14 @@ export class SkillTreePanel {
     this.panel.open();
   }
 
+  close(): void {
+    this.panel.close();
+  }
+
+  get isOpen(): boolean {
+    return this.panel.isOpen;
+  }
+
   // -- build ---------------------------------------------------------------
 
   refresh(): void {
@@ -222,7 +230,7 @@ export class SkillTreePanel {
       node.dataset.skill = s.id;
 
       const art = div('sknode-art');
-      art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive')}" alt="" style="width:NODE - 18px;height:NODE - 18px" draggable="false">`;
+      art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:NODE - 18px;height:NODE - 18px" draggable="false">`;
       const frame = div('sknode-frame');
       const rank = div('sknode-rank');
       const lock = div('sknode-lock');
@@ -277,7 +285,7 @@ export class SkillTreePanel {
       if (Math.hypot(e.clientX - sx, e.clientY - sy) < 6) return;
       armed = false;
       const accent = classAccent(save.account.current?.classId);
-      const ghost = `<div class="sknode sknode-ghost"><div class="sknode-art">${`<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive')}" alt="" style="width:44px;height:44px" draggable="false">`}</div><div class="sknode-frame"></div></div>`;
+      const ghost = `<div class="sknode sknode-ghost"><div class="sknode-art">${`<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:44px;height:44px" draggable="false">`}</div><div class="sknode-frame"></div></div>`;
       const payload: DragPayload = { kind: 'skill', skillId: s.id };
       drag.begin(payload, e, ghost);
     });
@@ -429,7 +437,7 @@ export class SkillTreePanel {
 
     const hd = div('skdetail-hd');
     const art = div('skdetail-art');
-    art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive')}" alt="" style="width:62px;height:62px" draggable="false">`;
+    art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:62px;height:62px" draggable="false">`;
     const titles = div('skdetail-titles');
     titles.appendChild(div('skdetail-name', s.name));
     const meta = div('skdetail-meta');

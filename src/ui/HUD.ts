@@ -780,7 +780,7 @@ export class HUD {
     if (rmb) {
       const d = skillDefFor(rmb);
       this.rmbArt.innerHTML =
-        `<img class="skill-img" src="${skillIconUri(rmb, d?.effect, d?.damageType, d?.targeting === 'passive')}" ` +
+        `<img class="skill-img" src="${skillIconUri(rmb, d?.effect, d?.damageType, d?.targeting === 'passive', d?.icon)}" ` +
         `alt="" style="width:40px;height:40px" draggable="false">`;
       this.rmbSlot.dataset.skill = rmb;
       this.rmbSlot.title = `${skillById(rmb)?.name ?? 'Skill'} — right click to attack. Right-click this slot to clear it.`;
@@ -809,7 +809,7 @@ export class HUD {
         continue;
       }
       const def = skillById(id);
-      art.innerHTML = `<img class="skill-img" src="${skillIconUri(id, skillDefFor(id)?.effect, skillDefFor(id)?.damageType, skillDefFor(id)?.targeting === 'passive')}" alt="" style="width:40px;height:40px" draggable="false">`;
+      art.innerHTML = `<img class="skill-img" src="${skillIconUri(id, skillDefFor(id)?.effect, skillDefFor(id)?.damageType, skillDefFor(id)?.targeting === 'passive', skillDefFor(id)?.icon)}" alt="" style="width:40px;height:40px" draggable="false">`;
       const rank = c.skills[id] ?? 0;
       if (rankEl) rankEl.textContent = rank > 0 ? String(rank) : '';
       const cost = def?.manaCost ? attempt(() => def.manaCost?.(rank) ?? 0, 0) : 0;

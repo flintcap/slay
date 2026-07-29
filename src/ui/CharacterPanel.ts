@@ -167,6 +167,14 @@ export class CharacterPanel {
     this.panel.open();
   }
 
+  close(): void {
+    this.panel.close();
+  }
+
+  get isOpen(): boolean {
+    return this.panel.isOpen;
+  }
+
   refresh(): void {
     const c = save.account.current;
     if (!c) return;

@@ -1507,8 +1507,45 @@ const MOTIFS: Record<string, Motif> = {
  * then a small alias table. Collapsing everything to one fallback is what made
  * a whole tree look like the same icon repeated.
  */
-function motifFor(effect: string | undefined): Motif {
-  const raw = (effect ?? 'melee').toLowerCase();
+/**
+ * Rotates an element palette by a per-skill amount, keeping it inside its own
+ * family so a cold skill never comes out orange.
+ */
+function tintElement(e: Element, seed: number): Element {
+  const shift = (((seed >>> 5) % 21) - 10) / 100;
+  const rot = (hex: number): number => {
+    const r = ((hex >> 16) & 255) / 255;
+    const g = ((hex >> 8) & 255) / 255;
+    const b = (hex & 255) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    if (d === 0) return hex;
+    const sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h =
+      max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = (h / 6 + shift + 1) % 1;
+    const q = l < 0.5 ? l * (1 + sat) : l + sat - l * sat;
+    const p = 2 * l - q;
+    const ch = (t: number): number => {
+      let tt = (t + 1) % 1;
+      if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+      if (tt < 1 / 2) return q;
+      if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+      return p;
+    };
+    const to = (v: number): number => Math.max(0, Math.min(255, Math.round(v * 255)));
+    return (to(ch(h + 1 / 3)) << 16) | (to(ch(h)) << 8) | to(ch(h - 1 / 3));
+  };
+  return { core: rot(e.core), glow: rot(e.glow), dark: rot(e.dark) };
+}
+
+function motifFor(iconKey: string | undefined, effect?: string | undefined): Motif {
+  // The skill's authored icon name wins; the effect family is the fallback.
+  const named = (iconKey ?? '').toLowerCase().replace(/[^a-z]/g, '');
+  if (named && MOTIFS[named]) return MOTIFS[named]!;
+  const raw = (effect ?? iconKey ?? 'melee').toLowerCase();
   const [family, sub] = raw.split('.');
 
   // Most specific first: 'melee.strike' prefers the `strike` motif.
@@ -1558,13 +1595,23 @@ export function skillIconUri(
   skillId: string,
   effect: string | undefined,
   damageType: DamageType | undefined,
-  passive = false
+  passive = false,
+  /**
+   * The skill's own authored icon name. Every skill definition carries one and
+   * they were all being ignored: the motif came from the effect family alone,
+   * so ~285 skills collapsed onto about fifteen pictures, and every skill that
+   * shared a family and a damage type came out identical.
+   */
+  iconKey?: string,
 ): string {
-  const key = `${skillId}|${effect ?? '-'}|${damageType ?? '-'}|${passive ? 'p' : 'a'}`;
+  const key = `${skillId}|${effect ?? '-'}|${damageType ?? '-'}|${passive ? 'p' : 'a'}|${iconKey ?? '-'}`;
   const hit = skillCache.get(key);
   if (hit) return hit;
 
-  const e = ELEMENT[damageType ?? 'physical'];
+  // Shift the element palette per skill. The damage type still sets the family
+  // — fire is warm, cold is blue — but two fire skills are no longer the same
+  // orange, which is most of what made a tree look like one icon repeated.
+  const e = tintElement(ELEMENT[damageType ?? 'physical'], hashStr(skillId));
   const rnd = makeRng(hashStr(key));
   const { c, x } = newCanvas();
 
@@ -1601,7 +1648,27 @@ export function skillIconUri(
     x.lineWidth = 3;
     x.stroke();
   } else {
-    motifFor(effect)(x, e, rnd);
+    motifFor(iconKey ?? effect, effect)(x, e, rnd);
+  }
+
+  // Signature ring: a short arc whose length, offset and tick count come from
+  // the skill id. Cheap, and it makes any two icons distinguishable at a glance
+  // even when they share a motif.
+  const sig = hashStr(skillId + ':sig');
+  const arc = 0.5 + ((sig >>> 3) % 7) * 0.18;
+  const off = ((sig >>> 7) % 12) * (Math.PI / 6);
+  x.strokeStyle = rgba(e.glow, 0.75);
+  x.lineWidth = 3;
+  x.beginPath();
+  x.arc(64, 64, 57, off, off + arc);
+  x.stroke();
+  const ticks = 2 + (sig % 4);
+  for (let i = 0; i < ticks; i++) {
+    const a2 = off + arc + 0.5 + i * 0.34;
+    x.beginPath();
+    x.moveTo(64 + Math.cos(a2) * 50, 64 + Math.sin(a2) * 50);
+    x.lineTo(64 + Math.cos(a2) * 58, 64 + Math.sin(a2) * 58);
+    x.stroke();
   }
 
   // Vignette keeps the glow from bleeding to the slot edge.

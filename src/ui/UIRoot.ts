@@ -159,11 +159,19 @@ class TitlePanel {
       );
     }
 
+    // The account holds a roster now, so this is a chooser rather than a
+    // one-way door. It used to read 'Abandon & Start Over', which was both the
+    // only route to the creation screen and a promise to destroy the character
+    // you already had — so there was no way to have two.
     menu.appendChild(
       new Button({
-        label: acct.current ? 'Abandon & Start Over' : 'New Character',
+        label: save.roster.length > 0 ? 'Characters' : 'New Character',
         variant: acct.current ? 'ghost' : 'primary',
-        icon: 'skull',
+        icon: save.roster.length > 0 ? 'bag' : 'skull',
+        hint:
+          save.roster.length > 0
+            ? `${save.roster.length} living · pick one or make another`
+            : undefined,
         onClick: () => {
           this.panel.close();
           void engine.goTo('charSelect');
@@ -323,8 +331,12 @@ export function mountUI(engine: Engine): void {
   for (const [id, handle, panel] of panels) {
     panel.mount(root);
     registry.set(id, {
-      open: () => handle.open(),
-      close: () => handle.close(),
+      // Fall back to the Panel itself. Every entry here is cast through
+      // `as unknown as PanelHandle`, so a panel class that never defined
+      // close() type-checked fine and then threw on the second keypress —
+      // which is what stopped I, C and T from closing what they opened.
+      open: () => (typeof handle.open === 'function' ? handle.open() : panel.open()),
+      close: () => (typeof handle.close === 'function' ? handle.close() : panel.close()),
       get isOpen() {
         return panel.isOpen;
       },
