@@ -40,7 +40,7 @@ import {
   runtime,
   type MinimapPip,
 } from './Widgets';
-import { skillIconUri } from '../art/Icons';
+import { skillIconUri, warmItemIcons } from '../art/Icons';
 import { setPrimaryAttack } from '../sim/Character';
 import { SKILL_BY_ID } from '../data/skills';
 
@@ -604,6 +604,9 @@ export class HUD {
     on('loot:pickedUp', (p) => {
       this.toast(attempt(() => p.item.name, 'Item'), 'epic', p.item.rarity);
       this.refreshPotions();
+      // Draw its inventory icon now, in the quiet frames after the pickup,
+      // rather than all of them at once the next time the pack is opened.
+      attempt(() => warmItemIcons([p.item]), undefined);
     });
     on('depth:changed', (p) => {
       // A new floor means a new grid and a new tile mapping, so anything we
@@ -768,6 +771,13 @@ export class HUD {
     this.refreshGold();
     const need = attempt(() => xpForLevel(c.level), 100);
     this.setXp(c.xp, need, c.level);
+    // Get the pack's icons drawn in the background. Skips anything already
+    // cached, so this is free after the first pass and means pressing I on a
+    // loaded character does not have to draw sixty icons before it can paint.
+    attempt(() => {
+      warmItemIcons(c.inventory);
+      warmItemIcons(Object.values(c.equipment));
+    }, undefined);
   }
 
   private refreshGold(): void {

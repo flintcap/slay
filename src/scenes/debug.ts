@@ -7,7 +7,7 @@ import { Random, randomSeed } from '../core/RNG';
 import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem } from '../sim/Character';
 import { rollItem, newItem, getBase } from '../sim/Loot';
 import { buildDropModel } from '../art/ItemModels';
-import { itemIconUri } from '../art/Icons';
+import { itemIconUri, requestItemIcon, clearIconCaches } from '../art/Icons';
 import { addItemToInventory } from '../sim/Inventory';
 import { SKILLS } from '../data/skills';
 import { CLASSES } from '../data/classes';
@@ -201,6 +201,41 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         };
       }
       return out;
+    },
+
+    /**
+     * How long the inventory blocks for on a cold open.
+     *
+     * Fills a pack, clears the icon cache so nothing is warm, then times the
+     * synchronous cost of rendering every slot. That number is what the player
+     * feels as "the inventory takes a moment"; anything drawn after it lands in
+     * later frames and does not hold the window.
+     */
+    inventoryOpenCost(count = 60): Record<string, number> {
+      const c = save.account.current;
+      if (!c) return {};
+      const rng = new Random(0x1cea1);
+      for (let i = 0; i < count; i++) {
+        addItemToInventory(c, rollItem(30, rng, { magicFind: 900 }));
+      }
+      const held = c.inventory.filter((it): it is NonNullable<typeof it> => !!it).slice(0, count);
+
+      clearIconCaches();
+      const t0 = performance.now();
+      const deferred = held.map((it) => requestItemIcon(it, () => {}));
+      const blocking = performance.now() - t0;
+
+      clearIconCaches();
+      const t1 = performance.now();
+      for (const it of held) itemIconUri(it);
+      const eager = performance.now() - t1;
+
+      return {
+        items: held.length,
+        blockingMs: +blocking.toFixed(1),
+        eagerMs: +eager.toFixed(1),
+        alreadyDrawn: deferred.filter((u) => !u.startsWith('data:image/gif')).length,
+      };
     },
 
     /** Slowest frames seen since the last call, in milliseconds. */

@@ -131,6 +131,21 @@ function newCanvas(size = S): { c: HTMLCanvasElement; x: CanvasRenderingContext2
 }
 
 /**
+ * One canvas, reused for every icon.
+ *
+ * A fresh `<canvas>` per icon means a fresh backing store per icon, and an
+ * inventory is a hundred of them in a row. Setting `width` is also the
+ * documented way to clear a canvas, so the reset is free.
+ */
+let scratch: { c: HTMLCanvasElement; x: CanvasRenderingContext2D } | null = null;
+
+function scratchCanvas(): { c: HTMLCanvasElement; x: CanvasRenderingContext2D } {
+  if (!scratch) scratch = newCanvas();
+  else scratch.c.width = S;
+  return scratch;
+}
+
+/**
  * Light comes from the top-left, consistently across every icon. A shared light
  * direction is most of what makes a set of icons look like a set.
  */
@@ -1034,17 +1049,116 @@ let baseLookup: ((baseId: string) => { visual?: { shape?: string; palette?: stri
 export function setIconBaseResolver(fn: typeof baseLookup): void {
   baseLookup = fn;
   itemCache.clear();
+  // Anything queued was queued against the old art. Drop it rather than let a
+  // stale icon land in a slot a frame later.
+  pending.clear();
+  listeners.clear();
+}
+
+/** The properties that actually change an item's art. */
+function iconKeyFor(item: Item): string {
+  return `${item.baseId}|${item.rarity}|${item.sockets?.length ?? 0}`;
+}
+
+/** A cached icon, or null if it has not been drawn yet. */
+export function cachedItemIcon(item: Item): string | null {
+  return itemCache.get(iconKeyFor(item)) ?? null;
+}
+
+/** A fully transparent 1x1, so a slot waiting on its icon renders as empty. */
+const BLANK =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+// ---------------------------------------------------------------------------
+// Deferred icon generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Icons are drawn a few at a time, off the frame that asked for them.
+ *
+ * Drawing one is a canvas render plus a PNG encode, and opening a full pack is
+ * a hundred of those back to back — enough to lock the window for most of a
+ * second the first time you press I. Nothing about that work needs to happen
+ * before the panel appears, so it doesn't: the grid renders immediately with
+ * blank slots and each icon drops in as it is drawn.
+ */
+const pending = new Map<string, Item>();
+const listeners = new Map<string, Array<(uri: string) => void>>();
+let pumping = 0;
+
+/** How long per frame to spend drawing icons. Roughly a third of a frame. */
+const ICON_BUDGET_MS = 5;
+
+function pump(): void {
+  pumping = 0;
+  const t0 = performance.now();
+  for (const [key, item] of pending) {
+    pending.delete(key);
+    const uri = drawItemIcon(item, key);
+    const waiting = listeners.get(key);
+    if (waiting) {
+      listeners.delete(key);
+      for (const fn of waiting) fn(uri);
+    }
+    if (performance.now() - t0 > ICON_BUDGET_MS) break;
+  }
+  if (pending.size > 0) schedulePump();
+}
+
+function schedulePump(): void {
+  if (pumping) return;
+  pumping = requestAnimationFrame(pump);
 }
 
 /**
- * Returns a data-URI icon for an item. Cached by the properties that actually
- * change the art, so an inventory redraw is a map lookup.
+ * The icon for an item, drawn later if it is not already cached.
+ *
+ * Returns the cached URI when there is one — the common case once a pack has
+ * been opened once — and otherwise a blank, calling `onReady` when the real one
+ * is available. Callers that genuinely cannot wait (a drag ghost, which must
+ * exist the instant the pointer moves) should use `itemIconUri`.
  */
-export function itemIconUri(item: Item): string {
-  const key = `${item.baseId}|${item.rarity}|${item.sockets?.length ?? 0}`;
+export function requestItemIcon(item: Item, onReady: (uri: string) => void): string {
+  const key = iconKeyFor(item);
   const hit = itemCache.get(key);
   if (hit) return hit;
+  pending.set(key, item);
+  let waiting = listeners.get(key);
+  if (!waiting) {
+    waiting = [];
+    listeners.set(key, waiting);
+  }
+  waiting.push(onReady);
+  schedulePump();
+  return BLANK;
+}
 
+/**
+ * Queues icons for items the player is holding, so they are already drawn by
+ * the time the pack is opened. Costs nothing when they are all cached.
+ */
+export function warmItemIcons(items: Iterable<Item | null>): void {
+  for (const item of items) {
+    if (!item) continue;
+    const key = iconKeyFor(item);
+    if (itemCache.has(key) || pending.has(key)) continue;
+    pending.set(key, item);
+  }
+  if (pending.size > 0) schedulePump();
+}
+
+/**
+ * Returns a data-URI icon for an item, drawing it now if it is not cached.
+ * Prefer `requestItemIcon` anywhere a blank frame is acceptable.
+ */
+export function itemIconUri(item: Item): string {
+  const key = iconKeyFor(item);
+  const hit = itemCache.get(key);
+  if (hit) return hit;
+  return drawItemIcon(item, key);
+}
+
+function drawItemIcon(item: Item, key: string): string {
   const base = baseLookup?.(item.baseId);
   const shapeName = base?.visual?.shape && base.visual.shape !== 'auto'
     ? base.visual.shape
@@ -1061,7 +1175,7 @@ export function itemIconUri(item: Item): string {
   const ornate = base?.visual?.ornate ?? Math.min(1, RARITY_RANK[item.rarity] / 4);
   const rnd = makeRng(hashStr(key));
 
-  const { c, x } = newCanvas();
+  const { c, x } = scratchCanvas();
   rarityUnder(x, item.rarity);
   x.save();
   // Drop shadow gives the icon weight against the slot background.
@@ -1906,6 +2020,10 @@ export function skillIconUri(
 /** Frees cached icons — used when the item database is swapped in tests. */
 export function clearIconCaches(): void {
   itemCache.clear();
+  // Anything queued was queued against the old art. Drop it rather than let a
+  // stale icon land in a slot a frame later.
+  pending.clear();
+  listeners.clear();
   skillCache.clear();
 }
 

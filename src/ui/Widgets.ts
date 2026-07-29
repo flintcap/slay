@@ -1,5 +1,5 @@
 import { stackCount } from '../sim/Inventory';
-import { itemIconUri } from '../art/Icons';
+import { itemIconUri, requestItemIcon } from '../art/Icons';
 import { ONE_HAND_MELEE } from '../data/itemBases';
 import { equipRules } from '../data/classes';
 import { save } from '../core/Save';
@@ -1522,9 +1522,21 @@ export class ItemSlot {
 
     const art = div('islot-art');
     const px = Math.round((this.opts.size ?? 52) * 0.78);
-    art.innerHTML =
-      `<img class="islot-img" src="${itemIconUri(item)}" alt="" draggable="false" ` +
-      `style="width:${px}px;height:${px}px">`;
+    // Drawing an icon is a canvas render plus a PNG encode. A full pack is a
+    // hundred of them, which is why opening the inventory used to lock up the
+    // first time. The grid goes up straight away and the art fills in over the
+    // next few frames instead.
+    const img = document.createElement('img');
+    img.className = 'islot-img';
+    img.alt = '';
+    img.draggable = false;
+    img.style.width = `${px}px`;
+    img.style.height = `${px}px`;
+    img.src = requestItemIcon(item, (uri) => {
+      // The slot may have been given a different item while we were drawing.
+      if (this.item === item) img.src = uri;
+    });
+    art.appendChild(img);
     this.inner.appendChild(art);
 
     // Stack size. Potions, gems, runes and materials all stack, and the slot
