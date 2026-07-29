@@ -113,6 +113,15 @@ export class TownScene extends GameScene {
       { id: 'portal', label: 'The Descent — Enter the Dungeon', panel: 'descend', pos: this.town.portalSpot.clone(), radius: 2.8 },
     ];
 
+    // Equipping has to change the model now, not whenever the stat sheet next
+    // happens to be recomputed. `item:equipped` was fired into the void, so new
+    // gear appeared on your character minutes later, at whatever unrelated
+    // moment something else called refreshStats.
+    this.offs.push(
+      events.on('item:equipped', () => this.player?.refreshStats()),
+      events.on('item:unequipped', () => this.player?.refreshStats()),
+    );
+
     this.rig.follow(this.player.root);
     this.rig.snap();
     audio.music('town', 2.0);

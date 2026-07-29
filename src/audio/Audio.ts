@@ -21,6 +21,7 @@
 
 import type { GameSettings, ItemRarity, DamageType } from '../types';
 import { events } from '../core/Events';
+import { save } from '../core/Save';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { Synth, midiToFreq } from './Synth';
@@ -810,6 +811,10 @@ class AudioEngine {
     this.unsubs.push(
       events.on('sfx', (e) => this.play(e.id, { volume: e.volume, pitch: e.pitch, x: e.x, z: e.z })),
       events.on('music', (e) => this.music(e.track, e.fade)),
+      // The settings panel emits this on every slider move. Nothing was
+      // listening, so the volume sliders wrote a number into the save file and
+      // changed nothing you could hear.
+      events.on('settings:changed', () => this.applySettings(save.settings)),
     );
   }
 
@@ -914,7 +919,7 @@ class AudioEngine {
     if (!s) return;
     const t = s.ctx.currentTime;
     s.master.gain.setTargetAtTime(document.hidden ? 0 : this.masterVol, t, 0.05);
-    s.sfxBus.gain.setTargetAtTime(0.9, t, 0.05);
+    s.sfxBus.gain.setTargetAtTime(this.sfxVol * 1.05, t, 0.05);
     s.musicBus.gain.setTargetAtTime(this.musicVol * 0.85, t, 0.1);
   }
 

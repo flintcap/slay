@@ -160,6 +160,15 @@ export class DungeonScene extends GameScene {
       events.on('potion:use', (p) => this.drink(p.kind, p.baseId)),
     );
 
+    // Equipping has to change the model now, not whenever the stat sheet next
+    // happens to be recomputed. `item:equipped` was fired into the void, so new
+    // gear appeared on your character minutes later, at whatever unrelated
+    // moment something else called refreshStats.
+    this.offs.push(
+      events.on('item:equipped', () => this.player?.refreshStats()),
+      events.on('item:unequipped', () => this.player?.refreshStats()),
+    );
+
     this.plates = new NameplateLayer();
     this.groundLabels = new GroundLabelLayer();
     this.groundLabels.onPickUp = (uid) => this.pickUpByUid(uid);

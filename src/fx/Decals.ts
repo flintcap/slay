@@ -107,13 +107,16 @@ function buildStainAtlas(): THREE.Texture {
     return [lum, m * (0.55 + 0.45 * soot)];
   });
 
-  // 1 blood pool — dark, wet, with a slightly brighter meniscus at the rim.
+  // 1 blood pool — an irregular puddle with a wet middle and a drying rim.
   paint(DECAL.blood, (u, v, r) => {
-    const m = blobMask(u, v, r, 1.9, 0.3, 3.7);
-    const rim = Math.exp(-Math.pow((r - 0.62) * 4.2, 2)) * 0.5;
-    const pool = smoothstep(0.95, 0.3, r);
-    const grain = noise.fbm(u * 6, v * 6, 3) * 0.12;
-    return [0.25 + rim + grain + pool * 0.25, m];
+    // The edge radius varies with *position*, never with angle. Perturbing by
+    // angle alone is constant along every ray, which draws spokes.
+    const lobe = noise.fbm(u * 2.6 + 3, v * 2.6 - 7, 4);
+    const chew = noise.fbm(u * 6.4 - 2, v * 6.4 + 5, 3);
+    const R = 0.40 + lobe * 0.30 + chew * 0.10;
+    const pool = smoothstep(R, R - 0.09, r);
+    const rim = Math.exp(-Math.pow((r - R * 0.92) * 7.0, 2)) * 0.45;
+    return [0.16 + rim + smoothstep(R * 0.8, 0, r) * 0.4, pool];
   });
 
   // 2 ice patch — cell-fractured sheet, bright at the facet borders.
@@ -143,35 +146,32 @@ function buildStainAtlas(): THREE.Texture {
 
   // 5 splatter — thrown blood.
   //
-  // Real splatter is a torn central mass with fingers reaching out of it and
-  // satellite droplets beyond, and the droplets get smaller and sparser the
-  // further out they land. A radially symmetric scatter reads as a circle no
-  // matter how much noise is in it, so the structure here is angular: the reach
-  // of the mass varies with direction, which is what breaks the disc.
+  // A torn central mass with fingers coming off it and satellite droplets
+  // beyond, the droplets thinning with distance. Every term is sampled in
+  // (u, v): the previous version perturbed the shape by angle, and a function
+  // of the angle alone is constant along each ray, so it drew a star of grey
+  // spokes rather than anything resembling blood.
   paint(DECAL.splatter, (u, v, r) => {
-    const ang = Math.atan2(v, u);
-    const ca = Math.cos(ang);
-    const sa = Math.sin(ang);
+    const lobe = noise.fbm(u * 3.4 + 11, v * 3.4 - 4, 4);
+    const chew = noise.fbm(u * 8.2 - 3, v * 8.2 + 9, 3);
 
-    // Torn central mass: how far it reaches depends on which way you look.
-    const reach = 0.16 + noise.fbm(ca * 2.1 + 11, sa * 2.1 - 4, 4) * 0.46;
-    const core = smoothstep(reach, reach * 0.35, r);
+    // Torn mass: an irregular blob, small enough to leave room for droplets.
+    const R = 0.20 + lobe * 0.26 + chew * 0.08;
+    const core = smoothstep(R, R - 0.07, r);
 
-    // Fingers: narrow spikes of the mass thrown further than the rest.
-    const spikes = Math.pow(clamp01(noise.fbm(ca * 5.4 - 2, sa * 5.4 + 7, 3)), 2.6);
-    const finger = smoothstep(reach + spikes * 0.55, reach, r) * spikes * 1.5;
+    // Fingers: ridged noise, kept just outside the mass, so the edge tears.
+    const ridge = noise.ridged(u * 4.4 - 6, v * 4.4 + 2, 3);
+    const finger = smoothstep(0.66, 0.95, ridge) * smoothstep(R + 0.34, R - 0.04, r);
 
-    // Satellites: droplets, stretched along the throw direction and thinning
-    // out with distance.
-    const w = noise.worley(u * 6.4 + 30, (v - r * 0.35) * 5.2 + 30, 1.0);
-    const size = 0.05 + (w.id / 255) * 0.16 * (1 - r * 0.7);
-    const drop = 1 - smoothstep(size * 0.6, size, w.f1);
-    const sparse = smoothstep(1.15, 0.25, r) * (0.35 + noise.fbm(ca * 3.3, sa * 3.3, 2) * 0.8);
+    // Satellites: worley cells become droplets, smaller and rarer further out.
+    const w = noise.worley(u * 7.2 + 30, v * 7.2 + 30, 1.0);
+    const size = (0.10 + (w.id / 255) * 0.2) * (1 - r * 0.55);
+    const drop = 1 - smoothstep(size * 0.55, size, w.f1);
+    const sparse = smoothstep(1.05, 0.22, r) * (0.25 + chew * 1.1);
 
-    const m = clamp01(Math.max(core, Math.max(finger, drop * sparse)));
-    // Wet centre, drier at the edges, so it does not read as flat paint.
-    const wet = 0.2 + smoothstep(reach * 1.2, 0, r) * 0.45;
-    return [wet, m];
+    const m = clamp01(Math.max(core, Math.max(finger * 0.9, drop * sparse)));
+    // Wet in the middle, thinner where it is only droplets.
+    return [0.16 + smoothstep(R, 0, r) * 0.45, m];
   });
 
   // 6 ring — a soft annulus used for shockwaves and area markers.
@@ -219,33 +219,26 @@ function buildStainAtlas(): THREE.Texture {
 
   // 12 gore — the pool left where something died.
   //
-  // A pool spreads: it is broadly round but its edge is a run of lobes where
-  // the liquid found low ground, with a dark wet centre and thin drying margins.
-  // The old one was a soft disc with speckle on it, which at any size reads as
-  // a red circle painted on the floor.
+  // Broadly round, with a lobed edge where the liquid found low ground, thin
+  // runs escaping it, and chunks scattered around. Same rule as splatter: the
+  // edge is perturbed in (u, v), never by angle.
   paint(DECAL.gore, (u, v, r) => {
-    const ang = Math.atan2(v, u);
-    const ca = Math.cos(ang);
-    const sa = Math.sin(ang);
+    const lobe = noise.fbm(u * 2.2 + 41, v * 2.2 - 13, 4);
+    const chew = noise.fbm(u * 5.8 - 7, v * 5.8 + 22, 3);
+    const R = 0.40 + lobe * 0.26 + chew * 0.07;
+    const pool = smoothstep(R, R - 0.06, r);
 
-    // Lobed edge: the pool's radius varies with direction, at two scales.
-    const lobes =
-      0.42 + noise.fbm(ca * 1.7 + 41, sa * 1.7 - 13, 3) * 0.34
-           + noise.fbm(ca * 5.1 - 7, sa * 5.1 + 22, 2) * 0.12;
-    const pool = smoothstep(lobes, lobes * 0.72, r);
+    // Runs: thin trails leaving the pool, fading out quickly.
+    const ridge = noise.ridged(u * 3.2 + 3, v * 3.2 - 9, 3);
+    const run = smoothstep(0.74, 0.96, ridge) * smoothstep(R + 0.3, R - 0.03, r);
 
-    // Runs: thin trails of blood escaping the pool downhill.
-    const runNoise = Math.pow(clamp01(noise.fbm(ca * 4.2 + 3, sa * 4.2 - 9, 3)), 3.2);
-    const run = smoothstep(lobes + runNoise * 0.5, lobes * 0.95, r) * runNoise * 1.8;
+    // Chunks around the margin.
+    const w = noise.worley(u * 6.6 + 3, v * 6.6 - 8, 1.0);
+    const chunk = (1 - smoothstep(0.07, 0.16, w.f1)) * smoothstep(1.0, 0.3, r) * 0.8;
 
-    // Chunks scattered around the edge.
-    const w = noise.worley(u * 6.0 + 3, v * 6.0 - 8, 1.0);
-    const chunk = (1 - smoothstep(0.08, 0.19, w.f1)) * smoothstep(1.1, 0.35, r);
-
-    const m = clamp01(Math.max(pool, Math.max(run, chunk * 0.85)));
-    // Wet and near-black in the middle, thinner and browner at the margin.
-    const wet = 0.12 + smoothstep(lobes, 0, r) * 0.5 + chunk * 0.25;
-    return [wet, m];
+    const m = clamp01(Math.max(pool, Math.max(run * 0.85, chunk)));
+    // Near-black and wet in the middle, browner and thinner at the margin.
+    return [0.1 + smoothstep(R, 0, r) * 0.5 + chunk * 0.2, m];
   });
 
   // 13 water — thin sheen with concentric ripples.

@@ -200,12 +200,79 @@ interface LiveEffect {
 // Materials
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Material pooling
+// ---------------------------------------------------------------------------
+
+/**
+ * Effect materials are pooled, never destroyed.
+ *
+ * Every one of these is a ShaderMaterial, and each effect used to build a fresh
+ * one on cast and dispose it on finish. Three.js reference-counts compiled GL
+ * programs against the materials using them: dropping the last user *deletes
+ * the program*, so the next cast of the same spell recompiles the shader from
+ * source. That is a multi-millisecond stall on the main thread, and it landed
+ * every single time you pressed the button — which is exactly what a lag spike
+ * on every cast looks like.
+ *
+ * Recycling the instance keeps the program alive and skips the allocation. The
+ * pool is per shader kind, and each material remembers its own kind so callers
+ * can hand it back without tracking which factory produced it.
+ */
+const materialPool = new Map<string, THREE.ShaderMaterial[]>();
+const POOL_LIMIT = 16;
+
+function pooled(kind: string, make: () => THREE.ShaderMaterial): THREE.ShaderMaterial {
+  const free = materialPool.get(kind);
+  const m = free && free.length > 0 ? free.pop()! : make();
+  m.userData.poolKind = kind;
+  m.visible = true;
+  return m;
+}
+
+/** Returns a material to its pool. Use instead of `dispose()` on effect exit. */
+export function releaseMaterial(m: THREE.Material | THREE.Material[] | undefined | null): void {
+  if (!m) return;
+  if (Array.isArray(m)) {
+    for (const one of m) releaseMaterial(one);
+    return;
+  }
+  const kind = m.userData?.poolKind as string | undefined;
+  if (!kind) {
+    m.dispose();
+    return;
+  }
+  let free = materialPool.get(kind);
+  if (!free) {
+    free = [];
+    materialPool.set(kind, free);
+  }
+  if (free.length >= POOL_LIMIT) m.dispose();
+  else free.push(m as THREE.ShaderMaterial);
+}
+
+/** Drops every pooled program. Call between runs, not between casts. */
+export function disposeEffectMaterials(): void {
+  for (const list of materialPool.values()) for (const m of list) m.dispose();
+  materialPool.clear();
+}
+
 function beamMaterial(color: THREE.Color, core: THREE.Color): THREE.ShaderMaterial {
+  const m = pooled('beam', make_beamMaterial);
+  m.uniforms.uColor!.value.copy(color);
+  m.uniforms.uCore!.value.copy(core);
+  if (m.uniforms.uPower) m.uniforms.uPower.value = 1;
+  if (m.uniforms.uTime) m.uniforms.uTime.value = 0;
+  m.opacity = 1;
+  return m;
+}
+
+function make_beamMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uColor: { value: color.clone() },
-      uCore: { value: core.clone() },
+      uColor: { value: new THREE.Color(1, 1, 1) },
+      uCore: { value: new THREE.Color(1, 1, 1) },
       uPower: { value: 1 },
       uScroll: { value: 3.2 },
       uNoise: { value: 1.0 },
@@ -253,10 +320,19 @@ function beamMaterial(color: THREE.Color, core: THREE.Color): THREE.ShaderMateri
 }
 
 function shieldMaterial(color: THREE.Color): THREE.ShaderMaterial {
+  const m = pooled('shield', make_shieldMaterial);
+  m.uniforms.uColor!.value.copy(color);
+  if (m.uniforms.uPower) m.uniforms.uPower.value = 1;
+  if (m.uniforms.uTime) m.uniforms.uTime.value = 0;
+  m.opacity = 1;
+  return m;
+}
+
+function make_shieldMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uColor: { value: color.clone() },
+      uColor: { value: new THREE.Color(1, 1, 1) },
       uPower: { value: 1 },
       /** xyz = last impact point in local space, w = time since impact. */
       uImpact: { value: new THREE.Vector4(0, 0, 0, 99) },
@@ -318,10 +394,19 @@ function shieldMaterial(color: THREE.Color): THREE.ShaderMaterial {
 }
 
 function runeCircleMaterial(color: THREE.Color): THREE.ShaderMaterial {
+  const m = pooled('rune', make_runeCircleMaterial);
+  m.uniforms.uColor!.value.copy(color);
+  if (m.uniforms.uPower) m.uniforms.uPower.value = 1;
+  if (m.uniforms.uTime) m.uniforms.uTime.value = 0;
+  m.opacity = 1;
+  return m;
+}
+
+function make_runeCircleMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uColor: { value: color.clone() },
+      uColor: { value: new THREE.Color(1, 1, 1) },
       uProgress: { value: 0 },
       uPower: { value: 1 },
     },
@@ -374,10 +459,19 @@ function runeCircleMaterial(color: THREE.Color): THREE.ShaderMaterial {
 }
 
 function novaRingMaterial(color: THREE.Color): THREE.ShaderMaterial {
+  const m = pooled('nova', make_novaRingMaterial);
+  m.uniforms.uColor!.value.copy(color);
+  if (m.uniforms.uPower) m.uniforms.uPower.value = 1;
+  if (m.uniforms.uTime) m.uniforms.uTime.value = 0;
+  m.opacity = 1;
+  return m;
+}
+
+function make_novaRingMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uColor: { value: color.clone() },
+      uColor: { value: new THREE.Color(1, 1, 1) },
       uProgress: { value: 0 },
       uThickness: { value: 0.16 },
     },
@@ -415,10 +509,19 @@ function novaRingMaterial(color: THREE.Color): THREE.ShaderMaterial {
 }
 
 function auraMaterial(color: THREE.Color): THREE.ShaderMaterial {
+  const m = pooled('aura', make_auraMaterial);
+  m.uniforms.uColor!.value.copy(color);
+  if (m.uniforms.uPower) m.uniforms.uPower.value = 1;
+  if (m.uniforms.uTime) m.uniforms.uTime.value = 0;
+  m.opacity = 1;
+  return m;
+}
+
+function make_auraMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uColor: { value: color.clone() },
+      uColor: { value: new THREE.Color(1, 1, 1) },
       uPower: { value: 1 },
     },
     vertexShader: /* glsl */ `
@@ -458,10 +561,19 @@ function auraMaterial(color: THREE.Color): THREE.ShaderMaterial {
 }
 
 function vortexMaterial(color: THREE.Color): THREE.ShaderMaterial {
+  const m = pooled('vortex', make_vortexMaterial);
+  m.uniforms.uColor!.value.copy(color);
+  if (m.uniforms.uPower) m.uniforms.uPower.value = 1;
+  if (m.uniforms.uTime) m.uniforms.uTime.value = 0;
+  m.opacity = 1;
+  return m;
+}
+
+function make_vortexMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uColor: { value: color.clone() },
+      uColor: { value: new THREE.Color(1, 1, 1) },
       uPower: { value: 1 },
       uSpin: { value: 4.5 },
     },
@@ -549,10 +661,10 @@ class LightningArc {
     this.geo.setIndex(new THREE.BufferAttribute(idx, 1));
     this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);
 
-    this.mat = new THREE.ShaderMaterial({
+    this.mat = pooled('arc', () => new THREE.ShaderMaterial({
       uniforms: {
-        uColor: { value: color.clone() },
-        uCore: { value: core.clone() },
+        uColor: { value: new THREE.Color(1, 1, 1) },
+        uCore: { value: new THREE.Color(1, 1, 1) },
         uPower: { value: 1 },
         uTime: { value: 0 },
       },
@@ -582,8 +694,11 @@ class LightningArc {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
-    });
+    }));
 
+    this.mat.uniforms.uColor!.value.copy(color);
+    this.mat.uniforms.uCore!.value.copy(core);
+    this.mat.uniforms.uPower!.value = 1;
     this.mesh = new THREE.Mesh(this.geo, this.mat);
     this.mesh.frustumCulled = false;
     this.mesh.matrixAutoUpdate = false;
@@ -646,7 +761,7 @@ class LightningArc {
 
   dispose(): void {
     this.geo.dispose();
-    this.mat.dispose();
+    releaseMaterial(this.mat);
   }
 }
 
@@ -1079,7 +1194,7 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(group);
-        core.material.dispose();
+        releaseMaterial(core.material);
         haloMat.dispose();
         trail?.retire(0.18);
       },
@@ -1198,7 +1313,7 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(mesh);
-        mat.dispose();
+        releaseMaterial(mat);
       },
     });
 
@@ -1319,7 +1434,7 @@ export class EffectSystem {
       dispose(): void {
         tg.cancel();
         self.scene.remove(pivot);
-        mat.dispose();
+        releaseMaterial(mat);
       },
     });
     return handle;
@@ -1388,7 +1503,7 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(mesh);
-        mat.dispose();
+        releaseMaterial(mat);
       },
     });
     return handle;
@@ -1459,7 +1574,7 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(mesh);
-        mat.dispose();
+        releaseMaterial(mat);
       },
     });
     return handle;
@@ -1631,7 +1746,7 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(mesh);
-        mat.dispose();
+        releaseMaterial(mat);
       },
     });
     return handle;
@@ -1684,7 +1799,7 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(mesh);
-        mat.dispose();
+        releaseMaterial(mat);
       },
     });
     return handle;
@@ -1759,7 +1874,7 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(mesh);
-        mat.dispose();
+        releaseMaterial(mat);
         if (ring) {
           self.scene.remove(ring);
           ringMat?.dispose();
@@ -1823,7 +1938,7 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(mesh);
-        mat.dispose();
+        releaseMaterial(mat);
       },
     });
     return handle;
@@ -2124,6 +2239,8 @@ export class EffectSystem {
     this.geoPlane.dispose();
     this.geoCone.dispose();
     this.geoIcosa.dispose();
+    // Pooled programs outlive individual effects but not the run.
+    disposeEffectMaterials();
     void this.elapsed;
   }
 }
