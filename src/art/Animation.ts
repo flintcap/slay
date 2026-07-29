@@ -207,6 +207,12 @@ export type ClipName =
   | 'attack2'
   | 'cast'
   | 'shoot'
+  | 'slam'
+  | 'thrust'
+  | 'channel'
+  | 'point'
+  | 'stomp'
+  | 'roar'
   | 'hurt'
   | 'death'
   | 'dodge';
@@ -557,6 +563,166 @@ const CLIPS: Record<ClipName, ClipDef> = {
     },
   },
 
+
+  /**
+   * Overhead two-handed smash. Wind up tall, then drive down through the
+   * target with the whole body behind it.
+   */
+  slam: {
+    duration: 0.72,
+    loop: false,
+    breath: 0.08,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const wind = kf(t, [[0, 0], [0.34, 1], [0.44, 1], [0.56, 0], [1, 0]]);
+      const drop = kf(t, [[0, 0], [0.46, 0], [0.58, 1], [0.72, 0.9], [1, 0.2]]);
+
+      p.set('spine', -0.34 * wind + 0.5 * drop, 0, 0);
+      p.set('chest', -0.4 * wind + 0.62 * drop, 0, 0);
+      p.set('head', -0.36 * wind + 0.34 * drop, 0, 0);
+      p.move('hips', 0, h * 0.05 * wind - h * 0.09 * drop, 0);
+
+      // Both arms travel together — this is a two-handed blow.
+      const arm = -2.5 * wind + 1.1 * drop;
+      p.set('shoulderL', arm, 0.18, 0.34 - 0.2 * drop);
+      p.set('shoulderR', arm, -0.18, -0.34 + 0.2 * drop);
+      p.set('elbowL', -0.5 - 0.7 * wind + 0.6 * drop, 0, 0);
+      p.set('elbowR', -0.5 - 0.7 * wind + 0.6 * drop, 0, 0);
+
+      p.foot(0, 0.16, -0.18 * drop, 0.22 * drop, 0);
+      p.foot(1, -0.16, -0.1 * drop, -0.1, 0);
+    },
+  },
+
+  /** A lunging stab: back foot drives, the weapon arm extends straight out. */
+  thrust: {
+    duration: 0.46,
+    loop: false,
+    breath: 0.1,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const coil = kf(t, [[0, 0], [0.3, 1], [0.42, 0.7], [1, 0]]);
+      const stab = kf(t, [[0, 0], [0.36, 0], [0.5, 1], [0.72, 0.85], [1, 0.1]]);
+
+      p.set('hips', 0, -0.3 * coil + 0.34 * stab, 0);
+      p.set('spine', 0.06 * stab, -0.22 * coil + 0.28 * stab, 0);
+      p.set('chest', 0.04, -0.3 * coil + 0.4 * stab, 0);
+      p.set('head', 0, 0.16 * coil - 0.1 * stab, 0);
+      p.move('hips', 0, -h * 0.05 * stab, 0);
+
+      p.set('shoulderR', -0.5 - 0.55 * coil - 0.75 * stab, -0.4 + 0.5 * stab, -0.3);
+      p.set('elbowR', -1.5 * coil + 1.45 * stab, 0, 0);
+      p.set('shoulderL', -0.2, 0.4, 0.5);
+      p.set('elbowL', -1.0, 0, 0.2);
+
+      p.foot(0, 0.14, -0.22 * stab, 0.5 * stab, 0);
+      p.foot(1, -0.18, 0, -0.3 * stab, 0);
+    },
+  },
+
+  /** Sustained two-handed output: arms forward, braced, holding the line. */
+  channel: {
+    duration: 0.9,
+    loop: true,
+    breath: 0.3,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const push = kf(t, [[0, 0.85], [0.5, 1], [1, 0.85]]);
+      const tremor = Math.sin(t * Math.PI * 8) * 0.02;
+
+      p.set('spine', 0.12 * push, 0, 0);
+      p.set('chest', 0.16 * push, 0, 0);
+      p.set('head', -0.06, 0, 0);
+      p.move('hips', 0, -h * 0.02 * push, 0);
+
+      p.set('shoulderL', -1.5 * push + tremor, 0.22, 0.3);
+      p.set('shoulderR', -1.5 * push + tremor, -0.22, -0.3);
+      p.set('elbowL', -0.28 + tremor, 0, 0.1);
+      p.set('elbowR', -0.28 - tremor, 0, -0.1);
+
+      p.foot(0, 0.18, -0.1, 0.12, 0);
+      p.foot(1, -0.18, -0.14, -0.16, 0);
+    },
+  },
+
+  /** One arm snapped out, finger first: commands, curses, marks, summons. */
+  point: {
+    duration: 0.54,
+    loop: false,
+    breath: 0.15,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const draw = kf(t, [[0, 0], [0.32, 1], [0.44, 1], [1, 0]]);
+      const snap = kf(t, [[0, 0], [0.4, 0], [0.52, 1], [0.78, 0.9], [1, 0.3]]);
+
+      p.set('spine', -0.14 * draw + 0.18 * snap, -0.1 * draw + 0.14 * snap, 0);
+      p.set('chest', -0.18 * draw + 0.24 * snap, -0.16 * draw + 0.22 * snap, 0);
+      p.set('head', -0.1 * draw + 0.12 * snap, 0.1 * snap, 0);
+      p.move('hips', 0, -h * 0.014 * snap, 0);
+
+      // Pointing arm out level; the other stays tucked, which is what makes
+      // the gesture read as deliberate rather than as a flail.
+      p.set('shoulderR', -0.4 - 0.5 * draw - 0.8 * snap, -0.2 + 0.35 * snap, -0.3);
+      p.set('elbowR', -1.3 * draw + 1.3 * snap, 0, 0);
+      p.set('shoulderL', -0.3 - 0.35 * draw, 0.3, 0.55);
+      p.set('elbowL', -1.35, 0, 0.25);
+
+      p.foot(0, 0.14, -0.05 * snap, 0.1 * snap, 0);
+      p.foot(1, -0.16, -0.04, -0.06, 0);
+    },
+  },
+
+  /** Rise and drive both feet down — ground novas, quakes, shockwaves. */
+  stomp: {
+    duration: 0.66,
+    loop: false,
+    breath: 0.05,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const lift = kf(t, [[0, 0], [0.34, 1], [0.46, 0.9], [0.58, 0], [1, 0]]);
+      const land = kf(t, [[0, 0], [0.5, 0], [0.6, 1], [0.76, 0.55], [1, 0.1]]);
+
+      p.move('hips', 0, h * 0.14 * lift - h * 0.16 * land, 0);
+      p.set('spine', -0.2 * lift + 0.4 * land, 0, 0);
+      p.set('chest', -0.26 * lift + 0.5 * land, 0, 0);
+      p.set('head', -0.2 * lift + 0.3 * land, 0, 0);
+
+      p.set('shoulderL', -1.9 * lift + 0.9 * land, 0.4, 0.7 - 0.4 * land);
+      p.set('shoulderR', -1.9 * lift + 0.9 * land, -0.4, -0.7 + 0.4 * land);
+      p.set('elbowL', -0.9 * lift + 0.7 * land, 0, 0.2);
+      p.set('elbowR', -0.9 * lift + 0.7 * land, 0, -0.2);
+
+      // Knees tuck on the rise and splay wide on the landing.
+      p.foot(0, 0.1 + 0.22 * land, -0.42 * lift - 0.3 * land, 0, 0);
+      p.foot(1, -0.1 - 0.22 * land, -0.42 * lift - 0.3 * land, 0, 0);
+    },
+  },
+
+  /** Head back, chest open, arms flung wide — shouts, banners, war cries. */
+  roar: {
+    duration: 0.8,
+    loop: false,
+    breath: 0.2,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const gather = kf(t, [[0, 0], [0.26, 1], [0.36, 1], [0.5, 0], [1, 0]]);
+      const bellow = kf(t, [[0, 0], [0.4, 0], [0.52, 1], [0.8, 0.8], [1, 0.2]]);
+
+      p.set('spine', 0.24 * gather - 0.3 * bellow, 0, 0);
+      p.set('chest', 0.3 * gather - 0.42 * bellow, 0, 0);
+      p.set('head', 0.3 * gather - 0.55 * bellow, 0, 0);
+      p.move('hips', 0, -h * 0.03 * gather + h * 0.02 * bellow, 0);
+
+      p.set('shoulderL', -0.3 - 0.5 * gather - 0.7 * bellow, 0.3 + 0.5 * bellow, 0.5 + 0.7 * bellow);
+      p.set('shoulderR', -0.3 - 0.5 * gather - 0.7 * bellow, -0.3 - 0.5 * bellow, -0.5 - 0.7 * bellow);
+      p.set('elbowL', -1.4 * gather + 1.0 * bellow, 0, 0.3);
+      p.set('elbowR', -1.4 * gather + 1.0 * bellow, 0, -0.3);
+
+      p.foot(0, 0.2 + 0.1 * bellow, -0.12 * bellow, 0, 0);
+      p.foot(1, -0.2 - 0.1 * bellow, -0.12 * bellow, 0, 0);
+    },
+  },
+
   cast: {
     duration: 0.85,
     loop: false,
@@ -714,6 +880,12 @@ function resolveClip(name: string): ClipName {
   if (n.includes('walk')) return 'walk';
   if (n.includes('idle')) return 'idle';
   if (n.includes('shoot') || n.includes('bow') || n.includes('fire')) return 'shoot';
+  if (n.includes('slam') || n.includes('smash') || n.includes('crush')) return 'slam';
+  if (n.includes('thrust') || n.includes('stab') || n.includes('pierce')) return 'thrust';
+  if (n.includes('channel') || n.includes('beam') || n.includes('stream')) return 'channel';
+  if (n.includes('point') || n.includes('summon') || n.includes('curse') || n.includes('mark')) return 'point';
+  if (n.includes('stomp') || n.includes('nova') || n.includes('quake')) return 'stomp';
+  if (n.includes('roar') || n.includes('shout') || n.includes('cry')) return 'roar';
   if (n.includes('2') || n.includes('sweep') || n.includes('slash')) return 'attack2';
   return 'attack1';
 }

@@ -42,6 +42,107 @@ export function isDualWielding(player: Player): boolean {
   }
 }
 
+/**
+ * The animation a skill should play.
+ *
+ * Keyed on the effect id first — a `nova` stomps, a `beam` is channelled, a
+ * `shout` is roared — then narrowed by what is in your hands, because the same
+ * skill is a draw with a bow and a throw without one. This is the whole reason
+ * skills stopped looking alike: the delivery families already differed, but
+ * every one of them played the same two clips.
+ */
+/** Stable small integer from a skill id. */
+function hashId(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/**
+ * Rotates a colour a little way around the wheel, keeping it in its own family.
+ * A +/-8% shift is enough to tell two skills apart and small enough that fire
+ * never turns green.
+ */
+function shiftHue(hex: number, seed: number): number {
+  const shift = (((seed >>> 6) % 17) - 8) / 100;
+  const r = ((hex >> 16) & 255) / 255;
+  const g = ((hex >> 8) & 255) / 255;
+  const b = (hex & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return hex;
+  const sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = (h / 6 + shift + 1) % 1;
+  const q = l < 0.5 ? l * (1 + sat) : l + sat - l * sat;
+  const pp = 2 * l - q;
+  const ch = (tv: number): number => {
+    const tt = (tv + 1) % 1;
+    if (tt < 1 / 6) return pp + (q - pp) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return pp + (q - pp) * (2 / 3 - tt) * 6;
+    return pp;
+  };
+  const to = (v: number): number => Math.max(0, Math.min(255, Math.round(v * 255)));
+  return (to(ch(h + 1 / 3)) << 16) | (to(ch(h)) << 8) | to(ch(h - 1 / 3));
+}
+
+export function clipFor(effect: string | undefined, holding: WeaponStyle): string {
+  const raw = (effect ?? 'melee').toLowerCase();
+  const [family, sub] = raw.split('.');
+  const f = family ?? 'melee';
+  const s2 = sub ?? '';
+
+  // Sub-effects that override their family outright.
+  if (s2 === 'strike' || s2 === 'lunge') return 'thrust';
+  if (s2 === 'slam' || s2 === 'smash') return 'slam';
+  if (s2 === 'stream' || s2 === 'channel') return 'channel';
+
+  switch (f) {
+    case 'melee':
+      return 'attack1';
+    case 'cleave':
+    case 'whirlwind':
+      return 'attack2';
+    case 'slam':
+    case 'meteor':
+      return 'slam';
+    case 'nova':
+      return 'stomp';
+    case 'beam':
+      return 'channel';
+    case 'cone':
+      return holding === 'ranged' ? 'shoot' : 'channel';
+    case 'chain':
+    case 'summon':
+    case 'corpse':
+    case 'curse':
+      return 'point';
+    case 'shout':
+    case 'banner':
+      return 'roar';
+    case 'dash':
+      return 'dodge';
+    case 'projectile':
+    case 'bolt':
+      return holding === 'ranged' ? 'shoot' : 'point';
+    case 'aura':
+    case 'stance':
+    case 'buff':
+    case 'self':
+    case 'absorb':
+    case 'heal':
+      return 'cast';
+    default:
+      return holding === 'ranged' ? 'shoot' : 'cast';
+  }
+}
+
 export function weaponStyle(player: Player): WeaponStyle {
   const item = player.character.equipment.mainHand;
   if (!item) return 'unarmed';
@@ -93,6 +194,7 @@ export class SkillRunner {
   private effects: EffectSystem;
   private tmp = new THREE.Vector3();
   /** Pending off-hand blow from a dual-wield basic attack. */
+  private swingParity = 0;
   private offHandTimer = 0;
   private offHandSwing: {
     dir: THREE.Vector3;
@@ -151,7 +253,11 @@ export class SkillRunner {
 
     const scale = def.damageScale ? def.damageScale(rank) : 1;
     const type: DamageType = def.damageType ?? 'physical';
-    const color = ELEMENTS[type]?.core ?? 0xffe3b0;
+    // Every skill of a damage type used the one element colour, so a whole
+    // tree of fire skills was the same orange on screen. Shift it by a hash of
+    // the skill's own id: still unmistakably fire, no longer indistinguishable
+    // from the fire skill next to it.
+    const color = shiftHue(ELEMENTS[type]?.core ?? 0xffe3b0, hashId(def.id));
 
     const makePacket = (mult = 1): DamagePacket =>
       rollDamage(player.stats, ctx.rng, {
@@ -181,11 +287,15 @@ export class SkillRunner {
     // without one.
     const holding = weaponStyle(player);
     const rangedClip: 'shoot' | 'cast' = holding === 'ranged' ? 'shoot' : 'cast';
+    // What the body does for this specific skill. Everything used to collapse
+    // onto `cast` or `attack1`, so a ground slam, a war cry, a channelled beam
+    // and a thrown bolt were all the same gesture.
+    const clip = clipFor(def.effect, holding);
 
     switch (family) {
       case 'melee':
       case 'cleave': {
-        player.beginAction('attack1', attackTime);
+        player.beginAction(clip, attackTime);
         const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
         this.meleeSwing(player, dir, num('arc', wide ? 2.2 : 1.3), num('reach', 2.3), makePacket, ctx, enemies, boss, type);
         break;
@@ -199,7 +309,7 @@ export class SkillRunner {
 
       case 'projectile':
       case 'bolt': {
-        player.beginAction(rangedClip, castTime);
+        player.beginAction(clip, castTime);
         const range = num('range', 18);
         const count = Math.max(1, Math.floor(num('count', 1)));
         const spread = num('spread', 0.16);
@@ -237,7 +347,7 @@ export class SkillRunner {
       }
 
       case 'nova': {
-        player.beginAction(rangedClip, castTime);
+        player.beginAction(clip, castTime);
         const radius = num('radius', 5.2);
         this.effects.nova(player.position.x, player.position.z, radius, { element: type, color });
         this.areaDamage(player.position, radius, makePacket, ctx, enemies, boss);
@@ -261,7 +371,7 @@ export class SkillRunner {
       }
 
       case 'meteor': {
-        player.beginAction(rangedClip, castTime);
+        player.beginAction(clip, castTime);
         const radius = num('radius', 3.4);
         const at = target.clone().setY(0);
         this.effects.meteor(at.x, at.z, {
@@ -274,7 +384,7 @@ export class SkillRunner {
       }
 
       case 'beam': {
-        player.beginAction(rangedClip, castTime);
+        player.beginAction(clip, castTime);
         const length = num('length', 12);
         const to = origin.clone().addScaledVector(dir, length);
         this.effects.beam(origin, to, { element: type, color, width: num('width', 1.1), endBurst: true });
@@ -284,7 +394,7 @@ export class SkillRunner {
       }
 
       case 'cone': {
-        player.beginAction(rangedClip, castTime);
+        player.beginAction(clip, castTime);
         const reach = num('reach', 6.5);
         const half = num('arc', 1.1) * 0.5;
         this.effects.cone(player.position.clone().setY(1.0), dir, half, reach, { element: type, color });
@@ -294,7 +404,7 @@ export class SkillRunner {
       }
 
       case 'chain': {
-        player.beginAction(rangedClip, castTime);
+        player.beginAction(clip, castTime);
         this.chainLightning(player, target, Math.floor(num('jumps', 4)), num('range', 7), makePacket, ctx, enemies, boss, type, color);
         audio.play('chain');
         break;
@@ -307,7 +417,7 @@ export class SkillRunner {
       }
 
       case 'heal': {
-        player.beginAction('cast', castTime * 0.7);
+        player.beginAction(clip, castTime * 0.7);
         player.heal(num('amount', 30) * (1 + rank * 0.15));
         this.effects.impact('arcane', player.position.x, 1.0, player.position.z, {
           color: 0x7dffb0,
@@ -325,7 +435,7 @@ export class SkillRunner {
       case 'banner':
       case 'self':
       case 'absorb': {
-        player.beginAction('cast', castTime * 0.7);
+        player.beginAction(clip, castTime * 0.7);
         this.applyBuff(player, def, rank, num, color);
         this.effects.impact(type, player.position.x, 1.0, player.position.z, {
           color,
@@ -342,7 +452,7 @@ export class SkillRunner {
         // melee put every bow user through a sword animation, hitting nothing,
         // on every cast of anything the runner did not recognise.
         if (holding === 'ranged' || holding === 'caster') {
-          player.beginAction(rangedClip, castTime);
+          player.beginAction(clip, castTime);
           const from = player.position.clone().setY(holding === 'ranged' ? 1.28 : 1.05);
           const stop = this.firstHitAlong(from, dir, 18, enemies, boss, 0.4);
           this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
@@ -353,7 +463,7 @@ export class SkillRunner {
             onHit: (pt) => this.pointDamage(pt, 0.6, makePacket, ctx, enemies, boss),
           });
         } else {
-          player.beginAction('attack1', attackTime);
+          player.beginAction(clip, attackTime);
           this.meleeSwing(player, dir, 1.4, 2.3, makePacket, ctx, enemies, boss, type);
         }
         break;
@@ -422,7 +532,10 @@ export class SkillRunner {
     }
 
     const attackTime = 0.42 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
-    player.beginAction('attack1', attackTime);
+    // Basic melee alternates its two swings, so holding the button reads as a
+    // combo rather than one animation stuttering.
+    this.swingParity = (this.swingParity + 1) % 2;
+    player.beginAction(this.swingParity === 0 ? 'attack1' : 'attack2', attackTime);
     this.meleeSwing(player, dir, 1.5, 2.4, packet, ctx, enemies, boss, 'physical');
 
     // Dual wield: the off-hand weapon follows the main one.
