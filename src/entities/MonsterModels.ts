@@ -123,6 +123,7 @@ function bodyMaterial(palette: string, rough: number, metal: number): THREE.Mesh
       metalness: metal,
     });
   }
+  mat.userData.shared = true;
   materialCache.set(cacheKey, mat);
   return mat;
 }
@@ -142,6 +143,7 @@ function glowMaterial(color: number, intensity: number): THREE.MeshStandardMater
       roughness: 0.4,
     });
   }
+  mat.userData.shared = true;
   glowCache.set(cacheKey, mat);
   return mat;
 }

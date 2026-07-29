@@ -25,10 +25,26 @@ export abstract class GameScene {
   onPause?(): void;
 }
 
-/** Recursively frees geometries, materials and textures under a root. */
+/**
+ * Recursively frees the geometry under a root, and any material that belongs
+ * to it alone.
+ *
+ * It used to free the materials and textures too, unconditionally. Almost
+ * nothing in this game owns its own material: `surface()`, `emissiveMaterial()`
+ * and friends all hand back globally cached instances, and every texture in the
+ * project lives in a cache in `Textures.ts` shared across the whole scene. So
+ * throwing away one item model — which happens on every single equip change,
+ * and again in the paperdoll — was deleting materials the dungeon walls, the
+ * monsters and the player were still using. Three.js then had to rebuild and
+ * re-upload all of it on the next frame that touched them, which is both the
+ * stall on equipping and a chunk of the general combat stutter.
+ *
+ * Geometry is always per-instance here, so that is always safe to free.
+ * Textures are never freed from here; `clearTextureCache()` owns that, and it
+ * is a between-runs operation, not a per-object one.
+ */
 export function disposeObject(root: THREE.Object3D): void {
-  const seenMaterials = new Set<THREE.Material>();
-  const seenTextures = new Set<THREE.Texture>();
+  const seen = new Set<THREE.Material>();
   root.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
     if (mesh.geometry) mesh.geometry.dispose();
@@ -36,15 +52,10 @@ export function disposeObject(root: THREE.Object3D): void {
     if (!mat) return;
     const list = Array.isArray(mat) ? mat : [mat];
     for (const m of list) {
-      if (seenMaterials.has(m)) continue;
-      seenMaterials.add(m);
-      for (const key of Object.keys(m)) {
-        const v = (m as unknown as Record<string, unknown>)[key];
-        if (v instanceof THREE.Texture && !seenTextures.has(v)) {
-          seenTextures.add(v);
-          v.dispose();
-        }
-      }
+      if (seen.has(m)) continue;
+      seen.add(m);
+      // Opt-out marker set by every cached factory in `art/Materials.ts`.
+      if (m.userData?.shared === true) continue;
       m.dispose();
     }
   });

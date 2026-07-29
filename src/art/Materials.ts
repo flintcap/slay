@@ -159,6 +159,9 @@ export function surface(key: string, opts: SurfaceOpts = {}): THREE.MeshStandard
   const hit = surfaceCache.get(ck);
   if (hit) return hit;
   const mat = buildSurface(pal.key, opts);
+  // Marks it as belonging to the cache, not to whoever asked for it. Object
+  // teardown checks this before freeing anything.
+  mat.userData.shared = true;
   const evict = (): void => {
     if (surfaceCache.get(ck) === mat) surfaceCache.delete(ck);
   };

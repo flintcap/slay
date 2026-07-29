@@ -521,6 +521,7 @@ function projMaterial(color: number): THREE.MeshBasicMaterial {
   let m = projectileMatCache.get(color);
   if (m) return m;
   m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false });
+  m.userData.shared = true;
   projectileMatCache.set(color, m);
   return m;
 }
@@ -776,6 +777,7 @@ function hazardMaterial(color: number): THREE.MeshBasicMaterial {
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+  m.userData.shared = true;
   hazardMatCache.set(color, m);
   return m;
 }

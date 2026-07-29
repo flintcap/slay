@@ -161,6 +161,7 @@ function auraMaterial(color: number): THREE.MeshBasicMaterial {
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+  m.userData.shared = true;
   auraMatCache.set(color, m);
   return m;
 }
