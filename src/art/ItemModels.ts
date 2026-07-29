@@ -29,7 +29,7 @@ import {
   type ItemVisual,
   type Rng,
 } from '../types';
-import { surface, emissiveMaterial, gemMaterial, additiveMaterial, beamMaterial } from './Materials';
+import { surface, surfaceVariant, emissiveMaterial, gemMaterial, additiveMaterial, beamMaterial } from './Materials';
 import { radialGlowTexture, runeRingTexture } from './Textures';
 import {
   beveledBox,
@@ -243,6 +243,8 @@ interface Kit {
   deco: Deco;
   rng: Rng;
   ornate: number;
+  /** The item's own palette, so builders can ask what it is made of. */
+  paletteKey: string;
 }
 
 function kitFor(visual: ItemVisual, rarity: ItemRarity, rng: Rng): Kit {
@@ -264,6 +266,7 @@ function kitFor(visual: ItemVisual, rarity: ItemRarity, rng: Rng): Kit {
     deco,
     rng,
     ornate: visual.ornate ?? 0.35,
+    paletteKey: base,
   };
 }
 
@@ -1195,12 +1198,20 @@ function buildChest(kit: Kit, g: THREE.Group): void {
       g.add(stud);
     }
   }
-  if (kit.deco.tier >= 1) {
+  // A surcoat, and only where one belongs.
+  //
+  // This used to hang undyed linen down the front of every magic-or-better
+  // chest piece, which on brown leather is a pale beige slab stuck to your
+  // stomach. A surcoat is worn over *metal* — it is what stops a cuirass
+  // cooking you — and it is heraldry, so it takes the item's own colour rather
+  // than the colour of a bedsheet.
+  const metallic = /^(metal|bone)/.test(kit.paletteKey);
+  if (kit.deco.tier >= 1 && metallic) {
     const tabard = mesh(
-      clothPanel(0.22, 0.4, kit.rng, { segsX: 5, segsY: 7, ripple: 0.04, flare: 0.2, tatter: kit.deco.tier >= 4 ? 0.2 : 0 }),
-      kit.cloth,
+      clothPanel(0.17, 0.34, kit.rng, { segsX: 5, segsY: 7, ripple: 0.05, flare: 0.15, tatter: kit.deco.tier >= 4 ? 0.2 : 0 }),
+      surfaceVariant('cloth.banner', { tint: kit.accent, repeat: 5, seed: kit.deco.tier + 3 }),
     );
-    tabard.position.set(0, -h * 0.14, 0.16);
+    tabard.position.set(0, -h * 0.18, 0.16);
     g.add(tabard);
   }
   if (kit.deco.runes) {

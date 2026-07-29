@@ -1,9 +1,11 @@
-import type { CharClassId } from '../types';
+import * as THREE from 'three';
+import type { CharClassId, ItemRarity } from '../types';
 import type { Engine } from '../core/Engine';
 import { save } from '../core/Save';
+import { events } from '../core/Events';
 import { Random, randomSeed } from '../core/RNG';
 import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem } from '../sim/Character';
-import { rollItem } from '../sim/Loot';
+import { rollItem, newItem, getBase } from '../sim/Loot';
 import { addItemToInventory } from '../sim/Inventory';
 import { SKILLS } from '../data/skills';
 import { CLASSES } from '../data/classes';
@@ -86,6 +88,74 @@ export function installDebug(engine: Engine): Record<string, unknown> {
     /** Opens the art studio. kind: items | monsters | classes | rarity. */
     showcase(kind = 'items', page = 0): void {
       void engine.goTo('boot', { kind, page });
+    },
+
+    /**
+     * Equips a specific base by id, rolled at `ilvl`. The screenshot tools need
+     * this: `makeCharacter` rolls random gear, so "render an archer shooting"
+     * kept producing an archer with no bow swinging their fists.
+     */
+    equip(baseId: string, ilvl = 10, rarity: ItemRarity = 'rare'): string | null {
+      const c = save.account.current;
+      if (!c) return null;
+      const base = getBase(baseId);
+      if (!base) return null;
+      const item = newItem(base, ilvl, rarity, new Random(randomSeed()));
+      const res = equipItem(c, item);
+      if (!res.ok) {
+        addItemToInventory(c, item);
+        return null;
+      }
+      save.touch();
+      events.emit('ui:refresh', {});
+      return item.uid;
+    },
+
+    /** Fires the primary attack once, through the real input path. */
+    attack(dx = 1, dz = 0): void {
+      const s = engine.currentScene as unknown as { player?: { position: { x: number; z: number } } };
+      const p = s?.player;
+      if (!p) return;
+      engine.input.pointerOverUI = false;
+      engine.input.worldPoint.set(p.position.x + dx * 9, 0, p.position.z + dz * 9);
+      engine.input.mouseRight = true;
+    },
+
+    stopAttack(): void {
+      engine.input.mouseRight = false;
+    },
+
+    /**
+     * Every mesh currently hanging off the player's skeleton, with the equip
+     * slot it came from. This is how you find the stray panel on someone's back
+     * without guessing from source.
+     */
+    wornParts(): Array<{ name: string; slot: string; bone: string; pos: [number, number, number] }> {
+      const s = engine.currentScene as unknown as { player?: { root?: THREE.Object3D } };
+      const root = s?.player?.root;
+      if (!root) return [];
+      const out: Array<{ name: string; slot: string; bone: string; pos: [number, number, number] }> = [];
+      const world = new THREE.Vector3();
+      root.updateMatrixWorld(true);
+      root.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh || !m.visible) return;
+        // Walk up for the nearest socket marker and the bone it hangs from.
+        let slot = '';
+        let bone = '';
+        for (let p: THREE.Object3D | null = o; p; p = p.parent) {
+          if (!slot && typeof p.userData.socketSlot === 'string') slot = p.userData.socketSlot;
+          if (!bone && (p as THREE.Bone).isBone) bone = p.name;
+        }
+        o.getWorldPosition(world);
+        out.push({
+          name: m.name || (m.material as THREE.Material)?.name || '(unnamed)',
+          slot: slot || (typeof m.userData.coverSlot === 'string' ? `cover:${m.userData.coverSlot}` : 'body'),
+          bone,
+          pos: [+world.x.toFixed(3), +world.y.toFixed(3), +world.z.toFixed(3)],
+        });
+      });
+      return out;
     },
 
     setDepth(n: number): void {

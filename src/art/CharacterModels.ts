@@ -719,6 +719,10 @@ function underGarments(ctx: BuildCtx, mat = 'linen'): void {
       { y: H * 0.798, w: shW * 0.88, d: hipW * 0.84 * dep },
     ], 18),
     mat,
+    // Body armour replaces the undershirt rather than sitting over it. The
+    // shirt is a whole torso; a breastplate is a shell a few centimetres wider,
+    // so any place the two disagree the shirt pokes through as a pale patch.
+    cover: 'chest',
     bind: TORSO,
   });
 
@@ -774,6 +778,7 @@ function underGarments(ctx: BuildCtx, mat = 'linen'): void {
           rot: [i * 0.35, 0, 0],
         }),
         mat,
+        cover: 'boots',
         bind: bindLeg,
       });
     }
