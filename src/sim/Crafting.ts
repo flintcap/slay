@@ -318,7 +318,11 @@ export function insertGem(item: Item, gemId: string, socket: number): CraftResul
   if (!def) return { ok: false, reason: 'That is not a gem or rune.' };
   const base = getBase(item.baseId);
   if (def.levelReq > base.levelReq + 25) {
-    return { ok: false, reason: `${def.name} is too potent for this base.` };
+    // Say what would work, not just that this does not.
+    return {
+      ok: false,
+      reason: `${def.name} needs a base of level ${def.levelReq - 25} or higher — ${base.name} is level ${base.levelReq}.`,
+    };
   }
   slot.gemId = gemId;
   item.value = Math.round(item.value + def.value * 0.5);

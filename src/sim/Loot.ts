@@ -1268,6 +1268,11 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
         seen.add(text);
         push(`  ${label}: ${text}`, gem.isRune ? COLOR.rune : COLOR.socket);
       }
+      // The level rule is invisible until you try, and "too potent for this
+      // base" is a baffling thing to be told after the fact.
+      if (gem.levelReq > 26) {
+        push(`Needs a base of level ${gem.levelReq - 25} or higher.`, COLOR.dim);
+      }
       push('Drag onto a socketed item to set it.', COLOR.flavor);
     }
   }

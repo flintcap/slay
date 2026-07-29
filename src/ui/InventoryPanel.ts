@@ -14,6 +14,7 @@ import { save, INVENTORY_SIZE } from '../core/Save';
 import { equipItem, unequipItem, isWornOffHand } from '../sim/Character';
 import { computeStats } from '../sim/Stats';
 import { vendorPrice, itemDisplayName } from '../sim/Loot';
+import { insertGem } from '../sim/Crafting';
 import {
   Panel,
   ItemSlot,
@@ -273,10 +274,16 @@ export class InventoryPanel {
       slot.root.title = SLOT_LABEL[s];
       registerDrop(
         slot.root,
-        (p) => !!p.item && slotsFor(p.item).includes(s),
+        (p) =>
+          !!p.item &&
+          // Either it goes in this slot, or it is a gem for what is already in it.
+          (slotsFor(p.item).includes(s) || this.isSocketMove(p.item, save.account.current?.equipment[s])),
         (p) => {
           const c = save.account.current;
           if (!c || !p.item) return false;
+          // Socketing a worn item works too: you should not have to take your
+          // armour off to put a gem in it.
+          if (this.trySocket(p.item, c.equipment[s] ?? null)) return true;
           const r = doEquip(c, p.item, s);
           if (!r.ok) events.emit('toast', { text: r.reason ?? 'Cannot equip', kind: 'bad' });
           return r.ok;
@@ -317,7 +324,7 @@ export class InventoryPanel {
     });
 
     const hint = div('inv-hint');
-    hint.appendChild(span('', 'Right-click to equip or drink · drag onto the ground to drop · hold '));
+    hint.appendChild(span('', 'Right-click to equip or drink · drag a gem onto gear to socket it · drag onto the ground to drop · hold '));
     hint.appendChild(span('keycap', 'Shift'));
     hint.appendChild(span('', ' and right-click for more'));
 
@@ -456,10 +463,61 @@ export class InventoryPanel {
     ], attempt(() => item.name, 'Item'));
   }
 
+  /**
+   * Puts a dragged gem or rune into a host item's first empty socket.
+   *
+   * Dragging the stone onto the thing you want it in is the obvious gesture,
+   * and until now the only way to socket anything was to walk to the anvil and
+   * click the socket itself. Returns false when this is not a socketing move at
+   * all, so the caller can fall through to its normal swap.
+   */
+  private trySocket(gem: Item | null | undefined, host: Item | null | undefined): boolean {
+    const c = save.account.current;
+    if (!c || !gem || !host || gem.uid === host.uid) return false;
+    const gemBase = safeBase(gem);
+    if (gemBase?.category !== 'gem' && gemBase?.category !== 'rune') return false;
+
+    const free = host.sockets.findIndex((s) => !s.gemId);
+    if (free < 0) {
+      const why = host.sockets.length === 0 ? 'has no sockets' : 'has no empty socket';
+      events.emit('toast', { text: `${attempt(() => itemDisplayName(host), 'That')} ${why}.`, kind: 'bad' });
+      // Handled: the player clearly meant to socket it, so do not also swap the
+      // two items around as a consolation prize.
+      return true;
+    }
+
+    const r = attempt(() => insertGem(host, gem.baseId, free), { ok: false, reason: 'Failed' });
+    if (!r.ok) {
+      events.emit('toast', { text: r.reason ?? 'It will not seat.', kind: 'bad' });
+      return true;
+    }
+    invRemove(c, gem);
+    save.touch();
+    events.emit('sfx', { id: 'ui.equip' });
+    events.emit('toast', {
+      text: `${attempt(() => itemDisplayName(gem), 'Gem')} set into ${attempt(() => itemDisplayName(host), 'it')}.`,
+      kind: 'good',
+    });
+    events.emit('ui:refresh', {});
+    this.refresh();
+    return true;
+  }
+
+  /** True when dropping `gem` on `host` would socket rather than swap. */
+  private isSocketMove(gem: Item | null | undefined, host: Item | null | undefined): boolean {
+    if (!gem || !host || gem.uid === host.uid) return false;
+    const cat = safeBase(gem)?.category;
+    if (cat !== 'gem' && cat !== 'rune') return false;
+    return host.sockets.length > 0;
+  }
+
   private dropIntoInventory(p: DragPayload, index: number): boolean {
     const c = save.account.current;
     if (!c || !p.item) return false;
     normalizeInventory(c);
+
+    // A gem landing on a socketed item goes in it, rather than trading places.
+    if (this.trySocket(p.item, c.inventory[index] ?? null)) return true;
 
     if (p.kind === 'equipment' && p.slot) {
       if (!doUnequip(c, p.slot)) return false;

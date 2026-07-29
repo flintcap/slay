@@ -327,6 +327,8 @@ export function mountUI(engine: Engine): void {
     ['death', death as unknown as PanelHandle, death.panel],
     ['memorial', memorial, memorial.panel],
   ];
+  panelRegistry.clear();
+  for (const [id, handle] of panels) panelRegistry.set(id, handle);
 
   for (const [id, handle, panel] of panels) {
     panel.mount(root);
@@ -442,6 +444,19 @@ export function mountUI(engine: Engine): void {
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
+}
+
+/**
+ * Every built panel, by id.
+ *
+ * The screenshot and behaviour tools drive panels through their real handlers
+ * rather than re-implementing them, which is the only way a check can prove the
+ * thing the player touches actually works.
+ */
+const panelRegistry = new Map<string, unknown>();
+
+export function panelInstance(id: string): unknown {
+  return panelRegistry.get(id);
 }
 
 /** Exposed for panels that need to nudge the HUD (quest log sync). */

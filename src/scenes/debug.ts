@@ -12,6 +12,8 @@ import { addItemToInventory } from '../sim/Inventory';
 import { SKILLS } from '../data/skills';
 import { CLASSES } from '../data/classes';
 import { DungeonScene } from './DungeonScene';
+import { panelInstance } from '../ui/UIRoot';
+import { insertGem } from '../sim/Crafting';
 
 /**
  * Debug surface exposed as `window.SLAY.debug`. The Playwright screenshot
@@ -235,6 +237,53 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         blockingMs: +blocking.toFixed(1),
         eagerMs: +eager.toFixed(1),
         alreadyDrawn: deferred.filter((u) => !u.startsWith('data:image/gif')).length,
+      };
+    },
+
+    /**
+     * Drives the inventory's own drop handler with a gem over a socketed item,
+     * which is the exact path a player's drag takes. Returns what changed.
+     */
+    socketByDrag(): Record<string, unknown> {
+      const c = save.account.current;
+      if (!c) return { error: 'no character' };
+      const rng = new Random(0x50c);
+
+      // A host with sockets, and a gem to put in it. The base has to be high
+      // enough level for the gem — `insertGem` refuses a stone more than 25
+      // levels above the base, which is a real rule and not a bug.
+      const host = newItem(getBase('chest.gothic') ?? getBase('chest.plate')!, 60, 'rare', rng);
+      host.sockets = [{ gemId: null }, { gemId: null }];
+      const gem = newItem(getBase('gem.ruby.chipped')!, 40, 'normal', rng);
+      addItemToInventory(c, host);
+      addItemToInventory(c, gem);
+      const hostAt = c.inventory.findIndex((it) => it?.uid === host.uid);
+      const gemAt = c.inventory.findIndex((it) => it?.uid === gem.uid);
+
+      const panel = panelInstance('inventory') as
+        | { dropIntoInventory?: (p: unknown, i: number) => boolean }
+        | undefined;
+      if (!panel?.dropIntoInventory) return { error: 'inventory panel not reachable' };
+
+      const handled = panel.dropIntoInventory(
+        { kind: 'inventory', item: gem, index: gemAt },
+        hostAt,
+      );
+
+      // Also try the sim call straight, so a refusal reports why rather than
+      // just showing an empty socket.
+      const spare = newItem(getBase('gem.ruby.chipped')!, 40, 'normal', rng);
+      const direct = insertGem(host, spare.baseId, 1);
+
+      return {
+        handled,
+        gemId: gem.baseId,
+        hostBase: host.baseId,
+        socketsAfter: host.sockets.map((s) => s.gemId),
+        gemStillInPack: c.inventory.some((it) => it?.uid === gem.uid),
+        hostStillAtIndex: c.inventory[hostAt]?.uid === host.uid,
+        directOk: direct.ok,
+        directReason: direct.reason ?? null,
       };
     },
 
