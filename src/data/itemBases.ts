@@ -1361,6 +1361,7 @@ const CLASS_PREFERENCE: Record<CharClassId, Partial<Record<ItemCategory, number>
   shadowblade: { dagger: 2.6, sword: 1.6, bow: 1.8, crossbow: 1.6, gloves: 1.5, boots: 1.5, axe: 0.8, mace: 0.5, staff: 0.3, wand: 0.5, orb: 0.4, spear: 0.8, shield: 0.7 },
   stormcaller: { staff: 2.2, wand: 2.0, orb: 2.2, spear: 1.4, scepter: 1.3, boots: 1.6, sword: 0.6, axe: 0.4, mace: 0.4, dagger: 0.8, bow: 0.6, crossbow: 0.5, shield: 0.7 },
   revenant: { wand: 2.4, scepter: 2.0, orb: 2.0, dagger: 1.4, staff: 1.6, shield: 1.2, amulet: 1.3, sword: 0.7, axe: 0.5, mace: 0.6, spear: 0.5, bow: 0.35, crossbow: 0.35 },
+  ranger: { bow: 3.0, crossbow: 2.8, quiver: 2.4, gloves: 1.5, boots: 1.6, dagger: 1.2, sword: 0.9, spear: 0.9, axe: 0.5, mace: 0.2, staff: 0.2, wand: 0.2, orb: 0.2, shield: 0.15 },
 };
 
 export function classAffinity(base: ItemBase, classId?: CharClassId): number {

@@ -4219,16 +4219,25 @@ input.slider::-moz-range-thumb {
 }
 .cs-body {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: minmax(0, 1fr) 330px;
   gap: var(--s5);
   flex: 1;
   min-height: 0;
 }
 .cs-cards {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: var(--s4);
+  /* Six classes now. Auto-fit rather than a fixed five keeps the row honest as
+     the roster grows, and stops a sixth card squeezing the other five thin. */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s3);
   align-content: start;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+@media (max-width: 1500px) {
+  .cs-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 .cs-card {
   --accent: var(--gold);
@@ -4350,6 +4359,64 @@ input.slider::-moz-range-thumb {
   flex-direction: column;
   gap: var(--s4);
   min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* --- roster --------------------------------------------------------------
+   The account holds several living characters, so this screen picks as well as
+   creates. The roster sits above the creation controls: resuming someone is
+   the more common action once you have any. */
+.cs-roster {
+  padding: var(--s3) var(--s4) var(--s4);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius);
+  box-shadow: var(--hairline);
+}
+.cs-roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: var(--s2);
+  max-height: 230px;
+  overflow-y: auto;
+}
+.roster-row {
+  --accent: var(--gold);
+  display: grid;
+  grid-template-columns: 30px 1fr auto auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: 6px var(--s3);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), rgba(0, 0, 0, 0.2));
+  border-radius: var(--radius-sm);
+  box-shadow: var(--hairline);
+}
+.roster-crest {
+  display: grid;
+  place-items: center;
+  opacity: 0.9;
+}
+.roster-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.roster-name {
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  color: var(--ink-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster-detail {
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+}
+.roster-row .iconbtn.is-armed {
+  color: var(--bad);
+  box-shadow: inset 0 0 0 1px var(--bad);
 }
 .cs-namebox {
   padding: var(--s4);

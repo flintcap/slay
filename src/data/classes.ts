@@ -8,6 +8,7 @@
  *  - Shadowblade  burst windows out of stealth, poison between them.
  *  - Stormcaller  never stands still; damage comes from chaining and charge.
  *  - Revenant    an army does the killing; you manage its life and its death.
+ *  - Ranger      range is the resource; every skill trades distance for damage.
  *
  * `lifePerVit` / `manaPerEnr` and `perLevel` are the numbers that make that
  * true at the sheet level; the skill trees make it true at the keyboard.
@@ -19,6 +20,16 @@ import type { CharClassDef, CharClassId } from '../types';
 export const BASE_LIFE = 35;
 export const BASE_MANA = 15;
 
+/**
+ * `startingGear` holds real item base ids. Every entry here used to be a
+ * made-up name — 'shortSword', 'clothRobe' — which `getBase` could not resolve,
+ * so it was silently dropped and every class began the game with nothing
+ * equipped at all.
+ *
+ * Deliberately just a weapon, and an off hand where the class fights with one.
+ * Armour is what you go down there to find: starting in a full kit removes the
+ * first thing the game has to give you.
+ */
 export const CLASSES: CharClassDef[] = [
   {
     id: 'warden',
@@ -34,7 +45,7 @@ export const CLASSES: CharClassDef[] = [
     manaPerEnr: 1,
     trees: ['bulwark', 'carnage', 'oath'],
     color: 0xc8a24a,
-    startingGear: ['shortSword', 'woodenShield', 'leatherArmor', 'leatherCap'],
+    startingGear: ['sword.short', 'shield.buckler'],
   },
   {
     id: 'pyromancer',
@@ -50,7 +61,7 @@ export const CLASSES: CharClassDef[] = [
     manaPerEnr: 2,
     trees: ['conflagration', 'cinders', 'sunfire'],
     color: 0xff7a1e,
-    startingGear: ['apprenticeWand', 'clothRobe', 'orb'],
+    startingGear: ['wand.wand'],
   },
   {
     id: 'shadowblade',
@@ -66,7 +77,7 @@ export const CLASSES: CharClassDef[] = [
     manaPerEnr: 1.5,
     trees: ['venom', 'shadowcraft', 'bladework'],
     color: 0x5ad18f,
-    startingGear: ['rustedDagger', 'leatherArmor', 'leatherGloves'],
+    startingGear: ['dagger.dagger', 'dagger.dagger'],
   },
   {
     id: 'stormcaller',
@@ -82,7 +93,7 @@ export const CLASSES: CharClassDef[] = [
     manaPerEnr: 1.75,
     trees: ['tempest', 'galewalk', 'conduit'],
     color: 0x6fc9ff,
-    startingGear: ['stormRod', 'clothRobe', 'leatherBoots'],
+    startingGear: ['staff.short'],
   },
   {
     id: 'revenant',
@@ -98,7 +109,23 @@ export const CLASSES: CharClassDef[] = [
     manaPerEnr: 2,
     trees: ['ossuary', 'blight', 'gravepact'],
     color: 0x8ce0c8,
-    startingGear: ['boneScepter', 'clothRobe', 'boneCharm'],
+    startingGear: ['wand.bone'],
+  },
+  {
+    id: 'ranger',
+    name: 'Ranger',
+    title: 'Warden of the Long Shot',
+    blurb:
+      'They learned the dungeon by mapping the distances in it. A ranger opens at the far wall and spends the ' +
+      'whole fight keeping it there — traps behind, arrows ahead, and a step back for every step you take. ' +
+      'Let one close the gap and the answer is a blade in the ribs, but that is not the plan.',
+    base: { strength: 18, dexterity: 35, vitality: 20, energy: 12 },
+    perLevel: { life: 1.9, mana: 1.1, attackRating: 9 },
+    lifePerVit: 3,
+    manaPerEnr: 1.4,
+    trees: ['marksman', 'wildcraft', 'volley'],
+    color: 0x7fc46a,
+    startingGear: ['bow.short', 'quiver.ragged'],
   },
 ];
 
@@ -129,6 +156,7 @@ export const STARTING_SKILL_HINTS: Record<CharClassId, string[]> = {
   shadowblade: ['viperStrike', 'shadowStep', 'preciseCut', 'coatBlades'],
   stormcaller: ['sparkbolt', 'staticField', 'gust', 'chargeUp'],
   revenant: ['boneSpear', 'raiseSkeleton', 'siphonLife', 'weaken'],
+  ranger: ['pierceShot', 'huntersMark', 'rollAway', 'snareTrap'],
 };
 
 /** Flavour lines used by the character select screen when hovering a class. */
@@ -138,6 +166,7 @@ export const CLASS_TAGLINES: Record<CharClassId, string[]> = {
   shadowblade: ['One window is enough.', 'Poison does the waiting.', 'Crit or leave.'],
   stormcaller: ['Never stand still.', 'The chain is the build.', 'Charge, discharge, repeat.'],
   revenant: ['The army is the weapon.', 'Corpses are ammunition.', 'Steal what you cannot survive.'],
+  ranger: ['Distance is the build.', 'Never let them arrive.', 'The floor is the trap.'],
 };
 
 
@@ -164,6 +193,14 @@ export interface ClassEquipRules {
  * cannot plant a shield loses the whole point of the class.
  */
 export const CLASS_EQUIP: Record<CharClassId, ClassEquipRules> = {
+  ranger: {
+    // The only class built around a bow. A shield in the off hand is the one
+    // thing that stops you drawing one, so it is out.
+    denied: ['shield', 'staff', 'wand', 'orb', 'scepter', 'mace'],
+    dualWield: false,
+    offHandExtra: ['quiver'],
+    note: 'Rangers need both hands on the bow. A quiver is the only off hand.',
+  },
   warden: {
     denied: ['bow', 'crossbow', 'wand', 'staff', 'orb'],
     dualWield: false,

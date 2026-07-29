@@ -17,6 +17,7 @@ import { Random, randomSeed } from '../core/RNG';
 import {
   Panel,
   Button,
+  IconButton,
   add,
   clear,
   div,
@@ -55,6 +56,7 @@ const PLAYSTYLE: Record<CharClassId, string> = {
   shadowblade: 'Strike from outside their awareness. Crits, poison stacks, and a dodge on a short leash.',
   stormcaller: 'Never stop moving. Chain lightning between targets while you blink across the room.',
   revenant: 'Bring a crowd. Your dead do the work while you drain the living to stay standing.',
+  ranger: 'Open at the far wall and keep it there. Traps behind you, arrows ahead, and a step back for every step they take.',
 };
 
 const ROLE: Record<CharClassId, string> = {
@@ -63,6 +65,7 @@ const ROLE: Record<CharClassId, string> = {
   shadowblade: 'Crit · Poison',
   stormcaller: 'Lightning · Mobility',
   revenant: 'Summons · Drain',
+  ranger: 'Bow · Traps',
 };
 
 export class CharSelectPanel {
@@ -75,6 +78,8 @@ export class CharSelectPanel {
   private difficultyCards = new Map<DifficultyId, HTMLDivElement>();
   private difficultyDetail!: HTMLDivElement;
   private memorialList: HTMLDivElement;
+  private rosterBox!: HTMLDivElement;
+  private rosterList!: HTMLDivElement;
   private beginBtn: Button;
   private rng = new Random(randomSeed());
 
@@ -159,6 +164,19 @@ export class CharSelectPanel {
     namebox.appendChild(this.beginBtn.root);
     side.appendChild(namebox);
 
+    // --- roster ----------------------------------------------------------
+    // The account can hold several living characters now, so the screen has to
+    // be a chooser as well as a creator.
+    this.rosterBox = div('cs-roster');
+    const rhd = div('section-hd');
+    rhd.appendChild(icon('bag', { size: 13 }));
+    rhd.appendChild(span('section-title', 'Your Characters'));
+    rhd.appendChild(div('section-rule'));
+    this.rosterBox.appendChild(rhd);
+    this.rosterList = div('cs-roster-list');
+    this.rosterBox.appendChild(this.rosterList);
+    side.appendChild(this.rosterBox);
+
     const memorial = div('cs-memorial');
     const mhd = div('section-hd');
     mhd.appendChild(icon('skull', { size: 13 }));
@@ -238,6 +256,7 @@ export class CharSelectPanel {
   // -- lifecycle -----------------------------------------------------------
 
   open(): void {
+    this.renderRoster();
     this.renderMemorial();
     if (!this.selected) {
       const first = classList()[0];
@@ -253,6 +272,55 @@ export class CharSelectPanel {
 
   get isOpen(): boolean {
     return this.panel.isOpen;
+  }
+
+  /** The account's living characters, resumable or retirable. */
+  private renderRoster(): void {
+    clear(this.rosterList);
+    const roster = save.roster;
+    this.rosterBox.style.display = roster.length ? '' : 'none';
+    for (const c of roster) {
+      const row = div('roster-row');
+      row.style.setProperty('--accent', String(classAccent(c.classId)));
+
+      const crest = div('roster-crest');
+      crest.innerHTML = classCrestSvg(c.classId, classAccent(c.classId), 30);
+      row.appendChild(crest);
+
+      const body = div('roster-body');
+      body.appendChild(span('roster-name', c.name));
+      body.appendChild(
+        span('roster-detail', `Lv ${c.level} ${classById(c.classId)?.name ?? c.classId}`),
+      );
+      row.appendChild(body);
+
+      const play = new Button({
+        label: 'Play',
+        variant: 'primary',
+        small: true,
+        onClick: () => {
+          if (!save.selectCharacter(c.id)) return;
+          this.panel.close();
+          void this.engine.goTo('town');
+        },
+      });
+      row.appendChild(play.root);
+
+      // Retiring is deliberate and irreversible, so it asks first.
+      const del = new IconButton('close', 'Retire this character', () => {
+        if (del.root.dataset.armed === '1') {
+          save.deleteCharacter(c.id);
+          this.renderRoster();
+          return;
+        }
+        del.root.dataset.armed = '1';
+        del.root.title = 'Click again to retire permanently';
+        del.root.classList.add('is-armed');
+      });
+      row.appendChild(del.root);
+
+      this.rosterList.appendChild(row);
+    }
   }
 
   private renderMemorial(): void {

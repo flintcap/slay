@@ -229,6 +229,7 @@ const STARTING_SKILL: Record<CharClassId, string> = {
   shadowblade: 'preciseCut', // fast single-target crit strike
   stormcaller: 'sparkbolt',  // erratic piercing lightning
   revenant: 'boneSpear',   // piercing bone shard
+  ranger: 'pierceShot',    // a shot that runs through the whole rank
 };
 
 /**

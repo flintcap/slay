@@ -1345,6 +1345,113 @@ const CLASSES: Record<CharClassId, ClassBuild> = {
       }
     },
   },
+  // ---------------------------------------------------------------- RANGER --
+  ranger: {
+    profile: { height: 1.79, shoulder: 0.112, hip: 0.053, thick: 0.92, depth: 0.9, head: 0.98, lean: 0.07 },
+    palettes: {
+      skin: 'skin.tan',
+      hair: 'hair.fair',
+      shadow: 'metal.dark',
+      armour: 'leather.worn',
+      cloth: 'cloth.undyed',
+      linen: 'cloth.undyed',
+      trim: 'metal.bronze',
+      leather: 'leather.studded',
+    },
+    accent: 0x7fc46a,
+    build(ctx) {
+      const { j, p, rng, parts, props } = ctx;
+      const H = p.height;
+      baseBody(ctx, { skin: 'skin', armour: 'armour', boots: 'leather', gloves: 'leather' });
+      baseHead(ctx, 'skin', 0.97);
+      underGarments(ctx);
+
+      // Hunting jerkin: light, sleeveless, cut short so it never fouls a draw.
+      const jerkin = shell(p.shoulder * H * 1.94, H * 0.22, H * 0.062 * p.depth, 9, 8, H * 0.015, (u, v) =>
+        0.74 + 0.26 * Math.sin(Math.PI * (0.18 + v * 0.72)) * (1 - 0.2 * Math.abs(u - 0.5)),
+      );
+      jerkin.translate(0, H * 0.7, H * 0.014 * p.depth);
+      parts.push({ geo: jerkin, mat: 'armour', cover: 'chest', bind: TORSO });
+
+      // Bracer on the bow arm only. Asymmetry is the cheapest silhouette cue
+      // there is, and this is the one every archer actually wears.
+      const bracer = new THREE.Mesh(
+        limb(H * 0.11, H * 0.036, H * 0.042, 9),
+        surface('leather.studded', { repeat: 5, seed: 3 }),
+      );
+      bracer.position.set(0, -H * 0.05, 0);
+      bracer.castShadow = true;
+      props.push({ bone: 'elbowL', obj: bracer, cover: 'gloves' });
+
+      // Belt with a knife on it — what you reach for when the gap closes.
+      parts.push({
+        geo: transformed(beveledBox(p.hip * H * 2.66, H * 0.04, p.hip * H * 2.4, H * 0.008), {
+          pos: [0, H * 0.556, 0],
+        }),
+        mat: 'leather',
+        cover: 'belt',
+        bind: ['hips'],
+      });
+      const knife = new THREE.Mesh(
+        taperedBox(H * 0.026, H * 0.012, H * 0.012, H * 0.008, H * 0.16, H * 0.004),
+        surface('leather.worn', { repeat: 4, seed: 8 }),
+      );
+      knife.position.set(p.hip * H * 1.5, -H * 0.06, -H * 0.02);
+      knife.rotation.set(0.25, 0, 0.2);
+      props.push({ bone: 'hips', obj: knife });
+
+      // Quiver across the back, with arrows standing out of it. This is the
+      // read at gameplay distance: fletchings over one shoulder.
+      const quiver = new THREE.Mesh(
+        limb(H * 0.26, H * 0.05, H * 0.062, 10),
+        surface('leather.worn', { repeat: 4, seed: 5 }),
+      );
+      quiver.position.set(-H * 0.05, -H * 0.02, -H * 0.075);
+      quiver.rotation.set(-0.25, 0, -0.42);
+      quiver.castShadow = true;
+      props.push({ bone: 'chest', obj: quiver });
+      for (let i = 0; i < 5; i++) {
+        const shaft = new THREE.Mesh(
+          limb(H * 0.16, H * 0.004, H * 0.005, 4),
+          surface('wood.oak', { repeat: 6, seed: 2 }),
+        );
+        const a = (i / 5) * Math.PI * 2;
+        shaft.position.set(
+          -H * 0.08 + Math.cos(a) * H * 0.018,
+          H * 0.09,
+          -H * 0.105 + Math.sin(a) * H * 0.018,
+        );
+        shaft.rotation.set(-0.25, 0, -0.42);
+        props.push({ bone: 'chest', obj: shaft });
+        // Fletching.
+        const vane = new THREE.Mesh(
+          clothPanel(H * 0.022, H * 0.05, rng, { segsX: 2, segsY: 3, ripple: 0.02, flare: 0.1 }),
+          surface('cloth.banner', { repeat: 3, seed: 6 }),
+        );
+        vane.position.copy(shaft.position);
+        vane.position.y += H * 0.13;
+        vane.rotation.set(-0.25, a, -0.42);
+        props.push({ bone: 'chest', obj: vane });
+      }
+
+      // Half-cloak over the quiver shoulder, cut away on the draw side.
+      const cloak = new THREE.Mesh(
+        clothPanel(H * 0.26, H * 0.4, rng, { segsX: 6, segsY: 8, ripple: 0.06, flare: 0.35, tatter: 0.15 }),
+        surface('cloth.undyed', { repeat: 2.5, seed: 11 }),
+      );
+      cloak.position.set(-H * 0.03, H * 0.04, -H * 0.055);
+      cloak.rotation.set(-0.16, 0, -0.12);
+      cloak.castShadow = true;
+      props.push({ bone: 'chest', obj: cloak });
+
+      // Hood, thrown back off the head so the face still reads.
+      const hood = shell(H * 0.19, H * 0.15, H * 0.06, 8, 6, H * 0.014);
+      hood.rotateX(0.55);
+      hood.translate(0, j.head.y - H * 0.085, -H * 0.05);
+      parts.push({ geo: hood, mat: 'cloth', cover: 'helm', bind: ['head', 'chest'] });
+    },
+  },
+
 };
 
 // ---------------------------------------------------------------------------

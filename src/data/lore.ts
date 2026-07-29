@@ -893,6 +893,14 @@ export const CLASS_LORE: Record<CharClassId, { creed: string; origin: string; se
     origin: `A revenant has died once, formally, with witnesses, and come back with a debt they did not agree to. The dead follow them out of professional courtesy and something less pleasant.`,
     selectLine: `I have been where they are. They remember the courtesy.`,
   },
+  ranger: {
+    creed: 'Everything dies at the right distance.',
+    origin:
+      'Border scouts, before there was a border. They mapped the descent by walking it and coming back, ' +
+      'which nobody else has managed, and they will tell you the trick was never fighting anything they ' +
+      'could not have outrun.',
+    selectLine: 'Nock. Breathe. Let go.',
+  },
 };
 
 // ---------------------------------------------------------------------------

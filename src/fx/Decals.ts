@@ -156,18 +156,18 @@ function buildStainAtlas(): THREE.Texture {
     const chew = noise.fbm(u * 8.2 - 3, v * 8.2 + 9, 3);
 
     // Torn mass: an irregular blob, small enough to leave room for droplets.
-    const R = 0.20 + lobe * 0.26 + chew * 0.08;
+    const R = 0.26 + lobe * 0.30 + chew * 0.10;
     const core = smoothstep(R, R - 0.07, r);
 
     // Fingers: ridged noise, kept just outside the mass, so the edge tears.
     const ridge = noise.ridged(u * 4.4 - 6, v * 4.4 + 2, 3);
-    const finger = smoothstep(0.66, 0.95, ridge) * smoothstep(R + 0.34, R - 0.04, r);
+    const finger = smoothstep(0.58, 0.92, ridge) * smoothstep(R + 0.44, R - 0.04, r);
 
     // Satellites: worley cells become droplets, smaller and rarer further out.
     const w = noise.worley(u * 7.2 + 30, v * 7.2 + 30, 1.0);
-    const size = (0.10 + (w.id / 255) * 0.2) * (1 - r * 0.55);
+    const size = (0.2 + (w.id / 255) * 0.28) * (1 - r * 0.4);
     const drop = 1 - smoothstep(size * 0.55, size, w.f1);
-    const sparse = smoothstep(1.05, 0.22, r) * (0.25 + chew * 1.1);
+    const sparse = smoothstep(1.1, 0.2, r) * (0.45 + chew * 1.0);
 
     const m = clamp01(Math.max(core, Math.max(finger * 0.9, drop * sparse)));
     // Wet in the middle, thinner where it is only droplets.
@@ -225,7 +225,7 @@ function buildStainAtlas(): THREE.Texture {
   paint(DECAL.gore, (u, v, r) => {
     const lobe = noise.fbm(u * 2.2 + 41, v * 2.2 - 13, 4);
     const chew = noise.fbm(u * 5.8 - 7, v * 5.8 + 22, 3);
-    const R = 0.40 + lobe * 0.26 + chew * 0.07;
+    const R = 0.5 + lobe * 0.26 + chew * 0.07;
     const pool = smoothstep(R, R - 0.06, r);
 
     // Runs: thin trails leaving the pool, fading out quickly.
@@ -234,7 +234,7 @@ function buildStainAtlas(): THREE.Texture {
 
     // Chunks around the margin.
     const w = noise.worley(u * 6.6 + 3, v * 6.6 - 8, 1.0);
-    const chunk = (1 - smoothstep(0.07, 0.16, w.f1)) * smoothstep(1.0, 0.3, r) * 0.8;
+    const chunk = (1 - smoothstep(0.12, 0.24, w.f1)) * smoothstep(1.05, 0.3, r) * 0.85;
 
     const m = clamp01(Math.max(pool, Math.max(run * 0.85, chunk)));
     // Near-black and wet in the middle, browner and thinner at the margin.

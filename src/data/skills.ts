@@ -110,6 +110,24 @@ function build(treeId: string, specs: Spec[]): SkillDef[] {
 
 export const SKILL_TREES: SkillTreeDef[] = [
   {
+    id: 'marksman',
+    name: 'Marksman',
+    classId: 'ranger',
+    blurb: 'One arrow, placed. Pierce, crit, and everything that rewards the first shot.',
+  },
+  {
+    id: 'wildcraft',
+    name: 'Wildcraft',
+    classId: 'ranger',
+    blurb: 'Traps, snares and footwork. Nothing reaches you at a time of its choosing.',
+  },
+  {
+    id: 'volley',
+    name: 'Volley',
+    classId: 'ranger',
+    blurb: 'Arrows in quantity — spreads, rains, and shots that keep going.',
+  },
+  {
     id: 'bulwark',
     name: 'Bulwark',
     classId: 'warden',
@@ -3980,11 +3998,242 @@ const GRAVEPACT = build('gravepact', [
   },
 ]);
 
+
+// ===========================================================================
+// RANGER
+// ===========================================================================
+
+const MARKSMAN = build('marksman', [
+  {
+    id: 'pierceShot', name: 'Pierce Shot',
+    desc: 'A shot placed through the whole rank. Passes through every enemy in a line.',
+    tier: 1, col: 0, icon: 'arrow', t: 'direction', mana: [3, 0.35], dmg: [1.15, 0.14],
+    type: 'physical', fx: 'projectile', p: { pierce: 99, speed: 34, range: 22 },
+  },
+  {
+    id: 'steadyHand', name: 'Steady Hand',
+    desc: 'Breath control. +14 attack rating and +1% critical chance per rank.',
+    tier: 1, col: 1, icon: 'eye',
+    stat: { attackRating: per(14), critChance: dim(26, 0.1) },
+  },
+  {
+    id: 'huntersMark', name: "Hunter's Mark",
+    desc: 'Name the target. It takes 12% more damage from you for 12s (+1.5% per rank).',
+    tier: 1, col: 2, icon: 'target', t: 'enemy', mana: [5, 0.4], cd: [10, 0.3, 4],
+    fx: 'debuff.mark', p: { duration: 12, amp: 12, ampPerRank: 1.5 },
+  },
+  {
+    id: 'aimedShot', name: 'Aimed Shot',
+    desc: 'Draw fully. Slow, single target, and it always crits below half health.',
+    tier: 2, col: 0, icon: 'crosshair', req: ['pierceShot'], t: 'enemy',
+    mana: [7, 0.5], cd: [4, 0.12, 1.4], dmg: [2.6, 0.3], type: 'physical',
+    fx: 'projectile.homing', p: { speed: 40, executeBelow: 50 },
+  },
+  {
+    id: 'bleedingArrow', name: 'Bleeding Arrow',
+    desc: 'A barbed head that will not come out. Applies a bleed for 6s.',
+    tier: 2, col: 1, icon: 'blood', req: ['steadyHand'], t: 'enemy',
+    mana: [6, 0.45], cd: [6, 0.2, 2], dmg: [1.1, 0.12], type: 'physical',
+    fx: 'apply.dot', p: { duration: 6, dotScale: 0.5 },
+  },
+  {
+    id: 'longEye', name: 'Long Eye',
+    desc: 'Damage rises with range. +2% damage per metre past 6, up to +30% (+3% cap per rank).',
+    tier: 2, col: 2, icon: 'range', req: ['huntersMark'],
+    stat: { enhancedDamage: dim(30, 0.11) },
+  },
+  {
+    id: 'punchThrough', name: 'Punch Through',
+    desc: 'Arrows lose nothing on the way through. +8% damage per rank against pierced targets.',
+    tier: 3, col: 0, icon: 'pierce', req: ['aimedShot'],
+    stat: { enhancedDamage: dim(40, 0.09) },
+  },
+  {
+    id: 'crippling', name: 'Crippling Shot',
+    desc: 'Take the leg. 35% slow for 4s, and the target cannot dash (+3% slow per rank).',
+    tier: 3, col: 1, icon: 'snare', req: ['bleedingArrow'], t: 'enemy',
+    mana: [8, 0.5], cd: [9, 0.25, 3.5], dmg: [1.3, 0.16], type: 'physical',
+    fx: 'projectile', p: { slow: 35, slowPerRank: 3, duration: 4, speed: 32 },
+  },
+  {
+    id: 'coldFocus', name: 'Cold Focus',
+    desc: 'Nothing hurries you. +2% critical damage and +1% attack speed per rank.',
+    tier: 3, col: 2, icon: 'crit', req: ['longEye'],
+    stat: { critDamage: per(6), attackSpeed: dim(24, 0.08) },
+  },
+  {
+    id: 'headshot', name: 'Headshot',
+    desc: 'A critical hit from full draw refunds its cooldown and cannot be blocked.',
+    tier: 4, col: 1, icon: 'skull', req: ['aimedShot', 'coldFocus'], max: 10,
+    stat: { critChance: per(1), critDamage: per(8) },
+  },
+  {
+    id: 'oneShot', name: 'One Shot, One Grave',
+    desc: 'Capstone. Your first attack on a full-health target is always a critical hit and pierces everything.',
+    tier: 5, col: 1, icon: 'apex', req: ['headshot'], max: 5, t: 'enemy',
+    mana: [22, 1], cd: [26, 1.2, 14], dmg: [5.5, 0.8], type: 'physical',
+    fx: 'capstone.overkillChain', p: { pierce: 99, range: 30 },
+  },
+]);
+
+const WILDCRAFT = build('wildcraft', [
+  {
+    id: 'rollAway', name: 'Roll Away',
+    desc: 'A short evade that leaves the ground where you were. Brief invulnerability.',
+    tier: 1, col: 0, icon: 'dash', t: 'direction', mana: [4, 0.3], cd: [7, 0.25, 3],
+    fx: 'dash', p: { distance: 6, iframes: 0.3 },
+  },
+  {
+    id: 'snareTrap', name: 'Snare Trap',
+    desc: 'Set a trap. The first thing across it is rooted for 2.5s (+0.2s per rank).',
+    tier: 1, col: 1, icon: 'trap', t: 'point', mana: [6, 0.4], cd: [9, 0.3, 4],
+    fx: 'summon.totem', p: { duration: 30, root: 2.5, rootPerRank: 0.2, radius: 2 },
+  },
+  {
+    id: 'lightFoot', name: 'Light Foot',
+    desc: 'You move like the floor owes you nothing. +2% movement speed per rank.',
+    tier: 1, col: 2, icon: 'boots',
+    stat: { moveSpeed: dim(30, 0.09), dexterity: per(1) },
+  },
+  {
+    id: 'spikeTrap', name: 'Spike Trap',
+    desc: 'A pressure plate over a pit. Detonates for heavy physical damage in a small area.',
+    tier: 2, col: 0, icon: 'spikes', req: ['snareTrap'], t: 'point',
+    mana: [9, 0.6], cd: [11, 0.35, 5], dmg: [2.2, 0.26], type: 'physical',
+    fx: 'trap.ground', p: { duration: 25, radius: 2.6 },
+  },
+  {
+    id: 'thornBarrier', name: 'Thorn Barrier',
+    desc: 'A line of brambles. Blocks pursuit and bleeds anything that forces it.',
+    tier: 2, col: 1, icon: 'thorns', req: ['snareTrap'], t: 'point',
+    mana: [11, 0.7], cd: [16, 0.5, 8], dmg: [0.6, 0.08], type: 'poison',
+    fx: 'wall.line', p: { duration: 8, length: 7 },
+  },
+  {
+    id: 'survivalist', name: 'Survivalist',
+    desc: 'Field medicine. +12 life and +1 life regeneration per rank.',
+    tier: 2, col: 2, icon: 'heart', req: ['lightFoot'],
+    stat: { life: per(12), lifeRegen: per(1) },
+  },
+  {
+    id: 'disengage', name: 'Disengage',
+    desc: 'Leap backwards and fire on the way. Damage on landing.',
+    tier: 3, col: 0, icon: 'leap', req: ['rollAway'], t: 'direction',
+    mana: [10, 0.6], cd: [12, 0.4, 5], dmg: [1.6, 0.2], type: 'physical',
+    fx: 'dash.strike', p: { distance: 8, backwards: 1 },
+  },
+  {
+    id: 'venomCoat', name: 'Venom Coat',
+    desc: 'Arrows carry poison for 20s. Every hit applies a stacking poison dot.',
+    tier: 3, col: 1, icon: 'vial', req: ['thornBarrier'], t: 'self',
+    mana: [14, 0.8], cd: [24, 0.6, 12], type: 'poison',
+    fx: 'buff.weapon', p: { duration: 20, dotScale: 0.35 },
+  },
+  {
+    id: 'camouflage', name: 'Camouflage',
+    desc: 'Stand still and disappear. Breaking it grants a guaranteed critical hit.',
+    tier: 3, col: 2, icon: 'stealth', req: ['survivalist'], t: 'self',
+    mana: [12, 0.7], cd: [22, 0.7, 10], fx: 'buff.stealth',
+    p: { duration: 8, critBonus: 100 },
+  },
+  {
+    id: 'trapMastery', name: 'Trap Mastery',
+    desc: 'Two traps may be armed at once, and they arm 5% faster per rank.',
+    tier: 4, col: 1, icon: 'gear', req: ['spikeTrap', 'venomCoat'], max: 10,
+    stat: { cooldownReduction: dim(30, 0.1) },
+  },
+  {
+    id: 'theWholeFloor', name: 'The Whole Floor Is A Trap',
+    desc: 'Capstone. Seed the ground around you with every trap you know, armed at once.',
+    tier: 5, col: 1, icon: 'apex', req: ['trapMastery'], max: 5, t: 'self',
+    mana: [26, 1.2], cd: [40, 1.5, 22], dmg: [2.4, 0.35], type: 'physical',
+    fx: 'capstone.longDecline', p: { count: 6, radius: 8, duration: 20 },
+  },
+]);
+
+const VOLLEY = build('volley', [
+  {
+    id: 'twinShot', name: 'Twin Shot',
+    desc: 'Two arrows, slightly apart. Both can hit the same target at close range.',
+    tier: 1, col: 0, icon: 'arrows', t: 'direction', mana: [4, 0.4], dmg: [0.72, 0.09],
+    type: 'physical', fx: 'projectile.spread', p: { count: 2, spread: 0.14, speed: 32 },
+  },
+  {
+    id: 'quickDraw', name: 'Quick Draw',
+    desc: 'Nock without looking. +2% attack speed per rank.',
+    tier: 1, col: 1, icon: 'speed',
+    stat: { attackSpeed: dim(32, 0.1) },
+  },
+  {
+    id: 'scattershot', name: 'Scattershot',
+    desc: 'A cone of arrows at close range. Falls off badly with distance.',
+    tier: 1, col: 2, icon: 'cone', t: 'direction', mana: [7, 0.5], cd: [5, 0.15, 2],
+    dmg: [0.65, 0.08], type: 'physical', fx: 'cone.burst', p: { count: 7, arc: 0.8, range: 8 },
+  },
+  {
+    id: 'arrowRain', name: 'Arrow Rain',
+    desc: 'Loose high. Arrows fall over an area for 3s.',
+    tier: 2, col: 0, icon: 'rain', req: ['twinShot'], t: 'point',
+    mana: [12, 0.8], cd: [10, 0.3, 4], dmg: [0.5, 0.07], type: 'physical',
+    fx: 'sky.impact', p: { radius: 4.5, duration: 3, ticks: 8 },
+  },
+  {
+    id: 'ricochet', name: 'Ricochet',
+    desc: 'Arrows bounce to a nearby target after hitting. +1 bounce per 4 ranks.',
+    tier: 2, col: 1, icon: 'bounce', req: ['quickDraw'], t: 'direction',
+    mana: [8, 0.5], dmg: [0.95, 0.11], type: 'physical',
+    fx: 'projectile.bounce', p: { bounces: 2, range: 8, speed: 30 },
+  },
+  {
+    id: 'fanFire', name: 'Fan Fire',
+    desc: 'Five arrows in a wide fan. Every one can crit.',
+    tier: 2, col: 2, icon: 'fan', req: ['scattershot'], t: 'direction',
+    mana: [11, 0.7], cd: [7, 0.2, 3], dmg: [0.7, 0.09], type: 'physical',
+    fx: 'projectile.spread', p: { count: 5, spread: 0.6, speed: 30 },
+  },
+  {
+    id: 'suppressing', name: 'Suppressing Fire',
+    desc: 'A stream of arrows down one line while you hold. Slows everything it touches.',
+    tier: 3, col: 0, icon: 'stream', req: ['arrowRain'], t: 'direction',
+    mana: [4, 0.3], dmg: [0.42, 0.06], type: 'physical',
+    fx: 'projectile.stream', p: { rate: 9, slow: 20, range: 18 },
+  },
+  {
+    id: 'explosiveTip', name: 'Explosive Tip',
+    desc: 'Arrows burst on impact for area fire damage.',
+    tier: 3, col: 1, icon: 'burst', req: ['ricochet'], t: 'direction',
+    mana: [10, 0.6], cd: [3, 0.1, 1], dmg: [1.4, 0.18], type: 'fire',
+    fx: 'projectile.explode', p: { radius: 3, speed: 28 },
+  },
+  {
+    id: 'endlessQuiver', name: 'Endless Quiver',
+    desc: 'Every third shot costs no mana. +1% mana regeneration per rank.',
+    tier: 3, col: 2, icon: 'quiver', req: ['fanFire'],
+    stat: { manaRegen: per(1), mana: per(6) },
+  },
+  {
+    id: 'volleyMastery', name: 'Volley Mastery',
+    desc: 'Multi-shot skills fire one extra arrow every 5 ranks.',
+    tier: 4, col: 1, icon: 'multi', req: ['explosiveTip', 'endlessQuiver'], max: 10,
+    stat: { enhancedDamage: dim(35, 0.08), attackSpeed: dim(15, 0.06) },
+  },
+  {
+    id: 'darkenTheSky', name: 'Darken The Sky',
+    desc: 'Capstone. A sustained rain of arrows across the whole room.',
+    tier: 5, col: 1, icon: 'apex', req: ['volleyMastery'], max: 5, t: 'point',
+    mana: [30, 1.4], cd: [45, 1.8, 24], dmg: [1.1, 0.16], type: 'physical',
+    fx: 'capstone.greatArc', p: { radius: 12, duration: 6, ticks: 20 },
+  },
+]);
+
 // ===========================================================================
 // Assembly
 // ===========================================================================
 
 export const SKILLS: SkillDef[] = [
+  ...MARKSMAN,
+  ...WILDCRAFT,
+  ...VOLLEY,
   ...BULWARK,
   ...CARNAGE,
   ...OATH,

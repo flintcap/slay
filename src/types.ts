@@ -299,7 +299,8 @@ export type CharClassId =
   | 'pyromancer'  // fire / arcane caster
   | 'shadowblade' // dex crit / poison
   | 'stormcaller' // lightning / mobility
-  | 'revenant';   // summoner / life-drain
+  | 'revenant'    // summoner / life-drain
+  | 'ranger';     // bow / crossbow marksman
 
 export interface CharClassDef {
   id: CharClassId;
@@ -409,6 +410,12 @@ export interface AccountSave {
   unlocks: string[];
   /** Live character, if a run is in progress. */
   current: Character | null;
+  /**
+   * Every living character on the account. `current` is whichever one is being
+   * played; this is the roster you pick from. Permadeath still applies — a dead
+   * character leaves this list and joins `fallen`.
+   */
+  roster?: Character[];
   /** Crafting materials by id. */
   materials: Record<string, number>;
   settings: GameSettings;

@@ -27,6 +27,7 @@ function emptyAccount(): AccountSave {
     fallen: [],
     unlocks: [],
     current: null,
+    roster: [],
     materials: {},
     settings: { ...DEFAULT_SETTINGS },
   };
@@ -106,6 +107,46 @@ class SaveManager {
 
   setCharacter(c: Character | null): void {
     this.data.current = c;
+    if (c) this.upsertRoster(c);
+    this.touch();
+    this.flush();
+  }
+
+  /** Every living character on the account, newest first. */
+  get roster(): Character[] {
+    if (!Array.isArray(this.data.roster)) this.data.roster = [];
+    return this.data.roster;
+  }
+
+  /**
+   * Keeps the roster in step with the live character.
+   *
+   * The roster holds the same object the game is mutating, so playing a
+   * character updates their roster entry for free. Only identity matters here.
+   */
+  private upsertRoster(c: Character): void {
+    const list = this.roster;
+    const at = list.findIndex((x) => x.id === c.id);
+    if (at >= 0) list[at] = c;
+    else list.unshift(c);
+  }
+
+  /** Switch to another character on the roster. */
+  selectCharacter(id: string): Character | null {
+    const found = this.roster.find((c) => c.id === id) ?? null;
+    if (!found) return null;
+    this.data.current = found;
+    this.touch();
+    this.flush();
+    return found;
+  }
+
+  /** Retire a character deliberately, without it counting as a death. */
+  deleteCharacter(id: string): void {
+    const list = this.roster;
+    const at = list.findIndex((c) => c.id === id);
+    if (at >= 0) list.splice(at, 1);
+    if (this.data.current?.id === id) this.data.current = null;
     this.touch();
     this.flush();
   }
@@ -127,6 +168,10 @@ class SaveManager {
       });
       if (this.data.fallen.length > 50) this.data.fallen.length = 50;
       if (depth > this.data.bestDepth) this.data.bestDepth = depth;
+      // Permadeath removes them from the roster as well as from play.
+      const list = this.roster;
+      const at = list.findIndex((x) => x.id === c.id);
+      if (at >= 0) list.splice(at, 1);
     }
     this.data.current = null;
     this.touch();
