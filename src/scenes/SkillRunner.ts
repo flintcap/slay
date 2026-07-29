@@ -59,7 +59,10 @@ export function weaponStyle(player: Player): WeaponStyle {
 
 /** Effect families that swing a weapon and therefore need one in hand. */
 const MELEE_EFFECTS = new Set([
-  'melee', 'cleave', 'whirlwind', 'strike', 'heavy', 'multislash', 'leap', 'dash',
+  // A dash or a leap is footwork, not a swing: gating them on a melee weapon
+  // meant an archer could not roll out of a pack. The variants that do end in a
+  // hit are caught by their `.strike` suffix, which is in this set already.
+  'melee', 'cleave', 'whirlwind', 'strike', 'heavy', 'multislash',
 ]);
 
 /**
@@ -173,6 +176,11 @@ export class SkillRunner {
     // Skill effects are dotted families ('buff.self', 'aura.damage'); switch on
     // the family so every variant lands on the right handler.
     const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
+    // What the body does when a skill fires depends on what is in your hands,
+    // not only on the skill: the same volley is a draw with a bow and a throw
+    // without one.
+    const holding = weaponStyle(player);
+    const rangedClip: 'shoot' | 'cast' = holding === 'ranged' ? 'shoot' : 'cast';
 
     switch (family) {
       case 'melee':
@@ -191,7 +199,7 @@ export class SkillRunner {
 
       case 'projectile':
       case 'bolt': {
-        player.beginAction('cast', castTime);
+        player.beginAction(rangedClip, castTime);
         const range = num('range', 18);
         const count = Math.max(1, Math.floor(num('count', 1)));
         const spread = num('spread', 0.16);
@@ -229,7 +237,7 @@ export class SkillRunner {
       }
 
       case 'nova': {
-        player.beginAction('cast', castTime);
+        player.beginAction(rangedClip, castTime);
         const radius = num('radius', 5.2);
         this.effects.nova(player.position.x, player.position.z, radius, { element: type, color });
         this.areaDamage(player.position, radius, makePacket, ctx, enemies, boss);
@@ -253,7 +261,7 @@ export class SkillRunner {
       }
 
       case 'meteor': {
-        player.beginAction('cast', castTime);
+        player.beginAction(rangedClip, castTime);
         const radius = num('radius', 3.4);
         const at = target.clone().setY(0);
         this.effects.meteor(at.x, at.z, {
@@ -266,7 +274,7 @@ export class SkillRunner {
       }
 
       case 'beam': {
-        player.beginAction('cast', castTime);
+        player.beginAction(rangedClip, castTime);
         const length = num('length', 12);
         const to = origin.clone().addScaledVector(dir, length);
         this.effects.beam(origin, to, { element: type, color, width: num('width', 1.1), endBurst: true });
@@ -276,7 +284,7 @@ export class SkillRunner {
       }
 
       case 'cone': {
-        player.beginAction('cast', castTime);
+        player.beginAction(rangedClip, castTime);
         const reach = num('reach', 6.5);
         const half = num('arc', 1.1) * 0.5;
         this.effects.cone(player.position.clone().setY(1.0), dir, half, reach, { element: type, color });
@@ -286,7 +294,7 @@ export class SkillRunner {
       }
 
       case 'chain': {
-        player.beginAction('cast', castTime);
+        player.beginAction(rangedClip, castTime);
         this.chainLightning(player, target, Math.floor(num('jumps', 4)), num('range', 7), makePacket, ctx, enemies, boss, type, color);
         audio.play('chain');
         break;
@@ -329,10 +337,25 @@ export class SkillRunner {
       }
 
       default: {
-        // An unknown effect id falls back to a swing rather than a dead button,
-        // so a data-entry typo never silently breaks a skill.
-        player.beginAction('attack1', attackTime);
-        this.meleeSwing(player, dir, 1.4, 2.3, makePacket, ctx, enemies, boss, type);
+        // An unknown effect id falls back to a delivery the character can
+        // actually perform, rather than always to a swing: falling back to
+        // melee put every bow user through a sword animation, hitting nothing,
+        // on every cast of anything the runner did not recognise.
+        if (holding === 'ranged' || holding === 'caster') {
+          player.beginAction(rangedClip, castTime);
+          const from = player.position.clone().setY(holding === 'ranged' ? 1.28 : 1.05);
+          const stop = this.firstHitAlong(from, dir, 18, enemies, boss, 0.4);
+          this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
+            element: type,
+            color,
+            speed: holding === 'ranged' ? 30 : 20,
+            size: holding === 'ranged' ? 0.24 : 0.36,
+            onHit: (pt) => this.pointDamage(pt, 0.6, makePacket, ctx, enemies, boss),
+          });
+        } else {
+          player.beginAction('attack1', attackTime);
+          this.meleeSwing(player, dir, 1.4, 2.3, makePacket, ctx, enemies, boss, type);
+        }
         break;
       }
     }
@@ -369,11 +392,20 @@ export class SkillRunner {
     // The weapon decides what a basic attack even is.
     if (style === 'ranged' || style === 'caster') {
       const castTime = 0.46 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
-      player.beginAction('cast', castTime);
+      // A bow is drawn and loosed; only a spell is cast. Sharing the casting
+      // animation put archers through a two-handed overhead gesture with a bow
+      // in their hands, which is the most wrong an archer can look.
+      player.beginAction(style === 'ranged' ? 'shoot' : 'cast', castTime);
 
       const type: DamageType = style === 'ranged' ? 'physical' : 'arcane';
       const colour = style === 'ranged' ? 0xd8c9a0 : (ELEMENTS.arcane?.core ?? 0xff7de8);
-      const from = player.position.clone().setY(1.05);
+      // Arrows leave the bow hand, spells leave the chest. A projectile that
+      // starts at the sternum reads as coming out of the character's ribs.
+      const from = player.position.clone().setY(style === 'ranged' ? 1.28 : 1.05);
+      if (style === 'ranged') {
+        // Offset to the bow side so the shot lines up with the weapon.
+        from.addScaledVector(this.tmp.set(dir.z, 0, -dir.x), 0.16);
+      }
       const range = style === 'ranged' ? 20 : 16;
       const stop = this.firstHitAlong(from, dir, range, enemies, boss, 0.4);
       const to = from.clone().addScaledVector(dir, stop);

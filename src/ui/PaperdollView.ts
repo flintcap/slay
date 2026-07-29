@@ -176,9 +176,12 @@ export class PaperdollView {
       const item = eq[slot];
       if (!item) continue;
       try {
-        const visual = getBase(item.baseId)?.visual ?? { shape: 'auto', palette: 'metal.steel' };
+        const base = getBase(item.baseId);
+        const visual = base?.visual ?? { shape: 'auto', palette: 'metal.steel' };
+        // Quivers are worn on the back rather than held.
+        const socketKey = base?.category === 'quiver' ? 'quiver' : undefined;
         const mesh = buildItemModel(visual, rng, item.rarity);
-        attachToSocket(this.rig, this.bones, slot, mesh);
+        attachToSocket(this.rig, this.bones, slot, mesh, socketKey);
         this.equipMeshes.set(slot, mesh);
       } catch {
         // A single unbuildable item must not blank the whole figure.

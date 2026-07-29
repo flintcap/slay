@@ -519,6 +519,16 @@ function isTwoHanded(item: Item): boolean {
   return baseOf(item)?.slot === 'twoHand';
 }
 
+/**
+ * Off-hand items that are worn on the body rather than held in the hand.
+ *
+ * These coexist with a two-handed weapon: a quiver hangs off your back, and a
+ * bow needs one. Everything else in the off hand occupies the hand itself.
+ */
+export function isWornOffHand(item: Item | null | undefined): boolean {
+  return !!item && baseOf(item)?.category === 'quiver';
+}
+
 /** The slot(s) an item is legally allowed to occupy. */
 export function slotsFor(item: Item, classId?: CharClassId): EquipSlot[] {
   const base = baseOf(item);
@@ -604,11 +614,16 @@ export function equipItem(
   const twoHand = isTwoHanded(item);
   if (target === 'mainHand' && twoHand) {
     const off = c.equipment.offHand;
-    if (off) displaced.push(off);
+    // A quiver is worn, not held. It is the one off-hand a two-hander does not
+    // knock out — you cannot shoot a bow without one, so making them exclusive
+    // meant equipping a quiver silently unequipped the bow it feeds.
+    if (off && !isWornOffHand(off)) displaced.push(off);
   }
   if (target === 'offHand') {
     const main = c.equipment.mainHand;
-    if (main && isTwoHanded(main) && !displaced.includes(main)) displaced.push(main);
+    if (main && isTwoHanded(main) && !isWornOffHand(item) && !displaced.includes(main)) {
+      displaced.push(main);
+    }
     // An off-hand weapon needs a main-hand weapon to pair with.
     const offBase = baseOf(item);
     if (offBase && ONE_HAND_MELEE.has(offBase.category) && !c.equipment.mainHand) {

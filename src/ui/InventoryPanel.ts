@@ -10,7 +10,7 @@
 import type { Character, EquipSlot, Item } from '../types';
 import { events } from '../core/Events';
 import { save, INVENTORY_SIZE } from '../core/Save';
-import { equipItem, unequipItem } from '../sim/Character';
+import { equipItem, unequipItem, isWornOffHand } from '../sim/Character';
 import { computeStats } from '../sim/Stats';
 import { vendorPrice } from '../sim/Loot';
 import {
@@ -448,7 +448,12 @@ export class InventoryPanel {
 
     // Two-handers visually claim the off-hand.
     const mh = c.equipment.mainHand ?? null;
-    this.equipSlots.get('offHand')?.root.classList.toggle('is-blocked', isTwoHanded(mh));
+    // A two-hander blocks the off hand — except for a quiver, which is worn on
+    // the back and is exactly what a two-handed bow needs.
+    const off = c.equipment.offHand ?? null;
+    this.equipSlots
+      .get('offHand')
+      ?.root.classList.toggle('is-blocked', isTwoHanded(mh) && !isWornOffHand(off));
 
     this.grid.setItems(c.inventory);
     countTo(this.goldEl, c.gold, fmtInt, 400);

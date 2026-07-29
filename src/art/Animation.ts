@@ -206,6 +206,7 @@ export type ClipName =
   | 'attack1'
   | 'attack2'
   | 'cast'
+  | 'shoot'
   | 'hurt'
   | 'death'
   | 'dodge';
@@ -504,6 +505,58 @@ const CLIPS: Record<ClipName, ClipDef> = {
   },
 
   // ------------------------------------------------------------------ CAST --
+  /**
+   * Drawing and loosing a bow.
+   *
+   * Casting was standing in for this, and a two-handed overhead spell gesture
+   * while holding a bow is the single most wrong thing an archer can do. The
+   * shape that reads is: front arm locked out holding the bow, rear hand pulled
+   * back to the cheek, a beat of stillness at full draw, then a snap forward on
+   * release with the string hand flicking past the ear.
+   */
+  shoot: {
+    duration: 0.5,
+    loop: false,
+    breath: 0.15,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      // Draw builds, holds briefly at full, then goes in one frame on release.
+      const draw = kf(t, [
+        [0, 0],
+        [0.46, 1],
+        [0.6, 1],
+        [0.68, 0],
+        [1, 0],
+      ]);
+      const loose = kf(t, [
+        [0, 0],
+        [0.62, 0],
+        [0.72, 1],
+        [1, 0.25],
+      ]);
+
+      // Side-on stance: the bow shoulder leads, the body turns out of square.
+      p.set('hips', 0, -0.34, 0);
+      p.set('spine', -0.04, -0.2, 0);
+      p.set('chest', -0.06 - 0.05 * draw, -0.26 - 0.1 * draw, 0);
+      p.set('head', 0, 0.34, 0);
+      p.move('hips', 0, -h * 0.012 * draw, 0);
+
+      // Bow arm: out straight and level, and it stays there through the loose.
+      // A bow arm that moves is a missed shot.
+      p.set('shoulderL', -1.5, 0.42, 0.12);
+      p.set('elbowL', -0.1, 0, 0);
+
+      // String hand: back to the cheek, then released past the ear.
+      p.set('shoulderR', -1.15 - 0.35 * draw + 0.15 * loose, -0.5 - 0.45 * draw + 0.7 * loose, -0.1);
+      p.set('elbowR', -0.6 - 1.5 * draw + 0.4 * loose, 0, 0);
+
+      // Weight settles onto the back foot as the draw builds.
+      p.foot(0, 0.12, -0.06 * draw, 0.1, 0);
+      p.foot(1, -0.14, -0.1 * draw, -0.12, 0);
+    },
+  },
+
   cast: {
     duration: 0.85,
     loop: false,
@@ -660,6 +713,7 @@ function resolveClip(name: string): ClipName {
   if (n.includes('run') || n.includes('sprint')) return 'run';
   if (n.includes('walk')) return 'walk';
   if (n.includes('idle')) return 'idle';
+  if (n.includes('shoot') || n.includes('bow') || n.includes('fire')) return 'shoot';
   if (n.includes('2') || n.includes('sweep') || n.includes('slash')) return 'attack2';
   return 'attack1';
 }

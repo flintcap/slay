@@ -1584,6 +1584,8 @@ const SOCKETS: Record<string, Socket> = {
   boots: { bone: 'footR', pos: [0, 0.01, 0.02], rot: [0, 0, 0], mirror: 'footL' },
   belt: { bone: 'hips', pos: [0, 0.03, 0], rot: [0, 0, 0] },
   amulet: { bone: 'chest', pos: [0, 0.02, 0.08], rot: [0, 0, 0] },
+  // Worn across the back, canted over the shoulder, mouth up.
+  quiver: { bone: 'chest', pos: [-0.06, -0.02, -0.1], rot: [-0.28, 0, -0.42] },
   ring1: { bone: 'handR', pos: [0.015, -0.05, 0.01], rot: [Math.PI * 0.5, 0, 0] },
   ring2: { bone: 'handL', pos: [-0.015, -0.05, 0.01], rot: [Math.PI * 0.5, 0, 0] },
 };
@@ -1614,9 +1616,15 @@ export function attachToSocket(
   bones: Record<string, THREE.Bone>,
   slot: EquipSlot,
   mesh: THREE.Object3D,
+  /**
+   * Overrides the socket for items that live somewhere other than their slot's
+   * default. A quiver is an off-hand item you wear on your back, not a thing
+   * you hold — socketing it into the hand put it in the fist like a club.
+   */
+  socketKey?: string,
 ): void {
   void model;
-  const socket = SOCKETS[slot];
+  const socket = SOCKETS[socketKey ?? slot];
   if (!socket) return;
   const bone = bones[socket.bone];
   if (!bone) return;

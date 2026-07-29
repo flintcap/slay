@@ -139,9 +139,12 @@ export class Player {
       if (!item) continue;
 
       try {
-        const visual = getBase(item.baseId)?.visual ?? { shape: 'auto', palette: 'metal.steel' };
+        const base = getBase(item.baseId);
+        const visual = base?.visual ?? { shape: 'auto', palette: 'metal.steel' };
+        // Quivers are worn on the back rather than held.
+        const socketKey = base?.category === 'quiver' ? 'quiver' : undefined;
         const mesh = buildItemModel(visual, this.rng, item.rarity);
-        attachToSocket(this.root, this.bones, slot, mesh);
+        attachToSocket(this.root, this.bones, slot, mesh, socketKey);
         this.equipMeshes.set(slot, mesh);
       } catch {
         // A missing visual must never break the run.
