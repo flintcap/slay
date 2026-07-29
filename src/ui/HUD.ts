@@ -14,6 +14,7 @@
 import type { DungeonLevel, ItemRarity, QuestInstance, StatKey } from '../types';
 import { events, type GameEvents } from '../core/Events';
 import { save } from '../core/Save';
+import { stackCount } from '../sim/Inventory';
 import type { Engine } from '../core/Engine';
 import { computeStats, xpForLevel } from '../sim/Stats';
 import { getStatus } from '../data/statuses';
@@ -456,7 +457,7 @@ export class HUD {
     this.potionMana = div('potslot pot-mana ui-interactive');
     for (const [node, ic, key] of [
       [this.potionLife, 'potion', 'Q'],
-      [this.potionMana, 'potion', 'W'],
+      [this.potionMana, 'potion', 'F'],
     ] as Array<[HTMLDivElement, string, string]>) {
       const art = div('potslot-art');
       art.innerHTML = iconSvg(ic, { size: 24 });
@@ -850,9 +851,12 @@ export class HUD {
       if (!it) continue;
       const base = safeBase(it);
       if (!base || base.category !== 'potion') continue;
+      // Count units, not slots. Potions stack, so a slot holding five flasks
+      // was being reported as one.
+      const n = stackCount(it);
       const isMana = /mana|azure|sapphire|spirit/i.test(base.id + base.name);
-      if (isMana) mana++;
-      else life++;
+      if (isMana) mana += n;
+      else life += n;
     }
     const lc = this.potionLife.querySelector<HTMLElement>('.potslot-count');
     const mc = this.potionMana.querySelector<HTMLElement>('.potslot-count');

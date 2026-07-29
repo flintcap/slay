@@ -27,6 +27,7 @@ import { DecalSystem } from './Decals';
 import { TrailSystem, Trail } from './Trails';
 import type { CameraRig } from './CameraRig';
 import { emissiveMaterial } from '../art/Materials';
+import { radialGlowTexture } from '../art/Textures';
 
 // ---------------------------------------------------------------------------
 // Element palette
@@ -199,6 +200,32 @@ interface LiveEffect {
 // ---------------------------------------------------------------------------
 // Materials
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Projectile halo pool
+// ---------------------------------------------------------------------------
+
+const haloPool: THREE.SpriteMaterial[] = [];
+
+function takeHalo(): THREE.SpriteMaterial {
+  const hit = haloPool.pop();
+  if (hit) {
+    hit.opacity = 0.9;
+    return hit;
+  }
+  return new THREE.SpriteMaterial({
+    map: radialGlowTexture(128, 2.4),
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    opacity: 0.9,
+  });
+}
+
+function giveHalo(m: THREE.SpriteMaterial): void {
+  if (haloPool.length >= 24) m.dispose();
+  else haloPool.push(m);
+}
 
 // ---------------------------------------------------------------------------
 // Material pooling
@@ -1127,13 +1154,16 @@ export class EffectSystem {
     group.add(core);
 
     // A soft additive halo sells the light without needing a second light.
-    const haloMat = new THREE.SpriteMaterial({
-      color: new THREE.Color(color).multiplyScalar(2.4),
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      opacity: 0.9,
-    });
+    //
+    // It needs a texture. A SpriteMaterial with no map draws a solid quad, so
+    // additively blended at six times the projectile's size this was rendering
+    // every arrow, bolt and firebolt in the game as an enormous white square.
+    //
+    // It is also pooled. Building and disposing a material per shot deletes the
+    // compiled GL program each time the last user goes away, and recompiles it
+    // on the next shot — a stall on every single projectile fired.
+    const haloMat = takeHalo();
+    haloMat.color.set(color).multiplyScalar(2.4);
     const halo = new THREE.Sprite(haloMat);
     halo.scale.setScalar(size * 6);
     group.add(halo);
@@ -1218,7 +1248,7 @@ export class EffectSystem {
       dispose(): void {
         self.scene.remove(group);
         releaseMaterial(core.material);
-        haloMat.dispose();
+        giveHalo(haloMat);
         trail?.retire(0.18);
       },
     };

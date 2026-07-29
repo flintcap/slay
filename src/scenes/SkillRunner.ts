@@ -382,7 +382,7 @@ export class SkillRunner {
           const from = origin.clone();
           // Stop the shot at the first thing it would actually hit, so the
           // visual lands on the target instead of sailing through it.
-          const stop = this.firstHitAlong(from, d, range, enemies, boss, num('radius', 0.42));
+          const stop = this.firstHitAlong(from, d, range, enemies, boss, num('radius', 0.42), ctx);
           const to = from.clone().addScaledVector(d, stop);
 
           this.effects.projectile(from, to, {
@@ -537,7 +537,7 @@ export class SkillRunner {
         if (holding === 'ranged' || holding === 'caster') {
           player.beginAction(clip, castTime);
           const from = player.position.clone().setY(holding === 'ranged' ? 1.28 : 1.05);
-          const stop = this.firstHitAlong(from, dir, 18, enemies, boss, 0.4);
+          const stop = this.firstHitAlong(from, dir, 18, enemies, boss, 0.4, ctx);
           this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
             element: type,
             color,
@@ -601,7 +601,7 @@ export class SkillRunner {
         from.addScaledVector(this.tmp.set(dir.z, 0, -dir.x), 0.16);
       }
       const range = style === 'ranged' ? 20 : 16;
-      const stop = this.firstHitAlong(from, dir, range, enemies, boss, 0.4);
+      const stop = this.firstHitAlong(from, dir, range, enemies, boss, 0.4, ctx);
       const to = from.clone().addScaledVector(dir, stop);
 
       this.effects.projectile(from, to, {
@@ -708,15 +708,23 @@ export class SkillRunner {
   }
 
   /** Distance along `dir` to the nearest target, or `max` if nothing is hit. */
+  /**
+   * How far a shot travels before something stops it.
+   *
+   * Walls count. Enemy projectiles have always tested line of sight, but the
+   * player's never did, so every arrow, bolt and firebolt flew straight through
+   * the level geometry and hit things in the next room.
+   */
   private firstHitAlong(
     from: THREE.Vector3,
     dir: THREE.Vector3,
     max: number,
     enemies: Enemy[],
     boss: Boss | null,
-    radius: number
+    radius: number,
+    ctx?: CombatContext
   ): number {
-    let best = max;
+    let best = this.wallStop(from, dir, max, ctx, radius);
     const consider = (t: Target) => {
       if (t.life <= 0) return;
       const to = this.tmp2.copy(t.root.position).sub(from).setY(0);
@@ -729,6 +737,48 @@ export class SkillRunner {
     for (const e of enemies) consider(e);
     if (boss) consider(boss);
     return best;
+  }
+
+  /**
+   * Walks the ray in short steps and stops at the first blocked point. Stepping
+   * rather than solving is deliberate: the nav grid already answers "can these
+   * two points see each other" exactly, and props are boxes the grid does not
+   * know about, so one loop covers both.
+   */
+  private wallStop(
+    from: THREE.Vector3,
+    dir: THREE.Vector3,
+    max: number,
+    ctx: CombatContext | undefined,
+    radius: number
+  ): number {
+    if (!ctx) return max;
+    const STEP = 0.5;
+    const bl = ctx.blockers;
+    let travelled = 0;
+    let px = from.x;
+    let pz = from.z;
+    while (travelled < max) {
+      const step = Math.min(STEP, max - travelled);
+      const nx = px + dir.x * step;
+      const nz = pz + dir.z * step;
+      if (ctx.nav && !ctx.nav.lineOfSight(px, pz, nx, nz)) return travelled;
+      if (bl) {
+        for (let i = 0; i < bl.length; i++) {
+          const b = bl[i]!;
+          if (
+            Math.abs(nx - b.x) < b.w * 0.5 + radius * 0.5 &&
+            Math.abs(nz - b.z) < b.d * 0.5 + radius * 0.5
+          ) {
+            return travelled;
+          }
+        }
+      }
+      px = nx;
+      pz = nz;
+      travelled += step;
+    }
+    return max;
   }
 
   private allTargets(enemies: Enemy[], boss: Boss | null): Target[] {

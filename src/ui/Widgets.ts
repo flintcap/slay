@@ -1,3 +1,4 @@
+import { stackCount } from '../sim/Inventory';
 import { itemIconUri } from '../art/Icons';
 import { ONE_HAND_MELEE } from '../data/itemBases';
 import { equipRules } from '../data/classes';
@@ -1525,6 +1526,11 @@ export class ItemSlot {
       `<img class="islot-img" src="${itemIconUri(item)}" alt="" draggable="false" ` +
       `style="width:${px}px;height:${px}px">`;
     this.inner.appendChild(art);
+
+    // Stack size. Potions, gems, runes and materials all stack, and the slot
+    // never showed how many were in it — so a stack of twelve looked like one.
+    const n = stackCount(item);
+    if (n > 1) this.inner.appendChild(span('islot-stack', String(n)));
 
     if (item.upgrade > 0) this.inner.appendChild(span('islot-upg', `+${item.upgrade}`));
     if (item.sockets && item.sockets.length > 0) {

@@ -1579,7 +1579,9 @@ const SOCKETS: Record<string, Socket> = {
   mainHand: { bone: 'handR', pos: [0, -0.04, 0.02], rot: [Math.PI * 0.92, 0, 0] },
   offHand: { bone: 'handL', pos: [0, -0.04, 0.02], rot: [Math.PI * 0.92, 0, 0] },
   helm: { bone: 'head', pos: [0, 0.012, 0], rot: [0, 0, 0] },
-  chest: { bone: 'chest', pos: [0, 0.02, 0.01], rot: [0, 0, 0] },
+  // Chest armour hangs from the shoulders, so it sits *below* the chest bone,
+  // not level with it. At the bone's own height it rode up around the collar.
+  chest: { bone: 'chest', pos: [0, -0.075, 0.01], rot: [0, 0, 0] },
   gloves: { bone: 'handR', pos: [0, -0.02, 0], rot: [0, 0, 0], mirror: 'handL' },
   boots: { bone: 'footR', pos: [0, 0.01, 0.02], rot: [0, 0, 0], mirror: 'footL' },
   belt: { bone: 'hips', pos: [0, 0.03, 0], rot: [0, 0, 0] },

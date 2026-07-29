@@ -548,7 +548,11 @@ export class DungeonScene extends GameScene {
       if (assigned) {
         acted = this.skills.cast(assigned, this.player, target, ctx, this.enemies, this.boss);
       }
-      if (!acted && !assigned) {
+      // Fall back whenever the assigned skill did not fire, not only when
+      // nothing is assigned. Out of mana used to mean the attack button simply
+      // did nothing, which reads as the game being broken rather than as you
+      // being out of mana.
+      if (!acted) {
         this.skills.basicAttack(this.player, target, ctx, this.enemies, this.boss);
       }
     }

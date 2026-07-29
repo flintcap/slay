@@ -1541,10 +1541,180 @@ function tintElement(e: Element, seed: number): Element {
   return { core: rot(e.core), glow: rot(e.glow), dark: rot(e.dark) };
 }
 
+/**
+ * Builds a distinct mark for any skill name.
+ *
+ * The skill data names 291 different icons and only 27 of them were ever drawn,
+ * so everything else fell through to its effect family and a whole tree came
+ * out as the same picture with a different tint. Hand-drawing 291 motifs is not
+ * the answer; deriving one is.
+ *
+ * The name is hashed into a small set of shape decisions — core form, how many
+ * arms or points, whether it is ringed, barred, slashed or haloed, and how it
+ * is rotated — which yields thousands of combinations that all read as
+ * deliberate heraldic marks rather than as noise. Bold and high-contrast on
+ * purpose: these are looked at around 40 pixels.
+ */
+function proceduralSigil(name: string): Motif {
+  const h = hashStr(name);
+  const core = h % 6;
+  const arms = 3 + ((h >>> 3) % 6);
+  const ringed = ((h >>> 7) & 3) !== 0;
+  const barred = ((h >>> 9) & 1) === 1;
+  const slashed = ((h >>> 10) & 3) === 0;
+  const haloed = ((h >>> 12) & 3) === 0;
+  const spin = ((h >>> 14) % 12) * (Math.PI / 6);
+  const inner = 0.3 + ((h >>> 17) % 5) * 0.09;
+
+  return (x, e) => {
+    x.save();
+    x.translate(64, 64);
+    x.rotate(spin);
+    x.lineJoin = 'round';
+    x.lineCap = 'round';
+
+    if (haloed) {
+      const g = x.createRadialGradient(0, 0, 4, 0, 0, 44);
+      g.addColorStop(0, rgba(e.core, 0.55));
+      g.addColorStop(1, rgba(e.glow, 0));
+      x.fillStyle = g;
+      x.beginPath();
+      x.arc(0, 0, 44, 0, Math.PI * 2);
+      x.fill();
+    }
+
+    const R = 30;
+    x.strokeStyle = rgba(e.core, 0.95);
+    x.fillStyle = rgba(e.glow, 0.8);
+    x.lineWidth = 6;
+
+    if (core === 0) {
+      // Star: alternating outer points and an inner waist.
+      x.beginPath();
+      for (let i = 0; i < arms * 2; i++) {
+        const r = i % 2 === 0 ? R : R * inner;
+        const a = (i / (arms * 2)) * Math.PI * 2 - Math.PI / 2;
+        const px = Math.cos(a) * r;
+        const py = Math.sin(a) * r;
+        if (i === 0) x.moveTo(px, py);
+        else x.lineTo(px, py);
+      }
+      x.closePath();
+      x.fill();
+      x.stroke();
+    } else if (core === 1) {
+      // Polygon shield.
+      x.beginPath();
+      for (let i = 0; i < arms; i++) {
+        const a = (i / arms) * Math.PI * 2 - Math.PI / 2;
+        const px = Math.cos(a) * R;
+        const py = Math.sin(a) * R;
+        if (i === 0) x.moveTo(px, py);
+        else x.lineTo(px, py);
+      }
+      x.closePath();
+      x.fill();
+      x.stroke();
+    } else if (core === 2) {
+      // Radiating blades from a hub.
+      for (let i = 0; i < arms; i++) {
+        const a = (i / arms) * Math.PI * 2;
+        x.beginPath();
+        x.moveTo(Math.cos(a) * R * inner, Math.sin(a) * R * inner);
+        x.lineTo(Math.cos(a + 0.16) * R, Math.sin(a + 0.16) * R);
+        x.lineTo(Math.cos(a - 0.16) * R, Math.sin(a - 0.16) * R);
+        x.closePath();
+        x.fill();
+      }
+      x.beginPath();
+      x.arc(0, 0, R * inner * 0.9, 0, Math.PI * 2);
+      x.fillStyle = rgba(e.core, 0.95);
+      x.fill();
+    } else if (core === 3) {
+      // Chevron stack, pointing up.
+      for (let i = 0; i < Math.min(4, arms - 1); i++) {
+        const o = -R + i * 20;
+        x.beginPath();
+        x.moveTo(-R * 0.8, o + 16);
+        x.lineTo(0, o - 6);
+        x.lineTo(R * 0.8, o + 16);
+        x.stroke();
+      }
+    } else if (core === 4) {
+      // Crescent. Sweep and bite both come from the name, so two crescents are
+      // not the same crescent.
+      const gap = 0.28 + (arms - 3) * 0.22;
+      x.beginPath();
+      x.arc(0, 0, R, gap, Math.PI * 2 - gap);
+      x.arc(R * (0.34 + inner * 0.4), 0, R * (0.5 + inner * 0.5), Math.PI * 2 - gap, gap, true);
+      x.closePath();
+      x.fill();
+      x.stroke();
+    } else {
+      // Teardrop / bolt shape.
+      x.beginPath();
+      x.moveTo(0, -R);
+      x.quadraticCurveTo(R * 0.9, -R * 0.1, R * inner, R * 0.55);
+      x.quadraticCurveTo(0, R, -R * inner, R * 0.55);
+      x.quadraticCurveTo(-R * 0.9, -R * 0.1, 0, -R);
+      x.closePath();
+      x.fill();
+      x.stroke();
+    }
+
+    // Count pips. The single most reliable difference between two marks: you
+    // can see four of something is not five without reading the shape.
+    x.fillStyle = rgba(e.core, 0.9);
+    for (let i = 0; i < arms; i++) {
+      const a = (i / arms) * Math.PI * 2 - Math.PI / 2;
+      x.beginPath();
+      x.arc(Math.cos(a) * (R + 15), Math.sin(a) * (R + 15), 3.4, 0, Math.PI * 2);
+      x.fill();
+    }
+
+    if (ringed) {
+      x.beginPath();
+      x.arc(0, 0, R + 8, 0, Math.PI * 2);
+      x.strokeStyle = rgba(e.glow, 0.75);
+      x.lineWidth = 3;
+      x.stroke();
+    }
+    if (barred) {
+      x.beginPath();
+      x.moveTo(-R - 6, 0);
+      x.lineTo(R + 6, 0);
+      x.strokeStyle = rgba(e.core, 0.9);
+      x.lineWidth = 5;
+      x.stroke();
+    }
+    if (slashed) {
+      x.beginPath();
+      x.moveTo(-R, R);
+      x.lineTo(R, -R);
+      x.strokeStyle = rgba(e.core, 0.85);
+      x.lineWidth = 5;
+      x.stroke();
+    }
+    x.restore();
+  };
+}
+
+const sigilCache = new Map<string, Motif>();
+
 function motifFor(iconKey: string | undefined, effect?: string | undefined): Motif {
   // The skill's authored icon name wins; the effect family is the fallback.
   const named = (iconKey ?? '').toLowerCase().replace(/[^a-z]/g, '');
   if (named && MOTIFS[named]) return MOTIFS[named]!;
+  // No hand-drawn motif under that name: derive one from the name itself
+  // rather than collapsing onto the effect family with everything else.
+  if (iconKey) {
+    let sig = sigilCache.get(iconKey);
+    if (!sig) {
+      sig = proceduralSigil(iconKey);
+      sigilCache.set(iconKey, sig);
+    }
+    return sig;
+  }
   const raw = (effect ?? iconKey ?? 'melee').toLowerCase();
   const [family, sub] = raw.split('.');
 
@@ -1632,7 +1802,10 @@ export function skillIconUri(
     x.scale(0.62, 0.62);
     x.translate(-64, -64);
     x.globalAlpha = 0.85;
-    motifFor(effect)(x, e, rnd);
+    // Passives were passing only the effect, so the skill's own icon name never
+    // reached the motif picker and every passive in a tree drew the same mark
+    // inside its hexagon.
+    motifFor(iconKey ?? effect, effect)(x, e, rnd);
     x.restore();
     x.globalAlpha = 1;
     x.beginPath();
