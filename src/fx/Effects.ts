@@ -885,6 +885,14 @@ export interface ImpactOpts {
   /** Sound id override; null to stay silent. */
   sfx?: string | null;
   crit?: boolean;
+  /**
+   * Overrides the particle burst this impact spawns. Without it the emitter is
+   * chosen by damage type alone, so every fire skill in the game threw exactly
+   * the same sparks.
+   */
+  emitter?: string;
+  /** Extra multiplier on the burst's particle count. */
+  density?: number;
 }
 
 export interface ProjectileOpts {
@@ -910,6 +918,10 @@ export interface ProjectileOpts {
 }
 
 export interface BeamOpts {
+  /** Per-skill particle override, so two spells of one element differ. */
+  emitter?: string;
+  /** Multiplier on particle counts. */
+  density?: number;
   element?: DamageType;
   color?: number;
   width?: number;
@@ -920,6 +932,10 @@ export interface BeamOpts {
 }
 
 export interface NovaOpts {
+  /** Per-skill particle override, so two spells of one element differ. */
+  emitter?: string;
+  /** Multiplier on particle counts. */
+  density?: number;
   element?: DamageType;
   color?: number;
   duration?: number;
@@ -1035,12 +1051,19 @@ export class EffectSystem {
     const scale = opts.scale ?? 1;
     const color = opts.color ?? el.body;
 
-    this.fx.burst(el.emitter, x, y, z, {
+    const base = opts.crit ? 18 : 10;
+    this.fx.burst(opts.emitter ?? el.emitter, x, y, z, {
       color: opts.color,
       scale,
       dir: opts.dir,
-      count: opts.crit ? 18 : undefined,
+      count: Math.max(3, Math.round(base * (opts.density ?? 1))),
     });
+    // A second, quieter burst of the element's own emitter whenever the skill
+    // overrode it, so a skill still reads as its damage type underneath its own
+    // signature.
+    if (opts.emitter && opts.emitter !== el.emitter) {
+      this.fx.burst(el.emitter, x, y, z, { color: opts.color, scale: scale * 0.7, count: 5 });
+    }
     if (opts.crit) this.fx.burst('crit', x, y, z, { color, scale: scale * 0.9 });
 
     if (opts.light !== 0) {
@@ -1204,7 +1227,7 @@ export class EffectSystem {
   }
 
   /** A meteor: a lobbed projectile from high above with a heavy impact. */
-  meteor(x: number, z: number, opts: { height?: number; delay?: number; radius?: number; color?: number; element?: DamageType; onHit?: (p: THREE.Vector3) => void } = {}): EffectHandle {
+  meteor(x: number, z: number, opts: { height?: number; delay?: number; radius?: number; color?: number; element?: DamageType; onHit?: (p: THREE.Vector3) => void ; emitter?: string; density?: number } = {}): EffectHandle {
     const element = opts.element ?? 'fire';
     const el = look(element);
     const height = opts.height ?? 22;
@@ -1296,7 +1319,7 @@ export class EffectSystem {
             for (let i = 0; i < n; i++) {
               const a = self.rng.range(0, Math.PI * 2);
               _v1.set(Math.cos(a), 0.25, Math.sin(a));
-              self.fx.burst(el.emitter, x + Math.cos(a) * front, 0.25, z + Math.sin(a) * front, {
+              self.fx.burst(opts.emitter ?? el.emitter, x + Math.cos(a) * front, 0.25, z + Math.sin(a) * front, {
                 count: 2,
                 scale: 0.4,
                 dir: _v1,
@@ -1325,7 +1348,7 @@ export class EffectSystem {
    * Ground slam: telegraph, then a heavy landing with concentric shockwaves,
    * dust, radial cracks, a hard camera hit and a bass thump.
    */
-  slam(x: number, z: number, radius: number, opts: { windup?: number; element?: DamageType; color?: number; onFire?: () => void } = {}): EffectHandle {
+  slam(x: number, z: number, radius: number, opts: { windup?: number; element?: DamageType; color?: number; emitter?: string; density?: number; onFire?: () => void } = {}): EffectHandle {
     const el = look(opts.element ?? 'physical');
     const windup = opts.windup ?? 0.9;
     const tg = this.decals.telegraph('circle', x, z, radius, 0, windup, opts.color ?? 0xff5020);
@@ -1365,7 +1388,7 @@ export class EffectSystem {
   }
 
   /** A cone blast — dragon breath, frost cone, shout. */
-  cone(origin: THREE.Vector3, direction: THREE.Vector3, halfAngle: number, range: number, opts: { element?: DamageType; color?: number; duration?: number } = {}): EffectHandle {
+  cone(origin: THREE.Vector3, direction: THREE.Vector3, halfAngle: number, range: number, opts: { element?: DamageType; color?: number; duration?: number; emitter?: string; density?: number } = {}): EffectHandle {
     const el = look(opts.element);
     _c1.setHex(opts.color ?? el.body);
     _c2.setHex(el.core);
@@ -1421,7 +1444,7 @@ export class EffectSystem {
           const dx = direction.x * c - direction.z * s;
           const dz = direction.x * s + direction.z * c;
           _v1.set(dx, 0.1, dz).normalize();
-          self.fx.burst(el.emitter, origin.x + dx * d, origin.y + self.rng.range(-0.2, 0.5), origin.z + dz * d, {
+          self.fx.burst(opts.emitter ?? el.emitter, origin.x + dx * d, origin.y + self.rng.range(-0.2, 0.5), origin.z + dz * d, {
             count: 2, scale: 0.7, dir: _v1, color: opts.color, speed: 1.6,
           });
         }

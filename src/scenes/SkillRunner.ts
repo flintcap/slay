@@ -51,6 +51,65 @@ export function isDualWielding(player: Player): boolean {
  * skills stopped looking alike: the delivery families already differed, but
  * every one of them played the same two clips.
  */
+/**
+ * A skill's own particle signature.
+ *
+ * Emitters were picked from the damage type alone, so every fire skill threw
+ * identical sparks and a whole tree looked like one spell cast at different
+ * ranges. Each skill now draws an emitter and a trail from its element's own
+ * pool, plus its own density and size, all keyed off its id — so two fire
+ * skills are still both obviously fire while never looking the same.
+ *
+ * Pools stay inside the element's family on purpose. Variety that crosses into
+ * the wrong element stops teaching the player what is about to hurt them.
+ */
+const PARTICLE_POOLS: Record<string, { burst: string[]; trail: string[] }> = {
+  physical: {
+    burst: ['hit.physical', 'sparks', 'dust', 'gib', 'impact'],
+    trail: ['sparks', 'dust', 'smoke'],
+  },
+  fire: {
+    burst: ['hit.fire', 'fire', 'embers', 'explosion', 'ash'],
+    trail: ['fire', 'embers', 'smoke'],
+  },
+  cold: {
+    burst: ['hit.cold', 'frost', 'steam', 'shieldHit'],
+    trail: ['frost', 'steam'],
+  },
+  lightning: {
+    burst: ['hit.lightning', 'shock', 'sparks', 'explosion'],
+    trail: ['shock', 'sparks'],
+  },
+  poison: {
+    burst: ['hit.poison', 'poison', 'dissolve', 'steam'],
+    trail: ['poison', 'dissolve'],
+  },
+  arcane: {
+    burst: ['hit.arcane', 'arcane', 'teleport', 'portal', 'void'],
+    trail: ['arcane', 'summon', 'void'],
+  },
+};
+
+export interface ParticleSig {
+  emitter: string;
+  trail: string;
+  density: number;
+  size: number;
+}
+
+export function particleFor(skillId: string, type: DamageType): ParticleSig {
+  const pool = PARTICLE_POOLS[type] ?? PARTICLE_POOLS.physical!;
+  const h = hashId(skillId);
+  return {
+    emitter: pool.burst[h % pool.burst.length]!,
+    trail: pool.trail[(h >>> 4) % pool.trail.length]!,
+    // Small, deliberate spread: enough to feel different, not enough to make
+    // one skill read as twice the spell another is.
+    density: 0.75 + ((h >>> 8) % 9) * 0.09,
+    size: 0.82 + ((h >>> 12) % 8) * 0.055,
+  };
+}
+
 /** Stable small integer from a skill id. */
 function hashId(id: string): number {
   let h = 2166136261;
@@ -291,6 +350,7 @@ export class SkillRunner {
     // onto `cast` or `attack1`, so a ground slam, a war cry, a channelled beam
     // and a thrown bolt were all the same gesture.
     const clip = clipFor(def.effect, holding);
+    const sig = particleFor(def.id, type);
 
     switch (family) {
       case 'melee':
@@ -328,8 +388,9 @@ export class SkillRunner {
           this.effects.projectile(from, to, {
             element: type,
             color,
+            trail: sig.trail,
             speed: num('speed', 17),
-            size: num('radius', 0.42),
+            size: num('radius', 0.42) * sig.size,
             onHit: (p) => {
               if (pierce > 0) {
                 // Piercing shots damage everything along the flight path.
@@ -349,7 +410,12 @@ export class SkillRunner {
       case 'nova': {
         player.beginAction(clip, castTime);
         const radius = num('radius', 5.2);
-        this.effects.nova(player.position.x, player.position.z, radius, { element: type, color });
+        this.effects.nova(player.position.x, player.position.z, radius, {
+          element: type,
+          color,
+          emitter: sig.emitter,
+          density: sig.density,
+        });
         this.areaDamage(player.position, radius, makePacket, ctx, enemies, boss);
         audio.play(`nova.${type}`);
         break;
@@ -363,6 +429,8 @@ export class SkillRunner {
         this.effects.slam(at.x, at.z, radius, {
           element: type,
           color,
+          emitter: sig.emitter,
+          density: sig.density,
           windup: num('windup', 0.25),
           onFire: () => this.areaDamage(at, radius, () => makePacket(1.25), ctx, enemies, boss),
         });
@@ -378,6 +446,8 @@ export class SkillRunner {
           radius,
           element: type,
           color,
+          emitter: sig.emitter,
+          density: sig.density,
           onHit: (p) => this.areaDamage(p, radius, () => makePacket(1.4), ctx, enemies, boss),
         });
         break;
@@ -387,7 +457,13 @@ export class SkillRunner {
         player.beginAction(clip, castTime);
         const length = num('length', 12);
         const to = origin.clone().addScaledVector(dir, length);
-        this.effects.beam(origin, to, { element: type, color, width: num('width', 1.1), endBurst: true });
+        this.effects.beam(origin, to, {
+          element: type,
+          color,
+          width: num('width', 1.1) * sig.size,
+          endBurst: true,
+          emitter: sig.emitter,
+        });
         this.lineDamage(player.position, dir, length, num('width', 1.1), makePacket, ctx, enemies, boss);
         audio.play(`beam.${type}`);
         break;
@@ -397,7 +473,12 @@ export class SkillRunner {
         player.beginAction(clip, castTime);
         const reach = num('reach', 6.5);
         const half = num('arc', 1.1) * 0.5;
-        this.effects.cone(player.position.clone().setY(1.0), dir, half, reach, { element: type, color });
+        this.effects.cone(player.position.clone().setY(1.0), dir, half, reach, {
+          element: type,
+          color,
+          emitter: sig.emitter,
+          density: sig.density,
+        });
         this.meleeSwing(player, dir, half * 2, reach, makePacket, ctx, enemies, boss, type, false);
         audio.play(`cone.${type}`);
         break;
@@ -439,6 +520,8 @@ export class SkillRunner {
         this.applyBuff(player, def, rank, num, color);
         this.effects.impact(type, player.position.x, 1.0, player.position.z, {
           color,
+          emitter: sig.emitter,
+          density: sig.density,
           decal: false,
           shake: 0,
           sfx: 'buff',
@@ -458,6 +541,7 @@ export class SkillRunner {
           this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
             element: type,
             color,
+            trail: sig.trail,
             speed: holding === 'ranged' ? 30 : 20,
             size: holding === 'ranged' ? 0.24 : 0.36,
             onHit: (pt) => this.pointDamage(pt, 0.6, makePacket, ctx, enemies, boss),
