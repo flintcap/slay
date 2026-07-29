@@ -8,11 +8,12 @@
  */
 
 import type { Character, EquipSlot, Item } from '../types';
+import { RARITY_ORDER } from '../types';
 import { events } from '../core/Events';
 import { save, INVENTORY_SIZE } from '../core/Save';
 import { equipItem, unequipItem, isWornOffHand } from '../sim/Character';
 import { computeStats } from '../sim/Stats';
-import { vendorPrice } from '../sim/Loot';
+import { vendorPrice, itemDisplayName } from '../sim/Loot';
 import {
   Panel,
   ItemSlot,
@@ -28,6 +29,7 @@ import {
   registerDrop,
   drag,
   contextMenu,
+  modal,
   countTo,
   fmt,
   fmtInt,
@@ -315,9 +317,14 @@ export class InventoryPanel {
     });
 
     const hint = div('inv-hint');
-    hint.appendChild(span('', 'Right-click to equip or drink · drag to rearrange · hold '));
+    hint.appendChild(span('', 'Right-click to equip or drink · drag onto the ground to drop · hold '));
     hint.appendChild(span('keycap', 'Shift'));
-    hint.appendChild(span('', ' to compare'));
+    hint.appendChild(span('', ' and right-click for more'));
+
+    // Dragging an item out of the window and letting go throws it away, which
+    // is how the whole genre does it and was the one thing the pack could not
+    // do at all.
+    drag.onWorldDrop = (p) => this.discard(p);
 
     add(right, packHd, this.grid.root, hint);
     add(wrap, left, right);
@@ -344,9 +351,57 @@ export class InventoryPanel {
     this.panel.close();
   }
 
+  /**
+   * Throws an item on the floor.
+   *
+   * The UI owns removing it from wherever it was; the scene owns putting a
+   * model at the player's feet. Anything worth keeping asks first — a
+   * mis-drag should not cost you a unique.
+   */
+  private discard(p: DragPayload): void {
+    const c = save.account.current;
+    const item = p.item;
+    if (!c || !item) return;
+
+    const throwIt = (): void => {
+      if (p.kind === 'equipment' && p.slot) {
+        // Take it off first, then out of the pack it landed in.
+        if (!doUnequip(c, p.slot)) return;
+      }
+      invRemove(c, item);
+      save.touch();
+      // The scene says what happened, because only it knows whether there was
+      // anywhere to put it. In town there is not, and it goes back in the pack.
+      events.emit('loot:discard', { item });
+      events.emit('ui:refresh', {});
+      this.refresh();
+    };
+
+    if (RARITY_ORDER.indexOf(item.rarity) >= 2 || item.upgrade > 0 || item.sockets.some((s) => s.gemId)) {
+      modal({
+        title: 'Drop this?',
+        icon: 'trash',
+        tone: 'danger',
+        body: `${attempt(() => itemDisplayName(item), 'This item')} will be left on the floor.`,
+        confirmLabel: 'Drop it',
+        onConfirm: throwIt,
+      });
+      return;
+    }
+    throwIt();
+  }
+
   private onRightClick(item: Item | null, ev: MouseEvent): void {
     const c = save.account.current;
     if (!c || !item) return;
+
+    // Shift opens the full menu for anything, including gear — plain
+    // right-click equips, so without this there was no way to reach the menu
+    // for an item you could wear.
+    if (ev.shiftKey) {
+      this.itemMenu(item, ev);
+      return;
+    }
 
     // Consumables are used, not equipped. Right-clicking one used to fall
     // through to the context menu, which offered no way to drink it.
@@ -366,6 +421,13 @@ export class InventoryPanel {
       else events.emit('sfx', { id: 'ui.equip' });
       return;
     }
+    this.itemMenu(item, ev);
+  }
+
+  /** Everything you can do with an item that is not "wear it" or "drink it". */
+  private itemMenu(item: Item, ev: MouseEvent): void {
+    const c = save.account.current;
+    if (!c) return;
     contextMenu(ev.clientX, ev.clientY, [
       {
         label: 'Send to Vault',
@@ -385,6 +447,11 @@ export class InventoryPanel {
         label: 'Take to the Blacksmith',
         icon: 'anvil',
         onPick: () => events.emit('ui:open', { panel: 'blacksmith' }),
+      },
+      {
+        label: 'Drop on the ground',
+        icon: 'trash',
+        onPick: () => this.discard({ kind: 'inventory', item }),
       },
     ], attempt(() => item.name, 'Item'));
   }

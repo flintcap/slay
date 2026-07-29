@@ -23,6 +23,11 @@ export interface GameEvents {
   'enemy:killed': { id: string; monsterId: string; rank: MonsterRank; x: number; z: number };
   'loot:dropped': { item: Item; x: number; z: number };
   'loot:pickedUp': { item: Item };
+  /**
+   * The player threw something away. The active scene puts it on the floor at
+   * their feet; the UI has already taken it out of the pack.
+   */
+  'loot:discard': { item: Item };
   'loot:gold': { amount: number };
   'item:equipped': { item: Item };
   'item:unequipped': { item: Item };

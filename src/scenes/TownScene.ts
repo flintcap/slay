@@ -4,6 +4,7 @@ import type { SceneId } from '../types';
 import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { save } from '../core/Save';
+import { addItemToInventory } from '../sim/Inventory';
 import { Random, randomSeed } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
 import { DecalSystem } from '../fx/Decals';
@@ -120,6 +121,16 @@ export class TownScene extends GameScene {
     this.offs.push(
       events.on('item:equipped', () => this.player?.refreshStats()),
       events.on('item:unequipped', () => this.player?.refreshStats()),
+      // There is nowhere to put a dropped item in town, so it goes back in the
+      // pack rather than vanishing. Better to refuse than to eat it.
+      events.on('loot:discard', ({ item }) => {
+        const c = save.account.current;
+        if (!c) return;
+        addItemToInventory(c, item);
+        save.touch();
+        events.emit('toast', { text: 'Not here — sell it or stash it instead.', kind: 'info' });
+        events.emit('ui:refresh', {});
+      }),
     );
 
     this.rig.follow(this.player.root);

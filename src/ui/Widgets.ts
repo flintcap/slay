@@ -860,6 +860,27 @@ class DragController {
     return null;
   }
 
+  /**
+   * Called when an item is released over the world rather than over any slot.
+   *
+   * Dragging something out of the pack and letting go is how every game in this
+   * genre throws an item away, and it was the one thing the inventory could not
+   * do. Registered by the inventory rather than implemented here, so this class
+   * stays a pure pointer-drag helper.
+   */
+  onWorldDrop: ((payload: DragPayload) => void) | null = null;
+
+  /** True when the point is over the playfield and not over any panel. */
+  private overWorld(x: number, y: number): boolean {
+    if (this.ghost) this.ghost.style.display = 'none';
+    const hit = document.elementFromPoint(x, y) as HTMLElement | null;
+    if (this.ghost) this.ghost.style.display = '';
+    if (!hit) return false;
+    // The UI layer is pointer-events:none except where a widget opts in, so
+    // anything that is not inside an interactive node is the world behind it.
+    return !hit.closest('.ui-interactive, .panel, .modal-wrap, .drag-ghost');
+  }
+
   private onUp = (e: PointerEvent): void => {
     const payload = this.payload;
     if (!payload) return;
@@ -871,6 +892,10 @@ class DragController {
         e.preventDefault();
         t.handler(payload);
       }
+    } else if (payload.item && this.onWorldDrop && this.overWorld(e.clientX, e.clientY)) {
+      e.stopPropagation();
+      e.preventDefault();
+      this.onWorldDrop(payload);
     }
     this.cancel();
   };

@@ -169,6 +169,17 @@ export class DungeonScene extends GameScene {
       events.on('item:unequipped', () => this.player?.refreshStats()),
     );
 
+    // Something thrown out of the pack lands at the player's feet, as a real
+    // drop — so it can be picked straight back up if it was a mistake.
+    this.offs.push(
+      events.on('loot:discard', ({ item }) => {
+        if (!this.player) return;
+        this.dropItem(item, this.player.position);
+        audio.play('ui.click');
+        toast(`Dropped ${item.name}.`, 'info');
+      }),
+    );
+
     this.plates = new NameplateLayer();
     this.groundLabels = new GroundLabelLayer();
     this.groundLabels.onPickUp = (uid) => this.pickUpByUid(uid);
