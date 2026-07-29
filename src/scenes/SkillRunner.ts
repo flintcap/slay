@@ -301,6 +301,9 @@ export class SkillRunner {
 
     const cost = def.manaCost ? def.manaCost(rank) : 0;
     if (cost > 0 && !player.spendMana(cost)) {
+      // Say so. A skill that silently refuses reads as a broken button, which
+      // is exactly how being out of mana was being reported as a bug.
+      events.emit('toast', { text: `Not enough mana for ${def.name}.`, kind: 'bad' });
       audio.play('ui.error');
       return false;
     }

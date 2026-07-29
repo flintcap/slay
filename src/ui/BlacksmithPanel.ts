@@ -10,8 +10,20 @@
 import type { Item, StatKey, Stats } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
-import { upgradeCost, upgradeItem, rerollAffixes, addSocket, salvage } from '../sim/Crafting';
-import { itemStats, itemDisplayName } from '../sim/Loot';
+import {
+  upgradeCost,
+  upgradeItem,
+  rerollAffixes,
+  addSocket,
+  salvage,
+  insertGem,
+  removeGem,
+  removeGemCost,
+  canAfford,
+} from '../sim/Crafting';
+import { itemStats, itemDisplayName, newItem, getBase } from '../sim/Loot';
+import { getSocketable, socketBonuses } from '../data/gems';
+import { addItemToInventory } from '../sim/Inventory';
 import { materialName, materialColor } from '../data/materials';
 import { Random, randomSeed } from '../core/RNG';
 import { ItemGrid, normalizeInventory, invRemove } from './InventoryPanel';
@@ -230,14 +242,129 @@ export class BlacksmithPanel {
       shd.appendChild(div('section-rule'));
       sockSec.appendChild(shd);
       const strip = div('tt-socket-strip');
-      for (const s of item.sockets) {
-        const cell = div(s.gemId ? 'tt-socket filled' : 'tt-socket');
-        if (s.gemId) cell.innerHTML = iconSvg('gem', { size: 14 });
+      item.sockets.forEach((s, i) => {
+        const cell = div(s.gemId ? 'tt-socket filled ui-interactive' : 'tt-socket ui-interactive');
+        const gem = s.gemId ? attempt(() => getSocketable(s.gemId!), undefined) : undefined;
+        if (gem) {
+          cell.innerHTML = iconSvg('gem', { size: 14 });
+          cell.style.color = rarityHex('unique');
+          cell.title = gem.name;
+        } else {
+          cell.title = 'Empty — click to set a gem or rune';
+        }
+        cell.style.cursor = 'pointer';
+        cell.addEventListener('click', () => this.openSocketPicker(item, i));
         strip.appendChild(cell);
-      }
+      });
       sockSec.appendChild(strip);
+      sockSec.appendChild(
+        div('craftcard-desc', 'Click a socket to set a gem, or to prise one back out.')
+      );
       this.preview.appendChild(sockSec);
     }
+  }
+
+  // -- socketing -----------------------------------------------------------
+
+  /**
+   * Set or prise out one socket.
+   *
+   * The crafting layer has had `insertGem` and `removeGem` from the beginning
+   * and nothing ever called either of them, so gems dropped, stacked up in the
+   * pack and did nothing at all. This is the missing half.
+   */
+  private openSocketPicker(item: Item, index: number): void {
+    const c = save.account.current;
+    if (!c) return;
+    const slot = item.sockets[index];
+    if (!slot) return;
+
+    if (slot.gemId) {
+      const gem = attempt(() => getSocketable(slot.gemId!), undefined);
+      const cost = removeGemCost();
+      const canKeep = attempt(() => canAfford(cost), false);
+      modal({
+        title: `Remove ${gem?.name ?? 'gem'}`,
+        icon: 'gem',
+        tone: 'danger',
+        body: canKeep
+          ? `A Sigil of Order and ${fmtInt(cost.gold)} gold prises it out intact. Without one the gem is destroyed.`
+          : `You have no Sigil of Order, so knocking this one out will destroy it.`,
+        confirmLabel: canKeep ? 'Prise it out' : 'Destroy it',
+        onConfirm: () => {
+          const r = attempt(
+            () => removeGem(item, index, canKeep),
+            { ok: false, reason: 'Failed' } as { ok: boolean; reason?: string; gemId?: string }
+          );
+          if (!r.ok) {
+            events.emit('toast', { text: r.reason ?? 'The smith cannot.', kind: 'bad' });
+            return;
+          }
+          if (canKeep && r.gemId) {
+            const made = attempt(() => newItem(getBase(r.gemId!), item.ilvl, 'normal', new Random(randomSeed())), null);
+            if (made) addItemToInventory(c, made);
+          }
+          events.emit('toast', { text: canKeep ? 'Gem recovered.' : 'Gem shattered.', kind: canKeep ? 'good' : 'info' });
+          save.touch();
+          events.emit('ui:refresh', {});
+          this.refresh();
+        },
+      });
+      return;
+    }
+
+    // Empty socket: pick from the gems and runes actually in the pack.
+    const gems = c.inventory.filter((it): it is Item => {
+      if (!it) return false;
+      const b = safeBase(it);
+      return b?.category === 'gem' || b?.category === 'rune';
+    });
+
+    const body = div('socket-picker');
+    if (gems.length === 0) {
+      body.appendChild(emptyState('No gems or runes in your pack.', 'gem'));
+    }
+    for (const gem of gems) {
+      const def = attempt(() => getSocketable(gem.baseId), undefined);
+      const row = div('socket-pick ui-interactive');
+      row.appendChild(icon(itemIconName(gem), { size: 16 }));
+      row.appendChild(span('socket-pick-name', def?.name ?? gem.name));
+      const hostBase = safeBase(item);
+      const bonuses = attempt(
+        () => (hostBase ? socketBonuses(gem.baseId, hostBase.category) : []),
+        [] as Array<{ stat: StatKey; value: number }>
+      );
+      row.appendChild(
+        span(
+          'socket-pick-stats',
+          bonuses.length
+            ? bonuses.map((b) => `${b.value >= 0 ? '+' : ''}${b.value} ${STAT_LABEL[b.stat] ?? b.stat}`).join(', ')
+            : 'No effect in this item'
+        )
+      );
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', () => {
+        const r = attempt(() => insertGem(item, gem.baseId, index), { ok: false, reason: 'Failed' });
+        if (!r.ok) {
+          events.emit('toast', { text: r.reason ?? 'It will not seat.', kind: 'bad' });
+          return;
+        }
+        invRemove(c, gem);
+        events.emit('toast', { text: `${def?.name ?? 'Gem'} set.`, kind: 'good' });
+        save.touch();
+        events.emit('ui:refresh', {});
+        this.refresh();
+        document.querySelector('.modal-wrap')?.remove();
+      });
+      body.appendChild(row);
+    }
+
+    modal({
+      title: 'Set a gem',
+      icon: 'gem',
+      body,
+      confirmLabel: 'Done',
+    });
   }
 
   // -- services ------------------------------------------------------------

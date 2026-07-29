@@ -84,6 +84,19 @@ function isLevel(v: unknown): v is DungeonLevel {
  * them. Structural rather than nominal so the UI never breaks when the scene
  * layer renames a field.
  */
+/**
+ * Forgets what we learned about a scene.
+ *
+ * The probe result is cached against the scene object, but a dungeon scene
+ * survives a floor change and rebuilds its level and its mesh underneath. The
+ * stale cache kept handing the HUD floor one's grid and floor one's
+ * `worldToTile`, which is why every minimap from floor two on was the wrong map
+ * with the arrow in the wrong place.
+ */
+function forgetProbe(scene: object | null | undefined): void {
+  if (scene) probes.delete(scene);
+}
+
 function probeScene(scene: object): SceneProbe {
   const cached = probes.get(scene);
   if (cached) return cached;
@@ -575,12 +588,14 @@ export class HUD {
       this.levelFlourish(p.level);
       this.refreshAll();
     });
-    on('player:xp', (p) => {
+    on('player:xp', () => {
       const c = save.account.current;
       if (!c) return;
-      const need = attempt(() => xpForLevel(c.level), Math.max(1, p.toNext));
-      const into = Math.max(0, need - p.toNext);
-      this.setXp(into, need, c.level);
+      // Read the character, not the event payload. `c.xp` is by definition the
+      // progress into the current level, so there is nothing to derive and
+      // nothing for a bad `toNext` to corrupt.
+      const need = attempt(() => xpForLevel(c.level), 100);
+      this.setXp(c.xp, need, c.level);
     });
     on('loot:gold', (p) => {
       this.floatText(`+${fmtInt(p.amount)}`, 'gold', this.goldReadout);
@@ -591,6 +606,10 @@ export class HUD {
       this.refreshPotions();
     });
     on('depth:changed', (p) => {
+      // A new floor means a new grid and a new tile mapping, so anything we
+      // cached about the scene's shape is now a lie.
+      forgetProbe(this.engine.currentScene as unknown as object | null);
+      runtime.level = null;
       runtime.depth = p.depth;
       runtime.levelIndex = p.level;
       runtime.levelsTotal = p.of;

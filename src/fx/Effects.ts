@@ -122,7 +122,14 @@ class FlashPool {
     for (let i = 0; i < count; i++) {
       const l = new THREE.PointLight(0xffffff, 0, 10, 2);
       l.castShadow = false;
-      l.visible = false;
+      // Never toggled off. `visible = false` drops a light out of the scene's
+      // light list, three.js keys its shader program cache on how many lights
+      // there are, and so every flash was silently recompiling every material
+      // in the dungeon. That is the stall on every cast, every hit and every
+      // kill. Idle slots sit at zero intensity, which costs nothing to look at
+      // and keeps the light count fixed for the renderer's whole life.
+      l.visible = true;
+      l.intensity = 0;
       scene.add(l);
       this.slots.push({ light: l, left: 0, total: 1, peak: 0 });
     }
@@ -152,7 +159,6 @@ class FlashPool {
     best.total = duration;
     best.light.position.set(x, y, z);
     best.light.intensity = intensity;
-    best.light.visible = true;
   }
 
   update(dt: number): void {
@@ -162,7 +168,6 @@ class FlashPool {
       if (s.left <= 0) {
         s.left = 0;
         s.light.intensity = 0;
-        s.light.visible = false;
         continue;
       }
       const t = s.left / s.total;
@@ -206,6 +211,57 @@ interface LiveEffect {
 // ---------------------------------------------------------------------------
 
 const haloPool: THREE.SpriteMaterial[] = [];
+
+// ---------------------------------------------------------------------------
+// Arrow geometry
+// ---------------------------------------------------------------------------
+
+/**
+ * A real arrow, not a glowing ball.
+ *
+ * Physical shots used the same emissive icosahedron every spell uses, scaled to
+ * a quarter of a metre and wrapped in a halo six times that wide. A bow fired a
+ * one-and-a-half-metre ball of white light. What an arrow needs instead is a
+ * shaft, a head and fletching, pointed the way it is flying — the silhouette is
+ * the whole read, and it is unmistakable even at two pixels wide.
+ *
+ * Built once, shared by every arrow in flight, and laid out along +Z so the
+ * group can simply `lookAt` its destination.
+ */
+let arrowParts: { shaft: THREE.BufferGeometry; head: THREE.BufferGeometry; vane: THREE.BufferGeometry } | null = null;
+
+function arrowGeometry(): NonNullable<typeof arrowParts> {
+  if (arrowParts) return arrowParts;
+  // Shaft: a hex rod down the Z axis, spanning -0.43 .. 0.43.
+  const shaft = new THREE.CylinderGeometry(0.016, 0.016, 0.86, 6, 1, true);
+  shaft.rotateX(Math.PI * 0.5);
+  // Head: a bodkin point sitting on the front of the shaft.
+  const head = new THREE.ConeGeometry(0.044, 0.17, 6);
+  head.rotateX(Math.PI * 0.5);
+  head.translate(0, 0, 0.45);
+  // Fletching: a solid sliver rather than a plane, so it does not vanish when
+  // seen from its back face.
+  const vane = new THREE.BoxGeometry(0.005, 0.072, 0.16);
+  vane.translate(0, 0.05, -0.34);
+  arrowParts = { shaft, head, vane };
+  return arrowParts;
+}
+
+/** Wood, steel and feather. Materials are cached, so a volley shares three. */
+function arrowMesh(tint: number): THREE.Group {
+  const g = arrowGeometry();
+  const root = new THREE.Group();
+  root.add(new THREE.Mesh(g.shaft, emissiveMaterial(0x6b5334, 0.05)));
+  root.add(new THREE.Mesh(g.head, emissiveMaterial(0xb9c2cc, 0.4)));
+  for (let i = 0; i < 3; i++) {
+    const v = new THREE.Mesh(g.vane, emissiveMaterial(tint, 0.45));
+    // Z is the flight axis, so spinning about it revolves the fin around the
+    // shaft.
+    v.rotation.z = (i / 3) * Math.PI * 2;
+    root.add(v);
+  }
+  return root;
+}
 
 function takeHalo(): THREE.SpriteMaterial {
   const hit = haloPool.pop();
@@ -942,6 +998,13 @@ export interface ProjectileOpts {
   /** Impact effect id; defaults to the element impact. */
   impact?: boolean;
   scale?: number;
+  /**
+   * What the projectile is made of. Defaults to an arrow for physical damage
+   * and a glowing mote for everything else, which is right almost always —
+   * override it for a thrown axe that should still look like a spell, or a
+   * magic arrow that should still look like an arrow.
+   */
+  shape?: 'arrow' | 'bolt';
 }
 
 export interface BeamOpts {
@@ -1148,9 +1211,20 @@ export class EffectSystem {
     const size = (opts.size ?? 0.22) * (opts.scale ?? 1);
     const speed = opts.speed ?? 18;
 
+    // A physical shot is an arrow; anything else is a mote of its element.
+    // Firing a bow used to launch the same glowing ball a fireball does, only
+    // beige, which is why arrows read as white blobs rather than as arrows.
+    const isArrow = opts.shape === 'arrow' || (opts.shape !== 'bolt' && element === 'physical');
+
     const group = new THREE.Group();
-    const core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.core, 5));
-    core.scale.setScalar(size);
+    let core: THREE.Object3D;
+    if (isArrow) {
+      core = arrowMesh(color);
+      core.scale.setScalar(Math.max(0.7, size / 0.24));
+    } else {
+      core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.core, 5));
+      core.scale.setScalar(size);
+    }
     group.add(core);
 
     // A soft additive halo sells the light without needing a second light.
@@ -1162,10 +1236,15 @@ export class EffectSystem {
     // It is also pooled. Building and disposing a material per shot deletes the
     // compiled GL program each time the last user goes away, and recompiles it
     // on the next shot — a stall on every single projectile fired.
+    //
+    // An arrow gets a much smaller one. The halo is standing in for the light a
+    // fireball throws; an arrow throws none, and at six times its own size the
+    // glow was all anyone could see of it.
     const haloMat = takeHalo();
-    haloMat.color.set(color).multiplyScalar(2.4);
+    haloMat.color.set(color).multiplyScalar(isArrow ? 0.5 : 2.4);
+    haloMat.opacity = isArrow ? 0.32 : 0.9;
     const halo = new THREE.Sprite(haloMat);
-    halo.scale.setScalar(size * 6);
+    halo.scale.setScalar(size * (isArrow ? 1.6 : 4.2));
     group.add(halo);
 
     group.position.copy(from);
@@ -1183,6 +1262,7 @@ export class EffectSystem {
     const flat = new THREE.Vector3(dest.x - start.x, 0, dest.z - start.z);
     const totalDist = Math.max(0.001, flat.length());
     const arc = opts.arc ?? 0;
+    const aim = new THREE.Vector3();
     let travelled = 0;
     let life = 0;
     const maxLife = opts.maxLife ?? 6;
@@ -1218,21 +1298,31 @@ export class EffectSystem {
           start.y + (dest.y - start.y) * t + (arc > 0 ? Math.sin(t * Math.PI) * arc : 0),
           start.z + (dest.z - start.z) * t,
         );
-        if (opts.spin) core.rotation.y += opts.spin * dt;
-        core.rotation.x += dt * 3.1;
+        if (isArrow) {
+          // Nose into the flight path, including the drop at the end of a lob.
+          aim.set(dest.x - start.x, dest.y - start.y, dest.z - start.z).normalize();
+          if (arc > 0) aim.y += Math.cos(t * Math.PI) * arc * Math.PI / Math.max(1, totalDist);
+          core.lookAt(pos.x + aim.x, pos.y + aim.y, pos.z + aim.z);
+        } else {
+          if (opts.spin) core.rotation.y += opts.spin * dt;
+          core.rotation.x += dt * 3.1;
+        }
 
         if (trail) trail.pushPoint(pos.x, pos.y, pos.z);
 
         // A dim travelling light: cheap, and it makes the projectile feel like
-        // it is actually made of fire rather than painted on.
-        if (self.quality.fxScale >= 0.9 && Math.random() < 0.5) {
+        // it is actually made of fire rather than painted on. An arrow is a
+        // stick, not a flare, so it does not get one.
+        if (!isArrow && self.quality.fxScale >= 0.9 && self.rng.chance(0.5)) {
           self.flash(pos.x, pos.y, pos.z, el.light, 2.2, 5, 0.07);
         }
-        self.fx.burst(element === 'physical' ? 'sparks' : el.emitter, pos.x, pos.y, pos.z, {
-          count: 1,
-          scale: 0.35 * (opts.scale ?? 1),
-          color: opts.color,
-        });
+        if (!isArrow) {
+          self.fx.burst(el.emitter, pos.x, pos.y, pos.z, {
+            count: 1,
+            scale: 0.35 * (opts.scale ?? 1),
+            color: opts.color,
+          });
+        }
 
         if (t >= 1) {
           if (opts.impact !== false) {
@@ -1247,7 +1337,11 @@ export class EffectSystem {
       },
       dispose(): void {
         self.scene.remove(group);
-        releaseMaterial(core.material);
+        // The core's material is *not* released. `emissiveMaterial` hands back a
+        // shared, cached instance, so disposing it here destroyed the compiled
+        // program out from under every other projectile using the same colour —
+        // and left the cache holding a dead material for the next shot to pick
+        // up and re-upload. Every arrow fired paid for that.
         giveHalo(haloMat);
         trail?.retire(0.18);
       },
@@ -1930,7 +2024,9 @@ export class EffectSystem {
         releaseMaterial(mat);
         if (ring) {
           self.scene.remove(ring);
-          ringMat?.dispose();
+          // Pooled like every other effect shader — disposing it deletes the
+          // program the next aura would have reused.
+          releaseMaterial(ringMat);
         }
       },
     });

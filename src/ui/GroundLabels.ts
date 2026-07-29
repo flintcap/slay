@@ -62,7 +62,10 @@ export class GroundLabelLayer {
       }
     }
     const root = document.createElement('div');
-    root.className = 'glabel ui-interactive';
+    // `ui-soft` marks a label as a *left-click* target only. It sits over the
+    // playfield, so treating it as full UI meant standing near a dropped item
+    // silently disabled the attack button.
+    root.className = 'glabel ui-interactive ui-soft';
     const name = document.createElement('span');
     name.className = 'glabel-name';
     const detail = document.createElement('div');
@@ -81,9 +84,12 @@ export class GroundLabelLayer {
       root.classList.remove('is-hover');
     });
     root.addEventListener('pointerdown', (e) => {
+      // Only the left button belongs to the label. Right-click has to reach the
+      // game underneath, or you cannot attack a monster standing on loot.
+      if (e.button !== 0) return;
       e.stopPropagation();
       e.preventDefault();
-      if (e.button === 0 && !e.shiftKey) this.onPickUp?.(label.uid);
+      if (!e.shiftKey) this.onPickUp?.(label.uid);
     });
 
     this.pool.push(label);

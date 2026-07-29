@@ -64,6 +64,12 @@ export class Input {
 
   /** Set true by the UI layer while the pointer is over a panel. */
   pointerOverUI = false;
+  /**
+   * True over anything clickable, including things that only claim the left
+   * button — ground-loot labels. `pointerOverUI` stays false for those so the
+   * attack button still works over a dropped item.
+   */
+  pointerOverClickable = false;
 
   private raycaster = new THREE.Raycaster();
   private groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -77,16 +83,24 @@ export class Input {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     el.addEventListener('pointermove', this.onPointerMove);
-    el.addEventListener('pointerdown', this.onPointerDown);
+    // On `window`, not on the canvas. Ground-loot nameplates are HTML sitting on
+    // top of the canvas, so a right-click aimed at a monster standing on an item
+    // landed on the label instead and the attack button simply did not fire. The
+    // scenes already gate every click on `pointerOverUI`, so listening wider is
+    // safe and it is what makes clicking *through* a label possible.
+    window.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointerup', this.onPointerUp);
     // A drag that ends outside the window, or a cancelled pointer, never
     // delivers pointerup on the canvas — without these the button latches down
     // and the player keeps running forever.
     window.addEventListener('pointercancel', this.onPointerUp);
     document.addEventListener('pointerleave', this.onPointerLost);
-    window.addEventListener('contextmenu', this.onPointerLost);
     el.addEventListener('wheel', this.onWheel, { passive: true });
-    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Right-click is the attack button, so the browser menu is never wanted —
+    // not over the canvas, and not over the loot labels and HUD chrome drawn on
+    // top of it. The only exception is a real text field, where right-click
+    // still needs to offer cut/copy/paste.
+    window.addEventListener('contextmenu', this.onContextMenu);
     window.addEventListener('blur', this.onBlur);
   }
 
@@ -130,6 +144,12 @@ export class Input {
   private onPointerUp = (e: PointerEvent): void => {
     if (e.button === 0) this.mouseLeft = false;
     if (e.button === 2) this.mouseRight = false;
+  };
+
+  private onContextMenu = (e: MouseEvent): void => {
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    e.preventDefault();
   };
 
   /** Drop all mouse state — used when the pointer leaves or is taken away. */
@@ -191,10 +211,11 @@ export class Input {
   dispose(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('pointerdown', this.onPointerDown);
     window.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('pointercancel', this.onPointerUp);
     document.removeEventListener('pointerleave', this.onPointerLost);
-    window.removeEventListener('contextmenu', this.onPointerLost);
+    window.removeEventListener('contextmenu', this.onContextMenu);
     window.removeEventListener('blur', this.onBlur);
   }
 }

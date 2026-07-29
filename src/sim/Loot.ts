@@ -64,6 +64,7 @@ import {
   socketableDropPool,
   socketableWeight,
 } from '../data/gems';
+import type { GemBonus } from '../data/gems';
 import { MATERIALS, materialDropPool, materialName } from '../data/materials';
 
 // ---------------------------------------------------------------------------
@@ -1238,6 +1239,36 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
     for (const mod of rolled) {
       const negative = mod.value < 0;
       push(modLine(mod), negative ? COLOR.bad : item.rarity === 'set' ? COLOR.set : COLOR.mod);
+    }
+  }
+
+  // --- the gem's own tooltip ----------------------------------------------
+  // A gem carries no mods of its own, so without this block it showed nothing
+  // but its name: no way to tell a Chipped Ruby from a Flawless Topaz, and no
+  // reason to pick either up.
+  if (base.category === 'gem' || base.category === 'rune') {
+    const gem = getSocketable(base.id);
+    if (gem) {
+      blank();
+      push('When socketed into:', COLOR.dim);
+      const tables: Array<[string, GemBonus[]]> = [
+        ['Weapons', gem.weapon],
+        ['Armour', gem.armor],
+        ['Helms & Shields', gem.armor],
+        ['Rings & Amulets', gem.jewelry],
+      ];
+      // Armour and helms share a table; list it once.
+      const seen = new Set<string>();
+      for (const [label, bonuses] of tables) {
+        if (bonuses.length === 0) continue;
+        const text = bonuses
+          .map((b) => `${b.value >= 0 ? '+' : ''}${b.value} ${STAT_LABEL[b.stat] ?? b.stat}`)
+          .join(', ');
+        if (seen.has(text)) continue;
+        seen.add(text);
+        push(`  ${label}: ${text}`, gem.isRune ? COLOR.rune : COLOR.socket);
+      }
+      push('Drag onto a socketed item to set it.', COLOR.flavor);
     }
   }
 

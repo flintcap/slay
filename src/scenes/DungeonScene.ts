@@ -529,8 +529,9 @@ export class DungeonScene extends GameScene {
 
     if (input.pointerOverUI) return;
 
-    // Left click is movement, full stop.
-    if (input.mouseLeft && this.keyDir.lengthSq() === 0) {
+    // Left click is movement, full stop — except over a loot label, which owns
+    // the left button so clicking an item picks it up instead of walking past.
+    if (input.mouseLeft && !input.pointerOverClickable && this.keyDir.lengthSq() === 0) {
       // Keyboard wins; a move order issued while a key is held leaves a stale
       // destination the player resumes running to after releasing the key.
       this.player.moveTo(input.worldPoint.x, input.worldPoint.z);
@@ -712,7 +713,9 @@ export class DungeonScene extends GameScene {
       this.fx.burst('levelup', pos.x, 1, pos.z, { count: 90 });
       audio.play('levelup');
     }
-    events.emit('player:xp', { gained: xp, total: c.xp, toNext: 0 });
+    // `grantXp` already announces the new total. Re-emitting here with a made-up
+    // `toNext` of zero is what pinned the XP bar to full after the first few
+    // kills — the HUD believed the second, wrong event.
 
     const drops = rollDrops(
       ilvl,

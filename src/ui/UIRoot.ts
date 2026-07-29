@@ -416,12 +416,18 @@ export function mountUI(engine: Engine): void {
   // so this is exactly "is the cursor over something clickable".
   const updatePointer = (x: number, y: number): void => {
     const hit = document.elementFromPoint(x, y);
-    engine.input.pointerOverUI = !!hit && hit !== engine.renderer.canvas && root.contains(hit);
+    const over = !!hit && hit !== engine.renderer.canvas && root.contains(hit);
+    // `.ui-soft` nodes — the ground-loot labels — take the left button and let
+    // everything else through, so they must not block the attack button.
+    const soft = over && !!(hit as HTMLElement).closest('.ui-soft');
+    engine.input.pointerOverUI = over && !soft;
+    engine.input.pointerOverClickable = over;
   };
   window.addEventListener('pointermove', (e) => updatePointer(e.clientX, e.clientY), { passive: true });
   window.addEventListener('pointerdown', (e) => updatePointer(e.clientX, e.clientY), { capture: true });
   window.addEventListener('pointerleave', () => {
     engine.input.pointerOverUI = false;
+    engine.input.pointerOverClickable = false;
   });
 
   // --- UI tick ------------------------------------------------------------

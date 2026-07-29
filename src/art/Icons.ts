@@ -756,31 +756,69 @@ const potionLike: Draw = (x, _s, _rnd, _ornate) => {
   x.fill();
 };
 
+/**
+ * The gem's own colour and cut.
+ *
+ * Every gem base is authored with `palette: 'crystal.blue'`, so drawing from
+ * the palette made a ruby, an emerald and a topaz the same blue stone. The real
+ * colour lives in the base's `glow`, and the cut is worth varying too: a chipped
+ * gem and a perfect one of the same family should not be the same picture.
+ */
+let gemTint = 0x4ad0ff;
+let gemCut = 0;
+
+/** Facet outlines for six cuts, so gem families read apart at a glance. */
+const GEM_CUTS: Array<Array<[number, number]>> = [
+  // Brilliant — the classic five-sided stone.
+  [[64, 18], [98, 50], [82, 106], [46, 106], [30, 50]],
+  // Marquise — a tall pointed oval.
+  [[64, 14], [92, 46], [90, 84], [64, 112], [38, 84], [36, 46]],
+  // Emerald cut — a rectangle with clipped corners.
+  [[48, 22], [80, 22], [96, 40], [96, 88], [80, 106], [48, 106], [32, 88], [32, 40]],
+  // Trillion — a rounded triangle.
+  [[64, 18], [102, 96], [26, 96]],
+  // Rose — a wide low dome on a flat base.
+  [[64, 24], [96, 44], [100, 78], [64, 104], [28, 78], [32, 44]],
+  // Baguette — a narrow bar, the cheapest-looking cut.
+  [[46, 26], [82, 26], [88, 100], [40, 100]],
+];
+
 const gemLike: Draw = (x, s, _rnd, ornate) => {
-  const c = ornate > 0.5 ? 0xff4aa0 : 0x4ad0ff;
-  poly(x, [[64, 20], [96, 50], [82, 104], [46, 104], [32, 50]]);
-  const g = x.createLinearGradient(32, 20, 96, 104);
+  const c = gemTint;
+  const cut = GEM_CUTS[gemCut % GEM_CUTS.length]!;
+  poly(x, cut);
+  const g = x.createLinearGradient(30, 18, 100, 110);
   g.addColorStop(0, '#ffffff');
-  g.addColorStop(0.3, rgba(c, 0.95));
-  g.addColorStop(1, rgba(c, 0.5));
+  g.addColorStop(0.28, rgba(c, 0.95));
+  g.addColorStop(1, rgba(c, 0.45));
   x.fillStyle = g;
   x.fill();
-  x.strokeStyle = rgba(0x000000, 0.4);
+  x.strokeStyle = rgba(0x000000, 0.45);
   x.lineWidth = 2;
   x.stroke();
-  // Facets
-  x.strokeStyle = 'rgba(255,255,255,.4)';
+
+  // Facets: spokes from the crown to each vertex, plus a girdle. Quality drives
+  // how many there are, so a flawless stone is visibly better cut.
+  const spokes = 3 + Math.round(ornate * 4);
+  x.save();
+  x.clip();
+  x.strokeStyle = 'rgba(255,255,255,.42)';
   x.lineWidth = 1.6;
   x.beginPath();
-  x.moveTo(64, 20);
-  x.lineTo(64, 104);
-  x.moveTo(32, 50);
-  x.lineTo(96, 50);
-  x.moveTo(64, 20);
-  x.lineTo(46, 104);
-  x.moveTo(64, 20);
-  x.lineTo(82, 104);
+  for (let i = 0; i < spokes; i++) {
+    const p = cut[i % cut.length]!;
+    x.moveTo(64, 46);
+    x.lineTo(p[0], p[1]);
+  }
+  x.moveTo(24, 52);
+  x.lineTo(104, 52);
   x.stroke();
+  // A specular flash on the crown sells it as a cut stone rather than glass.
+  x.fillStyle = 'rgba(255,255,255,.55)';
+  x.beginPath();
+  x.ellipse(54, 40, 12, 6, -0.5, 0, Math.PI * 2);
+  x.fill();
+  x.restore();
   void s;
 };
 
@@ -790,8 +828,9 @@ const runeLike: Draw = (x, s, rnd, ornate) => {
   x.roundRect?.(34, 28, 60, 74, 8);
   if (!x.roundRect) x.rect(34, 28, 60, 74);
   fillShape(x, stone, shade(x, stone, 34, 28, 94, 102));
-  // Carved glyph
-  const c = ornate > 0.5 ? 0xffb040 : 0xff7a30;
+  // Carved glyph, lit in the rune's own colour rather than one of two oranges.
+  const c = gemTint;
+  void ornate;
   x.strokeStyle = rgba(c, 0.95);
   x.lineWidth = 5;
   x.lineCap = 'round';
@@ -990,7 +1029,7 @@ function rarityOver(x: CanvasRenderingContext2D, rarity: ItemRarity, rnd: () => 
 const itemCache = new Map<string, string>();
 
 /** Resolver injected at boot so this module needn't depend on the item sim. */
-let baseLookup: ((baseId: string) => { visual?: { shape?: string; palette?: string; ornate?: number }; category?: string } | undefined) | null = null;
+let baseLookup: ((baseId: string) => { visual?: { shape?: string; palette?: string; ornate?: number; glow?: number }; category?: string } | undefined) | null = null;
 
 export function setIconBaseResolver(fn: typeof baseLookup): void {
   baseLookup = fn;
@@ -1012,6 +1051,12 @@ export function itemIconUri(item: Item): string {
     : inferShape(item.baseId, base?.category);
   const draw = SHAPES[shapeName] ?? SHAPES[inferShape(item.baseId, base?.category)] ?? materialLike;
   potionTint = potionColor(item.baseId);
+  // Gems and runes carry their colour in `glow`, not in the palette — every one
+  // of them is authored as 'crystal.blue'.
+  gemTint = base?.visual?.glow ?? 0x4ad0ff;
+  // The cut comes from the family half of `gem.<family>`, so all the rubies
+  // share a silhouette and rubies differ from emeralds.
+  gemCut = hashStr(shapeName.split('.')[1] ?? shapeName);
   const swatch = swatchFor(base?.visual?.palette);
   const ornate = base?.visual?.ornate ?? Math.min(1, RARITY_RANK[item.rarity] / 4);
   const rnd = makeRng(hashStr(key));

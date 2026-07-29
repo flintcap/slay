@@ -1675,10 +1675,21 @@ export function buildDropModel(item: Item, rng: Rng): THREE.Object3D {
     root.add(sigil);
   }
   if (tier >= 4) {
-    const light = new THREE.PointLight(color, 2.4, 3.2, 2);
-    light.position.y = 0.5;
-    light.name = 'dropLight';
-    root.add(light);
+    // A brighter second floor pool rather than a real PointLight.
+    //
+    // Adding a light to the scene changes the light count, and three.js keys its
+    // shader program cache on that count — so a mythic hitting the floor made
+    // every material in the dungeon recompile, and picking it up did it again.
+    // A drop is not worth a stall.
+    const halo = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.2, 2.2),
+      additiveMaterial(color, { map: radialGlowTexture(128, 1.7), opacity: 0.4 }),
+    );
+    halo.rotation.x = -Math.PI * 0.5;
+    halo.position.y = 0.008;
+    halo.renderOrder = 1;
+    halo.name = 'dropLight';
+    root.add(halo);
   }
 
   root.userData.rarity = rarity;
