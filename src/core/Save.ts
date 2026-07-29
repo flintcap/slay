@@ -62,6 +62,15 @@ class SaveManager {
       this.data.stash = next;
     }
     this.data.settings = { ...DEFAULT_SETTINGS, ...this.data.settings };
+
+    // Back-fill the roster from a save made before it existed. Without this an
+    // existing character loads fine and plays fine but never appears in the
+    // Characters list, so it looks like the update ate them.
+    if (!Array.isArray(this.data.roster)) this.data.roster = [];
+    const cur = this.data.current;
+    if (cur && !this.data.roster.some((c) => c.id === cur.id)) {
+      this.data.roster.unshift(cur);
+    }
     return this.data;
   }
 

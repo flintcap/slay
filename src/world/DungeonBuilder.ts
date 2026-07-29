@@ -339,6 +339,7 @@ export class DungeonMesh {
     this.buildProps(rng);
     this.buildLightPool();
     this.buildShafts(rng);
+    this.buildStairs(rng);
     this.buildColliders();
   }
 
@@ -689,6 +690,111 @@ export class DungeonMesh {
   }
 
   // --- props --------------------------------------------------------------
+
+  /**
+   * The way down, and the way you came in.
+   *
+   * Generation has always written a stairs tile at the exit, and the scene has
+   * always watched for the player standing on it — but nothing ever built any
+   * geometry there, so every floor had an invisible exit you had to walk over
+   * by accident, and no marker at all for where you entered.
+   */
+  private buildStairs(rng: Rng): void {
+    const level = this.level;
+    const stone = safeSurface(this.art.walls?.[0]?.palette ?? 'stone.crypt', { repeat: 1.6 });
+    const dark = safeSurface('stone.crypt', { repeat: 1.2, tint: 0x5a5a62 });
+
+    // --- the descent ------------------------------------------------------
+    const exit = this.tileToWorld(level.exit.x, level.exit.y);
+    const stairs = new THREE.Group();
+    stairs.position.copy(exit);
+
+    // A well sunk into the floor with a flight running down into it. Steps get
+    // narrower and darker as they go, which is what sells depth without
+    // actually cutting a hole in the floor mesh.
+    const STEPS = 7;
+    for (let i = 0; i < STEPS; i++) {
+      const t = i / (STEPS - 1);
+      const w = 2.6 - t * 0.5;
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.22, 0.42),
+        i > STEPS - 3 ? dark : stone,
+      );
+      step.position.set(0, -0.11 - i * 0.2, -0.6 + i * 0.42);
+      step.receiveShadow = true;
+      step.castShadow = true;
+      stairs.add(step);
+    }
+    // Side walls of the stairwell, so it does not read as steps on open floor.
+    for (const sx of [-1, 1]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.9, 3.6), stone);
+      wall.position.set(sx * 1.5, -0.9, 0.55);
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      stairs.add(wall);
+    }
+    // The dark at the bottom. Unlit black, so the shaft reads as bottomless.
+    const shaft = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.2, 1.4),
+      new THREE.MeshBasicMaterial({ color: 0x05050a, toneMapped: false }),
+    );
+    shaft.rotation.x = -Math.PI / 2;
+    shaft.position.set(0, -1.42, 1.5);
+    stairs.add(shaft);
+
+    // A lintel and two posts framing the mouth, so it is visible from above.
+    for (const sx of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.34, 2.2, 0.34), stone);
+      post.position.set(sx * 1.5, 1.1, -0.85);
+      post.castShadow = true;
+      stairs.add(post);
+    }
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.4, 0.5), stone);
+    lintel.position.set(0, 2.3, -0.85);
+    lintel.castShadow = true;
+    stairs.add(lintel);
+
+    // A cold glow out of the shaft: the one cue that reads at a glance as
+    // "this is the way on".
+    const glow = new THREE.PointLight(0x8fd0ff, 9, 9, 2);
+    glow.position.set(0, 0.4, 1.2);
+    glow.castShadow = false;
+    stairs.add(glow);
+
+    this.root.add(stairs);
+    this.colliders.push(
+      { x: exit.x - 1.5, z: exit.z + 0.55, w: 0.5, d: 3.6 },
+      { x: exit.x + 1.5, z: exit.z + 0.55, w: 0.5, d: 3.6 },
+    );
+
+    // --- the way in -------------------------------------------------------
+    const entry = this.tileToWorld(level.entry.x, level.entry.y);
+    const arch = new THREE.Group();
+    arch.position.copy(entry);
+    for (const sx of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.6, 0.4), stone);
+      post.position.set(sx * 1.4, 1.3, -1.1);
+      post.castShadow = true;
+      post.receiveShadow = true;
+      arch.add(post);
+    }
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.45, 0.6), stone);
+    cap.position.set(0, 2.75, -1.1);
+    cap.castShadow = true;
+    arch.add(cap);
+    // Collapsed behind you: rubble filling the opening. You do not go back up.
+    for (let i = 0; i < 7; i++) {
+      const sz = rng.range(0.35, 0.8);
+      const rock = new THREE.Mesh(new THREE.BoxGeometry(sz, sz * 0.8, sz), dark);
+      rock.position.set(rng.range(-1.1, 1.1), sz * 0.4, -1.1 + rng.range(-0.3, 0.3));
+      rock.rotation.set(rng.range(0, 3), rng.range(0, 3), rng.range(0, 3));
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+      arch.add(rock);
+    }
+    this.root.add(arch);
+    this.colliders.push({ x: entry.x, z: entry.z - 1.1, w: 3.0, d: 0.9 });
+  }
 
   private buildProps(rng: Rng): void {
     const level = this.level;
