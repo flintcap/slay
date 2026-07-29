@@ -250,7 +250,22 @@ interface Kit {
 function kitFor(visual: ItemVisual, rarity: ItemRarity, rng: Rng): Kit {
   const deco = decoFor(rarity, visual);
   const base = visual.palette || 'metal.steel';
-  const seed = 1 + Math.floor(rng.next() * 6);
+  // Seed 0, always — and this is the whole reason a kill could freeze the game.
+  //
+  // Item kits used to pick `1 + floor(rng.next() * 6)`, a fresh random texture
+  // seed per item. A seed is part of the texture cache key, so every drop had a
+  // one-in-six chance per material of missing the cache and baking a complete
+  // PBR set — albedo, normal, ORM, all procedural, all on the main thread. Boot
+  // warms seed 0 and nothing else, so the warmed textures were never once used
+  // by an item, and the cost landed on the frame a monster died. Measured at
+  // ~900ms per drop under software rendering before the first few seeds filled
+  // in, against ~1.5ms once they had.
+  //
+  // Two blades of the same steel now share a weave, which is what you would
+  // want anyway: a Leather Armor should look like a Leather Armor. Variety
+  // between items comes from shape, palette and rarity, none of which are free
+  // to vary per instance.
+  const seed = 0;
   // Higher rarities get richer base metals — the material itself upgrades.
   const trimKey = deco.tier >= 4 ? 'metal.gold' : deco.tier >= 2 ? 'metal.bronze' : 'metal.dark';
   return {
@@ -1209,7 +1224,9 @@ function buildChest(kit: Kit, g: THREE.Group): void {
   if (kit.deco.tier >= 1 && metallic) {
     const tabard = mesh(
       clothPanel(0.17, 0.34, kit.rng, { segsX: 5, segsY: 7, ripple: 0.05, flare: 0.15, tatter: kit.deco.tier >= 4 ? 0.2 : 0 }),
-      surfaceVariant('cloth.banner', { tint: kit.accent, repeat: 5, seed: kit.deco.tier + 3 }),
+      // Seed 0 for the same reason `kitFor` uses it: a fresh seed bakes a whole
+      // PBR set on the frame the item lands.
+      surfaceVariant('cloth.banner', { tint: kit.accent, repeat: 5 }),
     );
     tabard.position.set(0, -h * 0.18, 0.16);
     g.add(tabard);

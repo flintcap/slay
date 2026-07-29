@@ -1564,6 +1564,30 @@ export const WARM_SET: string[] = [
   'bone.pale',
   'crystal.arcane',
   'flesh.rotted',
+  // The rest of what item bases and characters are made of.
+  //
+  // Baking a PBR set is slow enough to be a visible hitch, and the frame a
+  // monster dies is the worst possible time to discover that nobody has ever
+  // asked for silver before. These are real registry keys, not aliases — an
+  // alias resolves to something already on this list and would only spend boot
+  // time re-warming it.
+  'metal.silver',
+  'metal.bronze',
+  'metal.rusted',
+  'wood.charred',
+  'wood.polished',
+  'cloth.silk',
+  'cloth.undyed',
+  'cloth.banner',
+  'leather.fine',
+  'leather.studded',
+  'crystal.void',
+  'bone.old',
+  'skin.tan',
+  'skin.fair',
+  'skin.deep',
+  'hair.dark',
+  'hair.fair',
 ];
 
 /** Palettes grouped by family, for editor/debug listings. */

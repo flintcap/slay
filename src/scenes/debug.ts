@@ -6,6 +6,8 @@ import { events } from '../core/Events';
 import { Random, randomSeed } from '../core/RNG';
 import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem } from '../sim/Character';
 import { rollItem, newItem, getBase } from '../sim/Loot';
+import { buildDropModel } from '../art/ItemModels';
+import { itemIconUri } from '../art/Icons';
 import { addItemToInventory } from '../sim/Inventory';
 import { SKILLS } from '../data/skills';
 import { CLASSES } from '../data/classes';
@@ -156,6 +158,60 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         });
       });
       return out;
+    },
+
+    /**
+     * Times the work a single drop costs, split by stage.
+     *
+     * A dropped item is not one operation: it builds a full 3D model, an icon,
+     * a nameplate and a set of ground effects, and any one of them can be the
+     * frame that stalls. Guessing which has been wrong twice, so this measures
+     * each one separately, per rarity, warm and cold.
+     */
+    dropCost(samples = 12): Record<string, unknown> {
+      const rng = new Random(0xd0b1e);
+      const out: Record<string, unknown> = {};
+      const time = (fn: () => void): number => {
+        const t0 = performance.now();
+        fn();
+        return performance.now() - t0;
+      };
+      const rarities: ItemRarity[] = ['normal', 'magic', 'rare', 'unique', 'mythic'];
+      for (const rarity of rarities) {
+        const base = getBase('chest.leather');
+        if (!base) continue;
+        const items = Array.from({ length: samples }, () => newItem(base, 30, rarity, rng));
+        // Cold: the very first of each rarity pays for whatever it caches.
+        const cold = {
+          model: time(() => void buildDropModel(items[0]!, rng)),
+          icon: time(() => void itemIconUri(items[0]!)),
+        };
+        let model = 0;
+        let icon = 0;
+        for (let i = 1; i < items.length; i++) {
+          model += time(() => void buildDropModel(items[i]!, rng));
+          icon += time(() => void itemIconUri(items[i]!));
+        }
+        const n = Math.max(1, items.length - 1);
+        out[rarity] = {
+          coldModelMs: +cold.model.toFixed(2),
+          coldIconMs: +cold.icon.toFixed(2),
+          warmModelMs: +(model / n).toFixed(2),
+          warmIconMs: +(icon / n).toFixed(2),
+        };
+      }
+      return out;
+    },
+
+    /** Slowest frames seen since the last call, in milliseconds. */
+    frameSpikes(): number[] {
+      const perf = (engine as unknown as { perf?: { frames?: number[] } }).perf;
+      const frames = perf?.frames ?? [];
+      return frames
+        .slice()
+        .sort((a, b) => b - a)
+        .slice(0, 8)
+        .map((n) => +n.toFixed(1));
     },
 
     setDepth(n: number): void {
