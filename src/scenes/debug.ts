@@ -13,6 +13,7 @@ import { SKILLS } from '../data/skills';
 import { CLASSES } from '../data/classes';
 import { DungeonScene } from './DungeonScene';
 import { panelInstance } from '../ui/UIRoot';
+import { runtime } from '../ui/Widgets';
 import { insertGem } from '../sim/Crafting';
 
 /**
@@ -285,6 +286,52 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         directOk: direct.ok,
         directReason: direct.reason ?? null,
       };
+    },
+
+    /**
+     * Faces the player four ways and reports where the minimap arrow points.
+     *
+     * `heading` is the world direction the character is facing, as (x, z).
+     * `arrow` is where the arrow tip lands on the canvas after its rotation,
+     * as (x, y) with y growing downwards. Both maps put +Z down the canvas, so
+     * for a correct arrow the two must agree: arrow.x matches heading.x and
+     * arrow.y matches heading.z.
+     */
+    arrowCheck(): Array<Record<string, string>> {
+      const s = engine.currentScene as unknown as { player?: { root: THREE.Object3D } };
+      const pl = s?.player;
+      if (!pl) return [];
+      const out: Array<Record<string, string>> = [];
+      const dirs: Array<[string, number, number]> = [
+        ['north (-Z)', 0, -1],
+        ['south (+Z)', 0, 1],
+        ['east (+X)', 1, 0],
+        ['west (-X)', -1, 0],
+      ];
+      const r2 = (n: number): string => (Math.abs(n) < 1e-6 ? '0' : n.toFixed(2));
+      for (const [name, dx, dz] of dirs) {
+        // Same convention as Player.faceTowards.
+        const yaw = Math.atan2(dx, dz);
+        pl.root.rotation.y = yaw;
+        const facing = Math.PI - yaw;
+        out.push({
+          facing: name,
+          heading: `(${r2(Math.sin(yaw))}, ${r2(Math.cos(yaw))})`,
+          arrow: `(${r2(Math.sin(facing))}, ${r2(-Math.cos(facing))})`,
+        });
+      }
+      return out;
+    },
+
+    /** How much of the current floor the shared exploration record has seen. */
+    exploredCount(): Record<string, number> {
+      const level = (engine.currentScene as unknown as { level?: { seed: number; width: number; height: number } })
+        ?.level;
+      if (!level) return {};
+      const e = runtime.explored.get(level.seed);
+      let seen = 0;
+      if (e) for (const v of e) if (v) seen++;
+      return { seen, tiles: level.width * level.height, records: runtime.explored.size };
     },
 
     /** Slowest frames seen since the last call, in milliseconds. */

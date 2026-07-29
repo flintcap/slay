@@ -302,7 +302,6 @@ export class HUD {
   private centerLayer: HTMLDivElement;
   private goldReadout: HTMLSpanElement;
 
-  private explored = new Map<number, Uint8Array>();
   private minimapAccum = 0;
   private bossMax = 1;
   private bossLife = 1;
@@ -626,7 +625,7 @@ export class HUD {
         this.biomeLabel.textContent = p.of > 0 ? `Floor ${p.level} of ${p.of}` : '';
         this.minimapLabel.textContent = `Depth ${p.depth}`;
       }
-      this.explored.clear();
+      runtime.explored.clear();
     });
     on('boss:engaged', (p) => this.showBoss(p.name, p.title, p.maxLife));
     on('boss:damaged', (p) => {
@@ -749,9 +748,17 @@ export class HUD {
         runtime.playerTileX = t.x;
         runtime.playerTileY = t.y;
       }
-      // Minimap arrow heading — the model's yaw, if the avatar exposes one.
+      // Minimap arrow heading, as a canvas rotation ready to use.
+      //
+      // The character's forward is +Z (`faceTowards` uses `atan2(dx, dz)` as the
+      // yaw), and both maps put +Z down the canvas and +X across it. The arrow
+      // art points up at rotation zero, so a canvas `rotate(a)` aims it at
+      // (sin a, -cos a) and the heading we want is (sin yaw, +cos yaw). Those
+      // agree when a = PI - yaw. It used to be plain `-yaw`, which is that
+      // direction reflected through the origin — the arrow pointed at exactly
+      // where the player had come from.
       const root = pl.root as { rotation?: { y: number } } | undefined;
-      if (root?.rotation) runtime.facing = -root.rotation.y;
+      if (root?.rotation) runtime.facing = Math.PI - root.rotation.y;
     }
     this.minimapAccum += dt;
     if (this.minimapAccum > 0.125) {
@@ -1063,10 +1070,10 @@ export class HUD {
   }
 
   private exploredFor(level: DungeonLevel): Uint8Array {
-    let e = this.explored.get(level.seed);
+    let e = runtime.explored.get(level.seed);
     if (!e || e.length !== level.width * level.height) {
       e = new Uint8Array(level.width * level.height);
-      this.explored.set(level.seed, e);
+      runtime.explored.set(level.seed, e);
     }
     return e;
   }

@@ -727,6 +727,15 @@ export const runtime = {
   playerTileY: 0,
   facing: 0,
   pips: [] as MinimapPip[],
+  /**
+   * Tiles the player has seen, per level seed. 1 = revealed.
+   *
+   * Shared, because the minimap and the full map each used to keep their own.
+   * Only the minimap updates every frame, so the full map revealed ground only
+   * while it happened to be open — walking the whole floor with it closed left
+   * it blank except for a disc around wherever you were standing.
+   */
+  explored: new Map<number, Uint8Array>(),
   depth: 0,
   levelIndex: 0,
   levelsTotal: 0,

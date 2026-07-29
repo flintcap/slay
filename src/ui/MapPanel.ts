@@ -52,8 +52,9 @@ export class MapPanel {
   private panX = 0;
   private panY = 0;
   private dirty = true;
-  private explored = new Map<number, Uint8Array>();
   private headerLabel: HTMLDivElement;
+  private lastTileX = -1;
+  private lastTileY = -1;
 
   constructor() {
     this.panel = new Panel({
@@ -105,7 +106,7 @@ export class MapPanel {
 
     this.wire();
     events.on('depth:changed', () => {
-      this.explored.clear();
+      // The HUD owns clearing the shared record; this only resets the view.
       this.panX = 0;
       this.panY = 0;
       this.dirty = true;
@@ -166,6 +167,14 @@ export class MapPanel {
   tick(): void {
     if (!this.panel.isOpen) return;
     this.resize();
+    // The game keeps running behind the map, so moving is a change worth
+    // redrawing for: without this the ground you walk while it is open only
+    // appears the next time something else happens to dirty the canvas.
+    if (runtime.playerTileX !== this.lastTileX || runtime.playerTileY !== this.lastTileY) {
+      this.lastTileX = runtime.playerTileX;
+      this.lastTileY = runtime.playerTileY;
+      this.dirty = true;
+    }
     if (this.dirty) {
       this.dirty = false;
       this.draw();
@@ -189,24 +198,21 @@ export class MapPanel {
     }
   }
 
+  /**
+   * What the player has seen — read from the shared record, never written.
+   *
+   * This used to keep its own copy and reveal a disc around the player each
+   * time it drew, which only happens while the panel is open. Walk the whole
+   * floor with the map closed and it stayed blank; the minimap in the corner,
+   * which does update every frame, knew the floor perfectly. The HUD owns the
+   * revealing now and this just draws what is already known.
+   */
   private exploredFor(level: DungeonLevel): Uint8Array {
-    let e = this.explored.get(level.seed);
-    if (!e || e.length !== level.width * level.height) {
-      e = new Uint8Array(level.width * level.height);
-      this.explored.set(level.seed, e);
-    }
-    // Reveal generously around the player each time the map is drawn.
-    const R = 12;
-    for (let dy = -R; dy <= R; dy++) {
-      for (let dx = -R; dx <= R; dx++) {
-        if (dx * dx + dy * dy > R * R) continue;
-        const x = runtime.playerTileX + dx;
-        const y = runtime.playerTileY + dy;
-        if (x < 0 || y < 0 || x >= level.width || y >= level.height) continue;
-        e[y * level.width + x] = 1;
-      }
-    }
-    return e;
+    const e = runtime.explored.get(level.seed);
+    if (e && e.length === level.width * level.height) return e;
+    const fresh = new Uint8Array(level.width * level.height);
+    runtime.explored.set(level.seed, fresh);
+    return fresh;
   }
 
   private draw(): void {
