@@ -38,6 +38,8 @@ export interface GameEvents {
   'sfx': { id: string; volume?: number; pitch?: number; x?: number; z?: number };
   'music': { track: string; fade?: number };
   'ui:refresh': Record<string, never>;
+  /** Drink a potion. `baseId` picks a specific one; otherwise quick-drink. */
+  'potion:use': { kind: 'life' | 'mana'; baseId?: string };
   'ui:open': { panel: string };
   'ui:close': { panel: string };
   'settings:changed': Record<string, never>;

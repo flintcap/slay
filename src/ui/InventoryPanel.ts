@@ -44,6 +44,7 @@ import {
   type DragPayload,
 } from './Widgets';
 import { PaperdollView } from './PaperdollView';
+import { potionKind } from '../sim/Potions';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -314,7 +315,7 @@ export class InventoryPanel {
     });
 
     const hint = div('inv-hint');
-    hint.appendChild(span('', 'Right-click to equip · drag to rearrange · hold '));
+    hint.appendChild(span('', 'Right-click to equip or drink · drag to rearrange · hold '));
     hint.appendChild(span('keycap', 'Shift'));
     hint.appendChild(span('', ' to compare'));
 
@@ -346,6 +347,16 @@ export class InventoryPanel {
   private onRightClick(item: Item | null, ev: MouseEvent): void {
     const c = save.account.current;
     if (!c || !item) return;
+
+    // Consumables are used, not equipped. Right-clicking one used to fall
+    // through to the context menu, which offered no way to drink it.
+    const base = safeBase(item);
+    if (base?.category === 'potion') {
+      const kind = potionKind(item.baseId) === 'mana' ? 'mana' : 'life';
+      events.emit('potion:use', { kind, baseId: item.baseId });
+      return;
+    }
+
     const slots = slotsFor(item);
     if (slots.length) {
       // Prefer the empty ring/hand so the second click does not overwrite the first.

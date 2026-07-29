@@ -423,7 +423,7 @@ export function itemDisplayName(item: Item): string {
 // Item construction
 // ---------------------------------------------------------------------------
 
-function newItem(base: ItemBase, ilvl: number, rarity: ItemRarity, rng: Rng): Item {
+export function newItem(base: ItemBase, ilvl: number, rarity: ItemRarity, rng: Rng): Item {
   return {
     uid: makeUid(rng),
     baseId: base.id,
@@ -600,6 +600,55 @@ export function rollSocketable(ilvl: number, rng: Rng): Item | null {
   return item;
 }
 
+/**
+ * Potion drops.
+ *
+ * Tuned so a normal monster is a rare treat and a pack clear reliably tops you
+ * up: at roughly one in nine per kill you refill about as fast as a careful
+ * player spends, without the floor ever becoming a pharmacy. Champions and up
+ * are much more generous, because that is when you actually spend.
+ *
+ * Which size drops is gated by depth, so a level-1 character is not handed a
+ * super potion and a level-50 one is not handed a minor.
+ */
+const POTION_DROP_CHANCE: Record<MonsterRank, number> = {
+  normal: 0.11,
+  champion: 0.3,
+  elite: 0.42,
+  rare: 0.55,
+  boss: 1,
+};
+
+/** Size tiers, with the depth at which each starts and stops appearing. */
+const POTION_TIERS: Array<{ life: string; mana: string; from: number; to: number }> = [
+  { life: 'potion.heal.minor', mana: 'potion.mana.minor', from: 1, to: 16 },
+  { life: 'potion.heal.light', mana: 'potion.mana.light', from: 8, to: 34 },
+  { life: 'potion.heal.greater', mana: 'potion.mana.greater', from: 22, to: 999 },
+  { life: 'potion.heal.super', mana: 'potion.mana.super', from: 44, to: 999 },
+];
+
+export function rollPotion(ilvl: number, rank: MonsterRank, rng: Rng): Item | null {
+  const chance = POTION_DROP_CHANCE[rank] ?? 0.11;
+  if (!rng.chance(chance)) return null;
+
+  const usable = POTION_TIERS.filter((t) => ilvl >= t.from && ilvl <= t.to);
+  const tiers = usable.length ? usable : [POTION_TIERS[0]!];
+  // Weighted toward the largest size you have unlocked, but not exclusively —
+  // finding the odd small flask is what makes the big ones feel like a find.
+  const tier = rng.weighted(tiers, (t) => 1 + tiers.indexOf(t) * 1.6);
+
+  // Bosses hand out a rejuvenation instead, which is the one worth saving.
+  if (rank === 'boss') {
+    const id = ilvl >= 40 ? 'potion.rejuv.full' : 'potion.rejuv.lesser';
+    const base = getBase(id);
+    if (base) return newItem(base, ilvl, 'normal', rng);
+  }
+
+  const id = rng.chance(0.55) ? tier.life : tier.mana;
+  const base = getBase(id);
+  return base ? newItem(base, ilvl, 'normal', rng) : null;
+}
+
 // ---------------------------------------------------------------------------
 // rollDrops
 // ---------------------------------------------------------------------------
@@ -655,6 +704,9 @@ export function rollDrops(
     const socketable = rollSocketable(lvl, rng);
     if (socketable) items.push(socketable);
   }
+
+  const potion = rollPotion(lvl, rank, rng);
+  if (potion) items.push(potion);
 
   // Gold. Scales with depth and rank, then gold find, then a wide variance so
   // the numbers on screen never look metronomic.

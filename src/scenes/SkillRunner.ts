@@ -21,6 +21,27 @@ const RANGED_CATEGORIES: ItemCategory[] = ['bow', 'crossbow'];
 const CASTER_CATEGORIES: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
 
 /** Resolves the style of whatever is in the character's main hand. */
+/** How hard the off-hand hits relative to the main hand. */
+const OFFHAND_SCALE = 0.62;
+
+/**
+ * True when both hands hold a melee weapon.
+ *
+ * Not simply "has an off-hand": a shield, an orb or a quiver in that slot is
+ * not something you hit with.
+ */
+export function isDualWielding(player: Player): boolean {
+  const eq = player.character.equipment;
+  if (!eq.mainHand || !eq.offHand) return false;
+  try {
+    const main = getBase(eq.mainHand.baseId)?.category;
+    const off = getBase(eq.offHand.baseId)?.category;
+    return !!main && !!off && MELEE_CATEGORIES.includes(main) && MELEE_CATEGORIES.includes(off);
+  } catch {
+    return false;
+  }
+}
+
 export function weaponStyle(player: Player): WeaponStyle {
   const item = player.character.equipment.mainHand;
   if (!item) return 'unarmed';
@@ -68,6 +89,14 @@ type Target = Enemy | Boss;
 export class SkillRunner {
   private effects: EffectSystem;
   private tmp = new THREE.Vector3();
+  /** Pending off-hand blow from a dual-wield basic attack. */
+  private offHandTimer = 0;
+  private offHandSwing: {
+    dir: THREE.Vector3;
+    ctx: CombatContext;
+    enemies: Enemy[];
+    boss: Boss | null;
+  } | null = null;
   private tmp2 = new THREE.Vector3();
 
   constructor(effects: EffectSystem) {
@@ -363,7 +392,38 @@ export class SkillRunner {
     const attackTime = 0.42 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
     player.beginAction('attack1', attackTime);
     this.meleeSwing(player, dir, 1.5, 2.4, packet, ctx, enemies, boss, 'physical');
+
+    // Dual wield: the off-hand weapon follows the main one.
+    //
+    // Fighting with two blades only ever swung one of them, which made the
+    // second weapon pure stat padding. The off-hand lands slightly later and
+    // for less, the way it does everywhere else in the genre, so two one-handed
+    // weapons beat one but do not simply double your damage.
+    if (isDualWielding(player)) {
+      this.offHandTimer = attackTime * 0.45;
+      this.offHandSwing = { dir: dir.clone(), ctx, enemies, boss };
+    }
     return true;
+  }
+
+  /** Fires the delayed off-hand blow queued by a dual-wield basic attack. */
+  tickOffHand(dt: number, player: Player): void {
+    if (!this.offHandSwing) return;
+    this.offHandTimer -= dt;
+    if (this.offHandTimer > 0) return;
+    const queued = this.offHandSwing;
+    this.offHandSwing = null;
+    if (!player.alive) return;
+    const packet = (mult = 1): DamagePacket =>
+      rollDamage(player.stats, queued.ctx.rng, {
+        // Off-hand hits for a share of the main hand, which is what stops a
+        // second weapon from being a flat damage doubler.
+        scale: mult * OFFHAND_SCALE,
+        type: 'physical',
+        ability: 'Attack',
+        source: 'player',
+      });
+    this.meleeSwing(player, queued.dir, 1.4, 2.3, packet, queued.ctx, queued.enemies, queued.boss, 'physical');
   }
 
   /**

@@ -464,6 +464,13 @@ export class HUD {
       const k = div('potslot-key', key);
       add(node, art, count, k);
     }
+    // Clicking a flask drinks it. The slots have always shown a count; nothing
+    // ever let you use one, from here or from the pack.
+    this.potionLife.addEventListener('click', () => events.emit('potion:use', { kind: 'life' }));
+    this.potionMana.addEventListener('click', () => events.emit('potion:use', { kind: 'mana' }));
+    this.potionLife.title = 'Drink a healing potion (Q)';
+    this.potionMana.title = 'Drink a mana potion (F)';
+
     add(potions, this.potionLife, this.potionMana);
 
     // Dash slot. It has a cooldown now, and a cooldown the player cannot see is

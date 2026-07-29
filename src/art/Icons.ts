@@ -715,8 +715,15 @@ const ringLike: Draw = (x, s, _rnd, ornate) => {
   gemAt(x, 64, 38, ornate > 0.5 ? 14 : 11, ornate > 0.5 ? 0xff5aa0 : 0x60d0ff);
 };
 
-const potionLike: Draw = (x, _s, _rnd, ornate) => {
-  const liquid = ornate > 0.5 ? 0x40c8ff : 0xe03a4a;
+/**
+ * Which liquid to draw. Set by the resolver from the base id before the draw
+ * runs: mana is blue, healing is red, and it is not negotiable — a potion whose
+ * colour depended on its rarity meant a greater healing potion came out blue.
+ */
+let potionTint = 0xe03a4a;
+
+const potionLike: Draw = (x, _s, _rnd, _ornate) => {
+  const liquid = potionTint;
   // Glass body
   x.beginPath();
   x.moveTo(52, 34);
@@ -882,6 +889,21 @@ const SHAPES: Record<string, Draw> = {
   material: materialLike,
 };
 
+/** Red for life, blue for mana, purple for anything that restores both. */
+export function potionColor(hay: string): number {
+  const h = hay.toLowerCase();
+  const life = /heal|life|health|blood|crimson|rejuv/.test(h);
+  const mana = /mana|azure|sapphire|spirit|arcane|rejuv/.test(h);
+  if (life && mana) return 0xb060ff;
+  if (mana) return 0x3aa0ff;
+  if (life) return 0xe03a4a;
+  if (/antidote|venom|poison/.test(h)) return 0x6cc02c;
+  if (/thaw|frost|cold/.test(h)) return 0x7fd8ff;
+  if (/stamina|haste/.test(h)) return 0xe0c040;
+  if (/oil|fire/.test(h)) return 0xff7a2a;
+  return 0xe03a4a;
+}
+
 /** Infer a shape family from a base id when the visual block is unhelpful. */
 function inferShape(baseId: string, category?: string): string {
   const hay = `${baseId} ${category ?? ''}`.toLowerCase();
@@ -989,6 +1011,7 @@ export function itemIconUri(item: Item): string {
     ? base.visual.shape
     : inferShape(item.baseId, base?.category);
   const draw = SHAPES[shapeName] ?? SHAPES[inferShape(item.baseId, base?.category)] ?? materialLike;
+  potionTint = potionColor(item.baseId);
   const swatch = swatchFor(base?.visual?.palette);
   const ornate = base?.visual?.ornate ?? Math.min(1, RARITY_RANK[item.rarity] / 4);
   const rnd = makeRng(hashStr(key));

@@ -37,6 +37,7 @@ import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
 import { affixIconUri } from '../art/Icons';
 import { typeColor } from '../entities/Abilities';
+import { quickDrink, drinkPotion } from '../sim/Potions';
 
 export interface DungeonPayload {
   depth: number;
@@ -98,13 +99,8 @@ export class DungeonScene extends GameScene {
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   private heroAura: THREE.Mesh | null = null;
-  /** Render layer the player's own torch is allowed to touch. */
-  private static readonly HERO_LAYER = 1;
-
-  /** Opt an object and its children into being lit by the hero light. */
-  private litByHero(obj: THREE.Object3D): void {
-    obj.traverse((o) => o.layers.enable(DungeonScene.HERO_LAYER));
-  }
+  /** Over-time portions of potions currently working. */
+  private potionTicks: Array<{ life: number; mana: number; left: number }> = [];
   private plates: NameplateLayer | null = null;
   private groundLabels: GroundLabelLayer | null = null;
   private transitioning = false;
@@ -160,21 +156,40 @@ export class DungeonScene extends GameScene {
       }),
     );
 
+    this.offs.push(
+      events.on('potion:use', (p) => this.drink(p.kind, p.baseId)),
+    );
+
     this.plates = new NameplateLayer();
     this.groundLabels = new GroundLabelLayer();
     this.groundLabels.onPickUp = (uid) => this.pickUpByUid(uid);
-    // The hero light lives on its own render layer.
+    // The torch. Hung well above head height rather than at the chest.
     //
-    // It is meant to light the ground around you, and a point light sitting at
-    // chest height lights the chest it is sitting in — the character came out
-    // glowing from the inside. Three.js only applies a light to objects that
-    // share one of its layers, so putting this light on HERO_LAYER and opting
-    // the world into that layer (but never the player) gives a pool of light
-    // with the player standing in it, unlit by it.
-    this.heroLight = new THREE.PointLight(0xffd9a8, 14, 17, 2);
+    // Three.js has no per-object light filtering, so there is no way to light
+    // the world and skip the player. What there is instead is geometry: from
+    // 4 metres up the character catches a normal top light rather than being
+    // lit from inside their own ribcage, and the visible ring of light is a
+    // disc drawn on the floor, which cannot illuminate anything at all.
+    this.heroLight = new THREE.PointLight(0xffd9a8, 30, 22, 2);
     this.heroLight.castShadow = false;
-    this.heroLight.layers.set(DungeonScene.HERO_LAYER);
     this.scene.add(this.heroLight);
+
+    this.heroAura = new THREE.Mesh(
+      new THREE.PlaneGeometry(9, 9),
+      new THREE.MeshBasicMaterial({
+        map: makeAuraTexture(),
+        color: 0xffc98a,
+        transparent: true,
+        opacity: 0.32,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+        toneMapped: false,
+      }),
+    );
+    this.heroAura.rotation.x = -Math.PI / 2;
+    this.heroAura.renderOrder = 2;
+    this.scene.add(this.heroAura);
 
     this.loadLevel(0);
 
@@ -227,7 +242,6 @@ export class DungeonScene extends GameScene {
     const levelRng = this.rng.fork(`level:${index}`) as Random;
     this.mesh = new DungeonMesh(this.level, this.biome, levelRng);
     this.scene.add(this.mesh.root);
-    this.litByHero(this.mesh.root);
     this.nav = new NavGrid(this.level);
     this.lighting = applyBiomeLighting(this.scene, this.biome);
 
@@ -255,7 +269,6 @@ export class DungeonScene extends GameScene {
       const wp = this.mesh.tileToWorld(spawn.x, spawn.y);
       enemy.root.position.copy(wp);
       this.scene.add(enemy.root);
-      this.litByHero(enemy.root);
       this.enemies.push(enemy);
     }
 
@@ -274,7 +287,6 @@ export class DungeonScene extends GameScene {
           : this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y);
         this.boss.root.position.copy(centre);
         this.scene.add(this.boss.root);
-        this.litByHero(this.boss.root);
       }
     }
 
@@ -422,17 +434,27 @@ export class DungeonScene extends GameScene {
 
     onSurviveTick(this.run.quest, dt);
 
+    // Potion regeneration.
+    for (let i = this.potionTicks.length - 1; i >= 0; i--) {
+      const t = this.potionTicks[i]!;
+      const step = Math.min(dt, t.left);
+      if (t.life > 0) this.player.heal(t.life * step);
+      if (t.mana > 0) this.player.restoreMana(t.mana * step);
+      t.left -= step;
+      if (t.left <= 0) this.potionTicks.splice(i, 1);
+    }
+
     if (this.heroLight) {
-      // Above head height. Nothing here lights the player, so the only job left
-      // is throwing a wide, even pool onto the floor around them.
-      this.heroLight.position.set(this.player.position.x, 2.4, this.player.position.z);
+      // High above, so it reads as light falling on the player rather than
+      // light coming out of them.
+      this.heroLight.position.set(this.player.position.x, 4.0, this.player.position.z);
       // Breathe very slightly so it reads as carried flame, not a fixed lamp.
-      this.heroLight.intensity = 11 + Math.sin(elapsed * 3.1) * 0.7;
+      this.heroLight.intensity = 30 + Math.sin(elapsed * 3.1) * 2.2;
     }
     if (this.heroAura) {
-      this.heroAura.position.set(this.player.position.x, 0.045, this.player.position.z);
+      this.heroAura.position.set(this.player.position.x, 0.06, this.player.position.z);
       const m = this.heroAura.material as THREE.MeshBasicMaterial;
-      m.opacity = 0.3 + Math.sin(elapsed * 3.1) * 0.03;
+      m.opacity = 0.32 + Math.sin(elapsed * 3.1) * 0.035;
     }
 
     if (this.groundLabels) {
@@ -468,6 +490,7 @@ export class DungeonScene extends GameScene {
     }
 
     this.skills.update(dt);
+    this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);
     this.mesh.update(dt, elapsed, this.player.position);
     this.rig.follow(this.player.root);
@@ -531,6 +554,9 @@ export class DungeonScene extends GameScene {
       this.skills.cast(id, this.player, target, ctx, this.enemies, this.boss);
     }
 
+    if (input.wasPressed('potionLife')) this.drink('life');
+    if (input.wasPressed('potionMana')) this.drink('mana');
+
     if (input.wasPressed('dodge')) {
       const d = this.tmpDir.subVectors(input.worldPoint, this.player.position);
       if (this.keyDir.lengthSq() > 0) d.copy(this.keyDir);
@@ -575,6 +601,51 @@ export class DungeonScene extends GameScene {
   }
 
   /** Handles kills: XP, loot, quest progress, FX. */
+  /**
+   * Quick-drink. Applies the instant portion immediately and spreads the rest
+   * over the potion's own duration, which is what makes a healing flask feel
+   * different from a full rejuvenation.
+   */
+  private drink(kind: 'life' | 'mana', baseId?: string): void {
+    if (!this.player || !this.player.alive) return;
+    const c = this.player.character;
+    const st = this.player.stats;
+    const res = baseId
+      ? drinkPotion(c, baseId, st.life, st.mana)
+      : quickDrink(
+          c,
+          kind,
+          kind === 'life' ? this.player.life : this.player.mana,
+          kind === 'life' ? st.life : st.mana,
+          st.life,
+          st.mana,
+        );
+    if (!res.ok) {
+      if (res.reason) toast(res.reason, 'bad');
+      return;
+    }
+
+    const instant = res.over > 0 ? 0.35 : 1;
+    if (res.life > 0) this.player.heal(res.life * instant);
+    if (res.mana > 0) this.player.restoreMana(res.mana * instant);
+    if (res.over > 0) {
+      this.potionTicks.push({
+        life: (res.life * (1 - instant)) / res.over,
+        mana: (res.mana * (1 - instant)) / res.over,
+        left: res.over,
+      });
+    }
+    for (const id of res.cleanse) this.player.status.remove(id);
+    if (res.buff) this.player.applyStatus('potion.tonic', res.buff.duration, 1, 1);
+
+    this.fx.burst(kind === 'life' ? 'heal' : 'mana', this.player.position.x, 1.1, this.player.position.z, {
+      count: 18,
+    });
+    audio.play('potion');
+    save.touch();
+    events.emit('ui:refresh', {});
+  }
+
   private reapDead(ctx: CombatContext): void {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i]!;
@@ -659,7 +730,6 @@ export class DungeonScene extends GameScene {
     const pos = new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d);
     model.position.copy(pos);
     this.scene.add(model);
-    this.litByHero(model);
     this.loot.push({ item, gold: 0, root: model, pos, bornAt: this.runTime });
     events.emit('loot:dropped', { item, x: pos.x, z: pos.z });
   }
@@ -685,7 +755,6 @@ export class DungeonScene extends GameScene {
     }
     group.position.copy(pos);
     this.scene.add(group);
-    this.litByHero(group);
     this.loot.push({ item: null, gold: amount, root: group, pos, bornAt: this.runTime });
   }
 
@@ -814,7 +883,6 @@ export class DungeonScene extends GameScene {
 
     group.position.copy(at);
     this.scene.add(group);
-    this.litByHero(group);
     this.returnPortal = group;
 
     this.exitPos.copy(at);
