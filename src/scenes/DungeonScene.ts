@@ -31,7 +31,7 @@ import { emissiveMaterial } from '../art/Materials';
 import { grantXp } from '../sim/Character';
 import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
-import { SkillRunner } from './SkillRunner';
+import { SkillRunner, weaponStyle } from './SkillRunner';
 import { NameplateLayer } from '../ui/Nameplates';
 import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
@@ -86,6 +86,11 @@ export class DungeonScene extends GameScene {
   private keyDir = new THREE.Vector3();
   /** Hoisted out of the per-frame path; these ran every single frame. */
   private static readonly UP = new THREE.Vector3(0, 1, 0);
+  /**
+   * How close a melee attacker walks before swinging. Slightly under the swing's
+   * own 2.3m reach, so arriving in range means the hit actually lands.
+   */
+  private static readonly MELEE_REACH = 1.9;
   private tmpDir = new THREE.Vector3();
   private aimPoint = new THREE.Vector3();
   /** Reused each frame; ground loot can number in the dozens. */
@@ -555,6 +560,29 @@ export class DungeonScene extends GameScene {
       // Aim at the target itself rather than the ground under the cursor, so
       // melee arcs and projectiles both converge on what is being clicked.
       const target = aimed ? this.aimPoint.copy(aimed.root.position).setY(0) : input.worldPoint;
+
+      // Close the distance before swinging.
+      //
+      // A melee swing reaches about two and a half metres. Clicking a monster
+      // further away than that used to play the whole attack against thin air,
+      // and because starting an action clears the move order the character then
+      // stood still doing it again forever. From the player's side the attack
+      // button simply did no damage, which is exactly how it was reported.
+      //
+      // Only when there is actually a monster under the cursor: clicking bare
+      // ground still swings on the spot rather than turning the attack button
+      // into a second movement key.
+      if (aimed) {
+        const style = weaponStyle(this.player);
+        if (style === 'melee' || style === 'unarmed') {
+          const gap = this.tmpDir.subVectors(target, this.player.position).setY(0).length() - aimed.hitRadius;
+          if (gap > DungeonScene.MELEE_REACH) {
+            this.player.moveTo(target.x, target.z);
+            return;
+          }
+        }
+      }
+
       const assigned = this.player.character.primaryAttack;
       let acted = false;
       if (assigned) {

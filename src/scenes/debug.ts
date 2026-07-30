@@ -334,6 +334,187 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       return { seen, tiles: level.width * level.height, records: runtime.explored.size };
     },
 
+    /**
+     * Walks up to the nearest monster and swings at it, reporting every stage.
+     *
+     * A basic attack has a lot of places to fail silently — no weapon, the wrong
+     * weapon style, a zero damage roll, a target outside the arc, an early
+     * return from being mid-animation — and from the outside they all look the
+     * same. This names which one.
+     */
+    attackProbe(): Record<string, unknown> {
+      const scene = engine.currentScene as unknown as {
+        player?: Record<string, unknown>;
+        enemies?: Array<Record<string, unknown>>;
+        skills?: Record<string, unknown>;
+        combatCtx?: unknown;
+      };
+      const pl = scene?.player;
+      const enemies = scene?.enemies ?? [];
+      if (!pl) return { error: 'no player' };
+
+      const c = save.account.current;
+      const main = c?.equipment.mainHand ?? null;
+      const stats = pl.stats as Record<string, number> | undefined;
+
+      // Park a live monster right in front of the player and aim at it.
+      const alive = enemies.filter((e) => (e.life as number) > 0);
+      const victim = alive[0];
+      const pos = pl.position as THREE.Vector3;
+      const before = victim ? (victim.life as number) : null;
+      if (victim) {
+        (victim.root as THREE.Object3D).position.set(pos.x + 1.4, 0, pos.z);
+      }
+
+      const input = engine.input;
+      input.pointerOverUI = false;
+      input.worldPoint.set(pos.x + 1.4, 0, pos.z);
+      input.mouseRight = true;
+
+      return {
+        mainHand: main?.baseId ?? null,
+        mainHandCategory: main ? (getBase(main.baseId)?.category ?? null) : null,
+        primaryAttack: c?.primaryAttack ?? null,
+        minDamage: stats?.minDamage ?? null,
+        maxDamage: stats?.maxDamage ?? null,
+        attackSpeed: stats?.attackSpeed ?? null,
+        playerBusy: pl.isBusy ?? null,
+        playerAlive: pl.alive ?? null,
+        enemiesAlive: alive.length,
+        victimLifeBefore: before,
+        note: 'mouseRight left held — read victimLifeAfter next frame',
+      };
+    },
+
+    /**
+     * Aims the attack button at whichever monster is nearest, right now.
+     *
+     * Call it every frame while holding the button. Monsters move, so a test
+     * that parks one somewhere and swings at that spot measures the AI walking
+     * away rather than whether the attack works.
+     */
+    aimAtNearest(): boolean {
+      const scene = engine.currentScene as unknown as {
+        player?: { position: THREE.Vector3 };
+        enemies?: Array<Record<string, unknown>>;
+      };
+      const pl = scene?.player;
+      if (!pl) return false;
+      let best: THREE.Vector3 | null = null;
+      let bestD = Infinity;
+      for (const e of scene?.enemies ?? []) {
+        if ((e.life as number) <= 0) continue;
+        const p = (e.root as THREE.Object3D).position;
+        const d = p.distanceTo(pl.position);
+        if (d < bestD) {
+          bestD = d;
+          best = p;
+        }
+      }
+      if (!best) return false;
+      engine.input.pointerOverUI = false;
+      engine.input.worldPoint.set(best.x, 0, best.z);
+      engine.input.mouseRight = true;
+      return true;
+    },
+
+    releaseAttack(): void {
+      engine.input.mouseRight = false;
+    },
+
+    /**
+     * Isolates where a basic attack loses its damage.
+     *
+     * Phase A calls the swing directly with the player standing next to a
+     * monster, bypassing input entirely. Phase B does the same through the real
+     * right-click path. If A lands and B does not, the fault is in aiming or
+     * input; if neither lands, it is the swing itself.
+     */
+    async swingProbe(swings = 8): Promise<Record<string, unknown>> {
+      const scene = engine.currentScene as unknown as {
+        player?: Record<string, unknown>;
+        enemies?: Array<Record<string, unknown>>;
+        skills?: {
+          basicAttack: (p: unknown, t: THREE.Vector3, c: unknown, e: unknown, b: unknown) => boolean;
+        };
+        context?: () => unknown;
+      };
+      const pl = scene?.player;
+      const skills = scene?.skills;
+      if (!pl || !skills) return { error: 'no player or skill runner' };
+
+      const nearest = (): Record<string, unknown> | null => {
+        let best: Record<string, unknown> | null = null;
+        let bestD = Infinity;
+        for (const e of scene?.enemies ?? []) {
+          if ((e.life as number) <= 0) continue;
+          const d = (e.root as THREE.Object3D).position.distanceTo(pl.position as THREE.Vector3);
+          if (d < bestD) {
+            bestD = d;
+            best = e;
+          }
+        }
+        return best;
+      };
+
+      let direct = 0;
+      let viaInput = 0;
+      let phase: 'direct' | 'input' = 'direct';
+      const off = events.on('enemy:damaged', () => {
+        if (phase === 'direct') direct++;
+        else viaInput++;
+      });
+
+      const frame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
+      const glueToTarget = (): THREE.Vector3 | null => {
+        const t = nearest();
+        if (!t) return null;
+        const tp = (t.root as THREE.Object3D).position;
+        // Stand a metre and a half away — inside any melee reach.
+        (pl.position as THREE.Vector3).set(tp.x - 1.5, 0, tp.z);
+        return tp;
+      };
+
+      // Phase A — straight at the swing.
+      for (let i = 0; i < swings; i++) {
+        const tp = glueToTarget();
+        if (!tp) break;
+        (pl as unknown as { actionLock: number }).actionLock = 0;
+        skills.basicAttack(pl, tp.clone().setY(0), scene.context?.(), scene.enemies, null);
+        await frame();
+      }
+
+      // Phase B — through the button.
+      phase = 'input';
+      for (let i = 0; i < swings * 6; i++) {
+        const tp = glueToTarget();
+        if (!tp) break;
+        engine.input.pointerOverUI = false;
+        engine.input.worldPoint.set(tp.x, 0, tp.z);
+        engine.input.mouseRight = true;
+        await frame();
+      }
+      engine.input.mouseRight = false;
+      off();
+
+      return { swings, directHits: direct, inputHits: viaInput };
+    },
+
+    /** Total life across every living monster — a damage meter that ignores AI. */
+    totalEnemyLife(): { alive: number; life: number } {
+      const scene = engine.currentScene as unknown as { enemies?: Array<Record<string, unknown>> };
+      let alive = 0;
+      let life = 0;
+      for (const e of scene?.enemies ?? []) {
+        const l = e.life as number;
+        if (l > 0) {
+          alive++;
+          life += l;
+        }
+      }
+      return { alive, life: Math.round(life) };
+    },
+
     /** Slowest frames seen since the last call, in milliseconds. */
     frameSpikes(): number[] {
       const perf = (engine as unknown as { perf?: { frames?: number[] } }).perf;
