@@ -823,6 +823,22 @@ export class SkillRunner {
     if (playVisual && hits === 0) audio.play('swing.miss');
   }
 
+  /**
+   * Distance on the floor, ignoring height.
+   *
+   * Every hit test in this game is really a 2D one: monsters are pinned to the
+   * ground and `root.position` is at their feet, while the points effects
+   * happen at are at chest or head height. Measuring in 3D silently adds that
+   * height difference to every range check — an arrow leaves the bow at 1.28m,
+   * so a hit test with a half-metre radius could never succeed no matter how
+   * squarely the shot landed. That is ranged attacks doing no damage.
+   */
+  private groundDistance(a: THREE.Vector3, b: THREE.Vector3): number {
+    const dx = a.x - b.x;
+    const dz = a.z - b.z;
+    return Math.sqrt(dx * dx + dz * dz);
+  }
+
   private pointDamage(
     at: THREE.Vector3,
     radius: number,
@@ -834,7 +850,7 @@ export class SkillRunner {
     let closest: Target | null = null;
     let bestD = Infinity;
     for (const t of this.allTargets(enemies, boss)) {
-      const d = t.root.position.distanceTo(at) - t.hitRadius;
+      const d = this.groundDistance(t.root.position, at) - t.hitRadius;
       if (d < bestD && d <= radius) {
         bestD = d;
         closest = t;
@@ -852,7 +868,9 @@ export class SkillRunner {
     boss: Boss | null
   ): void {
     for (const t of this.allTargets(enemies, boss)) {
-      const d = t.root.position.distanceTo(center);
+      // On the floor, not through the air: a meteor lands from above, and its
+      // blast should not shrink because the impact was measured from height.
+      const d = this.groundDistance(t.root.position, center);
       if (d > radius + t.hitRadius) continue;
       // Falloff so the centre of a nova genuinely rewards positioning.
       const p = packet();
@@ -905,7 +923,8 @@ export class SkillRunner {
       const anchor = j === 0 ? target : from;
       for (const t of pool) {
         if (struck.has(t)) continue;
-        const d = t.root.position.distanceTo(anchor);
+        // Anchors are at chest height; monsters are measured at their feet.
+        const d = this.groundDistance(t.root.position, anchor);
         if (d < bestD && d <= range) {
           bestD = d;
           best = t;

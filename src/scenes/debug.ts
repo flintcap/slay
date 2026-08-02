@@ -500,6 +500,163 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       return { swings, directHits: direct, inputHits: viaInput };
     },
 
+    /**
+     * Casts one named skill at the nearest monster and reports what happened.
+     *
+     * `cast` returning true only means it fired, not that it hit anything, and
+     * those two failures need telling apart: false means mana, cooldown or a
+     * weapon rule refused it; true with no damage means the skill's own aim or
+     * hit test is wrong.
+     */
+    async castProbe(skillId: string, tries = 6): Promise<Record<string, unknown>> {
+      const scene = engine.currentScene as unknown as {
+        player?: Record<string, unknown>;
+        enemies?: Array<Record<string, unknown>>;
+        skills?: { cast: (id: string, p: unknown, t: THREE.Vector3, c: unknown, e: unknown, b: unknown) => boolean };
+        context?: () => unknown;
+      };
+      const pl = scene?.player;
+      const skills = scene?.skills;
+      if (!pl || !skills) return { error: 'no player or skill runner' };
+
+      let hits = 0;
+      const off = events.on('enemy:damaged', () => hits++);
+      const fired: boolean[] = [];
+      const manaAt: number[] = [];
+
+      for (let i = 0; i < tries; i++) {
+        let best: THREE.Object3D | null = null;
+        let bestD = Infinity;
+        for (const e of scene.enemies ?? []) {
+          if ((e.life as number) <= 0) continue;
+          const r = e.root as THREE.Object3D;
+          const d = r.position.distanceTo(pl.position as THREE.Vector3);
+          if (d < bestD) {
+            bestD = d;
+            best = r;
+          }
+        }
+        if (!best) break;
+        // Stand a clear three metres back, in the open, facing it.
+        (pl.position as THREE.Vector3).set(best.position.x - 3, 0, best.position.z);
+        (pl as unknown as { actionLock: number }).actionLock = 0;
+        (pl as unknown as { cooldowns: Map<string, number> }).cooldowns?.clear();
+        manaAt.push(Math.round(pl.mana as number));
+        fired.push(
+          skills.cast(skillId, pl, best.position.clone().setY(0), scene.context?.(), scene.enemies, null)
+        );
+        for (let f = 0; f < 6; f++) await new Promise((r) => requestAnimationFrame(r));
+      }
+      off();
+      const stats = pl.stats as Record<string, number> | undefined;
+      return { skillId, tries, fired, manaAt, maxMana: Math.round(stats?.mana ?? 0), hits };
+    },
+
+    /**
+     * Fires every active skill a class has and records what actually happened.
+     *
+     * Each skill gets identical, controlled conditions — the player stood in an
+     * open spot, full mana, no cooldown, no action lock, and a live monster
+     * pinned three metres in front so the AI cannot walk out of the test. Then
+     * it reports, per skill: whether the cast was accepted, which animation clip
+     * played, how many visual effects it created, how much damage landed, and
+     * any error it threw.
+     *
+     * Nothing here is inferred. A skill that reports `fired` but no damage and
+     * no effects did nothing, whatever its description says.
+     */
+    async skillAudit(classId: CharClassId): Promise<Array<Record<string, unknown>>> {
+      const scene = engine.currentScene as unknown as {
+        player?: Record<string, unknown>;
+        enemies?: Array<Record<string, unknown>>;
+        skills?: { cast: (id: string, p: unknown, t: THREE.Vector3, c: unknown, e: unknown, b: unknown) => boolean };
+        effects?: { live?: unknown[] };
+        context?: () => unknown;
+        nav?: { walkable?: (x: number, z: number) => boolean };
+        mesh?: { tileToWorld: (x: number, y: number) => THREE.Vector3 };
+        level?: { entry: { x: number; y: number } };
+      };
+      const pl = scene?.player;
+      const skills = scene?.skills;
+      const c = save.account.current;
+      if (!pl || !skills || !c) return [{ error: 'no player, runner or character' }];
+
+      const def = CLASSES.find((k) => k.id === classId);
+      if (!def) return [{ error: `unknown class ${classId}` }];
+      const list = SKILLS.filter((s) => def.trees.includes(s.treeId) && s.targeting !== 'passive');
+
+      // A known-open stage: the level's own entrance, which generation
+      // guarantees is walkable and clear.
+      const entry = scene.level?.entry;
+      const stage =
+        entry && scene.mesh
+          ? scene.mesh.tileToWorld(entry.x, entry.y).clone().setY(0)
+          : (pl.position as THREE.Vector3).clone();
+
+      const live = (): number => scene.effects?.live?.length ?? 0;
+      const frame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
+
+      const rows: Array<Record<string, unknown>> = [];
+
+      for (const s of list) {
+        // Reset the world around this one skill.
+        c.skills[s.id] = 3;
+        (pl.position as THREE.Vector3).copy(stage);
+        (pl as unknown as { actionLock: number }).actionLock = 0;
+        (pl as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
+        const stats = pl.stats as Record<string, number>;
+        pl.mana = stats.mana;
+        pl.life = stats.life;
+
+        // Pin a live monster three metres ahead, and keep it pinned so its own
+        // movement cannot decide the result.
+        const dummy = (scene.enemies ?? []).find((e) => (e.life as number) > 0);
+        const spot = new THREE.Vector3(stage.x + 3, 0, stage.z);
+        if (dummy) (dummy.root as THREE.Object3D).position.copy(spot);
+
+        let damage = 0;
+        let hits = 0;
+        const off = events.on('enemy:damaged', (e) => {
+          hits++;
+          damage += e.amount;
+        });
+
+        const before = live();
+        let fired = false;
+        let error: string | null = null;
+        try {
+          fired = skills.cast(s.id, pl, spot.clone(), scene.context?.(), scene.enemies, null);
+        } catch (err) {
+          error = String(err).slice(0, 160);
+        }
+        const clip = ((pl.animator as { clip?: string } | undefined)?.clip) ?? null;
+        let peak = live();
+
+        // Let travel time, wind-ups and lingering effects resolve.
+        for (let f = 0; f < 30; f++) {
+          if (dummy) (dummy.root as THREE.Object3D).position.copy(spot);
+          peak = Math.max(peak, live());
+          await frame();
+        }
+        off();
+
+        rows.push({
+          id: s.id,
+          name: s.name,
+          tree: s.treeId,
+          effect: s.effect ?? null,
+          targeting: s.targeting,
+          fired,
+          clip,
+          effectsSpawned: Math.max(0, peak - before),
+          hits,
+          damage: Math.round(damage),
+          error,
+        });
+      }
+      return rows;
+    },
+
     /** Total life across every living monster — a damage meter that ignores AI. */
     totalEnemyLife(): { alive: number; life: number } {
       const scene = engine.currentScene as unknown as { enemies?: Array<Record<string, unknown>> };

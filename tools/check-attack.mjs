@@ -47,6 +47,9 @@ await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 900000, po
 
 const r = await page.evaluate(async ([cls]) => {
   window.SLAY.debug.makeCharacter(cls, 12);
+  // Force the weapon the class is meant to fight with; random rolls happily
+  // hand an archer a mace and then the test measures the wrong thing.
+  window.SLAY.debug.equip(cls === 'ranger' ? 'bow.short' : 'sword.short');
   await window.SLAY.engine.goTo('dungeon', { depth: 1 });
   for (let i = 0; i < 40; i++) await new Promise((res) => requestAnimationFrame(res));
 
@@ -64,6 +67,12 @@ const r = await page.evaluate(async ([cls]) => {
   // Glued adjacent to a monster: isolates the swing from the walk.
   const glued = await window.SLAY.debug.swingProbe(8);
 
+  // And the assigned primary specifically, which is what right-click runs.
+  const c = window.SLAY.save.account.current;
+  const primary = c.primaryAttack
+    ? await window.SLAY.debug.castProbe(c.primaryAttack, 6)
+    : null;
+
   const before = window.SLAY.debug.totalEnemyLife();
   let aimed = 0;
   // Walk the player at the pack so a melee swing can actually reach, and
@@ -77,7 +86,7 @@ const r = await page.evaluate(async ([cls]) => {
   window.SLAY.debug.releaseAttack();
   const after = window.SLAY.debug.totalEnemyLife();
 
-  return { probe, glued, before, after, aimedFrames: aimed, hits: hits.length, damage: hits.reduce((a, b) => a + b, 0) };
+  return { probe, glued, primary, before, after, aimedFrames: aimed, hits: hits.length, damage: hits.reduce((a, b) => a + b, 0) };
 }, [CLASS]);
 
 console.log(JSON.stringify(r, null, 1));
