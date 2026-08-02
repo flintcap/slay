@@ -571,6 +571,7 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         enemies?: Array<Record<string, unknown>>;
         skills?: { cast: (id: string, p: unknown, t: THREE.Vector3, c: unknown, e: unknown, b: unknown) => boolean };
         effects?: { live?: unknown[] };
+        fx?: { burst?: (...a: unknown[]) => void };
         context?: () => unknown;
         nav?: { walkable?: (x: number, z: number) => boolean };
         mesh?: { tileToWorld: (x: number, y: number) => THREE.Vector3 };
@@ -608,19 +609,37 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         pl.mana = stats.mana;
         pl.life = stats.life;
 
-        // Pin a live monster three metres ahead, and keep it pinned so its own
-        // movement cannot decide the result.
+        // Pin a live monster just inside melee reach — a swing reaches 2.3m, so
+        // a dummy any further away makes every melee skill look broken when it
+        // is only out of range. Projectiles cross 1.6m just as happily.
         const dummy = (scene.enemies ?? []).find((e) => (e.life as number) > 0);
-        const spot = new THREE.Vector3(stage.x + 3, 0, stage.z);
+        const spot = new THREE.Vector3(stage.x + 1.6, 0, stage.z);
         if (dummy) (dummy.root as THREE.Object3D).position.copy(spot);
 
         let damage = 0;
         let hits = 0;
-        const off = events.on('enemy:damaged', (e) => {
+        let sfx = 0;
+        // Count particle bursts by wrapping the emitter for the duration. Most
+        // of a skill's visuals are bursts, not tracked effects, so counting only
+        // `EffectSystem.live` makes a perfectly good spell look invisible.
+        const fx = scene.fx as { burst?: (...a: unknown[]) => void } | undefined;
+        const realBurst = fx?.burst;
+        let bursts = 0;
+        if (fx && realBurst) {
+          fx.burst = (...a: unknown[]) => {
+            bursts++;
+            return realBurst.apply(fx, a);
+          };
+        }
+        const offDmg = events.on('enemy:damaged', (e) => {
           hits++;
           damage += e.amount;
         });
+        const offSfx = events.on('sfx', () => sfx++);
 
+        const statusOf = (): number =>
+          ((pl.status as { active?: Map<string, unknown> } | undefined)?.active?.size) ?? 0;
+        const buffsBefore = statusOf();
         const before = live();
         let fired = false;
         let error: string | null = null;
@@ -631,14 +650,18 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         }
         const clip = ((pl.animator as { clip?: string } | undefined)?.clip) ?? null;
         let peak = live();
+        let buffPeak = statusOf();
 
         // Let travel time, wind-ups and lingering effects resolve.
         for (let f = 0; f < 30; f++) {
           if (dummy) (dummy.root as THREE.Object3D).position.copy(spot);
           peak = Math.max(peak, live());
+          buffPeak = Math.max(buffPeak, statusOf());
           await frame();
         }
-        off();
+        offDmg();
+        offSfx();
+        if (fx && realBurst) fx.burst = realBurst;
 
         rows.push({
           id: s.id,
@@ -648,7 +671,10 @@ export function installDebug(engine: Engine): Record<string, unknown> {
           targeting: s.targeting,
           fired,
           clip,
-          effectsSpawned: Math.max(0, peak - before),
+          effects: Math.max(0, peak - before),
+          bursts,
+          sfx,
+          buffs: Math.max(0, buffPeak - buffsBefore),
           hits,
           damage: Math.round(damage),
           error,

@@ -76,7 +76,8 @@ for (const cls of CLASSES) {
 
   console.log(`\n${'='.repeat(96)}\n${cls.toUpperCase()}  (${rows.length} active skills)\n${'='.repeat(96)}`);
   console.log(
-    'skill'.padEnd(20) + 'effect'.padEnd(20) + 'fired'.padEnd(7) + 'clip'.padEnd(10) + 'fx'.padEnd(5) + 'hits'.padEnd(6) + 'dmg'
+    'skill'.padEnd(19) + 'effect'.padEnd(20) + 'fire'.padEnd(6) + 'clip'.padEnd(9) +
+      'fx'.padEnd(4) + 'burst'.padEnd(6) + 'sfx'.padEnd(5) + 'buff'.padEnd(5) + 'hits'.padEnd(5) + 'dmg'
   );
   console.log('-'.repeat(96));
   for (const r of rows) {
@@ -85,17 +86,27 @@ for (const cls of CLASSES) {
       continue;
     }
     console.log(
-      String(r.id).padEnd(20) +
+      String(r.id).padEnd(19) +
         String(r.effect ?? '-').padEnd(20) +
-        String(r.fired).padEnd(7) +
-        String(r.clip ?? '-').padEnd(10) +
-        String(r.effectsSpawned).padEnd(5) +
-        String(r.hits).padEnd(6) +
+        String(r.fired).padEnd(6) +
+        String(r.clip ?? '-').padEnd(9) +
+        String(r.effects).padEnd(4) +
+        String(r.bursts).padEnd(6) +
+        String(r.sfx).padEnd(5) +
+        String(r.buffs).padEnd(5) +
+        String(r.hits).padEnd(5) +
         String(r.damage)
     );
   }
 
-  const dead = rows.filter((r) => !r.error && r.fired && r.effectsSpawned === 0 && r.hits === 0);
+  // "Did nothing" means nothing at all: no damage, no tracked effect, no
+  // particles, no sound, no buff. Any one of those is a skill doing something.
+  const dead = rows.filter(
+    (r) => !r.error && r.fired && !r.effects && !r.bursts && !r.sfx && !r.buffs && !r.hits
+  );
+  const silent = rows.filter(
+    (r) => !r.error && r.fired && !r.hits && (r.effects || r.bursts || r.sfx || r.buffs)
+  );
   const refused = rows.filter((r) => !r.error && !r.fired);
   const threw = rows.filter((r) => r.error);
   console.log(
@@ -106,6 +117,7 @@ for (const cls of CLASSES) {
   );
   if (refused.length) console.log('  refused: ' + refused.map((r) => r.id).join(', '));
   if (dead.length) console.log('  did nothing: ' + dead.map((r) => r.id).join(', '));
+  if (silent.length) console.log('  visual only, no damage: ' + silent.map((r) => r.id).join(', '));
   if (threw.length) console.log('  threw: ' + threw.map((r) => `${r.id} (${r.error})`).join('; '));
 }
 
