@@ -51,9 +51,19 @@ for (let i = 0; i < 120; i++) {
 
 const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
+  args: [
+    '--use-gl=angle',
+    '--use-angle=swiftshader',
+    '--enable-unsafe-swiftshader',
+    '--no-sandbox',
+    // Containers give /dev/shm 64MB by default. Chromium puts its renderer
+    // shared memory there and is killed when it runs out, which reads as
+    // "Target page, context or browser has been closed" halfway through a run.
+    '--disable-dev-shm-usage',
+    '--js-flags=--max-old-space-size=2048',
+  ],
 });
-const page = await browser.newPage({ viewport: { width: 800, height: 500 } });
+let page = await browser.newPage({ viewport: { width: 700, height: 440 } });
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
@@ -61,19 +71,46 @@ await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 900000, po
 
 const all = {};
 for (const cls of CLASSES) {
-  const rows = await page.evaluate(
+  let rows = null;
+  for (let attempt = 0; attempt < 2 && !rows; attempt++) {
+    try {
+      rows = await runClass(cls);
+    } catch (e) {
+      console.log(`  ${cls} attempt ${attempt + 1} failed: ${String(e).split('\n')[0]}`);
+      if (attempt === 0) {
+        // Fresh page, same browser: a dead renderer does not always mean a
+        // dead browser, and reloading is much cheaper than booting again.
+        try { await page.close(); } catch {}
+        page = await browser.newPage({ viewport: { width: 700, height: 440 } });
+        page.on('pageerror', (er) => pageErrors.push(String(er).slice(0, 200)));
+        await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
+        await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 900000, polling: 500 });
+      }
+    }
+  }
+  if (!rows) {
+    console.log(`\n${cls.toUpperCase()}: could not complete — browser died twice.`);
+    continue;
+  }
+  all[cls] = rows;
+  report(cls, rows);
+}
+
+async function runClass(cls) {
+  return page.evaluate(
     async ([c, weapon]) => {
       window.SLAY.debug.makeCharacter(c, 60);
       window.SLAY.debug.equip(weapon, 40);
-      await window.SLAY.engine.goTo('dungeon', { depth: 3 });
+      await window.SLAY.engine.goTo('dungeon', { depth: 1 });
       for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
       window.SLAY.debug.godMode(true);
       return window.SLAY.debug.skillAudit(c);
     },
     [cls, WEAPON[cls] ?? 'sword.short']
   );
-  all[cls] = rows;
+}
 
+function report(cls, rows) {
   console.log(`\n${'='.repeat(96)}\n${cls.toUpperCase()}  (${rows.length} active skills)\n${'='.repeat(96)}`);
   console.log(
     'skill'.padEnd(19) + 'effect'.padEnd(20) + 'fire'.padEnd(6) + 'clip'.padEnd(9) +

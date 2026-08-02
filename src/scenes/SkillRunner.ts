@@ -151,7 +151,15 @@ function shiftHue(hex: number, seed: number): number {
   return (to(ch(h + 1 / 3)) << 16) | (to(ch(h)) << 8) | to(ch(h - 1 / 3));
 }
 
-export function clipFor(effect: string | undefined, holding: WeaponStyle): string {
+/**
+ * The animation a skill plays.
+ *
+ * `skillId` is what splits skills that share an effect family. Five warden
+ * strike skills all have the effect `melee.strike`, so hashing the effect gave
+ * all five the same gesture — which is the thing this was meant to stop. The
+ * id is the only part that differs, so the id is what decides.
+ */
+export function clipFor(effect: string | undefined, holding: WeaponStyle, skillId = ''): string {
   const raw = (effect ?? 'melee').toLowerCase();
   const [family, sub] = raw.split('.');
   const f = family ?? 'melee';
@@ -162,7 +170,8 @@ export function clipFor(effect: string | undefined, holding: WeaponStyle): strin
   // `strike` used to send every one of them to `thrust`, so a warden with five
   // strike skills jabbed identically five times. Alternate the two stabs by the
   // skill's own name so each keeps a fixed, distinct gesture.
-  if (s2 === 'strike') return hashId(raw) % 2 === 0 ? 'thrust' : 'lunge';
+  const pick = hashId(skillId || raw);
+  if (s2 === 'strike') return pick % 2 === 0 ? 'thrust' : 'lunge';
   if (s2 === 'lunge') return 'lunge';
   if (s2 === 'slam' || s2 === 'smash') return 'slam';
   if (s2 === 'stream' || s2 === 'channel') return 'channel';
@@ -215,7 +224,7 @@ export function clipFor(effect: string | undefined, holding: WeaponStyle): strin
     case 'bolt':
       // Split the bow's eleven skills across a full draw and a snap shot, by
       // the skill's own id so each one always plays the same one.
-      if (holding === 'ranged') return hashId(raw) % 2 === 0 ? 'shoot' : 'snapshot';
+      if (holding === 'ranged') return pick % 2 === 0 ? 'shoot' : 'snapshot';
       return f === 'projectile' ? 'hurl' : 'point';
     case 'detonate':
       return 'point';
@@ -383,7 +392,7 @@ export class SkillRunner {
     // What the body does for this specific skill. Everything used to collapse
     // onto `cast` or `attack1`, so a ground slam, a war cry, a channelled beam
     // and a thrown bolt were all the same gesture.
-    const clip = clipFor(def.effect, holding);
+    const clip = clipFor(def.effect, holding, def.id);
     const sig = particleFor(def.id, type);
 
     switch (family) {
