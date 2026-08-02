@@ -158,9 +158,18 @@ export function clipFor(effect: string | undefined, holding: WeaponStyle): strin
   const s2 = sub ?? '';
 
   // Sub-effects that override their family outright.
-  if (s2 === 'strike' || s2 === 'lunge') return 'thrust';
+  //
+  // `strike` used to send every one of them to `thrust`, so a warden with five
+  // strike skills jabbed identically five times. Alternate the two stabs by the
+  // skill's own name so each keeps a fixed, distinct gesture.
+  if (s2 === 'strike') return hashId(raw) % 2 === 0 ? 'thrust' : 'lunge';
+  if (s2 === 'lunge') return 'lunge';
   if (s2 === 'slam' || s2 === 'smash') return 'slam';
   if (s2 === 'stream' || s2 === 'channel') return 'channel';
+  // Anything thrown at the floor is thrown, not conjured.
+  if (s2 === 'cloud' || s2 === 'explode' || s2 === 'vial' || s2 === 'bomb') return 'hurl';
+  // Vanishing is not a two-handed conjuring gesture.
+  if (f === 'teleport' || s2 === 'stealth' || s2 === 'reset' || s2 === 'blink') return 'blink';
 
   switch (f) {
     case 'melee':
@@ -169,27 +178,49 @@ export function clipFor(effect: string | undefined, holding: WeaponStyle): strin
     case 'whirlwind':
       return 'attack2';
     case 'slam':
+      return 'slam';
     case 'meteor':
+      // An archer calling arrows down draws and looses upward. Everyone else
+      // brings something heavy down from overhead.
+      return holding === 'ranged' ? 'skyshot' : 'slam';
+    case 'wave':
+      // A line of broken ground comes from striking it, not from a hand wave.
       return 'slam';
     case 'nova':
-      return 'stomp';
+      // Traps and wards are set down by hand. Only a caster or a bruiser makes
+      // a ring by stamping on the floor.
+      return holding === 'ranged' ? 'plant' : 'stomp';
+    case 'trap':
+    case 'ward':
+      return 'plant';
+    case 'ground':
+      return 'hurl';
     case 'beam':
       return 'channel';
     case 'cone':
-      return holding === 'ranged' ? 'shoot' : 'channel';
+      return holding === 'ranged' ? 'snapshot' : 'channel';
     case 'chain':
     case 'summon':
     case 'corpse':
     case 'curse':
       return 'point';
-    case 'shout':
     case 'banner':
+      // Planting a standard is planting something, not shouting.
+      return 'plant';
+    case 'shout':
       return 'roar';
     case 'dash':
       return 'dodge';
     case 'projectile':
     case 'bolt':
-      return holding === 'ranged' ? 'shoot' : 'point';
+      // Split the bow's eleven skills across a full draw and a snap shot, by
+      // the skill's own id so each one always plays the same one.
+      if (holding === 'ranged') return hashId(raw) % 2 === 0 ? 'shoot' : 'snapshot';
+      return f === 'projectile' ? 'hurl' : 'point';
+    case 'detonate':
+      return 'point';
+    case 'aoe':
+      return holding === 'ranged' ? 'plant' : 'stomp';
     case 'aura':
     case 'stance':
     case 'buff':
@@ -198,7 +229,7 @@ export function clipFor(effect: string | undefined, holding: WeaponStyle): strin
     case 'heal':
       return 'cast';
     default:
-      return holding === 'ranged' ? 'shoot' : 'cast';
+      return holding === 'ranged' ? 'snapshot' : 'cast';
   }
 }
 

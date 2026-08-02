@@ -210,6 +210,11 @@ interface LiveEffect {
 // Projectile halo pool
 // ---------------------------------------------------------------------------
 
+/** Wave steps a nova lays down. Each is one emitter call covering a full ring. */
+const NOVA_RING_STEPS = 5;
+/** Seconds between a cone's particle puffs — cadence, not per-frame. */
+const CONE_EMIT_INTERVAL = 0.06;
+
 const haloPool: THREE.SpriteMaterial[] = [];
 
 // ---------------------------------------------------------------------------
@@ -1434,22 +1439,23 @@ export class EffectSystem {
         mat.uniforms.uProgress!.value = p;
         mat.uniforms.uTime!.value = elapsed;
         if (opts.particles !== false) {
-          // Emit particles riding the ring front so the wave has volume.
-          const want = Math.floor(p * 10);
+          // Particles riding the ring front, so the wave has volume.
+          //
+          // This used to be ten wave steps of six separate `burst` calls each —
+          // sixty calls per nova, every one of them emitting about a single
+          // particle after the quality scale, which is the worst ratio of
+          // overhead to picture the system can produce. Five calls now, each
+          // laying a whole circle at once. Same wave, twelve times fewer calls.
+          const want = Math.floor(p * NOVA_RING_STEPS);
           while (emitted < want) {
             emitted++;
-            const front = radius * (emitted / 10);
-            const n = Math.round(6 * Math.max(0.4, self.quality.fxScale));
-            for (let i = 0; i < n; i++) {
-              const a = self.rng.range(0, Math.PI * 2);
-              _v1.set(Math.cos(a), 0.25, Math.sin(a));
-              self.fx.burst(opts.emitter ?? el.emitter, x + Math.cos(a) * front, 0.25, z + Math.sin(a) * front, {
-                count: 2,
-                scale: 0.4,
-                dir: _v1,
-                color: opts.color,
-              });
-            }
+            const front = radius * (emitted / NOVA_RING_STEPS);
+            self.fx.burst(opts.emitter ?? el.emitter, x, 0.25, z, {
+              count: Math.round(14 * Math.max(0.4, self.quality.fxScale)),
+              scale: 0.4,
+              ring: front,
+              color: opts.color,
+            });
           }
         }
         if (stopped || p >= 1) {
@@ -1539,6 +1545,7 @@ export class EffectSystem {
 
     const duration = opts.duration ?? 0.7;
     let t = 0;
+    let emitAccum = CONE_EMIT_INTERVAL;
     let stopped = false;
     let finished = false;
     const self = this;
@@ -1559,18 +1566,33 @@ export class EffectSystem {
         mat.uniforms.uTime!.value = elapsed;
         // Snap open, hold, then fade.
         mat.uniforms.uPower!.value = Math.min(1, p * 6) * (1 - Math.max(0, (p - 0.6) / 0.4));
-        const n = Math.round(5 * Math.max(0.4, self.quality.fxScale));
-        for (let i = 0; i < n; i++) {
-          const a = self.rng.range(-halfAngle, halfAngle);
-          const d = self.rng.range(0.2, 1) * range;
-          const c = Math.cos(a);
-          const s = Math.sin(a);
-          const dx = direction.x * c - direction.z * s;
-          const dz = direction.x * s + direction.z * c;
-          _v1.set(dx, 0.1, dz).normalize();
-          self.fx.burst(opts.emitter ?? el.emitter, origin.x + dx * d, origin.y + self.rng.range(-0.2, 0.5), origin.z + dz * d, {
-            count: 2, scale: 0.7, dir: _v1, color: opts.color, speed: 1.6,
-          });
+        // One scattered burst per tick, not five every frame.
+        //
+        // This fired five separate `burst` calls on every single frame for the
+        // whole duration — eighty calls for one breath of a cone, each emitting
+        // about a particle. It now emits on a fixed cadence regardless of frame
+        // rate, in one call that scatters across the cone's own width, so the
+        // effect costs the same on a fast machine as a slow one.
+        emitAccum += dt;
+        if (emitAccum >= CONE_EMIT_INTERVAL) {
+          emitAccum = 0;
+          const mid = range * 0.55;
+          _v1.set(direction.x, 0.1, direction.z).normalize();
+          self.fx.burst(
+            opts.emitter ?? el.emitter,
+            origin.x + direction.x * mid,
+            origin.y + 0.15,
+            origin.z + direction.z * mid,
+            {
+              count: Math.round(16 * Math.max(0.4, self.quality.fxScale)),
+              scale: 0.7,
+              dir: _v1,
+              color: opts.color,
+              speed: 1.6,
+              // Wide enough to fill the cone's mouth at its midpoint.
+              scatter: Math.max(0.6, Math.sin(halfAngle) * mid),
+            },
+          );
         }
         if (stopped || p >= 1) {
           finished = true;

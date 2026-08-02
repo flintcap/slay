@@ -29,7 +29,7 @@ const WEAPON = {
   shadowblade: 'dagger.dirk',
   ranger: 'bow.short',
   pyromancer: 'wand.wand',
-  stormcaller: 'wand.wand',
+  stormcaller: 'staff.long',
   revenant: 'wand.bone',
 };
 

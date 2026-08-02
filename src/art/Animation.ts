@@ -215,7 +215,16 @@ export type ClipName =
   | 'roar'
   | 'hurt'
   | 'death'
-  | 'dodge';
+  | 'dodge'
+  // Gestures that used to borrow a clip that meant something else. An archer
+  // laying a snare was playing the two-footed ground stomp; calling arrows down
+  // from the sky was the overhead hammer blow.
+  | 'plant'
+  | 'skyshot'
+  | 'snapshot'
+  | 'blink'
+  | 'hurl'
+  | 'lunge';
 
 interface ClipDef {
   /** Seconds for one full playthrough at speed 1. */
@@ -669,6 +678,195 @@ const CLIPS: Record<ClipName, ClipDef> = {
 
       p.foot(0, 0.14, -0.05 * snap, 0.1 * snap, 0);
       p.foot(1, -0.16, -0.04, -0.06, 0);
+    },
+  },
+
+  /**
+   * Drop to a knee and set something on the floor — traps, banners, wards.
+   *
+   * Traps used to play `stomp`, so laying a tripwire looked like an earthquake.
+   * This is the opposite shape: down, careful, one hand to the ground.
+   */
+  plant: {
+    duration: 0.62,
+    loop: false,
+    breath: 0.08,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const kneel = kf(t, [[0, 0], [0.34, 1], [0.62, 1], [1, 0]]);
+      const set = kf(t, [[0, 0], [0.38, 0], [0.5, 1], [0.66, 1], [1, 0]]);
+
+      p.move('hips', 0, -h * 0.3 * kneel, 0);
+      p.set('hips', 0.24 * kneel, -0.18 * kneel, 0);
+      p.set('spine', 0.3 * kneel, -0.12 * kneel, 0);
+      p.set('chest', 0.26 * kneel, -0.16 * kneel, 0);
+      p.set('head', 0.16 * kneel - 0.1 * set, -0.1 * kneel, 0);
+
+      // Working hand reaches the ground; the other braces on the knee.
+      p.set('shoulderR', -0.3 - 1.15 * kneel - 0.25 * set, -0.28 * kneel, -0.2);
+      p.set('elbowR', -0.55 - 0.4 * kneel + 0.5 * set, 0, 0);
+      p.set('shoulderL', -0.5 - 0.5 * kneel, 0.34, 0.4);
+      p.set('elbowL', -1.15, 0, 0.2);
+
+      // Front knee down, back leg trailing.
+      p.foot(0, 0.2, -0.72 * kneel, 0.34 * kneel, 0);
+      p.foot(1, -0.18, -0.2 * kneel, -0.46 * kneel, 0);
+    },
+  },
+
+  /**
+   * Draw and loose high, at something above you — arrow rain, volleys called
+   * down on a distant point. Previously the two-handed overhead `slam`, which
+   * is an archer hitting the ground to make arrows fall out of the sky.
+   */
+  skyshot: {
+    duration: 0.66,
+    loop: false,
+    breath: 0.12,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const draw = kf(t, [[0, 0], [0.46, 1], [0.62, 1], [0.72, 0], [1, 0]]);
+      const loose = kf(t, [[0, 0], [0.66, 0], [0.76, 1], [1, 0.3]]);
+
+      // Lean back and open the chest to the sky.
+      p.set('hips', -0.16 * draw, -0.3, 0);
+      p.set('spine', -0.26 * draw, -0.18, 0);
+      p.set('chest', -0.34 * draw + 0.12 * loose, -0.24, 0);
+      p.set('head', -0.42 * draw + 0.2 * loose, 0.3, 0);
+      p.move('hips', 0, -h * 0.02 * draw, 0);
+
+      // Bow arm angled up rather than level.
+      p.set('shoulderL', -2.1 - 0.2 * draw, 0.4, 0.16);
+      p.set('elbowL', -0.12, 0, 0);
+      p.set('shoulderR', -1.5 - 0.4 * draw + 0.2 * loose, -0.45 - 0.4 * draw + 0.6 * loose, -0.1);
+      p.set('elbowR', -0.7 - 1.4 * draw + 0.5 * loose, 0, 0);
+
+      p.foot(0, 0.14, -0.08 * draw, 0.14, 0);
+      p.foot(1, -0.16, -0.14 * draw, -0.16, 0);
+    },
+  },
+
+  /**
+   * A snap shot from a half draw. Same weapon as `shoot`, half the wind-up, so
+   * a class with eleven bow skills does not play one identical gesture for all
+   * of them.
+   */
+  snapshot: {
+    duration: 0.3,
+    loop: false,
+    breath: 0.12,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const draw = kf(t, [[0, 0], [0.34, 1], [0.44, 1], [0.54, 0], [1, 0]]);
+      const loose = kf(t, [[0, 0], [0.48, 0], [0.6, 1], [1, 0.2]]);
+
+      p.set('hips', 0, -0.28, 0);
+      p.set('spine', -0.02, -0.16, 0);
+      p.set('chest', -0.04 - 0.06 * draw, -0.22 - 0.06 * draw, 0);
+      p.set('head', 0, 0.3, 0);
+      p.move('hips', 0, -h * 0.008 * draw, 0);
+
+      // Bow held lower and closer in — a shot taken without setting up.
+      p.set('shoulderL', -1.24, 0.36, 0.14);
+      p.set('elbowL', -0.3, 0, 0);
+      p.set('shoulderR', -1.0 - 0.28 * draw + 0.16 * loose, -0.42 - 0.34 * draw + 0.6 * loose, -0.1);
+      p.set('elbowR', -0.75 - 1.15 * draw + 0.45 * loose, 0, 0);
+
+      p.foot(0, 0.12, 0, 0.08, 0);
+      p.foot(1, -0.12, -0.05 * draw, -0.1, 0);
+    },
+  },
+
+  /**
+   * Collapse inward and snap back out — teleports, shadow steps, vanishes.
+   * These all played `cast`, which is a two-handed conjuring gesture and reads
+   * as nothing at all like disappearing.
+   */
+  blink: {
+    duration: 0.34,
+    loop: false,
+    breath: 0,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const fold = kf(t, [[0, 0], [0.4, 1], [0.52, 1], [1, 0]]);
+      const snap = kf(t, [[0, 0], [0.54, 0], [0.66, 1], [1, 0.15]]);
+
+      p.move('hips', 0, -h * 0.16 * fold + h * 0.04 * snap, 0);
+      p.set('hips', 0.34 * fold - 0.1 * snap, 0.5 * fold - 0.7 * snap, 0);
+      p.set('spine', 0.4 * fold - 0.24 * snap, 0.4 * fold - 0.6 * snap, 0);
+      p.set('chest', 0.36 * fold - 0.3 * snap, 0.36 * fold - 0.55 * snap, 0);
+      p.set('head', 0.2 * fold - 0.24 * snap, 0.3 * fold - 0.4 * snap, 0);
+
+      // Arms cross the body on the fold, then fling wide as it releases.
+      p.set('shoulderL', -1.5 * fold - 0.2 * snap, 0.9 * fold, 0.7 - 0.5 * snap);
+      p.set('shoulderR', -1.5 * fold - 0.2 * snap, -0.9 * fold, -0.7 + 0.5 * snap);
+      p.set('elbowL', -1.7 * fold + 0.9 * snap, 0, 0.3);
+      p.set('elbowR', -1.7 * fold + 0.9 * snap, 0, -0.3);
+
+      p.foot(0, 0.1, -0.4 * fold, 0.12 * snap, 0);
+      p.foot(1, -0.1, -0.4 * fold, -0.12 * snap, 0);
+    },
+  },
+
+  /**
+   * An overhand throw: vials, bombs, anything lobbed at the floor. Distinct
+   * from `point`, which commands, and from `cast`, which conjures.
+   */
+  hurl: {
+    duration: 0.5,
+    loop: false,
+    breath: 0.1,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const cock = kf(t, [[0, 0], [0.32, 1], [0.42, 1], [0.54, 0], [1, 0]]);
+      const sling = kf(t, [[0, 0], [0.44, 0], [0.58, 1], [0.78, 0.8], [1, 0.15]]);
+
+      p.set('hips', 0, 0.34 * cock - 0.42 * sling, 0);
+      p.set('spine', -0.2 * cock + 0.3 * sling, 0.3 * cock - 0.44 * sling, 0);
+      p.set('chest', -0.26 * cock + 0.4 * sling, 0.34 * cock - 0.5 * sling, 0);
+      p.set('head', -0.1 * cock + 0.16 * sling, 0.2 * cock - 0.3 * sling, 0);
+      p.move('hips', 0, h * 0.02 * cock - h * 0.03 * sling, 0);
+
+      // Throwing arm goes back past the ear, then whips through and across.
+      p.set('shoulderR', -2.2 * cock + 1.4 * sling, -0.4 * cock + 0.5 * sling, -0.3);
+      p.set('elbowR', -1.9 * cock + 1.7 * sling, 0, 0);
+      p.set('shoulderL', -0.6 - 0.5 * sling, 0.5, 0.5);
+      p.set('elbowL', -0.9, 0, 0.2);
+
+      p.foot(0, 0.16, -0.1 * sling, 0.3 * sling, 0);
+      p.foot(1, -0.16, -0.16 * cock, -0.24 * cock, 0);
+    },
+  },
+
+  /**
+   * A long step-through stab. Shares intent with `thrust` but travels: the
+   * front foot lands well ahead and the whole body follows the point, so a
+   * class with five strike skills is not playing the same jab five times.
+   */
+  lunge: {
+    duration: 0.52,
+    loop: false,
+    breath: 0.08,
+    eval(t, p, rig) {
+      const h = rig.hipY;
+      const load = kf(t, [[0, 0], [0.26, 1], [0.38, 0.8], [1, 0]]);
+      const drive = kf(t, [[0, 0], [0.32, 0], [0.52, 1], [0.74, 0.9], [1, 0.15]]);
+
+      // Drop and drive forward rather than staying tall.
+      p.move('hips', 0, -h * 0.08 * load - h * 0.18 * drive, 0);
+      p.set('hips', 0.1 * drive, -0.36 - 0.2 * drive, 0);
+      p.set('spine', 0.16 * drive, -0.26 + 0.2 * drive, 0);
+      p.set('chest', 0.2 * drive, -0.34 + 0.3 * drive, 0);
+      p.set('head', -0.08 * load + 0.12 * drive, 0.24, 0);
+
+      p.set('shoulderR', -0.45 - 0.4 * load - 0.95 * drive, -0.45 + 0.55 * drive, -0.28);
+      p.set('elbowR', -1.35 * load + 1.5 * drive, 0, 0);
+      p.set('shoulderL', -0.25 - 0.2 * load, 0.45 + 0.2 * drive, 0.55);
+      p.set('elbowL', -1.05, 0, 0.22);
+
+      // Deep front lunge, back leg extended straight behind.
+      p.foot(0, 0.14, -0.34 * drive, 0.95 * drive, 0);
+      p.foot(1, -0.18, 0.06 * drive, -0.7 * drive, 0);
     },
   },
 

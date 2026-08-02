@@ -1411,6 +1411,18 @@ export interface BurstOpts {
   life?: number;
   /** Emit into a pool parented to this object so particles inherit its motion. */
   parent?: THREE.Object3D;
+  /**
+   * Spawn on a circle of this radius around the point, rather than at it.
+   *
+   * Effects that wanted a ring of particles used to get one by calling `burst`
+   * once per point around the circle — sixty calls for a single nova, each
+   * emitting about one particle once the quality scale had been applied. That
+   * is the most overhead per particle the system can possibly produce. One call
+   * with a ring does the same picture.
+   */
+  ring?: number;
+  /** Random offset applied per particle, in metres. Fills a volume in one call. */
+  scatter?: number;
 }
 
 const _v = new THREE.Vector3();
@@ -1563,6 +1575,8 @@ export class FXSystem {
 
     const dir = opts?.dir;
     const rng = this.rng;
+    const ring = opts?.ring ?? 0;
+    const scatter = opts?.scatter ?? 0;
 
     for (let i = 0; i < n; i++) {
       // Direction: a cone around `dir` when supplied, otherwise a sphere with
@@ -1590,10 +1604,25 @@ export class FXSystem {
       const size0 = rng.range(layer.size[0], layer.size[1]) * sizeMul;
       const rad = layer.radius * sizeMul;
 
+      // Shape the spawn point: a ring puts this particle somewhere on a circle,
+      // scatter fills a ball. Both let one call cover an area that used to need
+      // one call per point.
+      let sx = 0;
+      let sz = 0;
+      if (ring > 0) {
+        const ra = rng.range(0, Math.PI * 2);
+        sx = Math.cos(ra) * ring;
+        sz = Math.sin(ra) * ring;
+      }
+      if (scatter > 0) {
+        sx += rng.range(-scatter, scatter);
+        sz += rng.range(-scatter, scatter);
+      }
+
       pool.spawn({
-        x: ox + rng.range(-rad, rad),
+        x: ox + sx + rng.range(-rad, rad),
         y: oy + rng.range(-rad, rad),
-        z: oz + rng.range(-rad, rad),
+        z: oz + sz + rng.range(-rad, rad),
         vx: dx * sp,
         vy: dy * sp,
         vz: dz * sp,
