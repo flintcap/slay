@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { DamagePacket, DamageType } from '../types';
+import type { DamagePacket, DamageType, StatusApplication } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { SKILLS } from '../data/skills';
@@ -9,6 +9,7 @@ import type { Player } from '../entities/Player';
 import type { Enemy, CombatContext } from '../entities/Enemy';
 import type { Boss } from '../entities/Boss';
 import { EffectSystem, ELEMENTS } from '../fx/Effects';
+import type { EffectHandle } from '../fx/Effects';
 import { getStatus, synthesizeSkillBuff } from '../data/statuses';
 import { getBase } from '../sim/Loot';
 import type { ItemCategory } from '../types';
@@ -302,6 +303,7 @@ export class SkillRunner {
     boss: Boss | null;
   } | null = null;
   private tmp2 = new THREE.Vector3();
+  private tmp3 = new THREE.Vector3();
 
   constructor(effects: EffectSystem) {
     this.effects = effects;
@@ -572,6 +574,196 @@ export class SkillRunner {
         break;
       }
 
+      // -- persistent ground ------------------------------------------------
+      // Fifteen skills across four classes describe leaving something burning,
+      // choking or freezing on the floor. None of them left anything: the
+      // family had no handler, so every one fired a plain bolt.
+      case 'ground':
+      case 'trap':
+      case 'ward': {
+        player.beginAction(clip, castTime);
+        const radius = num('radius', 3.2);
+        const duration = num('duration', 6);
+        const at = target.clone().setY(0);
+        this.addZone(
+          at.x, at.z, radius, duration,
+          num('tickRate', 0.5),
+          // Ticking damage is a fraction of the hit it would be as a burst, or
+          // standing in a field would out-damage every direct skill in the game.
+          (m = 1) => makePacket(m * num('tickScale', 0.28)),
+          type, color, sig.emitter,
+          this.statusFor(def, num, color),
+        );
+        this.effects.nova(at.x, at.z, radius, { element: type, color, emitter: sig.emitter, density: sig.density });
+        audio.play(`nova.${type}`);
+        break;
+      }
+
+      // -- summons ----------------------------------------------------------
+      // Nine skills summon. Nothing was ever summoned. A minion here is a
+      // guardian that holds its ground and fights: a real presence with a real
+      // lifetime, without a full pet AI it would have to path and follow.
+      case 'summon':
+      case 'minion': {
+        player.beginAction('point', castTime);
+        const count = Math.max(1, Math.floor(num('count', 1)));
+        const life = num('duration', 20);
+        const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel');
+        for (let i = 0; i < count; i++) {
+          const a = (i / count) * Math.PI * 2;
+          const spread = 1.2 + count * 0.25;
+          this.addTurret(
+            player.position.x + Math.cos(a) * spread,
+            player.position.z + Math.sin(a) * spread,
+            life,
+            num('attackRate', melee ? 1.1 : 1.6),
+            num('range', melee ? 2.6 : 11),
+            (m = 1) => makePacket(m * num('minionScale', 0.5)),
+            type, color, melee,
+          );
+        }
+        audio.play('summon');
+        break;
+      }
+
+      // -- curses and debuffs -----------------------------------------------
+      // Nine skills between them, and all nine only dealt damage. A curse that
+      // deals damage is not a curse.
+      case 'curse':
+      case 'debuff':
+      case 'apply': {
+        player.beginAction('point', castTime);
+        const radius = num('radius', family === 'apply' ? 0.9 : 4.5);
+        const at = target.clone().setY(0);
+        const applies = this.statusFor(def, num, color);
+        let touched = 0;
+        for (const t of this.allTargets(enemies, boss)) {
+          if (this.groundDistance(t.root.position, at) > radius + t.hitRadius) continue;
+          t.applyStatuses(applies, ctx);
+          this.effects.impact(type, t.root.position.x, 1.0, t.root.position.z, {
+            color, emitter: sig.emitter, density: sig.density * 0.6, decal: false, shake: 0, sfx: null,
+          });
+          touched++;
+        }
+        this.effects.nova(at.x, at.z, radius, {
+          element: type, color, emitter: sig.emitter, density: sig.density * 0.5, particles: touched > 0,
+        });
+        // A curse that names no status still has to do something, or ranking it
+        // is a wasted point.
+        if (applies.length === 0) this.areaDamage(at, radius, makePacket, ctx, enemies, boss);
+        audio.play('curse');
+        break;
+      }
+
+      // -- channelled tethers -------------------------------------------------
+      case 'channel': {
+        player.beginAction('channel', castTime * 1.6);
+        const range = num('range', 12);
+        const stop = this.firstHitAlong(origin, dir, range, enemies, boss, 0.5, ctx);
+        const end = origin.clone().addScaledVector(dir, stop);
+        this.effects.beam(origin, end, {
+          element: type, color, width: num('width', 0.5),
+          duration: num('duration', 0.5), endBurst: true,
+          emitter: sig.emitter, density: sig.density,
+        });
+        this.lineDamage(origin, dir, stop, num('width', 0.9), makePacket, ctx, enemies, boss);
+        audio.play(`beam.${type}`);
+        break;
+      }
+
+      // -- strike from above --------------------------------------------------
+      case 'sky': {
+        player.beginAction(clip, castTime);
+        const at = target.clone().setY(0);
+        const radius = num('radius', 2.6);
+        this.effects.meteor(at.x, at.z, {
+          radius, color, element: type, emitter: sig.emitter, density: sig.density,
+          onHit: (p) => this.areaDamage(p, radius, makePacket, ctx, enemies, boss),
+        });
+        audio.play(`cast.${type}`);
+        break;
+      }
+
+      // -- a line of broken ground --------------------------------------------
+      case 'wave': {
+        player.beginAction('slam', attackTime);
+        const range = num('range', 9);
+        const width = num('width', 2.2);
+        this.effects.cone(origin, dir, 0.22, range, {
+          element: type, color, emitter: sig.emitter, density: sig.density,
+        });
+        this.lineDamage(player.position, dir, range, width, makePacket, ctx, enemies, boss);
+        this.effects.slam(player.position.x, player.position.z, width * 0.8, {
+          element: type, color, windup: 0, emitter: sig.emitter, density: sig.density,
+        });
+        audio.play('nova.physical');
+        break;
+      }
+
+      // -- leaps and blinks ---------------------------------------------------
+      case 'leap': {
+        player.beginAction('dodge', 0.34);
+        const range = num('range', 7);
+        const stop = this.wallStop(player.position, dir, range, ctx, 0.5);
+        const land = player.position.clone().addScaledVector(dir, stop);
+        this.effects.teleportOut(player.position.x, 0.6, player.position.z, color);
+        player.position.set(land.x, 0, land.z);
+        this.effects.teleportIn(land.x, 0.6, land.z, color);
+        const radius = num('radius', 2.8);
+        this.effects.slam(land.x, land.z, radius, {
+          element: type, color, windup: 0, emitter: sig.emitter, density: sig.density,
+        });
+        this.areaDamage(land, radius, makePacket, ctx, enemies, boss);
+        audio.play('nova.physical');
+        break;
+      }
+
+      case 'teleport': {
+        player.beginAction('blink', 0.26);
+        const range = num('range', 9);
+        const stop = this.wallStop(player.position, dir, Math.min(range, dir.length() > 0 ? range : range), ctx, 0.5);
+        const want = target.clone().setY(0);
+        const reach = Math.min(stop, this.groundDistance(want, player.position));
+        const land = player.position.clone().addScaledVector(dir, reach);
+        this.effects.teleportOut(player.position.x, 0.9, player.position.z, color);
+        player.position.set(land.x, 0, land.z);
+        this.effects.teleportIn(land.x, 0.9, land.z, color);
+        // A strike teleport arrives swinging.
+        if ((def.effect ?? '').includes('strike') || (def.effect ?? '').includes('chain')) {
+          this.meleeSwing(player, dir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false);
+        }
+        audio.play('teleport');
+        break;
+      }
+
+      // -- detonations and corpse work ----------------------------------------
+      // These consume something already on the field: a stack of damage over
+      // time, or a body. Both land as a burst centred on what they consume.
+      case 'detonate':
+      case 'corpse':
+      case 'point':
+      case 'aoe':
+      case 'capstone': {
+        player.beginAction(clip, castTime);
+        const radius = num('radius', family === 'point' ? 1.2 : 4);
+        const at = family === 'aoe' || family === 'capstone' ? player.position.clone().setY(0) : target.clone().setY(0);
+        this.effects.explosion(at.x, 0.8, at.z, { radius, element: type, color });
+        this.effects.nova(at.x, at.z, radius, {
+          element: type, color, emitter: sig.emitter, density: sig.density,
+        });
+        this.areaDamage(at, radius, (m = 1) => makePacket(m * num('burstScale', 1)), ctx, enemies, boss);
+        // A capstone is the top of a tree; it leaves the ground burning too.
+        if (family === 'capstone') {
+          this.addZone(
+            at.x, at.z, radius, num('duration', 5), 0.5,
+            (m = 1) => makePacket(m * 0.3), type, color, sig.emitter,
+          );
+        }
+        this.applyBuff(player, def, rank, num, color);
+        audio.play(`impact.${type}`);
+        break;
+      }
+
       default: {
         // An unknown effect id falls back to a delivery the character can
         // actually perform, rather than always to a swing: falling back to
@@ -731,6 +923,29 @@ export class SkillRunner {
    * Most buff skills declare their duration in `params.duration`; anything
    * without one gets a sensible default rather than no feedback at all.
    */
+  /**
+   * The debuff a curse, field or trap lays on whatever it catches.
+   *
+   * Prefers a status the skill names outright. Failing that it synthesizes one
+   * under the skill's own id so the effect is real and the tooltip reads — a
+   * curse with no registered status used to be a curse that did nothing at all.
+   */
+  private statusFor(
+    def: { id: string; name: string; params?: Record<string, number | number[] | string> },
+    num: (k: string, d: number) => number,
+    color: number,
+  ): StatusApplication[] {
+    const duration = num('duration', 8);
+    const magnitude = num('amp', num('magnitude', num('slow', 1)));
+    const named = typeof def.params?.statusId === 'string' ? (def.params.statusId as string) : null;
+    if (named && getStatus(named)) {
+      return [{ id: named, duration, magnitude, stacks: 1 }];
+    }
+    const id = `skill.${def.id}`;
+    if (!getStatus(id)) synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);
+    return [{ id, duration, magnitude, stacks: 1 }];
+  }
+
   private applyBuff(
     player: Player,
     def: { id: string; name: string; params?: Record<string, number | number[]> },
@@ -982,8 +1197,174 @@ export class SkillRunner {
     }
   }
 
-  /** Kept for symmetry with scene lifecycles; EffectSystem owns live effects. */
-  update(_dt: number): void {}
+  // -- persistent effects ---------------------------------------------------
 
-  dispose(): void {}
+  /**
+   * Ground zones and summons, ticked by the scene.
+   *
+   * Sixteen effect families had no handler at all and fell through to a plain
+   * bolt, so a wall of flame left nothing on the floor and a raised skeleton
+   * fought nothing. Both need something that outlives the cast, which is what
+   * these two lists are: a patch of ground that hurts what stands in it, and a
+   * thing that shoots on its own.
+   */
+  private zones: Array<{
+    x: number;
+    z: number;
+    radius: number;
+    left: number;
+    tick: number;
+    accum: number;
+    packet: (m?: number) => DamagePacket;
+    type: DamageType;
+    color: number;
+    emitter: string;
+    /** Applied to anything caught in it, for slows, fear and the like. */
+    applies?: StatusApplication[];
+    fx: EffectHandle | null;
+  }> = [];
+
+  private turrets: Array<{
+    x: number;
+    z: number;
+    left: number;
+    cd: number;
+    accum: number;
+    range: number;
+    packet: (m?: number) => DamagePacket;
+    type: DamageType;
+    color: number;
+    /** Melee guardians swing instead of shooting. */
+    melee: boolean;
+    fx: EffectHandle | null;
+  }> = [];
+
+  /** Context for the tick. Set every frame by the scene. */
+  private tickCtx: {
+    ctx: CombatContext;
+    enemies: Enemy[];
+    boss: Boss | null;
+  } | null = null;
+
+  /** Handed the live combat state so persistent effects can act on it. */
+  setContext(ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
+    this.tickCtx = { ctx, enemies, boss };
+  }
+
+  update(dt: number): void {
+    const live = this.tickCtx;
+    if (!live) return;
+    const { ctx, enemies, boss } = live;
+
+    for (let i = this.zones.length - 1; i >= 0; i--) {
+      const z = this.zones[i]!;
+      z.left -= dt;
+      z.accum += dt;
+      if (z.accum >= z.tick) {
+        z.accum = 0;
+        const centre = this.tmp3.set(z.x, 0, z.z);
+        this.areaDamage(centre, z.radius, z.packet, ctx, enemies, boss);
+        if (z.applies?.length) {
+          for (const t of this.allTargets(enemies, boss)) {
+            if (this.groundDistance(t.root.position, centre) > z.radius + t.hitRadius) continue;
+            t.applyStatuses(z.applies, ctx);
+          }
+        }
+      }
+      if (z.left <= 0) {
+        z.fx?.stop();
+        this.zones.splice(i, 1);
+      }
+    }
+
+    for (let i = this.turrets.length - 1; i >= 0; i--) {
+      const t = this.turrets[i]!;
+      t.left -= dt;
+      t.accum += dt;
+      if (t.accum >= t.cd) {
+        t.accum = 0;
+        const from = this.tmp3.set(t.x, t.melee ? 1.0 : 1.2, t.z);
+        let best: Target | null = null;
+        let bestD = Infinity;
+        for (const e of this.allTargets(enemies, boss)) {
+          const d = this.groundDistance(e.root.position, from);
+          if (d < bestD && d <= t.range) {
+            bestD = d;
+            best = e;
+          }
+        }
+        if (best) {
+          const to = best.root.position.clone().setY(1.0);
+          if (t.melee) {
+            best.takeDamage(t.packet(), ctx);
+            this.effects.impact(t.type, to.x, to.y, to.z, { color: t.color, scale: 0.7, shake: 0 });
+          } else {
+            this.effects.projectile(from.clone(), to, {
+              element: t.type,
+              color: t.color,
+              speed: 26,
+              size: 0.18,
+              onHit: (p) => this.pointDamage(p, 0.9, t.packet, ctx, enemies, boss),
+            });
+          }
+        }
+      }
+      if (t.left <= 0) {
+        t.fx?.stop();
+        this.turrets.splice(i, 1);
+      }
+    }
+  }
+
+  /** Leaves a patch of ground that keeps hurting whatever stands in it. */
+  private addZone(
+    x: number,
+    z: number,
+    radius: number,
+    duration: number,
+    tick: number,
+    packet: (m?: number) => DamagePacket,
+    type: DamageType,
+    color: number,
+    emitter: string,
+    applies?: StatusApplication[],
+  ): void {
+    // A cap, because a build that stacks ten fields should cost frames, not
+    // the whole run.
+    if (this.zones.length >= 12) {
+      this.zones[0]!.fx?.stop();
+      this.zones.shift();
+    }
+    const fx = this.effects.summonCircle(x, z, radius, duration, color);
+    this.zones.push({ x, z, radius, left: duration, tick, accum: tick, packet, type, color, emitter, applies, fx });
+  }
+
+  /** Leaves something standing that fights for you until its time runs out. */
+  private addTurret(
+    x: number,
+    z: number,
+    duration: number,
+    cd: number,
+    range: number,
+    packet: (m?: number) => DamagePacket,
+    type: DamageType,
+    color: number,
+    melee: boolean,
+  ): void {
+    if (this.turrets.length >= 8) {
+      this.turrets[0]!.fx?.stop();
+      this.turrets.shift();
+    }
+    const fx = this.effects.summonCircle(x, z, melee ? 0.7 : 0.55, duration, color);
+    this.effects.teleportIn(x, 0.1, z, color);
+    this.turrets.push({ x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx });
+  }
+
+  dispose(): void {
+    for (const z of this.zones) z.fx?.stop();
+    for (const t of this.turrets) t.fx?.stop();
+    this.zones.length = 0;
+    this.turrets.length = 0;
+    this.tickCtx = null;
+  }
 }

@@ -32,6 +32,10 @@ const HANDLED = new Set([
   'melee', 'cleave', 'whirlwind', 'projectile', 'bolt', 'nova', 'slam',
   'meteor', 'beam', 'cone', 'chain', 'dash', 'heal',
   'buff', 'aura', 'stance', 'shout', 'banner', 'self', 'absorb',
+  // Added when the sixteen unimplemented families were written.
+  'ground', 'trap', 'ward', 'summon', 'minion', 'curse', 'debuff', 'apply',
+  'channel', 'sky', 'wave', 'leap', 'teleport', 'detonate', 'corpse',
+  'point', 'aoe', 'capstone',
 ]);
 
 rmSync(OUT, { recursive: true, force: true });
