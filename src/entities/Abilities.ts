@@ -34,7 +34,20 @@ import type { Enemy } from './Enemy';
 
 /** What entities need to see the world. Provided by DungeonScene. */
 export interface CombatContext {
+  /**
+   * Where the acting monster's blow should land.
+   *
+   * Nearly always the player, and every ability may keep treating it that way.
+   * While a monster that has chosen to fight one of your summons is updating,
+   * the scene points this at that summon instead, which is what makes cones,
+   * arrows and telegraphs land on the skeleton the monster walked over to hit.
+   *
+   * Anything that means the player *specifically* — perception, waking, the
+   * decision of what to fight — must read `heroPos`.
+   */
   playerPos: THREE.Vector3;
+  /** The player, always, whoever the acting monster is currently swinging at. */
+  heroPos?: THREE.Vector3;
   playerStats: Stats;
   playerLevel: number;
   damagePlayer(packet: DamagePacket): void;
@@ -65,6 +78,26 @@ export interface CombatContext {
    * abilities read everything else.
    */
   auraRadiusBonus?: number;
+  /**
+   * The player's summoned allies, as things a monster can decide to fight.
+   *
+   * Without this a skeleton is scenery: monsters walked straight past the pack
+   * to reach you, because the only position any brain ever looked at was
+   * `playerPos`. A summon that cannot hold a line is not a summon.
+   */
+  minions?: ReadonlyArray<MinionTarget>;
+  /** Hits one summoned ally by id. False if it was already gone. */
+  damageMinion?(id: number, amount: number): boolean;
+}
+
+/** One summoned ally, seen from the outside. */
+export interface MinionTarget {
+  /** Stable for the life of the body. */
+  id: number;
+  x: number;
+  z: number;
+  /** Taunting minions pull attention well past the nearest-target rule. */
+  taunt: boolean;
 }
 
 /**

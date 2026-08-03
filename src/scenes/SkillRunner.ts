@@ -7,6 +7,7 @@ import { rollDamage } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 import type { Player } from '../entities/Player';
 import type { Enemy, CombatContext } from '../entities/Enemy';
+import type { MinionTarget } from '../entities/Abilities';
 import type { Boss } from '../entities/Boss';
 import { EffectSystem, ELEMENTS } from '../fx/Effects';
 import type { EffectHandle } from '../fx/Effects';
@@ -874,6 +875,9 @@ export class SkillRunner {
             // A share of your own pool, which is how the skill descriptions
             // read it — "40% of your life" and so on.
             Math.max(20, player.stats.life * (num('lifePct', 40) / 100) * (1 + mp.minionLifePct / 100)),
+            // Sentinels and clones are written to pull aggro; the rest hold a
+            // line only by standing in the way.
+            num('taunts', num('taunt', 0)) > 0,
           );
         }
         audio.play('summon');
@@ -1821,6 +1825,8 @@ export class SkillRunner {
     gait: number;
     action: RigAction;
     actionT: number;
+    /** Pulls monsters off you well past the nearest-target rule. */
+    taunt: boolean;
   }> = [];
 
   /** Wall clock for the tick, so rigs breathe and bob. */
@@ -1913,6 +1919,37 @@ export class SkillRunner {
         t.life = 0;
       }
     }
+  }
+
+  /**
+   * The pack as something monsters can decide to fight.
+   *
+   * Summons were invisible to enemy AI: every brain only ever looked at
+   * `playerPos`, so a wall of skeletons was scenery that monsters jogged
+   * around on their way to you. This is what makes them a line.
+   */
+  minionTargets(): MinionTarget[] {
+    const out: MinionTarget[] = [];
+    for (const t of this.turrets) {
+      if (!t.body || t.maxLife <= 0 || t.life <= 0 || t.left <= 0) continue;
+      out.push({ id: t.index, x: t.body.position.x, z: t.body.position.z, taunt: t.taunt });
+    }
+    return out;
+  }
+
+  /** Hits one minion by id. False if it was already gone. */
+  damageMinion(id: number, amount: number): boolean {
+    const t = this.turrets.find((q) => q.index === id);
+    if (!t || !t.body || t.maxLife <= 0 || t.life <= 0) return false;
+    t.life -= amount;
+    this.effects.impact('physical', t.body.position.x, 1.0, t.body.position.z, {
+      color: 0xc85a4a, scale: 0.6, shake: 0,
+    });
+    if (t.life <= 0) {
+      t.life = 0;
+      t.left = Math.min(t.left, 0.55);
+    }
+    return true;
   }
 
   /** Handed the live combat state so persistent effects can act on it. */
@@ -2128,6 +2165,8 @@ export class SkillRunner {
     skillId?: string,
     /** How much punishment the body can take before it falls apart. */
     minionLife = 0,
+    /** Whether this one actively pulls monsters off you. */
+    taunt = false,
   ): void {
     // A backstop only. Per-skill caps do the real work; this stops a runaway
     // from ever building an unbounded list.
@@ -2165,6 +2204,7 @@ export class SkillRunner {
       x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx,
       body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 1,
       index: this.summonSerial++, skillId: skillId ?? '', life: minionLife, maxLife: minionLife,
+      taunt,
     });
   }
 

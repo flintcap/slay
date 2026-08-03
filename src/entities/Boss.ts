@@ -126,6 +126,9 @@ export class Boss extends Enemy {
 
     // Bosses ignore the pack systems entirely — they are their own encounter.
     this.packId = -1;
+    // And they come for you, not for your skeletons. Ordinary monsters can be
+    // held by a summoned line; a boss encounter is built around the player.
+    if (this.ai) this.ai.fixateOnPlayer = true;
     // Immune to the soft CC that trivialises large targets.
     this.buff('boss_stability', Number.MAX_SAFE_INTEGER, {});
   }

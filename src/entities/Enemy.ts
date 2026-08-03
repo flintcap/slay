@@ -469,6 +469,16 @@ export class Enemy implements Combatant {
     this.ai?.wake(ctx, false);
   }
 
+  /**
+   * The summoned ally this monster is fighting instead of you, if any.
+   *
+   * The scene reads this while the monster is acting, so a blow aimed at "the
+   * player" lands on the thing it actually walked over to hit.
+   */
+  get aggroMinion(): number | null {
+    return this.ai?.aggroMinion ?? null;
+  }
+
   onAmbushSprung(ctx: CombatContext): void {
     ctx.fx.burst('dust', this.root.position.x, 0.4, this.root.position.z, { count: 16 });
     events.emit('sfx', { id: 'ambush', x: this.root.position.x, z: this.root.position.z });
@@ -490,6 +500,8 @@ export class Enemy implements Combatant {
     if (this.inst || !this.alive || this.rootTimer > 0) return false;
     const inst = makeInstance(def);
     inst.phase = 'windup';
+    // `playerPos` is the victim position: the scene points it at a summon when
+    // this monster has decided to fight one, so this aims itself.
     inst.targetX = ctx.playerPos.x;
     inst.targetZ = ctx.playerPos.z;
     inst.facing = angleTo(this.root.position.x, this.root.position.z, ctx.playerPos.x, ctx.playerPos.z);

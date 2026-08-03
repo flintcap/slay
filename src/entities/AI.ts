@@ -37,8 +37,37 @@ export type AIMode =
   | 'hidden';
 
 const TAU = Math.PI * 2;
+
+/**
+ * The player, whoever the acting monster is currently swinging at.
+ *
+ * `ctx.playerPos` is the *victim* position: the scene points it at a summon
+ * while a monster that chose to fight that summon is updating. Perception,
+ * waking and the choice of what to fight all mean the player specifically, so
+ * they go through here instead.
+ */
+function hero(ctx: CombatContext): THREE.Vector3 {
+  return ctx.heroPos ?? ctx.playerPos;
+}
+
 /** How close a monster must be to notice a Veiled player. Arm's length. */
 const HIDDEN_NOTICE = 1.8;
+
+/** How far a monster will look for a summon worth fighting. */
+const MINION_NOTICE = 13;
+/**
+ * How much nearer than the player a summon must be before a monster switches
+ * to it. Small, because a body in the way should be fought, not walked round.
+ */
+const MINION_SWITCH_MARGIN = 1.5;
+/**
+ * Once engaged, how much further the summon may be than the player before the
+ * monster gives up on it. Wider than the switch margin so a fight does not
+ * flicker between two targets at the boundary.
+ */
+const MINION_KEEP_MARGIN = 5;
+/** A taunting summon counts as this fraction of its real distance. */
+const TAUNT_PULL = 0.3;
 
 // ---------------------------------------------------------------------------
 // Role profiles — the whole personality of a monster in one table row
@@ -229,6 +258,33 @@ export class AIBrain {
   private hesitate = 0;
   private regroupTimer = 0;
 
+  /**
+   * What this monster is currently fighting.
+   *
+   * Everything positional reads this rather than `ctx.playerPos`. Normally it
+   * *is* the player, but a summon standing in the way takes it over, which is
+   * the whole difference between a pack that holds a line and a pack that gets
+   * jogged past.
+   *
+   * Perception deliberately stays on the player: a skeleton should not wake a
+   * sleeping room. Monsters still notice a minion the moment it hits them,
+   * through the ordinary damage path.
+   */
+  private readonly anchor = new THREE.Vector3();
+  private anchorId: number | null = null;
+
+  /**
+   * Set on bosses. A boss fight is a set piece built around the player, and a
+   * boss that walks off to swing at a skeleton stops being one.
+   */
+  fixateOnPlayer = false;
+
+  /** The summoned ally this monster has decided to fight, if any. */
+  get aggroMinion(): number | null {
+    return this.anchorId;
+  }
+
+
   constructor(
     private readonly self: Enemy,
     private readonly def: MonsterDef,
@@ -254,7 +310,7 @@ export class AIBrain {
     this.losAge = 0;
     const p = this.self.root.position;
     try {
-      this.losCache = ctx.nav.lineOfSight(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+      this.losCache = ctx.nav.lineOfSight(p.x, p.z, this.anchor.x, this.anchor.z);
     } catch {
       this.losCache = true;
     }
@@ -273,12 +329,12 @@ export class AIBrain {
    */
   private perceives(ctx: CombatContext): boolean {
     const p = this.self.root.position;
-    const d = dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+    const d = dist(p.x, p.z, hero(ctx).x, hero(ctx).z);
     if (ctx.playerHidden) return d <= HIDDEN_NOTICE;
     if (d > this.profile.sight) return d <= this.profile.hearing;
     if (d <= this.profile.hearing) return true;
     if (!this.lineOfSight(ctx)) return false;
-    const a = angleTo(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+    const a = angleTo(p.x, p.z, hero(ctx).x, hero(ctx).z);
     return Math.abs(angleDelta(this.self.facing, a)) <= (this.profile.fov * Math.PI) / 180;
   }
 
@@ -307,7 +363,7 @@ export class AIBrain {
     } else if (this.mode === 'hidden') {
       // Ambushers stay hidden until you are genuinely close.
       const p = this.self.root.position;
-      if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) < this.profile.ambushRange * 1.6) {
+      if (dist(p.x, p.z, hero(ctx).x, hero(ctx).z) < this.profile.ambushRange * 1.6) {
         this.mode = 'approach';
       }
     }
@@ -333,11 +389,57 @@ export class AIBrain {
     }
   }
 
+  /**
+   * Decides what this monster is fighting: you, or one of your summons.
+   *
+   * Nearest wins, with taunting summons weighted heavily toward themselves. The
+   * two margins give the decision hysteresis, so a monster caught between a
+   * skeleton and you commits to one instead of stuttering between them.
+   */
+  private pickAnchor(ctx: CombatContext): void {
+    this.anchor.copy(hero(ctx));
+    const list = ctx.minions;
+    if (this.fixateOnPlayer || !list?.length) {
+      this.anchorId = null;
+      return;
+    }
+    const p = this.self.root.position;
+    const toPlayer = dist(p.x, p.z, hero(ctx).x, hero(ctx).z);
+
+    let best: (typeof list)[number] | null = null;
+    let bestScore = Infinity;
+    let bestReal = Infinity;
+    for (const m of list) {
+      const real = dist(p.x, p.z, m.x, m.z);
+      if (real > MINION_NOTICE) continue;
+      const score = m.taunt ? real * TAUNT_PULL : real;
+      if (score < bestScore) {
+        bestScore = score;
+        bestReal = real;
+        best = m;
+      }
+    }
+    if (!best) {
+      this.anchorId = null;
+      return;
+    }
+    // Already committed to this one? Hold on to it for longer.
+    const holding = this.anchorId === best.id;
+    const margin = holding ? MINION_KEEP_MARGIN : MINION_SWITCH_MARGIN;
+    if (best.taunt || bestReal <= toPlayer + margin) {
+      this.anchor.set(best.x, 0, best.z);
+      this.anchorId = best.id;
+    } else {
+      this.anchorId = null;
+    }
+  }
+
   private think(ctx: CombatContext): void {
     const self = this.self;
     const p = self.root.position;
-    const d = dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+    let d = dist(p.x, p.z, hero(ctx).x, hero(ctx).z);
     this.lastDistance = d;
+    this.anchor.copy(hero(ctx));
 
     // --- wake checks -------------------------------------------------------
     if (this.mode === 'dormant') {
@@ -347,6 +449,13 @@ export class AIBrain {
       }
       if (this.mode === 'dormant') return;
     }
+
+    // Awake: from here on, everything positional aims at whatever this monster
+    // has decided to fight, which may be a summon rather than you. Waking above
+    // stayed on the player deliberately.
+    this.pickAnchor(ctx);
+    if (this.anchorId !== null) d = dist(p.x, p.z, this.anchor.x, this.anchor.z);
+
     if (this.mode === 'hidden') {
       if (d <= this.profile.ambushRange) {
         this.mode = 'approach';
@@ -361,7 +470,8 @@ export class AIBrain {
     // Veil applies to a monster already hunting you, not only a sleeping one.
     // Gating perception alone would have left everything that had already
     // noticed you walking straight at your back.
-    if (ctx.playerHidden && d > HIDDEN_NOTICE) {
+    // A summon it is already fighting is not hidden by your Veil.
+    if (ctx.playerHidden && this.anchorId === null && d > HIDDEN_NOTICE) {
       this.computeSeparation(ctx);
       this.desired.copy(p);
       return;
@@ -422,8 +532,8 @@ export class AIBrain {
     this.claimSlot(ctx);
     const ring = Math.max(0.6, standoff);
     const a = this.slot + this.strafeDir * this.profile.strafe * 0.35;
-    let tx = ctx.playerPos.x + Math.sin(a) * ring;
-    let tz = ctx.playerPos.z + Math.cos(a) * ring;
+    let tx = this.anchor.x + Math.sin(a) * ring;
+    let tz = this.anchor.z + Math.cos(a) * ring;
     if (this.profile.hidesBehindLine) {
       const behind = this.behindLineOffset(ctx);
       tx += behind.x;
@@ -447,8 +557,8 @@ export class AIBrain {
     const p = this.self.root.position;
     this.claimSlot(ctx);
     const ring = Math.max(0.5, standoff);
-    const gx = ctx.playerPos.x + Math.sin(this.slot) * ring;
-    const gz = ctx.playerPos.z + Math.cos(this.slot) * ring;
+    const gx = this.anchor.x + Math.sin(this.slot) * ring;
+    const gz = this.anchor.z + Math.cos(this.slot) * ring;
 
     if (this.lineOfSight(ctx)) {
       this.path.length = 0;
@@ -456,10 +566,10 @@ export class AIBrain {
       return;
     }
     // No line of sight — path around the geometry, refreshing sparingly.
-    const moved = dist2(this.pathTarget.x, this.pathTarget.y, ctx.playerPos.x, ctx.playerPos.z) > 9;
+    const moved = dist2(this.pathTarget.x, this.pathTarget.y, this.anchor.x, this.anchor.z) > 9;
     if (this.pathAge > 1.1 || moved || this.path.length === 0) {
       this.pathAge = 0;
-      this.pathTarget.set(ctx.playerPos.x, ctx.playerPos.z);
+      this.pathTarget.set(this.anchor.x, this.anchor.z);
       try {
         this.path = ctx.nav.path({ x: p.x, y: p.z }, { x: gx, y: gz }) ?? [];
       } catch {
@@ -474,13 +584,13 @@ export class AIBrain {
 
   private setRetreatTarget(ctx: CombatContext, range: number): void {
     const p = this.self.root.position;
-    const away = angleTo(ctx.playerPos.x, ctx.playerPos.z, p.x, p.z);
+    const away = angleTo(this.anchor.x, this.anchor.z, p.x, p.z);
     // Try a small fan of escape headings and take the first walkable one — stops
     // kiters from backing themselves into a wall and standing there.
     for (const spread of [0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6]) {
       const a = away + spread;
-      const tx = ctx.playerPos.x + Math.sin(a) * range;
-      const tz = ctx.playerPos.z + Math.cos(a) * range;
+      const tx = this.anchor.x + Math.sin(a) * range;
+      const tz = this.anchor.z + Math.cos(a) * range;
       let ok = true;
       try {
         ok = ctx.nav.lineOfSight(p.x, p.z, tx, tz);
@@ -506,7 +616,7 @@ export class AIBrain {
     }
     this.slotLocked = 6;
     const p = this.self.root.position;
-    const mine = angleTo(ctx.playerPos.x, ctx.playerPos.z, p.x, p.z);
+    const mine = angleTo(hero(ctx).x, hero(ctx).z, p.x, p.z);
     const SLOTS = 10;
     let best = mine;
     let bestScore = -Infinity;
@@ -518,7 +628,7 @@ export class AIBrain {
       for (const e of ctx.enemies) {
         if (e === this.self || !e.alive || e.ai?.isDormant) continue;
         const q = e.root.position;
-        const ea = angleTo(ctx.playerPos.x, ctx.playerPos.z, q.x, q.z);
+        const ea = angleTo(hero(ctx).x, hero(ctx).z, q.x, q.z);
         const delta = Math.abs(angleDelta(ea, a));
         if (delta < 0.55) score -= (0.55 - delta) * 6;
       }
@@ -549,7 +659,7 @@ export class AIBrain {
     }
     if (bestD === Infinity) return { x: 0, z: 0 };
     // Push away from the player along the line through the front-liner.
-    const a = angleTo(ctx.playerPos.x, ctx.playerPos.z, shieldX, shieldZ);
+    const a = angleTo(hero(ctx).x, hero(ctx).z, shieldX, shieldZ);
     return { x: Math.sin(a) * 1.6, z: Math.cos(a) * 1.6 };
   }
 
@@ -591,9 +701,9 @@ export class AIBrain {
       sx += (dx / d) * push;
       sz += (dz / d) * push;
     }
-    // Also avoid standing on top of the player.
-    const pdx = p.x - ctx.playerPos.x;
-    const pdz = p.z - ctx.playerPos.z;
+    // Also avoid standing on top of whatever it is fighting.
+    const pdx = p.x - this.anchor.x;
+    const pdz = p.z - this.anchor.z;
     const pd = Math.hypot(pdx, pdz);
     const minPd = myR + 0.55;
     if (pd < minPd && pd > 1e-4) {
@@ -720,7 +830,9 @@ export class AIBrain {
       const dz = this.desired.z - p.z;
       if (dx * dx + dz * dz > 0.04 && this.mode !== 'kite') return Math.atan2(dx, dz);
     }
-    _tmpA.copy(ctx.playerPos);
+    // The anchor is only trustworthy once this brain has thought at least once;
+    // before that it is still zeroed, so fall back to the player.
+    _tmpA.copy(this.anchorId !== null ? this.anchor : hero(ctx));
     return angleTo(p.x, p.z, _tmpA.x, _tmpA.z);
   }
 

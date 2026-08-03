@@ -720,13 +720,36 @@ export class DungeonScene extends GameScene {
   private ctxCache: CombatContext | null = null;
   /** Overkill from the corpse currently being reaped. */
   private lastOverkill = 0;
+  /**
+   * The monster whose `update` is running right now.
+   *
+   * Every enemy attack funnels through one `damagePlayer` callback, which has
+   * no idea who swung. Holding the acting monster here is what lets a blow
+   * aimed at a skeleton land on the skeleton.
+   */
+  private acting: Enemy | null = null;
+  /**
+   * The position monster abilities aim at, handed out as `ctx.playerPos`.
+   *
+   * Abilities read that field in seventy-odd places to mean "where the target
+   * is". Pointing it at a summon for the duration of one monster's update is
+   * what makes every cone, arrow and telegraph land on the thing that monster
+   * walked over to hit, without touching any of them. `ctx.heroPos` stays on
+   * the player for everything that means the player specifically.
+   */
+  private readonly aimPos = new THREE.Vector3();
 
   private context(): CombatContext {
     return {
-      playerPos: this.player.position,
+      playerPos: this.aimPos.copy(this.player.position),
+      heroPos: this.player.position,
       playerStats: this.player.stats,
       playerLevel: this.player.character.level,
       damagePlayer: (packet: DamagePacket) => {
+        // Swung at a summon, not at you. The whole point of a wall of skeletons
+        // is that the blows land on the skeletons.
+        const onMinion = this.acting?.aggroMinion ?? null;
+        if (onMinion !== null && this.skills.damageMinion(onMinion, packet.amount)) return;
         // Anything aimed at you also chews on whatever is standing beside you.
         // A pack that cannot be killed is a pack with no decisions in it.
         this.skills.damageMinionsNear(
@@ -766,6 +789,9 @@ export class DungeonScene extends GameScene {
       blockers: this.mesh?.colliders,
       playerHidden: this.player.statuses.some((s) => s.id === 'veiled'),
       auraRadiusBonus: this.player.passives.auraRadiusM,
+      // What the monsters can choose to fight instead of you.
+      minions: this.skills.minionTargets(),
+      damageMinion: (id: number, amount: number) => this.skills.damageMinion(id, amount),
     };
   }
 
@@ -807,8 +833,16 @@ export class DungeonScene extends GameScene {
       // Far away: leave it in the world and visible (frustum culling already
       // handles the draw cost), just stop simulating it.
       if (dx * dx + dz * dz > LEASH2) continue;
+      // Point everything this monster aims at whatever it decided to fight.
+      this.acting = e;
+      const onMinion = e.aggroMinion;
+      const m = onMinion === null ? undefined : ctx.minions?.find((q) => q.id === onMinion);
+      if (m) this.aimPos.set(m.x, 0, m.z);
+      else this.aimPos.copy(this.player.position);
       e.update(dt, ctx);
     }
+    this.acting = null;
+    this.aimPos.copy(this.player.position);
 
     this.boss?.update(dt, ctx);
 
