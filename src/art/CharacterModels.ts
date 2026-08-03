@@ -1178,7 +1178,16 @@ const SOCKETS: Record<string, Socket> = {
  * thin on Z, so these rotations are just "point the tip there, turn the flat
  * that way".
  */
-export type WeaponGrip = 'sword' | 'dagger' | 'twoHand' | 'staff' | 'bow' | 'none';
+export type WeaponGrip =
+  | 'sword'
+  | 'axe'
+  | 'mace'
+  | 'wand'
+  | 'dagger'
+  | 'twoHand'
+  | 'staff'
+  | 'bow'
+  | 'none';
 
 interface Grip {
   rot: [number, number, number];
@@ -1199,10 +1208,18 @@ interface Grip {
  * that lands the tip where it belongs.
  */
 const GRIPS: Record<WeaponGrip, Grip> = {
-  // Shouldered, not shouldered arms. Bolt upright read as a rifle at attention;
-  // a carried sword leans back over the shoulder and out from the body, about
-  // forty degrees off vertical, flat to the camera so it reads as a blade.
-  sword: { rot: [-0.213, -0.563, 0.711], pos: [0, -0.03, 0.02], bothHands: false },
+  // Shouldered, leaning *outward*. Two things were wrong before: bolt upright
+  // read as a rifle at attention, and tilting it backward ran the blade through
+  // the shoulder and past the ear. A carried weapon leans away from its owner.
+  sword: { rot: [0.391, 0.147, 1.03], pos: [0, -0.03, 0.02], bothHands: false },
+  // Head-heavy, so it rides higher and closer in than a sword: the weight is
+  // what you brace against the shoulder, not the haft.
+  axe: { rot: [1.31, -0.493, 1.072], pos: [0, -0.03, 0.02], bothHands: false },
+  // Blunt weapons rest on the shoulder outright, near vertical.
+  mace: { rot: [0.423, 0.06, 0.796], pos: [0, -0.03, 0.02], bothHands: false },
+  // A wand is a baton, not a blade. Held low at the side, pointing out ahead —
+  // shouldering it like a sword made every caster look like a swordsman.
+  wand: { rot: [-0.965, 0.007, 2.969], pos: [0, -0.03, 0.02], bothHands: false },
   // Straight down, reverse grip, barely canted. A knife rides point-down.
   dagger: { rot: [0.016, -0.199, -2.939], pos: [0, -0.04, 0.02], bothHands: false },
   // Up and across the body to the off side, both hands on the haft.
@@ -1226,12 +1243,14 @@ export function weaponGrip(category: string | undefined, twoHanded: boolean): We
     case 'spear':
       return 'staff';
     case 'sword':
-    case 'axe':
-    case 'mace':
       return twoHanded ? 'twoHand' : 'sword';
+    case 'axe':
+      return twoHanded ? 'twoHand' : 'axe';
+    case 'mace':
+      return twoHanded ? 'twoHand' : 'mace';
     case 'wand':
     case 'scepter':
-      return 'sword';
+      return 'wand';
     default:
       return 'none';
   }

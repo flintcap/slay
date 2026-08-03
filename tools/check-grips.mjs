@@ -35,7 +35,7 @@ const { rows, covered, swings } = JSON.parse(lines[lines.length - 1]);
 
 const pad = (s, n) => String(s).padEnd(n);
 console.log(
-  `${pad('base', 17)} ${pad('grip', 9)} ${pad('hand', 16)} ${pad('points', 14)} ${pad('hands', 16)} ${pad('gap', 7)} upright`,
+  `${pad('base', 17)} ${pad('grip', 9)} ${pad('hand', 16)} ${pad('points', 14)} ${pad('hands', 16)} ${pad('gap', 7)} ${pad('upright', 8)} lean`,
 );
 for (const r of rows) {
   const hand = `${r.hand}${r.hand === r.want.hand ? '' : ` (want ${r.want.hand})`}`;
@@ -44,7 +44,7 @@ for (const r of rows) {
     r.bothHands === r.want.both ? '' : ` (want ${r.want.both ? 'both' : 'one'})`
   }`;
   console.log(
-    `${pad(r.base, 17)} ${pad(r.grip, 9)} ${pad(hand, 16)} ${pad(pts, 14)} ${pad(hands, 16)} ${pad(r.handGap, 7)} ${r.upright}${
+    `${pad(r.base, 17)} ${pad(r.grip, 9)} ${pad(hand, 16)} ${pad(pts, 14)} ${pad(hands, 16)} ${pad(r.handGap, 7)} ${pad(r.upright, 8)} ${r.lean}${
       r.ok ? '' : '   <-- WRONG'
     }`,
   );

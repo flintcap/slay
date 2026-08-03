@@ -35,6 +35,8 @@ interface Row {
   points: 'up' | 'down';
   /** How vertical it is: 1 straight up or down, 0 flat across. */
   upright: number;
+  /** Positive leans away from the body, negative leans into the shoulder. */
+  lean: number;
   handGap: number;
   bothHands: boolean;
 }
@@ -65,6 +67,7 @@ function measure(baseId: string): Row | null {
   let hand = '(none)';
   let points: 'up' | 'down' = 'down';
   let upright = 0;
+  let lean = 0;
   for (const name of ['handR', 'handL']) {
     const bone = bones[name];
     if (!bone) continue;
@@ -80,6 +83,11 @@ function measure(baseId: string): Row | null {
       // How vertical it is. A one-handed sword at 1.0 is standing to attention
       // rather than being carried, which is what "too upright" meant.
       upright = +Math.abs(tip.y).toFixed(2);
+      // Which way it leans, along the axis that runs through the shoulders.
+      // The character faces +Z with +X to their left, so on the right hand a
+      // negative X leans away from the body and a positive one leans into it —
+      // the difference between carrying a sword and wearing it through the ear.
+      lean = +(name === 'handR' ? -tip.x : tip.x).toFixed(2);
     }
   }
   const l = new THREE.Vector3();
@@ -97,13 +105,35 @@ function measure(baseId: string): Row | null {
     hand,
     points,
     upright,
+    lean,
     handGap,
     bothHands: handGap < BOTH_HANDS_GAP,
   };
 }
 
-const WANTED: Array<{ base: string; hand: string; points: string; both: boolean }> = [
-  { base: 'sword.short', hand: 'handR', points: 'up', both: false },
+/**
+ * `carried` marks the one-handed weapons held up beside the body. Those have
+ * two extra rules, both from things that were wrong and reported:
+ *
+ *  - they must lean *away* from the body, not back through the shoulder;
+ *  - they must not stand bolt upright, which reads as a rifle at attention.
+ */
+interface Want {
+  base: string;
+  hand: string;
+  points: string;
+  both: boolean;
+  carried?: boolean;
+}
+
+/** A carried weapon has to lean out at least this much. */
+const MIN_LEAN = 0.25;
+/** And be no more vertical than this. */
+const MAX_UPRIGHT = 0.88;
+
+const WANTED: Want[] = [
+  { base: 'sword.short', hand: 'handR', points: 'up', both: false, carried: true },
+  { base: 'sword.gladius', hand: 'handR', points: 'up', both: false, carried: true },
   { base: 'sword.great', hand: 'handR', points: 'up', both: true },
   { base: 'dagger.dirk', hand: 'handR', points: 'down', both: false },
   { base: 'dagger.stiletto', hand: 'handR', points: 'down', both: false },
@@ -111,21 +141,30 @@ const WANTED: Array<{ base: string; hand: string; points: string; both: boolean 
   { base: 'bow.long', hand: 'handL', points: 'up', both: true },
   { base: 'staff.short', hand: 'handR', points: 'up', both: true },
   { base: 'spear.spear', hand: 'handR', points: 'up', both: true },
-  { base: 'axe.hand', hand: 'handR', points: 'up', both: false },
+  { base: 'axe.hand', hand: 'handR', points: 'up', both: false, carried: true },
+  { base: 'axe.cleaver', hand: 'handR', points: 'up', both: false, carried: true },
   { base: 'axe.battle', hand: 'handR', points: 'up', both: true },
-  { base: 'mace.club', hand: 'handR', points: 'up', both: false },
+  { base: 'mace.club', hand: 'handR', points: 'up', both: false, carried: true },
+  { base: 'mace.mace', hand: 'handR', points: 'up', both: false, carried: true },
   { base: 'mace.warhammer', hand: 'handR', points: 'up', both: true },
-  { base: 'wand.wand', hand: 'handR', points: 'up', both: false },
+  // A wand is a baton held low at the side, tip out ahead and a little down,
+  // so 'down' here is deliberate — shouldering one made casters look armed.
+  { base: 'wand.wand', hand: 'handR', points: 'down', both: false },
+  { base: 'scepter.rod', hand: 'handR', points: 'down', both: false },
 ];
 
-const rows: Array<Row & { want: (typeof WANTED)[number]; ok: boolean }> = [];
+const rows: Array<Row & { want: Want; ok: boolean }> = [];
 for (const w of WANTED) {
   const got = measure(w.base);
   if (!got) continue;
   rows.push({
     ...got,
     want: w,
-    ok: got.hand === w.hand && got.points === w.points && got.bothHands === w.both,
+    ok:
+      got.hand === w.hand &&
+      got.points === w.points &&
+      got.bothHands === w.both &&
+      (!w.carried || (got.lean >= MIN_LEAN && got.upright <= MAX_UPRIGHT)),
   });
 }
 

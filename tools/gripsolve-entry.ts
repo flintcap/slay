@@ -52,7 +52,17 @@ const CASES: Case[] = [
   // Shouldered, not shouldered arms. Bolt upright reads as a rifle at
   // attention; a carried sword leans back over the shoulder and out from the
   // body, roughly forty degrees off vertical.
-  { name: 'sword', hand: 'handR', tip: [-0.42, 0.7, -0.58], flat: [0.1, 0, -0.99] },
+  // Leaning *outward*, away from the body. Tilting it back put the blade
+  // through the shoulder and past the ear, which is the opposite of carrying
+  // it. On the right hand, away from the body is -X.
+  { name: 'sword', hand: 'handR', tip: [-0.68, 0.68, 0.28], flat: [0.1, 0, -0.99] },
+  // An axe is head-heavy, so it rides a little higher than a sword — the weight
+  // is what you brace, not the haft. Still outward.
+  { name: 'axe', hand: 'handR', tip: [-0.58, 0.76, 0.3], flat: [0.86, 0, -0.5] },
+  // Blunt weapons ride highest of the three, but still out, not in.
+  { name: 'mace', hand: 'handR', tip: [-0.5, 0.83, 0.25], flat: [0.1, 0, -0.99] },
+  // A wand is a baton, not a blade. Held low at the side, pointing out ahead.
+  { name: 'wand', hand: 'handR', tip: [-0.22, -0.36, 0.91], flat: [0.1, 0, -0.99] },
   { name: 'dagger', hand: 'handR', tip: [-0.05, -0.98, 0.19], flat: [0.1, 0, -0.99] },
   // Both hands. The tip goes up and across the body, so the free hand grips
   // further along the haft — which is toward the far shoulder, and reachable.
