@@ -652,8 +652,10 @@ function placeInteractables(ctx: PlaceCtx): void {
     } else if (room.kind === 'quest') {
       placeNear(ctx, cx, cy, 2, 'altar', 'quest.altar');
       scatterAround(ctx, room, ['urn', 'candleCluster'], 4);
-    } else if (room.kind === 'normal' && rng.chance(0.45)) {
-      scatterAround(ctx, room, ['barrel', 'crate', 'urn'], rng.int(1, 3));
+    } else if (room.kind === 'normal' && rng.chance(0.75)) {
+      // Scale with the room. A flat one-to-three put the same two barrels in a
+      // six-tile chamber and in a seventeen-tile hall room.
+      scatterAround(ctx, room, ['barrel', 'crate', 'urn'], clamp(Math.round((room.w * room.h) / 45), 1, 7));
     }
 
     // Bookcases go flat against a wall, never free-standing.

@@ -491,10 +491,26 @@ export class DungeonMesh {
         for (let y = y0; y < y1; y++) {
           for (let x = x0; x < x1; x++) {
             const v = this.tile(x, y);
-            if (v === T_VOID) continue;
             const wx = this.tileX(x);
             const wz = this.tileZ(y);
             const hy = this.heights[y * W + x] * STEP_HEIGHT;
+
+            if (v === T_VOID) {
+              // Bedrock.
+              //
+              // `wallify` turns exactly one ring of void into wall, and the void
+              // beyond it used to emit no geometry at all. From a camera pitched
+              // at 0.92 radians you look over a one-tile wall straight into that
+              // hole — black nothing, or the floor of a room two corridors away.
+              // Reported, correctly, as "the walls are see-through".
+              //
+              // Capping the void at wall-top height makes the level read as
+              // rooms carved out of solid rock, which is what it is. One quad per
+              // void tile, merged into the chunk's wall geometry, so it costs a
+              // bucket it was already paying for.
+              surfs[WALL0].flat(wx, hy + wallH, wz, HALF, true, x % 4, y % 4, 1);
+              continue;
+            }
 
             if (v === T_WALL) {
               this.emitWall(surfs, x, y, wx, wz, hy, wallH, wallMats.length, WALL0, TRIM, BASE);
