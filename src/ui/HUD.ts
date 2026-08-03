@@ -38,6 +38,8 @@ import {
   countTo,
   attempt,
   runtime,
+  tip,
+  STAT_LABEL,
   type MinimapPip,
 } from './Widgets';
 import { skillIconUri, warmItemIcons } from '../art/Icons';
@@ -943,7 +945,9 @@ export class HUD {
         add(chip, art, sweep);
         if (s.stacks > 1) chip.appendChild(span('buff-stacks', String(s.stacks)));
         chip.dataset.id = s.id;
-        chip.title = def?.name ?? s.id;
+        // A shrine blessing that lasts two minutes and says nothing about what
+        // it does is a mystery, not a reward. Hovering now spells it out.
+        tip(chip, def?.name ?? s.id, statusTooltip(s.id, s.stacks));
         this.buffStrip.appendChild(chip);
       }
     }
@@ -1281,6 +1285,41 @@ function tileColor(t: number): string {
     default:
       return 'rgba(0,0,0,0)';
   }
+}
+
+/**
+ * What a buff chip says when you hover it.
+ *
+ * Every status was authored with a plain-English `desc` and a table of stat
+ * modifiers, and the chip only ever showed the name. A shrine blessing that
+ * lasts two minutes and tells you nothing about what it does is a mystery
+ * rather than a reward.
+ */
+function statusTooltip(id: string, stacks: number): string {
+  const def = attempt(() => getStatus(id) ?? null, null);
+  if (!def) return '<p>No description.</p>';
+  const out: string[] = [];
+  if (def.desc) out.push(`<p>${def.desc}</p>`);
+
+  // The numbers as they actually apply right now, stacks included.
+  const mods = Object.entries(def.mods ?? {}).filter(([, v]) => typeof v === 'number' && v !== 0);
+  if (mods.length > 0) {
+    const rows = mods.map(([k, v]) => {
+      const value = (v as number) * Math.max(1, stacks);
+      const label = STAT_LABEL[k as StatKey] ?? k;
+      return `<li>${value >= 0 ? '+' : ''}${fmt(value)} ${label}</li>`;
+    });
+    out.push(`<ul class="tip-mods">${rows.join('')}</ul>`);
+  }
+  if (def.dot) out.push(`<p>${fmt(def.dot.perSecond * Math.max(1, stacks))} ${def.dot.type} damage per second.</p>`);
+  if (def.hot) out.push(`<p>Restores ${fmt(def.hot * Math.max(1, stacks))} life per second.</p>`);
+  if (def.manaPerSecond) out.push(`<p>Restores ${fmt(def.manaPerSecond * Math.max(1, stacks))} mana per second.</p>`);
+  if (def.absorb) out.push(`<p>Absorbs ${fmt(def.absorb * Math.max(1, stacks))} damage before it breaks.</p>`);
+  if (def.reflect) out.push(`<p>Reflects ${Math.round(def.reflect * 100 * Math.max(1, stacks))}% of damage taken.</p>`);
+  if (def.incapacitates) out.push('<p>You cannot act while this lasts.</p>');
+  else if (def.immobilises) out.push('<p>You cannot move while this lasts.</p>');
+  if (stacks > 1) out.push(`<p class="tip-dim">${stacks} stacks.</p>`);
+  return out.join('');
 }
 
 /** Maps a status id to the closest icon in the authored set. */

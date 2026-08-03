@@ -1781,6 +1781,23 @@ input.slider::-moz-range-thumb {
 .tt-text p:last-child {
   margin-bottom: 0;
 }
+/* Buff hover: the stat lines a status actually applies. */
+.tt-text .tip-mods {
+  list-style: none;
+  margin: 0 0 var(--s2);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tt-text .tip-mods li {
+  color: var(--good, #8fd67a);
+  font-variant-numeric: tabular-nums;
+}
+.tt-text .tip-dim {
+  color: var(--ink-4);
+  font-size: var(--fs-xs);
+}
 .tt-explain-how,
 .tt-text .tt-explain-how {
   font-size: var(--fs-xs);

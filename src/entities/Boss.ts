@@ -64,7 +64,11 @@ function defFromBoss(def: BossDef): MonsterDef {
     lifeMul: def.lifeMul,
     damageMul: def.damageMul,
     defenseMul: 1.35,
-    speed: 2.6,
+    // Deliberately below the player's 4.6 m/s. Phase multipliers run 1.15 to
+    // 1.5, so a boss tops out near 3.1 and a hard enrage pushes it a little
+    // past that — always slow enough that you can open ground while a telegraph
+    // resolves. A boss that keeps pace turns every fight into stand-and-trade.
+    speed: 2.05,
     scale: def.scale,
     attackRange: 3.4,
     attackSpeed: 0.85,
@@ -408,7 +412,9 @@ export class Boss extends Enemy {
           this.enrageStacks++;
           this.buff('hard_enrage', Number.MAX_SAFE_INTEGER, {
             damage: 1 + this.enrageStacks * 0.25,
-            speed: 1 + this.enrageStacks * 0.08,
+            // Capped: enrage should make the fight lethal, not make the boss
+            // outrun you and remove kiting from the answer set.
+            speed: Math.min(1.35, 1 + this.enrageStacks * 0.05),
           });
           events.emit('toast', {
             text: `${this.bossDef.name} grows stronger (${this.enrageStacks})`,
