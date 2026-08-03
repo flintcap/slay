@@ -50,7 +50,7 @@ import {
 } from './Widgets';
 import { PaperdollView } from './PaperdollView';
 import { potionKind } from '../sim/Potions';
-import { sortInventory } from '../sim/Inventory';
+import { sortInventory, stackCount, setStackCount } from '../sim/Inventory';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -84,6 +84,24 @@ export function invAdd(c: Character, item: Item): boolean {
 export function invRemove(c: Character, item: Item): void {
   const i = invIndexOf(c, item);
   if (i >= 0) c.inventory[i] = null;
+}
+
+/**
+ * Spends a single unit out of a stack.
+ *
+ * Socketing used `invRemove`, which nulls the whole slot. Setting one rune into
+ * a helm destroyed the other three in the stack with it. Anything that consumes
+ * one of something must come through here.
+ */
+export function invConsumeOne(c: Character, item: Item): void {
+  const i = invIndexOf(c, item);
+  if (i < 0) return;
+  const held = stackCount(item);
+  if (held <= 1) {
+    c.inventory[i] = null;
+    return;
+  }
+  setStackCount(item, held - 1);
 }
 
 export function invCount(c: Character): number {
@@ -511,7 +529,7 @@ export class InventoryPanel {
       events.emit('toast', { text: r.reason ?? 'It will not seat.', kind: 'bad' });
       return true;
     }
-    invRemove(c, gem);
+    invConsumeOne(c, gem);
     save.touch();
     events.emit('sfx', { id: 'ui.equip' });
     events.emit('toast', {

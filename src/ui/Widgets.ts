@@ -1553,10 +1553,19 @@ export class ItemSlot {
   }
 
   setItem(item: Item | null): void {
-    if (item === this.item) return;
+    // Identity alone is not enough. A stack that grows or shrinks is the same
+    // object with a different count, so comparing references meant the number
+    // on the slot only changed when the item was physically moved. Upgrades
+    // and sockets change in place for the same reason.
+    const sig = item ? `${item.uid}|${(item as { count?: number }).count ?? 1}|${item.upgrade}|${item.sockets.map((s) => s.gemId ?? '').join(',')}` : '';
+    if (item === this.item && sig === this.sig) return;
     this.item = item;
+    this.sig = sig;
     this.render();
   }
+
+  /** What was last drawn, so an in-place change still repaints. */
+  private sig = '';
 
   /** Force a redraw (upgrade level or socket count changed in place). */
   refresh(): void {

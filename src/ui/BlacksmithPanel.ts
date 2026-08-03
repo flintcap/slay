@@ -26,7 +26,7 @@ import { getSocketable, socketBonuses } from '../data/gems';
 import { addItemToInventory } from '../sim/Inventory';
 import { materialName, materialColor } from '../data/materials';
 import { Random, randomSeed } from '../core/RNG';
-import { ItemGrid, normalizeInventory, invRemove } from './InventoryPanel';
+import { ItemGrid, normalizeInventory, invRemove, invConsumeOne } from './InventoryPanel';
 import {
   scheduleRefresh,
   Panel,
@@ -352,7 +352,7 @@ export class BlacksmithPanel {
           events.emit('toast', { text: r.reason ?? 'It will not seat.', kind: 'bad' });
           return;
         }
-        invRemove(c, gem);
+        invConsumeOne(c, gem);
         events.emit('toast', { text: `${def?.name ?? 'Gem'} set.`, kind: 'good' });
         save.touch();
         events.emit('ui:refresh', {});
