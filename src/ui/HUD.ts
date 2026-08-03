@@ -968,7 +968,8 @@ export class HUD {
         tip(
           chip,
           name,
-          `<p>${p.count} under your command.</p><ul class="tip-mods"><li>${Math.round(p.life)} / ${Math.round(p.maxLife)} life</li></ul>`,
+          `<p>${p.count} under your command.</p><ul class="tip-mods"><li>${Math.round(p.life)} / ${Math.round(p.maxLife)} life</li>` +
+            `<li>${Number.isFinite(p.left) ? `${Math.ceil(p.left)}s left` : 'Stays until it falls'}</li></ul>`,
         );
         this.buffStrip.appendChild(chip);
       }
@@ -986,7 +987,8 @@ export class HUD {
       // Minion chips sweep on time left, and their stack number is the count.
       const p = pets[i - list.length];
       if (!p) continue;
-      const k = Math.max(0, Math.min(1, p.left / 30));
+      // A permanent summon has no arc to sweep; it is full until it dies.
+      const k = Number.isFinite(p.left) ? Math.max(0, Math.min(1, p.left / 30)) : 1;
       el.style.setProperty('--k', String(1 - k));
       const n = el.querySelector<HTMLElement>('.buff-stacks');
       if (n) n.textContent = String(p.count);

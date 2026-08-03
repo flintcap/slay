@@ -958,14 +958,14 @@ const OATH = build('oath', [
   {
     id: 'swornBrother',
     name: 'Sworn Brother',
-    desc: 'A spectral Warden rises from each planted banner, fighting for 20s with 60% of your damage (+4% per rank) and all of your oaths.',
+    desc: 'A spectral Warden rises from each planted banner with 140% of your life and 60% of your damage (+4% per rank). Up to 2 stand at once, and they stay until they fall.',
     tier: 6,
     col: 2,
     max: 15,
     icon: 'ghost-knight',
     req: ['standardBearer'],
     fx: 'summon.fromBanner',
-    p: { duration: 20, damagePct: 60, perRank: 4, lifePct: 80 },
+    p: { baseCap: 2, maxPerRanks: 10, damagePct: 60, perRank: 4, lifePct: 140 },
   },
 ]);
 
@@ -1356,7 +1356,7 @@ const CINDERS = build('cinders', [
   {
     id: 'livingFlame',
     name: 'Living Flame',
-    desc: 'A wisp of fire follows you for 25s, hurling 90% spell damage (+15% per rank) firebolts at whatever you burn.',
+    desc: 'A wisp of fire follows you, hurling 90% spell damage (+15% per rank) firebolts at whatever you burn. Up to 2 at once, with 30% of your life. They stay until they fall.',
     tier: 4,
     col: 0,
     icon: 'wisp',
@@ -1367,7 +1367,7 @@ const CINDERS = build('cinders', [
     dmg: [0.9, 0.15],
     type: 'fire',
     fx: 'summon.wisp',
-    p: { duration: 25, count: 1, countPerRanks: 8, fireRate: 1.2, seeksBurning: 1 },
+    p: { baseCap: 2, maxPerRanks: 6, count: 1, countPerRanks: 8, fireRate: 1.2, seeksBurning: 1, lifePct: 30 },
   },
   {
     id: 'wildfire',
@@ -1953,7 +1953,7 @@ const VENOM = build('venom', [
   {
     id: 'viperGod',
     name: 'Call the Viper',
-    desc: 'A spectral serpent hunts for 25s, striking for 140% weapon damage (+22% per rank) as poison and applying 5 stacks per bite.',
+    desc: 'A spectral serpent hunts at your side with 90% of your life, striking for 140% weapon damage (+22% per rank) as poison and applying 5 stacks per bite. It stays until it falls.',
     tier: 6,
     col: 1,
     max: 20,
@@ -1965,7 +1965,7 @@ const VENOM = build('venom', [
     dmg: [1.4, 0.22],
     type: 'poison',
     fx: 'summon.pet',
-    p: { duration: 25, biteRate: 1.4, poisonStacks: 5, lifePct: 40 },
+    p: { baseCap: 1, maxPerRanks: 12, biteRate: 1.4, poisonStacks: 5, lifePct: 90 },
   },
   {
     id: 'toxicMastery',
@@ -2042,7 +2042,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'shadowClone',
     name: 'Shadow Clone',
-    desc: 'A duplicate fights for 12s with 45% of your damage (+5% per rank) and pulls aggro from one enemy.',
+    desc: 'A duplicate fights at your side with 55% of your life and 45% of your damage (+5% per rank), and pulls aggro from one enemy. It stays until it falls.',
     tier: 2,
     col: 1,
     icon: 'clone',
@@ -2051,7 +2051,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     mana: [16, 0.9],
     cd: [22, 0.6, 10],
     fx: 'summon.clone',
-    p: { duration: 12, count: 1, damagePct: 45, perRank: 5, taunt: 1 },
+    p: { baseCap: 1, maxPerRanks: 5, count: 1, damagePct: 45, perRank: 5, taunt: 1, lifePct: 55 },
   },
   {
     id: 'fleetfoot',
@@ -3259,7 +3259,7 @@ const OSSUARY = build('ossuary', [
   {
     id: 'raiseSkeleton',
     name: 'Raise Skeleton',
-    desc: 'Raise a skeletal warrior from a corpse. 1 skeleton per 2 ranks (max 5 here), each with 40% of your life and 55% of your damage.',
+    desc: 'Raise a skeletal warrior from a corpse. 1 skeleton per 2 ranks (max 5 here), each with 75% of your life and 55% of your damage. They stay until they fall.',
     tier: 1,
     col: 1,
     icon: 'skeleton',
@@ -3267,7 +3267,7 @@ const OSSUARY = build('ossuary', [
     mana: [12, 0.6],
     cd: [1.5, 0, 1.5],
     fx: 'summon.minion',
-    p: { minionType: 0, maxPerRanks: 2, baseCap: 5, lifePct: 40, damagePct: 55, perRank: 6 },
+    p: { minionType: 0, maxPerRanks: 2, baseCap: 5, lifePct: 75, damagePct: 55, perRank: 6 },
   },
   {
     id: 'boneArmor',
@@ -3296,7 +3296,7 @@ const OSSUARY = build('ossuary', [
     cd: [2, 0, 2],
     type: 'arcane',
     fx: 'summon.minion',
-    p: { minionType: 1, maxPerRanks: 3, baseCap: 4, lifePct: 25, damagePct: 60, perRank: 7, range: 12 },
+    p: { minionType: 1, maxPerRanks: 3, baseCap: 4, lifePct: 45, damagePct: 60, perRank: 7, range: 12 },
   },
   {
     id: 'boneMastery',
@@ -3337,7 +3337,7 @@ const OSSUARY = build('ossuary', [
     mana: [30, 1.5],
     cd: [30, 0.8, 12],
     fx: 'summon.minion',
-    p: { minionType: 2, baseCap: 1, lifePct: 200, perRank: 15, damagePct: 70, taunts: 1 },
+    p: { minionType: 2, baseCap: 1, maxPerRanks: 8, lifePct: 260, perRank: 15, damagePct: 70, taunts: 1 },
   },
   {
     id: 'marrowFeast',
@@ -3465,7 +3465,7 @@ const OSSUARY = build('ossuary', [
   {
     id: 'grandOssuary',
     name: 'Grand Ossuary',
-    desc: 'Raise every corpse within 14m at once, and for 10s minions cost no mana and are summoned without a corpse.',
+    desc: 'Raise a host of bone wardens at once, 6 per cast, each with 75% of your life. +1 to the host cap every 3 ranks, up to 16. They stay until they fall.',
     tier: 6,
     col: 1,
     max: 15,
@@ -3474,8 +3474,8 @@ const OSSUARY = build('ossuary', [
     req: ['reassemble'],
     mana: [45, 2],
     cd: [60, 1.5, 25],
-    fx: 'summon.mass',
-    p: { radius: 14, duration: 10, freeSummon: 1, overCapPct: 50 },
+    fx: 'summon.massMinion',
+    p: { radius: 14, count: 6, baseCap: 6, maxPerRanks: 3, lifePct: 75, damagePct: 70, minionScale: 0.7 },
   },
   {
     id: 'ossuaryMastery',

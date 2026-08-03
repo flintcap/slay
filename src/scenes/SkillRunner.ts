@@ -49,6 +49,33 @@ const MINION_MONSTER: Record<string, string> = {
   livingFlame: 'ember_wisp',
 };
 
+/**
+ * How many of each summon may stand at once, and the ceiling it grows toward.
+ *
+ * Summons used to expire on a timer, which is not a limit — it is a chore. You
+ * could hold as many as you could click, and the only thing stopping you was
+ * having to recast. A real cap makes the summon a resource: it rises with
+ * ranks and with the minion passives, and stops at a number the fight is
+ * balanced around. Casting at the cap replaces your oldest, so the button is
+ * never dead.
+ *
+ * Totems are absent on purpose. A totem is an object with a lifetime the skill
+ * itself describes, not a creature you keep.
+ */
+const SUMMON_HARD_CAP: Record<string, number> = {
+  raiseSkeleton: 12,
+  skeletalMage: 8,
+  claySentinel: 3,
+  shadowClone: 6,
+  livingFlame: 5,
+  swornBrother: 3,
+  viperGod: 2,
+  grandOssuary: 16,
+};
+
+/** Nothing may hold more than this many bodies at once, whatever the maths. */
+const SUMMON_ABSOLUTE_CAP = 20;
+
 /** How far a minion will chase before it comes back to you. */
 const MINION_LEASH = 16;
 const MINION_SPEED = 3.4;
@@ -796,25 +823,44 @@ export class SkillRunner {
       case 'summon':
       case 'minion': {
         player.beginAction('point', castTime);
+        // A creature stays until something kills it; only a totem runs down.
+        const isTotem = (def.effect ?? '').includes('totem');
         // Bone Mastery, Marrow Feast and the minion capstones all land here.
         const mp = player.passives;
         // Shadow Legion and Mirror Gambit only touch the clone summons; every
         // other summon keeps the minion numbers.
         const isClone = (def.effect ?? '').includes('clone');
-        const count =
-          Math.max(1, Math.floor(num('count', 1))) +
-          Math.floor(isClone ? mp.cloneCount : mp.minionCapBonus);
-        // Sworn Brother's `lifePct` is how sturdy the spectre is; a turret has
-        // no life bar, so it buys standing time instead.
-        const life =
-          num('duration', 20) * (1 + mp.minionDurationPct / 100) * (1 + mp.minionLifePct / 200);
+        const count = Math.max(1, Math.floor(num('count', 1)));
+        // Only a totem has a lifetime. A creature is permanent.
+        const life = isTotem
+          ? num('duration', 20) * (1 + mp.minionDurationPct / 100)
+          : Infinity;
+
+        // The cap: what the skill grants, plus ranks, plus the minion passives,
+        // stopped at the number the fight is balanced around.
+        const cap = Math.min(
+          SUMMON_ABSOLUTE_CAP,
+          SUMMON_HARD_CAP[def.id] ?? 6,
+          Math.max(1, num('baseCap', 1))
+            + Math.floor(rank / Math.max(1, num('maxPerRanks', 99)))
+            + Math.floor(isClone ? mp.cloneCount : mp.minionCapBonus),
+        );
         const minionPower = 1 + (isClone ? mp.clonePowerPct : mp.minionDamagePct) / 100;
         // Skeletal Knight and Death Knight upgrade the first few summons.
         const elites = Math.floor(mp.minionEliteCount);
         const elitePower = 1 + mp.minionElitePowerPct / 100;
         const swingRate = 1 / (1 + mp.minionAttackSpeedPct / 100);
         const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel');
-        for (let i = 0; i < count; i++) {
+        // Make room before raising anything. Oldest of this skill goes first, so
+        // pressing the button at the cap always does something visible.
+        if (!isTotem) this.trimSummons(def.id, Math.max(0, cap - count));
+
+        const room = isTotem ? count : Math.max(0, cap - this.countSummons(def.id));
+        if (room === 0) {
+          events.emit('toast', { text: `${def.name} is at its limit.`, kind: 'info' });
+          break;
+        }
+        for (let i = 0; i < Math.min(count, room); i++) {
           const a = (i / count) * Math.PI * 2;
           const spread = 1.2 + count * 0.25;
           this.addTurret(
@@ -1826,6 +1872,8 @@ export class SkillRunner {
     for (const t of this.turrets) {
       if (!t.body) continue;
       const row = bySkill.get(t.skillId);
+      // `left` is Infinity for a permanent creature. The HUD reads it as "no
+      // timer" rather than trying to sweep an endless arc.
       if (row) {
         row.count++;
         row.left = Math.max(row.left, t.left);
@@ -1922,7 +1970,10 @@ export class SkillRunner {
 
     for (let i = this.turrets.length - 1; i >= 0; i--) {
       const t = this.turrets[i]!;
-      t.left -= dt;
+      // A permanent creature carries `Infinity`; only totems and the dying tick
+      // down. Guarding here rather than storing a flag keeps one source of
+      // truth for "is this thing on a clock".
+      if (Number.isFinite(t.left)) t.left -= dt;
       t.accum += dt;
 
       // A summoned creature walks. Totems have no body and stay put.
@@ -1980,7 +2031,7 @@ export class SkillRunner {
           if (t.actionT === 0) t.action = 'idle';
         }
         // Fade out over the last second rather than blinking away.
-        const fade = Math.min(1, Math.max(0, t.left));
+        const fade = Number.isFinite(t.left) ? Math.min(1, Math.max(0, t.left)) : 1;
         t.body.scale.setScalar(t.body.scale.x > 0 ? t.body.scale.x : 1);
         t.body.visible = t.left > 0;
         t.anim?.update(dt, {
@@ -1988,7 +2039,7 @@ export class SkillRunner {
           action: t.action,
           actionT: 1 - t.actionT,
           time: this.runTime,
-          deathT: t.left < 0.6 ? 1 - fade / 0.6 : 0,
+          deathT: Number.isFinite(t.left) && t.left < 0.6 ? 1 - fade / 0.6 : 0,
         });
       }
 
@@ -2078,7 +2129,9 @@ export class SkillRunner {
     /** How much punishment the body can take before it falls apart. */
     minionLife = 0,
   ): void {
-    if (this.turrets.length >= 8) {
+    // A backstop only. Per-skill caps do the real work; this stops a runaway
+    // from ever building an unbounded list.
+    if (this.turrets.length >= SUMMON_ABSOLUTE_CAP + 8) {
       const oldest = this.turrets[0]!;
       oldest.fx?.stop();
       this.removeBody(oldest.body);
@@ -2182,6 +2235,33 @@ export class SkillRunner {
         scale: 0.45, shake: 0, decal: false, sfx: null,
       });
       made++;
+    }
+  }
+
+  /** How many bodies this skill currently has standing. */
+  private countSummons(skillId: string): number {
+    let n = 0;
+    for (const t of this.turrets) if (t.skillId === skillId && t.body) n++;
+    return n;
+  }
+
+  /**
+   * Cuts a skill's pack down to `keep`, oldest first.
+   *
+   * Casting at the cap should never be a dead button — it recycles. Oldest is
+   * the right one to lose: it is the one furthest from where you are fighting
+   * now, and the one whose life is most likely already gone.
+   */
+  private trimSummons(skillId: string, keep: number): void {
+    for (let i = 0; i < this.turrets.length && this.countSummons(skillId) > keep; ) {
+      const t = this.turrets[i]!;
+      if (t.skillId !== skillId || !t.body) {
+        i++;
+        continue;
+      }
+      t.fx?.stop();
+      this.removeBody(t.body);
+      this.turrets.splice(i, 1);
     }
   }
 
