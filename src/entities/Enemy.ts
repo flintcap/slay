@@ -60,6 +60,7 @@ import {
 import { getMonster, MONSTERS, pickMonstersForDepth } from '../data/monsters';
 import { getAffix, MONSTER_AFFIXES } from '../data/monsterAffixes';
 import { BOSSES } from '../data/bosses';
+import { getStatus, type StatusDef } from '../data/statuses';
 
 // Re-exported so the scene layer can pull the whole monster surface from here,
 // exactly as CONTRACTS.md specifies.
@@ -657,7 +658,13 @@ export class Enemy implements Combatant {
   private get currentSpeed(): number {
     let s = this.baseSpeed * this.buffMul('speed');
     for (const st of this.statuses) {
-      if (st.id === 'chill' || st.id === 'slow') s *= Math.max(0.15, 1 - st.magnitude);
+      const d = statusDef(st.id);
+      if (!d) continue;
+      // Anything the catalogue says cuts move speed does, rather than the two
+      // ids this used to name. `immobilises` stops it dead.
+      if (d.immobilises || d.incapacitates) return 0;
+      const slow = d.mods?.moveSpeed;
+      if (typeof slow === 'number' && slow < 0) s *= Math.max(0.15, 1 + (slow / 100) * st.magnitude);
     }
     if (this.inst && this.inst.phase === 'recovery') s *= 0.4;
     return s;
@@ -717,7 +724,7 @@ export class Enemy implements Combatant {
 
   applyStatuses(list: StatusApplication[], ctx: CombatContext): void {
     for (const app of list) {
-      if (this.isImmuneToControl && CONTROL_STATUSES.has(app.id)) continue;
+      if (this.isImmuneToControl && isControl(app.id)) continue;
       const existing = this.statuses.find((s) => s.id === app.id);
       if (existing) {
         existing.time = Math.max(existing.time, app.duration);
@@ -725,16 +732,21 @@ export class Enemy implements Combatant {
         existing.stacks = Math.min(12, existing.stacks + (app.stacks ?? 0));
         continue;
       }
-      const dotType = DOT_TYPES[app.id] ?? null;
+      const def = statusDef(app.id);
+      const dotType = def?.dot?.type ?? null;
       this.statuses.push({
         id: app.id,
         time: app.duration,
         magnitude: app.magnitude,
         stacks: app.stacks ?? 1,
         dotType,
-        dotPerSecond: dotType ? depthCurve(this.depth).damage * 0.22 * app.magnitude : 0,
+        // The catalogue's `perSecond` is the shape of the effect; the depth
+        // curve is what makes it hurt as much at depth 40 as at depth 1.
+        dotPerSecond: dotType
+          ? depthCurve(this.depth).damage * 0.035 * (def?.dot?.perSecond ?? 6) * app.magnitude
+          : 0,
       });
-      if (CONTROL_STATUSES.has(app.id)) {
+      if (isControl(app.id)) {
         this.rootTimer = Math.max(this.rootTimer, app.duration);
         this.interrupt(ctx);
       }
@@ -743,6 +755,29 @@ export class Enemy implements Combatant {
 
   private get isImmuneToControl(): boolean {
     return this.affixes.some((a) => a.behavior === 'juggernaut');
+  }
+
+  /**
+   * The monster's stats with every active status folded in.
+   *
+   * Rebuilt on the hit rather than cached: a monster is hit a handful of times
+   * a second at most, and a cache here is a stale-resistance bug waiting to
+   * happen. Returns the base object untouched when nothing is active, which is
+   * the overwhelmingly common case.
+   */
+  private statusAdjustedStats(): Stats {
+    let out: Stats | null = null;
+    for (const s of this.statuses) {
+      const mods = statusDef(s.id)?.mods;
+      if (!mods) continue;
+      if (!out) out = { ...this.stats };
+      for (const [k, v] of Object.entries(mods)) {
+        const key = k as keyof Stats;
+        if (typeof v !== 'number') continue;
+        (out[key] as number) = ((out[key] as number) ?? 0) + v * s.magnitude * s.stacks;
+      }
+    }
+    return out ?? this.stats;
   }
 
   private tickStatuses(dt: number, ctx: CombatContext): void {
@@ -799,7 +834,11 @@ export class Enemy implements Combatant {
     let taken: number;
     let type: DamageType = working.type;
     try {
-      const res = mitigate(working, this.stats, ctx.rng);
+      // Mitigate against the stats as they are *right now*, debuffs included.
+      // Shred effects — scorched, brittle, unmade, vulnerable — are authored as
+      // flat resistance modifiers and were being computed against the monster's
+      // untouched base stats, so lowering a resistance lowered nothing.
+      const res = mitigate(working, this.statusAdjustedStats(), ctx.rng);
       taken = res.amount;
       type = res.type;
     } catch {
@@ -872,6 +911,21 @@ export class Enemy implements Combatant {
       this.moveBy(Math.sin(a) * push * 0.35, Math.cos(a) * push * 0.35, ctx);
     }
     if (working.applies?.length) this.applyStatuses(working.applies, ctx);
+
+    // Elements leave a mark. A skill that names its own statuses above keeps
+    // them; everything else afflicts whatever its damage type is made of, which
+    // is what makes fire different from cold rather than a resistance lookup.
+    if (taken > 0 && working.source === 'player' && !working.applies?.length) {
+      const affliction = ELEMENT_AFFLICTION[type];
+      const chance = AFFLICTION_CHANCE[type] ?? 0;
+      if (affliction && ctx.rng.chance(chance)) {
+        const def = statusDef(affliction);
+        this.applyStatuses(
+          [{ id: affliction, duration: def?.baseDuration ?? 4, magnitude: 1, stacks: 1 }],
+          ctx,
+        );
+      }
+    }
 
     // Retaliation affixes ---------------------------------------------------
     for (const a of this.affixes) {
@@ -1395,14 +1449,75 @@ export class Enemy implements Combatant {
   }
 }
 
-const DOT_TYPES: Record<string, DamageType> = {
-  burn: 'fire',
-  poison: 'poison',
-  bleed: 'physical',
-  corrode: 'poison',
+/**
+ * Short ids this file used before the status catalogue existed.
+ *
+ * `data/statuses.ts` authors sixty-seven effects with durations, stacking,
+ * icons and stat modifiers. This file only ever knew four damage-over-times and
+ * five crowd controls, under different names — `burn` against the catalogue's
+ * `burning`, `stun` against `stunned`. Two vocabularies that never met, so
+ * forty-eight authored effects could be applied and would do precisely nothing.
+ *
+ * The catalogue is the source of truth now. These stay as aliases so anything
+ * still speaking the old short form keeps working.
+ */
+const LEGACY_ALIASES: Record<string, string> = {
+  burn: 'burning',
+  poison: 'poisoned',
+  bleed: 'bleeding',
+  corrode: 'corroded',
+  stun: 'stunned',
+  freeze: 'frozen',
+  root: 'rooted',
+  chill: 'chilled',
+  slow: 'slowed',
+  web: 'entangled',
 };
 
-const CONTROL_STATUSES = new Set(['stun', 'freeze', 'root', 'petrified', 'web']);
+/** Resolves an id through the aliases and into the authored catalogue. */
+function statusDef(id: string): StatusDef | undefined {
+  return getStatus(id) ?? getStatus(LEGACY_ALIASES[id] ?? '');
+}
+
+/** True for anything the catalogue marks as hard crowd control. */
+function isControl(id: string): boolean {
+  const d = statusDef(id);
+  if (!d) return false;
+  return !!d.incapacitates || !!d.immobilises || d.tags.includes('control');
+}
+
+/**
+ * What each damage type leaves behind.
+ *
+ * Nothing in the game applied a damage-over-time. Fire did not burn, poison did
+ * not poison, and every one of those effects sat authored and unreachable — so
+ * an element was only ever a resistance number, and picking fire over cold
+ * changed nothing you could see. A hit now afflicts its own element.
+ */
+const ELEMENT_AFFLICTION: Partial<Record<DamageType, string>> = {
+  fire: 'burning',
+  cold: 'chilled',
+  lightning: 'electrified',
+  poison: 'poisoned',
+  arcane: 'soulburn',
+  physical: 'bleeding',
+};
+
+/**
+ * How often a hit of each element sticks.
+ *
+ * Physical is rare because every basic attack is physical and a permanent bleed
+ * on everything is not a mechanic. The elements land often enough to matter and
+ * seldom enough that resistances still decide fights.
+ */
+const AFFLICTION_CHANCE: Partial<Record<DamageType, number>> = {
+  fire: 0.35,
+  cold: 0.4,
+  lightning: 0.28,
+  poison: 0.45,
+  arcane: 0.25,
+  physical: 0.12,
+};
 
 // ---------------------------------------------------------------------------
 // Spawning helpers

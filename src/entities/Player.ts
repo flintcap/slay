@@ -230,6 +230,22 @@ export class Player {
     return this.dodgeCdMax > 0 ? Math.max(0, this.dodgeCd) / this.dodgeCdMax : 0;
   }
 
+  /**
+   * Shoved backwards by a hit. Cancels the move order, because being knocked
+   * across a room and then walking straight back to where you were standing is
+   * not a knockback.
+   */
+  shove(force: number): void {
+    const f = Math.max(0, Math.min(6, force));
+    if (f <= 0) return;
+    // Away from wherever the blow came from, which is whatever the player is
+    // facing: monsters hit you from the front in almost every case.
+    const push = f * 0.16;
+    this.root.position.x -= Math.sin(this.root.rotation.y) * push;
+    this.root.position.z -= Math.cos(this.root.rotation.y) * push;
+    this.moveTarget = null;
+  }
+
   dodge(dirX: number, dirZ: number): boolean {
     // A real cooldown. Without one the dash was limited only by its own 0.32s
     // animation, so holding the key was simply a faster way to move and there
@@ -282,6 +298,22 @@ export class Player {
       maxLife: this.stats.life,
     });
     this.animator.play('hurt', { fade: 0.04, once: true });
+
+    // Whatever the hit carried, the player now has.
+    //
+    // `DamagePacket.applies` has always existed and monsters have always filled
+    // it in — nothing ever read it on this side, so a hit that was supposed to
+    // slow, terrify or poison you did its damage and nothing else. Every debuff
+    // a monster can inflict was dead on arrival here.
+    if (packet.applies?.length) {
+      for (const a of packet.applies) {
+        this.applyStatus(a.id, a.duration, a.magnitude, a.stacks ?? 1);
+      }
+    }
+    // Knockback is carried the same way and was equally ignored.
+    if (packet.knockback && packet.knockback > 0) {
+      this.shove(packet.knockback);
+    }
 
     if (this.life <= 0) {
       this.life = 0;

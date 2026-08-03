@@ -350,8 +350,43 @@ export function hitPlayer(
   const packet = rollPacket(self, ctx, scale, type, ability);
   if (opts?.knockback) packet.knockback = opts.knockback;
   if (opts?.applies) packet.applies = opts.applies;
+  affixRiders(self, ctx, packet);
   ctx.damagePlayer(packet);
   return packet;
+}
+
+/**
+ * Affixes that ride along on whatever the monster just hit you with.
+ *
+ * Three were declared on real elites and never acted on anywhere:
+ * `knockback` ("every blow sends you flying"), `entangling` ("its strikes leave
+ * you dragging your feet") and `nightmarish` ("its blows send you fleeing in
+ * terror"). Each describes something that happens on a hit, and this is the one
+ * place every hit a monster lands passes through.
+ */
+function affixRiders(self: Combatant, ctx: CombatContext, packet: DamagePacket): void {
+  const affixes = (self as { affixes?: Array<{ behavior: string; params?: Record<string, number> }> }).affixes;
+  if (!affixes?.length) return;
+  for (const a of affixes) {
+    const p = a.params ?? {};
+    if (a.behavior === 'knockback') {
+      packet.knockback = Math.max(packet.knockback ?? 0, p.force ?? 6);
+    } else if (a.behavior === 'entangling') {
+      (packet.applies ??= []).push({
+        id: 'slowed',
+        duration: p.duration ?? 2.5,
+        magnitude: p.slow ?? 0.35,
+        stacks: 1,
+      });
+    } else if (a.behavior === 'nightmarish' && ctx.rng.chance(p.chance ?? 0.22)) {
+      (packet.applies ??= []).push({
+        id: 'feared',
+        duration: p.duration ?? 1.4,
+        magnitude: 1,
+        stacks: 1,
+      });
+    }
+  }
 }
 
 const FX_FOR_TYPE: Record<DamageType, string> = {
