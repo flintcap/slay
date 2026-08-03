@@ -524,6 +524,42 @@ export class DungeonScene extends GameScene {
    * Combustion detonates a burning corpse, Executioner refunds mana on a
    * finishing blow, and Reap Soul heals. All three read the same moment.
    */
+  /**
+   * The passives that read how you are moving.
+   *
+   * Tailwind and Airborne pay you for running; Thunder Run leaves a burning
+   * strip behind a dash. All three need distance travelled per frame, which
+   * only the scene knows, so they tick here rather than in the engine.
+   */
+  private passiveMovement(dt: number, ctx: CombatContext): void {
+    const e = this.player.passives;
+    const st = this.player.passiveState;
+    const p = this.player.position;
+    const moved = this.lastPos.distanceTo(p);
+    this.lastPos.copy(p);
+
+    if (e.momentumMovePct > 0 || e.momentumDamageShare > 0) {
+      // Metres banked in a short rolling window, not a raw speed reading: the
+      // skills are written as "distance travelled recently".
+      st.moving = moved > 0.01 ? Math.min(e.momentumMoveCap || 30, st.moving + moved) : Math.max(0, st.moving - dt * 8);
+    }
+
+    if (e.trailDamagePct > 0 && e.trailRadius > 0 && moved > 0.02) {
+      this.trailTimer -= dt;
+      if (this.trailTimer <= 0) {
+        this.trailTimer = 0.25;
+        this.skills.passiveNova(
+          this.player, p.clone(), e.trailRadius, e.trailDamagePct / 100 * 0.25,
+          'lightning', ctx, this.enemies, this.boss,
+        );
+        this.decals.add('scorch', p.x, p.z, e.trailRadius * 0.8);
+      }
+    }
+  }
+
+  private lastPos = new THREE.Vector3();
+  private trailTimer = 0;
+
   private passiveOnKill(pos: THREE.Vector3, overkill = 0): void {
     const e = this.player.passives;
     // Cataclysm: whatever the killing blow spilled past zero carries onward.
@@ -732,6 +768,7 @@ export class DungeonScene extends GameScene {
     this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);
     this.mesh.update(dt, elapsed, this.player.position);
+    this.passiveMovement(dt, ctx);
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
     this.rig.update(dt, elapsed);

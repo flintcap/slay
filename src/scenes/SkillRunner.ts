@@ -447,6 +447,17 @@ export class SkillRunner {
     if (player.isBusy || !player.alive) return false;
     this.setCaster(player, enemies, boss);
 
+    // Resonance: a lightning skill sometimes goes off a second time, weaker and
+    // free. Queued rather than recursed so it cannot stack on itself, and it
+    // bypasses the busy and cost checks because it is not a second press.
+    const echo = player.passives;
+    if (!this.echoing && echo.echoChance > 0 && ctx.rng.chance(Math.min(1, echo.echoChance / 100))) {
+      const def = SKILLS.find((s) => s.id === skillId);
+      if (def?.damageType === 'lightning') {
+        this.pendingEcho = { skillId, target: target.clone(), scale: echo.echoDamagePct / 100 };
+      }
+    }
+
     const def = SKILLS.find((s) => s.id === skillId);
     if (!def || def.targeting === 'passive') return false;
 
@@ -561,8 +572,18 @@ export class SkillRunner {
         const pierce = Math.floor(num('pierce', 0));
         const splash = num('splash', 0);
 
-        for (let i = 0; i < count; i++) {
-          const a = count === 1 ? 0 : (i - (count - 1) / 2) * spread;
+        // Forked Bolt adds shots either side of the original at reduced power.
+        const fp = player.passives;
+        const forks = type === 'lightning' ? Math.floor(fp.forkCount) : 0;
+        const shots = count + forks;
+        for (let i = 0; i < shots; i++) {
+          const isFork = i >= count;
+          const a = isFork
+            ? (i - count - (forks - 1) / 2) * (fp.forkSpread || 0.35) + (forks > 1 ? 0 : 0.35)
+            : count === 1
+              ? 0
+              : (i - (count - 1) / 2) * spread;
+          const forkScale = isFork ? fp.forkDamagePct / 100 : 1;
           const d = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
           const from = origin.clone();
           // A piercing shot does not stop at the first body — it flies until a
@@ -586,13 +607,14 @@ export class SkillRunner {
             speed: num('speed', 17),
             size: num('radius', 0.42) * sig.size,
             onHit: (p) => {
+              const hit = (m = 1): DamagePacket => makePacket(m * forkScale);
               if (pierce > 0) {
                 // Piercing shots damage everything along the flight path.
-                this.lineDamage(from, d, stop, num('radius', 0.42) * 2, makePacket, ctx, enemies, boss);
+                this.lineDamage(from, d, stop, num('radius', 0.42) * 2, hit, ctx, enemies, boss);
               } else if (splash > 0) {
-                this.areaDamage(p, splash, makePacket, ctx, enemies, boss);
+                this.areaDamage(p, splash, hit, ctx, enemies, boss);
               } else {
-                this.pointDamage(p, num('radius', 0.42), makePacket, ctx, enemies, boss);
+                this.pointDamage(p, num('radius', 0.42), hit, ctx, enemies, boss);
               }
             },
           });
@@ -1314,7 +1336,9 @@ export class SkillRunner {
         to.normalize();
         if (facing.dot(to) < Math.cos(half)) continue;
       }
-      t.takeDamage(this.tune(packet(), t), ctx);
+      const mp = this.tune(packet(), t);
+      t.takeDamage(mp, ctx);
+      this.afterHit(mp, t, ctx, enemies, boss);
       this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, { dir: facing, color: ELEMENTS[type]?.core });
       hits++;
     }
@@ -1350,6 +1374,14 @@ export class SkillRunner {
     const p = this.caster;
     if (!p) return packet;
     const e = p.passives;
+    // Transformer converts part of every other school into lightning, which is
+    // the school the Stormcaller's whole tree scales.
+    if (
+      e.convertToLightningPct > 0 &&
+      (packet.type === 'fire' || packet.type === 'cold' || packet.type === 'physical')
+    ) {
+      packet = { ...packet, type: 'lightning' };
+    }
     const mul = damageMultiplier(
       e,
       {
@@ -1362,9 +1394,10 @@ export class SkillRunner {
         maxMana: p.stats.mana,
         lifeFrac: p.life / Math.max(1, p.stats.life),
         nearby: this.nearbyCount,
+        moving: p.passiveState.moving,
       },
     );
-    let amount = packet.amount * mul;
+    let amount = packet.amount * mul * this.echoScale;
 
     // Retribution: blocks build a charge and the next blow spends it.
     const st = p.passiveState;
@@ -1375,6 +1408,68 @@ export class SkillRunner {
     if (amount === packet.amount) return packet;
     return { ...packet, amount };
   }
+
+  /**
+   * Everything that happens after a blow has landed on one target.
+   *
+   * Arc Weave throws a smaller copy at a second enemy, and Superconductor
+   * shares lightning between everything already Shocked. Both need the hit to
+   * have resolved first, so neither can live in `tune`.
+   */
+  private afterHit(packet: DamagePacket, t: Target, ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
+    const p = this.caster;
+    if (!p || this.arcing) return;
+    const e = p.passives;
+    if (e.arcChance <= 0 && e.conductSharePct <= 0) return;
+
+    this.arcing = true;
+    try {
+      if (e.arcChance > 0 && e.arcRadius > 0 && ctx.rng.chance(Math.min(1, e.arcChance / 100))) {
+        let best: Target | null = null;
+        let bestD = Infinity;
+        for (const other of this.allTargets(enemies, boss)) {
+          if (other === t || other.life <= 0) continue;
+          const d = this.groundDistance(other.root.position, t.root.position);
+          if (d < bestD && d <= e.arcRadius) {
+            bestD = d;
+            best = other;
+          }
+        }
+        if (best) {
+          best.takeDamage(
+            { ...packet, amount: packet.amount * (e.arcDamagePct / 100), ability: 'Arc' },
+            ctx,
+          );
+          this.effects.beam(
+            t.root.position.clone().setY(1.1),
+            best.root.position.clone().setY(1.1),
+            { element: 'lightning', color: ELEMENTS.lightning?.core ?? 0xffe066, duration: 0.16, width: 0.1 },
+          );
+        }
+      }
+
+      // Superconductor: a Shocked enemy passes a share to every other Shocked
+      // enemy nearby. Only lightning, and only between the already-afflicted.
+      if (e.conductSharePct > 0 && packet.type === 'lightning' && t.hasStatus('shocked')) {
+        const share = packet.amount * (e.conductSharePct / 100);
+        for (const other of this.allTargets(enemies, boss)) {
+          if (other === t || other.life <= 0 || !other.hasStatus('shocked')) continue;
+          if (this.groundDistance(other.root.position, t.root.position) > e.conductRadius) continue;
+          other.takeDamage({ ...packet, amount: share, ability: 'Superconductor' }, ctx);
+        }
+      }
+    } finally {
+      this.arcing = false;
+    }
+  }
+
+  /** Guards the arc and conduct hooks against recursing into themselves. */
+  private arcing = false;
+  /** A Resonance repeat waiting for the next frame. */
+  private pendingEcho: { skillId: string; target: THREE.Vector3; scale: number } | null = null;
+  private echoing = false;
+  /** What the echo pays, applied to every packet it throws. */
+  private echoScale = 1;
 
   /** Enemies close to the caster, refreshed per cast for the crowd passives. */
   private nearbyCount = 0;
@@ -1418,7 +1513,11 @@ export class SkillRunner {
         closest = t;
       }
     }
-    if (closest) closest.takeDamage(this.tune(packet(), closest), ctx);
+    if (closest) {
+      const hp = this.tune(packet(), closest);
+      closest.takeDamage(hp, ctx);
+      this.afterHit(hp, closest, ctx, enemies, boss);
+    }
   }
 
   private areaDamage(
@@ -1437,7 +1536,9 @@ export class SkillRunner {
       // Falloff so the centre of a nova genuinely rewards positioning.
       const p = packet();
       p.amount *= 1 - Math.min(1, d / (radius + t.hitRadius)) * 0.35;
-      t.takeDamage(this.tune(p, t), ctx);
+      const ap = this.tune(p, t);
+      t.takeDamage(ap, ctx);
+      this.afterHit(ap, t, ctx, enemies, boss);
     }
   }
 
@@ -1457,7 +1558,9 @@ export class SkillRunner {
       if (along < 0 || along > length) continue;
       const perp = Math.sqrt(Math.max(0, to.lengthSq() - along * along));
       if (perp > width * 0.5 + t.hitRadius) continue;
-      t.takeDamage(this.tune(packet(), t), ctx);
+      const lp = this.tune(packet(), t);
+      t.takeDamage(lp, ctx);
+      this.afterHit(lp, t, ctx, enemies, boss);
     }
   }
 
@@ -1573,6 +1676,26 @@ export class SkillRunner {
     const live = this.tickCtx;
     if (!live) return;
     this.runTime += dt;
+
+    // Fire a queued Resonance echo one frame after the original, so the two
+    // read as a stutter rather than one doubled hit.
+    const pe = this.pendingEcho;
+    if (pe && this.caster) {
+      this.pendingEcho = null;
+      this.echoing = true;
+      this.echoScale = pe.scale;
+      try {
+        const p = this.caster;
+        const lock = p.isBusy;
+        void lock;
+        this.cast(pe.skillId, p, pe.target, live.ctx, live.enemies, live.boss);
+      } catch {
+        /* an echo must never break the frame */
+      } finally {
+        this.echoing = false;
+        this.echoScale = 1;
+      }
+    }
     this.spreadTick(dt, live.ctx, live.enemies, live.boss);
     const { ctx, enemies, boss } = live;
 

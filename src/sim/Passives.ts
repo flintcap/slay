@@ -149,6 +149,20 @@ export interface PassiveEffects {
   /** Chance for a hit to arc to a second target. */
   arcChance: number;
   arcRadius: number;
+  /** Fraction of the original blow the arc carries. */
+  arcDamagePct: number;
+  /** Chance for a spell to cast a second time for free. */
+  echoChance: number;
+  echoDamagePct: number;
+  /** Extra projectiles a bolt splits into, and what each one carries. */
+  forkCount: number;
+  forkDamagePct: number;
+  forkSpread: number;
+  /** Shocked enemies share this share of lightning damage with each other. */
+  conductRadius: number;
+  conductSharePct: number;
+  /** Fraction of fire, cold and physical damage converted to lightning. */
+  convertToLightningPct: number;
 
   // --- movement -----------------------------------------------------------
   /** Movement speed gained per second of continuous movement. */
@@ -231,6 +245,15 @@ function emptyEffects(): PassiveEffects {
     hitStackMax: 0,
     arcChance: 0,
     arcRadius: 0,
+    arcDamagePct: 0,
+    echoChance: 0,
+    echoDamagePct: 0,
+    forkCount: 0,
+    forkDamagePct: 0,
+    forkSpread: 0,
+    conductRadius: 0,
+    conductSharePct: 0,
+    convertToLightningPct: 0,
     momentumMovePct: 0,
     momentumMoveCap: 0,
     momentumDamageShare: 0,
@@ -386,6 +409,85 @@ const RULES: Record<string, Contribution> = {
     );
     e.overkillRadius = Math.max(e.overkillRadius, param(id, 'radius', 8));
   },
+
+  // ----------------------------------------------------------- stormcaller
+  conductance: (e, r, id) => {
+    // Shocked enemies take more from everything, which is the debuff branch of
+    // the conditional multiplier rather than a lightning-only bonus.
+    e.vsDebuffedPct += param(id, 'pctPerRank', 5) * r;
+    e.curseDurationPct += param(id, 'durationPerRank', 0.4) * r * 10;
+  },
+  forkedBolt: (e, r, id) => {
+    e.forkCount = Math.max(
+      e.forkCount,
+      param(id, 'forks', 2) + Math.floor(r / Math.max(1, param(id, 'forksPerRanks', 5))),
+    );
+    e.forkDamagePct = Math.max(
+      e.forkDamagePct,
+      param(id, 'forkPct', 60) + param(id, 'perRank', 3) * (r - 1),
+    );
+    e.forkSpread = Math.max(e.forkSpread, (param(id, 'spreadAngle', 20) * Math.PI) / 180);
+  },
+  tailwind: (e, r, id) => {
+    e.momentumMovePct += param(id, 'castSpeed', 20) + param(id, 'perRank', 2) * (r - 1);
+    e.momentumMoveCap = Math.max(e.momentumMoveCap, param(id, 'distance', 5));
+    e.momentumDamageShare = Math.max(e.momentumDamageShare, param(id, 'damage', 15) / 100);
+  },
+  airborne: (e, r, id) => {
+    e.momentumDamageShare += (param(id, 'pctPerRank', 1.5) * r) / 100;
+    e.momentumMoveCap = Math.max(e.momentumMoveCap, param(id, 'perMetres', 3) * param(id, 'maxStacks', 10));
+  },
+  thunderRun: (e, r, id) => {
+    e.trailDamagePct += 60 + 11 * (r - 1);
+    e.trailRadius = Math.max(e.trailRadius, param(id, 'width', 2));
+  },
+  arcWeave: (e, r, id) => {
+    e.arcChance = Math.min(
+      param(id, 'chanceCap', 70),
+      e.arcChance + param(id, 'chancePerRank', 15) * r,
+    );
+    e.arcRadius = Math.max(e.arcRadius, param(id, 'range', 7));
+    e.arcDamagePct = Math.max(e.arcDamagePct, param(id, 'damagePct', 50));
+  },
+  superconductor: (e, r, id) => {
+    e.conductSharePct += param(id, 'pct', 40) + param(id, 'perRank', 5) * (r - 1);
+    e.conductRadius = Math.max(e.conductRadius, param(id, 'radius', 8));
+  },
+  resonance: (e, r, id) => {
+    e.echoChance = Math.min(
+      param(id, 'chanceCap', 45),
+      e.echoChance + param(id, 'chancePerRank', 10) * r,
+    );
+    e.echoDamagePct = Math.max(e.echoDamagePct, param(id, 'damagePct', 50));
+  },
+  transformer: (e, r, id) => {
+    e.convertToLightningPct = Math.min(
+      param(id, 'cap', 60),
+      e.convertToLightningPct + param(id, 'pctPerRank', 5) * r,
+    );
+  },
+  conduitMastery: (e, r, id) => {
+    e.dotMaxStacks += param(id, 'stacksPerRank', 2) * r;
+    e.vsDebuffedPct += param(id, 'detonatePerRank', 4) * r;
+  },
+  neverGrounded: (e, r, id) => {
+    // Damage that builds the further you have run and decays when you stop.
+    e.momentumDamageShare += (param(id, 'pctPerMetre', 1) + param(id, 'perRank', 0.1) * (r - 1)) / 100;
+    e.momentumMoveCap = Math.max(
+      e.momentumMoveCap,
+      param(id, 'cap', 120) + param(id, 'capPerRank', 8) * (r - 1),
+    );
+  },
+  theGreatArc: (e, r, id) => {
+    // The lightning capstone is the overkill chain wearing a different coat:
+    // a kill throws what it spilled at everything within twenty metres.
+    e.overkillCarryPct += param(id, 'carryPct', 80) + param(id, 'perRank', 2) * (r - 1);
+    e.overkillChains = Math.max(e.overkillChains, param(id, 'maxCascade', 24));
+    e.overkillRadius = Math.max(e.overkillRadius, param(id, 'radius', 20));
+    e.arcChance = Math.max(e.arcChance, 100);
+    e.arcRadius = Math.max(e.arcRadius, param(id, 'radius', 20) * 0.4);
+    e.arcDamagePct = Math.max(e.arcDamagePct, 60);
+  },
 };
 
 /** Every skill this engine knows how to run. */
@@ -435,7 +537,7 @@ export function newPassiveState(): PassiveState {
 export function damageMultiplier(
   e: PassiveEffects,
   target: { lifeFrac: number; bleeding: boolean; debuffed: boolean },
-  self: { manaFrac: number; maxMana: number; lifeFrac: number; nearby: number },
+  self: { manaFrac: number; maxMana: number; lifeFrac: number; nearby: number; moving?: number },
 ): number {
   let pct = 0;
   if (target.bleeding) pct += e.vsBleedingPct;
@@ -456,6 +558,10 @@ export function damageMultiplier(
   }
   if (e.crowdDamagePct > 0) {
     pct += Math.min(e.crowdDamageCap, e.crowdDamagePct * Math.max(0, self.nearby - 1));
+  }
+  // Momentum: metres banked in the last few seconds turn into damage.
+  if (e.momentumDamageShare > 0 && (self.moving ?? 0) > 0) {
+    pct += Math.min(e.momentumMoveCap, self.moving ?? 0) * e.momentumDamageShare * 100;
   }
   return 1 + pct / 100;
 }

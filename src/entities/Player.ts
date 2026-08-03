@@ -504,7 +504,15 @@ export class Player {
   }
 
   private updateMovement(dt: number, ctx: PlayerContext, keyboardDir: THREE.Vector3 | null): void {
-    const speedStat = 1 + this.stats.moveSpeed / 100;
+    // Tailwind pays for running: once you have banked enough distance without
+    // stopping, you move and cast faster. `passiveState.moving` is the banked
+    // metres, kept by the scene.
+    const pass = this.passives;
+    const tail =
+      pass.momentumMovePct > 0 && this.passiveState.moving >= (pass.momentumMoveCap || 5)
+        ? pass.momentumMovePct
+        : 0;
+    const speedStat = 1 + (this.stats.moveSpeed + tail) / 100;
     const baseSpeed = 4.6 * speedStat;
 
     if (this.dodgeCd > 0) this.dodgeCd = Math.max(0, this.dodgeCd - dt);
