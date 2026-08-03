@@ -1986,7 +1986,7 @@ export class SkillRunner {
 
     this.turrets.push({
       x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx,
-      body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 0,
+      body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 1,
     });
   }
 

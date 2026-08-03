@@ -864,6 +864,12 @@ export class DungeonScene extends GameScene {
       this.returnPortal.position.y = Math.sin(elapsed * 1.7) * 0.07;
     }
 
+    // Hand the runner the live world before it ticks. Without this every
+    // persistent effect in the game bailed out on its first line: ground
+    // clouds, wards, turrets and every summoned minion. A raised skeleton
+    // appeared, stood exactly still, and vanished when its timer ran out,
+    // because the tick that moves it never got past `if (!live) return`.
+    this.skills.setContext(ctx, this.enemies, this.boss);
     this.skills.update(dt);
     this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);

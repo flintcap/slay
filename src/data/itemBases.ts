@@ -463,6 +463,13 @@ wpn('wand.burnt', 'Burnt Wand', 'wand', 1, 48, 12, 12, 15, 32, 1.45, 'wand', 'wo
   imp: [{ stat: 'castSpeed', min: 11, max: 18 }],
 });
 
+// The bottom of the necromantic wand ladder. The Revenant starts holding this
+// one: `wand.bone` sits at level 10 and the class was being handed a weapon it
+// could not equip for its first nine levels.
+wpn('wand.femur', 'Femur Wand', 'wand', 1, 1, 4, 4, 2, 5, 1.3, 'wand.bone', 'bone.pale', {
+  classes: CASTERS,
+  imp: [{ stat: 'manaRegen', min: 1, max: 2 }],
+});
 wpn('wand.bone', 'Bone Wand', 'wand', 1, 10, 6, 6, 5, 11, 1.3, 'wand.bone', 'bone.pale', {
   classes: CASTERS,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],

@@ -109,7 +109,7 @@ export const CLASSES: CharClassDef[] = [
     manaPerEnr: 2,
     trees: ['ossuary', 'blight', 'gravepact'],
     color: 0x8ce0c8,
-    startingGear: ['wand.bone'],
+    startingGear: ['wand.femur'],
   },
   {
     id: 'ranger',
