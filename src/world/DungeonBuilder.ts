@@ -452,6 +452,16 @@ export class DungeonMesh {
       opacity: 0.72,
     });
     this.ownedMat.push(puddleMat);
+    // The rock the level is carved out of. Dark, matte, and lit only by the
+    // ambient term: it is the mass around the dungeon, not a surface anyone is
+    // meant to look at. Taking no shadows either way keeps a plane that covers
+    // most of the screen out of the shadow pass entirely.
+    const bedrockMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(art.skyColor).lerp(new THREE.Color(0x0a0a0c), 0.55),
+      roughness: 1,
+      metalness: 0,
+    });
+    this.ownedMat.push(bedrockMat);
 
     const FLOOR0 = 0;
     const WALL0 = FLOOR0 + floorMats.length;
@@ -461,8 +471,9 @@ export class DungeonMesh {
     const LIQ = CEIL + 1;
     const VEIN = LIQ + 1;
     const PUDDLE = VEIN + 1;
-    const BUCKETS = PUDDLE + 1;
-    mats.push(...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, puddleMat);
+    const BEDROCK = PUDDLE + 1;
+    const BUCKETS = BEDROCK + 1;
+    mats.push(...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, puddleMat, bedrockMat);
 
     // Deterministic per-room floor variant.
     const roomVariant = new Map<number, number>();
@@ -507,8 +518,8 @@ export class DungeonMesh {
               // Capping the void at wall-top height makes the level read as
               // rooms carved out of solid rock, which is what it is. One quad per
               // void tile, merged into the chunk's wall geometry, so it costs a
-              // bucket it was already paying for.
-              surfs[WALL0].flat(wx, hy + wallH, wz, HALF, true, x % 4, y % 4, 1);
+              // bucket that takes no part in the shadow pass.
+              surfs[BEDROCK].flat(wx, hy + wallH, wz, HALF, true, x % 4, y % 4, 1);
               continue;
             }
 
@@ -597,7 +608,7 @@ export class DungeonMesh {
           this.ownedGeo.push(geo);
           const mesh = new THREE.Mesh(geo, mats[i]);
           mesh.castShadow = i >= WALL0 && i < CEIL;
-          mesh.receiveShadow = i !== VEIN && i !== LIQ;
+          mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK;
           mesh.matrixAutoUpdate = false;
           mesh.updateMatrix();
           if (i === VEIN) mesh.renderOrder = 2;
