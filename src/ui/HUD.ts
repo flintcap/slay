@@ -927,8 +927,16 @@ export class HUD {
       }
     }
 
+    // Summons ride the same strip as buffs. A pack you cannot see the state of
+    // is a pack you cannot play around, and a chip beside the buffs is where a
+    // player already looks for "what is currently true about me".
+    const pets = runtime.minions;
+
     // Signature comparison keeps us from rebuilding the strip every frame.
-    const sig = list.map((s) => `${s.id}:${s.stacks}`).join(',');
+    const sig =
+      list.map((s) => `${s.id}:${s.stacks}`).join(',') +
+      '|' +
+      pets.map((p) => `${p.skillId}:${p.count}`).join(',');
     if (sig !== this.buffStrip.dataset.sig) {
       this.buffStrip.dataset.sig = sig;
       clear(this.buffStrip);
@@ -947,13 +955,41 @@ export class HUD {
         tip(chip, def?.name ?? s.id, statusTooltip(s.id, s.stacks));
         this.buffStrip.appendChild(chip);
       }
+
+      for (const p of pets) {
+        const chip = div('buff buff-minion');
+        chip.style.setProperty('--bc', hex(0x8fd67a));
+        const art = div('buff-art');
+        art.innerHTML = iconSvg('skull', { size: 17 });
+        add(chip, art, div('buff-sweep'));
+        chip.appendChild(span('buff-stacks', String(p.count)));
+        chip.dataset.minion = p.skillId;
+        const name = skillById(p.skillId)?.name ?? 'Summons';
+        tip(
+          chip,
+          name,
+          `<p>${p.count} under your command.</p><ul class="tip-mods"><li>${Math.round(p.life)} / ${Math.round(p.maxLife)} life</li></ul>`,
+        );
+        this.buffStrip.appendChild(chip);
+      }
     }
     // Cheap per-frame: only the sweep fraction changes.
     const chips = this.buffStrip.children;
-    for (let i = 0; i < chips.length && i < list.length; i++) {
-      const s = list[i];
-      const k = s.duration > 0 ? Math.max(0, Math.min(1, s.remaining / s.duration)) : 0;
-      (chips[i] as HTMLElement).style.setProperty('--k', String(1 - k));
+    for (let i = 0; i < chips.length; i++) {
+      const el = chips[i] as HTMLElement;
+      if (i < list.length) {
+        const s = list[i]!;
+        const k = s.duration > 0 ? Math.max(0, Math.min(1, s.remaining / s.duration)) : 0;
+        el.style.setProperty('--k', String(1 - k));
+        continue;
+      }
+      // Minion chips sweep on time left, and their stack number is the count.
+      const p = pets[i - list.length];
+      if (!p) continue;
+      const k = Math.max(0, Math.min(1, p.left / 30));
+      el.style.setProperty('--k', String(1 - k));
+      const n = el.querySelector<HTMLElement>('.buff-stacks');
+      if (n) n.textContent = String(p.count);
     }
   }
 

@@ -722,6 +722,13 @@ export const runtime = {
   cooldowns: new Map<string, number>(),
   cooldownTotal: new Map<string, number>(),
   statuses: [] as StatusChip[],
+  /**
+   * Summons currently fighting for you, one row per skill.
+   *
+   * Published by the dungeon scene each frame so the HUD can show a chip beside
+   * the buffs without reaching into the skill runner.
+   */
+  minions: [] as Array<{ skillId: string; count: number; left: number; life: number; maxLife: number }>,
   level: null as DungeonLevel | null,
   playerTileX: 0,
   playerTileY: 0,

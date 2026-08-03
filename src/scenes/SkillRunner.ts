@@ -15,6 +15,7 @@ import { getBase } from '../sim/Loot';
 import type { ItemCategory } from '../types';
 import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../entities/MonsterModels';
 import { MONSTERS } from '../data/monsters';
+import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
 
@@ -28,6 +29,16 @@ import { damageMultiplier } from '../sim/Passives';
  * model and rig — a skeleton that walks, swings and rots away when its time is
  * up. Totems keep no body on purpose; a totem is an object, not a creature.
  */
+const MINION_NAME: Record<string, string> = {
+  raiseSkeleton: 'Skeleton',
+  skeletalMage: 'Skeletal Mage',
+  grandOssuary: 'Bone Warden',
+  claySentinel: 'Clay Sentinel',
+  swornBrother: 'Sworn Brother',
+  shadowClone: 'Shadow',
+  livingFlame: 'Living Flame',
+};
+
 const MINION_MONSTER: Record<string, string> = {
   raiseSkeleton: 'skeleton_rattler',
   skeletalMage: 'skeleton_archer',
@@ -41,6 +52,8 @@ const MINION_MONSTER: Record<string, string> = {
 /** How far a minion will chase before it comes back to you. */
 const MINION_LEASH = 16;
 const MINION_SPEED = 3.4;
+/** How close a minion heels when there is nothing to fight. */
+const MINION_FOLLOW = 3.2;
 
 /** How the equipped main hand wants to be fought with. */
 export type WeaponStyle = 'melee' | 'ranged' | 'caster' | 'unarmed';
@@ -812,6 +825,9 @@ export class SkillRunner {
             num('range', melee ? 2.6 : 11),
             (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower * (i < elites ? elitePower : 1)),
             type, color, melee, def.id,
+            // A share of your own pool, which is how the skill descriptions
+            // read it — "40% of your life" and so on.
+            Math.max(20, player.stats.life * (num('lifePct', 40) / 100) * (1 + mp.minionLifePct / 100)),
           );
         }
         audio.play('summon');
@@ -1561,6 +1577,8 @@ export class SkillRunner {
 
   /** Guards the arc and conduct hooks against recursing into themselves. */
   private arcing = false;
+  /** Increments per summon so a pack fans out rather than stacking. */
+  private summonSerial = 0;
   /** A Resonance repeat waiting for the next frame. */
   private pendingEcho: { skillId: string; target: THREE.Vector3; scale: number } | null = null;
   private echoing = false;
@@ -1745,6 +1763,12 @@ export class SkillRunner {
     fx: EffectHandle | null;
     /** A summoned creature's body. Null for a totem, which is just a spot. */
     body: THREE.Object3D | null;
+    /** Stable slot, so a pack fans out instead of stacking on one point. */
+    index: number;
+    /** What the skill was called, for the HUD chip. */
+    skillId: string;
+    life: number;
+    maxLife: number;
     anim: RigAnimator | null;
     facing: number;
     /** 0..1, drives the walk cycle. */
@@ -1762,6 +1786,86 @@ export class SkillRunner {
     enemies: Enemy[];
     boss: Boss | null;
   } | null = null;
+
+  /**
+   * The pack, shaped so the nameplate layer can draw a bar over each one.
+   *
+   * Minions are effects with a body, not `Enemy` instances, so they cannot be
+   * handed to the plate layer directly. This adapts them.
+   */
+  minionPlates(): Array<{ root: THREE.Object3D; life: number; nameplate: PlateData; plateHeight: number }> {
+    const out: Array<{ root: THREE.Object3D; life: number; nameplate: PlateData; plateHeight: number }> = [];
+    for (const t of this.turrets) {
+      if (!t.body || t.maxLife <= 0 || t.life <= 0) continue;
+      out.push({
+        root: t.body,
+        life: t.life,
+        plateHeight: 1.7,
+        nameplate: {
+          name: MINION_NAME[t.skillId] ?? 'Minion',
+          rank: 'normal',
+          affixes: [],
+          life: t.life,
+          maxLife: t.maxLife,
+          color: 0x8fd67a,
+          level: 0,
+        },
+      });
+    }
+    return out;
+  }
+
+  /**
+   * What is currently fighting for you, for the HUD.
+   *
+   * A summoned pack you cannot see the state of is a pack you cannot play
+   * around: you need to know how many are left and how long they have.
+   */
+  minionSummary(): Array<{ skillId: string; count: number; left: number; life: number; maxLife: number }> {
+    const bySkill = new Map<string, { skillId: string; count: number; left: number; life: number; maxLife: number }>();
+    for (const t of this.turrets) {
+      if (!t.body) continue;
+      const row = bySkill.get(t.skillId);
+      if (row) {
+        row.count++;
+        row.left = Math.max(row.left, t.left);
+        row.life += t.life;
+        row.maxLife += t.maxLife;
+      } else {
+        bySkill.set(t.skillId, {
+          skillId: t.skillId,
+          count: 1,
+          left: t.left,
+          life: t.life,
+          maxLife: t.maxLife,
+        });
+      }
+    }
+    return [...bySkill.values()];
+  }
+
+  /**
+   * Splash damage from an enemy attack, shared out over the pack.
+   *
+   * Minions are not `Enemy` instances and never will be — they are effects with
+   * a body — so they cannot be hit by the normal path. The scene forwards what
+   * lands near them instead.
+   */
+  damageMinionsNear(x: number, z: number, radius: number, amount: number): void {
+    for (let i = this.turrets.length - 1; i >= 0; i--) {
+      const t = this.turrets[i]!;
+      if (!t.body || t.maxLife <= 0) continue;
+      const dx = t.body.position.x - x;
+      const dz = t.body.position.z - z;
+      if (Math.hypot(dx, dz) > radius) continue;
+      t.life -= amount;
+      if (t.life <= 0) {
+        // Falls apart rather than vanishing: the last second plays the collapse.
+        t.left = Math.min(t.left, 0.55);
+        t.life = 0;
+      }
+    }
+  }
 
   /** Handed the live combat state so persistent effects can act on it. */
   setContext(ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
@@ -1836,17 +1940,35 @@ export class SkillRunner {
         // thing you are hitting looks worse than stopping short of it.
         const stand = t.melee ? Math.max(1.2, t.range * 0.7) : t.range * 0.75;
         let moving = 0;
-        if (chase) {
-          const dx = chase.root.position.x - t.body.position.x;
-          const dz = chase.root.position.z - t.body.position.z;
-          t.facing = Math.atan2(dx, dz);
-          if (chaseD > stand) {
-            const inv = 1 / Math.max(0.0001, chaseD);
-            const step = Math.min(MINION_SPEED * dt, chaseD - stand);
-            t.body.position.x += dx * inv * step;
-            t.body.position.z += dz * inv * step;
-            moving = 1;
-          }
+
+        // No enemy in reach: heel. A summon that plants itself where it was
+        // raised is useless the moment you walk on, which is exactly how the
+        // skeletons read before this.
+        const owner = this.caster;
+        let goalX = chase ? chase.root.position.x : owner?.position.x ?? t.body.position.x;
+        let goalZ = chase ? chase.root.position.z : owner?.position.z ?? t.body.position.z;
+        let hold = chase ? stand : MINION_FOLLOW;
+        if (!chase && owner) {
+          // Spread out around the owner rather than stacking on one point.
+          const spread = (t.index / Math.max(1, this.turrets.length)) * Math.PI * 2;
+          goalX += Math.cos(spread) * MINION_FOLLOW * 0.6;
+          goalZ += Math.sin(spread) * MINION_FOLLOW * 0.6;
+          hold = 0.6;
+        }
+
+        const dx = goalX - t.body.position.x;
+        const dz = goalZ - t.body.position.z;
+        const gap = Math.hypot(dx, dz);
+        if (gap > 0.05) t.facing = Math.atan2(dx, dz);
+        if (gap > hold) {
+          const inv = 1 / Math.max(0.0001, gap);
+          // A minion that cannot keep up is a minion you never see again, so it
+          // runs harder the further behind it falls.
+          const speed = chase ? MINION_SPEED : MINION_SPEED * (gap > 8 ? 1.8 : 1.15);
+          const step = Math.min(speed * dt, gap - hold);
+          t.body.position.x += dx * inv * step;
+          t.body.position.z += dz * inv * step;
+          moving = 1;
         }
         t.x = t.body.position.x;
         t.z = t.body.position.z;
@@ -1953,6 +2075,8 @@ export class SkillRunner {
     color: number,
     melee: boolean,
     skillId?: string,
+    /** How much punishment the body can take before it falls apart. */
+    minionLife = 0,
   ): void {
     if (this.turrets.length >= 8) {
       const oldest = this.turrets[0]!;
@@ -1987,6 +2111,7 @@ export class SkillRunner {
     this.turrets.push({
       x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx,
       body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 1,
+      index: this.summonSerial++, skillId: skillId ?? '', life: minionLife, maxLife: minionLife,
     });
   }
 

@@ -36,6 +36,7 @@ import { NameplateLayer } from '../ui/Nameplates';
 import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
 import { affixIconUri } from '../art/Icons';
+import { runtime as hudRuntime } from '../ui/Widgets';
 import { typeColor } from '../entities/Abilities';
 import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
@@ -726,6 +727,14 @@ export class DungeonScene extends GameScene {
       playerStats: this.player.stats,
       playerLevel: this.player.character.level,
       damagePlayer: (packet: DamagePacket) => {
+        // Anything aimed at you also chews on whatever is standing beside you.
+        // A pack that cannot be killed is a pack with no decisions in it.
+        this.skills.damageMinionsNear(
+          this.player.position.x,
+          this.player.position.z,
+          4.5,
+          packet.amount * 0.6,
+        );
         if (this.godMode) return;
         const before = this.player.life;
         const taken = this.player.takeDamage(packet, this.rng);
@@ -849,7 +858,12 @@ export class DungeonScene extends GameScene {
     }
 
     if (this.plates) {
-      const targets = this.boss ? [...this.enemies, this.boss] : this.enemies;
+      // Your own summons get a bar too. They are effects with a body rather
+      // than monsters, so the runner adapts them into plate targets.
+      const targets = [
+        ...(this.boss ? [...this.enemies, this.boss] : this.enemies),
+        ...this.skills.minionPlates(),
+      ];
       this.plates.update(
         this.camera,
         targets,
@@ -871,6 +885,7 @@ export class DungeonScene extends GameScene {
     // because the tick that moves it never got past `if (!live) return`.
     this.skills.setContext(ctx, this.enemies, this.boss);
     this.skills.update(dt);
+    hudRuntime.minions = this.skills.minionSummary();
     this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);
     this.mesh.update(dt, elapsed, this.player.position);
