@@ -45,6 +45,7 @@ import {
   isEquippable,
   isStackableCategory,
   maxSockets,
+  JEWELRY_CATEGORIES,
 } from '../data/itemBases';
 import { AFFIXES as ALL_AFFIXES, affixNameWord } from '../data/affixes';
 import { UNIQUES, uniqueDropWeight, uniquePool, getUnique } from '../data/uniques';
@@ -212,7 +213,7 @@ function rollOneAffix(
 }
 
 /** How many prefixes and suffixes a rarity gets. */
-function affixBudget(rarity: ItemRarity, rng: Rng): { prefixes: number; suffixes: number } {
+function affixBudget(base: ItemBase, rarity: ItemRarity, rng: Rng): { prefixes: number; suffixes: number } {
   switch (rarity) {
     case 'magic': {
       const two = rng.chance(0.62);
@@ -224,13 +225,20 @@ function affixBudget(rarity: ItemRarity, rng: Rng): { prefixes: number; suffixes
       const prefixes = Math.min(3, Math.max(1, Math.round(total / 2 + (rng.chance(0.5) ? 0.5 : -0.5))));
       return { prefixes, suffixes: Math.min(3, total - prefixes) };
     }
-    default:
-      return { prefixes: 0, suffixes: 0 };
+    default: {
+      // A normal weapon still has damage and a normal chestplate still has
+      // armour, so an unaffixed one is a real, if boring, item. Jewellery has
+      // no base stats at all — every point a ring, amulet or charm gives you
+      // comes from its affixes, so a normal one was a completely blank object
+      // that did nothing when equipped. Those always get one.
+      if (!JEWELRY_CATEGORIES.includes(base.category)) return { prefixes: 0, suffixes: 0 };
+      return rng.chance(0.5) ? { prefixes: 1, suffixes: 0 } : { prefixes: 0, suffixes: 1 };
+    }
   }
 }
 
 function rollAffixes(base: ItemBase, ilvl: number, rarity: ItemRarity, rng: Rng): ItemMod[] {
-  const budget = affixBudget(rarity, rng);
+  const budget = affixBudget(base, rarity, rng);
   const used = new Set<string>();
   const mods: ItemMod[] = [];
   for (let i = 0; i < budget.prefixes; i++) {
@@ -496,9 +504,13 @@ export function createItem(baseId: string, ilvl: number, rng: Rng, rarity: ItemR
   const base = getBase(baseId);
   const item = newItem(base, ilvl, rarity, rng);
   item.mods = rollImplicits(base, rng);
-  if (rarity === 'magic' || rarity === 'rare') {
-    item.mods.push(...rollAffixes(base, ilvl, rarity, rng));
-    item.name = rarity === 'magic' ? magicName(base, item.mods) : rareName(base, item.mods, rng);
+  // Normal rarity is included: `affixBudget` gives it nothing except on
+  // jewellery, which has no base stats to fall back on.
+  if (rarity === 'normal' || rarity === 'magic' || rarity === 'rare') {
+    const affixes = rollAffixes(base, ilvl, rarity, rng);
+    item.mods.push(...affixes);
+    if (rarity === 'magic') item.name = magicName(base, affixes);
+    else if (rarity === 'rare') item.name = rareName(base, affixes, rng);
   }
   item.sockets = rollSockets(base, ilvl, rarity, rng);
   item.value = vendorPrice(item, false) * 4;
@@ -579,10 +591,11 @@ export function rollItem(
   const item = newItem(base, lvl, rarity, rng);
   item.mods = rollImplicits(base, rng);
 
-  if (rarity === 'magic' || rarity === 'rare') {
+  if (rarity === 'normal' || rarity === 'magic' || rarity === 'rare') {
     const affixes = rollAffixes(base, lvl, rarity, rng);
     item.mods.push(...affixes);
-    item.name = rarity === 'magic' ? magicName(base, affixes) : rareName(base, affixes, rng);
+    if (rarity === 'magic') item.name = magicName(base, affixes);
+    else if (rarity === 'rare') item.name = rareName(base, affixes, rng);
   }
 
   item.sockets = rollSockets(base, lvl, rarity, rng);
