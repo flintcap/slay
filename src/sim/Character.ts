@@ -237,9 +237,14 @@ export function repairCharacter(c: Character): boolean {
     }
   }
 
-  // Make sure every ranked active is reachable from the bar.
+  // Make sure every ranked active is reachable — from the bar, or from right
+  // click. This ran last and did not check `primaryAttack`, so it put the
+  // right-click skill straight back on the bar on every single load. Stripping
+  // it two blocks above achieved nothing; the bug survived every fix until the
+  // filter moved down here.
   const ranked = Object.entries(c.skills)
     .filter(([id, rank]) => rank > 0 && SKILL_BY_ID[id]?.targeting !== 'passive')
+    .filter(([id]) => id !== c.primaryAttack)
     .map(([id]) => id);
   for (const id of ranked) {
     if (c.hotbar.includes(id)) continue;
