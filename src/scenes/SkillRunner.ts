@@ -495,9 +495,18 @@ export class SkillRunner {
           const a = count === 1 ? 0 : (i - (count - 1) / 2) * spread;
           const d = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
           const from = origin.clone();
-          // Stop the shot at the first thing it would actually hit, so the
-          // visual lands on the target instead of sailing through it.
-          const stop = this.firstHitAlong(from, d, range, enemies, boss, num('radius', 0.42), ctx);
+          // A piercing shot does not stop at the first body — it flies until a
+          // wall stops it. Using the first-hit distance meant `pierce` changed
+          // nothing: the arrow ended at the same monster, and the line damage
+          // it applied covered only the stretch up to that monster. Pierce Shot
+          // and every skill built on it pierced exactly one target.
+          //
+          // Anything else stops at the first thing it would actually hit, so
+          // the visual lands on the target instead of sailing through it.
+          const stop =
+            pierce > 0
+              ? this.wallStop(from, d, range, ctx, num('radius', 0.42))
+              : this.firstHitAlong(from, d, range, enemies, boss, num('radius', 0.42), ctx);
           const to = from.clone().addScaledVector(d, stop);
 
           this.effects.projectile(from, to, {
@@ -1066,19 +1075,30 @@ export class SkillRunner {
     radius: number,
     ctx?: CombatContext
   ): number {
-    let best = this.wallStop(from, dir, max, ctx, radius);
+    const wall = this.wallStop(from, dir, max, ctx, radius);
+    let best = Infinity;
     const consider = (t: Target) => {
       if (t.life <= 0) return;
       const to = this.tmp2.copy(t.root.position).sub(from).setY(0);
       const along = to.dot(dir);
-      if (along <= 0 || along >= best) return;
+      if (along <= 0 || along > max || along >= best) return;
       const perp = Math.sqrt(Math.max(0, to.lengthSq() - along * along));
       if (perp > radius + t.hitRadius) return;
+      // A monster is not rejected merely for sitting past the wall stop.
+      //
+      // `NavGrid.lineOfSight` is deliberately conservative about diagonal
+      // steps, so a ray aimed at something backed against a wall clips the wall
+      // tile up to a metre before reaching it. Requiring the monster's *centre*
+      // to be in front of that point is exactly why shots at anything standing
+      // against a wall stopped short and dealt nothing. What the shot meets is
+      // the near edge of the body, plus half a metre of slack for the grid.
+      // Anything in the next room is metres past the wall and still excluded.
+      if (along - t.hitRadius - 0.5 > wall) return;
       best = along;
     };
     for (const e of enemies) consider(e);
     if (boss) consider(boss);
-    return best;
+    return best === Infinity ? wall : best;
   }
 
   /**
