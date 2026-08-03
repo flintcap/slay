@@ -862,11 +862,13 @@ export function biomeArt(id: BiomeId): BiomeArt {
 
 /** Weighted layout choice honouring the biome's preferences. */
 export function layoutForBiome(biome: BiomeDef, rng: Rng, depth: number): LayoutKind {
-  const pool = biome.layouts.length > 0 ? biome.layouts : (['rooms'] as LayoutKind[]);
-  // Deeper runs skew toward the harsher shapes in the biome's list.
+  const pool = biome.layouts.length > 0 ? biome.layouts : (['halls'] as LayoutKind[]);
+  // The first entry is the biome's signature shape and stays the most common
+  // one you meet. Deeper runs shift weight toward the harsher shapes later in
+  // the list without ever making the signature rare.
   const bias = Math.min(0.5, depth / 120);
   return rng.weighted(pool, (k) => {
     const idx = pool.indexOf(k);
-    return 1 + idx * bias * 2;
+    return (idx === 0 ? 3 : 1) + idx * bias * 2;
   });
 }
