@@ -33,7 +33,26 @@ import {
 } from './Layouts';
 import { STEP_HEIGHT, TILE_SIZE, levelExtras } from './DungeonGen';
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
+
 import { surface } from '../art/Materials';
+
+/** One usable thing in the world, and the instance slot that draws it. */
+export interface Interactable {
+  /** The payload from the prop definition: 'chest', 'shrine', 'barrel', ... */
+  kind: string;
+  propKind: string;
+  tileX: number;
+  tileY: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Which instance of the batch this is. */
+  index: number;
+  /** Every instanced mesh drawing this prop kind, so it can be hidden. */
+  meshes: THREE.InstancedMesh[];
+  used: boolean;
+}
+
 
 const CHUNK = 32;
 const MAX_TORCH_LIGHTS = 8;
@@ -291,6 +310,16 @@ interface Chunk {
 
 export class DungeonMesh {
   readonly root = new THREE.Group();
+
+  /**
+   * Everything in the level the player can walk up to and use.
+   *
+   * Chests, shrines, barrels, crates and urns were all authored in `Props.ts`
+   * with an `interact` payload, placed by the generator and drawn by the
+   * builder — and nothing anywhere read the payload, so the entire
+   * interactable layer was scenery. This is the index that makes it reachable.
+   */
+  readonly interactables: Interactable[] = [];
   readonly colliders: Array<{ x: number; z: number; w: number; d: number }> = [];
 
   private readonly level: DungeonLevel;
@@ -796,6 +825,53 @@ export class DungeonMesh {
     this.colliders.push({ x: entry.x, z: entry.z - 1.1, w: 3.0, d: 0.9 });
   }
 
+  /**
+   * The nearest unused interactable within `range` metres, or null.
+   *
+   * Linear over the level's interactables, which is a few dozen. Called only
+   * when the player presses the use key, never per frame.
+   */
+  nearestInteractable(x: number, z: number, range: number): Interactable | null {
+    let best: Interactable | null = null;
+    let bestD = range * range;
+    for (const it of this.interactables) {
+      if (it.used) continue;
+      const dx = it.x - x;
+      const dz = it.z - z;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) {
+        bestD = d;
+        best = it;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Takes a prop out of the world.
+   *
+   * Props are drawn as instanced batches, so one cannot simply be removed —
+   * its transform is collapsed to nothing instead, which costs a single matrix
+   * write rather than rebuilding the batch.
+   */
+  removeInteractable(it: Interactable): void {
+    it.used = true;
+    const m = new THREE.Matrix4().makeScale(0, 0, 0);
+    for (const mesh of it.meshes) {
+      if (it.index >= mesh.count) continue;
+      mesh.setMatrixAt(it.index, m);
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+    // Stop it blocking movement now that it is gone. A smashed barrel that you
+    // still cannot walk through reads as a bug even though the model is hidden.
+    const cx = this.tileX(it.tileX);
+    const cz = this.tileZ(it.tileY);
+    for (let i = this.colliders.length - 1; i >= 0; i--) {
+      const c = this.colliders[i]!;
+      if (Math.abs(c.x - cx) < 0.01 && Math.abs(c.z - cz) < 0.01) this.colliders.splice(i, 1);
+    }
+  }
+
   private buildProps(rng: Rng): void {
     const level = this.level;
     const art = this.art;
@@ -849,6 +925,11 @@ export class DungeonMesh {
         sc[i] = scaleFor(g.kind, p.x, p.y);
       }
 
+      // A placement may carry its own payload even when the prop kind has no
+      // default one — the quest altar is emitted with `quest.altar` while its
+      // definition declares nothing. Gate on either.
+      const groupInteracts = def.interact !== undefined || g.list.some((p) => p.interact !== undefined);
+      const meshesForGroup: THREE.InstancedMesh[] = [];
       for (const layer of tmpl.layers) {
         const inst = new THREE.InstancedMesh(layer.geometry, layer.material, n);
         inst.name = `prop:${g.kind}:${g.variant}`;
@@ -866,6 +947,34 @@ export class DungeonMesh {
         inst.frustumCulled = true;
         inst.computeBoundingSphere();
         this.root.add(inst);
+        // Remember every mesh a placement is drawn by, so one chest can be
+        // opened or one barrel smashed without disturbing the rest of the
+        // batch. Props are instanced for speed; this is the price of that.
+        if (groupInteracts) meshesForGroup.push(inst);
+      }
+
+      // Index the interactables. A prop with an `interact` payload is something
+      // the player can walk up to and use — chests, shrines, barrels, urns. The
+      // whole layer was authored, placed and drawn, and nothing ever read the
+      // payload, so none of it could be touched.
+      if (groupInteracts) {
+        for (let i = 0; i < n; i++) {
+          const p = g.list[i]!;
+          const payload = p.interact ?? def.interact;
+          if (!payload) continue;
+          this.interactables.push({
+            kind: payload,
+            propKind: g.kind,
+            tileX: p.x,
+            tileY: p.y,
+            x: xs[i]!,
+            y: ys[i]!,
+            z: zs[i]!,
+            index: i,
+            meshes: meshesForGroup,
+            used: false,
+          });
+        }
       }
 
       // Emissive flame + light record.

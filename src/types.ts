@@ -568,7 +568,7 @@ export interface BiomeDef {
   music: string;
 }
 
-export type LayoutKind = 'rooms' | 'caves' | 'maze' | 'catacombs' | 'ruins' | 'arena' | 'spiral';
+export type LayoutKind = 'rooms' | 'halls' | 'caves' | 'maze' | 'catacombs' | 'ruins' | 'arena' | 'spiral';
 
 export type TileKind =
   | 'void'

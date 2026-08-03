@@ -23,9 +23,9 @@ import { Enemy, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { generateRun, isWalkable, BIOMES } from '../world/DungeonGen';
-import { DungeonMesh, applyBiomeLighting } from '../world/DungeonBuilder';
+import { DungeonMesh, applyBiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
-import { rollDrops } from '../sim/Loot';
+import { rollDrops, rollItem, rollPotion } from '../sim/Loot';
 import { buildDropModel } from '../art/ItemModels';
 import { emissiveMaterial } from '../art/Materials';
 import { grantXp } from '../sim/Character';
@@ -38,6 +38,68 @@ import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
 import { affixIconUri } from '../art/Icons';
 import { typeColor } from '../entities/Abilities';
 import { quickDrink, drinkPotion } from '../sim/Potions';
+import { getStatus } from '../data/statuses';
+
+/** What the prompt calls each thing you can use. */
+const INTERACT_LABEL: Record<string, string> = {
+  shrine: 'Pray at the shrine',
+  chest: 'Open the chest',
+  barrel: 'Smash the barrel',
+  crate: 'Smash the crate',
+  urn: 'Smash the urn',
+  bookcase: 'Search the shelves',
+  lever: 'Pull the lever',
+  quest: 'Use the altar',
+  altar: 'Use the altar',
+};
+
+/**
+ * What a shrine can give you.
+ *
+ * Every one of these was authored in `data/statuses.ts` with real modifiers and
+ * could not be granted by anything, because nothing built a shrine. Biome room
+ * tables roll shrine rooms and a quest objective asks you to cleanse them.
+ */
+interface Blessing {
+  id: string;
+  duration: number;
+  blurb: string;
+}
+
+/**
+ * The generator already writes a shrine's flavour into its payload —
+ * `shrine.power`, `shrine.fortune` and four more — so a shrine grants what it
+ * looks like it should, not a random pick. Every status below was authored with
+ * real modifiers and nothing in the game could grant a single one of them.
+ */
+const SHRINE_BLESSINGS: Record<string, Blessing[]> = {
+  power: [
+    { id: 'might', duration: 120, blurb: 'Your blows land heavier.' },
+    { id: 'overcharged', duration: 120, blurb: 'The air crackles around you.' },
+  ],
+  ward: [
+    { id: 'sanctified', duration: 120, blurb: 'Blessed against everything below.' },
+    { id: 'fortitude', duration: 120, blurb: 'You can take more than you could.' },
+  ],
+  haste: [
+    { id: 'haste', duration: 120, blurb: 'The floor comes at you faster.' },
+    { id: 'veiled', duration: 90, blurb: 'They lose sight of you.' },
+  ],
+  fortune: [
+    { id: 'treasureSense', duration: 180, blurb: 'The dark keeps fewer secrets.' },
+    { id: 'inspired', duration: 120, blurb: 'Your craft comes easier.' },
+  ],
+  wrath: [
+    { id: 'siphoning', duration: 120, blurb: 'Their wounds feed you.' },
+    { id: 'soulharvest', duration: 150, blurb: 'Each death leaves something behind.' },
+  ],
+  vitality: [
+    { id: 'secondWind', duration: 180, blurb: 'Something will catch you once.' },
+    { id: 'evasion', duration: 120, blurb: 'You are harder to catch.' },
+  ],
+};
+
+const ANY_BLESSING: Blessing[] = Object.values(SHRINE_BLESSINGS).flat();
 
 export interface DungeonPayload {
   depth: number;
@@ -91,6 +153,8 @@ export class DungeonScene extends GameScene {
    * own 2.3m reach, so arriving in range means the hit actually lands.
    */
   private static readonly MELEE_REACH = 1.9;
+  /** How close you stand to use something. Generous: this is not a precision test. */
+  private static readonly INTERACT_RANGE = 2.4;
   private tmpDir = new THREE.Vector3();
   private aimPoint = new THREE.Vector3();
   /** Reused each frame; ground loot can number in the dozens. */
@@ -111,6 +175,10 @@ export class DungeonScene extends GameScene {
   private transitioning = false;
   private runTime = 0;
   private godMode = false;
+  /** The interactable currently prompting, so the prompt only changes on change. */
+  private nearProp: Interactable | null = null;
+  /** Set when the floor's vault lever is pulled. Resets with each level. */
+  private vaultOpen = false;
 
   constructor(engine: Engine) {
     super();
@@ -262,6 +330,8 @@ export class DungeonScene extends GameScene {
 
     this.levelIndex = index;
     this.level = this.run.levels[index]!;
+    this.nearProp = null;
+    this.vaultOpen = false;
     this.biome = BIOMES.find((b) => b.id === this.level.biome) ?? BIOMES[0]!;
 
     const levelRng = this.rng.fork(`level:${index}`) as Random;
@@ -595,6 +665,9 @@ export class DungeonScene extends GameScene {
       if (!acted) {
         this.skills.basicAttack(this.player, target, ctx, this.enemies, this.boss);
       }
+      // Swinging at a barrel should break it. Nobody presses a use key on a
+      // crate that is in their way.
+      this.breakNear(target.x, target.z);
     }
 
     // Number keys 1-6 fire the matching hotbar slot.
@@ -606,6 +679,8 @@ export class DungeonScene extends GameScene {
       const target = aimed ? this.aimPoint.copy(aimed.root.position).setY(0) : input.worldPoint;
       this.skills.cast(id, this.player, target, ctx, this.enemies, this.boss);
     }
+
+    this.tickInteractables(input, ctx);
 
     if (input.wasPressed('potionLife')) this.drink('life');
     if (input.wasPressed('potionMana')) this.drink('mana');
@@ -775,6 +850,188 @@ export class DungeonScene extends GameScene {
       this.dropGold(Math.round(drops.gold * dif.goldFind), pos);
     }
     for (const [id, n] of Object.entries(drops.materials)) save.addMaterial(id, n);
+  }
+
+  /**
+   * Walk-up-and-use, for everything the level put in your path.
+   *
+   * Chests, shrines, barrels, crates and urns were all authored with an
+   * `interact` payload, placed by the generator and drawn by the builder, and
+   * nothing anywhere read the payload. The whole layer was scenery you walked
+   * past. This is the half that was missing.
+   */
+  private tickInteractables(input: Engine['input'], ctx: CombatContext): void {
+    const near = this.mesh.nearestInteractable(
+      this.player.position.x,
+      this.player.position.z,
+      DungeonScene.INTERACT_RANGE,
+    );
+    if (near !== this.nearProp) {
+      this.nearProp = near;
+      toast(near ? `[E] ${this.promptFor(near)}` : '', 'info');
+    }
+    if (!near || !input.wasPressed('interact')) return;
+
+    // The payload is `family.tier` — `chest.vault`, `lever.vault`, `quest.altar`
+    // — or a bare family for anything scattered. Dispatch on the family.
+    const family = near.kind.split('.')[0]!;
+    const tier = near.kind.split('.')[1] ?? '';
+
+    if (family === 'lever') {
+      this.pullLever(near);
+      return;
+    }
+    if (family === 'chest' && tier === 'vault' && !this.vaultOpen) {
+      toast('The vault is barred. There is a lever somewhere in this room.', 'bad');
+      audio.play('ui.error');
+      return;
+    }
+
+    this.mesh.removeInteractable(near);
+    this.nav.setBlocked(near.tileX, near.tileY, false);
+    this.nearProp = null;
+    toast('', 'info');
+
+    if (family === 'shrine') this.useShrine(near);
+    else if (family === 'chest') this.openChest(near, tier);
+    else if (family === 'quest' || family === 'altar') this.useAltar(near);
+    else if (family === 'bookcase') this.search(near);
+    else this.smash(near);
+  }
+
+  /**
+   * Breaks any loose container caught in a swing.
+   *
+   * Only the smashables: a chest, a shrine, a lever and a quest altar all need
+   * a deliberate use, and popping them by swinging near them would be a way to
+   * lose a vault by accident.
+   */
+  private breakNear(x: number, z: number, range = 2.2): void {
+    const it = this.mesh.nearestInteractable(x, z, range);
+    if (!it) return;
+    const family = it.kind.split('.')[0]!;
+    if (family !== 'barrel' && family !== 'crate' && family !== 'urn') return;
+    this.mesh.removeInteractable(it);
+    this.nav.setBlocked(it.tileX, it.tileY, false);
+    if (this.nearProp === it) this.nearProp = null;
+    this.smash(it);
+  }
+
+  /** What the on-screen prompt says, for a `family.tier` payload. */
+  private promptFor(it: Interactable): string {
+    const family = it.kind.split('.')[0]!;
+    if (family === 'chest' && it.kind.split('.')[1] === 'vault' && !this.vaultOpen) return 'Barred vault';
+    return INTERACT_LABEL[family] ?? INTERACT_LABEL[it.propKind] ?? 'Search';
+  }
+
+  /**
+   * The vault lever. Vault rooms place a barred chest and a wall lever, and the
+   * lever was drawn with an `interact` payload nothing ever read, so the vault
+   * could never be opened at all.
+   */
+  private pullLever(it: Interactable): void {
+    this.mesh.removeInteractable(it);
+    this.nav.setBlocked(it.tileX, it.tileY, false);
+    this.nearProp = null;
+    this.vaultOpen = true;
+    this.effects.teleportIn(it.x, 0.8, it.z, 0xffd66b);
+    audio.play('ui.open');
+    toast('Something heavy moves. The vault is open.', 'good');
+  }
+
+  /** The quest altar in a quest room. Counts toward `interact` objectives. */
+  private useAltar(it: Interactable): void {
+    this.effects.summonCircle(it.x, it.z, 2.0, 1.2, 0x9fd8ff);
+    this.fx.burst('levelup', it.x, 1.0, it.z, { count: 26 });
+    audio.play('ui.open');
+    toast('The altar goes quiet.', 'good');
+    onInteract(this.run.quest, 'altar');
+  }
+
+  /** Shelves pay small and quiet: coins, and occasionally something written. */
+  private search(it: Interactable): void {
+    const at = this.tmpDir.set(it.x, 0, it.z).clone();
+    const ilvl = Math.max(1, this.run.depth + this.levelIndex);
+    this.dropGold(Math.round(this.rng.range(6, 20) * (1 + ilvl * 0.35)), at);
+    if (this.rng.chance(0.12)) {
+      const item = rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind });
+      if (item) this.dropItem(item, at);
+    }
+    this.fx.burst('dust', it.x, 1.0, it.z, { count: 14, scale: 0.7 });
+    audio.play('ui.open');
+    onInteract(this.run.quest, 'bookcase');
+  }
+
+  /**
+   * A shrine grants the blessing matching its own flavour, then is spent.
+   *
+   * Twelve blessing statuses were written with full modifiers — might,
+   * fortitude, sanctified, treasure sense — and nothing in the game could grant
+   * a single one, because nothing ever built a shrine you could touch.
+   */
+  private useShrine(it: { x: number; y: number; z: number; kind: string }): void {
+    const type = it.kind.split('.')[1] ?? '';
+    const blessing = this.rng.pick(SHRINE_BLESSINGS[type] ?? ANY_BLESSING);
+    const def = getStatus(blessing.id);
+    this.player.applyStatus(blessing.id, blessing.duration, 1, 1);
+    this.effects.summonCircle(it.x, it.z, 2.2, 1.4, def?.color ?? 0xffd66b);
+    this.effects.teleportIn(it.x, 0.6, it.z, def?.color ?? 0xffd66b);
+    this.fx.burst('levelup', it.x, 1.0, it.z, { count: 40 });
+    audio.play('levelup');
+    toast(`${def?.name ?? 'Blessing'} — ${blessing.blurb}`, 'good');
+    onInteract(this.run.quest, 'shrine');
+  }
+
+  /**
+   * A chest pays out like a kill of the matching rank, plus a gold bonus. The
+   * generator writes three tiers into the payload: scattered chests are normal,
+   * treasure rooms hold a rare, and the barred vault chest is the best on the
+   * floor.
+   */
+  private openChest(it: { x: number; y: number; z: number }, tier: string): void {
+    const at = this.tmpDir.set(it.x, 0, it.z).clone();
+    const ilvl = Math.max(1, this.run.depth + this.levelIndex);
+    const rank: MonsterRank = tier === 'vault' ? 'boss' : tier === 'rare' ? 'rare' : 'champion';
+    const goldBonus = tier === 'vault' ? 3.0 : tier === 'rare' ? 1.6 : 1.1;
+    const drops = rollDrops(
+      ilvl,
+      rank,
+      this.rng,
+      this.player.stats.magicFind * activeDifficulty().magicFind,
+      this.player.stats.goldFind * activeDifficulty().goldFind,
+    );
+    for (const item of drops.items) this.dropItem(item, at);
+    if (drops.gold > 0) this.dropGold(Math.round(drops.gold * goldBonus), at);
+    this.effects.explosion(it.x, 0.7, it.z, { radius: 1.2, element: 'physical', color: 0xffd66b });
+    audio.play('ui.open');
+    onInteract(this.run.quest, 'chest');
+  }
+
+  /**
+   * A breakable pays out small: a handful of coins, sometimes a potion, and
+   * only rarely anything worth keeping. It is there to be smashed on the way
+   * past, not to be farmed.
+   */
+  private smash(it: { x: number; y: number; z: number; propKind: string }): void {
+    const at = this.tmpDir.set(it.x, 0, it.z).clone();
+    const ilvl = Math.max(1, this.run.depth + this.levelIndex);
+
+    this.dropGold(Math.round(this.rng.range(4, 14) * (1 + ilvl * 0.35)), at);
+    if (this.rng.chance(0.22)) {
+      const potion = rollPotion(ilvl, 'normal', this.rng);
+      if (potion) this.dropItem(potion, at);
+    }
+    if (this.rng.chance(0.06)) {
+      const item = rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind });
+      if (item) this.dropItem(item, at);
+    }
+
+    // Debris in the prop's own colour family, and a bang.
+    this.fx.burst(it.propKind === 'urn' ? 'dust' : 'gib', it.x, 0.6, it.z, { count: 22, scale: 0.8 });
+    this.decals.add('dust', it.x, it.z, 0.7);
+    this.effects.impact('physical', it.x, 0.6, it.z, { scale: 0.8, decal: false });
+    audio.play('hit.physical');
+    onInteract(this.run.quest, it.propKind);
   }
 
   private dropItem(item: Item, at: THREE.Vector3): void {

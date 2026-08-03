@@ -217,6 +217,8 @@ export function layoutSizeFor(depth: number, kind: LayoutKind, rng: Rng): { w: n
   if (kind === 'arena') base = 54 + Math.floor(growth * 0.6);
   if (kind === 'caves' || kind === 'ruins') base = 70 + growth;
   if (kind === 'maze') base = 55 + Math.floor(growth * 0.8);
+  // Halls need room for the hallways between the rooms, not just the rooms.
+  if (kind === 'halls') base = 76 + growth;
   if (kind === 'spiral') base = 66 + Math.floor(growth * 0.5);
   const w = base + rng.int(-4, 6);
   const h = base + rng.int(-4, 6);
@@ -230,6 +232,9 @@ export function buildLayout(kind: LayoutKind, o: LayoutOpts): LayoutOut {
   switch (kind) {
     case 'rooms':
       out = layoutRooms(o);
+      break;
+    case 'halls':
+      out = layoutHalls(o);
       break;
     case 'caves':
       out = layoutCaves(o);
@@ -712,6 +717,54 @@ function carveCorridor(
   }
 }
 
+/**
+ * Opens one-tile-wide passages out to two tiles.
+ *
+ * A tile is 2.0 metres and the camera looks down at 0.92 radians, so a one-tile
+ * corridor is a two-metre slot with both walls filling the frame. You cannot
+ * see what you are walking into, and every layout ends up reading as the same
+ * brick tunnel regardless of which biome dressed it.
+ *
+ * Where a passage pinches to a single tile this carves the wall on one side,
+ * preferring the side that already has floor two tiles further out so the
+ * widening joins space that exists instead of chewing fresh holes into rock.
+ * Only void and wall are ever overwritten — water, lava and chasms are hazards
+ * the level meant to place.
+ */
+function widenPinchPoints(g: Grid, rng: Rng, passes = 2): void {
+  for (let p = 0; p < passes; p++) {
+    const todo: number[] = [];
+    for (let y = 2; y < g.h - 2; y++) {
+      for (let x = 2; x < g.w - 2; x++) {
+        if (!g.walkable(x, y)) continue;
+        const l = g.walkable(x - 1, y);
+        const r = g.walkable(x + 1, y);
+        const u = g.walkable(x, y - 1);
+        const d = g.walkable(x, y + 1);
+        // A horizontal run boxed in above and below, or the vertical mirror.
+        // Two open neighbours means a passage you walk through. One means a
+        // stub — a crypt niche, a treasure alcove — that is meant to be tight.
+        if ((l ? 1 : 0) + (r ? 1 : 0) + (u ? 1 : 0) + (d ? 1 : 0) < 2) continue;
+        const boxedVertically = (l || r) && !u && !d;
+        const boxedHorizontally = (u || d) && !l && !r;
+        if (boxedVertically) {
+          const up = g.walkable(x, y - 2) ? 1 : 0;
+          const dn = g.walkable(x, y + 2) ? 1 : 0;
+          const side = up === dn ? (rng.chance(0.5) ? -1 : 1) : up > dn ? -1 : 1;
+          todo.push(g.idx(x, y + side));
+        } else if (boxedHorizontally) {
+          const lf = g.walkable(x - 2, y) ? 1 : 0;
+          const rt = g.walkable(x + 2, y) ? 1 : 0;
+          const side = lf === rt ? (rng.chance(0.5) ? -1 : 1) : lf > rt ? -1 : 1;
+          todo.push(g.idx(x + side, y));
+        }
+      }
+    }
+    if (todo.length === 0) return;
+    for (const i of todo) if (g.t[i] === T_VOID || g.t[i] === T_WALL) g.t[i] = T_FLOOR;
+  }
+}
+
 /** Distance between room centres, squared. */
 function roomDist2(a: DungeonRoom, b: DungeonRoom): number {
   const dx = a.center.x - b.center.x;
@@ -937,7 +990,9 @@ function layoutRooms(o: LayoutOpts): LayoutOut {
     const a = node.left ? collect(node.left) : undefined;
     const b = node.right ? collect(node.right) : undefined;
     if (a && b) {
-      const width2 = rng.chance(0.3) ? 2 : 1;
+      // Two tiles is the floor: a spanning corridor is walked in both
+      // directions, so it is the one the player sees most.
+      const width2 = rng.chance(0.35) ? 3 : 2;
       carveCorridor(g, a.center.x, a.center.y, b.center.x, b.center.y, width2, rng);
       linked.add(`${a.id}:${b.id}`);
       linked.add(`${b.id}:${a.id}`);
@@ -946,9 +1001,192 @@ function layoutRooms(o: LayoutOpts): LayoutOut {
   };
   collect(root);
 
-  addLoops(g, rooms, linked, rng, 0.42, 1);
+  addLoops(g, rooms, linked, rng, 0.42, 2);
+  widenPinchPoints(g, rng);
 
   return { grid: g, rooms, kind: 'rooms' };
+}
+
+// ---------------------------------------------------------------------------
+// 1b. halls — Diablo-style rooms strung on wide hallways
+// ---------------------------------------------------------------------------
+
+/**
+ * Rooms of three clear sizes, joined by wide hallways running in every
+ * direction, with the stairs sitting in one of them somewhere.
+ *
+ * This is the shape the genre is built on and the one BSP does not give you:
+ * BSP fills its leaves, so the floor is nearly all room and the corridors are
+ * short seams between them. Here the rooms are islands on a loose grid and the
+ * space between them is hallway, so you walk a hall, arrive somewhere, fight,
+ * and pick an exit. Big rooms are deliberately big — the monster budget is
+ * spread by floor area, so a twenty-tile hall room is where a real pack lands.
+ */
+function layoutHalls(o: LayoutOpts): LayoutOut {
+  resetRoomIds();
+  const { width, height, rng } = o;
+  const g = new Grid(width, height);
+  const noise = new Noise(o.seed ^ 0x4a11);
+
+  // A loose cell grid. Rooms sit inside a cell with jitter; the leftover space
+  // between cells is what the hallways run through.
+  const CELL = 20;
+  const cols = Math.max(2, Math.floor((width - 6) / CELL));
+  const rowsN = Math.max(2, Math.floor((height - 6) / CELL));
+  const ox = Math.floor((width - cols * CELL) / 2);
+  const oy = Math.floor((height - rowsN * CELL) / 2);
+
+  const cellRoom: (DungeonRoom | null)[] = new Array(cols * rowsN).fill(null);
+  const rooms: DungeonRoom[] = [];
+
+  for (let cy = 0; cy < rowsN; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      // A few empty cells so hallways have somewhere to bend around and the
+      // grid never reads as a grid.
+      const edge = cx === 0 || cy === 0 || cx === cols - 1 || cy === rowsN - 1;
+      if (!edge && rng.chance(0.14)) continue;
+
+      // Three size classes, and they are meant to be told apart at a glance.
+      const roll = rng.next();
+      const span = roll < 0.22 ? rng.int(13, 17) : roll < 0.62 ? rng.int(9, 12) : rng.int(5, 8);
+      const rw = clamp(span + rng.int(-2, 2), 5, CELL - 3);
+      const rh = clamp(span + rng.int(-2, 2), 5, CELL - 3);
+      const rx = ox + cx * CELL + 2 + rng.int(0, Math.max(0, CELL - rw - 4));
+      const ry = oy + cy * CELL + 2 + rng.int(0, Math.max(0, CELL - rh - 4));
+      if (rx < 3 || ry < 3 || rx + rw > width - 3 || ry + rh > height - 3) continue;
+
+      // Big rooms stay rectangular and readable; small ones get chewed edges.
+      carveOrganicRoom(g, rx, ry, rw, rh, rng, noise, span >= 13 ? 0.12 : rng.range(0.2, 0.6));
+      const room = makeRoom(rx, ry, rw, rh);
+      cellRoom[cy * cols + cx] = room;
+      rooms.push(room);
+
+      // Interior character: a dais in the big ones, a sunken floor in some.
+      const shape = rng.next();
+      if (span >= 13 && shape < 0.45) {
+        const dw = Math.floor(rw * 0.45);
+        const dh = Math.floor(rh * 0.45);
+        g.rectHeight(rx + ((rw - dw) >> 1), ry + ((rh - dh) >> 1), dw, dh, 1);
+      } else if (shape < 0.2 && rw >= 9 && rh >= 9) {
+        g.rectHeight(rx + 2, ry + 2, rw - 4, rh - 4, -1);
+      }
+    }
+  }
+
+  if (rooms.length === 0) return layoutRooms(o);
+
+  // --- hallways ----------------------------------------------------------
+  // Spanning tree first (randomised Prim over the cell grid), so every room is
+  // reachable, then loops so the halls run in all four directions rather than
+  // branching off one spine.
+  const linked = new Set<string>();
+  const join = (a: DungeonRoom, b: DungeonRoom, w: number): void => {
+    carveCorridor(g, a.center.x, a.center.y, b.center.x, b.center.y, w, rng);
+    linked.add(`${a.id}:${b.id}`);
+    linked.add(`${b.id}:${a.id}`);
+    a.links.push(b.id);
+    b.links.push(a.id);
+  };
+  /** Trunk halls between the big rooms are three wide; the rest are two. */
+  const hallWidth = (a: DungeonRoom, b: DungeonRoom): number =>
+    Math.min(a.w, a.h) >= 12 && Math.min(b.w, b.h) >= 12 ? 3 : rng.chance(0.3) ? 3 : 2;
+
+  const inTree = new Uint8Array(cols * rowsN);
+  let seed = -1;
+  for (let i = 0; i < cellRoom.length; i++) if (cellRoom[i]) { seed = i; break; }
+  const frontier: Array<[number, number]> = [];
+  const pushEdges = (c: number): void => {
+    const cx = c % cols;
+    const cy = Math.floor(c / cols);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as Array<[number, number]>) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rowsN) continue;
+      const nc = ny * cols + nx;
+      if (!cellRoom[nc] || inTree[nc]) continue;
+      frontier.push([c, nc]);
+    }
+  };
+  inTree[seed] = 1;
+  pushEdges(seed);
+  while (frontier.length > 0) {
+    const i = rng.int(0, frontier.length - 1);
+    const [a, b] = frontier[i]!;
+    frontier.splice(i, 1);
+    if (inTree[b]) continue;
+    inTree[b] = 1;
+    const ra = cellRoom[a]!;
+    const rb = cellRoom[b]!;
+    join(ra, rb, hallWidth(ra, rb));
+    pushEdges(b);
+  }
+
+  // Cells the tree skipped (their neighbours were all empty) get stitched to
+  // whichever room is nearest, so nothing is stranded.
+  for (let c = 0; c < cellRoom.length; c++) {
+    const r = cellRoom[c];
+    if (!r || inTree[c]) continue;
+    let best: DungeonRoom | null = null;
+    let bestD = Infinity;
+    for (let k = 0; k < cellRoom.length; k++) {
+      const other = cellRoom[k];
+      if (!other || !inTree[k]) continue;
+      const d = roomDist2(r, other);
+      if (d < bestD) {
+        bestD = d;
+        best = other;
+      }
+    }
+    if (best) {
+      join(r, best, 2);
+      inTree[c] = 1;
+    }
+  }
+
+  // Loops. This is what turns a branching tree into a place with junctions.
+  for (let cy = 0; cy < rowsN; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const c = cy * cols + cx;
+      const r = cellRoom[c];
+      if (!r) continue;
+      const right = cx + 1 < cols ? cellRoom[c + 1] : null;
+      const down = cy + 1 < rowsN ? cellRoom[c + cols] : null;
+      if (right && !linked.has(`${r.id}:${right.id}`) && rng.chance(0.5)) join(r, right, hallWidth(r, right));
+      if (down && !linked.has(`${r.id}:${down.id}`) && rng.chance(0.5)) join(r, down, hallWidth(r, down));
+    }
+  }
+
+  // Side chambers: a short spur off a hall into a small dead-end room. These
+  // are where treasure and ambushes go, and they are the reason a hall is worth
+  // looking down instead of running past.
+  const spurs = rng.int(2, 4);
+  for (let i = 0, made = 0; i < spurs * 8 && made < spurs; i++) {
+    const host = rng.pick(rooms);
+    const side = rng.int(0, 3);
+    const sw = rng.int(5, 8);
+    const sh = rng.int(5, 8);
+    const dist = rng.int(7, 12);
+    const sx = side === 2 ? host.x - dist - sw : side === 3 ? host.x + host.w + dist : host.center.x - (sw >> 1);
+    const sy = side === 0 ? host.y - dist - sh : side === 1 ? host.y + host.h + dist : host.center.y - (sh >> 1);
+    if (sx < 3 || sy < 3 || sx + sw > width - 3 || sy + sh > height - 3) continue;
+    // Do not drop a spur on top of an existing room.
+    let clash = false;
+    for (const r of rooms) {
+      if (sx < r.x + r.w + 2 && sx + sw + 2 > r.x && sy < r.y + r.h + 2 && sy + sh + 2 > r.y) {
+        clash = true;
+        break;
+      }
+    }
+    if (clash) continue;
+    g.rect(sx, sy, sw, sh, T_FLOOR);
+    const spur = makeRoom(sx, sy, sw, sh, rng.chance(0.5) ? 'treasure' : 'ambush');
+    rooms.push(spur);
+    join(host, spur, 2);
+    made++;
+  }
+
+  widenPinchPoints(g, rng);
+  return { grid: g, rooms, kind: 'halls' };
 }
 
 // ---------------------------------------------------------------------------
@@ -1040,6 +1278,11 @@ function layoutCaves(o: LayoutOpts): LayoutOut {
 
   ensureConnected(g, []);
   removeDiagonalPinch(g);
+  // The cellular automata leaves worm-thin threads between chambers. Open them
+  // before connectivity is measured for rooms, so the partition sees the real
+  // walkable shape.
+  widenPinchPoints(g, rng);
+  removeDiagonalPinch(g);
 
   const anchors = spreadAnchors(g, rng, 12 + Math.min(6, Math.floor(o.depth / 8)), 11);
   const rooms = roomsFromPartition(g, anchors, 28);
@@ -1059,16 +1302,30 @@ function layoutMaze(o: LayoutOpts): LayoutOut {
   const height = o.height | 1;
   const g = new Grid(width, height);
 
-  const cw = Math.floor((width - 3) / 2);
-  const ch = Math.floor((height - 3) / 2);
+  // Stride 3 with a 2x2 block per cell. A stride-2 maze gives one-tile
+  // passages, which at 2m a tile is the tunnel the camera cannot see down.
+  // Three tiles buys a two-wide corridor with a one-tile wall between runs.
+  const STRIDE = 3;
+  const CELL = 2;
+  const cw = Math.floor((width - 4) / STRIDE);
+  const ch = Math.floor((height - 4) / STRIDE);
   const visited = new Uint8Array(cw * ch);
-  const cellX = (c: number): number => 2 + (c % cw) * 2;
-  const cellY = (c: number): number => 2 + Math.floor(c / cw) * 2;
+  const cellX = (c: number): number => 2 + (c % cw) * STRIDE;
+  const cellY = (c: number): number => 2 + Math.floor(c / cw) * STRIDE;
+  /** Carve a cell's own block. */
+  const openCell = (c: number): void => g.rect(cellX(c), cellY(c), CELL, CELL, T_FLOOR);
+  /** Carve the one-tile gap between two adjacent cells, full corridor width. */
+  const openLink = (c: number, dx: number, dy: number): void => {
+    const x = cellX(c);
+    const y = cellY(c);
+    if (dx !== 0) g.rect(dx > 0 ? x + CELL : x - 1, y, 1, CELL, T_FLOOR);
+    else g.rect(x, dy > 0 ? y + CELL : y - 1, CELL, 1, T_FLOOR);
+  };
 
   const start = rng.int(0, cw * ch - 1);
   const active: number[] = [start];
   visited[start] = 1;
-  g.set(cellX(start), cellY(start), T_FLOOR);
+  openCell(start);
 
   // Newest-first with an occasional random pick: long snaking corridors punctuated
   // by branch points. Pure-random reads as noise, pure-newest as a single snake.
@@ -1092,8 +1349,8 @@ function layoutMaze(o: LayoutOpts): LayoutOut {
       const nc = ny * cw + nx;
       if (visited[nc]) continue;
       visited[nc] = 1;
-      g.set(cellX(nc), cellY(nc), T_FLOOR);
-      g.set(cellX(cur) + dx, cellY(cur) + dy, T_FLOOR);
+      openCell(nc);
+      openLink(cur, dx, dy);
       active.push(nc);
       advanced = true;
       break;
@@ -1103,15 +1360,25 @@ function layoutMaze(o: LayoutOpts): LayoutOut {
 
   // Braid: remove most dead ends. A perfect maze is a chore; a braided one is a
   // place. Keep a few dead ends for treasure niches.
-  const deadEnds: number[] = [];
-  for (let c = 0; c < cw * ch; c++) {
+  /** Is the gap between a cell and its neighbour in this direction carved? */
+  const linkOpen = (c: number, dx: number, dy: number): boolean => {
     const x = cellX(c);
     const y = cellY(c);
+    if (dx !== 0) return g.walkable(dx > 0 ? x + CELL : x - 1, y);
+    return g.walkable(x, dy > 0 ? y + CELL : y - 1);
+  };
+  const DIRS: Array<[number, number]> = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
+
+  const deadEnds: number[] = [];
+  for (let c = 0; c < cw * ch; c++) {
+    if (!visited[c]) continue;
     let n = 0;
-    if (g.walkable(x + 1, y)) n++;
-    if (g.walkable(x - 1, y)) n++;
-    if (g.walkable(x, y + 1)) n++;
-    if (g.walkable(x, y - 1)) n++;
+    for (const [dx, dy] of DIRS) if (linkOpen(c, dx, dy)) n++;
     if (n === 1) deadEnds.push(c);
   }
   rng.shuffle(deadEnds);
@@ -1119,22 +1386,14 @@ function layoutMaze(o: LayoutOpts): LayoutOut {
   const niches: number[] = deadEnds.slice(0, keep);
   for (let i = keep; i < deadEnds.length; i++) {
     const c = deadEnds[i];
-    const x = cellX(c);
-    const y = cellY(c);
     const cx = c % cw;
     const cy = Math.floor(c / cw);
-    const dirs = rng.shuffle([
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ]);
-    for (const [dx, dy] of dirs) {
+    for (const [dx, dy] of rng.shuffle(DIRS.slice())) {
       const nx = cx + dx;
       const ny = cy + dy;
       if (nx < 0 || ny < 0 || nx >= cw || ny >= ch) continue;
-      if (g.walkable(x + dx, y + dy)) continue;
-      g.set(x + dx, y + dy, T_FLOOR);
+      if (linkOpen(c, dx, dy)) continue;
+      openLink(c, dx, dy);
       break;
     }
   }
@@ -1144,10 +1403,12 @@ function layoutMaze(o: LayoutOpts): LayoutOut {
   const chamberCount = rng.int(6, 10);
   const attempts = chamberCount * 8;
   for (let i = 0, made = 0; i < attempts && made < chamberCount; i++) {
-    const rw = rng.int(5, 9) | 1;
-    const rh = rng.int(5, 9) | 1;
-    const rx = (2 + rng.int(0, Math.max(0, cw - Math.ceil(rw / 2))) * 2) | 0;
-    const ry = (2 + rng.int(0, Math.max(0, ch - Math.ceil(rh / 2))) * 2) | 0;
+    // Sized and placed on the cell grid so a chamber swallows whole cells and
+    // leaves no half-tile slivers against the maze walls.
+    const rw = CELL + STRIDE * rng.int(1, 3);
+    const rh = CELL + STRIDE * rng.int(1, 3);
+    const rx = 2 + rng.int(0, Math.max(0, cw - Math.ceil(rw / STRIDE))) * STRIDE;
+    const ry = 2 + rng.int(0, Math.max(0, ch - Math.ceil(rh / STRIDE))) * STRIDE;
     if (rx + rw >= width - 2 || ry + rh >= height - 2) continue;
     let overlaps = false;
     for (const r of rooms) {
@@ -1163,7 +1424,7 @@ function layoutMaze(o: LayoutOpts): LayoutOut {
     made++;
   }
 
-  // Turn kept dead ends into 1-tile treasure niches with a room record so the
+  // Turn kept dead ends into small treasure niches with a room record so the
   // spawner can find them.
   for (const c of niches.slice(0, 5)) {
     const x = cellX(c);
@@ -1176,7 +1437,7 @@ function layoutMaze(o: LayoutOpts): LayoutOut {
       }
     }
     if (overlaps) continue;
-    rooms.push(makeRoom(x - 1, y - 1, 3, 3, 'treasure'));
+    rooms.push(makeRoom(x, y, CELL, CELL, 'treasure'));
   }
 
   return { grid: g, rooms, kind: 'maze' };
@@ -1191,7 +1452,7 @@ function layoutCatacombs(o: LayoutOpts): LayoutOut {
   const { width, height, rng } = o;
   const g = new Grid(width, height);
 
-  const cell = 7; // 5-wide chamber + 2 wall
+  const cell = 9; // 7-wide chamber + 2 wall
   const cols = Math.floor((width - 4) / cell);
   const rowsN = Math.floor((height - 4) / cell);
   const ox = Math.floor((width - cols * cell) / 2);
@@ -1217,8 +1478,8 @@ function layoutCatacombs(o: LayoutOpts): LayoutOut {
       if (hallRows.has(cy) || hallCols.has(cx)) continue;
       // A few cells stay solid — the necropolis is not a perfect grid.
       if (rng.chance(0.08) && cx > 0 && cy > 0 && cx < cols - 1 && cy < rowsN - 1) continue;
-      const rw = rng.chance(0.25) ? 5 : 4;
-      const rh = rng.chance(0.25) ? 5 : 4;
+      const rw = rng.chance(0.25) ? 7 : 6;
+      const rh = rng.chance(0.25) ? 7 : 6;
       g.rect(bx, by, rw, rh, T_FLOOR);
       const room = makeRoom(bx, by, rw, rh);
       rooms.push(room);
@@ -1274,7 +1535,7 @@ function layoutCatacombs(o: LayoutOpts): LayoutOut {
       g.set(mx + (bx2 > ax ? -1 : 1), my, T_FLOOR);
       g.set(mx + (bx2 > ax ? 1 : -1), my, T_FLOOR);
     }
-    carveCorridor(g, ra.center.x, ra.center.y, rb.center.x, rb.center.y, 1, rng);
+    carveCorridor(g, ra.center.x, ra.center.y, rb.center.x, rb.center.y, 2, rng);
   };
   if (seedCell >= 0) {
     inTree[seedCell] = 1;
@@ -1330,9 +1591,11 @@ function layoutCatacombs(o: LayoutOpts): LayoutOut {
       }
     }
     if (nearestHall && best < 30 * 30 && rng.chance(0.72)) {
-      carveCorridor(g, r.center.x, r.center.y, nearestHall.center.x, nearestHall.center.y, 1, rng);
+      carveCorridor(g, r.center.x, r.center.y, nearestHall.center.x, nearestHall.center.y, 2, rng);
     }
   }
+
+  widenPinchPoints(g, rng);
 
   return { grid: g, rooms, kind: 'catacombs' };
 }
