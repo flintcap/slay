@@ -34,6 +34,8 @@ export interface GameEvents {
   'quest:progress': { index: number; progress: number; target: number; desc: string };
   'quest:complete': { name: string };
   'depth:changed': { depth: number; level: number; of: number };
+  /** A run was finished and banked. Fires once, on the way back to town. */
+  'run:cleared': { depth: number };
   'boss:engaged': { name: string; title: string; maxLife: number };
   'boss:phase': { name: string; bark?: string; index: number };
   'boss:damaged': { life: number; maxLife: number };

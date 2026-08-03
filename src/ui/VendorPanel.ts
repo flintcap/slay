@@ -42,6 +42,8 @@ export class VendorPanel {
   private packGrid: ItemGrid;
   private goldEl: HTMLSpanElement;
   private restockEl: HTMLDivElement;
+  private restockBtn!: Button;
+  /** How many crates have been asked for since the last cleared run. */
   private restocks = 0;
   private generatedFor = -1;
 
@@ -80,19 +82,22 @@ export class VendorPanel {
     const buyHint = div('inv-hint', 'Click an item to buy it.');
     left.appendChild(buyHint);
 
-    const restock = new Button({
+    this.restockBtn = new Button({
       label: 'Ask for new stock',
       variant: 'ghost',
       icon: 'sparkle',
       small: true,
-      onClick: () => {
-        this.restocks++;
-        this.generateStock();
-        this.refresh();
-        events.emit('toast', { text: 'The merchant unpacks another crate.', kind: 'info' });
-      },
+      onClick: () => this.buyRestock(),
     });
-    left.appendChild(restock.root);
+    left.appendChild(this.restockBtn.root);
+
+    // A cleared run wipes the tally. Rerolling the shelf between floors of the
+    // same run gets expensive fast; going back down and finishing resets it.
+    events.on('run:cleared', () => {
+      this.restocks = 0;
+      this.generatedFor = -1;
+      this.refresh();
+    });
 
     // --- pack -------------------------------------------------------------
     const right = div('trade-col');
@@ -146,6 +151,38 @@ export class VendorPanel {
 
   // -- stock ---------------------------------------------------------------
 
+  /**
+   * What the next crate costs.
+   *
+   * Doubling-ish per crate inside a single trip to town, so the first reroll is
+   * an easy call and the fifth is a real decision. Scaled by level and best
+   * depth so it stays a meaningful sum instead of pocket change by depth 40.
+   */
+  private restockCost(): number {
+    const c = save.account.current;
+    const base = 140 + (c?.level ?? 1) * 40 + Math.max(1, save.account.bestDepth) * 55;
+    return Math.round(base * Math.pow(1.9, this.restocks));
+  }
+
+  /** Pay for a fresh shelf, or say why you cannot. */
+  private buyRestock(): void {
+    const c = save.account.current;
+    if (!c) return;
+    const cost = this.restockCost();
+    if (c.gold < cost) {
+      events.emit('toast', { text: `You need ${fmtInt(cost - c.gold)} more gold.`, kind: 'bad' });
+      this.restockBtn.flash('bad');
+      return;
+    }
+    c.gold -= cost;
+    save.setCharacter(c);
+    this.restocks++;
+    this.generateStock();
+    this.refresh();
+    this.restockBtn.flash('good');
+    events.emit('toast', { text: `The merchant unpacks another crate. ${fmtInt(cost)} gold.`, kind: 'info' });
+  }
+
   private generateStock(): void {
     const c = save.account.current;
     const level = c?.level ?? 1;
@@ -183,6 +220,9 @@ export class VendorPanel {
       this.packGrid.setItems(c.inventory);
       countTo(this.goldEl, c.gold, fmtInt, 340);
     }
+    const cost = this.restockCost();
+    this.restockBtn.setLabel(`Ask for new stock — ${fmtInt(cost)}g`);
+    this.restockBtn.setDisabled((c?.gold ?? 0) < cost);
     this.decorate(c?.gold ?? 0);
   }
 

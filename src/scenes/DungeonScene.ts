@@ -1156,6 +1156,7 @@ export class DungeonScene extends GameScene {
       if (this.run.depth > save.account.bestDepth) save.account.bestDepth = this.run.depth;
       this.awardQuestIfComplete();
       save.setCharacter(c);
+      events.emit('run:cleared', { depth: this.run.depth });
       toast(`Depth ${this.run.depth} cleared.`, 'epic');
       void this.engine.goTo('town');
     }
