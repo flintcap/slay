@@ -226,6 +226,53 @@ export type ClipName =
   | 'hurl'
   | 'lunge';
 
+/**
+ * Which carry pose the free hand takes while the body is just moving around.
+ *
+ * `twoHand` and `staff` bring the left hand onto the haft; `bow` brings the
+ * right hand across to the bow the left hand is holding. `none` leaves the
+ * arms as the clip authored them, which is what every weapon used to get.
+ */
+export type CarryGrip = 'none' | 'twoHand' | 'staff' | 'bow';
+
+/**
+ * The carry poses, as absolute arm angles.
+ *
+ * Bones are unrotated in bind pose, so these are plain character-space angles:
+ * on a hanging arm, a negative shoulder X swings it forward, and Z swings it
+ * across the body — outward for the left arm when positive, for the right arm
+ * when negative.
+ */
+const CARRY: Record<Exclude<CarryGrip, 'none'>, Array<[string, number, number, number]>> = {
+  // Both hands on the haft of something held up and across the body.
+  twoHand: [
+    ['shoulderR', 0.052, 0.335, 0.07],
+    ['elbowR', -0.95, 0, 0],
+    ['handR', 0, 0, 0],
+    ['shoulderL', -0.055, -1.006, 0.033],
+    ['elbowL', -1.52, 0, 0],
+    ['handL', 0, 0, 0],
+  ],
+  // A staff stands vertical: top hand near the chest, lower hand down the shaft.
+  staff: [
+    ['shoulderR', 0.18, -0.002, 0.2],
+    ['elbowR', -0.949, 0, 0],
+    ['handR', 0, 0, 0],
+    ['shoulderL', -0.593, -0.6, -0.844],
+    ['elbowL', -1.248, 0, 0],
+    ['handL', 0, 0, 0],
+  ],
+  // The bow rides in the bow hand; the string hand comes across to the riser.
+  bow: [
+    ['shoulderL', -0.066, -0.335, -0.07],
+    ['elbowL', -0.949, 0, 0],
+    ['handL', 0, 0, 0],
+    ['shoulderR', -0.989, 0.699, 0.694],
+    ['elbowR', -0.176, 0, 0],
+    ['handR', 0, 0, 0],
+  ],
+};
+
 interface ClipDef {
   /** Seconds for one full playthrough at speed 1. */
   duration: number;
@@ -1157,6 +1204,21 @@ export class Animator {
   /** Extra forward lean applied by the caller when accelerating. */
   leanBias = 0;
 
+  /**
+   * How the carried weapon is held while walking, running or standing.
+   *
+   * Applied only over locomotion clips: the attack and cast clips already pose
+   * both arms on purpose, and a carry pose laid over a bow shot or an overhead
+   * smash would fight the animation that makes the move readable.
+   */
+  private grip: CarryGrip = 'none';
+  /** Eases in and out so equipping a greatsword is not a one-frame snap. */
+  private gripW = 0;
+
+  setGrip(grip: CarryGrip): void {
+    this.grip = grip;
+  }
+
   constructor(bones: Record<string, THREE.Bone>) {
     for (const name of SLOT_NAMES) {
       const b = bones[name] ?? null;
@@ -1328,6 +1390,7 @@ export class Animator {
    * movement, head stabilisation and weapon follow-through.
    */
   private applyProcedural(pose: Pose, dt: number): void {
+    this.applyCarry(pose, dt);
     const breath = this.cur.def.breath ?? 1;
     if (breath > 0.01) {
       const b = Math.sin(this.elapsed * 1.7);
@@ -1356,6 +1419,32 @@ export class Animator {
       pose.add('handL', 0, lag * 1.2, -lag * 0.5);
       pose.add('elbowR', lag * 0.4, 0, 0);
       pose.add('head', 0, -chestY * 0.35, 0);
+    }
+  }
+
+  /**
+   * Puts the free hand on the weapon while the body is only moving around.
+   *
+   * Blended rather than switched, on two counts: it has to fade out the instant
+   * an attack starts, so the swing owns the arms, and it has to fade in when a
+   * greatsword is equipped rather than snapping the arms across in one frame.
+   * The arm swing of the walk still shows through at partial weight, which is
+   * what stops a walking two-hander looking like a mannequin.
+   */
+  private applyCarry(pose: Pose, dt: number): void {
+    // Locomotion only. Attack, cast and shoot clips pose both arms on purpose.
+    const want = this.grip !== 'none' && this.cur.def.locomotion && !this.inAction ? 1 : 0;
+    const rate = want > this.gripW ? 6 : 12;
+    this.gripW += (want - this.gripW) * Math.min(1, dt * rate);
+    if (this.gripW < 0.002 || this.grip === 'none') return;
+
+    const w = smooth(clamp01(this.gripW));
+    for (const [bone, rx, ry, rz] of CARRY[this.grip]) {
+      const i = SLOT[bone];
+      if (i === undefined) continue;
+      pose.rot[i * 3] += (rx - pose.rot[i * 3]) * w;
+      pose.rot[i * 3 + 1] += (ry - pose.rot[i * 3 + 1]) * w;
+      pose.rot[i * 3 + 2] += (rz - pose.rot[i * 3 + 2]) * w;
     }
   }
 

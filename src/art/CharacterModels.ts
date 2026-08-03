@@ -1161,6 +1161,107 @@ const SOCKETS: Record<string, Socket> = {
   ring2: { bone: 'handL', pos: [-0.015, -0.05, 0.01], rot: [Math.PI * 0.5, 0, 0] },
 };
 
+// ---------------------------------------------------------------------------
+// Grips — how each kind of weapon is actually held
+// ---------------------------------------------------------------------------
+
+/**
+ * Every weapon used one socket, so every weapon was held the same way: tipped
+ * down and forward in the right fist. A greatsword was carried like a dagger, a
+ * bow was clutched in the drawing hand rather than the bow hand, and a sword
+ * hung point-down as if it had been dropped.
+ *
+ * A grip is a weapon's carry pose. Bones are unrotated in bind pose, so a
+ * socket rotation is expressed directly in character space: **+X is the
+ * character's left, +Y is up, +Z is forward**. Weapon models are authored with
+ * the grip at the origin, the business end along +Y, the blade wide on X and
+ * thin on Z, so these rotations are just "point the tip there, turn the flat
+ * that way".
+ */
+export type WeaponGrip = 'sword' | 'dagger' | 'twoHand' | 'staff' | 'bow' | 'none';
+
+interface Grip {
+  rot: [number, number, number];
+  pos?: [number, number, number];
+  /** Forces a hand, whatever slot the item sits in. Bows go in the bow hand. */
+  bone?: string;
+  /** True when the free hand comes across to help hold it. */
+  bothHands: boolean;
+}
+
+/**
+ * Solved by `tools/solve-grips.mjs`, not typed by hand.
+ *
+ * A socket rotation lives in the hand bone's frame, and by the time a weapon is
+ * being carried that bone has been turned through most of a right angle by the
+ * pose. Numbers authored against the bind pose come out pointing somewhere
+ * else, so the tool settles the animation first and then solves the rotation
+ * that lands the tip where it belongs.
+ */
+const GRIPS: Record<WeaponGrip, Grip> = {
+  // Point up, tilted a little away from the body and a little back, flat to the
+  // camera so the blade reads as a blade and not a stick.
+  sword: { rot: [0.064, -0.23, 0.462], pos: [0, -0.03, 0.02], bothHands: false },
+  // Straight down, reverse grip, barely canted. A knife rides point-down.
+  dagger: { rot: [0.016, -0.199, -2.939], pos: [0, -0.04, 0.02], bothHands: false },
+  // Up and across the body to the off side, both hands on the haft.
+  twoHand: { rot: [0.548, -0.414, -0.761], pos: [0, -0.02, 0.03], bothHands: true },
+  // Vertical, like a walking staff, second hand further down the shaft.
+  staff: { rot: [0.802, -0.043, -0.136], pos: [0, -0.02, 0.02], bothHands: true },
+  // Bow hand, not string hand: limbs diagonal across the body, string inward.
+  bow: { rot: [-1.807, 0.175, 2.748], pos: [0, -0.03, 0.04], bone: 'handL', bothHands: true },
+  none: { rot: [Math.PI * 0.92, 0, 0], bothHands: false },
+};
+
+/** Which grip a weapon category wants. Non-weapons keep the plain hand socket. */
+export function weaponGrip(category: string | undefined, twoHanded: boolean): WeaponGrip {
+  switch (category) {
+    case 'bow':
+    case 'crossbow':
+      return 'bow';
+    case 'dagger':
+      return 'dagger';
+    case 'staff':
+    case 'spear':
+      return 'staff';
+    case 'sword':
+    case 'axe':
+    case 'mace':
+      return twoHanded ? 'twoHand' : 'sword';
+    case 'wand':
+    case 'scepter':
+      return 'sword';
+    default:
+      return 'none';
+  }
+}
+
+/** True when this grip needs the free hand brought onto the weapon. */
+export function gripUsesBothHands(grip: WeaponGrip): boolean {
+  return GRIPS[grip].bothHands;
+}
+
+/**
+ * The body pose a weapon asks for, as opposed to where the weapon itself sits.
+ *
+ * The socket says where the weapon is; this says what the other arm does about
+ * it. One rule so the world character, the character sheet and the checker
+ * cannot drift apart.
+ */
+export function carryGrip(
+  category: string | undefined,
+  twoHanded: boolean,
+): 'none' | 'twoHand' | 'staff' | 'bow' {
+  if (!twoHanded) return 'none';
+  const grip = weaponGrip(category, true);
+  return grip === 'bow' || grip === 'staff' || grip === 'twoHand' ? grip : 'none';
+}
+
+/** Which hand a grip actually puts the weapon in. */
+export function gripBone(grip: WeaponGrip, slot: EquipSlot): string {
+  return GRIPS[grip].bone ?? SOCKETS[slot]?.bone ?? 'handR';
+}
+
 /**
  * Removes anything previously socketed into `slot`, across every bone.
  *
@@ -1193,18 +1294,28 @@ export function attachToSocket(
    * you hold — socketing it into the hand put it in the fist like a club.
    */
   socketKey?: string,
+  /**
+   * How this weapon is held. Overrides the socket's own pose, and may move it
+   * to the other hand — a bow belongs in the bow hand, not the string hand.
+   */
+  grip?: WeaponGrip,
 ): void {
   void model;
   const socket = SOCKETS[socketKey ?? slot];
   if (!socket) return;
-  const bone = bones[socket.bone];
+  const g = grip && grip !== 'none' ? GRIPS[grip] : null;
+  // The off hand is the mirror of the main hand, so the same grip reads there
+  // by flipping the two rotations that lean the weapon sideways.
+  const offHand = slot === 'offHand';
+  const bone = bones[g?.bone ?? socket.bone];
   if (!bone) return;
 
   clearSocket(bones, slot);
 
   mesh.userData.socketSlot = slot;
-  mesh.position.set(...socket.pos);
-  mesh.rotation.set(...socket.rot);
+  mesh.position.set(...(g?.pos ?? socket.pos));
+  const rot = g?.rot ?? socket.rot;
+  mesh.rotation.set(rot[0], offHand && g ? -rot[1] : rot[1], offHand && g ? -rot[2] : rot[2]);
   if (socket.scale) mesh.scale.setScalar(socket.scale);
   mesh.traverse((o) => {
     const m = o as THREE.Mesh;

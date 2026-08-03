@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import type { Character, EquipSlot } from '../types';
 import { Random } from '../core/RNG';
 import { disposeObject } from '../core/Engine';
-import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots } from '../art/CharacterModels';
+import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip } from '../art/CharacterModels';
 import { buildItemModel } from '../art/ItemModels';
 import { Animator } from '../art/Animation';
 import { getBase } from '../sim/Loot';
@@ -180,13 +180,21 @@ export class PaperdollView {
         const visual = base?.visual ?? { shape: 'auto', palette: 'metal.steel' };
         // Quivers are worn on the back rather than held.
         const socketKey = base?.category === 'quiver' ? 'quiver' : undefined;
+        // The doll holds a weapon the same way the character in the world does.
+        const grip =
+          slot === 'mainHand' || slot === 'offHand'
+            ? weaponGrip(base?.category, base?.slot === 'twoHand')
+            : undefined;
         const mesh = buildItemModel(visual, rng, item.rarity);
-        attachToSocket(this.rig, this.bones, slot, mesh, socketKey);
+        attachToSocket(this.rig, this.bones, slot, mesh, socketKey, grip);
         this.equipMeshes.set(slot, mesh);
       } catch {
         // A single unbuildable item must not blank the whole figure.
       }
     }
+    // The doll stands the same way the character in the world does.
+    const main = eq.mainHand ? getBase(eq.mainHand.baseId) : undefined;
+    this.animator?.setGrip(carryGrip(main?.category, main?.slot === 'twoHand'));
   }
 
   /** Points the camera at the model's own bounds, so proportions never matter. */

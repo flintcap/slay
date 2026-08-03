@@ -164,6 +164,58 @@ export function installDebug(engine: Engine): Record<string, unknown> {
     },
 
     /**
+     * How the equipped weapon is actually being held, after the carry pose has
+     * settled.
+     *
+     * Every weapon used to hang off the same right-hand socket at the same
+     * angle, so a greatsword was carried like a dagger and a bow sat in the
+     * string hand. Which hand it ends up in, which way the business end points,
+     * and how far apart the hands are is the whole of "held properly", and none
+     * of it needs a rendered frame to read.
+     */
+    gripProbe(settleFrames = 90): Record<string, unknown> {
+      const s = engine.currentScene as unknown as {
+        player?: {
+          root: THREE.Object3D;
+          bones: Record<string, THREE.Bone>;
+          animator: { update(dt: number): void };
+        };
+      };
+      const p = s?.player;
+      if (!p) return { error: 'no player' };
+      // The carry pose eases in, so a probe on the first frame reads the old one.
+      for (let i = 0; i < settleFrames; i++) p.animator.update(1 / 60);
+      p.root.updateMatrixWorld(true);
+
+      let hand: string | null = null;
+      let tipAbove = false;
+      for (const name of ['handR', 'handL']) {
+        const bone = p.bones[name];
+        if (!bone) continue;
+        for (const child of bone.children) {
+          if (child.userData?.socketSlot !== 'mainHand') continue;
+          hand = name;
+          const grip = new THREE.Vector3();
+          child.getWorldPosition(grip);
+          const box = new THREE.Box3().setFromObject(child);
+          // The business end is whichever extreme is further from the grip.
+          const up = box.max.y - grip.y;
+          const down = grip.y - box.min.y;
+          tipAbove = up > down;
+        }
+      }
+      const l = new THREE.Vector3();
+      const r = new THREE.Vector3();
+      p.bones.handL?.getWorldPosition(l);
+      p.bones.handR?.getWorldPosition(r);
+      return {
+        hand,
+        points: tipAbove ? 'up' : 'down',
+        handGap: +l.distanceTo(r).toFixed(3),
+      };
+    },
+
+    /**
      * Times the work a single drop costs, split by stage.
      *
      * A dropped item is not one operation: it builds a full 3D model, an icon,

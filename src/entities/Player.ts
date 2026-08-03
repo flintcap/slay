@@ -5,7 +5,7 @@ import { mitigate } from '../sim/Combat';
 import { StatusContainer } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
-import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots } from '../art/CharacterModels';
+import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip } from '../art/CharacterModels';
 import { disposeObject } from '../core/Engine';
 import { Animator } from '../art/Animation';
 import { buildItemModel } from '../art/ItemModels';
@@ -167,8 +167,13 @@ export class Player {
         const visual = base?.visual ?? { shape: 'auto', palette: 'metal.steel' };
         // Quivers are worn on the back rather than held.
         const socketKey = base?.category === 'quiver' ? 'quiver' : undefined;
+        // How it is carried: a greatsword is not held like a dagger.
+        const grip =
+          slot === 'mainHand' || slot === 'offHand'
+            ? weaponGrip(base?.category, base?.slot === 'twoHand')
+            : undefined;
         const mesh = buildItemModel(visual, this.rng, item.rarity);
-        attachToSocket(this.root, this.bones, slot, mesh, socketKey);
+        attachToSocket(this.root, this.bones, slot, mesh, socketKey, grip);
         // Marks the weapon so a poison coat can glow on the blade and nowhere
         // else. Cheap to stamp here; walking the tree for it later is not.
         if (slot === 'mainHand' || slot === 'offHand') {
@@ -185,6 +190,10 @@ export class Player {
         // A missing visual must never break the run.
       }
     }
+    // Two-handed weapons need both hands on them and a bow needs the string
+    // hand brought across, which is a body pose rather than a socket transform.
+    const main = eq.mainHand ? getBase(eq.mainHand.baseId) : undefined;
+    this.animator.setGrip(carryGrip(main?.category, main?.slot === 'twoHand'));
   }
 
   /**
