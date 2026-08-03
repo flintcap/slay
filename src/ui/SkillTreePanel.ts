@@ -12,7 +12,7 @@
 import type { Character, SkillDef, StatKey } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
-import { allocateSkill, canAllocateSkill, setPrimaryAttack } from '../sim/Character';
+import { allocateSkill, canAllocateSkill, setPrimaryAttack, setHotbarSlot } from '../sim/Character';
 import {
   Panel,
   Tabs,
@@ -413,7 +413,7 @@ export class SkillTreePanel {
     if (c.hotbar.includes(id)) return;
     const free = c.hotbar.findIndex((h) => !h);
     const at = free >= 0 ? free : 0;
-    c.hotbar[at] = id;
+    setHotbarSlot(c, at, id);
     save.touch();
     events.emit('ui:refresh', {});
     events.emit('toast', { text: `${def.name} bound to slot ${at + 1}`, kind: 'good' });

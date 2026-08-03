@@ -161,6 +161,32 @@ export function setPrimaryAttack(c: Character, skillId: string | null): boolean 
   if (!def || def.targeting === 'passive') return false;
   if ((c.skills[skillId] ?? 0) <= 0) return false;
   c.primaryAttack = skillId;
+  // Right click and a hotbar slot are two ways to fire the same thing, so a
+  // skill sitting in both wastes a slot and reads as a bug. Moving it to right
+  // click takes it off the bar.
+  for (let i = 0; i < c.hotbar.length; i++) if (c.hotbar[i] === skillId) c.hotbar[i] = null;
+  return true;
+}
+
+/**
+ * Binds a skill to a hotbar slot, keeping the bar and right click exclusive.
+ *
+ * The one place that rule lives, so every panel that can bind a skill obeys it
+ * without each remembering to.
+ */
+export function setHotbarSlot(c: Character, index: number, skillId: string | null): boolean {
+  if (index < 0 || index >= 6) return false;
+  while (c.hotbar.length < 6) c.hotbar.push(null);
+  if (skillId === null) {
+    c.hotbar[index] = null;
+    return true;
+  }
+  const def = SKILL_BY_ID[skillId];
+  if (!def || def.targeting === 'passive') return false;
+  if ((c.skills[skillId] ?? 0) <= 0) return false;
+  for (let i = 0; i < 6; i++) if (c.hotbar[i] === skillId) c.hotbar[i] = null;
+  if (c.primaryAttack === skillId) c.primaryAttack = null;
+  c.hotbar[index] = skillId;
   return true;
 }
 

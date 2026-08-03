@@ -13,6 +13,33 @@ import type { EffectHandle } from '../fx/Effects';
 import { getStatus, synthesizeSkillBuff } from '../data/statuses';
 import { getBase } from '../sim/Loot';
 import type { ItemCategory } from '../types';
+import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../entities/MonsterModels';
+import { MONSTERS } from '../data/monsters';
+import { Random } from '../core/RNG';
+
+/**
+ * What a summon actually looks like.
+ *
+ * Summons used to be a glowing ring on the floor that fired bolts. For a skill
+ * called Raise Skeleton that reads, correctly, as the skill not working: you
+ * press it and no skeleton appears. Each summoning skill now names a real
+ * monster from the bestiary, and the minion is built from that monster's own
+ * model and rig — a skeleton that walks, swings and rots away when its time is
+ * up. Totems keep no body on purpose; a totem is an object, not a creature.
+ */
+const MINION_MONSTER: Record<string, string> = {
+  raiseSkeleton: 'skeleton_rattler',
+  skeletalMage: 'skeleton_archer',
+  grandOssuary: 'skeleton_warden',
+  claySentinel: 'animated_armor',
+  swornBrother: 'bandit_cutthroat',
+  shadowClone: 'bandit_cutthroat',
+  livingFlame: 'ember_wisp',
+};
+
+/** How far a minion will chase before it comes back to you. */
+const MINION_LEASH = 16;
+const MINION_SPEED = 3.4;
 
 /** How the equipped main hand wants to be fought with. */
 export type WeaponStyle = 'melee' | 'ranged' | 'caster' | 'unarmed';
@@ -698,7 +725,7 @@ export class SkillRunner {
             num('attackRate', melee ? 1.1 : 1.6),
             num('range', melee ? 2.6 : 11),
             (m = 1) => makePacket(m * num('minionScale', 0.5)),
-            type, color, melee,
+            type, color, melee, def.id,
           );
         }
         audio.play('summon');
@@ -1341,7 +1368,18 @@ export class SkillRunner {
     /** Melee guardians swing instead of shooting. */
     melee: boolean;
     fx: EffectHandle | null;
+    /** A summoned creature's body. Null for a totem, which is just a spot. */
+    body: THREE.Object3D | null;
+    anim: RigAnimator | null;
+    facing: number;
+    /** 0..1, drives the walk cycle. */
+    gait: number;
+    action: RigAction;
+    actionT: number;
   }> = [];
+
+  /** Wall clock for the tick, so rigs breathe and bob. */
+  private runTime = 0;
 
   /** Context for the tick. Set every frame by the scene. */
   private tickCtx: {
@@ -1358,6 +1396,7 @@ export class SkillRunner {
   update(dt: number): void {
     const live = this.tickCtx;
     if (!live) return;
+    this.runTime += dt;
     const { ctx, enemies, boss } = live;
 
     for (let i = this.zones.length - 1; i >= 0; i--) {
@@ -1385,6 +1424,56 @@ export class SkillRunner {
       const t = this.turrets[i]!;
       t.left -= dt;
       t.accum += dt;
+
+      // A summoned creature walks. Totems have no body and stay put.
+      if (t.body) {
+        let chase: Target | null = null;
+        let chaseD = Infinity;
+        for (const e of this.allTargets(enemies, boss)) {
+          const d = this.groundDistance(e.root.position, t.body.position);
+          if (d < chaseD && d <= MINION_LEASH) {
+            chaseD = d;
+            chase = e;
+          }
+        }
+        // Close to just inside its own reach, then hold. Walking through the
+        // thing you are hitting looks worse than stopping short of it.
+        const stand = t.melee ? Math.max(1.2, t.range * 0.7) : t.range * 0.75;
+        let moving = 0;
+        if (chase) {
+          const dx = chase.root.position.x - t.body.position.x;
+          const dz = chase.root.position.z - t.body.position.z;
+          t.facing = Math.atan2(dx, dz);
+          if (chaseD > stand) {
+            const inv = 1 / Math.max(0.0001, chaseD);
+            const step = Math.min(MINION_SPEED * dt, chaseD - stand);
+            t.body.position.x += dx * inv * step;
+            t.body.position.z += dz * inv * step;
+            moving = 1;
+          }
+        }
+        t.x = t.body.position.x;
+        t.z = t.body.position.z;
+        t.body.rotation.y = t.facing;
+        t.gait += (moving - t.gait) * Math.min(1, dt * 8);
+
+        if (t.actionT > 0) {
+          t.actionT = Math.max(0, t.actionT - dt * 2.6);
+          if (t.actionT === 0) t.action = 'idle';
+        }
+        // Fade out over the last second rather than blinking away.
+        const fade = Math.min(1, Math.max(0, t.left));
+        t.body.scale.setScalar(t.body.scale.x > 0 ? t.body.scale.x : 1);
+        t.body.visible = t.left > 0;
+        t.anim?.update(dt, {
+          locomotion: t.gait,
+          action: t.action,
+          actionT: 1 - t.actionT,
+          time: this.runTime,
+          deathT: t.left < 0.6 ? 1 - fade / 0.6 : 0,
+        });
+      }
+
       if (t.accum >= t.cd) {
         t.accum = 0;
         const from = this.tmp3.set(t.x, t.melee ? 1.0 : 1.2, t.z);
@@ -1398,6 +1487,10 @@ export class SkillRunner {
           }
         }
         if (best) {
+          if (t.body) {
+            t.action = t.melee ? 'attack' : 'cast';
+            t.actionT = 1;
+          }
           const to = best.root.position.clone().setY(1.0);
           if (t.melee) {
             best.takeDamage(t.packet(), ctx);
@@ -1415,6 +1508,7 @@ export class SkillRunner {
       }
       if (t.left <= 0) {
         t.fx?.stop();
+        this.removeBody(t.body);
         this.turrets.splice(i, 1);
       }
     }
@@ -1454,19 +1548,58 @@ export class SkillRunner {
     type: DamageType,
     color: number,
     melee: boolean,
+    skillId?: string,
   ): void {
     if (this.turrets.length >= 8) {
-      this.turrets[0]!.fx?.stop();
+      const oldest = this.turrets[0]!;
+      oldest.fx?.stop();
+      this.removeBody(oldest.body);
       this.turrets.shift();
     }
     const fx = this.effects.summonCircle(x, z, melee ? 0.7 : 0.55, duration, color);
     this.effects.teleportIn(x, 0.1, z, color);
-    this.turrets.push({ x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx });
+
+    // Give it a body if the skill names one.
+    let body: THREE.Object3D | null = null;
+    let anim: RigAnimator | null = null;
+    const monsterId = skillId ? MINION_MONSTER[skillId] : undefined;
+    const mdef = monsterId ? MONSTERS.find((m) => m.id === monsterId) : undefined;
+    if (mdef) {
+      try {
+        const rng = new Random((Date.now() ^ this.turrets.length * 7919) >>> 0);
+        const model = buildMonsterModel(mdef.visual, rng, (mdef.scale ?? 1) * 0.92);
+        model.root.position.set(x, 0, z);
+        this.effects.scene.add(model.root);
+        anim = new RigAnimator(model.root, model.bones, monsterArchetype(mdef.visual.body), rng);
+        body = model.root;
+      } catch {
+        // A missing rig must not swallow the cast; it just falls back to a
+        // bodiless guardian rather than throwing mid-spell.
+        body = null;
+        anim = null;
+      }
+    }
+
+    this.turrets.push({
+      x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx,
+      body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 0,
+    });
+  }
+
+  /** Takes a minion's body out of the scene and frees what it owns. */
+  private removeBody(body: THREE.Object3D | null): void {
+    if (!body) return;
+    body.parent?.remove(body);
+    // Geometry and materials are shared prototypes owned by the model cache and
+    // released by `disposeMonsterModels`, so only the clone goes here.
   }
 
   dispose(): void {
     for (const z of this.zones) z.fx?.stop();
-    for (const t of this.turrets) t.fx?.stop();
+    for (const t of this.turrets) {
+      t.fx?.stop();
+      this.removeBody(t.body);
+    }
     this.zones.length = 0;
     this.turrets.length = 0;
     this.tickCtx = null;

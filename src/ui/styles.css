@@ -4882,7 +4882,14 @@ input.slider::-moz-range-thumb {
   align-items: flex-end;
   min-height: 0;
   margin: 0 auto 6px;
+  /* The strip stays click-through so it never eats a click meant for the game,
+     but the chips themselves must take the pointer or their hover tooltip can
+     never fire. `pointer-events: none` here is what made the buff descriptions
+     unreachable. */
   pointer-events: none;
+}
+.hud-buffs .buff {
+  pointer-events: auto;
 }
 .hud-buffs:empty { display: none; }
 

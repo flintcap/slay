@@ -43,7 +43,7 @@ import {
   type MinimapPip,
 } from './Widgets';
 import { skillIconUri, warmItemIcons } from '../art/Icons';
-import { setPrimaryAttack } from '../sim/Character';
+import { setPrimaryAttack, setHotbarSlot } from '../sim/Character';
 import { SKILL_BY_ID } from '../data/skills';
 
 // Tile ids as stored in DungeonLevel.tiles (mirrors world/Layouts TILE_VALUES).
@@ -446,10 +446,7 @@ export class HUD {
         (p) => {
           const c = save.account.current;
           if (!c || !p.skillId) return false;
-          while (c.hotbar.length < 6) c.hotbar.push(null);
-          // Clear the skill from any other slot so it never occupies two.
-          for (let k = 0; k < 6; k++) if (c.hotbar[k] === p.skillId) c.hotbar[k] = null;
-          c.hotbar[i] = p.skillId;
+          if (!setHotbarSlot(c, i, p.skillId)) return false;
           save.touch();
           this.buildHotbar(true);
           events.emit('toast', { text: `Bound ${skillById(p.skillId)?.name ?? 'skill'} to slot ${i + 1}`, kind: 'good' });
