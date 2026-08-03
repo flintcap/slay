@@ -758,6 +758,10 @@ export interface StatusApplication {
   duration: number;
   magnitude: number;
   stacks?: number;
+  /** Raises the stack ceiling for this application. Smolder and Cultivate. */
+  maxStacks?: number;
+  /** Multiplies how fast the effect ticks. Pyre Mastery. */
+  tickScale?: number;
 }
 
 export interface StatusEffectDef {

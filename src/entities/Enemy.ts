@@ -218,6 +218,8 @@ export class Enemy implements Combatant {
   private readonly cooldowns = new Map<string, number>();
   private inst: AbilityInstance | null = null;
   private statuses: ActiveStatus[] = [];
+  /** Damage the killing blow spilled past zero life. Read once, on death. */
+  overkill = 0;
   private buffs: ActiveBuff[] = [];
   private shieldTimer = 0;
   private action: RigAction = 'idle';
@@ -737,16 +739,52 @@ export class Enemy implements Combatant {
     }
   }
 
+  /** True when any status with this tag is running. Used by passive queries. */
+  hasStatusTag(tag: string): boolean {
+    for (const s of this.statuses) {
+      const def = statusDef(s.id);
+      if (def?.tags?.includes(tag as never)) return true;
+    }
+    return false;
+  }
+
+  /** True when the named status is running. */
+  hasStatus(id: string): boolean {
+    return this.statuses.some((s) => s.id === id);
+  }
+
+  /** True when anything the player put on it is still running. */
+  get isDebuffed(): boolean {
+    for (const s of this.statuses) {
+      const def = statusDef(s.id);
+      if (def && def.polarity < 0) return true;
+    }
+    return false;
+  }
+
+  /** True when a bleed is running — the condition several passives read. */
+  get isBleeding(): boolean {
+    for (const s of this.statuses) {
+      if (s.dotType === 'physical') return true;
+      const def = statusDef(s.id);
+      if (def?.dot?.type === 'physical') return true;
+    }
+    return false;
+  }
+
   // --- statuses ------------------------------------------------------------
 
   applyStatuses(list: StatusApplication[], ctx: CombatContext): void {
     for (const app of list) {
       if (this.isImmuneToControl && isControl(app.id)) continue;
+      // Passives may raise the ceiling on a stacking affliction.
+      const cap = Math.min(24, Math.max(1, (statusDef(app.id)?.maxStacks ?? 5) + (app.maxStacks ?? 0)));
       const existing = this.statuses.find((s) => s.id === app.id);
       if (existing) {
         existing.time = Math.max(existing.time, app.duration);
         existing.magnitude = Math.max(existing.magnitude, app.magnitude);
-        existing.stacks = Math.min(12, existing.stacks + (app.stacks ?? 0));
+        existing.stacks = Math.min(cap, existing.stacks + (app.stacks ?? 0));
+        if (app.tickScale && app.tickScale !== 1) existing.dotPerSecond *= app.tickScale;
         continue;
       }
       const def = statusDef(app.id);
@@ -760,7 +798,7 @@ export class Enemy implements Combatant {
         // The catalogue's `perSecond` is the shape of the effect; the depth
         // curve is what makes it hurt as much at depth 40 as at depth 1.
         dotPerSecond: dotType
-          ? depthCurve(this.depth).damage * 0.035 * (def?.dot?.perSecond ?? 6) * app.magnitude
+          ? depthCurve(this.depth).damage * 0.035 * (def?.dot?.perSecond ?? 6) * app.magnitude * (app.tickScale ?? 1)
           : 0,
       });
       if (isControl(app.id)) {
@@ -890,6 +928,8 @@ export class Enemy implements Combatant {
     }
 
     this.life -= taken;
+    // How far past zero the blow landed. Cataclysm carries this to the pack.
+    this.overkill = this.life < 0 ? -this.life : 0;
     this.lastDamagedAt = ctx.elapsed;
     this.killedBy = type;
     this.hitFlash = 1;

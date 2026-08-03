@@ -12,6 +12,7 @@ import { buildItemModel } from '../art/ItemModels';
 import { getBase } from '../sim/Loot';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
+import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
 
 export interface PlayerContext {
   colliders: Array<{ x: number; z: number; w: number; d: number }>;
@@ -50,6 +51,14 @@ export class Player {
   life: number;
   mana: number;
 
+  /**
+   * What this character's passives add up to, and what the engine remembers
+   * between hits. Recomputed alongside `stats`, which is the only time either
+   * can change.
+   */
+  passives: PassiveEffects = passiveEffects({ skills: {} } as never);
+  readonly passiveState: PassiveState = newPassiveState();
+
   /** Radius used for collision and for enemies deciding when they're in range. */
   readonly radius = 0.42;
 
@@ -83,6 +92,8 @@ export class Player {
   /** Set by DungeonScene when the player has no business moving (dead, cutscene). */
   frozen = false;
   invulnerable = false;
+  /** Seconds of timed invulnerability left, from Phoenix Heart and friends. */
+  private invulnTimer = 0;
 
   constructor(character: Character, seed = 1) {
     this.character = character;
@@ -106,6 +117,9 @@ export class Player {
     const lifeRatio = this.stats.life > 0 ? this.life / this.stats.life : 1;
     const manaRatio = this.stats.mana > 0 ? this.mana / this.stats.mana : 1;
     this.stats = computeStats(this.character);
+    // Passives resolve on the same trigger as stats: both only change when gear
+    // or the skill tree changes.
+    this.passives = passiveEffects(this.character);
     this.life = Math.min(this.stats.life, this.stats.life * lifeRatio);
     this.mana = Math.min(this.stats.mana, this.stats.mana * manaRatio);
     this.refreshEquipmentVisuals();
@@ -337,7 +351,21 @@ export class Player {
     this.cooldowns.set(skillId, reduced);
   }
 
+  /** Makes the player untouchable for a while. Used by the cheat-death passives. */
+  grantInvulnerability(seconds: number): void {
+    this.invulnTimer = Math.max(this.invulnTimer, seconds);
+    this.invulnerable = true;
+  }
+
   update(dt: number, ctx: PlayerContext, keyboardDir: THREE.Vector3 | null): void {
+    if (this.invulnTimer > 0) {
+      this.invulnTimer -= dt;
+      if (this.invulnTimer <= 0) this.invulnerable = false;
+    }
+    // Passive cooldowns tick here too — a cheat death you cannot spend twice.
+    if (this.passiveState.cheatDeathCd > 0) {
+      this.passiveState.cheatDeathCd = Math.max(0, this.passiveState.cheatDeathCd - dt);
+    }
     // Cooldowns tick even while locked in an animation.
     for (const [id, t] of this.cooldowns) {
       const next = t - dt;

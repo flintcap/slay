@@ -27,6 +27,7 @@
 import type { Character, EquipSlot, Item, StatKey, Stats } from '../types';
 import { BASE_LIFE, BASE_MANA, getClass } from '../data/classes';
 import { HARD_SKILL_RANK_CAP, SKILL_BY_ID } from '../data/skills';
+import { passiveEffects } from './Passives';
 import { peekStatuses } from './Status';
 import { itemStats } from './Loot';
 
@@ -315,19 +316,29 @@ export function skillPassiveStats(
   skillLevels: number,
 ): Stats {
   const out = emptyStats();
+  const e = passiveEffects({ skills } as never);
+  // The Last Order: every oath's numbers get bigger, and each one you hold adds
+  // flat damage reduction. It is the Warden's capstone and it is the only thing
+  // in the game that scales another skill's stat grant, so it is resolved here
+  // rather than in the passive engine — this is where those grants are summed.
+  const oathScale = 1 + e.allOathsPct / 100;
+  let oaths = 0;
   for (const id of Object.keys(skills)) {
     const hard = skills[id] ?? 0;
     if (hard <= 0) continue;
     const def = SKILL_BY_ID[id];
     if (!def?.passive) continue;
+    const isOath = id.startsWith('oathOf');
+    if (isOath) oaths++;
     const rank = effectiveRank(hard, skillLevels);
     for (const key of Object.keys(def.passive) as StatKey[]) {
       const fn = def.passive[key];
       if (!fn) continue;
       const v = fn(rank);
-      if (Number.isFinite(v)) out[key] += v;
+      if (Number.isFinite(v)) out[key] += isOath ? v * oathScale : v;
     }
   }
+  out.damageReduction += e.drPerOath * oaths;
   return out;
 }
 

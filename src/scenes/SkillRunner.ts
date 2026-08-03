@@ -16,6 +16,7 @@ import type { ItemCategory } from '../types';
 import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../entities/MonsterModels';
 import { MONSTERS } from '../data/monsters';
 import { Random } from '../core/RNG';
+import { damageMultiplier } from '../sim/Passives';
 
 /**
  * What a summon actually looks like.
@@ -408,6 +409,15 @@ type Target = Enemy | Boss;
  */
 export class SkillRunner {
   private effects: EffectSystem;
+  /**
+   * Who is casting right now.
+   *
+   * Every damage applier below needs the caster's passives to tune a packet
+   * against the specific thing it is about to hit, and threading the player
+   * through six call signatures would be noise. `cast` and `basicAttack` set
+   * this before they resolve anything.
+   */
+  private caster: Player | null = null;
   private tmp = new THREE.Vector3();
   /** Pending off-hand blow from a dual-wield basic attack. */
   private swingParity = 0;
@@ -435,6 +445,7 @@ export class SkillRunner {
     boss: Boss | null
   ): boolean {
     if (player.isBusy || !player.alive) return false;
+    this.setCaster(player, enemies, boss);
 
     const def = SKILLS.find((s) => s.id === skillId);
     if (!def || def.targeting === 'passive') return false;
@@ -700,6 +711,8 @@ export class SkillRunner {
       case 'self':
       case 'absorb': {
         player.beginAction(clip, castTime * 0.7);
+        // Commanding Presence and Standard Bearer widen and strengthen what an
+        // oath, aura or banner does. `applyBuff` reads the same numbers.
         this.applyBuff(player, def, rank, num, color);
         this.effects.impact(type, player.position.x, 1.0, player.position.z, {
           color,
@@ -720,15 +733,19 @@ export class SkillRunner {
       case 'trap':
       case 'ward': {
         player.beginAction(clip, castTime);
-        const radius = num('radius', 3.2);
-        const duration = num('duration', 6);
+        // Scorched Earth and Standard Bearer both make what you leave on the
+        // floor last longer and hit harder.
+        const groundLife = 1 + player.passives.groundDurationPct / 100;
+        const groundHit = 1 + player.passives.groundDamagePct / 100;
+        const radius = num('radius', 3.2) + (ctx.auraRadiusBonus ?? 0);
+        const duration = num('duration', 6) * groundLife;
         const at = target.clone().setY(0);
         this.addZone(
           at.x, at.z, radius, duration,
           num('tickRate', 0.5),
           // Ticking damage is a fraction of the hit it would be as a burst, or
           // standing in a field would out-damage every direct skill in the game.
-          (m = 1) => makePacket(m * num('tickScale', 0.28)),
+          (m = 1) => makePacket(m * num('tickScale', 0.28) * groundHit),
           type, color, sig.emitter,
           this.statusFor(def, num, color),
         );
@@ -744,8 +761,14 @@ export class SkillRunner {
       case 'summon':
       case 'minion': {
         player.beginAction('point', castTime);
-        const count = Math.max(1, Math.floor(num('count', 1)));
-        const life = num('duration', 20);
+        // Bone Mastery, Marrow Feast and the minion capstones all land here.
+        const mp = player.passives;
+        const count = Math.max(1, Math.floor(num('count', 1))) + Math.floor(mp.minionCapBonus);
+        // Sworn Brother's `lifePct` is how sturdy the spectre is; a turret has
+        // no life bar, so it buys standing time instead.
+        const life =
+          num('duration', 20) * (1 + mp.minionDurationPct / 100) * (1 + mp.minionLifePct / 200);
+        const minionPower = 1 + mp.minionDamagePct / 100;
         const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel');
         for (let i = 0; i < count; i++) {
           const a = (i / count) * Math.PI * 2;
@@ -756,7 +779,7 @@ export class SkillRunner {
             life,
             num('attackRate', melee ? 1.1 : 1.6),
             num('range', melee ? 2.6 : 11),
-            (m = 1) => makePacket(m * num('minionScale', 0.5)),
+            (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower),
             type, color, melee, def.id,
           );
         }
@@ -943,6 +966,7 @@ export class SkillRunner {
     boss: Boss | null
   ): boolean {
     if (player.isBusy || !player.alive) return false;
+    this.setCaster(player, enemies, boss);
 
     player.faceTowards(target.x, target.z);
     const dir = this.tmp.copy(target).sub(player.position).setY(0).normalize().clone();
@@ -1080,17 +1104,28 @@ export class SkillRunner {
      */
     riderOnly = false,
   ): StatusApplication[] {
-    const duration = num('duration', 8);
-    const magnitude = num('amp', num('magnitude', num('slow', 1)));
+    const e = this.caster?.passives;
+    // Passives that scale what the player puts on a monster land here, because
+    // this is the one function that builds those applications. Dot passives
+    // lengthen and strengthen afflictions; curse passives do the same for
+    // control and shred.
+    const dotBonus = 1 + (e?.dotDamagePct ?? 0) / 100;
+    const curseBonus = 1 + (e?.curseEffectPct ?? 0) / 100;
+    const duration =
+      (num('duration', 8) + (e?.dotDurationSec ?? 0)) * (1 + (e?.curseDurationPct ?? 0) / 100);
+    const magnitude =
+      num('amp', num('magnitude', num('slow', 1))) * Math.max(dotBonus, curseBonus);
+    const extraStacks = Math.floor(e?.dotMaxStacks ?? 0);
+    const tickScale = 1 + (e?.dotTickPct ?? 0) / 100;
     const named = typeof def.params?.statusId === 'string' ? (def.params.statusId as string) : null;
     if (named && getStatus(named)) {
-      return [{ id: named, duration, magnitude, stacks: 1 }];
+      return [{ id: named, duration, magnitude, stacks: 1, maxStacks: extraStacks, tickScale }];
     }
     // The authored effect this skill is describing, if the two tables can be
     // joined. This is what makes a curse actually curse.
     const mapped = SKILL_STATUS[def.id];
     if (mapped && getStatus(mapped)) {
-      return [{ id: mapped, duration, magnitude, stacks: 1 }];
+      return [{ id: mapped, duration, magnitude, stacks: 1, maxStacks: extraStacks, tickScale }];
     }
     if (riderOnly) return [];
     const id = `skill.${def.id}`;
@@ -1105,7 +1140,10 @@ export class SkillRunner {
     num: (k: string, d: number) => number,
     color: number
   ): void {
-    const duration = num('duration', 10) + num('durationPerRank', 0) * (rank - 1);
+    const e = player.passives;
+    const auraScale = 1 + e.auraStrengthPct / 100;
+    const duration =
+      (num('duration', 10) + num('durationPerRank', 0) * (rank - 1)) * (1 + e.groundDurationPct / 100);
 
     // Prefer the authored status this skill is meant to grant, so the buff
     // carries real modifiers instead of being a decorative icon. Only skills
@@ -1116,7 +1154,7 @@ export class SkillRunner {
     if (!getStatus(id)) {
       synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);
     }
-    player.applyStatus(id, Math.max(1, duration), 1, 1);
+    player.applyStatus(id, Math.max(1, duration), auraScale, 1);
   }
 
   /** Distance along `dir` to the nearest target, or `max` if nothing is hit. */
@@ -1204,6 +1242,47 @@ export class SkillRunner {
     return max;
   }
 
+  /**
+   * One free swing at whatever just hit you. Riposte's counterattack.
+   *
+   * Lives here rather than in the scene because it is a player attack and has
+   * to go through the same packet pipeline as every other one, conditional
+   * passives included.
+   */
+  counterAttack(player: Player, target: Target, ctx: CombatContext, scale: number): void {
+    this.caster = player;
+    const packet = rollDamage(player.stats, ctx.rng, {
+      scale,
+      type: 'physical',
+      ability: 'Riposte',
+      source: 'player',
+    });
+    target.takeDamage(this.tune(packet, target), ctx);
+    this.effects.meleeHit(target.root.position.x, 1.0, target.root.position.z, {
+      color: ELEMENTS.physical?.core ?? 0xffffff,
+    });
+    audio.play('hit.physical');
+  }
+
+  /**
+   * A blast a passive fires rather than a skill. Phoenix Heart's rebirth nova.
+   */
+  passiveNova(
+    player: Player,
+    at: THREE.Vector3,
+    radius: number,
+    scale: number,
+    type: DamageType,
+    ctx: CombatContext,
+    enemies: Enemy[],
+    boss: Boss | null,
+  ): void {
+    this.setCaster(player, enemies, boss);
+    const packet = (): DamagePacket =>
+      rollDamage(player.stats, ctx.rng, { scale, type, ability: 'Rebirth', source: 'player' });
+    this.areaDamage(at, radius, packet, ctx, enemies, boss);
+  }
+
   private allTargets(enemies: Enemy[], boss: Boss | null): Target[] {
     const list: Target[] = [];
     for (const e of enemies) if (e.life > 0) list.push(e);
@@ -1235,7 +1314,7 @@ export class SkillRunner {
         to.normalize();
         if (facing.dot(to) < Math.cos(half)) continue;
       }
-      t.takeDamage(packet(), ctx);
+      t.takeDamage(this.tune(packet(), t), ctx);
       this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, { dir: facing, color: ELEMENTS[type]?.core });
       hits++;
     }
@@ -1259,6 +1338,69 @@ export class SkillRunner {
     return Math.sqrt(dx * dx + dz * dz);
   }
 
+  /**
+   * Applies the caster's conditional passives to one packet against one target.
+   *
+   * This is the single choke point for "more damage when...". Executioner,
+   * Blood Scent, Ember Soul, Hemotoxin and Momentum all land here, because all
+   * of them need the attacker and the victim at the same moment and nowhere
+   * else in the pipeline has both.
+   */
+  private tune(packet: DamagePacket, t: Target): DamagePacket {
+    const p = this.caster;
+    if (!p) return packet;
+    const e = p.passives;
+    const mul = damageMultiplier(
+      e,
+      {
+        lifeFrac: t.life / Math.max(1, t.maxLife),
+        bleeding: t.isBleeding,
+        debuffed: t.isDebuffed,
+      },
+      {
+        manaFrac: p.mana / Math.max(1, p.stats.mana),
+        maxMana: p.stats.mana,
+        lifeFrac: p.life / Math.max(1, p.stats.life),
+        nearby: this.nearbyCount,
+      },
+    );
+    let amount = packet.amount * mul;
+
+    // Retribution: blocks build a charge and the next blow spends it.
+    const st = p.passiveState;
+    if (st.retribution > 0 && e.retributionRadius > 0) {
+      amount *= 1 + st.retribution / 100;
+      st.retribution = 0;
+    }
+    if (amount === packet.amount) return packet;
+    return { ...packet, amount };
+  }
+
+  /** Enemies close to the caster, refreshed per cast for the crowd passives. */
+  private nearbyCount = 0;
+
+  /**
+   * Records who is acting and how surrounded they are.
+   *
+   * Counted once per cast rather than per target: a whirlwind hitting eight
+   * monsters should not walk the whole enemy list eight times to answer the
+   * same question.
+   */
+  private setCaster(player: Player, enemies: Enemy[], boss: Boss | null): void {
+    this.caster = player;
+    if (player.passives.crowdDamagePct <= 0) {
+      this.nearbyCount = 0;
+      return;
+    }
+    let n = 0;
+    for (const e of enemies) {
+      if (e.life <= 0) continue;
+      if (this.groundDistance(e.root.position, player.position) <= 8) n++;
+    }
+    if (boss && boss.life > 0 && this.groundDistance(boss.root.position, player.position) <= 8) n++;
+    this.nearbyCount = n;
+  }
+
   private pointDamage(
     at: THREE.Vector3,
     radius: number,
@@ -1276,7 +1418,7 @@ export class SkillRunner {
         closest = t;
       }
     }
-    closest?.takeDamage(packet(), ctx);
+    if (closest) closest.takeDamage(this.tune(packet(), closest), ctx);
   }
 
   private areaDamage(
@@ -1295,7 +1437,7 @@ export class SkillRunner {
       // Falloff so the centre of a nova genuinely rewards positioning.
       const p = packet();
       p.amount *= 1 - Math.min(1, d / (radius + t.hitRadius)) * 0.35;
-      t.takeDamage(p, ctx);
+      t.takeDamage(this.tune(p, t), ctx);
     }
   }
 
@@ -1315,7 +1457,7 @@ export class SkillRunner {
       if (along < 0 || along > length) continue;
       const perp = Math.sqrt(Math.max(0, to.lengthSq() - along * along));
       if (perp > width * 0.5 + t.hitRadius) continue;
-      t.takeDamage(packet(), ctx);
+      t.takeDamage(this.tune(packet(), t), ctx);
     }
   }
 
@@ -1357,7 +1499,7 @@ export class SkillRunner {
       // Each jump loses punch, or chain skills trivialise every pack.
       const p = packet();
       p.amount *= Math.pow(0.82, j);
-      best.takeDamage(p, ctx);
+      best.takeDamage(this.tune(p, best), ctx);
       from = to;
     }
   }
@@ -1431,6 +1573,7 @@ export class SkillRunner {
     const live = this.tickCtx;
     if (!live) return;
     this.runTime += dt;
+    this.spreadTick(dt, live.ctx, live.enemies, live.boss);
     const { ctx, enemies, boss } = live;
 
     for (let i = this.zones.length - 1; i >= 0; i--) {
@@ -1618,6 +1761,76 @@ export class SkillRunner {
       x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx,
       body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 0,
     });
+  }
+
+  /**
+   * Afflictions that travel between monsters.
+   *
+   * Wildfire passes a burn to the nearest enemy on a timer, Plague of Embers
+   * removes the target limit and decays the magnitude per jump instead, and the
+   * Warden's Blood Tide does the same for bleeds while amplifying them. All
+   * three are the same shape — a periodic hop from an afflicted monster to a
+   * clean one nearby — so they share one tick rather than three.
+   */
+  private spreadTick(dt: number, ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
+    const p = this.caster;
+    if (!p) return;
+    const e = p.passives;
+    const wantsFire = e.dotSpreadInterval > 0 && e.dotSpreadRadius > 0;
+    const wantsBlood = e.bloodTideChains > 0 && e.bloodTideRadius > 0;
+    if (!wantsFire && !wantsBlood) return;
+
+    const st = p.passiveState;
+    st.spreadTimer -= dt;
+    if (st.spreadTimer > 0) return;
+    st.spreadTimer = wantsFire ? e.dotSpreadInterval : 2;
+
+    const pool = this.allTargets(enemies, boss);
+    // Unlimited hops when Plague of Embers is allocated, otherwise one per tick
+    // per source, which is what the base skill describes.
+    const budget = e.dotSpreadDecay > 0 ? pool.length : Math.max(1, e.bloodTideChains);
+    let made = 0;
+
+    for (const src of pool) {
+      if (made >= budget) break;
+      const fire = wantsFire && src.hasStatus('immolated');
+      const blood = wantsBlood && src.isBleeding;
+      if (!fire && !blood) continue;
+      const radius = fire ? e.dotSpreadRadius : e.bloodTideRadius;
+
+      let best: Target | null = null;
+      let bestD = Infinity;
+      for (const t of pool) {
+        if (t === src || t.life <= 0) continue;
+        if (fire && t.hasStatus('immolated')) continue;
+        const d = this.groundDistance(t.root.position, src.root.position);
+        if (d < bestD && d <= radius) {
+          bestD = d;
+          best = t;
+        }
+      }
+      if (!best) continue;
+
+      // Each jump loses magnitude when the decay rule is allocated, and gains
+      // it when Blood Tide is amplifying instead.
+      const decay = e.dotSpreadDecay > 0 ? 1 - e.dotSpreadDecay : 1;
+      const amplify = blood ? 1 + e.bloodTideAmplifyPct / 100 : 1;
+      best.applyStatuses(
+        [
+          {
+            id: fire ? 'immolated' : 'bleeding',
+            duration: 6,
+            magnitude: Math.max(0.15, decay * amplify),
+            stacks: Math.max(1, Math.floor(e.dotSpreadStacks || 1)),
+          },
+        ],
+        ctx,
+      );
+      this.effects.impact(fire ? 'fire' : 'physical', best.root.position.x, 1.0, best.root.position.z, {
+        scale: 0.45, shake: 0, decal: false, sfx: null,
+      });
+      made++;
+    }
   }
 
   /** Takes a minion's body out of the scene and frees what it owns. */

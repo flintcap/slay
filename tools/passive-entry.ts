@@ -9,6 +9,9 @@
  */
 import { SKILLS } from '../src/data/skills';
 import { CLASSES } from '../src/data/classes';
+import { IMPLEMENTED_PASSIVES } from '../src/sim/Passives';
+
+const engine = new Set<string>(IMPLEMENTED_PASSIVES);
 
 const rows = SKILLS.map((s) => ({
   id: s.id,
@@ -18,6 +21,7 @@ const rows = SKILLS.map((s) => ({
   targeting: s.targeting,
   effect: s.effect ?? null,
   hasPassiveStats: !!s.passive && Object.keys(s.passive).length > 0,
+  inEngine: engine.has(s.id),
   desc: s.desc,
 }));
 

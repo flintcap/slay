@@ -59,6 +59,12 @@ export interface CombatContext {
    * else, which is why Veil read as broken.
    */
   playerHidden?: boolean;
+  /**
+   * Extra metres on the player's own auras, from Commanding Presence. Carried
+   * on the context because the aura tick reads it from the same place enemy
+   * abilities read everything else.
+   */
+  auraRadiusBonus?: number;
 }
 
 /**

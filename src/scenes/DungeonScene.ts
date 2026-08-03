@@ -445,6 +445,145 @@ export class DungeonScene extends GameScene {
   }
 
   /** The world view handed to enemy AI each frame. */
+  /**
+   * Everything a passive does when the player is hit.
+   *
+   * Thorns, Riposte's counterattack, Retribution's charge and the two cheat
+   * deaths all trigger from the same moment, and all of them need the attacker
+   * and the scene. `Player.takeDamage` has neither, so it stays a pure
+   * mitigation function and this runs beside it.
+   */
+  private passiveDefence(packet: DamagePacket, taken: number, lifeBefore: number): void {
+    const e = this.player.passives;
+    const st = this.player.passiveState;
+    const ctx = this.ctxCache ?? this.context();
+
+    // The thing that hit us, if it is still standing.
+    const attacker =
+      this.enemies.find((x) => x.id === packet.source && x.life > 0) ??
+      (this.boss && this.boss.id === packet.source && this.boss.life > 0 ? this.boss : null);
+
+    const blocked = taken === 0 && lifeBefore === this.player.life;
+    const reach = 2.6;
+
+    if (attacker) {
+      const melee = !packet.ability || packet.ability === 'melee';
+      let back = 0;
+      if (blocked && e.thornsBlockPct > 0) back += lifeBefore * 0 + packet.amount * (e.thornsBlockPct / 100);
+      if (!blocked && melee && e.thornsMeleePct > 0) back += taken * (e.thornsMeleePct / 100);
+      if (back > 0) {
+        attacker.takeDamage(
+          { amount: back, type: 'physical', crit: false, source: 'player', ability: 'Thorns' },
+          ctx,
+        );
+        this.effects.impact('physical', attacker.root.position.x, 1.0, attacker.root.position.z, {
+          scale: 0.5, shake: 0, decal: false,
+        });
+      }
+      // Riposte: a blocked attack is an opening.
+      if (blocked && e.blockCounterChance > 0 && this.rng.chance(Math.min(0.9, e.blockCounterChance / 100))) {
+        const gap = this.tmpDir.subVectors(attacker.root.position, this.player.position).setY(0).length();
+        if (gap <= reach + attacker.hitRadius) {
+          this.skills.counterAttack(this.player, attacker, ctx, e.blockCounterPct / 100);
+        }
+      }
+    }
+
+    // Retribution builds a charge on every block and spends it on the next hit.
+    if (blocked && e.retributionPctPerBlock > 0) {
+      st.retribution = Math.min(300, st.retribution + e.retributionPctPerBlock);
+    }
+
+    // Cheat death, once the cooldown is spent.
+    if (this.player.life <= 0 && e.cheatDeathCooldown > 0 && st.cheatDeathCd <= 0) {
+      st.cheatDeathCd = e.cheatDeathCooldown;
+      this.player.life = Math.max(1, this.player.stats.life * (e.cheatDeathHealPct / 100));
+      if (e.cheatDeathInvuln > 0) this.player.grantInvulnerability(e.cheatDeathInvuln);
+      const p = this.player.position;
+      this.effects.nova(p.x, p.z, Math.max(4, e.cheatDeathRadius), {
+        element: e.cheatDeathNovaPct > 0 ? 'fire' : 'physical',
+        color: e.cheatDeathNovaPct > 0 ? 0xff7a2a : 0xffe9b0,
+      });
+      if (e.cheatDeathNovaPct > 0) {
+        this.skills.passiveNova(this.player, p, e.cheatDeathRadius, e.cheatDeathNovaPct / 100, 'fire', ctx, this.enemies, this.boss);
+      } else {
+        for (const en of this.enemies) {
+          if (en.life <= 0) continue;
+          if (en.root.position.distanceTo(p) > e.cheatDeathRadius) continue;
+          en.applyStatuses([{ id: 'stunned', duration: 3, magnitude: 1 }], ctx);
+        }
+      }
+      toast('You should have died there.', 'epic');
+      audio.play('levelup');
+    }
+  }
+
+  /**
+   * Everything a passive does when something dies.
+   *
+   * Combustion detonates a burning corpse, Executioner refunds mana on a
+   * finishing blow, and Reap Soul heals. All three read the same moment.
+   */
+  private passiveOnKill(pos: THREE.Vector3, overkill = 0): void {
+    const e = this.player.passives;
+    // Cataclysm: whatever the killing blow spilled past zero carries onward.
+    if (e.overkillCarryPct > 0 && e.overkillRadius > 0 && overkill > 0) {
+      const ctx = this.ctxCache ?? this.context();
+      let carried = overkill * (e.overkillCarryPct / 100);
+      let chains = Math.max(1, Math.floor(e.overkillChains));
+      const struck = new Set<string>();
+      while (chains > 0 && carried > 1) {
+        let best: Enemy | null = null;
+        let bestD = Infinity;
+        for (const en of this.enemies) {
+          if (en.life <= 0 || struck.has(en.id)) continue;
+          const d = en.root.position.distanceTo(pos);
+          if (d < bestD && d <= e.overkillRadius) {
+            bestD = d;
+            best = en;
+          }
+        }
+        if (!best) break;
+        struck.add(best.id);
+        best.takeDamage(
+          { amount: carried, type: 'fire', crit: false, source: 'player', ability: 'Cataclysm' },
+          ctx,
+        );
+        this.effects.impact('fire', best.root.position.x, 1.0, best.root.position.z, { scale: 0.8, shake: 0 });
+        carried *= e.overkillCarryPct / 100;
+        chains--;
+      }
+    }
+    if (e.killExplodePct > 0 && e.killExplodeRadius > 0) {
+      const ctx = this.ctxCache ?? this.context();
+      this.effects.explosion(pos.x, 0.8, pos.z, {
+        radius: e.killExplodeRadius,
+        element: 'fire',
+        color: 0xff7a2a,
+      });
+      this.skills.passiveNova(
+        this.player, pos, e.killExplodeRadius, e.killExplodePct / 100, 'fire', ctx, this.enemies, this.boss,
+      );
+    }
+    if (e.executeManaRefund > 0) {
+      this.player.mana = Math.min(
+        this.player.stats.mana,
+        this.player.mana + this.player.stats.mana * (e.executeManaRefund / 100) * 0.1,
+      );
+    }
+    if (e.killLifePct > 0) {
+      this.player.life = Math.min(
+        this.player.stats.life,
+        this.player.life + this.player.stats.life * (e.killLifePct / 100),
+      );
+    }
+  }
+
+  /** Reused inside the damage callback so it never rebuilds the context. */
+  private ctxCache: CombatContext | null = null;
+  /** Overkill from the corpse currently being reaped. */
+  private lastOverkill = 0;
+
   private context(): CombatContext {
     return {
       playerPos: this.player.position,
@@ -452,7 +591,9 @@ export class DungeonScene extends GameScene {
       playerLevel: this.player.character.level,
       damagePlayer: (packet: DamagePacket) => {
         if (this.godMode) return;
+        const before = this.player.life;
         const taken = this.player.takeDamage(packet, this.rng);
+        this.passiveDefence(packet, taken, before);
         if (taken > 0 && save.settings.showDamageNumbers) {
           // Player damage in the packet's own colour, so a big fire hit is
           // readable as fire without reading the number.
@@ -479,6 +620,7 @@ export class DungeonScene extends GameScene {
       scene: this.scene,
       blockers: this.mesh?.colliders,
       playerHidden: this.player.statuses.some((s) => s.id === 'veiled'),
+      auraRadiusBonus: this.player.passives.auraRadiusM,
     };
   }
 
@@ -490,6 +632,7 @@ export class DungeonScene extends GameScene {
     input.updateWorldPoint(this.camera, 0);
 
     const ctx = this.context();
+    this.ctxCache = ctx;
 
     if (this.player.alive) {
       this.handleInput(dt, input, ctx);
@@ -782,6 +925,7 @@ export class DungeonScene extends GameScene {
       // it. The corpse can take its time sinking; the loot should not.
       if (!e.lootGranted && e.readyToLoot) {
         e.lootGranted = true;
+        this.lastOverkill = e.overkill;
         this.grantKill(e.monsterId, e.rank, e.family, e.root.position, e.ilvl);
       }
       if (e.life > 0 || !e.readyToRemove) continue;
@@ -815,6 +959,8 @@ export class DungeonScene extends GameScene {
   ): void {
     events.emit('enemy:killed', { id: monsterId, monsterId, rank, x: pos.x, z: pos.z });
     onKill(this.run.quest, monsterId, family, rank);
+    this.passiveOnKill(pos, this.lastOverkill);
+    this.lastOverkill = 0;
 
     const c = this.player.character;
     const dif = activeDifficulty();

@@ -36,12 +36,14 @@ const { rows, treeOwner } = JSON.parse(lines[lines.length - 1]);
 
 const castable = rows.filter((r) => r.targeting !== 'passive');
 const granting = rows.filter((r) => r.targeting === 'passive' && r.hasPassiveStats);
-const dead = rows.filter((r) => r.targeting === 'passive' && !r.hasPassiveStats);
+const engined = rows.filter((r) => r.targeting === 'passive' && !r.hasPassiveStats && r.inEngine);
+const dead = rows.filter((r) => r.targeting === 'passive' && !r.hasPassiveStats && !r.inEngine);
 
 console.log(`skills: ${rows.length}`);
-console.log(`  castable:          ${castable.length}`);
-console.log(`  passive, grants stats: ${granting.length}`);
-console.log(`  DEAD (no cast, no stats): ${dead.length}`);
+console.log(`  castable:                 ${castable.length}`);
+console.log(`  passive, grants stats:    ${granting.length}`);
+console.log(`  passive, run by the engine: ${engined.length}`);
+console.log(`  DEAD (none of the above): ${dead.length}`);
 
 const byClass = {};
 for (const d of dead) {
