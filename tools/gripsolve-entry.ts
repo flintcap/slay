@@ -49,7 +49,10 @@ interface Case {
 
 const CASES: Case[] = [
   // One-handed. No free hand involved; just point the thing.
-  { name: 'sword', hand: 'handR', tip: [-0.2, 0.96, -0.18], flat: [0.1, 0, -0.99] },
+  // Shouldered, not shouldered arms. Bolt upright reads as a rifle at
+  // attention; a carried sword leans back over the shoulder and out from the
+  // body, roughly forty degrees off vertical.
+  { name: 'sword', hand: 'handR', tip: [-0.42, 0.7, -0.58], flat: [0.1, 0, -0.99] },
   { name: 'dagger', hand: 'handR', tip: [-0.05, -0.98, 0.19], flat: [0.1, 0, -0.99] },
   // Both hands. The tip goes up and across the body, so the free hand grips
   // further along the haft — which is toward the far shoulder, and reachable.

@@ -1199,9 +1199,10 @@ interface Grip {
  * that lands the tip where it belongs.
  */
 const GRIPS: Record<WeaponGrip, Grip> = {
-  // Point up, tilted a little away from the body and a little back, flat to the
-  // camera so the blade reads as a blade and not a stick.
-  sword: { rot: [0.064, -0.23, 0.462], pos: [0, -0.03, 0.02], bothHands: false },
+  // Shouldered, not shouldered arms. Bolt upright read as a rifle at attention;
+  // a carried sword leans back over the shoulder and out from the body, about
+  // forty degrees off vertical, flat to the camera so it reads as a blade.
+  sword: { rot: [-0.213, -0.563, 0.711], pos: [0, -0.03, 0.02], bothHands: false },
   // Straight down, reverse grip, barely canted. A knife rides point-down.
   dagger: { rot: [0.016, -0.199, -2.939], pos: [0, -0.04, 0.02], bothHands: false },
   // Up and across the body to the off side, both hands on the haft.

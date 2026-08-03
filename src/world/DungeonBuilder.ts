@@ -460,13 +460,21 @@ export class DungeonMesh {
     // it, so a lit-only material went fully black — which looks exactly like
     // the hole it was added to fill. A self-lit floor guarantees it always
     // reads as a surface. Scene fog still fades it with distance.
+    //
+    // Textured, too. A flat untextured slab the size of half the screen reads as
+    // a hole whether or not there is one behind it, which is why "still holes in
+    // the walls" kept coming back after the geometry was closed. Borrowing the
+    // biome's own wall texture makes the same plane read as the rock it is.
     const rockTone = new THREE.Color(art.skyColor).lerp(new THREE.Color(0x33363f), 0.72);
-    const bedrockMat = new THREE.MeshStandardMaterial({
-      color: rockTone,
-      emissive: rockTone.clone().multiplyScalar(0.55),
+    const bedrockMat = safeSurface(art.walls[0].palette, {
+      repeat: 1.5,
+      tint: rockTone.getHex(),
       roughness: 1,
-      metalness: 0,
-    });
+    }) as THREE.MeshStandardMaterial;
+    if (bedrockMat.isMeshStandardMaterial) {
+      bedrockMat.emissive = rockTone.clone().multiplyScalar(0.42);
+      bedrockMat.metalness = 0;
+    }
     this.ownedMat.push(bedrockMat);
 
     const FLOOR0 = 0;
@@ -494,6 +502,21 @@ export class DungeonMesh {
     const chunksY = Math.ceil(H / CHUNK);
     const wallH = art.wallHeight;
     const ceilY = art.ceilingHeight;
+
+    // One flat plane of rock over the whole level.
+    //
+    // Every solid tile used to cap at *its own* terrain height plus the wall
+    // height, and terrain height is per-tile noise. Two neighbouring caps a step
+    // apart left a vertical slot between their quads with nothing emitting a
+    // face to close it — a gash up to 1.8m tall you could see the void through,
+    // in every biome. Reported as "holes in the walls and top of walls".
+    //
+    // A single height removes the whole class of bug rather than patching each
+    // step: the rock above a carved dungeon is one surface, and rooms whose
+    // floor sits lower simply have taller walls, which is what carving means.
+    let maxStep = 0;
+    for (let i = 0; i < this.heights.length; i++) maxStep = Math.max(maxStep, this.heights[i]);
+    const roofY = maxStep * STEP_HEIGHT + wallH;
 
     for (let cy = 0; cy < chunksY; cy++) {
       for (let cx = 0; cx < chunksX; cx++) {
@@ -525,12 +548,12 @@ export class DungeonMesh {
               // rooms carved out of solid rock, which is what it is. One quad per
               // void tile, merged into the chunk's wall geometry, so it costs a
               // bucket that takes no part in the shadow pass.
-              surfs[BEDROCK].flat(wx, hy + wallH, wz, HALF, true, x % 4, y % 4, 1);
+              surfs[BEDROCK].flat(wx, roofY, wz, HALF, true, x % 4, y % 4, 1);
               continue;
             }
 
             if (v === T_WALL) {
-              this.emitWall(surfs, x, y, wx, wz, hy, wallH, wallMats.length, WALL0, TRIM, BASE);
+              this.emitWall(surfs, x, y, wx, wz, hy, roofY, wallMats.length, WALL0, TRIM, BASE);
               continue;
             }
 
@@ -676,6 +699,11 @@ export class DungeonMesh {
    * A wall tile. Only faces that touch open space are emitted, plus a top cap,
    * a protruding base course and a cornice — that trio is what gives a wall
    * mass instead of reading as a cardboard plane.
+   *
+   * The top cap is unconditional. It used to be emitted only for walls touching
+   * open space, on the reasoning that a buried wall tile is never seen. It is:
+   * a tile with no cap is a two-metre hole straight down into the level, and
+   * thick runs of wall left roughly two hundred of them per floor.
    */
   private emitWall(
     surfs: Surf[],
@@ -684,13 +712,14 @@ export class DungeonMesh {
     wx: number,
     wz: number,
     hy: number,
-    wallH: number,
+    /** The level's single rock height. Walls run all the way up to it. */
+    topY: number,
     wallCount: number,
     WALL0: number,
     TRIM: number,
     BASE: number,
   ): void {
-    const topY = hy + wallH;
+    const wallH = topY - hy;
     // Deterministic wall variant, clumped so it reads as masonry courses rather
     // than per-tile noise.
     const nv = this.noise.fbm(x * 0.07, y * 0.07, 2) * 0.5 + 0.5;
@@ -699,12 +728,10 @@ export class DungeonMesh {
     const trim = surfs[TRIM];
     const base = surfs[BASE];
 
-    let exposed = false;
     for (let d = 0; d < 4; d++) {
       const nx = x + DX4[d];
       const ny = y + DY4[d];
       if (!this.open(nx, ny)) continue;
-      exposed = true;
       const nh = this.heights[ny * this.level.width + nx] * STEP_HEIGHT;
       const yBottom = Math.min(nh, hy) - 0.15;
       const fx = wx + DX4[d] * HALF;
@@ -732,7 +759,7 @@ export class DungeonMesh {
         trim.ledge(fx, my + 0.16, fz, DX4[d], DY4[d], TILE_SIZE, 0.07, true);
       }
     }
-    if (exposed) s.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
+    s.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
   }
 
   /** Walls of a pit, dropped below the surrounding floor. */

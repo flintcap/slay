@@ -77,6 +77,8 @@ function measure(baseId: string): Row | null {
         child.getWorldQuaternion(new THREE.Quaternion()),
       );
       points = tip.y > 0 ? 'up' : 'down';
+      // How vertical it is. A one-handed sword at 1.0 is standing to attention
+      // rather than being carried, which is what "too upright" meant.
       upright = +Math.abs(tip.y).toFixed(2);
     }
   }
