@@ -471,10 +471,16 @@ export class DungeonMesh {
     // it, so a lit-only material went fully black — which looks exactly like
     // the hole it was added to fill. A self-lit floor guarantees it always
     // reads as a surface. Scene fog still fades it with distance.
-    const rockTone = new THREE.Color(art.skyColor).lerp(new THREE.Color(0x33363f), 0.72);
+    //
+    // Kept dark on purpose. The roof is the surface nearest the camera and it
+    // fills most of the frame, so anything brighter than the floor reads as fog
+    // sitting on top of the level rather than as the rock the level is cut out
+    // of. The emissive term exists only so it never reaches pure black, which
+    // is what made it look like a hole in the first place.
+    const rockTone = new THREE.Color(art.skyColor).lerp(new THREE.Color(0x24262c), 0.5);
     const bedrockMat = new THREE.MeshStandardMaterial({
       color: rockTone,
-      emissive: rockTone.clone().multiplyScalar(0.55),
+      emissive: rockTone.clone().multiplyScalar(0.16),
       roughness: 1,
       metalness: 0,
     });
@@ -985,7 +991,7 @@ export class DungeonMesh {
             '  vec2 rockOff = vRockPos.xz - uRoofHole.xz;',
             '  float rockD = length(rockOff);',
             // Speckled rim: dissolve over the outer 2.2m instead of a hard edge.
-            '  float rim = smoothstep(uRoofHole.w - 2.2, uRoofHole.w, rockD);',
+            '  float rim = smoothstep(uRoofHole.w - 4.5, uRoofHole.w, rockD);',
             '  float grain = fract(sin(dot(floor(vRockPos.xz * 3.0), vec2(12.9898, 78.233))) * 43758.5453);',
             '  if (rim <= grain) discard;',
           ].join('\n'),
