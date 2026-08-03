@@ -31,7 +31,7 @@ import {
   T_WATER,
   isWalkableValue,
 } from './Layouts';
-import { STEP_HEIGHT, TILE_SIZE, levelExtras } from './DungeonGen';
+import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './DungeonGen';
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
 
 import { surface } from '../art/Materials';
@@ -953,7 +953,11 @@ export class DungeonMesh {
         const off = def.placement === 'wall' ? (def.wallOffset ?? 0.7) : 0;
         xs[i] = this.tileX(p.x) - fx * off;
         zs[i] = this.tileZ(p.y) - fz * off;
-        ys[i] = this.floorHeight(p.x, p.y);
+        // Ground to the lowest floor this tile touches, not the tile's own
+        // height. See `propGroundHeight`.
+        ys[i] = def.placement === 'wall' || def.placement === 'liquid'
+          ? this.floorHeight(p.x, p.y)
+          : propGroundHeight(level, p.x, p.y) * STEP_HEIGHT;
         rot[i] = yaw;
         sc[i] = scaleFor(g.kind, p.x, p.y);
       }

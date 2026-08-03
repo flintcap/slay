@@ -149,6 +149,38 @@ export function particleFor(skillId: string, type: DamageType): ParticleSig {
  *
  * A skill that names `statusId` in its params still wins over this table.
  */
+/**
+ * Self-buff skills joined to the player status they are meant to grant.
+ *
+ * `applyBuff` looked for a `statusId` in a skill's params, but the params type
+ * only holds numbers, so no skill could ever name one. Every self-buff fell
+ * through to a synthesized placeholder carrying the skill's name and no
+ * modifiers at all — which is why Veil put an icon on the bar and changed
+ * nothing. These statuses were all authored with real numbers already.
+ */
+const SELF_BUFF_STATUS: Record<string, string> = {
+  veil: 'veiled',
+  camouflage: 'veiled',
+  vanish: 'veiled',
+  shieldWall: 'stoneform',
+  fortressStance: 'stoneform',
+  guardStance: 'fortitude',
+  aegis: 'shielded',
+  flameWard: 'warded',
+  voltaicShield: 'shielded',
+  boneArmor: 'shielded',
+  sunbrand: 'might',
+  lucentForm: 'sanctified',
+  ashenShroud: 'evasion',
+  stormveil: 'evasion',
+  overchargeSkill: 'overcharged',
+  chargeUp: 'overcharged',
+  thunderstorm: 'overcharged',
+  bloodPact: 'siphoning',
+  revenantForm: 'frenzy',
+  consumeAshes: 'inspired',
+};
+
 const SKILL_STATUS: Record<string, string> = {
   // Curses and marks
   weaken: 'weakened',
@@ -1075,9 +1107,11 @@ export class SkillRunner {
   ): void {
     const duration = num('duration', 10) + num('durationPerRank', 0) * (rank - 1);
 
-    // Prefer an authored status if the skill names one, else synthesize one
-    // carrying the skill's own name so the tooltip reads correctly.
-    const authored = typeof def.params?.statusId === 'string' ? (def.params.statusId as string) : null;
+    // Prefer the authored status this skill is meant to grant, so the buff
+    // carries real modifiers instead of being a decorative icon. Only skills
+    // with nothing authored fall back to a synthesized placeholder named after
+    // the skill, which at least reads correctly in the tooltip.
+    const authored = SELF_BUFF_STATUS[def.id] ?? null;
     const id = authored && getStatus(authored) ? authored : `skill.${def.id}`;
     if (!getStatus(id)) {
       synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);

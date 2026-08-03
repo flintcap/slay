@@ -51,6 +51,14 @@ export interface CombatContext {
    * the player is quite reasonably hiding behind.
    */
   blockers?: Array<{ x: number; z: number; w: number; d: number }>;
+  /**
+   * True while the player is Veiled.
+   *
+   * The status existed with real modifiers and the skill applied it, but no
+   * monster ever asked. Stealth that nothing checks is a buff icon and nothing
+   * else, which is why Veil read as broken.
+   */
+  playerHidden?: boolean;
 }
 
 /**

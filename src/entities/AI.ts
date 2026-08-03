@@ -37,6 +37,8 @@ export type AIMode =
   | 'hidden';
 
 const TAU = Math.PI * 2;
+/** How close a monster must be to notice a Veiled player. Arm's length. */
+const HIDDEN_NOTICE = 1.8;
 
 // ---------------------------------------------------------------------------
 // Role profiles — the whole personality of a monster in one table row
@@ -259,10 +261,20 @@ export class AIBrain {
     return this.losCache;
   }
 
-  /** Sight cone + hearing + LOS. Returns true when the player is perceived. */
+  /**
+   * Sight cone + hearing + LOS. Returns true when the player is perceived.
+   *
+   * Veil collapses this to arm's length. The `veiled` status was authored with
+   * real modifiers and the skill applied it correctly, but nothing in the AI
+   * ever asked whether the player was hidden, so monsters kept walking straight
+   * at you and the skill read as doing nothing. A monster you are practically
+   * standing on still finds you — total invisibility would let you walk a whole
+   * floor untouched.
+   */
   private perceives(ctx: CombatContext): boolean {
     const p = this.self.root.position;
     const d = dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+    if (ctx.playerHidden) return d <= HIDDEN_NOTICE;
     if (d > this.profile.sight) return d <= this.profile.hearing;
     if (d <= this.profile.hearing) return true;
     if (!this.lineOfSight(ctx)) return false;
@@ -344,6 +356,15 @@ export class AIBrain {
         this.desired.copy(p);
         return;
       }
+    }
+
+    // Veil applies to a monster already hunting you, not only a sleeping one.
+    // Gating perception alone would have left everything that had already
+    // noticed you walking straight at your back.
+    if (ctx.playerHidden && d > HIDDEN_NOTICE) {
+      this.computeSeparation(ctx);
+      this.desired.copy(p);
+      return;
     }
 
     // --- flee / regroup ----------------------------------------------------

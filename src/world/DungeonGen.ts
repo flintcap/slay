@@ -130,6 +130,34 @@ export function worldToTileXZ(level: DungeonLevel, wx: number, wz: number): { x:
   };
 }
 
+/**
+ * The height a prop standing on this tile should be drawn at.
+ *
+ * Not the tile's own height: the lowest walkable height it touches. Prop models
+ * are routinely wider than the two-metre tile they are placed on, and clutter
+ * placement deliberately favours tiles against a wall, which is also where the
+ * floor steps. A rock drawn at its own tile's height overhangs the step with
+ * nothing under it and reads as floating — which is exactly how playtesters
+ * described it. Dropping to the lower side buries the overhang instead.
+ */
+export function propGroundHeight(level: DungeonLevel, x: number, y: number): number {
+  const ex = levelExtras(level);
+  if (!ex) return 0;
+  const at = (px: number, py: number): number =>
+    px < 0 || py < 0 || px >= level.width || py >= level.height ? 0 : ex.heights[py * level.width + px]!;
+  let lowest = at(x, y);
+  for (const [dx, dy] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as Array<[number, number]>) {
+    if (!isWalkable(level, x + dx, y + dy)) continue;
+    lowest = Math.min(lowest, at(x + dx, y + dy));
+  }
+  return lowest;
+}
+
 export function levelExtras(level: DungeonLevel): LevelExtras | null {
   const l = level as Partial<GeneratedLevel>;
   return l.heights && l.roomOf && l.audit

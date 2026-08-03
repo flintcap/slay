@@ -161,7 +161,9 @@ export const PROP_DEFS: Record<string, PropDef> = {
   }),
   brazier: P('brazier', {
     placement: 'feature',
-    radius: 0.55,
+    // A brazier is a narrow bowl on a tripod. At 0.55 its collider was a metre
+    // and a bit across, so you bounced off thin air a half-tile away from it.
+    radius: 0.3,
     blocks: true,
     variants: 2,
     light: { color: 0xff8a3c, intensity: 9, distance: 17, height: 1.5, flicker: 1, forward: 0 },

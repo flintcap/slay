@@ -478,6 +478,7 @@ export class DungeonScene extends GameScene {
       enemies: this.enemies,
       scene: this.scene,
       blockers: this.mesh?.colliders,
+      playerHidden: this.player.statuses.some((s) => s.id === 'veiled'),
     };
   }
 
