@@ -4266,7 +4266,10 @@ input.slider::-moz-range-thumb {
 .cs-wrap {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* `min-height`, not `height`. On a short window a fixed height forces the
+     inner boxes to fight over the space, and the card row ends up scrolled with
+     its top edge clipped. The panel body already scrolls; let it own that job. */
+  min-height: 100%;
   gap: var(--s5);
 }
 .cs-head {
@@ -4292,8 +4295,8 @@ input.slider::-moz-range-thumb {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;
   gap: var(--s5);
-  flex: 1;
-  min-height: 0;
+  flex: 1 0 auto;
+  align-items: start;
 }
 .cs-cards {
   display: grid;
@@ -4302,8 +4305,10 @@ input.slider::-moz-range-thumb {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--s3);
   align-content: start;
-  overflow-y: auto;
-  padding-right: 4px;
+  /* Deliberately not a scroll container. When it was, the browser could scroll
+     it to bring a focused card into view and cut the top off every card in the
+     row. The whole screen scrolls as one thing instead. */
+  overflow: visible;
 }
 @media (max-width: 1500px) {
   .cs-cards {
