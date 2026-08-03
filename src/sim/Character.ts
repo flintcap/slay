@@ -663,9 +663,13 @@ export function equipItem(
     if (main && isTwoHanded(main) && !isWornOffHand(item) && !displaced.includes(main)) {
       displaced.push(main);
     }
-    // An off-hand weapon needs a main-hand weapon to pair with.
+    // An off-hand weapon needs a main-hand weapon to pair with. "Whatever is in
+    // the main hand *after* this equip" — moving your only weapon across from
+    // the main hand leaves that hand empty, so it has to be refused, not
+    // silently allowed because the check ran before the move.
     const offBase = baseOf(item);
-    if (offBase && ONE_HAND_MELEE.has(offBase.category) && !c.equipment.mainHand) {
+    const mainAfter = c.equipment.mainHand?.uid === item.uid ? null : c.equipment.mainHand;
+    if (offBase && ONE_HAND_MELEE.has(offBase.category) && !mainAfter) {
       return { ok: false, reason: 'Equip a weapon in your main hand first.' };
     }
   }
@@ -686,6 +690,16 @@ export function equipItem(
     }
     addToInventory(c, d);
     events.emit('item:unequipped', { item: d });
+  }
+
+  // The item may already be worn somewhere else. Dragging a one-hander from the
+  // main hand to the off hand is exactly that, and on a dual-wield class it is a
+  // legal move — but assigning the target slot without vacating the old one left
+  // the same item in both hands, which is an item duplication bug because that
+  // is what it is. Vacate here rather than in the drag handler: every path in,
+  // including right-click and the debug tools, comes through this function.
+  for (const s of Object.keys(c.equipment) as EquipSlot[]) {
+    if (s !== target && c.equipment[s]?.uid === item.uid) delete c.equipment[s];
   }
 
   c.equipment[target] = item;
