@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   // Teach the item-model builder how to find a base's authored visual. Done
   // here rather than inside art/ so the art layer keeps no compile-time
   // dependency on the item simulation.
-  const [{ setItemVisualResolver }, { getBase }] = await Promise.all([
+  const [{ setItemVisualResolver, setDropColorResolver }, { getBase, itemLabelColor }] = await Promise.all([
     import('./art/ItemModels'),
     import('./sim/Loot'),
   ]);
@@ -68,6 +68,13 @@ async function main(): Promise<void> {
   setItemVisualResolver((item) => {
     try {
       return getBase(item.baseId)?.visual;
+    } catch {
+      return undefined;
+    }
+  });
+  setDropColorResolver((item) => {
+    try {
+      return itemLabelColor(item);
     } catch {
       return undefined;
     }

@@ -8,8 +8,7 @@
  */
 import * as THREE from 'three';
 import type { Item } from '../types';
-import { RARITY_COLOR } from '../types';
-import { itemDisplayName, itemTooltipLines } from '../sim/Loot';
+import { itemDisplayName, itemTooltipLines, itemLabelColor, itemTypeTag } from '../sim/Loot';
 
 export interface GroundEntry {
   item: Item;
@@ -20,6 +19,8 @@ export interface GroundEntry {
 interface Label {
   root: HTMLDivElement;
   name: HTMLSpanElement;
+  /** What the item is — Sword, Ring, Rune — under the name. */
+  type: HTMLSpanElement;
   detail: HTMLDivElement;
   uid: string;
   inUse: boolean;
@@ -68,12 +69,14 @@ export class GroundLabelLayer {
     root.className = 'glabel ui-interactive ui-soft';
     const name = document.createElement('span');
     name.className = 'glabel-name';
+    const type = document.createElement('span');
+    type.className = 'glabel-type';
     const detail = document.createElement('div');
     detail.className = 'glabel-detail';
-    root.append(name, detail);
+    root.append(name, type, detail);
     this.container.appendChild(root);
 
-    const label: Label = { root, name, detail, uid: '', inUse: true };
+    const label: Label = { root, name, type, detail, uid: '', inUse: true };
 
     root.addEventListener('pointerenter', () => {
       this.hovered = label.uid;
@@ -102,10 +105,19 @@ export class GroundLabelLayer {
     if (l.root.dataset.key === key) return;
     l.root.dataset.key = key;
 
-    const colour = hex(RARITY_COLOR[item.rarity] ?? 0xc8c8c8);
+    // Gems wear their own stone colour and runes a single shared orange, so a
+    // ruby reads red on the floor and a rune is never lost in a pile of grey
+    // drops. Everything else stays rarity-coloured, because that is the
+    // decision you make about gear.
+    const colour = hex(itemLabelColor(item));
     l.root.style.setProperty('--gc', colour);
     l.root.dataset.rarity = item.rarity;
     l.name.textContent = itemDisplayName(item);
+
+    // What it *is*, always. A name alone does not tell you a Sigil is an amulet.
+    const tag = itemTypeTag(item);
+    l.type.textContent = tag;
+    l.type.style.display = tag ? '' : 'none';
 
     l.detail.textContent = '';
     let lines: Array<{ text: string; color: string; bold?: boolean }> = [];

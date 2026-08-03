@@ -4914,6 +4914,16 @@ input.slider::-moz-range-thumb {
   text-shadow: 0 1px 2px #000;
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
+/* What the thing is, under its name. A "Sigil" tells you nothing on its own. */
+.glabel-type {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--gc, #888) 70%, #cfcfcf);
+  text-shadow: 0 1px 2px #000;
+  margin-top: 1px;
+  white-space: nowrap;
+}
 .glabel.is-hover .glabel-name {
   transform: translateY(-1px);
   box-shadow: 0 0 12px -2px var(--gc, #888);

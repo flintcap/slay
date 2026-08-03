@@ -428,6 +428,34 @@ export function itemDisplayName(item: Item): string {
   return item.name;
 }
 
+/** Single unmistakable colour for every rune, whatever its tier. */
+export const RUNE_LABEL_COLOR = 0xff8a1f;
+
+/**
+ * The colour an item's name is written in.
+ *
+ * Rarity for gear, because that is the decision you make about gear. Gems get
+ * their own stone colour — a ruby should read red on the floor, not the same
+ * grey as every other unsocketed drop — and every rune gets one shared orange
+ * so a rune is never mistaken for anything else in a pile of loot.
+ */
+export function itemLabelColor(item: Item): number {
+  const base = findBase(item.baseId);
+  if (base?.category === 'rune') return RUNE_LABEL_COLOR;
+  if (base?.category === 'gem') {
+    const gem = getSocketable(item.baseId);
+    if (gem) return gem.color;
+  }
+  return RARITY_COLOR[item.rarity] ?? 0xc8c8c8;
+}
+
+/** Short tag naming what an item *is*, for the floor label. */
+export function itemTypeTag(item: Item): string {
+  const base = findBase(item.baseId);
+  return base ? (CATEGORY_LABEL[base.category] ?? base.category) : '';
+}
+
+
 // ---------------------------------------------------------------------------
 // Item construction
 // ---------------------------------------------------------------------------

@@ -1583,6 +1583,17 @@ export function buildItemModel(visual: ItemVisual, rng: Rng, rarity: ItemRarity)
 // ---------------------------------------------------------------------------
 
 let visualResolver: ((item: Item) => ItemVisual | undefined) | null = null;
+/**
+ * What colour a dropped item's beam burns.
+ *
+ * Injected rather than imported so the art layer keeps knowing nothing about
+ * the loot tables. `main.ts` wires it to `itemLabelColor`.
+ */
+let dropColorHook: ((item: Item) => number | undefined) | null = null;
+
+export function setDropColorResolver(fn: (item: Item) => number | undefined): void {
+  dropColorHook = fn;
+}
 
 /**
  * Lets the integration layer wire real `ItemBase.visual` data in without this
@@ -1647,7 +1658,10 @@ function inferVisual(item: Item): ItemVisual {
 export function buildDropModel(item: Item, rng: Rng): THREE.Object3D {
   const visual = (visualResolver ? visualResolver(item) : undefined) ?? inferVisual(item);
   const rarity = item.rarity;
-  const color = RARITY_COLOR[rarity] ?? 0xc8c8c8;
+  // The beam is what you read from across a room. Gems glow their own stone
+  // colour and runes a single shared orange, so you can tell a ruby from an
+  // emerald from a rune without walking over to read three labels.
+  const color = (dropColorHook ? dropColorHook(item) : undefined) ?? RARITY_COLOR[rarity] ?? 0xc8c8c8;
   const tier = RARITY_TIER[rarity] ?? 0;
 
   const root = new THREE.Group();
