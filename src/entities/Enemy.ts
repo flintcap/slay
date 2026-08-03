@@ -333,6 +333,23 @@ export class Enemy implements Combatant {
     this.ai = new AIBrain(this, def, rng);
 
     if (affixes.length > 0) this.buildAura(affixes[0]!.color);
+
+    // An affix that describes a buff now wears it, permanently, so its stat
+    // modifiers are real. A Stoneskin elite used to be a name and a colour.
+    for (const a of affixes) {
+      const buff = a.behavior ? AFFIX_BUFF[a.behavior] : undefined;
+      if (!buff || !statusDef(buff)) continue;
+      this.statuses.push({
+        id: buff,
+        // Longer than any fight it will be in. These are what the monster is,
+        // not something that wears off.
+        time: 9999,
+        magnitude: 1,
+        stacks: 1,
+        dotType: null,
+        dotPerSecond: 0,
+      });
+    }
     this.root.userData.enemy = this;
   }
 
@@ -925,6 +942,16 @@ export class Enemy implements Combatant {
           ctx,
         );
       }
+      // A critical blow shreds as well as hurts, which is what the shred tier
+      // of the catalogue is for and what makes a crit worth more than a number.
+      const shred = working.crit ? CRIT_SHRED[type] ?? undefined : undefined;
+      if (shred) {
+        const def = statusDef(shred);
+        this.applyStatuses(
+          [{ id: shred, duration: def?.baseDuration ?? 6, magnitude: 1, stacks: 1 }],
+          ctx,
+        );
+      }
     }
 
     // Retaliation affixes ---------------------------------------------------
@@ -1510,6 +1537,38 @@ const ELEMENT_AFFLICTION: Partial<Record<DamageType, string>> = {
  * on everything is not a mechanic. The elements land often enough to matter and
  * seldom enough that resistances still decide fights.
  */
+/**
+ * The authored buff each elite affix wears.
+ *
+ * These statuses were written with full modifiers — `stoneform` grants damage
+ * reduction and physical resistance, `frenzy` stacks attack speed per kill —
+ * and nothing granted any of them. The affixes that describe exactly those
+ * things already existed too; the two were never joined, so a Stoneskin elite
+ * was a name and a colour.
+ */
+const AFFIX_BUFF: Record<string, string> = {
+  stoneskin: 'stoneform',
+  berserker: 'frenzy',
+  blood_thirsty: 'bloodlust',
+  vampiric: 'siphoning',
+  arcane_enchanted: 'voidtouched',
+  plagued: 'hexbrand',
+  juggernaut: 'stoneform',
+};
+
+/**
+ * Statuses a heavy elemental blow leaves on top of its own affliction.
+ *
+ * The catalogue calls these the shred tier: charred armour, bone-deep cold, a
+ * weapon knocked wide. They are the reason a critical hit should mean something
+ * beyond a bigger number, and nothing applied them.
+ */
+const CRIT_SHRED: Partial<Record<DamageType, string>> = {
+  fire: 'scorched',
+  cold: 'frostbite',
+  physical: 'disarmed',
+};
+
 const AFFLICTION_CHANCE: Partial<Record<DamageType, number>> = {
   fire: 0.35,
   cold: 0.4,

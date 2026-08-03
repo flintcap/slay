@@ -111,6 +111,63 @@ export function particleFor(skillId: string, type: DamageType): ParticleSig {
   };
 }
 
+/**
+ * The authored status a skill inflicts.
+ *
+ * Both halves of this were already written and neither knew about the other:
+ * `data/skills.ts` describes a curse that weakens, and `data/statuses.ts`
+ * defines `weakened` with its modifiers and icon. Nothing joined them, so every
+ * curse synthesized a nameless placeholder buff instead of applying the real
+ * effect its own description promises.
+ *
+ * A skill that names `statusId` in its params still wins over this table.
+ */
+const SKILL_STATUS: Record<string, string> = {
+  // Curses and marks
+  weaken: 'weakened',
+  intimidate: 'weakened',
+  amplifyDamage: 'vulnerable',
+  terror: 'feared',
+  doomBrand: 'doomed',
+  massConfusion: 'confused',
+  lowerResist: 'unmade',
+  huntersMark: 'marked',
+  soulCage: 'grasped',
+  soulTether: 'lifelink',
+  boneCage: 'grasped',
+  tauntingRoar: 'weakened',
+
+  // Maiming and shredding
+  crippling: 'crippled',
+  crippleTendon: 'crippled',
+  maim: 'crippled',
+  polarize: 'brittle',
+  sunder: 'brittle',
+  rend: 'rent',
+  gash: 'hemorrhage',
+  bleedingArrow: 'hemorrhage',
+  suppressing: 'exhausted',
+
+  // Blinding smoke and darkness
+  nightfall: 'blinded',
+  eclipse: 'blinded',
+  smokeBomb: 'blinded',
+  scattershot: 'blinded',
+
+  // Elemental afflictions named outright by the skill
+  ignite: 'immolated',
+  noxiousCloud: 'envenomed',
+  envenomBurst: 'envenomed',
+
+  // Traps and impacts
+  snareTrap: 'rooted',
+  thornBarrier: 'slowed',
+  spikeTrap: 'bleeding',
+  shieldBash: 'stunned',
+  warStomp: 'knockedDown',
+  earthshatter: 'knockedDown',
+};
+
 /** Stable small integer from a skill id. */
 function hashId(id: string): number {
   let h = 2166136261;
@@ -363,13 +420,17 @@ export class SkillRunner {
     // from the fire skill next to it.
     const color = shiftHue(ELEMENTS[type]?.core ?? 0xffe3b0, hashId(def.id));
 
-    const makePacket = (mult = 1): DamagePacket =>
-      rollDamage(player.stats, ctx.rng, {
+    const makePacket = (mult = 1): DamagePacket => {
+      const p = rollDamage(player.stats, ctx.rng, {
         scale: scale * mult,
         type,
         ability: def.name,
         source: 'player',
       });
+      const r = rider();
+      if (r.length) p.applies = r;
+      return p;
+    };
 
     const attackTime = 0.42 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
     const castTime = 0.5 / Math.max(0.4, 1 + player.stats.castSpeed / 100);
@@ -379,6 +440,15 @@ export class SkillRunner {
       const v = params[k];
       return typeof v === 'number' ? v : d;
     };
+
+    // Whatever this skill inflicts rides on every packet it produces, so a
+    // maiming strike maims whether the runner delivered it as a swing, a
+    // projectile or a nova. Attaching it in the individual branches would mean
+    // remembering to, in twenty places, forever. Computed once, lazily, because
+    // `num` has to exist first.
+    let riderCache: StatusApplication[] | null = null;
+    const rider = (): StatusApplication[] =>
+      (riderCache ??= this.statusFor(def, num, color, true));
 
     const origin = player.position.clone().setY(1.05);
     const dir = this.tmp.copy(target).sub(player.position).setY(0).normalize().clone();
@@ -934,6 +1004,13 @@ export class SkillRunner {
     def: { id: string; name: string; params?: Record<string, number | number[] | string> },
     num: (k: string, d: number) => number,
     color: number,
+    /**
+     * True when this is the rider attached to every packet the skill throws.
+     * A rider only fires when the skill genuinely names an effect: synthesizing
+     * a placeholder for all 163 skills would put a meaningless icon on every
+     * monster in the game.
+     */
+    riderOnly = false,
   ): StatusApplication[] {
     const duration = num('duration', 8);
     const magnitude = num('amp', num('magnitude', num('slow', 1)));
@@ -941,6 +1018,13 @@ export class SkillRunner {
     if (named && getStatus(named)) {
       return [{ id: named, duration, magnitude, stacks: 1 }];
     }
+    // The authored effect this skill is describing, if the two tables can be
+    // joined. This is what makes a curse actually curse.
+    const mapped = SKILL_STATUS[def.id];
+    if (mapped && getStatus(mapped)) {
+      return [{ id: mapped, duration, magnitude, stacks: 1 }];
+    }
+    if (riderOnly) return [];
     const id = `skill.${def.id}`;
     if (!getStatus(id)) synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);
     return [{ id, duration, magnitude, stacks: 1 }];
