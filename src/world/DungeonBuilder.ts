@@ -350,6 +350,17 @@ export class DungeonMesh {
   private cullTimer = 0;
   private cullRadius = 68;
 
+  /**
+   * Where the roof is cut open, in world space, and how wide the cut is.
+   *
+   * Shared uniform objects: every chunk's rock material references these, so
+   * moving the hole is one vector write per frame rather than a walk over
+   * every mesh. `w` carries the radius so it rides along in the same uniform.
+   */
+  private readonly roofHole = { value: new THREE.Vector4(0, 0, 0, 9.5) };
+  /** How far the opening reaches. Tuned against the camera's 0.92 rad pitch. */
+  private roofHoleRadius = 9.5;
+
   constructor(level: DungeonLevel, biome: BiomeDef, rng: Rng) {
     this.level = level;
     this.biome = biome;
@@ -468,6 +479,13 @@ export class DungeonMesh {
       metalness: 0,
     });
     this.ownedMat.push(bedrockMat);
+    // The roof over rooms is the same rock, but it is the only part that opens
+    // up around the player. The mass over the void must stay solid: cutting a
+    // hole in that would expose empty space with no floor under it, which is
+    // the very thing the rock was added to hide.
+    const roofMat = bedrockMat.clone();
+    this.applyRoofHole(roofMat);
+    this.ownedMat.push(roofMat);
 
     const FLOOR0 = 0;
     const WALL0 = FLOOR0 + floorMats.length;
@@ -478,8 +496,20 @@ export class DungeonMesh {
     const VEIN = LIQ + 1;
     const PUDDLE = VEIN + 1;
     const BEDROCK = PUDDLE + 1;
-    const BUCKETS = BEDROCK + 1;
-    mats.push(...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, puddleMat, bedrockMat);
+    const ROOF = BEDROCK + 1;
+    const BUCKETS = ROOF + 1;
+    mats.push(
+      ...floorMats,
+      ...wallMats,
+      trimMat,
+      baseMat,
+      ceilMat,
+      liquidMat,
+      veinMat,
+      puddleMat,
+      bedrockMat,
+      roofMat,
+    );
 
     // Deterministic per-room floor variant.
     const roomVariant = new Map<number, number>();
@@ -494,6 +524,10 @@ export class DungeonMesh {
     const chunksY = Math.ceil(H / CHUNK);
     const wallH = art.wallHeight;
     const ceilY = art.ceilingHeight;
+    // One flat height for the whole rock mass, so the roof over a room and the
+    // rock over the corridor beside it read as a single slab rather than a
+    // staircase of ledges.
+    const rockTop = art.ceiling === 'open' ? wallH : Math.max(wallH, ceilY);
 
     for (let cy = 0; cy < chunksY; cy++) {
       for (let cx = 0; cx < chunksX; cx++) {
@@ -525,7 +559,7 @@ export class DungeonMesh {
               // rooms carved out of solid rock, which is what it is. One quad per
               // void tile, merged into the chunk's wall geometry, so it costs a
               // bucket that takes no part in the shadow pass.
-              surfs[BEDROCK].flat(wx, hy + wallH, wz, HALF, true, x % 4, y % 4, 1);
+              surfs[BEDROCK].flat(wx, hy + rockTop, wz, HALF, true, x % 4, y % 4, 1);
               continue;
             }
 
@@ -593,12 +627,22 @@ export class DungeonMesh {
               }
             }
 
-            // Ceiling.
+            // Ceiling — the underside you see from inside the room.
             if (art.ceiling !== 'open') {
               const hole =
                 art.ceilingHoles > 0 &&
                 this.noise.fbm(x * 0.08 + 77, y * 0.08, 3) * 0.5 + 0.5 > 1 - art.ceilingHoles;
-              if (!hole) surfs[CEIL].flat(wx, hy + ceilY, wz, HALF, false, x % 6, y % 6, 1.4);
+              if (!hole) {
+                surfs[CEIL].flat(wx, hy + ceilY, wz, HALF, false, x % 6, y % 6, 1.4);
+                // And the roof: the same rock seen from above. Without it the
+                // camera looks straight down into every room on the floor,
+                // because a wall pitched at 0.92 radians only hides 2.75m of
+                // ground behind it however tall you build it. The roof is cut
+                // open around the player in the shader, so you always see the
+                // room you are standing in and never the one three corridors
+                // away.
+                surfs[ROOF].flat(wx, hy + rockTop, wz, HALF, true, x % 4, y % 4, 1);
+              }
             }
           }
         }
@@ -614,7 +658,7 @@ export class DungeonMesh {
           this.ownedGeo.push(geo);
           const mesh = new THREE.Mesh(geo, mats[i]);
           mesh.castShadow = i >= WALL0 && i < CEIL;
-          mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK;
+          mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK && i !== ROOF;
           mesh.matrixAutoUpdate = false;
           mesh.updateMatrix();
           if (i === VEIN) mesh.renderOrder = 2;
@@ -903,6 +947,53 @@ export class DungeonMesh {
       const c = this.colliders[i]!;
       if (Math.abs(c.x - cx) < 0.01 && Math.abs(c.z - cz) < 0.01) this.colliders.splice(i, 1);
     }
+  }
+
+  /**
+   * Cuts a moving hole in the rock so you can see the room you are standing in.
+   *
+   * A roof is the only thing that stops the camera looking into every room on
+   * the floor — walls cannot, because at a 0.92 radian pitch a wall hides only
+   * `height / tan(pitch)` of ground behind it, under one and a half tiles at
+   * any sane wall height. So the rock is solid everywhere and discarded within
+   * a radius of the player, with a soft speckled rim so the edge does not read
+   * as a cookie-cutter circle.
+   *
+   * Done in the shader rather than by toggling meshes because the opening has
+   * to move smoothly and follow the player between tiles; chunk visibility is
+   * 64 metres of granularity and would pop.
+   */
+  private applyRoofHole(mat: THREE.MeshStandardMaterial): void {
+    const hole = this.roofHole;
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uRoofHole = hole;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;')
+        .replace(
+          '#include <begin_vertex>',
+          '#include <begin_vertex>\n  vRockPos = (modelMatrix * vec4(position, 1.0)).xyz;',
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          '#include <common>',
+          '#include <common>\nvarying vec3 vRockPos;\nuniform vec4 uRoofHole;',
+        )
+        .replace(
+          'void main() {',
+          [
+            'void main() {',
+            '  vec2 rockOff = vRockPos.xz - uRoofHole.xz;',
+            '  float rockD = length(rockOff);',
+            // Speckled rim: dissolve over the outer 2.2m instead of a hard edge.
+            '  float rim = smoothstep(uRoofHole.w - 2.2, uRoofHole.w, rockD);',
+            '  float grain = fract(sin(dot(floor(vRockPos.xz * 3.0), vec2(12.9898, 78.233))) * 43758.5453);',
+            '  if (rim <= grain) discard;',
+          ].join('\n'),
+        );
+    };
+    // Force a fresh program; a cached one would ignore onBeforeCompile.
+    mat.customProgramCacheKey = () => 'slay-roof-hole';
+    mat.needsUpdate = true;
   }
 
   private buildProps(rng: Rng): void {
@@ -1315,6 +1406,8 @@ export class DungeonMesh {
   // --- per-frame ----------------------------------------------------------
 
   update(dt: number, elapsed: number, focus: THREE.Vector3): void {
+    // Follow the player with the opening in the rock.
+    this.roofHole.value.set(focus.x, focus.y, focus.z, this.roofHoleRadius);
     this.updateLights(dt, elapsed, focus);
     this.updateFlames(elapsed, focus);
 
