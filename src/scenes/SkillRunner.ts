@@ -513,7 +513,7 @@ export class SkillRunner {
       return p;
     };
 
-    const attackTime = 0.42 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
+    const attackTime = 0.42 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
     const castTime = 0.5 / Math.max(0.4, 1 + player.stats.castSpeed / 100);
 
     const params = def.params ?? {};
@@ -785,12 +785,21 @@ export class SkillRunner {
         player.beginAction('point', castTime);
         // Bone Mastery, Marrow Feast and the minion capstones all land here.
         const mp = player.passives;
-        const count = Math.max(1, Math.floor(num('count', 1))) + Math.floor(mp.minionCapBonus);
+        // Shadow Legion and Mirror Gambit only touch the clone summons; every
+        // other summon keeps the minion numbers.
+        const isClone = (def.effect ?? '').includes('clone');
+        const count =
+          Math.max(1, Math.floor(num('count', 1))) +
+          Math.floor(isClone ? mp.cloneCount : mp.minionCapBonus);
         // Sworn Brother's `lifePct` is how sturdy the spectre is; a turret has
         // no life bar, so it buys standing time instead.
         const life =
           num('duration', 20) * (1 + mp.minionDurationPct / 100) * (1 + mp.minionLifePct / 200);
-        const minionPower = 1 + mp.minionDamagePct / 100;
+        const minionPower = 1 + (isClone ? mp.clonePowerPct : mp.minionDamagePct) / 100;
+        // Skeletal Knight and Death Knight upgrade the first few summons.
+        const elites = Math.floor(mp.minionEliteCount);
+        const elitePower = 1 + mp.minionElitePowerPct / 100;
+        const swingRate = 1 / (1 + mp.minionAttackSpeedPct / 100);
         const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel');
         for (let i = 0; i < count; i++) {
           const a = (i / count) * Math.PI * 2;
@@ -799,9 +808,9 @@ export class SkillRunner {
             player.position.x + Math.cos(a) * spread,
             player.position.z + Math.sin(a) * spread,
             life,
-            num('attackRate', melee ? 1.1 : 1.6),
+            num('attackRate', melee ? 1.1 : 1.6) * swingRate,
             num('range', melee ? 2.6 : 11),
-            (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower),
+            (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower * (i < elites ? elitePower : 1)),
             type, color, melee, def.id,
           );
         }
@@ -1004,7 +1013,7 @@ export class SkillRunner {
 
     // The weapon decides what a basic attack even is.
     if (style === 'ranged' || style === 'caster') {
-      const castTime = 0.46 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
+      const castTime = 0.46 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
       // A bow is drawn and loosed; only a spell is cast. Sharing the casting
       // animation put archers through a two-handed overhead gesture with a bow
       // in their hands, which is the most wrong an archer can look.
@@ -1034,7 +1043,7 @@ export class SkillRunner {
       return true;
     }
 
-    const attackTime = 0.42 / Math.max(0.4, 1 + player.stats.attackSpeed / 100);
+    const attackTime = 0.42 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
     // Basic melee alternates its two swings, so holding the button reads as a
     // combo rather than one animation stuttering.
     this.swingParity = (this.swingParity + 1) % 2;
@@ -1395,12 +1404,36 @@ export class SkillRunner {
         lifeFrac: p.life / Math.max(1, p.stats.life),
         nearby: this.nearbyCount,
         moving: p.passiveState.moving,
+        souls: p.passiveState.souls,
+        maxLife: p.stats.life,
       },
     );
+    const st = p.passiveState;
     let amount = packet.amount * mul * this.echoScale;
 
+    // Perfect Form: every Nth blow is a guaranteed critical, and hits harder
+    // for being one. Counted per landed blow, not per press, so a whirlwind
+    // does not burn the counter on a swing that touched nothing.
+    let crit = packet.crit;
+    if (e.guaranteedCritEvery > 0) {
+      st.swings++;
+      if (st.swings >= e.guaranteedCritEvery) {
+        st.swings = 0;
+        crit = true;
+        amount *= 1 + e.guaranteedCritBonusPct / 100;
+      }
+    }
+    // Blood Toxin: poison that ignores part of the resistance meant to stop it.
+    // Applied as raw damage rather than a resistance edit, which is the same
+    // arithmetic and keeps mitigation a pure function.
+    if (e.resistPiercePct > 0 && packet.type === 'poison') {
+      amount *= 1 + e.resistPiercePct / 200;
+    }
+    if (crit !== packet.crit || amount !== packet.amount) {
+      return { ...packet, amount, crit };
+    }
+
     // Retribution: blocks build a charge and the next blow spends it.
-    const st = p.passiveState;
     if (st.retribution > 0 && e.retributionRadius > 0) {
       amount *= 1 + st.retribution / 100;
       st.retribution = 0;
@@ -1424,6 +1457,69 @@ export class SkillRunner {
 
     this.arcing = true;
     try {
+      // --- what a critical strike leaves behind --------------------------
+      if (packet.crit) {
+        const riders: StatusApplication[] = [];
+        if (e.critVulnerableSec > 0) {
+          riders.push({ id: 'vulnerable', duration: e.critVulnerableSec, magnitude: 1, stacks: 1 });
+        }
+        if (e.critBleedStacks > 0) {
+          riders.push({
+            id: 'bleeding',
+            duration: 6,
+            magnitude: 1,
+            stacks: Math.floor(e.critBleedStacks),
+          });
+        }
+        if (riders.length) t.applyStatuses(riders, ctx);
+
+        // Phantom Blades: a spectral copy flies at somebody else.
+        if (e.critBladeChance > 0 && ctx.rng.chance(Math.min(1, e.critBladeChance / 100))) {
+          let mark: Target | null = null;
+          let markD = Infinity;
+          for (const other of this.allTargets(enemies, boss)) {
+            if (other === t || other.life <= 0) continue;
+            const d = this.groundDistance(other.root.position, t.root.position);
+            if (d < markD && d <= e.critBladeRange) {
+              markD = d;
+              mark = other;
+            }
+          }
+          if (mark) {
+            mark.takeDamage(
+              { ...packet, amount: packet.amount * (e.critBladePct / 100), ability: 'Phantom Blade' },
+              ctx,
+            );
+            this.effects.projectile(
+              t.root.position.clone().setY(1.1),
+              mark.root.position.clone().setY(1.1),
+              { element: 'physical', color: 0xbfc8e0, speed: 40, size: 0.16 },
+            );
+          }
+        }
+      }
+
+      // --- Paralytic Toxin ------------------------------------------------
+      if (e.poisonStunStacks > 0 && t.stacksOf('envenomed') >= e.poisonStunStacks) {
+        t.applyStatuses([{ id: 'stunned', duration: e.poisonStunSec, magnitude: 1 }], ctx);
+      }
+
+      // --- Blood Curse ----------------------------------------------------
+      if (e.curseLeechPct > 0 && t.isDebuffed) {
+        const back = packet.amount * (e.curseLeechPct / 100);
+        p.life = Math.min(p.stats.life, p.life + back);
+        p.mana = Math.min(p.stats.mana, p.mana + back * 0.5);
+      }
+
+      // --- Undying's leech while low --------------------------------------
+      if (e.lowLifeLeechPct > 0 && p.life / Math.max(1, p.stats.life) * 100 <= e.lowLifeThreshold) {
+        p.life = Math.min(p.stats.life, p.life + packet.amount * (e.lowLifeLeechPct / 100));
+      }
+
+      // --- Flurry ----------------------------------------------------------
+      if (e.hitStackAttackSpeed > 0) {
+        p.passiveState.hitStacks = Math.min(e.hitStackMax, p.passiveState.hitStacks + 1);
+      }
       if (e.arcChance > 0 && e.arcRadius > 0 && ctx.rng.chance(Math.min(1, e.arcChance / 100))) {
         let best: Target | null = null;
         let bestD = Infinity;
@@ -1790,6 +1886,14 @@ export class SkillRunner {
           if (t.body) {
             t.action = t.melee ? 'attack' : 'cast';
             t.actionT = 1;
+          }
+          // Marrow Feast: what the army bites, you swallow.
+          const owner = this.caster;
+          if (owner && owner.passives.minionLeechPct > 0) {
+            owner.life = Math.min(
+              owner.stats.life,
+              owner.life + t.packet().amount * (owner.passives.minionLeechPct / 100),
+            );
           }
           const to = best.root.position.clone().setY(1.0);
           if (t.melee) {

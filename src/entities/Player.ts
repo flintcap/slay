@@ -124,6 +124,12 @@ export class Player {
     // Passives resolve on the same trigger as stats: both only change when gear
     // or the skill tree changes.
     this.passives = passiveEffects(this.character);
+    // Death's Embrace: a slice of the mana pool becomes life outright.
+    if (this.passives.manaToLifePct > 0) {
+      const moved = this.stats.mana * (this.passives.manaToLifePct / 100);
+      this.stats.mana = Math.max(1, this.stats.mana - moved);
+      this.stats.life += moved;
+    }
     this.life = Math.min(this.stats.life, this.stats.life * lifeRatio);
     this.mana = Math.min(this.stats.mana, this.stats.mana * manaRatio);
     this.refreshEquipmentVisuals();
@@ -292,9 +298,9 @@ export class Player {
   }
 
   spendMana(amount: number): boolean {
-    if (this.mana < amount) return false;
-    this.mana -= amount;
-    return true;
+    // Routed through the cost path so Crimson Covenant's life payment applies
+    // to every caster in the game rather than one call site.
+    return this.paySkillCost(amount);
   }
 
   heal(amount: number): void {
@@ -312,6 +318,15 @@ export class Player {
   takeDamage(packet: DamagePacket, rng: Rng): number {
     if (!this.alive || this.invulnerable || this.dodgeTime > 0) return 0;
     const result = mitigate(packet, this.stats, rng);
+    // Gloom Shroud and Undying both cut what actually lands, after mitigation
+    // rather than as armour, because both are written as "you take less".
+    const e = this.passives;
+    let cut = 0;
+    if (e.stealthReductionPct > 0 && this.status.has('veiled')) cut += e.stealthReductionPct;
+    if (e.lowLifeReductionPct > 0 && (this.life / Math.max(1, this.stats.life)) * 100 <= e.lowLifeThreshold) {
+      cut += e.lowLifeReductionPct;
+    }
+    if (cut > 0) result.amount *= Math.max(0.1, 1 - cut / 100);
     if (result.blocked) {
       events.emit('sfx', { id: 'block' });
       this.animator.play('hurt', { fade: 0.05, once: true });
@@ -366,6 +381,37 @@ export class Player {
     this.cooldowns.set(skillId, reduced);
   }
 
+  /**
+   * Attack speed including the Flurry stack, which is not a stat grant — it
+   * builds on landed hits and decays when you stop connecting, so it cannot
+   * live in the stat sheet.
+   */
+  get attackSpeedPct(): number {
+    const e = this.passives;
+    return this.stats.attackSpeed + e.hitStackAttackSpeed * this.passiveState.hitStacks;
+  }
+
+  /**
+   * Pays a skill's cost, spending life when mana runs short.
+   *
+   * Crimson Covenant is the only thing that lets you do that, and it is what
+   * makes the Revenant's low-mana damage bonus reachable rather than a trap.
+   */
+  paySkillCost(mana: number): boolean {
+    if (this.mana >= mana) {
+      this.mana -= mana;
+      return true;
+    }
+    const rate = this.passives.lifePerMana;
+    if (rate <= 0) return false;
+    const short = mana - this.mana;
+    const life = short * rate;
+    if (this.life <= life) return false;
+    this.mana = 0;
+    this.life -= life;
+    return true;
+  }
+
   /** Makes the player untouchable for a while. Used by the cheat-death passives. */
   grantInvulnerability(seconds: number): void {
     this.invulnTimer = Math.max(this.invulnTimer, seconds);
@@ -414,8 +460,13 @@ export class Player {
       this.regenAccum = 0;
       if (this.alive) {
         const regen = activeDifficulty().regen;
+        // Each banked Soul is mana regeneration on top of the sheet.
+        const souls = this.passives.soulManaRegen * this.passiveState.souls;
         this.life = Math.min(this.stats.life, this.life + this.stats.lifeRegen * step * regen);
-        this.mana = Math.min(this.stats.mana, this.mana + this.stats.manaRegen * step * regen);
+        this.mana = Math.min(
+          this.stats.mana,
+          this.mana + (this.stats.manaRegen + souls) * step * regen,
+        );
       }
     }
 

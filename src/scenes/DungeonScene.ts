@@ -559,6 +559,80 @@ export class DungeonScene extends GameScene {
 
   private lastPos = new THREE.Vector3();
   private trailTimer = 0;
+  private auraTimer = 0;
+
+  /**
+   * The passives that tick rather than trigger.
+   *
+   * Souls expiring, Wither eating cursed enemies alive, Attrition's standing
+   * debuff aura, and Gloom Shroud's regeneration while unseen. Ticked at 4Hz;
+   * none of them need a per-frame answer and the aura walks the enemy list.
+   */
+  private passiveTick(dt: number, ctx: CombatContext): void {
+    const e = this.player.passives;
+    const st = this.player.passiveState;
+
+    if (st.souls > 0) {
+      st.soulTimer -= dt;
+      if (st.soulTimer <= 0) {
+        st.souls = 0;
+        st.soulTimer = 0;
+      }
+    }
+    if (e.stealthRegenPct > 0 && this.player.status.has('veiled')) {
+      this.player.life = Math.min(
+        this.player.stats.life,
+        this.player.life + this.player.stats.life * (e.stealthRegenPct / 100) * dt,
+      );
+    }
+    // Flurry decays when you stop connecting.
+    if (e.hitStackAttackSpeed > 0 && st.hitStacks > 0) {
+      this.flurryIdle += dt;
+      if (this.flurryIdle > 2) {
+        st.hitStacks = 0;
+        this.flurryIdle = 0;
+      }
+    }
+
+    this.auraTimer -= dt;
+    if (this.auraTimer > 0) return;
+    this.auraTimer = 0.25;
+
+    if (e.curseDecayPctPerSec > 0 || e.auraDebuffRadius > 0) {
+      for (const en of this.enemies) {
+        if (en.life <= 0) continue;
+        // Wither: a curse that eats through maximum life rather than ticking a
+        // flat number, so it scales with whatever you are fighting.
+        if (e.curseDecayPctPerSec > 0 && en.isDebuffed) {
+          en.takeDamage(
+            {
+              amount: en.maxLife * (e.curseDecayPctPerSec / 100) * 0.25,
+              type: 'poison',
+              crit: false,
+              source: 'player',
+              ability: 'Wither',
+            },
+            ctx,
+          );
+        }
+        // Attrition: everything near you is worse at its job.
+        if (
+          e.auraDebuffRadius > 0 &&
+          en.root.position.distanceTo(this.player.position) <= e.auraDebuffRadius
+        ) {
+          en.applyStatuses(
+            [{ id: 'weakened', duration: 1, magnitude: Math.max(0.2, e.auraResistShred / 20) }],
+            ctx,
+          );
+          if (e.auraSlowPct > 0) {
+            en.applyStatuses([{ id: 'slowed', duration: 1, magnitude: e.auraSlowPct / 100 }], ctx);
+          }
+        }
+      }
+    }
+  }
+
+  private flurryIdle = 0;
 
   private passiveOnKill(pos: THREE.Vector3, overkill = 0): void {
     const e = this.player.passives;
@@ -612,6 +686,28 @@ export class DungeonScene extends GameScene {
         this.player.stats.life,
         this.player.life + this.player.stats.life * (e.killLifePct / 100),
       );
+    }
+    if (e.killManaPct > 0) {
+      this.player.mana = Math.min(
+        this.player.stats.mana,
+        this.player.mana + this.player.stats.mana * (e.killManaPct / 100),
+      );
+    }
+    // Reap Soul banks a soul per kill nearby; Harvest Mastery raises the
+    // ceiling and how long they keep.
+    const st = this.player.passiveState;
+    if (e.soulMaxStacks > 0 && this.player.position.distanceTo(pos) <= 12) {
+      st.souls = Math.min(e.soulMaxStacks, st.souls + 1);
+      st.soulTimer = e.soulDurationSec;
+    }
+    // Contagion: a cursed corpse throws its curses at the pack.
+    if (e.curseSpreadRadius > 0) {
+      const ctx = this.ctxCache ?? this.context();
+      for (const en of this.enemies) {
+        if (en.life <= 0) continue;
+        if (en.root.position.distanceTo(pos) > e.curseSpreadRadius) continue;
+        en.applyStatuses([{ id: 'weakened', duration: 8, magnitude: 1, stacks: 1 }], ctx);
+      }
     }
   }
 
@@ -769,6 +865,7 @@ export class DungeonScene extends GameScene {
     this.effects.update(dt, elapsed);
     this.mesh.update(dt, elapsed, this.player.position);
     this.passiveMovement(dt, ctx);
+    this.passiveTick(dt, ctx);
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
     this.rig.update(dt, elapsed);

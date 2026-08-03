@@ -71,7 +71,6 @@ export interface PassiveEffects {
   // --- curses and debuffs -------------------------------------------------
   curseEffectPct: number;
   curseDurationPct: number;
-  curseRadiusM: number;
   /** A cursed enemy leeches this fraction of damage dealt back to you. */
   curseLeechPct: number;
   /** A cursed enemy's death passes its curses to enemies within this radius. */
@@ -101,9 +100,6 @@ export interface PassiveEffects {
   /** Scales with the player's own missing mana, per 10% missing. */
   missingManaPct: number;
   missingManaCap: number;
-  /** Scales with the player's own missing life, per 10% missing. */
-  missingLifePct: number;
-  missingLifeCap: number;
   /** Scales with maximum mana, per 200 points. */
   maxManaPct: number;
   maxManaCap: number;
@@ -141,8 +137,6 @@ export interface PassiveEffects {
   killLifePct: number;
 
   // --- crits and hits -----------------------------------------------------
-  /** Guaranteed critical on the next attack after standing still or hiding. */
-  guaranteedCritAfter: number;
   /** Stacking attack speed per hit landed. */
   hitStackAttackSpeed: number;
   hitStackMax: number;
@@ -163,6 +157,70 @@ export interface PassiveEffects {
   conductSharePct: number;
   /** Fraction of fire, cold and physical damage converted to lightning. */
   convertToLightningPct: number;
+  /** A critical strike applies Vulnerable for this long. 0 = never. */
+  critVulnerableSec: number;
+  /** A critical strike applies this many stacks of Bleeding. */
+  critBleedStacks: number;
+  /** A critical strike throws a blade at another enemy. */
+  critBladeChance: number;
+  critBladeRange: number;
+  critBladePct: number;
+  /** Every Nth attack is a guaranteed critical. 0 = never. */
+  guaranteedCritEvery: number;
+  guaranteedCritBonusPct: number;
+  /** Damage against a target scaled by how much life it is missing. */
+  vsMissingLifePct: number;
+  /** Poison ignores this much of the target's poison resistance. */
+  resistPiercePct: number;
+  /** Poison at this many stacks stuns. 0 = never. */
+  poisonStunStacks: number;
+  poisonStunSec: number;
+
+  // --- shadow and clones --------------------------------------------------
+  cloneCount: number;
+  clonePowerPct: number;
+  /** Damage reduction and regeneration while unseen. */
+  stealthReductionPct: number;
+  stealthRegenPct: number;
+
+  // --- souls --------------------------------------------------------------
+  /** Kills bank a Soul: damage and mana regeneration each, to a ceiling. */
+  soulMaxStacks: number;
+  soulDamagePct: number;
+  soulManaRegen: number;
+  soulDurationSec: number;
+
+  // --- resource conversion ------------------------------------------------
+  /** Maximum mana converted into maximum life, as a percentage. */
+  manaToLifePct: number;
+  /** Damage gained per 400 maximum life. */
+  damagePer400Life: number;
+  /** Skills may be paid with life at this rate. 0 = never. */
+  lifePerMana: number;
+  /** Damage while below half mana. */
+  lowManaDamagePct: number;
+
+  // --- low life -----------------------------------------------------------
+  lowLifeThreshold: number;
+  lowLifeReductionPct: number;
+  lowLifeLeechPct: number;
+
+  // --- minions, deeper ----------------------------------------------------
+  minionAttackSpeedPct: number;
+  minionLeechPct: number;
+  /** Some minions are upgraded: this many, at this much more power. */
+  minionEliteCount: number;
+  minionElitePowerPct: number;
+
+  // --- curses, deeper -----------------------------------------------------
+  /** Cursed enemies lose this much of maximum life per second. */
+  curseDecayPctPerSec: number;
+  /** A standing debuff aura around the player. */
+  auraDebuffRadius: number;
+  auraResistShred: number;
+  auraSlowPct: number;
+  /** Mana restored on a kill, as a percentage of maximum. */
+  killManaPct: number;
 
   // --- movement -----------------------------------------------------------
   /** Movement speed gained per second of continuous movement. */
@@ -204,7 +262,6 @@ function emptyEffects(): PassiveEffects {
     dotSpreadDecay: 0,
     curseEffectPct: 0,
     curseDurationPct: 0,
-    curseRadiusM: 0,
     curseLeechPct: 0,
     curseSpreadRadius: 0,
     minionDamagePct: 0,
@@ -222,8 +279,6 @@ function emptyEffects(): PassiveEffects {
     crowdDamageCap: 0,
     missingManaPct: 0,
     missingManaCap: 0,
-    missingLifePct: 0,
-    missingLifeCap: 0,
     maxManaPct: 0,
     maxManaCap: 0,
     vsDebuffedPct: 0,
@@ -240,7 +295,6 @@ function emptyEffects(): PassiveEffects {
     killExplodeRadius: 0,
     executeManaRefund: 0,
     killLifePct: 0,
-    guaranteedCritAfter: 0,
     hitStackAttackSpeed: 0,
     hitStackMax: 0,
     arcChance: 0,
@@ -254,6 +308,41 @@ function emptyEffects(): PassiveEffects {
     conductRadius: 0,
     conductSharePct: 0,
     convertToLightningPct: 0,
+    critVulnerableSec: 0,
+    critBleedStacks: 0,
+    critBladeChance: 0,
+    critBladeRange: 0,
+    critBladePct: 0,
+    guaranteedCritEvery: 0,
+    guaranteedCritBonusPct: 0,
+    vsMissingLifePct: 0,
+    resistPiercePct: 0,
+    poisonStunStacks: 0,
+    poisonStunSec: 0,
+    cloneCount: 0,
+    clonePowerPct: 0,
+    stealthReductionPct: 0,
+    stealthRegenPct: 0,
+    soulMaxStacks: 0,
+    soulDamagePct: 0,
+    soulManaRegen: 0,
+    soulDurationSec: 0,
+    manaToLifePct: 0,
+    damagePer400Life: 0,
+    lifePerMana: 0,
+    lowManaDamagePct: 0,
+    lowLifeThreshold: 0,
+    lowLifeReductionPct: 0,
+    lowLifeLeechPct: 0,
+    minionAttackSpeedPct: 0,
+    minionLeechPct: 0,
+    minionEliteCount: 0,
+    minionElitePowerPct: 0,
+    curseDecayPctPerSec: 0,
+    auraDebuffRadius: 0,
+    auraResistShred: 0,
+    auraSlowPct: 0,
+    killManaPct: 0,
     momentumMovePct: 0,
     momentumMoveCap: 0,
     momentumDamageShare: 0,
@@ -488,6 +577,223 @@ const RULES: Record<string, Contribution> = {
     e.arcRadius = Math.max(e.arcRadius, param(id, 'radius', 20) * 0.4);
     e.arcDamagePct = Math.max(e.arcDamagePct, 60);
   },
+
+  // ----------------------------------------------------------- shadowblade
+  toxicology: (e, r, id) => {
+    e.dotDamagePct += param(id, 'damagePerRank', 9) * r;
+    e.dotDurationSec += param(id, 'durationPerRank', 0.4) * r;
+  },
+  toxicMastery: (e, r, id) => {
+    e.dotDamagePct += param(id, 'damagePerRank', 6) * r;
+    e.dotTickPct += param(id, 'tickRatePerRank', 4) * r;
+  },
+  cultivate: (e, r, id) => {
+    e.dotMaxStacks += Math.floor(r / Math.max(1, param(id, 'stacksPerRanks', 3)));
+    e.dotDamagePct += param(id, 'bonusPerExtra', 5) * Math.floor(r / 3);
+  },
+  paralyticToxin: (e, r, id) => {
+    e.poisonStunStacks = Math.max(e.poisonStunStacks, param(id, 'stunAtStacks', 5));
+    e.poisonStunSec = Math.max(
+      e.poisonStunSec,
+      param(id, 'stunDuration', 1.5) + param(id, 'stunPerRank', 0.05) * (r - 1),
+    );
+  },
+  bloodToxin: (e, r, id) => {
+    e.resistPiercePct = Math.min(
+      param(id, 'pierceFloor', 80),
+      e.resistPiercePct + param(id, 'piercePerRank', 4) * r,
+    );
+  },
+  hemotoxin: (e, r, id) => {
+    e.vsMissingLifePct += param(id, 'pctPer10PerRank', 1.5) * r;
+  },
+  miasmaTrail: (e, r, id) => {
+    e.trailDamagePct += 25 + 5 * (r - 1);
+    e.trailRadius = Math.max(e.trailRadius, param(id, 'width', 1.6));
+  },
+  exploitWeakness: (e, r, id) => {
+    e.critVulnerableSec = Math.max(e.critVulnerableSec, param(id, 'vulnerable', 8));
+    e.vsDebuffedPct += param(id, 'defShredPerRank', 5) * r;
+  },
+  bleedingEdge: (e, r, id) => {
+    e.critBleedStacks = Math.max(
+      e.critBleedStacks,
+      param(id, 'bleedStacks', 2) + Math.floor(r / Math.max(1, param(id, 'stacksPerRanks', 5))),
+    );
+    e.dotDamagePct += param(id, 'bleedDamagePerRank', 6) * r;
+  },
+  phantomBlades: (e, r, id) => {
+    e.critBladeChance = Math.max(e.critBladeChance, param(id, 'chance', 100));
+    e.critBladeRange = Math.max(e.critBladeRange, param(id, 'range', 9));
+    e.critBladePct = Math.max(e.critBladePct, 90 + 15 * (r - 1));
+  },
+  perfectForm: (e, r, id) => {
+    e.guaranteedCritEvery = Math.max(
+      param(id, 'floor', 5),
+      Math.round(param(id, 'interval', 12) - param(id, 'reducePerRank', 0.4) * (r - 1)),
+    );
+    e.guaranteedCritBonusPct = Math.max(e.guaranteedCritBonusPct, param(id, 'bonusDamage', 50));
+  },
+  riposteBlade: (e, r, id) => {
+    e.blockCounterChance += Math.min(
+      param(id, 'chanceCap', 60),
+      param(id, 'chancePerRank', 15) * r,
+    );
+    e.blockCounterPct = Math.max(e.blockCounterPct, 160);
+  },
+  flurry: (e, r, id) => {
+    e.hitStackAttackSpeed += param(id, 'attackSpeedPerStack', 10) + param(id, 'perRank', 1) * (r - 1);
+    e.hitStackMax = Math.max(e.hitStackMax, param(id, 'maxStacks', 6));
+  },
+  momentum: (e, r, id) => {
+    e.crowdDamagePct += param(id, 'pctPerRank', 2) * r;
+    e.crowdDamageCap = Math.max(e.crowdDamageCap, param(id, 'pctPerRank', 2) * r * param(id, 'maxTargets', 8));
+  },
+  finisher: (e, r, id) => {
+    e.executeThreshold = Math.max(e.executeThreshold, param(id, 'threshold', 30));
+    e.executeDamagePct += param(id, 'pct', 40) + param(id, 'pctPerRank', 7) * (r - 1);
+    e.killManaPct = Math.max(e.killManaPct, param(id, 'manaOnKill', 8));
+  },
+  gloomShroud: (e, r, id) => {
+    e.stealthReductionPct += param(id, 'drPct', 30) + param(id, 'perRank', 2) * (r - 1);
+    e.stealthRegenPct = Math.max(e.stealthRegenPct, param(id, 'lifeRegenPct', 2));
+  },
+  shadowLegion: (e, r, id) => {
+    e.cloneCount = Math.max(
+      e.cloneCount,
+      Math.min(param(id, 'maxClones', 6), param(id, 'extraClones', 2) + Math.floor(r / Math.max(1, param(id, 'perRanks', 6)))),
+    );
+    e.clonePowerPct += param(id, 'damagePerRank', 4) * r;
+  },
+  mirrorGambit: (e, r, id) => {
+    e.clonePowerPct += param(id, 'mimicPct', 40) + param(id, 'perRank', 4) * (r - 1);
+    if (e.cloneCount === 0) e.cloneCount = 1;
+  },
+  apexPredator: (e, r, id) => {
+    // Poison on a dying enemy leaps to the pack, amplified.
+    e.dotSpreadInterval = e.dotSpreadInterval || 2;
+    e.dotSpreadRadius = Math.max(e.dotSpreadRadius, param(id, 'radius', 10));
+    e.dotSpreadStacks += 1;
+    e.bloodTideAmplifyPct += param(id, 'amplify', 25) + param(id, 'perRank', 2) * (r - 1);
+    e.bloodTideChains = Math.max(
+      e.bloodTideChains,
+      param(id, 'transferCap', 6) + Math.floor(r / Math.max(1, param(id, 'capPerRanks', 4))),
+    );
+    e.bloodTideRadius = Math.max(e.bloodTideRadius, param(id, 'radius', 10));
+  },
+  theUnseenBlade: (e, r, id) => {
+    e.guaranteedCritBonusPct += param(id, 'critDamage', 40) + param(id, 'critPerRank', 5) * (r - 1);
+    e.stealthReductionPct += 10;
+  },
+  thousandCuts: (e, r, id) => {
+    // Crits stack critical damage; the ceiling is what the skill promises.
+    e.critBladeChance = Math.max(e.critBladeChance, 40);
+    e.critBladeRange = Math.max(e.critBladeRange, 9);
+    e.critBladePct = Math.max(
+      e.critBladePct,
+      (param(id, 'critDamagePerCut', 2) + param(id, 'perRank', 0.3) * (r - 1)) * param(id, 'maxCuts', 50),
+    );
+  },
+
+  // -------------------------------------------------------------- revenant
+  decay: (e, r, id) => {
+    e.curseEffectPct += param(id, 'strengthPerRank', 8) * r;
+    e.curseDurationPct += param(id, 'durationPerRank', 0.5) * r * 10;
+  },
+  curseMastery: (e, r, id) => {
+    e.curseDurationPct += param(id, 'costPerRank', 4) * r;
+    e.curseEffectPct += param(id, 'costPerRank', 4) * r;
+  },
+  wither: (e, r, id) => {
+    e.curseDecayPctPerSec += param(id, 'pct', 2) * (r / Math.max(1, param(id, 'pctPerSecondPerRanks', 4)));
+  },
+  bloodCurse: (e, r, id) => {
+    e.curseLeechPct += param(id, 'lifePct', 6) + param(id, 'perRank', 0.8) * (r - 1);
+  },
+  contagion: (e, r, id) => {
+    e.curseSpreadRadius = Math.max(
+      e.curseSpreadRadius,
+      param(id, 'radius', 7) + param(id, 'perRank', 0.2) * (r - 1),
+    );
+  },
+  attrition: (e, r, id) => {
+    e.auraDebuffRadius = Math.max(e.auraDebuffRadius, param(id, 'radius', 8));
+    e.auraResistShred += param(id, 'resistPerRank', 1) * r;
+    e.auraSlowPct += param(id, 'attackSpeedPerRank', 2) * r;
+  },
+  theLongDecline: (e, r, id) => {
+    e.curseDecayPctPerSec += param(id, 'pctPerSecond', 5) + param(id, 'perRank', 0.5) * (r - 1);
+    e.curseSpreadRadius = Math.max(e.curseSpreadRadius, 10);
+  },
+  boneMastery: (e, r, id) => {
+    e.minionLifePct += param(id, 'lifePerRank', 9) * r;
+    e.minionDamagePct += param(id, 'damagePerRank', 7) * r;
+  },
+  marrowFeast: (e, r, id) => {
+    e.minionAttackSpeedPct += param(id, 'attackSpeedPerRank', 6) * r;
+    e.minionLeechPct += param(id, 'leechPerRank', 0.8) * r;
+    e.killLifePct = Math.max(e.killLifePct, param(id, 'healOnKillPct', 15) * 0.1);
+  },
+  ossuaryLord: (e, r, id) => {
+    e.minionCapBonus += Math.floor(r / Math.max(1, param(id, 'warriorPerRanks', 2)));
+    e.minionDurationPct += 20;
+  },
+  skeletalKnight: (e, r, id) => {
+    e.minionEliteCount = Math.max(
+      e.minionEliteCount,
+      param(id, 'count', 2) + Math.floor(r / Math.max(1, param(id, 'countPerRanks', 8))),
+    );
+    e.minionElitePowerPct += param(id, 'damagePct', 80) + param(id, 'perRank', 6) * (r - 1);
+    e.minionLifePct += param(id, 'lifePct', 120) * 0.25;
+  },
+  deathKnight: (e, r, id) => {
+    e.minionElitePowerPct += param(id, 'damagePct', 40) + param(id, 'perRank', 4) * (r - 1);
+    if (e.minionEliteCount === 0) e.minionEliteCount = 1;
+  },
+  theBoneChoir: (e, r, id) => {
+    e.minionCapBonus += 2;
+    e.minionDamagePct += param(id, 'lifePct', 60) + param(id, 'lifePerRank', 4) * (r - 1);
+    e.auraRadiusM = Math.max(e.auraRadiusM, param(id, 'radius', 4) + param(id, 'perRank', 0.4) * (r - 1));
+  },
+  reapSoul: (e, r, id) => {
+    e.soulMaxStacks = Math.max(e.soulMaxStacks, param(id, 'maxStacks', 15));
+    e.soulDamagePct = Math.max(e.soulDamagePct, 3);
+    e.soulManaRegen = Math.max(e.soulManaRegen, 2);
+    e.soulDurationSec = Math.max(
+      e.soulDurationSec,
+      param(id, 'duration', 30) + param(id, 'durationPerRank', 1) * (r - 1),
+    );
+  },
+  harvestMastery: (e, r, id) => {
+    e.soulMaxStacks += param(id, 'maxPerRank', 2) * r;
+    e.soulDamagePct += r / Math.max(1, param(id, 'damagePerSoulPerRanks', 5));
+    e.soulDurationSec *= 1 + param(id, 'durationPct', 50) / 100;
+  },
+  deathsEmbrace: (e, r, id) => {
+    e.manaToLifePct += param(id, 'pct', 10) * Math.floor(r / Math.max(1, param(id, 'manaToLifePerRanks', 2)));
+    e.damagePer400Life += param(id, 'damagePer400Life', 1);
+  },
+  undying: (e, r, id) => {
+    e.lowLifeThreshold = Math.max(e.lowLifeThreshold, param(id, 'threshold', 30));
+    e.lowLifeReductionPct += param(id, 'drPerRank', 4) * r;
+    e.lowLifeLeechPct += param(id, 'leechPerRank', 2) * r;
+  },
+  crimsonCovenant: (e, r, id) => {
+    e.lifePerMana = Math.max(e.lifePerMana, param(id, 'lifePerMana', 2));
+    e.lowManaDamagePct += param(id, 'lowManaDamage', 25) + param(id, 'perRank', 2) * (r - 1);
+  },
+  theSecondDeath: (e, r, id) => {
+    // A second cheat death, stronger and slower, that spends your Souls.
+    const cd = Math.max(60, param(id, 'cooldown', 180) - param(id, 'cdPerRank', 6) * (r - 1));
+    e.cheatDeathCooldown = e.cheatDeathCooldown > 0 ? Math.min(e.cheatDeathCooldown, cd) : cd;
+    e.cheatDeathHealPct = Math.max(e.cheatDeathHealPct, 60);
+    e.cheatDeathInvuln = Math.max(
+      e.cheatDeathInvuln,
+      param(id, 'duration', 8) + param(id, 'perRank', 0.3) * (r - 1),
+    );
+    e.cheatDeathNovaPct = Math.max(e.cheatDeathNovaPct, param(id, 'damagePct', 100));
+    e.cheatDeathRadius = Math.max(e.cheatDeathRadius, 8);
+  },
 };
 
 /** Every skill this engine knows how to run. */
@@ -521,10 +827,15 @@ export interface PassiveState {
   hitStacks: number;
   /** Countdown to the next damage-over-time spread tick. */
   spreadTimer: number;
+  /** Souls banked from recent kills, and how long the oldest has left. */
+  souls: number;
+  soulTimer: number;
+  /** Attacks since the last guaranteed critical. */
+  swings: number;
 }
 
 export function newPassiveState(): PassiveState {
-  return { cheatDeathCd: 0, retribution: 0, moving: 0, hitStacks: 0, spreadTimer: 0 };
+  return { cheatDeathCd: 0, retribution: 0, moving: 0, hitStacks: 0, spreadTimer: 0, souls: 0, soulTimer: 0, swings: 0 };
 }
 
 /**
@@ -537,7 +848,15 @@ export function newPassiveState(): PassiveState {
 export function damageMultiplier(
   e: PassiveEffects,
   target: { lifeFrac: number; bleeding: boolean; debuffed: boolean },
-  self: { manaFrac: number; maxMana: number; lifeFrac: number; nearby: number; moving?: number },
+  self: {
+    manaFrac: number;
+    maxMana: number;
+    lifeFrac: number;
+    nearby: number;
+    moving?: number;
+    souls?: number;
+    maxLife?: number;
+  },
 ): number {
   let pct = 0;
   if (target.bleeding) pct += e.vsBleedingPct;
@@ -549,10 +868,18 @@ export function damageMultiplier(
     const missingTenths = Math.max(0, (1 - self.manaFrac) * 10);
     pct += Math.min(e.missingManaCap, e.missingManaPct * missingTenths);
   }
-  if (e.missingLifePct > 0) {
-    const missingTenths = Math.max(0, (1 - self.lifeFrac) * 10);
-    pct += Math.min(e.missingLifeCap, e.missingLifePct * missingTenths);
+  // Hemotoxin reads the *target's* missing life, not the player's.
+  if (e.vsMissingLifePct > 0) {
+    pct += Math.max(0, (1 - target.lifeFrac) * 10) * e.vsMissingLifePct;
   }
+  // Crimson Covenant pays out while you are running on empty.
+  if (e.lowManaDamagePct > 0 && self.manaFrac < 0.5) pct += e.lowManaDamagePct;
+  // Souls banked from recent kills.
+  if (e.soulDamagePct > 0 && (self.souls ?? 0) > 0) {
+    pct += Math.min(e.soulMaxStacks, self.souls ?? 0) * e.soulDamagePct;
+  }
+  // Death's Embrace turns a deep life pool into damage.
+  if (e.damagePer400Life > 0) pct += ((self.maxLife ?? 0) / 400) * e.damagePer400Life;
   if (e.maxManaPct > 0) {
     pct += Math.min(e.maxManaCap, e.maxManaPct * (self.maxMana / 200));
   }
