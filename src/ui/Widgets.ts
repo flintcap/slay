@@ -761,6 +761,36 @@ export const hoverHooks: {
   hide: (() => void) | null;
 } = { item: null, text: null, hide: null };
 
+/**
+ * Coalesces panel refreshes to one per frame.
+ *
+ * Panels rebuild on events, which is right — nothing here runs per frame. But
+ * events arrive in bursts: walking over a pile of loot fires `loot:pickedUp`,
+ * `loot:gold` and `ui:refresh` within the same frame, and an open inventory
+ * rebuilt all sixty slots three times for one step. This collapses a burst into
+ * a single rebuild on the next frame, which is where the menu stutter was.
+ */
+const pendingRefresh = new Set<() => void>();
+let refreshQueued = false;
+
+export function scheduleRefresh(fn: () => void): void {
+  pendingRefresh.add(fn);
+  if (refreshQueued) return;
+  refreshQueued = true;
+  requestAnimationFrame(() => {
+    refreshQueued = false;
+    const batch = [...pendingRefresh];
+    pendingRefresh.clear();
+    for (const f of batch) {
+      try {
+        f();
+      } catch {
+        /* one bad panel must not stop the rest */
+      }
+    }
+  });
+}
+
 /** Attach a rich text tooltip to any element. */
 export function tip(node: HTMLElement, title: string, html: string): void {
   node.addEventListener('pointerenter', () => hoverHooks.text?.(html, node, title));

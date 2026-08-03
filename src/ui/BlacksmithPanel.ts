@@ -28,6 +28,7 @@ import { materialName, materialColor } from '../data/materials';
 import { Random, randomSeed } from '../core/RNG';
 import { ItemGrid, normalizeInventory, invRemove } from './InventoryPanel';
 import {
+  scheduleRefresh,
   Panel,
   Button,
   add,
@@ -107,7 +108,7 @@ export class BlacksmithPanel {
     this.panel.body.appendChild(wrap);
 
     events.on('ui:refresh', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
   }
 
@@ -141,6 +142,8 @@ export class BlacksmithPanel {
     this.renderPreview();
     this.renderActions();
   }
+
+  private readonly boundRefresh = (): void => this.refresh();
 
   refresh(): void {
     const c = save.account.current;

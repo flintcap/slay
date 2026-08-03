@@ -94,6 +94,10 @@ export class Player {
   invulnerable = false;
   /** Seconds of timed invulnerability left, from Phoenix Heart and friends. */
   private invulnTimer = 0;
+  /** How solid the body currently reads, 1 normal and lower while Veiled. */
+  private bodyFade = 1;
+  private appliedFade = 1;
+  private appliedCoat = false;
 
   constructor(character: Character, seed = 1) {
     this.character = character;
@@ -159,7 +163,18 @@ export class Player {
         const socketKey = base?.category === 'quiver' ? 'quiver' : undefined;
         const mesh = buildItemModel(visual, this.rng, item.rarity);
         attachToSocket(this.root, this.bones, slot, mesh, socketKey);
+        // Marks the weapon so a poison coat can glow on the blade and nowhere
+        // else. Cheap to stamp here; walking the tree for it later is not.
+        if (slot === 'mainHand' || slot === 'offHand') {
+          mesh.traverse((o) => {
+            o.userData.weaponPart = true;
+          });
+        }
         this.equipMeshes.set(slot, mesh);
+        // A new model brings fresh shared materials, so the tint has to be
+        // reapplied rather than skipped by the change guard.
+        this.appliedFade = -1;
+        this.appliedCoat = !this.appliedCoat;
       } catch {
         // A missing visual must never break the run.
       }
@@ -416,6 +431,76 @@ export class Player {
     this.root.rotation.y = this.facing;
 
     this.animator.update(dt);
+    this.updateBodyTint(dt);
+  }
+
+  /**
+   * How the body reads while a status is changing what you are.
+   *
+   * Veil is the case that needs it: enemies stop seeing you, and without a
+   * visual the skill looks like it did nothing at all. The whole model fades
+   * toward a dark, half-there silhouette and comes back when the status drops.
+   * Coated Blades is the other: a poison on the weapon should be visible on the
+   * weapon, so the blade takes a green rim.
+   *
+   * Materials are cloned once per model on first use — the shared cache must
+   * never be tinted, or every character in the game turns green.
+   */
+  private updateBodyTint(dt: number): void {
+    const hidden = this.status.has('veiled');
+    const coated = this.status.has('envenomed') || this.status.has('skill.coatBlades');
+    const wantFade = hidden ? 0.32 : 1;
+    this.bodyFade += (wantFade - this.bodyFade) * Math.min(1, dt * 6);
+
+    const fadeChanged = Math.abs(this.bodyFade - this.appliedFade) > 0.01;
+    const coatChanged = coated !== this.appliedCoat;
+    if (!fadeChanged && !coatChanged) return;
+    this.appliedFade = this.bodyFade;
+    this.appliedCoat = coated;
+
+    const dim = this.bodyFade;
+    const translucent = dim < 0.99;
+    this.root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mat = this.ownMaterial(mesh);
+      if (!mat) return;
+      mat.transparent = translucent;
+      mat.opacity = 0.15 + dim * 0.85;
+      mat.depthWrite = !translucent;
+      // Darken as it fades, so a veiled hero reads as a shadow rather than a
+      // ghost of themselves.
+      mat.color.copy(mat.userData.baseColor as THREE.Color).multiplyScalar(0.35 + dim * 0.65);
+      if (mesh.userData.weaponPart) {
+        mat.emissive.setHex(coated ? 0x2fbf4a : (mat.userData.baseEmissive as number) ?? 0x000000);
+        mat.emissiveIntensity = coated ? 1.5 : 1;
+      }
+      mat.needsUpdate = fadeChanged !== coatChanged;
+    });
+  }
+
+  /**
+   * A material this player owns outright.
+   *
+   * `surface()` hands out shared, cached materials; tinting one would tint
+   * every wall and every other character using it. The first time a mesh needs
+   * to be tinted it gets its own clone, and the original colour is stashed so
+   * the effect can be undone exactly.
+   */
+  private ownMaterial(mesh: THREE.Mesh): THREE.MeshStandardMaterial | null {
+    const m = mesh.material;
+    if (Array.isArray(m)) return null;
+    const std = m as THREE.MeshStandardMaterial;
+    if (!std || !std.isMaterial) return null;
+    if (!std.userData.playerOwned) {
+      const copy = std.clone() as THREE.MeshStandardMaterial;
+      copy.userData = { ...std.userData, playerOwned: true, shared: false };
+      copy.userData.baseColor = copy.color.clone();
+      copy.userData.baseEmissive = copy.emissive.getHex();
+      mesh.material = copy;
+      return copy;
+    }
+    return std;
   }
 
   private updateMovement(dt: number, ctx: PlayerContext, keyboardDir: THREE.Vector3 | null): void {

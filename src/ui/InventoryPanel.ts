@@ -16,7 +16,9 @@ import { computeStats } from '../sim/Stats';
 import { vendorPrice, itemDisplayName } from '../sim/Loot';
 import { insertGem } from '../sim/Crafting';
 import {
+  scheduleRefresh,
   Panel,
+  Button,
   ItemSlot,
   add,
   clear,
@@ -48,6 +50,7 @@ import {
 } from './Widgets';
 import { PaperdollView } from './PaperdollView';
 import { potionKind } from '../sim/Potions';
+import { sortInventory } from '../sim/Inventory';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -311,7 +314,24 @@ export class InventoryPanel {
     gold.appendChild(icon('coin', { size: 15 }));
     this.goldEl = span('inv-gold-v', '0');
     gold.appendChild(this.goldEl);
-    add(packHd, cap, gold);
+
+    // Sort. `sortSlots` merges stacks first and then orders by rarity and
+    // slot, so a pack full of half-stacks of dust collapses on one click.
+    const sortBtn = new Button({
+      label: 'Sort',
+      variant: 'ghost',
+      icon: 'sparkle',
+      small: true,
+      onClick: () => {
+        const c = save.account.current;
+        if (!c) return;
+        sortInventory(c);
+        save.setCharacter(c);
+        this.refresh();
+        events.emit('toast', { text: 'Pack sorted.', kind: 'info' });
+      },
+    });
+    add(packHd, cap, sortBtn.root, gold);
 
     this.grid = new ItemGrid({
       cols: 10,
@@ -338,13 +358,13 @@ export class InventoryPanel {
     this.panel.body.appendChild(wrap);
 
     events.on('ui:refresh', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
     events.on('loot:pickedUp', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
     events.on('loot:gold', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
   }
 
@@ -563,6 +583,8 @@ export class InventoryPanel {
 
     return false;
   }
+
+  private readonly boundRefresh = (): void => this.refresh();
 
   refresh(): void {
     const c = save.account.current;

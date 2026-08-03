@@ -220,6 +220,9 @@ export class Enemy implements Combatant {
   private statuses: ActiveStatus[] = [];
   /** Damage the killing blow spilled past zero life. Read once, on death. */
   overkill = 0;
+  /** Damage-over-time banked since the last floating number. */
+  private dotAccum = 0;
+  private dotShow = 0;
   private buffs: ActiveBuff[] = [];
   private shieldTimer = 0;
   private action: RigAction = 'idle';
@@ -842,6 +845,25 @@ export class Enemy implements Combatant {
       if (s.dotType && s.dotPerSecond > 0) {
         const amount = s.dotPerSecond * s.stacks * dt;
         this.life -= amount;
+        // Damage over time was completely silent. A poison that visibly ticks
+        // is the difference between "this does nothing" and "this is working".
+        // Accumulated and shown about twice a second — one number per frame
+        // would be a green blizzard.
+        this.dotAccum += amount;
+        this.dotShow -= dt;
+        if (this.dotShow <= 0 && this.dotAccum >= 1) {
+          events.emit('enemy:damaged', {
+            id: this.id,
+            amount: this.dotAccum,
+            type: s.dotType,
+            crit: false,
+            x: this.root.position.x,
+            y: this.centerY + 0.25,
+            z: this.root.position.z,
+          });
+          this.dotAccum = 0;
+          this.dotShow = 0.55;
+        }
         if (ctx.rng.next() < dt * 3) {
           ctx.fx.burst(s.dotType === 'poison' ? 'poison' : s.dotType === 'fire' ? 'hit.fire' : 'blood',
             this.root.position.x, this.centerY, this.root.position.z, { count: 2, color: typeColor(s.dotType) });

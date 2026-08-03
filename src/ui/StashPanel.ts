@@ -11,8 +11,10 @@ import type { Item, ItemRarity } from '../types';
 import { events } from '../core/Events';
 import { save, STASH_TAB_SIZE } from '../core/Save';
 import { itemDisplayName } from '../sim/Loot';
+import { sortSlots } from '../sim/Inventory';
 import { ItemGrid, normalizeInventory, invFirstFree } from './InventoryPanel';
 import {
+  scheduleRefresh,
   Panel,
   Button,
   Tabs,
@@ -96,6 +98,25 @@ export class StashPanel {
       },
     });
     tabRow.appendChild(addTab.root);
+
+    // Sorts the tab you are looking at, not the whole vault: a ten-tab vault
+    // sorted as one blob would shuffle everything you had deliberately filed.
+    const sortTab = new Button({
+      label: 'Sort Tab',
+      variant: 'ghost',
+      icon: 'sparkle',
+      small: true,
+      onClick: () => {
+        const start = this.tabIndex * STASH_TAB_SIZE;
+        const slice = save.account.stash.slice(start, start + STASH_TAB_SIZE);
+        sortSlots(slice);
+        for (let i = 0; i < STASH_TAB_SIZE; i++) save.account.stash[start + i] = slice[i] ?? null;
+        save.touch();
+        this.refresh();
+        events.emit('toast', { text: 'Tab sorted.', kind: 'info' });
+      },
+    });
+    tabRow.appendChild(sortTab.root);
     this.tabBar.appendChild(tabRow);
     left.appendChild(this.tabBar);
 
@@ -175,7 +196,7 @@ export class StashPanel {
     this.panel.body.appendChild(wrap);
 
     events.on('ui:refresh', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
   }
 
@@ -195,6 +216,8 @@ export class StashPanel {
   private tabOffset(): number {
     return this.tabIndex * STASH_TAB_SIZE;
   }
+
+  private readonly boundRefresh = (): void => this.refresh();
 
   refresh(): void {
     const acct = save.account;

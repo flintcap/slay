@@ -14,6 +14,7 @@ import { save } from '../core/Save';
 import { computeStats, xpForLevel } from '../sim/Stats';
 import { allocateStat } from '../sim/Character';
 import {
+  scheduleRefresh,
   Panel,
   add,
   clear,
@@ -155,10 +156,10 @@ export class CharacterPanel {
     this.panel.body.appendChild(wrap);
 
     events.on('ui:refresh', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
     events.on('player:levelUp', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
   }
 
@@ -174,6 +175,8 @@ export class CharacterPanel {
   get isOpen(): boolean {
     return this.panel.isOpen;
   }
+
+  private readonly boundRefresh = (): void => this.refresh();
 
   refresh(): void {
     const c = save.account.current;

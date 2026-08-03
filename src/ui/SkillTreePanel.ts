@@ -14,6 +14,7 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { allocateSkill, canAllocateSkill, setPrimaryAttack, setHotbarSlot } from '../sim/Character';
 import {
+  scheduleRefresh,
   Panel,
   Tabs,
   add,
@@ -111,10 +112,10 @@ export class SkillTreePanel {
     add(this.panel.body, head, body);
 
     events.on('ui:refresh', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
     events.on('player:levelUp', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
   }
 
@@ -132,6 +133,8 @@ export class SkillTreePanel {
   }
 
   // -- build ---------------------------------------------------------------
+
+  private readonly boundRefresh = (): void => this.refresh();
 
   refresh(): void {
     const c = save.account.current;

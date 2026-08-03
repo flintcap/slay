@@ -15,6 +15,7 @@ import { rollItem, vendorPrice, itemDisplayName, rarityRank } from '../sim/Loot'
 import { Random, randomSeed } from '../core/RNG';
 import { ItemGrid, normalizeInventory, invFirstFree, invRemove } from './InventoryPanel';
 import {
+  scheduleRefresh,
   Panel,
   Button,
   add,
@@ -132,7 +133,7 @@ export class VendorPanel {
     this.panel.body.appendChild(wrap);
 
     events.on('ui:refresh', () => {
-      if (this.panel.isOpen) this.refresh();
+      if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
   }
 
@@ -211,6 +212,8 @@ export class VendorPanel {
     }
     this.restockEl.textContent = `${this.stock.filter(Boolean).length} wares`;
   }
+
+  private readonly boundRefresh = (): void => this.refresh();
 
   refresh(): void {
     const c = save.account.current;

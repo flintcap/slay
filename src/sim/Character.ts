@@ -184,8 +184,10 @@ export function setHotbarSlot(c: Character, index: number, skillId: string | nul
   const def = SKILL_BY_ID[skillId];
   if (!def || def.targeting === 'passive') return false;
   if ((c.skills[skillId] ?? 0) <= 0) return false;
+  // Refused, not swapped. A skill on right click already has a button; putting
+  // it on the bar as well spends a slot on a duplicate.
+  if (c.primaryAttack === skillId) return false;
   for (let i = 0; i < 6; i++) if (c.hotbar[i] === skillId) c.hotbar[i] = null;
-  if (c.primaryAttack === skillId) c.primaryAttack = null;
   c.hotbar[index] = skillId;
   return true;
 }
@@ -212,6 +214,12 @@ export function repairCharacter(c: Character): boolean {
   for (let i = 0; i < c.hotbar.length; i++) {
     const id = c.hotbar[i];
     if (id && (c.skills[id] ?? 0) <= 0) {
+      c.hotbar[i] = null;
+      changed = true;
+    }
+    // Saves made before the two were made exclusive can hold the right-click
+    // skill on the bar as well. Clean it out on load.
+    if (id && id === c.primaryAttack) {
       c.hotbar[i] = null;
       changed = true;
     }
