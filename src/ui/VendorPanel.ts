@@ -11,7 +11,7 @@ import type { Item, ItemRarity } from '../types';
 import { RARITY_ORDER } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
-import { rollItem, vendorPrice, itemDisplayName } from '../sim/Loot';
+import { rollItem, vendorPrice, itemDisplayName, rarityRank } from '../sim/Loot';
 import { Random, randomSeed } from '../core/RNG';
 import { ItemGrid, normalizeInventory, invFirstFree, invRemove } from './InventoryPanel';
 import {
@@ -156,10 +156,17 @@ export class VendorPanel {
     for (let i = 0; i < STOCK_SIZE; i++) {
       // A little above the player's level so the shop is aspirational.
       const ilvl = Math.max(1, level + rng.int(-2, 4) + Math.floor(depth / 3));
-      const item = attempt(
-        () => rollItem(ilvl, rng, { magicFind: 40 + this.restocks * 5, classId: c?.classId }),
-        null
-      );
+      // Rare is the ceiling. Sets, uniques, mythics and ancients are things you
+      // go and find; stocking them on a shelf turns the whole loot chase into a
+      // gold check. Reroll rather than force the rarity, so the shop still
+      // carries a normal spread of white, blue and yellow.
+      const item = attempt(() => {
+        for (let tries = 0; tries < 8; tries++) {
+          const roll = rollItem(ilvl, rng, { magicFind: 40 + this.restocks * 5, classId: c?.classId });
+          if (roll && rarityRank(roll.rarity) <= rarityRank('rare')) return roll;
+        }
+        return rollItem(ilvl, rng, { classId: c?.classId, forceRarity: 'rare' });
+      }, null);
       if (item) {
         item.seen = true;
         this.stock[i] = item;

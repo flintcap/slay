@@ -456,8 +456,14 @@ export class DungeonMesh {
     // ambient term: it is the mass around the dungeon, not a surface anyone is
     // meant to look at. Taking no shadows either way keeps a plane that covers
     // most of the screen out of the shadow pass entirely.
+    // Emissive on purpose. Torches sit below the rock and nothing else lights
+    // it, so a lit-only material went fully black — which looks exactly like
+    // the hole it was added to fill. A self-lit floor guarantees it always
+    // reads as a surface. Scene fog still fades it with distance.
+    const rockTone = new THREE.Color(art.skyColor).lerp(new THREE.Color(0x33363f), 0.72);
     const bedrockMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(art.skyColor).lerp(new THREE.Color(0x0a0a0c), 0.55),
+      color: rockTone,
+      emissive: rockTone.clone().multiplyScalar(0.55),
       roughness: 1,
       metalness: 0,
     });
