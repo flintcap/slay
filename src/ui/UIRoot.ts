@@ -301,6 +301,14 @@ export function mountUI(engine: Engine): void {
   const skills = new SkillTreePanel();
   const stash = new StashPanel();
   const vendor = new VendorPanel();
+  // Same shop, different shelf. See `VendorOpts`.
+  const alchemist = new VendorPanel({
+    id: 'alchemist',
+    title: 'Apothecary',
+    subtitle: 'Flasks, tonics and oils. Buy more than you think you need',
+    icon: 'potion',
+    only: 'potion',
+  });
   const blacksmith = new BlacksmithPanel();
   const map = new MapPanel();
   const questLog = new QuestLogPanel();
@@ -318,6 +326,7 @@ export function mountUI(engine: Engine): void {
     ['skills', skills as unknown as PanelHandle, skills.panel],
     ['stash', stash as unknown as PanelHandle, stash.panel],
     ['vendor', vendor as unknown as PanelHandle, vendor.panel],
+    ['alchemist', alchemist as unknown as PanelHandle, alchemist.panel],
     ['blacksmith', blacksmith as unknown as PanelHandle, blacksmith.panel],
     ['map', map as unknown as PanelHandle, map.panel],
     ['questLog', questLog as unknown as PanelHandle, questLog.panel],

@@ -11,13 +11,16 @@ import type { Item, ItemRarity } from '../types';
 import { RARITY_ORDER } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
-import { rollItem, vendorPrice, itemDisplayName, rarityRank } from '../sim/Loot';
+import { rollItem, vendorPrice, itemDisplayName, rarityRank, createItem, getBase } from '../sim/Loot';
 import { Random, randomSeed } from '../core/RNG';
 import { ItemGrid, normalizeInventory, invFirstFree, invRemove } from './InventoryPanel';
+import { recordSale, buyBackList, buyBackPrice, takeBack } from '../sim/BuyBack';
+import { addItemToInventory, setStackCount } from '../sim/Inventory';
 import {
   scheduleRefresh,
   Panel,
   Button,
+  Tabs,
   add,
   clear,
   div,
@@ -36,24 +39,76 @@ const PRECIOUS: ItemRarity[] = ['set', 'unique', 'mythic', 'ancient'];
 
 const STOCK_SIZE = 40;
 
+/**
+ * What the apothecary keeps behind the counter.
+ *
+ * Ordered so the cheap reliable flasks come first and the situational tonics
+ * sit at the end, and filtered by level so a fresh character is not looking at
+ * a wall of things they cannot use.
+ */
+const POTION_STOCK = [
+  'potion.heal.minor',
+  'potion.mana.minor',
+  'potion.heal.light',
+  'potion.mana.light',
+  'potion.heal.greater',
+  'potion.mana.greater',
+  'potion.heal.super',
+  'potion.mana.super',
+  'potion.rejuv.lesser',
+  'potion.rejuv.full',
+  'potion.heal.full',
+  'potion.antidote',
+  'potion.thawing',
+  'potion.stamina',
+  'potion.oil.fire',
+  'potion.oil.venom',
+];
+
+/**
+ * What kind of counter this is.
+ *
+ * The apothecary is the same shop with a different shelf: same buying, same
+ * selling, same buy-back. Only what it stocks changes, so it is a parameter
+ * rather than a second panel class that would drift out of sync.
+ */
+export interface VendorOpts {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon?: string;
+  /** Restrict the shelf to one item category. */
+  only?: 'potion';
+}
+
 export class VendorPanel {
   readonly panel: Panel;
+  private opts: VendorOpts;
   private stock: Array<Item | null> = new Array(STOCK_SIZE).fill(null);
   private stockGrid: ItemGrid;
   private packGrid: ItemGrid;
   private goldEl: HTMLSpanElement;
   private restockEl: HTMLDivElement;
   private restockBtn!: Button;
+  private tabs!: Tabs;
+  /** Which shelf the left column is showing. */
+  private tab: 'stock' | 'buyback' = 'stock';
   /** How many crates have been asked for since the last cleared run. */
   private restocks = 0;
   private generatedFor = -1;
 
-  constructor() {
+  constructor(opts: VendorOpts = {
+    id: 'vendor',
+    title: 'Merchant',
+    subtitle: 'Everything has a price, and hers are bad',
+    icon: 'coin',
+  }) {
+    this.opts = opts;
     this.panel = new Panel({
-      id: 'vendor',
-      title: 'Merchant',
-      subtitle: 'Everything has a price, and hers are bad',
-      icon: 'coin',
+      id: opts.id,
+      title: opts.title,
+      subtitle: opts.subtitle,
+      icon: opts.icon ?? 'coin',
       width: 1080,
     });
     this.panel.frame.classList.add('panel-vendor');
@@ -64,7 +119,20 @@ export class VendorPanel {
     // --- stock ------------------------------------------------------------
     const left = div('trade-col');
     const lhd = div('trade-colhd');
-    lhd.appendChild(span('trade-coltitle', 'For Sale'));
+    // The shelf behind the counter. Everything you sold this visit sits there
+    // at exactly what you were paid, until you go back down.
+    this.tabs = new Tabs(
+      [
+        { id: 'stock', label: 'For Sale' },
+        { id: 'buyback', label: 'Buy Back' },
+      ],
+      'stock',
+      (id) => {
+        this.tab = id === 'buyback' ? 'buyback' : 'stock';
+        this.refresh();
+      },
+    );
+    lhd.appendChild(this.tabs.root);
     this.restockEl = div('goldbank-label', '');
     lhd.appendChild(this.restockEl);
     left.appendChild(lhd);
@@ -75,8 +143,16 @@ export class VendorPanel {
       size: 50,
       source: 'vendor',
       accepts: () => false,
-      onClick: (item, i) => this.buy(item, i),
-      onRightClick: (item, i) => this.buy(item, i),
+      onClick: (item, i) => {
+        if (!item) return;
+        if (this.tab === 'buyback') this.buyBack(item);
+        else this.buy(item, i);
+      },
+      onRightClick: (item, i) => {
+        if (!item) return;
+        if (this.tab === 'buyback') this.buyBack(item);
+        else this.buy(item, i);
+      },
     });
     left.appendChild(this.stockGrid.root);
 
@@ -191,6 +267,26 @@ export class VendorPanel {
     this.generatedFor = save.account.bestDepth + this.restocks * 1000;
     const rng = new Random(randomSeed());
     this.stock = new Array(STOCK_SIZE).fill(null);
+
+    // The apothecary stocks flasks, not gear, and stocks them deep: a potion
+    // shop that sells one of each is a shop you visit once.
+    if (this.opts.only === 'potion') {
+      const pool = POTION_STOCK.filter((id) => {
+        const base = attempt(() => getBase(id), null);
+        return !!base && base.levelReq <= level + 6;
+      });
+      pool.forEach((id, i) => {
+        if (i >= STOCK_SIZE) return;
+        const item = attempt(() => createItem(id, Math.max(1, level), rng, 'normal'), null);
+        if (!item) return;
+        item.seen = true;
+        setStackCount(item, 10);
+        this.stock[i] = item;
+      });
+      this.restockEl.textContent = `${this.stock.filter(Boolean).length} kinds`;
+      return;
+    }
+
     for (let i = 0; i < STOCK_SIZE; i++) {
       // A little above the player's level so the shop is aspirational.
       const ilvl = Math.max(1, level + rng.int(-2, 4) + Math.floor(depth / 3));
@@ -217,7 +313,21 @@ export class VendorPanel {
 
   refresh(): void {
     const c = save.account.current;
-    this.stockGrid.setItems(this.stock);
+    const shelf = buyBackList();
+    if (this.tab === 'buyback') {
+      const items: Array<Item | null> = shelf.map((e) => e.item);
+      while (items.length < STOCK_SIZE) items.push(null);
+      this.stockGrid.setItems(items);
+    } else {
+      this.stockGrid.setItems(this.stock);
+    }
+    this.tabs.setTabs(
+      [
+        { id: 'stock', label: 'For Sale' },
+        { id: 'buyback', label: shelf.length > 0 ? `Buy Back (${shelf.length})` : 'Buy Back' },
+      ],
+      this.tab,
+    );
     if (c) {
       normalizeInventory(c);
       this.packGrid.setItems(c.inventory);
@@ -225,7 +335,8 @@ export class VendorPanel {
     }
     const cost = this.restockCost();
     this.restockBtn.setLabel(`Ask for new stock — ${fmtInt(cost)}g`);
-    this.restockBtn.setDisabled((c?.gold ?? 0) < cost);
+    this.restockBtn.setDisabled((c?.gold ?? 0) < cost || this.tab === 'buyback');
+    this.restockBtn.root.style.display = this.tab === 'buyback' ? 'none' : '';
     this.decorate(c?.gold ?? 0);
   }
 
@@ -337,10 +448,44 @@ export class VendorPanel {
     });
   }
 
+  /**
+   * Takes something back off the shelf for exactly what you were paid.
+   *
+   * No markup on purpose. This is an undo for a misclick, not a trading
+   * mechanic, and charging a spread would make it one.
+   */
+  private buyBack(item: Item): void {
+    const c = save.account.current;
+    if (!c) return;
+    const price = buyBackPrice(item.uid);
+    if (price === null) return;
+    if (c.gold < price) {
+      events.emit('toast', { text: `You need ${fmtInt(price - c.gold)} more gold.`, kind: 'bad' });
+      return;
+    }
+    if (invFirstFree(c) < 0) {
+      events.emit('toast', { text: 'Your pack is full.', kind: 'bad' });
+      return;
+    }
+    const back = takeBack(item.uid);
+    if (!back) return;
+    c.gold -= price;
+    addItemToInventory(c, back);
+    save.setCharacter(c);
+    events.emit('sfx', { id: 'ui.buy' });
+    events.emit('toast', {
+      text: `${attempt(() => itemDisplayName(back), 'Item')} bought back.`,
+      kind: 'good',
+    });
+    this.refresh();
+    events.emit('ui:refresh', {});
+  }
+
   private sell(item: Item, price: number): void {
     const c = save.account.current;
     if (!c) return;
     invRemove(c, item);
+    recordSale(item, price);
     c.gold += price;
     save.touch();
     events.emit('sfx', { id: 'ui.sell' });

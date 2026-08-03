@@ -39,6 +39,7 @@ import { affixIconUri } from '../art/Icons';
 import { typeColor } from '../entities/Abilities';
 import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
+import { clearBuyBack } from '../sim/BuyBack';
 
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
@@ -208,6 +209,9 @@ export class DungeonScene extends GameScene {
     // Must be set before anything generates: world gen and monster stats both
     // read the active tier.
     setActiveDifficulty(character.difficulty as never);
+
+    // What you sold in camp stops being buyable back the moment you leave it.
+    clearBuyBack();
 
     this.run = generateRun(depth, seed, character.classId);
     this.player = new Player(character, seed);

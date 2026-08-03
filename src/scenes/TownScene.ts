@@ -109,6 +109,7 @@ export class TownScene extends GameScene {
     this.interactables = [
       { id: 'vendor', label: 'Merchant — Buy & Sell', panel: 'vendor', pos: at('vendor'), radius: 2.4 },
       { id: 'blacksmith', label: 'Blacksmith — Upgrade & Craft', panel: 'blacksmith', pos: at('blacksmith'), radius: 2.4 },
+      { id: 'alchemist', label: 'Apothecary — Potions & Oils', panel: 'alchemist', pos: at('alchemist'), radius: 2.4 },
       { id: 'stash', label: 'Vault — Shared Stash', panel: 'stash', pos: at('stash'), radius: 2.4 },
       { id: 'memorial', label: 'Memorial — The Fallen', panel: 'memorial', pos: at('memorial'), radius: 2.2 },
       { id: 'portal', label: 'The Descent — Enter the Dungeon', panel: 'descend', pos: this.town.portalSpot.clone(), radius: 2.8 },

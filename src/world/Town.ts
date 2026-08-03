@@ -398,6 +398,12 @@ export function buildTown(rng: Rng): TownBuild {
   buildSupplyTent(ctx, mats, stashAt);
   npcSpots.stash = new THREE.Vector3(stashAt.x + 2.6, 0, stashAt.z + 1.2);
 
+  // The apothecary. Opposite the vault so the two supply stops bracket the
+  // camp rather than crowding the same corner.
+  const alchemyAt = new THREE.Vector3(-6.5, 0, -13.5);
+  buildApothecary(ctx, mats, alchemyAt);
+  npcSpots.alchemist = new THREE.Vector3(alchemyAt.x + 2.4, 0, alchemyAt.z + 1.6);
+
   const cairnAt = new THREE.Vector3(12.5, 0, -8.5);
   buildCairn(ctx, mats, cairnAt);
   npcSpots.memorial = new THREE.Vector3(cairnAt.x - 2.4, 0, cairnAt.z + 1.4);
@@ -847,6 +853,69 @@ function buildWagon(ctx: Ctx, m: Mats, at: THREE.Vector3): void {
 
   addLantern(ctx, x + 3.8, 2.0, z + 0.4, 0xffc06a, 8, 12, 0.5, 0.11);
   addLantern(ctx, x - 2.0, 2.3, z + 1.2, 0xffc06a, 6, 10, 0.5, 0.09);
+}
+
+/**
+ * The apothecary's stall: a bench of bottles under a canvas awning, with a
+ * small cauldron working beside it.
+ *
+ * Built from the same primitives as everything else in camp. The bottles are
+ * emissive so the stall reads as the potion stop from across the fire, which is
+ * the only job it has to do at that distance.
+ */
+function buildApothecary(ctx: Ctx, m: Mats, at: THREE.Vector3): void {
+  const { x, z } = at;
+  const rng = ctx.rng;
+
+  addBox(ctx, 3.6, 0.16, 1.1, x, 0.98, z, m.wood, 0, true);
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      addCyl(ctx, 0.07, 0.08, 1.0, 6, x + sx * 1.6, 0, z + sz * 0.42, m.woodDark);
+    }
+  }
+
+  for (const sx of [-1, 1]) addCyl(ctx, 0.08, 0.1, 2.7, 6, x + sx * 1.9, 0, z - 0.9, m.wood, true);
+  const sheet = keep(ctx, new THREE.PlaneGeometry(4.2, 2.4, 6, 4));
+  displace(sheet, rng.fork('apoth'), 0.045, 1.3);
+  const awning = new THREE.Mesh(sheet, m.linen);
+  awning.position.set(x, 2.5, z - 0.1);
+  awning.rotation.set(-Math.PI * 0.5 + 0.34, 0, 0);
+  awning.castShadow = true;
+  awning.receiveShadow = true;
+  ctx.root.add(awning);
+
+  addBox(ctx, 3.2, 0.1, 0.34, x, 1.72, z - 0.72, m.woodDark);
+  const tints = [0xd8434a, 0x3f7ad8, 0x7ec24a, 0xe0c24a, 0xb35ad8];
+  for (let i = 0; i < 11; i++) {
+    const shelf = i < 7;
+    const bx = shelf ? x - 1.4 + (i / 6) * 2.8 : x - 1.1 + ((i - 7) / 3) * 2.2;
+    const by = shelf ? 1.82 : 1.06;
+    const bz = shelf ? z - 0.72 : z + 0.1;
+    const colour = tints[i % tints.length]!;
+    const glass = new THREE.MeshStandardMaterial({
+      color: colour,
+      emissive: colour,
+      emissiveIntensity: 0.7,
+      roughness: 0.25,
+      metalness: 0,
+      transparent: true,
+      opacity: 0.88,
+    });
+    ctx.mat.push(glass);
+    const h = rng.range(0.2, 0.32);
+    add(ctx, new THREE.CylinderGeometry(0.055, 0.075, h, 7), glass, bx, by + h / 2, bz);
+    addCyl(ctx, 0.03, 0.035, 0.05, 5, bx, by + h, bz, m.woodDark);
+  }
+
+  const cx = x - 2.6;
+  const cz = z + 0.6;
+  addCyl(ctx, 0.5, 0.36, 0.55, 10, cx, 0.28, cz, m.darkStone, true);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    addCyl(ctx, 0.035, 0.035, 0.34, 4, cx + Math.cos(a) * 0.34, 0, cz + Math.sin(a) * 0.34, m.metal);
+  }
+  addLantern(ctx, cx, 0.9, cz, 0x6ad86a, 3.2, 6, 0.8, 0.16, true);
+  addLantern(ctx, x, 2.25, z - 0.2, 0xffd9a0, 4.5, 9, 0.35, 0.11, true);
 }
 
 function buildSupplyTent(ctx: Ctx, m: Mats, at: THREE.Vector3): void {
