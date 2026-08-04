@@ -61,7 +61,7 @@ export const CLASSES: CharClassDef[] = [
     manaPerEnr: 2,
     trees: ['conflagration', 'cinders', 'sunfire'],
     color: 0xff7a1e,
-    startingGear: ['wand.wand'],
+    startingGear: ['wand.wand', 'orb.cracked'],
   },
   {
     id: 'shadowblade',
@@ -109,7 +109,7 @@ export const CLASSES: CharClassDef[] = [
     manaPerEnr: 2,
     trees: ['ossuary', 'blight', 'gravepact'],
     color: 0x8ce0c8,
-    startingGear: ['wand.femur'],
+    startingGear: ['wand.femur', 'orb.cracked'],
   },
   {
     id: 'ranger',

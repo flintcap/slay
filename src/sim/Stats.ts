@@ -89,6 +89,21 @@ export const DERIVE = {
   dexDefense: 0.25,
   /** Mana regeneration per point of energy. */
   enrManaRegen: 0.05,
+  /**
+   * Elemental damage percent per point of energy.
+   *
+   * Strength has always bought enhanced damage; energy bought mana and nothing
+   * else. That makes the caster attribute purely defensive, so a pyromancer's
+   * thirty-five starting energy paid for no offence at all and their damage was
+   * whatever weapon happened to be in their hand — which for them is a wand
+   * doing two to four. Measured, their opening attack hit for four where every
+   * other class hit for six to ten, on the lowest life pool in the game.
+   *
+   * Deliberately elemental rather than enhanced: strength should stay the way
+   * you make a weapon hit harder, and energy the way you make a spell hit
+   * harder, or the two stats do the same job.
+   */
+  enrElementalPct: 0.55,
   /** Base attack rating everyone has. */
   baseAttackRating: 20,
   /** Base unarmed damage. */
@@ -445,6 +460,13 @@ export function computeStats(c: Character): Stats {
     skills.enhancedDamage,
     status.enhancedDamage,
     strengthDamage,
+  );
+  const energyDamage = out.energy * DERIVE.enrElementalPct;
+  out.elementalDamagePct = combinePercent(
+    gear.elementalDamagePct,
+    skills.elementalDamagePct,
+    status.elementalDamagePct,
+    energyDamage,
   );
   const defPct = combinePercent(gear.enhancedDefense, skills.enhancedDefense, status.enhancedDefense);
   out.enhancedDefense = defPct;

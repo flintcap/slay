@@ -544,7 +544,15 @@ export function monsterBudget(depth: number, floorTiles: number, levelIndex: num
   // many things on it is a walk between fights rather than a fight. The soft
   // cap is what was binding — the area guard below never came near it — so the
   // cap is where the change belongs.
-  const soft = 100 + 260 * (1 - Math.exp(-curve / 120));
+  // Shaped on depth, not on the combat curve, and starting low.
+  //
+  // The previous shape had a flat base of a hundred, which applied at depth one
+  // as much as at depth fifty: floor one went from about fifty monsters to a
+  // hundred and fourteen, against a level-one character with seventy-five life.
+  // The ask was for a lot more monsters, and this still delivers roughly double
+  // from depth ten on — it just lets the first couple of floors be the first
+  // couple of floors.
+  const soft = 44 + 220 * (1 - Math.exp(-depth / 18));
   // Density guard: never more than one monster per ~11 walkable tiles. Still a
   // guard rather than the driver, but it now lets a big open floor carry a
   // crowd proportional to its size instead of the same pack a small one gets.

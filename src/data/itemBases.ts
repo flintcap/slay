@@ -698,6 +698,18 @@ arm('shield.aeons', 'Ward of Aeons', 'shield', 'offHand', 84, 170, 0, 172, 'shie
 // ORBS — caster off-hands. No block, all utility.
 // ===========================================================================
 
+// The bottom of the ladder. Every other off-hand family starts at level one —
+// there was no orb below level eight, so a caster's off-hand sat empty for the
+// first eight levels and the pyromancer, whose whole kit is one wand, opened
+// the game with half the damage of anyone else.
+arm('orb.cracked', 'Cracked Focus', 'orb', 'offHand', 1, 0, 0, 0, 'orb', 'crystal.gem', {
+  classes: CASTERS,
+  glow: 0x6f8cff,
+  imp: [
+    { stat: 'elementalDamagePct', min: 8, max: 14 },
+    { stat: 'mana', min: 6, max: 12 },
+  ],
+});
 arm('orb.eagle', 'Eagle Orb', 'orb', 'offHand', 8, 0, 0, 0, 'orb', 'crystal.gem', {
   classes: CASTERS,
   glow: 0x6f8cff,
