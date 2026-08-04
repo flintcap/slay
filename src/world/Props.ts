@@ -2249,13 +2249,13 @@ function build(kind: string, ctx: BuildCtx): ReturnType<Builder> {
     case 'stalagmite':
       return buildCluster(ctx, { count: [2, 5], size: [0.2, 0.45], palette: art.walls[0].palette, shape: 'cone', spread: 0.3, displaceAmt: 0.05 });
     case 'chitinSpike':
-      return buildCluster(ctx, { count: [2, 5], size: [0.16, 0.4], palette: 'flesh.chitin', shape: 'cone', spread: 0.3 });
+      return buildCluster(ctx, { count: [2, 5], size: [0.16, 0.4], palette: 'flesh.insect', shape: 'cone', spread: 0.3 });
     case 'crystalShard':
-      return buildCluster(ctx, { count: [2, 5], size: [0.2, 0.5], palette: 'crystal.blue', shape: 'octa', spread: 0.3, emissive: art.veinColor || 0x53f0c8 });
+      return buildCluster(ctx, { count: [2, 5], size: [0.2, 0.5], palette: 'crystal.gem', shape: 'octa', spread: 0.3, emissive: art.veinColor || 0x53f0c8 });
     case 'crystalCluster':
-      return buildCluster(ctx, { count: [4, 8], size: [0.3, 0.8], palette: 'crystal.blue', shape: 'octa', spread: 0.5, emissive: art.veinColor || 0x53f0c8 });
+      return buildCluster(ctx, { count: [4, 8], size: [0.3, 0.8], palette: 'crystal.gem', shape: 'octa', spread: 0.5, emissive: art.veinColor || 0x53f0c8 });
     case 'iceShard':
-      return buildCluster(ctx, { count: [2, 5], size: [0.24, 0.6], palette: 'crystal.ice', shape: 'octa', spread: 0.32 });
+      return buildCluster(ctx, { count: [2, 5], size: [0.24, 0.6], palette: 'crystal.frost', shape: 'octa', spread: 0.32 });
     case 'voidShard':
       return buildCluster(ctx, { count: [2, 5], size: [0.24, 0.6], palette: 'crystal.void', shape: 'octa', spread: 0.32, emissive: 0xd040ff });
     case 'brokenColumn':
@@ -2272,15 +2272,15 @@ function build(kind: string, ctx: BuildCtx): ReturnType<Builder> {
     case 'ashDrift':
       return buildCluster(ctx, { count: [3, 6], size: [0.14, 0.34], palette: art.floors[0].palette, shape: 'sphere', spread: 0.42, displaceAmt: 0.09 });
     case 'mossPatch':
-      return buildCluster(ctx, { count: [4, 8], size: [0.08, 0.2], palette: 'flesh.fungal', shape: 'sphere', spread: 0.46 });
+      return buildCluster(ctx, { count: [4, 8], size: [0.08, 0.2], palette: 'ground.grass', shape: 'sphere', spread: 0.46 });
     case 'sporeTuft':
-      return buildCluster(ctx, { count: [2, 5], size: [0.06, 0.16], palette: 'flesh.fungal', shape: 'cone', spread: 0.34, emissive: art.veinColor || 0x6fe0a0 });
+      return buildCluster(ctx, { count: [2, 5], size: [0.06, 0.16], palette: 'ground.grass', shape: 'cone', spread: 0.34, emissive: art.veinColor || 0x6fe0a0 });
     case 'iceCrust':
-      return buildCluster(ctx, { count: [3, 7], size: [0.07, 0.19], palette: 'crystal.ice', shape: 'octa', spread: 0.45 });
+      return buildCluster(ctx, { count: [3, 7], size: [0.07, 0.19], palette: 'crystal.frost', shape: 'octa', spread: 0.45 });
     case 'slagChunk':
       return buildCluster(ctx, { count: [3, 6], size: [0.07, 0.18], palette: 'metal.dark', shape: 'rock', spread: 0.42 });
     case 'shellFragment':
-      return buildCluster(ctx, { count: [3, 7], size: [0.06, 0.17], palette: 'flesh.chitin', shape: 'octa', spread: 0.44 });
+      return buildCluster(ctx, { count: [3, 7], size: [0.06, 0.17], palette: 'flesh.insect', shape: 'octa', spread: 0.44 });
     case 'sandDrift':
       return buildCluster(ctx, { count: [3, 6], size: [0.13, 0.3], palette: art.floors[0].palette, shape: 'sphere', spread: 0.44, displaceAmt: 0.08 });
     case 'voidMote':
@@ -2288,7 +2288,7 @@ function build(kind: string, ctx: BuildCtx): ReturnType<Builder> {
     case 'scorchMark':
       return buildCluster(ctx, { count: [2, 4], size: [0.16, 0.36], palette: 'metal.dark', shape: 'sphere', spread: 0.4, displaceAmt: 0.12 });
     case 'grassTuft':
-      return buildCluster(ctx, { count: [3, 6], size: [0.07, 0.18], palette: 'flesh.fungal', shape: 'cone', spread: 0.4 });
+      return buildCluster(ctx, { count: [3, 6], size: [0.07, 0.18], palette: 'ground.grass', shape: 'cone', spread: 0.4 });
 
     default:
       return buildMisc(ctx, kind);

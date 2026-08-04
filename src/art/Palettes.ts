@@ -1539,6 +1539,15 @@ export function allPalettes(): Palette[] {
   return LIST.slice();
 }
 
+/**
+ * Every key that resolves to a real palette, registry entries and aliases
+ * alike. An alias is a legitimate name for a surface, so tooling asking "is
+ * this key real" has to see both — `allPalettes` alone under-reports.
+ */
+export function allPaletteKeys(): string[] {
+  return [...LIST.map((p) => p.key), ...Object.keys(ALIASES)];
+}
+
 export function paletteKeyList(): string[] {
   return LIST.map((p2) => p2.key);
 }
