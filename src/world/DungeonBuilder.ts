@@ -34,7 +34,7 @@ import {
 import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './DungeonGen';
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
 
-import { surface } from '../art/Materials';
+import { surface, surfaceVariant } from '../art/Materials';
 
 /** One usable thing in the world, and the instance slot that draws it. */
 export interface Interactable {
@@ -59,7 +59,7 @@ const MAX_TORCH_LIGHTS = 8;
 const SHADOW_LIGHTS = 2;
 const HALF = TILE_SIZE * 0.5;
 /** How much of the lid is cut away around the player, in world units. */
-const ROOF_OPEN = 15;
+const ROOF_OPEN = 21;
 
 // ---------------------------------------------------------------------------
 // Vertex accumulation
@@ -471,16 +471,30 @@ export class DungeonMesh {
     // a hole whether or not there is one behind it, which is why "still holes in
     // the walls" kept coming back after the geometry was closed. Borrowing the
     // biome's own wall texture makes the same plane read as the rock it is.
-    const rockTone = new THREE.Color(art.skyColor).lerp(new THREE.Color(0x33363f), 0.72);
-    const bedrockMat = safeSurface(art.walls[0].palette, {
-      repeat: 1.5,
-      tint: rockTone.getHex(),
-      roughness: 1,
-    }) as THREE.MeshStandardMaterial;
-    if (bedrockMat.isMeshStandardMaterial) {
-      bedrockMat.emissive = rockTone.clone().multiplyScalar(0.42);
-      bedrockMat.metalness = 0;
+    // Dark. The lid is the back of the frame, not part of it.
+    //
+    // It was mixed most of the way toward a mid grey and given a strong
+    // emissive so it could never read as a hole. A render showed the other
+    // failure: bright textured wall tops filling well over half the screen and
+    // out-competing the floor the game is actually played on. It only has to be
+    // legible as a surface, and at this distance a very dark one still is.
+    const rockTone = new THREE.Color(art.skyColor).lerp(new THREE.Color(0x33363f), 0.34);
+    // `surfaceVariant`, not `surface`: the roof dissolve below is compiled into
+    // whatever material it is attached to, and `surface` hands back a *shared*
+    // cached instance. Attaching it there would punch the same hole in every
+    // wall drawn from the same palette.
+    let bedrockMat: THREE.MeshStandardMaterial;
+    try {
+      bedrockMat = surfaceVariant(art.walls[0].palette, {
+        repeat: 1.5,
+        tint: rockTone.getHex(),
+        roughness: 1,
+      });
+    } catch {
+      bedrockMat = new THREE.MeshStandardMaterial({ color: rockTone, roughness: 1 });
     }
+    bedrockMat.emissive = rockTone.clone().multiplyScalar(0.12);
+    bedrockMat.metalness = 0;
     this.ownedMat.push(bedrockMat);
 
     // The lid opens around the player.
