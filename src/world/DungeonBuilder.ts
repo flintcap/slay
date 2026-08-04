@@ -1302,13 +1302,17 @@ export class DungeonMesh {
     const merged = mergeSimple(parts);
     if (!merged) return;
     this.ownedGeo.push(merged);
+    // Front faces only. A double-sided cone shows its own far wall through its
+    // near one, and where the two overlap the shape reads as a solid object
+    // sitting in the room rather than as light falling through it — which is
+    // exactly how it looked in a render: a faceted tent with a bright lid.
     const mat = new THREE.MeshBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.55,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      side: THREE.DoubleSide,
+      side: THREE.FrontSide,
       toneMapped: false,
     });
     this.ownedMat.push(mat);
@@ -1419,7 +1423,7 @@ export class DungeonMesh {
     if (this.shaftMat) {
       // Very slow breathing so the shafts feel like drifting dust, not a pulse.
       const n = this.noise.fbm(elapsed * 0.13, 4.2, 2);
-      this.shaftMat.opacity = 0.7 + n * 0.22;
+      this.shaftMat.opacity = 0.45 + n * 0.16;
     }
   }
 

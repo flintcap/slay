@@ -772,6 +772,12 @@ function placeWallDressing(ctx: PlaceCtx): void {
   }
 }
 
+/** True within `r` tiles of the up-stairs, where the floor must stay readable. */
+function nearEntry(ctx: PlaceCtx, x: number, y: number, r: number): boolean {
+  const e = ctx.level.entry;
+  return Math.abs(x - e.x) <= r && Math.abs(y - e.y) <= r;
+}
+
 // --- clutter scatter -------------------------------------------------------
 
 function placeScatter(ctx: PlaceCtx): void {
@@ -791,7 +797,11 @@ function placeScatter(ctx: PlaceCtx): void {
       if (isOccupied(ctx, x, y)) continue;
 
       const room = roomAtTile(ctx, x, y);
-      if (room && room.kind === 'entry') continue;
+      // The landing you arrive on stays clear so the way on is never lost in
+      // clutter — but only the landing. Skipping the whole entry room meant the
+      // first room of every floor, the one the player looks at longest, was the
+      // one room with nothing in it.
+      if (room && room.kind === 'entry' && nearEntry(ctx, x, y, 4)) continue;
       // A boss arena needs floor to fight on, not a bare plate. It keeps the
       // middle clear and takes clutter only around the rim, and only clutter
       // that does not block — measured, the arena floor was half bare, which is
@@ -869,9 +879,8 @@ function placeGroundDetail(ctx: PlaceCtx): void {
       if (v !== T_FLOOR && v !== T_RUBBLE) continue;
       if (isOccupied(ctx, x, y)) continue;
       const room = roomAtTile(ctx, x, y);
-      // The landing you arrive on stays clean, so the way out is never lost in
-      // grit on the first frame of a floor.
-      if (room && room.kind === 'entry') continue;
+      // Only the landing itself, not the whole room it sits in.
+      if (room && room.kind === 'entry' && nearEntry(ctx, x, y, 3)) continue;
 
       // Drifts: a broad field decides where detail gathers, a finer one breaks
       // its edges. Both are needed — one alone gives either uniform fuzz or
