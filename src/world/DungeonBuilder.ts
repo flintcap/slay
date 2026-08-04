@@ -484,10 +484,10 @@ export class DungeonMesh {
     // so it never goes absolutely black: at distance it dissolves into the fog
     // and reads as unlit rock, which is what it is. The playable floor is then
     // the only lit thing on screen, which is the whole point.
-    const rockTone = new THREE.Color(this.biome.fogColor).lerp(new THREE.Color(0x2a2f3a), 0.34);
+    const rockTone = new THREE.Color(this.biome.fogColor).lerp(new THREE.Color(0x2a2f3a), 0.5);
     const bedrockMat = new THREE.MeshStandardMaterial({
       color: rockTone,
-      emissive: rockTone.clone().multiplyScalar(0.35),
+      emissive: rockTone.clone().multiplyScalar(0.5),
       roughness: 1,
       metalness: 0,
     });
