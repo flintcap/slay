@@ -447,16 +447,16 @@ wpn('xbow.colossus', 'Colossus Crossbow', 'crossbow', 2, 83, 130, 130, 107, 191,
 // WANDS — the worst melee weapons and the best spell conduits.
 // ===========================================================================
 
-wpn('wand.wand', 'Wand', 'wand', 1, 1, 4, 4, 2, 4, 1.45, 'wand', 'wood.oak', {
+wpn('wand.wand', 'Wand', 'wand', 1, 1, 4, 4, 4, 8, 1.45, 'wand', 'wood.oak', {
   classes: CASTERS,
   imp: [{ stat: 'castSpeed', min: 3, max: 6 }],
 });
-wpn('wand.yew', 'Yew Wand', 'wand', 1, 23, 8, 8, 8, 17, 1.45, 'wand', 'wood.ash', {
+wpn('wand.yew', 'Yew Wand', 'wand', 1, 23, 8, 8, 14, 29, 1.45, 'wand', 'wood.ash', {
   ornate: 0.2,
   classes: CASTERS,
   imp: [{ stat: 'castSpeed', min: 6, max: 11 }],
 });
-wpn('wand.burnt', 'Burnt Wand', 'wand', 1, 48, 12, 12, 15, 32, 1.45, 'wand', 'wood.dark', {
+wpn('wand.burnt', 'Burnt Wand', 'wand', 1, 48, 12, 12, 26, 54, 1.45, 'wand', 'wood.dark', {
   ornate: 0.34,
   glow: 0xd8632a,
   classes: CASTERS,
@@ -466,27 +466,27 @@ wpn('wand.burnt', 'Burnt Wand', 'wand', 1, 48, 12, 12, 15, 32, 1.45, 'wand', 'wo
 // The bottom of the necromantic wand ladder. The Revenant starts holding this
 // one: `wand.bone` sits at level 10 and the class was being handed a weapon it
 // could not equip for its first nine levels.
-wpn('wand.femur', 'Femur Wand', 'wand', 1, 1, 4, 4, 2, 5, 1.3, 'wand.bone', 'bone.pale', {
+wpn('wand.femur', 'Femur Wand', 'wand', 1, 1, 4, 4, 4, 9, 1.3, 'wand.bone', 'bone.pale', {
   classes: CASTERS,
   imp: [{ stat: 'manaRegen', min: 1, max: 2 }],
 });
-wpn('wand.bone', 'Bone Wand', 'wand', 1, 10, 6, 6, 5, 11, 1.3, 'wand.bone', 'bone.pale', {
+wpn('wand.bone', 'Bone Wand', 'wand', 1, 10, 6, 6, 9, 19, 1.3, 'wand.bone', 'bone.pale', {
   classes: CASTERS,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
 });
-wpn('wand.grim', 'Grim Wand', 'wand', 1, 35, 10, 10, 13, 27, 1.3, 'wand.bone', 'bone.pale', {
+wpn('wand.grim', 'Grim Wand', 'wand', 1, 35, 10, 10, 22, 46, 1.3, 'wand.bone', 'bone.pale', {
   ornate: 0.26,
   classes: CASTERS,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }, { stat: 'arcaneDamage', min: 6, max: 16 }],
 });
-wpn('wand.lich', 'Lich Wand', 'wand', 1, 60, 14, 14, 21, 43, 1.3, 'wand.bone', 'crystal.void', {
+wpn('wand.lich', 'Lich Wand', 'wand', 1, 60, 14, 14, 36, 73, 1.3, 'wand.bone', 'crystal.void', {
   ornate: 0.44,
   glow: 0xc060ff,
   classes: CASTERS,
   imp: [{ stat: 'skillLevels', min: 1, max: 2 }, { stat: 'arcaneDamage', min: 18, max: 44 }],
 });
 
-wpn('wand.tomb', 'Tomb Wand', 'wand', 1, 17, 6, 6, 6, 13, 1.55, 'wand.crystal', 'crystal.gem', {
+wpn('wand.tomb', 'Tomb Wand', 'wand', 1, 17, 6, 6, 10, 22, 1.55, 'wand.crystal', 'crystal.gem', {
   classes: CASTERS,
   imp: [{ stat: 'mana', min: 15, max: 30 }],
 });

@@ -57,7 +57,7 @@ export const CLASSES: CharClassDef[] = [
       'Eyebrows are a luxury.',
     base: { strength: 14, dexterity: 16, vitality: 20, energy: 35 },
     perLevel: { life: 1.4, mana: 2.2, attackRating: 2.5 },
-    lifePerVit: 2,
+    lifePerVit: 2.5,
     manaPerEnr: 2,
     trees: ['conflagration', 'cinders', 'sunfire'],
     color: 0xff7a1e,

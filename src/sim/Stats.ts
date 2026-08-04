@@ -102,8 +102,15 @@ export const DERIVE = {
    * Deliberately elemental rather than enhanced: strength should stay the way
    * you make a weapon hit harder, and energy the way you make a spell hit
    * harder, or the two stats do the same job.
+   *
+   * Priced high on purpose. A caster's weapon is a wand doing two to four,
+   * against a warden's sword doing three to six and a ranger's bow doing more;
+   * the whole point of the attribute is that it, not the stick in their hand,
+   * is where a spellcaster's damage comes from. At this rate a starting
+   * pyromancer's thirty-five energy is worth about forty-five percent, which
+   * puts their opening attack alongside the classes that swing metal.
    */
-  enrElementalPct: 0.55,
+  enrElementalPct: 1.3,
   /** Base attack rating everyone has. */
   baseAttackRating: 20,
   /** Base unarmed damage. */
