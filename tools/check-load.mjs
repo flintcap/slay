@@ -43,7 +43,31 @@ const out = await page.evaluate(async () => {
 
   const engine = window.SLAY.engine;
   const scene = engine.currentScene;
-  const info = engine.renderer?.renderer?.info ?? engine.renderer?.info;
+  const info = engine.renderer?.gl?.info ?? null;
+
+  // Stand where the fight is.
+  //
+  // Sampling at the entry stairs measures an empty floor: every monster is
+  // outside the AI leash, nothing is simulated, and the update loop looks free
+  // because it is doing nothing. Move to the densest cluster first, which is
+  // the state the number is supposed to describe.
+  const mobs = scene.enemies ?? [];
+  if (mobs.length > 0 && scene.player) {
+    let best = mobs[0].root.position;
+    let bestN = -1;
+    for (const a of mobs) {
+      let n = 0;
+      for (const b of mobs) {
+        const dx = a.root.position.x - b.root.position.x;
+        const dz = a.root.position.z - b.root.position.z;
+        if (dx * dx + dz * dz < 24 * 24) n++;
+      }
+      if (n > bestN) { bestN = n; best = a.root.position; }
+    }
+    scene.player.root.position.set(best.x, scene.player.root.position.y, best.z);
+    scene.player.position.set(best.x, scene.player.position.y, best.z);
+    for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
+  }
 
   // Simulation cost with the GPU out of it: call the scene's own update.
   const samples = [];
@@ -74,11 +98,15 @@ const out = await page.evaluate(async () => {
     drawCalls: info?.render?.calls ?? null,
     triangles: info?.render?.triangles ?? null,
     programs: info?.programs?.length ?? null,
+    // A crowd nobody is standing in costs nothing, so this ratio is the number
+    // that matters — it is what the leash buys.
+    simulatedPct: 0,
     updateMsMedian: +samples[Math.floor(samples.length / 2)].toFixed(2),
     updateMsWorst: +samples[samples.length - 1].toFixed(2),
   };
 });
 
+out.simulatedPct = +((out.monstersSimulated / Math.max(1, out.monstersOnFloor)) * 100).toFixed(1);
 const pad = (k) => String(k).padEnd(20);
 console.log('');
 for (const [k, v] of Object.entries(out)) console.log(`  ${pad(k)} ${v}`);
