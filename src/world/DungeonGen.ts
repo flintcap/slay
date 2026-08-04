@@ -275,18 +275,18 @@ export interface RunModifierDef {
 }
 
 export const RUN_MODIFIERS: RunModifierDef[] = [
-  { id: 'mod.swarm', name: 'Teeming', desc: 'Monster packs are {v}% larger.', minDepth: 2, weight: 10, maxTier: 4 },
-  { id: 'mod.elites', name: 'Warband', desc: '{v}% more elite packs roam the floor.', minDepth: 5, weight: 9, maxTier: 4 },
-  { id: 'mod.hardened', name: 'Hardened', desc: 'Enemies have {v}% more life.', minDepth: 4, weight: 9, maxTier: 5 },
-  { id: 'mod.savage', name: 'Savage', desc: 'Enemies deal {v}% more damage.', minDepth: 6, weight: 8, maxTier: 5 },
-  { id: 'mod.swift', name: 'Swift', desc: 'Enemies move {v}% faster.', minDepth: 8, weight: 7, maxTier: 3 },
-  { id: 'mod.gloom', name: 'Gloom', desc: 'Light sources are dimmed and sight is short.', minDepth: 10, weight: 6, maxTier: 2, excludes: ['mod.blaze'] },
-  { id: 'mod.blaze', name: 'Conflagration', desc: 'Fire pools erupt where enemies die.', minDepth: 12, weight: 6, maxTier: 3, excludes: ['mod.gloom'] },
-  { id: 'mod.frostbite', name: 'Frostbite', desc: 'Standing still chills you.', minDepth: 14, weight: 6, maxTier: 3 },
+  { id: 'mod.swarm', name: 'Teeming', desc: 'Monster packs are {v}% larger.', minDepth: 1, weight: 10, maxTier: 4 },
+  { id: 'mod.elites', name: 'Warband', desc: '{v}% more elite packs roam the floor.', minDepth: 4, weight: 9, maxTier: 4 },
+  { id: 'mod.hardened', name: 'Hardened', desc: 'Enemies have {v}% more life.', minDepth: 2, weight: 9, maxTier: 5 },
+  { id: 'mod.savage', name: 'Savage', desc: 'Enemies deal {v}% more damage.', minDepth: 5, weight: 8, maxTier: 5 },
+  { id: 'mod.swift', name: 'Swift', desc: 'Enemies move {v}% faster.', minDepth: 4, weight: 7, maxTier: 3 },
+  { id: 'mod.gloom', name: 'Gloom', desc: 'Light sources are dimmed and sight is short.', minDepth: 3, weight: 6, maxTier: 2, excludes: ['mod.blaze'] },
+  { id: 'mod.blaze', name: 'Conflagration', desc: 'Fire pools erupt where enemies die.', minDepth: 8, weight: 6, maxTier: 3, excludes: ['mod.gloom'] },
+  { id: 'mod.frostbite', name: 'Frostbite', desc: 'Standing still chills you.', minDepth: 10, weight: 6, maxTier: 3 },
   { id: 'mod.resistant', name: 'Warded', desc: 'Enemies gain {v}% all resistances.', minDepth: 16, weight: 7, maxTier: 4 },
   { id: 'mod.reflect', name: 'Thorned', desc: 'Enemies reflect {v}% of melee damage.', minDepth: 20, weight: 5, maxTier: 3 },
-  { id: 'mod.ambush', name: 'Ambush', desc: 'Packs lie in wait and open from cover.', minDepth: 18, weight: 6, maxTier: 2 },
-  { id: 'mod.greed', name: 'Hoard', desc: 'Treasure is {v}% richer, guarded by rares.', minDepth: 7, weight: 8, maxTier: 4 },
+  { id: 'mod.ambush', name: 'Ambush', desc: 'Packs lie in wait and open from cover.', minDepth: 6, weight: 6, maxTier: 2 },
+  { id: 'mod.greed', name: 'Hoard', desc: 'Treasure is {v}% richer, guarded by rares.', minDepth: 1, weight: 8, maxTier: 4 },
   { id: 'mod.fragile', name: 'Brittle Bones', desc: 'You take {v}% more damage but deal {v}% more.', minDepth: 25, weight: 5, maxTier: 3 },
   { id: 'mod.hunted', name: 'Hunted', desc: 'A stalker follows you through every floor.', minDepth: 30, weight: 4, maxTier: 2 },
   { id: 'mod.unstable', name: 'Unstable', desc: 'Elites detonate on death.', minDepth: 22, weight: 5, maxTier: 3 },
@@ -307,8 +307,13 @@ export function modifierId(mod: string): string {
 }
 
 function rollModifiers(depth: number, rng: Rng): string[] {
-  const count = clamp(Math.floor(depth / 9), 0, 6);
-  if (count === 0) return [];
+  // Every run gets at least one.
+  //
+  // This was `floor(depth / 9)`, so depths 1 to 8 rolled none at all — the one
+  // system that makes a run feel different from the last was switched off for
+  // the whole early game, which is exactly how "every run feels the same"
+  // happens. A second arrives at 7, a third at 15, and so on.
+  const count = clamp(1 + Math.floor((depth - 1) / 8), 1, 6);
   const pool = RUN_MODIFIERS.filter((m) => m.minDepth <= depth);
   if (pool.length === 0) return [];
   const chosen: RunModifierDef[] = [];
@@ -324,8 +329,12 @@ function rollModifiers(depth: number, rng: Rng): string[] {
   // Tier rises with depth; deep runs stack heavier versions of the same modifier
   // rather than needing an ever-longer modifier list.
   const tierBase = 1 + Math.floor(depth / 35);
+  // And the tier is held down by depth as well as by the modifier's own cap.
+  // Now that every run carries a modifier, a tier-2 roll on floor one would be
+  // the first thing a brand new character meets.
+  const depthCap = 1 + Math.floor(depth / 6);
   return chosen.map((m) => {
-    const tier = clamp(tierBase + rng.int(0, 1), 1, m.maxTier);
+    const tier = clamp(tierBase + rng.int(0, 1), 1, Math.min(m.maxTier, depthCap));
     return `${m.id}@${tier}`;
   });
 }
@@ -539,15 +548,30 @@ export function eliteDensity(depth: number): number {
   // single most important early-game lever: a level 1 character meeting a
   // 4.5x-life elite pack on floor 1 simply dies.
   if (depth < dif.eliteFloor) return 0;
-  return clamp((0.05 + depth * 0.0038) * dif.eliteDensity, 0, 0.5);
+  // Capped well below half. This is a *per-pack* roll, and with the pack
+  // composition below it decides how many packs have a leader worth noticing —
+  // a number that stops meaning anything once most packs have one.
+  return clamp((0.05 + depth * 0.0038) * dif.eliteDensity, 0, 0.26);
 }
 
 export function championDensity(depth: number): number {
   const dif = activeDifficulty();
   // Champions are the gentler step up, so they arrive one floor earlier.
   if (depth < dif.eliteFloor - 1) return 0;
-  return clamp((0.09 + depth * 0.0055) * dif.eliteDensity, 0, 0.55);
+  // Measured at the old numbers: by depth 21-30 nearly a third of every
+  // monster on the floor was a champion and under half were plain. The step up
+  // has to stay a step, so the slope and the ceiling both come down.
+  return clamp((0.07 + depth * 0.0028) * dif.eliteDensity, 0, 0.2);
 }
+
+/** One rank below, for the retinue behind a pack leader. */
+const STEP_DOWN: Record<MonsterRank, MonsterRank> = {
+  boss: 'elite',
+  rare: 'champion',
+  elite: 'champion',
+  champion: 'normal',
+  normal: 'normal',
+};
 
 export function affixCountFor(rank: MonsterRank, depth: number): number {
   const extra = activeDifficulty().extraAffixes;
@@ -1120,9 +1144,15 @@ function placeSpawns(
     for (let k = 0; k < spots.length; k++) {
       const t = spots[k];
       usedTile.add(t);
-      // Rare packs have a leader plus normal minions; elites are all-elite.
-      const memberRank: MonsterRank =
-        rank === 'rare' ? (k === 0 ? 'rare' : 'champion') : rank;
+      // A special pack is a leader with a retinue, not a pack of clones.
+      //
+      // Rare packs already worked this way; elite and champion packs did not,
+      // so a single elite roll put six elites on the floor at once and by depth
+      // 25 half of everything you met was above normal rank. Now the front of
+      // the pack carries the rank and the rest sit one step down, which keeps
+      // the number of *packs* worth noticing while cutting the headcount.
+      const leaders = Math.max(1, Math.round(spots.length * 0.34));
+      const memberRank: MonsterRank = k < leaders ? rank : STEP_DOWN[rank];
       spawns.push({
         x: t % g.w,
         y: (t / g.w) | 0,

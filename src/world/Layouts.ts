@@ -220,6 +220,12 @@ export function layoutSizeFor(depth: number, kind: LayoutKind, rng: Rng): { w: n
   // Halls need room for the hallways between the rooms, not just the rooms.
   if (kind === 'halls') base = 76 + growth;
   if (kind === 'spiral') base = 66 + Math.floor(growth * 0.5);
+  // One enormous room needs the space to be enormous in.
+  if (kind === 'cathedral') base = 78 + growth;
+  // Small chambers, so the same footprint holds far more of them.
+  if (kind === 'warrens') base = 60 + Math.floor(growth * 0.8);
+  // Open ground reads as small quickly; terraces want room to breathe.
+  if (kind === 'terraces') base = 74 + growth;
   const w = base + rng.int(-4, 6);
   const h = base + rng.int(-4, 6);
   return { w: clamp(w, 40, 128) | 0, h: clamp(h, 40, 128) | 0 };
@@ -253,6 +259,15 @@ export function buildLayout(kind: LayoutKind, o: LayoutOpts): LayoutOut {
       break;
     case 'spiral':
       out = layoutSpiral(o);
+      break;
+    case 'cathedral':
+      out = layoutCathedral(o);
+      break;
+    case 'warrens':
+      out = layoutWarrens(o);
+      break;
+    case 'terraces':
+      out = layoutTerraces(o);
       break;
     default:
       out = layoutRooms(o);
@@ -1911,6 +1926,265 @@ function layoutSpiral(o: LayoutOpts): LayoutOut {
   }
 
   return { grid: g, rooms, kind: 'spiral' };
+}
+
+// ---------------------------------------------------------------------------
+// CATHEDRAL — one enormous nave, side chapels, a colonnade down the middle
+// ---------------------------------------------------------------------------
+
+/**
+ * The opposite of a corridor dungeon: one room so large it *is* the floor.
+ *
+ * Sightlines run the whole length, so a pack at the far end is a decision you
+ * make from a distance rather than a surprise round a corner. The two rows of
+ * pillars break line of sight just enough that ranged monsters have cover, and
+ * the chapels down either side hold the treasure worth stepping out of the nave
+ * for.
+ */
+function layoutCathedral(o: LayoutOpts): LayoutOut {
+  resetRoomIds();
+  const { width, height, rng } = o;
+  const g = new Grid(width, height);
+  const rooms: DungeonRoom[] = [];
+
+  // The nave: a wide hall down the long axis, inset from the border.
+  const alongX = width >= height;
+  const navLen = (alongX ? width : height) - 12;
+  const navWide = Math.max(13, Math.round((alongX ? height : width) * 0.42));
+  const nx = alongX ? 6 : Math.round((width - navWide) / 2);
+  const ny = alongX ? Math.round((height - navWide) / 2) : 6;
+  const nw = alongX ? navLen : navWide;
+  const nh = alongX ? navWide : navLen;
+  g.rect(nx, ny, nw, nh, T_FLOOR);
+  rooms.push(makeRoom(nx, ny, nw, nh));
+
+  // Colonnade: two rows of pillars, leaving a clear processional down the middle
+  // and a clear aisle against each wall.
+  const pillarGap = 6;
+  const inset = Math.max(3, Math.round(navWide * 0.26));
+  for (let i = 1; i * pillarGap < navLen - 3; i++) {
+    for (const side of [inset, navWide - inset - 1]) {
+      const px = alongX ? nx + i * pillarGap : nx + side;
+      const py = alongX ? ny + side : ny + i * pillarGap;
+      // Two by two, so it reads as a column and not a stray block.
+      g.rect(px, py, 2, 2, T_WALL);
+    }
+  }
+
+  // Chapels: alcoves off both long sides, each a small room with a door gap.
+  const chapels = Math.max(4, Math.floor(navLen / 11));
+  for (let i = 0; i < chapels; i++) {
+    const t = (i + 0.5) / chapels;
+    const cw = rng.int(6, 9);
+    const ch = rng.int(6, 9);
+    const far = i % 2 === 1;
+    let cx: number;
+    let cy: number;
+    if (alongX) {
+      cx = clamp(Math.round(nx + t * navLen - cw / 2), 3, width - cw - 3);
+      cy = far ? ny + nh - 1 : ny - ch + 1;
+    } else {
+      cy = clamp(Math.round(ny + t * navLen - ch / 2), 3, height - ch - 3);
+      cx = far ? nx + nw - 1 : nx - cw + 1;
+    }
+    if (cx < 2 || cy < 2 || cx + cw > width - 2 || cy + ch > height - 2) continue;
+    g.rect(cx, cy, cw, ch, T_FLOOR);
+    rooms.push(makeRoom(cx, cy, cw, ch, i === 0 ? 'treasure' : i === chapels - 1 ? 'shrine' : 'normal'));
+  }
+
+  // A raised chancel at one end — the natural place for the stairs down.
+  const chW = alongX ? 12 : navWide;
+  const chH = alongX ? navWide : 12;
+  const chX = alongX ? nx + nw - chW : nx;
+  const chY = alongX ? ny : ny + nh - chH;
+  g.rectHeight(chX, chY, chW, chH, 1);
+  rooms.push(makeRoom(chX, chY, chW, chH, 'vault'));
+
+  return { grid: g, rooms, kind: 'cathedral' };
+}
+
+// ---------------------------------------------------------------------------
+// WARRENS — many tiny chambers, short links, nothing you can see across
+// ---------------------------------------------------------------------------
+
+/**
+ * Claustrophobic by construction, and the counterweight to the cathedral.
+ *
+ * Rooms are small and numerous and the links between them are one tile wide and
+ * short, so you are never more than a few steps from a wall and never see more
+ * than one room ahead. Ranged builds have to close; melee builds get the fights
+ * they want. It is not a maze — every chamber is a real room with a real
+ * purpose, and the connections are dense rather than tree-shaped, so you are
+ * never walking a dead end back.
+ */
+function layoutWarrens(o: LayoutOpts): LayoutOut {
+  resetRoomIds();
+  const { width, height, rng, depth } = o;
+  const g = new Grid(width, height);
+  const noise = new Noise(o.seed ^ 0x77a3);
+  const rooms: DungeonRoom[] = [];
+
+  // A loose grid of cells, each holding one small chamber somewhere inside it.
+  const CELL = 9;
+  const cols = Math.floor((width - 6) / CELL);
+  const rows = Math.floor((height - 6) / CELL);
+  const grid: Array<DungeonRoom | null> = new Array(cols * rows).fill(null);
+
+  for (let cy = 0; cy < rows; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      // A few cells stay solid, which is what gives the warren its irregular
+      // outline instead of reading as a grid of boxes.
+      if (rng.chance(0.12)) continue;
+      const w = rng.int(4, 6);
+      const h = rng.int(4, 6);
+      const x = 3 + cx * CELL + rng.int(0, CELL - w - 1);
+      const y = 3 + cy * CELL + rng.int(0, CELL - h - 1);
+      carveOrganicRoom(g, x, y, w, h, rng, noise, 0.35);
+      const room = makeRoom(x, y, w, h);
+      grid[cy * cols + cx] = room;
+      rooms.push(room);
+    }
+  }
+
+  // Link every neighbouring pair, with a few dropped so the map still has shape.
+  // Dense on purpose: a warren you have to backtrack through is just a maze.
+  const link = (a: DungeonRoom | null, b: DungeonRoom | null): void => {
+    if (!a || !b) return;
+    carveCorridor(g, a.center.x, a.center.y, b.center.x, b.center.y, 1, rng);
+    a.links.push(b.id);
+    b.links.push(a.id);
+  };
+  for (let cy = 0; cy < rows; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const here = grid[cy * cols + cx] ?? null;
+      if (!here) continue;
+      if (cx + 1 < cols && rng.chance(0.86)) link(here, grid[cy * cols + cx + 1] ?? null);
+      if (cy + 1 < rows && rng.chance(0.86)) link(here, grid[(cy + 1) * cols + cx] ?? null);
+    }
+  }
+
+  // One chamber opens out — a warren with no relief anywhere is exhausting, and
+  // the boss of a pack needs somewhere to actually be fought.
+  if (rooms.length > 3) {
+    const pick = rooms[rng.int(0, rooms.length - 1)]!;
+    const w = rng.int(11, 14);
+    const h = rng.int(11, 14);
+    const x = clamp(pick.center.x - (w >> 1), 3, width - w - 3);
+    const y = clamp(pick.center.y - (h >> 1), 3, height - h - 3);
+    g.rect(x, y, w, h, T_FLOOR);
+    rooms.push(makeRoom(x, y, w, h, depth > 3 ? 'vault' : 'treasure'));
+  }
+
+  widenPinchPoints(g, rng, 1);
+  return { grid: g, rooms, kind: 'warrens' };
+}
+
+// ---------------------------------------------------------------------------
+// TERRACES — open ground shaped by height, not by walls
+// ---------------------------------------------------------------------------
+
+/**
+ * Almost no interior walls at all. The floor is one broad sweep cut into
+ * plateaus, and the shape of a fight comes from where the ramps are.
+ *
+ * The height system was already there and only the spiral used it for anything
+ * structural. Here it is the whole layout: you can see the entire floor, but
+ * getting to what you can see means finding the ramp, so a pack two terraces up
+ * is a problem you watch approaching.
+ */
+function layoutTerraces(o: LayoutOpts): LayoutOut {
+  resetRoomIds();
+  const { width, height, rng } = o;
+  const g = new Grid(width, height);
+  const noise = new Noise(o.seed ^ 0x3e11);
+  const rooms: DungeonRoom[] = [];
+
+  // The floor: one large blob, eroded at the edges so the outline is natural.
+  const cx = width / 2;
+  const cy = height / 2;
+  const rx = width * 0.42;
+  const ry = height * 0.42;
+  for (let y = 3; y < height - 3; y++) {
+    for (let x = 3; x < width - 3; x++) {
+      const dx = (x - cx) / rx;
+      const dy = (y - cy) / ry;
+      const edge = noise.fbm(x * 0.055, y * 0.055, 3) * 0.34;
+      if (dx * dx + dy * dy + edge < 1) g.set(x, y, T_FLOOR);
+    }
+  }
+
+  // Terraces: broad bands of height taken straight from low-frequency noise, so
+  // the plateaus are large and irregular rather than a staircase.
+  const bands = rng.int(3, 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!g.walkable(x, y)) continue;
+      const n = noise.fbm(x * 0.028 + 60, y * 0.028, 2) * 0.5 + 0.5;
+      g.setHeight(x, y, Math.min(bands - 1, Math.floor(n * bands)));
+    }
+  }
+
+  // Ramps. Without these the terraces are separate islands, so this is the one
+  // part that has to be deliberate rather than noise: walk each boundary and
+  // punch a wide slope through it at intervals.
+  const at = (x: number, y: number): number => (g.walkable(x, y) ? g.height(x, y) : -99);
+  const ramps: Array<{ x: number; y: number }> = [];
+  for (let y = 5; y < height - 5; y += 2) {
+    for (let x = 5; x < width - 5; x += 2) {
+      if (!g.walkable(x, y)) continue;
+      const h = at(x, y);
+      // A boundary tile: some neighbour is exactly one step lower.
+      let lower = false;
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as Array<[number, number]>) {
+        if (at(x + dx, y + dy) === h - 1) lower = true;
+      }
+      if (!lower) continue;
+      // Far enough from the last ramp that the terraces still mean something.
+      if (ramps.some((r) => Math.abs(r.x - x) + Math.abs(r.y - y) < 16)) continue;
+      ramps.push({ x, y });
+    }
+  }
+  for (const r of ramps) {
+    const w = rng.int(4, 6);
+    for (let dy = -w; dy <= w; dy++) {
+      for (let dx = -w; dx <= w; dx++) {
+        const x = r.x + dx;
+        const y = r.y + dy;
+        if (!g.walkable(x, y)) continue;
+        // Blend toward the ramp's own height across the patch, which is what
+        // turns a cliff into a slope the player can walk up.
+        const d = Math.hypot(dx, dy) / w;
+        if (d > 1) continue;
+        const here = g.height(x, y);
+        const target = g.height(r.x, r.y);
+        g.setHeight(x, y, Math.round(here + (target - here) * (1 - d)));
+      }
+    }
+  }
+
+  // A handful of named spots so props, spawns and stairs have somewhere to go.
+  const spots = Math.max(5, Math.floor(Math.min(width, height) / 9));
+  for (let i = 0; i < spots; i++) {
+    const a = (i / spots) * Math.PI * 2 + rng.range(0, 0.6);
+    const rr = rng.range(0.25, 0.8);
+    const w = rng.int(7, 11);
+    const h = rng.int(7, 11);
+    const x = clamp(Math.round(cx + Math.cos(a) * rx * rr) - (w >> 1), 3, width - w - 3);
+    const y = clamp(Math.round(cy + Math.sin(a) * ry * rr) - (h >> 1), 3, height - h - 3);
+    if (!g.walkable(x + (w >> 1), y + (h >> 1))) continue;
+    rooms.push(makeRoom(x, y, w, h, i === 0 ? 'treasure' : i === 1 ? 'shrine' : 'normal'));
+  }
+  // Guarantee at least one room even on a hostile roll.
+  if (rooms.length === 0) {
+    rooms.push(makeRoom(Math.round(cx) - 5, Math.round(cy) - 5, 10, 10));
+  }
+
+  return { grid: g, rooms, kind: 'terraces' };
 }
 
 // ---------------------------------------------------------------------------

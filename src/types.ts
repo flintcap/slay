@@ -568,7 +568,22 @@ export interface BiomeDef {
   music: string;
 }
 
-export type LayoutKind = 'rooms' | 'halls' | 'caves' | 'maze' | 'catacombs' | 'ruins' | 'arena' | 'spiral';
+export type LayoutKind =
+  | 'rooms'
+  | 'halls'
+  | 'caves'
+  | 'maze'
+  | 'catacombs'
+  | 'ruins'
+  | 'arena'
+  | 'spiral'
+  // Added because five of the eight biomes led with `halls` and every run read
+  // as the same corridor dungeon. These three are deliberately unlike it and
+  // unlike each other: one enormous room, one warren of tiny ones, one open
+  // floor with almost no walls at all.
+  | 'cathedral'
+  | 'warrens'
+  | 'terraces';
 
 export type TileKind =
   | 'void'

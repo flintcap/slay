@@ -51,6 +51,7 @@ interface Roll {
   monsters: string[];
   bosses: string[];
   packs: number[];
+  ranks: Record<string, number>;
   elites: number;
   spawns: number;
   affixes: number;
@@ -66,6 +67,7 @@ for (let r = 0; r < RUNS; r++) {
   const bosses = new Set<string>();
   const layouts = new Set<string>();
   const packs: number[] = [];
+  const ranks: Record<string, number> = {};
   let elites = 0;
   let spawns = 0;
   let affixes = 0;
@@ -74,6 +76,7 @@ for (let r = 0; r < RUNS; r++) {
     for (const s of level.spawns ?? []) {
       spawns++;
       monsters.add(s.monsterId);
+      ranks[s.rank] = (ranks[s.rank] ?? 0) + 1;
       if (s.rank && s.rank !== 'normal') elites++;
       affixes += s.affixes?.length ?? 0;
     }
@@ -93,6 +96,7 @@ for (let r = 0; r < RUNS; r++) {
     monsters: [...monsters],
     bosses: [...bosses],
     packs,
+    ranks,
     elites,
     spawns,
     affixes,
@@ -173,6 +177,24 @@ for (const [lo, hi] of [
   });
 }
 
+// Rank split by depth band. "Not normal" lumps champions in with elites and
+// makes the elite share look far worse than it is, so break it out.
+const rankBands: Array<{ band: string; pct: Record<string, number> }> = [];
+for (const [lo, hi] of [[1, 5], [6, 12], [13, 20], [21, 30]]) {
+  const band = rolls.filter((r) => r.depth >= lo! && r.depth <= hi!);
+  const total: Record<string, number> = {};
+  let n = 0;
+  for (const r of band) {
+    for (const [k, v] of Object.entries(r.ranks)) {
+      total[k] = (total[k] ?? 0) + v;
+      n += v;
+    }
+  }
+  const pct: Record<string, number> = {};
+  for (const [k, v] of Object.entries(total)) pct[k] = +((v / Math.max(1, n)) * 100).toFixed(1);
+  rankBands.push({ band: `${lo}-${hi}`, pct });
+}
+
 // --- bosses ---------------------------------------------------------------
 const bossSeen = new Set<string>();
 for (const r of rolls) for (const b of r.bosses) bossSeen.add(b);
@@ -202,6 +224,7 @@ console.log(
     packMax,
     lonerPct: +((loners / Math.max(1, allPacks.length)) * 100).toFixed(1),
     density,
+    rankBands,
     elitePct: +((totalElites / Math.max(1, totalSpawns)) * 100).toFixed(1),
     affixPerElite: +(totalAffixes / Math.max(1, totalElites)).toFixed(2),
     bossRoster: BOSSES.length,
