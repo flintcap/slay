@@ -58,6 +58,8 @@ const CHUNK = 32;
 const MAX_TORCH_LIGHTS = 8;
 const SHADOW_LIGHTS = 2;
 const HALF = TILE_SIZE * 0.5;
+/** How much of the lid is cut away around the player, in world units. */
+const ROOF_OPEN = 15;
 
 // ---------------------------------------------------------------------------
 // Vertex accumulation
@@ -351,6 +353,8 @@ export class DungeonMesh {
   private lightTimer = 0;
   private cullTimer = 0;
   private cullRadius = 68;
+  /** Where the hole in the roof is centred. Written every frame. */
+  private readonly heroXZ = new THREE.Vector2();
 
   constructor(level: DungeonLevel, biome: BiomeDef, rng: Rng) {
     this.level = level;
@@ -479,6 +483,46 @@ export class DungeonMesh {
     }
     this.ownedMat.push(bedrockMat);
 
+    // The lid opens around the player.
+    //
+    // Closing the roof fixed the holes and created a worse problem: from a
+    // camera pitched at 0.92 radians the lid *is* the frame. A rendered floor
+    // showed the player in a small visible pocket with roof over most of the
+    // screen, which is not a level you can read or fight on.
+    //
+    // Every game in this genre solves it the same way — the roof simply is not
+    // there near you. A radial dissolve rather than a hard circle, because a
+    // hard edge sweeping across a stone ceiling is more distracting than the
+    // roof was. Dithered rather than blended: the lid is opaque geometry that
+    // walls draw against, and making it transparent would put it in the sorting
+    // pass for no gain.
+    bedrockMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uHero = { value: this.heroXZ };
+      shader.uniforms.uOpen = { value: ROOF_OPEN };
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vRoofPos;')
+        .replace(
+          '#include <begin_vertex>',
+          '#include <begin_vertex>\nvRoofPos = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          '#include <common>',
+          '#include <common>\nvarying vec3 vRoofPos;\nuniform vec2 uHero;\nuniform float uOpen;',
+        )
+        .replace(
+          '#include <clipping_planes_fragment>',
+          [
+            'float roofD = distance(vRoofPos.xz, uHero);',
+            'float roofA = smoothstep(uOpen * 0.62, uOpen, roofD);',
+            // Screen-space hash: the band dissolves instead of banding.
+            'float roofN = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);',
+            'if (roofA < roofN) discard;',
+            '#include <clipping_planes_fragment>',
+          ].join('\n'),
+        );
+    };
+
     const FLOOR0 = 0;
     const WALL0 = FLOOR0 + floorMats.length;
     const TRIM = WALL0 + wallMats.length;
@@ -555,7 +599,7 @@ export class DungeonMesh {
             }
 
             if (v === T_WALL) {
-              this.emitWall(surfs, x, y, wx, wz, hy, roofY, wallMats.length, WALL0, TRIM, BASE);
+              this.emitWall(surfs, x, y, wx, wz, hy, roofY, wallMats.length, WALL0, TRIM, BASE, surfs[BEDROCK]);
               continue;
             }
 
@@ -720,6 +764,8 @@ export class DungeonMesh {
     WALL0: number,
     TRIM: number,
     BASE: number,
+    /** The bucket the level's lid is accumulated into. */
+    roof: Surf,
   ): void {
     const wallH = topY - hy;
     // Deterministic wall variant, clumped so it reads as masonry courses rather
@@ -761,7 +807,10 @@ export class DungeonMesh {
         trim.ledge(fx, my + 0.16, fz, DX4[d], DY4[d], TILE_SIZE, 0.07, true);
       }
     }
-    s.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
+    // The cap goes in the roof bucket, not the wall bucket. A wall top and the
+    // rock beyond it are the same surface — the lid over the level — and the
+    // lid has to be able to open around the player as one piece.
+    roof.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
   }
 
   /** Walls of a pit, dropped below the surrounding floor. */
@@ -1348,6 +1397,8 @@ export class DungeonMesh {
   // --- per-frame ----------------------------------------------------------
 
   update(dt: number, elapsed: number, focus: THREE.Vector3): void {
+    // The roof follows the camera focus, which is the player.
+    this.heroXZ.set(focus.x, focus.z);
     this.updateLights(dt, elapsed, focus);
     this.updateFlames(elapsed, focus);
 

@@ -55,7 +55,9 @@ const rules = [
   ['one flat rock height per level', /const roofY = maxStep \* STEP_HEIGHT \+ wallH;/],
   ['void tiles cap at it', /surfs\[BEDROCK\]\.flat\(wx, roofY, wz/],
   ['wall tiles cap at it', /this\.emitWall\(surfs, x, y, wx, wz, hy, roofY,/],
-  ['every wall tile is capped', /^\s*s\.flat\(wx, topY, wz, HALF, true, x % 4, y % 4, 1\);$/m],
+  ['every wall tile is capped', /^\s*roof\.flat\(wx, topY, wz, HALF, true, x % 4, y % 4, 1\);$/m],
+  ['wall tops share the roof surface', /this\.emitWall\([^)]*surfs\[BEDROCK\]\)/],
+  ['the roof opens around the player', /float roofA = smoothstep\(uOpen \* 0\.62, uOpen, roofD\);/],
 ];
 console.log('\nand the builder still works that way:');
 const unwired = [];
