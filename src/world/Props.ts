@@ -40,7 +40,7 @@ import { displace, lathe, mergeGeometries, stoneBlock } from '../art/Meshes';
 // Definitions
 // ---------------------------------------------------------------------------
 
-export type PropPlacementKind = 'floor' | 'wall' | 'feature' | 'liquid' | 'ceiling';
+export type PropPlacementKind = 'floor' | 'wall' | 'feature' | 'liquid' | 'ceiling' | 'detail';
 
 export interface PropLightSpec {
   color: number;
@@ -89,6 +89,25 @@ function P(kind: string, o: Partial<PropDef>): PropDef {
     receiveShadow: true,
     ...o,
   };
+}
+
+/**
+ * Ground detail: too small to matter, too many to leave out.
+ *
+ * No collision, no shadow, no blocking. The placement pass is allowed to be
+ * far more generous with these than with clutter precisely because none of
+ * that is true of them.
+ */
+function DETAIL(kind: string): PropDef {
+  return P(kind, {
+    placement: 'detail',
+    radius: 0,
+    blocks: false,
+    variants: 4,
+    scaleJitter: 0.3,
+    castShadow: false,
+    receiveShadow: true,
+  });
 }
 
 const TORCH_LIGHT = (color: number, i = 6.5, d = 13, flicker = 1): PropLightSpec => ({
@@ -279,6 +298,29 @@ export const PROP_DEFS: Record<string, PropDef> = {
     light: { color: 0x9fd8ff, intensity: 6, distance: 12, height: 1.5, flicker: 0.35, forward: 0 },
   }),
   lever: P('lever', { placement: 'wall', radius: 0, variants: 2, freeRotate: false, wallOffset: 0.68, interact: 'lever', castShadow: false }),
+
+  // --- ground detail -----------------------------------------------------
+  //
+  // The layer that makes a floor read as a place rather than a plane.
+  //
+  // A floor covered in barrels and columns is not detailed, it is an obstacle
+  // course; what a finished level actually has is a great deal of small stuff
+  // nobody looks at directly — grit, chips, drifts, growth. Everything here is
+  // tiny, blocks nothing, casts no shadow and has zero collision radius, so it
+  // can be scattered an order of magnitude more densely than the clutter layer
+  // without changing how the floor plays or costing a shadow pass.
+  pebbles: DETAIL('pebbles'),
+  boneChips: DETAIL('boneChips'),
+  ashDrift: DETAIL('ashDrift'),
+  mossPatch: DETAIL('mossPatch'),
+  sporeTuft: DETAIL('sporeTuft'),
+  iceCrust: DETAIL('iceCrust'),
+  slagChunk: DETAIL('slagChunk'),
+  shellFragment: DETAIL('shellFragment'),
+  sandDrift: DETAIL('sandDrift'),
+  voidMote: DETAIL('voidMote'),
+  scorchMark: DETAIL('scorchMark'),
+  grassTuft: DETAIL('grassTuft'),
 };
 
 export function propDef(kind: string): PropDef {
@@ -339,6 +381,7 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
   placeInteractables(ctx);
   placeWallDressing(ctx);
   placeScatter(ctx);
+  placeGroundDetail(ctx);
   placeLiquidProps(ctx);
 
   enforceConnectivity(ctx);
@@ -740,7 +783,7 @@ function placeScatter(ctx: PlaceCtx): void {
   const ox = ctx.rng.range(0, 200);
   const oy = ctx.rng.range(0, 200);
 
-  const baseDensity = 0.11;
+  const baseDensity = 0.2;
   for (let y = 1; y < ctx.h - 1; y++) {
     for (let x = 1; x < ctx.w - 1; x++) {
       const v = tile(ctx, x, y);
@@ -748,22 +791,102 @@ function placeScatter(ctx: PlaceCtx): void {
       if (isOccupied(ctx, x, y)) continue;
 
       const room = roomAtTile(ctx, x, y);
-      // Corridors get a fraction of the clutter of rooms — you must be able to
-      // run through them.
-      const inRoom = room !== null;
-      if (!inRoom && ctx.rng.chance(0.86)) continue;
-      if (room && (room.kind === 'entry' || room.kind === 'boss')) continue;
+      if (room && room.kind === 'entry') continue;
+      // A boss arena needs floor to fight on, not a bare plate. It keeps the
+      // middle clear and takes clutter only around the rim, and only clutter
+      // that does not block — measured, the arena floor was half bare, which is
+      // most of the screen during the fight you came for.
+      const bossRoom = room?.kind === 'boss';
+      if (bossRoom) {
+        const rimX = Math.min(x - room.x, room.x + room.w - 1 - x);
+        const rimY = Math.min(y - room.y, room.y + room.h - 1 - y);
+        if (Math.min(rimX, rimY) > 3) continue;
+      }
+
+      // How open the ground is here, out of the eight neighbours.
+      //
+      // This used to ask "is this tile inside a room rectangle", and thin
+      // anything that was not by 86%. That works for a dungeon made of boxes
+      // and corridors and fails completely for one that is not: the terraces,
+      // arena and ruins shapes are mostly open ground that no room rectangle
+      // covers, so almost nothing was placed on them. Measured, those three
+      // were 45-55% bare while a maze was under 1%. Openness is the thing the
+      // rule was reaching for — a corridor you must be able to run down is a
+      // narrow tile, whatever the room list says.
+      let open = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          if (walkable(ctx, x + dx, y + dy)) open++;
+        }
+      }
+      const corridor = open <= 4;
+      if (corridor && ctx.rng.chance(0.72)) continue;
 
       const clump = n.fbm((x + ox) * 0.11, (y + oy) * 0.11, 3) * 0.5 + 0.5;
-      const wallHug =
-        !walkable(ctx, x - 1, y) || !walkable(ctx, x + 1, y) || !walkable(ctx, x, y - 1) || !walkable(ctx, x, y + 1)
-          ? 2.1
-          : 1;
-      const density = baseDensity * Math.pow(clump, 2.4) * 3.2 * wallHug;
-      if (!ctx.rng.chance(clamp(density, 0, 0.55))) continue;
+      const touchesWall =
+        !walkable(ctx, x - 1, y) || !walkable(ctx, x + 1, y) || !walkable(ctx, x, y - 1) || !walkable(ctx, x, y + 1);
+      // Clutter still gathers against walls, because that is where it gathers.
+      // Open ground no longer gets nothing, though — it gets the base rate, and
+      // a second noise field so the middle of a big room is not a uniform
+      // sprinkle.
+      const wallHug = touchesWall ? 2.0 : 1;
+      const drift = n.fbm((x + ox) * 0.045 + 30, (y + oy) * 0.045, 2) * 0.5 + 0.5;
+      const density = baseDensity * Math.pow(clump, 2.0) * 3.2 * wallHug * (0.55 + drift * 0.9);
+      if (!ctx.rng.chance(clamp(density, 0, 0.6))) continue;
+
+      const kind = bossRoom
+        ? pickWeighted(ctx, pool.filter((p) => !propDef(p.kind).blocks))
+        : pickWeighted(ctx, pool);
+      emit(ctx, x, y, kind, ctx.rng.range(0, Math.PI * 2), propDef(kind).interact);
+    }
+  }
+}
+
+/**
+ * The detail layer.
+ *
+ * Runs after the clutter and takes what is left, which is most of the floor.
+ * Reported as "nothing to them but empty rooms and halls", and the measurement
+ * agreed: a floor carried about fourteen props per hundred walkable tiles, so
+ * six tiles in seven had nothing on them at all.
+ *
+ * None of this blocks, collides or casts a shadow, so it can be laid down at a
+ * rate that would be unplayable for clutter. It clumps on noise rather than
+ * spreading evenly — an even sprinkle reads as wallpaper, and what a real floor
+ * has is drifts and bare patches between them.
+ */
+function placeGroundDetail(ctx: PlaceCtx): void {
+  const pool = ctx.art.detailProps;
+  if (!pool || pool.length === 0) return;
+  const n = ctx.noise;
+  const ox = ctx.rng.range(0, 200);
+  const oy = ctx.rng.range(0, 200);
+
+  for (let y = 1; y < ctx.h - 1; y++) {
+    for (let x = 1; x < ctx.w - 1; x++) {
+      const v = tile(ctx, x, y);
+      if (v !== T_FLOOR && v !== T_RUBBLE) continue;
+      if (isOccupied(ctx, x, y)) continue;
+      const room = roomAtTile(ctx, x, y);
+      // The landing you arrive on stays clean, so the way out is never lost in
+      // grit on the first frame of a floor.
+      if (room && room.kind === 'entry') continue;
+
+      // Drifts: a broad field decides where detail gathers, a finer one breaks
+      // its edges. Both are needed — one alone gives either uniform fuzz or
+      // hard-edged blobs.
+      const drift = n.fbm((x + ox) * 0.052, (y + oy) * 0.052, 3) * 0.5 + 0.5;
+      const grain = n.fbm((x + ox) * 0.21 + 90, (y + oy) * 0.21, 2) * 0.5 + 0.5;
+      const touchesWall =
+        !walkable(ctx, x - 1, y) || !walkable(ctx, x + 1, y) || !walkable(ctx, x, y - 1) || !walkable(ctx, x, y + 1);
+      // Grit piles up against walls and in corners exactly like real grit.
+      const edge = touchesWall ? 1.7 : 1;
+      const density = 0.5 * Math.pow(drift, 1.5) * (0.45 + grain * 1.1) * edge;
+      if (!ctx.rng.chance(clamp(density, 0, 0.78))) continue;
 
       const kind = pickWeighted(ctx, pool);
-      emit(ctx, x, y, kind, ctx.rng.range(0, Math.PI * 2), propDef(kind).interact);
+      emit(ctx, x, y, kind, ctx.rng.range(0, Math.PI * 2));
     }
   }
 }
@@ -2137,6 +2260,35 @@ function build(kind: string, ctx: BuildCtx): ReturnType<Builder> {
       return buildCluster(ctx, { count: [2, 5], size: [0.24, 0.6], palette: 'crystal.void', shape: 'octa', spread: 0.32, emissive: 0xd040ff });
     case 'brokenColumn':
       return buildPillar(ctx, 'pillarBroken');
+
+    // --- ground detail ---------------------------------------------------
+    // All the same builder with different grammar. Small counts and small
+    // sizes: at this scale the silhouette is two or three pixels, so the read
+    // comes from how much of it there is and what colour it is, not shape.
+    case 'pebbles':
+      return buildCluster(ctx, { count: [4, 9], size: [0.05, 0.13], palette: art.walls[0].palette, shape: 'rock', spread: 0.46 });
+    case 'boneChips':
+      return buildCluster(ctx, { count: [3, 7], size: [0.05, 0.14], palette: 'bone.pale', shape: 'bone', spread: 0.44 });
+    case 'ashDrift':
+      return buildCluster(ctx, { count: [3, 6], size: [0.14, 0.34], palette: art.floors[0].palette, shape: 'sphere', spread: 0.42, displaceAmt: 0.09 });
+    case 'mossPatch':
+      return buildCluster(ctx, { count: [4, 8], size: [0.08, 0.2], palette: 'flesh.fungal', shape: 'sphere', spread: 0.46 });
+    case 'sporeTuft':
+      return buildCluster(ctx, { count: [2, 5], size: [0.06, 0.16], palette: 'flesh.fungal', shape: 'cone', spread: 0.34, emissive: art.veinColor || 0x6fe0a0 });
+    case 'iceCrust':
+      return buildCluster(ctx, { count: [3, 7], size: [0.07, 0.19], palette: 'crystal.ice', shape: 'octa', spread: 0.45 });
+    case 'slagChunk':
+      return buildCluster(ctx, { count: [3, 6], size: [0.07, 0.18], palette: 'metal.dark', shape: 'rock', spread: 0.42 });
+    case 'shellFragment':
+      return buildCluster(ctx, { count: [3, 7], size: [0.06, 0.17], palette: 'flesh.chitin', shape: 'octa', spread: 0.44 });
+    case 'sandDrift':
+      return buildCluster(ctx, { count: [3, 6], size: [0.13, 0.3], palette: art.floors[0].palette, shape: 'sphere', spread: 0.44, displaceAmt: 0.08 });
+    case 'voidMote':
+      return buildCluster(ctx, { count: [2, 5], size: [0.05, 0.12], palette: 'crystal.void', shape: 'octa', spread: 0.4, emissive: 0xb060ff });
+    case 'scorchMark':
+      return buildCluster(ctx, { count: [2, 4], size: [0.16, 0.36], palette: 'metal.dark', shape: 'sphere', spread: 0.4, displaceAmt: 0.12 });
+    case 'grassTuft':
+      return buildCluster(ctx, { count: [3, 6], size: [0.07, 0.18], palette: 'flesh.fungal', shape: 'cone', spread: 0.4 });
 
     default:
       return buildMisc(ctx, kind);

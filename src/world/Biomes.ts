@@ -82,6 +82,12 @@ export interface BiomeArt {
   wallProps: Array<{ kind: string; weight: number }>;
   /** Big set-dressing placed at room centres. */
   featureProps: Array<{ kind: string; weight: number }>;
+  /**
+   * Ground detail: grit, chips, drifts, growth. Scattered far more densely than
+   * clutter because none of it blocks, collides or casts a shadow. This is the
+   * layer that stops a floor reading as a plane with objects on it.
+   */
+  detailProps: Array<{ kind: string; weight: number }>;
   /** Pillar prop used on room grids, or null for none. */
   pillar: string | null;
   /** How cracked/damaged the floor reads, 0..1. */
@@ -449,6 +455,7 @@ const ART: Record<BiomeId, BiomeArt> = {
       { kind: 'altar', weight: 3 },
       { kind: 'statue', weight: 4 },
     ],
+    detailProps: [{ kind: 'boneChips', weight: 7 }, { kind: 'pebbles', weight: 6 }, { kind: 'ashDrift', weight: 3 }, { kind: 'mossPatch', weight: 2 }],
     pillar: 'pillarGothic',
     damage: 0.35,
     puddles: 0.1,
@@ -504,6 +511,7 @@ const ART: Record<BiomeId, BiomeArt> = {
       { kind: 'stalagmite', weight: 5 },
       { kind: 'shrine', weight: 2 },
     ],
+    detailProps: [{ kind: 'pebbles', weight: 7 }, { kind: 'mossPatch', weight: 6 }, { kind: 'sporeTuft', weight: 5 }, { kind: 'grassTuft', weight: 3 }],
     pillar: 'stalacColumn',
     damage: 0.15,
     puddles: 0.4,
@@ -563,6 +571,7 @@ const ART: Record<BiomeId, BiomeArt> = {
       { kind: 'brazier', weight: 4 },
       { kind: 'smeltingVat', weight: 5 },
     ],
+    detailProps: [{ kind: 'slagChunk', weight: 8 }, { kind: 'scorchMark', weight: 5 }, { kind: 'pebbles', weight: 4 }, { kind: 'ashDrift', weight: 3 }],
     pillar: 'pillarIron',
     damage: 0.5,
     puddles: 0.05,
@@ -622,6 +631,7 @@ const ART: Record<BiomeId, BiomeArt> = {
       { kind: 'fountain', weight: 5 },
       { kind: 'shrine', weight: 4 },
     ],
+    detailProps: [{ kind: 'sandDrift', weight: 7 }, { kind: 'mossPatch', weight: 6 }, { kind: 'pebbles', weight: 5 }, { kind: 'shellFragment', weight: 3 }],
     pillar: 'pillarFluted',
     damage: 0.45,
     puddles: 0.65,
@@ -678,6 +688,7 @@ const ART: Record<BiomeId, BiomeArt> = {
       { kind: 'eggSac', weight: 6 },
       { kind: 'shrine', weight: 2 },
     ],
+    detailProps: [{ kind: 'shellFragment', weight: 8 }, { kind: 'sporeTuft', weight: 5 }, { kind: 'mossPatch', weight: 4 }, { kind: 'boneChips', weight: 3 }],
     pillar: 'chitinColumn',
     damage: 0.2,
     puddles: 0.25,
@@ -736,6 +747,7 @@ const ART: Record<BiomeId, BiomeArt> = {
       { kind: 'shrine', weight: 3 },
       { kind: 'brazier', weight: 3 },
     ],
+    detailProps: [{ kind: 'iceCrust', weight: 8 }, { kind: 'pebbles', weight: 5 }, { kind: 'boneChips', weight: 3 }, { kind: 'sandDrift', weight: 2 }],
     pillar: 'pillarIce',
     damage: 0.25,
     puddles: 0.3,
@@ -794,6 +806,7 @@ const ART: Record<BiomeId, BiomeArt> = {
       { kind: 'altar', weight: 4 },
       { kind: 'deadTree', weight: 5 },
     ],
+    detailProps: [{ kind: 'ashDrift', weight: 8 }, { kind: 'scorchMark', weight: 6 }, { kind: 'boneChips', weight: 5 }, { kind: 'pebbles', weight: 4 }],
     pillar: 'pillarBroken',
     damage: 0.75,
     puddles: 0.02,
@@ -849,6 +862,7 @@ const ART: Record<BiomeId, BiomeArt> = {
       { kind: 'obelisk', weight: 6 },
       { kind: 'altar', weight: 4 },
     ],
+    detailProps: [{ kind: 'voidMote', weight: 7 }, { kind: 'pebbles', weight: 5 }, { kind: 'ashDrift', weight: 3 }, { kind: 'boneChips', weight: 2 }],
     pillar: 'pillarVoid',
     damage: 0.3,
     puddles: 0.08,

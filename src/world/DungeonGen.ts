@@ -539,9 +539,16 @@ export function levelsForDepth(depth: number): number {
  */
 export function monsterBudget(depth: number, floorTiles: number, levelIndex: number, levelsTotal: number): number {
   const curve = 16 + depth * 0.75 + Math.pow(Math.max(0, depth), 1.18) * 0.22;
-  const soft = 34 + 110 * (1 - Math.exp(-curve / 110));
-  // Density guard: never more than one monster per ~14 walkable tiles.
-  const byArea = floorTiles / 14;
+  // Measured at the old numbers: one monster per 43 walkable tiles, which at a
+  // two-metre tile is one every 170 square metres. A floor that size with that
+  // many things on it is a walk between fights rather than a fight. The soft
+  // cap is what was binding — the area guard below never came near it — so the
+  // cap is where the change belongs.
+  const soft = 100 + 260 * (1 - Math.exp(-curve / 120));
+  // Density guard: never more than one monster per ~11 walkable tiles. Still a
+  // guard rather than the driver, but it now lets a big open floor carry a
+  // crowd proportional to its size instead of the same pack a small one gets.
+  const byArea = floorTiles / 11;
   // Later floors of a run are hotter than the first.
   const rampe = 0.85 + 0.3 * (levelIndex / Math.max(1, levelsTotal - 1));
   // Difficulty widens or thins every floor.
@@ -1069,6 +1076,9 @@ function placeSpawns(
 
   let budget = monsterBudget(depth, floorTiles, levelIndex, levelsTotal);
   budget = Math.round(budget * (1 + swarmTier * 0.14));
+  // The boss floor is the boss's floor. A crowd this size on top of a boss
+  // fight is not harder, it is just noise on top of the thing you came for.
+  if (levelIndex === levelsTotal - 1) budget = Math.round(budget * 0.45);
 
   const eliteChance = eliteDensity(depth) * (1 + eliteTier * 0.25);
   const champChance = championDensity(depth);
