@@ -613,6 +613,11 @@ export interface DungeonLevel {
   seed: number;
   depth: number;
   biome: BiomeId;
+  /**
+   * Which dressed sub-version of the biome this run wears. Chosen once per run
+   * so a descent stays coherent, and 'plain' means the biome's own art.
+   */
+  variant?: string;
   layout: LayoutKind;
   width: number;
   height: number;
@@ -636,6 +641,11 @@ export interface SpawnPoint {
   affixes: string[];
   /** Pack id — members share aggro. */
   packId: number;
+  /**
+   * A named rare's id, when this spawn is one. The entity layer resolves it to
+   * a name, a title, fixed affixes and a stat bump.
+   */
+  named?: string;
 }
 
 export interface PropPlacement {
@@ -653,6 +663,8 @@ export interface DungeonRun {
   seed: number;
   depth: number;
   biome: BiomeId;
+  /** The biome variant every level of this run wears. */
+  variant?: string;
   levels: DungeonLevel[];
   quest: QuestInstance;
   /** Global run modifiers from endless scaling. */

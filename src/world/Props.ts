@@ -307,7 +307,9 @@ interface PlaceCtx {
 
 /** Builds the full prop list for a level. */
 export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): PropPlacement[] {
-  const art = biomeArt(biome.id);
+  // The run's dressed version of the biome, so a flooded crypt gets the
+  // flooded crypt's clutter rather than the plain one's.
+  const art = biomeArt(biome.id, level.variant);
   const w = level.width;
   const h = level.height;
   const roomOf = (level as DungeonLevel & { roomOf?: Int16Array }).roomOf ?? buildRoomIndex(level);

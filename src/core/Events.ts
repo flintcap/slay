@@ -33,7 +33,7 @@ export interface GameEvents {
   'item:unequipped': { item: Item };
   'quest:progress': { index: number; progress: number; target: number; desc: string };
   'quest:complete': { name: string };
-  'depth:changed': { depth: number; level: number; of: number };
+  'depth:changed': { depth: number; level: number; of: number; place?: string };
   /** A run was finished and banked. Fires once, on the way back to town. */
   'run:cleared': { depth: number };
   'boss:engaged': { name: string; title: string; maxLife: number };

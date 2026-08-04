@@ -83,12 +83,18 @@ async function main(): Promise<void> {
   // Hand the world generator the real bestiary. Without this it falls back to
   // a structurally-valid placeholder catalogue whose ids match no real monster,
   // and every spawn is silently discarded at load time.
-  const [{ setMonsterCatalog }, { MONSTERS, pickMonstersForDepth }, { MONSTER_AFFIXES }, { pickBossForDepth }] =
-    await Promise.all([
+  const [
+    { setMonsterCatalog },
+    { MONSTERS, pickMonstersForDepth },
+    { MONSTER_AFFIXES },
+    { pickBossForDepth },
+    { namedRaresFor },
+  ] = await Promise.all([
       import('./world/DungeonGen'),
       import('./data/monsters'),
       import('./data/monsterAffixes'),
       import('./data/bosses'),
+      import('./data/namedRares'),
     ]);
   setMonsterCatalog({
     pick: (depth, biome, rng, count) => {
@@ -118,6 +124,16 @@ async function main(): Promise<void> {
       return out;
     },
     bossFor: (depth, biome, rng) => pickBossForDepth(depth, biome, rng).id,
+    // Which named rare, if any, could stand in for this monster here. World
+    // generation must not import the bestiary, so the lookup comes in the same
+    // way the monster pool does.
+    nameFor: (monsterId, biome, depth, rng) => {
+      const def = MONSTERS.find((m) => m.id === monsterId);
+      if (!def) return null;
+      const pool = namedRaresFor(def.family, monsterId, biome, depth);
+      if (pool.length === 0) return null;
+      return rng.weighted(pool, (n) => n.weight).id;
+    },
   });
 
   boot(0.74, 'Tuning the instruments…');

@@ -856,8 +856,362 @@ const ART: Record<BiomeId, BiomeArt> = {
   },
 };
 
-export function biomeArt(id: BiomeId): BiomeArt {
-  return ART[id] ?? ART.crypt;
+// ---------------------------------------------------------------------------
+// Variants — the same place, in a different state
+// ---------------------------------------------------------------------------
+
+/**
+ * A dressed sub-version of a biome.
+ *
+ * Eight biomes is not eight looks when a run only ever sees one of them, and
+ * two crypt runs in a row were identical down to the palette. A variant is a
+ * patch laid over the biome's own art: different light, different water,
+ * different clutter, sometimes a different ceiling. It is chosen once per run,
+ * so a descent stays coherent while two descents into the same biome do not
+ * look like the same descent.
+ *
+ * Deliberately not a new biome. The families, the layouts and the monster pool
+ * are the biome's identity and stay put; only the dressing moves.
+ */
+export interface BiomeVariant {
+  id: string;
+  /** Replaces the biome name on the depth card when present. */
+  name: string;
+  blurb: string;
+  weight: number;
+  /** Variants can be held back so shallow floors stay legible. */
+  minDepth?: number;
+  patch: Partial<BiomeArt>;
+}
+
+/** The unmodified biome, so "no variant" is a real weighted option. */
+const PLAIN = (name: string, blurb: string, weight = 6): BiomeVariant => ({
+  id: 'plain',
+  name,
+  blurb,
+  weight,
+  patch: {},
+});
+
+const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
+  crypt: [
+    PLAIN('The Bone Crypt', 'Grave-cold corridors of stacked stone.'),
+    {
+      id: 'flooded',
+      name: 'The Drowned Crypt',
+      blurb: 'The water table rose a century ago and never went back down.',
+      weight: 4,
+      patch: {
+        liquid: 'water',
+        liquidColor: 0x16323c,
+        puddles: 0.7,
+        lightColor: 0x6fd0c4,
+        lightIntensity: 5.2,
+        bounceColor: 0x2a5a62,
+        damage: 0.55,
+        veinDensity: 0.05,
+        veinColor: 0x3fa89a,
+      },
+    },
+    {
+      id: 'candlelit',
+      name: 'The Vigil',
+      blurb: 'Somebody is still lighting the candles. Nobody has seen them do it.',
+      weight: 3,
+      minDepth: 2,
+      patch: {
+        lightColor: 0xffc46a,
+        lightIntensity: 8.4,
+        lightDistance: 16,
+        wallLightSpacing: 4,
+        bounceColor: 0x6a4a2a,
+        shaftDensity: 0.3,
+        puddles: 0,
+        damage: 0.15,
+      },
+    },
+  ],
+
+  caverns: [
+    PLAIN('The Weeping Caverns', 'Living rock, wet to the touch.'),
+    {
+      id: 'fungal',
+      name: 'The Bloom',
+      blurb: 'The glow is thicker here, and it moves when you are not looking.',
+      weight: 4,
+      patch: {
+        lightColor: 0x8affc0,
+        lightIntensity: 6.0,
+        bounceColor: 0x2f7a52,
+        veinDensity: 0.5,
+        veinColor: 0x9dffb4,
+        shaftDensity: 0.05,
+        puddles: 0.4,
+      },
+    },
+    {
+      id: 'dry',
+      name: 'The Dust Hollows',
+      blurb: 'Something drank this cave dry. The stone remembers being wet.',
+      weight: 3,
+      minDepth: 3,
+      patch: {
+        liquid: 'none',
+        puddles: 0,
+        veinDensity: 0.02,
+        lightColor: 0xffb070,
+        bounceColor: 0x5a4030,
+        shaftDensity: 0.45,
+        damage: 0.6,
+      },
+    },
+  ],
+
+  foundry: [
+    PLAIN('The Foundry', 'Heat with nowhere to go, and machines that never stopped.'),
+    {
+      id: 'coldforge',
+      name: 'The Cold Forge',
+      blurb: 'The fires went out. Whatever they were feeding did not.',
+      weight: 4,
+      minDepth: 3,
+      patch: {
+        liquid: 'none',
+        lightColor: 0x9fc4ff,
+        lightIntensity: 4.0,
+        bounceColor: 0x2a3550,
+        veinDensity: 0,
+        shaftDensity: 0.35,
+        damage: 0.65,
+        puddles: 0.25,
+      },
+    },
+    {
+      id: 'overflow',
+      name: 'The Overflow',
+      blurb: 'A crucible cracked upstairs. It has been draining down here ever since.',
+      weight: 4,
+      patch: {
+        liquid: 'lava',
+        liquidEmissive: 0xff6a20,
+        lightColor: 0xff7a2c,
+        lightIntensity: 8.0,
+        bounceColor: 0x7a3010,
+        veinDensity: 0.45,
+        veinColor: 0xff8a3c,
+        shaftDensity: 0.05,
+      },
+    },
+  ],
+
+  sunkenTemple: [
+    PLAIN('The Sunken Temple', 'Worship that outlasted its worshippers.'),
+    {
+      id: 'tidal',
+      name: 'The Tidal Reach',
+      blurb: 'The water goes out and comes back. Nothing here agrees on when.',
+      weight: 4,
+      patch: {
+        liquid: 'water',
+        liquidColor: 0x0f3a4a,
+        puddles: 0.8,
+        lightColor: 0x5fc8ff,
+        lightIntensity: 5.0,
+        bounceColor: 0x1a5a78,
+        damage: 0.5,
+      },
+    },
+    {
+      id: 'gilded',
+      name: 'The Gilded Sanctum',
+      blurb: 'Gold does not tarnish. It has had a long time to prove it.',
+      weight: 3,
+      minDepth: 5,
+      patch: {
+        lightColor: 0xffd88a,
+        lightIntensity: 7.6,
+        lightDistance: 15,
+        bounceColor: 0x7a5a20,
+        shaftDensity: 0.4,
+        damage: 0.1,
+        roomMaterialVariance: 0.6,
+      },
+    },
+  ],
+
+  hive: [
+    PLAIN('The Hive', 'Chambers chewed out of the rock, still warm.'),
+    {
+      id: 'brood',
+      name: 'The Brood Chambers',
+      blurb: 'Every surface is a nursery. Try not to stand still.',
+      weight: 4,
+      patch: {
+        lightColor: 0xffc86a,
+        lightIntensity: 4.6,
+        bounceColor: 0x6a4a1a,
+        veinDensity: 0.4,
+        veinColor: 0xffd070,
+        puddles: 0.5,
+        damage: 0.25,
+      },
+    },
+    {
+      id: 'abandoned',
+      name: 'The Dead Hive',
+      blurb: 'The colony moved on. Something moved in behind it.',
+      weight: 3,
+      minDepth: 8,
+      patch: {
+        lightColor: 0x8f9fd0,
+        lightIntensity: 3.4,
+        bounceColor: 0x2a3048,
+        veinDensity: 0.05,
+        shaftDensity: 0.4,
+        damage: 0.7,
+        puddles: 0.1,
+      },
+    },
+  ],
+
+  frostvault: [
+    PLAIN('The Frostvault', 'Cold enough that the air hurts, and nothing rots.'),
+    {
+      id: 'blizzard',
+      name: 'The Whiteout',
+      blurb: 'There is weather down here. Nobody can explain it and nobody stays to try.',
+      weight: 4,
+      patch: {
+        lightColor: 0xdcefff,
+        lightIntensity: 5.6,
+        lightDistance: 9,
+        bounceColor: 0x3a5a80,
+        shaftDensity: 0.6,
+        veinDensity: 0.1,
+        veinColor: 0xaad8ff,
+      },
+    },
+    {
+      id: 'thaw',
+      name: 'The Slow Thaw',
+      blurb: 'Something warm is buried down here, and the ice is losing.',
+      weight: 3,
+      minDepth: 10,
+      patch: {
+        liquid: 'water',
+        liquidColor: 0x1a4050,
+        puddles: 0.85,
+        lightColor: 0x9fd8e8,
+        lightIntensity: 4.6,
+        bounceColor: 0x2a5060,
+        damage: 0.6,
+      },
+    },
+  ],
+
+  ashwaste: [
+    PLAIN('The Ashwaste', 'Open ground under a sky that is not a sky.'),
+    {
+      id: 'emberfall',
+      name: 'The Emberfall',
+      blurb: 'It is raining, and the rain is still burning when it lands.',
+      weight: 4,
+      patch: {
+        lightColor: 0xff8a3c,
+        lightIntensity: 7.2,
+        bounceColor: 0x7a3512,
+        veinDensity: 0.5,
+        veinColor: 0xff9a4a,
+        shaftDensity: 0.15,
+        damage: 0.6,
+      },
+    },
+    {
+      id: 'grey',
+      name: 'The Grey Waste',
+      blurb: 'The fires here went out a very long time ago. It is worse.',
+      weight: 3,
+      minDepth: 14,
+      patch: {
+        liquid: 'none',
+        lightColor: 0xa8a2a0,
+        lightIntensity: 4.2,
+        bounceColor: 0x3a3634,
+        veinDensity: 0,
+        shaftDensity: 0.5,
+        damage: 0.75,
+      },
+    },
+  ],
+
+  voidspire: [
+    PLAIN('The Voidspire', 'Stone with nothing under it.'),
+    {
+      id: 'unravelled',
+      name: 'The Unravelling',
+      blurb: 'The geometry stopped agreeing with itself somewhere above you.',
+      weight: 4,
+      patch: {
+        lightColor: 0xc07aff,
+        lightIntensity: 6.4,
+        bounceColor: 0x4a2a7a,
+        veinDensity: 0.55,
+        veinColor: 0xc07aff,
+        shaftDensity: 0.3,
+      },
+    },
+    {
+      id: 'starlit',
+      name: 'The Long Dark',
+      blurb: 'There are lights out there. They are not stars and they are not far away.',
+      weight: 3,
+      minDepth: 18,
+      patch: {
+        lightColor: 0x6fa8ff,
+        lightIntensity: 3.6,
+        lightDistance: 10,
+        bounceColor: 0x1a2a5a,
+        veinDensity: 0.2,
+        veinColor: 0x8fc0ff,
+        shaftDensity: 0.7,
+        damage: 0.5,
+      },
+    },
+  ],
+};
+
+/** Every variant a biome can wear, for tooling and the bestiary. */
+export function biomeVariants(id: BiomeId): BiomeVariant[] {
+  return VARIANTS[id] ?? [];
+}
+
+/** Rolls the variant a run wears. Held back by depth where the variant says so. */
+export function pickVariant(id: BiomeId, depth: number, rng: Rng): string {
+  const pool = (VARIANTS[id] ?? []).filter((v) => (v.minDepth ?? 0) <= depth);
+  if (pool.length === 0) return 'plain';
+  return rng.weighted(pool, (v) => v.weight).id;
+}
+
+/** The name and one-liner the depth card shows for this run. */
+export function variantLabel(id: BiomeId, variant?: string): { name: string; blurb: string } {
+  const v = (VARIANTS[id] ?? []).find((x) => x.id === variant);
+  const b = getBiome(id);
+  return v ? { name: v.name, blurb: v.blurb } : { name: b.name, blurb: b.blurb };
+}
+
+/**
+ * The art for a biome, with a variant's patch laid over it.
+ *
+ * A shallow merge is the right depth here: every field a variant wants to
+ * change is a scalar or a whole list it means to replace outright, and a deep
+ * merge of the prop tables would silently blend two sets of clutter.
+ */
+export function biomeArt(id: BiomeId, variant?: string): BiomeArt {
+  const base = ART[id] ?? ART.crypt;
+  if (!variant || variant === 'plain') return base;
+  const v = (VARIANTS[id] ?? []).find((x) => x.id === variant);
+  if (!v) return base;
+  return { ...base, ...v.patch };
 }
 
 /** Weighted layout choice honouring the biome's preferences. */

@@ -25,6 +25,7 @@ import type {
   StatusApplication,
   Stats,
 } from '../types';
+import type { NamedRare } from '../data/namedRares';
 import { events } from '../core/Events';
 import { activeDifficulty } from '../data/difficulties';
 import { emptyStats } from '../sim/Stats';
@@ -184,6 +185,8 @@ export class Enemy implements Combatant {
   readonly ilvl: number;
   readonly level: number;
   readonly displayName: string;
+  /** Set when this monster is a named rare rather than a generated one. */
+  readonly named: NamedRare | null = null;
   readonly name: string;
   readonly isBoss: boolean = false;
   readonly hitRadius: number;
@@ -247,6 +250,12 @@ export class Enemy implements Combatant {
     affixes: MonsterAffixDef[],
     depth: number,
     rng: Rng,
+    /**
+     * A named rare's definition, when this one is somebody in particular. It
+     * replaces the generated "Frenzied Skeleton" name with a fixed one, adds a
+     * title, and multiplies life and damage on top of the rank.
+     */
+    named?: NamedRare | null,
   ) {
     this.def = def;
     this.monsterId = def.id;
@@ -325,8 +334,23 @@ export class Enemy implements Combatant {
     }
 
     // --- name --------------------------------------------------------------
-    this.name = rank === 'normal' ? def.name : `${affixes[0]?.name ?? ''} ${def.name}`.trim();
+    // A named rare keeps its own name; no rank prefix is bolted onto it,
+    // because "Frenzied The Choirmaster" is not a name.
+    this.named = named ?? null;
+    this.name = named
+      ? named.name
+      : rank === 'normal'
+        ? def.name
+        : `${affixes[0]?.name ?? ''} ${def.name}`.trim();
     this.displayName = this.name;
+    if (named) {
+      this.maxLife = Math.round(this.maxLife * named.lifeMul);
+      this.life = this.maxLife;
+      this.stats.life = this.maxLife;
+      this.stats.minDamage = Math.round(this.stats.minDamage * named.damageMul);
+      this.stats.maxDamage = Math.round(this.stats.maxDamage * named.damageMul);
+      this.xpValue = Math.round(this.xpValue * 2.2);
+    }
 
     // --- model -------------------------------------------------------------
     this.root = new THREE.Group();
@@ -380,6 +404,8 @@ export class Enemy implements Combatant {
   /** Nameplate payload for the UI layer. */
   get nameplate(): {
     name: string;
+    /** Only a named rare has one. */
+    title?: string;
     rank: MonsterRank;
     affixes: string[];
     life: number;
@@ -391,6 +417,7 @@ export class Enemy implements Combatant {
   } {
     return {
       name: this.name,
+      title: this.named?.title,
       rank: this.rank,
       affixes: this.affixes.map((a) => a.name),
       life: this.life,

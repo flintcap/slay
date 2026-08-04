@@ -4754,6 +4754,21 @@ input.slider::-moz-range-thumb {
   color: var(--np-color, #d8d8d8);
   opacity: 0.85;
 }
+/* Only a named rare carries one, so it should read as a caption, not a stat. */
+.np-epithet {
+  font-size: 9px;
+  font-style: italic;
+  letter-spacing: 0.03em;
+  color: var(--np-color, #d8d8d8);
+  opacity: 0.72;
+  margin-top: -1px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-shadow: 0 1px 3px #000, 0 0 6px #000;
+}
 .np-bar {
   width: 92px;
   height: 5px;

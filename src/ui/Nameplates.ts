@@ -12,6 +12,12 @@ import { affixIconUri } from '../art/Icons';
 /** The shape both Enemy and Boss expose via their `nameplate` getter. */
 export interface PlateData {
   name: string;
+  /**
+   * A named rare's epithet, shown under the name. Only they have one, which is
+   * what makes the plate read as somebody rather than as another Frenzied
+   * Skeleton.
+   */
+  title?: string;
   rank: MonsterRank;
   affixes: string[];
   life: number;
@@ -45,6 +51,8 @@ interface Plate {
   nameEl: HTMLSpanElement;
   levelEl: HTMLSpanElement;
   rankEl: HTMLSpanElement;
+  /** The named-rare epithet line. Hidden for everything else. */
+  epithet: HTMLDivElement;
   barFill: HTMLDivElement;
   chips: HTMLDivElement;
   /** What the DOM currently shows, so we only touch it on change. */
@@ -110,24 +118,29 @@ export class NameplateLayer {
     barFill.className = 'np-bar-fill';
     bar.appendChild(barFill);
 
+    const epithet = document.createElement('div');
+    epithet.className = 'np-epithet';
+
     const chips = document.createElement('div');
     chips.className = 'np-chips';
 
-    root.append(title, bar, chips);
+    root.append(title, epithet, bar, chips);
     this.container.appendChild(root);
 
-    const plate: Plate = { root, title, nameEl, levelEl, rankEl, barFill, chips, key: '', pct: -1, inUse: true };
+    const plate: Plate = { root, title, nameEl, levelEl, rankEl, epithet, barFill, chips, key: '', pct: -1, inUse: true };
     this.pool.push(plate);
     return plate;
   }
 
   /** Rebuilds a plate's text only when its identity actually changed. */
   private paint(p: Plate, d: PlateData): void {
-    const key = `${d.name}|${d.rank}|${d.level}|${d.affixes.join(',')}`;
+    const key = `${d.name}|${d.title ?? ''}|${d.rank}|${d.level}|${d.affixes.join(',')}`;
     if (p.key === key) return;
     p.key = key;
 
     p.nameEl.textContent = d.name;
+    p.epithet.textContent = d.title ?? '';
+    p.epithet.style.display = d.title ? '' : 'none';
     p.levelEl.textContent = String(d.level);
     const label = RANK_LABEL[d.rank];
     p.rankEl.textContent = label ?? '';

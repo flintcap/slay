@@ -620,7 +620,7 @@ export class HUD {
         this.biomeLabel.textContent = 'Sanctuary';
         this.minimapLabel.textContent = 'Town';
       } else {
-        this.depthLabel.textContent = `Depth ${p.depth}`;
+        this.depthLabel.textContent = p.place ? `Depth ${p.depth} · ${p.place}` : `Depth ${p.depth}`;
         this.biomeLabel.textContent = p.of > 0 ? `Floor ${p.level} of ${p.of}` : '';
         this.minimapLabel.textContent = `Depth ${p.depth}`;
       }

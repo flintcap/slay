@@ -222,8 +222,10 @@ function radialTexture(size = 128): THREE.CanvasTexture {
 export function applyBiomeLighting(
   scene: THREE.Scene,
   biome: BiomeDef,
+  /** The run's biome variant, which is mostly a lighting change. */
+  variant?: string,
 ): { key: THREE.DirectionalLight; ambient: THREE.Light; dispose(): void } {
-  const art = biomeArt(biome.id);
+  const art = biomeArt(biome.id, variant);
 
   const fog = new THREE.FogExp2(biome.fogColor, biome.fogDensity);
   scene.fog = fog;
@@ -353,7 +355,7 @@ export class DungeonMesh {
   constructor(level: DungeonLevel, biome: BiomeDef, rng: Rng) {
     this.level = level;
     this.biome = biome;
-    this.art = biomeArt(biome.id);
+    this.art = biomeArt(biome.id, level.variant);
     this.noise = new Noise((level.seed ^ 0x7a1c) >>> 0);
     this.halfW = level.width / 2;
     this.halfH = level.height / 2;

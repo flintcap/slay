@@ -37,7 +37,7 @@ import type {
 import { Random, streamFor } from '../core/RNG';
 import { activeDifficulty } from '../data/difficulties';
 import { clamp } from '../art/Noise';
-import { BIOMES as BIOME_LIST, biomeForDepth, getBiome, layoutForBiome } from './Biomes';
+import { BIOMES as BIOME_LIST, biomeForDepth, getBiome, layoutForBiome, pickVariant } from './Biomes';
 import {
   Grid,
   TILE_VALUES,
@@ -176,6 +176,11 @@ export interface MonsterCatalog {
   affixes(depth: number, rng: Rng, count: number): string[];
   /** The boss for this run. */
   bossFor(depth: number, biome: BiomeId, rng: Rng): string;
+  /**
+   * A named rare that could stand in for this monster, or null for none.
+   * Optional so an older catalogue still satisfies the contract.
+   */
+  nameFor?(monsterId: string, biome: BiomeId, depth: number, rng: Rng): string | null;
 }
 
 /**
@@ -256,6 +261,7 @@ export function setMonsterCatalog(c: Partial<MonsterCatalog>): void {
     pick: c.pick ?? fallbackCatalog.pick,
     affixes: c.affixes ?? fallbackCatalog.affixes,
     bossFor: c.bossFor ?? fallbackCatalog.bossFor,
+    nameFor: c.nameFor,
   };
 }
 
@@ -603,13 +609,19 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
 
   const bossId = catalog.bossFor(depth, biome, runRng.fork('boss'));
 
+  // Which dressed version of the biome this descent wears. Rolled once for the
+  // whole run so the floors read as one place, and re-rolled next run so two
+  // descents into the same biome are not the same descent.
+  const variant = pickVariant(biome, depth, runRng.fork('variant'));
+
   const levels: DungeonLevel[] = [];
   for (let i = 0; i < levelsTotal; i++) {
     const level = generateLevel(depth, i, levelsTotal, biome, seed, quest, modifiers);
+    level.variant = variant;
     levels.push(level);
   }
 
-  return { seed, depth, biome, levels, quest, modifiers, bossId };
+  return { seed, depth, biome, variant, levels, quest, modifiers, bossId };
 }
 
 // ---------------------------------------------------------------------------
@@ -1139,6 +1151,17 @@ function placeSpawns(
     const leaderId = pickId();
     const id = packId++;
 
+    // A rare pack's leader is sometimes somebody in particular.
+    //
+    // Rare packs are already the rarest thing on a floor, and a generated name
+    // like "Frenzied Skeleton" is a thing that happens rather than a thing that
+    // happened. Roughly a third of them now carry a name you could tell someone
+    // about, which works out at about one per two floors.
+    const named =
+      rank === 'rare' && rng.chance(0.34)
+        ? catalog.nameFor?.(leaderId, biome.id, depth, rng.fork(`name${id}`)) ?? null
+        : null;
+
     // Spread the pack across nearby open tiles.
     const spots = gatherPackSpots(g, sx, sy, packSize, usedTile);
     for (let k = 0; k < spots.length; k++) {
@@ -1156,10 +1179,13 @@ function placeSpawns(
       spawns.push({
         x: t % g.w,
         y: (t / g.w) | 0,
-        monsterId: rng.chance(0.72) ? leaderId : pickId(),
+        // The named one is always the leader, and always the pack's own
+        // monster — a retinue of something else reads as two packs overlapping.
+        monsterId: named && k === 0 ? leaderId : rng.chance(0.72) ? leaderId : pickId(),
         rank: memberRank,
         affixes: memberRank === 'normal' ? [] : packAffixes,
         packId: id,
+        named: named && k === 0 ? named : undefined,
       });
       placed++;
     }

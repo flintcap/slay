@@ -25,6 +25,8 @@ import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { generateRun, isWalkable, BIOMES } from '../world/DungeonGen';
 import { DungeonMesh, applyBiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
+import { variantLabel } from '../world/Biomes';
+import { namedRare } from '../data/namedRares';
 import { rollDrops, rollItem, rollPotion } from '../sim/Loot';
 import { buildDropModel } from '../art/ItemModels';
 import { emissiveMaterial } from '../art/Materials';
@@ -343,7 +345,7 @@ export class DungeonScene extends GameScene {
     this.mesh = new DungeonMesh(this.level, this.biome, levelRng);
     this.scene.add(this.mesh.root);
     this.nav = new NavGrid(this.level);
-    this.lighting = applyBiomeLighting(this.scene, this.biome);
+    this.lighting = applyBiomeLighting(this.scene, this.biome, this.level?.variant);
 
     this.engine.renderer.applyEnvironment(this.scene, 0.4);
     this.scene.fog = new THREE.FogExp2(this.biome.fogColor, this.biome.fogDensity);
@@ -365,7 +367,23 @@ export class DungeonScene extends GameScene {
       const affixes = spawn.affixes
         .map((id) => MONSTER_AFFIXES.find((a) => a.id === id))
         .filter((a): a is NonNullable<typeof a> => !!a);
-      const enemy = new Enemy(def, spawn.rank, affixes, this.run.depth, levelRng.fork(`e${spawn.x},${spawn.y}`));
+      // A named rare's own affixes are guaranteed, on top of the pack roll.
+      const named = spawn.named ? namedRare(spawn.named) : null;
+      if (named) {
+        for (const id of named.affixes) {
+          if (affixes.some((a) => a.id === id)) continue;
+          const a = MONSTER_AFFIXES.find((x) => x.id === id);
+          if (a) affixes.push(a);
+        }
+      }
+      const enemy = new Enemy(
+        def,
+        spawn.rank,
+        affixes,
+        this.run.depth,
+        levelRng.fork(`e${spawn.x},${spawn.y}`),
+        named,
+      );
       const wp = this.mesh.tileToWorld(spawn.x, spawn.y);
       enemy.root.position.copy(wp);
       this.scene.add(enemy.root);
@@ -442,11 +460,17 @@ export class DungeonScene extends GameScene {
       // Warm-up is an optimisation; never let it block the run starting.
     }
 
+    // The name of the place, not just the number. Two crypt runs wear
+    // different variants and the header is where you notice.
+    const place = variantLabel(this.biome.id, this.level?.variant);
     events.emit('depth:changed', {
       depth: this.run.depth,
       level: index + 1,
       of: this.run.levels.length,
+      place: place.name,
     });
+    // The blurb only lands once per run — on the first floor of it.
+    if (index === 0) setTimeout(() => toast(place.blurb, 'info'), 1600);
   }
 
   /** The world view handed to enemy AI each frame. */
