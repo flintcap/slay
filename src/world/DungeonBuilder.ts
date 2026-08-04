@@ -471,30 +471,26 @@ export class DungeonMesh {
     // a hole whether or not there is one behind it, which is why "still holes in
     // the walls" kept coming back after the geometry was closed. Borrowing the
     // biome's own wall texture makes the same plane read as the rock it is.
-    // Dark. The lid is the back of the frame, not part of it.
+    // The lid is darkness, not a surface.
     //
-    // It was mixed most of the way toward a mid grey and given a strong
-    // emissive so it could never read as a hole. A render showed the other
-    // failure: bright textured wall tops filling well over half the screen and
-    // out-competing the floor the game is actually played on. It only has to be
-    // legible as a surface, and at this distance a very dark one still is.
-    const rockTone = new THREE.Color(art.skyColor).lerp(new THREE.Color(0x33363f), 0.34);
-    // `surfaceVariant`, not `surface`: the roof dissolve below is compiled into
-    // whatever material it is attached to, and `surface` hands back a *shared*
-    // cached instance. Attaching it there would punch the same hole in every
-    // wall drawn from the same palette.
-    let bedrockMat: THREE.MeshStandardMaterial;
-    try {
-      bedrockMat = surfaceVariant(art.walls[0].palette, {
-        repeat: 1.5,
-        tint: rockTone.getHex(),
-        roughness: 1,
-      });
-    } catch {
-      bedrockMat = new THREE.MeshStandardMaterial({ color: rockTone, roughness: 1 });
-    }
-    bedrockMat.emissive = rockTone.clone().multiplyScalar(0.12);
-    bedrockMat.metalness = 0;
+    // Two renders bracketed this. Bright and textured, it filled well over half
+    // the screen and out-competed the floor the game is played on. Dark and
+    // textured, it still read as a noisy mottled *thing* covering everything —
+    // in a cave layout the wall tops genuinely are most of the frame, so
+    // whatever the lid looks like is what the frame looks like.
+    //
+    // So it does not look like anything. A flat matte tone a shade off the
+    // biome's own fog, with no texture to catch the eye and a trace of emissive
+    // so it never goes absolutely black: at distance it dissolves into the fog
+    // and reads as unlit rock, which is what it is. The playable floor is then
+    // the only lit thing on screen, which is the whole point.
+    const rockTone = new THREE.Color(this.biome.fogColor).lerp(new THREE.Color(0x2a2f3a), 0.34);
+    const bedrockMat = new THREE.MeshStandardMaterial({
+      color: rockTone,
+      emissive: rockTone.clone().multiplyScalar(0.35),
+      roughness: 1,
+      metalness: 0,
+    });
     this.ownedMat.push(bedrockMat);
 
     // The lid opens around the player.
