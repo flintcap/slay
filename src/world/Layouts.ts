@@ -1644,8 +1644,27 @@ function layoutRuins(o: LayoutOpts): LayoutOut {
   }
 
   // Collapsed structures: rectangular footprints whose walls are mostly gone.
+  // Ground the city was never built on, or that the collapse buried: ridges of
+  // standing rock through the open blob. Decorating the blob with fragments
+  // took it from 63% wide-open to 31%, and the rest is the blob itself — an
+  // ellipse a hundred tiles across is a field whatever you put on it.
+  for (let y = 4; y < height - 4; y++) {
+    for (let x = 4; x < width - 4; x++) {
+      if (!g.walkable(x, y)) continue;
+      // Ridged noise gives long spines rather than the round blobs plain fbm
+      // makes, so this reads as broken ground and not as polka dots.
+      const n = Math.abs(noise.fbm(x * 0.062 + 310, y * 0.062, 3));
+      if (n < 0.1) g.set(x, y, T_VOID);
+    }
+  }
+
+  // A ruined district, not a lawn with six sheds on it.
+  //
+  // Measured at 63% of floor more than two tiles from any wall, with open
+  // squares 80 metres across, because eight buildings on a 128-tile blob leave
+  // the blob. Roughly twice as many, packed closer.
   const rooms: DungeonRoom[] = [];
-  const buildings = rng.int(6, 10);
+  const buildings = rng.int(12, 18);
   for (let i = 0; i < buildings; i++) {
     const bw = rng.int(9, 17);
     const bh = rng.int(9, 17);
@@ -1654,7 +1673,7 @@ function layoutRuins(o: LayoutOpts): LayoutOut {
     if (g.countFloorIn(bx, by, bw, bh) < bw * bh * 0.55) continue;
     let overlaps = false;
     for (const r of rooms) {
-      if (bx < r.x + r.w + 3 && bx + bw + 3 > r.x && by < r.y + r.h + 3 && by + bh + 3 > r.y) {
+      if (bx < r.x + r.w + 2 && bx + bw + 2 > r.x && by < r.y + r.h + 2 && by + bh + 2 > r.y) {
         overlaps = true;
         break;
       }
@@ -1690,6 +1709,40 @@ function layoutRuins(o: LayoutOpts): LayoutOut {
     rooms.push(makeRoom(bx, by, bw, bh));
   }
 
+  // Standing fragments: the bits of wall left when the rest of a building went.
+  // These are what stop the ground between the buildings from being a field —
+  // they break sight lines and give a fight somewhere to happen, without
+  // enclosing anything.
+  const fragments = rng.int(44, 62);
+  for (let i = 0; i < fragments; i++) {
+    const fx = rng.int(5, width - 6);
+    const fy = rng.int(5, height - 6);
+    if (!g.walkable(fx, fy)) continue;
+    const run = rng.int(3, 9);
+    const horizontal = rng.chance(0.5);
+    // Thicker than one tile at the base so it reads as masonry rather than a
+    // line, and gapped so it reads as broken rather than built.
+    const thick = rng.chance(0.35) ? 2 : 1;
+    for (let k = 0; k < run; k++) {
+      for (let t = 0; t < thick; t++) {
+        const x = fx + (horizontal ? k : t);
+        const y = fy + (horizontal ? t : k);
+        if (!g.walkable(x, y)) continue;
+        if (rng.chance(0.18)) continue;
+        g.set(x, y, T_VOID);
+      }
+    }
+  }
+
+  // Toppled masonry: heaps too big to climb, scattered through the open ground.
+  const heaps = rng.int(22, 34);
+  for (let i = 0; i < heaps; i++) {
+    const hx = rng.int(6, width - 7);
+    const hy = rng.int(6, height - 7);
+    if (!g.walkable(hx, hy)) continue;
+    g.disc(hx, hy, rng.range(1.4, 3.0), rng.range(1.4, 3.0), T_VOID);
+  }
+
   // Rubble fields — walkable but slow, and visually chaotic.
   for (let y = 3; y < height - 3; y++) {
     for (let x = 3; x < width - 3; x++) {
@@ -1718,12 +1771,14 @@ function layoutRuins(o: LayoutOpts): LayoutOut {
     }
   }
 
-  // Open-air courtyards inside the ruin field give the spawner arena space.
-  const courts = rng.int(2, 3);
+  // One or two open-air courtyards give the spawner somewhere to stage a real
+  // fight. They used to be three discs up to sixteen tiles across, which is
+  // most of what the openness measurement was counting.
+  const courts = rng.int(1, 2);
   for (let i = 0; i < courts; i++) {
     const px = rng.int(10, width - 11);
     const py = rng.int(10, height - 11);
-    const pr = rng.range(5, 8);
+    const pr = rng.range(4, 6);
     g.disc(px, py, pr, pr * rng.range(0.8, 1.2), T_FLOOR);
     rooms.push(makeRoom(Math.round(px - pr), Math.round(py - pr), Math.round(pr * 2), Math.round(pr * 2)));
   }
@@ -2149,6 +2204,9 @@ function layoutTerraces(o: LayoutOpts): LayoutOut {
       ramps.push({ x, y });
     }
   }
+  // Tiles a ramp has smoothed. Everything else on a band boundary becomes a
+  // cliff, so this mask is what keeps the plateaus reachable.
+  const onRamp = new Uint8Array(width * height);
   for (const r of ramps) {
     const w = rng.int(4, 6);
     for (let dy = -w; dy <= w; dy++) {
@@ -2163,7 +2221,57 @@ function layoutTerraces(o: LayoutOpts): LayoutOut {
         const here = g.height(x, y);
         const target = g.height(r.x, r.y);
         g.setHeight(x, y, Math.round(here + (target - here) * (1 - d)));
+        onRamp[y * width + x] = 1;
       }
+    }
+  }
+
+  // Cliffs.
+  //
+  // Asked, of a level that came out of here: "Are the Caverns supposed to be a
+  // giant open map?" No. Measured, 83% of this layout's floor was more than two
+  // tiles from any wall, with fully walkable squares up to 122 metres across —
+  // a plain, not terraces. The bands existed but you could stroll between them,
+  // because a height step is a walkable skirt rather than a wall.
+  //
+  // A terrace is a plateau with an edge. Every boundary between bands is now
+  // solid rock except where a ramp cuts through it, which is what makes the
+  // ramps worth finding and the plateaus worth being on.
+  const bandHeight = new Int16Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) bandHeight[y * width + x] = at(x, y);
+  }
+  const cliffs: number[] = [];
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const i = y * width + x;
+      if (!g.walkable(x, y) || onRamp[i]) continue;
+      const h = bandHeight[i]!;
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as Array<[number, number]>) {
+        const n = bandHeight[(y + dy) * width + (x + dx)]!;
+        if (n !== -99 && n < h) {
+          cliffs.push(i);
+          break;
+        }
+      }
+    }
+  }
+  for (const i of cliffs) g.set(i % width, (i / width) | 0, T_VOID);
+
+  // Outcrops: ridges of standing rock inside the plateaus, so a single band is
+  // still somewhere with shape rather than an empty table.
+  for (let y = 4; y < height - 4; y++) {
+    for (let x = 4; x < width - 4; x++) {
+      if (!g.walkable(x, y) || onRamp[y * width + x]) continue;
+      // Ridged noise: the absolute value of a signed field gives long thin
+      // spines instead of the round blobs plain fbm makes.
+      const n = Math.abs(noise.fbm(x * 0.075 + 210, y * 0.075, 3));
+      if (n < 0.075) g.set(x, y, T_VOID);
     }
   }
 
