@@ -39,6 +39,9 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 200)));
+// Software rendering takes well over Playwright's 30s default to produce a
+// frame, and a timed-out screenshot loses the whole run.
+page.setDefaultTimeout(300000);
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
 await page.waitForFunction(() => !!window.SLAY?.engine, null, { timeout: 240000 });
 
