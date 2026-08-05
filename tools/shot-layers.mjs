@@ -1,0 +1,89 @@
+/**
+ * The same frame, with one layer removed at a time.
+ *
+ *   node tools/shot-layers.mjs
+ *
+ * Reported three times now: big dark shapes on the floor, and lights that look
+ * broken. Every attempt to name the culprit by reading code has been wrong, so
+ * this stops arguing and renders the evidence: one frame as shipped, then the
+ * same frame with the rock lid gone, then with the torch floor decals gone,
+ * then with both. Whichever image loses the dark shapes names the layer.
+ *
+ * Writes to shots/layers-*.png.
+ */
+import { chromium } from '@playwright/test';
+import { spawn } from 'node:child_process';
+import { existsSync, mkdirSync } from 'node:fs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+const PORT = 4194;
+const CHROME = '/opt/pw-browsers/chromium';
+mkdirSync('shots', { recursive: true });
+
+const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  stdio: ['ignore', 'ignore', 'pipe'],
+});
+process.on('exit', () => server.kill('SIGTERM'));
+for (let i = 0; i < 60; i++) {
+  try {
+    if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) break;
+  } catch {
+    /* wait */
+  }
+  await sleep(500);
+}
+
+const browser = await chromium.launch({
+  executablePath: existsSync(CHROME) ? CHROME : undefined,
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
+});
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 200)));
+await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
+await page.waitForFunction(() => !!window.SLAY?.engine, null, { timeout: 240000 });
+
+await page.evaluate(async () => {
+  localStorage.clear();
+  window.SLAY.save.hardReset();
+  window.SLAY.debug.makeCharacter('warden', 5);
+  await window.SLAY.engine.goTo('dungeon', { depth: 1 });
+  for (let i = 0; i < 90; i++) await new Promise((r) => requestAnimationFrame(r));
+});
+
+/** Turns named layers on or off and lets the frame settle. */
+async function shot(name, hide) {
+  const info = await page.evaluate(async (hideList) => {
+    const mesh = window.SLAY.engine.currentScene?.mesh;
+    if (!mesh) return { error: 'no dungeon' };
+    const counts = {};
+    mesh.root.traverse((o) => {
+      if (!o.isMesh && !o.isInstancedMesh) return;
+      const n = o.name || '';
+      const match =
+        (hideList.includes('roof') && n === 'roof') ||
+        (hideList.includes('pools') && n === 'lightPools') ||
+        (hideList.includes('shafts') && n === 'lightShafts') ||
+        (hideList.includes('ceiling') && n === 'ceiling');
+      if (hideList.length === 0) {
+        o.visible = true;
+      } else if (match) {
+        o.visible = false;
+        counts[n] = (counts[n] ?? 0) + 1;
+      }
+    });
+    for (let i = 0; i < 20; i++) await new Promise((r) => requestAnimationFrame(r));
+    return { counts, at: window.SLAY.engine.currentScene.player?.position?.toArray?.().map((v) => +v.toFixed(1)) };
+  }, hide);
+  await page.screenshot({ path: `shots/layers-${name}.png` });
+  console.log(`${name.padEnd(16)} hid ${JSON.stringify(info.counts ?? {})} player ${JSON.stringify(info.at ?? [])}`);
+}
+
+// Reset visibility between shots by showing everything first.
+await shot('1-as-shipped', []);
+await shot('2-no-roof', ['roof']);
+await shot('3-no-roof-pools', ['roof', 'pools']);
+await shot('4-no-roof-shafts', ['roof', 'pools', 'shafts', 'ceiling']);
+
+await browser.close();
+server.kill('SIGTERM');
+process.exit(0);
