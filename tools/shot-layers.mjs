@@ -78,8 +78,34 @@ async function shot(name, hide) {
     for (let i = 0; i < 20; i++) await new Promise((r) => requestAnimationFrame(r));
     return { counts, at: window.SLAY.engine.currentScene.player?.position?.toArray?.().map((v) => +v.toFixed(1)) };
   }, hide);
-  await page.screenshot({ path: `shots/layers-${name}.png` });
-  console.log(`${name.padEnd(16)} hid ${JSON.stringify(info.counts ?? {})} player ${JSON.stringify(info.at ?? [])}`);
+  const file = `shots/layers-${name}.png`;
+  await page.screenshot({ path: file });
+  // "Too dark" is an opinion until it is a number. Mean luminance over the play
+  // area, with the HUD bands at the top and bottom cut out.
+  const lum = await page.evaluate(async () => {
+    const c = document.querySelector('canvas');
+    if (!c) return null;
+    const off = document.createElement('canvas');
+    off.width = 160;
+    off.height = 90;
+    const g = off.getContext('2d');
+    g.drawImage(c, 0, 0, 160, 90);
+    const d = g.getImageData(0, 12, 160, 62).data;
+    let sum = 0;
+    let dark = 0;
+    const n = d.length / 4;
+    for (let i = 0; i < d.length; i += 4) {
+      const l = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+      sum += l;
+      if (l < 0.06) dark++;
+    }
+    return { mean: +(sum / n).toFixed(3), nearBlack: +((dark / n) * 100).toFixed(1) };
+  });
+  console.log(
+    `${name.padEnd(18)} hid ${JSON.stringify(info.counts ?? {}).padEnd(30)} lum ${lum?.mean ?? '?'}  near-black ${
+      lum?.nearBlack ?? '?'
+    }%`,
+  );
 }
 
 // Reset visibility between shots by showing everything first.

@@ -508,13 +508,14 @@ export class DungeonMesh {
     // the rooms, the thing every game in this genre leaves standing when it
     // takes the ceiling away. They cap at the same height as the lid, so where
     // the lid dissolves the caps carry straight on and the seam closes itself.
-    const capMat = new THREE.MeshStandardMaterial({
-      color: rockTone,
-      emissive: rockTone.clone().multiplyScalar(0.5),
-      roughness: 1,
-      metalness: 0,
-    });
-    this.ownedMat.push(capMat);
+    //
+    // They wear the wall's own stone, not the lid's tone. The lid is painted a
+    // flat matte colour with a trace of emissive so it sinks into the fog and
+    // reads as nothing; a wall top is a real surface with a wall under it, and
+    // in the lid's paint the first render came back with pale slabs glowing in
+    // mid-air over a dark level, because the emissive lit them while their own
+    // walls stayed black.
+    const capMat = wallMats[0]!;
 
     // The lid opens around the player.
     //
@@ -724,7 +725,7 @@ export class DungeonMesh {
           mesh.name =
             i === BEDROCK ? 'roof' : i === CAPS ? 'wallTops' : i === CEIL ? 'ceiling' : `surface${i}`;
           mesh.castShadow = i >= WALL0 && i < CEIL;
-          mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK && i !== CAPS;
+          mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK;
           mesh.matrixAutoUpdate = false;
           mesh.updateMatrix();
           if (i === VEIN) mesh.renderOrder = 2;
