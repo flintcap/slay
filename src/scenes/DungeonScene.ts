@@ -344,6 +344,10 @@ export class DungeonScene extends GameScene {
     const levelRng = this.rng.fork(`level:${index}`) as Random;
     this.mesh = new DungeonMesh(this.level, this.biome, levelRng);
     this.scene.add(this.mesh.root);
+    // Blood, scorch and telegraphs are flat quads. Without this they sit at
+    // world zero, which is only the floor on the lowest height band: everywhere
+    // else they were buried under the floor or floating over the one below.
+    this.decals.setGround((x, z) => this.mesh.floorY(x, z));
     this.nav = new NavGrid(this.level);
     this.lighting = applyBiomeLighting(this.scene, this.biome, this.level?.variant);
 

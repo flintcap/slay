@@ -493,6 +493,29 @@ export class DungeonMesh {
     });
     this.ownedMat.push(bedrockMat);
 
+    // The same rock, but it never opens.
+    //
+    // Reported three times — "still see through walls", "still holes in the
+    // walls and top of walls", "the walls are invisible and see through" — and
+    // this is why. Wall tops were emitted into the bedrock bucket so the lid
+    // could open as one piece, and the lid opens by *discarding* every fragment
+    // within 13 metres of the player. That discards the wall tops too. A wall
+    // tile in the middle of a thick run emits no side faces, because it has no
+    // open neighbour to face, so with its cap discarded it is a hole straight
+    // down into the void — and every wall around you is inside 13 metres.
+    //
+    // Wall tops belong to the level, not to the lid. They are the cut edge of
+    // the rooms, the thing every game in this genre leaves standing when it
+    // takes the ceiling away. They cap at the same height as the lid, so where
+    // the lid dissolves the caps carry straight on and the seam closes itself.
+    const capMat = new THREE.MeshStandardMaterial({
+      color: rockTone,
+      emissive: rockTone.clone().multiplyScalar(0.5),
+      roughness: 1,
+      metalness: 0,
+    });
+    this.ownedMat.push(capMat);
+
     // The lid opens around the player.
     //
     // Closing the roof fixed the holes and created a worse problem: from a
@@ -542,8 +565,12 @@ export class DungeonMesh {
     const VEIN = LIQ + 1;
     const PUDDLE = VEIN + 1;
     const BEDROCK = PUDDLE + 1;
-    const BUCKETS = BEDROCK + 1;
-    mats.push(...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, puddleMat, bedrockMat);
+    /** Wall tops. Same rock as the lid, but this bucket never dissolves. */
+    const CAPS = BEDROCK + 1;
+    const BUCKETS = CAPS + 1;
+    mats.push(
+      ...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, puddleMat, bedrockMat, capMat,
+    );
 
     // Deterministic per-room floor variant.
     const roomVariant = new Map<number, number>();
@@ -609,7 +636,7 @@ export class DungeonMesh {
             }
 
             if (v === T_WALL) {
-              this.emitWall(surfs, x, y, wx, wz, hy, roofY, wallMats.length, WALL0, TRIM, BASE, surfs[BEDROCK]);
+              this.emitWall(surfs, x, y, wx, wz, hy, roofY, wallMats.length, WALL0, TRIM, BASE, surfs[CAPS]);
               continue;
             }
 
@@ -694,9 +721,10 @@ export class DungeonMesh {
           const mesh = new THREE.Mesh(geo, mats[i]);
           // Named so probes can find the rock lid without guessing which
           // unnamed slab is filling the frame.
-          mesh.name = i === BEDROCK ? 'roof' : i === CEIL ? 'ceiling' : `surface${i}`;
+          mesh.name =
+            i === BEDROCK ? 'roof' : i === CAPS ? 'wallTops' : i === CEIL ? 'ceiling' : `surface${i}`;
           mesh.castShadow = i >= WALL0 && i < CEIL;
-          mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK;
+          mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK && i !== CAPS;
           mesh.matrixAutoUpdate = false;
           mesh.updateMatrix();
           if (i === VEIN) mesh.renderOrder = 2;
@@ -777,8 +805,12 @@ export class DungeonMesh {
     WALL0: number,
     TRIM: number,
     BASE: number,
-    /** The bucket the level's lid is accumulated into. */
-    roof: Surf,
+    /**
+     * Where wall tops go. Deliberately *not* the lid's bucket: the lid opens
+     * around the player by discarding fragments, and a discarded wall top is a
+     * hole you see the void through.
+     */
+    caps: Surf,
   ): void {
     const wallH = topY - hy;
     // Deterministic wall variant, clumped so it reads as masonry courses rather
@@ -820,10 +852,11 @@ export class DungeonMesh {
         trim.ledge(fx, my + 0.16, fz, DX4[d], DY4[d], TILE_SIZE, 0.07, true);
       }
     }
-    // The cap goes in the roof bucket, not the wall bucket. A wall top and the
-    // rock beyond it are the same surface — the lid over the level — and the
-    // lid has to be able to open around the player as one piece.
-    roof.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
+    // Every wall tile is capped, at the one flat rock height, so neighbouring
+    // caps never leave a step between them. It goes in the solid bucket: a wall
+    // top is the cut edge of the room and has to stay standing when the lid
+    // opens.
+    caps.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
   }
 
   /** Walls of a pit, dropped below the surrounding floor. */

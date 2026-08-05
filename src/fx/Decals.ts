@@ -315,6 +315,7 @@ const STAIN_VERT = /* glsl */ `
   attribute vec4 iXform;   // x, z, radius, rotation
   attribute vec4 iAnim;    // spawn, life, cell, fadeIn
   attribute vec3 iColor;
+  attribute float iGround; // floor height under the stain
 
   varying vec2 vUv;
   varying vec4 vColor;
@@ -334,7 +335,11 @@ const STAIN_VERT = /* glsl */ `
     vec2 local = position.xz;
     vec2 rot = vec2(local.x * c - local.y * s, local.x * s + local.y * c);
 
-    vec3 wpos = vec3(iXform.x + rot.x * radius * 2.0, position.y, iXform.y + rot.y * radius * 2.0);
+    // position.y is the hair of clearance that keeps the quad off the floor.
+    // The floor itself is iGround: dungeons are built in height bands, so a
+    // stain pinned to world zero is buried under every raised room and floats
+    // over every sunken one.
+    vec3 wpos = vec3(iXform.x + rot.x * radius * 2.0, iGround + position.y, iXform.y + rot.y * radius * 2.0);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(wpos, 1.0);
 
     float fadeIn = smoothstep(0.0, max(iAnim.w, 1e-3), age);
@@ -365,6 +370,7 @@ interface StainAttrs {
   iXform: THREE.InstancedBufferAttribute;
   iAnim: THREE.InstancedBufferAttribute;
   iColor: THREE.InstancedBufferAttribute;
+  iGround: THREE.InstancedBufferAttribute;
 }
 
 class StainLayer {
@@ -397,10 +403,11 @@ class StainLayer {
       a.setUsage(THREE.DynamicDrawUsage);
       return a;
     };
-    this.attrs = { iXform: mk(4), iAnim: mk(4), iColor: mk(3) };
+    this.attrs = { iXform: mk(4), iAnim: mk(4), iColor: mk(3), iGround: mk(1) };
     geo.setAttribute('iXform', this.attrs.iXform);
     geo.setAttribute('iAnim', this.attrs.iAnim);
     geo.setAttribute('iColor', this.attrs.iColor);
+    geo.setAttribute('iGround', this.attrs.iGround);
     geo.instanceCount = 0;
     this.geo = geo;
 
@@ -427,7 +434,7 @@ class StainLayer {
     this.mesh.renderOrder = additive ? 6 : 4;
   }
 
-  add(x: number, z: number, radius: number, rotation: number, cell: number, color: THREE.Color, spawn: number, life: number, fadeIn: number): void {
+  add(x: number, z: number, ground: number, radius: number, rotation: number, cell: number, color: THREE.Color, spawn: number, life: number, fadeIn: number): void {
     const i = this.head;
     this.head = (this.head + 1) % this.cap;
     if (i + 1 > this.high) this.high = i + 1;
@@ -445,6 +452,7 @@ class StainLayer {
     A.iColor.array[o3] = color.r;
     A.iColor.array[o3 + 1] = color.g;
     A.iColor.array[o3 + 2] = color.b;
+    A.iGround.array[i] = ground;
     if (i < this.lo) this.lo = i;
     if (i > this.hi) this.hi = i;
   }
@@ -455,7 +463,7 @@ class StainLayer {
     if (this.hi < this.lo) return;
     const count = this.hi - this.lo + 1;
     const spec: Array<[THREE.InstancedBufferAttribute, number]> = [
-      [this.attrs.iXform, 4], [this.attrs.iAnim, 4], [this.attrs.iColor, 3],
+      [this.attrs.iXform, 4], [this.attrs.iAnim, 4], [this.attrs.iColor, 3], [this.attrs.iGround, 1],
     ];
     for (const [attr, items] of spec) {
       attr.clearUpdateRanges();
@@ -487,6 +495,7 @@ const TELEGRAPH_VERT = /* glsl */ `
   attribute vec4 iXform;  // x, z, size, rotation
   attribute vec4 iAnim;   // spawn, duration, shape, param
   attribute vec3 iColor;
+  attribute float iGround; // floor height under the marker
 
   uniform float uTime;
 
@@ -510,7 +519,7 @@ const TELEGRAPH_VERT = /* glsl */ `
     vec2 scaled = local * iXform.z * alive;
     vec2 rot = vec2(scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c);
 
-    vec3 wpos = vec3(iXform.x + rot.x, position.y, iXform.y + rot.y);
+    vec3 wpos = vec3(iXform.x + rot.x, iGround + position.y, iXform.y + rot.y);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(wpos, 1.0);
 
     vLocal = local;
@@ -612,6 +621,7 @@ interface TelegraphAttrs {
   iXform: THREE.InstancedBufferAttribute;
   iAnim: THREE.InstancedBufferAttribute;
   iColor: THREE.InstancedBufferAttribute;
+  iGround: THREE.InstancedBufferAttribute;
 }
 
 /** Handle returned by `telegraph()`. */
@@ -636,6 +646,12 @@ export class DecalSystem {
   private quality: QualityProfile;
   private rng = new Random(0xdeca1);
   private time = 0;
+  /**
+   * Floor height at a world position. Decals are flat quads, so they need to
+   * know what they are lying on. The town is one flat slab and needs nothing;
+   * the dungeon points this at `DungeonBuilder.floorY`.
+   */
+  private groundAt: (x: number, z: number) => number = () => 0;
 
   private opaque: StainLayer;
   private additive: StainLayer;
@@ -681,10 +697,11 @@ export class DecalSystem {
       a.setUsage(THREE.DynamicDrawUsage);
       return a;
     };
-    this.tgAttrs = { iXform: mk(4), iAnim: mk(4), iColor: mk(3) };
+    this.tgAttrs = { iXform: mk(4), iAnim: mk(4), iColor: mk(3), iGround: mk(1) };
     geo.setAttribute('iXform', this.tgAttrs.iXform);
     geo.setAttribute('iAnim', this.tgAttrs.iAnim);
     geo.setAttribute('iColor', this.tgAttrs.iColor);
+    geo.setAttribute('iGround', this.tgAttrs.iGround);
     geo.instanceCount = 0;
     this.tgGeo = geo;
     this.tgGen = new Int32Array(this.tgCap);
@@ -711,6 +728,11 @@ export class DecalSystem {
     scene.add(this.tgMesh);
   }
 
+  /** Tells decals what height the floor is, so they lie on it. */
+  setGround(fn: (x: number, z: number) => number): void {
+    this.groundAt = fn;
+  }
+
   /**
    * Drops a ground stain. Unknown kinds degrade to a neutral scorch instead of
    * throwing. `life` overrides the style default (seconds).
@@ -726,7 +748,7 @@ export class DecalSystem {
     _col.multiplyScalar(jitter);
     const rot = rotation ?? this.rng.range(0, Math.PI * 2);
     layer.add(
-      x, z,
+      x, z, this.groundAt(x, z),
       Math.max(0.05, radius * style.sizeMul * this.rng.range(0.9, 1.12)),
       rot,
       style.cell,
@@ -797,6 +819,7 @@ export class DecalSystem {
     A.iAnim.array[o4 + 1] = Math.max(0.05, duration);
     A.iAnim.array[o4 + 2] = SHAPE_ID[kind] ?? 0;
     A.iAnim.array[o4 + 3] = param;
+    A.iGround.array[slot] = this.groundAt(x, z);
     // Telegraph colours are pushed well above 1 so the outline catches bloom
     // and stays legible over a bright lava floor.
     _col.setHex(color ?? 0xff3020).multiplyScalar(1.6);
