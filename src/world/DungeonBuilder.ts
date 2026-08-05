@@ -439,7 +439,11 @@ export class DungeonMesh {
     const wallMats = art.walls.map(variantMaterial);
     const trimMat = variantMaterial(art.trim);
     const baseMat = safeSurface(art.baseTrim, { repeat: 1.2 });
-    const ceilMat = safeSurface(art.walls[0].palette, { repeat: 1.6, tint: 0x6a6a72, roughness: 1 });
+    // A private clone, not the shared cached surface: the dissolve below is
+    // attached with `onBeforeCompile`, and hanging that on a cached material
+    // gives every other user of the same palette a hole in it.
+    const ceilMat = surfaceVariant(art.walls[0].palette, { repeat: 1.6, tint: 0x6a6a72, roughness: 1 });
+    this.ownedMat.push(ceilMat);
 
     const liquidMat = this.makeLiquidMaterial();
     const veinMat = new THREE.MeshBasicMaterial({
@@ -530,32 +534,48 @@ export class DungeonMesh {
     // roof was. Dithered rather than blended: the lid is opaque geometry that
     // walls draw against, and making it transparent would put it in the sorting
     // pass for no gain.
-    bedrockMat.onBeforeCompile = (shader) => {
-      shader.uniforms.uHero = { value: this.heroXZ };
-      shader.uniforms.uOpen = { value: ROOF_OPEN };
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vRoofPos;')
-        .replace(
-          '#include <begin_vertex>',
-          '#include <begin_vertex>\nvRoofPos = (modelMatrix * vec4(transformed, 1.0)).xyz;',
-        );
-      shader.fragmentShader = shader.fragmentShader
-        .replace(
-          '#include <common>',
-          '#include <common>\nvarying vec3 vRoofPos;\nuniform vec2 uHero;\nuniform float uOpen;',
-        )
-        .replace(
-          '#include <clipping_planes_fragment>',
-          [
-            'float roofD = distance(vRoofPos.xz, uHero);',
-            'float roofA = smoothstep(uOpen * 0.62, uOpen, roofD);',
-            // Screen-space hash: the band dissolves instead of banding.
-            'float roofN = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);',
-            'if (roofA < roofN) discard;',
+    const openAroundHero = (mat: THREE.Material, open: number): void => {
+      mat.onBeforeCompile = (shader) => {
+        shader.uniforms.uHero = { value: this.heroXZ };
+        shader.uniforms.uOpen = { value: open };
+        shader.vertexShader = shader.vertexShader
+          .replace('#include <common>', '#include <common>\nvarying vec3 vRoofPos;')
+          .replace(
+            '#include <begin_vertex>',
+            '#include <begin_vertex>\nvRoofPos = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+          );
+        shader.fragmentShader = shader.fragmentShader
+          .replace(
+            '#include <common>',
+            '#include <common>\nvarying vec3 vRoofPos;\nuniform vec2 uHero;\nuniform float uOpen;',
+          )
+          .replace(
             '#include <clipping_planes_fragment>',
-          ].join('\n'),
-        );
+            [
+              'float roofD = distance(vRoofPos.xz, uHero);',
+              'float roofA = smoothstep(uOpen * 0.62, uOpen, roofD);',
+              // Screen-space hash: the band dissolves instead of banding.
+              'float roofN = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);',
+              'if (roofA < roofN) discard;',
+              '#include <clipping_planes_fragment>',
+            ].join('\n'),
+          );
+      };
     };
+    openAroundHero(bedrockMat, ROOF_OPEN);
+
+    // The vault ceiling is the same problem one storey lower.
+    //
+    // The lid over the level opens around the player, but the ceiling drawn
+    // inside vaulted biomes never did, and the camera sits about twelve metres
+    // above the player looking down — well above a five metre ceiling. So in
+    // every vaulted biome a solid slab was drawn between the camera and the
+    // room being played in. Rendering the frame with this layer hidden is what
+    // finally named it: the large dark shape over the level simply vanished.
+    //
+    // It opens a little tighter than the lid, so the ceiling reads as present
+    // just past the edge of play rather than peeling back to the horizon.
+    openAroundHero(ceilMat, ROOF_OPEN * 0.8);
 
     const FLOOR0 = 0;
     const WALL0 = FLOOR0 + floorMats.length;
