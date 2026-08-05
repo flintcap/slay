@@ -985,8 +985,10 @@ export class DungeonMesh {
     }
     // Stop it blocking movement now that it is gone. A smashed barrel that you
     // still cannot walk through reads as a bug even though the model is hidden.
-    const cx = this.tileX(it.tileX);
-    const cz = this.tileZ(it.tileY);
+    // Match on where the prop is *drawn*, not its tile centre: a wall prop's
+    // collider carries the same `wallOffset` its mesh does.
+    const cx = it.x;
+    const cz = it.z;
     for (let i = this.colliders.length - 1; i >= 0; i--) {
       const c = this.colliders[i]!;
       if (Math.abs(c.x - cx) < 0.01 && Math.abs(c.z - cz) < 0.01) this.colliders.splice(i, 1);
@@ -1389,13 +1391,23 @@ export class DungeonMesh {
       }
     }
 
-    // Prop colliders.
+    // Prop colliders. A wall prop is *drawn* pushed back into the wall by
+    // `wallOffset` (see `buildProps`), so a collider left on the tile centre
+    // sits half a metre out in the open — a bookcase you bump into a pace
+    // before you reach it, and bare floor where the shelf actually is. Use the
+    // same offset the mesh uses.
     for (const p of this.level.props) {
       const def = propDef(p.kind);
       if (!def.blocks || def.radius <= 0) continue;
       const s = scaleFor(p.kind, p.x, p.y);
       const r = def.radius * s * 2;
-      this.colliders.push({ x: this.tileX(p.x), z: this.tileZ(p.y), w: r, d: r });
+      const off = def.placement === 'wall' ? (def.wallOffset ?? 0.7) : 0;
+      this.colliders.push({
+        x: this.tileX(p.x) - Math.sin(p.rotation) * off,
+        z: this.tileZ(p.y) - Math.cos(p.rotation) * off,
+        w: r,
+        d: r,
+      });
     }
   }
 
