@@ -5,3 +5,7 @@ shots/
 .DS_Store
 dist-single/
 .audit/
+# Every `tools/check-*.mjs` bundles its entry point into a scratch directory
+# like `.roofaudit` and deletes it on the way out. An interrupted run leaves
+# one behind; none of them are ever worth committing.
+.*audit/
