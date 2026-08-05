@@ -64,6 +64,7 @@ async function shot(name, hide) {
       const n = o.name || '';
       const match =
         (hideList.includes('roof') && n === 'roof') ||
+        (hideList.includes('tops') && n === 'wallTops') ||
         (hideList.includes('pools') && n === 'lightPools') ||
         (hideList.includes('shafts') && n === 'lightShafts') ||
         (hideList.includes('ceiling') && n === 'ceiling');
@@ -86,6 +87,11 @@ await shot('1-as-shipped', []);
 await shot('2-no-roof', ['roof']);
 await shot('3-no-roof-pools', ['roof', 'pools']);
 await shot('4-no-roof-shafts', ['roof', 'pools', 'shafts', 'ceiling']);
+// Wall tops stopped dissolving when the see-through walls were fixed. In a
+// cave or hive layout the wall mass is most of the map, so this is the shot
+// that says whether the cure covers the screen.
+await shot('5-no-wall-tops', ['tops']);
+await shot('6-no-tops-no-roof', ['tops', 'roof', 'ceiling']);
 
 await browser.close();
 server.kill('SIGTERM');
