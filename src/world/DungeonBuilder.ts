@@ -58,8 +58,17 @@ const CHUNK = 32;
 const MAX_TORCH_LIGHTS = 8;
 const SHADOW_LIGHTS = 2;
 const HALF = TILE_SIZE * 0.5;
-/** How much of the lid is cut away around the player, in world units. */
-const ROOF_OPEN = 21;
+/**
+ * How much of the lid is cut away around the player, in world units.
+ *
+ * Sized against the camera, not by taste. The rig sits 15.5m back at 0.92
+ * radians, so the readable floor runs about 26m ahead of the player, and an
+ * opening smaller than that leaves a dark cap sitting in the middle of the
+ * frame — which is exactly what the first render after the ceiling fix showed.
+ * At 30m the biome fog is already carrying half the distant frame, so the point
+ * where the rock closes over is hidden rather than seen.
+ */
+const ROOF_OPEN = 30;
 
 // ---------------------------------------------------------------------------
 // Vertex accumulation
@@ -575,7 +584,11 @@ export class DungeonMesh {
     //
     // It opens a little tighter than the lid, so the ceiling reads as present
     // just past the edge of play rather than peeling back to the horizon.
-    openAroundHero(ceilMat, ROOF_OPEN * 0.8);
+    // The same radius as the lid. A tighter one was tried first and the render
+    // came back with a dark cap still sitting beside the player: the ceiling is
+    // lower than the lid, so it occludes *more* of the floor per metre, not
+    // less.
+    openAroundHero(ceilMat, ROOF_OPEN);
 
     const FLOOR0 = 0;
     const WALL0 = FLOOR0 + floorMats.length;
