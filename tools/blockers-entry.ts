@@ -14,8 +14,10 @@
  *
  * and the player is stopped when `|x - c.x| < c.w * 0.5 + 0.42`. What is drawn
  * is the template's geometry, scaled, and for wall placements pushed
- * `wallOffset` toward the wall — so a wall prop's collider sits half a metre
- * from the thing you can see.
+ * `wallOffset` toward the wall. The builder now applies that same offset to the
+ * collider, so this checks the two stay in step: a wall prop whose collider
+ * went back to the tile centre would put half a metre of solid air in front of
+ * every bookcase in the game.
  *
  * **Part two — gaps too narrow for the player's body.** The player is a disc of
  * radius 0.42 and every collider is inflated by that. A one-tile corridor is
@@ -337,7 +339,10 @@ for (const depth of [1, 2, 4, 6, 9, 13, 18, 25]) {
             count: 0,
             colliderHalf: 0,
             meshHalf: mh === null ? 0 : mh,
-            offset: def.placement === 'wall' ? (def.wallOffset ?? 0.7) : 0,
+            // The builder moves the collider by `wallOffset` too, so mesh and
+            // collider share a centre and the offset cancels out. Kept as a
+            // reported column: if it ever stops cancelling, `bare` shows it.
+            offset: 0,
             noMesh: mh === null,
             bareRing: 0,
           };

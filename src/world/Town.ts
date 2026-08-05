@@ -149,7 +149,16 @@ function addBox(
   mat: THREE.Material, ry = 0, collide = false,
 ): THREE.Mesh {
   const m = add(ctx, new THREE.BoxGeometry(w, h, d), mat, x, y + h / 2, z, ry);
-  if (collide) ctx.colliders.push({ x, z, w: Math.max(w, d), d: Math.max(w, d) });
+  // The collider used to be `max(w, d)` on both axes, which is rotation-proof
+  // and wrong: a 5x1 wall got a 5x5 box, so two metres of open ground on each
+  // side of it were solid. Take the real axis-aligned bounds of the rotated
+  // rectangle instead — that is (w, d) when it is square-on and (d, w) when it
+  // is turned a quarter, with the correct in-between for anything else.
+  if (collide) {
+    const c = Math.abs(Math.cos(ry));
+    const s = Math.abs(Math.sin(ry));
+    ctx.colliders.push({ x, z, w: w * c + d * s, d: w * s + d * c });
+  }
   return m;
 }
 

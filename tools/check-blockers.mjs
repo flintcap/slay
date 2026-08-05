@@ -91,7 +91,8 @@ const src =
   readFileSync(path.join(ROOT, 'src/entities/Player.ts'), 'utf8');
 const rules = [
   ['collider comes from def.radius', /const r = def\.radius \* s \* 2;/],
-  ['collider sits on the tile centre', /this\.colliders\.push\(\{ x: this\.tileX\(p\.x\), z: this\.tileZ\(p\.y\), w: r, d: r \}\)/],
+  ['collider follows the drawn offset', /x: this\.tileX\(p\.x\) - Math\.sin\(p\.rotation\) \* off,/],
+  ['a looted prop drops its collider', /const cx = it\.x;/],
   ['wall props are drawn offset', /const off = def\.placement === 'wall' \? \(def\.wallOffset \?\? 0\.7\) : 0;/],
   ['the player is a 0.42m disc', /readonly radius = 0\.42;/],
 ];

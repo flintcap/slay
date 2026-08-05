@@ -692,6 +692,9 @@ export class DungeonMesh {
           const geo = s.build();
           this.ownedGeo.push(geo);
           const mesh = new THREE.Mesh(geo, mats[i]);
+          // Named so probes can find the rock lid without guessing which
+          // unnamed slab is filling the frame.
+          mesh.name = i === BEDROCK ? 'roof' : i === CEIL ? 'ceiling' : `surface${i}`;
           mesh.castShadow = i >= WALL0 && i < CEIL;
           mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK;
           mesh.matrixAutoUpdate = false;
