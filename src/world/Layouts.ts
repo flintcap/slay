@@ -214,7 +214,9 @@ export interface LayoutOut {
 export function layoutSizeFor(depth: number, kind: LayoutKind, rng: Rng): { w: number; h: number } {
   const growth = Math.min(30, Math.floor(Math.log2(depth + 1) * 7));
   let base = 62 + growth;
-  if (kind === 'arena') base = 54 + Math.floor(growth * 0.6);
+  // The arena chamber is capped now, so the level has to be big enough that the
+  // ring of approaches around it is a place rather than a rind.
+  if (kind === 'arena') base = 57 + Math.floor(growth * 0.75);
   if (kind === 'caves' || kind === 'ruins') base = 70 + growth;
   if (kind === 'maze') base = 55 + Math.floor(growth * 0.8);
   // Halls need room for the hallways between the rooms, not just the rooms.
@@ -1799,7 +1801,14 @@ function layoutArena(o: LayoutOpts): LayoutOut {
 
   const cx = width / 2;
   const cy = height / 2;
-  const R = Math.min(width, height) * 0.31;
+  // Capped, not just proportional.
+  //
+  // At a flat 31% of the level the chamber grew with the level and stayed the
+  // same share of it forever: measured at 35 tiles of solid open floor inside a
+  // 54-tile level, so half the map was one room and the satellite approaches
+  // were a thin rind. The cap lets the ring around the arena grow with depth
+  // while the stage stays a stage.
+  const R = Math.min(Math.min(width, height) * 0.31, 16);
 
   // Octagonal-ish main chamber with a noise-perturbed rim.
   for (let y = 2; y < height - 2; y++) {
@@ -1825,6 +1834,48 @@ function layoutArena(o: LayoutOpts): LayoutOut {
     }
   }
 
+  // A colonnade on each tier edge.
+  //
+  // The tiers were pure height, and a height step is a walkable slope, so the
+  // chamber was a flat disc with nothing in it — you could see and cross the
+  // whole thing from anywhere on it. Broken rings of pillars at the two tier
+  // edges give the fight something to use: they cut sight lines and force
+  // movement without ever closing a route, because the gaps between them are
+  // wider than the pillars.
+  for (const [ringR, count] of [
+    [R * 0.34, 9],
+    [R * 0.62, 14],
+  ] as Array<[number, number]>) {
+    if (ringR < 3) continue;
+    for (let y = 2; y < height - 2; y++) {
+      for (let x = 2; x < width - 2; x++) {
+        if (!g.walkable(x, y)) continue;
+        const dx = x - cx;
+        const dy = y - cy;
+        const d = Math.hypot(dx, dy);
+        if (Math.abs(d - ringR) > 1.1) continue;
+        // Pillars occupy a little under a third of the ring, so two thirds of
+        // it is doorway.
+        if (Math.cos(Math.atan2(dy, dx) * count) < 0.55) continue;
+        g.set(x, y, T_VOID);
+      }
+    }
+  }
+
+  // Cover on the outer floor: fallen blocks big enough to break a charge.
+  const blocks = rng.int(5, 9);
+  for (let i = 0; i < blocks; i++) {
+    const ang = rng.range(0, Math.PI * 2);
+    const d = R * rng.range(0.68, 0.94);
+    g.disc(
+      Math.round(cx + Math.cos(ang) * d),
+      Math.round(cy + Math.sin(ang) * d),
+      rng.range(1.2, 2.4),
+      rng.range(1.2, 2.4),
+      T_VOID,
+    );
+  }
+
   const rooms: DungeonRoom[] = [];
   const arena = makeRoom(
     Math.round(cx - R),
@@ -1838,7 +1889,9 @@ function layoutArena(o: LayoutOpts): LayoutOut {
 
   // Satellites on a ring, joined to the arena by wide approaches and to each
   // other by a perimeter loop.
-  const satCount = rng.int(4, 6);
+  // More of them, because the chamber no longer eats the level and the ring
+  // around it is now the part you spend most of the floor in.
+  const satCount = rng.int(6, 9);
   const startAng = rng.range(0, Math.PI * 2);
   const sats: DungeonRoom[] = [];
   for (let i = 0; i < satCount; i++) {
