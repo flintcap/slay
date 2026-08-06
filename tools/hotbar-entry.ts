@@ -28,6 +28,25 @@ const rows: Row[] = [];
 for (const def of CLASSES) {
   const actives = SKILLS.filter((s) => def.trees.includes(s.treeId) && s.targeting !== 'passive');
 
+  // 0. A brand new character, untouched.
+  //
+  // This case was missing, and it is the one the player meets: reported as
+  // "new character and still putting the first skill in the hotbar when its
+  // RMB". Every other scenario here calls `repairCharacter` first, which
+  // strips the duplicate — so the suite passed while the character-creation
+  // code wrote both fields by hand and shipped the bug to the first screen
+  // anyone sees. Repair does not run on a character that was just created.
+  {
+    const c = makeCharacter(def.id, `T${def.id}`);
+    rows.push({
+      cls: def.id,
+      scenario: 'brand new, no repair',
+      primary: c.primaryAttack ?? null,
+      hotbar: [...c.hotbar],
+      overlap: !!c.primaryAttack && c.hotbar.includes(c.primaryAttack),
+    });
+  }
+
   // 1. A fresh character, repaired the way loading does.
   {
     const c = makeCharacter(def.id, `T${def.id}`);

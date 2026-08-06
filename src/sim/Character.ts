@@ -130,16 +130,23 @@ export function createCharacter(
   const starter = startingSkillFor(cls.id);
   if (starter) {
     c.skills[starter] = 1;
-    c.hotbar[0] = starter;
     // Right click is the attack button; point it at the class opener so a new
     // character can fight without visiting a menu first.
-    c.primaryAttack = starter;
+    //
+    // And *only* right click. This used to write `hotbar[0]` and
+    // `primaryAttack` by hand, which walks straight past the rule both setters
+    // enforce — a skill is on the bar or on right click, never both. The result
+    // was that every new character opened with its one skill shown twice, which
+    // is the first thing anybody sees. Going through the setter means the rule
+    // cannot be bypassed here again.
+    setPrimaryAttack(c, starter);
   }
 
   // Anything else the class recommends is bound only once it has a rank, so the
-  // bar never shows a skill the player cannot actually cast.
+  // bar never shows a skill the player cannot actually cast. Starting at slot
+  // zero, because the opener is not taking that slot any more.
   const hints = (STARTING_SKILL_HINTS[cls.id] ?? []).filter((id) => id !== starter);
-  let slot = 1;
+  let slot = 0;
   for (const id of hints) {
     if (slot >= c.hotbar.length) break;
     if ((c.skills[id] ?? 0) > 0) c.hotbar[slot++] = id;
