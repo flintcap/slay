@@ -2,7 +2,7 @@
 
 Goal: take SLAY from "good base" to something that looks, sounds and plays
 like a finished, premium action RPG. Not just the looks: how it plays, how
-deep it goes, the story, and how solid it is. Nine workstreams run in parallel, each
+deep it goes, the story, and how solid it is. Ten workstreams run in parallel, each
 owned by one agent, each checkpointing to git so it can be stopped at any
 moment and resumed later with nothing lost.
 
@@ -18,6 +18,7 @@ moment and resumed later with nothing lost.
 | depth | `depth.md` | Items, affixes, uniques, progression, dungeon events, crafting, run variety |
 | combat | `combat.md` | Controls, skill design, enemy AI and behaviours, elites, mini-bosses, boss fights, difficulty curve |
 | story | `story.md` | Lore, quest lines, town NPCs and dialogue, boss personalities, flavour text, a reason to descend |
+| art | `art.md` | Item and skill icons, item models, class portraits, key art, UI ornament, boss portraits |
 | quality | `quality.md` | Bugs, performance, save safety, accessibility, crash resistance |
 
 ## File ownership
@@ -27,11 +28,14 @@ only in small additive changes (new lines, new exports), never rewrite it.
 
 - **hud**: `src/ui/HUD.ts`, `Widgets.ts`, `Tooltip.ts`, `InventoryPanel.ts`, `SkillTreePanel.ts`,
   `CharacterPanel.ts`, `PaperdollView.ts`, `VendorPanel.ts`, `BlacksmithPanel.ts`, `StashPanel.ts`,
-  `MapPanel.ts`, `QuestLog.ts`, `Nameplates.ts`, `GroundLabels.ts`, `src/ui/styles.css`, `src/art/Icons.ts`
+  `MapPanel.ts`, `QuestLog.ts`, `Nameplates.ts`, `GroundLabels.ts`, `src/ui/styles.css`
 - **menus**: `src/scenes/TitleScene.ts`, `CharSelectScene.ts`, `DeathScene.ts`, `ShowcaseScene.ts`,
   `src/ui/CharSelectPanel.ts`, `DeathPanel.ts`, `PausePanel.ts`, `SettingsPanel.ts`, `UIRoot.ts`,
   `index.html`, new `src/ui/menus.css`
-- **animation**: `src/art/Animation.ts`, `CharacterModels.ts`, `ItemModels.ts`, `Meshes.ts`, `src/entities/MonsterModels.ts`
+- **animation**: `src/art/Animation.ts`, `CharacterModels.ts`, `Meshes.ts`, `src/entities/MonsterModels.ts`
+- **art**: `src/art/Icons.ts`, `src/art/ItemModels.ts`, new files under `src/art/` for portraits, key art
+  and ornament. The `GRIPS` table and grip contract in `CharacterModels.ts` stay animation's; item
+  models must keep the weapon contract (grip at origin, business end along +Y, wide on X, thin on Z).
 - **world**: `src/art/Textures.ts`, `Materials.ts`, `Palettes.ts`, `Noise.ts`, `src/world/DungeonBuilder.ts`,
   `Props.ts`, `Biomes.ts` (art fields), `Town.ts`, `src/core/Renderer.ts`, `src/scenes/TownScene.ts`
 - **feel**: `src/fx/*`, `src/audio/*`, `src/scenes/SkillRunner.ts`
