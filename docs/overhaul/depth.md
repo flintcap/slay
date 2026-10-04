@@ -60,6 +60,11 @@ the character (`Character.bounties?`, migrate in `repairCharacter`).
 
 ## Notes for resume
 
+**Requests from other streams (added at pause):**
+- From story: "collect" and "reach" quest objectives generated in `DungeonGen.ts` are never counted, so those quests can never be finished. Fix the counting or stop generating them.
+- From story: some generated runs have no chests on any floor, so chest objectives can fail.
+- Note on the openness request from quality: cathedral being one large nave is intentional (the owner agreed to leave it). Halls and rooms sit just over the bar; tighten only if it improves play.
+
 - **Item powers** (`src/sim/ItemPowers.ts`): one table, 73 powers. A power has
   up to four parts: `passive` (folds into `PassiveEffects`, so it rides the
   combat hooks skills already use), `stats` (transforms the sheet at the end of
@@ -105,7 +110,6 @@ the character (`Character.bounties?`, migrate in `repairCharacter`).
   - menus: O opens the Loot Filter; please list it in any controls help.
   - combat: `enemy:killed` is emitted twice per kill (Enemy.die and
     DungeonScene.grantKill) with different `id` meanings.
-(none yet)
 
 ### Request from quality
 - `node tools/check-openness.mjs` fails: cathedral 59.6%, halls 29.6% and rooms

@@ -57,6 +57,11 @@ Still to do for milestone 5:
 
 ## Notes for resume
 
+**Requests from other streams (added at pause, from the depth stream's report):**
+- `SkillRunner.afterHit` returns early unless arc or conduct passives are set, so most characters never get crit riders, Flurry or minion leech. Make the early-out only skip the passive-specific work.
+- The Flurry timer is never refreshed on a hit, so stacks are wiped every 2 seconds regardless of how fast you hit.
+- From the combat stream: `player:evaded` fires when the dodge avoids a hit; give it a sound and a flash.
+
 - **The world clock.** `DungeonScene.update` now runs the world on
   `rawDt * rig.worldScale` and calls `rig.update(rawDt)`. Before this, hit-stop
   and slow-mo in `CameraRig` only moved the camera; nothing in the world froze.

@@ -44,6 +44,11 @@ Left to do for milestone 4:
 
 ## Notes for resume
 
+**Requests from other streams (added at pause):**
+- From depth: `enemy:killed` fires twice per kill. Anything counting kills (bounties, renown, quests, run stats) double counts until fixed. Add a checker that one kill emits exactly one event.
+- From animation: melee damage lands the instant you click, not when the swing connects. Animation will publish each clip's contact time; delay melee damage to match.
+- From story: some quest objectives generated in `DungeonGen.ts` ("collect" and "reach") are never counted by the dungeon, so those quests cannot be finished. Coordinate with depth, who owns DungeonGen.ts.
+
 - Controls live in `src/entities/Controls.ts` (`CombatControls`). `DungeonScene.handleInput`
   is now a three-line delegation; the old `enemyUnderCursor`, `aimPoint` and
   `MELEE_REACH` in the scene are unused leftovers kept to keep the shared-file diff small.

@@ -38,6 +38,12 @@ in-game CombatTextLayer has not yet been seen in a real frame).
 
 ## Notes for resume
 
+**Requests from other streams (added at pause):**
+- From art: `statusIconUri(icon, color, polarity)` in `src/art/Icons.ts` is ready to replace the SVG art in the buff chips in `HUD.ts` (around line 948). One-line change.
+- From combat: seven new elite affixes show a placeholder star with no icon: desecrator, fire_chains, bulwark, splitter, hexing, adaptive, lancer. New events to hook: `miniboss:engaged`, `miniboss:killed`, `boss:cast`, `boss:enraged`.
+- From quality: 49 font sizes are fixed pixel values and ignore the text-size setting. Use the `--fs-*` sizes or `calc(Npx * var(--text-scale, 1))`.
+- From menus: old styles in `styles.css` are unused and can go: `.title-*`, `.cs-*` (keep `.cs-memorial-list` and `.fallen-*`), `.death-*`, `.pause-*`, `.settings-cols`.
+
 - **UI lab (use it).** `node tools/uilab.mjs --out=shots/hud --shots=hud,inventory,skills`
   mounts the real UI with a stub engine (no game boot) and screenshots it in
   seconds. States: `hud`, `levelup`, `tooltip`, `modal`, `menu`, or any panel id

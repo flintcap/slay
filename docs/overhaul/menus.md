@@ -41,6 +41,11 @@ Status: paused
 
 ## Notes for resume
 
+**Requests from other streams (added at pause):**
+- From depth: list O (loot filter) and G (Legacy) in the controls help.
+- From story: J now opens the journal; add a Journal entry to the pause menu.
+- From quality: keep the text size, colour-blind and key rebinding sections it added to the settings panel; 49 font sizes in hud and menus ignore text size (see hud.md).
+
 - All menu styles live in `src/ui/menus.css` (linked from `index.html` after `styles.css`). Prefixes:
   `mn-` shared list, `ttl-` title, `csx-` char select, `ld-` loading card, `bn-` banners, `pz-` pause,
   `stg-` settings, `dth-` death, `ob-` hints, `mem-` memorial summary.
