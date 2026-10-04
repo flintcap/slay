@@ -380,6 +380,47 @@ export const SHEETS: Record<string, () => Promise<string>> = {
   'bodies-mid': () => bodySheet('mid'),
   'bodies-top': () => bodySheet('top'),
 
+  /**
+   * Every class in mid and top gear caught mid-stride and mid-swing, from the
+   * side and the front: where skirts, capes, tassets and long hair clip.
+   */
+  async stride() {
+    const tiers: Tier[] = ['mid', 'top'];
+    const poses: Array<{ clip: string; t: number; yaw: number }> = [
+      { clip: 'run', t: 0.3, yaw: Math.PI * 0.5 },
+      { clip: 'run', t: 0.62, yaw: 0.3 },
+      { clip: 'attack1', t: 0.2, yaw: 0.6 },
+    ];
+    const cw = 170;
+    const ch = 300;
+    const W = CLASSES.length * tiers.length * cw + 20;
+    const H = poses.length * (ch + 10) + 30;
+    const { c, g } = canvas(W, H);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(BG);
+    lights(scene, 'studio');
+    const cam = new THREE.PerspectiveCamera(28, cw / ch, 0.05, 60);
+    const r = studio(cw, ch);
+    let col = 0;
+    for (const cls of CLASSES) {
+      for (const tier of tiers) {
+        const x = 10 + col * cw;
+        g.fillStyle = INK;
+        g.fillText(`${cls} ${tier}`, x, 16);
+        for (let pi = 0; pi < poses.length; pi++) {
+          const pose = poses[pi]!;
+          const fig = dressed(cls, tier);
+          fig.animator?.play(pose.clip, { fade: 0 });
+          for (let s = 0; s < Math.round(pose.t * 30); s++) fig.animator?.update(1 / 30);
+          drawCell(g, r, scene, cam, fig.root, pose.yaw, x, 24 + pi * (ch + 10), cw, ch);
+        }
+        col++;
+        await settle();
+      }
+    }
+    return c.toDataURL('image/png');
+  },
+
   async classes() {
     const tiers: Tier[] = ['bare', 'low', 'mid', 'top'];
     const views = [0.45, Math.PI + 0.45];
