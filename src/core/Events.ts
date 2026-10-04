@@ -42,6 +42,9 @@ export interface GameEvents {
   'boss:phase': { name: string; bark?: string; index: number };
   'boss:damaged': { life: number; maxLife: number };
   'boss:killed': { name: string };
+  /** A floor's mini-boss noticed the hero. `title` names its mechanic. */
+  'miniboss:engaged': { id: string; name: string; title: string; kind: string };
+  'miniboss:killed': { id: string; name: string; kind: string };
   'toast': { text: string; kind?: 'info' | 'good' | 'bad' | 'epic'; rarity?: ItemRarity };
   'shake': { amount: number; duration: number };
   'sfx': { id: string; volume?: number; pitch?: number; x?: number; z?: number };

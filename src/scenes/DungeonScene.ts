@@ -13,13 +13,14 @@ import type {
 import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { save } from '../core/Save';
-import { Random, randomSeed } from '../core/RNG';
+import { Random, randomSeed, streamFor } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
 import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { EffectSystem } from '../fx/Effects';
 import { Player } from '../entities/Player';
 import { CombatControls } from '../entities/Controls';
+import { planMiniBoss, attachMiniBoss } from '../entities/MiniBoss';
 import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
@@ -407,7 +408,14 @@ export class DungeonScene extends GameScene {
     this.exitPos.copy(this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y));
 
     // Spawn the level's monsters.
+    // Most floors promote one pack leader to a mini-boss with a mechanic of
+    // its own (entities/MiniBoss.ts). Its own stream, so the rest of the floor
+    // rolls exactly as it did before.
+    const mini = planMiniBoss(this.level.spawns, this.run.depth, this.level.isBossLevel, streamFor(this.level.seed, `miniboss:${index}`));
+    let spawnIndex = -1;
     for (const spawn of this.level.spawns) {
+      spawnIndex++;
+      const promoted = mini && mini.index === spawnIndex ? mini : null;
       const def = MONSTERS.find((m) => m.id === spawn.monsterId);
       if (!def) continue;
       const affixes = spawn.affixes
@@ -424,12 +432,13 @@ export class DungeonScene extends GameScene {
       }
       const enemy = new Enemy(
         def,
-        spawn.rank,
+        promoted ? promoted.rank : spawn.rank,
         affixes,
         this.run.depth,
         levelRng.fork(`e${spawn.x},${spawn.y}`),
-        named,
+        promoted ? promoted.named : named,
       );
+      if (promoted) attachMiniBoss(enemy, promoted);
       // Members of a pack share aggro and tactics. The spawn table always
       // carried the id; nothing copied it across, so every pack fought alone.
       enemy.packId = spawn.packId;

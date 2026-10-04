@@ -154,6 +154,8 @@ export interface BuffMods {
   /** Makes the host untargetable / non-colliding. */
   phased: number;
   invulnerable: number;
+  /** Multiplier on damage taken. Above 1 is an opening: a stuck or dazed monster. */
+  taken: number;
 }
 
 /** A scripted movement the AI must not fight (charges, leaps, knockbacks). */
@@ -375,8 +377,11 @@ export function rollPacket(
   ability: string,
 ): DamagePacket {
   const roll = rollDamageImpl ?? fallbackRoll;
+  // Damage buffs (Empowered, war cries, enrage) multiply on top of the
+  // standing multiplier. They were written everywhere and read nowhere.
+  const buffed = (self as { buffDamageMul?: number }).buffDamageMul ?? 1;
   const packet = roll(self.stats, ctx.rng, {
-    scale: scale * self.outgoingMul,
+    scale: scale * self.outgoingMul * buffed,
     type,
     ability,
     source: self.id,
@@ -402,8 +407,37 @@ export function hitPlayer(
   if (opts?.knockback) packet.knockback = opts.knockback;
   if (opts?.applies) packet.applies = opts.applies;
   affixRiders(self, ctx, packet);
+  noteControl(ctx, packet);
   ctx.damagePlayer(packet);
   return packet;
+}
+
+// ---------------------------------------------------------------------------
+// Combos — a monster that pins you down sets the others off
+// ---------------------------------------------------------------------------
+
+/** Status ids that hold the hero in place or slow them right down. */
+const CONTROL_IDS = new Set([
+  'root', 'rooted', 'stun', 'stunned', 'freeze', 'frozen', 'web', 'entangled',
+  'slow', 'slowed', 'chill', 'chilled', 'grasped', 'knockedDown', 'feared', 'petrified',
+]);
+
+let controlledUntil = -1;
+
+/** Remembers that a blow just pinned the hero, so follow-ups can punish it. */
+export function noteControl(ctx: CombatContext, packet: DamagePacket): void {
+  let until = -1;
+  for (const a of packet.applies ?? []) {
+    if (CONTROL_IDS.has(a.id)) until = Math.max(until, ctx.elapsed + Math.min(3, a.duration));
+  }
+  // Being dragged in by a vortex or a gravity well is control too.
+  if ((packet.knockback ?? 0) < 0) until = Math.max(until, ctx.elapsed + 1);
+  if (until > controlledUntil) controlledUntil = until;
+}
+
+/** True while the hero is held by something a monster did. */
+export function heroControlled(ctx: CombatContext): boolean {
+  return ctx.elapsed < controlledUntil;
 }
 
 /**
@@ -429,6 +463,8 @@ function affixRiders(self: Combatant, ctx: CombatContext, packet: DamagePacket):
         magnitude: p.slow ?? 0.35,
         stacks: 1,
       });
+    } else if (a.behavior === 'hexing') {
+      (packet.applies ??= []).push({ id: 'cursed', duration: p.duration ?? 6, magnitude: 1, stacks: 1 });
     } else if (a.behavior === 'nightmarish' && ctx.rng.chance(p.chance ?? 0.22)) {
       (packet.applies ??= []).push({
         id: 'feared',
@@ -1094,6 +1130,7 @@ export function resetAbilityWorld(): void {
   hazards.length = 0;
   delayed.length = 0;
   lastWorldTick = -1;
+  controlledUntil = -1;
 }
 
 /** Releases the pooled GPU resources. */

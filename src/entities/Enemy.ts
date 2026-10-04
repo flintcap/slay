@@ -39,8 +39,12 @@ import {
   angleTo,
   clamp,
   circleHit,
+  dashToward,
   dist,
+  distToSegment,
   fireProjectile,
+  heroControlled,
+  noteControl,
   getAbility,
   hitPlayer,
   makeInstance,
@@ -107,6 +111,25 @@ export function depthCurve(depth: number): DepthCurve {
     xp: 9 * Math.pow(1.105, d - 1) + d * 4,
     level: Math.max(1, Math.round(d * 1.05)),
   };
+}
+
+/**
+ * Affixes that fire early when the hero has just been pinned by something.
+ * This is what makes a pair of affixes a threat rather than two timers.
+ */
+const COMBO_FOLLOWUPS: ReadonlySet<string> = new Set([
+  'mortar', 'desecrator', 'lancer', 'electrified', 'lightning_enchanted', 'frozen_pulse', 'arcane_enchanted',
+]);
+/** Seconds before the same affix can be set off by a combo again. */
+const COMBO_COOLDOWN = 6;
+
+/** What `Enemy` needs from a mini-boss mechanic. Implemented in `MiniBoss.ts`. */
+export interface MiniBossHook {
+  readonly kind: string;
+  /** While true, ordinary abilities wait: the mechanic has the floor. */
+  readonly wantsTurn: boolean;
+  tick(dt: number, ctx: CombatContext): void;
+  onDeath(ctx: CombatContext): void;
 }
 
 /** Half-angle of a braced tank's guard, radians, and how much it turns aside. */
@@ -245,6 +268,13 @@ export class Enemy implements Combatant {
   private locomotion = 0;
   private aura: THREE.Mesh | null = null;
   private affixTimers: number[] = [];
+  /** When each follow-up affix may next be set off by a combo. */
+  private comboAt: number[] = [];
+  /** Adaptive: recent hits by element, and the element it has hardened to. */
+  private adaptHits: Array<{ type: DamageType; t: number }> = [];
+  private adapted: { type: DamageType; until: number } | null = null;
+  /** Mini-boss mechanic, when this monster is one. See `MiniBoss.ts`. */
+  miniBoss: MiniBossHook | null = null;
   private affixStacks = 0;
   private revives = 0;
   private lastDamagedAt = -99;
@@ -466,6 +496,11 @@ export class Enemy implements Combatant {
     return this.buffs.some((b) => b.id === id);
   }
 
+  /** Outgoing damage multiplier from active buffs. Read by `rollPacket`. */
+  get buffDamageMul(): number {
+    return this.buffMul('damage');
+  }
+
   private buffMul(key: keyof BuffMods): number {
     let m = 1;
     for (const b of this.buffs) {
@@ -533,6 +568,7 @@ export class Enemy implements Combatant {
   /** Starts an ability. Returns false when it could not begin. */
   beginAbility(def: AbilityDef, ctx: CombatContext): boolean {
     if (this.inst || !this.alive || this.rootTimer > 0) return false;
+    if (this.miniBoss?.wantsTurn) return false;
     const inst = makeInstance(def);
     inst.phase = 'windup';
     // `playerPos` is the victim position: the scene points it at a summon when
@@ -699,6 +735,8 @@ export class Enemy implements Combatant {
 
     // Affixes ---------------------------------------------------------------
     if (this.affixes.length) this.tickAffixes(dt, ctx);
+    this.miniBoss?.tick(dt, ctx);
+    if (!this.alive) return;
 
     // Presentation ----------------------------------------------------------
     this.root.rotation.y = this.facing;
@@ -953,6 +991,10 @@ export class Enemy implements Combatant {
     // Item powers (conversion, slayer bonuses, life tap) shape the player's blow.
     if (packet.source === 'player' && powerHooks.outgoing) packet = powerHooks.outgoing(this, packet, ctx);
     let working = packet;
+    // Adaptive: hardens against an element that keeps landing.
+    const adapt = this.affixes.find((a) => a.behavior === 'adaptive');
+    if (adapt) working = this.adapt(working, adapt, ctx);
+
     // Stoneskin / missile dampening chip the packet before mitigation.
     for (const a of this.affixes) {
       if (a.behavior === 'stoneskin' && working.type === 'physical') {
@@ -970,13 +1012,19 @@ export class Enemy implements Combatant {
       // Shred effects — scorched, brittle, unmade, vulnerable — are authored as
       // flat resistance modifiers and were being computed against the monster's
       // untouched base stats, so lowering a resistance lowered nothing.
-      const res = mitigate(working, this.statusAdjustedStats(), ctx.rng);
+      // Defense buffs and debuffs (a barrier breaking, a stuck executioner)
+      // scale armour for this hit.
+      let st = this.statusAdjustedStats();
+      const defMul = this.buffMul('defense');
+      if (defMul !== 1) st = { ...st, defense: st.defense * defMul };
+      const res = mitigate(working, st, ctx.rng);
       taken = res.amount;
       type = res.type;
     } catch {
       taken = working.amount;
     }
     taken *= 1 - clamp(this.buffSum('absorb'), 0, 0.9);
+    taken *= this.buffMul('taken');
     // A tank braced behind its guard turns blows aside from the front. Hit it
     // from the side or the back, or while it is committed to a swing.
     if (this.braced && working.source === 'player') {
@@ -1166,6 +1214,7 @@ export class Enemy implements Combatant {
       if (a?.tags?.includes('ondeath')) a.onExecute?.(this, ctx, makeInstance(a));
     }
     this.runDeathAffixes(ctx);
+    this.miniBoss?.onDeath(ctx);
 
     events.emit('enemy:killed', {
       id: this.id,
@@ -1251,10 +1300,44 @@ export class Enemy implements Combatant {
         case 'arcane_sentry':
           summon(this, ctx, 'arcane_sentry_totem', 1, 1.5);
           break;
+        case 'splitter': {
+          // Plain copies, so a split never splits again.
+          const kids = summon(this, ctx, this.monsterId, a.params?.count ?? 2, 1.4);
+          for (const k of kids) k.packId = this.packId;
+          ctx.fx.burst('blood', p.x, this.centerY, p.z, { count: 30, color: a.color });
+          break;
+        }
         default:
           break;
       }
     }
+  }
+
+  /** Adaptive affix: tracks hits by element and hardens against a repeated one. */
+  private adapt(packet: DamagePacket, a: MonsterAffixDef, ctx: CombatContext): DamagePacket {
+    const params = a.params ?? {};
+    const now = ctx.elapsed;
+    if (this.adapted && now < this.adapted.until && this.adapted.type === packet.type) {
+      ctx.fx.burst('shock', this.root.position.x, this.centerY, this.root.position.z, { count: 3, color: a.color });
+      return { ...packet, amount: packet.amount * (1 - (params.resist ?? 45) / 100) };
+    }
+    const window = params.window ?? 3;
+    this.adaptHits.push({ type: packet.type, t: now });
+    while (this.adaptHits.length && now - this.adaptHits[0]!.t > window) this.adaptHits.shift();
+    if (this.adaptHits.length > 12) this.adaptHits.shift();
+    let same = 0;
+    for (const h of this.adaptHits) if (h.type === packet.type) same++;
+    if (same >= (params.hits ?? 4)) {
+      this.adapted = { type: packet.type, until: now + (params.duration ?? 6) };
+      this.adaptHits.length = 0;
+      ctx.fx.burst('heal', this.root.position.x, this.centerY, this.root.position.z, { count: 16, color: typeColor(packet.type) });
+    }
+    return packet;
+  }
+
+  /** The element an Adaptive monster has hardened against right now, if any. */
+  adaptedTo(now: number): DamageType | null {
+    return this.adapted && now < this.adapted.until ? this.adapted.type : null;
   }
 
   private tickDeath(dt: number, ctx: CombatContext): void {
@@ -1296,6 +1379,13 @@ export class Enemy implements Combatant {
     for (let i = 0; i < this.affixes.length; i++) {
       const a = this.affixes[i]!;
       this.affixTimers[i] = (this.affixTimers[i] ?? 0) - dt;
+      // A follow-up affix fires straight away when the hero has just been
+      // pinned by anything: the trap springs and the shell lands on it.
+      if (brainAwake && a.behavior && COMBO_FOLLOWUPS.has(a.behavior) && heroControlled(ctx) &&
+        ctx.elapsed >= (this.comboAt[i] ?? 0)) {
+        this.affixTimers[i] = 0;
+        this.comboAt[i] = ctx.elapsed + COMBO_COOLDOWN;
+      }
       const ready = (this.affixTimers[i] ?? 0) <= 0;
       const params = a.params ?? {};
 
@@ -1469,6 +1559,7 @@ export class Enemy implements Combatant {
             if (dist(tx, tz, c.playerPos.x, c.playerPos.z) < 1.8) {
               const packet = rollPacket(self, c, 0.15, 'arcane', 'jailer');
               packet.applies = [{ id: 'root', duration: params.duration ?? 1.6, magnitude: 1 }];
+              noteControl(c, packet);
               c.damagePlayer(packet);
             }
           });
@@ -1498,6 +1589,7 @@ export class Enemy implements Combatant {
           this.affixTimers[i] = params.interval ?? 7;
           const packet = rollPacket(this, ctx, 0.2, 'arcane', 'vortex');
           packet.knockback = -Math.min(10, d);
+          noteControl(ctx, packet);
           ctx.damagePlayer(packet);
           ctx.fx.burst('void', ctx.playerPos.x, 1, ctx.playerPos.z, { count: 18, color: a.color });
           break;
@@ -1508,6 +1600,7 @@ export class Enemy implements Combatant {
           if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) > (params.radius ?? 10)) break;
           const packet = rollPacket(this, ctx, 0.08, 'arcane', 'gravity');
           packet.knockback = -(params.pull ?? 2.2);
+          noteControl(ctx, packet);
           ctx.damagePlayer(packet);
           break;
         }
@@ -1561,6 +1654,77 @@ export class Enemy implements Combatant {
             duration: 6,
             tickRate: 2,
             color: a.color,
+          });
+          break;
+        }
+        case 'desecrator': {
+          if (!ready || !brainAwake) break;
+          if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) > 16) break;
+          this.affixTimers[i] = params.interval ?? 5;
+          const tx = ctx.playerPos.x;
+          const tz = ctx.playerPos.z;
+          const r = params.radius ?? 2.2;
+          const delay = params.delay ?? 0.9;
+          const tel = ctx.decals.telegraph('circle', tx, tz, r, 0, delay, a.color);
+          const self = this;
+          after(delay, (c) => {
+            tel.cancel();
+            if (!self.alive) return;
+            spawnHazard(self, c, tx, tz, r, params.dps ?? 0.5, 'arcane', a.id, {
+              duration: params.life ?? 7,
+              tickRate: 2,
+              color: a.color,
+            });
+          });
+          break;
+        }
+        case 'fire_chains': {
+          if (!ready || !brainAwake) break;
+          this.affixTimers[i] = 0.25;
+          const range = params.range ?? 12;
+          let links = 0;
+          for (const ally of alliesNear(ctx, p.x, p.z, range, this.id)) {
+            if (links >= (params.links ?? 2)) break;
+            if (this.packId < 0 || ally.packId !== this.packId) continue;
+            // Both ends chained? Only one of them burns the link.
+            if (ally.affixes.some((x) => x.behavior === 'fire_chains') && ally.id < this.id) continue;
+            links++;
+            const q = ally.root.position;
+            if (distToSegment(ctx.playerPos.x, ctx.playerPos.z, p.x, p.z, q.x, q.z) < (params.width ?? 0.7)) {
+              hitPlayer(this, ctx, params.mul ?? 0.22, 'fire', a.id);
+            }
+            const k = ctx.rng.next();
+            ctx.fx.burst('embers', p.x + (q.x - p.x) * k, 0.9, p.z + (q.z - p.z) * k, { count: 3, color: a.color });
+          }
+          break;
+        }
+        case 'bulwark': {
+          if (!ready) break;
+          this.affixTimers[i] = 1;
+          for (const ally of alliesNear(ctx, p.x, p.z, params.radius ?? 7, this.id)) {
+            ally.buff('bulwark', 1.3, { absorb: params.absorb ?? 0.4 });
+          }
+          if (brainAwake) ctx.fx.burst('heal', p.x, this.centerY + 0.4, p.z, { count: 3, color: a.color });
+          break;
+        }
+        case 'lancer': {
+          if (!ready || !brainAwake || this.busy || this.motionOverride || this.rootTimer > 0) break;
+          const d = dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+          if (d < (params.minRange ?? 5) || d > (params.range ?? 14)) break;
+          this.affixTimers[i] = params.interval ?? 7;
+          const windup = params.windup ?? 1.0;
+          const ang = angleTo(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+          const len = d + 3;
+          const tx = p.x + Math.sin(ang) * len;
+          const tz = p.z + Math.cos(ang) * len;
+          this.facing = ang;
+          this.rootTimer = windup;
+          const tel = ctx.decals.telegraph('line', p.x, p.z, len, ang, windup, a.color);
+          const self = this;
+          after(windup, (c) => {
+            tel.cancel();
+            if (!self.alive) return;
+            dashToward(self, c, tx, tz, 17, { trample: { mul: params.mul ?? 1.8, radius: 0.9, type: 'physical' } });
           });
           break;
         }

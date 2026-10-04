@@ -595,6 +595,93 @@ affix({
   excludes: ['unstable'],
 });
 
+// --- Combat overhaul: affixes that change where you can stand ---------------
+//
+// Each of these asks a different question of the player. Several are written
+// to *combine*: a control affix (Jailer, Waller, Vortex, Entangling, Frozen
+// Ground, Gravity) that catches you sets off any follow-up affix in the same
+// monster immediately (see COMBO_FOLLOWUPS in Enemy.ts), so Jailer + Mortar is
+// a trap and a shell, not two unrelated timers.
+
+affix({
+  id: 'desecrator',
+  name: 'Desecrator',
+  desc: 'Fouls the ground where you stand. Keep moving.',
+  minDepth: 4,
+  weight: 9,
+  behavior: 'desecrator',
+  params: { interval: 5, radius: 2.2, dps: 0.5, life: 7, delay: 0.9 },
+  color: 0x9b2fd0,
+});
+
+affix({
+  id: 'fire_chains',
+  name: 'Fire Chains',
+  desc: 'Chained in flame to its packmates. Do not step between them.',
+  minDepth: 8,
+  weight: 7,
+  behavior: 'fire_chains',
+  params: { links: 2, range: 12, width: 0.7, mul: 0.22 },
+  color: 0xff5a1a,
+});
+
+affix({
+  id: 'bulwark',
+  name: 'Bulwark',
+  desc: 'Its ward turns aside blows aimed at the pack. Kill it first.',
+  minDepth: 6,
+  weight: 7,
+  behavior: 'bulwark',
+  params: { radius: 7, absorb: 0.4 },
+  color: 0x7fb2ff,
+});
+
+affix({
+  id: 'splitter',
+  name: 'Splitting',
+  desc: 'Bursts into two of itself when it dies.',
+  minDepth: 5,
+  weight: 7,
+  behavior: 'splitter',
+  params: { count: 2 },
+  color: 0x86d16a,
+  excludes: ['soul_bound', 'unstable', 'summoner'],
+});
+
+affix({
+  id: 'hexing',
+  name: 'Hexing',
+  desc: 'Every blow lays a curse that strips your resistances.',
+  minDepth: 7,
+  weight: 7,
+  behavior: 'hexing',
+  params: { duration: 6 },
+  color: 0x6c3fa0,
+});
+
+affix({
+  id: 'adaptive',
+  name: 'Adaptive',
+  desc: 'Hardens against whatever element keeps hitting it. Mix your attacks.',
+  minDepth: 9,
+  weight: 6,
+  behavior: 'adaptive',
+  params: { hits: 4, window: 3, resist: 45, duration: 6 },
+  color: 0xd0d0ff,
+});
+
+affix({
+  id: 'lancer',
+  name: 'Lancer',
+  desc: 'Lines up and charges straight through you.',
+  minDepth: 6,
+  weight: 7,
+  behavior: 'lancer',
+  params: { interval: 7, minRange: 5, range: 14, windup: 1.0, mul: 1.8 },
+  color: 0xffc040,
+  excludes: ['teleporter', 'wormhole', 'juggernaut'],
+});
+
 // ---------------------------------------------------------------------------
 
 export const MONSTER_AFFIXES: MonsterAffixDef[] = ALL;
