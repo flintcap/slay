@@ -7,30 +7,36 @@ Status: in progress
 - [x] Hit feedback: hit-stop, flash, knockback, tuned camera shake, a heavier punch on crits and kills. — "Make every blow land: hit-stop, flash, knockback and kill punch"
 - [x] Skill VFX: an upgrade pass per element (fire, frost, lightning, poison, bone, physical) with proper impacts and lingering decals. — "Give every element its own cast, flight, impact and scar"
 - [x] Loot: drops arc out with a sound and beam by rarity; pickups and gold feel good. — same commit
-- [ ] Audio: layered weapon and impact sounds, footsteps by floor type, UI sounds, ambient beds per biome, combat-reactive music and boss music.
+- [x] Audio: layered weapon and impact sounds, footsteps by floor type, UI sounds, ambient beds per biome, combat-reactive music and boss music. — "Make the dungeon sound like a place and every monster audible"
 - [ ] Performance guard: particle and sound budgets so big fights stay smooth.
 - [ ] Sweep: every skill has a cast, travel and impact beat; nothing is silent.
 
 ## Next up
 
-Milestone 4, audio. Partly done in the same commit (see notes): ambience beds,
-footsteps, UI sounds, boss themes, combat heat floor and stingers all exist.
-Still to do for milestone 4:
-1. Swing whooshes per weapon at the start of every melee swing (in
-   `SkillRunner.meleeSwing` / `basicAttack`, before the hit test), so a hit is
-   whoosh + impact rather than impact alone.
-2. Richer weapon impact recipes in `src/audio/Audio.ts` (`hit.sword`,
-   `hit.axe`, `hit.blunt`, `hit.pierce`): add a short pitch-varied body layer
-   and a tail so they read as layered, not as one burst.
-3. Enemy attack and windup sounds by family (`monster.<family>.attack`) if
-   combat's `Abilities.ts` does not already play them; hook via the `sfx` bus
-   event only, do not edit combat's files.
-4. Verify by adding audio cases to `tools/feel-entry.ts`: every bed id in
-   `bedIds()` has a surface whose `footstep.<surface>` resolves, every boss
-   `music` id in `src/data/bosses.ts` resolves to a real track (export a
-   `hasTrack()` from `Music.ts`), every music track maps to a bed or is a
-   state track.
-Then milestone 5 (performance guard) — see the debt note below.
+Milestone 5, performance guard. Concretely:
+1. **Voice pools.** In `src/audio/Synth.ts` music notes and SFX share one
+   `voices` counter (`maxVoices = 26`) and music is never refused, so a dense
+   score starves combat sounds. Give `tone()`/`noise()` a pool (`'sfx' |
+   'music' | 'amb'`, inferred from `dest`: musicBus/track outs -> music),
+   count each pool separately with its own cap (sfx ~40 oscillators, music
+   ~48, ambience ~10), and make `AudioEngine.play` estimate a recipe's cost
+   (count oscillators it schedules in a dry run, cached per id) instead of the
+   flat `canVoice(2)`. Add priorities: player hits, kills, telegraphs and UI
+   beat ambience one-shots and monster vocals; when full, drop the lowest.
+2. **Particle budget.** `FXSystem` pools are ring buffers (5000 add / 2600
+   alpha at fxScale 1) that overwrite the oldest live particle when full. Add
+   a per-frame spawn budget (scaled by fxScale) and a "pressure" value
+   (live / capacity); when pressure is high, `emitLayer` scales counts down
+   (keep 1-count core layers such as flashes). Expose `fx.pressure` and let
+   `EffectSystem.projectile` shed less under pressure.
+3. **Lights.** `FlashPool` is fixed-size already; make projectile travel
+   flashes yield entirely when more than half the slots are busy.
+4. **Live effects cap.** `EffectSystem.live` is unbounded; cap composites
+   (e.g. 160) and drop the oldest decorative ones (novas without callbacks)
+   first. Never drop a `delay()` that carries gameplay (meteor/slam onHit).
+5. Extend `tools/feel-entry.ts` with a stress case: 300 bursts in one frame
+   must keep spawned particles within budget; 200 `audio.play` calls must
+   not exceed the sfx voice cap (test Synth accounting with a fake context).
 
 ## Notes for resume
 
@@ -121,3 +127,13 @@ Then milestone 5 (performance guard) — see the debt note below.
   impact and marks. Boot can take 10-20 minutes when other agents render.
 - Only one player skill deals cold damage (`gravechill`); frost visuals exist
   but are rarely seen. Tell the combat stream (owns `src/data/skills.ts`).
+- **Milestone 4.** Monster sounds come from `src/audio/MonsterAudio.ts`,
+  which wraps `Enemy.prototype.notifyAbility` (the documented FX/audio hook)
+  from `SkillRunner`'s constructor, calling the original first. Wind-ups of
+  0.45s or more play a rising `telegraph` (`telegraph.long` for 1s+), melee
+  releases whoosh, ranged shots play `shoot.<element>`, area spells their
+  element. Combat stream: if you add sounds in `notifyAbility` yourself, keep
+  the method name; the wrapper chains. Player swings play `swing.<weapon>` on
+  every swing (`swing.heavy` for heavy skills); impacts are layered recipes.
+  `boss.final` exists for the Gaunt King. `tools/check-audio.mjs` (static)
+  proves tracks, beds, footsteps, swings, UI ids and monster abilities resolve.

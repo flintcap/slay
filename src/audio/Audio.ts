@@ -438,10 +438,32 @@ const SOUNDS: Record<string, SoundFn> = {
 
   // --- weapons -------------------------------------------------------------
   'hit.melee': (s, p) => { thump(s, p, 122, 0.16, 0.42); crack(s, p, 2300, 0.07, 0.3, 1.1); squelch(s, { ...p, g: p.g * 0.5 }, 0.14, 0.2); },
-  'hit.sword': (s, p) => { crack(s, p, 3400, 0.06, 0.34, 1.4); metallic(s, p, 620, 0.3, 0.12); thump(s, p, 140, 0.12, 0.3); },
-  'hit.axe': (s, p) => { thump(s, p, 98, 0.2, 0.5); crack(s, p, 1500, 0.1, 0.32, 0.9); },
-  'hit.blunt': (s, p) => { thump(s, p, 78, 0.26, 0.6); crack(s, p, 800, 0.09, 0.22, 0.7); },
-  'hit.pierce': (s, p) => { crack(s, p, 4600, 0.05, 0.3, 2.6); thump(s, p, 165, 0.08, 0.2); },
+  // Weapon impacts are three layers each: the edge or face meeting the body
+  // (transient), the weight behind it (low body), and a short tail that says
+  // what the weapon is made of.
+  'hit.sword': (s, p) => {
+    crack(s, p, 3400, 0.06, 0.34, 1.4);
+    s.noise({ color: 'white', gain: 0.16 * p.g, attack: 0.001, decay: 0.09, release: 0.05, filter: { type: 'bandpass', freq: 5200 * p.p, endFreq: 2400 * p.p, q: 1.6, sweep: 0.09 }, pan: p.pan, when: p.t + 0.004 });
+    thump(s, p, 140, 0.12, 0.32);
+    metallic(s, { ...p, t: p.t + 0.01 }, 620 * p.rng.range(0.92, 1.08), 0.32, 0.09);
+  },
+  'hit.axe': (s, p) => {
+    crack(s, p, 1500, 0.1, 0.32, 0.9);
+    thump(s, p, 96, 0.22, 0.52);
+    s.noise({ color: 'brown', gain: 0.22 * p.g, attack: 0.001, decay: 0.14, release: 0.08, filter: { type: 'lowpass', freq: 1600, endFreq: 300, q: 1.4, sweep: 0.14 }, distortion: 0.35, pan: p.pan, when: p.t + 0.006 });
+    metallic(s, { ...p, t: p.t + 0.012 }, 380 * p.rng.range(0.9, 1.1), 0.22, 0.05, [1, 2.4, 4.1]);
+  },
+  'hit.blunt': (s, p) => {
+    thump(s, p, 76, 0.28, 0.62);
+    crack(s, p, 800, 0.09, 0.24, 0.7);
+    sub(s, p, 58, 0.22, 0.2);
+    s.noise({ color: 'brown', gain: 0.18 * p.g, attack: 0.002, decay: 0.12, release: 0.08, filter: { type: 'lowpass', freq: 900, endFreq: 200, q: 1, sweep: 0.12 }, distortion: 0.3, pan: p.pan, when: p.t + 0.01 });
+  },
+  'hit.pierce': (s, p) => {
+    crack(s, p, 4600, 0.05, 0.3, 2.6);
+    thump(s, p, 165, 0.08, 0.22);
+    s.noise({ color: 'pink', gain: 0.1 * p.g, attack: 0.002, decay: 0.07, release: 0.05, filter: { type: 'bandpass', freq: 2200, endFreq: 900, q: 2.2, sweep: 0.07 }, pan: p.pan, when: p.t + 0.02 });
+  },
   'hit.flesh': (s, p) => { squelch(s, p, 0.2, 0.4); thump(s, p, 105, 0.13, 0.3); },
   'hit.bone': (s, p) => { crack(s, p, 1900, 0.07, 0.36, 2.2); metallic(s, p, 340, 0.16, 0.08, [1, 3.1, 5.2]); },
   'hit.metal': (s, p) => { crack(s, p, 5200, 0.05, 0.3, 2.4); metallic(s, p, 780, 0.42, 0.14); },
@@ -478,6 +500,37 @@ const SOUNDS: Record<string, SoundFn> = {
   },
   'arrow.thunk': (s, p) => { crack(s, p, 1200, 0.04, 0.16, 3.0); thump(s, p, 180, 0.07, 0.14); },
   'swing.miss': (s, p) => whoosh(s, p, 0.2, 0.22, 300, 2100),
+  // Swings by weapon: a blade sings high and quick, an axe hums, a maul
+  // pushes air, a spear hisses, fists barely whisper.
+  'swing.blade': (s, p) => { whoosh(s, p, 0.17, 0.2, 700, 3400); whoosh(s, { ...p, t: p.t + 0.03 }, 0.12, 0.08, 2400, 5200); },
+  'swing.axe': (s, p) => { whoosh(s, p, 0.24, 0.24, 300, 1600); s.tone({ type: 'sine', freq: 140 * p.p, freqEnd: 90 * p.p, freqTime: 0.2, gain: 0.05 * p.g, attack: 0.05, decay: 0.18, release: 0.08, pan: p.pan, when: p.t }); },
+  'swing.blunt': (s, p) => { whoosh(s, p, 0.28, 0.26, 180, 1100); sub(s, p, 72, 0.18, 0.08); },
+  'swing.pierce': (s, p) => whoosh(s, p, 0.13, 0.18, 1200, 3800),
+  'swing.fist': (s, p) => whoosh(s, p, 0.12, 0.14, 500, 1800),
+  'swing.light': (s, p) => whoosh(s, p, 0.15, 0.16, 600, 2600),
+  /** A monster's blow being released. */
+  'monster.swing': (s, p) => { whoosh(s, p, 0.2, 0.22, 260, 1500); thump(s, { ...p, g: p.g * 0.4 }, 110, 0.08, 0.12); },
+  /**
+   * A dangerous wind-up: a rising, tightening tone whose top is the moment it
+   * lands. This is the audio half of a telegraph, and it is what lets a player
+   * dodge something they have not looked at.
+   */
+  telegraph: (s, p) => {
+    s.tone({ type: 'sawtooth', freq: 110 * p.p, freqEnd: 260 * p.p, freqTime: 0.5, gain: 0.08 * p.g, attack: 0.25, decay: 0.15, sustain: 0.8, release: 0.08, duration: 0.3, unison: 2, unisonSpread: 16, filter: { type: 'bandpass', freq: 400, endFreq: 1600, q: 4, sweep: 0.5 }, pan: p.pan, send: p.send, when: p.t });
+    s.noise({ color: 'pink', gain: 0.06 * p.g, attack: 0.35, decay: 0.1, release: 0.06, filter: { type: 'highpass', freq: 1200, endFreq: 4200, q: 1, sweep: 0.45 }, pan: p.pan, when: p.t });
+  },
+  'telegraph.long': (s, p) => {
+    s.tone({ type: 'sawtooth', freq: 70 * p.p, freqEnd: 220 * p.p, freqTime: 1.0, gain: 0.1 * p.g, attack: 0.5, decay: 0.3, sustain: 0.85, release: 0.1, duration: 0.6, unison: 3, unisonSpread: 22, filter: { type: 'bandpass', freq: 260, endFreq: 1400, q: 4.5, sweep: 1.0 }, distortion: 0.2, pan: p.pan, send: p.send * 1.2, when: p.t });
+    sub(s, { ...p, t: p.t + 0.2 }, 48, 0.9, 0.18);
+  },
+  roar: (s, p) => { growl(s, p, 120, 1.0, 0.3, 0.5); sub(s, p, 60, 0.8, 0.22); },
+  howl: (s, p) => {
+    s.tone({ type: 'sawtooth', freq: 300 * p.p, freqEnd: 520 * p.p, freqTime: 0.5, gain: 0.12 * p.g, attack: 0.1, decay: 0.8, sustain: 0.5, release: 0.6, duration: 0.6, filter: { type: 'bandpass', freq: 900, q: 3 }, vibrato: { rate: 5, depth: 14 }, pan: p.pan, send: p.send * 1.8, when: p.t });
+  },
+  wail: (s, p) => {
+    s.tone({ type: 'triangle', freq: 640 * p.p, freqEnd: 380 * p.p, freqTime: 1.1, gain: 0.1 * p.g, attack: 0.2, decay: 1.0, release: 0.6, unison: 2, unisonSpread: 30, vibrato: { rate: 7, depth: 20 }, pan: p.pan, send: p.send * 2.2, delaySend: 0.2, when: p.t });
+  },
+  ambush: (s, p) => { crack(s, p, 900, 0.12, 0.3, 0.8); growl(s, p, 200, 0.4, 0.22, 0.45); },
   'swing.heavy': (s, p) => { whoosh(s, p, 0.34, 0.3, 180, 1500); sub(s, p, 70, 0.2, 0.12); },
   crit: (s, p) => {
     crack(s, p, 5600, 0.07, 0.4, 2);
@@ -795,6 +848,18 @@ function derive(id: string): SoundFn | undefined {
     case 'cone':
     case 'breath':
       return coneOf(tail);
+    case 'shoot':
+      // A monster firing: a bowstring for physical, its element otherwise.
+      if (tail === 'physical' || tail === '') {
+        return (s, p) => {
+          s.tone({ type: 'triangle', freq: 190 * p.p, freqEnd: 120 * p.p, freqTime: 0.12, gain: 0.12 * p.g, attack: 0.001, decay: 0.12, release: 0.06, pan: p.pan, when: p.t });
+          whoosh(s, { ...p, t: p.t + 0.01 }, 0.12, 0.14, 1400, 4200);
+        };
+      }
+      {
+        const c = castOf(tail);
+        return (s, p) => c(s, { ...p, g: p.g * 0.7 });
+      }
     case 'footstep':
     case 'step': {
       const surface = tail || 'stone';

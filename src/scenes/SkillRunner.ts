@@ -6,7 +6,8 @@ import { SKILLS } from '../data/skills';
 import { rollDamage } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 import type { Player } from '../entities/Player';
-import type { Enemy, CombatContext } from '../entities/Enemy';
+import { Enemy, type CombatContext } from '../entities/Enemy';
+import { installMonsterAudio } from '../audio/MonsterAudio';
 import type { MinionTarget } from '../entities/Abilities';
 import type { Boss } from '../entities/Boss';
 import { EffectSystem, ELEMENTS, type School } from '../fx/Effects';
@@ -536,6 +537,9 @@ export class SkillRunner {
   constructor(effects: EffectSystem) {
     this.effects = effects;
     this.feel = new CombatFeel(effects);
+    // Monsters voice their own wind-ups, swings and spells through the
+    // documented `notifyAbility` hook.
+    installMonsterAudio(Enemy.prototype as never);
   }
 
   /**
@@ -1503,6 +1507,12 @@ export class SkillRunner {
     const origin = player.position;
     const half = arc * 0.5;
     let hits = 0;
+    // The swing is heard whether or not it connects: whoosh, then impact.
+    if (playVisual) {
+      audio.play(kind === 'heavy' ? 'swing.heavy' : `swing.${this.weaponSound}`, {
+        x: origin.x, z: origin.z, volume: 0.9,
+      });
+    }
 
     for (const t of this.allTargets(enemies, boss)) {
       const to = this.tmp2.copy(t.root.position).sub(origin).setY(0);
@@ -1524,7 +1534,7 @@ export class SkillRunner {
       hits++;
     }
 
-    if (playVisual && hits === 0) audio.play('swing.miss');
+    void hits;
   }
 
   /**

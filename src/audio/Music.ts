@@ -215,6 +215,8 @@ TRACKS['boss.arcane'] = bossTrack({ root: 39, scale: 'harmonicMinor', bpm: 126, 
 TRACKS['boss.temple'] = bossTrack({ root: 38, scale: 'aeolian', bpm: 116, flavor: 'choir', space: 0.6, seed: 0xb0c8 });
 TRACKS['boss.void'] = bossTrack({ root: 37, scale: 'harmonicMinor', bpm: 120, flavor: 'ring', perc: 'pulse', spread: 34, seed: 0xb0c9 });
 TRACKS['boss.frost'] = bossTrack({ root: 41, scale: 'aeolian', bpm: 122, flavor: 'glass', cutoff: 2400, layers: ['drone', 'pad', 'bass', 'arp', 'lead', 'bell'], gain: { drone: 0.4, pad: 0.34, bass: 0.42, arp: 0.28, lead: 0.3, bell: 0.28 }, seed: 0xb0ca });
+/** The last door: everything at once, in the darkest mode, choir on top. */
+TRACKS['boss.final'] = bossTrack({ root: 36, scale: 'harmonicMinor', bpm: 132, flavor: 'choir', perc: 'war', spread: 22, cutoff: 1800, layers: ['drone', 'pad', 'bass', 'arp', 'lead', 'bell', 'air'], gain: { drone: 0.46, pad: 0.36, bass: 0.48, arp: 0.28, lead: 0.36, bell: 0.26, air: 0.18 }, seed: 0xb0cf });
 TRACKS['boss.storm'] = bossTrack({ root: 38, scale: 'phrygian', bpm: 142, perc: 'war', leadWave: 'square', cutoff: 2000, seed: 0xb0cb });
 
 // Fallbacks so an unrecognised biome track still plays something appropriate.
@@ -777,6 +779,11 @@ export class MusicDirector {
     for (const inst of this.instances) inst.fadeOut(0.2);
     this.instances.length = 0;
   }
+}
+
+/** True when `id` names a real track (not a fallback). */
+export function hasTrack(id: string): boolean {
+  return !!TRACKS[id];
 }
 
 /** Every track id the director understands, for tooling and debug menus. */
