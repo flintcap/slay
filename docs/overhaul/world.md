@@ -85,10 +85,8 @@ Status: in progress
 - The render harness parks the mouse mid-screen after boot; the rig leans toward the cursor, and with
   the cursor at (0,0) the hero sat off-centre and looked missing.
 
-- **From models (foundry invisible hero):** checked with your harness. All hero meshes are submitted every
-  frame, bones are finite, materials opaque; the hero showed in 1 of 3 foundry runs at the same spot.
-  Replacing the hero's materials with identical clones hides it in the crypt too, while emissive clones
-  show, and the same clones render fine in the models lineup under the foundry fog. So it is not the
-  body or armour materials; suspect the live scene: 22 lights re-keying programs (new heat lights), the
-  post chain (GTAO/grade) or a NaN light. Next test: after it vanishes, null the fog, then disable GTAO,
-  then zero heat lights one at a time. Details in models.md "Notes for resume".
+- **From models (foundry invisible hero), solved:** the hero is inside the room landmark's rubble pile.
+  With your harness, hiding only meshes within 1.5 m of the hero (the arch, r 6.4, and its rubble blocks,
+  r 0.3 to 1.6) makes the hero appear; nothing else changes it. The normal depth-1 start in `check-worn`
+  (caverns) has the same problem: the hero spawns inside the entry arch's rubble. Request: keep landmark
+  rubble off the spawn tile and walkable tiles (or make it collide), and move the harness stand point.

@@ -23,7 +23,7 @@ Remaining:
    `npm run build && SLAY_PORT=4311 node tools/screenshot.mjs --out=shots/models/sweep --shots=town`.
 3. Rerun `check-worn` and `check-paperdoll` when the machine is quiet (they timed out on screenshots under
    load average ~24, no page errors).
-4. The foundry invisible-hero investigation is handed to world (see notes); models found no model fault.
+4. The foundry invisible hero is occlusion by landmark rubble (see notes); handed to world.
 
 ## Notes for resume
 
@@ -125,20 +125,17 @@ Budgets and level of detail (milestone 5):
 - Measured (classes sheet): bare 10-12 calls, low 12-19, mid 21-30, top 28-41 (was 78-105). Monsters 2-5
   calls plus a weapon (2-4 now). NPCs 14-24. Budgets: player top gear <= 42, monster <= 8, NPC <= 25.
 
-Foundry "hero cannot be seen" (asked by world at 75e1755), what models found:
-- Same harness (`docs/overhaul/world-render.mjs`, `foundry@close` and `crypt@close`, seed 1001): the hero
-  was invisible in the foundry in two runs and visible in a third, at the same spot. In every run all 64
-  hero meshes are submitted (an `onBeforeRender` hook fires for each), bone matrices are finite, the root
-  is in the scene at y 0, materials are opaque with depth test and write on. Not culled, not NaN.
-- Swapping the hero's materials for identical `.clone()`s in the live game makes the hero vanish in the
-  crypt too (sword included, which is a plain Mesh), while clones forced to a flat emissive red show. The
-  same clones render normally in the lineup tool with the foundry's fog (`FogExp2 0x1a0b05, 0.037`) and a
-  dungeon light rig. So the body and armour materials are not near-black by construction; something in
-  the live scene makes lit MeshStandardMaterials that get a fresh program at that moment draw as nothing.
-  Suspects for world/quality: the scene's 22 lights (program re-keyed per light count; new heat lights),
-  the post chain (GTAO / grade) or a light that goes NaN. No shader errors are logged.
-- Cheapest next test (world/quality): in the harness, after the hero vanishes, set `scene.fog = null`,
-  then disable GTAO, then zero the heat lights one by one, screenshotting after each.
+Foundry "hero cannot be seen" (asked by world at 75e1755): **solved, it is occlusion, not the models.**
+- With `docs/overhaul/world-render.mjs` `foundry@close`: hiding every scene child except the hero shows
+  the hero; hiding only the meshes within 1.5 m of the hero (the room's arch landmark, r 6.4, and its
+  rubble blocks, r 0.3 to 1.6) also shows it. The hero is standing inside the landmark's rubble pile.
+  The same happens at the normal depth-1 start in `check-worn` (caverns): the hero spawns inside the
+  entry arch's rubble. It looked flaky because the idle sway moves parts in and out of the blocks.
+- Earlier theories (fog, lights, cloned materials) are wrong: my clone experiment re-ran with the hero
+  inside the rubble. Models materials and bodies are fine.
+- Fix belongs to world (`DungeonBuilder` landmarks / spawn): keep rubble and landmark pieces off the
+  spawn tile and off walkable tiles, or add them to the colliders; and the harness's "south of centre"
+  stand point lands in the rubble.
 
 Requests to other streams:
 - art: adopt `GearLook.gearLook` for trim/set colour in `ItemModels` (see above).
