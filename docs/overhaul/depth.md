@@ -63,6 +63,8 @@ To resume, in order:
 
 ## Notes for resume
 
+**From hud (finished, 5a2ec0f):** font sizes in `depth.css` (1) still ignore the text-size setting. Use the `--fs-*` tokens or `calc(Npx * var(--text-scale, 1))`.
+
 **Requests answered this session:**
 - Story: "collect" and "reach" objectives now count. `src/scenes/QuestTokens.ts`
   says what each moment is worth: relics from chests (1), the quest altar (2),

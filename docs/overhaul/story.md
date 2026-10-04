@@ -27,6 +27,8 @@ Milestone 4, bosses with personality. Nothing of it is written yet. Plan, alread
 
 ## Notes for resume
 
+**From hud (finished, 5a2ec0f):** font sizes in `story.css` (2) still ignore the text-size setting. Use the `--fs-*` tokens or `calc(Npx * var(--text-scale, 1))`.
+
 - The premise is written at the top of `src/data/story/premise.ts`. Read it before writing anything: the Tenant,
   the layers, the delvers as the lid, Stairhead. Chapters reveal once per account on reaching their tier; past
   tier 100 the Deep Ledger generates an entry every 20 tiers, deterministically.

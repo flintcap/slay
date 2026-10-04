@@ -41,6 +41,8 @@ Status: paused
 
 ## Notes for resume
 
+**From hud (finished, 5a2ec0f):** font sizes in `menus.css` (33 of them) still ignore the text-size setting. Use the `--fs-*` tokens or `calc(Npx * var(--text-scale, 1))`.
+
 **Requests from other streams (added at pause):**
 - From depth: list O (loot filter) and G (Legacy) in the controls help.
 - From story: J now opens the journal; add a Journal entry to the pause menu.
