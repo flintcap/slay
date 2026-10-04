@@ -62,3 +62,24 @@ SLAY_PORT=<your port> node tools/screenshot.mjs --out=shots/<stream> --shots=tow
 Ports: hud 4301, menus 4302, animation 4303, world 4304, feel 4305, depth 4306,
 combat 4307, story 4308, quality 4309, art 4310.
 Look at the PNGs yourself. `shots/` is not committed.
+
+## Pause
+
+The owner pauses the overhaul by saying so. Claude then sends every running
+agent a message starting with **PAUSE**. On receiving it:
+
+1. Stop starting new work.
+2. Bring what you have to a safe state: the game builds, typecheck is clean,
+   nothing half-wired is reachable. Unfinished work is either finished quickly
+   or committed behind a feature that is not yet switched on.
+3. Update your progress file: set `Status: paused`, tick anything finished, and
+   rewrite "Next up" so precisely that a fresh agent with no memory can carry on.
+4. Commit, rebase and push exactly as in "A checkpoint" above.
+5. Reply with one line: the commit you stopped at and what is next. Then end.
+
+## Resume
+
+When the owner says resume, Claude launches one agent per stream whose
+progress file still has unticked milestones. Each starts with "Setup" above,
+reads its progress file, sets `Status: in progress`, and continues from
+"Next up".

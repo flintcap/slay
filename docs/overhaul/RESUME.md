@@ -1,11 +1,16 @@
 # Resuming the overhaul
 
-If the agents were stopped (usage ran out, session ended), nothing is lost:
-every finished milestone is already on the branch.
+To pause on purpose, tell Claude "pause". Every agent stops at a safe point,
+pushes its work and leaves precise notes (see "Pause" in PROTOCOL.md).
+
+If the agents were stopped without warning (usage ran out, session ended),
+nothing finished is lost: every finished milestone is already on the branch.
 
 To restart, tell Claude:
 
-> Resume the overhaul from docs/overhaul.
+> Resume.
+
+(or, from a brand new session: "Resume the overhaul from docs/overhaul.")
 
 Claude then relaunches one agent per stream that still has unticked
 milestones, each told to follow `PROTOCOL.md` and pick up from its own
