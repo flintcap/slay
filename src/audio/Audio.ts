@@ -429,6 +429,37 @@ const SOUNDS: Record<string, SoundFn> = {
   'hit.bone': (s, p) => { crack(s, p, 1900, 0.07, 0.36, 2.2); metallic(s, p, 340, 0.16, 0.08, [1, 3.1, 5.2]); },
   'hit.metal': (s, p) => { crack(s, p, 5200, 0.05, 0.3, 2.4); metallic(s, p, 780, 0.42, 0.14); },
   'hit.stone': (s, p) => { crack(s, p, 1100, 0.09, 0.34, 1.0); thump(s, p, 88, 0.15, 0.3); },
+  'hit.chitin': (s, p) => { crack(s, p, 2800, 0.05, 0.3, 3.2); crack(s, { ...p, t: p.t + 0.012 }, 1300, 0.06, 0.18, 2.4); squelch(s, { ...p, g: p.g * 0.4 }, 0.12, 0.2); },
+  'hit.wood': (s, p) => { crack(s, p, 900, 0.08, 0.3, 3.4); thump(s, p, 150, 0.12, 0.26); },
+  'hit.ooze': (s, p) => { squelch(s, p, 0.24, 0.46); s.tone({ type: 'sine', freq: 220 * p.p, freqEnd: 90 * p.p, freqTime: 0.16, gain: 0.14 * p.g, attack: 0.002, decay: 0.16, release: 0.1, pan: p.pan, when: p.t }); },
+  'hit.fist': (s, p) => { thump(s, p, 104, 0.13, 0.46); crack(s, p, 1400, 0.05, 0.22, 0.9); },
+  /** The extra weight under a committed skill: a low body blow and grit. */
+  'hit.heavy': (s, p) => {
+    sub(s, p, 70, 0.32, 0.36);
+    s.noise({ color: 'brown', gain: 0.3 * p.g, attack: 0.001, decay: 0.22, release: 0.16, filter: { type: 'lowpass', freq: 1800 * p.p, endFreq: 240, q: 1.1, sweep: 0.22 }, distortion: 0.45, pan: p.pan, send: p.send, when: p.t });
+  },
+  /**
+   * A kill. Short, low and dry: a crunch under the death cry that tells the
+   * player the thing is finished before the body has started to fall.
+   */
+  'kill.confirm': (s, p) => {
+    thump(s, p, 66, 0.22, 0.5);
+    crack(s, p, 1700, 0.06, 0.3, 1.0);
+    s.noise({ color: 'brown', gain: 0.22 * p.g, attack: 0.001, decay: 0.16, release: 0.1, filter: { type: 'bandpass', freq: 520 * p.p, endFreq: 180, q: 1.8, sweep: 0.16 }, distortion: 0.5, pan: p.pan, when: p.t + 0.008 });
+  },
+  /** An elite or rare going down: a low boom and a dark ringing tail. */
+  'kill.elite': (s, p) => {
+    sub(s, { ...p, pan: p.pan * 0.4 }, 50, 1.3, 0.5);
+    metallic(s, { ...p, send: p.send * 2.2 }, 96, 1.6, 0.12, [1, 2.41, 3.98, 5.43]);
+    s.noise({ color: 'pink', gain: 0.18 * p.g, attack: 0.002, decay: 0.9, release: 0.5, filter: { type: 'lowpass', freq: 3200, endFreq: 260, q: 0.9, sweep: 0.9 }, pan: p.pan, send: p.send * 2, when: p.t });
+  },
+  /** Three or more kills inside a heartbeat. A swelling, satisfying whomp. */
+  'kill.multi': (s, p) => {
+    sub(s, { ...p, pan: 0 }, 58, 0.9, 0.42);
+    s.tone({ type: 'sawtooth', freq: 70 * p.p, freqEnd: 140 * p.p, freqTime: 0.35, gain: 0.12 * p.g, attack: 0.03, decay: 0.4, release: 0.3, unison: 3, unisonSpread: 18, filter: { type: 'lowpass', freq: 300, endFreq: 1800, q: 3, sweep: 0.35 }, pan: 0, send: p.send * 1.6, when: p.t });
+    chime(s, { ...p, pan: 0, t: p.t + 0.05 }, 57, 0.8, 0.08, [0, 7]);
+  },
+  'arrow.thunk': (s, p) => { crack(s, p, 1200, 0.04, 0.16, 3.0); thump(s, p, 180, 0.07, 0.14); },
   'swing.miss': (s, p) => whoosh(s, p, 0.2, 0.22, 300, 2100),
   'swing.heavy': (s, p) => { whoosh(s, p, 0.34, 0.3, 180, 1500); sub(s, p, 70, 0.2, 0.12); },
   crit: (s, p) => {
@@ -524,6 +555,11 @@ const SOUNDS: Record<string, SoundFn> = {
     thump(s, p, 92, 0.2, 0.44);
     squelch(s, p, 0.18, 0.3);
     s.tone({ type: 'sawtooth', freq: 240 * p.p, freqEnd: 130 * p.p, freqTime: 0.2, gain: 0.1 * p.g, attack: 0.004, decay: 0.2, release: 0.14, filter: { type: 'lowpass', freq: 1200, q: 2 }, distortion: 0.3, pan: 0, when: p.t });
+  },
+  /** Under `player.hurt` when a blow takes a real chunk: a body-deep thud. */
+  'player.hurtHeavy': (s, p) => {
+    sub(s, { ...p, pan: 0 }, 64, 0.4, 0.42);
+    s.noise({ color: 'brown', gain: 0.26 * p.g, attack: 0.001, decay: 0.24, release: 0.16, filter: { type: 'lowpass', freq: 1400, endFreq: 200, q: 1.2, sweep: 0.24 }, distortion: 0.4, pan: 0, when: p.t });
   },
   'player.death': (s, p) => {
     sub(s, { ...p, pan: 0 }, 70, 2.2, 0.5);
@@ -965,6 +1001,14 @@ export const audio = new AudioEngine();
 
 /** Element ids the sound registry understands, for tooling. */
 export const AUDIO_ELEMENTS: readonly DamageType[] = ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane'];
+
+/**
+ * True when `id` resolves to a recipe, directly or through its family. Used by
+ * the static checks to prove that nothing the game asks for is silent.
+ */
+export function resolvesSound(id: string): boolean {
+  return !!(SOUNDS[id] ?? derive(id));
+}
 
 /** All explicitly registered sound ids, for a debug browser. */
 export function soundIds(): string[] {

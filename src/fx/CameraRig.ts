@@ -62,6 +62,13 @@ const DEFAULTS: Required<CameraRigOptions> = {
   stiffness: 9.5,
 };
 
+/** Seconds of hit-stop the rig can bank. */
+const HITSTOP_BUDGET = 0.16;
+/** Seconds of hit-stop regained per real second. */
+const HITSTOP_REFILL = 0.14;
+/** Budget charged per second of stop: the stop itself plus its ease-back. */
+const HITSTOP_COST = 1.6;
+
 const _target = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _dir = new THREE.Vector3();
@@ -146,8 +153,27 @@ export class CameraRig {
   private slowTotal = 0;
   private slowScale = 1;
   private easeBack = 0;
+  private easeTotal = 0.07;
+  /**
+   * How much freeze the rig may still spend, in seconds.
+   *
+   * Hit-stop is the strongest single tool for weight, and the easiest to
+   * overuse: a fast weapon in a crowd asks for a freeze on every frame, and the
+   * fight turns to treacle. The budget refills at a fixed rate and every stop
+   * draws from it, so a flurry gets a few crisp stops and then plays at full
+   * speed. Kills and crits may overdraw, because those are the beats that
+   * should always land.
+   */
+  private stopBudget = HITSTOP_BUDGET;
   /** The dt multiplier for this frame. */
   timeScale = 1;
+
+  // --- directional kick ---------------------------------------------------
+  /** Screen-space spring offset from a directional hit, in world units. */
+  private kickX = 0;
+  private kickZ = 0;
+  private kickVX = 0;
+  private kickVZ = 0;
 
   // --- framing ----------------------------------------------------------
   private punch = 0;
@@ -283,11 +309,45 @@ export class CameraRig {
    * Freezes time briefly. This is the single cheapest way to make a heavy hit
    * feel heavy: 40-90ms at scale 0.05 reads as the world flinching.
    */
-  hitStop(duration = 0.06, scale = 0.04): void {
-    if (duration > this.hitStopLeft) {
-      this.hitStopLeft = duration;
+  hitStop(duration = 0.06, scale = 0.04, priority = false): void {
+    if (duration <= 0) return;
+    // Spend from the budget. A normal hit is shortened to whatever is left; a
+    // priority beat (a kill, a crit) always gets at least most of its length.
+    // A normal stop is all or nothing: a half-length freeze reads as a
+    // stutter, not as weight. Each stop is charged for its ease-back too.
+    const d = duration;
+    const extra = d - Math.max(0, this.hitStopLeft);
+    const cost = extra * HITSTOP_COST;
+    if (!priority && cost > this.stopBudget) return;
+    if (d > this.hitStopLeft) {
+      this.stopBudget = Math.max(0, this.stopBudget - cost);
+      this.hitStopLeft = d;
+      this.hitStopScale = scale;
+      this.easeTotal = Math.min(0.07, 0.025 + d * 0.6);
+    } else if (scale < this.hitStopScale && this.hitStopLeft > 0) {
+      // A harder stop arriving inside a softer one deepens it without
+      // lengthening it.
       this.hitStopScale = scale;
     }
+  }
+
+  /**
+   * A directional jolt: the view is shoved a little way along `dx,dz` (world
+   * space) and springs back. Trauma says "something big happened"; a kick says
+   * "it happened *that* way", which is what makes a heavy swing feel like it
+   * connected with something rather than like an earthquake.
+   */
+  kick(dx: number, dz: number, amount: number): void {
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-5 || amount <= 0) return;
+    const a = amount * this.shakeIntensity;
+    this.kickVX += (dx / len) * a * 9;
+    this.kickVZ += (dz / len) * a * 9;
+  }
+
+  /** The multiplier the world should run at this frame. Never zero. */
+  get worldScale(): number {
+    return Math.max(0.02, Math.min(1, this.timeScale));
   }
 
   /** Longer, eased time dilation — boss kills, last-hit slow motion. */
@@ -298,6 +358,7 @@ export class CameraRig {
   }
 
   clearTimeEffects(): void {
+    this.stopBudget = HITSTOP_BUDGET;
     this.hitStopLeft = 0;
     this.slowLeft = 0;
     this.slowScale = 1;
@@ -342,10 +403,13 @@ export class CameraRig {
     if (this.hitStopLeft > 0) {
       this.hitStopLeft -= rawDt;
       scale = this.hitStopScale;
-      if (this.hitStopLeft <= 0) this.easeBack = 0.07;
+      if (this.hitStopLeft <= 0) this.easeBack = this.easeTotal;
     } else if (this.easeBack > 0) {
       this.easeBack -= rawDt;
-      scale = lerp(this.hitStopScale, 1, clamp01(1 - this.easeBack / 0.07));
+      // Ease out of the freeze rather than snapping, quadratically so most of
+      // the speed returns at once and only the tail is soft.
+      const k = clamp01(1 - this.easeBack / Math.max(1e-3, this.easeTotal));
+      scale = lerp(this.hitStopScale, 1, 1 - (1 - k) * (1 - k));
     }
     if (this.slowLeft > 0) {
       this.slowLeft -= rawDt;
@@ -359,7 +423,25 @@ export class CameraRig {
       }
     }
     this.timeScale = scale;
+    this.stopBudget = Math.min(HITSTOP_BUDGET, this.stopBudget + rawDt * HITSTOP_REFILL);
     const dt = rawDt * scale;
+
+    // --- kick spring -------------------------------------------------------
+    // Stiff and slightly under-damped: one quick shove and a small settle,
+    // over in about a fifth of a second. Runs on real time so a kick that
+    // lands with a hit-stop still reads during the freeze.
+    {
+      const k = 260;
+      const c = 2 * Math.sqrt(k) * 0.72;
+      const h = Math.min(rawDt, 1 / 30);
+      this.kickVX += (-k * this.kickX - c * this.kickVX) * h;
+      this.kickVZ += (-k * this.kickZ - c * this.kickVZ) * h;
+      this.kickX += this.kickVX * h;
+      this.kickZ += this.kickVZ * h;
+      const cap = 0.6;
+      if (this.kickX > cap) this.kickX = cap; else if (this.kickX < -cap) this.kickX = -cap;
+      if (this.kickZ > cap) this.kickZ = cap; else if (this.kickZ < -cap) this.kickZ = -cap;
+    }
     // The camera itself runs on a partially dilated clock: fully frozen camera
     // motion during hit-stop looks broken, fully live motion breaks the freeze.
     const camDt = rawDt * lerp(1, scale, 0.55);
@@ -398,6 +480,8 @@ export class CameraRig {
 
     _target.copy(this.smooth).add(this.leadOffset);
     _target.y += 0.9; // aim a little above the floor so the player sits low
+    _target.x += this.kickX;
+    _target.z += this.kickZ;
 
     // --- boom + collision --------------------------------------------------
     const yaw = this.opts.yaw + (this.orbitOn ? this.orbitYaw : 0);

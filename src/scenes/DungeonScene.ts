@@ -329,6 +329,8 @@ export class DungeonScene extends GameScene {
   /** Tears down the current level and builds the next. */
   private loadLevel(index: number): void {
     // Clear the previous level.
+    this.skills.feel.clear();
+    this.rig.clearTimeEffects();
     for (const e of this.enemies) {
       e.root.removeFromParent();
       e.dispose();
@@ -820,6 +822,7 @@ export class DungeonScene extends GameScene {
         if (taken > 0) {
           this.engine.renderer.flashHurt(Math.min(1, taken / Math.max(1, this.player.stats.life * 0.25)));
           this.rig.addTrauma(Math.min(0.5, taken / Math.max(1, this.player.stats.life * 0.4)));
+          this.skills.feel.playerHit(taken, this.player.stats.life);
         }
       },
       nav: this.nav,
@@ -838,8 +841,11 @@ export class DungeonScene extends GameScene {
     };
   }
 
-  override update(dt: number, elapsed: number): void {
+  override update(rawDt: number, elapsed: number): void {
     if (!this.player || this.transitioning) return;
+    // Hit-stop and slow motion: the world runs on the rig's dilated clock,
+    // while the rig itself counts down in real time (see `rig.update` below).
+    const dt = rawDt * this.rig.worldScale;
     this.runTime += dt;
 
     const input = this.engine.input;
@@ -970,7 +976,13 @@ export class DungeonScene extends GameScene {
     this.passiveTick(dt, ctx);
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
-    this.rig.update(dt, elapsed);
+    this.rig.update(rawDt, elapsed);
+    this.skills.feel.update(
+      dt,
+      this.nav,
+      this.player.stats.life > 0 ? this.player.life / this.player.stats.life : 1,
+      this.player.alive,
+    );
     this.fx.update(dt, elapsed);
     this.decals.update(dt);
 
@@ -1524,6 +1536,7 @@ export class DungeonScene extends GameScene {
   private handleDeath(): void {
     if (this.transitioning) return;
     this.transitioning = true;
+    this.skills.feel.playerDied();
     const c = this.player.character;
     const payload = {
       killedBy: 'the depths',

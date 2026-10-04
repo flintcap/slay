@@ -1118,6 +1118,16 @@ export class EffectSystem {
     this.camera = camera;
   }
 
+  /** The rig handed over by `setRig`, for systems layered on top of this one. */
+  get cameraRig(): CameraRig | null {
+    return this.rig;
+  }
+
+  /** A roll on the effect stream, for presentation-only decisions. */
+  chance(p: number): boolean {
+    return this.rng.chance(p);
+  }
+
   // -- primitives -----------------------------------------------------------
 
   /** Fires a one-shot point light. Colour is in sRGB hex. */
@@ -1173,8 +1183,11 @@ export class EffectSystem {
     const shake = opts.shake ?? (opts.crit ? 0.24 : 0.12) * scale;
     this.trauma(shake);
 
-    if (opts.hitStop && this.rig) this.rig.hitStop(opts.hitStop, 0.05);
-    else if (opts.crit && this.rig) this.rig.hitStop(0.045, 0.08);
+    // An explicit `hitStop` (including 0) is the caller taking charge of time;
+    // only an unspecified one falls back to the crit default.
+    if (opts.hitStop !== undefined) {
+      if (opts.hitStop > 0 && this.rig) this.rig.hitStop(opts.hitStop, 0.05);
+    } else if (opts.crit && this.rig) this.rig.hitStop(0.045, 0.08, true);
 
     if (opts.sfx !== null) this.sfx(opts.sfx ?? el.sfxHit, x, z);
   }
@@ -1197,7 +1210,7 @@ export class EffectSystem {
     this.flash(x, y + 0.5, z, el.light, 6 * scale, 6, 0.2);
     this.trauma(opts.heavy ? 0.4 : 0.12 * scale);
     if (opts.heavy && this.rig) {
-      this.rig.hitStop(0.09, 0.03);
+      this.rig.hitStop(0.09, 0.03, true);
       this.rig.slowMo(0.5, 0.5);
     }
     this.sfx(opts.heavy ? 'death.heavy' : 'death.normal', x, z);
@@ -1331,7 +1344,11 @@ export class EffectSystem {
 
         if (t >= 1) {
           if (opts.impact !== false) {
-            self.impact(element, pos.x, pos.y, pos.z, { scale: opts.scale ?? 1, color: opts.color });
+            // An arrow thunks home; it does not detonate. The feel layer adds
+            // the body it met on top, when it met one.
+            self.impact(element, pos.x, pos.y, pos.z, isArrow
+              ? { scale: (opts.scale ?? 1) * 0.6, color: opts.color, shake: 0.02, light: 0, decal: false, sfx: 'arrow.thunk' }
+              : { scale: opts.scale ?? 1, color: opts.color });
           }
           opts.onHit?.(pos.clone());
           finished = true;
@@ -1509,7 +1526,7 @@ export class EffectSystem {
       }
       self.trauma(0.85);
       if (self.rig) {
-        self.rig.hitStop(0.1, 0.02);
+        self.rig.hitStop(0.1, 0.02, true);
         self.rig.setRumble(0);
       }
       self.sfx('boss.slam', x, z);

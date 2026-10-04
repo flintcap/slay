@@ -10,6 +10,7 @@ import type { Enemy, CombatContext } from '../entities/Enemy';
 import type { MinionTarget } from '../entities/Abilities';
 import type { Boss } from '../entities/Boss';
 import { EffectSystem, ELEMENTS } from '../fx/Effects';
+import { CombatFeel, type HitKind, type WeaponSound } from '../fx/CombatFeel';
 import type { EffectHandle } from '../fx/Effects';
 import { getStatus, synthesizeSkillBuff } from '../data/statuses';
 import { getBase } from '../sim/Loot';
@@ -416,6 +417,24 @@ export function weaponStyle(player: Player): WeaponStyle {
   return 'unarmed';
 }
 
+/** What the main hand sounds like when it lands. */
+export function weaponSoundOf(player: Player): WeaponSound {
+  const item = player.character.equipment.mainHand;
+  if (!item) return 'fist';
+  try {
+    switch (getBase(item.baseId)?.category) {
+      case 'sword': return 'blade';
+      case 'dagger': return 'blade';
+      case 'axe': return 'axe';
+      case 'mace': case 'staff': case 'scepter': case 'wand': case 'orb': return 'blunt';
+      case 'spear': case 'bow': case 'crossbow': return 'pierce';
+      default: return 'blade';
+    }
+  } catch {
+    return 'blade';
+  }
+}
+
 /** Effect families that swing a weapon and therefore need one in hand. */
 const MELEE_EFFECTS = new Set([
   // A dash or a leap is footwork, not a swing: gating them on a melee weapon
@@ -472,8 +491,33 @@ export class SkillRunner {
   private tmp2 = new THREE.Vector3();
   private tmp3 = new THREE.Vector3();
 
+  /** Hit-stop, flash, knockback and layered sound for every blow that lands. */
+  readonly feel: CombatFeel;
+  /** What the caster's main hand sounds like when it connects. */
+  private weaponSound: WeaponSound = 'fist';
+
   constructor(effects: EffectSystem) {
     this.effects = effects;
+    this.feel = new CombatFeel(effects);
+  }
+
+  /**
+   * Lands one blow and reports it to the feel layer.
+   *
+   * Every player hit in this file goes through here, so a blow cannot connect
+   * without flashing, stopping, shoving and sounding like it did. `fromX/Z` is
+   * where the blow came from, which decides which way the body is knocked and
+   * the camera kicks.
+   */
+  private strike(t: Target, packet: DamagePacket, ctx: CombatContext, kind: HitKind, fromX: number, fromZ: number): void {
+    const before = t.life;
+    t.takeDamage(packet, ctx);
+    try {
+      this.feel.hit(t, packet, { kind, fromX, fromZ, lifeBefore: before, weapon: this.weaponSound }, ctx.nav);
+    } catch (err) {
+      // Presentation must never take the hit itself down with it.
+      console.warn('[feel] hit report failed', err);
+    }
   }
 
   /** Attempt to cast. Returns false if on cooldown, unaffordable, or busy. */
@@ -594,7 +638,10 @@ export class SkillRunner {
       case 'cleave': {
         player.beginAction(clip, attackTime);
         const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
-        this.meleeSwing(player, dir, num('arc', wide ? 2.2 : 1.3), num('reach', 2.3), makePacket, ctx, enemies, boss, type);
+        // A committed single-target skill lands like one: heavier stop, harder
+        // shove. Wide sweeps hit many things and stay crisp instead.
+        const heavy = !wide && (scale >= 1.6 || /heavy|smash|crush|execute/i.test(def.effect ?? ''));
+        this.meleeSwing(player, dir, num('arc', wide ? 2.2 : 1.3), num('reach', 2.3), makePacket, ctx, enemies, boss, type, true, heavy ? 'heavy' : 'melee');
         break;
       }
 
@@ -655,7 +702,7 @@ export class SkillRunner {
               } else if (splash > 0) {
                 this.areaDamage(p, splash, hit, ctx, enemies, boss);
               } else {
-                this.pointDamage(p, num('radius', 0.42), hit, ctx, enemies, boss);
+                this.pointDamage(p, num('radius', 0.42), hit, ctx, enemies, boss, 'projectile', from);
               }
             },
           });
@@ -689,7 +736,7 @@ export class SkillRunner {
           emitter: sig.emitter,
           density: sig.density,
           windup: num('windup', 0.25),
-          onFire: () => this.areaDamage(at, radius, () => makePacket(1.25), ctx, enemies, boss),
+          onFire: () => this.areaDamage(at, radius, () => makePacket(1.25), ctx, enemies, boss, 'heavy'),
         });
         audio.play('slam');
         break;
@@ -950,7 +997,7 @@ export class SkillRunner {
         this.effects.cone(origin, dir, 0.22, range, {
           element: type, color, emitter: sig.emitter, density: sig.density,
         });
-        this.lineDamage(player.position, dir, range, width, makePacket, ctx, enemies, boss);
+        this.lineDamage(player.position, dir, range, width, makePacket, ctx, enemies, boss, 'heavy');
         this.effects.slam(player.position.x, player.position.z, width * 0.8, {
           element: type, color, windup: 0, emitter: sig.emitter, density: sig.density,
         });
@@ -971,7 +1018,7 @@ export class SkillRunner {
         this.effects.slam(land.x, land.z, radius, {
           element: type, color, windup: 0, emitter: sig.emitter, density: sig.density,
         });
-        this.areaDamage(land, radius, makePacket, ctx, enemies, boss);
+        this.areaDamage(land, radius, makePacket, ctx, enemies, boss, 'heavy');
         audio.play('nova.physical');
         break;
       }
@@ -1037,7 +1084,7 @@ export class SkillRunner {
             trail: sig.trail,
             speed: holding === 'ranged' ? 30 : 20,
             size: holding === 'ranged' ? 0.24 : 0.36,
-            onHit: (pt) => this.pointDamage(pt, 0.6, makePacket, ctx, enemies, boss),
+            onHit: (pt) => this.pointDamage(pt, 0.6, makePacket, ctx, enemies, boss, 'projectile', from),
           });
         } else {
           player.beginAction(clip, attackTime);
@@ -1103,7 +1150,7 @@ export class SkillRunner {
         color: colour,
         speed: style === 'ranged' ? 30 : 19,
         size: style === 'ranged' ? 0.24 : 0.4,
-        onHit: (p) => this.pointDamage(p, 0.5, packet, ctx, enemies, boss),
+        onHit: (p) => this.pointDamage(p, 0.5, packet, ctx, enemies, boss, 'projectile', from),
       });
       audio.play(style === 'ranged' ? 'cast.physical' : 'cast.arcane');
       return true;
@@ -1354,11 +1401,12 @@ export class SkillRunner {
       ability: 'Riposte',
       source: 'player',
     });
-    target.takeDamage(this.tune(packet, target), ctx);
+    this.strike(target, this.tune(packet, target), ctx, 'melee', player.position.x, player.position.z);
     this.effects.meleeHit(target.root.position.x, 1.0, target.root.position.z, {
       color: ELEMENTS.physical?.core ?? 0xffffff,
+      sfx: null,
+      shake: 0,
     });
-    audio.play('hit.physical');
   }
 
   /**
@@ -1397,7 +1445,8 @@ export class SkillRunner {
     enemies: Enemy[],
     boss: Boss | null,
     type: DamageType,
-    playVisual = true
+    playVisual = true,
+    kind: HitKind = 'melee',
   ): void {
     const origin = player.position;
     const half = arc * 0.5;
@@ -1412,9 +1461,14 @@ export class SkillRunner {
         if (facing.dot(to) < Math.cos(half)) continue;
       }
       const mp = this.tune(packet(), t);
-      t.takeDamage(mp, ctx);
+      this.strike(t, mp, ctx, kind, origin.x, origin.z);
       this.afterHit(mp, t, ctx, enemies, boss);
-      this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, { dir: facing, color: ELEMENTS[type]?.core });
+      // Sound and camera come from the feel layer, which knows the weapon and
+      // the body it met; the impact here is the picture only.
+      this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, {
+        dir: facing, color: ELEMENTS[type]?.core, sfx: null, shake: 0, crit: mp.crit,
+        hitStop: 0,
+      });
       hits++;
     }
 
@@ -1552,9 +1606,10 @@ export class SkillRunner {
             }
           }
           if (mark) {
-            mark.takeDamage(
+            this.strike(
+              mark,
               { ...packet, amount: packet.amount * (e.critBladePct / 100), ability: 'Phantom Blade' },
-              ctx,
+              ctx, 'proc', t.root.position.x, t.root.position.z,
             );
             this.effects.projectile(
               t.root.position.clone().setY(1.1),
@@ -1598,9 +1653,10 @@ export class SkillRunner {
           }
         }
         if (best) {
-          best.takeDamage(
+          this.strike(
+            best,
             { ...packet, amount: packet.amount * (e.arcDamagePct / 100), ability: 'Arc' },
-            ctx,
+            ctx, 'proc', t.root.position.x, t.root.position.z,
           );
           this.effects.beam(
             t.root.position.clone().setY(1.1),
@@ -1617,7 +1673,7 @@ export class SkillRunner {
         for (const other of this.allTargets(enemies, boss)) {
           if (other === t || other.life <= 0 || !other.hasStatus('shocked')) continue;
           if (this.groundDistance(other.root.position, t.root.position) > e.conductRadius) continue;
-          other.takeDamage({ ...packet, amount: share, ability: 'Superconductor' }, ctx);
+          this.strike(other, { ...packet, amount: share, ability: 'Superconductor' }, ctx, 'proc', t.root.position.x, t.root.position.z);
         }
       }
     } finally {
@@ -1647,6 +1703,7 @@ export class SkillRunner {
    */
   private setCaster(player: Player, enemies: Enemy[], boss: Boss | null): void {
     this.caster = player;
+    this.weaponSound = weaponSoundOf(player);
     if (player.passives.crowdDamagePct <= 0) {
       this.nearbyCount = 0;
       return;
@@ -1666,7 +1723,9 @@ export class SkillRunner {
     packet: () => DamagePacket,
     ctx: CombatContext,
     enemies: Enemy[],
-    boss: Boss | null
+    boss: Boss | null,
+    kind: HitKind = 'projectile',
+    from?: THREE.Vector3,
   ): void {
     let closest: Target | null = null;
     let bestD = Infinity;
@@ -1679,7 +1738,8 @@ export class SkillRunner {
     }
     if (closest) {
       const hp = this.tune(packet(), closest);
-      closest.takeDamage(hp, ctx);
+      const src = from ?? this.caster?.position ?? at;
+      this.strike(closest, hp, ctx, kind, src.x, src.z);
       this.afterHit(hp, closest, ctx, enemies, boss);
     }
   }
@@ -1690,7 +1750,8 @@ export class SkillRunner {
     packet: () => DamagePacket,
     ctx: CombatContext,
     enemies: Enemy[],
-    boss: Boss | null
+    boss: Boss | null,
+    kind: HitKind = 'area',
   ): void {
     for (const t of this.allTargets(enemies, boss)) {
       // On the floor, not through the air: a meteor lands from above, and its
@@ -1701,7 +1762,8 @@ export class SkillRunner {
       const p = packet();
       p.amount *= 1 - Math.min(1, d / (radius + t.hitRadius)) * 0.35;
       const ap = this.tune(p, t);
-      t.takeDamage(ap, ctx);
+      // Knocked away from the middle of the blast.
+      this.strike(t, ap, ctx, kind, center.x, center.z);
       this.afterHit(ap, t, ctx, enemies, boss);
     }
   }
@@ -1714,7 +1776,8 @@ export class SkillRunner {
     packet: () => DamagePacket,
     ctx: CombatContext,
     enemies: Enemy[],
-    boss: Boss | null
+    boss: Boss | null,
+    kind: HitKind = 'beam',
   ): void {
     for (const t of this.allTargets(enemies, boss)) {
       const to = this.tmp2.copy(t.root.position).sub(origin).setY(0);
@@ -1723,7 +1786,8 @@ export class SkillRunner {
       const perp = Math.sqrt(Math.max(0, to.lengthSq() - along * along));
       if (perp > width * 0.5 + t.hitRadius) continue;
       const lp = this.tune(packet(), t);
-      t.takeDamage(lp, ctx);
+      // Pushed along the line, as if the beam carried them.
+      this.strike(t, lp, ctx, kind, t.root.position.x - dir.x, t.root.position.z - dir.z);
       this.afterHit(lp, t, ctx, enemies, boss);
     }
   }
@@ -1766,7 +1830,7 @@ export class SkillRunner {
       // Each jump loses punch, or chain skills trivialise every pack.
       const p = packet();
       p.amount *= Math.pow(0.82, j);
-      best.takeDamage(this.tune(p, best), ctx);
+      this.strike(best, this.tune(p, best), ctx, 'chain', from.x, from.z);
       from = to;
     }
   }
@@ -1991,7 +2055,9 @@ export class SkillRunner {
       if (z.accum >= z.tick) {
         z.accum = 0;
         const centre = this.tmp3.set(z.x, 0, z.z);
-        this.areaDamage(centre, z.radius, z.packet, ctx, enemies, boss);
+        // A field ticking is not a blow: no flash or stop, or a burning floor
+        // would strobe everything standing in it.
+        this.areaDamage(centre, z.radius, z.packet, ctx, enemies, boss, 'proc');
         if (z.applies?.length) {
           for (const t of this.allTargets(enemies, boss)) {
             if (this.groundDistance(t.root.position, centre) > z.radius + t.hitRadius) continue;
@@ -2107,7 +2173,7 @@ export class SkillRunner {
           }
           const to = best.root.position.clone().setY(1.0);
           if (t.melee) {
-            best.takeDamage(t.packet(), ctx);
+            this.strike(best, t.packet(), ctx, 'minion', t.x, t.z);
             this.effects.impact(t.type, to.x, to.y, to.z, { color: t.color, scale: 0.7, shake: 0 });
           } else {
             this.effects.projectile(from.clone(), to, {
@@ -2115,7 +2181,7 @@ export class SkillRunner {
               color: t.color,
               speed: 26,
               size: 0.18,
-              onHit: (p) => this.pointDamage(p, 0.9, t.packet, ctx, enemies, boss),
+              onHit: (p) => this.pointDamage(p, 0.9, t.packet, ctx, enemies, boss, 'minion'),
             });
           }
         }
@@ -2322,5 +2388,6 @@ export class SkillRunner {
     this.zones.length = 0;
     this.turrets.length = 0;
     this.tickCtx = null;
+    this.feel.clear();
   }
 }
