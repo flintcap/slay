@@ -85,6 +85,7 @@ export class CombatTextLayer {
   /** Deterministic spread so stacked numbers fan out without randomness. */
   private spawnCount = 0;
   private hero = new THREE.Vector3();
+  private textScale = 1;
 
   constructor(parent: HTMLElement | null = document.getElementById('ui')) {
     this.canvas = document.createElement('canvas');
@@ -260,6 +261,10 @@ export class CombatTextLayer {
       return;
     }
     this.dirty = true;
+    // The text-size setting scales these too. Access.ts writes it inline on
+    // the root, so this is a cheap property read, not a style recalc.
+    const ts = parseFloat(document.documentElement.style.getPropertyValue('--text-scale'));
+    this.textScale = Number.isFinite(ts) && ts > 0 ? ts : 1;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.w, this.h);
     ctx.textAlign = 'center';
@@ -298,7 +303,7 @@ export class CombatTextLayer {
   }
 
   private drawEntry(ctx: CanvasRenderingContext2D, e: Entry, x: number, y: number, scale: number, alpha: number): void {
-    const size = e.size * scale;
+    const size = e.size * scale * this.textScale;
     ctx.globalAlpha = alpha;
     if (e.kind === 'word' || e.kind === 'level') {
       ctx.font = `700 ${size}px 'Cinzel', 'Trajan Pro', 'Palatino Linotype', Palatino, Georgia, serif`;

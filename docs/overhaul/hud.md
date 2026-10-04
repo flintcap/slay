@@ -16,32 +16,26 @@ Status: in progress
 
 ## Next up
 
-Milestone 8 is built and checked in the lab; it is not ticked yet because it
-still needs its one real render. Done: ground labels tiered by rarity with a
-light shaft and gilt caps for unique/set/mythic/ancient and a declutter pass
-that lifts overlapping labels onto a tether (`GroundLabels.ts`); nameplates
-with a draining damage trail, serif names for elites and rares, gilt hairline
-bars for champion and up, no more truncated names (`Nameplates.ts`); the map
-drawn as an inked chart (ground wash, bright wall edges, halos on stairs and
-the hero, fit-to-floor zoom on first open, framed legend) (`MapPanel.ts`);
-blacksmith shows the painted item art and marks the item on the anvil in the
-pack (`.islot.is-picked`, `ItemSlot` now sets `data-uid`); vendor grids
-centred; quest rewards have their own chips (`.quest-reward-item`, no longer
-borrowing `.death-kept-item`).
+Milestones 8 and 9 are built and lab-checked; neither is ticked yet because
+they wait on the real render. Milestone 9 so far: dead menu styles pruned,
+all font sizes follow the text-size setting, press and hover states added
+where missing (`Sweep:` block at the end of `styles.css`), 1280x720 checked
+in the lab for hud, inventory, skills, character, vendor, stash, blacksmith
+(skill board scales down under 820px tall; blacksmith pack column sized to
+its grid). Panels and modals already animate open and closed.
 
-To finish 8: `npm run build && SLAY_PORT=4301 node tools/screenshot.mjs
---out=shots/hud/real --shots=combatText,dungeon` (about 15 to 30 minutes on a
-loaded machine), look at the combat text, nameplates and loot labels, fix
-what looks wrong, tick 8. Then milestone 9 (sweep), which includes the
-font-size and dead-style requests below.
+To finish: `npm run build && SLAY_PORT=4301 node tools/screenshot.mjs
+--out=shots/hud/real --shots=combatText,dungeon` (15 to 30 minutes on a
+loaded machine). Look at the combat text, nameplates, loot labels and the
+HUD in a real frame, fix what looks wrong, then tick 8 and 9.
 
 ## Notes for resume
 
 **Requests from other streams (added at pause):**
 - DONE art: buff chips now use `statusIconUri` (painted chip, `.buff.has-img`); the line-icon stays as fallback.
 - DONE combat: the seven new elite affixes borrow glyphs through `BADGE_ALIAS` in `Nameplates.ts` (art: if you add real glyphs to `AFFIX_MAP` in `SkillIconArt.ts`, delete the alias lines). `boss:cast` shows a wind-up bar under the boss bar (`.bosscast`, fills over `windup` seconds), `boss:enraged` adds `.is-enraged` (red glow, "· Enraged" after the title, throbbing name), `miniboss:engaged` shows a 4s entrance card (`.minicard`) where the boss bar lives, `miniboss:killed` hides it and toasts "X is slain". Lab: `bosscast`, `miniboss`.
-- From quality: 49 font sizes are fixed pixel values and ignore the text-size setting. Use the `--fs-*` sizes or `calc(Npx * var(--text-scale, 1))`.
-- From menus: old styles in `styles.css` are unused and can go: `.title-*`, `.cs-*` (keep `.cs-memorial-list` and `.fallen-*`), `.death-*`, `.pause-*`, `.settings-cols`.
+- DONE quality: every `font-size` in `styles.css` now follows the text-size setting (`--fs-*` or `calc(Npx * var(--text-scale, 1))`); the combat text canvas reads `--text-scale` too. `check-access` now reports 36 raw sizes, all in `menus.css` (33), `story.css` (2) and `depth.css` (1), which belong to those streams.
+- DONE menus: the unused `.title-*`, `.cs-*` (kept `.cs-memorial`, `.cs-memorial-list`), `.death-*`, `.pause-*` and `.settings-cols` rules are gone from `styles.css` (75 rules). `QuestLog` had borrowed `.death-kept-item`; it now has `.quest-reward-item`.
 
 - **UI lab (use it).** `node tools/uilab.mjs --out=shots/hud --shots=hud,inventory,skills`
   mounts the real UI with a stub engine (no game boot) and screenshots it in

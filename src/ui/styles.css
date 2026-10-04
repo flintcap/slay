@@ -1322,7 +1322,7 @@ input.slider::-moz-range-thumb {
 }
 .panel-title-text {
   font-family: var(--font-title);
-  font-size: 21px;
+  font-size: calc(21px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0.22em;
@@ -1559,7 +1559,7 @@ input.slider::-moz-range-thumb {
 .islot-ph-label {
   position: absolute;
   bottom: 2px;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(147, 133, 108, 0.4);
@@ -1583,7 +1583,7 @@ input.slider::-moz-range-thumb {
   top: 2px;
   right: 3px;
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--gold-hi);
   text-shadow: 0 1px 2px #000;
@@ -1766,7 +1766,7 @@ input.slider::-moz-range-thumb {
 /* Over the open world: the label says what letting go will do. */
 .drag-ghost-hint {
   display: none;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -2034,7 +2034,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-compare-flag {
   margin: 10px 0 -2px;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -2086,7 +2086,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-name {
   font-family: var(--font-title);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.03em;
@@ -2165,7 +2165,7 @@ input.slider::-moz-range-thumb {
   line-height: 1.1;
 }
 .tt-bigstat-label {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -2254,7 +2254,7 @@ input.slider::-moz-range-thumb {
   display: none;
   margin-left: 4px;
   font-family: var(--font-num);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   color: var(--ink-3);
 }
 .tt-wrap.show-detail .tt-tier-num {
@@ -2262,7 +2262,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-modtag {
   flex: none;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #7fd6c8;
@@ -2292,7 +2292,7 @@ input.slider::-moz-range-thumb {
 .tt-sublabel {
   display: block;
   margin-bottom: 3px;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -2377,7 +2377,7 @@ input.slider::-moz-range-thumb {
 .socket-pick-stats {
   margin-left: auto;
   color: var(--c-mod, #7fb0ff);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   text-align: right;
 }
 
@@ -2402,7 +2402,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-set-count {
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   color: var(--ink-3);
 }
 .tt-set-piece {
@@ -2433,7 +2433,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1px currentColor;
@@ -2467,7 +2467,7 @@ input.slider::-moz-range-thumb {
   border-top: 1px solid rgba(214, 178, 96, 0.12);
 }
 .tt-reqs-label {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -2532,7 +2532,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-ilvl {
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
 }
 
 .tt-actions {
@@ -2570,7 +2570,7 @@ input.slider::-moz-range-thumb {
   margin-bottom: 3px;
 }
 .tt-verdict {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -2608,7 +2608,7 @@ input.slider::-moz-range-thumb {
   font-weight: 700;
 }
 .tt-delta-arrow {
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
 }
 .tt-delta.up .tt-delta-v {
   color: var(--good);
@@ -3000,7 +3000,7 @@ input.slider::-moz-range-thumb {
 .bossbar-proper {
   display: block;
   font-family: var(--font-title);
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.22em;
   margin-right: -0.22em;
@@ -3136,7 +3136,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   color: #ffe9dc;
   text-shadow: 0 1px 2px #000, 0 0 4px #000;
@@ -3696,7 +3696,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.08em;
@@ -3814,7 +3814,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-title);
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale, 1));
   font-weight: 700;
   color: #fff6e2;
   text-shadow: 0 0 4px #000, 0 2px 3px #000;
@@ -3893,7 +3893,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1;
   color: #e9dcbc;
@@ -3908,7 +3908,7 @@ input.slider::-moz-range-thumb {
   bottom: 1px;
   left: 3px;
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 700;
   color: #9cc8ff;
   text-shadow: 0 1px 2px #000, 0 0 3px #000;
@@ -3919,7 +3919,7 @@ input.slider::-moz-range-thumb {
   bottom: 1px;
   right: 3px;
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--gold-hi);
   text-shadow: 0 1px 2px #000, 0 0 3px #000;
@@ -3930,7 +3930,7 @@ input.slider::-moz-range-thumb {
   top: 2px;
   right: 3px;
   font-family: var(--font-num);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 700;
   color: #fff;
   text-shadow: 0 1px 2px #000, 0 0 3px #000;
@@ -3959,7 +3959,7 @@ input.slider::-moz-range-thumb {
   background: linear-gradient(180deg, transparent, rgba(214, 178, 96, 0.55), transparent);
 }
 .hotslot-rmb .hotslot-key {
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 0.04em;
 }
 .hotslot-rmb.is-basic .hotslot-art {
@@ -4097,7 +4097,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   color: #fff;
   background: #1a120a;
@@ -4110,7 +4110,7 @@ input.slider::-moz-range-thumb {
   left: 50%;
   transform: translateX(-50%);
   font-family: var(--font-num);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--ink-2);
   text-shadow: 0 1px 2px #000, 0 0 3px #000;
@@ -4137,7 +4137,7 @@ input.slider::-moz-range-thumb {
 }
 /* A summon chip reads as a count, not a timer, so its number sits larger. */
 .buff-minion .buff-stacks {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 
 .hud-gold {
@@ -4284,7 +4284,7 @@ input.slider::-moz-range-thumb {
 .levelup-word {
   position: relative;
   font-family: var(--font-title);
-  font-size: 62px;
+  font-size: calc(62px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0.16em;
@@ -4440,7 +4440,7 @@ input.slider::-moz-range-thumb {
   left: 50%;
   bottom: 4px;
   transform: translateX(-50%);
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -4503,7 +4503,7 @@ input.slider::-moz-range-thumb {
   left: 50%;
   bottom: -13px;
   transform: translateX(-50%);
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -4641,7 +4641,7 @@ input.slider::-moz-range-thumb {
 }
 .char-level-w {
   display: block;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 0.2em;
   color: var(--ink-4);
 }
@@ -4665,7 +4665,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   color: rgba(255, 240, 205, 0.9);
   text-shadow: 0 1px 2px #000;
 }
@@ -4690,7 +4690,7 @@ input.slider::-moz-range-thumb {
   color: var(--ink);
 }
 .char-fact-l {
-  font-size: 8.5px;
+  font-size: calc(8.5px * var(--text-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -5291,7 +5291,7 @@ input.slider::-moz-range-thumb {
   display: none;
   place-items: center;
   font-family: var(--font-num);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1;
   color: #1a1206;
@@ -5490,7 +5490,7 @@ input.slider::-moz-range-thumb {
 }
 .skdetail-chip {
   padding: 1px 8px;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -5526,7 +5526,7 @@ input.slider::-moz-range-thumb {
   background: rgba(201, 162, 39, 0.06);
 }
 .skdetail-trow.is-head {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -5564,7 +5564,7 @@ input.slider::-moz-range-thumb {
   padding: 3px 0;
 }
 .skdetail-linklabel {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -5613,7 +5613,7 @@ input.slider::-moz-range-thumb {
   box-shadow: var(--hairline);
 }
 .skill-hotlabel {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -5640,7 +5640,7 @@ input.slider::-moz-range-thumb {
   top: 1px;
   left: 3px;
   font-family: var(--font-num);
-  font-size: 8.5px;
+  font-size: calc(8.5px * var(--text-scale, 1));
   color: var(--ink-4);
 }
 
@@ -5660,7 +5660,7 @@ input.slider::-moz-range-thumb {
 }
 /* Grids keep their fixed cells but sit centred in their well. */
 .trade-col .itemgrid {
-  justify-content: center;
+  justify-content: safe center;
 }
 .trade-colhd {
   display: flex;
@@ -5758,7 +5758,7 @@ input.slider::-moz-range-thumb {
   right: 0;
   text-align: center;
   font-family: var(--font-num);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   color: var(--gold-hi);
   text-shadow: 0 1px 2px #000;
   pointer-events: none;
@@ -5774,7 +5774,7 @@ input.slider::-moz-range-thumb {
 
 .smith-wrap {
   display: grid;
-  grid-template-columns: 300px 1fr 260px;
+  grid-template-columns: max-content minmax(0, 1fr) 260px;
   gap: var(--s5);
   align-items: start;
 }
@@ -5822,7 +5822,7 @@ input.slider::-moz-range-thumb {
   border-radius: 2px;
 }
 .diffrow.is-head {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -6100,37 +6100,6 @@ input.slider::-moz-range-thumb {
    Pause / settings
    -------------------------------------------------------------------------- */
 
-.pause-menu {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  width: 320px;
-  margin: 0 auto;
-}
-.pause-title {
-  margin-bottom: var(--s5);
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--gold-hi);
-  text-shadow: 0 0 24px rgba(201, 162, 39, 0.35);
-}
-.pause-sub {
-  margin-top: var(--s5);
-  text-align: center;
-  font-size: var(--fs-xs);
-  color: var(--ink-4);
-  letter-spacing: 0.12em;
-}
-
-.settings-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s6);
-}
 .settings-danger {
   margin-top: var(--s4);
   padding: var(--s4);
@@ -6162,26 +6131,6 @@ input.slider::-moz-range-thumb {
    Title / character select / death
    -------------------------------------------------------------------------- */
 
-.title-wrap {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  text-align: center;
-}
-.title-logo {
-  font-family: var(--font-display);
-  font-size: clamp(64px, 13vw, 150px);
-  font-weight: 700;
-  letter-spacing: 0.26em;
-  text-indent: 0.26em;
-  line-height: 1;
-  color: transparent;
-  background: linear-gradient(180deg, #fff2c9 0%, #d8b154 40%, #8a6521 74%, #4d3611 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: drop-shadow(0 6px 30px rgba(201, 140, 39, 0.35)) drop-shadow(0 2px 0 rgba(0, 0, 0, 0.9));
-  animation: titleIn 1200ms var(--ease) both;
-}
 @keyframes titleIn {
   from {
     opacity: 0;
@@ -6189,244 +6138,14 @@ input.slider::-moz-range-thumb {
     filter: blur(10px);
   }
 }
-.title-tagline {
-  margin: var(--s4) 0 var(--s7);
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: var(--fs-lg);
-  letter-spacing: 0.2em;
-  color: var(--ink-3);
-}
-.title-menu {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  width: 300px;
-  margin: 0 auto;
-}
-.title-foot {
-  margin-top: var(--s7);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.14em;
-  color: var(--ink-4);
-}
-.title-stats {
-  display: flex;
-  justify-content: center;
-  gap: var(--s6);
-  margin-top: var(--s5);
-}
-.title-stat {
-  text-align: center;
-}
-.title-stat-v {
-  font-family: var(--font-num);
-  font-size: var(--fs-xl);
-  color: var(--gold-hi);
-}
-.title-stat-l {
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-}
 
 /* --- character select ---------------------------------------------------- */
-
-.cs-wrap {
-  display: flex;
-  flex-direction: column;
-  /* `min-height`, not `height`. On a short window a fixed height forces the
-     inner boxes to fight over the space, and the card row ends up scrolled with
-     its top edge clipped. The panel body already scrolls; let it own that job. */
-  min-height: 100%;
-  gap: var(--s5);
-}
-.cs-head {
-  text-align: center;
-  flex: none;
-}
-.cs-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--gold-hi);
-  text-shadow: 0 0 26px rgba(201, 162, 39, 0.3);
-}
-.cs-sub {
-  font-size: var(--fs-sm);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-}
-.cs-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
-  gap: var(--s5);
-  flex: 1 0 auto;
-  align-items: start;
-}
-.cs-cards {
-  display: grid;
-  /* Six classes now. Auto-fit rather than a fixed five keeps the row honest as
-     the roster grows, and stops a sixth card squeezing the other five thin. */
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--s3);
-  align-content: start;
-  /* Deliberately not a scroll container. When it was, the browser could scroll
-     it to bring a focused card into view and cut the top off every card in the
-     row. The whole screen scrolls as one thing instead. */
-  overflow: visible;
-}
-@media (max-width: 1500px) {
-  .cs-cards {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-.cs-card {
-  --accent: var(--gold);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  padding: var(--s4) var(--s3);
-  text-align: center;
-  background:
-    radial-gradient(ellipse 90% 55% at 50% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 68%),
-    linear-gradient(180deg, rgba(30, 24, 17, 0.9), rgba(12, 10, 8, 0.95));
-  border: 1px solid rgba(201, 162, 39, 0.14);
-  border-radius: var(--radius-lg);
-  box-shadow: inset 0 1px 0 rgba(255, 232, 186, 0.06), var(--shadow-2);
-  cursor: pointer;
-  overflow: hidden;
-  transition: transform 180ms var(--ease), box-shadow 200ms ease, border-color 200ms ease;
-}
-.cs-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: var(--noise);
-  opacity: 0.18;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-}
-.cs-card:hover {
-  transform: translateY(-6px);
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  box-shadow: 0 0 30px -8px var(--accent), var(--shadow-3);
-}
-.cs-card.is-selected {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent), 0 0 42px -10px var(--accent), var(--shadow-3);
-  transform: translateY(-6px);
-}
-.cs-card.is-selected::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-}
-.cs-crest {
-  display: grid;
-  place-items: center;
-  color: var(--accent);
-}
-.cs-name {
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-.cs-role {
-  font-size: 9.5px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-.cs-blurb {
-  font-size: var(--fs-xs);
-  line-height: 1.6;
-  color: var(--ink-3);
-  min-height: 62px;
-}
-.cs-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.cs-statrow {
-  display: grid;
-  grid-template-columns: 26px 1fr 22px;
-  align-items: center;
-  gap: 5px;
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-}
-.cs-statbar {
-  height: 4px;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 99px;
-  overflow: hidden;
-}
-.cs-statfill {
-  height: 100%;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 40%, #000), var(--accent));
-  transition: width 300ms var(--ease);
-}
-.cs-statv {
-  font-family: var(--font-num);
-  text-align: right;
-  color: var(--ink-3);
-}
-.cs-trees {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: var(--s2);
-  border-top: 1px solid rgba(201, 162, 39, 0.12);
-}
-.cs-tree {
-  font-size: 9.5px;
-  letter-spacing: 0.09em;
-  color: var(--ink-4);
-}
-
-.cs-side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s4);
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 4px;
-}
 
 /* --- roster --------------------------------------------------------------
    The account holds several living characters, so this screen picks as well as
    creates. The roster sits above the creation controls: resuming someone is
    the more common action once you have any. */
-.cs-roster {
-  padding: var(--s3) var(--s4) var(--s4);
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: var(--radius);
-  box-shadow: var(--hairline);
-}
-.cs-roster-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: var(--s2);
-  max-height: 230px;
-  overflow-y: auto;
-}
+
 .roster-row {
   --accent: var(--gold);
   display: grid;
@@ -6464,33 +6183,7 @@ input.slider::-moz-range-thumb {
   color: var(--bad);
   box-shadow: inset 0 0 0 1px var(--bad);
 }
-.cs-namebox {
-  padding: var(--s4);
-  background: rgba(0, 0, 0, 0.32);
-  border-radius: var(--radius);
-  box-shadow: var(--hairline);
-}
-.cs-nameinput {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  margin-top: var(--s2);
-  padding: 6px 10px;
-  background: #0b0907;
-  border-radius: var(--radius);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.85), var(--hairline);
-}
-.cs-nameinput input {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  letter-spacing: 0.08em;
-  color: var(--ink);
-  background: none;
-  border: 0;
-  outline: none;
-}
+
 .cs-memorial {
   display: flex;
   flex-direction: column;
@@ -6521,7 +6214,7 @@ input.slider::-moz-range-thumb {
 }
 .fallen-detail {
   display: block;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   color: var(--ink-4);
 }
 .fallen-depth {
@@ -6531,100 +6224,11 @@ input.slider::-moz-range-thumb {
 
 /* --- death --------------------------------------------------------------- */
 
-.death-wrap {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  text-align: center;
-  animation: deathIn 1600ms ease both;
-}
 @keyframes deathIn {
   from {
     opacity: 0;
     transform: scale(1.04);
   }
-}
-.death-inner {
-  width: min(720px, 88vw);
-}
-.death-title {
-  font-family: var(--font-display);
-  font-size: clamp(48px, 9vw, 104px);
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
-  line-height: 1;
-  color: transparent;
-  background: linear-gradient(180deg, #ff8a72 0%, #a5150c 55%, #4a0a06 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: drop-shadow(0 4px 30px rgba(165, 21, 12, 0.5));
-}
-.death-killer {
-  margin: var(--s5) 0 var(--s6);
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-style: italic;
-  color: var(--ink-2);
-}
-.death-killer b {
-  color: #ff8a72;
-  font-style: normal;
-}
-.death-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--s4);
-  margin-bottom: var(--s6);
-}
-.death-stat {
-  padding: var(--s4) var(--s3);
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: var(--radius);
-  box-shadow: var(--hairline);
-}
-.death-stat-v {
-  font-family: var(--font-num);
-  font-size: var(--fs-2xl);
-  color: var(--ink);
-}
-.death-stat-l {
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-}
-.death-truth {
-  padding: var(--s4);
-  margin-bottom: var(--s5);
-  font-size: var(--fs-md);
-  line-height: 1.7;
-  color: var(--ink-3);
-  background: rgba(224, 80, 60, 0.06);
-  border-radius: var(--radius);
-  box-shadow: inset 0 0 0 1px rgba(224, 80, 60, 0.22);
-}
-.death-truth b {
-  color: #ff9c88;
-}
-.death-kept {
-  display: flex;
-  justify-content: center;
-  gap: var(--s5);
-  margin-bottom: var(--s6);
-  font-size: var(--fs-sm);
-  color: var(--ink-4);
-}
-.death-kept-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--good);
-}
-.death-actions {
-  display: flex;
-  justify-content: center;
-  gap: var(--s4);
 }
 
 /* --------------------------------------------------------------------------
@@ -6647,7 +6251,7 @@ input.slider::-moz-range-thumb {
     gap: var(--s5);
   }
   .smith-wrap {
-    grid-template-columns: 260px 1fr 240px;
+    grid-template-columns: max-content minmax(0, 1fr) 236px;
   }
 }
 
@@ -6832,58 +6436,6 @@ input.slider::-moz-range-thumb {
 }
 
 /* Difficulty picker --------------------------------------------------------- */
-.cs-difbox {
-  background: linear-gradient(180deg, rgba(24, 21, 18, 0.9), rgba(16, 14, 12, 0.9));
-  border: 1px solid rgba(203, 185, 138, 0.22);
-  border-radius: 5px;
-  padding: 11px 12px 12px;
-  margin-bottom: 12px;
-}
-.cs-difrow { display: flex; gap: 5px; margin-top: 8px; }
-.cs-difcard {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 7px 2px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.35);
-  cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
-}
-.cs-difcard:hover { border-color: var(--dc); transform: translateY(-1px); }
-.cs-difcard.is-on {
-  border-color: var(--dc);
-  background: color-mix(in srgb, var(--dc) 16%, rgba(0, 0, 0, 0.5));
-  box-shadow: 0 0 12px -2px var(--dc);
-}
-.cs-difpip {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--dc);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.cs-difname {
-  font-size: 9px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #b6ab92;
-  white-space: nowrap;
-}
-.cs-difcard.is-on .cs-difname { color: #efe6d0; }
-.cs-difdetail { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
-.cs-difblurb { font-size: 12px; font-style: italic; color: #d9cdb2; }
-.cs-difguide { font-size: 11px; color: #8e846f; line-height: 1.4; margin-bottom: 5px; }
-.cs-diflist { display: flex; flex-direction: column; gap: 2px; }
-.cs-difline { display: flex; gap: 6px; align-items: baseline; font-size: 11px; line-height: 1.35; }
-.cs-difmark { width: 8px; font-weight: 700; flex: none; }
-.cs-diflist.good .cs-difmark { color: #7dd87d; }
-.cs-diflist.bad .cs-difmark { color: #e07a6a; }
-.cs-diflist.good .cs-diftext { color: #b8c9ad; }
-.cs-diflist.bad .cs-diftext { color: #c9a9a0; }
 
 /* Buff strip, centred above the hotbar ------------------------------------- */
 .hud-buffs {
@@ -7089,4 +6641,67 @@ input.slider::-moz-range-thumb {
   50% {
     box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--gold-hi), 0 0 22px rgba(242, 217, 137, 0.8);
   }
+}
+
+/* Short screens (720p): the six-tier board is taller than the panel body, so
+   the board scales down as one piece rather than scrolling its last tiers
+   out of sight. The flavour line goes first. */
+@media (max-height: 820px) {
+  .skill-treeblurb {
+    display: none;
+  }
+  .skill-boardwrap {
+    width: auto;
+  }
+  .skill-board {
+    zoom: 0.76;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Sweep: hover and press states for everything clickable that lacked one.
+   A press sinks a pixel and darkens; a hover lifts and warms. Same language
+   as .btn so the whole UI answers a click the same way.
+   -------------------------------------------------------------------------- */
+.sknode:active {
+  transform: scale(0.96);
+  filter: brightness(0.88);
+  transition-duration: 60ms;
+}
+.hotslot:active,
+.potslot:active {
+  transform: translateY(1px);
+  filter: brightness(0.85);
+}
+.attr-plus:active,
+.socket-pick:active,
+.seg:active {
+  transform: translateY(1px);
+  filter: brightness(0.85);
+}
+.skill-hotcell:not(.is-empty):hover {
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(242, 217, 137, 0.6), 0 0 10px -2px rgba(201, 162, 39, 0.55);
+}
+.buff {
+  transition: transform var(--dur-1) var(--ease), filter var(--dur-1) ease;
+}
+.hud-buffs .buff:hover {
+  transform: translateY(-2px) scale(1.08);
+  filter: brightness(1.15);
+}
+.quest-obj {
+  transition: background var(--dur-1) ease;
+}
+.quest-obj:hover {
+  background: rgba(201, 162, 39, 0.05);
+}
+.legend-item {
+  transition: color var(--dur-1) ease;
+}
+.legend-item:hover {
+  color: var(--ink);
+}
+.minimap-expand:active,
+.hud-quest:active {
+  transform: translateY(1px);
 }
