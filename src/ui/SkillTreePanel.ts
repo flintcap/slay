@@ -47,9 +47,9 @@ import {
 import { skillIconUri } from '../art/Icons';
 import { SKILL_BY_ID } from '../data/skills';
 
-const CELL_W = 122;
+const CELL_W = 132;
 const CELL_H = 104;
-const NODE = 66;
+const NODE = 58;
 const TIERS = 6;
 const COLS = 3;
 
@@ -78,6 +78,9 @@ export class SkillTreePanel {
   private treeBlurb: HTMLDivElement;
 
   private nodes = new Map<string, NodeView>();
+  private card = div('skcard');
+  /** The node under the pointer, so its card survives a board rebuild. */
+  private hoverId: string | null = null;
   private respecBtn: Button;
   private activeTree = '';
   private focused: string | null = null;
@@ -284,13 +287,20 @@ export class SkillTreePanel {
     }
 
     // Tier rails give the eye a grid to read the six power levels against.
+    // The tier number and its point gate sit stacked in the left gutter so
+    // they never collide with a node's name; a tier you have opened is lit.
+    const spentHere = c ? this.pointsIn(c, this.activeTree) : 0;
     for (let t = 1; t <= TIERS; t++) {
       const rail = div('skill-tierrail');
       rail.style.top = `${(t - 1) * CELL_H}px`;
       rail.style.height = `${CELL_H}px`;
       const need = (t - 1) * 5;
-      rail.appendChild(span('skill-tiernum', `T${t}`));
-      if (need > 0) rail.appendChild(span('skill-tierreq', `${need} pts`));
+      rail.classList.toggle('is-open', spentHere >= need);
+      const tag = div('skill-tiertag');
+      tag.appendChild(span('skill-tiernum', toRoman(t)));
+      if (need > 0) tag.appendChild(span('skill-tierreq', `${need}`));
+      tag.title = need > 0 ? `Tier ${t}: needs ${need} points in this tree` : `Tier ${t}`;
+      rail.appendChild(tag);
       this.board.appendChild(rail);
     }
 
@@ -310,7 +320,7 @@ export class SkillTreePanel {
       node.dataset.skill = s.id;
 
       const art = div('sknode-art');
-      art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:${NODE - 16}px;height:${NODE - 16}px" draggable="false">`;
+      art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:${NODE - 7}px;height:${NODE - 7}px" draggable="false">`;
       const frame = div('sknode-frame');
       const rank = div('sknode-rank');
       const lock = div('sknode-lock');
@@ -345,10 +355,14 @@ export class SkillTreePanel {
         this.focused = s.id;
         this.highlightSynergies(s.id, true);
         if (!this.pinned) this.showDetail(s.id);
+        this.hoverId = s.id;
+        this.showCard(s.id);
       });
       node.addEventListener('pointerleave', () => {
         this.highlightSynergies(s.id, false);
         if (!this.pinned) this.showDetail(this.focused ?? this.defaultFocus());
+        this.hoverId = null;
+        this.hideCard();
       });
       node.addEventListener('click', () => this.spend(s));
       node.addEventListener('contextmenu', (e) => {
@@ -359,9 +373,11 @@ export class SkillTreePanel {
       });
       this.enableDrag(node, s);
 
+      // The rank badge straddles the bottom of the ring; the name sits clear
+      // of it underneath.
       const label = div('sknode-label', s.name);
       label.style.left = `${x - CELL_W / 2}px`;
-      label.style.top = `${y + NODE / 2 - 4}px`;
+      label.style.top = `${y + NODE / 2 + 9}px`;
       label.style.width = `${CELL_W}px`;
 
       this.board.appendChild(node);
@@ -371,6 +387,7 @@ export class SkillTreePanel {
 
     this.drawLines();
     this.syncStates();
+    if (this.hoverId && this.nodes.has(this.hoverId)) this.showCard(this.hoverId);
   }
 
   private enableDrag(node: HTMLDivElement, s: SkillDef): void {
@@ -395,6 +412,85 @@ export class SkillTreePanel {
     node.addEventListener('pointerup', () => {
       armed = false;
     });
+  }
+
+  // -- hover card ------------------------------------------------------------
+
+  /**
+   * A small card beside the hovered node: what the next point buys, in
+   * numbers, without the eye leaving the board. The detail pane on the right
+   * keeps the long form.
+   */
+  private showCard(id: string): void {
+    const c = save.account.current;
+    const view = this.nodes.get(id);
+    const s = skillById(id);
+    if (!c || !view || !s) return;
+    const card = this.card;
+    clear(card);
+    const rank = c.skills[id] ?? 0;
+    const maxed = rank >= s.maxRank;
+    const check = attempt(() => canAllocateSkill(c, id), { ok: false, reason: '' } as { ok: boolean; reason?: string });
+
+    const hd = div('skcard-hd');
+    hd.appendChild(span('skcard-name', s.name));
+    hd.appendChild(span(`skcard-rank ${maxed ? 'is-max' : ''}`.trim(), `${rank}/${s.maxRank}`));
+    card.appendChild(hd);
+
+    const rows = rankRows(s, rank);
+    if (rows.length) {
+      const list = div('skcard-rows');
+      for (const r of rows.slice(0, 4)) {
+        const line = div('skcard-row');
+        line.appendChild(span('skcard-l', r.label));
+        if (maxed) {
+          line.appendChild(span('skcard-n', r.cur));
+        } else {
+          if (rank > 0) {
+            line.appendChild(span('skcard-c', r.cur));
+            const arrow = span('skcard-a');
+            arrow.innerHTML = iconSvg('chevronRight', { size: 9 });
+            line.appendChild(arrow);
+          }
+          line.appendChild(span(`skcard-n ${r.cur !== r.nxt ? 'is-better' : ''}`.trim(), r.nxt));
+        }
+        list.appendChild(line);
+      }
+      card.appendChild(list);
+    }
+
+    let foot = '';
+    let tone = '';
+    if (maxed) {
+      foot = 'Mastered';
+      tone = 'is-max';
+    } else if (rank === 0 && !check.ok) {
+      foot = check.reason || 'Locked';
+      tone = 'is-bad';
+    } else if (c.skillPoints <= 0) {
+      foot = 'No points to spend';
+      tone = 'is-dim';
+    } else {
+      foot = rank > 0 ? `Click to raise to rank ${rank + 1}` : 'Click to learn';
+      tone = 'is-go';
+    }
+    card.appendChild(div(`skcard-foot ${tone}`, foot));
+
+    // Beside the node, on whichever side has room; nudged up near the bottom.
+    const right = view.x < (COLS * CELL_W) / 2 + 1;
+    card.classList.toggle('on-left', !right);
+    card.style.left = right ? `${view.x + NODE / 2 + 14}px` : '';
+    card.style.right = right ? '' : `${COLS * CELL_W - view.x + NODE / 2 + 14}px`;
+    card.style.top = `${Math.min(view.y - NODE / 2 - 6, TIERS * CELL_H - 150)}px`;
+    this.board.appendChild(card);
+    card.classList.remove('is-shown');
+    void card.offsetWidth;
+    card.classList.add('is-shown');
+  }
+
+  private hideCard(): void {
+    this.card.classList.remove('is-shown');
+    this.card.remove();
   }
 
   private drawLines(): void {
@@ -565,39 +661,7 @@ export class SkillTreePanel {
     this.detail.appendChild(div('skdetail-desc', s.desc));
 
     // --- current vs next ---------------------------------------------------
-    const rows: Array<{ label: string; cur: string; nxt: string; icon?: string }> = [];
-    const numFmt = (v: number, suffix = ''): string => `${fmt(v)}${suffix}`;
-
-    if (s.damageScale) {
-      const a = attempt(() => s.damageScale?.(Math.max(1, rank)) ?? 0, 0);
-      const b = attempt(() => s.damageScale?.(next) ?? 0, 0);
-      rows.push({ label: 'Damage', cur: rank > 0 ? `${Math.round(a * 100)}%` : '—', nxt: `${Math.round(b * 100)}%`, icon: 'sword' });
-    }
-    if (s.manaCost) {
-      const a = attempt(() => s.manaCost?.(Math.max(1, rank)) ?? 0, 0);
-      const b = attempt(() => s.manaCost?.(next) ?? 0, 0);
-      rows.push({ label: 'Mana Cost', cur: rank > 0 ? numFmt(a) : '—', nxt: numFmt(b), icon: 'mana' });
-    }
-    if (s.cooldown) {
-      const a = attempt(() => s.cooldown?.(Math.max(1, rank)) ?? 0, 0);
-      const b = attempt(() => s.cooldown?.(next) ?? 0, 0);
-      if (a > 0 || b > 0) rows.push({ label: 'Cooldown', cur: rank > 0 ? `${a.toFixed(1)}s` : '—', nxt: `${b.toFixed(1)}s`, icon: 'cooldown' });
-    }
-    if (s.passive) {
-      for (const key of Object.keys(s.passive) as StatKey[]) {
-        const fn = s.passive[key];
-        if (!fn) continue;
-        const a = attempt(() => fn(Math.max(1, rank)), 0);
-        const b = attempt(() => fn(next), 0);
-        const suffix = PERCENT_STATS.has(key) ? '%' : '';
-        rows.push({
-          label: STAT_LABEL[key],
-          cur: rank > 0 ? `${signed(a)}${suffix}` : '—',
-          nxt: `${signed(b)}${suffix}`,
-          icon: STAT_ICON[key],
-        });
-      }
-    }
+    const rows = rankRows(s, rank);
 
     if (rows.length) {
       const sec = section(rank >= s.maxRank ? 'At Maximum Rank' : 'This Rank → Next Rank', 'chevronRight');
@@ -736,6 +800,55 @@ const TARGETING_LABEL: Record<string, string> = {
   enemy: 'Single Target',
   passive: 'Passive',
 };
+
+interface RankRow {
+  label: string;
+  cur: string;
+  nxt: string;
+  icon?: string;
+}
+
+/** The numbers that change with rank: this rank and the next, formatted. */
+function rankRows(s: SkillDef, rank: number): RankRow[] {
+  const next = Math.min(s.maxRank, rank + 1);
+  const rows: RankRow[] = [];
+  const numFmt = (v: number, suffix = ''): string => `${fmt(v)}${suffix}`;
+  if (s.damageScale) {
+    const a = attempt(() => s.damageScale?.(Math.max(1, rank)) ?? 0, 0);
+    const b = attempt(() => s.damageScale?.(next) ?? 0, 0);
+    rows.push({ label: 'Damage', cur: rank > 0 ? `${Math.round(a * 100)}%` : '—', nxt: `${Math.round(b * 100)}%`, icon: 'sword' });
+  }
+  if (s.manaCost) {
+    const a = attempt(() => s.manaCost?.(Math.max(1, rank)) ?? 0, 0);
+    const b = attempt(() => s.manaCost?.(next) ?? 0, 0);
+    rows.push({ label: 'Mana Cost', cur: rank > 0 ? numFmt(a) : '—', nxt: numFmt(b), icon: 'mana' });
+  }
+  if (s.cooldown) {
+    const a = attempt(() => s.cooldown?.(Math.max(1, rank)) ?? 0, 0);
+    const b = attempt(() => s.cooldown?.(next) ?? 0, 0);
+    if (a > 0 || b > 0) rows.push({ label: 'Cooldown', cur: rank > 0 ? `${a.toFixed(1)}s` : '—', nxt: `${b.toFixed(1)}s`, icon: 'cooldown' });
+  }
+  if (s.passive) {
+    for (const key of Object.keys(s.passive) as StatKey[]) {
+      const fn = s.passive[key];
+      if (!fn) continue;
+      const a = attempt(() => fn(Math.max(1, rank)), 0);
+      const b = attempt(() => fn(next), 0);
+      const suffix = PERCENT_STATS.has(key) ? '%' : '';
+      rows.push({
+        label: STAT_LABEL[key],
+        cur: rank > 0 ? `${signed(a)}${suffix}` : '—',
+        nxt: `${signed(b)}${suffix}`,
+        icon: STAT_ICON[key],
+      });
+    }
+  }
+  return rows;
+}
+
+function toRoman(n: number): string {
+  return ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][n - 1] ?? String(n);
+}
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);

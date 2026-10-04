@@ -232,6 +232,28 @@ function hoverFirst(rarities: string[], extra?: (s: HTMLElement) => boolean): vo
 }
 
 const scenarios2: Record<string, () => void> = {
+  /** Boss bar mid-fight: enraged, winding up a slam, with buffs and debuffs up. */
+  bosscast() {
+    scenarios.hud!();
+    setTimeout(() => {
+      events.emit('boss:enraged', { name: 'Morvath' });
+      events.emit('boss:cast', { name: 'Morvath', ability: 'Grave Slam', windup: 6 });
+    }, 300);
+  },
+  /** A mini-boss walks in. */
+  miniboss() {
+    events.emit('miniboss:engaged', { id: 'mb1', name: 'Gorrak the Unbowed', title: 'Shatters the floor when struck', kind: 'quaker' });
+  },
+  /** The skill tree with the hover card up on a learned node and a locked one. */
+  skillhover() {
+    events.emit('ui:open', { panel: 'skills' });
+    setTimeout(() => {
+      const q = new URLSearchParams(location.search).get('node');
+      const nodes = [...document.querySelectorAll<HTMLElement>('.sknode')];
+      const pick = (q ? nodes.find((n) => n.dataset.skill === q) : null) ?? nodes[Number(q ?? 1)] ?? nodes[1];
+      pick?.dispatchEvent(new PointerEvent('pointerenter'));
+    }, 300);
+  },
   /** Lifts a piece of armour out of the pack and holds it over its paperdoll slot. */
   drag() {
     events.emit('ui:open', { panel: 'inventory' });

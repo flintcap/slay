@@ -43,7 +43,7 @@ import {
   ORNAMENT,
   type MinimapPip,
 } from './Widgets';
-import { skillIconUri, warmItemIcons } from '../art/Icons';
+import { skillIconUri, statusIconUri, warmItemIcons } from '../art/Icons';
 import { setPrimaryAttack, setHotbarSlot } from '../sim/Character';
 import { SKILL_BY_ID } from '../data/skills';
 import { BOSSES } from '../data/bosses';
@@ -512,6 +512,14 @@ export class HUD {
   private bossName: HTMLDivElement;
   private bossPips: HTMLDivElement;
   private bossBark: HTMLDivElement;
+  /** The boss's wind-up: ability name over a bar that fills to the hit. */
+  private bossCast: HTMLDivElement;
+  private bossCastFill: HTMLDivElement;
+  private bossCastName: HTMLSpanElement;
+  private bossCastTimer = 0;
+  /** A mini-boss's entrance card under the boss bar's spot. */
+  private miniCard: HTMLDivElement;
+  private miniTimer = 0;
   private toastStack: HTMLDivElement;
   private promptBox: HTMLDivElement;
   private floatLayer: HTMLDivElement;
@@ -592,7 +600,14 @@ export class HUD {
     capR.innerHTML = BOSS_CAP_SVG;
     add(bossPlate, capL, bossTrack, capR);
     this.bossBark = div('bossbar-bark');
-    add(this.bossBar, this.bossName, bossPlate, this.bossPips, this.bossBark);
+    this.bossCast = div('bosscast');
+    this.bossCastName = span('bosscast-name');
+    const castTrack = div('bosscast-track');
+    this.bossCastFill = div('bosscast-fill');
+    castTrack.appendChild(this.bossCastFill);
+    add(this.bossCast, this.bossCastName, castTrack);
+    add(this.bossBar, this.bossName, bossPlate, this.bossPips, this.bossCast, this.bossBark);
+    this.miniCard = div('minicard');
 
     // --- bottom: command bar ---------------------------------------------
     const bar = div('cmdbar');
@@ -746,7 +761,7 @@ export class HUD {
     this.floatLayer = div('float-layer');
     this.centerLayer = div('center-layer');
 
-    add(this.root, topLeft, topRight, this.bossBar, this.centerLayer, this.promptBox, goldBox, bar, this.floatLayer);
+    add(this.root, topLeft, topRight, this.bossBar, this.miniCard, this.centerLayer, this.promptBox, goldBox, bar, this.floatLayer);
     this.root.style.display = 'none';
   }
 
@@ -906,7 +921,20 @@ export class HUD {
       void this.bossBar.offsetWidth;
       this.bossBar.classList.add('phase-shift');
     });
+    on('boss:cast', (p) => this.bossCasting(p.ability, p.windup));
+    on('boss:enraged', () => {
+      this.bossBar.classList.add('is-enraged');
+      this.bossBar.classList.remove('enrage-in');
+      void this.bossBar.offsetWidth;
+      this.bossBar.classList.add('enrage-in');
+    });
+    on('miniboss:engaged', (p) => this.showMiniBoss(p.name, p.title, p.kind));
+    on('miniboss:killed', (p) => {
+      this.hideMiniBoss();
+      this.toast(`${p.name} is slain`, 'epic');
+    });
     on('boss:killed', () => {
+      this.endBossCast();
       this.setBossLife(0);
       this.bossBar.classList.add('is-slain');
       setTimeout(() => this.hideBoss(), 1400);
@@ -1261,7 +1289,13 @@ export class HUD {
         const chip = div(`buff ${def && def.polarity < 0 ? 'debuff' : ''}`.trim());
         chip.style.setProperty('--bc', hex(def?.color ?? 0x9ad0ff));
         const art = div('buff-art');
-        art.innerHTML = iconSvg(statusIcon(s.id, def?.icon), { size: 17 });
+        // Painted chip from the art stream (gold ring for a buff, toothed red
+        // ring for a debuff); the line-icon is the fallback if painting fails.
+        const uri = attempt(() => statusIconUri(def?.icon ?? s.id, def?.color ?? 0x9ad0ff, def?.polarity ?? 1), '');
+        art.innerHTML = uri
+          ? `<img class="buff-img" src="${uri}" alt="" draggable="false">`
+          : iconSvg(statusIcon(s.id, def?.icon), { size: 17 });
+        if (uri) chip.classList.add('has-img');
         const sweep = div('buff-sweep');
         add(chip, sweep, art, span('buff-time'));
         if (s.stacks > 1) chip.appendChild(span('buff-stacks', String(s.stacks)));
@@ -1351,7 +1385,9 @@ export class HUD {
     clear(this.bossPips);
     for (let i = 0; i < phases.length; i++) this.bossPips.appendChild(div(`bosspip ${i === 0 ? 'is-current' : ''}`.trim()));
     this.bossBark.textContent = '';
-    this.bossBar.classList.remove('is-slain');
+    this.endBossCast();
+    this.bossBar.classList.remove('is-slain', 'is-enraged', 'enrage-in');
+    this.hideMiniBoss();
     this.bossBar.classList.add('is-open');
     this.bossVisible = true;
   }
@@ -1380,7 +1416,61 @@ export class HUD {
     this.bossBar.classList.add('is-hit');
   }
 
+  /**
+   * A boss wind-up. The bar fills over exactly the tell's length, so "when it
+   * reaches the end, move" is the whole lesson.
+   */
+  private bossCasting(ability: string, windup: number): void {
+    if (!this.bossVisible) return;
+    const secs = Math.max(0.2, Number.isFinite(windup) ? windup : 1);
+    this.bossCastName.textContent = ability;
+    const fill = this.bossCastFill;
+    fill.style.transition = 'none';
+    fill.style.width = '0%';
+    void fill.offsetWidth;
+    fill.style.transition = `width ${secs}s linear`;
+    fill.style.width = '100%';
+    this.bossCast.classList.add('is-live');
+    window.clearTimeout(this.bossCastTimer);
+    this.bossCastTimer = window.setTimeout(() => this.endBossCast(), secs * 1000 + 260);
+  }
+
+  private endBossCast(): void {
+    window.clearTimeout(this.bossCastTimer);
+    this.bossCast.classList.remove('is-live');
+  }
+
+  /**
+   * A floor's mini-boss announces itself: a short card where the boss bar
+   * lives, naming it and what it does, then it gets out of the way.
+   */
+  private showMiniBoss(name: string, title: string, kind: string): void {
+    if (this.bossVisible) return;
+    clear(this.miniCard);
+    this.miniCard.appendChild(span('minicard-kicker', 'Mini-boss'));
+    const row = div('minicard-row');
+    const ornL = span('minicard-orn');
+    const ornR = span('minicard-orn is-r');
+    ornL.innerHTML = ORNAMENT.divider;
+    ornR.innerHTML = ORNAMENT.divider;
+    add(row, ornL, span('minicard-name', name), ornR);
+    this.miniCard.appendChild(row);
+    const sub = title || prettyKind(kind);
+    if (sub) this.miniCard.appendChild(span('minicard-title', sub));
+    this.miniCard.classList.remove('is-open');
+    void this.miniCard.offsetWidth;
+    this.miniCard.classList.add('is-open');
+    window.clearTimeout(this.miniTimer);
+    this.miniTimer = window.setTimeout(() => this.hideMiniBoss(), 4200);
+  }
+
+  private hideMiniBoss(): void {
+    window.clearTimeout(this.miniTimer);
+    this.miniCard.classList.remove('is-open');
+  }
+
   private hideBoss(): void {
+    this.endBossCast();
     if (!this.bossVisible) return;
     this.bossVisible = false;
     this.bossBar.classList.remove('is-open');
@@ -1735,6 +1825,11 @@ function statusTooltip(id: string, stacks: number): string {
 }
 
 /** "12s", "4.5s", "2m": short enough to sit under a 30px chip. */
+/** "frost_warden" -> "Frost Warden", for a mini-boss with no title. */
+function prettyKind(kind: string): string {
+  return (kind ?? '').replace(/[-_]+/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase()).trim();
+}
+
 function buffTime(sec: number): string {
   if (sec <= 0) return '';
   if (sec >= 120) return `${Math.round(sec / 60)}m`;

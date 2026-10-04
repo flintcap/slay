@@ -27,6 +27,7 @@ const WIDTH = Number(args.width ?? 1920);
 const HEIGHT = Number(args.height ?? 1080);
 const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4301);
 const CLS = args.class ? `&class=${args.class}` : '';
+const NODE_Q = args.node ? `&node=${args.node}` : '';
 mkdirSync(OUT, { recursive: true });
 
 const server = await createServer({
@@ -49,7 +50,7 @@ for (const name of WANT) {
   page.on('console', (m) => {
     if (m.type() === 'error' && !m.text().includes('404')) errors.push(`${name}: ${m.text()}`);
   });
-  await page.goto(`http://127.0.0.1:${PORT}/tools/uilab.html?s=${encodeURIComponent(name)}${CLS}`, {
+  await page.goto(`http://127.0.0.1:${PORT}/tools/uilab.html?s=${encodeURIComponent(name)}${CLS}${NODE_Q}`, {
     waitUntil: 'load',
     timeout: 120000,
   });

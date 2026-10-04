@@ -9,6 +9,26 @@ import * as THREE from 'three';
 import type { MonsterRank } from '../types';
 import { affixIconUri } from '../art/Icons';
 
+/**
+ * Newer elite affixes the badge painter has no pictogram for yet. Each borrows
+ * the glyph of an older behaviour that says the same thing at a glance (the
+ * affix keeps its own colour). If the art stream adds real glyphs for these in
+ * `paintAffixIcon`, delete the matching line here.
+ */
+const BADGE_ALIAS: Record<string, string> = {
+  desecrator: 'plagued', // fouled ground: a cloud
+  fire_chains: 'soul_bound', // chained to its packmates: a chain
+  bulwark: 'shielded', // wards the pack: a shield
+  splitter: 'illusionist', // becomes two: a doubled figure
+  hexing: 'nightmarish', // a curse: the evil eye
+  adaptive: 'stoneskin', // hardens: stone
+  lancer: 'avenger', // charges through: a blade
+};
+
+function badgeBehavior(behavior: string | undefined): string | undefined {
+  return (behavior && BADGE_ALIAS[behavior]) || behavior;
+}
+
 /** The shape both Enemy and Boss expose via their `nameplate` getter. */
 export interface PlateData {
   name: string;
@@ -156,7 +176,7 @@ export class NameplateLayer {
     for (let i = 0; i < shown.length; i++) {
       const img = document.createElement('img');
       img.className = 'np-chip';
-      img.src = affixIconUri(d.affixBehaviors?.[i], d.affixColors?.[i] ?? d.color);
+      img.src = affixIconUri(badgeBehavior(d.affixBehaviors?.[i]), d.affixColors?.[i] ?? d.color);
       img.alt = shown[i] ?? '';
       img.title = shown[i] ?? '';
       img.draggable = false;

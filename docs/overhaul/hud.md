@@ -1,6 +1,6 @@
 # Stream: hud (in-game UI)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
@@ -10,37 +10,28 @@ Status: paused
 - [x] Combat text: damage numbers that read at a glance (crit styling, element colour, stacking and fading), plus heal, mana, dodge, immune, level up. — "Combat text, tooltips, inventory feedback, and a working skill tree with respec"
 - [x] Tooltips: rarity frames, affix tier marks, compare-to-equipped with green and red deltas, set and unique flavour text, requirement warnings. — "Combat text, tooltips, inventory feedback, and a working skill tree with respec"
 - [x] Inventory, paperdoll and stash: drag ghost, valid-slot highlighting, rarity glow on cells, sort button, item drop and equip feedback. — "Combat text, tooltips, inventory feedback, and a working skill tree with respec"
-- [ ] Skill tree: node states, glowing link lines, rank pips, hover previews with next-rank numbers, clear respec affordance.
+- [x] Skill tree: node states, glowing link lines, rank pips, hover previews with next-rank numbers, clear respec affordance. — "Gild the skill tree, add its hover card, and answer the boss and elite requests"
 - [ ] Vendor, blacksmith, map, quest log, nameplates and ground labels: same frame language; loot labels styled by rarity with beams for the best drops.
 - [ ] Sweep: hover and press states everywhere, no overlap at 1280x720 and 1920x1080, every panel opens and closes with a short animation.
 
 ## Next up
 
-Finish milestone 7, skill tree (`src/ui/SkillTreePanel.ts`, "Skill tree" part
-of `styles.css`). Already done: the icon size bug (images rendered at natural
-size) is fixed; every node has a rank arc (`.sknode-ring`/`.sknode-arc`), a "+"
-badge when you can spend into it, travelling dashes on learned links
-(`.skline-flow`), and a Respec button beside the points counter that prices the
-next respec with `respecCost` from `sim/Progression.ts`, confirms in a modal,
-refunds with `respecSkills`, clears the hotbar and counts `Character.respecs`
-(new optional field in `src/types.ts`). Still to do: node labels overlap the
-`2/20` rank badges (move the badge inside the arc at the bottom or drop the
-label lower); restyle node frames to the gilt frame language and the locked
-state (dashed ring, darker); a floating hover card by the node with the
-next-rank numbers (the right-hand detail pane already shows them); then tick
-milestone 7. Check with `node tools/uilab.mjs --shots=skills`.
-
-Then milestone 8 (vendor, blacksmith, map, quest log, nameplates, ground
-labels) and 9 (sweep). Before ticking 8, run one real render:
-`npm run build && SLAY_PORT=4301 node tools/screenshot.mjs --out=shots/hud/real --shots=dungeon,boss`
-(about 15 minutes; it was started once and stopped by the pause, so the
-in-game CombatTextLayer has not yet been seen in a real frame).
+Milestone 8: vendor, blacksmith, map, quest log, nameplates and ground labels
+in the same frame language; loot labels styled by rarity with beams for the
+best drops. Files: `VendorPanel.ts`, `BlacksmithPanel.ts`, `MapPanel.ts`,
+`QuestLog.ts`, `Nameplates.ts`, `GroundLabels.ts` and their parts of
+`styles.css`. Photograph each with the lab first
+(`node tools/uilab.mjs --port=4321 --out=shots/hud --shots=vendor,blacksmith,map,questLog`).
+A real render (`combatText` driver in `tools/screenshot.mjs`) was started at
+the start of this session to see the damage numbers; check `shots/hud/real/`.
+Then milestone 9 (sweep), which includes the font-size and dead-style requests
+below.
 
 ## Notes for resume
 
 **Requests from other streams (added at pause):**
-- From art: `statusIconUri(icon, color, polarity)` in `src/art/Icons.ts` is ready to replace the SVG art in the buff chips in `HUD.ts` (around line 948). One-line change.
-- From combat: seven new elite affixes show a placeholder star with no icon: desecrator, fire_chains, bulwark, splitter, hexing, adaptive, lancer. New events to hook: `miniboss:engaged`, `miniboss:killed`, `boss:cast`, `boss:enraged`.
+- DONE art: buff chips now use `statusIconUri` (painted chip, `.buff.has-img`); the line-icon stays as fallback.
+- DONE combat: the seven new elite affixes borrow glyphs through `BADGE_ALIAS` in `Nameplates.ts` (art: if you add real glyphs to `AFFIX_MAP` in `SkillIconArt.ts`, delete the alias lines). `boss:cast` shows a wind-up bar under the boss bar (`.bosscast`, fills over `windup` seconds), `boss:enraged` adds `.is-enraged` (red glow, "· Enraged" after the title, throbbing name), `miniboss:engaged` shows a 4s entrance card (`.minicard`) where the boss bar lives, `miniboss:killed` hides it and toasts "X is slain". Lab: `bosscast`, `miniboss`.
 - From quality: 49 font sizes are fixed pixel values and ignore the text-size setting. Use the `--fs-*` sizes or `calc(Npx * var(--text-scale, 1))`.
 - From menus: old styles in `styles.css` are unused and can go: `.title-*`, `.cs-*` (keep `.cs-memorial-list` and `.fallen-*`), `.death-*`, `.pause-*`, `.settings-cols`.
 
@@ -62,8 +53,18 @@ in-game CombatTextLayer has not yet been seen in a real frame).
 - Combat damage numbers are drawn by `src/fx/Particles.ts` (`damageNumber`,
   an instanced glyph pool), which the feel stream owns. Milestone 4 needs either
   a coordinated change there or a new DOM/canvas layer in a new hud file.
-- Seen while working, not yet fixed: the skill tree nodes in the lab render with
-  oversized icons spilling out of their circles (milestone 7).
+- Skill tree layout: `NODE` 58, `CELL_W` 132, `CELL_H` 104 (board 396 wide).
+  The rank badge straddles the bottom of the ring; the name sits under it.
+  Tier numerals (I to VI) and the point gate are stacked in the left gutter
+  and lit (`.skill-tierrail.is-open`) once the tree has enough points. Node
+  bezel is `.sknode-frame::after`, a conic metal ring masked to a band: iron
+  locked, bronze available, gilt learned, pale gold maxed; locked nodes get a
+  dashed groove. Hover card is `.skcard` (built by `showCard`, numbers from
+  `rankRows`, shared with the detail pane). Lab: `skillhover` (pass
+  `--node=<skill id or index>`).
+- Seen in the lab, not mine: plain unstyled text at the very top-left ("The
+  Hollow King", "Depth 7 · Floor 2 of 4"). Likely a menus banner whose CSS
+  (`menus.css`) the lab page does not load. Check in a real render.
 - The buff strip now lives inside `.cmdbar-center` (absolutely placed above the
   plate). The command bar plate is `.cmdbar-plate`; orbs are 124px with a
   `.orb-wing` bracket; the interact prompt sits at `bottom: 236px` (216px under

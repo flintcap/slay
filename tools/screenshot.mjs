@@ -182,6 +182,48 @@ const drivers = {
     });
     await settle(120);
   },
+  // hud: the boss floor with a steady stream of combat text, so the floating
+  // numbers (CombatTextLayer) are on screen when the frame is taken. Numbers
+  // live about a second, so a page timer keeps feeding them until the shot.
+  combatText: async () => {
+    await page.evaluate(async () => {
+      const s = window.SLAY;
+      if (s.debug?.makeCharacter) s.debug.makeCharacter('stormcaller', 30);
+      await s.engine.goTo('dungeon', { depth: 12 });
+      s.debug?.warpToBoss?.();
+      s.debug?.godMode?.(true);
+    });
+    await settle(60);
+    await page.evaluate(() => {
+      const s = window.SLAY;
+      const types = ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane'];
+      let n = 0;
+      clearInterval(window.__ctTimer);
+      window.__ctTimer = setInterval(() => {
+        const sc = s.engine.currentScene;
+        const p = sc?.player?.position;
+        if (!p) return;
+        const foes = [sc.boss, ...(sc.enemies ?? [])].filter((e) => e && e.root);
+        n++;
+        const pick = foes.length ? foes[n % Math.min(4, foes.length)] : null;
+        const at = pick ? pick.root.position : { x: p.x + 2.5, y: 0, z: p.z - 1.5 };
+        const crit = n % 5 === 0;
+        s.events.emit('enemy:damaged', {
+          id: pick ? String(pick.id ?? n % 4) : `t${n % 3}`,
+          amount: crit ? 2400 + (n % 7) * 310 : 180 + (n % 9) * 37,
+          type: types[n % types.length],
+          crit,
+          x: at.x,
+          y: 1.6,
+          z: at.z,
+        });
+        if (n % 6 === 0) s.events.emit('player:damaged', { amount: 64 + (n % 5) * 11, type: 'fire', life: 500, maxLife: 900 });
+        if (n % 9 === 0) s.events.emit('player:healed', { amount: 120 });
+        if (n % 13 === 0) s.events.emit('player:evaded', { ability: 'x', source: 'y' });
+      }, 120);
+    });
+    await settle(30);
+  },
   inventory: async () => {
     await page.evaluate(async () => {
       const s = window.SLAY;
