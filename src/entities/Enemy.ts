@@ -543,6 +543,12 @@ export class Enemy implements Combatant {
     return undefined;
   }
 
+  /**
+   * Distance this monster wants to open before its next move (a charge needs a
+   * run-up). The brain backs off to it. 0 means no such wish. Set by bosses.
+   */
+  gapWanted = 0;
+
   /** Wakes this monster into combat — used by rally abilities and aggro pings. */
   wake(ctx: CombatContext): void {
     this.ai?.wake(ctx, false);

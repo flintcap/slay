@@ -607,6 +607,7 @@ export class Boss extends Enemy {
   override preferredAbility(d: number, ctx: CombatContext): AbilityDef | null | undefined {
     const list = this.abilityIds;
     if (!this.engaged || list.length === 0) return undefined;
+    this.gapWanted = 0;
     const lifeFrac = this.lifeFraction;
     for (let tries = 0; tries < list.length; tries++) {
       const id = list[this.rotIdx % list.length]!;
@@ -626,13 +627,17 @@ export class Boss extends Enemy {
       if (d <= a!.range && (a!.minRange === undefined || d >= a!.minRange)) {
         this.rotIdx++;
         this.rotWait = 0;
+        this.gapWanted = 0;
         return a!;
       }
-      // Next move is out of reach: close in (or back off) for it.
+      // Next move is out of reach: close in for it, or back off to give a
+      // charge its run-up (the brain reads `gapWanted`).
+      this.gapWanted = a!.minRange !== undefined && d < a!.minRange ? a!.minRange + 0.8 : 0;
       this.rotWait += 0.3;
       if (this.rotWait > 3) {
         this.rotIdx++;
         this.rotWait = 0;
+        this.gapWanted = 0;
         continue;
       }
       return null;

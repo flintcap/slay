@@ -13,11 +13,21 @@ import { arena, caseLog, type Arena } from './combat-arena';
 import { Boss, softEnrageAfter } from '../src/entities/Boss';
 import { BOSSES } from '../src/data/bosses';
 import { Random } from '../src/core/RNG';
+import { getAbility } from '../src/entities/Abilities';
 import type { BossDef } from '../src/types';
 
+declare const process: { argv: string[] };
 const { cases, check } = caseLog();
 const DT = 1 / 30;
-const TTK = 90;
+// A fight lasts about this long. Kept short: the checker shares a small machine.
+const TTK = 45;
+const CAP = 120;
+// `--only=3,7` fights those bosses (1-based); `--every=3` fights every third.
+const arg = (k: string): string | undefined => process.argv.find((x) => x.startsWith(`--${k}=`))?.split('=')[1];
+const only = arg('only')?.split(',').map(Number);
+const every = Number(arg('every') ?? 1);
+const offset = Number(arg('offset') ?? 0);
+const trace = process.argv.includes('--trace');
 const SAFE_RING = 0x60ffa0;
 
 interface Zone {
@@ -69,6 +79,8 @@ interface Result {
   used: number;
   kit: number;
   unused: string[];
+  usedSet: Set<string>;
+  life: number;
 }
 
 function fight(def: BossDef, dodge: boolean, seed: number): Result {
@@ -108,7 +120,7 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
   let lastHits = 0;
   const chunk = (boss.maxLife / TTK) * 0.5;
 
-  for (let t = 0; t < 260 && boss.alive; t += DT) {
+  for (let t = 0; t < CAP && boss.alive; t += DT) {
     a.step(DT);
     for (let i = lastHits; i < a.hits.length; i++) taken += a.hits[i]!.amount;
     lastHits = a.hits.length;
@@ -117,13 +129,16 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
     hitAcc += DT;
     if (hitAcc >= 0.5) {
       hitAcc = 0;
-      for (const e of a.enemies) {
-        if (e === boss || !e.alive) continue;
-        e.takeDamage({ amount: e.maxLife * 0.12, type: 'physical', crit: false, source: 'player' }, a.ctx);
-      }
+      // Adds: a player focuses them one at a time, healers and guardians first.
+      const adds = a.enemies.filter((e) => e !== boss && e.alive);
+      adds.sort((x, y) => Number(y.def.role === 'support') - Number(x.def.role === 'support'));
+      const focus = adds[0];
+      if (focus) focus.takeDamage({ amount: focus.maxLife * 0.3, type: 'physical', crit: false, source: 'player' }, a.ctx);
+      for (const e of adds.slice(1)) e.takeDamage({ amount: e.maxLife * 0.06, type: 'physical', crit: false, source: 'player' }, a.ctx);
       boss.takeDamage({ amount: chunk, type: 'physical', crit: false, source: 'player' }, a.ctx);
     }
 
+    if (trace && !dodge && Math.abs(t % 5) < DT) console.error(`t=${t.toFixed(0)} life=${(boss.life / boss.maxLife).toFixed(3)} phase=${boss.phaseIndex} buffs=${JSON.stringify((boss as unknown as { buffs?: unknown }).buffs ?? null).slice(0, 300)} shield=${(boss as unknown as { shield: number }).shield}`);
     if (!dodge) continue;
     // The dodger: into a safe ring if one is up, out of any marker it is in,
     // and otherwise hold about seven metres from the boss.
@@ -171,7 +186,10 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
 
   const kit = new Set<string>();
   def.phases.slice(0, boss.phaseIndex + 1).forEach((p) => p.abilities.forEach((id) => kit.add(id)));
-  const unused = [...kit].filter((id) => !boss.usedAbilities.has(id));
+  // A death move is used by dying.
+  const used = new Set(boss.usedAbilities);
+  if (!boss.alive) for (const id of kit) if (getAbility(id)?.tags?.includes('ondeath')) used.add(id);
+  const unused = [...kit].filter((id) => !used.has(id));
   return {
     phases: boss.phaseIndex + 1,
     of: def.phases.length,
@@ -180,6 +198,8 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
     used: kit.size - unused.length,
     kit: kit.size,
     unused,
+    usedSet: used,
+    life: boss.life / boss.maxLife,
   };
 }
 
@@ -187,6 +207,8 @@ const rows: Array<Record<string, unknown>> = [];
 let i = 0;
 for (const def of BOSSES) {
   i++;
+  if (only ? !only.includes(i) : (i - 1 - offset) % every !== 0) continue;
+  const t0 = Date.now();
   const stand = fight(def, false, 100 + i);
   const dodge = fight(def, true, 100 + i);
   // Soft enrage: nobody hurts it, and the clock runs out.
@@ -195,7 +217,9 @@ for (const def of BOSSES) {
   boss.root.position.set(0, 0, 7);
   a.enemies.push(boss);
   boss.engage(a.ctx);
-  a.step(softEnrageAfter(def.phases.length) + 2);
+  // Wind the fight clock to just before the warning rather than simulate four idle minutes.
+  (boss as unknown as { fightTime: number }).fightTime = softEnrageAfter(def.phases.length) - 16;
+  a.step(18);
   const enraged = boss.softEnraged;
 
   const ratio = dodge.taken / Math.max(1, stand.taken);
@@ -208,11 +232,12 @@ for (const def of BOSSES) {
     dodge: Math.round(dodge.taken),
     ratio: Number(ratio.toFixed(2)),
     enraged,
+    ms: Date.now() - t0,
   });
   check(
     `${def.name}: every phase, most of the kit, dodgeable, enrages`,
-    stand.died && stand.phases === stand.of && stand.used >= Math.ceil(stand.kit * 0.7) && ratio < 0.6 && enraged,
-    `phases ${stand.phases}/${stand.of}, kit ${stand.used}/${stand.kit}${stand.unused.length ? ` (unused ${stand.unused.join(',')})` : ''}, damage standing ${Math.round(stand.taken)} vs dodging ${Math.round(dodge.taken)} (${Math.round(ratio * 100)}%), enrages: ${enraged}`,
+    stand.died && stand.phases === stand.of && stand.used >= Math.ceil(stand.kit * 0.85) && ratio < 0.6 && enraged,
+    `phases ${stand.phases}/${stand.of}${stand.died ? '' : ` (alive at ${Math.round(stand.life * 100)}%)`}, kit ${stand.used}/${stand.kit}${stand.unused.length ? ` (unused ${stand.unused.join(',')})` : ''}, damage standing ${Math.round(stand.taken)} vs dodging ${Math.round(dodge.taken)} (${Math.round(ratio * 100)}%), enrages: ${enraged}`,
   );
 }
 

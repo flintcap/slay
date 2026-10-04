@@ -684,6 +684,14 @@ export class AIBrain {
       return;
     }
 
+    // A boss whose next move needs a run-up steps back for it: the backstep is
+    // itself the tell that a charge is coming.
+    if (self.gapWanted > 0 && d < self.gapWanted) {
+      this.mode = 'kite';
+      this.setRetreatTarget(ctx, self.gapWanted + 1);
+      return;
+    }
+
     if (tooClose > 0 && d < tooClose) {
       this.mode = 'kite';
       this.setRetreatTarget(ctx, standoff + 2);
