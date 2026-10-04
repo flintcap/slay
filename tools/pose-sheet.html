@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Pose sheet</title>
+    <style>
+      html, body { margin: 0; background: #1b1d22; color: #d8d2c4; font: 12px/1.3 system-ui, sans-serif; }
+      #labels { position: absolute; inset: 0; pointer-events: none; }
+      #labels div { position: absolute; padding: 3px 6px; background: rgba(0, 0, 0, 0.55); }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="labels"></div>
+    <script type="module" src="./pose-sheet.ts"></script>
+  </body>
+</html>

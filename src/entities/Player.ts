@@ -110,6 +110,8 @@ export class Player {
     this.root.add(built.root);
     this.bones = built.bones;
     this.animator = new Animator(built.bones);
+    // The animator reads real ground motion from the body so feet plant.
+    this.animator.follow(this.root);
 
     this.stats = computeStats(character);
     this.life = this.stats.life;
