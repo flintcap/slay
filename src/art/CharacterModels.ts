@@ -38,6 +38,7 @@ import {
   blob,
   buildBones,
   buildSegments,
+  deltoidGeo,
   footGeos,
   handGeos,
   legNodes,
@@ -194,6 +195,7 @@ function skinMaterial(spec: MatSpec): THREE.MeshStandardMaterial {
 function personMaterial(bucket: string, spec: MatSpec | undefined, look: PersonLook): THREE.Material {
   if (bucket === 'skin' && spec && !look.skeletal) return skinMaterial(spec);
   if (bucket === 'eye') return emissiveMaterial(look.eyeGlow ?? 0xffffff, 2.2);
+  if (bucket === 'sclera') return surface('cloth.linen', { repeat: 1, seed: 0, tint: 0xf4ece4, roughness: 0.4, bump: 0.1 });
   if (bucket === 'shadow') return surface('metal.dark', { repeat: 1, seed: 0, tint: 0x3a3230, roughness: 0.9, metalness: 0 });
   const s = spec ?? { key: 'metal.iron' };
   const repeat = MAT_REPEAT[bucket] ?? 3;
@@ -354,17 +356,7 @@ function baseBody(ctx: BuildCtx): void {
 
     // One continuous arm, shoulder to palm.
     parts.push({ geo: sweep(armNodes(fit, side), 12), mat: 'skin', bind: bindArm });
-    // The deltoid caps the joint and tapers down into the arm. Sized off the
-    // arm, not the shoulder span: a broad class gets wider shoulders from its
-    // skeleton, not from a bigger ball.
-    parts.push({
-      geo: transformed(blob(0.027 * u, 0.037 * u, 0.03 * u, 12), {
-        pos: [S.x + side * H * 0.004, S.y - H * 0.016, S.z],
-        rot: [0, 0, side * 0.18],
-      }),
-      mat: 'skin',
-      bind: bindArm,
-    });
+    parts.push({ geo: deltoidGeo(fit, side), mat: 'skin', bind: bindArm });
     for (const g of handGeos(fit, side)) parts.push({ geo: g, mat: 'skin', bind: bindArm, cover: 'gloves' });
 
     parts.push({ geo: sweep(legNodes(fit, side), 12), mat: 'skin', bind: bindLeg });
@@ -426,11 +418,12 @@ function underGarments(ctx: BuildCtx): void {
   if (look.sleeves) {
     for (const side of [1, -1] as const) {
       parts.push({
-        geo: sweep(armNodes(fit, side, H * 0.007, 0, 0.42), 12),
+        geo: sweep(armNodes(fit, side, H * 0.007, 0, 0.36), 12),
         mat: 'linen',
         cover: 'chest',
         bind: side > 0 ? ARM_L : ARM_R,
       });
+      parts.push({ geo: deltoidGeo(fit, side, H * 0.007), mat: 'linen', cover: 'chest', bind: side > 0 ? ARM_L : ARM_R });
     }
   }
 
@@ -514,7 +507,7 @@ function baseHead(ctx: BuildCtx): void {
   // Brow ridge and cheekbones frame the eyes, so the sockets sit in shadow.
   parts.push({ geo: transformed(blob(r * 0.66, r * 0.1, r * 0.16, 10), { pos: at(0, 0.25, 0.64), rot: [-0.1, 0, 0] }), mat: 'skin', bind: HEAD });
   for (const s of [-1, 1]) {
-    parts.push({ geo: transformed(blob(r * 0.22, r * 0.1, r * 0.12, 8), { pos: at(s * 0.44, -0.12, 0.6) }), mat: 'skin', bind: HEAD });
+    parts.push({ geo: transformed(blob(r * 0.16, r * 0.07, r * 0.1, 8), { pos: at(s * 0.5, -0.06, 0.52) }), mat: 'skin', bind: HEAD });
     // The socket, recessed between brow and cheek.
     parts.push({
       geo: transformed(blob(r * (skull ? 0.2 : 0.14), r * (skull ? 0.17 : 0.08), r * 0.06, 8), { pos: at(s * 0.31, 0.08, skull ? 0.66 : 0.68) }),
@@ -523,6 +516,12 @@ function baseHead(ctx: BuildCtx): void {
     });
     if (look.eyeGlow !== undefined) {
       parts.push({ geo: transformed(blob(r * 0.07, r * 0.06, r * 0.04, 6), { pos: at(s * 0.32, 0.08, 0.73) }), mat: 'eye', bind: HEAD });
+    } else if (!skull) {
+      // An eye in the socket: a pale almond and a dark iris. Too small to see
+      // in play; at portrait scale it is the difference between a face and a
+      // mask with holes in it.
+      parts.push({ geo: transformed(blob(r * 0.085, r * 0.045, r * 0.04, 8), { pos: at(s * 0.31, 0.08, 0.715) }), mat: 'sclera', bind: HEAD });
+      parts.push({ geo: transformed(blob(r * 0.036, r * 0.036, r * 0.02, 6), { pos: at(s * 0.3, 0.08, 0.75) }), mat: 'shadow', bind: HEAD });
     }
     if (!skull) {
       parts.push({ geo: transformed(blob(r * 0.08, r * 0.2, r * 0.14, 8), { pos: at(s * 0.86, 0.02, -0.06) }), mat: 'skin', bind: HEAD });

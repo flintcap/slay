@@ -33,6 +33,7 @@ import {
   BONE_NAMES,
   armNodes,
   blob,
+  deltoidGeo,
   footGeos,
   handGeos,
   legNodes,
@@ -358,6 +359,7 @@ function robe(ctx: Ctx): void {
   parts.push({ geo: skirt, mat: 'main', bind: SKIRT_BIND, falloff: 1.4 });
   for (const s of sides()) {
     const arm = s > 0 ? ['chest', 'shoulderL', 'elbowL', 'handL'] : ['chest', 'shoulderR', 'elbowR', 'handR'];
+    parts.push({ geo: deltoidGeo(fit, s, H * 0.01), mat: 'main', bind: arm });
     let nodes = armNodes(fit, s, H * 0.01, 0, 0.95);
     if (look.baseTier >= 1 || look.palette.includes('silk')) nodes = bell(nodes, H * (0.018 + 0.012 * look.baseTier));
     parts.push({ geo: sweep(nodes, 12, false), mat: 'main', bind: arm });
@@ -412,6 +414,7 @@ function coat(ctx: Ctx): void {
     const arm = s > 0 ? ['chest', 'shoulderL', 'elbowL', 'handL'] : ['chest', 'shoulderR', 'elbowR', 'handR'];
     const nodes = armNodes(fit, s, H * 0.011, 0, 0.92);
     parts.push({ geo: sweep(nodes, 12, false), mat: 'main', bind: arm });
+    parts.push({ geo: deltoidGeo(fit, s, H * 0.011), mat: 'main', bind: arm });
     const cuff = nodes[nodes.length - 1]!;
     parts.push({ geo: sweep([{ ...cuff, p: cuff.p.clone().add(new THREE.Vector3(0, H * 0.02, 0)), rx: cuff.rx + H * 0.004, rz: cuff.rz + H * 0.004 }, { ...cuff, rx: cuff.rx + H * 0.004, rz: cuff.rz + H * 0.004 }], 12, false), mat: DARK, bind: arm });
   }
@@ -430,6 +433,7 @@ function apron(ctx: Ctx): void {
   parts.push({ geo: torsoBand(fit, H * 0.006, 0.52, 0.81, 12), mat: 'pal:cloth.undyed', bind: ['hips', 'spine', 'chest'] });
   for (const s of sides()) {
     parts.push({ geo: sweep(armNodes(fit, s, H * 0.008, 0, 0.36), 12), mat: 'pal:cloth.undyed', bind: s > 0 ? ['chest', 'shoulderL', 'elbowL'] : ['chest', 'shoulderR', 'elbowR'] });
+    parts.push({ geo: deltoidGeo(fit, s, H * 0.008), mat: 'pal:cloth.undyed', bind: s > 0 ? ['chest', 'shoulderL', 'elbowL'] : ['chest', 'shoulderR', 'elbowR'] });
   }
   // The bib and skirt of the apron: the front of the body, then down past the knee.
   const rings = skirtRings(fit, H * 0.016, 0.79, 0.26, 0.06, 14);
@@ -464,6 +468,7 @@ function jerkin(ctx: Ctx): void {
   for (const s of sides()) {
     const arm = s > 0 ? ['chest', 'shoulderL', 'elbowL'] : ['chest', 'shoulderR', 'elbowR'];
     parts.push({ geo: sweep(armNodes(fit, s, H * 0.009, 0, 0.2), 12, false), mat: 'main', bind: arm });
+    parts.push({ geo: deltoidGeo(fit, s, H * 0.009), mat: 'main', bind: arm });
     // Shoulder cap of boiled leather, bigger up the tiers.
     const S = fit.joints[s > 0 ? 'shoulderL' : 'shoulderR'];
     const cap = dome(H * (0.05 + 0.008 * look.baseTier) * fit.limbT, 0.7, 12, 5);
@@ -538,6 +543,7 @@ function hauberk(ctx: Ctx, scales: boolean): void {
     const arm = s > 0 ? ['chest', 'shoulderL', 'elbowL', 'handL'] : ['chest', 'shoulderR', 'elbowR', 'handR'];
     const len = scales ? 0.3 : look.baseTier >= 1 ? 0.62 : 0.4;
     parts.push({ geo: relief(sweep(armNodes(fit, s, H * 0.01, 0, len), 12, false), surf), mat: 'main', bind: arm });
+    parts.push({ geo: deltoidGeo(fit, s, H * 0.01), mat: 'main', bind: arm });
     if (scales || look.hasFittings) {
       // Layered shoulder lames.
       const S = fit.joints[s > 0 ? 'shoulderL' : 'shoulderR'];

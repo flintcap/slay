@@ -640,7 +640,9 @@ export function armNodes(fit: BodyFit, side: 1 | -1, inflate = 0, from = 0, to =
   const W = lerpV(E, D, 0.82);
   const g = inflate;
   const all: Array<SweepNode & { at: number }> = [
-    { at: 0, p: S.clone().add(new THREE.Vector3(-side * H * 0.012, H * 0.02, 0)), rx: 0.022 * u + g, rz: 0.022 * u + g },
+    // The tube starts narrow, up and in toward the neck, so a sleeve rounds
+    // over the shoulder instead of ending in a flat-topped pad.
+    { at: 0, p: S.clone().add(new THREE.Vector3(-side * H * 0.02, H * 0.018, 0)), rx: 0.012 * u + g * 0.6, rz: 0.016 * u + g * 0.6 },
     { at: 0.06, p: S.clone().add(new THREE.Vector3(0, -H * 0.012, 0)), rx: 0.03 * u + g, rz: 0.031 * u + g },
     { at: 0.2, p: lerpV(S, E, 0.36), rx: 0.0285 * u + g, rz: 0.031 * u + g },
     { at: 0.38, p: lerpV(S, E, 0.76), rx: 0.023 * u + g, rz: 0.025 * u + g },
@@ -731,4 +733,20 @@ export function footGeos(fit: BodyFit, side: 1 | -1, inflate = 0, toeLen = 1): T
       { pos: [F.x, F.y + H * 0.018 + g * 0.3, F.z + H * 0.03 + (toeLen - 1) * H * 0.05 + g * 0.5], rot: [Math.PI * 0.5, 0, 0] },
     ),
   ];
+}
+
+/**
+ * The deltoid: the mass that caps the shoulder joint and tapers into the arm.
+ * Sized off the arm, not the shoulder span: a broad class gets wider shoulders
+ * from its skeleton, not from a bigger ball. Sleeves grow it by `inflate` so
+ * the shoulder never pokes through the cloth.
+ */
+export function deltoidGeo(fit: BodyFit, side: 1 | -1, inflate = 0): THREE.BufferGeometry {
+  const { H } = fit;
+  const u = H * fit.limbT;
+  const S = fit.joints[side > 0 ? 'shoulderL' : 'shoulderR'];
+  return transformed(blob(0.027 * u + inflate, 0.037 * u + inflate, 0.03 * u + inflate, 12), {
+    pos: [S.x + side * H * 0.004, S.y - H * 0.016, S.z],
+    rot: [0, 0, side * 0.18],
+  });
 }
