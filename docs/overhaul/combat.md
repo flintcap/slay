@@ -9,20 +9,22 @@ Status: in progress
 - [x] Elites and mini-bosses: more elite affixes that combine into real threats, and a mini-boss with its own mechanic on most floors. — "Give most floors a mini-boss and elites that combine"
 - [x] Boss fights: phases, arena mechanics, enrage, and attacks you can learn and dodge, for every boss. — "Bosses step back to charge, and every boss fight is checked"
 - [x] Skill depth: synergies between skills, meaningful choices per rank, and a reason to mix skills instead of spamming one. — "Synergies and +skills reach skill damage, and mixing skills combos"
-- [ ] Difficulty curve: headless fights confirm every class at every depth band is challenged but not walled; tune enemies up and classes up, never monsters down.
+- [x] Difficulty curve: headless fights confirm every class at every depth band is challenged but not walled; tune enemies up and classes up, never monsters down. — "Heroes compound with level, and a class-versus-depth harness proves the curve"
 - [ ] Sweep: every skill and every monster ability has been exercised by a checker; nothing is unhittable, unavoidable or broken.
 
 ## Next up
 
-Milestone 6, difficulty curve. Build a headless "class vs depth" fight harness
-(reuse `tools/combat-arena.ts` for monsters and `tools/skilldepth-entry.ts`'s
-`rig()` for a real hero with the real SkillRunner): for each class, a
-reasonable build at a few depth bands (e.g. 1, 5, 12, 25, 50), fight a typical
-pack and the floor boss, and report time-to-kill and life lost. Mind that
-synergies and +skills now really count (milestone 5), so skill damage is much
-higher than before for invested builds. Rule from the owner: if a class is
-walled, make the class stronger; never make monsters weaker or fewer.
-Keep the harness under a minute; the machine is shared.
+Milestone 7, the sweep: every skill and every monster ability exercised by a
+checker; nothing unhittable, unavoidable or broken. Suggested shape:
+1. Skills: for every active skill in `SKILLS`, cast it with the real
+   SkillRunner against an arena target (reuse `promisingEffects()` and `rig()`
+   from `tools/curve-entry.ts` / `tools/skilldepth-entry.ts`) and require damage
+   (or its buff/summon/curse) to land. Report any that do nothing.
+2. Monster abilities: for every ability id in `entities/Abilities.ts`, have a
+   monster use it on a standing hero (must hit) and on a hero that steps out of
+   the telegraph (must miss or be greatly reduced). `tools/check-readable.mjs`
+   already covers the telegraphs; extend rather than duplicate.
+3. Fix what it finds. Keep it under ~2 minutes.
 
 ## Notes for resume
 
@@ -51,6 +53,22 @@ Keep the harness under a minute; the machine is shared.
   `Name!` over the target and emits `combat:combo`.
 - `node tools/check-skilldepth.mjs` covers synergies (all 18 trees), real-cast
   synergy and +skills damage, and combos (about 20s).
+
+- Difficulty curve: `node tools/check-curve.mjs` (~1-2 min) builds a hero per
+  class at depths 1, 5, 12, 25, 40 (level from real run XP, sensible skill and
+  stat points, best rare drops plus milestone caches), fights the biggest real
+  pack and the real boss under the run's real modifiers, 3 seeds per cell. A
+  cell fails if it loses every try (walled) or is never hurt (unchallenged).
+  Before: every class died in 2-3s from depth 25 on. Fixes, all hero-side:
+  `src/sim/HeroPower.ts` (from level 8, x1.135 damage and x1.13 life per level,
+  hooked at the end of `computeStats` with one line in depth's Stats.ts), and
+  bladework actives hit ~30% harder (shadowblade was the weakest class).
+  Results now: packs mostly 3/3 early and 1-2/3 deep; bosses 1-3/3 everywhere;
+  potions always needed past depth 5. Deep floors are hard on purpose.
+- Hero statuses reach the sheet now (depth's fix). `check-controls` checks a
+  slow slows once, a buff counts once through any number of recomputes, and a
+  poisoning hit applies one stack.
+- `check-bossfights` sim cap is 150s (Hurn needed a few more seconds).
 
 **Requests from other streams (added at pause), and what was done:**
 - From depth, `enemy:killed` fired twice per kill: fixed. Only `Enemy.die` raises
@@ -133,6 +151,10 @@ Keep the harness under a minute; the machine is shared.
 - feel: `SkillRunner.meleeSwing` now defers a visible swing to its contact frame
   (`pendingSwings`, ticked in `update`). Hit feel fires at contact; the whoosh on
   the click.
+- depth / everyone: hero power (`sim/HeroPower.ts`) multiplies hero damage and
+  life from level 8 on (x2.8 damage at level 16, ~x60 at level 40). Anything
+  that prices or tunes against hero numbers (item powers, economy) should read
+  sheets from `computeStats`, which includes it.
 - feel / hud: `combat:combo` { id, name, setup, payoff, bonusPct, x, y, z } fires
   on each combo; it already floats `Name!` over the target. A sound and a skill
   tree line would help: `comboForSkill(def)` and `comboBonusPct(def)` in

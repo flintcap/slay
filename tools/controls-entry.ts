@@ -430,4 +430,46 @@ function casterOnBar() {
   check('a swing dodged out of before contact deals nothing', e.life === before, `life ${Math.round(before)} -> ${Math.round(e.life)}`);
 }
 
+// 15. Buffs and debuffs on the hero count once. Statuses reach the stat sheet
+//     (computeStats reads the player's container), so nothing may apply them a
+//     second time: not movement, not a recompute, not the hit that carried them.
+{
+  const c = createCharacter('Test', 'warden', new Random(4));
+  const player = new Player(c, 1);
+  const pctx = { colliders: [], walkableAt: () => true };
+  const run = (): number => {
+    // Cruising speed: the second of two seconds, after the hero is up to pace.
+    player.position.set(0, 0, 0);
+    player.moveTo(0, 30);
+    for (let i = 0; i < 60; i++) player.update(DT, pctx, null);
+    const from = player.position.z;
+    for (let i = 0; i < 60; i++) player.update(DT, pctx, null);
+    return player.position.z - from;
+  };
+  const baseMs = player.stats.moveSpeed;
+  const free = run();
+  player.applyStatus('slowed', 30, 1, 1);
+  const slowMs = player.stats.moveSpeed;
+  const slowed = run();
+  const want = (1 + slowMs / 100) / (1 + baseMs / 100);
+  check(
+    'a slow slows once: on the sheet, and movement only reads the sheet',
+    Math.abs(slowMs - (baseMs - 35)) < 1e-6 && Math.abs(slowed / free - want) < 0.03,
+    `moveSpeed ${baseMs} -> ${slowMs}, distance ${free.toFixed(2)} -> ${slowed.toFixed(2)} (x${(slowed / free).toFixed(2)}, sheet says x${want.toFixed(2)})`,
+  );
+  const lifeBefore = player.stats.life;
+  const edBefore = player.stats.enhancedDamage;
+  player.applyStatus('might', 30, 1, 1);
+  const ed = player.stats.enhancedDamage;
+  for (let i = 0; i < 5; i++) player.refreshStats();
+  check(
+    'a buff counts once, however often the sheet is recomputed',
+    ed > edBefore && player.stats.enhancedDamage === ed && player.stats.life === lifeBefore,
+    `enhanced damage ${edBefore.toFixed(1)} -> ${ed.toFixed(1)}, after 5 recomputes ${player.stats.enhancedDamage.toFixed(1)}; life ${lifeBefore} -> ${player.stats.life}`,
+  );
+  player.takeDamage({ amount: 1, type: 'poison', crit: false, source: 'm', applies: [{ id: 'poisoned', duration: 5, magnitude: 1, stacks: 1 }] }, new Random(1));
+  const stacks = player.statuses.find((x) => x.id === 'poisoned')?.stacks ?? 0;
+  check('a hit carrying a poison applies one stack', stacks === 1, `${stacks} stack(s)`);
+}
+
 console.log(JSON.stringify({ cases }));

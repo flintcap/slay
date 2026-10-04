@@ -474,3 +474,22 @@ panel (`gambler`, `enchanter`, `bounties`, registered in `DepthUI`) when the
 Legacy unlock is reached, and says what it takes before that.
 `RunEvents`' host `renown(amount, event?)` names finished events so bounties
 can count them.
+
+## Combat additions — owned by COMBAT
+
+```ts
+// src/sim/HeroPower.ts — the hero compounds with level as the dungeon does with depth.
+export function heroPower(level: number): { damage: number; life: number }; // 1 up to level 8
+export function applyHeroPower(level: number, s: Stats): void;               // end of computeStats
+// src/sim/Combat.ts — the multiplier SkillRunner uses: rank with +skills, plus synergies.
+export function skillDamageScale(skills: Record<string, number>, skillLevels: number, skillId: string): number;
+// src/entities/Combos.ts — a different skill on the heels of another is a combo.
+export function comboForSkill(skill: SkillDef): ComboDef | null;   // name, desc, colour
+export function comboBonusPct(skill: SkillDef): number;            // 25..50 by tier
+// src/entities/Player.ts — melee lands at the swing's contact frame.
+export const CLIP_CONTACT: Record<string, number>; export const CONTACT_CAP: number;
+player.contactIn; player.actionId;
+```
+
+Events: `combat:combo` { id, name, setup, payoff, bonusPct, x, y, z }. Only
+`Enemy.die` raises `enemy:killed` and only `Boss.die` raises `boss:killed`.

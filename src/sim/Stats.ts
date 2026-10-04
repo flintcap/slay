@@ -32,6 +32,7 @@ import { peekStatuses } from './Status';
 import { itemStats, setBonusesFor } from './Loot';
 import { applyPowerStats } from './ItemPowers';
 import { applyLegacyStats } from './Legacy';
+import { applyHeroPower } from './HeroPower';
 import { getSet } from '../data/sets';
 
 export const MAX_LEVEL = 99;
@@ -496,6 +497,8 @@ export function computeStats(c: Character): Stats {
   applyPowerStats(c, out);
   // --- Legacy perks: what the account has earned across every life ---------
   applyLegacyStats(out);
+  // --- Hero power: the hero compounds with level as the dungeon does with depth (combat)
+  applyHeroPower(c.level, out);
 
   // --- clamps ---------------------------------------------------------------
   out.life = Math.max(1, Math.round(out.life));
