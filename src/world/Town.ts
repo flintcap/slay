@@ -24,7 +24,7 @@ import type { CharClassId, Rng } from '../types';
 import { Noise, clamp } from '../art/Noise';
 import { surface } from '../art/Materials';
 import { displace, mergeGeometries, rock, stoneBlock, taperedBox, clothPanel, limb } from '../art/Meshes';
-import { buildPlayerModel } from '../art/CharacterModels';
+import { buildNpcModel, npcCarryGrip } from '../art/NpcModels';
 import { Animator } from '../art/Animation';
 import { Random } from '../core/RNG';
 
@@ -335,10 +335,13 @@ function pine(ctx: Ctx, m: Mats, x: number, z: number, h: number, rng: Rng): voi
   ctx.colliders.push({ x, z, w: 1.1, d: 1.1 });
 }
 
-/** A camp resident. Idle-animated, so the place is never a still life. */
-function npc(ctx: Ctx, classId: CharClassId, x: number, z: number, facing: number, seed: number): void {
+/**
+ * A camp resident, built for their trade by `NpcModels` (the models stream).
+ * Idle-animated, so the place is never a still life.
+ */
+function npc(ctx: Ctx, who: string, x: number, z: number, facing: number, seed: number): void {
   try {
-    const built = buildPlayerModel(classId, new Random(seed));
+    const built = buildNpcModel(who, new Random(seed));
     built.root.position.set(x, 0, z);
     built.root.rotation.y = facing;
     built.root.traverse((o) => {
@@ -350,6 +353,7 @@ function npc(ctx: Ctx, classId: CharClassId, x: number, z: number, facing: numbe
     });
     ctx.root.add(built.root);
     const anim = new Animator(built.bones);
+    anim.setGrip(npcCarryGrip(who));
     anim.play('idle', { fade: 0 });
     anim.timeScale = 0.7 + (seed % 7) * 0.06;
     ctx.npcs.push(anim);
@@ -445,14 +449,20 @@ export function buildTown(rng: Rng): TownBuild {
   flushBatches(ctx, mats);
 
   // --- residents ---------------------------------------------------------
-  npc(ctx, 'warden', forgeAt.x + 1.4, forgeAt.z + 0.4, 2.3, 101);
-  npc(ctx, 'pyromancer', wagonAt.x - 1.5, wagonAt.z + 0.5, -2.3, 202);
-  npc(ctx, 'shadowblade', stashAt.x + 1.6, stashAt.z + 0.4, 1.2, 303);
-  npc(ctx, 'stormcaller', cairnAt.x - 1.3, cairnAt.z + 0.6, -1.1, 404);
-  npc(ctx, 'shadowblade', -3.6, 4.4, 0.6, 505);
-  npc(ctx, 'warden', 3.4, 4.8, -0.7, 606);
-  npc(ctx, 'stormcaller', -1.2, -14.6, 0.15, 707);
-  npc(ctx, 'warden', 2.0, -14.4, -0.15, 808);
+  npc(ctx, 'kale', forgeAt.x + 1.4, forgeAt.z + 0.4, 2.3, 101);
+  npc(ctx, 'hesk', wagonAt.x - 1.5, wagonAt.z + 0.5, -2.3, 202);
+  npc(ctx, 'corvane', stashAt.x + 1.6, stashAt.z + 0.4, 1.2, 303);
+  npc(ctx, 'marrow', cairnAt.x - 1.3, cairnAt.z + 0.6, -1.1, 404);
+  npc(ctx, 'gilder', -3.6, 4.4, 0.6, 505);
+  npc(ctx, 'wenna', 3.4, 4.8, -0.7, 606);
+  npc(ctx, 'listener', -1.2, -14.6, 0.15, 707);
+  npc(ctx, 'renn', 2.0, -14.4, -0.15, 808);
+  // Sister Vell, who kept the apothecary with no one behind the counter.
+  {
+    const vx = alchemyAt.x + 1.3;
+    const vz = alchemyAt.z + 0.5;
+    npc(ctx, 'vell', vx, vz, Math.atan2(npcSpots.alchemist.x - vx, npcSpots.alchemist.z - vz), 909);
+  }
 
   // --- ambience ----------------------------------------------------------
   const hemi = new THREE.HemisphereLight(0x627cb0, 0x453626, 2.9);

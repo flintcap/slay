@@ -7,14 +7,23 @@ Status: in progress
 - [x] Player bodies: better proportions, anatomy and silhouette per class; faces and hair with character; materials with real skin, cloth, leather and metal response. ("Models: real bodies and armour cut to fit them")
 - [x] Equipped gear on the body: helm, chest, gloves, boots, belt and shield show the actual item worn. Shape, material and ornament change with the item's base, tier and rarity, so upgrading visibly changes your character. Uniques and sets look unique. ("Models: real bodies and armour cut to fit them")
 - [x] Monster looks: a distinct, readable silhouette per family, more detail and material variety, elites and champions visibly tougher, bosses that look like bosses. ("Models: monsters by family and rank, one skinned mesh per material")
-- [ ] Town NPCs: each camp NPC built for their role (smith, vendor, healer, stash keeper and the rest), with clothing and props that say who they are.
+- [x] Town NPCs: each camp NPC built for their role (smith, vendor, healer, stash keeper and the rest), with clothing and props that say who they are. ("Models: every camp resident built for their trade")
 - [ ] Level of detail and budgets: far-away models get cheaper, crowds of monsters stay smooth, nothing visibly pops.
 - [ ] Sweep: a turntable render of every class in low, mid and top gear, every monster family and every NPC, checked for clipping, floating parts and style drift.
 
 ## Next up
 
-Milestone 4, town NPCs: `src/art/NpcModels.ts` with `NPC_LOOK_IDS` and `buildNpcModel(id, rng)`, one
-look per resident from `src/data/story/npcs.ts`, wired into `Town.ts` `npc()` (mapping in the notes).
+Milestone 5, level of detail and budgets. Concretely:
+1. Monsters: build a second, cheaper prototype per cache key (fewer lathe/sphere segments, no `alt` and
+   `rank` dressing below a size threshold, no weapon detail) and swap a monster's meshes to it beyond
+   ~22 m from the camera, with a small hysteresis band so nothing pops back and forth. Do it inside
+   `MonsterModels.ts` (e.g. a `setMonsterDetail(root, far)` the scene calls, or a `THREE.LOD`-like switch
+   driven from `RigAnimator.update`), and keep both levels on the same skeleton so animation is shared.
+2. Characters: held weapons and shields from `ItemModels` cost one draw call per part (5-15 each). Merge a
+   socketed model's meshes by material once it is attached (in `attachToSocket`'s caller side, not in the
+   grip code, which is the animation stream's), or ask art to merge in `buildItemModel`.
+3. Measure with the `classes` and `monsters` sheets (they print tris and draw calls) and record budgets
+   here: player top gear under 40 calls, monster under 6, NPC under 25.
 
 ## Notes for resume
 
@@ -92,6 +101,18 @@ Monsters (`src/entities/MonsterModels.ts`):
 - `RigAnimator` is untouched and still lives here. Animation stream: when monster motion moves to
   `src/art/MonsterAnimation.ts`, change the class here to `export { RigAnimator } from
   '../art/MonsterAnimation'` (models agrees in advance); it only touches bones, so skinning is fine.
+
+Town NPCs (`src/art/NpcModels.ts`):
+- `NPC_LOOK_IDS`, `buildNpcModel(id, rng)`, `npcCarryGrip(id)`. Each resident is a `PersonLook` on the shared
+  rig plus clothes through `wearItem` (coat, apron, habit, hood, hat, blindfold, mail with a crimson
+  surcoat), trousers and the smith's burn scars through `WornGear.buildFitted`, and tools: item-model
+  weapons (hammer, spears, staffs) through `attachToSocket` with a real grip, props (ledger, keys,
+  lantern, satchel, tankard, map, chisel) as rigid meshes on the hand bones.
+- `Town.ts` `npc()` now takes a resident id (small edit, world's file): forge = kale, wagon = hesk, stash
+  = corvane, cairn = marrow, (-3.6,4.4) = gilder, (3.4,4.8) = wenna, (-1.2,-14.6) = listener,
+  (2.0,-14.4) = renn, and Sister Vell is new, standing at the apothecary facing `npcSpots.alchemist`.
+  The animator gets `setGrip(npcCarryGrip(id))` so two-handed tools are held with both hands.
+- Story stream: talk spots still come from `TALK_SPOTS`/`npcSpots`; positions are unchanged.
 
 Requests to other streams:
 - art: adopt `GearLook.gearLook` for trim/set colour in `ItemModels` (see above).
