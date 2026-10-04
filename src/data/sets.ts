@@ -39,6 +39,10 @@ export interface SetBonusTier {
   pieces: number;
   desc: string;
   mods: Array<{ stat: StatKey; value: number }>;
+  /** A signature power this tier grants (see `sim/ItemPowers.ts`). */
+  power?: string;
+  /** The power's magnitude; 1 when omitted. */
+  powerMag?: number;
 }
 
 export interface SetDef {
@@ -429,6 +433,38 @@ set(
 // ===========================================================================
 // Exports and lookup
 // ===========================================================================
+
+/**
+ * Signature powers. Most full-set bonuses always *said* they did something a
+ * stat cannot ("chilled enemies shatter on death"), and none of them did. The
+ * power ids resolve in `sim/ItemPowers.ts`; a phrase is appended to the bonus
+ * text only when the authored text does not already describe it.
+ */
+const SET_POWERS: Array<[setId: string, pieces: number, power: string, mag: number, phrase?: string]> = [
+  ['set.bloodied', 3, 'killLife', 1, 'kills restore 2% life'],
+  ['set.kindled', 3, 'emberHeart', 0.6, 'your fire burns 15% hotter'],
+  ['set.quickstep', 3, 'momentum', 0.75, 'each hit you land quickens the next'],
+  ['set.bonefetter', 4, 'hymnAura', 1],
+  ['set.gravewarden', 4, 'blockReflect', 0.8, 'blocks answer the blow'],
+  ['set.frostwrought', 4, 'shatter', 1],
+  ['set.stormbound', 5, 'chainLightning', 2],
+  ['set.venomthread', 4, 'poisonStacks', 1.5],
+  ['set.ironvow', 5, 'blockReflect', 1.2],
+  ['set.ashwalker', 5, 'pyreKills', 1.2],
+  ['set.gilded', 4, 'goldToLife', 1.5],
+  ['set.nightfall', 5, 'unblockableCrit', 1.5],
+  ['set.sunderedsky', 6, 'bloodMagic', 1],
+  ['set.lastlegion', 6, 'unstoppable', 1],
+  ['set.hollowking', 5, 'cheatDeath', 1.5],
+];
+for (const [setId, pieces, power, mag, phrase] of SET_POWERS) {
+  const def = ALL.find((x) => x.id === setId);
+  const tier = def?.bonuses.find((b) => b.pieces === pieces);
+  if (!tier) continue;
+  tier.power = power;
+  if (mag !== 1) tier.powerMag = mag;
+  if (phrase && !tier.desc.includes('—')) tier.desc = `${tier.desc} — ${phrase}`;
+}
 
 export const SETS: SetDef[] = ALL;
 

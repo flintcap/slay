@@ -25,6 +25,7 @@
 
 import type {
   CharClassId,
+  EquipSlot,
   Item,
   ItemBase,
   ItemCategory,
@@ -66,6 +67,7 @@ import {
   socketableWeight,
 } from '../data/gems';
 import type { GemBonus } from '../data/gems';
+import { rollPowerAffix, powerWord, powerLines, powerValue } from './ItemPowers';
 import { MATERIALS, materialDropPool, materialName } from '../data/materials';
 
 // ---------------------------------------------------------------------------
@@ -424,6 +426,22 @@ function magicName(base: ItemBase, mods: ItemMod[]): string {
   return name;
 }
 
+/**
+ * Gives a magic or rare item its chance at a power affix: a behaviour rather
+ * than a number. A magic item with no suffix of its own takes the power's name
+ * word, so "Hand Axe of Cleaving" says what it does.
+ */
+function maybeAddPower(item: Item, base: ItemBase, rarity: ItemRarity, ilvl: number, rng: Rng): void {
+  if (rarity !== 'magic' && rarity !== 'rare') return;
+  const roll = rollPowerAffix(base.category, rarity, ilvl, rng);
+  if (!roll) return;
+  item.powers = [roll];
+  if (rarity === 'magic' && !item.mods.some((m) => m.kind === 'suffix')) {
+    const word = powerWord(roll.id);
+    if (word) item.name = `${item.name} ${word}`;
+  }
+}
+
 export function itemDisplayName(item: Item): string {
   return item.name;
 }
@@ -540,6 +558,7 @@ export function createItem(baseId: string, ilvl: number, rng: Rng, rarity: ItemR
     if (rarity === 'magic') item.name = magicName(base, affixes);
     else if (rarity === 'rare') item.name = rareName(base, affixes, rng);
   }
+  maybeAddPower(item, base, rarity, ilvl, rng);
   item.sockets = rollSockets(base, ilvl, rarity, rng);
   item.value = vendorPrice(item, false) * 4;
   return item;
@@ -625,6 +644,7 @@ export function rollItem(
     if (rarity === 'magic') item.name = magicName(base, affixes);
     else if (rarity === 'rare') item.name = rareName(base, affixes, rng);
   }
+  maybeAddPower(item, base, rarity, lvl, rng);
 
   item.sockets = rollSockets(base, lvl, rarity, rng);
   item.value = vendorPrice(item, false) * 4;
@@ -1006,6 +1026,7 @@ export function vendorPrice(item: Item, buying: boolean): number {
     value *= 1 + item.sockets.length * 0.12;
     value *= 1 + item.upgrade * 0.14;
     if (item.corrupted) value *= 1.35;
+    value += powerValue(item) * (1 + item.ilvl / 30);
   }
 
   if (buying) return Math.max(1, Math.round(value * 3.2));
@@ -1029,6 +1050,7 @@ const COLOR = {
   socket: '#b8a978',
   rune: '#d8a860',
   flavor: '#7d7566',
+  power: '#ff9f43',
 } as const;
 
 function hexColor(n: number): string {
@@ -1178,6 +1200,33 @@ function statOrder(stat: StatKey): number {
   return i < 0 ? STAT_ORDER.length : i;
 }
 
+/**
+ * Where the tooltip learns what the player is wearing, for set progress. Set
+ * once at boot by `main.ts`; the sim layer never imports the save itself.
+ */
+let tooltipWearer: (() => Partial<Record<EquipSlot, Item>> | null) | null = null;
+export function setTooltipWearer(fn: (() => Partial<Record<EquipSlot, Item>> | null) | null): void {
+  tooltipWearer = fn;
+}
+
+/**
+ * The roll's tier, PoE style: T1 is the best rung of that affix's ladder.
+ * Seeing "T1" on a drop is what makes a good rare legible at a glance.
+ */
+export function affixTierRank(mod: ItemMod): { rank: number; of: number } | null {
+  if (mod.kind !== 'prefix' && mod.kind !== 'suffix') return null;
+  if (!mod.tier || mod.tier <= 0) return null;
+  const affix = ALL_AFFIXES.find((a) => a.id === mod.affixId);
+  if (!affix) return null;
+  const of = affix.tiers.length;
+  return { rank: Math.max(1, of - mod.tier + 1), of };
+}
+
+function tierTag(mod: ItemMod): string {
+  const t = affixTierRank(mod);
+  return t ? `  [T${t.rank}]` : '';
+}
+
 /** Requirement context. Optional — omit it and requirements render neutral. */
 export interface TooltipContext {
   level?: number;
@@ -1279,7 +1328,17 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
     blank();
     for (const mod of rolled) {
       const negative = mod.value < 0;
-      push(modLine(mod), negative ? COLOR.bad : item.rarity === 'set' ? COLOR.set : COLOR.mod);
+      push(modLine(mod) + tierTag(mod), negative ? COLOR.bad : item.rarity === 'set' ? COLOR.set : COLOR.mod);
+    }
+  }
+
+  // --- powers: behaviours, not numbers -------------------------------------
+  const powers = powerLines(item);
+  if (powers.length) {
+    blank();
+    for (const p of powers) {
+      push(p.name, COLOR.power, true);
+      push(p.text, p.source === 'unique' ? COLOR.gold : COLOR.power);
     }
   }
 
@@ -1356,13 +1415,24 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
     const set = getSet(item.setId);
     if (set) {
       blank();
-      push(set.name, COLOR.set, true);
+      // What the wearer has on right now, so the block reads as progress.
+      const worn = new Set<string>();
+      const eq = tooltipWearer?.() ?? null;
+      if (eq) {
+        for (const w of Object.values(eq)) {
+          if (w && w.setId === set.id) worn.add(w.uniqueId ?? w.baseId);
+        }
+      }
+      const count = worn.size;
+      push(eq ? `${set.name} (${count}/${set.pieces.length})` : set.name, COLOR.set, true);
       for (const piece of set.pieces) {
         const mine = piece.id === item.uniqueId;
-        push(`  ${piece.name}`, mine ? COLOR.set : COLOR.dim);
+        const have = worn.has(piece.id);
+        push(`  ${have ? '+ ' : ''}${piece.name}`, have || mine ? COLOR.set : COLOR.dim);
       }
       for (const bonus of set.bonuses) {
-        push(`  (${bonus.pieces} pieces) ${bonus.desc}`, COLOR.set);
+        const active = eq ? count >= bonus.pieces : true;
+        push(`  (${bonus.pieces} pieces) ${bonus.desc}`, active ? COLOR.set : COLOR.dim);
       }
     }
   }
@@ -1371,7 +1441,8 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
   if (item.uniqueId) {
     const def = getUnique(item.uniqueId);
     if (def) {
-      if (def.hook) {
+      // A unique with a power already printed its exact effect above.
+      if (def.hook && powers.length === 0) {
         blank();
         push(def.hook, COLOR.gold);
       }

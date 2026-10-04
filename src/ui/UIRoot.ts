@@ -68,6 +68,19 @@ const SCENE_OWNED = new Set(['hud', 'descend']);
 // Public API (see CONTRACTS.md)
 // ---------------------------------------------------------------------------
 
+/** Hotkeys for panels registered from outside this file. */
+const EXTRA_KEYS = new Map<string, string>();
+
+/**
+ * Registers a panel built elsewhere (see `ui/DepthUI.ts`), with an optional
+ * hotkey code such as 'KeyO'. It then opens, closes and toggles exactly like
+ * the panels built here, including Escape.
+ */
+export function registerPanel(id: string, handle: PanelHandle, hotkey?: string): void {
+  registry.set(id, handle);
+  if (hotkey) EXTRA_KEYS.set(hotkey, id);
+}
+
 export function isAnyPanelOpen(): boolean {
   for (const [, p] of registry) if (p.isOpen) return true;
   return false;
@@ -421,7 +434,7 @@ export function mountUI(engine: Engine): void {
     }
 
     if (!inWorld) return;
-    const id = KEYS[e.code];
+    const id = KEYS[e.code] ?? EXTRA_KEYS.get(e.code);
     if (id) {
       e.preventDefault();
       togglePanel(id);

@@ -80,6 +80,10 @@ async function main(): Promise<void> {
     }
   });
 
+  // Set tooltips show progress against what the live character is wearing.
+  const { setTooltipWearer } = await import('./sim/Loot');
+  setTooltipWearer(() => save.account.current?.equipment ?? null);
+
   // Hand the world generator the real bestiary. Without this it falls back to
   // a structurally-valid placeholder catalogue whose ids match no real monster,
   // and every spawn is silently discarded at load time.
@@ -146,6 +150,9 @@ async function main(): Promise<void> {
   // The story layer: chapters, dialogue, contracts, boss voices, the journal.
   const { installStory } = await import('./ui/StoryOverlay');
   installStory();
+  // Systems panels: loot filter, progression, town services.
+  const { mountDepthUI } = await import('./ui/DepthUI');
+  mountDepthUI();
 
   engine.register('title', () => new TitleScene(engine));
   engine.register('charSelect', () => new CharSelectScene(engine));

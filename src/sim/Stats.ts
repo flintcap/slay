@@ -29,7 +29,9 @@ import { BASE_LIFE, BASE_MANA, getClass } from '../data/classes';
 import { HARD_SKILL_RANK_CAP, SKILL_BY_ID } from '../data/skills';
 import { passiveEffects } from './Passives';
 import { peekStatuses } from './Status';
-import { itemStats } from './Loot';
+import { itemStats, setBonusesFor } from './Loot';
+import { applyPowerStats } from './ItemPowers';
+import { getSet } from '../data/sets';
 
 export const MAX_LEVEL = 99;
 
@@ -268,17 +270,27 @@ const EQUIP_SLOTS: readonly EquipSlot[] = [
  * always worth completing even before its bespoke bonus exists.
  */
 export function setBonusStats(equipment: Partial<Record<EquipSlot, Item>>): Partial<Stats> {
+  // Authored sets pay out exactly what their tooltip promises. The generic
+  // curve below is only for a set id the catalogue does not know (an old save
+  // carrying a retired set), so such a piece is never worth nothing.
+  const worn: Item[] = [];
+  for (const slot of EQUIP_SLOTS) {
+    const item = equipment[slot];
+    if (item) worn.push(item);
+  }
+  const authored = setBonusesFor(worn.filter((i) => !!i.setId && !!getSet(i.setId))).stats;
   const counts = new Map<string, number>();
   let maxIlvl = 1;
   for (const slot of EQUIP_SLOTS) {
     const item = equipment[slot];
     if (!item?.setId) continue;
+    if (getSet(item.setId)) continue;
     counts.set(item.setId, (counts.get(item.setId) ?? 0) + 1);
     if (item.ilvl > maxIlvl) maxIlvl = item.ilvl;
   }
-  if (counts.size === 0) return {};
+  if (counts.size === 0) return authored;
 
-  const out: Partial<Stats> = {};
+  const out: Partial<Stats> = { ...authored };
   const scale = 1 + maxIlvl / 40;
   for (const [, n] of counts) {
     if (n < 2) continue;
@@ -478,6 +490,9 @@ export function computeStats(c: Character): Stats {
   const defPct = combinePercent(gear.enhancedDefense, skills.enhancedDefense, status.enhancedDefense);
   out.enhancedDefense = defPct;
   out.defense = Math.max(0, out.defense * (1 + defPct / 100));
+
+  // --- item powers that reshape the sheet (Hollow Pact, Bearform, ...) -----
+  applyPowerStats(c, out);
 
   // --- clamps ---------------------------------------------------------------
   out.life = Math.max(1, Math.round(out.life));

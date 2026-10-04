@@ -1,0 +1,128 @@
+/*
+ * Depth stream panels: loot filter, progression, town services.
+ * Built only from the design tokens in styles.css so they match the HUD.
+ */
+
+.depth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.depth-note {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  line-height: 1.45;
+  padding: var(--s3) var(--s4);
+  background: var(--sunken);
+  border: 1px solid var(--panel-3);
+  border-radius: 4px;
+}
+
+.depth-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.depth-foot {
+  justify-content: space-between;
+  border-top: 1px solid var(--panel-3);
+  padding-top: var(--s3);
+}
+
+.depth-dim {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}
+
+.depth-good {
+  color: var(--good);
+}
+
+.depth-bad {
+  color: var(--bad);
+}
+
+.depth-gold {
+  color: var(--gold-hi);
+}
+
+.depth-power {
+  color: #ff9f43;
+}
+
+/* A card in a list: bounties, gambles, unlocks, enchant options. */
+.depth-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--panel-1);
+  border: 1px solid var(--panel-3);
+  border-radius: 4px;
+}
+
+.depth-card.is-done {
+  border-color: var(--gold-lo);
+  background: linear-gradient(90deg, rgba(201, 162, 39, 0.12), var(--panel-1));
+}
+
+.depth-card.is-locked {
+  opacity: 0.55;
+}
+
+.depth-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.depth-card-title {
+  color: var(--ink);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.depth-card-sub {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+.depth-track {
+  height: 5px;
+  background: var(--sunken);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.depth-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-lo), var(--gold-hi));
+}
+
+.depth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--s2);
+}
+
+.depth-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: var(--s1);
+}
+
+.depth-big {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--gold-hi);
+}

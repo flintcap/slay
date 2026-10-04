@@ -63,6 +63,7 @@ import { getMonster, MONSTERS, pickMonstersForDepth } from '../data/monsters';
 import { getAffix, MONSTER_AFFIXES } from '../data/monsterAffixes';
 import { BOSSES } from '../data/bosses';
 import { getStatus, type StatusDef } from '../data/statuses';
+import { powerHooks } from '../sim/ItemPowers';
 
 // Re-exported so the scene layer can pull the whole monster surface from here,
 // exactly as CONTRACTS.md specifies.
@@ -949,6 +950,8 @@ export class Enemy implements Combatant {
       return;
     }
 
+    // Item powers (conversion, slayer bonuses, life tap) shape the player's blow.
+    if (packet.source === 'player' && powerHooks.outgoing) packet = powerHooks.outgoing(this, packet, ctx);
     let working = packet;
     // Stoneskin / missile dampening chip the packet before mitigation.
     for (const a of this.affixes) {
@@ -1095,6 +1098,9 @@ export class Enemy implements Combatant {
         summon(this, ctx, 'mirror_image', a.params?.count ?? 2, 2.2);
       }
     }
+
+    // Item powers that act once a blow has landed: leech, chill, cleave, echo.
+    if (working.source === 'player' && powerHooks.afterHit) powerHooks.afterHit(this, working, taken, ctx);
 
     if (this.life <= 0) this.die(ctx);
   }

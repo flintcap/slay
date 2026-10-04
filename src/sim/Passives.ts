@@ -29,6 +29,7 @@
 
 import type { Character } from '../types';
 import { SKILL_BY_ID } from '../data/skills';
+import { applyPowerPassives } from './ItemPowers';
 
 /** A skill's rank, after +skills. Mirrors `Stats.effectiveRank`. */
 function rankOf(c: Character, id: string): number {
@@ -812,6 +813,9 @@ export function passiveEffects(c: Character): PassiveEffects {
     if (r <= 0) continue;
     RULES[id]?.(e, r, id);
   }
+  // Item powers that are really passives on an item: cheat death, overkill,
+  // arcs. `Stats` calls this with only `skills`, so equipment may be absent.
+  if (c.equipment) applyPowerPassives(c, e);
   return e;
 }
 

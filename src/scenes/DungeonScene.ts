@@ -44,6 +44,8 @@ import { typeColor } from '../entities/Abilities';
 import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
 import { clearBuyBack } from '../sim/BuyBack';
+import { PowerRuntime } from './PowerRuntime';
+import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
@@ -118,6 +120,8 @@ interface GroundLoot {
   root: THREE.Object3D;
   pos: THREE.Vector3;
   bornAt: number;
+  /** Hidden by the loot filter. Still there: Shift shows it. */
+  hidden?: boolean;
 }
 
 /**
@@ -185,6 +189,8 @@ export class DungeonScene extends GameScene {
   private nearProp: Interactable | null = null;
   /** Set when the floor's vault lever is pulled. Resets with each level. */
   private vaultOpen = false;
+  /** Item powers and life/mana steal. See `PowerRuntime`. */
+  private powers: PowerRuntime | null = null;
 
   constructor(engine: Engine) {
     super();
@@ -233,6 +239,22 @@ export class DungeonScene extends GameScene {
       afterSwing: (target) => this.breakNear(target.x, target.z),
       drink: (kind) => this.drink(kind),
       dodged: () => this.rig.addTrauma(0.08),
+    });
+    this.powers?.dispose();
+    this.powers = new PowerRuntime({
+      player: () => this.player,
+      enemies: () => this.enemies,
+      boss: () => this.boss,
+      context: () => this.ctxCache ?? this.context(),
+      effects: this.effects,
+      fx: this.fx,
+      decals: this.decals,
+      rng: () => this.rng,
+      walkable: (x, z) => {
+        const t = this.mesh.worldToTile(x, z);
+        return isWalkable(this.level, t.x, t.y);
+      },
+      dropBonus: (at, ilvl) => this.dropItem(rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind }), at),
     });
 
     // A light on the hero is standard for the genre: torch placement is
@@ -812,9 +834,11 @@ export class DungeonScene extends GameScene {
           packet.amount * 0.6,
         );
         if (this.godMode) return;
+        if (this.powers) packet = this.powers.incoming(packet);
         const before = this.player.life;
         const taken = this.player.takeDamage(packet, this.rng);
         this.passiveDefence(packet, taken, before);
+        this.powers?.afterPlayerHit(packet, taken, taken === 0 && before === this.player.life);
         if (taken > 0 && save.settings.showDamageNumbers) {
           // Player damage in the packet's own colour, so a big fire hit is
           // readable as fire without reading the number.
@@ -936,6 +960,10 @@ export class DungeonScene extends GameScene {
       const shift = this.engine.input.keyDown('ShiftLeft') || this.engine.input.keyDown('ShiftRight');
       this.labelScratch.length = 0;
       for (const l of this.loot) {
+        if (l.hidden) {
+          l.root.visible = shift;
+          if (!shift) continue;
+        }
         if (l.item) this.labelScratch.push(l as { item: Item; root: THREE.Object3D; pos: THREE.Vector3 });
       }
       this.groundLabels.update(
@@ -976,6 +1004,7 @@ export class DungeonScene extends GameScene {
     // because the tick that moves it never got past `if (!live) return`.
     this.skills.setContext(ctx, this.enemies, this.boss);
     this.skills.update(dt);
+    this.powers?.update(dt);
     hudRuntime.minions = this.skills.minionSummary();
     this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);
@@ -1102,6 +1131,7 @@ export class DungeonScene extends GameScene {
         e.lootGranted = true;
         this.lastOverkill = e.overkill;
         this.grantKill(e.monsterId, e.rank, e.family, e.root.position, e.ilvl);
+        this.powers?.onKill(e);
       }
       if (e.life > 0 || !e.readyToRemove) continue;
       this.enemies.splice(i, 1);
@@ -1364,8 +1394,12 @@ export class DungeonScene extends GameScene {
     const pos = new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d);
     model.position.copy(pos);
     this.scene.add(model);
-    this.loot.push({ item, gold: 0, root: model, pos, bornAt: this.runTime });
-    events.emit('loot:dropped', { item, x: pos.x, z: pos.z });
+    // The loot filter hides what you told it to. Hidden drops make no sound
+    // and draw nothing until Shift is held.
+    const hidden = !passesFilter(item, lootFilterOf(save.account), this.player?.character.classId);
+    if (hidden) model.visible = false;
+    this.loot.push({ item, gold: 0, root: model, pos, bornAt: this.runTime, hidden });
+    if (!hidden) events.emit('loot:dropped', { item, x: pos.x, z: pos.z });
   }
 
   /** Scatters a gold pile that the player collects by walking over it. */
@@ -1580,6 +1614,8 @@ export class DungeonScene extends GameScene {
   override dispose(): void {
     for (const off of this.offs) off();
     this.offs = [];
+    this.powers?.dispose();
+    this.powers = null;
     for (const e of this.enemies) e.dispose();
     this.enemies = [];
     this.boss?.dispose();

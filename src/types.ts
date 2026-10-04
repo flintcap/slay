@@ -257,6 +257,18 @@ export interface Item {
   value: number;
   /** Corruption / mythic implicit rolls, if any. */
   corrupted?: boolean;
+  /**
+   * Power affixes: behaviours rather than stat lines ("chance on hit to arc",
+   * "kills explode"). Resolved by `sim/ItemPowers.ts`. Optional so every save
+   * written before powers existed still loads.
+   */
+  powers?: ItemPowerRoll[];
+}
+
+/** One rolled power on an item. `mag` scales it; 1 is a unique's strength. */
+export interface ItemPowerRoll {
+  id: string;
+  mag: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -425,6 +437,10 @@ export interface AccountSave {
    * `sim/Story.ts` fills in and repairs it on first use.
    */
   story?: StorySave;
+  /** What the floor shows you. Optional: repaired by `sim/LootFilter.ts`. */
+  lootFilter?: LootFilterSettings;
+  /** Progression that survives death. Optional: repaired by `sim/Legacy.ts`. */
+  legacy?: LegacyState;
 }
 
 /** Account-wide story state. Survives death, like the vault and the memorial. */
@@ -451,6 +467,46 @@ export interface StorySave {
   chains: Record<string, { step: number; state: 'idle' | 'active' | 'ready' }>;
   /** The last thing that happened below, for the camp to react to. */
   last?: { kind: 'cleared' | 'died'; at: number; depth: number; name: string };
+}
+
+/** Account-level progression. See `sim/Legacy.ts`. */
+export interface LegacyState {
+  /** Total renown ever earned. Rank is derived from it. */
+  renown: number;
+  /** Perk id -> rank bought with Legacy points. */
+  perks: Record<string, number>;
+  /** Unique and set-piece ids the account has found. */
+  codex: string[];
+  stats: {
+    runs: number;
+    clears: number;
+    kills: number;
+    bosses: number;
+    deaths: number;
+    deepest: number;
+    contracts: number;
+  };
+  /** Depth milestones whose first-clear reward has been claimed. */
+  milestones: number[];
+}
+
+/** Loot filter rules. See `sim/LootFilter.ts`. */
+export interface LootFilterSettings {
+  /** Off means every drop shows. */
+  enabled: boolean;
+  /** Gear below this rarity is hidden unless something below keeps it. */
+  minRarity: ItemRarity;
+  /** Always show gear carrying a power affix. */
+  keepPowers: boolean;
+  /** Always show gear with at least one T1 affix roll. */
+  keepTopTier: boolean;
+  /** Always show bases with at least this many sockets. 0 = off. */
+  keepSockets: number;
+  /** Hide gear your class cannot use. */
+  hideOtherClasses: boolean;
+  showGems: boolean;
+  showRunes: boolean;
+  showPotions: boolean;
 }
 
 export interface GameSettings {

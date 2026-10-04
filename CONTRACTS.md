@@ -337,3 +337,52 @@ export class CombatControls {
 
 `Player` exposes `inRecovery`, `cancelRecovery()` and `dodgeReadyIn`. A hit that
 lands during the dash emits `player:evaded` on the event bus, for the feel layer.
+
+## `src/sim/ItemPowers.ts` — owned by DEPTH
+
+Item powers: behaviours rather than stat lines. A unique's `special`, a set
+bonus tier's `power`, and an item's rolled `powers` (power affixes) all name a
+power in `POWERS`.
+
+```ts
+export const POWERS: readonly PowerDef[];
+export function getPower(id: string): PowerDef | undefined;
+/** Every power a character has active (uniques, set tiers, power affixes). */
+export function characterPowers(c: Pick<Character, 'equipment'>): ItemPowerRoll[];
+/** Folded into `passiveEffects` (cheat death, arcs, overkill...). */
+export function applyPowerPassives(c, e: PassiveEffects): void;
+/** Applied at the end of `computeStats` (Hollow Pact, Bearform...). */
+export function applyPowerStats(c, s: Stats): void;
+/** Flat record read by `scenes/PowerRuntime.ts`. */
+export function powerEffects(c): PowerEffects;
+/**
+ * Seam for the entity layer. `Enemy.takeDamage` calls `outgoing` on every
+ * player packet before mitigation and `afterHit` once it lands. Installed by
+ * the dungeon's PowerRuntime, null everywhere else.
+ */
+export const powerHooks: { outgoing: ...; afterHit: ... };
+```
+
+`src/scenes/PowerRuntime.ts` (DEPTH) owns the live half, and is also where
+Life Steal and Mana Steal are applied. DungeonScene calls `incoming(packet)`
+before `Player.takeDamage`, `afterPlayerHit` after it, `update(dt)` each frame
+and `onKill(enemy)` when loot is granted.
+
+## `src/sim/LootFilter.ts` — owned by DEPTH
+
+```ts
+export function lootFilterOf(account: AccountSave): LootFilterSettings;
+export function passesFilter(item: Item, f: LootFilterSettings, classId?: CharClassId): boolean;
+```
+
+DungeonScene hides filtered drops (`GroundLoot.hidden`); Shift shows them.
+
+## `src/ui/UIRoot.ts` — registerPanel
+
+```ts
+/** Register a panel built outside UIRoot, with an optional hotkey code. */
+export function registerPanel(id: string, handle: PanelHandle, hotkey?: string): void;
+```
+
+`src/ui/DepthUI.ts` (DEPTH) builds and registers every depth panel; `main.ts`
+calls `mountDepthUI()` right after `mountUI`.
