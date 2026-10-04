@@ -26,7 +26,9 @@
 import * as THREE from 'three';
 import type { MonsterVisual, Rng } from '../types';
 import { surface, surfaceVariant, emissiveMaterial } from '../art/Materials';
-import { beveledBox, displace, lathe, mergeGeometries } from '../art/Meshes';
+import { beveledBox, clothPanel, displace, lathe, limb, mergeGeometries, spike } from '../art/Meshes';
+import { mergeSkinned, skinRigid } from '../art/BodyKit';
+import { resolvePalette } from '../art/Palettes';
 import { Noise } from '../art/Noise';
 import { buildItemModel } from '../art/ItemModels';
 
@@ -105,6 +107,29 @@ function parsePalette(p: string): { key: string; tint?: number } {
   return Number.isFinite(tint) ? { key, tint } : { key };
 }
 
+/**
+ * The multiplier that makes a palette's texture come out at the authored
+ * colour. A tint used to multiply the palette's own albedo, so a bone-white
+ * `0xd6cfb4` on crypt stone came out the grey of wet slate, and most of the
+ * bestiary rendered as near-black lumps whatever colour it was written as.
+ * Dividing by the palette's base turns the tint into the creature's colour.
+ */
+function albedoTint(key: string, tint: number): THREE.Color {
+  const base = new THREE.Color(0x808080);
+  try {
+    base.setHex(resolvePalette(key).base);
+  } catch {
+    /* keep grey */
+  }
+  const want = new THREE.Color(tint);
+  // Linear ratios; a ceiling keeps a near-black palette from blowing out.
+  return new THREE.Color(
+    Math.min(2.6, want.r / Math.max(0.02, base.r)),
+    Math.min(2.6, want.g / Math.max(0.02, base.g)),
+    Math.min(2.6, want.b / Math.max(0.02, base.b)),
+  );
+}
+
 function bodyMaterial(palette: string, rough: number, metal: number): THREE.MeshStandardMaterial {
   const cacheKey = `${palette}:${rough.toFixed(2)}:${metal.toFixed(2)}`;
   const hit = materialCache.get(cacheKey);
@@ -115,7 +140,8 @@ function bodyMaterial(palette: string, rough: number, metal: number): THREE.Mesh
     mat =
       tint === undefined
         ? surface(key, { roughness: rough, metalness: metal })
-        : surfaceVariant(key, { tint, roughness: rough, metalness: metal });
+        : surfaceVariant(key, { roughness: rough, metalness: metal });
+    if (tint !== undefined) mat.color.copy(albedoTint(key, tint));
   } catch {
     mat = new THREE.MeshStandardMaterial({
       color: tint ?? 0x8a8a8a,
@@ -154,11 +180,19 @@ function glowMaterial(color: number, intensity: number): THREE.MeshStandardMater
 
 const noise = new Noise(0xb0d1e5);
 
+/**
+ * Which material a part takes: the creature's own `body`, its `glow`, `trim`
+ * (rank armour: steel for champions, gold for elites), `alt` (the family's
+ * second material: an undead's rags, a plant's leaves, a construct's plates)
+ * or `rank` (the glowing colour of its rank).
+ */
+type PartMat = 'body' | 'glow' | 'trim' | 'alt' | 'rank';
+
 /** A geometry queued onto a bone. */
 interface Part {
   bone: string;
   geo: THREE.BufferGeometry;
-  glow?: boolean;
+  mat: PartMat;
 }
 
 class Builder {
@@ -166,12 +200,17 @@ class Builder {
   constructor(readonly rng: Rng, readonly v: MonsterVisual) {}
 
   add(bone: string, geo: THREE.BufferGeometry): THREE.BufferGeometry {
-    this.parts.push({ bone, geo });
+    this.parts.push({ bone, geo, mat: 'body' });
     return geo;
   }
 
   addGlow(bone: string, geo: THREE.BufferGeometry): THREE.BufferGeometry {
-    this.parts.push({ bone, geo, glow: true });
+    this.parts.push({ bone, geo, mat: 'glow' });
+    return geo;
+  }
+
+  addAs(bone: string, geo: THREE.BufferGeometry, mat: PartMat): THREE.BufferGeometry {
+    this.parts.push({ bone, geo, mat });
     return geo;
   }
 }
@@ -224,11 +263,21 @@ function safeMerge(list: THREE.BufferGeometry[]): THREE.BufferGeometry {
   }
 }
 
-/** Tapered limb along +Y, origin at the joint (top). */
+/**
+ * Tapered limb hanging down from its joint (origin at the top). A lathe with
+ * a muscle belly and rounded ends, not a raw cylinder: open-ended tubes were
+ * what made every monster limb read as a stick of pipe.
+ */
 function limbGeo(length: number, rTop: number, rBottom: number, seg = 6): THREE.BufferGeometry {
-  const g = new THREE.CylinderGeometry(rTop, rBottom, length, seg, 1, false);
-  g.translate(0, -length * 0.5, 0);
-  return g;
+  try {
+    const g = limb(length, rTop, rBottom, Math.max(5, seg));
+    g.translate(0, -length, 0);
+    return g;
+  } catch {
+    const g = new THREE.CylinderGeometry(rTop, rBottom, length, seg, 1, false);
+    g.translate(0, -length * 0.5, 0);
+    return g;
+  }
 }
 
 /** A blade / claw / horn cone pointing along +Y. */
@@ -324,8 +373,12 @@ function addSpineSpikes(b: Builder, bone: string, count: number, size: number, s
   }
 }
 
-function addEyes(b: Builder, bone: string, count: number, radius: number, headR: number, glow: boolean): void {
+function addEyes(b: Builder, bone: string, count: number, radius: number, headR: number, _glow: boolean): void {
   if (count <= 0) return;
+  // Eyes always glow. Unlit eyes are the body's own material, which is to say
+  // invisible, and the eyes are where a player looks to see which way a
+  // monster is facing.
+  const glow = true;
   if (count === 1) {
     const g = sphereGeo(radius, 1);
     place(g, 0, headR * 0.12, headR * 0.82);
@@ -1048,16 +1101,46 @@ export interface MonsterModel {
   skeleton: THREE.Skeleton | null;
 }
 
+/** What a monster is, beyond its visual: its family, and how important it is. */
+export interface MonsterLookOpts {
+  family?: string;
+  /** 'normal' | 'champion' | 'elite' | 'rare' | 'boss'. */
+  rank?: string;
+}
+
 interface Prototype {
   root: THREE.Group;
   boneNames: string[];
   archetype: Archetype;
+  skeleton: THREE.Skeleton;
 }
 
 const prototypeCache = new Map<string, Prototype[]>();
 const VARIANTS_PER_KEY = 3;
 
-function cacheKey(v: MonsterVisual): string {
+/** 0 rank and file, 1 champion, 2 elite or named rare, 3 boss. */
+function rankTier(rank: string | undefined): number {
+  switch (rank) {
+    case 'champion':
+      return 1;
+    case 'elite':
+    case 'rare':
+      return 2;
+    case 'boss':
+      return 3;
+    default:
+      return 0;
+  }
+}
+
+/** The glowing colour each rank wears, matching its nameplate. */
+const RANK_GLOW: Record<string, number> = {
+  champion: 0x6f8cff,
+  elite: 0xf5d76e,
+  rare: 0xffa040,
+};
+
+function cacheKey(v: MonsterVisual, opts: MonsterLookOpts): string {
   return [
     v.body,
     v.palette,
@@ -1068,10 +1151,422 @@ function cacheKey(v: MonsterVisual): string {
     v.wings ? 1 : 0,
     v.eyes ?? -1,
     v.weapon ?? '-',
+    opts.family ?? '-',
+    opts.rank ?? 'normal',
   ].join('/');
 }
 
-function buildPrototype(v: MonsterVisual, rng: Rng): Prototype {
+// ---------------------------------------------------------------------------
+// Family and rank dressing
+// ---------------------------------------------------------------------------
+
+/**
+ * Bounds of everything already built on a bone, in that bone's space. The
+ * dressing passes place horns, crowns, rags and plates against these, so one
+ * rule fits a goblin's head and a colossus's alike.
+ */
+function boxOf(b: Builder, bone: string): THREE.Box3 | null {
+  const box = new THREE.Box3();
+  let any = false;
+  for (const p of b.parts) {
+    if (p.bone !== bone || p.mat !== 'body') continue;
+    p.geo.computeBoundingBox();
+    if (p.geo.boundingBox) {
+      box.union(p.geo.boundingBox);
+      any = true;
+    }
+  }
+  return any ? box : null;
+}
+
+/** A horn: a curved spike swept back and out from a point on the head. */
+function horn(len: number, r: number, curve = 0.6): THREE.BufferGeometry {
+  try {
+    return spike(len, r, 6, curve);
+  } catch {
+    return spikeGeo(len, r, 6);
+  }
+}
+
+/** The second material each family wears, and its eye colour when it has none. */
+const FAMILY_ALT: Record<string, string> = {
+  undead: 'cloth.tattered|0x4e4a42',
+  demon: 'metal.dark|0x3a2a28',
+  beast: 'leather.worn|0x3a2c22',
+  construct: 'metal.dark|0x4a4a50',
+  insect: 'flesh.chitin|0x2e2a20',
+  aberration: 'flesh.rotted|0x5a3a6a',
+  elemental: 'stone.ash|0x3a3430',
+  humanoid: 'cloth.tattered|0x5a4636',
+  plant: 'cloth.linen|0x4f7a32',
+  ooze: 'flesh.rotted|0x3a4a2a',
+};
+
+const FAMILY_EYE: Record<string, number> = {
+  undead: 0x7cffb0,
+  demon: 0xff5020,
+  beast: 0xffc040,
+  construct: 0x60c0ff,
+  insect: 0xd0ff40,
+  aberration: 0xe060ff,
+  elemental: 0xffa030,
+  humanoid: 0xffd890,
+  plant: 0xc8ff60,
+  ooze: 0xb0ff60,
+};
+
+/**
+ * What makes a family read as itself before its name does: an undead's rags,
+ * a demon's horns and burning seams, a beast's ears and hackles, a
+ * construct's rivets and core, an insect's feelers, an aberration's eye
+ * stalks, an elemental's orbiting shards, a humanoid's hood, a plant's leaves.
+ */
+function dressFamily(b: Builder, family: string | undefined, arch: Archetype): void {
+  if (!family) return;
+  const rng = b.rng;
+  const head = boxOf(b, 'head');
+  const chest = boxOf(b, 'chest');
+  const hips = boxOf(b, 'hips');
+  const upright = arch === 'humanoid' || arch === 'colossal' || arch === 'winged';
+  const ornate = b.v.ornate ?? 0.3;
+  const hs = head ? head.getSize(new THREE.Vector3()) : new THREE.Vector3(0.3, 0.3, 0.3);
+  const hc = head ? head.getCenter(new THREE.Vector3()) : new THREE.Vector3();
+  const cs = chest ? chest.getSize(new THREE.Vector3()) : new THREE.Vector3(0.4, 0.4, 0.4);
+  const cc = chest ? chest.getCenter(new THREE.Vector3()) : new THREE.Vector3();
+
+  switch (family) {
+    case 'undead': {
+      // A shroud rotted to rags, hanging from the hips.
+      if (hips && upright && arch !== 'winged') {
+        const hz = hips.getSize(new THREE.Vector3());
+        const hcn = hips.getCenter(new THREE.Vector3());
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * Math.PI * 2 + rng.range(-0.2, 0.2);
+          const len = hz.y * rng.range(1.2, 2.2);
+          const rag = safeBevelBox(hz.x * 0.32, len, 0.012, 0.004);
+          rag.translate(0, -len * 0.5, 0);
+          place(rag, hcn.x + Math.sin(a) * hz.x * 0.5, hcn.y - hz.y * 0.1, hcn.z + Math.cos(a) * hz.z * 0.5, rng.range(-0.15, 0.15), a, rng.range(-0.1, 0.1));
+          b.addAs('hips', rag, 'alt');
+        }
+      }
+      if (chest && upright && arch !== 'winged') {
+        // A torn mantle over the shoulders.
+        const m = safeDisplace(sphereGeo(Math.max(cs.x, cs.z) * 0.52, 1), rng, 0.02, 6);
+        place(m, cc.x, chest.max.y - cs.y * 0.18, cc.z - cs.z * 0.05, 0, 0, 0, 1.05, 0.32, 0.9);
+        b.addAs('chest', m, 'alt');
+      }
+      break;
+    }
+    case 'demon': {
+      if (head && ornate <= 0.35) {
+        for (const s of [-1, 1]) {
+          const h = horn(hs.y * 0.9, hs.x * 0.12, 0.8);
+          place(h, hc.x + s * hs.x * 0.32, head.max.y - hs.y * 0.2, hc.z - hs.z * 0.05, -0.5, 0, s * 0.55);
+          b.add('head', h);
+        }
+      }
+      if (chest) {
+        // Burning seams across the hide.
+        for (let i = 0; i < 4; i++) {
+          const seam = safeBevelBox(cs.x * rng.range(0.18, 0.32), cs.y * 0.025, 0.012, 0.003);
+          place(seam, cc.x + rng.range(-0.3, 0.3) * cs.x, cc.y + rng.range(-0.3, 0.3) * cs.y, chest.max.z - cs.z * 0.06, 0, 0, rng.range(-0.8, 0.8));
+          b.addGlow('chest', seam);
+        }
+      }
+      break;
+    }
+    case 'beast': {
+      if (head) {
+        for (const s of [-1, 1]) {
+          const ear = horn(hs.y * 0.45, hs.x * 0.14, 0.2);
+          place(ear, hc.x + s * hs.x * 0.3, head.max.y - hs.y * 0.18, hc.z - hs.z * 0.18, -0.4, 0, s * 0.35);
+          b.add('head', ear);
+        }
+      }
+      // Hackles: a ridge of coarse fur down the back.
+      for (const [bone, box] of [
+        ['chest', chest],
+        ['hips', hips],
+      ] as Array<[string, THREE.Box3 | null]>) {
+        if (!box) continue;
+        const sz = box.getSize(new THREE.Vector3());
+        const c = box.getCenter(new THREE.Vector3());
+        for (let i = 0; i < 5; i++) {
+          const t = i / 4 - 0.5;
+          const tuft = horn(Math.max(sz.y, 0.2) * 0.32, Math.max(sz.x, 0.2) * 0.07, 0.4);
+          if (upright) place(tuft, c.x, c.y + t * sz.y * 0.8, box.min.z + sz.z * 0.05, -2.2, 0, 0);
+          else place(tuft, c.x, box.max.y - sz.y * 0.08, c.z + t * sz.z * 0.8, -0.9, 0, 0);
+          b.addAs(bone, tuft, 'alt');
+        }
+      }
+      break;
+    }
+    case 'construct': {
+      if (chest) {
+        // A furnace core behind a grille, and rivets round the plates.
+        const core = sphereGeo(Math.min(cs.x, cs.y) * 0.16, 1);
+        place(core, cc.x, cc.y + cs.y * 0.05, chest.max.z - cs.z * 0.08);
+        b.addGlow('chest', core);
+        const grille = new THREE.TorusGeometry(Math.min(cs.x, cs.y) * 0.2, Math.min(cs.x, cs.y) * 0.03, 5, 14);
+        place(grille, cc.x, cc.y + cs.y * 0.05, chest.max.z - cs.z * 0.04);
+        b.addAs('chest', grille, 'alt');
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          const rv = sphereGeo(Math.min(cs.x, cs.y) * 0.035, 0);
+          place(rv, cc.x + Math.cos(a) * cs.x * 0.38, cc.y + Math.sin(a) * cs.y * 0.36, chest.max.z - cs.z * 0.12);
+          b.addAs('chest', rv, 'alt');
+        }
+      }
+      if (upright) {
+        for (const [bone, s] of [
+          ['shoulderL', 1],
+          ['shoulderR', -1],
+        ] as Array<[string, number]>) {
+          const box = boxOf(b, bone);
+          if (!box) continue;
+          const sz = box.getSize(new THREE.Vector3());
+          const plate = safeBevelBox(sz.x * 1.5, sz.x * 0.35, sz.x * 1.4, sz.x * 0.08);
+          place(plate, s * sz.x * 0.2, box.max.y + sz.x * 0.05, 0, 0, 0, s * -0.35);
+          b.addAs(bone, plate, 'alt');
+        }
+      }
+      break;
+    }
+    case 'insect': {
+      if (head) {
+        for (const s of [-1, 1]) {
+          const ant = limbGeo(hs.y * 1.6, hs.x * 0.035, hs.x * 0.015, 4);
+          // limbGeo hangs down; turn it to sweep up and forward.
+          ant.rotateX(Math.PI * 0.78);
+          ant.rotateZ(s * 0.35);
+          ant.translate(hc.x + s * hs.x * 0.18, head.max.y - hs.y * 0.1, hc.z + hs.z * 0.25);
+          b.add('head', ant);
+        }
+      }
+      if (hips) {
+        const hz = hips.getSize(new THREE.Vector3());
+        const c = hips.getCenter(new THREE.Vector3());
+        for (let i = 0; i < 3; i++) {
+          const ridge = safeDisplace(sphereGeo(Math.max(hz.x, hz.z) * 0.32, 1), rng, 0.01, 8);
+          place(ridge, c.x, hips.max.y - hz.y * 0.12, c.z + (i - 1) * hz.z * 0.28, 0, 0, 0, 1.1, 0.22, 0.5);
+          b.addAs('hips', ridge, 'alt');
+        }
+      }
+      break;
+    }
+    case 'aberration': {
+      const host = head ? 'head' : chest ? 'chest' : null;
+      const box = head ?? chest;
+      if (host && box) {
+        const sz = box.getSize(new THREE.Vector3());
+        const c = box.getCenter(new THREE.Vector3());
+        for (let i = 0; i < 3; i++) {
+          const a = (i / 3) * Math.PI * 2 + 0.4;
+          const len = sz.y * rng.range(0.7, 1.1);
+          const stalk = limbGeo(len, sz.x * 0.05, sz.x * 0.03, 4);
+          stalk.rotateX(Math.PI);
+          place(stalk, c.x + Math.cos(a) * sz.x * 0.25, box.max.y - sz.y * 0.1, c.z + Math.sin(a) * sz.z * 0.2, rng.range(-0.4, 0.4), 0, rng.range(-0.5, 0.5));
+          b.add(host, stalk);
+          const eye = sphereGeo(sz.x * 0.08, 1);
+          place(eye, c.x + Math.cos(a) * sz.x * 0.25, box.max.y - sz.y * 0.1 + len * 0.95, c.z + Math.sin(a) * sz.z * 0.2);
+          b.addGlow(host, eye);
+        }
+      }
+      if (hips && arch !== 'floating') {
+        const hz = hips.getSize(new THREE.Vector3());
+        const c = hips.getCenter(new THREE.Vector3());
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 + 0.3;
+          const t = limbGeo(hz.y * 1.8, hz.x * 0.09, hz.x * 0.02, 5);
+          place(t, c.x + Math.sin(a) * hz.x * 0.4, hips.min.y + hz.y * 0.2, c.z + Math.cos(a) * hz.z * 0.4, Math.cos(a) * 0.35, 0, -Math.sin(a) * 0.35);
+          b.addAs('hips', t, 'alt');
+        }
+      }
+      break;
+    }
+    case 'elemental': {
+      if (chest) {
+        // Shards of the element drifting about the shoulders.
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 + rng.range(-0.2, 0.2);
+          const sh = new THREE.OctahedronGeometry(Math.max(cs.x, cs.z) * rng.range(0.08, 0.14), 0);
+          place(sh, cc.x + Math.cos(a) * cs.x * 0.85, chest.max.y + rng.range(-0.1, 0.25) * cs.y, cc.z + Math.sin(a) * cs.z * 0.85, rng.range(0, 2), rng.range(0, 2), 0, 1, 1.6, 1);
+          b.addAs('chest', sh, i % 2 ? 'alt' : 'glow');
+        }
+        const core = sphereGeo(Math.min(cs.x, cs.y) * 0.15, 1);
+        place(core, cc.x, cc.y, chest.max.z - cs.z * 0.1);
+        b.addGlow('chest', core);
+      }
+      break;
+    }
+    case 'humanoid': {
+      if (head && upright) {
+        // A hood thrown up over the head.
+        const hood = safeDisplace(sphereGeo(Math.max(hs.x, hs.z) * 0.62, 1), rng, 0.01, 8);
+        place(hood, hc.x, hc.y + hs.y * 0.08, hc.z - hs.z * 0.12, 0, 0, 0, 1.0, 1.05, 1.08);
+        b.addAs('head', hood, 'alt');
+      }
+      if (hips && upright) {
+        const hz = hips.getSize(new THREE.Vector3());
+        const c = hips.getCenter(new THREE.Vector3());
+        const belt = new THREE.TorusGeometry(Math.max(hz.x, hz.z) * 0.5, hz.y * 0.07, 5, 18);
+        place(belt, c.x, hips.max.y - hz.y * 0.2, c.z, Math.PI * 0.5, 0, 0, 1, 1, 0.8);
+        b.addAs('hips', belt, 'alt');
+        const pouch = safeBevelBox(hz.x * 0.2, hz.y * 0.3, hz.z * 0.15, 0.01);
+        place(pouch, c.x + hz.x * 0.35, hips.max.y - hz.y * 0.45, c.z + hz.z * 0.3);
+        b.addAs('hips', pouch, 'alt');
+      }
+      break;
+    }
+    case 'plant': {
+      const leafy = (bone: string, box: THREE.Box3 | null, n: number) => {
+        if (!box) return;
+        const sz = box.getSize(new THREE.Vector3());
+        const c = box.getCenter(new THREE.Vector3());
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2 + rng.range(-0.3, 0.3);
+          const leaf = sphereGeo(Math.max(sz.x, sz.z) * 0.34, 1);
+          leaf.scale(1, 0.14, 0.45);
+          leaf.translate(Math.max(sz.x, sz.z) * 0.3, 0, 0);
+          leaf.rotateZ(rng.range(0.2, 0.7));
+          leaf.rotateY(-a);
+          leaf.translate(c.x, box.max.y - sz.y * 0.15, c.z);
+          b.addAs(bone, leaf, 'alt');
+        }
+      };
+      leafy('head', head, 5);
+      leafy('chest', chest, 4);
+      if (head) {
+        const bulb = sphereGeo(Math.max(hs.x, hs.z) * 0.16, 1);
+        place(bulb, hc.x, head.max.y + hs.y * 0.08, hc.z);
+        b.addGlow('head', bulb);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+/**
+ * Rank you can see. A champion wears steel on its shoulders and a band of
+ * blue light; an elite a gold crown of spikes, a spined back and a gold band;
+ * a boss all of that grander, with a cape and a burning core. Read from across
+ * the room, before the nameplate.
+ */
+function dressRank(b: Builder, tier: number, arch: Archetype): void {
+  if (tier <= 0) return;
+  const rng = b.rng;
+  const head = boxOf(b, 'head');
+  const chest = boxOf(b, 'chest');
+  const upright = arch === 'humanoid' || arch === 'colossal' || arch === 'winged';
+  const cs = chest ? chest.getSize(new THREE.Vector3()) : null;
+  const cc = chest ? chest.getCenter(new THREE.Vector3()) : null;
+
+  // Shoulder armour.
+  let shouldered = false;
+  for (const [bone, s] of [
+    ['shoulderL', 1],
+    ['shoulderR', -1],
+  ] as Array<[string, number]>) {
+    const box = upright ? boxOf(b, bone) : null;
+    if (!box) continue;
+    shouldered = true;
+    const sz = box.getSize(new THREE.Vector3());
+    // Sized off the arm, not off whatever already sits on the shoulder:
+    // measuring an existing pauldron and its spikes made a boss's pads the
+    // size of a mushroom cap.
+    const arm = Math.min(sz.x, sz.z, sz.y * 0.4);
+    const r = arm * (0.75 + tier * 0.12);
+    const pad = safeDisplace(sphereGeo(r, 1), rng, r * 0.04, 6);
+    place(pad, s * r * 0.25, box.max.y - r * 0.35, 0, 0, 0, s * -0.3, 1.05, 0.62, 1.1);
+    b.addAs(bone, pad, 'trim');
+    if (tier >= 2) {
+      for (let k = 0; k < tier; k++) {
+        const sp = horn(r * (1.1 - k * 0.2), r * 0.18, 0.2);
+        place(sp, s * r * (0.45 + k * 0.1), box.max.y - r * 0.1, (k - (tier - 1) / 2) * r * 0.5, 0, 0, s * -(0.5 + k * 0.25));
+        b.addAs(bone, sp, 'trim');
+      }
+    }
+  }
+  if (!shouldered && chest && cs && cc) {
+    // Beasts and crawlers: armour plates over the back instead.
+    for (let k = 0; k < 1 + tier; k++) {
+      const plate = safeDisplace(sphereGeo(Math.max(cs.x, cs.z) * 0.32, 1), rng, 0.01, 6);
+      place(plate, cc.x, chest.max.y - cs.y * 0.05, cc.z + (k - tier / 2) * cs.z * 0.28, 0, 0, 0, 1.1, 0.25, 0.6);
+      b.addAs('chest', plate, 'trim');
+    }
+  }
+
+  // A band of the rank's light around the chest.
+  if (chest && cs && cc) {
+    const band = new THREE.TorusGeometry(1, 0.06, 5, 20);
+    band.rotateX(Math.PI * 0.5);
+    const rx = cs.x * 0.53;
+    const rz = cs.z * 0.53;
+    band.scale(rx, Math.max(cs.y * 0.25, 0.05), rz);
+    band.translate(cc.x, cc.y - cs.y * 0.05, cc.z);
+    b.addAs('chest', band, tier >= 3 ? 'trim' : 'rank');
+  }
+
+  // A crown of spikes: elites and bosses.
+  if (tier >= 2 && head) {
+    const hs = head.getSize(new THREE.Vector3());
+    const hc = head.getCenter(new THREE.Vector3());
+    const n = tier >= 3 ? 7 : 5;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const len = hs.y * (tier >= 3 ? 0.75 : 0.5) * (i % 2 ? 0.7 : 1);
+      const sp = horn(len, hs.x * 0.07, 0);
+      place(sp, hc.x + Math.cos(a) * hs.x * 0.36, head.max.y - hs.y * 0.18, hc.z + Math.sin(a) * hs.z * 0.36, Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
+      b.addAs('head', sp, 'trim');
+    }
+    const circlet = new THREE.TorusGeometry(1, 0.08, 5, 18);
+    circlet.rotateX(Math.PI * 0.5);
+    circlet.scale(hs.x * 0.4, hs.y * 0.3, hs.z * 0.4);
+    circlet.translate(hc.x, head.max.y - hs.y * 0.2, hc.z);
+    b.addAs('head', circlet, 'trim');
+  }
+
+  // A spined back: elites and bosses.
+  if (tier >= 2 && chest && cs && cc) {
+    const n = tier >= 3 ? 6 : 4;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1) - 0.5;
+      const sp = horn(Math.max(cs.y, cs.z) * (tier >= 3 ? 0.45 : 0.3) * (1 - Math.abs(t)), Math.max(cs.x, 0.1) * 0.06, 0.3);
+      if (upright) place(sp, cc.x, cc.y + t * cs.y * 0.8, chest.min.z + cs.z * 0.1, -2.0, 0, 0);
+      else place(sp, cc.x, chest.max.y - cs.y * 0.05, cc.z + t * cs.z * 0.8, -0.6, 0, 0);
+      b.addAs('chest', sp, 'trim');
+    }
+  }
+
+  // Bosses: a burning core and a cape.
+  if (tier >= 3 && chest && cs && cc) {
+    const core = sphereGeo(Math.min(cs.x, cs.y) * 0.13, 1);
+    place(core, cc.x, cc.y + cs.y * 0.08, chest.max.z - cs.z * 0.04);
+    b.addGlow('chest', core);
+    if (upright) {
+      try {
+        const cape = clothPanel(cs.x * 1.1, cs.y * 2.6, rng, { segsX: 6, segsY: 10, ripple: 0.04, flare: 0.5, tatter: 0.25 });
+        cape.rotateY(Math.PI);
+        cape.translate(cc.x, chest.max.y - cs.y * 0.08, chest.min.z - cs.z * 0.04);
+        const pos = cape.getAttribute('position') as THREE.BufferAttribute;
+        const top = chest.max.y - cs.y * 0.08;
+        for (let i = 0; i < pos.count; i++) pos.setZ(i, pos.getZ(i) - Math.max(0, top - pos.getY(i)) * 0.22);
+        cape.computeVertexNormals();
+        b.addAs('chest', cape, 'alt');
+      } catch {
+        /* a cape is a nicety */
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Assembly
+// ---------------------------------------------------------------------------
+
+function buildPrototype(v: MonsterVisual, rng: Rng, opts: MonsterLookOpts): Prototype {
   const archetype = monsterArchetype(v.body);
   let plan: BuildResult;
   switch (archetype) {
@@ -1111,21 +1606,9 @@ function buildPrototype(v: MonsterVisual, rng: Rng): Prototype {
   const { root, bones } = buildBones(plan.specs);
   const builder = new Builder(rng, v);
   plan.build(builder);
-
-  // Group parts per bone and merge, so each animated joint costs one draw call.
-  const byBone = new Map<string, { solid: THREE.BufferGeometry[]; glow: THREE.BufferGeometry[] }>();
-  for (const part of builder.parts) {
-    if (!bones[part.bone]) {
-      part.geo.dispose();
-      continue;
-    }
-    let entry = byBone.get(part.bone);
-    if (!entry) {
-      entry = { solid: [], glow: [] };
-      byBone.set(part.bone, entry);
-    }
-    (part.glow ? entry.glow : entry.solid).push(part.geo);
-  }
+  const tier = rankTier(opts.rank);
+  dressFamily(builder, opts.family, archetype);
+  dressRank(builder, tier, archetype);
 
   const isOoze = archetype === 'ooze';
   // Only actual metal is metal. Treating 'stone' as a construct put every
@@ -1135,25 +1618,57 @@ function buildPrototype(v: MonsterVisual, rng: Rng): Prototype {
   const isMetal = v.palette.startsWith('metal');
   const isStone = v.palette.startsWith('stone');
   const rough = isOoze ? 0.28 : isMetal ? 0.5 : isStone ? 0.78 : 0.85;
-  const bodyMat = bodyMaterial(v.palette, rough, isMetal ? 0.7 : 0.02);
-  const glowMat = glowMaterial(v.glow ?? 0xff6030, v.glow === undefined ? 0.6 : 2.2);
+  const eye = v.glow ?? FAMILY_EYE[opts.family ?? ''] ?? 0xff6030;
+  const altKey = FAMILY_ALT[opts.family ?? ''] ?? 'cloth.tattered|0x4a443c';
+  const mats: Record<PartMat, THREE.Material> = {
+    body: bodyMaterial(v.palette, rough, isMetal ? 0.7 : 0.02),
+    glow: glowMaterial(eye, v.glow === undefined ? 1.4 : 2.2 + tier * 0.4),
+    trim: bodyMaterial(tier >= 3 ? 'metal.gold|0xc8a050' : tier >= 2 ? 'metal.gold' : 'metal.steel', 0.45, 0.85),
+    alt: bodyMaterial(altKey, altKey.startsWith('metal') ? 0.5 : 0.9, altKey.startsWith('metal') ? 0.7 : 0.02),
+    rank: glowMaterial(RANK_GLOW[opts.rank ?? ''] ?? eye, 1.8),
+  };
 
-  for (const [boneName, entry] of byBone) {
-    const bone = bones[boneName]!;
-    if (entry.solid.length) {
-      const merged = safeMerge(entry.solid);
-      const mesh = new THREE.Mesh(merged, bodyMat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = false;
-      mesh.name = `${boneName}.body`;
-      bone.add(mesh);
+  // One skinned mesh per material for the whole creature, every vertex bound
+  // rigidly to its bone. The old build was one mesh per bone, ~20 draw calls a
+  // monster; this is three to five, which is what lets a floor hold a crowd.
+  // Bones carry no bind-pose rotation, so bone space to model space is a pure
+  // translation and the rigid binding is exact.
+  root.updateMatrixWorld(true);
+  const order = plan.specs.map((sp) => bones[sp.name]!).filter(Boolean);
+  const index = new Map(order.map((bn, i) => [bn.name, i]));
+  const buckets = new Map<PartMat, THREE.BufferGeometry[]>();
+  for (const part of builder.parts) {
+    const bone = bones[part.bone];
+    if (!bone) {
+      part.geo.dispose();
+      continue;
     }
-    if (entry.glow.length) {
-      const merged = safeMerge(entry.glow);
-      const mesh = new THREE.Mesh(merged, glowMat);
-      mesh.name = `${boneName}.glow`;
-      bone.add(mesh);
+    const g = part.geo;
+    g.applyMatrix4(bone.matrixWorld);
+    skinRigid(g, index.get(bone.name) ?? 0);
+    const list = buckets.get(part.mat) ?? [];
+    list.push(g);
+    buckets.set(part.mat, list);
+  }
+  const skeleton = new THREE.Skeleton(order);
+  for (const [key, list] of buckets) {
+    let geo: THREE.BufferGeometry;
+    try {
+      geo = mergeSkinned(list);
+    } catch {
+      continue;
     }
+    for (const g of list) g.dispose();
+    const mesh = new THREE.SkinnedMesh(geo, mats[key]);
+    mesh.name = `monster.${key}`;
+    mesh.castShadow = key !== 'glow' && key !== 'rank';
+    mesh.receiveShadow = false;
+    root.add(mesh);
+    mesh.bind(skeleton, new THREE.Matrix4());
+    // Culling bounds: the bind-pose bounds, grown to cover a limb's swing.
+    geo.computeBoundingSphere();
+    mesh.boundingSphere = geo.boundingSphere!.clone();
+    mesh.boundingSphere.radius *= 1.5;
   }
 
   // --- weapon -------------------------------------------------------------
@@ -1189,7 +1704,7 @@ function buildPrototype(v: MonsterVisual, rng: Rng): Prototype {
   }
 
   root.updateMatrixWorld(true);
-  return { root, boneNames: plan.specs.map((s) => s.name), archetype };
+  return { root, boneNames: plan.specs.map((sp) => sp.name), archetype, skeleton };
 }
 
 /** What each monster weapon is made of. Cheap gear: iron, wood, bone. */
@@ -1206,13 +1721,12 @@ const WEAPON_PALETTE: Record<string, string> = {
 /**
  * Builds a monster model. Repeat calls for the same visual reuse one of a small
  * pool of cached prototypes, so a pack of twelve ghouls shares three geometries.
+ * `opts` says what family the creature belongs to and how important it is, so
+ * the family reads in its silhouette and a champion, an elite and a boss look
+ * tougher than the rank and file.
  */
-export function buildMonsterModel(
-  visual: MonsterVisual,
-  rng: Rng,
-  scale: number,
-): MonsterModel {
-  const key = cacheKey(visual);
+export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number, opts: MonsterLookOpts = {}): MonsterModel {
+  const key = cacheKey(visual, opts);
   let variants = prototypeCache.get(key);
   if (!variants) {
     variants = [];
@@ -1220,7 +1734,7 @@ export function buildMonsterModel(
   }
   const wanted = Math.min(VARIANTS_PER_KEY, 1 + Math.floor(rng.next() * VARIANTS_PER_KEY));
   while (variants.length < wanted) {
-    variants.push(buildPrototype(visual, rng.fork(`proto:${key}:${variants.length}`)));
+    variants.push(buildPrototype(visual, rng.fork(`proto:${key}:${variants.length}`), opts));
   }
   const proto = variants[Math.floor(rng.next() * variants.length)] ?? variants[0]!;
 
@@ -1229,13 +1743,37 @@ export function buildMonsterModel(
   root.traverse((o) => {
     if ((o as THREE.Bone).isBone) bones[o.name] = o as THREE.Bone;
   });
+  // A clone shares its prototype's skeleton, which would make every ghoul in a
+  // pack dance to the first one's bones. Each instance gets its own skeleton
+  // over its own bones; the inverse bind matrices are shared, read-only.
+  const own = new THREE.Skeleton(
+    proto.skeleton.bones.map((bn) => bones[bn.name]!),
+    proto.skeleton.boneInverses,
+  );
+  root.traverse((o) => {
+    const sm = o as THREE.SkinnedMesh;
+    if (sm.isSkinnedMesh) sm.bind(own, sm.bindMatrix);
+  });
+  root.userData.monsterSkeleton = own;
   root.scale.setScalar(scale);
   // A touch of per-instance asymmetry so a pack does not look stamped.
   root.scale.x *= rng.range(0.96, 1.04);
   root.scale.z *= rng.range(0.96, 1.04);
   root.updateMatrixWorld(true);
 
-  return { root, bones, skeleton: null };
+  return { root, bones, skeleton: own };
+}
+
+/**
+ * Frees what one spawned monster owns: its skeleton's bone texture. Geometry
+ * and materials belong to the shared prototype cache and are left alone.
+ */
+export function releaseMonsterModel(root: THREE.Object3D): void {
+  const skel = root.userData?.monsterSkeleton as THREE.Skeleton | undefined;
+  if (skel) {
+    skel.dispose();
+    root.userData.monsterSkeleton = undefined;
+  }
 }
 
 /** Releases every cached prototype, geometry and material. Call between runs. */
@@ -1246,6 +1784,7 @@ export function disposeMonsterModels(): void {
         const m = o as THREE.Mesh;
         if (m.geometry) m.geometry.dispose();
       });
+      p.skeleton.dispose();
     }
   }
   prototypeCache.clear();

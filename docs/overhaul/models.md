@@ -6,16 +6,15 @@ Status: in progress
 
 - [x] Player bodies: better proportions, anatomy and silhouette per class; faces and hair with character; materials with real skin, cloth, leather and metal response. ("Models: real bodies and armour cut to fit them")
 - [x] Equipped gear on the body: helm, chest, gloves, boots, belt and shield show the actual item worn. Shape, material and ornament change with the item's base, tier and rarity, so upgrading visibly changes your character. Uniques and sets look unique. ("Models: real bodies and armour cut to fit them")
-- [ ] Monster looks: a distinct, readable silhouette per family, more detail and material variety, elites and champions visibly tougher, bosses that look like bosses.
+- [x] Monster looks: a distinct, readable silhouette per family, more detail and material variety, elites and champions visibly tougher, bosses that look like bosses. ("Models: monsters by family and rank, one skinned mesh per material")
 - [ ] Town NPCs: each camp NPC built for their role (smith, vendor, healer, stash keeper and the rest), with clothing and props that say who they are.
 - [ ] Level of detail and budgets: far-away models get cheaper, crowds of monsters stay smooth, nothing visibly pops.
 - [ ] Sweep: a turntable render of every class in low, mid and top gear, every monster family and every NPC, checked for clipping, floating parts and style drift.
 
 ## Next up
 
-Milestone 3, monsters. Plan (see "Monsters" in the notes): optional 4th arg `{ family, rank }` to
-`buildMonsterModel`, family and rank dressing placed against each bone's bounds, one rigid-weighted
-SkinnedMesh per material instead of one mesh per bone, tints that read as the authored colour.
+Milestone 4, town NPCs: `src/art/NpcModels.ts` with `NPC_LOOK_IDS` and `buildNpcModel(id, rng)`, one
+look per resident from `src/data/story/npcs.ts`, wired into `Town.ts` `npc()` (mapping in the notes).
 
 ## Notes for resume
 
@@ -73,6 +72,26 @@ Checker status at this checkpoint: `check-grips` passes. `check-worn` and `check
 screenshot step with no page errors but timed out taking the screenshot (30 s Playwright default) with the
 machine at load average ~24; rerun them when the machine is quieter. `check-body`, `check-fabric`,
 `check-clips` are visual/boot tools that do not touch the changed code paths in a way that can fail.
+
+Monsters (`src/entities/MonsterModels.ts`):
+- `buildMonsterModel(visual, rng, scale, { family, rank })`; Enemy passes `def.family` and its rank. The
+  prototype cache key includes both. `dressFamily` adds what makes a family read (undead rags and mantle,
+  demon horns and burning seams, beast ears and hackles, construct core, grille, rivets and plates, insect
+  feelers and carapace ridges, aberration eye stalks and tentacles, elemental shards and core, humanoid
+  hood, belt and pouch, plant leaves and a glowing bulb). `dressRank` adds steel pauldrons and a blue
+  band (champion), a gold crown, spikes, spined back and gold band (elite, orange band for rare), and for
+  bosses all of that grander plus a cape and a burning core. Everything is placed against the bounds of
+  what each bone already carries (`boxOf`), so one rule fits a goblin and a colossus.
+- Assembly: one SkinnedMesh per material (`body`, `glow`, `trim`, `alt`, `rank`), every vertex rigidly
+  bound to its bone; 2-5 draw calls a monster (weapon extra), was ~20. Each clone gets its own Skeleton
+  over its own bones (shared inverse matrices); `releaseMonsterModel(root)` frees it, called from
+  `Enemy.dispose`. Culling uses a padded `boundingSphere` on each SkinnedMesh.
+- Tints (`palette: 'key|0xRRGGBB'`) are now the creature's albedo (`albedoTint` divides by the palette
+  base), not a multiplier on it: the bestiary was rendering near-black. Eyes always glow (family colour
+  when the visual has none). Limbs are rounded lathes, not open cylinders.
+- `RigAnimator` is untouched and still lives here. Animation stream: when monster motion moves to
+  `src/art/MonsterAnimation.ts`, change the class here to `export { RigAnimator } from
+  '../art/MonsterAnimation'` (models agrees in advance); it only touches bones, so skinning is fine.
 
 Requests to other streams:
 - art: adopt `GearLook.gearLook` for trim/set colour in `ItemModels` (see above).

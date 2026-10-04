@@ -30,7 +30,7 @@ import { events } from '../core/Events';
 import { activeDifficulty } from '../data/difficulties';
 import { emptyStats } from '../sim/Stats';
 import { rollDamage, mitigate } from '../sim/Combat';
-import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from './MonsterModels';
+import { buildMonsterModel, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from './MonsterModels';
 import { AIBrain, resetPacks } from './AI';
 import {
   after,
@@ -394,7 +394,8 @@ export class Enemy implements Combatant {
     // --- model -------------------------------------------------------------
     this.root = new THREE.Group();
     this.root.name = `enemy:${def.id}`;
-    const model = buildMonsterModel(def.visual, rng, this.sizeScale);
+    // Family and rank shape the look: an elite wears its rank, a boss looks like one.
+    const model = buildMonsterModel(def.visual, rng, this.sizeScale, { family: def.family, rank });
     this.bodyRoot = model.root;
     this.root.add(model.root);
     this.rig = new RigAnimator(model.root, model.bones, monsterArchetype(def.visual.body), rng);
@@ -1846,6 +1847,8 @@ export class Enemy implements Combatant {
     this.inst = null;
     this.ai = null;
     this.root.parent?.remove(this.root);
+    // The instance's own skeleton (its bone texture) is the one thing it owns.
+    releaseMonsterModel(this.bodyRoot);
     // Geometry and materials belong to the shared prototype cache in
     // MonsterModels — releasing them here would break every other spawn.
     // `disposeMonsterCache()` handles them at run teardown.
