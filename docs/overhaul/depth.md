@@ -41,7 +41,7 @@ To resume, in order:
    matches.
 2. If a station sits badly in camp, move it in `STATIONS`
    (`src/scenes/TownStations.ts`): gambler's table east at x 16.4, z 1;
-   enchanter's lectern west at x -17, z 2; bounty board at x 5, z -10.5.
+   enchanter's lectern west at x -13.8, z 0.3 (it sat inside the broken cart at x -17); bounty board at x 5, z -10.5.
 3. When combat's class-vs-depth harness (their milestone 6) lands, read its
    numbers next to `tools/check-economy.mjs` and retune gear scaling if a class
    is walled (make the class stronger; never monsters weaker or fewer).
@@ -93,7 +93,7 @@ To resume, in order:
   shrine blessings, boons, tonics and run statuses now count. Combat may want to
   check nothing double-counts (a slow status that also slows in movement code).
 - world: `src/scenes/TownStations.ts` puts three small stations in camp
-  (gambler's table east at x 16.4, enchanter's lectern west at x -17, bounty
+  (gambler's table east at x 16.4, enchanter's lectern west at x -13.8, bounty
   board by the gate path at x 5, z -10.5) and adds their colliders to
   `town.colliders`. If the camp layout moves, move `STATIONS`. TownScene got two
   small edits: `mountTownStations(...)` in `enter`, and `descend` now goes

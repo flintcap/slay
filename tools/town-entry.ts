@@ -16,6 +16,9 @@
  *      that pays gold, Renown and an item. Targets are reachable in a couple
  *      of real generated runs.
  *   5. Wiring (in check-town.mjs). Every seam the live game needs is present.
+ *   6. Placement. Each station stands clear of the camp's own colliders, and
+ *      its stand spot is walkable and not inside another service's prompt.
+ *      The lectern once sat inside the broken cart, which only a render showed.
  */
 import './depth-catalog';
 import type { Character, Item, ItemRarity, MonsterRank } from '../src/types';
@@ -27,6 +30,8 @@ import { getBase, rollItem, vendorPrice, AFFIXES } from '../src/sim/Loot';
 import { getPower } from '../src/sim/ItemPowers';
 import { generateRun } from '../src/world/DungeonGen';
 import { RunDirector } from '../src/scenes/RunDirector';
+import { buildTown } from '../src/world/Town';
+import { STATIONS } from '../src/scenes/TownStations';
 import {
   BOARD_SIZE,
   BOUNTY_KINDS,
@@ -300,5 +305,38 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
 
 // 5. Wiring is checked by check-town.mjs, which reads the sources.
 for (const id of ['gambler', 'enchanter', 'bounties']) if (!LEGACY_UNLOCKS.some((u) => u.id === id)) problems.push(`no Legacy unlock for ${id}`);
+
+// 6. Placement, against the camp TownScene builds (same fixed seed).
+{
+  const town = buildTown(new Random(0x70b6));
+  const prompts = [...Object.entries(town.npcSpots).map(([k, v]) => ({ k, x: v.x, z: v.z, r: 2.4 })), { k: 'portal', x: town.portalSpot.x, z: town.portalSpot.z, r: 2.8 }];
+  const placed: string[] = [];
+  for (const s of STATIONS) {
+    const [x, z] = s.at;
+    const margin = 0.7 + 0.4;
+    for (const c of town.colliders) {
+      if (Math.abs(c.x - x) < c.w / 2 + margin && Math.abs(c.z - z) < c.d / 2 + margin) {
+        problems.push(`${s.id} at ${x},${z} runs into a camp collider at ${c.x.toFixed(1)},${c.z.toFixed(1)} (${c.w.toFixed(1)}x${c.d.toFixed(1)})`);
+      }
+    }
+    const sx = x + Math.sin(s.facing) * 1.4;
+    const sz = z + Math.cos(s.facing) * 1.4;
+    if (Math.hypot(sx, sz) > 20.5) problems.push(`${s.id}'s stand spot is against the palisade`);
+    if (town.colliders.some((c) => Math.abs(c.x - sx) < c.w / 2 + 0.35 && Math.abs(c.z - sz) < c.d / 2 + 0.35)) problems.push(`${s.id}'s stand spot is blocked`);
+    for (const p of prompts) {
+      const d = Math.hypot(p.x - sx, p.z - sz);
+      if (d < p.r + 0.4) problems.push(`${s.id}'s stand spot is ${d.toFixed(1)} from the ${p.k} prompt`);
+    }
+    placed.push(`${s.id} ${x},${z}`);
+  }
+  for (let i = 0; i < STATIONS.length; i++) {
+    for (let j = i + 1; j < STATIONS.length; j++) {
+      const a = STATIONS[i].at;
+      const b = STATIONS[j].at;
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 6) problems.push(`${STATIONS[i].id} and ${STATIONS[j].id} crowd each other`);
+    }
+  }
+  report.placement = placed;
+}
 
 console.log(JSON.stringify({ problems, report }));
