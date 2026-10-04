@@ -47,6 +47,8 @@ import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
 import { clearBuyBack } from '../sim/BuyBack';
 import { PowerRuntime } from './PowerRuntime';
+import { RunDirector } from './RunDirector';
+import { legacyXpMultiplier } from '../sim/Legacy';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 
 /** What the prompt calls each thing you can use. */
@@ -195,6 +197,8 @@ export class DungeonScene extends GameScene {
   private vaultOpen = false;
   /** Item powers and life/mana steal. See `PowerRuntime`. */
   private powers: PowerRuntime | null = null;
+  /** Legacy renown, codex and lifetime tally. See `RunDirector`. */
+  private director: RunDirector | null = null;
 
   constructor(engine: Engine) {
     super();
@@ -261,6 +265,8 @@ export class DungeonScene extends GameScene {
       },
       dropBonus: (at, ilvl) => this.dropItem(rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind }), at),
     });
+    this.director?.dispose();
+    this.director = new RunDirector(depth);
 
     // A light on the hero is standard for the genre: torch placement is
     // procedural, so without it the player regularly ends up in pitch black.
@@ -526,6 +532,7 @@ export class DungeonScene extends GameScene {
     // The name of the place, not just the number. Two crypt runs wear
     // different variants and the header is where you notice.
     const place = variantLabel(this.biome.id, this.level?.variant);
+    this.director?.onFloor(index);
     events.emit('depth:changed', {
       depth: this.run.depth,
       level: index + 1,
@@ -1184,7 +1191,8 @@ export class DungeonScene extends GameScene {
     const c = this.player.character;
     const dif = activeDifficulty();
     const xpMul = rank === 'boss' ? 22 : rank === 'rare' ? 5 : rank === 'elite' ? 3.2 : rank === 'champion' ? 1.9 : 1;
-    const xp = Math.round((8 + this.run.depth * 6) * xpMul * dif.xp);
+    const xp = Math.round((8 + this.run.depth * 6) * xpMul * dif.xp * legacyXpMultiplier());
+    this.director?.onKill(rank);
     if (grantXp(c, xp)) {
       this.player.refreshStats();
       // Levelling up is a full heal, as the genre expects.
@@ -1539,6 +1547,7 @@ export class DungeonScene extends GameScene {
       if (this.run.depth > save.account.bestDepth) save.account.bestDepth = this.run.depth;
       this.awardQuestIfComplete();
       save.setCharacter(c);
+      this.director?.onRunCleared();
       events.emit('run:cleared', { depth: this.run.depth });
       toast(`Depth ${this.run.depth} cleared.`, 'epic');
       void this.engine.goTo('town');
@@ -1615,6 +1624,7 @@ export class DungeonScene extends GameScene {
       playtime: c.playtime,
     };
     // The roguelike contract: the character is gone, the stash is not.
+    this.director?.onDeath();
     save.killCharacter(payload.killedBy, this.run.depth);
     setTimeout(() => {
       void this.engine.goTo('death', payload);
@@ -1643,6 +1653,8 @@ export class DungeonScene extends GameScene {
     this.offs = [];
     this.powers?.dispose();
     this.powers = null;
+    this.director?.dispose();
+    this.director = null;
     for (const e of this.enemies) e.dispose();
     this.enemies = [];
     this.boss?.dispose();

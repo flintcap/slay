@@ -68,6 +68,7 @@ import {
 } from '../data/gems';
 import type { GemBonus } from '../data/gems';
 import { rollPowerAffix, powerWord, powerLines, powerValue } from './ItemPowers';
+import { legacyPriceMultiplier } from './Legacy';
 import { MATERIALS, materialDropPool, materialName } from '../data/materials';
 
 // ---------------------------------------------------------------------------
@@ -1029,7 +1030,7 @@ export function vendorPrice(item: Item, buying: boolean): number {
     value += powerValue(item) * (1 + item.ilvl / 30);
   }
 
-  if (buying) return Math.max(1, Math.round(value * 3.2));
+  if (buying) return Math.max(1, Math.round(value * 3.2 * legacyPriceMultiplier()));
   return Math.max(1, Math.round(value * 0.28));
 }
 

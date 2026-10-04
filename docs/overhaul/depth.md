@@ -6,7 +6,8 @@ Status: in progress
 
 - [x] Itemisation: more affixes and tiers, uniques with signature effects, item sets, and a loot filter.
       Commit: "Make every unique's power real, add power affixes, set powers and a loot filter"
-- [ ] Progression across runs: a meta progression track and unlocks so every run moves you forward.
+- [x] Progression across runs: a meta progression track and unlocks so every run moves you forward.
+      Commit: "Legacy: renown, perks, unlocks and a codex that survive every death"
 - [ ] Dungeon events: cursed chests, ambushes, treasure runners, shrines with choices. (Elite affixes and mini-bosses moved to the combat stream.)
 - [ ] Town systems: crafting or enchanting, a gambling vendor, a bounty board with rewards.
 - [ ] Run variety: depth milestones with rewards, more run modifiers, reasons to push deeper.
@@ -14,27 +15,31 @@ Status: in progress
 
 ## Next up
 
-Milestone 2, Legacy (meta progression). `src/sim/Legacy.ts` is written but NOT
-wired yet (nothing imports it). To finish:
+Milestone 3, dungeon events. Plan (nothing written yet):
 
-1. `main.ts`: `bindLegacyAccount(() => save.account)` after `save.load()`.
-2. `Stats.computeStats`: call `applyLegacyStats(out)` next to `applyPowerStats`.
-3. `Character.createCharacter`: call `legacyStartingBonus(c)` and add that many
-   `potion.heal.minor` with `makeStartingItem`.
-4. `Loot.vendorPrice(buying)`: multiply by `legacyPriceMultiplier()`;
-   `Crafting.salvage`: multiply yields by `legacySalvageMultiplier()`.
-5. A new `src/scenes/RunDirector.ts` owned by DungeonScene (same pattern as
-   `PowerRuntime`): grants renown on kill (`grantKill`), floor change
-   (`loadLevel`), run clear (`checkExit`), boss kill, quest complete, new
-   best depth; records codex on `loot:pickedUp` for unique/set/mythic/ancient;
-   bumps `legacy.stats`; toasts rank-ups and unlocks. Multiply kill XP in
-   `grantKill` by `legacyXpMultiplier()`.
-6. `src/ui/LegacyPanel.ts` (hotkey G) registered in `src/ui/DepthUI.ts`:
-   renown bar, perk list with buy buttons, unlock list, codex counts, lifetime
-   stats. `stashTab` unlock calls `save.addStashTab()` once.
-7. Checker `tools/check-legacy.mjs` + `tools/legacy-entry.ts`: old saves get a
-   legacy block, renown curve sane (first run reaches rank 1-2), every perk
-   changes the sheet or its multiplier, unlocks fire at their rank.
+1. `DungeonGen.ts`: after `placeProps`, a `placeEvents(level, depth, rng.fork('events'))`
+   step appends event props on free walkable tiles of `normal` rooms, away from
+   spawns, stairs and other props: `chest` with interact `chest.cursed`,
+   `bonepile` with `corpse.ambush`, `shrine` with `shrine.choice`; and records a
+   treasure runner in a new optional `DungeonLevel.events` list.
+2. New `src/scenes/RunEvents.ts` owned by DungeonScene (pattern of
+   `PowerRuntime`): `interact(it)` returns true when it handled an event prop
+   (call it in `tickInteractables` before the vault check), `update(dt)`,
+   `onKill(enemy)`, `onLevel()` to spawn the runner.
+   - Cursed chest: opening seals it and spawns two waves of champions/elites
+     around it; kill them inside 40s and it opens with boss-rank loot, else it
+     crumbles to dust.
+   - Fallen adventurer: loot a bone pile, then an ambush pack steps out of the
+     dark all around you; killing it drops a guaranteed rare.
+   - Treasure runner ("the Hoarder"): a named rare with `ai = null`, driven by
+     `motionOverride` dashes away from the player, dropping coins; escapes 30s
+     after it sees you. Kill it for a gold fountain, 3-5 items, materials.
+   - Shrine of choices: a small chooser panel (`src/ui/ChoicePanel.ts`) offers
+     three bargains (boon with a cost). Boons are statuses registered at runtime
+     with `registerStatus` from a new `src/data/boons.ts`, so the HUD shows them.
+3. Renown for completing each event via `RunDirector`.
+4. Checker `tools/check-events.mjs`: events are placed at sane rates on
+   walkable, unblocked tiles, never on stairs; each boon status resolves.
 
 ## Notes for resume
 
@@ -65,6 +70,14 @@ wired yet (nothing imports it). To finish:
   fires, sets apply, power affixes and every rarity drop, filter works.
   `npm run build && SLAY_PORT=4306 node tools/smoke-depth.mjs` boots the real
   game and drives hits through the live runtime (slow: many minutes).
+- **Legacy** (`src/sim/Legacy.ts`): renown is fractional (a normal kill is
+  ~0.15). Curve tuned by `tools/check-legacy.mjs` from real generated runs:
+  a cleared first run is rank 1, rank 5 by about run 5, rank ~44 by run 40.
+  Unlock ranks: bounties 2, gambler 3, enchanter 5, waypoints 7, pacts 9,
+  stash tab 12, perk cap 20. The town services for milestone 4 must check
+  `hasUnlock(save.account, id)`.
+- `RunDirector` is created in `DungeonScene.enter`; it is the place to add any
+  "this moment is worth something" rule (events, bounties, milestones).
 - Requests for other streams (logged, not done by depth):
   - feel: `SkillRunner.afterHit` returns early unless `arcChance` or
     `conductSharePct` > 0, so crit riders, Flurry stacks and minion leech never

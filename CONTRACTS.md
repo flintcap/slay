@@ -386,3 +386,24 @@ export function registerPanel(id: string, handle: PanelHandle, hotkey?: string):
 
 `src/ui/DepthUI.ts` (DEPTH) builds and registers every depth panel; `main.ts`
 calls `mountDepthUI()` right after `mountUI`.
+
+## `src/sim/Legacy.ts` — owned by DEPTH
+
+Account progression that survives death. State lives on `AccountSave.legacy`
+(repaired by `legacyOf`, back-credited for old saves).
+
+```ts
+export function legacyOf(account: AccountSave): LegacyState;
+export function grantRenown(account: AccountSave, amount: number): RenownGain; // ranks + unlocks crossed
+export function hasUnlock(account: AccountSave, id: string): boolean; // 'bounties','gambler','enchanter','waypoints','pacts','stashTab','perkCap'
+export function bindLegacyAccount(fn: () => AccountSave | null): void;   // main.ts binds save.account
+export function applyLegacyStats(s: Stats): void;     // called by computeStats
+export function legacyXpMultiplier(): number;         // DungeonScene.grantKill
+export function legacyPriceMultiplier(): number;      // Loot.vendorPrice(buying)
+export function legacySalvageMultiplier(): number;    // Crafting.salvage
+export function legacyStartingBonus(c: Character): { gold: number; potions: number }; // createCharacter
+```
+
+`src/scenes/RunDirector.ts` (DEPTH) is DungeonScene's seam for renown, the
+Codex and the lifetime tally: `onFloor(index)`, `onKill(rank)`,
+`onRunCleared()`, `onDeath()`. Panel: `src/ui/LegacyPanel.ts`, hotkey G.

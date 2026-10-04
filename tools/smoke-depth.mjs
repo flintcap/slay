@@ -82,11 +82,17 @@ const result = await page.evaluate(async () => {
   plain.sockets = [];
   scene.dropItem(plain, scene.player.position);
   out.filterHid = scene.loot[scene.loot.length - 1]?.hidden === true;
+  // Legacy: killing things earns renown that is banked at once.
+  const renown0 = S.save.account.legacy?.renown ?? 0;
+  for (const e of scene.enemies.slice(0, 6)) e.takeDamage({ amount: 1e9, type: 'physical', crit: false, source: 'player', ability: 'Attack' }, ctx);
+  for (let i = 0; i < 90; i++) await new Promise((r) => requestAnimationFrame(r));
+  out.renownGained = (S.save.account.legacy?.renown ?? 0) - renown0;
+  out.kills = S.save.account.legacy?.stats?.kills ?? 0;
   return out;
 });
 
 // Every depth panel opens without throwing.
-const panels = ['lootFilter'];
+const panels = ['lootFilter', 'legacy'];
 for (const id of panels) {
   await page.evaluate((p) => window.SLAY.events.emit('ui:open', { panel: p }), id);
   await sleep(300);
@@ -97,6 +103,6 @@ for (const id of panels) {
 
 console.log(JSON.stringify({ result, errors }, null, 2));
 await browser.close();
-const bad = errors.length > 0 || result.error || !result.cleaveLanded || !result.chilled || !result.leeched || !result.filterHid;
+const bad = errors.length > 0 || result.error || !result.cleaveLanded || !result.chilled || !result.leeched || !result.filterHid || !(result.kills > 0);
 console.log(bad ? 'FAILED' : 'OK — depth systems work in the live game.');
 process.exit(bad ? 1 : 0);

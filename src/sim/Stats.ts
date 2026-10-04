@@ -31,6 +31,7 @@ import { passiveEffects } from './Passives';
 import { peekStatuses } from './Status';
 import { itemStats, setBonusesFor } from './Loot';
 import { applyPowerStats } from './ItemPowers';
+import { applyLegacyStats } from './Legacy';
 import { getSet } from '../data/sets';
 
 export const MAX_LEVEL = 99;
@@ -493,6 +494,8 @@ export function computeStats(c: Character): Stats {
 
   // --- item powers that reshape the sheet (Hollow Pact, Bearform, ...) -----
   applyPowerStats(c, out);
+  // --- Legacy perks: what the account has earned across every life ---------
+  applyLegacyStats(out);
 
   // --- clamps ---------------------------------------------------------------
   out.life = Math.max(1, Math.round(out.life));

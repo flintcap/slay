@@ -29,6 +29,7 @@ import { AFFIXES, eligibleTiers } from './Loot';
 import { maxSockets } from '../data/itemBases';
 import { getSocketable, gemUpgradeRecipe, GEMS } from '../data/gems';
 import { formatMaterials, materialName, salvagePool } from '../data/materials';
+import { legacySalvageMultiplier } from './Legacy';
 
 export type CraftResult = { ok: boolean; reason?: string };
 
@@ -384,7 +385,7 @@ export function salvage(item: Item): Record<string, number> {
   }
 
   const yieldMul = SALVAGE_YIELD[item.rarity] ?? 1;
-  const scale = (1 + base.levelReq * 0.045) * yieldMul * (1 + item.upgrade * 0.12);
+  const scale = (1 + base.levelReq * 0.045) * yieldMul * (1 + item.upgrade * 0.12) * legacySalvageMultiplier();
 
   const pool = salvagePool(item.rarity, item.ilvl);
   if (pool.length === 0) {

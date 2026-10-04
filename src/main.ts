@@ -30,6 +30,10 @@ async function main(): Promise<void> {
   boot(0.05, 'Reading the ledger of the fallen…');
   await tick();
   save.load();
+  // Legacy perks apply to every character; the sim reads the account through this.
+  const { bindLegacyAccount, legacyOf } = await import('./sim/Legacy');
+  bindLegacyAccount(() => save.account);
+  legacyOf(save.account);
   // Saves made before the starter-skill change load with a bar full of skills
   // at rank 0 and no way to attack; repair them in place.
   if (save.account.current) {

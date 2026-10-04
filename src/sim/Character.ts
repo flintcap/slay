@@ -34,6 +34,7 @@ import {
 import { MAX_LEVEL, computeStats, effectiveRank, xpForLevel } from './Stats';
 import { skillPointsForLevel, statPointsForLevel } from './Progression';
 import { getBase } from './Loot';
+import { legacyStartingBonus } from './Legacy';
 import { ONE_HAND_MELEE } from '../data/itemBases';
 
 // ---------------------------------------------------------------------------
@@ -124,6 +125,13 @@ export function createCharacter(
   // One of each potion, so the first fight has an out.
   for (const potionId of ['potion.heal.minor', 'potion.mana.minor']) {
     const potion = makeStartingItem(potionId, rng);
+    if (potion) addToInventory(c, potion);
+  }
+
+  // Legacy: what the account has earned gives every new life a head start.
+  const legacy = legacyStartingBonus(c);
+  for (let i = 0; i < legacy.potions; i++) {
+    const potion = makeStartingItem('potion.heal.minor', rng);
     if (potion) addToInventory(c, potion);
   }
 
