@@ -1,6 +1,6 @@
 # Stream: combat (how fighting plays)
 
-Status: in progress
+Status: done (all milestones ticked)
 
 ## Milestones
 
@@ -16,7 +16,10 @@ Status: in progress
 
 All seven milestones are done. If more time is given, good follow-ups:
 1. A live render (`SLAY_PORT=4307 node tools/screenshot.mjs --out=shots/combat
-   --shots=town,dungeon`) to eyeball combos (`Name!` text) and hero numbers.
+   --shots=dungeon`) to eyeball combos (`Name!` text) and hero numbers. The one
+   tried at the end of this session booted into the dungeon with no game
+   errors, but the page screenshot timed out (machine load ~10 on 4 cores).
+   `npm run build` is clean.
 2. Re-run `node tools/check-curve.mjs` after any item, progression or monster
    change; widen it to depths 60 and 80 if the deep game matters.
 
