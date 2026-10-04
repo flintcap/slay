@@ -805,6 +805,12 @@ export class DungeonMesh {
             if (v === T_CHASM) {
               // A chasm is a hole: drop the walls of the pit and no floor at all.
               this.emitPitWalls(surfs, x, y, wx, wz, hy, WALL0);
+              // Molten biomes: the level's own lava, four metres down. The
+              // height fog swallows most of it, so what is left is an ember
+              // glow at the bottom rather than a flat black cut-out.
+              if (art.liquid === 'lava' || art.liquid === 'voidwater') {
+                surfs[LIQ].flat(wx, hy - 4.2, wz, HALF, true, x % 4, y % 4, 1, [0, 0, 0, 0]);
+              }
               continue;
             }
 

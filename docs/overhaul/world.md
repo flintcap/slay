@@ -1,6 +1,6 @@
 # Stream: world (environment art and rendering)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
@@ -13,39 +13,31 @@ Status: paused
 
 ## Next up
 
-Everything below is already in the code and switched on. What is missing is
-looking at it. Paused mid render batch; the code builds, typecheck is clean,
-check-roof, check-props, check-decalheight and check-palettes pass.
-
-1. `npm run build`, then one batch (expect 5 to 8 minutes per shot under load):
-   `SLAY_PORT=4304 node docs/overhaul/world-render.mjs --out=shots/w4 --shots=crypt,foundry@close,sunkenTemple,sunkenTemple@room,caverns@room,foundry@room,town`
-   Harness options (new): `biome@room` teleports to the biggest non-entry room, `biome@<kind>` to the
-   first room of that kind (treasure, ambush, vault, boss), `biome@close` zooms the camera in on the
-   hero. Each line prints `hero` (meshes shown and screen position) and real whole-frame draw calls
-   and triangles. Wait for lines with the regex `^name +[0-9]+s`; the `name -> {...}` line is only the
-   teleport. Kill the node process AND its `vite preview --port 4304` child when done (by PID).
-2. Look for, and fix in this order:
-   - foundry@close: in the foundry start shot the hero was NOT visible at the screen centre although
-     the probe says 42 of 44 meshes are shown at (640,370). The crypt start shot shows the hero fine at
-     the same spot. Find out why (dark material? under the floor? hidden by the entry arch?). If it is
-     not a world problem, write it up for the models or quality stream.
-   - water (sunkenTemple, caverns@room): froth was a bright white ring round every one-tile pool; now
-     `rim 0.32`, darker `rimColor`, and clotted by noise in `Liquids.ts`. Check it reads as water.
-   - drips (sunkenTemple): falling drops plus rings near the hero.
-   - lava (foundry@room, bottom right of the old shot): a white-hot blown-out patch. If still blown out,
-     lower `TUNING.lava.emissiveIntensity` (2.8) or the heat light `intensity` in `addHeatLights`.
-   - foundry grade: changed to cool shadows (`shadowTint 0x4a5874`) because the whole frame was one red.
-   - chasms render as a flat black shape. Consider an ember glow at the bottom for foundry/ashwaste.
-   - landmarks: still unseen. A `@room` shot that lands in a fight shows monsters, not the piece; try
-     `@vault`, `@treasure` or another seed in `SEEDS`.
-   - town: night grade, `setFogShape(18)`, ground light pools (`buildGlows` in Town.ts), fireflies at
-     radius 22 to 34 and moths on the lantern posts. Town has 34 real lights (perf budget is 24 for
-     dungeons); consider marking a few more lanterns unlit.
-3. Tick milestones 3, 4, 5 as they check out and checkpoint.
-4. Milestone 6 sweep: all eight biomes in `SEEDS`, fix anything hiding the player or monsters.
-5. `node tools/check-propmesh.mjs` has never finished under load; run it alone when the machine is quiet.
+1. Hero invisible in foundry and caverns (and monsters black there). Found, not yet fixed:
+   `foundry@close` with `--diag` shows the hero drawn (raycast hits the hero first, floor height 0,
+   no occluder) yet not on screen; recompiling every program (fog null for 3 frames, then back)
+   makes the hero and monsters render properly in the same frame. So a stale program or uniform
+   state from level load hides them, not geometry and not the fog maths. Next: run
+   `SLAY_PORT=4304 node docs/overhaul/world-render.mjs --diag --out=shots/w5 --shots=foundry@close`
+   and read the `PROGS` line (program alive? linked? light state version) to name the cause, then
+   fix it at the source (suspects: `renderer.compile()` warm-ups in `Engine.goTo` and
+   `DungeonScene` before the first frame; disposed shared materials or programs). Worst case,
+   force one recompile after level load.
+2. Then look at w4 shots (sunkenTemple@room, caverns@room, town) and tick milestones 3 to 5.
+3. Town costs 5868 draw calls and 2.6M triangles (budget 900 / 1.5M): needs batching.
+4. Milestone 6 sweep: all eight biomes in `SEEDS`.
+5. `node tools/check-propmesh.mjs` alone when the machine is quiet.
 
 ## Notes for resume
+
+- Town lights cut to 22 counted by check-perf (palisade torches, watch platforms, cairn candles and
+  the vendor's second lantern are bulbs only; unlit high lanterns still get a faint ground pool).
+  Budget note sits above `addLantern` in Town.ts. The apothecary lantern post moved to (-3.0,-10.6).
+- Chasms in lava and voidwater biomes get the level's liquid 4.2 m down; the height fog leaves an
+  ember glow. Not yet seen rendered.
+- `world-render.mjs` now prints, per shot, `hero.hits` (first things a ray from the camera to the
+  hero's chest meets; ignores dithered roof discard), `hero.y` and `hero.floor`. `--diag` adds a
+  `-recompiled.png` per `@close` shot and a `PROGS` line about the hero's programs.
 
 - Renders are slow because every stream renders at once. Use `docs/overhaul/world-render.mjs`
   (boots once, many shots, 1280x720) rather than `tools/screenshot.mjs`, and give it a long timeout.

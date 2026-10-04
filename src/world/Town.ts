@@ -185,6 +185,11 @@ function addCyl(
  * the screen the player sees between every single run. So most lanterns are
  * emissive geometry only: bloom makes them read as light sources, and a handful
  * of real lights do the actual work.
+ *
+ * Budget: `tools/check-perf.mjs` allows 24 lights with intensity (hemisphere
+ * excluded). The camp holds 21 (15 lit lanterns, fire, forge, portal, the
+ * cairn spot, moon, bounce) plus the hero's light in TownScene: 22. Count
+ * before adding one.
  */
 function addLantern(
   ctx: Ctx, x: number, y: number, z: number,
@@ -198,6 +203,9 @@ function addLantern(
   ctx.root.add(bulb);
 
   if (!lit) {
+    // A faint pool still sits under a high one: the instanced decal is free,
+    // a real light is a step in every lit pixel's loop.
+    if (y > 1.5) ctx.glows.push({ x, z, r: Math.min(3.5, distance * 0.16), color, k: 0.16 });
     // Still flickers — the bulb is what the eye reads at this distance.
     ctx.flames.push({
       light: { intensity: 0 } as THREE.PointLight,
@@ -438,7 +446,7 @@ export function buildTown(rng: Rng): TownBuild {
   // pool the player walks through, which is what stops the middle distance
   // reading as one flat brown field.
   const posts: Array<[number, number]> = [
-    [-7.5, 9.5], [7.5, 9.5], [-17.5, -1.5], [17.5, -1.5], [-7.0, -13.5], [7.0, -13.5],
+    [-7.5, 9.5], [7.5, 9.5], [-17.5, -1.5], [17.5, -1.5], [-3.0, -10.6], [7.0, -13.5],
     [-5.0, 16.5], [5.0, 16.5], [-14.0, 15.0], [14.0, 15.0], [0, 19.0],
     [-19.0, 6.0], [19.0, 6.0], [-16.0, -12.5], [16.0, -12.5],
   ];
@@ -983,7 +991,7 @@ function buildWagon(ctx: Ctx, m: Mats, at: THREE.Vector3): void {
   barrel(ctx, m, x + 3.4, z - 1.8, 0.9, true);
 
   addLantern(ctx, x + 3.8, 2.0, z + 0.4, 0xffc06a, 8, 12, 0.5, 0.11);
-  addLantern(ctx, x - 2.0, 2.3, z + 1.2, 0xffc06a, 6, 10, 0.5, 0.09);
+  addLantern(ctx, x - 2.0, 2.3, z + 1.2, 0xffc06a, 6, 10, 0.5, 0.09, false);
 }
 
 /**
@@ -1156,7 +1164,7 @@ function buildCairn(ctx: Ctx, m: Mats, at: THREE.Vector3): void {
     const cx = x + Math.cos(a) * 2.1;
     const cz = z + Math.sin(a) * 2.1;
     addCyl(ctx, 0.05, 0.06, rng.range(0.2, 0.36), 6, cx, 0.02, cz, m.linen);
-    addLantern(ctx, cx, 0.42, cz, 0xffca80, 6, 6, 1.0, 0.04, i === 0);
+    addLantern(ctx, cx, 0.42, cz, 0xffca80, 6, 6, 1.0, 0.04, false);
   }
 
   // One cold uplight so the cairn reads as a monument, not a pile.
@@ -1260,7 +1268,7 @@ function buildPalisade(ctx: Ctx, m: Mats): void {
       addCyl(ctx, 0.07, 0.09, 2.6, 6, bx, 0, bz, m.wood);
       const basket = add(ctx, new THREE.CylinderGeometry(0.28, 0.16, 0.36, 8, 1, true), m.iron, bx, 2.75, bz);
       void basket;
-      addLantern(ctx, bx, 2.85, bz, 0xffa044, 13, 17, 0.85, 0.13, i % 28 === 0);
+      addLantern(ctx, bx, 2.85, bz, 0xffa044, 13, 17, 0.85, 0.13, false);
     }
   }
 
@@ -1282,7 +1290,7 @@ function buildPalisade(ctx: Ctx, m: Mats): void {
     for (let i = 0; i < 8; i++) {
       addBox(ctx, 0.7, 0.07, 0.07, tx + s * 1.5, 0.4 + i * 0.52, tz + 1.1, m.wood, Math.PI * 0.5);
     }
-    addLantern(ctx, tx, 5.0, tz, 0xffa044, 9, 15, 0.8, 0.13);
+    addLantern(ctx, tx, 5.0, tz, 0xffa044, 9, 15, 0.8, 0.13, false);
   }
 }
 

@@ -98,6 +98,23 @@ for (const name of WANT) {
         pl.root.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { parts++; let v = true; for (let q = o; q; q = q.parent) if (!q.visible) v = false; if (v) shown++; } });
         const p = pl.root.position.clone(); p.y += 1; p.project(sc.camera);
         hero = { parts, shown, sx: Math.round((p.x * 0.5 + 0.5) * innerWidth), sy: Math.round((0.5 - p.y * 0.5) * innerHeight) };
+        // What stands between the camera and the hero's chest, and the floor
+        // under their feet: a drawn hero that cannot be seen is buried or hidden.
+        const rc = window.SLAY.engine.input.raycaster;
+        const chest = pl.root.position.clone(); chest.y += 1.1;
+        const from = sc.camera.position.clone();
+        const dist = from.distanceTo(chest);
+        rc.set(from, chest.clone().sub(from).normalize());
+        rc.near = 0; rc.far = dist + 2;
+        const own = new Set(); pl.root.traverse((o) => own.add(o));
+        const isShown = (o) => { for (let q = o; q; q = q.parent) if (!q.visible) return false; return true; };
+        hero.hits = rc.intersectObject(sc.scene, true)
+          .filter((h) => isShown(h.object) && !h.object.isSprite && !h.object.isPoints && !h.object.isLine)
+          .slice(0, 5)
+          .map((h) => `${own.has(h.object) ? 'HERO ' : ''}${h.object.name || h.object.type}/${(Array.isArray(h.object.material) ? h.object.material[0] : h.object.material)?.name ?? ''}@${h.distance.toFixed(1)}`);
+        hero.dist = +dist.toFixed(1);
+        hero.y = +pl.root.position.y.toFixed(2);
+        hero.floor = sc.mesh?.floorY ? +sc.mesh.floorY(pl.root.position.x, pl.root.position.z).toFixed(2) : null;
         if (close && sc.rig) { sc.rig.zoomBias = 0; sc.rig.zoom(-6); }
       }
       return { hero, calls: gl.info.render.calls, tris: gl.info.render.triangles, programs: gl.info.programs?.length, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries, lights, meshes, materials: mats.size, biome: sc.biome?.id, variant: sc.level?.variant, layout: sc.level?.layout, _r: (gl.info.autoReset = true) };
@@ -106,6 +123,47 @@ for (const name of WANT) {
     const file = path.join(OUT, `${name.replace('@', '-')}.png`);
     await page.screenshot({ path: file });
     console.log(`${name.padEnd(13)} ${((Date.now() - t) / 1000) | 0}s ${JSON.stringify(info)}`);
+    if (args.diag && close) {
+      // Is every program the hero draws with alive and linked?
+      const progs = await page.evaluate(() => {
+        const sc = window.SLAY.engine.currentScene; const r = window.SLAY.engine.renderer.gl; const g = r.getContext();
+        const live = new Set(r.info.programs);
+        const seen = new Map();
+        sc.player.root.traverse((o) => {
+          if (!o.isMesh) return;
+          for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+            const p = r.properties.get(m); const cp = p?.currentProgram;
+            const k = cp ? cp.id : 'none';
+            if (seen.has(k)) { seen.get(k).n++; continue; }
+            seen.set(k, { n: 1, mat: m.name, live: cp ? live.has(cp) : null, used: cp?.usedTimes, isProg: cp ? g.isProgram(cp.program) : null,
+              link: cp && g.isProgram(cp.program) ? g.getProgramParameter(cp.program, g.LINK_STATUS) : null,
+              lsv: p?.lightsStateVersion, keys: p?.programs ? p.programs.size : 0, ver: m.version, vis: m.visible, side: m.side, cw: m.colorWrite, dt: m.depthTest, blend: m.blending, op: m.opacity });
+          }
+        });
+        return [...seen.entries()];
+      });
+      console.log('PROGS ' + JSON.stringify(progs));
+      // Recompile every program with the same fog: if the hero appears, a
+      // stale program or uniform hid it, not geometry and not the fog maths.
+      await page.evaluate(() => { const sc = window.SLAY.engine.currentScene; window.__fog = sc.scene.fog; sc.scene.fog = null; });
+      await settle(3);
+      await page.evaluate(() => { const sc = window.SLAY.engine.currentScene; sc.scene.fog = window.__fog; });
+      await settle(6);
+      await page.screenshot({ path: file.replace('.png', '-recompiled.png') });
+      const u = await page.evaluate(() => {
+        const sc = window.SLAY.engine.currentScene; const gl = window.SLAY.engine.renderer.gl;
+        const out = [];
+        sc.player.root.traverse((o) => {
+          if (!o.isMesh || out.length > 3) return;
+          const m = Array.isArray(o.material) ? o.material[0] : o.material;
+          const p = gl.properties.get(m);
+          const fu = p?.uniforms?.slayFog?.value;
+          out.push({ n: o.name, fog: fu ? [fu.x, fu.y, fu.z, fu.w] : null, prog: p?.currentProgram?.name, key: p?.currentProgram?.cacheKey?.slice(0, 60) });
+        });
+        return out;
+      });
+      console.log('DIAG ' + JSON.stringify(u));
+    }
   } catch (e) {
     console.log(`${name} FAILED ${String(e).slice(0, 300)}`);
   }
