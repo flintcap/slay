@@ -315,7 +315,65 @@ function gameStrip(
   for (const f of figures) scene.remove(f);
 }
 
+/** Frames just the head bone's neighbourhood, for faces and hair. */
+function headShot(cam: THREE.PerspectiveCamera, obj: THREE.Object3D, yaw: number): void {
+  obj.updateMatrixWorld(true);
+  let head: THREE.Object3D | undefined;
+  obj.traverse((o) => {
+    if (!head && o.name === 'head' && (o as THREE.Bone).isBone) head = o;
+  });
+  const mid = new THREE.Vector3();
+  head?.getWorldPosition(mid);
+  mid.y += 0.08;
+  const dist = 0.62;
+  cam.position.set(mid.x + Math.sin(yaw) * dist, mid.y + 0.05, mid.z + Math.cos(yaw) * dist);
+  cam.lookAt(mid);
+  cam.updateProjectionMatrix();
+}
+
+/** Every class big in one gear tier: front, side, back, and the head close up. */
+async function bodySheet(tierArg: Tier): Promise<string> {
+  {
+    const views = [0.35, Math.PI * 0.5, Math.PI + 0.3];
+    const cw = 200;
+    const ch = 360;
+    const hw = 200;
+    const W = CLASSES.length * cw + 20;
+    const H = views.length * (ch + 10) + 2 * (hw + 10) + 40;
+    const { c, g } = canvas(W, H);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(BG);
+    lights(scene, 'studio');
+    const cam = new THREE.PerspectiveCamera(26, cw / ch, 0.05, 60);
+    const hcam = new THREE.PerspectiveCamera(30, 1, 0.02, 20);
+    for (let ci = 0; ci < CLASSES.length; ci++) {
+      const cls = CLASSES[ci]!;
+      const fig = dressed(cls, tierArg);
+      const x = 10 + ci * cw;
+      g.fillStyle = INK;
+      g.fillText(cls, x, 16);
+      let r = studio(cw, ch);
+      for (let vi = 0; vi < views.length; vi++) drawCell(g, r, scene, cam, fig.root, views[vi]!, x, 24 + vi * (ch + 10), cw, ch);
+      r = studio(hw, hw);
+      for (let hi = 0; hi < 2; hi++) {
+        scene.add(fig.root);
+        headShot(hcam, fig.root, hi === 0 ? 0.4 : Math.PI * 0.62);
+        r.render(scene, hcam);
+        g.drawImage(r.domElement, x, 24 + views.length * (ch + 10) + hi * (hw + 10), hw, hw);
+        scene.remove(fig.root);
+      }
+      await settle();
+    }
+    return c.toDataURL('image/png');
+  }
+}
+
 export const SHEETS: Record<string, () => Promise<string>> = {
+  bodies: () => bodySheet('bare'),
+  'bodies-low': () => bodySheet('low'),
+  'bodies-mid': () => bodySheet('mid'),
+  'bodies-top': () => bodySheet('top'),
+
   async classes() {
     const tiers: Tier[] = ['bare', 'low', 'mid', 'top'];
     const views = [0.45, Math.PI + 0.45];
@@ -413,7 +471,13 @@ export const SHEETS: Record<string, () => Promise<string>> = {
     return c.toDataURL('image/png');
   },
 
-  async npcs() {
+  npcs: () => npcSheet(0, 99),
+  'npcs-a': () => npcSheet(0, 5),
+  'npcs-b': () => npcSheet(5, 99),
+};
+
+async function npcSheet(from: number, to: number): Promise<string> {
+  {
     let mod: Record<string, unknown> | null = null;
     try {
       const path = '/src/art/NpcModels.ts';
@@ -421,7 +485,7 @@ export const SHEETS: Record<string, () => Promise<string>> = {
     } catch {
       mod = null;
     }
-    const ids = mod && Array.isArray(mod.NPC_LOOK_IDS) ? (mod.NPC_LOOK_IDS as string[]) : [];
+    const ids = (mod && Array.isArray(mod.NPC_LOOK_IDS) ? (mod.NPC_LOOK_IDS as string[]) : []).slice(from, to);
     const cw = 200;
     const ch = 320;
     const n = Math.max(1, ids.length);
@@ -439,6 +503,8 @@ export const SHEETS: Record<string, () => Promise<string>> = {
       const holder = new THREE.Group();
       holder.add(built.root);
       const anim = new Animator(built.bones);
+      const carry = mod!.npcCarryGrip as ((id: string) => 'none' | 'twoHand' | 'staff' | 'bow') | undefined;
+      if (carry) anim.setGrip(carry(ids[i]!));
       anim.play('idle', { fade: 0 });
       for (let t = 0; t < 24; t++) anim.update(1 / 30);
       const x = 10 + i * cw * 2;
@@ -456,5 +522,5 @@ export const SHEETS: Record<string, () => Promise<string>> = {
     if (figs.length) gameStrip(g, figs, 10, ch + 50, n * cw * 2, 250, 1.8);
     console.log(report.join('\n'));
     return c.toDataURL('image/png');
-  },
-};
+  }
+}

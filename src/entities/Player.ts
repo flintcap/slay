@@ -5,7 +5,7 @@ import { mitigate } from '../sim/Combat';
 import { StatusContainer } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
-import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip } from '../art/CharacterModels';
+import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
 import { disposeObject } from '../core/Engine';
 import { Animator } from '../art/Animation';
 import { buildItemModel } from '../art/ItemModels';
@@ -203,8 +203,13 @@ export class Player {
           slot === 'mainHand' || slot === 'offHand'
             ? weaponGrip(base?.category, base?.slot === 'twoHand')
             : undefined;
-        const mesh = buildItemModel(visual, this.rng, item.rarity);
-        attachToSocket(this.root, this.bones, slot, mesh, socketKey, grip);
+        // Armour is cut to the body and skinned to it; weapons, shields and
+        // anything the body cannot wear fall back to a socketed model.
+        let mesh = wearItem(this.body, this.bones, slot, item, visual);
+        if (!mesh) {
+          mesh = buildItemModel(visual, this.rng, item.rarity);
+          attachToSocket(this.root, this.bones, slot, mesh, socketKey, grip);
+        }
         // Marks the weapon so a poison coat can glow on the blade and nowhere
         // else. Cheap to stamp here; walking the tree for it later is not.
         if (slot === 'mainHand' || slot === 'offHand') {

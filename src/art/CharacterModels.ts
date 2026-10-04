@@ -1,96 +1,71 @@
 /**
- * SLAY — rigged player models.
+ * SLAY — rigged people: the six player classes and everyone in camp.
  *
- * Five classes, five silhouettes. Silhouette is the whole game at ARPG camera
- * distance: you read a character from a 30-degree top-down view at 12 metres,
+ * Six classes, six silhouettes. Silhouette is the whole game at ARPG camera
+ * distance: you read a character from a steep top-down view at fifteen metres,
  * where surface detail is two pixels wide and the outline is everything. So the
- * classes differ first in *shape* — the warden is a wall, the pyromancer is a
- * bell, the shadowblade is a blade, the stormcaller trails a cape, the revenant
- * is a spindle of bone — and only second in colour.
+ * classes differ first in *shape* — the warden is a wall with a beard, the
+ * pyromancer a lean figure with a mane of copper, the shadowblade a hooded
+ * blade, the stormcaller trails braids, the revenant is a spindle of bone, the
+ * ranger a ponytail and a long stride — and only second in colour.
  *
- * The rig is fixed and shared, so `Animation.ts` can drive any class:
+ * The rig is fixed and shared, so `Animation.ts` can drive any body:
  *   root, hips, spine, chest, head,
  *   shoulderL/R, elbowL/R, handL/R,
  *   hipL/R, kneeL/R, footL/R
  *
- * Skinning is computed here from the bind pose: every vertex takes its two
- * nearest bone *segments* (not bone origins — origins put elbow weights on the
- * chest) with an inverse-cube falloff, optionally restricted to a subset so a
- * robe skirt binds to the hips instead of splitting between the knees.
+ * Limbs are single swept surfaces with the muscle masses built into their
+ * cross-sections, not capsules joined by balls; heads are a cranium, a face
+ * mass, a brow that throws the eyes into shadow, and hair that stops at a
+ * hairline instead of a helmet-shaped shell. Skinning, the rig and the body's
+ * measurements live in `BodyKit.ts`, which is also what `WornGear.ts` cuts
+ * armour from, so gear fits whichever body it goes on.
  */
 
 import * as THREE from 'three';
-import type { CharClassId, EquipSlot, Rng } from '../types';
-import { surface } from './Materials';
+import type { CharClassId, EquipSlot, Item, ItemVisual, Rng } from '../types';
+import { emissiveMaterial, surface, surfaceVariant } from './Materials';
+import { resolvePalette } from './Palettes';
+import { beveledBox, limb, normalizeGeometry, ring, taperedBox, transformed } from './Meshes';
 import {
-  beveledBox,
-  clothPanel,
-  dome,
-  gem,
-  limb,
-  mergeGeometries,
-  normalizeGeometry,
-  ring,
-  shell,
-  spike,
-  taperedBox,
-  transformed,
-  displace,
-} from './Meshes';
+  ARM_L,
+  ARM_R,
+  LEG_L,
+  LEG_R,
+  SKIRT,
+  TORSO,
+  armNodes,
+  blob,
+  buildBones,
+  buildSegments,
+  footGeos,
+  handGeos,
+  legNodes,
+  mergeSkinned,
+  ringStack,
+  shapedSphere,
+  skinGeometry,
+  smooth01,
+  sweep,
+  torsoRings,
+  type BodyFit,
+  type JointMap,
+} from './BodyKit';
+import { buildWorn } from './WornGear';
+
+export { BONE_NAMES, type BoneName } from './BodyKit';
 
 // ---------------------------------------------------------------------------
-// Rig definition
+// Proportions
 // ---------------------------------------------------------------------------
-
-export const BONE_NAMES = [
-  'root',
-  'hips',
-  'spine',
-  'chest',
-  'head',
-  'shoulderL',
-  'shoulderR',
-  'elbowL',
-  'elbowR',
-  'handL',
-  'handR',
-  'hipL',
-  'hipR',
-  'kneeL',
-  'kneeR',
-  'footL',
-  'footR',
-] as const;
-
-export type BoneName = (typeof BONE_NAMES)[number];
-
-/** Parent of each bone. `root` has none. */
-const BONE_PARENT: Record<string, string | null> = {
-  root: null,
-  hips: 'root',
-  spine: 'hips',
-  chest: 'spine',
-  head: 'chest',
-  shoulderL: 'chest',
-  shoulderR: 'chest',
-  elbowL: 'shoulderL',
-  elbowR: 'shoulderR',
-  handL: 'elbowL',
-  handR: 'elbowR',
-  hipL: 'hips',
-  hipR: 'hips',
-  kneeL: 'hipL',
-  kneeR: 'hipR',
-  footL: 'kneeL',
-  footR: 'kneeR',
-};
 
 /**
  * Body proportions, in fractions of total height. Changing these is how a
  * class silhouette is really made — armour on top of the wrong proportions
- * still reads as the same character.
+ * still reads as the same character. The joints they produce are a contract
+ * with the animation stream: never move them without agreeing it there.
  */
-interface BodyProfile {
+export interface BodyProfile {
   height: number;
   /** Half-distance between shoulder joints. */
   shoulder: number;
@@ -103,10 +78,6 @@ interface BodyProfile {
   head: number;
   /** Forward lean of the whole spine, radians. */
   lean: number;
-}
-
-interface JointMap {
-  [name: string]: THREE.Vector3;
 }
 
 function jointsFor(p: BodyProfile): JointMap {
@@ -135,302 +106,187 @@ function jointsFor(p: BodyProfile): JointMap {
   return j;
 }
 
-/** Builds the bone hierarchy from world-space joint positions. */
-function buildBones(joints: JointMap): {
-  bones: Record<string, THREE.Bone>;
-  order: THREE.Bone[];
-  rootBone: THREE.Bone;
-} {
-  const bones: Record<string, THREE.Bone> = {};
-  const order: THREE.Bone[] = [];
-  for (const name of BONE_NAMES) {
-    const b = new THREE.Bone();
-    b.name = name;
-    bones[name] = b;
-    order.push(b);
-  }
-  for (const name of BONE_NAMES) {
-    const parent = BONE_PARENT[name];
-    const world = joints[name];
-    if (parent) {
-      bones[parent].add(bones[name]);
-      bones[name].position.copy(world).sub(joints[parent]);
-    } else {
-      bones[name].position.copy(world);
-    }
-  }
-  const rootBone = bones.root;
-  rootBone.updateMatrixWorld(true);
-  return { bones, order, rootBone };
-}
-
 // ---------------------------------------------------------------------------
-// Skinning
+// Looks
 // ---------------------------------------------------------------------------
 
-interface Segment {
-  index: number;
-  a: THREE.Vector3;
-  b: THREE.Vector3;
-  name: string;
+/** How a head of hair is cut. */
+export type HairStyle = 'crop' | 'long' | 'ponytail' | 'topknot' | 'braids' | 'bun' | 'shaved' | 'bald' | 'skull';
+
+/** A material slot on a person: a palette and an optional multiplicative tint. */
+export interface MatSpec {
+  key: string;
+  tint?: number;
 }
 
 /**
- * A bone's influence volume runs from its own joint to its child's, which is
- * what makes weights follow limbs instead of pooling at joint origins. Leaf
- * bones (hands, feet, head) get a short stub in their own direction.
+ * Everything that decides what one person looks like. The six classes are six
+ * of these; the people in camp are more.
  */
-function buildSegments(joints: JointMap, order: THREE.Bone[]): Segment[] {
-  const childOf: Record<string, string[]> = {};
-  for (const name of BONE_NAMES) {
-    const p = BONE_PARENT[name];
-    if (p) (childOf[p] ??= []).push(name);
-  }
-  const segs: Segment[] = [];
-  order.forEach((bone, index) => {
-    const name = bone.name;
-    const a = joints[name];
-    const kids = childOf[name];
-    let b: THREE.Vector3;
-    if (kids && kids.length === 1) {
-      b = joints[kids[0]];
-    } else if (name === 'head') {
-      b = a.clone().add(new THREE.Vector3(0, 0.16, 0));
-    } else if (name.startsWith('hand')) {
-      b = a.clone().add(new THREE.Vector3(0, -0.09, 0));
-    } else if (name.startsWith('foot')) {
-      b = a.clone().add(new THREE.Vector3(0, 0, 0.13));
-    } else if (kids && kids.length > 1) {
-      // Torso bones with several children: aim at the average.
-      b = new THREE.Vector3();
-      for (const k of kids) b.add(joints[k]);
-      b.multiplyScalar(1 / kids.length);
-    } else {
-      b = a.clone().add(new THREE.Vector3(0, 0.1, 0));
-    }
-    segs.push({ index, a, b, name });
-  });
-  return segs;
-}
-
-const _p = new THREE.Vector3();
-const _ab = new THREE.Vector3();
-const _ap = new THREE.Vector3();
-
-function distToSegment(p: THREE.Vector3, s: Segment): number {
-  _ab.subVectors(s.b, s.a);
-  _ap.subVectors(p, s.a);
-  const len2 = _ab.lengthSq();
-  const t = len2 > 1e-9 ? Math.max(0, Math.min(1, _ap.dot(_ab) / len2)) : 0;
-  _p.copy(s.a).addScaledVector(_ab, t);
-  return _p.distanceTo(p);
+export interface PersonLook {
+  profile: BodyProfile;
+  skin: MatSpec;
+  hair: MatSpec;
+  /** Undershirt and braies. */
+  linen: MatSpec;
+  leather: MatSpec;
+  /** Hoods, scarves and other class cloth. */
+  cloth: MatSpec;
+  hairStyle: HairStyle;
+  /** 0 clean-shaven, 1 short beard, 2 full beard. */
+  beard?: number;
+  /** Hairline height, -1..1 on the skull; higher is a receding hairline. */
+  hairline?: number;
+  /** A hood up over the head. Hidden by any helm. */
+  hood?: boolean;
+  /** A cloth mask over the lower face. Hidden by any helm. */
+  mask?: boolean;
+  /** Bare ribs and a lipless jaw: the revenant. */
+  skeletal?: boolean;
+  /** Eye colour if the eyes glow. */
+  eyeGlow?: number;
+  /** Shirt sleeves to the elbow rather than a sleeveless vest. */
+  sleeves?: boolean;
+  accent: number;
 }
 
 /**
- * Attaches skinIndex/skinWeight to a geometry authored in bind pose.
- * `restrict` limits which bones may claim the part — the single most useful
- * knob here, because it is what stops a robe from tearing between the knees.
- */
-function skinGeometry(
-  geo: THREE.BufferGeometry,
-  segs: Segment[],
-  restrict?: string[],
-  falloff = 3,
-): void {
-  const pos = geo.getAttribute('position');
-  const n = pos.count;
-  const si = new Uint16Array(n * 4);
-  const sw = new Float32Array(n * 4);
-  const pool = restrict ? segs.filter((s) => restrict.includes(s.name)) : segs;
-  const v = new THREE.Vector3();
-
-  for (let i = 0; i < n; i++) {
-    v.set(pos.getX(i), pos.getY(i), pos.getZ(i));
-    let bi0 = pool[0].index;
-    let bi1 = pool[0].index;
-    let d0 = Infinity;
-    let d1 = Infinity;
-    for (const s of pool) {
-      const d = distToSegment(v, s);
-      if (d < d0) {
-        d1 = d0;
-        bi1 = bi0;
-        d0 = d;
-        bi0 = s.index;
-      } else if (d < d1) {
-        d1 = d;
-        bi1 = s.index;
-      }
-    }
-    const w0 = 1 / Math.pow(d0 + 0.02, falloff);
-    const w1 = pool.length > 1 ? 1 / Math.pow(d1 + 0.02, falloff) : 0;
-    const sum = w0 + w1;
-    si[i * 4] = bi0;
-    si[i * 4 + 1] = bi1;
-    sw[i * 4] = w0 / sum;
-    sw[i * 4 + 1] = w1 / sum;
-  }
-
-  geo.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
-  geo.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
-}
-
-/** Merge preserving skin attributes — the shared merge only carries pos/nor/uv. */
-function mergeSkinned(list: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const usable = list.filter((g) => g.getAttribute('position'));
-  if (usable.length === 0) return new THREE.BufferGeometry();
-  let vTotal = 0;
-  let iTotal = 0;
-  for (const g of usable) {
-    normalizeGeometry(g);
-    vTotal += g.getAttribute('position').count;
-    const idx = g.getIndex();
-    iTotal += idx ? idx.count : g.getAttribute('position').count;
-  }
-  const pos = new Float32Array(vTotal * 3);
-  const nor = new Float32Array(vTotal * 3);
-  const uv = new Float32Array(vTotal * 2);
-  const si = new Uint16Array(vTotal * 4);
-  const sw = new Float32Array(vTotal * 4);
-  const idxArr = vTotal > 65535 ? new Uint32Array(iTotal) : new Uint16Array(iTotal);
-  let vo = 0;
-  let io = 0;
-  for (const g of usable) {
-    const p = g.getAttribute('position');
-    const nn = g.getAttribute('normal');
-    const t = g.getAttribute('uv');
-    const gi = g.getAttribute('skinIndex');
-    const gw = g.getAttribute('skinWeight');
-    for (let i = 0; i < p.count; i++) {
-      const o3 = (vo + i) * 3;
-      const o2 = (vo + i) * 2;
-      const o4 = (vo + i) * 4;
-      pos[o3] = p.getX(i);
-      pos[o3 + 1] = p.getY(i);
-      pos[o3 + 2] = p.getZ(i);
-      nor[o3] = nn.getX(i);
-      nor[o3 + 1] = nn.getY(i);
-      nor[o3 + 2] = nn.getZ(i);
-      uv[o2] = t.getX(i);
-      uv[o2 + 1] = t.getY(i);
-      if (gi && gw) {
-        si[o4] = gi.getX(i);
-        si[o4 + 1] = gi.getY(i);
-        sw[o4] = gw.getX(i);
-        sw[o4 + 1] = gw.getY(i);
-      } else {
-        sw[o4] = 1;
-      }
-    }
-    const index = g.getIndex();
-    if (index) {
-      for (let i = 0; i < index.count; i++) idxArr[io + i] = vo + index.getX(i);
-      io += index.count;
-    } else {
-      for (let i = 0; i < p.count; i++) idxArr[io + i] = vo + i;
-      io += p.count;
-    }
-    vo += p.count;
-  }
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-  out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  out.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
-  out.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
-  out.setIndex(new THREE.BufferAttribute(idxArr, 1));
-  out.computeBoundingSphere();
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Part assembly helpers
-// ---------------------------------------------------------------------------
-
-const _up = new THREE.Vector3(0, 1, 0);
-const _dir = new THREE.Vector3();
-const _q = new THREE.Quaternion();
-const _m = new THREE.Matrix4();
-
-/** Orients a +Y-aligned geometry so it spans from `a` to `b`. */
-function spanTo(geo: THREE.BufferGeometry, a: THREE.Vector3, b: THREE.Vector3): THREE.BufferGeometry {
-  _dir.subVectors(b, a);
-  const len = _dir.length() || 1e-5;
-  _dir.divideScalar(len);
-  _q.setFromUnitVectors(_up, _dir);
-  _m.compose(a, _q, new THREE.Vector3(1, 1, 1));
-  return geo.applyMatrix4(_m);
-}
-
-/** A limb segment between two joints, with a muscle belly. */
-function limbBetween(a: THREE.Vector3, b: THREE.Vector3, rA: number, rB: number, seg = 7): THREE.BufferGeometry {
-  const len = a.distanceTo(b);
-  return spanTo(limb(len, rB, rA, seg), a, b);
-}
-
-/**
- * Builds a closed surface from a stack of elliptical rings.
+ * Texture density per material bucket, in tiles across the body.
  *
- * A human torso is not a box and it is not a cylinder: it is wide and deep at
- * the ribcage, pinched at the waist, and wide again at the pelvis, and the
- * cross-section is an ellipse rather than a circle. Two tapered boxes cannot
- * express that, which is why the old bodies read as slabs with tubes stuck on.
+ * Cloth and leather need many tiles, skin barely any — its texture is pores,
+ * and pores should be invisible. Every bucket uses texture seed 0: boot warms
+ * seed 0, and any other seed bakes a whole PBR set on the main thread the
+ * first time a character is built.
  */
-function ringStack(
-  rings: Array<{ y: number; w: number; d: number; z?: number }>,
-  cols = 16,
-): THREE.BufferGeometry {
-  const rows = rings.length;
-  const verts: number[] = [];
-  const uvs: number[] = [];
-  const idx: number[] = [];
+const MAT_REPEAT: Record<string, number> = {
+  skin: 1.4,
+  hair: 3,
+  shadow: 1,
+  linen: 11,
+  cloth: 8,
+  leather: 7,
+  bone: 2,
+};
 
-  for (let r = 0; r < rows; r++) {
-    const ring = rings[r];
-    for (let c = 0; c <= cols; c++) {
-      const t = c / cols;
-      const ang = t * Math.PI * 2;
-      verts.push(Math.cos(ang) * ring.w, ring.y, Math.sin(ang) * ring.d + (ring.z ?? 0));
-      uvs.push(t, r / (rows - 1));
-    }
-  }
-  for (let r = 0; r < rows - 1; r++) {
-    for (let c = 0; c < cols; c++) {
-      const a0 = r * (cols + 1) + c;
-      const b0 = a0 + 1;
-      const c0 = a0 + cols + 1;
-      const d0 = c0 + 1;
-      idx.push(a0, c0, d0, a0, d0, b0);
-    }
-  }
-  // Caps, so the shape is solid from any angle.
-  const capTop = verts.length / 3;
-  const top = rings[rows - 1];
-  verts.push(0, top.y, top.z ?? 0);
-  uvs.push(0.5, 1);
-  for (let c = 0; c < cols; c++) {
-    idx.push(capTop, (rows - 1) * (cols + 1) + c + 1, (rows - 1) * (cols + 1) + c);
-  }
-  const capBot = verts.length / 3;
-  const bot = rings[0];
-  verts.push(0, bot.y, bot.z ?? 0);
-  uvs.push(0.5, 0);
-  for (let c = 0; c < cols; c++) idx.push(capBot, c, c + 1);
+const skinCache = new Map<string, THREE.MeshStandardMaterial>();
 
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  return geo;
+/**
+ * Skin keeps its palette's relief and roughness but drops the albedo map. The
+ * palette's speckle and stain passes are right for weathered stone and wrong
+ * for a face: at play distance they read as dirt, close up as a rash. Skin's
+ * colour should come from form and light, so it is one flat tone.
+ */
+function skinMaterial(spec: MatSpec): THREE.MeshStandardMaterial {
+  const ck = `${spec.key}|${spec.tint ?? 0xffffff}`;
+  const hit = skinCache.get(ck);
+  if (hit) return hit;
+  const mat = surfaceVariant(spec.key, { repeat: MAT_REPEAT.skin, seed: 0, bump: 0.3 });
+  mat.map = null;
+  mat.color.setHex(resolvePalette(spec.key).base);
+  if (spec.tint !== undefined) mat.color.multiply(new THREE.Color(spec.tint));
+  mat.userData.shared = true;
+  mat.needsUpdate = true;
+  skinCache.set(ck, mat);
+  return mat;
 }
 
-/** An ellipsoid — skulls, deltoids, knees, calves. Cheap and always readable. */
-function blob(w: number, h: number, d: number, seg = 12): THREE.BufferGeometry {
-  const g = new THREE.SphereGeometry(1, seg, Math.max(6, seg - 4));
-  g.scale(w, h, d);
-  return g;
+/** A shared, cached material for one bucket. */
+function personMaterial(bucket: string, spec: MatSpec | undefined, look: PersonLook): THREE.Material {
+  if (bucket === 'skin' && spec && !look.skeletal) return skinMaterial(spec);
+  if (bucket === 'eye') return emissiveMaterial(look.eyeGlow ?? 0xffffff, 2.2);
+  if (bucket === 'shadow') return surface('metal.dark', { repeat: 1, seed: 0, tint: 0x3a3230, roughness: 0.9, metalness: 0 });
+  const s = spec ?? { key: 'metal.iron' };
+  const repeat = MAT_REPEAT[bucket] ?? 3;
+  // Skin's normal map is pulled well back: relief that strong reads as
+  // pockmarks at portrait scale and as shimmering grain in play.
+  const bump = bucket === 'skin' ? 0.35 : bucket === 'hair' ? 0.8 : undefined;
+  return surface(s.key, { repeat, seed: 0, tint: s.tint, bump });
 }
+
+export const CLASS_LOOKS: Record<CharClassId, PersonLook> = {
+  // ---------------------------------------------------------------- WARDEN --
+  warden: {
+    profile: { height: 1.86, shoulder: 0.135, hip: 0.062, thick: 1.28, depth: 1.25, head: 1.0, lean: 0.03 },
+    skin: { key: 'skin.tan' },
+    hair: { key: 'hair.dark', tint: 0xc8a888 },
+    linen: { key: 'cloth.undyed' },
+    leather: { key: 'leather.worn' },
+    cloth: { key: 'cloth.banner' },
+    hairStyle: 'crop',
+    beard: 2,
+    hairline: 0.42,
+    sleeves: true,
+    accent: 0xd8b45a,
+  },
+  // ----------------------------------------------------------- PYROMANCER --
+  pyromancer: {
+    profile: { height: 1.76, shoulder: 0.098, hip: 0.05, thick: 0.94, depth: 0.92, head: 1.0, lean: 0.06 },
+    skin: { key: 'skin.fair' },
+    hair: { key: 'hair.fair', tint: 0xe08a5a },
+    linen: { key: 'cloth.linen' },
+    leather: { key: 'leather.fine' },
+    cloth: { key: 'cloth.silk' },
+    hairStyle: 'long',
+    hairline: 0.34,
+    accent: 0xff7a2a,
+  },
+  // ---------------------------------------------------------- SHADOWBLADE --
+  shadowblade: {
+    profile: { height: 1.78, shoulder: 0.105, hip: 0.052, thick: 0.88, depth: 0.86, head: 0.96, lean: 0.11 },
+    skin: { key: 'skin.deep' },
+    hair: { key: 'hair.dark' },
+    linen: { key: 'cloth.tattered', tint: 0x9a9aa4 },
+    leather: { key: 'leather.studded' },
+    cloth: { key: 'cloth.tattered', tint: 0x6a6e78 },
+    hairStyle: 'topknot',
+    hood: true,
+    mask: true,
+    accent: 0x4ad69a,
+  },
+  // ----------------------------------------------------------- STORMCALLER --
+  stormcaller: {
+    profile: { height: 1.8, shoulder: 0.115, hip: 0.055, thick: 1.0, depth: 1.0, head: 1.0, lean: 0.05 },
+    skin: { key: 'skin.fair', tint: 0xf4eee8 },
+    hair: { key: 'hair.dark', tint: 0xb8c4d8 },
+    linen: { key: 'cloth.undyed', tint: 0xd8dce4 },
+    leather: { key: 'leather.studded' },
+    cloth: { key: 'cloth.silk', tint: 0x9fb4d8 },
+    hairStyle: 'braids',
+    hairline: 0.38,
+    beard: 1,
+    accent: 0x6fc8ff,
+  },
+  // -------------------------------------------------------------- REVENANT --
+  revenant: {
+    profile: { height: 1.84, shoulder: 0.12, hip: 0.05, thick: 0.72, depth: 0.78, head: 1.02, lean: 0.14 },
+    skin: { key: 'bone.pale' },
+    hair: { key: 'bone.old' },
+    linen: { key: 'cloth.tattered' },
+    leather: { key: 'leather.worn' },
+    cloth: { key: 'cloth.tattered', tint: 0x7a8a7e },
+    hairStyle: 'skull',
+    skeletal: true,
+    eyeGlow: 0x7ce0a0,
+    accent: 0x7ce0a0,
+  },
+  // ---------------------------------------------------------------- RANGER --
+  ranger: {
+    profile: { height: 1.79, shoulder: 0.112, hip: 0.053, thick: 0.92, depth: 0.9, head: 0.98, lean: 0.07 },
+    skin: { key: 'skin.tan', tint: 0xf8e8dc },
+    hair: { key: 'hair.fair' },
+    linen: { key: 'cloth.undyed' },
+    leather: { key: 'leather.studded' },
+    cloth: { key: 'cloth.undyed', tint: 0x8a9a70 },
+    hairStyle: 'ponytail',
+    hairline: 0.36,
+    sleeves: true,
+    accent: 0x7fc46a,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Assembly
+// ---------------------------------------------------------------------------
 
 interface Part {
   geo: THREE.BufferGeometry;
@@ -438,327 +294,162 @@ interface Part {
   mat: string;
   /** Restrict which bones may claim this part. */
   bind?: string[];
+  /** Softer blending across joints for loose things (hair, hoods). */
+  falloff?: number;
   /**
-   * The equipment slot whose item replaces this piece. A part tagged `chest`
-   * is the class's own default chest covering; the moment real chest armour is
-   * equipped the item model takes over and this is hidden. Untagged parts are
-   * the character themself — body, undergarments, hair, capes — and are always
-   * visible.
+   * What hides this part. An equipment slot means "hidden while that slot is
+   * worn": a part tagged `chest` is the undershirt, and the moment real chest
+   * armour is equipped it steps aside. `hair` (the cap of hair) and
+   * `hairLong` (falls, braids, tails) are hidden by helms that close over the
+   * head, as `WornGear` asks. Untagged parts are the person themself.
    */
-  cover?: EquipSlot;
-}
-
-const ARM_L = ['chest', 'shoulderL', 'elbowL', 'handL'];
-const ARM_R = ['chest', 'shoulderR', 'elbowR', 'handR'];
-const LEG_L = ['hips', 'hipL', 'kneeL', 'footL'];
-const LEG_R = ['hips', 'hipR', 'kneeR', 'footR'];
-const TORSO = ['hips', 'spine', 'chest'];
-const SKIRT = ['hips', 'spine'];
-
-// ---------------------------------------------------------------------------
-// Class definitions
-// ---------------------------------------------------------------------------
-
-interface ClassBuild {
-  profile: BodyProfile;
-  /** Material bucket -> palette key. */
-  palettes: Record<string, string>;
-  accent: number;
+  cover?: string;
 }
 
 interface BuildCtx {
-  j: JointMap;
-  p: BodyProfile;
+  fit: BodyFit;
+  look: PersonLook;
   rng: Rng;
   parts: Part[];
-  /** Non-skinned decorations parented to a bone. */
-  props: Array<{ bone: string; obj: THREE.Object3D; cover?: EquipSlot }>;
-  accent: number;
 }
 
 /**
- * Shared underlying body: torso, limbs, hands, feet, neck.
- *
- * This is the person, not the outfit. Everything here is skin (or bone, for the
- * revenant) so that a character with an empty equipment sheet reads as someone
- * standing in their underclothes rather than as a suit of armour with no one
- * inside it. Armour arrives from the equipment sockets and from the class's own
- * cover pieces, which step aside when real gear replaces them.
+ * The person under the clothes: torso, limbs, hands, feet, neck.
  *
  * What makes a body read as a body is landmarks, not detail. A shoulder is a
- * ball, an elbow and a knee are hinges you can see, a wrist and an ankle are
- * narrow, a waist is narrower than the ribcage above it and the hips below it.
- * Miss those and no amount of surface texture rescues it: you get smooth tubes
- * plugged into a slab, which is exactly what a mannequin made of sausages looks
- * like. Every segment below is therefore built as mass -> joint -> mass, with
- * the joint always narrower than the muscle either side of it.
+ * mass that caps the arm, an elbow and a knee are narrower than the muscle
+ * either side, a wrist and an ankle are genuinely thin, a waist is narrower
+ * than the ribcage above it and the hips below it.
  */
-function baseBody(ctx: BuildCtx, opts: { skin: string; armour: string; boots?: string; gloves?: string }): void {
-  const { j, p, parts } = ctx;
-  const H = p.height;
-  const t = p.thick;
-  void opts.armour;
-  const skin = opts.skin;
+function baseBody(ctx: BuildCtx): void {
+  const { fit, parts, look } = ctx;
+  const { H, shW, hipW, joints: j } = fit;
+  const u = H * fit.limbT;
 
-  const shW = p.shoulder * H;
-  const hipW = p.hip * H;
-  const dep = p.depth;
+  parts.push({ geo: ringStack(torsoRings(fit), 20), mat: 'skin', bind: TORSO });
 
-  // --- torso ---------------------------------------------------------------
-  // One continuous surface from the pelvis to the collarbones, pinched at the
-  // waist. Elliptical throughout: a human is much wider than they are deep.
+  // Neck, then the two trapezius wedges that stop the head floating.
   parts.push({
-    geo: ringStack([
-      { y: H * 0.44, w: hipW * 0.92, d: hipW * 0.72 * dep },
-      { y: H * 0.475, w: hipW * 1.26, d: hipW * 0.94 * dep },
-      { y: H * 0.515, w: hipW * 1.34, d: hipW * 1.0 * dep },
-      // The waist. This is the single most important ring in the model.
-      { y: H * 0.575, w: hipW * 1.02, d: hipW * 0.8 * dep },
-      { y: H * 0.625, w: hipW * 1.12, d: hipW * 0.88 * dep },
-      // Ribcage, widening and deepening toward the chest.
-      { y: H * 0.685, w: shW * 0.82, d: hipW * 1.1 * dep },
-      { y: H * 0.735, w: shW * 0.94, d: hipW * 1.18 * dep },
-      { y: H * 0.775, w: shW * 0.98, d: hipW * 1.06 * dep },
-      // Collarbone shelf, then in sharply to the neck.
-      { y: H * 0.805, w: shW * 0.9, d: hipW * 0.86 * dep },
-      { y: H * 0.828, w: shW * 0.4, d: hipW * 0.5 * dep },
-    ], 18),
-    mat: skin,
-    bind: TORSO,
-  });
-
-  // Neck: a column, then the two trapezius wedges that stop the head floating.
-  parts.push({
-    geo: transformed(limb(H * 0.062, H * 0.031 * t, H * 0.036 * t, 10), {
-      pos: [0, H * 0.822, -H * 0.004],
+    geo: transformed(limb(H * 0.066, H * 0.03 * Math.sqrt(fit.t), H * 0.036 * Math.sqrt(fit.t), 10), {
+      pos: [0, H * 0.818, -H * 0.006],
     }),
-    mat: skin,
+    mat: 'skin',
     bind: ['chest', 'head'],
   });
   for (const side of [-1, 1]) {
     parts.push({
-      geo: transformed(blob(shW * 0.42, H * 0.028, hipW * 0.6 * dep, 10), {
-        pos: [side * shW * 0.42, H * 0.802, -H * 0.006],
-        rot: [0, 0, side * -0.28],
+      geo: transformed(blob(shW * 0.44, H * 0.024, hipW * 0.58 * fit.dep, 10), {
+        pos: [side * shW * 0.42, H * 0.806, -H * 0.008],
+        rot: [0, 0, side * -0.26],
       }),
-      mat: skin,
+      mat: 'skin',
       bind: ['chest'],
     });
   }
 
-  // --- arms ----------------------------------------------------------------
-  for (const [sh, el, hd, bindArm] of [
-    ['shoulderL', 'elbowL', 'handL', ARM_L],
-    ['shoulderR', 'elbowR', 'handR', ARM_R],
-  ] as Array<[string, string, string, string[]]>) {
-    const S = j[sh];
-    const E = j[el];
-    const D = j[hd];
-    const side = S.x < 0 ? -1 : 1;
+  for (const side of [1, -1] as const) {
+    const bindArm = side > 0 ? ARM_L : ARM_R;
+    const bindLeg = side > 0 ? LEG_L : LEG_R;
+    const S = j[side > 0 ? 'shoulderL' : 'shoulderR'];
 
-    // Deltoid: a ball capping the joint. Without it the arm looks socketed
-    // straight into the ribcage.
+    // One continuous arm, shoulder to palm.
+    parts.push({ geo: sweep(armNodes(fit, side), 12), mat: 'skin', bind: bindArm });
+    // The deltoid caps the joint and tapers down into the arm. Sized off the
+    // arm, not the shoulder span: a broad class gets wider shoulders from its
+    // skeleton, not from a bigger ball.
     parts.push({
-      geo: transformed(blob(H * 0.05 * t, H * 0.055 * t, H * 0.048 * t, 12), {
-        pos: [S.x + side * H * 0.004, S.y - H * 0.004, S.z],
+      geo: transformed(blob(0.027 * u, 0.037 * u, 0.03 * u, 12), {
+        pos: [S.x + side * H * 0.004, S.y - H * 0.016, S.z],
+        rot: [0, 0, side * 0.18],
       }),
-      mat: skin,
+      mat: 'skin',
       bind: bindArm,
     });
+    for (const g of handGeos(fit, side)) parts.push({ geo: g, mat: 'skin', bind: bindArm, cover: 'gloves' });
 
-    // Upper arm: thick under the deltoid, tapering into a narrow elbow.
-    parts.push({ geo: limbBetween(S, E, H * 0.037 * t, H * 0.025 * t), mat: skin, bind: bindArm });
-    // Elbow, as a small hinge mass.
-    parts.push({
-      geo: transformed(blob(H * 0.027 * t, H * 0.029 * t, H * 0.028 * t, 10), { pos: [E.x, E.y, E.z] }),
-      mat: skin,
-      bind: bindArm,
-    });
-    // Forearm: the brachioradialis swells just below the elbow, then runs down
-    // to a wrist that is genuinely thin — this contrast is most of the read.
-    const wrist = E.clone().lerp(D, 0.82);
-    parts.push({ geo: limbBetween(E, wrist, H * 0.03 * t, H * 0.017 * t), mat: skin, bind: bindArm });
-
-    // --- hand ---
-    const gloved = opts.gloves && opts.gloves !== skin;
-    const handMat = gloved ? opts.gloves! : skin;
-    const handCover: EquipSlot | undefined = gloved ? 'gloves' : undefined;
-    const palmW = H * 0.036 * t;
-    const px = D.x;
-    const py = D.y + H * 0.012;
-    const pz = D.z;
-
-    // Palm: a flattened slab, wider across the knuckles than at the wrist.
-    parts.push({
-      geo: transformed(taperedBox(palmW * 0.78, palmW * 0.5, palmW * 1.06, palmW * 0.56, H * 0.042 * t, H * 0.006), {
-        pos: [px, py - H * 0.021 * t, pz],
-      }),
-      mat: handMat,
-      cover: handCover,
-      bind: bindArm,
-    });
-    // Four fingers, curled. A mitten with no fingers is the thing that most
-    // makes a hand look like a lump of clay.
-    for (let f = 0; f < 4; f++) {
-      const off = (f / 3 - 0.5) * palmW * 0.78;
-      const len = H * (0.026 - Math.abs(f - 1.4) * 0.0022) * t;
-      parts.push({
-        geo: transformed(limb(len, palmW * 0.12, palmW * 0.14, 5), {
-          pos: [px + off, py - H * 0.044 * t, pz + palmW * 0.1],
-          rot: [-0.55, 0, 0],
-        }),
-        mat: handMat,
-        cover: handCover,
-        bind: bindArm,
-      });
-    }
-    // Thumb, set across the palm rather than beside the fingers.
-    parts.push({
-      geo: transformed(limb(H * 0.024 * t, palmW * 0.15, palmW * 0.19, 5), {
-        pos: [px + side * palmW * 0.5, py - H * 0.03 * t, pz + palmW * 0.24],
-        rot: [-0.7, 0, side * 0.85],
-      }),
-      mat: handMat,
-      cover: handCover,
-      bind: bindArm,
-    });
+    parts.push({ geo: sweep(legNodes(fit, side), 12), mat: 'skin', bind: bindLeg });
+    for (const g of footGeos(fit, side)) parts.push({ geo: g, mat: 'skin', bind: bindLeg, cover: 'boots' });
   }
 
-  // --- legs ----------------------------------------------------------------
-  for (const [hp, kn, ft, bindLeg] of [
-    ['hipL', 'kneeL', 'footL', LEG_L],
-    ['hipR', 'kneeR', 'footR', LEG_R],
-  ] as Array<[string, string, string, string[]]>) {
-    const P = j[hp];
-    const K = j[kn];
-    const F = j[ft];
+  if (look.skeletal) ribs(ctx);
+}
 
-    // Thigh: heaviest mass on the body, tapering hard into the knee.
-    parts.push({ geo: limbBetween(P, K, H * 0.056 * t, H * 0.033 * t), mat: skin, bind: bindLeg });
-    // Kneecap.
+/** The revenant's ribcage: bars of bone standing proud of a sunken chest. */
+function ribs(ctx: BuildCtx): void {
+  const { fit, parts } = ctx;
+  const H = fit.H;
+  const rings = torsoRings(fit, H * 0.004);
+  const nearest = (y: number) => rings.reduce((best, cur) => (Math.abs(cur.y - y) < Math.abs(best.y - y) ? cur : best));
+  for (let i = 0; i < 5; i++) {
+    const y = H * (0.69 + i * 0.022);
+    const r = nearest(y);
+    const bar = ring(1, H * 0.0055, 18, 5);
+    bar.rotateX(Math.PI * 0.5);
+    bar.scale(r.w * (0.96 - i * 0.02), 1, r.df * 1.0);
+    bar.translate(0, y, 0);
+    parts.push({ geo: bar, mat: 'bone', bind: ['chest', 'spine'] });
+  }
+  // Sternum and the knuckles of the spine.
+  parts.push({
+    geo: transformed(taperedBox(H * 0.02, H * 0.012, H * 0.014, H * 0.01, H * 0.11, H * 0.003), {
+      pos: [0, H * 0.73, nearest(H * 0.73).df + H * 0.004],
+    }),
+    mat: 'bone',
+    bind: ['chest'],
+  });
+  for (let i = 0; i < 7; i++) {
+    const y = H * (0.54 + i * 0.04);
     parts.push({
-      geo: transformed(blob(H * 0.036 * t, H * 0.036 * t, H * 0.038 * t, 10), {
-        pos: [K.x, K.y, K.z + H * 0.006],
-      }),
-      mat: skin,
-      bind: bindLeg,
+      geo: transformed(blob(H * 0.011, H * 0.009, H * 0.012, 6), { pos: [0, y, -(nearest(y).db + H * 0.002)] }),
+      mat: 'bone',
+      bind: TORSO,
     });
-    // Calf: bulges high and behind, then a genuinely thin ankle.
-    const ankle = K.clone().lerp(F, 0.86);
-    parts.push({ geo: limbBetween(K, ankle, H * 0.038 * t, H * 0.017 * t), mat: skin, bind: bindLeg });
-    parts.push({
-      geo: transformed(blob(H * 0.03 * t, H * 0.05 * t, H * 0.032 * t, 10), {
-        pos: [K.x, K.y - H * 0.055, K.z - H * 0.016],
-      }),
-      mat: skin,
-      bind: bindLeg,
-    });
-
-    // Foot: heel mass, arch, and a forward wedge for the toes.
-    parts.push({
-      geo: transformed(blob(H * 0.022 * t, H * 0.022, H * 0.026, 9), {
-        pos: [F.x, F.y + H * 0.019, F.z - H * 0.012],
-      }),
-      mat: skin,
-      bind: bindLeg,
-    });
-    parts.push({
-      geo: transformed(taperedBox(H * 0.05 * t, H * 0.038, H * 0.044 * t, H * 0.02, H * 0.1, H * 0.008), {
-        pos: [F.x, F.y + H * 0.018, F.z + H * 0.03],
-        rot: [Math.PI * 0.5, 0, 0],
-      }),
-      mat: skin,
-      bind: bindLeg,
-    });
-
-    // The class's own boot, sized to wrap the foot rather than fight it.
-    if (opts.boots && opts.boots !== skin) {
-      parts.push({
-        geo: transformed(taperedBox(H * 0.062 * t, H * 0.05, H * 0.056 * t, H * 0.03, H * 0.12, H * 0.01), {
-          pos: [F.x, F.y + H * 0.022, F.z + H * 0.028],
-          rot: [Math.PI * 0.5, 0, 0],
-        }),
-        mat: opts.boots,
-        cover: 'boots',
-        bind: bindLeg,
-      });
-      parts.push({
-        geo: transformed(limb(H * 0.075, H * 0.036 * t, H * 0.044 * t, 9), {
-          pos: [F.x, F.y + H * 0.03, F.z - H * 0.006],
-        }),
-        mat: opts.boots,
-        cover: 'boots',
-        bind: bindLeg,
-      });
-    }
   }
 }
 
-function underGarments(ctx: BuildCtx, mat = 'linen'): void {
-  const { j, p, parts } = ctx;
-  const H = p.height;
-  const t = p.thick;
-  const shW = p.shoulder * H;
-  const hipW = p.hip * H;
-  const dep = p.depth;
+function underGarments(ctx: BuildCtx): void {
+  const { fit, parts, look } = ctx;
+  const { H, hipW, joints: j } = fit;
+  const t = fit.limbT;
   // Cloth sits a fixed distance off the body rather than a fixed percentage,
   // so it does not balloon at the chest and shrink-wrap at the waist.
-  const g = H * 0.0065;
+  const g = H * 0.006;
 
-  // Sleeveless shirt, following the same rings as the torso underneath. A
-  // tapered box here reads as a sandwich board, because a box cannot pinch at
-  // the waist and a body does.
+  // Shirt: the torso's own rings, grown by the cloth's thickness.
   parts.push({
-    geo: ringStack([
-      { y: H * 0.598, w: hipW * 1.04 + g, d: hipW * 0.82 * dep + g },
-      { y: H * 0.612, w: hipW * 1.06 + g, d: hipW * 0.84 * dep + g },
-      { y: H * 0.625, w: hipW * 1.12 + g, d: hipW * 0.88 * dep + g },
-      { y: H * 0.685, w: shW * 0.82 + g, d: hipW * 1.1 * dep + g },
-      { y: H * 0.735, w: shW * 0.94 + g, d: hipW * 1.18 * dep + g },
-      { y: H * 0.775, w: shW * 0.98 + g, d: hipW * 1.06 * dep + g },
-      { y: H * 0.798, w: shW * 0.88, d: hipW * 0.84 * dep },
-    ], 18),
-    mat,
-    // Body armour replaces the undershirt rather than sitting over it. The
-    // shirt is a whole torso; a breastplate is a shell a few centimetres wider,
-    // so any place the two disagree the shirt pokes through as a pale patch.
+    geo: ringStack(torsoRings(fit, g, 0.54, 0.805), 20),
+    mat: 'linen',
+    // Body armour replaces the undershirt rather than sitting over it.
     cover: 'chest',
     bind: TORSO,
   });
+  if (look.sleeves) {
+    for (const side of [1, -1] as const) {
+      parts.push({
+        geo: sweep(armNodes(fit, side, H * 0.007, 0, 0.42), 12),
+        mat: 'linen',
+        cover: 'chest',
+        bind: side > 0 ? ARM_L : ARM_R,
+      });
+    }
+  }
 
   // Braies: a waistband and two short legs, cut mid-thigh.
-  parts.push({
-    geo: ringStack([
-      { y: H * 0.452, w: hipW * 0.94 + g, d: hipW * 0.74 * dep + g },
-      { y: H * 0.48, w: hipW * 1.28 + g, d: hipW * 0.96 * dep + g },
-      { y: H * 0.515, w: hipW * 1.36 + g, d: hipW * 1.02 * dep + g },
-      { y: H * 0.558, w: hipW * 1.08 + g, d: hipW * 0.84 * dep + g },
-      { y: H * 0.576, w: hipW * 1.0 + g, d: hipW * 0.78 * dep + g },
-    ], 16),
-    mat,
-    bind: SKIRT,
-  });
-  for (const [hp, kn, bindLeg] of [
-    ['hipL', 'kneeL', LEG_L],
-    ['hipR', 'kneeR', LEG_R],
-  ] as Array<[string, string, string[]]>) {
-    const cuff = j[hp].clone().lerp(j[kn], 0.26);
-    parts.push({
-      geo: limbBetween(j[hp], cuff, H * 0.064 * t, H * 0.05 * t),
-      mat,
-      bind: bindLeg,
-    });
+  parts.push({ geo: ringStack(torsoRings(fit, g, 0.44, 0.58), 18), mat: 'linen', bind: SKIRT });
+  for (const side of [1, -1] as const) {
+    parts.push({ geo: sweep(legNodes(fit, side, g * 1.1, 0.04, 0.26), 12), mat: 'linen', bind: side > 0 ? LEG_L : LEG_R });
   }
 
   // Waist cord. A torus, because a box here reads as a second belt buckle.
-  const cord = ring(hipW * 1.06, H * 0.009, 18, 6);
+  const waist = torsoRings(fit, g * 1.6, 0.57, 0.585)[0] ?? { w: hipW * 1.06, df: hipW * 0.8, db: hipW * 0.74 };
+  const cord = ring(1, H * 0.0085, 22, 6);
   cord.rotateX(Math.PI * 0.5);
-  cord.scale(1, 1, (hipW * 0.82 * dep) / (hipW * 1.06));
+  cord.scale(waist.w, 1, (waist.df + waist.db) * 0.5);
   cord.translate(0, H * 0.578, 0);
   parts.push({ geo: cord, mat: 'leather', bind: ['hips'] });
   parts.push({
     geo: transformed(limb(H * 0.05, H * 0.007, H * 0.005, 5), {
-      pos: [H * 0.014, H * 0.548, hipW * 0.86 * dep],
+      pos: [H * 0.014, H * 0.548, waist.df],
       rot: [0.2, 0, 0.3],
     }),
     mat: 'leather',
@@ -766,20 +457,17 @@ function underGarments(ctx: BuildCtx, mat = 'linen'): void {
   });
 
   // Foot wraps: strips crossing the instep.
-  for (const [ft, bindLeg] of [
-    ['footL', LEG_L],
-    ['footR', LEG_R],
-  ] as Array<[string, string[]]>) {
-    const f = j[ft];
+  for (const side of [1, -1] as const) {
+    const f = j[side > 0 ? 'footL' : 'footR'];
     for (let i = 0; i < 2; i++) {
       parts.push({
-        geo: transformed(beveledBox(H * 0.056 * t, H * 0.013, H * 0.028, H * 0.004), {
-          pos: [f.x, f.y + H * 0.03 - i * H * 0.014, f.z + H * 0.008 + i * H * 0.026],
+        geo: transformed(beveledBox(H * 0.054 * Math.sqrt(t), H * 0.012, H * 0.026, H * 0.004), {
+          pos: [f.x, f.y + H * 0.034 - i * H * 0.012, f.z + H * 0.012 + i * H * 0.03],
           rot: [i * 0.35, 0, 0],
         }),
-        mat,
+        mat: 'linen',
         cover: 'boots',
-        bind: bindLeg,
+        bind: side > 0 ? LEG_L : LEG_R,
       });
     }
   }
@@ -788,231 +476,238 @@ function underGarments(ctx: BuildCtx, mat = 'linen'): void {
 /**
  * A head with actual structure.
  *
- * The head is where the eye goes first and the worst place to be vague. The old
- * one was a dome with six small boxes stuck to it for brow, nose, cheeks and
- * jaw, which at gameplay distance is a potato with lumps — the details were all
- * below the size a pixel can resolve, so all they did was break the silhouette.
- *
- * What actually reads at forty pixels is: the egg of the cranium, a wedge of
- * face narrowing to a chin, a dark band where the eyes are, and hair. Hair most
- * of all — it is a large shape in a different colour from the skin, and it is
- * the single cheapest thing that separates a head from a boulder. Everything
- * here is built at that scale and no smaller.
+ * What reads at forty pixels is the egg of the cranium, a face mass narrowing
+ * to a chin, a brow that throws the eyes into shadow, and hair. Hair most of
+ * all: a big shape in a different colour from the skin is the cheapest thing
+ * that separates a head from a boulder. It has to *stop*, though. The old hair
+ * was a full ellipsoid around the skull that came down to the chin, which from
+ * every angle but dead ahead read as a helmet.
  */
-function baseHead(ctx: BuildCtx, mat: string, scale = 1, hairMat = 'hair'): void {
-  const { j, p, parts } = ctx;
-  const H = p.height;
-  const r = H * 0.058 * p.head * scale;
-  const c = j.head;
+function baseHead(ctx: BuildCtx): void {
+  const { fit, parts, look } = ctx;
+  const r = fit.headR;
+  const c = fit.joints.head;
+  const O = new THREE.Vector3(c.x, c.y + r * 0.15, c.z);
+  const at = (x: number, y: number, z: number): [number, number, number] => [O.x + x * r, O.y + y * r, O.z + z * r];
+  const skull = look.hairStyle === 'skull';
+  const HEAD = ['head'];
 
-  // Cranium: an egg, taller than wide, flattened at the back and widest just
-  // above the ears.
-  const skull = blob(r * 0.95, r * 1.12, r * 1.04, 16);
-  skull.translate(c.x, c.y + r * 0.16, c.z - r * 0.06);
-  parts.push({ geo: skull, mat, bind: ['head', 'chest'] });
+  // Cranium: an egg, taller than wide, set back over the neck.
+  parts.push({ geo: transformed(blob(r * 0.9, r * 1.0, r * 0.94, 16), { pos: at(0, 0.12, -0.16) }), mat: 'skin', bind: ['head', 'chest'] });
 
-  // Face: a wedge running from the brow down to a narrow chin. One shape doing
-  // the work six little boxes used to do badly.
-  parts.push({
-    geo: transformed(
-      taperedBox(r * 0.78, r * 0.7, r * 1.28, r * 0.94, r * 1.24, r * 0.16),
-      { pos: [c.x, c.y - r * 0.22, c.z + r * 0.16], rot: [0.06, 0, 0] },
-    ),
-    mat,
-    bind: ['head'],
-  });
+  // Face: one smooth mass from the brow down to a narrow chin.
+  const gaunt = skull ? 0.82 : 1;
+  const face = ringStack(
+    [
+      { y: -1.0, w: 0.2, df: 0.26, db: 0.22, z: 0.4 },
+      { y: -0.84, w: 0.36 * gaunt, df: 0.4, db: 0.36, z: 0.36 },
+      { y: -0.6, w: 0.6 * gaunt, df: 0.48, db: 0.5, z: 0.22 },
+      { y: -0.3, w: 0.76 * gaunt, df: 0.6, db: 0.6, z: 0.12 },
+      { y: 0.0, w: 0.84, df: 0.68, db: 0.7, z: 0.06 },
+      { y: 0.3, w: 0.86, df: 0.7, db: 0.7, z: 0.0 },
+      { y: 0.52, w: 0.72, df: 0.58, db: 0.6, z: -0.04 },
+    ].map((q) => ({ y: O.y + q.y * r, w: q.w * r, df: q.df * r, db: q.db * r, z: O.z + q.z * r })),
+    14,
+  );
+  parts.push({ geo: face, mat: 'skin', bind: HEAD });
 
-  // Brow ridge: throws the eye band into shadow, which is what reads as a face
-  // from across a room.
-  parts.push({
-    geo: transformed(beveledBox(r * 1.18, r * 0.2, r * 0.42, r * 0.07), {
-      pos: [c.x, c.y + r * 0.3, c.z + r * 0.66],
-      rot: [-0.2, 0, 0],
-    }),
-    mat,
-    bind: ['head'],
-  });
-
-  // The eyes, as one recessed dark band. Two separate sockets are smaller than
-  // a pixel at play distance; a band is always legible.
-  parts.push({
-    geo: transformed(beveledBox(r * 1.02, r * 0.24, r * 0.16, r * 0.04), {
-      pos: [c.x, c.y + r * 0.1, c.z + r * 0.62],
-    }),
-    mat: 'shadow',
-    bind: ['head'],
-  });
-
-  // Nose: a small wedge off the brow, catching the key light down the centre.
-  parts.push({
-    geo: transformed(taperedBox(r * 0.26, r * 0.3, r * 0.16, r * 0.14, r * 0.44, r * 0.03), {
-      pos: [c.x, c.y - r * 0.14, c.z + r * 0.68],
-      rot: [0.3, 0, 0],
-    }),
-    mat,
-    bind: ['head'],
-  });
-
-  // Ears.
-  for (const side of [-1, 1]) {
+  // Brow ridge and cheekbones frame the eyes, so the sockets sit in shadow.
+  parts.push({ geo: transformed(blob(r * 0.66, r * 0.1, r * 0.16, 10), { pos: at(0, 0.25, 0.64), rot: [-0.1, 0, 0] }), mat: 'skin', bind: HEAD });
+  for (const s of [-1, 1]) {
+    parts.push({ geo: transformed(blob(r * 0.22, r * 0.1, r * 0.12, 8), { pos: at(s * 0.44, -0.12, 0.6) }), mat: 'skin', bind: HEAD });
+    // The socket, recessed between brow and cheek.
     parts.push({
-      geo: transformed(blob(r * 0.08, r * 0.2, r * 0.14, 8), {
-        pos: [c.x + side * r * 0.92, c.y + r * 0.06, c.z + r * 0.02],
-      }),
-      mat,
-      bind: ['head'],
+      geo: transformed(blob(r * (skull ? 0.2 : 0.14), r * (skull ? 0.17 : 0.08), r * 0.06, 8), { pos: at(s * 0.31, 0.08, skull ? 0.66 : 0.68) }),
+      mat: 'shadow',
+      bind: HEAD,
     });
+    if (look.eyeGlow !== undefined) {
+      parts.push({ geo: transformed(blob(r * 0.07, r * 0.06, r * 0.04, 6), { pos: at(s * 0.32, 0.08, 0.73) }), mat: 'eye', bind: HEAD });
+    }
+    if (!skull) {
+      parts.push({ geo: transformed(blob(r * 0.08, r * 0.2, r * 0.14, 8), { pos: at(s * 0.86, 0.02, -0.06) }), mat: 'skin', bind: HEAD });
+    }
   }
 
-  // Hair: a shell over the cranium that comes down past the ears and covers the
-  // nape. Sized deliberately larger than the skull so it reads as a separate
-  // mass in silhouette rather than as paint.
-  const hair = blob(r * 1.06, r * 1.15, r * 1.12, 14);
-  hair.translate(c.x, c.y + r * 0.2, c.z - r * 0.1);
-  parts.push({ geo: hair, mat: hairMat, bind: ['head'] });
-  // Nape, running down onto the neck.
-  parts.push({
-    geo: transformed(taperedBox(r * 1.5, r * 0.5, r * 1.1, r * 0.4, r * 0.9, r * 0.1), {
-      pos: [c.x, c.y - r * 0.6, c.z - r * 0.62],
-    }),
-    mat: hairMat,
-    bind: ['head'],
-  });
-  // A fringe over the brow, so the hairline is a shape and not a seam.
-  parts.push({
-    geo: transformed(taperedBox(r * 1.16, r * 0.34, r * 0.9, r * 0.3, r * 0.42, r * 0.07), {
-      pos: [c.x, c.y + r * 0.66, c.z + r * 0.5],
-      rot: [-0.3, 0, 0],
-    }),
-    mat: hairMat,
-    bind: ['head'],
-  });
-}
+  if (skull) {
+    // A nasal cavity and a band of teeth where a living face has a nose and lips.
+    parts.push({ geo: transformed(taperedBox(r * 0.16, r * 0.08, r * 0.04, r * 0.06, r * 0.22, r * 0.02), { pos: at(0, -0.2, 0.72) }), mat: 'shadow', bind: HEAD });
+    parts.push({ geo: transformed(beveledBox(r * 0.46, r * 0.12, r * 0.1, r * 0.02), { pos: at(0, -0.58, 0.66) }), mat: 'hair', bind: HEAD });
+    parts.push({ geo: transformed(beveledBox(r * 0.4, r * 0.03, r * 0.1, r * 0.01), { pos: at(0, -0.58, 0.69) }), mat: 'shadow', bind: HEAD });
+  } else {
+    // Nose: a wedge off the brow, catching the key light down the centre.
+    parts.push({
+      geo: transformed(taperedBox(r * 0.24, r * 0.28, r * 0.12, r * 0.12, r * 0.4, r * 0.03), { pos: at(0, -0.14, 0.76), rot: [0.32, 0, 0] }),
+      mat: 'skin',
+      bind: HEAD,
+    });
+    parts.push({ geo: transformed(beveledBox(r * 0.32, r * 0.04, r * 0.05, r * 0.015), { pos: at(0, -0.55, 0.7) }), mat: 'shadow', bind: HEAD });
+  }
 
-function pauldron(size: number, curve: number, rng: Rng): THREE.BufferGeometry {
-  const g = shell(size, size * 0.92, curve, 7, 7, size * 0.09, (u, v) =>
-    // Fan wider at the top, tuck under at the bottom: a real spaulding shape.
-    0.55 + 0.45 * Math.sin(Math.PI * (0.25 + v * 0.6)) * (0.8 + 0.2 * Math.cos((u - 0.5) * Math.PI)),
-  );
-  displace(g, rng, size * 0.012, 5 / size);
-  return g;
+  hair(ctx, O, r);
+  if (look.beard) beard(ctx, O, r, look.beard);
+  if (look.mask) mask(ctx, O, r);
+  if (look.hood) hood(ctx, O, r);
 }
 
 /**
- * Texture density per material bucket, in tiles across the body.
- *
- * A single figure-wide repeat gave a linen weave with threads the width of a
- * hand. Cloth and leather need many more tiles than plate does, and skin needs
- * barely any — its texture is pores, and pores should be invisible.
+ * Hair: the skull's own shape grown outward, then sunk back under the skin
+ * wherever this cut does not reach, so it ends at a hairline, above the ears
+ * or at the nape like real hair.
  */
-const MAT_REPEAT: Record<string, number> = {
-  skin: 1.4,
-  hair: 3,
-  shadow: 1,
-  linen: 13,
-  cloth: 9,
-  leather: 8,
-  armour: 3,
-  trim: 4,
-};
-
-const CLASSES: Record<CharClassId, ClassBuild> = {
-  // ---------------------------------------------------------------- WARDEN --
-  warden: {
-    profile: { height: 1.86, shoulder: 0.135, hip: 0.062, thick: 1.28, depth: 1.25, head: 1.0, lean: 0.03 },
-    palettes: {
-      skin: 'skin.tan',
-      hair: 'hair.dark',
-      shadow: 'metal.dark',
-      armour: 'metal.steel',
-      trim: 'metal.gold',
-      cloth: 'cloth.banner',
-      linen: 'cloth.undyed',
-      leather: 'leather.worn',
+function hair(ctx: BuildCtx, O: THREE.Vector3, r: number): void {
+  const { parts, look } = ctx;
+  const style = look.hairStyle;
+  if (style === 'bald' || style === 'skull') return;
+  const HEAD = ['head'];
+  const line = look.hairline ?? 0.36;
+  const close = style === 'shaved' || style === 'topknot';
+  const short = style === 'crop' || close;
+  const vol = close ? 1.04 : 1.1;
+  const cap = shapedSphere(
+    r * 0.9 * vol,
+    r * 1.0 * vol,
+    r * 0.94 * vol,
+    (n) => {
+      const front = smooth01(0.05, 0.4, n.z) * smooth01(line + 0.06, line - 0.12, n.y);
+      const side = (short ? 1 : 0.15) * smooth01(0.5, 0.82, Math.abs(n.x)) * smooth01(0.02, -0.28, n.y) * smooth01(-0.4, 0.1, n.z);
+      const nape = short ? smooth01(-0.5, -0.78, n.y) : 0;
+      const under = smooth01(-0.62, -0.9, n.y) * smooth01(-0.8, -0.3, n.z);
+      return 1 - 0.16 * Math.max(front, side, nape, under);
     },
-    accent: 0xd8b45a,
-  },
+    18,
+  );
+  cap.translate(O.x, O.y + r * 0.12, O.z - r * 0.16);
+  parts.push({ geo: cap, mat: 'hair', bind: HEAD, cover: 'hair' });
 
-  // ----------------------------------------------------------- PYROMANCER --
-  pyromancer: {
-    profile: { height: 1.76, shoulder: 0.098, hip: 0.05, thick: 0.94, depth: 0.92, head: 1.0, lean: 0.06 },
-    palettes: {
-      skin: 'skin.fair',
-      hair: 'hair.fair',
-      shadow: 'metal.dark',
-      armour: 'cloth.silk',
-      cloth: 'cloth.linen',
-      linen: 'cloth.undyed',
-      trim: 'metal.gold',
-      leather: 'leather.fine',
-    },
-    accent: 0xff7a2a,
-  },
+  const back = (y: number, z: number): THREE.Vector3 => new THREE.Vector3(O.x, O.y + y * r, O.z + z * r);
+  if (style === 'long' || style === 'braids') {
+    // A fall of hair down the back to the shoulder blades.
+    const fall = ringStack(
+      [
+        { y: -2.6, w: 0.62, df: 0.08, db: 0.16, z: -0.98 },
+        { y: -1.9, w: 0.72, df: 0.14, db: 0.24, z: -0.98 },
+        { y: -1.1, w: 0.84, df: 0.3, db: 0.3, z: -0.86 },
+        { y: -0.4, w: 0.9, df: 0.5, db: 0.32, z: -0.62 },
+        { y: 0.2, w: 0.86, df: 0.5, db: 0.3, z: -0.56 },
+      ].map((q) => ({ y: O.y + q.y * r, w: q.w * r, df: q.df * r, db: q.db * r, z: O.z + q.z * r })),
+      12,
+    );
+    parts.push({ geo: fall, mat: 'hair', bind: ['head', 'chest'], falloff: 1.5, cover: 'hairLong' });
+  }
+  if (style === 'braids') {
+    for (const s of [-1, 1]) {
+      const nodes = [0, 1, 2, 3, 4].map((i) => ({
+        p: new THREE.Vector3(O.x + s * r * (0.82 + i * 0.04), O.y - r * (0.1 + i * 0.42), O.z - r * (0.2 - i * 0.02)),
+        rx: r * (0.13 - i * 0.012),
+        rz: r * (0.13 - i * 0.012),
+      }));
+      parts.push({ geo: sweep(nodes, 6), mat: 'hair', bind: ['head', 'chest'], falloff: 1.5, cover: 'hairLong' });
+      const end = nodes[4].p;
+      parts.push({ geo: transformed(blob(r * 0.08, r * 0.08, r * 0.08, 6), { pos: [end.x, end.y - r * 0.08, end.z] }), mat: 'leather', bind: ['head', 'chest'], cover: 'hairLong' });
+    }
+  }
+  if (style === 'ponytail') {
+    const tie = back(0.05, -1.02);
+    parts.push({ geo: transformed(blob(r * 0.16, r * 0.16, r * 0.14, 8), { pos: [tie.x, tie.y, tie.z] }), mat: 'leather', bind: HEAD, cover: 'hair' });
+    const nodes = [0, 1, 2, 3, 4].map((i) => ({
+      p: back(0.05 - i * 0.48, -1.08 - Math.sin(i * 0.7) * 0.14),
+      rx: r * [0.17, 0.22, 0.2, 0.15, 0.06][i],
+      rz: r * [0.15, 0.18, 0.16, 0.12, 0.05][i],
+    }));
+    parts.push({ geo: sweep(nodes, 8), mat: 'hair', bind: ['head', 'chest'], falloff: 1.5, cover: 'hairLong' });
+  }
+  if (style === 'topknot' || style === 'bun') {
+    const knot = style === 'topknot' ? back(1.02, -0.3) : back(0.2, -1.02);
+    parts.push({ geo: transformed(blob(r * 0.24, r * 0.22, r * 0.24, 10), { pos: [knot.x, knot.y, knot.z] }), mat: 'hair', bind: HEAD, cover: 'hair' });
+    parts.push({
+      geo: transformed(ring(r * 0.15, r * 0.04, 10, 5), { pos: [knot.x, knot.y - r * 0.14, knot.z], rot: [Math.PI * 0.5, 0, 0] }),
+      mat: 'leather',
+      bind: HEAD,
+      cover: 'hair',
+    });
+  }
+}
 
-  // ---------------------------------------------------------- SHADOWBLADE --
-  shadowblade: {
-    profile: { height: 1.78, shoulder: 0.105, hip: 0.052, thick: 0.88, depth: 0.86, head: 0.96, lean: 0.11 },
-    palettes: {
-      skin: 'skin.deep',
-      hair: 'hair.dark',
-      shadow: 'metal.dark',
-      armour: 'leather.fine',
-      cloth: 'cloth.tattered',
-      linen: 'cloth.undyed',
-      trim: 'metal.dark',
-      leather: 'leather.studded',
-    },
-    accent: 0x4ad69a,
-  },
+/** A beard: the jaw grown outward and cut back above the mouth. */
+function beard(ctx: BuildCtx, O: THREE.Vector3, r: number, amount: number): void {
+  const full = amount >= 2;
+  const g = full ? 0.12 : 0.04;
+  const rings = [
+    { y: full ? -1.32 : -1.06, w: 0.12, df: 0.16, db: 0.1, z: full ? 0.46 : 0.42 },
+    { y: -1.0, w: 0.3 + g, df: 0.3 + g, db: 0.26, z: 0.4 },
+    { y: -0.84, w: 0.4 + g, df: 0.44 + g, db: 0.4, z: 0.36 },
+    { y: -0.6, w: 0.64 + g, df: 0.5 + g, db: 0.5, z: 0.22 },
+    { y: -0.28, w: 0.8 + g * 0.5, df: 0.34, db: 0.6, z: 0.08 },
+  ].map((q) => ({ y: O.y + q.y * r, w: q.w * r, df: q.df * r, db: q.db * r, z: O.z + q.z * r }));
+  ctx.parts.push({ geo: ringStack(rings, 14), mat: 'hair', bind: ['head'] });
+  if (full) {
+    // Moustache over the mouth line.
+    ctx.parts.push({
+      geo: transformed(taperedBox(r * 0.5, r * 0.1, r * 0.3, r * 0.12, r * 0.12, r * 0.04), { pos: [O.x, O.y - r * 0.44, O.z + r * 0.76] }),
+      mat: 'hair',
+      bind: ['head'],
+    });
+  }
+}
 
-  // ----------------------------------------------------------- STORMCALLER --
-  stormcaller: {
-    profile: { height: 1.8, shoulder: 0.115, hip: 0.055, thick: 1.0, depth: 1.0, head: 1.0, lean: 0.05 },
-    palettes: {
-      skin: 'skin.fair',
-      hair: 'hair.dark',
-      shadow: 'metal.dark',
-      armour: 'metal.silver',
-      cloth: 'cloth.silk',
-      linen: 'cloth.undyed',
-      trim: 'metal.gold',
-      leather: 'leather.studded',
-    },
-    accent: 0x6fc8ff,
-  },
+/** A cloth mask over the nose and mouth. */
+function mask(ctx: BuildCtx, O: THREE.Vector3, r: number): void {
+  const g = r * 0.06;
+  const rings = [
+    { y: -1.04, w: 0.26, df: 0.32, db: 0.3, z: 0.38 },
+    { y: -0.84, w: 0.44, df: 0.46, db: 0.44, z: 0.34 },
+    { y: -0.6, w: 0.66, df: 0.54, db: 0.58, z: 0.2 },
+    { y: -0.3, w: 0.82, df: 0.66, db: 0.7, z: 0.1 },
+    { y: -0.06, w: 0.9, df: 0.76, db: 0.76, z: 0.04 },
+  ].map((q) => ({ y: O.y + q.y * r, w: q.w * r + g, df: q.df * r + g, db: q.db * r + g, z: O.z + q.z * r }));
+  ctx.parts.push({ geo: ringStack(rings, 14), mat: 'cloth', bind: ['head'], cover: 'helm' });
+}
 
-  // -------------------------------------------------------------- REVENANT --
-  revenant: {
-    profile: { height: 1.84, shoulder: 0.12, hip: 0.05, thick: 0.72, depth: 0.78, head: 1.02, lean: 0.14 },
-    palettes: {
-      skin: 'bone.pale',
-      hair: 'bone.old',
-      shadow: 'metal.dark',
-      armour: 'bone.old',
-      cloth: 'cloth.tattered',
-      linen: 'cloth.tattered',
-      trim: 'metal.dark',
-      leather: 'leather.worn',
+/**
+ * A hood: a shaped shell over the head, open at the face, with a cowl that
+ * drapes onto the shoulders. The shadow it casts over the eyes is most of a
+ * rogue's silhouette.
+ */
+function hood(ctx: BuildCtx, O: THREE.Vector3, r: number): void {
+  const { fit } = ctx;
+  const shell = shapedSphere(
+    r * 1.08,
+    r * 1.16,
+    r * 1.2,
+    (n) => {
+      // Open at the face: sink a forward oval under the skin.
+      const face = smooth01(0.25, 0.62, n.z) * smooth01(0.66, 0.34, n.y) * smooth01(0.8, 0.5, Math.abs(n.x));
+      return 1 - 0.4 * face;
     },
-    accent: 0x7ce0a0,
-  },
-  // ---------------------------------------------------------------- RANGER --
-  ranger: {
-    profile: { height: 1.79, shoulder: 0.112, hip: 0.053, thick: 0.92, depth: 0.9, head: 0.98, lean: 0.07 },
-    palettes: {
-      skin: 'skin.tan',
-      hair: 'hair.fair',
-      shadow: 'metal.dark',
-      armour: 'leather.worn',
-      cloth: 'cloth.undyed',
-      linen: 'cloth.undyed',
-      trim: 'metal.bronze',
-      leather: 'leather.studded',
-    },
-    accent: 0x7fc46a,
-  },
-
-};
+    20,
+  );
+  // A hood is not a ball: its crown runs back to a point, the sides hang
+  // straight past the cheeks, and the front edge peaks over the brow.
+  const pos = shell.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const back = smooth01(0, -1.1 * r, z) * smooth01(-0.2 * r, 0.9 * r, y);
+    let nx = x * (1 - 0.3 * back);
+    let ny = y + back * r * 0.22;
+    let nz = z - back * r * 0.42;
+    // Straight sides below the temples.
+    if (y < 0) nx *= 1 + smooth01(0, -0.9 * r, y) * 0.08;
+    // The brim, pulled forward and down over the brow.
+    const brim = smooth01(0.5 * r, 1.0 * r, z) * smooth01(0.2 * r, 0.8 * r, y);
+    nz += brim * r * 0.18;
+    ny -= brim * r * 0.08;
+    pos.setXYZ(i, nx, ny, nz);
+  }
+  shell.computeVertexNormals();
+  shell.translate(O.x, O.y + r * 0.12, O.z - r * 0.1);
+  ctx.parts.push({ geo: shell, mat: 'cloth', bind: ['head'], cover: 'helm' });
+  // Cowl over the shoulders.
+  const cowl = ringStack(torsoRings(fit, fit.H * 0.022, 0.755, 0.84), 18);
+  ctx.parts.push({ geo: cowl, mat: 'cloth', bind: ['chest', 'head'], falloff: 2, cover: 'helm' });
+}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -1025,42 +720,46 @@ export interface PlayerModel {
 }
 
 /**
- * Builds a rigged player model. Bone names are fixed so the animation layer can
- * drive any class: 'root','hips','spine','chest','head','shoulderL/R',
- * 'elbowL/R','handL/R','hipL/R','kneeL/R','footL/R'.
+ * Builds any rigged person from a look. The player classes and every camp
+ * resident come through here, so they share one rig the animator drives.
  */
-export function buildPlayerModel(classId: CharClassId, rng: Rng, worn?: Iterable<EquipSlot>): PlayerModel {
-  const def = CLASSES[classId] ?? CLASSES.warden;
-  const p = def.profile;
+export function buildPerson(look: PersonLook, rng: Rng, name = 'person'): PlayerModel {
+  const p = look.profile;
   const joints = jointsFor(p);
   const { bones, order, rootBone } = buildBones(joints);
   const segs = buildSegments(joints, order);
+  const skeleton = new THREE.Skeleton(order);
+  const fit: BodyFit = {
+    H: p.height,
+    shW: p.shoulder * p.height,
+    hipW: p.hip * p.height,
+    dep: p.depth,
+    t: p.thick,
+    limbT: Math.pow(p.thick, 0.6),
+    headR: p.height * 0.056 * p.head,
+    joints,
+    segs,
+    skeleton,
+  };
 
-  const ctx: BuildCtx = { j: joints, p, rng, parts: [], props: [], accent: def.accent };
-  // Every class starts as bare body plus underwear, and nothing else.
-  //
-  // Classes used to arrive wearing their own jerkins, cloaks, robes and boots.
-  // Those pieces are not equipment, so gear could not replace them: a ranger who
-  // equipped a breastplate wore the breastplate *and* the class cloak, and the
-  // two clipped through each other. What a character looks like is now decided
-  // entirely by what is in their equipment slots.
-  baseBody(ctx, { skin: 'skin', armour: 'armour' });
-  baseHead(ctx, 'skin', p.head);
+  const ctx: BuildCtx = { fit, look, rng, parts: [] };
+  // Every class starts as bare body plus underwear. What a character wears
+  // beyond that is decided entirely by their equipment slots.
+  baseBody(ctx);
+  baseHead(ctx);
   underGarments(ctx);
 
   const root = new THREE.Group();
-  root.name = `player:${classId}`;
+  root.name = name;
   root.add(rootBone);
 
-  const skeleton = new THREE.Skeleton(order);
-
-  // Bucket parts by material so the whole character is a handful of draw calls.
-  // The cover slot joins the key: pieces that gear replaces have to live in
-  // their own mesh to be hideable independently of the body they sit on.
+  // Bucket parts by material so the whole character is a handful of draw
+  // calls. The cover joins the key: pieces that gear replaces live in their
+  // own mesh so they can be hidden independently of the body they sit on.
   const buckets = new Map<string, THREE.BufferGeometry[]>();
   for (const part of ctx.parts) {
     normalizeGeometry(part.geo);
-    skinGeometry(part.geo, segs, part.bind);
+    skinGeometry(part.geo, segs, part.bind, part.falloff ?? 3);
     const key = `${part.mat}#${part.cover ?? ''}`;
     let list = buckets.get(key);
     if (!list) {
@@ -1070,15 +769,20 @@ export function buildPlayerModel(classId: CharClassId, rng: Rng, worn?: Iterable
     list.push(part.geo);
   }
 
-  let seedTick = 1;
+  const specs: Record<string, MatSpec | undefined> = {
+    skin: look.skin,
+    hair: look.hair,
+    linen: look.linen,
+    leather: look.leather,
+    cloth: look.cloth,
+    bone: look.skin,
+  };
   for (const [key, list] of buckets) {
     const [matKey, coverKey] = key.split('#');
     const geo = mergeSkinned(list);
     for (const g of list) g.dispose();
-    const paletteKey = def.palettes[matKey] ?? 'metal.iron';
-    const mat = surface(paletteKey, { repeat: MAT_REPEAT[matKey] ?? 2.5, seed: seedTick++ });
-    const mesh = new THREE.SkinnedMesh(geo, mat);
-    mesh.name = `${classId}:${matKey}`;
+    const mesh = new THREE.SkinnedMesh(geo, personMaterial(matKey, specs[matKey], look));
+    mesh.name = `${name}:${matKey}`;
     if (coverKey) mesh.userData.coverSlot = coverKey;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -1089,32 +793,43 @@ export function buildPlayerModel(classId: CharClassId, rng: Rng, worn?: Iterable
     mesh.bind(skeleton, new THREE.Matrix4());
   }
 
-  // Rigid decorations ride their bone directly.
-  for (const { bone, obj, cover } of ctx.props) {
-    obj.castShadow = true;
-    if (cover) obj.userData.coverSlot = cover;
-    bones[bone]?.add(obj);
-  }
-
-  root.userData.classId = classId;
-  root.userData.accent = def.accent;
+  root.userData.accent = look.accent;
   root.userData.height = p.height;
-
-  applyWornSlots(root, worn ?? []);
-
+  root.userData.bodyFit = fit;
+  root.userData.look = look;
   return { root, skeleton, bones };
 }
 
 /**
- * Hides the class's own covering for every slot that has real gear in it.
+ * Builds a rigged player model. Bone names are fixed so the animation layer can
+ * drive any class: 'root','hips','spine','chest','head','shoulderL/R',
+ * 'elbowL/R','handL/R','hipL/R','kneeL/R','footL/R'.
+ */
+export function buildPlayerModel(classId: CharClassId, rng: Rng, worn?: Iterable<EquipSlot>): PlayerModel {
+  const look = CLASS_LOOKS[classId] ?? CLASS_LOOKS.warden;
+  const built = buildPerson(look, rng, `player:${classId}`);
+  built.root.userData.classId = classId;
+  applyWornSlots(built.root, worn ?? []);
+  return built;
+}
+
+/**
+ * Hides the body's own covering for every slot that has real gear in it, and
+ * whatever else that gear asked to hide (a closed helm hides the hair).
  *
  * This is what makes equipment change how you look. A fresh character wears
- * nothing but linen, so every default piece is on show; equip a breastplate and
- * the class's own chest covering steps aside for it rather than clipping
- * through it. Cheap enough to call on every equip — it only flips `visible`.
+ * nothing but linen; equip a breastplate and the undershirt steps aside for it
+ * rather than clipping through it. Cheap enough to call on every equip — it
+ * only flips `visible`.
  */
 export function applyWornSlots(root: THREE.Object3D, worn: Iterable<EquipSlot>): void {
-  const set = worn instanceof Set ? (worn as Set<string>) : new Set<string>(worn as Iterable<string>);
+  const set = new Set<string>(worn as Iterable<string>);
+  root.userData.wornSlots = new Set(set);
+  const extra = (root.userData.extraCovers ?? {}) as Record<string, string[]>;
+  for (const [slot, keys] of Object.entries(extra)) {
+    if (!set.has(slot)) continue;
+    for (const k of keys) set.add(k);
+  }
   root.traverse((o) => {
     const slot = o.userData?.coverSlot as string | undefined;
     if (slot) o.visible = !set.has(slot);
@@ -1123,7 +838,40 @@ export function applyWornSlots(root: THREE.Object3D, worn: Iterable<EquipSlot>):
 
 /** The class accent colour, for rim lights and UI tinting. */
 export function classAccent(classId: CharClassId): number {
-  return (CLASSES[classId] ?? CLASSES.warden).accent;
+  return (CLASS_LOOKS[classId] ?? CLASS_LOOKS.warden).accent;
+}
+
+/**
+ * Puts a piece of armour on the body itself — helm, chest, gloves, boots or
+ * belt — cut to this body's measurements and skinned to its skeleton, so it
+ * bends with the arm and fits a broad warden and a thin pyromancer alike.
+ *
+ * Returns the object it attached (under a bone, tagged with `socketSlot`, so
+ * `clearSocket` removes it like any socketed item), or null for slots and
+ * bodies it does not handle; callers then fall back to `attachToSocket`.
+ */
+export function wearItem(
+  body: THREE.Object3D,
+  bones: Record<string, THREE.Bone>,
+  slot: EquipSlot,
+  item: Pick<Item, 'baseId' | 'rarity' | 'uniqueId' | 'setId'>,
+  visual: ItemVisual | undefined,
+): THREE.Object3D | null {
+  const fit = body.userData?.bodyFit as BodyFit | undefined;
+  const host = bones.hips ?? bones.root;
+  if (!fit || !visual || !host) return null;
+  const worn = buildWorn(fit, slot, item, visual);
+  if (!worn) return null;
+  clearSocket(bones, slot);
+  worn.object.userData.socketSlot = slot;
+  host.add(worn.object);
+  // What this piece hides on the body beyond its own slot.
+  const extra = (body.userData.extraCovers ??= {}) as Record<string, string[]>;
+  extra[slot] = worn.hides;
+  const now = new Set<EquipSlot>((body.userData.wornSlots as Set<EquipSlot> | undefined) ?? []);
+  now.add(slot);
+  applyWornSlots(body, now);
+  return worn.object;
 }
 
 // ---------------------------------------------------------------------------

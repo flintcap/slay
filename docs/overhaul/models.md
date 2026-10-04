@@ -1,11 +1,11 @@
 # Stream: models (how bodies and worn gear look)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
-- [ ] Player bodies: better proportions, anatomy and silhouette per class; faces and hair with character; materials with real skin, cloth, leather and metal response.
-- [ ] Equipped gear on the body: helm, chest, gloves, boots, belt and shield show the actual item worn. Shape, material and ornament change with the item's base, tier and rarity, so upgrading visibly changes your character. Uniques and sets look unique.
+- [x] Player bodies: better proportions, anatomy and silhouette per class; faces and hair with character; materials with real skin, cloth, leather and metal response. ("Models: real bodies and armour cut to fit them")
+- [x] Equipped gear on the body: helm, chest, gloves, boots, belt and shield show the actual item worn. Shape, material and ornament change with the item's base, tier and rarity, so upgrading visibly changes your character. Uniques and sets look unique. ("Models: real bodies and armour cut to fit them")
 - [ ] Monster looks: a distinct, readable silhouette per family, more detail and material variety, elites and champions visibly tougher, bosses that look like bosses.
 - [ ] Town NPCs: each camp NPC built for their role (smith, vendor, healer, stash keeper and the rest), with clothing and props that say who they are.
 - [ ] Level of detail and budgets: far-away models get cheaper, crowds of monsters stay smooth, nothing visibly pops.
@@ -13,47 +13,70 @@ Status: paused
 
 ## Next up
 
-Milestone 1 (nothing ticked yet). First run the baseline lineup render, which has never been run:
-`SLAY_PORT=4311 node tools/models-sheet.mjs classes,monsters --out=shots/models/base` (run it as a plain
-command, not wrapped in `time`). Look at the PNGs, then start on the body work in the plan below.
+Milestone 3, monsters. Plan (see "Monsters" in the notes): optional 4th arg `{ family, rank }` to
+`buildMonsterModel`, family and rank dressing placed against each bone's bounds, one rigid-weighted
+SkinnedMesh per material instead of one mesh per bone, tints that read as the authored colour.
 
 ## Notes for resume
 
-Tools already written (committed, typecheck clean, not yet run):
-- `tools/models-sheet.mjs` + `tools/models-page.ts`: lineup renders without booting the game (Vite dev
-  server, empty page, SwiftShader WebGL). Sheets: `classes` (6 classes x bare/low/mid/top gear, front and
-  back, plus a strip at the real game camera scale), `monsters` (per family, plus an elite and 6 bosses),
-  `npcs` (reads `NPC_LOOK_IDS` and `buildNpcModel` from `src/art/NpcModels.ts` once it exists). Prints
-  triangles and draw calls per figure. The page already calls `CM.wearItem(body, bones, slot, item, visual)`
-  if it exists, and passes `{ family, rank }` as a 4th arg to `buildMonsterModel`.
+How to look at models (fast, no game boot, about 30-60 s each even under load):
+`node tools/models-sheet.mjs <sheets> --port=4311 --out=shots/models/<dir>`. Sheets: `classes` (6 classes x
+bare/low/mid/top, front and back, plus a game-camera strip), `bodies`, `bodies-low|mid|top` (each class big:
+front, side, back, two head close-ups), `monsters`, `npcs`, `npcs-a`, `npcs-b`. If a browser checker is
+using 4311, pass `--port=4312` (unassigned) so the two never collide. Read the PNGs with the Read tool.
 
-What I found (read before coding):
-- Worn armour today is `ItemModels.buildItemModel` (art stream) as a rigid one-size mesh on a bone, socketed
-  by `attachToSocket` in `Player.refreshEquipmentVisuals` and `PaperdollView.setCharacter`. It does not fit
-  each class's body. Plan: new `src/art/WornGear.ts` builds helm/chest/gloves/boots/belt as SkinnedMeshes
-  bound to the body's own skeleton (store skeleton and joint fit on `root.userData` in `buildPlayerModel`),
-  shaped by the sub-type in `visual.shape` (`chest.robe|leather|mail|scale|plate`, `helm.cap|full|horned|circlet`,
-  `gloves.light|plate|silk`, `boots.light|plate|silk`, `belt.sash|plate|chain`), rarity tier and ornate.
-  Export `wearItem(...)` from CharacterModels returning null for slots it does not handle, and make a
-  one-line additive edit in Player.ts and PaperdollView.ts: try `wearItem` first, else the old path. Attach
-  the result under a bone with `userData.socketSlot = slot` so `clearSocket` removes it. Do not route
-  skinned meshes through `attachToSocket` (its mirror clone would double-draw).
-- Share skinning helpers (`ringStack`, `blob`, `skinGeometry`, `mergeSkinned`, segments) via a new
-  `src/art/BodyKit.ts` to avoid an import cycle between CharacterModels and WornGear.
-- Put an exported `gearLook(visual, rarity)` helper in a new `src/art/GearLook.ts` (tier, trim key, accent,
-  glow) mirroring `ItemModels.decoFor/kitFor`, and ask the art stream in art.md to use it so drops and worn
-  gear agree.
-- `buildPlayerModel` uses texture seeds 1..N per material bucket, which bakes fresh PBR sets per character
-  (boot only warms seed 0). Switch to seed 0.
-- Town NPCs: `Town.ts` calls `npc(ctx, classId, ...)` 8 times with player class models. Mapping by position:
-  forge = Kale (smith), wagon = Hesk (quartermaster), stash tent = Corvane (vaultkeeper), cairn = Marrow
-  (gravekeeper), (-3.6,4.4) = Gilder, (3.4,4.8) = Wenna, (-1.2,-14.6) = the Listener, (2.0,-14.4) = Captain
-  Renn. Sister Vell (apothecary at `npcSpots.alchemist`) has no model at all. People are in
-  `src/data/story/npcs.ts`.
-- Monsters: `MonsterVisual` has no family; Enemy.ts (combat) builds via `buildMonsterModel(def.visual, rng,
-  sizeScale)` and knows `def.family` and `rank` (bosses go through Enemy with rank 'boss'). Plan: optional
-  4th arg `{ family, rank }`, one-line edit in Enemy.ts. Monsters are rigid-bound, one mesh per bone, one
-  material each (~17 draw calls per humanoid). Big draw-call win: rebuild as one rigidly weighted
-  SkinnedMesh per material (bones have no bind rotation), and re-create the Skeleton per clone.
-  HitFlash swaps materials to MeshBasicMaterial, which works with skinning. Leave `RigAnimator` (same file)
-  to the animation stream.
+How the bodies work now:
+- `src/art/BodyKit.ts` holds the rig (`BONE_NAMES`, `BONE_PARENT`, unchanged), skinning (`skinGeometry`,
+  `skinRigid`, `mergeSkinned`), shape builders (`ringStack` with separate front/back depth and open arcs,
+  `sweep` = a tube through stations with elliptical sections, `shapedSphere`), and the anatomy shared by
+  body and gear: `torsoRings(fit, inflate, from, to)` (the torso surface; the ribcage is narrower than the
+  shoulder joints so arms hang outside it), `armNodes`, `legNodes`, `handGeos`, `footGeos`. Gear is cut by
+  calling these with an `inflate`, so it fits every class.
+- `CharacterModels.ts`: `PersonLook` (profile, materials with optional tints, hair style, beard, hood,
+  mask, skeletal, eye glow, sleeves) and `buildPerson(look, rng, name)`; the six classes are `CLASS_LOOKS`;
+  `buildPlayerModel` wraps it. Joint positions (`jointsFor`) are untouched: they are the animation contract.
+  The root carries `userData.bodyFit` (measurements, joints, segments, skeleton) for gear.
+- Skin uses a flat colour plus the palette's normal and roughness (`skinMaterial`): the palettes' speckle
+  passes read as dirt on faces. All buckets use texture seed 0 (boot warms seed 0).
+- Cover keys: `chest` (undershirt, shirt sleeves), `gloves` (the bare hands), `boots` (bare feet and foot
+  wraps), `helm` (class hood and mask), `hair` (the cap of hair, topknots), `hairLong` (falls, braids,
+  ponytails). Equipment slots hide their own key; a piece can hide more through
+  `root.userData.extraCovers[slot]`, which `applyWornSlots` honours only while that slot is worn.
+
+How worn gear works now:
+- `wearItem(body, bones, slot, item, visual)` in CharacterModels builds `WornGear.buildWorn` and parents
+  the result under the hips bone with `userData.socketSlot = slot`, so `clearSocket` and `disposeObject`
+  remove it like any socketed item. Geometry is in character space and bound to the body's skeleton with
+  an identity bind matrix; attached-mode skinning makes the parent irrelevant. Returns null for weapons,
+  shields, jewellery: those still go through `attachToSocket` (art's `ItemModels`). Shields are held items,
+  so they stay the art stream's model.
+- Wired (one small edit each) in `Player.refreshEquipmentVisuals`, `PaperdollView.setCharacter`,
+  `HeroModel.assemble` (menus): try `wearItem`, else the old socket path.
+- `WornGear` cuts: chest `robe|leather|mail|scale|plate` (+ `coat|apron` for camp people), helm
+  `cap|full|horned|circlet` (+ `hat|hood|blindfold`), gloves `light|plate|silk`, boots `light|plate|silk`,
+  belt `sash|plate|chain`. Base tier (level req <20, <50, 50+) grows the cut (robe length, plate fluting,
+  pauldron lames, horn length, closed vs open helm); rarity adds trim, fittings, gems, runes; uniques get a
+  signature (cape / fur mantle / glowing veins on chest; crown / wings / plume / halo on helms; claws /
+  glowing knuckles / spiked cuffs; ankle wings / spurs / glowing soles; skull buckle / trophies / stones);
+  set pieces wear their set colour (`setColor(setId)`) on trim and gems. `buildFitted(fit, name, parts)`
+  skins one-off pieces (NPC trousers, scars).
+- Visual `palette` may be `key|0xRRGGBB` for dyed cloth (worn gear only).
+- `src/art/GearLook.ts` `gearLook(item, visual)` is the shared "what does this item look like" answer
+  (palette, family, kind, rarity tier, base tier, trim palette and tint, accent, glow, ornament flags,
+  signature). Art stream: please build `itemLook()` on it or adopt it in `ItemModels`, so drops, held
+  weapons and icons use the same trim metal and set colour (requested in art.md).
+
+Costs (classes sheet): bare 10-12 draw calls, top gear 31-60 (was 78-105); most of what is left is the held
+weapon and shield from `ItemModels`, one mesh per part.
+
+Checker status at this checkpoint: `check-grips` passes. `check-worn` and `check-paperdoll` reached their
+screenshot step with no page errors but timed out taking the screenshot (30 s Playwright default) with the
+machine at load average ~24; rerun them when the machine is quieter. `check-body`, `check-fabric`,
+`check-clips` are visual/boot tools that do not touch the changed code paths in a way that can fail.
+
+Requests to other streams:
+- art: adopt `GearLook.gearLook` for trim/set colour in `ItemModels` (see above).
+- feel (`SkillRunner.ts` summons): once monsters are skinned (milestone 3), call `releaseMonsterModel(root)`
+  when a summon's model is thrown away, or its skeleton's bone texture leaks.
+- world (`Palettes.ts`): a smooth `skin.*` palette without speckle/stain passes would let skin use its
+  albedo map again; today `CharacterModels.skinMaterial` drops the map.

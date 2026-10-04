@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import type { Character, EquipSlot } from '../types';
 import { Random } from '../core/RNG';
 import { disposeObject } from '../core/Engine';
-import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip } from '../art/CharacterModels';
+import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
 import { buildItemModel } from '../art/ItemModels';
 import { Animator } from '../art/Animation';
 import { getBase } from '../sim/Loot';
@@ -185,8 +185,12 @@ export class PaperdollView {
           slot === 'mainHand' || slot === 'offHand'
             ? weaponGrip(base?.category, base?.slot === 'twoHand')
             : undefined;
-        const mesh = buildItemModel(visual, rng, item.rarity);
-        attachToSocket(this.rig, this.bones, slot, mesh, socketKey, grip);
+        // Armour is worn on the body itself, exactly as in the world.
+        let mesh = this.model ? wearItem(this.model, this.bones, slot, item, visual) : null;
+        if (!mesh) {
+          mesh = buildItemModel(visual, rng, item.rarity);
+          attachToSocket(this.rig, this.bones, slot, mesh, socketKey, grip);
+        }
         this.equipMeshes.set(slot, mesh);
       } catch {
         // A single unbuildable item must not blank the whole figure.
