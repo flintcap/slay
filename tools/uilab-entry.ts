@@ -22,7 +22,9 @@ import { SKILLS } from '../src/data/skills';
 import { CLASSES } from '../src/data/classes';
 import { STATUSES } from '../src/data/statuses';
 import { hoverHooks, runtime, modal, contextMenu } from '../src/ui/Widgets';
-import type { CharClassId } from '../src/types';
+import type { CharClassId, DamageType } from '../src/types';
+import * as THREE from 'three';
+import { CombatTextLayer } from '../src/ui/CombatText';
 
 setIconBaseResolver((id) => {
   try {
@@ -146,26 +148,127 @@ const scenarios: Record<string, () => void> = {
       { label: 'Salvage', icon: 'warn', danger: true },
     ], 'Gilded Warplate');
   },
+  /** A staged fight: a pack ahead of the hero taking hits, the hero taking some. */
+  combat() {
+    const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+    cam.position.set(0, 14, 12);
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld();
+    const layer = new CombatTextLayer();
+    const hero = { x: 0, z: 2 };
+    let last = performance.now();
+    const loop = (now: number): void => {
+      layer.update(Math.min(0.1, (now - last) / 1000), cam, hero);
+      last = now;
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+    const types: DamageType[] = ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane'];
+    let n = 0;
+    setInterval(() => {
+      n++;
+      const t = types[n % types.length]!;
+      const target = n % 4;
+      events.emit('enemy:damaged', {
+        id: `e${target}`,
+        amount: 40 + ((n * 37) % 90),
+        type: t,
+        crit: n % 7 === 0,
+        x: -4 + target * 2.6,
+        y: 1.4,
+        z: -3 + (target % 2),
+      });
+      if (n % 9 === 0) events.emit('player:damaged', { amount: 23 + (n % 20), type: 'fire', life: 80, maxLife: 200 });
+      if (n % 11 === 0) events.emit('player:healed', { amount: 41 });
+      if (n % 13 === 0) events.emit('player:evaded', { ability: 'x', source: 'y' });
+    }, 70);
+    setTimeout(() => events.emit('enemy:damaged', { id: 'boss', amount: 18450, type: 'fire', crit: true, x: 0, y: 2, z: -6 }), 900);
+  },
   levelup() {
     events.emit('player:levelUp', { level: 29, statPoints: 5, skillPoints: 1 });
   },
   tooltip() {
-    events.emit('ui:open', { panel: 'inventory' });
-    setTimeout(() => {
-      const slots = [...document.querySelectorAll<HTMLElement>('.inv-grid .islot:not(.is-empty), .itemgrid .islot:not(.is-empty)')];
-      const pick = slots.find((s) => s.dataset.rarity === 'rare' || s.dataset.rarity === 'unique') ?? slots[0];
+    hoverFirst(['rare', 'unique']);
+  },
+  /** Rolls until a unique and a set piece exist, then hovers one. */
+  ttunique() {
+    rollUntil(['unique', 'mythic', 'ancient']);
+    hoverFirst(['unique', 'mythic', 'ancient']);
+  },
+  ttset() {
+    rollUntil(['set']);
+    hoverFirst(['set']);
+  },
+  ttgem() {
+    hoverFirst(['normal', 'magic'], (s) => /gem|rune/i.test(s.title + (s.dataset.base ?? '')));
+  },
+};
+
+function rollUntil(rarities: string[]): void {
+  const ch = save.account.current!;
+  for (let i = 0; i < 3000; i++) {
+    const it = rollItem(ch.level + 10, rng, { magicFind: 6000 });
+    if (rarities.includes(it.rarity)) {
+      ch.inventory.unshift(it);
+      ch.inventory.length = Math.max(ch.inventory.length - 1, 0);
+      ch.inventory[0] = it;
+      return;
+    }
+  }
+}
+
+function hoverFirst(rarities: string[], extra?: (s: HTMLElement) => boolean): void {
+  events.emit('ui:open', { panel: 'inventory' });
+  setTimeout(() => {
+    {
+      const slots = [...document.querySelectorAll<HTMLElement>('.itemgrid .islot:not(.is-empty)')];
+      const pick = slots.find((s) => rarities.includes(s.dataset.rarity ?? '') && (!extra || extra(s))) ?? slots[0];
       if (pick) {
         const r = pick.getBoundingClientRect();
         pick.dispatchEvent(new PointerEvent('pointerenter', { clientX: r.left + 5, clientY: r.top + 5 }));
       }
-    }, 300);
+    }
+  }, 300);
+}
+
+const scenarios2: Record<string, () => void> = {
+  /** Lifts a piece of armour out of the pack and holds it over its paperdoll slot. */
+  drag() {
+    events.emit('ui:open', { panel: 'inventory' });
+    setTimeout(() => {
+      const slots = [...document.querySelectorAll<HTMLElement>('.itemgrid .islot:not(.is-empty)')];
+      const src = slots.find((s) => s.dataset.rarity === 'rare') ?? slots[2]!;
+      const r = src.getBoundingClientRect();
+      const x0 = r.left + 20;
+      const y0 = r.top + 20;
+      src.dispatchEvent(new PointerEvent('pointerdown', { clientX: x0, clientY: y0, button: 0, bubbles: true }));
+      src.dispatchEvent(new PointerEvent('pointermove', { clientX: x0 + 12, clientY: y0 + 4, bubbles: true }));
+      const target = [...document.querySelectorAll<HTMLElement>('.pd-slot.drop-ok')][0];
+      const t = target?.getBoundingClientRect();
+      const tx = t ? t.left + t.width / 2 : x0 - 200;
+      const ty = t ? t.top + t.height / 2 : y0;
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: tx - 30, clientY: ty, bubbles: true }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: tx, clientY: ty, bubbles: true }));
+    }, 400);
+  },
+  /** An equip and a pickup, a moment after the panel opens, to see the flashes. */
+  arrive() {
+    events.emit('ui:open', { panel: 'inventory' });
+    setTimeout(() => {
+      const ch = save.account.current!;
+      const it = rollItem(ch.level, rng, { magicFind: 3000 });
+      const free = ch.inventory.findIndex((x) => !x);
+      if (free >= 0) ch.inventory[free] = it;
+      events.emit('ui:refresh', {});
+    }, 900);
   },
 };
 
 const want = new URLSearchParams(location.search).get('s') ?? 'hud';
 setTimeout(() => {
   for (const part of want.split('+')) {
-    if (scenarios[part]) scenarios[part]!();
+    const all = { ...scenarios, ...scenarios2 };
+    if (all[part]) all[part]!();
     else events.emit('ui:open', { panel: part });
   }
   (window as unknown as Record<string, unknown>).LAB_READY = true;

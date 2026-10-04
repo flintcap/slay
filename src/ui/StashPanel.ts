@@ -112,8 +112,10 @@ export class StashPanel {
         sortSlots(slice);
         for (let i = 0; i < STASH_TAB_SIZE; i++) save.account.stash[start + i] = slice[i] ?? null;
         save.touch();
+        this.quietNext = true;
         this.refresh();
-        events.emit('toast', { text: 'Tab sorted.', kind: 'info' });
+        this.stashGrid.playSort();
+        events.emit('sfx', { id: 'ui.click' });
       },
     });
     tabRow.appendChild(sortTab.root);
@@ -218,6 +220,8 @@ export class StashPanel {
   }
 
   private readonly boundRefresh = (): void => this.refresh();
+  private quietNext = false;
+  private shownOffset = -1;
 
   refresh(): void {
     const acct = save.account;
@@ -231,7 +235,11 @@ export class StashPanel {
     if (this.tabIndex >= acct.stashTabs) this.tabIndex = 0;
     this.tabs.setTabs(defs, `tab${this.tabIndex}`);
 
-    this.stashGrid.setItems(acct.stash, this.tabOffset());
+    // A tab switch or a sort replaces every cell; only a real arrival flashes.
+    const offset = this.tabOffset();
+    this.stashGrid.setItems(acct.stash, offset, this.quietNext || offset !== this.shownOffset);
+    this.shownOffset = offset;
+    this.quietNext = false;
 
     const c = acct.current;
     if (c) {

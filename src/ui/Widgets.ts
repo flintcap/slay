@@ -850,7 +850,10 @@ export function unregisterDrop(node: HTMLElement): void {
 class DragController {
   payload: DragPayload | null = null;
   private ghost: HTMLElement | null = null;
+  private ghostBody: HTMLElement | null = null;
   private hovered: HTMLElement | null = null;
+  private lastX = 0;
+  private tilt = 0;
   private onEnd: (() => void) | null = null;
 
   get active(): boolean {
@@ -863,9 +866,21 @@ class DragController {
     this.onEnd = onEnd ?? null;
 
     const g = div('drag-ghost');
-    g.innerHTML = ghostHtml;
+    // The body tilts with the swing of the pointer, so the item feels held
+    // rather than pasted to the cursor.
+    const body = div('drag-ghost-body');
+    body.innerHTML = ghostHtml;
+    g.appendChild(body);
+    if (payload.item) {
+      g.style.setProperty('--rc', rarityHex(payload.item.rarity));
+      g.appendChild(div('drag-ghost-name', payload.item.name));
+      g.appendChild(div('drag-ghost-hint', 'Release to drop'));
+    }
     document.body.appendChild(g);
     this.ghost = g;
+    this.ghostBody = body;
+    this.lastX = ev.clientX;
+    this.tilt = 0;
     this.move(ev.clientX, ev.clientY);
 
     document.body.classList.add('dragging');
@@ -889,6 +904,11 @@ class DragController {
       this.hovered?.classList.remove('drop-hover');
       this.hovered = under;
       this.hovered?.classList.add('drop-hover');
+    }
+    if (this.ghost) {
+      this.ghost.classList.toggle('is-over-ok', !!under);
+      const world = !under && !!this.payload?.item && !!this.onWorldDrop && this.overWorld(e.clientX, e.clientY);
+      this.ghost.classList.toggle('is-over-world', world);
     }
   };
 
@@ -955,6 +975,10 @@ class DragController {
   private move(x: number, y: number): void {
     if (!this.ghost) return;
     this.ghost.style.transform = `translate3d(${x - 26}px, ${y - 26}px, 0)`;
+    const swing = Math.max(-14, Math.min(14, (x - this.lastX) * 0.9));
+    this.tilt += (swing - this.tilt) * 0.35;
+    this.lastX = x;
+    if (this.ghostBody) this.ghostBody.style.transform = `rotate(${this.tilt.toFixed(1)}deg)`;
   }
 
   cancel(): void {
@@ -963,6 +987,7 @@ class DragController {
     window.removeEventListener('keydown', this.onKey, true);
     this.ghost?.remove();
     this.ghost = null;
+    this.ghostBody = null;
     this.hovered?.classList.remove('drop-hover');
     this.hovered = null;
     this.payload = null;
@@ -1645,6 +1670,14 @@ export class ItemSlot {
   /** Force a redraw (upgrade level or socket count changed in place). */
   refresh(): void {
     this.render();
+  }
+
+  /** A one-shot burst in the item's colour: it just arrived here. */
+  flash(): void {
+    this.root.classList.remove('is-flash');
+    void this.root.offsetWidth;
+    this.root.classList.add('is-flash');
+    window.setTimeout(() => this.root.classList.remove('is-flash'), 700);
   }
 
   private render(): void {

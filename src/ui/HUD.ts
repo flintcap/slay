@@ -835,11 +835,9 @@ export class HUD {
 
     on('player:damaged', (p) => {
       this.lifeOrb.set(p.life, p.maxLife);
+      // The number itself is drawn over the hero by CombatTextLayer; a second
+      // copy over the orb only split the eye between two places.
       this.pulseHurt(p.amount / Math.max(1, p.maxLife));
-      this.floatText(`-${fmt(p.amount)}`, 'bad', this.lifeOrb.root);
-    });
-    on('player:healed', (p) => {
-      this.floatText(`+${fmt(p.amount)}`, 'good', this.lifeOrb.root);
     });
     on('player:levelUp', (p) => {
       this.levelFlourish(p.level);
@@ -1628,10 +1626,13 @@ export class HUD {
     }
     const wrap = div('levelup');
     wrap.innerHTML =
-      `<div class="levelup-ring"></div><div class="levelup-word">LEVEL ${level}</div>` +
-      `<div class="levelup-sub">Points to spend — press C and T</div>`;
+      `<div class="levelup-rays"></div><div class="levelup-ring"></div>` +
+      `<div class="levelup-kicker">You grow stronger</div>` +
+      `<div class="levelup-word">LEVEL ${level}</div>` +
+      `<div class="levelup-orn">${ORNAMENT.crest}</div>` +
+      `<div class="levelup-sub">Spend your points <span class="keycap">C</span> attributes <span class="keycap">T</span> skills</div>`;
     this.centerLayer.appendChild(wrap);
-    setTimeout(() => wrap.remove(), 2600);
+    setTimeout(() => wrap.remove(), 3000);
   }
 
   private setPrompt(text: string): void {

@@ -38,11 +38,11 @@ import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
 import { SkillRunner, weaponStyle } from './SkillRunner';
 import { NameplateLayer } from '../ui/Nameplates';
+import { CombatTextLayer } from '../ui/CombatText';
 import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
 import { affixIconUri } from '../art/Icons';
 import { runtime as hudRuntime } from '../ui/Widgets';
-import { typeColor } from '../entities/Abilities';
 import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
 import { runStats } from '../ui/RunStats';
@@ -189,6 +189,8 @@ export class DungeonScene extends GameScene {
   /** Over-time portions of potions currently working. */
   private potionTicks: Array<{ life: number; mana: number; left: number }> = [];
   private plates: NameplateLayer | null = null;
+  /** Floating combat numbers; listens to the combat events itself. */
+  private combatText: CombatTextLayer | null = null;
   private groundLabels: GroundLabelLayer | null = null;
   private transitioning = false;
   private runTime = 0;
@@ -304,19 +306,8 @@ export class DungeonScene extends GameScene {
 
     // A light on the hero is standard for the genre: torch placement is
     // procedural, so without it the player regularly ends up in pitch black.
-    // Floating combat text. The particle system has always been able to draw
-    // these; nothing ever asked it to, so every hit in the game landed silently.
-    this.offs.push(
-      events.on('enemy:damaged', (e) => {
-        if (!save.settings.showDamageNumbers) return;
-        this.fx.damageNumber(
-          String(Math.max(1, Math.round(e.amount))),
-          e.x, e.y + 0.35, e.z,
-          typeColor(e.type),
-          !!e.crit,
-        );
-      }),
-    );
+    // Floating combat text is drawn by the HUD's CombatTextLayer, which
+    // listens to `enemy:damaged` and the player events itself.
 
     this.offs.push(
       events.on('potion:use', (p) => this.drink(p.kind, p.baseId)),
@@ -343,6 +334,7 @@ export class DungeonScene extends GameScene {
     );
 
     this.plates = new NameplateLayer();
+    this.combatText = new CombatTextLayer();
     this.groundLabels = new GroundLabelLayer();
     this.groundLabels.onPickUp = (uid) => this.pickUpByUid(uid);
     // The torch. Hung well above head height rather than at the chest.
@@ -891,18 +883,6 @@ export class DungeonScene extends GameScene {
         const taken = this.player.takeDamage(packet, this.rng);
         this.passiveDefence(packet, taken, before);
         this.powers?.afterPlayerHit(packet, taken, taken === 0 && before === this.player.life);
-        if (taken > 0 && save.settings.showDamageNumbers) {
-          // Player damage in the packet's own colour, so a big fire hit is
-          // readable as fire without reading the number.
-          this.fx.damageNumber(
-            String(Math.max(1, Math.round(taken))),
-            this.player.position.x,
-            1.9,
-            this.player.position.z,
-            typeColor(packet.type),
-            false,
-          );
-        }
         if (taken > 0) {
           this.engine.renderer.flashHurt(Math.min(1, taken / Math.max(1, this.player.stats.life * 0.25)));
           this.rig.addTrauma(Math.min(0.5, taken / Math.max(1, this.player.stats.life * 0.4)));
@@ -1067,6 +1047,8 @@ export class DungeonScene extends GameScene {
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
     this.rig.update(rawDt, elapsed);
+    // Real time, so numbers keep moving through a hit-stop.
+    if (this.player) this.combatText?.update(rawDt, this.camera, this.player.position);
     this.skills.feel.update(
       dt,
       this.nav,
@@ -1717,6 +1699,8 @@ export class DungeonScene extends GameScene {
     }
     this.plates?.dispose();
     this.plates = null;
+    this.combatText?.dispose();
+    this.combatText = null;
     this.groundLabels?.dispose();
     this.groundLabels = null;
     this.skills.dispose();

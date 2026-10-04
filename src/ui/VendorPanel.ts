@@ -317,9 +317,9 @@ export class VendorPanel {
     if (this.tab === 'buyback') {
       const items: Array<Item | null> = shelf.map((e) => e.item);
       while (items.length < STOCK_SIZE) items.push(null);
-      this.stockGrid.setItems(items);
+      this.stockGrid.setItems(items, 0, true);
     } else {
-      this.stockGrid.setItems(this.stock);
+      this.stockGrid.setItems(this.stock, 0, true);
     }
     this.tabs.setTabs(
       [

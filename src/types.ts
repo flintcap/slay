@@ -393,6 +393,11 @@ export interface Character {
    * Optional so saves written before this existed still load.
    */
   primaryAttack?: string | null;
+  /**
+   * Skill respecs taken so far; prices the next one (`respecCost` in
+   * sim/Progression). Optional so older saves load as zero.
+   */
+  respecs?: number;
   equipment: Partial<Record<EquipSlot, Item>>;
   inventory: (Item | null)[];
   gold: number;

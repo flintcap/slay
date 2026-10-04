@@ -13,6 +13,7 @@ import type { Character, SkillDef, StatKey } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { allocateSkill, canAllocateSkill, setPrimaryAttack, setHotbarSlot } from '../sim/Character';
+import { respecCost, respecSkills, FREE_RESPECS } from '../sim/Progression';
 import {
   scheduleRefresh,
   Panel,
@@ -38,6 +39,9 @@ import {
   STAT_ICON,
   PERCENT_STATS,
   emptyState,
+  modal,
+  fmtInt,
+  Button,
   type DragPayload,
 } from './Widgets';
 import { skillIconUri } from '../art/Icons';
@@ -53,9 +57,15 @@ interface NodeView {
   def: SkillDef;
   root: HTMLDivElement;
   rank: HTMLDivElement;
+  /** The rank arc drawn round the node, filled as points go in. */
+  arc: SVGCircleElement;
   x: number;
   y: number;
 }
+
+/** Radius and length of the rank arc round each node. */
+const ARC_R = NODE / 2 + 3;
+const ARC_LEN = 2 * Math.PI * ARC_R;
 
 export class SkillTreePanel {
   readonly panel: Panel;
@@ -68,6 +78,7 @@ export class SkillTreePanel {
   private treeBlurb: HTMLDivElement;
 
   private nodes = new Map<string, NodeView>();
+  private respecBtn: Button;
   private activeTree = '';
   private focused: string | null = null;
   private pinned: string | null = null;
@@ -76,7 +87,7 @@ export class SkillTreePanel {
     this.panel = new Panel({
       id: 'skills',
       title: 'Skills',
-      subtitle: 'Every point is permanent — this character dies with its build',
+      subtitle: 'Points are yours to spend · a full respec has a price',
       icon: 'skillLevels',
       width: 1160,
     });
@@ -90,8 +101,20 @@ export class SkillTreePanel {
     }, 'tabs-trees');
 
     this.pointsEl = div('skill-points');
+    // Respec lives in plain sight beside the point counter, with its price on
+    // the button, so changing your mind is a known cost rather than a mystery.
+    this.respecBtn = new Button({
+      label: 'Respec',
+      variant: 'ghost',
+      icon: 'cooldown',
+      small: true,
+      onClick: () => this.confirmRespec(),
+    });
+    this.respecBtn.root.classList.add('skill-respec');
+    const right = div('skill-head-right');
+    add(right, this.respecBtn.root, this.pointsEl);
     const head = div('skill-head');
-    add(head, this.tabs.root, this.pointsEl);
+    add(head, this.tabs.root, right);
 
     const body = div('skill-body');
 
@@ -150,6 +173,7 @@ export class SkillTreePanel {
     this.tabs.setTabs(defs, keep);
     this.buildBoard();
     this.renderPoints(c);
+    this.renderRespec(c);
     this.renderHotStrip(c);
     this.showDetail(this.pinned ?? this.focused ?? this.defaultFocus());
   }
@@ -170,6 +194,59 @@ export class SkillTreePanel {
     }
     const sorted = [...list].sort((a, b) => a.tier - b.tier || a.column - b.column);
     return sorted[0]?.id ?? null;
+  }
+
+  private renderRespec(c: Character): void {
+    let spent = 0;
+    for (const id of Object.keys(c.skills)) spent += c.skills[id] ?? 0;
+    const used = c.respecs ?? 0;
+    const cost = attempt(() => respecCost(c, used), { gold: 0, materials: {}, free: true });
+    this.respecBtn.setDisabled(spent === 0);
+    this.respecBtn.setLabel(cost.free ? `Respec · free (${FREE_RESPECS - used} left)` : `Respec · ${fmtInt(cost.gold)}g`);
+    this.respecBtn.root.title = spent === 0 ? 'Nothing to refund yet' : 'Refund every skill point';
+  }
+
+  private confirmRespec(): void {
+    const c = save.account.current;
+    if (!c) return;
+    let spent = 0;
+    for (const id of Object.keys(c.skills)) spent += c.skills[id] ?? 0;
+    if (spent === 0) return;
+    const used = c.respecs ?? 0;
+    const cost = attempt(() => respecCost(c, used), { gold: 0, materials: {}, free: true });
+    if (!cost.free && c.gold < cost.gold) {
+      events.emit('toast', { text: `A respec costs ${fmtInt(cost.gold)} gold.`, kind: 'bad' });
+      return;
+    }
+    const price = cost.free
+      ? `This one is <b>free</b> (${FREE_RESPECS - used} free respec${FREE_RESPECS - used === 1 ? '' : 's'} left).`
+      : `It costs <b>${fmtInt(cost.gold)} gold</b>, and each one after costs more.`;
+    modal({
+      title: 'Unlearn Every Skill',
+      icon: 'cooldown',
+      tone: 'danger',
+      body:
+        `All <b>${spent}</b> skill points come back to you to spend again, and your hotbar is cleared. ${price}`,
+      confirmLabel: cost.free ? 'Respec' : `Pay ${fmtInt(cost.gold)}g`,
+      onConfirm: () => {
+        if (!cost.free) c.gold -= cost.gold;
+        attempt(() => respecSkills(c), 0);
+        c.respecs = used + 1;
+        for (let i = 0; i < c.hotbar.length; i++) c.hotbar[i] = null;
+        c.primaryAttack = null;
+        save.touch();
+        events.emit('sfx', { id: 'ui.levelup' });
+        events.emit('toast', { text: `${spent} skill points returned.`, kind: 'good' });
+        events.emit('ui:refresh', {});
+        this.refresh();
+        // Every node lights as the points drain back out of it.
+        for (const [, v] of this.nodes) {
+          v.root.classList.remove('refund');
+          void v.root.offsetWidth;
+          v.root.classList.add('refund');
+        }
+      },
+    });
   }
 
   private renderPoints(c: Character): void {
@@ -233,12 +310,35 @@ export class SkillTreePanel {
       node.dataset.skill = s.id;
 
       const art = div('sknode-art');
-      art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:NODE - 18px;height:NODE - 18px" draggable="false">`;
+      art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:${NODE - 16}px;height:${NODE - 16}px" draggable="false">`;
       const frame = div('sknode-frame');
       const rank = div('sknode-rank');
       const lock = div('sknode-lock');
       lock.innerHTML = iconSvg('lock', { size: 15 });
-      add(node, art, frame, rank, lock);
+      // Rank arc: a groove all the way round, lit for the share of max rank
+      // already bought. Reads from across the board where "3/20" does not.
+      const ns = 'http://www.w3.org/2000/svg';
+      const ring = document.createElementNS(ns, 'svg');
+      const box = NODE + 12;
+      ring.setAttribute('class', 'sknode-ring');
+      ring.setAttribute('viewBox', `0 0 ${box} ${box}`);
+      ring.setAttribute('width', String(box));
+      ring.setAttribute('height', String(box));
+      const groove = document.createElementNS(ns, 'circle');
+      groove.setAttribute('class', 'sknode-groove');
+      const arc = document.createElementNS(ns, 'circle');
+      arc.setAttribute('class', 'sknode-arc');
+      for (const c0 of [groove, arc]) {
+        c0.setAttribute('cx', String(box / 2));
+        c0.setAttribute('cy', String(box / 2));
+        c0.setAttribute('r', String(ARC_R));
+      }
+      arc.setAttribute('stroke-dasharray', `0 ${ARC_LEN}`);
+      arc.setAttribute('transform', `rotate(-90 ${box / 2} ${box / 2})`);
+      ring.appendChild(groove);
+      ring.appendChild(arc);
+      const plus = div('sknode-plus', '+');
+      add(node, ring as unknown as HTMLElement, art, frame, rank, lock, plus);
       node.appendChild(div('sknode-name-tip'));
 
       node.addEventListener('pointerenter', () => {
@@ -266,7 +366,7 @@ export class SkillTreePanel {
 
       this.board.appendChild(node);
       this.board.appendChild(label);
-      this.nodes.set(s.id, { def: s, root: node, rank, x, y });
+      this.nodes.set(s.id, { def: s, root: node, rank, arc, x, y });
     }
 
     this.drawLines();
@@ -316,6 +416,14 @@ export class SkillTreePanel {
         path.dataset.to = view.def.id;
         path.dataset.from = reqId;
         svg.appendChild(path);
+        // A travelling dash over the same curve: power flowing down the tree
+        // once both ends are learned.
+        const flow = document.createElementNS(ns, 'path');
+        flow.setAttribute('d', d);
+        flow.setAttribute('class', 'skline-flow');
+        flow.dataset.to = view.def.id;
+        flow.dataset.from = reqId;
+        svg.appendChild(flow);
 
         const dot = document.createElementNS(ns, 'circle');
         dot.setAttribute('cx', String(view.x));
@@ -343,10 +451,12 @@ export class SkillTreePanel {
       view.root.classList.toggle('can-spend', canSpend);
       view.root.classList.toggle('is-locked', rank === 0 && !check.ok);
       view.rank.textContent = rank > 0 ? `${rank}/${max}` : `0/${max}`;
+      const k = max > 0 ? Math.min(1, rank / max) : 0;
+      view.arc.setAttribute('stroke-dasharray', `${(ARC_LEN * k).toFixed(1)} ${ARC_LEN.toFixed(1)}`);
       view.root.title = check.ok ? '' : check.reason ?? '';
     }
     // Lines light up once their prerequisite is actually taken.
-    const paths = this.lines.querySelectorAll<SVGPathElement>('.skline, .skline-dot');
+    const paths = this.lines.querySelectorAll<SVGPathElement>('.skline, .skline-flow, .skline-dot');
     paths.forEach((p) => {
       const fromId = (p as unknown as HTMLElement).dataset.from;
       const toId = (p as unknown as HTMLElement).dataset.to;

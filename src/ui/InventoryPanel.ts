@@ -169,6 +169,9 @@ export class ItemGrid {
   readonly root: HTMLDivElement;
   readonly slots: ItemSlot[] = [];
   private opts: ItemGridOpts;
+  /** Uid last shown in each cell, so a new arrival can be made to flash. */
+  private shown: string[] = [];
+  private primed = false;
 
   constructor(opts: ItemGridOpts) {
     this.opts = opts;
@@ -191,20 +194,38 @@ export class ItemGrid {
         (p) => (opts.accepts ? opts.accepts(p, i) : !!p.item),
         (p) => opts.onDrop?.(p, i) ?? false
       );
+      slot.root.style.setProperty('--i', String(i));
       this.slots.push(slot);
       this.root.appendChild(slot.root);
     }
   }
 
-  setItems(items: Array<Item | null>, offset = 0): void {
+  /**
+   * Fills the grid. `quiet` skips the arrival flash, for wholesale changes
+   * such as a sort or a tab switch where everything would light at once.
+   */
+  setItems(items: Array<Item | null>, offset = 0, quiet = false): void {
     for (let i = 0; i < this.slots.length; i++) {
       const item = items[offset + i] ?? null;
+      const uid = item?.uid ?? '';
+      const arrived = this.primed && !quiet && uid !== '' && this.shown[i] !== uid;
+      this.shown[i] = uid;
       this.slots[i].setItem(item);
+      if (arrived) this.slots[i].flash();
       if (item && this.opts.hoverPrice) {
         const p = this.opts.hoverPrice(item);
         this.slots[i].root.dataset.price = p ? String(p.gold) : '';
       }
     }
+    this.primed = true;
+  }
+
+  /** Plays the settle-in animation, cell by cell, after a sort. */
+  playSort(): void {
+    this.root.classList.remove('is-sorting');
+    void this.root.offsetWidth;
+    this.root.classList.add('is-sorting');
+    window.setTimeout(() => this.root.classList.remove('is-sorting'), 1100);
   }
 
   /** Highlights every cell whose item matches a filter (search box support). */
@@ -250,6 +271,11 @@ export class InventoryPanel {
   private crest: HTMLDivElement;
   private statRail: HTMLDivElement;
   private view = new PaperdollView();
+  /** Uid last shown in each equipment slot, to flash a fresh equip. */
+  private worn = new Map<EquipSlot, string>();
+  private wornPrimed = false;
+  /** Set before a refresh that rearranges everything (sort). */
+  private quietNext = false;
 
   constructor() {
     this.panel = new Panel({
@@ -345,8 +371,10 @@ export class InventoryPanel {
         if (!c) return;
         sortInventory(c);
         save.setCharacter(c);
+        this.quietNext = true;
         this.refresh();
-        events.emit('toast', { text: 'Pack sorted.', kind: 'info' });
+        this.grid.playSort();
+        events.emit('sfx', { id: 'ui.click' });
       },
     });
     add(packHd, cap, sortBtn.root, gold);
@@ -609,7 +637,15 @@ export class InventoryPanel {
     if (!c) return;
     normalizeInventory(c);
 
-    for (const [slot, ui] of this.equipSlots) ui.setItem(c.equipment[slot] ?? null);
+    for (const [slot, ui] of this.equipSlots) {
+      const it = c.equipment[slot] ?? null;
+      const uid = it?.uid ?? '';
+      const fresh = this.wornPrimed && uid !== '' && this.worn.get(slot) !== uid;
+      this.worn.set(slot, uid);
+      ui.setItem(it);
+      if (fresh) ui.flash();
+    }
+    this.wornPrimed = true;
 
     // Two-handers visually claim the off-hand.
     const mh = c.equipment.mainHand ?? null;
@@ -620,7 +656,8 @@ export class InventoryPanel {
       .get('offHand')
       ?.root.classList.toggle('is-blocked', isTwoHanded(mh) && !isWornOffHand(off));
 
-    this.grid.setItems(c.inventory);
+    this.grid.setItems(c.inventory, 0, this.quietNext);
+    this.quietNext = false;
     countTo(this.goldEl, c.gold, fmtInt, 400);
     const used = invCount(c);
     this.capacityEl.textContent = `${used} / ${c.inventory.length}`;
