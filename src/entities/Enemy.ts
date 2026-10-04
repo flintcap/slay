@@ -44,6 +44,7 @@ import {
   getAbility,
   hitPlayer,
   makeInstance,
+  resetAbilityWorld,
   rollPacket,
   setDamageRoller,
   setSummonFactory,
@@ -106,6 +107,12 @@ export function depthCurve(depth: number): DepthCurve {
     level: Math.max(1, Math.round(d * 1.05)),
   };
 }
+
+/** Half-angle of a braced tank's guard, radians, and how much it turns aside. */
+export const TANK_GUARD_ARC = 1.0;
+export const TANK_GUARD_CUT = 0.3;
+/** Seconds a pack falters when its leader dies. */
+const LEADER_FALL_SHAKE = 1.2;
 
 const RANK_MODS: Record<MonsterRank, { life: number; damage: number; defense: number; xp: number; scale: number }> = {
   normal: { life: 1, damage: 1, defense: 1, xp: 1, scale: 1 },
@@ -717,7 +724,8 @@ export class Enemy implements Combatant {
   }
 
   private get currentSpeed(): number {
-    let s = this.baseSpeed * this.buffMul('speed');
+    // The brain's own pace: a rusher sprinting in, a shaken pack faltering.
+    let s = this.baseSpeed * this.buffMul('speed') * (this.ai?.speedMul ?? 1);
     for (const st of this.statuses) {
       const d = statusDef(st.id);
       if (!d) continue;
@@ -966,6 +974,19 @@ export class Enemy implements Combatant {
       taken = working.amount;
     }
     taken *= 1 - clamp(this.buffSum('absorb'), 0, 0.9);
+    // A tank braced behind its guard turns blows aside from the front. Hit it
+    // from the side or the back, or while it is committed to a swing.
+    if (this.braced && working.source === 'player') {
+      const h = ctx.heroPos ?? ctx.playerPos;
+      const from = angleTo(this.root.position.x, this.root.position.z, h.x, h.z);
+      if (Math.abs(angleDelta(this.facing, from)) < TANK_GUARD_ARC) {
+        taken *= 1 - TANK_GUARD_CUT;
+        ctx.fx.burst('hit.physical', this.root.position.x, this.centerY, this.root.position.z, {
+          count: 4,
+          color: 0xc0c8d8,
+        });
+      }
+    }
     if (taken <= 0) return;
 
     // Health Link spreads a share across the pack.
@@ -1078,6 +1099,11 @@ export class Enemy implements Combatant {
     if (this.life <= 0) this.die(ctx);
   }
 
+  /** True while this monster is a tank with its guard up (not mid-swing). */
+  get braced(): boolean {
+    return !this.isBoss && this.ai?.archetype === 'tank' && !this.busy && this.rootTimer <= 0;
+  }
+
   /** Health Link partner intake — bypasses mitigation so links can't double-dip. */
   absorbLinked(amount: number, ctx: CombatContext): void {
     if (!this.alive) return;
@@ -1142,6 +1168,14 @@ export class Enemy implements Combatant {
       x: p.x,
       z: p.z,
     });
+
+    // A pack that watches its leader fall falters for a moment. Killing the
+    // champion first is a choice the player can make, and it should pay.
+    if (this.isElite && this.packId >= 0) {
+      for (const ally of alliesNear(ctx, p.x, p.z, 18, this.id)) {
+        if (ally.packId === this.packId && !ally.isElite) ally.ai?.shake(LEADER_FALL_SHAKE);
+      }
+    }
 
     // Avenger: the pack gets angrier every time one of them falls.
     for (const ally of alliesNear(ctx, p.x, p.z, 16, this.id)) {
@@ -1712,6 +1746,8 @@ export function spawnEnemy(
 /** Clears per-run AI state. Scenes call this when tearing a level down. */
 export function resetEnemyRuntime(): void {
   resetPacks();
+  // Projectiles, ground hazards and delayed impacts from the floor being left.
+  resetAbilityWorld();
 }
 
 // Wire the ability layer to the combat sim and to Enemy construction. Done here

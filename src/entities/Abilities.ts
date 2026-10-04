@@ -48,6 +48,10 @@ export interface CombatContext {
   playerPos: THREE.Vector3;
   /** The player, always, whoever the acting monster is currently swinging at. */
   heroPos?: THREE.Vector3;
+  /** Which way the player is facing, radians (0 = +Z). Flankers go round it. */
+  heroFacing?: number;
+  /** Player life as a fraction of max. Packs press harder when it is low. */
+  heroLifeFrac?: number;
   playerStats: Stats;
   playerLevel: number;
   damagePlayer(packet: DamagePacket): void;

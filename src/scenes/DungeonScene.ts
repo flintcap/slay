@@ -20,7 +20,7 @@ import { CameraRig } from '../fx/CameraRig';
 import { EffectSystem } from '../fx/Effects';
 import { Player } from '../entities/Player';
 import { CombatControls } from '../entities/Controls';
-import { Enemy, type CombatContext } from '../entities/Enemy';
+import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { generateRun, isWalkable, BIOMES } from '../world/DungeonGen';
@@ -336,6 +336,9 @@ export class DungeonScene extends GameScene {
       e.dispose();
     }
     this.enemies = [];
+    // Pack memory, projectiles, hazards and delayed impacts belong to the
+    // floor they were made on; without this a meteor could land on the next one.
+    resetEnemyRuntime();
     if (this.boss) {
       this.boss.root.removeFromParent();
       this.boss.dispose();
@@ -405,6 +408,9 @@ export class DungeonScene extends GameScene {
         levelRng.fork(`e${spawn.x},${spawn.y}`),
         named,
       );
+      // Members of a pack share aggro and tactics. The spawn table always
+      // carried the id; nothing copied it across, so every pack fought alone.
+      enemy.packId = spawn.packId;
       const wp = this.mesh.tileToWorld(spawn.x, spawn.y);
       enemy.root.position.copy(wp);
       this.scene.add(enemy.root);
@@ -788,6 +794,8 @@ export class DungeonScene extends GameScene {
     return {
       playerPos: this.aimPos.copy(this.player.position),
       heroPos: this.player.position,
+      heroFacing: this.player.root.rotation.y,
+      heroLifeFrac: this.player.stats.life > 0 ? this.player.life / this.player.stats.life : 1,
       playerStats: this.player.stats,
       playerLevel: this.player.character.level,
       damagePlayer: (packet: DamagePacket) => {

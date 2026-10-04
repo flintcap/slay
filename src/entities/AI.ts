@@ -205,6 +205,109 @@ export function roleProfile(role: MonsterRole): RoleProfile {
 }
 
 // ---------------------------------------------------------------------------
+// Archetypes — how a monster fights inside a pack
+// ---------------------------------------------------------------------------
+
+/**
+ * What a monster *does* in a fight, as opposed to what it is.
+ *
+ * - **rusher** closes fast and hits first. It sprints while it is far away.
+ * - **flanker** goes round you on a wide arc and comes in from behind.
+ * - **kiter** holds a distance band, circles while it shoots, backs off when
+ *   you close.
+ * - **caster** stays at the back behind a body and channels.
+ * - **support** keeps near its most wounded friends and away from you.
+ * - **swarm** gathers in a ring just out of reach, then dives in all at once.
+ * - **tank** plants itself between you and the pack's back line.
+ */
+export type Archetype = 'rusher' | 'flanker' | 'kiter' | 'caster' | 'support' | 'swarm' | 'tank';
+
+const ROLE_ARCHETYPE: Record<MonsterRole, Archetype> = {
+  melee: 'rusher',
+  ambusher: 'flanker',
+  ranged: 'kiter',
+  caster: 'caster',
+  support: 'support',
+  swarm: 'swarm',
+  brute: 'tank',
+};
+
+export function archetypeOf(def: MonsterDef): Archetype {
+  // A "support" that fights with its teeth (a pack alpha) leads from the front.
+  if (def.role === 'support' && def.attackRange < 4) return 'rusher';
+  return ROLE_ARCHETYPE[def.role];
+}
+
+/** Archetypes that stand behind someone else. Tanks guard these. */
+const BACK_LINE: ReadonlySet<Archetype> = new Set(['kiter', 'caster', 'support']);
+
+/**
+ * How fast a monster may run while it is closing on you. Fast enough that a
+ * rush reads as a rush, never faster than the hero's own 4.6 m/s, so running
+ * away is always still an answer.
+ */
+const RUSH_MUL = 1.3;
+const RUSH_SPEED_CAP = 4.4;
+
+/** Swarm rhythm: gather in a ring, then everyone dives at once. */
+const SWARM_RING = 3.8;
+const SWARM_GATHER_MAX = 1.8;
+const SWARM_SURGE = 3.4;
+
+/** Below this much life, the pack smells blood and stops being careful. */
+const PRESS_AT = 0.35;
+
+interface PackState {
+  members: AIBrain[];
+  phase: 'gather' | 'surge';
+  phaseAt: number;
+}
+
+const packs = new Map<number, PackState>();
+
+function packState(id: number): PackState | null {
+  if (id < 0) return null;
+  let p = packs.get(id);
+  if (!p) {
+    p = { members: [], phase: 'gather', phaseAt: -99 };
+    packs.set(id, p);
+  }
+  return p;
+}
+
+// ---------------------------------------------------------------------------
+// Telegraph schedule — big blows land one after another, not on top of each other
+// ---------------------------------------------------------------------------
+
+/**
+ * When each committed, telegraphed blow is due to land. A heavy slam and a
+ * cleave whose markers resolve in the same instant cannot be read, let alone
+ * dodged, so a monster about to start one that would land within
+ * TELEGRAPH_GAP of another picks something else this beat instead.
+ */
+const landings: Array<{ at: number; by: string }> = [];
+export const TELEGRAPH_GAP = 0.3;
+/** Windups at least this long count as "big" for the schedule. */
+const BIG_WINDUP = 0.5;
+
+function telegraphClash(at: number, by: string, now: number): boolean {
+  for (let i = landings.length - 1; i >= 0; i--) {
+    const l = landings[i]!;
+    if (l.at < now - 0.5) {
+      landings.splice(i, 1);
+      continue;
+    }
+    if (l.by !== by && Math.abs(l.at - at) < TELEGRAPH_GAP) return true;
+  }
+  return false;
+}
+
+/** Big-telegraph landing times currently scheduled. Exposed for the checker. */
+export function scheduledLandings(): ReadonlyArray<{ at: number; by: string }> {
+  return landings;
+}
+
+// ---------------------------------------------------------------------------
 // Pack registry — shared aggro and slot bookkeeping
 // ---------------------------------------------------------------------------
 
@@ -224,6 +327,8 @@ export function packIsAlerted(packId: number, elapsed: number): boolean {
 
 export function resetPacks(): void {
   packAggro.clear();
+  packs.clear();
+  landings.length = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -279,6 +384,21 @@ export class AIBrain {
    */
   fixateOnPlayer = false;
 
+  /** How this monster fights in a pack. See the Archetype type. */
+  archetype: Archetype;
+  /** Multiplier the body applies to its walk speed this beat. */
+  speedMul = 1;
+  private pack: PackState | null = null;
+  private joined = false;
+  /** Which side a flanker goes round, -1 or 1. */
+  private readonly flankSide: number;
+  /** Seconds spent trying to get round; a flanker gives up eventually. */
+  private flankTry = 0;
+  /** Seconds left committed to the current line of attack. */
+  private commit = 0;
+  /** Seconds left reeling from the pack leader's death. */
+  private shaken = 0;
+
   /** The summoned ally this monster has decided to fight, if any. */
   get aggroMinion(): number | null {
     return this.anchorId;
@@ -291,12 +411,42 @@ export class AIBrain {
     rng: { next(): number },
   ) {
     this.profile = PROFILES[def.role];
+    this.archetype = archetypeOf(def);
     // Stagger the first think so a freshly spawned pack does not all think on
     // the same frame.
     this.thinkTimer = rng.next() * this.profile.thinkPeriod;
     this.slot = rng.next() * TAU;
     this.strafeDir = rng.next() < 0.5 ? -1 : 1;
     this.strafeTimer = 1 + rng.next() * 2;
+    this.flankSide = rng.next() < 0.5 ? -1 : 1;
+  }
+
+  /**
+   * Joins the pack's roster the first time this monster is awake. Every third
+   * plain melee member of a pack goes round the side instead of straight in,
+   * which is what turns a line of swordsmen into a pincer.
+   */
+  private joinPack(): void {
+    if (this.joined) return;
+    this.joined = true;
+    if (this.fixateOnPlayer) return;
+    this.pack = packState(this.self.packId);
+    if (!this.pack) return;
+    let melee = 0;
+    for (const m of this.pack.members) if (m.def.role === 'melee') melee++;
+    this.pack.members.push(this);
+    if (this.def.role === 'melee' && melee % 3 === 2) this.archetype = 'flanker';
+  }
+
+  /** The pack leader fell: hesitate, and come on slower for a moment. */
+  shake(seconds: number): void {
+    this.shaken = Math.max(this.shaken, seconds);
+    this.hesitate = Math.max(this.hesitate, seconds * 0.6);
+  }
+
+  /** True while this monster is waiting for its pack's swarm to gather. */
+  get holdingForSwarm(): boolean {
+    return this.archetype === 'swarm' && this.pack !== null && this.pack.phase === 'gather';
   }
 
   get isDormant(): boolean {
@@ -377,6 +527,8 @@ export class AIBrain {
     this.strafeTimer -= dt;
     this.hesitate = Math.max(0, this.hesitate - dt);
     this.regroupTimer = Math.max(0, this.regroupTimer - dt);
+    this.commit = Math.max(0, this.commit - dt);
+    this.shaken = Math.max(0, this.shaken - dt);
     if (this.strafeTimer <= 0) {
       this.strafeDir = -this.strafeDir;
       this.strafeTimer = 1.4 + (this.self.root.position.x % 1) * 2;
@@ -486,19 +638,36 @@ export class AIBrain {
     }
 
     this.computeSeparation(ctx);
+    this.joinPack();
+    const pressing = (ctx.heroLifeFrac ?? 1) < PRESS_AT;
+    if (this.archetype === 'swarm') this.tickSwarm(ctx, pressing);
 
     // --- ability selection --------------------------------------------------
     // Casters and supports pick first; if something fires, movement yields.
     const chosen = this.chooseAbility(ctx, d);
-    if (chosen && self.beginAbility(chosen, ctx)) {
-      this.mode = chosen.kind === 'movement' ? 'approach' : 'engage';
-      this.desired.copy(p);
-      return;
+    if (chosen) {
+      const speed = Math.max(0.35, self.stats.attackSpeed);
+      const lands = ctx.elapsed + chosen.windup / speed;
+      if (self.beginAbility(chosen, ctx)) {
+        if (chosen.telegraph && chosen.windup >= BIG_WINDUP) landings.push({ at: lands, by: self.id });
+        this.mode = chosen.kind === 'movement' ? 'approach' : 'engage';
+        this.desired.copy(p);
+        return;
+      }
     }
 
     // --- positioning --------------------------------------------------------
-    const standoff = this.profile.standoff(this.def);
+    let standoff = this.profile.standoff(this.def);
     const tooClose = this.profile.tooClose(this.def);
+    this.speedMul = this.shaken > 0 ? 0.6 : 1;
+    // Closing from range: rushers sprint, and everything with a blade sprints
+    // once the hero is on the ropes.
+    const closer = this.archetype === 'rusher' || this.archetype === 'flanker' || this.archetype === 'swarm';
+    if (this.shaken <= 0 && ((this.archetype === 'rusher' && d > standoff + 3) || (pressing && closer) ||
+      (this.archetype === 'swarm' && this.pack?.phase === 'surge'))) {
+      this.speedMul = Math.max(1, Math.min(RUSH_MUL, RUSH_SPEED_CAP / Math.max(0.1, this.def.speed)));
+    }
+    if (pressing && closer) standoff *= 0.8;
 
     if (this.mode === 'flee') {
       this.setRetreatTarget(ctx, 16);
@@ -521,6 +690,28 @@ export class AIBrain {
       return;
     }
 
+    // Archetype movement. Each returns true when it has set where to go.
+    switch (this.archetype) {
+      case 'flanker':
+        if (!pressing && this.flank(ctx, d, standoff)) return;
+        break;
+      case 'tank':
+        if (this.guard(ctx, standoff)) return;
+        break;
+      case 'support':
+        if (this.tend(ctx, standoff, tooClose)) return;
+        break;
+      case 'swarm':
+        if (this.gather(ctx)) return;
+        break;
+      case 'kiter':
+        // Keep circling while shooting, so a kiter is never a stationary turret.
+        if (d <= standoff + 1.2) this.slot += this.strafeDir * 0.16;
+        break;
+      default:
+        break;
+    }
+
     if (d > standoff + 1.2) {
       this.mode = 'approach';
       this.setApproachTarget(ctx, standoff);
@@ -540,6 +731,143 @@ export class AIBrain {
       tz += behind.z;
     }
     this.setDesiredWalkable(ctx, tx, tz);
+  }
+
+  // --- archetype movement --------------------------------------------------
+
+  /**
+   * Flanker: work round to the hero's back on a wide arc, then come in. Gives
+   * up and goes straight in after a few seconds of being turned on, so a
+   * player who keeps facing it is not simply immune.
+   */
+  private flank(ctx: CombatContext, d: number, standoff: number): boolean {
+    if (this.anchorId !== null || ctx.heroFacing === undefined || this.commit > 0) return false;
+    const p = this.self.root.position;
+    const goal = ctx.heroFacing + Math.PI + this.flankSide * 0.5;
+    const mine = angleTo(this.anchor.x, this.anchor.z, p.x, p.z);
+    const off = angleDelta(mine, goal);
+    if (Math.abs(off) < 0.7 || this.flankTry > 4) {
+      // Round the back (or out of patience): commit and close in on that line.
+      this.slot = Math.abs(off) < 0.7 ? goal : mine;
+      this.slotLocked = 8;
+      this.commit = 3;
+      this.flankTry = 0;
+      return false;
+    }
+    this.flankTry += this.profile.thinkPeriod;
+    const ring = Math.max(standoff + 3.2, Math.min(d, 8));
+    const a = mine + Math.sign(off) * Math.min(Math.abs(off), 0.8);
+    this.mode = 'reposition';
+    this.setDesiredWalkable(ctx, this.anchor.x + Math.sin(a) * ring, this.anchor.z + Math.cos(a) * ring);
+    return true;
+  }
+
+  /**
+   * Tank: stand on the line between the hero and the nearest back-liner, so
+   * reaching the archer means going through the shield.
+   */
+  private guard(ctx: CombatContext, standoff: number): boolean {
+    if (this.anchorId !== null || this.fixateOnPlayer) return false;
+    const ward = this.nearestBackLiner(ctx, 16);
+    if (!ward) return false;
+    const w = ward.root.position;
+    const wd = dist(this.anchor.x, this.anchor.z, w.x, w.z);
+    if (wd < 2.5) return false;
+    const along = Math.min(wd * 0.5, standoff + 0.8);
+    const a = angleTo(this.anchor.x, this.anchor.z, w.x, w.z);
+    this.mode = 'engage';
+    this.setDesiredWalkable(ctx, this.anchor.x + Math.sin(a) * along, this.anchor.z + Math.cos(a) * along);
+    return true;
+  }
+
+  /**
+   * Support: hover by the wounded, on the far side of them from the hero.
+   */
+  private tend(ctx: CombatContext, standoff: number, tooClose: number): boolean {
+    const p = this.self.root.position;
+    let wx = 0;
+    let wz = 0;
+    let wsum = 0;
+    for (const e of ctx.enemies) {
+      if (e === this.self || !e.alive || e.ai?.isDormant) continue;
+      const q = e.root.position;
+      if (dist2(p.x, p.z, q.x, q.z) > 18 * 18) continue;
+      const weight = 0.25 + (1 - e.life / Math.max(1, e.maxLife)) * 2;
+      wx += q.x * weight;
+      wz += q.z * weight;
+      wsum += weight;
+    }
+    if (wsum <= 0) return false;
+    wx /= wsum;
+    wz /= wsum;
+    const away = angleTo(this.anchor.x, this.anchor.z, wx, wz);
+    const keep = Math.max(standoff * 0.8, tooClose + 1.5);
+    const fromHero = Math.max(keep, dist(this.anchor.x, this.anchor.z, wx, wz) + 3);
+    this.mode = 'support';
+    this.setDesiredWalkable(ctx, this.anchor.x + Math.sin(away) * fromHero, this.anchor.z + Math.cos(away) * fromHero);
+    return true;
+  }
+
+  /** Swarm, gathering: wait on the ring until the pack is ready to dive. */
+  private gather(ctx: CombatContext): boolean {
+    if (!this.pack || this.pack.phase !== 'gather' || this.anchorId !== null) return false;
+    this.claimSlot(ctx);
+    this.mode = 'strafe';
+    this.setDesiredWalkable(
+      ctx,
+      this.anchor.x + Math.sin(this.slot) * SWARM_RING,
+      this.anchor.z + Math.cos(this.slot) * SWARM_RING,
+    );
+    return true;
+  }
+
+  /** Advances the pack's gather/surge rhythm. Any member may call it. */
+  private tickSwarm(ctx: CombatContext, pressing: boolean): void {
+    const pack = this.pack;
+    if (!pack) return;
+    const now = ctx.elapsed;
+    if (pack.phase === 'surge') {
+      if (now - pack.phaseAt > SWARM_SURGE && !pressing) {
+        pack.phase = 'gather';
+        pack.phaseAt = now;
+      } else {
+        // Diving together: quicker blows for as long as the surge lasts.
+        this.self.buff('swarm_surge', 0.6, { attackSpeed: 1.3 });
+      }
+      return;
+    }
+    if (pack.phaseAt < 0) pack.phaseAt = now;
+    let swarm = 0;
+    let ready = 0;
+    const h = hero(ctx);
+    for (const m of pack.members) {
+      if (m.archetype !== 'swarm' || !m.self.alive || m.isDormant) continue;
+      swarm++;
+      const q = m.self.root.position;
+      const r = dist(q.x, q.z, h.x, h.z);
+      if (r > SWARM_RING - 1.4 && r < SWARM_RING + 1.6) ready++;
+    }
+    if (pressing || ready >= Math.min(3, swarm) || now - pack.phaseAt > SWARM_GATHER_MAX) {
+      pack.phase = 'surge';
+      pack.phaseAt = now;
+    }
+  }
+
+  private nearestBackLiner(ctx: CombatContext, radius: number): Enemy | null {
+    const p = this.self.root.position;
+    let best: Enemy | null = null;
+    let bestD = radius * radius;
+    for (const e of ctx.enemies) {
+      if (e === this.self || !e.alive || !e.ai || e.ai.isDormant) continue;
+      if (!BACK_LINE.has(e.ai.archetype)) continue;
+      const q = e.root.position;
+      const d = dist2(p.x, p.z, q.x, q.z);
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
+    }
+    return best;
   }
 
   // --- targeting helpers ---------------------------------------------------
@@ -610,6 +938,7 @@ export class AIBrain {
    * a converging blob into an encirclement.
    */
   private claimSlot(ctx: CombatContext): void {
+    if (this.archetype === 'kiter' && this.mode === 'strafe') return;
     if (this.slotLocked > 0) {
       this.slotLocked--;
       return;
@@ -755,6 +1084,10 @@ export class AIBrain {
     const self = this.self;
     if (self.busy || this.hesitate > 0) return null;
     const lifeFrac = self.life / Math.max(1, self.maxLife);
+    // A gathering swarm waits for the others, unless you walk into it.
+    const reach = this.def.attackRange + self.hitRadius;
+    if (this.holdingForSwarm && d > reach) return null;
+    const speed = Math.max(0.35, self.stats.attackSpeed);
     let best: AbilityDef | null = null;
     let bestScore = 0.12; // don't act at all below this
 
@@ -769,13 +1102,25 @@ export class AIBrain {
       if (a.minRange !== undefined && d < a.minRange) continue;
       if (a.requiresLos && !this.lineOfSight(ctx)) continue;
       if (a.needsAllies !== undefined && this.countAllies(ctx, 14) < a.needsAllies) continue;
+      // Two big blows landing in the same instant cannot be read. Wait a beat.
+      if (a.telegraph && a.windup >= BIG_WINDUP && telegraphClash(ctx.elapsed + a.windup / speed, self.id, ctx.elapsed)) {
+        continue;
+      }
+      // Healing nobody is a wasted turn: mend only when someone is hurt.
+      let healNeed = 1;
+      if (a.kind === 'heal' && a.needsAllies !== undefined) {
+        healNeed = Math.min(lifeFrac, this.mostWoundedAlly(ctx, a.range));
+        if (healNeed > 0.85) continue;
+      }
+      // A ward on allies is for allies in the fight.
+      if (a.kind === 'buff' && a.needsAllies !== undefined && !this.alliesEngaged(ctx)) continue;
 
       let score = a.priority ?? 0.35;
       // Prefer abilities whose sweet spot is where we already are.
       const sweet = a.minRange !== undefined ? (a.minRange + a.range) * 0.5 : a.range * 0.6;
       score *= 1 - clamp(Math.abs(d - sweet) / Math.max(2, a.range), 0, 0.6);
       // Desperation raises the value of defensive and escape tools.
-      if (a.kind === 'heal' || a.kind === 'buff') score *= 1 + (1 - lifeFrac) * 1.4;
+      if (a.kind === 'heal' || a.kind === 'buff') score *= 1 + (1 - Math.min(lifeFrac, healNeed)) * 1.4;
       if (a.tags?.includes('escape')) score *= 1 + (1 - lifeFrac) * 1.8;
       if (a.tags?.includes('defensive')) score *= 1 + (1 - lifeFrac);
       // Don't stack more ground hazards than the arena can carry.
@@ -798,6 +1143,31 @@ export class AIBrain {
       return null;
     }
     return best;
+  }
+
+  /** Life fraction of the most wounded awake ally in range. 1 when none. */
+  private mostWoundedAlly(ctx: CombatContext, radius: number): number {
+    const p = this.self.root.position;
+    const r2 = radius * radius;
+    let worst = 1;
+    for (const e of ctx.enemies) {
+      if (e === this.self || !e.alive) continue;
+      const q = e.root.position;
+      if (dist2(p.x, p.z, q.x, q.z) > r2) continue;
+      worst = Math.min(worst, e.life / Math.max(1, e.maxLife));
+    }
+    return worst;
+  }
+
+  /** True when any ally is close enough to the hero to be trading blows. */
+  private alliesEngaged(ctx: CombatContext): boolean {
+    const h = hero(ctx);
+    for (const e of ctx.enemies) {
+      if (e === this.self || !e.alive || e.ai?.isDormant) continue;
+      const q = e.root.position;
+      if (dist2(h.x, h.z, q.x, q.z) < 7 * 7) return true;
+    }
+    return false;
   }
 
   private countAllies(ctx: CombatContext, radius: number): number {
