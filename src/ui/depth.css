@@ -123,7 +123,7 @@
 
 .depth-big {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   color: var(--gold-hi);
 }
 

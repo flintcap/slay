@@ -1,6 +1,6 @@
 # Stream: depth (systems and content)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 

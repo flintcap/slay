@@ -41,7 +41,7 @@ page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text().slice(0, 400));
 });
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
-await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 600000, polling: 500 });
+await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 2400000, polling: 1000 });
 
 const result = await page.evaluate(async () => {
   const S = window.SLAY;
@@ -172,14 +172,42 @@ const camp = await page.evaluate(async () => {
   await until(() => S.engine.currentScene?.interactables?.some((i) => i.id === 'station:gambler'), 30);
   const scene = S.engine.currentScene;
   const spots = scene.interactables.filter((i) => i.id.startsWith('station:'));
-  return { stations: spots.map((s) => ({ id: s.id, x: s.pos.x, z: s.pos.z })) };
+  // Placement: anything the station's own footprint (1.4 square, plus a
+  // walking margin) runs into, and any other prompt that crowds its stand.
+  const own = new Set();
+  const crowding = {};
+  for (const s of spots) {
+    const body = scene.town.colliders.find((c) => c.w === 1.4 && c.d === 1.4 && Math.hypot(c.x - s.pos.x, c.z - s.pos.z) < 1.5);
+    if (body) own.add(body);
+    const bx = body?.x ?? s.pos.x;
+    const bz = body?.z ?? s.pos.z;
+    const hits = scene.town.colliders
+      .filter((c) => c !== body && Math.abs(c.x - bx) < c.w / 2 + 0.7 + 0.6 && Math.abs(c.z - bz) < c.d / 2 + 0.7 + 0.6)
+      .map((c) => `collider ${c.x.toFixed(1)},${c.z.toFixed(1)} ${c.w.toFixed(1)}x${c.d.toFixed(1)}`);
+    const standBlocked = scene.town.colliders.some((c) => Math.abs(c.x - s.pos.x) < c.w / 2 + 0.3 && Math.abs(c.z - s.pos.z) < c.d / 2 + 0.3);
+    if (standBlocked) hits.push('stand spot is inside a collider');
+    if (Math.hypot(s.pos.x, s.pos.z) > 20.5) hits.push('stand spot near the palisade');
+    for (const o of scene.interactables) {
+      if (o === s) continue;
+      const d = o.pos.distanceTo(s.pos);
+      if (d < Math.max(o.radius, s.radius) + 0.4) hits.push(`prompt ${o.id} ${d.toFixed(1)} away`);
+    }
+    crowding[s.id] = hits;
+  }
+  return { stations: spots.map((s) => ({ id: s.id, x: s.pos.x, z: s.pos.z, label: s.label })), crowding };
 });
 result.stations = camp.stations.map((s) => s.id);
+result.stationLabels = camp.stations.map((s) => s.label);
+result.crowding = camp.crowding;
 for (const st of camp.stations) {
   await page.evaluate(async (s) => {
     const scene = window.SLAY.engine.currentScene;
+    // Stand where a player would, facing the station, with the camera settled.
     scene.player.position.set(s.x, 0, s.z);
-    for (let i = 0; i < 3; i++) await new Promise((r) => requestAnimationFrame(r));
+    scene.player.stop?.();
+    scene.rig.follow(scene.player.root);
+    scene.rig.snap();
+    for (let i = 0; i < 4; i++) await new Promise((r) => requestAnimationFrame(r));
   }, st);
   await page.screenshot({ path: `${OUT}/town-${st.id.split(':')[1]}.png` });
   const id = st.id.split(':')[1];
