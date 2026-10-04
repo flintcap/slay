@@ -419,6 +419,38 @@ export interface AccountSave {
   /** Crafting materials by id. */
   materials: Record<string, number>;
   settings: GameSettings;
+  /**
+   * Narrative progress: what the account has learned, who it has talked to,
+   * which contracts are open. Optional so saves from before it existed load;
+   * `sim/Story.ts` fills in and repairs it on first use.
+   */
+  story?: StorySave;
+}
+
+/** Account-wide story state. Survives death, like the vault and the memorial. */
+export interface StorySave {
+  v: number;
+  /** Chapter and Deep Ledger ids revealed. */
+  chapters: string[];
+  /** Lore note ids found. */
+  notes: string[];
+  /** Biomes entered at least once. */
+  biomes: string[];
+  /** Bosses fought, and bosses killed. */
+  met: string[];
+  slain: string[];
+  /** One-shot dialogue lines and topics already heard. */
+  heard: string[];
+  /** Person id -> when they last spoke to you (ms since epoch). */
+  talked: Record<string, number>;
+  /**
+   * Contract chains. `step` is the step the chain is on; `state` is `idle`
+   * until accepted, `active` while being worked, `ready` once done and waiting
+   * to be handed in. A chain past its last step is finished.
+   */
+  chains: Record<string, { step: number; state: 'idle' | 'active' | 'ready' }>;
+  /** The last thing that happened below, for the camp to react to. */
+  last?: { kind: 'cleared' | 'died'; at: number; depth: number; name: string };
 }
 
 export interface GameSettings {

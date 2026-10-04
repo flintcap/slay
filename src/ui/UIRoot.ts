@@ -26,6 +26,7 @@ import { PausePanel } from './PausePanel';
 import { SettingsPanel } from './SettingsPanel';
 import { CharSelectPanel } from './CharSelectPanel';
 import { DeathPanel } from './DeathPanel';
+import { journal } from './JournalPanel';
 import {
   Panel,
   Button,
@@ -317,6 +318,7 @@ export function mountUI(engine: Engine): void {
   const charSelect = new CharSelectPanel(engine);
   const death = new DeathPanel(engine);
   const memorial = new MemorialPanel();
+  const journalPanel = journal();
   pauseRef = pause;
 
   const panels: Array<[string, PanelHandle, Panel]> = [
@@ -335,6 +337,7 @@ export function mountUI(engine: Engine): void {
     ['charSelect', charSelect as unknown as PanelHandle, charSelect.panel],
     ['death', death as unknown as PanelHandle, death.panel],
     ['memorial', memorial, memorial.panel],
+    ['journal', journalPanel, journalPanel.panel],
   ];
   panelRegistry.clear();
   for (const [id, handle] of panels) panelRegistry.set(id, handle);
@@ -388,7 +391,7 @@ export function mountUI(engine: Engine): void {
     KeyB: 'stash',
     KeyM: 'map',
     KeyL: 'questLog',
-    KeyJ: 'questLog',
+    KeyJ: 'journal',
   };
 
   window.addEventListener('keydown', (e) => {

@@ -143,6 +143,9 @@ async function main(): Promise<void> {
   boot(0.84, 'Raising the town…');
   await tick();
   mountUI(engine);
+  // The story layer: chapters, dialogue, contracts, boss voices, the journal.
+  const { installStory } = await import('./ui/StoryOverlay');
+  installStory();
 
   engine.register('title', () => new TitleScene(engine));
   engine.register('charSelect', () => new CharSelectScene(engine));

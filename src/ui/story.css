@@ -1,0 +1,448 @@
+/* ==========================================================================
+   SLAY — the story layer: spoken lines, revelation cards, the dialogue box
+   and the journal. Built only from the tokens in styles.css, so it reads as
+   the same object as the rest of the interface.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Spoken lines — subtitles above the skill bar
+   -------------------------------------------------------------------------- */
+
+.story-subs {
+  position: fixed;
+  left: 50%;
+  bottom: 168px;
+  transform: translateX(-50%);
+  width: min(760px, 86vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.story-sub {
+  max-width: 100%;
+  padding: 8px 18px 9px;
+  text-align: center;
+  background: radial-gradient(ellipse at center, rgba(8, 6, 4, 0.82) 0%, rgba(8, 6, 4, 0.55) 70%, rgba(8, 6, 4, 0) 100%);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 260ms ease, transform 320ms var(--ease);
+}
+.story-sub.is-open {
+  opacity: 1;
+  transform: none;
+}
+.story-sub-who {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.story-sub-line {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--ink);
+  text-shadow: 0 1px 2px #000, 0 0 12px rgba(0, 0, 0, 0.9);
+}
+.story-sub.is-boss .story-sub-who {
+  color: var(--life-hi);
+}
+.story-sub.is-narration .story-sub-line {
+  font-style: normal;
+  color: var(--ink-2);
+  font-size: var(--fs-md);
+}
+
+/* --------------------------------------------------------------------------
+   Revelation cards — chapters, lore notes, the first sight of a place
+   -------------------------------------------------------------------------- */
+
+.story-cards {
+  position: fixed;
+  top: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, 90vw);
+  z-index: 35;
+  pointer-events: none;
+}
+
+.story-card {
+  position: relative;
+  padding: var(--s5) var(--s6) var(--s4);
+  color: var(--ink-2);
+  background:
+    var(--noise),
+    linear-gradient(180deg, rgba(43, 36, 25, 0.96) 0%, rgba(25, 21, 16, 0.97) 100%);
+  border: 1px solid #4a3b26;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--hairline), var(--bevel), var(--shadow-3);
+  opacity: 0;
+  transform: translateY(-10px) scale(0.985);
+  transition: opacity 420ms ease, transform 520ms var(--ease);
+  pointer-events: auto;
+}
+.story-card.is-open {
+  opacity: 1;
+  transform: none;
+}
+.story-card::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(201, 162, 39, 0.14);
+  border-radius: var(--radius);
+  pointer-events: none;
+}
+.story-card-kicker {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: center;
+}
+.story-card-title {
+  margin: 4px 0 var(--s4);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: var(--gold-hi);
+  text-shadow: 0 2px 14px rgba(201, 162, 39, 0.28), 0 1px 0 #000;
+}
+.story-card-rule {
+  height: 1px;
+  margin: 0 auto var(--s4);
+  width: 62%;
+  background: linear-gradient(90deg, transparent, var(--bronze), transparent);
+}
+.story-card p {
+  margin: 0 0 var(--s3);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+  color: var(--ink);
+}
+.story-card.is-note p {
+  font-style: italic;
+}
+.story-card-source {
+  margin-top: var(--s2);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: right;
+}
+.story-card-ft {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--s4);
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+  letter-spacing: 0.08em;
+}
+.story-card-ft button {
+  font-size: var(--fs-xs);
+}
+
+/* --------------------------------------------------------------------------
+   Dialogue
+   -------------------------------------------------------------------------- */
+
+.dlg {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: var(--s5);
+}
+.dlg-sigil {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 35%, #3a2f20 0%, #15110c 75%);
+  box-shadow: var(--hairline), inset 0 0 18px rgba(0, 0, 0, 0.8), var(--shadow-1);
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+}
+.dlg-role {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.dlg-speech {
+  min-height: 92px;
+  margin: var(--s2) 0 var(--s4);
+  padding-left: var(--s4);
+  border-left: 2px solid rgba(201, 162, 39, 0.35);
+}
+.dlg-speech p {
+  margin: 0 0 var(--s3);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+  color: var(--ink);
+}
+.dlg-speech p:first-child::before {
+  content: '“';
+  color: var(--gold);
+  margin-right: 1px;
+}
+.dlg-speech p:last-child::after {
+  content: '”';
+  color: var(--gold);
+  margin-left: 1px;
+}
+.dlg-speech.is-narration p::before,
+.dlg-speech.is-narration p::after {
+  content: none;
+}
+.dlg-speech.is-narration p {
+  font-style: italic;
+  color: var(--ink-2);
+}
+.dlg-portrait {
+  margin-top: var(--s3);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.dlg-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.dlg-opt {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: 7px 12px;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--ink-2);
+  background: linear-gradient(180deg, rgba(46, 38, 25, 0.7) 0%, rgba(29, 24, 17, 0.7) 100%);
+  border: 1px solid #3d3122;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 140ms ease, background 140ms ease;
+}
+.dlg-opt:hover,
+.dlg-opt:focus-visible {
+  color: var(--ink);
+  border-color: var(--bronze);
+  background: linear-gradient(180deg, #3b3020 0%, #241d14 100%);
+  outline: none;
+}
+.dlg-opt .dlg-key {
+  min-width: 18px;
+  font-family: var(--font-num);
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+}
+.dlg-opt.is-primary {
+  color: var(--gold-hi);
+  border-color: var(--gold-lo);
+}
+.dlg-opt.is-contract {
+  color: #e8d3ff;
+  border-color: rgba(176, 108, 255, 0.45);
+}
+.dlg-opt.is-ready {
+  color: #cfeed6;
+  border-color: rgba(79, 191, 106, 0.55);
+}
+.dlg-opt.is-new::after {
+  content: 'new';
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.dlg-opt.is-heard {
+  color: var(--ink-3);
+}
+.dlg-reward {
+  margin: 0 0 var(--s4);
+  padding: var(--s3) var(--s4);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  background: rgba(16, 13, 10, 0.7);
+  border: 1px solid #3a2e1f;
+  border-radius: var(--radius);
+}
+.dlg-reward b {
+  color: var(--gold-hi);
+  font-weight: 600;
+}
+.dlg-obj {
+  margin: 2px 0;
+  color: var(--ink-2);
+}
+.dlg-obj::before {
+  content: '◆ ';
+  color: var(--bronze);
+  font-size: 9px;
+}
+
+/* --------------------------------------------------------------------------
+   Journal
+   -------------------------------------------------------------------------- */
+
+.jr {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: var(--s4);
+  height: 100%;
+  min-height: 0;
+}
+.jr-body {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: var(--s4);
+  min-height: 0;
+}
+.jr-list {
+  overflow-y: auto;
+  padding-right: 4px;
+  border-right: 1px solid rgba(201, 162, 39, 0.12);
+}
+.jr-group {
+  margin: var(--s4) 0 var(--s2);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.jr-group:first-child {
+  margin-top: 0;
+}
+.jr-item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+.jr-item:hover {
+  color: var(--ink);
+  background: rgba(201, 162, 39, 0.05);
+}
+.jr-item.on {
+  color: var(--gold-hi);
+  border-left-color: var(--gold);
+  background: rgba(201, 162, 39, 0.08);
+}
+.jr-item.is-locked {
+  color: var(--ink-4);
+  cursor: default;
+}
+.jr-item-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+  color: var(--ink-4);
+}
+.jr-page {
+  overflow-y: auto;
+  padding: 0 var(--s4) var(--s4) 0;
+}
+.jr-page h3 {
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  letter-spacing: 0.06em;
+  color: var(--gold-hi);
+}
+.jr-meta {
+  margin-bottom: var(--s4);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.jr-page p {
+  margin: 0 0 var(--s3);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  line-height: 1.6;
+  color: var(--ink);
+}
+.jr-page p.jr-quiet {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+.jr-page blockquote {
+  margin: 0 0 var(--s3);
+  padding-left: var(--s4);
+  border-left: 2px solid rgba(201, 162, 39, 0.3);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.jr-step {
+  margin: 0 0 var(--s4);
+  padding: var(--s3) var(--s4);
+  background: rgba(16, 13, 10, 0.6);
+  border: 1px solid #33291c;
+  border-radius: var(--radius);
+}
+.jr-step-hd {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+.jr-step-state {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.jr-step.is-active .jr-step-state {
+  color: var(--epic);
+}
+.jr-step.is-ready .jr-step-state {
+  color: var(--good);
+}
+.jr-step.is-done {
+  opacity: 0.78;
+}
+.jr-step p {
+  font-size: var(--fs-md);
+  margin-bottom: var(--s2);
+}
+.jr-hint {
+  margin-top: var(--s4);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
