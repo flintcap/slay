@@ -534,6 +534,15 @@ export class Enemy implements Combatant {
     /* hook point for FX/audio layers */
   }
 
+  /**
+   * An ability this monster insists on using next, ahead of the brain's own
+   * scoring. `undefined` means no opinion; `null` means "nothing yet, close the
+   * distance". Bosses override it to fight in a learnable rotation.
+   */
+  preferredAbility(_d: number, _ctx: CombatContext): AbilityDef | null | undefined {
+    return undefined;
+  }
+
   /** Wakes this monster into combat — used by rally abilities and aggro pings. */
   wake(ctx: CombatContext): void {
     this.ai?.wake(ctx, false);

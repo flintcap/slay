@@ -52,6 +52,8 @@ export interface CombatContext {
   heroFacing?: number;
   /** Player life as a fraction of max. Packs press harder when it is low. */
   heroLifeFrac?: number;
+  /** Puts a status straight on the hero, without a hit. Boss auras use it. */
+  applyHeroStatus?(id: string, duration: number, magnitude?: number): void;
   playerStats: Stats;
   playerLevel: number;
   damagePlayer(packet: DamagePacket): void;
@@ -1563,15 +1565,18 @@ def({
   name: 'Pounce',
   kind: 'movement',
   cooldown: 7,
-  windup: 0.32,
+  // Long enough to see coming, and it lands where the marker was put down:
+  // step out of the circle and the pounce hits stone.
+  windup: 0.5,
   recovery: 0.5,
   range: 9,
   minRange: 3,
   damageMul: 1.7,
   priority: 0.9,
   rooted: true,
-  onExecute: (self, ctx) => {
-    dashToward(self, ctx, ctx.playerPos.x, ctx.playerPos.z, 17, {
+  telegraph: { shape: 'circle', size: 2.4, color: 0xd08040 },
+  onExecute: (self, ctx, inst) => {
+    dashToward(self, ctx, inst.targetX, inst.targetZ, 17, {
       arc: 2.2,
       kind: 'leap',
       onLand: (s, c) => {
@@ -2807,7 +2812,9 @@ def({
   name: 'Volatile Death',
   kind: 'aoe',
   cooldown: 0,
-  windup: 0,
+  // Documentary: the blast puts down its own 0.8s marker when it fires.
+  windup: 0.8,
+  telegraph: { shape: 'circle', size: 4, color: 0xff6020, atSelf: true },
   recovery: 0,
   range: 0,
   radius: 4,
@@ -2853,7 +2860,9 @@ def({
   name: 'Shatter',
   kind: 'aoe',
   cooldown: 0,
-  windup: 0,
+  // The corpse cracks for 0.6s before the shards fly, along the lines shown.
+  windup: 0.6,
+  telegraph: { shape: 'ring', size: 4, color: 0x9ce0ff, atSelf: true },
   recovery: 0,
   range: 0,
   radius: 4,
@@ -2863,14 +2872,20 @@ def({
   tags: ['ondeath'],
   onExecute: (self, ctx) => {
     const p = P(self);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU;
-      fireProjectile(self, ctx, p.x + Math.sin(a) * 8, p.z + Math.cos(a) * 8, 1.0, 'cold', 'shatter_death', {
-        shape: 'shard',
-        speed: 13,
-        life: 1.2,
-      });
-    }
+    const x = p.x;
+    const z = p.z;
+    const tel = ctx.decals.telegraph('ring', x, z, 4, 0, 0.6, 0x9ce0ff);
+    after(0.6, (c) => {
+      tel.cancel();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU;
+        fireProjectile(self, c, x + Math.sin(a) * 8, z + Math.cos(a) * 8, 1.0, 'cold', 'shatter_death', {
+          shape: 'shard',
+          speed: 13,
+          life: 1.2,
+        });
+      }
+    });
   },
 });
 
@@ -2881,7 +2896,7 @@ def({
   name: 'Blink Strike',
   kind: 'movement',
   cooldown: 8,
-  windup: 0.45,
+  windup: 0.6,
   recovery: 0.55,
   range: 18,
   minRange: 3,

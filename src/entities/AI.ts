@@ -1083,6 +1083,14 @@ export class AIBrain {
   private chooseAbility(ctx: CombatContext, d: number): AbilityDef | null {
     const self = this.self;
     if (self.busy || this.hesitate > 0) return null;
+    // A boss fights in a rotation you can learn, not a dice roll.
+    const preferred = self.preferredAbility(d, ctx);
+    if (preferred !== undefined) {
+      if (preferred) return preferred;
+      const strike = getAbility('basic_strike');
+      if (strike && d <= this.def.attackRange + self.hitRadius && self.abilityReady('basic_strike', ctx)) return strike;
+      return null;
+    }
     const lifeFrac = self.life / Math.max(1, self.maxLife);
     // A gathering swarm waits for the others, unless you walk into it.
     const reach = this.def.attackRange + self.hitRadius;
@@ -1102,6 +1110,8 @@ export class AIBrain {
       if (a.minRange !== undefined && d < a.minRange) continue;
       if (a.requiresLos && !this.lineOfSight(ctx)) continue;
       if (a.needsAllies !== undefined && this.countAllies(ctx, 14) < a.needsAllies) continue;
+      // A flanker saves its leap for when it is round the side.
+      if (this.archetype === 'flanker' && a.kind === 'movement' && this.commit <= 0 && (ctx.heroLifeFrac ?? 1) >= PRESS_AT) continue;
       // Two big blows landing in the same instant cannot be read. Wait a beat.
       if (a.telegraph && a.windup >= BIG_WINDUP && telegraphClash(ctx.elapsed + a.windup / speed, self.id, ctx.elapsed)) {
         continue;

@@ -20,6 +20,10 @@
  *   sentries   — immortal turrets until the boss is staggered
  *   barrier    — boss is invulnerable while its adds live
  *   enrageTimer— hard damage ramp, kill it or die
+ *   hookSweep  — chains sweep the room in a cross through the boss; step off the lines
+ *
+ * Every boss also has a soft enrage: a fight that runs past its time limit
+ * (Boss.ts, softEnrageAfter) enrages the boss and fills the room with dread.
  */
 
 import type { BossDef, BiomeId } from '../types';
@@ -143,6 +147,7 @@ boss({
       atLife: 0.6,
       name: 'The Hook',
       abilities: ['grapple_pull', 'flesh_hooks', 'whirlwind', 'heavy_slam'],
+      arena: 'hookSweep',
       damage: 1.15,
       speed: 1.15,
       bark: 'COME CLOSER. I INSIST.',

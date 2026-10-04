@@ -864,6 +864,9 @@ export class DungeonScene extends GameScene {
       heroPos: this.player.position,
       heroFacing: this.player.root.rotation.y,
       heroLifeFrac: this.player.stats.life > 0 ? this.player.life / this.player.stats.life : 1,
+      applyHeroStatus: (id: string, duration: number, magnitude = 1) => {
+        if (!this.godMode) this.player.applyStatus(id, duration, magnitude);
+      },
       playerStats: this.player.stats,
       playerLevel: this.player.character.level,
       damagePlayer: (packet: DamagePacket) => {

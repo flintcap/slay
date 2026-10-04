@@ -33,15 +33,29 @@ import { Enemy, depthCurve } from './Enemy';
 import {
   after,
   alliesNear,
+  angleTo,
   circleHit,
   clamp,
   dist,
+  distToSegment,
   getAbility,
   hitPlayer,
+  inCone,
   spawnHazard,
   summon,
+  type AbilityDef,
   type CombatContext,
 } from './Abilities';
+
+/** Seconds of fight before the soft enrage, for a boss with `phases` phases. */
+export function softEnrageAfter(phases: number): number {
+  return 75 + 55 * phases;
+}
+
+/** Abilities long or heavy enough to be announced by name the first time. */
+function isSignature(a: AbilityDef): boolean {
+  return a.windup >= 0.8 || a.damageMul >= 2;
+}
 
 const TAU = Math.PI * 2;
 
@@ -118,6 +132,17 @@ export class Boss extends Enemy {
   private enrageTimer = 0;
   private lastBarUpdate = -1;
   private introTimer = 0;
+  /** Where in the phase's rotation the boss is. */
+  private rotIdx = 0;
+  /** Seconds spent waiting for the next move in the rotation to be in reach. */
+  private rotWait = 0;
+  private fightTime = 0;
+  /** True once the fight has run past its time limit. */
+  softEnraged = false;
+  private dreadTick = 0;
+  private announced = new Set<string>();
+  /** Abilities started per phase, for the checker. */
+  readonly usedAbilities = new Set<string>();
 
   constructor(def: BossDef, depth: number, rng: Rng) {
     super(defFromBoss(def), BOSS_RANK, [], depth, rng);
@@ -158,6 +183,8 @@ export class Boss extends Enemy {
 
     // Swap the whole kit. `abilityIds` is a mutable array behind a readonly
     // binding, so we rewrite it in place rather than rebuilding the entity.
+    this.rotIdx = 0;
+    this.rotWait = 0;
     this.abilityIds.length = 0;
     for (const id of phase.abilities) {
       if (getAbility(id)) this.abilityIds.push(id);
@@ -361,8 +388,63 @@ export class Boss extends Enemy {
       }
       case 'darkness': {
         if (a.timer > 0) break;
-        a.timer = 5;
+        a.timer = 6.5;
+        // The dark is the boss's: it steps out of it at your side. The cone
+        // goes down where it will land; turn and move, or take it.
+        if (this.busy || this.motionOverride) {
+          a.timer = 0.5;
+          break;
+        }
         ctx.fx.burst('void', p.x, 1.5, p.z, { count: 24, color: 0x201830 });
+        this.buff('darkness_step', 0.7, { invulnerable: 1 });
+        after(0.7, (c) => {
+          if (!this.alive) return;
+          const h = c.heroPos ?? c.playerPos;
+          const side = (c.heroFacing ?? 0) + (c.rng.next() < 0.5 ? 1 : -1) * Math.PI * 0.6;
+          const t = c.nav.clampToWalkable(h.x + Math.sin(side) * 2.6, h.z + Math.cos(side) * 2.6);
+          this.teleportTo(t.x, t.y, c);
+          this.facing = angleTo(t.x, t.y, h.x, h.z);
+          this.rootTimer = 0.65;
+          const facing = this.facing;
+          c.decals.telegraph('cone', t.x, t.y, 4 * Math.min(1.5, this.sizeScale * 0.6), facing, 0.65, 0x6040a0);
+          c.fx.burst('void', t.x, 1.5, t.y, { count: 30, color: 0x201830 });
+          after(0.65, (cc) => {
+            if (!this.alive) return;
+            const reach = 4 * Math.min(1.5, this.sizeScale * 0.6);
+            if (inCone(t.x, t.y, facing, 60, reach, cc.playerPos.x, cc.playerPos.z)) {
+              hitPlayer(this, cc, 2.2, 'arcane', 'arena.darkness', { knockback: 3 });
+            }
+          });
+        });
+        break;
+      }
+      case 'hookSweep': {
+        if (a.timer > 0) break;
+        a.timer = 6.5;
+        // Chains whip across the room in a cross through the boss. The cross
+        // turns an eighth each time, so the safe wedges move.
+        const base = (a.step % 2) * (Math.PI / 4);
+        a.step++;
+        const LEN = 18;
+        const x = p.x;
+        const z = p.z;
+        const tels = [0, 1, 2, 3].map((k) =>
+          ctx.decals.telegraph('line', x, z, LEN, base + (k * Math.PI) / 2, 1.3, 0xc04030),
+        );
+        after(1.3, (c) => {
+          for (const t of tels) t.cancel();
+          for (let k = 0; k < 4; k++) {
+            const ang = base + (k * Math.PI) / 2;
+            const ex = x + Math.sin(ang) * LEN;
+            const ez = z + Math.cos(ang) * LEN;
+            if (distToSegment(c.playerPos.x, c.playerPos.z, x, z, ex, ez) < 1.0) {
+              hitPlayer(this, c, 1.9, 'physical', 'arena.hookSweep', { knockback: 3 });
+              break;
+            }
+          }
+          c.fx.burst('blood', x, 1, z, { count: 30, scale: 3 });
+          events.emit('shake', { amount: 0.3, duration: 0.25 });
+        });
         break;
       }
       case 'swarmCall': {
@@ -460,7 +542,10 @@ export class Boss extends Enemy {
       }
     }
 
-    if (this.engaged) this.tickArena(dt, ctx);
+    if (this.engaged) {
+      this.tickArena(dt, ctx);
+      this.tickSoftEnrage(dt, ctx);
+    }
 
     // Trickle adds independent of arena hooks, so a boss room never feels empty.
     this.addTimer -= dt;
@@ -479,6 +564,90 @@ export class Boss extends Enemy {
     if (pct !== this.lastBarUpdate) {
       this.lastBarUpdate = pct;
       events.emit('boss:damaged', { life: this.life, maxLife: this.maxLife });
+    }
+  }
+
+  /**
+   * The fight's time limit. Past it the boss is enraged for good, and anyone
+   * near it fights through dread. Not a wall: a clock you can see coming.
+   */
+  private tickSoftEnrage(dt: number, ctx: CombatContext): void {
+    this.fightTime += dt;
+    const limit = softEnrageAfter(this.bossDef.phases.length);
+    if (!this.softEnraged && this.fightTime >= limit - 15 && this.fightTime - dt < limit - 15) {
+      events.emit('toast', { text: `${this.bossDef.name} is losing patience...`, kind: 'bad' });
+    }
+    if (!this.softEnraged && this.fightTime >= limit) {
+      this.softEnraged = true;
+      this.buff('soft_enrage', Number.MAX_SAFE_INTEGER, { damage: 1.6, attackSpeed: 1.25, speed: 1.15 });
+      this.applyStatuses([{ id: 'bossEnrage', duration: 9999, magnitude: 1 }], ctx);
+      const p = this.root.position;
+      ctx.fx.burst('crit', p.x, 1.4 * this.sizeScale, p.z, { count: 60, color: 0xff2d2d });
+      events.emit('boss:enraged', { name: this.bossDef.name });
+      events.emit('toast', { text: `${this.bossDef.name} is ENRAGED.`, kind: 'bad' });
+      events.emit('shake', { amount: 0.8, duration: 0.5 });
+    }
+    if (this.softEnraged && ctx.applyHeroStatus) {
+      this.dreadTick -= dt;
+      if (this.dreadTick <= 0) {
+        this.dreadTick = 1;
+        const p = this.root.position;
+        const h = ctx.heroPos ?? ctx.playerPos;
+        if (dist(p.x, p.z, h.x, h.z) < 10) ctx.applyHeroStatus('dreadaura', 1.5, 1);
+      }
+    }
+  }
+
+  /**
+   * The boss's rotation: the current phase's abilities, in the order the phase
+   * lists them, round and round. A move that is cooling down or gated is
+   * skipped; one that is out of reach is walked into for a few seconds before
+   * the boss gives up on it. Learn the order and you know what comes next.
+   */
+  override preferredAbility(d: number, ctx: CombatContext): AbilityDef | null | undefined {
+    const list = this.abilityIds;
+    if (!this.engaged || list.length === 0) return undefined;
+    const lifeFrac = this.lifeFraction;
+    for (let tries = 0; tries < list.length; tries++) {
+      const id = list[this.rotIdx % list.length]!;
+      const a = getAbility(id);
+      const usable =
+        !!a &&
+        !a.tags?.includes('ondeath') &&
+        this.abilityReady(id, ctx) &&
+        (a.belowLife === undefined || lifeFrac <= a.belowLife) &&
+        (a.aboveLife === undefined || lifeFrac >= a.aboveLife) &&
+        (a.needsAllies === undefined || alliesNear(ctx, this.root.position.x, this.root.position.z, 14, this.id).length >= a.needsAllies);
+      if (!usable) {
+        this.rotIdx++;
+        this.rotWait = 0;
+        continue;
+      }
+      if (d <= a!.range && (a!.minRange === undefined || d >= a!.minRange)) {
+        this.rotIdx++;
+        this.rotWait = 0;
+        return a!;
+      }
+      // Next move is out of reach: close in (or back off) for it.
+      this.rotWait += 0.3;
+      if (this.rotWait > 3) {
+        this.rotIdx++;
+        this.rotWait = 0;
+        continue;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  override notifyAbility(ability: AbilityDef, phase: string): void {
+    if (phase !== 'windup') return;
+    this.usedAbilities.add(ability.id);
+    events.emit('boss:cast', { name: this.bossDef.name, ability: ability.name, windup: ability.windup });
+    // Name each big move the first time it comes, so it can be learned.
+    if (isSignature(ability) && !this.announced.has(ability.id)) {
+      this.announced.add(ability.id);
+      events.emit('toast', { text: `${this.bossDef.name}: ${ability.name}`, kind: 'bad' });
     }
   }
 
