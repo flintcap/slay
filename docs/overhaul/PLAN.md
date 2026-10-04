@@ -2,7 +2,7 @@
 
 Goal: take SLAY from "good base" to something that looks, sounds and plays
 like a finished, premium action RPG. Not just the looks: how it plays, how
-deep it goes, the story, and how solid it is. Ten workstreams run in parallel, each
+deep it goes, the story, and how solid it is. Eleven workstreams run in parallel, each
 owned by one agent, each checkpointing to git so it can be stopped at any
 moment and resumed later with nothing lost.
 
@@ -12,7 +12,8 @@ moment and resumed later with nothing lost.
 | --- | --- | --- |
 | hud | `hud.md` | In-game HUD, panels, tooltips, icons, the visual design system |
 | menus | `menus.md` | Title, character select, loading, pause, settings, death, banners, onboarding |
-| animation | `animation.md` | Player and monster models, animation, hit reactions, deaths |
+| animation | `animation.md` | How player, NPC and monster bodies move: locomotion, attacks, reactions, deaths, secondary motion |
+| models | `models.md` | How player, NPC and monster bodies look, and how equipped gear appears on them |
 | world | `world.md` | Textures, materials, lighting, post-processing, props, biomes' look, town |
 | feel | `feel.md` | Combat feedback, skill VFX, camera, loot drops, all audio and music |
 | depth | `depth.md` | Items, affixes, uniques, progression, dungeon events, crafting, run variety |
@@ -32,7 +33,13 @@ only in small additive changes (new lines, new exports), never rewrite it.
 - **menus**: `src/scenes/TitleScene.ts`, `CharSelectScene.ts`, `DeathScene.ts`, `ShowcaseScene.ts`,
   `src/ui/CharSelectPanel.ts`, `DeathPanel.ts`, `PausePanel.ts`, `SettingsPanel.ts`, `UIRoot.ts`,
   `index.html`, new `src/ui/menus.css`
-- **animation**: `src/art/Animation.ts`, `CharacterModels.ts`, `Meshes.ts`, `src/entities/MonsterModels.ts`
+- **animation**: `src/art/Animation.ts`, and in `CharacterModels.ts` only the grip and socket code
+  (`GRIPS`, `weaponGrip`, `carryGrip`, `gripUsesBothHands`, `gripBone`, `clearSocket`, `attachToSocket`,
+  `socketBone`)
+- **models**: `src/art/CharacterModels.ts` (everything except animation's grip and socket code),
+  `src/art/Meshes.ts`, `src/entities/MonsterModels.ts`, new `src/art/NpcModels.ts` and other new model
+  files. Bone names and the skeleton layout are a contract with animation: add bones if needed, never
+  rename or move existing ones without agreeing it in both progress files.
 - **art**: `src/art/Icons.ts`, `src/art/ItemModels.ts`, new files under `src/art/` for portraits, key art
   and ornament. The `GRIPS` table and grip contract in `CharacterModels.ts` stay animation's; item
   models must keep the weapon contract (grip at origin, business end along +Y, wide on X, thin on Z).
