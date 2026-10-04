@@ -25,6 +25,9 @@ import { hoverHooks, runtime, modal, contextMenu } from '../src/ui/Widgets';
 import type { CharClassId, DamageType } from '../src/types';
 import * as THREE from 'three';
 import { CombatTextLayer } from '../src/ui/CombatText';
+import { GroundLabelLayer } from '../src/ui/GroundLabels';
+import { NameplateLayer, type PlateTarget } from '../src/ui/Nameplates';
+import { previewLevel } from '../src/world/DungeonGen';
 
 setIconBaseResolver((id) => {
   try {
@@ -232,6 +235,86 @@ function hoverFirst(rarities: string[], extra?: (s: HTMLElement) => boolean): vo
 }
 
 const scenarios2: Record<string, () => void> = {
+  /** The blacksmith with a rare weapon on the anvil. */
+  smith() {
+    events.emit('ui:open', { panel: 'blacksmith' });
+    setTimeout(() => {
+      const slots = [...document.querySelectorAll<HTMLElement>('.itemgrid .islot:not(.is-empty)')];
+      const pick = slots.find((x) => x.dataset.rarity === 'rare') ?? slots[3];
+      pick?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }, 300);
+  },
+  /** The full map over a real generated floor, most of it explored. */
+  mapfull() {
+    const level = previewLevel('crypt', 'rooms', 4242, 7);
+    runtime.level = level;
+    runtime.depth = 7;
+    const seen = new Uint8Array(level.width * level.height);
+    for (let i = 0; i < seen.length; i++) seen[i] = (i % level.width) < level.width * 0.7 ? 1 : 0;
+    runtime.explored.set(level.seed, seen);
+    const room = level.rooms?.[1] ?? level.rooms?.[0];
+    if (room) {
+      runtime.playerTileX = Math.round(room.x + room.w / 2);
+      runtime.playerTileY = Math.round(room.y + room.h / 2);
+    }
+    events.emit('ui:open', { panel: 'map' });
+  },
+  /** A pack's nameplates: trash, champion, elite, a named rare, a wounded one. */
+  plates() {
+    const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+    cam.position.set(0, 14, 12);
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld();
+    const layer = new NameplateLayer();
+    const mk = (x: number, z: number, d: Partial<PlateTarget['nameplate']> & { rank: PlateTarget['nameplate']['rank'] }): PlateTarget => {
+      const root = new THREE.Object3D();
+      root.position.set(x, 0, z);
+      const plate = { name: 'Drowned Thrall', affixes: [], life: 100, maxLife: 100, color: 0xc0261c, level: 31, ...d };
+      return { root, life: plate.life, nameplate: plate };
+    };
+    const targets: PlateTarget[] = [
+      mk(-8, 0, { rank: 'normal' }),
+      mk(-4, -2, { rank: 'normal', life: 38 }),
+      mk(0, -3, { rank: 'champion', name: 'Bloated Ghoul', affixes: ['Fire Enchanted', 'Hasted'], affixBehaviors: ['fire_enchanted', 'hasted_pack'], affixColors: [0xff5a1a, 0xd0d0ff], color: 0x6f8cff, life: 70 }),
+      mk(5, -1, { rank: 'elite', name: 'Grave Knight', affixes: ['Bulwark', 'Lancer', 'Hexing'], affixBehaviors: ['bulwark', 'lancer', 'hexing'], affixColors: [0x7fb2ff, 0xffc040, 0x6c3fa0], color: 0xf5d76e }),
+      mk(2, 4, { rank: 'rare', name: 'Mother Silt', title: 'Who Drinks the Lamps', affixes: ['Desecrator', 'Fire Chains', 'Splitting', 'Adaptive'], affixBehaviors: ['desecrator', 'fire_chains', 'splitter', 'adaptive'], affixColors: [0x9b2fd0, 0xff5a1a, 0x86d16a, 0xd0d0ff], color: 0xf5d76e, life: 55 }),
+    ];
+    const focus = new THREE.Vector3(0, 0, 2);
+    const loop = (): void => {
+      layer.update(cam, targets, focus, innerWidth, innerHeight);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  },
+  /** Ground loot: one of each rarity spread out, plus a pile that must declutter. */
+  loot() {
+    const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+    cam.position.set(0, 14, 12);
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld();
+    const layer = new GroundLabelLayer();
+    const want = ['normal', 'magic', 'rare', 'set', 'unique', 'mythic', 'ancient'];
+    const got = new Map<string, ReturnType<typeof rollItem>>();
+    const extra: Array<ReturnType<typeof rollItem>> = [];
+    for (let i = 0; i < 6000 && got.size < want.length; i++) {
+      const it = rollItem(40, rng, { magicFind: 4000 });
+      if (!got.has(it.rarity)) got.set(it.rarity, it);
+      else if (extra.length < 5 && it.rarity !== 'normal') extra.push(it);
+    }
+    const entries: Array<{ item: ReturnType<typeof rollItem>; root: THREE.Object3D; pos: THREE.Vector3 }> = [];
+    want.forEach((r, i) => {
+      const item = got.get(r);
+      if (item) entries.push({ item, root: new THREE.Object3D(), pos: new THREE.Vector3(-9 + i * 3, 0, -2 + (i % 2) * 3) });
+    });
+    // A pile on one spot: these have to stack, not overlap.
+    extra.forEach((item, i) => entries.push({ item, root: new THREE.Object3D(), pos: new THREE.Vector3(1.5 + i * 0.15, 0, 4.5) }));
+    const focus = new THREE.Vector3(0, 0, 2);
+    const loop = (): void => {
+      layer.update(cam, entries, focus, innerWidth, innerHeight, false);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  },
   /** Boss bar mid-fight: enraged, winding up a slam, with buffs and debuffs up. */
   bosscast() {
     scenarios.hud!();

@@ -5,9 +5,15 @@
  * ARPG players expect. Hovering shows a short summary; holding shift swaps it
  * for the full tooltip. Clicking the label picks the item up, so a small item
  * on a busy floor is never a pixel hunt.
+ *
+ * Labels are tiered by rarity (a plain tag for common junk up to a gilt,
+ * capped plate with a light shaft for uniques and better) and decluttered:
+ * the best drop keeps its spot, and anything that would cover it is lifted
+ * clear on a thin tether back to the item.
  */
 import * as THREE from 'three';
-import type { Item } from '../types';
+import type { Item, ItemRarity } from '../types';
+import { RARITY_ORDER } from '../types';
 import { itemDisplayName, itemTooltipLines, itemLabelColor, itemTypeTag } from '../sim/Loot';
 
 export interface GroundEntry {
@@ -22,9 +28,27 @@ interface Label {
   /** What the item is — Sword, Ring, Rune — under the name. */
   type: HTMLSpanElement;
   detail: HTMLDivElement;
+  /** Thin line back to the item when the label was lifted out of a pile. */
+  tether: HTMLSpanElement;
   uid: string;
   inUse: boolean;
+  /** Short-form size, measured once per contents change. */
+  w: number;
+  h: number;
 }
+
+/** Rarities that get the full treatment: gilt caps and a light shaft. */
+const BEAM: ReadonlySet<ItemRarity> = new Set<ItemRarity>(['unique', 'set', 'mythic', 'ancient']);
+
+interface Placed {
+  l: Label;
+  x: number;
+  y: number;
+  rank: number;
+  d2: number;
+}
+
+const GAP = 3;
 
 function hex(n: number): string {
   return '#' + (n >>> 0).toString(16).padStart(6, '0');
@@ -73,10 +97,14 @@ export class GroundLabelLayer {
     type.className = 'glabel-type';
     const detail = document.createElement('div');
     detail.className = 'glabel-detail';
-    root.append(name, type, detail);
+    const beam = document.createElement('span');
+    beam.className = 'glabel-beam';
+    const tether = document.createElement('span');
+    tether.className = 'glabel-tether';
+    root.append(beam, name, type, detail, tether);
     this.container.appendChild(root);
 
-    const label: Label = { root, name, type, detail, uid: '', inUse: true };
+    const label: Label = { root, name, type, detail, tether, uid: '', inUse: true, w: 0, h: 0 };
 
     root.addEventListener('pointerenter', () => {
       this.hovered = label.uid;
@@ -103,6 +131,7 @@ export class GroundLabelLayer {
   private paint(l: Label, item: Item, detailed: boolean): void {
     const key = `${item.uid}|${detailed ? 'full' : 'short'}`;
     if (l.root.dataset.key === key) return;
+    const sameItem = l.root.dataset.key?.startsWith(`${item.uid}|`) ?? false;
     l.root.dataset.key = key;
 
     // Gems wear their own stone colour and runes a single shared orange, so a
@@ -138,6 +167,15 @@ export class GroundLabelLayer {
       l.detail.appendChild(row);
     }
     l.detail.classList.toggle('is-full', detailed);
+    l.root.classList.toggle('has-beam', BEAM.has(item.rarity));
+
+    // Measure the short form once per item: the declutter pass works in these
+    // sizes, and reading layout every frame for every label is not free.
+    if (!sameItem) {
+      l.root.style.display = '';
+      l.w = l.name.offsetWidth + 4;
+      l.h = l.name.offsetHeight + (tag ? l.type.offsetHeight + 2 : 0);
+    }
   }
 
   update(
@@ -151,11 +189,13 @@ export class GroundLabelLayer {
     for (const l of this.pool) l.inUse = false;
 
     camera.updateMatrixWorld();
+    const placed: Placed[] = [];
 
     for (const e of entries) {
       const dx = e.pos.x - focus.x;
       const dz = e.pos.z - focus.z;
-      if (dx * dx + dz * dz > this.maxDistance * this.maxDistance) continue;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > this.maxDistance * this.maxDistance) continue;
 
       const head = this.tmp.set(e.pos.x, e.pos.y + 0.95, e.pos.z);
       const proj = head.project(camera);
@@ -166,12 +206,47 @@ export class GroundLabelLayer {
       l.uid = e.item.uid;
       const detailed = shiftHeld && this.hovered === e.item.uid;
       this.paint(l, e.item, detailed);
-
-      const sx = (proj.x * 0.5 + 0.5) * width;
-      const sy = (-proj.y * 0.5 + 0.5) * height;
-      l.root.style.transform = `translate(-50%,-100%) translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
-      l.root.style.display = '';
       l.root.classList.toggle('is-detailed', detailed);
+
+      placed.push({
+        l,
+        x: (proj.x * 0.5 + 0.5) * width,
+        y: (-proj.y * 0.5 + 0.5) * height,
+        rank: RARITY_ORDER.indexOf(e.item.rarity),
+        d2,
+      });
+    }
+
+    // Declutter: best rarity first, then nearest, keep their spot; anything
+    // that would overlap a placed label is lifted above it. A handful of
+    // labels at most, so the pairwise pass is cheap.
+    placed.sort((a, b) => b.rank - a.rank || a.d2 - b.d2);
+    const boxes: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+    for (const p of placed) {
+      const half = p.l.w / 2;
+      let bottom = p.y;
+      for (let guard = 0; guard < 12; guard++) {
+        const top = bottom - p.l.h;
+        let hit: { y0: number } | null = null;
+        for (const b of boxes) {
+          if (p.x + half <= b.x0 || p.x - half >= b.x1) continue;
+          if (bottom <= b.y0 || top >= b.y1) continue;
+          if (!hit || b.y0 < hit.y0) hit = b;
+        }
+        if (!hit) break;
+        bottom = hit.y0 - GAP;
+      }
+      boxes.push({ x0: p.x - half, x1: p.x + half, y0: bottom - p.l.h, y1: bottom });
+      const lift = p.y - bottom;
+      const l = p.l;
+      l.root.style.transform = `translate(-50%,-100%) translate(${p.x.toFixed(1)}px, ${bottom.toFixed(1)}px)`;
+      l.root.style.display = '';
+      if (lift > 2) {
+        l.tether.style.height = `${lift.toFixed(0)}px`;
+        l.root.classList.add('is-lifted');
+      } else if (l.root.classList.contains('is-lifted')) {
+        l.root.classList.remove('is-lifted');
+      }
     }
 
     for (const l of this.pool) {

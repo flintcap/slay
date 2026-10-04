@@ -26,6 +26,7 @@ import { getSocketable, socketBonuses } from '../data/gems';
 import { addItemToInventory } from '../sim/Inventory';
 import { materialName, materialColor } from '../data/materials';
 import { Random, randomSeed } from '../core/RNG';
+import { requestItemIcon } from '../art/Icons';
 import { ItemGrid, normalizeInventory, invRemove, invConsumeOne } from './InventoryPanel';
 import {
   scheduleRefresh,
@@ -164,9 +165,14 @@ export class BlacksmithPanel {
 
   private renderPreview(): void {
     clear(this.preview);
+    // Mark the item on the anvil in the pack, so you can see what you picked.
+    const uid = this.selected?.uid ?? '';
+    this.packGrid.root.querySelectorAll<HTMLElement>('.islot').forEach((el) => {
+      el.classList.toggle('is-picked', !!uid && el.dataset.uid === uid);
+    });
     const item = this.selected;
     if (!item) {
-      this.preview.appendChild(emptyState('Bring the smith something to work on.', 'anvil'));
+      this.preview.appendChild(emptyState('Click an item in your pack to put it on the anvil.', 'anvil'));
       return;
     }
     const rc = rarityHex(item.rarity);
@@ -174,7 +180,25 @@ export class BlacksmithPanel {
     const crest = div('tt-crest');
     crest.style.setProperty('--rc', rc);
     crest.style.color = rc;
-    crest.innerHTML = iconSvg(itemIconName(item), { size: 26 });
+    // The painted item art, as in the tooltip; the line icon only if it fails.
+    const uri = attempt(
+      () =>
+        requestItemIcon(item, (ready) => {
+          const img = crest.querySelector<HTMLImageElement>('img');
+          if (img?.isConnected) img.src = ready;
+        }),
+      ''
+    );
+    if (uri) {
+      const img = document.createElement('img');
+      img.className = 'tt-crest-img';
+      img.alt = '';
+      img.draggable = false;
+      img.src = uri;
+      crest.appendChild(img);
+    } else {
+      crest.innerHTML = iconSvg(itemIconName(item), { size: 26 });
+    }
     const titles = div('');
     const nm = div('smith-itemname', attempt(() => itemDisplayName(item), item.name));
     nm.style.color = rc;
@@ -377,7 +401,7 @@ export class BlacksmithPanel {
     const item = this.selected;
     const c = save.account.current;
     if (!item || !c) {
-      this.actions.appendChild(emptyState('No item at the anvil.', 'hammer'));
+      this.actions.appendChild(emptyState('Upgrades, sockets and salvage appear here once an item is on the anvil.', 'hammer'));
       return;
     }
 

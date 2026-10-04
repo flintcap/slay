@@ -1686,6 +1686,7 @@ export class ItemSlot {
     this.root.classList.toggle('is-empty', !item);
     if (!item) {
       this.root.removeAttribute('data-rarity');
+      this.root.removeAttribute('data-uid');
       this.root.style.removeProperty('--rc');
       if (this.opts.placeholder) {
         const ph = div('islot-ph');
@@ -1699,6 +1700,7 @@ export class ItemSlot {
     }
     const rc = rarityHex(item.rarity);
     this.root.dataset.rarity = item.rarity;
+    this.root.dataset.uid = item.uid;
     this.root.style.setProperty('--rc', rc);
 
     const art = div('islot-art');

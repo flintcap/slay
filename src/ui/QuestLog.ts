@@ -148,7 +148,7 @@ export class QuestLogPanel {
 
     const reward = div('quest-reward');
     const item = (iconName: string, label: string): HTMLElement => {
-      const d = div('death-kept-item');
+      const d = div('quest-reward-item');
       d.appendChild(icon(iconName, { size: 14 }));
       d.appendChild(span('', label));
       return d;

@@ -74,12 +74,21 @@ interface Plate {
   /** The named-rare epithet line. Hidden for everything else. */
   epithet: HTMLDivElement;
   barFill: HTMLDivElement;
+  /** Pale chunk that lingers where life just was, then drains to the fill. */
+  barTrail: HTMLDivElement;
   chips: HTMLDivElement;
   /** What the DOM currently shows, so we only touch it on change. */
   key: string;
   pct: number;
+  /** Where the trail sits, and when the last hit landed (ms). */
+  trail: number;
+  hitAt: number;
   inUse: boolean;
 }
+
+/** How long the trail holds before draining, and how fast it drains (1/s). */
+const TRAIL_HOLD = 380;
+const TRAIL_RATE = 5;
 
 function hex(n: number): string {
   return '#' + (n >>> 0).toString(16).padStart(6, '0');
@@ -94,6 +103,7 @@ export class NameplateLayer {
   private tmpFwd = new THREE.Vector3();
   private tmpHead = new THREE.Vector3();
   private tmpProj = new THREE.Vector3();
+  private lastT = 0;
 
   /** Plates fade out past this distance so the screen stays readable. */
   maxDistance = 26;
@@ -134,9 +144,11 @@ export class NameplateLayer {
 
     const bar = document.createElement('div');
     bar.className = 'np-bar';
+    const barTrail = document.createElement('div');
+    barTrail.className = 'np-bar-trail';
     const barFill = document.createElement('div');
     barFill.className = 'np-bar-fill';
-    bar.appendChild(barFill);
+    bar.append(barTrail, barFill);
 
     const epithet = document.createElement('div');
     epithet.className = 'np-epithet';
@@ -147,7 +159,22 @@ export class NameplateLayer {
     root.append(title, epithet, bar, chips);
     this.container.appendChild(root);
 
-    const plate: Plate = { root, title, nameEl, levelEl, rankEl, epithet, barFill, chips, key: '', pct: -1, inUse: true };
+    const plate: Plate = {
+      root,
+      title,
+      nameEl,
+      levelEl,
+      rankEl,
+      epithet,
+      barFill,
+      barTrail,
+      chips,
+      key: '',
+      pct: -1,
+      trail: -1,
+      hitAt: 0,
+      inUse: true,
+    };
     this.pool.push(plate);
     return plate;
   }
@@ -157,6 +184,8 @@ export class NameplateLayer {
     const key = `${d.name}|${d.title ?? ''}|${d.rank}|${d.level}|${d.affixes.join(',')}`;
     if (p.key === key) return;
     p.key = key;
+    // A new face on this pooled plate: no trail carried over from the last one.
+    p.trail = -1;
 
     p.nameEl.textContent = d.name;
     p.epithet.textContent = d.title ?? '';
@@ -197,6 +226,9 @@ export class NameplateLayer {
    */
   update(camera: THREE.Camera, targets: Iterable<PlateTarget>, focus: THREE.Vector3, width: number, height: number): void {
     for (const p of this.pool) p.inUse = false;
+    const now = performance.now();
+    const dt = this.lastT ? Math.min(0.1, (now - this.lastT) / 1000) : 0;
+    this.lastT = now;
 
     camera.updateMatrixWorld();
     const camPos = this.tmpCam.setFromMatrixPosition(camera.matrixWorld);
@@ -229,8 +261,16 @@ export class NameplateLayer {
 
       const pct = d.maxLife > 0 ? Math.max(0, Math.min(1, d.life / d.maxLife)) : 0;
       if (Math.abs(pct - plate.pct) > 0.002) {
+        if (pct < plate.pct) plate.hitAt = now;
         plate.pct = pct;
         plate.barFill.style.transform = `scaleX(${pct})`;
+      }
+      // The trail: snaps up on a heal, holds after a hit, then drains.
+      let trail = plate.trail < 0 || pct > plate.trail ? pct : plate.trail;
+      if (trail > pct && now - plate.hitAt > TRAIL_HOLD) trail = Math.max(pct, trail - (trail - pct) * Math.min(1, dt * TRAIL_RATE) - dt * 0.05);
+      if (Math.abs(trail - plate.trail) > 0.001) {
+        plate.trail = trail;
+        plate.barTrail.style.transform = `scaleX(${trail})`;
       }
 
       const sx = (proj.x * 0.5 + 0.5) * width;

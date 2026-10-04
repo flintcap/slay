@@ -16,16 +16,24 @@ Status: in progress
 
 ## Next up
 
-Milestone 8: vendor, blacksmith, map, quest log, nameplates and ground labels
-in the same frame language; loot labels styled by rarity with beams for the
-best drops. Files: `VendorPanel.ts`, `BlacksmithPanel.ts`, `MapPanel.ts`,
-`QuestLog.ts`, `Nameplates.ts`, `GroundLabels.ts` and their parts of
-`styles.css`. Photograph each with the lab first
-(`node tools/uilab.mjs --port=4321 --out=shots/hud --shots=vendor,blacksmith,map,questLog`).
-A real render (`combatText` driver in `tools/screenshot.mjs`) was started at
-the start of this session to see the damage numbers; check `shots/hud/real/`.
-Then milestone 9 (sweep), which includes the font-size and dead-style requests
-below.
+Milestone 8 is built and checked in the lab; it is not ticked yet because it
+still needs its one real render. Done: ground labels tiered by rarity with a
+light shaft and gilt caps for unique/set/mythic/ancient and a declutter pass
+that lifts overlapping labels onto a tether (`GroundLabels.ts`); nameplates
+with a draining damage trail, serif names for elites and rares, gilt hairline
+bars for champion and up, no more truncated names (`Nameplates.ts`); the map
+drawn as an inked chart (ground wash, bright wall edges, halos on stairs and
+the hero, fit-to-floor zoom on first open, framed legend) (`MapPanel.ts`);
+blacksmith shows the painted item art and marks the item on the anvil in the
+pack (`.islot.is-picked`, `ItemSlot` now sets `data-uid`); vendor grids
+centred; quest rewards have their own chips (`.quest-reward-item`, no longer
+borrowing `.death-kept-item`).
+
+To finish 8: `npm run build && SLAY_PORT=4301 node tools/screenshot.mjs
+--out=shots/hud/real --shots=combatText,dungeon` (about 15 to 30 minutes on a
+loaded machine), look at the combat text, nameplates and loot labels, fix
+what looks wrong, tick 8. Then milestone 9 (sweep), which includes the
+font-size and dead-style requests below.
 
 ## Notes for resume
 
@@ -99,4 +107,6 @@ below.
   animates a sort. `ItemSlot.flash()` is public. The drag ghost tilts with the
   pointer, shows the item name, and says "Release to drop" over the world.
 - Lab scenarios added: `combat`, `drag`, `arrive`, `ttunique`, `ttset`,
-  `ttgem`. Run the lab on another port (`--port=4311`) if 4301 is busy.
+  `ttgem`, `skillhover`, `bosscast`, `miniboss`, `loot` (ground labels),
+  `plates` (nameplates), `mapfull` (a generated floor, 70% explored),
+  `smith` (an item on the anvil). Run the lab on another port (`--port=4311`) if 4301 is busy.

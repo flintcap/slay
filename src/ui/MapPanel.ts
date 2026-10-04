@@ -55,6 +55,8 @@ export class MapPanel {
   private headerLabel: HTMLDivElement;
   private lastTileX = -1;
   private lastTileY = -1;
+  /** The floor the zoom was last fitted to; a new floor refits once. */
+  private fittedSeed = -1;
 
   constructor() {
     this.panel = new Panel({
@@ -80,9 +82,10 @@ export class MapPanel {
     this.stage.appendChild(this.headerLabel);
 
     const legend = div('map-legend');
+    legend.appendChild(div('map-legend-title', 'Legend'));
     const rows: Array<[string, string]> = [
-      ['#9c8862', 'Explored floor'],
-      ['#3a3026', 'Wall'],
+      [FLOOR_FILL, 'Explored floor'],
+      [EDGE_INK, 'Wall'],
       ['#ffd66b', 'Stairs down'],
       ['#7fb0ff', 'Stairs up'],
       ['#d8a83a', 'Treasure'],
@@ -239,6 +242,13 @@ export class MapPanel {
     this.stage.querySelector('.empty-state')?.remove();
 
     const explored = this.exploredFor(level);
+    if (this.fittedSeed !== level.seed) {
+      // First look at a floor: zoom so the whole of it would fit the stage,
+      // within sane bounds. The wheel takes over from there.
+      this.fittedSeed = level.seed;
+      const fit = Math.min(W / level.width, H / level.height) * 0.8;
+      this.zoom = Math.max(4, Math.min(14, fit));
+    }
     const s = this.zoom;
     const ox = W / 2 + this.panX - runtime.playerTileX * s;
     const oy = H / 2 + this.panY - runtime.playerTileY * s;
@@ -262,25 +272,68 @@ export class MapPanel {
       ctx.fillRect(ox + room.x * s, oy + room.y * s, room.w * s, room.h * s);
     }
 
-    // Tiles.
+    // Tiles. Walkable ground is a muted wash; walls are not filled at all but
+    // inked as a bright edge wherever ground meets them, the way a drawn chart
+    // reads. Water, lava and chasms keep their own colour.
+    const LW = level.width;
+    const walk = (x: number, y: number): boolean => {
+      if (x < 0 || y < 0 || x >= LW || y >= level.height) return false;
+      const t = level.tiles[y * LW + x];
+      return t !== T_VOID && t !== T_WALL;
+    };
     for (let y = 0; y < level.height; y++) {
       const py = oy + y * s;
       if (py < -s || py > H) continue;
-      for (let x = 0; x < level.width; x++) {
-        const idx = y * level.width + x;
+      for (let x = 0; x < LW; x++) {
+        const idx = y * LW + x;
         if (!explored[idx]) continue;
         const t = level.tiles[idx];
-        if (t === T_VOID) continue;
+        if (t === T_VOID || t === T_WALL) continue;
         const px = ox + x * s;
         if (px < -s || px > W) continue;
         ctx.fillStyle = tileColor(t);
         ctx.fillRect(px, py, s + 0.5, s + 0.5);
       }
     }
+    // Edge pass: one stroked path for every ground-to-wall boundary seen.
+    ctx.beginPath();
+    for (let y = 0; y < level.height; y++) {
+      const py = oy + y * s;
+      if (py < -s || py > H) continue;
+      for (let x = 0; x < LW; x++) {
+        if (!explored[y * LW + x] || !walk(x, y)) continue;
+        const px = ox + x * s;
+        if (px < -s || px > W) continue;
+        if (!walk(x, y - 1)) {
+          ctx.moveTo(px, py);
+          ctx.lineTo(px + s, py);
+        }
+        if (!walk(x, y + 1)) {
+          ctx.moveTo(px, py + s);
+          ctx.lineTo(px + s, py + s);
+        }
+        if (!walk(x - 1, y)) {
+          ctx.moveTo(px, py);
+          ctx.lineTo(px, py + s);
+        }
+        if (!walk(x + 1, y)) {
+          ctx.moveTo(px + s, py);
+          ctx.lineTo(px + s, py + s);
+        }
+      }
+    }
+    ctx.lineCap = 'square';
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = Math.max(2, s * 0.42);
+    ctx.stroke();
+    ctx.strokeStyle = EDGE_INK;
+    ctx.lineWidth = Math.max(1, s * 0.2);
+    ctx.stroke();
 
     // Room labels.
     if (s >= 5) {
-      ctx.font = '600 10px system-ui, sans-serif';
+      ctx.font = `700 ${Math.round(11 * textScale())}px 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif`;
+      ctx.letterSpacing = '2px';
       ctx.textAlign = 'center';
       for (const room of level.rooms ?? []) {
         const label = ROOM_LABEL[room.kind];
@@ -288,11 +341,14 @@ export class MapPanel {
         const cx = room.center?.x ?? room.x + room.w / 2;
         const cy = room.center?.y ?? room.y + room.h / 2;
         if (!explored[Math.floor(cy) * level.width + Math.floor(cx)]) continue;
-        ctx.fillStyle = 'rgba(0,0,0,0.65)';
-        ctx.fillText(label, ox + cx * s + 1, oy + cy * s + 1);
-        ctx.fillStyle = 'rgba(236,224,200,0.85)';
-        ctx.fillText(label, ox + cx * s, oy + cy * s);
+        const text = label.toUpperCase();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+        ctx.strokeText(text, ox + cx * s, oy + cy * s);
+        ctx.fillStyle = ROOM_INK[room.kind] ?? 'rgba(236,224,200,0.9)';
+        ctx.fillText(text, ox + cx * s, oy + cy * s);
       }
+      ctx.letterSpacing = '0px';
     }
 
     // Stairs.
@@ -303,6 +359,14 @@ export class MapPanel {
       if (!explored[my * level.width + mx]) continue;
       const px = ox + mx * s + s / 2;
       const py = oy + my * s + s / 2;
+      // A soft halo first so the marker finds the eye on a big floor.
+      const halo = ctx.createRadialGradient(px, py, 0, px, py, s * 2.4);
+      halo.addColorStop(0, color);
+      halo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = halo;
+      ctx.fillRect(px - s * 2.4, py - s * 2.4, s * 4.8, s * 4.8);
+      ctx.globalAlpha = 1;
       ctx.beginPath();
       ctx.moveTo(px, py - s * 0.9);
       ctx.lineTo(px + s * 0.8, py + s * 0.7);
@@ -328,6 +392,11 @@ export class MapPanel {
     // Player.
     const px = ox + runtime.playerTileX * s + s / 2;
     const py = oy + runtime.playerTileY * s + s / 2;
+    const glow = ctx.createRadialGradient(px, py, 0, px, py, s * 3);
+    glow.addColorStop(0, 'rgba(255,236,190,0.45)');
+    glow.addColorStop(1, 'rgba(255,236,190,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(px - s * 3, py - s * 3, s * 6, s * 6);
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(runtime.facing);
@@ -346,12 +415,32 @@ export class MapPanel {
   }
 }
 
+/** The map's two inks: ground wash and the wall line drawn round it. */
+const FLOOR_FILL = '#4f432f';
+const EDGE_INK = '#e3c88e';
+
+/** Room label colours, matching the legend. */
+const ROOM_INK: Partial<Record<DungeonRoom['kind'], string>> = {
+  treasure: '#f0c75a',
+  shrine: '#cf9dff',
+  boss: '#ff7a62',
+  vault: '#6fe08a',
+  quest: '#9fb4ff',
+  entry: '#a9c8ff',
+  exit: '#ffe08a',
+};
+
+function textScale(): number {
+  const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--text-scale'));
+  return Number.isFinite(v) && v > 0 ? v : 1;
+}
+
 function tileColor(t: number): string {
   switch (t) {
     case T_FLOOR:
-      return '#9c8862';
+      return FLOOR_FILL;
     case T_WALL:
-      return '#3a3026';
+      return 'rgba(0,0,0,0)';
     case T_DOOR:
       return '#d6a850';
     case T_WATER:
@@ -365,7 +454,7 @@ function tileColor(t: number): string {
     case T_STAIRS_UP:
       return '#7fb0ff';
     case T_RUBBLE:
-      return '#605442';
+      return '#433a2c';
     default:
       return 'rgba(0,0,0,0)';
   }
