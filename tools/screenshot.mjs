@@ -133,7 +133,9 @@ async function settle(frames = 90) {
 async function shoot(name) {
   await settle(60);
   const file = path.join(OUT, `${name}.png`);
-  await page.screenshot({ path: file });
+  // Under software rendering on a busy machine one frame can take longer
+  // than Playwright's 30s default, so the capture gets more room.
+  await page.screenshot({ path: file, timeout: Number(args.shotTimeout ?? 180000) });
   // Judge the written PNG, not the live canvas: without preserveDrawingBuffer
   // the WebGL buffer is already cleared by the time script code can read it,
   // which reports every frame as black.
@@ -221,7 +223,7 @@ const drivers = {
         if (n % 6 === 0) s.events.emit('player:damaged', { amount: 64 + (n % 5) * 11, type: 'fire', life: 500, maxLife: 900 });
         if (n % 9 === 0) s.events.emit('player:healed', { amount: 120 });
         if (n % 13 === 0) s.events.emit('player:evaded', { ability: 'x', source: 'y' });
-      }, 120);
+      }, 200);
     });
     await settle(30);
   },
