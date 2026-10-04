@@ -14,7 +14,7 @@
  * nova and a fire beam read as different abilities.
  */
 import type { Item, ItemRarity, DamageType } from '../types';
-import { RARITY_COLOR } from '../types';
+import { paintItemIcon } from './ItemIconArt';
 
 // ---------------------------------------------------------------------------
 // Small deterministic RNG — icons must be stable across sessions.
@@ -224,818 +224,8 @@ function gemAt(x: CanvasRenderingContext2D, cx: number, cy: number, r: number, c
   x.stroke();
 }
 
-// ---------------------------------------------------------------------------
-// Item shape routines. Each draws into a 128×128 field.
-// ---------------------------------------------------------------------------
-
-type Draw = (x: CanvasRenderingContext2D, s: Swatch, rnd: () => number, ornate: number) => void;
-
-function grip(x: CanvasRenderingContext2D, s: Swatch, cx: number, y0: number, y1: number, w = 7): void {
-  const lg = x.createLinearGradient(cx - w, 0, cx + w, 0);
-  lg.addColorStop(0, '#241a12');
-  lg.addColorStop(0.5, s.accent);
-  lg.addColorStop(1, '#1c1410');
-  x.fillStyle = lg;
-  x.fillRect(cx - w, y0, w * 2, y1 - y0);
-  // Wrap bindings.
-  x.strokeStyle = 'rgba(0,0,0,.4)';
-  x.lineWidth = 1.4;
-  for (let y = y0 + 4; y < y1 - 2; y += 6) {
-    x.beginPath();
-    x.moveTo(cx - w, y);
-    x.lineTo(cx + w, y + 2.5);
-    x.stroke();
-  }
-}
-
-const bladeWeapon = (len: number, wide: number, guardW: number): Draw =>
-  (x, s, _rnd, ornate) => {
-    const cx = 64;
-    const tip = 128 - len;
-    const guardY = 128 - len + len * 0.72;
-    // Blade
-    poly(x, [
-      [cx, tip],
-      [cx + wide, tip + 14],
-      [cx + wide * 0.8, guardY],
-      [cx - wide * 0.8, guardY],
-      [cx - wide, tip + 14],
-    ]);
-    fillShape(x, s, shade(x, s, cx - wide, tip, cx + wide, guardY));
-    // Fuller — the groove down the centre reads as forged steel.
-    x.beginPath();
-    x.moveTo(cx, tip + 10);
-    x.lineTo(cx, guardY - 4);
-    x.strokeStyle = rgba(0x000000, 0.35);
-    x.lineWidth = 2.5;
-    x.stroke();
-    x.beginPath();
-    x.moveTo(cx - 1.5, tip + 12);
-    x.lineTo(cx - 1.5, guardY - 6);
-    x.strokeStyle = rgba(0xffffff, 0.22);
-    x.lineWidth = 1.2;
-    x.stroke();
-    // Guard
-    poly(x, [
-      [cx - guardW, guardY],
-      [cx + guardW, guardY],
-      [cx + guardW * 0.75, guardY + 8],
-      [cx - guardW * 0.75, guardY + 8],
-    ]);
-    fillShape(x, s, shade(x, s, cx - guardW, guardY, cx + guardW, guardY + 8));
-    grip(x, s, cx, guardY + 8, 118);
-    // Pommel
-    x.beginPath();
-    x.arc(cx, 120, 7, 0, Math.PI * 2);
-    fillShape(x, s, shade(x, s, cx - 7, 113, cx + 7, 127));
-    if (ornate > 0.5) gemAt(x, cx, guardY + 3, 4.2, 0xc0504a);
-  };
-
-const axeLike = (heavy: boolean): Draw =>
-  (x, s, rnd, ornate) => {
-    const cx = 60;
-    // Haft
-    const wood = SWATCHES['wood.oak']!;
-    x.save();
-    poly(x, [[cx - 5, 16], [cx + 5, 16], [cx + 6, 124], [cx - 6, 124]]);
-    fillShape(x, wood, shade(x, wood, cx - 6, 0, cx + 6, 0));
-    poly(x, [[cx - 5, 16], [cx + 5, 16], [cx + 6, 124], [cx - 6, 124]]);
-    grain(x, wood, rnd, 4);
-    x.restore();
-    // Head
-    const top = 22;
-    const h = heavy ? 52 : 40;
-    poly(x, [
-      [cx + 2, top],
-      [cx + 34, top + 6],
-      [cx + 44, top + h * 0.5],
-      [cx + 34, top + h],
-      [cx + 2, top + h - 4],
-    ]);
-    fillShape(x, s, shade(x, s, cx, top, cx + 44, top + h));
-    // Edge highlight along the cutting face.
-    x.beginPath();
-    x.moveTo(cx + 34, top + 6);
-    x.quadraticCurveTo(cx + 46, top + h * 0.5, cx + 34, top + h);
-    x.strokeStyle = s.spec;
-    x.lineWidth = 2.6;
-    x.stroke();
-    if (heavy) {
-      // Mirrored bit for a double-headed axe.
-      poly(x, [
-        [cx - 2, top],
-        [cx - 30, top + 6],
-        [cx - 38, top + h * 0.5],
-        [cx - 30, top + h],
-        [cx - 2, top + h - 4],
-      ]);
-      fillShape(x, s, shade(x, s, cx - 38, top, cx, top + h));
-    }
-    if (ornate > 0.45) gemAt(x, cx + 14, top + h * 0.5, 4.5, 0x4aa8c0);
-  };
-
-const maceLike: Draw = (x, s, rnd, ornate) => {
-  const cx = 64;
-  grip(x, s, cx, 60, 122, 6);
-  // Head
-  x.beginPath();
-  x.arc(cx, 42, 24, 0, Math.PI * 2);
-  fillShape(x, s, shade(x, s, cx - 24, 18, cx + 24, 66));
-  // Flanges
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 + 0.3;
-    const r0 = 20;
-    const r1 = 33;
-    poly(x, [
-      [cx + Math.cos(a - 0.22) * r0, 42 + Math.sin(a - 0.22) * r0],
-      [cx + Math.cos(a) * r1, 42 + Math.sin(a) * r1],
-      [cx + Math.cos(a + 0.22) * r0, 42 + Math.sin(a + 0.22) * r0],
-    ]);
-    fillShape(x, s, shade(x, s, cx - 30, 12, cx + 30, 72));
-  }
-  x.beginPath();
-  x.arc(cx - 7, 34, 7, 0, Math.PI * 2);
-  x.fillStyle = rgba(0xffffff, s.metallic ? 0.3 : 0.15);
-  x.fill();
-  if (ornate > 0.5) gemAt(x, cx, 42, 6, 0xc06a2a);
-  void rnd;
-};
-
-const daggerLike: Draw = bladeWeapon(74, 9, 16);
-const swordLike: Draw = bladeWeapon(96, 13, 26);
-const spearLike: Draw = (x, s, rnd, ornate) => {
-  const cx = 64;
-  const wood = SWATCHES['wood.oak']!;
-  x.save();
-  poly(x, [[cx - 5, 40], [cx + 5, 40], [cx + 5, 126], [cx - 5, 126]]);
-  fillShape(x, wood, shade(x, wood, cx - 5, 0, cx + 5, 0));
-  poly(x, [[cx - 5, 40], [cx + 5, 40], [cx + 5, 126], [cx - 5, 126]]);
-  grain(x, wood, rnd, 3);
-  x.restore();
-  poly(x, [[cx, 6], [cx + 13, 30], [cx + 7, 46], [cx - 7, 46], [cx - 13, 30]]);
-  fillShape(x, s, shade(x, s, cx - 13, 6, cx + 13, 46));
-  x.beginPath();
-  x.moveTo(cx, 10);
-  x.lineTo(cx, 44);
-  x.strokeStyle = rgba(0x000000, 0.32);
-  x.lineWidth = 2;
-  x.stroke();
-  if (ornate > 0.5) {
-    x.strokeStyle = hexStr(0xb48a24);
-    x.lineWidth = 2;
-    x.beginPath();
-    x.moveTo(cx - 6, 50);
-    x.lineTo(cx + 6, 50);
-    x.stroke();
-  }
-};
-
-const bowLike = (crossbow: boolean): Draw =>
-  (x, s, rnd, ornate) => {
-    const wood = SWATCHES['wood.polished']!;
-    if (crossbow) {
-      // Stock
-      poly(x, [[52, 30], [74, 30], [78, 118], [50, 118]]);
-      fillShape(x, wood, shade(x, wood, 50, 30, 78, 118));
-      // Prod
-      x.beginPath();
-      x.moveTo(14, 44);
-      x.quadraticCurveTo(64, 22, 114, 44);
-      x.strokeStyle = s.base;
-      x.lineWidth = 8;
-      x.lineCap = 'round';
-      x.stroke();
-      x.strokeStyle = s.spec;
-      x.lineWidth = 2.4;
-      x.stroke();
-      // String
-      x.beginPath();
-      x.moveTo(16, 46);
-      x.lineTo(64, 62);
-      x.lineTo(112, 46);
-      x.strokeStyle = '#d8cfae';
-      x.lineWidth = 1.8;
-      x.stroke();
-    } else {
-      x.beginPath();
-      x.moveTo(38, 10);
-      x.bezierCurveTo(96, 40, 96, 88, 38, 118);
-      x.strokeStyle = wood.dark;
-      x.lineWidth = 11;
-      x.lineCap = 'round';
-      x.stroke();
-      x.strokeStyle = wood.base;
-      x.lineWidth = 7.5;
-      x.stroke();
-      x.strokeStyle = wood.light;
-      x.lineWidth = 2.6;
-      x.stroke();
-      // String
-      x.beginPath();
-      x.moveTo(38, 10);
-      x.lineTo(38, 118);
-      x.strokeStyle = '#ddd4b6';
-      x.lineWidth = 2;
-      x.stroke();
-      if (ornate > 0.45) gemAt(x, 84, 64, 5, 0x63c08a);
-    }
-    void rnd;
-  };
-
-const staffLike = (short: boolean): Draw =>
-  (x, s, rnd, ornate) => {
-    const cx = 64;
-    const wood = SWATCHES['wood.oak']!;
-    const top = short ? 56 : 30;
-    x.save();
-    poly(x, [[cx - 5, top], [cx + 5, top], [cx + 6, 126], [cx - 6, 126]]);
-    fillShape(x, wood, shade(x, wood, cx - 6, 0, cx + 6, 0));
-    poly(x, [[cx - 5, top], [cx + 5, top], [cx + 6, 126], [cx - 6, 126]]);
-    grain(x, wood, rnd, 4);
-    x.restore();
-    // Crown holding a focus stone.
-    const cy = top - 14;
-    x.beginPath();
-    x.moveTo(cx - 16, cy + 16);
-    x.quadraticCurveTo(cx - 20, cy - 12, cx, cy - 18);
-    x.quadraticCurveTo(cx + 20, cy - 12, cx + 16, cy + 16);
-    x.strokeStyle = s.base;
-    x.lineWidth = 5;
-    x.stroke();
-    x.strokeStyle = s.spec;
-    x.lineWidth = 1.8;
-    x.stroke();
-    gemAt(x, cx, cy + 2, short ? 9 : 12, ornate > 0.5 ? 0xb050ff : 0x50a8ff);
-  };
-
-const shieldLike: Draw = (x, s, rnd, ornate) => {
-  x.beginPath();
-  x.moveTo(24, 20);
-  x.lineTo(104, 20);
-  x.lineTo(104, 72);
-  x.quadraticCurveTo(104, 106, 64, 122);
-  x.quadraticCurveTo(24, 106, 24, 72);
-  x.closePath();
-  fillShape(x, s, shade(x, s, 24, 20, 104, 122));
-  // Rim
-  x.save();
-  x.beginPath();
-  x.moveTo(24, 20);
-  x.lineTo(104, 20);
-  x.lineTo(104, 72);
-  x.quadraticCurveTo(104, 106, 64, 122);
-  x.quadraticCurveTo(24, 106, 24, 72);
-  x.closePath();
-  x.strokeStyle = s.light;
-  x.lineWidth = 4;
-  x.stroke();
-  x.restore();
-  // Boss
-  x.beginPath();
-  x.arc(64, 62, 15, 0, Math.PI * 2);
-  fillShape(x, s, shade(x, s, 49, 47, 79, 77));
-  if (ornate > 0.4) {
-    x.strokeStyle = rgba(0xb48a24, 0.85);
-    x.lineWidth = 2.2;
-    x.beginPath();
-    x.moveTo(64, 26);
-    x.lineTo(64, 112);
-    x.stroke();
-    gemAt(x, 64, 62, 6, 0xd0442a);
-  }
-  void rnd;
-};
-
-const orbLike: Draw = (x, s, _rnd, ornate) => {
-  const g = x.createRadialGradient(52, 50, 6, 64, 64, 40);
-  g.addColorStop(0, '#ffffff');
-  g.addColorStop(0.25, s.light);
-  g.addColorStop(0.7, s.base);
-  g.addColorStop(1, s.dark);
-  x.beginPath();
-  x.arc(64, 64, 38, 0, Math.PI * 2);
-  x.fillStyle = g;
-  x.fill();
-  x.strokeStyle = rgba(0x000000, 0.4);
-  x.lineWidth = 2;
-  x.stroke();
-  // Inner swirl suggests something alive inside the glass.
-  x.save();
-  x.beginPath();
-  x.arc(64, 64, 36, 0, Math.PI * 2);
-  x.clip();
-  x.globalAlpha = 0.45;
-  x.strokeStyle = s.spec;
-  x.lineWidth = 3;
-  x.beginPath();
-  x.arc(72, 74, 22, 0.6, 2.6);
-  x.stroke();
-  x.restore();
-  x.globalAlpha = 1;
-  // Specular
-  x.beginPath();
-  x.ellipse(52, 48, 11, 7, -0.6, 0, Math.PI * 2);
-  x.fillStyle = 'rgba(255,255,255,.55)';
-  x.fill();
-  if (ornate > 0.4) {
-    x.strokeStyle = rgba(0xb48a24, 0.9);
-    x.lineWidth = 3;
-    x.beginPath();
-    x.arc(64, 64, 41, 0.4, 2.2);
-    x.stroke();
-  }
-};
-
-const helmLike: Draw = (x, s, _rnd, ornate) => {
-  x.beginPath();
-  x.moveTo(30, 84);
-  x.quadraticCurveTo(30, 26, 64, 26);
-  x.quadraticCurveTo(98, 26, 98, 84);
-  x.lineTo(92, 100);
-  x.lineTo(36, 100);
-  x.closePath();
-  fillShape(x, s, shade(x, s, 30, 26, 98, 100));
-  // Visor slot
-  x.fillStyle = 'rgba(0,0,0,.55)';
-  x.fillRect(40, 62, 48, 9);
-  x.fillRect(60, 70, 8, 20);
-  // Brow ridge
-  x.beginPath();
-  x.moveTo(34, 60);
-  x.quadraticCurveTo(64, 46, 94, 60);
-  x.strokeStyle = s.light;
-  x.lineWidth = 3.5;
-  x.stroke();
-  if (ornate > 0.45) {
-    // Crest
-    x.beginPath();
-    x.moveTo(64, 24);
-    x.quadraticCurveTo(74, 8, 64, 4);
-    x.quadraticCurveTo(54, 8, 64, 24);
-    x.fillStyle = hexStr(0xa03a2a);
-    x.fill();
-  }
-};
-
-const chestLike: Draw = (x, s, rnd, ornate) => {
-  x.beginPath();
-  x.moveTo(38, 30);
-  x.lineTo(64, 22);
-  x.lineTo(90, 30);
-  x.lineTo(96, 84);
-  x.quadraticCurveTo(64, 110, 32, 84);
-  x.closePath();
-  fillShape(x, s, shade(x, s, 32, 22, 96, 110));
-  // Pauldrons
-  for (const sx of [30, 98]) {
-    x.beginPath();
-    x.ellipse(sx, 40, 15, 11, sx < 64 ? 0.4 : -0.4, 0, Math.PI * 2);
-    fillShape(x, s, shade(x, s, sx - 15, 29, sx + 15, 51));
-  }
-  // Sternum line + ribs
-  x.strokeStyle = rgba(0x000000, 0.35);
-  x.lineWidth = 2;
-  x.beginPath();
-  x.moveTo(64, 30);
-  x.lineTo(64, 96);
-  x.stroke();
-  for (let i = 0; i < 3; i++) {
-    const y = 48 + i * 14;
-    x.beginPath();
-    x.moveTo(42, y);
-    x.quadraticCurveTo(64, y + 7, 86, y);
-    x.strokeStyle = rgba(0xffffff, 0.14);
-    x.lineWidth = 2;
-    x.stroke();
-  }
-  if (!s.metallic) grain(x, s, rnd, 5);
-  if (ornate > 0.5) gemAt(x, 64, 44, 5.5, 0x3aa0d0);
-};
-
-const glovesLike: Draw = (x, s, _rnd, ornate) => {
-  x.beginPath();
-  x.moveTo(42, 44);
-  x.lineTo(84, 38);
-  x.lineTo(92, 76);
-  x.quadraticCurveTo(66, 96, 40, 80);
-  x.closePath();
-  fillShape(x, s, shade(x, s, 40, 38, 92, 96));
-  // Fingers
-  for (let i = 0; i < 4; i++) {
-    const px = 48 + i * 12;
-    x.beginPath();
-    x.roundRect?.(px, 26, 9, 20, 4);
-    if (!x.roundRect) x.rect(px, 26, 9, 20);
-    fillShape(x, s, shade(x, s, px, 26, px + 9, 46));
-  }
-  // Cuff
-  x.beginPath();
-  x.roundRect?.(38, 78, 56, 16, 5);
-  if (!x.roundRect) x.rect(38, 78, 56, 16);
-  fillShape(x, s, shade(x, s, 38, 78, 94, 94));
-  if (ornate > 0.5) gemAt(x, 66, 62, 5, 0xc0a030);
-};
-
-const bootsLike: Draw = (x, s, _rnd, ornate) => {
-  x.beginPath();
-  x.moveTo(44, 24);
-  x.lineTo(74, 24);
-  x.lineTo(78, 78);
-  x.lineTo(102, 92);
-  x.lineTo(102, 106);
-  x.lineTo(40, 106);
-  x.lineTo(40, 40);
-  x.closePath();
-  fillShape(x, s, shade(x, s, 40, 24, 102, 106));
-  // Sole
-  x.fillStyle = '#1b1712';
-  x.fillRect(38, 100, 66, 8);
-  // Cuff
-  x.beginPath();
-  x.roundRect?.(40, 22, 36, 13, 4);
-  if (!x.roundRect) x.rect(40, 22, 36, 13);
-  fillShape(x, s, shade(x, s, 40, 22, 76, 35));
-  if (ornate > 0.5) {
-    x.strokeStyle = rgba(0xb48a24, 0.9);
-    x.lineWidth = 2.4;
-    x.beginPath();
-    x.moveTo(44, 62);
-    x.lineTo(76, 62);
-    x.stroke();
-  }
-};
-
-const beltLike: Draw = (x, s, _rnd, ornate) => {
-  x.beginPath();
-  x.roundRect?.(16, 52, 96, 26, 6);
-  if (!x.roundRect) x.rect(16, 52, 96, 26);
-  fillShape(x, s, shade(x, s, 16, 52, 112, 78));
-  // Buckle
-  x.beginPath();
-  x.roundRect?.(52, 44, 26, 42, 5);
-  if (!x.roundRect) x.rect(52, 44, 26, 42);
-  const metal = SWATCHES['metal.gold']!;
-  fillShape(x, metal, shade(x, metal, 52, 44, 78, 86));
-  x.fillStyle = 'rgba(0,0,0,.5)';
-  x.fillRect(59, 52, 12, 26);
-  // Studs
-  for (let i = 0; i < 3; i++) {
-    for (const side of [-1, 1]) {
-      const px = 64 + side * (30 + i * 14);
-      x.beginPath();
-      x.arc(px, 65, 3.2, 0, Math.PI * 2);
-      x.fillStyle = metal.light;
-      x.fill();
-    }
-  }
-  if (ornate > 0.5) gemAt(x, 65, 65, 4.5, 0x50c07a);
-};
-
-const amuletLike: Draw = (x, s, _rnd, ornate) => {
-  // Chain
-  x.strokeStyle = SWATCHES['metal.gold']!.base;
-  x.lineWidth = 3;
-  x.beginPath();
-  x.moveTo(38, 22);
-  x.quadraticCurveTo(64, 58, 90, 22);
-  x.stroke();
-  x.strokeStyle = SWATCHES['metal.gold']!.spec;
-  x.lineWidth = 1.2;
-  x.stroke();
-  // Setting
-  x.beginPath();
-  x.moveTo(64, 44);
-  x.lineTo(88, 68);
-  x.lineTo(64, 104);
-  x.lineTo(40, 68);
-  x.closePath();
-  fillShape(x, s, shade(x, s, 40, 44, 88, 104));
-  gemAt(x, 64, 72, 13, ornate > 0.5 ? 0xc050ff : 0x50a0ff);
-};
-
-const ringLike: Draw = (x, s, _rnd, ornate) => {
-  x.beginPath();
-  x.arc(64, 74, 30, 0, Math.PI * 2);
-  x.strokeStyle = s.dark;
-  x.lineWidth = 15;
-  x.stroke();
-  x.strokeStyle = s.base;
-  x.lineWidth = 11;
-  x.stroke();
-  x.strokeStyle = s.spec;
-  x.lineWidth = 3.5;
-  x.beginPath();
-  x.arc(64, 74, 30, Math.PI * 1.05, Math.PI * 1.6);
-  x.stroke();
-  gemAt(x, 64, 38, ornate > 0.5 ? 14 : 11, ornate > 0.5 ? 0xff5aa0 : 0x60d0ff);
-};
-
-/**
- * Which liquid to draw. Set by the resolver from the base id before the draw
- * runs: mana is blue, healing is red, and it is not negotiable — a potion whose
- * colour depended on its rarity meant a greater healing potion came out blue.
- */
-let potionTint = 0xe03a4a;
-
-const potionLike: Draw = (x, _s, _rnd, _ornate) => {
-  const liquid = potionTint;
-  // Glass body
-  x.beginPath();
-  x.moveTo(52, 34);
-  x.lineTo(76, 34);
-  x.lineTo(76, 52);
-  x.quadraticCurveTo(98, 70, 92, 96);
-  x.quadraticCurveTo(86, 116, 64, 116);
-  x.quadraticCurveTo(42, 116, 36, 96);
-  x.quadraticCurveTo(30, 70, 52, 52);
-  x.closePath();
-  const g = x.createLinearGradient(36, 40, 92, 116);
-  g.addColorStop(0, rgba(liquid, 0.35));
-  g.addColorStop(0.45, rgba(liquid, 0.95));
-  g.addColorStop(1, rgba(liquid, 0.6));
-  x.fillStyle = g;
-  x.fill();
-  x.strokeStyle = 'rgba(220,235,255,.5)';
-  x.lineWidth = 2.4;
-  x.stroke();
-  // Cork
-  const wood = SWATCHES['wood.oak']!;
-  x.beginPath();
-  x.roundRect?.(50, 20, 28, 18, 4);
-  if (!x.roundRect) x.rect(50, 20, 28, 18);
-  fillShape(x, wood, shade(x, wood, 50, 20, 78, 38));
-  // Highlight
-  x.beginPath();
-  x.ellipse(50, 74, 5, 16, 0.25, 0, Math.PI * 2);
-  x.fillStyle = 'rgba(255,255,255,.4)';
-  x.fill();
-};
-
-/**
- * The gem's own colour and cut.
- *
- * Every gem base is authored with `palette: 'crystal.blue'`, so drawing from
- * the palette made a ruby, an emerald and a topaz the same blue stone. The real
- * colour lives in the base's `glow`, and the cut is worth varying too: a chipped
- * gem and a perfect one of the same family should not be the same picture.
- */
-let gemTint = 0x4ad0ff;
-let gemCut = 0;
-
-/** Facet outlines for six cuts, so gem families read apart at a glance. */
-const GEM_CUTS: Array<Array<[number, number]>> = [
-  // Brilliant — the classic five-sided stone.
-  [[64, 18], [98, 50], [82, 106], [46, 106], [30, 50]],
-  // Marquise — a tall pointed oval.
-  [[64, 14], [92, 46], [90, 84], [64, 112], [38, 84], [36, 46]],
-  // Emerald cut — a rectangle with clipped corners.
-  [[48, 22], [80, 22], [96, 40], [96, 88], [80, 106], [48, 106], [32, 88], [32, 40]],
-  // Trillion — a rounded triangle.
-  [[64, 18], [102, 96], [26, 96]],
-  // Rose — a wide low dome on a flat base.
-  [[64, 24], [96, 44], [100, 78], [64, 104], [28, 78], [32, 44]],
-  // Baguette — a narrow bar, the cheapest-looking cut.
-  [[46, 26], [82, 26], [88, 100], [40, 100]],
-];
-
-const gemLike: Draw = (x, s, _rnd, ornate) => {
-  const c = gemTint;
-  const cut = GEM_CUTS[gemCut % GEM_CUTS.length]!;
-  poly(x, cut);
-  const g = x.createLinearGradient(30, 18, 100, 110);
-  g.addColorStop(0, '#ffffff');
-  g.addColorStop(0.28, rgba(c, 0.95));
-  g.addColorStop(1, rgba(c, 0.45));
-  x.fillStyle = g;
-  x.fill();
-  x.strokeStyle = rgba(0x000000, 0.45);
-  x.lineWidth = 2;
-  x.stroke();
-
-  // Facets: spokes from the crown to each vertex, plus a girdle. Quality drives
-  // how many there are, so a flawless stone is visibly better cut.
-  const spokes = 3 + Math.round(ornate * 4);
-  x.save();
-  x.clip();
-  x.strokeStyle = 'rgba(255,255,255,.42)';
-  x.lineWidth = 1.6;
-  x.beginPath();
-  for (let i = 0; i < spokes; i++) {
-    const p = cut[i % cut.length]!;
-    x.moveTo(64, 46);
-    x.lineTo(p[0], p[1]);
-  }
-  x.moveTo(24, 52);
-  x.lineTo(104, 52);
-  x.stroke();
-  // A specular flash on the crown sells it as a cut stone rather than glass.
-  x.fillStyle = 'rgba(255,255,255,.55)';
-  x.beginPath();
-  x.ellipse(54, 40, 12, 6, -0.5, 0, Math.PI * 2);
-  x.fill();
-  x.restore();
-  void s;
-};
-
-const runeLike: Draw = (x, s, rnd, ornate) => {
-  const stone = SWATCHES['bone.pale']!;
-  x.beginPath();
-  x.roundRect?.(34, 28, 60, 74, 8);
-  if (!x.roundRect) x.rect(34, 28, 60, 74);
-  fillShape(x, stone, shade(x, stone, 34, 28, 94, 102));
-  // Carved glyph, lit in the rune's own colour rather than one of two oranges.
-  const c = gemTint;
-  void ornate;
-  x.strokeStyle = rgba(c, 0.95);
-  x.lineWidth = 5;
-  x.lineCap = 'round';
-  x.lineJoin = 'round';
-  x.shadowColor = rgba(c, 0.9);
-  x.shadowBlur = 10;
-  x.beginPath();
-  const n = 3 + Math.floor(rnd() * 3);
-  let px = 50 + rnd() * 10;
-  let py = 40;
-  x.moveTo(px, py);
-  for (let i = 0; i < n; i++) {
-    px = 44 + rnd() * 40;
-    py = 40 + ((i + 1) / n) * 50;
-    x.lineTo(px, py);
-  }
-  x.stroke();
-  x.shadowBlur = 0;
-  void s;
-};
-
-const materialLike: Draw = (x, s, rnd, _o) => {
-  for (let i = 0; i < 5; i++) {
-    const cx = 44 + rnd() * 40;
-    const cy = 52 + rnd() * 40;
-    const r = 9 + rnd() * 9;
-    x.beginPath();
-    x.arc(cx, cy, r, 0, Math.PI * 2);
-    fillShape(x, s, shade(x, s, cx - r, cy - r, cx + r, cy + r));
-  }
-};
-
-const quiverLike: Draw = (x, s, _rnd, ornate) => {
-  const leather = SWATCHES['leather.worn']!;
-  x.beginPath();
-  x.roundRect?.(46, 46, 40, 72, 8);
-  if (!x.roundRect) x.rect(46, 46, 40, 72);
-  fillShape(x, leather, shade(x, leather, 46, 46, 86, 118));
-  // Arrows
-  for (let i = 0; i < 3; i++) {
-    const px = 54 + i * 11;
-    x.strokeStyle = SWATCHES['wood.oak']!.base;
-    x.lineWidth = 3;
-    x.beginPath();
-    x.moveTo(px, 46);
-    x.lineTo(px, 16);
-    x.stroke();
-    poly(x, [[px, 8], [px + 5, 18], [px - 5, 18]]);
-    fillShape(x, s, shade(x, s, px - 5, 8, px + 5, 18));
-  }
-  if (ornate > 0.5) {
-    x.strokeStyle = rgba(0xb48a24, 0.9);
-    x.lineWidth = 2.5;
-    x.beginPath();
-    x.moveTo(46, 76);
-    x.lineTo(86, 76);
-    x.stroke();
-  }
-};
-
-/** Shape family → drawing routine. */
-const SHAPES: Record<string, Draw> = {
-  sword: swordLike,
-  greatsword: swordLike,
-  dagger: daggerLike,
-  knife: daggerLike,
-  axe: axeLike(false),
-  greataxe: axeLike(true),
-  mace: maceLike,
-  hammer: maceLike,
-  club: maceLike,
-  spear: spearLike,
-  polearm: spearLike,
-  bow: bowLike(false),
-  crossbow: bowLike(true),
-  wand: staffLike(true),
-  scepter: staffLike(true),
-  staff: staffLike(false),
-  shield: shieldLike,
-  buckler: shieldLike,
-  orb: orbLike,
-  quiver: quiverLike,
-  helm: helmLike,
-  chest: chestLike,
-  armor: chestLike,
-  gloves: glovesLike,
-  boots: bootsLike,
-  belt: beltLike,
-  amulet: amuletLike,
-  ring: ringLike,
-  charm: gemLike,
-  gem: gemLike,
-  rune: runeLike,
-  potion: potionLike,
-  material: materialLike,
-};
-
-/** Red for life, blue for mana, purple for anything that restores both. */
-export function potionColor(hay: string): number {
-  const h = hay.toLowerCase();
-  const life = /heal|life|health|blood|crimson|rejuv/.test(h);
-  const mana = /mana|azure|sapphire|spirit|arcane|rejuv/.test(h);
-  if (life && mana) return 0xb060ff;
-  if (mana) return 0x3aa0ff;
-  if (life) return 0xe03a4a;
-  if (/antidote|venom|poison/.test(h)) return 0x6cc02c;
-  if (/thaw|frost|cold/.test(h)) return 0x7fd8ff;
-  if (/stamina|haste/.test(h)) return 0xe0c040;
-  if (/oil|fire/.test(h)) return 0xff7a2a;
-  return 0xe03a4a;
-}
-
-/** Infer a shape family from a base id when the visual block is unhelpful. */
-function inferShape(baseId: string, category?: string): string {
-  const hay = `${baseId} ${category ?? ''}`.toLowerCase();
-  const table: Array<[string, string]> = [
-    ['greatsword', 'sword'], ['sword', 'sword'], ['blade', 'sword'], ['falchion', 'sword'],
-    ['dagger', 'dagger'], ['dirk', 'dagger'], ['kris', 'dagger'], ['knife', 'dagger'],
-    ['greataxe', 'greataxe'], ['axe', 'axe'], ['cleaver', 'axe'],
-    ['maul', 'mace'], ['hammer', 'mace'], ['mace', 'mace'], ['club', 'mace'], ['flail', 'mace'],
-    ['spear', 'spear'], ['pike', 'spear'], ['halberd', 'spear'], ['glaive', 'spear'], ['lance', 'spear'],
-    ['crossbow', 'crossbow'], ['bow', 'bow'],
-    ['wand', 'wand'], ['scepter', 'scepter'], ['sceptre', 'scepter'], ['staff', 'staff'], ['rod', 'staff'],
-    ['shield', 'shield'], ['buckler', 'shield'], ['aegis', 'shield'],
-    ['orb', 'orb'], ['quiver', 'quiver'],
-    ['helm', 'helm'], ['crown', 'helm'], ['cap', 'helm'], ['diadem', 'helm'], ['mask', 'helm'],
-    ['chest', 'chest'], ['plate', 'chest'], ['mail', 'chest'], ['robe', 'chest'], ['armor', 'chest'], ['armour', 'chest'],
-    ['glove', 'gloves'], ['gaunt', 'gloves'], ['grip', 'gloves'],
-    ['boot', 'boots'], ['greave', 'boots'], ['sabaton', 'boots'], ['shoe', 'boots'],
-    ['belt', 'belt'], ['sash', 'belt'], ['girdle', 'belt'],
-    ['amulet', 'amulet'], ['necklace', 'amulet'], ['pendant', 'amulet'], ['talisman', 'amulet'],
-    ['ring', 'ring'], ['band', 'ring'], ['loop', 'ring'],
-    ['charm', 'charm'], ['gem', 'gem'], ['rune', 'rune'], ['potion', 'potion'], ['flask', 'potion'], ['elixir', 'potion'],
-  ];
-  for (const [needle, shape] of table) if (hay.includes(needle)) return shape;
-  return 'material';
-}
-
-// ---------------------------------------------------------------------------
-// Rarity treatment
-// ---------------------------------------------------------------------------
-
-const RARITY_RANK: Record<ItemRarity, number> = {
-  normal: 0, magic: 1, rare: 2, set: 3, unique: 4, mythic: 5, ancient: 6,
-};
-
-/** Background wash + rim, drawn under and over the item respectively. */
-function rarityUnder(x: CanvasRenderingContext2D, rarity: ItemRarity): void {
-  const rank = RARITY_RANK[rarity];
-  if (rank < 1) return;
-  const c = RARITY_COLOR[rarity];
-  const g = x.createRadialGradient(64, 64, 4, 64, 64, 62);
-  g.addColorStop(0, rgba(c, 0.1 + rank * 0.055));
-  g.addColorStop(1, rgba(c, 0));
-  x.fillStyle = g;
-  x.fillRect(0, 0, S, S);
-}
-
-function rarityOver(x: CanvasRenderingContext2D, rarity: ItemRarity, rnd: () => number): void {
-  const rank = RARITY_RANK[rarity];
-  if (rank < 3) return;
-  const c = RARITY_COLOR[rarity];
-  // Emissive rim: composite the item's own silhouette in the rarity colour.
-  x.save();
-  x.globalCompositeOperation = 'source-atop';
-  const g = x.createLinearGradient(0, 0, 0, S);
-  g.addColorStop(0, rgba(c, 0.05 + rank * 0.03));
-  g.addColorStop(1, rgba(c, 0.02));
-  x.fillStyle = g;
-  x.fillRect(0, 0, S, S);
-  x.restore();
-
-  // Orbiting motes for the true chase tiers.
-  if (rank >= 5) {
-    for (let i = 0; i < 7; i++) {
-      const a = rnd() * Math.PI * 2;
-      const r = 40 + rnd() * 22;
-      const px = 64 + Math.cos(a) * r;
-      const py = 64 + Math.sin(a) * r * 0.85;
-      const rr = 1.6 + rnd() * 2.4;
-      const mg = x.createRadialGradient(px, py, 0, px, py, rr * 3);
-      mg.addColorStop(0, rgba(c, 0.95));
-      mg.addColorStop(1, rgba(c, 0));
-      x.fillStyle = mg;
-      x.beginPath();
-      x.arc(px, py, rr * 3, 0, Math.PI * 2);
-      x.fill();
-    }
-  }
-}
+// Item icons are painted by ./ItemIconArt (families in IconWeapons, IconArmor, IconTrinkets).
+export { potionColor } from './IconTrinkets';
 
 // ---------------------------------------------------------------------------
 // Public: item icons
@@ -1048,6 +238,8 @@ let baseLookup: ((baseId: string) => { visual?: { shape?: string; palette?: stri
 
 export function setIconBaseResolver(fn: typeof baseLookup): void {
   baseLookup = fn;
+  generation++;
+  encoding.clear();
   itemCache.clear();
   // Anything queued was queued against the old art. Drop it rather than let a
   // stale icon land in a slot a frame later.
@@ -1057,7 +249,8 @@ export function setIconBaseResolver(fn: typeof baseLookup): void {
 
 /** The properties that actually change an item's art. */
 function iconKeyFor(item: Item): string {
-  return `${item.baseId}|${item.rarity}|${item.sockets?.length ?? 0}`;
+  // Uniques and set pieces share a base with plain drops but not a picture.
+  return `${item.baseId}|${item.rarity}|${item.uniqueId ?? item.setId ?? ''}`;
 }
 
 /** A cached icon, or null if it has not been drawn yet. */
@@ -1084,22 +277,64 @@ const BLANK =
  */
 const pending = new Map<string, Item>();
 const listeners = new Map<string, Array<(uri: string) => void>>();
+/** Keys painted and waiting on the browser's PNG encoder. */
+const encoding = new Set<string>();
+/** Bumped whenever the caches are dropped, so a late encode cannot land stale art. */
+let generation = 0;
 let pumping = 0;
 
 /** How long per frame to spend drawing icons. Roughly a third of a frame. */
 const ICON_BUDGET_MS = 5;
+
+function deliver(key: string, uri: string): void {
+  const waiting = listeners.get(key);
+  if (!waiting) return;
+  listeners.delete(key);
+  for (const fn of waiting) fn(uri);
+}
+
+/**
+ * Paints now, encodes later. The PNG encode is as expensive as the painting,
+ * and `toBlob` does it off the main thread, so the frame only pays for the
+ * brushwork.
+ */
+function drawItemIconAsync(item: Item, key: string): void {
+  const gen = generation;
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 128;
+  const x = c.getContext('2d')!;
+  paintItemIcon(x, { baseId: item.baseId, rarity: item.rarity, base: baseLookup?.(item.baseId), identity: item.uniqueId ?? item.setId });
+  if (typeof c.toBlob !== 'function' || typeof URL?.createObjectURL !== 'function') {
+    const uri = c.toDataURL('image/png');
+    itemCache.set(key, uri);
+    deliver(key, uri);
+    return;
+  }
+  encoding.add(key);
+  c.toBlob((blob) => {
+    encoding.delete(key);
+    if (gen !== generation) return;
+    // A synchronous draw may have beaten the encoder to it; keep that one.
+    let uri = itemCache.get(key);
+    if (!uri) {
+      uri = blob ? URL.createObjectURL(blob) : c.toDataURL('image/png');
+      itemCache.set(key, uri);
+    }
+    deliver(key, uri);
+  }, 'image/png');
+}
 
 function pump(): void {
   pumping = 0;
   const t0 = performance.now();
   for (const [key, item] of pending) {
     pending.delete(key);
-    const uri = drawItemIcon(item, key);
-    const waiting = listeners.get(key);
-    if (waiting) {
-      listeners.delete(key);
-      for (const fn of waiting) fn(uri);
+    if (itemCache.has(key)) {
+      deliver(key, itemCache.get(key)!);
+      continue;
     }
+    drawItemIconAsync(item, key);
     if (performance.now() - t0 > ICON_BUDGET_MS) break;
   }
   if (pending.size > 0) schedulePump();
@@ -1122,7 +357,7 @@ export function requestItemIcon(item: Item, onReady: (uri: string) => void): str
   const key = iconKeyFor(item);
   const hit = itemCache.get(key);
   if (hit) return hit;
-  pending.set(key, item);
+  if (!encoding.has(key)) pending.set(key, item);
   let waiting = listeners.get(key);
   if (!waiting) {
     waiting = [];
@@ -1141,7 +376,7 @@ export function warmItemIcons(items: Iterable<Item | null>): void {
   for (const item of items) {
     if (!item) continue;
     const key = iconKeyFor(item);
-    if (itemCache.has(key) || pending.has(key)) continue;
+    if (itemCache.has(key) || pending.has(key) || encoding.has(key)) continue;
     pending.set(key, item);
   }
   if (pending.size > 0) schedulePump();
@@ -1160,32 +395,13 @@ export function itemIconUri(item: Item): string {
 
 function drawItemIcon(item: Item, key: string): string {
   const base = baseLookup?.(item.baseId);
-  const shapeName = base?.visual?.shape && base.visual.shape !== 'auto'
-    ? base.visual.shape
-    : inferShape(item.baseId, base?.category);
-  const draw = SHAPES[shapeName] ?? SHAPES[inferShape(item.baseId, base?.category)] ?? materialLike;
-  potionTint = potionColor(item.baseId);
-  // Gems and runes carry their colour in `glow`, not in the palette — every one
-  // of them is authored as 'crystal.blue'.
-  gemTint = base?.visual?.glow ?? 0x4ad0ff;
-  // The cut comes from the family half of `gem.<family>`, so all the rubies
-  // share a silhouette and rubies differ from emeralds.
-  gemCut = hashStr(shapeName.split('.')[1] ?? shapeName);
-  const swatch = swatchFor(base?.visual?.palette);
-  const ornate = base?.visual?.ornate ?? Math.min(1, RARITY_RANK[item.rarity] / 4);
-  const rnd = makeRng(hashStr(key));
-
   const { c, x } = scratchCanvas();
-  rarityUnder(x, item.rarity);
-  x.save();
-  // Drop shadow gives the icon weight against the slot background.
-  x.shadowColor = 'rgba(0,0,0,.55)';
-  x.shadowBlur = 8;
-  x.shadowOffsetY = 3;
-  draw(x, swatch, rnd, Math.max(ornate, RARITY_RANK[item.rarity] >= 4 ? 0.7 : 0));
-  x.restore();
-  rarityOver(x, item.rarity, rnd);
-
+  paintItemIcon(x, {
+    baseId: item.baseId,
+    rarity: item.rarity,
+    base,
+    identity: item.uniqueId ?? item.setId,
+  });
   const uri = c.toDataURL('image/png');
   itemCache.set(key, uri);
   return uri;
@@ -2019,6 +1235,8 @@ export function skillIconUri(
 
 /** Frees cached icons — used when the item database is swapped in tests. */
 export function clearIconCaches(): void {
+  generation++;
+  encoding.clear();
   itemCache.clear();
   // Anything queued was queued against the old art. Drop it rather than let a
   // stale icon land in a slot a frame later.
