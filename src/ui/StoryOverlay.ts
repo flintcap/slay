@@ -24,6 +24,7 @@ import {
   revealChaptersUpTo,
 } from '../sim/Story';
 import type { Chapter } from '../data/story/types';
+import { installContracts } from './StoryContracts';
 
 // ---------------------------------------------------------------------------
 // DOM
@@ -179,6 +180,7 @@ export function installStory(): void {
   if (installed) return;
   installed = true;
   ensureRoots();
+  installContracts();
 
   events.on('depth:changed', (p) => {
     // Town fires depth 0: the first night in camp reveals the premise. Every

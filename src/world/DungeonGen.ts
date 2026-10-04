@@ -606,11 +606,34 @@ export function affixCountFor(rank: MonsterRank, depth: number): number {
 // Run generation
 // ---------------------------------------------------------------------------
 
+/**
+ * What the story layer wants from one descent. An open contract sends the
+ * stair to its biome, carries its own quest, and may name the floor boss.
+ * Every field is optional; anything left out is rolled as usual.
+ */
+export interface RunPlan {
+  biome?: BiomeId;
+  quest?: (biome: BiomeId) => QuestInstance;
+  bossId?: string;
+}
+
+/** Installed by `sim/Chains.ts`. Generation is unchanged without it. */
+export type RunDirector = (depth: number, seed: number) => RunPlan | null;
+
+let director: RunDirector | null = null;
+
+export function setRunDirector(d: RunDirector | null): void {
+  director = d;
+}
+
 export function generateRun(depth: number, seed: number, classId: CharClassId): DungeonRun {
   const runRng = streamFor(seed, `run:${depth}`);
-  const biome = biomeForDepth(depth, runRng);
+  const plan = director ? director(depth, seed) : null;
+  const rolledBiome = biomeForDepth(depth, runRng);
+  const biome = plan?.biome ?? rolledBiome;
   const levelsTotal = levelsForDepth(depth);
-  const quest = buildQuest(depth, runRng, classId);
+  const rolledQuest = buildQuest(depth, runRng, classId);
+  const quest = plan?.quest ? plan.quest(biome) : rolledQuest;
   const modifiers = rollModifiers(depth, runRng);
 
   // A quest may impose its own modifier on top of the depth roll.
@@ -620,7 +643,8 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
     if (md) modifiers.push(`${md.id}@${clamp(1 + Math.floor(depth / 35), 1, md.maxTier)}`);
   }
 
-  const bossId = catalog.bossFor(depth, biome, runRng.fork('boss'));
+  const rolledBoss = catalog.bossFor(depth, biome, runRng.fork('boss'));
+  const bossId = plan?.bossId ?? rolledBoss;
 
   // Which dressed version of the biome this descent wears. Rolled once for the
   // whole run so the floors read as one place, and re-rolled next run so two

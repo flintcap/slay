@@ -118,8 +118,17 @@ export const NPCS: Record<NpcId, NpcDef> = {
       {
         id: 'arms',
         label: 'Your arms',
-        when: { notDone: 'kale' },
+        when: { notDone: 'kale:2' },
         text: [`An accident.`, `That is the whole answer. Ask again when you have earned a longer one.`],
+      },
+      {
+        id: 'quench',
+        label: 'The quench',
+        when: { done: 'kale:2' },
+        text: [
+          `You know already. What runs off the Tenant takes skin and gives edge.`,
+          `Do not try it. I have meant very few things as much as I mean that.`,
+        ],
       },
       {
         id: 'steel',
@@ -243,6 +252,15 @@ export const NPCS: Record<NpcId, NpcDef> = {
         label: 'The lower room',
         when: { notDone: 'corvane' },
         text: [`No.`],
+      },
+      {
+        id: 'charter',
+        label: 'The charter',
+        when: { done: 'corvane' },
+        text: [
+          `One of ours below at all times, and it stays below us. Three founders signed it. One of them went down to make sure.`,
+          `I read it every night now, to see whether it says anything else. It does not. It never needed to.`,
+        ],
       },
     ],
   },
@@ -389,7 +407,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
         label: 'The fourth set of footsteps',
         when: { best: 4 },
         text: [
-          `Last year three delvers went down. Four sets of footsteps came back up the stair.`,
+          `When the Third Expedition came home, three of them climbed the stair. I heard four sets of footsteps.`,
           `Three of them went home. I do not know where the fourth went. I hear it some nights, walking the palisade, very carefully, as if it were learning how.`,
         ],
       },

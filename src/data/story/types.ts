@@ -151,6 +151,11 @@ export interface ChainStep {
   turnIn: string[];
   /** Journal entry once it is handed in. */
   outcome: string;
+  /**
+   * Paid by the giver on hand-in. `gold` and `xp` multiply a curve on the
+   * step's tier (see `chainReward` in `sim/Chains.ts`); `item` is a guaranteed
+   * drop of at least that rarity.
+   */
   reward: { gold: number; xp: number; item?: ItemRarity };
 }
 

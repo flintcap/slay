@@ -6,26 +6,24 @@ Status: in progress
 
 - [x] The why: a central premise for the descent, revealed in pieces as you go deeper, with a payoff at depth milestones. (`Story: the premise of the descent, chapters and the journal`)
 - [x] Town NPCs: each has a name, a voice, a few lines of dialogue that change with your progress, and a reason to talk to them. (`Story: the people of Stairhead, and talking to them`)
-- [ ] Quest lines: hand-written quest chains that send you to specific depths and biomes, with rewards and short story beats.
+- [x] Quest lines: hand-written quest chains that send you to specific depths and biomes, with rewards and short story beats. (`Story: contracts, nine hand-written quest lines`)
 - [ ] Bosses with personality: an intro line, a taunt mid-fight, and a death line for every boss; lore found on their floors.
 - [ ] Flavour: item, unique and set flavour text, biome and variant blurbs, lore notes found in the dungeon, a journal to reread them.
 - [ ] Sweep: consistent tone and names, no contradictions, every quest completable.
 
 ## Next up
 
-Milestone 3, quest chains. Plan, already decided:
-- New `src/data/story/chains.ts`: nine chains, one per person, 3 to 5 steps each (`ChainDef`/`ChainStep` in
-  `src/data/story/types.ts`). Each step has a giver, a tier, a biome, optionally a boss, fixed objectives, an offer,
-  a hand-in speech and a reward. Use only objective kinds the dungeon really counts: `slay` (any, family:x, rank:x),
-  `slayElite`, `cleanse` with `prop:shrine` or `prop:chest`, `boss` with `boss:<id>`, `survive` with `zone:any`.
-- Chain progress lives in `StorySave.chains`; register readers with `setChainReaders()` so `When.done/active` work.
-- An accepted step drives the next run at or past its tier: additive hook in `src/world/DungeonGen.ts`
-  (`setRunDirector`) that can choose the biome, the quest instance and the boss. Build the quest with
-  `instantiateQuest` from `src/sim/Quests.ts`; make `questById` in `src/data/quests.ts` find chain steps too.
-- Mark a step ready on `quest:complete`; hand it in through the dialogue (`addDialogueOptions`,
-  `addNewsCheck` in `src/ui/DialoguePanel.ts`). Add a Contracts tab to the journal.
-- Extend `tools/story-entry.ts`: every step's biome, boss and families exist at its tier, and generated runs
-  with the director installed actually contain enough monsters, shrines and chests to finish it.
+Milestone 4, bosses with personality. Plan, already decided:
+- New `src/data/story/bossVoices.ts`: `BOSS_VOICES: Record<bossId, BossVoice>` (type in `src/data/story/types.ts`)
+  for every boss in `src/data/bosses.ts` (22 today; combat owns that file and may add more, so the checker must
+  require a voice for every `BOSSES` entry). Each: `greet`, several `taunts`, `death`, `slain`, `victory`, `floor`.
+- Show them from `src/ui/StoryOverlay.ts` with `say(name, line, { tone: 'boss' })`: greet on `boss:engaged` (map the
+  event's name+title back to the id via `BOSSES`), one taunt mid-fight on `boss:damaged` crossing about 45% life
+  (pick by how the fight is going), `death` and then `slain` narration on `boss:killed`, `victory` on
+  `player:died` while a boss is engaged. Record `met`/`slain` in `StorySave` (already has the arrays).
+- Floor lore: on `depth:changed` where `level === of` (the boss floor), show `floor` as a card, once per boss per
+  account, and keep it in the journal (new Bosses tab via `addJournalSection`).
+- Note: `Boss.ts` (combat) already toasts its own `intro` and phase barks; ours are spoken lines, not toasts.
 
 ## Notes for resume
 
@@ -43,4 +41,9 @@ Milestone 3, quest chains. Plan, already decided:
   `openDialogueFor(best.id)` before opening a station, and pushes `storyTalkSpots(spots)` for Renn, the Listener,
   Gilder and Wenna (positions in `TALK_SPOTS`, overridden by `npcSpots[<id>]` if world names them). E twice at a
   keeper opens their trade. `tools/check-story.mjs` checks these hooks by name.
+- Contracts: `src/data/story/chains.ts` (9 chains, 32 steps), runtime `src/sim/Chains.ts`, UI
+  `src/ui/StoryContracts.ts`. A taken step steers the next descent at or past its tier through `setRunDirector` in
+  `src/world/DungeonGen.ts` (biome, quest, boss). Step quests have ids `story.<chain>.<n>`; `questById` in
+  `src/data/quests.ts` builds their definitions (weight 0, never in the random pool). Chest objectives are banned:
+  some layouts produce floors with no chest. The checker generates 8 runs per step and counts what is on the floors.
 - Text style: no em dashes in new writing, no curly quotes in data (the UI adds them), tokens `{name}` etc. only.

@@ -45,6 +45,7 @@
  */
 
 import type { BiomeId, QuestDef } from '../types';
+import { parseChainQuestId } from './story/chains';
 
 // ---------------------------------------------------------------------------
 // Extended definition
@@ -1724,7 +1725,44 @@ const BY_ID = new Map<string, QuestDefEx>();
 for (const q of QUESTS) BY_ID.set(q.id, q);
 
 export function questById(id: string): QuestDefEx | undefined {
-  return BY_ID.get(id);
+  return BY_ID.get(id) ?? chainQuestDef(id);
+}
+
+// ---------------------------------------------------------------------------
+// Contract steps
+// ---------------------------------------------------------------------------
+
+const CHAIN_DEFS = new Map<string, QuestDefEx>();
+
+/**
+ * The quest definition a hand-written contract step runs under, so rewards,
+ * modifiers and the quest log treat it like any other quest. Weight zero and
+ * kept out of `QUESTS`: a contract is only ever carried because you took it.
+ * Targets do not scale with depth.
+ */
+export function chainQuestDef(id: string): QuestDefEx | undefined {
+  const hit = CHAIN_DEFS.get(id);
+  if (hit) return hit;
+  const parsed = parseChainQuestId(id);
+  if (!parsed) return undefined;
+  const step = parsed.chain.steps[parsed.step]!;
+  const def: QuestDefEx = {
+    id,
+    name: step.title,
+    flavor: step.flavor,
+    minDepth: step.minDepth,
+    weight: 0,
+    objectives: step.objectives.map((o) => ({ kind: o.kind, filter: o.filter, base: o.n, perDepth: 0, desc: o.desc })),
+    // The giver pays the real reward on hand-in; this is the run's share.
+    rewardGold: 0.6,
+    rewardXp: 0.6,
+    rewardItems: 1,
+    biomes: [step.biome],
+    tags: step.boss ? ['boss'] : ['combat'],
+    danger: 1,
+  };
+  CHAIN_DEFS.set(id, def);
+  return def;
 }
 
 /** Quests that can ever be offered at this depth, ignoring biome. */
