@@ -36,9 +36,35 @@ async function main(): Promise<void> {
   legacyOf(save.account);
   // Saves made before the starter-skill change load with a bar full of skills
   // at rank 0 and no way to attack; repair them in place.
-  if (save.account.current) {
+  // Every hero on the roster, not just the live one: switching to a benched
+  // character skipped this and handed back an unrepaired bar.
+  {
     const { repairCharacter } = await import('./sim/Character');
-    if (repairCharacter(save.account.current)) save.touch();
+    const heroes = new Set([...save.roster, ...(save.account.current ? [save.account.current] : [])]);
+    for (const c of heroes) {
+      try {
+        if (repairCharacter(c)) save.touch();
+      } catch (err) {
+        console.error('[save] could not repair', c?.name, err);
+      }
+    }
+  }
+
+  // Accessibility (text size, colour-blind rarity colours, reduced motion,
+  // rebound keys) before anything draws, and again whenever settings change.
+  {
+    const { applyAccessibility } = await import('./core/Access');
+    applyAccessibility(save.settings);
+    let palette = save.settings.colorBlindRarity;
+    events.on('settings:changed', () => {
+      applyAccessibility(save.settings);
+      if (palette !== save.settings.colorBlindRarity) {
+        palette = save.settings.colorBlindRarity;
+        // Icons bake the rarity colour in; redraw them in the new palette.
+        void import('./art/Icons').then((m) => m.clearIconCaches());
+        events.emit('ui:refresh', {});
+      }
+    });
   }
 
   boot(0.18, 'Kindling the forge…');
@@ -173,6 +199,19 @@ async function main(): Promise<void> {
 
   engine.start();
   await engine.goTo('title');
+
+  // Tell the player if their save needed rescuing. Said once, after the UI
+  // exists to show it.
+  {
+    const r = save.loadReport;
+    if (r.source === 'backup') {
+      events.emit('toast', { text: 'Your save was damaged. It was restored from the backup copy.', kind: 'bad' });
+    } else if (r.primaryDamaged) {
+      events.emit('toast', { text: 'Your save could not be read. A copy was kept; a new account was started.', kind: 'bad' });
+    } else if (r.quarantined > 0) {
+      events.emit('toast', { text: `${r.quarantined} damaged item${r.quarantined === 1 ? ' was' : 's were'} set aside from your save.`, kind: 'bad' });
+    }
+  }
 
   boot(1, 'Ready');
   if (bootEl) {

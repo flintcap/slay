@@ -16,6 +16,7 @@ import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save, DEFAULT_SETTINGS } from '../core/Save';
 import { resetHints } from './Onboarding';
+import { accessibilitySection, keybindSection } from './AccessibilitySettings';
 import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, modal, attempt } from './Widgets';
 
 type QualityId = GameSettings['quality'];
@@ -334,10 +335,14 @@ export class SettingsPanel {
         this.commit();
       }, 'Calmer menus: no slow intros or sweeping shines').root,
     );
+    // Text size and colour-blind item colours (quality stream).
+    this.content.appendChild(accessibilitySection(() => this.commit()));
   }
 
   private controls(): void {
     this.heading('Controls', 'Every binding in the game.');
+    // Rebindable keys (quality stream). The card below is the full reference.
+    this.content.appendChild(keybindSection(() => this.commit()));
     for (const g of CONTROLS) {
       this.content.appendChild(div('stg-group', g.group));
       const list = div('stg-keys');

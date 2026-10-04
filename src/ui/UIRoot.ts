@@ -12,6 +12,7 @@
 import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
+import { remapKey } from '../core/Access';
 import { HUD } from './HUD';
 import { tooltip } from './Tooltip';
 import { InventoryPanel } from './InventoryPanel';
@@ -419,7 +420,7 @@ export function mountUI(engine: Engine): void {
     }
 
     if (!inWorld) return;
-    const id = KEYS[e.code] ?? EXTRA_KEYS.get(e.code);
+    const id = KEYS[remapKey(e.code)] ?? EXTRA_KEYS.get(remapKey(e.code));
     if (id) {
       e.preventDefault();
       togglePanel(id);

@@ -105,3 +105,11 @@ the character (`Character.bounties?`, migrate in `repairCharacter`).
   - menus: O opens the Loot Filter; please list it in any controls help.
   - combat: `enemy:killed` is emitted twice per kill (Enemy.die and
     DungeonScene.grantKill) with different `id` meanings.
+(none yet)
+
+### Request from quality
+- `node tools/check-openness.mjs` fails: cathedral 59.6%, halls 29.6% and rooms
+  25.1% of floor is "wide open" (two clear tiles every way; the limit is 25%).
+  Arena, terraces and ruins were fixed this way before (see commit 90a8fbe).
+  Either break those layouts up, or if the cathedral is meant to be one hall,
+  say so in the checker with a per-layout limit.

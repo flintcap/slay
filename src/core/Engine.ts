@@ -3,6 +3,37 @@ import { Renderer } from './Renderer';
 import { Input } from './Input';
 import type { SceneId } from '../types';
 import { events } from './Events';
+import { save } from './Save';
+
+/** One distinct error the engine caught, with how often it has happened. */
+export interface CaughtError {
+  /** Where it was caught: 'update', 'render', 'enter', 'dispose', 'window', 'promise'. */
+  where: string;
+  message: string;
+  /** First few stack lines of the first occurrence. */
+  stack: string;
+  count: number;
+  firstAt: number;
+  lastAt: number;
+  scene: SceneId | null;
+}
+
+/** Frames in a row a scene may fail before the engine pulls the player out. */
+const FAILS_BEFORE_RECOVERY = 30;
+
+let liveEngine: Engine | null = null;
+
+/**
+ * Record an error caught somewhere inside a scene, without stopping it. Use it
+ * to fence off one entity's update so a single broken monster cannot end the
+ * frame for everything after it:
+ *
+ *     try { e.update(dt, ctx); } catch (err) { reportError('enemy', err); }
+ */
+export function reportError(where: string, err: unknown): void {
+  if (liveEngine) liveEngine.report(where, err);
+  else console.error(`[${where}]`, err);
+}
 
 /**
  * A game scene (town, dungeon, menus). Scenes own their THREE.Scene and camera
@@ -97,13 +128,61 @@ export class Engine {
   fps = 60;
   private fpsAccum = 0;
   private fpsFrames = 0;
+  /** Wall time across the same frames, for an fps that is an average, not one sample. */
+  private fpsWall = 0;
 
   /** True only for a pause the engine applied itself when the tab went away. */
   private autoPaused = false;
 
+  /**
+   * Every distinct error caught anywhere in the game, keyed by place and
+   * message. A frame that throws is logged once and counted after that, so a
+   * bug that fires every frame cannot flood the console or stall the tab.
+   * Read by the soak test via window.SLAY.engine.errors.
+   */
+  readonly errors = new Map<string, CaughtError>();
+  /** Frames in a row the active scene's update or render has thrown. */
+  private failStreak = 0;
+  private recovering = false;
+  /** Set while the WebGL context is lost; nothing is drawn until it returns. */
+  contextLost = false;
+
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new Renderer(canvas);
     this.input = new Input(canvas);
+    liveEngine = this;
+
+    // Errors that escape everything else: event listeners, timers, promises
+    // nobody awaited. None of them stop the loop on their own, but they must
+    // be seen, and counted, rather than vanish.
+    window.addEventListener('error', (e) => {
+      this.report('window', e.error ?? e.message);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      this.report('promise', e.reason);
+    });
+
+    // A lost GPU context (driver reset, too many tabs, laptop sleep). Three.js
+    // restores its own state when the context comes back; until then there is
+    // nothing to draw into, so stop trying and hold the game still.
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.contextLost = true;
+      this.report('render', new Error('WebGL context lost'));
+      if (!this.paused) {
+        this.autoPaused = true;
+        this.setPaused(true);
+      }
+      events.emit('toast', { text: 'The graphics device was reset. Waiting for it to come back...', kind: 'bad' });
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      this.contextLost = false;
+      if (this.autoPaused) {
+        this.autoPaused = false;
+        this.setPaused(false);
+      }
+      events.emit('toast', { text: 'Graphics restored.', kind: 'good' });
+    });
 
     // Pause when the tab is hidden, and — critically — resume when it comes
     // back. Only ever undo a pause we applied ourselves, so a player who opened
@@ -158,30 +237,138 @@ export class Engine {
     if (!factory) throw new Error(`Engine: no scene registered for "${id}"`);
     this.transitioning = true;
     const from = this.active?.id ?? 'boot';
+    let arrived: SceneId = id;
 
-    await fadeTo(1, 260);
-    events.emit('scene:loading', { from, to: id, payload });
+    try {
+      await fadeTo(1, 260);
+      events.emit('scene:loading', { from, to: id, payload });
 
-    if (this.active) {
-      this.active.dispose();
-      disposeObject(this.active.scene);
-      this.active = null;
+      if (this.active) {
+        // A scene that fails to tear down must not keep the player in it.
+        try {
+          this.active.dispose();
+        } catch (err) {
+          this.report('dispose', err);
+        }
+        try {
+          disposeObject(this.active.scene);
+        } catch (err) {
+          this.report('dispose', err);
+        }
+        this.active = null;
+      }
+
+      // Let the browser reclaim before we allocate the next world.
+      await nextFrame();
+
+      try {
+        await this.enterScene(id, factory, payload);
+      } catch (err) {
+        // The scene could not be built. Fall back to somewhere that can be:
+        // town for anything in a run, the title for town itself.
+        this.report('enter', err);
+        const fallback = this.fallbackFor(id);
+        const fb = fallback ? this.scenes.get(fallback) : undefined;
+        if (!fallback || !fb) throw err;
+        this.active = null;
+        events.emit('toast', { text: 'Something went wrong getting there. You are safe.', kind: 'bad' });
+        await this.enterScene(fallback, fb, undefined);
+        arrived = fallback;
+      }
+
+      this.failStreak = 0;
+      events.emit('scene:change', { from, to: arrived });
+    } finally {
+      // Whatever happened, never leave the screen black and input dead.
+      await fadeTo(0, 420);
+      this.transitioning = false;
     }
+  }
 
-    // Let the browser reclaim before we allocate the next world.
-    await nextFrame();
-
+  private async enterScene(id: SceneId, factory: () => GameScene, payload: unknown): Promise<void> {
     const next = factory();
     this.active = next;
-    await next.enter(payload);
-
+    try {
+      await next.enter(payload);
+    } catch (err) {
+      try {
+        next.dispose();
+        disposeObject(next.scene);
+      } catch {
+        /* half-built; nothing more to do */
+      }
+      this.active = null;
+      throw err;
+    }
     // Prime: build shaders now so the first visible frame is not a hitch.
-    this.renderer.gl.compile(next.scene, next.camera);
+    try {
+      this.renderer.gl.compile(next.scene, next.camera);
+    } catch (err) {
+      this.report('render', err);
+    }
     this.clock.getDelta();
+  }
 
-    events.emit('scene:change', { from, to: id });
-    await fadeTo(0, 420);
-    this.transitioning = false;
+  /** Where to send the player when `id` cannot be entered or keeps failing. */
+  private fallbackFor(id: SceneId): SceneId | null {
+    if (id === 'title') return null;
+    if (id === 'town') return 'title';
+    return this.scenes.has('town') ? 'town' : 'title';
+  }
+
+  /**
+   * Record a caught error. Logs it in full the first time, then only counts
+   * it, so a per-frame failure costs a map lookup rather than a console flood.
+   */
+  report(where: string, err: unknown): void {
+    const message = err instanceof Error ? err.message : String(err);
+    const key = `${where}|${message}`;
+    const now = performance.now();
+    const seen = this.errors.get(key);
+    if (seen) {
+      seen.count++;
+      seen.lastAt = now;
+      // Remind every so often so a long session still shows it is ongoing.
+      if (seen.count === 10 || seen.count === 100 || seen.count % 1000 === 0) {
+        console.error(`[engine] ${where} error repeated ${seen.count}x: ${message}`);
+      }
+      return;
+    }
+    if (this.errors.size >= 200) return;
+    const stack = err instanceof Error ? (err.stack ?? '').split('\n').slice(0, 6).join('\n') : '';
+    this.errors.set(key, { where, message, stack, count: 1, firstAt: now, lastAt: now, scene: this.active?.id ?? null });
+    console.error(`[engine] ${where} error:`, err);
+  }
+
+  /** Total caught errors, every kind, every repeat. */
+  get errorCount(): number {
+    let n = 0;
+    for (const e of this.errors.values()) n += e.count;
+    return n;
+  }
+
+  /**
+   * A scene has thrown for many frames in a row: it is not going to fix
+   * itself. Save what can be saved and move the player somewhere safe.
+   */
+  private recover(): void {
+    if (this.recovering || this.transitioning) return;
+    const id = this.active?.id ?? null;
+    const to = id ? this.fallbackFor(id) : 'title';
+    this.failStreak = 0;
+    if (!to) return; // The title itself is failing; keep trying to draw it.
+    this.recovering = true;
+    try {
+      save.flush();
+    } catch {
+      /* the save has its own safety */
+    }
+    events.emit('toast', { text: 'Something went wrong. You have been moved somewhere safe.', kind: 'bad' });
+    void this.goTo(to)
+      .catch((err) => this.report('enter', err))
+      .finally(() => {
+        this.recovering = false;
+      });
   }
 
   setPaused(v: boolean): void {
@@ -220,14 +407,30 @@ export class Engine {
     if (!this.paused) this.elapsed += dt;
 
     const scene = this.active;
-    if (scene) {
+    if (scene && !this.contextLost) {
+      // Update and render are guarded separately: a bad frame of simulation
+      // should still draw, and a bad draw should not stop the simulation.
+      let failed = false;
       const tu0 = performance.now();
       if (!this.paused && !this.transitioning) {
-        scene.update(dt, this.elapsed);
+        try {
+          scene.update(dt, this.elapsed);
+        } catch (err) {
+          failed = true;
+          this.report('update', err);
+        }
       }
       const tu1 = performance.now();
-      this.renderer.render(scene.scene, scene.camera, dt, this.elapsed);
+      try {
+        this.renderer.render(scene.scene, scene.camera, dt, this.elapsed);
+      } catch (err) {
+        failed = true;
+        this.report('render', err);
+      }
       const tr1 = performance.now();
+      if (failed) {
+        if (++this.failStreak >= FAILS_BEFORE_RECOVERY) this.recover();
+      } else this.failStreak = 0;
 
       const p = this.perf;
       p.upd[p.i] = tu1 - tu0;
@@ -237,16 +440,21 @@ export class Engine {
       if (p.count < p.upd.length) p.count++;
     }
 
-    this.input.endFrame();
+    try {
+      this.input.endFrame();
+    } catch (err) {
+      this.report('input', err);
+    }
 
     const t1 = performance.now();
     this.fpsAccum += t1 - t0;
+    this.fpsWall += raw;
     this.fpsFrames++;
     if (this.fpsFrames >= 20) {
       this.frameMs = this.fpsAccum / this.fpsFrames;
-      this.fps = Math.round(1000 / Math.max(0.001, raw * 1000) / 1) || 60;
-      this.fps = Math.round(1 / Math.max(raw, 0.0001));
+      this.fps = Math.round(this.fpsFrames / Math.max(this.fpsWall, 0.0001));
       this.fpsAccum = 0;
+      this.fpsWall = 0;
       this.fpsFrames = 0;
     }
   };

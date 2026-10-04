@@ -251,6 +251,9 @@ export class TownScene extends GameScene {
     this.town?.dispose();
     this.fx.dispose();
     this.decals.dispose();
+    // The rig subscribes to the event bus and to window resize; without this
+    // every visit left one behind, still answering every shake event.
+    this.rig.dispose();
     events.emit('ui:close', { panel: 'hud' });
   }
 }

@@ -22,6 +22,8 @@
 
 import * as THREE from 'three';
 import { events } from '../core/Events';
+import { save } from '../core/Save';
+import { effectiveShake, reducedMotion } from '../core/Access';
 import { Noise, clamp01, lerp } from '../art/Noise';
 import type { GameSettings } from '../types';
 
@@ -214,6 +216,11 @@ export class CameraRig {
       }),
     );
     window.addEventListener('resize', this.onResize);
+
+    // The settings menu's camera distance and shake sliders, and reduced
+    // motion. Nothing ever called applySettings, so all three did nothing.
+    this.applySettings(save.settings);
+    this.unsubs.push(events.on('settings:changed', () => this.applySettings(save.settings)));
   }
 
   private onResize = (): void => {
@@ -226,8 +233,12 @@ export class CameraRig {
   /** `cameraDistance` is a 0.6..1.6 multiplier; `screenShake` scales trauma. */
   applySettings(settings: GameSettings): void {
     this.distanceMul = THREE.MathUtils.clamp(settings.cameraDistance || 1, 0.5, 2);
-    this.shakeIntensity = THREE.MathUtils.clamp(settings.screenShake ?? 1, 0, 2);
+    this.shakeIntensity = effectiveShake(settings);
+    this.noPunch = reducedMotion(settings);
   }
+
+  /** Reduced motion: no dolly or FOV punches. */
+  private noPunch = false;
 
   setAngles(yaw: number, pitch: number): void {
     this.opts.yaw = yaw;
@@ -368,6 +379,7 @@ export class CameraRig {
 
   /** Dolly + FOV punch. `amount` is a fraction of the boom (0.15 is strong). */
   punchIn(amount: number, duration = 1.2): void {
+    if (this.noPunch) return;
     this.punch = Math.max(this.punch, amount);
     this.punchLeft = Math.max(this.punchLeft, duration);
     this.punchTotal = Math.max(this.punchTotal, duration);

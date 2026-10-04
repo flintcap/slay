@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GameScene, type Engine, disposeObject } from '../core/Engine';
+import { GameScene, type Engine, disposeObject, reportError } from '../core/Engine';
 import type {
   SceneId,
   DungeonRun,
@@ -957,12 +957,21 @@ export class DungeonScene extends GameScene {
       const m = onMinion === null ? undefined : ctx.minions?.find((q) => q.id === onMinion);
       if (m) this.aimPos.set(m.x, 0, m.z);
       else this.aimPos.copy(this.player.position);
-      e.update(dt, ctx);
+      // One broken monster must not end the frame for everything after it.
+      try {
+        e.update(dt, ctx);
+      } catch (err) {
+        reportError('enemy', err);
+      }
     }
     this.acting = null;
     this.aimPos.copy(this.player.position);
 
-    this.boss?.update(dt, ctx);
+    try {
+      this.boss?.update(dt, ctx);
+    } catch (err) {
+      reportError('boss', err);
+    }
 
     this.reapDead(ctx);
     this.updateLoot(dt, elapsed, input);
@@ -1712,6 +1721,9 @@ export class DungeonScene extends GameScene {
     this.effects.dispose();
     this.fx.dispose();
     this.decals.dispose();
+    // The rig subscribes to the event bus and to window resize; without this
+    // every visit left one behind, still answering every shake event.
+    this.rig.dispose();
     this.engine.renderer.setLowLife(0);
     this.engine.renderer.setGrade();
     events.emit('ui:close', { panel: 'hud' });

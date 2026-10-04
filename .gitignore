@@ -14,3 +14,6 @@ dist-single/
 # its own copy under .claude/worktrees and pushes its checkpoints to the
 # branch; the copies themselves are never part of the repository.
 .claude/
+.checks/
+# The worktrees symlink node_modules, and a trailing-slash pattern does not match a symlink.
+node_modules

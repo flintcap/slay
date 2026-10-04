@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { remapKey } from './Access';
 
 export type ActionName =
   | 'move'
@@ -109,14 +110,17 @@ export class Input {
     // Let the browser handle text entry (character naming).
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-    if (!this.down.has(e.code)) this.pressedThisFrame.add(e.code);
-    this.down.add(e.code);
-    if (e.code === 'Space' || e.code.startsWith('Digit')) e.preventDefault();
+    // Player key rebinding (accessibility): the game sees the default code.
+    const code = remapKey(e.code);
+    if (!this.down.has(code)) this.pressedThisFrame.add(code);
+    this.down.add(code);
+    if (code === 'Space' || code.startsWith('Digit') || e.code === 'Space') e.preventDefault();
   };
 
   private onKeyUp = (e: KeyboardEvent): void => {
-    this.down.delete(e.code);
-    this.releasedThisFrame.add(e.code);
+    const code = remapKey(e.code);
+    this.down.delete(code);
+    this.releasedThisFrame.add(code);
   };
 
   private onBlur = (): void => {

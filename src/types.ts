@@ -526,10 +526,20 @@ export interface GameSettings {
   hints?: boolean;
   /** Floor and town title cards (ui/Banners.ts). */
   titleCards?: boolean;
-  /** Calms the menus: no slow intros, letter reveals or sweeping shines. */
+  /**
+   * Reduced motion: calms the menus (no slow intros, letter reveals or
+   * sweeping shines), and turns off screen shake, camera punch-ins and CSS
+   * animation (core/Access.ts). Also on when the system asks for it.
+   */
   reduceMotion?: boolean;
   /** Small frame-rate readout in the corner. */
   showFps?: boolean;
+  /** Multiplier on every UI type size (accessibility). 1 = as designed. */
+  textScale?: number;
+  /** Swap rarity colours for a palette every colour-vision type can tell apart. */
+  colorBlindRarity?: boolean;
+  /** Rebound keys: default key code -> the key the player chose. Always a permutation. */
+  keybinds?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------

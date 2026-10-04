@@ -115,6 +115,16 @@ class EventBus {
     }
   }
 
+  /**
+   * Live subscriptions per event, for leak hunting. A count that grows every
+   * time a scene is entered means something subscribes and never lets go.
+   */
+  listenerCounts(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const [k, set] of this.handlers) if (set.size) out[k] = set.size;
+    return out;
+  }
+
   /** Drop every subscription — used when tearing a scene down. */
   clear(): void {
     this.handlers.clear();
