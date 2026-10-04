@@ -1,6 +1,6 @@
 # Stream: hud (in-game UI)
 
-Status: in progress
+Status: done (all milestones ticked; see Next up for optional follow-ups)
 
 ## Milestones
 
@@ -12,22 +12,21 @@ Status: in progress
 - [x] Inventory, paperdoll and stash: drag ghost, valid-slot highlighting, rarity glow on cells, sort button, item drop and equip feedback. — "Combat text, tooltips, inventory feedback, and a working skill tree with respec"
 - [x] Skill tree: node states, glowing link lines, rank pips, hover previews with next-rank numbers, clear respec affordance. — "Gild the skill tree, add its hover card, and answer the boss and elite requests"
 - [x] Vendor, blacksmith, map, quest log, nameplates and ground labels: same frame language; loot labels styled by rarity with beams for the best drops. — "Frame the world UI: rarity-tiered loot labels with beams, nameplate trails, an inked map" (+ "Combat text: running totals stop swelling, hero numbers sit apart, repeated words merge")
-- [ ] Sweep: hover and press states everywhere, no overlap at 1280x720 and 1920x1080, every panel opens and closes with a short animation.
+- [x] Sweep: hover and press states everywhere, no overlap at 1280x720 and 1920x1080, every panel opens and closes with a short animation. — "Sweep the HUD styles: drop dead menu rules, scale every font with the text setting, add press states" (+ "Combat text: crits keep their own running total per target")
 
 ## Next up
 
-Milestone 9 (sweep) is built and lab-checked: dead menu styles pruned, every
-font size follows the text-size setting, press and hover states added where
-missing (`Sweep:` block at the end of `styles.css`), 1280x720 checked in the
-lab for hud, inventory, skills, character, vendor, stash, blacksmith,
-tooltips. Panels and modals already animate open and closed. To tick it: one
-real render, as ONE self-contained command that exits by itself (never leave
-a server running in the background):
-`npm run build && SLAY_PORT=4301 timeout -k 20 3000 node tools/screenshot.mjs --out=shots/hud/real --shots=combatText`
-On a loaded machine it takes 25 to 50 minutes; run it in the background as
-that single command and keep working. Check the enemy damage numbers (the
-first real frame only showed hero numbers, because the driver anchored hits
-on far-off monsters; the driver now uses stand-in points near the hero).
+All nine milestones are ticked. Optional follow-ups, in order of value:
+1. Inventory at 1280x720: the "At a glance" stats under the paperdoll scroll
+   out of view. The paperdoll canvas is a fixed 176x384 (`.pd-view`, sized
+   in `PaperdollView.ts`); shrinking it under 820px tall needs the canvas
+   resized in code, not just CSS.
+2. Item icons in the lab often draw late or not at all within a 2.5s wait
+   (`requestItemIcon` queue in the art stream's `Icons.ts`). Worth a look by
+   art if it also happens in the real game.
+3. A real render of a boss floor (`--shots=boss`) to see the cast bar,
+   enrage state and mini-boss card in a live frame; so far only the lab has
+   shown them. Use one self-contained command, never a background server.
 
 ## Notes for resume
 
@@ -64,9 +63,10 @@ on far-off monsters; the driver now uses stand-in points near the hero).
   dashed groove. Hover card is `.skcard` (built by `showCard`, numbers from
   `rankRows`, shared with the detail pane). Lab: `skillhover` (pass
   `--node=<skill id or index>`).
-- Seen in the lab, not mine: plain unstyled text at the very top-left ("The
-  Hollow King", "Depth 7 · Floor 2 of 4"). Likely a menus banner whose CSS
-  (`menus.css`) the lab page does not load. Check in a real render.
+- The lab page now loads `menus.css` like `index.html`. The stray top-left
+  text seen earlier was the menus banners unstyled. With it loaded, the `hud`
+  and `bosscast` states play the boss intro banner (letterbox) for a few
+  seconds; use `--wait=5000` to photograph the HUD after it.
 - The buff strip now lives inside `.cmdbar-center` (absolutely placed above the
   plate). The command bar plate is `.cmdbar-plate`; orbs are 124px with a
   `.orb-wing` bracket; the interact prompt sits at `bottom: 236px` (216px under
@@ -92,6 +92,13 @@ on far-off monsters; the driver now uses stand-in points near the hero).
 - `tools/screenshot.mjs`: the preview server now runs in its own process
   group and is killed as a group, so no orphaned `vite preview` holds the
   port after a render. Capture timeout is 180s (`--shotTimeout`).
+- Second real frame (depth 2, combat text fed near the hero): enemy numbers,
+  stacked totals with `xN`, hero hurt/heal either side of the head and a
+  single DODGE all read well over the lit floor. It showed crits on one
+  target piling into a smear (crits never merged), so crits now keep their
+  own running total per target (`crit:<id>` key) and show `xN` too. Under
+  software rendering the page timer fires many times per game frame, so the
+  frame overstates how many hits land at once.
 - Combat text is `src/ui/CombatText.ts` (`CombatTextLayer`, one 2D canvas
   under the HUD). DungeonScene creates it next to the nameplates, updates it
   with real (not hit-stopped) time, and disposes it; the two old

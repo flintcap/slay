@@ -162,10 +162,14 @@ export class CombatTextLayer {
     );
   }
 
-  /** A hit on something. Crits get their own treatment and never merge. */
+  /**
+   * A hit on something. Crits get their own treatment and keep their own
+   * running total per target, apart from the normal hits: a fast build that
+   * crits often otherwise piled a dozen big numbers on one spot.
+   */
   damage(amount: number, x: number, y: number, z: number, type: DamageType, crit: boolean, target = ''): void {
     const fill = TYPE_FILL[type] ?? TYPE_FILL.physical!;
-    const key = crit || !target ? '' : `hit:${target}`;
+    const key = !target ? '' : crit ? `crit:${target}` : `hit:${target}`;
     if (key && this.merge(key, amount)) return;
     const n = this.spawnCount++;
     const fan = ((n * 7) % 5) - 2;
@@ -372,7 +376,7 @@ export class CombatTextLayer {
     }
     ctx.fillText(e.text, x, y);
 
-    if (e.stacks > 2 && e.kind === 'hit') {
+    if (e.stacks > 2 && (e.kind === 'hit' || e.kind === 'crit')) {
       // A small multiplier tells you the number is a running total.
       // Measure the number in its own font before switching to the small one.
       const tx = x + ctx.measureText(e.text).width * 0.5 + size * 0.42;
