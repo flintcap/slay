@@ -194,6 +194,7 @@ export class Ambience {
     out.gain.setValueAtTime(0.0001, now);
     out.gain.exponentialRampToValueAtTime(1, now + Math.max(0.1, fade));
     out.connect(this.bus);
+    this.synth.markPool(out, 'amb');
     // A little of the bed in the reverb puts it in the same room as the fight.
     const send = ctx.createGain();
     send.gain.value = 0.25;
@@ -268,7 +269,7 @@ export class Ambience {
       const wait = Math.min(mean * 3, Math.max(0.6, -Math.log(1 - this.rng.next() * 0.98) * mean));
       const id = window.setTimeout(() => {
         if (this.live !== bed) return;
-        if (this.synth.ctx.state === 'running' && this.synth.canVoice(4)) this.fire(kind, bed.out);
+        if (this.synth.ctx.state === 'running' && this.synth.canVoice(4, 'amb')) this.fire(kind, bed.out);
         arm();
       }, wait * 1000);
       bed.timers.push(id);

@@ -185,6 +185,13 @@ class FlashPool {
     best.light.intensity = intensity;
   }
 
+  /** Share of slots currently lit, 0..1. */
+  get busy(): number {
+    let n = 0;
+    for (const s of this.slots) if (s.left > 0) n++;
+    return this.slots.length ? n / this.slots.length : 1;
+  }
+
   update(dt: number): void {
     for (const s of this.slots) {
       if (s.left <= 0) continue;
@@ -224,7 +231,15 @@ interface LiveEffect {
   dispose(): void;
   stop(): void;
   handle: EffectHandle;
+  /**
+   * Carries gameplay (a delayed hit, a projectile's damage callback). Never
+   * culled by the effect budget; only decoration is.
+   */
+  essential?: boolean;
 }
+
+/** Composite effects alive at once before the oldest decoration is culled. */
+export const MAX_LIVE_EFFECTS = 180;
 
 // ---------------------------------------------------------------------------
 // Materials
@@ -1393,6 +1408,7 @@ export class EffectSystem {
 
     const effect: LiveEffect = {
       handle,
+      essential: !!opts.onHit,
       stop(): void { stopped = true; },
       update(dt: number, _elapsed: number, camera?: THREE.Camera): boolean {
         life += dt;
@@ -1439,15 +1455,18 @@ export class EffectSystem {
         // A dim travelling light: cheap, and it makes the projectile feel like
         // it is actually made of fire rather than painted on. An arrow is a
         // stick, not a flare, and bone is bone, so neither gets one.
-        if (body !== 'arrow' && body !== 'spike' && self.quality.fxScale >= 0.9 && self.rng.chance(0.35)) {
+        // Travel lights are the first thing to give up a slot: an impact
+        // flash lighting the room matters more than a moving glow.
+        if (body !== 'arrow' && body !== 'spike' && self.quality.fxScale >= 0.9 && self.lights.busy < 0.5 && self.rng.chance(0.35)) {
           self.flash(pos.x, pos.y, pos.z, el.light, 2.2, 5, 0.07);
         }
         // Shed by distance, not by frame, so a shot leaves the same wake at
         // 30fps as at 144.
         if (!isArrow) {
           shedAcc += speed * dt;
-          while (shedAcc >= shedStep) {
-            shedAcc -= shedStep;
+          const step = self.fx.pressure > 0.7 ? shedStep * 2 : shedStep;
+          while (shedAcc >= step) {
+            shedAcc -= step;
             shedCount++;
             self.fx.burst(el.shedEmitter, pos.x, pos.y, pos.z, {
               scale: 0.75 * (opts.scale ?? 1),
@@ -2400,6 +2419,7 @@ export class EffectSystem {
     };
     this.live.push({
       handle,
+      essential: true,
       stop(): void { stopped = true; },
       update(dt: number): boolean {
         t += dt;
@@ -2599,7 +2619,28 @@ export class EffectSystem {
         this.live.splice(i, 1);
       }
     }
+
+    // The budget: past the cap, the oldest purely decorative effects go first.
+    // Gameplay-carrying ones (a meteor's landing, a bolt's damage) never do.
+    if (this.live.length > MAX_LIVE_EFFECTS) {
+      let over = this.live.length - MAX_LIVE_EFFECTS;
+      for (let i = 0; i < this.live.length && over > 0; ) {
+        const e = this.live[i]!;
+        if (e.essential) {
+          i++;
+          continue;
+        }
+        e.stop();
+        e.dispose();
+        this.live.splice(i, 1);
+        this.culled++;
+        over--;
+      }
+    }
   }
+
+  /** Decorative effects dropped by the budget since boot. */
+  culled = 0;
 
   /** Number of live composite effects — handy for a debug overlay. */
   get liveCount(): number {

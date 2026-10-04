@@ -929,6 +929,16 @@ function derive(id: string): SoundFn | undefined {
 // The singleton
 // ---------------------------------------------------------------------------
 
+/**
+ * How much a sound matters when voices run short: 2 must play (the player's
+ * own hits, kills, warnings, UI), 0 is texture that may be dropped first.
+ */
+export function soundPriority(id: string): 0 | 1 | 2 {
+  if (/^(ui\.|player\.|kill\.|crit$|telegraph|levelup|loot\.legendary|boss\.|heartbeat|quest\.|block|parry|hit\.(sword|axe|blunt|pierce|fist|heavy))/.test(id)) return 2;
+  if (/^(monster\.|footstep\.|step\.|gold\.spill|gold\.land|loot\.toss|arrow\.thunk|swing\.light|shoot\.)/.test(id)) return 0;
+  return 1;
+}
+
 /** Per-id retrigger guard, in seconds. Prevents phase-cancelling machine-gun. */
 const MIN_INTERVAL = 0.032;
 /** Beyond this many world units, a sound is not worth a voice. */
@@ -1060,11 +1070,22 @@ class AudioEngine {
     if (gain < 0.008) return;
 
     // --- voice budget -----------------------------------------------------
-    if (!s.canVoice(2)) return;
+    // Each recipe's real cost (sources it starts) is learned the first time it
+    // plays. Lower-priority sounds may only use part of the pool, so in a
+    // crowded fight the hit you landed and the telegraph you must dodge still
+    // have room after the footsteps and monster grunts have been turned away.
+    const cost = this.costs.get(id) ?? 6;
+    const prio = soundPriority(id);
+    const headroom = prio === 2 ? 1 : prio === 1 ? 0.82 : 0.55;
+    if (!s.canVoice(cost, 'sfx', headroom)) {
+      this.refused++;
+      return;
+    }
 
     this.lastPlayed.set(id, now);
     const pitch = (opts?.pitch ?? 1) * this.rng.range(0.94, 1.06);
 
+    const before = s.voicesIn('sfx');
     try {
       fn(s, {
         t: now + 0.002,
@@ -1077,7 +1098,14 @@ class AudioEngine {
     } catch (err) {
       console.warn(`[audio] "${id}" failed`, err);
     }
+    // Remember the most it has ever cost (randomised recipes vary).
+    const spent = s.voicesIn('sfx') - before;
+    if (spent > 0) this.costs.set(id, Math.max(spent, this.costs.get(id) ?? 0));
   }
+
+  /** Sounds refused for want of a voice since boot. */
+  refused = 0;
+  private costs = new Map<string, number>();
 
   private lookup(id: string): SoundFn | null {
     const cached = this.resolved.get(id);
@@ -1212,9 +1240,13 @@ class AudioEngine {
   }
 
   /** Exposed for debug overlays. */
-  get diagnostics(): { voices: number; state: string; track: string | null } {
+  get diagnostics(): { voices: number; sfx: number; music: number; amb: number; refused: number; state: string; track: string | null } {
     return {
       voices: this.synth?.activeVoices ?? 0,
+      sfx: this.synth?.voicesIn('sfx') ?? 0,
+      music: this.synth?.voicesIn('music') ?? 0,
+      amb: this.synth?.voicesIn('amb') ?? 0,
+      refused: this.refused,
       state: this.synth?.ctx.state ?? 'none',
       track: this.musicDir?.currentTrack ?? null,
     };

@@ -98,6 +98,16 @@ export interface NoiseOpts {
   dest?: AudioNode;
 }
 
+/**
+ * Which budget a voice is drawn from. Music, ambience and effects used to
+ * share one counter, and music was never refused — so a dense bar of score
+ * could leave no room for the sword hit it was scoring.
+ */
+export type VoicePool = 'sfx' | 'music' | 'amb';
+
+/** Oscillators/sources each pool may hold at once. */
+export const POOL_CAPS: Record<VoicePool, number> = { sfx: 44, music: 60, amb: 12 };
+
 const DEFAULT_ADSR: ADSR = { attack: 0.004, decay: 0.08, sustain: 0.0, release: 0.06 };
 
 /** Equal temperament. MIDI 69 = A4 = 440Hz. */
@@ -131,9 +141,16 @@ export class Synth {
   /** Nodes that are still sounding, so `stopAll` can silence them. */
   private activeNodes = new Set<AudioScheduledSourceNode>();
 
-  /** Simple polyphony cap — the voice limiter. */
-  private voices = 0;
-  maxVoices = 26;
+  /** Live sources per pool — the voice limiter. */
+  private counts: Record<VoicePool, number> = { sfx: 0, music: 0, amb: 0 };
+  /** Effects-pool cap, kept as a field so a debug panel can turn it. */
+  get maxVoices(): number {
+    return POOL_CAPS.sfx;
+  }
+  /** Destinations registered as belonging to a pool other than sfx. */
+  private destPool = new WeakMap<AudioNode, VoicePool>();
+  /** Notes refused for lack of room, per pool, for diagnostics. */
+  readonly dropped: Record<VoicePool, number> = { sfx: 0, music: 0, amb: 0 };
 
   ready = false;
 
@@ -390,12 +407,23 @@ export class Synth {
     return a + d + r;
   }
 
-  private track(node: AudioScheduledSourceNode, stopAt: number): void {
+  /** Marks a bus or track output as feeding `pool`, so notes sent to it count there. */
+  markPool(dest: AudioNode, pool: VoicePool): void {
+    this.destPool.set(dest, pool);
+  }
+
+  private poolOf(dest: AudioNode | undefined): VoicePool {
+    if (!dest || dest === this.sfxBus) return 'sfx';
+    if (dest === this.musicBus) return 'music';
+    return this.destPool.get(dest) ?? 'sfx';
+  }
+
+  private track(node: AudioScheduledSourceNode, stopAt: number, pool: VoicePool): void {
     this.activeNodes.add(node);
-    this.voices++;
+    this.counts[pool]++;
     node.onended = () => {
       this.activeNodes.delete(node);
-      this.voices = Math.max(0, this.voices - 1);
+      this.counts[pool] = Math.max(0, this.counts[pool] - 1);
       try {
         node.disconnect();
       } catch {
@@ -410,12 +438,17 @@ export class Synth {
   }
 
   /** True when the voice budget still has room. */
-  canVoice(cost = 1): boolean {
-    return this.voices + cost <= this.maxVoices;
+  canVoice(cost = 1, pool: VoicePool = 'sfx', headroom = 1): boolean {
+    return this.counts[pool] + cost <= POOL_CAPS[pool] * headroom;
   }
 
   get activeVoices(): number {
-    return this.voices;
+    return this.counts.sfx + this.counts.music + this.counts.amb;
+  }
+
+  /** Live sources in one pool. */
+  voicesIn(pool: VoicePool): number {
+    return this.counts[pool];
   }
 
   // -- players --------------------------------------------------------------
@@ -423,6 +456,15 @@ export class Synth {
   /** Plays a single oscillator voice (or a detuned unison stack). */
   tone(o: ToneOpts): void {
     const ctx = this.ctx;
+    const pool = this.poolOf(o.dest);
+    const unisonN = Math.max(1, o.unison ?? 1);
+    // Effects are gated by the caller, which knows what a whole sound costs.
+    // The score and the ambience gate themselves note by note: a missing pad
+    // voice in a busy bar is inaudible, a missing sword hit is not.
+    if (pool !== 'sfx' && !this.canVoice(unisonN, pool)) {
+      this.dropped[pool]++;
+      return;
+    }
     const t0 = o.when ?? ctx.currentTime;
     const body = o.duration ?? 0;
     const adsr: ADSR = {
@@ -483,13 +525,18 @@ export class Synth {
       }
 
       osc.start(t0);
-      this.track(osc, stopAt);
+      this.track(osc, stopAt, pool);
     }
   }
 
   /** Plays a filtered noise burst — the backbone of every impact and footstep. */
   noise(o: NoiseOpts): void {
     const ctx = this.ctx;
+    const pool = this.poolOf(o.dest);
+    if (pool !== 'sfx' && !this.canVoice(1, pool)) {
+      this.dropped[pool]++;
+      return;
+    }
     const t0 = o.when ?? ctx.currentTime;
     const body = o.duration ?? 0;
     const adsr: ADSR = {
@@ -506,7 +553,7 @@ export class Synth {
     const total = this.applyEnv(tail.out.gain, t0, adsr, o.gain ?? 0.3, body);
     const stopAt = t0 + total + 0.05;
     src.start(t0, this.rng.range(0, 1.5));
-    this.track(src, stopAt);
+    this.track(src, stopAt, pool);
   }
 
   /** Silences everything currently sounding. */
@@ -520,7 +567,9 @@ export class Synth {
       }
     }
     this.activeNodes.clear();
-    this.voices = 0;
+    this.counts.sfx = 0;
+    this.counts.music = 0;
+    this.counts.amb = 0;
   }
 
   dispose(): void {

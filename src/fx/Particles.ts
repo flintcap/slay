@@ -1759,6 +1759,34 @@ export class FXSystem {
     return this.addPool.capacity + this.alphaPool.capacity;
   }
 
+  // --- budget ----------------------------------------------------------------
+  /** Particles spawned this frame, against `frameBudget`. */
+  private frameSpawned = 0;
+  /** Spawns in each of the last ten tenths of a second. */
+  private recent = new Float32Array(10);
+  private bucket = 0;
+  private bucketT = 0;
+  /** Count multiplier for many-particle layers, eased from pressure. */
+  private throttle = 1;
+  /** Times a burst was cut short by the per-frame ceiling. */
+  clipped = 0;
+
+  /** Most particles one frame may spawn: an eighth of the world pools. */
+  get frameBudget(): number {
+    return Math.max(120, Math.round(this.capacity * 0.125));
+  }
+
+  /**
+   * Roughly how full the pools are, 0..1+: particles spawned over the last
+   * second times a typical life, over capacity. Effects use it to shed less
+   * when a fight is already saturated.
+   */
+  get pressure(): number {
+    let sum = 0;
+    for (let i = 0; i < this.recent.length; i++) sum += this.recent[i]!;
+    return (sum * 0.75) / Math.max(1, this.capacity);
+  }
+
   /**
    * Turns on depth-faded ("soft") particles. Costs one extra half-resolution
    * depth-only pass per frame, so it is gated on the quality profile.
@@ -1809,9 +1837,24 @@ export class FXSystem {
 
   private emitLayer(layer: Layer, x: number, y: number, z: number, opts: BurstOpts | undefined, countMul: number): void {
     const fx = this.quality.fxScale;
-    let n = Math.round(layer.count * countMul * fx);
-    if (layer.count > 0 && n < 1) n = this.rng.chance(layer.count * countMul * fx) ? 1 : 0;
+    // Under pressure the many-particle layers thin out; single-particle
+    // layers are the flash and the ring at the heart of an effect, and keep.
+    const core = layer.count <= 1;
+    const throttle = core ? 1 : this.throttle;
+    let n = Math.round(layer.count * countMul * fx * throttle);
+    if (layer.count > 0 && n < 1) n = this.rng.chance(layer.count * countMul * fx * throttle) ? 1 : 0;
     if (n <= 0) return;
+    // A hard per-frame ceiling. A ring buffer that is asked for more than it
+    // holds overwrites particles that are still on screen, which reads as the
+    // oldest effects popping out of existence mid-fight.
+    const room = this.frameBudget - this.frameSpawned;
+    if (n > room) {
+      n = core ? Math.min(n, Math.max(1, room)) : Math.max(0, room);
+      this.clipped++;
+      if (n <= 0) return;
+    }
+    this.frameSpawned += n;
+    this.recent[this.bucket] = (this.recent[this.bucket] ?? 0) + n;
 
     const pool = this.poolFor(layer.blend, opts?.parent);
     const sizeMul = opts?.scale ?? 1;
@@ -2073,6 +2116,17 @@ export class FXSystem {
    */
   update(dt: number, elapsed: number, camera?: THREE.Camera): void {
     this.time = elapsed;
+    // Budget bookkeeping: a new frame, and roll the one-second window.
+    this.frameSpawned = 0;
+    this.bucketT += dt;
+    while (this.bucketT >= 0.1) {
+      this.bucketT -= 0.1;
+      this.bucket = (this.bucket + 1) % this.recent.length;
+      this.recent[this.bucket] = 0;
+    }
+    const p = this.pressure;
+    const want = p <= 0.55 ? 1 : Math.max(0.3, 1 - (p - 0.55) * 1.6);
+    this.throttle += (want - this.throttle) * Math.min(1, dt * 6);
     if (camera) {
       this.camRef = camera;
       camera.getWorldPosition(_v2);

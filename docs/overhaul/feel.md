@@ -1,6 +1,6 @@
 # Stream: feel (combat feedback, VFX and audio)
 
-Status: in progress
+Status: paused
 
 ## Milestones
 
@@ -13,30 +13,47 @@ Status: in progress
 
 ## Next up
 
-Milestone 5, performance guard. Concretely:
-1. **Voice pools.** In `src/audio/Synth.ts` music notes and SFX share one
-   `voices` counter (`maxVoices = 26`) and music is never refused, so a dense
-   score starves combat sounds. Give `tone()`/`noise()` a pool (`'sfx' |
-   'music' | 'amb'`, inferred from `dest`: musicBus/track outs -> music),
-   count each pool separately with its own cap (sfx ~40 oscillators, music
-   ~48, ambience ~10), and make `AudioEngine.play` estimate a recipe's cost
-   (count oscillators it schedules in a dry run, cached per id) instead of the
-   flat `canVoice(2)`. Add priorities: player hits, kills, telegraphs and UI
-   beat ambience one-shots and monster vocals; when full, drop the lowest.
-2. **Particle budget.** `FXSystem` pools are ring buffers (5000 add / 2600
-   alpha at fxScale 1) that overwrite the oldest live particle when full. Add
-   a per-frame spawn budget (scaled by fxScale) and a "pressure" value
-   (live / capacity); when pressure is high, `emitLayer` scales counts down
-   (keep 1-count core layers such as flashes). Expose `fx.pressure` and let
-   `EffectSystem.projectile` shed less under pressure.
-3. **Lights.** `FlashPool` is fixed-size already; make projectile travel
-   flashes yield entirely when more than half the slots are busy.
-4. **Live effects cap.** `EffectSystem.live` is unbounded; cap composites
-   (e.g. 160) and drop the oldest decorative ones (novas without callbacks)
-   first. Never drop a `delay()` that carries gameplay (meteor/slam onHit).
-5. Extend `tools/feel-entry.ts` with a stress case: 300 bursts in one frame
-   must keep spawned particles within budget; 200 `audio.play` calls must
-   not exceed the sfx voice cap (test Synth accounting with a fake context).
+Milestone 5, performance guard, is about two-thirds done and committed in a
+working state ("Budget voices, particles and effects so big fights stay
+smooth (part 1)"). Already in:
+- `src/audio/Synth.ts`: separate voice pools (`VoicePool`, `POOL_CAPS` sfx 44
+  / music 60 / amb 12). Music track outs and ambience beds register with
+  `synth.markPool`; their notes are refused note-by-note when the pool is
+  full (`synth.dropped`). Effects are gated by the caller.
+- `src/audio/Audio.ts`: `play()` learns each recipe's real cost on first play
+  (`costs`), and `soundPriority(id)` (2 must play / 1 normal / 0 texture)
+  sets how much of the sfx pool it may use (100% / 82% / 55%).
+  `audio.diagnostics` reports per-pool voices and `refused`.
+- `src/fx/Particles.ts`: per-frame spawn ceiling (`frameBudget`, an eighth of
+  capacity), a one-second `pressure` estimate, and a `throttle` that thins
+  many-particle layers above 0.55 pressure (single-particle core layers are
+  never thinned). `fx.clipped` counts cut bursts.
+- `src/fx/Effects.ts`: `MAX_LIVE_EFFECTS = 180`; past it the oldest
+  non-`essential` composites are culled (`delay()` and projectiles with
+  `onHit` are essential). Projectile travel lights yield when the flash pool
+  is over half busy; projectiles shed half as often above 0.7 pressure.
+
+Still to do for milestone 5:
+1. Add a stress section to `tools/feel-entry.ts`: 300 `fx.burst('explosion')`
+   calls in one frame on a real `FXSystem` (needs a stub scene; the node shim
+   in `tools/feel-harness.mjs` already builds canvas textures) must spawn no
+   more than `frameBudget`; `pressure` must rise and `throttle` fall after a
+   few frames of heavy bursts; 400 decorative `nova()` calls must leave
+   `liveCount <= MAX_LIVE_EFFECTS` while a pending `delay()` still fires.
+   Audio pools need a fake AudioContext to test; optional.
+2. Tick milestone 5, then milestone 6 (sweep): build a static map of every
+   active skill's cast / travel / impact beat by effect family (see
+   `SkillRunner.cast` switch; families listed in `tools/check-coverage.mjs`)
+   and assert each beat has an emitter and a sound; fix any silent family
+   (e.g. `chain` for physical `ricochet` draws a lightning beam, `heal` and
+   `buff` have no travel beat, which is fine but should be declared).
+3. The render tool never got past boot (the machine was busy with other
+   agents' renders; two attempts timed out). On resume, run
+   `npm run build` then `SLAY_PORT=4305 node tools/shot-feel.mjs --out=shots/feel`
+   once with nothing else rendering, and look at `atlas-sprites.png`,
+   `atlas-decals.png` and the three `vfx-*.png` shots. The atlas flip fix in
+   milestone 2 changes every particle and stain on screen; confirm it looks
+   right and retune emitter sizes if anything reads too big or too small.
 
 ## Notes for resume
 

@@ -323,6 +323,7 @@ class TrackInstance {
     this.out.gain.setValueAtTime(0.0001, startAt);
     this.out.gain.exponentialRampToValueAtTime(1, startAt + Math.max(0.05, fadeIn));
     this.out.connect(synth.musicBus);
+    synth.markPool(this.out, 'music');
   }
 
   get stepDuration(): number {
