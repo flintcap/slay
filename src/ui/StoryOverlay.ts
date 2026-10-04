@@ -18,6 +18,7 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { div, span, clear } from './Widgets';
 import {
+  NPCS,
   arrivalLine,
   noteDeath,
   noteRunCleared,
@@ -25,6 +26,8 @@ import {
 } from '../sim/Story';
 import type { Chapter } from '../data/story/types';
 import { installContracts } from './StoryContracts';
+import { openDialogueFor } from './DialoguePanel';
+import { journal } from './JournalPanel';
 
 // ---------------------------------------------------------------------------
 // DOM
@@ -210,4 +213,12 @@ export function installStory(): void {
   });
 
   events.on('scene:change', () => hush());
+
+  // A handle for the screenshot and behaviour tools, next to window.SLAY.
+  (window as unknown as Record<string, unknown>).SLAY_STORY = {
+    say,
+    showCard,
+    talk: (id: string) => openDialogueFor(id.includes(':') || !(id in NPCS) ? id : `talk:${id}`),
+    journal: (tab?: string) => journal().openAt(tab ?? 'descent'),
+  };
 }

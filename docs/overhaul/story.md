@@ -1,6 +1,6 @@
 # Stream: story (lore, quests, characters)
 
-Status: in progress
+Status: paused
 
 ## Milestones
 
@@ -13,7 +13,7 @@ Status: in progress
 
 ## Next up
 
-Milestone 4, bosses with personality. Plan, already decided:
+Milestone 4, bosses with personality. Nothing of it is written yet. Plan, already decided:
 - New `src/data/story/bossVoices.ts`: `BOSS_VOICES: Record<bossId, BossVoice>` (type in `src/data/story/types.ts`)
   for every boss in `src/data/bosses.ts` (22 today; combat owns that file and may add more, so the checker must
   require a voice for every `BOSSES` entry). Each: `greet`, several `taunts`, `death`, `slain`, `victory`, `floor`.
@@ -46,4 +46,8 @@ Milestone 4, bosses with personality. Plan, already decided:
   `src/world/DungeonGen.ts` (biome, quest, boss). Step quests have ids `story.<chain>.<n>`; `questById` in
   `src/data/quests.ts` builds their definitions (weight 0, never in the random pool). Chest objectives are banned:
   some layouts produce floors with no chest. The checker generates 8 runs per step and counts what is on the floors.
+- `installStory()` also sets `window.SLAY_STORY` (`say`, `showCard`, `talk(npcId)`, `journal(tab)`) for render
+  tools. No story render has been taken yet: before or during milestone 4, write `tools/shot-story.mjs` (copy the
+  boot and `town` driver from `tools/screenshot.mjs`, port 4308) to screenshot a conversation with Renn, an offer,
+  and the journal, and look at the PNGs.
 - Text style: no em dashes in new writing, no curly quotes in data (the UI adds them), tokens `{name}` etc. only.
