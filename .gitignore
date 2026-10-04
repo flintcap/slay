@@ -9,3 +9,8 @@ dist-single/
 # like `.roofaudit` and deletes it on the way out. An interrupted run leaves
 # one behind; none of them are ever worth committing.
 .*audit/
+
+# Agent worktrees and local Claude Code state. Each overhaul agent works in
+# its own copy under .claude/worktrees and pushes its checkpoints to the
+# branch; the copies themselves are never part of the repository.
+.claude/
