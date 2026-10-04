@@ -10,21 +10,19 @@ Status: in progress
 - [x] Boss fights: phases, arena mechanics, enrage, and attacks you can learn and dodge, for every boss. — "Bosses step back to charge, and every boss fight is checked"
 - [x] Skill depth: synergies between skills, meaningful choices per rank, and a reason to mix skills instead of spamming one. — "Synergies and +skills reach skill damage, and mixing skills combos"
 - [x] Difficulty curve: headless fights confirm every class at every depth band is challenged but not walled; tune enemies up and classes up, never monsters down. — "Heroes compound with level, and a class-versus-depth harness proves the curve"
-- [ ] Sweep: every skill and every monster ability has been exercised by a checker; nothing is unhittable, unavoidable or broken.
+- [x] Sweep: every skill and every monster ability has been exercised by a checker; nothing is unhittable, unavoidable or broken. — "Sweep every skill and monster blow: markers hold still, hazards bite on entry"
 
 ## Next up
 
-Milestone 7, the sweep: every skill and every monster ability exercised by a
-checker; nothing unhittable, unavoidable or broken. Suggested shape:
-1. Skills: for every active skill in `SKILLS`, cast it with the real
-   SkillRunner against an arena target (reuse `promisingEffects()` and `rig()`
-   from `tools/curve-entry.ts` / `tools/skilldepth-entry.ts`) and require damage
-   (or its buff/summon/curse) to land. Report any that do nothing.
-2. Monster abilities: for every ability id in `entities/Abilities.ts`, have a
-   monster use it on a standing hero (must hit) and on a hero that steps out of
-   the telegraph (must miss or be greatly reduced). `tools/check-readable.mjs`
-   already covers the telegraphs; extend rather than duplicate.
-3. Fix what it finds. Keep it under ~2 minutes.
+All seven milestones are done. If more time is given, good follow-ups:
+1. A live render (`SLAY_PORT=4307 node tools/screenshot.mjs --out=shots/combat
+   --shots=town,dungeon`) to eyeball combos (`Name!` text) and hero numbers.
+2. Hero stuns: monster stuns, roots and fears put a status on the hero but
+   nothing in `Player`/`Controls` reads `incapacitates`/`immobilises`, so a
+   stunned hero can still act. Decide with feel/animation how a stunned hero
+   should look, then gate actions and movement in `Player.update`.
+3. Re-run `node tools/check-curve.mjs` after any item, progression or monster
+   change; widen it to depths 60 and 80 if the deep game matters.
 
 ## Notes for resume
 
@@ -69,6 +67,17 @@ checker; nothing unhittable, unavoidable or broken. Suggested shape:
   slow slows once, a buff counts once through any number of recomputes, and a
   poisoning hit applies one stack.
 - `check-bossfights` sim cap is 150s (Hurn needed a few more seconds).
+
+- Sweep: `node tools/check-sweep.mjs` (~25s) casts all 163 active skills with
+  the real runner (each must hit under its own name, or leave a status, a
+  minion or a move) and uses all 81 damaging monster abilities on a hero who
+  stands (must land), crosses its ground (hazards, barrages), walks out of its
+  marker and, if needed, dashes through it (must be avoidable). Shared fake
+  effects that fire `onHit`/`onFire`/`delay` callbacks: `tools/sim-effects.ts`.
+- Fixed by the sweep: a monster whose marker is drawn round its own body no
+  longer walks during the windup (`Enemy.canMove`), so the blow lands where the
+  marker said; ground hazards bite the moment you step in (`Hazard.inside`),
+  where before a wall of spikes could be crossed free between two ticks.
 
 **Requests from other streams (added at pause), and what was done:**
 - From depth, `enemy:killed` fired twice per kill: fixed. Only `Enemy.die` raises

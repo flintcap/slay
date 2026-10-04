@@ -885,6 +885,8 @@ interface Hazard {
   pulse: number;
   /** Hazards that pull the player toward the centre. */
   pull: number;
+  /** Whether the player stood in it last frame (entering bites at once). */
+  inside: boolean;
 }
 
 const hazards: Hazard[] = [];
@@ -954,6 +956,7 @@ export function spawnHazard(
       applies: null,
       pulse: 0,
       pull: 0,
+      inside: false,
     };
     hazards.push(h);
   }
@@ -973,6 +976,8 @@ export function spawnHazard(
   h.applies = opts.applies ?? null;
   h.pulse = ctx.rng.next() * TAU;
   h.pull = opts.pull ?? 0;
+  // Ground laid down under you ticks as before; only walking into it bites at once.
+  h.inside = playerInCircle(ctx, x, z, radius);
   h.mesh.position.set(x, 0.06, z);
   h.mesh.scale.setScalar(radius);
   h.mesh.visible = true;
@@ -999,10 +1004,18 @@ function tickHazards(dt: number, ctx: CombatContext): void {
     h.mesh.scale.setScalar(h.radius * (1 + Math.sin(ctx.elapsed * 3 + h.pulse) * 0.03));
     h.accum += dt;
     const period = 1 / Math.max(0.1, h.tickRate);
+    // Stepping in bites at once. Hazards used to bite only on their own tick,
+    // so a wall of spikes could be crossed for free between two ticks.
+    const inside = !!h.owner && playerInCircle(ctx, h.x, h.z, h.radius);
+    if (inside && !h.inside) {
+      h.accum = 0;
+      hitPlayer(h.owner!, ctx, h.scale, h.type, h.ability, { applies: h.applies ?? undefined });
+    }
+    h.inside = inside;
     if (h.accum >= period) {
       h.accum -= period;
-      if (h.owner && playerInCircle(ctx, h.x, h.z, h.radius)) {
-        hitPlayer(h.owner, ctx, h.scale, h.type, h.ability, { applies: h.applies ?? undefined });
+      if (inside) {
+        hitPlayer(h.owner!, ctx, h.scale, h.type, h.ability, { applies: h.applies ?? undefined });
       }
       if (ctx.rng.chance(0.5)) {
         const a = ctx.rng.next() * TAU;

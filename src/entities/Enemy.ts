@@ -692,6 +692,9 @@ export class Enemy implements Combatant {
     const inst = this.inst;
     if (inst && inst.def.rooted && inst.phase !== 'recovery') return false;
     if (inst && inst.def.kind === 'beam') return false;
+    // A marker drawn round the body is a promise about where the blow lands:
+    // the body stays on it until the blow does, or walking out of it is futile.
+    if (inst && inst.phase === 'windup' && inst.telegraph && inst.def.telegraph?.atSelf) return false;
     return true;
   }
 
