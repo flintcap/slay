@@ -320,3 +320,20 @@ window.SLAY.debug = {
   godMode(on: boolean): void;
 };
 ```
+
+## `src/entities/Controls.ts` — owned by COMBAT
+
+```ts
+/** Turns presses into actions: buffer, hold-to-cast, attack-move, force-stand, evade. */
+export class CombatControls {
+  constructor(player: Player, hooks: ControlHooks);
+  readonly keyDir: THREE.Vector3;          // camera-relative WASD this frame
+  update(dt: number, input: ControlInput, cameraYaw: number, enemies: readonly Enemy[], boss: Enemy | null): void;
+  reset(): void;
+  get lockedTarget(): Enemy | null;        // what the held attack button is locked onto
+  get pending(): string | null;            // what is waiting in the input buffer
+}
+```
+
+`Player` exposes `inRecovery`, `cancelRecovery()` and `dodgeReadyIn`. A hit that
+lands during the dash emits `player:evaded` on the event bus, for the feel layer.

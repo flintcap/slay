@@ -19,6 +19,7 @@ import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { EffectSystem } from '../fx/Effects';
 import { Player } from '../entities/Player';
+import { CombatControls } from '../entities/Controls';
 import { Enemy, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
@@ -150,6 +151,7 @@ export class DungeonScene extends GameScene {
   private rng!: Random;
 
   private keyDir = new THREE.Vector3();
+  private controls!: CombatControls;
   /** Hoisted out of the per-frame path; these ran every single frame. */
   private static readonly UP = new THREE.Vector3(0, 1, 0);
   /**
@@ -219,6 +221,19 @@ export class DungeonScene extends GameScene {
     this.run = generateRun(depth, seed, character.classId);
     this.player = new Player(character, seed);
     this.scene.add(this.player.root);
+    this.controls = new CombatControls(this.player, {
+      cast: (id, target) => this.skills.cast(id, this.player, target, this.ctxCache ?? this.context(), this.enemies, this.boss),
+      basic: (target) => this.skills.basicAttack(this.player, target, this.ctxCache ?? this.context(), this.enemies, this.boss),
+      melee: () => {
+        const style = weaponStyle(this.player);
+        return style === 'melee' || style === 'unarmed';
+      },
+      // Swinging at a barrel should break it. Nobody presses a use key on a
+      // crate that is in their way.
+      afterSwing: (target) => this.breakNear(target.x, target.z),
+      drink: (kind) => this.drink(kind),
+      dodged: () => this.rig.addTrauma(0.08),
+    });
 
     // A light on the hero is standard for the genre: torch placement is
     // procedural, so without it the player regularly ends up in pitch black.
@@ -969,92 +984,11 @@ export class DungeonScene extends GameScene {
   }
 
   private handleInput(dt: number, input: Engine['input'], ctx: CombatContext): void {
-    this.keyDir.set(0, 0, 0);
-    if (input.keyDown('KeyW') || input.keyDown('ArrowUp')) this.keyDir.z -= 1;
-    if (input.keyDown('KeyS') || input.keyDown('ArrowDown')) this.keyDir.z += 1;
-    if (input.keyDown('KeyA') || input.keyDown('ArrowLeft')) this.keyDir.x -= 1;
-    if (input.keyDown('KeyD') || input.keyDown('ArrowRight')) this.keyDir.x += 1;
-    if (this.keyDir.lengthSq() > 0) {
-      this.keyDir.applyAxisAngle(DungeonScene.UP, this.rig.yaw);
-    }
-
-    if (input.pointerOverUI) return;
-
-    // Left click is movement, full stop — except over a loot label, which owns
-    // the left button so clicking an item picks it up instead of walking past.
-    if (input.mouseLeft && !input.pointerOverClickable && this.keyDir.lengthSq() === 0) {
-      // Keyboard wins; a move order issued while a key is held leaves a stale
-      // destination the player resumes running to after releasing the key.
-      this.player.moveTo(input.worldPoint.x, input.worldPoint.z);
-    }
-
-    // Right click is the attack button. It runs whatever the player assigned,
-    // falling back to the free basic attack.
-    if (input.mouseRight) {
-      const aimed = this.enemyUnderCursor(input.worldPoint);
-      // Aim at the target itself rather than the ground under the cursor, so
-      // melee arcs and projectiles both converge on what is being clicked.
-      const target = aimed ? this.aimPoint.copy(aimed.root.position).setY(0) : input.worldPoint;
-
-      // Close the distance before swinging.
-      //
-      // A melee swing reaches about two and a half metres. Clicking a monster
-      // further away than that used to play the whole attack against thin air,
-      // and because starting an action clears the move order the character then
-      // stood still doing it again forever. From the player's side the attack
-      // button simply did no damage, which is exactly how it was reported.
-      //
-      // Only when there is actually a monster under the cursor: clicking bare
-      // ground still swings on the spot rather than turning the attack button
-      // into a second movement key.
-      if (aimed) {
-        const style = weaponStyle(this.player);
-        if (style === 'melee' || style === 'unarmed') {
-          const gap = this.tmpDir.subVectors(target, this.player.position).setY(0).length() - aimed.hitRadius;
-          if (gap > DungeonScene.MELEE_REACH) {
-            this.player.moveTo(target.x, target.z);
-            return;
-          }
-        }
-      }
-
-      const assigned = this.player.character.primaryAttack;
-      let acted = false;
-      if (assigned) {
-        acted = this.skills.cast(assigned, this.player, target, ctx, this.enemies, this.boss);
-      }
-      // Fall back whenever the assigned skill did not fire, not only when
-      // nothing is assigned. Out of mana used to mean the attack button simply
-      // did nothing, which reads as the game being broken rather than as you
-      // being out of mana.
-      if (!acted) {
-        this.skills.basicAttack(this.player, target, ctx, this.enemies, this.boss);
-      }
-      // Swinging at a barrel should break it. Nobody presses a use key on a
-      // crate that is in their way.
-      this.breakNear(target.x, target.z);
-    }
-
-    // Number keys 1-6 fire the matching hotbar slot.
-    for (let i = 0; i < 6; i++) {
-      if (!input.keyPressed(`Digit${i + 1}`)) continue;
-      const id = this.player.character.hotbar[i];
-      if (!id) continue;
-      const aimed = this.enemyUnderCursor(input.worldPoint);
-      const target = aimed ? this.aimPoint.copy(aimed.root.position).setY(0) : input.worldPoint;
-      this.skills.cast(id, this.player, target, ctx, this.enemies, this.boss);
-    }
-
+    // Turning presses into actions (buffering, hold-to-attack, attack-move,
+    // force-stand, the evade) lives in `entities/Controls`, owned by combat.
+    this.controls.update(dt, input, this.rig.yaw, this.enemies, this.boss);
+    this.keyDir.copy(this.controls.keyDir);
     this.tickInteractables(input, ctx);
-
-    if (input.wasPressed('potionLife')) this.drink('life');
-    if (input.wasPressed('potionMana')) this.drink('mana');
-
-    if (input.wasPressed('dodge')) {
-      const d = this.tmpDir.subVectors(input.worldPoint, this.player.position);
-      if (this.keyDir.lengthSq() > 0) d.copy(this.keyDir);
-      if (this.player.dodge(d.x, d.z)) this.rig.addTrauma(0.08);
-    }
   }
 
   /**

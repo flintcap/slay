@@ -9,6 +9,8 @@ export interface GameEvents {
   'player:damaged': { amount: number; type: DamageType; life: number; maxLife: number };
   'player:healed': { amount: number };
   'player:died': { killedBy: string; depth: number };
+  /** A hit passed through the hero's dodge. Combat emits; feel may reward it. */
+  'player:evaded': { ability: string; source: string };
   'player:levelUp': { level: number; statPoints: number; skillPoints: number };
   'player:xp': { gained: number; total: number; toNext: number };
   'enemy:damaged': {

@@ -70,6 +70,8 @@ export class Player {
 
   /** Seconds remaining in an uninterruptible action (attack/cast/dodge). */
   private actionLock = 0;
+  /** Full length of the current action, so its recovery tail can be cancelled. */
+  private actionTotal = 0;
   private dodgeTime = 0;
   private dodgeDir = new THREE.Vector3();
   /** Seconds until the dash is available again, and the full period. */
@@ -236,7 +238,11 @@ export class Player {
    * and reads to the player as "it never stops running".
    */
   moveTo(x: number, z: number): void {
-    if (this.frozen || this.actionLock > 0) return;
+    if (this.frozen) return;
+    // A move order during an attack's recovery cancels it; earlier than that
+    // the order is kept and the hero sets off the instant the swing ends,
+    // rather than the click being thrown away.
+    this.cancelRecovery();
     const dx = x - this.root.position.x;
     const dz = z - this.root.position.z;
     const d = Math.hypot(dx, dz);
@@ -265,6 +271,7 @@ export class Player {
   /** Lock out movement for an attack/cast and play the matching clip. */
   beginAction(clip: string, duration: number): void {
     this.actionLock = duration;
+    this.actionTotal = duration;
     this.moveTarget = null;
     this.animator.play(clip, { fade: 0.08, speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)) });
   }
@@ -290,15 +297,49 @@ export class Player {
     this.moveTarget = null;
   }
 
+  /**
+   * Fraction of an action after which movement may cut it short. Every hit in
+   * the game resolves on the first frame of the action, so what remains is
+   * follow-through; letting a move order take it back is what makes the
+   * controls feel instant without letting anyone attack faster.
+   */
+  static readonly RECOVERY_CANCEL_AT = 0.55;
+
+  /** True once the current action is far enough along to be walked out of. */
+  get inRecovery(): boolean {
+    if (this.actionLock <= 0 || this.dodgeTime > 0 || this.actionTotal <= 0) return false;
+    return 1 - this.actionLock / this.actionTotal >= Player.RECOVERY_CANCEL_AT;
+  }
+
+  /** Ends the current action early if it is in its recovery tail. */
+  cancelRecovery(): boolean {
+    if (!this.inRecovery) return false;
+    this.actionLock = 0;
+    this.actionTotal = 0;
+    return true;
+  }
+
+  /** Seconds until a dodge would be accepted. Zero when it is ready now. */
+  get dodgeReadyIn(): number {
+    if (this.frozen) return Infinity;
+    return Math.max(this.dodgeCd, this.dodgeTime > 0 ? this.dodgeTime : 0);
+  }
+
   dodge(dirX: number, dirZ: number): boolean {
     // A real cooldown. Without one the dash was limited only by its own 0.32s
     // animation, so holding the key was simply a faster way to move and there
     // was never a moment where committing to it cost anything.
-    if (this.frozen || this.dodgeTime > 0 || this.actionLock > 0 || this.dodgeCd > 0) return false;
+    //
+    // It does not wait for an attack to finish, though. The evade is the answer
+    // to a telegraph, and an answer that is refused because you were swinging
+    // is not one: it cancels whatever the hero was doing.
+    if (this.frozen || this.dodgeTime > 0 || this.dodgeCd > 0) return false;
+    this.actionLock = 0;
     const len = Math.hypot(dirX, dirZ) || 1;
     this.dodgeDir.set(dirX / len, 0, dirZ / len);
     this.dodgeTime = 0.32;
     this.actionLock = 0.32;
+    this.actionTotal = 0.32;
     this.dodgeCd = this.dodgeCdMax;
     this.animator.play('dodge', { fade: 0.05 });
     this.targetFacing = Math.atan2(this.dodgeDir.x, this.dodgeDir.z);
@@ -325,7 +366,12 @@ export class Player {
 
   /** Apply an incoming attack. Returns damage actually taken. */
   takeDamage(packet: DamagePacket, rng: Rng): number {
-    if (!this.alive || this.invulnerable || this.dodgeTime > 0) return 0;
+    if (!this.alive || this.invulnerable) return 0;
+    if (this.dodgeTime > 0) {
+      // Slipped it. Said out loud so the feel layer can reward a timed evade.
+      if (packet.amount > 0) events.emit('player:evaded', { ability: packet.ability ?? '', source: packet.source });
+      return 0;
+    }
     const result = mitigate(packet, this.stats, rng);
     // Gloom Shroud and Undying both cut what actually lands, after mitigation
     // rather than as armour, because both are written as "you take less".
@@ -585,6 +631,8 @@ export class Player {
       return;
     }
 
+    // Steering by hand walks out of an attack's follow-through.
+    if (this.actionLock > 0 && keyboardDir && keyboardDir.lengthSq() > 0.001) this.cancelRecovery();
     if (this.actionLock > 0) {
       this.velocity.multiplyScalar(Math.max(0, 1 - dt * 12));
       return;
