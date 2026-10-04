@@ -26,6 +26,7 @@ import * as THREE from 'three';
 import type { EquipSlot, ItemRarity, ItemVisual, Rng } from '../types';
 import { buildPerson, wearItem, attachToSocket, weaponGrip, type PersonLook, type PlayerModel } from './CharacterModels';
 import { buildItemModel } from './ItemModels';
+import { compactModel } from './ModelBudget';
 import { buildFitted } from './WornGear';
 import { armNodes, legNodes, ringStack, sweep, torsoRings, type BodyFit } from './BodyKit';
 import { surface } from './Materials';
@@ -408,7 +409,7 @@ export function buildNpcModel(id: string, rng: Rng = new Random(1)): PlayerModel
   for (const t of spec.tools) {
     try {
       if (t.item) {
-        const model = buildItemModel(t.item.visual, rng, 'normal');
+        const model = compactModel(buildItemModel(t.item.visual, rng, 'normal'));
         attachToSocket(root, bones, t.item.slot, model, undefined, weaponGrip(t.item.category, !!t.item.twoHanded));
       } else if (t.prop) {
         const bone = bones[t.hand === 'L' ? 'handL' : 'handR'];

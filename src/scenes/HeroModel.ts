@@ -4,6 +4,7 @@ import { Random } from '../core/RNG';
 import { disposeObject } from '../core/Engine';
 import { buildPlayerModel, attachToSocket, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
 import { buildItemModel } from '../art/ItemModels';
+import { compactModel } from '../art/ModelBudget';
 import { Animator } from '../art/Animation';
 import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
@@ -74,7 +75,7 @@ function assemble(classId: CharClassId, pieces: Map<EquipSlot, Piece>, seed: num
         slot === 'mainHand' || slot === 'offHand' ? weaponGrip(base?.category, base?.slot === 'twoHand') : undefined;
       // Armour is worn on the body, as in play; the rest is socketed.
       if (wearItem(built.root, built.bones, slot, piece, visual)) continue;
-      const mesh = buildItemModel(visual, rng, piece.rarity);
+      const mesh = compactModel(buildItemModel(visual, rng, piece.rarity));
       mesh.traverse((o) => {
         o.castShadow = true;
       });

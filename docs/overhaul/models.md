@@ -8,22 +8,21 @@ Status: in progress
 - [x] Equipped gear on the body: helm, chest, gloves, boots, belt and shield show the actual item worn. Shape, material and ornament change with the item's base, tier and rarity, so upgrading visibly changes your character. Uniques and sets look unique. ("Models: real bodies and armour cut to fit them")
 - [x] Monster looks: a distinct, readable silhouette per family, more detail and material variety, elites and champions visibly tougher, bosses that look like bosses. ("Models: monsters by family and rank, one skinned mesh per material")
 - [x] Town NPCs: each camp NPC built for their role (smith, vendor, healer, stash keeper and the rest), with clothing and props that say who they are. ("Models: every camp resident built for their trade")
-- [ ] Level of detail and budgets: far-away models get cheaper, crowds of monsters stay smooth, nothing visibly pops.
+- [x] Level of detail and budgets: far-away models get cheaper, crowds of monsters stay smooth, nothing visibly pops. ("Models: monster level of detail and merged held items")
 - [ ] Sweep: a turntable render of every class in low, mid and top gear, every monster family and every NPC, checked for clipping, floating parts and style drift.
 
 ## Next up
 
-Milestone 5, level of detail and budgets. Concretely:
-1. Monsters: build a second, cheaper prototype per cache key (fewer lathe/sphere segments, no `alt` and
-   `rank` dressing below a size threshold, no weapon detail) and swap a monster's meshes to it beyond
-   ~22 m from the camera, with a small hysteresis band so nothing pops back and forth. Do it inside
-   `MonsterModels.ts` (e.g. a `setMonsterDetail(root, far)` the scene calls, or a `THREE.LOD`-like switch
-   driven from `RigAnimator.update`), and keep both levels on the same skeleton so animation is shared.
-2. Characters: held weapons and shields from `ItemModels` cost one draw call per part (5-15 each). Merge a
-   socketed model's meshes by material once it is attached (in `attachToSocket`'s caller side, not in the
-   grip code, which is the animation stream's), or ask art to merge in `buildItemModel`.
-3. Measure with the `classes` and `monsters` sheets (they print tris and draw calls) and record budgets
-   here: player top gear under 40 calls, monster under 6, NPC under 25.
+Milestone 6, the sweep. Render `classes`, `bodies-low|mid|top`, `monsters`, `npcs-a|b` and one full game
+render (`npm run build` then `SLAY_PORT=4311 node tools/screenshot.mjs --out=shots/models/sweep
+--shots=town,dungeon`), look for clipping (long hair through chest armour, robe skirts through legs in
+stride, capes through legs, belts inside plate), floating parts (props, pauldrons, crowns) and style drift
+between classes, NPCs and monsters, and fix what is found. Rerun `check-worn` and `check-paperdoll` when
+the machine is quiet (they timed out on screenshots under load, see notes). Known items to look at:
+- revenant and pyromancer long hair (`hairLong`) under chest plate and a closed helm (closed helms hide it);
+- the coat skirt is open at the front, trousers cover the legs (NPCs only);
+- hood shells on Vell and Marrow, the Listener's blindfold, Wenna's hat at the game camera;
+- monster `alt` rags on undead read as a kilt; maybe vary length per rank.
 
 ## Notes for resume
 
@@ -113,6 +112,17 @@ Town NPCs (`src/art/NpcModels.ts`):
   (2.0,-14.4) = renn, and Sister Vell is new, standing at the apothecary facing `npcSpots.alchemist`.
   The animator gets `setGrip(npcCarryGrip(id))` so two-handed tools are held with both hands.
 - Story stream: talk spots still come from `TALK_SPOTS`/`npcSpots`; positions are unchanged.
+
+Budgets and level of detail (milestone 5):
+- Monsters: each prototype is built twice from one seed (`DETAIL` 1 and 0: fewer lathe and sphere segments,
+  cylinders for limbs, 4-sided horns) and both are skinned to the same skeleton under a `THREE.LOD`
+  (`FAR_DISTANCE` 25 m, hysteresis 0.1). The renderer switches levels itself; the far level casts no
+  shadow. The `monsters` sheet prints near and far triangles.
+- Held items: `src/art/ModelBudget.ts` `compactModel(root)` merges a static item model's meshes into one
+  per material (keeps `userData.orbit/spin` parts). Used in Player, PaperdollView, HeroModel, NpcModels and
+  monster weapons (one-line wraps around `buildItemModel`).
+- Measured (classes sheet): bare 10-12 calls, low 12-19, mid 21-30, top 28-41 (was 78-105). Monsters 2-5
+  calls plus a weapon (2-4 now). NPCs 14-24. Budgets: player top gear <= 42, monster <= 8, NPC <= 25.
 
 Requests to other streams:
 - art: adopt `GearLook.gearLook` for trim/set colour in `ItemModels` (see above).

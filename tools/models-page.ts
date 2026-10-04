@@ -17,6 +17,7 @@ import type { CharClassId, EquipSlot, Item, ItemRarity, MonsterVisual } from '..
 import { Random } from '../src/core/RNG';
 import * as CM from '../src/art/CharacterModels';
 import { buildItemModel } from '../src/art/ItemModels';
+import { compactModel } from '../src/art/ModelBudget';
 import { Animator } from '../src/art/Animation';
 import { ITEM_BASES } from '../src/data/itemBases';
 import { MONSTERS } from '../src/data/monsters';
@@ -127,7 +128,12 @@ export function cost(root: THREE.Object3D): { tris: number; calls: number } {
     const m = o as THREE.Mesh;
     if (!m.isMesh || !m.visible) return;
     let vis = true;
-    for (let p: THREE.Object3D | null = m; p; p = p.parent) if (!p.visible) vis = false;
+    for (let p: THREE.Object3D | null = m; p; p = p.parent) {
+      if (!p.visible) vis = false;
+      // Only the near level of a LOD counts: the others are not drawn.
+      const lod = p.parent as THREE.LOD | null;
+      if (lod && (lod as THREE.LOD).isLOD && lod.levels[0]?.object !== p) vis = false;
+    }
     if (!vis) return;
     const geo = m.geometry;
     const idx = geo.getIndex();
@@ -237,7 +243,7 @@ export function dressed(cls: CharClassId, tier: Tier): Figure {
     if (onBody) continue;
     const socketKey = base.category === 'quiver' ? 'quiver' : undefined;
     const grip = s === 'mainHand' || s === 'offHand' ? CM.weaponGrip(base.category, base.slot === 'twoHand') : undefined;
-    const mesh = buildItemModel(base.visual, rng, rarity);
+    const mesh = compactModel(buildItemModel(base.visual, rng, rarity));
     CM.attachToSocket(holder, built.bones, s, mesh, socketKey, grip);
   }
   const main = kit.mainHand ? baseById.get(kit.mainHand[0]) : undefined;
@@ -464,7 +470,19 @@ export const SHEETS: Record<string, () => Promise<string>> = {
       g.fillText(p.label.slice(0, 22), x, y - 4);
       g.fillStyle = DIM;
       g.fillText(`${p.family} ${k.tris}t ${k.calls}dc`, x, y + ch + 12);
-      report.push(`${p.label} [${p.family}/${p.visual.body}/${p.rank}]: ${k.tris} tris, ${k.calls} calls`);
+      // The far level, which the game swaps in beyond 25 m from the camera.
+      let farTris = 0;
+      model.root.traverse((o) => {
+        const lod = o as THREE.LOD;
+        if (!lod.isLOD || !lod.levels[1]) return;
+        lod.levels[1].object.traverse((m) => {
+          const mm = m as THREE.Mesh;
+          if (!mm.isMesh) return;
+          const idx = mm.geometry.getIndex();
+          farTris += ((idx ? idx.count : mm.geometry.getAttribute('position').count) / 3) | 0;
+        });
+      });
+      report.push(`${p.label} [${p.family}/${p.visual.body}/${p.rank}]: ${k.tris} tris (far ${farTris}), ${k.calls} calls`);
       await settle();
     }
     console.log(report.join('\n'));

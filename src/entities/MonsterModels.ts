@@ -31,6 +31,8 @@ import { mergeSkinned, skinRigid } from '../art/BodyKit';
 import { resolvePalette } from '../art/Palettes';
 import { Noise } from '../art/Noise';
 import { buildItemModel } from '../art/ItemModels';
+import { compactModel } from '../art/ModelBudget';
+import { Random } from '../core/RNG';
 
 // ---------------------------------------------------------------------------
 // Archetypes
@@ -245,7 +247,15 @@ function safeBevelBox(w: number, h: number, d: number, bevel: number): THREE.Buf
   }
 }
 
+/**
+ * Geometry detail for the build in progress: 1 for the near model, 0 for the
+ * far one. The far model is the same creature from the same random stream
+ * with fewer segments on every round thing, and it casts no shadow.
+ */
+let DETAIL = 1;
+
 function safeLathe(profile: Array<[number, number]>, segments: number): THREE.BufferGeometry {
+  if (DETAIL < 1) segments = Math.max(5, Math.round(segments * 0.6));
   try {
     return lathe(profile, segments);
   } catch {
@@ -269,6 +279,11 @@ function safeMerge(list: THREE.BufferGeometry[]): THREE.BufferGeometry {
  * what made every monster limb read as a stick of pipe.
  */
 function limbGeo(length: number, rTop: number, rBottom: number, seg = 6): THREE.BufferGeometry {
+  if (DETAIL < 1) {
+    const g = new THREE.CylinderGeometry(rTop, rBottom, length, 5, 1, false);
+    g.translate(0, -length * 0.5, 0);
+    return g;
+  }
   try {
     const g = limb(length, rTop, rBottom, Math.max(5, seg));
     g.translate(0, -length, 0);
@@ -288,7 +303,7 @@ function spikeGeo(length: number, radius: number, seg = 5): THREE.BufferGeometry
 }
 
 function sphereGeo(r: number, detail = 1): THREE.BufferGeometry {
-  return new THREE.IcosahedronGeometry(r, detail);
+  return new THREE.IcosahedronGeometry(r, DETAIL < 1 ? Math.max(0, detail - 1) : detail);
 }
 
 function place(
@@ -1182,7 +1197,7 @@ function boxOf(b: Builder, bone: string): THREE.Box3 | null {
 /** A horn: a curved spike swept back and out from a point on the head. */
 function horn(len: number, r: number, curve = 0.6): THREE.BufferGeometry {
   try {
-    return spike(len, r, 6, curve);
+    return spike(len, r, DETAIL < 1 ? 4 : 6, curve);
   } catch {
     return spikeGeo(len, r, 6);
   }
@@ -1566,49 +1581,116 @@ function dressRank(b: Builder, tier: number, arch: Archetype): void {
 // Assembly
 // ---------------------------------------------------------------------------
 
-function buildPrototype(v: MonsterVisual, rng: Rng, opts: MonsterLookOpts): Prototype {
-  const archetype = monsterArchetype(v.body);
-  let plan: BuildResult;
+function planFor(archetype: Archetype, v: MonsterVisual, rng: Rng): BuildResult {
   switch (archetype) {
     case 'quadruped':
-      plan = buildQuadruped(v, rng);
-      break;
+      return buildQuadruped(v, rng);
     case 'serpent':
-      plan = buildSerpent(v, rng);
-      break;
+      return buildSerpent(v, rng);
     case 'arachnid':
-      plan = buildArachnid(v, rng);
-      break;
+      return buildArachnid(v, rng);
     case 'insectoid':
-      plan = buildInsectoid(v, rng);
-      break;
+      return buildInsectoid(v, rng);
     case 'floating':
-      plan = buildFloating(v, rng);
-      break;
+      return buildFloating(v, rng);
     case 'ooze':
-      plan = buildOoze(v, rng);
-      break;
+      return buildOoze(v, rng);
     case 'winged':
-      plan = buildWinged(v, rng);
-      break;
+      return buildWinged(v, rng);
     case 'swarm':
-      plan = buildSwarm(v, rng);
-      break;
+      return buildSwarm(v, rng);
     case 'colossal':
-      plan = buildHumanoid(v, rng, true);
-      break;
+      return buildHumanoid(v, rng, true);
     case 'humanoid':
     default:
-      plan = buildHumanoid(v, rng, false);
-      break;
+      return buildHumanoid(v, rng, false);
   }
+}
+
+/**
+ * Beyond this camera distance a monster draws its far model. The game camera
+ * sits about 15.5 m from the player, so this is roughly the top third of the
+ * screen and beyond.
+ */
+const FAR_DISTANCE = 25;
+
+/**
+ * One skinned mesh per material for the whole creature, every vertex bound
+ * rigidly to its bone. The old build was one mesh per bone, ~20 draw calls a
+ * monster; this is three to five, which is what lets a floor hold a crowd.
+ * Bones carry no bind-pose rotation, so bone space to model space is a pure
+ * translation and the rigid binding is exact.
+ */
+function skinParts(
+  parts: Part[],
+  bones: Record<string, THREE.Bone>,
+  skeleton: THREE.Skeleton,
+  index: Map<string, number>,
+  mats: Record<PartMat, THREE.Material>,
+  shadows: boolean,
+): THREE.Group {
+  const group = new THREE.Group();
+  const buckets = new Map<PartMat, THREE.BufferGeometry[]>();
+  for (const part of parts) {
+    const bone = bones[part.bone];
+    if (!bone) {
+      part.geo.dispose();
+      continue;
+    }
+    const g = part.geo;
+    g.applyMatrix4(bone.matrixWorld);
+    skinRigid(g, index.get(bone.name) ?? 0);
+    const list = buckets.get(part.mat) ?? [];
+    list.push(g);
+    buckets.set(part.mat, list);
+  }
+  for (const [key, list] of buckets) {
+    let geo: THREE.BufferGeometry;
+    try {
+      geo = mergeSkinned(list);
+    } catch {
+      continue;
+    }
+    for (const g of list) g.dispose();
+    const mesh = new THREE.SkinnedMesh(geo, mats[key]);
+    mesh.name = `monster.${key}`;
+    mesh.castShadow = shadows && key !== 'glow' && key !== 'rank';
+    mesh.receiveShadow = false;
+    group.add(mesh);
+    mesh.bind(skeleton, new THREE.Matrix4());
+    // Culling bounds: the bind-pose bounds, grown to cover a limb's swing.
+    geo.computeBoundingSphere();
+    mesh.boundingSphere = geo.boundingSphere!.clone();
+    mesh.boundingSphere.radius *= 1.5;
+  }
+  return group;
+}
+
+function buildPrototype(v: MonsterVisual, seed: number, opts: MonsterLookOpts): Prototype {
+  const archetype = monsterArchetype(v.body);
+  const tier = rankTier(opts.rank);
+  // Near and far builds come from the same seed, so they are the same
+  // creature: same horns, same rags, same bones.
+  const build = (detail: number) => {
+    DETAIL = detail;
+    try {
+      const rng = new Random(seed);
+      const plan = planFor(archetype, v, rng);
+      const builder = new Builder(rng, v);
+      plan.build(builder);
+      dressFamily(builder, opts.family, archetype);
+      dressRank(builder, tier, archetype);
+      return { plan, builder, rng };
+    } finally {
+      DETAIL = 1;
+    }
+  };
+  const near = build(1);
+  const far = build(0);
+  const plan = near.plan;
+  const rng = near.rng;
 
   const { root, bones } = buildBones(plan.specs);
-  const builder = new Builder(rng, v);
-  plan.build(builder);
-  const tier = rankTier(opts.rank);
-  dressFamily(builder, opts.family, archetype);
-  dressRank(builder, tier, archetype);
 
   const isOoze = archetype === 'ooze';
   // Only actual metal is metal. Treating 'stone' as a construct put every
@@ -1628,48 +1710,20 @@ function buildPrototype(v: MonsterVisual, rng: Rng, opts: MonsterLookOpts): Prot
     rank: glowMaterial(RANK_GLOW[opts.rank ?? ''] ?? eye, 1.8),
   };
 
-  // One skinned mesh per material for the whole creature, every vertex bound
-  // rigidly to its bone. The old build was one mesh per bone, ~20 draw calls a
-  // monster; this is three to five, which is what lets a floor hold a crowd.
-  // Bones carry no bind-pose rotation, so bone space to model space is a pure
-  // translation and the rigid binding is exact.
   root.updateMatrixWorld(true);
   const order = plan.specs.map((sp) => bones[sp.name]!).filter(Boolean);
   const index = new Map(order.map((bn, i) => [bn.name, i]));
-  const buckets = new Map<PartMat, THREE.BufferGeometry[]>();
-  for (const part of builder.parts) {
-    const bone = bones[part.bone];
-    if (!bone) {
-      part.geo.dispose();
-      continue;
-    }
-    const g = part.geo;
-    g.applyMatrix4(bone.matrixWorld);
-    skinRigid(g, index.get(bone.name) ?? 0);
-    const list = buckets.get(part.mat) ?? [];
-    list.push(g);
-    buckets.set(part.mat, list);
-  }
   const skeleton = new THREE.Skeleton(order);
-  for (const [key, list] of buckets) {
-    let geo: THREE.BufferGeometry;
-    try {
-      geo = mergeSkinned(list);
-    } catch {
-      continue;
-    }
-    for (const g of list) g.dispose();
-    const mesh = new THREE.SkinnedMesh(geo, mats[key]);
-    mesh.name = `monster.${key}`;
-    mesh.castShadow = key !== 'glow' && key !== 'rank';
-    mesh.receiveShadow = false;
-    root.add(mesh);
-    mesh.bind(skeleton, new THREE.Matrix4());
-    // Culling bounds: the bind-pose bounds, grown to cover a limb's swing.
-    geo.computeBoundingSphere();
-    mesh.boundingSphere = geo.boundingSphere!.clone();
-    mesh.boundingSphere.radius *= 1.5;
-  }
+  // Level of detail: the far model has a fraction of the triangles and casts
+  // no shadow (at that distance the shadow is a smudge, and the shadow pass
+  // draws every caster again). A tenth of hysteresis keeps a monster walking
+  // along the boundary from flickering between the two. Both levels ride the
+  // same skeleton, so the animation is shared and the switch cannot pop pose.
+  const lod = new THREE.LOD();
+  lod.name = 'monster.lod';
+  lod.addLevel(skinParts(near.builder.parts, bones, skeleton, index, mats, true), 0);
+  lod.addLevel(skinParts(far.builder.parts, bones, skeleton, index, mats, false), FAR_DISTANCE, 0.1);
+  root.add(lod);
 
   // --- weapon -------------------------------------------------------------
   //
@@ -1679,10 +1733,8 @@ function buildPrototype(v: MonsterVisual, rng: Rng, opts: MonsterLookOpts): Prot
     const hand = bones.handR ?? bones.handL;
     if (hand) {
       try {
-        const model = buildItemModel(
-          { shape: v.weapon, palette: WEAPON_PALETTE[v.weapon] ?? 'metal.iron' },
-          rng.fork('weapon'),
-          'normal',
+        const model = compactModel(
+          buildItemModel({ shape: v.weapon, palette: WEAPON_PALETTE[v.weapon] ?? 'metal.iron' }, rng.fork('weapon'), 'normal'),
         );
         // Item models are authored with the grip at the origin and the business
         // end along +Y, the same convention the player's hand sockets use.
@@ -1734,7 +1786,8 @@ export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number
   }
   const wanted = Math.min(VARIANTS_PER_KEY, 1 + Math.floor(rng.next() * VARIANTS_PER_KEY));
   while (variants.length < wanted) {
-    variants.push(buildPrototype(visual, rng.fork(`proto:${key}:${variants.length}`), opts));
+    const seed = Math.floor(rng.fork(`proto:${key}:${variants.length}`).next() * 0xffffffff);
+    variants.push(buildPrototype(visual, seed, opts));
   }
   const proto = variants[Math.floor(rng.next() * variants.length)] ?? variants[0]!;
 

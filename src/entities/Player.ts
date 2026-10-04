@@ -9,6 +9,7 @@ import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGr
 import { disposeObject } from '../core/Engine';
 import { Animator } from '../art/Animation';
 import { buildItemModel } from '../art/ItemModels';
+import { compactModel } from '../art/ModelBudget';
 import { getBase } from '../sim/Loot';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
@@ -207,7 +208,8 @@ export class Player {
         // anything the body cannot wear fall back to a socketed model.
         let mesh = wearItem(this.body, this.bones, slot, item, visual);
         if (!mesh) {
-          mesh = buildItemModel(visual, this.rng, item.rarity);
+          // Merged per material: a held item is static, and ten parts cost ten draws.
+          mesh = compactModel(buildItemModel(visual, this.rng, item.rarity));
           attachToSocket(this.root, this.bones, slot, mesh, socketKey, grip);
         }
         // Marks the weapon so a poison coat can glow on the blade and nowhere

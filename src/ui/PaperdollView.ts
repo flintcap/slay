@@ -19,6 +19,7 @@ import { Random } from '../core/RNG';
 import { disposeObject } from '../core/Engine';
 import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
 import { buildItemModel } from '../art/ItemModels';
+import { compactModel } from '../art/ModelBudget';
 import { Animator } from '../art/Animation';
 import { getBase } from '../sim/Loot';
 
@@ -188,7 +189,7 @@ export class PaperdollView {
         // Armour is worn on the body itself, exactly as in the world.
         let mesh = this.model ? wearItem(this.model, this.bones, slot, item, visual) : null;
         if (!mesh) {
-          mesh = buildItemModel(visual, rng, item.rarity);
+          mesh = compactModel(buildItemModel(visual, rng, item.rarity));
           attachToSocket(this.rig, this.bones, slot, mesh, socketKey, grip);
         }
         this.equipMeshes.set(slot, mesh);
