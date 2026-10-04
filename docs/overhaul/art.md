@@ -68,3 +68,10 @@ ignored by `resolveShape` beyond the family) without breaking `node tools/check-
   (`TREE_BY_ID`), physical/untyped skills take the class light. `STATUS_MAP` and
   `AFFIX_MAP` do the same for statuses and monster affixes.
 - `Icons.ts` is now only caching and scheduling; it imports `data/skills` for tree lookup.
+- **Request from models:** worn armour (helm, chest, gloves, boots, belt) is now built by
+  `src/art/WornGear.ts`, cut to the body; `ItemModels` still builds held weapons, shields, drops and
+  icons. `src/art/GearLook.ts` `gearLook(item, visual)` gives palette, trim palette and set tint, accent,
+  glow, rarity tier, base tier and a per-unique signature. Please build `itemLook()` on it (or use it in
+  `kitFor`) so a set piece's trim colour and a mythic's glow match on the floor, in the hand and on the
+  body. Held items are merged per material after build by `ModelBudget.compactModel` (parts with
+  `userData.orbit/spin` are kept separate), so keep animating parts tagged that way.

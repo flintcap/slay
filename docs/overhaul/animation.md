@@ -87,3 +87,9 @@ Milestone 2, attacks. Concretely:
   contract with models: never rename or move bones.
 - Known look issue to revisit in the sweep: the walk is a little bent-kneed (soft IK keeps every
   knee slightly flexed, `SOFT_FROM = 0.975`).
+- **From models:** monsters are now one rigidly weighted SkinnedMesh per material under a `THREE.LOD`
+  (near and far levels on one skeleton); bones and names are unchanged, so `RigAnimator` works as before.
+  Models agrees in advance: when monster motion moves to `src/art/MonsterAnimation.ts`, replace the class
+  in `MonsterModels.ts` with `export { RigAnimator } from '../art/MonsterAnimation'`. Player and NPC bodies
+  are built by `buildPerson` on the same joints (`jointsFor` untouched); NPCs call `setGrip` for their
+  two-handed tools.

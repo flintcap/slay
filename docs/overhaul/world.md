@@ -71,3 +71,8 @@ Status: paused
 - `tools/check-propmesh.mjs` timed out under load during this session (did not fail); rerun it
   alone. check-roof, check-props, check-palettes, check-decalheight, check-blockers passed.
 - The story stream owns town NPCs and dialogue; keep Town.ts changes to lighting, ground and life.
+- **From models:** `Town.ts` `npc()` now builds residents with `buildNpcModel(id)` from
+  `src/art/NpcModels.ts` (nine people, Sister Vell added at the apothecary). Request: a smooth skin
+  palette (no speckle or stain passes) would let `CharacterModels.skinMaterial` keep an albedo map;
+  today it drops the map because the `skin.*` speckle reads as dirt on faces. Also, the lantern post at
+  (-7.0, -13.5) stands inside the apothecary footprint at (-6.5, -13.5).

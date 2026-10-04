@@ -159,3 +159,6 @@ Still to do for milestone 5:
   every swing (`swing.heavy` for heavy skills); impacts are layered recipes.
   `boss.final` exists for the Gaunt King. `tools/check-audio.mjs` (static)
   proves tracks, beds, footsteps, swings, UI ids and monster abilities resolve.
+- **Request from models:** monsters are now skinned meshes with a skeleton per instance. When a summon's
+  model is thrown away in `SkillRunner.ts`, call `releaseMonsterModel(root)` from
+  `entities/MonsterModels` (Enemy already does), or each one leaks a small bone texture.
