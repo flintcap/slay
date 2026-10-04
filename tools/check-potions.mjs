@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const PORT = 4218;
+const PORT = Number(process.env.SLAY_PORT ?? 4218);
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
   stdio: ['ignore', 'ignore', 'pipe'],
 });

@@ -18,7 +18,7 @@ const args = Object.fromEntries(
   })
 );
 const CLASS = String(args.class ?? 'warden');
-const PORT = Number(args.port ?? 4245);
+const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4245);
 
 if (!existsSync('dist/index.html')) {
   console.error('No dist/ build. Run `npm run build` first.');

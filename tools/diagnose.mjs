@@ -9,7 +9,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const PORT = 4188;
+const PORT = Number(process.env.SLAY_PORT ?? 4188);
 const CHROME = '/opt/pw-browsers/chromium';
 
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {

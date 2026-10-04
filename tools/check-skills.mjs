@@ -21,7 +21,7 @@ const args = Object.fromEntries(
   })
 );
 const CLASSES = String(args.classes ?? 'warden,shadowblade,ranger').split(',');
-const PORT = Number(args.port ?? 4247);
+const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4247);
 
 /** The weapon each class is meant to fight with, so no test is weapon-starved. */
 const WEAPON = {

@@ -13,7 +13,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const PORT = 4241;
+const PORT = Number(process.env.SLAY_PORT ?? 4241);
 
 if (!existsSync('dist/index.html')) {
   console.error('No dist/ build. Run `npm run build` first.');

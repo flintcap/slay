@@ -22,7 +22,7 @@ const args = Object.fromEntries(
 );
 
 const CLASS = String(args.class ?? 'ranger');
-const PORT = Number(args.port ?? 4233);
+const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4233);
 const OUT = 'shots';
 mkdirSync(OUT, { recursive: true });
 

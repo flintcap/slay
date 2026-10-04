@@ -16,7 +16,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const PORT = 4194;
+const PORT = Number(process.env.SLAY_PORT ?? 4194);
 const CHROME = '/opt/pw-browsers/chromium';
 mkdirSync('shots', { recursive: true });
 

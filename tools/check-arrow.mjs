@@ -12,7 +12,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const PORT = 4231;
+const PORT = Number(process.env.SLAY_PORT ?? 4231);
 const OUT = 'shots';
 mkdirSync(OUT, { recursive: true });
 

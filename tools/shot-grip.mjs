@@ -17,7 +17,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const base = process.argv[2] ?? 'sword.short';
 const cls = process.argv[3] ?? 'warden';
 
-const PORT = 4219;
+const PORT = Number(process.env.SLAY_PORT ?? 4219);
 const server = spawn(
   'npx',
   ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'],

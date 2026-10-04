@@ -25,7 +25,7 @@ const OUT = path.resolve(args.out ?? 'shots');
 const WANT = String(args.shots ?? 'title,charSelect,town,dungeon,inventory,skills,boss').split(',');
 const WIDTH = Number(args.width ?? 1920);
 const HEIGHT = Number(args.height ?? 1080);
-const PORT = Number(args.port ?? 4173);
+const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4173);
 
 mkdirSync(OUT, { recursive: true });
 

@@ -19,7 +19,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const PORT = 4225;
+const PORT = Number(process.env.SLAY_PORT ?? 4225);
 const server = spawn('npx', ['vite','preview','--port',String(PORT),'--strictPort','--host','127.0.0.1'], { stdio:['ignore','ignore','pipe'] });
 process.on('exit', () => server.kill('SIGTERM'));
 for (let i=0;i<60;i++){ try { if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) break; } catch {} await sleep(500); }

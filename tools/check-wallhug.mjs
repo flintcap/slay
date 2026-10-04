@@ -23,7 +23,7 @@ const args = Object.fromEntries(
   }),
 );
 const CLASS = String(args.class ?? 'ranger');
-const PORT = Number(args.port ?? 4247);
+const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4247);
 
 if (!existsSync('dist/index.html')) {
   console.error('No dist/ build. Run `npm run build` first.');
