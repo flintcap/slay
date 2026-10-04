@@ -95,9 +95,13 @@ function material(key: MatKey, look: GearLook): THREE.Material {
   if (key === 'main') {
     // `key|0xRRGGBB` tints a palette: the people in camp wear dyed cloth.
     const [pal, tint] = look.palette.split('|');
-    return surface(pal!, { repeat: REPEAT[look.family] ?? 3, seed: 0, tint: tint ? Number(tint) : undefined });
+    // Worn metal keeps a share of diffuse light. Full metalness on a body in
+    // a dark dungeon has nothing to reflect, and a polished helm read as a
+    // black egg.
+    const metal = look.family === 'metal' ? { metalness: 0.72, roughness: 1.08 } : {};
+    return surface(pal!, { repeat: REPEAT[look.family] ?? 3, seed: 0, tint: tint ? Number(tint) : undefined, ...metal });
   }
-  if (key === 'trim') return surface(look.trimKey, { repeat: 5, seed: 0, tint: look.trimTint });
+  if (key === 'trim') return surface(look.trimKey, { repeat: 5, seed: 0, tint: look.trimTint, metalness: 0.8 });
   if (key === 'glow') return emissiveMaterial(look.accent, Math.max(1.1, look.glow));
   // Stones glow less than runes: a gem at full rune strength reads as a lamp.
   if (key === 'gem') return emissiveMaterial(look.accent, 0.7 + look.glow * 0.25);
