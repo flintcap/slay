@@ -44,7 +44,18 @@ interface Entry {
   /** 1 just after spawn or a merge, decaying to 0: drives the pop. */
   pop: number;
   stacks: number;
+  /** Time since spawn, never reset by a merge: caps how long one total runs. */
+  born: number;
+  /** Spawn size: merges may grow a number, but only so far past this. */
+  base: number;
+  /** Fixed screen offset in px, so hero numbers sit either side of the head. */
+  ox: number;
 }
+
+/** A running total stops absorbing hits after this long and a new one starts. */
+const MAX_RUN = 1.4;
+/** How much a running total may grow past its spawn size. */
+const MAX_GROW = 1.3;
 
 /** Element colours. Bright enough to survive bloom and a dark floor. */
 const TYPE_FILL: Record<string, string> = {
@@ -179,6 +190,19 @@ export class CombatTextLayer {
 
   /** A short word at a world point: IMMUNE, BLOCK, DODGE, RESIST. */
   word(text: string, x: number, y: number, z: number, color = '#e6e0d0'): void {
+    // The same word again while it is still up (three dodges in a row) just
+    // re-pops it; stacking copies on one spot made an unreadable smear.
+    const key = `word:${text}`;
+    for (let i = this.entries.length - 1; i >= 0; i--) {
+      const e = this.entries[i]!;
+      if (e.key !== key || e.age > 0.55) continue;
+      e.age = Math.min(e.age, 0.1);
+      e.pop = 1;
+      e.x = x;
+      e.z = z;
+      this.dirty = true;
+      return;
+    }
     this.spawn({
       kind: 'word',
       text,
@@ -192,7 +216,7 @@ export class CombatTextLayer {
       fill: color,
       edge: '#0c0a08',
       size: 18,
-      key: '',
+      key,
     });
   }
 
@@ -212,6 +236,9 @@ export class CombatTextLayer {
       z: this.hero.z,
       vx: hurt ? -34 - (n % 3) * 6 : 22,
       vy: hurt ? 30 : -46,
+      // Either side of the head from the start, so a hit and a heal in the
+      // same moment never print over each other.
+      ox: hurt ? -34 : 34,
       life: 1.05,
       fill: hurt && type && type !== 'physical' ? mixHurt(TYPE_FILL[type] ?? fill) : fill,
       edge: hurt ? '#2a0402' : '#04210a',
@@ -225,23 +252,25 @@ export class CombatTextLayer {
     for (let i = this.entries.length - 1; i >= 0; i--) {
       const e = this.entries[i]!;
       if (e.key !== key) continue;
-      if (e.age > STACK_WINDOW + 0.25) return false;
+      // Too old, or it has been running long enough: let it go and start a
+      // fresh number, so a long fight reads as a series, not one swelling blob.
+      if (e.age > STACK_WINDOW + 0.25 || e.born > MAX_RUN) return false;
       e.amount += amount;
       e.text = `${sign}${compactNumber(e.amount)}`;
       e.stacks += 1;
       e.pop = 1;
       // Keep it alive while the hits keep coming, and let it grow a little.
       e.age = Math.min(e.age, 0.12);
-      e.size = Math.min(e.size * 1.05, e.size + 8);
+      e.size = Math.min(e.size * 1.05, e.base * MAX_GROW);
       this.dirty = true;
       return true;
     }
     return false;
   }
 
-  private spawn(p: Omit<Entry, 'age' | 'pop' | 'stacks'>): void {
+  private spawn(p: Omit<Entry, 'age' | 'pop' | 'stacks' | 'born' | 'base' | 'ox'> & { ox?: number }): void {
     if (this.entries.length >= MAX_ENTRIES) this.entries.shift();
-    this.entries.push({ ...p, age: 0, pop: 1, stacks: 1 });
+    this.entries.push({ ...p, age: 0, pop: 1, stacks: 1, born: 0, base: p.size, ox: p.ox ?? 0 });
     this.dirty = true;
   }
 
@@ -276,6 +305,7 @@ export class CombatTextLayer {
     for (let i = 0; i < this.entries.length; i++) {
       const e = this.entries[i]!;
       e.age += dt;
+      e.born += dt;
       e.pop = Math.max(0, e.pop - dt * 6);
       if (e.age >= e.life) continue;
       this.entries[write++] = e;
@@ -285,7 +315,7 @@ export class CombatTextLayer {
       const t = e.age / e.life;
       // Ease out: a quick throw, then it hangs and fades.
       const travel = 1 - (1 - Math.min(1, e.age / 0.7)) ** 3;
-      let sx = (_v.x * 0.5 + 0.5) * this.w + e.vx * travel * 0.9;
+      let sx = (_v.x * 0.5 + 0.5) * this.w + e.ox + e.vx * travel * 0.9;
       let sy = (-_v.y * 0.5 + 0.5) * this.h + e.vy * travel * 0.9;
       if (sx < -80 || sx > this.w + 80 || sy < -60 || sy > this.h + 60) continue;
 

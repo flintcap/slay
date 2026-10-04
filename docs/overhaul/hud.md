@@ -11,23 +11,23 @@ Status: in progress
 - [x] Tooltips: rarity frames, affix tier marks, compare-to-equipped with green and red deltas, set and unique flavour text, requirement warnings. — "Combat text, tooltips, inventory feedback, and a working skill tree with respec"
 - [x] Inventory, paperdoll and stash: drag ghost, valid-slot highlighting, rarity glow on cells, sort button, item drop and equip feedback. — "Combat text, tooltips, inventory feedback, and a working skill tree with respec"
 - [x] Skill tree: node states, glowing link lines, rank pips, hover previews with next-rank numbers, clear respec affordance. — "Gild the skill tree, add its hover card, and answer the boss and elite requests"
-- [ ] Vendor, blacksmith, map, quest log, nameplates and ground labels: same frame language; loot labels styled by rarity with beams for the best drops.
+- [x] Vendor, blacksmith, map, quest log, nameplates and ground labels: same frame language; loot labels styled by rarity with beams for the best drops. — "Frame the world UI: rarity-tiered loot labels with beams, nameplate trails, an inked map" (+ "Combat text: running totals stop swelling, hero numbers sit apart, repeated words merge")
 - [ ] Sweep: hover and press states everywhere, no overlap at 1280x720 and 1920x1080, every panel opens and closes with a short animation.
 
 ## Next up
 
-Milestones 8 and 9 are built and lab-checked; neither is ticked yet because
-they wait on the real render. Milestone 9 so far: dead menu styles pruned,
-all font sizes follow the text-size setting, press and hover states added
-where missing (`Sweep:` block at the end of `styles.css`), 1280x720 checked
-in the lab for hud, inventory, skills, character, vendor, stash, blacksmith
-(skill board scales down under 820px tall; blacksmith pack column sized to
-its grid). Panels and modals already animate open and closed.
-
-To finish: `npm run build && SLAY_PORT=4301 node tools/screenshot.mjs
---out=shots/hud/real --shots=combatText,dungeon` (15 to 30 minutes on a
-loaded machine). Look at the combat text, nameplates, loot labels and the
-HUD in a real frame, fix what looks wrong, then tick 8 and 9.
+Milestone 9 (sweep) is built and lab-checked: dead menu styles pruned, every
+font size follows the text-size setting, press and hover states added where
+missing (`Sweep:` block at the end of `styles.css`), 1280x720 checked in the
+lab for hud, inventory, skills, character, vendor, stash, blacksmith,
+tooltips. Panels and modals already animate open and closed. To tick it: one
+real render, as ONE self-contained command that exits by itself (never leave
+a server running in the background):
+`npm run build && SLAY_PORT=4301 timeout -k 20 3000 node tools/screenshot.mjs --out=shots/hud/real --shots=combatText`
+On a loaded machine it takes 25 to 50 minutes; run it in the background as
+that single command and keep working. Check the enemy damage numbers (the
+first real frame only showed hero numbers, because the driver anchored hits
+on far-off monsters; the driver now uses stand-in points near the hero).
 
 ## Notes for resume
 
@@ -81,6 +81,17 @@ HUD in a real frame, fix what looks wrong, then tick 8 and 9.
 - The boss bar reads phase thresholds from `BOSSES` (`src/data/bosses.ts`) by
   matching the boss name from `boss:engaged`. If combat changes that event,
   pass the id too and match on it.
+- First real frame of combat text (depth 2, after this session's fixes were
+  not yet built): the layer draws over the 3D view correctly, but a sustained
+  stream of hits on the hero merged into one ever-growing number (-2,472 at
+  three times normal size) with the heal printed on top, and repeated DODGE
+  words stacked into a smear. Fixed: a running total stops merging after
+  `MAX_RUN` (1.4s) and grows at most `MAX_GROW` (1.3x); hero hurt and heal
+  numbers carry a fixed screen offset (`ox`, -34/+34 px); a repeated word
+  re-pops instead of stacking.
+- `tools/screenshot.mjs`: the preview server now runs in its own process
+  group and is killed as a group, so no orphaned `vite preview` holds the
+  port after a render. Capture timeout is 180s (`--shotTimeout`).
 - Combat text is `src/ui/CombatText.ts` (`CombatTextLayer`, one 2D canvas
   under the HUD). DungeonScene creates it next to the nameplates, updates it
   with real (not hit-stopped) time, and disposes it; the two old

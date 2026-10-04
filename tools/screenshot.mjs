@@ -34,17 +34,24 @@ if (!existsSync('dist/index.html')) {
   process.exit(1);
 }
 
+// Its own process group: killing `npx` alone left the `vite preview` it
+// started running after the render, holding the port.
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
   stdio: ['ignore', 'pipe', 'pipe'],
+  detached: true,
 });
 server.stdout.on('data', () => {});
 server.stderr.on('data', (d) => process.stderr.write(`[preview] ${d}`));
 
 const shutdown = () => {
   try {
-    server.kill('SIGTERM');
+    process.kill(-server.pid, 'SIGTERM');
   } catch {
-    /* already gone */
+    try {
+      server.kill('SIGTERM');
+    } catch {
+      /* already gone */
+    }
   }
 };
 process.on('exit', shutdown);
@@ -206,13 +213,19 @@ const drivers = {
         const sc = s.engine.currentScene;
         const p = sc?.player?.position;
         if (!p) return;
-        const foes = [sc.boss, ...(sc.enemies ?? [])].filter((e) => e && e.root);
+        // Only foes near the hero are on screen; otherwise stand-in points
+        // round the hero, so the numbers land in frame either way.
+        const foes = [sc.boss, ...(sc.enemies ?? [])].filter(
+          (e) => e && e.root && Math.hypot(e.root.position.x - p.x, e.root.position.z - p.z) < 9,
+        );
         n++;
+        const spots = [[3, -2], [-3, -1.5], [1.5, -4], [-1, 2.5]];
         const pick = foes.length ? foes[n % Math.min(4, foes.length)] : null;
-        const at = pick ? pick.root.position : { x: p.x + 2.5, y: 0, z: p.z - 1.5 };
+        const sp = spots[n % spots.length];
+        const at = pick ? pick.root.position : { x: p.x + sp[0], y: 0, z: p.z + sp[1] };
         const crit = n % 5 === 0;
         s.events.emit('enemy:damaged', {
-          id: pick ? String(pick.id ?? n % 4) : `t${n % 3}`,
+          id: pick ? String(pick.id ?? n % 4) : `t${n % spots.length}`,
           amount: crit ? 2400 + (n % 7) * 310 : 180 + (n % 9) * 37,
           type: types[n % types.length],
           crit,
