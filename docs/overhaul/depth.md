@@ -1,6 +1,6 @@
 # Stream: depth (systems and content)
 
-Status: in progress
+Status: paused
 
 ## Milestones
 
@@ -15,31 +15,48 @@ Status: in progress
 
 ## Next up
 
-Milestone 3, dungeon events. Plan (nothing written yet):
+Milestone 3, dungeon events. Code is WRITTEN and WIRED but switched OFF by
+`EVENTS_ENABLED = false` in `src/world/DungeonGen.ts` (no event props are
+placed, so nothing new is reachable). Already done:
 
-1. `DungeonGen.ts`: after `placeProps`, a `placeEvents(level, depth, rng.fork('events'))`
-   step appends event props on free walkable tiles of `normal` rooms, away from
-   spawns, stairs and other props: `chest` with interact `chest.cursed`,
-   `bonepile` with `corpse.ambush`, `shrine` with `shrine.choice`; and records a
-   treasure runner in a new optional `DungeonLevel.events` list.
-2. New `src/scenes/RunEvents.ts` owned by DungeonScene (pattern of
-   `PowerRuntime`): `interact(it)` returns true when it handled an event prop
-   (call it in `tickInteractables` before the vault check), `update(dt)`,
-   `onKill(enemy)`, `onLevel()` to spawn the runner.
-   - Cursed chest: opening seals it and spawns two waves of champions/elites
-     around it; kill them inside 40s and it opens with boss-rank loot, else it
-     crumbles to dust.
-   - Fallen adventurer: loot a bone pile, then an ambush pack steps out of the
-     dark all around you; killing it drops a guaranteed rare.
-   - Treasure runner ("the Hoarder"): a named rare with `ai = null`, driven by
-     `motionOverride` dashes away from the player, dropping coins; escapes 30s
-     after it sees you. Kill it for a gold fountain, 3-5 items, materials.
-   - Shrine of choices: a small chooser panel (`src/ui/ChoicePanel.ts`) offers
-     three bargains (boon with a cost). Boons are statuses registered at runtime
-     with `registerStatus` from a new `src/data/boons.ts`, so the HUD shows them.
-3. Renown for completing each event via `RunDirector`.
-4. Checker `tools/check-events.mjs`: events are placed at sane rates on
-   walkable, unblocked tiles, never on stairs; each boon status resolves.
+- `DungeonGen.placeEvents` (behind the flag): cursed chest (`chest` prop,
+  interact `chest.cursed`), fallen adventurer (`bonepile`, `corpse.ambush`),
+  shrine of choices (`shrine`, `shrine.choice`), treasure runner (recorded in
+  the new `DungeonLevel.events` list). Rates in `EVENT_RATES`.
+- `src/scenes/RunEvents.ts`: runs all four (waves with a 45s timer for the
+  cursed chest, ambush pack with a guaranteed-rare carrier, bargains, the
+  fleeing Hoarder driven by `motionOverride` dashes with `ai = null`).
+- `src/data/boons.ts`: boon statuses via `registerStatus` + `BARGAINS`.
+- `src/ui/ChoicePanel.ts`, exposed as `offerChoice()` from `src/ui/DepthUI.ts`.
+- DungeonScene wiring (additive): `dungeonEvents` constructed in `enter`,
+  `onLevel()` in `loadLevel`, `interact()` in `tickInteractables` after the
+  lever check, `RunEvents.prompt` in `promptFor`, `update`, `onKill` in
+  `reapDead`, `dispose`. Renown via `RunDirector.award`.
+
+To finish milestone 3:
+1. Write `tools/events-entry.ts` + `tools/check-events.mjs` (use
+   `tools/depth-ssr.mjs`; install the real catalogue with `setMonsterCatalog`
+   as `tools/legacy-entry.ts` does). Make placement forceable for the checker
+   and check: rates per floor sane, every event tile has all 8 neighbours
+   floor, is at least 6 tiles from stairs, never on a spawn or prop, boss
+   floors have none, every `BARGAINS[].status` resolves via `getStatus`.
+2. Flip `EVENTS_ENABLED` to true.
+3. `npm run build && SLAY_PORT=4306 node tools/smoke-depth.mjs` in the
+   background (boot takes 10+ minutes under software rendering). Extend the
+   smoke to use an event prop (`scene.mesh.interactables` kind `chest.cursed`
+   / `shrine.choice`) and confirm a runner spawns. The smoke has never
+   completed yet, so milestones 1 and 2 have headless verification only.
+   Do not `pkill -f` with a pattern that matches your own shell command.
+4. Checkpoint (tick milestone 3 here).
+
+Then milestone 4 (town systems): gambler, enchanter, bounty board, each gated
+by `hasUnlock(save.account, 'gambler' | 'enchanter' | 'bounties')`. Add town
+interactables additively to the `interactables` array in
+`src/scenes/TownScene.ts` (world-owned: additive lines only) opening panels
+registered in `src/ui/DepthUI.ts`. Enchanter: reforge one affix (D4 rule:
+only that mod may be reforged again; store `Item.enchantedMod?`) or imbue a
+power affix on a rare via `rollPowerAffix(..., force=true)`. Bounties live on
+the character (`Character.bounties?`, migrate in `repairCharacter`).
 
 ## Notes for resume
 

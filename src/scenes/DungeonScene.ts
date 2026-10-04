@@ -49,6 +49,7 @@ import { runStats } from '../ui/RunStats';
 import { clearBuyBack } from '../sim/BuyBack';
 import { PowerRuntime } from './PowerRuntime';
 import { RunDirector } from './RunDirector';
+import { RunEvents } from './RunEvents';
 import { legacyXpMultiplier } from '../sim/Legacy';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 
@@ -200,6 +201,8 @@ export class DungeonScene extends GameScene {
   private powers: PowerRuntime | null = null;
   /** Legacy renown, codex and lifetime tally. See `RunDirector`. */
   private director: RunDirector | null = null;
+  /** Cursed chests, ambushes, shrines of choices, treasure runners. */
+  private dungeonEvents: RunEvents | null = null;
 
   constructor(engine: Engine) {
     super();
@@ -268,6 +271,36 @@ export class DungeonScene extends GameScene {
     });
     this.director?.dispose();
     this.director = new RunDirector(depth);
+    this.dungeonEvents?.dispose();
+    this.dungeonEvents = new RunEvents({
+      scene: this.scene,
+      player: () => this.player,
+      enemies: () => this.enemies,
+      context: () => this.ctxCache ?? this.context(),
+      effects: this.effects,
+      fx: this.fx,
+      decals: this.decals,
+      rng: () => this.rng,
+      depth,
+      level: () => this.level,
+      tileToWorld: (x, y) => this.mesh.tileToWorld(x, y),
+      walkable: (x, z) => {
+        const t = this.mesh.worldToTile(x, z);
+        return isWalkable(this.level, t.x, t.y);
+      },
+      consume: (it) => {
+        this.mesh.removeInteractable(it);
+        this.nav.setBlocked(it.tileX, it.tileY, false);
+        if (this.nearProp === it) this.nearProp = null;
+      },
+      dropItem: (item, at) => this.dropItem(item, at),
+      dropGold: (amount, at) => this.dropGold(amount, at),
+      addMaterials: (m) => {
+        for (const [id, n] of Object.entries(m)) save.addMaterial(id, n);
+      },
+      magicFind: () => this.player.stats.magicFind,
+      renown: (amount) => this.director?.award(amount),
+    });
 
     // A light on the hero is standard for the genre: torch placement is
     // procedural, so without it the player regularly ends up in pitch black.
@@ -527,6 +560,7 @@ export class DungeonScene extends GameScene {
     // The name of the place, not just the number. Two crypt runs wear
     // different variants and the header is where you notice.
     const place = variantLabel(this.biome.id, this.level?.variant);
+    this.dungeonEvents?.onLevel();
     this.director?.onFloor(index);
     events.emit('depth:changed', {
       depth: this.run.depth,
@@ -1023,6 +1057,7 @@ export class DungeonScene extends GameScene {
     this.skills.setContext(ctx, this.enemies, this.boss);
     this.skills.update(dt);
     this.powers?.update(dt);
+    this.dungeonEvents?.update(dt);
     hudRuntime.minions = this.skills.minionSummary();
     this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);
@@ -1150,6 +1185,7 @@ export class DungeonScene extends GameScene {
         this.lastOverkill = e.overkill;
         this.grantKill(e.monsterId, e.rank, e.family, e.root.position, e.ilvl);
         this.powers?.onKill(e);
+        this.dungeonEvents?.onKill(e);
       }
       if (e.life > 0 || !e.readyToRemove) continue;
       this.enemies.splice(i, 1);
@@ -1252,6 +1288,11 @@ export class DungeonScene extends GameScene {
       this.pullLever(near);
       return;
     }
+    // Dungeon events run their own props (cursed chests, shrines of choices).
+    if (this.dungeonEvents?.interact(near)) {
+      toast('', 'info');
+      return;
+    }
     if (family === 'chest' && tier === 'vault' && !this.vaultOpen) {
       toast('The vault is barred. There is a lever somewhere in this room.', 'bad');
       audio.play('ui.error');
@@ -1290,6 +1331,8 @@ export class DungeonScene extends GameScene {
 
   /** What the on-screen prompt says, for a `family.tier` payload. */
   private promptFor(it: Interactable): string {
+    const event = RunEvents.prompt(it.kind);
+    if (event) return event;
     const family = it.kind.split('.')[0]!;
     if (family === 'chest' && it.kind.split('.')[1] === 'vault' && !this.vaultOpen) return 'Barred vault';
     return INTERACT_LABEL[family] ?? INTERACT_LABEL[it.propKind] ?? 'Search';
@@ -1657,6 +1700,8 @@ export class DungeonScene extends GameScene {
     this.powers = null;
     this.director?.dispose();
     this.director = null;
+    this.dungeonEvents?.dispose();
+    this.dungeonEvents = null;
     for (const e of this.enemies) e.dispose();
     this.enemies = [];
     this.boss?.dispose();

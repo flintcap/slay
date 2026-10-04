@@ -727,6 +727,21 @@ export interface DungeonLevel {
   props: PropPlacement[];
   /** True when this level holds the floor boss. */
   isBossLevel: boolean;
+  /**
+   * Dungeon events on this floor (cursed chest, fallen adventurer, shrine of
+   * choices, treasure runner). Event props also carry their own `interact`
+   * payload; this list is the index. Optional: older generators wrote none.
+   */
+  events?: LevelEvent[];
+}
+
+export type LevelEventKind = 'cursedChest' | 'fallenAdventurer' | 'choiceShrine' | 'treasureRunner';
+
+export interface LevelEvent {
+  kind: LevelEventKind;
+  /** Tile coordinates. */
+  x: number;
+  y: number;
 }
 
 export interface SpawnPoint {

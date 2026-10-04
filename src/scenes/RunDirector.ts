@@ -52,6 +52,11 @@ export class RunDirector {
     this.earn(RENOWN.kill(rank, this.depth));
   }
 
+  /** Renown for something the run's events decided was worth it. */
+  award(amount: number): void {
+    this.earn(amount);
+  }
+
   /** The run's last stairs were taken. Banks the clear and any new record. */
   onRunCleared(): void {
     const l = legacyOf(this.account);

@@ -24,6 +24,8 @@ import type {
   DungeonRoom,
   DungeonRun,
   LayoutKind,
+  LevelEvent,
+  LevelEventKind,
   MonsterRank,
   PropPlacement,
   QuestDef,
@@ -749,7 +751,101 @@ export function generateLevel(
   }
   level.props = props;
 
+  // --- Dungeon events ------------------------------------------------------
+  if (EVENTS_ENABLED && !isBossLevel) {
+    try {
+      level.events = placeEvents(level, depth, rng.fork('events'));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[world] event placement failed', err);
+      level.events = [];
+    }
+  }
+
   return level;
+}
+
+/**
+ * Dungeon events are written and wired (`scenes/RunEvents.ts`) but not yet
+ * verified in a live browser run, so placement is off until they are.
+ */
+export const EVENTS_ENABLED = false;
+
+/** How often each event appears on a non-boss floor, by depth. */
+export const EVENT_RATES: Record<LevelEventKind, { minDepth: number; chance: (depth: number) => number }> = {
+  cursedChest: { minDepth: 2, chance: (d) => clamp(0.3 + d * 0.004, 0.3, 0.5) },
+  fallenAdventurer: { minDepth: 1, chance: () => 0.3 },
+  choiceShrine: { minDepth: 1, chance: (d) => clamp(0.32 + d * 0.003, 0.32, 0.45) },
+  treasureRunner: { minDepth: 2, chance: (d) => clamp(0.15 + d * 0.003, 0.15, 0.3) },
+};
+
+/** The prop each event is drawn as, and the payload the scene dispatches on. */
+const EVENT_PROPS: Partial<Record<LevelEventKind, { kind: string; interact: string }>> = {
+  cursedChest: { kind: 'chest', interact: 'chest.cursed' },
+  fallenAdventurer: { kind: 'bonepile', interact: 'corpse.ambush' },
+  choiceShrine: { kind: 'shrine', interact: 'shrine.choice' },
+};
+
+/**
+ * Picks this floor's events and finds each one an open tile in an ordinary
+ * room: fully surrounded by floor, well clear of the stairs, and not on top of
+ * a spawn or another prop. An event that cannot find a tile is simply skipped.
+ */
+function placeEvents(level: DungeonLevel, depth: number, rng: Rng): LevelEvent[] {
+  const out: LevelEvent[] = [];
+  const taken = new Set<number>();
+  const key = (x: number, y: number) => y * level.width + x;
+  for (const p of level.props) taken.add(key(p.x, p.y));
+  for (const s of level.spawns) taken.add(key(s.x, s.y));
+  const rooms = level.rooms.filter((r) => r.kind === 'normal' && r.w >= 5 && r.h >= 5);
+  rng.shuffle(rooms);
+  const usedRooms = new Set<number>();
+
+  const open = (x: number, y: number): boolean => {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx;
+        const yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= level.width || yy >= level.height) return false;
+        const v = level.tiles[key(xx, yy)];
+        if (v !== T_FLOOR && v !== T_RUBBLE) return false;
+        if (taken.has(key(xx, yy))) return false;
+      }
+    }
+    const far = (p: Vec2) => Math.abs(p.x - x) + Math.abs(p.y - y) >= 6;
+    return far(level.entry) && far(level.exit);
+  };
+
+  const spot = (): Vec2 | null => {
+    for (const r of rooms) {
+      if (usedRooms.has(r.id)) continue;
+      const cx = Math.round(r.center.x);
+      const cy = Math.round(r.center.y);
+      for (let ring = 0; ring <= 2; ring++) {
+        for (let dy = -ring; dy <= ring; dy++) {
+          for (let dx = -ring; dx <= ring; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+            if (!open(cx + dx, cy + dy)) continue;
+            usedRooms.add(r.id);
+            return { x: cx + dx, y: cy + dy };
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  for (const kind of Object.keys(EVENT_RATES) as LevelEventKind[]) {
+    const rate = EVENT_RATES[kind];
+    if (depth < rate.minDepth || !rng.chance(rate.chance(depth))) continue;
+    const at = spot();
+    if (!at) continue;
+    taken.add(key(at.x, at.y));
+    out.push({ kind, x: at.x, y: at.y });
+    const prop = EVENT_PROPS[kind];
+    if (prop) level.props.push({ x: at.x, y: at.y, rotation: rng.range(0, Math.PI * 2), kind: prop.kind, interact: prop.interact });
+  }
+  return out;
 }
 
 function pickLayoutKind(biome: BiomeDef, rng: Rng, depth: number, boss: boolean): LayoutKind {
