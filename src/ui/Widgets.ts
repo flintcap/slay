@@ -994,6 +994,66 @@ export interface PanelOpts {
 
 let panelZ = 40;
 
+/**
+ * The filigree layer for any framed surface: four corners and two crests.
+ * Panels and modals both wear it, so a confirm dialog looks like it belongs
+ * to the panel that raised it.
+ */
+export function frameOrnament(crests = true): HTMLDivElement {
+  const o = div('panel-orn');
+  o.innerHTML =
+    `<div class="pc pc-tl">${ORNAMENT.corner}</div><div class="pc pc-tr">${ORNAMENT.corner}</div>` +
+    `<div class="pc pc-bl">${ORNAMENT.corner}</div><div class="pc pc-br">${ORNAMENT.corner}</div>` +
+    (crests ? `<div class="pcrest pcrest-top">${ORNAMENT.crest}</div><div class="pcrest pcrest-bot">${ORNAMENT.crest}</div>` : '');
+  return o;
+}
+
+/**
+ * Frame ornament, drawn once as SVG strings and shared by every panel.
+ *
+ * The corner is authored for the top-left and mirrored by CSS for the other
+ * three, so the four always match. Everything strokes or fills with
+ * `currentColor`, which lets the stylesheet tint a whole frame at once.
+ */
+export const ORNAMENT = {
+  corner:
+    '<svg viewBox="0 0 46 46" aria-hidden="true">' +
+    // Solid gilt corner plate with angled ends.
+    '<path d="M0 0H24L19.5 4.5H9.5Q4.5 4.5 4.5 9.5V19.5L0 24Z" fill="currentColor"/>' +
+    '<path d="M2 2H20L17.6 4.4" fill="none" stroke="#fff3cf" stroke-opacity=".55" stroke-width=".8"/>' +
+    // Inner sweep with a scroll at each end.
+    '<path d="M9 24C9 15.5 15.5 9 24 9" fill="none" stroke="currentColor" stroke-width="1.3"/>' +
+    '<path d="M24 9c3.6 0 5.6 2 5.6 4.6 0 1.9-1.3 3-2.8 3-1.4 0-2.3-.9-2.3-2.1" fill="none" stroke="currentColor" stroke-width="1.1"/>' +
+    '<path d="M9 24c0 3.6 2 5.6 4.6 5.6 1.9 0 3-1.3 3-2.8 0-1.4-.9-2.3-2.1-2.3" fill="none" stroke="currentColor" stroke-width="1.1"/>' +
+    // Set stone.
+    '<path d="M12.5 7.5 17.5 12.5 12.5 17.5 7.5 12.5Z" fill="#1a0f08" stroke="currentColor" stroke-width="1"/>' +
+    '<path d="M12.5 9.6 15.4 12.5 12.5 15.4 9.6 12.5Z" fill="#c8402c"/>' +
+    '<path d="M11.6 10.8 12.5 9.9 13.2 10.6" fill="none" stroke="#ffd0b8" stroke-width=".7"/>' +
+    // Long tails running off along the edges, fading out.
+    '<path d="M24 2.2H46M2.2 24V46" stroke="currentColor" stroke-width="1" opacity=".55"/>' +
+    '</svg>',
+  crest:
+    '<svg viewBox="0 0 132 18" aria-hidden="true">' +
+    '<path d="M4 9H46M86 9H128" stroke="currentColor" stroke-width="1" opacity=".7"/>' +
+    '<circle cx="2.5" cy="9" r="1.4" fill="currentColor" opacity=".7"/><circle cx="129.5" cy="9" r="1.4" fill="currentColor" opacity=".7"/>' +
+    '<path d="M57 9C52 9 50 4.5 45 4.5M57 9C52 9 50 13.5 45 13.5M75 9C80 9 82 4.5 87 4.5M75 9C80 9 82 13.5 87 13.5" fill="none" stroke="currentColor" stroke-width="1.2"/>' +
+    '<circle cx="45" cy="4.5" r="1.3" fill="currentColor"/><circle cx="45" cy="13.5" r="1.3" fill="currentColor"/>' +
+    '<circle cx="87" cy="4.5" r="1.3" fill="currentColor"/><circle cx="87" cy="13.5" r="1.3" fill="currentColor"/>' +
+    '<path d="M66 .8 74.2 9 66 17.2 57.8 9Z" fill="currentColor"/>' +
+    '<path d="M66 4 71 9 66 14 61 9Z" fill="#1a0f08"/>' +
+    '<path d="M66 5.6 69.4 9 66 12.4 62.6 9Z" fill="#c8402c"/>' +
+    '<path d="M64.9 7.3 66 6.2 67 7.2" fill="none" stroke="#ffd0b8" stroke-width=".7"/>' +
+    '</svg>',
+  /** The rule under a panel title: a fine line with a lozenge at its heart. */
+  divider:
+    '<svg viewBox="0 0 132 16" aria-hidden="true">' +
+    '<path d="M0 8H52M80 8H132" stroke="currentColor" stroke-width=".8" opacity=".6"/>' +
+    '<path d="M54 8 60 3.5 66 8 60 12.5ZM78 8 72 3.5 66 8 72 12.5Z" fill="none" stroke="currentColor" stroke-width="1"/>' +
+    '<path d="M66 2.5 71.5 8 66 13.5 60.5 8Z" fill="currentColor"/>' +
+    '<path d="M66 5.4 68.6 8 66 10.6 63.4 8Z" fill="#1a0f08"/>' +
+    '</svg>',
+};
+
 export class Panel {
   readonly root: HTMLDivElement;
   readonly frame: HTMLDivElement;
@@ -1024,9 +1084,7 @@ export class Panel {
     // --- header ---
     this.header = div('panel-hd');
     const orn = div('panel-hd-orn');
-    orn.innerHTML =
-      '<svg viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true">' +
-      '<path d="M0 6h34l6-5 6 5h28l6-5 6 5h34" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+    orn.innerHTML = ORNAMENT.divider;
 
     const titles = div('panel-hd-titles');
     const t = div('panel-title');
@@ -1047,7 +1105,11 @@ export class Panel {
     this.body = div('panel-body');
     this.footer = div('panel-ft');
 
-    add(this.frame, this.header, this.body, this.footer);
+    // Filigree sits over the frame edge, outside the scrolling body, so it
+    // never scrolls away or gets clipped by a panel's own overflow.
+    const frameOrn = frameOrnament();
+
+    add(this.frame, this.header, this.body, this.footer, frameOrn);
     this.root.appendChild(this.frame);
 
     if (opts.draggable !== false && !opts.fullscreen) this.enableDrag();
@@ -1743,7 +1805,10 @@ export function modal(opts: ModalOpts): void {
     },
   });
   add(ft, cancel.root, confirm.root);
-  add(box, hd, body, ft);
+  const orn = div('modal-orn');
+  orn.innerHTML = ORNAMENT.divider;
+  hd.appendChild(orn);
+  add(box, hd, body, ft, frameOrnament());
   wrap.appendChild(box);
   wrap.addEventListener('pointerdown', (e) => {
     if (e.target === wrap) {
