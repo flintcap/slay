@@ -182,18 +182,19 @@ const drivers = {
     });
     await settle(120);
   },
-  // hud: the boss floor with a steady stream of combat text, so the floating
+  // hud: a dungeon floor with a steady stream of combat text, so the floating
   // numbers (CombatTextLayer) are on screen when the frame is taken. Numbers
   // live about a second, so a page timer keeps feeding them until the shot.
   combatText: async () => {
     await page.evaluate(async () => {
       const s = window.SLAY;
-      if (s.debug?.makeCharacter) s.debug.makeCharacter('stormcaller', 30);
-      await s.engine.goTo('dungeon', { depth: 12 });
-      s.debug?.warpToBoss?.();
+      // A shallow floor: cheap to build under software rendering, and the
+      // numbers are fed by the timer below rather than a real fight.
+      if (s.debug?.makeCharacter) s.debug.makeCharacter('stormcaller', 12);
+      await s.engine.goTo('dungeon', { depth: 2 });
       s.debug?.godMode?.(true);
     });
-    await settle(60);
+    await settle(30);
     await page.evaluate(() => {
       const s = window.SLAY;
       const types = ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane'];
