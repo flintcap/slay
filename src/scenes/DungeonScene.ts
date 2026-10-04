@@ -45,6 +45,7 @@ import { runtime as hudRuntime } from '../ui/Widgets';
 import { typeColor } from '../entities/Abilities';
 import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
+import { runStats } from '../ui/RunStats';
 import { clearBuyBack } from '../sim/BuyBack';
 import { PowerRuntime } from './PowerRuntime';
 import { RunDirector } from './RunDirector';
@@ -343,15 +344,9 @@ export class DungeonScene extends GameScene {
 
     events.emit('ui:open', { panel: 'hud' });
 
-    // First descent: say plainly how to fight. Discovering the attack button by
-    // accident is not a puzzle worth having.
-    if (!save.hasUnlock('tutorial.controls')) {
-      save.unlock('tutorial.controls');
-      toast('Left click to attack. Move with WASD.', 'info');
-      setTimeout(() => toast('Keys 1-6 cast your other skills.', 'info'), 3200);
-      setTimeout(() => toast('Press T to spend skill points.', 'info'), 6400);
-      setTimeout(() => toast('Space dodges. Q drinks a health potion.', 'info'), 9600);
-    }
+    // First-descent control hints live in ui/Onboarding.ts: one at a time,
+    // each waiting for the player to try it. They replaced four timed toasts
+    // here, two of which named the wrong buttons.
 
     if (this.run.quest) {
       setTimeout(() => toast(this.run.quest.name, 'epic'), 800);
@@ -538,9 +533,11 @@ export class DungeonScene extends GameScene {
       level: index + 1,
       of: this.run.levels.length,
       place: place.name,
+      // The floor's title card (ui/Banners.ts) shows the blurb on the first
+      // floor of a run; it used to arrive separately as a toast.
+      blurb: index === 0 ? place.blurb : undefined,
+      biome: this.biome.id,
     });
-    // The blurb only lands once per run — on the first floor of it.
-    if (index === 0) setTimeout(() => toast(place.blurb, 'info'), 1600);
   }
 
   /** The world view handed to enemy AI each frame. */
@@ -1617,11 +1614,16 @@ export class DungeonScene extends GameScene {
     this.skills.feel.playerDied();
     const c = this.player.character;
     const payload = {
-      killedBy: 'the depths',
+      // Named from the last hit's source (ui/RunStats.ts), so the memorial
+      // says what actually did it.
+      killedBy: runStats.killerName() ?? 'the depths',
       depth: this.run.depth,
       level: c.level,
       name: c.name,
       playtime: c.playtime,
+      // For the death screen: the class, and the weapon planted on the grave.
+      classId: c.classId,
+      weapon: c.equipment.mainHand ? { baseId: c.equipment.mainHand.baseId, rarity: c.equipment.mainHand.rarity } : null,
     };
     // The roguelike contract: the character is gone, the stash is not.
     this.director?.onDeath();

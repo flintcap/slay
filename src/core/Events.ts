@@ -6,6 +6,11 @@ import type { Item, DamageType, SceneId, MonsterRank, ItemRarity } from '../type
  */
 export interface GameEvents {
   'scene:change': { from: SceneId; to: SceneId };
+  /**
+   * A scene swap has faded to black and is about to build `to`. Fires before
+   * the (possibly slow) `enter`, so the loading card can say where we are going.
+   */
+  'scene:loading': { from: SceneId; to: SceneId; payload?: unknown };
   'player:damaged': { amount: number; type: DamageType; life: number; maxLife: number };
   'player:healed': { amount: number };
   'player:died': { killedBy: string; depth: number };
@@ -35,7 +40,16 @@ export interface GameEvents {
   'item:unequipped': { item: Item };
   'quest:progress': { index: number; progress: number; target: number; desc: string };
   'quest:complete': { name: string };
-  'depth:changed': { depth: number; level: number; of: number; place?: string };
+  'depth:changed': {
+    depth: number;
+    level: number;
+    of: number;
+    place?: string;
+    /** One line of flavour for the place, shown on the floor's title card. */
+    blurb?: string;
+    /** Biome id, so the title card can take the biome's colour. */
+    biome?: string;
+  };
   /** A run was finished and banked. Fires once, on the way back to town. */
   'run:cleared': { depth: number };
   'boss:engaged': { name: string; title: string; maxLife: number };

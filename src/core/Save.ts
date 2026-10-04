@@ -15,6 +15,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   showDamageNumbers: true,
   screenShake: 1,
   cameraDistance: 1,
+  hints: true,
+  titleCards: true,
+  reduceMotion: false,
+  showFps: false,
 };
 
 function emptyAccount(): AccountSave {

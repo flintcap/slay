@@ -28,9 +28,13 @@ import { CharSelectPanel } from './CharSelectPanel';
 import { DeathPanel } from './DeathPanel';
 import { journal } from './JournalPanel';
 import { dialogue } from './DialoguePanel';
+import { TitlePanel } from './TitlePanel';
+import { mountTransitions } from './Transitions';
+import { mountBanners } from './Banners';
+import { runStats } from './RunStats';
+import { mountOnboarding } from './Onboarding';
 import {
   Panel,
-  Button,
   add,
   clear,
   div,
@@ -40,7 +44,6 @@ import {
   classAccent,
   closeContextMenu,
   drag,
-  fmtInt,
   timeAgo,
   emptyState,
 } from './Widgets';
@@ -60,6 +63,13 @@ let pauseRef: PausePanel | null = null;
 
 /** Panels that pause the simulation while open (dungeon only). */
 const PAUSING = new Set(['pause', 'settings', 'charSelect', 'death']);
+
+/**
+ * Fullscreen panels that *are* the screen rather than sitting over it. Escape
+ * never closes these: closing the title or the death screen leaves the player
+ * looking at a bare 3D backdrop with no way forward.
+ */
+const STORY = new Set(['title', 'charSelect', 'death']);
 
 /** Ids handled by scenes rather than the UI layer. */
 const SCENE_OWNED = new Set(['hud', 'descend']);
@@ -92,6 +102,19 @@ export function closeAllPanels(): void {
   drag.cancel();
 }
 
+/** True if anything other than a fullscreen story panel is open. */
+function isOverlayOpen(): boolean {
+  for (const [id, p] of registry) if (p.isOpen && !STORY.has(id)) return true;
+  return false;
+}
+
+/** Closes every open panel except the fullscreen story screens. */
+function closeOverlays(): void {
+  for (const [id, p] of registry) if (p.isOpen && !STORY.has(id)) p.close();
+  closeContextMenu();
+  drag.cancel();
+}
+
 /** Closes everything except the given id. */
 function closeOthers(keep: string): void {
   for (const [id, p] of registry) if (id !== keep && p.isOpen) p.close();
@@ -103,7 +126,33 @@ export function openPanel(id: string): void {
   // Fullscreen story panels take over completely.
   if (id === 'charSelect' || id === 'death' || id === 'title') closeOthers(id);
   p.open();
+  const at = openOrder.indexOf(id);
+  if (at >= 0) openOrder.splice(at, 1);
+  openOrder.push(id);
   syncPause();
+}
+
+/**
+ * The order panels were opened in, newest last. Panels can also close
+ * themselves (their own X), so read it through `topOverlay`, which skips
+ * anything no longer open.
+ */
+const openOrder: string[] = [];
+
+/**
+ * Panels that are opened *from* another screen and should be backed out of
+ * one at a time: Escape in Settings returns to the pause menu or title, not
+ * all the way to the game.
+ */
+const NESTED = new Set(['settings', 'memorial']);
+
+function topOverlay(): string | null {
+  for (let i = openOrder.length - 1; i >= 0; i--) {
+    const id = openOrder[i]!;
+    if (registry.get(id)?.isOpen && !STORY.has(id)) return id;
+  }
+  for (const [id, p] of registry) if (p.isOpen && !STORY.has(id)) return id;
+  return null;
 }
 
 export function closePanel(id: string): void {
@@ -129,108 +178,6 @@ function syncPause(): void {
   let wantPause = false;
   for (const id of PAUSING) if (registry.get(id)?.isOpen) wantPause = true;
   engineRef.setPaused(wantPause);
-}
-
-// ---------------------------------------------------------------------------
-// Title panel — small enough to live here rather than in its own file.
-// ---------------------------------------------------------------------------
-
-class TitlePanel {
-  readonly panel: Panel;
-
-  constructor(engine: Engine) {
-    this.panel = new Panel({
-      id: 'title',
-      title: '',
-      fullscreen: true,
-      closable: false,
-      draggable: false,
-      className: 'panel-titlescreen',
-    });
-    this.panel.header.style.display = 'none';
-    this.panel.frame.style.background = 'transparent';
-
-    const wrap = div('title-wrap');
-    const inner = div('');
-    inner.appendChild(div('title-logo', 'SLAY'));
-    inner.appendChild(div('title-tagline', 'Descend. Die. Descend again.'));
-
-    const menu = div('title-menu');
-    const acct = save.account;
-
-    if (acct.current) {
-      const c = acct.current;
-      menu.appendChild(
-        new Button({
-          label: 'Continue',
-          variant: 'primary',
-          icon: 'play',
-          hint: `${c.name} · Lv ${c.level}`,
-          onClick: () => {
-            this.panel.close();
-            void engine.goTo('town');
-          },
-        }).root
-      );
-    }
-
-    // The account holds a roster now, so this is a chooser rather than a
-    // one-way door. It used to read 'Abandon & Start Over', which was both the
-    // only route to the creation screen and a promise to destroy the character
-    // you already had — so there was no way to have two.
-    menu.appendChild(
-      new Button({
-        label: save.roster.length > 0 ? 'Characters' : 'New Character',
-        variant: acct.current ? 'ghost' : 'primary',
-        icon: save.roster.length > 0 ? 'bag' : 'skull',
-        hint:
-          save.roster.length > 0
-            ? `${save.roster.length} living · pick one or make another`
-            : undefined,
-        onClick: () => {
-          this.panel.close();
-          void engine.goTo('charSelect');
-        },
-      }).root
-    );
-
-    menu.appendChild(
-      new Button({
-        label: 'Settings',
-        variant: 'ghost',
-        icon: 'gear',
-        onClick: () => openPanel('settings'),
-      }).root
-    );
-
-    inner.appendChild(menu);
-
-    const stats = div('title-stats');
-    const stat = (v: string, l: string): HTMLElement => {
-      const d = div('title-stat');
-      d.appendChild(div('title-stat-v', v));
-      d.appendChild(div('title-stat-l', l));
-      return d;
-    };
-    stats.appendChild(stat(String(acct.bestDepth), 'Best Depth'));
-    stats.appendChild(stat(String(acct.fallen.length), 'Fallen'));
-    stats.appendChild(stat(fmtInt(acct.bankGold), 'Banked Gold'));
-    inner.appendChild(stats);
-
-    inner.appendChild(div('title-foot', 'The vault and the memorial survive. Nothing else does.'));
-    wrap.appendChild(inner);
-    this.panel.body.appendChild(wrap);
-  }
-
-  open(): void {
-    this.panel.open();
-  }
-  close(): void {
-    this.panel.close();
-  }
-  get isOpen(): boolean {
-    return this.panel.isOpen;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -273,6 +220,24 @@ class MemorialPanel {
       this.list.appendChild(emptyState('No one has died yet. Give it time.', 'skull'));
       return;
     }
+    // A short reckoning above the names: how many, how deep, and what keeps
+    // doing it.
+    const deepest = fallen.reduce((m, f) => Math.max(m, f.depth), 0);
+    const tally = new Map<string, number>();
+    for (const f of fallen) tally.set(f.killedBy, (tally.get(f.killedBy) ?? 0) + 1);
+    let nemesis = '';
+    let most = 0;
+    for (const [k, n] of tally) if (n > most) [nemesis, most] = [k, n];
+    const sum = div('mem-sum');
+    const cell = (v: string, l: string): void => {
+      const c = div('mem-sum-cell');
+      add(c, div('mem-sum-v', v), div('mem-sum-l', l));
+      sum.appendChild(c);
+    };
+    cell(String(fallen.length), 'Fallen');
+    cell(`D${deepest}`, 'Deepest grave');
+    cell(most > 1 ? nemesis : '-', most > 1 ? `Nemesis · ${most} kills` : 'Nemesis');
+    this.list.appendChild(sum);
     for (const f of fallen) {
       const row = div('fallen-row');
       const mark = span('');
@@ -281,7 +246,7 @@ class MemorialPanel {
       const body = div('');
       body.appendChild(span('fallen-name', f.name));
       body.appendChild(
-        span('fallen-detail', `Level ${f.level} ${classById(f.classId)?.name ?? f.classId} — slain by ${f.killedBy} · ${timeAgo(f.at)}`)
+        span('fallen-detail', `Level ${f.level} ${classById(f.classId)?.name ?? f.classId}, slain by ${f.killedBy} · ${timeAgo(f.at)}`)
       );
       const depth = span('fallen-depth', `D${f.depth}`);
       add(row, mark, body, depth);
@@ -308,6 +273,10 @@ export function mountUI(engine: Engine): void {
   hud.mount(root);
   hudRef = hud;
   tooltip.mount(root);
+  runStats.attach(engine);
+  mountBanners(root);
+  mountTransitions();
+  mountOnboarding(root, engine);
 
   // --- panels -------------------------------------------------------------
   const title = new TitlePanel(engine);
@@ -378,7 +347,7 @@ export function mountUI(engine: Engine): void {
     const id = p.panel;
     if (!id || SCENE_OWNED.has(id)) return;
     // `class:<id>` is the CharSelect panel talking to the CharSelect scene.
-    if (id.startsWith('class:')) return;
+    if (id.startsWith('class:') || id.startsWith('char:')) return;
     openPanel(id);
   });
 
@@ -424,9 +393,25 @@ export function mountUI(engine: Engine): void {
         drag.cancel();
         return;
       }
-      if (isAnyPanelOpen()) {
-        closeAllPanels();
+      // A confirmation dialog is the topmost thing on screen, so it is what
+      // Escape dismisses: the same as pressing its Cancel button.
+      const dialog = document.querySelector<HTMLElement>('.modal-wrap.is-open');
+      if (dialog) {
+        dialog.querySelector<HTMLButtonElement>('.modal-ft .btn-ghost')?.click();
+        return;
+      }
+      if (isOverlayOpen()) {
+        // Back out of a nested screen one step; otherwise clear the deck, the
+        // way every inventory-heavy ARPG does.
+        const top = topOverlay();
+        if (top && NESTED.has(top)) closePanel(top);
+        else closeOverlays();
         syncPause();
+        return;
+      }
+      // Character select is one step in from the title, so Escape steps back.
+      if (sceneId === 'charSelect') {
+        void engine.goTo('title');
         return;
       }
       if (inWorld) togglePanel('pause');
@@ -467,6 +452,7 @@ export function mountUI(engine: Engine): void {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     elapsed += dt;
+    runStats.tick(dt);
     hud.update(dt, elapsed);
     map.tick();
     requestAnimationFrame(tick);

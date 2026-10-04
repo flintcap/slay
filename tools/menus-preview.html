@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SLAY menus preview</title>
+    <style>
+      /* A painted stand-in for the 3D scene: a dark room with a warm glow
+         right of centre, roughly where the title's gate and the plinth sit. */
+      #view {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background:
+          radial-gradient(ellipse 22% 38% at 62% 50%, rgba(255, 110, 50, 0.35), transparent 70%),
+          radial-gradient(ellipse 40% 50% at 55% 60%, rgba(70, 80, 120, 0.35), transparent 75%),
+          linear-gradient(180deg, #0b0c14, #050508);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="ui"></div>
+    <div id="fade"></div>
+    <script type="module" src="/tools/menus-preview.ts"></script>
+  </body>
+</html>

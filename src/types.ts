@@ -517,6 +517,14 @@ export interface GameSettings {
   showDamageNumbers: boolean;
   screenShake: number;
   cameraDistance: number;
+  /** First-run control hints (ui/Onboarding.ts). */
+  hints?: boolean;
+  /** Floor and town title cards (ui/Banners.ts). */
+  titleCards?: boolean;
+  /** Calms the menus: no slow intros, letter reveals or sweeping shines. */
+  reduceMotion?: boolean;
+  /** Small frame-rate readout in the corner. */
+  showFps?: boolean;
 }
 
 // ---------------------------------------------------------------------------

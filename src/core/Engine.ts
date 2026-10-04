@@ -160,6 +160,7 @@ export class Engine {
     const from = this.active?.id ?? 'boot';
 
     await fadeTo(1, 260);
+    events.emit('scene:loading', { from, to: id, payload });
 
     if (this.active) {
       this.active.dispose();

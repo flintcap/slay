@@ -1,12 +1,16 @@
 import * as THREE from 'three';
 import { GameScene, type Engine } from '../core/Engine';
-import type { SceneId } from '../types';
+import type { CharClassId, ItemRarity, SceneId } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
-import { surface, emissiveMaterial } from '../art/Materials';
+import { surface, emissiveMaterial, glowSpriteMaterial } from '../art/Materials';
 import { stoneBlock, displace } from '../art/Meshes';
+import { buildItemModel } from '../art/ItemModels';
 import { Random } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
+import { getBase } from '../sim/Loot';
+import { CLASSES } from '../data/classes';
+import { buildAtmosphere, type AtmosphereHandle } from './MenuStage';
 
 export interface DeathPayload {
   killedBy: string;
@@ -14,11 +18,17 @@ export interface DeathPayload {
   level: number;
   name: string;
   playtime: number;
+  classId?: CharClassId;
+  /** The main-hand weapon they died holding, planted on the grave. */
+  weapon?: { baseId: string; rarity: ItemRarity } | null;
 }
 
 /**
- * The death screen backdrop: a fresh grave marker under cold light. Deliberately
- * still and quiet — the run just ended, and the pause should land.
+ * The death screen backdrop: a fresh grave under cold light, the name cut into
+ * the stone, the weapon they died holding planted in the earth in front of it,
+ * and a single wisp in the class's colour rising off the mound.
+ *
+ * Deliberately still and quiet. The run just ended, and the pause should land.
  */
 export class DeathScene extends GameScene {
   readonly id: SceneId = 'death';
@@ -27,6 +37,9 @@ export class DeathScene extends GameScene {
   private fx: FXSystem;
   private engine: Engine;
   private candle!: THREE.PointLight;
+  private wisp: THREE.Sprite | null = null;
+  private atmosphere!: AtmosphereHandle;
+  private textures: THREE.Texture[] = [];
   private t = 0;
 
   constructor(engine: Engine) {
@@ -41,11 +54,11 @@ export class DeathScene extends GameScene {
     const rng = new Random(0xdead);
     const scene = this.scene;
 
-    scene.fog = new THREE.FogExp2(0x05060a, 0.075);
+    scene.fog = new THREE.FogExp2(0x05060a, 0.07);
     scene.background = new THREE.Color(0x030408);
     scene.add(new THREE.HemisphereLight(0x1a2338, 0x050505, 0.22));
 
-    const moon = new THREE.DirectionalLight(0x7a90c0, 0.45);
+    const moon = new THREE.DirectionalLight(0x7a90c0, 0.5);
     moon.position.set(-6, 12, -8);
     moon.castShadow = true;
     moon.shadow.mapSize.set(1024, 1024);
@@ -58,7 +71,17 @@ export class DeathScene extends GameScene {
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Headstone
+    // The fresh mound in front of the stone.
+    const moundGeo = new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    moundGeo.scale(0.75, 0.22, 1.25);
+    displace(moundGeo, rng.fork('mound'), 0.05, 2.2);
+    const mound = new THREE.Mesh(moundGeo, surface('ground.dirt', { repeat: 3, tint: 0x6a5a48 }));
+    mound.position.set(0, 0, 1.25);
+    mound.receiveShadow = true;
+    mound.castShadow = true;
+    scene.add(mound);
+
+    // Headstone.
     const stoneMat = surface('stone.crypt', { repeat: 1.6 });
     const slab = new THREE.Mesh(stoneBlock(1.3, 1.75, 0.24, rng.fork('slab'), 0.35), stoneMat);
     slab.position.set(0, 0.85, 0);
@@ -79,10 +102,37 @@ export class DeathScene extends GameScene {
     base.receiveShadow = true;
     scene.add(base);
 
+    // The name, cut into the face of the stone.
+    const engraving = this.engrave(data);
+    engraving.position.set(0, 1.0, 0.124);
+    engraving.rotation.z = 0.035;
+    scene.add(engraving);
+
+    // The weapon they died holding, driven point-first into the mound.
+    if (data.weapon) {
+      try {
+        const def = getBase(data.weapon.baseId);
+        if (def?.visual) {
+          const w = buildItemModel(def.visual, rng.fork('weapon'), data.weapon.rarity);
+          w.rotation.set(0.12, 0.5, Math.PI + 0.1);
+          const holder = new THREE.Group();
+          holder.add(w);
+          const box = new THREE.Box3().setFromObject(holder);
+          holder.position.set(0.05, -box.min.y - 0.18, 1.0);
+          holder.traverse((o) => {
+            o.castShadow = true;
+          });
+          scene.add(holder);
+        }
+      } catch {
+        // No weapon is better than no death screen.
+      }
+    }
+
     // A single guttering candle: the only warmth in the frame.
     const candleBody = new THREE.Mesh(
       new THREE.CylinderGeometry(0.055, 0.065, 0.3, 10),
-      surface('cloth.linen', { tint: 0xe8e0cc, roughness: 0.7 })
+      surface('cloth.linen', { tint: 0xe8e0cc, roughness: 0.7 }),
     );
     candleBody.position.set(0.62, 0.37, 0.42);
     candleBody.castShadow = true;
@@ -99,8 +149,16 @@ export class DeathScene extends GameScene {
     this.candle.shadow.mapSize.set(512, 512);
     scene.add(this.candle);
 
-    // Scattered stones in the background suggest the rest of the graveyard.
-    for (let i = 0; i < 12; i++) {
+    // What is left of them: a wisp in the class colour, rising and fading.
+    const color = CLASSES.find((c) => c.id === data.classId)?.color ?? 0x9fb4e0;
+    this.wisp = new THREE.Sprite(glowSpriteMaterial(color, 0.75));
+    this.wisp.position.set(0, 0.4, 1.2);
+    scene.add(this.wisp);
+    const wispLight = new THREE.PointLight(color, 2.5, 5, 2);
+    this.wisp.add(wispLight);
+
+    // The rest of the graveyard, receding into fog.
+    for (let i = 0; i < 14; i++) {
       const h = rng.range(0.7, 1.4);
       const s = new THREE.Mesh(stoneBlock(rng.range(0.6, 1.0), h, 0.18, rng.fork(`s${i}`), 0.5), stoneMat);
       const a = rng.range(-1.2, 1.2) + Math.PI;
@@ -112,16 +170,82 @@ export class DeathScene extends GameScene {
       scene.add(s);
     }
 
+    this.atmosphere = buildAtmosphere({
+      mistColor: 0x2c3448,
+      mistOpacity: 0.55,
+      extent: 40,
+      layers: 3,
+      shafts: [{ x: -1.4, z: -1.5, height: 9, width: 2.2, tilt: -0.3 }],
+      shaftColor: 0x8aa0d0,
+      shaftOpacity: 0.07,
+      seed: 0xdead,
+    });
+    scene.add(this.atmosphere.root);
+
     this.fx.setAmbient('dust', new THREE.Box3(new THREE.Vector3(-10, 0, -10), new THREE.Vector3(10, 5, 10)));
 
-    this.camera.position.set(1.1, 1.45, 3.5);
+    this.camera.position.set(1.1, 1.45, 3.9);
     this.camera.lookAt(0, 1.0, 0);
 
     audio.music('death', 1.2);
     audio.play('player.death');
-    events.emit('ui:open', { panel: 'death' });
     // Hand the run summary to the UI layer.
     (window as unknown as Record<string, unknown>).SLAY_DEATH = data;
+    events.emit('ui:open', { panel: 'death' });
+  }
+
+  /** A transparent plane carrying the carved inscription. */
+  private engrave(data: Partial<DeathPayload>): THREE.Mesh {
+    const W = 512;
+    const H = 460;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+    const serif = "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif";
+    const carve = (text: string, y: number, size: number, weight = '700'): void => {
+      ctx.font = `${weight} ${size}px ${serif}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // Lit lower lip, then the dark cut: reads as letters sunk into stone.
+      ctx.fillStyle = 'rgba(200, 200, 210, 0.22)';
+      ctx.fillText(text, W / 2, y + 2);
+      ctx.fillStyle = 'rgba(8, 8, 10, 0.88)';
+      ctx.fillText(text, W / 2, y);
+    };
+    const name = (data.name ?? 'The Nameless').toUpperCase();
+    const size = name.length > 11 ? Math.max(38, 66 - (name.length - 11) * 4) : 66;
+    carve('HERE LIES', 70, 30, '600');
+    carve(name, 150, size);
+    ctx.fillStyle = 'rgba(8, 8, 10, 0.7)';
+    ctx.fillRect(W / 2 - 110, 200, 220, 3);
+    const cls = CLASSES.find((c) => c.id === data.classId)?.name;
+    carve(cls ? `${cls}, level ${data.level ?? 1}` : `Level ${data.level ?? 1}`, 250, 32, '600');
+    carve(`Fell on Depth ${data.depth ?? 0}`, 300, 32, '600');
+    // A small cross of crossed lines as a mark.
+    ctx.strokeStyle = 'rgba(8, 8, 10, 0.8)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 350);
+    ctx.lineTo(W / 2, 420);
+    ctx.moveTo(W / 2 - 24, 372);
+    ctx.lineTo(W / 2 + 24, 372);
+    ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    this.textures.push(tex);
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex,
+      transparent: true,
+      roughness: 1,
+      metalness: 0,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+    });
+    return new THREE.Mesh(new THREE.PlaneGeometry(1.08, 1.08 * (H / W)), mat);
   }
 
   override update(dt: number, elapsed: number): void {
@@ -129,17 +253,29 @@ export class DeathScene extends GameScene {
     // Slow push-in over the first several seconds, then hold.
     const k = Math.min(1, this.t / 9);
     const ease = 1 - Math.pow(1 - k, 3);
-    const dist = 3.5 - ease * 0.85;
-    this.camera.position.set(1.1 - ease * 0.5, 1.45 - ease * 0.12, dist);
+    const dist = 3.9 - ease * 0.95;
+    this.camera.position.set(1.1 - ease * 0.55, 1.45 - ease * 0.12, dist);
     this.camera.lookAt(0, 1.0, 0);
 
     const s = Math.sin(elapsed * 17) * Math.sin(elapsed * 9.3);
     this.candle.intensity = 5.5 * (0.8 + s * 0.2);
 
+    if (this.wisp) {
+      // Rises off the mound over six seconds, shrinking away, then begins again.
+      const p = (this.t % 6) / 6;
+      this.wisp.position.set(Math.sin(this.t * 1.3) * 0.12, 0.35 + p * 2.1, 1.2 - p * 0.4);
+      const sc = 0.55 * Math.sin(Math.PI * Math.min(1, p * 1.15));
+      this.wisp.scale.setScalar(Math.max(0.001, sc));
+    }
+
+    this.atmosphere.update(dt);
     this.fx.update(dt, elapsed);
   }
 
   override dispose(): void {
+    this.atmosphere.dispose();
+    for (const t of this.textures) t.dispose();
+    this.textures = [];
     this.fx.dispose();
     events.emit('ui:close', { panel: 'death' });
   }

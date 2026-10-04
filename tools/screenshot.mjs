@@ -110,7 +110,7 @@ try {
   await page.waitForFunction(() => {
     const s = window.SLAY;
     return !!s && !!s.debug && !!s.engine && s.engine.currentSceneId !== null;
-  }, null, { timeout: 300000 });
+  }, null, { timeout: Number(args.bootTimeout ?? 300000) });
 } catch {
   console.error('game never reached a live scene');
   const status = await page.textContent('#boot-status').catch(() => null);
@@ -231,6 +231,34 @@ const drivers = {
   },
   vendor: async () => {
     await page.evaluate(() => window.SLAY.events.emit('ui:open', { panel: 'vendor' }));
+  },
+  // Front-end screens (menus stream).
+  pause: async () => {
+    await page.evaluate(async () => {
+      const s = window.SLAY;
+      if (!s.save.account.current && s.debug?.makeCharacter) s.debug.makeCharacter('ranger', 12);
+      if (s.engine.currentSceneId !== 'town' && s.engine.currentSceneId !== 'dungeon') await s.engine.goTo('town');
+      s.events.emit('ui:open', { panel: 'pause' });
+    });
+  },
+  settings: async () => {
+    await page.evaluate(() => window.SLAY.events.emit('ui:open', { panel: 'settings' }));
+  },
+  death: async () => {
+    await page.evaluate(async () => {
+      const s = window.SLAY;
+      await s.engine.goTo('death', {
+        killedBy: 'Gorefang the Ravenous',
+        depth: 7,
+        level: 14,
+        name: 'Kaelwyn',
+        playtime: 2100,
+        classId: 'warden',
+        weapon: { baseId: 'sword.short', rarity: 'rare' },
+      });
+    });
+    // The death screen plays in beats; let them land.
+    await settle(90);
   },
 };
 
