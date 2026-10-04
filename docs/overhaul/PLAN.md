@@ -1,7 +1,8 @@
 # SLAY AAA Overhaul
 
 Goal: take SLAY from "good base" to something that looks, sounds and plays
-like a finished, premium action RPG. Six workstreams run in parallel, each
+like a finished, premium action RPG. Not just the looks: how it plays, how
+deep it goes, the story, and how solid it is. Nine workstreams run in parallel, each
 owned by one agent, each checkpointing to git so it can be stopped at any
 moment and resumed later with nothing lost.
 
@@ -14,7 +15,10 @@ moment and resumed later with nothing lost.
 | animation | `animation.md` | Player and monster models, animation, hit reactions, deaths |
 | world | `world.md` | Textures, materials, lighting, post-processing, props, biomes' look, town |
 | feel | `feel.md` | Combat feedback, skill VFX, camera, loot drops, all audio and music |
-| depth | `depth.md` | Items, affixes, uniques, progression, encounters, crafting, run variety |
+| depth | `depth.md` | Items, affixes, uniques, progression, dungeon events, crafting, run variety |
+| combat | `combat.md` | Controls, skill design, enemy AI and behaviours, elites, mini-bosses, boss fights, difficulty curve |
+| story | `story.md` | Lore, quest lines, town NPCs and dialogue, boss personalities, flavour text, a reason to descend |
+| quality | `quality.md` | Bugs, performance, save safety, accessibility, crash resistance |
 
 ## File ownership
 
@@ -27,13 +31,20 @@ only in small additive changes (new lines, new exports), never rewrite it.
 - **menus**: `src/scenes/TitleScene.ts`, `CharSelectScene.ts`, `DeathScene.ts`, `ShowcaseScene.ts`,
   `src/ui/CharSelectPanel.ts`, `DeathPanel.ts`, `PausePanel.ts`, `SettingsPanel.ts`, `UIRoot.ts`,
   `index.html`, new `src/ui/menus.css`
-- **animation**: `src/art/Animation.ts`, `CharacterModels.ts`, `ItemModels.ts`, `Meshes.ts`
+- **animation**: `src/art/Animation.ts`, `CharacterModels.ts`, `ItemModels.ts`, `Meshes.ts`, `src/entities/MonsterModels.ts`
 - **world**: `src/art/Textures.ts`, `Materials.ts`, `Palettes.ts`, `Noise.ts`, `src/world/DungeonBuilder.ts`,
   `Props.ts`, `Biomes.ts` (art fields), `Town.ts`, `src/core/Renderer.ts`, `src/scenes/TownScene.ts`
 - **feel**: `src/fx/*`, `src/audio/*`, `src/scenes/SkillRunner.ts`
-- **depth**: `src/data/*`, `src/sim/*`, `src/world/DungeonGen.ts`, `Layouts.ts`, `src/entities/AI.ts`
+- **depth**: `src/data/*` and `src/sim/*` except the files listed for combat and story below,
+  `src/world/DungeonGen.ts`, `Layouts.ts`
+- **combat**: `src/entities/AI.ts`, `Abilities.ts`, `Enemy.ts`, `Boss.ts`, `Player.ts`, `src/data/skills.ts`,
+  `bosses.ts`, `monsterAffixes.ts`, `statuses.ts`, `src/sim/Combat.ts`, `Status.ts`, `src/core/Input.ts`
+- **story**: `src/data/lore.ts`, `quests.ts`, `src/sim/Quests.ts`, new dialogue and narrative files
+- **quality**: `src/core/Engine.ts`, `Events.ts`, `Save.ts`, `tools/`. May also make small, surgical bug
+  fixes in any file, explaining each in the commit message; anything bigger goes in the owning
+  stream's progress file under "Notes for resume" as a request.
 - **shared** (small additive edits only): `src/types.ts`, `src/main.ts`, `src/scenes/DungeonScene.ts`,
-  `src/entities/Player.ts`, `Enemy.ts`, `Boss.ts`, `Abilities.ts`, `src/core/*` except Renderer, `CONTRACTS.md`
+  `src/core/RNG.ts`, `CONTRACTS.md`
 
 A stream that needs a new panel or system puts it in a **new file** rather than
 growing someone else's.

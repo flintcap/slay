@@ -59,5 +59,6 @@ npm run build
 SLAY_PORT=<your port> node tools/screenshot.mjs --out=shots/<stream> --shots=town,dungeon
 ```
 
-Ports: hud 4301, menus 4302, animation 4303, world 4304, feel 4305, depth 4306.
+Ports: hud 4301, menus 4302, animation 4303, world 4304, feel 4305, depth 4306,
+combat 4307, story 4308, quality 4309.
 Look at the PNGs yourself. `shots/` is not committed.
