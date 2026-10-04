@@ -163,10 +163,11 @@ export class CombatTextLayer {
       text: compactNumber(amount),
       amount,
       x,
-      // Crits start a little higher so they clear the running total beneath.
-      y: crit ? y + 0.45 : y,
+      // Crits start higher and off to one side so they clear the running
+      // total of normal hits on the same target instead of landing on it.
+      y: crit ? y + 0.8 : y,
       z,
-      vx: fan * (crit ? 16 : 11),
+      vx: crit ? (n % 2 ? 1 : -1) * (26 + Math.abs(fan) * 8) : fan * 11,
       vy: crit ? -70 : -58,
       life: crit ? 1.25 : 0.95,
       fill,
@@ -187,10 +188,10 @@ export class CombatTextLayer {
       z,
       vx: 0,
       vy: -40,
-      life: 0.9,
+      life: 0.95,
       fill: color,
       edge: '#0c0a08',
-      size: 15,
+      size: 18,
       key: '',
     });
   }
