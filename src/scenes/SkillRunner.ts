@@ -4,7 +4,7 @@ import type { DamagePacket, DamageType, StatusApplication } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { SKILLS } from '../data/skills';
-import { rollDamage } from '../sim/Combat';
+import { rollDamage, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 import type { Player } from '../entities/Player';
 import { Enemy, type CombatContext } from '../entities/Enemy';
@@ -620,7 +620,8 @@ export class SkillRunner {
 
     player.faceTowards(target.x, target.z);
 
-    const scale = def.damageScale ? def.damageScale(rank) : 1;
+    // Rank with +skills, and the synergies the tree shows (combat's `skillDamageScale`).
+    const scale = skillDamageScale(player.character.skills, player.stats.skillLevels, def.id);
     const type: DamageType = def.damageType ?? 'physical';
     // Every skill of a damage type used the one element colour, so a whole
     // tree of fire skills was the same orange on screen. Shift it by a hash of

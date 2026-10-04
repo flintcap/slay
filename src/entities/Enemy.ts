@@ -68,6 +68,7 @@ import { getAffix, MONSTER_AFFIXES } from '../data/monsterAffixes';
 import { BOSSES } from '../data/bosses';
 import { getStatus, type StatusDef } from '../data/statuses';
 import { powerHooks } from '../sim/ItemPowers';
+import { resolveCombo, type ComboHit } from './Combos';
 
 // Re-exported so the scene layer can pull the whole monster surface from here,
 // exactly as CONTRACTS.md specifies.
@@ -982,6 +983,48 @@ export class Enemy implements Combatant {
 
   // --- damage --------------------------------------------------------------
 
+  /** Combo memory (`Combos.ts`): the last skill of yours that hit this, and when. */
+  lastSkillHit = '';
+  lastSkillHitAt = -99;
+
+  /** A combo landed: say so over the target and deliver the class's follow-up. */
+  private onCombo(hit: ComboHit, ctx: CombatContext): void {
+    const p = this.root.position;
+    const c = hit.combo;
+    ctx.fx.damageNumber(`${c.name}!`, p.x, this.centerY + 0.9, p.z, c.color, true);
+    ctx.fx.burst('crit', p.x, this.centerY, p.z, { count: 14, color: c.color });
+    events.emit('combat:combo', {
+      id: this.id,
+      name: c.name,
+      setup: hit.setup,
+      payoff: hit.payoff.id,
+      bonusPct: hit.bonusPct,
+      x: p.x,
+      y: this.centerY,
+      z: p.z,
+    });
+    if (c.stagger && !this.isBoss) this.applyStatuses([{ id: 'stunned', duration: c.stagger, magnitude: 1 }], ctx);
+    if (c.arc) {
+      let best: Enemy | null = null;
+      let bestD = 6;
+      for (const e of ctx.enemies) {
+        if (e === this || !e.alive) continue;
+        const d = Math.hypot(e.root.position.x - p.x, e.root.position.z - p.z);
+        if (d < bestD) {
+          bestD = d;
+          best = e;
+        }
+      }
+      if (best) {
+        ctx.fx.burst('shock', best.root.position.x, best.centerY, best.root.position.z, { count: 10, color: c.color });
+        best.takeDamage(
+          { amount: hit.packet.amount * c.arc, type: hit.packet.type, crit: false, source: 'player', ability: c.name },
+          ctx,
+        );
+      }
+    }
+  }
+
   takeDamage(packet: DamagePacket, ctx: CombatContext): void {
     if (!this.alive || this.disposed) return;
 
@@ -1006,6 +1049,14 @@ export class Enemy implements Combatant {
     // Item powers (conversion, slayer bonuses, life tap) shape the player's blow.
     if (packet.source === 'player' && powerHooks.outgoing) packet = powerHooks.outgoing(this, packet, ctx);
     let working = packet;
+    // Combos: a different skill landing on the heels of another hits harder.
+    if (packet.source === 'player') {
+      const combo = resolveCombo(working, this, ctx.elapsed);
+      if (combo) {
+        working = combo.packet;
+        this.onCombo(combo, ctx);
+      }
+    }
     // Adaptive: hardens against an element that keeps landing.
     const adapt = this.affixes.find((a) => a.behavior === 'adaptive');
     if (adapt) working = this.adapt(working, adapt, ctx);

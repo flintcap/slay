@@ -8,20 +8,21 @@ Status: in progress
 - [x] Enemy behaviours: clear archetypes (rusher, flanker, ranged kiter, caster, support, swarm, tank) with readable telegraphs and pack tactics instead of everyone walking straight at you. — "Teach packs to fight together: archetypes, flanks, guards and waves"
 - [x] Elites and mini-bosses: more elite affixes that combine into real threats, and a mini-boss with its own mechanic on most floors. — "Give most floors a mini-boss and elites that combine"
 - [x] Boss fights: phases, arena mechanics, enrage, and attacks you can learn and dodge, for every boss. — "Bosses step back to charge, and every boss fight is checked"
-- [ ] Skill depth: synergies between skills, meaningful choices per rank, and a reason to mix skills instead of spamming one.
+- [x] Skill depth: synergies between skills, meaningful choices per rank, and a reason to mix skills instead of spamming one. — "Synergies and +skills reach skill damage, and mixing skills combos"
 - [ ] Difficulty curve: headless fights confirm every class at every depth band is challenged but not walled; tune enemies up and classes up, never monsters down.
 - [ ] Sweep: every skill and every monster ability has been exercised by a checker; nothing is unhittable, unavoidable or broken.
 
 ## Next up
 
-Milestone 5, skill depth: synergies between skills, meaningful choices per
-rank, and a reason to mix skills instead of spamming one. Start by reading
-`src/data/skills.ts` (combat owns it) and `src/sim/Passives.ts` to see what
-already combines, then pick a small set of cross-skill hooks (for example: a
-status one skill applies that another skill consumes for a bonus).
-
-The three requests other streams left at the pause are dealt with (see
-"Notes for resume"); the quest-objective one belongs to depth, who has it too.
+Milestone 6, difficulty curve. Build a headless "class vs depth" fight harness
+(reuse `tools/combat-arena.ts` for monsters and `tools/skilldepth-entry.ts`'s
+`rig()` for a real hero with the real SkillRunner): for each class, a
+reasonable build at a few depth bands (e.g. 1, 5, 12, 25, 50), fight a typical
+pack and the floor boss, and report time-to-kill and life lost. Mind that
+synergies and +skills now really count (milestone 5), so skill damage is much
+higher than before for invested builds. Rule from the owner: if a class is
+walled, make the class stronger; never make monsters weaker or fewer.
+Keep the harness under a minute; the machine is shared.
 
 ## Notes for resume
 
@@ -34,6 +35,22 @@ The three requests other streams left at the pause are dealt with (see
   The backstep is the tell. Before this, gap closers never fired in melee.
 - The checker's hero focuses adds, healers first. Tide Callers' Mend heals a
   boss 30% of its life, so leaving a healer up stalls the fight (by design).
+
+- Skill damage: `sim/Combat.skillDamageScale(skills, skillLevels, id)` is what
+  `SkillRunner.cast` now uses (one line in feel's file). Before, skills used
+  `damageScale(hardRank)`, so every authored synergy and all `+skills` gear did
+  nothing to damage. Ranger trees had no synergies at all; they have 31 now.
+- Combos: `src/entities/Combos.ts`. A skill hitting a target another of your
+  skills hit within `COMBO_WINDOW` (4s) is a combo: +20% +5% per payoff tier
+  (25..50%), plus the class follow-up: warden Break (0.8s stun, not bosses),
+  pyromancer Flashpoint (3 burning), shadowblade Exploit (forced crit),
+  stormcaller Overload (40% arcs to the nearest enemy), revenant Reap
+  (weakened), ranger Expose (vulnerable). Same skill twice, basic attacks,
+  summons and item powers never combo. Memory is `Enemy.lastSkillHit/At`;
+  applied in `Enemy.takeDamage` after item powers, before mitigation. Shows
+  `Name!` over the target and emits `combat:combo`.
+- `node tools/check-skilldepth.mjs` covers synergies (all 18 trees), real-cast
+  synergy and +skills damage, and combos (about 20s).
 
 **Requests from other streams (added at pause), and what was done:**
 - From depth, `enemy:killed` fired twice per kill: fixed. Only `Enemy.die` raises
@@ -116,5 +133,9 @@ The three requests other streams left at the pause are dealt with (see
 - feel: `SkillRunner.meleeSwing` now defers a visible swing to its contact frame
   (`pendingSwings`, ticked in `update`). Hit feel fires at contact; the whoosh on
   the click.
+- feel / hud: `combat:combo` { id, name, setup, payoff, bonusPct, x, y, z } fires
+  on each combo; it already floats `Name!` over the target. A sound and a skill
+  tree line would help: `comboForSkill(def)` and `comboBonusPct(def)` in
+  `src/entities/Combos.ts` give the text and number for a tooltip.
 - feel: `player:evaded` fires when a hit lands during the dodge. Mini-boss beats
   (horn, mark, shadow step, cage, volley, charge) currently use existing bursts and toasts.

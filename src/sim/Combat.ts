@@ -175,6 +175,22 @@ export function rollDamage(stats: Stats, rng: Rng, opts: RollOpts = {}): DamageP
 }
 
 /**
+ * A skill's damage multiplier as the game should use it: the rank including
+ * `+skills` from gear, and every synergy the character has invested in. Skills
+ * without a damage curve return 1.
+ *
+ * The skill runner used to read `damageScale(hardRank)` directly, so the
+ * synergies the skill tree advertises and `+skills` on gear did nothing to a
+ * skill's damage.
+ */
+export function skillDamageScale(skills: Record<string, number>, skillLevels: number, skillId: string): number {
+  const def = SKILL_BY_ID[skillId];
+  const hard = skills[skillId] ?? 0;
+  if (!def?.damageScale || hard <= 0) return 1;
+  return effectiveDamageScale(skillId, effectiveRank(hard, skillLevels), skills) || 1;
+}
+
+/**
  * Rolls a packet for a specific skill, folding in its per-rank damage scaling
  * and every synergy the character has invested in.
  */
