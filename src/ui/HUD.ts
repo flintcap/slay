@@ -40,11 +40,13 @@ import {
   runtime,
   tip,
   STAT_LABEL,
+  ORNAMENT,
   type MinimapPip,
 } from './Widgets';
 import { skillIconUri, warmItemIcons } from '../art/Icons';
 import { setPrimaryAttack, setHotbarSlot } from '../sim/Character';
 import { SKILL_BY_ID } from '../data/skills';
+import { BOSSES } from '../data/bosses';
 
 // Tile ids as stored in DungeonLevel.tiles (mirrors world/Layouts TILE_VALUES).
 const T_VOID = 0;
@@ -138,18 +140,81 @@ function probeScene(scene: object): SceneProbe {
 // Orb — a canvas globe with animated liquid.
 // ---------------------------------------------------------------------------
 
+/** Fractional part, for looping bubble phases without any randomness. */
+function frac(v: number): number {
+  return v - Math.floor(v);
+}
+
+/**
+ * A two-beat heartbeat envelope, 0..1, with a period of `period` seconds.
+ * Lub, a short gap, dub. Reads as a pulse rather than a blink.
+ */
+function heartbeat(t: number, period: number): number {
+  const p = t % period;
+  const lub = Math.exp(-p * 14);
+  const q = p - 0.2;
+  const dub = q > 0 ? 0.65 * Math.exp(-q * 13) : 0;
+  return Math.min(1, lub + dub);
+}
+
+/** Per-orb palette: surface, body, depths, the trail band and the swirl tint. */
+interface OrbPalette {
+  hi: [number, number, number];
+  mid: [number, number, number];
+  deep: [number, number, number];
+  trail: string;
+  swirl: string;
+}
+
+const ORB_PALETTE: Record<'life' | 'mana', OrbPalette> = {
+  life: {
+    hi: [255, 120, 96],
+    mid: [196, 22, 18],
+    deep: [58, 4, 6],
+    trail: 'rgba(255,214,170,0.42)',
+    swirl: 'rgba(255,90,60,',
+  },
+  mana: {
+    hi: [140, 196, 255],
+    mid: [34, 92, 214],
+    deep: [8, 16, 64],
+    trail: 'rgba(200,230,255,0.38)',
+    swirl: 'rgba(120,170,255,',
+  },
+};
+
 class Orb {
   readonly root: HTMLDivElement;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D | null;
   private label: HTMLDivElement;
+  private curEl: HTMLElement | null;
+  private maxEl: HTMLElement | null;
+  private kind: 'life' | 'mana';
+  private pal: OrbPalette;
+  private size: number;
+
+  /** What the liquid shows, eased toward `target` so a hit pours rather than cuts. */
   private display = 1;
   private target = 1;
-  private hue: [number, number, number];
-  private size: number;
+  /**
+   * The "damage taken" level. It holds where the liquid was for a moment after
+   * a loss, then drains to meet it, so a big hit leaves a visible pale band of
+   * exactly how much it cost.
+   */
+  private trail = 1;
+  private trailHold = 0;
+  /** Surface slosh: a damped spring kicked by every change in level. */
+  private slosh = 0;
+  private sloshV = 0;
   private flash = 0;
+  private healGlow = 0;
+  private lastCur = -1;
+  private lastMax = -1;
 
   constructor(kind: 'life' | 'mana', size: number) {
+    this.kind = kind;
+    this.pal = ORB_PALETTE[kind];
     this.size = size;
     this.root = div(`orb orb-${kind}`);
     this.canvas = el2('canvas');
@@ -161,100 +226,239 @@ class Orb {
     this.ctx = this.canvas.getContext('2d');
     this.ctx?.scale(dpr, dpr);
 
-    this.hue = kind === 'life' ? [0xd8, 0x1f, 0x1a] : [0x2f, 0x6b, 0xe0];
-
     const glass = div('orb-glass');
     const ring = div('orb-ring');
+    const studs = div('orb-studs');
+    const wing = div('orb-wing');
+    wing.innerHTML = ORB_WING_SVG;
     this.label = div('orb-label');
-    this.label.innerHTML = '<span class="orb-cur">0</span><span class="orb-sep">/</span><span class="orb-max">0</span>';
-    add(this.root, this.canvas, glass, ring, this.label);
+    this.label.innerHTML = '<span class="orb-cur">0</span><span class="orb-max">/ 0</span>';
+    this.curEl = this.label.querySelector<HTMLElement>('.orb-cur');
+    this.maxEl = this.label.querySelector<HTMLElement>('.orb-max');
+    add(this.root, wing, this.canvas, glass, ring, studs, this.label);
   }
 
   set(value: number, max: number): void {
     const t = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
-    if (t < this.target - 0.001) this.flash = 1;
+    const delta = t - this.target;
+    if (delta < -0.001) {
+      this.flash = Math.min(1, this.flash + 0.5 + -delta * 3);
+      this.trailHold = 0.45;
+      // A bigger loss throws the liquid harder.
+      this.sloshV -= Math.min(26, 6 + -delta * 90);
+    } else if (delta > 0.004) {
+      this.healGlow = Math.min(1, this.healGlow + delta * 6);
+      this.sloshV += Math.min(14, 3 + delta * 40);
+    }
     this.target = t;
-    const cur = this.label.querySelector<HTMLElement>('.orb-cur');
-    const mx = this.label.querySelector<HTMLElement>('.orb-max');
-    if (cur) countTo(cur, Math.round(value), (n) => fmtInt(Math.round(n)), 260);
-    if (mx) mx.textContent = fmtInt(Math.round(max));
-    this.root.classList.toggle('is-critical', t < 0.28);
+    const cur = Math.round(value);
+    const mx = Math.round(max);
+    // Writing text every frame forces layout; only touch it on a change.
+    if (cur !== this.lastCur && this.curEl) {
+      this.lastCur = cur;
+      countTo(this.curEl, cur, (n) => fmtInt(Math.round(n)), 260);
+    }
+    if (mx !== this.lastMax && this.maxEl) {
+      this.lastMax = mx;
+      this.maxEl.textContent = `/ ${fmtInt(mx)}`;
+    }
+    this.root.classList.toggle('is-critical', this.kind === 'life' && t < 0.28 && t > 0);
+    this.root.classList.toggle('is-empty', t <= 0.001);
   }
 
   draw(elapsed: number, dt: number): void {
     const ctx = this.ctx;
     if (!ctx) return;
-    // Ease the fill so a big hit reads as liquid sloshing down, not a jump cut.
-    this.display += (this.target - this.display) * Math.min(1, dt * 7);
-    this.flash = Math.max(0, this.flash - dt * 2.6);
+    const step = Math.min(dt, 0.05);
+    this.display += (this.target - this.display) * Math.min(1, step * 7);
+    if (this.trail < this.display) this.trail = this.display;
+    if (this.trailHold > 0) this.trailHold -= step;
+    else this.trail += (this.display - this.trail) * Math.min(1, step * 2.6);
+    // Damped spring: stiff enough to settle in about a second.
+    this.sloshV += (-this.slosh * 38 - this.sloshV * 3.2) * step;
+    this.slosh += this.sloshV * step;
+    this.flash = Math.max(0, this.flash - step * 2.4);
+    this.healGlow = Math.max(0, this.healGlow - step * 1.6);
 
     const s = this.size;
     const r = s / 2;
+    const pal = this.pal;
+    const [hr, hg, hb] = pal.hi;
+    const [mr, mg, mb] = pal.mid;
+    const [dr, dg, db] = pal.deep;
+    const critical = this.kind === 'life' && this.target < 0.28 && this.target > 0;
+    const beat = critical ? heartbeat(elapsed, 1.05) : 0;
+
     ctx.clearRect(0, 0, s, s);
     ctx.save();
     ctx.beginPath();
-    ctx.arc(r, r, r - 3, 0, Math.PI * 2);
+    ctx.arc(r, r, r - 1, 0, Math.PI * 2);
     ctx.clip();
 
-    // Empty vessel.
-    const bg = ctx.createRadialGradient(r * 0.75, r * 0.6, r * 0.1, r, r, r);
-    bg.addColorStop(0, '#141013');
-    bg.addColorStop(1, '#050405');
+    // Empty vessel: smoked glass, faintly tinted by what it holds.
+    const bg = ctx.createRadialGradient(r * 0.8, r * 0.7, r * 0.1, r, r, r);
+    bg.addColorStop(0, `rgb(${Math.round(dr * 0.6 + 14)},${Math.round(dg * 0.6 + 12)},${Math.round(db * 0.6 + 14)})`);
+    bg.addColorStop(1, '#030203');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, s, s);
 
     const level = s - this.display * s;
-    const [cr, cg, cb] = this.hue;
+    const trailLevel = s - this.trail * s;
+    const tilt = this.slosh * 0.012;
 
-    // Two offset sine waves make the surface look like a fluid rather than a bar.
-    for (let layer = 0; layer < 2; layer++) {
-      const amp = (layer === 0 ? 3.4 : 2.2) * (0.55 + this.display * 0.45);
-      const speed = layer === 0 ? 1.7 : -2.3;
-      const freq = layer === 0 ? 0.055 : 0.083;
-      const yoff = layer === 0 ? 0 : 2.4;
-      ctx.beginPath();
-      ctx.moveTo(0, s);
-      ctx.lineTo(0, level + yoff);
-      for (let x = 0; x <= s; x += 3) {
-        const y = level + yoff + Math.sin(x * freq + elapsed * speed + layer * 1.9) * amp;
-        ctx.lineTo(x, y);
-      }
-      ctx.lineTo(s, s);
-      ctx.closePath();
-      const g = ctx.createLinearGradient(0, level - 10, 0, s);
-      const a = layer === 0 ? 1 : 0.55;
-      g.addColorStop(0, `rgba(${Math.min(255, cr + 70)},${Math.min(255, cg + 80)},${Math.min(255, cb + 70)},${a})`);
-      g.addColorStop(0.35, `rgba(${cr},${cg},${cb},${a})`);
-      g.addColorStop(1, `rgba(${Math.round(cr * 0.34)},${Math.round(cg * 0.3)},${Math.round(cb * 0.38)},${a})`);
-      ctx.fillStyle = g;
-      ctx.fill();
+    // Damage-taken band, drawn first so the liquid sits in front of it.
+    if (trailLevel < level - 0.5) {
+      ctx.fillStyle = pal.trail;
+      ctx.fillRect(0, trailLevel, s, level - trailLevel + 2);
     }
 
-    // Caustic sheen just under the surface.
-    ctx.globalCompositeOperation = 'lighter';
-    const sheen = ctx.createLinearGradient(0, level, 0, level + 26);
-    sheen.addColorStop(0, `rgba(255,255,255,${0.16 + this.flash * 0.3})`);
-    sheen.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = sheen;
-    ctx.fillRect(0, level, s, 26);
+    const surface = (x: number, layer: number): number => {
+      const amp = (layer === 0 ? 2.6 : 1.8) * (0.5 + this.display * 0.5) + Math.abs(this.slosh) * 0.12;
+      const speed = layer === 0 ? 1.6 : -2.1;
+      const freq = layer === 0 ? 0.06 : 0.09;
+      return (
+        level +
+        (layer === 0 ? 0 : -1.6) +
+        (x - r) * tilt +
+        Math.sin(x * freq + elapsed * speed + layer * 1.9) * amp +
+        Math.sin(x * 0.17 - elapsed * 2.9 + layer) * amp * 0.25
+      );
+    };
 
+    const liquidPath = (layer: number): void => {
+      ctx.beginPath();
+      ctx.moveTo(0, s);
+      for (let x = 0; x <= s; x += 3) ctx.lineTo(x, surface(x, layer));
+      ctx.lineTo(s, surface(s, layer));
+      ctx.lineTo(s, s);
+      ctx.closePath();
+    };
+
+    if (this.display > 0.002) {
+      // Back wave: thinner, darker, a beat out of step with the front.
+      liquidPath(1);
+      ctx.fillStyle = `rgba(${mr},${mg},${mb},0.5)`;
+      ctx.fill();
+
+      // Front body.
+      liquidPath(0);
+      const g = ctx.createLinearGradient(0, level - 6, 0, s);
+      g.addColorStop(0, `rgb(${hr},${hg},${hb})`);
+      g.addColorStop(0.16, `rgb(${mr},${mg},${mb})`);
+      g.addColorStop(1, `rgb(${dr},${dg},${db})`);
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      // Everything below lives inside the liquid.
+      ctx.save();
+      liquidPath(0);
+      ctx.clip();
+      ctx.globalCompositeOperation = 'lighter';
+
+      // Slow churn: three soft lights drifting on Lissajous paths.
+      for (let i = 0; i < 3; i++) {
+        const cx = r + Math.sin(elapsed * (0.35 + i * 0.13) + i * 2.1) * r * 0.55;
+        const cy = r + 8 + Math.cos(elapsed * (0.27 + i * 0.11) + i * 1.3) * r * 0.45;
+        const rad = r * (0.42 + i * 0.1);
+        const sw = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+        sw.addColorStop(0, `${pal.swirl}${0.2 + beat * 0.25})`);
+        sw.addColorStop(1, `${pal.swirl}0)`);
+        ctx.fillStyle = sw;
+        ctx.fillRect(0, 0, s, s);
+      }
+
+      // Bubbles, rising on fixed loops. Deterministic, so no RNG needed.
+      for (let i = 0; i < 9; i++) {
+        const seed = frac(Math.sin(i * 91.7) * 4375.85);
+        const speed = 0.16 + seed * 0.22;
+        const ph = frac(elapsed * speed + seed * 7.3);
+        const bx = r + (frac(seed * 13.1) - 0.5) * s * 0.7 + Math.sin(elapsed * 2 + i) * 2.2;
+        const by = s - ph * (s - level + 4);
+        if (by < level + 3) continue;
+        const br = 0.8 + frac(seed * 5.7) * 1.8;
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.1 + (1 - ph) * 0.12})`;
+        ctx.fill();
+      }
+
+      // Caustic sheen just under the surface.
+      const sheen = ctx.createLinearGradient(0, level - 4, 0, level + 22);
+      sheen.addColorStop(0, `rgba(255,255,255,${0.2 + this.flash * 0.3 + this.healGlow * 0.3})`);
+      sheen.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, level - 6, s, 30);
+      ctx.restore();
+
+      // Meniscus: a bright hairline along the front surface.
+      ctx.beginPath();
+      for (let x = 0; x <= s; x += 3) {
+        const y = surface(x, 0);
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = `rgba(${Math.min(255, hr + 40)},${Math.min(255, hg + 60)},${Math.min(255, hb + 60)},0.75)`;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+
+    ctx.globalCompositeOperation = 'lighter';
     if (this.flash > 0.01) {
-      ctx.fillStyle = `rgba(255,235,220,${this.flash * 0.14})`;
+      ctx.fillStyle = `rgba(255,236,220,${this.flash * 0.16})`;
+      ctx.fillRect(0, 0, s, s);
+    }
+    if (this.healGlow > 0.01) {
+      ctx.fillStyle = `rgba(${hr},${hg},${hb},${this.healGlow * 0.18})`;
+      ctx.fillRect(0, 0, s, s);
+    }
+    if (beat > 0.01) {
+      // The whole globe throbs with the heartbeat when life runs low.
+      const hb2 = ctx.createRadialGradient(r, r, r * 0.3, r, r, r);
+      hb2.addColorStop(0, `rgba(255,40,30,${beat * 0.06})`);
+      hb2.addColorStop(1, `rgba(255,40,30,${beat * 0.38})`);
+      ctx.fillStyle = hb2;
       ctx.fillRect(0, 0, s, s);
     }
     ctx.globalCompositeOperation = 'source-over';
 
-    // Glass highlight.
-    const hl = ctx.createRadialGradient(r * 0.68, r * 0.5, 2, r * 0.68, r * 0.5, r * 0.95);
-    hl.addColorStop(0, 'rgba(255,255,255,0.20)');
-    hl.addColorStop(0.5, 'rgba(255,255,255,0.04)');
-    hl.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = hl;
+    // Spherical shading: darken toward the rim so it reads as a globe.
+    const rim = ctx.createRadialGradient(r * 0.92, r * 0.86, r * 0.5, r, r, r);
+    rim.addColorStop(0, 'rgba(0,0,0,0)');
+    rim.addColorStop(0.82, 'rgba(0,0,0,0.25)');
+    rim.addColorStop(1, 'rgba(0,0,0,0.7)');
+    ctx.fillStyle = rim;
     ctx.fillRect(0, 0, s, s);
 
     ctx.restore();
   }
 }
+
+/** A horned skull on a gilt boss: the end caps of the boss health bar. */
+const BOSS_CAP_SVG =
+  '<svg viewBox="0 0 40 40" aria-hidden="true">' +
+  '<path d="M20 1 39 20 20 39 1 20Z" fill="#1a110a" stroke="#c9a24f" stroke-width="1.6"/>' +
+  '<path d="M20 5 35 20 20 35 5 20Z" fill="none" stroke="#6d4f1e" stroke-width="1"/>' +
+  '<path d="M11 13c1 3 3 4.6 5 5M29 13c-1 3-3 4.6-5 5" fill="none" stroke="#e8d3a0" stroke-width="1.4" stroke-linecap="round"/>' +
+  '<path d="M20 13c-4.4 0-7 2.8-7 6.4 0 2.4 1.2 3.9 2.6 4.6V27h8.8v-3c1.4-.7 2.6-2.2 2.6-4.6 0-3.6-2.6-6.4-7-6.4Z" fill="#e8d3a0"/>' +
+  '<circle cx="17.3" cy="19.6" r="1.7" fill="#b3200f"/><circle cx="22.7" cy="19.6" r="1.7" fill="#b3200f"/>' +
+  '<path d="M18 27v-2M20 27v-2M22 27v-2" stroke="#1a110a" stroke-width=".9"/>' +
+  '</svg>';
+
+/**
+ * The bracket that cradles each orb on its outer side: a crescent of gilt
+ * with three thorns, drawn for the life orb and mirrored for mana.
+ */
+const ORB_WING_SVG =
+  '<svg viewBox="0 0 60 150" aria-hidden="true">' +
+  '<defs><linearGradient id="orbWingG" x1="0" y1="0" x2="1" y2="1">' +
+  '<stop offset="0" stop-color="#f3dc9a"/><stop offset=".45" stop-color="#9c7432"/><stop offset="1" stop-color="#4a3414"/>' +
+  '</linearGradient></defs>' +
+  '<path d="M52 8C26 22 12 46 12 75s14 53 40 67C34 124 26 101 26 75s8-49 26-67Z" fill="url(#orbWingG)" stroke="#120c06" stroke-width="1.2"/>' +
+  '<path d="M19 40 3 33 15 47ZM13 75 0 75 13 82ZM19 110 3 117 15 103Z" fill="url(#orbWingG)" stroke="#120c06" stroke-width="1"/>' +
+  '<path d="M44 18C28 32 20 52 20 75s8 43 24 57" fill="none" stroke="#fff1c4" stroke-opacity=".35" stroke-width="1"/>' +
+  '<circle cx="19" cy="75" r="4" fill="#1a0f08" stroke="#e3c47e" stroke-width="1.2"/>' +
+  '<circle class="orb-gem" cx="19" cy="75" r="2.2"/>' +
+  '</svg>';
 
 function el2<K extends keyof HTMLElementTagNameMap>(tag: K): HTMLElementTagNameMap[K] {
   return document.createElement(tag);
@@ -295,6 +499,12 @@ export class HUD {
   private questBox: HTMLDivElement;
   private bossBar: HTMLDivElement;
   private bossFill: HTMLDivElement;
+  private bossTrail: HTMLDivElement;
+  private bossTicks: HTMLDivElement;
+  private bossPct: HTMLSpanElement;
+  private bossTrailTimer = 0;
+  private bossThresholds: number[] = [];
+  private xpTrack: HTMLDivElement;
   private bossName: HTMLDivElement;
   private bossPips: HTMLDivElement;
   private bossBark: HTMLDivElement;
@@ -359,20 +569,31 @@ export class HUD {
     add(topRight, mapWrap, this.questBox, this.toastStack);
 
     // --- top-center: boss bar --------------------------------------------
+    // A framed plate: skull caps at each end, a pale trail that shows the
+    // last chunk of damage, and tick marks where the fight changes phase.
     this.bossBar = div('bossbar');
     this.bossName = div('bossbar-name');
     this.bossPips = div('bossbar-pips');
+    const bossPlate = div('bossbar-plate');
     const bossTrack = div('bossbar-track');
+    this.bossTrail = div('bossbar-trail');
     this.bossFill = div('bossbar-fill');
+    this.bossTicks = div('bossbar-ticks');
     const bossGloss = div('bossbar-gloss');
-    add(bossTrack, this.bossFill, bossGloss);
+    this.bossPct = span('bossbar-pct', '100%');
+    add(bossTrack, this.bossTrail, this.bossFill, this.bossTicks, bossGloss, this.bossPct);
+    const capL = div('bossbar-cap cap-l');
+    const capR = div('bossbar-cap cap-r');
+    capL.innerHTML = BOSS_CAP_SVG;
+    capR.innerHTML = BOSS_CAP_SVG;
+    add(bossPlate, capL, bossTrack, capR);
     this.bossBark = div('bossbar-bark');
-    add(this.bossBar, this.bossName, bossTrack, this.bossPips, this.bossBark);
+    add(this.bossBar, this.bossName, bossPlate, this.bossPips, this.bossBark);
 
     // --- bottom: command bar ---------------------------------------------
     const bar = div('cmdbar');
-    this.lifeOrb = new Orb('life', 118);
-    this.manaOrb = new Orb('mana', 118);
+    this.lifeOrb = new Orb('life', 124);
+    this.manaOrb = new Orb('mana', 124);
 
     const center = div('cmdbar-center');
 
@@ -381,10 +602,13 @@ export class HUD {
     this.levelBadge = div('level-badge');
     this.levelBadge.innerHTML = '<span class="level-num">1</span><span class="level-word">LVL</span>';
     const xpTrack = div('xp-track ui-interactive');
+    this.xpTrack = xpTrack;
     this.xpFill = div('xp-fill');
     this.xpText = span('xp-text', '0 / 0 XP');
+    // Ten cells, so "a tenth of a level" is something you can see at a glance.
     const xpNotches = div('xp-notches');
-    add(xpTrack, this.xpFill, xpNotches, this.xpText);
+    const xpFlare = div('xp-flare');
+    add(xpTrack, this.xpFill, xpNotches, xpFlare, this.xpText);
     add(xpRow, this.levelBadge, xpTrack);
 
     const slots = div('hotbar');
@@ -497,7 +721,10 @@ export class HUD {
 
     const skillRow = div('skillrow');
     add(skillRow, slots, potions);
-    add(center, xpRow, skillRow);
+    // The carved plate the whole bar sits on, joining the two orbs.
+    const plate = div('cmdbar-plate');
+    // Buffs ride just above the plate: where the eyes already are in a fight.
+    add(center, plate, this.buffStrip, xpRow, skillRow);
 
     const goldBox = div('hud-gold ui-interactive');
     goldBox.appendChild(icon('coin', { size: 14 }));
@@ -510,9 +737,6 @@ export class HUD {
     this.floatLayer = div('float-layer');
     this.centerLayer = div('center-layer');
 
-    // Buffs live directly above the hotbar: that is where the player's eyes
-    // already are during a fight, not the top-left corner.
-    bar.insertBefore(this.buffStrip, bar.firstChild);
     add(this.root, topLeft, topRight, this.bossBar, this.centerLayer, this.promptBox, goldBox, bar, this.floatLayer);
     this.root.style.display = 'none';
   }
@@ -630,11 +854,15 @@ export class HUD {
     on('boss:damaged', (p) => {
       this.bossLife = p.life;
       this.bossMax = Math.max(1, p.maxLife);
-      this.bossFill.style.width = `${Math.max(0, (p.life / this.bossMax) * 100)}%`;
+      this.setBossLife(p.life / this.bossMax);
     });
     on('boss:phase', (p) => {
       const pips = this.bossPips.querySelectorAll('.bosspip');
-      pips.forEach((n, i) => n.classList.toggle('spent', i <= p.index));
+      pips.forEach((n, i) => {
+        n.classList.toggle('spent', i < p.index);
+        n.classList.toggle('is-current', i === p.index);
+      });
+      this.bossTicks.querySelectorAll('.btick').forEach((n, i) => n.classList.toggle('passed', i < p.index));
       if (p.bark) {
         this.bossBark.textContent = `“${p.bark}”`;
         this.bossBark.classList.remove('is-live');
@@ -646,7 +874,7 @@ export class HUD {
       this.bossBar.classList.add('phase-shift');
     });
     on('boss:killed', () => {
-      this.bossFill.style.width = '0%';
+      this.setBossLife(0);
       this.bossBar.classList.add('is-slain');
       setTimeout(() => this.hideBoss(), 1400);
     });
@@ -1002,14 +1230,59 @@ export class HUD {
     this.bossLife = maxLife;
     clear(this.bossName);
     this.bossName.appendChild(span('bossbar-title', title));
-    this.bossName.appendChild(span('bossbar-proper', name));
-    this.bossFill.style.width = '100%';
+    const proper = div('bossbar-proper-row');
+    const ornL = span('bossbar-orn');
+    const ornR = span('bossbar-orn is-r');
+    ornL.innerHTML = ORNAMENT.divider;
+    ornR.innerHTML = ORNAMENT.divider;
+    add(proper, ornL, span('bossbar-proper', name), ornR);
+    this.bossName.appendChild(proper);
+
+    // Phase thresholds come from the boss's own definition, so the ticks sit
+    // exactly where the fight will turn. Unknown bosses fall back to quarters.
+    const def = attempt(() => BOSSES.find((b) => b.name === name) ?? null, null);
+    const phases = def?.phases?.length ? def.phases.map((ph) => ph.atLife) : [1, 0.75, 0.5, 0.25];
+    this.bossThresholds = phases.slice(1);
+    clear(this.bossTicks);
+    for (const at of this.bossThresholds) {
+      const t = div('btick');
+      t.style.left = `${Math.max(0, Math.min(1, at)) * 100}%`;
+      this.bossTicks.appendChild(t);
+    }
+    window.clearTimeout(this.bossTrailTimer);
+    this.bossTrail.style.transition = 'none';
+    this.bossTrail.style.width = '100%';
+    this.setBossLife(1);
     clear(this.bossPips);
-    for (let i = 0; i < 4; i++) this.bossPips.appendChild(div('bosspip'));
+    for (let i = 0; i < phases.length; i++) this.bossPips.appendChild(div(`bosspip ${i === 0 ? 'is-current' : ''}`.trim()));
     this.bossBark.textContent = '';
     this.bossBar.classList.remove('is-slain');
     this.bossBar.classList.add('is-open');
     this.bossVisible = true;
+  }
+
+  /**
+   * Moves the boss bar. The red fill snaps; the pale trail waits a beat and
+   * then drains to meet it, so each burst of damage reads as a chunk lost.
+   */
+  private setBossLife(k: number): void {
+    const pct = Math.max(0, Math.min(1, k)) * 100;
+    this.bossFill.style.width = `${pct}%`;
+    this.bossPct.textContent = pct > 0 && pct < 1 ? '<1%' : `${Math.ceil(pct)}%`;
+    const trailNow = parseFloat(this.bossTrail.style.width) || 100;
+    if (pct >= trailNow) {
+      this.bossTrail.style.transition = 'none';
+      this.bossTrail.style.width = `${pct}%`;
+      return;
+    }
+    window.clearTimeout(this.bossTrailTimer);
+    this.bossTrailTimer = window.setTimeout(() => {
+      this.bossTrail.style.transition = '';
+      this.bossTrail.style.width = `${pct}%`;
+    }, 420);
+    this.bossBar.classList.remove('is-hit');
+    void this.bossBar.offsetWidth;
+    this.bossBar.classList.add('is-hit');
   }
 
   private hideBoss(): void {
@@ -1250,6 +1523,12 @@ export class HUD {
   }
 
   private levelFlourish(level: number): void {
+    // The bar itself celebrates too: a flare runs along it and the badge burns.
+    for (const n of [this.xpTrack, this.levelBadge]) {
+      n.classList.remove('is-flare');
+      void n.offsetWidth;
+      n.classList.add('is-flare');
+    }
     const wrap = div('levelup');
     wrap.innerHTML =
       `<div class="levelup-ring"></div><div class="levelup-word">LEVEL ${level}</div>` +

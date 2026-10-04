@@ -5,7 +5,7 @@ Status: in progress
 ## Milestones
 
 - [x] Design system: one set of colour, type, spacing and frame tokens in styles.css. Every panel shares one frame, header, close button and tab style. Ornate but readable, dark-fantasy. — "Give every panel one gilded frame, title plate and tab style"
-- [ ] Orbs and bars: liquid-filled health and mana orbs with slosh and a low-health pulse; segmented XP bar with level-up flare; boss health bar with name, phase ticks and damage-taken trail.
+- [x] Orbs and bars: liquid-filled health and mana orbs with slosh and a low-health pulse; segmented XP bar with level-up flare; boss health bar with name, phase ticks and damage-taken trail. — "Pour the orbs, carve the command bar, and give the boss a real health bar"
 - [ ] Hotbar: cooldown sweep, out-of-mana and out-of-range tint, key hints, ready flash, charge counts; buff and debuff row with timers and tooltips.
 - [ ] Combat text: damage numbers that read at a glance (crit styling, element colour, stacking and fading), plus heal, mana, dodge, immune, level up.
 - [ ] Tooltips: rarity frames, affix tier marks, compare-to-equipped with green and red deltas, set and unique flavour text, requirement warnings.
@@ -16,15 +16,19 @@ Status: in progress
 
 ## Next up
 
-Milestone 2, orbs and bars, all in `src/ui/HUD.ts` (class `Orb`, `setXp`,
-`showBoss`, boss events) and the HUD section of `styles.css` ("--- command bar",
-"--- boss bar"). Plan: give the bottom command bar one carved plate that joins
-both orbs (frame tokens), redraw the orbs with a meniscus, bubbles, a slosh that
-reacts to damage, and a heartbeat pulse under 28% life; segment the XP bar into
-ten gilt cells with a flare sweep on level-up; give the boss bar a framed plate,
-a damage-taken trail (a second fill that lags), phase ticks drawn on the track
-at real thresholds, and the name on a title plate. Check with
-`node tools/uilab.mjs --shots=hud,levelup`.
+Milestone 3, hotbar, in `src/ui/HUD.ts` (`buildHotbar`, `updateHotbarRuntime`,
+`updateStatuses`, the RMB and dash slots) and the "--- command bar" part of
+`styles.css` from `.skillrow` down to `.hud-gold`. Plan: framed gilt slots with
+an inner bevel; cooldown as a radial sweep with a bright leading edge and the
+seconds in serif; a short gold "ready" flash when a cooldown ends (track the
+previous remaining per slot); out-of-mana tints blue and out-of-range tints red
+(range needs the cursor target distance; if the scene exposes nothing, read
+`runtime` or add a small additive field to `runtime` in Widgets.ts that
+DungeonScene can fill later); key hints as small keycaps; charge counts if a
+skill def has charges (grep `charges` in src/types.ts). Buff strip: round or
+shield chips with a clockwise timer ring, seconds left under each chip, debuffs
+in a red frame, tooltips already wired via `tip()`. Check with
+`node tools/uilab.mjs --shots=hud --clip=420,840,1080,240 --dpr=2`.
 
 ## Notes for resume
 
@@ -47,6 +51,11 @@ at real thresholds, and the name on a title plate. Check with
   an instanced glyph pool), which the feel stream owns. Milestone 4 needs either
   a coordinated change there or a new DOM/canvas layer in a new hud file.
 - Seen while working, not yet fixed: the skill tree nodes in the lab render with
-  oversized icons spilling out of their circles (milestone 7); the buff strip
-  renders as a vertical column left of the life orb instead of a row above the
-  hotbar (milestone 3).
+  oversized icons spilling out of their circles (milestone 7).
+- The buff strip now lives inside `.cmdbar-center` (absolutely placed above the
+  plate). The command bar plate is `.cmdbar-plate`; orbs are 124px with a
+  `.orb-wing` bracket; the interact prompt sits at `bottom: 236px` (216px under
+  820px tall) so it clears the buffs.
+- The boss bar reads phase thresholds from `BOSSES` (`src/data/bosses.ts`) by
+  matching the boss name from `boss:engaged`. If combat changes that event,
+  pass the id too and match on it.
