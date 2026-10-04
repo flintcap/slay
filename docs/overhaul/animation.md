@@ -1,6 +1,6 @@
 # Stream: animation (how bodies move)
 
-Status: in progress (milestone 1 done)
+Status: paused (milestone 1 done; milestone 2 researched, no code yet)
 
 ## Milestones
 
@@ -28,7 +28,26 @@ Milestone 2, attacks. Concretely:
    `tools/grip-entry.ts` samples swings 20 frames in and requires the weapon tip `z > -0.75`.
 3. Hand glow on casts: the animator can expose a `castGlow` 0..1 value (e.g. a getter driven by the
    current clip's gather/release curve) for the feel stream to read; do not build VFX here.
-4. Extend `tools/footplant-entry.ts` with a row per action clip and then gate actions too
+4. Findings already made for milestone 2 (no code written yet):
+   - Melee damage lands the instant the attack starts: `SkillRunner.meleeSwing` runs on the click,
+     not at a hit frame. So keep anticipation very short (contact about 0.12 to 0.16 s in) and export
+     a per-clip normalised contact time from `Animation.ts` (e.g. `CLIP_CONTACT`) so combat or feel
+     can later delay damage to it. Note this for combat in their progress file.
+   - The clip outlives the action lock: real clip length is `def.duration * duration / 0.45`
+     (about 1.38x `actionLock` for `attack1`), so the player starts moving while the swing is still
+     playing and the feet skate. Add a per-clip `recover` time after which a `walk`/`run` request may
+     interrupt the one-shot (not `idle`), crossfading into the gait.
+   - Two-handed swings should keep the off hand on the haft with left-arm two-bone IK. Measured
+     off-hand point in weapon (socket) space after the carry pose settles: `twoHand` (0, 0.19, -0.03),
+     `staff` (0, 0.32, -0.03). Weapon space is the socket transform from `GRIPS` under `handR`; expose
+     it from the grip code in `CharacterModels.ts` (animation's part) and solve in chest space using
+     `chest.matrixWorld^-1 * handR.matrixWorld` after `updateWorldMatrix` on the root bone.
+   - Per-weapon weight needs the one-hand grip too: add `Animator.setWeapon(grip: WeaponGrip)` and one
+     line in `Player.refreshEquipmentVisuals` next to `setGrip`. Profiles: light (dagger, wand, fist),
+     medium (sword), heavy (axe, mace), twoHand, polearm (staff grip).
+   - `kf` eases to zero speed at every key, which is wrong at contact. Add a keyed curve with
+     per-segment easing (accelerate into contact, decelerate out of it).
+5. Extend `tools/footplant-entry.ts` with a row per action clip and then gate actions too
    (move them out of the "reported only" line in `check-footplant.mjs`). Add a `set=attacks` to
    `tools/pose-sheet.ts` showing anticipation / contact / recovery for sword, greatsword, dagger,
    staff, bow.
