@@ -27,6 +27,29 @@ const TMP2 = new THREE.Vector3();
  * Equipment slots that put geometry on the body. Rings and amulets are left
  * off: at gameplay camera distance they cost a draw call and show nothing.
  */
+/**
+ * When a weapon swing connects, as a share of the action's length, per clip.
+ * Melee damage waits for this moment (`Player.contactIn`) instead of landing on
+ * the click. Clips not listed (casts, the dash, blinks) land at once.
+ * Animation: author each strike to land here, capped at `CONTACT_CAP` seconds.
+ */
+export const CLIP_CONTACT: Readonly<Record<string, number>> = {
+  attack1: 0.35,
+  attack2: 0.33,
+  slam: 0.4,
+  thrust: 0.32,
+  lunge: 0.32,
+  stomp: 0.38,
+};
+/** No swing waits longer than this to connect, however slow the weapon. */
+export const CONTACT_CAP = 0.16;
+
+/** Seconds from the start of an action to its contact frame. */
+export function contactDelay(clip: string, duration: number): number {
+  const f = CLIP_CONTACT[clip];
+  return f === undefined ? 0 : Math.min(CONTACT_CAP, f * Math.max(0, duration));
+}
+
 const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt'];
 
 /** Which body-covering slots currently hold an item. */
@@ -72,6 +95,10 @@ export class Player {
   private actionLock = 0;
   /** Full length of the current action, so its recovery tail can be cancelled. */
   private actionTotal = 0;
+  /** Bumped by every new action and every dodge, so a queued blow can tell it was cut off. */
+  private actionSerial = 0;
+  /** Seconds into the current action at which its blow connects. */
+  private contactAt = 0;
   private dodgeTime = 0;
   private dodgeDir = new THREE.Vector3();
   /** Seconds until the dash is available again, and the full period. */
@@ -274,8 +301,21 @@ export class Player {
   beginAction(clip: string, duration: number): void {
     this.actionLock = duration;
     this.actionTotal = duration;
+    this.actionSerial++;
+    this.contactAt = contactDelay(clip, duration);
     this.moveTarget = null;
     this.animator.play(clip, { fade: 0.08, speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)) });
+  }
+
+  /** Identifies the current action. Changes when a new one starts or a dodge cuts it off. */
+  get actionId(): number {
+    return this.actionSerial;
+  }
+
+  /** Seconds until the current swing connects. 0 with no swing, or once it has. */
+  get contactIn(): number {
+    if (this.actionLock <= 0 || this.actionTotal <= 0) return 0;
+    return Math.max(0, this.contactAt - (this.actionTotal - this.actionLock));
   }
 
   /** 0 when the dash is ready, 1 the instant it is spent. */
@@ -301,8 +341,8 @@ export class Player {
 
   /**
    * Fraction of an action after which movement may cut it short. Every hit in
-   * the game resolves on the first frame of the action, so what remains is
-   * follow-through; letting a move order take it back is what makes the
+   * the game resolves by then (melee at its contact frame, `CLIP_CONTACT`, at
+   * most 40% in), so what remains is follow-through; letting a move order take it back is what makes the
    * controls feel instant without letting anyone attack faster.
    */
   static readonly RECOVERY_CANCEL_AT = 0.55;
@@ -337,6 +377,9 @@ export class Player {
     // is not one: it cancels whatever the hero was doing.
     if (this.frozen || this.dodgeTime > 0 || this.dodgeCd > 0) return false;
     this.actionLock = 0;
+    // A swing dodged out of before it connects never lands.
+    this.actionSerial++;
+    this.contactAt = 0;
     const len = Math.hypot(dirX, dirZ) || 1;
     this.dodgeDir.set(dirX / len, 0, dirZ / len);
     this.dodgeTime = 0.32;

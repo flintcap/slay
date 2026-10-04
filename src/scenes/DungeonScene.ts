@@ -1193,7 +1193,7 @@ export class DungeonScene extends GameScene {
       const b = this.boss;
       this.boss = null;
       onBossKilled(this.run.quest, b.defId);
-      events.emit('boss:killed', { name: b.name });
+      // 'boss:killed' and 'enemy:killed' are raised once, by the body (Boss.die / Enemy.die).
       this.grantKill(b.defId, 'boss', 'demon', b.root.position, this.run.depth + 6);
       // Boss death is the run's payoff: a real burst of loot.
       const drops = rollDrops(this.run.depth + 8, 'boss', this.rng, this.player.stats.magicFind, this.player.stats.goldFind);
@@ -1212,7 +1212,6 @@ export class DungeonScene extends GameScene {
     pos: THREE.Vector3,
     ilvl: number
   ): void {
-    events.emit('enemy:killed', { id: monsterId, monsterId, rank, x: pos.x, z: pos.z });
     onKill(this.run.quest, monsterId, family, rank);
     this.passiveOnKill(pos, this.lastOverkill);
     this.lastOverkill = 0;

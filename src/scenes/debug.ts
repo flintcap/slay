@@ -534,6 +534,9 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         (pl as unknown as { actionLock: number }).actionLock = 0;
         skills.basicAttack(pl, tp.clone().setY(0), scene.context?.(), scene.enemies, null);
         await frame();
+        // Melee lands at the swing's contact frame, not on the click (Player.contactIn).
+        for (let f = 0; f < 60 && ((pl as unknown as { contactIn?: number }).contactIn ?? 0) > 0; f++) await frame();
+        await frame();
       }
 
       // Phase B — through the button.
@@ -597,7 +600,9 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         fired.push(
           skills.cast(skillId, pl, best.position.clone().setY(0), scene.context?.(), scene.enemies, null)
         );
-        for (let f = 0; f < 6; f++) await new Promise((r) => requestAnimationFrame(r));
+        for (let f = 0; f < 6 || (f < 60 && ((pl as unknown as { contactIn?: number }).contactIn ?? 0) > 0); f++) {
+          await new Promise((r) => requestAnimationFrame(r));
+        }
       }
       off();
       const stats = pl.stats as Record<string, number> | undefined;

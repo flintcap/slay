@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { reportError } from '../core/Engine';
 import type { DamagePacket, DamageType, StatusApplication } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
@@ -1508,10 +1509,33 @@ export class SkillRunner {
     const half = arc * 0.5;
     let hits = 0;
     // The swing is heard whether or not it connects: whoosh, then impact.
-    if (playVisual) {
+    if (playVisual && !this.atContact) {
       audio.play(kind === 'heavy' ? 'swing.heavy' : `swing.${this.weaponSound}`, {
         x: origin.x, z: origin.z, volume: 0.9,
       });
+    }
+    // A weapon swing connects at its contact frame. Dodging out first cancels it.
+    const wait = playVisual && !this.atContact ? player.contactIn : 0;
+    if (wait > 0.01) {
+      const id = player.actionId;
+      const dir = facing.clone();
+      const echo = this.echoScale;
+      this.pendingSwings.push({
+        t: wait,
+        run: () => {
+          if (player.actionId !== id || !player.alive) return;
+          const prev = this.echoScale;
+          this.atContact = true;
+          this.echoScale = echo;
+          try {
+            this.meleeSwing(player, dir, arc, reach, packet, ctx, enemies, boss, type, playVisual, kind);
+          } finally {
+            this.atContact = false;
+            this.echoScale = prev;
+          }
+        },
+      });
+      return;
     }
 
     for (const t of this.allTargets(enemies, boss)) {
@@ -1749,6 +1773,12 @@ export class SkillRunner {
   private summonSerial = 0;
   /** A Resonance repeat waiting for the next frame. */
   private pendingEcho: { skillId: string; target: THREE.Vector3; scale: number } | null = null;
+  /**
+   * Weapon swings waiting for their contact frame (`Player.contactIn`, combat):
+   * a blow lands when the blade arrives, not on the click.
+   */
+  private pendingSwings: Array<{ t: number; run: () => void }> = [];
+  private atContact = false;
   private echoing = false;
   /** What the echo pays, applied to every packet it throws. */
   private echoScale = 1;
@@ -2089,6 +2119,18 @@ export class SkillRunner {
     const live = this.tickCtx;
     if (!live) return;
     this.runTime += dt;
+
+    for (let i = this.pendingSwings.length - 1; i >= 0; i--) {
+      const sw = this.pendingSwings[i]!;
+      sw.t -= dt;
+      if (sw.t > 0) continue;
+      this.pendingSwings.splice(i, 1);
+      try {
+        sw.run();
+      } catch (err) {
+        reportError('skill.contact', err);
+      }
+    }
 
     // Fire a queued Resonance echo one frame after the original, so the two
     // read as a stutter rather than one doubled hit.
@@ -2459,6 +2501,7 @@ export class SkillRunner {
     }
     this.zones.length = 0;
     this.turrets.length = 0;
+    this.pendingSwings.length = 0;
     this.tickCtx = null;
     this.feel.clear();
   }

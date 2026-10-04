@@ -8,7 +8,7 @@
  * part between the button and the body.
  */
 import * as THREE from 'three';
-import { Player } from '../src/entities/Player';
+import { Player, CONTACT_CAP } from '../src/entities/Player';
 import { CombatControls, type ControlInput } from '../src/entities/Controls';
 import { Enemy } from '../src/entities/Enemy';
 import { MONSTERS } from '../src/data/monsters';
@@ -16,6 +16,8 @@ import { createCharacter, setPrimaryAttack, skillRank } from '../src/sim/Charact
 import { getSkill } from '../src/data/skills';
 import { Random } from '../src/core/RNG';
 import { events } from '../src/core/Events';
+import { SkillRunner } from '../src/scenes/SkillRunner';
+import { arena, shrug } from './combat-arena';
 
 const DT = 1 / 60;
 
@@ -363,6 +365,69 @@ function casterOnBar() {
   w.step();
   w.step(90);
   check('move click mid-swing is kept', w.player.position.x > 3, `hero at x=${w.player.position.x.toFixed(2)}`);
+}
+
+// 13. A swing connects at its contact frame: not on the click, and before the
+//     recovery a move order may cut short. A dodge first means it never lands.
+{
+  const w = world();
+  w.player.beginAction('attack1', 0.42);
+  const at0 = w.player.contactIn;
+  const id = w.player.actionId;
+  const frames = Math.ceil(at0 / DT);
+  w.step(frames - 1);
+  const before = w.player.contactIn;
+  w.step(1);
+  const after = w.player.contactIn;
+  const recoveryAt = 0.42 * Player.RECOVERY_CANCEL_AT;
+  check(
+    'a swing connects after the click, before recovery',
+    at0 > 0.05 && at0 <= CONTACT_CAP && at0 < recoveryAt && before > 0 && after === 0 && w.player.actionId === id,
+    `contact ${(at0 * 1000).toFixed(0)}ms in, recovery from ${(recoveryAt * 1000).toFixed(0)}ms`,
+  );
+  w.player.beginAction('attack2', 0.42);
+  const swing = w.player.actionId;
+  w.step(2);
+  w.player.dodge(1, 0);
+  check('a dodge before contact cancels the blow', w.player.actionId !== swing && w.player.contactIn === 0, `action ${swing} -> ${w.player.actionId}`);
+  w.player.beginAction('cast', 0.5);
+  check('casts are not held for a contact frame', w.player.contactIn === 0, `contactIn ${w.player.contactIn}`);
+}
+
+// 14. The real skill runner: a basic swing takes life at contact, not on the
+//     click, and a swing dodged out of before contact takes none.
+{
+  const a = arena({ seed: 9 });
+  const def = MONSTERS.find((m) => m.role === 'brute') ?? MONSTERS[0]!;
+  const e = a.spawn(def, 0, 1.6);
+  const c = createCharacter('Test', 'warden', new Random(2));
+  const player = new Player(c, 1);
+  const runner = new SkillRunner(shrug);
+  runner.setContext(a.ctx, a.enemies, null);
+  const pctx = { colliders: [], walkableAt: () => true };
+  const tick = (n: number): void => {
+    for (let i = 0; i < n; i++) {
+      player.update(DT, pctx, null);
+      runner.update(DT);
+    }
+  };
+  const full = e.life;
+  runner.basicAttack(player, new THREE.Vector3(0, 0, 1.6), a.ctx, a.enemies, null);
+  const onClick = e.life;
+  tick(Math.ceil(0.2 / DT));
+  const atContact = e.life;
+  check(
+    'a basic swing lands at contact, not on the click',
+    onClick === full && atContact < full,
+    `life ${Math.round(full)} -> ${Math.round(onClick)} on the click -> ${Math.round(atContact)} at contact`,
+  );
+  tick(Math.ceil(0.6 / DT));
+  const before = e.life;
+  runner.basicAttack(player, new THREE.Vector3(0, 0, 1.6), a.ctx, a.enemies, null);
+  tick(2);
+  player.dodge(1, 0);
+  tick(Math.ceil(0.4 / DT));
+  check('a swing dodged out of before contact deals nothing', e.life === before, `life ${Math.round(before)} -> ${Math.round(e.life)}`);
 }
 
 console.log(JSON.stringify({ cases }));

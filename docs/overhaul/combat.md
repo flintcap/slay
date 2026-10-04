@@ -14,14 +14,14 @@ Status: in progress
 
 ## Next up
 
-Milestone 4 is done. Next is the list of requests other streams left (see
-"Notes for resume"), then milestone 5, skill depth:
-1. Kills emitted twice: find why `enemy:killed` fires twice per kill and add a
-   checker that one kill emits exactly one event.
-2. Melee damage on contact: delay melee damage to the swing's contact time.
-3. Uncountable quest objectives: coordinate with depth (DungeonGen.ts).
-4. Milestone 5: synergies between skills, meaningful rank choices, a reason to
-   mix skills.
+Milestone 5, skill depth: synergies between skills, meaningful choices per
+rank, and a reason to mix skills instead of spamming one. Start by reading
+`src/data/skills.ts` (combat owns it) and `src/sim/Passives.ts` to see what
+already combines, then pick a small set of cross-skill hooks (for example: a
+status one skill applies that another skill consumes for a bonus).
+
+The three requests other streams left at the pause are dealt with (see
+"Notes for resume"); the quest-objective one belongs to depth, who has it too.
 
 ## Notes for resume
 
@@ -35,10 +35,22 @@ Milestone 4 is done. Next is the list of requests other streams left (see
 - The checker's hero focuses adds, healers first. Tide Callers' Mend heals a
   boss 30% of its life, so leaving a healer up stalls the fight (by design).
 
-**Requests from other streams (added at pause):**
-- From depth: `enemy:killed` fires twice per kill. Anything counting kills (bounties, renown, quests, run stats) double counts until fixed. Add a checker that one kill emits exactly one event.
-- From animation: melee damage lands the instant you click, not when the swing connects. Animation will publish each clip's contact time; delay melee damage to match.
-- From story: some quest objectives generated in `DungeonGen.ts` ("collect" and "reach") are never counted by the dungeon, so those quests cannot be finished. Coordinate with depth, who owns DungeonGen.ts.
+**Requests from other streams (added at pause), and what was done:**
+- From depth, `enemy:killed` fired twice per kill: fixed. Only `Enemy.die` raises
+  `enemy:killed` and only `Boss.die` raises `boss:killed`; DungeonScene no longer
+  repeats them. `node tools/check-kills.mjs` checks plain, Soul Bound, splitter
+  and boss kills, and that no other file emits either event.
+- From animation, melee damage on the click: fixed. `Player.CLIP_CONTACT` gives
+  each swing clip's contact point as a share of the action (attack1 0.35,
+  attack2 0.33, slam 0.4, thrust/lunge 0.32, stomp 0.38), capped at
+  `CONTACT_CAP` 0.16s. `Player.contactIn` / `actionId`. `SkillRunner.meleeSwing`
+  (feel's file, small edit) queues a visible swing until contact; a dodge first
+  cancels it. Cones, teleport strikes and dashes still land at once. The swing
+  whoosh still plays on the click. `debug.ts` probes wait for contact.
+  `check-controls` covers it with the real SkillRunner.
+- From story, "collect" and "reach" objectives from `DungeonGen.ts` never count:
+  not combat's; depth has the same request in `depth.md`. `sim/Quests.ts` has
+  `onCollect` and `onReach`, but nothing in the dungeon calls them yet.
 
 - Controls live in `src/entities/Controls.ts` (`CombatControls`). `DungeonScene.handleInput`
   is now a three-line delegation; the old `enemyUnderCursor`, `aimPoint` and
@@ -97,5 +109,12 @@ Milestone 4 is done. Next is the list of requests other streams left (see
   back to a star: desecrator, fire_chains, bulwark, splitter, hexing, adaptive, lancer.
   Mini-bosses raise `miniboss:engaged` { id, name, title, kind } and `miniboss:killed`;
   a mini-boss health bar could hang off those. Their nameplate title names the mechanic.
+- animation: melee damage now lands at `contactDelay(clip, duration)` in
+  `Player.ts` = min(0.16s, `CLIP_CONTACT[clip]` x action length). Author each
+  strike to land there, or export your own per-clip contact and tell combat to
+  read it instead of the table.
+- feel: `SkillRunner.meleeSwing` now defers a visible swing to its contact frame
+  (`pendingSwings`, ticked in `update`). Hit feel fires at contact; the whoosh on
+  the click.
 - feel: `player:evaded` fires when a hit lands during the dodge. Mini-boss beats
   (horn, mark, shadow step, cage, volley, charge) currently use existing bursts and toasts.
