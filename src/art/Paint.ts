@@ -215,6 +215,7 @@ export function rrectP(x: number, y: number, w: number, h: number, r: number): P
 export function ringP(cx: number, cy: number, r0: number, r1: number, sx = 1): Path2D {
   const p = new Path2D();
   p.ellipse(cx, cy, r1 * sx, r1, 0, 0, Math.PI * 2);
+  p.moveTo(cx + r0 * sx, cy);
   p.ellipse(cx, cy, r0 * sx, r0, 0, 0, Math.PI * 2, true);
   return p;
 }

@@ -1,6 +1,6 @@
 # Stream: art (illustration and iconography)
 
-Status: in progress
+Status: paused
 
 ## Milestones
 
@@ -14,16 +14,30 @@ Status: in progress
 
 ## Next up
 
-Milestone 2: skill, buff and affix icons. Rewrite the skill half of `src/art/Icons.ts`
-(`skillIconUri`, `affixIconUri`) on top of `src/art/Paint.ts`, and add a painterly
-status icon helper (`statusIconUri`) that the hud stream can swap in for the SVG
-glyphs in `HUD.ts` buff chips (`iconSvg(statusIcon(...))`, around line 948).
-Skill data: 303 skills in `src/data/skills.ts`, each with a descriptive `icon` name
-(e.g. 'shield-raise', 'bone-spear', 'nova-fire'); trees map to classes via
-`SKILL_TREES[].classId`. Locked/cooldown states are CSS filters
-(`grayscale(1) brightness(.5)` locked, `grayscale(.6) brightness(.7)` cooldown), so icons
-must read in luminance alone. `node tools/art-sheet.mjs skills` already renders every
-skill in all three states.
+Milestone 2 is mostly built and live, not yet ticked. Finish it:
+
+1. Review `SLAY_PORT=4310 node tools/art-sheet.mjs skillsA,skillsB,skillsC,skillcloseup,statuses --out=shots/art`
+   (skillsA/B/C are the 18 trees in thirds, each skill ready / cooldown / locked).
+   Known weak spots: dark pictograms on dark ground (`figure` in shroud/cloak/void
+   status chips is near invisible; scythe, helm and bone read thin in passives);
+   bone-spear and other `^speed` icons draw the glyph small. Brighten `figure`
+   (lighter body fill or a stronger rim) and enlarge thin glyphs.
+2. Ask the hud stream (or make the one-line additive edit yourself) to swap the buff
+   chip art in `src/ui/HUD.ts` (~line 948, `art.innerHTML = iconSvg(statusIcon(...))`)
+   for `<img src="${statusIconUri(def?.icon, def?.color ?? 0x9ad0ff, def?.polarity ?? 1)}">`.
+   `statusIconUri` is exported from `src/art/Icons.ts` and unused so far.
+3. Run `node tools/check-skillicons.mjs` and `node tools/check-clips.mjs` (both boot the
+   game, several minutes) to confirm no duplicates/regressions, then tick milestone 2.
+
+Then milestone 3 (item models). New since the plan update: a **models** stream owns
+worn armour on the body; art keeps `ItemModels.ts` (held weapons, ground drops).
+Expose a small helper for them, e.g. `src/art/ItemLook.ts` exporting
+`itemLook(item, visual)` -> `{ palette, trimPalette, stoneColor, glowColor, rank, ornate }`
+built from `IconKit.trimFor/stoneFor/glowFor/RANK` (map verdigris/voidgold/bloodgold
+trims to world palette keys like 'metal.bronze'/'metal.gold' for `Materials.surface`),
+so worn gear, held weapons, drops and icons agree. Then match weapon models to icon
+sub-types (`visual.shape` like 'sword.thin', 'axe.great', 'dagger.wavy' are currently
+ignored by `resolveShape` beyond the family) without breaking `node tools/check-grips.mjs`.
 
 ## Notes for resume
 
@@ -46,5 +60,11 @@ skill in all three states.
   (off-thread) and cache a `blob:` URL; `itemIconUri` stays synchronous (data URI) for the
   drag ghost. Timings in this container are inflated by load from other agents
   (load average 40+ on 4 cores), so treat `perf` numbers as relative.
-- The old swatch helpers at the top of `Icons.ts` are still used by the skill and affix
-  code; milestone 2 should replace them with `Paint.ts`.
+- **Skill/status/affix icons:** `src/art/SkillIconArt.ts` composes them from the painted
+  pictogram vocabulary in `src/art/Glyphs.ts` (~70 glyphs, each `(ctx, tone, variant)`).
+  `ICON_MAP` hand-maps every skill `icon` name to `glyph[:variant][^modifier]`; modifiers
+  (aura, nova, burst, field, rain, rise, speed, impact, chain, spin, multi, wall, drip,
+  cross, mastery) live in `MODS`. Class frame and tree pips come from the skill's tree
+  (`TREE_BY_ID`), physical/untyped skills take the class light. `STATUS_MAP` and
+  `AFFIX_MAP` do the same for statuses and monster affixes.
+- `Icons.ts` is now only caching and scheduling; it imports `data/skills` for tree lookup.

@@ -127,38 +127,71 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
 
   /** Every skill, grouped by tree, at hotbar size (40px) ready / cooldown / locked. */
   async skills() {
-    const S = 48;
-    const CW = 3 * (S + 2) + 10;
-    const COLS = 6;
-    const trees = SKILL_TREES;
-    let rows = 0;
-    const per = trees.map((t) => SKILLS.filter((s) => s.treeId === t.id));
-    for (const l of per) rows += Math.ceil(l.length / COLS) + 0.4;
-    const RH = S + 14;
-    const { c, g } = sheet(COLS * CW + 10, Math.ceil(rows * RH) + 20);
-    let y = 4;
-    for (let ti = 0; ti < trees.length; ti++) {
-      const list = per[ti]!;
-      g.fillStyle = '#d8c690';
-      g.textAlign = 'left';
-      g.fillText(`${trees[ti]!.name} (${trees[ti]!.classId})`, 4, y);
-      g.textAlign = 'center';
-      y += 12;
-      for (let i = 0; i < list.length; i++) {
-        const s = list[i]!;
-        const im = await img(IC.skillIconUri(s.id, s.effect, s.damageType, s.targeting === 'passive', s.icon));
-        const x = (i % COLS) * CW + 6;
-        const yy = y + Math.floor(i / COLS) * RH;
-        g.drawImage(im, x, yy, S, S);
-        g.filter = 'grayscale(0.6) brightness(0.7)';
-        g.drawImage(im, x + S + 2, yy, S, S);
-        g.filter = 'grayscale(1) brightness(0.5)';
-        g.drawImage(im, x + 2 * (S + 2), yy, S, S);
-        g.filter = 'none';
-        g.fillStyle = INK;
-        g.fillText(s.icon.slice(0, 18), x + CW / 2 - 5, yy + S + 1);
-      }
-      y += Math.ceil(list.length / COLS) * RH + 6;
+    return skillSheet(SKILL_TREES);
+  },
+  async skillsA() {
+    return skillSheet(SKILL_TREES.slice(0, 6));
+  },
+  async skillsB() {
+    return skillSheet(SKILL_TREES.slice(6, 12));
+  },
+  async skillsC() {
+    return skillSheet(SKILL_TREES.slice(12));
+  },
+
+  /** Every status chip at 48px and at the HUD's 17px, then every affix badge at 32px and 14px. */
+  async statuses() {
+    const { STATUSES } = await import('../src/data/statuses');
+    const { MONSTER_AFFIXES } = await import('../src/data/monsterAffixes');
+    const CW = 96;
+    const COLS = 12;
+    const rows = Math.ceil(STATUSES.length / COLS) + Math.ceil(MONSTER_AFFIXES.length / COLS) + 1;
+    const { c, g } = sheet(COLS * CW, rows * 74);
+    for (let i = 0; i < STATUSES.length; i++) {
+      const s = STATUSES[i]!;
+      const x = (i % COLS) * CW;
+      const y = Math.floor(i / COLS) * 74;
+      const im = await img(IC.statusIconUri(s.icon, s.color, s.polarity));
+      g.drawImage(im, x + 8, y + 4, 48, 48);
+      g.drawImage(im, x + 62, y + 20, 17, 17);
+      g.fillStyle = INK;
+      g.fillText(`${s.icon}`.slice(0, 14), x + CW / 2, y + 56);
+    }
+    const y0 = (Math.ceil(STATUSES.length / COLS) + 1) * 74;
+    for (let i = 0; i < MONSTER_AFFIXES.length; i++) {
+      const a = MONSTER_AFFIXES[i]!;
+      const x = (i % COLS) * CW;
+      const y = y0 + Math.floor(i / COLS) * 74;
+      const im = await img(IC.affixIconUri(a.behavior, a.color));
+      g.drawImage(im, x + 14, y + 10, 32, 32);
+      g.drawImage(im, x + 56, y + 20, 14, 14);
+      g.fillStyle = INK;
+      g.fillText(`${a.behavior}`.slice(0, 14), x + CW / 2, y + 56);
+    }
+    return c;
+  },
+
+  /** A handful of skill icons at native size, to judge the brushwork. */
+  async skillcloseup() {
+    const ids = ['bash', 'nova-fire', 'bone-spear', 'chain', 'fang', 'rain', 'mastery-fire', 'cleave', 'cyclone', 'eclipse', 'smoke-bomb', 'harvest'];
+    const list = ids.map((n) => SKILLS.find((s) => s.icon === n)!).filter(Boolean);
+    const S = 192;
+    const COLS = 4;
+    const { c, g } = sheet(COLS * S, Math.ceil(list.length / COLS) * (S + 60));
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i]!;
+      const im = await img(IC.skillIconUri(s.id, s.effect, s.damageType, s.targeting === 'passive', s.icon));
+      const x = (i % COLS) * S;
+      const y = Math.floor(i / COLS) * (S + 60);
+      g.drawImage(im, x + 32, y + 4, 128, 128);
+      g.drawImage(im, x + 10, y + 140, 40, 40);
+      g.filter = 'grayscale(0.6) brightness(0.7)';
+      g.drawImage(im, x + 60, y + 140, 40, 40);
+      g.filter = 'grayscale(1) brightness(0.5)';
+      g.drawImage(im, x + 110, y + 140, 40, 40);
+      g.filter = 'none';
+      g.fillStyle = INK;
+      g.fillText(s.icon, x + S / 2, y + 186);
     }
     return c;
   },
@@ -205,3 +238,40 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return c;
   },
 };
+
+/** Every skill in the given trees at hotbar size (48px): ready, cooldown, locked. */
+async function skillSheet(trees: typeof SKILL_TREES): Promise<HTMLCanvasElement> {
+  const S = 48;
+  const CW = 3 * (S + 2) + 10;
+  const COLS = 6;
+  let rows = 0;
+  const per = trees.map((t) => SKILLS.filter((s) => s.treeId === t.id));
+  for (const l of per) rows += Math.ceil(l.length / COLS) + 0.4;
+  const RH = S + 14;
+  const { c, g } = sheet(COLS * CW + 10, Math.ceil(rows * RH) + 20);
+  let y = 4;
+  for (let ti = 0; ti < trees.length; ti++) {
+    const list = per[ti]!;
+    g.fillStyle = '#d8c690';
+    g.textAlign = 'left';
+    g.fillText(`${trees[ti]!.name} (${trees[ti]!.classId})`, 4, y);
+    g.textAlign = 'center';
+    y += 12;
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i]!;
+      const im = await img(IC.skillIconUri(s.id, s.effect, s.damageType, s.targeting === 'passive', s.icon));
+      const x = (i % COLS) * CW + 6;
+      const yy = y + Math.floor(i / COLS) * RH;
+      g.drawImage(im, x, yy, S, S);
+      g.filter = 'grayscale(0.6) brightness(0.7)';
+      g.drawImage(im, x + S + 2, yy, S, S);
+      g.filter = 'grayscale(1) brightness(0.5)';
+      g.drawImage(im, x + 2 * (S + 2), yy, S, S);
+      g.filter = 'none';
+      g.fillStyle = INK;
+      g.fillText(s.icon.slice(0, 18), x + CW / 2 - 5, yy + S + 1);
+    }
+    y += Math.ceil(list.length / COLS) * RH + 6;
+  }
+  return c;
+}

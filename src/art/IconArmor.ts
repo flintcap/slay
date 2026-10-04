@@ -95,6 +95,7 @@ const shieldLike: Painter = (k) => {
       const rimM = k.rank >= 1 ? k.trim : MATS['metal.iron']!;
       const rim = new Path2D();
       rim.arc(0, 0, r, 0, Math.PI * 2);
+      rim.moveTo(r - 6, 0);
       rim.arc(0, 0, r - 6, 0, Math.PI * 2, true);
       solid(x, rim, rimM, { a: [-r, -r], b: [r, r], tex: null, size: 0.8, ao: 0.3 });
       const n = sub === 'buckler' ? 8 : 12;
