@@ -13,8 +13,10 @@
 
 import type { AccountSave, Character, StorySave } from '../types';
 import { save } from '../core/Save';
-import type { Chapter, When } from '../data/story/types';
+import type { Chapter, Line, NpcDef, NpcId, Topic, When } from '../data/story/types';
 import { CHAPTERS, chapterById, chaptersUpTo } from '../data/story/premise';
+import { NPCS, NPC_IDS, npcForStation, TALK_SPOTS } from '../data/story/npcs';
+import { Random, streamFor } from '../core/RNG';
 
 const STORY_VERSION = 1;
 
@@ -145,11 +147,12 @@ export function holds(w: When | undefined, npcId?: string): boolean {
   return true;
 }
 
-/** `{name}`, `{class}`, `{depth}`, `{best}`, `{fallen}`, `{lastFallen}` in a line. */
+/** `{name}`, `{class}`, `{depth}`, `{best}`, `{fallen}`, `{lastFallen}`, `{lastDepth}` in a line. */
 export function fillStory(text: string): string {
   const acct = save.account;
   const c = current();
-  const lastFallen = acct.fallen.length ? acct.fallen[acct.fallen.length - 1]!.name : 'the last one';
+  const lastF = acct.fallen.length ? acct.fallen[acct.fallen.length - 1]! : null;
+  const lastFallen = lastF?.name ?? 'the last one';
   const vars: Record<string, string> = {
     name: c?.name ?? 'delver',
     class: c ? className(c.classId) : 'delver',
@@ -157,6 +160,7 @@ export function fillStory(text: string): string {
     best: String(acct.bestDepth),
     fallen: String(acct.fallen.length),
     lastFallen,
+    lastDepth: String(lastF?.depth ?? story().last?.depth ?? 0),
   };
   return text.replace(/\{(\w+)\}/g, (whole, k: string) => vars[k] ?? whole);
 }
@@ -234,3 +238,105 @@ export function enterBiome(biome: string): boolean {
   persist();
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// The people of the camp
+// ---------------------------------------------------------------------------
+
+let talkSeq = 0;
+const lastSaid = new Map<string, string>();
+
+function pickRng(salt: string): Random {
+  talkSeq++;
+  return streamFor((Date.now() ^ Math.imul(talkSeq, 0x9e3779b1)) >>> 0, salt);
+}
+
+const isNews = (l: Line): boolean => !!l.once || l.when?.after !== undefined || l.when?.first !== undefined;
+
+/** The lines a person could say right now, before choosing. */
+export function eligibleLines(npc: NpcDef): Line[] {
+  const s = story();
+  return npc.lines.filter((l) => !(l.once && s.heard.includes(l.id)) && holds(l.when, npc.id));
+}
+
+/** True when a person has news: something said once, or a reaction to what just happened. */
+export function hasNews(npc: NpcDef): boolean {
+  return eligibleLines(npc).some(isNews);
+}
+
+/**
+ * What a person says as you walk up. News outranks small talk; small talk is
+ * drawn at random from every repeatable line whose conditions hold, never
+ * the same line twice in a row. Records that they spoke.
+ */
+export function greet(npc: NpcDef): string {
+  const s = story();
+  const lines = eligibleLines(npc);
+  const news = lines.filter(isNews);
+  let chosen: Line | undefined;
+  if (news.length) {
+    const top = Math.max(...news.map((l) => l.pri ?? 0));
+    chosen = news.find((l) => (l.pri ?? 0) === top);
+  } else {
+    const pool = lines.filter((l) => l.id !== lastSaid.get(npc.id));
+    const from = pool.length ? pool : lines;
+    if (from.length) chosen = pickRng(`greet:${npc.id}`).pick(from);
+  }
+  s.talked[npc.id] = Date.now();
+  if (!chosen) {
+    persist();
+    return '';
+  }
+  lastSaid.set(npc.id, chosen.id);
+  if (chosen.once && !s.heard.includes(chosen.id)) s.heard.push(chosen.id);
+  persist();
+  return fillStory(chosen.text);
+}
+
+const topicKey = (npc: NpcDef, t: Topic): string => `topic:${npc.id}.${t.id}`;
+
+/** Topics a person will discuss right now, with whether you have heard each. */
+export function topicsFor(npc: NpcDef): Array<{ topic: Topic; heard: boolean }> {
+  const s = story();
+  return npc.topics
+    .filter((t) => holds(t.when, npc.id))
+    .map((t) => ({ topic: t, heard: s.heard.includes(topicKey(npc, t)) }));
+}
+
+/** Marks a topic heard and returns its paragraphs, filled. */
+export function hearTopic(npc: NpcDef, t: Topic): string[] {
+  const s = story();
+  const k = topicKey(npc, t);
+  if (!s.heard.includes(k)) {
+    s.heard.push(k);
+    persist();
+  }
+  return t.text.map(fillStory);
+}
+
+/**
+ * One line called across camp as you arrive, from whoever has the most to say
+ * about what just happened below. It does not consume that person's greeting:
+ * the same news still waits for you when you walk over.
+ */
+export function arrivalLine(): { npc: NpcDef; text: string } | null {
+  const s = story();
+  const stamp = s.last?.at ?? 0;
+  const order: NpcId[] = ['renn', 'gilder', 'marrow', 'listener', 'hesk', 'kale', 'vell', 'corvane', 'wenna'];
+  for (const id of order) {
+    const npc = NPCS[id];
+    for (const l of npc.arrival ?? []) {
+      const key = `arrival:${l.id}:${stamp}`;
+      if (s.heard.includes(key)) continue;
+      if (!holds(l.when, `arrival.${id}`)) continue;
+      // Arrival keys are per event; keep only the current event's.
+      s.heard = s.heard.filter((h) => !h.startsWith('arrival:') || h.endsWith(`:${stamp}`));
+      s.heard.push(key);
+      persist();
+      return { npc, text: fillStory(l.text) };
+    }
+  }
+  return null;
+}
+
+export { NPCS, NPC_IDS, npcForStation, TALK_SPOTS };

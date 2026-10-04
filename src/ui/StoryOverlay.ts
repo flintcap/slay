@@ -18,6 +18,7 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { div, span, clear } from './Widgets';
 import {
+  arrivalLine,
   noteDeath,
   noteRunCleared,
   revealChaptersUpTo,
@@ -186,6 +187,9 @@ export function installStory(): void {
       if (!save.account.current) return;
       const fresh = revealChaptersUpTo(0);
       for (const ch of fresh) setTimeout(() => showCard(chapterCard(ch)), 2200);
+      // Somebody in camp calls out about what just happened below.
+      const call = arrivalLine();
+      if (call) say(call.npc.name, call.text, { delay: 2.6 });
       return;
     }
     if (p.level !== 1) return;

@@ -12,6 +12,7 @@ import { CameraRig } from '../fx/CameraRig';
 import { Player } from '../entities/Player';
 import { buildTown, type TownBuild } from '../world/Town';
 import { setActiveDifficulty } from '../data/difficulties';
+import { openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
 
 /** Interaction points the player can walk up to and press E on. */
 interface Interactable {
@@ -114,6 +115,9 @@ export class TownScene extends GameScene {
       { id: 'memorial', label: 'Memorial — The Fallen', panel: 'memorial', pos: at('memorial'), radius: 2.2 },
       { id: 'portal', label: 'The Descent — Enter the Dungeon', panel: 'descend', pos: this.town.portalSpot.clone(), radius: 2.8 },
     ];
+    // The people who keep no station: the watch captain, the Listener, Gilder
+    // and the surveyor. Talking is handled by the story layer.
+    this.interactables.push(...storyTalkSpots(spots));
 
     // Equipping has to change the model now, not whenever the stat sheet next
     // happens to be recomputed. `item:equipped` was fired into the void, so new
@@ -205,11 +209,12 @@ export class TownScene extends GameScene {
     }
     if (best !== this.nearby) {
       this.nearby = best;
-      events.emit('toast', best ? { text: `[E] ${best.label}`, kind: 'info' } : { text: '', kind: 'info' });
+      events.emit('toast', best ? { text: `[E] ${stationPrompt(best.id, best.label)}`, kind: 'info' } : { text: '', kind: 'info' });
     }
     if (best && input.wasPressed('interact')) {
       audio.play('ui.open');
-      events.emit('ui:open', { panel: best.panel });
+      // The keeper of a station talks first; their trade is the first option.
+      if (!openDialogueFor(best.id)) events.emit('ui:open', { panel: best.panel });
     }
 
     if (this.heroLight) {

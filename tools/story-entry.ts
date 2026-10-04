@@ -8,7 +8,20 @@
 import type { AccountSave } from '../src/types';
 import { save } from '../src/core/Save';
 import { CHAPTERS, chaptersUpTo, deepLedger, isLedgerTier, chapterById } from '../src/data/story/premise';
-import { ensureStory, revealChaptersUpTo, story } from '../src/sim/Story';
+import {
+  NPCS,
+  NPC_IDS,
+  TALK_SPOTS,
+  ensureStory,
+  fillStory,
+  greet,
+  hasNews,
+  noteDeath,
+  revealChaptersUpTo,
+  story,
+} from '../src/sim/Story';
+import type { When } from '../src/data/story/types';
+import { getBoss } from '../src/data/bosses';
 
 const failures: string[] = [];
 const fail = (msg: string): void => {
@@ -21,7 +34,7 @@ function lintText(where: string, text: string): void {
   if (!text || !text.trim()) fail(`${where}: empty text`);
   if (/\s{2,}/.test(text.replace(/\n/g, ' '))) fail(`${where}: double space`);
   if (/\b(okay|OK|gonna|wanna|awesome|cool)\b/.test(text)) fail(`${where}: modern idiom in "${text.slice(0, 50)}"`);
-  if (/\{(?!n\}|name\}|class\}|depth\}|best\}|fallen\}|lastFallen\})[^}]*\}/.test(text)) fail(`${where}: unknown token in "${text}"`);
+  if (/\{(?!n\}|name\}|class\}|depth\}|best\}|fallen\}|lastFallen\}|lastDepth\})[^}]*\}/.test(text)) fail(`${where}: unknown token in "${text}"`);
   if (/[“”]/.test(text)) fail(`${where}: curly quotes belong to the UI, not the text`);
 }
 
@@ -90,6 +103,92 @@ section('Save migration');
   if (again.length !== 0) fail('reveal: chapters revealed twice');
   if (story().chapters.length !== first.length) fail('reveal: not recorded');
   delete acct.story;
+}
+
+// ---------------------------------------------------------------------------
+section('References');
+
+const CLASS_IDS = new Set(['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger']);
+const chapterIds = new Set(CHAPTERS.map((c) => c.id));
+
+/** Every id a condition names must exist. Chain refs are checked once chains exist. */
+function checkWhen(where: string, w: When | undefined): void {
+  if (!w) return;
+  for (const k of ['chapter', 'notChapter'] as const) {
+    const v = w[k];
+    if (v && !chapterIds.has(v)) fail(`${where}: unknown chapter "${v}"`);
+  }
+  for (const k of ['slain', 'notSlain'] as const) {
+    const v = w[k];
+    if (v && !getBoss(v)) fail(`${where}: unknown boss "${v}"`);
+  }
+  if (w.cls && !CLASS_IDS.has(w.cls)) fail(`${where}: unknown class "${w.cls}"`);
+  for (const k of ['done', 'notDone', 'active'] as const) {
+    const v = w[k];
+    if (v) chainRefs.push([where, v]);
+  }
+  if (w.note) noteRefs.push([where, w.note]);
+}
+const chainRefs: Array<[string, string]> = [];
+const noteRefs: Array<[string, string]> = [];
+
+// ---------------------------------------------------------------------------
+section('People');
+
+{
+  const lineIds = new Set<string>();
+  for (const id of NPC_IDS) {
+    const npc = NPCS[id];
+    if (npc.id !== id) fail(`npc ${id}: id field is "${npc.id}"`);
+    lintText(`npc ${id} portrait`, npc.portrait);
+    if (npc.lines.length < 8) fail(`npc ${id}: only ${npc.lines.length} lines`);
+    if (npc.topics.length < 2) fail(`npc ${id}: only ${npc.topics.length} topics`);
+    if (!npc.lines.some((l) => l.when?.first)) fail(`npc ${id}: no first-meeting line`);
+    if (!npc.lines.some((l) => l.when?.after === 'died')) fail(`npc ${id}: no line for after a death`);
+    if (!npc.lines.some((l) => l.when?.after === 'cleared')) fail(`npc ${id}: no line for a cleared run`);
+    if (npc.lines.filter((l) => !l.when && !l.once).length < 4) fail(`npc ${id}: fewer than four lines of small talk`);
+    if (npc.station && !npc.serviceLabel) fail(`npc ${id}: station without a service label`);
+    for (const l of [...npc.lines, ...(npc.arrival ?? [])]) {
+      if (lineIds.has(l.id)) fail(`npc ${id}: duplicate line id ${l.id}`);
+      lineIds.add(l.id);
+      lintText(`line ${l.id}`, l.text);
+      checkWhen(`line ${l.id}`, l.when);
+    }
+    const topicIds = new Set<string>();
+    for (const t of npc.topics) {
+      if (topicIds.has(t.id)) fail(`npc ${id}: duplicate topic ${t.id}`);
+      topicIds.add(t.id);
+      lintText(`topic ${id}.${t.id} label`, t.label);
+      t.text.forEach((x, i) => lintText(`topic ${id}.${t.id}[${i}]`, x));
+      checkWhen(`topic ${id}.${t.id}`, t.when);
+    }
+  }
+  const stations = NPC_IDS.map((id) => NPCS[id].station).filter(Boolean);
+  if (new Set(stations).size !== stations.length) fail('two people keep the same station');
+  for (const id of NPC_IDS) {
+    if (!NPCS[id].station && !TALK_SPOTS[id]) fail(`npc ${id}: no station and nowhere to stand`);
+  }
+
+  // Play a conversation through: first meeting, then news after a death.
+  const acct = save.account as AccountSave;
+  delete acct.story;
+  for (const id of NPC_IDS) {
+    const first = greet(NPCS[id]);
+    const expected = NPCS[id].lines.find((l) => l.when?.first)!;
+    if (!first || first.startsWith(expected.text.slice(0, 12)) === false) fail(`npc ${id}: first greeting was "${first}"`);
+    const second = greet(NPCS[id]);
+    if (second === first) fail(`npc ${id}: said the first-meeting line twice`);
+  }
+  noteDeath(4, 'Tester');
+  story().last!.at = Date.now() + 1000;
+  for (const id of NPC_IDS) {
+    if (!hasNews(NPCS[id])) fail(`npc ${id}: no news after a death`);
+    const line = greet(NPCS[id]);
+    const died = NPCS[id].lines.find((l) => l.when?.after === 'died')!;
+    if (!line.startsWith(fillStory(died.text).slice(0, 10))) fail(`npc ${id}: after a death said "${line}"`);
+  }
+  delete acct.story;
+  console.log(`${NPC_IDS.length} people, ${lineIds.size} lines`);
 }
 
 // ---------------------------------------------------------------------------

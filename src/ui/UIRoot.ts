@@ -27,6 +27,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { CharSelectPanel } from './CharSelectPanel';
 import { DeathPanel } from './DeathPanel';
 import { journal } from './JournalPanel';
+import { dialogue } from './DialoguePanel';
 import {
   Panel,
   Button,
@@ -319,6 +320,7 @@ export function mountUI(engine: Engine): void {
   const death = new DeathPanel(engine);
   const memorial = new MemorialPanel();
   const journalPanel = journal();
+  const dialoguePanel = dialogue();
   pauseRef = pause;
 
   const panels: Array<[string, PanelHandle, Panel]> = [
@@ -338,6 +340,7 @@ export function mountUI(engine: Engine): void {
     ['death', death as unknown as PanelHandle, death.panel],
     ['memorial', memorial, memorial.panel],
     ['journal', journalPanel, journalPanel.panel],
+    ['dialogue', dialoguePanel, dialoguePanel.panel],
   ];
   panelRegistry.clear();
   for (const [id, handle] of panels) panelRegistry.set(id, handle);

@@ -11,7 +11,7 @@
 
 import './story.css';
 import { Panel, Tabs, div, span, clear, emptyState, type TabDef } from './Widgets';
-import { nextChapter, revealedChapters } from '../sim/Story';
+import { NPCS, NPC_IDS, fillStory, nextChapter, revealedChapters, story } from '../sim/Story';
 
 /** One entry in the left-hand list and the page it opens. */
 export interface JournalEntry {
@@ -93,6 +93,42 @@ addJournalSection({
       });
     }
     return out;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// People — everyone you have spoken to, and what they told you
+// ---------------------------------------------------------------------------
+
+addJournalSection({
+  id: 'people',
+  label: 'People',
+  icon: 'quest',
+  empty: 'You have not spoken to anyone in Stairhead yet. Walk up to someone and press E.',
+  entries() {
+    const s = story();
+    return NPC_IDS.filter((id) => s.talked[id] !== undefined).map((id) => {
+      const npc = NPCS[id];
+      return {
+        id,
+        label: npc.name,
+        sub: npc.role,
+        group: npc.station ? 'Keepers' : 'Townsfolk',
+        render(page: HTMLElement) {
+          pageTitle(page, npc.name, npc.role);
+          para(page, npc.portrait);
+          for (const t of npc.topics) {
+            if (!s.heard.includes(`topic:${npc.id}.${t.id}`)) continue;
+            page.appendChild(div('jr-group', t.label));
+            for (const line of t.text) {
+              const q = document.createElement('blockquote');
+              q.textContent = fillStory(line);
+              page.appendChild(q);
+            }
+          }
+        },
+      };
+    });
   },
 });
 
