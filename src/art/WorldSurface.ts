@@ -38,6 +38,19 @@ export interface WorldSurfaceOpts {
 export const WORLD_ENV_ATTRIBUTE = 'aEnv';
 
 /**
+ * `aEnv` written on wall tops. Anything above 150 on a wall-kind surface is a
+ * cap: the cut edge of the rock seen from above, not a face anyone looks at.
+ *
+ * Caps wear the wall's own stone (a flat painted cap glowed in mid-air), but
+ * at full brightness they were the biggest lit surface in the frame: the first
+ * render of the textured walls showed bright blue cobbles over half the crypt
+ * shot and a noisy teal mottle over the caverns, out-shining the floor. So the
+ * shader keeps their texture and sinks them: darker, flatter, matte. They
+ * still read as rock with walls under it; the floor reads as where you play.
+ */
+export const WORLD_CAP_ENV = 199;
+
+/**
  * A private material for level geometry: the palette's own PBR set, plus a
  * world-space layer that breaks the tiling and grounds the surface.
  *
@@ -130,6 +143,8 @@ export function worldSurface(key: string, opts: SurfaceOpts, w: WorldSurfaceOpts
           // Grime in the corners and along the foot of every wall.
           'float wsG = clamp(wsContact * (0.55 + wsB.b * 0.6), 0.0, 1.0) * uGrimeAmt;',
           'diffuseColor.rgb = mix(diffuseColor.rgb, uGrime, wsG * 0.5);',
+          wall ? 'float wsCap = step(150.0, vEnv);' : 'const float wsCap = 0.0;',
+          'diffuseColor.rgb *= 1.0 - wsCap * 0.6;',
         ].join('\n'),
       )
       .replace(
@@ -137,7 +152,8 @@ export function worldSurface(key: string, opts: SurfaceOpts, w: WorldSurfaceOpts
         [
           '#include <roughnessmap_fragment>',
           'roughnessFactor *= mix(0.86, 1.08, wsB.a);',
-          'roughnessFactor = mix(roughnessFactor, 0.12, wsWet * 0.85);',
+          'roughnessFactor = mix(roughnessFactor, 0.22, wsWet * 0.85);',
+          'roughnessFactor = mix(roughnessFactor, 1.0, wsCap);',
         ].join('\n'),
       )
       .replace(
@@ -145,7 +161,7 @@ export function worldSurface(key: string, opts: SurfaceOpts, w: WorldSurfaceOpts
         [
           '#include <normal_fragment_maps>',
           // Standing water fills the crevices: relief flattens where it is wet.
-          'normal = normalize(mix(normal, nonPerturbedNormal, wsWet * 0.7));',
+          'normal = normalize(mix(normal, nonPerturbedNormal, max(wsWet * 0.7, wsCap * 0.6)));',
         ].join('\n'),
       )
       .replace(

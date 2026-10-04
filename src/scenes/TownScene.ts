@@ -11,6 +11,7 @@ import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { Player } from '../entities/Player';
 import { buildTown, type TownBuild } from '../world/Town';
+import { setFogShape } from '../core/Renderer';
 import { setActiveDifficulty } from '../data/difficulties';
 import { openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
 import { mountTownStations } from './TownStations';
@@ -80,6 +81,20 @@ export class TownScene extends GameScene {
     // much lower on the curve than the dungeon does. Open the grade up while
     // we are here and put it back on the way out.
     this.engine.renderer.setExposure(1.5);
+    // Moonlit night: cool blue in the shadows, firelight gold in the
+    // highlights, and a heavier vignette so the lit clearing is the subject.
+    this.engine.renderer.setGrade({
+      shadowTint: 0x4a5a8a,
+      highlightTint: 0xffc080,
+      splitTone: 0.5,
+      vignette: 0.5,
+      vignetteTint: 0x5a6890,
+      saturation: 1.04,
+      bloomStrength: 0.7,
+    });
+    // Fog starts past the camp's near edge, so the stations stay crisp and
+    // only the tree line and the far palisade go soft.
+    setFogShape(18);
     // Cold, damp night air. Denser than the old town fog so the tree line goes
     // soft and the camp reads as a lit clearing rather than an object on a plane.
     this.scene.fog = new THREE.FogExp2(0x131a26, 0.017);
@@ -246,6 +261,8 @@ export class TownScene extends GameScene {
   override dispose(): void {
     // Drop the proximity prompt so it does not follow the player downstairs.
     this.engine.renderer.setExposure(1.0);
+    this.engine.renderer.setGrade();
+    setFogShape();
     this.nearby = null;
     this.smokeSpots = [];
     events.emit('toast', { text: '', kind: 'info' });

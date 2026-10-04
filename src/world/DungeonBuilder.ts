@@ -36,7 +36,9 @@ import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from '
 
 import { surface, surfaceVariant } from '../art/Materials';
 import { setFogShape, fogShape } from '../core/Renderer';
-import { worldSurface, WORLD_ENV_ATTRIBUTE, type WorldSurfaceOpts } from '../art/WorldSurface';
+import { worldSurface, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldSurfaceOpts } from '../art/WorldSurface';
+import { liquidSurface, type LiquidSurface, type LiquidStyle } from '../art/Liquids';
+import { Drips, type DripSite } from './Ambience';
 
 /** One usable thing in the world, and the instance slot that draws it. */
 export interface Interactable {
@@ -433,6 +435,9 @@ export class DungeonMesh {
   private readonly flames: FlameMesh[] = [];
 
   private poolMesh: THREE.InstancedMesh | null = null;
+  /** The level's animated liquid, if it has any liquid tiles. */
+  private liquid: LiquidSurface | null = null;
+  private drips: Drips | null = null;
   private shafts: THREE.Mesh | null = null;
   private shaftMat: THREE.MeshBasicMaterial | null = null;
 
@@ -562,6 +567,9 @@ export class DungeonMesh {
     this.ownedMat.push(ceilMat);
 
     const liquidMat = this.makeLiquidMaterial();
+    // Where drops fall and where lava throws light, gathered while emitting.
+    const dripSites: DripSite[] = [];
+    const hotTiles: Array<{ x: number; y: number; h: number }> = [];
     const veinMat = new THREE.MeshBasicMaterial({
       color: art.veinColor,
       transparent: true,
@@ -727,6 +735,12 @@ export class DungeonMesh {
     const wallH = art.wallHeight;
     const ceilY = art.ceilingHeight;
 
+    // Only damp places drip, and only where there is a ceiling to drip from.
+    const wetDrips =
+      art.ceiling !== 'open' &&
+      (art.liquid === 'water' || art.liquid === 'sludge') &&
+      (art.wetness ?? art.puddles) >= 0.2;
+
     // One flat plane of rock over the whole level.
     //
     // Every solid tile used to cap at *its own* terrain height plus the wall
@@ -747,9 +761,11 @@ export class DungeonMesh {
         const surfs: Surf[] = [];
         // Wall-kind buckets default to "far above the floor", so faces that do
         // not say otherwise (caps, ledges) carry no contact shadow.
+        // Caps say so with their own marker (see WORLD_CAP_ENV) so the wall
+        // shader can sink them back without a second material.
         for (let i = 0; i < BUCKETS; i++) {
-          const wallKind = (i >= WALL0 && i < TRIM) || i === CAPS;
-          surfs.push(new Surf(wallKind ? 99 : 0));
+          const wallKind = i >= WALL0 && i < TRIM;
+          surfs.push(new Surf(i === CAPS ? WORLD_CAP_ENV : wallKind ? 99 : 0));
         }
 
         const x0 = cx * CHUNK;
@@ -834,7 +850,21 @@ export class DungeonMesh {
 
             // Liquid surface.
             if (v === T_WATER || v === T_LAVA) {
-              surfs[LIQ].flat(wx, hy + 0.13, wz, HALF, true, x % 4, y % 4, 1);
+              surfs[LIQ].flat(wx, hy + 0.13, wz, HALF, true, x % 4, y % 4, 1, this.shoreContact(x, y, v));
+              if (v === T_LAVA || art.liquid === 'voidwater') hotTiles.push({ x, y, h: hy });
+            }
+
+            // Drips: off the ceiling into the water and the puddles below it.
+            if (wetDrips && (v === T_WATER || (art.puddles > 0 && hashTile(x, y, level.seed ^ 0x51) % 11 === 0))) {
+              if (hashTile(x, y, level.seed ^ 0xd1) % 3 === 0) {
+                const top = art.ceiling === 'vault' || art.ceiling === 'broken' ? hy + ceilY : hy + wallH;
+                dripSites.push({
+                  x: wx + ((hashTile(x, y, 7) % 100) / 100 - 0.5) * 1.4,
+                  z: wz + ((hashTile(x, y, 9) % 100) / 100 - 0.5) * 1.4,
+                  floor: v === T_WATER ? hy + 0.13 : hy,
+                  top,
+                });
+              }
             }
 
             // Emissive veins in the cracks.
@@ -897,43 +927,81 @@ export class DungeonMesh {
         this.root.add(group);
       }
     }
+
+    if (dripSites.length > 0) {
+      this.drips = new Drips(dripSites, art.liquidColor === 0 ? 0x9fc0d0 : art.liquidColor);
+      this.root.add(this.drips.root);
+    }
+    this.addHeatLights(hotTiles);
+  }
+
+  /**
+   * Lava and void pools light the room around them.
+   *
+   * The pool is emissive and blooms, but on its own it lit nothing: the walls
+   * beside a lava river stayed as dark as the walls beside a puddle. Each
+   * cluster of hot tiles becomes a record in the torch pool, so the nearest
+   * ones get real lights as the player walks past and the rest still throw a
+   * soft additive glow on the floor. No flame mesh, a slow heavy flicker.
+   */
+  private addHeatLights(hot: Array<{ x: number; y: number; h: number }>): void {
+    if (hot.length === 0) return;
+    const CELL = 5;
+    const cells = new Map<string, { sx: number; sy: number; sh: number; n: number }>();
+    for (const t of hot) {
+      const k = `${Math.floor(t.x / CELL)},${Math.floor(t.y / CELL)}`;
+      let c = cells.get(k);
+      if (!c) {
+        c = { sx: 0, sy: 0, sh: 0, n: 0 };
+        cells.set(k, c);
+      }
+      c.sx += t.x;
+      c.sy += t.y;
+      c.sh += t.h;
+      c.n++;
+    }
+    const colour = new THREE.Color(this.art.liquidEmissive || this.art.liquidColor);
+    let i = 0;
+    for (const c of cells.values()) {
+      if (c.n < 3) continue;
+      const x = c.sx / c.n;
+      const y = c.sy / c.n;
+      this.torches.push({
+        pos: new THREE.Vector3(this.tileX(x), c.sh / c.n + 1.1, this.tileZ(y)),
+        color: colour.clone(),
+        intensity: 4 + Math.min(4, c.n * 0.25),
+        distance: 9 + Math.min(5, c.n * 0.3),
+        flicker: 0.45,
+        flameMesh: -1,
+        flameIndex: -1,
+        phase: (i++ * 7.31) % 100,
+      });
+    }
+  }
+
+  /**
+   * Shore contact for a liquid tile's four corners, in `Surf.flat` order: how
+   * much of the bank each corner touches. Drives froth on water and the cooled
+   * crust at the edge of lava.
+   */
+  private shoreContact(x: number, y: number, self: number): number[] {
+    const bank = (tx: number, ty: number): number => (this.tile(tx, ty) === self ? 0 : 1);
+    const out: number[] = [];
+    for (const [dx, dz] of FLAT_CORNERS) {
+      const a = bank(x + dx, y);
+      const b = bank(x, y + dz);
+      const c = bank(x + dx, y + dz);
+      out.push(a > 0 && b > 0 ? 1 : Math.min(1, (a + b + c) * 0.5));
+    }
+    return out;
   }
 
   private makeLiquidMaterial(): THREE.Material {
     const art = this.art;
-    if (art.liquid === 'lava' || art.liquid === 'voidwater') {
-      const m = new THREE.MeshStandardMaterial({
-        color: art.liquidColor,
-        emissive: new THREE.Color(art.liquidEmissive),
-        emissiveIntensity: 2.4,
-        roughness: 0.55,
-        metalness: 0,
-      });
-      this.ownedMat.push(m);
-      return m;
-    }
-    if (art.liquid === 'ice') {
-      const m = new THREE.MeshStandardMaterial({
-        color: art.liquidColor,
-        roughness: 0.06,
-        metalness: 0.1,
-        transparent: true,
-        opacity: 0.72,
-      });
-      this.ownedMat.push(m);
-      return m;
-    }
-    const m = new THREE.MeshStandardMaterial({
-      color: art.liquidColor,
-      emissive: new THREE.Color(art.liquidEmissive),
-      emissiveIntensity: 0.45,
-      roughness: 0.03,
-      metalness: 0.55,
-      transparent: true,
-      opacity: art.liquid === 'sludge' ? 0.94 : 0.78,
-    });
-    this.ownedMat.push(m);
-    return m;
+    // A biome whose liquid is 'none' can still have the odd water tile.
+    const style: LiquidStyle = art.liquid === 'none' ? 'water' : art.liquid;
+    this.liquid = liquidSurface(style, art.liquidColor, art.liquidEmissive);
+    return this.liquid.material;
   }
 
   /**
@@ -1164,7 +1232,9 @@ export class DungeonMesh {
     // Collapsed behind you: rubble filling the opening. You do not go back up.
     for (let i = 0; i < 7; i++) {
       const sz = rng.range(0.35, 0.8);
-      const rock = new THREE.Mesh(new THREE.BoxGeometry(sz, sz * 0.8, sz), dark);
+      // The wall's own stone: in the dark tint the fall read as black holes
+      // punched in the floor beside the player on every first frame.
+      const rock = new THREE.Mesh(new THREE.BoxGeometry(sz, sz * 0.8, sz), stone);
       rock.position.set(rng.range(-1.1, 1.1), sz * 0.4, -1.1 + rng.range(-0.3, 0.3));
       rock.rotation.set(rng.range(0, 3), rng.range(0, 3), rng.range(0, 3));
       rock.castShadow = true;
@@ -1659,6 +1729,8 @@ export class DungeonMesh {
     if (fogShape.w > 0) fogShape.y = this.lowestFloor - 0.9;
     this.updateLights(dt, elapsed, focus);
     this.updateFlames(elapsed, focus);
+    this.liquid?.update(elapsed);
+    this.drips?.update(dt, focus);
 
     this.cullTimer -= dt;
     if (this.cullTimer <= 0) {
@@ -1801,6 +1873,10 @@ export class DungeonMesh {
       this.root.remove(l);
     }
     this.lights.length = 0;
+    this.liquid?.dispose();
+    this.liquid = null;
+    this.drips?.dispose();
+    this.drips = null;
     for (const g of this.ownedGeo) g.dispose();
     for (const m of this.ownedMat) m.dispose();
     for (const t of this.ownedTex) t.dispose();

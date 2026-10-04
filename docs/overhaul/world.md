@@ -6,38 +6,44 @@ Status: paused
 
 - [x] Textures: richer procedural surfaces with normal and roughness detail and large-scale variation so floors and walls stop tiling visibly. (commit "World: world-space surfaces, biome grades, height fog, room landmarks")
 - [x] Lighting and post: tone mapping, a colour grade per biome, tuned bloom, ambient occlusion, vignette, light shafts and fog that add depth. (same commit; grade + bloom + vignette per biome, fog shaped around the player, height fog in pits. Light shafts untouched.)
-- [ ] Set dressing: landmark pieces per room type and per biome so every room has a focal point. (code is in and wired, not yet seen in a render)
-- [ ] Liquids and hazards: water, lava and chasms that look the part, with ambient motes and drips per biome. (materials and drips written, NOT wired)
-- [ ] Town: lived-in camp with lighting, landmarks and life. (fireflies class written, NOT wired)
+- [ ] Set dressing: landmark pieces per room type and per biome so every room has a focal point. (wired; start rooms rendered fine, but no landmark has been seen up close yet: the room shots landed in fights)
+- [ ] Liquids and hazards: water, lava and chasms that look the part, with ambient motes and drips per biome. (WIRED and live; water seen once and froth toned down after; lava and drips not yet seen)
+- [ ] Town: lived-in camp with lighting, landmarks and life. (WIRED and live: night grade, fog shape, world-surface ground, fireflies, ground light pools; not yet rendered)
 - [ ] Sweep: one render per biome, each reads clearly with the player and monsters easy to see.
 
 ## Next up
 
-1. Render to check milestone 3 (and recheck 1 and 2 in more biomes). From the repo root after `npm run build`:
-   `SLAY_PORT=4304 node docs/overhaul/world-render.mjs --out=shots/w2 --shots=crypt,caverns,foundry,sunkenTemple,town`
-   It boots once (10 to 25 minutes under load), then visits each biome with a fixed seed and prints
-   draw calls, triangles, programs, lights and materials per shot. Look at each PNG. Check: floor
-   seals sit flat and are not z-fighting; ossuary, idol head, gold hoard and gibbet look right; big
-   rooms have a hero piece; floors show broad patches and dark corners at wall feet but are still
-   the brightest, clearest thing on screen. If seals look noisy, lower the glyph emissive in
-   `buildSeal` (Props.ts). Then tick milestone 3 and checkpoint.
-2. Milestone 4, liquids: run `python3 docs/overhaul/world-m4-wiring.py` after changing its
-   `os.chdir` line to your worktree. It wires `src/art/Liquids.ts` (animated water, lava crust over
-   glow, sludge, ice, void; shore froth from an `aEnv` corner attribute) and `src/world/Ambience.ts`
-   (drips from the ceiling into water with rings) into `DungeonBuilder.ts`, and makes lava and void
-   pools add records to the torch pool so they light the room. Typecheck, run check-roof,
-   check-props, check-decalheight, render foundry (lava) and sunkenTemple (water), tune, checkpoint.
-   Delete `world-m4-wiring.py` once applied.
-3. Milestone 5, town: in `TownScene.enter` call `renderer.setGrade({...night grade...})` (cool
-   shadows ~0x4a5a8a, warm highlights ~0xffc080, splitTone 0.5, vignette 0.5) and
-   `setFogShape(18)` from `core/Renderer`; reset both in `dispose` (`setGrade()`, `setFogShape()`).
-   Swap the town dirt and path materials in `Town.ts` to `worldSurface(..., {kind:'floor', ...})`
-   so the ground stops tiling (push them into `ctx.mat` for disposal). Wire `CampLife` from
-   `src/world/TownLife.ts`: build it with the lantern post positions (y 2.86, x+0.24) and ring
-   inner 22, outer 34, add `root`, call `update(elapsed)` from the town's update, dispose it.
-   Render town, tune, checkpoint.
-4. Milestone 6 sweep: render all eight biomes (names in `world-render.mjs` SEEDS), fix anything
-   that hides the player or monsters, checkpoint.
+Everything below is already in the code and switched on. What is missing is
+looking at it. Paused mid render batch; the code builds, typecheck is clean,
+check-roof, check-props, check-decalheight and check-palettes pass.
+
+1. `npm run build`, then one batch (expect 5 to 8 minutes per shot under load):
+   `SLAY_PORT=4304 node docs/overhaul/world-render.mjs --out=shots/w4 --shots=crypt,foundry@close,sunkenTemple,sunkenTemple@room,caverns@room,foundry@room,town`
+   Harness options (new): `biome@room` teleports to the biggest non-entry room, `biome@<kind>` to the
+   first room of that kind (treasure, ambush, vault, boss), `biome@close` zooms the camera in on the
+   hero. Each line prints `hero` (meshes shown and screen position) and real whole-frame draw calls
+   and triangles. Wait for lines with the regex `^name +[0-9]+s`; the `name -> {...}` line is only the
+   teleport. Kill the node process AND its `vite preview --port 4304` child when done (by PID).
+2. Look for, and fix in this order:
+   - foundry@close: in the foundry start shot the hero was NOT visible at the screen centre although
+     the probe says 42 of 44 meshes are shown at (640,370). The crypt start shot shows the hero fine at
+     the same spot. Find out why (dark material? under the floor? hidden by the entry arch?). If it is
+     not a world problem, write it up for the models or quality stream.
+   - water (sunkenTemple, caverns@room): froth was a bright white ring round every one-tile pool; now
+     `rim 0.32`, darker `rimColor`, and clotted by noise in `Liquids.ts`. Check it reads as water.
+   - drips (sunkenTemple): falling drops plus rings near the hero.
+   - lava (foundry@room, bottom right of the old shot): a white-hot blown-out patch. If still blown out,
+     lower `TUNING.lava.emissiveIntensity` (2.8) or the heat light `intensity` in `addHeatLights`.
+   - foundry grade: changed to cool shadows (`shadowTint 0x4a5874`) because the whole frame was one red.
+   - chasms render as a flat black shape. Consider an ember glow at the bottom for foundry/ashwaste.
+   - landmarks: still unseen. A `@room` shot that lands in a fight shows monsters, not the piece; try
+     `@vault`, `@treasure` or another seed in `SEEDS`.
+   - town: night grade, `setFogShape(18)`, ground light pools (`buildGlows` in Town.ts), fireflies at
+     radius 22 to 34 and moths on the lantern posts. Town has 34 real lights (perf budget is 24 for
+     dungeons); consider marking a few more lanterns unlit.
+3. Tick milestones 3, 4, 5 as they check out and checkpoint.
+4. Milestone 6 sweep: all eight biomes in `SEEDS`, fix anything hiding the player or monsters.
+5. `node tools/check-propmesh.mjs` has never finished under load; run it alone when the machine is quiet.
 
 ## Notes for resume
 
@@ -76,3 +82,14 @@ Status: paused
   palette (no speckle or stain passes) would let `CharacterModels.skinMaterial` keep an albedo map;
   today it drops the map because the `skin.*` speckle reads as dirt on faces. Also, the lantern post at
   (-7.0, -13.5) stands inside the apothecary footprint at (-6.5, -13.5).
+- Wall tops (CAPS) now carry `aEnv = WORLD_CAP_ENV` (199) and the wall shader darkens them 60%, makes
+  them matte and flattens their normal. Same material, same bucket, still solid (check-roof passes).
+  Render after the change: the floor is now the brightest thing in the crypt start shot.
+- Entry-arch rubble now uses the wall stone; in the dark tint it read as black holes by the player.
+- Wet floors bottom out at roughness 0.22 (was 0.12) to cut specular sparkle on damp biomes.
+- `world-m4-wiring.py` was applied and deleted. Liquids: `liquidSurface()` owns the level's liquid
+  material (disposed via `this.liquid`), `shoreContact()` feeds froth/crust, lava and void pools add
+  records to the torch pool (`addHeatLights`), `Drips` from `src/world/Ambience.ts` run near the hero.
+- The render harness parks the mouse mid-screen after boot; the rig leans toward the cursor, and with
+  the cursor at (0,0) the hero sat off-centre and looked missing.
+

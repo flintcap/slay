@@ -23,6 +23,8 @@ import * as THREE from 'three';
 import type { CharClassId, Rng } from '../types';
 import { Noise, clamp } from '../art/Noise';
 import { surface } from '../art/Materials';
+import { worldSurface, WORLD_ENV_ATTRIBUTE } from '../art/WorldSurface';
+import { CampLife } from './TownLife';
 import { displace, mergeGeometries, rock, stoneBlock, taperedBox, clothPanel, limb } from '../art/Meshes';
 import { buildNpcModel, npcCarryGrip } from '../art/NpcModels';
 import { Animator } from '../art/Animation';
@@ -66,6 +68,8 @@ interface Ctx {
   /** Static geometry accumulating per material, merged before hand-off. */
   batches: Map<string, THREE.BufferGeometry[]>;
   smoke: THREE.Vector3[];
+  /** Warm pools painted on the ground under real lights. See `buildGlows`. */
+  glows: Array<{ x: number; z: number; r: number; color: number; k: number }>;
   rng: Rng;
   noise: Noise;
 }
@@ -205,6 +209,7 @@ function addLantern(
   const light = new THREE.PointLight(color, intensity, distance, 2);
   light.position.set(x, y, z);
   light.castShadow = false;
+  if (y > 1.5) ctx.glows.push({ x, z, r: Math.min(5, distance * 0.22), color, k: 0.28 });
   ctx.root.add(light);
   ctx.lights.push(light);
   ctx.flames.push({ light, base: intensity, phase: ctx.rng.range(0, 100), flicker, mesh: bulb });
@@ -371,12 +376,15 @@ export function buildTown(rng: Rng): TownBuild {
 
   const ctx: Ctx = {
     root, colliders: [], geo: [], mat: [], lights: [], flames: [], spin: [], sway: [],
-    npcs: [], batches: new Map(), smoke: [], rng, noise: new Noise(0x70ad),
+    npcs: [], batches: new Map(), smoke: [], glows: [], rng, noise: new Noise(0x70ad),
   };
 
   const mats: Mats = {
-    dirt: safeSurface('ground.dirt', { repeat: 16, tint: 0x8d8478, roughness: 0.98 }),
-    path: safeSurface('ground.dirt', { repeat: 7, tint: 0xa2968a, roughness: 0.99 }),
+    // Trodden earth carries the same world-space breakup as dungeon floors, so
+    // forty metres of camp ground stops reading as one tile repeated: broad
+    // light and dark patches, damp hollows, grime banked against the stakes.
+    dirt: groundSurface(ctx, { repeat: 16, tint: 0x8d8478, roughness: 0.98 }, 0.22),
+    path: groundSurface(ctx, { repeat: 7, tint: 0xa2968a, roughness: 0.99 }, 0.08),
     grass: safeSurface('ground.grass', { repeat: 20, roughness: 0.98 }),
     stone: safeSurface('stone.town', { repeat: 2.2 }),
     darkStone: safeSurface('stone.crypt', { repeat: 1.6, tint: 0x6a6a72 }),
@@ -443,10 +451,19 @@ export function buildTown(rng: Rng): TownBuild {
     addLantern(ctx, lx + 0.24, 2.86, lz, 0xffb964, 20, 24, 0.55, 0.1, pi % 2 === 0);
   }
 
+  // Fireflies out at the tree line, moths round the lantern bulbs.
+  const life = new CampLife(
+    posts.map(([lx, lz]) => new THREE.Vector3(lx + 0.24, 2.86, lz)),
+    22,
+    34,
+  );
+  root.add(life.root);
+
   buildPalisade(ctx, mats);
   buildLivingQuarters(ctx, mats);
   buildForest(ctx, mats);
   flushBatches(ctx, mats);
+  buildGlows(ctx);
 
   // --- residents ---------------------------------------------------------
   npc(ctx, 'kale', forgeAt.x + 1.4, forgeAt.z + 0.4, 2.3, 101);
@@ -525,8 +542,10 @@ export function buildTown(rng: Rng): TownBuild {
         else w.obj.rotation.z = a;
       }
       for (const a of ctx.npcs) a.update(dt);
+      life.update(elapsed);
     },
     dispose(): void {
+      life.dispose();
       for (const g of ctx.geo) g.dispose();
       for (const m of ctx.mat) m.dispose();
       for (const l of ctx.lights) {
@@ -548,6 +567,95 @@ export function buildTown(rng: Rng): TownBuild {
 // ---------------------------------------------------------------------------
 // Pieces
 // ---------------------------------------------------------------------------
+
+/**
+ * Warm light pools on the ground under the fire and the lit lanterns.
+ *
+ * The first night render had the fire reading as a flame sitting on an evenly
+ * lit grey-brown field: real point lights fall off too smoothly from a camera
+ * twenty metres up to make a pool. The dungeon solved the same thing with an
+ * additive radial decal under each torch; the camp gets the same, one
+ * instanced mesh for all of them.
+ */
+function buildGlows(ctx: Ctx): void {
+  if (ctx.glows.length === 0) return;
+  const N = 64;
+  const data = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const d = Math.min(1, Math.hypot(x - N / 2 + 0.5, y - N / 2 + 0.5) / (N / 2));
+      const a = Math.pow(1 - d, 2.2);
+      const i = (y * N + x) * 4;
+      data[i] = data[i + 1] = data[i + 2] = Math.round(a * 255);
+      data[i + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, N, N);
+  tex.needsUpdate = true;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const dispose = mat.dispose.bind(mat);
+  mat.dispose = () => {
+    tex.dispose();
+    dispose();
+  };
+  ctx.mat.push(mat);
+  const geo = keep(ctx, new THREE.PlaneGeometry(2, 2));
+  geo.rotateX(-Math.PI / 2);
+  const inst = new THREE.InstancedMesh(geo, mat, ctx.glows.length);
+  inst.name = 'campGlows';
+  inst.renderOrder = 2;
+  const m4 = new THREE.Matrix4();
+  const c = new THREE.Color();
+  ctx.glows.forEach((g, i) => {
+    m4.makeScale(g.r, 1, g.r).setPosition(g.x, 0.2, g.z);
+    inst.setMatrixAt(i, m4);
+    inst.setColorAt(i, c.set(g.color).multiplyScalar(g.k));
+  });
+  inst.instanceMatrix.needsUpdate = true;
+  if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+  inst.computeBoundingSphere();
+  ctx.root.add(inst);
+}
+
+/**
+ * Camp ground: the dirt palette with the world-space layer on top. Owned by
+ * the camp (pushed to `ctx.mat`), never the shared cached surface.
+ */
+function groundSurface(ctx: Ctx, opts: { repeat: number; tint: number; roughness: number }, wet: number): THREE.Material {
+  try {
+    const m = worldSurface('ground.dirt', opts, {
+      kind: 'floor',
+      grime: 0x2a2018,
+      grimeAmount: 0.55,
+      wet,
+      variation: 0.85,
+      contact: 0.6,
+    });
+    ctx.mat.push(m);
+    return m;
+  } catch {
+    return safeSurface('ground.dirt', opts);
+  }
+}
+
+/**
+ * Fills the `aEnv` contact attribute on a ground mesh. `contact(x, y)` is in
+ * the geometry's own plane coordinates, before it is laid flat.
+ */
+function groundContact(geo: THREE.BufferGeometry, contact: (x: number, y: number) => number): void {
+  const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+  const env = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) env[i] = contact(pos.getX(i), pos.getY(i));
+  geo.setAttribute(WORLD_ENV_ATTRIBUTE, new THREE.BufferAttribute(env, 1));
+}
 
 function buildGround(ctx: Ctx, m: Mats): void {
   // Turf, lumpy, running out past the palisade into the trees.
@@ -578,6 +686,8 @@ function buildGround(ctx: Ctx, m: Mats): void {
     fpos.setZ(i, n.simplex2(x * 0.13, y * 0.13) * 0.07 + n.simplex2(x * 0.5, y * 0.5) * 0.025);
   }
   floor.computeVertexNormals();
+  // Grime and shadow bank up against the palisade at the rim.
+  groundContact(floor, (x, y) => clamp((Math.hypot(x, y) - 18.5) / 3.5, 0, 1));
   floor.rotateX(-Math.PI / 2);
   const floorMesh = new THREE.Mesh(floor, m.dirt);
   floorMesh.position.y = 0.06;
@@ -597,6 +707,7 @@ function buildGround(ctx: Ctx, m: Mats): void {
       spos.setX(i, spos.getX(i) + n.simplex2(spos.getY(i) * 0.2, 4) * 0.5);
     }
     strip.computeVertexNormals();
+    groundContact(strip, () => 0);
     strip.rotateX(-Math.PI / 2);
     const mesh = new THREE.Mesh(strip, m.path);
     mesh.position.set(tx * 0.5, 0.05, tz * 0.5);
@@ -670,6 +781,7 @@ function buildCampfire(ctx: Ctx, m: Mats): void {
   // a shadow the length of the camp, and those hard black wedges read as broken
   // geometry rather than as firelight.
   fire.position.set(0, 2.6, 0);
+  ctx.glows.push({ x: 0, z: 0, r: 9.5, color: 0xff9440, k: 0.42 });
   fire.castShadow = true;
   fire.shadow.mapSize.set(1024, 1024);
   fire.shadow.camera.near = 0.6;

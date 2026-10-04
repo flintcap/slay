@@ -51,8 +51,10 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     speed: 0.16,
     scaleA: 5.5,
     scaleB: 2.3,
-    rim: 0.55,
-    rimColor: 0x9fb6b8,
+    // Froth is patchy and dim. At 0.55 of a pale grey-blue every one-tile
+    // pool (all four corners on the bank) rendered as a white-rimmed hole.
+    rim: 0.32,
+    rimColor: 0x6f878c,
     molten: 0,
     roughness: 0.05,
     metalness: 0.1,
@@ -189,6 +191,8 @@ export function liquidSurface(style: LiquidStyle, color: number, glow: number): 
           '} else {',
           // Depth: liquid darkens away from the bank.
           '  diffuseColor.rgb *= mix(0.55, 1.0, lqShore);',
+          // Foam gathers in clots along the bank, not as a ruled line.
+          '  lqRim *= smoothstep(0.42, 0.68, lqA.g * 0.6 + lqB.r * 0.4);',
           '  diffuseColor.rgb = mix(diffuseColor.rgb, uLqRim, lqRim * 0.55);',
           '  diffuseColor.a = mix(diffuseColor.a, 1.0, lqRim * 0.6);',
           '}',

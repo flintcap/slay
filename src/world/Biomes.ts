@@ -553,7 +553,9 @@ const ART: Record<BiomeId, BiomeArt> = {
   foundry: {
     id: 'foundry',
     landmarks: [{ kind: 'forge', weight: 5 }, { kind: 'smeltingVat', weight: 4 }],
-    grade: { contrast: 1.12, saturation: 1.1, shadowTint: 0x7a4030, highlightTint: 0xffb060, splitTone: 0.45, vignette: 0.52, vignetteTint: 0x8a4a30, lift: [0.012, 0.005, 0.002], bloomStrength: 0.85, bloomRadius: 0.65, bloomThreshold: 0.8 },
+    // Cool shadows against the furnace light. Warm on warm (the first grade)
+    // turned every surface the same red and the frame lost its depth.
+    grade: { contrast: 1.12, saturation: 0.98, shadowTint: 0x4a5874, highlightTint: 0xffb060, splitTone: 0.42, vignette: 0.52, vignetteTint: 0x6a4030, lift: [0.008, 0.005, 0.006], bloomStrength: 0.75, bloomRadius: 0.6, bloomThreshold: 0.86 },
     grime: 0x17110d,
     wetness: 0.04,
     surfaceVariation: 1.0,
