@@ -263,6 +263,13 @@ export interface Item {
    * written before powers existed still loads.
    */
   powers?: ItemPowerRoll[];
+  /**
+   * The Enchanter's mark: the affix id of the one mod that has been reforged.
+   * Only that mod may be reforged again. Optional; absent on most items.
+   */
+  enchantedMod?: string;
+  /** How many times this item has been reforged or imbued; prices the next. */
+  enchants?: number;
 }
 
 /** One rolled power on an item. `mag` scales it; 1 is a unique's strength. */
@@ -406,6 +413,36 @@ export interface Character {
   /** Wall-clock seconds played. */
   playtime: number;
   createdAt: number;
+  /**
+   * Town services: the bounty board and the counter that seeds the gambler's
+   * and enchanter's rolls. Optional; repaired by `sim/TownServices.ts`.
+   */
+  town?: TownState;
+}
+
+/** A character's standing with the camp's services. See `sim/TownServices.ts`. */
+export interface TownState {
+  v: number;
+  /** Bumps with every gamble, reforge, imbue and new bounty; seeds the next roll. */
+  rolls: number;
+  /** What is pinned to the board: open offers, taken bounties and finished ones. */
+  bounties: Bounty[];
+  /** Bounties this character has been paid for. */
+  claimed: number;
+}
+
+export type BountyKind = 'slay' | 'elites' | 'boss' | 'clear' | 'events';
+
+export interface Bounty {
+  id: string;
+  kind: BountyKind;
+  /** Only descents at least this deep count. */
+  minDepth: number;
+  target: number;
+  progress: number;
+  /** `open` on the board, `active` once taken, `done` when ready to claim. */
+  state: 'open' | 'active' | 'done';
+  reward: { gold: number; renown: number; rarity: ItemRarity };
 }
 
 // ---------------------------------------------------------------------------

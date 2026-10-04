@@ -430,3 +430,47 @@ export function legacyStartingBonus(c: Character): { gold: number; potions: numb
 `src/scenes/RunDirector.ts` (DEPTH) is DungeonScene's seam for renown, the
 Codex and the lifetime tally: `onFloor(index)`, `onKill(rank)`,
 `onRunCleared()`, `onDeath()`. Panel: `src/ui/LegacyPanel.ts`, hotkey G.
+
+## Dungeon events — DEPTH
+
+`DungeonGen.placeEvents` puts set pieces on ordinary floors (never boss
+floors): `chest.cursed`, `corpse.ambush`, `shrine.choice` props and the
+treasure runner (`DungeonLevel.events`). Rates in `EVENT_RATES`;
+`forceEvents(true | false | null)` is for checkers. `src/scenes/RunEvents.ts`
+runs them; DungeonScene calls `onLevel`, `interact`, `onKill`, `update`.
+
+```ts
+// src/ui/ChoiceSeam.ts — DOM-free, so systems can offer a choice headlessly.
+export function offerChoice(title, subtitle, options: ChoiceOption[], onPick: (id: string | null) => void): void;
+export function setChoiceHandler(h: ChoiceHandler | null): void; // DepthUI installs the panel
+```
+
+Every floor is guaranteed a plain chest (`isPlainChest`), a floor a collect
+quest owes gets its `quest.altar`, and a cleanse quest gets enough
+`isQuestShrine` shrines spread over the run.
+
+## Generated quest pickups — DEPTH
+
+`src/scenes/QuestTokens.ts` says what a moment is worth to the run's quest:
+relics (chests, the quest altar, elites, the boss), corpse-keys (champions and
+up), `marker:bottom` (the last floor), `marker:altar`, `marker:exit` (a down
+stair). DungeonScene calls `questTokens.kill / chest / altar / floor / exit`.
+
+## Town services — DEPTH
+
+```ts
+// src/sim/TownServices.ts — state on Character.town (repaired by repairCharacter)
+export function gamble(c, offerId): { ok; reason?; item? };
+export function reforgeMod(c, item, modIndex, pay): ServiceResult;   // Item.enchantedMod: only that mod again
+export function imbuePower(c, item, pay): ServiceResult;              // rares without a power
+export function refreshBoard(c) / acceptBounty / abandonBounty / claimBounty;
+export function bountyProgress(c, kind, depth, amount?): Bounty[];    // called by RunDirector
+```
+
+`src/scenes/TownStations.ts` draws the gambler's table, the enchanter's lectern
+and the bounty board in camp and adds their interaction points; TownScene calls
+`mountTownStations(scene, town.colliders, interactables)` once. Each opens its
+panel (`gambler`, `enchanter`, `bounties`, registered in `DepthUI`) when the
+Legacy unlock is reached, and says what it takes before that.
+`RunEvents`' host `renown(amount, event?)` names finished events so bounties
+can count them.

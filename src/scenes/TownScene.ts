@@ -13,6 +13,8 @@ import { Player } from '../entities/Player';
 import { buildTown, type TownBuild } from '../world/Town';
 import { setActiveDifficulty } from '../data/difficulties';
 import { openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
+import { mountTownStations } from './TownStations';
+import { planDescent } from './DescentPlanner';
 
 /** Interaction points the player can walk up to and press E on. */
 interface Interactable {
@@ -118,6 +120,8 @@ export class TownScene extends GameScene {
     // The people who keep no station: the watch captain, the Listener, Gilder
     // and the surveyor. Talking is handled by the story layer.
     this.interactables.push(...storyTalkSpots(spots));
+    // The gambler, the enchanter and the bounty board (Legacy unlocks).
+    this.offs.push(mountTownStations(this.scene, this.town.colliders, this.interactables));
 
     // Equipping has to change the model now, not whenever the stat sheet next
     // happens to be recomputed. `item:equipped` was fired into the void, so new
@@ -162,9 +166,11 @@ export class TownScene extends GameScene {
   private descend(): void {
     const character = save.account.current;
     if (!character) return;
-    const depth = Math.max(1, character.depthRecord + 1);
-    audio.play('portal');
-    void this.engine.goTo('dungeon', { depth, seed: randomSeed() });
+    // Waypoints and pacts, when Legacy has unlocked them (scenes/DescentPlanner).
+    planDescent(character, (depth, pacts) => {
+      audio.play('portal');
+      void this.engine.goTo('dungeon', { depth, seed: randomSeed(), pacts });
+    });
   }
 
   override update(dt: number, elapsed: number): void {

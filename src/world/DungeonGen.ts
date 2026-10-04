@@ -295,7 +295,7 @@ export const RUN_MODIFIERS: RunModifierDef[] = [
   { id: 'mod.reflect', name: 'Thorned', desc: 'Enemies reflect {v}% of melee damage.', minDepth: 20, weight: 5, maxTier: 3 },
   { id: 'mod.ambush', name: 'Ambush', desc: 'Packs lie in wait and open from cover.', minDepth: 6, weight: 6, maxTier: 2 },
   { id: 'mod.greed', name: 'Hoard', desc: 'Treasure is {v}% richer, guarded by rares.', minDepth: 1, weight: 8, maxTier: 4 },
-  { id: 'mod.fragile', name: 'Brittle Bones', desc: 'You take {v}% more damage but deal {v}% more.', minDepth: 25, weight: 5, maxTier: 3 },
+  { id: 'mod.fragile', name: 'Brittle Bones', desc: 'You deal {v}% more damage, but lose {v}% of every resistance.', minDepth: 25, weight: 5, maxTier: 3 },
   { id: 'mod.hunted', name: 'Hunted', desc: 'A stalker follows you through every floor.', minDepth: 30, weight: 4, maxTier: 2 },
   { id: 'mod.unstable', name: 'Unstable', desc: 'Elites detonate on death.', minDepth: 22, weight: 5, maxTier: 3 },
   { id: 'mod.drain', name: 'Leeching', desc: 'Enemies drain {v}% of damage dealt as life.', minDepth: 28, weight: 5, maxTier: 3 },
@@ -380,7 +380,8 @@ export const QUESTS: QuestDef[] = [
     flavor: 'Whatever they were carrying, it belongs above ground now.',
     minDepth: 2,
     weight: 9,
-    objectives: [{ kind: 'collect', filter: 'relic', base: 5, perDepth: 0.12, desc: 'Recover {n} relics' }],
+    // Relics come out of chests, the quest altar, and elites (`scenes/QuestTokens.ts`).
+    objectives: [{ kind: 'collect', filter: 'item:relic', base: 5, perDepth: 0.12, desc: 'Recover {n} relics' }],
     rewardGold: 1.5,
     rewardXp: 1,
     rewardItems: 2,
@@ -392,7 +393,7 @@ export const QUESTS: QuestDef[] = [
     minDepth: 6,
     weight: 8,
     objectives: [
-      { kind: 'cleanse', base: 3, perDepth: 0.05, desc: 'Cleanse {n} shrines' },
+      { kind: 'cleanse', filter: 'prop:shrine', base: 3, perDepth: 0.05, desc: 'Cleanse {n} shrines' },
       { kind: 'boss', base: 1, perDepth: 0, desc: 'Kill what was sealed' },
     ],
     rewardGold: 1.2,
@@ -407,7 +408,7 @@ export const QUESTS: QuestDef[] = [
     minDepth: 1,
     weight: 8,
     objectives: [
-      { kind: 'reach', base: 1, perDepth: 0, desc: 'Reach the lowest floor' },
+      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Reach the lowest floor' },
       { kind: 'boss', base: 1, perDepth: 0, desc: 'Slay the floor’s master' },
     ],
     rewardGold: 1,
@@ -450,8 +451,9 @@ export const QUESTS: QuestDef[] = [
     minDepth: 18,
     weight: 6,
     objectives: [
-      { kind: 'collect', filter: 'key', base: 3, perDepth: 0.06, desc: 'Take {n} corpse-keys' },
-      { kind: 'reach', base: 1, perDepth: 0, desc: 'Open the reliquary' },
+      // Keys come off champions and better; the reliquary is the quest altar.
+      { kind: 'collect', filter: 'item:key', base: 3, perDepth: 0.06, desc: 'Take {n} corpse-keys' },
+      { kind: 'reach', filter: 'marker:altar', base: 1, perDepth: 0, desc: 'Open the reliquary' },
     ],
     rewardGold: 2,
     rewardXp: 1.2,
@@ -464,7 +466,12 @@ export const QUESTS: QuestDef[] = [
     flavor: 'He mapped this place once. He will do it again, if he lives.',
     minDepth: 24,
     weight: 5,
-    objectives: [{ kind: 'escort', base: 1, perDepth: 0, desc: 'Bring the cartographer to the stair' }],
+    // Escort finishes itself once everything else is done, so it needs a
+    // second objective that can actually be done: the lowest floor.
+    objectives: [
+      { kind: 'escort', base: 1, perDepth: 0, desc: 'Keep the cartographer alive' },
+      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Bring him to the lowest floor' },
+    ],
     rewardGold: 1.8,
     rewardXp: 1.6,
     rewardItems: 2,
@@ -477,7 +484,7 @@ export const QUESTS: QuestDef[] = [
     minDepth: 45,
     weight: 6,
     objectives: [
-      { kind: 'cleanse', base: 4, perDepth: 0.04, desc: 'Collapse {n} rifts' },
+      { kind: 'cleanse', filter: 'prop:shrine', base: 4, perDepth: 0.04, desc: 'Collapse {n} rifts' },
       { kind: 'slayElite', base: 4, perDepth: 0.06, desc: 'Silence {n} rift-heralds' },
       { kind: 'boss', base: 1, perDepth: 0, desc: 'End the thing on the other side' },
     ],
@@ -751,8 +758,20 @@ export function generateLevel(
   }
   level.props = props;
 
+  // --- Guarantees ----------------------------------------------------------
+  // Chest and altar objectives must always be finishable. Treasure rooms and
+  // quest rooms are taken from a pool of ordinary rooms that a big-hall layout
+  // can run out of, and prop placement can fail to fit a chest, so a floor
+  // could end up with neither. Plant one in the open when that happens.
+  try {
+    ensureInteractables(level, rng.fork('ensure'), quest, levelIndex, levelsTotal);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[world] interactable guarantee failed', err);
+  }
+
   // --- Dungeon events ------------------------------------------------------
-  if (EVENTS_ENABLED && !isBossLevel) {
+  if (eventsOn() && !isBossLevel) {
     try {
       level.events = placeEvents(level, depth, rng.fork('events'));
     } catch (err) {
@@ -765,11 +784,20 @@ export function generateLevel(
   return level;
 }
 
+/** Dungeon events (`scenes/RunEvents.ts`): cursed chests, ambushes, shrines, runners. */
+export const EVENTS_ENABLED = true;
+
+let eventsForced: boolean | null = null;
 /**
- * Dungeon events are written and wired (`scenes/RunEvents.ts`) but not yet
- * verified in a live browser run, so placement is off until they are.
+ * For checkers: `true` places every event on every eligible floor, `false`
+ * turns placement off, `null` goes back to `EVENTS_ENABLED` and the rates.
  */
-export const EVENTS_ENABLED = false;
+export function forceEvents(v: boolean | null): void {
+  eventsForced = v;
+}
+function eventsOn(): boolean {
+  return eventsForced ?? EVENTS_ENABLED;
+}
 
 /** How often each event appears on a non-boss floor, by depth. */
 export const EVENT_RATES: Record<LevelEventKind, { minDepth: number; chance: (depth: number) => number }> = {
@@ -780,67 +808,235 @@ export const EVENT_RATES: Record<LevelEventKind, { minDepth: number; chance: (de
 };
 
 /** The prop each event is drawn as, and the payload the scene dispatches on. */
-const EVENT_PROPS: Partial<Record<LevelEventKind, { kind: string; interact: string }>> = {
+export const EVENT_PROPS: Partial<Record<LevelEventKind, { kind: string; interact: string }>> = {
   cursedChest: { kind: 'chest', interact: 'chest.cursed' },
   fallenAdventurer: { kind: 'bonepile', interact: 'corpse.ambush' },
   choiceShrine: { kind: 'shrine', interact: 'shrine.choice' },
 };
 
-/**
- * Picks this floor's events and finds each one an open tile in an ordinary
- * room: fully surrounded by floor, well clear of the stairs, and not on top of
- * a spawn or another prop. An event that cannot find a tile is simply skipped.
- */
-function placeEvents(level: DungeonLevel, depth: number, rng: Rng): LevelEvent[] {
-  const out: LevelEvent[] = [];
-  const taken = new Set<number>();
-  const key = (x: number, y: number) => y * level.width + x;
-  for (const p of level.props) taken.add(key(p.x, p.y));
-  for (const s of level.spawns) taken.add(key(s.x, s.y));
-  const rooms = level.rooms.filter((r) => r.kind === 'normal' && r.w >= 5 && r.h >= 5);
-  rng.shuffle(rooms);
-  const usedRooms = new Set<number>();
+/** Minimum Manhattan distance from either stair for a planted prop. */
+export const PLANT_STAIR_CLEARANCE = 6;
 
-  const open = (x: number, y: number): boolean => {
+/**
+ * Finds open tiles for set pieces: fully surrounded by floor, well clear of
+ * the stairs, not on a spawn or another prop, one per room, room centres
+ * first. Rooms are tried in the order given; `anywhere` falls back to a scan
+ * of the whole floor when every room is used up or too cramped.
+ */
+class Planter {
+  private taken = new Set<number>();
+  private usedRooms = new Set<number>();
+  constructor(
+    private level: DungeonLevel,
+    private rng: Rng,
+  ) {
+    for (const p of level.props) this.taken.add(this.key(p.x, p.y));
+    for (const s of level.spawns) this.taken.add(this.key(s.x, s.y));
+  }
+  private key(x: number, y: number): number {
+    return y * this.level.width + x;
+  }
+  open(x: number, y: number): boolean {
+    const L = this.level;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const xx = x + dx;
         const yy = y + dy;
-        if (xx < 0 || yy < 0 || xx >= level.width || yy >= level.height) return false;
-        const v = level.tiles[key(xx, yy)];
+        if (xx < 0 || yy < 0 || xx >= L.width || yy >= L.height) return false;
+        const v = L.tiles[this.key(xx, yy)];
         if (v !== T_FLOOR && v !== T_RUBBLE) return false;
-        if (taken.has(key(xx, yy))) return false;
+        if (this.taken.has(this.key(xx, yy))) return false;
       }
     }
-    const far = (p: Vec2) => Math.abs(p.x - x) + Math.abs(p.y - y) >= 6;
-    return far(level.entry) && far(level.exit);
-  };
-
-  const spot = (): Vec2 | null => {
+    const far = (p: Vec2) => Math.abs(p.x - x) + Math.abs(p.y - y) >= PLANT_STAIR_CLEARANCE;
+    return far(L.entry) && far(L.exit);
+  }
+  spot(rooms: DungeonRoom[], fallback: 'none' | 'open' | 'deadEnd'): Vec2 | null {
     for (const r of rooms) {
-      if (usedRooms.has(r.id)) continue;
+      if (this.usedRooms.has(r.id)) continue;
       const cx = Math.round(r.center.x);
       const cy = Math.round(r.center.y);
       for (let ring = 0; ring <= 2; ring++) {
         for (let dy = -ring; dy <= ring; dy++) {
           for (let dx = -ring; dx <= ring; dx++) {
             if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-            if (!open(cx + dx, cy + dy)) continue;
-            usedRooms.add(r.id);
-            return { x: cx + dx, y: cy + dy };
+            if (!this.open(cx + dx, cy + dy)) continue;
+            this.usedRooms.add(r.id);
+            return this.claim(cx + dx, cy + dy);
           }
         }
       }
     }
+    if (fallback === 'none') return null;
+    // Then anywhere open on the floor. Failing that (a maze is all one-wide
+    // corridor), the end of a dead end, where a prop blocks nothing, and then
+    // any corridor tile on a loop, whose blocking still leaves every tile
+    // reachable from the entry.
+    const tests = [(x: number, y: number) => this.open(x, y)];
+    if (fallback === 'deadEnd') {
+      tests.push((x: number, y: number) => this.deadEnd(x, y));
+      let floods = 0;
+      tests.push((x: number, y: number) => this.corridor(x, y) && floods++ < 200 && this.noCut(x, y));
+    }
+    for (const test of tests) {
+      const L = this.level;
+      const n = L.width * L.height;
+      const start = this.rng.int(0, n - 1);
+      // 7919 is prime and divides no grid size, so this visits every tile.
+      for (let k = 0; k < n; k++) {
+        const i = (start + k * 7919) % n;
+        const x = i % L.width;
+        const y = Math.floor(i / L.width);
+        if (test(x, y)) return this.claim(x, y);
+      }
+    }
     return null;
-  };
+  }
+  /** A floor tile with exactly one way in, clear of the stairs and of everything placed. */
+  deadEnd(x: number, y: number): boolean {
+    const L = this.level;
+    if (x < 1 || y < 1 || x >= L.width - 1 || y >= L.height - 1) return false;
+    const v = L.tiles[this.key(x, y)];
+    if ((v !== T_FLOOR && v !== T_RUBBLE) || this.taken.has(this.key(x, y))) return false;
+    let ways = 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      if (isWalkableValue(L.tiles[this.key(x + dx, y + dy)]!)) ways++;
+    }
+    const far = (p: Vec2) => Math.abs(p.x - x) + Math.abs(p.y - y) >= PLANT_STAIR_CLEARANCE;
+    return ways === 1 && far(L.entry) && far(L.exit);
+  }
+  /** Bare floor in the clear of the stairs: a candidate for `noCut`. */
+  private corridor(x: number, y: number): boolean {
+    const L = this.level;
+    if (x < 1 || y < 1 || x >= L.width - 1 || y >= L.height - 1) return false;
+    const v = L.tiles[this.key(x, y)];
+    if ((v !== T_FLOOR && v !== T_RUBBLE) || this.taken.has(this.key(x, y))) return false;
+    const far = (p: Vec2) => Math.abs(p.x - x) + Math.abs(p.y - y) >= PLANT_STAIR_CLEARANCE;
+    return far(L.entry) && far(L.exit);
+  }
+  /** Tiles this planter has blocked by planting on a corridor. */
+  private blocked = new Set<number>();
+  private reachBase = -1;
+  private reachCount(extra: number): number {
+    const L = this.level;
+    const seen = new Uint8Array(L.width * L.height);
+    const start = this.key(L.entry.x, L.entry.y);
+    const stack = [start];
+    seen[start] = 1;
+    let n = 0;
+    while (stack.length) {
+      const i = stack.pop()!;
+      n++;
+      const x = i % L.width;
+      const y = (i / L.width) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const xx = x + dx;
+        const yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= L.width || yy >= L.height) continue;
+        const j = this.key(xx, yy);
+        if (seen[j] || j === extra || this.blocked.has(j) || !isWalkableValue(L.tiles[j]!)) continue;
+        seen[j] = 1;
+        stack.push(j);
+      }
+    }
+    return n;
+  }
+  /** Blocking this tile leaves everything else as reachable as before. */
+  private noCut(x: number, y: number): boolean {
+    if (this.reachBase < 0) this.reachBase = this.reachCount(-1);
+    const k = this.key(x, y);
+    if (this.reachCount(k) !== this.reachBase - 1) return false;
+    this.blocked.add(k);
+    this.reachBase -= 1;
+    return true;
+  }
+  private claim(x: number, y: number): Vec2 {
+    this.taken.add(this.key(x, y));
+    return { x, y };
+  }
+}
 
+/** True for a chest the player can simply open (not barred, not cursed). */
+export function isPlainChest(p: PropPlacement): boolean {
+  return p.interact === 'chest.normal' || p.interact === 'chest.rare';
+}
+
+/** Plants a chest on every floor that has none, and the quest altar where one is owed. */
+function ensureInteractables(
+  level: DungeonLevel,
+  rng: Rng,
+  quest: QuestInstance | undefined,
+  levelIndex: number,
+  levelsTotal: number,
+): void {
+  const wantsAltar = !!quest && questRoomKind(quest) === 'quest' && levelIndex >= 1 && !level.isBossLevel;
+  const hasChest = level.props.some(isPlainChest);
+  const hasAltar = level.props.some((p) => p.interact === 'quest.altar');
+  // A cleanse quest's shrines, spread evenly over the run with one to spare.
+  const cleanse = quest?.objectives.find((o) => o.kind === 'cleanse');
+  const shrinesWanted = cleanse ? Math.ceil((cleanse.target + 1) / Math.max(1, levelsTotal)) : 0;
+  const shrines = level.props.filter(isQuestShrine).length;
+  if (hasChest && (hasAltar || !wantsAltar) && shrines >= shrinesWanted) return;
+  const planter = new Planter(level, rng);
+  const pref = (kinds: DungeonRoom['kind'][]) => {
+    const out = level.rooms.filter((r) => kinds.includes(r.kind));
+    rng.shuffle(out);
+    return out;
+  };
+  // Last resort on a floor with no open ground and no dead ends (a braided
+  // maze packed with props): turn a barrel or crate into the thing. Both
+  // already block their tile, so the floor's connectivity is unchanged.
+  const breakables = level.props.filter(
+    (p) => (p.kind === 'barrel' || p.kind === 'crate') && farFrom(p, level.entry) && farFrom(p, level.exit),
+  );
+  rng.shuffle(breakables);
+  const plant = (rooms: DungeonRoom[], kind: string, interact: string, rotation: number): boolean => {
+    const at = planter.spot(rooms, 'deadEnd');
+    if (at) {
+      level.props.push({ x: at.x, y: at.y, rotation, kind, interact });
+      return true;
+    }
+    const b = breakables.pop();
+    if (!b) return false;
+    b.kind = kind;
+    b.interact = interact;
+    return true;
+  };
+  if (!hasChest) plant(pref(['treasure', 'normal', 'ambush', 'shrine']), 'chest', 'chest.rare', rng.range(0, Math.PI * 2));
+  if (wantsAltar && !hasAltar) plant(pref(['quest', 'normal', 'treasure', 'shrine']), 'altar', 'quest.altar', 0);
+  const shrineRooms = pref(['shrine', 'normal', 'ambush', 'treasure']);
+  for (let i = shrines; i < shrinesWanted; i++) {
+    if (!plant(shrineRooms, 'shrine', `shrine.${rng.pick(QUEST_SHRINE_TYPES)}`, 0)) break;
+  }
+}
+
+function farFrom(p: Vec2, stair: Vec2): boolean {
+  return Math.abs(p.x - stair.x) + Math.abs(p.y - stair.y) >= PLANT_STAIR_CLEARANCE;
+}
+
+const QUEST_SHRINE_TYPES = ['power', 'ward', 'haste', 'fortune', 'wrath', 'vitality'];
+
+/** An ordinary blessing shrine, the kind a cleanse quest counts. */
+export function isQuestShrine(p: PropPlacement): boolean {
+  return !!p.interact && p.interact.startsWith('shrine.') && p.interact !== 'shrine.choice';
+}
+
+/**
+ * Picks this floor's events and finds each one an open tile in an ordinary
+ * room. An event that cannot find a tile is simply skipped.
+ */
+function placeEvents(level: DungeonLevel, depth: number, rng: Rng): LevelEvent[] {
+  const out: LevelEvent[] = [];
+  const planter = new Planter(level, rng);
+  const rooms = level.rooms.filter((r) => r.kind === 'normal' && r.w >= 5 && r.h >= 5);
+  rng.shuffle(rooms);
   for (const kind of Object.keys(EVENT_RATES) as LevelEventKind[]) {
     const rate = EVENT_RATES[kind];
-    if (depth < rate.minDepth || !rng.chance(rate.chance(depth))) continue;
-    const at = spot();
+    if (depth < rate.minDepth) continue;
+    if (eventsForced !== true && !rng.chance(rate.chance(depth))) continue;
+    // Rooms first; a floor short of ordinary rooms (one great nave) uses any open ground.
+    const at = planter.spot(rooms, 'open');
     if (!at) continue;
-    taken.add(key(at.x, at.y));
     out.push({ kind, x: at.x, y: at.y });
     const prop = EVENT_PROPS[kind];
     if (prop) level.props.push({ x: at.x, y: at.y, rotation: rng.range(0, Math.PI * 2), kind: prop.kind, interact: prop.interact });

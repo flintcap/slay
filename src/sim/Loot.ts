@@ -215,6 +215,30 @@ function rollOneAffix(
   return { affixId: affix.id, stat: affix.stat, value, tier: tier.tier, kind };
 }
 
+/**
+ * Rerolls one prefix or suffix of an item in place, for the Enchanter. The new
+ * roll is the same kind (prefix stays prefix), never from a group another mod
+ * on the item already uses, and may be the same affix at a new value. Returns
+ * the new mod, or null when the slot cannot be rerolled.
+ */
+export function rerollOneMod(item: Item, index: number, rng: Rng): ItemMod | null {
+  const old = item.mods[index];
+  if (!old || (old.kind !== 'prefix' && old.kind !== 'suffix')) return null;
+  const base = getBase(item.baseId);
+  const groupOf = (id: string) => ALL_AFFIXES.find((a) => a.id === id)?.group;
+  const used = new Set<string>();
+  item.mods.forEach((m, i) => {
+    if (i === index) return;
+    const g = groupOf(m.affixId);
+    if (g) used.add(g);
+  });
+  const mod = rollOneAffix(base, item.ilvl, item.rarity, old.kind, used, rng);
+  if (!mod) return null;
+  item.mods[index] = mod;
+  item.value = vendorPrice(item, false) * 4;
+  return mod;
+}
+
 /** How many prefixes and suffixes a rarity gets. */
 function affixBudget(base: ItemBase, rarity: ItemRarity, rng: Rng): { prefixes: number; suffixes: number } {
   switch (rarity) {

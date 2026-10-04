@@ -35,7 +35,7 @@ import { MONSTERS, rollAffixes } from '../data/monsters';
 import type { NamedRare } from '../data/namedRares';
 import { BARGAINS, getBargain, type BargainDef } from '../data/boons';
 import { rollDrops, rollItem } from '../sim/Loot';
-import { offerChoice } from '../ui/DepthUI';
+import { offerChoice } from '../ui/ChoiceSeam';
 
 export interface EventHost {
   scene: THREE.Scene;
@@ -56,8 +56,8 @@ export interface EventHost {
   dropGold: (amount: number, at: THREE.Vector3) => void;
   addMaterials: (m: Record<string, number>) => void;
   magicFind: () => number;
-  /** Renown for finishing an event. */
-  renown: (amount: number) => void;
+  /** Renown for finishing an event. `event` names it, which bounties count. */
+  renown: (amount: number, event?: string) => void;
 }
 
 /** Monsters an event called into being, and what happens when they are all dead. */
@@ -288,7 +288,7 @@ export class RunEvents {
     this.host.fx.burst('levelup', at.x, 1.0, at.z, { count: 40 });
     audio.play('levelup');
     toast(`${b.name}. ${b.gain}.`, 'good');
-    this.host.renown(8 + this.host.depth * 1.5);
+    this.host.renown(8 + this.host.depth * 1.5, 'bargain');
   }
 
   // -------------------------------------------------------------------------
@@ -458,10 +458,10 @@ export class RunEvents {
       this.host.effects.explosion(t.at.x, 0.7, t.at.z, { radius: 2, element: 'arcane', color: 0xffd66b });
       audio.play('quest.complete');
       toast('The curse breaks. The chest is yours.', 'epic');
-      this.host.renown(25 + this.host.depth * 4);
+      this.host.renown(25 + this.host.depth * 4, 'cursedChest');
     } else {
       toast(t.kind === 'hunt' ? 'The hunt is over.' : 'The ambush is broken.', 'good');
-      this.host.renown(12 + this.host.depth * 2);
+      this.host.renown(12 + this.host.depth * 2, t.kind);
     }
   }
 
@@ -491,7 +491,7 @@ export class RunEvents {
       this.host.addMaterials(mats);
       this.host.fx.burst('pickup', at.x, 1.2, at.z, { count: 60, color: 0xffc63a, scale: 1.5 });
       toast(`${e.name} falls. The sack splits open.`, 'epic');
-      this.host.renown(20 + this.host.depth * 3);
+      this.host.renown(20 + this.host.depth * 3, 'treasureRunner');
     }
     if (this.carriers.delete(e.id)) {
       this.host.dropItem(rollItem(this.host.depth + 3, rng, { forceRarity: 'rare' }), at);

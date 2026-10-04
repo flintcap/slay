@@ -1,6 +1,6 @@
 # Stream: depth (systems and content)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
@@ -8,62 +8,117 @@ Status: paused
       Commit: "Make every unique's power real, add power affixes, set powers and a loot filter"
 - [x] Progression across runs: a meta progression track and unlocks so every run moves you forward.
       Commit: "Legacy: renown, perks, unlocks and a codex that survive every death"
-- [ ] Dungeon events: cursed chests, ambushes, treasure runners, shrines with choices. (Elite affixes and mini-bosses moved to the combat stream.)
-- [ ] Town systems: crafting or enchanting, a gambling vendor, a bounty board with rewards.
-- [ ] Run variety: depth milestones with rewards, more run modifiers, reasons to push deeper.
-- [ ] Balance: headless simulations confirm every class can clear early depths and scale; sweep.
+- [x] Dungeon events: cursed chests, ambushes, treasure runners, shrines with choices. (Elite affixes and mini-bosses moved to the combat stream.)
+      Commit: "Dungeon events, town services, real run modifiers, milestones and an economy sweep"
+- [x] Town systems: crafting or enchanting, a gambling vendor, a bounty board with rewards.
+      Commit: same as above.
+- [x] Run variety: depth milestones with rewards, more run modifiers, reasons to push deeper.
+      Commit: same as above.
+- [x] Balance: headless simulations confirm every class can clear early depths and scale; sweep.
+      Commit: same as above. Systems half only (economy, level curve, loot by depth:
+      `tools/check-economy.mjs`). The fight half (class against depth) is the combat
+      stream's milestone 6, which owns the combat sim now.
 
 ## Next up
 
-Milestone 3, dungeon events. Code is WRITTEN and WIRED but switched OFF by
-`EVENTS_ENABLED = false` in `src/world/DungeonGen.ts` (no event props are
-placed, so nothing new is reachable). Already done:
+All six milestones are ticked. What a successor could still do, in order of value:
 
-- `DungeonGen.placeEvents` (behind the flag): cursed chest (`chest` prop,
-  interact `chest.cursed`), fallen adventurer (`bonepile`, `corpse.ambush`),
-  shrine of choices (`shrine`, `shrine.choice`), treasure runner (recorded in
-  the new `DungeonLevel.events` list). Rates in `EVENT_RATES`.
-- `src/scenes/RunEvents.ts`: runs all four (waves with a 45s timer for the
-  cursed chest, ambush pack with a guaranteed-rare carrier, bargains, the
-  fleeing Hoarder driven by `motionOverride` dashes with `ai = null`).
-- `src/data/boons.ts`: boon statuses via `registerStatus` + `BARGAINS`.
-- `src/ui/ChoicePanel.ts`, exposed as `offerChoice()` from `src/ui/DepthUI.ts`.
-- DungeonScene wiring (additive): `dungeonEvents` constructed in `enter`,
-  `onLevel()` in `loadLevel`, `interact()` in `tickInteractables` after the
-  lever check, `RunEvents.prompt` in `promptFor`, `update`, `onKill` in
-  `reapDead`, `dispose`. Renown via `RunDirector.award`.
+1. Browser-verify the town stations and the gate's choice panels in a real
+   frame: `npm run build && SLAY_PORT=4306 node tools/screenshot.mjs --out=shots/depth --shots=town`
+   and look at the gambler's table (east, x 16.4), the enchanter's lectern
+   (west, x -17) and the bounty board (by the gate path, x 5, z -10.5).
+   Positions are in `STATIONS` in `src/scenes/TownStations.ts`; move them there.
+2. Extend `tools/smoke-depth.mjs` to walk to a station and open its panel,
+   and to take a pact at the gate (needs a save with Renown rank 9).
+3. When combat's class-vs-depth harness lands, read its numbers next to
+   `tools/check-economy.mjs` and retune gear scaling if a class is walled
+   (make the class stronger; never monsters weaker or fewer).
 
-To finish milestone 3:
-1. Write `tools/events-entry.ts` + `tools/check-events.mjs` (use
-   `tools/depth-ssr.mjs`; install the real catalogue with `setMonsterCatalog`
-   as `tools/legacy-entry.ts` does). Make placement forceable for the checker
-   and check: rates per floor sane, every event tile has all 8 neighbours
-   floor, is at least 6 tiles from stairs, never on a spawn or prop, boss
-   floors have none, every `BARGAINS[].status` resolves via `getStatus`.
-2. Flip `EVENTS_ENABLED` to true.
-3. `npm run build && SLAY_PORT=4306 node tools/smoke-depth.mjs` in the
-   background (boot takes 10+ minutes under software rendering). Extend the
-   smoke to use an event prop (`scene.mesh.interactables` kind `chest.cursed`
-   / `shrine.choice`) and confirm a runner spawns. The smoke has never
-   completed yet, so milestones 1 and 2 have headless verification only.
-   Do not `pkill -f` with a pattern that matches your own shell command.
-4. Checkpoint (tick milestone 3 here).
+## Checkers (all headless, run alone, about a minute each)
 
-Then milestone 4 (town systems): gambler, enchanter, bounty board, each gated
-by `hasUnlock(save.account, 'gambler' | 'enchanter' | 'bounties')`. Add town
-interactables additively to the `interactables` array in
-`src/scenes/TownScene.ts` (world-owned: additive lines only) opening panels
-registered in `src/ui/DepthUI.ts`. Enchanter: reforge one affix (D4 rule:
-only that mod may be reforged again; store `Item.enchantedMod?`) or imbue a
-power affix on a rare via `rollPowerAffix(..., force=true)`. Bounties live on
-the character (`Character.bounties?`, migrate in `repairCharacter`).
+- `node tools/check-events.mjs` — event placement, rates, chest/altar/shrine
+  guarantees, every generated quest finishable, live RunEvents (cursed chest
+  won and lost, fallen adventurer, every bargain, the runner caught and lost).
+- `node tools/check-town.mjs` — saves, gambler odds and edge, enchanter rules,
+  bounty board through a real RunDirector, wiring.
+- `node tools/check-runmods.mjs` — every run modifier does something, danger
+  pays, milestones, waypoints, pacts, wiring.
+- `node tools/check-economy.mjs` — gold per descent against camp prices, level
+  curve against monster level, loot value by depth, for all six classes.
+- `node tools/check-items.mjs`, `node tools/check-legacy.mjs` — milestones 1 and 2.
+- `npm run build && SLAY_PORT=4306 node tools/smoke-depth.mjs` — the live game
+  (slow; see notes).
 
 ## Notes for resume
 
-**Requests from other streams (added at pause):**
-- From story: "collect" and "reach" quest objectives generated in `DungeonGen.ts` are never counted, so those quests can never be finished. Fix the counting or stop generating them.
-- From story: some generated runs have no chests on any floor, so chest objectives can fail.
-- Note on the openness request from quality: cathedral being one large nave is intentional (the owner agreed to leave it). Halls and rooms sit just over the bar; tighten only if it improves play.
+**Requests answered this session:**
+- Story: "collect" and "reach" objectives now count. `src/scenes/QuestTokens.ts`
+  says what each moment is worth: relics from chests (1), the quest altar (2),
+  elites/rares (1) and the boss (2); corpse-keys from champions and up;
+  `marker:bottom` on reaching the run's last floor, `marker:altar` at the quest
+  altar (the reliquary), `marker:exit` on every down stair. The generated
+  quests' filters were made exact (`item:relic`, `item:key`, `marker:*`,
+  cleanse is `prop:shrine` so smashing barrels no longer "cleanses shrines").
+  The escort quest got a second objective (reach the bottom) because an
+  escort-only quest could never complete. `tools/check-events.mjs` drives every
+  generated quest to completion through the same calls DungeonScene makes.
+- Story: every floor now has a plain chest. `DungeonGen.ensureInteractables`
+  plants one when room roles or prop placement left none (open ground, then a
+  dead end, then a corridor on a loop that blocking cannot cut, then a barrel
+  turned into a chest). It does the same for the quest altar a collect quest
+  owes and for enough shrines for a cleanse quest.
+- Quality (openness): cathedral is a per-layout limit (0.65) in
+  `tools/check-openness.mjs`, with the owner's reason. Rooms and halls got
+  pillars in their big rooms (`colonnade` in `src/world/Layouts.ts`).
+
+**Requests for other streams (logged, not done by depth):**
+- combat: no buff on the player ever reached the stat sheet. `Player.status`
+  was a private `StatusContainer('player')` and `computeStats` looks statuses
+  up by character id. Depth added two lines to `Player.ts` (`adoptStatuses` in
+  the constructor, `releaseAdopted` in dispose; new exports in `Status.ts`), so
+  shrine blessings, boons, tonics and run statuses now count. Combat may want to
+  check nothing double-counts (a slow status that also slows in movement code).
+- world: `src/scenes/TownStations.ts` puts three small stations in camp
+  (gambler's table east at x 16.4, enchanter's lectern west at x -17, bounty
+  board by the gate path at x 5, z -10.5) and adds their colliders to
+  `town.colliders`. If the camp layout moves, move `STATIONS`. TownScene got two
+  small edits: `mountTownStations(...)` in `enter`, and `descend` now goes
+  through `planDescent` (waypoints and pacts).
+- hud: `src/ui/RunModStrip.ts` appends a row of modifier chips into
+  `.hud-topleft` (under the depth header) while a run is on. Styles in
+  `depth.css` (`.depth-mods`, `.depth-mod`). Restyle freely.
+- menus: no new keys. The gate may now open a choice panel (waypoints, pacts).
+
+**Systems added this session:**
+- Dungeon events are ON (`EVENTS_ENABLED = true`). About 0.6 events per
+  ordinary floor at depth 1, 1.1 at depth 5 to 20, 1.6 at depth 60.
+  `forceEvents(true|false|null)` for checkers. `RunEvents` uses
+  `ui/ChoiceSeam.ts` (DOM-free) for the shrine's offer, so it runs headless.
+- Town services (`src/sim/TownServices.ts`, state on `Character.town`,
+  repaired by `repairCharacter`; items carry `enchantedMod` and `enchants`):
+  Gambler (rank 3), Enchanter (rank 5, reforge one mod D4-style, or imbue a
+  rare with a power), Bounty Board (rank 2, three offers, hold two, progress
+  through `RunDirector`). Panels `GamblerPanel`, `EnchanterPanel`,
+  `BountyPanel`, registered in `DepthUI`.
+- Run modifiers are real (`src/scenes/RunModifiers.ts`). Before this only
+  Teeming, Warband and Legion did anything. Every modifier also grants
+  "Spoils of Danger" (+8% magic and gold find per tier).
+- Depth milestones (every 5th depth, first clear per account) pay gold,
+  Renown and guaranteed uniques (sets on 10s, mythics on 25s) via
+  `RunDirector.payMilestones`. Waypoints (rank 7) let a descent start at a
+  claimed milestone; Pacts (rank 9) add a chosen modifier for +25% Renown.
+  Both at the gate (`src/scenes/DescentPlanner.ts`). The Legacy panel lists
+  milestones.
+- Economy sweep (`tools/check-economy.mjs`): gamble, reforge and imbue prices
+  were raised to track gold income (a gamble is 1-2k early, ~17k at level 34;
+  ten to twenty a descent).
+- The browser smoke (`tools/smoke-depth.mjs`) waits on conditions, not frame
+  counts: under software rendering a frame takes seconds, and the fixed waits
+  are why it never finished. It also screenshots camp stations into
+  `shots/depth/`.
+
+**Earlier sessions:**
+
 
 - **Item powers** (`src/sim/ItemPowers.ts`): one table, 73 powers. A power has
   up to four parts: `passive` (folds into `PassiveEffects`, so it rides the
@@ -110,10 +165,3 @@ the character (`Character.bounties?`, migrate in `repairCharacter`).
   - menus: O opens the Loot Filter; please list it in any controls help.
   - combat: `enemy:killed` is emitted twice per kill (Enemy.die and
     DungeonScene.grantKill) with different `id` meanings.
-
-### Request from quality
-- `node tools/check-openness.mjs` fails: cathedral 59.6%, halls 29.6% and rooms
-  25.1% of floor is "wide open" (two clear tiles every way; the limit is 25%).
-  Arena, terraces and ruins were fixed this way before (see commit 90a8fbe).
-  Either break those layouts up, or if the cathedral is meant to be one hall,
-  say so in the checker with a per-layout limit.

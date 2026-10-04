@@ -35,6 +35,7 @@ import { MAX_LEVEL, computeStats, effectiveRank, xpForLevel } from './Stats';
 import { skillPointsForLevel, statPointsForLevel } from './Progression';
 import { getBase } from './Loot';
 import { legacyStartingBonus } from './Legacy';
+import { repairTownState } from './TownServices';
 import { ONE_HAND_MELEE } from '../data/itemBases';
 
 // ---------------------------------------------------------------------------
@@ -215,6 +216,10 @@ export function setHotbarSlot(c: Character, index: number, skillId: string | nul
  */
 export function repairCharacter(c: Character): boolean {
   let changed = false;
+
+  // Town services (bounties, the gambler's and enchanter's roll counter) came
+  // after the first saves; build or repair the block.
+  if (repairTownState(c)) changed = true;
 
   // Right click must always point at something castable, or the basic attack.
   if (c.primaryAttack && (c.skills[c.primaryAttack] ?? 0) <= 0) {

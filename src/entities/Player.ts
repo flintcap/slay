@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Character, Stats, DamagePacket, EquipSlot } from '../types';
 import { computeStats } from '../sim/Stats';
 import { mitigate } from '../sim/Combat';
-import { StatusContainer } from '../sim/Status';
+import { StatusContainer, adoptStatuses, releaseAdopted } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
 import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
@@ -132,6 +132,9 @@ export class Player {
   constructor(character: Character, seed = 1) {
     this.character = character;
     this.rng = new Random(seed);
+    // computeStats finds statuses by character id; without this no buff on the
+    // player ever reached the sheet.
+    adoptStatuses(character.id, this.status);
 
     const built = buildPlayerModel(character.classId, this.rng, wornSlots(character));
     this.body = built.root;
@@ -774,5 +777,6 @@ export class Player {
 
   dispose(): void {
     this.equipMeshes.clear();
+    releaseAdopted(this.character.id, this.status);
   }
 }

@@ -415,3 +415,54 @@ export function legacyStartingBonus(c: Character): { gold: number; potions: numb
   c.statPoints += pro * 3;
   return { gold: inh * 150, potions: inh };
 }
+
+// ---------------------------------------------------------------------------
+// Depth milestones
+// ---------------------------------------------------------------------------
+
+/** Every this many depths is a milestone: a first-clear cache and a waypoint. */
+export const MILESTONE_STEP = 5;
+
+export interface MilestoneReward {
+  depth: number;
+  renown: number;
+  gold: number;
+  /** Guaranteed items, best first. */
+  items: Array<'set' | 'unique' | 'mythic'>;
+}
+
+/** What clearing a milestone depth for the first time pays the account. */
+export function milestoneReward(depth: number): MilestoneReward {
+  const items: MilestoneReward['items'] = ['unique'];
+  if (depth % 10 === 0) items.push('set');
+  if (depth % 25 === 0) items.unshift('mythic');
+  return { depth, renown: Math.round(40 + depth * 10), gold: Math.round(500 + depth * 150), items };
+}
+
+/**
+ * Marks every milestone at or below `clearedDepth` that the account has not
+ * claimed, and returns their rewards for the caller to pay out.
+ */
+export function claimMilestones(account: AccountSave, clearedDepth: number): MilestoneReward[] {
+  const l = legacyOf(account);
+  const out: MilestoneReward[] = [];
+  for (let d = MILESTONE_STEP; d <= clearedDepth; d += MILESTONE_STEP) {
+    if (l.milestones.includes(d)) continue;
+    l.milestones.push(d);
+    out.push(milestoneReward(d));
+  }
+  l.milestones.sort((a, b) => a - b);
+  return out;
+}
+
+/**
+ * Where a character may begin a descent: the next depth always, and with the
+ * Waypoints unlock any claimed milestone deeper than where they would start.
+ */
+export function descentOptions(account: AccountSave, c: Pick<Character, 'depthRecord'>): number[] {
+  const next = Math.max(1, c.depthRecord + 1);
+  const out = [next];
+  if (!hasUnlock(account, 'waypoints')) return out;
+  for (const d of legacyOf(account).milestones) if (d > next) out.push(d);
+  return out;
+}

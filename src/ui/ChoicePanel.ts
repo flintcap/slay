@@ -79,7 +79,7 @@ export class ChoicePanel {
       this.body.appendChild(card);
     }
     const foot = div('depth-row depth-foot');
-    foot.appendChild(span('depth-dim', 'Each shrine answers once.'));
+    foot.appendChild(span('depth-dim', 'Choose one, or walk away.'));
     foot.appendChild(
       new Button({ label: 'Walk away', small: true, variant: 'ghost', onClick: () => this.panel.close() }).root,
     );

@@ -141,7 +141,8 @@ export function canUpgrade(item: Item): CraftResult {
   return { ok: true };
 }
 
-function spendCost(cost: CraftCost): CraftResult {
+/** Takes a cost from the current character's gold and the account's materials. */
+export function spendCost(cost: CraftCost): CraftResult {
   const character = save.account.current;
   const gold = character ? character.gold : save.account.bankGold;
   if (gold < cost.gold) return { ok: false, reason: `Not enough gold (need ${cost.gold}).` };

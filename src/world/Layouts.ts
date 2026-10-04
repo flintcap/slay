@@ -939,6 +939,45 @@ interface BspNode {
   room?: DungeonRoom;
 }
 
+/**
+ * Pillars down the middle of the big rooms.
+ *
+ * A big organic room was one open floor you could see and cross from any
+ * side, and enough of them made `rooms` and `halls` measure as fields (25% and
+ * 30% of floor two clear tiles from any wall; the bar is 25%). A loose grid of
+ * single-tile pillars, every four or five tiles and well inside the walls,
+ * cuts sight lines and gives a fight something to use without ever closing a
+ * route: a pillar only goes where all eight of its neighbours are open floor
+ * on the same level, and never within two tiles of the room's centre, where
+ * the generator puts altars, chests and shrines.
+ */
+function colonnade(g: Grid, rooms: DungeonRoom[], rng: Rng, minSize = 12): void {
+  for (const r of rooms) {
+    if (r.w < minSize || r.h < minSize) continue;
+    const step = rng.chance(0.5) ? 4 : 5;
+    const ox = r.x + 3 + rng.int(0, step - 1);
+    const oy = r.y + 3 + rng.int(0, step - 1);
+    const cx = Math.round(r.center.x);
+    const cy = Math.round(r.center.y);
+    for (let y = oy; y <= r.y + r.h - 4; y += step) {
+      for (let x = ox; x <= r.x + r.w - 4; x += step) {
+        if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) <= 2) continue;
+        let clear = true;
+        const h = g.height(x, y);
+        for (let dy = -1; dy <= 1 && clear; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (g.get(x + dx, y + dy) !== T_FLOOR || g.height(x + dx, y + dy) !== h) {
+              clear = false;
+              break;
+            }
+          }
+        }
+        if (clear) g.set(x, y, T_VOID);
+      }
+    }
+  }
+}
+
 function layoutRooms(o: LayoutOpts): LayoutOut {
   resetRoomIds();
   const { width, height, rng } = o;
@@ -1020,6 +1059,7 @@ function layoutRooms(o: LayoutOpts): LayoutOut {
 
   addLoops(g, rooms, linked, rng, 0.42, 2);
   widenPinchPoints(g, rng);
+  colonnade(g, rooms, rng);
 
   return { grid: g, rooms, kind: 'rooms' };
 }
@@ -1203,6 +1243,7 @@ function layoutHalls(o: LayoutOpts): LayoutOut {
   }
 
   widenPinchPoints(g, rng);
+  colonnade(g, rooms, rng);
   return { grid: g, rooms, kind: 'halls' };
 }
 

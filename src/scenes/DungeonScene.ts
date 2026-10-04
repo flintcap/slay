@@ -50,6 +50,8 @@ import { clearBuyBack } from '../sim/BuyBack';
 import { PowerRuntime } from './PowerRuntime';
 import { RunDirector } from './RunDirector';
 import { RunEvents } from './RunEvents';
+import { questTokens } from './QuestTokens';
+import { RunModifiers } from './RunModifiers';
 import { legacyXpMultiplier } from '../sim/Legacy';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 
@@ -117,6 +119,8 @@ const ANY_BLESSING: Blessing[] = Object.values(SHRINE_BLESSINGS).flat();
 export interface DungeonPayload {
   depth: number;
   seed?: number;
+  /** Run modifiers taken by choice at the gate (scenes/DescentPlanner). */
+  pacts?: string[];
 }
 
 interface GroundLoot {
@@ -205,6 +209,8 @@ export class DungeonScene extends GameScene {
   private director: RunDirector | null = null;
   /** Cursed chests, ambushes, shrines of choices, treasure runners. */
   private dungeonEvents: RunEvents | null = null;
+  /** Run modifiers that act while you play (scenes/RunModifiers). */
+  private runMods: RunModifiers | null = null;
 
   constructor(engine: Engine) {
     super();
@@ -272,7 +278,10 @@ export class DungeonScene extends GameScene {
       dropBonus: (at, ilvl) => this.dropItem(rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind }), at),
     });
     this.director?.dispose();
-    this.director = new RunDirector(depth);
+    // Pacts join the run's modifiers; each one makes the descent's Renown richer.
+    const pacts = (p.pacts ?? []).filter((m) => !this.run.modifiers.some((x) => x.split('@')[0] === m.split('@')[0]));
+    this.run.modifiers.push(...pacts);
+    this.director = new RunDirector(depth, pacts.length);
     this.dungeonEvents?.dispose();
     this.dungeonEvents = new RunEvents({
       scene: this.scene,
@@ -301,7 +310,27 @@ export class DungeonScene extends GameScene {
         for (const [id, n] of Object.entries(m)) save.addMaterial(id, n);
       },
       magicFind: () => this.player.stats.magicFind,
-      renown: (amount) => this.director?.award(amount),
+      renown: (amount, event) => this.director?.award(amount, event),
+    });
+    this.runMods?.dispose();
+    this.runMods = new RunModifiers({
+      scene: this.scene,
+      player: () => this.player,
+      enemies: () => this.enemies,
+      boss: () => this.boss,
+      context: () => this.ctxCache ?? this.context(),
+      effects: this.effects,
+      fx: this.fx,
+      decals: this.decals,
+      rng: () => this.rng,
+      depth,
+      modifiers: this.run.modifiers,
+      level: () => this.level,
+      walkable: (x, z) => {
+        const t = this.mesh.worldToTile(x, z);
+        return isWalkable(this.level, t.x, t.y);
+      },
+      setExposure: (v) => this.engine.renderer.setExposure(v),
     });
 
     // A light on the hero is standard for the genre: torch placement is
@@ -555,7 +584,9 @@ export class DungeonScene extends GameScene {
     // different variants and the header is where you notice.
     const place = variantLabel(this.biome.id, this.level?.variant);
     this.dungeonEvents?.onLevel();
+    this.runMods?.onLevel(index);
     this.director?.onFloor(index);
+    questTokens.floor(this.run.quest, index, this.run.levels.length);
     events.emit('depth:changed', {
       depth: this.run.depth,
       level: index + 1,
@@ -1052,6 +1083,7 @@ export class DungeonScene extends GameScene {
     this.skills.update(dt);
     this.powers?.update(dt);
     this.dungeonEvents?.update(dt);
+    this.runMods?.update(dt);
     hudRuntime.minions = this.skills.minionSummary();
     this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);
@@ -1182,6 +1214,7 @@ export class DungeonScene extends GameScene {
         this.grantKill(e.monsterId, e.rank, e.family, e.root.position, e.ilvl);
         this.powers?.onKill(e);
         this.dungeonEvents?.onKill(e);
+        this.runMods?.onKill(e);
       }
       if (e.life > 0 || !e.readyToRemove) continue;
       this.enemies.splice(i, 1);
@@ -1213,6 +1246,7 @@ export class DungeonScene extends GameScene {
     ilvl: number
   ): void {
     onKill(this.run.quest, monsterId, family, rank);
+    questTokens.kill(this.run.quest, rank);
     this.passiveOnKill(pos, this.lastOverkill);
     this.lastOverkill = 0;
 
@@ -1355,6 +1389,7 @@ export class DungeonScene extends GameScene {
     audio.play('ui.open');
     toast('The altar goes quiet.', 'good');
     onInteract(this.run.quest, 'altar');
+    questTokens.altar(this.run.quest);
   }
 
   /** Shelves pay small and quiet: coins, and occasionally something written. */
@@ -1414,6 +1449,7 @@ export class DungeonScene extends GameScene {
     this.effects.explosion(it.x, 0.7, it.z, { radius: 1.2, element: 'physical', color: 0xffd66b });
     audio.play('ui.open');
     onInteract(this.run.quest, 'chest');
+    questTokens.chest(this.run.quest);
   }
 
   /**
@@ -1567,6 +1603,7 @@ export class DungeonScene extends GameScene {
     if (this.levelIndex + 1 < this.run.levels.length) {
       this.transitioning = true;
       audio.play('stairs');
+      questTokens.exit(this.run.quest);
       void (async () => {
         const { fadeTo } = await import('../core/Engine');
         await fadeTo(1, 320);
@@ -1697,6 +1734,8 @@ export class DungeonScene extends GameScene {
     this.director = null;
     this.dungeonEvents?.dispose();
     this.dungeonEvents = null;
+    this.runMods?.dispose();
+    this.runMods = null;
     for (const e of this.enemies) e.dispose();
     this.enemies = [];
     this.boss?.dispose();

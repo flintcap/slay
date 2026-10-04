@@ -432,6 +432,21 @@ export function statusesOf(ownerId: string): StatusContainer {
   return c;
 }
 
+/**
+ * Makes an existing container the one registered for an id. The player builds
+ * its own container, and `computeStats` looks statuses up by character id, so
+ * until this existed no buff on the player (shrine blessings, boons, tonics)
+ * ever reached the stat sheet.
+ */
+export function adoptStatuses(ownerId: string, container: StatusContainer): void {
+  containers.set(ownerId, container);
+}
+
+/** Releases an id only if it still points at this container. */
+export function releaseAdopted(ownerId: string, container: StatusContainer): void {
+  if (containers.get(ownerId) === container) containers.delete(ownerId);
+}
+
 /** Non-creating lookup — used by `computeStats`, which runs constantly. */
 export function peekStatuses(ownerId: string): StatusContainer | undefined {
   return containers.get(ownerId);

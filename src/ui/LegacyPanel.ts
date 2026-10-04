@@ -10,6 +10,8 @@ import { save } from '../core/Save';
 import { events } from '../core/Events';
 import {
   LEGACY_UNLOCKS,
+  MILESTONE_STEP,
+  milestoneReward,
   PERKS,
   buyPerk,
   canBuyPerk,
@@ -156,6 +158,20 @@ export class LegacyPanel {
     }
     unlocks.body.appendChild(ul);
     this.body.appendChild(unlocks.root);
+
+    // --- depth milestones -----------------------------------------------------
+    const ms = section('Depth milestones', 'descend');
+    const claimed = l.milestones;
+    const next = (Math.floor(Math.max(0, ...claimed, 0) / MILESTONE_STEP) + 1) * MILESTONE_STEP;
+    const nr = milestoneReward(next);
+    ms.body.appendChild(
+      div(
+        'depth-note',
+        `Every ${MILESTONE_STEP}th depth, cleared for the first time, pays a cache and becomes a waypoint. Next: depth ${next}, ${fmtInt(nr.gold)} gold, ${nr.renown} Renown and ${nr.items.map((r) => `a ${r}`).join(', ')} item.`,
+      ),
+    );
+    ms.body.appendChild(statLine('Claimed', claimed.length ? claimed.join(', ') : 'none yet', { icon: 'check' }));
+    this.body.appendChild(ms.root);
 
     // --- codex and tally ----------------------------------------------------
     const codex = codexTotals(acct);

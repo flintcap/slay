@@ -126,3 +126,30 @@
   font-size: 22px;
   color: var(--gold-hi);
 }
+
+/* The descent's run modifiers, under the depth header (ui/RunModStrip.ts). */
+.depth-mods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  pointer-events: auto;
+}
+
+.depth-mods.is-floating {
+  position: absolute;
+  top: 92px;
+  left: var(--s5);
+  max-width: 340px;
+}
+
+.depth-mod {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  padding: 2px var(--s2);
+  background: rgba(20, 16, 11, 0.78);
+  border: 1px solid var(--panel-3);
+  border-left: 2px solid var(--bad);
+  border-radius: 3px;
+  cursor: help;
+}

@@ -13,7 +13,13 @@
 import type { AccountSave, Item, MonsterRank } from '../types';
 import { events, toast } from '../core/Events';
 import { save } from '../core/Save';
-import { RENOWN, grantRenown, legacyOf, recordCodex, renownRank, type RenownGain } from '../sim/Legacy';
+import { RENOWN, claimMilestones, grantRenown, legacyOf, recordCodex, renownRank, type RenownGain } from '../sim/Legacy';
+import { Random, hashString } from '../core/RNG';
+import { rollItem } from '../sim/Loot';
+import { addItemToInventory } from '../sim/Inventory';
+import { bountyKindsForKill, bountyProgress, bountyText } from '../sim/TownServices';
+import type { BountyKind } from '../types';
+import { PACT_RENOWN } from './DescentPlanner';
 
 const CODEX_RARITIES = new Set(['set', 'unique', 'mythic', 'ancient']);
 
@@ -24,8 +30,12 @@ export class RunDirector {
   runRenown = 0;
   private floorsSeen = new Set<number>();
 
-  constructor(depth: number) {
+  /** Renown multiplier from pacts taken at the gate. */
+  private renownMul: number;
+
+  constructor(depth: number, pacts = 0) {
     this.depth = depth;
+    this.renownMul = 1 + PACT_RENOWN * pacts;
     const l = legacyOf(this.account);
     l.stats.runs++;
     save.touch();
@@ -50,11 +60,46 @@ export class RunDirector {
     legacyOf(this.account).stats.kills++;
     if (rank === 'boss') legacyOf(this.account).stats.bosses++;
     this.earn(RENOWN.kill(rank, this.depth));
+    for (const kind of bountyKindsForKill(rank)) this.bounty(kind);
   }
 
-  /** Renown for something the run's events decided was worth it. */
-  award(amount: number): void {
+  /**
+   * Renown for something the run's events decided was worth it. `event` names
+   * a finished dungeon event, which also counts for bounties.
+   */
+  award(amount: number, event?: string): void {
     this.earn(amount);
+    if (event) this.bounty('events');
+  }
+
+  /**
+   * First clears of a depth milestone (every fifth depth) pay a cache: gold,
+   * Renown, and guaranteed uniques (sets and mythics on the round ones). The
+   * items go into the pack, or the shared stash when the pack is full.
+   */
+  private payMilestones(): void {
+    const c = this.account.current;
+    for (const m of claimMilestones(this.account, this.depth)) {
+      const rng = new Random(hashString(`milestone:${m.depth}:${c?.id ?? 'none'}`));
+      if (c) c.gold += m.gold;
+      const names: string[] = [];
+      for (const rarity of m.items) {
+        const item = rollItem(m.depth + 6, rng, { forceRarity: rarity, classId: c?.classId });
+        const kept = (c && addItemToInventory(c, item)) || save.stashItem(item);
+        if (kept) names.push(item.name);
+      }
+      this.earn(m.renown);
+      toast(`Depth ${m.depth} milestone: ${m.gold} gold${names.length ? `, ${names.join(', ')}` : ''}. A waypoint is set.`, 'epic');
+    }
+  }
+
+  /** Steps the character's taken bounties and announces any it finishes. */
+  private bounty(kind: BountyKind): void {
+    const c = this.account.current;
+    if (!c) return;
+    for (const b of bountyProgress(c, kind, this.depth)) {
+      toast(`Bounty complete: ${bountyText(b)}. Claim it at the board.`, 'epic');
+    }
   }
 
   /** The run's last stairs were taken. Banks the clear and any new record. */
@@ -68,6 +113,8 @@ export class RunDirector {
       toast(`New deepest descent: depth ${this.depth}`, 'epic');
     }
     this.earn(amount);
+    this.bounty('clear');
+    this.payMilestones();
     this.summary('Descent cleared');
   }
 
@@ -90,6 +137,7 @@ export class RunDirector {
   /** Grants renown, announcing any ranks and unlocks it crosses. */
   private earn(amount: number, also?: () => void): RenownGain | null {
     also?.();
+    amount *= this.renownMul;
     if (amount <= 0) {
       save.touch();
       return null;

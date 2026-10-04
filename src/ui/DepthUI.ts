@@ -14,21 +14,16 @@ import { save } from '../core/Save';
 import { legacyOf, pointsAvailable } from '../sim/Legacy';
 import { LootFilterPanel } from './LootFilterPanel';
 import { LegacyPanel } from './LegacyPanel';
-import { ChoicePanel, type ChoiceOption } from './ChoicePanel';
+import { ChoicePanel } from './ChoicePanel';
+import { GamblerPanel } from './GamblerPanel';
+import { EnchanterPanel } from './EnchanterPanel';
+import { BountyPanel } from './BountyPanel';
+import { setChoiceHandler } from './ChoiceSeam';
 
 let choicePanel: ChoicePanel | null = null;
 
-/**
- * Offers the player a choice. `onPick` receives the chosen id, or null when
- * they walk away. Safe to call before the UI exists: it then picks nothing.
- */
-export function offerChoice(title: string, subtitle: string, options: ChoiceOption[], onPick: (id: string | null) => void): void {
-  if (!choicePanel) {
-    onPick(null);
-    return;
-  }
-  choicePanel.offer(title, subtitle, options, onPick);
-}
+/** Lives in `ChoiceSeam` so systems can import it without the DOM. */
+export { offerChoice } from './ChoiceSeam';
 
 let mounted = false;
 
@@ -49,6 +44,18 @@ export function mountDepthUI(): void {
   choicePanel = new ChoicePanel();
   choicePanel.panel.mount(root);
   registerPanel('choice', choicePanel);
+  setChoiceHandler((title, subtitle, options, onPick) => choicePanel!.offer(title, subtitle, options, onPick));
+
+  // Town services, opened from their stations in camp (scenes/TownStations).
+  const gambler = new GamblerPanel();
+  gambler.panel.mount(root);
+  registerPanel('gambler', gambler);
+  const enchanter = new EnchanterPanel();
+  enchanter.panel.mount(root);
+  registerPanel('enchanter', enchanter);
+  const bounties = new BountyPanel();
+  bounties.panel.mount(root);
+  registerPanel('bounties', bounties);
 
   // Back in camp with points to spend: say where they go, once per visit.
   events.on('scene:change', (p) => {

@@ -45,12 +45,17 @@ console.log(
 );
 const rows = layouts.sort((a, b) => b.wideOpen / Math.max(1, b.floor) - a.wideOpen / Math.max(1, a.floor));
 let bad = 0;
+// Layouts that are one great space on purpose. The cathedral is a single long
+// nave, and the owner has agreed it stays one (its widest square is still a
+// room inside a much larger level). Everything else keeps the quarter.
+const LIMIT = { cathedral: 0.65 };
 for (const r of rows) {
   const wide = r.wideOpen / Math.max(1, r.floor);
   // A quarter of the floor being two tiles from any wall means the level reads
   // as one space rather than a set of them.
-  const flag = wide > 0.25 ? '   <-- reads as one open field' : '';
-  if (wide > 0.25) bad++;
+  const limit = LIMIT[r.layout] ?? 0.25;
+  const flag = wide > limit ? '   <-- reads as one open field' : '';
+  if (wide > limit) bad++;
   console.log(
     `${pad(r.layout, 12)} ${pad(r.levels, 7)} ${pad(pct(r.floor, r.area), 8)} ${pad(pct(r.wideOpen, r.floor), 8)} ${pad(
       r.widestSquare,
