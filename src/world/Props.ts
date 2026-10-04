@@ -299,6 +299,48 @@ export const PROP_DEFS: Record<string, PropDef> = {
   }),
   lever: P('lever', { placement: 'wall', radius: 0, variants: 2, freeRotate: false, wallOffset: 0.68, interact: 'lever', castShadow: false }),
 
+  // --- landmarks -----------------------------------------------------------
+  //
+  // A room needs one thing the eye goes to first. From a camera twelve metres
+  // up, the strongest focal point is not a tall object but a shape on the
+  // floor: an inlaid seal reads across the whole room, frames whatever stands
+  // on it, and costs one flat instanced batch. Seals carry no collision and
+  // cast no shadow; the hero piece that stands on them does the blocking.
+  floorSeal: P('floorSeal', {
+    placement: 'detail',
+    radius: 0,
+    variants: 3,
+    scaleJitter: 0,
+    castShadow: false,
+    receiveShadow: true,
+  }),
+  arenaSeal: P('arenaSeal', {
+    placement: 'detail',
+    radius: 0,
+    variants: 2,
+    scaleJitter: 0,
+    castShadow: false,
+    receiveShadow: true,
+  }),
+  ossuary: P('ossuary', {
+    placement: 'feature',
+    radius: 0.9,
+    blocks: true,
+    variants: 2,
+    scaleJitter: 0.05,
+    light: { color: 0xffb060, intensity: 3.2, distance: 8, height: 1.5, flicker: 1, forward: 0 },
+  }),
+  idolHead: P('idolHead', { placement: 'feature', radius: 1.0, blocks: true, variants: 2, scaleJitter: 0.08 }),
+  goldHoard: P('goldHoard', {
+    placement: 'feature',
+    radius: 0.7,
+    blocks: true,
+    variants: 2,
+    scaleJitter: 0.06,
+    light: { color: 0xffc860, intensity: 2.4, distance: 6, height: 0.9, flicker: 0.2, forward: 0 },
+  }),
+  gibbet: P('gibbet', { placement: 'feature', radius: 0.45, blocks: true, variants: 2, scaleJitter: 0.06 }),
+
   // --- ground detail -----------------------------------------------------
   //
   // The layer that makes a floor read as a place rather than a plane.
@@ -345,6 +387,9 @@ interface PlaceCtx {
   occupied: Uint8Array;
   blocked: Uint8Array;
   out: PropPlacement[];
+  /** Where the last `placeNearAt` landed. */
+  lastX: number;
+  lastY: number;
 }
 
 /** Builds the full prop list for a level. */
@@ -368,6 +413,8 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
     occupied: new Uint8Array(w * h),
     blocked: new Uint8Array(w * h),
     out: [],
+    lastX: 0,
+    lastY: 0,
   };
 
   // Reserve stairs and their landings, plus every spawn tile.
@@ -589,6 +636,8 @@ function placeRoomFeatures(ctx: PlaceCtx): void {
     }
 
     if (room.kind === 'boss') {
+      // The arena floor is marked, not cluttered: a great seal at its heart.
+      sealAt(ctx, Math.round(cx), Math.round(cy), 'arenaSeal');
       // Keep the arena floor clear; ring the edge with features instead.
       const ringR = Math.min(room.w, room.h) * 0.42;
       const spokes = 8;
@@ -604,12 +653,73 @@ function placeRoomFeatures(ctx: PlaceCtx): void {
     }
 
     if (room.kind === 'entry' || room.kind === 'exit') continue;
-    if (room.w < 7 || room.h < 7) continue;
-    if (!ctx.rng.chance(0.62)) continue;
 
-    const kind = pickWeighted(ctx, ctx.art.featureProps);
-    placeNear(ctx, cx, cy, 2, kind);
+    // Room-kind landmarks. Each kind gets a piece that says what the room is
+    // before anything in it moves.
+    if (room.kind === 'treasure') {
+      if (placeNearAt(ctx, cx, cy, 1, 'goldHoard')) sealAt(ctx, ctx.lastX, ctx.lastY, 'floorSeal');
+      continue;
+    }
+    if (room.kind === 'ambush') {
+      const n = room.w * room.h >= 80 ? 2 : 1;
+      for (let i = 0; i < n; i++) {
+        const a = ctx.rng.range(0, Math.PI * 2);
+        placeNear(ctx, Math.round(cx + Math.cos(a) * 2), Math.round(cy + Math.sin(a) * 2), 2, 'gibbet');
+      }
+      continue;
+    }
+    if (room.kind === 'vault' || room.kind === 'quest') {
+      // The chest or altar lands on the centre later; the seal frames it.
+      sealAt(ctx, cx, cy, 'floorSeal');
+      continue;
+    }
+
+    if (room.w < 6 || room.h < 6) continue;
+    const big = room.w >= 11 && room.h >= 11;
+    const pool = big && ctx.art.landmarks && ctx.art.landmarks.length > 0 ? ctx.art.landmarks : ctx.art.featureProps;
+    // Big rooms always get their hero; mid rooms nearly always do. A room
+    // with nothing in it is a corridor that got lost.
+    if (!big && !ctx.rng.chance(0.85)) continue;
+    const kind = pickWeighted(ctx, pool);
+    if (!placeNearAt(ctx, cx, cy, 2, kind)) continue;
+    if (big || ctx.rng.chance(0.45)) sealAt(ctx, ctx.lastX, ctx.lastY, 'floorSeal');
   }
+}
+
+/** `placeNear`, remembering where it landed in `ctx.lastX/lastY`. */
+function placeNearAt(ctx: PlaceCtx, cx: number, cy: number, r: number, kind: string, interact?: string): boolean {
+  const before = ctx.out.length;
+  const ok = placeNear(ctx, cx, cy, r, kind, interact);
+  if (ok) {
+    const p = ctx.out[before]!;
+    ctx.lastX = p.x;
+    ctx.lastY = p.y;
+  }
+  return ok;
+}
+
+/**
+ * Lays a floor seal centred on a tile — only where the floor under the whole
+ * disc is walkable and level, because a flat inlay on a stepped floor is
+ * half-buried. Does not occupy the tile: the seal is the ground the room's
+ * hero piece stands on.
+ */
+function sealAt(ctx: PlaceCtx, cxIn: number, cyIn: number, kind: 'floorSeal' | 'arenaSeal'): boolean {
+  const cx = Math.round(cxIn);
+  const cy = Math.round(cyIn);
+  const r = kind === 'arenaSeal' ? 2 : 1;
+  const heights = (ctx.level as DungeonLevel & { heights?: Int8Array }).heights;
+  const h0 = heights ? heights[cy * ctx.w + cx] : 0;
+  for (let y = cy - r; y <= cy + r; y++) {
+    for (let x = cx - r; x <= cx + r; x++) {
+      if (!walkable(ctx, x, y)) return false;
+      const v = tile(ctx, x, y);
+      if (v === T_WATER || v === T_LAVA) return false;
+      if (heights && heights[y * ctx.w + x] !== h0) return false;
+    }
+  }
+  ctx.out.push({ x: cx, y: cy, rotation: ctx.rng.range(0, Math.PI * 2), kind });
+  return true;
 }
 
 function placeNear(
@@ -1961,6 +2071,233 @@ function buildFoundry(b: BuildCtx, kind: 'anvil' | 'gear' | 'pipeCluster' | 'ing
   };
 }
 
+/**
+ * A seal inlaid in the floor: an outer band of the biome's trim metal, a disc
+ * of contrasting stone, and a thin ring of glyphs in the biome's glow colour.
+ * Three variants change the star and spoke pattern. `scale` makes the arena
+ * version without a second code path.
+ */
+function buildSeal(b: BuildCtx, scale: number): ReturnType<Builder> {
+  const { art, variant } = b;
+  const R = 2.35 * scale;
+  const flat = (g: THREE.BufferGeometry, y: number): THREE.BufferGeometry => {
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, y, 0);
+    return g;
+  };
+  const SEG = 48;
+  // Disc of inlay stone, just proud of the floor so it never z-fights.
+  const disc = flat(new THREE.CircleGeometry(R * 0.86, SEG), 0.012);
+  // Raised metal band around it, and a thinner inner one.
+  const band = flat(new THREE.RingGeometry(R * 0.86, R, SEG), 0.02);
+  const inner = flat(new THREE.RingGeometry(R * 0.5, R * 0.54, SEG), 0.018);
+  // Star / spokes in the metal.
+  const points = variant === 0 ? 8 : variant === 1 ? 6 : 12;
+  const spokes: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < points; i++) {
+    const a = (i / points) * Math.PI * 2;
+    const len = R * (variant === 2 && i % 2 === 1 ? 0.28 : 0.34);
+    const g = new THREE.PlaneGeometry(0.07 * scale, len);
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, 0.018, -(R * 0.53 + len / 2));
+    g.rotateY(a);
+    spokes.push(g);
+  }
+  // Glyph ring: short dashes, a few missing, so it reads as script not a hoop.
+  const glyphs: THREE.BufferGeometry[] = [];
+  const n = Math.round(28 * scale);
+  for (let i = 0; i < n; i++) {
+    if ((i * 7 + variant * 3) % 5 === 0) continue;
+    const a = (i / n) * Math.PI * 2;
+    const g = new THREE.PlaneGeometry(0.12 * scale + ((i * 13) % 3) * 0.05, 0.1 * scale);
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, 0.022, -R * 0.71);
+    g.rotateY(a);
+    glyphs.push(g);
+  }
+  const centre = flat(new THREE.CircleGeometry(R * 0.16, 24), 0.02);
+  const metal = art.trim.palette;
+  return {
+    layers: [
+      { geometry: own(sanitize(disc)), material: mat(art.baseTrim, { repeat: 2, tint: 0xb4aea2, roughness: 0.55 }) },
+      { geometry: merge([band, inner, ...spokes, centre]), material: mat(metal, { roughness: 0.4, metalness: 0.85 }) },
+      { geometry: merge(glyphs), material: emiss(art.veinColor || art.lightColor, 1.1) },
+    ],
+  };
+}
+
+/** Crypt landmark: a stepped bone pyramid crowned with skulls and candles. */
+function buildOssuary(b: BuildCtx): ReturnType<Builder> {
+  const { rng, art } = b;
+  const stone: THREE.BufferGeometry[] = [
+    boxAt(2.0, 0.24, 2.0, 0, 0.12, 0),
+    boxAt(1.6, 0.24, 1.6, 0, 0.36, 0),
+  ];
+  const bone: THREE.BufferGeometry[] = [];
+  // Skull courses stacked into a cone.
+  const tiers = [
+    { r: 0.62, y: 0.6, n: 10 },
+    { r: 0.44, y: 0.86, n: 8 },
+    { r: 0.26, y: 1.1, n: 6 },
+  ];
+  for (const t of tiers) {
+    for (let i = 0; i < t.n; i++) {
+      const a = (i / t.n) * Math.PI * 2 + rng.range(-0.1, 0.1);
+      const sk = sphere(0.13, Math.cos(a) * t.r, t.y, Math.sin(a) * t.r, 7);
+      sk.scale(1, 0.9, 1.1);
+      bone.push(sk);
+    }
+  }
+  bone.push(sphere(0.16, 0, 1.32, 0, 8));
+  // Long bones jammed between the courses.
+  for (let i = 0; i < 9; i++) {
+    const a = rng.range(0, Math.PI * 2);
+    const g = new THREE.CylinderGeometry(0.035, 0.035, rng.range(0.5, 0.8), 5);
+    g.rotateZ(rng.range(-1.2, 1.2));
+    g.rotateY(a);
+    g.translate(Math.cos(a) * 0.5, rng.range(0.55, 0.95), Math.sin(a) * 0.5);
+    bone.push(g);
+  }
+  // Candles on the corners of the plinth.
+  const wax: THREE.BufferGeometry[] = [];
+  const flames: THREE.BufferGeometry[] = [];
+  for (const [x, z] of [
+    [-0.8, -0.8],
+    [0.8, -0.8],
+    [-0.8, 0.8],
+    [0.8, 0.8],
+  ] as const) {
+    const h = rng.range(0.22, 0.4);
+    wax.push(cyl(0.05, 0.06, h, 6, x, 0.48, z));
+    flames.push(cone(0.035, 0.1, 5, x, 0.48 + h, z));
+  }
+  return {
+    layers: [
+      { geometry: merge(stone), material: mat(art.baseTrim, { repeat: 1.2 }) },
+      { geometry: merge(bone), material: mat('bone.pale', { repeat: 1.5, tint: 0xb8ae96 }) },
+      { geometry: merge(wax), material: mat('cloth.linen', { tint: 0xe8dcc0, roughness: 0.6 }) },
+      { geometry: merge(flames), material: emiss(0xffb060, 3.2) },
+    ],
+  };
+}
+
+/** Sunken landmark: a colossal stone head, toppled and half sunk. */
+function buildIdolHead(b: BuildCtx): ReturnType<Builder> {
+  const { rng, art, variant } = b;
+  let head: THREE.BufferGeometry = new THREE.SphereGeometry(1.0, 16, 12);
+  head.scale(0.95, 1.2, 1.0);
+  head = safeDisplace(head, rng, 0.06, 1.6);
+  // Brow, nose, jaw: blocky features read from above.
+  const features: THREE.BufferGeometry[] = [
+    boxAt(1.2, 0.22, 0.5, 0, 0.35, 0.7),
+    boxAt(0.26, 0.5, 0.36, 0, 0.0, 0.98),
+    boxAt(0.9, 0.3, 0.4, 0, -0.62, 0.72),
+  ];
+  // Crown band.
+  const crown = new THREE.CylinderGeometry(0.86, 0.96, 0.32, 14, 1, true);
+  crown.translate(0, 0.86, 0);
+  const all = merge([head, ...features]);
+  // Topple: lie it on its side, sunk into the floor.
+  const tilt = variant === 0 ? 1.25 : -1.1;
+  all.rotateZ(tilt);
+  all.rotateX(0.25);
+  all.translate(0, 0.62, 0);
+  const crownG = merge([crown]);
+  crownG.rotateZ(tilt);
+  crownG.rotateX(0.25);
+  crownG.translate(0, 0.62, 0);
+  // Eyes: a faint drowned glow.
+  const eyes = merge([sphere(0.12, -0.3, 0.12, 0.92, 6), sphere(0.12, 0.3, 0.12, 0.92, 6)]);
+  eyes.rotateZ(tilt);
+  eyes.rotateX(0.25);
+  eyes.translate(0, 0.62, 0);
+  return {
+    layers: [
+      { geometry: all, material: mat(art.walls[0].palette, { repeat: 1.6, tint: 0x9aa89a }) },
+      { geometry: crownG, material: mat(art.trim.palette, { roughness: 0.4, metalness: 0.9 }) },
+      { geometry: eyes, material: emiss(art.veinColor || 0x50e0ff, 2.0) },
+    ],
+  };
+}
+
+/** Treasure-room landmark: a heap of coin with goblets and a spilled casket. */
+function buildGoldHoard(b: BuildCtx): ReturnType<Builder> {
+  const { rng } = b;
+  const heap: THREE.BufferGeometry[] = [];
+  let mound: THREE.BufferGeometry = new THREE.SphereGeometry(0.9, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+  mound.scale(1, 0.55, 1);
+  mound = safeDisplace(mound, rng, 0.05, 3);
+  heap.push(mound);
+  for (let i = 0; i < 26; i++) {
+    const a = rng.range(0, Math.PI * 2);
+    const r = rng.range(0.6, 1.3);
+    const c = new THREE.CylinderGeometry(0.07, 0.07, 0.02, 8);
+    c.rotateX(rng.range(-0.4, 0.4));
+    c.translate(Math.cos(a) * r, 0.02, Math.sin(a) * r);
+    heap.push(c);
+  }
+  const goblets: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < 2; i++) {
+    const a = rng.range(0, Math.PI * 2);
+    const g = safeLathe([[0.03, 0], [0.09, 0.01], [0.02, 0.06], [0.02, 0.16], [0.08, 0.2], [0.09, 0.32]], 10);
+    g.translate(Math.cos(a) * 0.55, 0.38, Math.sin(a) * 0.55);
+    goblets.push(g);
+  }
+  const casket = boxAt(0.6, 0.36, 0.4, 0.75, 0.18, -0.3, 0.6);
+  const lid = new THREE.BoxGeometry(0.6, 0.06, 0.4);
+  lid.rotateX(-0.9);
+  lid.rotateY(0.6);
+  lid.translate(0.66, 0.48, -0.5);
+  return {
+    layers: [
+      { geometry: merge([...heap, ...goblets]), material: mat('metal.gold', { roughness: 0.3, metalness: 1, emissive: 0x5a3a08, emissiveIntensity: 0.4 }) },
+      { geometry: merge([casket, lid]), material: mat('wood.oak', { repeat: 1.2 }) },
+    ],
+  };
+}
+
+/** Ambush landmark: a hanging cage on a post, its last occupant still inside. */
+function buildGibbet(b: BuildCtx): ReturnType<Builder> {
+  const { rng } = b;
+  const brace = new THREE.BoxGeometry(0.6, 0.12, 0.12);
+  brace.rotateZ(0.8);
+  brace.translate(0.22, 2.75, 0);
+  const wood: THREE.BufferGeometry[] = [
+    cyl(0.1, 0.13, 3.2, 7, 0, 0),
+    boxAt(1.3, 0.14, 0.14, 0.55, 3.05, 0),
+    brace,
+  ];
+  const iron: THREE.BufferGeometry[] = [];
+  const cx = 1.05;
+  const top = 2.75;
+  const h = 1.3;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    iron.push(cyl(0.02, 0.02, h, 4, cx + Math.cos(a) * 0.32, top - h, Math.sin(a) * 0.32));
+  }
+  for (const y of [top - h, top - h * 0.5, top]) {
+    const ring = new THREE.TorusGeometry(0.32, 0.025, 4, 12);
+    ring.rotateX(Math.PI / 2);
+    ring.translate(cx, y, 0);
+    iron.push(ring);
+  }
+  iron.push(cyl(0.015, 0.015, 0.3, 4, cx, top, 0));
+  const bones: THREE.BufferGeometry[] = [sphere(0.11, cx + 0.05, top - h + 0.42, 0.05, 7)];
+  for (let i = 0; i < 4; i++) {
+    const g = new THREE.CylinderGeometry(0.025, 0.025, rng.range(0.3, 0.5), 5);
+    g.rotateZ(rng.range(-1.4, 1.4));
+    g.translate(cx + rng.range(-0.15, 0.15), top - h + 0.12, rng.range(-0.15, 0.15));
+    bones.push(g);
+  }
+  return {
+    layers: [
+      { geometry: merge(wood), material: mat('wood.charred', { repeat: 1.3 }) },
+      { geometry: merge(iron), material: mat('metal.rusted', { roughness: 0.7, metalness: 0.8 }) },
+      { geometry: merge(bones), material: mat('bone.pale', { tint: 0xa89c84 }) },
+    ],
+  };
+}
+
 function buildMisc(b: BuildCtx, kind: string): ReturnType<Builder> {
   const { rng, art } = b;
   switch (kind) {
@@ -2298,6 +2635,19 @@ function build(kind: string, ctx: BuildCtx): ReturnType<Builder> {
       return buildCluster(ctx, { count: [2, 4], size: [0.16, 0.36], palette: 'metal.dark', shape: 'sphere', spread: 0.4, displaceAmt: 0.12 });
     case 'grassTuft':
       return buildCluster(ctx, { count: [3, 6], size: [0.07, 0.18], palette: 'ground.grass', shape: 'cone', spread: 0.4 });
+
+    case 'floorSeal':
+      return buildSeal(ctx, 1);
+    case 'arenaSeal':
+      return buildSeal(ctx, 1.9);
+    case 'ossuary':
+      return buildOssuary(ctx);
+    case 'idolHead':
+      return buildIdolHead(ctx);
+    case 'goldHoard':
+      return buildGoldHoard(ctx);
+    case 'gibbet':
+      return buildGibbet(ctx);
 
     default:
       return buildMisc(ctx, kind);

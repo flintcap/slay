@@ -28,7 +28,7 @@ import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { generateRun, isWalkable, BIOMES } from '../world/DungeonGen';
 import { DungeonMesh, applyBiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
-import { variantLabel } from '../world/Biomes';
+import { variantLabel, biomeArt } from '../world/Biomes';
 import { namedRare } from '../data/namedRares';
 import { rollDrops, rollItem, rollPotion } from '../sim/Loot';
 import { buildDropModel } from '../art/ItemModels';
@@ -426,6 +426,8 @@ export class DungeonScene extends GameScene {
     this.lighting = applyBiomeLighting(this.scene, this.biome, this.level?.variant);
 
     this.engine.renderer.applyEnvironment(this.scene, 0.4);
+    // The biome's colour grade (world stream). Reset in dispose().
+    this.engine.renderer.setGrade(biomeArt(this.biome.id, this.level?.variant).grade);
     this.scene.fog = new THREE.FogExp2(this.biome.fogColor, this.biome.fogDensity);
     this.scene.background = new THREE.Color(this.biome.fogColor).multiplyScalar(0.4);
 
@@ -1708,6 +1710,7 @@ export class DungeonScene extends GameScene {
     this.fx.dispose();
     this.decals.dispose();
     this.engine.renderer.setLowLife(0);
+    this.engine.renderer.setGrade();
     events.emit('ui:close', { panel: 'hud' });
   }
 }

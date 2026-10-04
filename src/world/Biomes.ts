@@ -14,6 +14,7 @@
  */
 
 import type { BiomeDef, BiomeId, LayoutKind, MonsterFamily, Rng } from '../types';
+import type { GradeProfile } from '../core/Renderer';
 
 // ---------------------------------------------------------------------------
 // Extended art configuration
@@ -83,6 +84,11 @@ export interface BiomeArt {
   /** Big set-dressing placed at room centres. */
   featureProps: Array<{ kind: string; weight: number }>;
   /**
+   * The hero piece for a big room (11x11 and up), stood on an inlaid floor
+   * seal. Falls back to `featureProps` when absent.
+   */
+  landmarks?: Array<{ kind: string; weight: number }>;
+  /**
    * Ground detail: grit, chips, drifts, growth. Scattered far more densely than
    * clutter because none of it blocks, collides or casts a shadow. This is the
    * layer that stops a floor reading as a plane with objects on it.
@@ -96,6 +102,22 @@ export interface BiomeArt {
   puddles: number;
   /** Chance a room is a "special" material set. */
   roomMaterialVariance: number;
+  /**
+   * Colour of the dirt that settles in corners and along wall feet, and the
+   * hue stains lean toward. Defaults to a neutral soot brown.
+   */
+  grime?: number;
+  /** 0..1 how damp the stone reads: darker, glossier patches. Defaults from `puddles`. */
+  wetness?: number;
+  /** 0..1 strength of world-scale light/dark patches on floors and walls. */
+  surfaceVariation?: number;
+  /**
+   * The biome's colour grade. Each one commits to a shadow hue and a highlight
+   * hue, the same contract the lighting makes, so the grade pushes the mood
+   * the lights set up instead of fighting it. Fields left out take the house
+   * grade in `Renderer.DEFAULT_GRADE`.
+   */
+  grade?: Partial<GradeProfile>;
 }
 
 // ---------------------------------------------------------------------------
@@ -403,6 +425,11 @@ export function biomeForDepth(depth: number, rng: Rng): BiomeId {
 const ART: Record<BiomeId, BiomeArt> = {
   crypt: {
     id: 'crypt',
+    landmarks: [{ kind: 'ossuary', weight: 5 }, { kind: 'statue', weight: 3 }, { kind: 'altar', weight: 2 }],
+    grade: { contrast: 1.1, saturation: 0.96, shadowTint: 0x5a78a8, highlightTint: 0xffc890, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x6a7a9a },
+    grime: 0x2b2620,
+    wetness: 0.22,
+    surfaceVariation: 0.8,
     wallHeight: 3.6,
     ceiling: 'vault',
     ceilingHeight: 4.1,
@@ -464,6 +491,11 @@ const ART: Record<BiomeId, BiomeArt> = {
 
   caverns: {
     id: 'caverns',
+    landmarks: [{ kind: 'crystalCluster', weight: 6 }, { kind: 'shrine', weight: 1 }],
+    grade: { contrast: 1.06, saturation: 1.05, shadowTint: 0x3f8f88, highlightTint: 0xd8ffe8, splitTone: 0.42, vignette: 0.48, vignetteTint: 0x4a7a76, bloomStrength: 0.72, bloomThreshold: 0.86 },
+    grime: 0x1e2a22,
+    wetness: 0.55,
+    surfaceVariation: 0.9,
     wallHeight: 4.4,
     ceiling: 'broken',
     ceilingHeight: 5.2,
@@ -520,6 +552,11 @@ const ART: Record<BiomeId, BiomeArt> = {
 
   foundry: {
     id: 'foundry',
+    landmarks: [{ kind: 'forge', weight: 5 }, { kind: 'smeltingVat', weight: 4 }],
+    grade: { contrast: 1.12, saturation: 1.1, shadowTint: 0x7a4030, highlightTint: 0xffb060, splitTone: 0.45, vignette: 0.52, vignetteTint: 0x8a4a30, lift: [0.012, 0.005, 0.002], bloomStrength: 0.85, bloomRadius: 0.65, bloomThreshold: 0.8 },
+    grime: 0x17110d,
+    wetness: 0.04,
+    surfaceVariation: 1.0,
     wallHeight: 5.0,
     ceiling: 'broken',
     ceilingHeight: 6.0,
@@ -580,6 +617,11 @@ const ART: Record<BiomeId, BiomeArt> = {
 
   sunkenTemple: {
     id: 'sunkenTemple',
+    landmarks: [{ kind: 'idolHead', weight: 5 }, { kind: 'fountain', weight: 4 }, { kind: 'statue', weight: 2 }],
+    grade: { contrast: 1.06, saturation: 1.06, shadowTint: 0x2f7f8f, highlightTint: 0xffe0a0, splitTone: 0.45, vignette: 0.46, vignetteTint: 0x3a7480, bloomStrength: 0.7, bloomThreshold: 0.88 },
+    grime: 0x1f3229,
+    wetness: 0.65,
+    surfaceVariation: 0.85,
     wallHeight: 5.4,
     ceiling: 'broken',
     ceilingHeight: 6.4,
@@ -640,6 +682,11 @@ const ART: Record<BiomeId, BiomeArt> = {
 
   hive: {
     id: 'hive',
+    landmarks: [{ kind: 'broodMound', weight: 6 }],
+    grade: { contrast: 1.1, saturation: 1.1, shadowTint: 0x6a3f8a, highlightTint: 0xffd070, splitTone: 0.5, vignette: 0.55, vignetteTint: 0x6a3a6a, bloomStrength: 0.72 },
+    grime: 0x2c1a26,
+    wetness: 0.45,
+    surfaceVariation: 0.9,
     wallHeight: 4.6,
     ceiling: 'vault',
     ceilingHeight: 5.4,
@@ -697,6 +744,11 @@ const ART: Record<BiomeId, BiomeArt> = {
 
   frostvault: {
     id: 'frostvault',
+    landmarks: [{ kind: 'iceMonolith', weight: 5 }, { kind: 'statue', weight: 2 }],
+    grade: { exposure: 0.96, contrast: 1.08, saturation: 0.9, shadowTint: 0x5f8fd0, highlightTint: 0xf0f8ff, splitTone: 0.5, vignette: 0.4, vignetteTint: 0x6a8ab0, bloomStrength: 0.55, bloomThreshold: 1.0 },
+    grime: 0x34465a,
+    wetness: 0.3,
+    surfaceVariation: 0.6,
     wallHeight: 4.8,
     ceiling: 'vault',
     ceilingHeight: 5.6,
@@ -756,6 +808,11 @@ const ART: Record<BiomeId, BiomeArt> = {
 
   ashwaste: {
     id: 'ashwaste',
+    landmarks: [{ kind: 'obelisk', weight: 4 }, { kind: 'statue', weight: 2 }],
+    grade: { contrast: 1.1, saturation: 0.86, shadowTint: 0x7a5040, highlightTint: 0xffa070, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x7a5040, lift: [0.014, 0.008, 0.004] },
+    grime: 0x2a2420,
+    wetness: 0.0,
+    surfaceVariation: 0.95,
     wallHeight: 4.2,
     ceiling: 'open',
     ceilingHeight: 0,
@@ -815,6 +872,11 @@ const ART: Record<BiomeId, BiomeArt> = {
 
   voidspire: {
     id: 'voidspire',
+    landmarks: [{ kind: 'voidRift', weight: 4 }, { kind: 'obelisk', weight: 3 }],
+    grade: { contrast: 1.14, saturation: 1.12, shadowTint: 0x4a2a8a, highlightTint: 0xff8ae0, splitTone: 0.5, vignette: 0.58, vignetteTint: 0x3a2060, bloomStrength: 0.8, bloomThreshold: 0.82 },
+    grime: 0x1a1028,
+    wetness: 0.12,
+    surfaceVariation: 0.7,
     wallHeight: 5.2,
     ceiling: 'open',
     ceilingHeight: 0,
@@ -916,9 +978,11 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
       blurb: 'The water table rose a century ago and never went back down.',
       weight: 4,
       patch: {
+        grade: { contrast: 1.08, saturation: 0.98, shadowTint: 0x3f7f88, highlightTint: 0xc8f0e8, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x3a6a70 },
         liquid: 'water',
         liquidColor: 0x16323c,
         puddles: 0.7,
+        wetness: 0.6,
         lightColor: 0x6fd0c4,
         lightIntensity: 5.2,
         bounceColor: 0x2a5a62,
@@ -934,6 +998,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
       weight: 3,
       minDepth: 2,
       patch: {
+        grade: { contrast: 1.08, saturation: 1.02, shadowTint: 0x6a6090, highlightTint: 0xffc070, splitTone: 0.5, vignette: 0.52, vignetteTint: 0x5a4a6a, bloomStrength: 0.75 },
         lightColor: 0xffc46a,
         lightIntensity: 8.4,
         lightDistance: 16,
@@ -970,6 +1035,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
       weight: 3,
       minDepth: 3,
       patch: {
+        grade: { contrast: 1.08, saturation: 0.94, shadowTint: 0x6a5a4a, highlightTint: 0xffc890, splitTone: 0.4, vignette: 0.48, vignetteTint: 0x5a4a3a },
         liquid: 'none',
         puddles: 0,
         veinDensity: 0.02,
@@ -990,6 +1056,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
       weight: 4,
       minDepth: 3,
       patch: {
+        grade: { contrast: 1.1, saturation: 0.92, shadowTint: 0x4a6a9a, highlightTint: 0xd8e8ff, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x4a5a7a },
         liquid: 'none',
         lightColor: 0x9fc4ff,
         lightIntensity: 4.0,
@@ -1077,6 +1144,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
       weight: 3,
       minDepth: 8,
       patch: {
+        grade: { contrast: 1.08, saturation: 0.9, shadowTint: 0x4a5a8a, highlightTint: 0xc8d0ff, splitTone: 0.42, vignette: 0.52, vignetteTint: 0x3a3a5a },
         lightColor: 0x8f9fd0,
         lightIntensity: 3.4,
         bounceColor: 0x2a3048,

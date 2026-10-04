@@ -31,6 +31,10 @@ const GradeShader = {
     uGrain: { value: 0.028 },
     uLift: { value: new THREE.Vector3(0.005, 0.004, 0.012) },
     uGain: { value: new THREE.Vector3(1.02, 1.0, 0.98) },
+    /** Split toning: multiplicative tints for the shadows and the highlights. */
+    uShadowTint: { value: new THREE.Vector3(1, 1, 1) },
+    uHighTint: { value: new THREE.Vector3(1, 1, 1) },
+    uVignetteTint: { value: new THREE.Vector3(0.62, 0.64, 0.74) },
     /** 0..1 red damage flash. */
     uHurt: { value: 0.0 },
     /** 0..1 desaturating low-life pulse. */
@@ -48,7 +52,7 @@ const GradeShader = {
     uniform sampler2D tDiffuse;
     uniform float uTime, uExposure, uContrast, uSaturation, uVignette;
     uniform float uAberration, uGrain, uHurt, uLowLife;
-    uniform vec3 uLift, uGain;
+    uniform vec3 uLift, uGain, uShadowTint, uHighTint, uVignetteTint;
     uniform vec2 uResolution;
     varying vec2 vUv;
 
@@ -85,6 +89,15 @@ const GradeShader = {
       float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
       col = mix(vec3(luma), col, uSaturation);
 
+      // Split tone. Shadows and highlights lean different ways, which is most
+      // of what makes a grade read as a mood rather than as a colour filter.
+      // Weights are in scene-linear light, so a torch pool and the dark
+      // between pools pick up different tints.
+      float shW = 1.0 - smoothstep(0.0, 0.22, luma);
+      float hiW = smoothstep(0.3, 1.6, luma);
+      col *= mix(vec3(1.0), uShadowTint, shW);
+      col *= mix(vec3(1.0), uHighTint, hiW);
+
       // Low-life: desaturate and push toward red, pulsing.
       if (uLowLife > 0.001) {
         float pulse = 0.5 + 0.5 * sin(uTime * 5.0);
@@ -96,7 +109,7 @@ const GradeShader = {
 
       // Vignette, smooth and slightly cool at the corners.
       float vig = smoothstep(0.9, 0.2, r2 * uVignette * 2.6);
-      col *= mix(vec3(0.62, 0.64, 0.74), vec3(1.0), vig);
+      col *= mix(uVignetteTint, vec3(1.0), vig);
 
       // Grain, applied in linear so it survives tone mapping naturally.
       float g = ign(gl_FragCoord.xy + fract(uTime) * 137.0) - 0.5;
@@ -106,6 +119,148 @@ const GradeShader = {
     }
   `,
 };
+
+/**
+ * A colour grade: how a place *feels*, applied after lighting and before tone
+ * mapping. Scenes set one on enter; anything left out falls back to the
+ * neutral house grade. Tints are 0xRRGGBB and are normalised so they shift hue
+ * without changing brightness.
+ */
+export interface GradeProfile {
+  exposure: number;
+  contrast: number;
+  saturation: number;
+  /** Added to every pixel: lifts the blacks. Linear RGB, tiny values. */
+  lift: [number, number, number];
+  /** Multiplies every pixel. */
+  gain: [number, number, number];
+  shadowTint: number;
+  highlightTint: number;
+  /** 0..1 how strongly the two tints apply. */
+  splitTone: number;
+  vignette: number;
+  vignetteTint: number;
+  bloomStrength: number;
+  bloomRadius: number;
+  bloomThreshold: number;
+}
+
+export const DEFAULT_GRADE: GradeProfile = {
+  exposure: 1.0,
+  contrast: 1.06,
+  saturation: 1.08,
+  lift: [0.005, 0.004, 0.012],
+  gain: [1.02, 1.0, 0.98],
+  shadowTint: 0x8090b0,
+  highlightTint: 0xffe0b8,
+  splitTone: 0.25,
+  vignette: 0.42,
+  vignetteTint: 0x9ea3bd,
+  bloomStrength: 0.62,
+  bloomRadius: 0.55,
+  bloomThreshold: 0.92,
+};
+
+/** A hue at unit brightness, mixed toward white by `amount`. */
+function tintVector(hex: number, amount: number, out: THREE.Vector3): THREE.Vector3 {
+  const c = new THREE.Color(hex);
+  const m = Math.max(c.r, c.g, c.b, 1e-4);
+  const l = (c.r / m) * 0.2126 + (c.g / m) * 0.7152 + (c.b / m) * 0.0722;
+  // Normalise to unit luminance so a tint never brightens or darkens.
+  const k = 1 / Math.max(l, 1e-4) / m;
+  out.set(1 + (c.r * k - 1) * amount, 1 + (c.g * k - 1) * amount, 1 + (c.b * k - 1) * amount);
+  return out;
+}
+
+/**
+ * Shape of the scene fog, shared by every material in the game.
+ *
+ * Plain exponential fog is measured from the camera, and the camera here sits
+ * twenty metres from the player, so a quarter of the fog was always lying over
+ * the floor being fought on. That is backwards for an ARPG: the playable
+ * floor should be the clearest thing in frame and the distance should fall
+ * away. So fog starts `start` metres out, and below `floorY` a second, height
+ * term thickens it so pits and chasms sink into the murk instead of showing
+ * their bottoms.
+ *
+ * Plain object rather than a Vector4 on purpose: three copies uniform values
+ * per material when they are vectors, but passes plain objects by reference,
+ * so this one object drives every program at once.
+ *   x  distance from the camera where fog begins
+ *   y  world height below which the height fog thickens
+ *   z  1 / the depth over which it reaches full strength
+ *   w  0..1 strength of the height fog
+ */
+export const fogShape = { x: 0, y: -1000, z: 0, w: 0 };
+
+/** Sets the fog shape; with no argument restores plain camera fog. */
+export function setFogShape(start = 0, floorY = -1000, fadeDepth = 1, strength = 0): void {
+  fogShape.x = start;
+  fogShape.y = floorY;
+  fogShape.z = 1 / Math.max(0.01, fadeDepth);
+  fogShape.w = strength;
+}
+
+let fogPatched = false;
+
+/**
+ * Rewrites three's fog chunks once, before any program compiles. Materials
+ * whose uniforms predate the patch (hand-written ShaderMaterials) read the
+ * new uniform as zero, which is exactly plain fog, so nothing breaks.
+ */
+function patchFog(): void {
+  if (fogPatched) return;
+  fogPatched = true;
+  const SC = THREE.ShaderChunk as unknown as Record<string, string>;
+  SC.fog_pars_vertex = `
+#ifdef USE_FOG
+	varying float vFogDepth;
+	varying float vFogWorldY;
+#endif
+`;
+  // World height from the view-space position: the view matrix is rigid, so
+  // its inverse rotation is a transpose. Works for instanced meshes, sprites
+  // and skinned meshes alike, because it starts from the final mvPosition.
+  SC.fog_vertex = `
+#ifdef USE_FOG
+	vFogDepth = - mvPosition.z;
+	vFogWorldY = cameraPosition.y + ( transpose( mat3( viewMatrix ) ) * mvPosition.xyz ).y;
+#endif
+`;
+  SC.fog_pars_fragment = `
+#ifdef USE_FOG
+	uniform vec3 fogColor;
+	uniform vec4 slayFog;
+	varying float vFogDepth;
+	varying float vFogWorldY;
+	#ifdef FOG_EXP2
+		uniform float fogDensity;
+	#else
+		uniform float fogNear;
+		uniform float fogFar;
+	#endif
+#endif
+`;
+  SC.fog_fragment = `
+#ifdef USE_FOG
+	float fogD = max( 0.0, vFogDepth - slayFog.x );
+	#ifdef FOG_EXP2
+		float fogFactor = 1.0 - exp( - fogDensity * fogDensity * fogD * fogD );
+	#else
+		float fogFactor = smoothstep( fogNear, fogFar, fogD );
+	#endif
+	float fogLow = clamp( ( slayFog.y - vFogWorldY ) * slayFog.z, 0.0, 1.0 );
+	fogFactor = max( fogFactor, fogLow * fogLow * slayFog.w );
+	gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );
+#endif
+`;
+  const libs = THREE.ShaderLib as unknown as Record<string, { uniforms: Record<string, { value: unknown }> }>;
+  for (const key of Object.keys(libs)) {
+    const u = libs[key]?.uniforms;
+    if (u && 'fogDensity' in u) u.slayFog = { value: fogShape };
+  }
+  (THREE.UniformsLib.fog as Record<string, { value: unknown }>).slayFog = { value: fogShape };
+}
 
 export interface QualityProfile {
   shadowMapSize: number;
@@ -138,7 +293,7 @@ export class Renderer {
   private renderPass!: RenderPass;
   private gtao?: GTAOPass;
   private bloom?: UnrealBloomPass;
-  private grade!: ShaderPass;
+  private gradePass!: ShaderPass;
   private smaa?: SMAAPass;
   private output!: OutputPass;
 
@@ -155,12 +310,17 @@ export class Renderer {
    */
   private envMap: THREE.Texture | null = null;
 
+  /** The grade the current scene asked for, and a scene-level exposure trim. */
+  private grade: GradeProfile = { ...DEFAULT_GRADE };
+  private exposureTrim = 1;
+
   /** Transient grade state driven by gameplay. */
   private hurt = 0;
   private lowLife = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    patchFog();
     this.gl = new THREE.WebGLRenderer({
       canvas,
       antialias: false, // SMAA handles it; MSAA is wasted with a composer.
@@ -300,9 +460,10 @@ export class Renderer {
       this.composer.addPass(this.bloom);
     }
 
-    this.grade = new ShaderPass(GradeShader);
-    this.grade.uniforms.uResolution.value.set(w, h);
-    this.composer.addPass(this.grade);
+    this.gradePass = new ShaderPass(GradeShader);
+    this.gradePass.uniforms.uResolution.value.set(w, h);
+    this.composer.addPass(this.gradePass);
+    this.applyGrade();
 
     // OutputPass performs tone mapping + sRGB conversion; must come after grade.
     this.output = new OutputPass();
@@ -342,7 +503,7 @@ export class Renderer {
     const h = window.innerHeight;
     this.gl.setSize(w, h);
     this.composer.setSize(w, h);
-    this.grade.uniforms.uResolution.value.set(w, h);
+    this.gradePass.uniforms.uResolution.value.set(w, h);
     this.bloom?.setSize(w, h);
     this.gtao?.setSize(w, h);
     const cam = this.currentCamera;
@@ -362,8 +523,49 @@ export class Renderer {
     this.lowLife = v;
   }
 
+  /**
+   * Scene-level exposure trim, multiplied into the grade's own exposure. The
+   * town uses it because a night exterior sits lower on the curve.
+   */
   setExposure(v: number): void {
-    this.grade.uniforms.uExposure.value = v;
+    this.exposureTrim = v;
+    this.applyGrade();
+  }
+
+  /**
+   * Sets the colour grade for the current scene. Fields left out take the
+   * house default, so `setGrade()` with nothing resets it.
+   */
+  setGrade(profile: Partial<GradeProfile> = {}): void {
+    this.grade = { ...DEFAULT_GRADE, ...profile };
+    this.applyGrade();
+  }
+
+  get currentGrade(): Readonly<GradeProfile> {
+    return this.grade;
+  }
+
+  /** Pushes the grade into the post chain. Safe to call after a rebuild. */
+  private applyGrade(): void {
+    const g = this.grade;
+    const u = this.gradePass?.uniforms;
+    if (u) {
+      u.uExposure.value = g.exposure * this.exposureTrim;
+      u.uContrast.value = g.contrast;
+      u.uSaturation.value = g.saturation;
+      (u.uLift.value as THREE.Vector3).set(g.lift[0], g.lift[1], g.lift[2]);
+      (u.uGain.value as THREE.Vector3).set(g.gain[0], g.gain[1], g.gain[2]);
+      tintVector(g.shadowTint, g.splitTone, u.uShadowTint.value as THREE.Vector3);
+      tintVector(g.highlightTint, g.splitTone * 0.6, u.uHighTint.value as THREE.Vector3);
+      u.uVignette.value = g.vignette;
+      // The vignette darkens toward its tint: a hue at roughly 63% brightness.
+      tintVector(g.vignetteTint, 1, u.uVignetteTint.value as THREE.Vector3).multiplyScalar(0.63);
+    }
+    if (this.bloom) {
+      this.bloom.strength = g.bloomStrength;
+      this.bloom.radius = g.bloomRadius;
+      this.bloom.threshold = g.bloomThreshold;
+    }
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera, dt: number, elapsed: number): void {
@@ -380,9 +582,9 @@ export class Renderer {
 
     // Hurt decays fast — a long flash reads as a bug, not a hit.
     this.hurt = Math.max(0, this.hurt - dt * 3.2);
-    this.grade.uniforms.uHurt.value = this.hurt;
-    this.grade.uniforms.uLowLife.value = this.lowLife;
-    this.grade.uniforms.uTime.value = elapsed;
+    this.gradePass.uniforms.uHurt.value = this.hurt;
+    this.gradePass.uniforms.uLowLife.value = this.lowLife;
+    this.gradePass.uniforms.uTime.value = elapsed;
 
     this.composer.render(dt);
   }

@@ -1343,6 +1343,60 @@ export function runeRingTexture(size = 256, seed = 11, glyphs = 12): THREE.DataT
   return finishUtil(key, data, size, true);
 }
 
+/**
+ * World-scale breakup field for environment surfaces.
+ *
+ * A material texture tiles every two metres, and from the game camera thirty
+ * metres of floor is fifteen copies of the same flagstones. No amount of detail
+ * inside one tile hides that; what hides it is variation *across* tiles that
+ * the tile itself knows nothing about. This is that variation, sampled in world
+ * space by `worldSurface` materials at a scale of tens of metres.
+ *
+ *   R  broad discolouration — big soft patches of lighter and darker stone
+ *   G  mid-frequency blotching — stains, wear paths, mineral bloom
+ *   B  damp mask — where water sits, so roughness and albedo drop together
+ *   A  fine grain — breaks the edge of the other three so none reads as a blob
+ *
+ * Linear data, tileable by construction, generated once and shared.
+ */
+export function macroNoiseTexture(size = 256): THREE.DataTexture {
+  const key = `macro|${size}`;
+  const hit = utilCache.get(key);
+  if (hit) return hit;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size;
+      const v = y / size;
+      // Domain warp the broad field so patches have organic edges, not
+      // value-noise diamonds.
+      const wx = vfbm(u * 4, v * 4, 4, 4, 3, 901) - 0.5;
+      const wy = vfbm(u * 4 + 7.1, v * 4, 4, 4, 3, 902) - 0.5;
+      const broad = vfbm(fract(u + wx * 0.18) * 3, fract(v + wy * 0.18) * 3, 3, 3, 4, 911);
+      const blotch = vfbm(fract(u + wy * 0.1) * 8, fract(v + wx * 0.1) * 8, 8, 8, 4, 923);
+      const damp = vfbm(fract(u - wx * 0.25) * 5, fract(v - wy * 0.25) * 5, 5, 5, 4, 937);
+      const grain = vfbm(u * 32, v * 32, 32, 32, 3, 941);
+      // Stretch each to use the full byte range; fBm bunches around 0.5.
+      const st = (t: number): number => clamp01((t - 0.5) * 2.1 + 0.5);
+      const o = (y * size + x) * 4;
+      data[o] = (st(broad) * 255) | 0;
+      data[o + 1] = (st(blotch) * 255) | 0;
+      data[o + 2] = (st(damp) * 255) | 0;
+      data[o + 3] = (st(grain) * 255) | 0;
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.needsUpdate = true;
+  utilCache.set(key, tex);
+  return tex;
+}
+
 export function disposeUtilityTextures(): void {
   for (const t of utilCache.values()) t.dispose();
   utilCache.clear();

@@ -35,6 +35,8 @@ import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './Dungeon
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
 
 import { surface, surfaceVariant } from '../art/Materials';
+import { setFogShape, fogShape } from '../core/Renderer';
+import { worldSurface, WORLD_ENV_ATTRIBUTE, type WorldSurfaceOpts } from '../art/WorldSurface';
 
 /** One usable thing in the world, and the instance slot that draws it. */
 export interface Interactable {
@@ -78,7 +80,15 @@ class Surf {
   pos: number[] = [];
   nor: number[] = [];
   uv: number[] = [];
+  /**
+   * Per-vertex world context for `worldSurface` materials: contact occlusion
+   * on floors, height above the floor on walls. See `WorldSurfaceOpts.kind`.
+   */
+  env: number[] = [];
   idx: number[] = [];
+
+  /** `env` written for vertices whose caller does not say. */
+  constructor(readonly defEnv = 0) {}
 
   get empty(): boolean {
     return this.idx.length === 0;
@@ -89,8 +99,27 @@ class Surf {
     this.idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
   }
 
-  /** Horizontal quad (normal ±Y) covering a tile-sized square at `y`. */
-  flat(cx: number, y: number, cz: number, half: number, up: boolean, u0: number, v0: number, us: number): void {
+  /**
+   * Horizontal quad (normal ±Y) covering a tile-sized square at `y`.
+   *
+   * `env` is per corner in emission order (for `up`: -x+z, +x+z, +x-z, -x-z).
+   * `mirror` bit 0 flips U and bit 1 flips V across the tile. Mirroring is
+   * seamless only when the tile spans a whole number of texture repeats, which
+   * the caller checks: the shared edge then samples the same texel column on
+   * both sides whichever way each tile faces.
+   */
+  flat(
+    cx: number,
+    y: number,
+    cz: number,
+    half: number,
+    up: boolean,
+    u0: number,
+    v0: number,
+    us: number,
+    env?: readonly number[],
+    mirror = 0,
+  ): void {
     const n = up ? 1 : -1;
     const order: Array<[number, number]> = up
       ? [
@@ -105,10 +134,14 @@ class Surf {
           [1, 1],
           [-1, 1],
         ];
-    for (const [dx, dz] of order) {
+    const mu = mirror & 1 ? -1 : 1;
+    const mv = mirror & 2 ? -1 : 1;
+    for (let k = 0; k < 4; k++) {
+      const [dx, dz] = order[k]!;
       this.pos.push(cx + dx * half, y, cz + dz * half);
       this.nor.push(0, n, 0);
-      this.uv.push(u0 + (dx * 0.5 + 0.5) * us, v0 + (dz * 0.5 + 0.5) * us);
+      this.uv.push(u0 + (mu * dx * 0.5 + 0.5) * us, v0 + (mv * dz * 0.5 + 0.5) * us);
+      this.env.push(env ? env[k]! : this.defEnv);
     }
     this.quadIndices();
   }
@@ -116,8 +149,27 @@ class Surf {
   /**
    * Vertical quad. `nx,nz` is the outward normal; the quad is centred on
    * (cx, cz) at the given base height, `w` wide and `h` tall.
+   *
+   * `u0`/`v0` offset the texture so neighbouring faces can continue one
+   * another instead of each restarting at zero; `flipU` mirrors across the
+   * face. `envLo`/`envHi` are written at the bottom and top edges.
    */
-  wall(cx: number, yBase: number, cz: number, nx: number, nz: number, w: number, h: number, us: number, vs: number): void {
+  wall(
+    cx: number,
+    yBase: number,
+    cz: number,
+    nx: number,
+    nz: number,
+    w: number,
+    h: number,
+    us: number,
+    vs: number,
+    u0 = 0,
+    v0 = 0,
+    flipU = false,
+    envLo?: number,
+    envHi?: number,
+  ): void {
     // right = n × up
     const rx = nz;
     const rz = -nx;
@@ -128,16 +180,21 @@ class Surf {
       [cx + rx * hw, yBase + h, cz + rz * hw],
       [cx - rx * hw, yBase + h, cz - rz * hw],
     ];
+    const ua = flipU ? us : 0;
+    const ub = flipU ? 0 : us;
     const uvs: Array<[number, number]> = [
-      [0, 0],
-      [us, 0],
-      [us, vs],
-      [0, vs],
+      [u0 + ua, v0],
+      [u0 + ub, v0],
+      [u0 + ub, v0 + vs],
+      [u0 + ua, v0 + vs],
     ];
+    const lo = envLo ?? this.defEnv;
+    const hi = envHi ?? this.defEnv;
     for (let i = 0; i < 4; i++) {
       this.pos.push(pts[i][0], pts[i][1], pts[i][2]);
       this.nor.push(nx, 0, nz);
       this.uv.push(uvs[i][0], uvs[i][1]);
+      this.env.push(i < 2 ? lo : hi);
     }
     this.quadIndices();
   }
@@ -165,6 +222,7 @@ class Surf {
       this.pos.push(order[i][0], order[i][1], order[i][2]);
       this.nor.push(0, ny, 0);
       this.uv.push(uvs[i][0], uvs[i][1]);
+      this.env.push(this.defEnv);
     }
     this.quadIndices();
   }
@@ -174,6 +232,7 @@ class Surf {
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2));
+    g.setAttribute(WORLD_ENV_ATTRIBUTE, new THREE.Float32BufferAttribute(this.env, 1));
     g.setIndex(this.pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(this.idx, 1) : new THREE.Uint16BufferAttribute(this.idx, 1));
     g.computeBoundingSphere();
     g.computeBoundingBox();
@@ -204,6 +263,26 @@ function variantMaterial(v: FloorVariant): THREE.Material {
     emissive: v.emissive,
     emissiveIntensity: v.emissiveIntensity,
   });
+}
+
+/** A level-private world-space material for a floor or wall variant. */
+function worldVariantMaterial(v: FloorVariant, w: WorldSurfaceOpts): THREE.Material {
+  try {
+    return worldSurface(
+      v.palette,
+      {
+        repeat: v.repeat ?? 1,
+        tint: v.tint,
+        roughness: v.roughness,
+        metalness: v.metalness,
+        emissive: v.emissive,
+        emissiveIntensity: v.emissiveIntensity,
+      },
+      w,
+    );
+  } catch {
+    return variantMaterial(v);
+  }
 }
 
 /** Soft radial falloff used for the fake light pools. Generated, never loaded. */
@@ -240,6 +319,11 @@ export function applyBiomeLighting(
 
   const fog = new THREE.FogExp2(biome.fogColor, biome.fogDensity);
   scene.fog = fog;
+  // Keep the fight clear and let the distance go. Fog starts a little short
+  // of the player (the camera sits ~20m back), and below the floor a height
+  // term swallows pits and chasms so they read as bottomless. The height is
+  // set by `DungeonMesh.update`, which knows where the lowest floor is.
+  setFogShape(14, -1000, 4.5, 0.92);
   scene.background = new THREE.Color(art.ceiling === 'open' ? art.skyColor : biome.fogColor);
 
   // Hemisphere fill: a cool sky term over a warmer bounce term is what stops
@@ -285,6 +369,7 @@ export function applyBiomeLighting(
       key.dispose();
       ambient.dispose();
       if (scene.fog === fog) scene.fog = null;
+      setFogShape();
     },
   };
 }
@@ -357,6 +442,10 @@ export class DungeonMesh {
 
   private readonly halfW: number;
   private readonly halfH: number;
+  /** Height of the lowest floor in the level, for the height fog. */
+  private lowestFloor = 0;
+  /** Per wall variant: does one tile span whole texture repeats? */
+  private wallWhole: boolean[] = [];
 
   /** Refresh cadence for the light pool assignment, in seconds. */
   private lightTimer = 0;
@@ -378,6 +467,11 @@ export class DungeonMesh {
     this.roomOf = ex?.roomOf ?? new Int16Array(level.width * level.height).fill(-1);
 
     this.root.name = `dungeon:${biome.id}:${level.layout}`;
+    let low = 0;
+    for (let i = 0; i < level.tiles.length; i++) {
+      if (isWalkableValue(level.tiles[i]!)) low = Math.min(low, this.heights[i]! * STEP_HEIGHT);
+    }
+    this.lowestFloor = low;
 
     this.buildStatic(rng);
     this.buildProps(rng);
@@ -444,8 +538,21 @@ export class DungeonMesh {
 
     // Material table. Index order matters only internally.
     const mats: THREE.Material[] = [];
-    const floorMats = art.floors.map(variantMaterial);
-    const wallMats = art.walls.map(variantMaterial);
+    // Floors and walls wear world-space materials: the palette's own PBR set
+    // plus the breakup, damp and contact-grime layer from `WorldSurface`.
+    // Private to this level, so they are owned and disposed here.
+    const world = (kind: WorldSurfaceOpts['kind']): WorldSurfaceOpts => ({
+      kind,
+      grime: art.grime ?? 0x2a2622,
+      grimeAmount: kind === 'floor' ? 0.75 : 0.6,
+      wet: (art.wetness ?? clamp(art.puddles * 0.8, 0, 0.8)) * (kind === 'floor' ? 1 : 0.7),
+      variation: art.surfaceVariation ?? 0.8,
+      contact: 0.85,
+    });
+    const floorMats = art.floors.map((v) => worldVariantMaterial(v, world('floor')));
+    const wallMats = art.walls.map((v) => worldVariantMaterial(v, world('wall')));
+    for (const m of [...floorMats, ...wallMats]) if (!m.userData.shared) this.ownedMat.push(m);
+    this.wallWhole = art.walls.map((v) => wholeRepeat(v.repeat ?? 1, 1));
     const trimMat = variantMaterial(art.trim);
     const baseMat = safeSurface(art.baseTrim, { repeat: 1.2 });
     // A private clone, not the shared cached surface: the dissolve below is
@@ -638,7 +745,12 @@ export class DungeonMesh {
     for (let cy = 0; cy < chunksY; cy++) {
       for (let cx = 0; cx < chunksX; cx++) {
         const surfs: Surf[] = [];
-        for (let i = 0; i < BUCKETS; i++) surfs.push(new Surf());
+        // Wall-kind buckets default to "far above the floor", so faces that do
+        // not say otherwise (caps, ledges) carry no contact shadow.
+        for (let i = 0; i < BUCKETS; i++) {
+          const wallKind = (i >= WALL0 && i < TRIM) || i === CAPS;
+          surfs.push(new Surf(wallKind ? 99 : 0));
+        }
 
         const x0 = cx * CHUNK;
         const y0 = cy * CHUNK;
@@ -690,7 +802,10 @@ export class DungeonMesh {
             }
             const s = surfs[FLOOR0 + clamp(fv, 0, floorMats.length - 1)];
             const us = art.floors[clamp(fv, 0, art.floors.length - 1)].repeat ?? 1;
-            s.flat(wx, hy, wz, HALF, true, (x * us) % 8, (y * us) % 8, us);
+            // Mirror whole-repeat tiles at random. Seamless (see `Surf.flat`),
+            // free, and it quarters how often the eye meets the same stone.
+            const mirror = wholeRepeat(us, us) ? (hashTile(x, y, level.seed) & 3) : 0;
+            s.flat(wx, hy, wz, HALF, true, (x * us) % 8, (y * us) % 8, us, this.floorContact(x, y, hy), mirror);
 
             // Height skirts wherever the neighbour sits lower.
             for (let d = 0; d < 4; d++) {
@@ -709,6 +824,11 @@ export class DungeonMesh {
                 hy - nh,
                 1,
                 (hy - nh) / TILE_SIZE,
+                0,
+                nh / TILE_SIZE,
+                false,
+                0.85,
+                0,
               );
             }
 
@@ -817,6 +937,32 @@ export class DungeonMesh {
   }
 
   /**
+   * Contact occlusion at the four corners of a floor tile, in `Surf.flat`
+   * order. A corner darkens with each solid neighbour it touches — the classic
+   * per-vertex AO rule — and a floor that steps up beside it counts as most
+   * of a wall. Interpolated across the tile it gives a soft shadow along every
+   * wall foot without a screen-space pass.
+   */
+  private floorContact(x: number, y: number, hy: number): number[] {
+    const W = this.level.width;
+    const solid = (tx: number, ty: number): number => {
+      if (!this.open(tx, ty)) return 1;
+      const v = this.tile(tx, ty);
+      if (v === T_CHASM) return 0;
+      const nh = this.heights[ty * W + tx] * STEP_HEIGHT;
+      return nh > hy + 0.2 ? 0.7 : 0;
+    };
+    const out: number[] = [];
+    for (const [dx, dz] of FLAT_CORNERS) {
+      const a = solid(x + dx, y);
+      const b = solid(x, y + dz);
+      const c = solid(x + dx, y + dz);
+      out.push(a > 0 && b > 0 ? 1 : Math.min(1, (a + b + c) * 0.5));
+    }
+    return out;
+  }
+
+  /**
    * A wall tile. Only faces that touch open space are emitted, plus a top cap,
    * a protruding base course and a cornice — that trio is what gives a wall
    * mass instead of reading as a cardboard plane.
@@ -864,7 +1010,17 @@ export class DungeonMesh {
       const fx = wx + DX4[d] * HALF;
       const fz = wz + DY4[d] * HALF;
       const h = topY - yBottom;
-      s.wall(fx, yBottom, fz, DX4[d], DY4[d], TILE_SIZE, h, 1, h / TILE_SIZE);
+      // Texture runs on in world space: V from world height, so courses line
+      // up across tiles whose floors sit at different heights, and U along the
+      // face. Whole-repeat stone is mirrored per tile instead, which is
+      // seamless and breaks the run of identical blocks.
+      const whole = this.wallWhole[wi - WALL0] ?? false;
+      const u0 = whole ? 0 : (fx * DY4[d] - fz * DX4[d]) / TILE_SIZE - 0.5;
+      const flip = whole && (hashTile(x * 4 + d, y, this.level.seed) & 1) === 1;
+      s.wall(
+        fx, yBottom, fz, DX4[d], DY4[d], TILE_SIZE, h, 1, h / TILE_SIZE,
+        u0, yBottom / TILE_SIZE, flip, yBottom - nh, topY - nh,
+      );
 
       // Base course: a plinth that steps out from the wall.
       const bh = 0.42;
@@ -904,7 +1060,10 @@ export class DungeonMesh {
       if (v === T_CHASM || v === T_VOID) continue;
       const nh = this.heights[ny * this.level.width + nx] * STEP_HEIGHT;
       // Inward-facing: normal points back toward this tile.
-      s.wall(wx + DX4[d] * HALF, nh - depth, wz + DY4[d] * HALF, -DX4[d], -DY4[d], TILE_SIZE, depth + 0.2, 1, 2);
+      s.wall(
+        wx + DX4[d] * HALF, nh - depth, wz + DY4[d] * HALF, -DX4[d], -DY4[d], TILE_SIZE, depth + 0.2, 1,
+        (depth + 0.2) / TILE_SIZE, 0, (nh - depth) / TILE_SIZE, false, -depth, 0.2,
+      );
     }
     void hy;
   }
@@ -1495,6 +1654,9 @@ export class DungeonMesh {
   update(dt: number, elapsed: number, focus: THREE.Vector3): void {
     // The roof follows the camera focus, which is the player.
     this.heroXZ.set(focus.x, focus.z);
+    // Height fog sits just under the lowest walkable floor: pits sink into it,
+    // nobody stands in it.
+    if (fogShape.w > 0) fogShape.y = this.lowestFloor - 0.9;
     this.updateLights(dt, elapsed, focus);
     this.updateFlames(elapsed, focus);
 
@@ -1656,6 +1818,31 @@ export class DungeonMesh {
 }
 
 const UP_AXIS = new THREE.Vector3(0, 1, 0);
+/** Corner order of an upward `Surf.flat` quad, as (dx, dz). */
+const FLAT_CORNERS: ReadonlyArray<readonly [number, number]> = [
+  [-1, 1],
+  [1, 1],
+  [1, -1],
+  [-1, -1],
+];
+
+/** Cheap deterministic per-tile hash. Not randomness: a stable property of the tile. */
+function hashTile(x: number, y: number, seed: number): number {
+  let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed | 0, 1442695041)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/**
+ * True when a surface with this UV span per tile lands on whole texture
+ * repeats at the tile edge — the condition for per-tile mirroring to be
+ * seamless. Mirrors the quantisation the texture library applies.
+ */
+function wholeRepeat(repeat: number, uvSpan: number): boolean {
+  const q = Math.round(Math.max(0.125, Math.min(64, repeat)) * 4) / 4;
+  const span = uvSpan * q;
+  return Math.abs(span - Math.round(span)) < 1e-6;
+}
 const DX4 = [1, -1, 0, 0];
 const DY4 = [0, 0, 1, -1];
 
