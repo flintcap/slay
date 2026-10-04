@@ -13,16 +13,17 @@ Status: in progress
 
 ## Next up
 
-Milestone 6, the sweep. Render `classes`, `bodies-low|mid|top`, `monsters`, `npcs-a|b` and one full game
-render (`npm run build` then `SLAY_PORT=4311 node tools/screenshot.mjs --out=shots/models/sweep
---shots=town,dungeon`), look for clipping (long hair through chest armour, robe skirts through legs in
-stride, capes through legs, belts inside plate), floating parts (props, pauldrons, crowns) and style drift
-between classes, NPCs and monsters, and fix what is found. Rerun `check-worn` and `check-paperdoll` when
-the machine is quiet (they timed out on screenshots under load, see notes). Known items to look at:
-- revenant and pyromancer long hair (`hairLong`) under chest plate and a closed helm (closed helms hide it);
-- the coat skirt is open at the front, trousers cover the legs (NPCs only);
-- hood shells on Vell and Marrow, the Listener's blindfold, Wenna's hat at the game camera;
-- monster `alt` rags on undead read as a kilt; maybe vary length per rank.
+Milestone 6, the sweep (started: stride sheet, rounder sleeve shoulders, eyes, subtler cheekbones are in).
+Remaining:
+1. Render `classes`, `bodies-low|mid|top`, `stride`, `monsters`, `npcs-a|b` with
+   `node tools/models-sheet.mjs <sheets> --port=4311 --out=shots/models/sweep` (self-contained: it starts
+   and stops its own Vite server; never leave a server running) and look for clipping (long hair through
+   plate, robe skirts in stride, capes through legs, belts inside plate), floating parts and style drift.
+2. One full game render of town (NPCs) when the machine is quiet:
+   `npm run build && SLAY_PORT=4311 node tools/screenshot.mjs --out=shots/models/sweep --shots=town`.
+3. Rerun `check-worn` and `check-paperdoll` when the machine is quiet (they timed out on screenshots under
+   load average ~24, no page errors).
+4. The foundry invisible-hero investigation is handed to world (see notes); models found no model fault.
 
 ## Notes for resume
 
@@ -123,6 +124,21 @@ Budgets and level of detail (milestone 5):
   monster weapons (one-line wraps around `buildItemModel`).
 - Measured (classes sheet): bare 10-12 calls, low 12-19, mid 21-30, top 28-41 (was 78-105). Monsters 2-5
   calls plus a weapon (2-4 now). NPCs 14-24. Budgets: player top gear <= 42, monster <= 8, NPC <= 25.
+
+Foundry "hero cannot be seen" (asked by world at 75e1755), what models found:
+- Same harness (`docs/overhaul/world-render.mjs`, `foundry@close` and `crypt@close`, seed 1001): the hero
+  was invisible in the foundry in two runs and visible in a third, at the same spot. In every run all 64
+  hero meshes are submitted (an `onBeforeRender` hook fires for each), bone matrices are finite, the root
+  is in the scene at y 0, materials are opaque with depth test and write on. Not culled, not NaN.
+- Swapping the hero's materials for identical `.clone()`s in the live game makes the hero vanish in the
+  crypt too (sword included, which is a plain Mesh), while clones forced to a flat emissive red show. The
+  same clones render normally in the lineup tool with the foundry's fog (`FogExp2 0x1a0b05, 0.037`) and a
+  dungeon light rig. So the body and armour materials are not near-black by construction; something in
+  the live scene makes lit MeshStandardMaterials that get a fresh program at that moment draw as nothing.
+  Suspects for world/quality: the scene's 22 lights (program re-keyed per light count; new heat lights),
+  the post chain (GTAO / grade) or a light that goes NaN. No shader errors are logged.
+- Cheapest next test (world/quality): in the harness, after the hero vanishes, set `scene.fog = null`,
+  then disable GTAO, then zero the heat lights one by one, screenshotting after each.
 
 Requests to other streams:
 - art: adopt `GearLook.gearLook` for trim/set colour in `ItemModels` (see above).
