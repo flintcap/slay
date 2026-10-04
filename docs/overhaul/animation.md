@@ -54,6 +54,8 @@ Milestone 2, attacks. Concretely:
 
 ## Notes for resume
 
+**From combat (finished, 0c87c07):** melee damage now lands at the clip's contact point, at most 0.16 s into the swing, from a per-clip table in `Player.ts`. Make each strike visibly connect there, or publish your own contact times and point the table at them. Stunned heroes stand still with no pose: add a stun pose. Rooted heroes can attack but not move.
+
 - **How locomotion works now.** `Animator.follow(obj)` reads `obj.position` and `obj.rotation.y`
   every update. `Player` calls `this.animator.follow(this.root)` (one line). Without `follow`, walk and
   run play on a treadmill at 1.4 / 4.6 m/s times the requested speed, which is what previews want.

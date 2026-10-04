@@ -57,6 +57,8 @@ Still to do for milestone 5:
 
 ## Notes for resume
 
+**From combat (finished, 0c87c07):** `combat:combo` fires on every skill combo and already shows "Name!" over the target; give it a sound and a punch. Melee hits in `SkillRunner.ts` now wait for the swing's contact point. Stunned and rooted heroes now really are; a stun needs a sound. Hero damage scales much harder past level 8; read it from `computeStats`, never hard-code.
+
 **Requests from other streams (added at pause, from the depth stream's report):**
 - `SkillRunner.afterHit` returns early unless arc or conduct passives are set, so most characters never get crit riders, Flurry or minion leech. Make the early-out only skip the passive-specific work.
 - The Flurry timer is never refreshed on a hit, so stacks are wiped every 2 seconds regardless of how fast you hit.
