@@ -266,7 +266,21 @@ export class Player {
   }
 
   get isBusy(): boolean {
-    return this.actionLock > 0;
+    return this.actionLock > 0 || this.incapacitated;
+  }
+
+  /**
+   * Stunned, frozen, petrified, knocked down: no attacks, no casts, no dash.
+   * Monsters put these on the hero all along and nothing read them, so a
+   * stun from a Thunderclap was a stat line and a sound.
+   */
+  get incapacitated(): boolean {
+    return this.status.isIncapacitated();
+  }
+
+  /** Rooted or grasped (or worse): the feet stay put, the hands still work. */
+  get immobilised(): boolean {
+    return this.status.isImmobilised();
   }
 
   /**
@@ -386,6 +400,8 @@ export class Player {
     // to a telegraph, and an answer that is refused because you were swinging
     // is not one: it cancels whatever the hero was doing.
     if (this.frozen || this.dodgeTime > 0 || this.dodgeCd > 0) return false;
+    // A root holds the feet and a stun the whole body: no dash out of either.
+    if (this.immobilised) return false;
     this.actionLock = 0;
     // A swing dodged out of before it connects never lands.
     this.actionSerial++;
@@ -683,6 +699,12 @@ export class Player {
       // Ease out so the dash front-loads its distance and lands cleanly.
       const dashSpeed = baseSpeed * 2.9 * (0.25 + t * 0.75);
       this.tryMove(this.dodgeDir.x * dashSpeed * dt, this.dodgeDir.z * dashSpeed * dt, ctx);
+      return;
+    }
+
+    // Held in place: the order is kept and resumed the moment it wears off.
+    if (this.immobilised) {
+      this.velocity.set(0, 0, 0);
       return;
     }
 

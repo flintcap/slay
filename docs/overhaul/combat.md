@@ -17,11 +17,7 @@ Status: in progress
 All seven milestones are done. If more time is given, good follow-ups:
 1. A live render (`SLAY_PORT=4307 node tools/screenshot.mjs --out=shots/combat
    --shots=town,dungeon`) to eyeball combos (`Name!` text) and hero numbers.
-2. Hero stuns: monster stuns, roots and fears put a status on the hero but
-   nothing in `Player`/`Controls` reads `incapacitates`/`immobilises`, so a
-   stunned hero can still act. Decide with feel/animation how a stunned hero
-   should look, then gate actions and movement in `Player.update`.
-3. Re-run `node tools/check-curve.mjs` after any item, progression or monster
+2. Re-run `node tools/check-curve.mjs` after any item, progression or monster
    change; widen it to depths 60 and 80 if the deep game matters.
 
 ## Notes for resume
@@ -68,6 +64,11 @@ All seven milestones are done. If more time is given, good follow-ups:
   poisoning hit applies one stack.
 - `check-bossfights` sim cap is 150s (Hurn needed a few more seconds).
 
+- Hero crowd control is real now: `Player.incapacitated` (stunned, frozen,
+  petrified, knocked down) makes `isBusy` true and blocks the dash;
+  `Player.immobilised` (rooted, grasped) holds the feet and blocks the dash but
+  not attacks. Orders are kept and resume. `check-controls` cases 16. Before,
+  monster stuns on the hero were only a stat line.
 - Sweep: `node tools/check-sweep.mjs` (~25s) casts all 163 active skills with
   the real runner (each must hit under its own name, or leave a status, a
   minion or a move) and uses all 81 damaging monster abilities on a hero who
@@ -168,5 +169,7 @@ All seven milestones are done. If more time is given, good follow-ups:
   on each combo; it already floats `Name!` over the target. A sound and a skill
   tree line would help: `comboForSkill(def)` and `comboBonusPct(def)` in
   `src/entities/Combos.ts` give the text and number for a tooltip.
+- animation / feel: a stunned hero now really stands still (`Player.incapacitated`);
+  there is no stun pose or sound yet.
 - feel: `player:evaded` fires when a hit lands during the dodge. Mini-boss beats
   (horn, mark, shadow step, cage, volley, charge) currently use existing bursts and toasts.

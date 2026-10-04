@@ -472,4 +472,40 @@ function casterOnBar() {
   check('a hit carrying a poison applies one stack', stacks === 1, `${stacks} stack(s)`);
 }
 
+// 16. Crowd control on the hero: a stun stops everything, a root only the feet,
+//     and both wear off with the order still standing.
+{
+  const w = world();
+  setPrimaryAttack(w.c, null);
+  w.player.applyStatus('stunned', 0.5, 1, 1);
+  w.input.worldPoint.set(0, 0, 3);
+  w.input.mouseRightPressed = true;
+  w.step();
+  const swingsStunned = w.log.basics.length;
+  const dashStunned = w.player.dodge(1, 0);
+  w.player.moveTo(0, 20);
+  w.step(20);
+  const zStunned = w.player.position.z;
+  w.step(60);
+  check(
+    'a stun stops swings, the dash and the feet, then lets go',
+    swingsStunned === 0 && !dashStunned && Math.abs(zStunned) < 0.05 && w.player.position.z > 2,
+    `swings ${swingsStunned}, dash ${dashStunned}, moved ${zStunned.toFixed(2)}m stunned and ${w.player.position.z.toFixed(2)}m after`,
+  );
+  const r = world();
+  setPrimaryAttack(r.c, null);
+  r.player.applyStatus('rooted', 0.6, 1, 1);
+  r.player.moveTo(0, 20);
+  r.step(15);
+  const zRooted = r.player.position.z;
+  r.input.worldPoint.set(0, 0, 3);
+  r.input.mouseRightPressed = true;
+  r.step();
+  check(
+    'a root holds the feet but not the hands',
+    Math.abs(zRooted) < 0.05 && r.log.basics.length === 1 && !r.player.dodge(1, 0),
+    `moved ${zRooted.toFixed(2)}m rooted, swings ${r.log.basics.length}`,
+  );
+}
+
 console.log(JSON.stringify({ cases }));
