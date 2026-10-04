@@ -37,7 +37,7 @@ import type { Rng } from '../types';
 // Sprite atlas
 // ---------------------------------------------------------------------------
 
-/** Atlas cell ids. 4x4 grid; the shader derives UVs from the index. */
+/** Atlas cell ids. 4 columns by 8 rows; the shader derives UVs from the index. */
 export const SPRITE = {
   glow: 0,
   spark: 1,
@@ -55,9 +55,23 @@ export const SPRITE = {
   spore: 13,
   bolt: 14,
   chunk: 15,
+  /** A tapering shard of bone. */
+  splinter: 16,
+  /** A falling drop: poison, blood, ichor. */
+  drip: 17,
+  /** A branching crackle of electricity. */
+  arc: 18,
+  /** A thin curling flake: ash, cinders, rime. */
+  flake: 19,
+  /** A tall flickering tongue of flame. */
+  wisp: 20,
+  /** A six-sided crystal: frost, arcane lattice. */
+  hex: 21,
 } as const;
 
 const ATLAS_GRID = 4;
+/** Rows in the sheet. Columns stay at ATLAS_GRID. */
+const ATLAS_ROWS = 8;
 const ATLAS_CELL = 128;
 
 let atlasTexture: THREE.Texture | null = null;
@@ -77,9 +91,9 @@ function buildSpriteAtlas(): THREE.Texture {
   const size = ATLAS_GRID * ATLAS_CELL;
   const cv = document.createElement('canvas');
   cv.width = size;
-  cv.height = size;
+  cv.height = ATLAS_ROWS * ATLAS_CELL;
   const ctx = cv.getContext('2d')!;
-  ctx.clearRect(0, 0, size, size);
+  ctx.clearRect(0, 0, size, cv.height);
 
   const noise = new Noise(0xa17e);
   const C = ATLAS_CELL;
@@ -90,8 +104,14 @@ function buildSpriteAtlas(): THREE.Texture {
     oy: Math.floor(i / ATLAS_GRID) * C,
   });
 
+  // The cell being painted. `putImageData` ignores the canvas transform and
+  // clip, so per-pixel sprites must place themselves with this explicitly.
+  // They used to write at (0, 0): eight of the sixteen sprites were stacked
+  // on top of the glow in the first cell and their own cells were left empty.
+  let cur = { ox: 0, oy: 0 };
   const withCell = (i: number, fn: () => void): void => {
     const { ox, oy } = cell(i);
+    cur = { ox, oy };
     ctx.save();
     ctx.translate(ox, oy);
     ctx.beginPath();
@@ -134,7 +154,7 @@ function buildSpriteAtlas(): THREE.Texture {
         d[o + 3] = a * 255;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, cur.ox, cur.oy);
   });
 
   // 2 — smoke puff: fbm-perturbed disc with soft, ragged edges.
@@ -158,7 +178,7 @@ function buildSpriteAtlas(): THREE.Texture {
         d[o + 3] = a * 235;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, cur.ox, cur.oy);
   });
 
   // 3 — ember: white-hot pinpoint core with a wide dim halo.
@@ -181,7 +201,7 @@ function buildSpriteAtlas(): THREE.Texture {
         d[o + 3] = a * 255;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, cur.ox, cur.oy);
   });
 
   // 4 — crystal shard: hard-edged hexagonal sliver with a bright spine.
@@ -259,7 +279,7 @@ function buildSpriteAtlas(): THREE.Texture {
         d[o + 3] = a * 255;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, cur.ox, cur.oy);
   });
 
   // 7 — four-point star flare, the classic "bright thing" sparkle.
@@ -284,7 +304,7 @@ function buildSpriteAtlas(): THREE.Texture {
         d[o + 3] = a * 255;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, cur.ox, cur.oy);
   });
 
   // 8 — blood droplet: teardrop with a heavy head, slightly irregular.
@@ -307,7 +327,7 @@ function buildSpriteAtlas(): THREE.Texture {
         d[o + 3] = a * 255;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, cur.ox, cur.oy);
   });
 
   // 9 — dust speck: very soft, very cheap, low contrast.
@@ -342,7 +362,7 @@ function buildSpriteAtlas(): THREE.Texture {
         d[o + 3] = clamp01(a) * 255;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, cur.ox, cur.oy);
   });
 
   // 11 — snowflake: six-fold dendrite.
@@ -393,7 +413,7 @@ function buildSpriteAtlas(): THREE.Texture {
         d[o + 3] = a * 255;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, cur.ox, cur.oy);
   });
 
   // 13 — spore: fuzzy seed head with a halo of filaments.
@@ -463,10 +483,178 @@ function buildSpriteAtlas(): THREE.Texture {
     ctx.fill();
   });
 
+  // 16 — bone splinter: a long tapering shard, pale with a darker marrow line.
+  withCell(SPRITE.splinter, () => {
+    ctx.translate(H, H);
+    const rng = new Random(0x5b11);
+    ctx.beginPath();
+    const len = H * 0.92;
+    ctx.moveTo(0, -len);
+    // Ragged sides, wider near one end, like a snapped bone.
+    const pts = 6;
+    for (let i = 1; i <= pts; i++) {
+      const t = i / pts;
+      ctx.lineTo(H * (0.07 + t * 0.16) * rng.range(0.75, 1.15), -len + t * len * 2);
+    }
+    for (let i = pts; i >= 1; i--) {
+      const t = i / pts;
+      ctx.lineTo(-H * (0.06 + t * 0.15) * rng.range(0.75, 1.15), -len + t * len * 2 - rng.range(0, 6));
+    }
+    ctx.closePath();
+    const g = ctx.createLinearGradient(-H * 0.2, 0, H * 0.2, 0);
+    g.addColorStop(0, 'rgba(170,170,170,1)');
+    g.addColorStop(0.5, 'rgba(255,255,255,1)');
+    g.addColorStop(1, 'rgba(150,150,150,1)');
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(110,110,110,0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -len * 0.7);
+    ctx.lineTo(rng.range(-3, 3), len * 0.6);
+    ctx.stroke();
+  });
+
+  // 17 — drip: a teardrop with a bright meniscus, point up.
+  withCell(SPRITE.drip, () => {
+    const img = ctx.createImageData(C, C);
+    const d = img.data;
+    for (let y = 0; y < C; y++) {
+      for (let x = 0; x < C; x++) {
+        const u = (x - H) / H;
+        const v = (y - H) / H;
+        // Round bottom, pinched top.
+        const w = 0.5 * clamp01((v + 0.95) / 1.5);
+        const body = Math.sqrt(u * u / Math.max(1e-4, w * w) + Math.pow(Math.max(0, v - 0.35) / 0.55, 2));
+        const a = clamp01((1 - body) * 6);
+        const hl = Math.exp(-((u + 0.15) ** 2 + (v - 0.4) ** 2) * 60);
+        const o = (y * C + x) * 4;
+        const lum = 175 + 80 * hl;
+        d[o] = lum;
+        d[o + 1] = lum;
+        d[o + 2] = lum;
+        d[o + 3] = a * 255;
+      }
+    }
+    ctx.putImageData(img, cur.ox, cur.oy);
+  });
+
+  // 18 — arc: a branching crackle, a trunk with two forks.
+  withCell(SPRITE.arc, () => {
+    ctx.translate(H, H);
+    const seg = new Random(0xa4c1);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const trunk: Array<[number, number]> = [];
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      trunk.push([seg.range(-0.22, 0.22) * H * Math.sin(t * Math.PI), -H * 0.9 + t * H * 1.8]);
+    }
+    const forks: Array<Array<[number, number]>> = [];
+    for (const at of [3, 5]) {
+      const [fx, fy] = trunk[at]!;
+      const dir = at === 3 ? 1 : -1;
+      const f: Array<[number, number]> = [[fx, fy]];
+      for (let i = 1; i <= 3; i++) f.push([fx + dir * i * H * 0.14 + seg.range(-6, 6), fy + i * H * 0.1]);
+      forks.push(f);
+    }
+    for (const [w, a] of [[14, 0.22], [6, 0.55], [2.5, 1]] as Array<[number, number]>) {
+      ctx.strokeStyle = `rgba(255,255,255,${a})`;
+      for (const line of [trunk, ...forks]) {
+        ctx.lineWidth = line === trunk ? w : w * 0.6;
+        ctx.beginPath();
+        line.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+        ctx.stroke();
+      }
+    }
+  });
+
+  // 19 — flake: a thin curled sliver with a soft edge.
+  withCell(SPRITE.flake, () => {
+    ctx.translate(H, H);
+    ctx.rotate(0.6);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, H * 0.7);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.6, 'rgba(200,200,200,0.8)');
+    g.addColorStop(1, 'rgba(200,200,200,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, H * 0.7, H * 0.26, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.ellipse(H * 0.12, -H * 0.16, H * 0.6, H * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  });
+
+  // 20 — wisp: a tall flame tongue that licks upward and leans.
+  withCell(SPRITE.wisp, () => {
+    const img = ctx.createImageData(C, C);
+    const d = img.data;
+    for (let y = 0; y < C; y++) {
+      for (let x = 0; x < C; x++) {
+        const u = (x - H) / H;
+        const v = (y - H) / H; // -1 top .. 1 bottom
+        const up = clamp01((1 - v) * 0.5); // 0 at the base, 1 at the tip
+        const lean = Math.sin(up * 2.4) * 0.18 + noise.fbm(up * 3 + 7, 1.3, 2) * 0.12;
+        const width = 0.42 * Math.pow(1 - up, 0.75) * clamp01((v + 1.05) * 4);
+        const across = Math.abs(u - lean) / Math.max(0.02, width);
+        const flick = 0.75 + 0.25 * noise.fbm(u * 4 + 3, v * 6 - 2, 3);
+        const a = clamp01((1 - across) * 2.2) * flick * clamp01((0.95 - v) * 3);
+        const core = clamp01(1 - across * 1.8) * (1 - up);
+        const o = (y * C + x) * 4;
+        const lum = 160 + 95 * core;
+        d[o] = lum;
+        d[o + 1] = lum;
+        d[o + 2] = lum;
+        d[o + 3] = a * 255;
+      }
+    }
+    ctx.putImageData(img, cur.ox, cur.oy);
+  });
+
+  // 21 — hex crystal: a faceted six-sided flake, bright edges.
+  withCell(SPRITE.hex, () => {
+    ctx.translate(H, H);
+    const r = H * 0.78;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+      if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.55)');
+    g.addColorStop(0.8, 'rgba(220,220,220,0.35)');
+    g.addColorStop(1, 'rgba(255,255,255,0.9)');
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,1)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9);
+      ctx.lineTo(-Math.cos(a) * r * 0.9, -Math.sin(a) * r * 0.9);
+      ctx.stroke();
+    }
+  });
+
   void px;
 
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
+  // The sheet is painted top-down, cell 0 in the top-left, and the shader
+  // derives rows the same way. three.js flips canvas uploads by default,
+  // which mirrored the rows: every particle in the game drew the sprite four
+  // cells away from the one it named (glow drew as a bubble, sparks as
+  // spores, smoke as lightning). Same fix the damage-number glyphs needed.
+  tex.flipY = false;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.magFilter = THREE.LinearFilter;
   tex.generateMipmaps = true;
@@ -566,7 +754,7 @@ const PARTICLE_VERT = /* glsl */ `
     float idx = iSize.w;
     float col = mod(idx, 4.0);
     float row = floor(idx * 0.25);
-    vUv = (uv + vec2(col, row)) * 0.25;
+    vUv = vec2((uv.x + col) * 0.25, (uv.y + row) * 0.125);
   }
 `;
 
@@ -836,6 +1024,11 @@ interface Layer {
   stagger: number;
   /** When false, `opts.color` does not retint this layer (keeps smoke grey). */
   tintable: boolean;
+  /**
+   * Spawn on a shell of `radius` and fly *toward* the centre: power gathering
+   * into a hand before a spell leaves it.
+   */
+  converge: boolean;
 }
 
 const LAYER_DEFAULTS: Layer = {
@@ -860,6 +1053,7 @@ const LAYER_DEFAULTS: Layer = {
   fade: 1.6,
   stagger: 0,
   tintable: true,
+  converge: false,
 };
 
 function L(over: Partial<Layer>): Layer {
@@ -884,22 +1078,32 @@ const EMITTERS: Record<string, Layer[]> = {
     L({ sprite: SPRITE.flame, count: 12, speed: [1.6, 4.4], spread: 0.75, upBias: 0.45, life: [0.28, 0.55], size: [0.3, 0.6], grow: 1.5, colorA: 0xffd070, colorB: 0xc02000, intensity: 2.6, gravity: 2.2, drag: 3.2, turbulence: 0.55, spin: 1.4, fade: 1.5 }),
     L({ sprite: SPRITE.ember, count: 16, speed: [2.4, 7.5], spread: 0.85, upBias: 0.35, life: [0.5, 1.3], size: [0.05, 0.11], grow: 0.35, colorA: 0xfff2c0, colorB: 0xff3a00, intensity: 3.4, gravity: 1.1, drag: 1.5, turbulence: 0.5, stretch: 0.5, fade: 1.1 }),
     L({ blend: 'alpha', sprite: SPRITE.smoke, count: 8, speed: [0.5, 1.8], spread: 0.9, upBias: 0.8, life: [0.9, 1.8], size: [0.35, 0.6], grow: 2.6, colorA: 0x3a332e, colorB: 0x14110f, intensity: 1, gravity: 0.7, drag: 1.9, turbulence: 0.35, spin: 0.6, fade: 1.8, stagger: 0.12, tintable: false }),
+    L({ sprite: SPRITE.wisp, count: 5, speed: [0.6, 1.6], spread: 0.5, upBias: 1, radius: 0.18, life: [0.25, 0.45], size: [0.35, 0.6], grow: 1.3, colorA: 0xffe08a, colorB: 0xd03000, intensity: 2.8, gravity: 2.8, drag: 2.4, turbulence: 0.4, fade: 1.6 }),
   ],
   'hit.cold': [
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.16, 0.2], size: [1.0, 1.25], grow: 1.7, colorA: 0xd8f6ff, colorB: 0x3f8fff, intensity: 3.6, gravity: 0, drag: 0, fade: 2.4 }),
     L({ sprite: SPRITE.shard, count: 14, speed: [3, 8], spread: 0.7, life: [0.3, 0.7], size: [0.09, 0.2], grow: 0.5, colorA: 0xffffff, colorB: 0x4aa8ff, intensity: 2.4, gravity: -9, drag: 2.6, spin: 5, fade: 1.5 }),
     L({ sprite: SPRITE.snow, count: 10, speed: [0.6, 2.2], spread: 1, life: [0.7, 1.5], size: [0.07, 0.14], grow: 0.7, colorA: 0xe8f8ff, colorB: 0x86c8ff, intensity: 1.8, gravity: -1.4, drag: 2.4, turbulence: 0.4, spin: 2.2, fade: 1.6 }),
     L({ blend: 'alpha', sprite: SPRITE.smoke, count: 5, speed: [0.4, 1.3], spread: 1, upBias: 0.3, life: [0.7, 1.3], size: [0.3, 0.5], grow: 2.1, colorA: 0x9fd0e6, colorB: 0x5a7f92, intensity: 1, gravity: -0.4, drag: 2.6, spin: 0.5, fade: 1.9, tintable: false }),
+    L({ sprite: SPRITE.hex, count: 4, speed: [1.2, 3.2], spread: 1, life: [0.45, 0.8], size: [0.12, 0.22], grow: 0.6, colorA: 0xffffff, colorB: 0x6ab8ff, intensity: 2.4, gravity: -5, drag: 2.4, spin: 3, fade: 1.5 }),
   ],
   'hit.lightning': [
     L({ sprite: SPRITE.star, count: 1, speed: [0, 0], radius: 0, life: [0.1, 0.13], size: [1.3, 1.7], grow: 1.5, colorA: 0xffffff, colorB: 0x88ccff, intensity: 6, gravity: 0, drag: 0, fade: 3 }),
     L({ sprite: SPRITE.bolt, count: 10, speed: [5, 14], spread: 1, life: [0.08, 0.2], size: [0.12, 0.3], grow: 0.4, colorA: 0xffffff, colorB: 0x5aa8ff, intensity: 5, gravity: 0, drag: 7, spin: 8, stretch: 0.8, fade: 1.1 }),
     L({ sprite: SPRITE.spark, count: 20, speed: [6, 18], spread: 1, life: [0.14, 0.34], size: [0.04, 0.08], grow: 0.25, colorA: 0xeaf6ff, colorB: 0x2f6fff, intensity: 4, gravity: -6, drag: 5.5, stretch: 2.2, fade: 1.2 }),
+    L({ sprite: SPRITE.arc, count: 4, speed: [0.5, 2], spread: 1, radius: 0.25, life: [0.07, 0.16], size: [0.35, 0.6], grow: 1.2, colorA: 0xffffff, colorB: 0x6aa8ff, intensity: 5, gravity: 0, drag: 4, spin: 14, fade: 1, stagger: 0.12 }),
+  ],
+  'hit.bone': [
+    L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.1, 0.14], size: [0.8, 1.0], grow: 1.6, colorA: 0xfff6e4, colorB: 0xb8a888, intensity: 2.6, gravity: 0, drag: 0, fade: 2.4 }),
+    L({ blend: 'alpha', sprite: SPRITE.splinter, count: 12, speed: [4, 10], spread: 0.8, upBias: 0.3, life: [0.4, 0.8], size: [0.1, 0.22], grow: 0.9, colorA: 0xf2ead8, colorB: 0x9a8e78, intensity: 1, gravity: -20, drag: 1.2, spin: 9, stretch: 0.4, fade: 1.1, tintable: false }),
+    L({ blend: 'alpha', sprite: SPRITE.chunk, count: 6, speed: [2, 6], spread: 0.9, upBias: 0.3, life: [0.5, 0.9], size: [0.05, 0.1], grow: 0.9, colorA: 0xe0d6c0, colorB: 0x7a705e, intensity: 1, gravity: -22, drag: 0.6, spin: 7, fade: 1, tintable: false }),
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 7, speed: [0.6, 2.0], spread: 1, upBias: 0.2, life: [0.5, 1.0], size: [0.2, 0.36], grow: 2.2, colorA: 0xc8bea8, colorB: 0x6a6252, intensity: 1, gravity: -0.8, drag: 3, turbulence: 0.3, spin: 0.8, fade: 1.6, tintable: false }),
   ],
   'hit.poison': [
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.18, 0.22], size: [0.9, 1.1], grow: 1.8, colorA: 0xd2ff7a, colorB: 0x2f7a12, intensity: 2.4, gravity: 0, drag: 0, fade: 2.2 }),
     L({ sprite: SPRITE.blood, count: 14, speed: [1.6, 5], spread: 0.8, upBias: 0.3, life: [0.5, 1.0], size: [0.1, 0.2], grow: 0.8, colorA: 0xbaff62, colorB: 0x2c6a10, intensity: 1.7, gravity: -7, drag: 2.2, spin: 3, fade: 1.5 }),
     L({ blend: 'alpha', sprite: SPRITE.smoke, count: 9, speed: [0.4, 1.6], spread: 1, upBias: 0.6, life: [1.0, 2.0], size: [0.3, 0.55], grow: 2.4, colorA: 0x6f9a3a, colorB: 0x24401a, intensity: 1, gravity: 0.5, drag: 2.0, turbulence: 0.45, spin: 0.5, fade: 2.0, stagger: 0.15, tintable: false }),
+    L({ sprite: SPRITE.drip, count: 8, speed: [1.5, 4], spread: 0.8, upBias: 0.4, life: [0.5, 0.9], size: [0.08, 0.14], grow: 0.8, colorA: 0xd8ff8a, colorB: 0x3c8a18, intensity: 1.8, gravity: -14, drag: 1.2, stretch: 0.5, fade: 1.3 }),
   ],
   'hit.arcane': [
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.16, 0.2], size: [1.0, 1.3], grow: 1.9, colorA: 0xf2d6ff, colorB: 0x8a3cff, intensity: 4, gravity: 0, drag: 0, fade: 2.4 }),
@@ -1022,6 +1226,80 @@ const EMITTERS: Record<string, Layer[]> = {
     L({ sprite: SPRITE.glow, count: 24, speed: [0.4, 1.8], spread: 0.4, upBias: 1, radius: 0.85, life: [0.8, 1.6], size: [0.12, 0.28], grow: 0.4, colorA: 0xe0c0ff, colorB: 0x5010a0, intensity: 3.2, gravity: 1.6, drag: 1.2, turbulence: 0.35, fade: 1.7, stagger: 0.45 }),
   ],
 
+  // --- cast flares -----------------------------------------------------------
+  // The beat at the caster's hand. Most layers start out on a small sphere and
+  // fly *inward* (negative speed), so the flare reads as power gathering before
+  // it leaves, then a short bright pop.
+  'cast.fire': [
+    L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.12, 0.16], size: [0.7, 0.9], grow: 1.5, colorA: 0xfff0b0, colorB: 0xff5010, intensity: 4, gravity: 0, drag: 0, fade: 2.4 }),
+    L({ sprite: SPRITE.wisp, count: 6, speed: [0.8, 2], spread: 0.6, upBias: 0.8, radius: 0.15, life: [0.22, 0.4], size: [0.25, 0.42], grow: 1.3, colorA: 0xffe08a, colorB: 0xc02400, intensity: 2.8, gravity: 2.5, drag: 2.6, turbulence: 0.4, fade: 1.6 }),
+    L({ sprite: SPRITE.ember, count: 10, speed: [1.4, 2.6], converge: true, radius: 0.6, life: [0.18, 0.3], size: [0.04, 0.08], grow: 0.4, colorA: 0xfff2c0, colorB: 0xff4000, intensity: 3.4, gravity: 0, drag: 1.5, fade: 1.2 }),
+  ],
+  'cast.cold': [
+    L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.14, 0.18], size: [0.6, 0.8], grow: 1.4, colorA: 0xe8faff, colorB: 0x3f8fff, intensity: 3.4, gravity: 0, drag: 0, fade: 2.4 }),
+    L({ sprite: SPRITE.hex, count: 6, speed: [1.2, 2.2], converge: true, radius: 0.65, life: [0.22, 0.34], size: [0.1, 0.18], grow: 0.4, colorA: 0xffffff, colorB: 0x6ab8ff, intensity: 2.6, gravity: 0, drag: 1.4, spin: 4, fade: 1.3 }),
+    L({ sprite: SPRITE.snow, count: 8, speed: [0.4, 1.6], spread: 1, life: [0.4, 0.8], size: [0.05, 0.1], grow: 0.6, colorA: 0xeaf9ff, colorB: 0x7cc0ff, intensity: 2, gravity: -1.2, drag: 2.4, turbulence: 0.4, spin: 2, fade: 1.5 }),
+    L({ blend: 'alpha', sprite: SPRITE.smoke, count: 3, speed: [0.2, 0.8], spread: 1, life: [0.5, 0.9], size: [0.2, 0.35], grow: 2, colorA: 0xc8e8f6, colorB: 0x7a9cb0, intensity: 1, gravity: -0.4, drag: 2.4, fade: 1.9, tintable: false }),
+  ],
+  'cast.lightning': [
+    L({ sprite: SPRITE.star, count: 1, speed: [0, 0], radius: 0, life: [0.08, 0.11], size: [0.8, 1.1], grow: 1.3, colorA: 0xffffff, colorB: 0x88ccff, intensity: 5, gravity: 0, drag: 0, fade: 3 }),
+    L({ sprite: SPRITE.arc, count: 4, speed: [0.3, 1.2], spread: 1, radius: 0.22, life: [0.06, 0.13], size: [0.25, 0.45], grow: 1.1, colorA: 0xffffff, colorB: 0x5aa8ff, intensity: 5, gravity: 0, drag: 4, spin: 16, fade: 1, stagger: 0.1 }),
+    L({ sprite: SPRITE.spark, count: 12, speed: [3, 9], spread: 1, life: [0.08, 0.2], size: [0.03, 0.06], grow: 0.3, colorA: 0xf0f8ff, colorB: 0x2f6fff, intensity: 4, gravity: -4, drag: 5, stretch: 2, fade: 1.2 }),
+  ],
+  'cast.poison': [
+    L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.16, 0.2], size: [0.6, 0.8], grow: 1.5, colorA: 0xd8ff8a, colorB: 0x2f7a12, intensity: 2.4, gravity: 0, drag: 0, fade: 2.2 }),
+    L({ sprite: SPRITE.drip, count: 7, speed: [0.4, 1.4], spread: 1, radius: 0.2, life: [0.4, 0.7], size: [0.06, 0.11], grow: 0.8, colorA: 0xd2ff7a, colorB: 0x2c6a10, intensity: 1.8, gravity: -9, drag: 1.4, fade: 1.3 }),
+    L({ sprite: SPRITE.bubble, count: 5, speed: [0.8, 1.6], converge: true, radius: 0.5, life: [0.25, 0.4], size: [0.06, 0.12], grow: 0.6, colorA: 0xe6ff9a, colorB: 0x4a9a20, intensity: 1.8, gravity: 0, drag: 1.4, fade: 1.4 }),
+  ],
+  'cast.arcane': [
+    L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.14, 0.18], size: [0.7, 0.9], grow: 1.6, colorA: 0xf2d6ff, colorB: 0x8a3cff, intensity: 3.6, gravity: 0, drag: 0, fade: 2.4 }),
+    L({ sprite: SPRITE.rune, count: 4, speed: [0.9, 1.8], converge: true, radius: 0.6, life: [0.24, 0.36], size: [0.14, 0.24], grow: 0.5, colorA: 0xe8d0ff, colorB: 0x6a1fd0, intensity: 3, gravity: 0, drag: 1.2, spin: 3, fade: 1.4 }),
+    L({ sprite: SPRITE.star, count: 8, speed: [0.6, 2.4], spread: 1, life: [0.25, 0.5], size: [0.05, 0.1], grow: 0.4, colorA: 0xffffff, colorB: 0x9b4dff, intensity: 3.4, gravity: -1, drag: 3, turbulence: 0.5, fade: 1.4 }),
+  ],
+  'cast.bone': [
+    L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.12, 0.16], size: [0.55, 0.7], grow: 1.4, colorA: 0xfff6e4, colorB: 0x8a7c66, intensity: 2.2, gravity: 0, drag: 0, fade: 2.4 }),
+    L({ blend: 'alpha', sprite: SPRITE.splinter, count: 7, speed: [1.2, 2.4], converge: true, radius: 0.7, life: [0.22, 0.32], size: [0.1, 0.18], grow: 0.6, colorA: 0xf2ead8, colorB: 0xb0a48c, intensity: 1, gravity: 0, drag: 1.2, spin: 8, fade: 1.2, tintable: false }),
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 4, speed: [0.3, 1.2], spread: 1, life: [0.5, 0.9], size: [0.18, 0.3], grow: 2, colorA: 0xc8bea8, colorB: 0x6a6252, intensity: 1, gravity: -0.5, drag: 3, fade: 1.8, tintable: false }),
+  ],
+  'cast.physical': [
+    L({ sprite: SPRITE.spark, count: 8, speed: [2, 6], spread: 0.8, life: [0.1, 0.22], size: [0.03, 0.07], grow: 0.3, colorA: 0xfff3d0, colorB: 0xff9a3c, intensity: 2.4, gravity: -10, drag: 4, stretch: 1.4, fade: 1.2 }),
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 4, speed: [0.5, 1.5], spread: 1, upBias: 0.3, life: [0.4, 0.8], size: [0.15, 0.28], grow: 2, colorA: 0x8d8377, colorB: 0x4a443c, intensity: 1, gravity: -0.8, drag: 3, fade: 1.6, tintable: false }),
+  ],
+
+  // --- projectile wakes ------------------------------------------------------
+  // Emitted every ~0.4m of flight. Small counts: the trail ribbon does the
+  // continuous read, these give it texture.
+  'trail.fire': [
+    L({ sprite: SPRITE.wisp, count: 2, speed: [0.2, 0.8], spread: 1, upBias: 0.8, radius: 0.08, life: [0.16, 0.3], size: [0.18, 0.32], grow: 1.2, colorA: 0xffd880, colorB: 0xc02400, intensity: 2.6, gravity: 2, drag: 2, turbulence: 0.4, fade: 1.5 }),
+    L({ sprite: SPRITE.ember, count: 2, speed: [0.4, 1.6], spread: 1, upBias: 0.5, life: [0.4, 0.9], size: [0.03, 0.06], grow: 0.4, colorA: 0xfff0b8, colorB: 0xff3c00, intensity: 3, gravity: 1, drag: 1.4, turbulence: 0.5, fade: 1.1 }),
+    L({ blend: 'alpha', sprite: SPRITE.smoke, count: 1, speed: [0.1, 0.5], spread: 1, upBias: 0.8, life: [0.6, 1.1], size: [0.2, 0.34], grow: 2.4, colorA: 0x3c3733, colorB: 0x141212, intensity: 1, gravity: 0.6, drag: 1.6, turbulence: 0.4, fade: 2, tintable: false }),
+  ],
+  'trail.cold': [
+    L({ sprite: SPRITE.snow, count: 2, speed: [0.2, 0.9], spread: 1, life: [0.4, 0.8], size: [0.05, 0.1], grow: 0.6, colorA: 0xeaf9ff, colorB: 0x7cc0ff, intensity: 2, gravity: -1.4, drag: 2.2, turbulence: 0.4, spin: 2.2, fade: 1.5 }),
+    L({ sprite: SPRITE.hex, count: 1, speed: [0.2, 0.8], spread: 1, life: [0.3, 0.5], size: [0.06, 0.11], grow: 0.5, colorA: 0xffffff, colorB: 0x6ab8ff, intensity: 2.2, gravity: -3, drag: 2, spin: 3, fade: 1.5 }),
+    L({ blend: 'alpha', sprite: SPRITE.smoke, count: 1, speed: [0.1, 0.4], spread: 1, life: [0.5, 0.9], size: [0.16, 0.28], grow: 2, colorA: 0xd0ecf8, colorB: 0x8aa8b8, intensity: 1, gravity: -0.3, drag: 2, fade: 2, tintable: false }),
+  ],
+  'trail.lightning': [
+    L({ sprite: SPRITE.arc, count: 1, speed: [0.2, 1], spread: 1, radius: 0.12, life: [0.05, 0.1], size: [0.2, 0.34], grow: 1, colorA: 0xffffff, colorB: 0x5aa8ff, intensity: 5, gravity: 0, drag: 3, spin: 18, fade: 1 }),
+    L({ sprite: SPRITE.spark, count: 3, speed: [1.5, 5], spread: 1, life: [0.08, 0.18], size: [0.025, 0.05], grow: 0.3, colorA: 0xf0f8ff, colorB: 0x2f6fff, intensity: 4, gravity: -3, drag: 5, stretch: 2, fade: 1.2 }),
+  ],
+  'trail.poison': [
+    L({ sprite: SPRITE.drip, count: 1, speed: [0.1, 0.5], spread: 1, life: [0.4, 0.7], size: [0.05, 0.09], grow: 0.8, colorA: 0xd2ff7a, colorB: 0x2c6a10, intensity: 1.8, gravity: -12, drag: 0.8, fade: 1.3 }),
+    L({ sprite: SPRITE.bubble, count: 1, speed: [0.2, 0.6], spread: 1, life: [0.3, 0.6], size: [0.04, 0.08], grow: 0.8, colorA: 0xe6ff9a, colorB: 0x4a9a20, intensity: 1.6, gravity: 0.4, drag: 2, fade: 1.4 }),
+    L({ blend: 'alpha', sprite: SPRITE.smoke, count: 1, speed: [0.1, 0.4], spread: 1, upBias: 0.3, life: [0.6, 1.1], size: [0.18, 0.3], grow: 2.2, colorA: 0x6da03c, colorB: 0x22401a, intensity: 1, gravity: 0.2, drag: 1.8, turbulence: 0.3, fade: 2, tintable: false }),
+  ],
+  'trail.arcane': [
+    L({ sprite: SPRITE.star, count: 2, speed: [0.3, 1.2], spread: 1, life: [0.3, 0.6], size: [0.04, 0.09], grow: 0.4, colorA: 0xffffff, colorB: 0x9b4dff, intensity: 3.2, gravity: 0, drag: 2.4, turbulence: 0.6, fade: 1.4 }),
+    L({ sprite: SPRITE.rune, count: 1, speed: [0.1, 0.5], spread: 1, life: [0.35, 0.6], size: [0.09, 0.16], grow: 0.8, colorA: 0xe8d0ff, colorB: 0x6a1fd0, intensity: 2.6, gravity: 0.3, drag: 2, spin: 2, fade: 1.6 }),
+  ],
+  'trail.bone': [
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 2, speed: [0.1, 0.5], spread: 1, life: [0.4, 0.8], size: [0.1, 0.18], grow: 2, colorA: 0xd2c8b2, colorB: 0x7a705e, intensity: 1, gravity: -0.4, drag: 2.4, fade: 1.8, tintable: false }),
+    L({ blend: 'alpha', sprite: SPRITE.splinter, count: 1, speed: [0.5, 1.6], spread: 1, life: [0.3, 0.55], size: [0.05, 0.09], grow: 0.8, colorA: 0xf2ead8, colorB: 0x9a8e78, intensity: 1, gravity: -9, drag: 1.2, spin: 8, fade: 1.1, tintable: false }),
+  ],
+  'trail.physical': [
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 1, speed: [0.1, 0.4], spread: 1, life: [0.3, 0.6], size: [0.08, 0.14], grow: 1.8, colorA: 0x8d8377, colorB: 0x4a443c, intensity: 1, gravity: -0.4, drag: 2.4, fade: 1.8, tintable: false }),
+  ],
+
   // --- loot ----------------------------------------------------------------
   itemDrop: [
     L({ sprite: SPRITE.star, count: 14, speed: [1.6, 4.5], spread: 0.8, upBias: 0.5, life: [0.5, 1.1], size: [0.09, 0.2], grow: 0.4, colorA: 0xffffff, colorB: 0xffd070, intensity: 3.4, gravity: -6, drag: 2.4, fade: 1.5 }),
@@ -1048,12 +1326,6 @@ const EMITTERS: Record<string, Layer[]> = {
 EMITTERS['hit.blood'] = EMITTERS['blood']!;
 EMITTERS['hit.void'] = EMITTERS['void']!;
 EMITTERS['impact'] = EMITTERS['hit.physical']!;
-EMITTERS['cast.fire'] = EMITTERS['fire']!;
-EMITTERS['cast.cold'] = EMITTERS['frost']!;
-EMITTERS['cast.lightning'] = EMITTERS['shock']!;
-EMITTERS['cast.poison'] = EMITTERS['poison']!;
-EMITTERS['cast.arcane'] = EMITTERS['arcane']!;
-EMITTERS['cast.physical'] = EMITTERS['sparks']!;
 EMITTERS['death'] = EMITTERS['dissolve']!;
 EMITTERS['ash'] = EMITTERS['dust']!;
 
@@ -1619,13 +1891,16 @@ export class FXSystem {
         sz += rng.range(-scatter, scatter);
       }
 
+      // Converging layers start out on the shell along their direction and
+      // fly back through the centre.
+      const conv = layer.converge;
       pool.spawn({
-        x: ox + sx + rng.range(-rad, rad),
-        y: oy + rng.range(-rad, rad),
-        z: oz + sz + rng.range(-rad, rad),
-        vx: dx * sp,
-        vy: dy * sp,
-        vz: dz * sp,
+        x: ox + sx + (conv ? dx * rad : rng.range(-rad, rad)),
+        y: oy + (conv ? dy * rad : rng.range(-rad, rad)),
+        z: oz + sz + (conv ? dz * rad : rng.range(-rad, rad)),
+        vx: (conv ? -dx : dx) * sp,
+        vy: (conv ? -dy : dy) * sp,
+        vz: (conv ? -dz : dz) * sp,
         spawn: this.time + (layer.stagger > 0 ? rng.range(0, layer.stagger) : 0),
         life: rng.range(layer.life[0], layer.life[1]) * lifeMul,
         fadePow: layer.fade,
@@ -1880,6 +2155,21 @@ export class FXSystem {
 }
 
 /** Emitter ids available to `FXSystem.burst`. Exposed for tooling/debug UI. */
+/** The sprite sheet, built on first use. Exposed for tooling and checks. */
+export function spriteAtlasTexture(): THREE.Texture {
+  return buildSpriteAtlas();
+}
+
+/** How many cells the sprite sheet holds. */
+export const SPRITE_CELLS = ATLAS_GRID * ATLAS_ROWS;
+
+/** Every sprite index any emitter layer uses, for the static checks. */
+export function emitterSprites(): Array<{ id: string; sprite: number }> {
+  const out: Array<{ id: string; sprite: number }> = [];
+  for (const [id, layers] of Object.entries(EMITTERS)) for (const l of layers) out.push({ id, sprite: l.sprite });
+  return out;
+}
+
 export function emitterIds(): string[] {
   return Object.keys(EMITTERS).sort();
 }

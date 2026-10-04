@@ -17,6 +17,7 @@ import { Random, randomSeed, streamFor } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
 import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
+import { LootFX } from '../fx/LootFX';
 import { EffectSystem } from '../fx/Effects';
 import { Player } from '../entities/Player';
 import { CombatControls } from '../entities/Controls';
@@ -153,6 +154,8 @@ export class DungeonScene extends GameScene {
   private enemies: Enemy[] = [];
   private boss: Boss | null = null;
   private loot: GroundLoot[] = [];
+  /** Drop arcs, landings, pickups and the gold magnet. */
+  private lootFx: LootFX;
   private rng!: Random;
 
   private keyDir = new THREE.Vector3();
@@ -204,6 +207,7 @@ export class DungeonScene extends GameScene {
     this.effects.setRig(this.rig);
     this.effects.setCamera(this.camera);
     this.skills = new SkillRunner(this.effects);
+    this.lootFx = new LootFX(this.effects);
   }
 
   async enter(payload?: unknown): Promise<void> {
@@ -353,6 +357,7 @@ export class DungeonScene extends GameScene {
   private loadLevel(index: number): void {
     // Clear the previous level.
     this.skills.feel.clear();
+    this.lootFx.clear();
     this.rig.clearTimeEffects();
     for (const e of this.enemies) {
       e.root.removeFromParent();
@@ -1407,7 +1412,11 @@ export class DungeonScene extends GameScene {
     // and draw nothing until Shift is held.
     const hidden = !passesFilter(item, lootFilterOf(save.account), this.player?.character.classId);
     if (hidden) model.visible = false;
-    this.loot.push({ item, gold: 0, root: model, pos, bornAt: this.runTime, hidden });
+    const entry = { item, gold: 0, root: model, pos, bornAt: this.runTime, hidden };
+    this.loot.push(entry);
+    // Thrown out of the body rather than appearing on the floor. A filtered
+    // drop just lies there quietly.
+    if (!hidden) this.lootFx.launch(entry, this.tmpDir.set(at.x, 0.9, at.z), item.rarity);
     if (!hidden) events.emit('loot:dropped', { item, x: pos.x, z: pos.z });
   }
 
@@ -1432,7 +1441,9 @@ export class DungeonScene extends GameScene {
     }
     group.position.copy(pos);
     this.scene.add(group);
-    this.loot.push({ item: null, gold: amount, root: group, pos, bornAt: this.runTime });
+    const entry = { item: null, gold: amount, root: group, pos, bornAt: this.runTime };
+    this.loot.push(entry);
+    this.lootFx.launch(entry, this.tmpDir.set(at.x, 0.8, at.z), 'gold');
   }
 
   /** Picks up a specific ground item, used by the label click handler. */
@@ -1449,21 +1460,27 @@ export class DungeonScene extends GameScene {
       return false;
     }
     this.loot.splice(i, 1);
-    l.root.removeFromParent();
-    disposeObject(l.root);
     events.emit('loot:pickedUp', { item: l.item });
-    this.fx.burst('pickup', l.pos.x, 0.5, l.pos.z, { count: 14 });
-    audio.play('pickup');
+    // It flies into the hero rather than blinking out.
+    this.lootFx.collect(l.root, this.player.root, l.item.rarity, () => {
+      l.root.removeFromParent();
+      disposeObject(l.root);
+    });
     return true;
   }
 
   private updateLoot(dt: number, elapsed: number, input: Engine['input']): void {
     const pickupRadius = 1.5;
+    this.lootFx.magnet(this.loot, this.player.position, dt);
+    this.lootFx.update(dt);
     for (let i = this.loot.length - 1; i >= 0; i--) {
       const l = this.loot[i]!;
       const age = this.runTime - l.bornAt;
-      // Drop-in arc, then a slow idle bob and spin.
-      if (age < 0.45) {
+      // Drop-in arc, then a slow idle bob and spin. The loot layer flies drops
+      // out of the body and owns them until they have landed.
+      if (this.lootFx.owns(l.root)) {
+        /* in flight, or a gold pile lying flat */
+      } else if (age < 0.45) {
         const t = age / 0.45;
         l.root.position.y = Math.sin(t * Math.PI) * 0.9;
       } else {
@@ -1490,10 +1507,11 @@ export class DungeonScene extends GameScene {
         this.player.character.gold += l.gold;
         events.emit('loot:gold', { amount: l.gold });
         this.loot.splice(i, 1);
-        l.root.removeFromParent();
-        disposeObject(l.root);
-        this.fx.burst('pickup', l.pos.x, 0.4, l.pos.z, { count: 10, color: 0xffc63a });
-        audio.play('gold');
+        const root = l.root;
+        this.lootFx.collect(root, this.player.root, 'gold', () => {
+          root.removeFromParent();
+          disposeObject(root);
+        });
       }
     }
   }

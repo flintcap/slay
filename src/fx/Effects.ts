@@ -24,7 +24,7 @@ import { events } from '../core/Events';
 import { Random } from '../core/RNG';
 import { FXSystem } from './Particles';
 import { DecalSystem } from './Decals';
-import { TrailSystem, Trail } from './Trails';
+import { TrailSystem, Trail, TRAIL_PRESETS } from './Trails';
 import type { CameraRig } from './CameraRig';
 import { emissiveMaterial } from '../art/Materials';
 import { radialGlowTexture } from '../art/Textures';
@@ -41,24 +41,48 @@ export interface ElementLook {
   /** Trailing / cooling colour. */
   tail: number;
   light: number;
+  /** The mark it leaves on the floor, which lingers. */
   decal: string;
+  /**
+   * A glowing layer laid over the mark that dies first: fire ground cooling to
+   * char, rime losing its shine, a lightning scar going dark.
+   */
+  glowDecal?: string;
+  /** Ribbon trail preset behind its projectiles. */
   trail: string;
+  /** Impact burst. */
   emitter: string;
+  /** Flare at the caster's hand as the spell leaves it. */
+  castEmitter: string;
+  /** Particles a projectile sheds as it flies. */
+  shedEmitter: string;
   sfxHit: string;
   sfxCast: string;
 }
 
-export const ELEMENTS: Record<DamageType, ElementLook> = {
-  physical: { core: 0xfff4dc, body: 0xffc98a, tail: 0x8a7a68, light: 0xffd0a0, decal: 'dust', trail: 'sword', emitter: 'hit.physical', sfxHit: 'hit.physical', sfxCast: 'cast.physical' },
-  fire: { core: 0xfff0b0, body: 0xff7a18, tail: 0x8c1a00, light: 0xff8a30, decal: 'scorch', trail: 'fire', emitter: 'hit.fire', sfxHit: 'hit.fire', sfxCast: 'cast.fire' },
-  cold: { core: 0xffffff, body: 0x66c0ff, tail: 0x14406e, light: 0x80c8ff, decal: 'ice', trail: 'frost', emitter: 'hit.cold', sfxHit: 'hit.cold', sfxCast: 'cast.cold' },
-  lightning: { core: 0xffffff, body: 0x76b0ff, tail: 0x1a3ea8, light: 0x90c0ff, decal: 'lightning', trail: 'lightning', emitter: 'hit.lightning', sfxHit: 'hit.lightning', sfxCast: 'cast.lightning' },
-  poison: { core: 0xe6ff9a, body: 0x86dd2c, tail: 0x1f5a12, light: 0x9ae83c, decal: 'poison', trail: 'poison', emitter: 'hit.poison', sfxHit: 'hit.poison', sfxCast: 'cast.poison' },
-  arcane: { core: 0xf6e2ff, body: 0xa855ff, tail: 0x2c0a5e, light: 0xb070ff, decal: 'arcane', trail: 'arcane', emitter: 'hit.arcane', sfxHit: 'hit.arcane', sfxCast: 'cast.arcane' },
+/**
+ * What a spell looks like is its *school*, which is nearly always its damage
+ * type. The one exception is bone: the Revenant's bone magic deals physical
+ * damage, and drawing it as a beige sword-spark made the whole tree read as a
+ * stick-throwing warrior. Damage still resolves on the type; only the picture
+ * and the sound follow the school.
+ */
+export type School = DamageType | 'bone';
+
+export const SCHOOLS: readonly School[] = ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane', 'bone'];
+
+export const ELEMENTS: Record<School, ElementLook> = {
+  physical: { core: 0xfff4dc, body: 0xffc98a, tail: 0x8a7a68, light: 0xffd0a0, decal: 'dust', trail: 'sword', emitter: 'hit.physical', castEmitter: 'cast.physical', shedEmitter: 'trail.physical', sfxHit: 'hit.physical', sfxCast: 'cast.physical' },
+  fire: { core: 0xfff0b0, body: 0xff7a18, tail: 0x8c1a00, light: 0xff8a30, decal: 'scorch', glowDecal: 'cinders', trail: 'fire', emitter: 'hit.fire', castEmitter: 'cast.fire', shedEmitter: 'trail.fire', sfxHit: 'hit.fire', sfxCast: 'cast.fire' },
+  cold: { core: 0xffffff, body: 0x66c0ff, tail: 0x14406e, light: 0x80c8ff, decal: 'rime', glowDecal: 'rimeGlow', trail: 'frost', emitter: 'hit.cold', castEmitter: 'cast.cold', shedEmitter: 'trail.cold', sfxHit: 'hit.cold', sfxCast: 'cast.cold' },
+  lightning: { core: 0xffffff, body: 0x76b0ff, tail: 0x1a3ea8, light: 0x90c0ff, decal: 'fork', glowDecal: 'forkGlow', trail: 'lightning', emitter: 'hit.lightning', castEmitter: 'cast.lightning', shedEmitter: 'trail.lightning', sfxHit: 'hit.lightning', sfxCast: 'cast.lightning' },
+  poison: { core: 0xe6ff9a, body: 0x86dd2c, tail: 0x1f5a12, light: 0x9ae83c, decal: 'acid', glowDecal: 'acidGlow', trail: 'poison', emitter: 'hit.poison', castEmitter: 'cast.poison', shedEmitter: 'trail.poison', sfxHit: 'hit.poison', sfxCast: 'cast.poison' },
+  arcane: { core: 0xf6e2ff, body: 0xa855ff, tail: 0x2c0a5e, light: 0xb070ff, decal: 'sigil', trail: 'arcane', emitter: 'hit.arcane', castEmitter: 'cast.arcane', shedEmitter: 'trail.arcane', sfxHit: 'hit.arcane', sfxCast: 'cast.arcane' },
+  bone: { core: 0xfffaf0, body: 0xe6dcc4, tail: 0x5e5546, light: 0xffeed6, decal: 'bone', trail: 'bone', emitter: 'hit.bone', castEmitter: 'cast.bone', shedEmitter: 'trail.bone', sfxHit: 'hit.bone', sfxCast: 'cast.bone' },
 };
 
-function look(el: DamageType | undefined): ElementLook {
-  return ELEMENTS[el ?? 'physical'];
+function look(el: School | undefined): ElementLook {
+  return ELEMENTS[el ?? 'physical'] ?? ELEMENTS.physical;
 }
 
 // ---------------------------------------------------------------------------
@@ -984,7 +1008,7 @@ export interface ImpactOpts {
 }
 
 export interface ProjectileOpts {
-  element?: DamageType;
+  element?: School;
   color?: number;
   speed?: number;
   /** Radius of the glowing core. */
@@ -1010,6 +1034,13 @@ export interface ProjectileOpts {
    * magic arrow that should still look like an arrow.
    */
   shape?: 'arrow' | 'bolt';
+  /**
+   * A skill's own particle signature, shed alongside the school's trail so
+   * two spells of one element still fly differently.
+   */
+  shed?: string;
+  /** false to skip the flare at the caster's hand. */
+  flare?: boolean;
 }
 
 export interface BeamOpts {
@@ -1017,7 +1048,7 @@ export interface BeamOpts {
   emitter?: string;
   /** Multiplier on particle counts. */
   density?: number;
-  element?: DamageType;
+  element?: School;
   color?: number;
   width?: number;
   duration?: number;
@@ -1031,20 +1062,22 @@ export interface NovaOpts {
   emitter?: string;
   /** Multiplier on particle counts. */
   density?: number;
-  element?: DamageType;
+  element?: School;
   color?: number;
   duration?: number;
   /** Ring thickness as a fraction of the radius. */
   thickness?: number;
   particles?: boolean;
   shake?: number;
+  /** Leave the school's mark at the centre (cast novas, not decorative rings). */
+  mark?: boolean;
 }
 
 export interface CastContext {
   origin: THREE.Vector3;
   target?: THREE.Vector3;
   dir?: THREE.Vector3;
-  element?: DamageType;
+  element?: School;
   color?: number;
   radius?: number;
   duration?: number;
@@ -1083,6 +1116,10 @@ export class EffectSystem {
   private geoPlane: THREE.PlaneGeometry;
   private geoCone: THREE.ConeGeometry;
   private geoIcosa: THREE.IcosahedronGeometry;
+  /** An ice shard: an octahedron stretched along +Z at draw time. */
+  private geoShard: THREE.OctahedronGeometry;
+  /** A spike of bone, pointing down +Z. */
+  private geoSpike: THREE.ConeGeometry;
 
   constructor(
     scene: THREE.Scene,
@@ -1107,6 +1144,9 @@ export class EffectSystem {
     this.geoPlane = new THREE.PlaneGeometry(1, 1, 1, 1);
     this.geoCone = new THREE.ConeGeometry(1, 1, 22, 1, true);
     this.geoIcosa = new THREE.IcosahedronGeometry(1, 1);
+    this.geoShard = new THREE.OctahedronGeometry(1, 0);
+    this.geoSpike = new THREE.ConeGeometry(1, 1, 7);
+    this.geoSpike.rotateX(Math.PI * 0.5);
   }
 
   /** Hand the rig over so heavy effects can drive hit-stop and punch-in. */
@@ -1145,13 +1185,30 @@ export class EffectSystem {
     else events.emit('shake', { amount, duration: 0.3 });
   }
 
+  /**
+   * The cast beat: a flare at the caster's hand as the spell leaves it.
+   *
+   * Spells used to start in mid-air — a projectile simply appeared and flew.
+   * The flare is what connects the effect to the body that made it: a short
+   * gathering burst in the school's colours and a light that touches the
+   * caster's own armour.
+   */
+  castFlare(school: School, x: number, y: number, z: number, opts: { scale?: number; dir?: THREE.Vector3; light?: number } = {}): void {
+    const el = look(school);
+    const scale = opts.scale ?? 1;
+    this.fx.burst(el.castEmitter, x, y, z, { scale, dir: opts.dir });
+    if (opts.light !== 0) {
+      this.flash(x, y + 0.1, z, el.light, 6 * scale * (opts.light ?? 1), 5 + 2 * scale, 0.13);
+    }
+  }
+
   // -- the one clean call site ----------------------------------------------
 
   /**
    * The full impact recipe: particles, light flash, emissive pop, decal,
    * screen trauma, hit-stop and sound. Call this and nothing else.
    */
-  impact(element: DamageType, x: number, y: number, z: number, opts: ImpactOpts = {}): void {
+  impact(element: School, x: number, y: number, z: number, opts: ImpactOpts = {}): void {
     const el = look(element);
     const scale = opts.scale ?? 1;
     const color = opts.color ?? el.body;
@@ -1177,7 +1234,14 @@ export class EffectSystem {
     }
 
     if (opts.decal !== false && scale > 0.55) {
-      this.decals.add(el.decal, x, z, 0.5 * scale * this.rng.range(0.85, 1.2));
+      const r = 0.5 * scale * this.rng.range(0.85, 1.2);
+      const rot = this.rng.range(0, Math.PI * 2);
+      // A big physical blow gouges the floor; a small one just scuffs it.
+      const mark = element === 'physical' && scale >= 1.2 ? 'crater' : el.decal;
+      this.decals.add(mark, x, z, r, rot);
+      // The hot layer sits exactly on the cold one so it reads as the same
+      // mark cooling, not as two stains.
+      if (el.glowDecal) this.decals.add(el.glowDecal, x, z, r, rot);
     }
 
     const shake = opts.shake ?? (opts.crit ? 0.24 : 0.12) * scale;
@@ -1201,7 +1265,7 @@ export class EffectSystem {
   }
 
   /** A kill: gore, a decal pool, a light pop, a slow-motion beat for elites. */
-  kill(x: number, y: number, z: number, opts: { scale?: number; element?: DamageType; heavy?: boolean; color?: number } = {}): void {
+  kill(x: number, y: number, z: number, opts: { scale?: number; element?: School; heavy?: boolean; color?: number } = {}): void {
     const scale = opts.scale ?? 1;
     const el = look(opts.element);
     this.fx.burst('gib', x, y + 0.3, z, { scale });
@@ -1234,15 +1298,36 @@ export class EffectSystem {
     // beige, which is why arrows read as white blobs rather than as arrows.
     const isArrow = opts.shape === 'arrow' || (opts.shape !== 'bolt' && element === 'physical');
 
+    // What the thing in flight is made of. Each school has its own body: frost
+    // is a spinning shard, bone a spike, poison a wobbling glob, lightning a
+    // flickering spark, fire and arcane a burning mote.
+    type Body = 'arrow' | 'shard' | 'spike' | 'glob' | 'mote';
+    const body: Body = isArrow
+      ? 'arrow'
+      : element === 'cold' ? 'shard'
+      : element === 'bone' ? 'spike'
+      : element === 'poison' ? 'glob'
+      : 'mote';
     const group = new THREE.Group();
     let core: THREE.Object3D;
-    if (isArrow) {
+    if (body === 'arrow') {
       core = arrowMesh(color);
       core.scale.setScalar(Math.max(0.7, size / 0.24));
+    } else if (body === 'shard') {
+      core = new THREE.Mesh(this.geoShard, emissiveMaterial(0xd8f2ff, 2.6));
+      core.scale.set(size * 0.5, size * 0.5, size * 2.1);
+    } else if (body === 'spike') {
+      // Bone, not light: a low glow so it reads as a thing, not a flare.
+      core = new THREE.Mesh(this.geoSpike, emissiveMaterial(0xefe4cc, 0.55));
+      core.scale.set(size * 0.42, size * 0.42, size * 2.6);
+    } else if (body === 'glob') {
+      core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.body, 2.4));
+      core.scale.setScalar(size * 1.05);
     } else {
       core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.core, 5));
       core.scale.setScalar(size);
     }
+    const oriented = body === 'arrow' || body === 'shard' || body === 'spike';
     group.add(core);
 
     // A soft additive halo sells the light without needing a second light.
@@ -1268,11 +1353,24 @@ export class EffectSystem {
     group.position.copy(from);
     this.scene.add(group);
 
-    const trailName = opts.trail === null ? null : (opts.trail ?? el.trail);
+    // Only a real ribbon preset may name the trail. Skills used to hand their
+    // particle id here ('sparks', 'embers'), which is not a ribbon, so every
+    // such shot fell back to the sword's swept arc and dragged a white-blue
+    // smear behind a fireball.
+    const wanted = opts.trail === null ? null : (opts.trail ?? el.trail);
+    const trailName = wanted && TRAIL_PRESETS[wanted] ? wanted : wanted ? el.trail : null;
     const trail: Trail | null = trailName ? this.trails.spawn(trailName, { width: size * 0.85 }) : null;
-    if (trail) trail.setColors(el.core, el.tail);
+    if (trail && !isArrow) trail.setColors(el.core, el.tail);
 
     this.sfx(el.sfxCast, from.x, from.z);
+    if (opts.flare !== false && !isArrow) {
+      _v1.set(to.x - from.x, 0, to.z - from.z).normalize();
+      this.castFlare(element, from.x, from.y, from.z, { scale: Math.max(0.6, Math.min(1.6, size / 0.3)), dir: _v1 });
+    }
+    const shedStep = 0.42;
+    let shedAcc = shedStep;
+    let shedCount = 0;
+    const sigShed = opts.shed && opts.shed !== el.shedEmitter ? opts.shed : null;
 
     const self = this;
     const start = from.clone();
@@ -1316,30 +1414,49 @@ export class EffectSystem {
           start.y + (dest.y - start.y) * t + (arc > 0 ? Math.sin(t * Math.PI) * arc : 0),
           start.z + (dest.z - start.z) * t,
         );
-        if (isArrow) {
+        if (oriented) {
           // Nose into the flight path, including the drop at the end of a lob.
           aim.set(dest.x - start.x, dest.y - start.y, dest.z - start.z).normalize();
           if (arc > 0) aim.y += Math.cos(t * Math.PI) * arc * Math.PI / Math.max(1, totalDist);
           core.lookAt(pos.x + aim.x, pos.y + aim.y, pos.z + aim.z);
+          // Shards tumble slowly about their length; bone spikes spin fast.
+          if (body === 'shard') core.rotateZ(life * 4.2);
+          else if (body === 'spike') core.rotateZ(life * 14);
+        } else if (body === 'glob') {
+          // A blob of liquid wobbles as it flies.
+          const w = Math.sin(life * 19) * 0.16;
+          core.scale.set(size * (1.05 + w), size * (1.05 - w), size * (1.05 + w * 0.5));
         } else {
           if (opts.spin) core.rotation.y += opts.spin * dt;
           core.rotation.x += dt * 3.1;
+          // Lightning cannot hold still; fire breathes.
+          const f = element === 'lightning' ? self.rng.range(0.65, 1.4) : 0.92 + Math.sin(life * 31) * 0.08;
+          core.scale.setScalar(size * f);
         }
 
         if (trail) trail.pushPoint(pos.x, pos.y, pos.z);
 
         // A dim travelling light: cheap, and it makes the projectile feel like
         // it is actually made of fire rather than painted on. An arrow is a
-        // stick, not a flare, so it does not get one.
-        if (!isArrow && self.quality.fxScale >= 0.9 && self.rng.chance(0.5)) {
+        // stick, not a flare, and bone is bone, so neither gets one.
+        if (body !== 'arrow' && body !== 'spike' && self.quality.fxScale >= 0.9 && self.rng.chance(0.35)) {
           self.flash(pos.x, pos.y, pos.z, el.light, 2.2, 5, 0.07);
         }
+        // Shed by distance, not by frame, so a shot leaves the same wake at
+        // 30fps as at 144.
         if (!isArrow) {
-          self.fx.burst(el.emitter, pos.x, pos.y, pos.z, {
-            count: 1,
-            scale: 0.35 * (opts.scale ?? 1),
-            color: opts.color,
-          });
+          shedAcc += speed * dt;
+          while (shedAcc >= shedStep) {
+            shedAcc -= shedStep;
+            shedCount++;
+            self.fx.burst(el.shedEmitter, pos.x, pos.y, pos.z, {
+              scale: 0.75 * (opts.scale ?? 1),
+              color: opts.color,
+            });
+            if (sigShed && shedCount % 2 === 0) {
+              self.fx.burst(sigShed, pos.x, pos.y, pos.z, { count: 2, scale: 0.5 * (opts.scale ?? 1), color: opts.color });
+            }
+          }
         }
 
         if (t >= 1) {
@@ -1373,7 +1490,7 @@ export class EffectSystem {
   }
 
   /** A meteor: a lobbed projectile from high above with a heavy impact. */
-  meteor(x: number, z: number, opts: { height?: number; delay?: number; radius?: number; color?: number; element?: DamageType; onHit?: (p: THREE.Vector3) => void ; emitter?: string; density?: number } = {}): EffectHandle {
+  meteor(x: number, z: number, opts: { height?: number; delay?: number; radius?: number; color?: number; element?: School; onHit?: (p: THREE.Vector3) => void ; emitter?: string; density?: number } = {}): EffectHandle {
     const element = opts.element ?? 'fire';
     const el = look(element);
     const height = opts.height ?? 22;
@@ -1385,6 +1502,23 @@ export class EffectSystem {
     const tg = this.decals.telegraph('circle', x, z, radius, 0, opts.delay ?? 1.1, opts.color ?? el.body);
     const self = this;
 
+    // Not everything that falls from the sky is a rock. A lightning strike is
+    // a bolt, and a volley called down is a rain of arrows; drawing both as a
+    // fireball was the single most wrong-looking spell in the game.
+    if (element === 'lightning') {
+      return this.delay(opts.delay ?? 1.1, () => {
+        tg.cancel();
+        self.skyBolt(x, z, { radius, color: opts.color });
+        opts.onHit?.(to);
+      });
+    }
+    if (element === 'physical') {
+      return this.delay(Math.max(0.15, (opts.delay ?? 1.1) * 0.6), () => {
+        tg.cancel();
+        self.arrowRain(x, z, radius, () => opts.onHit?.(to));
+      });
+    }
+
     return this.delay(opts.delay ?? 1.1, () => {
       tg.cancel();
       self.projectile(from, to, {
@@ -1392,8 +1526,9 @@ export class EffectSystem {
         color: opts.color,
         speed: 42,
         size: 0.55,
-        trail: 'fire',
+        trail: el.trail,
         impact: false,
+        flare: false,
         onHit: (p) => {
           self.explosion(p.x, p.y, p.z, { radius, element, color: opts.color });
           opts.onHit?.(p);
@@ -1403,18 +1538,70 @@ export class EffectSystem {
     });
   }
 
+  /**
+   * A bolt from the sky: a jagged arc from far overhead to the ground, a white
+   * flash that lights the room, a scorched fork left behind.
+   */
+  skyBolt(x: number, z: number, opts: { radius?: number; color?: number } = {}): void {
+    const r = opts.radius ?? 2.6;
+    const top = new THREE.Vector3(x + this.rng.range(-1.6, 1.6), 22, z + this.rng.range(-1.6, 1.6));
+    const mid = new THREE.Vector3(x + this.rng.range(-0.9, 0.9), 9, z + this.rng.range(-0.9, 0.9));
+    const ground = new THREE.Vector3(x, 0.15, z);
+    this.chainLightning([top, mid, ground], { color: opts.color, width: 0.42, duration: 0.3, jumpDelay: 0.012, silent: true });
+    this.flash(x, 3, z, 0xdfeaff, 46, 22, 0.24);
+    this.fx.burst('hit.lightning', x, 0.4, z, { scale: 1.6 });
+    this.fx.burst('shock', x, 0.3, z, { scale: r / 2.4 });
+    this.decals.add('fork', x, z, r * 0.8, this.rng.range(0, Math.PI * 2));
+    this.decals.add('forkGlow', x, z, r * 0.8, this.rng.range(0, Math.PI * 2));
+    this.nova(x, z, r, { element: 'lightning', color: opts.color, duration: 0.3, particles: false });
+    this.trauma(0.32);
+    this.sfx('spell.thunder', x, z);
+  }
+
+  /** A volley called down: arrows fall across the circle over a beat. */
+  arrowRain(x: number, z: number, radius: number, onLand?: () => void): void {
+    const n = Math.round(9 * Math.max(0.5, Math.min(1.4, this.quality.fxScale)));
+    let landed = false;
+    for (let i = 0; i < n; i++) {
+      const a = this.rng.range(0, Math.PI * 2);
+      const d = Math.sqrt(this.rng.next()) * radius;
+      const tx = x + Math.cos(a) * d;
+      const tz = z + Math.sin(a) * d;
+      const from = new THREE.Vector3(tx - 3.5, 15 + this.rng.range(0, 3), tz - 3.5);
+      const to = new THREE.Vector3(tx, 0.05, tz);
+      this.delay(i * 0.035, () => {
+        this.projectile(from, to, {
+          element: 'physical', speed: 46, size: 0.3, impact: false, flare: false,
+          onHit: (p) => {
+            this.fx.burst('dust', p.x, 0.1, p.z, { count: 5, scale: 0.6 });
+            this.decals.add('dust', p.x, p.z, 0.3);
+            if (!landed) {
+              landed = true;
+              onLand?.();
+            }
+          },
+        });
+      });
+    }
+    this.sfx('spell.volley', x, z);
+  }
+
   // -- area effects ---------------------------------------------------------
 
   /** A ground explosion: fireball, shockwave ring, scorch, light, big shake. */
-  explosion(x: number, y: number, z: number, opts: { radius?: number; element?: DamageType; color?: number; shake?: number } = {}): void {
+  explosion(x: number, y: number, z: number, opts: { radius?: number; element?: School; color?: number; shake?: number } = {}): void {
     const el = look(opts.element ?? 'fire');
     const r = opts.radius ?? 3;
     const scale = r / 3;
 
     this.fx.burst('explosion', x, y + 0.2, z, { scale, color: opts.color });
     this.flash(x, y + 0.6, z, el.light, 34 * scale, 14 * scale + 4, 0.34);
-    this.decals.add(el.decal, x, z, r * 0.75);
-    this.decals.add('burn', x, z, r * 0.55, undefined, 3.5);
+    const rot = this.rng.range(0, Math.PI * 2);
+    this.decals.add(el.decal, x, z, r * 0.75, rot);
+    // Only fire leaves the floor burning. A frost or poison blast used to
+    // leave the same orange embers as a fireball.
+    if (el.glowDecal) this.decals.add(el.glowDecal, x, z, r * 0.7, rot);
+    if (opts.element === undefined || opts.element === 'fire') this.decals.add('burn', x, z, r * 0.55, undefined, 3.5);
     this.nova(x, z, r, { element: opts.element ?? 'fire', color: opts.color, duration: 0.45, particles: false });
     this.trauma(opts.shake ?? Math.min(0.75, 0.32 * scale));
     if (this.rig) this.rig.hitStop(0.055, 0.06);
@@ -1488,6 +1675,14 @@ export class EffectSystem {
     });
 
     if (opts.shake) this.trauma(opts.shake);
+    if (opts.mark) {
+      // The burst at the caster's feet and the scar it leaves.
+      this.fx.burst(el.castEmitter, x, 0.4, z, { scale: Math.min(2, radius / 3) });
+      this.flash(x, 1.2, z, el.light, 14 * Math.min(1.6, radius / 4), radius * 2.4, 0.22);
+      const rot = this.rng.range(0, Math.PI * 2);
+      this.decals.add(el.decal, x, z, radius * 0.42, rot);
+      if (el.glowDecal) this.decals.add(el.glowDecal, x, z, radius * 0.5, rot);
+    }
     return handle;
   }
 
@@ -1495,7 +1690,7 @@ export class EffectSystem {
    * Ground slam: telegraph, then a heavy landing with concentric shockwaves,
    * dust, radial cracks, a hard camera hit and a bass thump.
    */
-  slam(x: number, z: number, radius: number, opts: { windup?: number; element?: DamageType; color?: number; emitter?: string; density?: number; onFire?: () => void } = {}): EffectHandle {
+  slam(x: number, z: number, radius: number, opts: { windup?: number; element?: School; color?: number; emitter?: string; density?: number; onFire?: () => void } = {}): EffectHandle {
     const el = look(opts.element ?? 'physical');
     const windup = opts.windup ?? 0.9;
     const tg = this.decals.telegraph('circle', x, z, radius, 0, windup, opts.color ?? 0xff5020);
@@ -1535,7 +1730,7 @@ export class EffectSystem {
   }
 
   /** A cone blast — dragon breath, frost cone, shout. */
-  cone(origin: THREE.Vector3, direction: THREE.Vector3, halfAngle: number, range: number, opts: { element?: DamageType; color?: number; duration?: number; emitter?: string; density?: number } = {}): EffectHandle {
+  cone(origin: THREE.Vector3, direction: THREE.Vector3, halfAngle: number, range: number, opts: { element?: School; color?: number; duration?: number; emitter?: string; density?: number } = {}): EffectHandle {
     const el = look(opts.element);
     _c1.setHex(opts.color ?? el.body);
     _c2.setHex(el.core);
@@ -1770,7 +1965,7 @@ export class EffectSystem {
    * Chain lightning. `points` is the jump order, starting at the caster. Each
    * link is a procedurally jagged arc that re-randomises 45 times a second.
    */
-  chainLightning(points: THREE.Vector3[], opts: { color?: number; duration?: number; jumpDelay?: number; width?: number } = {}): EffectHandle {
+  chainLightning(points: THREE.Vector3[], opts: { color?: number; duration?: number; jumpDelay?: number; width?: number; silent?: boolean } = {}): EffectHandle {
     if (points.length < 2) return DEAD_HANDLE;
     const el = look('lightning');
     _c1.setHex(opts.color ?? el.body).multiplyScalar(1.2);
@@ -1799,7 +1994,7 @@ export class EffectSystem {
       get done(): boolean { return finished; },
     };
 
-    this.sfx('spell.chainLightning', points[0]!.x, points[0]!.z);
+    if (!opts.silent) this.sfx('spell.chainLightning', points[0]!.x, points[0]!.z);
 
     this.live.push({
       handle,
@@ -1835,7 +2030,7 @@ export class EffectSystem {
   }
 
   /** A persistent tether (leash, drain, summon link) between two live points. */
-  tether(getFrom: () => THREE.Vector3, getTo: () => THREE.Vector3, opts: { color?: number; element?: DamageType; width?: number; jitter?: number } = {}): EffectHandle {
+  tether(getFrom: () => THREE.Vector3, getTo: () => THREE.Vector3, opts: { color?: number; element?: School; width?: number; jitter?: number } = {}): EffectHandle {
     const el = look(opts.element ?? 'arcane');
     _c1.setHex(opts.color ?? el.body);
     _c2.setHex(el.core);
@@ -1877,7 +2072,7 @@ export class EffectSystem {
   // -- persistent world effects ---------------------------------------------
 
   /** A whirlwind vortex that follows an object. */
-  whirlwind(follow: THREE.Object3D, opts: { radius?: number; height?: number; color?: number; element?: DamageType; duration?: number } = {}): EffectHandle {
+  whirlwind(follow: THREE.Object3D, opts: { radius?: number; height?: number; color?: number; element?: School; duration?: number } = {}): EffectHandle {
     const el = look(opts.element ?? 'physical');
     _c1.setHex(opts.color ?? el.body);
     const mat = vortexMaterial(_c1);
@@ -1992,7 +2187,7 @@ export class EffectSystem {
   }
 
   /** A persistent aura around an entity — buffs, elite auras, boss phases. */
-  aura(follow: THREE.Object3D, opts: { radius?: number; height?: number; color?: number; element?: DamageType; groundRing?: boolean } = {}): EffectHandle {
+  aura(follow: THREE.Object3D, opts: { radius?: number; height?: number; color?: number; element?: School; groundRing?: boolean } = {}): EffectHandle {
     const el = look(opts.element);
     const color = opts.color ?? el.body;
     _c1.setHex(color);
@@ -2427,6 +2622,8 @@ export class EffectSystem {
     this.geoPlane.dispose();
     this.geoCone.dispose();
     this.geoIcosa.dispose();
+    this.geoShard.dispose();
+    this.geoSpike.dispose();
     // Pooled programs outlive individual effects but not the run.
     disposeEffectMaterials();
     void this.elapsed;

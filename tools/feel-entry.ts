@@ -10,6 +10,7 @@ import { CameraRig } from '../src/fx/CameraRig';
 import { HitFlash } from '../src/fx/HitFlash';
 import { CombatFeel, FEEL_TABLES, feelEmitterIds, feelSoundIds, type HitKind } from '../src/fx/CombatFeel';
 import { resolvesSound } from '../src/audio/Audio';
+import { LootFX, lootSoundIds } from '../src/fx/LootFX';
 import { emitterIds } from '../src/fx/Particles';
 import type { EffectSystem } from '../src/fx/Effects';
 import type { DamagePacket } from '../src/types';
@@ -178,6 +179,68 @@ const check = (ok: boolean, msg: string): void => {
   const valid = new Set(emitterIds());
   const missing = feelEmitterIds().filter((e) => !valid.has(e));
   check(missing.length === 0, `feel asks for emitters that do not exist: ${missing.join(', ')}`);
+}
+
+// --- 5. loot: arcs, landings, jackpots, magnet, pickup ----------------------
+{
+  let beams = 0;
+  let punches = 0;
+  const stub = {
+    cameraRig: { punchIn: () => { punches++; } },
+    fx: { burst: () => {} },
+    decals: { add: () => {} },
+    flash: () => {},
+    beam: () => { beams++; },
+    nova: () => {},
+    chance: () => true,
+  } as unknown as EffectSystem;
+  const loot = new LootFX(stub);
+  const mkDrop = (x: number, z: number) => {
+    const root = new THREE.Group();
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    beam.name = 'beam';
+    const spin = new THREE.Group();
+    spin.name = 'spin';
+    root.add(beam, spin);
+    return { root, pos: new THREE.Vector3(x, 0, z), gold: 0, beam };
+  };
+  const from = new THREE.Vector3(0, 0, 0);
+  const a = mkDrop(1.2, 0.4);
+  const b = mkDrop(-0.8, 1.0);
+  loot.launch(a, from, 'magic');
+  loot.launch(b, from, 'unique');
+  check(loot.owns(a.root) && loot.owns(b.root), 'a launched drop is not owned while in flight');
+  check(!a.beam.visible, 'a drop shows its beam while still in the air');
+  let peak = 0;
+  for (let i = 0; i < 120; i++) {
+    loot.update(1 / 60);
+    peak = Math.max(peak, a.root.position.y);
+  }
+  check(peak > 1, `drops do not arc (peak height ${peak.toFixed(2)})`);
+  check(Math.abs(a.root.position.x - 1.2) < 1e-6 && Math.abs(a.root.position.z - 0.4) < 1e-6, 'a drop did not land where the scene put it');
+  check(a.beam.visible && a.beam.scale.y === 1, 'a landed drop never showed its full beam');
+  check(!loot.owns(a.root), 'a landed item is still held by the loot layer');
+  check(beams >= 1 && punches >= 1, 'a unique landed without its pillar of light');
+
+  // Gold: lies flat, is vacuumed in, and is handed back on pickup.
+  const g = mkDrop(2, 0);
+  g.gold = 50;
+  loot.launch(g, from, 'gold');
+  for (let i = 0; i < 90; i++) loot.update(1 / 60);
+  check(loot.owns(g.root) && g.root.position.y === 0, 'a landed gold pile is not lying flat');
+  const hero = new THREE.Vector3(0, 0, 0);
+  const before = g.pos.x;
+  for (let i = 0; i < 10; i++) loot.magnet([g], hero, 1 / 60);
+  check(g.pos.x < before, 'gold in reach is not pulled toward the hero');
+  let done = false;
+  const target = new THREE.Group();
+  loot.collect(g.root, target, 'gold', () => { done = true; });
+  for (let i = 0; i < 30; i++) loot.update(1 / 60);
+  check(done, 'a collected pile was never handed back for disposal');
+
+  const silent = lootSoundIds().filter((id) => !resolvesSound(id));
+  check(silent.length === 0, `loot asks for sounds that do not exist: ${silent.join(', ')}`);
+  notes.lootPeak = +peak.toFixed(2);
 }
 
 console.log(JSON.stringify({ ok: fails.length === 0, fails, notes }));

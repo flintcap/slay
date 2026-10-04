@@ -26,6 +26,7 @@ import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { Synth, midiToFreq } from './Synth';
 import { MusicDirector } from './Music';
+import { Ambience, bedFor } from './Ambience';
 
 // ---------------------------------------------------------------------------
 // Sound context
@@ -269,6 +270,15 @@ function castOf(el: string): SoundFn {
         squelch(s, p, 0.36, 0.26);
         s.tone({ type: 'triangle', freq: 300 * p.p, freqEnd: 168 * p.p, freqTime: 0.34, gain: 0.11 * p.g, attack: 0.02, decay: 0.34, release: 0.2, vibrato: { rate: 9, depth: 16 }, pan: p.pan, send: p.send, when: p.t });
       };
+    case 'bone':
+      // Dry, hollow, rattling: knuckle bones thrown on a table.
+      return (s, p) => {
+        for (let i = 0; i < 4; i++) {
+          crack(s, { ...p, t: p.t + i * 0.028 + p.rng.range(0, 0.012) }, p.rng.range(1500, 2600), 0.035, 0.16, 4.5);
+        }
+        whoosh(s, p, 0.24, 0.18, 500, 1900);
+        s.tone({ type: 'triangle', freq: 210 * p.p, freqEnd: 120 * p.p, freqTime: 0.14, gain: 0.08 * p.g, attack: 0.002, decay: 0.14, release: 0.08, pan: p.pan, when: p.t });
+      };
     case 'arcane':
       return (s, p) => {
         chime(s, p, 74, 0.6, 0.16, [0, 5, 12, 17]);
@@ -304,6 +314,13 @@ function impactOf(el: string): SoundFn {
       return (s, p) => {
         squelch(s, p, 0.3, 0.4);
         crack(s, p, 900, 0.09, 0.14, 1.8);
+      };
+    case 'bone':
+      return (s, p) => {
+        crack(s, p, 2200, 0.06, 0.38, 3.0);
+        crack(s, { ...p, t: p.t + 0.018 }, 1300, 0.05, 0.22, 2.4);
+        s.tone({ type: 'triangle', freq: 330 * p.p, freqEnd: 180 * p.p, freqTime: 0.1, gain: 0.14 * p.g, attack: 0.001, decay: 0.12, release: 0.06, pan: p.pan, send: p.send, when: p.t });
+        thump(s, p, 140, 0.1, 0.22);
       };
     case 'arcane':
       return (s, p) => {
@@ -513,6 +530,47 @@ const SOUNDS: Record<string, SoundFn> = {
     s.noise({ color: 'white', gain: 0.14 * p.g, attack: 0.3, decay: 0.5, release: 0.4, filter: { type: 'highpass', freq: 2400, endFreq: 8000, q: 1, sweep: 0.7 }, pan: 0, send: p.send * 2, when: p.t });
   },
   skillpoint: (s, p) => chime(s, p, 83, 0.7, 0.16, [0, 7, 12]),
+  // --- loot ----------------------------------------------------------------
+  /** Something thrown out of a body: a short airy flick. */
+  'loot.toss': (s, p) => whoosh(s, p, 0.16, 0.12, 700, 2600),
+  /** A drop hitting the floor: a dull wooden-metal clunk with a little rattle. */
+  'loot.clink': (s, p) => {
+    thump(s, p, 150, 0.08, 0.2);
+    metallic(s, p, p.rng.range(520, 760), 0.18, 0.06, [1, 2.7, 5.1]);
+    crack(s, { ...p, t: p.t + 0.05 }, 1800, 0.03, 0.08, 3);
+  },
+  /** The hand closing on it. */
+  'loot.grab': (s, p) => {
+    s.noise({ color: 'pink', gain: 0.12 * p.g, attack: 0.004, decay: 0.08, release: 0.05, filter: { type: 'bandpass', freq: 1400, endFreq: 3200, q: 1.4, sweep: 0.08 }, pan: p.pan, when: p.t });
+    thump(s, p, 180, 0.06, 0.12);
+  },
+  /**
+   * A unique or better hitting the floor. A low swell and a bright bell stack
+   * that rises: unmistakable from across the room, and nothing else in the
+   * game makes it.
+   */
+  'loot.legendary': (s, p) => {
+    sub(s, { ...p, pan: 0 }, 55, 1.8, 0.36);
+    s.tone({ type: 'sawtooth', freq: 110 * p.p, freqEnd: 220 * p.p, freqTime: 0.9, gain: 0.1 * p.g, attack: 0.08, decay: 1.0, release: 0.8, unison: 3, unisonSpread: 14, filter: { type: 'lowpass', freq: 400, endFreq: 3200, q: 2.5, sweep: 0.9 }, pan: 0, send: p.send * 2.4, when: p.t });
+    const steps = [69, 76, 81, 88];
+    for (let i = 0; i < steps.length; i++) {
+      chime(s, { ...p, t: p.t + 0.12 + i * 0.11, pan: (i - 1.5) * 0.15 }, steps[i]!, 1.6 - i * 0.2, 0.16, [0, 12]);
+    }
+    s.noise({ color: 'white', gain: 0.1 * p.g, attack: 0.4, decay: 0.7, release: 0.5, filter: { type: 'highpass', freq: 3000, endFreq: 9000, q: 0.8, sweep: 1.0 }, pan: 0, send: p.send * 2, when: p.t });
+  },
+  /** Coins leaving a body: a quick spray of high ticks. */
+  'gold.spill': (s, p) => {
+    for (let i = 0; i < 5; i++) {
+      metallic(s, { ...p, t: p.t + i * 0.022 + p.rng.range(0, 0.015), pan: p.pan + p.rng.range(-0.25, 0.25) }, p.rng.range(2200, 3400), 0.09, 0.035, [1, 2.9]);
+    }
+  },
+  /** Coins landing: a scatter of clinks settling, the last ones quieter. */
+  'gold.land': (s, p) => {
+    for (let i = 0; i < 7; i++) {
+      const k = 1 - i / 8;
+      metallic(s, { ...p, t: p.t + i * 0.035 + p.rng.range(0, 0.02), pan: p.pan + p.rng.range(-0.3, 0.3) }, p.rng.range(1700, 2900), 0.14, 0.06 * k, [1, 2.9, 5.1]);
+    }
+  },
   equip: (s, p) => { metallic(s, p, 300, 0.34, 0.18, [1, 2.5, 4.2, 6.6]); crack(s, p, 1800, 0.05, 0.16, 1.4); },
   unequip: (s, p) => { metallic(s, p, 220, 0.26, 0.14, [1, 2.3, 3.8]); },
   gold: (s, p) => {
@@ -615,6 +673,19 @@ const SOUNDS: Record<string, SoundFn> = {
     sub(s, p, 84, 0.7, 0.24);
   },
   'spell.chainLightning': (s, p) => SOUNDS.chain!(s, p),
+  /** A bolt from the sky: the crack, then the roll of thunder behind it. */
+  'spell.thunder': (s, p) => {
+    s.noise({ color: 'white', gain: 0.5 * p.g, attack: 0.0005, decay: 0.12, release: 0.1, filter: { type: 'highpass', freq: 1600 * p.p, endFreq: 4200, q: 0.7, sweep: 0.12 }, distortion: 0.55, pan: p.pan, send: p.send * 1.5, when: p.t });
+    sub(s, p, 48, 1.6, 0.5);
+    s.noise({ color: 'brown', gain: 0.36 * p.g, attack: 0.06, decay: 1.4, release: 0.8, filter: { type: 'lowpass', freq: 900, endFreq: 140, q: 0.8, sweep: 1.5 }, distortion: 0.3, pan: p.pan, send: p.send * 2.2, when: p.t + 0.05 });
+  },
+  /** Arrows called down: a rising hiss of fletching, then the patter. */
+  'spell.volley': (s, p) => {
+    s.noise({ color: 'pink', gain: 0.26 * p.g, attack: 0.18, decay: 0.2, release: 0.15, filter: { type: 'bandpass', freq: 1800 * p.p, endFreq: 4200 * p.p, q: 2, sweep: 0.35 }, pan: p.pan, send: p.send, when: p.t });
+    for (let i = 0; i < 6; i++) {
+      crack(s, { ...p, t: p.t + 0.38 + i * 0.04 + p.rng.range(0, 0.03), pan: p.pan + p.rng.range(-0.3, 0.3) }, p.rng.range(900, 1500), 0.04, 0.12, 3);
+    }
+  },
   'spell.whirlwind': (s, p) => {
     s.noise({ color: 'pink', gain: 0.24 * p.g, attack: 0.15, decay: 0.4, sustain: 0.7, release: 0.5, duration: 1.4, filter: { type: 'bandpass', freq: 420 * p.p, endFreq: 1300 * p.p, q: 2.2, sweep: 1.2 }, pan: p.pan, send: p.send * 1.5, when: p.t });
     s.tone({ type: 'sawtooth', freq: 96 * p.p, gain: 0.09 * p.g, attack: 0.2, decay: 0.4, sustain: 0.7, release: 0.5, duration: 1.2, unison: 2, vibrato: { rate: 6.5, depth: 9 }, filter: { type: 'lowpass', freq: 900, q: 3 }, pan: p.pan, when: p.t });
@@ -653,6 +724,7 @@ SOUNDS['select'] = SOUNDS['ui.select']!;
 SOUNDS['hit.physical'] = SOUNDS['hit.melee']!;
 SOUNDS['miss'] = SOUNDS['swing.miss']!;
 SOUNDS['explosion'] = SOUNDS['spell.explosion']!;
+SOUNDS['ui.equip'] = SOUNDS['equip']!;
 
 // --- family fallbacks --------------------------------------------------------
 
@@ -725,20 +797,34 @@ function derive(id: string): SoundFn | undefined {
       return coneOf(tail);
     case 'footstep':
     case 'step': {
-      const sfc = SURFACES[tail] ?? SURFACES.stone!;
+      const surface = tail || 'stone';
+      const sfc = SURFACES[surface] ?? SURFACES.stone!;
       return (s, p) => {
+        // Heel, then the scuff of the sole rolling off it.
+        thump(s, { ...p, g: p.g * 0.5 }, 88 * p.rng.range(0.9, 1.1), 0.06, 0.16);
         s.noise({
           color: sfc.color,
           gain: sfc.gain * p.g,
-          attack: 0.001,
+          attack: 0.002,
           decay: sfc.dur,
           release: sfc.dur * 0.6,
-          filter: { type: 'bandpass', freq: sfc.freq * p.p, endFreq: sfc.freq * 0.4 * p.p, q: sfc.q, sweep: sfc.dur },
+          filter: { type: 'bandpass', freq: sfc.freq * p.p, endFreq: sfc.freq * 0.45 * p.p, q: sfc.q, sweep: sfc.dur },
           pan: p.pan,
           send: p.send * 1.2,
-          when: p.t,
+          when: p.t + 0.012,
         });
-        thump(s, { ...p, g: p.g * 0.45 }, 92, 0.07, 0.16);
+        // The material's own signature on top.
+        if (surface === 'snow' || surface === 'ash') {
+          for (let i = 0; i < 4; i++) {
+            s.noise({ color: 'white', gain: 0.03 * p.g, attack: 0.0006, decay: 0.012, release: 0.01, filter: { type: 'highpass', freq: surface === 'snow' ? 3800 : 2400, q: 1 }, pan: p.pan, when: p.t + 0.01 + i * p.rng.range(0.012, 0.03) });
+          }
+        } else if (surface === 'water') {
+          s.noise({ color: 'white', gain: 0.07 * p.g, attack: 0.01, decay: 0.16, release: 0.1, filter: { type: 'bandpass', freq: 1600, endFreq: 700, q: 1.6, sweep: 0.16 }, pan: p.pan, send: p.send * 1.4, when: p.t + 0.02 });
+        } else if (surface === 'metal') {
+          metallic(s, { ...p, g: p.g * 0.5 }, p.rng.range(420, 600), 0.16, 0.04, [1, 2.7, 4.9]);
+        } else if (surface === 'flesh') {
+          squelch(s, { ...p, g: p.g * 0.5 }, 0.1, 0.14);
+        }
       };
     }
     case 'pickup':
@@ -793,6 +879,11 @@ export interface PlayOpts {
 class AudioEngine {
   private synth: Synth | null = null;
   private musicDir: MusicDirector | null = null;
+  private amb: Ambience | null = null;
+  /** Footsteps are derived from how far the listener (the hero) walks. */
+  private stepAccum = 0;
+  private stepSide = 1;
+  private stepPrimed = false;
   private rng: Rng = new Random(0x50a7d);
 
   private lx = 0;
@@ -825,7 +916,9 @@ class AudioEngine {
       return;
     }
     this.musicDir = new MusicDirector(this.synth);
+    this.amb = new Ambience(this.synth);
     this.applySettings(settings);
+    this.installUiSounds();
 
     // Browsers hold the context suspended until the user interacts. Latch on
     // the first gesture of any kind and start whatever music was requested.
@@ -929,9 +1022,73 @@ class AudioEngine {
     return fn;
   }
 
-  /** Crossfade the procedural music layer. */
+  /**
+   * Crossfade the procedural music layer. A place's track also brings in that
+   * place's ambience bed; state tracks (boss, victory, danger) leave the bed
+   * where it is, so the room does not go quiet when the boss wakes.
+   */
   music(track: string, fadeSeconds = 2): void {
     this.musicDir?.play(track, fadeSeconds);
+    const stateful = /^(boss|victory|danger|ambient)/.test(track);
+    if (!stateful) this.amb?.play(bedFor(track), Math.max(1, fadeSeconds * 1.2));
+  }
+
+  /** Sets the ambience bed directly. Null for silence. */
+  ambience(bed: string | null): void {
+    this.amb?.play(bed);
+  }
+
+  /** The floor material under the hero, from the current bed. */
+  get surface(): string {
+    return this.amb?.surface ?? 'stone';
+  }
+
+  /**
+   * How much fighting is going on right now, 0..1, as a floor under the
+   * event-driven heat: monsters awake and close keep the drums going even
+   * between hits.
+   */
+  setCombatFloor(v: number): void {
+    this.musicDir?.setFloor(v);
+  }
+
+  /**
+   * Buttons click and tabs tick without every panel having to remember to.
+   * Listens at the document for presses on anything button-shaped, and on the
+   * bus for panels opening and closing.
+   */
+  private installUiSounds(): void {
+    const isButton = (el: Element | null): Element | null =>
+      el?.closest?.('button, [role="button"], .btn, .tab, [data-sfx]') ?? null;
+    let lastHover: Element | null = null;
+    const down = (e: Event): void => {
+      const b = isButton(e.target as Element | null);
+      if (!b) return;
+      if ((b as HTMLButtonElement).disabled || b.getAttribute('aria-disabled') === 'true') {
+        this.play('ui.error', { volume: 0.6 });
+        return;
+      }
+      const tag = b.getAttribute('data-sfx');
+      this.play(tag ?? (b.classList.contains('tab') || b.getAttribute('role') === 'tab' ? 'ui.tab' : 'ui.click'), { volume: 0.8 });
+    };
+    const over = (e: Event): void => {
+      const b = isButton(e.target as Element | null);
+      if (!b || b === lastHover) return;
+      lastHover = b;
+      this.play('ui.hover', { volume: 0.5 });
+    };
+    document.addEventListener('pointerdown', down, { capture: true, passive: true });
+    document.addEventListener('pointerover', over, { capture: true, passive: true });
+    this.unsubs.push(
+      () => document.removeEventListener('pointerdown', down, { capture: true }),
+      () => document.removeEventListener('pointerover', over, { capture: true }),
+      events.on('ui:open', (e) => {
+        if (e.panel !== 'hud') this.play('ui.open', { volume: 0.8 });
+      }),
+      events.on('ui:close', (e) => {
+        if (e.panel !== 'hud') this.play('ui.close', { volume: 0.8 });
+      }),
+    );
   }
 
   /** Combat heat, 0..1 — fades extra music layers in and out. */
@@ -941,6 +1098,21 @@ class AudioEngine {
 
   /** Position the listener for panning. `facing` is a yaw in radians. */
   setListener(x: number, z: number, facing: number): void {
+    // Footsteps: one per stride of ground actually covered. Big jumps (a
+    // teleport, a level load) are not walking and reset the stride instead.
+    const moved = Math.hypot(x - this.lx, z - this.lz);
+    if (!this.stepPrimed || moved > 2.5) {
+      this.stepPrimed = true;
+      this.stepAccum = 0;
+    } else if (moved > 0.0005) {
+      this.stepAccum += moved;
+      const stride = 1.15;
+      if (this.stepAccum >= stride) {
+        this.stepAccum -= stride;
+        this.stepSide = -this.stepSide;
+        this.play(`footstep.${this.surface}`, { volume: 0.55, x: x + this.stepSide * 0.6, z });
+      }
+    }
     this.lx = x;
     this.lz = z;
     this.facing = facing;
@@ -957,11 +1129,13 @@ class AudioEngine {
     s.master.gain.setTargetAtTime(document.hidden ? 0 : this.masterVol, t, 0.05);
     s.sfxBus.gain.setTargetAtTime(this.sfxVol * 1.05, t, 0.05);
     s.musicBus.gain.setTargetAtTime(this.musicVol * 0.85, t, 0.1);
+    this.amb?.setLevel(this.sfxVol);
   }
 
   stopAll(): void {
     this.synth?.stopAll();
     this.musicDir?.stop(0.4);
+    this.amb?.stop(0.4);
   }
 
   /** Instant silence toggle, used by the pause menu. */
@@ -985,6 +1159,8 @@ class AudioEngine {
     for (const off of this.unsubs) off();
     this.unsubs.length = 0;
     this.musicDir?.dispose();
+    this.amb?.dispose();
+    this.amb = null;
     this.synth?.dispose();
     this.synth = null;
     this.musicDir = null;

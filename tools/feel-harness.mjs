@@ -21,7 +21,7 @@ export async function runEntry(entry, outDirName) {
     logLevel: 'error',
     root: ROOT,
     build: {
-      ssr: path.join(ROOT, entry),
+      ssr: path.resolve(ROOT, entry),
       outDir: OUT,
       rollupOptions: { output: { entryFileNames: 'e.mjs' } },
       minify: false,

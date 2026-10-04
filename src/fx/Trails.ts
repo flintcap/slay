@@ -446,6 +446,8 @@ export const TRAIL_PRESETS: Record<string, TrailOptions> = {
   dash: { mode: 'swept', segments: 20, life: 0.24, headColor: 0xc8d8ff, tailColor: 0x203050, sharpen: 1.3, opacity: 0.7 },
   arrow: { mode: 'ribbon', segments: 18, life: 0.14, width: 0.045, headColor: 0xffffff, tailColor: 0xa0b0c0, sharpen: 2.0 },
   gold: { mode: 'ribbon', segments: 22, life: 0.3, width: 0.1, headColor: 0xfff0c0, tailColor: 0xc08010, sharpen: 1.6, scroll: 0.8 },
+  /** Bone magic: a dry, pale streak that greys out, not a glow. */
+  bone: { mode: 'ribbon', segments: 24, life: 0.26, width: 0.1, headColor: 0xf6eedc, tailColor: 0x5e5546, sharpen: 1.8, scroll: 0.4, opacity: 0.85 },
 };
 
 /**

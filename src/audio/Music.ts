@@ -195,6 +195,28 @@ const TRACKS: Record<string, TrackDef> = {
   }),
 };
 
+/**
+ * Every boss fight used to ask for a track named after the boss
+ * ('boss.crypt', 'boss.hive', ...) that did not exist, fall through to the
+ * crypt dirge, and so play the floor's ambient music over the climax of the
+ * run. Each boss family now gets its own variation on the battle theme: the
+ * same driving shape, its own mode, tempo, colour and percussion.
+ */
+function bossTrack(over: Partial<TrackDef>): TrackDef {
+  return { ...TRACKS.boss!, ...over };
+}
+TRACKS['boss.crypt'] = bossTrack({ root: 38, scale: 'aeolian', bpm: 120, flavor: 'choir', layers: ['drone', 'pad', 'bass', 'arp', 'lead', 'bell'], gain: { drone: 0.42, pad: 0.34, bass: 0.46, arp: 0.24, lead: 0.32, bell: 0.2 }, seed: 0xb0c1 });
+TRACKS['boss.hive'] = bossTrack({ root: 37, scale: 'phrygian', bpm: 138, flavor: 'ring', perc: 'tribal', spread: 26, seed: 0xb0c2 });
+TRACKS['boss.demon'] = bossTrack({ root: 36, scale: 'harmonicMinor', bpm: 124, leadWave: 'sawtooth', spread: 20, cutoff: 1400, seed: 0xb0c3 });
+TRACKS['boss.foundry'] = bossTrack({ root: 35, scale: 'phrygian', bpm: 132, perc: 'industrial', flavor: 'metal', seed: 0xb0c4 });
+TRACKS['boss.beast'] = bossTrack({ root: 40, scale: 'dorian', bpm: 134, perc: 'tribal', leadWave: 'square', seed: 0xb0c5 });
+TRACKS['boss.ooze'] = bossTrack({ root: 34, scale: 'phrygian', bpm: 112, flavor: 'ring', cutoff: 900, spread: 28, seed: 0xb0c6 });
+TRACKS['boss.arcane'] = bossTrack({ root: 39, scale: 'harmonicMinor', bpm: 126, flavor: 'glass', layers: ['drone', 'pad', 'bass', 'arp', 'lead', 'bell'], gain: { drone: 0.38, pad: 0.32, bass: 0.42, arp: 0.3, lead: 0.32, bell: 0.26 }, seed: 0xb0c7 });
+TRACKS['boss.temple'] = bossTrack({ root: 38, scale: 'aeolian', bpm: 116, flavor: 'choir', space: 0.6, seed: 0xb0c8 });
+TRACKS['boss.void'] = bossTrack({ root: 37, scale: 'harmonicMinor', bpm: 120, flavor: 'ring', perc: 'pulse', spread: 34, seed: 0xb0c9 });
+TRACKS['boss.frost'] = bossTrack({ root: 41, scale: 'aeolian', bpm: 122, flavor: 'glass', cutoff: 2400, layers: ['drone', 'pad', 'bass', 'arp', 'lead', 'bell'], gain: { drone: 0.4, pad: 0.34, bass: 0.42, arp: 0.28, lead: 0.3, bell: 0.28 }, seed: 0xb0ca });
+TRACKS['boss.storm'] = bossTrack({ root: 38, scale: 'phrygian', bpm: 142, perc: 'war', leadWave: 'square', cutoff: 2000, seed: 0xb0cb });
+
 // Fallbacks so an unrecognised biome track still plays something appropriate.
 TRACKS['crypt'] = TRACKS['dirge']!;
 TRACKS['caverns'] = TRACKS['drip']!;
@@ -284,6 +306,8 @@ class TrackInstance {
   private step = 0;
   private stopping = false;
   ended = false;
+  /** Semitones added to every pitched note, for boss phases. */
+  lift = 0;
 
   constructor(synth: Synth, name: string, def: TrackDef, startAt: number, fadeIn: number) {
     this.synth = synth;
@@ -324,6 +348,13 @@ class TrackInstance {
     return this.stopping;
   }
 
+  /** The audio-clock time of the first quarter-note beat at or after `t`. */
+  nextBeat(t: number): number {
+    const beat = this.stepDuration * 4;
+    const k = Math.ceil((t - this.startTime) / beat);
+    return this.startTime + Math.max(0, k) * beat;
+  }
+
   /** Schedules every step that begins before `until`. */
   schedule(until: number, intensity: number): void {
     if (this.stopping) return;
@@ -346,7 +377,7 @@ class TrackInstance {
   }
 
   private emitStep(step: number, when: number, intensity: number): void {
-    const d = this.def;
+    const d = this.lift ? { ...this.def, root: this.def.root + this.lift } : this.def;
     const s = this.synth;
     const scale = SCALES[d.scale];
     const bar = Math.floor(step / STEPS_PER_BAR);
@@ -578,6 +609,15 @@ export class MusicDirector {
   /** Smoothed combat heat, 0..1. */
   private intensity = 0;
   private intensityTarget = 0;
+  /** Heat the fight itself holds up: monsters awake and close. */
+  private floor = 0;
+  /** The last place track, for returning to after a boss or a victory. */
+  private placeTrack: string | null = null;
+  /** While the victory theme plays, requests to go back wait for it. */
+  private victoryUntil = 0;
+  private pendingReturn = false;
+  /** Semitones the active track is lifted by, per boss phase. */
+  private lift = 0;
   private lastTick = 0;
   private unsubs: Array<() => void> = [];
 
@@ -590,11 +630,25 @@ export class MusicDirector {
       events.on('enemy:damaged', () => this.bump(0.16)),
       events.on('player:damaged', () => this.bump(0.3)),
       events.on('enemy:killed', () => this.bump(0.22)),
+      // The boss itself asks for its own track; this only drives the heat.
       events.on('boss:engaged', () => {
         this.intensityTarget = 1;
-        this.play('boss', 1.6);
+        this.lift = 0;
       }),
-      events.on('boss:killed', () => this.play('victory', 2.2)),
+      // Each phase lifts the key a step: the oldest trick in film scoring, and
+      // it makes "it got angrier" audible.
+      events.on('boss:phase', (e) => {
+        this.intensityTarget = 1;
+        this.lift = Math.min(4, Math.max(0, e.index) * 2);
+        for (const inst of this.instances) inst.lift = this.lift;
+        this.stinger(1);
+      }),
+      events.on('boss:killed', () => {
+        this.lift = 0;
+        this.play('victory', 1.4);
+        this.victoryUntil = this.synth.ctx.currentTime + 11;
+        this.pendingReturn = true;
+      }),
     );
     this.start();
   }
@@ -609,6 +663,30 @@ export class MusicDirector {
 
   setIntensity(v: number): void {
     this.intensityTarget = Math.max(0, Math.min(1, v));
+  }
+
+  /** The fight's own heat, a floor under the event-driven bumps. */
+  setFloor(v: number): void {
+    const next = Math.max(0, Math.min(1, v));
+    // Combat starting from calm: a hit on the next beat announces it.
+    if (this.floor < 0.05 && next >= 0.2) this.stinger(0.6);
+    this.floor = next;
+  }
+
+  /**
+   * A percussive accent landed on the next beat of the playing track: a low
+   * drum, a cymbal-like wash and a sub drop. Used when a fight starts and when
+   * a boss changes phase.
+   */
+  private stinger(strength: number): void {
+    const inst = this.instances.find((i) => !i.isStopping);
+    if (!inst || this.synth.ctx.state !== 'running') return;
+    const when = inst.nextBeat(this.synth.ctx.currentTime + 0.03);
+    const s = this.synth;
+    const g = 0.5 * strength;
+    s.tone({ type: 'sine', freq: 120, freqEnd: 38, freqTime: 0.5, gain: g, attack: 0.002, decay: 0.6, release: 0.3, distortion: 0.3, dest: inst.out, when });
+    s.noise({ color: 'white', gain: g * 0.35, attack: 0.002, decay: 1.2, release: 0.6, filter: { type: 'highpass', freq: 4200, endFreq: 2400, q: 0.6, sweep: 1.2 }, send: 0.6, dest: inst.out, when });
+    s.tone({ type: 'sawtooth', freq: 55, gain: g * 0.3, attack: 0.01, decay: 0.8, release: 0.4, filter: { type: 'lowpass', freq: 300, endFreq: 90, q: 2, sweep: 0.8 }, dest: inst.out, when });
   }
 
   private start(): void {
@@ -627,7 +705,17 @@ export class MusicDirector {
 
   /** Crossfades to `track`. Re-requesting the current track is a no-op. */
   play(track: string, fadeSeconds = 2): void {
-    const def = TRACKS[track] ?? TRACKS[track.toLowerCase()] ?? TRACKS.dirge!;
+    // 'ambient' means "back to wherever we are". During the victory theme the
+    // return waits for the theme to finish rather than cutting it off.
+    if (track === 'ambient') {
+      if (this.synth.ctx.currentTime < this.victoryUntil) {
+        this.pendingReturn = true;
+        return;
+      }
+      track = this.placeTrack ?? 'dirge';
+    }
+    if (!/^(boss|victory|danger)/.test(track)) this.placeTrack = track;
+    const def = TRACKS[track] ?? TRACKS[track.toLowerCase()] ?? (track.startsWith('boss') ? TRACKS.boss! : TRACKS.dirge!);
     if (this.synth.ctx.state !== 'running') {
       // Remember it; `onContextStarted` will pick it up after the first input.
       this.wanted = { track, fade: fadeSeconds };
@@ -662,7 +750,11 @@ export class MusicDirector {
 
     // Intensity rises quickly and falls slowly — combat should feel like it
     // takes a moment to settle, not like a switch flipping off.
-    this.intensityTarget = Math.max(0, this.intensityTarget - dt * 0.16);
+    this.intensityTarget = Math.max(this.floor, this.intensityTarget - dt * 0.16);
+    if (this.pendingReturn && now >= this.victoryUntil) {
+      this.pendingReturn = false;
+      this.play(this.placeTrack ?? 'dirge', 4);
+    }
     const rate = this.intensityTarget > this.intensity ? 2.2 : 0.5;
     this.intensity += (this.intensityTarget - this.intensity) * Math.min(1, rate * dt);
 

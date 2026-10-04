@@ -9,7 +9,7 @@ import type { Player } from '../entities/Player';
 import type { Enemy, CombatContext } from '../entities/Enemy';
 import type { MinionTarget } from '../entities/Abilities';
 import type { Boss } from '../entities/Boss';
-import { EffectSystem, ELEMENTS } from '../fx/Effects';
+import { EffectSystem, ELEMENTS, type School } from '../fx/Effects';
 import { CombatFeel, type HitKind, type WeaponSound } from '../fx/CombatFeel';
 import type { EffectHandle } from '../fx/Effects';
 import { getStatus, synthesizeSkillBuff } from '../data/statuses';
@@ -270,6 +270,28 @@ const SKILL_STATUS: Record<string, string> = {
   earthshatter: 'knockedDown',
 };
 
+/**
+ * The school a tree draws in when a skill names no damage type of its own:
+ * buffs, wards and curses still need a colour and a sound.
+ */
+const TREE_SCHOOL: Record<string, School> = {
+  conflagration: 'fire', cinders: 'fire', sunfire: 'fire',
+  venom: 'poison', blight: 'poison',
+  tempest: 'lightning', conduit: 'lightning', galewalk: 'lightning',
+  ossuary: 'bone', gravepact: 'arcane', shadowcraft: 'arcane',
+};
+
+/**
+ * What a skill looks and sounds like. Usually its damage type; bone magic is
+ * physical damage drawn as bone, and an untyped skill borrows its tree's.
+ */
+export function schoolOf(def: { treeId: string; damageType?: DamageType }): School {
+  const t = def.damageType;
+  if (def.treeId === 'ossuary' && (t === undefined || t === 'physical')) return 'bone';
+  if (t) return t;
+  return TREE_SCHOOL[def.treeId] ?? 'physical';
+}
+
 /** Stable small integer from a skill id. */
 function hashId(id: string): number {
   let h = 2166136261;
@@ -456,6 +478,21 @@ export function needsMeleeWeapon(effect: string | undefined, damageType: string 
   return hit && (damageType ?? 'physical') === 'physical';
 }
 
+const HEAT_BY_RANK: Record<string, number> = { normal: 0.1, champion: 0.18, elite: 0.24, rare: 0.34, boss: 1 };
+
+/** 0..1: how much awake, nearby trouble the hero is in. */
+export function combatHeat(at: THREE.Vector3, enemies: readonly Enemy[]): number {
+  let heat = 0;
+  for (const e of enemies) {
+    if (!e.alive || e.ai?.isDormant) continue;
+    const dx = e.root.position.x - at.x;
+    const dz = e.root.position.z - at.z;
+    if (dx * dx + dz * dz > 22 * 22) continue;
+    heat += HEAT_BY_RANK[e.rank] ?? 0.1;
+  }
+  return Math.min(1, heat);
+}
+
 /** Anything the player can hit. Enemy and Boss both satisfy this. */
 type Target = Enemy | Boss;
 
@@ -584,7 +621,8 @@ export class SkillRunner {
     // tree of fire skills was the same orange on screen. Shift it by a hash of
     // the skill's own id: still unmistakably fire, no longer indistinguishable
     // from the fire skill next to it.
-    const color = shiftHue(ELEMENTS[type]?.core ?? 0xffe3b0, hashId(def.id));
+    const school = schoolOf(def);
+    const color = shiftHue(ELEMENTS[school]?.core ?? 0xffe3b0, hashId(def.id));
 
     const makePacket = (mult = 1): DamagePacket => {
       const p = rollDamage(player.stats, ctx.rng, {
@@ -632,6 +670,18 @@ export class SkillRunner {
     // and a thrown bolt were all the same gesture.
     const clip = clipFor(def.effect, holding, def.id);
     const sig = particleFor(def.id, type);
+
+    // The cast beat. Projectiles flare themselves as they leave the hand, and a
+    // plain weapon swing's beat is the swing itself; everything else gathers
+    // its school's power at the caster first, so no spell starts in mid-air.
+    const selfCast = def.targeting === 'self';
+    const swing = family === 'melee' || family === 'cleave' || family === 'whirlwind' || family === 'dash';
+    if (family !== 'projectile' && family !== 'bolt' && !(swing && school === 'physical')) {
+      this.effects.castFlare(school, origin.x, selfCast ? 1.0 : origin.y, origin.z, {
+        scale: selfCast ? 1.25 : 0.9,
+        dir: selfCast ? undefined : dir,
+      });
+    }
 
     switch (family) {
       case 'melee':
@@ -689,9 +739,10 @@ export class SkillRunner {
           const to = from.clone().addScaledVector(d, stop);
 
           this.effects.projectile(from, to, {
-            element: type,
+            element: school,
             color,
-            trail: sig.trail,
+            shed: sig.trail,
+            flare: i === 0,
             speed: num('speed', 17),
             size: num('radius', 0.42) * sig.size,
             onHit: (p) => {
@@ -707,7 +758,7 @@ export class SkillRunner {
             },
           });
         }
-        audio.play(`cast.${type}`);
+        audio.play(`cast.${school}`);
         break;
       }
 
@@ -715,13 +766,14 @@ export class SkillRunner {
         player.beginAction(clip, castTime);
         const radius = num('radius', 5.2);
         this.effects.nova(player.position.x, player.position.z, radius, {
-          element: type,
+          element: school,
           color,
           emitter: sig.emitter,
           density: sig.density,
+          mark: true,
         });
         this.areaDamage(player.position, radius, makePacket, ctx, enemies, boss);
-        audio.play(`nova.${type}`);
+        audio.play(`nova.${school}`);
         break;
       }
 
@@ -731,7 +783,7 @@ export class SkillRunner {
         const at = target.clone().setY(0);
         // The wind-up is what gives a slam weight; damage lands on the beat.
         this.effects.slam(at.x, at.z, radius, {
-          element: type,
+          element: school,
           color,
           emitter: sig.emitter,
           density: sig.density,
@@ -748,7 +800,7 @@ export class SkillRunner {
         const at = target.clone().setY(0);
         this.effects.meteor(at.x, at.z, {
           radius,
-          element: type,
+          element: school,
           color,
           emitter: sig.emitter,
           density: sig.density,
@@ -762,14 +814,14 @@ export class SkillRunner {
         const length = num('length', 12);
         const to = origin.clone().addScaledVector(dir, length);
         this.effects.beam(origin, to, {
-          element: type,
+          element: school,
           color,
           width: num('width', 1.1) * sig.size,
           endBurst: true,
           emitter: sig.emitter,
         });
         this.lineDamage(player.position, dir, length, num('width', 1.1), makePacket, ctx, enemies, boss);
-        audio.play(`beam.${type}`);
+        audio.play(`beam.${school}`);
         break;
       }
 
@@ -778,13 +830,13 @@ export class SkillRunner {
         const reach = num('reach', 6.5);
         const half = num('arc', 1.1) * 0.5;
         this.effects.cone(player.position.clone().setY(1.0), dir, half, reach, {
-          element: type,
+          element: school,
           color,
           emitter: sig.emitter,
           density: sig.density,
         });
         this.meleeSwing(player, dir, half * 2, reach, makePacket, ctx, enemies, boss, type, false);
-        audio.play(`cone.${type}`);
+        audio.play(`cone.${school}`);
         break;
       }
 
@@ -824,7 +876,7 @@ export class SkillRunner {
         // Commanding Presence and Standard Bearer widen and strengthen what an
         // oath, aura or banner does. `applyBuff` reads the same numbers.
         this.applyBuff(player, def, rank, num, color);
-        this.effects.impact(type, player.position.x, 1.0, player.position.z, {
+        this.effects.impact(school, player.position.x, 1.0, player.position.z, {
           color,
           emitter: sig.emitter,
           density: sig.density,
@@ -859,8 +911,8 @@ export class SkillRunner {
           type, color, sig.emitter,
           this.statusFor(def, num, color),
         );
-        this.effects.nova(at.x, at.z, radius, { element: type, color, emitter: sig.emitter, density: sig.density });
-        audio.play(`nova.${type}`);
+        this.effects.nova(at.x, at.z, radius, { element: school, color, emitter: sig.emitter, density: sig.density });
+        audio.play(`nova.${school}`);
         break;
       }
 
@@ -945,13 +997,13 @@ export class SkillRunner {
         for (const t of this.allTargets(enemies, boss)) {
           if (this.groundDistance(t.root.position, at) > radius + t.hitRadius) continue;
           t.applyStatuses(applies, ctx);
-          this.effects.impact(type, t.root.position.x, 1.0, t.root.position.z, {
+          this.effects.impact(school, t.root.position.x, 1.0, t.root.position.z, {
             color, emitter: sig.emitter, density: sig.density * 0.6, decal: false, shake: 0, sfx: null,
           });
           touched++;
         }
         this.effects.nova(at.x, at.z, radius, {
-          element: type, color, emitter: sig.emitter, density: sig.density * 0.5, particles: touched > 0,
+          element: school, color, emitter: sig.emitter, density: sig.density * 0.5, particles: touched > 0,
         });
         // A curse that names no status still has to do something, or ranking it
         // is a wasted point.
@@ -967,12 +1019,12 @@ export class SkillRunner {
         const stop = this.firstHitAlong(origin, dir, range, enemies, boss, 0.5, ctx);
         const end = origin.clone().addScaledVector(dir, stop);
         this.effects.beam(origin, end, {
-          element: type, color, width: num('width', 0.5),
+          element: school, color, width: num('width', 0.5),
           duration: num('duration', 0.5), endBurst: true,
           emitter: sig.emitter, density: sig.density,
         });
         this.lineDamage(origin, dir, stop, num('width', 0.9), makePacket, ctx, enemies, boss);
-        audio.play(`beam.${type}`);
+        audio.play(`beam.${school}`);
         break;
       }
 
@@ -982,10 +1034,10 @@ export class SkillRunner {
         const at = target.clone().setY(0);
         const radius = num('radius', 2.6);
         this.effects.meteor(at.x, at.z, {
-          radius, color, element: type, emitter: sig.emitter, density: sig.density,
+          radius, color, element: school, emitter: sig.emitter, density: sig.density,
           onHit: (p) => this.areaDamage(p, radius, makePacket, ctx, enemies, boss),
         });
-        audio.play(`cast.${type}`);
+        audio.play(`cast.${school}`);
         break;
       }
 
@@ -995,11 +1047,11 @@ export class SkillRunner {
         const range = num('range', 9);
         const width = num('width', 2.2);
         this.effects.cone(origin, dir, 0.22, range, {
-          element: type, color, emitter: sig.emitter, density: sig.density,
+          element: school, color, emitter: sig.emitter, density: sig.density,
         });
         this.lineDamage(player.position, dir, range, width, makePacket, ctx, enemies, boss, 'heavy');
         this.effects.slam(player.position.x, player.position.z, width * 0.8, {
-          element: type, color, windup: 0, emitter: sig.emitter, density: sig.density,
+          element: school, color, windup: 0, emitter: sig.emitter, density: sig.density,
         });
         audio.play('nova.physical');
         break;
@@ -1016,7 +1068,7 @@ export class SkillRunner {
         this.effects.teleportIn(land.x, 0.6, land.z, color);
         const radius = num('radius', 2.8);
         this.effects.slam(land.x, land.z, radius, {
-          element: type, color, windup: 0, emitter: sig.emitter, density: sig.density,
+          element: school, color, windup: 0, emitter: sig.emitter, density: sig.density,
         });
         this.areaDamage(land, radius, makePacket, ctx, enemies, boss, 'heavy');
         audio.play('nova.physical');
@@ -1052,9 +1104,9 @@ export class SkillRunner {
         player.beginAction(clip, castTime);
         const radius = num('radius', family === 'point' ? 1.2 : 4);
         const at = family === 'aoe' || family === 'capstone' ? player.position.clone().setY(0) : target.clone().setY(0);
-        this.effects.explosion(at.x, 0.8, at.z, { radius, element: type, color });
+        this.effects.explosion(at.x, 0.8, at.z, { radius, element: school, color });
         this.effects.nova(at.x, at.z, radius, {
-          element: type, color, emitter: sig.emitter, density: sig.density,
+          element: school, color, emitter: sig.emitter, density: sig.density,
         });
         this.areaDamage(at, radius, (m = 1) => makePacket(m * num('burstScale', 1)), ctx, enemies, boss);
         // A capstone is the top of a tree; it leaves the ground burning too.
@@ -1065,7 +1117,7 @@ export class SkillRunner {
           );
         }
         this.applyBuff(player, def, rank, num, color);
-        audio.play(`impact.${type}`);
+        audio.play(`impact.${school}`);
         break;
       }
 
@@ -1079,9 +1131,9 @@ export class SkillRunner {
           const from = player.position.clone().setY(holding === 'ranged' ? 1.28 : 1.05);
           const stop = this.firstHitAlong(from, dir, 18, enemies, boss, 0.4, ctx);
           this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
-            element: type,
+            element: school,
             color,
-            trail: sig.trail,
+            shed: sig.trail,
             speed: holding === 'ranged' ? 30 : 20,
             size: holding === 'ranged' ? 0.24 : 0.36,
             onHit: (pt) => this.pointDamage(pt, 0.6, makePacket, ctx, enemies, boss, 'projectile', from),
@@ -1893,6 +1945,8 @@ export class SkillRunner {
     taunt: boolean;
   }> = [];
 
+  private heatTimer = 0;
+
   /** Wall clock for the tick, so rigs breathe and bob. */
   private runTime = 0;
 
@@ -2047,6 +2101,14 @@ export class SkillRunner {
     }
     this.spreadTick(dt, live.ctx, live.enemies, live.boss);
     const { ctx, enemies, boss } = live;
+
+    // How hot the fight is, for the score: monsters awake and near, weighted
+    // by how dangerous they are. Twice a second is plenty for music.
+    this.heatTimer -= dt;
+    if (this.heatTimer <= 0 && this.caster) {
+      this.heatTimer = 0.5;
+      audio.setCombatFloor(combatHeat(this.caster.position, enemies));
+    }
 
     for (let i = this.zones.length - 1; i >= 0; i--) {
       const z = this.zones[i]!;

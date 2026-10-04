@@ -46,7 +46,24 @@ export const DECAL = {
   water: 13,
   burn: 14,
   dust: 15,
+  /** Scattered splinters of bone. */
+  bone: 16,
+  /** A forked lightning scar burnt into the floor. */
+  fork: 17,
+  /** A frozen sheet with a spiked crystalline rim. */
+  rime: 18,
+  /** A pitted, eaten pool: acid and plague. */
+  acid: 19,
+  /** A geometric arcane sigil. */
+  sigil: 20,
+  /** A radial gouge where something heavy landed. */
+  crater: 21,
+  /** Scattered live cinders, for fire ground cooling off. */
+  cinders: 22,
 } as const;
+
+/** Rows in the stain sheet. Columns stay at D_GRID. */
+const D_ROWS = 8;
 
 const D_GRID = 4;
 const D_CELL = 160;
@@ -63,9 +80,9 @@ function buildStainAtlas(): THREE.Texture {
   const size = D_GRID * D_CELL;
   const cv = document.createElement('canvas');
   cv.width = size;
-  cv.height = size;
+  cv.height = D_ROWS * D_CELL;
   const ctx = cv.getContext('2d')!;
-  ctx.clearRect(0, 0, size, size);
+  ctx.clearRect(0, 0, size, cv.height);
 
   const noise = new Noise(0x0dec);
   const C = D_CELL;
@@ -261,8 +278,100 @@ function buildStainAtlas(): THREE.Texture {
     return [0.6, m * 0.5];
   });
 
+  // 16 bone — splinters and grit thrown out from a centre.
+  paint(DECAL.bone, (u, v, r) => {
+    const w = noise.worley(u * 5.2 + 21, v * 5.2 - 4, 0.9);
+    // Elongate cells radially so the bits read as shards, not pebbles.
+    const ang = Math.atan2(v, u);
+    const rad = noise.worley(Math.cos(ang) * 2.2 + 9, r * 7.5, 0.8);
+    const shard = (1 - smoothstep(0.08, 0.2, rad.f1)) * smoothstep(1.0, 0.25, r);
+    const grit = (1 - smoothstep(0.1, 0.18, w.f1)) * smoothstep(0.9, 0.2, r) * 0.6;
+    const a = clamp01(Math.max(shard, grit));
+    return [0.75 + shard * 0.25, a];
+  });
+
+  // 17 fork — a central burn with branching scorched channels.
+  paint(DECAL.fork, (u, v, r) => {
+    const ang = Math.atan2(v, u);
+    let a = 0;
+    for (let k = 0; k < 5; k++) {
+      const base = k * 1.2566 + 0.3;
+      const wob = noise.simplex2(r * 3.2 + k * 7, k * 3.1) * 0.35;
+      const d = Math.abs(Math.atan2(Math.sin(ang - base - wob * r), Math.cos(ang - base - wob * r)));
+      const thick = 0.07 * (1 - r) + 0.012;
+      a = Math.max(a, (1 - smoothstep(thick * 0.6, thick, d * r + 0.002)) * smoothstep(1.0, 0.2, r));
+      // A sub-fork off each branch.
+      const sb = base + 0.35 * (k % 2 === 0 ? 1 : -1);
+      const ds = Math.abs(Math.atan2(Math.sin(ang - sb), Math.cos(ang - sb)));
+      a = Math.max(a, (1 - smoothstep(0.02, 0.035, ds * r)) * smoothstep(0.75, 0.4, r) * smoothstep(0.25, 0.4, r));
+    }
+    const core = smoothstep(0.32, 0.0, r + noise.fbm(u * 4, v * 4, 3) * 0.12);
+    return [0.12 + core * 0.2, clamp01(Math.max(a, core * 0.85))];
+  });
+
+  // 18 rime — a pale sheet with long crystal spikes standing off its edge.
+  paint(DECAL.rime, (u, v, r) => {
+    const ang = Math.atan2(v, u);
+    const sheet = blobMask(u, v, r * 1.25, 2.0, 0.25, 33.0);
+    const spikes = Math.pow(Math.abs(Math.cos(ang * 11 + noise.simplex2(u * 1.5, v * 1.5) * 1.6)), 14);
+    const halo = spikes * smoothstep(1.0, 0.55, r) * smoothstep(0.35, 0.6, r);
+    const cells = noise.worley(u * 4.2 + 5, v * 4.2 + 5, 0.95);
+    const facet = 1 - smoothstep(0, 0.12, cells.f2 - cells.f1);
+    return [0.7 + facet * 0.3, clamp01(sheet * (0.45 + facet * 0.4) + halo)];
+  });
+
+  // 19 acid — a pool eaten through with pits, its rim bright and wet.
+  paint(DECAL.acid, (u, v, r) => {
+    const m = blobMask(u, v, r, 1.9, 0.32, 71.0);
+    const pits = noise.worley(u * 6.0 + 2, v * 6.0 - 9, 1.0);
+    const pit = 1 - smoothstep(0.1, 0.2, pits.f1);
+    const rim = Math.exp(-Math.pow((r - 0.62) * 6.0, 2)) * 0.55;
+    return [0.3 + pit * 0.6 + rim, m * (0.55 + pit * 0.45)];
+  });
+
+  // 20 sigil — two interlocked triangles in a double ring.
+  paint(DECAL.sigil, (u, v, r) => {
+    const ring = Math.exp(-Math.pow((r - 0.9) * 30, 2)) + Math.exp(-Math.pow((r - 0.78) * 46, 2)) * 0.7;
+    let tri = 0;
+    for (let k = 0; k < 2; k++) {
+      const rot = k * Math.PI / 3;
+      for (let e = 0; e < 3; e++) {
+        const a = rot + e * (2 * Math.PI / 3) + Math.PI / 2;
+        // Distance to the edge line of an inscribed triangle.
+        const nx = Math.cos(a + Math.PI / 3);
+        const ny = Math.sin(a + Math.PI / 3);
+        const d = Math.abs(u * nx + v * ny - 0.39);
+        tri = Math.max(tri, Math.exp(-d * d * 1400) * smoothstep(0.82, 0.7, r));
+      }
+    }
+    const dot = Math.exp(-r * r * 60) * 0.6;
+    return [1, clamp01(ring + tri * 0.85 + dot)];
+  });
+
+  // 21 crater — a dark bowl with gouged streaks thrown outward.
+  paint(DECAL.crater, (u, v, r) => {
+    const ang = Math.atan2(v, u);
+    const bowl = smoothstep(0.45, 0.1, r + noise.fbm(u * 3 + 1, v * 3 - 1, 3) * 0.1);
+    const lip = Math.exp(-Math.pow((r - 0.42) * 9, 2)) * 0.5;
+    const streak = Math.pow(Math.abs(Math.sin(ang * 7 + noise.simplex2(u * 2 + 4, v * 2) * 1.2)), 10);
+    const rays = streak * smoothstep(1.0, 0.45, r) * smoothstep(0.35, 0.5, r);
+    return [0.08 + lip * 0.6, clamp01(bowl * 0.9 + rays * 0.7 + lip)];
+  });
+
+  // 22 cinders — scattered glowing points, for embers dying on the floor.
+  paint(DECAL.cinders, (u, v, r) => {
+    const w = noise.worley(u * 7.0 + 13, v * 7.0 + 31, 1.0);
+    const pt = Math.exp(-w.f1 * w.f1 * 260);
+    const fade = smoothstep(1.0, 0.3, r);
+    return [1, clamp01(pt * fade * (0.6 + noise.fbm(u * 9, v * 9, 2) * 0.6))];
+  });
+
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
+  // Painted top-down and sampled top-down. three.js flips canvas uploads by
+  // default, which mirrored the rows: a scorch drew the gore pattern, the
+  // glow under a drop drew frost needles, a crack drew ash.
+  tex.flipY = false;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.magFilter = THREE.LinearFilter;
   tex.generateMipmaps = true;
@@ -304,6 +413,18 @@ const STAINS: Record<string, StainStyle> = {
   arcane: { cell: DECAL.rune, color: 0x8a3cff, life: 8, additive: true, sizeMul: 1 },
   lightning: { cell: DECAL.crack, color: 0x60a0ff, life: 3, additive: true, sizeMul: 1.1 },
   shockwave: { cell: DECAL.ring, color: 0xffe0a0, life: 0.5, additive: true, sizeMul: 1 },
+  // Element marks. Each school leaves a dark mark that lingers and, for the
+  // hot ones, a glowing layer on top that cools away first.
+  bone: { cell: DECAL.bone, color: 0xd8cfb8, life: 22, additive: false, sizeMul: 1.15 },
+  fork: { cell: DECAL.fork, color: 0x1a1a22, life: 24, additive: false, sizeMul: 1.25 },
+  forkGlow: { cell: DECAL.fork, color: 0x7ab8ff, life: 1.1, additive: true, sizeMul: 1.25 },
+  rime: { cell: DECAL.rime, color: 0xa8dcff, life: 16, additive: false, sizeMul: 1.1 },
+  rimeGlow: { cell: DECAL.rime, color: 0x6ab8ff, life: 2.4, additive: true, sizeMul: 1.1 },
+  acid: { cell: DECAL.acid, color: 0x5fae24, life: 18, additive: false, sizeMul: 1 },
+  acidGlow: { cell: DECAL.acid, color: 0x8cff3a, life: 3.5, additive: true, sizeMul: 1 },
+  sigil: { cell: DECAL.sigil, color: 0xa060ff, life: 3, additive: true, sizeMul: 1.1 },
+  crater: { cell: DECAL.crater, color: 0x1e1a16, life: 30, additive: false, sizeMul: 1.2 },
+  cinders: { cell: DECAL.cinders, color: 0xff7a20, life: 6, additive: true, sizeMul: 1.1 },
 };
 
 // ---------------------------------------------------------------------------
@@ -348,7 +469,7 @@ const STAIN_VERT = /* glsl */ `
 
     float cell = iAnim.z;
     vec2 cellUv = vec2(mod(cell, 4.0), floor(cell * 0.25));
-    vUv = (uv + cellUv) * 0.25;
+    vUv = vec2((uv.x + cellUv.x) * 0.25, (uv.y + cellUv.y) * 0.125);
   }
 `;
 
@@ -908,6 +1029,16 @@ export class DecalSystem {
     this.tgGeo.dispose();
     this.tgMat.dispose();
   }
+}
+
+/** How many cells the stain sheet holds. */
+export const STAIN_CELLS = D_GRID * D_ROWS;
+
+/** Atlas cell per stain kind, for the static checks. */
+export function stainCells(): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(STAINS)) out[k] = v.cell;
+  return out;
 }
 
 /** Stain kinds accepted by `DecalSystem.add`. */
