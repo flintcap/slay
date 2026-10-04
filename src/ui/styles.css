@@ -2279,53 +2279,6 @@ input.slider::-moz-range-thumb {
   color: var(--ink-4);
 }
 
-.hud-buffs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-.buff {
-  --bc: #9ad0ff;
-  --k: 0;
-  position: relative;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  color: var(--bc);
-  background: linear-gradient(180deg, rgba(30, 26, 19, 0.9), rgba(12, 10, 8, 0.9));
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bc) 45%, transparent), 0 0 12px -4px var(--bc),
-    var(--shadow-1);
-  animation: buffIn 200ms var(--ease);
-}
-@keyframes buffIn {
-  from {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-}
-.buff.debuff {
-  box-shadow: inset 0 0 0 1px rgba(224, 80, 60, 0.6), 0 0 12px -4px rgba(224, 80, 60, 0.8), var(--shadow-1);
-}
-.buff-sweep {
-  position: absolute;
-  inset: 0;
-  border-radius: 3px;
-  background: conic-gradient(from 0deg, rgba(0, 0, 0, 0.72) calc(var(--k) * 360deg), transparent 0);
-  pointer-events: none;
-}
-.buff-stacks {
-  position: absolute;
-  right: 1px;
-  bottom: 0;
-  font-family: var(--font-num);
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--ink);
-  text-shadow: 0 1px 2px #000;
-}
-
 /* --- top right ----------------------------------------------------------- */
 
 .hud-topright {
@@ -3149,97 +3102,228 @@ input.slider::-moz-range-thumb {
 .skillrow {
   display: flex;
   align-items: flex-end;
-  gap: var(--s4);
+  gap: 16px;
 }
 .hotbar {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
+
+/* --- skill slots --------------------------------------------------------- */
+
+/* A socket set into the plate: gilt rim, dark well, the icon seated inside. */
 .hotslot {
   --cd: 0;
+  --slot-rim: linear-gradient(180deg, #b8914a 0%, #5d4520 45%, #33260f 70%, #8a6a32 100%);
   position: relative;
-  width: 58px;
-  height: 58px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #262019 0%, #100d09 100%);
-  box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.28), inset 0 1px 0 rgba(255, 232, 186, 0.08),
-    0 4px 12px rgba(0, 0, 0, 0.65);
+  width: 54px;
+  height: 54px;
+  border-radius: 6px;
+  background: radial-gradient(circle at 50% 42%, #2a2219 0%, #0e0b08 78%) padding-box, var(--slot-rim) border-box;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--frame-edge), inset 0 0 10px rgba(0, 0, 0, 0.9), 0 4px 10px rgba(0, 0, 0, 0.6);
   cursor: pointer;
-  transition: transform 110ms var(--ease), box-shadow 140ms ease;
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-2) ease, filter var(--dur-1) ease;
 }
 .hotslot:hover {
-  transform: translateY(-3px);
-  box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.6), 0 0 20px -4px rgba(201, 162, 39, 0.5),
-    0 6px 16px rgba(0, 0, 0, 0.7);
+  --slot-rim: linear-gradient(180deg, #fff0bf 0%, #c49a4a 40%, #6a4e22 70%, #e2c070 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 1px var(--frame-edge), inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 18px -3px rgba(232, 190, 96, 0.6),
+    0 6px 14px rgba(0, 0, 0, 0.7);
+}
+.hotslot.is-pressed,
+.potslot.is-pressed {
+  animation: slotPress 200ms var(--ease);
+}
+@keyframes slotPress {
+  0% {
+    transform: translateY(2px) scale(0.93);
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: none;
+    filter: none;
+  }
 }
 .hotslot-art {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: filter var(--dur-2) ease;
+}
+.hotslot-art .skill-img {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.7);
 }
 .hotslot.is-empty {
-  box-shadow: inset 0 0 0 1px rgba(107, 95, 76, 0.28), inset 0 4px 10px rgba(0, 0, 0, 0.6);
-  background: linear-gradient(180deg, #1a1610, #0c0a08);
+  --slot-rim: linear-gradient(180deg, rgba(120, 96, 56, 0.6), rgba(50, 38, 20, 0.6));
+  background: linear-gradient(180deg, #15110c, #0a0806) padding-box, var(--slot-rim) border-box;
 }
 .hotslot.is-empty::after {
   content: '';
   position: absolute;
-  inset: 12px;
-  border: 1px dashed rgba(147, 133, 108, 0.2);
-  border-radius: 3px;
+  inset: 13px;
+  border: 1px dashed rgba(147, 133, 108, 0.22);
+  border-radius: 50%;
 }
+
+/* Cooldown: the spent part of the clock is lit, the rest is shadow, and a
+   bright hand sweeps round to show exactly where it is. */
 .hotslot-cd {
   position: absolute;
   inset: 0;
   border-radius: 4px;
-  background: conic-gradient(from 0deg, rgba(3, 2, 2, 0.82) calc(var(--cd) * 360deg), transparent 0);
+  background: conic-gradient(from 0deg, rgba(4, 3, 2, 0.8) calc(var(--cd) * 360deg), transparent 0);
   pointer-events: none;
+}
+.hotslot-edge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 50%;
+  margin-left: -1px;
+  transform-origin: 50% 0;
+  transform: rotate(calc(180deg + var(--cd) * 360deg));
+  background: linear-gradient(0deg, rgba(255, 236, 190, 0.95), rgba(255, 236, 190, 0));
+  box-shadow: 0 0 6px rgba(255, 220, 150, 0.8);
+  opacity: 0;
+  pointer-events: none;
+}
+.on-cd > .hotslot-edge {
+  opacity: 1;
 }
 .hotslot-cdtext {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  font-family: var(--font-num);
-  font-size: var(--fs-lg);
+  font-family: var(--font-title);
+  font-size: 17px;
   font-weight: 700;
-  color: #fff;
-  text-shadow: 0 2px 4px #000;
+  color: #fff6e2;
+  text-shadow: 0 0 4px #000, 0 2px 3px #000;
   pointer-events: none;
 }
-.hotslot-key {
+.hotslot.on-cd .hotslot-art {
+  filter: grayscale(0.55) brightness(0.75);
+}
+
+/* Out of mana washes blue, out of reach washes red. */
+.hotslot-tint {
   position: absolute;
-  top: 2px;
-  left: 4px;
+  inset: 0;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-2) ease, background var(--dur-2) ease;
+}
+.hotslot.no-mana .hotslot-tint {
+  opacity: 1;
+  background: radial-gradient(circle, rgba(30, 70, 200, 0.35), rgba(10, 30, 120, 0.6));
+}
+.hotslot.no-mana .hotslot-art {
+  filter: grayscale(0.7) brightness(0.6);
+}
+.hotslot.out-of-range:not(.no-mana) .hotslot-tint {
+  opacity: 1;
+  background: radial-gradient(circle, rgba(200, 40, 30, 0.25), rgba(120, 10, 10, 0.55));
+}
+.hotslot.no-charges .hotslot-art {
+  filter: grayscale(1) brightness(0.5);
+}
+
+/* Fired: a quick pulse of the rim. Ready again: a gold ring blooms out. */
+.hotslot.is-cast,
+.potslot.is-cast {
+  animation: slotCast 260ms ease-out;
+}
+@keyframes slotCast {
+  0% {
+    filter: brightness(1.8);
+  }
+  100% {
+    filter: none;
+  }
+}
+.hotslot.is-ready::before,
+.potslot.is-ready::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 7px;
+  pointer-events: none;
+  animation: slotReady 520ms ease-out forwards;
+}
+@keyframes slotReady {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 226, 150, 0.95), inset 0 0 18px rgba(255, 226, 150, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(255, 226, 150, 0), inset 0 0 0 rgba(255, 226, 150, 0);
+  }
+}
+
+/* Key hint: a small keycap riding on the top edge of the socket. */
+.hotslot-key,
+.potslot-key {
+  position: absolute;
+  z-index: 3;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 15px;
+  height: 14px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
-  color: var(--ink-4);
+  line-height: 1;
+  color: #e9dcbc;
+  background: linear-gradient(180deg, #3a3020, #17120c);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(214, 178, 96, 0.5), 0 2px 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
 }
 .hotslot-cost {
   position: absolute;
-  bottom: 2px;
-  left: 4px;
+  z-index: 2;
+  bottom: 1px;
+  left: 3px;
   font-family: var(--font-num);
   font-size: 9.5px;
-  color: var(--mana-hi);
-  opacity: 0.85;
+  font-weight: 700;
+  color: #9cc8ff;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
 }
 .hotslot-rank {
   position: absolute;
-  bottom: 2px;
-  right: 4px;
+  z-index: 2;
+  bottom: 1px;
+  right: 3px;
   font-family: var(--font-num);
   font-size: 9.5px;
   font-weight: 700;
   color: var(--gold-hi);
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
 }
-.hotslot.no-mana .hotslot-art {
-  filter: grayscale(0.85) brightness(0.55);
+.hotslot-charges {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  right: 3px;
+  font-family: var(--font-num);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
 }
 .hotslot.no-mana .hotslot-cost {
-  color: var(--bad);
+  color: #ff8a7a;
   animation: manaBlink 1s ease-in-out infinite;
 }
 @keyframes manaBlink {
@@ -3247,64 +3331,189 @@ input.slider::-moz-range-thumb {
     opacity: 0.35;
   }
 }
-.hotslot.on-cd .hotslot-art {
-  filter: grayscale(0.6) brightness(0.7);
+
+/* Right-click attack slot: set a little apart, with a mouse glyph. */
+.hotslot-rmb {
+  margin-right: 12px;
 }
+.hotslot-rmb::after {
+  content: '';
+  position: absolute;
+  right: -11px;
+  top: 15%;
+  width: 1px;
+  height: 70%;
+  background: linear-gradient(180deg, transparent, rgba(214, 178, 96, 0.55), transparent);
+}
+.hotslot-rmb .hotslot-key {
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+.hotslot-rmb.is-basic .hotslot-art {
+  opacity: 0.8;
+}
+.hotslot-rmb.drop-ok,
+.hotslot.drop-ok {
+  outline: 2px solid #7dd87d;
+  outline-offset: 2px;
+}
+
+/* --- flasks and dash ----------------------------------------------------- */
 
 .potions {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
 .potslot {
+  --cd: 0;
   position: relative;
-  width: 46px;
-  height: 58px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #221b14, #0f0c09);
-  box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.22), 0 4px 12px rgba(0, 0, 0, 0.6);
+  width: 44px;
+  height: 54px;
+  border-radius: 22px 22px 6px 6px;
+  background: radial-gradient(ellipse at 50% 40%, #241c14 0%, #0d0a07 80%) padding-box,
+    linear-gradient(180deg, #b8914a 0%, #5d4520 45%, #33260f 70%, #8a6a32 100%) border-box;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--frame-edge), inset 0 0 10px rgba(0, 0, 0, 0.9), 0 4px 10px rgba(0, 0, 0, 0.6);
   display: grid;
   place-items: center;
   cursor: pointer;
+  transition: transform var(--dur-1) var(--ease), filter var(--dur-1) ease;
 }
-.pot-dash {
-  /* Distinct from the potions beside it: this one is an ability, not a stock. */
-  box-shadow: inset 0 0 0 1px rgba(120, 190, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.6);
+.potslot:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.15);
 }
-.pot-dash .potslot-art {
-  color: #8fc4ff;
-}
-.pot-dash.on-cd .potslot-art {
-  color: #55637a;
+.potslot > .hotslot-cd {
+  border-radius: 20px 20px 4px 4px;
 }
 .potslot-art {
   color: var(--life-hi);
-  filter: drop-shadow(0 0 8px rgba(255, 90, 66, 0.35));
+  filter: drop-shadow(0 0 8px rgba(255, 90, 66, 0.45));
 }
 .pot-mana .potslot-art {
   color: var(--mana-hi);
-  filter: drop-shadow(0 0 8px rgba(116, 180, 255, 0.35));
+  filter: drop-shadow(0 0 8px rgba(116, 180, 255, 0.45));
+}
+/* Distinct from the flasks beside it: this one is an ability, not a stock. */
+.pot-dash {
+  border-radius: 6px;
+}
+.pot-dash > .hotslot-cd {
+  border-radius: 4px;
+}
+.pot-dash .potslot-art {
+  color: #8fc4ff;
+  filter: drop-shadow(0 0 6px rgba(120, 180, 255, 0.5));
+}
+.pot-dash.on-cd .potslot-art {
+  color: #55637a;
+  filter: none;
 }
 .potslot-count {
   position: absolute;
-  right: 3px;
-  bottom: 2px;
+  right: 4px;
+  bottom: 1px;
   font-family: var(--font-num);
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--ink);
-  text-shadow: 0 1px 3px #000;
+  text-shadow: 0 1px 3px #000, 0 0 3px #000;
 }
-.potslot-key {
+.potslot.is-empty .potslot-art {
+  filter: grayscale(0.9) brightness(0.5);
+}
+.potslot.is-empty .potslot-count {
+  color: var(--bad);
+}
+
+/* --- buffs --------------------------------------------------------------- */
+
+/* Each status is a small medallion with a ring that drains clockwise and the
+   seconds left beneath it. Debuffs wear red, so a glance tells good from bad. */
+.buff {
+  --bc: #9ad0ff;
+  --ring: #e3c47e;
+  --k: 0;
+  position: relative;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--bc);
+  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--bc) 22%, #1c160f), #0a0806 75%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #000, 0 0 10px -3px var(--bc), 0 3px 6px rgba(0, 0, 0, 0.7);
+  animation: buffIn 220ms var(--ease-out-back);
+}
+@keyframes buffIn {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+.buff.debuff {
+  --ring: #e0503c;
+  background: radial-gradient(circle at 50% 38%, rgba(140, 30, 20, 0.6), #120605 75%);
+}
+.buff-art {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--bc) 60%, transparent));
+}
+/* The timer ring: lit for the time left, dark for the time gone. */
+.buff-sweep {
   position: absolute;
-  left: 4px;
-  top: 2px;
-  font-family: var(--font-num);
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--ink-4);
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(20, 16, 10, 0.95) calc(var(--k) * 360deg), var(--ring) 0);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 3px), #000 calc(50% - 2.5px));
+  mask: radial-gradient(circle, transparent 0 calc(50% - 3px), #000 calc(50% - 2.5px));
+  pointer-events: none;
 }
-.potslot.is-empty {
-  filter: grayscale(0.9) brightness(0.6);
+.buff-stacks {
+  position: absolute;
+  z-index: 2;
+  right: -5px;
+  top: -5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-num);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: #1a120a;
+  border-radius: 99px;
+  box-shadow: 0 0 0 1px var(--ring);
+}
+.buff-time {
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-num);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ink-2);
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  white-space: nowrap;
+}
+.buff.is-ending {
+  animation: buffEnding 0.5s ease-in-out infinite alternate;
+}
+@keyframes buffEnding {
+  to {
+    opacity: 0.45;
+  }
+}
+/* A summon chip reads as a count, not a timer, so its number sits larger. */
+.buff-minion .buff-stacks {
+  font-size: 10px;
 }
 
 .hud-gold {
@@ -5552,30 +5761,6 @@ input.slider::-moz-range-thumb {
   text-shadow: 0 1px 2px #000;
 }
 
-/* Right-click attack slot ---------------------------------------------------- */
-.hotslot-rmb {
-  margin-right: 10px;
-  position: relative;
-  border-color: rgba(203, 185, 138, 0.5);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 10px rgba(203, 185, 138, 0.12);
-}
-.hotslot-rmb .hotslot-key {
-  font-size: 8px;
-  letter-spacing: 0.06em;
-}
-.hotslot-rmb::after {
-  content: '';
-  position: absolute;
-  right: -6px;
-  top: 50%;
-  width: 1px;
-  height: 60%;
-  transform: translateY(-50%);
-  background: linear-gradient(180deg, transparent, rgba(203, 185, 138, 0.35), transparent);
-}
-.hotslot-rmb.is-basic .hotslot-art { opacity: 0.75; }
-.hotslot-rmb.drop-ok { outline: 2px solid #7dd87d; }
-
 /* Difficulty picker --------------------------------------------------------- */
 .cs-difbox {
   background: linear-gradient(180deg, rgba(24, 21, 18, 0.9), rgba(16, 14, 12, 0.9));
@@ -5633,7 +5818,7 @@ input.slider::-moz-range-thumb {
 /* Buff strip, centred above the hotbar ------------------------------------- */
 .hud-buffs {
   display: flex;
-  gap: 5px;
+  gap: 9px;
   justify-content: center;
   align-items: flex-end;
   min-height: 0;
@@ -5646,11 +5831,6 @@ input.slider::-moz-range-thumb {
 }
 .hud-buffs .buff {
   pointer-events: auto;
-}
-/* A summon chip reads as a count, not a timer, so its number sits larger. */
-.buff-minion .buff-stacks {
-  font-size: 11px;
-  font-weight: 700;
 }
 .hud-buffs:empty { display: none; }
 

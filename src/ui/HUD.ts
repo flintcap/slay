@@ -11,7 +11,7 @@
  * minimap redraw at 8Hz.
  */
 
-import type { DungeonLevel, ItemRarity, QuestInstance, StatKey } from '../types';
+import type { DungeonLevel, ItemRarity, QuestInstance, SkillDef, StatKey } from '../types';
 import { events, type GameEvents } from '../core/Events';
 import { save } from '../core/Save';
 import { stackCount } from '../sim/Inventory';
@@ -491,6 +491,10 @@ export class HUD {
   private rmbSlot!: HTMLDivElement;
   private rmbArt!: HTMLDivElement;
   private rmbCd!: HTMLDivElement;
+  /** Last cooldown seen per slot (RMB is index 6), to catch casts and readies. */
+  private cdPrev: number[] = [0, 0, 0, 0, 0, 0, 0];
+  private dashMax = 0;
+  private dashWasOn = false;
   private minimapCanvas: HTMLCanvasElement;
   private minimapCtx: CanvasRenderingContext2D | null;
   private minimapLabel: HTMLDivElement;
@@ -619,7 +623,7 @@ export class HUD {
     this.rmbArt = div('hotslot-art');
     const rmbCd = div('hotslot-cd');
     const rmbKey = div('hotslot-key', 'RMB');
-    add(this.rmbSlot, this.rmbArt, rmbCd, rmbKey);
+    add(this.rmbSlot, this.rmbArt, rmbCd, div('hotslot-edge'), div('hotslot-cdtext'), div('hotslot-tint'), rmbKey);
     slots.appendChild(this.rmbSlot);
     this.rmbCd = rmbCd;
 
@@ -655,11 +659,16 @@ export class HUD {
       s.dataset.index = String(i);
       const art = div('hotslot-art');
       const cd = div('hotslot-cd');
+      // The bright hand of the cooldown clock, so the sweep reads at a glance.
+      const edge = div('hotslot-edge');
       const cdText = div('hotslot-cdtext');
+      // Out-of-mana and out-of-range wash the icon in one overlay.
+      const tint = div('hotslot-tint');
       const key = div('hotslot-key', String(i + 1));
       const cost = div('hotslot-cost');
       const rank = div('hotslot-rank');
-      add(s, art, cd, cdText, key, cost, rank);
+      const charges = div('hotslot-charges');
+      add(s, art, cd, edge, tint, cdText, key, cost, rank, charges);
       this.hotSlots.push(s);
       this.hotIcons.push(art);
       slots.appendChild(s);
@@ -716,7 +725,7 @@ export class HUD {
     dashArt.innerHTML = iconSvg('dash', { size: 24 });
     const dashCd = div('hotslot-cd');
     const dashKey = div('potslot-key', 'SPC');
-    add(this.dashSlot, dashArt, dashCd, dashKey);
+    add(this.dashSlot, dashArt, dashCd, div('hotslot-edge'), dashKey);
     potions.appendChild(this.dashSlot);
 
     const skillRow = div('skillrow');
@@ -795,6 +804,32 @@ export class HUD {
     });
 
     on('ui:refresh', () => this.refreshAll());
+
+    // Press feedback. The bar does not handle input (the scene does); this only
+    // dips the slot that was pressed so a keypress is visibly acknowledged.
+    const pressKeys: Record<string, () => HTMLElement | undefined> = {
+      Digit1: () => this.hotSlots[0],
+      Digit2: () => this.hotSlots[1],
+      Digit3: () => this.hotSlots[2],
+      Digit4: () => this.hotSlots[3],
+      Digit5: () => this.hotSlots[4],
+      Digit6: () => this.hotSlots[5],
+      KeyQ: () => this.potionLife,
+      KeyF: () => this.potionMana,
+      Space: () => this.dashSlot,
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      if (!this.shown || e.repeat) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      const node = pressKeys[e.code]?.();
+      if (!node) return;
+      node.classList.remove('is-pressed');
+      void node.offsetWidth;
+      node.classList.add('is-pressed');
+    };
+    window.addEventListener('keydown', onKey);
+    this.offs.push(() => window.removeEventListener('keydown', onKey));
     on('item:equipped', () => this.refreshAll());
     on('item:unequipped', () => this.refreshAll());
 
@@ -958,12 +993,24 @@ export class HUD {
     if (cds instanceof Map) {
       runtime.cooldowns = cds as Map<string, number>;
     }
-    this.updateHotbarRuntime(mana);
+    // How far the cursor is from the player, for skills with a cast range.
+    let aim = Number.NaN;
+    const wp = (this.engine as unknown as { input?: { worldPoint?: { x: number; z: number } } }).input?.worldPoint;
+    const ppos = pl?.position as { x: number; z: number } | undefined;
+    if (wp && ppos && !runtime.inTown) aim = Math.hypot(wp.x - ppos.x, wp.z - ppos.z);
+    this.updateHotbarRuntime(mana, aim);
 
     // Dash cooldown, drawn with the same sweep the hotbar uses.
     const dashCd = typeof pl?.dodgeCooldown === 'number' ? (pl.dodgeCooldown as number) : 0;
-    this.dashSlot.style.setProperty('--cd', String(dashCd));
-    this.dashSlot.classList.toggle('on-cd', dashCd > 0.001);
+    // The dash cooldown is published in seconds; show it as a fraction of the
+    // longest one we have seen so the sweep empties smoothly.
+    if (dashCd > this.dashMax) this.dashMax = dashCd;
+    const dk = this.dashMax > 0 ? Math.min(1, dashCd / this.dashMax) : 0;
+    this.dashSlot.style.setProperty('--cd', String(dk));
+    const dashOn = dashCd > 0.001;
+    if (this.dashWasOn && !dashOn) this.flashReady(this.dashSlot);
+    this.dashWasOn = dashOn;
+    this.dashSlot.classList.toggle('on-cd', dashOn);
     this.updateStatuses(pl);
 
     // Minimap at 8Hz — a full grid redraw every frame is pure waste.
@@ -1047,6 +1094,10 @@ export class HUD {
         `<img class="skill-img" src="${skillIconUri(rmb, d?.effect, d?.damageType, d?.targeting === 'passive', d?.icon)}" ` +
         `alt="" style="width:40px;height:40px" draggable="false">`;
       this.rmbSlot.dataset.skill = rmb;
+      const rd = skillById(rmb);
+      const rrank = c.skills[rmb] ?? 0;
+      this.rmbSlot.dataset.cost = String(rd?.manaCost ? attempt(() => rd.manaCost?.(rrank) ?? 0, 0) : 0);
+      this.rmbSlot.dataset.range = String(castRange(rd));
       this.rmbSlot.title = `${skillById(rmb)?.name ?? 'Skill'} — right click to attack. Right-click this slot to clear it.`;
     } else {
       // A crossed-swords mark reads as "plain attack" without needing words.
@@ -1055,6 +1106,8 @@ export class HUD {
         '<path d="M3 3l7.5 7.5M21 3l-7.5 7.5M12 12l9 9M12 12l-9 9" fill="none" ' +
         'stroke="#cbb98a" stroke-width="2" stroke-linecap="round"/></svg>';
       delete this.rmbSlot.dataset.skill;
+      this.rmbSlot.dataset.cost = '0';
+      this.rmbSlot.dataset.range = '0';
       this.rmbSlot.title = 'Basic attack — drag a skill here to replace it.';
     }
 
@@ -1080,29 +1133,66 @@ export class HUD {
       if (costEl) costEl.textContent = cost > 0 ? String(Math.round(cost)) : '';
       slotEl.dataset.skill = id;
       slotEl.dataset.cost = String(cost);
+      slotEl.dataset.range = String(castRange(def));
       slotEl.title = def ? `${def.name} — Rank ${rank}` : id;
     }
   }
 
-  private updateHotbarRuntime(mana: number): void {
+  private updateHotbarRuntime(mana: number, aim: number): void {
     const c = save.account.current;
     if (!c) return;
-    for (let i = 0; i < 6; i++) {
-      const slotEl = this.hotSlots[i];
-      const id = c.hotbar[i];
-      if (!id) continue;
+    for (let i = 0; i < 7; i++) {
+      const slotEl = i < 6 ? this.hotSlots[i] : this.rmbSlot;
+      const id = i < 6 ? c.hotbar[i] : c.primaryAttack;
+      if (!id) {
+        this.cdPrev[i] = 0;
+        continue;
+      }
       const remain = runtime.cooldowns.get(id) ?? 0;
       const def = skillById(id);
       const rank = c.skills[id] ?? 0;
       const total = def?.cooldown ? attempt(() => def.cooldown?.(rank) ?? 0, 0) : 0;
       const k = total > 0 ? Math.max(0, Math.min(1, remain / total)) : 0;
       slotEl.style.setProperty('--cd', String(k));
-      slotEl.classList.toggle('on-cd', k > 0.001);
+      const onCd = k > 0.001;
+      slotEl.classList.toggle('on-cd', onCd);
+
+      // A cooldown that jumps up means the skill just fired; one that reaches
+      // zero means it is ready again. Both get a beat of light.
+      const prev = this.cdPrev[i] ?? 0;
+      if (remain > prev + 0.05 && prev < 0.05) this.flashCast(slotEl);
+      else if (prev > 0.05 && remain <= 0.05) this.flashReady(slotEl);
+      this.cdPrev[i] = remain;
+
       const t = slotEl.querySelector<HTMLElement>('.hotslot-cdtext');
-      if (t) t.textContent = remain > 0.05 ? (remain >= 10 ? String(Math.ceil(remain)) : remain.toFixed(1)) : '';
+      if (t) {
+        const txt = remain > 0.05 ? (remain >= 10 ? String(Math.ceil(remain)) : remain.toFixed(1)) : '';
+        if (t.textContent !== txt) t.textContent = txt;
+      }
       const cost = Number(slotEl.dataset.cost ?? 0);
       slotEl.classList.toggle('no-mana', cost > 0 && mana < cost);
+      const range = Number(slotEl.dataset.range ?? 0);
+      slotEl.classList.toggle('out-of-range', range > 0 && Number.isFinite(aim) && aim > range);
+      const ch = runtime.charges.get(id);
+      const chEl = slotEl.querySelector<HTMLElement>('.hotslot-charges');
+      if (chEl) {
+        const txt = ch !== undefined ? String(ch) : '';
+        if (chEl.textContent !== txt) chEl.textContent = txt;
+        slotEl.classList.toggle('no-charges', ch === 0);
+      }
     }
+  }
+
+  private flashCast(node: HTMLElement): void {
+    node.classList.remove('is-cast');
+    void node.offsetWidth;
+    node.classList.add('is-cast');
+  }
+
+  private flashReady(node: HTMLElement): void {
+    node.classList.remove('is-ready');
+    void node.offsetWidth;
+    node.classList.add('is-ready');
   }
 
   private refreshPotions(): void {
@@ -1175,7 +1265,7 @@ export class HUD {
         const art = div('buff-art');
         art.innerHTML = iconSvg(statusIcon(s.id, def?.icon), { size: 17 });
         const sweep = div('buff-sweep');
-        add(chip, art, sweep);
+        add(chip, sweep, art, span('buff-time'));
         if (s.stacks > 1) chip.appendChild(span('buff-stacks', String(s.stacks)));
         chip.dataset.id = s.id;
         // A shrine blessing that lasts two minutes and says nothing about what
@@ -1210,6 +1300,13 @@ export class HUD {
         const s = list[i]!;
         const k = s.duration > 0 ? Math.max(0, Math.min(1, s.remaining / s.duration)) : 0;
         el.style.setProperty('--k', String(1 - k));
+        // Seconds left under the chip; only rewritten when the number changes.
+        const tEl = el.querySelector<HTMLElement>('.buff-time');
+        if (tEl) {
+          const txt = !Number.isFinite(s.remaining) || s.remaining > 3600 ? '' : buffTime(s.remaining);
+          if (tEl.textContent !== txt) tEl.textContent = txt;
+        }
+        el.classList.toggle('is-ending', Number.isFinite(s.remaining) && s.remaining < 3 && s.remaining > 0);
         continue;
       }
       // Minion chips sweep on time left, and their stack number is the count.
@@ -1636,6 +1733,14 @@ function statusTooltip(id: string, stacks: number): string {
   return out.join('');
 }
 
+/** "12s", "4.5s", "2m": short enough to sit under a 30px chip. */
+function buffTime(sec: number): string {
+  if (sec <= 0) return '';
+  if (sec >= 120) return `${Math.round(sec / 60)}m`;
+  if (sec >= 10) return `${Math.ceil(sec)}s`;
+  return `${sec.toFixed(1)}s`;
+}
+
 /** Maps a status id to the closest icon in the authored set. */
 function statusIcon(id: string, hint?: string): string {
   const s = `${hint ?? ''} ${id}`.toLowerCase();
@@ -1653,6 +1758,18 @@ function statusIcon(id: string, hint?: string): string {
   return 'sparkle';
 }
 
+
+/**
+ * How far away a skill can be aimed, or 0 when distance does not matter.
+ *
+ * Only skills that land at a point or on a chosen enemy have a reach; a beam's
+ * `range` is how long it is, not how far you may aim it.
+ */
+function castRange(def: SkillDef | null | undefined): number {
+  if (!def || (def.targeting !== 'point' && def.targeting !== 'enemy')) return 0;
+  const r = def.params?.range;
+  return typeof r === 'number' && r > 0 ? r : 0;
+}
 
 /** Look up a skill definition by id for icon generation. */
 function skillDefFor(id: string) {

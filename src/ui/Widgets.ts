@@ -721,6 +721,12 @@ export const runtime = {
   /** Skill id -> seconds of cooldown remaining. */
   cooldowns: new Map<string, number>(),
   cooldownTotal: new Map<string, number>(),
+  /**
+   * Skill id -> charges left, for skills that hold several uses. Nothing fills
+   * this yet; a scene that adds charged skills writes here and the hotbar shows
+   * the count and greys the slot at zero.
+   */
+  charges: new Map<string, number>(),
   statuses: [] as StatusChip[],
   /**
    * Summons currently fighting for you, one row per skill.

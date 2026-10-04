@@ -102,7 +102,11 @@ scene.player = {
   dodgeCooldown: 0.5,
   position: { x: 0, z: 0 },
   root: { rotation: { y: 0.6 } },
-  statuses: STATUSES.slice(0, 6).map((s, i) => ({
+  // A mix of blessings and afflictions, so both chip styles are on screen.
+  statuses: [
+    ...STATUSES.filter((s) => s.polarity > 0).slice(0, 4),
+    ...STATUSES.filter((s) => s.polarity < 0).slice(0, 3),
+  ].map((s, i) => ({
     id: s.id,
     remaining: 4 + i * 3,
     duration: 12 + i * 2,
@@ -166,5 +170,15 @@ setTimeout(() => {
   }
   (window as unknown as Record<string, unknown>).LAB_READY = true;
 }, 200);
+
+// Frame-rate probe: headless Chromium can tick slowly, which matters for
+// anything eased per frame.
+let frames = 0;
+const countFrames = (): void => {
+  frames++;
+  requestAnimationFrame(countFrames);
+};
+requestAnimationFrame(countFrames);
+(window as unknown as Record<string, unknown>).labFrames = () => frames;
 
 (window as unknown as Record<string, unknown>).LAB = { events, save, runtime, hoverHooks, hud: hudInstance(), scene };
