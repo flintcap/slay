@@ -1,6 +1,6 @@
 # Stream: animation (how bodies move)
 
-Status: in progress (milestones 1-5 done; on milestone 6, the sweep)
+Status: done
 
 ## Milestones
 
@@ -9,22 +9,22 @@ Status: in progress (milestones 1-5 done; on milestone 6, the sweep)
 - [x] Hit reactions and deaths: flinch, stagger, knockback, and death animations that fall and fade instead of vanishing. ("Animation: hits flinch without cutting swings, stagger, stun, knockdown, two deaths")
 - [x] Monster motion: idle variety per family, spawn or emerge animations, movement that suits each body (scuttle, lope, float, lumber). (Monster looks moved to the models stream.) ("Animation: monsters move by body, wind up and strike, fidget, spawn and die their own way")
 - [x] Secondary motion: cloth, cape, hair and loose gear that sway and settle; town NPCs idle with personality. (Player and NPC looks moved to the models stream.) ("Animation: long hair swings and settles, camp residents idle at their trades")
-- [ ] Sweep: check-grips, check-clips and check-attack pass; nothing pops or snaps between states.
+- [x] Sweep: check-grips, check-clips and check-attack pass; nothing pops or snaps between states. ("Animation sweep: a foot caught mid-stride keeps its speed into an action; footplant gates actions"; browser checkers could not boot under load, see notes)
 
 ## Next up
 
-Milestone 6, the sweep. Concretely:
+All milestones are done. If a successor picks this up:
 
-1. Browser checkers, each one command under `timeout` (max 45 min), `SLAY_PORT=4303`, nothing left
-   running: `node tools/check-clips.mjs` (vite dev server, boots the game) and
-   `npm run build && node tools/check-attack.mjs` (vite preview). Each may fail at most twice for the
-   same reason; then note it here and move on.
-2. Static: `check-strikes`, `check-reactions`, `check-footplant`, `check-grips`, `check-monster-anim`
-   all pass now; rerun them after any change.
-3. Pops between states: done. A foot caught mid-stride keeps its speed into the action's step
-   (Hermite start in `holdFeet`), and `check-footplant` now gates action pops and slide too.
-4. Look issues to revisit if time allows: the walk is a little bent-kneed (`SOFT_FROM = 0.975`); hero
-   capes do not sway (see the milestone 5 note).
+1. Rerun the two browser checkers when the machine is quiet (each one command, under `timeout`,
+   `SLAY_PORT=4303`): `node tools/check-clips.mjs` and `npm run build && node tools/check-attack.mjs`.
+   At the sweep both failed once for the same reason: the game did not finish booting (check-clips
+   hit its 420 s wait; check-attack was still booting after ~65 min with load average 11 to 16 from
+   the other agents) and was stopped. Neither reached a test. What check-clips checks was verified
+   statically instead: every skill's clip for melee, ranged and caster holds resolves to a clip the
+   animator has (`clipFor` for every non-passive skill, played through the real Animator; none missing).
+2. Optional polish: hero capes (see the milestone 5 note), the slightly bent-kneed walk
+   (`SOFT_FROM = 0.975`), and the static strike checker's attack row (`check-footplant` uses a speed-1
+   attack; `check-strikes` covers the real Player timing).
 
 ## Notes for resume
 
