@@ -180,8 +180,20 @@ function hideSpritesFromAO(pass: GTAOPass): void {
   p._overrideVisibility = function (): void {
     const cache = p._visibilityCache;
     p.scene.traverse((o) => {
-      const t = o as THREE.Object3D & { isPoints?: boolean; isLine?: boolean; isLine2?: boolean; isSprite?: boolean };
-      if ((t.isPoints || t.isLine || t.isLine2 || t.isSprite) && o.visible) {
+      const t = o as THREE.Object3D & {
+        isPoints?: boolean; isLine?: boolean; isLine2?: boolean; isSprite?: boolean; isMesh?: boolean;
+        material?: THREE.Material | THREE.Material[];
+      };
+      // Glow meshes too: anything transparent that writes no depth (light
+      // shafts, light pools, cobwebs, additive FX). In the AO buffer a light
+      // shaft became a solid cone and laid a dark trapezoid over the floor
+      // around the hero (w16 frostvault, calm).
+      let glow = false;
+      if (t.isMesh && t.material) {
+        const m = Array.isArray(t.material) ? t.material[0] : t.material;
+        glow = !!m && m.transparent && !m.depthWrite;
+      }
+      if ((t.isPoints || t.isLine || t.isLine2 || t.isSprite || glow) && o.visible) {
         o.visible = false;
         cache.push(o);
       }
