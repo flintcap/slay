@@ -10,6 +10,9 @@
  */
 
 import './story.css';
+import { save } from '../core/Save';
+import { keyFor } from '../core/Access';
+import { keyLabel } from './AccessibilitySettings';
 import { Panel, Tabs, div, span, clear, emptyState, type TabDef } from './Widgets';
 import { NPCS, NPC_IDS, fillStory, nextChapter, revealedChapters, story } from '../sim/Story';
 
@@ -64,7 +67,7 @@ export function pageTitle(page: HTMLElement, title: string, meta?: string): void
 
 addJournalSection({
   id: 'descent',
-  label: 'The Descent',
+  label: 'Chapters',
   icon: 'descend',
   empty: 'Nothing written yet. Go down.',
   entries() {
@@ -104,7 +107,9 @@ addJournalSection({
   id: 'people',
   label: 'People',
   icon: 'quest',
-  empty: 'You have not spoken to anyone in Stairhead yet. Walk up to someone and press E.',
+  get empty() {
+    return `You have not spoken to anyone in Stairhead yet. Walk up to someone and press ${keyLabel(keyFor('KeyE', save.settings.keybinds))}.`;
+  },
   entries() {
     const s = story();
     return NPC_IDS.filter((id) => s.talked[id] !== undefined).map((id) => {

@@ -16,6 +16,8 @@
 import './story.css';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
+import { keyFor } from '../core/Access';
+import { keyLabel } from './AccessibilitySettings';
 import { div, span, clear } from './Widgets';
 import {
   NPCS,
@@ -131,7 +133,8 @@ function nextCard(): void {
   }
   if (card.source) el.appendChild(div('story-card-source', `— ${card.source}`));
   const ft = div('story-card-ft');
-  ft.appendChild(span('', queue.length ? `Kept in your journal (J) · ${queue.length} more` : 'Kept in your journal (J)'));
+  const kept = `Kept in your journal (${keyLabel(keyFor('KeyJ', save.settings.keybinds))})`;
+  ft.appendChild(span('', queue.length ? `${kept} · ${queue.length} more` : kept));
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'btn btn-ghost btn-sm';

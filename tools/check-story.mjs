@@ -50,6 +50,10 @@ HOOKS.push(
   ['src/data/sets.ts', 'applySetText(ALL)', 'sets keep their old blurbs'],
   ['src/sim/Quests.ts', "events.emit('story:line'", 'quest whispers are never said'],
   ['src/ui/StoryOverlay.ts', "events.on('story:line'", 'nobody speaks story lines'],
+  // Key hints follow the player's rebinding, never a hard-coded letter.
+  ['src/ui/DialoguePanel.ts', 'keyFor(`Digit${i + 1}`, save.settings.keybinds)', 'dialogue numbers ignore rebinding'],
+  ['src/ui/StoryOverlay.ts', "keyFor('KeyJ', save.settings.keybinds)", 'the card names a fixed journal key'],
+  ['src/ui/JournalPanel.ts', "keyFor('KeyE', save.settings.keybinds)", 'the journal names a fixed talk key'],
 );
 // Every boss event the story speaks on must have a listener in StoryBosses.
 for (const ev of ['boss:engaged', 'boss:phase', 'boss:damaged', 'boss:enraged', 'boss:killed', 'player:died']) {

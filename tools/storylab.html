@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SLAY story lab</title>
+    <link rel="stylesheet" href="/src/ui/styles.css" />
+    <!-- As in index.html: the menus banners and screens live here. -->
+    <link rel="stylesheet" href="/src/ui/menus.css" />
+    <style>
+      /* A painted stand-in for the 3D view, so translucent HUD pieces are
+         judged against something with light and dark in it, not flat black. */
+      #view {
+        background:
+          radial-gradient(ellipse 40% 30% at 50% 55%, rgba(255, 170, 90, 0.35), transparent 70%),
+          radial-gradient(ellipse 70% 50% at 30% 70%, #3b3a33, transparent 70%),
+          linear-gradient(180deg, #1b1d22 0%, #2a2721 55%, #181511 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="view"></div>
+    <div id="ui"></div>
+    <div id="fade"></div>
+    <script type="module" src="/tools/storylab-entry.ts"></script>
+  </body>
+</html>

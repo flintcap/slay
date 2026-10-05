@@ -15,7 +15,9 @@ import * as THREE from 'three';
 import './story.css';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
-import { remapKey } from '../core/Access';
+import { remapKey, keyFor } from '../core/Access';
+import { save } from '../core/Save';
+import { keyLabel } from './AccessibilitySettings';
 import { Panel, div, span, clear, icon } from './Widgets';
 import type { NpcDef, NpcId } from '../data/story/types';
 import {
@@ -200,7 +202,7 @@ export class DialoguePanel implements DialogueView {
       if (o.isNew) cls.push('is-new');
       if (o.heard) cls.push('is-heard');
       b.className = cls.join(' ');
-      b.appendChild(span('dlg-key', String(i + 1)));
+      b.appendChild(span('dlg-key', i < 9 ? keyLabel(keyFor(`Digit${i + 1}`, save.settings.keybinds)) : ''));
       if (o.icon) b.appendChild(icon(o.icon, { size: 14 }));
       b.appendChild(span('', o.label));
       b.addEventListener('click', () => this.choose(o));

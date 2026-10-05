@@ -1,6 +1,6 @@
 # Stream: story (lore, quests, characters)
 
-Status: paused
+Status: done
 
 ## Milestones
 
@@ -9,29 +9,31 @@ Status: paused
 - [x] Quest lines: hand-written quest chains that send you to specific depths and biomes, with rewards and short story beats. (`Story: contracts, nine hand-written quest lines`)
 - [x] Bosses with personality: an intro line, a taunt mid-fight, and a death line for every boss; lore found on their floors. (`Story: a voice and floor lore for all 24 bosses`)
 - [x] Flavour: item, unique and set flavour text, biome and variant blurbs, lore notes found in the dungeon, a journal to reread them. (`Story: flavour, one name per layer, uniques renamed into the world`)
-- [ ] Sweep: consistent tone and names, no contradictions, every quest completable.
+- [x] Sweep: consistent tone and names, no contradictions, every quest completable. (`Story: sweep done; journal fits its tabs, subtitles clear the buffs, key hints follow rebinding`)
 
 ## Next up
 
-Milestone 6, the sweep. Almost done. Already in place (milestone 5 commit plus the pause commit):
-- `src/data/lore.ts` cut to what the game reads (`pickLine`, `QUEST_LORE`/`questLore`, `NAMED_ELITES`); 14 quests
-  have their own lore; quest whispers are spoken through `story:line`.
-- Contradictions fixed: Hesk's expeditions (nine chartered), the Third Watch (six of the watch), the Herald's roll
-  (six of the nine; Gilder and Ashka live), Kale's lineage (a dozen pairs of hands back to the Works, since Caul fell
-  about four hundred years ago; Hurn's taunt matches), Vess no longer repeats Grell's "tell the wagon woman".
+All six milestones are done. Nothing is queued. If more story work is wanted later:
+- Optional: rename uniques already sitting in old saves to their new names (quality owns `Save.ts`; the map from old
+  to new names would come from `src/data/story/uniqueText.ts`).
+- A new boss from combat needs a voice in `src/data/story/bossVoices.ts` or `check-story` fails (by design).
 - Canon dates to keep: Caul paid rent nine hundred years and fell about four hundred years ago; the Works have run
   four hundred years since; Calix's last authorised entry (611 years) predates the fall; the Spire has worked loose
   for a thousand years; Gilder left Ferris on the sixth eleven years ago; Renn has kept the roster nineteen years.
-What is left:
-1. Take the one story render: `npm run build`, then
-   `SLAY_PORT=4308 timeout 2700 node tools/shot-story.mjs --out=shots/story --shots=talk,journal,note,boss,bossfloor`
-   as a single foreground command (it starts and stops its own server). The first attempt was stopped by the pause
-   before boot finished (the machine was at load 12); nothing was learned from it. Look at the PNGs: subtitle,
-   note card, journal tabs. If it times out, try `--shots=talk,note` only, and if that fails too, note it and move on.
-2. Optional: rename existing saved unique items to their new names (quality owns `Save.ts`; ask there).
-3. Tick milestone 6, set `Status: done`.
 
 ## Notes for resume
+
+- Story renders: `node tools/shot-story.mjs --lab --out=shots/story --shots=talk,offer,journal,card,note,boss,bossfloor`
+  mounts the real story UI on the UI lab's painted stand-in (`tools/storylab.html`, `tools/storylab-entry.ts`), no
+  WebGL, and takes under a minute. The full-game render (no `--lab`) never finished on this machine: it timed out
+  before boot at 40 minutes with two other renders running (load 15). The `journal` shot takes one picture per tab
+  and seeds chapters, notes, places and bosses into the in-memory save first.
+- Sweep render fixes: the journal tab row no longer widens the panel past its frame (the page text and contract cards
+  were clipped on the right, and Places was cut off); the first tab is now "Chapters"; subtitles sit above the buff
+  strip and the interact prompt (they were drawn over the buffs); cards start at 116px so they clear the boss bar's
+  phase marks; card footers and dialogue key numbers moved from ink-4 to ink-3 for contrast.
+- Key hints follow rebinding: dialogue option numbers show the key bound to Skill 1-9, the card footer shows the
+  journal key, and the empty People page names the interact key. `check-story` holds all three.
 
 - Done: the two raw font sizes in `story.css` hud asked about now scale with `--text-scale`.
 - Bosses: voices in `src/data/story/bossVoices.ts`, spoken by `src/ui/StoryBosses.ts`. `Boss.ts` no longer toasts its

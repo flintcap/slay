@@ -1,14 +1,20 @@
 /**
- * Story screenshots: a conversation, an offer, the journal, a revelation card,
- * a boss's spoken line and the boss floor's lore card.
+ * Story screenshots: a conversation, an offer, the journal (one picture per
+ * tab), a revelation card, a found note, a boss's spoken line and the boss
+ * floor's lore card.
  *
  *   npm run build
  *   SLAY_PORT=4308 node tools/shot-story.mjs --out=shots/story
  *   node tools/shot-story.mjs --shots=talk,offer,journal
+ *   node tools/shot-story.mjs --lab --shots=talk,journal,note,boss,bossfloor
  *
- * Self-contained: starts its own preview server on SLAY_PORT and stops it on
- * exit, so it can run as one blocking command. Boot takes minutes under
- * software rendering; each shot after that is a few seconds of settling.
+ * Self-contained: starts its own server on SLAY_PORT and stops it on exit, so
+ * it can run as one blocking command. Boot takes minutes under software
+ * rendering; each shot after that is a few seconds of settling.
+ *
+ * --lab mounts the real story UI on the UI lab's painted stand-in
+ * (tools/storylab.html) with no WebGL, so the whole set takes seconds. Use it
+ * to check text and panels when the machine is too loaded to boot the game.
  */
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
@@ -28,75 +34,96 @@ const WANT = String(args.shots ?? 'talk,offer,journal,contracts,card,note,boss,b
 const WIDTH = Number(args.width ?? 1600);
 const HEIGHT = Number(args.height ?? 900);
 const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4308);
+const LAB = !!args.lab;
 
 mkdirSync(OUT, { recursive: true });
-if (!existsSync('dist/index.html')) {
+if (!LAB && !existsSync('dist/index.html')) {
   console.error('No dist/ build found. Run `npm run build` first.');
   process.exit(1);
 }
 
-const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
-  stdio: ['ignore', 'pipe', 'pipe'],
-  detached: true,
-});
-server.stdout.on('data', () => {});
-server.stderr.on('data', (d) => process.stderr.write(`[preview] ${d}`));
-const shutdown = () => {
-  try {
-    process.kill(-server.pid, 'SIGTERM');
-  } catch {
+let shutdown = async () => {};
+if (LAB) {
+  const { createServer } = await import('vite');
+  const dev = await createServer({
+    root: path.resolve(import.meta.dirname, '..'),
+    configFile: false,
+    logLevel: 'error',
+    server: { port: PORT, strictPort: true, host: '127.0.0.1' },
+  });
+  await dev.listen();
+  shutdown = () => dev.close();
+} else {
+  const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: true,
+  });
+  server.stdout.on('data', () => {});
+  server.stderr.on('data', (d) => process.stderr.write(`[preview] ${d}`));
+  shutdown = async () => {
     try {
-      server.kill('SIGTERM');
+      process.kill(-server.pid, 'SIGTERM');
     } catch {
-      /* gone */
+      try {
+        server.kill('SIGTERM');
+      } catch {
+        /* gone */
+      }
     }
-  }
-};
-process.on('exit', shutdown);
-process.on('SIGINT', () => {
-  shutdown();
-  process.exit(130);
-});
+  };
+  process.on('exit', () => void shutdown());
+  process.on('SIGINT', () => {
+    void shutdown();
+    process.exit(130);
+  });
 
-let up = false;
-for (let i = 0; i < 60; i++) {
-  try {
-    if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) {
-      up = true;
-      break;
+  let up = false;
+  for (let i = 0; i < 60; i++) {
+    try {
+      if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) {
+        up = true;
+        break;
+      }
+    } catch {
+      /* not yet */
     }
-  } catch {
-    /* not yet */
+    await sleep(500);
   }
-  await sleep(500);
-}
-if (!up) {
-  console.error('preview server never came up');
-  shutdown();
-  process.exit(1);
+  if (!up) {
+    console.error('preview server never came up');
+    await shutdown();
+    process.exit(1);
+  }
 }
 
 const CHROME = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium';
 const browser = await chromium.launch({
   executablePath: existsSync(CHROME) ? CHROME : undefined,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--disable-gpu-sandbox', '--no-sandbox'],
+  args: LAB
+    ? ['--no-sandbox']
+    : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--disable-gpu-sandbox', '--no-sandbox'],
 });
 const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
 const errors = [];
 page.on('console', (m) => {
-  if (m.type() === 'error') errors.push(m.text());
+  if (m.type() === 'error' && !(LAB && m.text().includes('404'))) errors.push(m.text());
 });
 page.on('pageerror', (e) => errors.push(String(e)));
 page.setDefaultTimeout(Number(args.stepTimeout ?? 600000));
 
-await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load', timeout: 120000 });
-try {
-  await page.waitForFunction(() => {
-    const s = window.SLAY;
-    return !!s && !!s.debug && !!s.engine && s.engine.currentSceneId !== null && !!window.SLAY_STORY;
-  }, null, { timeout: Number(args.bootTimeout ?? 1500000) });
-} catch {
-  console.error('game never reached a live scene');
+if (LAB) {
+  await page.goto(`http://127.0.0.1:${PORT}/tools/storylab.html?s=hud`, { waitUntil: 'load', timeout: 120000 });
+  await page.waitForFunction(() => window.LAB_READY === true && !!window.SLAY_STORY, null, { timeout: 120000 });
+} else {
+  await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load', timeout: 120000 });
+  try {
+    await page.waitForFunction(() => {
+      const s = window.SLAY;
+      return !!s && !!s.debug && !!s.engine && s.engine.currentSceneId !== null && !!window.SLAY_STORY;
+    }, null, { timeout: Number(args.bootTimeout ?? 1500000) });
+  } catch {
+    console.error('game never reached a live scene');
+  }
 }
 console.log('booted');
 
@@ -119,14 +146,28 @@ async function shoot(name) {
   console.log(`ok    ${name.padEnd(12)} ${file}  ${Math.round(statSync(file).size / 1024)} KB`);
 }
 
+// Close every card the way a player would, so the card queue moves on. Taking
+// them out of the page by hand leaves the queue waiting forever.
+async function clearCards() {
+  for (let i = 0; i < 12; i++) {
+    const open = await page.evaluate(() => {
+      const btn = document.querySelector('.story-card.is-open .story-card-ft button');
+      if (btn) btn.click();
+      return !!btn || !!document.querySelector('.story-card');
+    });
+    if (!open) return;
+    await sleep(600);
+  }
+}
+
 async function closePanels() {
-  await page.keyboard.press('Escape').catch(() => {});
+  // No Escape key here: with nothing open it brings up the pause menu.
   await page.evaluate(() => {
     for (const id of ['dialogue', 'journal']) window.SLAY.events.emit('ui:close', { panel: id });
   });
 }
 
-let inTown = false;
+let inTown = LAB; // the lab has no town to walk to; its painted HUD stands in
 async function town() {
   if (inTown) return;
   await page.evaluate(async () => {
@@ -136,7 +177,7 @@ async function town() {
   });
   await settle(90);
   // The first night reveals a chapter card and an arrival line; let them go.
-  await page.evaluate(() => document.querySelectorAll('.story-card').forEach((n) => n.remove()));
+  await clearCards();
   inTown = true;
 }
 
@@ -157,6 +198,28 @@ const drivers = {
   },
   journal: async () => {
     await closePanels();
+    // Give every tab something to show: a few chapters, pages, places, bosses
+    // and a contract in hand. Only the in-memory save; nothing is written.
+    // Opening the journal once creates the story save if this account has none.
+    await page.evaluate(() => window.SLAY_STORY.journal('descent'));
+    await page.evaluate(() => {
+      window.SLAY.events.emit('ui:close', { panel: 'journal' });
+      const st = window.SLAY.save.account.story;
+      if (!st) return;
+      const add = (list, ids) => ids.forEach((id) => list.includes(id) || list.push(id));
+      add(st.chapters, ['ch.stairhead', 'ch.first', 'ch.tenant']);
+      add(st.notes, ['note.crypt.chalk', 'note.crypt.swept', 'note.crypt.oil', 'note.caverns.pin', 'floor.boneking_gharruth']);
+      add(st.biomes, ['crypt', 'caverns']);
+      add(st.met, ['boneking_gharruth', 'butcher_grell']);
+      add(st.slain, ['boneking_gharruth']);
+      st.chains.renn ??= { step: 0, state: 'active' };
+    });
+    // One picture per tab; the last one is taken by the loop below.
+    for (const tab of ['contracts', 'people', 'bosses', 'notes', 'places']) {
+      await page.evaluate((t) => window.SLAY_STORY.journal(t), tab);
+      await settle(20);
+      await shoot(`journal-${tab}`);
+    }
     await page.evaluate(() => window.SLAY_STORY.journal('descent'));
     await settle(30);
   },
@@ -181,8 +244,8 @@ const drivers = {
   },
   note: async () => {
     await closePanels();
+    await clearCards();
     await page.evaluate(() => {
-      document.querySelectorAll('.story-card').forEach((n) => n.remove());
       window.SLAY_STORY.note?.('note.crypt.swept');
     });
     await settle(40);
@@ -190,13 +253,15 @@ const drivers = {
   boss: async () => {
     // Spoken over the town: the subtitle is the same wherever it plays, and a
     // dungeon boot would double the render time.
+    await closePanels();
+    await clearCards();
     await page.evaluate(() => {
-      document.querySelectorAll('.story-card').forEach((n) => n.remove());
       window.SLAY_STORY.bossLine?.('greet');
     });
     await settle(30);
   },
   bossfloor: async () => {
+    await closePanels();
     await page.evaluate(() => {
       const st = window.SLAY_STORY;
       if (st.bossFloor) st.bossFloor();
@@ -225,5 +290,5 @@ if (errors.length) {
   for (const e of errors.slice(0, 25)) console.error('  ' + e);
 }
 await browser.close();
-shutdown();
+await shutdown();
 process.exit(ok ? 0 : 1);
