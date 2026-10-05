@@ -83,3 +83,22 @@ When the owner says resume, Claude launches one agent per stream whose
 progress file still has unticked milestones. Each starts with "Setup" above,
 reads its progress file, sets `Status: in progress`, and continues from
 "Next up".
+
+## Testing limits
+
+Agents have been losing hours to tests that hang or are rerun again and again.
+These limits are hard:
+
+- **Never run a server as a background task and wait on it.** It never exits,
+  so nothing wakes you. Render with one command that starts and stops its own
+  server.
+- **One render or browser check: 45 minutes, wrapped in `timeout`.** If it times
+  out, do not just rerun it. Make it smaller (fewer shots, one biome, one class)
+  or verify headlessly instead.
+- **The same check may fail at most twice for the same reason.** After the second
+  failure, write what you know in "Notes for resume", checkpoint, and move on to
+  the next milestone.
+- **No milestone may go more than 90 minutes without a checkpoint.** If you are
+  stuck, checkpoint what works, note the blocker, and move on.
+- **Leave nothing running.** Before ending a turn or finishing, make sure no
+  server, browser or checker you started is still alive.
