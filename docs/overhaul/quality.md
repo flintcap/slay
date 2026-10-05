@@ -40,6 +40,12 @@ Paused mid-way. In this order:
 
 ## Notes for resume
 
+**From depth (finished, 9ca7c18):**
+- `debug.makeCharacter` can leave the main hand empty (new characters start with no gear and the random items may hold no usable weapon). Make it always equip a class-appropriate weapon so every browser checker starts armed.
+- In camp shots the hero sometimes vanishes for a few frames right after a teleport, then appears. Probably test timing, possibly a mesh hidden after a position jump (frustum or bounds not updated). Worth one look.
+- The full live depth test (`tools/smoke-depth.mjs`) takes about 35 minutes; `tools/check-town.mjs` guards camp station placement.
+- Monsters killed more than 38 m from the hero never finished dying until depth fixed it in DungeonScene; a soak test should catch this class of bug.
+
 ### Tools quality added
 - `tools/run-checks.mjs`: runs every checker (static by default, `--browser`,
   `--all`, `--only=a,b`, `--skip=`), output per checker in `.checks/`. Kills a
