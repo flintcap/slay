@@ -40,6 +40,11 @@ Paused mid-way. In this order:
 
 ## Notes for resume
 
+**Requests left at the second pause (owning streams are finished, so these are yours):**
+- From story: unique items already in saves keep their old Diablo II names. Add a save migration in `Save.ts` that renames them from `src/data/story/uniqueText.ts`.
+- From world: in big fights monster nameplates cover most of the screen (hud is finished). Thin them: fade or hide plates for ordinary monsters beyond a count or distance, keep elites, rares and bosses.
+- From world: the town is at 1,096 draw calls against a budget of 900, and the nine residents from `src/art/NpcModels.ts` are most of it (models is finished). Merge each resident's meshes per material.
+
 **From depth (finished, 9ca7c18):**
 - `debug.makeCharacter` can leave the main hand empty (new characters start with no gear and the random items may hold no usable weapon). Make it always equip a class-appropriate weapon so every browser checker starts armed.
 - In camp shots the hero sometimes vanishes for a few frames right after a teleport, then appears. Probably test timing, possibly a mesh hidden after a position jump (frustum or bounds not updated). Worth one look.

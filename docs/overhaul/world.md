@@ -41,6 +41,8 @@ Paused mid-render (w10 stopped after its first shot). Nothing is half-wired; the
 
 ## Notes for resume
 
+**From menus (paused, 1238968):** sprites draw as solid dark squares in the ambient occlusion pass (seen on the death-scene wisp and the halo sprite in `src/fx/Effects.ts` around line 1375). Fix it once in `Renderer.ts`: hide sprites during the AO pass, the way points and lines already are.
+
 - w10 crypt@room (calm, treasure room 14x13): gold hoard glows as the room's centre piece, floor
   reads clean, hero clear, 242 draw calls. The floor seal under the hoard did not show clearly.
 
