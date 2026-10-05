@@ -2046,7 +2046,7 @@ const _dirB = new THREE.Vector3();
 const HAFT_TWOHAND = new THREE.Vector3(0, 0.19, -0.03);
 const HAFT_STAFF = new THREE.Vector3(0, 0.32, -0.03);
 /** A two-handed sword's hilt, under the guard: where the off hand goes in a swing. */
-const HILT_TWOHAND = new THREE.Vector3(0, -0.13, -0.02);
+const HILT_TWOHAND = new THREE.Vector3(0, -0.11, -0.02);
 const _haft = new THREE.Vector3();
 const _goal = new THREE.Vector3();
 const _qD = new THREE.Quaternion();
