@@ -1769,6 +1769,10 @@ export class DungeonScene extends GameScene {
     this.groundLabels?.dispose();
     this.groundLabels = null;
     this.skills.dispose();
+    // The runner's dispose only clears the feel (checkers reuse the runner);
+    // the scene is done with it, so drop its event subscriptions too. Every
+    // visit used to leave one listening to combos and evades.
+    this.skills.feel.dispose();
     this.effects.dispose();
     this.fx.dispose();
     this.decals.dispose();

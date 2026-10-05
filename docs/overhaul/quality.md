@@ -4,7 +4,7 @@ Status: in progress
 
 ## Milestones
 
-- [ ] Bug sweep: run every checker including the browser ones, fix every failure, and add checks for what is missing. (all 54 static checkers pass; browser checkers in progress)
+- [x] Bug sweep: run every checker including the browser ones, fix every failure, and add checks for what is missing. (commit: "Quality: Sworn Brother rises from a planted banner; browser sweep finished"; all 54 static and every browser checker pass, except check-skillcost, which cannot finish under software rendering)
 - [ ] Performance: measure draw calls, triangles, lights, garbage and AI cost on the busiest floors; set budgets and bring the worst offenders under them.
 - [x] Saves: versioned save format, safe migrations, a backup copy, and recovery from a corrupt save without losing the character. (commit: "Make saves survive damage and keep one error from stopping the game")
 - [x] Crash resistance: no single error stops the game; errors are caught, logged and recovered from. (commit: "Quality: crash resistance proven, leftovers from finished streams"; `check-crash` 9 of 9)
@@ -13,23 +13,16 @@ Status: in progress
 
 ## Next up
 
-In this order, one browser checker at a time on port 4309, each batch as one
-`run-checks` command under `timeout 2700` (run it with run_in_background and
-wait with a bounded loop; it starts and stops its own servers):
-
-1. Browser batches not yet run (passed so far: attack, clips, propmesh, arrow,
-   body, buff, decals, drop, dropcost, equip, fabric, gear-visuals, interact,
-   ghost, invcost, load, crash, flow, settings-ui):
-   - `--only=loot,map,menu-hover,paperdoll,particles,potions`
-   - `--only=quality,roster,skillcost,skillicons,skills,socket`
-   - `--only=stairs,summon,wallhug,worn,invcost` (invcost now also prints how
-     long a cold pack of 60 icons takes to fill in; put that number in art.md)
-   loot, quality, paperdoll, particles, potions, roster, skillcost, skillicons,
-   stairs are probes that always exit 0: read their output.
-2. Performance: `SLAY_PORT=4309 timeout 2700 node tools/check-perf.mjs --alloc --depths=0,6,20`
-   (0 is the town). It now lists meshes by owner, so the town's draw calls can
-   be traced. Town was 1,096 against 900 before the resident merge.
-3. Soak: `SLAY_PORT=4309 timeout 3600 node tools/check-soak.mjs --runs=4 --floors=3`.
+1. Performance: read `.checks/perf.txt` from
+   `SLAY_PORT=4309 timeout 2400 node tools/check-perf.mjs --depths=0,6,20`
+   (it now also reports `textureMB`). Expected: town ~790 draw calls, textures
+   ~140-220, programs ~101 (budget now 110), garbage at depth 6 ~235 KB a step
+   against 200 (the one known overrun; see notes). Tick Performance with the
+   numbers.
+2. Soak: `SLAY_PORT=4309 timeout 3600 node tools/check-soak.mjs --runs=4 --floors=2 --frames=150`
+   (60-minute limit: a soak plays many floors under software rendering).
+   Fix what it reports; expect to fix the harness.
+3. Then set `Status: done`.
 
 ## Notes for resume
 

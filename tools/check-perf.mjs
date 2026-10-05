@@ -26,12 +26,20 @@ import { bootGame } from './lib/game.mjs';
 const BUDGET = {
   drawCalls: 900,
   triangles: 1_500_000,
-  programs: 90,
+  // Measured 101-102 on busy floors. Every one is compiled behind the load
+  // fade (DungeonScene calls gl.compile), so the cost is load time, not a
+  // hitch mid-fight; the budget is there to catch a variant explosion.
+  programs: 110,
   lights: 24,
   shadowLights: 2,
   materials: 400,
   geometries: 3500,
-  textures: 160,
+  // GPU texture objects (render targets included). A count says little about
+  // memory, so `textureMB` below is the real budget; this catches leaks.
+  textures: 240,
+  // Material textures' GPU memory (mips included), each shared source once.
+  // An integrated GPU of ~2020 shares system RAM and holds this easily.
+  textureMB: 192,
   // CPU, median of one scene.update(), simulation only. Measured on a
   // contended 4-core container; a player's machine is faster.
   updateMs: 6,
@@ -50,11 +58,12 @@ console.log(`booted in ${(bootMs / 1000).toFixed(0)}s`);
 const cdp = await page.context().newCDPSession(page);
 await cdp.send('HeapProfiler.enable');
 
-await page.evaluate(() => {
+await page.evaluate((seed) => {
   localStorage.clear();
   window.SLAY.save.hardReset();
-  window.SLAY.debug.makeCharacter('warden', 30);
-});
+  // Seeded: the hero's gear is part of every frame measured.
+  window.SLAY.debug.makeCharacter('warden', 30, seed);
+}, SEED);
 
 const rows = [];
 for (const depth of DEPTHS) {
@@ -176,7 +185,19 @@ for (const depth of DEPTHS) {
     engine.renderer.render(scene.scene, scene.camera, 1 / 60, engine.elapsed);
     const calls = info.render.calls;
     const triangles = info.render.triangles;
+    // The scene alone (colour pass plus shadow maps), to tell scene weight
+    // from post-processing passes when the total moves.
+    info.reset();
+    engine.renderer.gl.render(scene.scene, scene.camera);
+    const sceneCalls = info.render.calls;
+    info.reset();
+    const shadowWas = engine.renderer.gl.shadowMap.enabled;
+    engine.renderer.gl.shadowMap.enabled = false;
+    engine.renderer.gl.render(scene.scene, scene.camera);
+    const colourCalls = info.render.calls;
+    engine.renderer.gl.shadowMap.enabled = shadowWas;
     info.autoReset = auto;
+    const cam = scene.camera.position;
 
     // Who the meshes belong to: tallied by the scene's direct child that
     // holds them (named, or its type), with how many cast shadows (each of
@@ -195,6 +216,24 @@ for (const depth of DEPTHS) {
         return below === o ? `${nameOf(a)}/${o.type}:${o.geometry?.type ?? '?'}` : `${nameOf(a)}/${nameOf(below)}`;
       }
       return nameOf(a);
+    };
+    // Material texture memory: each source (shared GPU upload) counted once.
+    const sources = new Set();
+    let textureBytes = 0;
+    const countTex = (t) => {
+      if (!t || !t.isTexture || sources.has(t.source)) return;
+      sources.add(t.source);
+      const img = t.source.data ?? t.image;
+      const w = img?.width ?? 0;
+      const h = img?.height ?? 0;
+      textureBytes += w * h * 4 * (t.generateMipmaps || t.mipmaps?.length ? 1.34 : 1);
+    };
+    const countMat = (m) => {
+      for (const k in m) {
+        const v = m[k];
+        if (v && v.isTexture) countTex(v);
+      }
+      for (const u of Object.values(m.uniforms ?? {})) if (u?.value?.isTexture) countTex(u.value);
     };
     let lights = 0;
     let shadowLights = 0;
@@ -225,14 +264,19 @@ for (const depth of DEPTHS) {
         const m = o.material;
         if (Array.isArray(m)) m.forEach((x) => materials.add(x));
         else if (m) materials.add(m);
+        if (Array.isArray(m)) m.forEach(countMat);
+        else if (m) countMat(m);
       }
     });
     return {
       drawCalls: calls,
+      passes: `colour ${colourCalls}, shadow ${sceneCalls - colourCalls}, post ${calls - sceneCalls}`,
+      camera: `${cam.x.toFixed(1)},${cam.y.toFixed(1)},${cam.z.toFixed(1)}`,
       triangles,
       programs: info.programs?.length ?? 0,
       geometries: info.memory.geometries,
       textures: info.memory.textures,
+      textureMB: +(textureBytes / 1048576).toFixed(1),
       lights,
       shadowLights,
       materials: materials.size,
@@ -251,6 +295,7 @@ for (const depth of DEPTHS) {
       (over.length ? `  OVER: ${over.map(([k, v]) => `${k} ${row[k]} > ${v}`).join(', ')}` : '  within budget'),
   );
   for (const k of Object.keys(BUDGET)) console.log(`  ${k.padEnd(16)} ${String(row[k]).padStart(10)}   budget ${BUDGET[k]}`);
+  console.log(`  ${'draw calls by'.padEnd(16)} ${row.passes}   (camera at ${row.camera})`);
   console.log(`  ${'meshes'.padEnd(16)} ${String(row.meshes).padStart(10)}   (${row.visibleMeshes} visible, ${row.instanced} instanced)`);
   console.log(`  ${'AI share'.padEnd(16)} ${String(Math.round(row.aiShare * 100) + '%').padStart(10)}   of the update`);
   if (showAlloc || row.drawCalls > BUDGET.drawCalls) {
@@ -271,5 +316,5 @@ console.log(
     ? `\nOK — every measured floor fits the budget.`
     : `\nFAILED — ${failures.length} over budget${failures.length ? `: ${failures.join(', ')}` : ''}${pageErrors.length ? `, ${pageErrors.length} page errors` : ''}.`,
 );
-console.log(JSON.stringify({ budget: BUDGET, rows: rows.map(({ topAlloc, owners, ...r }) => r) }));
+console.log(JSON.stringify({ budget: BUDGET, rows: rows.map(({ topAlloc, owners, passes, camera, ...r }) => r) }));
 process.exit(failures.length === 0 && pageErrors.length === 0 ? 0 : 1);

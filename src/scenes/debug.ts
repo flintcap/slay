@@ -12,6 +12,7 @@ import { addItemToInventory } from '../sim/Inventory';
 import { SKILLS } from '../data/skills';
 import { CLASSES } from '../data/classes';
 import { DungeonScene } from './DungeonScene';
+import { enemyPositionRepairs } from '../entities/Enemy';
 import { panelInstance } from '../ui/UIRoot';
 import { runtime } from '../ui/Widgets';
 import { insertGem } from '../sim/Crafting';
@@ -23,9 +24,11 @@ import { insertGem } from '../sim/Crafting';
  */
 export function installDebug(engine: Engine): Record<string, unknown> {
   return {
-    /** Create a fully playable character at `level`, geared and skilled up. */
-    makeCharacter(classId: CharClassId = 'warden', level = 1): void {
-      const rng = new Random(randomSeed());
+    /** Create a fully playable character at `level`, geared and skilled up (`seed` to repeat one). */
+    makeCharacter(classId: CharClassId = 'warden', level = 1, seed?: number): void {
+      // A seed makes the hero (gear, skills) the same every run, so a
+      // measuring checker compares like with like.
+      const rng = new Random(seed ?? randomSeed());
       const def = CLASSES.find((c) => c.id === classId) ?? CLASSES[0]!;
       const c = createCharacter(`Test ${def.name}`, def.id, rng);
 
@@ -97,6 +100,11 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         save.stashItem(rollItem(Math.max(1, c.level + 10), rng, { magicFind: 900 }));
       }
       save.touch();
+    },
+
+    /** How many monster positions went non-finite and were put back (`Enemy.update`). */
+    positionRepairs(): number {
+      return enemyPositionRepairs;
     },
 
     /** Whether a panel (inventory, settings, pause...) is open right now. */

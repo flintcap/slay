@@ -219,7 +219,12 @@ export interface EnemyPlate {
   affixColors: number[];
 }
 
+/** How many times a monster's position went non-finite and was repaired (soak reads it). */
+export let enemyPositionRepairs = 0;
+
 export class Enemy implements Combatant {
+  private lastGoodX = 0;
+  private lastGoodZ = 0;
   readonly root: THREE.Group;
   readonly id: string;
   readonly def: MonsterDef;
@@ -725,6 +730,19 @@ export class Enemy implements Combatant {
     if (!this.alive) {
       this.tickDeath(dt, ctx);
       return;
+    }
+
+    // A non-finite position (a bad motion target, a zero-length push) makes
+    // an invisible monster that every area check still hits, and its damage
+    // numbers threw in the HUD. Put it back where it last stood.
+    const pos = this.root.position;
+    if (Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z)) {
+      this.lastGoodX = pos.x;
+      this.lastGoodZ = pos.z;
+    } else {
+      pos.set(this.lastGoodX, 0, this.lastGoodZ);
+      this.motionOverride = null;
+      enemyPositionRepairs++;
     }
 
     // Timers ---------------------------------------------------------------

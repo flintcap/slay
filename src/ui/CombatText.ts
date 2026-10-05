@@ -322,6 +322,10 @@ export class CombatTextLayer {
       let sx = (_v.x * 0.5 + 0.5) * this.w + e.ox + e.vx * travel * 0.9;
       let sy = (-_v.y * 0.5 + 0.5) * this.h + e.vy * travel * 0.9;
       if (sx < -80 || sx > this.w + 80 || sy < -60 || sy > this.h + 60) continue;
+      // A number at a non-finite point (NaN passes every comparison above)
+      // made createLinearGradient throw, and the throw took the frame's whole
+      // HUD update with it. Drop the number instead.
+      if (!Number.isFinite(sx) || !Number.isFinite(sy) || !Number.isFinite(e.size)) continue;
 
       let scale = 1 + e.pop * (e.kind === 'crit' ? 0.7 : 0.28);
       if (e.kind === 'crit' && e.age < 0.18) {
