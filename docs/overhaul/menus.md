@@ -1,6 +1,6 @@
 # Stream: menus (front end and flow)
 
-Status: in progress
+Status: paused
 
 ## Milestones
 
@@ -14,16 +14,23 @@ Status: in progress
 
 ## Next up
 
-Milestone 7 (sweep) is in progress. Done so far (see "Sweep log" below): text size, rebind-aware
-keys, Journal in pause, O/G/J in the controls card, Enter/arrows in confirm dialogs, heroes face
-the viewer, 3D title checked. Still to do:
+Milestone 7 (sweep) is nearly done; only verification is left. Done: everything in the "Sweep log"
+below, plus (commits e09f666, 4b33970) the death scene fixes and the new flow check.
 
-1. Look at the 3D char select and death scenes at steady state:
-   `SLAY_PORT=4302 node tools/shot-menus.mjs --out=shots/menus3d --screens=3d:charSelect,3d:death`
-   (now waits for 6 s of *scene* time, HMR off; under heavy load each takes 20+ minutes). The first
-   char select shot (after only ~1 s of scene time) showed the hero washed out by a white glow in
-   the arch; judge whether it settles. The death scene has never been seen.
-2. Then tick milestone 7, set `Status: done`.
+1. Run the flow check once, on a quiet machine if you can:
+   `SLAY_PORT=4302 timeout 2700 node tools/check-flow.mjs --out=shots/flow`
+   It boots the real game on a fresh save and plays title -> char select -> forge -> town (saved?)
+   -> descend -> pause -> Return to Town -> Quit to Title -> Continue -> descend -> die -> death
+   screen (fallen + saved?) -> Rise Again -> Escape -> title, all with the keyboard. With `--out`
+   it also saves `flow-charSelect.png` and `flow-death.png` after 6 s / 9 s of scene time.
+   It was stopped by the pause after step 2 had run 11 minutes (load average 12; it had not
+   failed). If a step fails, fix the cause; a step's FAIL line says what it saw.
+2. Look at the two PNGs. Death: the grave should sit right of the run summary at correct
+   proportions with no dark square on the stone (both fixed, but the square fix is unseen).
+   Char select: heading and subtitle readable over the class rift.
+3. If both are fine, tick milestone 7 and set `Status: done`. If a full boot keeps timing out,
+   fall back to `node tools/shot-menus.mjs --screens=3d:death --width=1280 --height=720 --settle=10`
+   (18 minutes under load) and note the flow check as unverified.
 
 ## Notes for resume
 
@@ -49,6 +56,17 @@ the viewer, 3D title checked. Still to do:
   the server runs with `SLAY_NO_HMR` in its own process group (it used to leave vite running).
   New preview screen `controlsCard` (the reference card with Q rebound to Z).
 - 3D title seen: gate right of centre, rift visible, mist fine.
+- 3D death seen (twice). `camera.setViewOffset` also sets `aspect = fullWidth / fullHeight`, so the
+  old unit offset squashed the scene to square and switched itself off; `frameRight()` now passes
+  the real window size. Stone is `stone.temple` (repeat 0.45, bump 0.5), camera further back.
+- The death wisp was a Sprite; three's `GTAOPass` hides only Points and Lines in its normal pass,
+  so sprites print as flat dark squares wherever AO is on. Wisp is now a single additive Point.
+  **For feel/world:** `src/fx/Effects.ts` (halo Sprite, ~line 1375) has the same problem; the
+  general fix is to hide `isSprite` objects in the GTAO pass too (Renderer.ts, world's file).
+- 3D char select seen: hero reads; rift held to 0.38 of class colour; heading has a dark pool
+  behind it and the subtitle is `--ink-2` with a shadow (it was unreadable over gold).
+- Death screen Enter hint now names the first choice (Choose Another / Rise Again).
+- `tools/shot-menus.mjs --settle=<s>` sets how much scene time a `3d:` screen gets.
 
 
 **From models (finished, 5bebe1d):** in the `check-paperdoll` shot the figure seemed to face away from the camera. Check the paperdoll and character select hero face the viewer.
