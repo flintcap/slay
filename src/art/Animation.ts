@@ -2130,10 +2130,13 @@ interface ActionFoot {
   lift: number;
   /** Height the step started from, when it began in the air. */
   drop: number;
+  /** Ground velocity the step started with (a foot caught mid-stride), m/s. */
+  vx: number;
+  vz: number;
 }
 
 function newActionFoot(): ActionFoot {
-  return { x: 0, z: 0, yaw: 0, moving: false, k: 0, dur: 0.14, sx: 0, sz: 0, syaw: 0, lift: 0, drop: 0 };
+  return { x: 0, z: 0, yaw: 0, moving: false, k: 0, dur: 0.14, sx: 0, sz: 0, syaw: 0, lift: 0, drop: 0, vx: 0, vz: 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -2372,6 +2375,9 @@ export class Animator {
   private locoW = 1;
   /** The feet exactly as last applied, so the next state can start there. */
   private outIk = new Float32Array(8);
+  /** The feet the frame before, and that frame's length: how fast they were moving. */
+  private prevIk = new Float32Array(8);
+  private lastReal = 0;
   private outYaw = new Float32Array(2);
 
   setGrip(grip: CarryGrip): void {
@@ -2735,6 +2741,8 @@ export class Animator {
     this.updateGlow();
     this.secondary?.update(real);
 
+    this.prevIk.set(this.outIk);
+    this.lastReal = real;
     this.outIk.set(pose.ik);
     this.outYaw.set(pose.fyaw);
     // While something else owns the legs, the gait's feet stand wherever that
@@ -2821,6 +2829,8 @@ export class Animator {
       f.moving = false;
       f.k = 0;
       f.drop = 0;
+      f.vx = 0;
+      f.vz = 0;
       // A foot caught in the air (mid-stride) finishes coming down as a step
       // to wherever the action wants it, rather than dropping in one frame.
       const y = this.outIk[side * 4 + 1];
@@ -2833,6 +2843,16 @@ export class Animator {
         f.syaw = f.yaw;
         f.lift = this.rig.hipY * 0.025;
         f.drop = y;
+        // It keeps the speed it had for a moment rather than stopping dead.
+        if (this.lastReal > 1e-4) {
+          const o = side * 4;
+          const vx = (this.outIk[o] - this.prevIk[o]) / this.lastReal;
+          const vz = (this.outIk[o + 2] - this.prevIk[o + 2]) / this.lastReal;
+          const v = Math.hypot(vx, vz);
+          const k = v > 6 ? 6 / v : 1;
+          f.vx = vx * k;
+          f.vz = vz * k;
+        }
       }
     }
   }
@@ -2895,8 +2915,10 @@ export class Animator {
       if (f.moving) {
         f.k = Math.min(1, f.k + step / f.dur);
         const e = smooth(f.k);
-        fx = f.sx + (dx - f.sx) * e;
-        fz = f.sz + (dz - f.sz) * e;
+        // Hermite: leaves with the speed it had, arrives at rest.
+        const h10 = f.k * (1 - f.k) * (1 - f.k) * f.dur;
+        fx = f.sx + (dx - f.sx) * e + f.vx * h10;
+        fz = f.sz + (dz - f.sz) * e + f.vz * h10;
         fyaw = f.syaw + (dyaw - f.syaw) * e;
         // Every step clears the floor, whatever the clip's own foot does.
         fy = Math.max(dy, f.lift * Math.sin(Math.PI * f.k), f.drop * (1 - e));
@@ -2906,6 +2928,8 @@ export class Animator {
         if (f.k >= 1) {
           f.moving = false;
           f.drop = 0;
+          f.vx = 0;
+          f.vz = 0;
         }
       }
       // A raised heel rolls over the ball of the foot, which stays put.

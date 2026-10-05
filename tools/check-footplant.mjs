@@ -52,7 +52,9 @@ for (const s of r.segs) {
 }
 console.log(`\nmean planted slide ${r.slide} m/s (limit ${MAX_SLIDE}), worst frame ${r.slideMax} m/s (limit ${MAX_SLIDE_FRAME})`);
 console.log(`biggest one-frame joint jump ${r.pop} m at ${r.popAt} (limit ${MAX_POP})`);
-console.log(`(inside actions, reported only: slide is per segment above, jump ${r.actionPop} m at ${r.actionPopAt})`);
-const ok = r.slide <= MAX_SLIDE && r.slideMax <= MAX_SLIDE_FRAME && r.pop <= MAX_POP;
+console.log(`inside actions (arms excepted): jump ${r.actionPop} m at ${r.actionPopAt} (limit ${MAX_POP}); slide per segment above`);
+const act = r.segs.filter((s) => s.action);
+const actSlide = act.every((s) => s.slide <= MAX_SLIDE && s.slideMax <= MAX_SLIDE_FRAME);
+const ok = r.slide <= MAX_SLIDE && r.slideMax <= MAX_SLIDE_FRAME && r.pop <= MAX_POP && r.actionPop <= MAX_POP && actSlide;
 console.log(ok ? '\nOK — feet plant and nothing pops.' : '\nFAILED — feet skate or a joint pops.');
 process.exit(ok ? 0 : 1);
