@@ -519,7 +519,12 @@ export type ClipName =
   | 'snapshot'
   | 'blink'
   | 'hurl'
-  | 'lunge';
+  | 'lunge'
+  // Reactions: knocked back, stunned, knocked down, and a second death.
+  | 'stagger'
+  | 'stun'
+  | 'down'
+  | 'deathFwd';
 
 /**
  * Which carry pose the free hand takes while the body is just moving around.
@@ -1401,6 +1406,221 @@ function glowAround(contact: number, hold: number, hands: 'left' | 'right' | 'bo
   };
 }
 
+// ---------------------------------------------------------------------------
+// Reaction key poses
+// ---------------------------------------------------------------------------
+
+// Knocked back: the trunk is thrown back with the arms flung out for balance,
+// the back foot steps out behind to catch the weight, then the front follows.
+const K_STAGGER = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.12,
+    e: 'out',
+    sL: [0.9, 1.4],
+    sR: [0.9, -1.4],
+    b: { elbowL: [-0.6], elbowR: [-0.6], hips: [-0.1], spine: [-0.32, 0.12], chest: [-0.28, 0.18], head: [-0.3] },
+    hp: [0, -0.04, -0.06],
+  },
+  {
+    t: 0.26,
+    sL: [0.75, 1.25],
+    sR: [0.75, -1.25],
+    b: { elbowL: [-0.55], elbowR: [-0.55], hips: [-0.08], spine: [-0.24, 0.1], chest: [-0.2, 0.14], head: [-0.2] },
+    hp: [0, -0.05, -0.1],
+    fr: [-0.05, 0.1, -0.17],
+  },
+  {
+    t: 0.4,
+    sL: [0.55, 1.0],
+    sR: [0.55, -1.0],
+    b: { elbowL: [-0.5], elbowR: [-0.5], hips: [-0.04], spine: [-0.12, 0.05], chest: [-0.08, 0.08], head: [-0.08] },
+    hp: [0, -0.07, -0.16],
+    fr: [-0.06, 0, -0.3],
+  },
+  {
+    t: 0.6,
+    sL: [0.3, 0.7],
+    sR: [0.3, -0.7],
+    b: { elbowL: [-0.4], elbowR: [-0.4], spine: [0.04], chest: [0.03] },
+    hp: [0, -0.05, -0.12],
+    fl: [0.04, 0.06, -0.05],
+    fr: [-0.06, 0, -0.3],
+  },
+  { t: 0.78, b: READY, hp: [0, -0.02, -0.1], fl: [0.04, 0, -0.1], fr: [-0.06, 0, -0.3] },
+  { t: 1, b: READY, fl: [0.04, 0, -0.1], fr: [-0.06, 0, -0.3], hp: [0, 0, -0.1] },
+]);
+
+// Knocked down: the legs go, the body sits down hard and back, one hand
+// behind to break the fall, and stays there dazed while the status lasts.
+const K_DOWN = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.25,
+    sL: [0.6, 1.2],
+    sR: [0.6, -1.2],
+    b: { elbowL: [-0.5], elbowR: [-0.5], hips: [-0.3], spine: [-0.15], chest: [-0.1], head: [-0.2] },
+    hp: [0, -0.35, -0.08],
+    fl: [0.04, 0.1, 0.22],
+    fr: [-0.05, 0.08, 0.16],
+  },
+  {
+    t: 0.55,
+    e: 'in',
+    sL: [0.5, 2.6],
+    sR: [0.75, -2.3],
+    b: { elbowL: [-0.2], elbowR: [-0.35], hips: [-0.55], spine: [0.2], chest: [0.12], head: [0.15] },
+    hp: [0, -0.8, -0.24],
+    fl: [0.06, 0, 0.5],
+    fr: [-0.08, 0, 0.4],
+  },
+  {
+    t: 0.7,
+    e: 'out',
+    sL: [0.5, 2.6],
+    sR: [0.75, -2.3],
+    b: { elbowL: [-0.25], elbowR: [-0.4], hips: [-0.5], spine: [0.24], chest: [0.15], head: [0.3, 0.15] },
+    hp: [0, -0.77, -0.22],
+    fl: [0.06, 0, 0.5],
+    fr: [-0.08, 0, 0.4],
+  },
+  {
+    t: 1,
+    sL: [0.5, 2.6],
+    sR: [0.7, -2.3],
+    b: { elbowL: [-0.25], elbowR: [-0.45], hips: [-0.52], spine: [0.26], chest: [0.16], head: [0.4, 0.3, 0.1] },
+    hp: [0, -0.78, -0.22],
+    fl: [0.06, 0, 0.5],
+    fr: [-0.08, 0, 0.4],
+  },
+]);
+
+// Death, falling back: the hit snaps the head back, the knees go, and the body
+// topples backwards onto the floor and settles, limbs splayed. Asymmetric on
+// purpose: symmetry reads as a ragdoll bug, asymmetry reads as a body. Lying
+// on the back, a chest-space azimuth short of +-pi/2 lifts an arm off the
+// floor rather than driving it through.
+const K_DEATH_BACK = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.1,
+    e: 'out',
+    sL: [0.5, 1.1],
+    sR: [0.7, -1.2],
+    b: { elbowL: [-0.6], elbowR: [-0.5], spine: [-0.25, 0.1], chest: [-0.2, 0.12], head: [-0.4] },
+    hp: [0, -0.04, -0.04],
+  },
+  {
+    t: 0.34,
+    sL: [0.4, 0.9],
+    sR: [0.5, -0.8],
+    b: { elbowL: [-0.9], elbowR: [-0.7], hips: [-0.2, 0.1], spine: [0.15, 0.1], chest: [0.1], head: [0.25, 0.2] },
+    hp: [0.02, -0.36, -0.06],
+    fl: [0.05, 0.04, 0.1],
+    fr: [-0.08, 0, 0.04],
+  },
+  {
+    t: 0.62,
+    sL: [1.0, 1.3],
+    sR: [1.1, -1.2],
+    b: { elbowL: [-0.5], elbowR: [-0.4], hips: [-0.85, 0.2, 0.1], spine: [-0.3, 0.1], chest: [-0.15], head: [0.3, 0.3] },
+    hp: [0.04, -0.68, -0.26],
+    fl: [0.06, 0.05, 0.3],
+    fr: [-0.1, 0.04, 0.22],
+  },
+  {
+    t: 0.8,
+    e: 'in',
+    sL: [1.5, 1.15],
+    sR: [1.4, -1.5],
+    b: { elbowL: [-0.5], elbowR: [-0.3], hips: [-1.45, 0.25, 0.12], spine: [-0.05, 0.12], chest: [0, 0.08], head: [0.25, 0.55] },
+    hp: [0.05, -0.86, -0.36],
+    fl: [0.1, 0, 0.5],
+    fr: [-0.14, 0.06, 0.38],
+  },
+  {
+    t: 0.88,
+    e: 'out',
+    sL: [1.45, 1.2],
+    sR: [1.4, -1.52],
+    b: { elbowL: [-0.55], elbowR: [-0.32], hips: [-1.4, 0.25, 0.12], spine: [-0.08, 0.12], chest: [0.02, 0.08], head: [0.3, 0.6] },
+    hp: [0.05, -0.83, -0.36],
+    fl: [0.1, 0, 0.5],
+    fr: [-0.14, 0.05, 0.38],
+  },
+  {
+    t: 1,
+    sL: [1.48, 1.2],
+    sR: [1.4, -1.52],
+    b: { elbowL: [-0.55], elbowR: [-0.35], hips: [-1.45, 0.25, 0.12], spine: [-0.06, 0.12], chest: [0, 0.08], head: [0.28, 0.62] },
+    hp: [0.05, -0.86, -0.36],
+    fl: [0.1, 0, 0.52],
+    fr: [-0.15, 0.05, 0.38],
+  },
+]);
+
+// Death, crumpling forward: the knees go first and hit the floor, the trunk
+// folds over them, and the body pitches onto its front, face turned aside,
+// one arm flung out past the head and the other along the side.
+const K_DEATH_FWD = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.1,
+    e: 'out',
+    sL: [0.4, 0.8],
+    sR: [0.5, -0.9],
+    b: { elbowL: [-0.5], elbowR: [-0.6], spine: [-0.18, -0.08], chest: [-0.14], head: [-0.25] },
+    hp: [0, -0.04, 0],
+  },
+  {
+    t: 0.4,
+    sL: [0.5, 0.3],
+    sR: [0.3, -0.4],
+    b: { elbowL: [-0.6], elbowR: [-0.4], hips: [0.25, -0.1], spine: [0.3, -0.05], chest: [0.2], head: [0.35] },
+    hp: [0, -0.42, 0.06],
+    fl: [0.05, 0.05, -0.3],
+    fr: [-0.07, 0.04, -0.24],
+  },
+  {
+    t: 0.56,
+    sL: [1.4, 0.4],
+    sR: [0.6, -0.8],
+    b: { elbowL: [-0.5], elbowR: [-0.5], hips: [0.6, -0.12], spine: [0.4], chest: [0.25], head: [0.1, 0.3] },
+    hp: [0, -0.5, 0.12],
+    fl: [0.05, 0.03, -0.4],
+    fr: [-0.08, 0.03, -0.34],
+  },
+  {
+    t: 0.78,
+    e: 'in',
+    sL: [2.75, 0.5],
+    sR: [0.4, -1.85],
+    b: { elbowL: [-0.5], elbowR: [-0.1], hips: [1.35, 0.2, 0.15], spine: [0.08, 0.05], chest: [0.04], head: [-0.55, 0.75] },
+    hp: [0.05, -0.83, 0.36],
+    fl: [0.04, 0.04, -0.75],
+    fr: [-0.1, 0.02, -0.82],
+  },
+  {
+    t: 0.87,
+    e: 'out',
+    sL: [2.75, 0.52],
+    sR: [0.4, -1.85],
+    b: { elbowL: [-0.55], elbowR: [-0.12], hips: [1.3, 0.2, 0.15], spine: [0.1, 0.05], chest: [0.06], head: [-0.5, 0.8] },
+    hp: [0.05, -0.8, 0.35],
+    fl: [0.04, 0.05, -0.74],
+    fr: [-0.1, 0.03, -0.8],
+  },
+  {
+    t: 1,
+    sL: [2.75, 0.52],
+    sR: [0.4, -1.85],
+    b: { elbowL: [-0.55], elbowR: [-0.12], hips: [1.35, 0.2, 0.15], spine: [0.08, 0.05], chest: [0.05], head: [-0.55, 0.8] },
+    hp: [0.05, -0.83, 0.36],
+    fl: [0.04, 0.04, -0.76],
+    fr: [-0.1, 0.02, -0.82],
+  },
+]);
+
 const CLIPS: Record<ClipName, ClipDef> = {
   // ------------------------------------------------------------------ IDLE --
   idle: {
@@ -1528,7 +1748,11 @@ const CLIPS: Record<ClipName, ClipDef> = {
     },
   }),
 
-  // ------------------------------------------------------------------ HURT --
+  // ------------------------------------------------------------- REACTIONS --
+  // A plain hit no longer plays a clip at all: `play('hurt')` is an additive
+  // flinch on top of whatever the body is doing (see `Animator.flinch`), so a
+  // hit never cuts a swing short or stops the legs. This clip is what the
+  // flinch looked like as a whole-body one-shot, kept for callers that want it.
   hurt: {
     duration: 0.4,
     loop: false,
@@ -1549,54 +1773,50 @@ const CLIPS: Record<ClipName, ClipDef> = {
       p.set('shoulderR', -0.7 * hit, 0, -0.55 * hit - 0.1);
       p.set('elbowL', -1.0 * hit - 0.2, 0, 0.2);
       p.set('elbowR', -1.0 * hit - 0.2, 0, -0.2);
-      // Stagger a step back.
-      p.foot(0, h * 0.02, 0, -h * 0.1 * hit, 0.1 * hit);
-      p.foot(1, -h * 0.04, Math.sin(clamp01(t * 3) * Math.PI) * h * 0.06, -h * 0.3 * hit, -0.2 * hit);
+      p.foot(0, h * 0.02, 0, -h * 0.05 * hit, 0);
+      p.foot(1, -h * 0.04, 0, -h * 0.08 * hit, 0);
     },
   },
 
-  // ----------------------------------------------------------------- DEATH --
-  death: {
-    duration: 1.35,
-    loop: false,
-    breath: 0,
+  /** Knocked back: thrown back, a catching step behind, and recover. */
+  stagger: { ...gesture(K_STAGGER, 0.6, 0.12, { breath: 0, gaze: 0.4 }), recover: 0.45 },
+
+  /** Stunned: knees soft, swaying in small circles, the head lolling. */
+  stun: {
+    duration: 1.7,
+    loop: true,
+    breath: 0.5,
+    gaze: 0,
+    // Whatever is in the hands hangs from them, point down.
+    aim: { dir: [0, -1, 0.25], w: () => 0.7 },
     eval(t, p, rig) {
       const h = rig.hipY;
-      // Knees go first, then the torso follows and the body settles.
-      const buckle = kf(t, [
-        [0, 0],
-        [0.28, 1],
-        [1, 1],
-      ]);
-      const fall = kf(t, [
-        [0, 0],
-        [0.3, 0.1],
-        [0.72, 1],
-        [1, 1],
-      ]);
-      const settle = kf(t, [
-        [0.7, 0],
-        [0.85, 1],
-        [1, 0.7],
-      ]);
-
-      p.move('hips', h * 0.05 * fall, -h * (0.42 * buckle + 0.52 * fall), -h * 0.35 * fall);
-      p.set('hips', -1.15 * fall + 0.2 * buckle, 0.25 * fall, 0.3 * fall);
-      p.set('spine', 0.3 * buckle - 0.5 * fall + 0.1 * settle, -0.2 * fall, -0.25 * fall);
-      p.set('chest', 0.2 * buckle - 0.35 * fall, -0.3 * fall, -0.2 * fall);
-      p.set('head', 0.4 * buckle - 0.9 * fall + 0.2 * settle, 0.35 * fall, 0);
-
-      p.set('shoulderL', -0.4 * buckle + 1.1 * fall, 0.3 * fall, 0.9 * fall + 0.15);
-      p.set('shoulderR', -0.4 * buckle + 0.8 * fall, -0.2 * fall, -1.1 * fall - 0.15);
-      p.set('elbowL', -0.9 - 0.5 * fall, 0, 0.3);
-      p.set('elbowR', -0.6 - 0.3 * fall, 0, -0.3);
-
-      // Legs fold under, one further than the other — symmetry reads as a
-      // ragdoll bug, asymmetry reads as a body.
-      p.foot(0, h * 0.06 * fall, h * 0.06 * fall, -h * (0.22 * buckle + 0.1 * fall), -0.5 * fall);
-      p.foot(1, -h * 0.14 * fall, h * 0.02 * fall, -h * (0.3 * buckle + 0.34 * fall), -0.9 * fall);
+      const a = TAU * t;
+      const s = Math.sin(a);
+      const c = Math.cos(a);
+      p.move('hips', s * h * 0.03, -h * 0.07 + Math.sin(2 * a) * h * 0.008, c * h * 0.02);
+      p.set('hips', 0.1, s * 0.05, s * 0.07);
+      p.set('spine', 0.16 + c * 0.04, -s * 0.04, -s * 0.05);
+      p.set('chest', 0.1, -s * 0.06, -s * 0.04);
+      p.set('head', 0.32 + Math.sin(2 * a + 0.6) * 0.1, Math.sin(a + 0.9) * 0.3, Math.cos(a + 0.9) * 0.18);
+      // The arms hang dead and swing a beat behind the sway.
+      p.set('shoulderL', 0.06 + Math.sin(a - 0.8) * 0.06, 0, 0.08 + Math.cos(a - 0.8) * 0.05);
+      p.set('shoulderR', 0.06 + Math.sin(a - 0.8) * 0.06, 0, -0.08 + Math.cos(a - 0.8) * 0.05);
+      p.set('elbowL', -0.12, 0, 0.04);
+      p.set('elbowR', -0.12, 0, -0.04);
+      p.foot(0, h * 0.06, 0, h * 0.03, 0);
+      p.foot(1, -h * 0.06, 0, -h * 0.03, 0);
     },
   },
+
+  /** Knocked down: sits down hard, a hand behind, and stays there dazed. */
+  down: { ...gesture(K_DOWN, 0.6, 0.55, { breath: 0.3, gaze: 0 }), travel: true },
+
+  // ----------------------------------------------------------------- DEATH --
+  /** Dies falling back onto the floor. */
+  death: { ...gesture(K_DEATH_BACK, 1.3, 0.8, { breath: 0, gaze: 0 }), travel: true },
+  /** Dies crumpling forward onto the knees and then the face. */
+  deathFwd: { ...gesture(K_DEATH_FWD, 1.3, 0.78, { breath: 0, gaze: 0 }), travel: true },
 
   // ----------------------------------------------------------------- DODGE --
   dodge: {
@@ -1674,7 +1894,16 @@ export interface PlayOpts {
   contact?: number;
   /** Fired when a one-shot finishes. */
   onEnd?: () => void;
+  /** Plays even while a condition (stunned, knocked down) holds the body. */
+  force?: boolean;
 }
+
+/**
+ * What a status is doing to the body. `stunned` sways dazed on the spot,
+ * `frozen` holds the exact pose it was caught in (ice, stone), `down` sits
+ * knocked over until it wears off, `rooted` keeps the feet where they are.
+ */
+export type BodyCondition = 'none' | 'stunned' | 'frozen' | 'down' | 'rooted';
 
 interface Track {
   name: ClipName;
@@ -2091,13 +2320,35 @@ export class Animator {
    * to a one-shot that is still running.
    */
   play(name: string, opts: PlayOpts = {}): void {
-    const resolved = resolveClip(name);
+    let resolved = resolveClip(name);
+    // A hit is a flinch laid over whatever the body is doing, not a clip that
+    // replaces it: a swing keeps swinging and the legs keep stepping.
+    if (resolved === 'hurt') {
+      this.flinch(1);
+      return;
+    }
+    if (resolved === 'stagger') {
+      this.staggerAt = this.elapsed;
+      // Never knock a blow out of the hands before it lands: the game will
+      // still apply it at its contact frame.
+      const c = this.cur.def.contact;
+      if (this.inAction && c !== undefined && this.cur.time < c) {
+        this.flinch(1.4);
+        return;
+      }
+    }
+    if (resolved === 'death') {
+      // Thrown back by a heavy blow; otherwise either way, alternating.
+      resolved = this.elapsed - this.staggerAt < 0.8 || this.flinchSide > 0 ? 'death' : 'deathFwd';
+    }
+    const dying = resolved === 'death' || resolved === 'deathFwd';
+    if ((this.condition === 'stunned' || this.condition === 'down') && !opts.force && !dying) return;
     const def = CLIPS[resolved];
 
     // An action in flight beats any locomotion request, until it is past its
     // blow: then a real move order takes over and the follow-through blends
     // into the stride instead of skating along under it.
-    if (def.locomotion && this.inAction) {
+    if (def.locomotion && this.inAction && !opts.force) {
       const recover = this.cur.def.recover ?? this.cur.def.contact;
       const moving = !this.followed || this.speed > 0.25;
       if (resolved === 'idle' || recover === undefined || this.cur.time < recover || !moving) return;
@@ -2163,8 +2414,74 @@ export class Animator {
     this.leanBias = bias;
   }
 
+  // -- reactions ----------------------------------------------------------------
+
+  private condition: BodyCondition = 'none';
+  private flinchT = 1;
+  private flinchK = 0;
+  private flinchSide = 1;
+  private staggerAt = -9;
+
+  /**
+   * A hit, laid over whatever the body is doing: the trunk and head snap back
+   * and the shoulders come up, then it all settles. Each hit twists the other
+   * way, so a flurry of them does not look like one flinch on a loop.
+   */
+  flinch(strength = 1): void {
+    this.flinchT = 0;
+    this.flinchK = Math.max(0, Math.min(1.6, strength));
+    this.flinchSide = -this.flinchSide;
+  }
+
+  /** What a status is doing to the body; call every frame, cheap when unchanged. */
+  setCondition(c: BodyCondition): void {
+    if (c === this.condition) return;
+    const was = this.condition;
+    this.condition = c;
+    this.pinned = c === 'rooted';
+    const dead = this.cur.name === 'death' || this.cur.name === 'deathFwd';
+    if (dead) return;
+    if (c === 'stunned') this.play('stun', { fade: 0.2, force: true });
+    else if (c === 'down') this.play('down', { fade: 0.08, hold: true, force: true });
+    else if (was === 'stunned' || was === 'down') this.play('idle', { fade: 0.35, force: true });
+  }
+
+  /** The flinch layer, over everything else. */
+  private applyFlinch(pose: Pose, real: number): void {
+    if (this.flinchT >= 1) return;
+    this.flinchT = Math.min(1, this.flinchT + real / 0.4);
+    const k =
+      kf(this.flinchT, [
+        [0, 0],
+        [0.14, 1],
+        [0.45, 0.4],
+        [1, 0],
+      ]) *
+      this.flinchK *
+      (this.inAction ? 0.5 : 1);
+    if (k < 1e-4) return;
+    const s = this.flinchSide;
+    const h = this.rig.hipY;
+    pose.add('spine', -0.2 * k, 0.07 * k * s, 0.05 * k * s);
+    pose.add('chest', -0.18 * k, 0.1 * k * s, 0.06 * k * s);
+    pose.add('head', -0.28 * k, 0.16 * k * s, 0.05 * k * s);
+    pose.add('shoulderL', -0.3 * k, 0, 0.25 * k);
+    pose.add('shoulderR', -0.3 * k, 0, -0.25 * k);
+    pose.add('elbowL', -0.35 * k, 0, 0);
+    pose.add('elbowR', -0.35 * k, 0, 0);
+    pose.nudge('hips', 0, -h * 0.02 * k, -h * 0.035 * k);
+  }
+
   update(dt: number): void {
     const real = Math.max(0, Math.min(0.1, dt));
+    // Frozen solid: the body holds exactly the pose it was caught in. Ground
+    // motion is still read so nothing jumps when it thaws.
+    if (this.condition === 'frozen') {
+      // Re-read on thaw rather than decaying the remembered speed to zero,
+      // which would yank a swinging foot's landing spot.
+      this.hasLast = false;
+      return;
+    }
     const step = real * this.timeScale;
     this.elapsed += step;
     this.idleT = (this.idleT + step / CLIPS.idle.duration) % 1;
@@ -2538,7 +2855,9 @@ export class Animator {
     // only until both feet are home, then stop dead in double support.
     const span = this.rig.hipY * (lerp(0.6, 0.68, g) + 0.12 * sprint);
     let rate = 0;
-    if (v > 0.12) rate = cadence(v, this.duty, span);
+    // Rooted feet do not step at all, whatever the body does over them.
+    if (this.pinned) rate = 0;
+    else if (v > 0.12) rate = cadence(v, this.duty, span);
     else if (this.needsSettle()) rate = 1.7;
     this.phase = (this.phase + rate * step) % 1;
 
@@ -2920,6 +3239,7 @@ export class Animator {
    */
   private applyProcedural(pose: Pose, dt: number, real: number): void {
     this.applyCarry(pose, dt);
+    this.applyFlinch(pose, real);
     const breath = this.cur.def.breath ?? 1;
     if (breath > 0.01) {
       const b = Math.sin(this.elapsed * 1.7);

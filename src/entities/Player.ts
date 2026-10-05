@@ -7,7 +7,7 @@ import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
 import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
 import { disposeObject } from '../core/Engine';
-import { Animator } from '../art/Animation';
+import { Animator, type BodyCondition } from '../art/Animation';
 import { buildItemModel } from '../art/ItemModels';
 import { compactModel } from '../art/ModelBudget';
 import { getBase } from '../sim/Loot';
@@ -370,6 +370,8 @@ export class Player {
     this.root.position.x -= Math.sin(this.root.rotation.y) * push;
     this.root.position.z -= Math.cos(this.root.rotation.y) * push;
     this.moveTarget = null;
+    // A real shove throws the body back a step; a nudge is just the flinch.
+    if (f >= 1.5 && this.alive) this.animator.play('stagger', { fade: 0.05 });
   }
 
   /**
@@ -616,8 +618,20 @@ export class Player {
     this.facing += delta * Math.min(1, dt * 16);
     this.root.rotation.y = this.facing;
 
+    this.animator.setCondition(this.bodyCondition);
     this.animator.update(dt);
     this.updateBodyTint(dt);
+  }
+
+  /** What the hero's statuses are doing to the body, for the animator. */
+  private get bodyCondition(): BodyCondition {
+    if (!this.alive) return 'none';
+    const st = this.status;
+    if (st.has('frozen') || st.has('petrified')) return 'frozen';
+    if (st.has('knockedDown')) return 'down';
+    if (this.incapacitated) return 'stunned';
+    if (this.immobilised) return 'rooted';
+    return 'none';
   }
 
   /**

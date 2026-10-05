@@ -136,7 +136,36 @@ function actionTile(
   };
 }
 
+/** A reaction, set up by `act` after a settle, frozen `seconds` later. */
+function reactTile(label: string, cls: CharClassId, weapon: string | undefined, act: (a: Animator) => void, seconds: number, view: View = 'side'): Tile {
+  return {
+    label,
+    view,
+    run(mover) {
+      mover.rotation.y = view === 'side' ? Math.PI / 2 : 0;
+      const { anim } = character(cls, mover, weapon);
+      drive(anim, mover, 1.0, 0, 0);
+      act(anim);
+      for (let i = 0; i < Math.round(seconds / DT); i++) anim.update(DT);
+    },
+  };
+}
+
 const SETS: Record<string, Tile[]> = {
+  reactions: [
+    reactTile('flinch (hit)', 'warden', 'sword.short', (a) => a.play('hurt'), 0.06, 'threeQuarter'),
+    reactTile('stagger  catch step', 'warden', 'sword.short', (a) => a.play('stagger', { fade: 0.05 }), 0.2),
+    reactTile('stagger  recovering', 'warden', 'sword.short', (a) => a.play('stagger', { fade: 0.05 }), 0.38),
+    reactTile('stunned', 'ranger', 'bow.short', (a) => a.setCondition('stunned'), 0.9, 'threeQuarter'),
+    reactTile('knocked down', 'stormcaller', undefined, (a) => a.setCondition('down'), 1.2),
+    reactTile('knocked down, 3/4', 'stormcaller', undefined, (a) => a.setCondition('down'), 1.2, 'threeQuarter'),
+    reactTile('death back  buckle', 'warden', 'sword.great', (a) => (a.play('stagger'), a.play('death', { once: true, hold: true })), 0.45),
+    reactTile('death back  falling', 'warden', 'sword.great', (a) => (a.play('stagger'), a.play('death', { once: true, hold: true })), 0.8),
+    reactTile('death back  lying', 'warden', 'sword.great', (a) => (a.play('stagger'), a.play('death', { once: true, hold: true })), 1.8),
+    reactTile('death fwd  knees', 'shadowblade', 'dagger.dirk', (a) => (a.flinch(1), a.play('death', { once: true, hold: true })), 0.6),
+    reactTile('death fwd  pitching', 'shadowblade', 'dagger.dirk', (a) => (a.flinch(1), a.play('death', { once: true, hold: true })), 0.9),
+    reactTile('death fwd  lying', 'shadowblade', 'dagger.dirk', (a) => (a.flinch(1), a.play('death', { once: true, hold: true })), 1.8),
+  ],
   attacks: [
     actionTile('sword chop  wind', 'warden', 'sword.short', 'attack1', 0.14),
     actionTile('sword chop  contact', 'warden', 'sword.short', 'attack1', 0.3),

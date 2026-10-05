@@ -1,38 +1,53 @@
 # Stream: animation (how bodies move)
 
-Status: in progress (milestones 1-2 done; on milestone 3)
+Status: in progress (milestones 1-3 done; on milestone 4)
 
 ## Milestones
 
 - [x] Locomotion: speed-blended walk and run, lean into turns, feet that plant instead of sliding. ("Plant the feet: a stepping gait driven by real ground speed")
 - [x] Attacks: anticipation, impact and recovery with real weight for every weapon grip; spell casts with a hand glow. ("Animation: strikes land on the contact frame, feet held in actions, both hands on two-handed weapons")
-- [ ] Hit reactions and deaths: flinch, stagger, knockback, and death animations that fall and fade instead of vanishing.
+- [x] Hit reactions and deaths: flinch, stagger, knockback, and death animations that fall and fade instead of vanishing. ("Animation: hits flinch without cutting swings, stagger, stun, knockdown, two deaths")
 - [ ] Monster motion: idle variety per family, spawn or emerge animations, movement that suits each body (scuttle, lope, float, lumber). (Monster looks moved to the models stream.)
 - [ ] Secondary motion: cloth, cape, hair and loose gear that sway and settle; town NPCs idle with personality. (Player and NPC looks moved to the models stream.)
 - [ ] Sweep: check-grips, check-clips and check-attack pass; nothing pops or snaps between states.
 
 ## Next up
 
-Milestone 3, hit reactions and deaths. Concretely:
+Milestone 4, monster motion. Concretely:
 
-1. `Player.takeDamage` plays `hurt` (a full one-shot) on every hit, which cuts a swing off mid-strike
-   while the damage still lands. Route `play('hurt')` to an additive flinch layer inside the
-   animator (spine/chest/head/shoulders, ~0.35 s, feet untouched) so it never replaces an action or
-   stops the gait. Add a `stagger` clip with a step back for knockback, and call it from
-   `Player.shove` (one line; combat's file, small edit).
-2. Stun pose: `Player` already knows `incapacitated` / `immobilised`. Add `Animator.setCondition`
-   ('none' | 'stunned' | 'frozen' | 'down' | 'rooted') and one line in `Player.update` before
-   `animator.update`. Stunned: a dazed loop (head lolls, knees soft, sway). Frozen and petrified: the
-   body holds its exact pose (skip the update, keep `sampleMotion` fresh). Knocked down: a crouch-sprawl
-   held while the status lasts. Rooted: set `pinned` (already read by `holdFeet`) and stop the gait
-   stepping. Statuses: incapacitating = frozen, stunned, petrified, knockedDown; immobilising = rooted,
-   grasped (`src/data/statuses.ts`).
-3. Deaths: two or three death clips that fall and settle on the floor (back, forward crumple), picked
-   by the killing hit. Monster deaths are milestone 4 (`RigAnimator.poseDeath`).
-4. Add rows to `tools/check-strikes.mjs` (or a sibling) for hurt-during-swing (the swing must still
-   reach its contact pose) and stun enter/leave pops.
+1. Move `RigAnimator` (and `RigAction`, `RigDriveOpts`) out of `src/entities/MonsterModels.ts` into a new
+   `src/art/MonsterAnimation.ts`, then replace the class in MonsterModels with
+   `export { RigAnimator } from '../art/MonsterAnimation'` (plus the types). Models agreed to this in
+   both progress files; it is the only edit to MonsterModels. `Archetype` comes from MonsterModels
+   (import the type only, to avoid a cycle). `Enemy.ts`, `SkillRunner.ts` (summons) and `Boss`
+   drive it through `update(dt, { locomotion, action, actionT, time, deathT })`; keep that interface.
+2. Inside it: crossfade between actions (snapshot bone rotations, blend ~0.1 s) so nothing pops;
+   an `attack` that starts while another is running is the strike after a wind-up (Enemy sets
+   `attack` for the telegraph, then again for 0.4 s on execute): wind-up coils and holds with a
+   tremble, strike snaps through and follows through. Hits flinch additively; deaths fall by archetype
+   (quadrupeds roll onto a side, fliers drop, serpents coil and go limp, oozes splat) and settle.
+3. Idle variety per family (look around, shift weight, sniff, twitch) from a per-monster phase; spawn
+   or emerge per archetype (climb out of the floor, unfurl, drop in); locomotion that suits the body:
+   scuttle (insect/arachnid: fast tripod, low body), lope (quadruped: gallop at speed), float (bob and
+   tilt into motion), lumber (big humanoids: heavier, slower cadence, more sway). Stride from real
+   ground speed like the hero (monster `locomotion` is 0..1; Enemy also has its root position).
+4. Add a static checker for monsters (every archetype x action: no NaN, no pops between actions,
+   death ends low).
 
 ## Notes for resume
+
+- **Reactions (milestone 3).** `play('hurt')` no longer plays a clip: it calls `Animator.flinch(1)`, an
+  additive layer (`applyFlinch`) that alternates sides and is halved during actions. `stagger` is a
+  one-shot with a catching step (Player.shove plays it for force >= 1.5; if a swing has not reached
+  contact yet it becomes a strong flinch instead, so the blow still lands visibly). `setCondition`
+  ('none' | 'stunned' | 'frozen' | 'down' | 'rooted', exported as `BodyCondition`) is called every frame
+  by `Player.update` from the hero's statuses (`Player.bodyCondition`): stunned plays the `stun` loop
+  (weapon hangs point down), frozen skips the update so the pose holds exactly, down plays `down` and
+  holds, rooted sets `pinned` (no gait steps, no action steps). Conditions block other clips except
+  deaths (`force` overrides). `death` picks `death` (thrown back, after a stagger or on alternate hits)
+  or `deathFwd` (crumple onto the knees and face); both end lying on the floor. Deaths and `down` are
+  `travel` clips (feet follow the clip). `node tools/check-reactions.mjs` checks all of it;
+  `tools/pose-sheet.ts set=reactions` shows it.
 
 - **How actions work now (milestone 2).** Clips are keyed poses (`keyed([...])`, `KeyPose`): joint
   angles in `b`, arms as swing directions in `sL`/`sR` ([elevation, azimuth, twist], slerped as
