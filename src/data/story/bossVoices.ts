@@ -89,7 +89,7 @@ export const BOSS_VOICES: Record<string, BossVoice> = {
   },
 
   hound_master_vess: {
-    greet: `Tell the wagon woman I paid. Forty hounds. She sent them back. I sent them up again, to the gate.`,
+    greet: `Forty collars from your wagon, and I paid in hounds. She sent them back. So I sent them up again, to the gate.`,
     taunts: {
       ahead: `Down. Good. Stay down and they will be quick about it.`,
       even: `They are not hungry. They are bored. That is worse for you.`,
@@ -177,7 +177,7 @@ export const BOSS_VOICES: Record<string, BossVoice> = {
     taunts: {
       ahead: `Soft in the middle. I would have thrown you back in the melt.`,
       even: `You hold an edge. Who taught your smith? No. Do not tell me. I can see it in the steel.`,
-      behind: `Somebody up there still knows how to fold iron. Three pairs of hands from mine, I would guess.`,
+      behind: `Somebody up there still knows how to fold iron. A dozen pairs of hands from mine, I would guess.`,
     },
     enraged: `No more tempering. Straight into the fire.`,
     death: `Do not ask who the order was for. A smith does not tell.`,

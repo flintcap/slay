@@ -152,7 +152,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
         id: 'trade',
         label: 'Where you learned',
         text: [
-          `My master learned from a man who learned at Cindergate, before the fall. Three pairs of hands between me and the Works.`,
+          `My master learned from a woman who learned from a man, and so on back, a dozen pairs of hands, to someone who learned at Cindergate before the fall.`,
           `You can see it in how I hold the tongs, if you know what to look for. Nobody does.`,
         ],
       },

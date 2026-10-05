@@ -105,7 +105,7 @@ export const QUEST_LORE: Record<string, QuestLore> = {
   cartographers_debt: {
     brief: `Anwen Doss charted further than anyone paid her for. Her stations are still standing. Her pages are scattered.`,
     whisper: [`Her hand is very neat, right up to the last line.`],
-    onComplete: `The chart goes on the wall at the survey house, with a gap in it the shape of the fourth tier. It is the best map anyone has.`,
+    onComplete: `Wenna pins the chart on her wall, with a gap in it the shape of the fourth tier. It is the best map anyone has.`,
   },
   drowned_procession: {
     brief: `Sister Ottilie walks slowly and does not stop to pray. She says the praying is the walking.`,

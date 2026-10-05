@@ -1,6 +1,6 @@
 # Stream: story (lore, quests, characters)
 
-Status: in progress
+Status: paused
 
 ## Milestones
 
@@ -13,17 +13,23 @@ Status: in progress
 
 ## Next up
 
-Milestone 6, the sweep. Already done in the milestone 5 commit:
-- `src/data/lore.ts` cut down to what the game reads (`pickLine`, `QUEST_LORE`/`questLore`, `NAMED_ELITES`); the
-  dead tables that named missing bosses, monsters and townsfolk are gone. 14 quests have their own lore now.
-- Quest whispers were never shown; `sim/Quests.ts` now emits `story:line` as an objective falls, and
-  `StoryOverlay.ts` speaks it.
-- Fixed: Hesk's eleven expeditions (nine were chartered), the Third Watch's eleven guards (six of the watch), the
-  Herald's roll striking all nine of the Third (Gilder and Ashka are alive), dashes in quest text, a "difficulty
-  setting" line.
-Still to do: read every line of `npcs.ts`, `chains.ts`, `premise.ts` once more against `bossVoices.ts`, `notes.ts`
-and `places.ts` for contradictions (dates: Caul nine hundred years, the Works four hundred, the Spire and the
-Archive a thousand); look at the render from `tools/shot-story.mjs`; then set `Status: done`.
+Milestone 6, the sweep. Almost done. Already in place (milestone 5 commit plus the pause commit):
+- `src/data/lore.ts` cut to what the game reads (`pickLine`, `QUEST_LORE`/`questLore`, `NAMED_ELITES`); 14 quests
+  have their own lore; quest whispers are spoken through `story:line`.
+- Contradictions fixed: Hesk's expeditions (nine chartered), the Third Watch (six of the watch), the Herald's roll
+  (six of the nine; Gilder and Ashka live), Kale's lineage (a dozen pairs of hands back to the Works, since Caul fell
+  about four hundred years ago; Hurn's taunt matches), Vess no longer repeats Grell's "tell the wagon woman".
+- Canon dates to keep: Caul paid rent nine hundred years and fell about four hundred years ago; the Works have run
+  four hundred years since; Calix's last authorised entry (611 years) predates the fall; the Spire has worked loose
+  for a thousand years; Gilder left Ferris on the sixth eleven years ago; Renn has kept the roster nineteen years.
+What is left:
+1. Take the one story render: `npm run build`, then
+   `SLAY_PORT=4308 timeout 2700 node tools/shot-story.mjs --out=shots/story --shots=talk,journal,note,boss,bossfloor`
+   as a single foreground command (it starts and stops its own server). The first attempt was stopped by the pause
+   before boot finished (the machine was at load 12); nothing was learned from it. Look at the PNGs: subtitle,
+   note card, journal tabs. If it times out, try `--shots=talk,note` only, and if that fails too, note it and move on.
+2. Optional: rename existing saved unique items to their new names (quality owns `Save.ts`; ask there).
+3. Tick milestone 6, set `Status: done`.
 
 ## Notes for resume
 
