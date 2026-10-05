@@ -387,6 +387,10 @@ const DRAW: Record<string, (x: Ctx, light: number) => void> = {
 /** Paints the portrait for `classId` onto a 256px square context. */
 export function paintClassPortrait(x: Ctx, classId: string): void {
   const look = LOOK[classId] ?? LOOK.warden!;
+  const inner = smoothP([[128, 8], [210, 30], [244, 110], [244, 248], [12, 248], [12, 110], [46, 30]], 0.32);
+  // Painted through the arch, so the corners stay clear and nothing spills.
+  x.save();
+  x.clip(inner);
   // Ground: the class's dark, a back light behind the head, grain.
   const bg = x.createRadialGradient(128, 100, 10, 128, 140, 190);
   bg.addColorStop(0, css(lift(look.ground, 0.25)));
@@ -399,19 +403,8 @@ export function paintClassPortrait(x: Ctx, classId: string): void {
   (DRAW[classId] ?? drawWarden)(x, look.light);
   vignette(x, S, S, 0.65, 0.5);
   grain(x, S, S, 0.12);
-  // An arched frame in the class metal.
-  const outer = new Path2D();
-  outer.rect(0, 0, S, S);
-  const inner = smoothP([[128, 8], [210, 30], [244, 110], [244, 248], [12, 248], [12, 110], [46, 30]], 0.32);
-  const frame = new Path2D();
-  frame.addPath(outer);
-  frame.addPath(inner);
-  // Outside the arch is cut away, so the portrait sits on any panel.
-  x.save();
-  x.globalCompositeOperation = 'destination-out';
-  x.fillStyle = '#000';
-  x.fill(frame, 'evenodd');
   x.restore();
+  // An arched frame in the class metal.
   x.save();
   x.lineJoin = 'round';
   x.lineWidth = 7;

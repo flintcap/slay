@@ -2524,3 +2524,13 @@ body.reduce-motion .dth * {
   margin: 0 0 var(--s2) var(--s3);
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
 }
+
+/* Boss portrait (art stream) on the intro card. */
+.bn-boss-portrait {
+  position: relative;
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 10px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.7));
+}

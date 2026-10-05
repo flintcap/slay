@@ -368,6 +368,36 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return c;
   },
 
+  /** Every boss portrait at intro-card size, then the ten family portraits. */
+  async bosses() {
+    const BP = await import('../src/art/BossPortraits');
+    const ids = BP.bossIds();
+    const fams = ['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze'] as const;
+    const CW = 150;
+    const COLS = 6;
+    const rows = Math.ceil(ids.length / COLS) + Math.ceil(fams.length / COLS);
+    const { c, g } = sheet(COLS * CW, rows * 160 + 20);
+    const t0 = performance.now();
+    for (let i = 0; i < ids.length; i++) {
+      const x = (i % COLS) * CW + 11;
+      const y = Math.floor(i / COLS) * 160 + 4;
+      g.drawImage(await img(BP.bossPortraitUri(ids[i]!, 128)!), x, y, 128, 128);
+      g.fillStyle = INK;
+      g.fillText(ids[i]!.slice(0, 20), x + 64, y + 132);
+    }
+    const y0 = Math.ceil(ids.length / COLS) * 160 + 16;
+    for (let i = 0; i < fams.length; i++) {
+      const x = (i % COLS) * CW + 11;
+      const y = y0 + Math.floor(i / COLS) * 160;
+      g.drawImage(await img(BP.familyPortraitUri(fams[i]!, 128)), x, y, 128, 128);
+      g.drawImage(await img(BP.familyPortraitUri(fams[i]!, 40)), x + 100, y + 96, 40, 40);
+      g.fillStyle = '#d8c690';
+      g.fillText(fams[i]!, x + 64, y + 132);
+    }
+    c.dataset.note = `${((performance.now() - t0) / (ids.length + fams.length * 2)).toFixed(0)}ms per portrait`;
+    return c;
+  },
+
   /** Timing breakdown: paint versus PNG encode, over every base. */
   async perf() {
     const { paintItemIcon } = await import('../src/art/ItemIconArt');

@@ -13,6 +13,7 @@
 import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { BIOMES } from '../world/DungeonGen';
+import { bossPortraitUri } from '../art/BossPortraits';
 
 interface Queued {
   build: () => HTMLElement;
@@ -133,6 +134,20 @@ function bossIntro(name: string, title: string): HTMLElement {
   const wrap = el('bn bn-boss');
   wrap.append(el('bn-bars top'), el('bn-bars bottom'));
   const card = el('bn-boss-card');
+  // The boss's painted portrait (art stream), above the title.
+  try {
+    // 96px: painted on the frame the boss is engaged, so kept small.
+    const uri = bossPortraitUri(name, 96);
+    if (uri) {
+      const img = document.createElement('img');
+      img.className = 'bn-boss-portrait';
+      img.alt = '';
+      img.src = uri;
+      card.appendChild(img);
+    }
+  } catch {
+    /* the card reads fine without it */
+  }
   card.appendChild(el('bn-boss-title', title));
   const n = el('bn-boss-name');
   letters(n, name);

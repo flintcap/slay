@@ -9,7 +9,7 @@ Status: in progress
 - [x] Item models: ground drops and equipped gear that match their icons, with ornament scaling by rarity and tier; uniques and set items get distinctive shapes. — "Art: item models match their icons; one shared rarity look for icons, drops, held and worn gear"
 - [ ] Class portraits and key art: a drawn portrait per class for character select, and a title and loading key art composition, all generated in code (canvas or SVG).
 - [x] UI ornament: filigree corners, dividers, frame borders and crests drawn procedurally for the hud and menus streams to use, exposed as small reusable helpers. — "Art: class portraits, key art, UI ornament helpers"
-- [ ] Boss and monster portraits: a portrait for every boss for intro cards, and bestiary art per monster family.
+- [x] Boss and monster portraits: a portrait for every boss for intro cards, and bestiary art per monster family. — "Art: boss and monster family portraits; boss intro card shows its portrait"
 - [ ] Sweep: a contact sheet render of every icon and portrait, checked for readability, duplicates and style drift.
 
 ## Next up
@@ -18,14 +18,16 @@ Status: in progress
    and the slow loading card); confirm in the real game with
    `SLAY_PORT=4310 timeout 2400 node tools/screenshot.mjs --out=shots/art --shots=charSelect`
    (run it as a background task; it takes over ten minutes here) and tick milestone 4.
-2. Milestone 6: boss and monster portraits. New `src/art/BossPortraits.ts`:
-   `bossPortraitUri(bossId, size)` for intro cards and `familyPortraitUri(family, size)` for the
-   bestiary, painted like `Portraits.ts`. Bosses live in `src/data/bosses.ts`, families in
-   `src/entities/MonsterModels.ts` / `src/data/monsters.ts`. Find the boss intro card and the
-   bestiary/journal (grep `intro`, `bestiary`, `Journal`) and wire with small additive edits.
-3. Milestone 7: sweep every sheet; time item icon appearance in the real inventory.
+2. Milestone 7: sweep every sheet; time item icon appearance in the real inventory.
 
 ## Notes for resume
+
+- Milestone 6: `src/art/BossPortraits.ts` — `bossPortraitUri(idOrName, size)` and
+  `familyPortraitUri(family, size, visual?, key?)`: ten family painters in a round iron medallion,
+  coloured from the creature's `visual` (palette tint, glow, eye count, ornament, wings) with a
+  per-boss variant. `Banners.ts` shows the boss portrait (96px, `.bn-boss-portrait`) on the intro
+  card. There is no bestiary screen yet; if story or menus add one, use `familyPortraitUri`.
+  Sheet: `bosses`.
 
 - Milestones 4-5: `src/art/Portraits.ts` (`classPortraitUri(classId, size)`, cached data URI; the
   arch frame cuts the corners transparent), `src/art/KeyArt.ts` (`keyArtCanvas`, `mountKeyArt`,
