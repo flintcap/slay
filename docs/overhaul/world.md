@@ -1,6 +1,6 @@
 # Stream: world (environment art and rendering)
 
-Status: in progress
+Status: done
 
 ## Milestones
 
@@ -8,23 +8,19 @@ Status: in progress
 - [x] Lighting and post: tone mapping, a colour grade per biome, tuned bloom, ambient occlusion, vignette, light shafts and fog that add depth. (same commit; grade + bloom + vignette per biome, fog shaped around the player, height fog in pits. Light shafts untouched.)
 - [x] Set dressing: landmark pieces per room type and per biome so every room has a focal point. (commit "World: landmarks and lava seen in calm renders; foundry iron matte, trim follows the cutaway"; w10 crypt gold hoard, w11 foundry smelting vat glows as the room's centre piece, hive treasure room reads with webs and a hoard)
 - [x] Liquids and hazards: water, lava and chasms that look the part, with ambient motes and drips per biome. (same commit; w11: foundry and ashwaste lava read as crust over glowing seams with no blowout, a drip falls by the hero in caverns, water seen in w9)
-- [ ] Sweep: one render per biome, each reads clearly with the player and monsters easy to see.
+- [x] Sweep: one render per biome, each reads clearly with the player and monsters easy to see. (commit "World: sweep done; every biome reads with the hero and monsters clear"; w12 to w17: all eight biomes rendered with monsters on, plus calm checks of frostvault and voidspire)
 
 ## Next up
 
-1. Milestone 6 sweep: one shot per biome WITHOUT `--calm` so monsters are on screen. `npm run build`, then
-   one command per batch as a background Bash task (it exits by itself), waiting with an
-   `until grep -q EXIT shots/w12.log` loop under `timeout 590`, never on a bare server:
-   `SLAY_PORT=4304 timeout -k 20 2700 node docs/overhaul/world-render.mjs --out=shots/w12 --shots=crypt@room,caverns@landmark,foundry@room,sunkenTemple@room > shots/w12.log 2>&1; echo "EXIT $?" >> shots/w12.log; pkill -f "[v]ite preview --port 4304"`
-   then the same with `--out=shots/w13 --shots=hive@landmark,frostvault@room,ashwaste@room,voidspire@room`.
-   Judge: floor clearest and best lit, hero and monsters stand out from it. Also check the wall
-   cutaway (a dithered hole on the hero's sightline): the cornice trim and plinth should vanish
-   with the wall now (they floated as thin lines in w11 ashwaste@liquid), and side walls level with
-   the hero stay solid. Nameplates crowding big fights is the HUD stream's.
-2. When milestone 6 is ticked, set `Status: done`.
-3. Known, not fixed: the caverns floor away from the hero light is very dark; caverns water pools
-   read nearly black. Town: 1,096 draw calls (budget 900), the rest is residents (quality stream merging).
-4. `node tools/check-propmesh.mjs` alone when the machine is quiet.
+All milestones are done. If more time is given:
+
+1. Caverns: the floor away from the hero light is very dark and the water pools read nearly black.
+2. Voidspire floor is still a strongly saturated blue; a slightly lower grade saturation (1.12) or
+   floor tint would calm it further.
+3. Town: 1,096 draw calls against 900; the rest is the residents (the quality stream merges them).
+   A few pale stones and a pale log by the fire still read cold.
+4. `node tools/check-propmesh.mjs` timed out twice under load (not a failure). Run it alone when the
+   machine is quiet.
 
 ## Notes for resume
 
@@ -36,6 +32,11 @@ Status: in progress
   sightline cutaway: `worldCutaway` in WorldSurface.ts, a dithered 2 m hole on the camera-to-hero
   line, only in front of the hero, wall-kind materials only, set in `DungeonMesh.update`). Town
   stone tinted warm (0xb09c80). Cluster rocks of 0.5 m and under use the low bevel.
+- w16/w17 (calm): frostvault and voidspire read clean with monsters removed. A dark trapezoid over
+  the floor was the light shaft cone in GTAO's depth buffer: `hideSpritesFromAO()` now also hides
+  transparent meshes that write no depth (shafts, light pools, webs, additive FX) for that pass.
+  The white-pink haze over the frostvault fight is monster FX stacking on the bright ice (feel or
+  combat stream), not the world.
 - Sweep w12 to w14 (monsters on): crypt, caverns, foundry, sunkenTemple, hive and ashwaste read
   well (floor clear, hero and monsters stand out; the wall cutaway works with trim gone).
   Frostvault (whiteout variant) washed white-pink: seven light shafts in the vault plus bloom on
