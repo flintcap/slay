@@ -448,6 +448,8 @@ function npc(ctx: Ctx, who: string, x: number, z: number, facing: number, seed: 
     ctx.root.add(built.root);
     const anim = new Animator(built.bones);
     anim.setGrip(npcCarryGrip(who));
+    // How they stand about shows their trade (animation stream).
+    anim.setPersona(who);
     anim.play('idle', { fade: 0 });
     anim.timeScale = 0.7 + (seed % 7) * 0.06;
     ctx.npcs.push(anim);

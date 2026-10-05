@@ -248,4 +248,42 @@ for (const [name, prep] of [
   rows.push(row(name, m, `${clip}; hips ${m.hipsY.toFixed(2)} m, lowest joint ${m.lowestAt} ${m.lowest.toFixed(2)} m`, m.hipsY < 0.3 && m.lowest > -0.04));
 }
 
+// Long hair: swings back on a run, forward on a hard stop, then settles.
+{
+  const rng = new Random(0x4a1);
+  const built = buildPlayerModel('ranger', rng);
+  const mover = new THREE.Group();
+  mover.add(built.root);
+  const scene = new THREE.Scene();
+  scene.add(mover);
+  const anim = new Animator(built.bones);
+  anim.follow(mover);
+  anim.play('idle', { fade: 0 });
+  const r: Rig = { anim, mover, scene, bones: built.bones, restY: 0 };
+  const m = new Meter(r);
+  const sway = built.root.getObjectByName('hairSway') as THREE.Bone | undefined;
+  let back = 0;
+  let fwd = 0;
+  let end = 0;
+  let bad = false;
+  run(r, m, 4, (f) => {
+    const v = f < 90 ? 4.6 : 0;
+    mover.position.z += v * DT * (f < 90 ? 1 : Math.max(0, 1 - (f - 90) / 6));
+    anim.play(v > 0 ? 'run' : 'idle', { fade: 0.15, speed: 1 });
+    const ax = sway ? sway.rotation.x : 0;
+    if (!Number.isFinite(ax)) bad = true;
+    if (f > 40 && f < 90) back = Math.max(back, ax);
+    if (f >= 90 && f < 130) fwd = Math.min(fwd, ax);
+    end = Math.abs(ax) + Math.abs(sway ? sway.rotation.z : 0);
+  });
+  rows.push(
+    row(
+      'long hair, run and stop',
+      m,
+      `hair bone ${sway ? 'rigged' : 'missing'}; back ${back.toFixed(2)}, forward ${fwd.toFixed(2)}, at rest ${end.toFixed(3)}`,
+      !!sway && !bad && back > 0.05 && fwd < -0.02 && end < 0.06,
+    ),
+  );
+}
+
 console.log(JSON.stringify(rows));

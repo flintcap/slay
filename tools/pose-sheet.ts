@@ -17,6 +17,7 @@ import type { CharClassId } from '../src/types';
 import { contactDelay } from '../src/entities/Player';
 import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../src/entities/MonsterModels';
 import { MONSTERS } from '../src/data/monsters';
+import { buildNpcModel, npcCarryGrip } from '../src/art/NpcModels';
 
 type View = 'side' | 'front' | 'threeQuarter' | 'back';
 
@@ -186,7 +187,64 @@ function monsterTile(label: string, id: string, steps: Array<[number, number, Ri
   };
 }
 
+/** A camp resident standing about for `seconds` with their persona idle. */
+function npcTile(label: string, id: string, seconds: number, view: View = 'threeQuarter'): Tile {
+  return {
+    label,
+    view,
+    run(mover) {
+      const built = buildNpcModel(id, new Random(0x77));
+      mover.add(built.root);
+      const anim = new Animator(built.bones);
+      anim.setGrip(npcCarryGrip(id));
+      anim.setPersona(id);
+      anim.play('idle', { fade: 0 });
+      for (let i = 0; i < Math.round(seconds / DT); i++) anim.update(DT);
+    },
+  };
+}
+
 const SETS: Record<string, Tile[]> = {
+  kale: [0, 0.18, 0.36, 0.54, 0.72, 0.9].map((dt) => npcTile(`kale +${dt.toFixed(2)}s`, 'kale', 3 + dt, 'side')),
+  npcs: [
+    npcTile('kale  hammer up', 'kale', 0.55),
+    npcTile('kale  strike', 'kale', 0.86),
+    npcTile('hesk  ledger', 'hesk', 2.0),
+    npcTile('hesk  looks up', 'hesk', 6.6),
+    npcTile('vell  prayer', 'vell', 2.0),
+    npcTile('vell  satchel', 'vell', 9.9),
+    npcTile('corvane  lantern', 'corvane', 3.0),
+    npcTile('marrow  leaning', 'marrow', 2.0),
+    npcTile('renn  watching', 'renn', 5.0),
+    npcTile('listener', 'listener', 3.0),
+    npcTile('gilder  drinks', 'gilder', 4.4),
+    npcTile('wenna  map', 'wenna', 2.0),
+  ],
+  hair: [
+    gaitTile('ponytail, run', 'ranger', 4.6, 0.3),
+    {
+      label: 'ponytail, hard stop',
+      view: 'side',
+      run(mover) {
+        mover.rotation.y = Math.PI / 2;
+        const { anim } = character('ranger', mover);
+        drive(anim, mover, 1.5, 4.6, 0);
+        drive(anim, mover, 0.2, 0, 0);
+      },
+    },
+    gaitTile('long hair, run', 'pyromancer', 4.6, 0.6),
+    {
+      label: 'long hair, turning, back',
+      view: 'back',
+      run(mover) {
+        const { anim } = character('pyromancer', mover);
+        drive(anim, mover, 1.2, 4.6, 0);
+        drive(anim, mover, 0.35, 4.6, 4);
+      },
+    },
+    gaitTile('braids, walk', 'stormcaller', 1.4, 0.5, 'threeQuarter'),
+    reactTile('braids, stunned', 'stormcaller', undefined, (a) => a.setCondition('stunned'), 1.0, 'threeQuarter'),
+  ],
   monsters: [
     monsterTile('skeleton  run', 'skeleton_rattler', [[1.2, 3.4, 'idle', 1]]),
     monsterTile('skeleton  wind-up', 'skeleton_rattler', [[0.5, 0, 'idle', 1], [0.5, 0, 'attack', 0.7]], 'threeQuarter'),

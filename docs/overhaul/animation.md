@@ -1,6 +1,6 @@
 # Stream: animation (how bodies move)
 
-Status: in progress (milestones 1-4 done; on milestone 5)
+Status: in progress (milestones 1-5 done; on milestone 6, the sweep)
 
 ## Milestones
 
@@ -8,30 +8,44 @@ Status: in progress (milestones 1-4 done; on milestone 5)
 - [x] Attacks: anticipation, impact and recovery with real weight for every weapon grip; spell casts with a hand glow. ("Animation: strikes land on the contact frame, feet held in actions, both hands on two-handed weapons")
 - [x] Hit reactions and deaths: flinch, stagger, knockback, and death animations that fall and fade instead of vanishing. ("Animation: hits flinch without cutting swings, stagger, stun, knockdown, two deaths")
 - [x] Monster motion: idle variety per family, spawn or emerge animations, movement that suits each body (scuttle, lope, float, lumber). (Monster looks moved to the models stream.) ("Animation: monsters move by body, wind up and strike, fidget, spawn and die their own way")
-- [ ] Secondary motion: cloth, cape, hair and loose gear that sway and settle; town NPCs idle with personality. (Player and NPC looks moved to the models stream.)
+- [x] Secondary motion: cloth, cape, hair and loose gear that sway and settle; town NPCs idle with personality. (Player and NPC looks moved to the models stream.) ("Animation: long hair swings and settles, camp residents idle at their trades")
 - [ ] Sweep: check-grips, check-clips and check-attack pass; nothing pops or snaps between states.
 
 ## Next up
 
-Milestone 5, secondary motion and NPC idles. Concretely:
+Milestone 6, the sweep. Concretely:
 
-1. Long hair: the `hairLong` cover meshes (`userData.coverSlot === 'hairLong'`, bound to head and chest)
-   get a runtime sway bone under `head`: re-weight the vertices below the head joint toward it and bind
-   that mesh to a copy of the skeleton with the extra bone appended (other meshes keep theirs). Drive it
-   as a damped pendulum from the head's world acceleration, sub-stepped. Do it in a new file
-   (`src/art/Secondary.ts`) the Animator attaches lazily from `bones.root`'s parent.
-2. Loose gear: the quiver socket (on `chest`) and any socketed off-hand item can lag on a spring the
-   same way (the socket code is animation's).
-3. Capes: the unique chest cape (WornGear `chestSignature`, heraldry material, bound to chest/spine/hips)
-   and boss capes (MonsterModels `dressRank`) are merged into material buckets, so they cannot be swung
-   without either vertex selection (behind the back, below the shoulders) or models adding a bone. Try
-   vertex selection on the hero first; leave monster capes unless it is clean.
-4. Town NPC idles with personality: `Town.ts` builds each resident's `Animator` (world's file, one-line
-   edit to pass the resident id, e.g. `anim.setPersona(who)`). Give each trade an idle: the smith
-   hammers, the vendor gestures, the healer tends, the stash keeper counts keys, the listener sways.
-   Residents are `kale, hesk, corvane, marrow, gilder, wenna, listener, renn, vell` (NpcModels).
+1. Browser checkers, each one command under `timeout` (max 45 min), `SLAY_PORT=4303`, nothing left
+   running: `node tools/check-clips.mjs` (vite dev server, boots the game) and
+   `npm run build && node tools/check-attack.mjs` (vite preview). Each may fail at most twice for the
+   same reason; then note it here and move on.
+2. Static: `check-strikes`, `check-reactions`, `check-footplant`, `check-grips`, `check-monster-anim`
+   all pass now; rerun them after any change.
+3. Pops between states: the remaining reported one is `check-footplant`'s "inside actions" jump (a
+   running foot stopping mid-swing as an attack starts, `plantActionFeet`). Give the airborne foot's
+   step its velocity (a Hermite start) so it decelerates over a few frames.
+4. Look issues to revisit if time allows: the walk is a little bent-kneed (`SOFT_FROM = 0.975`); hero
+   capes and quivers do not sway (see the milestone 5 note).
 
 ## Notes for resume
+
+- **Secondary motion and personas (milestone 5).** `src/art/Secondary.ts`: `SecondaryMotion.attach`
+  (called by the Animator constructor, at bind pose) finds a person's `hairLong` cover meshes, adds a
+  `hairSway` bone under `head`, re-weights the hair below the head joint toward it (more further
+  down) and binds just those meshes to a copy of the skeleton with the bone appended. `update` drives
+  it as a sub-stepped damped pendulum from the head's world motion: it hangs with gravity when the
+  head tilts, streams back on a run, swings forward on a stop. Ranger (ponytail), pyromancer (long)
+  and stormcaller (braids) have it. Not done: hero capes (the unique chest cape shares the heraldry
+  material bucket with bands and panels, so isolating it means selecting vertices behind the back;
+  or models could add a bone) and quiver/loose-gear springs (the quiver is a socketed child of
+  `chest`, so a spring on its mesh rotation would do). Robes and skirts follow the legs through their
+  skin weights already. `Animator.setPersona(id)` gives camp residents an idle layer
+  (`PERSONAS`): kale hammers at the anvil, hesk reads his ledger and looks up, vell prays and reaches
+  into her satchel, corvane holds his lantern up and scans, renn sweeps the camp with his eyes,
+  marrow leans on his spear, the listener sways with his head tilted, gilder drinks, wenna reads her
+  map. `Town.ts` calls it (one added line). `swingArm(p, side, elev, azim, w)` points an arm from
+  inside a pose function. `tools/pose-sheet.ts` sets `npcs`, `kale` (a hammer cycle strip), `hair`;
+  `check-reactions` has a long-hair row.
 
 - **From art (47064a3):** the off-hand socket (`SOCKETS.offHand`, rot X 0.92π) carried shields with their authored front (+Z) toward the hero's back. Art now turns the shield inside `buildShield`, so it reads correctly as is. If you change the off-hand socket, tell art (art.md) so the inner turn can go. Sword grips are now centred on the origin with the guard above the hand (they used to sit half inside the blade); `check-grips` still passes.
 

@@ -22,6 +22,7 @@
  */
 
 import * as THREE from 'three';
+import { SecondaryMotion } from './Secondary';
 
 // ---------------------------------------------------------------------------
 // Bone slots
@@ -302,10 +303,13 @@ const _swB = new THREE.Quaternion();
 const _swE = new THREE.Euler();
 
 /** The shoulder rotation that points the upper arm along a swing direction. */
+const _SW_Y = new THREE.Vector3(0, 1, 0);
+const _SW_X = new THREE.Vector3(1, 0, 0);
+
 function swingQuat(elev: number, azim: number, twist: number, out: THREE.Quaternion): THREE.Quaternion {
-  out.setFromAxisAngle(new THREE.Vector3(0, 1, 0), azim);
-  _swA.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -elev);
-  _swB.setFromAxisAngle(new THREE.Vector3(0, 1, 0), twist - azim);
+  out.setFromAxisAngle(_SW_Y, azim);
+  _swA.setFromAxisAngle(_SW_X, -elev);
+  _swB.setFromAxisAngle(_SW_Y, twist - azim);
   return out.multiply(_swA).multiply(_swB);
 }
 
@@ -1853,6 +1857,183 @@ const CLIPS: Record<ClipName, ClipDef> = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Personas: how the people in camp stand about
+// ---------------------------------------------------------------------------
+
+const _swq = new THREE.Quaternion();
+
+/** Points an arm along a swing direction (see `KeyPose.sL`), at weight `w`. */
+function swingArm(p: Pose, side: 0 | 1, elev: number, azim: number, w: number): void {
+  swingQuat(elev, azim, 0, _swq);
+  p.sq[side * 4] = _swq.x;
+  p.sq[side * 4 + 1] = _swq.y;
+  p.sq[side * 4 + 2] = _swq.z;
+  p.sq[side * 4 + 3] = _swq.w;
+  p.sw[side] = clamp01(w);
+}
+
+/** 0..1 within a repeating cycle of `period` seconds. */
+function cyc(t: number, period: number): number {
+  return (((t / period) % 1) + 1) % 1;
+}
+
+/**
+ * Idle layers for camp residents, written over the plain idle. Each shows a
+ * trade at a glance from across the camp: the smith hammers, the trader reads
+ * his ledger, the healer prays, the keeper holds up his lantern and watches,
+ * the guard scans, the listener sways, the drinker drinks. Residents whose
+ * tool is two-handed have their arms on it (the carry pose wins), so theirs
+ * live in the trunk and head.
+ */
+const PERSONAS: Record<string, (p: Pose, t: number, rig: Rig) => void> = {
+  // The smith: bent over the anvil, hammering in a steady rhythm, a pause to
+  // straighten and roll the shoulders every so often.
+  kale(p, t, rig) {
+    const h = rig.hipY;
+    const round = cyc(t, 9);
+    const work = round < 0.78 ? 1 : 1 - smooth((round - 0.78) / 0.08) + smooth((round - 0.94) / 0.06);
+    const k = cyc(t, 1.1);
+    const raise = kf(k, [
+      [0, 0],
+      [0.5, 1],
+      [0.66, 1],
+      [0.78, 0],
+      [1, 0],
+    ]);
+    const jolt = k > 0.78 && k < 0.9 ? Math.sin(((k - 0.78) / 0.12) * Math.PI) : 0;
+    p.add('spine', 0.22 * work + 0.03 * jolt, 0, 0);
+    p.add('chest', 0.12 * work, -0.1 * work, 0);
+    p.add('head', 0.25 * work, 0.1 * work, 0);
+    p.nudge('hips', 0, -h * 0.03 * work, -h * 0.03 * work);
+    // Hammer arm: up over the shoulder, then down onto the anvil at the waist.
+    swingArm(p, 1, lerp(0.15, 0.9 + 2.0 * raise, work), lerp(-1.4, -0.15, work), work);
+    p.set('elbowR', lerp(-0.22, -0.35 - 1.5 * raise, work), 0, 0);
+    p.set('handR', lerp(0, -1.3 * (1 - raise), work), 0, 0);
+    // The other hand holds the work on the anvil.
+    swingArm(p, 0, lerp(0.15, 0.75, work), lerp(1.4, -0.25, work), work);
+    p.set('elbowL', lerp(-0.22, -0.9, work), 0, 0);
+    // The stretch between rounds.
+    const stretch = 1 - work;
+    p.add('chest', -0.12 * stretch, 0, 0);
+    p.add('head', -0.15 * stretch, 0, 0.1 * stretch * Math.sin(t * 3));
+  },
+  // The trader: nose in the ledger, the other hand fidgeting with his keys,
+  // looking up now and then as if someone had called.
+  hesk(p, t) {
+    const look = smooth(kf(cyc(t, 8), [
+      [0, 0],
+      [0.72, 0],
+      [0.78, 1],
+      [0.93, 1],
+      [1, 0],
+    ]));
+    p.add('head', 0.34 - 0.4 * look, 0.25 * look, 0);
+    p.add('chest', 0.06, 0.08, 0);
+    swingArm(p, 0, 0.5, -0.35, 1);
+    p.set('elbowL', -1.45, 0, 0);
+    swingArm(p, 1, 0.35 + 0.15 * look, 0.25, 1);
+    p.set('elbowR', -1.1 + Math.sin(t * 3.1) * 0.12 - 0.3 * look, 0, 0);
+    p.set('handR', Math.sin(t * 5.3) * 0.15, 0, 0);
+  },
+  // The healer: hands folded in front, head bowed in a slow prayer, now and
+  // then reaching into the satchel at her hip.
+  vell(p, t) {
+    const reach = smooth(kf(cyc(t, 11), [
+      [0, 0],
+      [0.8, 0],
+      [0.86, 1],
+      [0.94, 1],
+      [1, 0],
+    ]));
+    const nod = Math.sin(t * 0.7) * 0.06;
+    p.add('head', 0.22 + nod - 0.05 * reach, 0.2 * reach, 0);
+    p.add('spine', 0.05, 0, 0);
+    swingArm(p, 0, 0.5, -0.65, 1);
+    p.set('elbowL', -1.75, 0, 0);
+    swingArm(p, 1, 0.5 - 0.25 * reach, 0.65 + 0.9 * reach, 1);
+    p.set('elbowR', -1.75 + 1.1 * reach, 0, 0);
+  },
+  // The keeper: lantern held up and out, eyes moving slowly round the camp,
+  // keys at his hip.
+  corvane(p, t) {
+    const scan = Math.sin(t * 0.33) * 0.55;
+    p.add('head', -0.05, scan, 0);
+    p.add('chest', 0, scan * 0.25, 0);
+    swingArm(p, 0, 1.15 + Math.sin(t * 0.9) * 0.03, 0.4, 1);
+    p.set('elbowL', -1.0, 0, 0);
+    swingArm(p, 1, 0.25, -0.2, 1);
+    p.set('elbowR', -0.9 + Math.max(0, Math.sin(t * 6)) * 0.08, 0, 0);
+  },
+  // The stonecutter at the cairn, leaning on his spear, looking at the work.
+  marrow(p, t, rig) {
+    const h = rig.hipY;
+    p.nudge('hips', -h * 0.03, -h * 0.01, 0);
+    p.add('hips', 0, 0, -0.05);
+    p.add('spine', 0.1, 0, 0.06);
+    p.add('head', 0.28 + Math.sin(t * 0.5) * 0.05, -0.2, 0.05);
+    p.add('chest', -Math.sin(t * 0.8) * 0.02, 0, 0);
+  },
+  // The guard: upright, shifting weight, turning his head in slow sweeps that
+  // stop and hold on something.
+  renn(p, t, rig) {
+    const h = rig.hipY;
+    const k = cyc(t, 10);
+    const yaw = kf(k, [
+      [0, -0.55],
+      [0.12, -0.55],
+      [0.3, 0.1],
+      [0.45, 0.1],
+      [0.62, 0.6],
+      [0.8, 0.6],
+      [1, -0.55],
+    ]);
+    p.add('head', -0.06, yaw, 0);
+    p.add('chest', -0.04, yaw * 0.2, 0);
+    p.nudge('hips', Math.sin(t * 0.4) * h * 0.02, 0, 0);
+    p.add('hips', 0, 0, Math.sin(t * 0.4) * 0.03);
+  },
+  // The listener: eyes up, head tilted, swaying as if to something only he hears.
+  listener(p, t) {
+    const s = Math.sin(t * 0.55);
+    p.add('hips', 0, 0, s * 0.04);
+    p.add('spine', 0, 0, -s * 0.05);
+    p.add('chest', -0.04, s * 0.04, -s * 0.03);
+    p.add('head', -0.18 + Math.sin(t * 0.31) * 0.06, 0.12, 0.22 + Math.sin(t * 0.37) * 0.1);
+  },
+  // The drinker: tankard at the chest, up to the mouth every few seconds with
+  // the head back, and a laugh that shakes the shoulders.
+  gilder(p, t) {
+    const k = cyc(t, 6.5);
+    const drink = smooth(kf(k, [
+      [0, 0],
+      [0.5, 0],
+      [0.6, 1],
+      [0.75, 1],
+      [0.86, 0],
+      [1, 0],
+    ]));
+    const laugh = k > 0.88 && k < 0.98 ? Math.sin(t * 22) * 0.04 : 0;
+    p.set('shoulderR', -0.55 - 1.0 * drink, 0.15 + 0.45 * drink, -0.1);
+    p.set('elbowR', -1.5 - 0.6 * drink, 0, 0);
+    p.add('head', -0.35 * drink + laugh * 2, 0, 0);
+    p.add('chest', -0.08 * drink + laugh, 0, 0);
+    p.add('shoulderL', laugh * 2, 0, 0);
+  },
+  // The cartographer: reading the map, glancing up at the horizon now and then.
+  wenna(p, t) {
+    const up = smooth(kf(cyc(t, 7), [
+      [0, 0],
+      [0.68, 0],
+      [0.75, 1],
+      [0.9, 1],
+      [1, 0],
+    ]));
+    p.add('head', 0.3 - 0.4 * up, 0.28 - 0.3 * up, 0);
+    p.add('chest', 0.04, 0.1, 0);
+  },
+};
+
 /** Maps arbitrary caller strings onto a real clip. */
 function resolveClip(name: string): ClipName {
   if (name in CLIPS) return name as ClipName;
@@ -2299,7 +2480,16 @@ export class Animator {
       this.feet[side].x = _target.x;
       this.feet[side].z = _target.z;
     }
+    // Long hair and the like: rigged now, while the skeleton is still at bind.
+    try {
+      this.secondary = SecondaryMotion.attach(bones);
+    } catch {
+      this.secondary = null;
+    }
   }
+
+  /** Hair that swings after the head, when the body has any. */
+  private secondary: SecondaryMotion | null = null;
 
   get clip(): string {
     return this.cur.name;
@@ -2407,6 +2597,22 @@ export class Animator {
       else if (this.cur.def.locomotion || this.cur.def.travel || this.cur.done) this.plantActionFeet();
     }
     this.cur = track;
+  }
+
+  private persona = '';
+  private personaOffset = 0;
+
+  /**
+   * Who this body is, for the way it stands about: a camp resident's id
+   * (`kale`, `hesk`, `vell`, `corvane`, `marrow`, `renn`, `listener`,
+   * `gilder`, `wenna`) gives them an idle that shows their trade. Unknown
+   * ids keep the plain idle.
+   */
+  setPersona(id: string): void {
+    this.persona = id in PERSONAS ? id : '';
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    this.personaOffset = (h % 1000) / 100;
   }
 
   /** Called by movement code so the torso leans into acceleration. */
@@ -2527,6 +2733,7 @@ export class Animator {
     this.applyPose(pose);
     this.applyHands(pose, step);
     this.updateGlow();
+    this.secondary?.update(real);
 
     this.outIk.set(pose.ik);
     this.outYaw.set(pose.fyaw);
@@ -3172,6 +3379,10 @@ export class Animator {
     const pi = this.poseIdle;
     pi.reset();
     CLIPS.idle.eval(this.idleT, pi, this.rig, this.elapsed);
+    if (this.persona) {
+      const fn = PERSONAS[this.persona];
+      if (fn) fn(pi, this.elapsed + this.personaOffset, this.rig);
+    }
     if (this.moveW > 0.002) {
       const pg = this.poseGait;
       pg.reset();
