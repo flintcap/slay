@@ -21,11 +21,10 @@ Milestone 6, the sweep. Concretely:
    same reason; then note it here and move on.
 2. Static: `check-strikes`, `check-reactions`, `check-footplant`, `check-grips`, `check-monster-anim`
    all pass now; rerun them after any change.
-3. Pops between states: the remaining reported one is `check-footplant`'s "inside actions" jump (a
-   running foot stopping mid-swing as an attack starts, `plantActionFeet`). Give the airborne foot's
-   step its velocity (a Hermite start) so it decelerates over a few frames.
+3. Pops between states: done. A foot caught mid-stride keeps its speed into the action's step
+   (Hermite start in `holdFeet`), and `check-footplant` now gates action pops and slide too.
 4. Look issues to revisit if time allows: the walk is a little bent-kneed (`SOFT_FROM = 0.975`); hero
-   capes and quivers do not sway (see the milestone 5 note).
+   capes do not sway (see the milestone 5 note).
 
 ## Notes for resume
 
@@ -37,8 +36,9 @@ Milestone 6, the sweep. Concretely:
   head tilts, streams back on a run, swings forward on a stop. Ranger (ponytail), pyromancer (long)
   and stormcaller (braids) have it. Not done: hero capes (the unique chest cape shares the heraldry
   material bucket with bands and panels, so isolating it means selecting vertices behind the back;
-  or models could add a bone) and quiver/loose-gear springs (the quiver is a socketed child of
-  `chest`, so a spring on its mesh rotation would do). Robes and skirts follow the legs through their
+  or models could add a bone). A quiver on the back (`GearSway`, same file) swings from its strap
+  on a spring driven by the chest's motion; it is looked up each frame among `chest`'s children
+  (`socketSlot === 'offHand'`), so equipping and unequipping just work. Robes and skirts follow the legs through their
   skin weights already. `Animator.setPersona(id)` gives camp residents an idle layer
   (`PERSONAS`): kale hammers at the anvil, hesk reads his ledger and looks up, vell prays and reaches
   into her satchel, corvane holds his lantern up and scans, renn sweeps the camp with his eyes,

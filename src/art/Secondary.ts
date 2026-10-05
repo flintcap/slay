@@ -219,3 +219,98 @@ export class SecondaryMotion {
     }
   }
 }
+
+/**
+ * Loose gear worn on the body: a quiver on the back swings from its strap
+ * when the body accelerates, turns or stops, and settles. Equipment comes and
+ * goes, so the quiver is looked up every frame (it is the off-hand item
+ * socketed on the chest) and its socket pose is taken as the rest it swings
+ * about.
+ */
+export class GearSway {
+  private mesh: THREE.Object3D | null = null;
+  private readonly baseQ = new THREE.Quaternion();
+  private readonly baseP = new THREE.Vector3();
+  private ax = 0;
+  private az = 0;
+  private vx = 0;
+  private vz = 0;
+  private lastPos = new THREE.Vector3();
+  private lastVel = new THREE.Vector3();
+  private has = 0;
+
+  private constructor(
+    private readonly bones: Record<string, THREE.Bone>,
+    private readonly model: THREE.Object3D,
+  ) {}
+
+  static attach(bones: Record<string, THREE.Bone>): GearSway | null {
+    const model = bones.root?.parent;
+    if (!bones.chest || !model) return null;
+    return new GearSway(bones, model);
+  }
+
+  private find(): THREE.Object3D | null {
+    for (const c of this.bones.chest.children) if (c.userData?.socketSlot === 'offHand') return c;
+    return null;
+  }
+
+  update(dt: number): void {
+    if (dt <= 1e-5) return;
+    const mesh = this.find();
+    if (mesh !== this.mesh) {
+      this.mesh = mesh;
+      if (mesh) {
+        this.baseQ.copy(mesh.quaternion);
+        this.baseP.copy(mesh.position);
+      }
+      this.ax = this.az = this.vx = this.vz = 0;
+      this.has = 0;
+    }
+    if (!mesh) return;
+    // The chest's world transform from the current pose.
+    this.model.updateWorldMatrix(true, false);
+    _m.copy(this.model.matrixWorld);
+    for (const n of ['root', 'hips', 'spine', 'chest']) {
+      const b = this.bones[n];
+      if (!b) continue;
+      _m2.compose(b.position, b.quaternion, b.scale);
+      _m.multiply(_m2);
+    }
+    _m.decompose(_p, _q, _s);
+    const vel = _a.copy(_p).sub(this.lastPos).divideScalar(dt);
+    if (this.has < 2 || vel.length() > 20) {
+      this.lastPos.copy(_p);
+      this.lastVel.set(0, 0, 0);
+      this.has++;
+      return;
+    }
+    const acc = _g.copy(vel).sub(this.lastVel).divideScalar(dt);
+    this.lastPos.copy(_p);
+    this.lastVel.copy(vel);
+    const accL = acc.applyQuaternion(_q.invert()).divideScalar(Math.max(1e-3, _s.x));
+    const k = 120;
+    const c = 2 * Math.sqrt(k) * 0.3;
+    const n = Math.max(1, Math.ceil(dt * 120));
+    const h = dt / n;
+    for (let i = 0; i < n; i++) {
+      this.vx += (-this.ax * k - this.vx * c + accL.z * 0.6) * h;
+      this.vz += (-this.az * k - this.vz * c - accL.x * 0.6) * h;
+      this.ax += this.vx * h;
+      this.az += this.vz * h;
+    }
+    this.ax = Math.max(-0.35, Math.min(0.35, this.ax));
+    this.az = Math.max(-0.35, Math.min(0.35, this.az));
+    // Swing about the strap near the top, in the chest's frame.
+    _sq.setFromEuler(_e.set(this.ax, 0, this.az, 'XYZ'));
+    mesh.quaternion.copy(_sq).multiply(this.baseQ);
+    _top.copy(STRAP).applyQuaternion(this.baseQ);
+    _top2.copy(STRAP).applyQuaternion(mesh.quaternion);
+    mesh.position.copy(this.baseP).add(_top).sub(_top2);
+  }
+}
+
+const STRAP = new THREE.Vector3(0, 0.34, 0);
+const _sq = new THREE.Quaternion();
+const _top = new THREE.Vector3();
+const _top2 = new THREE.Vector3();

@@ -286,4 +286,33 @@ for (const [name, prep] of [
   );
 }
 
+// A quiver on the back swings from its strap on a stop, then settles.
+{
+  const rng = new Random(0x9a1);
+  const built = buildPlayerModel('ranger', rng, ['offHand']);
+  const mover = new THREE.Group();
+  mover.add(built.root);
+  const scene = new THREE.Scene();
+  scene.add(mover);
+  const quiver = buildItemModel({ shape: 'quiver', palette: 'leather.brown' }, rng, 'normal');
+  attachToSocket(built.root, built.bones, 'offHand', quiver, 'quiver');
+  const anim = new Animator(built.bones);
+  anim.follow(mover);
+  anim.play('idle', { fade: 0 });
+  const r: Rig = { anim, mover, scene, bones: built.bones, restY: 0 };
+  const m = new Meter(r);
+  const rest = quiver.quaternion.clone();
+  let swing = 0;
+  let end = 0;
+  run(r, m, 3.5, (f) => {
+    const v = f < 70 ? 4.6 : 0;
+    mover.position.z += v * DT;
+    anim.play(v > 0 ? 'run' : 'idle', { fade: 0.15, speed: 1 });
+    const a = quiver.quaternion.angleTo(rest);
+    if (f >= 70 && f < 110) swing = Math.max(swing, a);
+    end = a;
+  });
+  rows.push(row('quiver, run and stop', m, `swing ${swing.toFixed(2)} rad, at rest ${end.toFixed(3)}`, swing > 0.02 && swing <= 0.36 && end < 0.03));
+}
+
 console.log(JSON.stringify(rows));

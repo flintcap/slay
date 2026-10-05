@@ -22,7 +22,7 @@
  */
 
 import * as THREE from 'three';
-import { SecondaryMotion } from './Secondary';
+import { SecondaryMotion, GearSway } from './Secondary';
 
 // ---------------------------------------------------------------------------
 // Bone slots
@@ -2492,7 +2492,11 @@ export class Animator {
     } catch {
       this.secondary = null;
     }
+    this.gear = GearSway.attach(bones);
   }
+
+  /** A quiver on the back, swinging from its strap. */
+  private gear: GearSway | null = null;
 
   /** Hair that swings after the head, when the body has any. */
   private secondary: SecondaryMotion | null = null;
@@ -2740,6 +2744,7 @@ export class Animator {
     this.applyHands(pose, step);
     this.updateGlow();
     this.secondary?.update(real);
+    this.gear?.update(real);
 
     this.prevIk.set(this.outIk);
     this.lastReal = real;
@@ -3946,14 +3951,4 @@ export class Animator {
 }
 
 /** The clip names the animator understands, for editors and debug UI. */
-export const CLIP_NAMES: ClipName[] = [
-  'idle',
-  'walk',
-  'run',
-  'attack1',
-  'attack2',
-  'cast',
-  'hurt',
-  'death',
-  'dodge',
-];
+export const CLIP_NAMES: ClipName[] = Object.keys(CLIPS) as ClipName[];
