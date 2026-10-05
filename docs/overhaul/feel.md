@@ -57,6 +57,8 @@ Still to do for milestone 5:
 
 ## Notes for resume
 
+**From models (finished, 5bebe1d):** when a summon is thrown away in `SkillRunner.ts`, call `releaseMonsterModel(root)`, or a little GPU memory leaks per summon.
+
 **From combat (finished, 0c87c07):** `combat:combo` fires on every skill combo and already shows "Name!" over the target; give it a sound and a punch. Melee hits in `SkillRunner.ts` now wait for the swing's contact point. Stunned and rooted heroes now really are; a stun needs a sound. Hero damage scales much harder past level 8; read it from `computeStats`, never hard-code.
 
 **Requests from other streams (added at pause, from the depth stream's report):**

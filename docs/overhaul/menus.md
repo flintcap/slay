@@ -41,6 +41,8 @@ Status: paused
 
 ## Notes for resume
 
+**From models (finished, 5bebe1d):** in the `check-paperdoll` shot the figure seemed to face away from the camera. Check the paperdoll and character select hero face the viewer.
+
 **From hud (finished, 5a2ec0f):** font sizes in `menus.css` (33 of them) still ignore the text-size setting. Use the `--fs-*` tokens or `calc(Npx * var(--text-scale, 1))`.
 
 **Requests from other streams (added at pause):**
