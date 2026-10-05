@@ -60,6 +60,9 @@ for (const name of WANT) {
       const s = SEEDS[base];
       if (!s) { console.log('unknown', name); continue; }
       await page.evaluate(async (s) => { await window.SLAY.engine.goTo('dungeon', { depth: s.depth, seed: s.seed }); }, s);
+      // Deep biomes killed the level-12 hero mid-sweep (w13 frostvault): the
+      // death scene then has no level, and every later shot failed.
+      await page.evaluate(() => window.SLAY.debug.godMode?.(true));
       loaded = base;
     }
     const close = !!args.close || where === 'close';

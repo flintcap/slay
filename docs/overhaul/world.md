@@ -36,6 +36,15 @@ Status: in progress
   sightline cutaway: `worldCutaway` in WorldSurface.ts, a dithered 2 m hole on the camera-to-hero
   line, only in front of the hero, wall-kind materials only, set in `DungeonMesh.update`). Town
   stone tinted warm (0xb09c80). Cluster rocks of 0.5 m and under use the low bevel.
+- Sweep w12 to w14 (monsters on): crypt, caverns, foundry, sunkenTemple, hive and ashwaste read
+  well (floor clear, hero and monsters stand out; the wall cutaway works with trim gone).
+  Frostvault (whiteout variant) washed white-pink: seven light shafts in the vault plus bloom on
+  the pale floor. Voidspire's glossy crystal floor was a loud electric-blue ripple. Fixed after:
+  shafts at most three a room, opacity 0.4, the cone top eased off, and they fade to 20% within
+  2.5 to 6.5 m of the hero (private material, `uHero`); voidspire floors rougher, crystal tinted.
+- The harness turns on `debug.godMode` after each level load (the hero died in the frostvault
+  shot and every later shot failed on the death scene). Big white discs in fights (crypt,
+  caverns) are combat dust FX, the feel stream's.
 - Harness: `@landmark` stands three tiles south of the biggest room's biome landmark.
 - w11 (calm) confirmed: lava fixed in foundry and ashwaste, crack veins and webs read right, the
   cutaway brought the hero back in ashwaste@liquid. After w11 (not yet rendered): wall trim and

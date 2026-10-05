@@ -1621,7 +1621,9 @@ export class DungeonMesh {
     const candidates: Array<{ x: number; y: number }> = [];
     for (const room of this.level.rooms) {
       if (room.w < 6 || room.h < 6) continue;
-      const tries = Math.max(1, Math.round(room.w * room.h * 0.004 * art.shaftDensity * 6));
+      // At most three a room: the whiteout vault drew seven over one fight
+      // and the frame went white (w13, w14).
+      const tries = Math.min(3, Math.max(1, Math.round(room.w * room.h * 0.004 * art.shaftDensity * 6)));
       for (let i = 0; i < tries; i++) {
         const x = room.x + rng.int(1, Math.max(1, room.w - 2));
         const y = room.y + rng.int(1, Math.max(1, room.h - 2));
@@ -1645,7 +1647,9 @@ export class DungeonMesh {
         const yy = posAttr.getY(i);
         // +h/2 at the top of the cylinder, -h/2 at the floor.
         const t = clamp((yy + h / 2) / h, 0, 1);
-        const a = Math.pow(t, 2.1) * 0.5;
+        // The camera looks down on the top of the cone, so the top is what
+        // fills the screen: ease it off where the shaft leaves the ceiling.
+        const a = Math.pow(t, 2.1) * 0.5 * (1 - 0.6 * clamp((t - 0.7) / 0.3, 0, 1));
         colours[i * 3] = colour.r * a;
         colours[i * 3 + 1] = colour.g * a;
         colours[i * 3 + 2] = colour.b * a;
@@ -1668,12 +1672,26 @@ export class DungeonMesh {
     const mat = new THREE.MeshBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.4,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.FrontSide,
       toneMapped: false,
     });
+    // Shafts thin out around the hero so a beam never sits over the fight.
+    // A private material, so the patch leaks nowhere.
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uHero = { value: this.heroXZ };
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vShaftPos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvShaftPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vShaftPos;\nuniform vec2 uHero;')
+        .replace(
+          '#include <opaque_fragment>',
+          'diffuseColor.a *= 0.2 + 0.8 * smoothstep(2.5, 6.5, distance(vShaftPos.xz, uHero));\n#include <opaque_fragment>',
+        );
+    };
     this.ownedMat.push(mat);
     this.shaftMat = mat;
     const mesh = new THREE.Mesh(merged, mat);

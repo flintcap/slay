@@ -892,9 +892,12 @@ const ART: Record<BiomeId, BiomeArt> = {
     ceilingHoles: 1,
     skyColor: 0x04020a,
     floorNoise: 0.01,
+    // Glossy crystal floors turned the w14 vault into a loud electric-blue
+    // ripple that out-shouted the fight. Duller and a shade darker, so the
+    // monsters and the hero sit on it rather than in it.
     floors: [
-      { palette: 'stone.obsidian', weight: 7, repeat: 1, roughness: 0.22, metalness: 0.35 },
-      { palette: 'crystal.void', weight: 3, repeat: 0.9, roughness: 0.15 },
+      { palette: 'stone.obsidian', weight: 7, repeat: 1, roughness: 0.5, metalness: 0.2 },
+      { palette: 'crystal.void', weight: 3, repeat: 0.9, roughness: 0.6, tint: 0x9a92b0 },
     ],
     walls: [
       { palette: 'stone.obsidian', weight: 6, repeat: 1 },
