@@ -52,9 +52,10 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     scaleA: 5.5,
     scaleB: 2.3,
     // Froth is patchy and dim. At 0.55 of a pale grey-blue every one-tile
-    // pool (all four corners on the bank) rendered as a white-rimmed hole.
-    rim: 0.32,
-    rimColor: 0x6f878c,
+    // pool (all four corners on the bank) rendered as a white-rimmed hole,
+    // and at 0.32 the caverns pools still wore a pale ring.
+    rim: 0.2,
+    rimColor: 0x4c6266,
     molten: 0,
     roughness: 0.05,
     metalness: 0.1,

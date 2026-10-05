@@ -29,6 +29,12 @@ screenshot when the machine is busy (no page errors). Town render shows the resi
 
 ## Notes for resume
 
+- **From world:** the foundry/caverns invisible hero was the animator's pelvis spring blowing up on long
+  frames (hips at -1e14 m; it flickered, which is why hiding nearby meshes seemed to help). Fixed in
+  `Animation.ts`. Entry rubble was also pulled back from the spawn tile. `skin.fair|tan|deep` no longer
+  have speckle or stain passes, so `skinMaterial` can keep the albedo map again if you want it. The
+  apothecary lantern post moved to (-3.0, -10.6).
+
 How to look at models (fast, no game boot, about 30-60 s each even under load):
 `node tools/models-sheet.mjs <sheets> --port=4311 --out=shots/models/<dir>`. Sheets: `classes` (6 classes x
 bare/low/mid/top, front and back, plus a game-camera strip), `bodies`, `bodies-low|mid|top` (each class big:

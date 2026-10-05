@@ -1237,11 +1237,13 @@ export class DungeonMesh {
     arch.add(cap);
     // Collapsed behind you: rubble filling the opening. You do not go back up.
     for (let i = 0; i < 7; i++) {
-      const sz = rng.range(0.35, 0.8);
+      const sz = rng.range(0.35, 0.7);
       // The wall's own stone: in the dark tint the fall read as black holes
       // punched in the floor beside the player on every first frame.
       const rock = new THREE.Mesh(new THREE.BoxGeometry(sz, sz * 0.8, sz), stone);
-      rock.position.set(rng.range(-1.1, 1.1), sz * 0.4, -1.1 + rng.range(-0.3, 0.3));
+      // Pushed back into the opening: the hero spawns on the entry tile, and
+      // blocks reaching forward to -0.4 m stood in his legs.
+      rock.position.set(rng.range(-1.1, 1.1), sz * 0.4, -1.3 + rng.range(-0.15, 0.1));
       rock.rotation.set(rng.range(0, 3), rng.range(0, 3), rng.range(0, 3));
       rock.castShadow = true;
       rock.receiveShadow = true;

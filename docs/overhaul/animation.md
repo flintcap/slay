@@ -54,6 +54,14 @@ Milestone 2, attacks. Concretely:
 
 ## Notes for resume
 
+- **From world (bug fix made in your file, please keep it):** the invisible hero in foundry and caverns
+  renders was `Animator.guardReach`'s pelvis spring. An explicit step with k = 900 diverges for any frame
+  over ~65 ms (frames are capped at 0.1 s), and the harness caught `pelvisDrop` at 1e14 with the hips that
+  far below the floor; the clamp at zero made it flicker, so the hero showed on some frames only. It now
+  steps in closed form (exact critically damped). The weapon-lag spring (k 220) also grew at 0.1 s steps
+  and is now sub-stepped at 60 Hz. Lean and bank are stable at 0.1 s. Any new stiff spring: step it in
+  closed form or sub-step it.
+
 **From combat (finished, 0c87c07):** melee damage now lands at the clip's contact point, at most 0.16 s into the swing, from a per-clip table in `Player.ts`. Make each strike visibly connect there, or publish your own contact times and point the table at them. Stunned heroes stand still with no pose: add a stun pose. Rooted heroes can attack but not move.
 
 - **How locomotion works now.** `Animator.follow(obj)` reads `obj.position` and `obj.rotation.y`

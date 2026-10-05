@@ -793,7 +793,10 @@ function buildCampfire(ctx: Ctx, m: Mats): void {
   fire.castShadow = true;
   fire.shadow.mapSize.set(1024, 1024);
   fire.shadow.camera.near = 0.6;
-  fire.shadow.camera.far = 24;
+  // Twelve metres, not twenty-four: a point shadow draws every caster inside
+  // its range six times, and at 24 m that was the whole camp (5,800 draw calls
+  // a frame). The ring of people and logs round the fire is what needs it.
+  fire.shadow.camera.far = 12;
   fire.shadow.bias = -0.004;
   fire.shadow.normalBias = 0.06;
   fire.shadow.radius = 3;

@@ -947,7 +947,9 @@ const LIST: Palette[] = [
     // Human skin. The flesh.* family is built for corpses and monsters — grey,
     // lumpy, high relief — and putting a player character in it makes them look
     // carved from chalk. Skin is nearly smooth, warm, and gets almost all of
-    // its shading from form rather than from texture.
+    // its shading from form rather than from texture. No speckle or stain on
+    // any skin.*: at face scale both read as dirt, which is why the body used
+    // to drop the albedo map. Only a soft glaze on the high points.
     key: 'skin.fair',
     family: 'flesh',
     base: 0xd6a888,
@@ -963,8 +965,6 @@ const LIST: Palette[] = [
     ao: 0.3,
     repeat: 1,
     passes: [
-      p('speckle', 0.16, { color: 0xb27a5c, scale: 9 }),
-      p('stain', 0.22, { mask: 'low', color: 0xa9705a, rough: 0.03 }),
       p('glaze', 0.3, { mask: 'peak', rough: -0.08 }),
     ],
   },
@@ -1028,8 +1028,6 @@ const LIST: Palette[] = [
     ao: 0.32,
     repeat: 1,
     passes: [
-      p('speckle', 0.16, { color: 0x8e5a3c, scale: 9 }),
-      p('stain', 0.22, { mask: 'low', color: 0x7d4a30, rough: 0.03 }),
       p('glaze', 0.32, { mask: 'peak', rough: -0.08 }),
     ],
   },
@@ -1049,7 +1047,6 @@ const LIST: Palette[] = [
     ao: 0.34,
     repeat: 1,
     passes: [
-      p('stain', 0.2, { mask: 'low', color: 0x2f1a12, rough: 0.03 }),
       p('glaze', 0.4, { mask: 'peak', rough: -0.1 }),
     ],
   },

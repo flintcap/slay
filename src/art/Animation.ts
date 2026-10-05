@@ -2067,8 +2067,14 @@ export class Animator {
     const chestY = pose.rot[SLOT.chest * 3 + 1];
     const k = 220;
     const c = 2 * Math.sqrt(k) * 0.75;
-    this.lagVel += (-(this.lagY - chestY) * k - this.lagVel * c) * dt;
-    this.lagY += this.lagVel * dt;
+    // Sub-stepped: at the 0.1 s frame cap one explicit step of this spring
+    // grows instead of settling (the same failure that sank the pelvis).
+    const lagN = Math.max(1, Math.ceil(dt * 60));
+    const lagH = dt / lagN;
+    for (let i = 0; i < lagN; i++) {
+      this.lagVel += (-(this.lagY - chestY) * k - this.lagVel * c) * lagH;
+      this.lagY += this.lagVel * lagH;
+    }
     const lag = chestY - this.lagY;
     if (Math.abs(lag) > 1e-4) {
       pose.add('handR', 0, lag * 1.5, lag * 0.6);
@@ -2111,9 +2117,17 @@ export class Animator {
     need = Math.max(0, Math.min(need, rig.hipY * 0.3));
     // A stiff, critically damped spring rather than a chase: a stride that
     // suddenly lengthens must not yank the whole body down in one frame.
+    // Stepped in closed form: an explicit step with k = 900 diverges for any
+    // frame longer than ~65 ms, and one long frame (a level load, a hitch)
+    // threw the hips 1e14 m below the floor, so the hero vanished for good.
     const k = need > this.pelvisDrop ? 900 : 260;
-    this.pelvisVel += ((need - this.pelvisDrop) * k - this.pelvisVel * 2 * Math.sqrt(k)) * dt;
-    this.pelvisDrop = Math.max(0, this.pelvisDrop + this.pelvisVel * dt);
+    const w = Math.sqrt(k);
+    const x = this.pelvisDrop - need;
+    const c = this.pelvisVel + w * x;
+    const e = Math.exp(-w * dt);
+    this.pelvisVel = (this.pelvisVel - w * c * dt) * e;
+    this.pelvisDrop = Math.min(rig.hipY * 0.3, Math.max(0, need + (x + c * dt) * e));
+    if (this.pelvisDrop <= 0 && this.pelvisVel < 0) this.pelvisVel = 0;
     if (this.pelvisDrop > 1e-4) pose.pos[hp + 1] -= this.pelvisDrop;
   }
 

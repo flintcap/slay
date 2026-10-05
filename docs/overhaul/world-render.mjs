@@ -88,6 +88,8 @@ for (const name of WANT) {
       const gl = window.SLAY.engine.renderer.gl;
       const sc = window.SLAY.engine.currentScene;
       let lights = 0; let meshes = 0; const mats = new Set();
+      let casters = 0; let shadowLights = 0;
+      sc.scene.traverse((o) => { if (o.isLight && o.castShadow) shadowLights++; if (o.isMesh && o.castShadow && o.visible) casters++; });
       sc.scene.traverse((o) => { if (o.isLight) lights++; if (o.isMesh) { meshes++; (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => mats.add(m)); } });
       // Where the player is, and whether anything of them is drawn: a frame
       // with no visible hero is the worst failure this harness can catch.
@@ -114,12 +116,28 @@ for (const name of WANT) {
           .map((h) => `${own.has(h.object) ? 'HERO ' : ''}${h.object.name || h.object.type}/${(Array.isArray(h.object.material) ? h.object.material[0] : h.object.material)?.name ?? ''}@${h.distance.toFixed(1)}`);
         hero.dist = +dist.toFixed(1);
         hero.y = +pl.root.position.y.toFixed(2);
+        hero.pelvis = pl.animator ? +Number(pl.animator.pelvisDrop).toPrecision(3) : null;
         hero.floor = sc.mesh?.floorY ? +sc.mesh.floorY(pl.root.position.x, pl.root.position.z).toFixed(2) : null;
         if (close && sc.rig) { sc.rig.zoomBias = 0; sc.rig.zoom(-6); }
       }
-      return { hero, calls: gl.info.render.calls, tris: gl.info.render.triangles, programs: gl.info.programs?.length, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries, lights, meshes, materials: mats.size, biome: sc.biome?.id, variant: sc.level?.variant, layout: sc.level?.layout, _r: (gl.info.autoReset = true) };
+      return { hero, calls: gl.info.render.calls, tris: gl.info.render.triangles, programs: gl.info.programs?.length, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries, lights, shadowLights, casters, meshes, materials: mats.size, biome: sc.biome?.id, variant: sc.level?.variant, layout: sc.level?.layout, _r: (gl.info.autoReset = true) };
     }, close);
     if (close) await settle(30);
+    if (args.probe) {
+      // What is drawn at these screen pixels: --probe=x,y;x,y
+      const pts = String(args.probe).split(';').map((q) => q.split(',').map(Number));
+      const hits = await page.evaluate((pts) => {
+        const sc = window.SLAY.engine.currentScene; const rc = window.SLAY.engine.input.raycaster;
+        const shown = (o) => { for (let q = o; q; q = q.parent) if (!q.visible) return false; return true; };
+        return pts.map(([x, y]) => {
+          rc.setFromCamera({ x: (x / innerWidth) * 2 - 1, y: -(y / innerHeight) * 2 + 1 }, sc.camera);
+          rc.near = 0; rc.far = 200;
+          const h = rc.intersectObject(sc.scene, true).filter((h) => shown(h.object) && h.object.isMesh && !/roof|bedrock/i.test(h.object.name)).slice(0, 2);
+          return `${x},${y}: ` + h.map((q) => `${q.object.name || q.object.type}/${(Array.isArray(q.object.material) ? q.object.material[0] : q.object.material)?.name ?? ''}@${q.distance.toFixed(1)}`).join(' | ');
+        });
+      }, pts);
+      console.log(`PROBE ${name} ${JSON.stringify(hits)}`);
+    }
     const file = path.join(OUT, `${name.replace('@', '-')}.png`);
     await page.screenshot({ path: file });
     console.log(`${name.padEnd(13)} ${((Date.now() - t) / 1000) | 0}s ${JSON.stringify(info)}`);
@@ -143,6 +161,37 @@ for (const name of WANT) {
         return [...seen.entries()];
       });
       console.log('PROGS ' + JSON.stringify(progs));
+      // Experiments, each followed by a frame grab, cheapest suspect first.
+      const tryIt = async (tag, fn) => {
+        const out = await page.evaluate(fn);
+        await settle(4);
+        await page.screenshot({ path: file.replace('.png', `-${tag}.png`) });
+        console.log(`EXP ${tag} ${JSON.stringify(out ?? null)}`);
+      };
+      await tryIt('bones', () => {
+        const r = window.SLAY.engine.renderer.gl; const g = r.getContext(); const out = [];
+        window.SLAY.engine.currentScene.player.root.traverse((o) => {
+          if (!o.isSkinnedMesh || out.length > 5) return;
+          const t = o.skeleton.boneTexture; const tp = t ? r.properties.get(t) : null;
+          out.push({ n: o.name, bones: o.skeleton.bones.length, tex: !!t, gpu: tp?.__webglTexture ? g.isTexture(tp.__webglTexture) : null, ver: t?.version, gv: tp?.__version, bm: o.bindMode, nan: Array.from(o.skeleton.boneMatrices).some((v) => !Number.isFinite(v)), max: Math.max(...Array.from(o.skeleton.boneMatrices).map(Math.abs)) });
+        });
+        return out;
+      });
+      // Which bone, and what the animator thinks, when the skin explodes.
+      const bones = await page.evaluate(() => {
+        const pl = window.SLAY.engine.currentScene.player; const out = { bad: [], anim: {} };
+        pl.root.updateMatrixWorld(true);
+        let sk = null; pl.root.traverse((o) => { if (o.isSkinnedMesh && !sk) sk = o.skeleton; });
+        if (sk) sk.bones.forEach((b, i) => {
+          const m = sk.boneMatrices.slice(i * 16, i * 16 + 16); const mx = Math.max(...Array.from(m).map(Math.abs));
+          const inv = Math.max(...sk.boneInverses[i].elements.map(Math.abs)); const w = Math.max(...b.matrixWorld.elements.map(Math.abs));
+          if (mx > 200 || inv > 200 || w > 500) out.bad.push({ i, n: b.name, mx, inv, w, p: b.position.toArray().map((v) => +v.toFixed(3)), s: b.scale.toArray().map((v) => +v.toFixed(3)), q: b.quaternion.toArray().map((v) => +v.toFixed(3)), parent: b.parent?.name });
+        });
+        const a = pl.animator; if (a) for (const k of Object.keys(a)) { const v = a[k]; if (typeof v === 'number') out.anim[k] = +v.toFixed(3); }
+        out.anim.cur = a?.cur?.name; out.feet = a?.feet?.map((f) => ({ x: +f.x.toFixed(2), z: +f.z.toFixed(2) }));
+        return out;
+      });
+      console.log('BONES ' + JSON.stringify(bones));
       // Recompile every program with the same fog: if the hero appears, a
       // stale program or uniform hid it, not geometry and not the fog maths.
       await page.evaluate(() => { const sc = window.SLAY.engine.currentScene; window.__fog = sc.scene.fog; sc.scene.fog = null; });

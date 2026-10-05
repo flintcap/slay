@@ -13,22 +13,26 @@ Status: in progress
 
 ## Next up
 
-1. Hero invisible in foundry and caverns (and monsters black there). Found, not yet fixed:
-   `foundry@close` with `--diag` shows the hero drawn (raycast hits the hero first, floor height 0,
-   no occluder) yet not on screen; recompiling every program (fog null for 3 frames, then back)
-   makes the hero and monsters render properly in the same frame. So a stale program or uniform
-   state from level load hides them, not geometry and not the fog maths. Next: run
-   `SLAY_PORT=4304 node docs/overhaul/world-render.mjs --diag --out=shots/w5 --shots=foundry@close`
-   and read the `PROGS` line (program alive? linked? light state version) to name the cause, then
-   fix it at the source (suspects: `renderer.compile()` warm-ups in `Engine.goTo` and
-   `DungeonScene` before the first frame; disposed shared materials or programs). Worst case,
-   force one recompile after level load.
-2. Then look at w4 shots (sunkenTemple@room, caverns@room, town) and tick milestones 3 to 5.
-3. Town costs 5868 draw calls and 2.6M triangles (budget 900 / 1.5M): needs batching.
-4. Milestone 6 sweep: all eight biomes in `SEEDS`.
-5. `node tools/check-propmesh.mjs` alone when the machine is quiet.
+1. Look at the rest of the w6 batch (`shots/w6`: caverns@room, sunkenTemple, ashwaste, town) and the
+   town line's `calls` and `casters` (fire shadow range cut to 12 m; was 5868 calls). Tick milestones 3
+   to 5 as they check out.
+2. The flat orange square in the foundry start shot (bottom centre): find out what it is with
+   `--probe=510,510` on `foundry@close` (puddle mirror? lava without crust?) and fix it.
+3. Landmarks still unseen: `foundry@vault` has no vault on seed 1001; try `@treasure`, `@ambush`, or
+   another seed.
+4. Town draw calls and triangles against check-perf budgets (900 / 1.5M).
+5. Milestone 6 sweep: all eight biomes in `SEEDS`.
+6. `node tools/check-propmesh.mjs` alone when the machine is quiet.
 
 ## Notes for resume
+
+- SOLVED, the invisible hero: `Animator.guardReach`'s pelvis spring blew up on long frames (hips at
+  -1e14 m, flickering because of a clamp at zero). Fixed in `Animation.ts` (closed-form step; the
+  weapon-lag spring is sub-stepped). The models stream's "hidden by rubble" reading was the flicker.
+  The harness prints `hero.pelvis`; it should be a few centimetres.
+- Entry rubble sits further back (z -1.3) so nothing stands in the hero's legs at spawn.
+- `skin.*` palettes have no speckle or stain passes now (models asked).
+- Water froth down to `rim 0.2`, `rimColor 0x4c6266`; the caverns pools still wore a pale ring.
 
 - Town lights cut to 22 counted by check-perf (palisade torches, watch platforms, cairn candles and
   the vendor's second lantern are bulbs only; unlit high lanterns still get a faint ground pool).
