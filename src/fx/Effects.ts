@@ -357,6 +357,9 @@ function pooled(kind: string, make: () => THREE.ShaderMaterial): THREE.ShaderMat
   return m;
 }
 
+const _moteColor = new THREE.Color();
+const _moteCore = new THREE.Color();
+
 /** Returns a material to its pool. Use instead of `dispose()` on effect exit. */
 export function releaseMaterial(m: THREE.Material | THREE.Material[] | undefined | null): void {
   if (!m) return;
@@ -1329,7 +1332,7 @@ export class EffectSystem {
       core = arrowMesh(color);
       core.scale.setScalar(Math.max(0.7, size / 0.24));
     } else if (body === 'shard') {
-      core = new THREE.Mesh(this.geoShard, emissiveMaterial(0xd8f2ff, 2.6));
+      core = new THREE.Mesh(this.geoShard, emissiveMaterial(0xa8dcff, 1.8));
       core.scale.set(size * 0.5, size * 0.5, size * 2.1);
     } else if (body === 'spike') {
       // Bone, not light: a low glow so it reads as a thing, not a flare.
@@ -1339,10 +1342,13 @@ export class EffectSystem {
       core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.body, 2.4));
       core.scale.setScalar(size * 1.05);
     } else {
-      // First render (atlas-fixed build): at 5x emissive and full size, under
-      // bloom, a caster's mote read as a white ball as wide as the hero.
-      core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.core, 3.2));
-      core.scale.setScalar(size * 0.85);
+      // A coloured mote, not a white one. One near-white mesh at
+      // high emissive tone-mapped to plain white under bloom: the first real
+      // render showed every fire, lightning and arcane shot as the same ball.
+      // The body is the element's colour warmed a fifth of the way to its core.
+      const hot = _moteColor.set(opts.color ?? el.body).lerp(_moteCore.set(el.core), 0.2).getHex();
+      core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(hot, 2.2));
+      core.scale.setScalar(size * 0.75);
     }
     const oriented = body === 'arrow' || body === 'shard' || body === 'spike';
     group.add(core);
@@ -1363,10 +1369,11 @@ export class EffectSystem {
     const haloMat = takeHalo();
     // Kept to the element's hue: at 2.4x and four sizes wide the halo blew
     // out to white under bloom and swallowed the body it surrounds.
-    haloMat.color.set(color).multiplyScalar(isArrow ? 0.5 : 1.5);
-    haloMat.opacity = isArrow ? 0.32 : 0.78;
+    // Below 1 so tone mapping keeps the hue instead of bleaching it.
+    haloMat.color.set(color).multiplyScalar(isArrow ? 0.5 : 0.9);
+    haloMat.opacity = isArrow ? 0.32 : 0.7;
     const halo = new THREE.Sprite(haloMat);
-    halo.scale.setScalar(size * (isArrow ? 1.6 : 3.1));
+    halo.scale.setScalar(size * (isArrow ? 1.6 : 2.6));
     group.add(halo);
 
     group.position.copy(from);

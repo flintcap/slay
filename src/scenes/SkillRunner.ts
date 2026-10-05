@@ -2392,7 +2392,8 @@ export class SkillRunner {
     const mdef = monsterId ? MONSTERS.find((m) => m.id === monsterId) : undefined;
     if (mdef) {
       try {
-        const rng = new Random((Date.now() ^ this.turrets.length * 7919) >>> 0);
+        // Seeded from the summon count, not the wall clock: same run, same pack.
+        const rng = new Random((0x5a11 + this.summonSerial * 7919) >>> 0);
         const model = buildMonsterModel(mdef.visual, rng, (mdef.scale ?? 1) * 0.92);
         model.root.position.set(x, 0, z);
         this.effects.scene.add(model.root);

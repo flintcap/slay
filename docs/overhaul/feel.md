@@ -1,6 +1,6 @@
 # Stream: feel (combat feedback, VFX and audio)
 
-Status: in progress
+Status: done
 
 ## Milestones
 
@@ -9,22 +9,28 @@ Status: in progress
 - [x] Loot: drops arc out with a sound and beam by rarity; pickups and gold feel good. — same commit
 - [x] Audio: layered weapon and impact sounds, footsteps by floor type, UI sounds, ambient beds per biome, combat-reactive music and boss music. — "Make the dungeon sound like a place and every monster audible"
 - [x] Performance guard: particle and sound budgets so big fights stay smooth. — "Budget voices, particles and effects so big fights stay smooth (part 1)" + "Hard particle ceiling, a stress test, and the requests other streams left"
-- [ ] Sweep: every skill has a cast, travel and impact beat; nothing is silent.
+- [x] Sweep: every skill has a cast, travel and impact beat; nothing is silent. — "Every skill has a cast, travel and impact beat (check-beats)" + "Projectiles keep their element's colour on screen"
 
 ## Next up
 
-Milestone 6, the sweep, is nearly done. In: `tools/check-beats.mjs` (casts
-all 163 active skills through the real effect library and asserts a cast,
-travel and impact beat; passes), and the fixes it forced (see notes). Left:
-1. A render is running/ran into `shots/feel2/` with the toned-down projectile
-   motes (`SLAY_PORT=4305 node tools/shot-feel.mjs --out=shots/feel2
-   --shots=vfx` after `npm run build`). Look at `vfx-flight.png`,
-   `vfx-impact.png`, `vfx-marks.png`. The first render (`shots/feel/`) showed
-   caster motes as white balls as wide as the hero; core emissive 5 -> 3.2,
-   halo 4.2x/2.4 -> 3.1x/1.5 in `EffectSystem.projectile`. Retune further if
-   impacts or marks read wrong, then tick milestone 6 and set Status: done.
+All milestones done. Polish a successor could pick up, in order of value:
+1. Lightning motes still read near-white in flight (by design white-blue, but
+   could take more blue); fire motes are now orange, arcane violet, poison
+   green, frost a pale-blue shard (see `shots/feel3/` if still on disk).
+2. Cast glow layers in `src/fx/Particles.ts` (`cast.*`, single `glow`/`star`
+   sprite) use intensity 3.4 to 5; under bloom they flash white. Fine as a
+   0.15s flash, but they could carry more hue.
+3. Audio pools have no headless test (needs a fake AudioContext).
 
 ## Notes for resume
+
+- **Renders this session** (`tools/shot-feel.mjs`, port 4305, about 25 min
+  each under load; screenshots now have a 15 min timeout): atlases right side
+  up and correct; marks (scorch, rime, acid, sigil, crater) read well at nova
+  size. Projectile motes were white balls the size of the hero; now the body is
+  the element colour warmed 20% toward its core at emissive 2.2, size x0.75,
+  halo colour x0.9 at 2.6x size, opacity 0.7; frost shard 0xa8dcff at 1.8.
+  Summon models now seed from `summonSerial`, not `Date.now()`.
 
 - **Milestone 6 sweep (check-beats).** `tools/beats-entry.ts` spies on the
   public drawing calls of a real `EffectSystem`/`FXSystem`/`DecalSystem` and on
