@@ -91,6 +91,8 @@ for (const name of SCREENS) {
     if (m.type() === 'error' && !/404/.test(m.text())) errors.push(m.text());
   });
   const is3d = name.startsWith('3d:');
+  // `--settle=<s>`: how much scene time a 3D screen gets before the shot (default 6).
+  if (args.settle) await page.addInitScript((v) => (window.SLAY_SETTLE = v), Number(args.settle));
   await page.goto(`http://127.0.0.1:${PORT}/tools/menus-preview.html?screen=${name}`, { waitUntil: 'load', timeout: 600000 });
   try {
     await page.waitForFunction(() => window.MENUS_READY === true, null, { timeout: is3d ? 1800000 : 180000 });
@@ -102,16 +104,16 @@ for (const name of SCREENS) {
     // Software WebGL under load can take seconds a frame, and the engine clamps
     // each step to 1/20 s, so wall time says nothing. Wait for scene time:
     // entrance flashes and particle bursts are over by 6 s.
+    const t0 = Date.now();
     try {
       await page.waitForFunction(() => (window.SLAY_PREVIEW_ENGINE?.elapsed ?? 0) > Number(window.SLAY_SETTLE ?? 6), null, {
         timeout: 2400000,
         polling: 2000,
       });
     } catch {
-      errors.push('scene never reached 6 s of scene time');
+      errors.push('scene never settled');
     }
-    const fps = await page.evaluate(() => window.SLAY_PREVIEW_ENGINE?.fps ?? 0).catch(() => 0);
-    console.log(`     ${name}: ${Number(fps).toFixed(2)} fps`);
+    console.log(`     ${name}: ${args.settle ?? 6} s of scene time took ${Math.round((Date.now() - t0) / 1000)} s`);
   } else {
     await sleep(Number(args.wait ?? WAIT[name] ?? 3600));
   }

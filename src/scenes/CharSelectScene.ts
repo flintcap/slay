@@ -299,8 +299,10 @@ export class CharSelectScene extends GameScene {
     this.ringMat.emissive.copy(this.accent);
     this.ringMat.emissiveIntensity = 2.2 + Math.sin(elapsed * 1.6) * 0.3 + this.flash * 3;
     const u = this.rift.material.uniforms;
-    (u.uHot!.value as THREE.Color).copy(this.accent);
-    (u.uDeep!.value as THREE.Color).copy(this.accent).multiplyScalar(0.18);
+    // Held well under full strength: at full class colour the rift blew out to a
+    // flat sheet behind the hero, and a gold hero vanished against a gold gate.
+    (u.uHot!.value as THREE.Color).copy(this.accent).multiplyScalar(0.38);
+    (u.uDeep!.value as THREE.Color).copy(this.accent).multiplyScalar(0.1);
     this.rift.update(elapsed, this.flash);
     (this.rune.material as THREE.MeshBasicMaterial).color.copy(this.accent).multiplyScalar(0.55 + this.flash * 0.6);
     this.rune.rotation.z = elapsed * 0.05;

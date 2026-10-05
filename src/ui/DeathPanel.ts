@@ -226,9 +226,10 @@ export class DeathPanel {
 
     // The way forward.
     const others = save.roster.length;
+    const primary = others > 0 ? 'Choose Another' : 'Rise Again';
     const items: MenuItemOpts[] = [
       {
-        label: others > 0 ? 'Choose Another' : 'Rise Again',
+        label: primary,
         tone: 'primary',
         hint: others > 0 ? `${others} living character${others > 1 ? 's' : ''} waiting, or forge a new one` : 'Forge a new character',
         onSelect: () => this.go('charSelect'),
@@ -244,7 +245,7 @@ export class DeathPanel {
     this.inner.appendChild(this.nav.root);
 
     const foot = div('dth-foot');
-    foot.append(keycap('Enter'), span('', 'Rise again'));
+    foot.append(keycap('Enter'), span('', primary));
     this.inner.appendChild(foot);
   }
 

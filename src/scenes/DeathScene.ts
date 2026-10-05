@@ -82,7 +82,10 @@ export class DeathScene extends GameScene {
     scene.add(mound);
 
     // Headstone.
-    const stoneMat = surface('stone.crypt', { repeat: 1.6 });
+    // Dressed stone at a scale where one slab spans the face: a single cut
+    // headstone, not the crypt's brick wall, and pale enough for the
+    // inscription to read.
+    const stoneMat = surface('stone.temple', { repeat: 0.45, tint: 0xa4a6ae, bump: 0.5 });
     const slab = new THREE.Mesh(stoneBlock(1.3, 1.75, 0.24, rng.fork('slab'), 0.35), stoneMat);
     slab.position.set(0, 0.85, 0);
     slab.rotation.z = 0.035;
@@ -138,12 +141,12 @@ export class DeathScene extends GameScene {
     candleBody.castShadow = true;
     scene.add(candleBody);
 
-    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), emissiveMaterial(0xffb347, 6));
+    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), emissiveMaterial(0xffb347, 3.2));
     flame.scale.y = 2.1;
     flame.position.set(0.62, 0.57, 0.42);
     scene.add(flame);
 
-    this.candle = new THREE.PointLight(0xffb060, 5.5, 9, 2);
+    this.candle = new THREE.PointLight(0xffb060, 4, 9, 2);
     this.candle.position.set(0.62, 0.62, 0.42);
     this.candle.castShadow = true;
     this.candle.shadow.mapSize.set(512, 512);
@@ -184,8 +187,9 @@ export class DeathScene extends GameScene {
 
     this.fx.setAmbient('dust', new THREE.Box3(new THREE.Vector3(-10, 0, -10), new THREE.Vector3(10, 5, 10)));
 
-    this.camera.position.set(1.1, 1.45, 3.9);
+    this.camera.position.set(1.3, 1.7, 7.0);
     this.camera.lookAt(0, 1.0, 0);
+    this.frameRight();
 
     audio.music('death', 1.2);
     audio.play('player.death');
@@ -208,7 +212,7 @@ export class DeathScene extends GameScene {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       // Lit lower lip, then the dark cut: reads as letters sunk into stone.
-      ctx.fillStyle = 'rgba(200, 200, 210, 0.22)';
+      ctx.fillStyle = 'rgba(220, 220, 230, 0.32)';
       ctx.fillText(text, W / 2, y + 2);
       ctx.fillStyle = 'rgba(8, 8, 10, 0.88)';
       ctx.fillText(text, W / 2, y);
@@ -248,17 +252,42 @@ export class DeathScene extends GameScene {
     return new THREE.Mesh(new THREE.PlaneGeometry(1.08, 1.08 * (H / W)), mat);
   }
 
+  /**
+   * The run summary fills the left of the screen, so the grave is framed right
+   * of centre by shifting the projection, not by turning the camera (which
+   * would show the stone from the side). Portrait windows keep it centred.
+   */
+  private frameRight(): void {
+    const w = Math.max(1, window.innerWidth);
+    const h = Math.max(1, window.innerHeight);
+    const shift = w / h > 1.2 ? -0.19 : 0;
+    const v = this.camera.view;
+    if (v?.enabled) {
+      if (shift !== 0 && v.fullWidth === w && v.fullHeight === h) return;
+    } else if (shift === 0) return;
+    // setViewOffset also sets the aspect to fullWidth / fullHeight, so it gets
+    // the real window size; a unit window here squashed the scene to square.
+    if (shift === 0) {
+      this.camera.clearViewOffset();
+      this.camera.aspect = w / h;
+      this.camera.updateProjectionMatrix();
+    } else this.camera.setViewOffset(w, h, shift * w, 0, w, h);
+  }
+
   override update(dt: number, elapsed: number): void {
     this.t += dt;
+    this.frameRight();
     // Slow push-in over the first several seconds, then hold.
     const k = Math.min(1, this.t / 9);
     const ease = 1 - Math.pow(1 - k, 3);
-    const dist = 3.9 - ease * 0.95;
-    this.camera.position.set(1.1 - ease * 0.55, 1.45 - ease * 0.12, dist);
-    this.camera.lookAt(0, 1.0, 0);
+    // Far enough that the stone fills about half the height: the grave is the
+    // subject, but it sits in a graveyard, not against the lens.
+    const dist = 7.0 - ease * 1.1;
+    this.camera.position.set(1.3 - ease * 0.6, 1.7 - ease * 0.15, dist);
+    this.camera.lookAt(0, 0.95, 0);
 
     const s = Math.sin(elapsed * 17) * Math.sin(elapsed * 9.3);
-    this.candle.intensity = 5.5 * (0.8 + s * 0.2);
+    this.candle.intensity = 4 * (0.8 + s * 0.2);
 
     if (this.wisp) {
       // Rises off the mound over six seconds, shrinking away, then begins again.
