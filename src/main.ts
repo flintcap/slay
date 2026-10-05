@@ -233,6 +233,9 @@ async function main(): Promise<void> {
     save,
     events,
     debug: installDebug(engine),
+    // The checkers that measure scenes (ghost colliders, probes) build boxes
+    // and matrices in the page; three is already loaded, this only names it.
+    THREE: await import('three'),
   };
 }
 

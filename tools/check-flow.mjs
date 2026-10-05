@@ -152,8 +152,13 @@ await step('Escape pauses, Escape resumes', async () => {
   await page.waitForTimeout(1000);
   await openPause();
   await key('Escape');
-  await page.waitForTimeout(500);
-  if (await visible('.pz-root')) throw new Error('pause menu still open after Escape');
+  // The menu fades out before it turns `visibility: hidden`; under software
+  // rendering the fade can outlast a fixed 500 ms. Poll for it instead, and
+  // ask the panel itself whether it closed.
+  for (let i = 0; i < 20 && (await visible('.pz-root')); i++) await page.waitForTimeout(250);
+  const open = await page.evaluate(() => window.SLAY.debug.panelOpen?.('pause') ?? null);
+  if (open === true) throw new Error('pause menu still open after Escape');
+  if (open === null && (await visible('.pz-root'))) throw new Error('pause menu still visible after Escape');
 });
 
 await step('pause > Return to Town', async () => {
