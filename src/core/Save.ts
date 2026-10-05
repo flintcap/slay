@@ -1,6 +1,7 @@
 import type { AccountSave, Character, GameSettings, Item } from '../types';
 import { events } from './Events';
 import { bindsAreValid, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from './Access';
+import { UNIQUE_TEXT } from '../data/story/uniqueText';
 
 /**
  * The primary save. The key still says v1 because it predates versioning; the
@@ -184,6 +185,12 @@ class Repairer {
       if ((v as Record<string, unknown>).sockets !== undefined) this.note(`${where}: sockets were not a list`);
     } else {
       it.sockets = it.sockets.map((s) => ({ gemId: isObj(s) && isStr(s.gemId) ? s.gemId : null }));
+    }
+    // Uniques were renamed by the story pass; one that dropped before then
+    // takes its current name. Silent, because nothing was damaged.
+    if (isStr(it.uniqueId) && !isStr(it.setId)) {
+      const name = UNIQUE_TEXT[it.uniqueId]?.name;
+      if (name && it.name !== name) it.name = name;
     }
     return it;
   }

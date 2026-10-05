@@ -409,7 +409,9 @@ const STAINS: Record<string, StainStyle> = {
   crack: { cell: DECAL.crack, color: 0x1c1917, life: 45, additive: false, sizeMul: 1.2 },
   ash: { cell: DECAL.ash, color: 0x4a453f, life: 30, additive: false, sizeMul: 1.1 },
   water: { cell: DECAL.water, color: 0x6aa8c8, life: 18, additive: false, sizeMul: 1 },
-  dust: { cell: DECAL.dust, color: 0x6b6459, life: 8, additive: false, sizeMul: 1.2 },
+  // A scuff darkens the floor. Mid grey at 1.2x read as a pale disc on the
+  // dark crypt and cavern floors, one per physical hit, crowding every fight.
+  dust: { cell: DECAL.dust, color: 0x3e3830, life: 6, additive: false, sizeMul: 0.85 },
   glow: { cell: DECAL.glow, color: 0xffc060, life: 4, additive: true, sizeMul: 1 },
   shadow: { cell: DECAL.glow, color: 0x000000, life: 1e6, additive: false, sizeMul: 1 },
   ring: { cell: DECAL.ring, color: 0xffd090, life: 0.6, additive: true, sizeMul: 1 },

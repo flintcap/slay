@@ -61,6 +61,19 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         if (!res.ok) addItemToInventory(c, item);
       }
 
+      // Random rolls can leave the hands empty (a shield knocks out a bow, or
+      // nothing rolled is usable), so every checker starts with the class's
+      // own weapon, and its off hand when that slot is free.
+      def.startingGear.forEach((baseId, i) => {
+        const slot = i === 0 ? 'mainHand' : 'offHand';
+        if (c.equipment[slot]) return;
+        const base = getBase(baseId);
+        if (!base) return;
+        for (const [ilvl, rarity] of [[Math.max(1, level), 'rare'], [1, 'normal']] as const) {
+          if (equipItem(c, newItem(base, ilvl, rarity, rng)).ok) break;
+        }
+      });
+
       c.gold += 25000;
       save.setCharacter(c);
     },

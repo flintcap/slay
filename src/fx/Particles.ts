@@ -1071,7 +1071,7 @@ const EMITTERS: Record<string, Layer[]> = {
   'hit.physical': [
     L({ sprite: SPRITE.spark, count: 14, speed: [4, 11], spread: 0.55, life: [0.12, 0.28], size: [0.05, 0.1], grow: 0.3, colorA: 0xfff3d0, colorB: 0xff9a3c, intensity: 2.6, gravity: -14, drag: 5, stretch: 1.5, fade: 1.2 }),
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.1, 0.14], size: [0.75, 0.95], grow: 1.7, colorA: 0xffe9c0, colorB: 0xff7a30, intensity: 3.2, gravity: 0, drag: 0, fade: 2.4 }),
-    L({ blend: 'alpha', sprite: SPRITE.dust, count: 6, speed: [0.6, 2.0], spread: 0.9, life: [0.35, 0.7], size: [0.16, 0.3], grow: 2.0, colorA: 0x8d8377, colorB: 0x4a443c, intensity: 1, gravity: -1.2, drag: 3.4, turbulence: 0.3, spin: 1.2, fade: 1.4, tintable: false }),
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 6, speed: [0.6, 2.0], spread: 0.9, life: [0.35, 0.7], size: [0.12, 0.22], grow: 1.7, colorA: 0x8d8377, colorB: 0x4a443c, intensity: 1, gravity: -1.2, drag: 3.4, turbulence: 0.3, spin: 1.2, fade: 1.4, tintable: false }),
   ],
   'hit.fire': [
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.14, 0.18], size: [1.1, 1.35], grow: 1.9, colorA: 0xfff0b0, colorB: 0xff5a10, intensity: 4.5, gravity: 0, drag: 0, fade: 2.6 }),
@@ -1097,7 +1097,7 @@ const EMITTERS: Record<string, Layer[]> = {
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.1, 0.14], size: [0.8, 1.0], grow: 1.6, colorA: 0xfff6e4, colorB: 0xb8a888, intensity: 2.6, gravity: 0, drag: 0, fade: 2.4 }),
     L({ blend: 'alpha', sprite: SPRITE.splinter, count: 12, speed: [4, 10], spread: 0.8, upBias: 0.3, life: [0.4, 0.8], size: [0.1, 0.22], grow: 0.9, colorA: 0xf2ead8, colorB: 0x9a8e78, intensity: 1, gravity: -20, drag: 1.2, spin: 9, stretch: 0.4, fade: 1.1, tintable: false }),
     L({ blend: 'alpha', sprite: SPRITE.chunk, count: 6, speed: [2, 6], spread: 0.9, upBias: 0.3, life: [0.5, 0.9], size: [0.05, 0.1], grow: 0.9, colorA: 0xe0d6c0, colorB: 0x7a705e, intensity: 1, gravity: -22, drag: 0.6, spin: 7, fade: 1, tintable: false }),
-    L({ blend: 'alpha', sprite: SPRITE.dust, count: 7, speed: [0.6, 2.0], spread: 1, upBias: 0.2, life: [0.5, 1.0], size: [0.2, 0.36], grow: 2.2, colorA: 0xc8bea8, colorB: 0x6a6252, intensity: 1, gravity: -0.8, drag: 3, turbulence: 0.3, spin: 0.8, fade: 1.6, tintable: false }),
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 7, speed: [0.6, 2.0], spread: 1, upBias: 0.2, life: [0.5, 1.0], size: [0.14, 0.26], grow: 1.8, colorA: 0xa89e8a, colorB: 0x6a6252, intensity: 1, gravity: -0.8, drag: 3, turbulence: 0.3, spin: 0.8, fade: 1.6, tintable: false }),
   ],
   'hit.poison': [
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.18, 0.22], size: [0.9, 1.1], grow: 1.8, colorA: 0xd2ff7a, colorB: 0x2f7a12, intensity: 2.4, gravity: 0, drag: 0, fade: 2.2 }),
@@ -1259,11 +1259,11 @@ const EMITTERS: Record<string, Layer[]> = {
   'cast.bone': [
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, life: [0.12, 0.16], size: [0.55, 0.7], grow: 1.4, colorA: 0xfff6e4, colorB: 0x8a7c66, intensity: 2.2, gravity: 0, drag: 0, fade: 2.4 }),
     L({ blend: 'alpha', sprite: SPRITE.splinter, count: 7, speed: [1.2, 2.4], converge: true, radius: 0.7, life: [0.22, 0.32], size: [0.1, 0.18], grow: 0.6, colorA: 0xf2ead8, colorB: 0xb0a48c, intensity: 1, gravity: 0, drag: 1.2, spin: 8, fade: 1.2, tintable: false }),
-    L({ blend: 'alpha', sprite: SPRITE.dust, count: 4, speed: [0.3, 1.2], spread: 1, life: [0.5, 0.9], size: [0.18, 0.3], grow: 2, colorA: 0xc8bea8, colorB: 0x6a6252, intensity: 1, gravity: -0.5, drag: 3, fade: 1.8, tintable: false }),
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 4, speed: [0.3, 1.2], spread: 1, life: [0.5, 0.9], size: [0.13, 0.22], grow: 1.7, colorA: 0xa89e8a, colorB: 0x6a6252, intensity: 1, gravity: -0.5, drag: 3, fade: 1.8, tintable: false }),
   ],
   'cast.physical': [
     L({ sprite: SPRITE.spark, count: 8, speed: [2, 6], spread: 0.8, life: [0.1, 0.22], size: [0.03, 0.07], grow: 0.3, colorA: 0xfff3d0, colorB: 0xff9a3c, intensity: 2.4, gravity: -10, drag: 4, stretch: 1.4, fade: 1.2 }),
-    L({ blend: 'alpha', sprite: SPRITE.dust, count: 4, speed: [0.5, 1.5], spread: 1, upBias: 0.3, life: [0.4, 0.8], size: [0.15, 0.28], grow: 2, colorA: 0x8d8377, colorB: 0x4a443c, intensity: 1, gravity: -0.8, drag: 3, fade: 1.6, tintable: false }),
+    L({ blend: 'alpha', sprite: SPRITE.dust, count: 4, speed: [0.5, 1.5], spread: 1, upBias: 0.3, life: [0.4, 0.8], size: [0.11, 0.2], grow: 1.7, colorA: 0x8d8377, colorB: 0x4a443c, intensity: 1, gravity: -0.8, drag: 3, fade: 1.6, tintable: false }),
   ],
 
   // --- projectile wakes ------------------------------------------------------

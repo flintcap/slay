@@ -638,6 +638,9 @@ function make_novaRingMaterial(): THREE.ShaderMaterial {
   });
 }
 
+/** Live auras drawn at full strength; past this many they share the brightness. */
+const AURA_FULL = 3;
+
 function auraMaterial(color: THREE.Color): THREE.ShaderMaterial {
   const m = pooled('aura', make_auraMaterial);
   m.uniforms.uColor!.value.copy(color);
@@ -1126,6 +1129,14 @@ export class EffectSystem {
   private rig: CameraRig | null = null;
   private camera: THREE.Camera | null = null;
   private live: LiveEffect[] = [];
+  /**
+   * Persistent auras alive right now. Each is an additive cylinder plus a rune
+   * ring, so a pack of buffed or enchanted monsters stacked a dozen of them on
+   * one patch of floor, and on a pale level that summed to a white-pink haze
+   * over the fight. Past `AURA_FULL` live auras each one is dimmed so the sum
+   * stays about that bright.
+   */
+  private liveAuras = 0;
   private elapsed = 0;
 
   // Shared geometry — created once, reused by every effect, disposed at the end.
@@ -2249,6 +2260,12 @@ export class EffectSystem {
     let fade = 0;
     let t = 0;
     const self = this;
+    this.liveAuras++;
+    let counted = true;
+    const uncount = (): void => {
+      if (counted) self.liveAuras = Math.max(0, self.liveAuras - 1);
+      counted = false;
+    };
 
     const handle: EffectHandle = {
       stop(): void { stopped = true; },
@@ -2265,13 +2282,15 @@ export class EffectSystem {
         if (ring) ring.position.set(_v1.x, _v1.y + 0.05, _v1.z);
         mat.uniforms.uTime!.value = elapsed;
         if (stopped) fade = Math.min(1, fade + dt * 3);
-        const power = (1 - fade) * Math.min(1, t * 3);
+        // Crowd cap: the sum of every live aura stays near AURA_FULL of them.
+        const crowd = Math.min(1, AURA_FULL / Math.max(1, self.liveAuras));
+        const power = (1 - fade) * Math.min(1, t * 3) * crowd;
         mat.uniforms.uPower!.value = power;
         if (ringMat) {
           ringMat.uniforms.uTime!.value = elapsed;
           ringMat.uniforms.uPower!.value = power * 0.55;
         }
-        if (self.rng.chance(0.35 * self.quality.fxScale)) {
+        if (self.rng.chance(0.35 * self.quality.fxScale * crowd)) {
           const a = self.rng.range(0, Math.PI * 2);
           self.fx.burst('embers', _v1.x + Math.cos(a) * radius, _v1.y + 0.2, _v1.z + Math.sin(a) * radius, {
             count: 1, scale: 0.7, color,
@@ -2279,11 +2298,13 @@ export class EffectSystem {
         }
         if (stopped && fade >= 1) {
           finished = true;
+          uncount();
           return false;
         }
         return true;
       },
       dispose(): void {
+        uncount();
         self.scene.remove(mesh);
         releaseMaterial(mat);
         if (ring) {

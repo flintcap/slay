@@ -369,6 +369,20 @@ check('storage that throws on every call never crashes the game', () => {
   return true;
 });
 
+check('uniques that dropped before the story pass take their new names, silently', () => {
+  const h = hero('u', 10);
+  h.equipment.mainHand = item('u-mh', { rarity: 'unique', uniqueId: 'uq.rixots', name: "Rixot's Keen" });
+  h.inventory[1] = item('u-set', { rarity: 'set', uniqueId: 'uq.rixots', setId: 'set.x', name: 'Set Piece' });
+  h.inventory[3] = item('u-unk', { rarity: 'unique', uniqueId: 'uq.nobody-knows', name: 'Kept As Is' });
+  const { data, report } = migrateAccount(account(h, [h]));
+  const c = data.current!;
+  if (c.equipment.mainHand?.name !== "Orlo's Keen") return `renamed to ${c.equipment.mainHand?.name}`;
+  if (c.inventory[1]?.name !== 'Set Piece') return 'a set piece was renamed';
+  if (c.inventory[3]?.name !== 'Kept As Is') return 'an unknown unique was renamed';
+  if (report.repairs.length) return `rename reported as damage: ${report.repairs.join('; ')}`;
+  return true;
+});
+
 // Fuzz: random damage to a good save never throws and always yields a valid
 // account; the hero survives whenever their class does.
 const fuzz = { runs: 0, heroKept: 0, heroExpected: 0, failures: [] as string[] };

@@ -28,7 +28,7 @@ import { buildPerson, wearItem, attachToSocket, weaponGrip, type PersonLook, typ
 import { buildItemModel } from './ItemModels';
 import { compactModel } from './ModelBudget';
 import { buildFitted } from './WornGear';
-import { armNodes, legNodes, ringStack, sweep, torsoRings, type BodyFit } from './BodyKit';
+import { armNodes, legNodes, mergeSkinned, ringStack, sweep, torsoRings, type BodyFit } from './BodyKit';
 import { surface } from './Materials';
 import { beveledBox, limb, ring, taperedBox, lathe } from './Meshes';
 import { Random } from '../core/RNG';
@@ -368,6 +368,54 @@ function burns(fit: BodyFit): THREE.Object3D {
   return buildFitted(fit, 'npc:burns', parts);
 }
 
+/** Parts smaller than this (bounding box diagonal, metres) cast no shadow. */
+const NPC_SHADOW_MIN = 0.36;
+
+/**
+ * Folds a resident's skinned parts into one mesh per material. The body, each
+ * garment and the trousers are built as separate skinned meshes, and several
+ * share a material (the same linen, the same leather); a resident never
+ * changes clothes, so each set can be one draw instead of several, in the
+ * colour pass and in every shadow pass. Only visible meshes bound to the
+ * body's own skeleton with the identity bind are merged; anything hidden by a
+ * garment stays as it is, and long hair (which secondary motion finds by its
+ * cover tag and rigs) is kept apart.
+ */
+function mergeResidentSkins(root: THREE.Object3D, skeleton: THREE.Skeleton): void {
+  const identity = new THREE.Matrix4();
+  const groups = new Map<string, THREE.SkinnedMesh[]>();
+  root.traverse((o) => {
+    const m = o as THREE.SkinnedMesh;
+    if (!m.isSkinnedMesh || m.skeleton !== skeleton || Array.isArray(m.material)) return;
+    if (!m.bindMatrix.equals(identity)) return;
+    for (let p: THREE.Object3D | null = m; p; p = p.parent) if (!p.visible) return;
+    // Long hair keeps its own mesh: secondary motion finds and rigs it by tag.
+    const hair = m.userData.coverSlot === 'hairLong' ? 'hairLong' : '';
+    const key = `${m.material.uuid}|${hair}|${m.renderOrder}`;
+    const list = groups.get(key) ?? [];
+    list.push(m);
+    groups.set(key, list);
+  });
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const first = list[0]!;
+    const geo = mergeSkinned(list.map((m) => m.geometry));
+    const mesh = new THREE.SkinnedMesh(geo, first.material);
+    mesh.name = first.name;
+    if (first.userData.coverSlot === 'hairLong') mesh.userData.coverSlot = 'hairLong';
+    mesh.renderOrder = first.renderOrder;
+    mesh.castShadow = list.some((m) => m.castShadow);
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    for (const m of list) {
+      m.removeFromParent();
+      m.geometry.dispose();
+    }
+    root.add(mesh);
+    mesh.bind(skeleton, identity);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -413,7 +461,7 @@ export function buildNpcModel(id: string, rng: Rng = new Random(1)): PlayerModel
         attachToSocket(root, bones, t.item.slot, model, undefined, weaponGrip(t.item.category, !!t.item.twoHanded));
       } else if (t.prop) {
         const bone = bones[t.hand === 'L' ? 'handL' : 'handR'];
-        bone?.add(buildProp(t.prop));
+        bone?.add(compactModel(buildProp(t.prop)));
       }
     } catch {
       /* a resident without a prop still works */
@@ -425,6 +473,19 @@ export function buildNpcModel(id: string, rng: Rng = new Random(1)): PlayerModel
       m.castShadow = true;
       m.receiveShadow = true;
     }
+  });
+  mergeResidentSkins(root, built.skeleton);
+  // Small parts (eyes, buttons, a lantern flame, a bottle) cast shadows a few
+  // texels across in the moon's map, and each one is another draw in every
+  // shadow pass. Only parts big enough to throw a visible shadow cast one.
+  const size = new THREE.Vector3();
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+    const box = m.geometry.boundingBox;
+    const lit = !(m.material as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial;
+    if (!box || box.getSize(size).length() < NPC_SHADOW_MIN || !lit) m.castShadow = false;
   });
   root.userData.npcId = id;
   return built;

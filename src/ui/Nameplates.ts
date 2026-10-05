@@ -70,6 +70,19 @@ interface Plate {
 const TRAIL_HOLD = 380;
 const TRAIL_RATE = 5;
 
+/** One target that survived the cheap culls this frame, before thinning. */
+interface Candidate {
+  t: PlateTarget;
+  dist: number;
+  sx: number;
+  sy: number;
+  /** Ordinary monsters are the ones thinned in a crowd. */
+  ordinary: boolean;
+  keep: boolean;
+}
+
+const byDistance = (a: Candidate, b: Candidate): number => a.dist - b.dist;
+
 function hex(n: number): string {
   return '#' + (n >>> 0).toString(16).padStart(6, '0');
 }
@@ -87,6 +100,15 @@ export class NameplateLayer {
 
   /** Plates fade out past this distance so the screen stays readable. */
   maxDistance = 26;
+  /**
+   * Ordinary monsters in a crowd: only the nearest few keep a plate, and only
+   * inside a tighter radius. Champions, elites, rares and bosses always keep
+   * theirs. Without this a big fight is a wall of plates over the action.
+   */
+  maxOrdinaryPlates = 6;
+  ordinaryDistance = 16;
+  private cands: Candidate[] = [];
+  private ordinaryScratch: Candidate[] = [];
 
   constructor(parent?: HTMLElement) {
     const host = parent ?? document.getElementById('ui') ?? document.body;
@@ -214,6 +236,9 @@ export class NameplateLayer {
     const camPos = this.tmpCam.setFromMatrixPosition(camera.matrixWorld);
     const forward = this.tmpFwd.set(0, 0, -1).applyQuaternion(camera.quaternion);
 
+    let n = 0;
+    const ordinary = this.ordinaryScratch;
+    ordinary.length = 0;
     for (const t of targets) {
       if (t.life <= 0) continue;
 
@@ -223,7 +248,10 @@ export class NameplateLayer {
       // Cheap squared check before anything else runs.
       const ddx = world.x - focus.x;
       const ddz = world.z - focus.z;
-      if (ddx * ddx + ddz * ddz > this.maxDistance * this.maxDistance) continue;
+      const d2 = ddx * ddx + ddz * ddz;
+      const isOrdinary = t.nameplate.rank === 'normal';
+      const reach = isOrdinary ? Math.min(this.maxDistance, this.ordinaryDistance) : this.maxDistance;
+      if (d2 > reach * reach) continue;
 
       const head = this.tmpHead.set(world.x, world.y + (t.plateHeight ?? 2.1), world.z);
       // Behind the camera projects to a valid-looking point; reject it.
@@ -235,6 +263,33 @@ export class NameplateLayer {
       const proj = this.tmpProj.copy(head).project(camera);
       if (proj.x < -1.2 || proj.x > 1.2 || proj.y < -1.2 || proj.y > 1.2) continue;
 
+      let c = this.cands[n];
+      if (!c) {
+        c = { t, dist: 0, sx: 0, sy: 0, ordinary: false, keep: true };
+        this.cands[n] = c;
+      }
+      n++;
+      c.t = t;
+      c.dist = Math.sqrt(d2);
+      c.sx = (proj.x * 0.5 + 0.5) * width;
+      c.sy = (-proj.y * 0.5 + 0.5) * height;
+      c.ordinary = isOrdinary;
+      c.keep = true;
+      if (isOrdinary) ordinary.push(c);
+    }
+
+    // Thin the crowd: past the cap, only the nearest ordinary monsters keep a
+    // plate. Everyone with a rank keeps theirs.
+    if (ordinary.length > this.maxOrdinaryPlates) {
+      ordinary.sort(byDistance);
+      for (let i = this.maxOrdinaryPlates; i < ordinary.length; i++) ordinary[i]!.keep = false;
+    }
+    ordinary.length = 0;
+
+    for (let i = 0; i < n; i++) {
+      const c = this.cands[i]!;
+      if (!c.keep) continue;
+      const t = c.t;
       const d = t.nameplate;
       const plate = this.acquire();
       this.paint(plate, d);
@@ -253,17 +308,15 @@ export class NameplateLayer {
         plate.barTrail.style.transform = `scaleX(${trail})`;
       }
 
-      const sx = (proj.x * 0.5 + 0.5) * width;
-      const sy = (-proj.y * 0.5 + 0.5) * height;
-      const dist = Math.hypot(world.x - focus.x, world.z - focus.z);
       // Fade with distance so the far edge of the pack does not shout.
-      const fade = dist > this.maxDistance * 0.75
-        ? 1 - (dist - this.maxDistance * 0.75) / (this.maxDistance * 0.25)
-        : 1;
-      plate.root.style.transform = `translate(-50%,-100%) translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
+      const reach = c.ordinary ? Math.min(this.maxDistance, this.ordinaryDistance) : this.maxDistance;
+      const fade = c.dist > reach * 0.75 ? 1 - (c.dist - reach * 0.75) / (reach * 0.25) : 1;
+      plate.root.style.transform = `translate(-50%,-100%) translate(${c.sx.toFixed(1)}px, ${c.sy.toFixed(1)}px)`;
       plate.root.style.opacity = String(Math.max(0, Math.min(1, fade)));
       plate.root.style.display = '';
     }
+    // Drop references so a disposed scene's monsters are not kept alive.
+    for (let i = 0; i < n; i++) this.cands[i]!.t = null as unknown as PlateTarget;
 
     for (const p of this.pool) {
       if (!p.inUse) p.root.style.display = 'none';

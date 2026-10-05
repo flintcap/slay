@@ -15,8 +15,8 @@
  *   - A hook never talks about the game as a game: no "in the game", no
  *     "level 51 to the end", no "farming".
  *
- * Items already in a save keep the name they dropped with; new drops, the
- * tooltip flavour and the codex use these.
+ * New drops, the tooltip flavour and the codex use these. Uniques already in
+ * a save are renamed to match when the save loads (`core/Save.ts`).
  *
  * `tools/check-story.mjs` reads every unique and set through this table.
  */

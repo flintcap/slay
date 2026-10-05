@@ -1,6 +1,6 @@
 # Stream: quality (bugs, speed, safety, access)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
