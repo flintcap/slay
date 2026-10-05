@@ -27,6 +27,7 @@ import { worldSurface, WORLD_ENV_ATTRIBUTE } from '../art/WorldSurface';
 import { CampLife } from './TownLife';
 import { displace, mergeGeometries, rock, stoneBlock, taperedBox, clothPanel, limb } from '../art/Meshes';
 import { buildNpcModel, npcCarryGrip } from '../art/NpcModels';
+import { disposeObject } from '../core/Engine';
 import { Animator } from '../art/Animation';
 import { Random } from '../core/RNG';
 
@@ -650,6 +651,11 @@ export function buildTown(rng: Rng): TownBuild {
     },
     dispose(): void {
       life.dispose();
+      // Everything under the camp root, residents and stations included, not
+      // just what was registered in ctx.geo: `root.clear()` below detaches it
+      // before the engine's own sweep of the scene can reach it, so every visit
+      // to town left ~130 geometries and the residents' bone textures behind.
+      disposeObject(root);
       for (const g of ctx.geo) g.dispose();
       for (const m of ctx.mat) m.dispose();
       for (const l of ctx.lights) {

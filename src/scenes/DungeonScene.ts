@@ -54,6 +54,9 @@ import { questTokens } from './QuestTokens';
 import { RunModifiers } from './RunModifiers';
 import { legacyXpMultiplier } from '../sim/Legacy';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
+import { disposeAbilityWorld } from '../entities/Abilities';
+import { disposeMonsterModels } from '../entities/MonsterModels';
+import { disposePropLibrary } from '../world/Props';
 
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
@@ -1779,6 +1782,15 @@ export class DungeonScene extends GameScene {
     // The rig subscribes to the event bus and to window resize; without this
     // every visit left one behind, still answering every shake event.
     this.rig.dispose();
+    // Module-level caches of the run, built to be released "between runs" and
+    // never were. The ability pools kept the last floor's whole scene alive
+    // from town (about 50 MB), and monster prototypes and prop templates piled
+    // up biome after biome (the soak saw the heap climb ~60 MB per trip).
+    // Each one rebuilds lazily on the next floor, behind the load fade.
+    resetEnemyRuntime();
+    disposeAbilityWorld();
+    disposeMonsterModels();
+    disposePropLibrary();
     this.engine.renderer.setLowLife(0);
     this.engine.renderer.setGrade();
     events.emit('ui:close', { panel: 'hud' });

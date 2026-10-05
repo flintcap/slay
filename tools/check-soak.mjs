@@ -2,9 +2,9 @@
  * Play a long session headless and report any error, leak or slowdown.
  *
  *   SLAY_PORT=4309 node tools/check-soak.mjs                 # 3 runs x 3 floors
- *   SLAY_PORT=4309 node tools/check-soak.mjs --runs=6 --floors=4 --frames=400
+ *   SLAY_PORT=4309 node tools/check-soak.mjs --runs=6 --floors=4 --frames=400 --cycle=2
  *
- * Each run: town -> dungeon (a new depth each time) -> fight through
+ * Each run: town -> dungeon (depths cycle, `--cycle` of them) -> fight through
  * `--floors` levels through the scene's own level change -> back to town.
  * While on a floor an autopilot aims the attack button at the nearest monster
  * through the real input path (cursor projected from the monster's position),
@@ -30,6 +30,11 @@ const RUNS = arg('runs', 3);
 const FLOORS = arg('floors', 3);
 const FRAMES = arg('frames', 300);
 const START_DEPTH = arg('depth', 2);
+// Runs cycle through this many depths (each 3 deeper). Caches that are meant
+// to persist (a biome's textures, its shader programs) fill on the first lap;
+// leaks are judged from the end of the first lap on, so a new biome is not
+// mistaken for a leak and a real leak still shows on every lap after.
+const CYCLE = Math.max(1, arg('cycle', 2));
 
 const { page, close, pageErrors, bootMs } = await bootGame({
   fallbackPort: 4309,
@@ -166,10 +171,12 @@ for (let run = 0; run < RUNS; run++) {
   console.log(
     `town   heap ${snap.heapMB}MB  geo ${snap.geometries}  tex ${snap.textures}  prog ${snap.programs}  objects ${snap.objects}  dom ${snap.domNodes}  errors ${snap.errors}`,
   );
-  depth += 3;
+  depth = START_DEPTH + 3 * ((run + 1) % CYCLE);
 }
 
 const caught = await page.evaluate(() => [...window.SLAY.engine.errors.values()].map((e) => ({ ...e })));
+const repairs = await page.evaluate(() => window.SLAY.debug.positionRepairs?.() ?? 0);
+if (repairs > 0) console.log(`note: ${repairs} monster positions went non-finite and were put back (Enemy.update)`);
 await close();
 
 // --- verdict -------------------------------------------------------------------
@@ -177,12 +184,12 @@ const problems = [];
 for (const e of caught) problems.push(`caught ${e.where} error x${e.count}: ${e.message}\n      ${e.stack.split('\n').slice(1, 3).join('\n      ')}`);
 for (const e of pageErrors) problems.push(`page error: ${e}`);
 
-// Compare the last return to town with the first return (the first visit
-// to town warms caches that are meant to persist).
-if (town.length >= 3) {
-  const a = town[1];
+// Compare the last return to town with the one that ended the first lap
+// (the first lap warms caches that are meant to persist).
+if (town.length >= CYCLE + 2) {
+  const a = town[CYCLE];
   const b = town[town.length - 1];
-  const visits = town.length - 2;
+  const visits = town.length - 1 - CYCLE;
   const grow = (k, slack) => {
     if (b[k] - a[k] > slack) problems.push(`${k} grew ${a[k]} -> ${b[k]} over ${visits} more round trips`);
   };

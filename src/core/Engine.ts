@@ -79,6 +79,9 @@ export function disposeObject(root: THREE.Object3D): void {
   root.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
     if (mesh.geometry) mesh.geometry.dispose();
+    // A skinned mesh's skeleton owns a bone texture on the GPU; a torn-down
+    // scene left one behind per resident, hero and monster.
+    (obj as THREE.SkinnedMesh).skeleton?.dispose();
     const mat = (mesh as unknown as { material?: THREE.Material | THREE.Material[] }).material;
     if (!mat) return;
     const list = Array.isArray(mat) ? mat : [mat];
