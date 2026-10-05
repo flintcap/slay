@@ -83,7 +83,17 @@ for (const name of WANT) {
           sc.rig?.follow?.(sc.player.root); sc.rig?.snap?.();
           return { kind: 'liquid', at: best, liquid: [4, 5, 6].map((v) => L.tiles.filter((t) => t === v).length) };
         }
-        if (where === 'room') room = rooms.slice().sort((a, b) => b.w * b.h - a.w * a.h)[0];
+        // `@landmark`: the biggest room that holds a biome landmark, with the
+        // stand point just south of that piece so it sits above the hero.
+        let mark = null;
+        if (where === 'landmark') {
+          const LM = /^(ossuary|statue|altar|crystalCluster|shrine|forge|smeltingVat|idolHead|fountain|broodMound|iceMonolith|obelisk|voidRift)$/;
+          const inRoom = (q, r) => q.x >= r.x && q.x < r.x + r.w && q.y >= r.y && q.y < r.y + r.h;
+          for (const r of rooms.slice().sort((a, b) => b.w * b.h - a.w * a.h)) {
+            const q = sc.level.props.find((p) => LM.test(p.kind) && inRoom(p, r));
+            if (q) { room = r; mark = q; break; }
+          }
+        } else if (where === 'room') room = rooms.slice().sort((a, b) => b.w * b.h - a.w * a.h)[0];
         else room = rooms.find((r) => r.kind === where);
         if (!room) return null;
         // Stand a little south of the centre so the centre piece is in front.
@@ -96,7 +106,7 @@ for (const name of WANT) {
         const flat = /Seal$|pebbles|Chips|Drift|Patch|Tuft|Crust|slag|Fragment|Mote|scorch/;
         const busy = new Set(L.props.filter((q) => !flat.test(q.kind)).map((q) => q.y * W + q.x));
         const free = (x, y) => { if (L.tiles[y * W + x] !== 1) return false; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (busy.has((y + dy) * W + x + dx)) return false; return true; };
-        const tx = Math.round(room.center.x); const ty = Math.round(room.center.y) + off;
+        const tx = mark ? mark.x : Math.round(room.center.x); const ty = mark ? mark.y + 3 : Math.round(room.center.y) + off;
         let best = [tx, ty]; let bestD = 1e9;
         for (let y = room.y; y < room.y + room.h; y++) for (let x = room.x; x < room.x + room.w; x++) {
           const d = (x - tx) ** 2 + (y - ty) ** 2; if (d < bestD && free(x, y)) { bestD = d; best = [x, y]; }
@@ -106,7 +116,7 @@ for (const name of WANT) {
         sc.player.root?.position?.set(p.x, p.y, p.z);
         sc.rig?.follow?.(sc.player.root);
         sc.rig?.snap?.();
-        return { kind: room.kind, w: room.w, h: room.h };
+        return { kind: room.kind, w: room.w, h: room.h, mark: mark ? `${mark.kind}@${mark.x},${mark.y}` : undefined, at: best };
       }, where);
       if (!at) { console.log(`${name} no such room`); continue; }
       console.log(`${name} -> ${JSON.stringify(at)}`);

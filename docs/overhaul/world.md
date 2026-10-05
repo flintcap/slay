@@ -41,6 +41,16 @@ Paused mid-render (w10 stopped after its first shot). Nothing is half-wired; the
 
 ## Notes for resume
 
+- w10 (calm) found, and this session fixed without a render yet: lava blew out to a white sheet
+  and flooded the room orange (lava emissive 2.8 -> 1.25, molten albedo x0.4, voidwater 2.2 -> 1.2;
+  heat lights 1.7 m up, intensity 2.2..4.5, distance 8..12); floor veins were lit squares (now a
+  tileable `crackTexture()` with UVs running across tiles); hive webs were pale paper squares (now
+  `webTexture()` on `webMat`); the hero vanished behind a wall top in ashwaste@liquid (new wall
+  sightline cutaway: `worldCutaway` in WorldSurface.ts, a dithered 2 m hole on the camera-to-hero
+  line, only in front of the hero, wall-kind materials only, set in `DungeonMesh.update`). Town
+  stone tinted warm (0xb09c80). Cluster rocks of 0.5 m and under use the low bevel.
+- Harness: `@landmark` stands three tiles south of the biggest room's biome landmark.
+
 **From menus, DONE:** sprites drew as solid dark squares in the ambient occlusion pass. `Renderer.ts` `hideSpritesFromAO()` patches the GTAO pass instance so sprites hide with points and lines during its normal/depth draw (checked headlessly: hidden during, restored after).
 
 - w10 crypt@room (calm, treasure room 14x13): gold hoard glows as the room's centre piece, floor

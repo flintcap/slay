@@ -51,6 +51,25 @@ export const WORLD_ENV_ATTRIBUTE = 'aEnv';
 export const WORLD_CAP_ENV = 199;
 
 /**
+ * See-through for walls standing between the camera and the hero: xyz is the
+ * hero's chest, w the radius of the cut (0 switches it off). One object
+ * shared by every wall material, written each frame by the dungeon mesh.
+ *
+ * Caps never dissolve with the rock lid (that showed the void through the
+ * walls), but a wall just south of the hero hid the hero completely: the w10
+ * ashwaste lava shot found nothing but a wall top on the ray to the hero, and
+ * narrow corridors had a black cap wedge across the bottom of the frame. So a
+ * small dithered hole opens only along the sightline and only in front of the
+ * hero; side walls level with the hero, and everything behind, stay solid.
+ * Shadow and AO passes use their own materials and are not cut.
+ */
+export const worldCutaway = { value: new THREE.Vector4(0, 0, 0, 0) };
+
+export function setWorldCutaway(x: number, y: number, z: number, radius: number): void {
+  worldCutaway.value.set(x, y, z, radius);
+}
+
+/**
  * A private material for level geometry: the palette's own PBR set, plus a
  * world-space layer that breaks the tiling and grounds the surface.
  *
@@ -77,6 +96,7 @@ export function worldSurface(key: string, opts: SurfaceOpts, w: WorldSurfaceOpts
     uWet: { value: w.wet },
     uVar: { value: w.variation },
     uContact: { value: w.contact },
+    uCut: worldCutaway,
   };
   mat.userData.world = uniforms;
   const wall = w.kind === 'wall';
@@ -113,7 +133,28 @@ export function worldSurface(key: string, opts: SurfaceOpts, w: WorldSurfaceOpts
           'uniform sampler2D uMacro;',
           'uniform vec3 uGrime;',
           'uniform float uGrimeAmt, uWet, uVar, uContact;',
+          'uniform vec4 uCut;',
         ].join('\n'),
+      )
+      .replace(
+        '#include <clipping_planes_fragment>',
+        wall
+          ? [
+              'if (uCut.w > 0.0) {',
+              '  vec3 cutD = uCut.xyz - cameraPosition;',
+              '  float cutL = length(cutD);',
+              '  vec3 cutN = cutD / max(cutL, 1e-3);',
+              '  vec3 cutR = vWsPos - cameraPosition;',
+              '  float cutT = dot(cutR, cutN);',
+              '  float cutP = length(cutR - cutN * cutT);',
+              // Solid outside the tube, and from just in front of the hero on.
+              '  float cutA = max(smoothstep(uCut.w * 0.6, uCut.w, cutP), smoothstep(cutL - 1.4, cutL - 0.7, cutT));',
+              '  float cutH = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);',
+              '  if (cutA < cutH) discard;',
+              '}',
+              '#include <clipping_planes_fragment>',
+            ].join('\n')
+          : '#include <clipping_planes_fragment>',
       )
       .replace(
         '#include <map_fragment>',

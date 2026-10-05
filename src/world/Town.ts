@@ -475,7 +475,9 @@ export function buildTown(rng: Rng): TownBuild {
     dirt: groundSurface(ctx, { repeat: 16, tint: 0x8d8478, roughness: 0.98 }, 0.22),
     path: groundSurface(ctx, { repeat: 7, tint: 0xa2968a, roughness: 0.99 }, 0.08),
     grass: safeSurface('ground.grass', { repeat: 20, roughness: 0.98 }),
-    stone: safeSurface('stone.town', { repeat: 2.2 }),
+    // Warm and a shade darker than the palette: neutral grey stone under the
+    // blue moon read pale blue-white round the fire ring and across the camp.
+    stone: safeSurface('stone.town', { repeat: 2.2, tint: 0xb09c80 }),
     darkStone: safeSurface('stone.crypt', { repeat: 1.6, tint: 0x6a6a72 }),
     wood: safeSurface('wood.oak', { repeat: 2.4 }),
     woodDark: safeSurface('wood.oak', { repeat: 3.2, tint: 0x6d4c2e }),

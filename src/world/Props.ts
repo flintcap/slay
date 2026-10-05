@@ -35,6 +35,7 @@ import {
 } from './Layouts';
 import { emissiveMaterial, surface } from '../art/Materials';
 import { displace, lathe, mergeGeometries, stoneBlock } from '../art/Meshes';
+import { webTexture } from '../art/Textures';
 
 // ---------------------------------------------------------------------------
 // Definitions
@@ -1224,6 +1225,27 @@ function ghostMat(color: number, opacity: number, additive: boolean): THREE.Mate
   return m;
 }
 
+/**
+ * Cobweb: strands drawn into a shared alpha texture so each card reads as a
+ * web, not as a pale translucent square (the hive floor in the w10 render).
+ */
+function webMat(color: number, opacity: number): THREE.Material {
+  const ck = `web|${color}|${opacity}`;
+  const hit = materialCache.get(ck);
+  if (hit) return hit;
+  const m = new THREE.MeshBasicMaterial({
+    color,
+    map: webTexture(),
+    transparent: true,
+    opacity,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  materialCache.set(ck, m);
+  ownedMaterials.push(m);
+  return m;
+}
+
 // --- geometry helpers ------------------------------------------------------
 
 /**
@@ -1656,7 +1678,9 @@ function buildCluster(
           g.translate(px, s * 0.22, pz);
           break;
         }
-        g = safeRock(s, s * rng.range(0.6, 1.1), s, rng, opts.size[1] <= 0.45 ? 0.3 : 0.6);
+        // Per rock, not per kind: a rock cluster's small stones take the low
+        // bevel too (the full one is ~1,300 triangles a rock; ashwaste ran 2M).
+        g = safeRock(s, s * rng.range(0.6, 1.1), s, rng, opts.size[1] <= 0.45 || s <= 0.5 ? 0.3 : 0.6);
         g.rotateY(rng.range(0, 6.28));
         g.translate(px, s * 0.4, pz);
         break;
@@ -1894,7 +1918,7 @@ function buildFlatWall(
         p.rotateZ(rng.range(-0.4, 0.4));
         parts.push(p);
       }
-      return { layers: [{ geometry: merge(parts), material: ghostMat(0xd8d4e8, 0.3, false), ghost: true }] };
+      return { layers: [{ geometry: merge(parts), material: webMat(0xd8d4e8, 0.65), ghost: true }] };
     }
     case 'wallRelief': {
       const parts: THREE.BufferGeometry[] = [boxAt(1.3, 1.7, 0.1, 0, 1.5, 0)];
@@ -2514,7 +2538,7 @@ function buildMisc(b: BuildCtx, kind: string): ReturnType<Builder> {
         const p = plane(rng.range(0.7, 1.3), rng.range(0.7, 1.3), 0, rng.range(0.2, 0.9), 0, rng.range(0, 3.14), -Math.PI / 2.4);
         parts.push(p);
       }
-      return { layers: [{ geometry: merge(parts), material: ghostMat(0xd8d4e8, 0.26, false), ghost: true }] };
+      return { layers: [{ geometry: merge(parts), material: webMat(0xd8d4e8, 0.6), ghost: true }] };
     }
     case 'lilyPad': {
       const parts: THREE.BufferGeometry[] = [];

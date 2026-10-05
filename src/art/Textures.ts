@@ -1397,6 +1397,104 @@ export function macroNoiseTexture(size = 256): THREE.DataTexture {
   return tex;
 }
 
+/**
+ * A spider web on a clear ground: jittered spokes and a spiral, fading out
+ * at a ragged circular edge so the card it sits on never shows its corners.
+ * White strands in alpha; tint with the material colour. Plain translucent
+ * planes read as pale paper squares on the hive floor (w10).
+ */
+export function webTexture(size = 256, seed = 5): THREE.DataTexture {
+  const key = `web|${size}|${seed}`;
+  const hit = utilCache.get(key);
+  if (hit) return hit;
+  const hash = (n: number): number => {
+    const s = Math.sin(n * 127.1 + seed * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  const SPOKES = 11;
+  const spokes: number[] = [];
+  for (let i = 0; i < SPOKES; i++) spokes.push(((i + (hash(i) - 0.5) * 0.5) / SPOKES) * Math.PI * 2);
+  const c = (size - 1) / 2;
+  const spacing = size * 0.062;
+  const half = size * 0.003 + 0.35; // strand half-width in pixels
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x - c;
+      const dy = y - c;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const th = Math.atan2(dy, dx);
+      // Ragged rim: the outer radius wanders with angle.
+      const rim = c * (0.82 + 0.14 * Math.sin(th * 3 + seed) * Math.sin(th * 5 + seed * 2));
+      const fade = clamp01((rim - r) / (c * 0.18));
+      let a = 0;
+      if (fade > 0) {
+        for (const s of spokes) {
+          let d = Math.abs(th - s) % (Math.PI * 2);
+          if (d > Math.PI) d = Math.PI * 2 - d;
+          if (d < Math.PI / 2) a = Math.max(a, clamp01(half + 0.5 - r * Math.sin(d)));
+        }
+        if (r > size * 0.05) {
+          // Archimedean spiral, slightly sagging between spokes.
+          const turn = (th + Math.PI) / (Math.PI * 2);
+          const k = (r - size * 0.05) / spacing - turn;
+          const dr = Math.abs(k - Math.round(k)) * spacing;
+          a = Math.max(a, clamp01(half + 0.5 - dr) * 0.85);
+        }
+        a = (a * 0.9 + 0.04) * fade;
+      }
+      const o = (y * size + x) * 4;
+      data[o] = 255;
+      data[o + 1] = 255;
+      data[o + 2] = 255;
+      data[o + 3] = (clamp01(a) * 255) | 0;
+    }
+  }
+  return finishUtil(key, data, size, true);
+}
+
+/**
+ * Glowing cracks: thin meandering seams (contours of tileable noise) on a
+ * clear ground, in alpha. Repeats seamlessly. The floor veins were whole
+ * additive tiles, so every vein read as a lit square (w10 hive and foundry).
+ */
+export function crackTexture(size = 256, seed = 23): THREE.DataTexture {
+  const key = `crack|${size}|${seed}`;
+  const hit = utilCache.get(key);
+  if (hit) return hit;
+  const data = new Uint8Array(size * size * 4);
+  const P = 6; // noise cells across one repeat
+  const px = 1 / size;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = (x / size) * P;
+      const v = (y / size) * P;
+      // Main seams: where the field crosses its midline. Divide by the
+      // local slope so the line keeps one width however steep the field.
+      const f = (a: number, b: number): number => vfbm(a, b, P, P, 3, seed);
+      const n = f(u, v);
+      const gx = (f(u + px * P, v) - n) / px;
+      const gy = (f(u, v + px * P) - n) / px;
+      const slope = Math.max(Math.sqrt(gx * gx + gy * gy), 1e-3);
+      const d = (Math.abs(n - 0.5) / slope) * size; // distance in pixels
+      const main = clamp01(1.6 - d);
+      // Hairline branches off a second field, only near the main seams.
+      const m = vfbm(u * 2 + 3.1, v * 2 + 7.7, P * 2, P * 2, 2, seed + 5);
+      const branch = clamp01(1 - Math.abs(m - 0.5) * 60) * 0.55 * clamp01(1 - d / 28);
+      const a = Math.max(main, branch);
+      const o = (y * size + x) * 4;
+      data[o] = 255;
+      data[o + 1] = 255;
+      data[o + 2] = 255;
+      data[o + 3] = (a * 255) | 0;
+    }
+  }
+  const tex = finishUtil(key, data, size, true);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
 export function disposeUtilityTextures(): void {
   for (const t of utilCache.values()) t.dispose();
   utilCache.clear();

@@ -36,8 +36,9 @@ import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from '
 
 import { surface, surfaceVariant } from '../art/Materials';
 import { setFogShape, fogShape } from '../core/Renderer';
-import { worldSurface, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldSurfaceOpts } from '../art/WorldSurface';
+import { worldSurface, setWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldSurfaceOpts } from '../art/WorldSurface';
 import { liquidSurface, type LiquidSurface, type LiquidStyle } from '../art/Liquids';
+import { crackTexture } from '../art/Textures';
 import { Drips, type DripSite } from './Ambience';
 
 /** One usable thing in the world, and the instance slot that draws it. */
@@ -581,10 +582,13 @@ export class DungeonMesh {
     // Where drops fall and where lava throws light, gathered while emitting.
     const dripSites: DripSite[] = [];
     const hotTiles: Array<{ x: number; y: number; h: number }> = [];
+    // The glow lives in a crack texture: a bare additive tile read as a lit
+    // square on the floor (w10 hive and foundry).
     const veinMat = new THREE.MeshBasicMaterial({
       color: art.veinColor,
+      map: crackTexture(),
       transparent: true,
-      opacity: 0.85,
+      opacity: 1,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -888,7 +892,9 @@ export class DungeonMesh {
             if (art.veinDensity > 0 && v !== T_WATER) {
               const n = this.noise.ridged(x * 0.09 + 11, y * 0.09, 3);
               if (n > 1 - art.veinDensity * 0.5) {
-                surfs[VEIN].flat(wx, hy + 0.02, wz, HALF * 0.92, true, 0, 0, 1);
+                // Whole tile, UVs continuous across tiles (one repeat per 4
+                // tiles) so the cracks run on from one tile into the next.
+                surfs[VEIN].flat(wx, hy + 0.02, wz, HALF, true, x * 0.25, y * 0.25, 0.25);
               }
             }
 
@@ -984,10 +990,13 @@ export class DungeonMesh {
       const x = c.sx / c.n;
       const y = c.sy / c.n;
       this.torches.push({
-        pos: new THREE.Vector3(this.tileX(x), c.sh / c.n + 1.1, this.tileZ(y)),
+        // Higher and softer than a torch: at 1.1 m and up to 8 these burned
+        // white hot spots into the walls beside the pool and washed the floor
+        // the same orange as the lava, so the hero sank into it (w10).
+        pos: new THREE.Vector3(this.tileX(x), c.sh / c.n + 1.7, this.tileZ(y)),
         color: colour.clone(),
-        intensity: 4 + Math.min(4, c.n * 0.25),
-        distance: 9 + Math.min(5, c.n * 0.3),
+        intensity: 2.2 + Math.min(2.3, c.n * 0.14),
+        distance: 8 + Math.min(4, c.n * 0.25),
         flicker: 0.45,
         flameMesh: -1,
         flameIndex: -1,
@@ -1751,6 +1760,8 @@ export class DungeonMesh {
   update(dt: number, elapsed: number, focus: THREE.Vector3): void {
     // The roof follows the camera focus, which is the player.
     this.heroXZ.set(focus.x, focus.z);
+    // Walls between the camera and the hero open a small hole on the sightline.
+    setWorldCutaway(focus.x, focus.y + 1.1, focus.z, 2.0);
     // Height fog sits just under the lowest walkable floor: pits sink into it,
     // nobody stands in it.
     if (fogShape.w > 0) fogShape.y = this.lowestFloor - 0.9;

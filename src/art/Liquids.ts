@@ -99,7 +99,9 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     roughness: 0.75,
     metalness: 0,
     opacity: 1,
-    emissiveIntensity: 2.8,
+    // 2.8 (peak 5.6 in the seams) blew every pool out to a white sheet that
+    // bloomed over the hero in the w10 foundry render.
+    emissiveIntensity: 1.25,
   },
   voidwater: {
     ripple: 0.4,
@@ -112,7 +114,7 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     roughness: 0.3,
     metalness: 0.2,
     opacity: 1,
-    emissiveIntensity: 2.2,
+    emissiveIntensity: 1.2,
   },
 };
 
@@ -125,7 +127,10 @@ export function liquidSurface(style: LiquidStyle, color: number, glow: number): 
   const transparent = t.opacity < 0.999;
   const mat = new THREE.MeshStandardMaterial({
     name: `liquid:${style}`,
-    color,
+    // A molten body is lit by its own heat lights as well as glowing, so a
+    // full-bright orange albedo doubled the glare. Keep the body dark and let
+    // the emissive seams carry it.
+    color: t.molten > 0.5 ? new THREE.Color(color).multiplyScalar(0.4) : color,
     emissive: new THREE.Color(glow),
     emissiveIntensity: t.emissiveIntensity,
     roughness: t.roughness,
