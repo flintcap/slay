@@ -1,11 +1,11 @@
 # Stream: animation (how bodies move)
 
-Status: paused (milestone 1 done; milestone 2 researched, no code yet)
+Status: in progress (milestones 1-2 done; on milestone 3)
 
 ## Milestones
 
 - [x] Locomotion: speed-blended walk and run, lean into turns, feet that plant instead of sliding. ("Plant the feet: a stepping gait driven by real ground speed")
-- [ ] Attacks: anticipation, impact and recovery with real weight for every weapon grip; spell casts with a hand glow.
+- [x] Attacks: anticipation, impact and recovery with real weight for every weapon grip; spell casts with a hand glow. ("Animation: strikes land on the contact frame, feet held in actions, both hands on two-handed weapons")
 - [ ] Hit reactions and deaths: flinch, stagger, knockback, and death animations that fall and fade instead of vanishing.
 - [ ] Monster motion: idle variety per family, spawn or emerge animations, movement that suits each body (scuttle, lope, float, lumber). (Monster looks moved to the models stream.)
 - [ ] Secondary motion: cloth, cape, hair and loose gear that sway and settle; town NPCs idle with personality. (Player and NPC looks moved to the models stream.)
@@ -13,46 +13,60 @@ Status: paused (milestone 1 done; milestone 2 researched, no code yet)
 
 ## Next up
 
-Milestone 2, attacks. Concretely:
+Milestone 3, hit reactions and deaths. Concretely:
 
-1. Rewrite the one-shot clips in `src/art/Animation.ts` (`attack1`, `attack2`, `slam`, `thrust`,
-   `lunge`, `hurl`, `point`, `cast`, `channel`, `shoot`, `snapshot`, `skyshot`, `stomp`, `roar`,
-   `plant`, `blink`) with a clear anticipation / strike / recovery shape. Author foot targets in
-   units of `rig.hipY` (many old clips use raw metres and negative foot heights; the floor clamp in
-   `applyPose` now hides the worst of that). Any foot that travels more than ~6 cm must lift
-   (a `y` arc), never slide: `attack1` still slides its front foot forward on the strike, and that is
-   what `check-footplant` reports in its "attack" row (slide 0.36 m/s, pop 0.23 m).
-2. Keep hit timing: `Player.beginAction(clip, duration)` plays the clip at `speed = 0.45 / duration`,
-   so the strike must land at the same normalised time as today (find where the sim applies damage
-   in `src/scenes/SkillRunner.ts` / `DungeonScene.ts` before moving any strike key).
-   `tools/grip-entry.ts` samples swings 20 frames in and requires the weapon tip `z > -0.75`.
-3. Hand glow on casts: the animator can expose a `castGlow` 0..1 value (e.g. a getter driven by the
-   current clip's gather/release curve) for the feel stream to read; do not build VFX here.
-4. Findings already made for milestone 2 (no code written yet):
-   - Melee damage lands the instant the attack starts: `SkillRunner.meleeSwing` runs on the click,
-     not at a hit frame. So keep anticipation very short (contact about 0.12 to 0.16 s in) and export
-     a per-clip normalised contact time from `Animation.ts` (e.g. `CLIP_CONTACT`) so combat or feel
-     can later delay damage to it. Note this for combat in their progress file.
-   - The clip outlives the action lock: real clip length is `def.duration * duration / 0.45`
-     (about 1.38x `actionLock` for `attack1`), so the player starts moving while the swing is still
-     playing and the feet skate. Add a per-clip `recover` time after which a `walk`/`run` request may
-     interrupt the one-shot (not `idle`), crossfading into the gait.
-   - Two-handed swings should keep the off hand on the haft with left-arm two-bone IK. Measured
-     off-hand point in weapon (socket) space after the carry pose settles: `twoHand` (0, 0.19, -0.03),
-     `staff` (0, 0.32, -0.03). Weapon space is the socket transform from `GRIPS` under `handR`; expose
-     it from the grip code in `CharacterModels.ts` (animation's part) and solve in chest space using
-     `chest.matrixWorld^-1 * handR.matrixWorld` after `updateWorldMatrix` on the root bone.
-   - Per-weapon weight needs the one-hand grip too: add `Animator.setWeapon(grip: WeaponGrip)` and one
-     line in `Player.refreshEquipmentVisuals` next to `setGrip`. Profiles: light (dagger, wand, fist),
-     medium (sword), heavy (axe, mace), twoHand, polearm (staff grip).
-   - `kf` eases to zero speed at every key, which is wrong at contact. Add a keyed curve with
-     per-segment easing (accelerate into contact, decelerate out of it).
-5. Extend `tools/footplant-entry.ts` with a row per action clip and then gate actions too
-   (move them out of the "reported only" line in `check-footplant.mjs`). Add a `set=attacks` to
-   `tools/pose-sheet.ts` showing anticipation / contact / recovery for sword, greatsword, dagger,
-   staff, bow.
+1. `Player.takeDamage` plays `hurt` (a full one-shot) on every hit, which cuts a swing off mid-strike
+   while the damage still lands. Route `play('hurt')` to an additive flinch layer inside the
+   animator (spine/chest/head/shoulders, ~0.35 s, feet untouched) so it never replaces an action or
+   stops the gait. Add a `stagger` clip with a step back for knockback, and call it from
+   `Player.shove` (one line; combat's file, small edit).
+2. Stun pose: `Player` already knows `incapacitated` / `immobilised`. Add `Animator.setCondition`
+   ('none' | 'stunned' | 'frozen' | 'down' | 'rooted') and one line in `Player.update` before
+   `animator.update`. Stunned: a dazed loop (head lolls, knees soft, sway). Frozen and petrified: the
+   body holds its exact pose (skip the update, keep `sampleMotion` fresh). Knocked down: a crouch-sprawl
+   held while the status lasts. Rooted: set `pinned` (already read by `holdFeet`) and stop the gait
+   stepping. Statuses: incapacitating = frozen, stunned, petrified, knockedDown; immobilising = rooted,
+   grasped (`src/data/statuses.ts`).
+3. Deaths: two or three death clips that fall and settle on the floor (back, forward crumple), picked
+   by the killing hit. Monster deaths are milestone 4 (`RigAnimator.poseDeath`).
+4. Add rows to `tools/check-strikes.mjs` (or a sibling) for hurt-during-swing (the swing must still
+   reach its contact pose) and stun enter/leave pops.
 
 ## Notes for resume
+
+- **How actions work now (milestone 2).** Clips are keyed poses (`keyed([...])`, `KeyPose`): joint
+  angles in `b`, arms as swing directions in `sL`/`sR` ([elevation, azimuth, twist], slerped as
+  quaternions through `Pose.sq`/`Pose.sw`, so an arm can go from behind the head to out front
+  without euler flips), hips `hp` and feet `fl`/`fr` in hip-heights. Each key's `e` eases the segment
+  that arrives at it: `in` for the contact (arrives at full speed), `out` leaving it. `strike()` and
+  `gesture()` build the clip defs; `ClipDef.contact` is the contact key's share of the clip.
+- **Contact timing.** `Player.beginAction` now passes `contact` (seconds, from combat's
+  `contactDelay`, or `min(0.1, 0.3 * duration)` for things that resolve on the click) and
+  `restart: true`. The animator warps time so the contact key lands exactly then (`Track.warp`), then
+  plays the follow-through at the old rate. With under ~0.14 s to contact the wind-up is scaled down
+  (`Track.antic`, `sampleAction`). Combat's table stays the source of truth for gameplay timing.
+- **Interrupts.** A `walk`/`run` request cuts an action short once it is past `recover` (default:
+  its contact) and the body really moves; `idle` never does.
+- **Feet in actions.** `holdFeet` keeps each foot on its spot of floor while the body brakes and
+  turns under a swing, and steps (always with a lift) when the clip wants it more than 0.1 hip-heights
+  away or lifts it; one foot at a time unless far behind. A foot caught mid-air at the start finishes
+  coming down as a step. Clips that travel (`travel: true`, the dodge) still use the old `entry` blend.
+- **Weapon aim and two hands.** `ClipDef.aim` turns the wrist (up to 2 rad) so the business end points
+  along a character-space direction around the contact, for any grip (bows in the left hand too).
+  Two-handed grips put the off hand on the haft with a two-bone arm solve (`solveArm`), in carry and
+  in strikes; haft points `HAFT_TWOHAND`/`HAFT_STAFF` (carry), `HILT_TWOHAND` under the guard for
+  two-handed swords in swings. If the haft is out of the off arm's reach the main hand is drawn in.
+  `Animator.setWeapon(grip, category)` (called from `Player.refreshEquipmentVisuals`) sets the weight
+  profile: heavier weapons put more trunk into a swing (`torso()`).
+- **Cast glow.** `Animator.castGlow` (0..1) and `castHands` follow the clip's `glow` curve; the
+  animator also shows a soft additive sprite on the casting hands in the body's accent colour
+  (`updateGlow`, lazy, hidden otherwise). Feel can read `castGlow` for anything bigger.
+- **Checkers.** `node tools/check-strikes.mjs` (new, static, ~20 s): contact key on the contact frame,
+  tip fastest within 0.06 s of it, business end forward at contact, planted-foot slide, joint pops
+  outside the arms, off hand on the haft. `STRIKE_DEBUG=<case>` prints a case's feet per frame.
+  `check-footplant`'s attack row now slides 0.006 m/s (was 0.36); its "inside actions" jump (0.22 at
+  footL) is a running foot stopping mid-swing as the attack starts (a Hermite start would fix it).
+  `tools/pose-sheet.ts` has `set=attacks` (wind, contact and follow for each weapon).
 
 - **From world (bug fix made in your file, please keep it):** the invisible hero in foundry and caverns
   renders was `Animator.guardReach`'s pelvis spring. An explicit step with k = 900 diverges for any frame

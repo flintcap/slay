@@ -76,6 +76,14 @@ class Pose {
   readonly fyaw = new Float32Array(2);
   /** 0 = legs run on FK angles, 1 = legs run on the IK targets. */
   ikW = 0;
+  /**
+   * Shoulders as quaternions [x,y,z,w] per side (L, R), used instead of the
+   * euler angles by `sw` (0..1). Swings are keyed as directions and slerped
+   * between keys: an arm going from behind the head to out in front passes
+   * through euler angles that flip, and interpolating those spins the arm.
+   */
+  readonly sq = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1]);
+  readonly sw = new Float32Array(2);
 
   reset(): void {
     this.rot.fill(0);
@@ -83,6 +91,8 @@ class Pose {
     this.ik.fill(0);
     this.fyaw.fill(0);
     this.ikW = 0;
+    this.sq.set(QUAT_ID2);
+    this.sw.fill(0);
   }
 
   set(name: string, rx: number, ry = 0, rz = 0): void {
@@ -138,6 +148,21 @@ class Pose {
     out.fyaw[0] = a.fyaw[0] + (b.fyaw[0] - a.fyaw[0]) * t;
     out.fyaw[1] = a.fyaw[1] + (b.fyaw[1] - a.fyaw[1]) * t;
     out.ikW = a.ikW + (b.ikW - a.ikW) * t;
+    for (let side = 0; side < 2; side++) {
+      const wa = a.sw[side];
+      const wb = b.sw[side];
+      out.sw[side] = wa + (wb - wa) * t;
+      const o = side * 4;
+      if (wa <= 1e-4 && wb <= 1e-4) {
+        out.sq.set(QUAT_ID, o);
+        continue;
+      }
+      // A side that is not using its quaternion lends the other one, so the
+      // blend is a weight change rather than a swing through the identity.
+      const qa = wa > 1e-4 ? a.sq : b.sq;
+      const qb = wb > 1e-4 ? b.sq : a.sq;
+      nlerpInto(qa, qb, o, t, out.sq);
+    }
   }
 
   copyFrom(src: Pose): void {
@@ -146,7 +171,31 @@ class Pose {
     this.ik.set(src.ik);
     this.fyaw.set(src.fyaw);
     this.ikW = src.ikW;
+    this.sq.set(src.sq);
+    this.sw.set(src.sw);
   }
+}
+
+const QUAT_ID = [0, 0, 0, 1];
+const QUAT_ID2 = [0, 0, 0, 1, 0, 0, 0, 1];
+
+/** Normalised lerp of two quaternions stored at offset `o`, shortest way round. */
+function nlerpInto(a: Float32Array, b: Float32Array, o: number, t: number, out: Float32Array): void {
+  const dot = a[o] * b[o] + a[o + 1] * b[o + 1] + a[o + 2] * b[o + 2] + a[o + 3] * b[o + 3];
+  const sgn = dot < 0 ? -1 : 1;
+  let x = a[o] + (b[o] * sgn - a[o]) * t;
+  let y = a[o + 1] + (b[o + 1] * sgn - a[o + 1]) * t;
+  let z = a[o + 2] + (b[o + 2] * sgn - a[o + 2]) * t;
+  let w = a[o + 3] + (b[o + 3] * sgn - a[o + 3]) * t;
+  const len = Math.hypot(x, y, z, w) || 1;
+  x /= len;
+  y /= len;
+  z /= len;
+  w /= len;
+  out[o] = x;
+  out[o + 1] = y;
+  out[o + 2] = z;
+  out[o + 3] = w;
 }
 
 // ---------------------------------------------------------------------------
@@ -191,6 +240,197 @@ function snap(t: number, power = 3): number {
 const TAU = Math.PI * 2;
 
 // ---------------------------------------------------------------------------
+// Key poses
+// ---------------------------------------------------------------------------
+
+/**
+ * How a segment of a keyed clip moves into the key that ends it.
+ *
+ * `kf` eases to a stop at every key, which is right for a pose an arm settles
+ * into and wrong for the moment a blade meets something: a strike has to
+ * arrive at full speed (`in`) and leave the contact decelerating (`out`).
+ */
+type Ease = 's' | 'in' | 'out' | 'lin' | 'hold';
+
+function ease(e: Ease | undefined, x: number): number {
+  switch (e) {
+    case 'in':
+      return x * x;
+    case 'out':
+      return 1 - (1 - x) * (1 - x);
+    case 'lin':
+      return x;
+    case 'hold':
+      return 0;
+    default:
+      return x * x * (3 - 2 * x);
+  }
+}
+
+/**
+ * One key pose of an action, as an animator would block it: the time it is
+ * hit, how the body moves into it, and the joints that matter. Joints a key
+ * leaves out are at rest. Lengths are in units of the rig's hip height, so the
+ * same keys fit a gnome and an ogre.
+ */
+interface KeyPose {
+  t: number;
+  e?: Ease;
+  /** Joint rotations, [x, y, z] in radians. */
+  b?: Partial<Record<(typeof SLOT_NAMES)[number], [number, number?, number?]>>;
+  /** Hips offset, hip-heights. */
+  hp?: [number, number, number];
+  /** Foot targets from rest, hip-heights, and pitch (+ is heel up). */
+  fl?: [number, number, number, number?];
+  fr?: [number, number, number, number?];
+  /** Foot yaw, radians. */
+  yl?: number;
+  yr?: number;
+  /**
+   * Upper arm as a direction rather than angles: [elevation, azimuth, twist].
+   * Elevation 0 hangs, pi/2 is level, pi straight up and past it behind the
+   * head. Azimuth 0 is straight ahead and +pi/2 the character's left, for
+   * both arms. The arm turns about its own axis so a bent elbow folds the
+   * forearm forward; `twist` adds to that. Keys without one use `b`.
+   */
+  sL?: [number, number, number?];
+  sR?: [number, number, number?];
+}
+
+const _swA = new THREE.Quaternion();
+const _swB = new THREE.Quaternion();
+const _swE = new THREE.Euler();
+
+/** The shoulder rotation that points the upper arm along a swing direction. */
+function swingQuat(elev: number, azim: number, twist: number, out: THREE.Quaternion): THREE.Quaternion {
+  out.setFromAxisAngle(new THREE.Vector3(0, 1, 0), azim);
+  _swA.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -elev);
+  _swB.setFromAxisAngle(new THREE.Vector3(0, 1, 0), twist - azim);
+  return out.multiply(_swA).multiply(_swB);
+}
+
+/** Key poses flattened into dense arrays once, so sampling allocates nothing. */
+interface Keyed {
+  n: number;
+  t: Float32Array;
+  e: Array<Ease | undefined>;
+  rot: Float32Array;
+  hip: Float32Array;
+  ik: Float32Array;
+  yaw: Float32Array;
+  /** Shoulder quaternions per key, [L xyzw, R xyzw], and which sides use them. */
+  sq: Float32Array;
+  useS: [boolean, boolean];
+}
+
+function keyed(keys: KeyPose[]): Keyed {
+  const n = keys.length;
+  const k: Keyed = {
+    n,
+    t: new Float32Array(n),
+    e: keys.map((x) => x.e),
+    rot: new Float32Array(n * NSLOTS * 3),
+    hip: new Float32Array(n * 3),
+    ik: new Float32Array(n * 8),
+    yaw: new Float32Array(n * 2),
+    sq: new Float32Array(n * 8),
+    useS: [keys.some((x) => x.sL), keys.some((x) => x.sR)],
+  };
+  const q = new THREE.Quaternion();
+  keys.forEach((key, i) => {
+    for (let side = 0; side < 2; side++) {
+      const sw = side === 0 ? key.sL : key.sR;
+      if (sw) swingQuat(sw[0], sw[1], sw[2] ?? 0, q);
+      else {
+        const e = key.b?.[side === 0 ? 'shoulderL' : 'shoulderR'];
+        q.setFromEuler(_swE.set(e?.[0] ?? 0, e?.[1] ?? 0, e?.[2] ?? 0, 'XYZ'));
+      }
+      // Keep consecutive keys in one hemisphere so a slerp never goes the long way.
+      if (i > 0) {
+        const o = (i - 1) * 8 + side * 4;
+        const d = q.x * k.sq[o] + q.y * k.sq[o + 1] + q.z * k.sq[o + 2] + q.w * k.sq[o + 3];
+        if (d < 0) q.set(-q.x, -q.y, -q.z, -q.w);
+      }
+      k.sq.set([q.x, q.y, q.z, q.w], i * 8 + side * 4);
+    }
+    k.t[i] = key.t;
+    for (const [name, v] of Object.entries(key.b ?? {})) {
+      const s = SLOT[name];
+      if (s === undefined || !v) continue;
+      k.rot[i * NSLOTS * 3 + s * 3] = v[0];
+      k.rot[i * NSLOTS * 3 + s * 3 + 1] = v[1] ?? 0;
+      k.rot[i * NSLOTS * 3 + s * 3 + 2] = v[2] ?? 0;
+    }
+    if (key.hp) k.hip.set(key.hp, i * 3);
+    if (key.fl) k.ik.set([key.fl[0], key.fl[1], key.fl[2], key.fl[3] ?? 0], i * 8);
+    if (key.fr) k.ik.set([key.fr[0], key.fr[1], key.fr[2], key.fr[3] ?? 0], i * 8 + 4);
+    k.yaw[i * 2] = key.yl ?? 0;
+    k.yaw[i * 2 + 1] = key.yr ?? 0;
+  });
+  return k;
+}
+
+/** Writes a keyed clip at time `t` into `p` (joints, hips and both feet). */
+function sampleKeys(k: Keyed, t: number, p: Pose, h: number): void {
+  let i = 0;
+  while (i < k.n - 2 && t > k.t[i + 1]) i++;
+  const a = i;
+  const b = Math.min(k.n - 1, i + 1);
+  const span = k.t[b] - k.t[a];
+  const x = span > 1e-6 ? clamp01((t - k.t[a]) / span) : 1;
+  const s = ease(k.e[b], x);
+  const R = NSLOTS * 3;
+  for (let j = 0; j < R; j++) p.rot[j] = k.rot[a * R + j] + (k.rot[b * R + j] - k.rot[a * R + j]) * s;
+  const hp = SLOT.hips * 3;
+  for (let j = 0; j < 3; j++) p.pos[hp + j] = (k.hip[a * 3 + j] + (k.hip[b * 3 + j] - k.hip[a * 3 + j]) * s) * h;
+  for (let j = 0; j < 8; j++) {
+    const v = k.ik[a * 8 + j] + (k.ik[b * 8 + j] - k.ik[a * 8 + j]) * s;
+    p.ik[j] = (j & 3) === 3 ? v : v * h;
+  }
+  p.fyaw[0] = k.yaw[a * 2] + (k.yaw[b * 2] - k.yaw[a * 2]) * s;
+  p.fyaw[1] = k.yaw[a * 2 + 1] + (k.yaw[b * 2 + 1] - k.yaw[a * 2 + 1]) * s;
+  p.ikW = 1;
+  for (let side = 0; side < 2; side++) {
+    if (!k.useS[side]) continue;
+    _swA.fromArray(k.sq, a * 8 + side * 4);
+    _swB.fromArray(k.sq, b * 8 + side * 4);
+    _swA.slerp(_swB, s);
+    p.sq[side * 4] = _swA.x;
+    p.sq[side * 4 + 1] = _swA.y;
+    p.sq[side * 4 + 2] = _swA.z;
+    p.sq[side * 4 + 3] = _swA.w;
+    p.sw[side] = 1;
+  }
+}
+
+const _pA = new Pose();
+const _pB = new Pose();
+const _pC = new Pose();
+
+/**
+ * Samples an action, cutting its wind-up short when there is no time for it:
+ * before the contact the keyed path is blended toward the straight path from
+ * the first pose to the contact pose by how much wind-up there is time for.
+ */
+function sampleAction(k: Keyed, t: number, p: Pose, rig: Rig, contact: number): void {
+  sampleKeys(k, t, p, rig.hipY);
+  if (rig.antic >= 0.999 || t >= contact) return;
+  sampleKeys(k, 0, _pA, rig.hipY);
+  sampleKeys(k, contact, _pB, rig.hipY);
+  Pose.blend(_pA, _pB, ease('in', t / contact), _pC);
+  Pose.blend(_pC, p, rig.antic, p);
+}
+
+/** Scales the torso's part of a pose, which is where a heavy weapon shows. */
+function torso(p: Pose, k: number): void {
+  for (const n of [SLOT.hips, SLOT.spine, SLOT.chest]) {
+    p.rot[n * 3] *= k;
+    p.rot[n * 3 + 1] *= k;
+  }
+  p.pos[SLOT.hips * 3 + 1] *= k;
+}
+
+// ---------------------------------------------------------------------------
 // Rig metrics
 // ---------------------------------------------------------------------------
 
@@ -211,6 +451,43 @@ interface Rig {
   /** Ankle to ball of the foot, and ankle to heel: the two rocker pivots. */
   toe: number;
   heel: number;
+  /** What is in the hands, which is what gives a swing its weight. */
+  wpn: WeaponStyle;
+  /** Share of the authored wind-up the current action has time for. */
+  antic: number;
+}
+
+/**
+ * How a held weapon changes a swing. `heavy` is how much body goes into it
+ * (0 a dagger or a bare fist, 1 a greataxe), `two` puts the off hand on the
+ * haft, `pole` marks a long shaft held at the middle (staves and spears).
+ */
+interface WeaponStyle {
+  grip: string;
+  heavy: number;
+  two: boolean;
+  pole: boolean;
+}
+
+function weaponStyle(grip: string): WeaponStyle {
+  switch (grip) {
+    case 'dagger':
+    case 'wand':
+      return { grip, heavy: 0, two: false, pole: false };
+    case 'sword':
+      return { grip, heavy: 0.4, two: false, pole: false };
+    case 'axe':
+    case 'mace':
+      return { grip, heavy: 0.75, two: false, pole: false };
+    case 'twoHand':
+      return { grip, heavy: 1, two: true, pole: false };
+    case 'staff':
+      return { grip, heavy: 0.55, two: true, pole: true };
+    case 'bow':
+      return { grip, heavy: 0.2, two: false, pole: false };
+    default:
+      return { grip: 'none', heavy: 0.15, two: false, pole: false };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -291,6 +568,9 @@ const CARRY: Record<Exclude<CarryGrip, 'none'>, Array<[string, number, number, n
   ],
 };
 
+/** An aim direction in character space, or one chosen by what is held (null: none). */
+type AimDir = [number, number, number] | ((w: WeaponStyle) => [number, number, number] | null);
+
 interface ClipDef {
   /** Seconds for one full playthrough at speed 1. */
   duration: number;
@@ -300,12 +580,825 @@ interface ClipDef {
   /** How strongly the breathing layer still shows through. */
   breath?: number;
   eval(t: number, p: Pose, rig: Rig, elapsed: number): void;
+  /**
+   * When the blow lands (or the spell leaves the hand), as a share of the
+   * clip. `play({ contact })` bends time so this key arrives exactly when the
+   * game applies the hit, however fast or slow the swing is.
+   */
+  contact?: number;
+  /**
+   * Share of the clip after which a real move order may cut the rest short.
+   * Defaults to the contact: what follows is follow-through.
+   */
+  recover?: number;
+  /** Keeps the off hand on the haft of a two-handed weapon throughout. */
+  offHand?: boolean;
+  /**
+   * Where the weapon's business end must point around the contact, in
+   * character space, and how strongly (0..1) at clip time `t`. Grips differ
+   * by weapon, so no hand angle aims every weapon; this turns the wrist.
+   */
+  aim?: { dir: AimDir; w(t: number): number };
+  /** The body travels during it (a dash): its feet are not held to the floor. */
+  travel?: boolean;
+  /** Spell light in the hands, 0..1 at clip time `t`, and which hands. */
+  glow?: { w(t: number): number; hands: 'left' | 'right' | 'both' };
+  /** How much the head keeps looking where the hips point (default 0.8). */
+  gaze?: number;
 }
 
 /** Both feet planted at rest, with a little stance width. Used as a base. */
 function stance(p: Pose, rig: Rig, spread = 0, crouch = 0): void {
   p.foot(0, spread, -crouch, 0, 0);
   p.foot(1, -spread, -crouch, 0, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Action key poses
+// ---------------------------------------------------------------------------
+//
+// Every strike has the same three beats: a short anticipation that loads the
+// body against the blow, a contact the arm arrives at at full speed (`in`), and
+// a follow-through that leaves the contact still travelling and decelerates
+// (`out`) before settling. The game applies a hit no later than 0.16 s after
+// the click, so the anticipation is brief; the weight lives in the body drive
+// at contact (hips drop, chest and spine turn through, a planted heel lifts)
+// and in a follow-through that overshoots and takes its time to come back.
+
+type B = NonNullable<KeyPose['b']>;
+
+/** Arms as the idle holds them, so a strike starts and ends where idle is. */
+const READY: B = {
+  shoulderL: [0.04, 0, 0.13],
+  shoulderR: [0.04, 0, -0.13],
+  elbowL: [-0.22, 0, 0.06],
+  elbowR: [-0.22, 0, -0.06],
+  handL: [0, 0, 0.1],
+  handR: [0, 0, -0.1],
+};
+
+/** Both hands on a two-handed haft, the carry pose (`CARRY.twoHand`). */
+const READY2: B = {
+  shoulderR: [0.052, 0.335, 0.07],
+  elbowR: [-0.95],
+  shoulderL: [-0.055, -1.006, 0.033],
+  elbowL: [-1.52],
+};
+
+/** The bow carry (`CARRY.bow`). */
+const READYBOW: B = {
+  shoulderL: [-0.066, -0.335, -0.07],
+  elbowL: [-0.949],
+  shoulderR: [-0.989, 0.699, 0.694],
+  elbowR: [-0.176],
+};
+
+/** Aim weight that ramps in through the strike, holds and lets go after. */
+function aimAround(from: number, contact: number, hold: number, off: number): (t: number) => number {
+  return (t) => kf(t, [
+    [from, 0],
+    [contact, 1],
+    [hold, 1],
+    [off, 0],
+  ]);
+}
+
+// Overhead diagonal chop, one hand. Wind the blade up behind the head with the
+// chest turned away, then drive it down and across as the lead foot lands.
+const K_CHOP = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.14,
+    sR: [3.3, -0.3],
+    sL: [1.1, 0.35],
+    b: { elbowR: [-1.8], handR: [-0.4], elbowL: [-0.8], chest: [-0.1, -0.4], spine: [-0.08, -0.2], hips: [0, -0.15] },
+    hp: [0, 0.01, -0.01],
+    fl: [0.02, 0.07, 0.11],
+  },
+  {
+    t: 0.3,
+    e: 'in',
+    sR: [1.75, 0.3],
+    sL: [0.45, 2.4],
+    b: { elbowR: [-0.12], handR: [0.3], elbowL: [-0.9], chest: [0.2, 0.38], spine: [0.15, 0.18], hips: [0.08, 0.18] },
+    hp: [0, -0.045, 0.02],
+    fl: [0.03, 0, 0.24],
+    fr: [-0.01, 0, -0.02, 0.25],
+  },
+  {
+    t: 0.42,
+    e: 'out',
+    sR: [1.05, 0.65],
+    sL: [0.5, 2.5],
+    b: { elbowR: [-0.25], handR: [0.4], elbowL: [-0.8], chest: [0.28, 0.55], spine: [0.22, 0.25], hips: [0.1, 0.25] },
+    hp: [0, -0.06, 0.03],
+    fl: [0.03, 0, 0.24],
+    fr: [-0.01, 0, -0.02, 0.2],
+  },
+  {
+    t: 0.62,
+    sR: [0.45, 0.4],
+    sL: [0.25, 1.8],
+    b: { elbowR: [-0.5], handR: [0.2], elbowL: [-0.45], chest: [0.15, 0.25], spine: [0.1, 0.1], hips: [0.04, 0.12] },
+    hp: [0, -0.03, 0.01],
+    fl: [0.03, 0, 0.22],
+    fr: [-0.01, 0, -0.02, 0.05],
+  },
+  { t: 1, b: READY, fl: [0.03, 0, 0.2] },
+]);
+
+// The same chop with both hands on a heavy haft: the hands stay near the
+// middle of the body so the off hand can keep hold, and the whole trunk folds
+// into the blow.
+const K_CHOP2 = keyed([
+  { t: 0, b: READY2 },
+  {
+    t: 0.15,
+    sR: [3.0, 0.25],
+    sL: [2.9, -0.35],
+    b: { elbowR: [-1.5], handR: [-0.3], elbowL: [-1.5], chest: [-0.18, -0.2], spine: [-0.14, -0.1], hips: [-0.05, -0.1] },
+    hp: [0, 0.015, -0.02],
+    fl: [0.02, 0.08, 0.12],
+    fr: [0, 0, -0.02, 0.1],
+  },
+  {
+    t: 0.32,
+    e: 'in',
+    sR: [1.9, 0.45],
+    sL: [1.9, -0.4],
+    b: { elbowR: [-0.35], handR: [0.3], elbowL: [-0.6], chest: [0.3, 0.15], spine: [0.22, 0.08], hips: [0.14, 0.1] },
+    hp: [0, -0.09, 0.04],
+    fl: [0.03, 0, 0.26],
+    fr: [-0.01, 0, -0.04, 0.3],
+  },
+  {
+    t: 0.46,
+    e: 'out',
+    sR: [1.1, 0.5],
+    sL: [1.15, -0.5],
+    b: { elbowR: [-0.4], handR: [0.4], elbowL: [-0.6], chest: [0.4, 0.2], spine: [0.3, 0.1], hips: [0.18, 0.12] },
+    hp: [0, -0.11, 0.05],
+    fl: [0.03, 0, 0.26],
+    fr: [-0.01, 0, -0.04, 0.25],
+  },
+  {
+    t: 0.68,
+    sR: [0.55, 0.45],
+    sL: [0.6, -0.7],
+    b: { elbowR: [-0.75], elbowL: [-1.1], chest: [0.2, 0.1], spine: [0.15, 0.05], hips: [0.06, 0.05] },
+    hp: [0, -0.05, 0.02],
+    fl: [0.03, 0, 0.24],
+    fr: [0, 0, -0.03, 0.05],
+  },
+  { t: 1, b: READY2, fl: [0.03, 0, 0.22] },
+]);
+
+// Flat sweep from right to left. The arm opens out behind the right hip with
+// the chest turned away, then the hips lead the turn and the arm whips through.
+const K_SWEEP = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.14,
+    sR: [1.45, -1.9],
+    sL: [1.0, -0.2],
+    b: { elbowR: [-1.1], elbowL: [-1.0], chest: [0, -0.6, 0.05], spine: [0.02, -0.3], hips: [0, -0.25] },
+    hp: [0, -0.02, 0],
+    fl: [0.05, 0.06, 0.07],
+  },
+  {
+    t: 0.3,
+    e: 'in',
+    sR: [1.5, 0.15],
+    sL: [0.6, 1.9],
+    b: { elbowR: [-0.2], elbowL: [-0.9], chest: [0.08, 0.35], spine: [0.06, 0.2], hips: [0.04, 0.2] },
+    hp: [0, -0.04, 0.01],
+    fl: [0.07, 0, 0.14],
+    fr: [-0.02, 0, -0.03, 0.3],
+    yr: 0.3,
+  },
+  {
+    t: 0.44,
+    e: 'out',
+    sR: [1.4, 1.0],
+    sL: [0.65, 2.2],
+    b: { elbowR: [-0.4], elbowL: [-0.8], chest: [0.12, 0.7], spine: [0.1, 0.35], hips: [0.05, 0.32] },
+    hp: [0, -0.05, 0.01],
+    fl: [0.07, 0, 0.14],
+    fr: [-0.02, 0, -0.03, 0.25],
+    yr: 0.35,
+  },
+  {
+    t: 0.64,
+    sR: [0.8, 0.6],
+    sL: [0.3, 1.6],
+    b: { elbowR: [-0.6], elbowL: [-0.5], chest: [0.05, 0.3], spine: [0.04, 0.15], hips: [0.02, 0.15] },
+    hp: [0, -0.02, 0],
+    fl: [0.07, 0, 0.14],
+    fr: [-0.02, 0, -0.03, 0.05],
+    yr: 0.15,
+  },
+  { t: 1, b: READY, fl: [0.07, 0, 0.12] },
+]);
+
+// The sweep with both hands: shorter arc, both arms travelling together, and
+// the back heel spinning out as the hips turn through.
+const K_SWEEP2 = keyed([
+  { t: 0, b: READY2 },
+  {
+    t: 0.15,
+    sR: [1.3, -1.2],
+    sL: [1.25, -0.6],
+    b: { elbowR: [-1.3], elbowL: [-1.5], chest: [0, -0.75], spine: [0, -0.35], hips: [0, -0.3] },
+    hp: [0, -0.03, 0],
+    fl: [0.06, 0.06, 0.05],
+  },
+  {
+    t: 0.32,
+    e: 'in',
+    sR: [1.4, 0.4],
+    sL: [1.35, -0.15],
+    b: { elbowR: [-0.45], elbowL: [-0.8], chest: [0.1, 0.4], spine: [0.08, 0.2], hips: [0.05, 0.22] },
+    hp: [0, -0.07, 0.02],
+    fl: [0.1, 0, 0.12],
+    fr: [-0.02, 0, -0.03, 0.3],
+    yr: 0.3,
+  },
+  {
+    t: 0.48,
+    e: 'out',
+    sR: [1.3, 1.1],
+    sL: [1.1, 0.5],
+    b: { elbowR: [-0.5], elbowL: [-0.8], chest: [0.14, 0.85], spine: [0.1, 0.4], hips: [0.06, 0.38] },
+    hp: [0, -0.08, 0.02],
+    fl: [0.1, 0, 0.12],
+    fr: [-0.02, 0, -0.03, 0.3],
+    yr: 0.45,
+  },
+  {
+    t: 0.7,
+    sR: [0.7, 0.6],
+    sL: [0.6, -0.2],
+    b: { elbowR: [-0.8], elbowL: [-1.2], chest: [0.05, 0.35], spine: [0.04, 0.15], hips: [0.02, 0.15] },
+    hp: [0, -0.02, 0],
+    fl: [0.1, 0, 0.12],
+    fr: [-0.02, 0, -0.03, 0.05],
+    yr: 0.2,
+  },
+  { t: 1, b: READY2, fl: [0.1, 0, 0.1] },
+]);
+
+// Overhead two-handed smash: rise onto the back toe with both arms high, then
+// fold the trunk down through the target and drop the hips into it.
+const K_SLAM = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.18,
+    sL: [2.95, 0.2],
+    sR: [2.95, -0.2],
+    b: { elbowL: [-1.3], elbowR: [-1.3], handL: [-0.3], handR: [-0.3], spine: [-0.12], chest: [-0.15], head: [-0.1] },
+    hp: [0, 0.04, -0.02],
+    fl: [0.02, 0.08, 0.07],
+    fr: [0, 0, -0.03, 0.25],
+  },
+  {
+    t: 0.36,
+    e: 'in',
+    sL: [1.1, -0.15],
+    sR: [1.1, 0.15],
+    b: { elbowL: [-0.55], elbowR: [-0.55], handL: [0.3], handR: [0.3], spine: [0.3], chest: [0.36], hips: [0.15], head: [-0.3] },
+    hp: [0, -0.1, 0.05],
+    fl: [0.04, 0, 0.22],
+    fr: [-0.02, 0, -0.06, 0.2],
+  },
+  {
+    t: 0.5,
+    e: 'out',
+    sL: [0.85, -0.15],
+    sR: [0.85, 0.15],
+    b: { elbowL: [-0.55], elbowR: [-0.55], handL: [0.3], handR: [0.3], spine: [0.34], chest: [0.4], hips: [0.18], head: [-0.35] },
+    hp: [0, -0.12, 0.06],
+    fl: [0.04, 0, 0.22],
+    fr: [-0.02, 0, -0.06, 0.2],
+  },
+  {
+    t: 0.72,
+    sL: [0.5, 0.3],
+    sR: [0.5, -0.3],
+    b: { elbowL: [-0.6], elbowR: [-0.6], spine: [0.2], chest: [0.2], hips: [0.06], head: [-0.1] },
+    hp: [0, -0.06, 0.02],
+    fl: [0.04, 0, 0.22],
+    fr: [-0.02, 0, -0.06, 0.05],
+  },
+  { t: 1, b: READY, fl: [0.04, 0, 0.2], fr: [0, 0, -0.04] },
+]);
+
+// A stab: the weapon hand chambers at the hip with the chest turned away, then
+// drives straight out as the lead foot steps in and the back heel lifts.
+const K_THRUST = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.14,
+    sR: [0.5, -2.9],
+    sL: [1.2, 0.2],
+    b: { elbowR: [-1.9], handR: [0.1], elbowL: [-0.5], chest: [-0.02, -0.5], spine: [0, -0.25], hips: [0, -0.25] },
+    hp: [0, -0.03, -0.02],
+    fl: [0.03, 0.07, 0.12],
+  },
+  {
+    t: 0.3,
+    e: 'in',
+    sR: [1.55, 0.2],
+    sL: [0.5, 2.6],
+    b: { elbowR: [-0.06], handR: [-0.1], elbowL: [-0.8], chest: [0.12, 0.4], spine: [0.1, 0.2], hips: [0.06, 0.25] },
+    hp: [0, -0.07, 0.06],
+    fl: [0.04, 0, 0.36],
+    fr: [-0.01, 0, -0.06, 0.35],
+  },
+  {
+    t: 0.42,
+    e: 'out',
+    sR: [1.58, 0.25],
+    sL: [0.55, 2.7],
+    b: { elbowR: [-0.02], elbowL: [-0.8], chest: [0.16, 0.48], spine: [0.13, 0.25], hips: [0.08, 0.3] },
+    hp: [0, -0.08, 0.08],
+    fl: [0.04, 0, 0.36],
+    fr: [-0.01, 0, -0.06, 0.35],
+  },
+  {
+    t: 0.62,
+    sR: [1.0, 0.1],
+    sL: [0.25, 1.5],
+    b: { elbowR: [-0.7], elbowL: [-0.5], chest: [0.06, 0.2], spine: [0.05, 0.1], hips: [0.03, 0.12] },
+    hp: [0, -0.04, 0.03],
+    fl: [0.04, 0, 0.34],
+    fr: [-0.01, 0, -0.05, 0.05],
+  },
+  { t: 1, b: READY, fl: [0.04, 0, 0.3], fr: [0, 0, -0.04] },
+]);
+
+// A long step-through stab: the lead foot flies forward and lands well ahead
+// as the hips drop and drive after the point; then it steps back in.
+const K_LUNGE = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.12,
+    sR: [0.5, -2.9],
+    sL: [1.1, 0.25],
+    b: { elbowR: [-1.7], elbowL: [-0.7], chest: [0, -0.45], spine: [0, -0.2], hips: [0, -0.25] },
+    hp: [0, -0.06, 0.02],
+    fl: [0.04, 0.12, 0.3],
+  },
+  {
+    t: 0.32,
+    e: 'in',
+    sR: [1.5, 0.25],
+    sL: [0.55, 2.5],
+    b: { elbowR: [-0.04], elbowL: [-0.5], chest: [0.2, 0.42], spine: [0.18, 0.2], hips: [0.12, 0.25] },
+    hp: [0, -0.2, 0.32],
+    fl: [0.05, 0, 0.85],
+    fr: [-0.02, 0, -0.08, 0.45],
+  },
+  {
+    t: 0.46,
+    e: 'out',
+    sR: [1.55, 0.28],
+    sL: [0.6, 2.6],
+    b: { elbowR: [-0.02], elbowL: [-0.5], chest: [0.24, 0.48], spine: [0.2, 0.22], hips: [0.14, 0.28] },
+    hp: [0, -0.22, 0.36],
+    fl: [0.05, 0, 0.85],
+    fr: [-0.02, 0, -0.08, 0.45],
+  },
+  {
+    t: 0.7,
+    sR: [0.9, 0.1],
+    sL: [0.25, 1.6],
+    b: { elbowR: [-0.7], elbowL: [-0.5], chest: [0.08, 0.15], spine: [0.06, 0.08], hips: [0.04, 0.1] },
+    hp: [0, -0.1, 0.18],
+    fl: [0.05, 0, 0.85],
+    fr: [-0.02, 0, -0.08, 0.1],
+  },
+  { t: 0.85, b: READY, hp: [0, -0.04, 0.08], fl: [0.05, 0.09, 0.6], fr: [-0.02, 0, -0.07] },
+  { t: 1, b: READY, fl: [0.05, 0, 0.4], fr: [-0.02, 0, -0.06] },
+]);
+
+// Rise and drive both feet down: ground novas, quakes, shockwaves.
+const K_STOMP = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.22,
+    sL: [2.2, 0.6],
+    sR: [2.2, -0.6],
+    b: { elbowL: [-1.0], elbowR: [-1.0], spine: [-0.12], chest: [-0.15], head: [-0.15] },
+    hp: [0, 0.06, 0],
+    fl: [0.06, 0.13, 0],
+    fr: [-0.06, 0.13, 0],
+  },
+  {
+    t: 0.4,
+    e: 'in',
+    sL: [0.75, 0.6],
+    sR: [0.75, -0.6],
+    b: { elbowL: [-0.3], elbowR: [-0.3], spine: [0.3], chest: [0.36], hips: [0.12], head: [-0.25] },
+    hp: [0, -0.14, 0],
+    fl: [0.18, 0, 0],
+    fr: [-0.18, 0, 0],
+  },
+  {
+    t: 0.55,
+    e: 'out',
+    sL: [0.65, 0.65],
+    sR: [0.65, -0.65],
+    b: { elbowL: [-0.35], elbowR: [-0.35], spine: [0.32], chest: [0.4], hips: [0.14], head: [-0.28] },
+    hp: [0, -0.15, 0],
+    fl: [0.18, 0, 0],
+    fr: [-0.18, 0, 0],
+  },
+  {
+    t: 0.78,
+    sL: [0.25, 1.2],
+    sR: [0.25, -1.2],
+    b: { elbowL: [-0.4], elbowR: [-0.4], spine: [0.12], chest: [0.12] },
+    hp: [0, -0.06, 0],
+    fl: [0.18, 0, 0],
+    fr: [-0.18, 0, 0],
+  },
+  { t: 1, b: READY, fl: [0.12, 0, 0], fr: [-0.12, 0, 0] },
+]);
+
+// Overhand throw: the arm cocks back past the ear while the other points the
+// way, then whips through and across as the weight goes onto the lead foot.
+const K_HURL = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.14,
+    sR: [3.4, -0.5],
+    sL: [1.45, 0.3],
+    b: { elbowR: [-1.9], handR: [-0.4], elbowL: [-0.3], chest: [-0.15, -0.55], spine: [-0.1, -0.3], hips: [0, -0.3] },
+    hp: [0, 0.01, -0.02],
+    fl: [0.04, 0.07, 0.11],
+  },
+  {
+    t: 0.3,
+    e: 'in',
+    sR: [1.7, 0.2],
+    sL: [0.5, 2.0],
+    b: { elbowR: [-0.3], handR: [0.4], elbowL: [-0.9], chest: [0.25, 0.4], spine: [0.18, 0.2], hips: [0.08, 0.25] },
+    hp: [0, -0.04, 0.03],
+    fl: [0.04, 0, 0.24],
+    fr: [-0.01, 0, -0.04, 0.3],
+  },
+  {
+    t: 0.45,
+    e: 'out',
+    sR: [0.8, 0.7],
+    sL: [0.5, 2.4],
+    b: { elbowR: [-0.35], handR: [0.3], elbowL: [-0.8], chest: [0.32, 0.55], spine: [0.22, 0.25], hips: [0.1, 0.3] },
+    hp: [0, -0.05, 0.04],
+    fl: [0.04, 0, 0.24],
+    fr: [-0.01, 0, -0.04, 0.3],
+  },
+  {
+    t: 0.68,
+    sR: [0.4, 0.4],
+    sL: [0.25, 1.6],
+    b: { elbowR: [-0.5], elbowL: [-0.4], chest: [0.1, 0.2], spine: [0.06, 0.1], hips: [0.03, 0.12] },
+    hp: [0, -0.02, 0.01],
+    fl: [0.04, 0, 0.22],
+    fr: [-0.01, 0, -0.03, 0.05],
+  },
+  { t: 1, b: READY, fl: [0.04, 0, 0.2] },
+]);
+
+// One arm snapped out, finger first: commands, curses, marks, summons. The
+// other stays tucked, which is what makes it read as deliberate.
+const K_POINT = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.13,
+    sR: [0.9, 0.5],
+    sL: [0.7, -0.6],
+    b: { elbowR: [-1.7], handR: [0.3], elbowL: [-1.3], chest: [-0.12, -0.25], spine: [-0.08, -0.12] },
+    hp: [0, 0, -0.01],
+  },
+  {
+    t: 0.28,
+    e: 'in',
+    sR: [1.62, 0.15],
+    sL: [0.55, -0.5],
+    b: { elbowR: [-0.05], handR: [-0.15], elbowL: [-1.35], chest: [0.12, 0.25], spine: [0.1, 0.12], hips: [0.04, 0.1] },
+    hp: [0, -0.02, 0.02],
+    fl: [0.03, 0, 0.09],
+    fr: [0, 0, -0.02, 0.1],
+  },
+  {
+    t: 0.55,
+    e: 'out',
+    sR: [1.58, 0.15],
+    sL: [0.55, -0.5],
+    b: { elbowR: [-0.08], handR: [-0.1], elbowL: [-1.35], chest: [0.1, 0.22], spine: [0.08, 0.1], hips: [0.03, 0.08] },
+    hp: [0, -0.02, 0.02],
+    fl: [0.03, 0, 0.09],
+    fr: [0, 0, -0.02, 0.08],
+  },
+  { t: 1, b: READY, fl: [0.03, 0, 0.09] },
+]);
+
+// Draw power in to the chest, then push it out with both hands and hold.
+const K_CAST = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.16,
+    sL: [0.85, -0.75],
+    sR: [0.85, 0.75],
+    b: { elbowL: [-1.9], elbowR: [-1.9], handL: [0.5, 0, 0.3], handR: [0.5, 0, -0.3], spine: [-0.15], chest: [-0.2], head: [-0.1] },
+    hp: [0, -0.025, -0.01],
+    fl: [0.05, 0, 0.03],
+    fr: [-0.05, 0, -0.02],
+  },
+  {
+    t: 0.3,
+    e: 'in',
+    sL: [1.6, 0.2],
+    sR: [1.6, -0.2],
+    b: { elbowL: [-0.12], elbowR: [-0.12], handL: [-0.5, 0, 0.3], handR: [-0.5, 0, -0.3], spine: [0.18], chest: [0.25], head: [0.12] },
+    hp: [0, -0.03, 0.03],
+    fl: [0.05, 0, 0.09],
+    fr: [-0.05, 0, -0.04, 0.15],
+  },
+  {
+    t: 0.55,
+    e: 'out',
+    sL: [1.55, 0.22],
+    sR: [1.55, -0.22],
+    b: { elbowL: [-0.18], elbowR: [-0.18], handL: [-0.4, 0, 0.3], handR: [-0.4, 0, -0.3], spine: [0.15], chest: [0.2], head: [0.08] },
+    hp: [0, -0.03, 0.03],
+    fl: [0.05, 0, 0.09],
+    fr: [-0.05, 0, -0.04, 0.12],
+  },
+  { t: 1, b: READY, fl: [0.05, 0, 0.08], fr: [-0.05, 0, -0.03] },
+]);
+
+// A bow shot: side-on, bow arm locked out, string hand drawn to the cheek, a
+// beat at full draw, the release, and the string hand flying back past the ear.
+function bowKeys(up: number, drawAt: number, quick: number): Keyed {
+  const bowArm = -1.5 - up;
+  return keyed([
+    { t: 0, b: READYBOW },
+    {
+      t: drawAt,
+      b: {
+        hips: [-0.16 * up, -0.34 + 0.06 * quick],
+        spine: [-0.04 - 0.22 * up, -0.2],
+        chest: [-0.1 - 0.3 * up, -0.34 + 0.08 * quick],
+        head: [-0.4 * up, 0.34],
+        shoulderL: [bowArm + 0.26 * quick, 0.42, 0.12],
+        elbowL: [-0.1 - 0.2 * quick],
+        shoulderR: [bowArm + 0.05 + 0.2 * quick, -0.95 + 0.25 * quick, -0.1],
+        elbowR: [-2.1 + 0.4 * quick],
+      },
+      hp: [0, -0.012, 0],
+      fl: [0.13, 0, 0.1],
+      fr: [-0.15, 0, -0.12],
+    },
+    {
+      t: 0.3,
+      e: 'in',
+      b: {
+        hips: [-0.16 * up, -0.34],
+        spine: [-0.04 - 0.22 * up, -0.2],
+        chest: [-0.1 - 0.26 * up, -0.36],
+        head: [-0.36 * up, 0.34],
+        shoulderL: [bowArm, 0.42, 0.12],
+        elbowL: [-0.1],
+        shoulderR: [bowArm + 0.2, -0.55, -0.25],
+        elbowR: [-1.5],
+      },
+      hp: [0, -0.012, 0],
+      fl: [0.13, 0, 0.1],
+      fr: [-0.15, 0, -0.12],
+    },
+    {
+      t: 0.45,
+      e: 'out',
+      b: {
+        hips: [-0.1 * up, -0.32],
+        spine: [-0.03 - 0.15 * up, -0.18],
+        chest: [-0.06 - 0.2 * up, -0.3],
+        head: [-0.25 * up, 0.3],
+        shoulderL: [bowArm + 0.1, 0.4, 0.1],
+        elbowL: [-0.15],
+        shoulderR: [bowArm + 0.45, -0.15, -0.35],
+        elbowR: [-0.9],
+      },
+      hp: [0, -0.01, 0],
+      fl: [0.13, 0, 0.1],
+      fr: [-0.15, 0, -0.12],
+    },
+    {
+      t: 0.72,
+      b: {
+        hips: [0, -0.2],
+        spine: [-0.02, -0.1],
+        chest: [-0.04, -0.2],
+        head: [0, 0.2],
+        shoulderL: [-1.0, 0.2, 0],
+        elbowL: [-0.5],
+        shoulderR: [-0.8, 0.3, 0.3],
+        elbowR: [-0.5],
+      },
+      fl: [0.12, 0, 0.08],
+      fr: [-0.13, 0, -0.1],
+    },
+    { t: 1, b: READYBOW, fl: [0.1, 0, 0.06], fr: [-0.1, 0, -0.06] },
+  ]);
+}
+const K_SHOOT = bowKeys(0, 0.17, 0);
+const K_SKYSHOT = bowKeys(0.6, 0.17, 0);
+const K_SNAPSHOT = bowKeys(0, 0.16, 1);
+
+// Head back, chest open, arms flung wide: shouts, banners, war cries.
+const K_ROAR = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.18,
+    sL: [0.9, -0.4],
+    sR: [0.9, 0.4],
+    b: { elbowL: [-1.6], elbowR: [-1.6], spine: [0.24], chest: [0.3], head: [0.3] },
+    hp: [0, -0.03, 0],
+    fl: [0.08, 0, 0.02],
+    fr: [-0.08, 0, -0.02],
+  },
+  {
+    t: 0.32,
+    e: 'in',
+    sL: [1.6, 1.3],
+    sR: [1.6, -1.3],
+    b: { elbowL: [-0.4], elbowR: [-0.4], spine: [-0.3], chest: [-0.42], head: [-0.55] },
+    hp: [0, 0.02, 0],
+    fl: [0.09, 0, 0.02],
+    fr: [-0.09, 0, -0.02],
+  },
+  {
+    t: 0.7,
+    e: 'out',
+    sL: [1.45, 1.35],
+    sR: [1.45, -1.35],
+    b: { elbowL: [-0.5], elbowR: [-0.5], spine: [-0.26], chest: [-0.36], head: [-0.45] },
+    hp: [0, 0.015, 0],
+    fl: [0.09, 0, 0.02],
+    fr: [-0.09, 0, -0.02],
+  },
+  { t: 1, b: READY, fl: [0.09, 0, 0.02], fr: [-0.09, 0, -0.02] },
+]);
+
+// Collapse inward and snap back out: teleports, shadow steps, vanishes.
+const K_BLINK = keyed([
+  { t: 0, b: READY },
+  {
+    t: 0.26,
+    sL: [1.3, -1.0],
+    sR: [1.3, 1.0],
+    b: { elbowL: [-1.7], elbowR: [-1.7], hips: [0.34, 0.5], spine: [0.4, 0.4], chest: [0.36, 0.36], head: [0.2, 0.3] },
+    hp: [0, -0.16, 0],
+    fl: [0.08, 0, 0],
+    fr: [-0.08, 0, 0],
+  },
+  {
+    t: 0.4,
+    e: 'in',
+    sL: [1.4, 1.4],
+    sR: [1.4, -1.4],
+    b: { elbowL: [-0.2], elbowR: [-0.2], hips: [-0.1, -0.2], spine: [-0.24, -0.2], chest: [-0.3, -0.19], head: [-0.24, -0.1] },
+    hp: [0, 0.04, 0],
+    fl: [0.08, 0, 0.04],
+    fr: [-0.08, 0, -0.04],
+  },
+  {
+    t: 0.6,
+    e: 'out',
+    sL: [0.8, 1.0],
+    sR: [0.8, -1.0],
+    b: { elbowL: [-0.4], elbowR: [-0.4], spine: [-0.1], chest: [-0.12] },
+    hp: [0, 0.01, 0],
+    fl: [0.08, 0, 0.04],
+    fr: [-0.08, 0, -0.04],
+  },
+  { t: 1, b: READY, fl: [0.08, 0, 0.04], fr: [-0.08, 0, -0.04] },
+]);
+
+// Drop to a knee and set something on the floor: traps, banners, wards.
+const K_PLANT = keyed([
+  { t: 0, b: READY },
+  { t: 0.16, b: READY, hp: [0, -0.1, 0], fl: [0.1, 0.09, 0.17], fr: [-0.06, 0, -0.1] },
+  {
+    t: 0.34,
+    sR: [1.2, 0.2],
+    sL: [0.9, 0.3],
+    b: { elbowR: [-0.9], elbowL: [-1.15], hips: [0.24, -0.18], spine: [0.3, -0.12], chest: [0.26, -0.16], head: [0.16, -0.1] },
+    hp: [0, -0.3, 0],
+    fl: [0.2, 0, 0.34],
+    fr: [-0.17, 0.08, -0.35],
+  },
+  {
+    t: 0.45,
+    e: 'in',
+    sR: [1.0, 0.15],
+    sL: [0.9, 0.3],
+    b: { elbowR: [-0.4], elbowL: [-1.15], hips: [0.24, -0.18], spine: [0.32, -0.12], chest: [0.28, -0.16], head: [0.26, -0.1] },
+    hp: [0, -0.32, 0],
+    fl: [0.2, 0, 0.34],
+    fr: [-0.18, 0, -0.46],
+  },
+  {
+    t: 0.66,
+    e: 'out',
+    sR: [1.05, 0.15],
+    sL: [0.9, 0.3],
+    b: { elbowR: [-0.45], elbowL: [-1.15], hips: [0.24, -0.18], spine: [0.3, -0.12], chest: [0.26, -0.16], head: [0.2, -0.1] },
+    hp: [0, -0.31, 0],
+    fl: [0.2, 0, 0.34],
+    fr: [-0.18, 0, -0.46],
+  },
+  { t: 1, b: READY, fl: [0.12, 0, 0.16], fr: [-0.1, 0, -0.2] },
+]);
+
+/** A strike: keyed, with a heavier weapon putting more trunk into it. */
+function strike(k1: Keyed, k2: Keyed | null, duration: number, contact: number, aim: [number, number, number]): ClipDef {
+  return {
+    duration,
+    loop: false,
+    breath: 0.05,
+    contact,
+    offHand: true,
+    aim: { dir: aim, w: aimAround(contact - 0.14, contact, contact + 0.2, Math.min(1, contact + 0.6)) },
+    eval(t, p, rig) {
+      const w = rig.wpn;
+      sampleAction(w.two && k2 ? k2 : k1, t, p, rig, contact);
+      torso(p, 0.8 + 0.4 * w.heavy);
+    },
+  };
+}
+
+function gesture(
+  k: Keyed,
+  duration: number,
+  contact: number,
+  extra: Partial<ClipDef> = {},
+): ClipDef {
+  return {
+    duration,
+    loop: false,
+    breath: 0.1,
+    contact,
+    eval(t, p, rig) {
+      sampleAction(k, t, p, rig, contact);
+    },
+    ...extra,
+  };
+}
+
+let _glowTex: THREE.DataTexture | null = null;
+
+/** A round, soft falloff, made once: the spell light's shape. */
+function glowTexture(): THREE.DataTexture {
+  if (_glowTex) return _glowTex;
+  const N = 32;
+  const data = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const dx = (x + 0.5) / N - 0.5;
+      const dy = (y + 0.5) / N - 0.5;
+      const r = Math.min(1, Math.hypot(dx, dy) * 2);
+      const a = Math.pow(1 - r, 2.2);
+      const i = (y * N + x) * 4;
+      data[i] = 255;
+      data[i + 1] = 255;
+      data[i + 2] = 255;
+      data[i + 3] = Math.round(a * 255);
+    }
+  }
+  _glowTex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  _glowTex.needsUpdate = true;
+  return _glowTex;
+}
+
+/** Stands a bow up in the bow hand from the draw through the loose. */
+function bowAim(dir: [number, number, number]): ClipDef['aim'] {
+  return { dir: (w) => (w.grip === 'bow' ? dir : null), w: aimAround(0.02, 0.15, 0.5, 0.8) };
+}
+
+/** A glow that gathers into the release and fades after it. */
+function glowAround(contact: number, hold: number, hands: 'left' | 'right' | 'both'): ClipDef['glow'] {
+  return {
+    hands,
+    w: (t) => kf(t, [
+      [0, 0],
+      [contact * 0.7, 0.75],
+      [contact, 1],
+      [hold, 0.6],
+      [Math.min(1, hold + 0.3), 0],
+    ]),
+  };
 }
 
 const CLIPS: Record<ClipName, ClipDef> = {
@@ -365,239 +1458,33 @@ const CLIPS: Record<ClipName, ClipDef> = {
     eval() {},
   },
 
-  // --------------------------------------------------------------- ATTACK1 --
-  // Overhead vertical chop, right hand leading.
-  attack1: {
-    duration: 0.62,
-    loop: false,
-    breath: 0.1,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      // Wind up slow, strike fast, recover medium: the classic 3-beat.
-      const arm = kf(t, [
-        [0, 0.05],
-        [0.34, -3.35],
-        [0.5, -0.35],
-        [0.66, 0.15],
-        [1, 0.05],
-      ]);
-      const twist = kf(t, [
-        [0, 0],
-        [0.34, 0.62],
-        [0.5, -0.5],
-        [1, -0.12],
-      ]);
-      const lean = kf(t, [
-        [0, 0.03],
-        [0.34, -0.18],
-        [0.52, 0.34],
-        [1, 0.08],
-      ]);
+  // --------------------------------------------------------------- STRIKES --
+  // Overhead chop, right hand leading; both hands with a two-handed weapon.
+  attack1: strike(K_CHOP, K_CHOP2, 0.62, 0.3, [0, -0.3, 1]),
+  // Horizontal sweep across the body; reads completely differently from the
+  // chop at a glance, which is the point of having two.
+  attack2: strike(K_SWEEP, K_SWEEP2, 0.6, 0.3, [0.25, -0.1, 1]),
+  /** Overhead two-handed smash: wind up tall, then drive down through the target. */
+  slam: { ...strike(K_SLAM, null, 0.72, 0.36, [0, -0.75, 0.66]), breath: 0.03 },
+  /** A stab: the hand chambers at the hip and drives straight out. */
+  thrust: strike(K_THRUST, null, 0.5, 0.3, [0, -0.12, 1]),
+  /** A long step-through stab that travels after the point. */
+  lunge: strike(K_LUNGE, null, 0.56, 0.32, [0, -0.1, 1]),
 
-      p.set('hips', 0, twist * 0.4, 0);
-      p.move('hips', 0, -h * 0.03 * Math.max(0, lean), 0);
-      p.set('spine', lean * 0.55, twist * 0.42, 0);
-      p.set('chest', lean * 0.45, twist * 0.6, 0);
-      p.set('head', -lean * 0.25, twist * 0.2, 0);
-
-      p.set('shoulderR', arm, twist * 0.25, -0.3 - twist * 0.2);
-      p.set('elbowR', kf(t, [
-        [0, -0.4],
-        [0.34, -1.5],
-        [0.52, -0.16],
-        [1, -0.35],
-      ]));
-      p.set('handR', kf(t, [
-        [0, 0],
-        [0.34, -0.5],
-        [0.52, 0.3],
-        [1, 0],
-      ]));
-      p.set('shoulderL', kf(t, [
-        [0, 0.05],
-        [0.34, -0.55],
-        [0.55, 0.5],
-        [1, 0.05],
-      ]), 0, 0.25);
-      p.set('elbowL', -0.7, 0, 0.1);
-
-      // Step into the swing: the front foot slides forward on the strike.
-      const step = kf(t, [
-        [0, 0],
-        [0.34, -0.1],
-        [0.55, 0.35],
-        [1, 0.2],
-      ]);
-      p.foot(0, h * 0.03, 0, h * step * 0.5, 0.1);
-      p.foot(1, -h * 0.05, 0, -h * 0.18 - h * step * 0.1, -0.15);
-    },
-  },
-
-  // --------------------------------------------------------------- ATTACK2 --
-  // Horizontal sweep across the body — reads completely differently from the
-  // chop at a glance, which is the entire point of having two.
-  attack2: {
-    duration: 0.58,
-    loop: false,
-    breath: 0.1,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const sweep = kf(t, [
-        [0, 0],
-        [0.3, 1.05],
-        [0.48, -1.15],
-        [1, -0.25],
-      ]);
-      const rise = kf(t, [
-        [0, 0.05],
-        [0.3, -1.15],
-        [0.5, -1.0],
-        [1, 0.05],
-      ]);
-
-      p.set('hips', 0, sweep * 0.42, 0);
-      p.set('spine', 0.05, sweep * 0.5, sweep * 0.08);
-      p.set('chest', 0.02, sweep * 0.62, sweep * 0.12);
-      p.set('head', 0, -sweep * 0.15, 0);
-
-      p.set('shoulderR', rise, sweep * 0.35, -0.55 + sweep * 0.15);
-      p.set('elbowR', kf(t, [
-        [0, -0.5],
-        [0.3, -1.25],
-        [0.5, -0.3],
-        [1, -0.5],
-      ]));
-      p.set('handR', 0, sweep * 0.3, 0);
-      p.set('shoulderL', -0.25, 0, 0.4);
-      p.set('elbowL', -1.1, 0, 0.2);
-
-      const pivot = kf(t, [
-        [0, 0],
-        [0.3, 0.12],
-        [0.5, -0.28],
-        [1, -0.1],
-      ]);
-      p.foot(0, h * 0.05, 0, h * pivot, 0.05);
-      p.foot(1, -h * 0.05, 0, -h * pivot * 0.6, -0.05);
-      p.move('hips', 0, -h * 0.02, 0);
-    },
-  },
-
-  // ------------------------------------------------------------------ CAST --
-  /**
-   * Drawing and loosing a bow.
-   *
-   * Casting was standing in for this, and a two-handed overhead spell gesture
-   * while holding a bow is the single most wrong thing an archer can do. The
-   * shape that reads is: front arm locked out holding the bow, rear hand pulled
-   * back to the cheek, a beat of stillness at full draw, then a snap forward on
-   * release with the string hand flicking past the ear.
-   */
-  shoot: {
-    duration: 0.5,
-    loop: false,
-    breath: 0.15,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      // Draw builds, holds briefly at full, then goes in one frame on release.
-      const draw = kf(t, [
-        [0, 0],
-        [0.46, 1],
-        [0.6, 1],
-        [0.68, 0],
-        [1, 0],
-      ]);
-      const loose = kf(t, [
-        [0, 0],
-        [0.62, 0],
-        [0.72, 1],
-        [1, 0.25],
-      ]);
-
-      // Side-on stance: the bow shoulder leads, the body turns out of square.
-      p.set('hips', 0, -0.34, 0);
-      p.set('spine', -0.04, -0.2, 0);
-      p.set('chest', -0.06 - 0.05 * draw, -0.26 - 0.1 * draw, 0);
-      p.set('head', 0, 0.34, 0);
-      p.move('hips', 0, -h * 0.012 * draw, 0);
-
-      // Bow arm: out straight and level, and it stays there through the loose.
-      // A bow arm that moves is a missed shot.
-      p.set('shoulderL', -1.5, 0.42, 0.12);
-      p.set('elbowL', -0.1, 0, 0);
-
-      // String hand: back to the cheek, then released past the ear.
-      p.set('shoulderR', -1.15 - 0.35 * draw + 0.15 * loose, -0.5 - 0.45 * draw + 0.7 * loose, -0.1);
-      p.set('elbowR', -0.6 - 1.5 * draw + 0.4 * loose, 0, 0);
-
-      // Weight settles onto the back foot as the draw builds.
-      p.foot(0, 0.12, -0.06 * draw, 0.1, 0);
-      p.foot(1, -0.14, -0.1 * draw, -0.12, 0);
-    },
-  },
-
-
-  /**
-   * Overhead two-handed smash. Wind up tall, then drive down through the
-   * target with the whole body behind it.
-   */
-  slam: {
-    duration: 0.72,
-    loop: false,
-    breath: 0.08,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const wind = kf(t, [[0, 0], [0.34, 1], [0.44, 1], [0.56, 0], [1, 0]]);
-      const drop = kf(t, [[0, 0], [0.46, 0], [0.58, 1], [0.72, 0.9], [1, 0.2]]);
-
-      p.set('spine', -0.34 * wind + 0.5 * drop, 0, 0);
-      p.set('chest', -0.4 * wind + 0.62 * drop, 0, 0);
-      p.set('head', -0.36 * wind + 0.34 * drop, 0, 0);
-      p.move('hips', 0, h * 0.05 * wind - h * 0.09 * drop, 0);
-
-      // Both arms travel together — this is a two-handed blow.
-      const arm = -2.5 * wind + 1.1 * drop;
-      p.set('shoulderL', arm, 0.18, 0.34 - 0.2 * drop);
-      p.set('shoulderR', arm, -0.18, -0.34 + 0.2 * drop);
-      p.set('elbowL', -0.5 - 0.7 * wind + 0.6 * drop, 0, 0);
-      p.set('elbowR', -0.5 - 0.7 * wind + 0.6 * drop, 0, 0);
-
-      p.foot(0, 0.16, -0.18 * drop, 0.22 * drop, 0);
-      p.foot(1, -0.16, -0.1 * drop, -0.1, 0);
-    },
-  },
-
-  /** A lunging stab: back foot drives, the weapon arm extends straight out. */
-  thrust: {
-    duration: 0.46,
-    loop: false,
-    breath: 0.1,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const coil = kf(t, [[0, 0], [0.3, 1], [0.42, 0.7], [1, 0]]);
-      const stab = kf(t, [[0, 0], [0.36, 0], [0.5, 1], [0.72, 0.85], [1, 0.1]]);
-
-      p.set('hips', 0, -0.3 * coil + 0.34 * stab, 0);
-      p.set('spine', 0.06 * stab, -0.22 * coil + 0.28 * stab, 0);
-      p.set('chest', 0.04, -0.3 * coil + 0.4 * stab, 0);
-      p.set('head', 0, 0.16 * coil - 0.1 * stab, 0);
-      p.move('hips', 0, -h * 0.05 * stab, 0);
-
-      p.set('shoulderR', -0.5 - 0.55 * coil - 0.75 * stab, -0.4 + 0.5 * stab, -0.3);
-      p.set('elbowR', -1.5 * coil + 1.45 * stab, 0, 0);
-      p.set('shoulderL', -0.2, 0.4, 0.5);
-      p.set('elbowL', -1.0, 0, 0.2);
-
-      p.foot(0, 0.14, -0.22 * stab, 0.5 * stab, 0);
-      p.foot(1, -0.18, 0, -0.3 * stab, 0);
-    },
-  },
+  // -------------------------------------------------------------- GESTURES --
+  /** Drawing and loosing a bow, side-on, with a beat at full draw. */
+  shoot: gesture(K_SHOOT, 0.5, 0.3, { breath: 0.1, gaze: 0, aim: bowAim([0, 1, 0.1]) }),
+  /** Draw and loose high: arrow rain, volleys called down on a point. */
+  skyshot: gesture(K_SKYSHOT, 0.62, 0.3, { breath: 0.1, gaze: 0, aim: bowAim([0, 0.8, -0.6]) }),
+  /** A snap shot from a half draw, so eleven bow skills are not one gesture. */
+  snapshot: gesture(K_SNAPSHOT, 0.36, 0.3, { breath: 0.1, gaze: 0, aim: bowAim([0.25, 1, 0.1]) }),
 
   /** Sustained two-handed output: arms forward, braced, holding the line. */
   channel: {
     duration: 0.9,
     loop: true,
     breath: 0.3,
+    glow: { hands: 'both', w: (t) => 0.8 + 0.2 * Math.sin(t * TAU) },
     eval(t, p, rig) {
       const h = rig.hipY;
       const push = kf(t, [[0, 0.85], [0.5, 1], [1, 0.85]]);
@@ -613,317 +1500,33 @@ const CLIPS: Record<ClipName, ClipDef> = {
       p.set('elbowL', -0.28 + tremor, 0, 0.1);
       p.set('elbowR', -0.28 - tremor, 0, -0.1);
 
-      p.foot(0, 0.18, -0.1, 0.12, 0);
-      p.foot(1, -0.18, -0.14, -0.16, 0);
+      p.foot(0, h * 0.09, 0, h * 0.1, 0);
+      p.foot(1, -h * 0.09, 0, -h * 0.12, 0);
     },
   },
 
   /** One arm snapped out, finger first: commands, curses, marks, summons. */
-  point: {
-    duration: 0.54,
-    loop: false,
+  point: gesture(K_POINT, 0.54, 0.28, { glow: glowAround(0.28, 0.55, 'right') }),
+  /** Drop to a knee and set something on the floor: traps, banners, wards. */
+  plant: gesture(K_PLANT, 0.66, 0.45, { breath: 0.05, glow: glowAround(0.45, 0.66, 'right') }),
+  /** Collapse inward and snap back out: teleports, shadow steps, vanishes. */
+  blink: gesture(K_BLINK, 0.4, 0.4, { breath: 0, glow: glowAround(0.4, 0.5, 'both') }),
+  /** An overhand throw: vials, bombs, anything lobbed. */
+  hurl: { ...gesture(K_HURL, 0.52, 0.3), aim: { dir: [0, 0.2, 1], w: aimAround(0.16, 0.3, 0.36, 0.5) } },
+  /** Rise and drive both feet down: ground novas, quakes, shockwaves. */
+  stomp: gesture(K_STOMP, 0.66, 0.4, { breath: 0.05 }),
+  /** Head back, chest open, arms flung wide: shouts, banners, war cries. */
+  roar: gesture(K_ROAR, 0.8, 0.32, { breath: 0.15 }),
+  /** Draw power in, then push it out with both hands. */
+  cast: gesture(K_CAST, 0.8, 0.3, {
     breath: 0.15,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const draw = kf(t, [[0, 0], [0.32, 1], [0.44, 1], [1, 0]]);
-      const snap = kf(t, [[0, 0], [0.4, 0], [0.52, 1], [0.78, 0.9], [1, 0.3]]);
-
-      p.set('spine', -0.14 * draw + 0.18 * snap, -0.1 * draw + 0.14 * snap, 0);
-      p.set('chest', -0.18 * draw + 0.24 * snap, -0.16 * draw + 0.22 * snap, 0);
-      p.set('head', -0.1 * draw + 0.12 * snap, 0.1 * snap, 0);
-      p.move('hips', 0, -h * 0.014 * snap, 0);
-
-      // Pointing arm out level; the other stays tucked, which is what makes
-      // the gesture read as deliberate rather than as a flail.
-      p.set('shoulderR', -0.4 - 0.5 * draw - 0.8 * snap, -0.2 + 0.35 * snap, -0.3);
-      p.set('elbowR', -1.3 * draw + 1.3 * snap, 0, 0);
-      p.set('shoulderL', -0.3 - 0.35 * draw, 0.3, 0.55);
-      p.set('elbowL', -1.35, 0, 0.25);
-
-      p.foot(0, 0.14, -0.05 * snap, 0.1 * snap, 0);
-      p.foot(1, -0.16, -0.04, -0.06, 0);
+    glow: glowAround(0.3, 0.55, 'both'),
+    // A staff is raised and thrust out head first; a wand points the way.
+    aim: {
+      dir: (w) => (w.grip === 'staff' ? [0, 1, 0.45] : w.grip === 'wand' ? [0, 0.15, 1] : null),
+      w: aimAround(0.05, 0.25, 0.6, 0.95),
     },
-  },
-
-  /**
-   * Drop to a knee and set something on the floor — traps, banners, wards.
-   *
-   * Traps used to play `stomp`, so laying a tripwire looked like an earthquake.
-   * This is the opposite shape: down, careful, one hand to the ground.
-   */
-  plant: {
-    duration: 0.62,
-    loop: false,
-    breath: 0.08,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const kneel = kf(t, [[0, 0], [0.34, 1], [0.62, 1], [1, 0]]);
-      const set = kf(t, [[0, 0], [0.38, 0], [0.5, 1], [0.66, 1], [1, 0]]);
-
-      p.move('hips', 0, -h * 0.3 * kneel, 0);
-      p.set('hips', 0.24 * kneel, -0.18 * kneel, 0);
-      p.set('spine', 0.3 * kneel, -0.12 * kneel, 0);
-      p.set('chest', 0.26 * kneel, -0.16 * kneel, 0);
-      p.set('head', 0.16 * kneel - 0.1 * set, -0.1 * kneel, 0);
-
-      // Working hand reaches the ground; the other braces on the knee.
-      p.set('shoulderR', -0.3 - 1.15 * kneel - 0.25 * set, -0.28 * kneel, -0.2);
-      p.set('elbowR', -0.55 - 0.4 * kneel + 0.5 * set, 0, 0);
-      p.set('shoulderL', -0.5 - 0.5 * kneel, 0.34, 0.4);
-      p.set('elbowL', -1.15, 0, 0.2);
-
-      // Front knee down, back leg trailing.
-      p.foot(0, 0.2, -0.72 * kneel, 0.34 * kneel, 0);
-      p.foot(1, -0.18, -0.2 * kneel, -0.46 * kneel, 0);
-    },
-  },
-
-  /**
-   * Draw and loose high, at something above you — arrow rain, volleys called
-   * down on a distant point. Previously the two-handed overhead `slam`, which
-   * is an archer hitting the ground to make arrows fall out of the sky.
-   */
-  skyshot: {
-    duration: 0.66,
-    loop: false,
-    breath: 0.12,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const draw = kf(t, [[0, 0], [0.46, 1], [0.62, 1], [0.72, 0], [1, 0]]);
-      const loose = kf(t, [[0, 0], [0.66, 0], [0.76, 1], [1, 0.3]]);
-
-      // Lean back and open the chest to the sky.
-      p.set('hips', -0.16 * draw, -0.3, 0);
-      p.set('spine', -0.26 * draw, -0.18, 0);
-      p.set('chest', -0.34 * draw + 0.12 * loose, -0.24, 0);
-      p.set('head', -0.42 * draw + 0.2 * loose, 0.3, 0);
-      p.move('hips', 0, -h * 0.02 * draw, 0);
-
-      // Bow arm angled up rather than level.
-      p.set('shoulderL', -2.1 - 0.2 * draw, 0.4, 0.16);
-      p.set('elbowL', -0.12, 0, 0);
-      p.set('shoulderR', -1.5 - 0.4 * draw + 0.2 * loose, -0.45 - 0.4 * draw + 0.6 * loose, -0.1);
-      p.set('elbowR', -0.7 - 1.4 * draw + 0.5 * loose, 0, 0);
-
-      p.foot(0, 0.14, -0.08 * draw, 0.14, 0);
-      p.foot(1, -0.16, -0.14 * draw, -0.16, 0);
-    },
-  },
-
-  /**
-   * A snap shot from a half draw. Same weapon as `shoot`, half the wind-up, so
-   * a class with eleven bow skills does not play one identical gesture for all
-   * of them.
-   */
-  snapshot: {
-    duration: 0.3,
-    loop: false,
-    breath: 0.12,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const draw = kf(t, [[0, 0], [0.34, 1], [0.44, 1], [0.54, 0], [1, 0]]);
-      const loose = kf(t, [[0, 0], [0.48, 0], [0.6, 1], [1, 0.2]]);
-
-      p.set('hips', 0, -0.28, 0);
-      p.set('spine', -0.02, -0.16, 0);
-      p.set('chest', -0.04 - 0.06 * draw, -0.22 - 0.06 * draw, 0);
-      p.set('head', 0, 0.3, 0);
-      p.move('hips', 0, -h * 0.008 * draw, 0);
-
-      // Bow held lower and closer in — a shot taken without setting up.
-      p.set('shoulderL', -1.24, 0.36, 0.14);
-      p.set('elbowL', -0.3, 0, 0);
-      p.set('shoulderR', -1.0 - 0.28 * draw + 0.16 * loose, -0.42 - 0.34 * draw + 0.6 * loose, -0.1);
-      p.set('elbowR', -0.75 - 1.15 * draw + 0.45 * loose, 0, 0);
-
-      p.foot(0, 0.12, 0, 0.08, 0);
-      p.foot(1, -0.12, -0.05 * draw, -0.1, 0);
-    },
-  },
-
-  /**
-   * Collapse inward and snap back out — teleports, shadow steps, vanishes.
-   * These all played `cast`, which is a two-handed conjuring gesture and reads
-   * as nothing at all like disappearing.
-   */
-  blink: {
-    duration: 0.34,
-    loop: false,
-    breath: 0,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const fold = kf(t, [[0, 0], [0.4, 1], [0.52, 1], [1, 0]]);
-      const snap = kf(t, [[0, 0], [0.54, 0], [0.66, 1], [1, 0.15]]);
-
-      p.move('hips', 0, -h * 0.16 * fold + h * 0.04 * snap, 0);
-      p.set('hips', 0.34 * fold - 0.1 * snap, 0.5 * fold - 0.7 * snap, 0);
-      p.set('spine', 0.4 * fold - 0.24 * snap, 0.4 * fold - 0.6 * snap, 0);
-      p.set('chest', 0.36 * fold - 0.3 * snap, 0.36 * fold - 0.55 * snap, 0);
-      p.set('head', 0.2 * fold - 0.24 * snap, 0.3 * fold - 0.4 * snap, 0);
-
-      // Arms cross the body on the fold, then fling wide as it releases.
-      p.set('shoulderL', -1.5 * fold - 0.2 * snap, 0.9 * fold, 0.7 - 0.5 * snap);
-      p.set('shoulderR', -1.5 * fold - 0.2 * snap, -0.9 * fold, -0.7 + 0.5 * snap);
-      p.set('elbowL', -1.7 * fold + 0.9 * snap, 0, 0.3);
-      p.set('elbowR', -1.7 * fold + 0.9 * snap, 0, -0.3);
-
-      p.foot(0, 0.1, -0.4 * fold, 0.12 * snap, 0);
-      p.foot(1, -0.1, -0.4 * fold, -0.12 * snap, 0);
-    },
-  },
-
-  /**
-   * An overhand throw: vials, bombs, anything lobbed at the floor. Distinct
-   * from `point`, which commands, and from `cast`, which conjures.
-   */
-  hurl: {
-    duration: 0.5,
-    loop: false,
-    breath: 0.1,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const cock = kf(t, [[0, 0], [0.32, 1], [0.42, 1], [0.54, 0], [1, 0]]);
-      const sling = kf(t, [[0, 0], [0.44, 0], [0.58, 1], [0.78, 0.8], [1, 0.15]]);
-
-      p.set('hips', 0, 0.34 * cock - 0.42 * sling, 0);
-      p.set('spine', -0.2 * cock + 0.3 * sling, 0.3 * cock - 0.44 * sling, 0);
-      p.set('chest', -0.26 * cock + 0.4 * sling, 0.34 * cock - 0.5 * sling, 0);
-      p.set('head', -0.1 * cock + 0.16 * sling, 0.2 * cock - 0.3 * sling, 0);
-      p.move('hips', 0, h * 0.02 * cock - h * 0.03 * sling, 0);
-
-      // Throwing arm goes back past the ear, then whips through and across.
-      p.set('shoulderR', -2.2 * cock + 1.4 * sling, -0.4 * cock + 0.5 * sling, -0.3);
-      p.set('elbowR', -1.9 * cock + 1.7 * sling, 0, 0);
-      p.set('shoulderL', -0.6 - 0.5 * sling, 0.5, 0.5);
-      p.set('elbowL', -0.9, 0, 0.2);
-
-      p.foot(0, 0.16, -0.1 * sling, 0.3 * sling, 0);
-      p.foot(1, -0.16, -0.16 * cock, -0.24 * cock, 0);
-    },
-  },
-
-  /**
-   * A long step-through stab. Shares intent with `thrust` but travels: the
-   * front foot lands well ahead and the whole body follows the point, so a
-   * class with five strike skills is not playing the same jab five times.
-   */
-  lunge: {
-    duration: 0.52,
-    loop: false,
-    breath: 0.08,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const load = kf(t, [[0, 0], [0.26, 1], [0.38, 0.8], [1, 0]]);
-      const drive = kf(t, [[0, 0], [0.32, 0], [0.52, 1], [0.74, 0.9], [1, 0.15]]);
-
-      // Drop and drive forward rather than staying tall.
-      p.move('hips', 0, -h * 0.08 * load - h * 0.18 * drive, 0);
-      p.set('hips', 0.1 * drive, -0.36 - 0.2 * drive, 0);
-      p.set('spine', 0.16 * drive, -0.26 + 0.2 * drive, 0);
-      p.set('chest', 0.2 * drive, -0.34 + 0.3 * drive, 0);
-      p.set('head', -0.08 * load + 0.12 * drive, 0.24, 0);
-
-      p.set('shoulderR', -0.45 - 0.4 * load - 0.95 * drive, -0.45 + 0.55 * drive, -0.28);
-      p.set('elbowR', -1.35 * load + 1.5 * drive, 0, 0);
-      p.set('shoulderL', -0.25 - 0.2 * load, 0.45 + 0.2 * drive, 0.55);
-      p.set('elbowL', -1.05, 0, 0.22);
-
-      // Deep front lunge, back leg extended straight behind.
-      p.foot(0, 0.14, -0.34 * drive, 0.95 * drive, 0);
-      p.foot(1, -0.18, 0.06 * drive, -0.7 * drive, 0);
-    },
-  },
-
-  /** Rise and drive both feet down — ground novas, quakes, shockwaves. */
-  stomp: {
-    duration: 0.66,
-    loop: false,
-    breath: 0.05,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const lift = kf(t, [[0, 0], [0.34, 1], [0.46, 0.9], [0.58, 0], [1, 0]]);
-      const land = kf(t, [[0, 0], [0.5, 0], [0.6, 1], [0.76, 0.55], [1, 0.1]]);
-
-      p.move('hips', 0, h * 0.14 * lift - h * 0.16 * land, 0);
-      p.set('spine', -0.2 * lift + 0.4 * land, 0, 0);
-      p.set('chest', -0.26 * lift + 0.5 * land, 0, 0);
-      p.set('head', -0.2 * lift + 0.3 * land, 0, 0);
-
-      p.set('shoulderL', -1.9 * lift + 0.9 * land, 0.4, 0.7 - 0.4 * land);
-      p.set('shoulderR', -1.9 * lift + 0.9 * land, -0.4, -0.7 + 0.4 * land);
-      p.set('elbowL', -0.9 * lift + 0.7 * land, 0, 0.2);
-      p.set('elbowR', -0.9 * lift + 0.7 * land, 0, -0.2);
-
-      // Knees tuck on the rise and splay wide on the landing.
-      p.foot(0, 0.1 + 0.22 * land, -0.42 * lift - 0.3 * land, 0, 0);
-      p.foot(1, -0.1 - 0.22 * land, -0.42 * lift - 0.3 * land, 0, 0);
-    },
-  },
-
-  /** Head back, chest open, arms flung wide — shouts, banners, war cries. */
-  roar: {
-    duration: 0.8,
-    loop: false,
-    breath: 0.2,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const gather = kf(t, [[0, 0], [0.26, 1], [0.36, 1], [0.5, 0], [1, 0]]);
-      const bellow = kf(t, [[0, 0], [0.4, 0], [0.52, 1], [0.8, 0.8], [1, 0.2]]);
-
-      p.set('spine', 0.24 * gather - 0.3 * bellow, 0, 0);
-      p.set('chest', 0.3 * gather - 0.42 * bellow, 0, 0);
-      p.set('head', 0.3 * gather - 0.55 * bellow, 0, 0);
-      p.move('hips', 0, -h * 0.03 * gather + h * 0.02 * bellow, 0);
-
-      p.set('shoulderL', -0.3 - 0.5 * gather - 0.7 * bellow, 0.3 + 0.5 * bellow, 0.5 + 0.7 * bellow);
-      p.set('shoulderR', -0.3 - 0.5 * gather - 0.7 * bellow, -0.3 - 0.5 * bellow, -0.5 - 0.7 * bellow);
-      p.set('elbowL', -1.4 * gather + 1.0 * bellow, 0, 0.3);
-      p.set('elbowR', -1.4 * gather + 1.0 * bellow, 0, -0.3);
-
-      p.foot(0, 0.2 + 0.1 * bellow, -0.12 * bellow, 0, 0);
-      p.foot(1, -0.2 - 0.1 * bellow, -0.12 * bellow, 0, 0);
-    },
-  },
-
-  cast: {
-    duration: 0.85,
-    loop: false,
-    breath: 0.2,
-    eval(t, p, rig) {
-      const h = rig.hipY;
-      const gather = kf(t, [
-        [0, 0],
-        [0.42, 1],
-        [0.58, 1],
-        [1, 0],
-      ]);
-      const release = kf(t, [
-        [0, 0],
-        [0.5, 0],
-        [0.66, 1],
-        [1, 0.35],
-      ]);
-
-      // Draw power inward, then push it out. The arch of the back is what
-      // sells effort.
-      p.set('spine', -0.18 * gather + 0.22 * release, 0, 0);
-      p.set('chest', -0.22 * gather + 0.3 * release, 0, 0);
-      p.set('head', -0.3 * gather + 0.25 * release, 0, 0);
-      p.move('hips', 0, -h * 0.02 * gather, 0);
-
-      const armUp = -1.5 * gather - 0.55 * release;
-      p.set('shoulderL', armUp, 0.25 * gather, 0.55 - 0.3 * release);
-      p.set('shoulderR', armUp, -0.25 * gather, -0.55 + 0.3 * release);
-      p.set('elbowL', -1.5 * gather + 1.15 * release, 0, 0.2);
-      p.set('elbowR', -1.5 * gather + 1.15 * release, 0, -0.2);
-      p.set('handL', 0.4 * gather - 0.5 * release, 0, 0.3);
-      p.set('handR', 0.4 * gather - 0.5 * release, 0, -0.3);
-
-      stance(p, rig, h * 0.05, h * 0.03 * gather);
-      p.ik[2] = h * 0.12;
-      p.ik[6] = -h * 0.1;
-    },
-  },
+  }),
 
   // ------------------------------------------------------------------ HURT --
   hurt: {
@@ -1063,6 +1666,12 @@ export interface PlayOpts {
   hold?: boolean;
   /** Restart even if this clip is already playing. */
   restart?: boolean;
+  /**
+   * Seconds from now to the moment the blow lands (or the spell leaves the
+   * hand). The clip is time-warped so its contact key arrives exactly then,
+   * and plays its follow-through at `speed` after it.
+   */
+  contact?: number;
   /** Fired when a one-shot finishes. */
   onEnd?: () => void;
 }
@@ -1082,8 +1691,39 @@ interface Track {
    * Where the feet were when this one-shot began, and where the clip itself
    * wants them at its first frame. The difference is stepped out over the
    * first fraction of a second instead of being skated across the floor.
+   * Only for clips that travel; every other action holds its feet with
+   * `holdFeet`.
    */
   entry?: Float32Array;
+  /** Normalised clip time per second until the contact key, when warped. */
+  warp?: number;
+  /** How much of the authored wind-up there is time for, 0..1. */
+  antic?: number;
+}
+
+/**
+ * One foot during an action, in character space. Planted, it stays on its
+ * spot of floor whatever the body does over it; when the clip wants it more
+ * than a short distance away, or lifts it, it steps there.
+ */
+interface ActionFoot {
+  x: number;
+  z: number;
+  yaw: number;
+  moving: boolean;
+  k: number;
+  dur: number;
+  /** Where the step started, a spot on the floor. */
+  sx: number;
+  sz: number;
+  syaw: number;
+  lift: number;
+  /** Height the step started from, when it began in the air. */
+  drop: number;
+}
+
+function newActionFoot(): ActionFoot {
+  return { x: 0, z: 0, yaw: 0, moving: false, k: 0, dur: 0.14, sx: 0, sz: 0, syaw: 0, lift: 0, drop: 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -1163,10 +1803,73 @@ const _qAim = new THREE.Quaternion();
 const _eul = new THREE.Euler();
 const _vec = new THREE.Vector3();
 const _target = new THREE.Vector3();
+const _m4 = new THREE.Matrix4();
+const _m4b = new THREE.Matrix4();
+const _pole = new THREE.Vector3();
+const _elb = new THREE.Vector3();
+const _hand = new THREE.Vector3();
+const _dirA = new THREE.Vector3();
+const _dirB = new THREE.Vector3();
+/**
+ * Where the off hand holds a two-handed weapon, in the weapon's own frame
+ * (grip at the origin, business end up +Y), measured from the carry poses.
+ */
+const HAFT_TWOHAND = new THREE.Vector3(0, 0.19, -0.03);
+const HAFT_STAFF = new THREE.Vector3(0, 0.32, -0.03);
+/** A two-handed sword's hilt, under the guard: where the off hand goes in a swing. */
+const HILT_TWOHAND = new THREE.Vector3(0, -0.13, -0.02);
+const _haft = new THREE.Vector3();
+const _goal = new THREE.Vector3();
+const _qD = new THREE.Quaternion();
+const _m4c = new THREE.Matrix4();
+const _armE = new THREE.Vector3();
+const _armA = new THREE.Vector3();
+const _armB = new THREE.Vector3();
+const _armQ = new THREE.Quaternion();
+const _armH = new THREE.Vector3();
+
+/**
+ * Two-bone arm solve in the parent's frame. `S` is the shoulder, `u0` and `f0`
+ * the rest upper arm and forearm (bones have no bind rotation, so these are
+ * plain vectors), `T` where the wrist must go and `pole` which way the elbow
+ * points (consumed). Writes the shoulder and elbow rotations.
+ */
+function solveArm(
+  S: THREE.Vector3,
+  u0: THREE.Vector3,
+  f0: THREE.Vector3,
+  T: THREE.Vector3,
+  pole: THREE.Vector3,
+  qs: THREE.Quaternion,
+  qe: THREE.Quaternion,
+): void {
+  const a = u0.length();
+  const b = f0.length();
+  _armA.subVectors(T, S);
+  let d = _armA.length();
+  if (d < 1e-5) _armA.set(0, -1, 0);
+  else _armA.divideScalar(d);
+  d = Math.max(Math.abs(a - b) + 1e-3, Math.min((a + b) * 0.999, d));
+  pole.addScaledVector(_armA, -pole.dot(_armA));
+  if (pole.lengthSq() < 1e-8) pole.set(0, -1, 0).addScaledVector(_armA, -_armA.y);
+  pole.normalize();
+  const cosA = Math.max(-1, Math.min(1, (a * a + d * d - b * b) / (2 * a * d)));
+  const sinA = Math.sqrt(1 - cosA * cosA);
+  _armE.copy(S).addScaledVector(_armA, a * cosA).addScaledVector(pole, a * sinA);
+  // Shoulder: the rest upper arm onto the shoulder-elbow line.
+  qs.setFromUnitVectors(_armB.copy(u0).normalize(), _armA.subVectors(_armE, S).normalize());
+  // Elbow: the rest forearm onto the elbow-wrist line, in the shoulder's frame.
+  _armH.subVectors(T, S).normalize().multiplyScalar(d).add(S);
+  _armA.subVectors(_armH, _armE).normalize().applyQuaternion(_armQ.copy(qs).invert());
+  qe.setFromUnitVectors(_armB.copy(f0).normalize(), _armA);
+}
 const _AXIS_X = new THREE.Vector3(1, 0, 0);
 const _AXIS_Y = new THREE.Vector3(0, 1, 0);
 const _DOWN = new THREE.Vector3(0, -1, 0);
 const SIDES: ReadonlyArray<0 | 1> = [0, 1];
+/** Root down to the right hand, the chain whose rotations place the weapon. */
+const ARM_CHAIN_R = [SLOT.root, SLOT.hips, SLOT.spine, SLOT.chest, SLOT.shoulderR, SLOT.elbowR];
+const ARM_CHAIN_L = [SLOT.root, SLOT.hips, SLOT.spine, SLOT.chest, SLOT.shoulderL, SLOT.elbowL];
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
@@ -1266,6 +1969,45 @@ export class Animator {
   }
 
   /**
+   * What the main hand holds (a `WeaponGrip` from CharacterModels: sword,
+   * axe, mace, dagger, wand, twoHand, staff, bow or none). A dagger flicks,
+   * a greataxe puts the whole body into it.
+   */
+  setWeapon(grip: string, category?: string): void {
+    this.rig.wpn = weaponStyle(grip);
+    this.hilt = category === 'sword';
+  }
+
+  /** The two-handed weapon is a sword, held by its hilt rather than a haft. */
+  private hilt = false;
+
+  /**
+   * Spell light in the hands right now, 0..1: gathers into a cast's release
+   * and fades after it. The feel stream lights the hands from this; the
+   * animator draws nothing itself.
+   */
+  get castGlow(): number {
+    const g = this.cur.def.glow;
+    if (!g || this.cur.done) return 0;
+    const fade = this.prev ? smooth(clamp01(this.fadeTime / Math.max(1e-5, this.fadeDur))) : 1;
+    return clamp01(g.w(this.cur.time)) * fade;
+  }
+
+  /** Which hands `castGlow` lights. */
+  get castHands(): 'left' | 'right' | 'both' | null {
+    return this.cur.def.glow && !this.cur.done ? this.cur.def.glow.hands : null;
+  }
+
+  /**
+   * The running action, for tools and debug: its clip, how far through it
+   * is (0..1) and where its contact key sits. Null while only moving.
+   */
+  get actionState(): { clip: ClipName; t: number; contact: number | null } | null {
+    if (this.cur.def.locomotion || this.cur.done) return null;
+    return { clip: this.cur.name, t: this.cur.time, contact: this.cur.def.contact ?? null };
+  }
+
+  /**
    * Reads the body's real motion from `obj` (its position and `rotation.y`),
    * which is what lets planted feet stay put on the floor while the body
    * travels and turns over them. Without it, walk and run play on a treadmill
@@ -1309,6 +2051,8 @@ export class Animator {
       // runs well forward of the ankle, the heel only a little behind it.
       toe: hipY * 0.13,
       heel: hipY * 0.045,
+      wpn: weaponStyle('none'),
+      antic: 1,
     };
 
     this.cur = {
@@ -1350,8 +2094,14 @@ export class Animator {
     const resolved = resolveClip(name);
     const def = CLIPS[resolved];
 
-    // An action in flight beats any locomotion request.
-    if (def.locomotion && this.inAction) return;
+    // An action in flight beats any locomotion request, until it is past its
+    // blow: then a real move order takes over and the follow-through blends
+    // into the stride instead of skating along under it.
+    if (def.locomotion && this.inAction) {
+      const recover = this.cur.def.recover ?? this.cur.def.contact;
+      const moving = !this.followed || this.speed > 0.25;
+      if (resolved === 'idle' || recover === undefined || this.cur.time < recover || !moving) return;
+    }
 
     if (this.cur.name === resolved && !opts.restart) {
       if (opts.speed !== undefined) this.cur.speed = opts.speed;
@@ -1392,7 +2142,19 @@ export class Animator {
       onEnd: opts.onEnd,
       age: 0,
     };
-    if (!def.locomotion) track.entry = this.entryFeet(def);
+    if (def.contact !== undefined && opts.contact !== undefined) {
+      track.warp = def.contact / Math.max(0.03, opts.contact);
+      // A wind-up needs time to read. With less than that the body goes more
+      // directly to the blow instead of cramming a full wind-up into a blink.
+      track.antic = Math.max(0.3, Math.min(1, (opts.contact - 0.04) / 0.1));
+    }
+    if (!def.locomotion) {
+      if (def.travel) track.entry = this.entryFeet(def);
+      // Feet already held by an action stay exactly as they are (one may be
+      // mid-step); feet coming out of the gait or a dash start planted where
+      // they were last put.
+      else if (this.cur.def.locomotion || this.cur.def.travel || this.cur.done) this.plantActionFeet();
+    }
     this.cur = track;
   }
 
@@ -1438,11 +2200,16 @@ export class Animator {
     // Once locomotion is current the gait owns the feet outright, even while
     // the rest of the body is still fading out of an action: it started from
     // exactly where the action left them, and it keeps them on the floor.
+    // The same goes the other way: an action owns the feet from its first
+    // frame and holds them on the floor itself.
     if (this.cur.def.locomotion && pose !== this.poseA) this.writeFeet(pose);
+    else if (!this.cur.def.locomotion && !this.cur.def.travel) this.holdFeet(pose, this.poseA, step);
 
     this.applyProcedural(pose, step, real);
     this.guardReach(pose, real);
     this.applyPose(pose);
+    this.applyHands(pose, step);
+    this.updateGlow();
 
     this.outIk.set(pose.ik);
     this.outYaw.set(pose.fyaw);
@@ -1457,7 +2224,14 @@ export class Animator {
     track.age += step;
     if (track.done) return;
     const rate = Math.max(0.05, track.speed) / track.def.duration;
-    track.time += step * rate;
+    const c = track.def.contact;
+    if (track.warp !== undefined && c !== undefined && track.time < c) {
+      // Up to the contact on the game's clock, after it at the clip's own pace.
+      const next = track.time + step * track.warp;
+      track.time = next <= c ? next : c + ((next - c) / track.warp) * rate;
+    } else {
+      track.time += step * rate;
+    }
     if (track.def.loop && !track.once) {
       track.time -= Math.floor(track.time);
     } else if (track.time >= 1) {
@@ -1490,8 +2264,135 @@ export class Animator {
       this.evalLocomotion(pose);
       return;
     }
+    this.rig.antic = track.antic ?? 1;
     track.def.eval(track.time, pose, this.rig, this.elapsed);
+    // The head keeps looking where the body is going while the trunk winds
+    // and unwinds under it; a strike that turns the gaze away reads as a flail.
+    const g = track.def.gaze ?? 0.8;
+    if (g > 0) {
+      const hy = SLOT.hips * 3;
+      const sy = SLOT.spine * 3;
+      const cy = SLOT.chest * 3;
+      const hd = SLOT.head * 3;
+      pose.rot[hd + 1] -= g * (pose.rot[hy + 1] + pose.rot[sy + 1] + pose.rot[cy + 1]);
+      pose.rot[hd] -= 0.35 * g * (pose.rot[hy] + pose.rot[sy] + pose.rot[cy]);
+    }
     if (track.entry) this.applyEntry(track, pose);
+  }
+
+  // -- action feet ------------------------------------------------------------
+
+  private readonly actionFeet: [ActionFoot, ActionFoot] = [newActionFoot(), newActionFoot()];
+  /** Feet stay exactly where they are, steps and all (rooted, held fast). */
+  private pinned = false;
+
+  /** Plants both action feet where the feet were last put. */
+  private plantActionFeet(): void {
+    for (const side of SIDES) {
+      const f = this.actionFeet[side];
+      this.restFoot(side, _target);
+      f.x = _target.x + this.outIk[side * 4];
+      f.z = _target.z + this.outIk[side * 4 + 2];
+      f.yaw = this.outYaw[side];
+      f.moving = false;
+      f.k = 0;
+      f.drop = 0;
+      // A foot caught in the air (mid-stride) finishes coming down as a step
+      // to wherever the action wants it, rather than dropping in one frame.
+      const y = this.outIk[side * 4 + 1];
+      if (y > this.rig.hipY * 0.01) {
+        f.moving = true;
+        f.k = 0;
+        f.dur = 0.14;
+        f.sx = f.x;
+        f.sz = f.z;
+        f.syaw = f.yaw;
+        f.lift = this.rig.hipY * 0.025;
+        f.drop = y;
+      }
+    }
+  }
+
+  /**
+   * Puts an action's feet on the floor.
+   *
+   * A clip says where it wants the feet; this decides how they get there. A
+   * planted foot stays on its spot of ground while the body turns to face its
+   * target or drifts to a stop under the swing, and only steps when the clip
+   * wants it a real distance away, or lifts it. One foot steps at a time
+   * unless the clip lifts both. This is why nothing skates in an attack.
+   */
+  private holdFeet(pose: Pose, own: Pose, step: number): void {
+    const h = this.rig.hipY;
+    const c = Math.cos(-this.moveYaw);
+    const s = Math.sin(-this.moveYaw);
+    for (const f of this.actionFeet) {
+      const x = f.x * c + f.z * s - this.moveX;
+      const z = -f.x * s + f.z * c - this.moveZ;
+      f.x = x;
+      f.z = z;
+      f.yaw -= this.moveYaw;
+      const sx = f.sx * c + f.sz * s - this.moveX;
+      const sz = -f.sx * s + f.sz * c - this.moveZ;
+      f.sx = sx;
+      f.sz = sz;
+      f.syaw -= this.moveYaw;
+    }
+    for (const side of SIDES) {
+      const f = this.actionFeet[side];
+      const other = this.actionFeet[side === 0 ? 1 : 0];
+      const o = side * 4;
+      this.restFoot(side, _target);
+      const dx = _target.x + own.ik[o];
+      const dz = _target.z + own.ik[o + 2];
+      const dy = own.ik[o + 1];
+      const dyaw = own.fyaw[side];
+      const pitch = own.ik[o + 3];
+      const lifted = dy > h * 0.02;
+      if (!f.moving && !this.pinned) {
+        const err = Math.hypot(dx - f.x, dz - f.z);
+        const turn = Math.abs(dyaw - f.yaw);
+        // A foot left far behind does not wait its turn: it catches the body.
+        const far = (err > h * 0.1 || turn > 0.5) && (!other.moving || err > h * 0.35);
+        if (far || (lifted && err > h * 0.01)) {
+          f.moving = true;
+          f.k = 0;
+          f.dur = lifted ? 0.08 : 0.13;
+          f.sx = f.x;
+          f.sz = f.z;
+          f.syaw = f.yaw;
+          f.lift = Math.min(h * 0.07, h * 0.025 + err * 0.3);
+        }
+      }
+      let fx = f.x;
+      let fz = f.z;
+      let fyaw = f.yaw;
+      let fy = this.pinned ? 0 : dy;
+      if (f.moving) {
+        f.k = Math.min(1, f.k + step / f.dur);
+        const e = smooth(f.k);
+        fx = f.sx + (dx - f.sx) * e;
+        fz = f.sz + (dz - f.sz) * e;
+        fyaw = f.syaw + (dyaw - f.syaw) * e;
+        // Every step clears the floor, whatever the clip's own foot does.
+        fy = Math.max(dy, f.lift * Math.sin(Math.PI * f.k), f.drop * (1 - e));
+        f.x = fx;
+        f.z = fz;
+        f.yaw = fyaw;
+        if (f.k >= 1) {
+          f.moving = false;
+          f.drop = 0;
+        }
+      }
+      // A raised heel rolls over the ball of the foot, which stays put.
+      const r = this.rocker(Math.max(0, pitch));
+      pose.ik[o] = fx - _target.x;
+      pose.ik[o + 1] = fy + r.y;
+      pose.ik[o + 2] = fz - _target.z + r.z;
+      pose.ik[o + 3] = pitch;
+      pose.fyaw[side] = fyaw;
+    }
+    pose.ikW = Math.max(pose.ikW, own.ikW);
   }
 
   // -- ground motion ----------------------------------------------------------
@@ -2080,8 +2981,198 @@ export class Animator {
       pose.add('handR', 0, lag * 1.5, lag * 0.6);
       pose.add('handL', 0, lag * 1.2, -lag * 0.5);
       pose.add('elbowR', lag * 0.4, 0, 0);
-      pose.add('head', 0, -chestY * 0.35, 0);
+      // Actions keep their own gaze (see `evaluate`).
+      if (this.cur.def.locomotion) pose.add('head', 0, -chestY * 0.35, 0);
     }
+  }
+
+  // -- hands ------------------------------------------------------------------
+
+  /** How much the off hand is on a two-handed haft right now, eased. */
+  private offW = 0;
+
+  // -- spell light ------------------------------------------------------------
+
+  private glow: { sprites: THREE.Sprite[]; mat: THREE.SpriteMaterial } | null = null;
+
+  /**
+   * A soft light in the casting hands that gathers into the release and fades
+   * after it, in the body's accent colour. Built the first time anything is
+   * cast and hidden the rest of the time, so a body that never casts pays
+   * nothing.
+   */
+  private updateGlow(): void {
+    const g = this.castGlow;
+    if (g <= 0.01 && !this.glow) return;
+    if (!this.glow) {
+      const hl = this.bones[SLOT.handL];
+      const hr = this.bones[SLOT.handR];
+      if (!hl || !hr) return;
+      let accent = 0xffd9a0;
+      let o: THREE.Object3D | null = this.bones[SLOT.root];
+      while (o) {
+        if (typeof o.userData?.accent === 'number') {
+          accent = o.userData.accent;
+          break;
+        }
+        o = o.parent;
+      }
+      const mat = new THREE.SpriteMaterial({
+        map: glowTexture(),
+        color: accent,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false,
+        opacity: 0,
+      });
+      const sprites = [hl, hr].map((hand) => {
+        const s = new THREE.Sprite(mat);
+        s.position.set(0, -0.07, 0.02);
+        s.visible = false;
+        s.renderOrder = 2;
+        hand.add(s);
+        return s;
+      });
+      this.glow = { sprites, mat };
+    }
+    const hands = this.castHands;
+    this.glow.mat.opacity = Math.min(1, g * 1.2);
+    const size = this.rig.hipY * (0.16 + 0.16 * g);
+    this.glow.sprites.forEach((s, side) => {
+      const on = g > 0.01 && (hands === 'both' || hands === (side === 0 ? 'left' : 'right'));
+      s.visible = on;
+      if (on) s.scale.setScalar(size);
+    });
+  }
+
+  /** Which hand `mainWeapon` found the weapon in (a bow rides in the left). */
+  private weaponSlot = SLOT.handR;
+
+  /** The main-hand weapon, in whichever hand its grip put it, if any. */
+  private mainWeapon(): THREE.Object3D | null {
+    for (const slot of [SLOT.handR, SLOT.handL]) {
+      const hand = this.bones[slot];
+      if (!hand) continue;
+      for (const c of hand.children) {
+        if (c.userData && c.userData.socketSlot === 'mainHand') {
+          this.weaponSlot = slot;
+          return c;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * The hands after the arms are posed: the wrist turns the weapon onto its
+   * line around the contact, and on a two-handed weapon the off hand is put
+   * on the haft by a two-bone arm solve, so it stays there through a swing
+   * instead of the blade leaving one hand behind.
+   */
+  private applyHands(pose: Pose, dt: number): void {
+    void pose;
+    const weapon = this.mainWeapon();
+    const def = this.cur.def;
+    const fade = this.prev ? smooth(clamp01(this.fadeTime / Math.max(1e-5, this.fadeDur))) : 1;
+    if (weapon && def.aim && !this.cur.done) {
+      const dir = typeof def.aim.dir === 'function' ? def.aim.dir(this.rig.wpn) : def.aim.dir;
+      if (dir) this.aimWeapon(weapon, dir, def.aim.w(this.cur.time) * fade);
+    }
+
+    const carry = this.grip === 'twoHand' ? HAFT_TWOHAND : this.grip === 'staff' ? HAFT_STAFF : null;
+    const want = carry && weapon && this.weaponSlot === SLOT.handR && (def.locomotion ? 1 : def.offHand ? 1 : 0);
+    const rate = want ? 10 : 14;
+    this.offW += ((want ? 1 : 0) - this.offW) * Math.min(1, dt * rate);
+    if (!carry || !weapon || this.offW <= 0.01) return;
+    // A sword's grip runs below the guard, so in a swing the off hand closes
+    // on the hilt under the main hand; a haft is held above it.
+    _haft.copy(carry);
+    if (this.hilt && this.grip === 'twoHand') _haft.lerp(HILT_TWOHAND, 1 - this.locoW);
+    this.offHandOnHaft(weapon, _haft, smooth(this.offW));
+  }
+
+  /** Composes bone local transforms from the chest down the right arm. */
+  private chainR(out: THREE.Matrix4): THREE.Matrix4 {
+    out.identity();
+    for (const s of [SLOT.shoulderR, SLOT.elbowR, SLOT.handR]) {
+      const b = this.bones[s];
+      if (!b) continue;
+      _m4.compose(b.position, b.quaternion, b.scale);
+      out.multiply(_m4);
+    }
+    return out;
+  }
+
+  /** Rotation of a hand's parent frame in character space. */
+  private handParentQuat(out: THREE.Quaternion, left = false): THREE.Quaternion {
+    out.identity();
+    for (const s of left ? ARM_CHAIN_L : ARM_CHAIN_R) {
+      const b = this.bones[s];
+      if (b) out.multiply(b.quaternion);
+    }
+    return out;
+  }
+
+  private aimWeapon(weapon: THREE.Object3D, dir: [number, number, number], w: number): void {
+    if (w < 0.01) return;
+    const hand = this.bones[this.weaponSlot];
+    if (!hand) return;
+    const parent = this.handParentQuat(_qH, this.weaponSlot === SLOT.handL);
+    // Where the business end points now, in character space.
+    _qA.copy(parent).multiply(hand.quaternion).multiply(weapon.quaternion);
+    _vec.set(0, 1, 0).applyQuaternion(_qA);
+    _target.set(dir[0], dir[1], dir[2]).normalize();
+    _qB.setFromUnitVectors(_vec, _target);
+    // A wrist, a turned forearm and a shifted grip between them, and no more.
+    const ang = 2 * Math.acos(Math.min(1, Math.abs(_qB.w)));
+    const k = ang > 2.0 ? (2.0 / ang) * w : w;
+    _qC.identity().slerp(_qB, k);
+    // Turn in character space, expressed in the hand's own frame.
+    _qA.copy(parent).invert().multiply(_qC).multiply(parent);
+    hand.quaternion.premultiply(_qA);
+  }
+
+  /** The haft point in chest space, from the right arm and the weapon socket. */
+  private haftInChest(weapon: THREE.Object3D, haft: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
+    this.chainR(_m4b);
+    _m4.compose(weapon.position, weapon.quaternion, weapon.scale);
+    _m4b.multiply(_m4);
+    return out.copy(haft).applyMatrix4(_m4b);
+  }
+
+  private offHandOnHaft(weapon: THREE.Object3D, haft: THREE.Vector3, w: number): void {
+    const shL = this.bones[SLOT.shoulderL];
+    const elL = this.bones[SLOT.elbowL];
+    const shR = this.bones[SLOT.shoulderR];
+    const elR = this.bones[SLOT.elbowR];
+    const haR = this.bones[SLOT.handR];
+    if (!shL || !elL || !shR || !elR || !haR) return;
+    const u0 = this.restPos[SLOT.elbowL];
+    const f0 = this.restPos[SLOT.handL];
+    const reach = (u0.length() + f0.length()) * 0.97;
+
+    this.haftInChest(weapon, haft, _goal);
+    const d = _goal.distanceTo(shL.position);
+    if (d > reach) {
+      // Out of the off arm's reach: draw the main hand in toward it by the
+      // difference, keeping the weapon's angle, so both stay on the haft.
+      _vec.subVectors(_goal, shL.position).divideScalar(d);
+      _qD.copy(shR.quaternion).multiply(elR.quaternion).multiply(haR.quaternion);
+      _m4.compose(shR.position, shR.quaternion, shR.scale);
+      _m4c.compose(elR.position, elR.quaternion, elR.scale);
+      _hand.copy(haR.position).applyMatrix4(_m4c).applyMatrix4(_m4);
+      _hand.addScaledVector(_vec, -(d - reach) * w);
+      _pole.set(-0.6, -0.6, -0.5);
+      solveArm(shR.position, this.restPos[SLOT.elbowR], this.restPos[SLOT.handR], _hand, _pole, _qA, _qB);
+      shR.quaternion.copy(_qA);
+      elR.quaternion.copy(_qB);
+      haR.quaternion.copy(_qA.multiply(_qB).invert().multiply(_qD));
+      this.haftInChest(weapon, haft, _goal);
+    }
+    _pole.set(0.6, -0.6, -0.5);
+    solveArm(shL.position, u0, f0, _goal, _pole, _qA, _qB);
+    shL.quaternion.slerp(_qA.premultiply(this.restQuat[SLOT.shoulderL]), w);
+    elL.quaternion.slerp(_qB.premultiply(this.restQuat[SLOT.elbowL]), w);
   }
 
   /**
@@ -2164,6 +3255,11 @@ export class Animator {
       if (LEG_SLOTS.has(i) && pose.ikW > 0.001) continue;
       _eul.set(pose.rot[i * 3], pose.rot[i * 3 + 1], pose.rot[i * 3 + 2], 'XYZ');
       _qA.setFromEuler(_eul);
+      const side = i === SLOT.shoulderL ? 0 : i === SLOT.shoulderR ? 1 : -1;
+      if (side >= 0 && pose.sw[side] > 0.001) {
+        _qB.fromArray(pose.sq, side * 4);
+        _qA.slerp(_qB, Math.min(1, pose.sw[side]));
+      }
       bone.quaternion.copy(this.restQuat[i]).multiply(_qA);
       bone.position.set(
         this.restPos[i].x + pose.pos[i * 3],

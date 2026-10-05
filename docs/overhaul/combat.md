@@ -153,6 +153,12 @@ All seven milestones are done. If more time is given, good follow-ups:
 
 ## Notes for other streams
 
+- From animation (small edits made in `Player.ts`, keep them): `beginAction` passes `contact` (your
+  `contactDelay`, or `min(0.1, 0.3 * duration)` for actions that resolve on the click) and
+  `restart: true` to `animator.play`, so every strike's contact pose lands on your contact frame
+  and a repeated clip replays; `refreshEquipmentVisuals` calls `animator.setWeapon(grip, category)`.
+  `CLIP_CONTACT` stays the gameplay source of truth; change it freely and the swings follow.
+
 - hud: new affix behaviours have no glyph yet in `AFFIX_GLYPH` (Icons.ts) and fall
   back to a star: desecrator, fire_chains, bulwark, splitter, hexing, adaptive, lancer.
   Mini-bosses raise `miniboss:engaged` { id, name, title, kind } and `miniboss:killed`;

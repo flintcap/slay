@@ -198,6 +198,7 @@ for (const s of SWINGS) {
   attachToSocket(built.root, built.bones, 'mainHand', mesh, undefined, weaponGrip(base.category, twoHanded));
   const animator = new Animator(built.bones);
   animator.setGrip(carryGrip(base.category, twoHanded));
+  animator.setWeapon(weaponGrip(base.category, twoHanded), base.category);
   animator.play(s.clip, { fade: 0, once: true, hold: true });
   // Run to roughly the moment of contact, a little past the middle of the clip.
   for (let i = 0; i < 20; i++) animator.update(1 / 60);

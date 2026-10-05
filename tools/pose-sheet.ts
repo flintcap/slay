@@ -14,6 +14,7 @@ import { Animator } from '../src/art/Animation';
 import { ITEM_BASES } from '../src/data/itemBases';
 import { Random } from '../src/core/RNG';
 import type { CharClassId } from '../src/types';
+import { contactDelay } from '../src/entities/Player';
 
 type View = 'side' | 'front' | 'threeQuarter' | 'back';
 
@@ -103,7 +104,59 @@ function gaitTile(label: string, cls: CharClassId, speed: number, phase: number,
   };
 }
 
+/**
+ * An action frozen at a share of its clip, played the way Player plays it:
+ * rate from the action's length, contact from `contactDelay`.
+ */
+function actionTile(
+  label: string,
+  cls: CharClassId,
+  weapon: string | undefined,
+  clip: string,
+  at: number,
+  view: View = 'threeQuarter',
+  duration = 0.42,
+): Tile {
+  return {
+    label,
+    view,
+    run(mover) {
+      const { anim } = character(cls, mover, weapon);
+      const base = weapon ? ITEM_BASES.find((b) => b.id === weapon) : undefined;
+      if (base) anim.setWeapon(weaponGrip(base.category, base.slot === 'twoHand'), base.category);
+      drive(anim, mover, 1.0, 0, 0);
+      const contact = contactDelay(clip, duration) || Math.min(0.1, duration * 0.3);
+      anim.play(clip, { fade: 0.08, speed: Math.max(0.5, 0.45 / duration), restart: true, contact });
+      for (let i = 0; i < 240; i++) {
+        const st = anim.actionState;
+        if (!st || st.t >= at) break;
+        anim.update(DT);
+      }
+    },
+  };
+}
+
 const SETS: Record<string, Tile[]> = {
+  attacks: [
+    actionTile('sword chop  wind', 'warden', 'sword.short', 'attack1', 0.14),
+    actionTile('sword chop  contact', 'warden', 'sword.short', 'attack1', 0.3),
+    actionTile('sword chop  follow', 'warden', 'sword.short', 'attack1', 0.45),
+    actionTile('sword sweep  wind', 'warden', 'sword.short', 'attack2', 0.14),
+    actionTile('sword sweep  contact', 'warden', 'sword.short', 'attack2', 0.3),
+    actionTile('sword sweep  follow', 'warden', 'sword.short', 'attack2', 0.45),
+    actionTile('greatsword chop  wind', 'warden', 'sword.great', 'attack1', 0.15),
+    actionTile('greatsword chop  contact', 'warden', 'sword.great', 'attack1', 0.32),
+    actionTile('greatsword sweep  contact', 'warden', 'sword.great', 'attack2', 0.32),
+    actionTile('battleaxe slam  wind', 'warden', 'axe.battle', 'slam', 0.18),
+    actionTile('battleaxe slam  contact', 'warden', 'axe.battle', 'slam', 0.36),
+    actionTile('spear thrust  contact', 'warden', 'spear.spear', 'thrust', 0.3, 'side'),
+    actionTile('dagger chop  contact', 'shadowblade', 'dagger.dirk', 'attack1', 0.3),
+    actionTile('lunge  contact', 'shadowblade', 'sword.short', 'lunge', 0.32, 'side'),
+    actionTile('bow shoot  full draw', 'ranger', 'bow.short', 'shoot', 0.2, 'front', 0.46),
+    actionTile('staff cast  release', 'pyromancer', 'staff.short', 'cast', 0.32, 'threeQuarter', 0.5),
+    actionTile('stomp  land', 'warden', 'mace.mace', 'stomp', 0.42),
+    actionTile('hurl  release', 'revenant', undefined, 'hurl', 0.3, 'side', 0.5),
+  ],
   gait: [
     gaitTile('walk 1.4 m/s  0.00', 'warden', 1.4, 0.0),
     gaitTile('walk  0.25', 'warden', 1.4, 0.25),

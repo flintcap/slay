@@ -235,6 +235,8 @@ export class Player {
     // hand brought across, which is a body pose rather than a socket transform.
     const main = eq.mainHand ? getBase(eq.mainHand.baseId) : undefined;
     this.animator.setGrip(carryGrip(main?.category, main?.slot === 'twoHand'));
+    // And what is in the hand sets how much body goes into a swing.
+    this.animator.setWeapon(weaponGrip(main?.category, main?.slot === 'twoHand'));
   }
 
   /**
@@ -328,7 +330,14 @@ export class Player {
     this.actionSerial++;
     this.contactAt = contactDelay(clip, duration);
     this.moveTarget = null;
-    this.animator.play(clip, { fade: 0.08, speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)) });
+    // The clip is bent so its blow lands on the contact frame above; anything
+    // that resolves on the click releases a beat in, before the eye can tell.
+    this.animator.play(clip, {
+      fade: 0.08,
+      speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)),
+      restart: true,
+      contact: this.contactAt > 0 ? this.contactAt : Math.min(0.1, duration * 0.3),
+    });
   }
 
   /** Identifies the current action. Changes when a new one starts or a dodge cuts it off. */
