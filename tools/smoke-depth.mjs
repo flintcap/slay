@@ -141,9 +141,22 @@ const result = await page.evaluate(async () => {
   out.runnerFloor = idx;
   if (idx >= 0) {
     if (idx !== scene.levelIndex) scene.loadLevel(idx);
-    await until(() => scene.enemies.some((e) => e.named?.id === 'event.runner'), 10);
-    const runner = scene.enemies.find((e) => e.named?.id === 'event.runner');
-    out.runnerSpawned = !!runner && runner.ai === null;
+  } else {
+    // No floor of this run rolled one: plant one beside the hero, the way a
+    // generated floor would, and let the live runner spawn it.
+    const t = scene.mesh.worldToTile(scene.player.position.x, scene.player.position.z);
+    scene.level.events = [...(scene.level.events ?? []), { kind: 'treasureRunner', x: t.x, y: t.y }];
+    ev.onLevel();
+  }
+  await until(() => scene.enemies.some((e) => e.named?.id === 'event.runner'), 10);
+  const runner = scene.enemies.find((e) => e.named?.id === 'event.runner');
+  out.runnerSpawned = !!runner && runner.ai === null;
+  // Catch it: the sack splits and Renown is paid.
+  if (runner) {
+    const r0 = S.save.account.legacy?.renown ?? 0;
+    runner.takeDamage({ amount: 1e9, type: 'physical', crit: false, source: 'player', ability: 'Attack' }, scene.context());
+    await until(() => (S.save.account.legacy?.renown ?? 0) - r0 >= 20, 90);
+    out.runnerCaught = (S.save.account.legacy?.renown ?? 0) - r0 >= 20;
   }
   return out;
 });
@@ -243,7 +256,7 @@ await page.screenshot({ path: `${OUT}/gate.png` });
 console.log(JSON.stringify({ result, errors }, null, 2));
 await browser.close();
 const townBad = result.stations?.length !== 3 || !result.station_gambler || !result.station_enchanter || !result.station_bounties || !(result.gateWaypoints >= 3) || !result.bountiesClosed || !(result.modStrip >= 1);
-const eventsBad = !result.fallenHandled || !(result.ambushers >= 5) || !result.choiceOpen || !result.choiceClosed || !result.bargainTaken || (result.runnerFloor >= 0 && !result.runnerSpawned);
+const eventsBad = !result.fallenHandled || !(result.ambushers >= 5) || !result.choiceOpen || !result.choiceClosed || !result.bargainTaken || !result.runnerSpawned || !result.runnerCaught;
 const bad = errors.length > 0 || result.error || !result.cleaveLanded || !result.chilled || !result.leeched || !result.filterHid || !(result.kills > 0) || eventsBad || townBad;
 console.log(bad ? 'FAILED' : 'OK — depth systems work in the live game.');
 process.exit(bad ? 1 : 0);

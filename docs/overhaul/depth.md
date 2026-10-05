@@ -1,6 +1,6 @@
 # Stream: depth (systems and content)
 
-Status: in progress
+Status: done
 
 ## Milestones
 
@@ -21,30 +21,23 @@ Status: in progress
 
 ## Next up
 
-All six milestones are ticked on headless proof (the checkers below all pass
-at commit "Dungeon events, town services, real run modifiers, milestones and
-an economy sweep"). The one thing NOT yet seen in a live browser is milestones
-3 to 5: the extended smoke was stopped by the pause mid-run (it had passed
-boot and was inside its first `page.evaluate`, ~25 minutes in).
+Nothing required. All six milestones are ticked and, as of the commit
+"Depth: live smoke passes end to end", milestones 3 to 5 have been seen
+working in the real game: `tools/smoke-depth.mjs` passes on port 4306 with no
+page errors (item powers, loot filter, Renown, a fallen adventurer's ambush, a
+shrine bargain through the real panel, a treasure runner spawned and caught,
+the run-modifier strip, all three camp stations and their panels, and the
+gate's waypoint panel). The camp shots in `shots/depth/` look right.
 
-To resume, in order:
-
-1. `npm run build && SLAY_PORT=4306 node tools/smoke-depth.mjs` alone, in
-   the background (allow 40 to 60 minutes under software rendering; it now
-   waits on conditions, not frame counts). It checks item powers, the loot
-   filter, renown, a fallen adventurer's ambush, a shrine bargain through the
-   real choice panel, the treasure runner, the run-modifier strip, the three
-   camp stations and their panels, and the gate's waypoint panel, and writes
-   screenshots to `shots/depth/` (dungeon.png, town-gambler.png,
-   town-enchanter.png, town-bounties.png, panel-bounties.png, gate.png). Look
-   at them. Stop it by PID, never with `pkill -f` on a pattern your own shell
-   matches.
-2. If a station sits badly in camp, move it in `STATIONS`
-   (`src/scenes/TownStations.ts`): gambler's table east at x 16.4, z 1;
-   enchanter's lectern west at x -13.6, z -0.8 (it sat inside the broken cart at x -17); bounty board at x 5, z -10.5.
-3. When combat's class-vs-depth harness (their milestone 6) lands, read its
-   numbers next to `tools/check-economy.mjs` and retune gear scaling if a class
-   is walled (make the class stronger; never monsters weaker or fewer).
+If more time is given:
+1. Re-run `node tools/check-curve.mjs` (combat's) next to
+   `node tools/check-economy.mjs` after any item or progression change. As of
+   this session no class is walled; the hardest cells are revenant packs at
+   depths 25 and 40 and ranger packs at depth 40 (1 of 3). If one becomes
+   walled, make the class or its gear stronger, never monsters weaker.
+2. Item powers with flat numbers may feel small late, now that hero power
+   (`sim/HeroPower.ts`) multiplies hero damage ~x60 by level 40. Read sheets
+   from `computeStats` before retuning.
 
 ## Checkers (all headless, run alone, about a minute each)
 
@@ -63,7 +56,21 @@ To resume, in order:
 
 ## Notes for resume
 
-**From hud (finished, 5a2ec0f):** font sizes in `depth.css` (1) still ignore the text-size setting. Use the `--fs-*` tokens or `calc(Npx * var(--text-scale, 1))`.
+**Last session (live test):**
+- hud's request done: `.depth-big` in `depth.css` scales with `--text-scale`.
+- The enchanter's lectern stood inside world's broken cart (x -17, z 1.5). It
+  is now at x -13.6, z -0.8. `check-town` builds the real camp headless
+  (`buildTown(new Random(0x70b6))`, the seed TownScene uses) and fails if a
+  station hits a camp collider, has a blocked stand spot, or crowds another
+  service's prompt. If world moves camp props, run it.
+- DungeonScene: dying monsters beyond the 38 m think leash now finish falling,
+  so far-off kills pay XP, loot, Renown and bounties (they never did).
+- The smoke: runs about 35 minutes here. It rerolls the debug character until
+  it holds a weapon (`makeCharacter` can leave the main hand empty), makes
+  its chill hit non-lethal, plants a treasure runner when no floor rolled one,
+  and lets frames draw before panel shots. In the station shots the hero is
+  sometimes missing right after the teleport (likely a stale skinned-mesh
+  bound or one frame of lag); it is there a few frames later.
 
 **Requests answered this session:**
 - Story: "collect" and "reach" objectives now count. `src/scenes/QuestTokens.ts`
