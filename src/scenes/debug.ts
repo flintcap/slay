@@ -93,6 +93,12 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       save.touch();
     },
 
+    /** Whether a panel (inventory, settings, pause...) is open right now. */
+    panelOpen(id: string): boolean {
+      const h = panelInstance(id) as { isOpen?: boolean; panel?: { isOpen?: boolean } } | undefined;
+      return !!(h?.isOpen ?? h?.panel?.isOpen);
+    },
+
     warpToBoss(): void {
       const s = engine.currentScene;
       if (s instanceof DungeonScene) s.debugWarpToBoss();

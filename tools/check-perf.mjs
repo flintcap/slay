@@ -2,7 +2,7 @@
  * Does the busiest part of a floor fit the budget, on any GPU?
  *
  *   SLAY_PORT=4309 node tools/check-perf.mjs                  # the standard floors
- *   SLAY_PORT=4309 node tools/check-perf.mjs --depths=1,12    # just these depths
+ *   SLAY_PORT=4309 node tools/check-perf.mjs --depths=1,12    # just these depths (0 is the town)
  *   SLAY_PORT=4309 node tools/check-perf.mjs --alloc          # also list who allocates
  *
  * Frame time under software rendering says nothing about a player's machine,
@@ -41,7 +41,7 @@ const BUDGET = {
 };
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
-const DEPTHS = (arg('depths') ?? '1,6,12,20,32').split(',').map(Number);
+const DEPTHS = (arg('depths') ?? '0,1,6,12,20,32').split(',').map(Number);
 const SEED = Number(arg('seed') ?? 424242);
 const showAlloc = process.argv.includes('--alloc');
 
@@ -61,7 +61,9 @@ for (const depth of DEPTHS) {
   const floor = await page.evaluate(
     async ({ depth, seed }) => {
       const engine = window.SLAY.engine;
-      await engine.goTo('dungeon', { depth, seed: seed + depth });
+      // Depth 0 is the town: nine residents, the camp and its lights.
+      if (depth === 0) await engine.goTo('town');
+      else await engine.goTo('dungeon', { depth, seed: seed + depth });
       window.SLAY.debug.godMode(true);
       const raf = () => new Promise((r) => requestAnimationFrame(r));
       for (let i = 0; i < 30; i++) await raf();
@@ -89,7 +91,7 @@ for (const depth of DEPTHS) {
       }
       // Let them notice and close in.
       for (let i = 0; i < 90; i++) await raf();
-      return { biome: scene.level?.biome, layout: scene.level?.layout, monsters: mobs.length };
+      return { biome: depth === 0 ? 'town' : scene.level?.biome, layout: depth === 0 ? 'camp' : scene.level?.layout, monsters: mobs.length };
     },
     { depth, seed: SEED },
   );
