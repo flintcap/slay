@@ -4,7 +4,7 @@ import type { Engine } from '../core/Engine';
 import { save } from '../core/Save';
 import { events } from '../core/Events';
 import { Random, randomSeed } from '../core/RNG';
-import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem } from '../sim/Character';
+import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem, isWornOffHand } from '../sim/Character';
 import { rollItem, newItem, getBase } from '../sim/Loot';
 import { buildDropModel } from '../art/ItemModels';
 import { itemIconUri, requestItemIcon, clearIconCaches } from '../art/Icons';
@@ -70,7 +70,13 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         const base = getBase(baseId);
         if (!base) return;
         for (const [ilvl, rarity] of [[Math.max(1, level), 'rare'], [1, 'normal']] as const) {
-          if (equipItem(c, newItem(base, ilvl, rarity, rng)).ok) break;
+          const item = newItem(base, ilvl, rarity, rng);
+          // A rolled two-hander already fills both hands: a held off hand
+          // (shield, orb) would push it out and leave the hero unarmed.
+          const main = c.equipment.mainHand;
+          const mainTwoHand = !!main && getBase(main.baseId)?.slot === 'twoHand';
+          if (slot === 'offHand' && mainTwoHand && !isWornOffHand(item)) break;
+          if (equipItem(c, item).ok) break;
         }
       });
 
