@@ -288,6 +288,86 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return dropSheet();
   },
 
+  /** Every class portrait at full size and at a 96px card size. */
+  async portraits() {
+    const { classPortraitUri } = await import('../src/art/Portraits');
+    const ids = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+    const { c, g } = sheet(3 * 266 + 10, 2 * (256 + 110) + 10);
+    const t0 = performance.now();
+    for (let i = 0; i < ids.length; i++) {
+      const x = 10 + (i % 3) * 266;
+      const y = 10 + Math.floor(i / 3) * 366;
+      g.drawImage(await img(classPortraitUri(ids[i]!, 256)), x, y);
+      g.drawImage(await img(classPortraitUri(ids[i]!, 96)), x, y + 262);
+      g.fillStyle = INK;
+      g.fillText(ids[i]!, x + 170, y + 300);
+    }
+    const total = performance.now() - t0;
+    const { paintClassPortrait } = await import('../src/art/Portraits');
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 256;
+    const t1 = performance.now();
+    for (const id of ids) paintClassPortrait(cv.getContext('2d')!, id);
+    const paint = (performance.now() - t1) / ids.length;
+    const t2 = performance.now();
+    for (let i = 0; i < 6; i++) cv.toDataURL('image/png');
+    c.dataset.note = `${(total / 12).toFixed(1)}ms per portrait first time; repaint ${paint.toFixed(1)}ms, encode ${((performance.now() - t2) / 6).toFixed(1)}ms`;
+    return c;
+  },
+
+  /** The boot and loading key art at a desktop and a phone shape. */
+  async keyart() {
+    const { keyArtCanvas } = await import('../src/art/KeyArt');
+    const t0 = performance.now();
+    const a = keyArtCanvas(960, 540);
+    a.getContext('2d')!.getImageData(0, 0, 1, 1);
+    const ms = performance.now() - t0;
+    const b = keyArtCanvas(300, 540);
+    const { c, g } = sheet(960 + 320, 560);
+    g.drawImage(a, 0, 10, 960, 540);
+    g.drawImage(b, 970, 10, 300, 540);
+    const t1 = performance.now();
+    keyArtCanvas(960, 540, 7).getContext('2d')!.getImageData(0, 0, 1, 1);
+    c.dataset.note = `${ms.toFixed(0)}ms to paint 960x540 first, ${(performance.now() - t1).toFixed(0)}ms again`;
+    return c;
+  },
+
+  /** UI ornament: corners, dividers, frames and crests in every metal. */
+  async ornament() {
+    const O = await import('../src/art/Ornament');
+    const metals = O.ORNAMENT_METALS;
+    const { c, g } = sheet(1000, 560);
+    for (let i = 0; i < metals.length; i++) {
+      const m = metals[i]!;
+      const y = 10 + i * 108;
+      g.drawImage(await img(O.cornerUri(48, m, i === 0 ? 0xd02a3a : undefined)), 10, y, 48, 48);
+      g.drawImage(await img(O.dividerUri(320, m, i === 1 ? 0x3a8aff : undefined)), 70, y + 12, 320, 24);
+      // A panel framed with border-image semantics, drawn by hand: nine slices.
+      const fr = await img(O.frameUri(m));
+      const W = 220;
+      const H = 90;
+      const X = 410;
+      const s = 48;
+      const d = 18;
+      const sw = fr.width;
+      g.fillStyle = '#16171c';
+      g.fillRect(X + 6, y + 6, W - 12, H - 12);
+      const parts: Array<[number, number, number, number, number, number, number, number]> = [
+        [0, 0, s, s, X, y, d, d], [sw - s, 0, s, s, X + W - d, y, d, d], [0, sw - s, s, s, X, y + H - d, d, d], [sw - s, sw - s, s, s, X + W - d, y + H - d, d, d],
+        [s, 0, sw - 2 * s, s, X + d, y, W - 2 * d, d], [s, sw - s, sw - 2 * s, s, X + d, y + H - d, W - 2 * d, d],
+        [0, s, s, sw - 2 * s, X, y + d, d, H - 2 * d], [sw - s, s, s, sw - 2 * s, X + W - d, y + d, d, H - 2 * d],
+      ];
+      for (const [sx, sy, sw2, sh, dx, dy, dw, dh] of parts) g.drawImage(fr, sx, sy, sw2, sh, dx, dy, dw, dh);
+      const crests: Array<[string, number]> = [['skull', 0x7a1c18], ['flame', 0x8a3a10], ['bolt', 0x2a3a7a], ['sword', 0x2a5a3a], ['crown', 0x4a2a6a]];
+      const [gl, col] = crests[i]!;
+      g.drawImage(await img(O.crestUri(gl, col, 64, m)), 660, y, 64, 64);
+      g.drawImage(await img(O.crestUri(gl, col, 32, m)), 740, y + 16, 32, 32);
+      g.fillStyle = INK;
+      g.fillText(m, 860, y + 30);
+    }
+    return c;
+  },
+
   /** Timing breakdown: paint versus PNG encode, over every base. */
   async perf() {
     const { paintItemIcon } = await import('../src/art/ItemIconArt');

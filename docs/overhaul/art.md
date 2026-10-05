@@ -8,27 +8,35 @@ Status: in progress
 - [x] Skill, buff and affix icons: a consistent family style per class and element, strong central motif, readable at hotbar size, with locked, ready and cooldown states that still read. — "Art: brighter status pictograms, real badges for the seven new elite affixes"
 - [x] Item models: ground drops and equipped gear that match their icons, with ornament scaling by rarity and tier; uniques and set items get distinctive shapes. — "Art: item models match their icons; one shared rarity look for icons, drops, held and worn gear"
 - [ ] Class portraits and key art: a drawn portrait per class for character select, and a title and loading key art composition, all generated in code (canvas or SVG).
-- [ ] UI ornament: filigree corners, dividers, frame borders and crests drawn procedurally for the hud and menus streams to use, exposed as small reusable helpers.
+- [x] UI ornament: filigree corners, dividers, frame borders and crests drawn procedurally for the hud and menus streams to use, exposed as small reusable helpers. — "Art: class portraits, key art, UI ornament helpers"
 - [ ] Boss and monster portraits: a portrait for every boss for intro cards, and bestiary art per monster family.
 - [ ] Sweep: a contact sheet render of every icon and portrait, checked for readability, duplicates and style drift.
 
 ## Next up
 
-Milestone 4 (class portraits and key art). Menus built `src/scenes/TitleScene.ts`,
-`CharSelectScene.ts` and `src/ui/CharSelectPanel.ts`; read them to find where a portrait and a
-key-art backdrop plug in (small additive edits only). Plan:
-
-1. New `src/art/Portraits.ts`: `classPortraitUri(classId, size)` painted to canvas with the
-   `Paint.ts` brush box (one light top-left, same palette discipline as icons), cached data URI,
-   one per class in `data/classes` (warden, pyromancer, shadowblade, stormcaller, revenant, ranger
-   if present). Bust in a framed oval, class colour from `SkillIconArt.CLASS_LOOK` light.
-2. New `src/art/KeyArt.ts`: `keyArtCanvas(w, h, seed)` for title/loading: a descending stair
-   into a glowing pit, silhouetted hero, layered fog. Must paint in well under a second.
-3. Add `portraits` and `keyart` sheets to `tools/art-sheet-page.ts`, look at them, then wire.
-Then milestones 5 (ornament helpers), 6 (boss/monster portraits), 7 (sweep, including timing
-item icon appearance in the real game; see hud note below).
+1. Milestone 4 is built and wired (portraits in character select, key art behind the boot bar
+   and the slow loading card); confirm in the real game with
+   `SLAY_PORT=4310 timeout 2400 node tools/screenshot.mjs --out=shots/art --shots=charSelect`
+   (run it as a background task; it takes over ten minutes here) and tick milestone 4.
+2. Milestone 6: boss and monster portraits. New `src/art/BossPortraits.ts`:
+   `bossPortraitUri(bossId, size)` for intro cards and `familyPortraitUri(family, size)` for the
+   bestiary, painted like `Portraits.ts`. Bosses live in `src/data/bosses.ts`, families in
+   `src/entities/MonsterModels.ts` / `src/data/monsters.ts`. Find the boss intro card and the
+   bestiary/journal (grep `intro`, `bestiary`, `Journal`) and wire with small additive edits.
+3. Milestone 7: sweep every sheet; time item icon appearance in the real inventory.
 
 ## Notes for resume
+
+- Milestones 4-5: `src/art/Portraits.ts` (`classPortraitUri(classId, size)`, cached data URI; the
+  arch frame cuts the corners transparent), `src/art/KeyArt.ts` (`keyArtCanvas`, `mountKeyArt`,
+  painted at half resolution, no image encode), `src/art/Ornament.ts` (`cornerUri`, `dividerUri`,
+  `frameUri`, `frameBorderImage`, `crestUri(glyph, color)` in gold/silver/iron/bronze/bone).
+  Wiring: `CharSelectPanel` floats a portrait into the detail column (`.csx-portrait` in
+  menus.css), `main.ts` mounts key art in `#boot`, `Transitions.ts` fades key art in behind the
+  slow loading card and uses `dividerUri` instead of the tip hairline. Sheets: `portraits`,
+  `keyart`, `ornament`. Under software canvas here a portrait costs ~300 ms to rasterise the
+  first time (paint calls are lazy; the cost lands at encode) and key art ~200 ms; both are paid
+  once and cached.
 
 - Milestone 3 closing notes:
   - `src/art/ItemLook.ts` `itemLook(item, visual)` = `gearLook()` plus the art ladder: trim

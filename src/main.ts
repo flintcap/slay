@@ -8,6 +8,7 @@ import { DungeonScene } from './scenes/DungeonScene';
 import { DeathScene } from './scenes/DeathScene';
 import { mountUI } from './ui/UIRoot';
 import { audio } from './audio/Audio';
+import { mountKeyArt } from './art/KeyArt';
 
 const bootFill = document.getElementById('boot-fill');
 const bootStatus = document.getElementById('boot-status');
@@ -29,6 +30,12 @@ async function main(): Promise<void> {
 
   boot(0.05, 'Reading the ledger of the fallen…');
   await tick();
+  // The key art behind the boot bar (art stream); cosmetic, so never fatal.
+  try {
+    if (bootEl) mountKeyArt(bootEl, 0.55);
+  } catch {
+    /* the plain boot screen is fine */
+  }
   save.load();
   // Legacy perks apply to every character; the sim reads the account through this.
   const { bindLegacyAccount, legacyOf } = await import('./sim/Legacy');

@@ -12,6 +12,8 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { Random, randomSeed } from '../core/RNG';
 import { TIPS, nextTip } from './tips';
+import { mountKeyArt } from '../art/KeyArt';
+import { dividerUri } from '../art/Ornament';
 
 let mounted = false;
 
@@ -37,6 +39,32 @@ export function mountTransitions(): void {
     '<div class="ld-tip"><span class="ld-tip-k">Tip</span><span class="ld-tip-text"></span></div>';
   fade.appendChild(card);
 
+  // A gold filigree divider (art stream) in place of the tip's hairline.
+  const tipRow = card.querySelector<HTMLElement>('.ld-tip');
+  if (tipRow) {
+    try {
+      tipRow.style.borderTop = '0';
+      tipRow.style.paddingTop = '30px';
+      tipRow.style.background = `url(${dividerUri(320, 'gold')}) center top / 320px 24px no-repeat`;
+    } catch {
+      /* the hairline stays */
+    }
+  }
+
+  // The key art (art stream) fades in behind the card on slow swaps only.
+  let art: HTMLCanvasElement | null = null;
+  try {
+    art = mountKeyArt(fade, 0);
+    art.style.transition = 'opacity 600ms ease';
+  } catch {
+    art = null;
+  }
+  const showArt = (on: boolean): void => {
+    if (!art) return;
+    art.style.transitionDelay = on ? '380ms' : '0ms';
+    art.style.opacity = on ? '0.35' : '0';
+  };
+
   const kicker = card.querySelector<HTMLElement>('.ld-kicker')!;
   const title = card.querySelector<HTMLElement>('.ld-title')!;
   const tipText = card.querySelector<HTMLElement>('.ld-tip-text')!;
@@ -58,6 +86,7 @@ export function mountTransitions(): void {
     } else {
       // Menus build instantly; a card would only flash.
       card.classList.remove('is-on');
+      showArt(false);
       return;
     }
     tip = nextTip(tip, () => rng.next());
@@ -65,7 +94,11 @@ export function mountTransitions(): void {
     title.textContent = t;
     tipText.textContent = TIPS[tip] ?? '';
     card.classList.add('is-on');
+    showArt(true);
   });
 
-  events.on('scene:change', () => card.classList.remove('is-on'));
+  events.on('scene:change', () => {
+    card.classList.remove('is-on');
+    showArt(false);
+  });
 }

@@ -25,6 +25,7 @@ import { Random, randomSeed } from '../core/RNG';
 import { checkName, type NameCheck } from './names';
 import { menuKey } from './MenuNav';
 import { skillIconUri } from '../art/Icons';
+import { classPortraitUri } from '../art/Portraits';
 import {
   Panel,
   div,
@@ -442,6 +443,7 @@ export class CharSelectPanel {
     const d = this.detail;
     d.style.setProperty('--accent', accent);
 
+    d.appendChild(this.portrait(def.id));
     d.appendChild(div('csx-kicker', ROLE[def.id] ?? def.title));
     d.appendChild(div('csx-name-big', def.name));
     d.appendChild(div('csx-epithet', def.title));
@@ -523,10 +525,20 @@ export class CharSelectPanel {
     d.appendChild(trees);
   }
 
+  /** The painted class portrait, floated into the top of the detail column. */
+  private portrait(classId: CharClassId): HTMLElement {
+    const img = document.createElement('img');
+    img.className = 'csx-portrait';
+    img.alt = '';
+    attempt(() => (img.src = classPortraitUri(classId, 216)), '');
+    return img;
+  }
+
   private characterDetail(c: Character): void {
     const accent = classAccent(c.classId);
     const d = this.detail;
     d.style.setProperty('--accent', accent);
+    d.appendChild(this.portrait(c.classId));
     const cls = classById(c.classId);
     const dif = DIFFICULTIES.find((x) => x.id === c.difficulty);
 

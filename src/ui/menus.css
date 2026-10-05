@@ -2515,3 +2515,12 @@ body.reduce-motion .dth * {
   text-transform: uppercase;
   color: var(--ink-4);
 }
+
+/* Painted class portrait (art stream), floated into the detail column. */
+.csx-portrait {
+  float: right;
+  width: 108px;
+  height: 108px;
+  margin: 0 0 var(--s2) var(--s3);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+}
