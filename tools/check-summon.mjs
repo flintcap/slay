@@ -62,6 +62,9 @@ const r = await page.evaluate(async () => {
     livingFlame: 'pyromancer',
     lightningRod: 'stormcaller',
   };
+  // Sworn Brother is ranked like a passive and rises from a planted banner,
+  // so it is tested by planting one.
+  const VIA = { swornBrother: 'bannerOfTheGate' };
   const rows = [];
   const byClass = {};
   for (const [id, cls] of Object.entries(SUMMONS)) (byClass[cls] ??= []).push(id);
@@ -77,6 +80,8 @@ const r = await page.evaluate(async () => {
 
     for (const id of ids) {
       c.skills[id] = 5;
+      const castId = VIA[id] ?? id;
+      c.skills[castId] = Math.max(c.skills[castId] ?? 0, 5);
       scene.player.actionLock = 0;
       scene.player.cooldowns?.clear();
       scene.player.mana = scene.player.stats.mana;
@@ -88,7 +93,7 @@ const r = await page.evaluate(async () => {
       let fired = false;
       let error = null;
       try {
-        fired = scene.skills.cast(id, scene.player, scene.player.position.clone(), ctx, scene.enemies, null);
+        fired = scene.skills.cast(castId, scene.player, scene.player.position.clone(), ctx, scene.enemies, null);
       } catch (e) {
         error = String(e).slice(0, 120);
       }

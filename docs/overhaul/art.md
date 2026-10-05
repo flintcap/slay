@@ -96,6 +96,14 @@ All milestones done. Leftovers a successor could pick up:
 
 **From hud (finished, 5a2ec0f):** the seven new elite affixes (desecrator, fire_chains, bulwark, splitter, hexing, adaptive, lancer) borrow existing icons via `BADGE_ALIAS` in `Nameplates.ts`. Paint real ones in `AFFIX_MAP` in `SkillIconArt.ts`, then delete the matching alias lines. Also: item icons often had not appeared in the UI lab after a 2.5 s wait; check whether icon generation is that slow in the real game.
 
+**Item icon timing (measured by quality, `check-invcost`):** opening a cold pack blocks for 0.2 ms
+(icons are queued, not drawn up front). Painting one icon costs about 140 ms under software
+rendering (60 drawn eagerly: 8.3 s). The queue paints about one icon per frame (5 ms budget), so
+under software rendering, where a frame takes about 0.75 s, a cold pack of 60 fills in over 43 s.
+On a real GPU machine that is about one second at 60 fps, and `warmItemIcons` (HUD) has usually
+drawn held items before the pack is opened. The UI lab's 2.5 s wait was software-rendering
+frame rate, not slow icons. No change needed.
+
 - **Contact sheets without booting the game:** `SLAY_PORT=4310 node tools/art-sheet.mjs items,rarity,closeup,skills,perf --out=shots/art`.
   Sheets live in `tools/art-sheet-page.ts` (`SHEETS`); add one per milestone. Takes seconds.
   `shots/` is not committed.

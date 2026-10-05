@@ -51,6 +51,13 @@ wait with a bounded loop; it starts and stops its own servers):
   timeout and on its own SIGTERM); `bootGame` refuses a port already in use.
   Results from batch 3 before this (quality, roster) ran on the stale
   preview; both are probes and their output looked right.
+- Browser batches done: every browser checker has now run and passes except
+  check-skillcost (below). check-skills ran for ranger only (all three
+  classes outlast 45 min): 22 of 22 work.
+- check-summon caught Sworn Brother doing nothing (a passive that only raised
+  minion stats; the Warden has no other minion). It now rises beside the hero
+  whenever a banner is planted (`SkillRunner.raiseSwornBrother`).
+- Item icon timing measured and written up in art.md: no change needed.
 - check-skillcost: killed twice at 25 min (second time printing per skill).
   Under software rendering every frame of a level-40 dungeon costs about
   2.2 s whatever the skill, so it measures nothing here; run it on a GPU.

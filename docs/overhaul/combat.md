@@ -25,6 +25,13 @@ All seven milestones are done. If more time is given, good follow-ups:
 
 ## Notes for resume
 
+- From quality (after this stream finished): Sworn Brother (Warden tier 6) is
+  ranked as a passive and only raised minion stats, and the Warden has no other
+  minion, so it did nothing. `SkillRunner.raiseSwornBrother` now raises one
+  beside the hero whenever a banner skill is cast (cap 2, +1 per 10 ranks, hard
+  cap 3; 60% damage +4%/rank, 140% life). `check-summon` plants a banner to
+  test it.
+
 - `node tools/check-bossfights.mjs` fights all 24 bosses (stand vs dodge, plus a
   wound-forward enrage clock) in about 25s. `--only=3` fights one boss, `--trace`
   prints its life every 5s. It requires every phase, 85% of the kit used, dodging

@@ -24,6 +24,13 @@ All milestones done. Polish a successor could pick up, in order of value:
 
 ## Notes for resume
 
+- From quality (after this stream finished): Sworn Brother (Warden tier 6) is
+  ranked as a passive and only raised minion stats, and the Warden has no other
+  minion, so it did nothing. `SkillRunner.raiseSwornBrother` now raises one
+  beside the hero whenever a banner skill is cast (cap 2, +1 per 10 ranks, hard
+  cap 3; 60% damage +4%/rank, 140% life). `check-summon` plants a banner to
+  test it.
+
 - **Renders this session** (`tools/shot-feel.mjs`, port 4305, about 25 min
   each under load; screenshots now have a 15 min timeout): atlases right side
   up and correct; marks (scorch, rime, acid, sigil, crater) read well at nova

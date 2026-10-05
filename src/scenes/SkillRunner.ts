@@ -888,6 +888,8 @@ export class SkillRunner {
         // Commanding Presence and Standard Bearer widen and strengthen what an
         // oath, aura or banner does. `applyBuff` reads the same numbers.
         this.applyBuff(player, def, rank, num, color);
+        // Sworn Brother: a spectral Warden rises where the standard goes in.
+        if (family === 'banner') this.raiseSwornBrother(player, target, ctx);
         this.effects.impact(school, player.position.x, 1.0, player.position.z, {
           color,
           emitter: sig.emitter,
@@ -2483,6 +2485,47 @@ export class SkillRunner {
       });
       made++;
     }
+  }
+
+  /**
+   * Sworn Brother is ranked as a passive, so it is never cast: its Warden rises
+   * whenever a banner is planted. It used to only raise minion stats, and the
+   * Warden has no other minion, so the tier-6 capstone did nothing at all.
+   * Up to `baseCap` (+1 per `maxPerRanks` ranks) stand at once; planting at the
+   * cap recycles the oldest, like every other summon.
+   */
+  private raiseSwornBrother(player: Player, target: THREE.Vector3, ctx: CombatContext): void {
+    const rank = skillRank(player.character, 'swornBrother');
+    if (rank <= 0) return;
+    const def = SKILLS.find((s) => s.id === 'swornBrother');
+    if (!def) return;
+    const p = def.params ?? {};
+    const num = (k: string, d: number): number => (typeof p[k] === 'number' ? (p[k] as number) : d);
+    const cap = Math.min(
+      SUMMON_HARD_CAP.swornBrother ?? 3,
+      num('baseCap', 2) + Math.floor(rank / Math.max(1, num('maxPerRanks', 10))) + Math.floor(player.passives.minionCapBonus),
+    );
+    this.trimSummons(def.id, cap - 1);
+    // Beside the hero on the side of the banner, so it never rises in a wall.
+    const dx = target.x - player.position.x;
+    const dz = target.z - player.position.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const step = Math.min(1.6, len);
+    const x = player.position.x + (dx / len) * step + (-dz / len) * 0.9;
+    const z = player.position.z + (dz / len) * step + (dx / len) * 0.9;
+    // "60% of your damage (+4% per rank)", "140% of your life". The passive's
+    // minion bonus is that same 60%, so it is not applied a second time.
+    const share = (num('damagePct', 60) + num('perRank', 4) * (rank - 1)) / 100;
+    const scale = skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) * share;
+    const packet = (m = 1): DamagePacket =>
+      rollDamage(player.stats, ctx.rng, { scale: scale * m, type: 'physical', ability: def.name, source: 'player' });
+    const color = shiftHue(ELEMENTS.physical?.core ?? 0xffe3b0, hashId(def.id));
+    const swingRate = 1 / (1 + player.passives.minionAttackSpeedPct / 100);
+    this.addTurret(
+      x, z, Infinity, 1.1 * swingRate, 2.6, packet, 'physical', color, true, def.id,
+      Math.max(20, player.stats.life * (num('lifePct', 140) / 100)),
+      false,
+    );
   }
 
   /** How many bodies this skill currently has standing. */
