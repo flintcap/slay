@@ -59,7 +59,8 @@ if (!up) {
 
 const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-  args: ['--no-sandbox'],
+  // SwiftShader WebGL, for the 3D model sheets.
+  args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
 page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 400)));

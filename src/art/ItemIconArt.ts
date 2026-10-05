@@ -9,18 +9,19 @@
  *   normal   bare materials, no stone
  *   magic    silver fittings, a cold enchantment along the edges
  *   rare     gold fittings, a set stone, polish glints
- *   set      verdigris bronze, a green stone, a green aura hugging the shape
+ *   set      silver washed in the set's colour, a stone and aura of that colour
  *   unique   rich gold, a stone of its own, glowing runes, a warm aura
  *   mythic   void-gold, violet runes, aura and orbiting motes
  *   ancient  blood-gold, ember runes, a burning aura and rising sparks
  */
 import type { ItemRarity } from '../types';
 import { RARITY_COLOR } from '../types';
-import { type K, RANK, matFor, glowFor, stoneFor, trimFor } from './IconKit';
+import { type K, MATS, RANK, matFor, trimFor } from './IconKit';
+import { itemLook } from './ItemLook';
 import { WEAPON_PAINTERS } from './IconWeapons';
 import { ARMOR_PAINTERS } from './IconArmor';
 import { TRINKET_PAINTERS } from './IconTrinkets';
-import { type Ctx, composite, css, glow, hashString, resetCtx, scratch, seeded } from './Paint';
+import { type Ctx, composite, css, glow, hashString, resetCtx, scratch, seeded, tintMat } from './Paint';
 
 export interface IconBaseInfo {
   visual?: { shape?: string; palette?: string; ornate?: number; glow?: number };
@@ -85,6 +86,13 @@ export function paintItemIcon(out: Ctx, spec: ItemIconSpec): void {
   const rank = RANK[spec.rarity] ?? 0;
   const h = hashString(`${spec.baseId}|${spec.identity ?? ''}`);
   const layer = scratch('itemLayer', 128);
+  // The same trim, stone and glow the drop, the held weapon and the worn piece use.
+  const set = spec.rarity === 'set';
+  const look = itemLook(
+    { baseId: spec.baseId, rarity: spec.rarity, uniqueId: set ? undefined : spec.identity, setId: set ? spec.identity : undefined },
+    { shape: spec.base?.visual?.shape ?? 'auto', palette: pal, ornate: spec.base?.visual?.ornate, glow: baseGlow },
+  );
+  const trimBase = spec.rarity === 'normal' ? trimFor('normal', pal) : MATS[look.iconTrim] ?? trimFor(spec.rarity, pal);
   const k: K = {
     x: layer.x,
     rnd: seeded(`${spec.baseId}|${spec.rarity}|${spec.identity ?? ''}`),
@@ -96,9 +104,9 @@ export function paintItemIcon(out: Ctx, spec: ItemIconSpec): void {
     ornate: spec.base?.visual?.ornate ?? 0.2,
     rarity: spec.rarity,
     rank,
-    trim: trimFor(spec.rarity, pal),
-    stone: stoneFor(spec.rarity, h, spec.identity, baseGlow),
-    glowC: glowFor(spec.rarity, baseGlow),
+    trim: look.iconTrimTint !== undefined ? tintMat(trimBase, look.iconTrimTint, 0.5) : trimBase,
+    stone: look.stone,
+    glowC: look.glowColor,
     baseGlow,
     h,
   };

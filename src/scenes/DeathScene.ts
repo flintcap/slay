@@ -117,7 +117,7 @@ export class DeathScene extends GameScene {
       try {
         const def = getBase(data.weapon.baseId);
         if (def?.visual) {
-          const w = buildItemModel(def.visual, rng.fork('weapon'), data.weapon.rarity);
+          const w = buildItemModel(def.visual, rng.fork('weapon'), data.weapon.rarity, data.weapon);
           w.rotation.set(0.12, 0.5, Math.PI + 0.1);
           const holder = new THREE.Group();
           holder.add(w);

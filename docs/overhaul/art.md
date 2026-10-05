@@ -6,7 +6,7 @@ Status: in progress
 
 - [x] Item icons: painterly, readable at small size, real material rendering (metal sheen, leather grain, gem glints), a clear silhouette per item family, rarity shown by the art itself, not just a border. — "Paint item icons by family and sub-type, with rarity in the art"
 - [x] Skill, buff and affix icons: a consistent family style per class and element, strong central motif, readable at hotbar size, with locked, ready and cooldown states that still read. — "Art: brighter status pictograms, real badges for the seven new elite affixes"
-- [ ] Item models: ground drops and equipped gear that match their icons, with ornament scaling by rarity and tier; uniques and set items get distinctive shapes.
+- [x] Item models: ground drops and equipped gear that match their icons, with ornament scaling by rarity and tier; uniques and set items get distinctive shapes. — "Art: item models match their icons; one shared rarity look for icons, drops, held and worn gear"
 - [ ] Class portraits and key art: a drawn portrait per class for character select, and a title and loading key art composition, all generated in code (canvas or SVG).
 - [ ] UI ornament: filigree corners, dividers, frame borders and crests drawn procedurally for the hud and menus streams to use, exposed as small reusable helpers.
 - [ ] Boss and monster portraits: a portrait for every boss for intro cards, and bestiary art per monster family.
@@ -14,21 +14,50 @@ Status: in progress
 
 ## Next up
 
-Milestone 3 (item models). Art keeps `ItemModels.ts` (held weapons, shields, ground drops);
-models owns worn armour (`WornGear.ts`) and `GearLook.ts`.
+Milestone 4 (class portraits and key art). Menus built `src/scenes/TitleScene.ts`,
+`CharSelectScene.ts` and `src/ui/CharSelectPanel.ts`; read them to find where a portrait and a
+key-art backdrop plug in (small additive edits only). Plan:
 
-1. New `src/art/ItemLook.ts`: `itemLook(item, visual)` built on `gearLook()` from `GearLook.ts`
-   plus `IconKit.trimFor/stoneFor/glowFor/RANK`, returning one shared look (palette, trim, stone,
-   glow, rank, ornate, set tint) so icons, drops, held weapons and worn gear agree.
-2. Use it in `ItemModels.ts`: weapons and drops take trim/stone/glow from it; match weapon
-   models to icon sub-types (`visual.shape` like 'sword.great', 'axe.great', 'dagger.wavy').
-   Keep the weapon contract (grip at origin, +Y business end, wide X, thin Z), keep the drop part
-   names `beam`, `pool`, `sigil`, `dropLight`, `spin`, and run `node tools/check-grips.mjs`.
-3. Uniques and sets get distinctive shapes (per-unique signature from `gearLook`).
-4. Add an `itemmodels` sheet to `tools/art-sheet-page.ts` (three.js render of each model to a
-   canvas, no game boot) to look at them.
+1. New `src/art/Portraits.ts`: `classPortraitUri(classId, size)` painted to canvas with the
+   `Paint.ts` brush box (one light top-left, same palette discipline as icons), cached data URI,
+   one per class in `data/classes` (warden, pyromancer, shadowblade, stormcaller, revenant, ranger
+   if present). Bust in a framed oval, class colour from `SkillIconArt.CLASS_LOOK` light.
+2. New `src/art/KeyArt.ts`: `keyArtCanvas(w, h, seed)` for title/loading: a descending stair
+   into a glowing pit, silhouetted hero, layered fog. Must paint in well under a second.
+3. Add `portraits` and `keyart` sheets to `tools/art-sheet-page.ts`, look at them, then wire.
+Then milestones 5 (ornament helpers), 6 (boss/monster portraits), 7 (sweep, including timing
+item icon appearance in the real game; see hud note below).
 
 ## Notes for resume
+
+- Milestone 3 closing notes:
+  - `src/art/ItemLook.ts` `itemLook(item, visual)` = `gearLook()` plus the art ladder: trim
+    (magic silver, rare/unique gold, mythic gold tinted violet, ancient gold tinted red, set silver
+    tinted with `setColor(setId)`), `stone`, `glowColor`, `iconTrim`. Icons (`ItemIconArt`),
+    `ItemModels` and `WornGear.buildWorn` all use it. Set icons now carry their set's colour
+    (stone, aura, washed trim), not one shared green.
+  - `buildItemModel(visual, rng, rarity, ident?)` takes the item (baseId/uniqueId/setId); Player,
+    PaperdollView, HeroModel and DeathScene pass it. Uniques and sets build from their own seed.
+  - Weapons follow icon sub-types via `resolveModelShape` (sword thin/great/broad, dagger
+    wavy/needle, axe hand/war/great/broad, mace club/war/great, spear pike/halberd/trident, bow
+    short/long/war/great, crossbow light/heavy/repeat, wand bone/crystal, staff battle/rune,
+    scepter orbed/spiked, shield buckler/round/kite/tower/bone). Armour drops follow helm
+    cap/full/horned/circlet, chest robe/leather/mail/scale/plate, gloves, boots, belt subs.
+  - Fixed old model bugs: sword guards ran along the blade, axe bits were edge-on, crossbow
+    prods ran along the stock, `trident` resolved to a sword, ring stones floated off the band,
+    the great helm was inside out, sword grips were half inside the blade (grip is now centred
+    on the origin, guard above the hand).
+  - Unique/set signature (`addSignature`): wings, floating halo (`userData.spin`), crown of
+    thorns, or pennants, picked by `look.signature`; sets always fly pennants in set colour.
+  - Drops: `poseForDrop(model)` (exported) lays weapons diagonal, shields face up, armour upright;
+    the item is centred on the spin axis. Part names `beam`, `pool`, `sigil`, `dropLight`, `spin`
+    unchanged. Warm build ~2 ms per model.
+  - **For animation:** the off-hand socket held shields with their authored front toward the
+    hero's back. `buildShield` now turns the shield inside its group (face -Z authored = outward
+    in hand). If the socket is ever corrected, remove that inner turn.
+  - Sheets: `models`, `modelsHi`, `modelsSig`, `modelsArmor` (drop pose), `drops` render real
+    three.js models in seconds (art-sheet now launches chromium with SwiftShader WebGL).
+  - `tools/check-body.mjs` leaves its vite child running after it exits; kill it by port.
 
 - Milestone 2 closing notes: `figure`, `scythe`, `bone`, `helm`, `boulder` glyphs are now back-lit
   and brighter; `toneOf()` lifts very dark colours (dread, veiled) so chips read. The seven elite

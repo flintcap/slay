@@ -266,6 +266,28 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return c;
   },
 
+  /** Held weapon and shield models, one per base sub-type, at normal and unique rarity. */
+  async models() {
+    return modelSheet(MODEL_PICKS, ['normal', 'rare', 'unique'], 0);
+  },
+  /** The same spread across set, mythic and ancient, with set and unique identities. */
+  async modelsHi() {
+    return modelSheet(MODEL_PICKS, ['set', 'mythic', 'ancient'], 0);
+  },
+  /** One base as eight different uniques and four different sets: do signatures differ? */
+  async modelsSig() {
+    const ids = ['sword.short', 'axe.war', 'staff.archon', 'bow.long'];
+    return modelSheet(ids, ['unique', 'unique', 'unique', 'unique', 'set', 'set'], 1);
+  },
+  /** Armour, jewellery and consumable models (what drops on the floor). */
+  async modelsArmor() {
+    return modelSheet(ARMOR_PICKS, ['normal', 'rare', 'unique'], 2);
+  },
+  /** Ground drops as the dungeon shows them: beam, pool, sigil around the item. */
+  async drops() {
+    return dropSheet();
+  },
+
   /** Timing breakdown: paint versus PNG encode, over every base. */
   async perf() {
     const { paintItemIcon } = await import('../src/art/ItemIconArt');
@@ -323,5 +345,154 @@ async function skillSheet(trees: typeof SKILL_TREES): Promise<HTMLCanvasElement>
     }
     y += Math.ceil(list.length / COLS) * RH + 6;
   }
+  return c;
+}
+
+// ---------------------------------------------------------------------------
+// 3D model sheets
+// ---------------------------------------------------------------------------
+
+const MODEL_PICKS = [
+  'sword.short', 'sword.broad', 'sword.rapier', 'sword.great', 'dagger.dirk', 'dagger.kris', 'dagger.stiletto',
+  'axe.hand', 'axe.war', 'axe.battle', 'axe.greataxe', 'mace.club', 'mace.flanged', 'mace.warhammer', 'mace.maul',
+  'spear.spear', 'spear.pike', 'spear.halberd', 'spear.trident', 'bow.short', 'bow.long', 'bow.war', 'bow.great',
+  'xbow.light', 'xbow.crossbow', 'xbow.repeating', 'wand.wand', 'wand.bone', 'wand.tomb', 'staff.short', 'staff.battle',
+  'staff.archon', 'scepter.scepter', 'scepter.divine', 'scepter.wrath', 'shield.buckler', 'shield.round', 'shield.kite',
+  'shield.tower', 'shield.bone', 'orb.cracked', 'orb.crystalline', 'orb.eldritch', 'quiver.hunters',
+];
+
+const ARMOR_PICKS = [
+  'helm.cap', 'helm.full', 'helm.bone', 'helm.circlet', 'chest.quilted', 'chest.leather', 'chest.chainmail', 'chest.scale',
+  'chest.plate', 'gloves.leather', 'gloves.gauntlets', 'gloves.silk', 'boots.boots', 'boots.greaves', 'boots.slippers',
+  'belt.sash', 'belt.belt', 'belt.girdle', 'amulet.amulet', 'ring.ring', 'charm.small', 'charm.grand', 'potion.heal.greater',
+  'potion.rejuv.full', 'potion.antidote', 'gem.ruby.normal', 'rune.el', 'dust.grave',
+];
+
+async function modelSheet(ids: string[], rarities: ItemRarity[], identMode: number): Promise<HTMLCanvasElement> {
+  const THREE = await import('three');
+  const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js');
+  const { buildItemModel, poseForDrop } = await import('../src/art/ItemModels');
+  const { Random } = await import('../src/core/RNG');
+  const CELL = 150;
+  const COLS = rarities.length;
+  const GROUPS = Math.min(4, Math.ceil(ids.length / 12));
+  const perCol = Math.ceil(ids.length / GROUPS);
+  const W = GROUPS * (COLS * CELL + 20);
+  const H = perCol * (CELL + 14);
+  const gl = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  gl.setSize(CELL, CELL, false);
+  gl.toneMapping = THREE.ACESFilmicToneMapping;
+  gl.outputColorSpace = THREE.SRGBColorSpace;
+  const pm = new THREE.PMREMGenerator(gl);
+  const env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+  const { c, g } = sheet(W, H);
+  let buildMs = 0;
+  let builds = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i]!;
+    const base = baseById.get(id);
+    if (!base?.visual) continue;
+    const col = Math.floor(i / perCol);
+    const row = i % perCol;
+    for (let k = 0; k < COLS; k++) {
+      const r = rarities[k]!;
+      const vary = identMode === 1 ? k : 0;
+      const ident = { baseId: id, uniqueId: r === 'unique' ? `u.${id}.${vary}` : undefined, setId: r === 'set' ? `s.${vary}.${id}` : undefined };
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x15161b);
+      scene.environment = env;
+      scene.environmentIntensity = 0.7;
+      const key = new THREE.DirectionalLight(0xfff0dd, 2.2);
+      key.position.set(-2, 3, 4);
+      scene.add(key, new THREE.HemisphereLight(0x8090b0, 0x201810, 0.6));
+      const model = buildItemModel(base.visual, new Random(7), r, ident);
+      // Time a second build: materials and textures are cached by now, as in play.
+      const t0 = performance.now();
+      buildItemModel(base.visual, new Random(7), r, ident);
+      {
+        buildMs += performance.now() - t0;
+        builds++;
+      }
+      // Lay weapons across the cell diagonally, tip top-right, like the icon frame.
+      const pivot = new THREE.Group();
+      pivot.add(model);
+      const shape = model.userData.shape;
+      if (identMode === 2) {
+        // As the floor shows it: the drop's own tilt, seen from the play camera's height.
+        poseForDrop(model);
+      } else if (shape === 'shield') model.rotation.set(Math.PI, 0, 0); // face toward us, point down, as held
+      else if (shape === 'bow') {
+        // A bow's limbs curve back on -Z: look at it side on, the way it is drawn.
+        model.rotation.set(0, Math.PI / 2, 0);
+        pivot.rotation.z = -Math.PI / 4;
+      } else if (!['orb', 'quiver'].includes(shape)) model.rotation.set(0, 0, -Math.PI / 4);
+      scene.add(pivot);
+      const box = new THREE.Box3().setFromObject(pivot);
+      const ctr = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const span = (identMode === 2 ? Math.max(size.x, size.y, size.z) : Math.max(size.x, size.y)) * 1.15;
+      const cam = new THREE.OrthographicCamera(-span / 2, span / 2, span / 2, -span / 2, -10, 10);
+      if (identMode === 2) cam.position.set(ctr.x, ctr.y + 4, ctr.z + 3);
+      else cam.position.set(ctr.x, ctr.y, ctr.z + 5);
+      cam.lookAt(ctr);
+      gl.render(scene, cam);
+      const x = col * (COLS * CELL + 20) + k * CELL;
+      const y = row * (CELL + 14);
+      g.drawImage(gl.domElement, x, y, CELL, CELL);
+      g.strokeStyle = RCOL[r];
+      g.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
+      if (k === 0) {
+        g.fillStyle = INK;
+        g.fillText(id, x + (COLS * CELL) / 2, y + CELL + 1);
+      }
+    }
+  }
+  gl.dispose();
+  c.dataset.note = `${(buildMs / Math.max(1, builds)).toFixed(2)}ms per model build (warm caches)`;
+  return c;
+}
+
+async function dropSheet(): Promise<HTMLCanvasElement> {
+  const THREE = await import('three');
+  const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js');
+  const { buildDropModel, setItemVisualResolver } = await import('../src/art/ItemModels');
+  const { Random } = await import('../src/core/RNG');
+  setItemVisualResolver((it) => baseById.get(it.baseId)?.visual);
+  const picks: Array<[string, ItemRarity]> = [
+    ['sword.great', 'normal'], ['axe.war', 'magic'], ['staff.archon', 'rare'], ['chest.plate', 'set'],
+    ['bow.long', 'unique'], ['ring.ring', 'mythic'], ['mace.maul', 'ancient'], ['potion.heal.greater', 'normal'],
+  ];
+  const CELL = 220;
+  const { c, g } = sheet(4 * CELL, 2 * (CELL + 14));
+  const gl = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  gl.setSize(CELL, CELL, false);
+  gl.toneMapping = THREE.ACESFilmicToneMapping;
+  gl.outputColorSpace = THREE.SRGBColorSpace;
+  const env = new THREE.PMREMGenerator(gl).fromScene(new RoomEnvironment(), 0.04).texture;
+  for (let i = 0; i < picks.length; i++) {
+    const [id, r] = picks[i]!;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x101014);
+    scene.environment = env;
+    scene.environmentIntensity = 0.5;
+    const key = new THREE.DirectionalLight(0xfff0dd, 1.6);
+    key.position.set(-2, 4, 3);
+    scene.add(key, new THREE.HemisphereLight(0x8090b0, 0x201810, 0.4));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshStandardMaterial({ color: 0x2a2826, roughness: 0.9 }));
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+    const drop = buildDropModel(fakeItem(id, r, r === 'unique' ? { uniqueId: 'u.' + id } : r === 'set' ? { setId: 's.' + id } : {}), new Random(3));
+    scene.add(drop);
+    const cam = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
+    cam.position.set(0, 2.2, 2.6);
+    cam.lookAt(0, 0.45, 0);
+    gl.render(scene, cam);
+    const x = (i % 4) * CELL;
+    const y = Math.floor(i / 4) * (CELL + 14);
+    g.drawImage(gl.domElement, x, y, CELL, CELL);
+    g.fillStyle = INK;
+    g.fillText(`${id} ${r}`, x + CELL / 2, y + CELL + 1);
+  }
+  gl.dispose();
   return c;
 }

@@ -212,7 +212,7 @@ export class Player {
         let mesh = wearItem(this.body, this.bones, slot, item, visual);
         if (!mesh) {
           // Merged per material: a held item is static, and ten parts cost ten draws.
-          mesh = compactModel(buildItemModel(visual, this.rng, item.rarity));
+          mesh = compactModel(buildItemModel(visual, this.rng, item.rarity, item));
           attachToSocket(this.root, this.bones, slot, mesh, socketKey, grip);
         }
         // Marks the weapon so a poison coat can glow on the blade and nowhere

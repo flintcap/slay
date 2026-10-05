@@ -192,7 +192,7 @@ export class PaperdollView {
         // Armour is worn on the body itself, exactly as in the world.
         let mesh = this.model ? wearItem(this.model, this.bones, slot, item, visual) : null;
         if (!mesh) {
-          mesh = compactModel(buildItemModel(visual, rng, item.rarity));
+          mesh = compactModel(buildItemModel(visual, rng, item.rarity, item));
           attachToSocket(this.rig, this.bones, slot, mesh, socketKey, grip);
         }
         this.equipMeshes.set(slot, mesh);

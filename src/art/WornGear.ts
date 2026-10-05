@@ -52,6 +52,7 @@ import {
   type TorsoRing,
 } from './BodyKit';
 import { gearLook, type GearLook } from './GearLook';
+import { itemLook } from './ItemLook';
 
 export interface WornPiece {
   object: THREE.Object3D;
@@ -1363,7 +1364,9 @@ export function buildWorn(
 ): WornPiece | null {
   const build = BUILDERS[slot];
   if (!build) return null;
-  const look = gearLook(item, visual);
+  // itemLook (art) layers the shared trim, stone and glow ladder over gearLook,
+  // so the worn piece matches its icon, its drop and the held weapon.
+  const look = itemLook(item, visual);
   const ctx: Ctx = { fit, look, rng: new Random(look.signature || 1), parts: [] };
   const hides = build(ctx);
   if (ctx.parts.length === 0) return null;
