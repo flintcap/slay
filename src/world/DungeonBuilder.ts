@@ -311,6 +311,11 @@ function radialTexture(size = 128): THREE.CanvasTexture {
 // Biome lighting
 // ---------------------------------------------------------------------------
 
+/** Half-width of the sun's shadow square, metres. */
+const SUN_REACH = 30;
+/** The open-sky key light, while one is live; its shadow tracks the hero. */
+let sun: THREE.DirectionalLight | null = null;
+
 export function applyBiomeLighting(
   scene: THREE.Scene,
   biome: BiomeDef,
@@ -349,13 +354,18 @@ export function applyBiomeLighting(
   // purely as a directional wash, because their shadows come from torches.
   key.castShadow = art.ceiling === 'open';
   if (key.castShadow) {
+    // The sun's shadow follows the player (`DungeonMesh.update` moves it).
+    // A fixed 140 m square drew every caster on the floor into the shadow
+    // pass, 3.3M triangles a frame in the ashwaste, at a quarter the texel
+    // density this one gets.
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.camera.near = 1;
-    key.shadow.camera.far = 160;
-    key.shadow.camera.left = -70;
-    key.shadow.camera.right = 70;
-    key.shadow.camera.top = 70;
-    key.shadow.camera.bottom = -70;
+    key.shadow.camera.far = 120;
+    key.shadow.camera.left = -SUN_REACH;
+    key.shadow.camera.right = SUN_REACH;
+    key.shadow.camera.top = SUN_REACH;
+    key.shadow.camera.bottom = -SUN_REACH;
+    sun = key;
     key.shadow.bias = -0.0008;
     key.shadow.normalBias = 0.03;
   }
@@ -372,6 +382,7 @@ export function applyBiomeLighting(
       ambient.dispose();
       if (scene.fog === fog) scene.fog = null;
       setFogShape();
+      if (sun === key) sun = null;
     },
   };
 }
@@ -1735,6 +1746,15 @@ export class DungeonMesh {
     // Height fog sits just under the lowest walkable floor: pits sink into it,
     // nobody stands in it.
     if (fogShape.w > 0) fogShape.y = this.lowestFloor - 0.9;
+    if (sun) {
+      // Whole-metre steps: a shadow map sliding by fractions of a texel
+      // every frame shimmers along every edge.
+      const fx = Math.round(focus.x);
+      const fz = Math.round(focus.z);
+      sun.position.set(fx + 28, 52, fz + 18);
+      sun.target.position.set(fx, 0, fz);
+      sun.target.updateMatrixWorld();
+    }
     this.updateLights(dt, elapsed, focus);
     this.updateFlames(elapsed, focus);
     this.liquid?.update(elapsed);

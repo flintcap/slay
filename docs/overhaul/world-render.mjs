@@ -67,7 +67,9 @@ for (const name of WANT) {
         else room = rooms.find((r) => r.kind === where);
         if (!room) return null;
         // Stand a little south of the centre so the centre piece is in front.
-        const p = sc.mesh.tileToWorld(Math.round(room.center.x), Math.round(room.center.y) + 3);
+        // ...but stay inside a small room: +3 put the hero in the corridor.
+        const off = Math.max(1, Math.min(3, Math.floor(room.h / 2) - 1));
+        const p = sc.mesh.tileToWorld(Math.round(room.center.x), Math.round(room.center.y) + off);
         sc.player.position.set(p.x, p.y, p.z);
         sc.player.root?.position?.set(p.x, p.y, p.z);
         sc.rig?.follow?.(sc.player.root);
@@ -88,6 +90,15 @@ for (const name of WANT) {
       const gl = window.SLAY.engine.renderer.gl;
       const sc = window.SLAY.engine.currentScene;
       let lights = 0; let meshes = 0; const mats = new Set();
+      // The heaviest visible meshes, by triangles times instances.
+      const heavy = [];
+      sc.scene.traverse((o) => {
+        if (!o.isMesh || !o.visible) return;
+        const g = o.geometry; const n = (g.index ? g.index.count : g.getAttribute('position')?.count ?? 0) / 3;
+        heavy.push([Math.round(n * (o.isInstancedMesh ? o.count : 1)), `${o.name || o.type}/${(Array.isArray(o.material) ? o.material[0] : o.material)?.name ?? ''}${o.isInstancedMesh ? 'x' + o.count : ''}${o.castShadow ? ' S' : ''}`]);
+      });
+      heavy.sort((a, b) => b[0] - a[0]);
+      window.__heavy = heavy.slice(0, 6);
       let casters = 0; let shadowLights = 0;
       sc.scene.traverse((o) => { if (o.isLight && o.castShadow) shadowLights++; if (o.isMesh && o.castShadow && o.visible) casters++; });
       sc.scene.traverse((o) => { if (o.isLight) lights++; if (o.isMesh) { meshes++; (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => mats.add(m)); } });
@@ -120,7 +131,7 @@ for (const name of WANT) {
         hero.floor = sc.mesh?.floorY ? +sc.mesh.floorY(pl.root.position.x, pl.root.position.z).toFixed(2) : null;
         if (close && sc.rig) { sc.rig.zoomBias = 0; sc.rig.zoom(-6); }
       }
-      return { hero, calls: gl.info.render.calls, tris: gl.info.render.triangles, programs: gl.info.programs?.length, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries, lights, shadowLights, casters, meshes, materials: mats.size, biome: sc.biome?.id, variant: sc.level?.variant, layout: sc.level?.layout, _r: (gl.info.autoReset = true) };
+      return { hero, calls: gl.info.render.calls, tris: gl.info.render.triangles, programs: gl.info.programs?.length, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries, lights, shadowLights, casters, heavy: window.__heavy, meshes, materials: mats.size, biome: sc.biome?.id, variant: sc.level?.variant, layout: sc.level?.layout, _r: (gl.info.autoReset = true) };
     }, close);
     if (close) await settle(30);
     if (args.probe) {
@@ -132,8 +143,12 @@ for (const name of WANT) {
         return pts.map(([x, y]) => {
           rc.setFromCamera({ x: (x / innerWidth) * 2 - 1, y: -(y / innerHeight) * 2 + 1 }, sc.camera);
           rc.near = 0; rc.far = 200;
-          const h = rc.intersectObject(sc.scene, true).filter((h) => shown(h.object) && h.object.isMesh && !/roof|bedrock/i.test(h.object.name)).slice(0, 2);
-          return `${x},${y}: ` + h.map((q) => `${q.object.name || q.object.type}/${(Array.isArray(q.object.material) ? q.object.material[0] : q.object.material)?.name ?? ''}@${q.distance.toFixed(1)}`).join(' | ');
+          const h = rc.intersectObject(sc.scene, true).filter((h) => shown(h.object) && h.object.isMesh && !/roof|bedrock/i.test(h.object.name)).slice(0, 4);
+          return `${x},${y}: ` + h.map((q) => {
+            const o = q.object; const m = Array.isArray(o.material) ? o.material[0] : o.material;
+            o.geometry.computeBoundingBox?.(); const bb = o.geometry.boundingBox; const sz = bb ? bb.getSize(o.position.clone()).toArray().map((v) => +v.toFixed(2)) : null;
+            return `${o.name || o.type}/${m?.name ?? ''}@${q.distance.toFixed(1)} [${m?.type} #${m?.color?.getHexString?.()} em#${m?.emissive?.getHexString?.() ?? '-'} op${m?.opacity} bl${m?.blending} geo:${o.geometry.type} ${JSON.stringify(sz)} parent:${o.parent?.name || o.parent?.type}]`;
+          }).join(' | ');
         });
       }, pts);
       console.log(`PROBE ${name} ${JSON.stringify(hits)}`);

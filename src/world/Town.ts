@@ -60,7 +60,10 @@ interface Ctx {
   mat: THREE.Material[];
   lights: THREE.Light[];
   /** Animated emissive/flicker records. */
-  flames: Array<{ light: THREE.PointLight; base: number; phase: number; flicker: number; mesh?: THREE.Mesh }>;
+  flames: Array<{ light: THREE.PointLight; base: number; phase: number; flicker: number; mesh?: THREE.Mesh; bulb?: number }>;
+  /** Lantern bulbs, drawn as one instanced mesh (see `buildBulbs`). */
+  bulbs: Array<{ x: number; y: number; z: number; r: number; color: number }>;
+  bulbMesh: THREE.InstancedMesh | null;
   spin: Array<{ obj: THREE.Object3D; speed: number; axis: 'y' | 'x' }>;
   /** Things that sway: banners, washing, hanging pelts. */
   sway: Array<{ obj: THREE.Object3D; phase: number; amp: number; axis: 'x' | 'z' }>;
@@ -136,6 +139,79 @@ function flushBatches(ctx: Ctx, mats: Mats): void {
   ctx.batches.clear();
 }
 
+/**
+ * Merges every static, single-material mesh left directly under the camp root
+ * into one mesh per material.
+ *
+ * `bake` only catches what was written to use it; the stations, tents and
+ * clutter are hundreds of `add()` meshes, each drawn in the main pass, the
+ * AO pass and the moon's shadow pass. The first night render measured 5,868
+ * draw calls against a budget of 900. Anything that moves (spin, sway,
+ * flicker) or carries attributes beyond position, normal and uv is left alone.
+ */
+function mergeStatic(ctx: Ctx): void {
+  const moving = new Set<THREE.Object3D>();
+  const mark = (o: THREE.Object3D | undefined): void => o?.traverse((q) => moving.add(q));
+  for (const f of ctx.flames) mark(f.mesh);
+  for (const sp of ctx.spin) mark(sp.obj);
+  for (const sw of ctx.sway) mark(sw.obj);
+  const plain = new Set(['position', 'normal', 'uv']);
+  const groups = new Map<string, { mat: THREE.Material; cast: boolean; recv: boolean; list: THREE.Mesh[] }>();
+  for (const o of ctx.root.children) {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || (m as THREE.InstancedMesh).isInstancedMesh || (m as THREE.SkinnedMesh).isSkinnedMesh) continue;
+    if (moving.has(m) || m.children.length > 0 || Array.isArray(m.material)) continue;
+    const mat = m.material as THREE.Material;
+    if (mat.transparent || !m.visible) continue;
+    if (Object.keys(m.geometry.attributes).some((k) => !plain.has(k)) || !m.geometry.getAttribute('normal')) continue;
+    const key = `${mat.uuid}|${m.castShadow ? 1 : 0}${m.receiveShadow ? 1 : 0}`;
+    let g = groups.get(key);
+    if (!g) groups.set(key, (g = { mat, cast: m.castShadow, recv: m.receiveShadow, list: [] }));
+    g.list.push(m);
+  }
+  for (const g of groups.values()) {
+    if (g.list.length < 2) continue;
+    const geos = g.list.map((m) => {
+      m.updateMatrix();
+      return m.geometry.clone().applyMatrix4(m.matrix);
+    });
+    const merged = mergeGeometries(geos);
+    for (const q of geos) q.dispose();
+    ctx.geo.push(merged);
+    const mesh = new THREE.Mesh(merged, g.mat);
+    mesh.castShadow = g.cast;
+    mesh.receiveShadow = g.recv;
+    mesh.frustumCulled = false;
+    for (const m of g.list) ctx.root.remove(m);
+    ctx.root.add(mesh);
+  }
+}
+
+/**
+ * Every lantern bulb in the camp as one instanced mesh. They were fifty meshes
+ * with fifty materials, a draw call each in the main and AO passes; the
+ * flicker now writes instance matrices instead of mesh scales.
+ */
+function buildBulbs(ctx: Ctx): void {
+  if (ctx.bulbs.length === 0) return;
+  const mat = new THREE.MeshBasicMaterial({ toneMapped: false });
+  ctx.mat.push(mat);
+  const inst = new THREE.InstancedMesh(keep(ctx, new THREE.SphereGeometry(1, 8, 6)), mat, ctx.bulbs.length);
+  inst.name = 'lanternBulbs';
+  const c = new THREE.Color();
+  ctx.bulbs.forEach((b, i) => {
+    _mtx.makeScale(b.r, b.r, b.r).setPosition(b.x, b.y, b.z);
+    inst.setMatrixAt(i, _mtx);
+    inst.setColorAt(i, c.set(b.color));
+  });
+  inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+  inst.computeBoundingSphere();
+  inst.frustumCulled = false;
+  ctx.root.add(inst);
+  ctx.bulbMesh = inst;
+}
+
 function add(ctx: Ctx, geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, ry = 0): THREE.Mesh {
   keep(ctx, geo);
   const m = new THREE.Mesh(geo, mat);
@@ -196,11 +272,8 @@ function addLantern(
   color: number, intensity: number, distance: number,
   flicker = 0.6, radius = 0.13, lit = true,
 ): void {
-  const bulbMat = new THREE.MeshBasicMaterial({ color, toneMapped: false });
-  ctx.mat.push(bulbMat);
-  const bulb = new THREE.Mesh(keep(ctx, new THREE.SphereGeometry(radius, 8, 6)), bulbMat);
-  bulb.position.set(x, y, z);
-  ctx.root.add(bulb);
+  const bulb = ctx.bulbs.length;
+  ctx.bulbs.push({ x, y, z, r: radius, color });
 
   if (!lit) {
     // A faint pool still sits under a high one: the instanced decal is free,
@@ -209,7 +282,7 @@ function addLantern(
     // Still flickers — the bulb is what the eye reads at this distance.
     ctx.flames.push({
       light: { intensity: 0 } as THREE.PointLight,
-      base: 0, phase: ctx.rng.range(0, 100), flicker, mesh: bulb,
+      base: 0, phase: ctx.rng.range(0, 100), flicker, bulb,
     });
     return;
   }
@@ -220,7 +293,7 @@ function addLantern(
   if (y > 1.5) ctx.glows.push({ x, z, r: Math.min(5, distance * 0.22), color, k: 0.28 });
   ctx.root.add(light);
   ctx.lights.push(light);
-  ctx.flames.push({ light, base: intensity, phase: ctx.rng.range(0, 100), flicker, mesh: bulb });
+  ctx.flames.push({ light, base: intensity, phase: ctx.rng.range(0, 100), flicker, bulb });
 }
 
 // --- reusable camp furniture ------------------------------------------------
@@ -362,6 +435,14 @@ function npc(ctx: Ctx, who: string, x: number, z: number, facing: number, seed: 
       if (mm.isMesh) {
         mm.castShadow = true;
         mm.receiveShadow = true;
+        // Worn gear ships unculled, so all nine residents were drawn in every
+        // pass, every shadow face included, wherever the camera looked. A
+        // resident barely moves: a generous sphere round the bone it hangs
+        // from (no part is further than ~2 m from any bone) culls safely.
+        if ((mm as THREE.SkinnedMesh).isSkinnedMesh) {
+          (mm as THREE.SkinnedMesh).boundingSphere = new THREE.Sphere(new THREE.Vector3(), 2.4);
+          mm.frustumCulled = true;
+        }
       }
     });
     ctx.root.add(built.root);
@@ -383,7 +464,7 @@ export function buildTown(rng: Rng): TownBuild {
   root.name = 'camp';
 
   const ctx: Ctx = {
-    root, colliders: [], geo: [], mat: [], lights: [], flames: [], spin: [], sway: [],
+    root, colliders: [], geo: [], mat: [], lights: [], flames: [], bulbs: [], bulbMesh: null, spin: [], sway: [],
     npcs: [], batches: new Map(), smoke: [], glows: [], rng, noise: new Noise(0x70ad),
   };
 
@@ -488,6 +569,8 @@ export function buildTown(rng: Rng): TownBuild {
     const vz = alchemyAt.z + 0.5;
     npc(ctx, 'vell', vx, vz, Math.atan2(npcSpots.alchemist.x - vx, npcSpots.alchemist.z - vz), 909);
   }
+  mergeStatic(ctx);
+  buildBulbs(ctx);
 
   // --- ambience ----------------------------------------------------------
   const hemi = new THREE.HemisphereLight(0x627cb0, 0x453626, 2.9);
@@ -536,7 +619,14 @@ export function buildTown(rng: Rng): TownBuild {
           const s = 0.88 + v * 0.2;
           f.mesh.scale.set(s, s * 1.12, s);
         }
+        if (f.bulb !== undefined && ctx.bulbMesh) {
+          const b = ctx.bulbs[f.bulb]!;
+          const s = (0.88 + v * 0.2) * b.r;
+          _mtx.makeScale(s, s * 1.12, s).setPosition(b.x, b.y, b.z);
+          ctx.bulbMesh.setMatrixAt(f.bulb, _mtx);
+        }
       }
+      if (ctx.bulbMesh) ctx.bulbMesh.instanceMatrix.needsUpdate = true;
       for (const s of ctx.spin) {
         if (s.axis === 'y') s.obj.rotation.y += s.speed * dt;
         else s.obj.rotation.x += s.speed * dt;
@@ -781,25 +871,16 @@ function buildCampfire(ctx: Ctx, m: Mats): void {
   flameGroup.position.y = 0.1;
   ctx.root.add(flameGroup);
 
-  // The camp's key light. The only shadow-casting point light here, because a
-  // point light shadow costs six renders of the scene and this one earns it:
-  // it is what throws everybody's shadow out across the dirt.
+  // The camp's key light.
   const fire = new THREE.PointLight(0xff9440, 40, 28, 2);
-  // Raised well above the logs. At flame height every log around the ring threw
-  // a shadow the length of the camp, and those hard black wedges read as broken
-  // geometry rather than as firelight.
+  // Raised well above the logs, so the light falls in a pool rather than
+  // raking the ground.
   fire.position.set(0, 2.6, 0);
   ctx.glows.push({ x: 0, z: 0, r: 9.5, color: 0xff9440, k: 0.42 });
-  fire.castShadow = true;
-  fire.shadow.mapSize.set(1024, 1024);
-  fire.shadow.camera.near = 0.6;
-  // Twelve metres, not twenty-four: a point shadow draws every caster inside
-  // its range six times, and at 24 m that was the whole camp (5,800 draw calls
-  // a frame). The ring of people and logs round the fire is what needs it.
-  fire.shadow.camera.far = 12;
-  fire.shadow.bias = -0.004;
-  fire.shadow.normalBias = 0.06;
-  fire.shadow.radius = 3;
+  // No shadow. A point shadow draws every caster in range six more times; the
+  // camp measured 2,300 draw calls with it against a budget of 900. The moon
+  // is the camp's shadow caster.
+  fire.castShadow = false;
   ctx.root.add(fire);
   ctx.lights.push(fire);
   ctx.flames.push({ light: fire, base: 46, phase: 3.1, flicker: 0.85, mesh: flameGroup as unknown as THREE.Mesh });

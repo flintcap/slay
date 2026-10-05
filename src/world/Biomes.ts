@@ -337,9 +337,11 @@ const ASHWASTE = def(
   {
     fog: 0x2b1a13,
     fogDensity: 0.022,
-    ambient: 0x8a5a44,
+    // Grey ash under a red sky: the sky does the red, the ground stays grey.
+    // A red ambient and an orange key made floor, walls and monsters one hue.
+    ambient: 0x6f6460,
     ambientI: 0.95,
-    key: 0xff8f5a,
+    key: 0xffb48a,
     keyI: 0.9,
     accent: 0xff6a2a,
   },
@@ -811,7 +813,9 @@ const ART: Record<BiomeId, BiomeArt> = {
   ashwaste: {
     id: 'ashwaste',
     landmarks: [{ kind: 'obelisk', weight: 4 }, { kind: 'statue', weight: 2 }],
-    grade: { contrast: 1.1, saturation: 0.86, shadowTint: 0x7a5040, highlightTint: 0xffa070, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x7a5040, lift: [0.014, 0.008, 0.004] },
+    // Cool, ashen shadows under a hot sky. Warm on warm rendered the whole
+    // frame one red, floor, walls and monsters alike.
+    grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x585a66, highlightTint: 0xffa070, splitTone: 0.42, vignette: 0.5, vignetteTint: 0x4a3a34, lift: [0.01, 0.009, 0.009] },
     grime: 0x2a2420,
     wetness: 0.0,
     surfaceVariation: 0.95,
@@ -840,7 +844,7 @@ const ART: Record<BiomeId, BiomeArt> = {
     lightColor: 0xff8f4a,
     lightIntensity: 6.0,
     lightDistance: 13,
-    bounceColor: 0x8a5a3a,
+    bounceColor: 0x5e544e,
     shaftDensity: 0,
     shaftColor: 0xffb070,
     veinDensity: 0.1,

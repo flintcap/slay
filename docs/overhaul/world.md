@@ -13,18 +13,29 @@ Status: in progress
 
 ## Next up
 
-1. Look at the rest of the w6 batch (`shots/w6`: caverns@room, sunkenTemple, ashwaste, town) and the
-   town line's `calls` and `casters` (fire shadow range cut to 12 m; was 5868 calls). Tick milestones 3
-   to 5 as they check out.
-2. The flat orange square in the foundry start shot (bottom centre): find out what it is with
-   `--probe=510,510` on `foundry@close` (puddle mirror? lava without crust?) and fix it.
-3. Landmarks still unseen: `foundry@vault` has no vault on seed 1001; try `@treasure`, `@ambush`, or
-   another seed.
-4. Town draw calls and triangles against check-perf budgets (900 / 1.5M).
-5. Milestone 6 sweep: all eight biomes in `SEEDS`.
-6. `node tools/check-propmesh.mjs` alone when the machine is quiet.
+1. Read the rest of the w8 batch (`shots/w8`: ashwaste, foundry@treasure, crypt@treasure, frostvault)
+   and its `PROBE` lines: (650,260) is the white blob over the hero at the ashwaste entry, (900,450) the
+   black area right of the corridor in foundry@treasure. Fix what they name.
+2. Ashwaste got grey ground light (ambient 0x6f6460, key 0xffb48a, bounce 0x5e544e) and a cool
+   shadow grade after w8 was built; render it again to judge. Its 3.3M triangles are NOT the sun
+   shadow (the sun now follows the hero, `SUN_REACH` 30); the harness `heavy` list names the meshes.
+3. The flat orange square at the foundry entry: probe hits are the hero aura (a 9 m plane round the
+   hero) then `lightPools`; take a probe with 4 hits further from the hero to see what is under it.
+4. Landmarks still unseen. `@treasure` and `@ambush` now stand inside small rooms.
+5. Town: 1,092 draw calls (budget 900), 805K triangles, 23 lights, 1 shadow light. Remaining cost is
+   main + AO + moon shadow per mesh; nine residents at ~20 meshes each are most of it (models' budget).
+6. Then tick milestones 3 to 5 and do the milestone 6 sweep over all eight biomes.
+7. `node tools/check-propmesh.mjs` alone when the machine is quiet.
 
 ## Notes for resume
+
+- Town perf (w6 -> w8): 6,102 -> 1,092 draw calls, 2.7M -> 805K triangles. `mergeStatic` folds every
+  static single-material mesh under the camp root into one mesh per material (moving things in
+  `spin`/`sway`/`flames` are skipped), the lantern bulbs are one `InstancedMesh` (`buildBulbs`, flicker
+  writes instance matrices), residents' skinned parts cull against a 2.4 m sphere, and the camp fire
+  no longer casts a point shadow (the moon does). Hero light in town is softer and higher (9 at 3.4 m).
+- The open-sky sun's shadow square follows the hero in whole-metre steps (`sun` in DungeonBuilder,
+  moved in `DungeonMesh.update`).
 
 - SOLVED, the invisible hero: `Animator.guardReach`'s pelvis spring blew up on long frames (hips at
   -1e14 m, flickering because of a clamp at zero). Fixed in `Animation.ts` (closed-form step; the

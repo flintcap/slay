@@ -105,7 +105,9 @@ export class TownScene extends GameScene {
     this.player.position.set(0, 0, 8);
     this.scene.add(this.player.root);
 
-    this.heroLight = new THREE.PointLight(0xffdcb0, 12, 16, 2);
+    // Soft and high: at 12 and 2.3 m the hero's pale linen rendered white-hot
+    // against the night camp.
+    this.heroLight = new THREE.PointLight(0xffdcb0, 9, 16, 2);
     this.scene.add(this.heroLight);
 
     // Smoke from the cook fire and the forge chimney, and midges over the camp.
@@ -239,7 +241,7 @@ export class TownScene extends GameScene {
     }
 
     if (this.heroLight) {
-      this.heroLight.position.set(this.player.position.x, 2.3, this.player.position.z);
+      this.heroLight.position.set(this.player.position.x, 3.4, this.player.position.z);
     }
     // Keep the columns going. Bursting on a timer rather than every frame keeps
     // the particle budget where the combat scenes expect it.
