@@ -36,6 +36,8 @@ Milestone 4, monster motion. Concretely:
 
 ## Notes for resume
 
+- **From art (47064a3):** the off-hand socket (`SOCKETS.offHand`, rot X 0.92π) carried shields with their authored front (+Z) toward the hero's back. Art now turns the shield inside `buildShield`, so it reads correctly as is. If you change the off-hand socket, tell art (art.md) so the inner turn can go. Sword grips are now centred on the origin with the guard above the hand (they used to sit half inside the blade); `check-grips` still passes.
+
 - **Reactions (milestone 3).** `play('hurt')` no longer plays a clip: it calls `Animator.flinch(1)`, an
   additive layer (`applyFlinch`) that alternates sides and is halved during actions. `stagger` is a
   one-shot with a catching step (Player.shove plays it for force >= 1.5; if a swing has not reached
