@@ -13,10 +13,12 @@
 
 import type { AccountSave, Character, StorySave } from '../types';
 import { save } from '../core/Save';
-import type { Chapter, Line, NpcDef, NpcId, Topic, When } from '../data/story/types';
+import type { Chapter, LoreNote, Line, NpcDef, NpcId, Topic, When } from '../data/story/types';
+import { NOTES } from '../data/story/notes';
 import { CHAPTERS, chapterById, chaptersUpTo } from '../data/story/premise';
 import { NPCS, NPC_IDS, npcForStation, TALK_SPOTS } from '../data/story/npcs';
 import { Random, streamFor } from '../core/RNG';
+import { BOSSES } from '../data/bosses';
 
 const STORY_VERSION = 1;
 
@@ -237,6 +239,106 @@ export function enterBiome(biome: string): boolean {
   s.biomes.push(biome);
   persist();
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Bosses
+// ---------------------------------------------------------------------------
+
+/** The boss id for a name as `boss:engaged` and `boss:killed` carry it. */
+export function bossIdByName(name: string): string | undefined {
+  return BOSSES.find((b) => b.name === name)?.id;
+}
+
+function addOnce(list: string[], id: string): boolean {
+  if (list.includes(id)) return false;
+  list.push(id);
+  persist();
+  return true;
+}
+
+/** A boss has been fought. Returns true the first time. */
+export function noteBossMet(id: string): boolean {
+  return addOnce(story().met, id);
+}
+
+/** A boss has died to one of your characters. Returns true the first time. */
+export function noteBossSlain(id: string): boolean {
+  noteBossMet(id);
+  return addOnce(story().slain, id);
+}
+
+/** Key under which a boss floor's lore counts as found, in `StorySave.notes`. */
+export const floorNoteId = (bossId: string): string => `floor.${bossId}`;
+
+/** The lore on a boss's floor has been read. Returns true the first time. */
+export function noteBossFloor(id: string): boolean {
+  return addOnce(story().notes, floorNoteId(id));
+}
+
+export type TauntMood = 'ahead' | 'even' | 'behind';
+
+/**
+ * How the fight is going, from the boss's side, by the hero's share of life
+ * left as the boss drops under half: badly hurt is the boss ahead, barely
+ * scratched is the boss behind.
+ */
+export function tauntMood(lifeShare: number): TauntMood {
+  if (lifeShare < 0.35) return 'ahead';
+  if (lifeShare > 0.7) return 'behind';
+  return 'even';
+}
+
+// ---------------------------------------------------------------------------
+// Lore notes and places
+// ---------------------------------------------------------------------------
+
+/** Chance that each kind of search turns up a page, if one is left to find. */
+export const NOTE_CHANCE: Record<'bookcase' | 'chest' | 'fallen', number> = {
+  fallen: 1,
+  bookcase: 0.35,
+  chest: 0.12,
+};
+
+/** Notes that could still be found here. `biome` undefined means the town or unknown. */
+export function notesFindable(depth: number, biome: string | undefined): LoreNote[] {
+  const s = story();
+  return NOTES.filter((n) => n.minDepth <= depth && (!n.biome || n.biome === biome) && !s.notes.includes(n.id));
+}
+
+let searchSeq = 0;
+
+/**
+ * Rolls for a page on a search. Returns the note found, already recorded, or
+ * null. Deterministic for a given account state, depth and search count.
+ */
+export function searchForNote(source: keyof typeof NOTE_CHANCE, depth: number, biome: string | undefined): LoreNote | null {
+  const pool = notesFindable(depth, biome);
+  if (pool.length === 0) return null;
+  searchSeq++;
+  const rng = streamFor((depth * 7919 + story().notes.length * 104729 + searchSeq * 31) >>> 0, `story.note.${source}`);
+  if (!rng.chance(NOTE_CHANCE[source])) return null;
+  // Pages from this place before loose ones, so each layer tells its own story.
+  const local = pool.filter((n) => n.biome);
+  const from = local.length && rng.chance(0.7) ? local : pool;
+  const note = rng.pick(from);
+  story().notes.push(note.id);
+  persist();
+  return note;
+}
+
+/** Every lore note found, in the order of the catalogue. */
+export function foundNotes(): LoreNote[] {
+  const s = story();
+  return NOTES.filter((n) => s.notes.includes(n.id));
+}
+
+/** True once the deep entry for a biome has been told. */
+export const deepKey = (biome: string): string => `deep.${biome}`;
+
+/** Marks a biome's deep entry as told. Returns true the first time. */
+export function noteDeepEntry(biome: string): boolean {
+  return addOnce(story().heard, deepKey(biome));
 }
 
 // ---------------------------------------------------------------------------

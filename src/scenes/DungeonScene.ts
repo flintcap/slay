@@ -596,6 +596,7 @@ export class DungeonScene extends GameScene {
       // floor of a run; it used to arrive separately as a toast.
       blurb: index === 0 ? place.blurb : undefined,
       biome: this.biome.id,
+      bossId: this.level.isBossLevel ? this.boss?.bossDef.id : undefined,
     });
   }
 
@@ -1414,6 +1415,7 @@ export class DungeonScene extends GameScene {
     this.fx.burst('dust', it.x, 1.0, it.z, { count: 14, scale: 0.7 });
     audio.play('ui.open');
     onInteract(this.run.quest, 'bookcase');
+    events.emit('lore:search', { source: 'bookcase', depth: this.run.depth });
   }
 
   /**
@@ -1460,6 +1462,7 @@ export class DungeonScene extends GameScene {
     audio.play('ui.open');
     onInteract(this.run.quest, 'chest');
     questTokens.chest(this.run.quest);
+    events.emit('lore:search', { source: 'chest', depth: this.run.depth });
   }
 
   /**

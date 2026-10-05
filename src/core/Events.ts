@@ -54,6 +54,8 @@ export interface GameEvents {
     blurb?: string;
     /** Biome id, so the title card can take the biome's colour. */
     biome?: string;
+    /** On a boss floor, the boss waiting on it (story shows the floor's lore). */
+    bossId?: string;
   };
   /** A run was finished and banked. Fires once, on the way back to town. */
   'run:cleared': { depth: number };
@@ -68,6 +70,12 @@ export interface GameEvents {
   /** A floor's mini-boss noticed the hero. `title` names its mechanic. */
   'miniboss:engaged': { id: string; name: string; title: string; kind: string };
   'miniboss:killed': { id: string; name: string; kind: string };
+  /**
+   * The hero went through something that might hold a written page: a
+   * bookcase, a chest, a fallen adventurer's pack. The story layer decides
+   * whether a lore note is in it (ui/StoryPlaces.ts).
+   */
+  'lore:search': { source: 'bookcase' | 'chest' | 'fallen'; depth: number };
   'toast': { text: string; kind?: 'info' | 'good' | 'bad' | 'epic'; rarity?: ItemRarity };
   'shake': { amount: number; duration: number };
   'sfx': { id: string; volume?: number; pitch?: number; x?: number; z?: number };

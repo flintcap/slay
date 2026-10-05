@@ -15,6 +15,7 @@ import * as THREE from 'three';
 import './story.css';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
+import { remapKey } from '../core/Access';
 import { Panel, div, span, clear, icon } from './Widgets';
 import type { NpcDef, NpcId } from '../data/story/types';
 import {
@@ -106,7 +107,7 @@ export class DialoguePanel implements DialogueView {
 
     window.addEventListener('keydown', (e) => {
       if (!this.panel.isOpen || e.repeat) return;
-      const n = /^Digit([1-9])$/.exec(e.code);
+      const n = /^Digit([1-9])$/.exec(remapKey(e.code));
       if (!n) return;
       const opt = this.current[Number(n[1]) - 1];
       if (!opt) return;

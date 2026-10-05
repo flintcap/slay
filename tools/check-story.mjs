@@ -30,7 +30,27 @@ const HOOKS = [
   ['src/world/DungeonGen.ts', 'plan?.biome ?? rolledBiome', 'a contract cannot send the stair to its biome'],
   ['src/world/DungeonGen.ts', 'plan?.quest ? plan.quest(biome) : rolledQuest', 'a contract is never carried below'],
   ['src/world/DungeonGen.ts', 'plan?.bossId ?? rolledBoss', 'a contract cannot name its boss'],
+  ['src/ui/StoryOverlay.ts', 'installStoryBosses()', 'bosses never speak'],
+  ['src/core/Events.ts', 'bossId?: string', 'a boss floor cannot say which boss is on it'],
+  ['src/scenes/DungeonScene.ts', 'bossId: this.level.isBossLevel', 'boss floor lore is never shown'],
+  ['src/entities/Boss.ts', "events.emit('boss:engaged'", 'a boss fight never starts its speech'],
+  ['src/entities/Boss.ts', "events.emit('boss:phase'", 'phase barks are never spoken'],
+  ['src/entities/Boss.ts', "events.emit('boss:damaged'", 'a boss never taunts'],
+  ['src/entities/Boss.ts', "events.emit('boss:enraged'", 'a boss never loses patience aloud'],
+  ['src/entities/Boss.ts', "events.emit('boss:killed'", 'a boss never says its last words'],
+  ['src/entities/Player.ts', "events.emit('player:died'", 'a boss never speaks over your body'],
 ];
+HOOKS.push(
+  ['src/ui/StoryOverlay.ts', 'installStoryPlaces()', 'places and notes never appear'],
+  ['src/scenes/DungeonScene.ts', "events.emit('lore:search', { source: 'bookcase'", 'bookcases never hold a page'],
+  ['src/scenes/DungeonScene.ts', "events.emit('lore:search', { source: 'chest'", 'chests never hold a page'],
+  ['src/scenes/RunEvents.ts', "events.emit('lore:search', { source: 'fallen'", 'the fallen never carry a page'],
+  ['src/ui/Tooltip.ts', 'itemFlavor(item, base?.category)', 'rare and set items show no flavour'],
+);
+// Every boss event the story speaks on must have a listener in StoryBosses.
+for (const ev of ['boss:engaged', 'boss:phase', 'boss:damaged', 'boss:enraged', 'boss:killed', 'player:died']) {
+  HOOKS.push(['src/ui/StoryBosses.ts', `events.on('${ev}'`, `nothing is said on ${ev}`]);
+}
 const STATIONS = ['vendor', 'blacksmith', 'alchemist', 'stash', 'memorial'];
 const wiring = [];
 for (const [file, needle, why] of HOOKS) {

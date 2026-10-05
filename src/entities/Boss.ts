@@ -171,7 +171,8 @@ export class Boss extends Enemy {
       maxLife: this.maxLife,
     });
     events.emit('music', { track: this.bossDef.music, fade: 1.5 });
-    events.emit('toast', { text: this.bossDef.intro, kind: 'epic' });
+    // The intro is narrated as a subtitle by the story layer (ui/StoryBosses.ts);
+    // as a toast it clipped long lines.
     this.enterPhase(0, ctx);
     this.ai?.wake(ctx, false);
   }
@@ -217,7 +218,8 @@ export class Boss extends Enemy {
 
     this.setArena(phase.arena ?? null, ctx);
     events.emit('boss:phase', { name: phase.name, bark: phase.bark, index });
-    if (phase.bark) events.emit('toast', { text: `"${phase.bark}"`, kind: 'epic' });
+    // The bark shows under the boss bar (HUD) and is spoken as a subtitle by
+    // the story layer (ui/StoryBosses.ts); a toast as well said it three times.
     events.emit('sfx', { id: 'boss.phase', x: this.root.position.x, z: this.root.position.z });
   }
 

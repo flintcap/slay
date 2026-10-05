@@ -1,33 +1,38 @@
 # Stream: story (lore, quests, characters)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
 - [x] The why: a central premise for the descent, revealed in pieces as you go deeper, with a payoff at depth milestones. (`Story: the premise of the descent, chapters and the journal`)
 - [x] Town NPCs: each has a name, a voice, a few lines of dialogue that change with your progress, and a reason to talk to them. (`Story: the people of Stairhead, and talking to them`)
 - [x] Quest lines: hand-written quest chains that send you to specific depths and biomes, with rewards and short story beats. (`Story: contracts, nine hand-written quest lines`)
-- [ ] Bosses with personality: an intro line, a taunt mid-fight, and a death line for every boss; lore found on their floors.
+- [x] Bosses with personality: an intro line, a taunt mid-fight, and a death line for every boss; lore found on their floors. (`Story: a voice and floor lore for all 24 bosses`)
 - [ ] Flavour: item, unique and set flavour text, biome and variant blurbs, lore notes found in the dungeon, a journal to reread them.
 - [ ] Sweep: consistent tone and names, no contradictions, every quest completable.
 
 ## Next up
 
-Milestone 4, bosses with personality. Nothing of it is written yet. Plan, already decided:
-- New `src/data/story/bossVoices.ts`: `BOSS_VOICES: Record<bossId, BossVoice>` (type in `src/data/story/types.ts`)
-  for every boss in `src/data/bosses.ts` (22 today; combat owns that file and may add more, so the checker must
-  require a voice for every `BOSSES` entry). Each: `greet`, several `taunts`, `death`, `slain`, `victory`, `floor`.
-- Show them from `src/ui/StoryOverlay.ts` with `say(name, line, { tone: 'boss' })`: greet on `boss:engaged` (map the
-  event's name+title back to the id via `BOSSES`), one taunt mid-fight on `boss:damaged` crossing about 45% life
-  (pick by how the fight is going), `death` and then `slain` narration on `boss:killed`, `victory` on
-  `player:died` while a boss is engaged. Record `met`/`slain` in `StorySave` (already has the arrays).
-- Floor lore: on `depth:changed` where `level === of` (the boss floor), show `floor` as a card, once per boss per
-  account, and keep it in the journal (new Bosses tab via `addJournalSection`).
-- Note: `Boss.ts` (combat) already toasts its own `intro` and phase barks; ours are spoken lines, not toasts.
+Milestone 5, flavour. Much of it already landed with milestone 4's commit (it was written in the same session):
+lore notes (`src/data/story/notes.ts`, 39 pages, found through `lore:search` from bookcases, chests and fallen
+delvers, `src/ui/StoryPlaces.ts`), places (`src/data/story/places.ts`: first-sight cards, deep entries, ambient
+lines), rare item flavour (`src/data/story/itemFlavor.ts`, shown by `Tooltip.ts`), and journal tabs Bosses, Notes
+and Places. Still to do for milestone 5:
+- Read every unique flavour (`src/data/uniques.ts`) and set blurb (`src/data/sets.ts`) against the premise; fix any
+  that contradict it or use modern idiom (small text-only edits in depth's files).
+- Read the biome and variant blurbs in `src/world/Biomes.ts` (`PLAIN(...)` and `blurb:`); fix tone (text only).
+- Render once with `tools/shot-story.mjs` (port 4308, under `timeout`) and look at a boss line, a note card, the
+  journal.
+Then milestone 6: the sweep, starting with the old `src/data/lore.ts`, which names boss and monster ids that do not
+exist.
 
 ## Notes for resume
 
-**From hud (finished, 5a2ec0f):** font sizes in `story.css` (2) still ignore the text-size setting. Use the `--fs-*` tokens or `calc(Npx * var(--text-scale, 1))`.
+- Done: the two raw font sizes in `story.css` hud asked about now scale with `--text-scale`.
+- Bosses: voices in `src/data/story/bossVoices.ts`, spoken by `src/ui/StoryBosses.ts`. `Boss.ts` no longer toasts its
+  intro or phase barks (the toast clipped long lines); the intro is narrated as a subtitle and later barks are spoken.
+  The checker requires a voice for every `BOSSES` entry, so a new boss from combat fails `check-story` until written.
+- `depth:changed` carries `bossId` on boss floors; `lore:search` (Events.ts) is the hook for finding pages.
 
 - The premise is written at the top of `src/data/story/premise.ts`. Read it before writing anything: the Tenant,
   the layers, the delvers as the lid, Stairhead. Chapters reveal once per account on reaching their tier; past

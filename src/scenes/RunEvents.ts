@@ -22,7 +22,7 @@
 
 import * as THREE from 'three';
 import type { DungeonLevel, Item, MonsterRank } from '../types';
-import { toast } from '../core/Events';
+import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
 import type { Random } from '../core/RNG';
 import type { Player } from '../entities/Player';
@@ -198,6 +198,8 @@ export class RunEvents {
     };
     this.trials.push(trial);
     toast('Whatever killed them is still here.', 'bad');
+    // The dead carry pages; the story layer decides which (ui/StoryPlaces.ts).
+    events.emit('lore:search', { source: 'fallen', depth: this.host.depth });
   }
 
   // -------------------------------------------------------------------------

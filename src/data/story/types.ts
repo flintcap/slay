@@ -175,18 +175,28 @@ export interface ChainDef {
 // ---------------------------------------------------------------------------
 
 export interface BossVoice {
-  /** Said by the boss as the fight begins. */
+  /**
+   * Said by the boss a moment after the fight begins, after the narrated
+   * intro. It follows the opening shout in `bosses.ts`, so it should read as
+   * the second thing the boss says, not the first.
+   */
   greet: string;
-  /** Said mid-fight. One is used per fight, chosen by how it is going. */
-  taunts: string[];
+  /**
+   * One taunt per fight, said as the boss drops under half its life. Which
+   * one depends on how the fight is going for you: `ahead` when you are badly
+   * hurt, `behind` when you are barely scratched, `even` otherwise.
+   */
+  taunts: { ahead: string; even: string; behind: string };
+  /** The fight ran long and the boss has lost its patience. */
+  enraged: string;
   /** Its last words. */
   death: string;
   /** Narration once it is down. Kept in the journal. */
   slain: string;
   /** Said over your body, if it kills you. */
   victory: string;
-  /** Lore found on its floor. */
-  floor: { title: string; text: string };
+  /** Found on its floor, shown once per account as you arrive. Kept in the journal. */
+  floor: { title: string; source: string; text: string[] };
 }
 
 // ---------------------------------------------------------------------------

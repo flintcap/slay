@@ -19,9 +19,25 @@ import {
   noteDeath,
   revealChaptersUpTo,
   story,
+  bossIdByName,
+  floorNoteId,
+  noteBossFloor,
+  noteBossMet,
+  noteBossSlain,
+  tauntMood,
+  searchForNote,
+  notesFindable,
+  enterBiome,
 } from '../src/sim/Story';
+import { NOTES, noteById } from '../src/data/story/notes';
+import { PLACES } from '../src/data/story/places';
+import { RARE_FLAVOR, itemFlavor } from '../src/data/story/itemFlavor';
+import { UNIQUES } from '../src/data/uniques';
+import { SETS } from '../src/data/sets';
+import { setRunDirector } from '../src/world/DungeonGen';
 import type { When } from '../src/data/story/types';
-import { getBoss, pickBossForDepth } from '../src/data/bosses';
+import { BOSSES, getBoss, pickBossForDepth } from '../src/data/bosses';
+import { BOSS_VOICES } from '../src/data/story/bossVoices';
 import { CHAINS, chainQuestId } from '../src/data/story/chains';
 import { QUESTS, questById } from '../src/data/quests';
 import {
@@ -56,6 +72,7 @@ function lintText(where: string, text: string): void {
   if (/\b(okay|OK|gonna|wanna|awesome|cool)\b/.test(text)) fail(`${where}: modern idiom in "${text.slice(0, 50)}"`);
   if (/\{(?!n\}|name\}|class\}|depth\}|best\}|fallen\}|lastFallen\}|lastDepth\})[^}]*\}/.test(text)) fail(`${where}: unknown token in "${text}"`);
   if (/[“”]/.test(text)) fail(`${where}: curly quotes belong to the UI, not the text`);
+  if (/[—–]/.test(text)) fail(`${where}: no dashes in the writing; use a full stop or a comma`);
 }
 
 // ---------------------------------------------------------------------------
@@ -392,6 +409,169 @@ for (const [where, ref] of chainRefs) {
   const chain = CHAINS.find((c) => c.id === id);
   if (!chain) fail(`${where}: unknown chain "${id}"`);
   else if (n !== undefined && !chain.steps[Number(n)]) fail(`${where}: chain ${id} has no step ${n}`);
+}
+
+// ---------------------------------------------------------------------------
+section('Bosses');
+
+{
+  const names = new Set<string>();
+  for (const b of BOSSES) {
+    if (names.has(b.name)) fail(`boss ${b.id}: name "${b.name}" is shared, so its events cannot be told apart`);
+    names.add(b.name);
+    if (bossIdByName(b.name) !== b.id) fail(`boss ${b.id}: name does not map back to its id`);
+    const v = BOSS_VOICES[b.id];
+    if (!v) {
+      fail(`boss ${b.id}: no voice in data/story/bossVoices.ts`);
+      continue;
+    }
+    const where = `boss ${b.id}`;
+    const lines: Array<[string, string]> = [
+      ['greet', v.greet],
+      ['taunt ahead', v.taunts.ahead],
+      ['taunt even', v.taunts.even],
+      ['taunt behind', v.taunts.behind],
+      ['enraged', v.enraged],
+      ['death', v.death],
+      ['slain', v.slain],
+      ['victory', v.victory],
+      ['floor title', v.floor.title],
+      ['floor source', v.floor.source],
+      ...v.floor.text.map((t, i): [string, string] => [`floor[${i}]`, t]),
+    ];
+    for (const [k, t] of lines) lintText(`${where} ${k}`, t);
+    if (v.floor.text.length === 0) fail(`${where}: floor lore has no text`);
+    // Spoken lines go in a subtitle: keep them to one breath.
+    for (const [k, t] of lines.slice(0, 8)) {
+      if (k !== 'slain' && t.length > 140) fail(`${where} ${k}: ${t.length} characters is too long to read mid-fight`);
+    }
+    if (v.slain.length > 220) fail(`${where} slain: too long for a subtitle`);
+    // The greeting follows the opening shout; it must not repeat a bark.
+    for (const ph of b.phases) {
+      if (ph.bark && ph.bark.toLowerCase() === v.greet.toLowerCase()) fail(`${where}: greet repeats a phase bark`);
+    }
+    const said = new Set(lines.slice(0, 8).map(([, t]) => t));
+    if (said.size !== 8) fail(`${where}: two of its lines are the same`);
+  }
+  for (const id of Object.keys(BOSS_VOICES)) if (!getBoss(id)) fail(`voice for unknown boss "${id}"`);
+
+  // The moods cover the whole range.
+  if (tauntMood(0.1) !== 'ahead' || tauntMood(0.5) !== 'even' || tauntMood(0.95) !== 'behind') fail('tauntMood: wrong mood');
+
+  // State is once per account and feeds the conditions people's lines use.
+  const acct = save.account as AccountSave;
+  delete acct.story;
+  const b0 = BOSSES[0]!;
+  if (!noteBossMet(b0.id) || noteBossMet(b0.id)) fail('noteBossMet: not once-only');
+  if (holds({ slain: b0.id })) fail('slain condition holds before the kill');
+  if (!noteBossSlain(b0.id) || noteBossSlain(b0.id)) fail('noteBossSlain: not once-only');
+  if (!holds({ slain: b0.id }) || holds({ notSlain: b0.id })) fail('slain condition does not read the kill');
+  if (!noteBossFloor(b0.id) || noteBossFloor(b0.id)) fail('noteBossFloor: not once-only');
+  if (!story().notes.includes(floorNoteId(b0.id))) fail('floor lore not recorded');
+  delete acct.story;
+  console.log(`${BOSSES.length} bosses, every one with a voice and floor lore`);
+}
+
+// ---------------------------------------------------------------------------
+section('Notes and places');
+
+{
+  const ids = new Set<string>();
+  const perBiome: Record<string, number> = {};
+  for (const n of NOTES) {
+    const where = `note ${n.id}`;
+    if (ids.has(n.id)) fail(`${where}: duplicate id`);
+    ids.add(n.id);
+    if (noteById(n.id) !== n) fail(`${where}: lookup does not round-trip`);
+    lintText(`${where} title`, n.title);
+    lintText(`${where} source`, n.source);
+    lintText(`${where} text`, n.text);
+    if (n.text.length > 360) fail(`${where}: ${n.text.length} characters; a page should fit a card`);
+    if (n.biome) {
+      const b = BIOMES.find((x) => x.id === n.biome);
+      if (!b) fail(`${where}: unknown biome ${n.biome}`);
+      else if (b.minDepth > n.minDepth) fail(`${where}: ${n.biome} does not open until tier ${b.minDepth}`);
+      perBiome[n.biome] = (perBiome[n.biome] ?? 0) + 1;
+    }
+  }
+  for (const b of BIOMES) {
+    if ((perBiome[b.id] ?? 0) < 3) fail(`biome ${b.id}: only ${perBiome[b.id] ?? 0} notes`);
+    const place = PLACES[b.id];
+    if (!place) {
+      fail(`biome ${b.id}: no place in data/story/places.ts`);
+      continue;
+    }
+    for (const t of [place.name, place.makers, place.firstEntry, place.description, place.deepEntry, ...place.ambient]) lintText(`place ${b.id}`, t);
+    if (place.ambient.length < 4) fail(`place ${b.id}: fewer than four ambient lines`);
+  }
+  for (const [where, ref] of noteRefs) if (!noteById(ref)) fail(`${where}: unknown note "${ref}"`);
+
+  // Every page can really be found: searches turn up pages until there are
+  // none left, and each turns up only where and when it belongs.
+  const acct = save.account as AccountSave;
+  delete acct.story;
+  for (const n of NOTES) {
+    const biome = n.biome ?? 'crypt';
+    if (!notesFindable(n.minDepth, biome).includes(n)) fail(`note ${n.id}: not findable at its own tier`);
+    if (n.minDepth > 1 && notesFindable(n.minDepth - 1, biome).includes(n)) fail(`note ${n.id}: findable above its tier`);
+    if (n.biome && notesFindable(200, n.biome === 'crypt' ? 'caverns' : 'crypt').includes(n)) fail(`note ${n.id}: findable outside its biome`);
+  }
+  for (const b of BIOMES) {
+    for (let i = 0; i < 400 && notesFindable(200, b.id).length; i++) searchForNote('fallen', 200, b.id);
+  }
+  const missing = NOTES.filter((n) => !story().notes.includes(n.id));
+  if (missing.length) fail(`notes never found by searching: ${missing.map((n) => n.id).join(', ')}`);
+  if (searchForNote('fallen', 200, 'crypt')) fail('a search found a page when none were left');
+  delete acct.story;
+  // Chance stays a chance: a chest is not a guaranteed page.
+  let hits = 0;
+  for (let i = 0; i < 400; i++) {
+    if (searchForNote('chest', 20, 'crypt')) hits++;
+    delete acct.story;
+  }
+  if (hits < 20 || hits > 100) fail(`chests turned up a page ${hits} times in 400; expected about 48`);
+  if (!enterBiome('crypt') || enterBiome('crypt')) fail('enterBiome: not once-only');
+  delete acct.story;
+
+  // Every floor of every biome offers something to search: a chest at least.
+  for (const b of BIOMES) {
+    for (let seed = 1; seed <= 3; seed++) {
+      setRunDirector(() => ({ biome: b.id }));
+      const run = generateRun(Math.max(b.minDepth, 2) + seed, 0xbead + seed * 131, 'warden');
+      run.levels.forEach((lvl, i) => {
+        const searchable = lvl.props.filter((p) => {
+          const fam = (p.interact ?? '').split('.')[0];
+          return fam === 'chest' || fam === 'corpse';
+        }).length;
+        if (searchable === 0) fail(`${b.id} seed ${seed} floor ${i + 1}: nothing to search for a page`);
+      });
+    }
+  }
+  setRunDirector(null);
+  installChains();
+  console.log(`${NOTES.length} notes across ${Object.keys(perBiome).length} layers, ${Object.keys(PLACES).length} places`);
+}
+
+// ---------------------------------------------------------------------------
+section('Item flavour');
+
+{
+  let lines = 0;
+  for (const [cat, pool] of Object.entries(RARE_FLAVOR)) {
+    if (!pool || pool.length < 2) fail(`rare flavour ${cat}: fewer than two lines`);
+    for (const t of pool ?? []) {
+      lintText(`rare flavour ${cat}`, t);
+      lines++;
+    }
+  }
+  for (const u of UNIQUES) lintText(`unique ${u.id} flavour`, u.flavor);
+  for (const st of SETS) lintText(`set ${st.id} blurb`, st.blurb);
+  const fake = { uid: 'x1', baseId: 'b', name: 'n', rarity: 'rare', ilvl: 1, mods: [], upgrade: 0, sockets: [], value: 0 } as never;
+  if (!itemFlavor(fake, 'sword')) fail('itemFlavor: a rare sword has no line');
+  if (itemFlavor({ ...(fake as object), rarity: 'magic' } as never, 'sword')) fail('itemFlavor: magic items should stay quiet');
+  const setItem = { ...(fake as object), rarity: 'set', setId: SETS[0]!.id } as never;
+  if (itemFlavor(setItem, 'sword') !== SETS[0]!.blurb) fail('itemFlavor: a set piece does not show its set');
+  console.log(`${lines} rare lines, ${UNIQUES.length} uniques and ${SETS.length} sets read`);
 }
 
 // ---------------------------------------------------------------------------

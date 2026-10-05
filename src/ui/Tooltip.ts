@@ -14,6 +14,7 @@ import { meetsRequirements } from '../sim/Character';
 import { getAffix } from '../data/affixes';
 import { getUnique } from '../data/uniques';
 import { getSet } from '../data/sets';
+import { itemFlavor } from '../data/story/itemFlavor';
 import { requestItemIcon } from '../art/Icons';
 import { computeStats } from '../sim/Stats';
 import { save } from '../core/Save';
@@ -359,7 +360,7 @@ class TooltipManager {
       }
     }
 
-    const flavor = uq?.flavor ?? (item as unknown as { flavor?: string }).flavor;
+    const flavor = uq?.flavor ?? (item as unknown as { flavor?: string }).flavor ?? attempt(() => itemFlavor(item, base?.category), undefined);
     if (flavor) host.appendChild(div('tt-flavor', `“${flavor}”`));
 
     // --- footer ------------------------------------------------------------

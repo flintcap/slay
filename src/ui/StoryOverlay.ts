@@ -28,6 +28,8 @@ import type { Chapter } from '../data/story/types';
 import { installContracts } from './StoryContracts';
 import { openDialogueFor } from './DialoguePanel';
 import { journal } from './JournalPanel';
+import { installStoryBosses } from './StoryBosses';
+import { installStoryPlaces } from './StoryPlaces';
 
 // ---------------------------------------------------------------------------
 // DOM
@@ -221,4 +223,7 @@ export function installStory(): void {
     talk: (id: string) => openDialogueFor(id.includes(':') || !(id in NPCS) ? id : `talk:${id}`),
     journal: (tab?: string) => journal().openAt(tab ?? 'descent'),
   };
+
+  installStoryBosses();
+  installStoryPlaces();
 }
