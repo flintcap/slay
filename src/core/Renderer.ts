@@ -161,6 +161,34 @@ export const DEFAULT_GRADE: GradeProfile = {
   bloomThreshold: 0.92,
 };
 
+/**
+ * GTAO draws the scene once with a normal/depth override material, and three
+ * hides points and lines for that draw. Sprites slip through: the override
+ * material ignores their texture, so every glow sprite lands in the AO buffer
+ * as a solid camera-facing square and darkens the frame behind it. Hide them
+ * too. Patched on the instance (the method is internal to three; the typings
+ * name it without the underscore), so an upgrade that renames it just falls
+ * back to three's own behaviour.
+ */
+function hideSpritesFromAO(pass: GTAOPass): void {
+  const p = pass as unknown as {
+    _overrideVisibility?: () => void;
+    _visibilityCache: THREE.Object3D[];
+    scene: THREE.Scene;
+  };
+  if (typeof p._overrideVisibility !== 'function' || !Array.isArray(p._visibilityCache)) return;
+  p._overrideVisibility = function (): void {
+    const cache = p._visibilityCache;
+    p.scene.traverse((o) => {
+      const t = o as THREE.Object3D & { isPoints?: boolean; isLine?: boolean; isLine2?: boolean; isSprite?: boolean };
+      if ((t.isPoints || t.isLine || t.isLine2 || t.isSprite) && o.visible) {
+        o.visible = false;
+        cache.push(o);
+      }
+    });
+  };
+}
+
 /** A hue at unit brightness, mixed toward white by `amount`. */
 function tintVector(hex: number, amount: number, out: THREE.Vector3): THREE.Vector3 {
   const c = new THREE.Color(hex);
@@ -450,6 +478,7 @@ export class Renderer {
         distanceFallOff: 1.0,
         screenSpaceRadius: false,
       });
+      hideSpritesFromAO(this.gtao);
       this.composer.addPass(this.gtao);
     }
 
