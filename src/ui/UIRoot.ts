@@ -388,6 +388,25 @@ export function mountUI(engine: Engine): void {
     const sceneId = engine.currentSceneId;
     const inWorld = sceneId === 'town' || sceneId === 'dungeon';
 
+    // A confirmation dialog answers the keyboard too: Enter picks the
+    // highlighted button (the confirm one unless the player moved off it with
+    // the arrows or Tab), Escape below is Cancel.
+    const openDialog = document.querySelector<HTMLElement>('.modal-wrap.is-open');
+    if (openDialog && e.code !== 'Escape') {
+      const buttons = [...openDialog.querySelectorAll<HTMLButtonElement>('.modal-ft button')];
+      const focused = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+        const from = focused >= 0 ? focused : buttons.length - 1;
+        buttons[(from + (e.code === 'ArrowLeft' ? -1 : 1) + buttons.length) % buttons.length]?.focus();
+        e.preventDefault();
+      } else if ((e.code === 'Enter' || e.code === 'NumpadEnter') && focused < 0) {
+        // Nothing focused yet: Enter means the confirm button, the last one.
+        buttons[buttons.length - 1]?.click();
+        e.preventDefault();
+      }
+      return;
+    }
+
     if (e.code === 'Escape') {
       e.preventDefault();
       if (drag.active) {
@@ -423,6 +442,10 @@ export function mountUI(engine: Engine): void {
     const id = KEYS[remapKey(e.code)] ?? EXTRA_KEYS.get(remapKey(e.code));
     if (id) {
       e.preventDefault();
+      // Settings owns the keyboard (Q and E page its tabs). From the pause
+      // menu a hotkey does what picking that row does: leave the menu, open it.
+      if (registry.get('settings')?.isOpen) return;
+      if (registry.get('pause')?.isOpen) closePanel('pause');
       togglePanel(id);
     }
   });

@@ -46,6 +46,9 @@ export class PaperdollView {
   private classId = '';
   private equipSig = '';
   private spin = 0;
+  private swayT = 0;
+  /** Seconds a dragged pose is kept before easing back to the front. */
+  private holdFor = 0;
   private dragging = false;
   private lastX = 0;
   private raf = 0;
@@ -226,7 +229,15 @@ export class PaperdollView {
       // Clamped so a backgrounded tab does not hand us a multi-second step.
       const dt = Math.min(0.05, (now - this.lastT) / 1000);
       this.lastT = now;
-      if (!this.dragging) this.spin += dt * 0.25;
+      // Left alone, ease back to face the viewer with a small sway (a full
+      // turntable spin showed the back half the time). Drag still turns freely.
+      if (this.dragging) this.holdFor = 3;
+      else if ((this.holdFor -= dt) <= 0) {
+        this.swayT += dt;
+        const rest = Math.sin(this.swayT * 0.4) * 0.35;
+        const target = rest + Math.round((this.spin - rest) / (Math.PI * 2)) * Math.PI * 2;
+        this.spin += (target - this.spin) * (1 - Math.pow(0.35, dt));
+      }
       this.rig.rotation.y = this.spin;
       this.animator?.update(dt);
       this.renderer?.render(this.scene, this.camera);

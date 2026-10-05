@@ -258,13 +258,19 @@ export class CharSelectScene extends GameScene {
   }
 
   override update(dt: number, elapsed: number): void {
-    // Turntable: auto-spin after a few seconds of no input, with inertia from
-    // the last drag so a flick keeps turning and settles.
+    // Turntable with inertia from the last drag, so a flick keeps turning and
+    // settles. Left alone, the hero turns back to face you and sways a little:
+    // a slow full spin spent half its time showing the player a back.
     this.idleFor += dt;
     if (!this.dragging) {
       this.yaw += this.yawVel * dt;
       this.yawVel *= Math.pow(0.04, dt);
-      if (this.idleFor > 2.5) this.yaw += dt * 0.28 * Math.min(1, (this.idleFor - 2.5) / 1.5);
+      if (this.idleFor > 2.5) {
+        const rest = 0.3 + Math.sin(elapsed * 0.32) * 0.32;
+        const target = rest + Math.round((this.yaw - rest) / (Math.PI * 2)) * Math.PI * 2;
+        const k = Math.min(1, (this.idleFor - 2.5) / 2);
+        this.yaw += (target - this.yaw) * (1 - Math.pow(0.35, dt)) * k;
+      }
     }
     this.podium.rotation.y = this.yaw;
 

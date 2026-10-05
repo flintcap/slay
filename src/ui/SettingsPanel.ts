@@ -16,7 +16,8 @@ import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save, DEFAULT_SETTINGS } from '../core/Save';
 import { resetHints } from './Onboarding';
-import { accessibilitySection, keybindSection } from './AccessibilitySettings';
+import { accessibilitySection, keybindSection, keyLabel } from './AccessibilitySettings';
+import { keyFor, remapKey } from '../core/Access';
 import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, modal, attempt } from './Widgets';
 
 type QualityId = GameSettings['quality'];
@@ -37,30 +38,39 @@ const QUALITY_NOTES: Record<QualityId, string> = {
   ultra: 'Very sharp shadows, extra particles and full-resolution rendering on high-density screens.',
 };
 
-/** The bindings, grouped the way a player thinks about them. */
+/**
+ * The bindings, grouped the way a player thinks about them. A key written as
+ * a code ('KeyQ', 'Digit1', 'Space') is shown as whatever key the player has
+ * bound to it, so the card stays true after a rebind; anything else is shown
+ * as written.
+ */
 const CONTROLS: Array<{ group: string; rows: Array<[string, string[]]> }> = [
   {
     group: 'Moving and fighting',
     rows: [
-      ['Move', ['Left click', 'W A S D']],
-      ['Attack', ['Right click']],
-      ['Skills on the bar', ['1', '2', '3', '4', '5', '6']],
+      ['Move', ['Left click', 'KeyW', 'KeyA', 'KeyS', 'KeyD']],
+      ['Attack (hold to keep swinging)', ['Right click']],
+      ['Attack in place', ['Shift', 'Left click']],
+      ['Skills on the bar', ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6']],
       ['Dodge', ['Space']],
-      ['Life potion', ['Q']],
-      ['Mana potion', ['F']],
-      ['Interact, open, talk', ['E']],
-      ['Show items on the floor', ['Shift']],
+      ['Life potion', ['KeyQ']],
+      ['Mana potion', ['KeyF']],
+      ['Interact, open, talk', ['KeyE']],
+      ['Show items on the floor', ['Alt']],
     ],
   },
   {
     group: 'Panels',
     rows: [
-      ['Inventory', ['I']],
-      ['Character', ['C']],
-      ['Skill tree', ['T']],
-      ['Vault (in town)', ['B']],
-      ['Map', ['M']],
-      ['Quest log', ['L']],
+      ['Inventory', ['KeyI']],
+      ['Character', ['KeyC']],
+      ['Skill tree', ['KeyT']],
+      ['Vault (in town)', ['KeyB']],
+      ['Map', ['KeyM']],
+      ['Quest log', ['KeyL']],
+      ['Journal', ['KeyJ']],
+      ['Loot filter', ['KeyO']],
+      ['Legacy', ['KeyG']],
       ['Pause, close a panel', ['Esc']],
     ],
   },
@@ -70,9 +80,15 @@ const CONTROLS: Array<{ group: string; rows: Array<[string, string[]]> }> = [
       ['Choose', ['↑', '↓']],
       ['Confirm', ['Enter']],
       ['Back', ['Esc']],
+      ['Settings tabs', ['KeyQ', 'KeyE']],
     ],
   },
 ];
+
+/** A key from the card above, as the player currently has it bound. */
+function boundKey(k: string): string {
+  return /^(Key|Digit)|^Space$/.test(k) ? keyLabel(keyFor(k, save.settings.keybinds)) : k;
+}
 
 export class SettingsPanel {
   readonly panel: Panel;
@@ -153,8 +169,9 @@ export class SettingsPanel {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') && (t as HTMLInputElement).type !== 'range') return;
     let dir = 0;
-    if (e.code === 'KeyQ' || e.code === 'BracketLeft') dir = -1;
-    else if (e.code === 'KeyE' || e.code === 'BracketRight') dir = 1;
+    const code = remapKey(e.code);
+    if (code === 'KeyQ' || code === 'BracketLeft') dir = -1;
+    else if (code === 'KeyE' || code === 'BracketRight') dir = 1;
     if (!dir) return;
     const i = TABS.findIndex((x) => x.id === this.tab);
     const next = TABS[(i + dir + TABS.length) % TABS.length]!;
@@ -350,8 +367,13 @@ export class SettingsPanel {
         const r = div('stg-key');
         r.appendChild(span('stg-key-action', action));
         const caps = div('stg-key-caps');
-        keys.forEach((k, i) => {
-          if (i > 0 && k.length > 1 && keys[i - 1]!.length > 1) caps.appendChild(span('stg-key-or', 'or'));
+        const chord = action === 'Attack in place';
+        keys.forEach((code, i) => {
+          const k = boundKey(code);
+          const prev = i > 0 ? boundKey(keys[i - 1]!) : '';
+          // "Shift + Left click", "Left click or W A S D"; single letters sit side by side.
+          if (i > 0 && chord) caps.appendChild(span('stg-key-or', '+'));
+          else if (i > 0 && (prev === 'Left click' || (k.length > 1 && prev.length > 1))) caps.appendChild(span('stg-key-or', 'or'));
           caps.appendChild(keycap(k));
         });
         r.appendChild(caps);

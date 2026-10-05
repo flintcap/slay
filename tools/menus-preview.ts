@@ -55,6 +55,7 @@ if (screen.startsWith('3d:')) {
       ? { killedBy: 'Gorefang the Ravenous', depth: 7, level: 14, name: 'Vorwyn', playtime: 2100, classId: 'ranger', weapon: { baseId: 'bow.short', rarity: 'rare' } }
       : undefined,
   );
+  (window as unknown as Record<string, unknown>).SLAY_PREVIEW_ENGINE = eng;
   (window as unknown as Record<string, unknown>).MENUS_READY = true;
 } else {
   domPreview();
@@ -138,8 +139,18 @@ function domPreview(): void {
       settings.open();
       break;
     case 'controls':
+    case 'controlsCard':
       settings.open();
       (document.querySelectorAll('.stg-tab')[3] as HTMLElement | undefined)?.click();
+      // `controlsCard`: scrolled past the rebinding list to the reference card.
+      if (screen === 'controlsCard') {
+        // A rebound key, to show the card following it.
+        save.settings.keybinds = { KeyQ: 'KeyZ', KeyZ: 'KeyQ' };
+        (document.querySelectorAll('.stg-tab')[0] as HTMLElement | undefined)?.click();
+        (document.querySelectorAll('.stg-tab')[3] as HTMLElement | undefined)?.click();
+        const groups = document.querySelectorAll<HTMLElement>('.stg-group');
+        groups[groups.length - 1]?.scrollIntoView({ block: 'end' });
+      }
       break;
     case 'death':
       (window as unknown as Record<string, unknown>).SLAY_DEATH = {

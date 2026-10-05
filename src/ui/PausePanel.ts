@@ -16,6 +16,8 @@ import { xpForLevel } from '../sim/Stats';
 import { div, span, Panel, classById, classAccent, classCrestSvg, duration, fmtInt, keycap, modal, attempt } from './Widgets';
 import { MenuNav, type MenuItemOpts } from './MenuNav';
 import { runStats } from './RunStats';
+import { keyLabel } from './AccessibilitySettings';
+import { keyFor } from '../core/Access';
 
 export class PausePanel {
   readonly panel: Panel;
@@ -90,13 +92,16 @@ export class PausePanel {
       this.close();
       events.emit('ui:open', { panel });
     };
+    // The key each panel is on now, after any rebinding.
+    const key = (code: string): string => keyLabel(keyFor(code, save.settings.keybinds));
     const items: MenuItemOpts[] = [
       { label: 'Resume', tone: 'primary', onSelect: () => this.close() },
-      { label: 'Inventory', hint: 'I', onSelect: open('inventory') },
-      { label: 'Character', hint: 'C', onSelect: open('character') },
-      { label: 'Skills', hint: 'T', onSelect: open('skills') },
-      { label: 'Map', hint: 'M', onSelect: open('map') },
-      { label: 'Quest Log', hint: 'L', onSelect: open('questLog') },
+      { label: 'Inventory', hint: key('KeyI'), onSelect: open('inventory') },
+      { label: 'Character', hint: key('KeyC'), onSelect: open('character') },
+      { label: 'Skills', hint: key('KeyT'), onSelect: open('skills') },
+      { label: 'Map', hint: key('KeyM'), onSelect: open('map') },
+      { label: 'Quest Log', hint: key('KeyL'), onSelect: open('questLog') },
+      { label: 'Journal', hint: key('KeyJ'), onSelect: open('journal') },
       { label: 'Settings', hint: 'Picture, sound, controls', onSelect: () => events.emit('ui:open', { panel: 'settings' }) },
     ];
     if (inDungeon) {

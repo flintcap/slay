@@ -19,6 +19,14 @@
 import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
+import { remapKey, keyFor } from '../core/Access';
+import { keyLabel } from './AccessibilitySettings';
+
+/** `{Q}` -> the key the player has bound to the Q action now; names pass through. */
+function boundCap(name: string): string {
+  const code = /^[A-Z]$/.test(name) ? `Key${name}` : /^\d$/.test(name) ? `Digit${name}` : name === 'Space' ? 'Space' : '';
+  return code ? keyLabel(keyFor(code, save.settings.keybinds)) : name;
+}
 
 type Signal = { kind: 'key'; code: string } | { kind: 'mouse'; button: number } | { kind: 'event'; name: string };
 
@@ -167,7 +175,7 @@ function render(text: string): DocumentFragment {
     if (m) {
       const k = document.createElement('span');
       k.className = 'keycap ob-key';
-      k.textContent = m[1]!;
+      k.textContent = boundCap(m[1]!);
       frag.appendChild(k);
     } else {
       frag.appendChild(document.createTextNode(p));
@@ -278,7 +286,7 @@ export function mountOnboarding(root: HTMLElement, engine: Engine): void {
   window.addEventListener(
     'keydown',
     (e) => {
-      if (!e.repeat) signal({ kind: 'key', code: e.code });
+      if (!e.repeat) signal({ kind: 'key', code: remapKey(e.code) });
     },
     { capture: true, passive: true },
   );

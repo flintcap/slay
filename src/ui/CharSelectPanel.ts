@@ -23,6 +23,7 @@ import { DIFFICULTIES, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/dif
 import { STARTING_SKILL_HINTS, CLASS_TAGLINES } from '../data/classes';
 import { Random, randomSeed } from '../core/RNG';
 import { checkName, type NameCheck } from './names';
+import { menuKey } from './MenuNav';
 import { skillIconUri } from '../art/Icons';
 import {
   Panel,
@@ -660,10 +661,12 @@ export class CharSelectPanel {
     if (document.querySelector('.modal-wrap.is-open')) return;
     if (document.querySelector('.panel-wrap.is-open:not(.csx)')) return;
     let handled = true;
-    switch (e.code) {
+    // Menu keys go through the rebinding like every other key.
+    const code = menuKey(e);
+    switch (code) {
       case 'ArrowUp':
       case 'ArrowDown': {
-        const dir = e.code === 'ArrowUp' ? -1 : 1;
+        const dir = code === 'ArrowUp' ? -1 : 1;
         if (this.mode === 'new') {
           const ids = classList().map((c) => c.id);
           const i = ids.indexOf(this.selectedClass);
@@ -680,7 +683,7 @@ export class CharSelectPanel {
       case 'ArrowLeft':
       case 'ArrowRight': {
         if (this.mode !== 'new') break;
-        const dir = e.code === 'ArrowLeft' ? -1 : 1;
+        const dir = code === 'ArrowLeft' ? -1 : 1;
         const ids = DIFFICULTIES.map((x) => x.id);
         const i = ids.indexOf(this.difficulty);
         const n = i + dir;

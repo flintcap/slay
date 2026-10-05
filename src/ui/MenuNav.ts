@@ -12,6 +12,18 @@
  */
 
 import { events } from '../core/Events';
+import { remapKey } from '../core/Access';
+
+const FIXED_MENU_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'NumpadEnter', 'Tab', 'Escape']);
+
+/**
+ * The code a menu should act on. Arrows, Enter, Tab and Escape always mean
+ * themselves in a menu, even if a game action was bound to one; every other key
+ * goes through the player's rebinding (W moved to Z still moves up).
+ */
+export function menuKey(e: KeyboardEvent): string {
+  return FIXED_MENU_KEYS.has(e.code) ? e.code : remapKey(e.code);
+}
 import { div, span, icon } from './Widgets';
 
 /** Panels that open over a menu and take its keys while they are up. */
@@ -136,7 +148,7 @@ export class MenuNav {
       if (NESTED_ON_TOP.has(w.dataset.panel ?? '') && !w.contains(this.root)) return;
     }
     let handled = true;
-    switch (e.code) {
+    switch (menuKey(e)) {
       case 'ArrowUp':
       case 'KeyW':
         this.highlight(this.nextEnabled(this.index, -1));

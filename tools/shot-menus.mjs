@@ -33,8 +33,28 @@ const WAIT = { boss: 1500, hints: 6500, banners: 2200 };
 
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
   stdio: ['ignore', 'ignore', 'pipe'],
+  // One consistent build for the whole run: a source save must not reload the page mid-shot.
+  env: { ...process.env, SLAY_NO_HMR: '1' },
+  // Its own process group, so stopping it stops the vite under `npx` too
+  // (killing `npx` alone left vite holding the port after the run).
+  detached: true,
 });
-process.on('exit', () => server.kill('SIGTERM'));
+const stopServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
+// Drain the server's stderr: an unread pipe fills up and stalls or kills it.
+server.stderr.on('data', (d) => {
+  if (args.verbose) process.stderr.write(`[vite] ${d}`);
+});
+server.on('exit', (code, sig) => {
+  if (!finished) console.error(`dev server exited early (${code ?? sig})`);
+});
+let finished = false;
+process.on('exit', stopServer);
 let up = false;
 for (let i = 0; i < 120; i++) {
   try {
@@ -53,9 +73,13 @@ if (!up) {
 }
 
 const CHROME = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium';
+// The `3d:` screens run real WebGL scenes, which need SwiftShader switched on.
+const GL = SCREENS.some((s) => s.startsWith('3d:'))
+  ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--disable-gpu-sandbox']
+  : [];
 const browser = await chromium.launch({
   executablePath: existsSync(CHROME) ? CHROME : undefined,
-  args: ['--no-sandbox'],
+  args: ['--no-sandbox', ...GL],
 });
 let failed = false;
 for (const name of SCREENS) {
@@ -66,21 +90,39 @@ for (const name of SCREENS) {
     // The preview page has no favicon; that 404 is not the menus' fault.
     if (m.type() === 'error' && !/404/.test(m.text())) errors.push(m.text());
   });
-  await page.goto(`http://127.0.0.1:${PORT}/tools/menus-preview.html?screen=${name}`, { waitUntil: 'load', timeout: 180000 });
+  const is3d = name.startsWith('3d:');
+  await page.goto(`http://127.0.0.1:${PORT}/tools/menus-preview.html?screen=${name}`, { waitUntil: 'load', timeout: 600000 });
   try {
-    await page.waitForFunction(() => window.MENUS_READY === true, null, { timeout: 180000 });
+    await page.waitForFunction(() => window.MENUS_READY === true, null, { timeout: is3d ? 1800000 : 180000 });
   } catch {
     errors.push('preview never became ready');
   }
   // Let the entrance choreography finish (the slowest is the death screen).
-  await sleep(Number(args.wait ?? WAIT[name] ?? 3600));
-  const file = path.join(OUT, `${name}${WIDTH !== 1920 ? `-${WIDTH}` : ''}.png`);
-  await page.screenshot({ path: file });
+  if (is3d) {
+    // Software WebGL under load can take seconds a frame, and the engine clamps
+    // each step to 1/20 s, so wall time says nothing. Wait for scene time:
+    // entrance flashes and particle bursts are over by 6 s.
+    try {
+      await page.waitForFunction(() => (window.SLAY_PREVIEW_ENGINE?.elapsed ?? 0) > Number(window.SLAY_SETTLE ?? 6), null, {
+        timeout: 2400000,
+        polling: 2000,
+      });
+    } catch {
+      errors.push('scene never reached 6 s of scene time');
+    }
+    const fps = await page.evaluate(() => window.SLAY_PREVIEW_ENGINE?.fps ?? 0).catch(() => 0);
+    console.log(`     ${name}: ${Number(fps).toFixed(2)} fps`);
+  } else {
+    await sleep(Number(args.wait ?? WAIT[name] ?? 3600));
+  }
+  const file = path.join(OUT, `${name.replace(':', '-')}${WIDTH !== 1920 ? `-${WIDTH}` : ''}.png`);
+  await page.screenshot({ path: file, timeout: is3d ? 600000 : 30000 });
   console.log(`${errors.length ? 'ERR ' : 'ok  '} ${name.padEnd(14)} ${file}`);
   for (const e of errors) console.log('     ' + e.slice(0, 300));
   if (errors.length) failed = true;
   await page.close();
 }
 await browser.close();
-server.kill('SIGTERM');
+finished = true;
+stopServer();
 process.exit(failed ? 1 : 0);

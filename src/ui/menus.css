@@ -90,7 +90,7 @@
 
 .mn-item-label {
   font-family: var(--font-display);
-  font-size: 23px;
+  font-size: calc(23px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -355,7 +355,7 @@
   min-width: 0;
 }
 .ttl-hero-kicker {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -406,7 +406,7 @@
   text-shadow: 0 0 14px rgba(201, 162, 39, 0.3);
 }
 .ttl-stat-l {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -474,7 +474,7 @@
 }
 @media (max-height: 760px) {
   .mn-item-label {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
   }
   .ttl-tag {
     margin-bottom: var(--s4);
@@ -535,7 +535,7 @@
 
 .csx-label {
   margin: var(--s4) 0 var(--s2);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
@@ -596,7 +596,7 @@
 }
 .csx-title {
   font-family: var(--font-display);
-  font-size: clamp(24px, 2.4vw, 34px);
+  font-size: calc(clamp(24px, 2.4vw, 34px) * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.3em;
   text-indent: 0.3em;
@@ -737,7 +737,7 @@
   text-overflow: ellipsis;
 }
 .csx-row-meta {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent);
@@ -797,7 +797,7 @@
   }
 }
 .csx-kicker {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
@@ -805,7 +805,7 @@
 }
 .csx-name-big {
   font-family: var(--font-display);
-  font-size: clamp(28px, 2.6vw, 40px);
+  font-size: calc(clamp(28px, 2.6vw, 40px) * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0.08em;
@@ -846,7 +846,7 @@
   grid-template-columns: 74px 1fr 26px;
   align-items: center;
   gap: var(--s3);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -902,7 +902,7 @@
   color: var(--mana-hi);
 }
 .csx-vital-l {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -935,7 +935,7 @@
   color: var(--ink);
 }
 .csx-skill-key {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -973,7 +973,7 @@
   transform: translateY(-2px);
 }
 .csx-early-name {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   line-height: 1.25;
   color: var(--ink-4);
 }
@@ -985,7 +985,7 @@
 }
 .csx-tree {
   padding: 3px 8px;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -1010,7 +1010,7 @@
   color: var(--gold-hi);
 }
 .csx-fact-l {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -1036,7 +1036,7 @@
   left: 50%;
   bottom: calc(3vh + 104px);
   transform: translateX(-50%);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -1105,12 +1105,12 @@
   box-shadow: 0 0 16px -4px var(--dc);
 }
 .csx-dif-pips {
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
   letter-spacing: 2px;
   color: var(--dc);
 }
 .csx-dif-name {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1246,7 +1246,7 @@
   text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
 }
 .csx-go-sub {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   letter-spacing: 0.2em;
   text-transform: uppercase;
   opacity: 0.7;
@@ -1375,7 +1375,7 @@
 .ld-title {
   margin: 4px 0 var(--s6);
   font-family: var(--font-display);
-  font-size: clamp(34px, 4.2vw, 58px);
+  font-size: calc(clamp(34px, 4.2vw, 58px) * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.22em;
   text-indent: 0.22em;
@@ -1403,7 +1403,7 @@
   flex: none;
   font-family: var(--font-ui);
   font-style: normal;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -1498,7 +1498,7 @@
 .bn-depth-title {
   margin: 2px 0 var(--s2);
   font-family: var(--font-display);
-  font-size: clamp(36px, 4.6vw, 66px);
+  font-size: calc(clamp(36px, 4.6vw, 66px) * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1.1;
@@ -1587,7 +1587,7 @@
 }
 .pz-title {
   font-family: var(--font-display);
-  font-size: clamp(40px, 4.4vw, 64px);
+  font-size: calc(clamp(40px, 4.4vw, 64px) * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.22em;
   line-height: 1;
@@ -1614,7 +1614,7 @@
   padding-bottom: 7px;
 }
 .pz-menu .mn-item-label {
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale, 1));
 }
 .pz-menu .mn-item {
   animation: ttlSlide 380ms var(--mn-ease-out) both;
@@ -1712,7 +1712,7 @@
 }
 .pz-section {
   margin: var(--s5) 0 var(--s2);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
@@ -1735,7 +1735,7 @@
   color: var(--gold-hi);
 }
 .pz-stat-l {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -1850,7 +1850,7 @@
 }
 .stg-group {
   margin-top: var(--s2);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
@@ -1897,7 +1897,7 @@
   z-index: 250;
   padding: 2px 8px;
   font-family: var(--font-num);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: var(--good);
   background: rgba(0, 0, 0, 0.6);
   border-radius: 3px;
@@ -2038,7 +2038,7 @@ body.reduce-motion .ld-card * {
   padding: 1px 7px;
   font-family: var(--font-ui);
   font-style: normal;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -2086,7 +2086,7 @@ body.reduce-motion .ld-card * {
 }
 .dth-stat-l {
   margin-top: 2px;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -2111,7 +2111,7 @@ body.reduce-motion .ld-card * {
   animation: ttlFade 600ms ease 2200ms both;
 }
 .dth-best-l {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -2129,7 +2129,7 @@ body.reduce-motion .ld-card * {
   animation: ttlFade 700ms ease 2300ms both;
 }
 .dth-kept-h {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
@@ -2161,7 +2161,7 @@ body.reduce-motion .ld-card * {
   transition: opacity 500ms ease;
 }
 .dth-menu .mn-item-label {
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .dth-menu.is-locked {
   opacity: 0;
@@ -2248,7 +2248,7 @@ body.reduce-motion .dth * {
 .bn-boss-title {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: clamp(18px, 1.7vw, 28px);
+  font-size: calc(clamp(18px, 1.7vw, 28px) * var(--text-scale, 1));
   letter-spacing: 0.18em;
   color: #e6a596;
   text-shadow: 0 1px 0 #000, 0 0 14px rgba(0, 0, 0, 0.9);
@@ -2417,7 +2417,7 @@ body.reduce-motion .dth * {
 }
 .ob-kicker {
   flex: 1;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -2425,14 +2425,14 @@ body.reduce-motion .dth * {
 }
 .ob-count {
   font-family: var(--font-num);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--ink-4);
 }
 .ob-close {
   width: 18px;
   height: 18px;
   padding: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   line-height: 1;
   color: var(--ink-4);
   background: none;
@@ -2505,7 +2505,7 @@ body.reduce-motion .dth * {
   text-overflow: ellipsis;
 }
 .mem-sum-l {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ink-4);

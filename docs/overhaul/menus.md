@@ -1,6 +1,6 @@
 # Stream: menus (front end and flow)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
@@ -14,32 +14,42 @@ Status: paused
 
 ## Next up
 
-1. FIRST, before anything else: look at the 3D menu scenes, which have never been seen running.
-   Milestones 1-6 were checked with typecheck, `npm run build`, `node tools/check-menus.mjs` and the
-   DOM-only previews from `node tools/shot-menus.mjs` (all clean, all looked right), but the full
-   WebGL render timed out under machine load before reaching the title. Do one of:
-   - quick: `npx vite --port 4302` then open `/tools/menus-preview.html?screen=3d:title` (also
-     `3d:charSelect`, `3d:death`) in Playwright; this runs the real TitleScene / CharSelectScene /
-     DeathScene with the full UI but skips the boot texture bake. Watch for page errors.
-   - full: `npm run build && SLAY_PORT=4302 node tools/screenshot.mjs --out=shots/menus3d
-     --shots=title,charSelect,death,pause --bootTimeout=3600000`.
-   Things to judge: title gate composition (gate should sit right of centre, menu left), rift shader
-   visible in the arch, mist not washing the frame out; char select hero dressed in its field kit
-   and centred between the columns, drag-to-turn works; death grave shows the engraved name, the
-   planted weapon and the rising wisp. Fix anything that throws before continuing.
-2. Then milestone 7, the sweep:
-   - Rebase, then check whether the hud stream's tokens in `src/ui/styles.css` changed (`--gold`,
-     `--ink-*`, `--font-display`, `--radius*`, `--shadow-*`, `--hairline`). Every class in
-     `src/ui/menus.css` reads those tokens; swap any hard-coded colours there for new tokens.
-   - `node tools/shot-menus.mjs --out=shots/menus` and again with `--width=1280 --height=720`;
-     look at every PNG for overlap.
-   - Keyboard pass: title (arrows/Enter), char select (arrows, left/right difficulty, Tab mode,
-     N name, Enter), pause (arrows/Enter, Esc), settings (Q/E tabs, Esc back to pause), death
-     (arrows/Enter after the 2.6 s lock), memorial (Esc back). Modals: Esc = Cancel.
-   - Tell the hud stream (do not edit styles.css) that the old selectors `.title-*`, `.cs-*`
-     (except `.cs-memorial-list`, `.fallen-*`), `.death-*`, `.pause-*`, `.settings-cols` are unused.
+Milestone 7 (sweep) is in progress. Done so far (see "Sweep log" below): text size, rebind-aware
+keys, Journal in pause, O/G/J in the controls card, Enter/arrows in confirm dialogs, heroes face
+the viewer, 3D title checked. Still to do:
+
+1. Look at the 3D char select and death scenes at steady state:
+   `SLAY_PORT=4302 node tools/shot-menus.mjs --out=shots/menus3d --screens=3d:charSelect,3d:death`
+   (now waits for 6 s of *scene* time, HMR off; under heavy load each takes 20+ minutes). The first
+   char select shot (after only ~1 s of scene time) showed the hero washed out by a white glow in
+   the arch; judge whether it settles. The death scene has never been seen.
+2. Then tick milestone 7, set `Status: done`.
 
 ## Notes for resume
+
+**Sweep log (milestone 7):**
+- Every raw `font-size` in `menus.css` under 41px now scales with the text-size setting
+  (`calc(Npx * var(--text-scale, 1))`). Left fixed on purpose: the SVG logo (user units) and the
+  three giant display headings (YOU DIED, PAUSED-size clamps over 44px).
+- Tokens: no hard-coded colour in `menus.css` equals a hud token; every `var(--x)` it reads exists.
+  Hud already removed the old `.title-*`, `.cs-*`, `.death-*`, `.pause-*`, `.settings-cols` rules.
+- Keys: `menuKey(e)` in `MenuNav.ts` is the code a menu acts on (arrows, Enter, Tab, Esc fixed;
+  everything else through `remapKey`). MenuNav, char select, settings tab paging (Q/E) and the
+  onboarding hints use it. Hint keycaps and pause-menu hints show the player's bound key.
+- Controls card (`SettingsPanel` CONTROLS) writes keys as codes and shows the bound key; lists
+  Attack in place (Shift + Left click), Journal J, Loot filter O, Legacy G, Alt for floor items.
+- Pause menu: Journal row. A panel hotkey pressed in the pause menu closes the pause menu first;
+  hotkeys are ignored while Settings is open (Q/E page its tabs).
+- Confirm dialogs: Enter = confirm button (unless a button is focused), Left/Right move focus,
+  Esc = Cancel (all in `UIRoot.ts`, since `modal()` is hud's).
+- Char select hero and the paperdoll (`PaperdollView.ts`, hud's file, small fix at the models
+  stream's request) no longer spin all the way round when idle: they ease back to face the camera
+  and sway. The paperdoll keeps a dragged pose for 3 s first.
+- `tools/shot-menus.mjs`: `3d:` screens get SwiftShader flags, wait on scene time, report fps;
+  the server runs with `SLAY_NO_HMR` in its own process group (it used to leave vite running).
+  New preview screen `controlsCard` (the reference card with Q rebound to Z).
+- 3D title seen: gate right of centre, rift visible, mist fine.
+
 
 **From models (finished, 5bebe1d):** in the `check-paperdoll` shot the figure seemed to face away from the camera. Check the paperdoll and character select hero face the viewer.
 
