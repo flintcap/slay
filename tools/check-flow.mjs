@@ -16,6 +16,13 @@
  * so it is a milestone check, not a per-edit one.
  */
 import { bootGame, frames } from './lib/game.mjs';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+
+// `--out=<dir>`: also photograph character select and the death screen once
+// each has run 6 s of scene time (a free look at the 3D scenes in a real boot).
+const OUT = process.argv.find((a) => a.startsWith('--out='))?.slice(6);
+if (OUT) mkdirSync(OUT, { recursive: true });
 
 const T0 = Date.now();
 const secs = () => `${Math.round((Date.now() - T0) / 1000)}s`.padStart(6);
@@ -80,6 +87,13 @@ const openPause = async () => {
   }
   if (!(await visible('.pz-root'))) throw new Error('Escape never opened the pause menu');
 };
+/** Screenshot after `secs` more of engine time, when `--out` is given. */
+const shoot = async (file, secs = 6) => {
+  if (!OUT) return;
+  const from = await page.evaluate(() => window.SLAY.engine.elapsed);
+  await page.waitForFunction((t) => window.SLAY.engine.elapsed > t, from + secs, { timeout: 1_200_000, polling: 1000 });
+  await page.screenshot({ path: path.join(OUT, file), timeout: 600_000 });
+};
 const choose = async (label) => {
   const items = page.locator('.mn-item', { hasText: label });
   if ((await items.count()) === 0) throw new Error(`no menu item "${label}"`);
@@ -106,6 +120,7 @@ await step('Enter opens character select', async () => {
   await arrive('charSelect');
   name = await page.evaluate(() => document.querySelector('.csx-name input')?.value ?? '');
   if (!name) throw new Error('no prefilled name');
+  await shoot('flow-charSelect.png');
   return `name ${name}`;
 });
 
@@ -183,6 +198,7 @@ await step('death screen shows the run, and the save keeps the fallen', async ()
   if (!raw.includes(name)) throw new Error('memorial not saved');
   const l = await labels('body');
   if (l[0] !== 'Rise Again') throw new Error(`death menu is ${JSON.stringify(l)}`);
+  await shoot('flow-death.png', 9);
   return l.join(', ');
 });
 
