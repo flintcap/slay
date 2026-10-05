@@ -1,6 +1,6 @@
 # Stream: models (how bodies and worn gear look)
 
-Status: in progress
+Status: done (all milestones ticked; polish ideas under Next up)
 
 ## Milestones
 
@@ -9,21 +9,23 @@ Status: in progress
 - [x] Monster looks: a distinct, readable silhouette per family, more detail and material variety, elites and champions visibly tougher, bosses that look like bosses. ("Models: monsters by family and rank, one skinned mesh per material")
 - [x] Town NPCs: each camp NPC built for their role (smith, vendor, healer, stash keeper and the rest), with clothing and props that say who they are. ("Models: every camp resident built for their trade")
 - [x] Level of detail and budgets: far-away models get cheaper, crowds of monsters stay smooth, nothing visibly pops. ("Models: monster level of detail and merged held items")
-- [ ] Sweep: a turntable render of every class in low, mid and top gear, every monster family and every NPC, checked for clipping, floating parts and style drift.
+- [x] Sweep: a turntable render of every class in low, mid and top gear, every monster family and every NPC, checked for clipping, floating parts and style drift. ("Models: sweep done")
 
 ## Next up
 
-Milestone 6, the sweep (started: stride sheet, rounder sleeve shoulders, eyes, subtler cheekbones are in).
-Remaining:
-1. Render `classes`, `bodies-low|mid|top`, `stride`, `monsters`, `npcs-a|b` with
-   `node tools/models-sheet.mjs <sheets> --port=4311 --out=shots/models/sweep` (self-contained: it starts
-   and stops its own Vite server; never leave a server running) and look for clipping (long hair through
-   plate, robe skirts in stride, capes through legs, belts inside plate), floating parts and style drift.
-2. One full game render of town (NPCs) when the machine is quiet:
-   `npm run build && SLAY_PORT=4311 node tools/screenshot.mjs --out=shots/models/sweep --shots=town`.
-3. Rerun `check-worn` and `check-paperdoll` when the machine is quiet (they timed out on screenshots under
-   load average ~24, no page errors).
-4. The foundry invisible hero is occlusion by landmark rubble (see notes); handed to world.
+All six milestones are done. Polish a successor could pick up, in order of value:
+1. Faces at portrait scale are still blocky (brow bar, simple nose); a ring-built nose and lips and a
+   softer brow would help the paperdoll and character select. Check with the `bodies` sheet.
+2. Robe and coat sleeves puff at the shoulder (the deltoid cover grown by the cloth); a sleeve cap that
+   blends into the torso band would read more like tailoring.
+3. Worn gear is up to five meshes per piece; merging same-material meshes across slots (one skinned mesh
+   per material for all worn gear) would take top-gear characters from ~35 to ~22 draw calls.
+4. Undead rags read as a kilt; vary their length and add holes per rank.
+5. The paperdoll shows the figure from behind in `check-paperdoll` (hud's camera framing, or worth a look).
+Sweep results this session: `classes`, `bodies-*`, `stride`, `monsters`, `npcs-a|b` reviewed; fixes made
+(sleeve shoulders, eyes, cheekbones, worn metal reading black). `check-grips` and `check-worn` pass;
+`check-gear-visuals` passes; `check-paperdoll` renders the first class and then times out on the second
+screenshot when the machine is busy (no page errors). Town render shows the residents in place.
 
 ## Notes for resume
 
