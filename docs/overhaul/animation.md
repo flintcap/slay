@@ -28,6 +28,11 @@ All milestones are done. If a successor picks this up:
 
 ## Notes for resume
 
+- From quality (browser sweep, quiet machine): `check-attack` passes ("the
+  swing connects, and holding the button closes the distance", 21 min, mostly
+  boot and dungeon entry) and `check-clips` passes (16 clips in use, 303
+  skills, no page errors, 0 icon duplicates). Nothing to fix.
+
 - From quality: `RigAnimator`'s constructor (src/art/MonsterAnimation.ts) drew
   twice from the caller's rng (offset, then the fidget seed). Every roll made
   after building a monster shifted, and `check-tactics` went from passing to

@@ -23,6 +23,16 @@ mkdirSync(OUT, { recursive: true });
 const { page, close, pageErrors, bootMs } = await bootGame({ fallbackPort: 4309 });
 console.log(`booted in ${(bootMs / 1000).toFixed(0)}s`);
 
+// Screenshots are for a human look, not part of the verdict: under software
+// rendering one can take longer than Playwright's default 30 s.
+const shot = async (name) => {
+  try {
+    await page.screenshot({ path: `${OUT}/${name}.png`, timeout: 180_000 });
+  } catch (err) {
+    console.log(`note  screenshot ${name} skipped: ${String(err).split('\n')[0].slice(0, 120)}`);
+  }
+};
+
 const results = [];
 const ok = (name, pass, detail = '') => {
   results.push({ name, pass, detail });
@@ -75,7 +85,7 @@ try {
   ok('Accessibility section on Gameplay', !!acc && acc.textSize && acc.colour, JSON.stringify(acc));
   ok('Reduced motion toggle on Gameplay', !!acc?.motion, JSON.stringify(acc));
   await frames(page, 4);
-  await page.screenshot({ path: `${OUT}/settings-gameplay.png` });
+  await shot('settings-gameplay');
 
   // Text size: drive the slider's input like a drag would.
   const scale = await page.evaluate(async () => {
@@ -130,7 +140,7 @@ try {
     return !!btn;
   });
   await frames(page, 4);
-  await page.screenshot({ path: `${OUT}/settings-controls.png` });
+  await shot('settings-controls');
   ok('Inventory has a Change button', started);
   await page.keyboard.press('KeyP');
   await frames(page, 6);

@@ -38,7 +38,11 @@ const only = list('only');
 const skip = new Set(list('skip') ?? []);
 const wantBrowser = flag('browser') || flag('all');
 const wantStatic = !flag('browser') || flag('all');
-const timeoutMs = Number(list('timeout')?.[0] ?? (wantBrowser ? 1_500_000 : 600_000));
+// Per checker: a browser checker gets 25 minutes, a static one 10, unless
+// --timeout says otherwise. (With --only, a browser checker used to get the
+// static 10 minutes and was killed while still booting.)
+const fixedTimeout = list('timeout')?.[0];
+const timeoutFor = (c) => Number(fixedTimeout ?? (c.browser ? 1_500_000 : 600_000));
 
 const all = readdirSync(TOOLS)
   .filter((f) => /^check-.*\.mjs$/.test(f))
@@ -51,6 +55,22 @@ const all = readdirSync(TOOLS)
   .filter((c) => !skip.has(c.name))
   .filter((c) => (c.browser ? wantBrowser || only : wantStatic || only));
 
+// If run-checks itself is stopped, take the running checker's whole group
+// (its vite server and browser) with it, or they outlive it on the port.
+let current = null;
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+  process.on(sig, () => {
+    if (current) {
+      try {
+        process.kill(-current, 'SIGKILL');
+      } catch {
+        /* already gone */
+      }
+    }
+    process.exit(130);
+  });
+}
+
 function run(c) {
   return new Promise((resolve) => {
     const t0 = Date.now();
@@ -62,6 +82,7 @@ function run(c) {
       // server and browser instead of leaving them holding the port.
       detached: true,
     });
+    current = child.pid;
     const killAll = () => {
       try {
         process.kill(-child.pid, 'SIGKILL');
@@ -72,6 +93,7 @@ function run(c) {
     let out = '';
     child.stdout.on('data', (d) => (out += d));
     child.stderr.on('data', (d) => (out += d));
+    const timeoutMs = timeoutFor(c);
     const timer = setTimeout(() => {
       out += `\n[run-checks] killed after ${timeoutMs} ms\n`;
       killAll();
