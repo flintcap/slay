@@ -29,7 +29,9 @@ import {
   hashString,
   innerEdge,
   lift,
+  luma,
   mixC,
+  saturate,
   polyP,
   rampOf,
   sink,
@@ -54,7 +56,11 @@ export const ELEMENT_TONE: Record<DamageType, Tone> = {
 
 /** A tone built around one colour — statuses, affixes, class light. */
 export function toneOf(color: number): Tone {
-  return { core: lift(color, 0.75), glow: color, dark: sink(color, 0.82) };
+  // Very dark status colours (dread, veiled) would light a pictogram that
+  // vanishes into its own ground; lift them until they read.
+  const l = luma(color);
+  const c = l < 0.32 ? lift(saturate(color, 0.3), Math.min(0.6, (0.32 - l) * 2.4)) : color;
+  return { core: lift(c, 0.75), glow: c, dark: sink(c, 0.82) };
 }
 
 interface ClassLook {
@@ -102,7 +108,7 @@ const ICON_MAP: Record<string, string> = {
   'two-banners': 'banner:1', fissure: 'crack^field', 'thorn-crest': 'spikes^aura', sworn: 'sword^aura', 'skull-horn': 'skull:1',
   'ghost-knight': 'helm:1^aura',
   // Pyromancer — conflagration
-  'bolt-fire': 'flame^speed', 'mastery-fire': 'flame^mastery', 'nova-fire': 'flame^nova', lance: 'beam', scorch: 'flame:1^field',
+  'bolt-fire': 'flame^speed', 'mastery-fire': 'flame^mastery', 'nova-fire': 'flame^nova', lance: 'beam^impact', scorch: 'flame:1^field',
   fireball: 'orb^speed', stream: 'beam', kindle: 'flame', blast: 'nova', eruption: 'flame^rise', burst: 'nova^burst',
   shimmer: 'wave', 'rain-fire': 'flame^rain', core: 'orb^aura', dragon: 'wing:1^burst', 'chain-fire': 'flame^chain', nuke: 'sun',
   'soul-fire': 'skull:2',
@@ -551,6 +557,8 @@ const AFFIX_MAP: Record<string, string> = {
   berserker: 'skull:1', empowered: 'star', avenger: 'sword', nightmarish: 'eye', illusionist: 'figure:1',
   summoner: 'skull:2', soul_bound: 'chain', blood_thirsty: 'drop', vampiric: 'fang',
   life_leech: 'heart', regenerating: 'heart', health_link: 'chain', orbiter: 'orb', mortar: 'boulder',
+  desecrator: 'pool', fire_chains: 'firechain', bulwark: 'ward', splitter: 'split', hexing: 'hexshield',
+  adaptive: 'adapt', lancer: 'lance',
 };
 
 /** A nameplate badge: a bold pictogram in a ring of the affix's colour. */

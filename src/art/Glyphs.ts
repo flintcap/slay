@@ -68,6 +68,10 @@ const LEATHER = mat([0x170f09, 0x382515, 0x5c3f25, 0x85603b, 0xab8560], 0.1, 'po
 const CLOTH = mat([0x2a0a0a, 0x5c1818, 0x942a26, 0xc4504a, 0xe88a80], 0.1, 'weave', 0.3, 0.8);
 const STONE = mat([0x131518, 0x2b2f33, 0x4e5358, 0x7a7f84, 0xa8adb2], 0, 'crack', 0.45);
 
+/** Lighter steel and stone for glyphs that are one big dark mass (helm, boulder). */
+const BRIGHT_STEEL = rampOf(0x8a96a4, 0.9, 'brushed', 0.25);
+const BRIGHT_STONE = rampOf(0x8a8f94, 0.05, 'crack', 0.45);
+
 export const GLYPH_MATS = { STEEL, IRON, GOLD, BONE, WOOD, LEATHER, CLOTH, STONE };
 
 /** An object painted in a material, caught by the tone's coloured back light. */
@@ -277,9 +281,10 @@ const bone: Glyph = (x, t, v) => {
     x.rotate(n === 1 ? Math.PI / 4 : (i ? -1 : 1) * Math.PI / 4);
     x.translate(-64, -64);
     const p = new Path2D();
-    p.addPath(rrectP(58, 26, 12, 76, 5));
-    for (const [ex, ey] of [[56, 24], [72, 24], [56, 104], [72, 104]] as const) p.addPath(circleP(ex, ey, 8));
-    obj(x, p, BONE, t, [50, 20], [78, 110], 1);
+    p.addPath(rrectP(55, 22, 18, 84, 7));
+    for (const [ex, ey] of [[53, 18], [75, 18], [53, 110], [75, 110]] as const) p.addPath(circleP(ex, ey, 11));
+    if (n === 1 && i === 0) glow(x, 64, 64, 46, t.glow, 0.45);
+    obj(x, p, BONE, t, [42, 8], [86, 120], 1.1);
     x.restore();
   }
 };
@@ -452,11 +457,12 @@ const quiver: Glyph = (x, t) => {
 
 const helm: Glyph = (x, t, v) => {
   const p = smoothP([[30, 96], [26, 56], [36, 26], [64, 16], [92, 26], [102, 56], [98, 96], [64, 104]], 0.3);
+  glow(x, 64, 60, 52, t.glow, 0.45);
   if (v % 2) {
     x.save();
     x.globalAlpha = 0.85;
   }
-  obj(x, p, STEEL, t, [26, 16], [102, 104], 1.4);
+  obj(x, p, BRIGHT_STEEL, t, [26, 16], [102, 104], 1.4);
   const slit = polyP([[34, 56], [94, 56], [92, 64], [36, 64]]);
   x.fillStyle = '#060508';
   x.fill(slit);
@@ -520,17 +526,24 @@ const chain: Glyph = (x, t) => {
 };
 
 const scythe: Glyph = (x, t) => {
+  glow(x, 50, 44, 44, t.glow, 0.5);
   x.save();
   x.translate(64, 64);
   x.rotate(0.25);
   x.translate(-64, -64);
-  obj(x, rrectP(60, 18, 8, 98, 3), WOOD, t, [60, 60], [68, 60], 0.6);
+  obj(x, rrectP(66, 14, 12, 104, 4), WOOD, t, [66, 60], [78, 60], 0.7);
   const blade = new Path2D();
-  blade.moveTo(66, 22);
-  blade.bezierCurveTo(40, 4, 14, 16, 10, 40);
-  blade.bezierCurveTo(26, 26, 46, 26, 66, 36);
+  blade.moveTo(74, 18);
+  blade.bezierCurveTo(44, -4, 8, 10, 4, 52);
+  blade.bezierCurveTo(22, 28, 48, 30, 74, 40);
   blade.closePath();
-  obj(x, blade, STEEL, t, [10, 10], [66, 36], 1);
+  // A spectral blade, so it reads as the reaper's and never as a dark smear.
+  energy(x, blade, t, 60, 30, 64, 0.3);
+  // A cold glint running the cutting edge.
+  const edge = new Path2D();
+  edge.moveTo(8, 46);
+  edge.bezierCurveTo(24, 26, 48, 28, 70, 37);
+  ray(x, edge, t, 2.2);
   x.restore();
 };
 
@@ -572,7 +585,8 @@ const tower: Glyph = (x, t, v) => {
 
 const boulder: Glyph = (x, t) => {
   const p = smoothP([[30, 50], [52, 26], [86, 28], [104, 56], [96, 92], [62, 104], [30, 90], [22, 70]], 0.45);
-  obj(x, p, STONE, t, [22, 26], [104, 104], 1.6);
+  glow(x, 64, 64, 52, t.glow, 0.4);
+  obj(x, p, BRIGHT_STONE, t, [22, 26], [104, 104], 1.6);
   const cr = new Path2D();
   cr.moveTo(52, 40);
   cr.lineTo(60, 58);
@@ -731,20 +745,35 @@ const mirror: Glyph = (x, t) => {
 
 const figure: Glyph = (x, t, v) => {
   const n = v % 3 === 2 ? 3 : v % 3 === 1 ? 2 : 1;
+  // A hooded silhouette, back-lit so it reads on any dark ground: a halo
+  // behind it, a body that lightens toward the shoulders and a bright rim.
+  glow(x, 64, 58, 50, t.glow, 0.55);
   for (let i = n - 1; i >= 0; i--) {
     const ox = n === 1 ? 0 : (i - (n - 1) / 2) * 22;
-    const a = n === 1 ? 1 : i === 0 ? 1 : 0.55;
+    const a = n === 1 ? 1 : i === 0 ? 1 : 0.6;
     x.save();
     x.globalAlpha = a;
     x.translate(ox, 0);
-    const p = smoothP([[64, 18], [76, 26], [76, 40], [70, 46], [90, 56], [94, 110], [34, 110], [38, 56], [58, 46], [52, 40], [52, 26]], 0.35);
-    x.fillStyle = css(sink(t.dark, 0.5));
+    const p = smoothP([[64, 14], [78, 24], [78, 40], [72, 47], [92, 56], [98, 112], [30, 112], [36, 56], [56, 47], [50, 40], [50, 24]], 0.35);
+    const g = x.createLinearGradient(40, 18, 88, 112);
+    g.addColorStop(0, css(mixC(t.glow, t.dark, 0.35)));
+    g.addColorStop(0.45, css(mixC(t.glow, t.dark, 0.62)));
+    g.addColorStop(1, css(sink(t.dark, 0.3)));
+    x.fillStyle = g;
     x.fill(p);
-    innerEdge(x, p, css(t.glow, 1), 4, -2.5, -2, 2.5);
-    x.lineWidth = 1.6;
-    x.strokeStyle = css(t.glow, 0.7);
+    // The face, in shadow under the hood.
+    const face = smoothP([[64, 24], [72, 30], [71, 40], [64, 44], [57, 40], [56, 30]], 0.4);
+    x.fillStyle = css(sink(t.dark, 0.6));
+    x.fill(face);
+    innerEdge(x, p, css(lift(t.glow, 0.35), 1), 5, -3, -2.5, 3);
+    x.lineJoin = 'round';
+    x.lineWidth = 3.2;
+    x.strokeStyle = 'rgba(4,4,6,.9)';
     x.stroke(p);
-    for (const ex of [60, 68]) glow(x, ex, 34, 4, t.core, 1);
+    x.lineWidth = 2;
+    x.strokeStyle = css(lift(t.glow, 0.25), 0.95);
+    x.stroke(p);
+    for (const ex of [60, 68]) glow(x, ex, 35, 5, t.core, 1);
     x.restore();
   }
 };
@@ -1281,12 +1310,209 @@ const rift: Glyph = (x, t) => {
   x.restore();
 };
 
+// ---------------------------------------------------------------------------
+// Elite affix pictograms (each says what the affix asks of the player)
+// ---------------------------------------------------------------------------
+
+/** Desecrator: a fouled pool on the ground, fumes rising. */
+const pool: Glyph = (x, t) => {
+  x.save();
+  x.translate(64, 88);
+  x.scale(1, 0.4);
+  glow(x, 0, 0, 60, t.glow, 0.7);
+  const splat = smoothP([[-46, -6], [-30, -34], [0, -40], [34, -30], [48, -4], [36, 28], [4, 38], [-34, 30]], 0.45);
+  energy(x, splat, t, 0, 0, 46, 0.35);
+  x.restore();
+  for (const [bx, by, r] of [[46, 84, 5], [76, 90, 4], [62, 80, 3]] as const) {
+    x.save();
+    x.lineWidth = 1.6;
+    x.strokeStyle = css(lift(t.core, 0.3), 0.9);
+    x.beginPath();
+    x.arc(bx, by, r, 0, Math.PI * 2);
+    x.stroke();
+    x.restore();
+  }
+  for (const [fx, h] of [[44, 50], [64, 62], [84, 46]] as const) {
+    const f = new Path2D();
+    f.moveTo(fx, 78);
+    f.bezierCurveTo(fx - 10, 78 - h * 0.35, fx + 10, 78 - h * 0.65, fx, 78 - h);
+    ray(x, f, t, 3.2);
+  }
+};
+
+/** Fire Chains: links of burning chain, flames licking off them. */
+const firechain: Glyph = (x, t) => {
+  glow(x, 64, 64, 50, t.glow, 0.55);
+  for (let i = 0; i < 4; i++) {
+    const cx = 28 + i * 24;
+    const cy = 96 - i * 22;
+    const l = ellipseP(cx, cy, i % 2 ? 9 : 17, i % 2 ? 17 : 9, -0.75);
+    x.save();
+    x.lineWidth = 11;
+    x.strokeStyle = css(sink(t.dark, 0.5), 0.95);
+    x.stroke(l);
+    x.restore();
+    emissiveStroke(x, l, t.glow, 7, 1);
+    x.save();
+    x.lineWidth = 2.4;
+    x.strokeStyle = css(t.core);
+    x.stroke(l);
+    x.restore();
+  }
+  for (const [fx, fy, k] of [[38, 62, 0.42], [72, 46, 0.48], [90, 96, 0.36]] as const) energy(x, flamePath(fx, fy, k), t, fx, fy + 4, 16, 0.6);
+};
+
+/** Bulwark: a shield under a dome that shelters the pack behind it. */
+const ward: Glyph = (x, t) => {
+  const dome = new Path2D();
+  dome.arc(64, 92, 52, Math.PI * 1.05, Math.PI * 1.95);
+  glow(x, 64, 70, 54, t.glow, 0.45);
+  ray(x, dome, t, 4);
+  const dome2 = new Path2D();
+  dome2.arc(64, 92, 42, Math.PI * 1.1, Math.PI * 1.9);
+  x.save();
+  x.globalAlpha = 0.55;
+  ray(x, dome2, t, 2.4);
+  x.restore();
+  for (const px of [24, 104]) energy(x, circleP(px, 96, 7), t, px, 96, 8, 0.5);
+  x.save();
+  x.translate(64, 76);
+  x.scale(0.62, 0.62);
+  x.translate(-64, -64);
+  shield(x, t, 1);
+  x.restore();
+};
+
+/** Splitting: one body tearing into two, the seam glowing. */
+const split: Glyph = (x, t) => {
+  glow(x, 64, 64, 48, t.glow, 0.5);
+  for (const sg of [-1, 1]) {
+    x.save();
+    x.translate(sg * 9, sg * -2);
+    x.rotate(sg * 0.12);
+    const half = new Path2D();
+    const cx = 64;
+    half.moveTo(cx, 20);
+    half.bezierCurveTo(cx + sg * 44, 22, cx + sg * 50, 92, cx + sg * 4, 108);
+    half.lineTo(cx + sg * 8, 92);
+    half.lineTo(cx - sg * 2, 78);
+    half.lineTo(cx + sg * 8, 62);
+    half.lineTo(cx - sg * 2, 46);
+    half.lineTo(cx + sg * 6, 32);
+    half.closePath();
+    energy(x, half, t, cx + sg * 22, 54, 50, 0.3);
+    for (const ey of [48]) glow(x, cx + sg * 20, ey, 5, 0xffffff, 1);
+    x.restore();
+  }
+  const seam = new Path2D();
+  seam.moveTo(64, 14);
+  seam.lineTo(60, 40);
+  seam.lineTo(68, 60);
+  seam.lineTo(60, 80);
+  seam.lineTo(66, 112);
+  ray(x, seam, { core: 0xffffff, glow: t.glow, dark: t.dark }, 2);
+};
+
+/** Hexing: a ward cracked through by a curse rune. */
+const hexshield: Glyph = (x, t) => {
+  glow(x, 64, 64, 52, t.glow, 0.5);
+  const p = shieldPath(0.92);
+  obj(x, p, BRIGHT_STEEL, t);
+  const inner = shieldPath(0.7, 64, 62);
+  x.fillStyle = css(sink(t.glow, 0.6), 0.9);
+  x.fill(inner);
+  // An inverted triangle rune over the boss of the shield.
+  const r = new Path2D();
+  r.moveTo(44, 40);
+  r.lineTo(84, 40);
+  r.lineTo(64, 76);
+  r.closePath();
+  r.moveTo(64, 30);
+  r.lineTo(64, 88);
+  ray(x, r, t, 3.4);
+  const cr = new Path2D();
+  cr.moveTo(30, 22);
+  cr.lineTo(46, 46);
+  cr.lineTo(40, 60);
+  cr.lineTo(58, 82);
+  cr.lineTo(54, 106);
+  x.save();
+  x.lineWidth = 5;
+  x.lineJoin = 'round';
+  x.strokeStyle = '#050407';
+  x.stroke(cr);
+  x.restore();
+  ray(x, cr, t, 1.8);
+};
+
+/** Adaptive: a carapace plate ringed by the four elements it learns. */
+const adapt: Glyph = (x, t) => {
+  glow(x, 64, 64, 46, t.glow, 0.45);
+  const hex: Pt[] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI / 2 + (i / 6) * Math.PI * 2;
+    hex.push([64 + Math.cos(a) * 30, 64 + Math.sin(a) * 30]);
+  }
+  obj(x, polyP(hex), BRIGHT_STEEL, t, [36, 36], [92, 92], 1);
+  const facets = new Path2D();
+  for (const [hx, hy] of hex) {
+    facets.moveTo(64, 64);
+    facets.lineTo(hx, hy);
+  }
+  x.save();
+  x.strokeStyle = 'rgba(0,0,0,.45)';
+  x.lineWidth = 1.4;
+  x.stroke(facets);
+  x.restore();
+  energy(x, circleP(64, 64, 8), t, 64, 64, 9, 0.6);
+  const ELEM: Array<[number, number, number]> = [[0xff6a1a, 64, 18], [0x4ab4ff, 110, 64], [0xa47bff, 64, 110], [0x6cd030, 18, 64]];
+  for (const [c, ex, ey] of ELEM) energy(x, circleP(ex, ey, 9), { core: lift(c, 0.7), glow: c, dark: sink(c, 0.8) }, ex, ey, 10, 0.55);
+};
+
+/** Lancer: a couched lance driving forward, speed lines behind. */
+const lance: Glyph = (x, t) => {
+  x.save();
+  x.translate(64, 64);
+  x.rotate(-Math.PI / 4);
+  x.translate(-64, -64);
+  for (let i = 0; i < 3; i++) {
+    const p = new Path2D();
+    const oy = (i - 1) * 16;
+    p.moveTo(6, 64 + oy);
+    p.lineTo(34 - Math.abs(oy) * 0.6, 64 + oy);
+    x.save();
+    x.globalAlpha = 0.85;
+    ray(x, p, t, 3);
+    x.restore();
+  }
+  // A tapering jousting lance, banded in the affix colour, behind a steel guard.
+  const cone = polyP([[40, 50], [122, 62], [122, 66], [40, 78]]);
+  obj(x, cone, rampOf(0xc8a070, 0.05, 'grain', 0.3), t, [40, 50], [40, 78], 0.8);
+  x.save();
+  x.clip(cone);
+  for (let i = 0; i < 4; i++) {
+    const bx = 52 + i * 18;
+    x.fillStyle = css(t.glow, 0.85);
+    x.beginPath();
+    x.moveTo(bx, 40);
+    x.lineTo(bx + 8, 40);
+    x.lineTo(bx + 2, 90);
+    x.lineTo(bx - 6, 90);
+    x.closePath();
+    x.fill();
+  }
+  x.restore();
+  obj(x, ellipseP(38, 64, 7, 20), BRIGHT_STEEL, t, [31, 44], [45, 84], 0.7);
+  x.restore();
+  glint(x, 104, 24, 10, lift(t.core, 0.5), 1);
+};
+
 export const GLYPHS: Record<string, Glyph> = {
   shield, sword, dagger, axe, hammer, anvil, fist, skull, bone, chalice, crown, banner, horn, arrow, bow, target,
   boot, trap, quiver, helm, cage, chain, scythe, claw, tower, boulder, spikes, fang, serpent, leaf, vial, totem,
   mirror, figure, hand, heart, coil, crack, footprints, flame, drop, bolt, flake, eye, orb, star, sun, moon, cloud,
   swirl, tornado, ghost, wing, rune, nova, beam, wave, hourglass, lungs, coin, brand, anchor, wilt, mute, lens,
-  feather, link, gear, bubble, rift,
+  feather, link, gear, bubble, rift, pool, firechain, ward, split, hexshield, adapt, lance,
 };
 
 export { obj as paintObject, energy as paintEnergy, ray as paintRay };

@@ -1,11 +1,11 @@
 # Stream: art (illustration and iconography)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
 - [x] Item icons: painterly, readable at small size, real material rendering (metal sheen, leather grain, gem glints), a clear silhouette per item family, rarity shown by the art itself, not just a border. — "Paint item icons by family and sub-type, with rarity in the art"
-- [ ] Skill, buff and affix icons: a consistent family style per class and element, strong central motif, readable at hotbar size, with locked, ready and cooldown states that still read.
+- [x] Skill, buff and affix icons: a consistent family style per class and element, strong central motif, readable at hotbar size, with locked, ready and cooldown states that still read. — "Art: brighter status pictograms, real badges for the seven new elite affixes"
 - [ ] Item models: ground drops and equipped gear that match their icons, with ornament scaling by rarity and tier; uniques and set items get distinctive shapes.
 - [ ] Class portraits and key art: a drawn portrait per class for character select, and a title and loading key art composition, all generated in code (canvas or SVG).
 - [ ] UI ornament: filigree corners, dividers, frame borders and crests drawn procedurally for the hud and menus streams to use, exposed as small reusable helpers.
@@ -14,32 +14,30 @@ Status: paused
 
 ## Next up
 
-Milestone 2 is mostly built and live, not yet ticked. Finish it:
+Milestone 3 (item models). Art keeps `ItemModels.ts` (held weapons, shields, ground drops);
+models owns worn armour (`WornGear.ts`) and `GearLook.ts`.
 
-1. Review `SLAY_PORT=4310 node tools/art-sheet.mjs skillsA,skillsB,skillsC,skillcloseup,statuses --out=shots/art`
-   (skillsA/B/C are the 18 trees in thirds, each skill ready / cooldown / locked).
-   Known weak spots: dark pictograms on dark ground (`figure` in shroud/cloak/void
-   status chips is near invisible; scythe, helm and bone read thin in passives);
-   bone-spear and other `^speed` icons draw the glyph small. Brighten `figure`
-   (lighter body fill or a stronger rim) and enlarge thin glyphs.
-2. Ask the hud stream (or make the one-line additive edit yourself) to swap the buff
-   chip art in `src/ui/HUD.ts` (~line 948, `art.innerHTML = iconSvg(statusIcon(...))`)
-   for `<img src="${statusIconUri(def?.icon, def?.color ?? 0x9ad0ff, def?.polarity ?? 1)}">`.
-   `statusIconUri` is exported from `src/art/Icons.ts` and unused so far.
-3. Run `node tools/check-skillicons.mjs` and `node tools/check-clips.mjs` (both boot the
-   game, several minutes) to confirm no duplicates/regressions, then tick milestone 2.
-
-Then milestone 3 (item models). New since the plan update: a **models** stream owns
-worn armour on the body; art keeps `ItemModels.ts` (held weapons, ground drops).
-Expose a small helper for them, e.g. `src/art/ItemLook.ts` exporting
-`itemLook(item, visual)` -> `{ palette, trimPalette, stoneColor, glowColor, rank, ornate }`
-built from `IconKit.trimFor/stoneFor/glowFor/RANK` (map verdigris/voidgold/bloodgold
-trims to world palette keys like 'metal.bronze'/'metal.gold' for `Materials.surface`),
-so worn gear, held weapons, drops and icons agree. Then match weapon models to icon
-sub-types (`visual.shape` like 'sword.thin', 'axe.great', 'dagger.wavy' are currently
-ignored by `resolveShape` beyond the family) without breaking `node tools/check-grips.mjs`.
+1. New `src/art/ItemLook.ts`: `itemLook(item, visual)` built on `gearLook()` from `GearLook.ts`
+   plus `IconKit.trimFor/stoneFor/glowFor/RANK`, returning one shared look (palette, trim, stone,
+   glow, rank, ornate, set tint) so icons, drops, held weapons and worn gear agree.
+2. Use it in `ItemModels.ts`: weapons and drops take trim/stone/glow from it; match weapon
+   models to icon sub-types (`visual.shape` like 'sword.great', 'axe.great', 'dagger.wavy').
+   Keep the weapon contract (grip at origin, +Y business end, wide X, thin Z), keep the drop part
+   names `beam`, `pool`, `sigil`, `dropLight`, `spin`, and run `node tools/check-grips.mjs`.
+3. Uniques and sets get distinctive shapes (per-unique signature from `gearLook`).
+4. Add an `itemmodels` sheet to `tools/art-sheet-page.ts` (three.js render of each model to a
+   canvas, no game boot) to look at them.
 
 ## Notes for resume
+
+- Milestone 2 closing notes: `figure`, `scythe`, `bone`, `helm`, `boulder` glyphs are now back-lit
+  and brighter; `toneOf()` lifts very dark colours (dread, veiled) so chips read. The seven elite
+  affixes have real glyphs (`pool`, `firechain`, `ward`, `split`, `hexshield`, `adapt`, `lance`)
+  and the `BADGE_ALIAS` table in `Nameplates.ts` is gone. The HUD already uses `statusIconUri`.
+- `check-skillicons.mjs` draws through the same `Icons.ts` path as the art sheets, so the
+  `skillsA/B/C` sheets replace it (no game boot). `check-clips.mjs` is animation's, untouched by icons.
+  The new `dupes` sheet lists skills in one tree that resolve to the same picture (now 0), and
+  `affixcloseup` shows the newest badges large and at nameplate size.
 
 **From models (finished, 5bebe1d):** build the planned `itemLook()` on top of the new `src/art/GearLook.ts`, so ground drops, held weapons and worn gear share trim, rarity dressing and set colours.
 

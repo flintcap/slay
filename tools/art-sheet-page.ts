@@ -171,6 +171,38 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return c;
   },
 
+  /** The newest affix badges and the once-weak pictograms, large and at nameplate size. */
+  async affixcloseup() {
+    const { MONSTER_AFFIXES } = await import('../src/data/monsterAffixes');
+    const ids = ['desecrator', 'fire_chains', 'bulwark', 'splitter', 'hexing', 'adaptive', 'lancer'];
+    const list = ids.map((b) => MONSTER_AFFIXES.find((a) => a.behavior === b)!).filter(Boolean);
+    const skills = ['harvest', 'execute', 'bone-spear', 'knight', 'golem', 'cloak', 'shroud'].map((n) => SKILLS.find((s) => s.icon === n)!).filter(Boolean);
+    const S = 140;
+    const COLS = 7;
+    const { c, g } = sheet(COLS * S, 2 * (S + 30));
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i]!;
+      const im = await img(IC.affixIconUri(a.behavior, a.color));
+      const x = i * S;
+      g.drawImage(im, x + 10, 4, 96, 96);
+      g.drawImage(im, x + 110, 40, 24, 24);
+      g.drawImage(im, x + 112, 80, 14, 14);
+      g.fillStyle = INK;
+      g.fillText(a.behavior ?? a.id, x + S / 2, 110);
+    }
+    for (let i = 0; i < skills.length; i++) {
+      const s = skills[i]!;
+      const im = await img(IC.skillIconUri(s.id, s.effect, s.damageType, s.targeting === 'passive', s.icon));
+      const x = i * S;
+      const y = S + 30;
+      g.drawImage(im, x + 10, y, 96, 96);
+      g.drawImage(im, x + 104, y + 50, 32, 32);
+      g.fillStyle = INK;
+      g.fillText(s.icon, x + S / 2, y + 104);
+    }
+    return c;
+  },
+
   /** A handful of skill icons at native size, to judge the brushwork. */
   async skillcloseup() {
     const ids = ['bash', 'nova-fire', 'bone-spear', 'chain', 'fang', 'rain', 'mastery-fire', 'cleave', 'cyclone', 'eclipse', 'smoke-bomb', 'harvest'];
@@ -213,6 +245,24 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
       cell(g, x, y, S, RCOL[r]);
       g.drawImage(await img(IC.itemIconUri(fakeItem(id, r))), x, y, S, S);
     }
+    return c;
+  },
+
+  /** Skills inside one tree that resolve to the same picture (glyph, variant, modifier, element, passive). */
+  async dupes() {
+    const { planFor } = await import('../src/art/SkillIconArt');
+    const seen = new Map<string, string[]>();
+    for (const s of SKILLS) {
+      const p = planFor(s.icon, s.effect, 0);
+      const k = `${s.treeId}|${p.glyph}:${p.variant}^${p.mod}|${s.damageType ?? ''}|${s.targeting === 'passive'}`;
+      seen.set(k, [...(seen.get(k) ?? []), s.icon]);
+    }
+    const d = [...seen.entries()].filter(([, v]) => v.length > 1);
+    const { c, g } = sheet(900, 20 + d.length * 14);
+    g.textAlign = 'left';
+    g.fillStyle = INK;
+    d.forEach(([k, v], i) => g.fillText(`${k}  <-  ${v.join(', ')}`, 6, 6 + i * 14));
+    c.dataset.note = `${d.length} same-tree duplicate pictures`;
     return c;
   },
 
