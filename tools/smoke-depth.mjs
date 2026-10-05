@@ -35,6 +35,8 @@ const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// A town frame can take longer than Playwright's default 30 s to draw here.
+page.setDefaultTimeout(900000);
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 400)));
 page.on('console', (m) => {
@@ -56,8 +58,13 @@ const result = await page.evaluate(async () => {
   };
   localStorage.clear();
   S.save.hardReset();
-  S.debug.makeCharacter('warden', 20);
+  // makeCharacter rolls random gear; the checks below need a main-hand weapon.
+  for (let i = 0; i < 20; i++) {
+    S.debug.makeCharacter('warden', 20);
+    if (S.save.account.current?.equipment?.mainHand) break;
+  }
   const c = S.save.account.current;
+  if (!c.equipment.mainHand) return { error: 'no main-hand weapon after 20 characters' };
   // A melee weapon with Cleaving and an amulet with Rime: both visible in play.
   const sword = c.equipment.mainHand;
   if (sword) sword.powers = [{ id: 'cleave', mag: 1 }];
@@ -81,7 +88,8 @@ const result = await page.evaluate(async () => {
   scene.player.life = scene.player.stats.life * 0.5;
   const lifeBefore = scene.player.life;
   const ctx = scene.context();
-  a.takeDamage({ amount: 50, type: 'physical', crit: false, source: 'player', ability: 'Attack' }, ctx);
+  // A light hit: a depth-3 monster must survive it, or nothing can chill it.
+  a.takeDamage({ amount: Math.max(1, Math.floor(a.life * 0.2)), type: 'physical', crit: false, source: 'player', ability: 'Attack' }, ctx);
   out.cleaveLanded = b.life < bLife;
   out.chilled = a.hasStatus('chilled');
   out.leeched = scene.player.life > lifeBefore;
@@ -153,6 +161,7 @@ for (const id of panels) {
 // The descent's modifier strip is on screen in the dungeon.
 result.modStrip = await page.evaluate(() => document.querySelectorAll('.depth-mods .depth-mod').length);
 await page.screenshot({ path: `${OUT}/dungeon.png` });
+console.log('dungeon phase:', JSON.stringify({ result, errors }));
 
 // Camp: the three stations, their panels, and the gate's choices.
 const camp = await page.evaluate(async () => {
@@ -214,18 +223,26 @@ for (const st of camp.stations) {
   await page.evaluate((p) => window.SLAY.events.emit('ui:open', { panel: `station-open:${p}` }), id);
   await sleep(400);
   result[`station_${id}`] = await page.evaluate((p) => !!document.querySelector(`[data-panel="${p}"].is-open`), id);
+  await page.evaluate(async () => {
+    for (let i = 0; i < 3; i++) await new Promise((r) => requestAnimationFrame(r));
+  });
   if (id === 'bounties') await page.screenshot({ path: `${OUT}/panel-bounties.png` });
   await page.evaluate((p) => window.SLAY.events.emit('ui:close', { panel: p }), id);
 }
 // The gate: waypoints first (milestones 5 and 10 are claimed), then pacts.
 await page.evaluate(() => window.SLAY.events.emit('ui:open', { panel: 'descend' }));
 await sleep(400);
+// A frame here takes seconds: let a few draw so the shot shows the DOM as it is.
+await page.evaluate(async () => {
+  for (let i = 0; i < 3; i++) await new Promise((r) => requestAnimationFrame(r));
+});
+result.bountiesClosed = await page.evaluate(() => !document.querySelector('[data-panel="bounties"].is-open'));
 result.gateWaypoints = await page.evaluate(() => document.querySelectorAll('[data-panel="choice"].is-open .depth-card').length);
 await page.screenshot({ path: `${OUT}/gate.png` });
 
 console.log(JSON.stringify({ result, errors }, null, 2));
 await browser.close();
-const townBad = result.stations?.length !== 3 || !result.station_gambler || !result.station_enchanter || !result.station_bounties || !(result.gateWaypoints >= 3) || !(result.modStrip >= 1);
+const townBad = result.stations?.length !== 3 || !result.station_gambler || !result.station_enchanter || !result.station_bounties || !(result.gateWaypoints >= 3) || !result.bountiesClosed || !(result.modStrip >= 1);
 const eventsBad = !result.fallenHandled || !(result.ambushers >= 5) || !result.choiceOpen || !result.choiceClosed || !result.bargainTaken || (result.runnerFloor >= 0 && !result.runnerSpawned);
 const bad = errors.length > 0 || result.error || !result.cleaveLanded || !result.chilled || !result.leeched || !result.filterHid || !(result.kills > 0) || eventsBad || townBad;
 console.log(bad ? 'FAILED' : 'OK — depth systems work in the live game.');

@@ -40,7 +40,7 @@ interface Own {
 
 export const STATIONS: StationDef[] = [
   { id: 'gambler', label: 'The Gambler — Sealed Goods', at: [16.4, 1.0], facing: -Math.PI / 2, build: buildTable },
-  { id: 'enchanter', label: 'The Enchanter — Reforge & Imbue', at: [-13.8, 0.3], facing: Math.PI / 2, build: buildLectern },
+  { id: 'enchanter', label: 'The Enchanter — Reforge & Imbue', at: [-13.6, -0.8], facing: Math.PI / 2, build: buildLectern },
   { id: 'bounties', label: 'Bounty Board — Contracts & Rewards', at: [5.0, -10.5], facing: 0, build: buildBoard },
 ];
 

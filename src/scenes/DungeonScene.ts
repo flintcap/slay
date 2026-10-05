@@ -981,7 +981,10 @@ export class DungeonScene extends GameScene {
       const dz = e.root.position.z - pz;
       // Far away: leave it in the world and visible (frustum culling already
       // handles the draw cost), just stop simulating it.
-      if (dx * dx + dz * dz > LEASH2) continue;
+      // A monster already dying always finishes falling, wherever it is: its
+      // kill (XP, loot, Renown, bounties) is paid when the fall starts, and a
+      // far-off kill (a DoT, a long shot) otherwise never paid at all.
+      if (dx * dx + dz * dz > LEASH2 && e.alive) continue;
       // Point everything this monster aims at whatever it decided to fight.
       this.acting = e;
       const onMinion = e.aggroMinion;
