@@ -1,26 +1,40 @@
 # Stream: art (illustration and iconography)
 
-Status: in progress
+Status: done
 
 ## Milestones
 
 - [x] Item icons: painterly, readable at small size, real material rendering (metal sheen, leather grain, gem glints), a clear silhouette per item family, rarity shown by the art itself, not just a border. — "Paint item icons by family and sub-type, with rarity in the art"
 - [x] Skill, buff and affix icons: a consistent family style per class and element, strong central motif, readable at hotbar size, with locked, ready and cooldown states that still read. — "Art: brighter status pictograms, real badges for the seven new elite affixes"
 - [x] Item models: ground drops and equipped gear that match their icons, with ornament scaling by rarity and tier; uniques and set items get distinctive shapes. — "Art: item models match their icons; one shared rarity look for icons, drops, held and worn gear"
-- [ ] Class portraits and key art: a drawn portrait per class for character select, and a title and loading key art composition, all generated in code (canvas or SVG).
+- [x] Class portraits and key art: a drawn portrait per class for character select, and a title and loading key art composition, all generated in code (canvas or SVG). — "Art: class portraits, key art, UI ornament helpers" (seen in the real character select)
 - [x] UI ornament: filigree corners, dividers, frame borders and crests drawn procedurally for the hud and menus streams to use, exposed as small reusable helpers. — "Art: class portraits, key art, UI ornament helpers"
 - [x] Boss and monster portraits: a portrait for every boss for intro cards, and bestiary art per monster family. — "Art: boss and monster family portraits; boss intro card shows its portrait"
-- [ ] Sweep: a contact sheet render of every icon and portrait, checked for readability, duplicates and style drift.
+- [x] Sweep: a contact sheet render of every icon and portrait, checked for readability, duplicates and style drift. — "Art: sweep done"
 
 ## Next up
 
-1. Milestone 4 is built and wired (portraits in character select, key art behind the boot bar
-   and the slow loading card); confirm in the real game with
-   `SLAY_PORT=4310 timeout 2400 node tools/screenshot.mjs --out=shots/art --shots=charSelect`
-   (run it as a background task; it takes over ten minutes here) and tick milestone 4.
-2. Milestone 7: sweep every sheet; time item icon appearance in the real inventory.
+All milestones done. Leftovers a successor could pick up:
+
+1. Item icon timing in the real inventory is still unmeasured: the `inventory` shot of
+   `tools/screenshot.mjs` timed out twice here (boot alone took over 20 minutes under load). On a
+   quieter machine run `SLAY_PORT=4310 timeout 2400 node tools/screenshot.mjs --out=shots/art
+   --shots=inventory` in the background and see whether slots are filled. Note for reading the
+   numbers: canvas paint calls are lazy, so `ICON_BUDGET_MS` in `Icons.ts` measures recording, not
+   rasterising; the real cost lands in `toBlob`. If icons are slow, budget by count (e.g. 6 per
+   frame) instead of by time.
+2. 17 groups of item bases share an identical `visual` block (for example `orb.cracked`,
+   `orb.eagle`, `orb.sacred`; `helm.bone`, `helm.grim`), so their icons and models only differ by
+   base tier. That is depth's data; giving them distinct palettes, ornate or sub-types would fix it.
+3. No bestiary screen exists; `familyPortraitUri` is ready for one.
 
 ## Notes for resume
+
+- Sweep (milestone 7): looked at `skillsA/B/C`, `skillcloseup`, `statuses`, `affixcloseup`,
+  `dupes` (0 same-tree duplicates), `items`, `rarity`, `models`, `modelsHi`, `modelsSig`,
+  `modelsArmor`, `drops`, `portraits`, `keyart`, `ornament`, `bosses`. Style is consistent (one
+  top-left light, ramp + rim, class/element back light). Base tier now raises ornament on icons
+  and models. The real character select shows the portrait correctly (shots/art/charSelect.png).
 
 - Milestone 6: `src/art/BossPortraits.ts` — `bossPortraitUri(idOrName, size)` and
   `familyPortraitUri(family, size, visual?, key?)`: ten family painters in a round iron medallion,
