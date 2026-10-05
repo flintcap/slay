@@ -1,6 +1,6 @@
 # Stream: menus (front end and flow)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 

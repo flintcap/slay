@@ -118,6 +118,8 @@ function domPreview(): void {
   const settings = new SettingsPanel(engine);
   const death = new DeathPanel(engine);
   for (const p of [title.panel, cs.panel, pause.panel, settings.panel, death.panel]) p.mount(ui);
+  // For scripted checks (tools/check-menu-hover.mjs): the live panels.
+  (window as unknown as Record<string, unknown>).MENUS = { title, cs, pause, settings, death };
 
   switch (screen) {
     case 'title':

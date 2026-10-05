@@ -29,6 +29,10 @@ import { div, span, icon } from './Widgets';
 /** Panels that open over a menu and take its keys while they are up. */
 const NESTED_ON_TOP = new Set(['settings', 'memorial']);
 
+/** Where the pointer last really was (from pointermove), shared by every nav. */
+const pointer = { x: -1, y: -1 };
+window.addEventListener('pointermove', (e) => ((pointer.x = e.clientX), (pointer.y = e.clientY)), { capture: true, passive: true });
+
 export interface MenuItemOpts {
   label: string;
   /** Small second line under or beside the label. */
@@ -46,6 +50,15 @@ export class MenuNav {
   private index = 0;
   private active = false;
   private lastFire = 0;
+  /**
+   * Pointer hover only moves the highlight once the mouse has moved since the
+   * menu opened. When a menu appears under a resting cursor (click "Quit to
+   * Title" and leave the mouse there) the browser sends the item under it a
+   * hover event anyway, which used to drag the highlight off the first item.
+   */
+  private pointerLive = true;
+  private armX = -1;
+  private armY = -1;
 
   constructor(cls = 'mn-list') {
     this.root = div(cls);
@@ -72,7 +85,8 @@ export class MenuNav {
         el.disabled = true;
         el.classList.add('is-disabled');
       }
-      el.addEventListener('pointerenter', () => this.highlight(i));
+      el.addEventListener('pointerenter', (e) => this.hover(i, e));
+      el.addEventListener('pointermove', (e) => this.hover(i, e));
       el.addEventListener('focus', () => this.highlight(i));
       el.addEventListener('click', () => this.fire(i));
       this.root.appendChild(el);
@@ -87,6 +101,9 @@ export class MenuNav {
   setActive(on: boolean, resetTo = 0): void {
     this.active = on;
     if (on) {
+      this.pointerLive = false;
+      this.armX = pointer.x;
+      this.armY = pointer.y;
       this.index = this.nextEnabled(resetTo - 1, 1);
       this.paint();
     }
@@ -108,6 +125,14 @@ export class MenuNav {
       if (!this.items[i]!.opts.disabled) return i;
     }
     return Math.max(0, from);
+  }
+
+  private hover(i: number, e: PointerEvent): void {
+    if (!this.pointerLive) {
+      if (Math.abs(e.clientX - this.armX) + Math.abs(e.clientY - this.armY) < 3) return;
+      this.pointerLive = true;
+    }
+    this.highlight(i);
   }
 
   private highlight(i: number): void {
