@@ -433,7 +433,9 @@ function npc(ctx: Ctx, who: string, x: number, z: number, facing: number, seed: 
     built.root.traverse((o) => {
       const mm = o as THREE.Mesh;
       if (mm.isMesh) {
-        mm.castShadow = true;
+        // castShadow is left as `buildNpcModel` set it: small parts (eyes,
+        // buttons, a bottle) cast none there, and forcing it back on here put
+        // about a hundred extra draws into the moon's shadow pass.
         mm.receiveShadow = true;
         // Worn gear ships unculled, so all nine residents were drawn in every
         // pass, every shadow face included, wherever the camera looked. A

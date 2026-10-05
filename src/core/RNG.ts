@@ -16,17 +16,21 @@ export function hashString(s: string, seed = 0x9e3779b9): number {
  * (layout + props + spawns + every loot roll) without visible short cycles.
  */
 function sfc32(a: number, b: number, c: number, d: number): () => number {
+  // State in an Int32Array, not four captured variables: a 32-bit value often
+  // falls outside V8's small-integer range, so every draw boxed fresh heap
+  // numbers into the closure (a top allocator in a fight). Storing to an
+  // Int32Array is the same `| 0` wrap, so the sequence is bit-for-bit the same.
+  const s = new Int32Array([a, b, c, d]);
   return function () {
-    a |= 0;
-    b |= 0;
-    c |= 0;
-    d |= 0;
+    const a = s[0]!;
+    const b = s[1]!;
+    const c = s[2]!;
+    const d = s[3]!;
     const t = (((a + b) | 0) + d) | 0;
-    d = (d + 1) | 0;
-    a = b ^ (b >>> 9);
-    b = (c + (c << 3)) | 0;
-    c = (c << 21) | (c >>> 11);
-    c = (c + t) | 0;
+    s[3] = d + 1;
+    s[0] = b ^ (b >>> 9);
+    s[1] = c + (c << 3);
+    s[2] = ((c << 21) | (c >>> 11)) + t;
     return (t >>> 0) / 4294967296;
   };
 }

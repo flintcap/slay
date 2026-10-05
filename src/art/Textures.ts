@@ -1137,6 +1137,8 @@ export interface TextureSet {
 
 const rawCache = new Map<string, RawMaps>();
 const setCache = new Map<string, TextureSet>();
+/** Per pixel data (`rawKey`), the set whose textures the other repeats clone. */
+const sourceCache = new Map<string, TextureSet>();
 
 function makeTexture(data: Uint8Array, size: number, srgb: boolean, repeat: number): THREE.DataTexture {
   const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
@@ -1185,20 +1187,33 @@ export function getTextureSet(paletteKey: string, opts: TextureSetOpts = {}): Te
     rawCache.set(rawKey, raw);
   }
 
+  // Every repeat of one palette shows the same pixels. A texture made fresh
+  // per repeat was a separate GPU upload of identical data; a clone shares its
+  // `source`, and three keeps one GPU texture per source (repeat is a uniform,
+  // not part of the upload). The first set made for these pixels is the source.
+  const first = sourceCache.get(rawKey);
+  const make = (data: Uint8Array, srgb: boolean, from: THREE.DataTexture | null | undefined): THREE.DataTexture => {
+    if (!from) return makeTexture(data, size, srgb, repeat);
+    const t = from.clone();
+    t.repeat.set(repeat, repeat);
+    return t;
+  };
   const set: TextureSet = {
     key: setKey,
     size,
     palette: pal,
-    albedo: makeTexture(raw.albedo, size, true, repeat),
-    normal: makeTexture(raw.normal, size, false, repeat),
-    orm: makeTexture(raw.orm, size, false, repeat),
-    emissive: raw.emissive ? makeTexture(raw.emissive, size, false, repeat) : null,
+    albedo: make(raw.albedo, true, first?.albedo),
+    normal: make(raw.normal, false, first?.normal),
+    orm: make(raw.orm, false, first?.orm),
+    emissive: raw.emissive ? make(raw.emissive, false, first?.emissive) : null,
   };
+  if (!first) sourceCache.set(rawKey, set);
 
   // Scene teardown walks materials and frees every texture it finds. If that
   // happens to a shared set, drop it so the next request rebuilds cheaply.
   const evict = (): void => {
     if (setCache.get(setKey) === set) setCache.delete(setKey);
+    if (sourceCache.get(rawKey) === set) sourceCache.delete(rawKey);
   };
   set.albedo.addEventListener('dispose', evict);
   set.normal.addEventListener('dispose', evict);
@@ -1221,6 +1236,7 @@ export function clearTextureCache(): void {
     set.emissive?.dispose();
   }
   setCache.clear();
+  sourceCache.clear();
   rawCache.clear();
 }
 

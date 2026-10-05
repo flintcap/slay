@@ -204,6 +204,21 @@ function auraMaterial(color: number): THREE.MeshBasicMaterial {
 // Enemy
 // ---------------------------------------------------------------------------
 
+/** What a monster's nameplate shows (`Enemy.nameplate`). */
+export interface EnemyPlate {
+  name: string;
+  /** Only a named rare has one. */
+  title?: string;
+  rank: MonsterRank;
+  affixes: string[];
+  life: number;
+  maxLife: number;
+  color: number;
+  level: number;
+  affixBehaviors: string[];
+  affixColors: number[];
+}
+
 export class Enemy implements Combatant {
   readonly root: THREE.Group;
   readonly id: string;
@@ -442,19 +457,22 @@ export class Enemy implements Combatant {
   }
 
   /** Nameplate payload for the UI layer. */
-  get nameplate(): {
-    name: string;
-    /** Only a named rare has one. */
-    title?: string;
-    rank: MonsterRank;
-    affixes: string[];
-    life: number;
-    maxLife: number;
-    color: number;
-    level: number;
-    affixBehaviors: string[];
-    affixColors: number[];
-  } {
+  /**
+   * What the nameplate shows. Read for every monster every frame, so it is one
+   * object per monster, built once (name, rank, level and affixes never change
+   * after construction) with only life refreshed: building it fresh, three
+   * arrays included, was the biggest allocator in a fight.
+   */
+  get nameplate(): EnemyPlate {
+    const c = (this.plateCache ??= this.buildPlate());
+    c.life = this.life;
+    c.maxLife = this.maxLife;
+    return c;
+  }
+
+  private plateCache: EnemyPlate | null = null;
+
+  private buildPlate(): EnemyPlate {
     return {
       name: this.name,
       title: this.named?.title,
