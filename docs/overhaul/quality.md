@@ -1,6 +1,6 @@
 # Stream: quality (bugs, speed, safety, access)
 
-Status: in progress
+Status: paused
 
 ## Milestones
 
@@ -13,18 +13,38 @@ Status: in progress
 
 ## Next up
 
-1. Performance: read `.checks/perf.txt` from
+Paused at the owner's request before any new numbers were taken. Nothing is
+half-done in the code: the last code change is c1dc163 and the branch builds.
+
+1. Performance: `npm run build`, then
    `SLAY_PORT=4309 timeout 2400 node tools/check-perf.mjs --depths=0,6,20`
-   (it now also reports `textureMB`). Expected: town ~790 draw calls, textures
-   ~140-220, programs ~101 (budget now 110), garbage at depth 6 ~235 KB a step
-   against 200 (the one known overrun; see notes). Tick Performance with the
-   numbers.
+   (run it as a background command that writes to a file, and wait on that
+   command; boot alone took 61 s last time). It prints per-depth numbers and
+   lists the biggest allocators when garbage is over budget. Expected: town
+   ~790 draw calls, textures ~140-220, programs ~101 (budget 110), garbage at
+   depth 6 ~235 KB a step against 200 (the one known overrun). Fix anything
+   small that is clearly over; otherwise record it. Tick Performance with the
+   real numbers, then checkpoint and push.
 2. Soak: `SLAY_PORT=4309 timeout 3600 node tools/check-soak.mjs --runs=4 --floors=2 --frames=150`
-   (60-minute limit: a soak plays many floors under software rendering).
-   Fix what it reports; expect to fix the harness.
-3. Then set `Status: done`.
+   (60-minute limit). Fix what it reports; expect to fix the harness. Tick
+   Sweep, checkpoint and push.
+3. Then set `Status: done` and checkpoint.
 
 ## Notes for resume
+
+**Session 4 (paused):**
+- Resumed after a container restart, rebased onto 90c889e (coordinator):
+  `window.SLAY.THREE` is now only `{ Box3, Matrix4, Vector3, Raycaster }`.
+  check-perf and check-soak do not use it. If a checker needs another three.js
+  class in the page, add it to that object in `src/main.ts`; never expose the
+  whole namespace again (it broke tree shaking, +260 KB).
+- The check-perf run at depths 0,6,20 was started and stopped by the PAUSE
+  right after boot (61 s). No numbers from it; rerun it in full.
+- c1dc163 (memory fix) was pushed without a progress-file update; what it
+  did is in its commit message: Town.dispose now frees the camp, skinned
+  meshes free bone textures, DungeonScene frees ability pools, monster
+  prototypes and prop templates between runs; check-soak gained `--cycle`.
+
 
 **Session 3 (resumed after a container restart):**
 - check-flow waits for the death screen's 2.6 s lock (`.is-locked`) before
