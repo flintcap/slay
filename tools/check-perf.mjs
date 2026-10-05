@@ -178,6 +178,24 @@ for (const depth of DEPTHS) {
     const triangles = info.render.triangles;
     info.autoReset = auto;
 
+    // Who the meshes belong to: tallied by the scene's direct child that
+    // holds them (named, or its type), with how many cast shadows (each of
+    // those is drawn again in every shadow pass).
+    const owners = new Map();
+    const nameOf = (a) => a.name || a.userData?.kind || a.userData?.id || a.type;
+    const ownerOf = (o) => {
+      let a = o;
+      let below = null;
+      while (a.parent && a.parent !== scene.scene) {
+        below = a;
+        a = a.parent;
+      }
+      // A world root holding everything (the town) says nothing; go one deeper.
+      if (below && a.children.length > 12) {
+        return below === o ? `${nameOf(a)}/${o.type}:${o.geometry?.type ?? '?'}` : `${nameOf(a)}/${nameOf(below)}`;
+      }
+      return nameOf(a);
+    };
     let lights = 0;
     let shadowLights = 0;
     const materials = new Set();
@@ -193,7 +211,16 @@ for (const depth of DEPTHS) {
       }
       if (o.isMesh || o.isPoints || o.isLine || o.isSprite) {
         meshes++;
+        let shown = o.visible;
+        for (let a = o.parent; shown && a; a = a.parent) shown = a.visible;
         if (o.visible) visibleMeshes++;
+        if (shown) {
+          const k = ownerOf(o);
+          const t = owners.get(k) ?? { n: 0, shadow: 0 };
+          t.n++;
+          if (o.castShadow) t.shadow++;
+          owners.set(k, t);
+        }
         if (o.isInstancedMesh) instanced++;
         const m = o.material;
         if (Array.isArray(m)) m.forEach((x) => materials.add(x));
@@ -212,6 +239,7 @@ for (const depth of DEPTHS) {
       meshes,
       visibleMeshes,
       instanced,
+      owners: [...owners.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10),
     };
   });
 
@@ -225,6 +253,10 @@ for (const depth of DEPTHS) {
   for (const k of Object.keys(BUDGET)) console.log(`  ${k.padEnd(16)} ${String(row[k]).padStart(10)}   budget ${BUDGET[k]}`);
   console.log(`  ${'meshes'.padEnd(16)} ${String(row.meshes).padStart(10)}   (${row.visibleMeshes} visible, ${row.instanced} instanced)`);
   console.log(`  ${'AI share'.padEnd(16)} ${String(Math.round(row.aiShare * 100) + '%').padStart(10)}   of the update`);
+  if (showAlloc || row.drawCalls > BUDGET.drawCalls) {
+    console.log('  most meshes, by owner (shown / casting shadow):');
+    for (const [k, t] of row.owners) console.log(`    ${String(t.n).padStart(6)} / ${String(t.shadow).padStart(4)}  ${k}`);
+  }
   if (showAlloc || row.allocKBPerStep > BUDGET.allocKBPerStep) {
     console.log('  biggest allocators (KB per step):');
     for (const [where, b] of topAlloc) console.log(`    ${(b / 1024 / 30).toFixed(1).padStart(8)}  ${where}`);
@@ -239,5 +271,5 @@ console.log(
     ? `\nOK — every measured floor fits the budget.`
     : `\nFAILED — ${failures.length} over budget${failures.length ? `: ${failures.join(', ')}` : ''}${pageErrors.length ? `, ${pageErrors.length} page errors` : ''}.`,
 );
-console.log(JSON.stringify({ budget: BUDGET, rows: rows.map(({ topAlloc, ...r }) => r) }));
+console.log(JSON.stringify({ budget: BUDGET, rows: rows.map(({ topAlloc, owners, ...r }) => r) }));
 process.exit(failures.length === 0 && pageErrors.length === 0 ? 0 : 1);

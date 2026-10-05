@@ -313,6 +313,49 @@ export function installDebug(engine: Engine): Record<string, unknown> {
     },
 
     /**
+     * How long a cold pack takes to fill in: from asking for every held item's
+     * icon with an empty cache to the first and the last one arriving, and how
+     * many frames went by meanwhile. Run after `inventoryOpenCost` (it uses the
+     * items that call added).
+     */
+    async inventoryIconSettle(count = 60): Promise<Record<string, number>> {
+      const c = save.account.current;
+      if (!c) return {};
+      const held = c.inventory.filter((it): it is NonNullable<typeof it> => !!it).slice(0, count);
+      clearIconCaches();
+      let frames = 0;
+      let counting = true;
+      const tick = (): void => {
+        if (!counting) return;
+        frames++;
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      const t0 = performance.now();
+      let first = 0;
+      const done = held.map(
+        (it) =>
+          new Promise<void>((resolve) => {
+            const now = requestItemIcon(it, () => {
+              if (!first) first = performance.now() - t0;
+              resolve();
+            });
+            if (!now.startsWith('data:image/gif')) resolve();
+          }),
+      );
+      await Promise.all(done);
+      const all = performance.now() - t0;
+      counting = false;
+      return {
+        items: held.length,
+        firstMs: +first.toFixed(0),
+        allMs: +all.toFixed(0),
+        frames,
+        msPerIcon: +(all / Math.max(1, held.length)).toFixed(1),
+      };
+    },
+
+    /**
      * Drives the inventory's own drop handler with a gem over a socketed item,
      * which is the exact path a player's drag takes. Returns what changed.
      */

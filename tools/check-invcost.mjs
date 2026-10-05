@@ -3,7 +3,8 @@
  *
  * `blockingMs` is what the player feels: the synchronous work between pressing
  * I and the panel appearing. `eagerMs` is the same icons drawn the old way, all
- * up front. The gap between them is the fix.
+ * up front. The gap between them is the fix. Then how long the icons take to
+ * fill in once the pack is open (`inventoryIconSettle`).
  *
  *   npm run build && node tools/check-invcost.mjs
  */
@@ -57,6 +58,16 @@ console.log(JSON.stringify(r, null, 1));
 console.log(
   `\nopening the pack blocks for ${r.blockingMs}ms instead of ${r.eagerMs}ms ` +
     `(${(r.eagerMs / Math.max(0.1, r.blockingMs)).toFixed(0)}x)`
+);
+
+// How long a cold pack takes to fill in once open (the icons trickle in a few
+// per frame). Software rendering paints canvases on the CPU, so a real machine
+// is several times faster than this.
+const settle = await page.evaluate(() => window.SLAY.debug.inventoryIconSettle(60));
+console.log(JSON.stringify(settle));
+console.log(
+  `a cold pack of ${settle.items} fills in ${settle.allMs}ms over ${settle.frames} frames ` +
+    `(first icon ${settle.firstMs}ms, ${settle.msPerIcon}ms per icon)`
 );
 
 await browser.close();

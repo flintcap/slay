@@ -3,7 +3,7 @@ import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
-const PORT=4209;
+const PORT=Number(process.env.SLAY_PORT??4209);
 const server=spawn('npx',['vite','preview','--port',String(PORT),'--strictPort','--host','127.0.0.1'],{detached:true,stdio:['ignore','ignore','pipe']});
 // Own process group, so the vite child under npx dies with it.
 const killServer=()=>{try{process.kill(-server.pid,'SIGTERM');}catch{}};

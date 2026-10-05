@@ -8,26 +8,37 @@ Status: in progress
 - [ ] Performance: measure draw calls, triangles, lights, garbage and AI cost on the busiest floors; set budgets and bring the worst offenders under them.
 - [x] Saves: versioned save format, safe migrations, a backup copy, and recovery from a corrupt save without losing the character. (commit: "Make saves survive damage and keep one error from stopping the game")
 - [x] Crash resistance: no single error stops the game; errors are caught, logged and recovered from. (commit: "Quality: crash resistance proven, leftovers from finished streams"; `check-crash` 9 of 9)
-- [ ] Accessibility: text size, colour-blind-safe rarity colours, reduced motion and screen shake toggles, key rebinding, all through the settings menu. (`check-settings-ui` drives the real menu: 13 of 14 passed, the 14th was the checker's own lookup, fixed, re-run pending. Screenshots looked right.)
+- [x] Accessibility: text size, colour-blind-safe rarity colours, reduced motion and screen shake toggles, key rebinding, all through the settings menu. (commit: "Quality: flow and settings-ui pass; accessibility done"; `check-settings-ui` 14 of 14 in the real menu)
 - [ ] Sweep: a long headless soak test that plays many floors and reports any error, leak or slowdown.
 
 ## Next up
 
-In this order, one browser checker at a time on port 4309:
+In this order, one browser checker at a time on port 4309, each batch as one
+`run-checks` command under `timeout 2700` (run it with run_in_background and
+wait with a bounded loop; it starts and stops its own servers):
 
-1. Browser batch 1 was running: `SLAY_PORT=4309 node tools/run-checks.mjs --only=settings-ui,clips,attack,propmesh`
-   (output in `.checks/<name>.txt`). If settings-ui passes, tick Accessibility.
-   clips and attack are animation's (finished): note exact failures in animation.md;
-   small surgical fixes are fine.
-2. The rest of the browser checkers in batches of 5-6
-   (`grep -l -E "chromium|bootGame" tools/check-*.mjs`), skipping crash (done).
-3. Art asked: `SLAY_PORT=4309 timeout 2400 node tools/screenshot.mjs --out=shots/art --shots=inventory`;
-   check item icons appear promptly; note the timing in art.md if slow.
-4. Performance: `SLAY_PORT=4309 node tools/check-perf.mjs --alloc --depths=0,6,20` (0 is the town now).
-   Town was 1,096 draw calls against 900 before the resident merge; expect about 950.
-5. Soak: `SLAY_PORT=4309 node tools/check-soak.mjs --runs=4 --floors=3`. Expect to fix the harness.
+1. Browser batches not yet run (passed so far: attack, clips, propmesh, arrow,
+   body, buff, decals, drop, dropcost, equip, fabric, gear-visuals, interact,
+   ghost, invcost, load, crash, flow, settings-ui):
+   - `--only=loot,map,menu-hover,paperdoll,particles,potions`
+   - `--only=quality,roster,skillcost,skillicons,skills,socket`
+   - `--only=stairs,summon,wallhug,worn,invcost` (invcost now also prints how
+     long a cold pack of 60 icons takes to fill in; put that number in art.md)
+   loot, quality, paperdoll, particles, potions, roster, skillcost, skillicons,
+   stairs are probes that always exit 0: read their output.
+2. Performance: `SLAY_PORT=4309 timeout 2700 node tools/check-perf.mjs --alloc --depths=0,6,20`
+   (0 is the town). It now lists meshes by owner, so the town's draw calls can
+   be traced. Town was 1,096 against 900 before the resident merge.
+3. Soak: `SLAY_PORT=4309 timeout 3600 node tools/check-soak.mjs --runs=4 --floors=3`.
 
 ## Notes for resume
+
+**Session 3 (resumed after a container restart):**
+- check-flow waits for the death screen's 2.6 s lock (`.is-locked`) before
+  Enter; flow passes 12 of 12. settings-ui passes 14 of 14.
+- check-loot, check-quality, check-buff, check-equip honour `SLAY_PORT`
+  (they had fixed ports).
+- `debug.inventoryIconSettle(n)` measures a cold pack filling in.
 
 **Done this session (leftovers from finished streams):**
 - Uniques in old saves are renamed from `src/data/story/uniqueText.ts` on load

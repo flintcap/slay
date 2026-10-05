@@ -216,6 +216,9 @@ await step('death screen shows the run, and the save keeps the fallen', async ()
 });
 
 await step('Enter rises again into character select', async () => {
+  // The death screen's choices stay locked for 2.6 s so the moment can land
+  // (DeathPanel `is-locked`); an Enter before that is ignored on purpose.
+  await page.waitForFunction(() => !document.querySelector('.is-locked'), null, { timeout: 60_000, polling: 250 });
   await key('Enter');
   await arrive('charSelect');
 });
