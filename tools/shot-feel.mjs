@@ -140,15 +140,15 @@ if (WANT.includes('vfx')) {
     }, phase);
   await stage('flight');
   await frames(12);
-  await page.screenshot({ path: path.join(OUT, 'vfx-flight.png') });
+  await page.screenshot({ path: path.join(OUT, 'vfx-flight.png'), timeout: 900000 });
   console.log('ok', path.join(OUT, 'vfx-flight.png'));
   await stage('impact');
   await frames(3);
-  await page.screenshot({ path: path.join(OUT, 'vfx-impact.png') });
+  await page.screenshot({ path: path.join(OUT, 'vfx-impact.png'), timeout: 900000 });
   console.log('ok', path.join(OUT, 'vfx-impact.png'));
   await stage('marks');
   await frames(45);
-  await page.screenshot({ path: path.join(OUT, 'vfx-marks.png') });
+  await page.screenshot({ path: path.join(OUT, 'vfx-marks.png'), timeout: 900000 });
   console.log('ok', path.join(OUT, 'vfx-marks.png'));
 }
 

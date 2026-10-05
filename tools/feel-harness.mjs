@@ -12,7 +12,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
-export async function runEntry(entry, outDirName) {
+export async function runEntry(entry, outDirName, args = []) {
   const OUT = path.join(ROOT, outDirName);
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
@@ -52,8 +52,9 @@ await import(${JSON.stringify(path.join(OUT, 'e.mjs'))});
 `;
   let raw;
   try {
-    raw = execFileSync('node', ['--input-type=module', '-e', shim], {
+    raw = execFileSync('node', ['--input-type=module', '-e', shim, '--', ...args], {
       encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'inherit'],
       maxBuffer: 64 * 1024 * 1024,
     });
   } finally {

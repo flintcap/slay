@@ -1339,8 +1339,10 @@ export class EffectSystem {
       core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.body, 2.4));
       core.scale.setScalar(size * 1.05);
     } else {
-      core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.core, 5));
-      core.scale.setScalar(size);
+      // First render (atlas-fixed build): at 5x emissive and full size, under
+      // bloom, a caster's mote read as a white ball as wide as the hero.
+      core = new THREE.Mesh(this.geoIcosa, emissiveMaterial(opts.color ?? el.core, 3.2));
+      core.scale.setScalar(size * 0.85);
     }
     const oriented = body === 'arrow' || body === 'shard' || body === 'spike';
     group.add(core);
@@ -1359,10 +1361,12 @@ export class EffectSystem {
     // fireball throws; an arrow throws none, and at six times its own size the
     // glow was all anyone could see of it.
     const haloMat = takeHalo();
-    haloMat.color.set(color).multiplyScalar(isArrow ? 0.5 : 2.4);
-    haloMat.opacity = isArrow ? 0.32 : 0.9;
+    // Kept to the element's hue: at 2.4x and four sizes wide the halo blew
+    // out to white under bloom and swallowed the body it surrounds.
+    haloMat.color.set(color).multiplyScalar(isArrow ? 0.5 : 1.5);
+    haloMat.opacity = isArrow ? 0.32 : 0.78;
     const halo = new THREE.Sprite(haloMat);
-    halo.scale.setScalar(size * (isArrow ? 1.6 : 4.2));
+    halo.scale.setScalar(size * (isArrow ? 1.6 : 3.1));
     group.add(halo);
 
     group.position.copy(from);

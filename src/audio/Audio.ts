@@ -772,6 +772,12 @@ const SOUNDS: Record<string, SoundFn> = {
     s.noise({ color: 'white', gain: 0.14 * p.g, attack: 0.06, decay: 0.5, release: 0.4, filter: { type: 'highpass', freq: 1800, endFreq: 5200, q: 1.2, sweep: 0.6 }, pan: p.pan, send: p.send * 1.8, when: p.t });
   },
   'spell.heal': (s, p) => SOUNDS.heal!(s, p),
+  /** A curse taking hold: a low detuned groan that bends down, and a dry hiss. */
+  'spell.curse': (s, p) => {
+    s.tone({ type: 'sawtooth', freq: 180 * p.p, freqEnd: 92 * p.p, freqTime: 0.6, gain: 0.12 * p.g, attack: 0.05, decay: 0.6, release: 0.4, unison: 3, unisonSpread: 32, filter: { type: 'lowpass', freq: 1100, endFreq: 320, q: 4, sweep: 0.6 }, pan: p.pan, send: p.send * 1.8, when: p.t });
+    s.noise({ color: 'pink', gain: 0.1 * p.g, attack: 0.08, decay: 0.45, release: 0.3, filter: { type: 'bandpass', freq: 2600 * p.p, endFreq: 900, q: 3, sweep: 0.5 }, pan: p.pan, send: p.send * 1.4, when: p.t });
+    sub(s, p, 52, 0.5, 0.2);
+  },
   'spell.teleportOut': (s, p) => {
     s.tone({ type: 'triangle', freq: 620 * p.p, freqEnd: 120 * p.p, freqTime: 0.35, gain: 0.16 * p.g, attack: 0.004, decay: 0.35, release: 0.25, ring: { freq: 173, depth: 0.4 }, pan: p.pan, send: p.send * 1.8, delaySend: 0.25, when: p.t });
     s.noise({ color: 'white', gain: 0.14 * p.g, attack: 0.004, decay: 0.3, release: 0.2, filter: { type: 'bandpass', freq: 4200, endFreq: 700, q: 2, sweep: 0.32 }, pan: p.pan, send: p.send * 1.6, when: p.t });

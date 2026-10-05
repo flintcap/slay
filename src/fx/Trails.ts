@@ -515,6 +515,11 @@ export class TrailSystem {
     }
   }
 
+  /** Ribbons currently drawing, including ones fading out. */
+  get liveCount(): number {
+    return this.live.length;
+  }
+
   /** Retires everything, e.g. on a scene transition. */
   clear(): void {
     for (const t of this.live) t.retire(0.01);

@@ -209,8 +209,12 @@ function buildStainAtlas(): THREE.Texture {
 
   // 9 ooze — thick, glossy, with elongated runs.
   paint(DECAL.ooze, (u, v, r) => {
-    const stretch = Math.sqrt(u * u + (v * 0.62) * (v * 0.62));
-    const m = blobMask(u, v * 0.62, stretch, 1.6, 0.3, 51.0);
+    // An oval slick, kept inside its cell: stretched any further it ran off
+    // the top and bottom of the cell and drew as a hard-edged rectangle.
+    const su = u * 1.05;
+    const sv = v * 0.82;
+    const stretch = Math.sqrt(su * su + sv * sv);
+    const m = blobMask(su, sv, stretch, 1.6, 0.3, 51.0) * smoothstep(1.0, 0.82, r);
     const gloss = Math.exp(-Math.pow((r - 0.35) * 3.2, 2)) * 0.6;
     return [0.3 + gloss, m];
   });

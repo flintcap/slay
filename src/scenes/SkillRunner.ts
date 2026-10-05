@@ -804,6 +804,12 @@ export class SkillRunner {
         player.beginAction(clip, castTime);
         const radius = num('radius', 3.4);
         const at = target.clone().setY(0);
+        // The call goes up a beat before anything comes down: an archer looses
+        // skyward, a caster's gather rings out. Without this the second before
+        // the sky answers was dead air.
+        audio.play(school === 'physical' ? 'shoot.physical' : `cast.${school}`, {
+          x: origin.x, z: origin.z, volume: 0.9,
+        });
         this.effects.meteor(at.x, at.z, {
           radius,
           element: school,
@@ -985,7 +991,8 @@ export class SkillRunner {
             num('taunts', num('taunt', 0)) > 0,
           );
         }
-        audio.play('summon');
+        // Heard through the summoning circle (`spell.summon`); the id that used
+        // to be played here named no sound at all.
         break;
       }
 
@@ -1014,7 +1021,7 @@ export class SkillRunner {
         // A curse that names no status still has to do something, or ranking it
         // is a wasted point.
         if (applies.length === 0) this.areaDamage(at, radius, makePacket, ctx, enemies, boss);
-        audio.play('curse');
+        audio.play('spell.curse', { x: at.x, z: at.z });
         break;
       }
 
@@ -1068,7 +1075,11 @@ export class SkillRunner {
         player.beginAction('dodge', 0.34);
         const range = num('range', 7);
         const stop = this.wallStop(player.position, dir, range, ctx, 0.5);
-        const land = player.position.clone().addScaledVector(dir, stop);
+        // "Leap to a point up to N metres away": the point clicked, not always
+        // the full distance. Landing past the pack it was aimed at meant the
+        // blow came down on empty floor.
+        const reach = Math.min(stop, Math.max(1.5, this.groundDistance(target, player.position)));
+        const land = player.position.clone().addScaledVector(dir, reach);
         this.effects.teleportOut(player.position.x, 0.6, player.position.z, color);
         player.position.set(land.x, 0, land.z);
         this.effects.teleportIn(land.x, 0.6, land.z, color);
@@ -1077,7 +1088,7 @@ export class SkillRunner {
           element: school, color, windup: 0, emitter: sig.emitter, density: sig.density,
         });
         this.areaDamage(land, radius, makePacket, ctx, enemies, boss, 'heavy');
-        audio.play('nova.physical');
+        audio.play(`nova.${school}`, { x: land.x, z: land.z });
         break;
       }
 
@@ -1088,6 +1099,13 @@ export class SkillRunner {
         const want = target.clone().setY(0);
         const reach = Math.min(stop, this.groundDistance(want, player.position));
         const land = player.position.clone().addScaledVector(dir, reach);
+        // Blink's parting gift: a burst where you were standing.
+        if (num('exitBurst', 0) > 0) {
+          const from = player.position.clone().setY(0);
+          const r = num('radius', 3);
+          this.effects.explosion(from.x, 0.8, from.z, { radius: r, element: school, color });
+          this.areaDamage(from, r, makePacket, ctx, enemies, boss);
+        }
         this.effects.teleportOut(player.position.x, 0.9, player.position.z, color);
         player.position.set(land.x, 0, land.z);
         this.effects.teleportIn(land.x, 0.9, land.z, color);
@@ -1095,7 +1113,6 @@ export class SkillRunner {
         if ((def.effect ?? '').includes('strike') || (def.effect ?? '').includes('chain')) {
           this.meleeSwing(player, dir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false);
         }
-        audio.play('teleport');
         break;
       }
 

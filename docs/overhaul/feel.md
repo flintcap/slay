@@ -13,20 +13,36 @@ Status: in progress
 
 ## Next up
 
-Milestone 6, the sweep. Steps:
-1. Look at the first render (`shots/feel/`, made with
-   `SLAY_PORT=4305 node tools/shot-feel.mjs --out=shots/feel` after
-   `npm run build`): `atlas-sprites.png`, `atlas-decals.png`, `vfx-*.png`.
-   The atlas flip fix in milestone 2 changed every particle and stain; retune
-   emitter sizes in `src/fx/Particles.ts` / `Effects.ts` if anything reads
-   too big or too small.
-2. Build a static map of every active skill's cast / travel / impact beat by
-   effect family (see `SkillRunner.cast` switch; families listed in
-   `tools/check-coverage.mjs`) and assert each beat has an emitter and a
-   sound; fix any silent family (`heal` and `buff` have no travel beat, which
-   is fine but should be declared).
+Milestone 6, the sweep, is nearly done. In: `tools/check-beats.mjs` (casts
+all 163 active skills through the real effect library and asserts a cast,
+travel and impact beat; passes), and the fixes it forced (see notes). Left:
+1. A render is running/ran into `shots/feel2/` with the toned-down projectile
+   motes (`SLAY_PORT=4305 node tools/shot-feel.mjs --out=shots/feel2
+   --shots=vfx` after `npm run build`). Look at `vfx-flight.png`,
+   `vfx-impact.png`, `vfx-marks.png`. The first render (`shots/feel/`) showed
+   caster motes as white balls as wide as the hero; core emissive 5 -> 3.2,
+   halo 4.2x/2.4 -> 3.1x/1.5 in `EffectSystem.projectile`. Retune further if
+   impacts or marks read wrong, then tick milestone 6 and set Status: done.
 
 ## Notes for resume
+
+- **Milestone 6 sweep (check-beats).** `tools/beats-entry.ts` spies on the
+  public drawing calls of a real `EffectSystem`/`FXSystem`/`DecalSystem` and on
+  `audio.play` + the `sfx` event. Families in `NO_IMPACT` (buffs, auras,
+  summons, traps, curses...) owe only a cast beat; `TRAVELS` families must
+  have something live every frame between cast and first blow. It found and
+  this session fixed: meteor-family casts (arrowRain, darkenTheSky) were
+  silent for 1.1s (now `shoot.physical` / `cast.<school>` on the press);
+  `audio.play('summon' | 'curse' | 'teleport')` named no sound (summon and
+  teleport were already voiced by their effects, curse now plays the new
+  `spell.curse`); leaps always flew their full range and landed past the pack
+  they were aimed at (now land at the clicked point, capped by range, min
+  1.5m; sound is `nova.<school>`); Blink's `exitBurst` param was never read
+  (now a burst and damage where you left). `feel-harness.runEntry` takes an
+  args array and passes stderr through.
+- **First real render (atlas-fixed build).** Sprite and decal sheets look
+  right side up and correct. The ooze decal ran off its cell top and bottom
+  (drew as a hard-edged rectangle); fixed with a radial fade.
 
 - **Done this session (milestone 5 close):** `afterHit` no longer returns early
   (crit riders, Flurry, leeches now run for everyone); `SkillRunner.landedHits`
