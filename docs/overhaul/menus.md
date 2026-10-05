@@ -1,6 +1,6 @@
 # Stream: menus (front end and flow)
 
-Status: in progress
+Status: done
 
 ## Milestones
 
@@ -10,31 +10,29 @@ Status: in progress
 - [x] Pause menu and settings: graphics quality, audio sliders, keybind list, gameplay toggles, all saved. (same commit)
 - [x] Death screen: run summary (depth, kills, gold, time, what killed you) and a clean restart flow. (same commit)
 - [x] Banners and onboarding: level-up, new depth, boss intro, first-run hints that teach the controls once. (same commit)
-- [ ] Sweep: matches the hud design tokens, full keyboard navigation, Escape always does the expected thing.
+- [x] Sweep: matches the hud design tokens, full keyboard navigation, Escape always does the expected thing. (Menus: sweep verified; full keyboard flow passes, death wisp seen)
 
 ## Next up
 
-Milestone 7 (sweep) is nearly done; only verification is left. Done: everything in the "Sweep log"
-below, plus (commits e09f666, 4b33970) the death scene fixes and the new flow check.
+Nothing. All seven milestones are done and verified. If anyone touches the front end again:
 
-1. Run the flow check once, on a quiet machine if you can:
-   `SLAY_PORT=4302 timeout 2700 node tools/check-flow.mjs --out=shots/flow`
-   It boots the real game on a fresh save and plays title -> char select -> forge -> town (saved?)
-   -> descend -> pause -> Return to Town -> Quit to Title -> Continue -> descend -> die -> death
-   screen (fallen + saved?) -> Rise Again -> Escape -> title, all with the keyboard. With `--out`
-   it also saves `flow-charSelect.png` and `flow-death.png` after 6 s / 9 s of scene time.
-   It was stopped by the pause after step 2 had run 11 minutes (load average 12; it had not
-   failed). If a step fails, fix the cause; a step's FAIL line says what it saw.
-2. Look at the two PNGs. Death: the grave should sit right of the run summary at correct
-   proportions with no dark square on the stone (both fixed, but the square fix is unseen).
-   Char select: heading and subtitle readable over the class rift.
-3. If both are fine, tick milestone 7 and set `Status: done`. If a full boot keeps timing out,
-   fall back to `node tools/shot-menus.mjs --screens=3d:death --width=1280 --height=720 --settle=10`
-   (18 minutes under load) and note the flow check as unverified.
+- Static, seconds: `node tools/check-menus.mjs` and `SLAY_PORT=4302 timeout 600 node tools/check-menu-hover.mjs`.
+- Full loop, about 6 minutes plus a photo: `SLAY_PORT=4302 timeout 2700 node tools/check-flow.mjs --out=shots/flow --shots=death`
+  (last run 12/12 steps, 869 s with the death photo, load average 8 to 10).
 
 ## Notes for resume
 
 **Sweep log (milestone 7):**
+- Flow check passed 12/12 (title -> char select -> town -> dungeon -> pause -> Return to Town -> Quit
+  to Title -> Continue -> die -> death -> Rise Again -> Escape -> title, all keyboard).
+- It found a real bug: a menu that opens under a resting mouse (click Quit to Title, leave the mouse)
+  got a browser hover event and lost its highlight, so Enter picked the wrong item. `MenuNav` now
+  ignores pointer hover until the mouse has really moved since the menu opened.
+  `tools/check-menu-hover.mjs` covers it on the preview page (it uses `window.MENUS` there).
+- `check-flow.mjs`: menu reader skips closed panels (they keep layout at `visibility: hidden`);
+  new `--shots=death|charSelect` takes only those photos (each waits for scene time, slow).
+- Seen in a real boot: char select heading and subtitle readable over the rift; death grave right
+  of the summary, wisp is a soft glow, no dark square on the stone.
 - Every raw `font-size` in `menus.css` under 41px now scales with the text-size setting
   (`calc(Npx * var(--text-scale, 1))`). Left fixed on purpose: the SVG logo (user units) and the
   three giant display headings (YOU DIED, PAUSED-size clamps over 44px).

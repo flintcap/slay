@@ -23,6 +23,9 @@ import path from 'node:path';
 // each has run 6 s of scene time (a free look at the 3D scenes in a real boot).
 const OUT = process.argv.find((a) => a.startsWith('--out='))?.slice(6);
 if (OUT) mkdirSync(OUT, { recursive: true });
+// `--shots=death` (or `charSelect`): only those photographs. Each one waits for
+// scene time, which can take many minutes under software rendering.
+const SHOTS = process.argv.find((a) => a.startsWith('--shots='))?.slice(8).split(',');
 
 const T0 = Date.now();
 const secs = () => `${Math.round((Date.now() - T0) / 1000)}s`.padStart(6);
@@ -65,7 +68,12 @@ const visible = (sel) =>
   }, sel);
 const labels = (rootSel) =>
   page.evaluate(
-    (s) => [...document.querySelectorAll(`${s} .mn-item-label`)].filter((e) => e.getBoundingClientRect().width > 0).map((e) => e.textContent),
+    // Closed panels keep their layout (they fade to `visibility: hidden`), so
+    // size alone would also read the menus of screens that are not up.
+    (s) =>
+      [...document.querySelectorAll(`${s} .mn-item-label`)]
+        .filter((e) => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== 'hidden')
+        .map((e) => e.textContent),
     rootSel,
   );
 const key = async (k) => {
@@ -89,7 +97,7 @@ const openPause = async () => {
 };
 /** Screenshot after `secs` more of engine time, when `--out` is given. */
 const shoot = async (file, secs = 6) => {
-  if (!OUT) return;
+  if (!OUT || (SHOTS && !SHOTS.some((s) => file === `flow-${s}.png`))) return;
   const from = await page.evaluate(() => window.SLAY.engine.elapsed);
   await page.waitForFunction((t) => window.SLAY.engine.elapsed > t, from + secs, { timeout: 1_200_000, polling: 1000 });
   await page.screenshot({ path: path.join(OUT, file), timeout: 600_000 });
