@@ -101,7 +101,8 @@ export function paintItemIcon(out: Ctx, spec: ItemIconSpec): void {
     sub,
     m: matFor(pal, baseGlow),
     pal,
-    ornate: spec.base?.visual?.ornate ?? 0.2,
+    // Higher base tiers carry more ornament, so a Grim Wand is not a Bone Wand again.
+    ornate: Math.min(1, (spec.base?.visual?.ornate ?? 0.2) + look.baseTier * 0.2),
     rarity: spec.rarity,
     rank,
     trim: look.iconTrimTint !== undefined ? tintMat(trimBase, look.iconTrimTint, 0.5) : trimBase,

@@ -347,7 +347,7 @@ function kitFor(visual: ItemVisual, rarity: ItemRarity, rng: Rng, ident?: ItemId
     accent: look.glowColor,
     deco,
     rng,
-    ornate: visual.ornate ?? 0.35,
+    ornate: Math.min(1, (visual.ornate ?? 0.35) + look.baseTier * 0.2),
     paletteKey: base,
     sub,
     look,
