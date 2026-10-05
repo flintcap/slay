@@ -8,7 +8,7 @@ Status: in progress
 - [x] Lighting and post: tone mapping, a colour grade per biome, tuned bloom, ambient occlusion, vignette, light shafts and fog that add depth. (same commit; grade + bloom + vignette per biome, fog shaped around the player, height fog in pits. Light shafts untouched.)
 - [ ] Set dressing: landmark pieces per room type and per biome so every room has a focal point. (wired; start rooms rendered fine, but no landmark has been seen up close yet: the room shots landed in fights)
 - [ ] Liquids and hazards: water, lava and chasms that look the part, with ambient motes and drips per biome. (WIRED and live; water seen once and froth toned down after; lava and drips not yet seen)
-- [ ] Town: lived-in camp with lighting, landmarks and life. (WIRED and live: night grade, fog shape, world-surface ground, fireflies, ground light pools; not yet rendered)
+- [x] Town: lived-in camp with lighting, landmarks and life. (commit "World: town confirmed in render; foundry flat orange tile; calm harness shots"; w9 render: campfire, lanterns, tents and residents read at night, hero clear; 1,096 draw calls, 23 lights)
 - [ ] Sweep: one render per biome, each reads clearly with the player and monsters easy to see.
 
 ## Next up
@@ -28,6 +28,17 @@ Status: in progress
 7. `node tools/check-propmesh.mjs` alone when the machine is quiet.
 
 ## Notes for resume
+
+- w9 render (town, foundry, foundry@treasure, crypt@room, sunkenTemple@room, ashwaste): no white blob
+  at the ashwaste entry any more; foundry entry rubble sits behind the hero. The flat orange tile at
+  the foundry entry was a `metal.rust` floor tile at metalness 0.5 and roughness 0.8 reflecting a
+  flat blur of the warm environment map; rust is now metalness 0.12. The hero aura disc now follows
+  the hero's floor height (it sat at y 0.06 whatever the floor). Rubble piles cast no shadow
+  (ashwaste was 2.0M triangles in w9, much of it the sun's shadow pass).
+- Harness: `--calm` removes monsters within 24 m of an `@` stand point (landmark shots kept landing
+  in fights); `@liquid` stands on the floor tile next to water, lava or chasm nearest the entry.
+  The harness's own cleanup must use `pkill -f "[v]ite preview --port 4304"`; a plain pattern kills
+  the shell that runs it.
 
 - Keep-clear rule (Props.ts `crowdsKeepClear`): features and props of radius 0.6+ never stand within 4
   tiles (Chebyshev) of the entry; props of radius 0.85+ never stand next to a spawn tile. Interactables

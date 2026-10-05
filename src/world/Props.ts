@@ -212,7 +212,9 @@ export const PROP_DEFS: Record<string, PropDef> = {
   banner: P('banner', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.7, castShadow: false }),
   statue: P('statue', { placement: 'feature', radius: 0.6, blocks: true, variants: 3, scaleJitter: 0.08 }),
   altar: P('altar', { placement: 'feature', radius: 0.8, blocks: true, variants: 2, freeRotate: false, scaleJitter: 0.05 }),
-  rubblePile: P('rubblePile', { radius: 0.45, variants: 4, scaleJitter: 0.22 }),
+  // No shadow: dozens per screen in the open-sky biomes, each a handful of
+  // stones, cost more in the sun's shadow pass than they gave back.
+  rubblePile: P('rubblePile', { radius: 0.45, variants: 4, scaleJitter: 0.22, castShadow: false }),
 
   // --- caverns -----------------------------------------------------------
   stalagmite: P('stalagmite', { radius: 0.35, variants: 4, scaleJitter: 0.3 }),

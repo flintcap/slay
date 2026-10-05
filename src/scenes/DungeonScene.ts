@@ -1038,7 +1038,7 @@ export class DungeonScene extends GameScene {
       this.heroLight.intensity = 30 + Math.sin(elapsed * 3.1) * 2.2;
     }
     if (this.heroAura) {
-      this.heroAura.position.set(this.player.position.x, 0.06, this.player.position.z);
+      this.heroAura.position.set(this.player.position.x, this.player.position.y + 0.06, this.player.position.z);
       const m = this.heroAura.material as THREE.MeshBasicMaterial;
       m.opacity = 0.32 + Math.sin(elapsed * 3.1) * 0.035;
     }

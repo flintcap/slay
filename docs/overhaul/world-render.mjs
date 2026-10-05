@@ -21,10 +21,15 @@ const SEEDS = {"crypt":{"depth":1,"seed":1001},"caverns":{"depth":1,"seed":1000}
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], { stdio: ['ignore', 'ignore', 'pipe'] });
 const stop = () => { try { server.kill('SIGTERM'); } catch {} };
 process.on('exit', stop);
+// `timeout` sends SIGTERM, which skips 'exit' handlers: stop the server (and,
+// once launched, the browser) ourselves so nothing is left running.
+let browserRef = null;
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { stop(); try { browserRef?.close(); } catch {} setTimeout(() => process.exit(1), 2000); });
 for (let i = 0; i < 60; i++) { try { if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) break; } catch {} await sleep(500); }
 
 const CHROME = '/opt/pw-browsers/chromium';
 const browser = await chromium.launch({ executablePath: existsSync(CHROME) ? CHROME : undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
+browserRef = browser;
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
 page.setDefaultTimeout(600000);
 const errors = [];
@@ -63,6 +68,21 @@ for (const name of WANT) {
         const sc = window.SLAY.engine.currentScene;
         const rooms = sc.level.rooms.filter((r) => r.kind !== 'entry');
         let room = null;
+        if (where === 'liquid') {
+          // The floor tile next to water or lava (or a chasm) nearest the entry.
+          const L = sc.level; const W = L.width; const e = L.entry; let best = null; let bd = 1e9;
+          for (let y = 1; y < L.height - 1; y++) for (let x = 1; x < W - 1; x++) {
+            if (L.tiles[y * W + x] !== 1) continue;
+            const wet = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => [4, 5, 6].includes(L.tiles[(y + dy) * W + x + dx]));
+            if (!wet) continue;
+            const d = (x - e.x) ** 2 + (y - e.y) ** 2; if (d < bd) { bd = d; best = [x, y]; }
+          }
+          if (!best) return null;
+          const p = sc.mesh.tileToWorld(best[0], best[1]);
+          sc.player.position.set(p.x, p.y, p.z); sc.player.root?.position?.set(p.x, p.y, p.z);
+          sc.rig?.follow?.(sc.player.root); sc.rig?.snap?.();
+          return { kind: 'liquid', at: best, liquid: [4, 5, 6].map((v) => L.tiles.filter((t) => t === v).length) };
+        }
         if (where === 'room') room = rooms.slice().sort((a, b) => b.w * b.h - a.w * a.h)[0];
         else room = rooms.find((r) => r.kind === where);
         if (!room) return null;
@@ -90,6 +110,20 @@ for (const name of WANT) {
       }, where);
       if (!at) { console.log(`${name} no such room`); continue; }
       console.log(`${name} -> ${JSON.stringify(at)}`);
+      if (args.calm) {
+        // Landmark shots: take the monsters near the stand point out of the
+        // level, so the room is seen rather than a fight and its nameplates.
+        const gone = await page.evaluate(() => {
+          const sc = window.SLAY.engine.currentScene; const p = sc.player.position; let n = 0;
+          const list = sc.enemies ?? [];
+          for (let i = list.length - 1; i >= 0; i--) {
+            const en = list[i]; const q = en.root?.position ?? en.position;
+            if (q && Math.hypot(q.x - p.x, q.z - p.z) < 24) { en.root?.removeFromParent?.(); list.splice(i, 1); n++; }
+          }
+          return n;
+        });
+        console.log(`${name} calm: removed ${gone} monsters`);
+      }
       // Snap again once the scene has run a frame with the hero in place.
       await settle(3);
       await page.evaluate(() => { const sc = window.SLAY.engine.currentScene; sc.rig?.snap?.(); });

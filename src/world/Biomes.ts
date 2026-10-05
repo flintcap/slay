@@ -570,7 +570,7 @@ const ART: Record<BiomeId, BiomeArt> = {
     floors: [
       { palette: 'metal.iron', weight: 6, repeat: 1.4, roughness: 0.55, metalness: 0.85 },
       { palette: 'stone.foundry', weight: 4, repeat: 1, tint: 0x4a3830 },
-      { palette: 'metal.rust', weight: 3, repeat: 1.2, roughness: 0.8, metalness: 0.5 },
+      { palette: 'metal.rust', weight: 3, repeat: 1.2, roughness: 0.85, metalness: 0.12 },
     ],
     walls: [
       { palette: 'stone.foundry', weight: 6, repeat: 1 },
