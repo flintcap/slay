@@ -742,6 +742,11 @@ export class DungeonScene extends GameScene {
     }
     // Flurry decays when you stop connecting.
     if (e.hitStackAttackSpeed > 0 && st.hitStacks > 0) {
+      // Every landed hit restarts the clock (SkillRunner counts them).
+      if (this.skills.landedHits !== this.flurrySeen) {
+        this.flurrySeen = this.skills.landedHits;
+        this.flurryIdle = 0;
+      }
       this.flurryIdle += dt;
       if (this.flurryIdle > 2) {
         st.hitStacks = 0;
@@ -788,6 +793,7 @@ export class DungeonScene extends GameScene {
   }
 
   private flurryIdle = 0;
+  private flurrySeen = 0;
 
   private passiveOnKill(pos: THREE.Vector3, overkill = 0): void {
     const e = this.player.passives;
@@ -1103,6 +1109,7 @@ export class DungeonScene extends GameScene {
       this.nav,
       this.player.stats.life > 0 ? this.player.life / this.player.stats.life : 1,
       this.player.alive,
+      this.player,
     );
     this.fx.update(dt, elapsed);
     this.decals.update(dt);

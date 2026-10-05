@@ -682,6 +682,25 @@ const SOUNDS: Record<string, SoundFn> = {
     sub(s, { ...p, pan: 0 }, 54, 0.22, 0.42);
     sub(s, { ...p, t: p.t + 0.19, pan: 0 }, 48, 0.3, 0.3);
   },
+  /** A blow slipped through the dodge: a quick bright whisk and a glassy glint. */
+  'player.evade': (s, p) => {
+    whoosh(s, { ...p, pan: 0 }, 0.16, 0.18, 1400, 5200);
+    chime(s, { ...p, pan: 0, t: p.t + 0.02 }, 93, 0.22, 0.07, [0, 7]);
+  },
+  /** The hero is stunned: a dull knock, then a thin ringing that wavers away. */
+  'player.stunned': (s, p) => {
+    thump(s, { ...p, pan: 0 }, 86, 0.2, 0.42);
+    crack(s, { ...p, pan: 0 }, 900, 0.08, 0.2, 1.4);
+    s.tone({ type: 'sine', freq: 3150 * p.p, freqEnd: 2900 * p.p, freqTime: 0.9, gain: 0.05 * p.g, attack: 0.02, decay: 0.9, release: 0.4, vibrato: { rate: 7, depth: 30 }, pan: 0, send: p.send * 1.5, when: p.t + 0.03 });
+    for (let i = 0; i < 3; i++) chime(s, { ...p, pan: (i - 1) * 0.4, t: p.t + 0.08 + i * 0.09 }, 96 - i * 3, 0.16, 0.035, [0]);
+  },
+  /** A combo paid off: a punch and a two-note strike that rises. */
+  combo: (s, p) => {
+    thump(s, p, 96, 0.18, 0.4);
+    crack(s, p, 2600, 0.06, 0.26, 1.2);
+    chime(s, { ...p, t: p.t + 0.01 }, 79, 0.28, 0.1, [0, 7]);
+    chime(s, { ...p, t: p.t + 0.08 }, 86, 0.36, 0.1, [0, 12]);
+  },
   'death.normal': (s, p) => { growl(s, p, 180, 0.5, 0.2, 0.3); squelch(s, p, 0.3, 0.3); thump(s, p, 80, 0.3, 0.3); },
   'death.heavy': (s, p) => {
     growl(s, p, 96, 1.1, 0.3, 0.5);
@@ -934,7 +953,7 @@ function derive(id: string): SoundFn | undefined {
  * own hits, kills, warnings, UI), 0 is texture that may be dropped first.
  */
 export function soundPriority(id: string): 0 | 1 | 2 {
-  if (/^(ui\.|player\.|kill\.|crit$|telegraph|levelup|loot\.legendary|boss\.|heartbeat|quest\.|block|parry|hit\.(sword|axe|blunt|pierce|fist|heavy))/.test(id)) return 2;
+  if (/^(ui\.|player\.|kill\.|crit$|combo$|telegraph|levelup|loot\.legendary|boss\.|heartbeat|quest\.|block|parry|hit\.(sword|axe|blunt|pierce|fist|heavy))/.test(id)) return 2;
   if (/^(monster\.|footstep\.|step\.|gold\.spill|gold\.land|loot\.toss|arrow\.thunk|swing\.light|shoot\.)/.test(id)) return 0;
   return 1;
 }

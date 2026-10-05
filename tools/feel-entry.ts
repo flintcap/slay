@@ -11,8 +11,11 @@ import { HitFlash } from '../src/fx/HitFlash';
 import { CombatFeel, FEEL_TABLES, feelEmitterIds, feelSoundIds, type HitKind } from '../src/fx/CombatFeel';
 import { resolvesSound } from '../src/audio/Audio';
 import { LootFX, lootSoundIds } from '../src/fx/LootFX';
-import { emitterIds } from '../src/fx/Particles';
-import type { EffectSystem } from '../src/fx/Effects';
+import { emitterIds, FXSystem } from '../src/fx/Particles';
+import { DecalSystem } from '../src/fx/Decals';
+import { EffectSystem as RealEffects, MAX_LIVE_EFFECTS, type EffectSystem } from '../src/fx/Effects';
+import { events } from '../src/core/Events';
+import type { QualityProfile } from '../src/core/Renderer';
 import type { DamagePacket } from '../src/types';
 
 const fails: string[] = [];
@@ -163,6 +166,91 @@ const check = (ok: boolean, msg: string): void => {
   check(r2.trauma > 0.05, 'a twelve-target nova did not shake at all');
   feel.dispose();
   rig.dispose();
+}
+
+// --- 3b. combos, evades and stuns are felt ---------------------------------
+{
+  const rig = new CameraRig();
+  let bursts = 0;
+  let lights = 0;
+  const stub = {
+    cameraRig: rig,
+    fx: { burst: () => { bursts++; } },
+    flash: () => { lights++; },
+    chance: () => false,
+  } as unknown as EffectSystem;
+  const feel = new CombatFeel(stub);
+  const hero = { root: new THREE.Group(), incapacitated: false };
+  feel.update(1 / 60, null, 1, true, hero);
+
+  events.emit('combat:combo', { id: 'e', name: 'Break', setup: 'a', payoff: 'b', bonusPct: 40, x: 1, y: 1, z: 1 });
+  rig.update(1 / 60, 0);
+  check(lights > 0 && bursts > 0, 'a combo landed with no light or sparks');
+  check(rig.worldScale < 0.5, 'a combo did not freeze the frame');
+
+  const b0 = bursts;
+  events.emit('player:evaded', { ability: 'Slam', source: 'm' });
+  check(bursts > b0, 'an evade made no shimmer on the hero');
+  // A volley through one roll is one beat, not five.
+  const b1 = bursts;
+  for (let i = 0; i < 5; i++) events.emit('player:evaded', { ability: 'Arrow', source: 'm' });
+  check(bursts === b1, 'evades inside one roll each made their own shimmer');
+
+  const b2 = bursts;
+  hero.incapacitated = true;
+  feel.update(1 / 60, null, 1, true, hero);
+  feel.update(1 / 60, null, 1, true, hero);
+  check(bursts === b2 + 1, `a stun on the hero made ${bursts - b2} beats (want exactly 1)`);
+
+  // After dispose the bus no longer reaches it.
+  feel.dispose();
+  const b3 = bursts;
+  events.emit('player:evaded', { ability: 'x', source: 'm' });
+  check(bursts === b3, 'a disposed feel layer still hears events');
+  rig.dispose();
+}
+
+// --- 6. budgets hold under a screen-clearing fight ---------------------------
+{
+  const quality = { fxScale: 1 } as QualityProfile;
+  const scene = new THREE.Scene();
+  const fx = new FXSystem(scene, quality);
+  const decals = new DecalSystem(scene, quality);
+  const effects = new RealEffects(scene, fx, decals, quality);
+  const spawned = (): number => (fx as unknown as { frameSpawned: number }).frameSpawned;
+  const throttleOf = (): number => (fx as unknown as { throttle: number }).throttle;
+
+  // 300 explosions in one frame spawn no more than the frame ceiling.
+  for (let i = 0; i < 300; i++) fx.burst('explosion', i * 0.1, 1, 0);
+  notes.burstSpawned = spawned();
+  notes.frameBudget = fx.frameBudget;
+  check(spawned() <= fx.frameBudget, `300 explosions spawned ${spawned()} particles in one frame (ceiling ${fx.frameBudget})`);
+  check(fx.clipped > 0, 'the frame ceiling never clipped a burst');
+
+  // A second of heavy bursts raises pressure and thins the crowd layers.
+  let t = 0;
+  for (let f = 0; f < 60; f++) {
+    for (let i = 0; i < 40; i++) fx.burst('explosion', i * 0.1, 1, 0);
+    fx.update(1 / 60, (t += 1 / 60));
+  }
+  notes.pressure = +fx.pressure.toFixed(2);
+  notes.throttle = +throttleOf().toFixed(2);
+  check(fx.pressure > 0.55, `a second of heavy bursts left pressure at ${fx.pressure.toFixed(2)}`);
+  check(throttleOf() < 0.9, `pressure never thinned the crowd layers (throttle ${throttleOf().toFixed(2)})`);
+  // And it eases back once the fight is over.
+  for (let f = 0; f < 180; f++) fx.update(1 / 60, (t += 1 / 60));
+  check(throttleOf() > 0.95, `particle throttle stuck at ${throttleOf().toFixed(2)} after the fight`);
+
+  // 400 decorative novas stay under the live cap, and gameplay still fires.
+  let fired = false;
+  effects.delay(0.3, () => { fired = true; });
+  for (let i = 0; i < 400; i++) effects.nova(i * 0.2, 0, 2, { element: 'fire', duration: 2 });
+  for (let f = 0; f < 30; f++) effects.update(1 / 60, (t += 1 / 60));
+  notes.liveEffects = effects.liveCount;
+  notes.culled = effects.culled;
+  check(effects.liveCount <= MAX_LIVE_EFFECTS, `${effects.liveCount} live effects after 400 novas (cap ${MAX_LIVE_EFFECTS})`);
+  check(fired, 'a pending delay() was culled by the effect budget');
+  effects.dispose();
 }
 
 // --- 4. tables and assets ---------------------------------------------------

@@ -17,7 +17,7 @@ import type { EffectHandle } from '../fx/Effects';
 import { getStatus, synthesizeSkillBuff } from '../data/statuses';
 import { getBase } from '../sim/Loot';
 import type { ItemCategory } from '../types';
-import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../entities/MonsterModels';
+import { buildMonsterModel, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from '../entities/MonsterModels';
 import { MONSTERS } from '../data/monsters';
 import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
@@ -1660,7 +1660,10 @@ export class SkillRunner {
     const p = this.caster;
     if (!p || this.arcing) return;
     const e = p.passives;
-    if (e.arcChance <= 0 && e.conductSharePct <= 0) return;
+    // Every section below checks its own passive, so there is no early-out
+    // here: one used to skip the lot unless Arc Weave or Superconductor was
+    // taken, which silently switched off crit riders, Flurry and the leeches.
+    this.landedHits++;
 
     this.arcing = true;
     try {
@@ -1770,6 +1773,11 @@ export class SkillRunner {
 
   /** Guards the arc and conduct hooks against recursing into themselves. */
   private arcing = false;
+  /**
+   * Blows the hero has landed, counted in `afterHit`. The scene watches it to
+   * keep Flurry's stacks alive while hits keep connecting.
+   */
+  landedHits = 0;
   /** Increments per summon so a pack fans out rather than stacking. */
   private summonSerial = 0;
   /** A Resonance repeat waiting for the next frame. */
@@ -2491,7 +2499,10 @@ export class SkillRunner {
     if (!body) return;
     body.parent?.remove(body);
     // Geometry and materials are shared prototypes owned by the model cache and
-    // released by `disposeMonsterModels`, so only the clone goes here.
+    // released by `disposeMonsterModels`; each clone owns only its skeleton's
+    // bone texture, which leaks unless it is released here.
+    releaseMonsterModel(body);
+    this.feel.forget(body);
   }
 
   dispose(): void {

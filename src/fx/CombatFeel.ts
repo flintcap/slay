@@ -25,6 +25,7 @@
 import * as THREE from 'three';
 import type { DamagePacket, DamageType, MonsterRank } from '../types';
 import { audio } from '../audio/Audio';
+import { events } from '../core/Events';
 import { ELEMENTS, type EffectSystem } from './Effects';
 import type { CameraRig } from './CameraRig';
 import { HitFlash } from './HitFlash';
@@ -192,8 +193,67 @@ export class CombatFeel {
   private nextPlayerHurt = 0;
   private nextHeartbeat = 0;
 
+  /** Event subscriptions, dropped in `dispose`. */
+  private unsubs: Array<() => void> = [];
+  /** The hero, as last seen by `update`, for beats that happen on them. */
+  private hero: THREE.Object3D | null = null;
+  private heroDown = false;
+  private nextEvade = 0;
+  private nextCombo = 0;
+
   constructor(effects: EffectSystem) {
     this.effects = effects;
+    this.unsubs.push(
+      events.on('combat:combo', (e) => this.onCombo(e.x, e.y, e.z, e.bonusPct)),
+      events.on('player:evaded', () => this.onEvade()),
+    );
+  }
+
+  /**
+   * A combo paid off (`sim/Combos.ts`). The monster already says its name and
+   * throws sparks; this is the weight under it: a hard little freeze, a lean
+   * in and a two-note strike that rises, so the player learns the sound of
+   * doing it right.
+   */
+  private onCombo(x: number, y: number, z: number, bonusPct: number): void {
+    if (this.clock < this.nextCombo) return;
+    this.nextCombo = this.clock + 0.18;
+    const big = Math.min(1, Math.max(0, bonusPct) / 60);
+    this.effects.flash(x, y + 0.4, z, 0xffe6a8, 7 + big * 5, 6, 0.2);
+    this.effects.fx.burst('sparks', x, y, z, { count: 10 + Math.round(big * 8), scale: 0.8 });
+    audio.play('combo', { x, z, volume: 0.9 + big * 0.25 });
+    const rig = this.rig;
+    if (rig) {
+      rig.hitStop(0.055 + big * 0.03, 0.05, true);
+      rig.punchIn(0.03 + big * 0.02, 0.4);
+    }
+    this.addTrauma(0.1 + big * 0.08);
+  }
+
+  /**
+   * A blow passed through the dodge. Rewarded with a bright shimmer and a
+   * clean whisk of sound, rate-limited so a volley through a roll is one beat.
+   */
+  private onEvade(): void {
+    if (this.clock < this.nextEvade) return;
+    this.nextEvade = this.clock + 0.3;
+    const h = this.hero;
+    if (h) {
+      const p = h.position;
+      this.effects.flash(p.x, 1.1, p.z, 0xd8f0ff, 5, 5, 0.14);
+      this.effects.fx.burst('dodge', p.x, 0.9, p.z, { count: 12, scale: 1 });
+    }
+    audio.play('player.evade', { volume: 0.9 });
+  }
+
+  /** The hero just lost control of their body: a dull thud and a ringing. */
+  private onHeroStunned(root: THREE.Object3D): void {
+    const p = root.position;
+    audio.play('player.stunned', { volume: 1 });
+    this.effects.fx.burst('shock', p.x, 2.0, p.z, { count: 8, scale: 0.6, color: 0xfff2a0 });
+    this.addTrauma(0.16);
+    const rig = this.rig;
+    if (rig) rig.punchIn(0.025, 0.35);
   }
 
   private get rig(): CameraRig | null {
@@ -409,9 +469,21 @@ export class CombatFeel {
    * world's dilated step: a flash that lands with a hit-stop holds its white
    * frame for the length of the freeze, which is exactly the look.
    */
-  update(dt: number, world: FeelWorld | null, lifeFrac = 1, alive = true): void {
+  update(
+    dt: number,
+    world: FeelWorld | null,
+    lifeFrac = 1,
+    alive = true,
+    hero?: { root: THREE.Object3D; incapacitated: boolean },
+  ): void {
     this.clock += dt;
     this.flash.update(dt);
+    if (hero) {
+      this.hero = hero.root;
+      const down = alive && hero.incapacitated;
+      if (down && !this.heroDown) this.onHeroStunned(hero.root);
+      this.heroDown = down;
+    }
 
     for (let i = this.slides.length - 1; i >= 0; i--) {
       const s = this.slides[i]!;
@@ -484,6 +556,8 @@ export class CombatFeel {
 
   dispose(): void {
     this.clear();
+    for (const u of this.unsubs) u();
+    this.unsubs.length = 0;
     this.flash.dispose();
   }
 }
@@ -497,6 +571,7 @@ export function feelSoundIds(families: readonly string[]): string[] {
     ...Object.values(BODY_SOUND),
     'hit.heavy', 'hit.pierce', 'crit', 'kill.confirm', 'kill.elite', 'kill.multi',
     'player.hurt', 'player.hurtHeavy', 'heartbeat', 'player.death',
+    'combo', 'player.evade', 'player.stunned',
   ]);
   for (const f of families) {
     out.add(`monster.${f}.hurt`);
@@ -507,7 +582,7 @@ export function feelSoundIds(families: readonly string[]): string[] {
 
 /** Every particle emitter this module can ask for. */
 export function feelEmitterIds(): string[] {
-  return [...new Set([...Object.values(DEATH_BURST), 'gib'])];
+  return [...new Set([...Object.values(DEATH_BURST), 'gib', 'sparks', 'dodge', 'shock'])];
 }
 
 /** The per-kind tuning tables, for the static check. */

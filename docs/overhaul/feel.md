@@ -1,6 +1,6 @@
 # Stream: feel (combat feedback, VFX and audio)
 
-Status: paused
+Status: in progress
 
 ## Milestones
 
@@ -8,54 +8,38 @@ Status: paused
 - [x] Skill VFX: an upgrade pass per element (fire, frost, lightning, poison, bone, physical) with proper impacts and lingering decals. — "Give every element its own cast, flight, impact and scar"
 - [x] Loot: drops arc out with a sound and beam by rarity; pickups and gold feel good. — same commit
 - [x] Audio: layered weapon and impact sounds, footsteps by floor type, UI sounds, ambient beds per biome, combat-reactive music and boss music. — "Make the dungeon sound like a place and every monster audible"
-- [ ] Performance guard: particle and sound budgets so big fights stay smooth.
+- [x] Performance guard: particle and sound budgets so big fights stay smooth. — "Budget voices, particles and effects so big fights stay smooth (part 1)" + "Hard particle ceiling, a stress test, and the requests other streams left"
 - [ ] Sweep: every skill has a cast, travel and impact beat; nothing is silent.
 
 ## Next up
 
-Milestone 5, performance guard, is about two-thirds done and committed in a
-working state ("Budget voices, particles and effects so big fights stay
-smooth (part 1)"). Already in:
-- `src/audio/Synth.ts`: separate voice pools (`VoicePool`, `POOL_CAPS` sfx 44
-  / music 60 / amb 12). Music track outs and ambience beds register with
-  `synth.markPool`; their notes are refused note-by-note when the pool is
-  full (`synth.dropped`). Effects are gated by the caller.
-- `src/audio/Audio.ts`: `play()` learns each recipe's real cost on first play
-  (`costs`), and `soundPriority(id)` (2 must play / 1 normal / 0 texture)
-  sets how much of the sfx pool it may use (100% / 82% / 55%).
-  `audio.diagnostics` reports per-pool voices and `refused`.
-- `src/fx/Particles.ts`: per-frame spawn ceiling (`frameBudget`, an eighth of
-  capacity), a one-second `pressure` estimate, and a `throttle` that thins
-  many-particle layers above 0.55 pressure (single-particle core layers are
-  never thinned). `fx.clipped` counts cut bursts.
-- `src/fx/Effects.ts`: `MAX_LIVE_EFFECTS = 180`; past it the oldest
-  non-`essential` composites are culled (`delay()` and projectiles with
-  `onHit` are essential). Projectile travel lights yield when the flash pool
-  is over half busy; projectiles shed half as often above 0.7 pressure.
-
-Still to do for milestone 5:
-1. Add a stress section to `tools/feel-entry.ts`: 300 `fx.burst('explosion')`
-   calls in one frame on a real `FXSystem` (needs a stub scene; the node shim
-   in `tools/feel-harness.mjs` already builds canvas textures) must spawn no
-   more than `frameBudget`; `pressure` must rise and `throttle` fall after a
-   few frames of heavy bursts; 400 decorative `nova()` calls must leave
-   `liveCount <= MAX_LIVE_EFFECTS` while a pending `delay()` still fires.
-   Audio pools need a fake AudioContext to test; optional.
-2. Tick milestone 5, then milestone 6 (sweep): build a static map of every
-   active skill's cast / travel / impact beat by effect family (see
-   `SkillRunner.cast` switch; families listed in `tools/check-coverage.mjs`)
-   and assert each beat has an emitter and a sound; fix any silent family
-   (e.g. `chain` for physical `ricochet` draws a lightning beam, `heal` and
-   `buff` have no travel beat, which is fine but should be declared).
-3. The render tool never got past boot (the machine was busy with other
-   agents' renders; two attempts timed out). On resume, run
-   `npm run build` then `SLAY_PORT=4305 node tools/shot-feel.mjs --out=shots/feel`
-   once with nothing else rendering, and look at `atlas-sprites.png`,
-   `atlas-decals.png` and the three `vfx-*.png` shots. The atlas flip fix in
-   milestone 2 changes every particle and stain on screen; confirm it looks
-   right and retune emitter sizes if anything reads too big or too small.
+Milestone 6, the sweep. Steps:
+1. Look at the first render (`shots/feel/`, made with
+   `SLAY_PORT=4305 node tools/shot-feel.mjs --out=shots/feel` after
+   `npm run build`): `atlas-sprites.png`, `atlas-decals.png`, `vfx-*.png`.
+   The atlas flip fix in milestone 2 changed every particle and stain; retune
+   emitter sizes in `src/fx/Particles.ts` / `Effects.ts` if anything reads
+   too big or too small.
+2. Build a static map of every active skill's cast / travel / impact beat by
+   effect family (see `SkillRunner.cast` switch; families listed in
+   `tools/check-coverage.mjs`) and assert each beat has an emitter and a
+   sound; fix any silent family (`heal` and `buff` have no travel beat, which
+   is fine but should be declared).
 
 ## Notes for resume
+
+- **Done this session (milestone 5 close):** `afterHit` no longer returns early
+  (crit riders, Flurry, leeches now run for everyone); `SkillRunner.landedHits`
+  counts hero blows and DungeonScene restarts Flurry's 2s idle clock when it
+  moves; `combat:combo`, `player:evaded` and a hero stun (rising edge of
+  `player.incapacitated`, read in `CombatFeel.update`'s new `hero` param) each
+  have a sound (`combo`, `player.evade`, `player.stunned`) and a visual beat;
+  summon bodies go through `releaseMonsterModel`. The particle frame ceiling
+  is now hard: crowd layers stop at 80% of `frameBudget`, single-particle
+  cores use the last 20% (before, cores could overrun it by hundreds).
+  `tools/check-feel.mjs` section 3b covers the event beats, section 6 the
+  budgets (300 bursts in a frame, pressure/throttle, 400 novas under
+  `MAX_LIVE_EFFECTS` with a `delay()` still firing).
 
 **From models (finished, 5bebe1d):** when a summon is thrown away in `SkillRunner.ts`, call `releaseMonsterModel(root)`, or a little GPU memory leaks per summon.
 

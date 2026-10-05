@@ -1847,9 +1847,13 @@ export class FXSystem {
     // A hard per-frame ceiling. A ring buffer that is asked for more than it
     // holds overwrites particles that are still on screen, which reads as the
     // oldest effects popping out of existence mid-fight.
-    const room = this.frameBudget - this.frameSpawned;
+    // Crowd layers stop at 80% of it; the last fifth is kept for the
+    // single-particle cores, so a flood of bursts still shows every flash
+    // without ever going past the ceiling itself.
+    const cap = core ? this.frameBudget : Math.round(this.frameBudget * 0.8);
+    const room = cap - this.frameSpawned;
     if (n > room) {
-      n = core ? Math.min(n, Math.max(1, room)) : Math.max(0, room);
+      n = Math.max(0, room);
       this.clipped++;
       if (n <= 0) return;
     }
