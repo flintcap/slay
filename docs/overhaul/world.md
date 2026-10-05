@@ -1,33 +1,48 @@
 # Stream: world (environment art and rendering)
 
-Status: in progress
+Status: paused
 
 ## Milestones
 
 - [x] Textures: richer procedural surfaces with normal and roughness detail and large-scale variation so floors and walls stop tiling visibly. (commit "World: world-space surfaces, biome grades, height fog, room landmarks")
 - [x] Lighting and post: tone mapping, a colour grade per biome, tuned bloom, ambient occlusion, vignette, light shafts and fog that add depth. (same commit; grade + bloom + vignette per biome, fog shaped around the player, height fog in pits. Light shafts untouched.)
-- [ ] Set dressing: landmark pieces per room type and per biome so every room has a focal point. (wired; start rooms rendered fine, but no landmark has been seen up close yet: the room shots landed in fights)
-- [ ] Liquids and hazards: water, lava and chasms that look the part, with ambient motes and drips per biome. (WIRED and live; water seen once and froth toned down after; lava and drips not yet seen)
+- [ ] Set dressing: landmark pieces per room type and per biome so every room has a focal point. (wired; w10 calm render: the crypt treasure room's gold hoard reads as the focal point. Biome landmarks (ossuary, crystal, forge, idol, brood mound, monolith, obelisk, rift) not yet seen)
+- [ ] Liquids and hazards: water, lava and chasms that look the part, with ambient motes and drips per biome. (WIRED and live; water seen in caverns and sunken temple; lava and drips not yet seen)
 - [x] Town: lived-in camp with lighting, landmarks and life. (commit "World: town confirmed in render; foundry flat orange tile; calm harness shots"; w9 render: campfire, lanterns, tents and residents read at night, hero clear; 1,096 draw calls, 23 lights)
 - [ ] Sweep: one render per biome, each reads clearly with the player and monsters easy to see.
 
 ## Next up
 
-1. Read the rest of the w8 batch (`shots/w8`: ashwaste, foundry@treasure, crypt@treasure, frostvault)
-   and its `PROBE` lines: (650,260) is the white blob over the hero at the ashwaste entry, (900,450) the
-   black area right of the corridor in foundry@treasure. Fix what they name.
-2. Ashwaste got grey ground light (ambient 0x6f6460, key 0xffb48a, bounce 0x5e544e) and a cool
-   shadow grade after w8 was built; render it again to judge. Its 3.3M triangles are NOT the sun
-   shadow (the sun now follows the hero, `SUN_REACH` 30); the harness `heavy` list names the meshes.
-3. The flat orange square at the foundry entry: probe hits are the hero aura (a 9 m plane round the
-   hero) then `lightPools`; take a probe with 4 hits further from the hero to see what is under it.
-4. Landmarks still unseen. `@treasure` and `@ambush` now stand inside small rooms.
-5. Town: 1,092 draw calls (budget 900), 805K triangles, 23 lights, 1 shadow light. Remaining cost is
-   main + AO + moon shadow per mesh; nine residents at ~20 meshes each are most of it (models' budget).
-6. Then tick milestones 3 to 5 and do the milestone 6 sweep over all eight biomes.
-7. `node tools/check-propmesh.mjs` alone when the machine is quiet.
+Paused mid-render (w10 stopped after its first shot). Nothing is half-wired; the branch builds.
+
+1. Render the rest of w10, one command, under `timeout` (45 min max), port 4304:
+   `npm run build` then
+   `SLAY_PORT=4304 timeout -k 20 2700 node docs/overhaul/world-render.mjs --calm --out=shots/w10 --shots=caverns@room,foundry@liquid,foundry@room,hive@room,ashwaste@liquid`
+   then `pkill -f "[v]ite preview --port 4304"`. Run it as a background Bash task (it exits by
+   itself) and wait with an `until grep ... shots/w10.log` loop; never wait on a bare server.
+   - `@room` shots show biome landmarks: if each room has a clear focal piece, tick milestone 3.
+   - `@liquid` shots show foundry and ashwaste lava (both seeds have lava: 36 and 56 tiles) and
+     the drips near the hero: if lava reads as lava and nothing glares, tick milestone 4.
+   - foundry@liquid also checks the two fixes made after w9: no flat orange floor tile (rust is
+     metalness 0.12 now) and the hero aura disc on the hero's floor.
+2. Milestone 6 sweep: one shot per biome WITHOUT `--calm` so monsters are on screen, at most five
+   or six shots per render (each takes 4 to 7 minutes; boot about 1 minute). For example
+   `--shots=crypt@room,caverns@room,foundry@room,sunkenTemple@room` and then
+   `--shots=hive@room,frostvault@room,ashwaste@room,voidspire@room`. Judge: floor clearest and best
+   lit, hero and monsters stand out from it. Nameplates crowd big fights; that is the HUD stream's.
+3. Known look issues from w9, fix if cheap: the near wall's cap draws as a big black wedge at the
+   bottom of a narrow corridor shot (foundry@treasure); pale blue-white stones round the town
+   fire ring and scattered in the camp read cold and bright; ashwaste still 2.0M triangles in w9
+   (rubble now casts no shadow; rockCluster at rough 0.6 is 1,344 triangles a copy).
+4. Town: 1,096 draw calls (budget 900), 802K triangles, 23 lights (budget 24). Rest is residents
+   (models' budget).
+5. When milestones 3, 4 and 6 are ticked, set `Status: done`.
+6. `node tools/check-propmesh.mjs` alone when the machine is quiet.
 
 ## Notes for resume
+
+- w10 crypt@room (calm, treasure room 14x13): gold hoard glows as the room's centre piece, floor
+  reads clean, hero clear, 242 draw calls. The floor seal under the hoard did not show clearly.
 
 - w9 render (town, foundry, foundry@treasure, crypt@room, sunkenTemple@room, ashwaste): no white blob
   at the ashwaste entry any more; foundry entry rubble sits behind the hero. The flat orange tile at
