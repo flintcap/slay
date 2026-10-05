@@ -34,12 +34,22 @@ if (!existsSync('dist/index.html')) {
 }
 
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  // Own process group: npx starts vite as a child, and killing npx alone
+  // left vite running and holding the port after the checker exited.
+  detached: true,
   stdio: ['ignore', 'pipe', 'pipe'],
 });
+const killServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
 server.stdout.on('data', () => {});
 const shutdown = () => {
   try {
-    server.kill('SIGTERM');
+    killServer();
   } catch {
     /* gone */
   }

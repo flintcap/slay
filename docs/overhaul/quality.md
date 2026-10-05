@@ -4,46 +4,58 @@ Status: in progress
 
 ## Milestones
 
-- [ ] Bug sweep: run every checker including the browser ones, fix every failure, and add checks for what is missing.
+- [ ] Bug sweep: run every checker including the browser ones, fix every failure, and add checks for what is missing. (all 54 static checkers pass; browser checkers in progress)
 - [ ] Performance: measure draw calls, triangles, lights, garbage and AI cost on the busiest floors; set budgets and bring the worst offenders under them.
 - [x] Saves: versioned save format, safe migrations, a backup copy, and recovery from a corrupt save without losing the character. (commit: "Make saves survive damage and keep one error from stopping the game")
-- [ ] Crash resistance: no single error stops the game; errors are caught, logged and recovered from. (code done and pushed; `check-crash` passed its first 4 of 9 cases before the run hit its 30-minute limit on the overloaded machine; the last 5 are unverified)
-- [ ] Accessibility: text size, colour-blind-safe rarity colours, reduced motion and screen shake toggles, key rebinding, all through the settings menu. (code done and pushed; `check-access` passes; never looked at in a real browser yet)
+- [x] Crash resistance: no single error stops the game; errors are caught, logged and recovered from. (commit: "Quality: crash resistance proven, leftovers from finished streams"; `check-crash` 9 of 9)
+- [ ] Accessibility: text size, colour-blind-safe rarity colours, reduced motion and screen shake toggles, key rebinding, all through the settings menu. (`check-settings-ui` drives the real menu: 13 of 14 passed, the 14th was the checker's own lookup, fixed, re-run pending. Screenshots looked right.)
 - [ ] Sweep: a long headless soak test that plays many floors and reports any error, leak or slowdown.
 
 ## Next up
 
-Paused mid-way. In this order:
+In this order, one browser checker at a time on port 4309:
 
-1. Finish verifying crash resistance: `SLAY_PORT=4309 timeout 3600 node tools/check-crash.mjs`
-   (run it in the background; with ten agents on four cores boot alone took
-   3 minutes and entering a dungeon about 8). Cases 1-4 passed. If case 5+
-   fails, the code is in `src/core/Engine.ts` (`recover`, `goTo`, `enterScene`).
-   Then tick milestone 4.
-2. Look at the settings menu once in a browser (open Settings from the pause
-   menu): text size and colour-blind colours sit at the bottom of the Gameplay
-   tab, rebindable keys at the top of the Controls tab; both come from
-   `src/ui/AccessibilitySettings.ts` (menus owns the rest of the panel and
-   already had a Reduced motion toggle, which shares the same setting). Check a rebind works
-   (change Inventory to P, press P in town). Then tick milestone 5.
-3. Bug sweep (milestone 1): static checkers all ran; browser checkers have not.
-   Run them in batches of 5-6 in the background, one at a time on port 4309:
-   `SLAY_PORT=4309 node tools/run-checks.mjs --only=arrow,attack,body,buff,clips`
-   and so on (list: `grep -l -E "chromium|bootGame" tools/check-*.mjs`).
-   Read `.checks/<name>.txt` for each. Fix failures in quality's own files;
-   anything in another stream's area goes to that stream's progress file.
-4. Performance (milestone 2): `SLAY_PORT=4309 node tools/check-perf.mjs --alloc`
-   has never run. Budgets at the top of the file are first guesses; set them
-   from the first real measurement, then fix the worst offenders.
-5. Soak (milestone 6): `SLAY_PORT=4309 node tools/check-soak.mjs --runs=4 --floors=3`
-   has never run either. Expect to fix the harness on its first run.
+1. Browser batch 1 was running: `SLAY_PORT=4309 node tools/run-checks.mjs --only=settings-ui,clips,attack,propmesh`
+   (output in `.checks/<name>.txt`). If settings-ui passes, tick Accessibility.
+   clips and attack are animation's (finished): note exact failures in animation.md;
+   small surgical fixes are fine.
+2. The rest of the browser checkers in batches of 5-6
+   (`grep -l -E "chromium|bootGame" tools/check-*.mjs`), skipping crash (done).
+3. Art asked: `SLAY_PORT=4309 timeout 2400 node tools/screenshot.mjs --out=shots/art --shots=inventory`;
+   check item icons appear promptly; note the timing in art.md if slow.
+4. Performance: `SLAY_PORT=4309 node tools/check-perf.mjs --alloc --depths=0,6,20` (0 is the town now).
+   Town was 1,096 draw calls against 900 before the resident merge; expect about 950.
+5. Soak: `SLAY_PORT=4309 node tools/check-soak.mjs --runs=4 --floors=3`. Expect to fix the harness.
 
 ## Notes for resume
 
-**Requests left at the second pause (owning streams are finished, so these are yours):**
-- From story: unique items already in saves keep their old Diablo II names. Add a save migration in `Save.ts` that renames them from `src/data/story/uniqueText.ts`.
-- From world: in big fights monster nameplates cover most of the screen (hud is finished). Thin them: fade or hide plates for ordinary monsters beyond a count or distance, keep elites, rares and bosses.
-- From world: the town is at 1,096 draw calls against a budget of 900, and the nine residents from `src/art/NpcModels.ts` are most of it (models is finished). Merge each resident's meshes per material.
+**Done this session (leftovers from finished streams):**
+- Uniques in old saves are renamed from `src/data/story/uniqueText.ts` on load
+  (`Repairer.item` in Save.ts; silent, set pieces untouched). check-save case 19.
+- Nameplates (`src/ui/Nameplates.ts`): only the 6 nearest ordinary monsters
+  within 16 m keep a plate; champion and up always do (`maxOrdinaryPlates`,
+  `ordinaryDistance`).
+- Residents (`src/art/NpcModels.ts` `mergeResidentSkins`): visible skinned parts
+  merged per material (long hair kept apart for secondary motion), props
+  compacted, parts under 0.36 m cast no shadow. 370 -> 218 draw calls for all
+  nine. Guarded by `tools/check-npcdraws.mjs` (NPC_DUMP=1 lists parts).
+- `debug.makeCharacter` always equips the class's starting weapon (and off hand).
+- `debug.panelOpen(id)` for checkers.
+- FX: past 3 live auras (`Effects.aura`) each is dimmed so the sum stays ~3
+  auras bright (`AURA_FULL`); the physical-hit dust decal now darkens (was a
+  pale disc), smaller and shorter; pale dust puffs ~30% smaller.
+- The hero vanishing after a teleport: world fixed the cause (pelvis spring
+  exploding on long frames, `Animator.guardReach`) at ecafa92. Not seen since.
+- Every tool that spawns `npx vite` now runs it in its own process group and
+  kills the group (34 + 4 files). check-body left vite running before (art).
+- check-perf measures the town as depth 0.
+- RNG: `RigAnimator` (src/art/MonsterAnimation.ts) drew twice from the caller's
+  rng, shifting every later roll; check-tactics fell to 9/12. Now one draw.
+- Balance (owner rule: classes up, never monsters down): Ranger Aimed Shot
+  dmg 2.6 -> 3.0 (+0.36/rank), Crippling Shot 1.3 -> 1.5 (+0.2/rank). Ranger at
+  depth 40 had lost all three bosses. check-curve passes 30 of 30.
+- check-tactics and check-curve are seed-sensitive: any extra rng draw in
+  monster building moves their results. Keep rng draws stable.
 
 **From depth (finished, 9ca7c18):**
 - `debug.makeCharacter` can leave the main hand empty (new characters start with no gear and the random items may hold no usable weapon). Make it always equip a class-appropriate weapon so every browser checker starts armed.
@@ -69,11 +81,8 @@ Paused mid-way. In this order:
   broken scene update, scene that fails to build), `check-perf` (budgets),
   `check-soak` (long session, leaks, slowdown).
 
-### Known failing static checkers (not quality's area; requests filed)
-- `check-openness`: cathedral 59.6%, halls 29.6%, rooms 25.1% wide-open (limit 25%).
-  Request in depth.md.
-- `check-unfinished`: statuses `dreadaura`, `bossEnrage` never applied. Combat
-  already has this on its list (boss milestone).
+### Static checkers
+- All 54 pass as of this session (openness and unfinished were fixed by their owners).
 
 ### How things work now
 - Save (`src/core/Save.ts`): format version 2 inside the save (key name still

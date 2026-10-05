@@ -13,10 +13,20 @@ const PORT = Number(process.env.SLAY_PORT ?? 4188);
 const CHROME = '/opt/pw-browsers/chromium';
 
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  // Own process group: npx starts vite as a child, and killing npx alone
+  // left vite running and holding the port after the checker exited.
+  detached: true,
   stdio: ['ignore', 'ignore', 'pipe'],
 });
+const killServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
 server.stderr.on('data', (d) => process.stderr.write(`[preview] ${d}`));
-process.on('exit', () => server.kill('SIGTERM'));
+process.on('exit', killServer);
 
 let up = false;
 for (let i = 0; i < 60; i++) {
@@ -138,5 +148,5 @@ if (errors.length) {
 }
 
 await browser.close();
-server.kill('SIGTERM');
+killServer();
 process.exit(0);

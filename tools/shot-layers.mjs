@@ -21,9 +21,19 @@ const CHROME = '/opt/pw-browsers/chromium';
 mkdirSync('shots', { recursive: true });
 
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  // Own process group: npx starts vite as a child, and killing npx alone
+  // left vite running and holding the port after the checker exited.
+  detached: true,
   stdio: ['ignore', 'ignore', 'pipe'],
 });
-process.on('exit', () => server.kill('SIGTERM'));
+const killServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
+process.on('exit', killServer);
 for (let i = 0; i < 60; i++) {
   try {
     if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) break;
@@ -98,5 +108,5 @@ await shot('5-no-wall-tops', ['tops']);
 await shot('6-no-tops-no-roof', ['tops', 'roof', 'ceiling']);
 
 await browser.close();
-server.kill('SIGTERM');
+killServer();
 process.exit(0);

@@ -28,6 +28,14 @@ All milestones are done. If a successor picks this up:
 
 ## Notes for resume
 
+- From quality: `RigAnimator`'s constructor (src/art/MonsterAnimation.ts) drew
+  twice from the caller's rng (offset, then the fidget seed). Every roll made
+  after building a monster shifted, and `check-tactics` went from passing to
+  3 of 12 failing (flankers, staggered telegraphs, leader falter) with the
+  curve wobbling too. Quality changed it to one draw that seeds both; tactics
+  passes again. Rule of thumb: an animator never draws more from a shared rng
+  than the code it replaces did.
+
 - **Secondary motion and personas (milestone 5).** `src/art/Secondary.ts`: `SecondaryMotion.attach`
   (called by the Animator constructor, at bind pose) finds a person's `hairLong` cover meshes, adds a
   `hairSway` bone under `head`, re-weights the hair below the head joint toward it (more further

@@ -13,9 +13,19 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 const PORT = Number(process.env.SLAY_PORT ?? 4197);
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  // Own process group: npx starts vite as a child, and killing npx alone
+  // left vite running and holding the port after the checker exited.
+  detached: true,
   stdio: ['ignore', 'ignore', 'pipe'],
 });
-process.on('exit', () => server.kill('SIGTERM'));
+const killServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
+process.on('exit', killServer);
 for (let i = 0; i < 60; i++) {
   try { if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) break; } catch { /* wait */ }
   await sleep(500);
@@ -85,5 +95,5 @@ for (const n of [10, 30, 60, 120]) {
 }
 
 await browser.close();
-server.kill('SIGTERM');
+killServer();
 process.exit(0);

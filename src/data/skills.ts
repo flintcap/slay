@@ -4026,7 +4026,7 @@ const MARKSMAN = build('marksman', [
     id: 'aimedShot', name: 'Aimed Shot',
     desc: 'Draw fully. Slow, single target, and it always crits below half health.',
     tier: 2, col: 0, icon: 'crosshair', req: ['pierceShot'], t: 'enemy',
-    mana: [7, 0.5], cd: [4, 0.12, 1.4], dmg: [2.6, 0.3], type: 'physical',
+    mana: [7, 0.5], cd: [4, 0.12, 1.4], dmg: [3.0, 0.36], type: 'physical',
     fx: 'projectile', p: { speed: 40, executeBelow: 50 },
   },
   {
@@ -4052,7 +4052,7 @@ const MARKSMAN = build('marksman', [
     id: 'crippling', name: 'Crippling Shot',
     desc: 'Take the leg. 35% slow for 4s, and the target cannot dash (+3% slow per rank).',
     tier: 3, col: 1, icon: 'snare', req: ['bleedingArrow'], t: 'enemy',
-    mana: [8, 0.5], cd: [9, 0.25, 3.5], dmg: [1.3, 0.16], type: 'physical',
+    mana: [8, 0.5], cd: [9, 0.25, 3.5], dmg: [1.5, 0.2], type: 'physical',
     fx: 'projectile', p: { slow: 35, slowPerRank: 3, duration: 4, speed: 32 },
   },
   {

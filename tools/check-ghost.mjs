@@ -24,9 +24,19 @@ const PORT = Number(process.env.SLAY_PORT ?? 4193);
 const CHROME = '/opt/pw-browsers/chromium';
 
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  // Own process group: npx starts vite as a child, and killing npx alone
+  // left vite running and holding the port after the checker exited.
+  detached: true,
   stdio: ['ignore', 'ignore', 'pipe'],
 });
-process.on('exit', () => server.kill('SIGTERM'));
+const killServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
+process.on('exit', killServer);
 for (let i = 0; i < 60; i++) {
   try {
     if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) break;
@@ -153,5 +163,5 @@ console.log(
     : `\nFAILED — ${bad} colliders stop the player with nothing on screen.`,
 );
 await browser.close();
-server.kill('SIGTERM');
+killServer();
 process.exit(bad === 0 ? 0 : 1);

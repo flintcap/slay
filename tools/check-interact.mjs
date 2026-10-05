@@ -21,9 +21,19 @@ if (!existsSync('dist/index.html')) {
 }
 
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  // Own process group: npx starts vite as a child, and killing npx alone
+  // left vite running and holding the port after the checker exited.
+  detached: true,
   stdio: ['ignore', 'ignore', 'pipe'],
 });
-process.on('exit', () => server.kill('SIGTERM'));
+const killServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
+process.on('exit', killServer);
 for (let i = 0; i < 120; i++) {
   try {
     if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) break;
@@ -123,7 +133,7 @@ const r = await page.evaluate(async () => {
 });
 
 await browser.close();
-server.kill('SIGTERM');
+killServer();
 
 console.log(`levels scanned: ${r.levelsScanned}\n`);
 const pad = (s, n) => String(s).padEnd(n);

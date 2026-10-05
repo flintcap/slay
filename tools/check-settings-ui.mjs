@@ -104,9 +104,11 @@ try {
   );
 
   const cb = await page.evaluate(async () => {
-    const row = [...document.querySelectorAll('*')].find((e) => e.children.length === 0 && (e.textContent ?? '').trim() === 'Colour-blind item colours');
-    let t = null;
-    for (let p = row; p && !t; p = p.parentElement) t = p.querySelector('input[type=checkbox], button, [role=switch]');
+    // The label carries a hint span, so match the toggle row by its label's start.
+    const row = [...document.querySelectorAll('.field-toggle')].find((e) =>
+      (e.querySelector('.field-label')?.textContent ?? '').trim().startsWith('Colour-blind item colours'),
+    );
+    const t = row?.querySelector('[role=switch], button, input[type=checkbox]') ?? null;
     if (!t) return { error: 'no toggle' };
     const before = !!window.SLAY.save.settings.colorBlindRarity;
     t.click();

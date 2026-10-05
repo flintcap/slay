@@ -166,9 +166,13 @@ export class RigAnimator {
     rng: Rng,
   ) {
     this.archetype = archetype;
-    this.offset = rng.next() * TAU;
-    // Its own stream, seeded once, so fidgeting never draws from the caller's.
-    this.fidgetRng = new Random(Math.floor(rng.next() * 0x7fffffff) ^ 0x5eed);
+    const seed = rng.next();
+    this.offset = seed * TAU;
+    // Its own stream, seeded from the one draw, so fidgeting never draws from
+    // the caller's. A second draw here shifted every roll the caller made
+    // after building a monster (packs, affixes, AI), which moved the seeded
+    // tactics and curve fights off what they were tuned on.
+    this.fidgetRng = new Random(Math.floor(seed * 0x7fffffff) ^ 0x5eed);
     this.fidgetWait = 1 + this.fidgetRng.range(0, 4);
     for (const [name, bone] of Object.entries(bones)) {
       const r: Rest = {

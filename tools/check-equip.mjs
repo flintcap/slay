@@ -4,8 +4,10 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 const PORT=4209;
-const server=spawn('npx',['vite','preview','--port',String(PORT),'--strictPort','--host','127.0.0.1'],{stdio:['ignore','ignore','pipe']});
-process.on('exit',()=>server.kill('SIGTERM'));
+const server=spawn('npx',['vite','preview','--port',String(PORT),'--strictPort','--host','127.0.0.1'],{detached:true,stdio:['ignore','ignore','pipe']});
+// Own process group, so the vite child under npx dies with it.
+const killServer=()=>{try{process.kill(-server.pid,'SIGTERM');}catch{}};
+process.on('exit',killServer);
 for(let i=0;i<60;i++){try{if((await fetch(`http://127.0.0.1:${PORT}/`)).ok)break;}catch{}await sleep(500);}
 const browser=await chromium.launch({executablePath:existsSync('/opt/pw-browsers/chromium')?'/opt/pw-browsers/chromium':undefined,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
 const page=await browser.newPage({viewport:{width:800,height:500}});
@@ -23,4 +25,4 @@ const res = await page.evaluate(async () => {
   return { cls: c.classId, equipped: Object.entries(c.equipment).map(([k,v])=>[k, v?.baseId]) };
 });
 console.log('shadowblade start:', JSON.stringify(res));
-await browser.close(); server.kill('SIGTERM'); process.exit(0);
+await browser.close(); killServer(); process.exit(0);

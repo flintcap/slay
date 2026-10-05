@@ -23,9 +23,19 @@ const OUT = path.resolve(String(args.out ?? 'shots/animation'));
 const PORT = Number(process.env.SLAY_PORT ?? 4303);
 
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  // Own process group: npx starts vite as a child, and killing npx alone
+  // left vite running and holding the port after the checker exited.
+  detached: true,
   stdio: ['ignore', 'ignore', 'pipe'],
 });
-const shutdown = () => server.kill('SIGTERM');
+const killServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* already gone */
+  }
+};
+const shutdown = () => killServer();
 process.on('exit', shutdown);
 for (let i = 0; i < 120; i++) {
   try {
