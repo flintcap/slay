@@ -1,3 +1,4 @@
+import { Box3, Matrix4, Raycaster, Vector3 } from 'three';
 import { Engine } from './core/Engine';
 import { save } from './core/Save';
 import { events } from './core/Events';
@@ -234,8 +235,12 @@ async function main(): Promise<void> {
     events,
     debug: installDebug(engine),
     // The checkers that measure scenes (ghost colliders, probes) build boxes
-    // and matrices in the page; three is already loaded, this only names it.
-    THREE: await import('three'),
+    // and matrices in the page. Only the classes they use are named here.
+    // Exposing the whole namespace (`await import('three')`) defeated tree
+    // shaking: it pulled every loader, helper and curve in three.js into the
+    // shipped game, about 260 KB, and the network loaders in it got the
+    // published page refused as something it is not.
+    THREE: { Box3, Matrix4, Vector3, Raycaster },
   };
 }
 
