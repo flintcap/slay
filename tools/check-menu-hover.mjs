@@ -24,7 +24,7 @@ const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--
 server.stderr.on('data', () => {});
 const stopServer = () => {
   try {
-    process.kill(-server.pid, 'SIGTERM');
+    process.kill(-server.pid, 'SIGKILL');
   } catch {
     /* already gone */
   }

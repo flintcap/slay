@@ -39,6 +39,21 @@ wait with a bounded loop; it starts and stops its own servers):
 - check-loot, check-quality, check-buff, check-equip honour `SLAY_PORT`
   (they had fixed ports).
 - `debug.inventoryIconSettle(n)` measures a cold pack filling in.
+- `debug.makeCharacter` left 57 of 720 heroes unarmed (a rolled two-hander
+  pushed out by the starting shield or orb). Fixed; 0 of 720.
+- Found why checkers sometimes "passed" against the wrong build: a
+  `vite preview` from an earlier checker kept port 4309 (vite answers
+  SIGTERM with a graceful close that can hang), so the next checker's own
+  server failed to bind and its readiness probe was answered by the stale
+  one (check-skillicons then failed: a preview has no /src). Now: every tool
+  kills its server group with SIGKILL; run-checks clears the port before
+  each browser checker and fails the one that leaves a server behind (also on
+  timeout and on its own SIGTERM); `bootGame` refuses a port already in use.
+  Results from batch 3 before this (quality, roster) ran on the stale
+  preview; both are probes and their output looked right.
+- check-skillcost: killed twice at 25 min (second time printing per skill).
+  Under software rendering every frame of a level-40 dungeon costs about
+  2.2 s whatever the skill, so it measures nothing here; run it on a GPU.
 
 **Done this session (leftovers from finished streams):**
 - Uniques in old saves are renamed from `src/data/story/uniqueText.ts` on load

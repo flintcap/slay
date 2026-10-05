@@ -11,7 +11,7 @@ const server = spawn('npx', ['vite','preview','--port',String(PORT),'--strictPor
   detached: true, stdio:['ignore','ignore','pipe'] });
 const killServer = () => {
   try {
-    process.kill(-server.pid, 'SIGTERM');
+    process.kill(-server.pid, 'SIGKILL');
   } catch {
     /* already gone */
   }

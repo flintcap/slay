@@ -21,9 +21,17 @@ const PORT = Number(process.env.SLAY_PORT ?? 4219);
 const server = spawn(
   'npx',
   ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'],
-  { stdio: ['ignore', 'ignore', 'pipe'] },
+  // Own process group: killing npx alone leaves vite holding the port.
+  { stdio: ['ignore', 'ignore', 'pipe'], detached: true },
 );
-process.on('exit', () => server.kill('SIGTERM'));
+const killServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGKILL');
+  } catch {
+    /* gone */
+  }
+};
+process.on('exit', killServer);
 for (let i = 0; i < 60; i++) {
   try {
     if ((await fetch(`http://127.0.0.1:${PORT}/`)).ok) break;
@@ -68,5 +76,5 @@ await page.screenshot({ path: out, clip: box ?? undefined });
 console.log('wrote', out);
 
 await browser.close();
-server.kill('SIGTERM');
+killServer();
 process.exit(0);

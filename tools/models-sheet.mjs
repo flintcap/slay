@@ -35,7 +35,7 @@ const server = spawn(
 server.stderr.on('data', (d) => process.stderr.write(`[vite] ${d}`));
 const stop = () => {
   try {
-    server.kill('SIGTERM');
+    server.kill('SIGKILL');
   } catch {
     /* gone */
   }

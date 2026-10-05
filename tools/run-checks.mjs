@@ -20,7 +20,7 @@
  * number of failures, capped at 1.
  */
 import { readdirSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -67,6 +67,13 @@ for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
         /* already gone */
       }
     }
+    // The checker's own server is in a group of its own and its exit hook
+    // never ran (SIGKILL), so free the port as well.
+    try {
+      execFileSync('fuser', ['-k', '-KILL', '-n', 'tcp', process.env.SLAY_PORT ?? '4309'], { stdio: 'ignore' });
+    } catch {
+      /* nothing held it */
+    }
     process.exit(130);
   });
 }
@@ -112,15 +119,49 @@ function run(c) {
 // Checkers that use `vite preview` serve `dist/`, so it must match the source.
 if (all.some((c) => c.browser) && !flag('no-build')) {
   process.stdout.write('building dist/ for the preview-server checkers... ');
-  const { execFileSync } = await import('node:child_process');
   execFileSync('npx', ['vite', 'build', '--logLevel', 'error'], { cwd: ROOT, stdio: 'ignore' });
   console.log('done');
 }
 
+// A server left on the port is worse than a crash: the next checker's own
+// server cannot bind it, its readiness probe gets an answer anyway, and it
+// runs against the stale one (a `vite preview` has no /src, so a dev-server
+// checker then fails with "Failed to fetch dynamically imported module").
+// Before and after every browser checker, anything listening is killed and
+// the leak is pinned on the checker that left it.
+const PORT = process.env.SLAY_PORT ?? '4309';
+function portHeld() {
+  try {
+    execFileSync('fuser', ['-n', 'tcp', PORT], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+/** After a checker: give a server killed on exit a few seconds to let go. */
+async function portLeftHeld() {
+  for (let i = 0; i < 5 && portHeld(); i++) await new Promise((r) => setTimeout(r, 1000));
+  return clearPort();
+}
+function clearPort() {
+  try {
+    // Exit status 0 means something held the port and was killed.
+    execFileSync('fuser', ['-k', '-KILL', '-n', 'tcp', PORT], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const results = [];
 for (const c of all) {
+  if (c.browser && clearPort()) console.log(`[run-checks] port ${PORT} was already held; cleared it`);
   process.stdout.write(`${c.browser ? '[web] ' : '      '}${c.name.padEnd(18)} `);
   const r = await run(c);
+  if (c.browser && (await portLeftHeld())) {
+    r.code = r.code || 1;
+    r.last = `left a server running on port ${PORT} (killed) | ${r.last}`;
+  }
   results.push(r);
   console.log(`${r.code === 0 ? 'pass' : 'FAIL'} ${String(Math.round(r.ms / 1000)).padStart(4)}s  ${r.last}`);
 }

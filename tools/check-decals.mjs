@@ -19,7 +19,7 @@ const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--
 });
 const killServer = () => {
   try {
-    process.kill(-server.pid, 'SIGTERM');
+    process.kill(-server.pid, 'SIGKILL');
   } catch {
     /* already gone */
   }

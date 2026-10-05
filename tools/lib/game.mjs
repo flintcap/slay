@@ -27,6 +27,14 @@ export async function bootGame({
   extraArgs = [],
 } = {}) {
   const port = Number(process.env.SLAY_PORT ?? fallbackPort);
+  // Something already answering here would be used in place of our own
+  // server (ours fails to bind under --strictPort): a stale build, or a
+  // preview with no /src. Refuse rather than test the wrong thing.
+  const held = await fetch(`http://127.0.0.1:${port}/`).then(
+    () => true,
+    () => false,
+  );
+  if (held) throw new Error(`port ${port} is already in use by another server; stop it first`);
   const args = preview
     ? ['vite', 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1']
     : ['vite', '--port', String(port), '--strictPort', '--host', '127.0.0.1'];
@@ -39,7 +47,7 @@ export async function bootGame({
   });
   const killServer = () => {
     try {
-      process.kill(-server.pid, 'SIGTERM');
+      process.kill(-server.pid, 'SIGKILL');
     } catch {
       /* gone */
     }

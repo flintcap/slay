@@ -62,7 +62,7 @@ if (LAB) {
   server.stderr.on('data', (d) => process.stderr.write(`[preview] ${d}`));
   shutdown = async () => {
     try {
-      process.kill(-server.pid, 'SIGTERM');
+      process.kill(-server.pid, 'SIGKILL');
     } catch {
       try {
         server.kill('SIGTERM');

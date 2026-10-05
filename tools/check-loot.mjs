@@ -6,7 +6,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const PORT=Number(process.env.SLAY_PORT??4207);
 const server=spawn('npx',['vite','preview','--port',String(PORT),'--strictPort','--host','127.0.0.1'],{detached:true,stdio:['ignore','ignore','pipe']});
 // Own process group, so the vite child under npx dies with it.
-const killServer=()=>{try{process.kill(-server.pid,'SIGTERM');}catch{}};
+const killServer=()=>{try{process.kill(-server.pid, 'SIGKILL');}catch{}};
 process.on('exit',killServer);
 for(let i=0;i<60;i++){try{if((await fetch(`http://127.0.0.1:${PORT}/`)).ok)break;}catch{}await sleep(500);}
 const browser=await chromium.launch({executablePath:existsSync('/opt/pw-browsers/chromium')?'/opt/pw-browsers/chromium':undefined,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});

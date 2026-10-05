@@ -1,4 +1,8 @@
-/** Times the frame cost of casting each of a class's skills, one at a time. */
+/**
+ * Times the frame cost of casting each of a class's skills, one at a time.
+ *
+ *   SLAY_PORT=4309 node tools/check-skillcost.mjs [class] [--frames=20]
+ */
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -13,7 +17,7 @@ const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--stric
 });
 const killServer = () => {
   try {
-    process.kill(-server.pid, 'SIGTERM');
+    process.kill(-server.pid, 'SIGKILL');
   } catch {
     /* already gone */
   }
@@ -32,7 +36,7 @@ page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 240)));
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 420000, polling: 500 });
 
-const cls = process.argv[2] ?? 'ranger';
+const cls = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'ranger';
 await page.evaluate(async (c) => {
   localStorage.clear();
   window.SLAY.save.hardReset();
@@ -42,42 +46,51 @@ await page.evaluate(async (c) => {
 await page.waitForFunction(() => window.SLAY.engine.currentSceneId === 'dungeon', null, { timeout: 300000, polling: 500 });
 await page.evaluate(() => window.SLAY.debug.godMode(true));
 
-const rows = await page.evaluate(async (c) => {
-  const scene = window.SLAY.engine.currentScene;
-  const pl = scene?.player;
-  const runner = scene?.skills;
-  if (!pl || !runner) return [{ id: 'ERROR', worst: -1 }];
-
-  const ids = Object.keys(pl.character.skills).filter((k) => pl.character.skills[k] > 0);
-  const out = [];
-  const frame = () => new Promise((r) => requestAnimationFrame(r));
-
-  for (const id of ids) {
-    // Settle first, so the previous skill's effects are not counted.
-    for (let i = 0; i < 30; i++) await frame();
-    pl.cooldowns.clear();
-    pl.mana = pl.stats.mana;
-    let worst = 0;
-    let last = performance.now();
-    // Cast repeatedly: a one-off allocation hides, a per-cast stall does not.
-    for (let i = 0; i < 40; i++) {
-      if (i % 5 === 0) {
-        pl.cooldowns.clear();
-        pl.mana = pl.stats.mana;
-        try { runner.cast(id, pl, pl.position.clone().add({ x: 5, y: 0, z: 0 }), scene.context(), scene.enemies, scene.boss); } catch {}
+// One skill per evaluate, printed as it lands: under software rendering a
+// level-40 class takes many minutes, and a run cut short still says something.
+const ids = await page.evaluate(() => {
+  const pl = window.SLAY.engine.currentScene?.player;
+  return pl ? Object.keys(pl.character.skills).filter((k) => pl.character.skills[k] > 0) : [];
+});
+if (!ids.length) console.log('ERROR: no player or no skills');
+const FRAMES = Number(process.argv.find((a) => a.startsWith('--frames='))?.split('=')[1] ?? 20);
+const rows = [];
+for (const id of ids) {
+  const r = await page.evaluate(
+    async ({ id, frames }) => {
+      const scene = window.SLAY.engine.currentScene;
+      const pl = scene?.player;
+      const runner = scene?.skills;
+      if (!pl || !runner) return { id, worst: -1 };
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      // Settle first, so the previous skill's effects are not counted.
+      for (let i = 0; i < 10; i++) await frame();
+      let worst = 0;
+      let last = performance.now();
+      // Cast repeatedly: a one-off allocation hides, a per-cast stall does not.
+      for (let i = 0; i < frames; i++) {
+        if (i % 5 === 0) {
+          pl.cooldowns.clear();
+          pl.mana = pl.stats.mana;
+          try {
+            runner.cast(id, pl, pl.position.clone().add({ x: 5, y: 0, z: 0 }), scene.context(), scene.enemies, scene.boss);
+          } catch {}
+        }
+        await frame();
+        const now = performance.now();
+        const dt = now - last;
+        last = now;
+        if (i > 2 && dt > worst) worst = dt;
       }
-      await frame();
-      const now = performance.now();
-      const dt = now - last;
-      last = now;
-      if (i > 2 && dt > worst) worst = dt;
-    }
-    out.push({ id, worst: +worst.toFixed(1) });
-  }
-  return out.sort((a, b) => b.worst - a.worst);
-}, cls);
-
-for (const r of rows) console.log(String(r.worst).padStart(8) + 'ms  ' + r.id);
+      return { id, worst: +worst.toFixed(1) };
+    },
+    { id, frames: FRAMES },
+  );
+  rows.push(r);
+  console.log(String(r.worst).padStart(8) + 'ms  ' + r.id);
+}
+rows.sort((a, b) => b.worst - a.worst);
+console.log(`\nworst: ${rows.slice(0, 5).map((r) => `${r.id} ${r.worst}ms`).join(', ')}`);
 await browser.close();
 killServer();
 process.exit(0);

@@ -45,7 +45,7 @@ server.stderr.on('data', (d) => process.stderr.write(`[preview] ${d}`));
 
 const shutdown = () => {
   try {
-    process.kill(-server.pid, 'SIGTERM');
+    process.kill(-server.pid, 'SIGKILL');
   } catch {
     try {
       server.kill('SIGTERM');
