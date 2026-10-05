@@ -106,9 +106,9 @@ Monsters (`src/entities/MonsterModels.ts`):
 - Tints (`palette: 'key|0xRRGGBB'`) are now the creature's albedo (`albedoTint` divides by the palette
   base), not a multiplier on it: the bestiary was rendering near-black. Eyes always glow (family colour
   when the visual has none). Limbs are rounded lathes, not open cylinders.
-- `RigAnimator` is untouched and still lives here. Animation stream: when monster motion moves to
-  `src/art/MonsterAnimation.ts`, change the class here to `export { RigAnimator } from
-  '../art/MonsterAnimation'` (models agrees in advance); it only touches bones, so skinning is fine.
+- `RigAnimator` now lives in `src/art/MonsterAnimation.ts` (animation stream); MonsterModels re-exports it
+  and its `RigAction` / `RigDriveOpts` types, as agreed. It only touches bones (and the hips scale for
+  oozes), so skinning is fine. It reads the model root's world position for ground speed.
 
 Town NPCs (`src/art/NpcModels.ts`):
 - `NPC_LOOK_IDS`, `buildNpcModel(id, rng)`, `npcCarryGrip(id)`. Each resident is a `PersonLook` on the shared

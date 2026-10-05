@@ -1,42 +1,50 @@
 # Stream: animation (how bodies move)
 
-Status: in progress (milestones 1-3 done; on milestone 4)
+Status: in progress (milestones 1-4 done; on milestone 5)
 
 ## Milestones
 
 - [x] Locomotion: speed-blended walk and run, lean into turns, feet that plant instead of sliding. ("Plant the feet: a stepping gait driven by real ground speed")
 - [x] Attacks: anticipation, impact and recovery with real weight for every weapon grip; spell casts with a hand glow. ("Animation: strikes land on the contact frame, feet held in actions, both hands on two-handed weapons")
 - [x] Hit reactions and deaths: flinch, stagger, knockback, and death animations that fall and fade instead of vanishing. ("Animation: hits flinch without cutting swings, stagger, stun, knockdown, two deaths")
-- [ ] Monster motion: idle variety per family, spawn or emerge animations, movement that suits each body (scuttle, lope, float, lumber). (Monster looks moved to the models stream.)
+- [x] Monster motion: idle variety per family, spawn or emerge animations, movement that suits each body (scuttle, lope, float, lumber). (Monster looks moved to the models stream.) ("Animation: monsters move by body, wind up and strike, fidget, spawn and die their own way")
 - [ ] Secondary motion: cloth, cape, hair and loose gear that sway and settle; town NPCs idle with personality. (Player and NPC looks moved to the models stream.)
 - [ ] Sweep: check-grips, check-clips and check-attack pass; nothing pops or snaps between states.
 
 ## Next up
 
-Milestone 4, monster motion. Concretely:
+Milestone 5, secondary motion and NPC idles. Concretely:
 
-1. Move `RigAnimator` (and `RigAction`, `RigDriveOpts`) out of `src/entities/MonsterModels.ts` into a new
-   `src/art/MonsterAnimation.ts`, then replace the class in MonsterModels with
-   `export { RigAnimator } from '../art/MonsterAnimation'` (plus the types). Models agreed to this in
-   both progress files; it is the only edit to MonsterModels. `Archetype` comes from MonsterModels
-   (import the type only, to avoid a cycle). `Enemy.ts`, `SkillRunner.ts` (summons) and `Boss`
-   drive it through `update(dt, { locomotion, action, actionT, time, deathT })`; keep that interface.
-2. Inside it: crossfade between actions (snapshot bone rotations, blend ~0.1 s) so nothing pops;
-   an `attack` that starts while another is running is the strike after a wind-up (Enemy sets
-   `attack` for the telegraph, then again for 0.4 s on execute): wind-up coils and holds with a
-   tremble, strike snaps through and follows through. Hits flinch additively; deaths fall by archetype
-   (quadrupeds roll onto a side, fliers drop, serpents coil and go limp, oozes splat) and settle.
-3. Idle variety per family (look around, shift weight, sniff, twitch) from a per-monster phase; spawn
-   or emerge per archetype (climb out of the floor, unfurl, drop in); locomotion that suits the body:
-   scuttle (insect/arachnid: fast tripod, low body), lope (quadruped: gallop at speed), float (bob and
-   tilt into motion), lumber (big humanoids: heavier, slower cadence, more sway). Stride from real
-   ground speed like the hero (monster `locomotion` is 0..1; Enemy also has its root position).
-4. Add a static checker for monsters (every archetype x action: no NaN, no pops between actions,
-   death ends low).
+1. Long hair: the `hairLong` cover meshes (`userData.coverSlot === 'hairLong'`, bound to head and chest)
+   get a runtime sway bone under `head`: re-weight the vertices below the head joint toward it and bind
+   that mesh to a copy of the skeleton with the extra bone appended (other meshes keep theirs). Drive it
+   as a damped pendulum from the head's world acceleration, sub-stepped. Do it in a new file
+   (`src/art/Secondary.ts`) the Animator attaches lazily from `bones.root`'s parent.
+2. Loose gear: the quiver socket (on `chest`) and any socketed off-hand item can lag on a spring the
+   same way (the socket code is animation's).
+3. Capes: the unique chest cape (WornGear `chestSignature`, heraldry material, bound to chest/spine/hips)
+   and boss capes (MonsterModels `dressRank`) are merged into material buckets, so they cannot be swung
+   without either vertex selection (behind the back, below the shoulders) or models adding a bone. Try
+   vertex selection on the hero first; leave monster capes unless it is clean.
+4. Town NPC idles with personality: `Town.ts` builds each resident's `Animator` (world's file, one-line
+   edit to pass the resident id, e.g. `anim.setPersona(who)`). Give each trade an idle: the smith
+   hammers, the vendor gestures, the healer tends, the stash keeper counts keys, the listener sways.
+   Residents are `kale, hesk, corvane, marrow, gilder, wenna, listener, renn, vell` (NpcModels).
 
 ## Notes for resume
 
 - **From art (47064a3):** the off-hand socket (`SOCKETS.offHand`, rot X 0.92π) carried shields with their authored front (+Z) toward the hero's back. Art now turns the shield inside `buildShield`, so it reads correctly as is. If you change the off-hand socket, tell art (art.md) so the inner turn can go. Sword grips are now centred on the origin with the guard above the hand (they used to sit half inside the blade); `check-grips` still passes.
+
+- **Monsters (milestone 4).** `src/art/MonsterAnimation.ts` holds `RigAnimator` (re-exported from
+  MonsterModels). Same interface as before. Ground speed comes from the model root's world position (a
+  jump over 14 m/s is ignored) and sets the gait cadence per archetype (`cadence()`), eased (`rate`,
+  `gSm`) so long chains (serpents) never whip. Bipeds walk/run, colossal lumber, quadrupeds blend from
+  diagonal walk to a bounding gallop (`gal`, eased), many-legged scuttle on a tripod, floaters tilt and
+  bank, oozes hop with squash and stretch. `attack` restarting while an attack (or a long cast) is
+  running is the strike; otherwise it is the wind-up, which coils and holds with a tremble. Crossfades
+  (bone quaternion snapshots) on any change that has its own pose. Hits flinch additively. Fidgets from
+  a private seeded `Random`. Spawns and deaths per archetype. `node tools/check-monster-anim.mjs`
+  checks one monster per archetype; `tools/pose-sheet.ts set=monsters` renders them.
 
 - **Reactions (milestone 3).** `play('hurt')` no longer plays a clip: it calls `Animator.flinch(1)`, an
   additive layer (`applyFlinch`) that alternates sides and is halved during actions. `stagger` is a

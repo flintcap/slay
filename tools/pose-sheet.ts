@@ -15,6 +15,8 @@ import { ITEM_BASES } from '../src/data/itemBases';
 import { Random } from '../src/core/RNG';
 import type { CharClassId } from '../src/types';
 import { contactDelay } from '../src/entities/Player';
+import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../src/entities/MonsterModels';
+import { MONSTERS } from '../src/data/monsters';
 
 type View = 'side' | 'front' | 'threeQuarter' | 'back';
 
@@ -151,7 +153,60 @@ function reactTile(label: string, cls: CharClassId, weapon: string | undefined, 
   };
 }
 
+/**
+ * A monster driven the way Enemy drives it, frozen at a moment: `steps` is a
+ * list of [seconds, speed m/s, action, action length s, death?].
+ */
+function monsterTile(label: string, id: string, steps: Array<[number, number, RigAction, number, boolean?]>, view: View = 'side'): Tile {
+  return {
+    label,
+    view,
+    run(mover) {
+      mover.rotation.y = view === 'side' ? Math.PI / 2 : 0;
+      const def = MONSTERS.find((m) => m.id === id) ?? MONSTERS[0];
+      const rng = new Random(0x30b);
+      const model = buildMonsterModel(def.visual, rng, def.scale ?? 1, { family: def.family });
+      mover.add(model.root);
+      const anim = new RigAnimator(model.root, model.bones, monsterArchetype(def.visual.body), rng);
+      let time = 0;
+      for (const [secs, speed, action, len, death] of steps) {
+        let t = 0;
+        let dT = 0;
+        for (let i = 0; i < Math.round(secs / DT); i++) {
+          time += DT;
+          mover.position.x += Math.sin(mover.rotation.y) * speed * DT;
+          mover.position.z += Math.cos(mover.rotation.y) * speed * DT;
+          mover.updateMatrixWorld(true);
+          t = Math.min(1, t + DT / Math.max(0.05, len));
+          if (death) dT = Math.min(1, dT + DT * 1.25);
+          anim.update(DT, { locomotion: Math.min(1, speed / 3.2), action: t < 1 ? action : 'idle', actionT: t, time, deathT: dT });
+        }
+      }
+    },
+  };
+}
+
 const SETS: Record<string, Tile[]> = {
+  monsters: [
+    monsterTile('skeleton  run', 'skeleton_rattler', [[1.2, 3.4, 'idle', 1]]),
+    monsterTile('skeleton  wind-up', 'skeleton_rattler', [[0.5, 0, 'idle', 1], [0.5, 0, 'attack', 0.7]], 'threeQuarter'),
+    monsterTile('skeleton  strike', 'skeleton_rattler', [[0.5, 0, 'idle', 1], [0.6, 0, 'attack', 0.7], [0.1, 0, 'attack', 0.4]], 'threeQuarter'),
+    monsterTile('skeleton  dead', 'skeleton_rattler', [[0.5, 0, 'idle', 1], [1.0, 0, 'death', 1, true]]),
+    monsterTile('hound  walk', 'corpse_hound', [[1.2, 1.2, 'idle', 1]]),
+    monsterTile('hound  gallop', 'corpse_hound', [[1.6, 4.2, 'idle', 1]]),
+    monsterTile('hound  bite', 'corpse_hound', [[0.5, 0, 'idle', 1], [0.6, 0, 'attack', 0.7], [0.1, 0, 'attack', 0.4]]),
+    monsterTile('hound  dead', 'corpse_hound', [[0.5, 0, 'idle', 1], [1.0, 0, 'death', 1, true]], 'threeQuarter'),
+    monsterTile('titan  lumber', 'grave_titan', [[1.4, 2.0, 'idle', 1]], 'threeQuarter'),
+    monsterTile('titan  dead', 'grave_titan', [[0.5, 0, 'idle', 1], [1.0, 0, 'death', 1, true]]),
+    monsterTile('spider  scuttle', 'brass_stalker', [[1.2, 3.4, 'idle', 1]], 'threeQuarter'),
+    monsterTile('spider  rear (wind-up)', 'brass_stalker', [[0.5, 0, 'idle', 1], [0.5, 0, 'attack', 0.7]]),
+    monsterTile('spider  dead', 'brass_stalker', [[0.5, 0, 'idle', 1], [1.0, 0, 'death', 1, true]], 'threeQuarter'),
+    monsterTile('basilisk  slither', 'basilisk', [[1.4, 2.4, 'idle', 1]], 'threeQuarter'),
+    monsterTile('wraith  strike', 'wraith', [[0.5, 0, 'idle', 1], [0.6, 0, 'attack', 0.7], [0.1, 0, 'attack', 0.4]], 'threeQuarter'),
+    monsterTile('skeleton  climbing out', 'skeleton_rattler', [[0.3, 0, 'spawn', 0.62]], 'threeQuarter'),
+    monsterTile('scarab  dropping in', 'scarab_drone', [[0.42, 0, 'spawn', 0.62]], 'threeQuarter'),
+    monsterTile('ooze  hop', 'tentacle_horror', [[1.0, 2.0, 'idle', 1]], 'side'),
+  ],
   reactions: [
     reactTile('flinch (hit)', 'warden', 'sword.short', (a) => a.play('hurt'), 0.06, 'threeQuarter'),
     reactTile('stagger  catch step', 'warden', 'sword.short', (a) => a.play('stagger', { fade: 0.05 }), 0.2),
