@@ -69,6 +69,40 @@ export function setWorldCutaway(x: number, y: number, z: number, radius: number)
   worldCutaway.value.set(x, y, z, radius);
 }
 
+/** Fragment discard for the cutaway; needs `vWsPos` and `uCut`. */
+const CUTAWAY_GLSL = [
+  'if (uCut.w > 0.0) {',
+  '  vec3 cutD = uCut.xyz - cameraPosition;',
+  '  float cutL = length(cutD);',
+  '  vec3 cutN = cutD / max(cutL, 1e-3);',
+  '  vec3 cutR = vWsPos - cameraPosition;',
+  '  float cutT = dot(cutR, cutN);',
+  '  float cutP = length(cutR - cutN * cutT);',
+  // Solid outside the tube, and from just in front of the hero on.
+  '  float cutA = max(smoothstep(uCut.w * 0.6, uCut.w, cutP), smoothstep(cutL - 1.4, cutL - 0.7, cutT));',
+  '  float cutH = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);',
+  '  if (cutA < cutH) discard;',
+  '}',
+].join('\n');
+
+/**
+ * The same cutaway on a plain private material (the wall trim and plinth,
+ * which otherwise float in the hole). Never call it on a cached `surface()`.
+ */
+export function addWorldCutaway<M extends THREE.Material>(mat: M): M {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uCut = worldCutaway;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWsPos;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWsPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWsPos;\nuniform vec4 uCut;')
+      .replace('#include <clipping_planes_fragment>', `${CUTAWAY_GLSL}\n#include <clipping_planes_fragment>`);
+  };
+  mat.customProgramCacheKey = () => 'worldCutaway';
+  return mat;
+}
+
 /**
  * A private material for level geometry: the palette's own PBR set, plus a
  * world-space layer that breaks the tiling and grounds the surface.
@@ -138,23 +172,7 @@ export function worldSurface(key: string, opts: SurfaceOpts, w: WorldSurfaceOpts
       )
       .replace(
         '#include <clipping_planes_fragment>',
-        wall
-          ? [
-              'if (uCut.w > 0.0) {',
-              '  vec3 cutD = uCut.xyz - cameraPosition;',
-              '  float cutL = length(cutD);',
-              '  vec3 cutN = cutD / max(cutL, 1e-3);',
-              '  vec3 cutR = vWsPos - cameraPosition;',
-              '  float cutT = dot(cutR, cutN);',
-              '  float cutP = length(cutR - cutN * cutT);',
-              // Solid outside the tube, and from just in front of the hero on.
-              '  float cutA = max(smoothstep(uCut.w * 0.6, uCut.w, cutP), smoothstep(cutL - 1.4, cutL - 0.7, cutT));',
-              '  float cutH = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);',
-              '  if (cutA < cutH) discard;',
-              '}',
-              '#include <clipping_planes_fragment>',
-            ].join('\n')
-          : '#include <clipping_planes_fragment>',
+        wall ? `${CUTAWAY_GLSL}\n#include <clipping_planes_fragment>` : '#include <clipping_planes_fragment>',
       )
       .replace(
         '#include <map_fragment>',

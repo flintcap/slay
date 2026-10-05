@@ -6,38 +6,25 @@ Status: in progress
 
 - [x] Textures: richer procedural surfaces with normal and roughness detail and large-scale variation so floors and walls stop tiling visibly. (commit "World: world-space surfaces, biome grades, height fog, room landmarks")
 - [x] Lighting and post: tone mapping, a colour grade per biome, tuned bloom, ambient occlusion, vignette, light shafts and fog that add depth. (same commit; grade + bloom + vignette per biome, fog shaped around the player, height fog in pits. Light shafts untouched.)
-- [ ] Set dressing: landmark pieces per room type and per biome so every room has a focal point. (wired; w10 calm render: the crypt treasure room's gold hoard reads as the focal point. Biome landmarks (ossuary, crystal, forge, idol, brood mound, monolith, obelisk, rift) not yet seen)
-- [ ] Liquids and hazards: water, lava and chasms that look the part, with ambient motes and drips per biome. (WIRED and live; water seen in caverns and sunken temple; lava and drips not yet seen)
-- [x] Town: lived-in camp with lighting, landmarks and life. (commit "World: town confirmed in render; foundry flat orange tile; calm harness shots"; w9 render: campfire, lanterns, tents and residents read at night, hero clear; 1,096 draw calls, 23 lights)
+- [x] Set dressing: landmark pieces per room type and per biome so every room has a focal point. (commit "World: landmarks and lava seen in calm renders; foundry iron matte, trim follows the cutaway"; w10 crypt gold hoard, w11 foundry smelting vat glows as the room's centre piece, hive treasure room reads with webs and a hoard)
+- [x] Liquids and hazards: water, lava and chasms that look the part, with ambient motes and drips per biome. (same commit; w11: foundry and ashwaste lava read as crust over glowing seams with no blowout, a drip falls by the hero in caverns, water seen in w9)
 - [ ] Sweep: one render per biome, each reads clearly with the player and monsters easy to see.
 
 ## Next up
 
-Paused mid-render (w10 stopped after its first shot). Nothing is half-wired; the branch builds.
-
-1. Render the rest of w10, one command, under `timeout` (45 min max), port 4304:
-   `npm run build` then
-   `SLAY_PORT=4304 timeout -k 20 2700 node docs/overhaul/world-render.mjs --calm --out=shots/w10 --shots=caverns@room,foundry@liquid,foundry@room,hive@room,ashwaste@liquid`
-   then `pkill -f "[v]ite preview --port 4304"`. Run it as a background Bash task (it exits by
-   itself) and wait with an `until grep ... shots/w10.log` loop; never wait on a bare server.
-   - `@room` shots show biome landmarks: if each room has a clear focal piece, tick milestone 3.
-   - `@liquid` shots show foundry and ashwaste lava (both seeds have lava: 36 and 56 tiles) and
-     the drips near the hero: if lava reads as lava and nothing glares, tick milestone 4.
-   - foundry@liquid also checks the two fixes made after w9: no flat orange floor tile (rust is
-     metalness 0.12 now) and the hero aura disc on the hero's floor.
-2. Milestone 6 sweep: one shot per biome WITHOUT `--calm` so monsters are on screen, at most five
-   or six shots per render (each takes 4 to 7 minutes; boot about 1 minute). For example
-   `--shots=crypt@room,caverns@room,foundry@room,sunkenTemple@room` and then
-   `--shots=hive@room,frostvault@room,ashwaste@room,voidspire@room`. Judge: floor clearest and best
-   lit, hero and monsters stand out from it. Nameplates crowd big fights; that is the HUD stream's.
-3. Known look issues from w9, fix if cheap: the near wall's cap draws as a big black wedge at the
-   bottom of a narrow corridor shot (foundry@treasure); pale blue-white stones round the town
-   fire ring and scattered in the camp read cold and bright; ashwaste still 2.0M triangles in w9
-   (rubble now casts no shadow; rockCluster at rough 0.6 is 1,344 triangles a copy).
-4. Town: 1,096 draw calls (budget 900), 802K triangles, 23 lights (budget 24). Rest is residents
-   (models' budget).
-5. When milestones 3, 4 and 6 are ticked, set `Status: done`.
-6. `node tools/check-propmesh.mjs` alone when the machine is quiet.
+1. Milestone 6 sweep: one shot per biome WITHOUT `--calm` so monsters are on screen. `npm run build`, then
+   one command per batch as a background Bash task (it exits by itself), waiting with an
+   `until grep -q EXIT shots/w12.log` loop under `timeout 590`, never on a bare server:
+   `SLAY_PORT=4304 timeout -k 20 2700 node docs/overhaul/world-render.mjs --out=shots/w12 --shots=crypt@room,caverns@landmark,foundry@room,sunkenTemple@room > shots/w12.log 2>&1; echo "EXIT $?" >> shots/w12.log; pkill -f "[v]ite preview --port 4304"`
+   then the same with `--out=shots/w13 --shots=hive@landmark,frostvault@room,ashwaste@room,voidspire@room`.
+   Judge: floor clearest and best lit, hero and monsters stand out from it. Also check the wall
+   cutaway (a dithered hole on the hero's sightline): the cornice trim and plinth should vanish
+   with the wall now (they floated as thin lines in w11 ashwaste@liquid), and side walls level with
+   the hero stay solid. Nameplates crowding big fights is the HUD stream's.
+2. When milestone 6 is ticked, set `Status: done`.
+3. Known, not fixed: the caverns floor away from the hero light is very dark; caverns water pools
+   read nearly black. Town: 1,096 draw calls (budget 900), the rest is residents (quality stream merging).
+4. `node tools/check-propmesh.mjs` alone when the machine is quiet.
 
 ## Notes for resume
 
@@ -50,6 +37,11 @@ Paused mid-render (w10 stopped after its first shot). Nothing is half-wired; the
   line, only in front of the hero, wall-kind materials only, set in `DungeonMesh.update`). Town
   stone tinted warm (0xb09c80). Cluster rocks of 0.5 m and under use the low bevel.
 - Harness: `@landmark` stands three tiles south of the biggest room's biome landmark.
+- w11 (calm) confirmed: lava fixed in foundry and ashwaste, crack veins and webs read right, the
+  cutaway brought the hero back in ashwaste@liquid. After w11 (not yet rendered): wall trim and
+  plinth are private `surfaceVariant` copies with `addWorldCutaway()` so they open with the wall;
+  foundry iron floors and walls matte (roughness 0.95, metalness 0.65 / 0.6) to stop the glitter
+  and an iron-wall hot spot.
 
 **From menus, DONE:** sprites drew as solid dark squares in the ambient occlusion pass. `Renderer.ts` `hideSpritesFromAO()` patches the GTAO pass instance so sprites hide with points and lines during its normal/depth draw (checked headlessly: hidden during, restored after).
 

@@ -567,14 +567,17 @@ const ART: Record<BiomeId, BiomeArt> = {
     ceilingHoles: 0.15,
     skyColor: 0x120704,
     floorNoise: 0.01,
+    // Iron at roughness 0.55 / 0.5 glittered under the furnace lights (w10,
+    // w11: sparkle over the floor round the hero and a white hot spot on an
+    // iron wall). Matte enough to read as worked metal without the glitter.
     floors: [
-      { palette: 'metal.iron', weight: 6, repeat: 1.4, roughness: 0.55, metalness: 0.85 },
+      { palette: 'metal.iron', weight: 6, repeat: 1.4, roughness: 0.95, metalness: 0.65 },
       { palette: 'stone.foundry', weight: 4, repeat: 1, tint: 0x4a3830 },
       { palette: 'metal.rust', weight: 3, repeat: 1.2, roughness: 0.85, metalness: 0.12 },
     ],
     walls: [
       { palette: 'stone.foundry', weight: 6, repeat: 1 },
-      { palette: 'metal.iron', weight: 4, repeat: 1.2, metalness: 0.8, roughness: 0.5 },
+      { palette: 'metal.iron', weight: 4, repeat: 1.2, metalness: 0.6, roughness: 0.95 },
     ],
     trim: { palette: 'metal.bronze', weight: 1, roughness: 0.35, metalness: 0.95 },
     baseTrim: 'metal.rust',

@@ -36,7 +36,7 @@ import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from '
 
 import { surface, surfaceVariant } from '../art/Materials';
 import { setFogShape, fogShape } from '../core/Renderer';
-import { worldSurface, setWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldSurfaceOpts } from '../art/WorldSurface';
+import { worldSurface, setWorldCutaway, addWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldSurfaceOpts } from '../art/WorldSurface';
 import { liquidSurface, type LiquidSurface, type LiquidStyle } from '../art/Liquids';
 import { crackTexture } from '../art/Textures';
 import { Drips, type DripSite } from './Ambience';
@@ -570,8 +570,20 @@ export class DungeonMesh {
     const wallMats = art.walls.map((v) => worldVariantMaterial(v, world('wall')));
     for (const m of [...floorMats, ...wallMats]) if (!m.userData.shared) this.ownedMat.push(m);
     this.wallWhole = art.walls.map((v) => wholeRepeat(v.repeat ?? 1, 1));
-    const trimMat = variantMaterial(art.trim);
-    const baseMat = safeSurface(art.baseTrim, { repeat: 1.2 });
+    // Private copies (not the cached surfaces) so they can carry the wall
+    // cutaway: otherwise the cornice and plinth float in the hole.
+    const trimMat = addWorldCutaway(
+      surfaceVariant(art.trim.palette, {
+        repeat: art.trim.repeat ?? 1,
+        tint: art.trim.tint,
+        roughness: art.trim.roughness,
+        metalness: art.trim.metalness,
+        emissive: art.trim.emissive,
+        emissiveIntensity: art.trim.emissiveIntensity,
+      }),
+    );
+    const baseMat = addWorldCutaway(surfaceVariant(art.baseTrim, { repeat: 1.2 }));
+    this.ownedMat.push(trimMat, baseMat);
     // A private clone, not the shared cached surface: the dissolve below is
     // attached with `onBeforeCompile`, and hanging that on a cached material
     // gives every other user of the same palette a hole in it.
