@@ -1033,7 +1033,7 @@ export class DungeonScene extends GameScene {
     if (this.heroLight) {
       // High above, so it reads as light falling on the player rather than
       // light coming out of them.
-      this.heroLight.position.set(this.player.position.x, 4.0, this.player.position.z);
+      this.heroLight.position.set(this.player.position.x, this.player.position.y + 4.0, this.player.position.z);
       // Breathe very slightly so it reads as carried flame, not a fixed lamp.
       this.heroLight.intensity = 30 + Math.sin(elapsed * 3.1) * 2.2;
     }

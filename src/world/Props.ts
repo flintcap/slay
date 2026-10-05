@@ -386,6 +386,12 @@ interface PlaceCtx {
   roomOf: Int16Array;
   occupied: Uint8Array;
   blocked: Uint8Array;
+  /**
+   * Tiles big pieces must keep their distance from: the entry landing (where
+   * the hero arrives) and every spawn tile. Small clutter may sit next to
+   * them; a landmark or feature may not.
+   */
+  keepClear: Uint8Array;
   out: PropPlacement[];
   /** Where the last `placeNearAt` landed. */
   lastX: number;
@@ -412,6 +418,7 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
     roomOf,
     occupied: new Uint8Array(w * h),
     blocked: new Uint8Array(w * h),
+    keepClear: new Uint8Array(w * h),
     out: [],
     lastX: 0,
     lastY: 0,
@@ -421,6 +428,13 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
   reserve(ctx, level.entry.x, level.entry.y, 2);
   reserve(ctx, level.exit.x, level.exit.y, 2);
   for (const s of level.spawns) markOccupied(ctx, s.x, s.y);
+  // The landing the hero arrives on, and every spawn tile, stay out of reach
+  // of anything big. A landmark two tiles off the stairs put the hero's legs
+  // inside its rubble on the first frame of a foundry floor.
+  for (let y = level.entry.y - 2; y <= level.entry.y + 2; y++) {
+    for (let x = level.entry.x - 2; x <= level.entry.x + 2; x++) markKeepClear(ctx, x, y);
+  }
+  for (const s of level.spawns) markKeepClear(ctx, s.x, s.y);
 
   placeWallLights(ctx);
   placeRoomFeatures(ctx);
@@ -461,6 +475,35 @@ function walkable(ctx: PlaceCtx, x: number, y: number): boolean {
 function markOccupied(ctx: PlaceCtx, x: number, y: number): void {
   if (x < 0 || y < 0 || x >= ctx.w || y >= ctx.h) return;
   ctx.occupied[y * ctx.w + x] = 1;
+}
+
+function markKeepClear(ctx: PlaceCtx, x: number, y: number): void {
+  if (x < 0 || y < 0 || x >= ctx.w || y >= ctx.h) return;
+  ctx.keepClear[y * ctx.w + x] = 1;
+}
+
+/**
+ * How many tiles of breathing room a prop needs from the keep-clear tiles.
+ * Features and anything wider than half a tile keep one tile clear; pieces
+ * that spill past their own tile (ossuaries, idols, forges) keep it from
+ * spawn tiles too, and every big piece keeps two tiles clear of the landing.
+ */
+function crowdsKeepClear(ctx: PlaceCtx, x: number, y: number, def: PropDef): boolean {
+  if (def.placement === 'detail' || def.placement === 'wall' || def.placement === 'liquid') return false;
+  const big = def.placement === 'feature' || def.radius >= 0.6;
+  if (!big) return false;
+  const e = ctx.level.entry;
+  if (Math.max(Math.abs(x - e.x), Math.abs(y - e.y)) <= 4) return true;
+  if (def.radius < 0.85) return false;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= ctx.w || ny >= ctx.h) continue;
+      if (ctx.keepClear[ny * ctx.w + nx]) return true;
+    }
+  }
+  return false;
 }
 
 function isOccupied(ctx: PlaceCtx, x: number, y: number): boolean {
@@ -512,6 +555,8 @@ function emit(
   const def = propDef(kind);
   if (isOccupied(ctx, x, y)) return false;
   if (def.blocks && !canBlock(ctx, x, y)) return false;
+  // Gameplay pieces (chests, altars, shrines) are never dropped for this.
+  if (!interact && crowdsKeepClear(ctx, x, y, def)) return false;
   markOccupied(ctx, x, y);
   if (def.blocks) ctx.blocked[y * ctx.w + x] = 1;
   ctx.out.push({ x, y, rotation, kind, interact });
@@ -1599,7 +1644,17 @@ function buildCluster(
     let g: THREE.BufferGeometry;
     switch (opts.shape) {
       case 'rock': {
-        g = safeRock(s, s * rng.range(0.6, 1.1), s, rng, 0.6);
+        // Detail scales with size. Pebbles a few pixels across were full
+        // bevelled, displaced blocks, and the ashwaste's rubble and pebbles
+        // alone came to over half a million triangles a frame.
+        if (opts.size[1] <= 0.2) {
+          g = new THREE.IcosahedronGeometry(s * 0.55, 0);
+          g.scale(1, rng.range(0.5, 0.8), rng.range(0.8, 1.1));
+          g.rotateY(rng.range(0, 6.28));
+          g.translate(px, s * 0.22, pz);
+          break;
+        }
+        g = safeRock(s, s * rng.range(0.6, 1.1), s, rng, opts.size[1] <= 0.45 ? 0.3 : 0.6);
         g.rotateY(rng.range(0, 6.28));
         g.translate(px, s * 0.4, pz);
         break;

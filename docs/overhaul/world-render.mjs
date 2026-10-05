@@ -69,7 +69,19 @@ for (const name of WANT) {
         // Stand a little south of the centre so the centre piece is in front.
         // ...but stay inside a small room: +3 put the hero in the corridor.
         const off = Math.max(1, Math.min(3, Math.floor(room.h / 2) - 1));
-        const p = sc.mesh.tileToWorld(Math.round(room.center.x), Math.round(room.center.y) + off);
+        // ...and never inside a prop: the landmark lands near the centre, and
+        // standing in it hid the hero. Take the nearest floor tile to that
+        // point with no prop (other than flat seals and grit) within one tile.
+        const L = sc.level; const W = L.width;
+        const flat = /Seal$|pebbles|Chips|Drift|Patch|Tuft|Crust|slag|Fragment|Mote|scorch/;
+        const busy = new Set(L.props.filter((q) => !flat.test(q.kind)).map((q) => q.y * W + q.x));
+        const free = (x, y) => { if (L.tiles[y * W + x] !== 1) return false; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (busy.has((y + dy) * W + x + dx)) return false; return true; };
+        const tx = Math.round(room.center.x); const ty = Math.round(room.center.y) + off;
+        let best = [tx, ty]; let bestD = 1e9;
+        for (let y = room.y; y < room.y + room.h; y++) for (let x = room.x; x < room.x + room.w; x++) {
+          const d = (x - tx) ** 2 + (y - ty) ** 2; if (d < bestD && free(x, y)) { bestD = d; best = [x, y]; }
+        }
+        const p = sc.mesh.tileToWorld(best[0], best[1]);
         sc.player.position.set(p.x, p.y, p.z);
         sc.player.root?.position?.set(p.x, p.y, p.z);
         sc.rig?.follow?.(sc.player.root);

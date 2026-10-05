@@ -29,6 +29,15 @@ Status: in progress
 
 ## Notes for resume
 
+- Keep-clear rule (Props.ts `crowdsKeepClear`): features and props of radius 0.6+ never stand within 4
+  tiles (Chebyshev) of the entry; props of radius 0.85+ never stand next to a spawn tile. Interactables
+  (chests, altars, shrines) are exempt so no gameplay piece is dropped. Entry rubble blocks keep their
+  nearest corner behind z -1.0 of the entry tile. The harness `@room`/`@<kind>` stand point now picks
+  the nearest floor tile with no prop within one tile.
+- Ashwaste triangle cut: cluster rocks of size 0.2 and under are bare icosahedra, up to 0.45 use the
+  low bevel. The entry arch uses the walls' own stone and tint at 72% (the white blob over the hero).
+  The hero light follows the hero's height (it sat at y 4 on raised floors).
+
 - Town perf (w6 -> w8): 6,102 -> 1,092 draw calls, 2.7M -> 805K triangles. `mergeStatic` folds every
   static single-material mesh under the camp root into one mesh per material (moving things in
   `spin`/`sway`/`flames` are skipped), the lantern bulbs are one `InstancedMesh` (`buildBulbs`, flicker

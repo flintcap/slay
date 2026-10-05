@@ -1165,7 +1165,12 @@ export class DungeonMesh {
    */
   private buildStairs(rng: Rng): void {
     const level = this.level;
-    const stone = safeSurface(this.art.walls?.[0]?.palette ?? 'stone.crypt', { repeat: 1.6 });
+    // The walls' own stone with the walls' own tint, a shade darker: the arch
+    // stands a metre from the hero's light, and untinted pale stone there
+    // bloomed into a white blob over the hero on every ashwaste start.
+    const wall0 = this.art.walls?.[0];
+    const archTint = new THREE.Color(wall0?.tint ?? 0xffffff).multiplyScalar(0.72).getHex();
+    const stone = safeSurface(wall0?.palette ?? 'stone.crypt', { repeat: 1.6, tint: archTint });
     const dark = safeSurface('stone.crypt', { repeat: 1.2, tint: 0x5a5a62 });
 
     // --- the descent ------------------------------------------------------
@@ -1253,8 +1258,11 @@ export class DungeonMesh {
       // punched in the floor beside the player on every first frame.
       const rock = new THREE.Mesh(new THREE.BoxGeometry(sz, sz * 0.8, sz), stone);
       // Pushed back into the opening: the hero spawns on the entry tile, and
-      // blocks reaching forward to -0.4 m stood in his legs.
-      rock.position.set(rng.range(-1.1, 1.1), sz * 0.4, -1.3 + rng.range(-0.15, 0.1));
+      // blocks reaching forward to -0.4 m stood in his legs. Each block's
+      // nearest corner stays behind z -1.0 however it is turned (a tumbled
+      // cube reaches 0.87 of its size from its centre), so the landing is clear.
+      const jz = rng.range(-0.15, 0.1);
+      rock.position.set(rng.range(-1.1, 1.1), sz * 0.4, Math.min(-1.3 + jz, -1.0 - sz * 0.87));
       rock.rotation.set(rng.range(0, 3), rng.range(0, 3), rng.range(0, 3));
       rock.castShadow = true;
       rock.receiveShadow = true;
