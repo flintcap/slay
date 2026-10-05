@@ -13,6 +13,7 @@
  */
 
 import type { StatKey } from '../types';
+import { applySetText } from './story/uniqueText';
 
 export interface SetModRoll {
   stat: StatKey;
@@ -465,6 +466,9 @@ for (const [setId, pieces, power, mag, phrase] of SET_POWERS) {
   if (mag !== 1) tier.powerMag = mag;
   if (phrase && !tier.desc.includes('—')) tier.desc = `${tier.desc} — ${phrase}`;
 }
+
+// Names and blurbs come from the story (data/story/uniqueText.ts).
+applySetText(ALL);
 
 export const SETS: SetDef[] = ALL;
 

@@ -32,6 +32,7 @@ import {
 import { NOTES, noteById } from '../src/data/story/notes';
 import { PLACES } from '../src/data/story/places';
 import { RARE_FLAVOR, itemFlavor } from '../src/data/story/itemFlavor';
+import { UNIQUE_TEXT, SET_TEXT } from '../src/data/story/uniqueText';
 import { UNIQUES } from '../src/data/uniques';
 import { SETS } from '../src/data/sets';
 import { setRunDirector } from '../src/world/DungeonGen';
@@ -40,6 +41,7 @@ import { BOSSES, getBoss, pickBossForDepth } from '../src/data/bosses';
 import { BOSS_VOICES } from '../src/data/story/bossVoices';
 import { CHAINS, chainQuestId } from '../src/data/story/chains';
 import { QUESTS, questById } from '../src/data/quests';
+import { QUEST_LORE, NAMED_ELITES, questLore } from '../src/data/lore';
 import {
   acceptStep,
   carriedContract,
@@ -55,7 +57,7 @@ import { createCharacter } from '../src/sim/Character';
 import { Random } from '../src/core/RNG';
 import { events } from '../src/core/Events';
 import { generateRun, setMonsterCatalog } from '../src/world/DungeonGen';
-import { BIOMES } from '../src/world/Biomes';
+import { BIOMES, biomeVariants } from '../src/world/Biomes';
 import { familiesAtDepth, getMonster, pickMonstersForDepth } from '../src/data/monsters';
 import { MONSTER_AFFIXES } from '../src/data/monsterAffixes';
 
@@ -503,6 +505,14 @@ section('Notes and places');
     }
     for (const t of [place.name, place.makers, place.firstEntry, place.description, place.deepEntry, ...place.ambient]) lintText(`place ${b.id}`, t);
     if (place.ambient.length < 4) fail(`place ${b.id}: fewer than four ambient lines`);
+    // One name per layer: the floor card and the story agree.
+    if (b.name !== place.name) fail(`biome ${b.id}: the floor card calls it "${b.name}", the story "${place.name}"`);
+    lintText(`biome ${b.id} blurb`, b.blurb);
+    for (const v of biomeVariants(b.id)) {
+      lintText(`variant ${b.id}.${v.id}`, v.name);
+      lintText(`variant ${b.id}.${v.id}`, v.blurb);
+      if (v.id === 'plain' && v.name !== place.name) fail(`variant ${b.id}.plain: called "${v.name}", the story "${place.name}"`);
+    }
   }
   for (const [where, ref] of noteRefs) if (!noteById(ref)) fail(`${where}: unknown note "${ref}"`);
 
@@ -564,14 +574,71 @@ section('Item flavour');
       lines++;
     }
   }
-  for (const u of UNIQUES) lintText(`unique ${u.id} flavour`, u.flavor);
-  for (const st of SETS) lintText(`set ${st.id} blurb`, st.blurb);
+  // Every unique and set reads in the story's words, under a name of its own.
+  const itemNames = new Map<string, string>();
+  const claim = (name: string, who: string): void => {
+    const prior = itemNames.get(name.toLowerCase());
+    if (prior) fail(`${who}: name "${name}" is also ${prior}`);
+    itemNames.set(name.toLowerCase(), who);
+  };
+  const meta = /\b(in the game|the game|farming|farm for|end ?game|level \d+ to|dps|build)\b/i;
+  for (const u of UNIQUES) {
+    const t = UNIQUE_TEXT[u.id];
+    if (!t?.name || !t.flavor) fail(`unique ${u.id}: no name and flavour in data/story/uniqueText.ts`);
+    else if (u.name !== t.name || u.flavor !== t.flavor) fail(`unique ${u.id}: story text was not applied`);
+    claim(u.name, `unique ${u.id}`);
+    lintText(`unique ${u.id} name`, u.name);
+    lintText(`unique ${u.id} flavour`, u.flavor);
+    if (u.hook) {
+      lintText(`unique ${u.id} hook`, u.hook);
+      if (meta.test(u.hook)) fail(`unique ${u.id} hook talks about the game as a game: "${u.hook}"`);
+    }
+  }
+  for (const id of Object.keys(UNIQUE_TEXT)) if (!UNIQUES.some((u) => u.id === id)) fail(`uniqueText: unknown unique "${id}"`);
+  for (const st of SETS) {
+    if (!SET_TEXT[st.id]?.blurb) fail(`set ${st.id}: no blurb in data/story/uniqueText.ts`);
+    else if (st.blurb !== SET_TEXT[st.id]!.blurb) fail(`set ${st.id}: story text was not applied`);
+    lintText(`set ${st.id} blurb`, st.blurb);
+    claim(st.name, `set ${st.id}`);
+    for (const pc of st.pieces) claim(pc.name, `set piece ${pc.id}`);
+  }
+  for (const id of Object.keys(SET_TEXT)) if (!SETS.some((x) => x.id === id)) fail(`uniqueText: unknown set "${id}"`);
   const fake = { uid: 'x1', baseId: 'b', name: 'n', rarity: 'rare', ilvl: 1, mods: [], upgrade: 0, sockets: [], value: 0 } as never;
   if (!itemFlavor(fake, 'sword')) fail('itemFlavor: a rare sword has no line');
   if (itemFlavor({ ...(fake as object), rarity: 'magic' } as never, 'sword')) fail('itemFlavor: magic items should stay quiet');
   const setItem = { ...(fake as object), rarity: 'set', setId: SETS[0]!.id } as never;
   if (itemFlavor(setItem, 'sword') !== SETS[0]!.blurb) fail('itemFlavor: a set piece does not show its set');
   console.log(`${lines} rare lines, ${UNIQUES.length} uniques and ${SETS.length} sets read`);
+}
+
+// ---------------------------------------------------------------------------
+section('Quests');
+
+{
+  let lines = 0;
+  for (const q of QUESTS) {
+    const where = `quest ${q.id}`;
+    lintText(`${where} name`, q.name);
+    lintText(`${where} flavour`, q.flavor);
+    lines += 2;
+    for (const o of q.objectives) {
+      lintText(`${where} objective`, o.desc);
+      lines++;
+    }
+    const lore = questLore(q.id);
+    for (const t of [lore.brief, lore.onComplete, lore.onFail, ...(lore.whisper ?? [])]) {
+      if (t) {
+        lintText(`${where} lore`, t);
+        lines++;
+      }
+    }
+    // A whisper is said as an objective falls with more still to do; one past
+    // the second-to-last objective is never heard.
+    if ((lore.whisper?.length ?? 0) > Math.max(0, q.objectives.length - 1)) fail(`${where}: more whispers than objectives that can say them`);
+  }
+  for (const id of Object.keys(QUEST_LORE)) if (!QUESTS.some((q) => q.id === id)) fail(`quest lore for unknown quest "${id}"`);
+  for (const n of NAMED_ELITES) lintText('named elite', n);
+  console.log(`${QUESTS.length} quests, ${Object.keys(QUEST_LORE).length} with their own lore, ${lines} lines read`);
 }
 
 // ---------------------------------------------------------------------------

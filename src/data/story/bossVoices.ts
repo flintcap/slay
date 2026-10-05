@@ -464,7 +464,7 @@ export const BOSS_VOICES: Record<string, BossVoice> = {
       title: "The Herald's Roll",
       source: 'A strip of something that is not vellum',
       text: [
-        `Names, a great many, read aloud and struck through one by one. Caul's kings. The Works' foremen. The Third Expedition, all nine.`,
+        `Names, a great many, read aloud and struck through one by one. Caul's kings. The Works' foremen. The Third Expedition, six of the nine.`,
         `The last names are not struck through yet. They are Stairhead's. Yours is near the bottom, waiting its turn.`,
       ],
     },

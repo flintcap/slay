@@ -32,7 +32,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     station: 'vendor',
     serviceLabel: 'Show me what you have',
     serviceIcon: 'coin',
-    portrait: `A small, exact woman who has outlasted eleven expeditions by never joining one. Her ledger goes back further than Stairhead does, and nobody has ever caught her out in it.`,
+    portrait: `A small, exact woman who has outlasted nine expeditions by never joining one. Her ledger goes back further than Stairhead does, and nobody has ever caught her out in it.`,
     lines: [
       { id: 'hesk.first', pri: 10, when: { first: true }, text: `New face. I am Hesk. I sell what keeps you alive and buy what failed to keep the last one alive. We will get on.` },
       { id: 'hesk.died', pri: 9, when: { after: 'died' }, text: `{lastFallen} had an account with me. It is closed. Yours is open. Those are the only two states I recognise.` },

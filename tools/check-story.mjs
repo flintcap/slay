@@ -46,6 +46,10 @@ HOOKS.push(
   ['src/scenes/DungeonScene.ts', "events.emit('lore:search', { source: 'chest'", 'chests never hold a page'],
   ['src/scenes/RunEvents.ts', "events.emit('lore:search', { source: 'fallen'", 'the fallen never carry a page'],
   ['src/ui/Tooltip.ts', 'itemFlavor(item, base?.category)', 'rare and set items show no flavour'],
+  ['src/data/uniques.ts', 'applyUniqueText(UNIQUES)', 'uniques keep their old names and lines'],
+  ['src/data/sets.ts', 'applySetText(ALL)', 'sets keep their old blurbs'],
+  ['src/sim/Quests.ts', "events.emit('story:line'", 'quest whispers are never said'],
+  ['src/ui/StoryOverlay.ts', "events.on('story:line'", 'nobody speaks story lines'],
 );
 // Every boss event the story speaks on must have a listener in StoryBosses.
 for (const ev of ['boss:engaged', 'boss:phase', 'boss:damaged', 'boss:enraged', 'boss:killed', 'player:died']) {

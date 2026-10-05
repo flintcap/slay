@@ -224,6 +224,9 @@ export function installStory(): void {
     journal: (tab?: string) => journal().openAt(tab ?? 'descent'),
   };
 
+  // Lines other systems want spoken (quest whispers from sim/Quests.ts).
+  events.on('story:line', (p) => say(p.speaker ?? '', p.text, { tone: p.speaker ? undefined : 'narration' }));
+
   installStoryBosses();
   installStoryPlaces();
 }

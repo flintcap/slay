@@ -30,7 +30,7 @@
  *   survive     `zone:shrine`              — must be held in place
  *               `zone:any`                 — anywhere on the floor
  *               `zone:arena`
- *   escort      `npc:lantern_bearer`       — see lore.NAMED_ESCORTS
+ *   escort      `npc:lantern_bearer`       — named in the quest's own text
  *   cleanse     `prop:shrine` / `brazier` / `chest` / `seal` / `ward` /
  *               `nursery` / `forge` / `wardstone` / `pyre`
  *   boss        `boss:any` or `boss:<id>`
@@ -287,7 +287,7 @@ export const QUESTS: QuestDefEx[] = [
     maxDepth: 14,
     weight: 50,
     objectives: [
-      { kind: 'slay', filter: 'family:beast', base: 30, perDepth: 5, desc: `Thin the swarm — {n} of them` },
+      { kind: 'slay', filter: 'family:beast', base: 30, perDepth: 5, desc: `Thin the swarm by {n}` },
       { kind: 'slayElite', filter: 'named:mark', base: 1, perDepth: 0, desc: `Kill the thing they are all part of` },
     ],
     rewardGold: 1.4,
@@ -316,7 +316,7 @@ export const QUESTS: QuestDefEx[] = [
   {
     id: 'the_sealed_door',
     name: `The Sealed Door`,
-    flavor: `Three keys, three hands, no exceptions — so said the council that sealed it, and the council is four hundred years dissolved, and the door does not know that.`,
+    flavor: `Three keys, three hands, no exceptions. So said the council that sealed it. The council is four hundred years dissolved, and the door does not know that.`,
     minDepth: 1,
     weight: 55,
     objectives: [
@@ -441,7 +441,7 @@ export const QUESTS: QuestDefEx[] = [
   {
     id: 'the_third_watch',
     name: `The Third Watch`,
-    flavor: `Eleven guards went down with the Third Expedition and eleven tokens came back up, in a sack, without a note.`,
+    flavor: `Six of the watch went down with the Third Expedition and did not come back. Their tokens are still down there, and something is wearing them.`,
     minDepth: 3,
     weight: 50,
     objectives: [
@@ -495,7 +495,7 @@ export const QUESTS: QuestDefEx[] = [
     minDepth: 3,
     weight: 60,
     objectives: [
-      { kind: 'slay', filter: 'any', base: 55, perDepth: 9, desc: `Settle the bill — {n} dead` },
+      { kind: 'slay', filter: 'any', base: 55, perDepth: 9, desc: `Settle the bill, {n} dead` },
     ],
     rewardGold: 1.6,
     rewardXp: 1.7,
@@ -653,7 +653,7 @@ export const QUESTS: QuestDefEx[] = [
     objectives: [
       { kind: 'collect', filter: 'item:offering', base: 3, perDepth: 0.3, desc: `Lift {n} offerings from the bowls` },
       { kind: 'cleanse', filter: 'prop:shrine', base: 1, perDepth: 0.1, desc: `Close the shrine behind you` },
-      { kind: 'survive', filter: 'zone:any', base: 60, perDepth: 5, desc: `Outlast the objection — {n} seconds` },
+      { kind: 'survive', filter: 'zone:any', base: 60, perDepth: 5, desc: `Outlast the objection for {n} seconds` },
     ],
     rewardGold: 2.3,
     rewardXp: 1.5,
@@ -752,7 +752,7 @@ export const QUESTS: QuestDefEx[] = [
   {
     id: 'famine_run',
     name: `Lean Season`,
-    flavor: `Nothing down here is dropping anything worth having. The tier has been picked over — recently, thoroughly, by something with hands.`,
+    flavor: `Nothing down here is dropping anything worth having. The tier has been picked over, recently and thoroughly, by something with hands.`,
     minDepth: 5,
     weight: 40,
     objectives: [
@@ -777,7 +777,7 @@ export const QUESTS: QuestDefEx[] = [
     minDepth: 8,
     weight: 65,
     objectives: [
-      { kind: 'slayElite', filter: 'rank:elite', base: 3, perDepth: 0.3, desc: `Break the court — {n} elites` },
+      { kind: 'slayElite', filter: 'rank:elite', base: 3, perDepth: 0.3, desc: `Break the court, {n} elites` },
       { kind: 'boss', filter: 'boss:any', base: 1, perDepth: 0, desc: `Put down what sits at the end` },
     ],
     rewardGold: 2.2,
@@ -869,7 +869,7 @@ export const QUESTS: QuestDefEx[] = [
     objectives: [
       { kind: 'cleanse', filter: 'prop:forge', base: 4, perDepth: 0.3, desc: `Bank {n} furnaces` },
       { kind: 'slay', filter: 'family:construct', base: 40, perDepth: 7, desc: `Break {n} of the shift` },
-      { kind: 'survive', filter: 'zone:any', base: 120, perDepth: 9, desc: `Outlast the whistle — {n} seconds` },
+      { kind: 'survive', filter: 'zone:any', base: 120, perDepth: 9, desc: `Outlast the whistle for {n} seconds` },
     ],
     rewardGold: 2.3,
     rewardXp: 2.2,
@@ -1051,7 +1051,7 @@ export const QUESTS: QuestDefEx[] = [
     minDepth: 9,
     weight: 50,
     objectives: [
-      { kind: 'slayElite', filter: 'named:mark', base: 2, perDepth: 0.1, desc: `Kill both halves — {n} of it` },
+      { kind: 'slayElite', filter: 'named:mark', base: 2, perDepth: 0.1, desc: `Kill every half of it, all {n}` },
       { kind: 'collect', filter: 'item:trophy', base: 3, perDepth: 0.3, desc: `Take {n} of what it collected` },
     ],
     rewardGold: 2.5,
@@ -1160,7 +1160,7 @@ export const QUESTS: QuestDefEx[] = [
   {
     id: 'carrion_tide',
     name: `Carrion Tide`,
-    flavor: `They do not stop arriving. That is not a figure of speech and it is not a difficulty setting. It is a description of the tide.`,
+    flavor: `They do not stop arriving. That is not a figure of speech. It is a description of the tide.`,
     minDepth: 13,
     weight: 55,
     objectives: [
@@ -1288,7 +1288,7 @@ export const QUESTS: QuestDefEx[] = [
   {
     id: 'lightless_descent',
     name: `Lightless Descent`,
-    flavor: `Every tier of this run is dark. Not unlit — dark, in the way the drunk means when he says the dark has a grain to it.`,
+    flavor: `Every tier of this run is dark. Not unlit. Dark, in the way the drunk means when he says the dark has a grain to it.`,
     minDepth: 15,
     weight: 50,
     objectives: [
@@ -1546,7 +1546,7 @@ export const QUESTS: QuestDefEx[] = [
     weight: 45,
     objectives: [
       { kind: 'escort', filter: 'npc:holt', base: 1, perDepth: 0, desc: `Take Holt down to his post` },
-      { kind: 'survive', filter: 'zone:shrine', base: 240, perDepth: 14, desc: `Stand the watch with him — {n} seconds` },
+      { kind: 'survive', filter: 'zone:shrine', base: 240, perDepth: 14, desc: `Stand the watch with him for {n} seconds` },
       { kind: 'slayElite', filter: 'rank:elite', base: 5, perDepth: 0.4, desc: `Break {n} that come for him` },
     ],
     rewardGold: 3.8,
@@ -1587,7 +1587,7 @@ export const QUESTS: QuestDefEx[] = [
     objectives: [
       { kind: 'cleanse', filter: 'prop:forge', base: 8, perDepth: 0.4, desc: `Bank {n} furnaces` },
       { kind: 'slay', filter: 'any', base: 150, perDepth: 18, desc: `Deny it {n} inputs` },
-      { kind: 'survive', filter: 'zone:any', base: 200, perDepth: 12, desc: `Outlast the pour — {n} seconds` },
+      { kind: 'survive', filter: 'zone:any', base: 200, perDepth: 12, desc: `Outlast the pour for {n} seconds` },
     ],
     rewardGold: 3.7,
     rewardXp: 3.5,

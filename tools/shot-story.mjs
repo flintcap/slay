@@ -24,7 +24,7 @@ const args = Object.fromEntries(
 );
 
 const OUT = path.resolve(args.out ?? 'shots/story');
-const WANT = String(args.shots ?? 'talk,offer,journal,contracts,card,boss,bossfloor').split(',');
+const WANT = String(args.shots ?? 'talk,offer,journal,contracts,card,note,boss,bossfloor').split(',');
 const WIDTH = Number(args.width ?? 1600);
 const HEIGHT = Number(args.height ?? 900);
 const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4308);
@@ -179,21 +179,20 @@ const drivers = {
     );
     await settle(40);
   },
-  boss: async () => {
-    await page.evaluate(async () => {
-      document.querySelectorAll('.story-card').forEach((n) => n.remove());
-      const s = window.SLAY;
-      await s.engine.goTo('dungeon', { depth: 3 });
-      inTown = false;
-      s.debug?.godMode?.(true);
-      s.debug?.warpToBoss?.();
-    });
-    inTown = false;
-    // Let the floor card and the boss intro play, then catch the spoken line.
-    await settle(120);
+  note: async () => {
+    await closePanels();
     await page.evaluate(() => {
-      const st = window.SLAY_STORY;
-      if (st.bossLine) st.bossLine('greet');
+      document.querySelectorAll('.story-card').forEach((n) => n.remove());
+      window.SLAY_STORY.note?.('note.crypt.swept');
+    });
+    await settle(40);
+  },
+  boss: async () => {
+    // Spoken over the town: the subtitle is the same wherever it plays, and a
+    // dungeon boot would double the render time.
+    await page.evaluate(() => {
+      document.querySelectorAll('.story-card').forEach((n) => n.remove());
+      window.SLAY_STORY.bossLine?.('greet');
     });
     await settle(30);
   },

@@ -20,6 +20,7 @@
  */
 
 import type { ItemMod, ItemRarity, StatKey } from '../types';
+import { applyUniqueText } from './story/uniqueText';
 
 export interface UniqueMod {
   stat: StatKey;
@@ -594,6 +595,9 @@ export const UNIQUES: UniqueDef[] = [
 // ---------------------------------------------------------------------------
 // Lookup
 // ---------------------------------------------------------------------------
+
+// Names, flavour and hook wording come from the story (data/story/uniqueText.ts).
+applyUniqueText(UNIQUES);
 
 const BY_ID = new Map<string, UniqueDef>(UNIQUES.map((x) => [x.id, x]));
 

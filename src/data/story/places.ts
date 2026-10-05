@@ -11,8 +11,8 @@
  *   ambient                    one line, now and then, while you explore
  *
  * The biome's own name and blurb (`world/Biomes.ts`) head the floor card; the
- * variants there give a run its own sub-name. These are the names the people
- * of Stairhead use.
+ * variants there give a run its own sub-name. The biome's name and its plain
+ * variant's name must match `name` here (the checker holds them together).
  */
 
 import type { BiomeId } from '../../types';
@@ -42,7 +42,7 @@ export const PLACES: Record<BiomeId, Place> = {
       `Something turns over in a niche and settles again.`,
       `A name has been scratched off the wall. Only the scratching is left.`,
       `Two hundred skulls face the same way. You are walking the way they look.`,
-      `A lamp burns grave oil nobody has poured in nine hundred years.`,
+      `A lamp burns grave oil. Someone filled it this morning.`,
       `The mortar between these stones was mixed with ash, and something finer.`,
       `Somewhere ahead, a broom.`,
     ],

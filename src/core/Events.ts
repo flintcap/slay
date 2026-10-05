@@ -76,6 +76,8 @@ export interface GameEvents {
    * whether a lore note is in it (ui/StoryPlaces.ts).
    */
   'lore:search': { source: 'bookcase' | 'chest' | 'fallen'; depth: number };
+  /** A narrated line for the story's subtitle (ui/StoryOverlay.ts). */
+  'story:line': { text: string; speaker?: string };
   'toast': { text: string; kind?: 'info' | 'good' | 'bad' | 'epic'; rarity?: ItemRarity };
   'shake': { amount: number; duration: number };
   'sfx': { id: string; volume?: number; pitch?: number; x?: number; z?: number };

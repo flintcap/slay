@@ -177,7 +177,7 @@ function def(
  */
 const CRYPT = def(
   'crypt',
-  'The Bone Crypt',
+  'The Ossuary Tiers',
   'Grave-cold corridors of stacked stone. Something down here still counts the dead.',
   1,
   {
@@ -202,7 +202,7 @@ const CRYPT = def(
  */
 const CAVERNS = def(
   'caverns',
-  'The Weeping Caverns',
+  'The Root Deeps',
   'Living rock, wet to the touch. The glow comes from things that grow here.',
   1,
   {
@@ -228,7 +228,7 @@ const CAVERNS = def(
  */
 const FOUNDRY = def(
   'foundry',
-  'The Cinder Foundry',
+  'The Cindergate Works',
   'Furnaces that never went out. The floor still runs orange between the plates.',
   2,
   {
@@ -254,7 +254,7 @@ const FOUNDRY = def(
  */
 const SUNKEN_TEMPLE = def(
   'sunkenTemple',
-  'The Sunken Temple',
+  'The Drowned Sanctum',
   'Drowned halls of green stone and tarnished gold. The water remembers the prayers.',
   3,
   {
@@ -279,8 +279,8 @@ const SUNKEN_TEMPLE = def(
  */
 const HIVE = def(
   'hive',
-  'The Brood Hollow',
-  'Walls that flex when you touch them. Everything here is somebody’s larder.',
+  'The Chitin Warrens',
+  "Walls that flex when you touch them. Everything here is somebody's larder.",
   5,
   {
     fog: 0x140819,
@@ -305,8 +305,8 @@ const HIVE = def(
  */
 const FROSTVAULT = def(
   'frostvault',
-  'The Frostvault',
-  'A tomb sealed in glacier. Your breath freezes before it leaves your teeth.',
+  'The Rime Archive',
+  'Galleries sealed in ice, and everything on the shelves kept. Your breath freezes before it leaves your teeth.',
   7,
   {
     fog: 0x0f1e2e,
@@ -331,8 +331,8 @@ const FROSTVAULT = def(
  */
 const ASHWASTE = def(
   'ashwaste',
-  'The Ashen Waste',
-  'Open sky, at last — the colour of a banked fire. Nothing grows in the grey.',
+  'The Cinderfields',
+  'A sky at last, or something wearing one, the colour of a banked fire. Nothing grows in the grey.',
   10,
   {
     fog: 0x2b1a13,
@@ -360,8 +360,8 @@ const ASHWASTE = def(
  */
 const VOIDSPIRE = def(
   'voidspire',
-  'The Voidspire',
-  'Stone with nothing under it. The dark here is not an absence — it is looking back.',
+  'The Hollow Spire',
+  'Stone with nothing under it. The dark here is not an absence. It is looking back.',
   14,
   {
     fog: 0x05030d,
@@ -977,7 +977,7 @@ const PLAIN = (name: string, blurb: string, weight = 6): BiomeVariant => ({
 
 const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
   crypt: [
-    PLAIN('The Bone Crypt', 'Grave-cold corridors of stacked stone.'),
+    PLAIN('The Ossuary Tiers', 'Grave-cold corridors of stacked stone.'),
     {
       id: 'flooded',
       name: 'The Drowned Crypt',
@@ -1018,7 +1018,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
   ],
 
   caverns: [
-    PLAIN('The Weeping Caverns', 'Living rock, wet to the touch.'),
+    PLAIN('The Root Deeps', 'Living rock, wet to the touch.'),
     {
       id: 'fungal',
       name: 'The Bloom',
@@ -1054,7 +1054,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
   ],
 
   foundry: [
-    PLAIN('The Foundry', 'Heat with nowhere to go, and machines that never stopped.'),
+    PLAIN('The Cindergate Works', 'Heat with nowhere to go, and machines that never stopped.'),
     {
       id: 'coldforge',
       name: 'The Cold Forge',
@@ -1092,7 +1092,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
   ],
 
   sunkenTemple: [
-    PLAIN('The Sunken Temple', 'Worship that outlasted its worshippers.'),
+    PLAIN('The Drowned Sanctum', 'Worship that outlasted its worshippers.'),
     {
       id: 'tidal',
       name: 'The Tidal Reach',
@@ -1127,7 +1127,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
   ],
 
   hive: [
-    PLAIN('The Hive', 'Chambers chewed out of the rock, still warm.'),
+    PLAIN('The Chitin Warrens', 'Chambers chewed out of the rock, still warm.'),
     {
       id: 'brood',
       name: 'The Brood Chambers',
@@ -1163,7 +1163,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
   ],
 
   frostvault: [
-    PLAIN('The Frostvault', 'Cold enough that the air hurts, and nothing rots.'),
+    PLAIN('The Rime Archive', 'Cold enough that the air hurts, and nothing rots.'),
     {
       id: 'blizzard',
       name: 'The Whiteout',
@@ -1198,7 +1198,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
   ],
 
   ashwaste: [
-    PLAIN('The Ashwaste', 'Open ground under a sky that is not a sky.'),
+    PLAIN('The Cinderfields', 'Open ground under a sky that is not a sky.'),
     {
       id: 'emberfall',
       name: 'The Emberfall',
@@ -1233,7 +1233,7 @@ const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
   ],
 
   voidspire: [
-    PLAIN('The Voidspire', 'Stone with nothing under it.'),
+    PLAIN('The Hollow Spire', 'Stone with nothing under it.'),
     {
       id: 'unravelled',
       name: 'The Unravelling',

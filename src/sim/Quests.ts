@@ -449,16 +449,16 @@ function advance(quest: QuestInstance, index: number, amount: number): boolean {
     o.done = true;
   }
   emitProgress(quest, index);
-  if (o.done) {
-    const lore = questLore(quest.defId);
-    if (lore.whisper && lore.whisper.length > 0 && !quest.complete) {
-      // Objective-completion beat, quiet — the HUD toast carries the signal.
-      toast(o.desc, 'good');
-    } else {
-      toast(o.desc, 'good');
-    }
-  }
+  if (o.done) toast(o.desc, 'good');
   recheckComplete(quest);
+  // A quiet line as an objective falls, if the quest has one and is not over:
+  // the toast carries the signal, the line carries the mood.
+  if (o.done && !quest.complete) {
+    const lore = questLore(quest.defId);
+    const said = quest.objectives.filter((x) => x.done).length - 1;
+    const line = lore.whisper?.[said];
+    if (line) events.emit('story:line', { text: line });
+  }
   return true;
 }
 
@@ -661,7 +661,7 @@ export function onSurviveInterrupted(quest: QuestInstance, zone: string): void {
     st.timers[i] = 0;
     o.progress = 0;
     emitProgress(quest, i);
-    toast(`${quest.name} — the ground is lost`, 'bad');
+    toast(`${quest.name}: the ground is lost.`, 'bad');
   }
   if (canFail(quest, 'shrineLost') && target === 'shrine') failQuest(quest, 'shrineLost');
 }
@@ -712,7 +712,7 @@ export function onEliteEscaped(quest: QuestInstance, name?: string): number {
     failQuest(quest, 'markEscaped');
     return st.escapes;
   }
-  toast(`${st.markName || 'It'} slips away — and comes back heavier.`, 'bad');
+  toast(`${st.markName || 'It'} slips away. It will come back heavier.`, 'bad');
   return st.escapes;
 }
 
