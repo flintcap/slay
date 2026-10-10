@@ -54,6 +54,7 @@ export function garment(
         spec.thickness,
         spec.tris ?? 1800,
         spec.skinGroups ?? spec.groups,
+        true,
       );
       g.computeBoundingSphere();
       return g;

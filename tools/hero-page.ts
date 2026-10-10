@@ -4,9 +4,13 @@
  * data URI.
  */
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { CharClassId } from '../src/types';
 import { profileBodies } from '../src/art/hero/Body';
-import { buildHero } from '../src/art/hero/Hero';
+import { buildHero, setHeroHidden } from '../src/art/hero/Hero';
+import { wearArmour } from '../src/art/hero/Armour';
+import { ITEM_BASES } from '../src/data/itemBases';
+import type { EquipSlot, ItemRarity } from '../src/types';
 import { HERO_LOOKS } from '../src/art/hero/Looks';
 import { loadMeshCache } from '../src/art/hero/MeshCache';
 
@@ -15,6 +19,7 @@ const INK = '#c9d1de';
 const CLASSES: CharClassId[] = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
 
 let renderer: THREE.WebGLRenderer | null = null;
+let envTex: THREE.Texture | null = null;
 function studio(w: number, h: number): THREE.WebGLRenderer {
   if (!renderer) {
     renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -56,6 +61,14 @@ function shoot(
   const r = studio(opts.w, opts.h);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(BG);
+  // The game lights metal with a dim sky environment; so does the studio.
+  if (!envTex) {
+    const pm = new THREE.PMREMGenerator(r);
+    envTex = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+  }
+  scene.environment = envTex;
+  scene.environmentIntensity = 0.22;
   lights(scene);
   const holder = new THREE.Group();
   holder.add(obj);
@@ -76,6 +89,17 @@ function bareBody(cls: CharClassId): { root: THREE.Object3D; info: string } {
   const tris = hero.body.skin.getIndex()!.count / 3;
   return { root: hero.root, info: `${tris | 0} tris ${hero.body.ms | 0}ms` };
 }
+
+const KITS: Record<string, string[]> = {
+  heavy: ['chest.archon', 'helm.great', 'gloves.war', 'boots.myrmidon', 'belt.war'],
+  plate: ['chest.plate', 'helm.helm', 'gloves.gauntlets', 'boots.greaves', 'belt.belt'],
+  caster: ['chest.aeonshroud', 'helm.diadem', 'gloves.silk', 'boots.slippers', 'belt.sash'],
+  robe: ['chest.quilted', 'helm.circlet', 'gloves.silk', 'boots.slippers', 'belt.sash'],
+  leather: ['chest.studded', 'helm.cap', 'gloves.leather', 'boots.boots', 'belt.light'],
+  mail: ['chest.chainmail', 'helm.skullcap', 'gloves.heavy', 'boots.heavy', 'belt.girdle'],
+  scale: ['chest.kraken', 'helm.grim', 'gloves.vampirebone', 'boots.scarabshell', 'belt.troll'],
+  bone: ['chest.boneweave', 'helm.bone', 'gloves.bramble', 'boots.wyrmhide', 'belt.vampirefang'],
+};
 
 /** Every skinned mesh under a hero. */
 function skinnedMeshes(root: THREE.Object3D): THREE.SkinnedMesh[] {
@@ -142,6 +166,47 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       if (again > 120) bad(`${cls}: second build took ${again | 0} ms (cache miss?)`);
       lines.push(`${cls}: ${tris} tris, ${meshes.length} meshes, ${H.toFixed(2)} m, built ${ms | 0} ms, again ${again | 0} ms`);
     }
+    // Every kit on every class: it must build, stay in budget and skin cleanly.
+    for (const cls of list) {
+      for (const [kitName, kit] of Object.entries(KITS)) {
+        const hero = buildHero(HERO_LOOKS[cls], `${cls}-${kitName}`);
+        const t0 = performance.now();
+        for (const id of kit) {
+          const base = ITEM_BASES.find((b) => b.id === id);
+          if (!base) {
+            bad(`kit ${kitName}: no base ${id}`);
+            continue;
+          }
+          try {
+            wearArmour(hero, base.slot as EquipSlot, { baseId: base.id, rarity: 'unique' }, base.visual);
+          } catch (e) {
+            bad(`${cls} ${id}: ${String(e).slice(0, 160)}`);
+          }
+        }
+        const ms = performance.now() - t0;
+        let tris = 0;
+        let draws = 0;
+        hero.root.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (!m.isMesh) return;
+          draws++;
+          tris += (m.geometry.getIndex()?.count ?? 0) / 3;
+          const sw = m.geometry.getAttribute('skinWeight');
+          if (sw) {
+            const a = sw.array as Float32Array;
+            for (let v = 0; v < a.length; v += 4) {
+              if (Math.abs(a[v] + a[v + 1] + a[v + 2] + a[v + 3] - 1) > 2e-3) {
+                bad(`${cls} ${kitName} ${m.name}: skin weights do not sum to 1`);
+                break;
+              }
+            }
+          }
+        });
+        if (tris > 60000) bad(`${cls} ${kitName}: ${tris} triangles dressed, budget 60000`);
+        if (draws > 32) bad(`${cls} ${kitName}: ${draws} draw calls dressed, budget 32`);
+        lines.push(`${cls} ${kitName}: ${tris} tris, ${draws} draws, dressed in ${ms | 0} ms`);
+      }
+    }
     return JSON.stringify({ pass, lines });
   },
   /** Every class body, bare, front / side / back, in the bind pose. */
@@ -159,6 +224,41 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       [0, Math.PI * 0.5, Math.PI].forEach((yaw, k) => shoot(g, root, { x: ox + k * TW, y: oy, w: TW, h: TH, yaw, target: tgt, dist: 4.4 }));
       g.fillStyle = INK;
       g.fillText(`${cls}  ${info}`, ox + 8, oy + 18);
+    });
+    return c.toDataURL('image/png');
+  },
+  /**
+   * Every class in a typical kit, front / side / back. `--kit=heavy|plate|caster|...`
+   * overrides the class's own, `--rarity=` picks the rarity.
+   */
+  async gear(f) {
+    profileBodies(true);
+    const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
+    const own: Record<CharClassId, string> = { warden: 'heavy', pyromancer: 'caster', shadowblade: 'leather', stormcaller: 'mail', revenant: 'bone', ranger: 'scale' };
+    const rarity = (f.rarity ?? 'rare') as ItemRarity;
+    const TW = 260;
+    const TH = 480;
+    const { c, g } = sheet(TW * 3 * Math.min(3, list.length), TH * Math.ceil(list.length / 3) + 10);
+    list.forEach((cls, i) => {
+      const hero = buildHero(HERO_LOOKS[cls], `${cls}-gear`);
+      const hidden = new Set<string>();
+      const kit = KITS[f.kit ?? own[cls]] ?? KITS.heavy!;
+      let ms = 0;
+      for (const id of kit) {
+        const base = ITEM_BASES.find((b) => b.id === id);
+        if (!base) continue;
+        const t0 = performance.now();
+        const worn = wearArmour(hero, base.slot as EquipSlot, { baseId: base.id, rarity }, base.visual);
+        ms += performance.now() - t0;
+        worn?.hides.forEach((k) => hidden.add(k));
+      }
+      setHeroHidden(hero, hidden);
+      const ox = (i % 3) * TW * 3;
+      const oy = Math.floor(i / 3) * TH;
+      const tgt = new THREE.Vector3(0, HERO_LOOKS[cls].shape.height * 0.52, 0);
+      [0.35, Math.PI * 0.5, Math.PI].forEach((yaw, k) => shoot(g, hero.root, { x: ox + k * TW, y: oy, w: TW, h: TH, yaw, target: tgt, dist: 4.4 }));
+      g.fillStyle = INK;
+      g.fillText(`${cls} ${f.kit ?? own[cls]} ${ms | 0}ms`, ox + 8, oy + 18);
     });
     return c.toDataURL('image/png');
   },

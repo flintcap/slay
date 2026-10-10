@@ -72,6 +72,8 @@ export function meshPart(
   inflate: Inflate,
   tris: number,
   groups?: number[],
+  /** Shade the grown surface (folds, clumps), not the body under it. */
+  shadeInflate = false,
 ): THREE.BufferGeometry {
   const t0 = performance.now();
   EVALS.calls = 0;
@@ -82,7 +84,7 @@ export function meshPart(
   const t2 = performance.now();
   // Normals are the true body's: a vertex on a cut edge, or in a seam's
   // tuck, must shade like the surface it continues.
-  const normal = fieldNormals(field, s.pos, cell * 0.35);
+  const normal = fieldNormals(field, s.pos, cell * 0.35, [], shadeInflate ? inflate : 0);
   // Weights read the whole body's field so a detail mesh skins exactly as the
   // body under it does.
   const sk = skinWeights(anatomy.field, anatomy.chains, s.pos, GROUP_COUNT, { groups });

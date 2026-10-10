@@ -14,6 +14,8 @@
 import * as THREE from 'three';
 import { loadTexture } from '../../core/Assets';
 import type { HeroLook } from './Looks';
+import { resolveSurface } from '../SurfaceLibrary';
+import { setTextures, TEXTURE_SETS, type TextureSetInfo } from '../TextureSets';
 
 export type HeroFabric = 'linen' | 'wool' | 'leather' | 'suede' | 'hessian';
 
@@ -39,6 +41,8 @@ interface TriOpts {
   normalScale: number;
   /** How much the map's alpha moves roughness (0 none .. 1 all). */
   roughVar: number;
+  /** Multiplies the albedo map so its average lands on 1 (default 1.6, for scans pulled to 0.62). */
+  albedoGain?: number;
 }
 
 /** Patches a standard material to sample its maps triplanar in bind space. */
@@ -51,6 +55,7 @@ function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
     sh.uniforms.triScale = { value: o.scale };
     sh.uniforms.triNormalScale = { value: o.normalScale };
     sh.uniforms.triRoughVar = { value: o.roughVar };
+    sh.uniforms.triGain = { value: o.albedoGain ?? 1.6 };
     if (o.albedo) sh.defines = { ...(sh.defines ?? {}), TRI_ALBEDO: '' };
     sh.vertexShader = sh.vertexShader
       .replace(
@@ -85,6 +90,7 @@ uniform sampler2D triAlbedo;
 uniform sampler2D triNormal;
 uniform float triNormalScale;
 uniform float triRoughVar;
+uniform float triGain;
 varying vec3 vTriPos;
 varying vec3 vTriN;
 varying vec3 vB2V0;
@@ -101,7 +107,7 @@ vec4 triNy = texture2D( triNormal, vTriPos.xz );
 vec4 triNz = texture2D( triNormal, vTriPos.xy );
 #ifdef TRI_ALBEDO
   vec4 triA = texture2D( triAlbedo, vTriPos.zy ) * triW.x + texture2D( triAlbedo, vTriPos.xz ) * triW.y + texture2D( triAlbedo, vTriPos.xy ) * triW.z;
-  diffuseColor.rgb *= min( vec3( 1.6 ), triA.rgb * 1.6 );
+  diffuseColor.rgb *= min( vec3( 2.0 ), triA.rgb * triGain );
 #endif`,
       )
       .replace(
@@ -231,13 +237,13 @@ export function skinMaterial(look: HeroLook): THREE.MeshStandardMaterial {
 }
 
 /** Cloth or leather from a CC0 scan, dyed. */
-export function fabricMaterial(fabric: HeroFabric, tint: number, roughness = 0.9): THREE.MeshStandardMaterial {
-  return shared(`fabric|${fabric}|${tint}|${roughness}`, () => {
+export function fabricMaterial(fabric: HeroFabric, tint: number, roughness = 0.9, twoSided = false): THREE.MeshStandardMaterial {
+  return shared(`fabric|${fabric}|${tint}|${roughness}|${twoSided ? 2 : 1}`, () => {
     const dir = `textures/hero/${fabric}`;
     const albedo = loadTexture(`${dir}/albedo.webp`, { srgb: true, fallback: 0x9e9e9e, fallbackAlpha: 128 });
     const normal = loadTexture(`${dir}/normal.webp`, { srgb: false, fallback: 0x8080ff, fallbackAlpha: 200 });
-    const m = new THREE.MeshStandardMaterial({ color: tint, roughness, metalness: 0 });
-    triplanar(m, { albedo, normal, scale: 1 / FABRIC_METRES[fabric], normalScale: 1, roughVar: 0.7 });
+    const m = new THREE.MeshStandardMaterial({ color: tint, roughness, metalness: 0, side: twoSided ? THREE.DoubleSide : THREE.FrontSide });
+    triplanar(m, { albedo, normal, scale: 1 / FABRIC_METRES[fabric], normalScale: 1, roughVar: 0.7, albedoGain: 2.6 });
     m.name = `hero-${fabric}`;
     return m;
   });
@@ -301,6 +307,59 @@ export function hairMaterial(color: number): THREE.MeshStandardMaterial {
     // One tile every 4 cm.
     triplanar(m, { albedo: t.albedo, normal: t.normal, scale: 1 / 0.04, normalScale: 1.2, roughVar: 0.8 });
     m.name = 'hero-hair';
+    return m;
+  });
+}
+
+/** Tile size on armour by family: a plate shows its hammering, a mail its rings. */
+const GEAR_METRES: Record<string, number> = { metal: 0.45, leather: 0.3, cloth: 0.25, bone: 0.4 };
+
+/**
+ * Armour and trim from a world surface key ('metal.steel', 'leather.worn',
+ * 'cloth.linen|0x7a1e1a'...), projected triplanar like the skin. Colour,
+ * roughness and metalness follow the surface library, so the piece on the
+ * body matches the one on the floor.
+ */
+export function gearMaterial(key: string, opts: { tint?: number; metalness?: number; roughness?: number } = {}): THREE.MeshStandardMaterial {
+  const [pal, inlineTint] = key.split('|');
+  const tint = opts.tint ?? (inlineTint ? Number(inlineTint) : undefined);
+  return shared(`gear|${pal}|${tint ?? ''}|${opts.metalness ?? ''}|${opts.roughness ?? ''}`, () => {
+    const def = resolveSurface(pal!);
+    const info: TextureSetInfo = TEXTURE_SETS[def.set];
+    const tex = setTextures(def.set);
+    const avg = new THREE.Color(info.avg);
+    const lum = Math.max(0.05, 0.2126 * avg.r + 0.7152 * avg.g + 0.0722 * avg.b);
+    const color = new THREE.Color(def.base ?? 0xffffff);
+    if (tint !== undefined) color.multiply(new THREE.Color(tint));
+    // Worn metal keeps a share of diffuse light: a dungeon has little for a
+    // mirror to reflect, and full metal reads as black.
+    const metal = opts.metalness ?? (def.metal > 0.5 ? 0.6 : def.metal);
+    const m = new THREE.MeshStandardMaterial({
+      color,
+      roughness: opts.roughness ?? Math.max(0.35, (def.rough[0] + def.rough[1]) * 0.6),
+      metalness: metal,
+      envMapIntensity: metal > 0.5 ? 1.35 : 1,
+    });
+    // Coloured scans (wood, bone) keep a share of their own hue.
+    triplanar(m, {
+      albedo: tex.albedo,
+      normal: tex.normal,
+      scale: 1 / (GEAR_METRES[def.family] ?? 0.4),
+      normalScale: def.bump * 0.85,
+      roughVar: 0.8,
+      albedoGain: def.base !== undefined ? 1 / lum : 1,
+    });
+    m.name = `hero-gear:${def.key}`;
+    return m;
+  });
+}
+
+/** Glowing runes, gems and inlays. */
+export function glowMaterial(color: number, intensity: number): THREE.MeshStandardMaterial {
+  return shared(`glow|${color}|${intensity}`, () => {
+    const c = new THREE.Color(color);
+    const m = new THREE.MeshStandardMaterial({ color: c.clone().multiplyScalar(0.14), emissive: c, emissiveIntensity: intensity, roughness: 0.3, metalness: 0 });
+    m.name = 'hero-glow';
     return m;
   });
 }

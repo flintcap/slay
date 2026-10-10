@@ -46,3 +46,17 @@ export function buildHero(look: HeroLook, name = 'hero'): HeroModel {
   rig.root.userData.heroLook = look;
   return { rig, root: rig.root, body, look };
 }
+
+/**
+ * Hides the hero's own parts that worn gear covers: `hair` under a helm,
+ * `belt` under a belt. Keys match the part names after the colon
+ * (`warden:hair-crop` is `hair`).
+ */
+export function setHeroHidden(hero: HeroModel, hidden: Set<string>): void {
+  for (const m of hero.root.children) {
+    if (!(m as THREE.SkinnedMesh).isSkinnedMesh) continue;
+    const part = m.name.split(':')[1] ?? '';
+    const key = part.split('-')[0]!;
+    m.visible = !hidden.has(key);
+  }
+}

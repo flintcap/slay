@@ -19,7 +19,7 @@ and animator when done.
   leather from CC0 textures under `public/assets/textures/hero/`.
 - [x] Head and face. (`heroes: hair, brows, beards, hood and mask grown from the head`; helmets are fitted in Worn armour, where hair hides under them) Brow, eye sockets, nose, cheekbones, jaw, ears; eyes
   that catch light; hair and beards as real shapes; helmets fit over them.
-- [ ] Worn armour. Chest, shoulders, gloves, boots, belt, helmet, cape (with
+- [x] Worn armour. (`heroes: armour grown on the hero from ItemLook`; cape bones swing once the new animator drives them in Locomotion; not switched on yet) Chest, shoulders, gloves, boots, belt, helmet, cape (with
   sway), drawn on the new body from items' `ItemLook`. Bare and fully
   geared both look right. Until items' ItemLook lands, use the current one.
 - [ ] Locomotion. New animator from nothing: idle with breathing and weight
@@ -87,19 +87,30 @@ lands exactly on the game's contact time.
 
 ## Next up
 
-1. Worn armour: `src/art/hero/Armour.ts` grows chest, shoulders, gloves,
-   boots, belt, helmet from the body field like `Garment.ts` (thickness +
-   plane/`cut` clips + extra primitives for plates, rims and pauldrons),
-   picks material and shape from the current `ItemLook` / `GearLook` (items
-   owns `ItemLook`, read only), hides hair under helmets, cape as its own
-   skinned strip with sway bones driven in the animator. Add a `gear` sheet
-   to `tools/hero-page.ts`.
-2. Locomotion: new animator in `src/art/hero/Animator.ts`.
+1. Locomotion: new animator `src/art/hero/Animator.ts` from nothing (pose =
+   per-bone quaternions; layers: base locomotion, upper-body action,
+   additive breathing and hit reacts). Idle with breathing and weight shift,
+   walk, run, turn in place, start/stop, feet planted (foot IK against the
+   ground plane, two-bone IK in `src/art/hero/Ik.ts`), stance per weapon
+   (one hand, two hand, dual, staff, bow, shield). Drive the cape chain
+   (`Cape.ts`, `group.userData.capeBones`) with a spring in `Secondary.ts`.
+   Keep the API `Player.ts` uses today (`play`, `update`, `setGrip`,
+   `setWeapon`, `follow`, `setCondition`, `on('hit'|'release'|'step'|'end')`)
+   so the switch is one import. Add a `clips` sheet (pose strip per clip) and
+   a foot-slide number to `check-hero`.
+2. Combat moves on the same animator.
 
-Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities,poses [--class=warden,ranger]`
+Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities,poses,gear [--class=warden,ranger] [--kit=plate] [--rarity=unique]`
 writes `shots/heroes/*.png` in seconds. Check: `node tools/check-hero.mjs`.
 
 ## Notes for resume
+
+- Armour (`Armour.ts`): `wearArmour(hero, slot, item, visual)` returns
+  `{ object, hides }`; call `setHeroHidden(hero, hides)` and
+  `removeArmour(worn)` to take it off. First dressing costs 1-4 s per kit
+  (meshing); repeat costs nothing (memory + IndexedDB). If that hitch shows
+  in play, move meshing to a worker (specs would need to be declarative:
+  today cuts and thickness are closures).
 
 - New hero code lives in `src/art/hero/`: `Rig` (bones, sockets), `Sdf`
   (field), `Mesher` (surface nets), `Decimate` (QEM), `Anatomy` (body and
