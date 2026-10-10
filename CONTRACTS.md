@@ -751,6 +751,14 @@ export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | nul
   random turn. `turnVec` turns any east-pointing direction the same way.
 - The scene draws the waypoint (a gold ring at `level.waypoint`). `[E]` there
   goes home and gives the map up. Props are kept off it.
+- Events: `depth:changed` carries `mapName`, and `place` is the arrival
+  zone's name. `zone:entered {name, biome, order, of, depth, mapName}` fires
+  when the hero crosses into another zone of the same area.
+- The boss waits (`Boss.dormant`) until hero and boss are both inside
+  `level.arena`; then the scene seals the gate tiles and engages it. The gate
+  opens when the boss falls.
+- Charts: `src/ui/ZoneInk.ts` (`zoneInks`, `zoneInkAt`, `newKindInk`,
+  `wayMarks`) is shared by the minimap and the full map.
 
 ```ts
 // src/world/MapGen.ts

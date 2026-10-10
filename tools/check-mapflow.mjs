@@ -40,12 +40,13 @@ try {
       areas: s.run.levels.length,
       waypoint: !!s.level.waypoint,
       ring: !!s.waypoint?.parent,
-      hud: document.body.innerText.includes(`Tier ${s.run.depth}`),
+      hud: (document.body.textContent ?? '').includes(`Tier ${s.run.depth}`),
+      label: document.querySelector('.hud-depth')?.textContent ?? '(no label)',
     };
   });
   ok(!!m.name && m.zones >= 3 && m.areas >= 1, 'the run is a map', `${m.name}, ${m.zones} zones in ${m.areas} areas`);
   ok(m.waypoint && m.ring, 'the first area has a waypoint ring');
-  ok(m.hud, 'the HUD shows the tier');
+  ok(m.hud, 'the HUD shows the tier', m.label);
 
   // 2. Zone banner: find an area with two zones and walk into the second.
   const zoneSeen = await page.evaluate(async () => {
