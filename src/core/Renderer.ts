@@ -35,6 +35,8 @@ const GradeShader = {
     uShadowTint: { value: new THREE.Vector3(1, 1, 1) },
     uHighTint: { value: new THREE.Vector3(1, 1, 1) },
     uVignetteTint: { value: new THREE.Vector3(0.62, 0.64, 0.74) },
+    /** 0..1 heat shimmer toward the top of the frame (the far ground). */
+    uHaze: { value: 0.0 },
     /** 0..1 red damage flash. */
     uHurt: { value: 0.0 },
     /** 0..1 desaturating low-life pulse. */
@@ -51,7 +53,7 @@ const GradeShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uTime, uExposure, uContrast, uSaturation, uVignette;
-    uniform float uAberration, uGrain, uHurt, uLowLife;
+    uniform float uAberration, uGrain, uHurt, uLowLife, uHaze;
     uniform vec3 uLift, uGain, uShadowTint, uHighTint, uVignetteTint;
     uniform vec2 uResolution;
     varying vec2 vUv;
@@ -69,6 +71,14 @@ const GradeShader = {
       // Barrel-ish stretch that intensifies when hurt — sells impact without
       // moving the camera, so gameplay readability survives.
       uv = 0.5 + center * (1.0 + uHurt * 0.035 * r2);
+
+      // Heat haze: a slow sideways ripple, strongest at the top of the frame
+      // where the ground is farthest away, gone at the hero.
+      if (uHaze > 0.001) {
+        float hz = smoothstep(0.45, 1.0, uv.y) * uHaze;
+        uv.x += hz * 0.0022 * (sin(uv.y * 140.0 + uTime * 3.7) + 0.6 * sin(uv.y * 61.0 - uTime * 2.3 + uv.x * 9.0));
+        uv.y += hz * 0.0012 * sin(uv.x * 80.0 + uTime * 2.9);
+      }
 
       // Chromatic aberration scales with radius: clean centre, fringed edges.
       float ca = uAberration * (1.0 + uHurt * 6.0);
@@ -140,6 +150,8 @@ export interface GradeProfile {
   splitTone: number;
   vignette: number;
   vignetteTint: number;
+  /** 0..1 heat shimmer over the far ground. */
+  haze: number;
   bloomStrength: number;
   bloomRadius: number;
   bloomThreshold: number;
@@ -156,6 +168,7 @@ export const DEFAULT_GRADE: GradeProfile = {
   splitTone: 0.25,
   vignette: 0.42,
   vignetteTint: 0x9ea3bd,
+  haze: 0,
   bloomStrength: 0.62,
   bloomRadius: 0.55,
   bloomThreshold: 0.92,
@@ -599,6 +612,7 @@ export class Renderer {
       tintVector(g.shadowTint, g.splitTone, u.uShadowTint.value as THREE.Vector3);
       tintVector(g.highlightTint, g.splitTone * 0.6, u.uHighTint.value as THREE.Vector3);
       u.uVignette.value = g.vignette;
+      u.uHaze.value = g.haze;
       // The vignette darkens toward its tint: a hue at roughly 63% brightness.
       tintVector(g.vignetteTint, 1, u.uVignetteTint.value as THREE.Vector3).multiplyScalar(0.63);
     }

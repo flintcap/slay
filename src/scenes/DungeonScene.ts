@@ -26,7 +26,7 @@ import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy'
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { generateRun, isWalkable, BIOMES, zoneAt } from '../world/DungeonGen';
-import { DungeonMesh, applyBiomeLighting, type Interactable } from '../world/DungeonBuilder';
+import { DungeonMesh, applyBiomeLighting, type BiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
 import { variantLabel, biomeArt } from '../world/Biomes';
 import { namedRare } from '../data/namedRares';
@@ -161,7 +161,9 @@ export class DungeonScene extends GameScene {
   private soundBiome = '';
   private mesh!: DungeonMesh;
   private nav!: NavGrid;
-  private lighting: { dispose(): void } | null = null;
+  private lighting: BiomeLighting | null = null;
+  /** The hero light's strength for this level's light mood. */
+  private heroLightBase = 30;
 
   private player!: Player;
   private enemies: Enemy[] = [];
@@ -478,12 +480,16 @@ export class DungeonScene extends GameScene {
     this.decals.setGround((x, z) => this.mesh.floorY(x, z));
     this.nav = new NavGrid(this.level);
     this.lighting = applyBiomeLighting(this.scene, this.biome, this.level?.variant);
+    this.heroLightBase = this.lighting.hero.intensity;
+    if (this.heroLight) {
+      this.heroLight.color.setHex(this.lighting.hero.color);
+      this.heroLight.distance = this.lighting.hero.distance;
+    }
 
     this.engine.renderer.applyEnvironment(this.scene, 0.4);
     // The biome's colour grade (world stream). Reset in dispose().
     this.engine.renderer.setGrade(biomeArt(this.biome.id, this.level?.variant).grade);
-    this.scene.fog = new THREE.FogExp2(this.biome.fogColor, this.biome.fogDensity);
-    this.scene.background = new THREE.Color(this.biome.fogColor).multiplyScalar(0.4);
+    // Fog and the clear colour belong to the light mood (applyBiomeLighting).
 
     // Place the player at the entry stairs.
     const entry = this.mesh.tileToWorld(this.level.entry.x, this.level.entry.y);
@@ -1099,7 +1105,7 @@ export class DungeonScene extends GameScene {
       // light coming out of them.
       this.heroLight.position.set(this.player.position.x, this.player.position.y + 4.0, this.player.position.z);
       // Breathe very slightly so it reads as carried flame, not a fixed lamp.
-      this.heroLight.intensity = 30 + Math.sin(elapsed * 3.1) * 2.2;
+      this.heroLight.intensity = this.heroLightBase * (1 + Math.sin(elapsed * 3.1) * 0.07);
     }
     if (this.heroAura) {
       this.heroAura.position.set(this.player.position.x, this.player.position.y + 0.06, this.player.position.z);

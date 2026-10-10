@@ -1554,7 +1554,7 @@ ART.desert = {
   pillar: null,
   damage: 0.3,
   puddles: 0,
-  grade: { contrast: 1.14, saturation: 0.88, shadowTint: 0x4a4a6a, highlightTint: 0xffc890, splitTone: 0.48, vignette: 0.48, vignetteTint: 0x3a2818 },
+  grade: { contrast: 1.14, saturation: 0.88, shadowTint: 0x4a4a6a, highlightTint: 0xffc890, splitTone: 0.48, vignette: 0.48, vignetteTint: 0x3a2818, haze: 0.8 },
 };
 
 ART.tundra = {
@@ -1627,7 +1627,7 @@ ART.hell = {
   pillar: null,
   damage: 0.35,
   puddles: 0,
-  grade: { contrast: 1.16, saturation: 0.92, shadowTint: 0x3a1a2a, highlightTint: 0xffa060, splitTone: 0.5, vignette: 0.56, vignetteTint: 0x2a0604 },
+  grade: { contrast: 1.16, saturation: 0.92, shadowTint: 0x3a1a2a, highlightTint: 0xffa060, splitTone: 0.5, vignette: 0.56, vignetteTint: 0x2a0604, haze: 0.45 },
 };
 
 ART.desertTomb = {

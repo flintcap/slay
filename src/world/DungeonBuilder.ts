@@ -35,6 +35,7 @@ import {
   isWalkableValue,
 } from './Layouts';
 import { buildTerrain, isOutdoorLevel, type TerrainBuild } from './Terrain';
+import { lightDirection, lightMood } from './Lighting';
 import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './DungeonGen';
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
 
@@ -407,44 +408,57 @@ function radialTexture(size = 128): THREE.CanvasTexture {
 const SUN_REACH = 30;
 /** The open-sky key light, while one is live; its shadow tracks the hero. */
 let sun: THREE.DirectionalLight | null = null;
+/** Where the sun sits relative to the hero, metres. */
+const sunOffset = new THREE.Vector3(28, 52, 18);
 
+export interface BiomeLighting {
+  key: THREE.DirectionalLight;
+  ambient: THREE.Light;
+  /** The light the hero should carry here (`Lighting.ts`). */
+  hero: { color: number; intensity: number; distance: number };
+  dispose(): void;
+}
+
+/**
+ * Lights a level from its biome's light mood (`Lighting.ts`): a low tinted
+ * fill, a key light (the sun or moon outdoors, a dim wash indoors), an
+ * optional red light from below, fog and the clear colour. Owns `scene.fog`
+ * and `scene.background` until disposed.
+ */
 export function applyBiomeLighting(
   scene: THREE.Scene,
   biome: BiomeDef,
   /** The run's biome variant, which is mostly a lighting change. */
   variant?: string,
-): { key: THREE.DirectionalLight; ambient: THREE.Light; dispose(): void } {
+): BiomeLighting {
   const art = biomeArt(biome.id, variant);
+  const mood = lightMood(biome, art);
+  const open = art.ceiling === 'open';
 
-  const fog = new THREE.FogExp2(biome.fogColor, biome.fogDensity);
+  const fog = new THREE.FogExp2(mood.fog, mood.fogDensity);
   scene.fog = fog;
   // Keep the fight clear and let the distance go. Fog starts a little short
   // of the player (the camera sits ~20m back), and below the floor a height
   // term swallows pits and chasms so they read as bottomless. The height is
   // set by `DungeonMesh.update`, which knows where the lowest floor is.
   setFogShape(14, -1000, 4.5, 0.92);
-  scene.background = new THREE.Color(art.ceiling === 'open' ? art.skyColor : biome.fogColor);
+  scene.background = new THREE.Color(mood.background);
 
-  // Hemisphere fill: a cool sky term over a warmer bounce term is what stops
-  // shadowed geometry from going flat black without washing the scene out.
-  // Authored biome values were tuned darker than plays well: enclosed floors
-  // ended up readable only inside a torch pool. Lift the floor here rather than
-  // editing 8 biome definitions, so their relative moods are preserved.
-  const ambient = new THREE.HemisphereLight(
-    biome.ambientColor,
-    art.bounceColor,
-    biome.ambientIntensity * 2.2 + 0.35
-  );
+  // Hemisphere fill: the colour of the dark. Kept low so the torch pools and
+  // the hero's light carry the room, but tinted so shadow is never grey.
+  const ambient = new THREE.HemisphereLight(mood.sky, mood.ground, mood.fill);
   ambient.position.set(0, 40, 0);
   scene.add(ambient);
 
-  const key = new THREE.DirectionalLight(biome.keyColor, biome.keyIntensity * 1.9 + 0.12);
-  key.position.set(28, 52, 18);
+  const key = new THREE.DirectionalLight(mood.key, mood.keyIntensity);
+  const [dx, dy, dz] = lightDirection(mood.elevation, mood.azimuth);
+  sunOffset.set(dx * 60, dy * 60, dz * 60);
+  key.position.copy(sunOffset);
   key.target.position.set(0, 0, 0);
   scene.add(key.target);
   // Open-sky biomes get a real sun with real shadows; enclosed ones use the key
   // purely as a directional wash, because their shadows come from torches.
-  key.castShadow = art.ceiling === 'open';
+  key.castShadow = open;
   if (key.castShadow) {
     // The sun's shadow follows the player (`DungeonMesh.update` moves it).
     // A fixed 140 m square drew every caster on the floor into the shadow
@@ -452,7 +466,7 @@ export function applyBiomeLighting(
     // density this one gets.
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.camera.near = 1;
-    key.shadow.camera.far = 120;
+    key.shadow.camera.far = 140;
     key.shadow.camera.left = -SUN_REACH;
     key.shadow.camera.right = SUN_REACH;
     key.shadow.camera.top = SUN_REACH;
@@ -463,15 +477,32 @@ export function applyBiomeLighting(
   }
   scene.add(key);
 
+  // Light from below. Floors face up and never catch it; walls, bodies and
+  // the undersides of things glow with it.
+  let under: THREE.DirectionalLight | null = null;
+  if (mood.under) {
+    under = new THREE.DirectionalLight(mood.under.color, mood.under.intensity);
+    under.position.set(-dx * 20, -30, -dz * 20);
+    under.target.position.set(0, 0, 0);
+    scene.add(under.target);
+    scene.add(under);
+  }
+
   return {
     key,
     ambient,
+    hero: mood.hero,
     dispose(): void {
       scene.remove(ambient);
       scene.remove(key);
       scene.remove(key.target);
       key.dispose();
       ambient.dispose();
+      if (under) {
+        scene.remove(under);
+        scene.remove(under.target);
+        under.dispose();
+      }
       if (scene.fog === fog) scene.fog = null;
       setFogShape();
       if (sun === key) sun = null;
@@ -2114,7 +2145,7 @@ export class DungeonMesh {
       // every frame shimmers along every edge.
       const fx = Math.round(focus.x);
       const fz = Math.round(focus.z);
-      sun.position.set(fx + 28, 52, fz + 18);
+      sun.position.set(fx + sunOffset.x, sunOffset.y, fz + sunOffset.z);
       sun.target.position.set(fx, 0, fz);
       sun.target.updateMatrixWorld();
     }
