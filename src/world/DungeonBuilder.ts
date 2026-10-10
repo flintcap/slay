@@ -4,7 +4,7 @@
  * Turns a `DungeonLevel` into geometry, lights and colliders.
  *
  * Performance shape:
- *  - Static surfaces (floor, wall, trim, ceiling, liquid, veins, puddles) are
+ *  - Static surfaces (floor, wall, trim, ceiling, liquid, veins, bedrock) are
  *    written straight into flat vertex arrays and merged **per chunk per
  *    material**, so a 128×128 level is a few dozen draw calls, frustum-culled
  *    by chunk and distance-culled in `update`.
@@ -804,14 +804,6 @@ export class DungeonMesh {
       depthWrite: false,
     });
     this.ownedMat.push(veinMat);
-    const puddleMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0e12,
-      roughness: 0.045,
-      metalness: 0.35,
-      transparent: true,
-      opacity: 0.72,
-    });
-    this.ownedMat.push(puddleMat);
     // The rock the level is carved out of. Dark, matte, and lit only by the
     // ambient term: it is the mass around the dungeon, not a surface anyone is
     // meant to look at. Taking no shadows either way keeps a plane that covers
@@ -938,15 +930,14 @@ export class DungeonMesh {
     const CEIL = BASE + 1;
     const LIQ = CEIL + 1;
     const VEIN = LIQ + 1;
-    const PUDDLE = VEIN + 1;
-    const BEDROCK = PUDDLE + 1;
+    const BEDROCK = VEIN + 1;
     /** Wall tops. Same rock as the lid, but this bucket never dissolves. */
     const CAPS = BEDROCK + 1;
     /** Bridge decks (outdoors). */
     const DECK = CAPS + 1;
     const BUCKETS = DECK + 1;
     mats.push(
-      ...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, puddleMat, bedrockMat, capMat, deckMat,
+      ...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, bedrockMat, capMat, deckMat,
     );
     const outdoor = this.outdoor;
     if (outdoor) {
