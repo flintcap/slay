@@ -11,7 +11,7 @@
 import { resolvesSound } from '../src/audio/Audio';
 import { hasTrack, musicTracks } from '../src/audio/Score';
 import { bedDef, bedFor, bedIds } from '../src/audio/Beds';
-import { bankIds, soundFiles } from '../src/audio/Bank';
+import { bankIds, resolveSound, soundFiles } from '../src/audio/Bank';
 import { AMBIENCE_FILES, MUSIC_FILES } from '../src/audio/manifest';
 import { monsterSoundFor, TELEGRAPH_MIN } from '../src/audio/MonsterAudio';
 import { BIOMES } from '../src/world/DungeonGen';
@@ -111,6 +111,17 @@ for (const el of ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane']) 
   for (const k of ['cast', 'impact', 'nova']) check(resolvesSound(`${k}.${el}`), `${k}.${el} is silent`);
 }
 for (const f of ['stone', 'dirt', 'grass', 'sand', 'snow', 'water']) check(bankIds().includes(`footstep.${f}`), `footstep.${f} has no recordings`);
+// Every sound id the game names in its source resolves to a recording.
+const sources = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const literal = new Set<string>();
+for (const text of Object.values(sources)) {
+  for (const m of text.matchAll(/audio\.play\(\s*'([a-zA-Z][\w.]*)'/g)) literal.add(m[1]!);
+  for (const m of text.matchAll(/\bsfx:\s*'([a-zA-Z][\w.]*)'/g)) literal.add(m[1]!);
+  for (const m of text.matchAll(/emit\('sfx',\s*\{\s*id:\s*'([\w.]+)'/g)) literal.add(m[1]!);
+}
+for (const id of literal) check(resolvesSound(id), `"${id}" is played by the game but silent`);
+notes.literalIds = literal.size;
+notes.folded = [...literal].filter((id) => resolveSound(id) !== id).map((id) => `${id}>${resolveSound(id)}`);
 notes.soundIds = bankIds().length;
 notes.files = allFiles;
 notes.tracks = musicTracks().length;

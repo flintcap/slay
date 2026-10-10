@@ -1445,7 +1445,7 @@ export class DungeonScene extends GameScene {
     this.effects.summonCircle(it.x, it.z, 2.2, 1.4, def?.color ?? 0xffd66b);
     this.effects.teleportIn(it.x, 0.6, it.z, def?.color ?? 0xffd66b);
     this.fx.burst('levelup', it.x, 1.0, it.z, { count: 40 });
-    audio.play('levelup');
+    audio.play('shrine', { x: it.x, z: it.z });
     toast(`${def?.name ?? 'Blessing'} — ${blessing.blurb}`, 'good');
     onInteract(this.run.quest, 'shrine');
   }
@@ -1471,7 +1471,7 @@ export class DungeonScene extends GameScene {
     for (const item of drops.items) this.dropItem(item, at);
     if (drops.gold > 0) this.dropGold(Math.round(drops.gold * goldBonus), at);
     this.effects.explosion(it.x, 0.7, it.z, { radius: 1.2, element: 'physical', color: 0xffd66b });
-    audio.play('ui.open');
+    audio.play('chest', { x: it.x, z: it.z });
     onInteract(this.run.quest, 'chest');
     questTokens.chest(this.run.quest);
     events.emit('lore:search', { source: 'chest', depth: this.run.depth });

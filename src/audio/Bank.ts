@@ -89,7 +89,7 @@ const DEFS: Record<string, Partial<SoundDef>> = {
   'hit.stone': { vol: 0.7, max: 3 },
   'hit.chitin': { vol: 0.7, max: 3 },
   'hit.wood': { vol: 0.7, max: 3 },
-  'hit.ooze': { vol: 0.7, max: 3 },
+  'hit.ooze': { vol: 0.95, max: 3 },
   'arrow.thunk': { vol: 0.6, max: 3, prio: 0 },
   'block': { vol: 0.85, prio: 2, max: 2 },
   'block.magic': { vol: 0.75, prio: 2, max: 2, send: 0.4 },
@@ -279,12 +279,18 @@ function family(id: string): string | null {
   }
 }
 
+/**
+ * Families whose recordings are quiet by nature (rock, wood, slime): lifted so
+ * a stone golem is as present as a zombie.
+ */
+const MONSTER_LIFT: Record<string, number> = { elemental: 1.7, plant: 1.4, ooze: 1.3, construct: 1.2, insect: 1.15 };
+
 /** Mix settings for a bank id. */
 export function soundDef(id: string): SoundDef {
   const own = DEFS[id];
   const base: SoundDef = { ...DEFAULT };
   if (id.startsWith('monster.')) {
-    base.vol = id.endsWith('.death') ? 0.75 : 0.6;
+    base.vol = (id.endsWith('.death') ? 0.75 : 0.6) * (MONSTER_LIFT[id.split('.')[1] ?? ''] ?? 1);
     base.prio = id.endsWith('.death') ? 1 : 0;
     base.max = 3;
     base.gap = 0.08;
