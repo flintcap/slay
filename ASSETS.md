@@ -759,3 +759,87 @@ and music OGG Vorbis.
 | sounds/warcry/03.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/waypoint/01.ogg | https://opengameart.org/content/cure-magic | Someoneman + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
 | sounds/waypoint/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| `textures/world/slab/albedo.webp` | https://polyhaven.com/a/rock_tile_floor | Charlotte Baglioni | CC0 1.0 |
+| `textures/world/slab/normal.webp` | https://polyhaven.com/a/rock_tile_floor | Charlotte Baglioni | CC0 1.0 |
+| `textures/world/lava_crust/albedo.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava_crust/normal.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava_crust/emissive.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/tiles_worn/albedo.webp` | https://polyhaven.com/a/worn_tile_floor | Dimitrios Savva | CC0 1.0 |
+| `textures/world/tiles_worn/normal.webp` | https://polyhaven.com/a/worn_tile_floor | Dimitrios Savva | CC0 1.0 |
+| `textures/world/flagstone/albedo.webp` | https://polyhaven.com/a/grey_stone_path | Amal Kumar | CC0 1.0 |
+| `textures/world/flagstone/normal.webp` | https://polyhaven.com/a/grey_stone_path | Amal Kumar | CC0 1.0 |
+| `textures/world/flagstone_dark/albedo.webp` | https://polyhaven.com/a/monastery_stone_floor | Amal Kumar | CC0 1.0 |
+| `textures/world/flagstone_dark/normal.webp` | https://polyhaven.com/a/monastery_stone_floor | Amal Kumar | CC0 1.0 |
+| `textures/world/cobble/albedo.webp` | https://polyhaven.com/a/cobblestone_floor_04 | Rob Tuytel | CC0 1.0 |
+| `textures/world/cobble/normal.webp` | https://polyhaven.com/a/cobblestone_floor_04 | Rob Tuytel | CC0 1.0 |
+| `textures/world/ashlar/albedo.webp` | https://polyhaven.com/a/stone_brick_wall_001 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
+| `textures/world/ashlar/normal.webp` | https://polyhaven.com/a/stone_brick_wall_001 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
+| `textures/world/rubble_wall/albedo.webp` | https://polyhaven.com/a/castle_wall_varriation | Rob Tuytel | CC0 1.0 |
+| `textures/world/rubble_wall/normal.webp` | https://polyhaven.com/a/castle_wall_varriation | Rob Tuytel | CC0 1.0 |
+| `textures/world/brick_red/albedo.webp` | https://polyhaven.com/a/castle_brick_07 | Rob Tuytel | CC0 1.0 |
+| `textures/world/brick_red/normal.webp` | https://polyhaven.com/a/castle_brick_07 | Rob Tuytel | CC0 1.0 |
+| `textures/world/mossy_wall/albedo.webp` | https://polyhaven.com/a/mossy_stone_wall | Amal Kumar | CC0 1.0 |
+| `textures/world/mossy_wall/normal.webp` | https://polyhaven.com/a/mossy_stone_wall | Amal Kumar | CC0 1.0 |
+| `textures/world/sandstone/albedo.webp` | https://polyhaven.com/a/sandstone_blocks_08 | Rob Tuytel | CC0 1.0 |
+| `textures/world/sandstone/normal.webp` | https://polyhaven.com/a/sandstone_blocks_08 | Rob Tuytel | CC0 1.0 |
+| `textures/world/plaster/albedo.webp` | https://polyhaven.com/a/damaged_plaster | Amal Kumar | CC0 1.0 |
+| `textures/world/plaster/normal.webp` | https://polyhaven.com/a/damaged_plaster | Amal Kumar | CC0 1.0 |
+| `textures/world/cliff/albedo.webp` | https://polyhaven.com/a/cliff_side | James Ray Cock, Jenelle van Heerden, Dario Barresi | CC0 1.0 |
+| `textures/world/cliff/normal.webp` | https://polyhaven.com/a/cliff_side | James Ray Cock, Jenelle van Heerden, Dario Barresi | CC0 1.0 |
+| `textures/world/cave/albedo.webp` | https://polyhaven.com/a/rock_face | Greg Zaal, Dario Barresi | CC0 1.0 |
+| `textures/world/cave/normal.webp` | https://polyhaven.com/a/rock_face | Greg Zaal, Dario Barresi | CC0 1.0 |
+| `textures/world/basalt/albedo.webp` | https://polyhaven.com/a/dark_rock | Amal Kumar | CC0 1.0 |
+| `textures/world/basalt/normal.webp` | https://polyhaven.com/a/dark_rock | Amal Kumar | CC0 1.0 |
+| `textures/world/obsidian/albedo.webp` | https://ambientcg.com/view?id=Rock035 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/obsidian/normal.webp` | https://ambientcg.com/view?id=Rock035 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava/albedo.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava/normal.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava/emissive.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/ice/albedo.webp` | https://ambientcg.com/view?id=Ice002 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/ice/normal.webp` | https://ambientcg.com/view?id=Ice002 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/snow/albedo.webp` | https://polyhaven.com/a/snow_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/snow/normal.webp` | https://polyhaven.com/a/snow_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/dirt/albedo.webp` | https://polyhaven.com/a/dirt | Charlotte Baglioni | CC0 1.0 |
+| `textures/world/dirt/normal.webp` | https://polyhaven.com/a/dirt | Charlotte Baglioni | CC0 1.0 |
+| `textures/world/path/albedo.webp` | https://polyhaven.com/a/rocky_trail | Amal Kumar | CC0 1.0 |
+| `textures/world/path/normal.webp` | https://polyhaven.com/a/rocky_trail | Amal Kumar | CC0 1.0 |
+| `textures/world/mud/albedo.webp` | https://polyhaven.com/a/brown_mud_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/mud/normal.webp` | https://polyhaven.com/a/brown_mud_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/grass/albedo.webp` | https://polyhaven.com/a/forrest_ground_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/grass/normal.webp` | https://polyhaven.com/a/forrest_ground_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/leaves/albedo.webp` | https://polyhaven.com/a/forest_leaves_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/leaves/normal.webp` | https://polyhaven.com/a/forest_leaves_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/roots/albedo.webp` | https://polyhaven.com/a/roots | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/world/roots/normal.webp` | https://polyhaven.com/a/roots | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/world/sand/albedo.webp` | https://polyhaven.com/a/sand_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/sand/normal.webp` | https://polyhaven.com/a/sand_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/cracked/albedo.webp` | https://polyhaven.com/a/mud_cracked_dry_03 | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/world/cracked/normal.webp` | https://polyhaven.com/a/mud_cracked_dry_03 | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/world/ash/albedo.webp` | https://polyhaven.com/a/burned_ground_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/ash/normal.webp` | https://polyhaven.com/a/burned_ground_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/planks/albedo.webp` | https://polyhaven.com/a/old_planks_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/planks/normal.webp` | https://polyhaven.com/a/old_planks_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/rust/albedo.webp` | https://polyhaven.com/a/rust_coarse_01 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
+| `textures/world/rust/normal.webp` | https://polyhaven.com/a/rust_coarse_01 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
+| `textures/world/bark/albedo.webp` | https://polyhaven.com/a/bark_brown_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/bark/normal.webp` | https://polyhaven.com/a/bark_brown_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/iron/albedo.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/iron/normal.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/steel/albedo.webp` | https://ambientcg.com/view?id=Metal032 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/steel/normal.webp` | https://ambientcg.com/view?id=Metal032 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/chainmail/albedo.webp` | https://ambientcg.com/view?id=Chainmail004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/chainmail/normal.webp` | https://ambientcg.com/view?id=Chainmail004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/cloth/albedo.webp` | https://ambientcg.com/view?id=Fabric030 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/cloth/normal.webp` | https://ambientcg.com/view?id=Fabric030 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/leather/albedo.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
+| `textures/world/leather/normal.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
+| `textures/world/wood/albedo.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
+| `textures/world/wood/normal.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
+| `textures/world/fur/albedo.webp` | https://ambientcg.com/view?id=Fabric084 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/fur/normal.webp` | https://ambientcg.com/view?id=Fabric084 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/bone/albedo.webp` | https://ambientcg.com/view?id=Rock023 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/bone/normal.webp` | https://ambientcg.com/view?id=Rock023 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/flesh/albedo.webp` | https://ambientcg.com/view?id=Lava005 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/flesh/normal.webp` | https://ambientcg.com/view?id=Lava005 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/moss/albedo.webp` | https://ambientcg.com/view?id=Moss002 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/moss/normal.webp` | https://ambientcg.com/view?id=Moss002 | Lennart Demes (ambientCG) | CC0 1.0 |
