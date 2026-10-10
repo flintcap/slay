@@ -65,7 +65,9 @@ const SETS = [
   { name: 'ice', src: 'acg:Ice002', size: 1024 },
   // Terrain
   { name: 'snow', src: 'ph:snow_02', size: 1024 },
-  { name: 'dirt', src: 'ph:dirt', size: 1024 },
+  { name: 'dirt', src: 'ph:forest_ground_04', size: 1024 },
+  { name: 'tracks', src: 'ph:muddy_tracks', size: 1024 },
+  { name: 'stony_dirt', src: 'ph:stony_dirt_path', size: 1024 },
   { name: 'path', src: 'ph:rocky_trail', size: 1024 },
   { name: 'mud', src: 'ph:brown_mud_02', size: 1024 },
   { name: 'grass', src: 'ph:forrest_ground_01', size: 1024 },
@@ -209,22 +211,20 @@ function convert(set, maps) {
 }
 
 function addLedgerRows(files, page, author) {
-  let text = readFileSync(LEDGER, 'utf8');
-  const have = new Set(
-    text
-      .split('\n')
-      .filter((l) => l.startsWith('|'))
-      .map((l) => l.split('|')[1]?.trim().replace(/^`|`$/g, '')),
-  );
-  let add = '';
-  for (const f of files) {
-    const rel = path.relative(path.join(ROOT, 'public', 'assets'), f).split(path.sep).join('/');
-    if (have.has(rel)) continue;
-    add += `| \`${rel}\` | ${page} | ${author} | CC0 1.0 |\n`;
+  // A re-fetched file replaces its old row, so the ledger always names the
+  // source the file on disk actually came from.
+  const rels = new Set(files.map((f) => path.relative(path.join(ROOT, 'public', 'assets'), f).split(path.sep).join('/')));
+  const lines = readFileSync(LEDGER, 'utf8').split('\n');
+  const kept = lines.filter((l) => !(l.startsWith('|') && rels.has(l.split('|')[1]?.trim().replace(/^`|`$/g, ''))));
+  // New rows go where the old ones were, or at the end.
+  const at = lines.findIndex((l) => l.startsWith('|') && rels.has(l.split('|')[1]?.trim().replace(/^`|`$/g, '')));
+  const rows = [...rels].map((rel) => `| \`${rel}\` | ${page} | ${author} | CC0 1.0 |`);
+  if (at >= 0) kept.splice(at, 0, ...rows);
+  else {
+    while (kept.length && kept[kept.length - 1] === '') kept.pop();
+    kept.push(...rows, '');
   }
-  if (!add) return;
-  if (!text.endsWith('\n')) text += '\n';
-  writeFileSync(LEDGER, text + add);
+  writeFileSync(LEDGER, kept.join('\n'));
 }
 
 mkdirSync(DL, { recursive: true });

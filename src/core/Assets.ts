@@ -293,6 +293,8 @@ export function assetsPending(): number {
 }
 
 /** Counts for the debug overlay and checkers. */
-export function assetStats(): { bytes: number; images: number; textures: number; failed: number } {
-  return { bytes: cache.size, images: images.size, textures: textures.size, failed: failed.size };
+export function assetStats(): { bytes: number; images: number; textures: number; loaded: number; failed: string[] } {
+  let loaded = 0;
+  for (const e of textures.values()) if (e.tex.userData.loaded) loaded++;
+  return { bytes: cache.size, images: images.size, textures: textures.size, loaded, failed: Array.from(failed) };
 }

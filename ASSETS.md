@@ -799,8 +799,8 @@ and music OGG Vorbis.
 | `textures/world/ice/normal.webp` | https://ambientcg.com/view?id=Ice002 | Lennart Demes (ambientCG) | CC0 1.0 |
 | `textures/world/snow/albedo.webp` | https://polyhaven.com/a/snow_02 | Rob Tuytel | CC0 1.0 |
 | `textures/world/snow/normal.webp` | https://polyhaven.com/a/snow_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/dirt/albedo.webp` | https://polyhaven.com/a/dirt | Charlotte Baglioni | CC0 1.0 |
-| `textures/world/dirt/normal.webp` | https://polyhaven.com/a/dirt | Charlotte Baglioni | CC0 1.0 |
+| `textures/world/dirt/albedo.webp` | https://polyhaven.com/a/forest_ground_04 | Rob Tuytel, Rico Cilliers | CC0 1.0 |
+| `textures/world/dirt/normal.webp` | https://polyhaven.com/a/forest_ground_04 | Rob Tuytel, Rico Cilliers | CC0 1.0 |
 | `textures/world/path/albedo.webp` | https://polyhaven.com/a/rocky_trail | Amal Kumar | CC0 1.0 |
 | `textures/world/path/normal.webp` | https://polyhaven.com/a/rocky_trail | Amal Kumar | CC0 1.0 |
 | `textures/world/mud/albedo.webp` | https://polyhaven.com/a/brown_mud_02 | Rob Tuytel | CC0 1.0 |
@@ -843,3 +843,7 @@ and music OGG Vorbis.
 | `textures/world/flesh/normal.webp` | https://ambientcg.com/view?id=Lava005 | Lennart Demes (ambientCG) | CC0 1.0 |
 | `textures/world/moss/albedo.webp` | https://ambientcg.com/view?id=Moss002 | Lennart Demes (ambientCG) | CC0 1.0 |
 | `textures/world/moss/normal.webp` | https://ambientcg.com/view?id=Moss002 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/tracks/albedo.webp` | https://polyhaven.com/a/muddy_tracks | Amal Kumar | CC0 1.0 |
+| `textures/world/tracks/normal.webp` | https://polyhaven.com/a/muddy_tracks | Amal Kumar | CC0 1.0 |
+| `textures/world/stony_dirt/albedo.webp` | https://polyhaven.com/a/stony_dirt_path | eye-candy.xyz | CC0 1.0 |
+| `textures/world/stony_dirt/normal.webp` | https://polyhaven.com/a/stony_dirt_path | eye-candy.xyz | CC0 1.0 |

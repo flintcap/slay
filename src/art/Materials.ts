@@ -70,7 +70,7 @@ function patchPacked(mat: THREE.MeshStandardMaterial, uniforms: Record<string, T
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec2 slRough;\nuniform vec3 slUv;')
+      .replace('#include <common>', '#include <common>\nuniform vec2 slRough;\nuniform vec3 slUv;\nuniform float slCav;')
       .replace(
         '#include <map_fragment>',
         [
@@ -107,6 +107,10 @@ function patchPacked(mat: THREE.MeshStandardMaterial, uniforms: Record<string, T
         [
           '#ifdef USE_EMISSIVEMAP',
           '  totalEmissiveRadiance *= texture2D( emissiveMap, vEmissiveMapUv * slUv.x + slUv.yz ).rgb;',
+          '#elif defined( USE_MAP )',
+          // No emission map: the glow sits in the cracks and hollows of the relief.
+          '  float slC = 1.0 - slAlb.a;',
+          '  totalEmissiveRadiance *= mix( 1.0, slC * slC * slC * 2.0, slCav );',
           '#endif',
         ].join('\n'),
       );
@@ -160,6 +164,7 @@ function buildSurface(def: SurfaceDef, o: SurfaceOpts, name: string): THREE.Mesh
   const seed = o.seed ?? 0;
   const uniforms = {
     slRough: { value: new THREE.Vector2(def.rough[0], def.rough[1]) },
+    slCav: { value: o.emissive === undefined && !tex.emissive ? 1 : 0 },
     slUv: { value: new THREE.Vector3(o.repeat ?? 1, ((seed * 0.6180339) % 1 + 1) % 1, ((seed * 0.7548776) % 1 + 1) % 1) },
   };
   mat.userData.slay = uniforms;

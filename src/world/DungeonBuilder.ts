@@ -1118,8 +1118,23 @@ export class DungeonMesh {
     const wallH = topY - hy;
     // Deterministic wall variant, clumped so it reads as masonry courses rather
     // than per-tile noise.
-    const nv = this.noise.fbm(x * 0.07, y * 0.07, 2) * 0.5 + 0.5;
-    const wi = WALL0 + Math.min(wallCount - 1, Math.floor(nv * wallCount));
+    // Weighted: a 9:1 split means one wall in ten, not half (the cyan crystal
+    // walls in the caverns). fBm bunches round the middle, so stretch it first.
+    const nv = clamp((this.noise.fbm(x * 0.07, y * 0.07, 2) * 0.5) * 2.2 + 0.5, 0, 0.9999);
+    let wi = WALL0;
+    {
+      const ws = this.art.walls;
+      const total = ws.reduce((t, w) => t + Math.max(0, w.weight), 0) || 1;
+      let acc = 0;
+      for (let i = 0; i < wallCount; i++) {
+        acc += Math.max(0, ws[i]?.weight ?? 0) / total;
+        if (nv < acc) {
+          wi = WALL0 + i;
+          break;
+        }
+        wi = WALL0 + i;
+      }
+    }
     const s = surfs[wi];
     const trim = surfs[TRIM];
     const base = surfs[BASE];

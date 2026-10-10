@@ -54,7 +54,9 @@ export const TEXTURE_SETS = {
   ice: { metres: 2.0, avg: 0x698075, px: 1024 },
   // Terrain
   snow: { metres: 2.0, avg: 0x818082, px: 1024 },
-  dirt: { metres: 2.0, avg: 0x5e4f3b, px: 1024 },
+  dirt: { metres: 3.15, avg: 0x665743, px: 1024 },
+  tracks: { metres: 2.25, avg: 0x472a19, px: 1024 },
+  stony_dirt: { metres: 2.17, avg: 0x4c3c2d, px: 1024 },
   path: { metres: 2.0, avg: 0x7b6d5b, px: 1024 },
   mud: { metres: 1.3, avg: 0x484034, px: 1024 },
   grass: { metres: 2.0, avg: 0x6f674a, px: 1024 },

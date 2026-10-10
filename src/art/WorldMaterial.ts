@@ -232,7 +232,10 @@ const PROJ: Record<'x' | 'y' | 'z', Proj> = {
   },
 };
 
-function layerGlsl(i: number, axes: Array<'x' | 'y' | 'z'>, emissive: boolean): string {
+/** How a layer glows: not at all, from its emission map, or from the low points of its relief. */
+type Glow = 0 | 1 | 2;
+
+function layerGlsl(i: number, axes: Array<'x' | 'y' | 'z'>, emissive: Glow): string {
   const lines: string[] = [];
   lines.push(`if (slB${i} > 0.0) {`);
   lines.push(`  float s = slP${i}.x;`);
@@ -250,8 +253,11 @@ function layerGlsl(i: number, axes: Array<'x' | 'y' | 'z'>, emissive: boolean): 
     lines.push('    vec3 tt = n.xyz * 2.0 - 1.0;');
     lines.push(`    tt.xy *= slP${i}.y;`);
     lines.push(`    ld += (${p.delta}) * ${p.w};`);
-    if (emissive) {
+    if (emissive === 1) {
       lines.push(`    le += mix(textureGrad(slE${i}, puv + oa, pdx, pdy).rgb, textureGrad(slE${i}, puv + ob, pdx, pdy).rgb, tb) * ${p.w};`);
+    } else if (emissive === 2) {
+      // No emission map: light pools in the cracks and hollows of the relief.
+      lines.push(`    float cav = 1.0 - a.a; le += vec3(cav * cav * cav * 2.0) * ${p.w};`);
     }
     lines.push('  }');
   }
@@ -276,7 +282,7 @@ interface Built {
   key: string;
 }
 
-function buildShader(o: WorldMaterialOpts, emissiveMask: boolean[]): Built {
+function buildShader(o: WorldMaterialOpts, emissiveMask: Glow[]): Built {
   const n = Math.max(1, Math.min(4, o.layers.length));
   const floorOnly = o.kind === 'floor';
   const axes: Array<'x' | 'y' | 'z'> = floorOnly ? ['y'] : ['y', 'x', 'z'];
@@ -328,7 +334,8 @@ function buildShader(o: WorldMaterialOpts, emissiveMask: boolean[]): Built {
   ];
   for (let i = 0; i < n; i++) {
     pars.push(`uniform sampler2D slA${i};`, `uniform sampler2D slN${i};`, `uniform vec2 slP${i};`, `uniform vec3 slT${i};`, `uniform vec3 slR${i};`);
-    if (emissiveMask[i]) pars.push(`uniform sampler2D slE${i};`, `uniform vec3 slEC${i};`);
+    if (emissiveMask[i] === 1) pars.push(`uniform sampler2D slE${i};`);
+    if (emissiveMask[i]) pars.push(`uniform vec3 slEC${i};`);
   }
   pars.push(COMMON_GLSL);
 
@@ -440,7 +447,7 @@ function buildShader(o: WorldMaterialOpts, emissiveMask: boolean[]): Built {
     return s;
   };
 
-  const key = `world|${o.kind}|${n}|${emissiveMask.map((e) => (e ? 1 : 0)).join('')}|${detile ? 1 : 0}|${o.cutaway ? 1 : 0}|${o.roof ? 1 : 0}`;
+  const key = `world|${o.kind}|${n}|${emissiveMask.join('')}|${detile ? 1 : 0}|${o.cutaway ? 1 : 0}|${o.roof ? 1 : 0}`;
   return { vertex, fragment, key };
 }
 
@@ -480,8 +487,7 @@ export function worldMaterial(o: WorldMaterialOpts): THREE.MeshStandardMaterial 
   };
   if (o.cutaway) uniforms.uCut = worldCutaway;
   if (o.roof) uniforms.uRoof = worldRoof;
-  const emissiveMask: boolean[] = [];
-  let anyEmissive = false;
+  const emissiveMask: Glow[] = [];
   layers.forEach((l, i) => {
     const def = resolveSurface(l.key);
     const tex = setTextures(def.set);
@@ -491,12 +497,12 @@ export function worldMaterial(o: WorldMaterialOpts): THREE.MeshStandardMaterial 
     uniforms[`slP${i}`] = { value: new THREE.Vector2(1 / Math.max(0.05, metres), def.bump * (l.bump ?? 1)) };
     uniforms[`slT${i}`] = { value: tintOf(l.key, l.tint, o.tint) };
     uniforms[`slR${i}`] = { value: new THREE.Vector3(def.rough[0] * (l.rough ?? 1), Math.min(1, def.rough[1] * (l.rough ?? 1)), def.metal) };
-    const em = !!tex.emissive;
-    emissiveMask.push(em);
-    if (em) {
-      anyEmissive = true;
-      const c = new THREE.Color(l.emissive ?? def.emissive ?? 0xff6020).multiplyScalar(l.emissiveIntensity ?? def.emissiveIntensity ?? 1.5);
-      uniforms[`slE${i}`] = { value: tex.emissive };
+    const glowColor = l.emissive ?? def.emissive;
+    const glow: Glow = tex.emissive ? 1 : glowColor !== undefined ? 2 : 0;
+    emissiveMask.push(glow);
+    if (glow) {
+      const c = new THREE.Color(glowColor ?? 0xff6020).multiplyScalar(l.emissiveIntensity ?? def.emissiveIntensity ?? (glow === 1 ? 1.5 : 0.4));
+      if (tex.emissive) uniforms[`slE${i}`] = { value: tex.emissive };
       uniforms[`slEC${i}`] = { value: c };
     }
   });
@@ -508,15 +514,6 @@ export function worldMaterial(o: WorldMaterialOpts): THREE.MeshStandardMaterial 
     metalness: 1,
     side: o.side ?? THREE.FrontSide,
   });
-  // Surfaces whose own key glows (charred wood, void stone) without an
-  // emission map glow faintly all over.
-  if (!anyEmissive) {
-    const def0 = resolveSurface(layers[0]!.key);
-    if (def0.emissive !== undefined) {
-      mat.emissive = new THREE.Color(def0.emissive);
-      mat.emissiveIntensity = (def0.emissiveIntensity ?? 0.3) * 0.5;
-    }
-  }
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = built.vertex(shader.vertexShader);

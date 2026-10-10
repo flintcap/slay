@@ -16,6 +16,7 @@ import { enemyPositionRepairs } from '../entities/Enemy';
 import { panelInstance } from '../ui/UIRoot';
 import { runtime } from '../ui/Widgets';
 import { insertGem } from '../sim/Crafting';
+import { assetStats } from '../core/Assets';
 
 /**
  * Debug surface exposed as `window.SLAY.debug`. The Playwright screenshot
@@ -24,6 +25,8 @@ import { insertGem } from '../sim/Crafting';
  */
 export function installDebug(engine: Engine): Record<string, unknown> {
   return {
+    /** Asset loader counts: textures made, textures holding their real image, files that failed. */
+    assets: () => assetStats(),
     /** Create a fully playable character at `level`, geared and skilled up (`seed` to repeat one). */
     makeCharacter(classId: CharClassId = 'warden', level = 1, seed?: number): void {
       // A seed makes the hero (gear, skills) the same every run, so a
