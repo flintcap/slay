@@ -192,6 +192,11 @@ export class DungeonScene extends GameScene {
   /** On a boss floor the way home stays shut until the boss falls. */
   private exitOpen = true;
   private returnPortal: THREE.Object3D | null = null;
+  /** Ground height under the return portal, which bobs above it. */
+  private returnPortalY = 0;
+  /** The town waypoint by a map's first arrival: [E] there gives the map up. */
+  private waypoint: THREE.Object3D | null = null;
+  private nearWaypoint = false;
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   private heroAura: THREE.Mesh | null = null;
@@ -473,6 +478,14 @@ export class DungeonScene extends GameScene {
     this.rig.snap();
 
     this.exitPos.copy(this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y));
+
+    if (this.waypoint) {
+      this.waypoint.removeFromParent();
+      disposeObject(this.waypoint);
+      this.waypoint = null;
+    }
+    this.nearWaypoint = false;
+    if (this.level.waypoint) this.buildWaypoint(this.mesh.tileToWorld(this.level.waypoint.x, this.level.waypoint.y));
 
     // Spawn the level's monsters.
     // Most floors promote one pack leader to a mini-boss with a mechanic of
@@ -1086,7 +1099,7 @@ export class DungeonScene extends GameScene {
 
     if (this.returnPortal) {
       this.returnPortal.rotation.y += dt * 0.55;
-      this.returnPortal.position.y = Math.sin(elapsed * 1.7) * 0.07;
+      this.returnPortal.position.y = this.returnPortalY + Math.sin(elapsed * 1.7) * 0.07;
     }
 
     // Hand the runner the live world before it ticks. Without this every
@@ -1142,6 +1155,7 @@ export class DungeonScene extends GameScene {
     this.controls.update(dt, input, this.rig.yaw, this.enemies, this.boss);
     this.keyDir.copy(this.controls.keyDir);
     this.tickInteractables(input, ctx);
+    this.tickWaypoint(input);
   }
 
   /**
@@ -1661,6 +1675,8 @@ export class DungeonScene extends GameScene {
     if (offset.lengthSq() < 0.01) offset.set(0, 0, 1);
     offset.normalize().multiplyScalar(4.5);
     const at = new THREE.Vector3(near.x + offset.x, 0, near.z + offset.z);
+    at.y = this.mesh.floorY(at.x, at.z);
+    this.returnPortalY = at.y;
 
     const group = new THREE.Group();
     const ring = new THREE.Mesh(
@@ -1693,6 +1709,52 @@ export class DungeonScene extends GameScene {
     this.fx.burst('portal', at.x, 1.0, at.z, { count: 120, color: 0x7ec8ff, scale: 1.6 });
     audio.play('portal');
     toast('The way home has opened.', 'epic');
+  }
+
+  /**
+   * The waypoint: a low gold ring by the first arrival of a map. It is the
+   * way to give a map up. The town portal always opens a fresh one.
+   */
+  private buildWaypoint(at: THREE.Vector3): void {
+    const group = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.09, 12, 44), emissiveMaterial(0xffc861, 2.6));
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.08;
+    group.add(ring);
+    const inner = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.62, 32), emissiveMaterial(0xd99a3a, 1.4));
+    inner.rotation.x = -Math.PI / 2;
+    inner.position.y = 0.05;
+    group.add(inner);
+    const light = new THREE.PointLight(0xffb85a, 6, 9, 2);
+    light.position.set(0, 1.0, 0);
+    group.add(light);
+    group.position.copy(at);
+    this.scene.add(group);
+    this.waypoint = group;
+  }
+
+  /**
+   * [E] at the waypoint takes the hero home and gives the map up. Props come
+   * first: when a chest sits in reach its prompt wins.
+   */
+  private tickWaypoint(input: Engine['input']): void {
+    if (!this.waypoint || this.transitioning) return;
+    const near = !this.nearProp && this.player.position.distanceTo(this.waypoint.position) <= DungeonScene.INTERACT_RANGE;
+    if (near !== this.nearWaypoint) {
+      this.nearWaypoint = near;
+      // Leaving the ring for a prop keeps the prop's prompt on screen.
+      if (near) toast('[E] Waypoint: return to town (this map is lost)', 'info');
+      else if (!this.nearProp) toast('', 'info');
+    }
+    if (!near || !input.wasPressed('interact')) return;
+    this.transitioning = true;
+    this.nearWaypoint = false;
+    toast('', 'info');
+    audio.play('portal');
+    this.fx.burst('portal', this.waypoint.position.x, 0.6, this.waypoint.position.z, { count: 60, color: 0xffc861 });
+    save.touch();
+    save.flush();
+    void this.engine.goTo('town');
   }
 
   private awardQuestIfComplete(): void {

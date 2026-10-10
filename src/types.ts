@@ -748,8 +748,8 @@ export type TileKind =
   | 'water'
   | 'lava'
   | 'chasm'
-  | 'stairsDown'
-  | 'stairsUp'
+  | 'exit'
+  | 'arrival'
   | 'rubble'
   // Added by the map remake (docs/remake/maps.md). Each one says how it is
   // drawn until the builder knows it: see `drawAsKind` in world/Layouts.ts.

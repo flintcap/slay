@@ -50,8 +50,8 @@ import {
   T_FLOOR,
   T_LAVA,
   T_RUBBLE,
-  T_STAIRS_DOWN,
-  T_STAIRS_UP,
+  T_EXIT,
+  T_ARRIVAL,
   T_WATER,
   auditLayout,
   isWalkableValue,
@@ -76,8 +76,8 @@ const TILE_NAMES: TileKind[] = [
   'water',
   'lava',
   'chasm',
-  'stairsDown',
-  'stairsUp',
+  'exit',
+  'arrival',
   'rubble',
   'ruin',
   'deepWater',
@@ -763,13 +763,13 @@ export function generateLevel(
   if (entryRoom && entryRoom.kind === 'normal') entryRoom.kind = 'entry';
   if (exitRoom && exitRoom.kind === 'normal' && exitRoom !== entryRoom) exitRoom.kind = 'exit';
 
-  g.set(entry.x, entry.y, T_STAIRS_UP);
-  g.set(exit.x, exit.y, T_STAIRS_DOWN);
-  // Clear a small landing so props and packs never bury the stairs.
+  g.set(entry.x, entry.y, T_ARRIVAL);
+  g.set(exit.x, exit.y, T_EXIT);
+  // Clear a small landing so props and packs never bury the way in or out.
   clearRadius(g, entry.x, entry.y, 2);
   clearRadius(g, exit.x, exit.y, 2);
-  g.set(entry.x, entry.y, T_STAIRS_UP);
-  g.set(exit.x, exit.y, T_STAIRS_DOWN);
+  g.set(entry.x, entry.y, T_ARRIVAL);
+  g.set(exit.x, exit.y, T_EXIT);
 
   // --- Room roles --------------------------------------------------------
   assignRoomRoles(rooms, rng, depth, isBossLevel, quest, levelIndex);
@@ -821,6 +821,9 @@ export function generateLevel(
     console.warn('[world] prop placement failed', err);
     props = [];
   }
+  // The waypoint ring stands on bare ground.
+  const wp = level.waypoint;
+  if (wp) props = props.filter((p) => Math.hypot(p.x - wp.x, p.y - wp.y) > 1.6);
   level.props = props;
 
   // --- Guarantees ----------------------------------------------------------
@@ -1363,7 +1366,7 @@ function placeSpawns(
     for (let x = 1; x < g.w - 1; x++) {
       const i = y * g.w + x;
       if (!isWalkableValue(g.t[i])) continue;
-      if (g.t[i] === T_STAIRS_UP || g.t[i] === T_STAIRS_DOWN || g.t[i] === T_DOOR) continue;
+      if (g.t[i] === T_ARRIVAL || g.t[i] === T_EXIT || g.t[i] === T_DOOR) continue;
       if (dist[i] < 9) continue;
       let open = 0;
       for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) if (g.walkable(x + ox, y + oy)) open++;
@@ -1490,7 +1493,7 @@ function gatherPackSpots(g: Grid, sx: number, sy: number, count: number, used: S
     const c = queue.shift() as number;
     if (!used.has(c) && isWalkableValue(g.t[c])) {
       const v = g.t[c];
-      if (v !== T_STAIRS_UP && v !== T_STAIRS_DOWN) out.push(c);
+      if (v !== T_ARRIVAL && v !== T_EXIT) out.push(c);
     }
     const cx = c % g.w;
     const cy = (c / g.w) | 0;
@@ -1555,8 +1558,8 @@ export function previewLevel(biome: BiomeId, layout: LayoutKind, seed = 1234, de
   const g = out.grid;
   const entry = out.entry;
   const exit = out.exit;
-  g.set(entry.x, entry.y, T_STAIRS_UP);
-  g.set(exit.x, exit.y, T_STAIRS_DOWN);
+  g.set(entry.x, entry.y, T_ARRIVAL);
+  g.set(exit.x, exit.y, T_EXIT);
   const level: GeneratedLevel = {
     seed,
     depth,

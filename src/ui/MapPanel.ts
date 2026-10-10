@@ -17,8 +17,8 @@ const T_DOOR = 3;
 const T_WATER = 4;
 const T_LAVA = 5;
 const T_CHASM = 6;
-const T_STAIRS_DOWN = 7;
-const T_STAIRS_UP = 8;
+const T_EXIT = 7;
+const T_ARRIVAL = 8;
 const T_RUBBLE = 9;
 
 const ROOM_TINT: Record<DungeonRoom['kind'], string> = {
@@ -449,9 +449,9 @@ function tileColor(t: number): string {
       return '#c4481a';
     case T_CHASM:
       return '#0c0a0e';
-    case T_STAIRS_DOWN:
+    case T_EXIT:
       return '#ffd66b';
-    case T_STAIRS_UP:
+    case T_ARRIVAL:
       return '#7fb0ff';
     case T_RUBBLE:
       return '#433a2c';

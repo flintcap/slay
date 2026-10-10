@@ -56,8 +56,8 @@ const T_DOOR = 3;
 const T_WATER = 4;
 const T_LAVA = 5;
 const T_CHASM = 6;
-const T_STAIRS_DOWN = 7;
-const T_STAIRS_UP = 8;
+const T_EXIT = 7;
+const T_ARRIVAL = 8;
 const T_RUBBLE = 9;
 
 const MINIMAP_PX = 178;
@@ -1778,9 +1778,9 @@ function tileColor(t: number): string {
       return 'rgba(196,72,26,0.85)';
     case T_CHASM:
       return 'rgba(12,10,14,0.9)';
-    case T_STAIRS_DOWN:
+    case T_EXIT:
       return 'rgba(255,214,107,0.95)';
-    case T_STAIRS_UP:
+    case T_ARRIVAL:
       return 'rgba(127,176,255,0.9)';
     case T_RUBBLE:
       return 'rgba(96,84,66,0.6)';

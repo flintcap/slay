@@ -25,8 +25,8 @@ export const TILE_VALUES = {
   water: 4,
   lava: 5,
   chasm: 6,
-  stairsDown: 7,
-  stairsUp: 8,
+  exit: 7,
+  arrival: 8,
   rubble: 9,
   ruin: 10,
   deepWater: 11,
@@ -41,8 +41,14 @@ export const T_DOOR = 3;
 export const T_WATER = 4;
 export const T_LAVA = 5;
 export const T_CHASM = 6;
-export const T_STAIRS_DOWN = 7;
-export const T_STAIRS_UP = 8;
+/** The way on: into the next area, or home from the arena. Walkable. */
+export const T_EXIT = 7;
+/** Where the hero lands in an area. Walkable. */
+export const T_ARRIVAL = 8;
+/** @deprecated Old names, kept only until Props.ts (ground) moves to T_EXIT and T_ARRIVAL. */
+export const T_STAIRS_DOWN = T_EXIT;
+/** @deprecated See T_STAIRS_DOWN. */
+export const T_STAIRS_UP = T_ARRIVAL;
 export const T_RUBBLE = 9;
 /** Masonry standing in the open. Blocks. */
 export const T_RUIN = 10;
@@ -81,8 +87,8 @@ export function isWalkableValue(v: number): boolean {
     v === T_DOOR ||
     v === T_WATER ||
     v === T_RUBBLE ||
-    v === T_STAIRS_DOWN ||
-    v === T_STAIRS_UP ||
+    v === T_EXIT ||
+    v === T_ARRIVAL ||
     v === T_BRIDGE ||
     v === T_ICE
   );
