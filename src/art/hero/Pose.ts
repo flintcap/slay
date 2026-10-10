@@ -22,6 +22,11 @@
  *
  * Every left/right angle is mirrored, so the same numbers on L and R give a
  * mirror-image pose.
+ *
+ * A hand can also be placed rather than turned: a reach (`Pose.reach`) gives
+ * where the held thing's grip goes and which way it points, in character
+ * space, and the solver works the arm out (`Animator.ts`). Reaches blend as
+ * numbers too, so a blade between two keys travels a smooth arc.
  */
 import * as THREE from 'three';
 import { HERO_BONES, HERO_PARENT, type HeroBone } from './Rig';
@@ -42,8 +47,18 @@ export const CH = {
   offGrip: BONE_COUNT * 3 + 4,
   /** How far below the main hand the off hand grips, metres. */
   gripGap: BONE_COUNT * 3 + 5,
+  /**
+   * A reach per hand, seven channels each: weight, then the grip's place
+   * (x, y, z, character space, carried by the pelvis offset) and the held
+   * thing's pointing (x, y, z), both scaled by the weight so layers blend
+   * them as a weighted mean.
+   */
+  reachL: BONE_COUNT * 3 + 6,
+  reachR: BONE_COUNT * 3 + 13,
 } as const;
-export const CHANNELS = BONE_COUNT * 3 + 6;
+export const CHANNELS = BONE_COUNT * 3 + 20;
+/** The reach channels, for masks. */
+export const REACH_CHANNELS = Array.from({ length: 14 }, (_, i) => CH.reachL + i);
 
 export type Side = 'L' | 'R';
 
@@ -106,6 +121,24 @@ export class Pose {
     this.set(side === 'L' ? 'upperArmL' : 'upperArmR', fwd, twist, out);
     this.set(side === 'L' ? 'foreArmL' : 'foreArmR', elbow, pron, 0);
     this.set(side === 'L' ? 'handL' : 'handR', wrist, dev, 0);
+    return this;
+  }
+  /**
+   * Places a hand: the grip at `hand` and the held thing pointing along
+   * `dir`, metres, character space (+X left, +Z ahead), moved with the
+   * pelvis offset. The wrist keeps the cock its hand angles give.
+   */
+  reach(side: Side, hand: readonly number[], dir: readonly number[]): this {
+    const b = side === 'L' ? CH.reachL : CH.reachR;
+    const c = this.c;
+    const n = Math.hypot(dir[0]!, dir[1]!, dir[2]!) || 1;
+    c[b] = 1;
+    c[b + 1] = hand[0]!;
+    c[b + 2] = hand[1]!;
+    c[b + 3] = hand[2]!;
+    c[b + 4] = dir[0]! / n;
+    c[b + 5] = dir[1]! / n;
+    c[b + 6] = dir[2]! / n;
     return this;
   }
   /** Curls a hand's fingers and thumb: 1 a fist, 0 flat. */

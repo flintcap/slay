@@ -25,7 +25,7 @@ and animator when done.
 - [x] Locomotion. (`heroes: hero animator with planted feet, stances and cape swing`; not switched on yet, the game still runs the old animator until "Switch and clean") New animator from nothing: idle with breathing and weight
   shift, walk, run, turn in place, start and stop, feet planted (no sliding),
   stance per weapon (one hand, two hand, dual, staff, bow, shield).
-- [ ] Combat moves. Attacks per weapon kind (sword, axe, mace, dagger, spear,
+- [x] Combat moves. (`heroes: combat moves per weapon, placed hands, action steps`; not switched on yet) Attacks per weapon kind (sword, axe, mace, dagger, spear,
   two-handed, staff, wand, bow, shield bash, unarmed), combo chains, casts
   (aimed, self, ground), channel, dodge, hit react, stun, knockdown, death.
   Anticipation, weight and follow-through. Hit and release frames match
@@ -87,24 +87,21 @@ lands exactly on the game's contact time.
 
 ## Next up
 
-1. Combat moves on the new animator (`src/art/hero/Actions.ts`). Today every
-   strike is one placeholder overhand blow and every cast one two-handed
-   push. Author per weapon kind: sword, axe, mace, dagger, spear, two-hander,
-   staff, wand, bow (draw to the cheek, release on `contact`), shield bash,
-   unarmed; combos alternate (`ctx.flip`, `attack1`/`attack2`). Casts:
-   aimed, self, ground. Channel loop, dodge (roll or dash), hit react,
-   stagger, stun, knockdown, two deaths. Keys start from the stance's idle
-   pose; `contact` is the hit/release key and `recover` when a move order may
-   cut in. Steps inside an action (lunge, slam) still need a way to move a
-   planted foot: add `Gait.stepTo(foot, x, z, dur)` and call it from a key
-   time. Read hit/release timing off `CLIP_CONTACT` / `contactDelay`
-   (`src/entities/Player.ts`) and `src/scenes/SkillRunner.ts`. Add an
-   `actions` sheet (key strip per action and weapon) to `hero-page.ts` and a
-   check that `hit`/`release` fire exactly `contact` seconds after `play()`.
-2. Switch and clean.
+1. Switch and clean. Character select, paperdoll, town and dungeon build
+   `buildHero` + `HeroAnimator` (via `src/scenes/HeroModel.ts`), hold weapons
+   with `holdItem`, and pass the weapon category to `setWeapon(grip,
+   category)` so spears pick the spear chain. Call `loadMeshCache()` at boot.
+   Then delete `BodyKit.ts`, the old `Animation.ts` and every reference (keep
+   what `NpcModels.ts`, `Town` and `MonsterModels.ts` import working:
+   `Skinning.ts` has `mergeSkinned`/`skinRigid` replacements), update the old
+   tools that import the old animator, redraw portraits, and show zero grep
+   hits for the old names in the commit.
 
 Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities,poses,gear,clips,stances [--class=warden] [--kit=plate] [--rarity=unique] [--stance=shield]`
 writes `shots/heroes/*.png` in seconds. Check: `node tools/check-hero.mjs`.
+Actions: `hero-sheet.mjs actions --class=warden --stance=oneHand [--weapon=axe]
+--actions=attack1#0,attack1#1,slam` (two views a row, contact frame
+outlined, a post where the foe stands); `probe` prints hand and blade per key.
 
 ## Notes for resume
 
@@ -117,9 +114,23 @@ writes `shots/heroes/*.png` in seconds. Check: `node tools/check-hero.mjs`.
   (`Ik.ts`), off hand onto the main hand's grip. Feet (`Gait.ts`) live in
   world space; planted feet never move (check-hero measures 0.0 mm drift on
   every class). Cape bones under the chest are found automatically and
-  swung by `Secondary.ts`. Costs about 45 us a frame. `setWeapon(grip)` plus
+  swung by `Secondary.ts`. Costs about 45-80 us a frame. `setWeapon(grip)` plus
   `setOffHand('shield' | 'weapon')` pick the stance; `Hold.ts` puts items in
   hand sockets with the grip turn (reverse grip for daggers).
+
+- Actions (`Actions.ts`): `actionFor(name, kind, combo)` where
+  `moveKind(stance, grip, category)` picks the chain (blade, axe, mace,
+  dagger, dual, spear, great, staff, wand, bow, shield, unarmed); blows in a
+  row within 1 s walk the chain. Sword, axe, mace, two-hander, staff and
+  spear blows place the hand (`Pose.reach`: grip position and weapon
+  pointing, character space, carried by the pelvis offset) and the animator
+  solves the arm (`reachArm`): hand turned to point the weapon, elbow where
+  the wrist stays natural. Keys without a reach are filled from where their
+  angles put the hand, so the curve runs through. Daggers, fists and
+  gestures still use arm angles. `steps` move a foot inside an action
+  (`Gait.actionStep`); `legIk` below 1 (roll, falls) re-places the feet under
+  the body. check-hero times every hit/release on every weapon: within one
+  frame of `contact`.
 
 - Armour (`Armour.ts`): `wearArmour(hero, slot, item, visual)` returns
   `{ object, hides }`; call `setHeroHidden(hero, hides)` and

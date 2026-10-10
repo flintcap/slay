@@ -20,7 +20,7 @@
  */
 import * as THREE from 'three';
 import { HERO_BONES, HERO_PARENT, type HeroBone } from './Rig';
-import { BONE_INDEX, CH, CHANNELS, Pose, PoseSolver, mask, ARM_L, ARM_R, TRUNK } from './Pose';
+import { BONE_INDEX, CH, CHANNELS, Pose, PoseSolver, REACH_CHANNELS, mask, ARM_L, ARM_R, TRUNK } from './Pose';
 import { Gait, wrapAngle, type GaitInput } from './Gait';
 import { STANCES, stanceFor, type Stance, type StanceDef, type StanceBody } from './Stances';
 import { actionFor, moveKind, type ActionCtx, type ActionDef, type MoveKind } from './Actions';
@@ -59,8 +59,8 @@ export interface PlayOpts {
 
 const LOCO = new Set(['idle', 'walk', 'run']);
 const TAU = Math.PI * 2;
-const UPPER = mask([...TRUNK, ...ARM_L, ...ARM_R], [CH.offGrip, CH.gripGap]);
-const FULL = mask([...TRUNK, ...ARM_L, ...ARM_R, 'pelvis'], [CH.offGrip, CH.gripGap, CH.pelvisX, CH.pelvisY, CH.pelvisZ, CH.legIk]);
+const UPPER = mask([...TRUNK, ...ARM_L, ...ARM_R], [CH.offGrip, CH.gripGap, ...REACH_CHANNELS]);
+const FULL = mask([...TRUNK, ...ARM_L, ...ARM_R, 'pelvis'], [CH.offGrip, CH.gripGap, CH.pelvisX, CH.pelvisY, CH.pelvisZ, CH.legIk, ...REACH_CHANNELS]);
 const LEG_MASK = mask(['thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR']);
 for (let i = 0; i < CHANNELS; i++) FULL[i] = Math.max(FULL[i]!, LEG_MASK[i]!);
 
@@ -104,6 +104,17 @@ const _q2 = new THREE.Quaternion();
 const _q3 = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const _r1 = new THREE.Vector3();
+const _r2 = new THREE.Vector3();
+const _r3 = new THREE.Vector3();
+const _r4 = new THREE.Vector3();
+const _r5 = new THREE.Vector3();
+const _r6 = new THREE.Vector3();
+const _r7 = new THREE.Vector3();
+const _r8 = new THREE.Vector3();
+const _qa = new THREE.Quaternion();
+const _qh = new THREE.Quaternion();
+const _qf = new THREE.Quaternion();
 
 /** Where one leg's IK reads its geometry, bind pose. */
 interface LegGeo {
@@ -133,6 +144,11 @@ interface ArmGeo {
   elbowOut: THREE.Vector3;
   socketPos: THREE.Vector3;
   socketQuat: THREE.Quaternion;
+  /** The hand socket, to find what it holds (`hold:<slot>`). */
+  socket: THREE.Object3D | null;
+  slot: 'mainHand' | 'offHand';
+  /** Reach channels. */
+  reach: number;
 }
 
 export class HeroAnimator {
@@ -268,6 +284,9 @@ export class HeroAnimator {
         elbowOut: out,
         socketPos: sock ? sock.position.clone() : new THREE.Vector3(),
         socketQuat: sock ? sock.quaternion.clone() : new THREE.Quaternion(),
+        socket: sock ?? null,
+        slot: s === 'R' ? 'mainHand' : 'offHand',
+        reach: s === 'R' ? CH.reachR : CH.reachL,
       };
     };
     this.arms = { L: arm('L'), R: arm('R') };
@@ -445,23 +464,7 @@ export class HeroAnimator {
       this.lastAttackAt = this.elapsed;
     }
     const def = actionFor(resolved, this.kind, this.combo);
-    const ctx: ActionCtx = { ...this.body, stance: this.stance, kind: this.kind, flip: attack ? (this.combo % 2 ? -1 : 1) : this.flinchSide };
-    const keys: Float32Array[] = [];
-    const times: number[] = [];
-    const holds: boolean[] = [];
-    const pel = BONE_INDEX.pelvis * 3;
-    for (const key of def.keys) {
-      const p = this.scratch.copy(this.stanceIdle);
-      key.pose(p, ctx);
-      const c = p.c.slice();
-      // The pelvis turns the short way from key to key, so a roll that ends
-      // a full turn round does not spin back.
-      const prev = keys[keys.length - 1];
-      if (prev) for (let j = pel; j < pel + 3; j++) c[j] = prev[j]! + wrapAngle(c[j]! - prev[j]!);
-      keys.push(c);
-      times.push(key.t);
-      holds.push(!!key.hold);
-    }
+    const { keys, times, holds } = this.bake(def, attack ? (this.combo % 2 ? -1 : 1) : this.flinchSide);
     const speed = opts.speed ?? 1;
     let warp = speed;
     if (def.contact !== undefined && opts.contact !== undefined) warp = def.contact / Math.max(0.03, opts.contact);
@@ -488,6 +491,136 @@ export class HeroAnimator {
       out: 1,
       prevT: 0,
     };
+  }
+
+  /** An action's key poses, each built on the stance's standing pose. */
+  private bake(def: ActionDef, flip: number): { keys: Float32Array[]; times: number[]; holds: boolean[] } {
+    const ctx: ActionCtx = { ...this.body, stance: this.stance, kind: this.kind, flip };
+    const keys: Float32Array[] = [];
+    const times: number[] = [];
+    const holds: boolean[] = [];
+    const pel = BONE_INDEX.pelvis * 3;
+    const reaches = { L: false, R: false };
+    for (const key of def.keys) {
+      const p = this.scratch.copy(this.stanceIdle);
+      key.pose(p, ctx);
+      if (p.c[CH.reachL]! > 0) reaches.L = true;
+      if (p.c[CH.reachR]! > 0) reaches.R = true;
+    }
+    for (const key of def.keys) {
+      const p = this.scratch.copy(this.stanceIdle);
+      key.pose(p, ctx);
+      // A hand placed in any key is placed in all of them: the others reach
+      // for where their angles would put it, so the curve runs through.
+      for (const side of ['L', 'R'] as const) {
+        if (reaches[side] && !(p.c[this.arms[side].reach]! > 0)) this.handFrame(p, side);
+      }
+      const c = p.c.slice();
+      // The pelvis turns the short way from key to key, so a roll that ends
+      // a full turn round does not spin back.
+      const prev = keys[keys.length - 1];
+      if (prev) for (let j = pel; j < pel + 3; j++) c[j] = prev[j]! + wrapAngle(c[j]! - prev[j]!);
+      keys.push(c);
+      times.push(key.t);
+      holds.push(!!key.hold);
+    }
+    return { keys, times, holds };
+  }
+
+  /** Writes into `p`'s reach for `side` where its angles put the hand (forward kinematics). */
+  private handFrame(p: Pose, side: 'L' | 'R'): void {
+    const S = this.solver;
+    const A = this.arms[side];
+    S.rotations(p);
+    S.fk(p);
+    const q = S.world[A.hand]!;
+    const pos = _v1.copy(A.socketPos).applyQuaternion(q).add(S.pos[A.hand]!);
+    // Reaches ride on the pelvis offset, so a body stepping in carries the hand.
+    pos.x -= p.c[CH.pelvisX]!;
+    pos.y -= p.c[CH.pelvisY]!;
+    pos.z -= p.c[CH.pelvisZ]!;
+    const dir = this.bladeBind(A, _v2).applyQuaternion(q);
+    p.reach(side, [pos.x, pos.y, pos.z], [dir.x, dir.y, dir.z]);
+  }
+
+  /** Which way the held thing points in the hand's own frame. */
+  private bladeBind(A: ArmGeo, out: THREE.Vector3): THREE.Vector3 {
+    _q1.copy(A.socketQuat);
+    const held = A.socket?.children.find((o) => o.name === `hold:${A.slot}`);
+    if (held) _q1.multiply(held.quaternion);
+    return out.set(0, 1, 0).applyQuaternion(_q1);
+  }
+
+  /**
+   * An arm onto its reach: the hand turned so the held thing points where it
+   * should, the forearm where the wrist's cock wants it, the elbow wherever
+   * lets that happen best.
+   */
+  private reachArm(side: 'L' | 'R'): void {
+    const S = this.solver;
+    const c = this.pose.c;
+    const A = this.arms[side];
+    const b = A.reach;
+    const w = c[b]!;
+    if (w < 1e-3) return;
+    const k = Math.min(1, w);
+    const T = _r1.set(c[b + 1]!, c[b + 2]!, c[b + 3]!).divideScalar(w);
+    T.x += c[CH.pelvisX]!;
+    T.y += c[CH.pelvisY]!;
+    T.z += c[CH.pelvisZ]!;
+    const D = _r2.set(c[b + 4]!, c[b + 5]!, c[b + 6]!);
+    if (D.lengthSq() < 1e-8) return;
+    D.normalize();
+    const bladeB = this.bladeBind(A, _r3);
+    // The forearm's direction seen from the hand, with the wrist cocked as the channels say.
+    const wristInv = _qa.copy(S.local[A.hand]!).invert();
+    const foreH = _r4.copy(A.foreDir).applyQuaternion(wristInv);
+    const sh = S.pos[A.upper]!;
+    // The forearm would rather point from the shoulder toward the hand.
+    const P = _r5.subVectors(T, sh).normalize();
+    const Qh = aimQuat(bladeB, foreH, D, P, _qh);
+    const W = _r6.copy(A.socketPos).applyQuaternion(Qh).negate().add(T);
+    P.subVectors(W, sh).normalize();
+    aimQuat(bladeB, foreH, D, P, Qh);
+    W.copy(A.socketPos).applyQuaternion(Qh).negate().add(T);
+    // The forearm that hand wants, and the elbow that gives it.
+    const Qf = _qf.copy(Qh).multiply(_qa);
+    const F = _r7.copy(A.foreDir).applyQuaternion(Qf);
+    const pole = _r8.copy(W).addScaledVector(F, -A.l2).sub(sh);
+    // Elbows never point up and in: nudge toward down and out.
+    pole.x += side === 'L' ? 0.15 : -0.15;
+    pole.y -= 0.15;
+    for (const bi of [A.upper, A.fore, A.hand]) this.fkLocal[bi]!.copy(S.local[bi]!);
+    twoBoneIk(sh, W, A.l1, A.l2, pole, _knee);
+    const out = _v2.copy(_knee).sub(sh);
+    const line = _v1.copy(W).sub(sh).normalize();
+    out.addScaledVector(line, -out.dot(line));
+    if (out.lengthSq() < 1e-8) out.copy(pole).addScaledVector(line, -pole.dot(line));
+    S.setWorld(A.upper, aimQuat(A.upperDir, A.elbowOut, _v1.subVectors(_knee, sh), out, _q3));
+    S.refresh(A.fore);
+    // The forearm rolls with the hand.
+    const upF = _v4.copy(A.elbowOut).applyQuaternion(Qf);
+    S.setWorld(A.fore, aimQuat(A.foreDir, A.elbowOut, _v1.subVectors(W, _knee), upF, _q3));
+    S.refresh(A.hand);
+    S.setWorld(A.hand, Qh);
+    if (k < 1) for (const bi of [A.upper, A.fore, A.hand]) S.local[bi]!.slerp(this.fkLocal[bi]!, 1 - k);
+    S.refresh(A.upper);
+    S.refreshBelow(A.upper);
+  }
+
+  /** For tools: key `i` of an action as it would be baked now. */
+  bakeKey(name: string, i: number, combo = 0): Pose {
+    const { keys } = this.bake(actionFor(name, this.kind, combo), combo % 2 ? -1 : 1);
+    const p = new Pose();
+    p.c.set(keys[Math.min(i, keys.length - 1)]!);
+    return p;
+  }
+
+  /** For tools: puts a pose on the bones as it stands (IK and grip solved). */
+  showPose(p: Pose): void {
+    this.pose.copy(p);
+    this.solve();
+    this.solver.apply(this.bones, this.pose);
   }
 
   /** A hit laid over whatever the body is doing. Alternates sides. */
@@ -918,6 +1051,10 @@ export class HeroAnimator {
         S.refreshBelow(lg.thigh);
       }
     }
+
+    // Hands placed by an action.
+    this.reachArm('R');
+    this.reachArm('L');
 
     // The off hand onto a two-handed grip, below the main hand.
     const grip = clamp(p.c[CH.offGrip]!, 0, 1);

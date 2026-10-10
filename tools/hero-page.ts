@@ -106,6 +106,13 @@ function floorGrid(): THREE.Object3D {
   return grid;
 }
 
+/** A post where a foe would stand, a metre ahead, to judge where blows land. */
+function dummy(H: number): THREE.Object3D {
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, H * 0.9, 10), new THREE.MeshStandardMaterial({ color: 0x8a3030, roughness: 0.8 }));
+  post.position.set(0, H * 0.45, 1.25);
+  return post;
+}
+
 /** What each stance holds for the sheets: slot, item base, grip. */
 const STANCE_ITEMS: Record<Stance, Array<['mainHand' | 'offHand', string, string]>> = {
   unarmed: [],
@@ -562,6 +569,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
         const r = row * views.length + vi;
         const a = actor(cls, stance, `${cls}-${stance}-act${r}`, f.kit, (f.rarity ?? 'unique') as ItemRarity);
         if (f.weapon) a.anim.setWeapon(f.weapon);
+        a.world.add(dummy(a.hero.look.shape.height));
         simulate(a, 0, 0.6, still);
         const { end, contact } = playAction(a, name, Number(n ?? 0));
         // Even frames, with the one nearest the contact moved onto it.
@@ -592,6 +600,48 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       });
     });
     return c.toDataURL('image/png');
+  },
+  /**
+   * Numbers for tuning actions: at each key, where the weapon hand is and
+   * which way the blade points, in character space (+X left, +Z ahead),
+   * and the chest's turn. Same flags as `actions`.
+   */
+  async probe(f) {
+    await loadMeshCache();
+    const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
+    const stance = (f.stance as Stance | undefined) ?? CLASS_STANCE[cls];
+    const list = (f.actions ?? 'attack1#0,attack1#1,attack1#2').split(',');
+    const lines: string[] = [];
+    const v = (o: THREE.Vector3) => `${o.x.toFixed(2)} ${o.y.toFixed(2)} ${o.z.toFixed(2)}`.padEnd(17);
+    for (const spec of list) {
+      const [name, n] = spec.split('#') as [string, string | undefined];
+      const a = actor(cls, stance, `${cls}-${stance}-probe`);
+      if (f.weapon) a.anim.setWeapon(f.weapon);
+      simulate(a, 0, 0.6, still);
+      const def = actionFor(name, a.anim.moveKind, Number(n ?? 0));
+      playAction(a, name, Number(n ?? 0));
+      lines.push(`${spec} (${a.anim.moveKind}) contact ${def.contact ?? '-'}`);
+      lines.push('     t   hand R             blade R           hand L             blade L           chest yaw');
+      let t = 0;
+      for (const key of def.keys) {
+        simulate(a, t, key.t, still);
+        t = key.t;
+        a.world.updateMatrixWorld(true);
+        const row = [key.t.toFixed(2).padStart(6)];
+        for (const slot of ['mainHand', 'offHand'] as const) {
+          const sock = a.hero.rig.sockets[slot];
+          const node = sock.getObjectByName(`hold:${slot}`) ?? sock;
+          const pos = node.getWorldPosition(new THREE.Vector3());
+          const dir = new THREE.Vector3(0, 1, 0).applyQuaternion(node.getWorldQuaternion(new THREE.Quaternion()));
+          row.push(v(pos), v(dir));
+        }
+        const chest = a.hero.rig.bones.chest;
+        const fz = new THREE.Vector3(0, 0, 1).applyQuaternion(chest.getWorldQuaternion(new THREE.Quaternion()));
+        row.push(Math.atan2(fz.x, fz.z).toFixed(2));
+        lines.push(row.join('  '));
+      }
+    }
+    return JSON.stringify({ pass: true, lines });
   },
   /** Every stance on one class: standing, mid-walk, mid-run. */
   async stances(f) {

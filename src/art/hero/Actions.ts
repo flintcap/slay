@@ -108,12 +108,40 @@ function weight(p: Pose, c: ActionCtx, fwd: number, down: number, side = 0): voi
 // Weapon blows
 // ---------------------------------------------------------------------------
 
+/**
+ * A hand placed rather than turned: the grip's place and the weapon's
+ * pointing, heads, character space, for a right-handed blow (+X left, +Z
+ * ahead; mirrored for the left hand). `cock` and `flex` set the wrist.
+ */
+interface Reach {
+  at: [number, number, number];
+  dir: [number, number, number];
+  cock?: number;
+  flex?: number;
+}
+type Place = Arm | Reach;
+
+/** Metres on a 1.88 m body to heads, for writing reaches by eye. */
+const M = (x: number, y: number, z: number): [number, number, number] => [x * 4, y * 4, z * 4];
+const R = (at: [number, number, number], dir: [number, number, number], cock = 0.5, flex = 0): Reach => ({ at: M(...at), dir, cock, flex });
+
+function place(p: Pose, c: ActionCtx, side: Side, a: Place): void {
+  if (Array.isArray(a)) {
+    arm(p, side, a as Arm);
+    return;
+  }
+  const r = a as Reach;
+  const m = side === 'R' ? 1 : -1;
+  p.set(side === 'R' ? 'handR' : 'handL', r.flex ?? 0, r.cock ?? 0.5, 0);
+  p.reach(side, [r.at[0] * m * c.h, r.at[1] * c.h, r.at[2] * c.h], [r.dir[0] * m, r.dir[1], r.dir[2]]);
+}
+
 interface Blow {
   side?: Side;
-  /** Weapon arm at wind-up, contact, follow-through. */
-  wind: Arm;
-  hit: Arm;
-  follow: Arm;
+  /** Weapon hand at wind-up, contact, follow-through: arm angles or a reach. */
+  wind: Place;
+  hit: Place;
+  follow: Place;
   /** Trunk turn (+ left, for a right-handed blow) and lean at each. */
   turn: [number, number, number];
   lean: [number, number, number];
@@ -139,8 +167,8 @@ function blow(b: Blow): ActionDef {
   const side = b.side ?? 'R';
   const m = side === 'R' ? 1 : -1;
   const [tw, th, tf, te] = b.t ?? [0.16, 0.26, 0.42, 0.72];
-  const key = (a: Arm, i: 0 | 1 | 2, bal: Arm): PoseFn => (p, c) => {
-    arm(p, side, a);
+  const key = (a: Place, i: 0 | 1 | 2, bal: Arm): PoseFn => (p, c) => {
+    place(p, c, side, a);
     if (!b.keepOther && !b.grip) arm(p, other(side), bal);
     if (b.grip) p.c[CH.offGrip] = 1;
     trunk(p, b.turn[i] * m, b.lean[i]);
@@ -163,9 +191,9 @@ function blow(b: Blow): ActionDef {
 /** Forehand: from high over the weapon shoulder, down across to the far hip. */
 const forehand = (o: Partial<Blow> = {}): ActionDef =>
   blow({
-    wind: [2.4, 0.9, -0.9, 2.0, -0.6, 0.3, 0.5],
-    hit: [1.45, 0.25, 0.55, 0.2, -0.5, 0, -0.2],
-    follow: [0.75, -0.2, 1.0, 0.5, -0.3, 0.2, -0.3],
+    wind: R([-0.36, 1.78, -0.12], [0.25, 0.65, -0.72]),
+    hit: R([-0.05, 1.3, 0.55], [0.55, -0.12, 0.82]),
+    follow: R([0.3, 0.98, 0.25], [0.8, -0.35, -0.48]),
     turn: [-0.5, 0.3, 0.6],
     lean: [-0.08, 0.18, 0.28],
     ...o,
@@ -174,9 +202,9 @@ const forehand = (o: Partial<Blow> = {}): ActionDef =>
 /** Backhand: from the far shoulder, out across the front to the weapon side. */
 const backhand = (o: Partial<Blow> = {}): ActionDef =>
   blow({
-    wind: [1.3, -0.3, 1.3, 1.8, -0.3, 0.3, 0.2],
-    hit: [1.5, 0.55, -0.1, 0.2, -1.2, 0, 0.2],
-    follow: [1.25, 1.15, -0.5, 0.45, -1.4, 0, 0.3],
+    wind: R([0.28, 1.45, 0.08], [0.45, 0.4, -0.8]),
+    hit: R([-0.1, 1.32, 0.6], [-0.6, -0.05, 0.8]),
+    follow: R([-0.55, 1.35, 0.2], [-0.75, 0.2, -0.62]),
     turn: [0.55, -0.2, -0.5],
     lean: [0.05, 0.15, 0.18],
     ...o,
@@ -185,9 +213,9 @@ const backhand = (o: Partial<Blow> = {}): ActionDef =>
 /** Overhead: up and back, straight down through the target. */
 const overhead = (o: Partial<Blow> = {}): ActionDef =>
   blow({
-    wind: [2.9, 0.3, -0.3, 2.1, -0.4, 0.4, 0.7],
-    hit: [1.25, 0.12, 0.2, 0.2, -0.4, 0.1, -0.4],
-    follow: [0.65, 0.15, 0.3, 0.4, -0.4, 0.1, -0.6],
+    wind: R([-0.22, 1.98, -0.12], [0.05, 0.25, -0.96]),
+    hit: R([-0.1, 1.25, 0.55], [0.02, -0.35, 0.94]),
+    follow: R([-0.12, 0.95, 0.38], [0.05, -0.8, 0.6]),
     turn: [-0.2, 0.1, 0.15],
     lean: [-0.2, 0.3, 0.42],
     drive: [0.14, 0.16],
@@ -198,9 +226,9 @@ const overhead = (o: Partial<Blow> = {}): ActionDef =>
 /** Thrust: drawn back to the hip, driven straight out. */
 const thrust = (o: Partial<Blow> = {}): ActionDef =>
   blow({
-    wind: [0.55, 0.35, -0.1, 2.0, -1.3, -0.2, 0.1],
-    hit: [1.5, 0.05, 0.35, 0.05, -1.3, -0.1, 0.1],
-    follow: [1.4, 0.05, 0.35, 0.15, -1.3, -0.1, 0.1],
+    wind: R([-0.34, 1.12, -0.12], [0.1, 0.12, 0.99]),
+    hit: R([-0.08, 1.3, 0.66], [0.05, 0, 1]),
+    follow: R([-0.08, 1.28, 0.62], [0.05, -0.05, 1]),
     turn: [-0.4, 0.35, 0.3],
     lean: [-0.02, 0.22, 0.2],
     drive: [0.25, 0.1],
@@ -293,11 +321,26 @@ const flick: ActionDef = blow({
   t: [0.12, 0.2, 0.34, 0.6],
 });
 
+/** A reverse-grip blade punched straight out: arm angles, the point leads with the fist. */
+const DAGGER_THRUST: Partial<Blow> = {
+  wind: [0.55, 0.35, -0.1, 2.0, -1.3, -0.2, 0.1],
+  hit: [1.5, 0.05, 0.35, 0.1, -1.3, -0.1, 0.1],
+  follow: [1.4, 0.05, 0.35, 0.15, -1.3, -0.1, 0.1],
+};
+
+/** The thrust for what is held. */
+function thrustFor(kind: MoveKind): ActionDef {
+  if (kind === 'unarmed') return punch('R');
+  const grip = kind === 'great' || kind === 'staff' || kind === 'spear';
+  const keepOther = kind === 'shield' || kind === 'dual';
+  return thrust(kind === 'dagger' || kind === 'dual' ? { ...DAGGER_THRUST, keepOther } : { grip, keepOther });
+}
+
 const CHAINS: Record<MoveKind, ActionDef[]> = {
   blade: [forehand(), backhand(), thrust()],
-  axe: [overhead({ wind: [2.8, 0.6, -0.6, 2.1, -0.6, 0.4, 0.7] }), backhand({ hit: [1.4, 0.6, -0.1, 0.25, -1.4, 0, 0.4] }), forehand({ t: [0.2, 0.3, 0.48, 0.8], lean: [-0.12, 0.25, 0.35] })],
+  axe: [overhead({ wind: R([-0.25, 1.95, -0.25], [0.1, 0, -1]) }), backhand({ hit: R([-0.15, 1.25, 0.55], [-0.7, -0.15, 0.7]) }), forehand({ t: [0.2, 0.3, 0.48, 0.8], lean: [-0.12, 0.25, 0.35] })],
   mace: [overhead(), forehand({ t: [0.2, 0.3, 0.48, 0.8] }), backhand({ t: [0.18, 0.28, 0.46, 0.78] })],
-  dagger: [ripCross('R'), pick('R'), thrust({ hit: [1.5, 0.05, 0.35, 0.1, -1.3, -0.1, 0.1] })],
+  dagger: [ripCross('R'), pick('R'), thrust(DAGGER_THRUST)],
   dual: [ripCross('R', { keepOther: true }), ripCross('L', { keepOther: true }), pick('R', { keepOther: true }), pick('L', { keepOther: true })],
   shield: [forehand({ keepOther: true }), backhand({ keepOther: true }), shieldBash],
   great: [
@@ -589,8 +632,16 @@ const stomp: ActionDef = {
 /** Up and over with everything, down into the floor. */
 function slamFor(kind: MoveKind): ActionDef {
   const grip = kind === 'great' || kind === 'staff' || kind === 'spear';
-  const both = (p: Pose, a: Arm, b: Arm) => {
-    arm(p, 'R', a);
+  // A weapon that points out of the fist is brought down along a reach; a
+  // reverse-grip blade or a bare fist hammers down on arm angles.
+  const reach = !(kind === 'dagger' || kind === 'dual' || kind === 'unarmed' || kind === 'bow');
+  const PLACES: Record<'wind' | 'hit' | 'follow', Reach> = {
+    wind: R([-0.12, 2.02, -0.1], [0, 0.2, -1]),
+    hit: R([-0.05, 0.9, 0.55], [0, -0.75, 0.66]),
+    follow: R([-0.05, 0.86, 0.5], [0, -0.82, 0.57]),
+  };
+  const both = (p: Pose, c: ActionCtx, which: 'wind' | 'hit' | 'follow', a: Arm, b: Arm) => {
+    place(p, c, 'R', reach ? PLACES[which] : a);
     if (grip) p.c[CH.offGrip] = 1;
     else if (kind !== 'shield') arm(p, 'L', b);
   };
@@ -606,19 +657,19 @@ function slamFor(kind: MoveKind): ActionDef {
       k(
         0.2,
         (p, c) => {
-          both(p, [3.0, 0.25, -0.2, 2.0, -0.4, 0.4, 0.7], [2.9, 0.25, -0.2, 1.8]);
+          both(p, c, 'wind', [3.0, 0.25, -0.2, 2.0, -0.4, 0.4, 0.7], [2.9, 0.25, -0.2, 1.8]);
           trunk(p, 0, -0.28);
           weight(p, c, -0.1, -0.02);
         },
         true,
       ),
       k(0.32, (p, c) => {
-        both(p, [0.95, 0.1, 0.3, 0.15, -0.4, 0.1, -0.6], [0.9, 0.2, 0.3, 0.3]);
+        both(p, c, 'hit', [0.95, 0.1, 0.3, 0.15, -0.4, 0.1, -0.6], [0.9, 0.2, 0.3, 0.3]);
         trunk(p, 0.05, 0.6);
         weight(p, c, 0.25, 0.55);
       }),
       k(0.58, (p, c) => {
-        both(p, [0.85, 0.1, 0.3, 0.2, -0.4, 0.1, -0.6], [0.8, 0.2, 0.3, 0.4]);
+        both(p, c, 'follow', [0.85, 0.1, 0.3, 0.2, -0.4, 0.1, -0.6], [0.8, 0.2, 0.3, 0.4]);
         trunk(p, 0.05, 0.55);
         weight(p, c, 0.22, 0.5);
       }),
@@ -629,7 +680,7 @@ function slamFor(kind: MoveKind): ActionDef {
 
 /** A lunge: the back foot thrown far forward, the weapon arm driven out. */
 function lungeFor(kind: MoveKind): ActionDef {
-  const base = kind === 'unarmed' ? punch('R') : thrust({ grip: kind === 'great' || kind === 'staff' || kind === 'spear', keepOther: kind === 'shield' || kind === 'dual' });
+  const base = thrustFor(kind);
   return {
     ...base,
     steps: [{ t: 0.06, side: 'R', dx: 0.15, dz: 1.9, lift: 0.3, land: 0.24 }],
@@ -981,7 +1032,7 @@ export function actionFor(name: string, kind: MoveKind, combo: number): ActionDe
     }
     case 'thrust':
       if (kind === 'bow') return SNAP;
-      return kind === 'unarmed' ? punch('R') : thrust({ grip: kind === 'great' || kind === 'staff' || kind === 'spear', keepOther: kind === 'shield' || kind === 'dual' });
+      return thrustFor(kind);
     case 'lunge': {
       let a = LUNGES.get(kind);
       if (!a) LUNGES.set(kind, (a = lungeFor(kind)));
