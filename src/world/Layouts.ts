@@ -352,7 +352,7 @@ export function finalize(out: LayoutOut, rng: Rng): void {
 // ---------------------------------------------------------------------------
 
 /** Nothing walkable may touch the grid border — the shell needs room for walls. */
-function sealBorder(g: Grid): void {
+export function sealBorder(g: Grid): void {
   for (let x = 0; x < g.w; x++) {
     for (let m = 0; m < 2; m++) {
       g.set(x, m, T_VOID);
@@ -510,7 +510,7 @@ export function removeDiagonalPinch(g: Grid): void {
 }
 
 /** Remove single orphan floor tiles left by erosion — they read as artefacts. */
-function pruneStrayFloor(g: Grid): void {
+export function pruneStrayFloor(g: Grid): void {
   for (let y = 1; y < g.h - 1; y++) {
     for (let x = 1; x < g.w - 1; x++) {
       if (!g.walkable(x, y)) continue;
@@ -593,7 +593,7 @@ export function wallify(g: Grid): void {
 }
 
 /** Height field must not jump more than one step between adjacent walkables. */
-function smoothHeights(g: Grid): void {
+export function smoothHeights(g: Grid): void {
   for (let pass = 0; pass < 4; pass++) {
     let changed = false;
     for (let y = 1; y < g.h - 1; y++) {
