@@ -90,16 +90,28 @@ const RANK_WEIGHT: Record<MonsterRank, number> = { normal: 1, champion: 1.5, eli
  * Picks the pack leader to promote on this floor, or null for none. Boss
  * floors never get one; the boss is the floor's set piece.
  */
+/** How a map steers the pick (DungeonScene). */
+export interface MiniBossOptions {
+  /** Always place one, even in an area that holds the boss zone. */
+  sure?: boolean;
+  /** Only pack leaders this accepts: the zone that guards the boss. */
+  only?: (s: SpawnPoint) => boolean;
+}
+
 export function planMiniBoss(
   spawns: readonly SpawnPoint[],
   depth: number,
   isBossLevel: boolean,
   rng: Rng,
+  opts: MiniBossOptions = {},
 ): MiniBossPlan | null {
-  if (isBossLevel || spawns.length === 0) return null;
-  // Most floors. The very first floors of the game get one less often, so a
-  // new character meets the idea before it meets it every time.
-  if (!rng.chance(depth <= 1 ? 0.5 : 0.85)) return null;
+  if (spawns.length === 0) return null;
+  if (!opts.sure) {
+    if (isBossLevel) return null;
+    // Most floors. The very first floors of the game get one less often, so a
+    // new character meets the idea before it meets it every time.
+    if (!rng.chance(depth <= 1 ? 0.5 : 0.85)) return null;
+  }
 
   const seenPack = new Set<number>();
   const leaders: Array<{ index: number; kinds: KindDef[]; weight: number }> = [];
@@ -107,6 +119,7 @@ export function planMiniBoss(
     if (seenPack.has(s.packId)) return;
     seenPack.add(s.packId);
     if (s.named) return;
+    if (opts.only && !opts.only(s)) return;
     const def = getMonster(s.monsterId);
     if (!def || def.speed <= 0.5) return;
     const kinds = MINIBOSS_KINDS.filter((k) => k.roles.includes(def.role));

@@ -124,6 +124,12 @@ export class Boss extends Enemy {
   barrierUp = false;
 
   private engaged = false;
+  /**
+   * Waits in its arena and does not wake by distance: the scene engages it
+   * when the hero walks through the gate (DungeonScene's arena gate). A hit
+   * still wakes it.
+   */
+  dormant = false;
   private staggerTimer = 0;
   private arena: ArenaState | null = null;
   private addTimer = 0;
@@ -519,7 +525,7 @@ export class Boss extends Enemy {
   // --- tick ----------------------------------------------------------------
 
   override update(dt: number, ctx: CombatContext): void {
-    if (!this.engaged && this.alive) {
+    if (!this.engaged && this.alive && !this.dormant) {
       // Auto-engage once the player is in the room.
       const p = this.root.position;
       if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) < 22) this.engage(ctx);

@@ -772,7 +772,12 @@ export function generateLevel(
   g.set(exit.x, exit.y, T_EXIT);
 
   // --- Room roles --------------------------------------------------------
+  // Heat of each zone in the whole map: 0 where you arrive, 1 at the boss.
+  const heats = area.zones.map((z) => zoneHeat(z.order, zonesTotal));
+  const heatAt = (x: number, y: number): number => heats[area.zoneOf[y * g.w + x] ?? 0] ?? 0;
+  const roomHeat = (r: DungeonRoom): number => heatAt(Math.round(r.center.x), Math.round(r.center.y));
   assignRoomRoles(rooms, rng, depth, isBossLevel, quest, levelIndex);
+  heatRooms(rooms, rng.fork('heat'), depth, roomHeat);
 
   // --- Build the level record -------------------------------------------
   const roomOf = buildRoomIndex(g, rooms);
@@ -808,7 +813,6 @@ export function generateLevel(
   if (levelIndex === 0) level.waypoint = besideSpot(g, entry, 3, 5);
 
   // --- Spawns ------------------------------------------------------------
-  const heats = area.zones.map((z) => zoneHeat(z.order, zonesTotal));
   level.spawns = placeSpawns(level, g, rng.fork('spawns'), heats, actx?.budgetScale ?? 1, modifiers);
 
   // --- Props -------------------------------------------------------------
@@ -839,9 +843,11 @@ export function generateLevel(
   }
 
   // --- Dungeon events ------------------------------------------------------
-  if (eventsOn() && !isBossLevel) {
+  // The boss's area may hold a whole zone before the arena: events go
+  // there too, never inside the arena.
+  if (eventsOn()) {
     try {
-      level.events = placeEvents(level, depth, rng.fork('events'));
+      level.events = placeEvents(level, depth, rng.fork('events'), heatAt);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn('[world] event placement failed', err);
@@ -1093,18 +1099,31 @@ export function isQuestShrine(p: PropPlacement): boolean {
  * Picks this floor's events and finds each one an open tile in an ordinary
  * room. An event that cannot find a tile is simply skipped.
  */
-function placeEvents(level: DungeonLevel, depth: number, rng: Rng): LevelEvent[] {
+function placeEvents(
+  level: DungeonLevel,
+  depth: number,
+  rng: Rng,
+  heatAt: (x: number, y: number) => number = () => 0,
+): LevelEvent[] {
   const out: LevelEvent[] = [];
   const planter = new Planter(level, rng);
-  const rooms = level.rooms.filter((r) => r.kind === 'normal' && r.w >= 5 && r.h >= 5);
+  const arena = level.arena;
+  const inArena = (x: number, y: number): boolean =>
+    !!arena && x >= arena.x - 3 && y >= arena.y - 3 && x < arena.x + arena.w + 3 && y < arena.y + arena.h + 3;
+  const rooms = level.rooms.filter((r) => r.kind === 'normal' && r.w >= 5 && r.h >= 5 && !inArena(Math.round(r.center.x), Math.round(r.center.y)));
   rng.shuffle(rooms);
+  // Deeper into the map, rooms come first in the hotter zones and every event
+  // is likelier (never less likely than on the old floors).
+  rooms.sort((a, b) => heatAt(Math.round(b.center.x), Math.round(b.center.y)) - heatAt(Math.round(a.center.x), Math.round(a.center.y)));
+  let areaHeat = 0;
+  for (const r of rooms) areaHeat = Math.max(areaHeat, heatAt(Math.round(r.center.x), Math.round(r.center.y)));
   for (const kind of Object.keys(EVENT_RATES) as LevelEventKind[]) {
     const rate = EVENT_RATES[kind];
     if (depth < rate.minDepth) continue;
-    if (eventsForced !== true && !rng.chance(rate.chance(depth))) continue;
+    if (eventsForced !== true && !rng.chance(Math.min(1, rate.chance(depth) * (1 + 0.5 * areaHeat)))) continue;
     // Rooms first; a floor short of ordinary rooms (one great nave) uses any open ground.
     const at = planter.spot(rooms, 'open');
-    if (!at) continue;
+    if (!at || inArena(at.x, at.y)) continue;
     out.push({ kind, x: at.x, y: at.y });
     const prop = EVENT_PROPS[kind];
     if (prop) level.props.push({ x: at.x, y: at.y, rotation: rng.range(0, Math.PI * 2), kind: prop.kind, interact: prop.interact });
@@ -1237,6 +1256,39 @@ function distanceField(g: Grid, from: Vec2): Int32Array {
     if (cy < g.h - 1) step(c + g.w);
   }
   return dist;
+}
+
+/**
+ * Rewards rise through a map. On top of the base roles, hotter zones get
+ * more treasure, vaults and shrines, and more ambushes. Rolled on its own
+ * stream after the base roles, so the base rolls are unchanged.
+ */
+function heatRooms(rooms: DungeonRoom[], rng: Rng, depth: number, heatOf: (r: DungeonRoom) => number): void {
+  const free = rooms.filter((r) => r.kind === 'normal' && heatOf(r) > 0);
+  if (free.length === 0) return;
+  // Hottest first, with a little noise so it is not always the last room.
+  const key = new Map(free.map((r) => [r, heatOf(r) + rng.range(0, 0.35)] as const));
+  free.sort((a, b) => key.get(b)! - key.get(a)!);
+  let i = 0;
+  const take = (): DungeonRoom | null => (i < free.length ? free[i++]! : null);
+  const h = heatOf(free[0]!);
+  if (rng.chance(0.55 * h)) {
+    const r = take();
+    if (r) r.kind = 'treasure';
+  }
+  if (rng.chance(clamp(0.1 + depth * 0.005, 0.1, 0.45) * h)) {
+    const r = take();
+    if (r) r.kind = 'vault';
+  }
+  if (rng.chance(0.4 * h)) {
+    const r = take();
+    if (r) r.kind = 'shrine';
+  }
+  const ambush = Math.round(h * 1.5);
+  for (let a = 0; a < ambush; a++) {
+    const r = take();
+    if (r) r.kind = 'ambush';
+  }
 }
 
 function assignRoomRoles(

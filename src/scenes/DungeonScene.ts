@@ -197,6 +197,14 @@ export class DungeonScene extends GameScene {
   /** The town waypoint by a map's first arrival: [E] there gives the map up. */
   private waypoint: THREE.Object3D | null = null;
   private nearWaypoint = false;
+  /** The boss arena's gate: open until the hero walks in, shut until the boss falls. */
+  private arenaGate: {
+    tiles: Array<{ x: number; y: number }>;
+    sealed: boolean;
+    bars: THREE.Group | null;
+    colliders: Array<{ x: number; z: number; w: number; d: number }>;
+    rise: number;
+  } | null = null;
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   private heroAura: THREE.Mesh | null = null;
@@ -437,6 +445,11 @@ export class DungeonScene extends GameScene {
       this.boss.dispose();
       this.boss = null;
     }
+    if (this.arenaGate?.bars) {
+      this.arenaGate.bars.removeFromParent();
+      disposeObject(this.arenaGate.bars);
+    }
+    this.arenaGate = null;
     for (const l of this.loot) {
       l.root.removeFromParent();
       disposeObject(l.root);
@@ -491,7 +504,18 @@ export class DungeonScene extends GameScene {
     // Most floors promote one pack leader to a mini-boss with a mechanic of
     // its own (entities/MiniBoss.ts). Its own stream, so the rest of the floor
     // rolls exactly as it did before.
-    const mini = planMiniBoss(this.level.spawns, this.run.depth, this.level.isBossLevel, streamFor(this.level.seed, `miniboss:${index}`));
+    // On a map the zone before the boss always holds one: the boss's guard.
+    // Areas without that zone roll as before.
+    const miniRng = streamFor(this.level.seed, `miniboss:${index}`);
+    const guardOrder = (this.run.map?.zones.length ?? 0) - 2;
+    const guardZone = guardOrder >= 0 ? this.level.zones?.find((z) => z.order === guardOrder) : undefined;
+    const guarded = guardZone
+      ? planMiniBoss(this.level.spawns, this.run.depth, this.level.isBossLevel, miniRng.fork('guard'), {
+          sure: true,
+          only: (sp) => zoneAt(this.level, sp.x, sp.y)?.id === guardZone.id,
+        })
+      : null;
+    const mini = guarded ?? planMiniBoss(this.level.spawns, this.run.depth, this.level.isBossLevel, miniRng);
     let spawnIndex = -1;
     for (const spawn of this.level.spawns) {
       spawnIndex++;
@@ -543,6 +567,20 @@ export class DungeonScene extends GameScene {
           : this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y);
         this.boss.root.position.copy(centre);
         this.scene.add(this.boss.root);
+        const ar = this.level.arena;
+        if (ar) {
+          // The gate is the gap in the arena's shell: the walkable tiles of
+          // the ring one tile outside it.
+          const tiles: Array<{ x: number; y: number }> = [];
+          for (let y = ar.y - 1; y <= ar.y + ar.h; y++) {
+            for (let x = ar.x - 1; x <= ar.x + ar.w; x++) {
+              const ring = x === ar.x - 1 || y === ar.y - 1 || x === ar.x + ar.w || y === ar.y + ar.h;
+              if (ring && isWalkable(this.level, x, y)) tiles.push({ x, y });
+            }
+          }
+          this.boss.dormant = true;
+          this.arenaGate = { tiles, sealed: false, bars: null, colliders: [], rise: 0 };
+        }
       }
     }
 
@@ -1028,6 +1066,7 @@ export class DungeonScene extends GameScene {
 
     try {
       this.boss?.update(dt, ctx);
+      this.tickArenaGate(dt, ctx);
     } catch (err) {
       reportError('boss', err);
     }
@@ -1709,6 +1748,92 @@ export class DungeonScene extends GameScene {
     this.fx.burst('portal', at.x, 1.0, at.z, { count: 120, color: 0x7ec8ff, scale: 1.6 });
     audio.play('portal');
     toast('The way home has opened.', 'epic');
+  }
+
+  /**
+   * The arena entrance. The boss waits until the hero is through the gate,
+   * then the gate slams shut and the fight starts. It opens again when the
+   * boss falls. It only shuts with both of them inside, so a boss woken by a
+   * shot from the doorway is never locked away from the hero.
+   */
+  private tickArenaGate(dt: number, ctx: CombatContext): void {
+    const g = this.arenaGate;
+    const ar = this.level.arena;
+    if (!g || !ar) return;
+    const inside = (wx: number, wz: number): boolean => {
+      const t = this.mesh.worldToTile(wx, wz);
+      return t.x >= ar.x && t.y >= ar.y && t.x < ar.x + ar.w && t.y < ar.y + ar.h;
+    };
+    const boss = this.boss;
+    const bossUp = !!boss && boss.life > 0;
+    if (!g.sealed && bossUp && this.player.alive) {
+      if (inside(this.player.position.x, this.player.position.z) && inside(boss!.root.position.x, boss!.root.position.z)) {
+        this.sealArena(g);
+        boss!.dormant = false;
+        boss!.engage(ctx);
+      }
+    } else if (g.sealed && !bossUp) {
+      this.openArena(g);
+    }
+    if (g.bars && g.rise < 1) {
+      g.rise = Math.min(1, g.rise + dt / 0.28);
+      g.bars.position.y = (1 - g.rise) * -3.2;
+    }
+  }
+
+  private sealArena(g: NonNullable<DungeonScene['arenaGate']>): void {
+    g.sealed = true;
+    const bars = new THREE.Group();
+    const iron = new THREE.MeshStandardMaterial({ color: 0x2b2724, metalness: 0.85, roughness: 0.55 });
+    const barGeo = new THREE.CylinderGeometry(0.07, 0.07, 3.2, 6);
+    const railGeo = new THREE.BoxGeometry(2.0, 0.14, 0.14);
+    for (const t of g.tiles) {
+      const w = this.mesh.tileToWorld(t.x, t.y);
+      this.nav.setBlocked(t.x, t.y, true);
+      const c = { x: w.x, z: w.z, w: 2.0, d: 2.0 };
+      g.colliders.push(c);
+      this.mesh.colliders.push(c);
+      // Bars run across the way in: along x when the gap runs along x.
+      const alongX = g.tiles.some((o) => o.y === t.y && Math.abs(o.x - t.x) === 1);
+      const tile = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const bar = new THREE.Mesh(barGeo, iron);
+        const off = -0.8 + i * 0.4;
+        bar.position.set(alongX ? off : 0, 1.6, alongX ? 0 : off);
+        tile.add(bar);
+      }
+      for (const h of [0.5, 2.6]) {
+        const rail = new THREE.Mesh(railGeo, iron);
+        rail.position.y = h;
+        if (!alongX) rail.rotation.y = Math.PI / 2;
+        tile.add(rail);
+      }
+      tile.position.set(w.x, w.y, w.z);
+      bars.add(tile);
+    }
+    bars.position.y = -3.2;
+    this.scene.add(bars);
+    g.bars = bars;
+    g.rise = 0;
+    audio.play('slam');
+    this.rig.addTrauma(0.35);
+    toast('The gate slams shut behind you.', 'bad');
+  }
+
+  private openArena(g: NonNullable<DungeonScene['arenaGate']>): void {
+    g.sealed = false;
+    for (const t of g.tiles) this.nav.setBlocked(t.x, t.y, false);
+    for (const c of g.colliders) {
+      const i = this.mesh.colliders.indexOf(c);
+      if (i >= 0) this.mesh.colliders.splice(i, 1);
+    }
+    g.colliders = [];
+    if (g.bars) {
+      g.bars.removeFromParent();
+      disposeObject(g.bars);
+      g.bars = null;
+    }
+    audio.play('door');
   }
 
   /**

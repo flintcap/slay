@@ -33,7 +33,7 @@ one boss. Dark and gritty. Many biomes in unique mixes.
   transitions, waypoint back to town at the start, one boss arena at the end,
   portal home after the boss. The town portal always opens a new map. Remove
   the old stairs-per-floor run flow.
-- [ ] Content per zone. Packs, elites, rares, events, chests, shrines, quest
+- [x] Content per zone. (Maps: rewards rise through a map, a guard before the boss, the arena gate) Packs, elites, rares, events, chests, shrines, quest
   objectives, mini-bosses. Density rises through the map. The boss arena has
   an entrance moment. Keep every existing quest and event kind working.
 - [ ] Wayfinding. Minimap shows zones and exits. Zone name banner on entry
@@ -176,16 +176,13 @@ milestone 4.
 
 ## Next up
 
-1. Content per zone milestone. Mini-boss: `planMiniBoss` (entities/MiniBoss.ts)
-   already promotes one leader per level; make it land in the zone before the
-   boss zone (spawns carry their zone via `level.zoneOf`).
-2. Chests, shrines and events by heat: more and better the deeper into the
-   map. Check `placeProps` and the event placer read zone heat, or weight
-   their room picks by it in DungeonGen.
-3. Arena entrance moment in DungeonScene: boss stays idle until the hero
-   passes `level.arena.gate`; then the gate seals (nav blocked on the 3 gate
-   tiles, a sound, a banner) until the boss dies.
-4. Keep check-events, check-story, check-runmods and check-mapgen green.
+1. Wayfinding milestone. Minimap (HUD.ts `marks`, MapPanel.ts): tint each
+   zone, mark `level.exits` and `level.waypoint`.
+2. Zone banner on entering a zone: track the zone under the hero in
+   DungeonScene (as the music does) and emit an event Banners.ts shows.
+3. HUD map label: map name and "Tier N" instead of "Depth N" (the
+   `depth:changed` payload; add `mapName`, `zone`, `tier`). The "Depth N
+   cleared" toast in `checkExit` becomes the map name.
 
 ## Notes for resume
 
@@ -217,6 +214,17 @@ milestone 4.
 - The waypoint ring is drawn by DungeonScene (`buildWaypoint`,
   `tickWaypoint`). Music per zone is already done by audio (`zoneAt` in
   DungeonScene's update).
+
+- Content by heat: `heatRooms` (DungeonGen) adds treasure, vault, shrine and
+  ambush rooms in hotter zones on its own stream; `placeEvents` takes
+  `heatAt`, puts hot rooms first and lifts each event's chance by up to 1.5x.
+  Events may stand in the boss's area, never in or next to the arena.
+- The zone before the boss always has a mini-boss (`planMiniBoss` options
+  `sure` and `only`, called from DungeonScene.loadLevel).
+- Arena gate: `Boss.dormant` stops the distance wake. DungeonScene
+  `tickArenaGate` seals the shell gap (nav blockers, colliders, iron bars
+  rising) once hero and boss are both inside, engages the boss, and opens it
+  when the boss falls.
 
 - ground runs at the same time and draws what you generate. Unknown tile
   kinds must render as blocking walls until ground supports them.

@@ -91,9 +91,15 @@ for (const depth of DEPTHS) {
       if (JSON.stringify(level.events ?? []) !== JSON.stringify(twin.events ?? [])) {
         problems.push(`depth ${depth} seed ${seed} floor ${li}: events differ between two identical generations`);
       }
-      if (level.isBossLevel) {
-        if ((level.events ?? []).length) problems.push(`depth ${depth} seed ${seed}: boss floor has events`);
-        return;
+      // The boss's area may hold ground before the arena; events may stand
+      // there, never in the arena itself.
+      const ar = level.arena;
+      if (ar) {
+        for (const ev of level.events ?? []) {
+          if (ev.x >= ar.x && ev.y >= ar.y && ev.x < ar.x + ar.w && ev.y < ar.y + ar.h) {
+            problems.push(`depth ${depth} seed ${seed}: event ${ev.kind} inside the boss arena`);
+          }
+        }
       }
       forcedFloors++;
       const reach = reachableFrom(level);
