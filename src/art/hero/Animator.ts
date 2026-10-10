@@ -23,7 +23,8 @@ import { HERO_BONES, HERO_PARENT, type HeroBone } from './Rig';
 import { BONE_INDEX, CH, CHANNELS, Pose, PoseSolver, mask, ARM_L, ARM_R, TRUNK } from './Pose';
 import { Gait, wrapAngle, type GaitInput } from './Gait';
 import { STANCES, stanceFor, type Stance, type StanceDef, type StanceBody } from './Stances';
-import { ACTIONS, type ActionCtx, type ActionDef } from './Actions';
+import { actionFor, moveKind, type ActionCtx, type ActionDef, type MoveKind } from './Actions';
+export { ACTION_NAMES } from './Actions';
 import { aimQuat, twoBoneIk } from './Ik';
 import { CapeSpring } from './Secondary';
 
@@ -85,6 +86,8 @@ interface Track {
   holds: boolean[];
   /** Weight going out after the action ends. */
   out: number;
+  /** Natural time last frame, for steps crossing their key. */
+  prevT: number;
 }
 
 const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
@@ -192,7 +195,11 @@ export class HeroAnimator {
   private flinchT = 1;
   private flinchK = 0;
   private flinchSide = 1;
-  private comboFlip = 1;
+  private combo = 0;
+  private lastAttackAt = -9;
+  private category: string | undefined;
+  private kind: MoveKind = 'unarmed';
+  private lastLegIk = 1;
   private condition: BodyCondition = 'none';
   private staggerAt = -9;
 
@@ -305,15 +312,18 @@ export class HeroAnimator {
   }
 
   /** What the main hand holds: sword, axe, mace, dagger, wand, twoHand, staff, bow or none. */
-  setWeapon(grip: string, _category?: string): void {
+  setWeapon(grip: string, category?: string): void {
     this.grip = grip;
+    this.category = category;
     this.setStance(stanceFor(this.grip, this.offHand));
+    this.kind = moveKind(this.stance, this.grip, this.category);
   }
 
   /** What the off hand holds. */
   setOffHand(kind: OffHand): void {
     this.offHand = kind;
     this.setStance(stanceFor(this.grip, this.offHand));
+    this.kind = moveKind(this.stance, this.grip, this.category);
   }
 
   /** Picks a stance directly. */
@@ -324,10 +334,16 @@ export class HeroAnimator {
     this.prevMove.copy(this.stanceMove);
     this.stance = s;
     this.stanceW = 0;
+    this.kind = moveKind(s, this.grip, this.category);
   }
 
   get currentStance(): Stance {
     return this.stance;
+  }
+
+  /** Which chain of blows attacks swing now. */
+  get moveKind(): MoveKind {
+    return this.kind;
   }
 
   get clip(): string {
@@ -416,22 +432,33 @@ export class HeroAnimator {
     if (name === 'death') resolved = this.elapsed - this.staggerAt < 0.8 || this.flinchSide > 0 ? 'death' : 'deathFwd';
     const dying = resolved === 'death' || resolved === 'deathFwd';
     if ((this.condition === 'stunned' || this.condition === 'down') && !opts.force && !dying) return;
-    const def = ACTIONS[resolved] ?? ACTIONS.attack1!;
     const cur = this.track;
     if (cur && !cur.done && cur.name === resolved && !opts.restart) {
       if (opts.speed !== undefined) cur.speed = opts.speed;
       if (opts.onEnd) cur.onEnd = opts.onEnd;
       return;
     }
-    if (resolved === 'attack1' || resolved === 'attack2') this.comboFlip = -this.comboFlip;
-    const ctx: ActionCtx = { ...this.body, stance: this.stance, flip: resolved.startsWith('attack') ? this.comboFlip : this.flinchSide };
+    const attack = resolved === 'attack1' || resolved === 'attack2';
+    if (attack) {
+      // Blows close together run down the weapon's chain.
+      this.combo = this.elapsed - this.lastAttackAt < 1.0 ? this.combo + 1 : 0;
+      this.lastAttackAt = this.elapsed;
+    }
+    const def = actionFor(resolved, this.kind, this.combo);
+    const ctx: ActionCtx = { ...this.body, stance: this.stance, kind: this.kind, flip: attack ? (this.combo % 2 ? -1 : 1) : this.flinchSide };
     const keys: Float32Array[] = [];
     const times: number[] = [];
     const holds: boolean[] = [];
+    const pel = BONE_INDEX.pelvis * 3;
     for (const key of def.keys) {
       const p = this.scratch.copy(this.stanceIdle);
       key.pose(p, ctx);
-      keys.push(p.c.slice());
+      const c = p.c.slice();
+      // The pelvis turns the short way from key to key, so a roll that ends
+      // a full turn round does not spin back.
+      const prev = keys[keys.length - 1];
+      if (prev) for (let j = pel; j < pel + 3; j++) c[j] = prev[j]! + wrapAngle(c[j]! - prev[j]!);
+      keys.push(c);
       times.push(key.t);
       holds.push(!!key.hold);
     }
@@ -459,6 +486,7 @@ export class HeroAnimator {
       times,
       holds,
       out: 1,
+      prevT: 0,
     };
   }
 
@@ -484,7 +512,8 @@ export class HeroAnimator {
     if (dead) return;
     if (c === 'stunned') this.play('stun', { fade: 0.2, force: true });
     else if (c === 'down') this.play('down', { fade: 0.08, hold: true, force: true });
-    else if (was === 'stunned' || was === 'down') this.endTrack(0.35);
+    else if (was === 'down') this.play('getUp', { fade: 0.12, force: true, restart: true });
+    else if (was === 'stunned') this.endTrack(0.35);
   }
 
   /** Back to standing, feet placed under the body. */
@@ -494,6 +523,9 @@ export class HeroAnimator {
     this.hasLast = false;
     this.condition = 'none';
     this.flinchT = 1;
+    this.combo = 0;
+    this.lastAttackAt = -9;
+    this.lastLegIk = 1;
     this.gait = new Gait({ legLen: this.legLen, ankleY: this.legs[0].ankleY, ballZ: this.legs[0].ballZ, heelZ: this.legs[0].heelZ });
   }
 
@@ -538,6 +570,9 @@ export class HeroAnimator {
       rooted: this.condition === 'rooted' || this.condition === 'down' || this.condition === 'stunned',
       hold: plant,
     };
+    // Legs off the IK (a roll, a fall): the feet go where the body is.
+    if (this.lastLegIk < 0.99) this.gait.follow(inp);
+    if (tr && !tr.done && tr.def.steps) this.actionSteps(tr, inp);
     this.gait.update(real, inp);
     for (const side of this.gait.landed) this.emit('step', { clip: this.loco, side });
     this.gait.landed.length = 0;
@@ -608,6 +643,7 @@ export class HeroAnimator {
     tr.w = Math.min(1, tr.w + dt / tr.fade);
     const c = tr.def.contact;
     const before = tr.t;
+    tr.prevT = before;
     // Before the contact key the clock runs at the warp that lands it on time.
     if (c !== undefined && tr.t < c) {
       const tc = tr.t + dt * tr.warp;
@@ -632,6 +668,28 @@ export class HeroAnimator {
         this.endTrack(0.18);
       }
     }
+  }
+
+  /** Starts the steps whose key the track's clock crossed this frame. */
+  private actionSteps(tr: Track, inp: GaitInput): void {
+    const h = this.body.h;
+    for (const st of tr.def.steps!) {
+      if (!(tr.prevT <= st.t && tr.t > st.t) && !(st.t === 0 && tr.prevT === 0 && tr.t > 0)) continue;
+      const land = st.land ?? st.t + 0.15;
+      const dur = this.realSpan(tr, st.t, land);
+      this.gait.actionStep(st.side === 'L' ? 0 : 1, inp, st.dx * h, st.dz * h, dur, (st.lift ?? 0.3) * h);
+    }
+  }
+
+  /** Real seconds the track's clock takes from natural time `a` to `b`. */
+  private realSpan(tr: Track, a: number, b: number): number {
+    const c = tr.def.contact;
+    const sp = Math.max(1e-3, tr.speed);
+    if (c === undefined) return (b - a) / sp;
+    const w = Math.max(1e-3, tr.warp);
+    const pre = Math.max(0, Math.min(b, c) - a);
+    const post = Math.max(0, b - Math.max(a, c));
+    return pre / w + post / sp;
   }
 
   /** Samples a track's curve at its time into `out`. */
@@ -666,6 +724,8 @@ export class HeroAnimator {
       const B = b[c]!;
       o[c] = h00 * A + h10 * (B - pa[c]!) * ma + h01 * B + h11 * (pb[c]! - A) * mb;
     }
+    const pel = BONE_INDEX.pelvis * 3;
+    for (let c = pel; c < pel + 3; c++) o[c] = wrapAngle(o[c]!);
   }
 
   private buildStance(s: Stance, idle: Pose, move: Pose, run: number): void {
@@ -783,6 +843,7 @@ export class HeroAnimator {
     const S = this.solver;
     const p = this.pose;
     const legIk = clamp(p.c[CH.legIk]!, 0, 1);
+    this.lastLegIk = legIk;
     S.rotations(p);
     S.fk(p);
     // Ankle targets in rig space.
@@ -928,4 +989,3 @@ export class HeroAnimator {
   }
 }
 
-export const ACTION_NAMES = Object.keys(ACTIONS);

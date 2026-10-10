@@ -49,6 +49,8 @@ export interface Foot {
   prevPhi: number;
   /** Seconds since this foot last landed. */
   since: number;
+  /** An action's step: where this swing lands instead of the stance spot, and how high it lifts. */
+  goal: { x: number; z: number; yaw: number; height: number } | null;
 }
 
 export interface GaitInput {
@@ -85,6 +87,7 @@ function newFoot(): Foot {
     dutyAtLift: 0.6,
     prevPhi: 0,
     since: 9,
+    goal: null,
   };
 }
 
@@ -258,8 +261,8 @@ export class Gait {
 
   private stepClock(f: Foot, i: number, dt: number, inp: GaitInput): void {
     f.s = Math.min(1, f.s + dt / Math.max(0.05, f.dur));
-    const d = this.desired(inp, i, 0);
-    this.swingTo(f, d, f.s, false);
+    const d = f.goal ?? this.desired(inp, i, 0);
+    this.swingTo(f, d, f.s, false, f.goal?.height);
     if (f.s >= 1) this.land(f, i);
   }
 
@@ -274,7 +277,7 @@ export class Gait {
     f.dutyAtLift = duty;
   }
 
-  private swingTo(f: Foot, d: { x: number; z: number; yaw: number }, s: number, stride: boolean): void {
+  private swingTo(f: Foot, d: { x: number; z: number; yaw: number }, s: number, stride: boolean, height?: number): void {
     const run = stride ? this.runW : 0;
     const e = smooth(run > 0 ? Math.pow(s, 1 + 0.35 * run) : s);
     f.x = lerp(f.sx, d.x, e);
@@ -291,8 +294,9 @@ export class Gait {
       const pLand = lerp(-0.26, -0.06, this.runW) * this.moveW;
       f.pitch = f.spitch * (1 - smooth(Math.min(1, s / 0.45))) + pLand * smooth(s);
     } else {
-      // A shuffle: low, quick, the foot barely leaves the floor.
-      const h = Math.min(0.09 * L, 0.04 * L + dist * 0.25);
+      // A shuffle: low, quick, the foot barely leaves the floor. An action's
+      // stamp lifts it high and drives it down late.
+      const h = height ?? Math.min(0.09 * L, 0.04 * L + dist * 0.25);
       f.lift = h * Math.sin(Math.PI * s);
       f.pitch = f.spitch * (1 - smooth(Math.min(1, s / 0.4))) + 0.12 * Math.sin(Math.PI * s);
     }
@@ -304,6 +308,7 @@ export class Gait {
     f.lift = 0;
     f.s = 1;
     f.since = 0;
+    f.goal = null;
     this.landed.push(i === 0 ? 'L' : 'R');
   }
 
@@ -336,6 +341,27 @@ export class Gait {
     this.lift(f, false, this.duty);
     f.dur = bestDur;
     if (this.settle > 0) this.settle--;
+  }
+
+  /**
+   * An action moves foot `i`: `dx`, `dz` metres from its stance spot
+   * (character space, + left and forward), over `dur` seconds, lifted
+   * `height` metres at the top. Lands planted like any step.
+   */
+  actionStep(i: number, inp: GaitInput, dx: number, dz: number, dur: number, height: number): void {
+    const f = this.feet[i]!;
+    const d = this.desired(inp, i, 0);
+    const c = Math.cos(inp.yaw);
+    const s = Math.sin(inp.yaw);
+    if (!f.planted) this.land(f, i);
+    this.lift(f, false, this.duty);
+    f.dur = Math.max(0.06, dur);
+    f.goal = { x: d.x + dx * c + dz * s, z: d.z - dx * s + dz * c, yaw: d.yaw, height };
+  }
+
+  /** Re-places both feet under the body, planted (while the legs are not on IK). */
+  follow(inp: GaitInput): void {
+    this.place(inp);
   }
 
   /** Mean heading of the feet, relative to `yaw`. */

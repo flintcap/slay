@@ -14,6 +14,7 @@ import type { EquipSlot, ItemRarity } from '../src/types';
 import { HERO_LOOKS } from '../src/art/hero/Looks';
 import { loadMeshCache } from '../src/art/hero/MeshCache';
 import { HeroAnimator } from '../src/art/hero/Animator';
+import { ACTION_NAMES, actionFor } from '../src/art/hero/Actions';
 import { holdItem } from '../src/art/hero/Hold';
 import type { Stance } from '../src/art/hero/Stances';
 import type { HeroModel } from '../src/art/hero/Hero';
@@ -217,6 +218,26 @@ function circle(v: number, r: number): Drive {
     m.position.set(r - r * Math.cos(a), 0, r * Math.sin(a));
     m.rotation.y = a;
   };
+}
+
+/**
+ * Plays `name` as the game does for a blow `contact` seconds off, after
+ * `combo` blows of the chain; returns its natural length and contact key.
+ */
+function playAction(a: Actor, name: string, combo = 0, contact?: number, speed = 1): { end: number; contact: number | null } {
+  for (let i = 0; i < combo; i++) {
+    a.anim.play(name, { fade: 0.08, restart: true });
+    a.anim.update(1 / 60);
+  }
+  const def = actionFor(name, a.anim.moveKind, combo);
+  a.anim.play(name, { fade: 0.08, restart: true, speed, contact });
+  return { end: def.keys[def.keys.length - 1]!.t, contact: def.contact ?? null };
+}
+
+/** Real seconds an action takes when its contact is warped to `contact`. */
+function realLength(end: number, c: number | null, contact: number | undefined, speed: number): number {
+  if (c === null || contact === undefined) return end / speed;
+  return contact + (end - c) / speed;
 }
 
 /** Shoots the actor framed on its mover, the floor fixed under it. */
@@ -426,6 +447,53 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
         lines.push(`${cls} ${label}: slide ${r.slide.toFixed(1)} mm, drift ${r.drift.toFixed(1)} mm, float ${r.float.toFixed(1)} mm, lift ${r.air.toFixed(0)} mm, ${r.steps} steps`);
       }
     }
+    // Actions: the hit or release lands exactly when the game asked, every
+    // weapon, every blow of each chain, and nothing goes to NaN.
+    {
+      const kits: Array<[Stance, string | undefined]> = [...STANCE_LIST.map((st) => [st, undefined] as [Stance, undefined]), ['oneHand', 'axe'], ['oneHand', 'mace']];
+      let checked = 0;
+      let worst = 0;
+      for (const [st, weapon] of kits) {
+        const a = actor(list[0]!, st, `act-${st}-${weapon ?? ''}`);
+        if (weapon) a.anim.setWeapon(weapon);
+        simulate(a, 0, 0.5, still);
+        let fired = -1;
+        let clock = 0;
+        a.anim.on('hit', () => fired < 0 && (fired = clock + 1 / 60));
+        a.anim.on('release', () => fired < 0 && (fired = clock + 1 / 60));
+        const names = [...ACTION_NAMES, 'attack1#1', 'attack1#2', 'attack1#3'];
+        for (const spec of names) {
+          const [name, n] = spec.split('#') as [string, string | undefined];
+          if (name === 'death' || name === 'deathFwd' || name === 'down') continue;
+          a.anim.reset();
+          simulate(a, 0, 0.3, still);
+          const want = 0.16;
+          const speed = 1.07;
+          fired = -1;
+          const { end, contact } = playAction(a, name, Number(n ?? 0), want, speed);
+          clock = 0;
+          const len = realLength(end, contact, want, speed);
+          let nan = false;
+          simulate(a, 0, Math.min(3, len + 0.3), still, (t) => {
+            clock = t;
+            if (!nan) for (const b of a.anim.bones) if (!Number.isFinite(b.quaternion.w) || !Number.isFinite(b.position.y)) nan = true;
+          });
+          a.anim.reset();
+          const label = `${st}${weapon ? `/${weapon}` : ''} ${spec}`;
+          if (nan) bad(`${label}: bones went NaN`);
+          if (contact === null) {
+            if (fired >= 0 && name !== 'channel') bad(`${label}: fired an event with no contact key`);
+            continue;
+          }
+          checked++;
+          const late = fired - want;
+          if (fired < 0) bad(`${label}: never fired`);
+          else if (late < -1e-6 || late > 1 / 60 + 1e-6) bad(`${label}: fired ${(late * 1000).toFixed(1)} ms off`);
+          else worst = Math.max(worst, late);
+        }
+      }
+      lines.push(`actions: ${checked} timed, worst ${(worst * 1000).toFixed(1)} ms late (one frame is 16.7)`);
+    }
     return JSON.stringify({ pass, lines });
   },
   /**
@@ -465,6 +533,63 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       g.fillStyle = INK;
       const gi = a.anim.gaitInfo;
       g.fillText(`${label}  ${stance}  ${gi.freq.toFixed(2)} Hz  run ${gi.runW.toFixed(2)}`, 8, r * TH + 18);
+    });
+    return c.toDataURL('image/png');
+  },
+  /**
+   * Key strips for actions: one row per action, eight frames across its
+   * length, the contact frame outlined. `--class=`, `--stance=`,
+   * `--weapon=axe|mace` and `--actions=attack1#0,attack1#1,slam,...`
+   * (`#n` is the place in the chain).
+   */
+  async actions(f) {
+    await loadMeshCache();
+    const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
+    const stance = (f.stance as Stance | undefined) ?? CLASS_STANCE[cls];
+    const list = (f.actions ?? 'attack1#0,attack1#1,attack1#2,thrust,slam,lunge,cast,shoot').split(',');
+    const TW = 210;
+    const TH = 300;
+    const COLS = 8;
+    // Two views a row: three-quarter from the front, and the game's camera from above.
+    const views: Array<[number, number, number]> = [
+      [Number(f.view ?? 0.7), 0.15, 3.9],
+      [Number(f.view ?? 0.7) + 0.5, 0.95, 4.4],
+    ];
+    const { c, g } = sheet(TW * COLS, TH * list.length * views.length);
+    list.forEach((spec, row) => {
+      const [name, n] = spec.split('#') as [string, string | undefined];
+      views.forEach(([yaw, pitch, dist], vi) => {
+        const r = row * views.length + vi;
+        const a = actor(cls, stance, `${cls}-${stance}-act${r}`, f.kit, (f.rarity ?? 'unique') as ItemRarity);
+        if (f.weapon) a.anim.setWeapon(f.weapon);
+        simulate(a, 0, 0.6, still);
+        const { end, contact } = playAction(a, name, Number(n ?? 0));
+        // Even frames, with the one nearest the contact moved onto it.
+        const times = Array.from({ length: COLS }, (_, k) => (end * k) / (COLS - 1));
+        let ck = -1;
+        if (contact !== null) {
+          ck = 0;
+          times.forEach((tt, k) => Math.abs(tt - contact) < Math.abs(times[ck]! - contact) && (ck = k));
+          times[ck] = contact;
+        }
+        let t = 0;
+        times.forEach((next, k) => {
+          simulate(a, t, next, still);
+          t = next;
+          const H = a.hero.look.shape.height;
+          const tgt = new THREE.Vector3(0, H * 0.5, 0);
+          shoot(g, a.world, { x: k * TW, y: r * TH, w: TW, h: TH, yaw, target: tgt, dist, floor: true, pitch });
+          if (k === ck) {
+            g.strokeStyle = '#d04040';
+            g.lineWidth = 3;
+            g.strokeRect(k * TW + 2, r * TH + 2, TW - 4, TH - 4);
+          }
+          g.fillStyle = INK;
+          g.fillText(next.toFixed(2), k * TW + 8, r * TH + TH - 10);
+        });
+        g.fillStyle = INK;
+        if (vi === 0) g.fillText(`${spec}  ${a.anim.moveKind}  hit ${contact ?? '-'}`, 8, r * TH + 18);
+      });
     });
     return c.toDataURL('image/png');
   },
