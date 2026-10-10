@@ -644,6 +644,10 @@ export class DungeonMesh {
   private kit: WallKit;
   /** Open sky: one continuous ground instead of rooms cut from rock. */
   private readonly outdoor: boolean;
+  /** True when the level is open ground (Terrain.ts) rather than rooms. */
+  get isOutdoor(): boolean {
+    return this.outdoor;
+  }
   private terrain: TerrainBuild | null = null;
   /** Where the hole in the roof is centred. Written every frame. */
   private readonly heroXZ = new THREE.Vector2();

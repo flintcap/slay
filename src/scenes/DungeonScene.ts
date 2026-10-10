@@ -485,6 +485,9 @@ export class DungeonScene extends GameScene {
       this.heroLight.color.setHex(this.lighting.hero.color);
       this.heroLight.distance = this.lighting.hero.distance;
     }
+    // The floor glow is a flat sheet: on rolling outdoor ground the slopes cut
+    // through it in hard-edged slabs. Outdoors the hero light alone does it.
+    if (this.heroAura) this.heroAura.visible = !this.mesh.isOutdoor;
 
     this.engine.renderer.applyEnvironment(this.scene, 0.4);
     // The biome's colour grade (world stream). Reset in dispose().

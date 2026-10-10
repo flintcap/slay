@@ -734,7 +734,7 @@ function buildGlows(ctx: Ctx): void {
 
 /**
  * Camp ground: one world-space material over four photo layers. Grass is
- * the base; trodden earth (layer 1), cart tracks (2) and mud (3) are painted
+ * the base; trodden earth (layer 1), stony paths (2) and mud (3) are painted
  * in per vertex. Owned by the camp (pushed to `ctx.mat`).
  */
 function groundSurface(ctx: Ctx): THREE.Material {
@@ -743,7 +743,7 @@ function groundSurface(ctx: Ctx): THREE.Material {
       layers: [
         { key: 'ground.grass', tint: 0x8a9478, rough: 0.98 },
         { key: 'ground.dirt', tint: 0x8d8478, rough: 0.98 },
-        { key: 'ground.tracks', tint: 0xa09080, rough: 0.97 },
+        { key: 'ground.stony', tint: 0xb8aa98, rough: 0.97 },
         { key: 'ground.mud', tint: 0x8a8070, rough: 0.9 },
       ],
       kind: 'floor',

@@ -617,7 +617,7 @@ function treeKit(
 ): TreeKit {
   const VARIANTS = 3;
   const bark = addWorldCutaway(surfaceVariant('wood.bark', { repeat: 2, tint: kind === 'deadTrees' ? 0x8a8478 : 0x9a9088 }));
-  const leaf = kind === 'trees' ? addWorldCutaway(surfaceVariant('foliage.pine', { repeat: 2.5, tint: 0x6a7a5a, side: THREE.DoubleSide })) : null;
+  const leaf = kind === 'trees' ? addWorldCutaway(surfaceVariant('foliage.pine', { repeat: 2.5, tint: 0x90a274, side: THREE.DoubleSide })) : null;
   materials.push(bark);
   if (leaf) materials.push(leaf);
   const kit: TreeKit = { kind, trunks: [], canopies: [], bark, leaf };

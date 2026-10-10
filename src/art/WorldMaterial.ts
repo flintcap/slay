@@ -496,7 +496,12 @@ export function worldMaterial(o: WorldMaterialOpts): THREE.MeshStandardMaterial 
     uniforms[`slN${i}`] = { value: tex.normal };
     uniforms[`slP${i}`] = { value: new THREE.Vector2(1 / Math.max(0.05, metres), def.bump * (l.bump ?? 1)) };
     uniforms[`slT${i}`] = { value: tintOf(l.key, l.tint, o.tint) };
-    uniforms[`slR${i}`] = { value: new THREE.Vector3(def.rough[0] * (l.rough ?? 1), Math.min(1, def.rough[1] * (l.rough ?? 1)), def.metal) };
+    // Floors and walls never go mirror-smooth: seen from twenty metres, a
+    // glossy normal map turns into a field of glitter (the hive's chitin
+    // floor sparkled purple all over). Wet patches still darken and gloss.
+    const r0 = Math.max(0.32, def.rough[0] * (l.rough ?? 1));
+    const r1 = Math.max(r0 + 0.12, Math.min(1, def.rough[1] * (l.rough ?? 1)));
+    uniforms[`slR${i}`] = { value: new THREE.Vector3(r0, Math.min(1, r1), def.metal) };
     const glowColor = l.emissive ?? def.emissive;
     const glow: Glow = tex.emissive ? 1 : glowColor !== undefined ? 2 : 0;
     emissiveMask.push(glow);
