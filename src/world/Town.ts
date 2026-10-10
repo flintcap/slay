@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import type { CharClassId, Rng } from '../types';
 import { Noise, clamp } from '../art/Noise';
 import { surface } from '../art/Materials';
-import { worldMaterial, WORLD_ENV_ATTRIBUTE } from '../art/WorldMaterial';
+import { worldMaterial, WORLD_ENV_ATTRIBUTE, WORLD_SPLAT_ATTRIBUTE } from '../art/WorldMaterial';
 import { CampLife } from './TownLife';
 import { displace, mergeGeometries, rock, stoneBlock, taperedBox, clothPanel, limb } from '../art/Meshes';
 import { buildNpcModel, npcCarryGrip } from '../art/NpcModels';
@@ -474,11 +474,8 @@ export function buildTown(rng: Rng): TownBuild {
   };
 
   const mats: Mats = {
-    // Trodden earth carries the same world-space breakup as dungeon floors, so
-    // forty metres of camp ground stops reading as one tile repeated: broad
-    // light and dark patches, damp hollows, grime banked against the stakes.
-    dirt: groundSurface(ctx, { repeat: 16, tint: 0x8d8478, roughness: 0.98 }, 0.22),
-    path: groundSurface(ctx, { repeat: 7, tint: 0xa2968a, roughness: 0.99 }, 0.08),
+    // The camp ground itself is one splatted sheet (`buildGround`); this is
+    // for the tussocks baked out in the grass.
     grass: safeSurface('ground.grass', { repeat: 20, roughness: 0.98 }),
     // Warm and a shade darker than the palette: neutral grey stone under the
     // blue moon read pale blue-white round the fire ring and across the camp.
@@ -736,96 +733,108 @@ function buildGlows(ctx: Ctx): void {
 }
 
 /**
- * Camp ground: the dirt palette with the world-space layer on top. Owned by
- * the camp (pushed to `ctx.mat`), never the shared cached surface.
+ * Camp ground: one world-space material over four photo layers. Grass is
+ * the base; trodden earth (layer 1), cart tracks (2) and mud (3) are painted
+ * in per vertex. Owned by the camp (pushed to `ctx.mat`).
  */
-function groundSurface(ctx: Ctx, opts: { repeat: number; tint: number; roughness: number }, wet: number): THREE.Material {
+function groundSurface(ctx: Ctx): THREE.Material {
   try {
     const m = worldMaterial({
-      layers: [{ key: 'ground.dirt', tint: opts.tint, rough: opts.roughness }],
+      layers: [
+        { key: 'ground.grass', tint: 0x8a9478, rough: 0.98 },
+        { key: 'ground.dirt', tint: 0x8d8478, rough: 0.98 },
+        { key: 'ground.tracks', tint: 0xa09080, rough: 0.97 },
+        { key: 'ground.mud', tint: 0x8a8070, rough: 0.9 },
+      ],
       kind: 'floor',
       grime: 0x2a2018,
       grimeAmount: 0.55,
-      wet,
+      wet: 0.25,
       variation: 0.85,
       contact: 0.6,
     });
     ctx.mat.push(m);
     return m;
   } catch {
-    return safeSurface('ground.dirt', opts);
+    return safeSurface('ground.dirt', { repeat: 16, tint: 0x8d8478, roughness: 0.98 });
   }
 }
 
-/**
- * Fills the `aEnv` contact attribute on a ground mesh. `contact(x, y)` is in
- * the geometry's own plane coordinates, before it is laid flat.
- */
-function groundContact(geo: THREE.BufferGeometry, contact: (x: number, y: number) => number): void {
-  const pos = geo.getAttribute('position') as THREE.BufferAttribute;
-  const env = new Float32Array(pos.count);
-  for (let i = 0; i < pos.count; i++) env[i] = contact(pos.getX(i), pos.getY(i));
-  geo.setAttribute(WORLD_ENV_ATTRIBUTE, new THREE.BufferAttribute(env, 1));
+/** Distance from (x, z) to the segment a..b. */
+function segDist(x: number, z: number, ax: number, az: number, bx: number, bz: number): number {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const t = clamp(((x - ax) * dx + (z - az) * dz) / Math.max(1e-6, dx * dx + dz * dz), 0, 1);
+  return Math.hypot(x - (ax + dx * t), z - (az + dz * t));
+}
+
+function smooth(a: number, b: number, x: number): number {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
 }
 
 function buildGround(ctx: Ctx, m: Mats): void {
-  // Turf, lumpy, running out past the palisade into the trees.
-  const turf = keep(ctx, new THREE.PlaneGeometry(96, 96, 64, 64));
-  displace(turf, ctx.rng.fork('turf'), 0.35, 0.055);
-  turf.rotateX(-Math.PI / 2);
-  const turfMesh = new THREE.Mesh(turf, m.grass);
-  turfMesh.position.y = -0.3;
-  turfMesh.receiveShadow = true;
-  ctx.root.add(turfMesh);
-
-  // The camp floor: everything inside the palisade is trodden to bare earth.
-  const floor = keep(ctx, new THREE.CircleGeometry(23, 40));
-  const fpos = floor.getAttribute('position') as THREE.BufferAttribute;
+  // One sheet from the fire out past the palisade into the trees: no planes
+  // stacked a few centimetres apart, so no seams and no green showing
+  // through the dirt where two surfaces crossed.
+  const SIZE = 110;
+  const SEG = 132;
+  const geo = keep(ctx, new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG));
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.getAttribute('position') as THREE.BufferAttribute;
   const n = new Noise(0x3122);
-  for (let i = 0; i < fpos.count; i++) {
-    const x = fpos.getX(i);
-    const y = fpos.getY(i);
-    // Nibble the rim so the camp does not end on a drawn circle.
-    const d = Math.hypot(x, y);
-    if (d > 21) {
-      const a = Math.atan2(y, x);
-      const s = 1 + n.simplex2(Math.cos(a) * 2.4, Math.sin(a) * 2.4) * 0.06;
-      fpos.setXY(i, x * s, y * s);
-    }
-    // Kept shallow and entirely above the turf plane. Dipping below it let hard
-    // green triangles punch through the dirt wherever the two surfaces crossed.
-    fpos.setZ(i, n.simplex2(x * 0.13, y * 0.13) * 0.07 + n.simplex2(x * 0.5, y * 0.5) * 0.025);
-  }
-  floor.computeVertexNormals();
-  // Grime and shadow bank up against the palisade at the rim.
-  groundContact(floor, (x, y) => clamp((Math.hypot(x, y) - 18.5) / 3.5, 0, 1));
-  floor.rotateX(-Math.PI / 2);
-  const floorMesh = new THREE.Mesh(floor, m.dirt);
-  floorMesh.position.y = 0.06;
-  floorMesh.receiveShadow = true;
-  ctx.root.add(floorMesh);
-
-  // Paths worn between the fire and each station: paler, flatter, slightly
-  // proud of the dirt so they catch the firelight.
+  const turfN = new Noise(ctx.rng.int(1, 1 << 30));
+  const env = new Float32Array(pos.count);
+  const splat = new Float32Array(pos.count * 3);
+  // Paths worn between the fire and each station, plus the south road you
+  // arrive by and the way out through the gate.
   const spokes: Array<[number, number, number]> = [
-    [-13, 5, 2.6], [13, 5, 2.6], [-12.5, -8, 2.4], [12.5, -8.5, 2.4], [0, -19, 3.4],
+    [-13, 5, 2.6], [13, 5, 2.6], [-12.5, -8, 2.4], [12.5, -8.5, 2.4], [0, -19, 3.4], [0, 46, 3.2],
   ];
-  for (const [tx, tz, w] of spokes) {
-    const len = Math.hypot(tx, tz);
-    const strip = keep(ctx, new THREE.PlaneGeometry(w, len, 4, 12));
-    const spos = strip.getAttribute('position') as THREE.BufferAttribute;
-    for (let i = 0; i < spos.count; i++) {
-      spos.setX(i, spos.getX(i) + n.simplex2(spos.getY(i) * 0.2, 4) * 0.5);
+  const at = (x: number, z: number): { y: number; out: number; track: number; mud: number; r: number } => {
+    const r = Math.hypot(x, z);
+    const a = Math.atan2(z, x);
+    // The camp's edge, nibbled so it never ends on a drawn circle.
+    const rim = 21.5 + n.simplex2(Math.cos(a) * 2.4, Math.sin(a) * 2.4) * 1.4;
+    const out = smooth(rim - 1.5, rim + 2.5, r);
+    // Inside: shallow and nearly flat. Outside: lumpy turf falling a little.
+    const inner = n.simplex2(x * 0.13, z * 0.13) * 0.07 + n.simplex2(x * 0.5, z * 0.5) * 0.025;
+    const turf = -0.3 + turfN.fbm(x * 0.055, z * 0.055, 3) * 0.35 + turfN.simplex2(x * 0.4, z * 0.4) * 0.04;
+    let y = 0.06 + inner + (turf - 0.06 - inner) * out;
+    // Tracks: paler, flatter, worn a touch below the dirt either side.
+    let track = 0;
+    for (const [tx, tz, w] of spokes) {
+      const wob = n.simplex2(x * 0.2 + tx, z * 0.2 + tz) * 0.5;
+      const d = segDist(x, z, 0, 0, tx, tz) + wob;
+      track = Math.max(track, 1 - smooth(w * 0.28, w * 0.62, d));
     }
-    strip.computeVertexNormals();
-    groundContact(strip, () => 0);
-    strip.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(strip, m.path);
-    mesh.position.set(tx * 0.5, 0.05, tz * 0.5);
-    mesh.rotation.y = Math.atan2(tx, tz) + Math.PI / 2;
-    mesh.receiveShadow = true;
-    ctx.root.add(mesh);
+    // The south road fades out into the grass as it leaves the camp.
+    if (z > rim) track *= 1 - smooth(rim + 10, rim + 24, z);
+    y -= track * 0.025;
+    // Mud: damp hollows in the trodden ground, worst along the stakes and
+    // at the edges of the tracks where carts churn it up.
+    const damp = smooth(0.25, 0.6, n.simplex2(x * 0.09 + 7, z * 0.09 - 3) * 0.5 + 0.5 + n.simplex2(x * 0.35, z * 0.35) * 0.15);
+    const edge = smooth(rim - 4, rim - 1, r) * (1 - out);
+    const verge = track * (1 - track) * 2.4;
+    const mud = clamp(Math.max(damp * 0.85 * (1 - out * 0.7), edge * 0.6, verge * 0.5), 0, 1);
+    return { y, out, track, mud, r };
+  };
+  for (let i = 0; i < pos.count; i++) {
+    const { y, out, track, mud, r } = at(pos.getX(i), pos.getZ(i));
+    pos.setY(i, y);
+    splat[i * 3] = 1 - out;
+    splat[i * 3 + 1] = track;
+    splat[i * 3 + 2] = mud * (1 - track * 0.7);
+    // Grime and shadow bank up against the palisade at the rim.
+    env[i] = clamp((r - 18.5) / 3.5, 0, 1) * (1 - out);
   }
+  geo.computeVertexNormals();
+  geo.setAttribute(WORLD_ENV_ATTRIBUTE, new THREE.BufferAttribute(env, 1));
+  geo.setAttribute(WORLD_SPLAT_ATTRIBUTE, new THREE.BufferAttribute(splat, 3));
+  const ground = new THREE.Mesh(geo, groundSurface(ctx));
+  ground.receiveShadow = true;
+  ground.name = 'town:ground';
+  ctx.root.add(ground);
 
   // Loose stones and tussocks, so the ground is never empty.
   for (let i = 0; i < 60; i++) {
@@ -834,7 +843,7 @@ function buildGround(ctx: Ctx, m: Mats): void {
     const s = ctx.rng.range(0.1, 0.34);
     bake(
       ctx, rock(s, ctx.rng.fork(`r${i}`), 0), d < 22 ? 'stone' : 'grass',
-      Math.cos(a) * d, s * 0.25, Math.sin(a) * d,
+      Math.cos(a) * d, at(Math.cos(a) * d, Math.sin(a) * d).y + s * 0.2, Math.sin(a) * d,
       [ctx.rng.range(0, 3), ctx.rng.range(0, 3), ctx.rng.range(0, 3)],
     );
   }
