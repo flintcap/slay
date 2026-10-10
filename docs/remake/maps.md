@@ -36,7 +36,7 @@ one boss. Dark and gritty. Many biomes in unique mixes.
 - [x] Content per zone. (Maps: rewards rise through a map, a guard before the boss, the arena gate) Packs, elites, rares, events, chests, shrines, quest
   objectives, mini-bosses. Density rises through the map. The boss arena has
   an entrance moment. Keep every existing quest and event kind working.
-- [ ] Wayfinding. Minimap shows zones and exits. Zone name banner on entry
+- [x] Wayfinding. (Maps: zone tints, exits, gate and waypoint on the charts; zone banners; map name and tier on the HUD) Minimap shows zones and exits. Zone name banner on entry
   (use `src/ui/Banners.ts`). Map name and tier on the HUD's existing map label.
 - [ ] Verify and clean. Headless check that generates 200 maps: every zone
   connected, boss reachable, sizes and openness in range, generation time
@@ -176,13 +176,14 @@ milestone 4.
 
 ## Next up
 
-1. Wayfinding milestone. Minimap (HUD.ts `marks`, MapPanel.ts): tint each
-   zone, mark `level.exits` and `level.waypoint`.
-2. Zone banner on entering a zone: track the zone under the hero in
-   DungeonScene (as the music does) and emit an event Banners.ts shows.
-3. HUD map label: map name and "Tier N" instead of "Depth N" (the
-   `depth:changed` payload; add `mapName`, `zone`, `tier`). The "Depth N
-   cleared" toast in `checkExit` becomes the map name.
+1. Verify and clean. `node tools/check-maps.mjs --maps=200` is written and
+   passes (59ms a map on average). `tools/check-mapflow.mjs` (browser) checks
+   the waypoint, the way on, zone banners and the arena gate.
+2. Renders: `SLAY_PORT=4321 timeout 2700 node tools/screenshot.mjs
+   --out=shots/maps --shots=town,dungeon` and one zone per biome.
+3. Dead code: drop `T_STAIRS_DOWN`/`T_STAIRS_UP` once Props.ts uses the new
+   names (ground's file). `biomeForDepth` stays: four tools use it to pick a
+   plausible biome for a tier.
 
 ## Notes for resume
 
@@ -225,6 +226,13 @@ milestone 4.
   `tickArenaGate` seals the shell gap (nav blockers, colliders, iron bars
   rising) once hero and boss are both inside, engages the boss, and opens it
   when the boss falls.
+
+- Wayfinding: `src/ui/ZoneInk.ts` holds the zone tints, the new tile inks
+  and `wayMarks` for both charts. `zone:entered` (core/Events.ts) fires when
+  the hero crosses into another zone of the same area; Banners shows a short
+  card, the HUD and pause panel show the zone name, StoryPlaces greets each
+  new biome once per map. `depth:changed` carries `mapName`; `place` is the
+  arrival zone's name.
 
 - ground runs at the same time and draws what you generate. Unknown tile
   kinds must render as blocking walls until ground supports them.
