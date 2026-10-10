@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CharClassId, ItemRarity } from '../types';
+import type { BiomeId, CharClassId, ItemRarity } from '../types';
 import type { Engine } from '../core/Engine';
 import { save } from '../core/Save';
 import { events } from '../core/Events';
@@ -17,6 +17,7 @@ import { panelInstance } from '../ui/UIRoot';
 import { runtime } from '../ui/Widgets';
 import { insertGem } from '../sim/Crafting';
 import { assetStats } from '../core/Assets';
+import { setRunDirector } from '../world/DungeonGen';
 
 /**
  * Debug surface exposed as `window.SLAY.debug`. The Playwright screenshot
@@ -114,6 +115,18 @@ export function installDebug(engine: Engine): Record<string, unknown> {
     panelOpen(id: string): boolean {
       const h = panelInstance(id) as { isOpen?: boolean; panel?: { isOpen?: boolean } } | undefined;
       return !!(h?.isOpen ?? h?.panel?.isOpen);
+    },
+
+    /**
+     * Look at one biome: every map from here on ends in it (this replaces the
+     * contract director for the rest of the session), and the hero is put in
+     * that last area. For renders only.
+     */
+    async previewBiome(biome: BiomeId, depth = 8): Promise<void> {
+      setRunDirector(() => ({ biome }));
+      await engine.goTo('dungeon', { depth });
+      const s = engine.currentScene;
+      if (s instanceof DungeonScene) s.debugWarpToBoss();
     },
 
     warpToBoss(): void {

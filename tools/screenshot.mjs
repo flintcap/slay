@@ -322,7 +322,19 @@ const drivers = {
 
 let ok = true;
 for (const name of WANT) {
-  const drive = drivers[name.trim()];
+  // `biome-<id>`: the last area of a map ending in that biome (look checks).
+  const biomeId = name.trim().startsWith('biome-') ? name.trim().slice(6) : null;
+  const drive = biomeId
+    ? async () => {
+        await page.evaluate(async (b) => {
+          const s = window.SLAY;
+          if (s.debug?.makeCharacter) s.debug.makeCharacter('warden', 20, 7);
+          await s.debug.previewBiome(b);
+          s.debug?.godMode?.(true);
+        }, biomeId);
+        await settle(60);
+      }
+    : drivers[name.trim()];
   if (!drive) {
     console.warn(`no driver for "${name}"`);
     continue;

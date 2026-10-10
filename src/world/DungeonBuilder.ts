@@ -29,9 +29,12 @@ import {
   T_VOID,
   T_WALL,
   T_WATER,
+  T_RUIN,
+  T_BRIDGE,
   drawAsKind,
   isWalkableValue,
 } from './Layouts';
+import { buildTerrain, isOutdoorLevel, type TerrainBuild } from './Terrain';
 import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './DungeonGen';
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
 
@@ -240,6 +243,36 @@ class Surf {
         this.idx.push(a, a + 1, a + cols + 1, a, a + cols + 1, a + cols);
       }
     }
+  }
+
+  /**
+   * Any planar quad, corners counter-clockwise seen from the side `n` faces
+   * (the winding is fixed up if not). One normal for all four corners.
+   */
+  quad(
+    a: readonly [number, number, number],
+    b: readonly [number, number, number],
+    c: readonly [number, number, number],
+    d: readonly [number, number, number],
+    n: readonly [number, number, number],
+    env: readonly [number, number, number, number],
+  ): void {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const gx = uy * vz - uz * vy;
+    const gy = uz * vx - ux * vz;
+    const gz = ux * vy - uy * vx;
+    const flip = gx * n[0] + gy * n[1] + gz * n[2] < 0;
+    const pts = flip ? [a, d, c, b] : [a, b, c, d];
+    const ev = flip ? [env[0], env[3], env[2], env[1]] : env;
+    for (let k = 0; k < 4; k++) {
+      const p = pts[k]!;
+      this.pos.push(p[0], p[1], p[2]);
+      this.nor.push(n[0], n[1], n[2]);
+      this.uv.push(k === 1 || k === 2 ? 1 : 0, k >= 2 ? 1 : 0);
+      this.env.push(ev[k]!);
+    }
+    this.quadIndices();
   }
 
   /** An upright box face set (front and both sides) standing out of a wall: pilasters, piers. */
@@ -527,7 +560,10 @@ export class DungeonMesh {
   private cullTimer = 0;
   private cullRadius = 68;
   /** How walls are built: dressed stone with piers, or raw rock. */
-  private readonly kit: WallKit;
+  private kit: WallKit;
+  /** Open sky: one continuous ground instead of rooms cut from rock. */
+  private readonly outdoor: boolean;
+  private terrain: TerrainBuild | null = null;
   /** Where the hole in the roof is centred. Written every frame. */
   private readonly heroXZ = new THREE.Vector2();
 
@@ -536,6 +572,7 @@ export class DungeonMesh {
     this.biome = biome;
     this.art = biomeArt(biome.id, level.variant);
     this.kit = wallKitOf(this.art);
+    this.outdoor = isOutdoorLevel(level);
     this.noise = new Noise((level.seed ^ 0x7a1c) >>> 0);
     this.halfW = level.width / 2;
     this.halfH = level.height / 2;
@@ -603,6 +640,12 @@ export class DungeonMesh {
     return drawAsKind(this.level.tiles[y * this.level.width + x]);
   }
 
+  /** The stored tile value, before `drawAsKind`. */
+  private rawTile(x: number, y: number): number {
+    if (x < 0 || y < 0 || x >= this.level.width || y >= this.level.height) return T_VOID;
+    return this.level.tiles[y * this.level.width + x]!;
+  }
+
   private open(x: number, y: number): boolean {
     const v = this.tile(x, y);
     return isWalkableValue(v) || v === T_CHASM || v === T_LAVA;
@@ -651,6 +694,8 @@ export class DungeonMesh {
     // A private clone, not the shared cached surface: the dissolve below is
     // attached with `onBeforeCompile`, and hanging that on a cached material
     // gives every other user of the same palette a hole in it.
+    const deckMat = worldMaterial({ kind: 'wall', layers: [{ key: 'wood.planks', tint: 0x8a7a68 }], grimeAmount: 0.3, contact: 0.4, variation: 0.6 });
+    this.ownedMat.push(deckMat);
     const ceilMat = worldMaterial({
       kind: 'floor',
       layers: [{ key: art.walls[0].palette, tint: 0x6a6a72 }],
@@ -814,10 +859,26 @@ export class DungeonMesh {
     const BEDROCK = PUDDLE + 1;
     /** Wall tops. Same rock as the lid, but this bucket never dissolves. */
     const CAPS = BEDROCK + 1;
-    const BUCKETS = CAPS + 1;
+    /** Bridge decks (outdoors). */
+    const DECK = CAPS + 1;
+    const BUCKETS = DECK + 1;
     mats.push(
-      ...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, puddleMat, bedrockMat, capMat,
+      ...floorMats, ...wallMats, trimMat, baseMat, ceilMat, liquidMat, veinMat, puddleMat, bedrockMat, capMat, deckMat,
     );
+    const outdoor = this.outdoor;
+    if (outdoor) {
+      this.terrain = buildTerrain(level, this.heights, rng.fork('terrain'));
+      this.ownedGeo.push(...this.terrain.geometries);
+      this.ownedMat.push(...this.terrain.materials);
+      for (const c of this.terrain.chunks) {
+        const group = new THREE.Group();
+        group.name = 'terrain';
+        group.add(c.mesh);
+        this.root.add(group);
+        this.chunks.push({ group, center: c.center, radius: c.radius });
+      }
+      for (const d of this.terrain.dressing) this.root.add(d);
+    }
 
     // Deterministic per-room floor variant.
     const roomVariant = new Map<number, number>();
@@ -878,6 +939,7 @@ export class DungeonMesh {
             const wz = this.tileZ(y);
             const hy = this.heights[y * W + x] * STEP_HEIGHT;
 
+            if (v === T_VOID && outdoor) continue;
             if (v === T_VOID) {
               // Bedrock.
               //
@@ -895,6 +957,18 @@ export class DungeonMesh {
               continue;
             }
 
+            if (v === T_WALL && outdoor) {
+              // Outdoors a wall tile is the ground rising into the biome's
+              // edge (Terrain.ts); only ruins are built, as broken masonry.
+              if (this.rawTile(x, y) === T_RUIN) {
+                const keep = this.kit;
+                this.kit = 'masonry';
+                const top = hy + 1.6 + (hashTile(x, y, level.seed ^ 0x2c1) % 9) * 0.12;
+                this.emitWall(surfs, x, y, wx, wz, hy, top, wallMats.length, WALL0, TRIM, BASE, surfs[CAPS]);
+                this.kit = keep;
+              }
+              continue;
+            }
             if (v === T_WALL) {
               this.emitWall(surfs, x, y, wx, wz, hy, roofY, wallMats.length, WALL0, TRIM, BASE, surfs[CAPS]);
               continue;
@@ -925,10 +999,16 @@ export class DungeonMesh {
             // Mirror whole-repeat tiles at random. Seamless (see `Surf.flat`),
             // free, and it quarters how often the eye meets the same stone.
             const mirror = wholeRepeat(us, us) ? (hashTile(x, y, level.seed) & 3) : 0;
-            s.flat(wx, hy, wz, HALF, true, (x * us) % 8, (y * us) % 8, us, this.floorContact(x, y, hy), mirror);
+            if (!outdoor) s.flat(wx, hy, wz, HALF, true, (x * us) % 8, (y * us) % 8, us, this.floorContact(x, y, hy), mirror);
+
+            // A bridge: a plank deck at walking height, water under it.
+            if (outdoor && this.rawTile(x, y) === T_BRIDGE) {
+              this.emitDeck(surfs[DECK]!, x, y, wx, wz, hy);
+              surfs[LIQ].flat(wx, hy - 0.22, wz, HALF, true, x % 4, y % 4, 1, [0, 0, 0, 0]);
+            }
 
             // Height skirts wherever the neighbour sits lower.
-            for (let d = 0; d < 4; d++) {
+            for (let d = 0; d < 4 && !outdoor; d++) {
               const nx = x + DX4[d];
               const ny = y + DY4[d];
               const nOpen = this.open(nx, ny);
@@ -950,6 +1030,11 @@ export class DungeonMesh {
                 0.85,
                 0,
               );
+            }
+
+            // Arches over doorways (dressed stone only).
+            if (v === T_DOOR && this.kit === 'masonry') {
+              this.emitArch(surfs[WALL0]!, surfs[CAPS]!, surfs[TRIM]!, x, y, wx, wz, hy, roofY);
             }
 
             // Liquid surface.
@@ -1319,6 +1404,68 @@ export class DungeonMesh {
       env.push(py - nh);
     }
     s.grid(pts, env);
+  }
+
+  /**
+   * A round arch over a doorway: a block of the wall's stone filling the top
+   * of the door tile, cut by a half-round opening. Only where the door sits
+   * between two walls on one axis and opens both ways on the other.
+   */
+  private emitArch(s: Surf, caps: Surf, trim: Surf, x: number, y: number, wx: number, wz: number, hy: number, topY: number): void {
+    let ax: number;
+    let az: number;
+    if (this.tile(x - 1, y) === T_WALL && this.tile(x + 1, y) === T_WALL && this.open(x, y - 1) && this.open(x, y + 1)) {
+      ax = 1;
+      az = 0;
+    } else if (this.tile(x, y - 1) === T_WALL && this.tile(x, y + 1) === T_WALL && this.open(x - 1, y) && this.open(x + 1, y)) {
+      ax = 0;
+      az = 1;
+    } else return;
+    // Across the opening is (ax, az); along the passage is (px, pz).
+    const px = az;
+    const pz = ax;
+    const R = HALF;
+    const spring = hy + Math.min(2.25, topY - hy - R - 0.35);
+    if (spring < hy + 1.6) return;
+    const T = 0.45;
+    const at = (u: number, v: number, w: number): [number, number, number] => [wx + ax * u + px * w, v, wz + az * u + pz * w];
+    const SEG = 8;
+    const env = (v: number): number => v - hy;
+    for (let i = 0; i < SEG; i++) {
+      const a0 = Math.PI * (1 - i / SEG);
+      const a1 = Math.PI * (1 - (i + 1) / SEG);
+      const u0 = Math.cos(a0) * R;
+      const u1 = Math.cos(a1) * R;
+      const v0 = spring + Math.sin(a0) * R;
+      const v1 = spring + Math.sin(a1) * R;
+      for (const side of [-1, 1] as const) {
+        const w = side * T;
+        // Spandrel strip from the arc up to the top of the wall.
+        s.quad(at(u0, v0, w), at(u1, v1, w), at(u1, topY, w), at(u0, topY, w), [px * side, 0, pz * side], [env(v0), env(v1), env(topY), env(topY)]);
+      }
+      // The underside of the arch, facing the middle of the opening.
+      const am = (a0 + a1) * 0.5;
+      const nx = -Math.cos(am);
+      const ny = -Math.sin(am);
+      s.quad(at(u0, v0, -T), at(u1, v1, -T), at(u1, v1, T), at(u0, v0, T), [ax * nx, ny, az * nx], [env(v0), env(v1), env(v1), env(v0)]);
+    }
+    // The flat of the block on top, level with the wall caps.
+    caps.quad(at(-R, topY, -T), at(R, topY, -T), at(R, topY, T), at(-R, topY, T), [0, 1, 0], [WORLD_CAP_ENV, WORLD_CAP_ENV, WORLD_CAP_ENV, WORLD_CAP_ENV]);
+    // A keystone proud of both faces.
+    for (const side of [-1, 1] as const) {
+      trim.pier(wx + px * side * T, spring + R - 0.12, wz + pz * side * T, px * side, pz * side, 0.34, 0.06, 0.5, 0, 0);
+    }
+  }
+
+  /** A plank deck over water: the top at walking height and an edge where it meets water. */
+  private emitDeck(s: Surf, x: number, y: number, wx: number, wz: number, hy: number): void {
+    const top = hy + 0.03;
+    s.flat(wx, top, wz, HALF, true, 0, 0, 1, [0, 0, 0, 0]);
+    for (let d = 0; d < 4; d++) {
+      const nv = this.rawTile(x + DX4[d], y + DY4[d]);
+      if (nv === T_BRIDGE || (isWalkableValue(nv) && nv !== T_WATER)) continue;
+      s.wall(wx + DX4[d] * HALF, hy - 0.24, wz + DY4[d] * HALF, DX4[d], DY4[d], TILE_SIZE, 0.27, 1, 0.14, 0, 0, false, 0, 0.3);
+    }
   }
 
   /** Walls of a pit, dropped below the surrounding floor. */
@@ -2220,4 +2367,3 @@ function mergeSimple(list: THREE.BufferGeometry[]): THREE.BufferGeometry | null 
 }
 
 /** Unused-tile guard kept for readability of the switch above. */
-void T_DOOR;
