@@ -1963,6 +1963,24 @@ export class DungeonScene extends GameScene {
     }
   }
 
+  /**
+   * Puts the hero in the current area at its way in, a few steps short of its
+   * way on, or on a tile. For look renders.
+   */
+  debugWarpTo(where: 'entry' | 'exit' | { x: number; y: number }): void {
+    const lv = this.level;
+    let t = where === 'entry' ? lv.entry : where === 'exit' ? lv.exit : where;
+    if (where === 'exit') {
+      const f = lv.exits?.[0]?.facing ?? Math.PI / 2;
+      t = { x: Math.round(lv.exit.x - Math.cos(f) * 4), y: Math.round(lv.exit.y - Math.sin(f) * 4) };
+    }
+    const p = this.mesh.tileToWorld(t.x, t.y);
+    this.player.position.set(p.x, this.mesh.floorY(p.x, p.z), p.z);
+    this.player.stop();
+    this.rig.follow(this.player.root);
+    this.rig.snap();
+  }
+
   debugGodMode(on: boolean): void {
     this.godMode = on;
     this.player.invulnerable = on;

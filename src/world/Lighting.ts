@@ -55,8 +55,8 @@ const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
   },
   // A low, hard evening sun: long shadows, hot highlights, warm bounce.
   desert: {
-    sky: 0x7a8aa8, ground: 0x6a4626, fill: 0.9,
-    key: 0xffc890, keyIntensity: 3.4, elevation: 24, azimuth: 290,
+    sky: 0x8a96b0, ground: 0x6a5642, fill: 0.85,
+    key: 0xffe0bc, keyIntensity: 3.0, elevation: 24, azimuth: 290,
     fog: 0x3a2818, fogDensity: 0.016,
     hero: { color: 0xffd8b0, intensity: 14, distance: 12 },
   },

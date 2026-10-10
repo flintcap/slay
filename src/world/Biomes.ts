@@ -1554,7 +1554,7 @@ ART.desert = {
   pillar: null,
   damage: 0.3,
   puddles: 0,
-  grade: { contrast: 1.14, saturation: 0.88, shadowTint: 0x4a4a6a, highlightTint: 0xffc890, splitTone: 0.48, vignette: 0.48, vignetteTint: 0x3a2818, haze: 0.8 },
+  grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x4a4a6a, highlightTint: 0xffdcb0, splitTone: 0.48, vignette: 0.48, vignetteTint: 0x3a2818, haze: 0.8 },
 };
 
 ART.tundra = {

@@ -134,6 +134,12 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       if (s instanceof DungeonScene) s.debugWarpToBoss();
     },
 
+    /** Hero to this area's way in, near its way on, or a tile. For renders. */
+    warpTo(where: 'entry' | 'exit' | { x: number; y: number }): void {
+      const s = engine.currentScene;
+      if (s instanceof DungeonScene) s.debugWarpTo(where);
+    },
+
     godMode(on = true): void {
       const s = engine.currentScene;
       if (s instanceof DungeonScene) s.debugGodMode(on);

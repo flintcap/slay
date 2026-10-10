@@ -1147,13 +1147,9 @@ export class DungeonMesh {
               }
             }
 
-            // Reflective puddles.
-            if (art.puddles > 0 && v !== T_WATER && v !== T_LAVA) {
-              const n = this.noise.fbm(x * 0.2 + 33, y * 0.2, 2) * 0.5 + 0.5;
-              if (n > 1 - art.puddles * 0.42) {
-                surfs[PUDDLE].flat(wx, hy + 0.015, wz, HALF * 0.86, true, 0, 0, 1);
-              }
-            }
+            // No puddle quads: a whole tile of flat black glass read as a hole.
+            // The floor material's own damp patches (`wet`) do the job, with
+            // soft edges that follow the stone.
 
             // Ceiling.
             if (art.ceiling !== 'open') {

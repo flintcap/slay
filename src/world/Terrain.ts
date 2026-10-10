@@ -444,8 +444,13 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
             const lk = looks[z]!;
             const rock = smooth(0.28, 0.55, slope) * (lk.edge === 'trees' || lk.edge === 'deadTrees' ? 0.6 : 1);
             const pn = noise.fbm(wx * 0.045 + 3.1, wz * 0.045, 3) * 0.5 + 0.5;
-            // Trodden down the middle of open ground, broken by noise.
-            const trod = d > 0 ? 0 : smooth(1.2, 2.6, vopen[vi]! + (pn - 0.5) * 2.2) * 0.9;
+            // Trodden ground: winding paths (the ridges of a slow noise) and
+            // worn patches, never right up against the edge. Open ground is
+            // mostly the base cover; a whole field of path read as one mud.
+            const ridge = 1 - Math.abs(noise.simplex2(wx * 0.028 + 11.3, wz * 0.028 - 4.7));
+            const pathy = smooth(0.84, 0.95, ridge + (pn - 0.5) * 0.08);
+            const patch = smooth(0.62, 0.78, pn) * 0.7;
+            const trod = d > 0 ? 0 : smooth(0.8, 2.0, vopen[vi]!) * Math.max(pathy, patch) * 0.95;
             const spec = vspecial[vi]! * 0.9 + (lk.edge === 'rock' || lk.edge === 'cliff' ? smooth(0.62, 0.8, pn) * 0.35 : 0);
             const rest = Math.max(0, 1 - rock);
             wsum[so.rock] += rock * zf;
