@@ -22,7 +22,7 @@ and animator when done.
 - [x] Worn armour. (`heroes: armour grown on the hero from ItemLook`; cape bones swing once the new animator drives them in Locomotion; not switched on yet) Chest, shoulders, gloves, boots, belt, helmet, cape (with
   sway), drawn on the new body from items' `ItemLook`. Bare and fully
   geared both look right. Until items' ItemLook lands, use the current one.
-- [ ] Locomotion. New animator from nothing: idle with breathing and weight
+- [x] Locomotion. (`heroes: hero animator with planted feet, stances and cape swing`; not switched on yet, the game still runs the old animator until "Switch and clean") New animator from nothing: idle with breathing and weight
   shift, walk, run, turn in place, start and stop, feet planted (no sliding),
   stance per weapon (one hand, two hand, dual, staff, bow, shield).
 - [ ] Combat moves. Attacks per weapon kind (sword, axe, mace, dagger, spear,
@@ -87,23 +87,39 @@ lands exactly on the game's contact time.
 
 ## Next up
 
-1. Locomotion: new animator `src/art/hero/Animator.ts` from nothing (pose =
-   per-bone quaternions; layers: base locomotion, upper-body action,
-   additive breathing and hit reacts). Idle with breathing and weight shift,
-   walk, run, turn in place, start/stop, feet planted (foot IK against the
-   ground plane, two-bone IK in `src/art/hero/Ik.ts`), stance per weapon
-   (one hand, two hand, dual, staff, bow, shield). Drive the cape chain
-   (`Cape.ts`, `group.userData.capeBones`) with a spring in `Secondary.ts`.
-   Keep the API `Player.ts` uses today (`play`, `update`, `setGrip`,
-   `setWeapon`, `follow`, `setCondition`, `on('hit'|'release'|'step'|'end')`)
-   so the switch is one import. Add a `clips` sheet (pose strip per clip) and
-   a foot-slide number to `check-hero`.
-2. Combat moves on the same animator.
+1. Combat moves on the new animator (`src/art/hero/Actions.ts`). Today every
+   strike is one placeholder overhand blow and every cast one two-handed
+   push. Author per weapon kind: sword, axe, mace, dagger, spear, two-hander,
+   staff, wand, bow (draw to the cheek, release on `contact`), shield bash,
+   unarmed; combos alternate (`ctx.flip`, `attack1`/`attack2`). Casts:
+   aimed, self, ground. Channel loop, dodge (roll or dash), hit react,
+   stagger, stun, knockdown, two deaths. Keys start from the stance's idle
+   pose; `contact` is the hit/release key and `recover` when a move order may
+   cut in. Steps inside an action (lunge, slam) still need a way to move a
+   planted foot: add `Gait.stepTo(foot, x, z, dur)` and call it from a key
+   time. Read hit/release timing off `CLIP_CONTACT` / `contactDelay`
+   (`src/entities/Player.ts`) and `src/scenes/SkillRunner.ts`. Add an
+   `actions` sheet (key strip per action and weapon) to `hero-page.ts` and a
+   check that `hit`/`release` fire exactly `contact` seconds after `play()`.
+2. Switch and clean.
 
-Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities,poses,gear [--class=warden,ranger] [--kit=plate] [--rarity=unique]`
+Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities,poses,gear,clips,stances [--class=warden] [--kit=plate] [--rarity=unique] [--stance=shield]`
 writes `shots/heroes/*.png` in seconds. Check: `node tools/check-hero.mjs`.
 
 ## Notes for resume
+
+- Animator (`src/art/hero/Animator.ts`, `HeroAnimator(bones)`): poses are
+  channels (`Pose.ts`: three angles per bone in a fixed convention, plus
+  pelvis offset, leg IK weight, off-hand grip). Layers: stance
+  (`Stances.ts`) -> stride or idle (in `buildPose`) -> action
+  (`Actions.ts`, Hermite curve through key poses, time-warped to `contact`)
+  -> flinch. Then `solve()`: FK, pelvis dropped until feet reach, leg IK
+  (`Ik.ts`), off hand onto the main hand's grip. Feet (`Gait.ts`) live in
+  world space; planted feet never move (check-hero measures 0.0 mm drift on
+  every class). Cape bones under the chest are found automatically and
+  swung by `Secondary.ts`. Costs about 45 us a frame. `setWeapon(grip)` plus
+  `setOffHand('shield' | 'weapon')` pick the stance; `Hold.ts` puts items in
+  hand sockets with the grip turn (reverse grip for daggers).
 
 - Armour (`Armour.ts`): `wearArmour(hero, slot, item, visual)` returns
   `{ object, hides }`; call `setHeroHidden(hero, hides)` and

@@ -52,8 +52,8 @@ export class CapeSpring {
       // share of the total angle goes on each.
       const share = i === 0 ? 1 : 0.35;
       let tx = i === 0 ? inp.pitch : 0;
-      tx += (0.09 * Math.max(0, inp.fwd) + 0.06 * Math.max(0, inp.accel)) * share * (0.7 + k);
-      tx += Math.max(0, inp.legBack) * (i === 0 ? 0.25 : 0.2);
+      tx += (0.05 * Math.max(0, inp.fwd) + 0.04 * Math.min(8, Math.max(0, inp.accel))) * share * (0.7 + k);
+      tx += Math.max(0, inp.legBack) * (i === 0 ? 0.15 : 0.05);
       tx -= inp.vy * 0.05 * k;
       // Flutter: a fast ripple down the cloth, stronger toward the hem.
       tx += Math.sin(this.t * (6 + 2 * speed) - i * 1.3) * 0.025 * Math.min(1, speed / 3) * k;

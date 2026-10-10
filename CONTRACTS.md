@@ -220,6 +220,11 @@ animator.castGlow: number; animator.castHands: 'left' | 'right' | 'both' | null;
   timing in `src/scenes/SkillRunner.ts`.
 - `step` fires when a foot plants, with `side`. Footstep sounds and dust can
   key off it.
+- Stance: `setWeapon(grip)` (the `WeaponGrip` names) and
+  `setOffHand('none' | 'shield' | 'weapon' | 'focus')` pick how the hero
+  stands and carries (one hand, dagger, wand, dual, shield, two hand, staff,
+  bow). Put held models in hand with `holdItem(rig, slot, model, grip)` from
+  `src/art/hero/Hold.ts`, never on the socket directly.
 - Game rules still own timing: damage lands on `Player.contactIn`, never on an
   animation event. The animation bends to the rules, not the other way round.
 

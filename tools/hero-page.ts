@@ -142,8 +142,17 @@ interface Actor {
   world: THREE.Group;
 }
 
-function actor(cls: CharClassId, stance: Stance, name = `${cls}-${stance}`): Actor {
+function actor(cls: CharClassId, stance: Stance, name = `${cls}-${stance}`, kit?: string, rarity: ItemRarity = 'unique'): Actor {
   const hero = buildHero(HERO_LOOKS[cls], name);
+  if (kit && KITS[kit]) {
+    const hidden = new Set<string>();
+    for (const id of KITS[kit]!) {
+      const base = ITEM_BASES.find((b) => b.id === id);
+      if (!base) continue;
+      wearArmour(hero, base.slot as EquipSlot, { baseId: base.id, rarity }, base.visual)?.hides.forEach((k) => hidden.add(k));
+    }
+    setHeroHidden(hero, hidden);
+  }
   for (const [slot, id, grip] of STANCE_ITEMS[stance]) {
     const base = ITEM_BASES.find((b) => b.id === id);
     if (!base) continue;
@@ -389,6 +398,15 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
         lines.push(`${cls} ${kitName}: ${tris} tris, ${draws} draws, dressed in ${ms | 0} ms`);
       }
     }
+    // Cost: one animator frame, with a cape to swing.
+    {
+      const a = actor(list[0]!, CLASS_STANCE[list[0]!], 'timing', 'plate');
+      const t0 = performance.now();
+      simulate(a, 0, 10, circle(3.4, 3));
+      const us = ((performance.now() - t0) / 600) * 1000;
+      if (us > 400) bad(`animator frame costs ${us | 0} us, budget 400`);
+      lines.push(`animator: ${us | 0} us a frame`);
+    }
     // Feet: planted feet must stay planted, on the floor, whatever the body does.
     for (const cls of list) {
       const runs: Array<[string, Drive, number]> = [
@@ -434,7 +452,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     const { c, g } = sheet(TW * COLS, TH * rows.length);
     rows.forEach(([label, make, warm, span0, view], r) => {
       const drive = make();
-      const a = actor(cls, stance, `${cls}-${stance}-${r}`);
+      const a = actor(cls, stance, `${cls}-${stance}-${r}`, f.kit, (f.rarity ?? 'unique') as ItemRarity);
       simulate(a, 0, warm, drive);
       const span = span0 > 0 ? span0 : 1 / a.anim.gaitInfo.freq;
       let t = warm;
