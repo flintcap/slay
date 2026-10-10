@@ -120,6 +120,20 @@ export class Field {
     }
   }
 
+  /** A hash of every primitive: changes whenever the shape does. */
+  hash(): string {
+    let h1 = 0x811c9dc5;
+    let h2 = 0x01000193;
+    const eat = (bytes: Uint8Array) => {
+      for (let i = 0; i < bytes.length; i++) {
+        h1 = Math.imul(h1 ^ bytes[i], 0x01000193);
+        h2 = Math.imul(h2 ^ bytes[i], 0x5bd1e995) ^ (h2 >>> 15);
+      }
+    };
+    for (const a of [this.d, this.k, this.group, this.kind, this.sub]) eat(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
+    return `${(h1 >>> 0).toString(36)}${(h2 >>> 0).toString(36)}`;
+  }
+
   /** The whole field's bounds. */
   bounds(): THREE.Box3 {
     const b = new THREE.Box3();

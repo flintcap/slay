@@ -13,7 +13,14 @@ import type { Field } from './Sdf';
 const B = 8; // cells per block side
 const NC = B + 1; // corners per block side
 
-export interface Clip {
+export type Clip = PlaneClip | CutClip;
+
+/** Removes everywhere `cut` is negative (a distance field of the part to take away). */
+export interface CutClip {
+  cut: (x: number, y: number, z: number) => number;
+}
+
+export interface PlaneClip {
   /** Plane normal pointing *out* of the kept region. */
   n: THREE.Vector3;
   /** Keeps points with dot(n, p) <= d. */
@@ -51,6 +58,11 @@ export function listedField(field: Field, clips: Clip[], inflate: Inflate): (lis
   return (list, x, y, z) => {
     let v = field.evalList(list, list.length, x, y, z) - (typeof inflate === 'number' ? inflate : inflate(x, y, z));
     for (const cl of clips) {
+      if ('cut' in cl) {
+        const cv = -cl.cut(x, y, z);
+        if (cv > v) v = cv;
+        continue;
+      }
       if (cl.within) {
         const [cx, cy, cz, r] = cl.within;
         const dx = x - cx;

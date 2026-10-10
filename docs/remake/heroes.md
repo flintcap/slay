@@ -13,7 +13,7 @@ and animator when done.
   sockets (main hand, off hand, back, belt, head, chest). Write it to
   `CONTRACTS.md` before anything else, because items, npcs and vfx depend on
   it. Keep the hit frame and release frame events.
-- [ ] Body. One continuous skinned mesh per body type with smooth weights and
+- [x] Body. (`heroes: new hero body, skinned, textured, dressed`; not switched on yet, the old body goes in "Switch and clean") One continuous skinned mesh per body type with smooth weights and
   real proportions (about 7.5 heads tall, broad shoulders, hands and feet with
   shape). Male and female bodies, build varied per class. PBR skin, cloth and
   leather from CC0 textures under `public/assets/textures/hero/`.
@@ -39,6 +39,10 @@ and animator when done.
 `check-body`, `check-clips`, `check-footplant`, `check-grips`, `check-equip`,
 `check-gear-visuals`, `tools/art-sheet.mjs`. Update or replace them as the
 new system lands.
+
+New: `SLAY_PORT=4324 timeout 900 node tools/check-hero.mjs` (heights, soles,
+skin weights, budgets, eyes, cache). Sheets to look at:
+`node tools/hero-sheet.mjs bodies,faces,extremities,poses [--class=...]`.
 
 ## Design
 
@@ -83,18 +87,13 @@ lands exactly on the game's contact time.
 
 ## Next up
 
-Body is meshing, skinned, textured and dressed in undergarments; it is not
-switched on in the game yet (old `CharacterModels` still drives everything).
+1. Head and face: hair, brows and beards as shells grown from the head
+   field (`Garment.ts` with `cut` clips and extra primitives for hanging
+   hair), hood and mask for the shadowblade, strand normal texture painted
+   in code. Then judge `faces` and `bodies` sheets and tick.
+2. Worn armour, grown from the body like the undergarments.
 
-1. Body: persistent cache so a hero costs ~0 ms after the first boot
-   (IndexedDB keyed by a hash of shape + `BODY_VERSION`), and a
-   `tools/check-hero-body.mjs` checker (watertight-ish, weights sum to 1,
-   tri budget, height, under 900 draw calls).
-2. Head and face: hair, brows and beards as meshed shells (`Garment.ts`
-   style, grown from the scalp), hood and mask for the shadowblade.
-3. Then Worn armour, grown from the body like the undergarments.
-
-Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities [--class=warden,ranger]`
+Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities,poses [--class=warden,ranger]`
 writes `shots/heroes/*.png` in seconds.
 
 ## Notes for resume
@@ -109,7 +108,9 @@ writes `shots/heroes/*.png` in seconds.
 - Textures: `node tools/fetch-hero-textures.mjs` (Poly Haven CC0, rows in
   ASSETS.md).
 - A body costs 2-3 s to mesh in the browser (dominated by surface nets on the
-  trunk and QEM). Bodies are cached per shape in memory.
+  trunk and QEM). Parts are cached in memory and in IndexedDB
+  (`MeshCache.ts`, keyed by a hash of the field; bump `MESH_VERSION` when the
+  mesher, weights or painting change). Call `loadMeshCache()` at boot.
 
 - items runs at the same time and owns `ItemLook`. Read their contract in
   `CONTRACTS.md`; do not edit their files.

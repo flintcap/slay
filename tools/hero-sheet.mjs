@@ -5,7 +5,8 @@
  *
  * Starts a Vite dev server, opens an empty page with WebGL (SwiftShader),
  * imports the hero code from source and asks `tools/hero-page.ts` to render
- * each named sheet: bodies, faces, poses, clips, gear. Extra `--k=v` flags are
+ * each named sheet: bodies, faces, extremities; `check` prints a report and
+ * sets the exit code instead (see tools/check-hero.mjs). Extra `--k=v` flags are
  * handed to the sheet. Takes seconds, not the minutes a game boot does.
  */
 import { chromium } from '@playwright/test';
@@ -72,6 +73,7 @@ await page.route(`http://127.0.0.1:${PORT}/__heroes`, (r) =>
 );
 await page.goto(`http://127.0.0.1:${PORT}/__heroes`);
 
+let failed = false;
 for (const name of wanted) {
   const t0 = Date.now();
   const res = await page.evaluate(async ([n, f]) => {
@@ -88,10 +90,18 @@ for (const name of wanted) {
     console.error(res.error);
     continue;
   }
+  if (!res.uri.startsWith('data:')) {
+    // A check: a JSON report instead of a picture.
+    const rep = JSON.parse(res.uri);
+    for (const l of rep.lines) console.log(l);
+    console.log(`${name}: ${rep.pass ? 'PASS' : 'FAIL'}`);
+    if (!rep.pass) failed = true;
+    continue;
+  }
   const file = path.join(OUT, `${name}.png`);
   writeFileSync(file, Buffer.from(res.uri.split(',')[1], 'base64'));
   console.log(`wrote ${file} in ${Math.round((Date.now() - t0) / 1000)}s`);
 }
 await browser.close();
 stop();
-process.exit(0);
+process.exit(failed ? 1 : 0);

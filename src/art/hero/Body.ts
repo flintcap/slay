@@ -17,12 +17,15 @@ import { skinWeights } from './Skinning';
 import { G, GROUP_COUNT, bodyField, type AnatomyOpts, type BodyField } from './Anatomy';
 import { heroJoints, type BodyShape, type JointMap } from './Rig';
 import { EVALS, type Field } from './Sdf';
+import { meshCached } from './MeshCache';
 
 export interface BodyMesh {
   /** The skin: one skinned geometry, bind pose = the rig's A-pose. */
   skin: THREE.BufferGeometry;
   anatomy: BodyField;
   joints: JointMap;
+  /** Hash of the body's field: keys every cached part grown from it. */
+  hash: string;
   /** Milliseconds it took to build. */
   ms: number;
 }
@@ -137,6 +140,14 @@ export function meshBody(shape: BodyShape, opts: AnatomyOpts = {}, q: BodyQualit
   const t0 = performance.now();
   const joints = heroJoints(shape);
   const anatomy = bodyField(shape, joints, opts);
+  const hash = anatomy.field.hash();
+  const skin = meshCached(`body|${hash}|${JSON.stringify(q)}`, () => meshSkin(anatomy, opts, q));
+  const out: BodyMesh = { skin, anatomy, joints, hash, ms: performance.now() - t0 };
+  cache.set(k, out);
+  return out;
+}
+
+function meshSkin(anatomy: BodyField, opts: AnatomyOpts, q: BodyQuality): THREE.BufferGeometry {
   const h = anatomy.h;
   const whole = anatomy.field;
 
@@ -195,9 +206,7 @@ export function meshBody(shape: BodyShape, opts: AnatomyOpts = {}, q: BodyQualit
   const skin = concat([body, head, ...hands]);
   skin.setAttribute('color', new THREE.BufferAttribute(paintSkin(anatomy, skin, !!opts.skull), 3));
   for (const g of [body, head, ...hands]) g.dispose();
-  const out: BodyMesh = { skin, anatomy, joints, ms: performance.now() - t0 };
-  cache.set(k, out);
-  return out;
+  return skin;
 }
 
 /**

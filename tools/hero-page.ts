@@ -8,6 +8,7 @@ import type { CharClassId } from '../src/types';
 import { profileBodies } from '../src/art/hero/Body';
 import { buildHero } from '../src/art/hero/Hero';
 import { HERO_LOOKS } from '../src/art/hero/Looks';
+import { loadMeshCache } from '../src/art/hero/MeshCache';
 
 const BG = '#16181e';
 const INK = '#c9d1de';
@@ -76,7 +77,73 @@ function bareBody(cls: CharClassId): { root: THREE.Object3D; info: string } {
   return { root: hero.root, info: `${tris | 0} tris ${hero.body.ms | 0}ms` };
 }
 
+/** Every skinned mesh under a hero. */
+function skinnedMeshes(root: THREE.Object3D): THREE.SkinnedMesh[] {
+  const out: THREE.SkinnedMesh[] = [];
+  root.traverse((o) => {
+    if ((o as THREE.SkinnedMesh).isSkinnedMesh) out.push(o as THREE.SkinnedMesh);
+  });
+  return out;
+}
+
 export const SHEETS: Record<string, (f: Record<string, string>) => Promise<string>> = {
+  /** Numbers, not pictures: returns a JSON report. */
+  async check(f) {
+    await loadMeshCache();
+    const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
+    const lines: string[] = [];
+    let pass = true;
+    const bad = (msg: string) => {
+      pass = false;
+      lines.push(`  FAIL ${msg}`);
+    };
+    for (const cls of list) {
+      const look = HERO_LOOKS[cls];
+      const t0 = performance.now();
+      const hero = buildHero(look, cls);
+      const ms = performance.now() - t0;
+      const meshes = skinnedMeshes(hero.root);
+      let tris = 0;
+      for (const m of meshes) {
+        const geo = m.geometry;
+        tris += geo.getIndex()!.count / 3;
+        const pos = geo.getAttribute('position').array as Float32Array;
+        const sw = geo.getAttribute('skinWeight').array as Float32Array;
+        const si = geo.getAttribute('skinIndex').array;
+        let nan = 0;
+        for (let i = 0; i < pos.length; i++) if (!Number.isFinite(pos[i])) nan++;
+        if (nan) bad(`${cls} ${m.name}: ${nan} bad positions`);
+        let worst = 0;
+        for (let v = 0; v < sw.length; v += 4) worst = Math.max(worst, Math.abs(sw[v] + sw[v + 1] + sw[v + 2] + sw[v + 3] - 1));
+        if (worst > 2e-3) bad(`${cls} ${m.name}: skin weights off by ${worst.toFixed(4)}`);
+        for (let i = 0; i < si.length; i++) {
+          if (si[i] >= hero.rig.skeleton.bones.length) {
+            bad(`${cls} ${m.name}: skin index ${si[i]} out of range`);
+            break;
+          }
+        }
+      }
+      const box = new THREE.Box3();
+      box.setFromBufferAttribute(hero.body.skin.getAttribute('position') as THREE.BufferAttribute);
+      const H = box.max.y - box.min.y;
+      if (Math.abs(H / look.shape.height - 1) > 0.03) bad(`${cls}: height ${H.toFixed(3)} m, wants ${look.shape.height}`);
+      if (box.min.y < -0.005 || box.min.y > 0.02) bad(`${cls}: soles at ${box.min.y.toFixed(3)} m, want 0`);
+      if (tris > 24000) bad(`${cls}: ${tris} triangles, budget 24000`);
+      if (meshes.length > 8) bad(`${cls}: ${meshes.length} draw calls bare, budget 8`);
+      const e = hero.body.anatomy.eyes;
+      const f0 = hero.body.anatomy.field;
+      for (const c of [e.L, e.R]) {
+        // The eye's centre sits inside the head and its front just breaks the lid.
+        if (!look.face.skull && f0.eval(c.x, c.y, c.z) > 0) bad(`${cls}: eye centre outside the head`);
+      }
+      const t1 = performance.now();
+      buildHero(look, `${cls}-again`);
+      const again = performance.now() - t1;
+      if (again > 120) bad(`${cls}: second build took ${again | 0} ms (cache miss?)`);
+      lines.push(`${cls}: ${tris} tris, ${meshes.length} meshes, ${H.toFixed(2)} m, built ${ms | 0} ms, again ${again | 0} ms`);
+    }
+    return JSON.stringify({ pass, lines });
+  },
   /** Every class body, bare, front / side / back, in the bind pose. */
   async bodies(f) {
     profileBodies(true);
@@ -92,6 +159,33 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       [0, Math.PI * 0.5, Math.PI].forEach((yaw, k) => shoot(g, root, { x: ox + k * TW, y: oy, w: TW, h: TH, yaw, target: tgt, dist: 4.4 }));
       g.fillStyle = INK;
       g.fillText(`${cls}  ${info}`, ox + 8, oy + 18);
+    });
+    return c.toDataURL('image/png');
+  },
+  /** Bent joints, to judge the skin weights: a crouch, a reach, a twist. */
+  async poses(f) {
+    const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
+    const TW = 300;
+    const TH = 480;
+    const { c, g } = sheet(TW * 6, TH);
+    const H = HERO_LOOKS[cls].shape.height;
+    const poses: Array<Record<string, [number, number, number]>> = [
+      // Reach: arms forward, elbows bent, wrists cocked.
+      { upperArmL: [-1.3, 0, 0.5], upperArmR: [-0.3, 0, -0.9], foreArmL: [-1.5, 0, 0], foreArmR: [-0.9, 0, 0], handR: [0.6, 0, 0], neck: [0.2, 0, 0] },
+      // Crouch: hips and knees deep, back bent.
+      { thighL: [-1.4, 0, 0], thighR: [-0.4, 0, 0], shinL: [1.6, 0, 0], shinR: [1.2, 0, 0], footL: [-0.2, 0, 0], spine: [0.3, 0, 0], chest: [0.2, 0, 0] },
+      // Twist: torso turned, head turned back, arm raised overhead.
+      { spine: [0, 0.4, 0], chest: [0, 0.35, 0], neck: [0, -0.4, 0], head: [0, -0.3, 0.1], upperArmL: [0, 0, 2.1], foreArmL: [0, 0, 0.6], upperArmR: [0.5, 0, 0], clavL: [0, 0, 0.3] },
+    ];
+    poses.forEach((pose, i) => {
+      const hero = buildHero(HERO_LOOKS[cls], `${cls}-pose${i}`);
+      for (const [bone, r] of Object.entries(pose)) {
+        const b = hero.rig.bones[bone as keyof typeof hero.rig.bones];
+        if (b) b.rotation.set(r[0], r[1], r[2]);
+      }
+      const tgt = new THREE.Vector3(0, H * 0.48, 0);
+      shoot(g, hero.root, { x: i * 2 * TW, y: 0, w: TW, h: TH, yaw: 0.35, target: tgt, dist: 4.4 });
+      shoot(g, hero.root, { x: (i * 2 + 1) * TW, y: 0, w: TW, h: TH, yaw: Math.PI * 0.5 + 0.2, target: tgt, dist: 4.4 });
     });
     return c.toDataURL('image/png');
   },

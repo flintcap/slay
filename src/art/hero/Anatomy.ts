@@ -274,6 +274,8 @@ export function bodyField(shape: BodyShape, j: JointMap, opts: AnatomyOpts = {})
     const toeTip = To.clone().addScaledVector(fdir, 0.26 * h).setY(0.06 * h);
     F.box(To.clone().lerp(toeTip, 0.55).setY(0.06 * h), V(0.16 * h, 0.06 * h, 0.15 * h), 0.05 * h, 0.04 * h, fq);
     F.ellipsoid(An.clone().add(H(0, -0.05, 0.04)), V(0.12 * h, 0.14 * h, 0.15 * h), 0.08 * h);
+    // A flat sole: whatever of the foot dips under the ground is planed off.
+    F.box(V(An.x, -0.3 * h, An.z + 0.1 * h), V(0.5 * h, 0.3 * h, 0.9 * h), 0, 0.02 * h, undefined, { sub: true });
 
     chains[L ? G.legL : G.legR] = {
       bones: L ? ['pelvis', 'thighL', 'shinL'] : ['pelvis', 'thighR', 'shinR'],
