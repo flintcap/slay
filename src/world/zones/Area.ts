@@ -32,7 +32,7 @@ import { type ZoneCtx, type ZoneGenerator, landing, polyline, wander } from './K
 import { dunes, forest, swamp, tundra, wastes } from './Outdoor';
 
 /** The zone generators, one per new layout kind. */
-export const ZONE_GENERATORS: Partial<Record<LayoutKind, ZoneGenerator>> = {
+export const ZONE_GENERATORS: Record<LayoutKind, ZoneGenerator> = {
   forest,
   swamp,
   dunes,
@@ -82,11 +82,15 @@ const PORT_IN = 6;
 /** Grid size for one zone. Grows slowly with tier, like the old floors did. */
 export function zoneSize(layout: LayoutKind, depth: number, outdoor: boolean, boss: boolean, rng: Rng): { w: number; h: number } {
   const grow = Math.min(24, Math.floor(Math.log2(depth + 1) * 6));
-  let w = (outdoor ? 84 : 74) + grow + rng.int(-4, 8);
-  let h = (outdoor ? 58 : 60) + Math.floor(grow * 0.6) + rng.int(-3, 6);
+  let w = (outdoor ? 84 : 82) + grow + rng.int(-4, 8);
+  let h = (outdoor ? 58 : 64) + Math.floor(grow * 0.6) + rng.int(-3, 6);
   if (layout === 'tomb') w += 10;
   if (layout === 'swamp' || layout === 'rift') w += 6;
   if (layout === 'keep') h += 4;
+  if (layout === 'cave') {
+    w += 10;
+    h += 10;
+  }
   if (boss) w += 26;
   return { w, h };
 }
@@ -123,8 +127,7 @@ export function buildArea(plan: AreaPlan, rng: Rng): AreaOut {
       forbid: new Uint8Array(w * H),
     };
     const arena = ctx.boss ? carveArena(ctx) : undefined;
-    const gen = ZONE_GENERATORS[z.layout] ?? (z.outdoor ? forest : cave);
-    gen(ctx);
+    ZONE_GENERATORS[z.layout](ctx);
     landing(ctx, ctx.entry);
     landing(ctx, ctx.exit);
     locals.push({ ctx, arena });

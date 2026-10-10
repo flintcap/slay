@@ -40,7 +40,7 @@ import type {
 import { Random, streamFor } from '../core/RNG';
 import { activeDifficulty } from '../data/difficulties';
 import { clamp } from '../art/Noise';
-import { BIOMES as BIOME_LIST, biomeForDepth, getBiome, layoutForBiome, pickVariant } from './Biomes';
+import { BIOMES as BIOME_LIST, biomeForDepth, getBiome, isOutdoorBiome, layoutForBiome, pickVariant } from './Biomes';
 import {
   Grid,
   TILE_VALUES,
@@ -53,10 +53,9 @@ import {
   T_STAIRS_UP,
   T_WATER,
   auditLayout,
-  buildLayout,
   isWalkableValue,
-  layoutSizeFor,
 } from './Layouts';
+import { buildArea } from './zones/Area';
 import { placeProps } from './Props';
 
 // ---------------------------------------------------------------------------
@@ -692,26 +691,37 @@ export function generateLevel(
   const biomeDef = getBiome(biome);
   const isBossLevel = levelIndex === levelsTotal - 1;
 
-  const kind = pickLayoutKind(biomeDef, rng, depth, isBossLevel);
-  const size = layoutSizeFor(depth, kind, rng);
-  const layout = buildLayout(kind, {
-    width: size.w,
-    height: size.h,
-    rng,
-    depth,
-    seed: (seed ^ (levelIndex * 0x9e37)) >>> 0,
-    boss: isBossLevel,
-  });
+  const kind = pickLayoutKind(biomeDef, rng, depth);
+  const area = buildArea(
+    {
+      depth,
+      zones: [
+        {
+          name: biomeDef.name,
+          biome,
+          layout: kind,
+          outdoor: isOutdoorBiome(biome),
+          role: isBossLevel ? 'boss' : levelIndex === 0 ? 'start' : 'field',
+          order: levelIndex,
+        },
+      ],
+    },
+    rng.fork('area'),
+  );
 
-  const g = layout.grid;
-  const rooms = layout.rooms;
+  const g = area.grid;
+  const rooms = area.rooms;
 
   // --- Stairs ------------------------------------------------------------
-  const { entryRoom, exitRoom } = pickEntryExit(g, rooms, isBossLevel);
-  const entry = safeSpot(g, entryRoom ? entryRoom.center : firstWalkable(g));
-  const exit = safeSpot(g, exitRoom ? exitRoom.center : lastWalkable(g), entry);
-  if (entryRoom) entryRoom.kind = 'entry';
-  if (exitRoom && exitRoom.kind !== 'boss') exitRoom.kind = 'exit';
+  // The zone generators leave a landing at both ports. On the boss floor the
+  // way on opens in the middle of the arena once the boss is down.
+  const entry = area.entry;
+  const arenaMid = area.arena ? { x: area.arena.x + (area.arena.w >> 1), y: area.arena.y + (area.arena.h >> 1) } : null;
+  const exit = arenaMid ? safeSpot(g, arenaMid, entry) : area.exit;
+  const entryRoom = nearestRoom(rooms, entry, 10);
+  const exitRoom = arenaMid ? null : nearestRoom(rooms, exit, 10);
+  if (entryRoom && entryRoom.kind === 'normal') entryRoom.kind = 'entry';
+  if (exitRoom && exitRoom.kind === 'normal' && exitRoom !== entryRoom) exitRoom.kind = 'exit';
 
   g.set(entry.x, entry.y, T_STAIRS_UP);
   g.set(exit.x, exit.y, T_STAIRS_DOWN);
@@ -723,9 +733,6 @@ export function generateLevel(
 
   // --- Room roles --------------------------------------------------------
   assignRoomRoles(rooms, rng, depth, isBossLevel, quest, levelIndex);
-
-  // --- Liquid / hazard dressing -----------------------------------------
-  dressHazards(g, rooms, biomeDef, rng, depth);
 
   // --- Build the level record -------------------------------------------
   const roomOf = buildRoomIndex(g, rooms);
@@ -746,6 +753,9 @@ export function generateLevel(
     heights: g.heights,
     roomOf,
     audit: auditLayout(g, rooms, entry),
+    zones: area.zones,
+    zoneOf: area.zoneOf,
+    arena: area.arena,
   };
 
   // --- Spawns ------------------------------------------------------------
@@ -1049,16 +1059,23 @@ function placeEvents(level: DungeonLevel, depth: number, rng: Rng): LevelEvent[]
   return out;
 }
 
-function pickLayoutKind(biome: BiomeDef, rng: Rng, depth: number, boss: boolean): LayoutKind {
-  if (boss) {
-    // Boss floors are arenas, except where the biome's identity is the spiral.
-    if (biome.layouts.includes('spiral') && rng.chance(0.35)) return 'spiral';
-    return 'arena';
+/** The zone generator for a biome. The boss floor uses it too, with the arena on the end. */
+function pickLayoutKind(biome: BiomeDef, rng: Rng, depth: number): LayoutKind {
+  return layoutForBiome(biome, rng, depth);
+}
+
+/** The room whose centre is nearest `p`, if any is within `maxD` tiles. */
+function nearestRoom(rooms: DungeonRoom[], p: Vec2, maxD: number): DungeonRoom | null {
+  let best: DungeonRoom | null = null;
+  let bd = maxD;
+  for (const r of rooms) {
+    const d = Math.hypot(r.center.x - p.x, r.center.y - p.y);
+    if (d <= bd) {
+      bd = d;
+      best = r;
+    }
   }
-  let kind = layoutForBiome(biome, rng, depth);
-  // Never hand the player an arena on a non-boss floor; it reads as a mistake.
-  if (kind === 'arena') kind = biome.layouts.find((k) => k !== 'arena') ?? 'rooms';
-  return kind;
+  return best;
 }
 
 function firstWalkable(g: Grid): Vec2 {
@@ -1138,56 +1155,6 @@ function distanceField(g: Grid, from: Vec2): Int32Array {
   return dist;
 }
 
-function pickEntryExit(
-  g: Grid,
-  rooms: DungeonRoom[],
-  bossLevel: boolean,
-): { entryRoom: DungeonRoom | null; exitRoom: DungeonRoom | null } {
-  if (rooms.length === 0) return { entryRoom: null, exitRoom: null };
-
-  const bossRoom = rooms.find((r) => r.kind === 'boss') ?? null;
-  // On a boss floor the arena is always the destination.
-  const candidates = rooms.filter((r) => r !== bossRoom);
-  const start = candidates.length > 0 ? candidates[0] : rooms[0];
-
-  const dist = distanceField(g, start.center);
-  // Entry = the most peripheral room; on boss floors, the one furthest from the arena.
-  let entryRoom = start;
-  if (bossLevel && bossRoom) {
-    const bossDist = distanceField(g, bossRoom.center);
-    let best = -1;
-    for (const r of candidates) {
-      const d = bossDist[r.center.y * g.w + r.center.x];
-      if (d > best) {
-        best = d;
-        entryRoom = r;
-      }
-    }
-    return { entryRoom, exitRoom: bossRoom };
-  }
-
-  let best = -1;
-  for (const r of rooms) {
-    const d = dist[r.center.y * g.w + r.center.x];
-    if (d > best) {
-      best = d;
-      entryRoom = r;
-    }
-  }
-  const fromEntry = distanceField(g, entryRoom.center);
-  let exitRoom = entryRoom;
-  best = -1;
-  for (const r of rooms) {
-    if (r === entryRoom) continue;
-    const d = fromEntry[r.center.y * g.w + r.center.x];
-    if (d > best) {
-      best = d;
-      exitRoom = r;
-    }
-  }
-  return { entryRoom, exitRoom: exitRoom === entryRoom ? null : exitRoom };
-}
-
 function assignRoomRoles(
   rooms: DungeonRoom[],
   rng: Rng,
@@ -1243,121 +1210,6 @@ function assignRoomRoles(
     for (const r of rooms) if (!biggest || area(r) > area(biggest)) biggest = r;
     if (biggest) biggest.kind = 'boss';
   }
-}
-
-/**
- * Sprinkles biome-appropriate liquid and hazard tiles. Kept off room centres and
- * off the shortest path so it decorates rather than obstructs.
- */
-function dressHazards(g: Grid, rooms: DungeonRoom[], biome: BiomeDef, rng: Rng, depth: number): void {
-  const wantsLava = biome.id === 'foundry' || biome.id === 'ashwaste';
-  const wantsWater = biome.id === 'sunkenTemple' || biome.id === 'caverns';
-  if (!wantsLava && !wantsWater) return;
-
-  const pools = wantsWater ? rng.int(3, 7) : rng.int(2, 5);
-  for (let i = 0; i < pools; i++) {
-    const cx = rng.int(5, g.w - 6);
-    const cy = rng.int(5, g.h - 6);
-    const r = rng.range(2, 5.5);
-    const value = wantsLava ? T_LAVA : T_WATER;
-    for (let y = Math.floor(cy - r); y <= cy + r; y++) {
-      for (let x = Math.floor(cx - r); x <= cx + r; x++) {
-        const dx = x - cx;
-        const dy = y - cy;
-        if (dx * dx + dy * dy > r * r) continue;
-        if (g.get(x, y) !== T_FLOOR) continue;
-        g.set(x, y, value);
-        if (value === T_LAVA || value === T_WATER) g.setHeight(x, y, g.height(x, y) - 1);
-      }
-    }
-  }
-
-  // Lava must never sever the level; water is walkable so it cannot.
-  if (wantsLava) {
-    // Re-open a one-tile causeway anywhere lava cut the only route.
-    const opened = repairLavaCuts(g);
-    void opened;
-  }
-  void rooms;
-  void depth;
-}
-
-/** If lava split the walkable graph, bridge the largest gap back together. */
-function repairLavaCuts(g: Grid): number {
-  const n = g.w * g.h;
-  const label = new Int32Array(n).fill(-1);
-  const queue = new Int32Array(n);
-  const sizes: number[] = [];
-  let next = 0;
-  for (let i = 0; i < n; i++) {
-    if (label[i] !== -1 || !isWalkableValue(g.t[i])) continue;
-    const id = next++;
-    let head = 0;
-    let tail = 0;
-    queue[tail++] = i;
-    label[i] = id;
-    let count = 0;
-    while (head < tail) {
-      const c = queue[head++];
-      count++;
-      const cx = c % g.w;
-      const cy = (c / g.w) | 0;
-      const step = (nb: number): void => {
-        if (label[nb] !== -1 || !isWalkableValue(g.t[nb])) return;
-        label[nb] = id;
-        queue[tail++] = nb;
-      };
-      if (cx > 0) step(c - 1);
-      if (cx < g.w - 1) step(c + 1);
-      if (cy > 0) step(c - g.w);
-      if (cy < g.h - 1) step(c + g.w);
-    }
-    sizes.push(count);
-  }
-  if (sizes.length <= 1) return 0;
-  let main = 0;
-  for (let i = 1; i < sizes.length; i++) if (sizes[i] > sizes[main]) main = i;
-
-  // BFS through lava only, from the main component, carving the shortest bridge.
-  const parent = new Int32Array(n).fill(-1);
-  const seen = new Uint8Array(n);
-  let head = 0;
-  let tail = 0;
-  for (let i = 0; i < n; i++) if (label[i] === main) { seen[i] = 1; queue[tail++] = i; }
-  const best = new Int32Array(sizes.length).fill(-1);
-  while (head < tail) {
-    const c = queue[head++];
-    const lc = label[c];
-    if (lc >= 0 && lc !== main && best[lc] === -1) best[lc] = c;
-    const cx = c % g.w;
-    const cy = (c / g.w) | 0;
-    const step = (nb: number): void => {
-      if (seen[nb]) return;
-      const v = g.t[nb];
-      if (v !== T_LAVA && !isWalkableValue(v)) return;
-      seen[nb] = 1;
-      parent[nb] = c;
-      queue[tail++] = nb;
-    };
-    if (cx > 1) step(c - 1);
-    if (cx < g.w - 2) step(c + 1);
-    if (cy > 1) step(c - g.w);
-    if (cy < g.h - 2) step(c + g.w);
-  }
-  let fixed = 0;
-  for (let comp = 0; comp < sizes.length; comp++) {
-    if (comp === main || best[comp] === -1) continue;
-    let cur = best[comp];
-    let guard = 0;
-    while (cur !== -1 && guard++ < n) {
-      if (g.t[cur] === T_LAVA) {
-        g.t[cur] = T_FLOOR;
-        fixed++;
-      }
-      cur = parent[cur];
-    }
-  }
-  return fixed;
 }
 
 function buildRoomIndex(g: Grid, rooms: DungeonRoom[]): Int16Array {
@@ -1599,11 +1451,13 @@ export function heightAt(level: DungeonLevel, x: number, y: number): number {
 /** A standalone preview level, used by the screenshot harness. */
 export function previewLevel(biome: BiomeId, layout: LayoutKind, seed = 1234, depth = 10): DungeonLevel {
   const rng = new Random(seed);
-  const size = layoutSizeFor(depth, layout, rng);
-  const out = buildLayout(layout, { width: size.w, height: size.h, rng, depth, seed });
+  const out = buildArea(
+    { depth, zones: [{ name: getBiome(biome).name, biome, layout, outdoor: isOutdoorBiome(biome), role: 'start', order: 0 }] },
+    rng.fork('area'),
+  );
   const g = out.grid;
-  const entry = safeSpot(g, out.rooms.length > 0 ? out.rooms[0].center : firstWalkable(g));
-  const exit = safeSpot(g, out.rooms.length > 1 ? out.rooms[out.rooms.length - 1].center : lastWalkable(g), entry);
+  const entry = out.entry;
+  const exit = out.exit;
   g.set(entry.x, entry.y, T_STAIRS_UP);
   g.set(exit.x, exit.y, T_STAIRS_DOWN);
   const level: GeneratedLevel = {
@@ -1619,10 +1473,12 @@ export function previewLevel(biome: BiomeId, layout: LayoutKind, seed = 1234, de
     exit,
     spawns: [],
     props: [],
-    isBossLevel: layout === 'arena',
+    isBossLevel: false,
     heights: g.heights,
     roomOf: buildRoomIndex(g, out.rooms),
     audit: auditLayout(g, out.rooms, entry),
+    zones: out.zones,
+    zoneOf: out.zoneOf,
   };
   level.props = placeProps(level, getBiome(biome), rng.fork('props'));
   return level;

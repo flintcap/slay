@@ -1444,7 +1444,7 @@ export function isOutdoorBiome(id: BiomeId): boolean {
 
 /** Weighted layout choice honouring the biome's preferences. */
 export function layoutForBiome(biome: BiomeDef, rng: Rng, depth: number): LayoutKind {
-  const pool = biome.layouts.length > 0 ? biome.layouts : (['halls'] as LayoutKind[]);
+  const pool = biome.layouts.length > 0 ? biome.layouts : (['cave'] as LayoutKind[]);
   // The first entry is the biome's signature shape and stays the most common
   // one you meet. Deeper runs shift weight toward the harsher shapes later in
   // the list without ever making the signature rare.

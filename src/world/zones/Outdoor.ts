@@ -174,7 +174,7 @@ export function forest(ctx: ZoneCtx): void {
 export function swamp(ctx: ZoneCtx): void {
   const { g, rng, entry, exit } = ctx;
   const noise = makeNoise(rng);
-  const mask = bandMask(ctx, noise, 0.82);
+  const mask = bandMask(ctx, noise, 0.74);
   const f = rng.range(0.06, 0.085);
   const landBias = rng.range(-0.04, 0.06);
   for (let y = 3; y < g.h - 3; y++) {

@@ -727,21 +727,6 @@ export interface BiomeDef {
 }
 
 export type LayoutKind =
-  | 'rooms'
-  | 'halls'
-  | 'caves'
-  | 'maze'
-  | 'catacombs'
-  | 'ruins'
-  | 'arena'
-  | 'spiral'
-  // Added because five of the eight biomes led with `halls` and every run read
-  // as the same corridor dungeon. These three are deliberately unlike it and
-  // unlike each other: one enormous room, one warren of tiny ones, one open
-  // floor with almost no walls at all.
-  | 'cathedral'
-  | 'warrens'
-  | 'terraces'
   // Zone generators of the map remake (world/zones/*). Outdoor: forest,
   // swamp, dunes, tundra, wastes. Indoor: crypt, cave, tomb, keep, rift.
   | 'forest'

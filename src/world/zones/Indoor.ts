@@ -51,7 +51,7 @@ function portTo(ctx: ZoneCtx, p: Vec2, rooms: DungeonRoom[]): void {
 
 export function crypt(ctx: ZoneCtx): void {
   const { g, rng, entry, exit } = ctx;
-  const C = rng.int(10, 12);
+  const C = rng.int(11, 13);
   const x0 = 4;
   const y0 = 4;
   const cols = Math.max(2, Math.floor((right(ctx) - x0) / C));
@@ -62,9 +62,9 @@ export function crypt(ctx: ZoneCtx): void {
 
   for (let j = 0; j < rows; j++) {
     for (let i = 0; i < cols; i++) {
-      if (rng.chance(0.62)) {
-        const w = rng.int(5, C - 2);
-        const h = rng.int(5, C - 2);
+      if (rng.chance(0.78)) {
+        const w = rng.int(6, C - 1);
+        const h = rng.int(6, C - 1);
         const x = cx(i) - (w >> 1);
         const y = cy(j) - (h >> 1);
         rect(ctx, x, y, w, h, T_FLOOR);
@@ -137,17 +137,24 @@ export function cave(ctx: ZoneCtx): void {
   let since = 0;
   for (let i = 0; i + 1 < main.length; i++) {
     const p = main[i]!;
-    const r = 1.6 + 1.2 * (noise.fbm(p.x * 0.08, p.y * 0.08, 2) + 1);
+    const r = 2.1 + 1.4 * (noise.fbm(p.x * 0.08, p.y * 0.08, 2) + 1);
     segment(ctx, p, main[i + 1]!, r, T_FLOOR);
     since += 2;
-    if (since > (hive ? 9 : 14) && i > 2 && i < main.length - 3) {
+    if (since > (hive ? 8 : 11) && i > 2 && i < main.length - 3) {
       since = 0;
       chambers.push(p);
     }
   }
 
+  // A second way through for part of the length, so the cave has a loop.
+  const qa = main[Math.floor(main.length * rng.range(0.15, 0.35))]!;
+  const qb = main[Math.floor(main.length * rng.range(0.65, 0.85))]!;
+  const loop = wander(rng, qa, qb, g.h * 0.28, 2);
+  for (let i = 0; i + 1 < loop.length; i++) segment(ctx, loop[i]!, loop[i + 1]!, 1.8 + 1.1 * (noise.fbm(loop[i]!.x * 0.09, 5, 2) + 1), T_FLOOR);
+  chambers.push(loop[loop.length >> 1]!);
+
   // Side branches out into the rock, each ending in a chamber.
-  const nb = hive ? rng.int(5, 9) : rng.int(3, 6);
+  const nb = Math.round(((x1 * g.h) / 900) * (hive ? 1.5 : 1)) + rng.int(0, 2);
   const ends: Vec2[] = [];
   for (let b = 0; b < nb; b++) {
     const from = rng.pick(main.slice(2, -2));
@@ -155,7 +162,7 @@ export function cave(ctx: ZoneCtx): void {
       x: clampN(from.x + rng.range(-24, 24), 8, x1 - 6),
       y: clampN(from.y + (rng.chance(0.5) ? -1 : 1) * rng.range(12, 26), 7, g.h - 8),
     };
-    polyline(ctx, wander(rng, from, to, 5, 2), rng.range(1.2, 1.9), T_FLOOR);
+    polyline(ctx, wander(rng, from, to, 5, 2), rng.range(1.5, 2.3), T_FLOOR);
     chambers.push(to);
     ends.push(to);
   }
@@ -165,7 +172,7 @@ export function cave(ctx: ZoneCtx): void {
   }
 
   for (const c of chambers) {
-    const r = hive ? rng.range(3, 5) : rng.range(4, 7.5);
+    const r = hive ? rng.range(3.5, 5.5) : rng.range(5, 8.5);
     blob(ctx, c.x, c.y, r, T_FLOOR, noise, 0.45);
     addRoundRoom(ctx, c.x, c.y, Math.floor(r * 0.75));
     if (rng.chance(0.35)) g.rectHeight(Math.round(c.x - r), Math.round(c.y - r), Math.round(r * 2), Math.round(r * 2), rng.chance(0.5) ? -1 : 1);
@@ -198,7 +205,7 @@ export function tomb(ctx: ZoneCtx): void {
   const x1 = right(ctx);
   const top = Math.round(g.h * rng.range(0.2, 0.28));
   const bot = Math.round(g.h * rng.range(0.72, 0.8));
-  const legs = clampN(Math.round((x1 - entry.x) / 18), 3, 7);
+  const legs = clampN(Math.round((x1 - entry.x) / 15), 3, 8);
   const pts: Vec2[] = [entry];
   for (let k = 1; k < legs; k++) {
     const x = Math.round(entry.x + ((x1 - 4 - entry.x) * k) / legs);
@@ -207,12 +214,13 @@ export function tomb(ctx: ZoneCtx): void {
   pts.push(exit);
 
   // The gallery.
-  for (let k = 0; k + 1 < pts.length; k++) elbow(ctx, pts[k]!, pts[k + 1]!, 3, T_FLOOR, k % 2 === 0);
+  // Always across then up or down, so the gallery is a square wave.
+  for (let k = 0; k + 1 < pts.length; k++) elbow(ctx, pts[k]!, pts[k + 1]!, 3, T_FLOOR, true);
 
   // A pillared hall at every turn.
   for (let k = 1; k + 1 < pts.length; k++) {
     const p = pts[k]!;
-    const s = rng.int(9, 13);
+    const s = rng.int(11, 15);
     const r = addRoom(ctx, p.x - (s >> 1), p.y - (s >> 1), s, s);
     rect(ctx, r.x, r.y, r.w, r.h, T_FLOOR);
     pillars(ctx, r, rng.chance(0.5) ? 3 : 4);
@@ -223,20 +231,33 @@ export function tomb(ctx: ZoneCtx): void {
   for (let k = 0; k + 1 < pts.length; k++) {
     const a = pts[k]!;
     const b = pts[k + 1]!;
-    // The vertical part of the elbow runs at x = b.x (horizontal first) or a.x.
-    const vx = k % 2 === 0 ? b.x : a.x;
+    // The vertical part of each elbow runs at x = b.x.
+    const vx = b.x;
     const y0 = Math.min(a.y, b.y) + 8;
     const y1 = Math.max(a.y, b.y) - 8;
-    for (let y = y0; y <= y1; y += rng.int(8, 11)) {
+    for (let y = y0; y <= y1; y += rng.int(6, 8)) {
       for (const side of [-1, 1]) {
         if (!rng.chance(0.8)) continue;
-        const w = rng.int(5, 7);
-        const h = rng.int(4, 6);
+        const w = rng.int(6, 8);
+        const h = rng.int(5, 6);
         const x = side < 0 ? vx - 2 - 2 - w : vx + 2 + 2;
         rect(ctx, x, y - (h >> 1), w, h, T_FLOOR);
         // A short neck to the gallery.
         rect(ctx, side < 0 ? x + w : vx + 2, y - 1, 2, 2, T_FLOOR);
         addRoom(ctx, x, y - (h >> 1), w, h);
+      }
+    }
+    // One pair off the middle of a long cross passage too.
+    if (Math.abs(b.x - a.x) >= 16) {
+      const mx = Math.round((a.x + b.x) / 2);
+      for (const side of [-1, 1]) {
+        if (!rng.chance(0.7)) continue;
+        const w = rng.int(4, 6);
+        const h = rng.int(5, 7);
+        const y = side < 0 ? a.y - 2 - 2 - h : a.y + 2 + 2;
+        rect(ctx, mx - (w >> 1), y, w, h, T_FLOOR);
+        rect(ctx, mx - 1, side < 0 ? y + h : a.y + 2, 2, 2, T_FLOOR);
+        addRoom(ctx, mx - (w >> 1), y, w, h);
       }
     }
   }
@@ -379,13 +400,13 @@ export function rift(ctx: ZoneCtx): void {
       put(ctx, x, y, T_CHASM);
     }
   }
-  const pts: Vec2[] = [entry, exit, ...spread(rng, 9, 8, x1 - 8, g.h - 9, 30, 15, [entry, exit])];
+  const pts: Vec2[] = [entry, exit, ...spread(rng, 9, 8, x1 - 8, g.h - 9, 34, 14, [entry, exit])];
   const lv = pts.map(() => rng.int(-1, 2));
   lv[0] = 0;
   lv[1] = 0;
   for (let i = 0; i < pts.length; i++) {
     const p = pts[i]!;
-    const r = i < 2 ? 4 : rng.range(4, 7);
+    const r = i < 2 ? 4.5 : rng.range(5, 8);
     blob(ctx, p.x, p.y, r, T_FLOOR, noise, 0.35);
     g.rectHeight(Math.round(p.x - r - 1), Math.round(p.y - r - 1), Math.round(r * 2 + 3), Math.round(r * 2 + 3), lv[i]!);
     if (i >= 2) addRoundRoom(ctx, p.x, p.y, Math.floor(r * 0.75));

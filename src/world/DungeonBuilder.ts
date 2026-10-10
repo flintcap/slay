@@ -29,6 +29,7 @@ import {
   T_VOID,
   T_WALL,
   T_WATER,
+  drawAsKind,
   isWalkableValue,
 } from './Layouts';
 import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './DungeonGen';
@@ -537,7 +538,8 @@ export class DungeonMesh {
 
   private tile(x: number, y: number): number {
     if (x < 0 || y < 0 || x >= this.level.width || y >= this.level.height) return T_VOID;
-    return this.level.tiles[y * this.level.width + x];
+    // Map tile kinds this builder has no look for yet are drawn as an old one.
+    return drawAsKind(this.level.tiles[y * this.level.width + x]);
   }
 
   private open(x: number, y: number): boolean {

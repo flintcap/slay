@@ -246,7 +246,7 @@ const scenarios2: Record<string, () => void> = {
   },
   /** The full map over a real generated floor, most of it explored. */
   mapfull() {
-    const level = previewLevel('crypt', 'rooms', 4242, 7);
+    const level = previewLevel('crypt', 'crypt', 4242, 7);
     runtime.level = level;
     runtime.depth = 7;
     const seen = new Uint8Array(level.width * level.height);
