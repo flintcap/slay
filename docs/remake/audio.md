@@ -1,6 +1,6 @@
 # Stream: audio (every sound and all music)
 
-Status: not started
+Status: in progress
 
 Goal: replace every synthesized sound and the procedural music with real,
 free (CC0) recorded RPG sounds and music. Heavy, gritty, Diablo-like.
