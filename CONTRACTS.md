@@ -408,17 +408,49 @@ export class DungeonMesh {
   /** World position for a tile coordinate. */
   tileToWorld(x: number, y: number): THREE.Vector3;
   worldToTile(x: number, z: number): { x: number; y: number };
+  /** Ground height at a world point: tile steps indoors, the terrain outdoors. */
+  floorY(x: number, z: number): number;
   dispose(): void;
 }
-/** Applies a biome's lighting and fog to a scene. */
-export function applyBiomeLighting(scene: THREE.Scene, biome: BiomeDef): { key: THREE.DirectionalLight; ambient: THREE.Light; dispose(): void };
+/**
+ * Applies a biome's light mood (src/world/Lighting.ts): tinted fill, key light
+ * (a shadow-casting sun outdoors), optional light from below, fog and the clear
+ * colour. Owns scene.fog and scene.background until disposed. `hero` is the
+ * light the hero should carry on this level.
+ */
+export function applyBiomeLighting(scene: THREE.Scene, biome: BiomeDef, variant?: string): BiomeLighting;
+interface BiomeLighting {
+  key: THREE.DirectionalLight;
+  ambient: THREE.Light;
+  hero: { color: number; intensity: number; distance: number };
+  dispose(): void;
+}
 ```
+
+The way on is drawn from `level.exits[0].kind` and turned to its `facing`:
+`stairs` (a well with steps), `doorway` (round-headed frame in a run of wall,
+black inside), `gate` (raised portcullis), `caveMouth` (rock hump with a black
+mouth), `portal` (a dormant ring of stones; the scene opens the real portal).
+
+## `src/world/Lighting.ts` — owned by ground
+
+```ts
+/** How dark a level is and where its light comes from. */
+export interface LightMood { sky; ground; fill; key; keyIntensity; elevation; azimuth; under?; fog; fogDensity; background; hero }
+export function lightMood(biome: BiomeDef, art: BiomeArt): LightMood;
+```
+
+Outdoor biomes have a table entry (moon in the forest, low sun in the desert,
+overcast tundra, red underglow in hell). Indoor moods come from the biome's own
+colours at about half the old fill, so torch pools and the hero's light carry
+the room.
 
 ## `src/core/Renderer.ts` grade and fog — owned by WORLD
 
 ```ts
 /** A scene's colour grade. Fields left out take DEFAULT_GRADE. */
 renderer.setGrade(profile?: Partial<GradeProfile>): void;   // no argument resets
+// GradeProfile.haze (0..1): heat shimmer over the top of the frame (desert, hell).
 /** Scene exposure trim, multiplied into the grade's exposure (town night uses 1.5). */
 renderer.setExposure(v: number): void;
 /**

@@ -77,10 +77,10 @@ const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
   },
   // No sky to speak of. The light comes up from the lava.
   hell: {
-    sky: 0x2a1818, ground: 0x6a200e, fill: 0.9,
+    sky: 0x2a1c1c, ground: 0x4a1c12, fill: 0.95,
     key: 0xffa478, keyIntensity: 1.5, elevation: 48, azimuth: 120,
-    fog: 0x1e0a08, fogDensity: 0.028,
-    under: { color: 0xff3a10, intensity: 0.9 },
+    fog: 0x180c0a, fogDensity: 0.026,
+    under: { color: 0xff4a18, intensity: 0.55 },
     hero: { color: 0xffc898, intensity: 28, distance: 15 },
   },
 };
