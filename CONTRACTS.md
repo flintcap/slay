@@ -493,3 +493,37 @@ player.contactIn; player.actionId;
 
 Events: `combat:combo` { id, name, setup, payoff, bonusPct, x, y, z }. Only
 `Enemy.die` raises `enemy:killed` and only `Boss.die` raises `boss:killed`.
+
+## `src/core/Assets.ts` — owned by ground
+
+Downloaded CC0 files under `public/assets/` (every one listed in `ASSETS.md`).
+Nothing may fail when a file is missing: every call below resolves to a
+fallback (`null`, or a flat texture) instead of throwing.
+
+```ts
+/** URL of a file under public/assets/, e.g. assetUrl('sounds/hit_01.ogg'). */
+export function assetUrl(rel: string): string;
+/** Raw bytes, fetched once and shared. null on any failure. */
+export function fetchAsset(rel: string): Promise<ArrayBuffer | null>;
+/** Decoded image (ImageBitmap, pre-flipped for GL), cached. null on failure. */
+export function loadImage(rel: string): Promise<ImageBitmap | HTMLImageElement | null>;
+/**
+ * A shared texture returned at once holding a 2 px fallback colour; the real
+ * image is swapped in when it decodes (fires a 'loaded' event on the texture).
+ * srgb: true for colour maps, false for normal/roughness/AO/height data.
+ * Never dispose it yourself; releaseAssetTexture(rel) evicts.
+ */
+export function loadTexture(rel: string, opts?: { srgb?: boolean; fallback?: number; fallbackAlpha?: number; wrap?: THREE.Wrapping; anisotropy?: number }): THREE.Texture;
+export function textureReady(tex: THREE.Texture): Promise<boolean>;
+/**
+ * Fetch (and decode images) ahead of time. Emits 'assets:progress'
+ * { loaded, total, label } on the event bus, which the boot bar and the
+ * loading card show. Never rejects; missing files are returned in `missing`.
+ */
+export function preloadAssets(rels: string[], label?: string, onProgress?: (p: number, label: string) => void): Promise<{ ok: number; missing: string[] }>;
+```
+
+Tools: `node tools/check-assets.mjs` (ledger, CC0, formats, budgets: textures
+70 MB, sounds 25 MB, music 35 MB, 4 MB per file). `node tools/bundle-artifact.mjs`
+writes `dist-single/slay.html` plus `dist-single/files.json`, the `files`
+mapping (published path -> repo path) to publish the assets beside the page.

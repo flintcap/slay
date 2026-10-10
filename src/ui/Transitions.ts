@@ -97,8 +97,24 @@ export function mountTransitions(): void {
     showArt(true);
   });
 
+  // Asset preloading (core/Assets.ts) fills a hairline under the title while
+  // files for the next place are still arriving. Hidden when nothing is loading.
+  const bar = document.createElement('div');
+  bar.className = 'ld-assets';
+  bar.style.cssText = 'height:2px;width:220px;margin:14px auto 0;background:rgba(232,221,200,0.12);opacity:0;transition:opacity 300ms ease';
+  const barFill = document.createElement('div');
+  barFill.style.cssText = 'height:100%;width:0;background:#c8a050;transition:width 160ms linear';
+  bar.appendChild(barFill);
+  title.after(bar);
+  events.on('assets:progress', (p) => {
+    const f = p.total > 0 ? Math.min(1, p.loaded / p.total) : 1;
+    barFill.style.width = `${Math.round(f * 100)}%`;
+    bar.style.opacity = f < 1 ? '1' : '0';
+  });
+
   events.on('scene:change', () => {
     card.classList.remove('is-on');
     showArt(false);
+    bar.style.opacity = '0';
   });
 }

@@ -1,6 +1,6 @@
 # Stream: ground (assets pipeline, world textures, terrain, lighting)
 
-Status: not started
+Status: in progress
 
 Goal: the world looks like Diablo II or Path of Exile. Photo-based CC0
 textures, heavy stone and wet earth, deep shadows, warm torch pools, open sky
@@ -8,7 +8,7 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Milestones
 
-- [ ] Asset pipeline. Grow `src/core/Assets.ts` into a preloader (progress
+- [x] Asset pipeline. (ground: asset pipeline, preloader, check-assets, files.json) Grow `src/core/Assets.ts` into a preloader (progress
   shown on the existing loading screen through an event, decode, cache, a
   fallback when a file fails). `tools/check-assets.mjs`: every file under
   `public/assets/` is in `ASSETS.md`, CC0, within budgets. Make
@@ -51,11 +51,9 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Next up
 
-1. Run Setup in `docs/remake/PROTOCOL.md`.
-2. Read `src/core/Assets.ts`, `src/art/Materials.ts` (`surface`,
-   `surfaceVariant`), `src/art/Textures.ts`, `src/world/DungeonBuilder.ts`,
-   `src/core/Renderer.ts`, `tools/bundle-artifact.mjs`.
-3. Build the asset pipeline milestone.
+1. Material library: download CC0 PBR sets to `/tmp/slay-downloads/ground/`,
+   convert to WebP under `public/assets/textures/world/<name>/`, add rows to
+   `ASSETS.md`, build the new material API, switch world surfaces.
 
 ## Notes for resume
 
@@ -67,3 +65,7 @@ outdoors. Remake from nothing; delete the old painted textures.
   see-through (old bug).
 - Exposing the whole THREE namespace on `window.SLAY` breaks tree shaking and
   artifact publishing. Expose only named classes.
+- Asset pipeline is in: `src/core/Assets.ts` (`loadTexture`, `preloadAssets`,
+  `assets:progress` event, fallback textures), `tools/check-assets.mjs`,
+  `tools/bundle-artifact.mjs` writes `dist-single/files.json`. Contract in
+  `CONTRACTS.md` under `src/core/Assets.ts`.

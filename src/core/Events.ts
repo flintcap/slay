@@ -88,6 +88,8 @@ export interface GameEvents {
   'ui:open': { panel: string };
   'ui:close': { panel: string };
   'settings:changed': Record<string, never>;
+  /** Asset preloading (`core/Assets.ts`): files landed so far of those requested. */
+  'assets:progress': { loaded: number; total: number; label: string };
 }
 
 type Handler<K extends keyof GameEvents> = (payload: GameEvents[K]) => void;
