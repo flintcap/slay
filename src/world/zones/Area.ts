@@ -74,6 +74,8 @@ export interface AreaOut {
   arena?: { x: number; y: number; w: number; h: number; gate: Vec2 };
   /** 0..7: quarter turns in the low two bits, mirrored when bit 2 is set. */
   turn: number;
+  /** Direction of travel through the area, radians (0 = +x, PI/2 = +y). */
+  facing: number;
 }
 
 /** Ports sit this far in from a zone's west and east edges. */
@@ -223,7 +225,7 @@ export function buildArea(plan: AreaPlan, rng: Rng): AreaOut {
 
   // --- Turn the whole area ---------------------------------------------------
   const turn = rng.int(0, 7);
-  return turnArea({ grid: g, rooms: kept, zones, zoneOf, entry, exit, arena, turn });
+  return turnArea({ grid: g, rooms: kept, zones, zoneOf, entry, exit, arena, turn, facing: 0 });
 }
 
 // ---------------------------------------------------------------------------
@@ -456,6 +458,21 @@ function turnRect(r: { x: number; y: number; w: number; h: number }, W: number, 
   return { x, y, w: Math.abs(a.x - b.x) + 1, h: Math.abs(a.y - b.y) + 1 };
 }
 
+/** Where the direction (dx, dy) points under `turn`. */
+export function turnVec(dx: number, dy: number, turn: number): Vec2 {
+  if (turn & 4) dx = -dx;
+  switch (turn & 3) {
+    case 1:
+      return { x: -dy, y: dx };
+    case 2:
+      return { x: -dx, y: -dy };
+    case 3:
+      return { x: dy, y: -dx };
+    default:
+      return { x: dx, y: dy };
+  }
+}
+
 function turnArea(a: AreaOut): AreaOut {
   const { grid: g, turn } = a;
   if (turn === 0) return a;
@@ -484,5 +501,6 @@ function turnArea(a: AreaOut): AreaOut {
     exit: tp(a.exit),
     arena: a.arena ? { ...turnRect(a.arena, W, H, turn), gate: tp(a.arena.gate) } : undefined,
     turn,
+    facing: Math.atan2(turnVec(1, 0, turn).y, turnVec(1, 0, turn).x),
   };
 }

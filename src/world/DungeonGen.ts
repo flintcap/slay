@@ -1,10 +1,10 @@
 /**
  * SLAY — dungeon generation.
  *
- * `generateRun` builds a whole descent: several levels sharing a biome and a
- * quest, ending on a boss arena. `generateLevel` turns a layout into a playable
- * floor — stairs, room roles, monster packs, treasure, shrines, ambushes and
- * props.
+ * `generateRun` builds a whole map (docs/remake/maps.md): a themed chain of
+ * zones from `MapGen.ts`, grouped into areas, ending in a boss arena.
+ * `generateLevel` turns one area into a playable load: arrival and exit, room
+ * roles, monster packs per zone, treasure, shrines, ambushes and props.
  *
  * Endless scaling is the load-bearing design here. Depth 1 and depth 137 run
  * through the same code; what changes is monster count, elite density, affix
@@ -26,6 +26,7 @@ import type {
   LayoutKind,
   LevelEvent,
   LevelEventKind,
+  MapExit,
   MapZone,
   MonsterRank,
   PropPlacement,
@@ -40,7 +41,7 @@ import type {
 import { Random, streamFor } from '../core/RNG';
 import { activeDifficulty } from '../data/difficulties';
 import { clamp } from '../art/Noise';
-import { BIOMES as BIOME_LIST, biomeForDepth, getBiome, isOutdoorBiome, layoutForBiome, pickVariant } from './Biomes';
+import { BIOMES as BIOME_LIST, getBiome, isOutdoorBiome, layoutForBiome, pickVariant } from './Biomes';
 import {
   Grid,
   TILE_VALUES,
@@ -55,7 +56,8 @@ import {
   auditLayout,
   isWalkableValue,
 } from './Layouts';
-import { buildArea } from './zones/Area';
+import { type ZonePlan, buildArea } from './zones/Area';
+import { planMap, zoneHeat } from './MapGen';
 import { placeProps } from './Props';
 
 // ---------------------------------------------------------------------------
@@ -539,7 +541,10 @@ function questRoomKind(quest: QuestInstance): DungeonRoom['kind'] | null {
 // Depth curves
 // ---------------------------------------------------------------------------
 
-/** Number of floors in a run. 3 early, 5 once the player is deep. */
+/**
+ * Fewest zones in a map: what a run used to have in floors, 3 early and 5
+ * deep, so a map never holds fewer fights than a descent did.
+ */
 export function levelsForDepth(depth: number): number {
   if (depth >= 25) return 5;
   if (depth >= 9) return 4;
@@ -551,6 +556,11 @@ export function levelsForDepth(depth: number): number {
  * is denser than depth 20 without becoming an unrenderable soup.
  */
 export function monsterBudget(depth: number, floorTiles: number, levelIndex: number, levelsTotal: number): number {
+  return zoneBudget(depth, floorTiles, levelIndex / Math.max(1, levelsTotal - 1));
+}
+
+/** Monster budget for one zone. `heat` runs 0 (first zone) to 1 (boss zone). */
+export function zoneBudget(depth: number, floorTiles: number, heat: number): number {
   const curve = 16 + depth * 0.75 + Math.pow(Math.max(0, depth), 1.18) * 0.22;
   // Measured at the old numbers: one monster per 43 walkable tiles, which at a
   // two-metre tile is one every 170 square metres. A floor that size with that
@@ -568,8 +578,8 @@ export function monsterBudget(depth: number, floorTiles: number, levelIndex: num
   // guard rather than the driver, but it now lets a big open floor carry a
   // crowd proportional to its size instead of the same pack a small one gets.
   const byArea = floorTiles / 11;
-  // Later floors of a run are hotter than the first.
-  const rampe = 0.85 + 0.3 * (levelIndex / Math.max(1, levelsTotal - 1));
+  // Later zones of a map are hotter than the first.
+  const rampe = 0.85 + 0.3 * clamp(heat, 0, 1);
   // Difficulty widens or thins every floor.
   return Math.max(3, Math.round((Math.max(8, Math.round(Math.min(soft, byArea) * rampe))) * activeDifficulty().packSize));
 }
@@ -642,9 +652,11 @@ export function setRunDirector(d: RunDirector | null): void {
 export function generateRun(depth: number, seed: number, classId: CharClassId): DungeonRun {
   const runRng = streamFor(seed, `run:${depth}`);
   const plan = director ? director(depth, seed) : null;
-  const rolledBiome = biomeForDepth(depth, runRng);
-  const biome = plan?.biome ?? rolledBiome;
-  const levelsTotal = levelsForDepth(depth);
+  // The map: a themed chain of zones grouped into areas (world/MapGen.ts).
+  // A contract's biome becomes the boss zone.
+  const minZones = levelsForDepth(depth);
+  const map = planMap(depth, runRng.fork('map'), plan?.biome, minZones);
+  const biome = map.bossBiome;
   const rolledQuest = buildQuest(depth, runRng, classId);
   const quest = plan?.quest ? plan.quest(biome) : rolledQuest;
   const modifiers = rollModifiers(depth, runRng);
@@ -659,55 +671,83 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
   const rolledBoss = catalog.bossFor(depth, biome, runRng.fork('boss'));
   const bossId = plan?.bossId ?? rolledBoss;
 
-  // Which dressed version of the biome this descent wears. Rolled once for the
-  // whole run so the floors read as one place, and re-rolled next run so two
-  // descents into the same biome are not the same descent.
-  const variant = pickVariant(biome, depth, runRng.fork('variant'));
+  // Which dressed version of each biome this map wears. Rolled once per biome
+  // so two areas of one biome read as one place, and re-rolled next map.
+  const variants = new Map<BiomeId, string | undefined>();
+  const variantOf = (b: BiomeId): string | undefined => {
+    if (!variants.has(b)) variants.set(b, pickVariant(b, depth, runRng.fork(`variant:${b}`)));
+    return variants.get(b);
+  };
+  const variant = variantOf(biome);
 
+  const zonesTotal = map.info.zones.length;
+  // A map whose loads cannot hold the old floor count makes up the crowd.
+  const budgetScale = Math.max(1, minZones / zonesTotal);
   const levels: DungeonLevel[] = [];
-  for (let i = 0; i < levelsTotal; i++) {
-    const level = generateLevel(depth, i, levelsTotal, biome, seed, quest, modifiers);
-    level.variant = variant;
+  const n = map.areas.length;
+  for (let i = 0; i < n; i++) {
+    const level = generateLevel(depth, i, n, map.areas[i]!, seed, quest, modifiers, {
+      zonesTotal,
+      budgetScale,
+      next: map.areas[i + 1]?.[0],
+    });
+    level.variant = variantOf(level.biome);
     levels.push(level);
   }
 
-  return { seed, depth, biome, variant, levels, quest, modifiers, bossId };
+  return { seed, depth, biome, variant, levels, quest, modifiers, bossId, map: map.info };
 }
 
 // ---------------------------------------------------------------------------
 // Level generation
 // ---------------------------------------------------------------------------
 
+/** How an area sits in its map. Without it an area is a whole one-zone map step. */
+export interface AreaContext {
+  /** Zones in the whole map, for heat. */
+  zonesTotal: number;
+  /** Multiplier on every zone's monster budget (see generateRun). */
+  budgetScale: number;
+  /** First zone of the next area, which decides how the way on looks. */
+  next?: ZonePlan;
+}
+
+/**
+ * One area of a map: one or two zones in one grid, one load. `zonesOrBiome`
+ * may be a bare biome, which makes a one-zone area (the boss zone when
+ * `levelIndex` is the last), for checkers and previews.
+ */
 export function generateLevel(
   depth: number,
   levelIndex: number,
   levelsTotal: number,
-  biome: BiomeId,
+  zonesOrBiome: BiomeId | ZonePlan[],
   seed: number,
   quest?: QuestInstance,
   modifiers?: string[],
+  actx?: AreaContext,
 ): DungeonLevel {
+  const zonePlans: ZonePlan[] =
+    typeof zonesOrBiome === 'string'
+      ? [
+          {
+            name: getBiome(zonesOrBiome).name,
+            biome: zonesOrBiome,
+            layout: layoutForBiome(getBiome(zonesOrBiome), streamFor(seed, `layout:${depth}:${levelIndex}`), depth),
+            outdoor: isOutdoorBiome(zonesOrBiome),
+            role: levelIndex === levelsTotal - 1 ? 'boss' : levelIndex === 0 ? 'start' : 'field',
+            order: levelIndex,
+          },
+        ]
+      : zonesOrBiome;
+  const biome = zonePlans[0]!.biome;
   const rng = streamFor(seed, `lvl:${depth}:${levelIndex}:${biome}`);
   const biomeDef = getBiome(biome);
-  const isBossLevel = levelIndex === levelsTotal - 1;
+  const isBossLevel = zonePlans.some((z) => z.role === 'boss');
+  const zonesTotal = actx?.zonesTotal ?? levelsTotal;
 
-  const kind = pickLayoutKind(biomeDef, rng, depth);
-  const area = buildArea(
-    {
-      depth,
-      zones: [
-        {
-          name: biomeDef.name,
-          biome,
-          layout: kind,
-          outdoor: isOutdoorBiome(biome),
-          role: isBossLevel ? 'boss' : levelIndex === 0 ? 'start' : 'field',
-          order: levelIndex,
-        },
-      ],
-    },
-    rng.fork('area'),
-  );
+  const kind = zonePlans[0]!.layout;
+  const area = buildArea({ depth, zones: zonePlans }, rng.fork('area'));
 
   const g = area.grid;
   const rooms = area.rooms;
@@ -758,8 +798,18 @@ export function generateLevel(
     arena: area.arena,
   };
 
+  // --- Ways on, and the way home ----------------------------------------
+  const exitZone = area.zoneOf[exit.y * g.w + exit.x] ?? 0;
+  level.exits = [
+    isBossLevel
+      ? { x: exit.x, y: exit.y, kind: 'portal', facing: area.facing, to: 'town', zone: exitZone }
+      : { x: exit.x, y: exit.y, kind: exitKind(zonePlans[zonePlans.length - 1]!, actx?.next), facing: area.facing, to: levelIndex + 1, zone: exitZone },
+  ];
+  if (levelIndex === 0) level.waypoint = besideSpot(g, entry, 3, 5);
+
   // --- Spawns ------------------------------------------------------------
-  level.spawns = placeSpawns(level, g, biomeDef, rng.fork('spawns'), levelIndex, levelsTotal, modifiers);
+  const heats = area.zones.map((z) => zoneHeat(z.order, zonesTotal));
+  level.spawns = placeSpawns(level, g, rng.fork('spawns'), heats, actx?.budgetScale ?? 1, modifiers);
 
   // --- Props -------------------------------------------------------------
   let props: PropPlacement[] = [];
@@ -1059,9 +1109,40 @@ function placeEvents(level: DungeonLevel, depth: number, rng: Rng): LevelEvent[]
   return out;
 }
 
-/** The zone generator for a biome. The boss floor uses it too, with the arena on the end. */
-function pickLayoutKind(biome: BiomeDef, rng: Rng, depth: number): LayoutKind {
-  return layoutForBiome(biome, rng, depth);
+/** How the way from one area into the next looks. */
+function exitKind(from: ZonePlan, to: ZonePlan | undefined): MapExit['kind'] {
+  if (!to) return 'stairs';
+  if (!to.outdoor) {
+    if (to.layout === 'cave') return 'caveMouth';
+    if (to.layout === 'rift') return 'stairs';
+    return 'doorway';
+  }
+  // Out of a building or a cave into the open: steps up to the daylight.
+  return from.outdoor ? 'doorway' : 'stairs';
+}
+
+/** An open tile between `dmin` and `dmax` tiles from `p`, with all eight neighbours walkable. */
+function besideSpot(g: Grid, p: Vec2, dmin: number, dmax: number): Vec2 {
+  let best: Vec2 | null = null;
+  let bd = Infinity;
+  for (let dy = -dmax; dy <= dmax; dy++) {
+    for (let dx = -dmax; dx <= dmax; dx++) {
+      const d = Math.hypot(dx, dy);
+      if (d < dmin || d > dmax) continue;
+      const x = p.x + dx;
+      const y = p.y + dy;
+      if (g.get(x, y) !== T_FLOOR) continue;
+      let open = 0;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) if (g.walkable(x + ox, y + oy)) open++;
+      if (open < 9) continue;
+      const score = Math.abs(d - (dmin + dmax) / 2);
+      if (score < bd) {
+        bd = score;
+        best = { x, y };
+      }
+    }
+  }
+  return best ?? safeSpot(g, p, p);
 }
 
 /** The room whose centre is nearest `p`, if any is within `maxD` tiles. */
@@ -1233,15 +1314,17 @@ function buildRoomIndex(g: Grid, rooms: DungeonRoom[]): Int16Array {
 function placeSpawns(
   level: GeneratedLevel,
   g: Grid,
-  biome: BiomeDef,
   rng: Rng,
-  levelIndex: number,
-  levelsTotal: number,
+  heats: number[],
+  budgetScale: number,
   modifiers: string[] | undefined,
 ): SpawnPoint[] {
   const depth = level.depth;
-  let floorTiles = 0;
-  for (let i = 0; i < g.t.length; i++) if (isWalkableValue(g.t[i])) floorTiles++;
+  const zones = level.zones ?? [];
+  const nz = Math.max(1, zones.length);
+  const zoneOfTile = (i: number): number => Math.min(nz - 1, level.zoneOf ? level.zoneOf[i] ?? 0 : 0);
+  const floorTiles = new Array<number>(nz).fill(0);
+  for (let i = 0; i < g.t.length; i++) if (isWalkableValue(g.t[i])) floorTiles[zoneOfTile(i)]!++;
 
   const mods = modifiers ?? [];
   const has = (id: string): number => {
@@ -1253,11 +1336,17 @@ function placeSpawns(
   const eliteTier = has('mod.elites');
   const legion = has('mod.legion') > 0;
 
-  let budget = monsterBudget(depth, floorTiles, levelIndex, levelsTotal);
-  budget = Math.round(budget * (1 + swarmTier * 0.14));
-  // The boss floor is the boss's floor. A crowd this size on top of a boss
-  // fight is not harder, it is just noise on top of the thing you came for.
-  if (levelIndex === levelsTotal - 1) budget = Math.round(budget * 0.45);
+  // One budget per zone, each by its own ground and heat.
+  const budgets = floorTiles.map((tiles, z) => {
+    let b = zoneBudget(depth, tiles, heats[z] ?? 0);
+    b = Math.round(b * budgetScale * (1 + swarmTier * 0.14));
+    // The boss zone is the boss's. A crowd this size on top of a boss fight is
+    // not harder, it is just noise on top of the thing you came for.
+    if (zones[z]?.role === 'boss') b = Math.round(b * 0.45);
+    return b;
+  });
+  const placedIn = new Array<number>(nz).fill(0);
+  const full = (): boolean => placedIn.every((p, z) => p >= budgets[z]!);
 
   const eliteChance = eliteDensity(depth) * (1 + eliteTier * 0.25);
   const champChance = championDensity(depth);
@@ -1285,12 +1374,18 @@ function placeSpawns(
   if (candidates.length === 0) return spawns;
   rng.shuffle(candidates);
 
-  const monsterIds = catalog.pick(depth, biome.id, rng.fork('ids'), 24);
-  const uniqueIds = Array.from(new Set(monsterIds));
-  const pickId = (): string => (uniqueIds.length > 0 ? rng.pick(uniqueIds) : 'skeleton');
+  // Each zone fields its own biome's monsters.
+  const idsByZone = Array.from({ length: nz }, (_, z) => {
+    const b = zones[z]?.biome ?? level.biome;
+    return Array.from(new Set(catalog.pick(depth, b, rng.fork(z === 0 ? 'ids' : `ids${z}`), 24)));
+  });
+  let zoneNow = 0;
+  const pickId = (): string => {
+    const ids = idsByZone[zoneNow]!;
+    return ids.length > 0 ? rng.pick(ids) : 'skeleton';
+  };
 
   const usedTile = new Set<number>();
-  let placed = 0;
   let cursor = 0;
 
   const roomKindAt = (i: number): DungeonRoom['kind'] => {
@@ -1300,9 +1395,11 @@ function placeSpawns(
     return room ? room.kind : 'normal';
   };
 
-  while (placed < budget && cursor < candidates.length) {
+  while (!full() && cursor < candidates.length) {
     const seed = candidates[cursor++];
     if (usedTile.has(seed)) continue;
+    zoneNow = zoneOfTile(seed);
+    if (placedIn[zoneNow]! >= budgets[zoneNow]!) continue;
     const sx = seed % g.w;
     const sy = (seed / g.w) | 0;
 
@@ -1348,7 +1445,7 @@ function placeSpawns(
     // about, which works out at about one per two floors.
     const named =
       rank === 'rare' && rng.chance(0.34)
-        ? catalog.nameFor?.(leaderId, biome.id, depth, rng.fork(`name${id}`)) ?? null
+        ? catalog.nameFor?.(leaderId, zones[zoneNow]?.biome ?? level.biome, depth, rng.fork(`name${id}`)) ?? null
         : null;
 
     // Spread the pack across nearby open tiles.
@@ -1376,7 +1473,7 @@ function placeSpawns(
         packId: id,
         named: named && k === 0 ? named : undefined,
       });
-      placed++;
+      placedIn[zoneNow]!++;
     }
   }
 

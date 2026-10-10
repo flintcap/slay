@@ -27,7 +27,7 @@ const HOOKS = [
   ['src/ui/UIRoot.ts', "['dialogue', dialoguePanel", 'the dialogue panel is not registered'],
   ['src/scenes/TownScene.ts', 'openDialogueFor(best.id)', 'pressing E at a keeper does not start a conversation'],
   ['src/scenes/TownScene.ts', 'storyTalkSpots(spots)', 'the townsfolk without a station cannot be talked to'],
-  ['src/world/DungeonGen.ts', 'plan?.biome ?? rolledBiome', 'a contract cannot send the stair to its biome'],
+  ['src/world/DungeonGen.ts', 'planMap(depth, runRng.fork(\'map\'), plan?.biome', 'a contract cannot send the map to its biome'],
   ['src/world/DungeonGen.ts', 'plan?.quest ? plan.quest(biome) : rolledQuest', 'a contract is never carried below'],
   ['src/world/DungeonGen.ts', 'plan?.bossId ?? rolledBoss', 'a contract cannot name its boss'],
   ['src/ui/StoryOverlay.ts', 'installStoryBosses()', 'bosses never speak'],
