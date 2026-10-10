@@ -847,3 +847,13 @@ and music OGG Vorbis.
 | `textures/world/tracks/normal.webp` | https://polyhaven.com/a/muddy_tracks | Amal Kumar | CC0 1.0 |
 | `textures/world/stony_dirt/albedo.webp` | https://polyhaven.com/a/stony_dirt_path | eye-candy.xyz | CC0 1.0 |
 | `textures/world/stony_dirt/normal.webp` | https://polyhaven.com/a/stony_dirt_path | eye-candy.xyz | CC0 1.0 |
+| `textures/hero/linen/albedo.webp` | https://polyhaven.com/a/rough_linen | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/linen/normal.webp` | https://polyhaven.com/a/rough_linen | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/wool/albedo.webp` | https://polyhaven.com/a/caban | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/wool/normal.webp` | https://polyhaven.com/a/caban | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/leather/albedo.webp` | https://polyhaven.com/a/brown_leather | Rob Tuytel | CC0 1.0 |
+| `textures/hero/leather/normal.webp` | https://polyhaven.com/a/brown_leather | Rob Tuytel | CC0 1.0 |
+| `textures/hero/suede/albedo.webp` | https://polyhaven.com/a/scuba_suede | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/suede/normal.webp` | https://polyhaven.com/a/scuba_suede | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/hessian/albedo.webp` | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/hessian/normal.webp` | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 1.0 |

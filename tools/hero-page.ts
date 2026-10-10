@@ -114,7 +114,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
   },
   /** Hands and feet close-up. */
   async extremities(f) {
-    const cls = (f.class ?? 'warden') as CharClassId;
+    const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
     const T = 320;
     const { c, g } = sheet(T * 4, T);
     const { root } = bareBody(cls);

@@ -83,13 +83,33 @@ lands exactly on the game's contact time.
 
 ## Next up
 
-1. Body: build `src/art/hero/Sdf.ts` (primitives, smooth union),
-   `Mesher.ts` (sparse surface nets), `Decimate.ts` (quadric collapse),
-   `Anatomy.ts` (body field from `BodyShape`), `Skinning.ts` (weights).
-2. Render with a hero-only sheet tool (`tools/hero-sheet.mjs`, fast, no game
-   boot) and judge.
+Body is meshing, skinned, textured and dressed in undergarments; it is not
+switched on in the game yet (old `CharacterModels` still drives everything).
+
+1. Body: persistent cache so a hero costs ~0 ms after the first boot
+   (IndexedDB keyed by a hash of shape + `BODY_VERSION`), and a
+   `tools/check-hero-body.mjs` checker (watertight-ish, weights sum to 1,
+   tri budget, height, under 900 draw calls).
+2. Head and face: hair, brows and beards as meshed shells (`Garment.ts`
+   style, grown from the scalp), hood and mask for the shadowblade.
+3. Then Worn armour, grown from the body like the undergarments.
+
+Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities [--class=warden,ranger]`
+writes `shots/heroes/*.png` in seconds.
 
 ## Notes for resume
+
+- New hero code lives in `src/art/hero/`: `Rig` (bones, sockets), `Sdf`
+  (field), `Mesher` (surface nets), `Decimate` (QEM), `Anatomy` (body and
+  head field), `Skinning`, `Body` (three-resolution mesh: trunk coarse, head
+  and hands fine, overlapping at neck and wrist with tucked seams), `Garment`
+  (body field pushed out and cut by planes), `HeroMaterials` (triplanar in
+  bind space; skin pores painted in code, cloth from `textures/hero/*`),
+  `Eyes`, `Looks` (per class), `Hero` (`buildHero(look)`).
+- Textures: `node tools/fetch-hero-textures.mjs` (Poly Haven CC0, rows in
+  ASSETS.md).
+- A body costs 2-3 s to mesh in the browser (dominated by surface nets on the
+  trunk and QEM). Bodies are cached per shape in memory.
 
 - items runs at the same time and owns `ItemLook`. Read their contract in
   `CONTRACTS.md`; do not edit their files.

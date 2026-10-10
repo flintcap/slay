@@ -30,7 +30,7 @@ export type Inflate = number | ((x: number, y: number, z: number) => number);
  * detail mesh tucks under the body), `outside` metres beyond it (where the
  * detail mesh stands a hair proud), blended over `band` metres either side.
  */
-export function rampInflate(n: THREE.Vector3, d: number, inside: number, outside: number, band: number): Inflate {
+export function rampInflate(n: THREE.Vector3, d: number, inside: number, outside: number, band: number): (x: number, y: number, z: number) => number {
   return (x, y, z) => {
     const t = (n.x * x + n.y * y + n.z * z - d) / band;
     const k = t <= -1 ? 0 : t >= 1 ? 1 : (t + 1) * 0.5;

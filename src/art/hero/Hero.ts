@@ -6,7 +6,8 @@ import { buildRig, type HeroRig } from './Rig';
 import { meshBody, type BodyMesh } from './Body';
 import { eyeGeometry, eyeMaterial } from './Eyes';
 import type { HeroLook } from './Looks';
-import { skinMaterial } from './HeroMaterials';
+import { fabricMaterial, skinMaterial } from './HeroMaterials';
+import { beltSpec, chestWrapSpec, garment, shortsSpec } from './Garment';
 
 export interface HeroModel {
   rig: HeroRig;
@@ -35,6 +36,11 @@ export function buildHero(look: HeroLook, name = 'hero'): HeroModel {
   const e = body.anatomy.eyes;
   const eyes = skinned(eyeGeometry(e.L, e.R, e.r), eyeMaterial(look.eyes.iris, look.eyes.glow), rig, `${name}:eyes`);
   eyes.castShadow = false;
+  // Undergarments: what a hero wears under any armour.
+  const female = look.shape.sex === 'female';
+  skinned(garment(body, 'shorts', shortsSpec(body, female)), fabricMaterial('linen', look.linen), rig, `${name}:shorts`);
+  if (female) skinned(garment(body, 'wrap', chestWrapSpec(body)), fabricMaterial('linen', look.linen), rig, `${name}:wrap`);
+  skinned(garment(body, 'belt', beltSpec(body)), fabricMaterial('leather', look.leather, 0.7), rig, `${name}:belt`);
   rig.root.userData.heroLook = look;
   return { rig, root: rig.root, body, look };
 }

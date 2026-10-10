@@ -81,11 +81,13 @@ export function bodyField(shape: BodyShape, j: JointMap, opts: AnatomyOpts = {})
   // ------------------------------------------------------------------ torso
   F.group = G.torso;
   const ribW = (male ? 0.6 : 0.52) * mass * h + (sw - 0.7 * h) * 0.3;
-  const waistW = (male ? 0.5 : 0.42) * mass * h;
-  const pelW = hw + (male ? 0.27 : 0.32) * h * mass;
+  const waistW = (male ? 0.5 : 0.45) * mass * h;
+  const pelW = hw + (male ? 0.27 : 0.27) * h * mass;
   const depth = (male ? 0.4 : 0.37) * mass * h;
   // Ribcage: the widest mass of the trunk, tipped back a touch.
-  F.ellipsoid(H(0, 5.38, -0.02), V(ribW, 0.82 * h, depth * 1.05), 0, rot(-0.08));
+  F.ellipsoid(H(0, 5.28, -0.02), V(ribW * 0.96, 0.74 * h, depth * 1.02), 0, rot(-0.08));
+  // Upper chest: the trunk is widest at the armpits, not at the ribs' middle.
+  F.ellipsoid(H(0, 5.74, -0.04), V(ribW * 1.04, 0.44 * h, depth * 0.98), 0.16 * h);
   // Abdomen and waist.
   F.ellipsoid(H(0, 4.62, 0.05 - 0.06 * w), V(waistW, 0.62 * h, depth * (0.92 - 0.25 * w)), 0.16 * h);
   // Pelvis.
@@ -93,11 +95,11 @@ export function bodyField(shape: BodyShape, j: JointMap, opts: AnatomyOpts = {})
   // Lower belly over the pelvis, the front curve under the navel.
   F.ellipsoid(H(0, 4.12, 0.12), V(waistW * 0.82, 0.36 * h, depth * 0.62), 0.12 * h);
   // Glutes.
-  for (const s of [1, -1]) F.ellipsoid(H(s * 0.24 * (hw / (0.36 * h)), 3.82, -0.17), V(0.29 * h * mass, 0.34 * h, 0.25 * h * mass), 0.12 * h);
+  for (const s of [1, -1]) F.ellipsoid(H(s * 0.22 * (hw / (0.36 * h)), 3.84, -0.16), V(0.27 * h * mass, 0.34 * h, 0.24 * h * mass), 0.16 * h);
   // Chest: pectorals on a man, breasts on a woman.
   if (male) {
     for (const s of [1, -1]) {
-      F.ellipsoid(H(s * 0.26, 5.6, 0.22 + 0.04 * muscle), V(0.29 * h, 0.2 * h, (0.13 + 0.05 * muscle) * h), 0.1 * h, rot(0, 0, s * -0.28));
+      F.box(H(s * 0.25, 5.62, 0.16 + 0.03 * muscle), V(0.24 * h, 0.17 * h, (0.08 + 0.04 * muscle) * h), 0.08 * h, 0.14 * h, rot(0.12, s * 0.22, s * -0.2));
     }
   } else {
     for (const s of [1, -1]) {
@@ -114,9 +116,9 @@ export function bodyField(shape: BodyShape, j: JointMap, opts: AnatomyOpts = {})
     const tip = V(s * sw * 0.86, 6.06 * h, -0.08 * h);
     F.cone(H(s * 0.05, 6.32, -0.1), tip, (0.16 + 0.06 * muscle) * h, 0.1 * h, 0.14 * h);
   }
-  // Collarbones, a ridge under the skin.
-  if (!male || b < 0.8) {
-    for (const s of [1, -1]) F.cone(H(s * 0.08, 6.1, 0.2), V(s * sw * 0.86, 6.1 * h, 0.04 * h), 0.04 * h, 0.035 * h, 0.06 * h);
+  // Collarbones show only on the starved.
+  if (w > 0.3) {
+    for (const s of [1, -1]) F.cone(H(s * 0.08, 6.08, 0.18), V(s * sw * 0.8, 6.08 * h, 0.04 * h), 0.03 * h, 0.025 * h, 0.08 * h);
   }
   // Spine groove and ribs on the wasted.
   if (w > 0.3) {
@@ -308,7 +310,7 @@ export function bodyField(shape: BodyShape, j: JointMap, opts: AnatomyOpts = {})
     neckCut: 6.4 * h,
     wristL: wrist(true),
     wristR: wrist(false),
-    eyes: { L: H(0.135, eyeY, 0.36), R: H(-0.135, eyeY, 0.36), r: 0.058 * h },
+    eyes: { L: H(0.135, eyeY, 0.335), R: H(-0.135, eyeY, 0.335), r: 0.056 * h },
     h,
   };
 }
@@ -357,9 +359,9 @@ function headField(F: FieldBuilder, h: number, male: boolean, b: number, w: numb
   } else {
     // Eyelids: a shell over the eyeball, opened in an almond.
     for (const s of [1, -1]) {
-      const e = H(s * 0.135, 7.02, 0.36);
+      const e = H(s * 0.135, 7.02, 0.335);
       F.ellipsoid(e.clone().add(H(0, 0.004, 0.004)), V(0.066 * h, 0.064 * h, 0.064 * h), 0.02 * h);
-      F.ellipsoid(e.clone().add(H(s * 0.004, -0.002, 0.06)), V((0.058 + 0.006 * fem) * h, (0.022 + 0.005 * fem) * h, 0.06 * h), 0.01 * h, rot(0, 0, s * 0.08), { sub: true });
+      F.ellipsoid(e.clone().add(H(s * 0.004, -0.002, 0.06)), V((0.056 + 0.006 * fem) * h, (0.018 + 0.005 * fem) * h, 0.06 * h), 0.01 * h, rot(0, 0, s * 0.08), { sub: true });
     }
     // Nose: bridge, tip and wings.
     const nl = male ? 1 : 0.86;
@@ -368,9 +370,10 @@ function headField(F: FieldBuilder, h: number, male: boolean, b: number, w: numb
     for (const s of [1, -1]) F.ellipsoid(H(s * 0.048, 6.845, 0.455), V(0.035 * h, 0.03 * h, 0.035 * h), 0.025 * h);
     // Lips, fuller on a woman, with a soft line between them.
     const lip = 1 + 0.35 * fem;
-    F.ellipsoid(H(0, 6.722, 0.425), V(0.085 * h, 0.022 * h * lip, 0.04 * h), 0.02 * h);
-    F.ellipsoid(H(0, 6.672, 0.41), V(0.075 * h, 0.026 * h * lip, 0.042 * h), 0.02 * h);
-    F.ellipsoid(H(0, 6.698, 0.455), V(0.07 * h, 0.006 * h, 0.03 * h), 0.008 * h, undefined, { sub: true });
+    F.ellipsoid(H(0, 6.722, 0.405), V(0.1 * h, 0.022 * h * lip, 0.035 * h), 0.025 * h);
+    F.ellipsoid(H(0, 6.674, 0.395), V(0.09 * h, 0.025 * h * lip, 0.035 * h), 0.025 * h);
+    F.box(H(0, 6.698, 0.44), V(0.095 * h, 0.003 * h, 0.03 * h), 0.003 * h, 0.006 * h, undefined, { sub: true });
+    for (const s of [1, -1]) F.ellipsoid(H(s * 0.1, 6.7, 0.39), V(0.018 * h, 0.018 * h, 0.02 * h), 0.015 * h, undefined, { sub: true });
     // Ears.
     for (const s of [1, -1]) {
       F.ellipsoid(H(s * 0.36, 6.96, -0.06), V(0.045 * h, 0.14 * h, 0.095 * h), 0.04 * h, rot(0.12, s * -0.4, 0));
