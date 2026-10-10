@@ -133,6 +133,103 @@ export function buildPlayerModel(classId: CharClassId, rng: Rng): { root: THREE.
 export function attachToSocket(model: THREE.Object3D, bones: Record<string, THREE.Bone>, slot: EquipSlot, mesh: THREE.Object3D): void;
 ```
 
+## Hero rig — `src/art/hero/*` — owned by heroes
+
+Every player class and every townsperson stands on this rig and is driven by
+the hero animator. Bone and socket names below are stable: they will not be
+renamed. (The old `CharacterModels` rig with `hips`, `shoulderL`, `elbowL`,
+`hipL`, `kneeL` is being replaced by this one and will be deleted.)
+
+**Space.** Character space: +X the character's left, +Y up, +Z forward, feet on
+y = 0. Every bone has an identity rotation in the bind pose, so at rest a
+bone's local axes are character axes. Bind pose is an A-pose (arms 45 degrees
+below horizontal, palms down, thumbs forward); nobody is ever shown in it.
+
+**Bones** (`HERO_BONES`, parents first):
+
+```
+root                          on the floor under the pelvis
+└ pelvis                      4.02 h
+  ├ spine                     lumbar, 4.55 h
+  │ └ chest                   ribcage, 5.30 h
+  │   ├ neck                  6.24 h
+  │   │ └ head                atlas pivot, 6.62 h (crown at 7.5 h)
+  │   ├ clavL → upperArmL → foreArmL → handL → fingersL → fingerTipsL
+  │   │                                      └ thumbL
+  │   └ clavR → upperArmR → foreArmR → handR → fingersR → fingerTipsR
+  │                                          └ thumbR
+  ├ thighL → shinL → footL → toeL
+  └ thighR → shinR → footR → toeR
+```
+
+`h` is one head, `height / 7.5`. L is the character's left (+X).
+
+**Sockets** (`HERO_SOCKETS`): `Object3D` children of a bone, each with its own
+rotation. Attach a model to a socket at identity (`socket.add(model)`), never
+to a bone directly.
+
+| Socket | Bone | Frame |
+| --- | --- | --- |
+| `mainHand` | handR | Grip centre inside the fist. +Y along the grip, out of the thumb side (where a blade points). +X wrist to knuckles (where an edge faces). +Z = X × Y. |
+| `offHand` | handL | Same as `mainHand`, on the left fist. |
+| `back` | chest | Centre of the upper back on the skin. +Y up the spine, +Z out of the back. |
+| `quiver` | chest | Across the back, mouth up over the right shoulder. +Y toward the mouth, +Z out of the back. |
+| `belt` | pelvis | Front of the belt line. +Y up, +Z forward. |
+| `beltL`, `beltR` | pelvis | Belt line at the left and right hip, +Z pointing out sideways. Scabbards and pouches. |
+| `head` | head | Centre of the cranium. +Y up, +Z forward. Crowns, halos, head effects. |
+| `chest` | chest | Front of the sternum on the skin. +Y up, +Z forward. Amulets, chest effects. |
+| `castL`, `castR` | handL, handR | Palm centre. +Y out of the palm. Spell origins. |
+
+Held items keep the weapon contract: grip at the origin, business end along
++Y, wide on X, thin on Z. Put on the `mainHand` socket at identity, a sword is
+held like a sword. The hero code adds a per-weapon grip turn (reverse grip for
+daggers, bow hand for bows) on a child node of the socket, so item models never
+need to know who holds them.
+
+```ts
+// src/art/hero/Rig.ts
+export const HERO_BONES: readonly HeroBone[];
+export const HERO_SOCKETS: readonly HeroSocket[];
+export const SOCKET_BONE: Record<HeroSocket, HeroBone>;
+export interface BodyShape { sex: 'male' | 'female'; height: number; build: number; shoulders?: number; hips?: number; wasted?: number }
+export interface HeroRig {
+  root: THREE.Group; skeleton: THREE.Skeleton;
+  bones: Record<HeroBone, THREE.Bone>; sockets: Record<HeroSocket, THREE.Object3D>;
+  shape: BodyShape; joints: Record<HeroBone, THREE.Vector3>;   // bind pose, character space
+}
+export function buildRig(shape: BodyShape, name?: string): HeroRig;   // bones and sockets only
+```
+
+**Animation events.** The hero animator (`src/art/hero/Animator.ts`,
+`HeroAnimator`) keeps the hit frame and the release frame:
+
+```ts
+type HeroEvent = 'hit' | 'release' | 'step' | 'end';
+animator.on(event: HeroEvent, fn: (e: { clip: string; side?: 'L' | 'R' }) => void): () => void;
+animator.play(action: string, opts?: { fade?; speed?; once?; hold?; restart?; force?;
+  contact?: number;   // seconds from now to the hit / release frame; the clip is time-warped to land it
+  onEnd?: () => void });
+animator.actionState: { clip: string; t: number; contact: number | null } | null;
+animator.castGlow: number; animator.castHands: 'left' | 'right' | 'both' | null;
+```
+
+- `hit` fires on the frame a strike lands. `release` fires on the frame a
+  spell, arrow or thrown thing leaves the hand. Both come exactly `contact`
+  seconds after `play()` when `contact` is given, which is how they stay
+  locked to `Player.contactIn` (`CLIP_CONTACT`, `contactDelay`) and to the
+  timing in `src/scenes/SkillRunner.ts`.
+- `step` fires when a foot plants, with `side`. Footstep sounds and dust can
+  key off it.
+- Game rules still own timing: damage lands on `Player.contactIn`, never on an
+  animation event. The animation bends to the rules, not the other way round.
+
+Action names the game plays are unchanged: `idle walk run attack1 attack2 cast
+shoot slam thrust lunge channel point plant stomp roar hurl blink skyshot
+snapshot dodge hurt stagger stun down death deathFwd`. `attack1` and
+`attack2` resolve to the move for whatever weapon is held (sword, axe, mace,
+dagger, spear, two-hander, staff, wand, bow, shield, unarmed) and chain into
+combos on their own.
+
 ## `src/entities/MonsterModels.ts` — owned by MONSTERS
 
 ```ts

@@ -1,6 +1,6 @@
 # Stream: heroes (player bodies, faces, skeleton, animation, worn armour)
 
-Status: not started
+Status: in progress
 
 Goal: every class looks and moves like a Diablo II or Path of Exile hero.
 Whole body, face, walk, attacks: remade from nothing. Delete the old body kit
@@ -8,7 +8,7 @@ and animator when done.
 
 ## Milestones
 
-- [ ] Rig and design. Pick each class's silhouette and look (write it under
+- [x] Rig and design. (`heroes: hero rig contract and design`; the old rig goes with the old body in "Switch and clean") Pick each class's silhouette and look (write it under
   "Design"). Define the new skeleton: bone names, hierarchy, rest pose,
   sockets (main hand, off hand, back, belt, head, chest). Write it to
   `CONTRACTS.md` before anything else, because items, npcs and vfx depend on
@@ -42,15 +42,52 @@ new system lands.
 
 ## Design
 
-(to be written in milestone 1)
+The bar: a Diablo II or Path of Exile hero, read from a steep camera at
+fifteen metres. Silhouette and motion first, surface second.
+
+**How a body is made.** Each body is one signed distance field (ellipsoids,
+tapered capsules and muscle masses blended with smooth unions), meshed with
+sparse surface nets and simplified with quadric edge collapse. No more
+capsules joined by balls: one continuous skin from scalp to toe. The head and
+hands are meshed at finer resolution with a small overlap at the neck and
+wrist so the face and fingers hold their shape. Skin weights come from the
+bone segments, gated by body region (an arm never claims the ribs) and
+smoothed across each joint. Armour is cut from the same field grown outward,
+so every piece fits every body.
+
+**Surface.** PBR materials with CC0 photo detail (skin pores, linen weave,
+leather grain, metal) projected triplanar in rest-pose space, so the texture
+sticks to the skin as it bends. Eyes are separate glossy spheres that catch
+the light.
+
+**Skeleton.** 28 bones, A-pose bind, identity bind rotations; see "Hero rig"
+in `CONTRACTS.md`. Proportions in heads: 7.5 heads tall.
+
+**Classes.**
+
+| Class | Body | Read at game camera | Hair and face |
+| --- | --- | --- | --- |
+| Warden | Male, 1.88 m, heavy (build 0.9), broad shoulders | A wall: wide, square, planted, shield forward | Short crop, full beard, heavy brow, broken nose |
+| Pyromancer | Female, 1.74 m, lean (0.25), narrow shoulders | Upright and tall, long fall of copper hair | Long loose copper hair, high cheekbones |
+| Shadowblade | Female, 1.72 m, athletic (0.4) | Low and forward-leaning, hood and mask, two blades | Hood up, cloth mask, black hair in a knot |
+| Stormcaller | Male, 1.84 m, wiry (0.35), long limbs | Tall and straight with a staff, braids | Grey-blue braids, short beard, lined face |
+| Revenant | Male, 1.84 m, wasted (wasted 0.85) | A spindle of bone and sinew, hunched, glowing eyes | Bare skull face, sunken sockets, green eye glow |
+| Ranger | Female, 1.76 m, athletic (0.45) | Long stride, bow in the left hand, ponytail | Fair ponytail, freckled, strong jaw |
+
+**Motion.** A new animator: procedural gait with real stride length (feet
+planted, stride from ground speed so nothing slides), two-bone leg IK onto
+the ground, idle with breathing and weight shift, start/stop and turn-in-place
+steps, a stance per weapon. Actions are key poses with anticipation, a fast
+contact and a heavy follow-through, time-warped so the hit or release frame
+lands exactly on the game's contact time.
 
 ## Next up
 
-1. Run Setup in `docs/remake/PROTOCOL.md`.
-2. Read `src/art/CharacterModels.ts`, `BodyKit.ts`, `Animation.ts`
-   (`ClipName`, `Animator`, `PlayOpts`), `WornGear.ts`, `src/scenes/HeroModel.ts`,
-   and how `src/entities/Player.ts` and `Abilities.ts` call the animator.
-3. Write the rig to `CONTRACTS.md` and push it before building the body.
+1. Body: build `src/art/hero/Sdf.ts` (primitives, smooth union),
+   `Mesher.ts` (sparse surface nets), `Decimate.ts` (quadric collapse),
+   `Anatomy.ts` (body field from `BodyShape`), `Skinning.ts` (weights).
+2. Render with a hero-only sheet tool (`tools/hero-sheet.mjs`, fast, no game
+   boot) and judge.
 
 ## Notes for resume
 
