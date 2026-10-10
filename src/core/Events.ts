@@ -56,6 +56,22 @@ export interface GameEvents {
     biome?: string;
     /** On a boss floor, the boss waiting on it (story shows the floor's lore). */
     bossId?: string;
+    /** The map's own name ("Gallows Fen"). `place` is then the zone you arrive in. */
+    mapName?: string;
+  };
+  /**
+   * The hero walked into another zone of the same area (maps). Not fired on
+   * arrival: `depth:changed` covers the zone you land in.
+   */
+  'zone:entered': {
+    name: string;
+    biome: string;
+    /** 0-based position of the zone in the whole map. */
+    order: number;
+    /** Zones in the whole map. */
+    of: number;
+    depth: number;
+    mapName?: string;
   };
   /** A run was finished and banked. Fires once, on the way back to town. */
   'run:cleared': { depth: number };

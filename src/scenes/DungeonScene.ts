@@ -197,6 +197,8 @@ export class DungeonScene extends GameScene {
   /** The town waypoint by a map's first arrival: [E] there gives the map up. */
   private waypoint: THREE.Object3D | null = null;
   private nearWaypoint = false;
+  /** Zone id under the hero, for the zone banner. */
+  private zoneHere = -1;
   /** The boss arena's gate: open until the hero walks in, shut until the boss falls. */
   private arenaGate: {
     tiles: Array<{ x: number; y: number }>;
@@ -639,6 +641,10 @@ export class DungeonScene extends GameScene {
     // The name of the place, not just the number. Two crypt runs wear
     // different variants and the header is where you notice.
     const place = variantLabel(this.biome.id, this.level?.variant);
+    // On a map the place is the zone you arrive in; the card and the HUD
+    // carry the map's own name above it.
+    const arrival = zoneAt(this.level, this.level.entry.x, this.level.entry.y);
+    this.zoneHere = arrival?.id ?? -1;
     this.dungeonEvents?.onLevel();
     this.runMods?.onLevel(index);
     this.director?.onFloor(index);
@@ -647,7 +653,8 @@ export class DungeonScene extends GameScene {
       depth: this.run.depth,
       level: index + 1,
       of: this.run.levels.length,
-      place: place.name,
+      place: arrival?.name ?? place.name,
+      mapName: this.run.map?.name,
       // The floor's title card (ui/Banners.ts) shows the blurb on the first
       // floor of a run; it used to arrive separately as a toast.
       blurb: index === 0 ? place.blurb : undefined,
@@ -1176,6 +1183,7 @@ export class DungeonScene extends GameScene {
     // Music and room sound follow the zone the hero stands in (audio stream).
     const soundTile = this.mesh.worldToTile(this.player.position.x, this.player.position.z);
     const soundBiome = zoneAt(this.level, soundTile.x, soundTile.y)?.biome ?? this.level.biome;
+    this.tickZone(soundTile.x, soundTile.y);
     if (soundBiome !== this.soundBiome) {
       this.soundBiome = soundBiome;
       audio.music(BIOMES.find((b) => b.id === soundBiome)?.music ?? soundBiome, 2.5);
@@ -1699,7 +1707,7 @@ export class DungeonScene extends GameScene {
       save.setCharacter(c);
       this.director?.onRunCleared();
       events.emit('run:cleared', { depth: this.run.depth });
-      toast(`Depth ${this.run.depth} cleared.`, 'epic');
+      toast(this.run.map ? `${this.run.map.name} cleared.` : `Tier ${this.run.depth} cleared.`, 'epic');
       void this.engine.goTo('town');
     }
   }
@@ -1748,6 +1756,23 @@ export class DungeonScene extends GameScene {
     this.fx.burst('portal', at.x, 1.0, at.z, { count: 120, color: 0x7ec8ff, scale: 1.6 });
     audio.play('portal');
     toast('The way home has opened.', 'epic');
+  }
+
+  /** Walking from one zone of an area into the next raises its banner. */
+  private tickZone(tx: number, ty: number): void {
+    const z = zoneAt(this.level, tx, ty);
+    if (!z || z.id === this.zoneHere) return;
+    // Only on ground the hero can stand on: walls at a seam do not count.
+    if (!isWalkable(this.level, tx, ty)) return;
+    this.zoneHere = z.id;
+    events.emit('zone:entered', {
+      name: z.name,
+      biome: z.biome,
+      order: z.order,
+      of: this.run.map?.zones.length ?? 1,
+      depth: this.run.depth,
+      mapName: this.run.map?.name,
+    });
   }
 
   /**

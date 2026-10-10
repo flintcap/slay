@@ -59,8 +59,12 @@ export class PausePanel {
     this.panel.body.appendChild(root);
 
     events.on('depth:changed', (p) => {
-      this.place = p.depth <= 0 ? 'The Town' : p.place ? `Depth ${p.depth} · ${p.place}` : `Depth ${p.depth}`;
-      this.floor = p.depth > 0 && p.of > 1 ? `Floor ${p.level} of ${p.of}` : '';
+      this.place =
+        p.depth <= 0 ? 'The Town' : p.mapName ? `${p.mapName} · Tier ${p.depth}` : p.place ? `Tier ${p.depth} · ${p.place}` : `Tier ${p.depth}`;
+      this.floor = p.depth > 0 ? (p.mapName ? p.place ?? '' : p.of > 1 ? `Area ${p.level} of ${p.of}` : '') : '';
+    });
+    events.on('zone:entered', (p) => {
+      if (p.mapName) this.floor = p.name;
     });
   }
 

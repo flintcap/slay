@@ -47,6 +47,7 @@ import { skillIconUri, statusIconUri, warmItemIcons } from '../art/Icons';
 import { setPrimaryAttack, setHotbarSlot } from '../sim/Character';
 import { SKILL_BY_ID } from '../data/skills';
 import { BOSSES } from '../data/bosses';
+import { zoneInks, zoneInkAt, newKindInk, wayMarks } from './ZoneInk';
 
 // Tile ids as stored in DungeonLevel.tiles (mirrors world/Layouts TILE_VALUES).
 const T_VOID = 0;
@@ -892,11 +893,20 @@ export class HUD {
         this.biomeLabel.textContent = 'Sanctuary';
         this.minimapLabel.textContent = 'Town';
       } else {
-        this.depthLabel.textContent = p.place ? `Depth ${p.depth} · ${p.place}` : `Depth ${p.depth}`;
-        this.biomeLabel.textContent = p.of > 0 ? `Floor ${p.level} of ${p.of}` : '';
-        this.minimapLabel.textContent = `Depth ${p.depth}`;
+        // A map: its name and tier on top, the zone you are in below.
+        if (p.mapName) {
+          this.depthLabel.textContent = `${p.mapName} · Tier ${p.depth}`;
+          this.biomeLabel.textContent = p.place ?? '';
+        } else {
+          this.depthLabel.textContent = p.place ? `Tier ${p.depth} · ${p.place}` : `Tier ${p.depth}`;
+          this.biomeLabel.textContent = p.of > 0 ? `Area ${p.level} of ${p.of}` : '';
+        }
+        this.minimapLabel.textContent = `Tier ${p.depth}`;
       }
       runtime.explored.clear();
+    });
+    on('zone:entered', (p) => {
+      this.biomeLabel.textContent = p.name;
     });
     on('boss:engaged', (p) => this.showBoss(p.name, p.title, p.maxLife));
     on('boss:damaged', (p) => {
@@ -1614,6 +1624,8 @@ export class HUD {
     ctx.fillStyle = 'rgba(8,7,6,0.62)';
     ctx.fillRect(0, 0, S, S);
 
+    // Ground takes its zone's tint, so the seam between two zones shows.
+    const floorInks = zoneInks(level, [146, 128, 98], 0.62);
     for (let dy = -span0; dy <= span0; dy++) {
       for (let dx = -span0; dx <= span0; dx++) {
         const x = px + dx;
@@ -1621,29 +1633,41 @@ export class HUD {
         if (x < 0 || y < 0 || x >= level.width || y >= level.height) continue;
         const idx = y * level.width + x;
         if (!explored[idx]) continue;
-        const t = level.tiles[idx];
+        const t = level.tiles[idx]!;
         if (t === T_VOID) continue;
         const sx = half + dx * scale - scale / 2;
         const sy = half + dy * scale - scale / 2;
-        ctx.fillStyle = tileColor(t);
+        ctx.fillStyle = t === T_FLOOR ? zoneInkAt(level, floorInks, idx) : newKindInk(t) ?? tileColor(t);
         ctx.fillRect(sx, sy, scale + 0.5, scale + 0.5);
       }
     }
 
-    // Stairs are the thing you are actually looking for.
-    const marks: Array<[number, number, string, string]> = [];
-    if (level.exit) marks.push([level.exit.x, level.exit.y, '#ffd66b', 'down']);
-    if (level.entry) marks.push([level.entry.x, level.entry.y, '#7fb0ff', 'up']);
-    for (const [mx, my, color] of marks) {
+    // The ways on are the thing you are actually looking for.
+    const marks = wayMarks(level);
+    for (const [mx, my, color, shape] of marks) {
       const idx = my * level.width + mx;
       if (!explored[idx]) continue;
       const sx = half + (mx - px) * scale;
       const sy = half + (my - py) * scale;
       ctx.fillStyle = color;
+      ctx.strokeStyle = color;
       ctx.beginPath();
-      ctx.moveTo(sx, sy - 4);
-      ctx.lineTo(sx + 3.6, sy + 3);
-      ctx.lineTo(sx - 3.6, sy + 3);
+      if (shape === 'ring') {
+        ctx.lineWidth = 1.6;
+        ctx.arc(sx, sy, 3.4, 0, Math.PI * 2);
+        ctx.stroke();
+        continue;
+      }
+      if (shape === 'gate') {
+        ctx.moveTo(sx, sy - 4);
+        ctx.lineTo(sx + 4, sy);
+        ctx.lineTo(sx, sy + 4);
+        ctx.lineTo(sx - 4, sy);
+      } else {
+        ctx.moveTo(sx, sy - 4);
+        ctx.lineTo(sx + 3.6, sy + 3);
+        ctx.lineTo(sx - 3.6, sy + 3);
+      }
       ctx.closePath();
       ctx.fill();
     }

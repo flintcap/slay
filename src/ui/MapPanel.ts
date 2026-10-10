@@ -9,6 +9,7 @@
 import type { DungeonLevel, DungeonRoom } from '../types';
 import { events } from '../core/Events';
 import { runtime, Panel, add, clear, div, span, icon, emptyState } from './Widgets';
+import { zoneInks, zoneInkAt, newKindInk, wayMarks, T_RUIN } from './ZoneInk';
 
 const T_VOID = 0;
 const T_FLOOR = 1;
@@ -226,9 +227,7 @@ export class MapPanel {
     ctx.clearRect(0, 0, W, H);
 
     const level = runtime.level;
-    this.headerLabel.textContent = level
-      ? `Depth ${runtime.depth} · ${level.biome} · ${level.layout}`
-      : '';
+    this.headerLabel.textContent = level ? `Tier ${runtime.depth} · ${(level.zones ?? []).map((z) => z.name).join(' · ') || level.biome}` : '';
 
     if (!level) {
       clear(this.headerLabel);
@@ -279,19 +278,20 @@ export class MapPanel {
     const walk = (x: number, y: number): boolean => {
       if (x < 0 || y < 0 || x >= LW || y >= level.height) return false;
       const t = level.tiles[y * LW + x];
-      return t !== T_VOID && t !== T_WALL;
+      return t !== T_VOID && t !== T_WALL && t !== T_RUIN;
     };
+    const floorInks = zoneInks(level, [0x4f, 0x43, 0x2f], 1);
     for (let y = 0; y < level.height; y++) {
       const py = oy + y * s;
       if (py < -s || py > H) continue;
       for (let x = 0; x < LW; x++) {
         const idx = y * LW + x;
         if (!explored[idx]) continue;
-        const t = level.tiles[idx];
-        if (t === T_VOID || t === T_WALL) continue;
+        const t = level.tiles[idx]!;
+        if (t === T_VOID || t === T_WALL || t === T_RUIN) continue;
         const px = ox + x * s;
         if (px < -s || px > W) continue;
-        ctx.fillStyle = tileColor(t);
+        ctx.fillStyle = t === T_FLOOR ? zoneInkAt(level, floorInks, idx) : newKindInk(t) ?? tileColor(t);
         ctx.fillRect(px, py, s + 0.5, s + 0.5);
       }
     }
@@ -351,11 +351,34 @@ export class MapPanel {
       ctx.letterSpacing = '0px';
     }
 
-    // Stairs.
-    const marks: Array<[number, number, string]> = [];
-    if (level.exit) marks.push([level.exit.x, level.exit.y, '#ffd66b']);
-    if (level.entry) marks.push([level.entry.x, level.entry.y, '#7fb0ff']);
-    for (const [mx, my, color] of marks) {
+    // Zone names, once any of the zone is seen, over its middle.
+    if ((level.zones?.length ?? 0) > 1 && s >= 4) {
+      ctx.font = `italic 700 ${Math.round(15 * textScale())}px 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif`;
+      ctx.textAlign = 'center';
+      for (const z of level.zones!) {
+        const cx = z.bounds.x + z.bounds.w / 2;
+        const cy = z.bounds.y + z.bounds.h / 2;
+        let seen = false;
+        for (let y = z.bounds.y; y < z.bounds.y + z.bounds.h && !seen; y += 3) {
+          for (let x = z.bounds.x; x < z.bounds.x + z.bounds.w; x += 3) {
+            if (explored[y * level.width + x] && level.zoneOf?.[y * level.width + x] === z.id) {
+              seen = true;
+              break;
+            }
+          }
+        }
+        if (!seen) continue;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.strokeText(z.name, ox + cx * s, oy + cy * s);
+        ctx.fillStyle = 'rgba(236,214,170,0.85)';
+        ctx.fillText(z.name, ox + cx * s, oy + cy * s);
+      }
+    }
+
+    // The ways on, the arena gate, the waypoint and where you came in.
+    const marks = wayMarks(level);
+    for (const [mx, my, color, shape] of marks) {
       if (!explored[my * level.width + mx]) continue;
       const px = ox + mx * s + s / 2;
       const py = oy + my * s + s / 2;
@@ -368,9 +391,23 @@ export class MapPanel {
       ctx.fillRect(px - s * 2.4, py - s * 2.4, s * 4.8, s * 4.8);
       ctx.globalAlpha = 1;
       ctx.beginPath();
-      ctx.moveTo(px, py - s * 0.9);
-      ctx.lineTo(px + s * 0.8, py + s * 0.7);
-      ctx.lineTo(px - s * 0.8, py + s * 0.7);
+      if (shape === 'ring') {
+        ctx.arc(px, py, s * 0.9, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(1.5, s * 0.25);
+        ctx.stroke();
+        continue;
+      }
+      if (shape === 'gate') {
+        ctx.moveTo(px, py - s);
+        ctx.lineTo(px + s, py);
+        ctx.lineTo(px, py + s);
+        ctx.lineTo(px - s, py);
+      } else {
+        ctx.moveTo(px, py - s * 0.9);
+        ctx.lineTo(px + s * 0.8, py + s * 0.7);
+        ctx.lineTo(px - s * 0.8, py + s * 0.7);
+      }
       ctx.closePath();
       ctx.fillStyle = color;
       ctx.fill();

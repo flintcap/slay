@@ -69,6 +69,9 @@ function scheduleWhisper(): void {
 let installed = false;
 
 /** Called from `installStory`. */
+/** Biomes this map has already shown, so each greets the hero once per map. */
+const seenThisMap = new Set<BiomeId>();
+
 export function installStoryPlaces(): void {
   if (installed) return;
   installed = true;
@@ -83,26 +86,41 @@ export function installStoryPlaces(): void {
     here = { biome, depth: p.depth, floor: p.level };
     floorSeq++;
     notesThisFloor = 0;
+    if (p.level === 1) seenThisMap.clear();
+    arriveIn(biome, p.depth);
+    scheduleWhisper();
+  });
+
+  // A map mixes biomes: walking into a new one inside an area counts too.
+  events.on('zone:entered', (p) => {
+    if (!here) return;
+    here = { ...here, biome: p.biome as BiomeId };
+    arriveIn(p.biome as BiomeId, p.depth);
+  });
+
+  /** The first time a map shows a biome: its first-sight card or deep note. */
+  function arriveIn(biome: BiomeId, depth: number): void {
+    if (seenThisMap.has(biome)) return;
+    seenThisMap.add(biome);
     const place = PLACES[biome];
-    if (place && p.level === 1) {
+    if (place) {
       if (enterBiome(biome)) {
         // After the floor card and any chapter of the descent.
         setTimeout(
           () =>
             showCard({
-              kicker: `First sight · Tier ${p.depth}`,
+              kicker: `First sight · Tier ${depth}`,
               title: place.name,
               text: [place.firstEntry, place.description],
               kind: 'place',
             }),
           3000,
         );
-      } else if (p.depth >= getBiome(biome).minDepth + place.deepAfter && noteDeepEntry(biome)) {
+      } else if (depth >= getBiome(biome).minDepth + place.deepAfter && noteDeepEntry(biome)) {
         say('', place.deepEntry, { tone: 'narration', delay: 4.5 });
       }
     }
-    scheduleWhisper();
-  });
+  }
 
   events.on('lore:search', (p) => {
     if (!here || notesThisFloor >= 2) return;

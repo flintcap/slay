@@ -113,12 +113,28 @@ function depthCard(kicker: string, title: string, blurb: string | undefined, tin
   return card;
 }
 
-export function showDepthCard(depth: number, level: number, of: number, place?: string, blurb?: string, biome?: string): void {
+export function showDepthCard(
+  depth: number,
+  level: number,
+  of: number,
+  place?: string,
+  blurb?: string,
+  biome?: string,
+  mapName?: string,
+): void {
   const def = BIOMES.find((b) => b.id === biome);
   const tint = def ? hex(def.accentColor) : '#c9a227';
-  const name = place || def?.name || `Depth ${depth}`;
-  const kicker = of > 1 ? `Depth ${depth}  ·  Floor ${level} of ${of}` : `Depth ${depth}`;
+  const name = place || def?.name || `Tier ${depth}`;
+  const kicker = mapName ? `${mapName}  ·  Tier ${depth}` : of > 1 ? `Tier ${depth}  ·  Area ${level} of ${of}` : `Tier ${depth}`;
   enqueue({ build: () => depthCard(kicker, name, blurb, tint), hold: 3600, life: 4800 });
+}
+
+/** A shorter card for walking into the next zone of the same area. */
+export function showZoneCard(name: string, biome: string, order: number, of: number, depth: number): void {
+  const def = BIOMES.find((b) => b.id === biome);
+  const tint = def ? hex(def.accentColor) : '#c9a227';
+  const kicker = `Tier ${depth}  ·  Zone ${order + 1} of ${of}`;
+  enqueue({ build: () => depthCard(kicker, name, undefined, tint), hold: 2400, life: 3600 });
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +218,10 @@ export function mountBanners(root: HTMLElement): void {
   // The event fires while the new floor is still behind the fade curtain, so
   // the card waits for the curtain to lift before it starts.
   events.on('depth:changed', (p) => window.setTimeout(() => onDepth(p), 650));
+  events.on('zone:entered', (p) => {
+    if (save.settings.titleCards === false) return;
+    showZoneCard(p.name, p.biome, p.order, p.of, p.depth);
+  });
 
   events.on('boss:engaged', (p) => {
     // The boss outranks a floor card still on screen.
@@ -227,12 +247,12 @@ export function mountBanners(root: HTMLElement): void {
 /** Set when a run is banked, so the town card can say so. */
 let clearedDepth = 0;
 
-function onDepth(p: { depth: number; level: number; of: number; place?: string; blurb?: string; biome?: string }): void {
+function onDepth(p: { depth: number; level: number; of: number; place?: string; blurb?: string; biome?: string; mapName?: string }): void {
   if (save.settings.titleCards === false) return;
   if (p.depth <= 0) {
     // Town: a quieter card than a floor's.
-    const kicker = clearedDepth > 0 ? `Depth ${clearedDepth} cleared` : 'Sanctuary';
-    const blurb = clearedDepth > 0 ? 'The depth is banked. The next descent starts deeper.' : undefined;
+    const kicker = clearedDepth > 0 ? `Tier ${clearedDepth} cleared` : 'Sanctuary';
+    const blurb = clearedDepth > 0 ? 'The tier is banked. The next portal opens deeper.' : undefined;
     clearedDepth = 0;
     enqueue({
       build: () => depthCard(kicker, 'The Town', blurb, '#d8b45a'),
@@ -241,5 +261,5 @@ function onDepth(p: { depth: number; level: number; of: number; place?: string; 
     });
     return;
   }
-  showDepthCard(p.depth, p.level, p.of, p.place, p.blurb, p.biome);
+  showDepthCard(p.depth, p.level, p.of, p.place, p.blurb, p.biome, p.mapName);
 }
