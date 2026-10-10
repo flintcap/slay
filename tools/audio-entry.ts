@@ -4,11 +4,15 @@
  * Proves nothing the game asks for is silent: every biome and boss track is a
  * real track, every place has an ambience bed whose floor makes a footstep,
  * every monster ability phase resolves to a sound, and every swing and
- * weapon impact exists.
+ * weapon impact exists. Also: every bed's loops and events have recordings,
+ * every place has its own music, and every file the manifest names exists
+ * on disk with a row in ASSETS.md.
  */
 import { resolvesSound } from '../src/audio/Audio';
-import { hasTrack } from '../src/audio/Music';
-import { bedDef, bedFor, bedIds } from '../src/audio/Ambience';
+import { hasTrack, musicTracks } from '../src/audio/Score';
+import { bedDef, bedFor, bedIds } from '../src/audio/Beds';
+import { bankIds, soundFiles } from '../src/audio/Bank';
+import { AMBIENCE_FILES, MUSIC_FILES } from '../src/audio/manifest';
 import { monsterSoundFor, TELEGRAPH_MIN } from '../src/audio/MonsterAudio';
 import { BIOMES } from '../src/world/DungeonGen';
 import { BOSSES } from '../src/data/bosses';
@@ -39,6 +43,13 @@ for (const id of bedIds()) {
   check(resolvesSound(`footstep.${d.surface}`), `bed ${id}: footstep.${d.surface} is silent`);
 }
 check(bedFor('town') === 'town', 'town has no ambience');
+for (const id of bedIds()) {
+  const d = bedDef(id)!;
+  for (const loop of d.loops) check((AMBIENCE_FILES[loop] ?? []).length > 0, `bed ${id}: loop "${loop}" has no recording`);
+  for (const e of d.events) check(resolvesSound(e), `bed ${id}: event "${e}" is silent`);
+  check(hasTrack(id), `place ${id} has no music of its own`);
+}
+for (const b of BIOMES) check(bedFor(b.id) !== null && hasTrack(b.id), `biome id ${b.id} does not fold onto a place with music and a bed`);
 check(bedFor('menu') === null, 'menus should be free of ambience');
 
 // --- player weapons -------------------------------------------------------------
@@ -82,5 +93,26 @@ notes.voiced = voiced;
 notes.telegraphs = telegraphs;
 notes.namedSfx = named;
 check(voiced / Math.max(1, phases) > 0.8, `only ${voiced} of ${phases} monster abilities make any sound`);
+
+// --- files -----------------------------------------------------------------------
+// (check-audio.mjs checks each one is on disk and in ASSETS.md.)
+const allFiles = [
+  ...bankIds().flatMap((id) => soundFiles(id)),
+  ...Object.values(MUSIC_FILES).flat(),
+  ...Object.values(AMBIENCE_FILES).flat(),
+];
+for (const id of ['boss.intro', 'loot.legendary', 'drop.unique', 'levelup', 'quest.complete', 'portal', 'waypoint', 'player.death', 'player.hurt', 'block', 'crit']) {
+  check(resolvesSound(id), `${id} is silent`);
+}
+for (const fam of ['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze']) {
+  for (const k of ['aggro', 'attack', 'hurt', 'death']) check(bankIds().includes(`monster.${fam}.${k}`), `monster.${fam}.${k} has no recordings of its own`);
+}
+for (const el of ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane']) {
+  for (const k of ['cast', 'impact', 'nova']) check(resolvesSound(`${k}.${el}`), `${k}.${el} is silent`);
+}
+for (const f of ['stone', 'dirt', 'grass', 'sand', 'snow', 'water']) check(bankIds().includes(`footstep.${f}`), `footstep.${f} has no recordings`);
+notes.soundIds = bankIds().length;
+notes.files = allFiles;
+notes.tracks = musicTracks().length;
 
 console.log(JSON.stringify({ ok: fails.length === 0, fails: [...new Set(fails)].slice(0, 40), notes }));

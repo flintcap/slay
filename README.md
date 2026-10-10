@@ -48,7 +48,7 @@ src/
   sim/       stats, combat math, loot rolling, crafting, inventory, progression
   entities/  player, enemies, AI, bosses, abilities
   fx/        GPU particles, spell effects, decals, trails, camera rig
-  audio/     WebAudio synthesis, SFX registry, adaptive procedural music
+  audio/     recorded CC0 samples, music and ambience beds (WebAudio)
   ui/        DOM/CSS panels: HUD, inventory, skill tree, stash, vendor, smith
   scenes/    integration: title, character select, town, dungeon, death
 ```

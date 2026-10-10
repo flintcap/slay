@@ -103,22 +103,52 @@ export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number
   { root: THREE.Group; bones: Record<string, THREE.Bone>; skeleton: THREE.Skeleton | null };
 ```
 
-## `src/audio/Audio.ts` — owned by FX
+## `src/audio/Audio.ts` — owned by audio
+
+Recorded CC0 samples, music and ambience (`public/assets/sounds/`,
+`public/assets/music/`, every file in `ASSETS.md`), built by
+`node tools/build-audio.mjs` from `tools/audio/recipe.mjs`. A missing file
+is silent, never an error.
 
 ```ts
-/** Fully synthesised — no audio files. */
 export const audio: {
   init(settings: GameSettings): void;
-  /** Fire a one-shot. `id` keys into the synth registry. */
+  /**
+   * Fire a one-shot. `id` is a bank id (`sounds/<id>/NN.ogg`) or folds onto
+   * one by family: `cast.<element>`, `impact.<element>`, `nova.<element>`,
+   * `monster.<family>.<aggro|attack|hurt|death>`, `footstep.<surface>`,
+   * `drop.<rarity>`, `pickup.<rarity>`. x/z place it in the stereo field.
+   */
   play(id: string, opts?: { volume?: number; pitch?: number; x?: number; z?: number }): void;
-  /** Crossfade the procedural music layer. */
+  /**
+   * Crossfade the music to `track` and, for a place, its ambience bed. Keys:
+   * 'menu' | 'title' | 'charSelect' | 'town' | 'death' | 'victory' |
+   * 'ambient' (back to the place) | 'boss.<anything>' | any biome id or
+   * biome music key. Unknown biome ids fold onto a place by name (see below).
+   */
   music(track: string, fadeSeconds?: number): void;
-  /** Position the listener for panning. */
-  setListener(x: number, z: number, facing: number): void;
+  /** Set the ambience bed alone, by biome id or place. null for silence. */
+  ambience(bed: string | null): void;
+  /** Position the listener (the hero). Walking plays footsteps for the bed's floor. */
+  setListener(x: number, z: number, facing?: number): void;
+  setCombatFloor(v: number): void;
   applySettings(settings: GameSettings): void;
   stopAll(): void;
 };
+export function resolvesSound(id: string): boolean;
 ```
+
+Places (`src/audio/Places.ts`): every music key and biome id folds onto one
+of town, crypt, caverns, foundry, temple, hive, frozen, desert, tomb, void,
+forest, swamp, hell; first by exact name, then by keyword in the id
+(`/forest|wood|grove/` is forest, `/tomb|pyramid/` is tomb, `/frost|ice|tundra/`
+is frozen, and so on). A new biome needs no audio change if its id names its
+kind. Each place has music, a bed (loops plus scattered one-shots) and a
+footstep surface.
+
+Events the engine listens to: `sfx`, `music`, `settings:changed`,
+`ui:open`/`ui:close`, `loot:pickedUp` (pickup by item kind), `boss:engaged`
+(the boss intro sting).
 
 ## `src/fx/Particles.ts` / `src/fx/Effects.ts` — owned by FX
 

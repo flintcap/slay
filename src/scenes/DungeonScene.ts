@@ -25,7 +25,7 @@ import { planMiniBoss, attachMiniBoss } from '../entities/MiniBoss';
 import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
-import { generateRun, isWalkable, BIOMES } from '../world/DungeonGen';
+import { generateRun, isWalkable, BIOMES, zoneAt } from '../world/DungeonGen';
 import { DungeonMesh, applyBiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
 import { variantLabel, biomeArt } from '../world/Biomes';
@@ -157,6 +157,8 @@ export class DungeonScene extends GameScene {
   private levelIndex = 0;
   private level!: DungeonLevel;
   private biome!: BiomeDef;
+  /** Biome whose music and ambience are playing (audio stream). */
+  private soundBiome = '';
   private mesh!: DungeonMesh;
   private nav!: NavGrid;
   private lighting: { dispose(): void } | null = null;
@@ -1119,6 +1121,13 @@ export class DungeonScene extends GameScene {
     this.decals.update(dt);
 
     audio.setListener(this.player.position.x, this.player.position.z, this.player.root.rotation.y);
+    // Music and room sound follow the zone the hero stands in (audio stream).
+    const soundTile = this.mesh.worldToTile(this.player.position.x, this.player.position.z);
+    const soundBiome = zoneAt(this.level, soundTile.x, soundTile.y)?.biome ?? this.level.biome;
+    if (soundBiome !== this.soundBiome) {
+      this.soundBiome = soundBiome;
+      audio.music(BIOMES.find((b) => b.id === soundBiome)?.music ?? soundBiome, 2.5);
+    }
 
     // Low-life vignette feeds off the grade pass.
     const lifeFrac = this.player.stats.life > 0 ? this.player.life / this.player.stats.life : 0;

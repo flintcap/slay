@@ -49,6 +49,10 @@ const EXACT: Record<string, Place> = {
   frostvault: 'frozen',
   ashwaste: 'hell',
   voidspire: 'void',
+  // map remake biome ids (swamp, desert and hell are places already)
+  darkForest: 'forest',
+  desertTomb: 'tomb',
+  tundra: 'frozen',
 };
 
 /** Keyword fallbacks, checked in order against the lower-cased key. */
