@@ -71,7 +71,7 @@ export abstract class GameScene {
  * stall on equipping and a chunk of the general combat stutter.
  *
  * Geometry is always per-instance here, so that is always safe to free.
- * Textures are never freed from here; `clearTextureCache()` owns that, and it
+ * Textures are never freed from here; the asset cache (`core/Assets`) owns them, and that
  * is a between-runs operation, not a per-object one.
  */
 export function disposeObject(root: THREE.Object3D): void {

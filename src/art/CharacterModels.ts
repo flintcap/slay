@@ -24,8 +24,7 @@
 
 import * as THREE from 'three';
 import type { CharClassId, EquipSlot, Item, ItemVisual, Rng } from '../types';
-import { emissiveMaterial, surface, surfaceVariant } from './Materials';
-import { resolvePalette } from './Palettes';
+import { emissiveMaterial, surface, surfaceVariant, surfaceBaseColor } from './Materials';
 import { beveledBox, limb, normalizeGeometry, ring, taperedBox, transformed } from './Meshes';
 import {
   ARM_L,
@@ -183,7 +182,7 @@ function skinMaterial(spec: MatSpec): THREE.MeshStandardMaterial {
   if (hit) return hit;
   const mat = surfaceVariant(spec.key, { repeat: MAT_REPEAT.skin, seed: 0, bump: 0.3 });
   mat.map = null;
-  mat.color.setHex(resolvePalette(spec.key).base);
+  mat.color.setHex(surfaceBaseColor(spec.key));
   if (spec.tint !== undefined) mat.color.multiply(new THREE.Color(spec.tint));
   mat.userData.shared = true;
   mat.needsUpdate = true;

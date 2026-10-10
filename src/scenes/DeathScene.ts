@@ -4,7 +4,7 @@ import type { CharClassId, ItemRarity, SceneId } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { surface, emissiveMaterial } from '../art/Materials';
-import { radialGlowTexture } from '../art/Textures';
+import { radialGlowTexture } from '../fx/UtilityTextures';
 import { stoneBlock, displace } from '../art/Meshes';
 import { buildItemModel } from '../art/ItemModels';
 import { Random } from '../core/RNG';

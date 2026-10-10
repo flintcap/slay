@@ -24,7 +24,7 @@ import {
   radialGlowTexture,
   runeRingTexture,
   beamTexture,
-} from './Textures';
+} from '../fx/UtilityTextures';
 import { resolveSurface, surfaceKeys, surfaceBaseColor, type SurfaceDef } from './SurfaceLibrary';
 import { setTextures, setTextureAnisotropy, preloadSets, TEXTURE_SETS, type TextureSetName } from './TextureSets';
 import { setAssetAnisotropy } from '../core/Assets';

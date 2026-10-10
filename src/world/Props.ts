@@ -35,7 +35,7 @@ import {
 } from './Layouts';
 import { emissiveMaterial, surface } from '../art/Materials';
 import { displace, lathe, mergeGeometries, stoneBlock } from '../art/Meshes';
-import { webTexture } from '../art/Textures';
+import { webTexture } from '../fx/UtilityTextures';
 
 // ---------------------------------------------------------------------------
 // Definitions

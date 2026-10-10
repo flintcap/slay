@@ -39,7 +39,7 @@ import { surface, surfaceVariant } from '../art/Materials';
 import { setFogShape, fogShape } from '../core/Renderer';
 import { worldMaterial, setWorldCutaway, setWorldRoof, addWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldMaterialOpts } from '../art/WorldMaterial';
 import { liquidSurface, type LiquidSurface, type LiquidStyle } from '../art/Liquids';
-import { crackTexture } from '../art/Textures';
+import { crackTexture } from '../fx/UtilityTextures';
 import { Drips, type DripSite } from './Ambience';
 
 /** One usable thing in the world, and the instance slot that draws it. */

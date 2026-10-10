@@ -36,4 +36,7 @@ combat.
 
 ## Notes for resume
 
-(none yet)
+- From ground: the old texture painter `src/art/Textures.ts` is gone. Its small
+  effect textures (radial glow, beam, rune ring, web, crack, macro noise) now
+  live in `src/fx/UtilityTextures.ts`, which vfx owns. Same function names and
+  signatures.

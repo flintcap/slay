@@ -25,10 +25,9 @@
 
 import * as THREE from 'three';
 import type { MonsterVisual, Rng } from '../types';
-import { surface, surfaceVariant, emissiveMaterial } from '../art/Materials';
+import { surface, surfaceVariant, emissiveMaterial, surfaceBaseColor } from '../art/Materials';
 import { beveledBox, clothPanel, displace, lathe, limb, mergeGeometries, spike } from '../art/Meshes';
 import { mergeSkinned, skinRigid } from '../art/BodyKit';
-import { resolvePalette } from '../art/Palettes';
 import { Noise } from '../art/Noise';
 import { buildItemModel } from '../art/ItemModels';
 import { compactModel } from '../art/ModelBudget';
@@ -119,7 +118,7 @@ function parsePalette(p: string): { key: string; tint?: number } {
 function albedoTint(key: string, tint: number): THREE.Color {
   const base = new THREE.Color(0x808080);
   try {
-    base.setHex(resolvePalette(key).base);
+    base.setHex(surfaceBaseColor(key));
   } catch {
     /* keep grey */
   }

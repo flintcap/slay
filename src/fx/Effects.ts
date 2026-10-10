@@ -27,7 +27,7 @@ import { DecalSystem } from './Decals';
 import { TrailSystem, Trail, TRAIL_PRESETS } from './Trails';
 import type { CameraRig } from './CameraRig';
 import { emissiveMaterial } from '../art/Materials';
-import { radialGlowTexture } from '../art/Textures';
+import { radialGlowTexture } from './UtilityTextures';
 
 // ---------------------------------------------------------------------------
 // Element palette

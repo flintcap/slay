@@ -23,24 +23,33 @@ Rules for every contributor:
 
 ---
 
-## `src/art/Materials.ts` — owned by ART
+## `src/art/Materials.ts` — owned by ground
+
+Every surface is a CC0 photo set (`src/art/TextureSets.ts`, files under
+`public/assets/textures/world/<set>/`). `src/art/SurfaceLibrary.ts` maps each
+key to a set, a base colour and a roughness range. Unknown keys never fail:
+they fall back by family ('stone.*', 'metal.*', ...). `tex.<set>` gives a set
+in its own photo colour.
 
 ```ts
-/** Front-loads texture generation onto the boot bar. */
+/** Preloads the boot texture sets onto the boot bar. */
 export function warmMaterials(onProgress: (p: number, label: string) => void): Promise<void>;
 
 /**
- * The material library. `key` is a palette name such as 'stone.crypt',
+ * The material library. `key` is a surface name such as 'stone.crypt',
  * 'metal.iron', 'wood.oak', 'cloth.linen', 'flesh.rotted', 'crystal.void'.
- * Returns a shared, cached MeshStandardMaterial with albedo/normal/roughness/AO.
+ * Returns a shared, cached MeshStandardMaterial (photo albedo, normal,
+ * roughness, height-shaded AO) tinted to the key's base colour.
  * Never mutate the result — call `surfaceVariant` for a tweaked copy.
  */
 export function surface(key: string, opts?: SurfaceOpts): THREE.MeshStandardMaterial;
 export function surfaceVariant(key: string, opts: SurfaceOpts): THREE.MeshStandardMaterial;
 export function paletteKeys(): string[];
+/** The key's base colour (sRGB hex): what a flat-coloured copy should use. */
+export function surfaceBaseColor(key: string): number;
 
 export interface SurfaceOpts {
-  /** World-space texture repeat. */
+  /** Texture repeat across the model's UVs. */
   repeat?: number;
   /** Multiplicative colour tint. */
   tint?: number;
@@ -58,6 +67,34 @@ export interface SurfaceOpts {
 /** Emissive/animated materials for magic, lava, runes. */
 export function emissiveMaterial(color: number, intensity?: number): THREE.MeshStandardMaterial;
 ```
+
+## `src/art/WorldMaterial.ts` — owned by ground
+
+World geometry (floors, walls, cliffs, terrain) uses world-space projection,
+so it needs no UVs and never shows a seam between pieces. Floors project from
+above; walls and terrain use triplanar mapping. Up to four layers blend by
+height, weighted by the `aSplat` vertex attribute (vec3: weights of layers
+1..3; layer 0 takes the rest).
+
+```ts
+export const WORLD_ENV_ATTRIBUTE = 'aEnv';   // float: floor contact shadow 0..1; wall height above floor
+export const WORLD_SPLAT_ATTRIBUTE = 'aSplat';
+export interface WorldLayer { key: string; metres?: number; tint?: number; bump?: number; rough?: number; emissive?: number; emissiveIntensity?: number }
+export function worldMaterial(o: {
+  layers: WorldLayer[]; kind: 'floor' | 'wall' | 'terrain';
+  grime?: number; grimeAmount?: number; wet?: number; variation?: number; contact?: number;
+  cutaway?: boolean; roof?: boolean; detile?: boolean; side?: THREE.Side; tint?: number;
+}): THREE.MeshStandardMaterial;
+/** Sightline hole in walls between camera and hero; written once per frame by the level. */
+export function setWorldCutaway(x: number, y: number, z: number, radius: number): void;
+/** Roof and ceiling dissolve around the hero; written once per frame by the level. */
+export function setWorldRoof(x: number, z: number, radius: number): void;
+/** The same cutaway on a private (never a cached surface()) material. */
+export function addWorldCutaway<M extends THREE.Material>(mat: M): M;
+```
+
+Small effect textures (glow, beam, rune ring, web, crack, macro noise) live in
+`src/fx/UtilityTextures.ts`, owned by vfx.
 
 ## `src/art/Meshes.ts` — owned by ART
 

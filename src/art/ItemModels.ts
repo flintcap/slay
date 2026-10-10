@@ -30,7 +30,7 @@ import {
   type Rng,
 } from '../types';
 import { surface, surfaceVariant, emissiveMaterial, gemMaterial, additiveMaterial, beamMaterial } from './Materials';
-import { radialGlowTexture, runeRingTexture } from './Textures';
+import { radialGlowTexture, runeRingTexture } from '../fx/UtilityTextures';
 import { itemLook, type ItemLook } from './ItemLook';
 import { Random } from '../core/RNG';
 import {

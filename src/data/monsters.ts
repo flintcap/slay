@@ -19,7 +19,7 @@ export { MONSTER_AFFIXES, getAffix, rollAffixes, affixCountForRank } from './mon
 export { BOSSES, getBoss, pickBossForDepth } from './bosses';
 
 // ---------------------------------------------------------------------------
-// Palettes — six texture sets from the art library, tinted per creature.
+// Surfaces — six keys from the material library, tinted per creature.
 // ---------------------------------------------------------------------------
 
 const BONE = 'stone.crypt|0xd6cfb4';
