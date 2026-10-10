@@ -40,8 +40,11 @@ Long is fine for drafts, scripts, posts, and documents. This whole style guide i
 
 ## Project
 
-SLAY is an endless dungeon RPG roguelike in Three.js. Everything is generated in
-code. No asset files at all.
+SLAY is an endless dungeon RPG roguelike in Three.js. Models, props and effects
+are built in code. Free CC0 textures and sounds are allowed under
+`public/assets/`, each one listed in `ASSETS.md`.
+
+The remake plan lives in `docs/remake/` (start with `PLAN.md`).
 
 - `src/types.ts` holds every shared data shape. Read it before changing anything cross-cutting.
 - `CONTRACTS.md` documents the function signatures modules expose to each other.

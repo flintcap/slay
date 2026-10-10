@@ -1,3 +1,5 @@
+> **Finished.** The overhaul is closed. The remake in `docs/remake/` replaces it.
+
 # Resuming the overhaul
 
 To pause on purpose, tell Claude "pause". Every agent stops at a safe point,

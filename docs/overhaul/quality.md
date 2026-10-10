@@ -1,6 +1,6 @@
 # Stream: quality (bugs, speed, safety, access)
 
-Status: paused
+Status: cancelled (owner chose the remake, see docs/remake/; speed and soak moved to finish)
 
 ## Milestones
 
