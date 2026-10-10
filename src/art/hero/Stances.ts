@@ -87,13 +87,13 @@ export const STANCES: Record<Stance, StanceDef> = {
   // Sword, axe or mace in the right hand, held up and ready; left hand loose.
   oneHand: {
     idle(p, b) {
-      p.arm('R', 0.42, 0.22 + 0.1 * b.build, 0.25, 1.05, 0.1, -0.1, 0.25);
+      p.arm('R', 0.38, 0.26 + 0.1 * b.build, 0.05, 0.95, -0.9, -0.1, 0.3);
       p.fist('R', 1);
       relaxed(p, 'L', b, 0.25, 0.7);
       p.add('chest', 0.04, -0.08, 0);
     },
     move(p, b, run) {
-      p.arm('R', 0.2, 0.2 + 0.1 * b.build, 0.15, 0.75 + 0.4 * run, 0.1, 0, 0.35);
+      p.arm('R', 0.2, 0.2 + 0.1 * b.build, 0.05, 0.75 + 0.4 * run, -0.6, 0, 0.05);
       p.fist('R', 1);
       relaxed(p, 'L', b);
       runArm(p, 'L', b, run);
@@ -163,16 +163,16 @@ export const STANCES: Record<Stance, StanceDef> = {
   // Shield on the left forearm across the body, weapon ready behind it.
   shield: {
     idle(p, b) {
-      p.arm('L', 0.55, 0.15 + 0.08 * b.build, 0.75, 1.55, 0.4, 0, 0);
+      p.arm('L', 0.55, 0.15 + 0.08 * b.build, 1.0, 1.55, 0.4, 0, 0);
       p.fist('L', 1);
-      p.arm('R', 0.42, 0.22 + 0.1 * b.build, 0.25, 1.05, 0.1, -0.1, 0.25);
+      p.arm('R', 0.38, 0.26 + 0.1 * b.build, 0.05, 0.95, -0.9, -0.1, 0.3);
       p.fist('R', 1);
       p.add('chest', 0.03, -0.04, 0);
     },
     move(p, b, run) {
-      p.arm('L', 0.35, 0.15 + 0.08 * b.build, 0.6, 1.45, 0.4, 0, 0);
+      p.arm('L', 0.4, 0.15 + 0.08 * b.build, 0.95, 1.45, 0.4, 0, 0);
       p.fist('L', 1);
-      p.arm('R', 0.2, 0.2 + 0.1 * b.build, 0.15, 0.75 + 0.4 * run, 0.1, 0, 0.35);
+      p.arm('R', 0.2, 0.2 + 0.1 * b.build, 0.05, 0.75 + 0.4 * run, -0.6, 0, 0.05);
       p.fist('R', 1);
     },
     swing: [0.25, 0.45],
@@ -205,13 +205,13 @@ export const STANCES: Record<Stance, StanceDef> = {
   // A tall staff in the right hand, planted like a walking staff.
   staff: {
     idle(p, b) {
-      p.arm('R', 0.3, 0.24 + 0.1 * b.build, 0.1, 1.0, 0.1, 0, -0.4);
+      p.arm('R', 0.3, 0.24 + 0.1 * b.build, 0, 1.0, -0.35, 0, -0.4);
       p.fist('R', 1);
       relaxed(p, 'L', b, 0.15, 0.5);
       p.fist('L', 0.5);
     },
     move(p, b, run) {
-      p.arm('R', 0.25 + 0.1 * run, 0.22 + 0.1 * b.build, 0.1, 0.9 + 0.3 * run, 0.1, 0, -0.35);
+      p.arm('R', 0.25 + 0.1 * run, 0.22 + 0.1 * b.build, 0, 0.9 + 0.3 * run, -0.3, 0, -0.35);
       p.fist('R', 1);
       relaxed(p, 'L', b);
       runArm(p, 'L', b, run);

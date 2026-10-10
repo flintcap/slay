@@ -363,8 +363,14 @@ export class HeroAnimator {
   }
 
   /** Feet, for tools: planted or not, and the world ground point. */
-  get feet(): ReadonlyArray<{ planted: boolean; x: number; z: number }> {
+  get feet(): ReadonlyArray<{ planted: boolean; x: number; z: number; yaw: number; pitch: number }> {
     return this.gait.feet;
+  }
+
+  /** Foot geometry the gait plants by, for tools: ankle height, ball and heel contacts. */
+  get footGeo(): { ankleY: number; ballZ: number; heelZ: number } {
+    const l = this.legs[0];
+    return { ankleY: l.ankleY, ballZ: l.ballZ, heelZ: l.heelZ };
   }
 
   /** Gait numbers, for tools. */
@@ -700,7 +706,7 @@ export class HeroAnimator {
     const pelRoll = 0.06 * mw * (1 - 0.3 * rw) * Math.cos(mid);
     const counter = (0.2 + 0.08 * rw) * mw * Math.cos(ph);
     // Lean into speed and acceleration, on a spring so it settles.
-    const leanTarget = (0.05 + 0.16 * rw) * mw + clamp(this.accel * 0.025, -0.12, 0.18);
+    const leanTarget = (0.05 + 0.24 * rw) * mw + clamp(this.accel * 0.025, -0.12, 0.18);
     this.leanVel += ((leanTarget - this.lean) * 90 - this.leanVel * 14) * dt;
     this.lean += this.leanVel * dt;
     const speed = Math.hypot(this.vx, this.vz);

@@ -13,6 +13,12 @@ import { ITEM_BASES } from '../src/data/itemBases';
 import type { EquipSlot, ItemRarity } from '../src/types';
 import { HERO_LOOKS } from '../src/art/hero/Looks';
 import { loadMeshCache } from '../src/art/hero/MeshCache';
+import { HeroAnimator } from '../src/art/hero/Animator';
+import { holdItem } from '../src/art/hero/Hold';
+import type { Stance } from '../src/art/hero/Stances';
+import type { HeroModel } from '../src/art/hero/Hero';
+import { buildItemModel } from '../src/art/ItemModels';
+import { Random } from '../src/core/RNG';
 
 const BG = '#16181e';
 const INK = '#c9d1de';
@@ -56,7 +62,7 @@ function sheet(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRendering
 function shoot(
   g: CanvasRenderingContext2D,
   obj: THREE.Object3D,
-  opts: { x: number; y: number; w: number; h: number; yaw: number; target: THREE.Vector3; dist: number; fov?: number; pitch?: number },
+  opts: { x: number; y: number; w: number; h: number; yaw: number; target: THREE.Vector3; dist: number; fov?: number; pitch?: number; floor?: boolean },
 ): void {
   const r = studio(opts.w, opts.h);
   const scene = new THREE.Scene();
@@ -72,6 +78,7 @@ function shoot(
   lights(scene);
   const holder = new THREE.Group();
   holder.add(obj);
+  if (opts.floor) holder.add(floorGrid());
   holder.rotation.y = opts.yaw;
   scene.add(holder);
   const cam = new THREE.PerspectiveCamera(opts.fov ?? 30, opts.w / opts.h, 0.05, 50);
@@ -81,6 +88,181 @@ function shoot(
   r.render(scene, cam);
   g.drawImage(r.domElement, opts.x, opts.y);
   holder.remove(obj);
+}
+
+let grid: THREE.Object3D | null = null;
+/** A floor with a half-metre grid, fixed in the world, to judge sliding feet against. */
+function floorGrid(): THREE.Object3D {
+  if (!grid) {
+    const g = new THREE.Group();
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x2a2c33, roughness: 1 }));
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = -0.002;
+    g.add(plane);
+    g.add(new THREE.GridHelper(80, 160, 0x4a5060, 0x3a3e48));
+    grid = g;
+  }
+  return grid;
+}
+
+/** What each stance holds for the sheets: slot, item base, grip. */
+const STANCE_ITEMS: Record<Stance, Array<['mainHand' | 'offHand', string, string]>> = {
+  unarmed: [],
+  oneHand: [['mainHand', 'sword.broad', 'sword']],
+  dagger: [['mainHand', 'dagger.dagger', 'dagger']],
+  wand: [['mainHand', 'wand.wand', 'wand']],
+  dual: [
+    ['mainHand', 'dagger.kris', 'dagger'],
+    ['offHand', 'dagger.dirk', 'dagger'],
+  ],
+  shield: [
+    ['mainHand', 'sword.broad', 'sword'],
+    ['offHand', 'shield.heater', 'shield'],
+  ],
+  twoHand: [['mainHand', 'sword.great', 'twoHand']],
+  staff: [['mainHand', 'staff.long', 'staff']],
+  bow: [['offHand', 'bow.long', 'bow']],
+};
+const STANCE_LIST = Object.keys(STANCE_ITEMS) as Stance[];
+const CLASS_STANCE: Record<CharClassId, Stance> = {
+  warden: 'shield',
+  pyromancer: 'wand',
+  shadowblade: 'dual',
+  stormcaller: 'staff',
+  revenant: 'twoHand',
+  ranger: 'bow',
+};
+
+interface Actor {
+  hero: HeroModel;
+  anim: HeroAnimator;
+  /** Stands in for the player's root: the animator follows it over the floor. */
+  mover: THREE.Group;
+  /** Holds the mover and the floor grid, for shooting. */
+  world: THREE.Group;
+}
+
+function actor(cls: CharClassId, stance: Stance, name = `${cls}-${stance}`): Actor {
+  const hero = buildHero(HERO_LOOKS[cls], name);
+  for (const [slot, id, grip] of STANCE_ITEMS[stance]) {
+    const base = ITEM_BASES.find((b) => b.id === id);
+    if (!base) continue;
+    holdItem(hero.rig, slot, buildItemModel(base.visual, new Random(7), 'rare'), grip);
+  }
+  const anim = new HeroAnimator(hero.rig.bones);
+  anim.setStance(stance);
+  const mover = new THREE.Group();
+  mover.add(hero.root);
+  anim.follow(mover);
+  const world = new THREE.Group();
+  world.add(mover);
+  return { hero, anim, mover, world };
+}
+
+/** A path for the mover: position and heading at time t. */
+type Drive = (t: number, m: THREE.Group, dt: number) => void;
+
+/** Steps the actor at 60 Hz along a drive, calling `each` after every frame. */
+function simulate(a: Actor, from: number, to: number, drive: Drive, each?: (t: number) => void): void {
+  const dt = 1 / 60;
+  for (let t = from; t < to - 1e-6; t += dt) {
+    drive(t, a.mover, dt);
+    a.anim.update(dt);
+    each?.(t + dt);
+  }
+}
+
+const still: Drive = () => {};
+const straight =
+  (v: number): Drive =>
+  (t, m) => {
+    m.position.set(0, 0, v * t);
+    m.rotation.y = 0;
+  };
+/** Player-style: accelerate toward a run, hold, then let go and stop. */
+function startStop(): Drive {
+  let v = 0;
+  let z = 0;
+  return (t, m, dt) => {
+    const want = t > 0.3 && t < 1.3 ? 4.6 : 0;
+    v += (want - v) * Math.min(1, dt * (want > 0 ? 14 : 18));
+    z += v * dt;
+    m.position.set(0, 0, z);
+    m.rotation.y = 0;
+  };
+}
+/** Turns on the spot, half a turn and back, at the player's turn rate. */
+function turnInPlace(): Drive {
+  let yaw = 0;
+  return (t, m, dt) => {
+    const want = t < 0.4 ? 0 : t < 1.6 ? Math.PI * 0.95 : 0;
+    yaw += (want - yaw) * Math.min(1, dt * 16);
+    m.position.set(0, 0, 0);
+    m.rotation.y = yaw;
+  };
+}
+/** Runs a circle: a constant turn while moving. */
+function circle(v: number, r: number): Drive {
+  return (t, m) => {
+    const a = (v / r) * t;
+    m.position.set(r - r * Math.cos(a), 0, r * Math.sin(a));
+    m.rotation.y = a;
+  };
+}
+
+/** Shoots the actor framed on its mover, the floor fixed under it. */
+function shootActor(g: CanvasRenderingContext2D, a: Actor, x: number, y: number, w: number, h: number, yaw: number, dist = 4.2): void {
+  const H = a.hero.look.shape.height;
+  const tgt = a.mover.position.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).add(new THREE.Vector3(0, H * 0.5, 0));
+  shoot(g, a.world, { x, y, w, h, yaw, target: tgt, dist, floor: true, pitch: 0.18 });
+}
+
+/**
+ * How far planted feet slide and float: each planted frame, where the foot's
+ * contact point really is (from the skinned bones) against where the gait
+ * put it on the floor. Millimetres.
+ */
+function footSlide(a: Actor, drive: Drive, seconds: number): { slide: number; drift: number; float: number; air: number; steps: number } {
+  let slide = 0;
+  let float = 0;
+  let air = 0;
+  let steps = 0;
+  let drift = 0;
+  const off = a.anim.on('step', () => steps++);
+  const bones = [a.hero.rig.bones.footL, a.hero.rig.bones.footR];
+  const geo = a.anim.footGeo;
+  const p = new THREE.Vector3();
+  // Frame-to-frame travel of each planted contact point, summed per plant.
+  const last = [new THREE.Vector3(), new THREE.Vector3()];
+  const lastSign = [0, 0];
+  const run = [0, 0];
+  simulate(a, 0, seconds, drive, (t) => {
+    if (t < 0.5) return;
+    a.world.updateMatrixWorld(true);
+    a.anim.feet.forEach((f, i) => {
+      const sign = f.pitch >= 0 ? 1 : -1;
+      const pz = sign > 0 ? geo.ballZ : geo.heelZ;
+      p.set(0, -geo.ankleY, pz).applyMatrix4(bones[i]!.matrixWorld);
+      if (!f.planted) {
+        air = Math.max(air, p.y * 1000);
+        lastSign[i] = 0;
+        run[i] = 0;
+        return;
+      }
+      const ex = f.x + Math.sin(f.yaw) * pz;
+      const ez = f.z + Math.cos(f.yaw) * pz;
+      slide = Math.max(slide, Math.hypot(p.x - ex, p.z - ez) * 1000);
+      float = Math.max(float, Math.abs(p.y) * 1000);
+      if (lastSign[i] === sign) {
+        run[i]! += Math.hypot(p.x - last[i]!.x, p.z - last[i]!.z) * 1000;
+        drift = Math.max(drift, run[i]!);
+      }
+      lastSign[i] = sign;
+      last[i]!.copy(p);
+    });
+  });
+  off();
+  return { slide, drift, float, air, steps };
 }
 
 function bareBody(cls: CharClassId): { root: THREE.Object3D; info: string } {
@@ -207,7 +389,91 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
         lines.push(`${cls} ${kitName}: ${tris} tris, ${draws} draws, dressed in ${ms | 0} ms`);
       }
     }
+    // Feet: planted feet must stay planted, on the floor, whatever the body does.
+    for (const cls of list) {
+      const runs: Array<[string, Drive, number]> = [
+        ['walk', straight(1.6), 4],
+        ['run', straight(4.6), 4],
+        ['start-stop', startStop(), 3],
+        ['turn', turnInPlace(), 3],
+        ['circle', circle(3.4, 3), 4],
+      ];
+      for (const [label, drive, secs] of runs) {
+        const a = actor(cls, CLASS_STANCE[cls], `${cls}-feet-${label}`);
+        const r = footSlide(a, drive, secs);
+        if (r.slide > 15 || r.drift > 15) bad(`${cls} ${label}: planted foot slides ${Math.max(r.slide, r.drift).toFixed(1)} mm`);
+        if ((label === 'walk' || label === 'run') && r.air < 40) bad(`${cls} ${label}: feet never leave the floor`);
+        if (r.float > 20) bad(`${cls} ${label}: planted foot off the floor by ${r.float.toFixed(1)} mm`);
+        if ((label === 'walk' || label === 'run') && r.steps < secs) bad(`${cls} ${label}: only ${r.steps} steps`);
+        lines.push(`${cls} ${label}: slide ${r.slide.toFixed(1)} mm, drift ${r.drift.toFixed(1)} mm, float ${r.float.toFixed(1)} mm, lift ${r.air.toFixed(0)} mm, ${r.steps} steps`);
+      }
+    }
     return JSON.stringify({ pass, lines });
+  },
+  /**
+   * Locomotion strips: idle, a walk cycle, a run cycle, start and stop, a
+   * turn on the spot, a run round a circle. `--class=` and `--stance=` pick
+   * who and what they hold.
+   */
+  async clips(f) {
+    await loadMeshCache();
+    const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
+    const stance = (f.stance as Stance | undefined) ?? CLASS_STANCE[cls];
+    const TW = 200;
+    const TH = 340;
+    const COLS = 8;
+    // label, drive, warm-up, span (0: one gait cycle), view yaw
+    const rows: Array<[string, () => Drive, number, number, number]> = [
+      ['idle', () => still, 1, 6, 0.5],
+      ['walk', () => straight(1.6), 2, 0, Math.PI / 2],
+      ['run', () => straight(4.6), 2, 0, Math.PI / 2],
+      ['start, stop', startStop, 0.2, 2.2, Math.PI / 2],
+      ['turn', turnInPlace, 0.3, 2.4, 0.3],
+      ['circle', () => circle(3.4, 3), 2, 1.2, Math.PI / 2],
+    ];
+    const { c, g } = sheet(TW * COLS, TH * rows.length);
+    rows.forEach(([label, make, warm, span0, view], r) => {
+      const drive = make();
+      const a = actor(cls, stance, `${cls}-${stance}-${r}`);
+      simulate(a, 0, warm, drive);
+      const span = span0 > 0 ? span0 : 1 / a.anim.gaitInfo.freq;
+      let t = warm;
+      for (let k = 0; k < COLS; k++) {
+        const next = warm + (span * k) / COLS;
+        simulate(a, t, next, drive);
+        t = next;
+        shootActor(g, a, k * TW, r * TH, TW, TH, view);
+      }
+      g.fillStyle = INK;
+      const gi = a.anim.gaitInfo;
+      g.fillText(`${label}  ${stance}  ${gi.freq.toFixed(2)} Hz  run ${gi.runW.toFixed(2)}`, 8, r * TH + 18);
+    });
+    return c.toDataURL('image/png');
+  },
+  /** Every stance on one class: standing, mid-walk, mid-run. */
+  async stances(f) {
+    await loadMeshCache();
+    const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
+    const list = f.stance ? (f.stance.split(',') as Stance[]) : STANCE_LIST;
+    const TW = 220;
+    const TH = 380;
+    const { c, g } = sheet(TW * 3 * 3, TH * Math.ceil(list.length / 3));
+    list.forEach((st, i) => {
+      const ox = (i % 3) * TW * 3;
+      const oy = Math.floor(i / 3) * TH;
+      const idle = actor(cls, st, `${cls}-${st}-i`);
+      simulate(idle, 0, 1.5, still);
+      shootActor(g, idle, ox, oy, TW, TH, 0.6);
+      const walk = actor(cls, st, `${cls}-${st}-w`);
+      simulate(walk, 0, 2.3, straight(1.6));
+      shootActor(g, walk, ox + TW, oy, TW, TH, 1.1);
+      const run = actor(cls, st, `${cls}-${st}-r`);
+      simulate(run, 0, 2.15, straight(4.6));
+      shootActor(g, run, ox + TW * 2, oy, TW, TH, 1.3);
+      g.fillStyle = INK;
+      g.fillText(st, ox + 8, oy + 18);
+    });
+    return c.toDataURL('image/png');
   },
   /** Every class body, bare, front / side / back, in the bind pose. */
   async bodies(f) {
