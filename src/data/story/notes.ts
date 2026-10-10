@@ -60,6 +60,174 @@ export const NOTES: LoreNote[] = [
   },
 
   // ---------------------------------------------------------------------------
+  // The Blackroot Wood
+  // ---------------------------------------------------------------------------
+  {
+    id: 'note.darkForest.blaze',
+    title: 'Blazes',
+    biome: 'darkForest',
+    minDepth: 1,
+    source: 'Cut into the bark of a trail tree',
+    text: `Blaze every third tree, Renn said, so we can find the way back. I blazed every third tree. Coming back, every tree was blazed, in my hand, at my height, all the way to the edge of sight.`,
+  },
+  {
+    id: 'note.darkForest.forester',
+    title: 'The Forester’s Rule',
+    biome: 'darkForest',
+    minDepth: 2,
+    source: 'A wooden board nailed to an oak',
+    text: `By order of the House: no felling, no burning, no digging under the roots. The wood is fed. The wood is grateful. Do not give it a reason to be anything else.`,
+  },
+  {
+    id: 'note.darkForest.camp',
+    title: 'Cold Camp',
+    biome: 'darkForest',
+    minDepth: 4,
+    source: 'Scratched on a tin plate by a dead fire',
+    text: `No fire tonight. Last night we lit one and the trees leaned in to warm themselves, and in the morning Tam was gone and there was a new sapling where he had slept.`,
+  },
+
+  // ---------------------------------------------------------------------------
+  // The Gallows Fen
+  // ---------------------------------------------------------------------------
+  {
+    id: 'note.swamp.sentence',
+    title: 'A Sentence',
+    biome: 'swamp',
+    minDepth: 2,
+    source: 'A brass tag on a gibbet chain',
+    text: `Hanged in the fen for theft of bread. Sentence: until the rope rots. The rope has been replaced eleven times. The clerk who keeps replacing it is not on any roster.`,
+  },
+  {
+    id: 'note.swamp.planks',
+    title: 'Planks',
+    biome: 'swamp',
+    minDepth: 3,
+    source: 'Pencilled on a boardwalk plank',
+    text: `This plank was not here this morning. It has a name burned into it and a date. The date is next week. I have stepped round it. Hollis stepped on it.`,
+  },
+  {
+    id: 'note.swamp.drowned',
+    title: 'Low Water',
+    biome: 'swamp',
+    minDepth: 6,
+    source: 'Written on the inside of a boot',
+    text: `In a dry summer the fen drops a foot and you can see them under the surface, standing up, all facing the same way. Toward the city. Waiting for the water to bring them home.`,
+  },
+
+  // ---------------------------------------------------------------------------
+  // The Bleached Reach
+  // ---------------------------------------------------------------------------
+  {
+    id: 'note.desert.wall',
+    title: 'The Wall',
+    biome: 'desert',
+    minDepth: 3,
+    source: 'Painted on a ruined wall, in red',
+    text: `This was a city. It had a name. We gave the name to the sand to keep, and the sand has kept it, every grain. Listen to the wind and you will hear it said.`,
+  },
+  {
+    id: 'note.desert.water',
+    title: 'Water Ration',
+    biome: 'desert',
+    minDepth: 4,
+    source: 'A page torn from a delver’s log',
+    text: `Day four. One mouthful each at dawn and dusk. The sun has not gone down since we arrived. Wenna says it is still dawn. Wenna says it has been dawn for three days.`,
+  },
+  {
+    id: 'note.desert.caravan',
+    title: 'Caravan',
+    biome: 'desert',
+    minDepth: 7,
+    source: 'Carved on a camel bone',
+    text: `We passed a caravan going the other way, out of the dunes. Forty beasts, sixty drivers, no shadows. They asked us the way to the city. We pointed back toward Caul. They thanked us and kept walking into the sand.`,
+  },
+
+  // ---------------------------------------------------------------------------
+  // The Sand-Kings' Tombs
+  // ---------------------------------------------------------------------------
+  {
+    id: 'note.desertTomb.seal',
+    title: 'The Seal',
+    biome: 'desertTomb',
+    minDepth: 3,
+    source: 'Stamped into the wax of a tomb door',
+    text: `Here waits the King, and his household, and his guard, until the sand goes back where it came from. Do not wake him early. He has been told how long it will be, and he is a patient man.`,
+  },
+  {
+    id: 'note.desertTomb.servant',
+    title: 'Servant’s Tally',
+    biome: 'desertTomb',
+    minDepth: 5,
+    source: 'Scratched on the back of a funeral mask',
+    text: `Day nine thousand and something. Lamps trimmed. Floors swept. The King asked again whether the sand has gone. I told him it has not. I have not looked. I do not think he would like the answer.`,
+  },
+  {
+    id: 'note.desertTomb.robbers',
+    title: 'Robbers',
+    biome: 'desertTomb',
+    minDepth: 8,
+    source: 'A note pinned under a gold cup',
+    text: `Take nothing. We took a cup, once. The next night the King's guard walked out of the sand and into our camp and asked, politely, for it back. They took Orrin with it, as interest.`,
+  },
+
+  // ---------------------------------------------------------------------------
+  // The Frostmarch
+  // ---------------------------------------------------------------------------
+  {
+    id: 'note.tundra.orders',
+    title: 'Standing Orders',
+    biome: 'tundra',
+    minDepth: 6,
+    source: 'A dispatch case, frozen shut, cut open',
+    text: `To all companies: hold the high ground until relieved. Relief is on the march. Do not break camp. Do not light fires the enemy can see. Do not, under any circumstances, go home.`,
+  },
+  {
+    id: 'note.tundra.drift',
+    title: 'The Drift',
+    biome: 'tundra',
+    minDepth: 8,
+    source: 'Chalked on a frozen cart',
+    text: `The drifts are full of soldiers. Dig one out and he thanks you, and asks if relief has come, and when you say no he lies back down and asks you to cover him up again. We have stopped digging.`,
+  },
+  {
+    id: 'note.tundra.horn',
+    title: 'The Horn',
+    biome: 'tundra',
+    minDepth: 12,
+    source: 'Written in a dead officer’s hand',
+    text: `Somebody keeps sounding the advance from the next ridge. The men get up out of the snow to answer it, every time. I have walked to the next ridge four times. There is never anyone there, only the horn, still warm.`,
+  },
+
+  // ---------------------------------------------------------------------------
+  // The Burning Steppe
+  // ---------------------------------------------------------------------------
+  {
+    id: 'note.hell.crust',
+    title: 'The Crust',
+    biome: 'hell',
+    minDepth: 10,
+    source: 'Burned into a slab of black glass',
+    text: `Walk where the glass is dark. Where it glows, it is thin. Where it is thin, something underneath can see your feet, and it has never seen feet before, and it is very curious.`,
+  },
+  {
+    id: 'note.hell.prayer',
+    title: 'A Prayer',
+    biome: 'hell',
+    minDepth: 12,
+    source: 'Scratched on a melted helmet',
+    text: `Every god of Caul I prayed to up there, I have found down here, chained, and every one of them was glad to see me. Not one of them has asked me to free it. They are all waiting to see what I do.`,
+  },
+  {
+    id: 'note.hell.ledger',
+    title: 'The Ledger',
+    biome: 'hell',
+    minDepth: 16,
+    source: 'A page that will not burn',
+    text: `Every fire above was lit from this one. Every forge in the Works, every pyre in the Cinderfields, every lamp in the Ossuary. It keeps an account. It is owed a great deal of warmth, and it means to collect.`,
+  },
+
+  // ---------------------------------------------------------------------------
   // The Root Deeps
   // ---------------------------------------------------------------------------
   {

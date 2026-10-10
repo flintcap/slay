@@ -140,7 +140,10 @@ export function installStoryPlaces(): void {
 // Journal
 // ---------------------------------------------------------------------------
 
-const BIOME_ORDER: BiomeId[] = ['crypt', 'caverns', 'foundry', 'sunkenTemple', 'hive', 'frostvault', 'ashwaste', 'voidspire'];
+const BIOME_ORDER: BiomeId[] = [
+  'crypt', 'caverns', 'darkForest', 'foundry', 'swamp', 'sunkenTemple', 'desert', 'desertTomb',
+  'hive', 'tundra', 'frostvault', 'ashwaste', 'hell', 'voidspire',
+];
 
 addJournalSection({
   id: 'notes',

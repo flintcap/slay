@@ -686,7 +686,15 @@ export type BiomeId =
   | 'hive'
   | 'frostvault'
   | 'ashwaste'
-  | 'voidspire';
+  | 'voidspire'
+  // Added by the map remake. Outdoor: darkForest, swamp, desert, tundra (and
+  // ashwaste, hell). Indoor: desertTomb (and the eight above but ashwaste).
+  | 'darkForest'
+  | 'swamp'
+  | 'desert'
+  | 'desertTomb'
+  | 'tundra'
+  | 'hell';
 
 export interface BiomeDef {
   id: BiomeId;
@@ -714,6 +722,8 @@ export interface BiomeDef {
   /** Monster families weighted up in this biome. */
   families: MonsterFamily[];
   music: string;
+  /** Open sky: a map zone of this biome has no roof (maps remake). */
+  outdoor?: boolean;
 }
 
 export type LayoutKind =
@@ -731,7 +741,19 @@ export type LayoutKind =
   // floor with almost no walls at all.
   | 'cathedral'
   | 'warrens'
-  | 'terraces';
+  | 'terraces'
+  // Zone generators of the map remake (world/zones/*). Outdoor: forest,
+  // swamp, dunes, tundra, wastes. Indoor: crypt, cave, tomb, keep, rift.
+  | 'forest'
+  | 'swamp'
+  | 'dunes'
+  | 'tundra'
+  | 'wastes'
+  | 'crypt'
+  | 'cave'
+  | 'tomb'
+  | 'keep'
+  | 'rift';
 
 export type TileKind =
   | 'void'

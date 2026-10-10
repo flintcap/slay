@@ -195,7 +195,7 @@ export interface MonsterCatalog {
  * be generated, previewed and screenshotted before the monster vertical lands;
  * `scenes/` replaces it at boot with the real registry.
  */
-const FALLBACK_MONSTERS: Record<BiomeId, string[]> = {
+const FALLBACK_MONSTERS: Partial<Record<BiomeId, string[]>> = {
   crypt: ['skeleton', 'ghoul', 'wight', 'boneArcher', 'cryptSpawn'],
   caverns: ['caveLurker', 'fungalCrawler', 'rockBeast', 'slime', 'batSwarm'],
   foundry: ['forgeGolem', 'cinderImp', 'slagHound', 'boltConstruct', 'emberWisp'],
@@ -224,7 +224,7 @@ const FALLBACK_AFFIXES = [
   'entangling',
 ];
 
-const FALLBACK_BOSSES: Record<BiomeId, string[]> = {
+const FALLBACK_BOSSES: Partial<Record<BiomeId, string[]>> = {
   crypt: ['boneTyrant', 'graveMother'],
   caverns: ['theDevourer', 'stoneWyrm'],
   foundry: ['slagLord', 'theBellows'],
@@ -244,7 +244,7 @@ const fallbackCatalog: MonsterCatalog = {
       // eslint-disable-next-line no-console
       console.info('[world] using placeholder monster catalogue — call setMonsterCatalog() at boot');
     }
-    const pool = FALLBACK_MONSTERS[biome] ?? FALLBACK_MONSTERS.crypt;
+    const pool = FALLBACK_MONSTERS[biome] ?? FALLBACK_MONSTERS.crypt!;
     const out: string[] = [];
     for (let i = 0; i < count; i++) out.push(rng.pick(pool));
     return out;
@@ -255,7 +255,7 @@ const fallbackCatalog: MonsterCatalog = {
     return shuffled.slice(0, count);
   },
   bossFor(depth, biome, rng) {
-    const pool = FALLBACK_BOSSES[biome] ?? FALLBACK_BOSSES.crypt;
+    const pool = FALLBACK_BOSSES[biome] ?? FALLBACK_BOSSES.crypt!;
     return rng.pick(pool);
   },
 };

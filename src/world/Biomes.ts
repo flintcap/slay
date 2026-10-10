@@ -190,7 +190,7 @@ const CRYPT = def(
     accent: 0xff8a3c,
   },
   { floor: 'stone.crypt', wall: 'stone.crypt', trim: 'metal.iron' },
-  ['catacombs', 'halls', 'warrens'],
+  ['crypt', 'keep'],
   'dust',
   ['undead', 'humanoid', 'aberration'],
   'dirge',
@@ -215,7 +215,7 @@ const CAVERNS = def(
     accent: 0x53f0c8,
   },
   { floor: 'stone.cave', wall: 'stone.cave', trim: 'crystal.gem' },
-  ['caves', 'terraces', 'ruins'],
+  ['cave'],
   'spores',
   ['beast', 'insect', 'ooze', 'plant'],
   'drip',
@@ -241,7 +241,7 @@ const FOUNDRY = def(
     accent: 0xff5a14,
   },
   { floor: 'metal.iron', wall: 'stone.foundry', trim: 'metal.bronze' },
-  ['halls', 'rooms', 'cathedral'],
+  ['keep'],
   'embers',
   ['construct', 'demon', 'elemental'],
   'forge',
@@ -267,7 +267,7 @@ const SUNKEN_TEMPLE = def(
     accent: 0xffd27a,
   },
   { floor: 'stone.marble', wall: 'stone.sunken', trim: 'metal.gold' },
-  ['cathedral', 'spiral', 'rooms'],
+  ['keep'],
   'bubbles',
   ['aberration', 'humanoid', 'ooze', 'beast'],
   'submerged',
@@ -292,7 +292,7 @@ const HIVE = def(
     accent: 0xffc23c,
   },
   { floor: 'flesh.chitin', wall: 'flesh.rotted', trim: 'flesh.chitin' },
-  ['warrens', 'caves', 'maze'],
+  ['cave'],
   'spores',
   ['insect', 'aberration', 'plant', 'ooze'],
   'chitter',
@@ -318,7 +318,7 @@ const FROSTVAULT = def(
     accent: 0x8fd8ff,
   },
   { floor: 'stone.ice', wall: 'crystal.ice', trim: 'metal.steel' },
-  ['spiral', 'catacombs', 'halls'],
+  ['cave', 'keep'],
   'snow',
   ['elemental', 'beast', 'undead', 'construct'],
   'glacial',
@@ -346,7 +346,7 @@ const ASHWASTE = def(
     accent: 0xff6a2a,
   },
   { floor: 'earth.ash', wall: 'stone.sunken', trim: 'stone.foundry' },
-  ['terraces', 'ruins', 'caves'],
+  ['wastes'],
   'ash',
   ['demon', 'elemental', 'beast', 'construct'],
   'windswept',
@@ -373,23 +373,123 @@ const VOIDSPIRE = def(
     accent: 0xff3ce0,
   },
   { floor: 'stone.obsidian', wall: 'crystal.void', trim: 'crystal.void' },
-  ['maze', 'warrens', 'spiral'],
+  ['rift'],
   'void',
   ['aberration', 'demon', 'undead', 'elemental'],
   'null',
 );
 
+// ---------------------------------------------------------------------------
+// The map remake's biomes (docs/remake/maps.md). Gameplay fields are maps'.
+// The colour fields are a first pass for ground to replace; until ground
+// writes their `ART`, `biomeArt` lends each the look in `LOOK_FALLBACK`.
+// ---------------------------------------------------------------------------
+
+/** DARK FOREST — the first ground outside the walls. Moonlight through a canopy, a path the trees did not agree to. */
+const DARK_FOREST = def(
+  'darkForest',
+  'The Blackroot Wood',
+  'Old trees with their roots in older graves. The path is the only thing here that was made for you.',
+  1,
+  { fog: 0x0a110c, fogDensity: 0.03, ambient: 0x2c3e34, ambientI: 0.72, key: 0x9fb4cc, keyI: 0.5, accent: 0xff9a4a },
+  { floor: 'stone.cave', wall: 'stone.cave', trim: 'crystal.gem' },
+  ['forest'],
+  'spores',
+  ['beast', 'plant', 'humanoid', 'undead'],
+  'darkForest',
+);
+
+/** SWAMP — black water, dead trees, boardwalks somebody keeps mending. */
+const SWAMP = def(
+  'swamp',
+  'The Gallows Fen',
+  'Black water to the knee, and the knee is the shallow part. They hanged people out here once, to save on rope.',
+  2,
+  { fog: 0x0c140e, fogDensity: 0.036, ambient: 0x34462e, ambientI: 0.72, key: 0xa8c49a, keyI: 0.36, accent: 0xb8e060 },
+  { floor: 'stone.marble', wall: 'stone.sunken', trim: 'metal.gold' },
+  ['swamp'],
+  'spores',
+  ['ooze', 'plant', 'insect', 'undead', 'beast'],
+  'swamp',
+);
+
+/** DESERT — dunes, wind and the bones of walls. */
+const DESERT = def(
+  'desert',
+  'The Bleached Reach',
+  'Sand to the end of sight and walls that used to be a city. The wind has been taking it apart for a thousand years.',
+  3,
+  { fog: 0x2a2014, fogDensity: 0.02, ambient: 0x6a5a44, ambientI: 0.9, key: 0xffd8a0, keyI: 1.0, accent: 0xff9a3a },
+  { floor: 'earth.ash', wall: 'stone.sunken', trim: 'stone.foundry' },
+  ['dunes'],
+  'dust',
+  ['beast', 'insect', 'humanoid', 'elemental'],
+  'desert',
+);
+
+/** DESERT TOMB — the city went under the sand, and the dead went with it. */
+const DESERT_TOMB = def(
+  'desertTomb',
+  'The Sand-Kings’ Tombs',
+  'Corridors cut for kings, and the kings still in them. The sand has got in everywhere except the coffins.',
+  3,
+  { fog: 0x140e08, fogDensity: 0.03, ambient: 0x4a3a28, ambientI: 0.7, key: 0xd8b880, keyI: 0.3, accent: 0xffa040 },
+  { floor: 'stone.crypt', wall: 'stone.crypt', trim: 'metal.gold' },
+  ['tomb'],
+  'dust',
+  ['undead', 'construct', 'insect'],
+  'desertTomb',
+);
+
+/** TUNDRA — frozen highlands under a white sky, cliffs and dead camps. */
+const TUNDRA = def(
+  'tundra',
+  'The Frostmarch',
+  'High ground under a sky the colour of a blade. The snow keeps everything that falls in it, and a great deal has.',
+  6,
+  { fog: 0x1c2632, fogDensity: 0.026, ambient: 0x6a84a4, ambientI: 0.95, key: 0xdfeaff, keyI: 0.8, accent: 0xffa860 },
+  { floor: 'stone.ice', wall: 'crystal.ice', trim: 'metal.steel' },
+  ['tundra'],
+  'snow',
+  ['beast', 'elemental', 'undead', 'humanoid'],
+  'tundra',
+);
+
+/** HELL — black rock, rivers of fire, a sky lit from underneath. */
+const HELL = def(
+  'hell',
+  'The Burning Steppe',
+  'The ground is a crust over fire, and in places it gave up pretending. Everything here was made to hurt, and is proud of it.',
+  10,
+  { fog: 0x1e0805, fogDensity: 0.03, ambient: 0x5a2010, ambientI: 0.7, key: 0xff8a50, keyI: 0.7, accent: 0xff4a10 },
+  { floor: 'stone.obsidian', wall: 'stone.foundry', trim: 'metal.iron' },
+  ['wastes'],
+  'embers',
+  ['demon', 'elemental', 'undead'],
+  'hell',
+);
+
+/** Biomes with open sky. */
+const OUTDOOR = new Set<BiomeId>(['darkForest', 'swamp', 'desert', 'tundra', 'ashwaste', 'hell']);
+
 /** All biomes, ordered by the depth they unlock at. */
 export const BIOMES: BiomeDef[] = [
   CRYPT,
   CAVERNS,
+  DARK_FOREST,
   FOUNDRY,
+  SWAMP,
   SUNKEN_TEMPLE,
+  DESERT,
+  DESERT_TOMB,
   HIVE,
+  TUNDRA,
   FROSTVAULT,
   ASHWASTE,
+  HELL,
   VOIDSPIRE,
 ];
+for (const b of BIOMES) b.outdoor = OUTDOOR.has(b.id);
 
 const BY_ID: Record<BiomeId, BiomeDef> = {
   crypt: CRYPT,
@@ -400,6 +500,12 @@ const BY_ID: Record<BiomeId, BiomeDef> = {
   frostvault: FROSTVAULT,
   ashwaste: ASHWASTE,
   voidspire: VOIDSPIRE,
+  darkForest: DARK_FOREST,
+  swamp: SWAMP,
+  desert: DESERT,
+  desertTomb: DESERT_TOMB,
+  tundra: TUNDRA,
+  hell: HELL,
 };
 
 export function getBiome(id: BiomeId): BiomeDef {
@@ -424,7 +530,20 @@ export function biomeForDepth(depth: number, rng: Rng): BiomeId {
 // Art configuration per biome
 // ---------------------------------------------------------------------------
 
-const ART: Record<BiomeId, BiomeArt> = {
+/**
+ * The old biome whose art a new biome borrows until ground writes its own
+ * (maps -> ground contract). Outdoor borrowers also lose the roof.
+ */
+const LOOK_FALLBACK: Partial<Record<BiomeId, BiomeId>> = {
+  darkForest: 'caverns',
+  swamp: 'sunkenTemple',
+  desert: 'ashwaste',
+  desertTomb: 'crypt',
+  tundra: 'frostvault',
+  hell: 'foundry',
+};
+
+const ART: Partial<Record<BiomeId, BiomeArt>> = {
   crypt: {
     id: 'crypt',
     landmarks: [{ kind: 'ossuary', weight: 5 }, { kind: 'statue', weight: 3 }, { kind: 'altar', weight: 2 }],
@@ -983,7 +1102,7 @@ const PLAIN = (name: string, blurb: string, weight = 6): BiomeVariant => ({
   patch: {},
 });
 
-const VARIANTS: Record<BiomeId, BiomeVariant[]> = {
+const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   crypt: [
     PLAIN('The Ossuary Tiers', 'Grave-cold corridors of stacked stone.'),
     {
@@ -1303,11 +1422,24 @@ export function variantLabel(id: BiomeId, variant?: string): { name: string; blu
  * merge of the prop tables would silently blend two sets of clutter.
  */
 export function biomeArt(id: BiomeId, variant?: string): BiomeArt {
-  const base = ART[id] ?? ART.crypt;
+  const base = ownArt(id);
   if (!variant || variant === 'plain') return base;
   const v = (VARIANTS[id] ?? []).find((x) => x.id === variant);
   if (!v) return base;
   return { ...base, ...v.patch };
+}
+
+/** A biome's own art, or the borrowed look of `LOOK_FALLBACK`. */
+function ownArt(id: BiomeId): BiomeArt {
+  const own = ART[id];
+  if (own) return own;
+  const from = ART[LOOK_FALLBACK[id] ?? 'crypt'] ?? ART.crypt!;
+  return BY_ID[id]?.outdoor ? { ...from, id, ceiling: 'open', ceilingHoles: 0 } : { ...from, id };
+}
+
+/** True for a biome with open sky. */
+export function isOutdoorBiome(id: BiomeId): boolean {
+  return BY_ID[id]?.outdoor ?? false;
 }
 
 /** Weighted layout choice honouring the biome's preferences. */

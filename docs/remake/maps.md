@@ -15,7 +15,7 @@ one boss. Dark and gritty. Many biomes in unique mixes.
   portal, how old saves mid-run are handled (they start a fresh map). Add the
   `MapZone`, `zones` and `zoneOf` types to `src/types.ts` and the contract to
   `CONTRACTS.md` (see PLAN.md "maps → ground").
-- [ ] Biomes. A new biome list with gameplay fields. At least: crypt or
+- [x] Biomes. (Maps: six new biomes, monster and boss homes, places and notes) A new biome list with gameplay fields. At least: crypt or
   dungeon, dark forest, swamp, desert, desert tomb, frozen tundra, ice caves,
   hell, plus whichever old ones still earn a place. Remove biomes that are
   dropped and fix every reference (`src/data/monsters.ts`, quests, story,
@@ -137,6 +137,26 @@ Indoor: `crypt`, `caverns`, `desertTomb`, `frostvault` (now the ice caves),
 | foundry | no | keep | (own) |
 | voidspire | no | rift | (own) |
 
+Every old biome still earns a place, so none were dropped. Monster homes
+(`biomes` on each monster and boss) by family:
+
+| Family | Lives in |
+| --- | --- |
+| undead | crypt, desertTomb, darkForest, swamp, tundra, hell (bone giants) |
+| beast | darkForest, caverns, desert, tundra, swamp |
+| plant | darkForest, swamp, sunkenTemple, hive, caverns |
+| insect | hive, swamp, desert, desertTomb, caverns |
+| ooze | swamp, caverns, sunkenTemple, hive |
+| elemental | frostvault, tundra, foundry, hell, desert |
+| construct | foundry, desertTomb, sunkenTemple |
+| humanoid | darkForest, desert, tundra, crypt, ashwaste |
+| demon | hell, ashwaste, foundry, voidspire |
+| aberration | voidspire, sunkenTemple, swamp, hive |
+
+Music keys: each new biome's `music` is its own id (`darkForest`, `swamp`,
+`desert`, `desertTomb`, `tundra`, `hell`). Music falls back to the crypt
+dirge until audio has a track for it.
+
 ### Themes (zone chains)
 
 A theme is a weighted recipe for the zone chain, with a minimum tier, so the
@@ -156,13 +176,15 @@ milestone 4.
 
 ## Next up
 
-1. Biomes milestone: add the six new `BiomeId`s to `src/types.ts`, gameplay
-   defs in `src/world/Biomes.ts`, make `ART`/`VARIANTS` partial with a
-   borrowed-look table (`LOOK_FALLBACK`), fix `Record<BiomeId,...>` users
-   (`DungeonGen` fallbacks, `data/story/places.ts`), remap monster biomes in
-   `src/data/monsters.ts` and bosses in `src/data/bosses.ts`, music keys.
-2. Then zone generators in new files (`src/world/zones/*`), then
-   `src/world/MapGen.ts` assembly.
+1. Zone generators milestone. New files under `src/world/zones/`: a shared
+   `Region` carving kit, then outdoor `forest`, `swamp`, `dunes`, `tundra`,
+   `wastes` and indoor `crypt`, `cave`, `tomb`, `keep`, `rift`, plus the boss
+   `arena` tail. Each returns tiles, heights and rooms for a sub-rectangle.
+2. `tools/check-maps.mjs` (headless, vite SSR bundle like check-mapgen).
+3. Switch: `buildLayout` stops mapping new kinds through `INTERIM_LAYOUT`
+   (Layouts.ts) and calls the zone generators; then delete the eleven old
+   generators (rooms, halls, caves, maze, catacombs, ruins, arena, spiral,
+   cathedral, warrens, terraces) and their `LayoutKind`s.
 
 ## Notes for resume
 

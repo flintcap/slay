@@ -50,6 +50,11 @@ has written it.
 
 ## Notes for resume
 
+- From maps: six new biomes play `music` keys equal to their ids:
+  `darkForest`, `swamp`, `desert`, `desertTomb`, `tundra`, `hell` (and
+  `boss.<id>` if you key boss music by biome). Until a track exists Music.ts
+  falls back to the crypt dirge. Ambience may also want them.
+
 - freesound.org is blocked from this machine. Kenney and OpenGameArt work.
 - On OpenGameArt, check each entry's licence box. CC0 only.
 - Software rendering boots slowly; audio can mostly be checked headlessly.

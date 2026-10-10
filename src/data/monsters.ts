@@ -103,7 +103,7 @@ mon({
   minDepth: 1, weight: 16, lifeMul: 0.75, damageMul: 0.85, speed: 2.9, scale: 0.95,
   abilities: ['basic_strike'],
   resists: { poison: 50, cold: 20, physical: -10 },
-  biomes: ['crypt', 'caverns', 'sunkenTemple', 'ashwaste'],
+  biomes: ['crypt', 'caverns', 'sunkenTemple', 'ashwaste', 'darkForest', 'swamp', 'desert', 'desertTomb', 'tundra', 'hell'],
   visual: { body: 'skeleton', palette: BONE, ornate: 0.15, eyes: 2, glow: 0xffdd88 },
 });
 
@@ -112,7 +112,7 @@ mon({
   minDepth: 1, weight: 9, attackRange: 13, speed: 3.2,
   abilities: ['arrow_shot', 'caltrops'],
   resists: { poison: 50, cold: 20 },
-  biomes: ['crypt', 'caverns', 'sunkenTemple'],
+  biomes: ['crypt', 'caverns', 'sunkenTemple', 'darkForest', 'desert', 'desertTomb', 'tundra', 'swamp'],
   visual: { body: 'skeleton', palette: BONE, ornate: 0.2, eyes: 2, glow: 0xffdd88 },
 });
 
@@ -121,7 +121,7 @@ mon({
   minDepth: 4, weight: 5, lifeMul: 2.2, scale: 1.35, speed: 2.5,
   abilities: ['shield_bash', 'cleave', 'knockback_punt'],
   resists: { poison: 50, physical: 20 },
-  biomes: ['crypt', 'sunkenTemple'],
+  biomes: ['crypt', 'sunkenTemple', 'desertTomb'],
   visual: { body: 'armored', palette: OLDBONE, ornate: 0.55, eyes: 2, glow: 0x88ccff },
 });
 
@@ -130,7 +130,7 @@ mon({
   minDepth: 6, weight: 8, speed: 3.6, attackSpeed: 1.5, damageMul: 1.1, lifeMul: 0.8,
   abilities: ['double_swipe', 'impale', 'blink_away'],
   resists: { poison: 50, cold: 25 },
-  biomes: ['crypt', 'sunkenTemple', 'voidspire'],
+  biomes: ['crypt', 'sunkenTemple', 'voidspire', 'desertTomb'],
   visual: { body: 'skeleton', palette: BONE, ornate: 0.4, eyes: 2, glow: 0x66ffcc },
 });
 
@@ -139,7 +139,7 @@ mon({
   minDepth: 13, weight: 4, lifeMul: 1.4, speed: 1.5, scale: 1.4, attackRange: 24,
   abilities: ['ballista_bolt', 'bone_shard_spray'],
   resists: { poison: 60, physical: 15 },
-  biomes: ['crypt', 'sunkenTemple'],
+  biomes: ['crypt', 'sunkenTemple', 'desertTomb'],
   visual: { body: 'armored', palette: OLDBONE, ornate: 0.65, eyes: 3, glow: 0xff8844 },
 });
 
@@ -148,7 +148,7 @@ mon({
   minDepth: 6, weight: 5, attackRange: 14,
   abilities: ['raise_dead', 'heal_ally', 'hex_bolt'],
   resists: { poison: 60, arcane: 25 },
-  biomes: ['crypt', 'sunkenTemple', 'voidspire'],
+  biomes: ['crypt', 'sunkenTemple', 'voidspire', 'desertTomb'],
   visual: { body: 'skeleton', palette: SHROUD, ornate: 0.35, eyes: 2, glow: 0x80ffa0 },
 });
 
@@ -157,7 +157,7 @@ mon({
   minDepth: 2, weight: 12, speed: 3.5, lifeMul: 0.9, damageMul: 1.05,
   abilities: ['basic_strike', 'ambush_leap', 'rend'],
   resists: { poison: 40, cold: 15 },
-  biomes: ['crypt', 'caverns', 'hive'],
+  biomes: ['crypt', 'caverns', 'hive', 'darkForest', 'swamp', 'desertTomb'],
   visual: { body: 'humanoid', palette: PALE, ornate: 0.35, eyes: 2, glow: 0xff5555 },
 });
 
@@ -166,7 +166,7 @@ mon({
   minDepth: 7, weight: 9, speed: 3.3, lifeMul: 1.0, damageType: 'poison',
   abilities: ['basic_strike', 'rend', 'plague_death'],
   resists: { poison: 90, cold: 20 },
-  biomes: ['crypt', 'caverns', 'hive'],
+  biomes: ['crypt', 'caverns', 'hive', 'swamp', 'desertTomb'],
   visual: { body: 'humanoid', palette: ROT, ornate: 0.45, eyes: 2, glow: 0x9ce03a },
 });
 
@@ -175,7 +175,7 @@ mon({
   minDepth: 6, weight: 5, lifeMul: 3.0, speed: 1.7, scale: 1.6, damageType: 'poison',
   abilities: ['heavy_slam', 'corpse_burst', 'plague_death'],
   resists: { poison: 95, physical: 20, fire: -25 },
-  biomes: ['crypt', 'caverns', 'hive'],
+  biomes: ['crypt', 'caverns', 'hive', 'swamp'],
   visual: { body: 'humanoid', palette: ROT, ornate: 0.6, eyes: 4, glow: 0x9ce03a },
 });
 
@@ -184,7 +184,7 @@ mon({
   minDepth: 3, weight: 13, speed: 4.8, scale: 0.75,
   abilities: ['ambush_leap', 'rend'],
   resists: { poison: 50 },
-  biomes: ['crypt', 'caverns', 'ashwaste'],
+  biomes: ['crypt', 'caverns', 'ashwaste', 'darkForest', 'swamp', 'desert', 'tundra', 'hell'],
   visual: { body: 'quadruped', palette: PALE, ornate: 0.4, tail: true, eyes: 2, glow: 0xff4040 },
 });
 
@@ -193,7 +193,7 @@ mon({
   minDepth: 5, weight: 7, speed: 4.0, damageType: 'cold', attackRange: 2.4,
   abilities: ['phase_shift', 'life_drain', 'ambush_leap'],
   resists: { physical: 50, poison: 100, cold: 40, fire: -20 },
-  biomes: ['crypt', 'frostvault', 'voidspire'],
+  biomes: ['crypt', 'frostvault', 'voidspire', 'darkForest', 'desertTomb', 'tundra'],
   visual: { body: 'wraith', palette: SHROUD, ornate: 0.3, wings: true, eyes: 2, glow: 0x9cf0ff },
 });
 
@@ -202,7 +202,7 @@ mon({
   minDepth: 9, weight: 5, damageType: 'cold', attackRange: 12,
   abilities: ['banshee_wail', 'frost_bolt', 'terrify'],
   resists: { physical: 45, cold: 60, poison: 100 },
-  biomes: ['crypt', 'frostvault', 'voidspire'],
+  biomes: ['crypt', 'frostvault', 'voidspire', 'swamp', 'desertTomb', 'tundra'],
   visual: { body: 'wraith', palette: SHROUD, ornate: 0.45, wings: true, eyes: 2, glow: 0xa0e0ff },
 });
 
@@ -211,7 +211,7 @@ mon({
   minDepth: 10, weight: 5, lifeMul: 2.9, defenseMul: 1.8, scale: 1.45,
   abilities: ['cleave', 'charge', 'sunder_armor', 'enrage'],
   resists: { poison: 60, physical: 30, cold: 25 },
-  biomes: ['crypt', 'sunkenTemple', 'frostvault'],
+  biomes: ['crypt', 'sunkenTemple', 'frostvault', 'darkForest', 'desertTomb', 'tundra'],
   visual: { body: 'armored', palette: STEEL, ornate: 0.7, eyes: 2, glow: 0x4080ff },
 });
 
@@ -220,7 +220,7 @@ mon({
   minDepth: 16, weight: 3, lifeMul: 4.5, damageMul: 2.0, scale: 2.3, speed: 2.0,
   abilities: ['ground_slam', 'quake_stomp', 'shatter_death', 'grapple_pull'],
   resists: { poison: 70, physical: 35 },
-  biomes: ['crypt', 'sunkenTemple', 'ashwaste'],
+  biomes: ['crypt', 'sunkenTemple', 'ashwaste', 'desertTomb', 'tundra', 'hell'],
   visual: { body: 'colossal', palette: OLDBONE, ornate: 0.8, eyes: 4, glow: 0x66ff99 },
 });
 
@@ -229,7 +229,7 @@ mon({
   minDepth: 20, weight: 3, lifeMul: 1.1, damageMul: 1.5, attackRange: 16,
   abilities: ['raise_dead', 'wall_of_bone', 'siphon_soul', 'curse_frailty', 'blink_away'],
   resists: { poison: 100, cold: 50, arcane: 40, physical: 20 },
-  biomes: ['crypt', 'voidspire', 'sunkenTemple'],
+  biomes: ['crypt', 'voidspire', 'sunkenTemple', 'desertTomb'],
   visual: { body: 'humanoid', palette: SHROUD, ornate: 0.75, eyes: 2, glow: 0x60ffb0 },
 });
 
@@ -238,7 +238,7 @@ mon({
   minDepth: 14, weight: 6, speed: 4.4, damageMul: 1.7, damageType: 'arcane',
   abilities: ['stealth', 'teleport_strike', 'life_drain'],
   resists: { physical: 60, poison: 100, arcane: 30 },
-  biomes: ['crypt', 'voidspire'],
+  biomes: ['crypt', 'voidspire', 'darkForest', 'desertTomb'],
   visual: { body: 'wraith', palette: VOID, ornate: 0.4, wings: true, eyes: 3, glow: 0xc060ff },
 });
 
@@ -247,7 +247,7 @@ mon({
   minDepth: 18, weight: 3, attackRange: 12,
   abilities: ['haste_aura', 'shield_ally', 'resurrect_ally', 'terrify'],
   resists: { poison: 80, cold: 40 },
-  biomes: ['crypt', 'sunkenTemple'],
+  biomes: ['crypt', 'sunkenTemple', 'desertTomb'],
   visual: { body: 'wraith', palette: CLOTH, ornate: 0.5, wings: true, eyes: 6, glow: 0xffe0a0 },
 });
 
@@ -260,7 +260,7 @@ mon({
   minDepth: 3, weight: 14, speed: 5.0, scale: 0.6, damageType: 'fire',
   abilities: ['basic_strike', 'swarm_dive'],
   resists: { fire: 60, cold: -25 },
-  biomes: ['ashwaste', 'foundry', 'voidspire', 'caverns'],
+  biomes: ['ashwaste', 'foundry', 'voidspire', 'caverns', 'tundra', 'hell'],
   visual: { body: 'humanoid', palette: EMBER, ornate: 0.5, tail: true, wings: true, eyes: 2, glow: 0xff7a22 },
 });
 
@@ -269,7 +269,7 @@ mon({
   minDepth: 5, weight: 11, speed: 3.6, damageMul: 1.2, attackSpeed: 1.35,
   abilities: ['double_swipe', 'rend', 'ambush_leap'],
   resists: { fire: 40, poison: 25 },
-  biomes: ['ashwaste', 'voidspire', 'caverns'],
+  biomes: ['ashwaste', 'voidspire', 'caverns', 'tundra', 'hell'],
   visual: { body: 'humanoid', palette: CRIMSON, ornate: 0.65, tail: true, eyes: 2, glow: 0xff3020 },
 });
 
@@ -278,7 +278,7 @@ mon({
   minDepth: 7, weight: 9, speed: 4.2, damageType: 'fire', scale: 1.05,
   abilities: ['charge', 'cone_breath_fire', 'molten_trail'],
   resists: { fire: 85, cold: -30 },
-  biomes: ['ashwaste', 'foundry', 'voidspire'],
+  biomes: ['ashwaste', 'foundry', 'voidspire', 'hell'],
   visual: { body: 'quadruped', palette: EMBER, ornate: 0.6, tail: true, eyes: 2, glow: 0xff5010 },
 });
 
@@ -287,7 +287,7 @@ mon({
   minDepth: 8, weight: 7, damageType: 'fire', attackRange: 15,
   abilities: ['arrow_volley', 'bomb_lob', 'blink_away'],
   resists: { fire: 70, cold: -20 },
-  biomes: ['ashwaste', 'foundry'],
+  biomes: ['ashwaste', 'foundry', 'hell'],
   visual: { body: 'humanoid', palette: EMBER, ornate: 0.55, tail: true, eyes: 2, glow: 0xffaa30 },
 });
 
@@ -296,7 +296,7 @@ mon({
   minDepth: 9, weight: 5, lifeMul: 3.0, scale: 1.75, damageMul: 1.7,
   abilities: ['heavy_slam', 'gore_charge', 'enrage'],
   resists: { fire: 60, physical: 25, cold: -25 },
-  biomes: ['ashwaste', 'foundry', 'voidspire'],
+  biomes: ['ashwaste', 'foundry', 'voidspire', 'hell'],
   visual: { body: 'colossal', palette: CRIMSON, ornate: 0.8, tail: true, eyes: 2, glow: 0xff4020 },
 });
 
@@ -305,7 +305,7 @@ mon({
   minDepth: 11, weight: 5, attackRange: 12, damageType: 'arcane',
   abilities: ['mind_lash', 'curse_frailty', 'life_drain', 'blink_away'],
   resists: { fire: 40, arcane: 50 },
-  biomes: ['ashwaste', 'voidspire'],
+  biomes: ['ashwaste', 'voidspire', 'hell'],
   visual: { body: 'winged', palette: CRIMSON, ornate: 0.6, wings: true, tail: true, eyes: 2, glow: 0xff40a0 },
 });
 
@@ -314,7 +314,7 @@ mon({
   minDepth: 13, weight: 6, speed: 4.3, damageMul: 1.7, damageType: 'arcane',
   abilities: ['stealth', 'teleport_strike', 'phase_shift'],
   resists: { arcane: 60, physical: 25 },
-  biomes: ['voidspire', 'ashwaste'],
+  biomes: ['voidspire', 'ashwaste', 'hell'],
   visual: { body: 'humanoid', palette: VOID, ornate: 0.65, tail: true, eyes: 4, glow: 0xc060ff },
 });
 
@@ -323,7 +323,7 @@ mon({
   minDepth: 12, weight: 7, damageType: 'fire', attackRange: 14,
   abilities: ['fire_bolt', 'lava_pool', 'molten_trail'],
   resists: { fire: 95, cold: -40 },
-  biomes: ['ashwaste', 'foundry'],
+  biomes: ['ashwaste', 'foundry', 'hell'],
   visual: { body: 'humanoid', palette: EMBER, ornate: 0.7, wings: true, eyes: 3, glow: 0xff6600 },
 });
 
@@ -332,7 +332,7 @@ mon({
   minDepth: 15, weight: 4, attackRange: 13,
   abilities: ['blood_link', 'summon_imps', 'shield_ally', 'siphon_soul'],
   resists: { fire: 50, arcane: 45 },
-  biomes: ['ashwaste', 'voidspire'],
+  biomes: ['ashwaste', 'voidspire', 'hell'],
   visual: { body: 'humanoid', palette: VOID, ornate: 0.7, wings: true, eyes: 6, glow: 0xa040ff },
 });
 
@@ -341,7 +341,7 @@ mon({
   minDepth: 18, weight: 4, lifeMul: 3.4, scale: 1.9, damageMul: 1.9, speed: 2.6,
   abilities: ['cone_breath_void', 'vortex_pull', 'quake_stomp', 'enrage'],
   resists: { arcane: 60, fire: 45, physical: 30 },
-  biomes: ['voidspire', 'ashwaste'],
+  biomes: ['voidspire', 'ashwaste', 'hell'],
   visual: { body: 'colossal', palette: VOID, ornate: 0.9, tail: true, eyes: 6, glow: 0xd040ff },
 });
 
@@ -350,7 +350,7 @@ mon({
   minDepth: 22, weight: 3, lifeMul: 3.8, scale: 2.0, damageMul: 2.1, damageType: 'fire',
   abilities: ['flame_wave', 'meteor', 'charge', 'battle_cry', 'enrage'],
   resists: { fire: 90, physical: 35, cold: -25 },
-  biomes: ['ashwaste', 'foundry', 'voidspire'],
+  biomes: ['ashwaste', 'foundry', 'voidspire', 'hell'],
   visual: { body: 'colossal', palette: EMBER, ornate: 1.0, wings: true, tail: true, eyes: 2, glow: 0xff3000 },
 });
 
@@ -359,7 +359,7 @@ mon({
   minDepth: 20, weight: 6, lifeMul: 1.6, damageMul: 1.5, speed: 3.2,
   abilities: ['flesh_hooks', 'life_drain', 'execute_low'],
   resists: { arcane: 40, poison: 40 },
-  biomes: ['voidspire', 'ashwaste'],
+  biomes: ['voidspire', 'ashwaste', 'hell'],
   visual: { body: 'humanoid', palette: CRIMSON, ornate: 0.85, limbs: 4, eyes: 5, glow: 0xff2060 },
 });
 
@@ -368,7 +368,7 @@ mon({
   minDepth: 26, weight: 3, lifeMul: 4.2, scale: 2.1, damageType: 'fire', damageMul: 2.2,
   abilities: ['molten_trail', 'firestorm', 'ground_slam', 'death_explode'],
   resists: { fire: 100, physical: 35, cold: -40 },
-  biomes: ['foundry', 'ashwaste'],
+  biomes: ['foundry', 'ashwaste', 'hell'],
   visual: { body: 'colossal', palette: EMBER, ornate: 0.95, eyes: 4, glow: 0xffaa00 },
 });
 
@@ -380,7 +380,7 @@ mon({
   id: 'dire_rat', name: 'Dire Rat', family: 'beast', role: 'swarm',
   minDepth: 1, weight: 16, speed: 4.6, scale: 0.5,
   abilities: ['basic_strike'],
-  biomes: ['crypt', 'caverns', 'hive'],
+  biomes: ['crypt', 'caverns', 'hive', 'darkForest', 'swamp', 'desert', 'desertTomb'],
   visual: { body: 'quadruped', palette: FLESH, ornate: 0.2, tail: true, eyes: 2, glow: 0xff6060 },
 });
 
@@ -388,7 +388,7 @@ mon({
   id: 'cave_bat', name: 'Shriekbat', family: 'beast', role: 'swarm',
   minDepth: 2, weight: 14, speed: 5.4, scale: 0.5,
   abilities: ['swarm_dive'],
-  biomes: ['caverns', 'crypt', 'hive'],
+  biomes: ['caverns', 'crypt', 'hive', 'darkForest', 'desertTomb'],
   visual: { body: 'winged', palette: FLESH, ornate: 0.3, wings: true, eyes: 2, glow: 0xffcc44 },
 });
 
@@ -396,7 +396,7 @@ mon({
   id: 'gorge_wolf', name: 'Gorge Wolf', family: 'beast', role: 'melee',
   minDepth: 2, weight: 12, speed: 4.1, damageMul: 1.05,
   abilities: ['ambush_leap', 'rend'],
-  biomes: ['caverns', 'ashwaste', 'frostvault'],
+  biomes: ['caverns', 'ashwaste', 'frostvault', 'darkForest', 'desert', 'tundra'],
   visual: { body: 'quadruped', palette: FLESH, ornate: 0.35, tail: true, eyes: 2, glow: 0xffdd44 },
 });
 
@@ -404,7 +404,7 @@ mon({
   id: 'pack_alpha', name: 'Pack Alpha', family: 'beast', role: 'support',
   minDepth: 5, weight: 4, lifeMul: 1.6, scale: 1.25, speed: 3.8, attackRange: 2.4,
   abilities: ['rally_pack', 'ambush_leap', 'rend'],
-  biomes: ['caverns', 'ashwaste', 'frostvault'],
+  biomes: ['caverns', 'ashwaste', 'frostvault', 'darkForest', 'desert', 'tundra'],
   visual: { body: 'quadruped', palette: FLESH, ornate: 0.6, tail: true, eyes: 2, glow: 0xff8822 },
 });
 
@@ -413,7 +413,7 @@ mon({
   minDepth: 6, weight: 5, lifeMul: 2.8, scale: 1.6,
   abilities: ['heavy_slam', 'gore_charge', 'enrage'],
   resists: { physical: 20, cold: 25 },
-  biomes: ['caverns', 'frostvault'],
+  biomes: ['caverns', 'frostvault', 'darkForest', 'tundra'],
   visual: { body: 'quadruped', palette: BARK, ornate: 0.5, tail: true, eyes: 2, glow: 0xffaa44 },
 });
 
@@ -421,7 +421,7 @@ mon({
   id: 'saber_prowler', name: 'Saber Prowler', family: 'beast', role: 'ambusher',
   minDepth: 8, weight: 7, speed: 4.5, damageMul: 1.6,
   abilities: ['stealth', 'ambush_leap', 'rend'],
-  biomes: ['caverns', 'ashwaste'],
+  biomes: ['caverns', 'ashwaste', 'darkForest', 'desert', 'tundra'],
   visual: { body: 'quadruped', palette: FLESH, ornate: 0.55, tail: true, eyes: 2, glow: 0x66ff88 },
 });
 
@@ -429,7 +429,7 @@ mon({
   id: 'harpy_screecher', name: 'Harpy Screecher', family: 'beast', role: 'ranged',
   minDepth: 7, weight: 7, speed: 4.0, attackRange: 11,
   abilities: ['quill_burst', 'swarm_dive', 'terrify'],
-  biomes: ['caverns', 'ashwaste', 'voidspire'],
+  biomes: ['caverns', 'ashwaste', 'voidspire', 'darkForest', 'desert', 'tundra'],
   visual: { body: 'winged', palette: FLESH, ornate: 0.5, wings: true, tail: true, eyes: 2, glow: 0xffdd66 },
 });
 
@@ -438,7 +438,7 @@ mon({
   minDepth: 12, weight: 5, lifeMul: 1.2, scale: 1.3, attackRange: 13, speed: 2.4,
   abilities: ['petrify_gaze', 'poison_spit', 'tail_sweep'],
   resists: { poison: 70, physical: 20 },
-  biomes: ['caverns', 'sunkenTemple', 'hive'],
+  biomes: ['caverns', 'sunkenTemple', 'hive', 'swamp', 'desert'],
   visual: { body: 'serpent', palette: CHITIN, ornate: 0.6, eyes: 2, glow: 0xd8d060 },
 });
 
@@ -447,7 +447,7 @@ mon({
   minDepth: 4, weight: 8, speed: 3.2, lifeMul: 1.1, damageMul: 1.3,
   abilities: ['grapple_pull', 'ambush_leap', 'acid_spit'],
   resists: { poison: 50 },
-  biomes: ['caverns', 'sunkenTemple', 'hive'],
+  biomes: ['caverns', 'sunkenTemple', 'hive', 'swamp'],
   visual: { body: 'quadruped', palette: MOSS, ornate: 0.3, eyes: 2, glow: 0xaaff66 },
 });
 
@@ -456,7 +456,7 @@ mon({
   minDepth: 10, weight: 5, lifeMul: 2.6, scale: 1.7, speed: 2.2,
   abilities: ['burrow_emerge', 'acid_spit', 'tail_sweep'],
   resists: { physical: 30, poison: 45 },
-  biomes: ['caverns', 'hive', 'ashwaste'],
+  biomes: ['caverns', 'hive', 'ashwaste', 'swamp', 'desert'],
   visual: { body: 'serpent', palette: FLESH, ornate: 0.45, tail: true, eyes: 0, glow: 0xff8888 },
 });
 
@@ -465,7 +465,7 @@ mon({
   minDepth: 14, weight: 6, speed: 4.0, scale: 1.25, damageType: 'poison',
   abilities: ['swarm_dive', 'cone_breath_poison', 'tail_sweep'],
   resists: { poison: 70 },
-  biomes: ['caverns', 'ashwaste', 'hive'],
+  biomes: ['caverns', 'ashwaste', 'hive', 'darkForest', 'desert', 'tundra'],
   visual: { body: 'winged', palette: CHITIN, ornate: 0.7, wings: true, tail: true, eyes: 2, glow: 0x88ff44 },
 });
 
@@ -474,7 +474,7 @@ mon({
   minDepth: 16, weight: 4, lifeMul: 2.4, scale: 1.65, speed: 3.4, damageType: 'cold',
   abilities: ['gore_charge', 'ice_nova', 'shatter_death'],
   resists: { cold: 90, fire: -30 },
-  biomes: ['frostvault', 'caverns'],
+  biomes: ['frostvault', 'caverns', 'tundra'],
   visual: { body: 'quadruped', palette: RIME, ornate: 0.85, tail: true, eyes: 2, glow: 0x88ddff },
 });
 
@@ -483,7 +483,7 @@ mon({
   minDepth: 19, weight: 6, speed: 4.4, damageMul: 1.4, scale: 1.3, damageType: 'fire',
   abilities: ['charge', 'cone_breath_fire', 'rally_pack'],
   resists: { fire: 70 },
-  biomes: ['ashwaste', 'foundry'],
+  biomes: ['ashwaste', 'foundry', 'desert', 'hell'],
   visual: { body: 'quadruped', palette: EMBER, ornate: 0.75, tail: true, eyes: 2, glow: 0xff9944 },
 });
 
@@ -492,7 +492,7 @@ mon({
   minDepth: 24, weight: 3, lifeMul: 4.6, scale: 2.4, speed: 2.0,
   abilities: ['burrow_emerge', 'quake_stomp', 'cone_breath_poison', 'tail_sweep'],
   resists: { physical: 40, poison: 60 },
-  biomes: ['caverns', 'hive', 'ashwaste'],
+  biomes: ['caverns', 'hive', 'ashwaste', 'desert'],
   visual: { body: 'serpent', palette: CHITIN, ornate: 0.95, tail: true, eyes: 6, glow: 0x66ff99 },
 });
 
@@ -505,7 +505,7 @@ mon({
   minDepth: 4, weight: 13, speed: 4.4, scale: 0.55,
   abilities: ['basic_strike', 'shatter_death'],
   resists: { physical: 25, poison: 100, lightning: -40 },
-  biomes: ['foundry', 'sunkenTemple'],
+  biomes: ['foundry', 'sunkenTemple', 'desert', 'desertTomb'],
   visual: { body: 'insectoid', palette: BRASS, ornate: 0.4, limbs: 6, eyes: 2, glow: 0x66ffcc },
 });
 
@@ -514,7 +514,7 @@ mon({
   minDepth: 5, weight: 10, lifeMul: 1.3, defenseMul: 1.5, speed: 2.6,
   abilities: ['cleave', 'shield_bash'],
   resists: { physical: 35, poison: 100, cold: 30, lightning: -30 },
-  biomes: ['foundry', 'crypt', 'sunkenTemple'],
+  biomes: ['foundry', 'crypt', 'sunkenTemple', 'desertTomb'],
   visual: { body: 'armored', palette: IRON, ornate: 0.6, eyes: 2, glow: 0x66aaff },
 });
 
@@ -523,7 +523,7 @@ mon({
   minDepth: 6, weight: 8, speed: 2.2, attackRange: 16, lifeMul: 0.9,
   abilities: ['crossbow_bolt', 'shrapnel_nova'],
   resists: { physical: 25, poison: 100, lightning: -35 },
-  biomes: ['foundry', 'sunkenTemple'],
+  biomes: ['foundry', 'sunkenTemple', 'desertTomb'],
   visual: { body: 'humanoid', palette: BRASS, ornate: 0.5, eyes: 1, glow: 0xffcc44 },
 });
 
@@ -532,7 +532,7 @@ mon({
   minDepth: 9, weight: 6, speed: 1.6, attackRange: 14, damageType: 'lightning',
   abilities: ['chain_lightning', 'static_field'],
   resists: { lightning: 100, physical: 25, poison: 100, cold: -25 },
-  biomes: ['foundry', 'voidspire'],
+  biomes: ['foundry', 'voidspire', 'desertTomb'],
   visual: { body: 'floating', palette: STEEL, ornate: 0.6, eyes: 1, glow: 0xffe066 },
 });
 
@@ -541,7 +541,7 @@ mon({
   minDepth: 11, weight: 5, lifeMul: 3.4, defenseMul: 2.0, scale: 1.8, speed: 1.9,
   abilities: ['ground_slam', 'knockback_punt', 'sunder_armor'],
   resists: { physical: 45, poison: 100, cold: 35, lightning: -35 },
-  biomes: ['foundry', 'sunkenTemple'],
+  biomes: ['foundry', 'sunkenTemple', 'desertTomb'],
   visual: { body: 'colossal', palette: IRON, ornate: 0.7, eyes: 2, glow: 0xff6622 },
 });
 
@@ -577,7 +577,7 @@ mon({
   minDepth: 15, weight: 4, lifeMul: 1.4, attackRange: 12, damageType: 'arcane',
   abilities: ['shield_ally', 'summon_totem', 'arcane_nova'],
   resists: { arcane: 60, poison: 100, physical: 30 },
-  biomes: ['sunkenTemple', 'voidspire', 'foundry'],
+  biomes: ['sunkenTemple', 'voidspire', 'foundry', 'desertTomb'],
   visual: { body: 'floating', palette: STONE, ornate: 0.7, eyes: 1, glow: 0x60ffee },
 });
 
@@ -613,7 +613,7 @@ mon({
   minDepth: 27, weight: 3, lifeMul: 4.0, defenseMul: 2.4, scale: 2.0, damageType: 'fire',
   abilities: ['flame_wave', 'ground_slam', 'shield_self', 'molten_trail'],
   resists: { fire: 95, physical: 50, poison: 100 },
-  biomes: ['foundry', 'ashwaste', 'voidspire'],
+  biomes: ['foundry', 'ashwaste', 'voidspire', 'hell'],
   visual: { body: 'colossal', palette: BASALT, ornate: 0.9, eyes: 4, glow: 0xff5500 },
 });
 
@@ -626,7 +626,7 @@ mon({
   minDepth: 3, weight: 16, speed: 4.5, scale: 0.6,
   abilities: ['basic_strike'],
   resists: { poison: 60 },
-  biomes: ['hive', 'caverns', 'sunkenTemple'],
+  biomes: ['hive', 'caverns', 'sunkenTemple', 'swamp'],
   visual: { body: 'insectoid', palette: CHITIN, ornate: 0.4, limbs: 6, eyes: 4, glow: 0x99ff33 },
 });
 
@@ -635,7 +635,7 @@ mon({
   minDepth: 6, weight: 13, speed: 5.6, scale: 0.55, damageType: 'poison',
   abilities: ['swarm_dive'],
   resists: { poison: 80 },
-  biomes: ['hive', 'caverns'],
+  biomes: ['hive', 'caverns', 'swamp', 'desert'],
   visual: { body: 'insectoid', palette: BRASS, ornate: 0.5, limbs: 6, wings: true, tail: true, eyes: 4, glow: 0xffdd33 },
 });
 
@@ -644,7 +644,7 @@ mon({
   minDepth: 4, weight: 9, damageType: 'poison', attackRange: 12, speed: 2.6,
   abilities: ['acid_spit', 'spore_burst'],
   resists: { poison: 90, physical: 20 },
-  biomes: ['hive', 'caverns', 'sunkenTemple'],
+  biomes: ['hive', 'caverns', 'sunkenTemple', 'swamp', 'desert'],
   visual: { body: 'insectoid', palette: CHITIN, ornate: 0.5, limbs: 6, eyes: 4, glow: 0x9ce03a },
 });
 
@@ -653,7 +653,7 @@ mon({
   minDepth: 8, weight: 10, speed: 3.8, damageMul: 1.25, attackRange: 3.0,
   abilities: ['impale', 'double_swipe', 'ambush_leap'],
   resists: { poison: 50 },
-  biomes: ['hive', 'caverns'],
+  biomes: ['hive', 'caverns', 'desert'],
   visual: { body: 'insectoid', palette: MOSS, ornate: 0.65, limbs: 6, eyes: 4, glow: 0x66ff66 },
 });
 
@@ -662,7 +662,7 @@ mon({
   minDepth: 7, weight: 8, speed: 3.4, damageMul: 1.5, damageType: 'poison',
   abilities: ['burrow_emerge', 'life_drain'],
   resists: { poison: 90, physical: 25 },
-  biomes: ['hive', 'caverns', 'ashwaste'],
+  biomes: ['hive', 'caverns', 'ashwaste', 'darkForest', 'swamp', 'desert', 'desertTomb'],
   visual: { body: 'arachnid', palette: FLESH, ornate: 0.45, limbs: 8, eyes: 6, glow: 0xff5555 },
 });
 
@@ -671,7 +671,7 @@ mon({
   minDepth: 5, weight: 9, attackRange: 13, speed: 3.4,
   abilities: ['web_snare', 'acid_spit'],
   resists: { poison: 70 },
-  biomes: ['hive', 'caverns', 'crypt'],
+  biomes: ['hive', 'caverns', 'crypt', 'darkForest', 'desertTomb'],
   visual: { body: 'arachnid', palette: CHITIN, ornate: 0.4, limbs: 8, eyes: 8, glow: 0xccffaa },
 });
 
@@ -680,7 +680,7 @@ mon({
   minDepth: 12, weight: 5, lifeMul: 3.0, defenseMul: 1.8, scale: 1.7,
   abilities: ['heavy_slam', 'quill_burst', 'shield_self'],
   resists: { physical: 40, poison: 90 },
-  biomes: ['hive', 'caverns'],
+  biomes: ['hive', 'caverns', 'desert', 'desertTomb'],
   visual: { body: 'insectoid', palette: CHITIN, ornate: 0.8, limbs: 6, eyes: 6, glow: 0x77ff44 },
 });
 
@@ -698,7 +698,7 @@ mon({
   minDepth: 11, weight: 8, speed: 4.4, damageType: 'poison', attackRange: 12,
   abilities: ['acid_spit', 'swarm_dive', 'poison_spit'],
   resists: { poison: 100 },
-  biomes: ['hive', 'caverns', 'sunkenTemple'],
+  biomes: ['hive', 'caverns', 'sunkenTemple', 'swamp', 'desert'],
   visual: { body: 'insectoid', palette: EMBER, ornate: 0.6, limbs: 6, wings: true, tail: true, eyes: 4, glow: 0xffaa22 },
 });
 
@@ -716,7 +716,7 @@ mon({
   minDepth: 9, weight: 11, speed: 3.6, scale: 0.65, damageType: 'poison',
   abilities: ['basic_strike', 'plague_death'],
   resists: { poison: 100 },
-  biomes: ['hive', 'caverns'],
+  biomes: ['hive', 'caverns', 'swamp'],
   visual: { body: 'serpent', palette: ROT, ornate: 0.25, eyes: 2, glow: 0xaaff33 },
 });
 
@@ -756,7 +756,7 @@ mon({
   minDepth: 9, weight: 8, speed: 2.6, attackRange: 16, damageType: 'arcane',
   abilities: ['gaze_beam', 'homing_bolt'],
   resists: { arcane: 60, physical: 25 },
-  biomes: ['voidspire', 'sunkenTemple', 'crypt'],
+  biomes: ['voidspire', 'sunkenTemple', 'crypt', 'swamp', 'desertTomb'],
   visual: { body: 'floating', palette: VOID, ornate: 0.4, eyes: 1, glow: 0xff60c0 },
 });
 
@@ -783,7 +783,7 @@ mon({
   minDepth: 16, weight: 4, lifeMul: 3.2, scale: 1.9, speed: 2.2,
   abilities: ['tentacle_grasp', 'flesh_hooks', 'vortex_pull'],
   resists: { physical: 35, arcane: 40, poison: 40 },
-  biomes: ['voidspire', 'sunkenTemple', 'hive'],
+  biomes: ['voidspire', 'sunkenTemple', 'hive', 'swamp'],
   visual: { body: 'ooze', palette: CRIMSON, ornate: 0.9, eyes: 7, glow: 0xff3080 },
 });
 
@@ -801,7 +801,7 @@ mon({
   minDepth: 14, weight: 5, lifeMul: 3.6, scale: 1.75, speed: 2.0,
   abilities: ['heavy_slam', 'corpse_burst', 'heal_self', 'grapple_pull'],
   resists: { physical: 30, poison: 60, cold: 25 },
-  biomes: ['voidspire', 'crypt', 'hive'],
+  biomes: ['voidspire', 'crypt', 'hive', 'swamp', 'desertTomb'],
   visual: { body: 'ooze', palette: FLESH, ornate: 0.85, limbs: 6, eyes: 9, glow: 0xff6666 },
 });
 
@@ -849,7 +849,7 @@ mon({
   minDepth: 4, weight: 12, speed: 4.4, scale: 0.6, damageType: 'fire',
   abilities: ['basic_strike', 'death_explode'],
   resists: { fire: 100, cold: -50, physical: 30 },
-  biomes: ['foundry', 'ashwaste', 'caverns'],
+  biomes: ['foundry', 'ashwaste', 'caverns', 'desert', 'hell'],
   visual: { body: 'floating', palette: EMBER, ornate: 0.5, eyes: 1, glow: 0xff7722 },
 });
 
@@ -858,7 +858,7 @@ mon({
   minDepth: 8, weight: 9, damageType: 'fire', speed: 3.3,
   abilities: ['basic_strike', 'molten_trail', 'lava_pool'],
   resists: { fire: 100, cold: -50, physical: 30, poison: 100 },
-  biomes: ['foundry', 'ashwaste'],
+  biomes: ['foundry', 'ashwaste', 'desert', 'hell'],
   visual: { body: 'humanoid', palette: EMBER, ornate: 0.6, eyes: 2, glow: 0xff5500 },
 });
 
@@ -867,7 +867,7 @@ mon({
   minDepth: 15, weight: 4, lifeMul: 3.2, scale: 1.9, damageType: 'fire',
   abilities: ['ground_slam', 'molten_trail', 'firestorm', 'death_explode'],
   resists: { fire: 100, cold: -60, physical: 35, poison: 100 },
-  biomes: ['foundry', 'ashwaste'],
+  biomes: ['foundry', 'ashwaste', 'hell'],
   visual: { body: 'colossal', palette: BASALT, ornate: 0.85, eyes: 4, glow: 0xff6600 },
 });
 
@@ -876,7 +876,7 @@ mon({
   minDepth: 7, weight: 9, damageType: 'cold', attackRange: 14, speed: 2.8,
   abilities: ['frost_bolt', 'frozen_pulse', 'shatter_death'],
   resists: { cold: 100, fire: -50, poison: 100 },
-  biomes: ['frostvault', 'caverns', 'sunkenTemple'],
+  biomes: ['frostvault', 'caverns', 'sunkenTemple', 'tundra'],
   visual: { body: 'floating', palette: RIME, ornate: 0.7, eyes: 1, glow: 0x88ddff },
 });
 
@@ -885,7 +885,7 @@ mon({
   minDepth: 13, weight: 5, lifeMul: 2.8, scale: 1.7, damageType: 'cold',
   abilities: ['ice_nova', 'heavy_slam', 'shatter_death'],
   resists: { cold: 100, fire: -55, physical: 30, poison: 100 },
-  biomes: ['frostvault'],
+  biomes: ['frostvault', 'tundra'],
   visual: { body: 'colossal', palette: RIME, ornate: 0.8, eyes: 2, glow: 0x66ccff },
 });
 
@@ -894,7 +894,7 @@ mon({
   minDepth: 10, weight: 11, speed: 5.6, scale: 0.55, damageType: 'lightning',
   abilities: ['swarm_dive', 'static_field'],
   resists: { lightning: 100, poison: 100, physical: 35 },
-  biomes: ['foundry', 'voidspire', 'frostvault'],
+  biomes: ['foundry', 'voidspire', 'frostvault', 'tundra'],
   visual: { body: 'floating', palette: AZURE, ornate: 0.45, eyes: 1, glow: 0xffee66 },
 });
 
@@ -903,7 +903,7 @@ mon({
   minDepth: 16, weight: 5, damageType: 'lightning', attackRange: 15, speed: 3.4,
   abilities: ['chain_lightning', 'lightning_storm', 'blink_away'],
   resists: { lightning: 100, poison: 100, physical: 30 },
-  biomes: ['foundry', 'voidspire'],
+  biomes: ['foundry', 'voidspire', 'desert', 'desertTomb'],
   visual: { body: 'winged', palette: AZURE, ornate: 0.75, wings: true, eyes: 2, glow: 0xffee66 },
 });
 
@@ -912,7 +912,7 @@ mon({
   minDepth: 12, weight: 6, speed: 5.0, damageMul: 1.3, damageType: 'lightning',
   abilities: ['vortex_pull', 'swarm_dive', 'blink_away'],
   resists: { lightning: 80, physical: 50, poison: 100 },
-  biomes: ['frostvault', 'voidspire', 'ashwaste'],
+  biomes: ['frostvault', 'voidspire', 'ashwaste', 'desert', 'tundra'],
   visual: { body: 'swarm', palette: RIME, ornate: 0.6, eyes: 2, glow: 0xaaffff },
 });
 
@@ -921,7 +921,7 @@ mon({
   minDepth: 18, weight: 8, lifeMul: 1.6, defenseMul: 1.6, speed: 2.7,
   abilities: ['sunder_armor', 'shrapnel_nova', 'shield_self'],
   resists: { physical: 50, fire: 60, poison: 100 },
-  biomes: ['foundry', 'ashwaste', 'voidspire'],
+  biomes: ['foundry', 'ashwaste', 'voidspire', 'hell'],
   visual: { body: 'humanoid', palette: BASALT, ornate: 0.8, eyes: 3, glow: 0xff4400 },
 });
 
@@ -930,7 +930,7 @@ mon({
   minDepth: 14, weight: 4, attackRange: 12, damageType: 'cold',
   abilities: ['heal_ally', 'cleanse_allies', 'frost_bolt', 'blizzard'],
   resists: { cold: 80, fire: -30, poison: 100 },
-  biomes: ['sunkenTemple', 'frostvault'],
+  biomes: ['sunkenTemple', 'frostvault', 'swamp'],
   visual: { body: 'floating', palette: AZURE, ornate: 0.65, eyes: 3, glow: 0x40d0ff },
 });
 
@@ -939,7 +939,7 @@ mon({
   minDepth: 24, weight: 4, damageType: 'arcane', attackRange: 16,
   abilities: ['void_rift', 'arcane_nova', 'homing_bolt'],
   resists: { arcane: 90, fire: 60, poison: 100, physical: 35 },
-  biomes: ['voidspire', 'ashwaste'],
+  biomes: ['voidspire', 'ashwaste', 'hell'],
   visual: { body: 'floating', palette: VOID, ornate: 0.9, eyes: 3, glow: 0xcc44ff },
 });
 
@@ -948,7 +948,7 @@ mon({
   minDepth: 26, weight: 3, lifeMul: 4.4, scale: 2.3, damageType: 'cold', speed: 1.9,
   abilities: ['blizzard', 'quake_stomp', 'ice_nova', 'shatter_death'],
   resists: { cold: 100, fire: -50, physical: 45, poison: 100 },
-  biomes: ['frostvault'],
+  biomes: ['frostvault', 'tundra'],
   visual: { body: 'colossal', palette: RIME, ornate: 0.95, eyes: 4, glow: 0x66ddff },
 });
 
@@ -960,7 +960,7 @@ mon({
   id: 'goblin_scrapper', name: 'Goblin Scrapper', family: 'humanoid', role: 'swarm',
   minDepth: 1, weight: 15, speed: 4.2, scale: 0.7,
   abilities: ['basic_strike'],
-  biomes: ['caverns', 'foundry', 'crypt'],
+  biomes: ['caverns', 'foundry', 'crypt', 'darkForest', 'desert', 'tundra'],
   visual: { body: 'humanoid', palette: MOSS, ornate: 0.25, eyes: 2, glow: 0xffcc44 },
 });
 
@@ -969,7 +969,7 @@ mon({
   minDepth: 3, weight: 8, damageType: 'fire', attackRange: 12, speed: 3.6,
   abilities: ['bomb_lob', 'death_explode'],
   resists: { fire: 40 },
-  biomes: ['caverns', 'foundry'],
+  biomes: ['caverns', 'foundry', 'darkForest', 'desert', 'tundra', 'swamp'],
   visual: { body: 'humanoid', palette: MOSS, ornate: 0.35, eyes: 2, glow: 0xff8822 },
 });
 
@@ -977,7 +977,7 @@ mon({
   id: 'bandit_cutthroat', name: 'Cutthroat', family: 'humanoid', role: 'ambusher',
   minDepth: 2, weight: 8, speed: 3.9, damageMul: 1.4,
   abilities: ['stealth', 'ambush_leap', 'rend'],
-  biomes: ['caverns', 'crypt', 'ashwaste'],
+  biomes: ['caverns', 'crypt', 'ashwaste', 'darkForest', 'desert', 'tundra'],
   visual: { body: 'humanoid', palette: CLOTH, ornate: 0.3, eyes: 2, glow: 0xff4444 },
 });
 
@@ -985,7 +985,7 @@ mon({
   id: 'bandit_crossbow', name: 'Crossbow Bandit', family: 'humanoid', role: 'ranged',
   minDepth: 3, weight: 8, attackRange: 14,
   abilities: ['crossbow_bolt', 'caltrops'],
-  biomes: ['caverns', 'crypt', 'ashwaste'],
+  biomes: ['caverns', 'crypt', 'ashwaste', 'darkForest', 'desert', 'tundra', 'swamp'],
   visual: { body: 'humanoid', palette: CLOTH, ornate: 0.3, eyes: 2, glow: 0xffaa44 },
 });
 
@@ -993,7 +993,7 @@ mon({
   id: 'cultist_zealot', name: 'Cultist Zealot', family: 'humanoid', role: 'melee',
   minDepth: 4, weight: 11, speed: 3.4, damageMul: 1.1,
   abilities: ['basic_strike', 'enrage'],
-  biomes: ['crypt', 'sunkenTemple', 'voidspire'],
+  biomes: ['crypt', 'sunkenTemple', 'voidspire', 'darkForest', 'desertTomb', 'hell'],
   visual: { body: 'humanoid', palette: SHROUD, ornate: 0.4, eyes: 2, glow: 0xff2266 },
 });
 
@@ -1001,7 +1001,7 @@ mon({
   id: 'cultist_acolyte', name: 'Cultist Acolyte', family: 'humanoid', role: 'caster',
   minDepth: 4, weight: 7, damageType: 'arcane', attackRange: 13,
   abilities: ['hex_bolt', 'arcane_orb'],
-  biomes: ['crypt', 'sunkenTemple', 'voidspire'],
+  biomes: ['crypt', 'sunkenTemple', 'voidspire', 'darkForest', 'swamp', 'desertTomb'],
   visual: { body: 'humanoid', palette: SHROUD, ornate: 0.45, eyes: 2, glow: 0xc060ff },
 });
 
@@ -1010,7 +1010,7 @@ mon({
   minDepth: 8, weight: 5, attackRange: 12,
   abilities: ['heal_ally', 'shield_ally', 'curse_frailty', 'battle_cry'],
   resists: { arcane: 35 },
-  biomes: ['crypt', 'sunkenTemple', 'voidspire'],
+  biomes: ['crypt', 'sunkenTemple', 'voidspire', 'darkForest', 'desertTomb'],
   visual: { body: 'humanoid', palette: SHROUD, ornate: 0.6, eyes: 2, glow: 0x60ffa0 },
 });
 
@@ -1019,7 +1019,7 @@ mon({
   minDepth: 11, weight: 5, lifeMul: 2.4, scale: 1.4, damageType: 'fire',
   abilities: ['cleave', 'flame_wave', 'shield_bash'],
   resists: { fire: 55, physical: 20 },
-  biomes: ['ashwaste', 'foundry', 'sunkenTemple'],
+  biomes: ['ashwaste', 'foundry', 'sunkenTemple', 'desert'],
   visual: { body: 'armored', palette: STEEL, ornate: 0.7, eyes: 2, glow: 0xffaa22 },
 });
 
@@ -1028,7 +1028,7 @@ mon({
   minDepth: 5, weight: 10, lifeMul: 1.2, speed: 3.1, damageType: 'poison',
   abilities: ['basic_strike', 'acid_spit'],
   resists: { poison: 60 },
-  biomes: ['caverns', 'hive', 'sunkenTemple'],
+  biomes: ['caverns', 'hive', 'sunkenTemple', 'swamp'],
   visual: { body: 'humanoid', palette: MOSS, ornate: 0.4, tail: true, eyes: 2, glow: 0x99cc44 },
 });
 
@@ -1037,7 +1037,7 @@ mon({
   minDepth: 9, weight: 9, speed: 3.0, lifeMul: 1.2, damageType: 'cold',
   abilities: ['impale', 'frost_bolt'],
   resists: { cold: 60, poison: 40 },
-  biomes: ['sunkenTemple', 'frostvault'],
+  biomes: ['sunkenTemple', 'frostvault', 'tundra'],
   visual: { body: 'humanoid', palette: AZURE, ornate: 0.55, eyes: 4, glow: 0x40c0ff },
 });
 
@@ -1046,7 +1046,7 @@ mon({
   minDepth: 13, weight: 9, speed: 3.5, damageMul: 1.3, attackSpeed: 1.25,
   abilities: ['whirlwind', 'charge', 'rend'],
   resists: { fire: 40 },
-  biomes: ['ashwaste', 'foundry'],
+  biomes: ['ashwaste', 'foundry', 'desert'],
   visual: { body: 'armored', palette: RUST, ornate: 0.6, eyes: 2, glow: 0xff7733 },
 });
 
@@ -1055,7 +1055,7 @@ mon({
   minDepth: 16, weight: 4, attackRange: 12,
   abilities: ['blood_link', 'haste_aura', 'siphon_soul', 'resurrect_ally'],
   resists: { arcane: 40, poison: 30 },
-  biomes: ['crypt', 'voidspire', 'ashwaste'],
+  biomes: ['crypt', 'voidspire', 'ashwaste', 'darkForest', 'hell'],
   visual: { body: 'humanoid', palette: CRIMSON, ornate: 0.7, eyes: 3, glow: 0xff2244 },
 });
 
@@ -1064,7 +1064,7 @@ mon({
   minDepth: 19, weight: 5, damageMul: 1.4, attackRange: 16, damageType: 'fire',
   abilities: ['meteor', 'firestorm', 'summon_imps', 'blink_away'],
   resists: { fire: 60, arcane: 45 },
-  biomes: ['ashwaste', 'voidspire', 'foundry'],
+  biomes: ['ashwaste', 'voidspire', 'foundry', 'hell'],
   visual: { body: 'humanoid', palette: EMBER, ornate: 0.75, eyes: 2, glow: 0xff5500 },
 });
 
@@ -1073,7 +1073,7 @@ mon({
   minDepth: 23, weight: 4, lifeMul: 3.0, defenseMul: 1.9, scale: 1.5,
   abilities: ['battle_cry', 'cleave', 'sunder_armor', 'summon_adds', 'enrage'],
   resists: { physical: 30, fire: 30 },
-  biomes: ['foundry', 'ashwaste', 'crypt'],
+  biomes: ['foundry', 'ashwaste', 'crypt', 'desert', 'tundra'],
   visual: { body: 'armored', palette: STEEL, ornate: 0.85, eyes: 2, glow: 0x44aaff },
 });
 
@@ -1086,7 +1086,7 @@ mon({
   minDepth: 5, weight: 12, speed: 2.6, scale: 0.65, damageType: 'poison',
   abilities: ['basic_strike', 'plague_death'],
   resists: { poison: 100, physical: 20, fire: -40 },
-  biomes: ['sunkenTemple', 'hive', 'caverns'],
+  biomes: ['sunkenTemple', 'hive', 'caverns', 'darkForest', 'swamp'],
   visual: { body: 'ooze', palette: MOSS, ornate: 0.4, eyes: 3, glow: 0xaaff44 },
 });
 
@@ -1095,7 +1095,7 @@ mon({
   minDepth: 6, weight: 10, speed: 2.8, attackRange: 4.0,
   abilities: ['thorn_lash', 'root_snare'],
   resists: { poison: 90, physical: 25, fire: -45 },
-  biomes: ['sunkenTemple', 'caverns', 'hive'],
+  biomes: ['sunkenTemple', 'caverns', 'hive', 'darkForest', 'swamp'],
   visual: { body: 'serpent', palette: BARK, ornate: 0.65, eyes: 0, glow: 0x88ff44 },
 });
 
@@ -1104,7 +1104,7 @@ mon({
   minDepth: 8, weight: 7, speed: 0.8, damageMul: 1.8, attackRange: 5.5,
   abilities: ['tentacle_grasp', 'thorn_lash', 'root_snare'],
   resists: { poison: 100, physical: 30, fire: -50 },
-  biomes: ['sunkenTemple', 'hive'],
+  biomes: ['sunkenTemple', 'hive', 'darkForest', 'swamp'],
   visual: { body: 'serpent', palette: MOSS, ornate: 0.7, eyes: 0, glow: 0x66dd44 },
 });
 
@@ -1113,7 +1113,7 @@ mon({
   minDepth: 10, weight: 7, speed: 0, attackRange: 18, lifeMul: 1.4, damageType: 'poison',
   abilities: ['acid_spit', 'spore_burst', 'quill_burst'],
   resists: { poison: 100, physical: 30, fire: -50 },
-  biomes: ['sunkenTemple', 'hive', 'caverns'],
+  biomes: ['sunkenTemple', 'hive', 'caverns', 'darkForest', 'swamp'],
   visual: { body: 'floating', palette: MOSS, ornate: 0.6, eyes: 0, glow: 0xccff44 },
 });
 
@@ -1122,7 +1122,7 @@ mon({
   minDepth: 9, weight: 9, lifeMul: 1.4, speed: 2.4, damageType: 'poison',
   abilities: ['basic_strike', 'spore_burst', 'heal_self'],
   resists: { poison: 100, physical: 25, fire: -45 },
-  biomes: ['sunkenTemple', 'hive', 'caverns'],
+  biomes: ['sunkenTemple', 'hive', 'caverns', 'darkForest', 'swamp'],
   visual: { body: 'humanoid', palette: MOSS, ornate: 0.55, eyes: 5, glow: 0x99ff66 },
 });
 
@@ -1131,7 +1131,7 @@ mon({
   minDepth: 13, weight: 4, attackRange: 11, damageType: 'poison',
   abilities: ['heal_ally', 'haste_aura', 'spore_burst', 'summon_swarm'],
   resists: { poison: 100, fire: -40 },
-  biomes: ['sunkenTemple', 'hive'],
+  biomes: ['sunkenTemple', 'hive', 'darkForest'],
   visual: { body: 'humanoid', palette: CRIMSON, ornate: 0.7, eyes: 5, glow: 0xff88cc },
 });
 
@@ -1140,7 +1140,7 @@ mon({
   minDepth: 15, weight: 5, speed: 1.2, attackRange: 15, damageType: 'poison',
   abilities: ['poison_spit', 'root_snare', 'corpse_burst'],
   resists: { poison: 100, physical: 25, fire: -50 },
-  biomes: ['sunkenTemple', 'hive'],
+  biomes: ['sunkenTemple', 'hive', 'swamp'],
   visual: { body: 'floating', palette: CRIMSON, ornate: 0.8, eyes: 0, glow: 0xdd44ff },
 });
 
@@ -1149,7 +1149,7 @@ mon({
   minDepth: 17, weight: 4, lifeMul: 3.8, defenseMul: 1.9, scale: 2.1, speed: 1.8,
   abilities: ['ground_slam', 'root_snare', 'thorn_lash', 'heal_self'],
   resists: { poison: 100, physical: 40, cold: 30, fire: -55 },
-  biomes: ['sunkenTemple', 'caverns'],
+  biomes: ['sunkenTemple', 'caverns', 'darkForest'],
   visual: { body: 'colossal', palette: BARK, ornate: 0.85, eyes: 4, glow: 0x66ff88 },
 });
 
@@ -1158,7 +1158,7 @@ mon({
   minDepth: 20, weight: 5, speed: 2.0, damageMul: 1.9, attackRange: 5,
   abilities: ['burrow_emerge', 'tentacle_grasp', 'root_snare'],
   resists: { poison: 100, physical: 35, fire: -50 },
-  biomes: ['sunkenTemple', 'caverns', 'hive'],
+  biomes: ['sunkenTemple', 'caverns', 'hive', 'darkForest', 'swamp'],
   visual: { body: 'ooze', palette: BARK, ornate: 0.9, limbs: 6, eyes: 6, glow: 0x88dd44 },
 });
 
@@ -1167,7 +1167,7 @@ mon({
   minDepth: 22, weight: 4, attackRange: 16, damageType: 'poison', lifeMul: 1.3,
   abilities: ['corpse_burst', 'poison_spit', 'summon_swarm', 'root_snare'],
   resists: { poison: 100, physical: 30, fire: -50 },
-  biomes: ['sunkenTemple', 'hive', 'crypt'],
+  biomes: ['sunkenTemple', 'hive', 'crypt', 'swamp'],
   visual: { body: 'floating', palette: ROT, ornate: 0.9, eyes: 7, glow: 0xff66aa },
 });
 
@@ -1180,7 +1180,7 @@ mon({
   minDepth: 2, weight: 12, speed: 3.0, scale: 0.55, damageType: 'poison',
   abilities: ['basic_strike'],
   resists: { poison: 100, physical: 25, cold: 30 },
-  biomes: ['caverns', 'sunkenTemple', 'crypt', 'hive'],
+  biomes: ['caverns', 'sunkenTemple', 'crypt', 'hive', 'swamp'],
   visual: { body: 'ooze', palette: MOSS, ornate: 0.2, eyes: 2, glow: 0x88ff66 },
 });
 
@@ -1189,7 +1189,7 @@ mon({
   minDepth: 2, weight: 11, speed: 2.4, lifeMul: 1.2, damageType: 'poison',
   abilities: ['basic_strike', 'split_self'],
   resists: { poison: 100, physical: 30, cold: 30 },
-  biomes: ['caverns', 'sunkenTemple', 'crypt'],
+  biomes: ['caverns', 'sunkenTemple', 'crypt', 'swamp'],
   visual: { body: 'ooze', palette: MOSS, ornate: 0.3, eyes: 2, glow: 0x88ff66 },
 });
 
@@ -1198,7 +1198,7 @@ mon({
   minDepth: 6, weight: 10, speed: 2.5, lifeMul: 1.4, damageType: 'poison',
   abilities: ['acid_spit', 'split_self', 'plague_death'],
   resists: { poison: 100, physical: 35, cold: 25 },
-  biomes: ['caverns', 'hive', 'foundry'],
+  biomes: ['caverns', 'hive', 'foundry', 'swamp'],
   visual: { body: 'ooze', palette: ROT, ornate: 0.35, eyes: 3, glow: 0xccff33 },
 });
 
@@ -1207,7 +1207,7 @@ mon({
   minDepth: 9, weight: 7, speed: 3.2, damageMul: 1.5,
   abilities: ['ink_cloud', 'grapple_pull', 'ambush_leap'],
   resists: { poison: 100, physical: 40, fire: -35 },
-  biomes: ['caverns', 'sunkenTemple', 'foundry'],
+  biomes: ['caverns', 'sunkenTemple', 'foundry', 'swamp'],
   visual: { body: 'ooze', palette: BASALT, ornate: 0.4, eyes: 4, glow: 0x6688ff },
 });
 
@@ -1216,7 +1216,7 @@ mon({
   minDepth: 11, weight: 5, lifeMul: 3.4, scale: 1.8, speed: 1.7, damageType: 'poison',
   abilities: ['heavy_slam', 'split_self', 'grapple_pull'],
   resists: { poison: 100, physical: 45, cold: 35, lightning: -30 },
-  biomes: ['caverns', 'sunkenTemple', 'hive'],
+  biomes: ['caverns', 'sunkenTemple', 'hive', 'swamp'],
   visual: { body: 'ooze', palette: AZURE, ornate: 0.5, eyes: 5, glow: 0x66ddff },
 });
 
@@ -1225,7 +1225,7 @@ mon({
   minDepth: 14, weight: 8, speed: 2.6, lifeMul: 1.6, damageType: 'fire',
   abilities: ['molten_trail', 'split_self', 'death_explode'],
   resists: { fire: 100, poison: 100, cold: -45, physical: 35 },
-  biomes: ['foundry', 'ashwaste'],
+  biomes: ['foundry', 'ashwaste', 'hell'],
   visual: { body: 'ooze', palette: EMBER, ornate: 0.45, eyes: 3, glow: 0xff5500 },
 });
 
@@ -1234,7 +1234,7 @@ mon({
   minDepth: 18, weight: 4, lifeMul: 3.8, scale: 1.9, speed: 1.6, damageType: 'poison',
   abilities: ['corpse_burst', 'spore_burst', 'plague_death', 'heal_self'],
   resists: { poison: 100, physical: 45, cold: 30 },
-  biomes: ['crypt', 'hive', 'sunkenTemple'],
+  biomes: ['crypt', 'hive', 'sunkenTemple', 'swamp'],
   visual: { body: 'ooze', palette: ROT, ornate: 0.6, eyes: 7, glow: 0x99ff33 },
 });
 
@@ -1243,7 +1243,7 @@ mon({
   minDepth: 16, weight: 6, attackRange: 13, damageType: 'physical',
   abilities: ['shrapnel_nova', 'quill_burst', 'shatter_death'],
   resists: { poison: 100, cold: 60, physical: 20 },
-  biomes: ['frostvault', 'foundry', 'voidspire'],
+  biomes: ['frostvault', 'foundry', 'voidspire', 'desert'],
   visual: { body: 'ooze', palette: RIME, ornate: 0.55, eyes: 4, glow: 0xaaeeff },
 });
 

@@ -247,6 +247,7 @@ export interface LayoutOut {
  * depth 1 but never so big that generation or the mesh budget falls over.
  */
 export function layoutSizeFor(depth: number, kind: LayoutKind, rng: Rng): { w: number; h: number } {
+  kind = INTERIM_LAYOUT[kind] ?? kind;
   const growth = Math.min(30, Math.floor(Math.log2(depth + 1) * 7));
   let base = 62 + growth;
   // The arena chamber is capped now, so the level has to be big enough that the
@@ -269,9 +270,27 @@ export function layoutSizeFor(depth: number, kind: LayoutKind, rng: Rng): { w: n
 }
 
 /** Build a layout of `kind`, fully post-processed and guaranteed connected. */
+/**
+ * Stand-ins for the zone generators of the map remake until they land
+ * (docs/remake/maps.md, milestone "Zone generators"). Removed with them.
+ */
+const INTERIM_LAYOUT: Partial<Record<LayoutKind, LayoutKind>> = {
+  forest: 'caves',
+  swamp: 'caves',
+  dunes: 'terraces',
+  tundra: 'terraces',
+  wastes: 'ruins',
+  crypt: 'catacombs',
+  cave: 'caves',
+  tomb: 'catacombs',
+  keep: 'halls',
+  rift: 'spiral',
+};
+
 export function buildLayout(kind: LayoutKind, o: LayoutOpts): LayoutOut {
   const rng = o.rng;
   let out: LayoutOut;
+  kind = INTERIM_LAYOUT[kind] ?? kind;
   switch (kind) {
     case 'rooms':
       out = layoutRooms(o);

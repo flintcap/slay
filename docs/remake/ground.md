@@ -57,6 +57,19 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Notes for resume
 
+- From maps (contract in CONTRACTS.md "Maps → ground"): call
+  `drawAsKind(v)` from `world/Layouts.ts` wherever DungeonBuilder reads a tile
+  to draw it (its `tile()` accessor is the one place). Today an unknown value
+  falls through to the floor branch, so a blocking `ruin` (10) or `deepWater`
+  (11) would be an invisible wall. maps does not emit them until this lands or
+  maps' zone generators switch on (maps will then make the one-line edit
+  itself if it is still missing).
+- From maps: six new biomes (`darkForest`, `swamp`, `desert`, `desertTomb`,
+  `tundra`, `hell`) have no `ART` entry yet. `biomeArt()` lends them an old
+  look (`LOOK_FALLBACK` in Biomes.ts) and takes the roof off the outdoor ones.
+  Add real `ART` entries when you build their looks; the fallback then stops
+  applying on its own.
+
 - maps runs at the same time and will add tile kinds and zones. Draw unknown
   tile kinds as blocking walls until you support them.
 - `surface()` returns a shared cached material: never attach
