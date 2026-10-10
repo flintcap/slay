@@ -15,7 +15,7 @@
 
 import * as THREE from 'three';
 import { macroNoiseTexture } from './Textures';
-import { WORLD_ENV_ATTRIBUTE } from './WorldSurface';
+import { WORLD_ENV_ATTRIBUTE } from './WorldMaterial';
 
 export type LiquidStyle = 'water' | 'lava' | 'sludge' | 'ice' | 'voidwater';
 

@@ -187,9 +187,9 @@ export function loadTexture(rel: string, opts: AssetTextureOpts = {}): THREE.Tex
 
   const ready = loadImage(rel).then((img) => {
     if (!img) return false;
-    // Drop the GPU copy of the fallback first: the real image is a different
-    // size, and immutable texture storage cannot be resized in place.
-    tex.dispose();
+    // The filter and mipmap change below alters three's texture cache key, so
+    // the real image gets fresh GPU storage at its own size and the 2 px
+    // fallback's storage is released.
     tex.image = img;
     // An HTMLImageElement was not pre-flipped; ask the upload to do it.
     tex.flipY = !(typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap);

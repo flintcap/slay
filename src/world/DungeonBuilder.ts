@@ -37,7 +37,7 @@ import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from '
 
 import { surface, surfaceVariant } from '../art/Materials';
 import { setFogShape, fogShape } from '../core/Renderer';
-import { worldSurface, setWorldCutaway, addWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldSurfaceOpts } from '../art/WorldSurface';
+import { worldMaterial, setWorldCutaway, setWorldRoof, addWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldMaterialOpts } from '../art/WorldMaterial';
 import { liquidSurface, type LiquidSurface, type LiquidStyle } from '../art/Liquids';
 import { crackTexture } from '../art/Textures';
 import { Drips, type DripSite } from './Ambience';
@@ -86,7 +86,7 @@ class Surf {
   uv: number[] = [];
   /**
    * Per-vertex world context for `worldSurface` materials: contact occlusion
-   * on floors, height above the floor on walls. See `WorldSurfaceOpts.kind`.
+   * on floors, height above the floor on walls. See `WorldMaterial.ts`.
    */
   env: number[] = [];
   idx: number[] = [];
@@ -269,21 +269,27 @@ function variantMaterial(v: FloorVariant): THREE.Material {
   });
 }
 
+/** World context for a level surface, beyond what its texture knows. */
+type WorldEnv = Omit<WorldMaterialOpts, 'layers'>;
+
 /** A level-private world-space material for a floor or wall variant. */
-function worldVariantMaterial(v: FloorVariant, w: WorldSurfaceOpts): THREE.Material {
+function worldVariantMaterial(v: FloorVariant, w: WorldEnv): THREE.Material {
   try {
-    return worldSurface(
-      v.palette,
-      {
-        repeat: v.repeat ?? 1,
-        tint: v.tint,
-        roughness: v.roughness,
-        metalness: v.metalness,
-        emissive: v.emissive,
-        emissiveIntensity: v.emissiveIntensity,
-      },
-      w,
-    );
+    return worldMaterial({
+      ...w,
+      layers: [
+        {
+          key: v.palette,
+          tint: v.tint,
+          // `repeat` used to mean texture repeats per tile: more repeats is a
+          // smaller texture, so it divides the scan's real size.
+          metres: undefined,
+          rough: v.roughness,
+          emissive: v.emissive,
+          emissiveIntensity: v.emissiveIntensity,
+        },
+      ],
+    });
   } catch {
     return variantMaterial(v);
   }
@@ -538,7 +544,8 @@ export class DungeonMesh {
 
   private tile(x: number, y: number): number {
     if (x < 0 || y < 0 || x >= this.level.width || y >= this.level.height) return T_VOID;
-    // Map tile kinds this builder has no look for yet are drawn as an old one.
+    // Tile kinds this builder does not draw yet come back as the closest old
+    // kind (maps -> ground contract); unknown values draw as blocking wall.
     return drawAsKind(this.level.tiles[y * this.level.width + x]);
   }
 
@@ -558,10 +565,11 @@ export class DungeonMesh {
     // Material table. Index order matters only internally.
     const mats: THREE.Material[] = [];
     // Floors and walls wear world-space materials: the palette's own PBR set
-    // plus the breakup, damp and contact-grime layer from `WorldSurface`.
+    // plus the breakup, damp and contact-grime layer from `WorldMaterial`.
     // Private to this level, so they are owned and disposed here.
-    const world = (kind: WorldSurfaceOpts['kind']): WorldSurfaceOpts => ({
+    const world = (kind: 'floor' | 'wall'): WorldEnv => ({
       kind,
+      cutaway: kind === 'wall',
       grime: art.grime ?? 0x2a2622,
       grimeAmount: kind === 'floor' ? 0.75 : 0.6,
       wet: (art.wetness ?? clamp(art.puddles * 0.8, 0, 0.8)) * (kind === 'floor' ? 1 : 0.7),
@@ -589,7 +597,14 @@ export class DungeonMesh {
     // A private clone, not the shared cached surface: the dissolve below is
     // attached with `onBeforeCompile`, and hanging that on a cached material
     // gives every other user of the same palette a hole in it.
-    const ceilMat = surfaceVariant(art.walls[0].palette, { repeat: 1.6, tint: 0x6a6a72, roughness: 1 });
+    const ceilMat = worldMaterial({
+      kind: 'floor',
+      layers: [{ key: art.walls[0].palette, tint: 0x6a6a72 }],
+      roof: true,
+      grimeAmount: 0,
+      contact: 0,
+      variation: 0.6,
+    });
     this.ownedMat.push(ceilMat);
 
     const liquidMat = this.makeLiquidMaterial();
@@ -732,7 +747,7 @@ export class DungeonMesh {
     // came back with a dark cap still sitting beside the player: the ceiling is
     // lower than the lid, so it occludes *more* of the floor per metre, not
     // less.
-    openAroundHero(ceilMat, ROOF_OPEN);
+    // (The ceiling's world material carries the same dissolve; see `roof`.)
 
     const FLOOR0 = 0;
     const WALL0 = FLOOR0 + floorMats.length;
@@ -1792,6 +1807,7 @@ export class DungeonMesh {
   update(dt: number, elapsed: number, focus: THREE.Vector3): void {
     // The roof follows the camera focus, which is the player.
     this.heroXZ.set(focus.x, focus.z);
+    setWorldRoof(focus.x, focus.z, ROOF_OPEN);
     // Walls between the camera and the hero open a small hole on the sightline.
     setWorldCutaway(focus.x, focus.y + 1.1, focus.z, 2.0);
     // Height fog sits just under the lowest walkable floor: pits sink into it,

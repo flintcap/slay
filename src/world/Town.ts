@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import type { CharClassId, Rng } from '../types';
 import { Noise, clamp } from '../art/Noise';
 import { surface } from '../art/Materials';
-import { worldSurface, WORLD_ENV_ATTRIBUTE } from '../art/WorldSurface';
+import { worldMaterial, WORLD_ENV_ATTRIBUTE } from '../art/WorldMaterial';
 import { CampLife } from './TownLife';
 import { displace, mergeGeometries, rock, stoneBlock, taperedBox, clothPanel, limb } from '../art/Meshes';
 import { buildNpcModel, npcCarryGrip } from '../art/NpcModels';
@@ -741,7 +741,8 @@ function buildGlows(ctx: Ctx): void {
  */
 function groundSurface(ctx: Ctx, opts: { repeat: number; tint: number; roughness: number }, wet: number): THREE.Material {
   try {
-    const m = worldSurface('ground.dirt', opts, {
+    const m = worldMaterial({
+      layers: [{ key: 'ground.dirt', tint: opts.tint, rough: opts.roughness }],
       kind: 'floor',
       grime: 0x2a2018,
       grimeAmount: 0.55,
