@@ -20,7 +20,7 @@ one boss. Dark and gritty. Many biomes in unique mixes.
   hell, plus whichever old ones still earn a place. Remove biomes that are
   dropped and fix every reference (`src/data/monsters.ts`, quests, story,
   music keys). Map each monster family to the biomes it lives in.
-- [ ] Zone generators. Remake layout generation from nothing. Outdoor zones
+- [x] Zone generators. (Maps: zone generators switched on, eleven old generators deleted) Remake layout generation from nothing. Outdoor zones
   (winding forest paths with tree-line walls and clearings, desert dunes and
   ruined walls, frozen plains with cliffs, hell wastes with lava rivers,
   swamp with water and boardwalks) and indoor zones (crypt halls, caves, tomb
@@ -176,17 +176,37 @@ milestone 4.
 
 ## Next up
 
-1. Zone generators milestone. New files under `src/world/zones/`: a shared
-   `Region` carving kit, then outdoor `forest`, `swamp`, `dunes`, `tundra`,
-   `wastes` and indoor `crypt`, `cave`, `tomb`, `keep`, `rift`, plus the boss
-   `arena` tail. Each returns tiles, heights and rooms for a sub-rectangle.
-2. `tools/check-maps.mjs` (headless, vite SSR bundle like check-mapgen).
-3. Switch: `buildLayout` stops mapping new kinds through `INTERIM_LAYOUT`
-   (Layouts.ts) and calls the zone generators; then delete the eleven old
-   generators (rooms, halls, caves, maze, catacombs, ruins, arena, spiral,
-   cathedral, warrens, terraces) and their `LayoutKind`s.
+1. Map assembly milestone. New `src/world/MapGen.ts`: themes (weighted zone
+   chains with a minimum tier, from the Themes table), split the chain into
+   areas (outdoor runs of up to 2 share an area, indoor zones stand alone, at
+   most 4 areas), name the map, fill `DungeonRun.map`. `generateRun` builds
+   one `DungeonLevel` per area through `buildArea` (`zones/Area.ts` already
+   takes several zones). A RunPlan biome must appear in the chain.
+2. Exits and the waypoint: `level.exits` (cave mouth, doorway or stairs to the
+   next area; portal to town after the boss), `level.waypoint` on area 0.
+   Facing must go through `turnPoint` (the area is turned after assembly).
+3. DungeonScene: replace stairs-per-floor with area transitions, the arena
+   gate moment and the portal home; then rename or remove `stairsDown` and
+   `stairsUp` (Props.ts, MapPanel.ts, HUD.ts read them).
 
 ## Notes for resume
+
+- Zone generators live in `src/world/zones/`: `Kit.ts` (carving kit),
+  `Outdoor.ts`, `Indoor.ts`, `Arena.ts`, `Area.ts` (assembler, finalise,
+  turn). Each generator carves a void grid west to east from `ctx.entry` to
+  `ctx.exit`; the assembler joins seams, connects islands (planking over
+  water, fire and drops), never digs through the arena fence, and turns the
+  area at random (`AreaOut.turn`, `turnPoint`).
+- `node tools/check-maps.mjs` is the gate (connectivity, ports, sealed arena,
+  border). `--dump=keep:sunkenTemple[:pair|boss] --seed=N` prints one area.
+- check-openness: indoor layouts keep the 25% rule; outdoor layouts are open
+  country and get 75%. The boss arena is left out of the measure.
+- check-curve fails 3 of 30 (pyromancer 5 and 12, shadowblade 12). It failed
+  the same 3 before the generators changed, so it is not a maps regression.
+- check-audio fails on the new `hell` biome having no ambience bed: audio's
+  (noted in audio.md).
+- Monster counts per floor held: 123/152/170 by depth band, against
+  122/150/166 before the switch (check-density).
 
 - ground runs at the same time and draws what you generate. Unknown tile
   kinds must render as blocking walls until ground supports them.

@@ -15,6 +15,7 @@ import {
   blob,
   clampN,
   connectPoints,
+  disc,
   dist,
   elbow,
   get,
@@ -175,6 +176,12 @@ export function cave(ctx: ZoneCtx): void {
     const r = hive ? rng.range(3.5, 5.5) : rng.range(5, 8.5);
     blob(ctx, c.x, c.y, r, T_FLOOR, noise, 0.45);
     addRoundRoom(ctx, c.x, c.y, Math.floor(r * 0.75));
+    // Columns of rock left standing in the bigger chambers.
+    for (let k = r > 5 ? rng.int(2, 4) : 0; k > 0; k--) {
+      const a = rng.range(0, Math.PI * 2);
+      const d = rng.range(1.5, r - 2);
+      disc(ctx, c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, rng.range(0.5, 1.2), T_VOID);
+    }
     if (rng.chance(0.35)) g.rectHeight(Math.round(c.x - r), Math.round(c.y - r), Math.round(r * 2), Math.round(r * 2), rng.chance(0.5) ? -1 : 1);
   }
 
@@ -326,6 +333,7 @@ export function keep(ctx: ZoneCtx): void {
     const r = addRoom(ctx, l.x, l.y, l.w, l.h);
     roomOfBox.set(l, r);
     if (l === hall) pillars(ctx, r, 4);
+    else if (l.w >= 10 && l.h >= 10 && rng.chance(0.75)) pillars(ctx, r, rng.chance(0.5) ? 3 : 4);
     else if (rng.chance(0.15)) g.rectHeight(l.x, l.y, l.w, l.h, rng.chance(0.5) ? 1 : -1);
   }
 
@@ -410,6 +418,12 @@ export function rift(ctx: ZoneCtx): void {
     blob(ctx, p.x, p.y, r, T_FLOOR, noise, 0.35);
     g.rectHeight(Math.round(p.x - r - 1), Math.round(p.y - r - 1), Math.round(r * 2 + 3), Math.round(r * 2 + 3), lv[i]!);
     if (i >= 2) addRoundRoom(ctx, p.x, p.y, Math.floor(r * 0.75));
+    // Shards of the spire standing up out of the bigger platforms.
+    for (let k = i >= 2 && r > 5.5 ? rng.int(1, 3) : 0; k > 0; k--) {
+      const a = rng.range(0, Math.PI * 2);
+      const d = rng.range(2, r - 2);
+      disc(ctx, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, rng.range(0.5, 1.1), T_VOID);
+    }
   }
   for (const [a, b] of connectPoints(rng, pts, rng.int(1, 3))) {
     segment(ctx, pts[a]!, pts[b]!, 1, T_BRIDGE, (o) => o === T_CHASM || o === T_VOID);

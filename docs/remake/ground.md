@@ -57,13 +57,16 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Notes for resume
 
-- From maps (contract in CONTRACTS.md "Maps → ground"): call
-  `drawAsKind(v)` from `world/Layouts.ts` wherever DungeonBuilder reads a tile
-  to draw it (its `tile()` accessor is the one place). Today an unknown value
-  falls through to the floor branch, so a blocking `ruin` (10) or `deepWater`
-  (11) would be an invisible wall. maps does not emit them until this lands or
-  maps' zone generators switch on (maps will then make the one-line edit
-  itself if it is still missing).
+- From maps: the zone generators are on and emit `ruin`, `deepWater`,
+  `bridge` and `ice`. maps made the one-line edit in DungeonBuilder's
+  `tile()` accessor: it now returns `drawAsKind(v)`, so new kinds draw as
+  wall, water or floor. Colliders already read raw tiles through
+  `isWalkableValue`, so ruin and deep water block. When you give a kind its
+  own look, branch on the raw value before `drawAsKind`.
+- From maps: levels now carry `zones`, `zoneOf` and (boss floor) `arena`.
+  Outdoor zones are open ground with a void edge meant as a tree line, reeds,
+  dune ridge or cliff, not masonry. In milestone 4 one area can hold two
+  outdoor zones side by side (up to about 230 tiles on the long side).
 - From maps: six new biomes (`darkForest`, `swamp`, `desert`, `desertTomb`,
   `tundra`, `hell`) have no `ART` entry yet. `biomeArt()` lends them an old
   look (`LOOK_FALLBACK` in Biomes.ts) and takes the roof off the outdoor ones.

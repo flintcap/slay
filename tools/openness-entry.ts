@@ -43,6 +43,10 @@ for (const depth of [1, 2, 4, 6, 9, 13, 18, 25, 30]) {
       const W = level.width;
       const H = level.height;
       rep.area += W * H;
+      // The boss arena is one open room on purpose (docs/remake/maps.md), so
+      // its floor is left out: the question is how the rest of the zone reads.
+      const ar = level.arena;
+      const inArena = (x: number, y: number): boolean => !!ar && x >= ar.x && y >= ar.y && x < ar.x + ar.w && y < ar.y + ar.h;
 
       // Largest all-walkable square, by the standard dynamic program: the
       // square ending at a tile is one more than the smallest of its three
@@ -50,7 +54,7 @@ for (const depth of [1, 2, 4, 6, 9, 13, 18, 25, 30]) {
       const dp = new Int32Array(W * H);
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
-          if (!isWalkable(level, x, y)) continue;
+          if (!isWalkable(level, x, y) || inArena(x, y)) continue;
           rep.floor++;
           const i = y * W + x;
           dp[i] =

@@ -48,7 +48,12 @@ let bad = 0;
 // Layouts that are one great space on purpose. The cathedral is a single long
 // nave, and the owner has agreed it stays one (its widest square is still a
 // room inside a much larger level). Everything else keeps the quarter.
-const LIMIT = { cathedral: 0.65 };
+//
+// Outdoor zones of the map remake (docs/remake/maps.md) are open country on
+// purpose: a wood, a fen, a desert, a frozen plain, a burning waste. They are
+// held to "not one bare field" instead: three quarters at most.
+const OUTDOOR = 0.75;
+const LIMIT = { forest: OUTDOOR, swamp: OUTDOOR, dunes: OUTDOOR, tundra: OUTDOOR, wastes: OUTDOOR };
 for (const r of rows) {
   const wide = r.wideOpen / Math.max(1, r.floor);
   // A quarter of the floor being two tiles from any wall means the level reads
