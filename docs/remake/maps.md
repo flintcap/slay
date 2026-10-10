@@ -27,7 +27,7 @@ one boss. Dark and gritty. Many biomes in unique mixes.
   corridors, keep interiors). Each one clearly different from the others.
   Every zone must stay readable: no giant empty fields, no endless corridor.
   Delete the old layout generators.
-- [ ] Map assembly. Chain zones into one map with a theme (for example dark
+- [x] Map assembly. (Maps: themed zone chains assemble each map; waypoint home, exit and arrival tiles) Chain zones into one map with a theme (for example dark
   forest, then ruined chapel, then catacombs, then the boss's crypt). Biome
   mixes chosen by seeded RNG and weighted so they make sense. Zone
   transitions, waypoint back to town at the start, one boss arena at the end,
@@ -176,18 +176,16 @@ milestone 4.
 
 ## Next up
 
-1. Map assembly milestone. New `src/world/MapGen.ts`: themes (weighted zone
-   chains with a minimum tier, from the Themes table), split the chain into
-   areas (outdoor runs of up to 2 share an area, indoor zones stand alone, at
-   most 4 areas), name the map, fill `DungeonRun.map`. `generateRun` builds
-   one `DungeonLevel` per area through `buildArea` (`zones/Area.ts` already
-   takes several zones). A RunPlan biome must appear in the chain.
-2. Exits and the waypoint: `level.exits` (cave mouth, doorway or stairs to the
-   next area; portal to town after the boss), `level.waypoint` on area 0.
-   Facing must go through `turnPoint` (the area is turned after assembly).
-3. DungeonScene: replace stairs-per-floor with area transitions, the arena
-   gate moment and the portal home; then rename or remove `stairsDown` and
-   `stairsUp` (Props.ts, MapPanel.ts, HUD.ts read them).
+1. Content per zone milestone. Mini-boss: `planMiniBoss` (entities/MiniBoss.ts)
+   already promotes one leader per level; make it land in the zone before the
+   boss zone (spawns carry their zone via `level.zoneOf`).
+2. Chests, shrines and events by heat: more and better the deeper into the
+   map. Check `placeProps` and the event placer read zone heat, or weight
+   their room picks by it in DungeonGen.
+3. Arena entrance moment in DungeonScene: boss stays idle until the hero
+   passes `level.arena.gate`; then the gate seals (nav blocked on the 3 gate
+   tiles, a sound, a banner) until the boss dies.
+4. Keep check-events, check-story, check-runmods and check-mapgen green.
 
 ## Notes for resume
 
@@ -207,6 +205,18 @@ milestone 4.
   (noted in audio.md).
 - Monster counts per floor held: 123/152/170 by depth band, against
   122/150/166 before the switch (check-density).
+
+- Map plan: `src/world/MapGen.ts` (themes, `planMap`, `splitAreas`,
+  `zoneHeat`). Contract maps make every zone past the first the contract
+  biome, so family slay objectives have monsters to count (check-story).
+- Monsters per whole map held or rose at every tier (16 seeds each): new
+  432/435/488/501/576/641/892/1129 at tiers 1/3/5/8/12/20/30/45, against
+  358/341/348/356/539/616/874/1092 for the old floors.
+- Tiles 7 and 8 are `exit` and `arrival`. `T_STAIRS_DOWN`/`T_STAIRS_UP` are
+  deprecated aliases kept for Props.ts (ground); drop them in Verify and clean.
+- The waypoint ring is drawn by DungeonScene (`buildWaypoint`,
+  `tickWaypoint`). Music per zone is already done by audio (`zoneAt` in
+  DungeonScene's update).
 
 - ground runs at the same time and draws what you generate. Unknown tile
   kinds must render as blocking walls until ground supports them.

@@ -248,7 +248,7 @@ export function craftingRecipes(): CraftRecipe[];
 ```ts
 /** Generates a whole run: N levels for `depth`, ending in a boss floor. */
 export function generateRun(depth: number, seed: number, classId: CharClassId): DungeonRun;
-export function generateLevel(depth: number, levelIndex: number, levelsTotal: number, biome: BiomeId, seed: number): DungeonLevel;
+export function generateLevel(...): DungeonLevel; // see "Map assembly" below
 export function tileAt(level: DungeonLevel, x: number, y: number): TileKind;
 export function isWalkable(level: DungeonLevel, x: number, y: number): boolean;
 export const TILE: Record<TileKind, number>; // enum values stored in level.tiles
@@ -599,4 +599,37 @@ export const T_RUIN = 10, T_DEEP_WATER = 11, T_BRIDGE = 12, T_ICE = 13;
 // src/world/DungeonGen.ts
 export function generateRun(depth: number, seed: number, classId: CharClassId): DungeonRun; // now a map
 export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | null;
+```
+
+## Map assembly — owned by MAPS
+
+- `planMap` rolls the map: a themed chain of 3 to 5 zones (`THEMES`), split
+  into areas. Outdoor zones in a row share an area, two at most; an indoor
+  zone is an area of its own; four areas at most. The last zone is the boss
+  zone, with the arena at its far end. A contract biome (`want`) becomes the
+  boss zone and every zone past the first.
+- `generateRun` calls `generateLevel` once per area with an `AreaContext`.
+  Each zone has its own monster budget (`zoneBudget`) and monster pool (its
+  own biome). Heat rises from 0 in the first zone to 1 in the boss zone.
+- Tiles 7 and 8 are now `exit` (`T_EXIT`, the way on) and `arrival`
+  (`T_ARRIVAL`, where the hero lands). `T_STAIRS_DOWN` and `T_STAIRS_UP` stay
+  as deprecated aliases until Props.ts moves over.
+- `MapExit.facing` is the direction you walk through it, after the area's
+  random turn. `turnVec` turns any east-pointing direction the same way.
+- The scene draws the waypoint (a gold ring at `level.waypoint`). `[E]` there
+  goes home and gives the map up. Props are kept off it.
+
+```ts
+// src/world/MapGen.ts
+export function planMap(tier: number, rng: Rng, want?: BiomeId, minZones?: number): MapPlan; // { info, areas, bossBiome }
+export function zoneHeat(order: number, zones: number): number; // 0 first zone, 1 boss zone
+export const MAX_AREAS = 4, MAX_ZONES_PER_AREA = 2;
+// src/world/zones/Area.ts
+export function buildArea(plan: AreaPlan, rng: Rng): AreaOut; // grid, rooms, zones, zoneOf, entry, exit, arena?, turn, facing
+export function turnVec(dx: number, dy: number, turn: number): Vec2;
+// src/world/DungeonGen.ts
+export interface AreaContext { zonesTotal: number; budgetScale: number; next?: ZonePlan }
+export function generateLevel(depth: number, levelIndex: number, levelsTotal: number,
+  zonesOrBiome: BiomeId | ZonePlan[], seed: number, quest?: QuestInstance, modifiers?: string[], actx?: AreaContext): DungeonLevel;
+export function zoneBudget(depth: number, floorTiles: number, heat: number): number;
 ```

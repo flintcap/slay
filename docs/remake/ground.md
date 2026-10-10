@@ -67,6 +67,13 @@ outdoors. Remake from nothing; delete the old painted textures.
   Outdoor zones are open ground with a void edge meant as a tree line, reeds,
   dune ridge or cliff, not masonry. In milestone 4 one area can hold two
   outdoor zones side by side (up to about 230 tiles on the long side).
+- From maps: maps are live (milestone 4). Areas hold one or two zones; two
+  outdoor zones meet at a seam. `level.exits[0].kind` says how the way on
+  should look (caveMouth, doorway, stairs, portal) and `facing` which way you
+  walk through it. Tiles 7 and 8 are renamed `T_EXIT` and `T_ARRIVAL`;
+  Props.ts still imports the old names, which stay as aliases. Please switch
+  Props.ts to the new names when you next touch it. DungeonScene draws the
+  waypoint ring at `level.waypoint`; props are kept off it.
 - From maps: six new biomes (`darkForest`, `swamp`, `desert`, `desertTomb`,
   `tundra`, `hell`) have no `ART` entry yet. `biomeArt()` lends them an old
   look (`LOOK_FALLBACK` in Biomes.ts) and takes the roof off the outdoor ones.
