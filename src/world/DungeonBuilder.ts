@@ -702,6 +702,8 @@ export class DungeonMesh {
 
   /** Floor surface height at a world position — for entity grounding. */
   floorY(wx: number, wz: number): number {
+    // Outdoors the ground is a smooth heightfield, not tile steps: stand on it.
+    if (this.terrain) return this.terrain.heightAt(wx, wz);
     const t = this.worldToTile(wx, wz);
     return this.floorHeight(t.x, t.y);
   }

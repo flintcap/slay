@@ -1627,7 +1627,7 @@ ART.hell = {
   pillar: null,
   damage: 0.35,
   puddles: 0,
-  grade: { contrast: 1.16, saturation: 0.92, shadowTint: 0x3a1a2a, highlightTint: 0xffa060, splitTone: 0.5, vignette: 0.56, vignetteTint: 0x2a0604, haze: 0.45 },
+  grade: { contrast: 1.14, saturation: 0.8, shadowTint: 0x3a2030, highlightTint: 0xffc090, splitTone: 0.42, vignette: 0.56, vignetteTint: 0x2a0604, haze: 0.45 },
 };
 
 ART.desertTomb = {

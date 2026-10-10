@@ -77,7 +77,7 @@ const LOOKS: Partial<Record<BiomeId, TerrainLook>> = {
   },
   desert: {
     base: L('tex.sand'),
-    trodden: L('tex.cracked', 0xd8c8b0),
+    trodden: L('tex.cracked', 0xd0c8c0),
     rock: L('tex.sandstone', 0xc8b49a),
     special: L('tex.stony_dirt', 0xc8a888),
     edge: 'dunes',
@@ -103,8 +103,8 @@ const LOOKS: Partial<Record<BiomeId, TerrainLook>> = {
     wet: 0,
   },
   hell: {
-    base: L('tex.ash', 0xa07060),
-    trodden: L('tex.cracked', 0x7a3a2a),
+    base: L('tex.ash', 0x8a7c76),
+    trodden: L('tex.cracked', 0x6a4a40),
     rock: L('tex.obsidian', 0xa08080),
     special: L('tex.lava_crust', undefined, { emissive: 0xff3a0a, emissiveIntensity: 2.0 }),
     edge: 'cliff',

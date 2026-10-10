@@ -41,15 +41,15 @@ const HERO_INDOOR = { color: 0xffd2a0, intensity: 34, distance: 17 };
 const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
   // Moonlight through the canopy: blue key, green-black bounce.
   darkForest: {
-    sky: 0x34486a, ground: 0x10140c, fill: 0.85,
-    key: 0x9cb8ec, keyIntensity: 1.5, elevation: 52, azimuth: 215,
+    sky: 0x3a5078, ground: 0x141a10, fill: 1.15,
+    key: 0xa8c4f0, keyIntensity: 2.6, elevation: 50, azimuth: 215,
     fog: 0x0a1018, fogDensity: 0.03,
     hero: { color: 0xffc890, intensity: 30, distance: 16 },
   },
   // Overcast and thick: low yellow-green murk.
   swamp: {
-    sky: 0x3a4a34, ground: 0x161c0e, fill: 0.95,
-    key: 0xb8c89a, keyIntensity: 0.95, elevation: 44, azimuth: 160,
+    sky: 0x44563c, ground: 0x1c2412, fill: 1.25,
+    key: 0xc0d0a4, keyIntensity: 2.0, elevation: 44, azimuth: 160,
     fog: 0x121a10, fogDensity: 0.04,
     hero: { color: 0xffd09a, intensity: 28, distance: 15 },
   },
@@ -77,9 +77,9 @@ const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
   },
   // No sky to speak of. The light comes up from the lava.
   hell: {
-    sky: 0x2a0c0a, ground: 0xc8300c, fill: 0.85,
-    key: 0xff7a48, keyIntensity: 0.9, elevation: 48, azimuth: 120,
-    fog: 0x260806, fogDensity: 0.03,
+    sky: 0x2a1818, ground: 0x6a200e, fill: 0.9,
+    key: 0xffa478, keyIntensity: 1.5, elevation: 48, azimuth: 120,
+    fog: 0x1e0a08, fogDensity: 0.028,
     under: { color: 0xff3a10, intensity: 0.9 },
     hero: { color: 0xffc898, intensity: 28, distance: 15 },
   },
