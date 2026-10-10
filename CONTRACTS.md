@@ -331,9 +331,8 @@ Biome grades live in `BiomeArt.grade` (`src/world/Biomes.ts`). DungeonScene sets
 the biome grade on level load and resets it in dispose; other scenes that want a
 look of their own call `setGrade` on enter.
 
-`src/art/WorldSurface.ts` `worldSurface(key, opts, world)` — a private material for
-level geometry with world-space breakup, damp patches and contact grime driven by
-an `aEnv` vertex attribute. Caller owns disposal.
+Level geometry materials are `worldMaterial` in `src/art/WorldMaterial.ts`
+(see its section above).
 
 ## `src/world/Nav.ts` — owned by WORLD
 

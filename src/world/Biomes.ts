@@ -42,8 +42,13 @@ export interface FloorVariant {
   emissiveIntensity?: number;
 }
 
+/** How a biome's walls are built: dressed stone with plinth, cornice and piers, or raw rock. */
+export type WallKit = 'masonry' | 'rough';
+
 export interface BiomeArt {
   id: BiomeId;
+  /** Wall construction. Defaults by biome (caves, hives and ice are rough). */
+  wallKit?: WallKit;
   /** World-unit wall height. */
   wallHeight: number;
   ceiling: CeilingMode;
@@ -1435,6 +1440,13 @@ function ownArt(id: BiomeId): BiomeArt {
   if (own) return own;
   const from = ART[LOOK_FALLBACK[id] ?? 'crypt'] ?? ART.crypt!;
   return BY_ID[id]?.outdoor ? { ...from, id, ceiling: 'open', ceilingHoles: 0 } : { ...from, id };
+}
+
+const ROUGH_DEFAULT = new Set<BiomeId>(['caverns', 'hive', 'frostvault', 'ashwaste', 'darkForest', 'swamp', 'desert', 'tundra', 'hell']);
+
+/** The wall kit a biome's art asks for, or its default. */
+export function wallKitOf(art: BiomeArt): WallKit {
+  return art.wallKit ?? (ROUGH_DEFAULT.has(art.id) ? 'rough' : 'masonry');
 }
 
 /** True for a biome with open sky. */

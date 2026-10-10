@@ -21,7 +21,7 @@
 import * as THREE from 'three';
 import type { BiomeDef, DungeonLevel, DungeonRoom, PropPlacement, Rng } from '../types';
 import { Noise, clamp, lerp } from '../art/Noise';
-import { biomeArt, type BiomeArt, type FloorVariant } from './Biomes';
+import { biomeArt, wallKitOf, type BiomeArt, type FloorVariant, type WallKit } from './Biomes';
 import {
   T_CHASM,
   T_DOOR,
@@ -85,7 +85,7 @@ class Surf {
   nor: number[] = [];
   uv: number[] = [];
   /**
-   * Per-vertex world context for `worldSurface` materials: contact occlusion
+   * Per-vertex world context for `worldMaterial` materials: contact occlusion
    * on floors, height above the floor on walls. See `WorldMaterial.ts`.
    */
   env: number[] = [];
@@ -201,6 +201,57 @@ class Surf {
       this.env.push(i < 2 ? lo : hi);
     }
     this.quadIndices();
+  }
+
+  /**
+   * A displaced grid: `pts[row][col]`, rows bottom to top, columns along the
+   * face to its right (the same handedness as `wall`). Normals come from the
+   * grid itself, so a lumpy rock face shades as one surface.
+   */
+  grid(pts: ReadonlyArray<ReadonlyArray<readonly [number, number, number]>>, env: ReadonlyArray<number>): void {
+    const rows = pts.length;
+    const cols = pts[0]!.length;
+    const base = this.pos.length / 3;
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const p = pts[j]![i]!;
+        const l = pts[j]![Math.max(0, i - 1)]!;
+        const r = pts[j]![Math.min(cols - 1, i + 1)]!;
+        const dn = pts[Math.max(0, j - 1)]![i]!;
+        const up = pts[Math.min(rows - 1, j + 1)]![i]!;
+        const ux = r[0] - l[0], uy = r[1] - l[1], uz = r[2] - l[2];
+        const vx = up[0] - dn[0], vy = up[1] - dn[1], vz = up[2] - dn[2];
+        let nx = uy * vz - uz * vy;
+        let ny = uz * vx - ux * vz;
+        let nz = ux * vy - uy * vx;
+        const len = Math.hypot(nx, ny, nz) || 1;
+        nx /= len;
+        ny /= len;
+        nz /= len;
+        this.pos.push(p[0], p[1], p[2]);
+        this.nor.push(nx, ny, nz);
+        this.uv.push(i / (cols - 1), j / (rows - 1));
+        this.env.push(env[j] ?? this.defEnv);
+      }
+    }
+    for (let j = 0; j < rows - 1; j++) {
+      for (let i = 0; i < cols - 1; i++) {
+        const a = base + j * cols + i;
+        this.idx.push(a, a + 1, a + cols + 1, a, a + cols + 1, a + cols);
+      }
+    }
+  }
+
+  /** An upright box face set (front and both sides) standing out of a wall: pilasters, piers. */
+  pier(cx: number, yBase: number, cz: number, nx: number, nz: number, w: number, depth: number, h: number, envLo: number, envHi: number): void {
+    const rx = nz;
+    const rz = -nx;
+    // Front.
+    this.wall(cx + nx * depth, yBase, cz + nz * depth, nx, nz, w, h, 1, 1, 0, 0, false, envLo, envHi);
+    // Sides, facing along the wall.
+    const hw = w * 0.5;
+    this.wall(cx + rx * hw + nx * depth * 0.5, yBase, cz + rz * hw + nz * depth * 0.5, rx, rz, depth, h, 1, 1, 0, 0, false, envLo, envHi);
+    this.wall(cx - rx * hw + nx * depth * 0.5, yBase, cz - rz * hw + nz * depth * 0.5, -rx, -rz, depth, h, 1, 1, 0, 0, false, envLo, envHi);
   }
 
   /** Horizontal strip of depth `d` hanging off a wall face (base/cornice tops). */
@@ -475,6 +526,8 @@ export class DungeonMesh {
   private lightTimer = 0;
   private cullTimer = 0;
   private cullRadius = 68;
+  /** How walls are built: dressed stone with piers, or raw rock. */
+  private readonly kit: WallKit;
   /** Where the hole in the roof is centred. Written every frame. */
   private readonly heroXZ = new THREE.Vector2();
 
@@ -482,6 +535,7 @@ export class DungeonMesh {
     this.level = level;
     this.biome = biome;
     this.art = biomeArt(biome.id, level.variant);
+    this.kit = wallKitOf(this.art);
     this.noise = new Noise((level.seed ^ 0x7a1c) >>> 0);
     this.halfW = level.width / 2;
     this.halfH = level.height / 2;
@@ -1152,6 +1206,10 @@ export class DungeonMesh {
       // up across tiles whose floors sit at different heights, and U along the
       // face. Whole-repeat stone is mirrored per tile instead, which is
       // seamless and breaks the run of identical blocks.
+      if (this.kit === 'rough') {
+        this.roughFace(s, x, y, d, fx, yBottom, fz, topY, nh);
+        continue;
+      }
       const whole = this.wallWhole[wi - WALL0] ?? false;
       const u0 = whole ? 0 : (fx * DY4[d] - fz * DX4[d]) / TILE_SIZE - 0.5;
       const flip = whole && (hashTile(x * 4 + d, y, this.level.seed) & 1) === 1;
@@ -1179,12 +1237,88 @@ export class DungeonMesh {
         trim.wall(fx + DX4[d] * 0.07, my, fz + DY4[d] * 0.07, DX4[d], DY4[d], TILE_SIZE, 0.16, 1, 0.12);
         trim.ledge(fx, my + 0.16, fz, DX4[d], DY4[d], TILE_SIZE, 0.07, true);
       }
+
+      // Pilasters: a pier every few metres along a straight run, standing
+      // on the plinth and running up under the cornice. Each sits on the
+      // left edge of a face, so a shared edge is decided exactly once.
+      const rx = DY4[d];
+      const rz = -DX4[d];
+      if (this.faceContinues(x, y, d, -1)) {
+        const ex = fx - rx * HALF;
+        const ez = fz - rz * HALF;
+        if (hashTile(Math.round(ex * 2), Math.round(ez * 2), this.level.seed ^ 0x9e1) % 3 === 0) {
+          const pw = 0.72;
+          const pd = 0.24;
+          const top = topY - 0.3;
+          s.pier(ex, nh - 0.1, ez, DX4[d], DY4[d], pw, pd, top - nh + 0.1, -0.1, top - nh);
+          // Its own foot and head, a shade wider.
+          base.pier(ex, nh - 0.1, ez, DX4[d], DY4[d], pw + 0.16, pd + 0.08, 0.62, 0, 0);
+          base.ledge(ex + DX4[d] * pd, nh + 0.52, ez + DY4[d] * pd, DX4[d], DY4[d], pw + 0.16, 0.08, true);
+          trim.pier(ex, top - 0.26, ez, DX4[d], DY4[d], pw + 0.12, pd + 0.06, 0.26, 0, 0);
+          trim.ledge(ex + DX4[d] * pd, top - 0.26, ez + DY4[d] * pd, DX4[d], DY4[d], pw + 0.12, 0.06, false);
+        }
+      }
     }
     // Every wall tile is capped, at the one flat rock height, so neighbouring
     // caps never leave a step between them. It goes in the solid bucket: a wall
     // top is the cut edge of the room and has to stay standing when the lid
     // opens.
     caps.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
+  }
+
+  /**
+   * True when the wall face of tile (x, y) toward `d` carries straight on into
+   * the next wall tile on one side (`side` -1 left, +1 right): that tile is
+   * wall too, and open on the same side.
+   */
+  private faceContinues(x: number, y: number, d: number, side: -1 | 1): boolean {
+    const tx = x + DY4[d] * side;
+    const ty = y - DX4[d] * side;
+    return this.tile(tx, ty) === T_WALL && this.open(tx + DX4[d], ty + DY4[d]);
+  }
+
+  /**
+   * A natural rock face: the wall quad as a grid pushed out into the room by
+   * world-space noise. A shared edge in a straight run gets the same push from
+   * both sides, so the rock runs on unbroken; at corners and at the top
+   * (where the flat wall cap meets it) the push fades to nothing so no gap
+   * opens.
+   */
+  private roughFace(s: Surf, x: number, y: number, d: number, fx: number, yBottom: number, fz: number, topY: number, nh: number): void {
+    const nx = DX4[d];
+    const nz = DY4[d];
+    const rx = nz;
+    const rz = -nx;
+    const cl = this.faceContinues(x, y, d, -1);
+    const cr = this.faceContinues(x, y, d, 1);
+    const h = topY - yBottom;
+    const COLS = 4;
+    const ROWS = Math.max(3, Math.round(h / 0.65));
+    const amp = 0.42;
+    const pts: Array<Array<[number, number, number]>> = [];
+    const env: number[] = [];
+    for (let j = 0; j <= ROWS; j++) {
+      const py = yBottom + (j / ROWS) * h;
+      const fadeTop = 1 - smooth01((py - (topY - 1.1)) / 1.05);
+      const row: Array<[number, number, number]> = [];
+      for (let i = 0; i <= COLS; i++) {
+        const t = i / COLS - 0.5;
+        const px = fx + rx * t * TILE_SIZE;
+        const pz = fz + rz * t * TILE_SIZE;
+        let k = fadeTop;
+        if (i === 0 && !cl) k = 0;
+        if (i === COLS && !cr) k = 0;
+        // Big slow lumps plus a little crag.
+        const n = this.noise.fbm3(px * 0.32, py * 0.42, pz * 0.32, 3) * 0.5 + 0.5;
+        const c = this.noise.simplex3(px * 1.3 + 17, py * 1.1, pz * 1.3) * 0.5 + 0.5;
+        const push = amp * k * (0.35 + 0.65 * n) + 0.08 * k * c;
+        const lift = 0.12 * k * (c - 0.5);
+        row.push([px + nx * push, py + lift, pz + nz * push]);
+      }
+      pts.push(row);
+      env.push(py - nh);
+    }
+    s.grid(pts, env);
   }
 
   /** Walls of a pit, dropped below the surrounding floor. */
@@ -2013,6 +2147,11 @@ const FLAT_CORNERS: ReadonlyArray<readonly [number, number]> = [
 ];
 
 /** Cheap deterministic per-tile hash. Not randomness: a stable property of the tile. */
+function smooth01(t: number): number {
+  const c = t < 0 ? 0 : t > 1 ? 1 : t;
+  return c * c * (3 - 2 * c);
+}
+
 function hashTile(x: number, y: number, seed: number): number {
   let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed | 0, 1442695041)) | 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);

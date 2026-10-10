@@ -5,7 +5,7 @@
  * world breakup field. These are masks and sprites, not surfaces, so they stay
  * generated in code. World surfaces come from photo sets (`art/TextureSets`).
  *
- * Owned by vfx. Moved here from the old `art/Textures.ts` painter when ground
+ * Owned by vfx. Moved here from the old procedural painter when ground
  * replaced it with photo textures.
  */
 

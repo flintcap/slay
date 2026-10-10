@@ -15,14 +15,14 @@ outdoors. Remake from nothing; delete the old painted textures.
   `tools/bundle-artifact.mjs` write the page plus a list of asset files so
   Claude can publish them with the artifact's `files` option (print the
   mapping as JSON to `dist-single/files.json`).
-- [ ] Material library. Download CC0 PBR sets (Poly Haven, ambientCG): stone
+- [x] Material library. (ground: photo material library, world-space shader) Download CC0 PBR sets (Poly Haven, ambientCG): stone
   floor, flagstone, cobble, brick, rough rock, cave rock, dirt, mud, grass,
   forest floor with leaves, roots, sand, cracked earth, snow, ice, lava rock,
   obsidian, ash, wood planks, plaster, rusted metal, bone. Convert to 1024 px
   WebP (colour, normal, packed roughness/AO/height). New material API with
   world-space or triplanar UVs, tiling breakup and height-based blending
   between two materials. Switch every world surface to it.
-- [ ] Delete the old texture painter (`Textures.ts` procedural maps,
+- [x] Delete the old texture painter. (ground: delete the texture painter and palettes) (`Textures.ts` procedural maps,
   `Palettes.ts`, `WorldSurface.ts` if unused). Keep only small utility
   textures fx still uses, moved to a file vfx owns if needed (note it in
   `vfx.md`).
@@ -51,9 +51,12 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Next up
 
-1. Material library: download CC0 PBR sets to `/tmp/slay-downloads/ground/`,
-   convert to WebP under `public/assets/textures/world/<name>/`, add rows to
-   `ASSETS.md`, build the new material API, switch world surfaces.
+1. Indoor builder (in progress): `WallKit` in Biomes.ts ('masonry' gets
+   pilasters, plinth, cornice; 'rough' gets displaced rock faces from
+   `roughFace`). Render a crypt and a cave and check both. Then arches over
+   doorways and per-biome kit tuning (tomb, ice cave, keep).
+2. Outdoor builder: heightfield with `aSplat` layers, ART entries for the six
+   new biomes.
 
 ## Notes for resume
 
@@ -88,6 +91,17 @@ outdoors. Remake from nothing; delete the old painted textures.
   see-through (old bug).
 - Exposing the whole THREE namespace on `window.SLAY` breaks tree shaking and
   artifact publishing. Expose only named classes.
+- Material system: `src/art/TextureSets.ts` (the downloaded sets, average
+  colours, sizes), `src/art/SurfaceLibrary.ts` (every surface key to a set,
+  base colour, roughness), `src/art/Materials.ts` (`surface()` on photo sets,
+  same contract as before), `src/art/WorldMaterial.ts` (world-space and
+  triplanar level materials, up to 4 layers by `aSplat`, cutaway and roof
+  dissolve as shared uniforms). Add a set: a line in `tools/fetch-textures.mjs`,
+  run it with `--only=name`, then add it to `TEXTURE_SETS` with the average from
+  a 1x1 linear resize of its albedo.
+- A surface whose key glows but whose set has no emission map glows only in
+  the low points of its height map (cracks), never all over.
+- Effect textures moved to `src/fx/UtilityTextures.ts` (vfx owns it).
 - Asset pipeline is in: `src/core/Assets.ts` (`loadTexture`, `preloadAssets`,
   `assets:progress` event, fallback textures), `tools/check-assets.mjs`,
   `tools/bundle-artifact.mjs` writes `dist-single/files.json`. Contract in
