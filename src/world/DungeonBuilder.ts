@@ -511,6 +511,56 @@ export function applyBiomeLighting(
 }
 
 // ---------------------------------------------------------------------------
+// Exit pieces
+// ---------------------------------------------------------------------------
+
+/** Unlit black for the inside of a way on: it reads as depth, not as a surface. */
+function voidMaterial(): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({ color: 0x030304, toneMapped: false, side: THREE.DoubleSide });
+}
+
+/** A small light just inside a way on: the cue that reads as "go here". */
+function exitGlow(color: number, y: number, z: number, intensity = 9): THREE.PointLight {
+  const l = new THREE.PointLight(color, intensity, 9, 2);
+  l.position.set(0, y, z);
+  l.castShadow = false;
+  return l;
+}
+
+/** A doorway outline in the XY plane: straight sides to `h`, a round head of radius `r`. */
+function archShape(r: number, h: number): THREE.ShapeGeometry {
+  const s = new THREE.Shape();
+  s.moveTo(-r, 0);
+  s.lineTo(r, 0);
+  s.lineTo(r, h);
+  s.absarc(0, h, r, 0, Math.PI, false);
+  s.lineTo(-r, 0);
+  return new THREE.ShapeGeometry(s, 12);
+}
+
+/** A rough boulder about `size` metres across, flattened underneath. */
+function roughRock(rng: Rng, size: number): THREE.BufferGeometry {
+  const r = size * 0.55;
+  const geo = new THREE.IcosahedronGeometry(r, 1);
+  const p = geo.getAttribute('position') as THREE.BufferAttribute;
+  const a = rng.range(0, 50);
+  const b = rng.range(0, 50);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const y = p.getY(i);
+    const z = p.getZ(i);
+    // A function of position, so the copies of a shared corner move together.
+    const n =
+      Math.sin(x * 3.1 / r + a) * Math.sin(y * 2.7 / r + b) * Math.sin(z * 3.3 / r + a * 0.7) * 0.5 +
+      Math.sin(x * 7.3 / r + b) * Math.sin(z * 6.1 / r + a) * 0.15;
+    const k = 1 + n * 0.32;
+    p.setXYZ(i, x * k, (y < -r * 0.35 ? -r * 0.35 + (y + r * 0.35) * 0.3 : y) * k, z * k);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// ---------------------------------------------------------------------------
 // Internal records
 // ---------------------------------------------------------------------------
 
@@ -1538,68 +1588,36 @@ export class DungeonMesh {
     const stone = safeSurface(wall0?.palette ?? 'stone.crypt', { repeat: 1.6, tint: archTint });
     const dark = safeSurface('stone.crypt', { repeat: 1.2, tint: 0x5a5a62 });
 
-    // --- the descent ------------------------------------------------------
+    // --- the way on -------------------------------------------------------
     const exit = this.tileToWorld(level.exit.x, level.exit.y);
-    const stairs = new THREE.Group();
-    stairs.position.copy(exit);
-
-    // A well sunk into the floor with a flight running down into it. Steps get
-    // narrower and darker as they go, which is what sells depth without
-    // actually cutting a hole in the floor mesh.
-    const STEPS = 7;
-    for (let i = 0; i < STEPS; i++) {
-      const t = i / (STEPS - 1);
-      const w = 2.6 - t * 0.5;
-      const step = new THREE.Mesh(
-        new THREE.BoxGeometry(w, 0.22, 0.42),
-        i > STEPS - 3 ? dark : stone,
-      );
-      step.position.set(0, -0.11 - i * 0.2, -0.6 + i * 0.42);
-      step.receiveShadow = true;
-      step.castShadow = true;
-      stairs.add(step);
+    const ex = level.exits?.[0];
+    const kind = ex?.kind ?? 'stairs';
+    const way = new THREE.Group();
+    way.position.copy(exit);
+    // Built facing local +z, the way you walk through it; turned to `facing`
+    // (0 = +x, PI/2 = +z).
+    const turn = ex ? Math.PI / 2 - ex.facing : 0;
+    way.rotation.y = turn;
+    const local: Array<{ x: number; z: number; w: number; d: number }> = [];
+    if (kind === 'caveMouth') this.buildCaveMouth(way, local, rng);
+    else if (kind === 'doorway') this.buildDoorway(way, local, stone, dark);
+    else if (kind === 'gate') this.buildGate(way, local, stone);
+    else if (kind === 'portal') this.buildDormantRing(way, local, stone, rng);
+    else this.buildDescent(way, local, stone, dark);
+    this.root.add(way);
+    // Colliders are axis-aligned: turn each centre, and swap its sides when
+    // the turn is closer to a quarter than to a half.
+    const c = Math.cos(turn);
+    const s = Math.sin(turn);
+    const side = Math.abs(s) > Math.SQRT1_2;
+    for (const b of local) {
+      this.colliders.push({
+        x: exit.x + b.x * c + b.z * s,
+        z: exit.z - b.x * s + b.z * c,
+        w: side ? b.d : b.w,
+        d: side ? b.w : b.d,
+      });
     }
-    // Side walls of the stairwell, so it does not read as steps on open floor.
-    for (const sx of [-1, 1]) {
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.9, 3.6), stone);
-      wall.position.set(sx * 1.5, -0.9, 0.55);
-      wall.castShadow = true;
-      wall.receiveShadow = true;
-      stairs.add(wall);
-    }
-    // The dark at the bottom. Unlit black, so the shaft reads as bottomless.
-    const shaft = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.2, 1.4),
-      new THREE.MeshBasicMaterial({ color: 0x05050a, toneMapped: false }),
-    );
-    shaft.rotation.x = -Math.PI / 2;
-    shaft.position.set(0, -1.42, 1.5);
-    stairs.add(shaft);
-
-    // A lintel and two posts framing the mouth, so it is visible from above.
-    for (const sx of [-1, 1]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.34, 2.2, 0.34), stone);
-      post.position.set(sx * 1.5, 1.1, -0.85);
-      post.castShadow = true;
-      stairs.add(post);
-    }
-    const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.4, 0.5), stone);
-    lintel.position.set(0, 2.3, -0.85);
-    lintel.castShadow = true;
-    stairs.add(lintel);
-
-    // A cold glow out of the shaft: the one cue that reads at a glance as
-    // "this is the way on".
-    const glow = new THREE.PointLight(0x8fd0ff, 9, 9, 2);
-    glow.position.set(0, 0.4, 1.2);
-    glow.castShadow = false;
-    stairs.add(glow);
-
-    this.root.add(stairs);
-    this.colliders.push(
-      { x: exit.x - 1.5, z: exit.z + 0.55, w: 0.5, d: 3.6 },
-      { x: exit.x + 1.5, z: exit.z + 0.55, w: 0.5, d: 3.6 },
-    );
 
     // --- the way in -------------------------------------------------------
     const entry = this.tileToWorld(level.entry.x, level.entry.y);
@@ -1635,6 +1653,235 @@ export class DungeonMesh {
     }
     this.root.add(arch);
     this.colliders.push({ x: entry.x, z: entry.z - 1.1, w: 3.0, d: 0.9 });
+  }
+
+  /** Stairs down: a well sunk into the floor with a flight running into it. */
+  private buildDescent(
+    g: THREE.Group,
+    col: Array<{ x: number; z: number; w: number; d: number }>,
+    stone: THREE.Material,
+    dark: THREE.Material,
+  ): void {
+    // Steps get narrower and darker as they go, which is what sells depth
+    // without cutting a hole in the floor mesh.
+    const STEPS = 7;
+    for (let i = 0; i < STEPS; i++) {
+      const t = i / (STEPS - 1);
+      const w = 2.6 - t * 0.5;
+      const step = new THREE.Mesh(new THREE.BoxGeometry(w, 0.22, 0.42), i > STEPS - 3 ? dark : stone);
+      step.position.set(0, -0.11 - i * 0.2, -0.6 + i * 0.42);
+      step.receiveShadow = true;
+      step.castShadow = true;
+      g.add(step);
+    }
+    // Side walls of the stairwell, so it does not read as steps on open floor.
+    for (const sx of [-1, 1]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.9, 3.6), stone);
+      wall.position.set(sx * 1.5, -0.9, 0.55);
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      g.add(wall);
+      col.push({ x: sx * 1.5, z: 0.55, w: 0.5, d: 3.6 });
+    }
+    // The dark at the bottom. Unlit black, so the shaft reads as bottomless.
+    const shaft = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), voidMaterial());
+    shaft.rotation.x = -Math.PI / 2;
+    shaft.position.set(0, -1.42, 1.5);
+    g.add(shaft);
+    // A lintel and two posts framing the mouth, so it is visible from above.
+    for (const sx of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.34, 2.2, 0.34), stone);
+      post.position.set(sx * 1.5, 1.1, -0.85);
+      post.castShadow = true;
+      g.add(post);
+    }
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.4, 0.5), stone);
+    lintel.position.set(0, 2.3, -0.85);
+    lintel.castShadow = true;
+    g.add(lintel);
+    g.add(exitGlow(0x8fd0ff, 0.4, 1.2));
+  }
+
+  /**
+   * A doorway: a stone frame with a round head, set in a short run of wall,
+   * opening on black. You walk into the dark to go on.
+   */
+  private buildDoorway(
+    g: THREE.Group,
+    col: Array<{ x: number; z: number; w: number; d: number }>,
+    stone: THREE.Material,
+    dark: THREE.Material,
+  ): void {
+    const W = 2.2; // opening width
+    const H = 2.5; // to the spring of the arch
+    const R = W / 2;
+    const D = 0.9; // wall depth
+    const z0 = 0.9; // front face, ahead of the tile centre
+    // Wall slabs either side of the opening.
+    for (const sx of [-1, 1]) {
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, H + R + 0.9, D), stone);
+      slab.position.set(sx * (R + 0.75), (H + R + 0.9) / 2, z0 + D / 2);
+      slab.castShadow = true;
+      slab.receiveShadow = true;
+      g.add(slab);
+      col.push({ x: sx * (R + 0.75), z: z0 + D / 2, w: 1.5, d: D });
+    }
+    // Over the opening: the arch ring and the wall above it.
+    const top = new THREE.Mesh(new THREE.BoxGeometry(W, 0.9 + R * 0.2, D), stone);
+    top.position.set(0, H + R + 0.9 - (0.9 + R * 0.2) / 2, z0 + D / 2);
+    top.castShadow = true;
+    g.add(top);
+    const SEG = 9;
+    for (let i = 0; i < SEG; i++) {
+      const a0 = (i / SEG) * Math.PI;
+      const a1 = ((i + 1) / SEG) * Math.PI;
+      const am = (a0 + a1) / 2;
+      // Voussoirs: wedge blocks round the head, standing proud of the wall.
+      const len = R * (a1 - a0) * 1.08;
+      const v = new THREE.Mesh(new THREE.BoxGeometry(len, 0.42, D + 0.16), stone);
+      v.position.set(Math.cos(am) * (R + 0.21), H + Math.sin(am) * (R + 0.21), z0 + D / 2);
+      v.rotation.z = am + Math.PI / 2;
+      v.castShadow = true;
+      g.add(v);
+      // Fill between the ring and the square wall above.
+      const fill = new THREE.Mesh(new THREE.BoxGeometry(len, 0.6, D - 0.02), stone);
+      fill.position.set(Math.cos(am) * (R + 0.62), H + Math.sin(am) * (R + 0.62), z0 + D / 2);
+      fill.rotation.z = am + Math.PI / 2;
+      g.add(fill);
+    }
+    // Jambs: posts proud of the wall face.
+    for (const sx of [-1, 1]) {
+      const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.36, H, D + 0.16), stone);
+      jamb.position.set(sx * (R + 0.18), H / 2, z0 + D / 2);
+      jamb.castShadow = true;
+      g.add(jamb);
+    }
+    // A worn step at the threshold.
+    const step = new THREE.Mesh(new THREE.BoxGeometry(W + 0.8, 0.14, 0.8), dark);
+    step.position.set(0, 0.07, z0 + 0.1);
+    step.receiveShadow = true;
+    g.add(step);
+    // The dark inside, a little behind the front face so the jambs frame it.
+    const inside = new THREE.Mesh(archShape(R, H), voidMaterial());
+    inside.position.set(0, 0, z0 + 0.35);
+    inside.rotation.y = Math.PI;
+    g.add(inside);
+    g.add(exitGlow(0xffb070, 1.2, z0 - 0.4, 6));
+  }
+
+  /** An iron gate between stone posts, raised far enough to walk under. */
+  private buildGate(
+    g: THREE.Group,
+    col: Array<{ x: number; z: number; w: number; d: number }>,
+    stone: THREE.Material,
+  ): void {
+    const iron = safeSurface('metal.dark', { repeat: 1, tint: 0x8a8a90 });
+    const z0 = 0.9;
+    for (const sx of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.7, 3.4, 0.9), stone);
+      post.position.set(sx * 1.45, 1.7, z0 + 0.45);
+      post.castShadow = true;
+      g.add(post);
+      col.push({ x: sx * 1.45, z: z0 + 0.45, w: 0.8, d: 0.9 });
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 1.1), stone);
+      cap.position.set(sx * 1.45, 3.55, z0 + 0.45);
+      g.add(cap);
+    }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.45, 0.7), stone);
+    beam.position.set(0, 3.1, z0 + 0.45);
+    beam.castShadow = true;
+    g.add(beam);
+    // The portcullis, hauled up: bars hang from the beam to head height.
+    const bars = new THREE.Group();
+    for (let i = 0; i < 7; i++) {
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 6), iron);
+      bar.position.set(-1.0 + i * (2.0 / 6), 2.5, z0 + 0.45);
+      bar.castShadow = true;
+      bars.add(bar);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 6), iron);
+      spike.rotation.x = Math.PI;
+      spike.position.set(bar.position.x, 1.96, z0 + 0.45);
+      bars.add(spike);
+    }
+    for (const y of [2.15, 2.8]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.08), iron);
+      rail.position.set(0, y, z0 + 0.45);
+      bars.add(rail);
+    }
+    g.add(bars);
+    const inside = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.0), voidMaterial());
+    inside.position.set(0, 1.5, z0 + 0.8);
+    inside.rotation.y = Math.PI;
+    g.add(inside);
+    g.add(exitGlow(0xffb070, 1.2, z0 - 0.4, 6));
+  }
+
+  /**
+   * A cave mouth: a hump of rough rock with a black hole in its face. The
+   * stones are the biome's cave rock, so it reads as the ground rising.
+   */
+  private buildCaveMouth(g: THREE.Group, col: Array<{ x: number; z: number; w: number; d: number }>, rng: Rng): void {
+    const rock = safeSurface('stone.cavern', { repeat: 0.8, tint: 0x9a948c });
+    const z0 = 1.0;
+    const R = 1.35;
+    const H = 1.2;
+    // Boulders round the opening, largest at the sides.
+    const N = 9;
+    for (let i = 0; i < N; i++) {
+      const a = (i / (N - 1)) * Math.PI;
+      const sz = 0.75 + Math.sin(a) * -0.15 + rng.range(0, 0.35);
+      const m = new THREE.Mesh(roughRock(rng, sz), rock);
+      m.position.set(Math.cos(a) * (R + sz * 0.55), H + Math.sin(a) * (R * 0.85 + sz * 0.4) - sz * 0.2, z0 + rng.range(0, 0.3));
+      m.rotation.set(rng.range(0, 3), rng.range(0, 3), rng.range(0, 3));
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+    }
+    // Footing boulders on the ground either side.
+    for (const sx of [-1, 1]) {
+      const sz = rng.range(1.0, 1.3);
+      const m = new THREE.Mesh(roughRock(rng, sz), rock);
+      m.position.set(sx * (R + sz * 0.7), sz * 0.45, z0 + 0.3);
+      m.rotation.set(rng.range(0, 3), rng.range(0, 3), rng.range(0, 3));
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+      col.push({ x: sx * (R + sz * 0.7), z: z0 + 0.3, w: sz * 1.4, d: sz * 1.4 });
+    }
+    // The hump the mouth is cut into.
+    const hump = new THREE.Mesh(roughRock(rng, 2.6), rock);
+    hump.scale.set(1.5, 0.9, 0.8);
+    hump.position.set(0, 1.2, z0 + 2.2);
+    hump.castShadow = true;
+    hump.receiveShadow = true;
+    g.add(hump);
+    col.push({ x: 0, z: z0 + 2.0, w: 6.0, d: 2.4 });
+    const inside = new THREE.Mesh(archShape(R * 0.95, H), voidMaterial());
+    inside.position.set(0, 0, z0 + 0.45);
+    inside.rotation.y = Math.PI;
+    g.add(inside);
+    g.add(exitGlow(0x8fd0ff, 0.6, z0 - 0.3, 7));
+  }
+
+  /** Where the way home will open: a ring of short standing stones, unlit. */
+  private buildDormantRing(
+    g: THREE.Group,
+    col: Array<{ x: number; z: number; w: number; d: number }>,
+    stone: THREE.Material,
+    rng: Rng,
+  ): void {
+    const N = 7;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2 + 0.3;
+      const h = rng.range(0.9, 1.6);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.45, h, 0.32), stone);
+      m.position.set(Math.cos(a) * 2.6, h / 2 - 0.05, Math.sin(a) * 2.6);
+      m.rotation.set(rng.range(-0.08, 0.08), -a, rng.range(-0.1, 0.1));
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+    }
+    void col;
   }
 
   /**

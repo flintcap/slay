@@ -142,7 +142,8 @@ interface Slot {
 }
 
 export interface TerrainChunk {
-  mesh: THREE.Mesh;
+  /** A ground mesh, or a group of trees standing in one block. */
+  mesh: THREE.Object3D;
   center: THREE.Vector3;
   radius: number;
 }
@@ -507,12 +508,12 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
     for (let gx = 0; gx < GW; gx++) {
       const gi = gy * GW + gx;
       const d = dist[gi]!;
-      if (d < 1 || d > 7) continue;
+      if (d < 1 || d > 4.6) continue;
       const z = zoneW[gi]! > 0.5 ? 1 : 0;
       const edge = looks[z]!.edge;
       if (edge !== 'trees' && edge !== 'deadTrees') continue;
       // Dense at the front of the tree line, thinning behind it.
-      const p = edge === 'trees' ? (d < 2.5 ? 0.85 : 0.45) : d < 2.5 ? 0.45 : 0.18;
+      const p = edge === 'trees' ? (d < 2.2 ? 0.62 : 0.3) : d < 2.2 ? 0.34 : 0.12;
       if (!drng.chance(p)) continue;
       const tx = gx - MARGIN + drng.range(0.15, 0.85);
       const ty = gy - MARGIN + drng.range(0.15, 0.85);
@@ -522,10 +523,29 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
     }
   }
   if (treeSites.length) {
-    const forest = treeSites.filter((t) => looks[t.zone]!.edge === 'trees');
-    const dead = treeSites.filter((t) => looks[t.zone]!.edge === 'deadTrees');
-    if (forest.length) dressing.push(...instancedTrees(forest, 'trees', drng, geometries, materials));
-    if (dead.length) dressing.push(...instancedTrees(dead, 'deadTrees', drng, geometries, materials));
+    // Trees stand in square blocks, one instanced mesh per variant per block,
+    // so the cull and the sun's shadow pass skip the blocks out of reach.
+    const kits: Partial<Record<'trees' | 'deadTrees', TreeKit>> = {};
+    const blocks = new Map<string, typeof treeSites>();
+    for (const t of treeSites) {
+      const k = `${Math.floor(t.x / TREE_BLOCK)},${Math.floor(t.z / TREE_BLOCK)},${looks[t.zone]!.edge}`;
+      let b = blocks.get(k);
+      if (!b) blocks.set(k, (b = []));
+      b.push(t);
+    }
+    for (const [k, sites] of blocks) {
+      const kind = k.endsWith('deadTrees') ? 'deadTrees' : 'trees';
+      const kit = (kits[kind] ??= treeKit(kind, drng.fork(kind), geometries, materials));
+      const group = new THREE.Group();
+      group.name = `${kind}:block`;
+      for (const m of plantTrees(kit, sites)) group.add(m);
+      const box = new THREE.Box3();
+      for (const t of sites) box.expandByPoint(new THREE.Vector3(t.x, t.y, t.z));
+      box.expandByScalar(4);
+      box.max.y += 6;
+      const center = box.getCenter(new THREE.Vector3());
+      chunks.push({ mesh: group, center, radius: box.getSize(new THREE.Vector3()).length() * 0.5 });
+    }
   }
 
   return { chunks, dressing, geometries, materials, heightAt };
@@ -572,44 +592,70 @@ function rise(edge: EdgeKind, d: number, wx: number, wz: number, noise: Noise): 
  * forked trunks for dead ones. Private material copies carry the wall
  * cutaway, so a tree between camera and hero opens like a wall does.
  */
-function instancedTrees(
-  sites: Array<{ x: number; y: number; z: number; s: number; r: number }>,
+/** Side of a square block of trees, metres. */
+const TREE_BLOCK = 36;
+
+/** The shared shapes and materials one kind of tree is planted from. */
+interface TreeKit {
+  kind: 'trees' | 'deadTrees';
+  trunks: THREE.BufferGeometry[];
+  canopies: THREE.BufferGeometry[];
+  bark: THREE.Material;
+  leaf: THREE.Material | null;
+}
+
+function treeKit(
   kind: 'trees' | 'deadTrees',
   rng: Rng,
   geometries: THREE.BufferGeometry[],
   materials: THREE.Material[],
-): THREE.Object3D[] {
+): TreeKit {
   const VARIANTS = 3;
   const bark = addWorldCutaway(surfaceVariant('wood.bark', { repeat: 2, tint: kind === 'deadTrees' ? 0x8a8478 : 0x9a9088 }));
   const leaf = kind === 'trees' ? addWorldCutaway(surfaceVariant('foliage.pine', { repeat: 2.5, tint: 0x6a7a5a, side: THREE.DoubleSide })) : null;
   materials.push(bark);
   if (leaf) materials.push(leaf);
+  const kit: TreeKit = { kind, trunks: [], canopies: [], bark, leaf };
+  for (let v = 0; v < VARIANTS; v++) {
+    const vr = rng.fork(`tree${v}`);
+    const t = trunk(vr, kind);
+    geometries.push(t);
+    kit.trunks.push(t);
+    if (leaf) {
+      const c = canopy(vr);
+      geometries.push(c);
+      kit.canopies.push(c);
+    }
+  }
+  return kit;
+}
+
+/** Instanced trunks (and canopies) for one block of sites. */
+function plantTrees(kit: TreeKit, sites: Array<{ x: number; y: number; z: number; s: number; r: number }>): THREE.Object3D[] {
   const out: THREE.Object3D[] = [];
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
-  for (let v = 0; v < VARIANTS; v++) {
-    const mine = sites.filter((_, i) => i % VARIANTS === v);
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3();
+  const V = kit.trunks.length;
+  for (let v = 0; v < V; v++) {
+    const mine = sites.filter((_, i) => i % V === v);
     if (!mine.length) continue;
-    const vr = rng.fork(`tree${v}`);
-    const trunkGeo = trunk(vr, kind);
-    geometries.push(trunkGeo);
-    const tm = new THREE.InstancedMesh(trunkGeo, bark, mine.length);
+    const tm = new THREE.InstancedMesh(kit.trunks[v]!, kit.bark, mine.length);
     tm.castShadow = true;
     tm.receiveShadow = true;
-    tm.name = `${kind}:trunk`;
-    let cm: THREE.InstancedMesh | null = null;
-    if (leaf) {
-      const cg = canopy(vr);
-      geometries.push(cg);
-      cm = new THREE.InstancedMesh(cg, leaf, mine.length);
+    tm.name = `${kit.kind}:trunk`;
+    const cg = kit.canopies[v];
+    const cm = cg && kit.leaf ? new THREE.InstancedMesh(cg, kit.leaf, mine.length) : null;
+    if (cm) {
       cm.castShadow = true;
       cm.receiveShadow = true;
-      cm.name = `${kind}:canopy`;
+      cm.name = `${kit.kind}:canopy`;
     }
     mine.forEach((t, i) => {
       q.setFromAxisAngle(up, t.r);
-      m4.compose(new THREE.Vector3(t.x, t.y, t.z), q, new THREE.Vector3(t.s, t.s * (0.9 + (i % 3) * 0.08), t.s));
+      m4.compose(pos.set(t.x, t.y, t.z), q, scl.set(t.s, t.s * (0.9 + (i % 3) * 0.08), t.s));
       tm.setMatrixAt(i, m4);
       cm?.setMatrixAt(i, m4);
     });
@@ -642,7 +688,7 @@ function trunk(rng: Rng, kind: 'trees' | 'deadTrees'): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const h = kind === 'trees' ? rng.range(6.5, 9) : rng.range(4, 6);
   const r = kind === 'trees' ? rng.range(0.26, 0.36) : rng.range(0.18, 0.26);
-  const main = new THREE.CylinderGeometry(r * 0.45, r, h, 9, 6, true);
+  const main = new THREE.CylinderGeometry(r * 0.45, r, h, 8, 4, true);
   main.translate(0, h / 2, 0);
   // A slight lean and wobble along the height.
   const pos = main.getAttribute('position') as THREE.BufferAttribute;
@@ -654,7 +700,7 @@ function trunk(rng: Rng, kind: 'trees' | 'deadTrees'): THREE.BufferGeometry {
   }
   parts.push(main);
   // Root flare.
-  const flare = new THREE.CylinderGeometry(r * 1.05, r * 1.9, 0.6, 9, 1, true);
+  const flare = new THREE.CylinderGeometry(r * 1.05, r * 1.9, 0.6, 8, 1, true);
   flare.translate(0, 0.25, 0);
   parts.push(flare);
   // Branches: a few for living trees (under the canopy), crooked forks for dead ones.
@@ -677,7 +723,7 @@ function canopy(rng: Rng): THREE.BufferGeometry {
   const n = rng.int(4, 6);
   for (let i = 0; i < n; i++) {
     const s = rng.range(1.1, 1.8);
-    const g = lump(new THREE.IcosahedronGeometry(s, 2), rng.fork(`c${i}`), 0.28);
+    const g = lump(new THREE.IcosahedronGeometry(s, 1), rng.fork(`c${i}`), 0.3);
     const a = rng.range(0, Math.PI * 2);
     const rr = i === 0 ? 0 : rng.range(0.6, 1.5);
     g.scale(1, 0.75, 1);
