@@ -17,7 +17,7 @@ and animator when done.
   real proportions (about 7.5 heads tall, broad shoulders, hands and feet with
   shape). Male and female bodies, build varied per class. PBR skin, cloth and
   leather from CC0 textures under `public/assets/textures/hero/`.
-- [ ] Head and face. Brow, eye sockets, nose, cheekbones, jaw, ears; eyes
+- [x] Head and face. (`heroes: hair, brows, beards, hood and mask grown from the head`; helmets are fitted in Worn armour, where hair hides under them) Brow, eye sockets, nose, cheekbones, jaw, ears; eyes
   that catch light; hair and beards as real shapes; helmets fit over them.
 - [ ] Worn armour. Chest, shoulders, gloves, boots, belt, helmet, cape (with
   sway), drawn on the new body from items' `ItemLook`. Bare and fully
@@ -87,14 +87,17 @@ lands exactly on the game's contact time.
 
 ## Next up
 
-1. Head and face: hair, brows and beards as shells grown from the head
-   field (`Garment.ts` with `cut` clips and extra primitives for hanging
-   hair), hood and mask for the shadowblade, strand normal texture painted
-   in code. Then judge `faces` and `bodies` sheets and tick.
-2. Worn armour, grown from the body like the undergarments.
+1. Worn armour: `src/art/hero/Armour.ts` grows chest, shoulders, gloves,
+   boots, belt, helmet from the body field like `Garment.ts` (thickness +
+   plane/`cut` clips + extra primitives for plates, rims and pauldrons),
+   picks material and shape from the current `ItemLook` / `GearLook` (items
+   owns `ItemLook`, read only), hides hair under helmets, cape as its own
+   skinned strip with sway bones driven in the animator. Add a `gear` sheet
+   to `tools/hero-page.ts`.
+2. Locomotion: new animator in `src/art/hero/Animator.ts`.
 
 Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities,poses [--class=warden,ranger]`
-writes `shots/heroes/*.png` in seconds.
+writes `shots/heroes/*.png` in seconds. Check: `node tools/check-hero.mjs`.
 
 ## Notes for resume
 

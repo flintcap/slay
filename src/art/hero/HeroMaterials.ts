@@ -243,10 +243,63 @@ export function fabricMaterial(fabric: HeroFabric, tint: number, roughness = 0.9
   });
 }
 
-/** Hair, brows and beards: dark-cored strands with a soft sheen. */
+let strandTex: { albedo: THREE.DataTexture; normal: THREE.DataTexture } | null = null;
+
+/** Strands running down the tile (along v): grey albedo streaks and a ridged normal. */
+function strands(): { albedo: THREE.DataTexture; normal: THREE.DataTexture } {
+  if (strandTex) return strandTex;
+  const N = 256;
+  const hgt = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      // Columns wander a little down the tile so strands are not ruled lines.
+      const u = x / N + 0.012 * Math.sin((y / N) * Math.PI * 2 * 2 + vnoise(x / 16, 0, N / 16, 9) * 6);
+      const a = vnoise(u * 96, (y / N) * 3, 96, 7);
+      const b = vnoise(u * 40, (y / N) * 2, 40, 8);
+      hgt[y * N + x] = 0.65 * a + 0.35 * b;
+    }
+  }
+  const alb = new Uint8Array(N * N * 4);
+  const nor = new Uint8Array(N * N * 4);
+  const at = (x: number, y: number) => hgt[((y + N) % N) * N + ((x + N) % N)];
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const i = (y * N + x) * 4;
+      const v = at(x, y);
+      const g = Math.round(Math.min(1, 0.35 + 0.9 * v) * 255);
+      alb[i] = alb[i + 1] = alb[i + 2] = g;
+      alb[i + 3] = 255;
+      const dx = (at(x + 1, y) - at(x - 1, y)) * 2.2;
+      const dy = (at(x, y + 1) - at(x, y - 1)) * 0.4;
+      const l = Math.hypot(dx, dy, 1);
+      nor[i] = Math.round((-dx / l * 0.5 + 0.5) * 255);
+      nor[i + 1] = Math.round((-dy / l * 0.5 + 0.5) * 255);
+      nor[i + 2] = Math.round((1 / l * 0.5 + 0.5) * 255);
+      nor[i + 3] = Math.round((0.75 - 0.35 * v) * 255);
+    }
+  }
+  const mk = (data: Uint8Array, srgb: boolean) => {
+    const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.generateMipmaps = true;
+    t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.needsUpdate = true;
+    t.userData.shared = true;
+    return t;
+  };
+  strandTex = { albedo: mk(alb, true), normal: mk(nor, false) };
+  return strandTex;
+}
+
+/** Hair, brows and beards: streaked strands with a soft sheen. */
 export function hairMaterial(color: number): THREE.MeshStandardMaterial {
   return shared(`hair|${color}`, () => {
-    const m = new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0, vertexColors: true });
+    const m = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0 });
+    const t = strands();
+    // One tile every 4 cm.
+    triplanar(m, { albedo: t.albedo, normal: t.normal, scale: 1 / 0.04, normalScale: 1.2, roughVar: 0.8 });
     m.name = 'hero-hair';
     return m;
   });

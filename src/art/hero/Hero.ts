@@ -8,6 +8,7 @@ import { eyeGeometry, eyeMaterial } from './Eyes';
 import type { HeroLook } from './Looks';
 import { fabricMaterial, skinMaterial } from './HeroMaterials';
 import { beltSpec, chestWrapSpec, garment, shortsSpec } from './Garment';
+import { headParts } from './Hair';
 
 export interface HeroModel {
   rig: HeroRig;
@@ -41,6 +42,7 @@ export function buildHero(look: HeroLook, name = 'hero'): HeroModel {
   skinned(garment(body, 'shorts', shortsSpec(body, female)), fabricMaterial('linen', look.linen), rig, `${name}:shorts`);
   if (female) skinned(garment(body, 'wrap', chestWrapSpec(body)), fabricMaterial('linen', look.linen), rig, `${name}:wrap`);
   skinned(garment(body, 'belt', beltSpec(body)), fabricMaterial('leather', look.leather, 0.7), rig, `${name}:belt`);
+  for (const p of headParts(body, look)) skinned(p.geo, p.mat, rig, `${name}:${p.name}`);
   rig.root.userData.heroLook = look;
   return { rig, root: rig.root, body, look };
 }

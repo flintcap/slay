@@ -337,12 +337,16 @@ function headField(F: FieldBuilder, h: number, male: boolean, b: number, w: numb
   for (const s of [1, -1]) F.ellipsoid(H(s * 0.24, 6.92 + 0.02 * fem, 0.24), V(0.11 * h, 0.075 * h, 0.1 * h), 0.12 * h, rot(0, s * 0.5, 0));
   // Jaw: lower face mass, the angles under the ears and the chin.
   const jawW = (male ? 0.25 : 0.21) + 0.03 * rug;
-  F.ellipsoid(H(0, 6.68, 0.14), V(jawW * h * 0.92, 0.2 * h, 0.27 * h), 0.12 * h);
+  F.ellipsoid(H(0, 6.68 + 0.02 * fem, 0.14), V(jawW * h * 0.92, (0.2 - 0.02 * fem) * h, 0.27 * h), 0.12 * h);
   for (const s of [1, -1]) F.ellipsoid(H(s * jawW, 6.7, -0.02), V(0.07 * h, 0.13 * h, 0.12 * h), 0.12 * h);
-  const chin = H(0, 6.52 - 0.02 * rug, 0.3 + 0.02 * rug);
+  const chin = H(0, 6.52 - 0.02 * rug + 0.03 * fem, 0.3 + 0.02 * rug - 0.01 * fem);
   F.ellipsoid(chin, V((0.09 + 0.04 * rug) * h, (0.07 + 0.01 * rug) * h, 0.08 * h), 0.1 * h);
   // Muzzle: the curve of the teeth under the lips.
   F.ellipsoid(H(0, 6.73, 0.3), V(0.17 * h, 0.15 * h, 0.14 * h), 0.08 * h);
+  // Soft cheeks between the cheekbone and the jaw, gone on the starved.
+  if (gaunt < 0.5) {
+    for (const s of [1, -1]) F.ellipsoid(H(s * 0.2, 6.78 + 0.01 * fem, 0.27), V((0.1 + 0.01 * fem) * h, 0.1 * h, 0.09 * h), 0.1 * h);
+  }
   // Brow ridge.
   F.ellipsoid(H(0, 7.11, 0.36), V(0.29 * h, (0.045 + 0.03 * rug) * h, (0.07 + 0.03 * rug) * h), 0.08 * h, rot(-0.1));
   // Sunken cheeks on the starved and the dead.
@@ -366,9 +370,9 @@ function headField(F: FieldBuilder, h: number, male: boolean, b: number, w: numb
       F.ellipsoid(e.clone().add(H(s * 0.004, -0.002, 0.06)), V((0.056 + 0.006 * fem) * h, (0.018 + 0.005 * fem) * h, 0.06 * h), 0.01 * h, rot(0, 0, s * 0.08), { sub: true });
     }
     // Nose: bridge, tip and wings.
-    const nl = male ? 1 : 0.86;
-    F.cone(H(0, 7.06, 0.42), H(0, 6.87, 0.5 + 0.03 * nl), 0.028 * h, 0.04 * h * nl, 0.035 * h);
-    F.ellipsoid(H(0, 6.855, 0.5 + 0.02 * nl), V(0.05 * h * nl, 0.045 * h, 0.05 * h * nl), 0.025 * h);
+    const nl = male ? 1 : 0.8;
+    F.cone(H(0, 7.06, 0.42), H(0, 6.87 + 0.02 * fem, 0.5 + 0.03 * nl), 0.028 * h, 0.04 * h * nl, 0.035 * h);
+    F.ellipsoid(H(0, 6.855 + 0.015 * fem, 0.5 + 0.02 * nl), V(0.05 * h * nl, 0.045 * h, 0.05 * h * nl), 0.025 * h);
     for (const s of [1, -1]) F.ellipsoid(H(s * 0.048, 6.845, 0.455), V(0.035 * h, 0.03 * h, 0.035 * h), 0.025 * h);
     // Lips, fuller on a woman, with a soft line between them.
     const lip = 1 + 0.35 * fem;

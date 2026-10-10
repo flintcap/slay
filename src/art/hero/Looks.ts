@@ -63,7 +63,7 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     eyes: { iris: 0x2a2018 },
     linen: 0x3a3a40,
     leather: 0x2a2220,
-    cloth: 0x2a2e34,
+    cloth: 0x585e68,
     hood: true,
     mask: true,
     accent: 0x4ad69a,

@@ -6,11 +6,12 @@
  * stands off the skin. It skins from the same field as the body under it, so
  * it bends exactly as the body does and never needs fitting.
  */
-import * as THREE from "three";
-import { meshPart, type BodyMesh } from "./Body";
-import { G } from "./Anatomy";
-import type { Clip, Inflate } from "./Mesher";
-import { meshCached } from "./MeshCache";
+import * as THREE from 'three';
+import { meshPart, type BodyMesh } from './Body';
+import { G } from './Anatomy';
+import type { Clip, Inflate } from './Mesher';
+import { meshCached } from './MeshCache';
+import { Field, type Prim } from './Sdf';
 
 export interface GarmentSpec {
   /** Body groups the cloth wraps; the rest are left out of its field. */
@@ -23,6 +24,10 @@ export interface GarmentSpec {
   tris?: number;
   /** Heights the garment lies between, to keep the meshing box small. */
   yRange: [number, number];
+  /** Shapes added to the body's before growing: hanging hair, a hood's peak. */
+  extra?: Prim[];
+  /** Groups it may skin to (defaults to `groups`). */
+  skinGroups?: number[];
 }
 
 /** The garment's skinned geometry for a body; cached per body and spec name. */
@@ -35,7 +40,8 @@ export function garment(
     `garment|${body.hash}|${name}|${JSON.stringify(spec)}`,
     () => {
       const keep = new Set(spec.groups);
-      const field = body.anatomy.field.select((p) => keep.has(p.group));
+      const base = body.anatomy.field.select((p) => keep.has(p.group));
+      const field = spec.extra?.length ? new Field([...base.prims, ...spec.extra]) : base;
       const box = field.bounds().clone();
       box.min.y = Math.max(box.min.y, spec.yRange[0]);
       box.max.y = Math.min(box.max.y, spec.yRange[1]);
@@ -47,7 +53,7 @@ export function garment(
         spec.clips,
         spec.thickness,
         spec.tris ?? 1800,
-        spec.groups,
+        spec.skinGroups ?? spec.groups,
       );
       g.computeBoundingSphere();
       return g;
@@ -60,8 +66,8 @@ const down = (y: number): Clip => ({ n: new THREE.Vector3(0, -1, 0), d: -y });
 
 /** A cut across a leg, square to the thigh, `t` of the way from hip to knee. */
 function legCut(body: BodyMesh, L: boolean, t: number): Clip {
-  const hip = body.joints[L ? "thighL" : "thighR"];
-  const knee = body.joints[L ? "shinL" : "shinR"];
+  const hip = body.joints[L ? 'thighL' : 'thighR'];
+  const knee = body.joints[L ? 'shinL' : 'shinR'];
   const n = knee.clone().sub(hip).normalize();
   const at = hip.clone().lerp(knee, t);
   return { n, d: n.dot(at) };
