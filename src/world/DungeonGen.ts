@@ -26,6 +26,7 @@ import type {
   LayoutKind,
   LevelEvent,
   LevelEventKind,
+  MapZone,
   MonsterRank,
   PropPlacement,
   QuestDef,
@@ -77,6 +78,10 @@ const TILE_NAMES: TileKind[] = [
   'stairsDown',
   'stairsUp',
   'rubble',
+  'ruin',
+  'deepWater',
+  'bridge',
+  'ice',
 ];
 
 export const BIOMES: BiomeDef[] = BIOME_LIST;
@@ -1573,6 +1578,14 @@ export function roomAt(level: DungeonLevel, x: number, y: number): DungeonRoom |
     if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return r;
   }
   return null;
+}
+
+/** The zone a tile belongs to, or null on a level without zones. */
+export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | null {
+  const zones = level.zones;
+  if (!zones || zones.length === 0) return null;
+  if (!level.zoneOf || x < 0 || y < 0 || x >= level.width || y >= level.height) return zones[0] ?? null;
+  return zones[level.zoneOf[y * level.width + x]!] ?? zones[0] ?? null;
 }
 
 /** Height step at a tile, 0 when the level carries no height field. */

@@ -38,6 +38,10 @@ export const TILE_VALUES = {
   stairsDown: 7,
   stairsUp: 8,
   rubble: 9,
+  ruin: 10,
+  deepWater: 11,
+  bridge: 12,
+  ice: 13,
 } as const;
 
 export const T_VOID = 0;
@@ -50,6 +54,35 @@ export const T_CHASM = 6;
 export const T_STAIRS_DOWN = 7;
 export const T_STAIRS_UP = 8;
 export const T_RUBBLE = 9;
+/** Masonry standing in the open. Blocks. */
+export const T_RUIN = 10;
+/** Water too deep to wade. Blocks. */
+export const T_DEEP_WATER = 11;
+/** Boardwalk or bridge. Walkable. */
+export const T_BRIDGE = 12;
+/** Frozen pond. Walkable. */
+export const T_ICE = 13;
+
+/**
+ * The old kind a tile is drawn as by a builder that does not know it yet
+ * (maps -> ground contract in CONTRACTS.md). Blocking kinds map to a blocking
+ * look, walkable kinds to floor, so nothing is ever invisible or walk-through.
+ * Unknown values come back as wall.
+ */
+export function drawAsKind(v: number): number {
+  if (v <= T_RUBBLE) return v;
+  switch (v) {
+    case T_RUIN:
+      return T_WALL;
+    case T_DEEP_WATER:
+      return T_WATER;
+    case T_BRIDGE:
+    case T_ICE:
+      return T_FLOOR;
+    default:
+      return T_WALL;
+  }
+}
 
 /** Tiles an entity may stand on. Water and rubble are passable but slow. */
 export function isWalkableValue(v: number): boolean {
@@ -59,7 +92,9 @@ export function isWalkableValue(v: number): boolean {
     v === T_WATER ||
     v === T_RUBBLE ||
     v === T_STAIRS_DOWN ||
-    v === T_STAIRS_UP
+    v === T_STAIRS_UP ||
+    v === T_BRIDGE ||
+    v === T_ICE
   );
 }
 

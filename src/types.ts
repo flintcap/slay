@@ -743,7 +743,17 @@ export type TileKind =
   | 'chasm'
   | 'stairsDown'
   | 'stairsUp'
-  | 'rubble';
+  | 'rubble'
+  // Added by the map remake (docs/remake/maps.md). Each one says how it is
+  // drawn until the builder knows it: see `drawAsKind` in world/Layouts.ts.
+  /** Man-made wall standing in the open: broken walls, standing stones. Blocks. Drawn as `wall` until known. */
+  | 'ruin'
+  /** Water too deep to wade: swamp pools, rivers. Blocks. Drawn as `water` until known. */
+  | 'deepWater'
+  /** Plank boardwalk or stone bridge over water, lava or a chasm. Walkable. Drawn as `floor` until known. */
+  | 'bridge'
+  /** Frozen pond or ice sheet. Walkable. Drawn as `floor` until known. */
+  | 'ice';
 
 export interface DungeonRoom {
   id: number;
@@ -785,6 +795,77 @@ export interface DungeonLevel {
    * payload; this list is the index. Optional: older generators wrote none.
    */
   events?: LevelEvent[];
+  /**
+   * The zones this area holds (maps remake). One area is one load. Several
+   * outdoor zones share one area and meet at seamless edges; an indoor zone is
+   * always an area of its own. Optional so a hand-built preview level still
+   * works: no `zones` means one zone with the level's own biome.
+   */
+  zones?: MapZone[];
+  /**
+   * Zone index per tile, row-major, same length as `tiles`. Every tile has one,
+   * walls and void included, so a wall is drawn in the look of the zone it
+   * stands in. Index into `zones`.
+   */
+  zoneOf?: Uint8Array;
+  /**
+   * Ways out of this area. The first one is the way on (it matches `exit`). A
+   * level with none uses `exit` as a plain passage.
+   */
+  exits?: MapExit[];
+  /** The town waypoint, on the first area of a map only. Tile coordinates. */
+  waypoint?: Vec2;
+  /** The boss arena, on the last area only: its rectangle and the threshold tile where the fight begins. */
+  arena?: { x: number; y: number; w: number; h: number; gate: Vec2 };
+}
+
+/**
+ * One sub-zone of a map: one stretch of ground with one biome, one layout and
+ * one name. See docs/remake/maps.md "Design".
+ */
+export interface MapZone {
+  /** Index in `DungeonLevel.zones`, and the value `zoneOf` stores for its tiles. */
+  id: number;
+  /** Shown on the zone banner and the HUD: "The Blackroot Wood". */
+  name: string;
+  biome: BiomeId;
+  /** Open sky, no roof lid. */
+  outdoor: boolean;
+  /** The generator that shaped it. */
+  layout: LayoutKind;
+  /** Tile rectangle the zone was generated in. Zones of one area never overlap. */
+  bounds: { x: number; y: number; w: number; h: number };
+  /** Position in the whole map: 0 is the zone you arrive in. */
+  order: number;
+  /** 'start' holds the waypoint, 'boss' holds the arena. */
+  role: 'start' | 'field' | 'boss';
+}
+
+/** A way out of an area. Drawn by the builder, used by the scene. */
+export interface MapExit {
+  /** Tile coordinates of the tile you step on to leave. */
+  x: number;
+  y: number;
+  /** How it looks: a cave mouth, a doorway, stairs down, an iron gate, or a portal. */
+  kind: 'caveMouth' | 'doorway' | 'stairs' | 'gate' | 'portal';
+  /** Radians, the direction you face walking through it (0 = +x, PI/2 = +y). */
+  facing: number;
+  /** Area index in `DungeonRun.levels` it leads to, or 'town'. */
+  to: number | 'town';
+  /** Zone of this area the exit stands in. */
+  zone: number;
+}
+
+/** What a whole map is, for the HUD, the minimap and the story layer. */
+export interface MapInfo {
+  /** "Gallows Fen" — the map's own name. */
+  name: string;
+  /** Scaling tier. Equal to `DungeonRun.depth`, which every curve still reads. */
+  tier: number;
+  /** Theme id the zone chain was drawn from (world/MapGen.ts). */
+  theme: string;
+  /** Every zone in the map, in order, and which area (level index) holds it. */
+  zones: Array<{ name: string; biome: BiomeId; outdoor: boolean; area: number }>;
 }
 
 export type LevelEventKind = 'cursedChest' | 'fallenAdventurer' | 'choiceShrine' | 'treasureRunner';
@@ -833,6 +914,8 @@ export interface DungeonRun {
   /** Global run modifiers from endless scaling. */
   modifiers: string[];
   bossId: string;
+  /** The map this run is (maps remake). Optional for old callers and tools. */
+  map?: MapInfo;
 }
 
 // ---------------------------------------------------------------------------

@@ -527,3 +527,46 @@ Tools: `node tools/check-assets.mjs` (ledger, CC0, formats, budgets: textures
 70 MB, sounds 25 MB, music 35 MB, 4 MB per file). `node tools/bundle-artifact.mjs`
 writes `dist-single/slay.html` plus `dist-single/files.json`, the `files`
 mapping (published path -> repo path) to publish the assets beside the page.
+
+## Maps → ground (what a map is) — owned by MAPS
+
+Design: `docs/remake/maps.md` "Design". Types: `MapZone`, `MapExit`, `MapInfo`
+and the new `DungeonLevel` fields in `src/types.ts`.
+
+- One portal trip is one map, `DungeonRun`. `run.levels` is the list of
+  **areas**: one area is one load. `run.map` names the map, its tier (equal to
+  `run.depth`) and every zone in order.
+- An area holds one or two zones: `level.zones` and `level.zoneOf` (zone index
+  per tile, every tile including walls and void). Two outdoor zones in one area
+  meet at a seamless edge; draw each tile in its zone's biome and blend across
+  the seam. `zone.outdoor` means open sky: no roof lid, no ceiling.
+- A level with no `zones` is one zone of `level.biome` (previews, old tools).
+- `level.biome` is the area's first zone's biome. Lighting, fog and grade for
+  a two-zone area may follow the zone the hero stands in (`zoneOf`).
+- Tile kinds added: `ruin` 10 (blocks), `deepWater` 11 (blocks), `bridge` 12
+  (walkable), `ice` 13 (walkable). Collision and walkability come from
+  `isWalkableValue` (world/Layouts.ts) as always.
+- **Unknown kinds:** `drawAsKind(v)` (world/Layouts.ts) returns the old kind to
+  draw a tile as until the builder knows it: blocking kinds draw as a blocking
+  look (`ruin` as wall, `deepWater` as water), walkable ones as floor, any
+  value it does not know as wall. Call it wherever the builder reads a tile
+  for drawing.
+- In an outdoor zone a `wall` tile is that biome's natural edge: tree line
+  (darkForest), dead trees and reeds (swamp), dune ridge or rock (desert),
+  cliff (tundra), rock and slag (ashwaste, hell). `ruin` is masonry anywhere.
+- Ways out: `level.exits` (first one = the way on, at `level.exit`), each with
+  a `kind` (caveMouth, doorway, stairs, gate, portal) and `facing`. The builder
+  draws them. `level.waypoint` (first area only) is the town waypoint.
+  `level.arena` is the boss arena rectangle and its `gate` tile.
+- New biome ids (`darkForest`, `swamp`, `desert`, `desertTomb`, `tundra`,
+  `hell`) carry gameplay fields only. `biomeArt(id)` falls back to the closest
+  old look (table in maps.md) until ground writes their art.
+
+```ts
+// src/world/Layouts.ts
+export function drawAsKind(v: number): number;
+export const T_RUIN = 10, T_DEEP_WATER = 11, T_BRIDGE = 12, T_ICE = 13;
+// src/world/DungeonGen.ts
+export function generateRun(depth: number, seed: number, classId: CharClassId): DungeonRun; // now a map
+export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | null;
+```
