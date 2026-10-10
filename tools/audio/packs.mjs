@@ -101,6 +101,12 @@ export const PACKS = {
   portal4: oga('4-space-portal-sounds', 'Écrivain', ['tts.zip']),
   porta: oga('portal-sound', 'IgnasD', ['PortalSFX.zip']),
   thunder: oga('rain-long-thunder', 'WuxiaScrub', ['rain-thunder.ogg']),
+  mw: oga('100-cc0-metal-and-wood-sfx', 'rubberduck', ['100-CC0-wood-metal-SFX.zip']),
+  msfx1: oga('monster-sound-effects-pack', 'Ogrebane', ['monster_sfx_pack.zip']),
+  msfx2: oga('monster-sound-effects-2', 'Ogrebane', ['monster_sfx_pack_2.zip']),
+  msfx3: oga('monster-sound-pack-volume-1', 'Ogrebane', ['monster-sounds-volume-2.zip']),
+  dark: oga('dark-ambiences', 'Ogrebane', ['dark_ambiences.zip']),
+  laugh: oga('evil-laugh', 'AntumDeluge', ['laugh-evil-1.ogg']),
 
   // --- OpenGameArt: music ----------------------------------------------------------
   mMenu: oga('tragic-ambient-main-menu', 'HaelDB', ['ambientmain_0.ogg'], 'm-tragic-ambient'),

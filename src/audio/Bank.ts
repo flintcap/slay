@@ -230,10 +230,15 @@ function family(id: string): string | null {
     case 'impact':
       if (tail === 'physical' || tail === '') return 'hit.melee';
       return ELEMENTS.has(tail) ? `impact.${tail === 'bone' ? 'physical' : tail}` : 'hit.melee';
-    case 'nova':
+    case 'nova': {
+      // A nova with no recording of its own sounds like its element landing.
+      const e = el === 'bone' ? 'physical' : el;
+      return ELEMENTS.has(tail) ? (e === 'physical' ? 'hit.heavy' : `impact.${e}`) : 'nova.arcane';
+    }
     case 'beam':
     case 'cone':
-      return `${head}.${el === 'bone' ? 'physical' : el}`;
+      // Beams and cones fall back to their element's cast.
+      return ELEMENTS.has(tail) ? `cast.${el === 'bone' ? 'physical' : el}` : `cast.arcane`;
     case 'breath':
       return `cone.${el}`;
     case 'shoot':
@@ -246,8 +251,10 @@ function family(id: string): string | null {
       if (!RARITIES.has(tail)) return null;
       return tail === 'normal' ? 'loot.grab' : tail === 'magic' || tail === 'rare' ? 'pickup.magic' : 'pickup.rare';
     case 'drop':
+      // normal clinks, magic tinkles, rare rings, set chimes; unique and above
+      // get the deep gong under a bell, the sound you stop for.
       if (!RARITIES.has(tail)) return null;
-      return tail === 'normal' ? 'loot.clink' : tail === 'magic' || tail === 'rare' ? 'drop.magic' : 'drop.rare';
+      return tail === 'normal' ? 'loot.clink' : tail === 'magic' ? 'drop.magic' : tail === 'rare' ? 'drop.magic' : tail === 'set' ? 'drop.rare' : 'drop.unique';
     case 'monster': {
       const [fam, kind] = tail.split('.');
       if (!kind) return `monster.beast.${fam || 'aggro'}`;
