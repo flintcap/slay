@@ -5,12 +5,8 @@ import { mitigate } from '../sim/Combat';
 import { StatusContainer, adoptStatuses, releaseAdopted } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
-import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
-import { disposeObject } from '../core/Engine';
-import { Animator, type BodyCondition } from '../art/Animation';
-import { buildItemModel } from '../art/ItemModels';
-import { compactModel } from '../art/ModelBudget';
-import { getBase } from '../sim/Loot';
+import { HeroAnimator, type BodyCondition } from '../art/hero/Animator';
+import { DressedHero } from '../scenes/HeroModel';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
@@ -51,15 +47,6 @@ export function contactDelay(clip: string, duration: number): number {
   return f === undefined ? 0 : Math.min(CONTACT_CAP, f * Math.max(0, duration));
 }
 
-const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt'];
-
-/** Which body-covering slots currently hold an item. */
-export function wornSlots(c: Character): Set<EquipSlot> {
-  const out = new Set<EquipSlot>();
-  for (const slot of VISUAL_SLOTS) if (c.equipment[slot]) out.add(slot);
-  return out;
-}
-
 /**
  * The player avatar: movement, collision, resources, and animation state.
  * Skill execution lives in DungeonScene — this class owns the body, not the
@@ -69,7 +56,7 @@ export class Player {
   readonly root = new THREE.Group();
   readonly character: Character;
   readonly bones: Record<string, THREE.Bone>;
-  readonly animator: Animator;
+  readonly animator: HeroAnimator;
 
   stats: Stats;
   life: number;
@@ -113,11 +100,8 @@ export class Player {
   readonly status = new StatusContainer('player');
   private regenAccum = 0;
   private rng: Rng;
-  private equipMeshes = new Map<EquipSlot, THREE.Object3D>();
-  /** Last-built item identity per slot, so unchanged gear is never rebuilt. */
-  private equipKeys = new Map<EquipSlot, string>();
-  /** The class model, kept so its cover pieces can be toggled on equip. */
-  private body!: THREE.Object3D;
+  /** The body, its gear and its animator (`src/scenes/HeroModel.ts`). */
+  private hero: DressedHero;
 
   /** Set by DungeonScene when the player has no business moving (dead, cutscene). */
   frozen = false;
@@ -136,11 +120,10 @@ export class Player {
     // player ever reached the sheet.
     adoptStatuses(character.id, this.status);
 
-    const built = buildPlayerModel(character.classId, this.rng, wornSlots(character));
-    this.body = built.root;
-    this.root.add(built.root);
-    this.bones = built.bones;
-    this.animator = new Animator(built.bones);
+    this.hero = new DressedHero(character.classId, seed);
+    this.root.add(this.hero.root);
+    this.bones = this.hero.bones;
+    this.animator = this.hero.animator;
     // The animator reads real ground motion from the body so feet plant.
     this.animator.follow(this.root);
 
@@ -178,65 +161,11 @@ export class Player {
    * away and re-authored every equipped model on every buff tick.
    */
   private refreshEquipmentVisuals(): void {
-    const eq = this.character.equipment;
-    // Gear replaces the class's own covering rather than clipping through it.
-    applyWornSlots(this.body, wornSlots(this.character));
-    for (const slot of VISUAL_SLOTS) {
-      const item = eq[slot];
-      // baseId alone is not enough: rarity drives the dressing, and two items
-      // can share a base with different rolls.
-      const key = item ? `${item.uid}|${item.baseId}|${item.rarity}|${item.upgrade}` : '';
-      if (this.equipKeys.get(slot) === key) continue;
-      this.equipKeys.set(slot, key);
-
-      const prev = this.equipMeshes.get(slot);
-      if (prev) {
-        clearSocket(this.bones, slot);
-        disposeObject(prev);
-        this.equipMeshes.delete(slot);
-      }
-      if (!item) continue;
-
-      try {
-        const base = getBase(item.baseId);
-        const visual = base?.visual ?? { shape: 'auto', palette: 'metal.steel' };
-        // Quivers are worn on the back rather than held.
-        const socketKey = base?.category === 'quiver' ? 'quiver' : undefined;
-        // How it is carried: a greatsword is not held like a dagger.
-        const grip =
-          slot === 'mainHand' || slot === 'offHand'
-            ? weaponGrip(base?.category, base?.slot === 'twoHand')
-            : undefined;
-        // Armour is cut to the body and skinned to it; weapons, shields and
-        // anything the body cannot wear fall back to a socketed model.
-        let mesh = wearItem(this.body, this.bones, slot, item, visual);
-        if (!mesh) {
-          // Merged per material: a held item is static, and ten parts cost ten draws.
-          mesh = compactModel(buildItemModel(visual, this.rng, item.rarity, item));
-          attachToSocket(this.root, this.bones, slot, mesh, socketKey, grip);
-        }
-        // Marks the weapon so a poison coat can glow on the blade and nowhere
-        // else. Cheap to stamp here; walking the tree for it later is not.
-        if (slot === 'mainHand' || slot === 'offHand') {
-          mesh.traverse((o) => {
-            o.userData.weaponPart = true;
-          });
-        }
-        this.equipMeshes.set(slot, mesh);
-        // A new model brings fresh shared materials, so the tint has to be
-        // reapplied rather than skipped by the change guard.
-        this.appliedFade = -1;
-        this.appliedCoat = !this.appliedCoat;
-      } catch {
-        // A missing visual must never break the run.
-      }
-    }
-    // Two-handed weapons need both hands on them and a bow needs the string
-    // hand brought across, which is a body pose rather than a socket transform.
-    const main = eq.mainHand ? getBase(eq.mainHand.baseId) : undefined;
-    this.animator.setGrip(carryGrip(main?.category, main?.slot === 'twoHand'));
-    // And what is in the hand sets how much body goes into a swing.
-    this.animator.setWeapon(weaponGrip(main?.category, main?.slot === 'twoHand'));
+    if (!this.hero.dress(this.character.equipment)) return;
+    // A new model brings fresh shared materials, so the tint has to be
+    // reapplied rather than skipped by the change guard.
+    this.appliedFade = -1;
+    this.appliedCoat = !this.appliedCoat;
   }
 
   /**
@@ -697,6 +626,9 @@ export class Player {
       copy.userData = { ...std.userData, playerOwned: true, shared: false };
       copy.userData.baseColor = copy.color.clone();
       copy.userData.baseEmissive = copy.emissive.getHex();
+      // A clone drops shader patches (the hero's triplanar maps): keep them.
+      copy.onBeforeCompile = std.onBeforeCompile;
+      copy.customProgramCacheKey = std.customProgramCacheKey;
       mesh.material = copy;
       return copy;
     }
@@ -821,7 +753,6 @@ export class Player {
   }
 
   dispose(): void {
-    this.equipMeshes.clear();
     releaseAdopted(this.character.id, this.status);
   }
 }

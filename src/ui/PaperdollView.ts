@@ -14,17 +14,8 @@
  */
 
 import * as THREE from 'three';
-import type { Character, EquipSlot } from '../types';
-import { Random } from '../core/RNG';
-import { disposeObject } from '../core/Engine';
-import { buildPlayerModel, attachToSocket, clearSocket, applyWornSlots, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
-import { buildItemModel } from '../art/ItemModels';
-import { compactModel } from '../art/ModelBudget';
-import { Animator } from '../art/Animation';
-import { getBase } from '../sim/Loot';
-
-/** Slots that put geometry on the body. Matches the in-world player. */
-const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt'];
+import type { Character } from '../types';
+import { DressedHero, VISUAL_SLOTS } from '../scenes/HeroModel';
 
 /** Panel-sized viewport. Small enough that a second GL context is cheap. */
 const WIDTH = 176;
@@ -38,10 +29,8 @@ export class PaperdollView {
   private camera = new THREE.PerspectiveCamera(30, WIDTH / HEIGHT, 0.1, 40);
   private rig = new THREE.Group();
 
-  private model: THREE.Object3D | null = null;
-  private bones: Record<string, THREE.Bone> = {};
-  private animator: Animator | null = null;
-  private equipMeshes = new Map<EquipSlot, THREE.Object3D>();
+  /** The same dressed hero the world uses (`src/scenes/HeroModel.ts`). */
+  private hero: DressedHero | null = null;
 
   private classId = '';
   private equipSig = '';
@@ -141,19 +130,11 @@ export class PaperdollView {
     if (this.classId !== c.classId) {
       this.classId = c.classId;
       this.equipSig = '';
-      if (this.model) {
-        this.model.removeFromParent();
-        disposeObject(this.model);
-      }
-      this.equipMeshes.clear();
-
-      const built = buildPlayerModel(c.classId, new Random(0x9d0117));
-      this.rig.add(built.root);
-      this.model = built.root;
-      this.bones = built.bones;
-      this.animator = new Animator(built.bones);
-      this.animator.play('idle', { fade: 0 });
-      this.frame(built.root);
+      this.hero?.dispose();
+      this.hero = new DressedHero(c.classId, 0x9d0117);
+      this.rig.add(this.hero.root);
+      this.hero.animator.play('idle', { fade: 0 });
+      this.frame(this.hero.root);
     }
 
     const eq = c.equipment;
@@ -163,46 +144,9 @@ export class PaperdollView {
     }).join('|');
     if (sig === this.equipSig) return;
     this.equipSig = sig;
-
-    // Gear replaces the class's own covering rather than clipping through it.
-    const worn = new Set<EquipSlot>();
-    for (const slot of VISUAL_SLOTS) if (eq[slot]) worn.add(slot);
-    if (this.model) applyWornSlots(this.model, worn);
-
-    const rng = new Random(0x17ea55);
-    for (const slot of VISUAL_SLOTS) {
-      const prev = this.equipMeshes.get(slot);
-      if (prev) {
-        clearSocket(this.bones, slot);
-        disposeObject(prev);
-        this.equipMeshes.delete(slot);
-      }
-      const item = eq[slot];
-      if (!item) continue;
-      try {
-        const base = getBase(item.baseId);
-        const visual = base?.visual ?? { shape: 'auto', palette: 'metal.steel' };
-        // Quivers are worn on the back rather than held.
-        const socketKey = base?.category === 'quiver' ? 'quiver' : undefined;
-        // The doll holds a weapon the same way the character in the world does.
-        const grip =
-          slot === 'mainHand' || slot === 'offHand'
-            ? weaponGrip(base?.category, base?.slot === 'twoHand')
-            : undefined;
-        // Armour is worn on the body itself, exactly as in the world.
-        let mesh = this.model ? wearItem(this.model, this.bones, slot, item, visual) : null;
-        if (!mesh) {
-          mesh = compactModel(buildItemModel(visual, rng, item.rarity, item));
-          attachToSocket(this.rig, this.bones, slot, mesh, socketKey, grip);
-        }
-        this.equipMeshes.set(slot, mesh);
-      } catch {
-        // A single unbuildable item must not blank the whole figure.
-      }
-    }
-    // The doll stands the same way the character in the world does.
-    const main = eq.mainHand ? getBase(eq.mainHand.baseId) : undefined;
-    this.animator?.setGrip(carryGrip(main?.category, main?.slot === 'twoHand'));
+    // Armour is grown on the body and weapons held, exactly as in the world;
+    // only the slots that changed are rebuilt.
+    this.hero?.dress(eq);
   }
 
   /** Points the camera at the model's own bounds, so proportions never matter. */
@@ -239,7 +183,7 @@ export class PaperdollView {
         this.spin += (target - this.spin) * (1 - Math.pow(0.35, dt));
       }
       this.rig.rotation.y = this.spin;
-      this.animator?.update(dt);
+      this.hero?.animator.update(dt);
       this.renderer?.render(this.scene, this.camera);
     };
     this.raf = requestAnimationFrame(tick);
@@ -253,7 +197,8 @@ export class PaperdollView {
 
   dispose(): void {
     this.stop();
-    if (this.model) disposeObject(this.model);
+    this.hero?.dispose();
+    this.hero = null;
     this.renderer?.dispose();
     this.renderer?.domElement.remove();
     this.renderer = null;

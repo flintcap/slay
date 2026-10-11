@@ -114,3 +114,25 @@ export function beltSpec(body: BodyMesh): GarmentSpec {
     yRange: [4.08 * h, 4.42 * h],
   };
 }
+
+/** A cut across a shin, square to it, `t` of the way from knee to ankle. */
+function shinCut(body: BodyMesh, L: boolean, t: number): Clip {
+  const knee = body.joints[L ? 'shinL' : 'shinR'];
+  const ankle = body.joints[L ? 'footL' : 'footR'];
+  const n = ankle.clone().sub(knee).normalize();
+  const at = knee.clone().lerp(ankle, t);
+  return { n, d: n.dot(at) };
+}
+
+/** Cloth trousers from the waist to the top of the boot. */
+export function trousersSpec(body: BodyMesh): GarmentSpec {
+  const h = body.anatomy.h;
+  return {
+    groups: [G.torso, G.legL, G.legR],
+    thickness: 0.008,
+    clips: [up(4.36 * h), shinCut(body, true, 0.82), shinCut(body, false, 0.82)],
+    cell: 0.01,
+    tris: 2400,
+    yRange: [0.5 * h, 4.5 * h],
+  };
+}

@@ -1,104 +1,232 @@
 import * as THREE from 'three';
-import type { Character, CharClassId, EquipSlot, ItemRarity } from '../types';
+import type { Character, CharClassId, EquipSlot, Item, ItemRarity } from '../types';
 import { Random } from '../core/RNG';
-import { disposeObject } from '../core/Engine';
-import { buildPlayerModel, attachToSocket, weaponGrip, carryGrip, wearItem } from '../art/CharacterModels';
 import { buildItemModel } from '../art/ItemModels';
 import { compactModel } from '../art/ModelBudget';
-import { Animator } from '../art/Animation';
+import { buildHero, setHeroHidden, type HeroModel as HeroBody } from '../art/hero/Hero';
+import { HERO_LOOKS } from '../art/hero/Looks';
+import { wearArmour, removeArmour, type WornArmour } from '../art/hero/Armour';
+import { holdItem, weaponGrip } from '../art/hero/Hold';
+
+export { weaponGrip };
+import { HeroAnimator, type OffHand } from '../art/hero/Animator';
 import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import { FIELD_KIT } from './FieldKit';
 
 /**
- * A dressed, animated character for the front-end screens.
+ * The one place the game builds a hero: body, worn armour, held weapons and
+ * the animator, for play, the paperdoll and the front-end screens alike.
  *
- * The bare class model is a body in underwear: what a character looks like is
- * decided entirely by its equipment. That is right in play and wrong on a
- * class select screen, where the player is choosing a fantasy. So a class
- * preview wears a "field kit" that says what the class is, and a roster
- * preview wears the character's real gear, exactly as it will walk into town.
+ * The bare class body is a body in underwear: what a character looks like is
+ * decided by its equipment. That is right in play and wrong on a class select
+ * screen, where the player is choosing a fantasy. So a class preview wears a
+ * "field kit" that says what the class is, and a roster preview wears the
+ * character's real gear, exactly as it will walk into town.
  */
 
-/** Slots that put geometry on the body, in the same order the Player uses. */
-const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt'];
+/** Slots that put geometry on the body. Rings and amulets show nothing at play distance. */
+export const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt'];
 
+/** What a slot holds, as far as its looks go. */
+export type Piece = Pick<Item, 'baseId' | 'rarity'> & Partial<Pick<Item, 'uid' | 'upgrade' | 'uniqueId' | 'setId'>>;
+
+/** What the off hand's item does to the stance. */
+function offHandKind(category: string | undefined): OffHand {
+  switch (category) {
+    case 'shield':
+      return 'shield';
+    case 'sword':
+    case 'axe':
+    case 'mace':
+    case 'dagger':
+    case 'wand':
+    case 'scepter':
+      return 'weapon';
+    case 'orb':
+      return 'focus';
+    default:
+      return 'none';
+  }
+}
+
+interface Held {
+  key: string;
+  /** Armour grown on the body, or a model in a socket. */
+  worn?: WornArmour;
+  model?: THREE.Object3D;
+}
+
+/** A dressed, animated hero. Add `root` to the scene (or to a mover). */
+export class DressedHero {
+  readonly body: HeroBody;
+  readonly root: THREE.Group;
+  readonly animator: HeroAnimator;
+  /** Rig bones by name. */
+  readonly bones: Record<string, THREE.Bone>;
+  private held = new Map<EquipSlot, Held>();
+  private rng: Random;
+
+  constructor(
+    readonly classId: CharClassId,
+    seed = 1,
+  ) {
+    this.rng = new Random(seed);
+    this.body = buildHero(HERO_LOOKS[classId] ?? HERO_LOOKS.warden, classId);
+    this.root = this.body.root;
+    this.bones = this.body.rig.bones as unknown as Record<string, THREE.Bone>;
+    this.animator = new HeroAnimator(this.bones);
+  }
+
+  /**
+   * Wears and holds exactly `pieces`. Only slots whose item changed are
+   * rebuilt, so calling this on every stat refresh costs nothing. True when
+   * anything changed.
+   */
+  dress(pieces: Partial<Record<EquipSlot, Piece | null | undefined>>): boolean {
+    let changed = false;
+    for (const slot of VISUAL_SLOTS) {
+      const p = pieces[slot];
+      const key = p ? `${p.uid ?? ''}|${p.baseId}|${p.rarity}|${p.upgrade ?? 0}` : '';
+      if ((this.held.get(slot)?.key ?? '') === key) continue;
+      changed = true;
+      this.clear(slot);
+      if (!p) continue;
+      try {
+        this.held.set(slot, { key, ...this.put(slot, p) });
+      } catch {
+        // A missing visual must never break the run or blank a screen.
+        this.held.set(slot, { key });
+      }
+    }
+    if (!changed) return false;
+    const hides = new Set<string>();
+    for (const h of this.held.values()) h.worn?.hides.forEach((k) => hides.add(k));
+    setHeroHidden(this.body, hides);
+    // What is held picks the stance and the chain of blows.
+    const main = pieces.mainHand ? getBase(pieces.mainHand.baseId) : undefined;
+    const off = pieces.offHand ? getBase(pieces.offHand.baseId) : undefined;
+    this.animator.setOffHand(offHandKind(off?.category));
+    this.animator.setWeapon(weaponGrip(main?.category, main?.slot === 'twoHand'), main?.category);
+    return true;
+  }
+
+  /** Grows armour on the body, or puts a model in the right socket. */
+  private put(slot: EquipSlot, p: Piece): Omit<Held, 'key'> {
+    const base = getBase(p.baseId);
+    const visual = base?.visual ?? { shape: 'auto', palette: 'metal.steel' };
+    const worn = wearArmour(this.body, slot, p, visual);
+    if (worn) return { worn };
+    const model = compactModel(buildItemModel(visual, this.rng, p.rarity, p));
+    model.traverse((o) => {
+      o.castShadow = true;
+      // So a poison coat can glow on the blade and nowhere else.
+      if (slot === 'mainHand' || slot === 'offHand') o.userData.weaponPart = true;
+    });
+    const rig = this.body.rig;
+    if (base?.category === 'quiver') {
+      rig.sockets.quiver.add(model);
+      return { model };
+    }
+    const grip = weaponGrip(base?.category, base?.slot === 'twoHand');
+    // A bow is held in the left hand; the right draws.
+    const hand = grip === 'bow' ? 'offHand' : slot === 'offHand' ? 'offHand' : 'mainHand';
+    const node = holdItem(rig, hand, model, base?.category === 'shield' ? 'shield' : grip);
+    // Tools find the weapon by the game slot it came from.
+    node.parent!.userData.socketSlot = slot;
+    return { model };
+  }
+
+  private clear(slot: EquipSlot): void {
+    const h = this.held.get(slot);
+    if (!h) return;
+    this.held.delete(slot);
+    if (h.worn) {
+      removeArmour(h.worn);
+      disposeTree(h.worn.object);
+    }
+    if (h.model) {
+      const node = h.model.parent;
+      if (node?.parent?.userData.socketSlot === slot) delete node.parent.userData.socketSlot;
+      if (node && node.name.startsWith('hold:')) node.removeFromParent();
+      else h.model.removeFromParent();
+      disposeTree(h.model);
+    }
+  }
+
+  /** The held or worn object for a slot, if any. */
+  objectFor(slot: EquipSlot): THREE.Object3D | null {
+    const h = this.held.get(slot);
+    return h?.model ?? h?.worn?.object ?? null;
+  }
+
+  dispose(): void {
+    for (const slot of [...this.held.keys()]) this.clear(slot);
+    this.root.removeFromParent();
+    disposeTree(this.root);
+  }
+}
+
+/**
+ * Frees what a hero tree owns on the GPU. Meshed body parts are cached and
+ * shared between heroes (`MeshCache.ts`) and cached materials are shared
+ * between everything, so both are left alone.
+ */
+function disposeTree(root: THREE.Object3D): void {
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.geometry && !m.geometry.userData.cached) m.geometry.dispose();
+    (o as THREE.SkinnedMesh).skeleton?.dispose();
+    const mats = m.material ? (Array.isArray(m.material) ? m.material : [m.material]) : [];
+    for (const mat of mats) if (!mat.userData?.shared) mat.dispose();
+  });
+}
+
+/** A hero for the front-end screens. */
 export interface HeroModel {
   root: THREE.Group;
-  animator: Animator;
+  animator: HeroAnimator;
   classId: CharClassId;
   dispose(): void;
 }
 
-interface Piece {
-  baseId: string;
-  rarity: ItemRarity;
+function preview(classId: CharClassId, pieces: Partial<Record<EquipSlot, Piece>>, seed: number): HeroModel {
+  const hero = new DressedHero(classId, seed);
+  hero.dress(pieces);
+  hero.animator.play('idle', { fade: 0 });
+  // The screens turn and place this group; the body inside stays at its origin.
+  const root = new THREE.Group();
+  root.add(hero.root);
+  return {
+    root,
+    animator: hero.animator,
+    classId,
+    dispose(): void {
+      root.removeFromParent();
+      hero.dispose();
+    },
+  };
 }
 
 /** Builds a class in its field kit. */
 export function buildClassHero(classId: CharClassId): HeroModel {
-  const kit = FIELD_KIT[classId] ?? {};
-  const pieces = new Map<EquipSlot, Piece>();
-  for (const [slot, baseId] of Object.entries(kit) as Array<[EquipSlot, string]>) {
-    pieces.set(slot, { baseId, rarity: 'rare' });
+  const pieces: Partial<Record<EquipSlot, Piece>> = {};
+  for (const [slot, baseId] of Object.entries(FIELD_KIT[classId] ?? {}) as Array<[EquipSlot, string]>) {
+    pieces[slot] = { baseId, rarity: 'rare' as ItemRarity };
   }
-  return assemble(classId, pieces, 0x5eed ^ (classId.length * 7919));
+  return preview(classId, pieces, 0x5eed ^ (classId.length * 7919));
 }
 
 /** Builds a living character wearing exactly what it has equipped. */
 export function buildCharacterHero(c: Character): HeroModel {
-  const pieces = new Map<EquipSlot, Piece>();
+  const pieces: Partial<Record<EquipSlot, Piece>> = {};
   for (const slot of VISUAL_SLOTS) {
     const item = c.equipment[slot];
-    if (item) pieces.set(slot, { baseId: item.baseId, rarity: item.rarity });
+    if (item) pieces[slot] = item;
   }
   let seed = 0;
   for (let i = 0; i < c.id.length; i++) seed = (seed * 31 + c.id.charCodeAt(i)) >>> 0;
-  return assemble(c.classId, pieces, seed || 1);
-}
-
-function assemble(classId: CharClassId, pieces: Map<EquipSlot, Piece>, seed: number): HeroModel {
-  const rng = new Random(seed);
-  const built = buildPlayerModel(classId, rng, pieces.keys());
-  const root = new THREE.Group();
-  root.add(built.root);
-
-  let main: { category?: string; twoHand: boolean } | null = null;
-  for (const slot of VISUAL_SLOTS) {
-    const piece = pieces.get(slot);
-    if (!piece) continue;
-    try {
-      const base = getBase(piece.baseId);
-      const visual = base?.visual ?? { shape: 'auto', palette: 'metal.steel' };
-      const socketKey = base?.category === 'quiver' ? 'quiver' : undefined;
-      const grip =
-        slot === 'mainHand' || slot === 'offHand' ? weaponGrip(base?.category, base?.slot === 'twoHand') : undefined;
-      // Armour is worn on the body, as in play; the rest is socketed.
-      if (wearItem(built.root, built.bones, slot, piece, visual)) continue;
-      const mesh = compactModel(buildItemModel(visual, rng, piece.rarity, piece));
-      mesh.traverse((o) => {
-        o.castShadow = true;
-      });
-      attachToSocket(built.root, built.bones, slot, mesh, socketKey, grip);
-      if (slot === 'mainHand') main = { category: base?.category, twoHand: base?.slot === 'twoHand' };
-    } catch {
-      // A missing visual must never blank the select screen.
-    }
-  }
-
-  const animator = new Animator(built.bones);
-  if (main) animator.setGrip(carryGrip(main.category, main.twoHand));
-  animator.play('idle', { fade: 0 });
-
-  return {
-    root,
-    animator,
-    classId,
-    dispose(): void {
-      root.removeFromParent();
-      disposeObject(root);
-    },
-  };
+  return preview(c.classId, pieces, seed || 1);
 }
 
 /** The class accent as a number, for lights. */

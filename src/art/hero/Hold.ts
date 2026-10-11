@@ -40,3 +40,29 @@ export function holdItem(rig: HeroRig, slot: 'mainHand' | 'offHand', model: THRE
   socket.add(node);
   return node;
 }
+
+/**
+ * How a weapon is held: sword, axe, mace, dagger, wand, staff, bow, twoHand
+ * or none. Spears are held as staves (their thrusts come from the category).
+ */
+export function weaponGrip(category: string | undefined, twoHanded: boolean): string {
+  switch (category) {
+    case 'bow':
+    case 'crossbow':
+      return 'bow';
+    case 'dagger':
+      return 'dagger';
+    case 'staff':
+    case 'spear':
+      return 'staff';
+    case 'sword':
+    case 'axe':
+    case 'mace':
+      return twoHanded ? 'twoHand' : category;
+    case 'wand':
+    case 'scepter':
+      return 'wand';
+    default:
+      return 'none';
+  }
+}

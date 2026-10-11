@@ -28,7 +28,7 @@ import { CampLife } from './TownLife';
 import { displace, mergeGeometries, rock, stoneBlock, taperedBox, clothPanel, limb } from '../art/Meshes';
 import { buildNpcModel, npcCarryGrip } from '../art/NpcModels';
 import { disposeObject } from '../core/Engine';
-import { Animator } from '../art/Animation';
+import { HeroAnimator } from '../art/hero/Animator';
 import { Random } from '../core/RNG';
 
 export interface TownBuild {
@@ -68,7 +68,7 @@ interface Ctx {
   spin: Array<{ obj: THREE.Object3D; speed: number; axis: 'y' | 'x' }>;
   /** Things that sway: banners, washing, hanging pelts. */
   sway: Array<{ obj: THREE.Object3D; phase: number; amp: number; axis: 'x' | 'z' }>;
-  npcs: Animator[];
+  npcs: HeroAnimator[];
   /** Static geometry accumulating per material, merged before hand-off. */
   batches: Map<string, THREE.BufferGeometry[]>;
   smoke: THREE.Vector3[];
@@ -449,10 +449,9 @@ function npc(ctx: Ctx, who: string, x: number, z: number, facing: number, seed: 
       }
     });
     ctx.root.add(built.root);
-    const anim = new Animator(built.bones);
+    // The hero animator drives residents like anyone else on the hero rig.
+    const anim = new HeroAnimator(built.bones);
     anim.setGrip(npcCarryGrip(who));
-    // How they stand about shows their trade (animation stream).
-    anim.setPersona(who);
     anim.play('idle', { fade: 0 });
     anim.timeScale = 0.7 + (seed % 7) * 0.06;
     ctx.npcs.push(anim);

@@ -62,10 +62,13 @@ export function meshCached(key: string, build: () => THREE.BufferGeometry): THRE
   if (raw) {
     stored.delete(k);
     const g = fromRaw(raw);
+    g.userData.cached = true;
     memory.set(k, g);
     return g;
   }
   const g = build();
+  // Shared by every hero that uses it: disposers leave it alone.
+  g.userData.cached = true;
   memory.set(k, g);
   put(k, toRaw(g));
   return g;

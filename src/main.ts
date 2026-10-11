@@ -87,6 +87,10 @@ async function main(): Promise<void> {
   // first frame of gameplay.
   const { warmMaterials } = await import('./art/Materials');
   await warmMaterials((p, label) => boot(0.34 + p * 0.36, label));
+  // Hero bodies and armour take seconds to mesh; parts meshed on an earlier
+  // visit come back from IndexedDB in milliseconds.
+  const { loadMeshCache } = await import('./art/hero/MeshCache');
+  await loadMeshCache();
 
   // Teach the item-model builder how to find a base's authored visual. Done
   // here rather than inside art/ so the art layer keeps no compile-time

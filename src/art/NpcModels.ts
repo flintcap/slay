@@ -1,37 +1,40 @@
 /**
  * SLAY — the people of Stairhead, each built for who they are.
  *
- * The camp used to be furnished with spare player classes: the smith was a
- * warden, the quartermaster a pyromancer, the oracle a stormcaller, and a
- * shadowblade minded the vault. Now every resident is their own person on the
- * shared rig (so the animator drives them like anyone else), dressed for the
- * work they do and holding the tools of it, so a player can tell the smith from
- * the gravekeeper before either says a word:
+ * Every resident is their own person on the hero rig (`src/art/hero/*`), so
+ * the hero animator drives them like anyone else, dressed for the work they
+ * do and holding the tools of it, so a player can tell the smith from the
+ * gravekeeper before either says a word:
  *
  *   Hesk     small and exact, slate coat, ledger under her arm
- *   Kale     enormous, leather apron, forearms burned white, hammer
+ *   Kale     enormous, leather apron, a hammer
  *   Vell     grey habit and white hood, a satchel of bottles
  *   Corvane  tall, thin, black coat, a ring of keys and a lantern
  *   Marrow   old, hooded, weathered, a spade over his shoulder
- *   Renn     the captain: mail, a crimson surcoat, a spear
+ *   Renn     the captain: mail, a spear
  *   Listener pale robes, long white hair, a blindfold, a staff
  *   Gilder   faded finery, ruddy, a tankard always in hand
  *   Wenna    long leather coat, wide hat, a surveyor's rod and a map
  *
- * Worn clothes go through `WornGear` exactly like a player's armour, so they
- * fit the body; held tools are rigid meshes on the hand bones.
+ * Clothes are grown on the body like a hero's armour (`Armour.ts`), so they
+ * fit; held tools hang in the hand sockets. The npcs stream remakes all of
+ * this; it is the bridge that keeps the camp peopled on the new rig.
  */
 
 import * as THREE from 'three';
 import type { EquipSlot, ItemRarity, ItemVisual, Rng } from '../types';
-import { buildPerson, wearItem, attachToSocket, weaponGrip, type PersonLook, type PlayerModel } from './CharacterModels';
 import { buildItemModel } from './ItemModels';
 import { compactModel } from './ModelBudget';
-import { buildFitted } from './WornGear';
-import { armNodes, legNodes, mergeSkinned, ringStack, sweep, torsoRings, type BodyFit } from './BodyKit';
 import { surface } from './Materials';
 import { beveledBox, limb, ring, taperedBox, lathe } from './Meshes';
 import { Random } from '../core/RNG';
+import { buildHero, setHeroHidden, type HeroModel } from './hero/Hero';
+import type { HeroLook } from './hero/Looks';
+import { wearArmour } from './hero/Armour';
+import { holdItem, weaponGrip } from './hero/Hold';
+import { garment, trousersSpec } from './hero/Garment';
+import { fabricMaterial } from './hero/HeroMaterials';
+import { mergeSkinned } from './hero/Skinning';
 
 /** Every resident, in the order the camp lists them. */
 export const NPC_LOOK_IDS = ['hesk', 'kale', 'vell', 'corvane', 'marrow', 'renn', 'listener', 'gilder', 'wenna'] as const;
@@ -48,76 +51,73 @@ interface Wear {
 interface Tool {
   /** A weapon-shaped tool from the item models, held with a real grip. */
   item?: { visual: ItemVisual; category: string; twoHanded?: boolean; slot: 'mainHand' | 'offHand' };
-  /** A prop built here, carried in a hand or worn at the hip. */
+  /** A prop built here, carried in a hand. */
   prop?: 'ledger' | 'tankard' | 'lantern' | 'keys' | 'map' | 'satchel' | 'chisel';
   hand?: 'L' | 'R';
 }
 
 interface NpcSpec {
-  look: PersonLook;
+  look: HeroLook;
   wear: Wear[];
   tools: Tool[];
-  /** Pale burn scars up the forearms. */
-  burns?: boolean;
-  /** Trousers, as `pal:<palette>[:<tint>]`, for anyone not in a robe. */
-  legs?: string;
+  /** Trouser colour, for anyone not in a robe. */
+  legs?: number;
+}
+
+/** A resident's look: the parts every one of them shares filled in. */
+function person(o: Partial<HeroLook> & Pick<HeroLook, 'shape' | 'skin' | 'hair' | 'accent'>): HeroLook {
+  return {
+    face: { rugged: 0.3 },
+    eyes: { iris: 0x4a3a2a },
+    linen: 0x8a7e6a,
+    leather: 0x4a3424,
+    cloth: 0x5a5248,
+    stoop: 0.05,
+    ...o,
+  };
 }
 
 const SPECS: Record<NpcLookId, NpcSpec> = {
   hesk: {
-    look: {
-      profile: { height: 1.62, shoulder: 0.1, hip: 0.053, thick: 0.82, depth: 0.88, head: 1.04, lean: 0.04 },
-      skin: { key: 'skin.fair', tint: 0xf4e4dc },
-      hair: { key: 'hair.dark', tint: 0xb0aaa4 },
-      linen: { key: 'cloth.undyed' },
-      leather: { key: 'leather.worn' },
-      cloth: { key: 'cloth.undyed' },
-      hairStyle: 'bun',
-      hairline: 0.42,
-      sleeves: true,
+    look: person({
+      shape: { sex: 'female', height: 1.62, build: 0.2, shoulders: 0.95 },
+      face: { rugged: 0.1 },
+      skin: 0xe6c4b0,
+      hair: { cut: 'knot', color: 0x8a8480 },
       accent: 0xd8b45a,
-    },
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.coat', palette: 'cloth.undyed|0x4c5c6c' } },
       { slot: 'belt', visual: { shape: 'belt.plate', palette: 'leather.worn' }, rarity: 'magic' },
       { slot: 'boots', visual: { shape: 'boots.light', palette: 'leather.fine' } },
     ],
-    legs: 'pal:cloth.undyed:5a5248:8',
+    legs: 0x5a5248,
     tools: [{ prop: 'ledger', hand: 'L' }, { prop: 'keys', hand: 'R' }],
   },
   kale: {
-    look: {
-      profile: { height: 1.98, shoulder: 0.142, hip: 0.064, thick: 1.45, depth: 1.3, head: 0.97, lean: 0.02 },
-      skin: { key: 'skin.tan', tint: 0xf0d8c8 },
-      hair: { key: 'hair.dark' },
-      linen: { key: 'cloth.undyed' },
-      leather: { key: 'leather.worn' },
-      cloth: { key: 'cloth.undyed' },
-      hairStyle: 'shaved',
-      hairline: 0.56,
-      beard: 2,
+    look: person({
+      shape: { sex: 'male', height: 1.98, build: 1, shoulders: 1.12 },
+      face: { rugged: 1 },
+      skin: 0xb07a58,
+      hair: { cut: 'shaved', color: 0x2a2018, beard: 2 },
       accent: 0xff9a40,
-    },
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.apron', palette: 'leather.worn' } },
       { slot: 'gloves', visual: { shape: 'gloves.light', palette: 'leather.studded' } },
       { slot: 'boots', visual: { shape: 'boots.light', palette: 'leather.studded' }, baseId: 'boots.heavy' },
     ],
-    legs: 'pal:leather.worn:5a4a3a:6',
+    legs: 0x5a4a3a,
     tools: [{ item: { visual: { shape: 'hammer', palette: 'metal.dark' }, category: 'mace', slot: 'mainHand' } }],
-    burns: true,
   },
   vell: {
-    look: {
-      profile: { height: 1.7, shoulder: 0.1, hip: 0.052, thick: 0.86, depth: 0.9, head: 1.0, lean: 0.03 },
-      skin: { key: 'skin.fair' },
-      hair: { key: 'hair.dark' },
-      linen: { key: 'cloth.undyed' },
-      leather: { key: 'leather.worn' },
-      cloth: { key: 'cloth.undyed' },
-      hairStyle: 'bun',
+    look: person({
+      shape: { sex: 'female', height: 1.7, build: 0.3 },
+      face: { rugged: 0.15 },
+      skin: 0xe0b8a0,
+      hair: { cut: 'knot', color: 0x2a2018 },
       accent: 0x9ad8a0,
-    },
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.robe', palette: 'cloth.undyed|0x4a4e58' }, baseId: 'chest.ghost' },
       { slot: 'helm', visual: { shape: 'helm.hood', palette: 'cloth.linen|0xe8e2d8' } },
@@ -127,83 +127,68 @@ const SPECS: Record<NpcLookId, NpcSpec> = {
     tools: [{ prop: 'satchel', hand: 'L' }],
   },
   corvane: {
-    look: {
-      profile: { height: 1.88, shoulder: 0.108, hip: 0.05, thick: 0.8, depth: 0.84, head: 1.0, lean: 0.03 },
-      skin: { key: 'skin.fair', tint: 0xf0e2dc },
-      hair: { key: 'hair.dark' },
-      linen: { key: 'cloth.undyed' },
-      leather: { key: 'leather.fine' },
-      cloth: { key: 'cloth.undyed' },
-      hairStyle: 'crop',
-      hairline: 0.62,
+    look: person({
+      shape: { sex: 'male', height: 1.88, build: 0.15, shoulders: 0.95 },
+      face: { rugged: 0.4 },
+      skin: 0xe0c4b4,
+      hair: { cut: 'crop', color: 0x1e1814 },
       accent: 0xc8a050,
-    },
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.coat', palette: 'cloth.silk|0x2c2632' } },
       { slot: 'belt', visual: { shape: 'belt.chain', palette: 'metal.dark' }, baseId: 'belt.girdle' },
       { slot: 'gloves', visual: { shape: 'gloves.silk', palette: 'leather.fine' } },
       { slot: 'boots', visual: { shape: 'boots.light', palette: 'leather.fine' } },
     ],
-    legs: 'pal:cloth.silk:2a2630:8',
+    legs: 0x2a2630,
     tools: [{ prop: 'lantern', hand: 'L' }, { prop: 'keys', hand: 'R' }],
   },
   marrow: {
-    look: {
-      profile: { height: 1.72, shoulder: 0.108, hip: 0.053, thick: 0.9, depth: 0.96, head: 1.02, lean: 0.2 },
-      skin: { key: 'skin.tan', tint: 0xdccabc },
-      hair: { key: 'hair.fair', tint: 0xe0e0e0 },
-      linen: { key: 'cloth.tattered' },
-      leather: { key: 'leather.worn' },
-      cloth: { key: 'cloth.tattered' },
-      hairStyle: 'crop',
-      hairline: 0.6,
-      beard: 1,
+    look: person({
+      shape: { sex: 'male', height: 1.72, build: 0.4 },
+      face: { rugged: 0.85 },
+      skin: 0xb08a70,
+      hair: { cut: 'crop', color: 0xd8d8d0, beard: 1 },
       accent: 0x9ab0c0,
-    },
+      stoop: 0.45,
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.leather', palette: 'leather.worn' } },
       { slot: 'helm', visual: { shape: 'helm.hood', palette: 'cloth.tattered|0x5a5246' } },
       { slot: 'boots', visual: { shape: 'boots.light', palette: 'leather.worn' } },
     ],
-    legs: 'pal:cloth.tattered:6a6050:8',
+    legs: 0x6a6050,
     tools: [
       { item: { visual: { shape: 'spear', palette: 'wood.oak' }, category: 'spear', twoHanded: true, slot: 'mainHand' } },
       { prop: 'chisel', hand: 'L' },
     ],
   },
   renn: {
-    look: {
-      profile: { height: 1.8, shoulder: 0.118, hip: 0.055, thick: 1.0, depth: 1.0, head: 0.98, lean: 0.04 },
-      skin: { key: 'skin.tan' },
-      hair: { key: 'hair.dark', tint: 0xc09070 },
-      linen: { key: 'cloth.undyed' },
-      leather: { key: 'leather.worn' },
-      cloth: { key: 'cloth.undyed' },
-      hairStyle: 'ponytail',
-      hairline: 0.38,
+    look: person({
+      shape: { sex: 'female', height: 1.8, build: 0.6 },
+      face: { rugged: 0.4 },
+      skin: 0xc09070,
+      hair: { cut: 'ponytail', color: 0x5a3a24 },
       accent: 0xc84a3a,
-    },
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.mail', palette: 'metal.iron', glow: 0xa83a30 }, rarity: 'magic', baseId: 'chest.chainmail' },
       { slot: 'gloves', visual: { shape: 'gloves.plate', palette: 'metal.iron' } },
       { slot: 'boots', visual: { shape: 'boots.plate', palette: 'metal.iron' } },
       { slot: 'belt', visual: { shape: 'belt.plate', palette: 'leather.worn' }, rarity: 'magic' },
     ],
-    legs: 'pal:leather.worn:6a5a4a:6',
+    legs: 0x6a5a4a,
     tools: [{ item: { visual: { shape: 'spear', palette: 'metal.steel' }, category: 'spear', twoHanded: true, slot: 'mainHand' } }],
   },
   listener: {
-    look: {
-      profile: { height: 1.68, shoulder: 0.098, hip: 0.05, thick: 0.8, depth: 0.86, head: 1.0, lean: 0.05 },
-      skin: { key: 'skin.fair', tint: 0xf0e6ee },
-      hair: { key: 'cloth.linen', tint: 0xf4f2f0 },
-      linen: { key: 'cloth.linen' },
-      leather: { key: 'leather.fine' },
-      cloth: { key: 'cloth.linen' },
-      hairStyle: 'long',
-      hairline: 0.3,
+    look: person({
+      shape: { sex: 'female', height: 1.68, build: 0.1, shoulders: 0.94 },
+      face: { rugged: 0 },
+      skin: 0xeedcd8,
+      hair: { cut: 'long', color: 0xe8e4e0 },
+      eyes: { iris: 0x9a9aa8 },
       accent: 0xb090e0,
-    },
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.robe', palette: 'cloth.linen|0xd8d2e2' }, baseId: 'chest.dusk' },
       { slot: 'helm', visual: { shape: 'helm.blindfold', palette: 'cloth.silk|0x5a3a7a' } },
@@ -212,46 +197,36 @@ const SPECS: Record<NpcLookId, NpcSpec> = {
     tools: [{ item: { visual: { shape: 'staff', palette: 'wood.oak' }, category: 'staff', twoHanded: true, slot: 'mainHand' } }],
   },
   gilder: {
-    look: {
-      profile: { height: 1.82, shoulder: 0.115, hip: 0.056, thick: 0.98, depth: 1.12, head: 1.0, lean: 0.06 },
-      skin: { key: 'skin.tan', tint: 0xffd4c4 },
-      hair: { key: 'hair.fair', tint: 0xe8b070 },
-      linen: { key: 'cloth.linen' },
-      leather: { key: 'leather.fine' },
-      cloth: { key: 'cloth.banner' },
-      hairStyle: 'crop',
-      hairline: 0.3,
-      beard: 1,
-      sleeves: true,
+    look: person({
+      shape: { sex: 'male', height: 1.82, build: 0.55 },
+      face: { rugged: 0.5 },
+      skin: 0xd89a84,
+      hair: { cut: 'crop', color: 0xc08848, beard: 1 },
       accent: 0xf5d76e,
-    },
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.leather', palette: 'leather.fine', ornate: 0.3 }, rarity: 'rare', baseId: 'chest.studded' },
       { slot: 'belt', visual: { shape: 'belt.sash', palette: 'cloth.banner' }, rarity: 'magic' },
       { slot: 'boots', visual: { shape: 'boots.light', palette: 'leather.fine' }, baseId: 'boots.sharkskin' },
     ],
-    legs: 'pal:cloth.silk:7a3a4a:8',
+    legs: 0x7a3a4a,
     tools: [{ prop: 'tankard', hand: 'R' }],
   },
   wenna: {
-    look: {
-      profile: { height: 1.7, shoulder: 0.1, hip: 0.052, thick: 0.88, depth: 0.9, head: 1.0, lean: 0.04 },
-      skin: { key: 'skin.deep' },
-      hair: { key: 'hair.dark' },
-      linen: { key: 'cloth.undyed' },
-      leather: { key: 'leather.worn' },
-      cloth: { key: 'cloth.undyed' },
-      hairStyle: 'braids',
-      hairline: 0.36,
+    look: person({
+      shape: { sex: 'female', height: 1.7, build: 0.4 },
+      face: { rugged: 0.3 },
+      skin: 0x6a4430,
+      hair: { cut: 'braids', color: 0x1a1410 },
       accent: 0x7fc4c0,
-    },
+    }),
     wear: [
       { slot: 'chest', visual: { shape: 'chest.coat', palette: 'leather.worn' } },
       { slot: 'helm', visual: { shape: 'helm.hat', palette: 'leather.worn' } },
       { slot: 'belt', visual: { shape: 'belt.plate', palette: 'leather.studded' } },
       { slot: 'boots', visual: { shape: 'boots.light', palette: 'leather.studded' }, baseId: 'boots.heavy' },
     ],
-    legs: 'pal:cloth.undyed:6a6a5a:8',
+    legs: 0x6a6a5a,
     tools: [
       { item: { visual: { shape: 'staff', palette: 'wood.oak' }, category: 'staff', twoHanded: true, slot: 'mainHand' } },
       { prop: 'map', hand: 'L' },
@@ -358,40 +333,33 @@ function buildProp(kind: NonNullable<Tool['prop']>): THREE.Object3D {
   return g;
 }
 
-/** Pale scar tissue up a forearm, from wrist to elbow. */
-function burns(fit: BodyFit): THREE.Object3D {
-  const parts = ([1, -1] as const).map((s) => ({
-    geo: sweep(armNodes(fit, s, fit.H * 0.0015, 0.5, 0.9), 12, false),
-    mat: 'pal:skin.fair:fff4f0:1.4',
-    bind: s > 0 ? ['elbowL', 'handL'] : ['elbowR', 'handR'],
-  }));
-  return buildFitted(fit, 'npc:burns', parts);
-}
-
 /** Parts smaller than this (bounding box diagonal, metres) cast no shadow. */
 const NPC_SHADOW_MIN = 0.36;
 
 /**
- * Folds a resident's skinned parts into one mesh per material. The body, each
- * garment and the trousers are built as separate skinned meshes, and several
- * share a material (the same linen, the same leather); a resident never
- * changes clothes, so each set can be one draw instead of several, in the
- * colour pass and in every shadow pass. Only visible meshes bound to the
- * body's own skeleton with the identity bind are merged; anything hidden by a
- * garment stays as it is, and long hair (which secondary motion finds by its
- * cover tag and rigs) is kept apart.
+ * Folds a resident's skinned parts into one mesh per material. A resident
+ * never changes clothes, so the parts that share a material (the same linen,
+ * the same leather) can be one draw instead of several, in the colour pass
+ * and in every shadow pass. Hidden parts are dropped. Cached part meshes are
+ * shared with other heroes, so they are left as they are, never disposed.
  */
-function mergeResidentSkins(root: THREE.Object3D, skeleton: THREE.Skeleton): void {
+function mergeResidentSkins(hero: HeroModel): void {
+  const root = hero.root;
+  const skeleton = hero.rig.skeleton;
   const identity = new THREE.Matrix4();
+  // Hidden parts (hair under a hood) are never drawn: drop them first.
+  const hidden: THREE.Object3D[] = [];
+  root.traverse((o) => {
+    if ((o as THREE.SkinnedMesh).isSkinnedMesh && !o.visible) hidden.push(o);
+  });
+  for (const o of hidden) o.removeFromParent();
   const groups = new Map<string, THREE.SkinnedMesh[]>();
   root.traverse((o) => {
     const m = o as THREE.SkinnedMesh;
     if (!m.isSkinnedMesh || m.skeleton !== skeleton || Array.isArray(m.material)) return;
     if (!m.bindMatrix.equals(identity)) return;
     for (let p: THREE.Object3D | null = m; p; p = p.parent) if (!p.visible) return;
-    // Long hair keeps its own mesh: secondary motion finds and rigs it by tag.
-    const hair = m.userData.coverSlot === 'hairLong' ? 'hairLong' : '';
-    const key = `${m.material.uuid}|${hair}|${m.renderOrder}`;
+    const key = `${m.material.uuid}|${m.renderOrder}`;
     const list = groups.get(key) ?? [];
     list.push(m);
     groups.set(key, list);
@@ -402,15 +370,11 @@ function mergeResidentSkins(root: THREE.Object3D, skeleton: THREE.Skeleton): voi
     const geo = mergeSkinned(list.map((m) => m.geometry));
     const mesh = new THREE.SkinnedMesh(geo, first.material);
     mesh.name = first.name;
-    if (first.userData.coverSlot === 'hairLong') mesh.userData.coverSlot = 'hairLong';
     mesh.renderOrder = first.renderOrder;
     mesh.castShadow = list.some((m) => m.castShadow);
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
-    for (const m of list) {
-      m.removeFromParent();
-      m.geometry.dispose();
-    }
+    for (const m of list) m.removeFromParent();
     root.add(mesh);
     mesh.bind(skeleton, identity);
   }
@@ -420,66 +384,73 @@ function mergeResidentSkins(root: THREE.Object3D, skeleton: THREE.Skeleton): voi
 // Public API
 // ---------------------------------------------------------------------------
 
+/** A resident: the root to place, and the rig bones for the hero animator. */
+export interface NpcModel {
+  root: THREE.Group;
+  bones: Record<string, THREE.Bone>;
+  hero: HeroModel;
+}
+
 /**
  * Builds one camp resident: body, clothes and tools. Unknown ids fall back to
  * the quartermaster rather than failing, so a renamed NPC still stands there.
  */
-export function buildNpcModel(id: string, rng: Rng = new Random(1)): PlayerModel {
+export function buildNpcModel(id: string, rng: Rng = new Random(1)): NpcModel {
   const spec = SPECS[id as NpcLookId] ?? SPECS.hesk;
-  const built = buildPerson(spec.look, rng, `npc:${id}`);
-  const { root, bones } = built;
-  const worn = new Set<EquipSlot>();
+  const hero = buildHero(spec.look, `npc-${id}`);
+  const rig = hero.rig;
+  const hides = new Set<string>();
   for (const w of spec.wear) {
     try {
       const item = { baseId: w.baseId ?? `npc:${id}:${w.slot}`, rarity: w.rarity ?? 'normal' };
-      if (wearItem(root, bones, w.slot, item, w.visual)) worn.add(w.slot);
+      const worn = wearArmour(hero, w.slot, item, w.visual);
+      worn?.hides.forEach((k) => hides.add(k));
     } catch {
       // A missing garment is better than a missing resident.
     }
   }
-  const fit = root.userData.bodyFit as BodyFit | undefined;
-  if (spec.legs && fit) {
-    const H = fit.H;
-    const parts = [
-      { geo: ringStack(torsoRings(fit, H * 0.008, 0.44, 0.6), 18), mat: spec.legs, bind: ['hips', 'spine'] },
-      ...([1, -1] as const).map((sd) => ({
-        geo: sweep(legNodes(fit, sd, H * 0.009, 0.03, 0.8), 12),
-        mat: spec.legs!,
-        bind: sd > 0 ? ['hips', 'hipL', 'kneeL', 'footL'] : ['hips', 'hipR', 'kneeR', 'footR'],
-      })),
-    ];
-    bones.hips?.add(buildFitted(fit, 'npc:legs', parts));
-  }
-  if (spec.burns && fit) {
-    const scars = burns(fit);
-    bones.hips?.add(scars);
+  setHeroHidden(hero, hides);
+  if (spec.legs !== undefined) {
+    try {
+      const legs = new THREE.SkinnedMesh(garment(hero.body, 'npc-trousers', trousersSpec(hero.body)), fabricMaterial('wool', spec.legs));
+      legs.name = `npc-${id}:trousers`;
+      legs.frustumCulled = false;
+      rig.root.add(legs);
+      legs.bind(rig.skeleton, new THREE.Matrix4());
+    } catch {
+      /* bare legs beat no resident */
+    }
   }
   for (const t of spec.tools) {
     try {
       if (t.item) {
         const model = compactModel(buildItemModel(t.item.visual, rng, 'normal'));
-        attachToSocket(root, bones, t.item.slot, model, undefined, weaponGrip(t.item.category, !!t.item.twoHanded));
+        holdItem(rig, t.item.slot, model, weaponGrip(t.item.category, !!t.item.twoHanded));
       } else if (t.prop) {
-        const bone = bones[t.hand === 'L' ? 'handL' : 'handR'];
-        bone?.add(compactModel(buildProp(t.prop)));
+        // Props hang from the fist: their +Y runs up the forearm, which is
+        // the socket's -X (wrist to knuckles is +X).
+        const node = new THREE.Object3D();
+        node.rotation.z = Math.PI / 2;
+        node.add(compactModel(buildProp(t.prop)));
+        rig.sockets[t.hand === 'L' ? 'offHand' : 'mainHand'].add(node);
       }
     } catch {
       /* a resident without a prop still works */
     }
   }
-  root.traverse((o) => {
+  hero.root.traverse((o) => {
     const m = o as THREE.Mesh;
     if (m.isMesh) {
       m.castShadow = true;
       m.receiveShadow = true;
     }
   });
-  mergeResidentSkins(root, built.skeleton);
+  mergeResidentSkins(hero);
   // Small parts (eyes, buttons, a lantern flame, a bottle) cast shadows a few
   // texels across in the moon's map, and each one is another draw in every
   // shadow pass. Only parts big enough to throw a visible shadow cast one.
   const size = new THREE.Vector3();
-  root.traverse((o) => {
+  hero.root.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
     if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
@@ -487,8 +458,8 @@ export function buildNpcModel(id: string, rng: Rng = new Random(1)): PlayerModel
     const lit = !(m.material as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial;
     if (!box || box.getSize(size).length() < NPC_SHADOW_MIN || !lit) m.castShadow = false;
   });
-  root.userData.npcId = id;
-  return built;
+  hero.root.userData.npcId = id;
+  return { root: hero.root, bones: rig.bones as unknown as Record<string, THREE.Bone>, hero };
 }
 
 /** The grip a resident's tool asks for, so the animator can hold it properly. */

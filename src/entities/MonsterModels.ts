@@ -27,7 +27,7 @@ import * as THREE from 'three';
 import type { MonsterVisual, Rng } from '../types';
 import { surface, surfaceVariant, emissiveMaterial, surfaceBaseColor } from '../art/Materials';
 import { beveledBox, clothPanel, displace, lathe, limb, mergeGeometries, spike } from '../art/Meshes';
-import { mergeSkinned, skinRigid } from '../art/BodyKit';
+import { mergeSkinned, skinRigid } from '../art/hero/Skinning';
 import { Noise } from '../art/Noise';
 import { buildItemModel } from '../art/ItemModels';
 import { compactModel } from '../art/ModelBudget';

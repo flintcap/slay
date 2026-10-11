@@ -4,7 +4,7 @@ import type { SceneId, ItemRarity } from '../types';
 import { Random } from '../core/RNG';
 import { surface } from '../art/Materials';
 import { buildItemModel } from '../art/ItemModels';
-import { buildPlayerModel } from '../art/CharacterModels';
+import { buildClassHero, type HeroModel } from './HeroModel';
 import { buildMonsterModel } from '../entities/MonsterModels';
 import { ITEM_BASES } from '../sim/Loot';
 import { MONSTERS } from '../data/monsters';
@@ -32,6 +32,7 @@ export class ShowcaseScene extends GameScene {
 
   private engine: Engine;
   private subjects: THREE.Object3D[] = [];
+  private heroes: HeroModel[] = [];
   private spin = 0;
 
   constructor(engine: Engine) {
@@ -141,8 +142,10 @@ export class ShowcaseScene extends GameScene {
     } else {
       CLASSES.forEach((cls, i) => {
         try {
-          const built = buildPlayerModel(cls.id, rng.fork(cls.id));
-          place(built.root, i, 1.15);
+          // Each class in its field kit, standing in its stance.
+          const hero = buildClassHero(cls.id);
+          this.heroes.push(hero);
+          place(hero.root, i, 1.15);
         } catch {
           /* skip */
         }
@@ -161,10 +164,14 @@ export class ShowcaseScene extends GameScene {
     for (let i = 0; i < this.subjects.length; i++) {
       this.subjects[i]!.rotation.y = this.spin;
     }
+    for (const h of this.heroes) h.animator.update(dt);
   }
 
   override dispose(): void {
+    // Heroes first: they leave their shared, cached meshes alone.
+    for (const h of this.heroes) h.dispose();
     for (const s of this.subjects) disposeObject(s);
+    this.heroes = [];
     this.subjects = [];
   }
 }
