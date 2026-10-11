@@ -26,6 +26,15 @@ crashes, docs true, published.
 
 ## Notes for resume
 
+- From props (maps is done, so these are yours):
+  1. `DungeonGen.generateRun` sets `level.variant` after `generateLevel`
+     has already called `placeProps`, so props are always dressed as the
+     plain biome. Set the variant before placement (pass `variantOf` into
+     `generateLevel`). `check-dressing` warns until then.
+  2. `ensureInteractables` plants `chest.rare` as kind `chest`. Use
+     `chestKindFor(interact)` from `world/Props.ts` for the kind, so a rare
+     chest draws as the rare chest model.
+
 - The cancelled overhaul's quality stream never took its final speed numbers
   or ran the soak (see `docs/overhaul/quality.md`). Those tools are
   `tools/check-perf.mjs` and `tools/check-soak.mjs`.

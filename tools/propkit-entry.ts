@@ -10,7 +10,7 @@ import { biomeArt } from '../src/world/Biomes';
 import type { BiomeId } from '../src/types';
 
 const BIOMES: BiomeId[] = ['crypt', 'caverns', 'foundry', 'sunkenTemple', 'hive', 'frostvault', 'ashwaste', 'voidspire', 'darkForest', 'swamp', 'desert', 'desertTomb', 'tundra', 'hell'];
-const STATES: Record<string, string> = { chest: 'open', chestRare: 'open', chestVault: 'open', shrine: 'spent', lever: 'pulled' };
+const STATES: Record<string, string> = { chest: 'open', chestRare: 'open', chestVault: 'open', shrine: 'spent', lever: 'pulled', bookcase: 'searched', altar: 'spent' };
 
 interface Row {
   kind: string;

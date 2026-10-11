@@ -59,6 +59,20 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Notes for resume
 
+- From props (requests, `DungeonBuilder.buildProps`):
+  1. Props are now dressed per zone (`src/art/props/Dressing.ts`), but
+     templates are built with the level's art, so a forest zone beside a
+     crypt zone gets crypt-coloured stumps. Please group placements by
+     kind, variant and the zone biome at `level.zoneOf[p.y * w + p.x]`, and
+     call `propTemplate(kind, biomeArt(zoneBiome, level.variant), ...)`.
+  2. Every wall light template already resolves its light to
+     `art.lightColor` (`mood`), and fires to the biome flame, so line
+     `g.kind === art.wallLight ? art.lightColor : tmpl.light?.color` can
+     become `tmpl.light?.color`.
+  3. Placement no longer reads BiomeArt's prop vocabulary (`wallLight`,
+     `props`, `wallProps`, `featureProps`, `landmarks`, `detailProps`,
+     `pillar`). Once 2 is done, those fields can be dropped from BiomeArt.
+
 - Requests left in props.md (teal prop lights) and vfx.md (bright fight rings).
 
 - From maps: in the swamp zone render (`tools/shoot-zones.mjs`, tier 3) the

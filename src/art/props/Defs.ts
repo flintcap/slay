@@ -287,6 +287,7 @@ export const PROP_DEFS: Record<string, PropDef> = {
     light: { color: 0x9fd8ff, intensity: 6, distance: 12, height: 1.6, flicker: 0.35, forward: 0 },
   }),
   lever: WALL('lever', { variants: 2, interact: 'lever' }),
+  door: WALL('door', { variants: 3, castShadow: true }),
   goldHoard: P('goldHoard', {
     placement: 'feature',
     radius: 0.7,

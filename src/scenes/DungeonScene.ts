@@ -57,6 +57,8 @@ import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 import { disposeAbilityWorld } from '../entities/Abilities';
 import { disposeMonsterModels } from '../entities/MonsterModels';
 import { disposePropLibrary } from '../world/Props';
+import { PropRemains } from '../art/props/Remains';
+import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
 
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
@@ -199,6 +201,11 @@ export class DungeonScene extends GameScene {
   /** The town waypoint by a map's first arrival: [E] there gives the map up. */
   private waypoint: THREE.Object3D | null = null;
   private nearWaypoint = false;
+  /** The waypoint's and the return portal's looks (props stream). */
+  private waypointLook: WayLook | null = null;
+  private portalLook: WayLook | null = null;
+  /** Opened chests, spent shrines and smashed pieces left on this floor. */
+  private remains: PropRemains | null = null;
   /** Zone id under the hero, for the zone banner. */
   private zoneHere = -1;
   /** The boss arena's gate: open until the hero walks in, shut until the boss falls. */
@@ -325,6 +332,7 @@ export class DungeonScene extends GameScene {
         this.mesh.removeInteractable(it);
         this.nav.setBlocked(it.tileX, it.tileY, false);
         if (this.nearProp === it) this.nearProp = null;
+        this.leaveRemains(it);
       },
       dropItem: (item, at) => this.dropItem(item, at),
       dropGold: (amount, at) => this.dropGold(amount, at),
@@ -474,6 +482,9 @@ export class DungeonScene extends GameScene {
     const levelRng = this.rng.fork(`level:${index}`) as Random;
     this.mesh = new DungeonMesh(this.level, this.biome, levelRng);
     this.scene.add(this.mesh.root);
+    this.remains?.dispose();
+    this.remains = new PropRemains(biomeArt(this.biome.id, this.level.variant), levelRng.fork('remains'));
+    this.scene.add(this.remains.root);
     // Blood, scorch and telegraphs are flat quads. Without this they sit at
     // world zero, which is only the floor on the lowest height band: everywhere
     // else they were buried under the floor or floating over the one below.
@@ -504,8 +515,8 @@ export class DungeonScene extends GameScene {
     this.exitPos.copy(this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y));
 
     if (this.waypoint) {
-      this.waypoint.removeFromParent();
-      disposeObject(this.waypoint);
+      this.waypointLook?.dispose();
+      this.waypointLook = null;
       this.waypoint = null;
     }
     this.nearWaypoint = false;
@@ -1152,10 +1163,9 @@ export class DungeonScene extends GameScene {
       );
     }
 
-    if (this.returnPortal) {
-      this.returnPortal.rotation.y += dt * 0.55;
-      this.returnPortal.position.y = this.returnPortalY + Math.sin(elapsed * 1.7) * 0.07;
-    }
+    this.portalLook?.update(dt, this.camera);
+    this.waypointLook?.update(dt);
+    this.remains?.update(dt);
 
     // Hand the runner the live world before it ticks. Without this every
     // persistent effect in the game bailed out on its first line: ground
@@ -1425,6 +1435,7 @@ export class DungeonScene extends GameScene {
     this.nav.setBlocked(near.tileX, near.tileY, false);
     this.nearProp = null;
     toast('', 'info');
+    this.leaveRemains(near);
 
     if (family === 'shrine') this.useShrine(near);
     else if (family === 'chest') this.openChest(near, tier);
@@ -1448,7 +1459,17 @@ export class DungeonScene extends GameScene {
     this.mesh.removeInteractable(it);
     this.nav.setBlocked(it.tileX, it.tileY, false);
     if (this.nearProp === it) this.nearProp = null;
+    this.leaveRemains(it);
     this.smash(it);
+  }
+
+  /** What a used prop leaves: its opened, spent or pulled look, or its broken pieces. */
+  private leaveRemains(it: Interactable): void {
+    if (!this.remains) return;
+    const placed = this.level.props.find((p) => p.x === it.tileX && p.y === it.tileY && p.kind === it.propKind);
+    const rotation = placed?.rotation ?? 0;
+    if (PropRemains.breaks(it.propKind)) this.remains.smash(it, rotation, this.player.position);
+    else this.remains.used(it, rotation);
   }
 
   /** What the on-screen prompt says, for a `family.tier` payload. */
@@ -1469,6 +1490,7 @@ export class DungeonScene extends GameScene {
     this.mesh.removeInteractable(it);
     this.nav.setBlocked(it.tileX, it.tileY, false);
     this.nearProp = null;
+    this.leaveRemains(it);
     this.vaultOpen = true;
     this.effects.teleportIn(it.x, 0.8, it.z, 0xffd66b);
     audio.play('ui.open');
@@ -1734,27 +1756,9 @@ export class DungeonScene extends GameScene {
     at.y = this.mesh.floorY(at.x, at.z);
     this.returnPortalY = at.y;
 
-    const group = new THREE.Group();
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(1.15, 0.11, 14, 48),
-      emissiveMaterial(0x8fd8ff, 4.2)
-    );
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 1.25;
-    group.add(ring);
-
-    const veil = new THREE.Mesh(
-      new THREE.CircleGeometry(1.1, 40),
-      emissiveMaterial(0x4aa8ff, 1.6)
-    );
-    veil.rotation.x = -Math.PI / 2;
-    veil.position.y = 0.06;
-    group.add(veil);
-
-    const light = new THREE.PointLight(0x7ec8ff, 14, 16, 2);
-    light.position.set(0, 1.4, 0);
-    group.add(light);
-
+    this.portalLook?.dispose();
+    this.portalLook = buildPortal(0x7ec8ff);
+    const group = this.portalLook.root;
     group.position.copy(at);
     this.scene.add(group);
     this.returnPortal = group;
@@ -1875,18 +1879,9 @@ export class DungeonScene extends GameScene {
    * way to give a map up. The town portal always opens a fresh one.
    */
   private buildWaypoint(at: THREE.Vector3): void {
-    const group = new THREE.Group();
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.09, 12, 44), emissiveMaterial(0xffc861, 2.6));
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.08;
-    group.add(ring);
-    const inner = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.62, 32), emissiveMaterial(0xd99a3a, 1.4));
-    inner.rotation.x = -Math.PI / 2;
-    inner.position.y = 0.05;
-    group.add(inner);
-    const light = new THREE.PointLight(0xffb85a, 6, 9, 2);
-    light.position.set(0, 1.0, 0);
-    group.add(light);
+    this.waypointLook?.dispose();
+    this.waypointLook = buildWaypoint(biomeArt(this.biome.id, this.level.variant));
+    const group = this.waypointLook.root;
     group.position.copy(at);
     this.scene.add(group);
     this.waypoint = group;
@@ -2004,6 +1999,12 @@ export class DungeonScene extends GameScene {
     this.enemies = [];
     this.boss?.dispose();
     this.mesh?.dispose();
+    this.remains?.dispose();
+    this.remains = null;
+    this.waypointLook?.dispose();
+    this.waypointLook = null;
+    this.portalLook?.dispose();
+    this.portalLook = null;
     this.lighting?.dispose();
     this.player?.dispose();
     this.heroLight?.removeFromParent();

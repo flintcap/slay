@@ -22,7 +22,7 @@
 import * as THREE from 'three';
 import type { BiomeDef, DungeonLevel, DungeonRoom, PropPlacement, Rng } from '../types';
 import { Noise, clamp, hash2 } from '../art/Noise';
-import { biomeArt, isOutdoorBiome, type BiomeArt } from './Biomes';
+import { biomeArt, isOutdoorBiome, wallKitOf, type BiomeArt } from './Biomes';
 import { dressingFor, type Dressing, type Pool } from '../art/props/Dressing';
 import {
   T_DOOR,
@@ -58,6 +58,8 @@ interface PlaceCtx {
   dress: Dressing[];
   /** Open sky per zone. */
   outdoor: boolean[];
+  /** Dressed-stone walls (not raw rock) per zone. */
+  masonry: boolean[];
   rng: Rng;
   noise: Noise;
   w: number;
@@ -86,6 +88,7 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
   const zones = level.zones && level.zones.length > 0 ? level.zones : null;
   const dress = zones ? zones.map((z) => dressingFor(z.biome, level.variant)) : [dressingFor(biome.id, level.variant)];
   const outdoor = zones ? zones.map((z) => z.outdoor) : [isOutdoorBiome(biome.id)];
+  const masonry = (zones ? zones.map((z) => z.biome) : [biome.id]).map((b) => wallKitOf(biomeArt(b, level.variant)) === 'masonry');
   const w = level.width;
   const h = level.height;
   const roomOf = (level as DungeonLevel & { roomOf?: Int16Array }).roomOf ?? buildRoomIndex(level);
@@ -94,6 +97,7 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
     level,
     dress,
     outdoor,
+    masonry,
     rng,
     noise: new Noise((level.seed ^ 0x91d3) >>> 0),
     w,
@@ -125,6 +129,7 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
   placeRoomFeatures(ctx);
   placePillars(ctx);
   placeInteractables(ctx);
+  placeDoorLeaves(ctx);
   placeWallDressing(ctx);
   placeEdgeDressing(ctx);
   placeScatter(ctx);
@@ -704,6 +709,52 @@ function placeWallDressing(ctx: PlaceCtx): void {
       const pool = dressAt(ctx, f.x, f.y).wall;
       if (pool.length === 0) continue;
       emit(ctx, f.x, f.y, pickWeighted(ctx, pool), f.rotation);
+    }
+  }
+}
+
+/**
+ * Doors. A doorway in a dressed wall gets its door swung right back against
+ * the wall on the room side, flat to it, so it is something you see on the
+ * way through and never something you walk into.
+ */
+function placeDoorLeaves(ctx: PlaceCtx): void {
+  const dirs: Array<[number, number, number]> = [
+    [0, -1, 0],
+    [0, 1, Math.PI],
+    [-1, 0, Math.PI / 2],
+    [1, 0, -Math.PI / 2],
+  ];
+  for (let y = 1; y < ctx.h - 1; y++) {
+    for (let x = 1; x < ctx.w - 1; x++) {
+      if (tile(ctx, x, y) !== T_DOOR || outdoorAt(ctx, x, y) || !ctx.masonry[zoneAt(ctx, x, y)]) continue;
+      if (!ctx.rng.chance(0.65)) continue;
+      // The passage runs along the axis with floor on both ends.
+      const alongX = walkable(ctx, x - 1, y) && walkable(ctx, x + 1, y);
+      const ends: Array<[number, number]> = alongX ? [[-1, 0], [1, 0]] : [[0, -1], [0, 1]];
+      // The room side, if one end is in a room; otherwise either.
+      ends.sort((a, b) => Number(!!roomAtTile(ctx, x + b[0], y + b[1])) - Number(!!roomAtTile(ctx, x + a[0], y + a[1])));
+      let done = false;
+      for (const [ex, ey] of ends) {
+        if (done) break;
+        const rx = x + ex;
+        const ry = y + ey;
+        // Beside that end tile, against the wall the doorway is cut through.
+        const sides: Array<[number, number]> = alongX ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
+        if (ctx.rng.chance(0.5)) sides.reverse();
+        for (const [sx, sy] of sides) {
+          const fx = rx + sx;
+          const fy = ry + sy;
+          const wx = fx - ex;
+          const wy = fy - ey;
+          if (!walkable(ctx, fx, fy) || walkable(ctx, wx, wy) || tile(ctx, wx, wy) === 0) continue;
+          const face = dirs.find((d) => d[0] === -ex && d[1] === -ey)!;
+          if (emit(ctx, fx, fy, 'door', face[2])) {
+            done = true;
+            break;
+          }
+        }
+      }
     }
   }
 }

@@ -265,6 +265,7 @@ const bookcase: Builder = (k, c) => {
   k.box(wood, Wd, 0.08, D + 0.04, { y: H - 0.08, z: zc }, 0.8, 0.012);
   k.box(wood, Wd - 0.1, H - 0.1, 0.02, { y: 0.02, z: back + 0.01 }, 0.45, 0.004);
   const shelves = [0.08, 0.55, 1.02, 1.49];
+  const searched = c.state === 'searched';
   // One material for every book; the colour of each spine is baked in.
   const books = propMat('leather.worn', { base: 0x8a7a68, grime: 0.2 });
   const spines = [0x9a4a3a, 0x4a5a7a, 0x5a6a3a, 0x8a6a40, 0x6a3a5a, 0x7a7a6a];
@@ -276,7 +277,8 @@ const bookcase: Builder = (k, c) => {
     while (x < Wd / 2 - 0.12) {
       const bw = k.rng.range(0.035, 0.07);
       const bh = k.rng.range(0.24, 0.38);
-      if (i === gap || (c.variant === 2 && k.rng.chance(0.3))) {
+      // Searched: half the shelf pulled out and thrown down.
+      if (i === gap || (c.variant === 2 && k.rng.chance(0.3)) || (searched && k.rng.chance(0.45))) {
         x += bw * 2;
         i++;
         continue;
@@ -289,6 +291,18 @@ const bookcase: Builder = (k, c) => {
   }
   if (c.variant === 1) {
     k.add(M.bone(c), skull(k.rng, 0.95), { x: 0.3, y: 1.6, z: zc + 0.04, ry: -0.3 }, 0.85);
+  }
+  if (searched) {
+    // What came off the shelves lies open on the floor in front.
+    for (let i = 0; i < 7; i++) {
+      const bw = k.rng.range(0.04, 0.07);
+      k.add(books, shade(box(k.rng.range(0.24, 0.36), bw, k.rng.range(0.2, 0.26), 0.006), spines[k.rng.int(0, spines.length - 1)]!), {
+        x: k.rng.range(-0.55, 0.55),
+        y: bw / 2 + (i > 4 ? bw : 0),
+        z: k.rng.range(0.05, 0.45),
+        ry: k.rng.range(0, Math.PI),
+      }, k.rng.range(0.6, 1.0));
+    }
   }
 };
 
@@ -348,6 +362,53 @@ const lever: Builder = (k, c) => {
   k.add(M.wood(c), sphere(0.055, 8, 6).scale(1, 1.3, 1), { y: 1.3 + Math.cos(a) * 0.5, z: W + 0.06 + Math.sin(a) * 0.5 }, 0.85);
 };
 
+/**
+ * A heavy door swung right back against the wall beside its doorway: upright
+ * boards, iron straps nailed across, a ring to pull. One form has an arched
+ * head; one has been battered in, boards split off and blackened.
+ */
+const door: Builder = (k, c) => {
+  const planks = M.planks(c);
+  const iron = M.iron(c);
+  const v = c.variant;
+  const Wd = 1.7;
+  const n = 6;
+  const bw = Wd / n;
+  const z0 = W + 0.14;
+  const th = 0.07;
+  const zc = z0 + th / 2;
+  for (let i = 0; i < n; i++) {
+    const x = -Wd / 2 + (i + 0.5) * bw;
+    let h = v === 1 ? 2.0 + 0.32 * Math.sqrt(Math.max(0, 1 - (x / (Wd / 2)) ** 2)) : 2.25 + k.rng.range(-0.02, 0.02);
+    let y0 = 0.02;
+    if (v === 2 && i >= 3) {
+      // Battered in: the boards on one side snapped short, top and bottom.
+      y0 = k.rng.range(0.25, 0.7);
+      h = h - k.rng.range(0.2, 0.6) - y0;
+    }
+    const g = plank(h, bw - 0.012, th, k.rng, 0.6);
+    g.rotateZ(Math.PI / 2);
+    k.add(planks, g, { x, y: y0 + h / 2, z: zc }, v === 2 && i >= 3 ? k.rng.range(0.35, 0.55) : k.rng.range(0.7, 1.0));
+  }
+  // Straps nailed across, each with a rounded end and a row of studs.
+  for (const y of v === 1 ? [0.35, 1.15, 1.85] : [0.35, 1.2, 2.0]) {
+    const len = v === 2 && y > 1.5 ? Wd * 0.55 : Wd * 0.92;
+    const x0 = Wd / 2 - 0.04 - len / 2;
+    k.box(iron, len, 0.07, 0.014, { x: x0, y: y - 0.035, z: z0 + th + 0.007 }, 0.8, 0.004);
+    k.add(iron, cyl(0.05, 0.05, 0.014, 10).rotateX(Math.PI / 2), { x: x0 - len / 2, y, z: z0 + th + 0.007 }, 0.8);
+    for (let i = 0; i < 6; i++) k.add(iron, sphere(0.013, 5, 3), { x: x0 - len / 2 + 0.06 + (i * (len - 0.1)) / 5, y, z: z0 + th + 0.016 }, 0.9);
+  }
+  // The ring pull and its plate.
+  k.add(iron, cyl(0.06, 0.06, 0.012, 10).rotateX(Math.PI / 2), { x: -Wd / 2 + 0.22, y: 1.05, z: z0 + th + 0.006 }, 0.75);
+  k.add(iron, torus(0.07, 0.012, 5, 14).rotateX(0.25), { x: -Wd / 2 + 0.22, y: 0.98, z: z0 + th + 0.03 }, 0.85);
+  // Hinge pins: on the edge by the doorway, both sides would do, so both.
+  for (const y of [0.35, 2.0 - (v === 1 ? 0.15 : 0)]) k.add(iron, cyl(0.02, 0.02, 0.16, 6), { x: Wd / 2 + 0.01, y, z: z0 + th / 2 }, 0.7);
+  if (v === 2) {
+    // Split boards on the floor below the break.
+    for (let i = 0; i < 3; i++) k.plank(planks, k.rng.range(0.4, 0.8), bw - 0.02, th, { x: k.rng.range(0.1, 0.7), y: th / 2 + i * th, z: k.rng.range(0.05, 0.35), ry: k.rng.range(-0.6, 0.6) }, k.rng.range(0.4, 0.6));
+  }
+};
+
 const goldHoard: Builder = (k, c) => {
   const gold = propMat('prop.gold');
   // A heap of coin, goblets and plate tipped into it.
@@ -383,6 +444,7 @@ export const CONTAINERS: Record<string, Builder> = {
   bookcase,
   shrine,
   lever,
+  door,
   goldHoard,
 };
 

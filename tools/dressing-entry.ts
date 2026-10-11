@@ -107,7 +107,7 @@ for (const depth of [1, 2, 4, 7, 11, 16, 24]) {
             [d.standLight, d.clutter, d.wall, d.edge, d.feature, d.landmark, d.detail, d.liquid, d.breakables].some((pool) => pool.some((e) => e.kind === p.kind))
           );
         };
-        const fixed = p.interact || p.kind.startsWith('chest') || p.kind.endsWith('Seal') || ['candleCluster', 'goldHoard', 'gibbet', 'lever', 'bookcase', 'brazier'].includes(p.kind);
+        const fixed = p.interact || p.kind.startsWith('chest') || p.kind.endsWith('Seal') || ['candleCluster', 'goldHoard', 'gibbet', 'lever', 'bookcase', 'brazier', 'door'].includes(p.kind);
         if (!fixed && !planted.has(p.kind) && !names(level.variant)) {
           if (names(undefined)) warns.push(`variant dressing not applied: level.variant is set after placeProps (DungeonGen)`);
           else warns.push(`${biome}: ${p.kind} is not in its dressing`);
