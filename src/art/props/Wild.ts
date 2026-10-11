@@ -235,7 +235,7 @@ const rootTangle: Builder = (k, c) => {
     const x = k.rng.range(-0.6, 0.6);
     const y = k.rng.range(1.6, 2.8);
     const x2 = x + k.rng.range(-0.3, 0.3);
-    parts.push(tube([V(x, y, W - 0.05), V(x + k.rng.range(-0.15, 0.15), y - 0.4, W + 0.1), V(x2, y * 0.4, W + k.rng.range(0.05, 0.25)), V(x2 + k.rng.range(-0.2, 0.2), 0.0, W + k.rng.range(0.25, 0.5))], k.rng.range(0.03, 0.06), 0.015, 5, 10));
+    parts.push(tube([V(x, y, W + 0.03), V(x + k.rng.range(-0.15, 0.15), y - 0.4, W + 0.1), V(x2, y * 0.4, W + k.rng.range(0.05, 0.25)), V(x2 + k.rng.range(-0.2, 0.2), 0.0, W + k.rng.range(0.25, 0.5))], k.rng.range(0.03, 0.06), 0.015, 5, 10));
   }
   const g = merge(parts);
   mottle(g, k.rng, c.pal.stainAmt, 2, c.pal.stain);
@@ -363,18 +363,16 @@ const wayShrine: Builder = (k, c) => {
   if (c.variant === 0) {
     k.add(wood, log(1.0, 0.07, k.rng, { seg: 6, taper: 0.9 }), undefined, 0.8);
     k.box(wood, 0.36, 0.34, 0.28, { y: 0.95 }, 0.8);
-    for (const s of [-1, 1]) k.plank(M.planks(c), 0.36, 0.3, 0.03, { y: 1.38, z: s * 0.1, rx: s * 0.65 }, 0.8);
+    for (const s of [-1, 1]) k.plank(wood, 0.36, 0.3, 0.03, { y: 1.38, z: s * 0.1, rx: s * 0.65 }, 0.8);
   } else {
     k.add(st, weather(box(0.3, 0.95, 0.26, 0.03).translate(0, 0.475, 0), c, k.rng));
     k.box(st, 0.4, 0.08, 0.34, { y: 1.28 }, 0.85);
   }
-  const niche = propMat('ground.mud', { tint: 0x16120e });
-  k.add(niche, box(0.24, 0.22, 0.01, 0.002), { y: c.variant === 0 ? 1.07 : 1.0, z: 0.14 }, 0.4);
+  k.add(c.variant === 0 ? wood : st, box(0.24, 0.22, 0.01, 0.002), { y: c.variant === 0 ? 1.07 : 1.0, z: 0.14 }, 0.12);
   const wax = propMat('bone.pale', { tint: 0xd8ccb0, grime: 0 });
   const cy = c.variant === 0 ? 0.97 : 0.9;
   k.add(wax, cyl(0.025, 0.028, 0.1, 6), { y: cy, z: 0.12 }, 0.9);
   k.flame(flameMat(c.pal.flame), flameGeo(0.07, 0.016, k.rng), cy + 0.1, 0.12);
-  k.add(M.bone(c), skull(k.rng, 0.8), { x: 0.16, y: 0.13, z: 0.18, ry: 0.4 }, 0.8);
 };
 
 const beastSkull: Builder = (k, c) => {

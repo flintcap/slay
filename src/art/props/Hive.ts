@@ -3,7 +3,7 @@
  * and brood mounds.
  */
 import * as THREE from 'three';
-import { WALL_FACE, cone, jag, lathe, merge, mottle, rock, shadeY, skull, smooth, sphere, tube } from './Kit';
+import { WALL_FACE, cone, jag, lathe, merge, mottle, rock, seat, shadeY, skull, smooth, sphere, tube, xf } from './Kit';
 import { type BuildCtx, type Builder } from './Ctx';
 import { ghostMat, glowMat, propMat } from './PropMats';
 import { webTexture } from '../../fx/UtilityTextures';
@@ -37,7 +37,7 @@ const webSheet: Builder = (k, c) => {
     const y = p.getY(j);
     p.setZ(j, (1 - (x * x) / 0.64) * (1 - (y * y) / 0.81) * 0.35);
   }
-  k.add(web(), g, { y: 1.9 + c.variant * 0.15, z: W + 0.02, ry: k.rng.range(-0.2, 0.2) }, 1, true);
+  k.add(web(), g, { y: 1.9 + c.variant * 0.15, z: W + 0.03 }, 1, true);
 };
 
 const chitinSpike: Builder = (k, c) => {
@@ -73,9 +73,9 @@ const cocoon: Builder = (k, c) => {
   g.computeVertexNormals();
   mottle(g, k.rng, 0.5, 4, 0x8a7a5a);
   const slump = c.variant === 1;
-  k.add(propMat('cloth.linen', { base: 0xa89c84, grime: 1 }), g, slump ? { y: 0.22, rz: 1.25, x: -0.45 } : { rz: k.rng.range(-0.1, 0.1) });
+  k.add(propMat('cloth.linen', { base: 0xa89c84, grime: 1 }), seat(xf(g, slump ? { y: 0.26, rz: 1.25, x: 0.55 } : { rz: k.rng.range(-0.1, 0.1) })));
   if (c.variant === 2) k.add(glowMat(c.pal.accent, 0.6), sphere(0.08, 6, 5), { y: 0.7, z: 0.2 });
-  k.add(resin(), rock(0.3, k.rng, { flat: 0.3 }), { y: 0.02 }, 0.8);
+  k.add(resin(), seat(rock(0.3, k.rng, { flat: 0.3 }).translate(0, 0.02, 0)), undefined, 0.8);
 };
 
 const fleshGrowth: Builder = (k, c) => {
@@ -83,7 +83,7 @@ const fleshGrowth: Builder = (k, c) => {
   const g = smooth(new THREE.IcosahedronGeometry(0.35, 2));
   g.scale(1, 0.3, 1);
   jag(g, k.rng, 0.08, 4);
-  k.add(flesh(), shadeY(g, -0.05, 0.1, 0.6), { y: 0.02 });
+  k.add(flesh(), shadeY(g, -0.05, 0.1, 0.6), { y: 0.08 });
   for (let i = 0; i < 2 + c.variant; i++) k.add(glowMat(c.pal.accent, 0.4), sphere(k.rng.range(0.04, 0.08), 7, 5), { x: k.rng.range(-0.2, 0.2), y: 0.08, z: k.rng.range(-0.2, 0.2) });
   for (let i = 0; i < 3; i++) {
     const a = k.rng.range(0, Math.PI * 2);
@@ -95,8 +95,10 @@ const broodMound: Builder = (k, c) => {
   // A resin mound studded with eggs, glowing from inside, bones caught in it.
   const m = smooth(new THREE.IcosahedronGeometry(0.9, 2));
   m.scale(1, 0.55, 1);
+  m.translate(0, 0.38, 0);
   jag(m, k.rng, 0.12, 2);
-  k.add(resin(), shadeY(m, -0.1, 0.4, 0.6), { y: 0.0 });
+  seat(m);
+  k.add(resin(), shadeY(m, -0.1, 0.4, 0.6));
   const eggs = glowMat(c.pal.accent, 1.0);
   for (let i = 0; i < 9 + c.variant * 3; i++) {
     const a = k.rng.range(0, Math.PI * 2);
@@ -104,9 +106,9 @@ const broodMound: Builder = (k, c) => {
     const r = k.rng.range(0.08, 0.14);
     const e = sphere(r, 8, 6);
     e.scale(1, 1.3, 1);
-    k.add(eggs, e, { x: Math.cos(a) * Math.cos(el) * 0.82, y: Math.sin(el) * 0.46 + 0.02, z: Math.sin(a) * Math.cos(el) * 0.82 });
+    k.add(eggs, e, { x: Math.cos(a) * Math.cos(el) * 0.82, y: Math.sin(el) * 0.46 + 0.4, z: Math.sin(a) * Math.cos(el) * 0.82 });
   }
-  k.add(propMat('bone.old'), skull(k.rng, 1), { x: 0.5, y: 0.35, z: 0.45, rz: 0.6 }, 0.8);
+  k.add(propMat('bone.old'), skull(k.rng, 1), { x: 0.5, y: 0.7, z: 0.45, rz: 0.6 }, 0.8);
 };
 
 const chitinColumn: Builder = (k, c) => {

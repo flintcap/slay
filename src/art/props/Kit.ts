@@ -235,6 +235,15 @@ export function jag(geo: THREE.BufferGeometry, rng: Rng, amount: number, freq = 
   return geo;
 }
 
+/** Flattens anything below `floor` onto it, so a mound or rock rests on the floor instead of sinking through it. */
+export function seat(geo: THREE.BufferGeometry, floor = -0.03): THREE.BufferGeometry {
+  const p = geo.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) < floor) p.setY(i, floor);
+  p.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+
 /** Bows a long part along X: sagging planks, warped beams. `amount` is the drop at the middle. */
 export function sag(geo: THREE.BufferGeometry, amount: number, axis: 'x' | 'z' = 'x'): THREE.BufferGeometry {
   geo.computeBoundingBox();
@@ -474,11 +483,11 @@ export function skull(rng: Rng, s = 1): THREE.BufferGeometry {
 export function longBone(len: number, r: number): THREE.BufferGeometry {
   const shaftG = new THREE.CylinderGeometry(r * 0.7, r * 0.7, len * 0.8, 6);
   shaftG.rotateZ(Math.PI / 2);
-  const k1 = new THREE.SphereGeometry(r * 1.25, 6, 5);
+  const k1 = new THREE.SphereGeometry(r * 1.25, 5, 4);
   k1.translate(-len * 0.42, 0, r * 0.4);
-  const k2 = new THREE.SphereGeometry(r * 1.25, 6, 5);
+  const k2 = new THREE.SphereGeometry(r * 1.25, 5, 4);
   k2.translate(-len * 0.42, 0, -r * 0.4);
-  const k3 = new THREE.SphereGeometry(r * 1.3, 6, 5);
+  const k3 = new THREE.SphereGeometry(r * 1.3, 5, 4);
   k3.translate(len * 0.42, 0, 0);
   return merge([shaftG, k1, k2, k3]);
 }

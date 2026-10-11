@@ -8,7 +8,7 @@
  */
 import * as THREE from 'three';
 import type { Rng } from '../../types';
-import { PropKit, WALL_FACE, box, cone, cyl, disc, jag, lathe, merge, mottle, rock, shade, shadeY, smooth, sphere, taper, torus } from './Kit';
+import { PropKit, WALL_FACE, box, cone, cyl, disc, jag, lathe, merge, mottle, rock, seat, shade, shadeY, smooth, sphere, taper, torus } from './Kit';
 import { type BuildCtx, type Builder, M } from './Ctx';
 import { glowMat, propMat } from './PropMats';
 
@@ -133,7 +133,7 @@ const pillarBroken: Builder = (k, c) => {
   // A fallen drum and chips at the foot.
   const drum = fluted(0.3, 0.45, 12, 0.06, 2);
   jag(drum, k.rng, 0.03, 4);
-  k.add(st, weather(drum, c, k.rng), { x: 0.2, y: 0.05, z: 0.45, rz: Math.PI / 2, ry: k.rng.range(-1, 1), s: 0.8 });
+  k.add(st, weather(drum.translate(0, -0.225, 0), c, k.rng), { x: 0.2, y: 0.24, z: 0.45, rz: Math.PI / 2, ry: k.rng.range(-1, 1), s: 0.8 });
   for (let i = 0; i < 4; i++) k.add(st, rock(0.07, k.rng, { flat: 0.6 }), { x: k.rng.range(-0.5, 0.5), y: 0.04, z: k.rng.range(-0.5, 0.5) }, 0.8);
 };
 
@@ -211,7 +211,7 @@ const brokenColumn: Builder = (k, c) => {
   if (v >= 2) {
     const drum = fluted(0.28, 0.5, 12, 0.06, 2);
     jag(drum, k.rng, 0.03, 4);
-    k.add(st, weather(drum, c, k.rng), { x: -0.15, y: 0.02, z: 0.28, rz: Math.PI / 2, ry: 0.4 + v });
+    k.add(st, weather(drum.translate(0, -0.25, 0), c, k.rng), { x: -0.15, y: 0.27, z: 0.28, rz: Math.PI / 2, ry: 0.4 + v });
   }
   for (let i = 0; i < 5; i++) k.add(st, rock(0.06, k.rng, { flat: 0.6 }), { x: k.rng.range(-0.45, 0.45), y: 0.03, z: k.rng.range(-0.45, 0.45) }, 0.8);
 };
@@ -362,7 +362,8 @@ const boulder: Builder = (k, c) => {
   const st = M.rock(c);
   const r = 0.52;
   const g = rock(r, k.rng, { detail: 2, flat: 0.75 });
-  g.translate(0, r * 0.45, 0);
+  g.translate(0, r * 0.62, 0);
+  seat(g);
   weather(g, c, k.rng, 1.3, 0.5);
   // Moss or snow settles on the top.
   const n = g.getAttribute('normal') as THREE.BufferAttribute;
@@ -373,7 +374,7 @@ const boulder: Builder = (k, c) => {
     col.setXYZ(i, col.getX(i) * (1 - t + t * top.r * 1.4), col.getY(i) * (1 - t + t * top.g * 1.4), col.getZ(i) * (1 - t + t * top.b * 1.4));
   }
   k.add(st, g);
-  if (c.variant >= 2) k.add(st, weather(rock(0.22, k.rng, { flat: 0.7 }), c, k.rng), { x: 0.42, y: 0.1, z: 0.25 });
+  if (c.variant >= 2) k.add(st, weather(seat(rock(0.22, k.rng, { flat: 0.7 }).translate(0.42, 0.1, 0.25)), c, k.rng));
 };
 
 const stalagmite: Builder = (k, c) => {

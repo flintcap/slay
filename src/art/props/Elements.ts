@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import type { Rng } from '../../types';
-import { PropKit, WALL_FACE, box, cone, cyl, jag, lathe, merge, mottle, rock, shadeY, skull, smooth, sphere, torus, tube } from './Kit';
+import { PropKit, WALL_FACE, box, cone, cyl, jag, lathe, merge, mottle, rock, seat, shadeY, skull, smooth, sphere, torus, tube } from './Kit';
 import { type BuildCtx, type Builder, M } from './Ctx';
 import { ghostMat, glowMat, propMat } from './PropMats';
 import { weather } from './Stone';
@@ -40,9 +40,9 @@ function cluster(k: PropKit, c: BuildCtx, n: number, len: number, spread: number
     g.translate(Math.cos(a) * d, 0, -Math.sin(a) * d);
     parts.push(g);
   }
-  k.add(mat, shadeY(merge(parts), 0, len * 0.5, 0.55));
-  const base = rock(spread * 0.7, k.rng, { flat: 0.4 });
-  k.add(M.rock(c), weather(base, c, k.rng), { y: 0.02 });
+  k.add(mat, shadeY(seat(merge(parts)), 0, len * 0.5, 0.55));
+  const base = seat(rock(spread * 0.7, k.rng, { flat: 0.4 }).translate(0, spread * 0.22, 0));
+  k.add(M.rock(c), weather(base, c, k.rng));
 }
 
 const crystalShard: Builder = (k, c) => cluster(k, c, 2 + c.variant, 0.35 + c.variant * 0.08, 0.15);
@@ -151,12 +151,12 @@ const pillarIce: Builder = (k, c) => {
 
 const lavaRock: Builder = (k, c) => {
   const g = rock(0.5, k.rng, { detail: 2, flat: 0.7 });
-  g.translate(0, 0.25, 0);
+  g.translate(0, 0.36, 0);
   mottle(g, k.rng, 0.4, 3);
   k.add(propMat('stone.ash', { emissive: 0xff4a10, emissiveIntensity: 1.2, crackGlow: true }), shadeY(g, 0, 0.5, 0.6));
   if (c.variant > 0) {
     const g2 = rock(0.24, k.rng, { flat: 0.7 });
-    k.add(propMat('stone.ash', { emissive: 0xff4a10, emissiveIntensity: 1.2, crackGlow: true }), g2, { x: 0.38, y: 0.08, z: 0.2 });
+    k.add(propMat('stone.ash', { emissive: 0xff4a10, emissiveIntensity: 1.2, crackGlow: true }), g2, { x: 0.38, y: 0.16, z: 0.2 });
   }
 };
 

@@ -28,7 +28,7 @@ const anvil: Builder = (k, c) => {
     box(0.28, 0.12, 0.2, 0.02).translate(0, 0.06, 0),
     box(0.16, 0.14, 0.14, 0.02).translate(0, 0.19, 0),
     box(0.5, 0.11, 0.2, 0.015).translate(0.02, 0.31, 0),
-    cone(0.07, 0.24, 8).rotateZ(-Math.PI / 2).scale(1, 0.75, 1).translate(0.27 + 0.12, 0.31, 0),
+    cone(0.07, 0.24, 8).rotateZ(-Math.PI / 2).scale(1, 0.75, 1).translate(0.26, 0.31, 0),
   ]);
   k.add(iron, body, { y: 0.42 }, 0.85);
   k.add(iron, box(0.04, 0.03, 0.3, 0.005), { x: -0.12, y: 0.84, z: 0.05, ry: 0.3 }, 0.8);
@@ -144,7 +144,7 @@ const smeltingVat: Builder = (k, c) => {
   k.add(iron, vat, undefined, 0.8);
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    k.add(iron, box(0.1, 0.45, 0.1, 0.02), { x: Math.cos(a) * 0.5, z: Math.sin(a) * 0.5, rz: Math.cos(a) * 0.15, rx: -Math.sin(a) * 0.15 }, 0.75);
+    k.box(iron, 0.1, 0.45, 0.1, { x: Math.cos(a) * 0.5, z: Math.sin(a) * 0.5, rz: Math.cos(a) * 0.15, rx: -Math.sin(a) * 0.15 }, 0.75, 0.02);
   }
   for (const y of [0.7, 1.05]) k.add(rust(), torus(0.76, 0.025, 4, 24).rotateX(Math.PI / 2), { y }, 0.8);
   k.add(molten(), cyl(0.68, 0.68, 0.02, 18), { y: 1.14 });
@@ -164,8 +164,8 @@ const pillarIron: Builder = (k, c) => {
   k.add(st, weather(core, c, k.rng, 1.2, 1.2));
   // Iron corner angles, bands with rivets, a pipe up one face.
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    k.add(iron, box(0.14, H - 0.1, 0.03, 0.006), { x: sx * 0.46, y: 0.05, z: sz * 0.42 }, 0.75);
-    k.add(iron, box(0.03, H - 0.1, 0.14, 0.006), { x: sx * 0.42, y: 0.05, z: sz * 0.46 }, 0.75);
+    k.box(iron, 0.14, H - 0.1, 0.03, { x: sx * 0.46, y: 0.05, z: sz * 0.42 }, 0.75, 0.006);
+    k.box(iron, 0.03, H - 0.1, 0.14, { x: sx * 0.42, y: 0.05, z: sz * 0.46 }, 0.75, 0.006);
   }
   for (const y of [0.3, H * 0.45, H - 0.4]) {
     k.box(iron, 1.0, 0.14, 1.0, { y }, 0.7, 0.01);

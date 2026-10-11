@@ -154,7 +154,7 @@ const eggSac: Builder = (k, c) => {
   const smear = sphere(0.3, 12, 10);
   smear.scale(1.0, 1.6, 0.22);
   jag(smear, k.rng, 0.03, 5);
-  k.add(resin, smear, { y: 1.95, z: W + 0.02 }, 0.6);
+  k.add(resin, smear, { y: 1.95, z: W + 0.07 }, 0.6);
   const n = 3 + c.variant;
   for (let i = 0; i < n; i++) {
     const r = k.rng.range(0.07, 0.13);
@@ -312,9 +312,8 @@ const lanternPost: Builder = (k, c) => {
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) k.add(iron, box(0.016, 0.26, 0.016, 0.003), { x: sx * 0.09, y: y0 + 0.01, z: lz + sz * 0.09 }, 0.7);
   k.add(glowMat(c.glow, 1.0), box(0.16, 0.2, 0.16, 0.004), { y: y0 + 0.035, z: lz }, 0.8);
   if (c.variant === 2) {
-    // A tattered rag tied under the arm.
-    const rag = propMat('cloth.rags', { base: c.pal.clothTint, side: THREE.DoubleSide });
-    k.add(rag, mottle(shade(new THREE.PlaneGeometry(0.16, 0.5, 2, 5), 0.8), k.rng, 0.4), { y: 2.1, z: 0.12, ry: Math.PI / 2 });
+    // A second, shorter arm with a hook, nothing on it.
+    k.add(iron, box(0.04, 0.04, 0.4, 0.01), { y: 1.7, z: -0.18 }, 0.75);
   }
   k.flame(flameMat(c.glow), flameGeo(0.1, 0.03, k.rng), y0 + 0.05, lz);
 };

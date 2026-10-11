@@ -41,7 +41,7 @@ function chestBody(k: PropKit, c: BuildCtx, s: ChestStyle, y0 = 0): void {
   for (const x of [-1, 1]) k.box(s.wood, 0.045, h, d - 0.02, { x: x * (w / 2 - 0.02), y: y0 + 0.04 }, 0.8, 0.008);
   k.box(s.wood, w - 0.04, 0.04, d - 0.04, { y: y0 + 0.04 }, 0.6, 0.006);
   // Hollow: dark inside, read when the lid is open.
-  k.add(propMat('ground.mud', { base: 0x120e0a }), box(w - 0.1, 0.01, d - 0.1, 0.002), { y: y0 + h - 0.06 }, 0.4);
+  k.add(s.wood, box(w - 0.1, 0.01, d - 0.1, 0.002), { y: y0 + h - 0.06 }, 0.12);
   // Iron feet, corner straps, bands.
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
     k.box(s.band, 0.08, 0.06, 0.08, { x: sx * (w / 2 - 0.03), y: y0, z: sz * (d / 2 - 0.03) }, 0.75, 0.01);
@@ -53,7 +53,7 @@ function chestBody(k: PropKit, c: BuildCtx, s: ChestStyle, y0 = 0): void {
   }
   // Lock plate and hasp on the front.
   k.box(s.trim ?? s.band, 0.13, 0.15, 0.025, { y: y0 + h - 0.12, z: d / 2 + 0.012 }, 0.85, 0.008);
-  k.add(propMat('metal.dark'), box(0.025, 0.05, 0.01, 0.003), { y: y0 + h - 0.06, z: d / 2 + 0.03 }, 0.5);
+  k.add(s.band, box(0.025, 0.05, 0.01, 0.003), { y: y0 + h - 0.06, z: d / 2 + 0.03 }, 0.3);
   // Handles on the ends.
   for (const x of [-1, 1]) k.add(s.band, torus(0.06, 0.012, 4, 10, Math.PI), { x: x * (w / 2 + 0.03), y: y0 + h * 0.62, ry: Math.PI / 2, rz: Math.PI }, 0.8);
   // The lid.
@@ -88,7 +88,7 @@ function chestBody(k: PropKit, c: BuildCtx, s: ChestStyle, y0 = 0): void {
   void lidH;
   if (open) {
     // Spilled straw and a few coins inside.
-    k.add(propMat('prop.thatch'), box(w - 0.14, 0.02, d - 0.14, 0.01), { y: y0 + h - 0.08 }, 0.7);
+    k.add(s.wood, box(w - 0.14, 0.02, d - 0.14, 0.01), { y: y0 + h - 0.08 }, [0.8, 0.7, 0.45]);
   }
 }
 

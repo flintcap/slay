@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import type { Rng } from '../../types';
-import { PropKit, WALL_FACE, box, chain, cloth, cone, cyl, disc, jag, lathe, log, longBone, merge, mottle, rock, shade, shadeY, skull, sphere, torus, tube } from './Kit';
+import { PropKit, WALL_FACE, box, chain, cloth, cone, cyl, disc, jag, lathe, log, longBone, merge, mottle, rock, seat, shade, shadeY, skull, sphere, torus, tube } from './Kit';
 import { type BuildCtx, type Builder, M } from './Ctx';
 import { flameMat, propMat } from './PropMats';
 import { weather } from './Stone';
@@ -168,7 +168,9 @@ const skullPile: Builder = (k, c) => {
   // A dirt-and-bone mound with skulls set into its skin.
   const mound = sphere(0.42, 12, 8);
   mound.scale(1, 0.55, 1);
+  mound.translate(0, 0.14, 0);
   jag(mound, k.rng, 0.05, 4);
+  seat(mound);
   k.add(propMat('ground.dirt'), shadeY(mound, -0.1, 0.25, 0.7));
   const parts: THREE.BufferGeometry[] = [];
   const n = 10 + c.variant * 4;

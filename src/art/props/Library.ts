@@ -86,15 +86,29 @@ const cache = new Map<string, PropTemplate>();
  * signature but not used: a prop's look belongs to its biome, not its level.
  */
 export function libraryTemplate(kind: string, art: BiomeArt, _seed: number, variant: number): PropTemplate {
-  const key = `${kind}|${art.id}|${art.lightColor}|${variant}`;
+  return buildTemplate(kind, art, variant);
+}
+
+/**
+ * The used version of an interactable: a chest with its lid thrown back
+ * ('open'), a shrine gone dark ('spent'), a lever pulled down ('pulled').
+ * Same seed as the placed one, so it is the same chest, opened.
+ */
+export function remainsTemplate(kind: string, art: BiomeArt, variant: number, state: string): PropTemplate {
+  return buildTemplate(kind, art, variant, state);
+}
+
+function buildTemplate(kind: string, art: BiomeArt, variant: number, state?: string): PropTemplate {
+  const seedKey = `${kind}|${art.id}|${art.lightColor}|${variant}`;
+  const key = state ? `${seedKey}|${state}` : seedKey;
   const hit = cache.get(key);
   if (hit) return hit;
   const def = propDef(kind);
   const build = BUILDERS[kind] ?? BUILDERS[def.kind];
   if (!build) throw new Error(`no prop builder for ${kind}`);
-  const rng = streamFor(hashString(key), 'prop');
+  const rng = streamFor(hashString(seedKey), 'prop');
   const k = new PropKit(rng);
-  build(k, makeCtx(art, rng, variant));
+  build(k, makeCtx(art, rng, variant, state));
   const out = k.done();
   const light = def.light
     ? { ...def.light, color: def.light.fire ? paletteFor(art.id).flame : def.light.mood ? art.lightColor : def.light.color }
