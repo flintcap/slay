@@ -15,7 +15,7 @@ import { bipedRig, flyerRig } from './Rig';
 import type { CreatureLook } from './Creature';
 import type { LookCtx, LookFactory } from './Looks';
 import type { CMat, PaintSpec, RGB, Sculpt } from './Sculpt';
-import { boxGeo, membraneGeo, ringGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { boxGeo, membraneGeo, ringGeo, sailGeo, spikeGeo, tubeGeo } from './Sculpt';
 import { weapon, type WeaponKind } from './Arms';
 import { V, belt, claws, fleshArms, fleshHead, fleshLegs, lerpV, mixHex, quatAlong, seq, skirt, trunk } from './Kit';
 import { houndHead } from './LookUndead';
@@ -102,7 +102,7 @@ function eyesAt(s: Sculpt, k: number, at: ReadonlyArray<readonly [number, number
  * an arm and forearm of bone, three finger spars off the wrist, and membrane
  * strung between them, hanging the way `trail` points.
  */
-function demonWings(s: Sculpt, o: { thick?: number; mat?: CMat; bone?: CMat; trail?: THREE.Vector3; claw?: boolean; spar?: RGB }): void {
+function demonWings(s: Sculpt, o: { thick?: number; mat?: CMat; bone?: CMat; trail?: THREE.Vector3; claw?: boolean; spar?: RGB; tatter?: number }): void {
   const mat = o.mat ?? 'alt';
   const bone = o.bone ?? 'skin';
   const th = o.thick ?? 1;
@@ -124,9 +124,12 @@ function demonWings(s: Sculpt, o: { thick?: number; mat?: CMat; bone?: CMat; tra
     root.x *= 0.35;
     for (const f of [tip, f1, f2]) s.hard(`wing${side}3`, tubeGeo([w, lerpV(w, f, 0.5).addScaledVector(trail, R * 0.03), f], (t) => (0.016 - 0.012 * t) * R * th, 5, true), bone, o.spar);
     // Membrane panels: outer on the hand, middle on the forearm, inner on the arm.
-    s.hard(`wing${side}3`, membraneGeo(w, [tip, lerpV(tip, f1, 0.5).addScaledVector(trail, -R * 0.04), f1, lerpV(f1, f2, 0.5).addScaledVector(trail, -R * 0.05), f2], 0.007 * R, 0.14), mat);
-    s.hard(`wing${side}2`, membraneGeo(e, [w, f2, lerpV(f2, inner, 0.5).addScaledVector(trail, -R * 0.05), inner], 0.007 * R, 0.12), mat);
-    s.hard(`wing${side}`, membraneGeo(a, [e, inner, lerpV(inner, root, 0.5).addScaledVector(trail, -R * 0.04), root], 0.007 * R, 0.1), mat);
+    // Membrane panels: outer on the hand, middle on the forearm, inner on the
+    // arm. Each billows back between the spars, its trailing edge scalloped.
+    const sail = { thick: 0.007 * R, billow: 0.1, scallop: 0.17, tatter: o.tatter ?? 0, bulge: trail.clone().add(V(0, 0, -0.6)) };
+    s.hard(`wing${side}3`, sailGeo(w, [tip, f1, f2], [true, true], sail), mat);
+    s.hard(`wing${side}2`, sailGeo(e, [w, f2, inner], [false, true], sail), mat);
+    s.hard(`wing${side}`, sailGeo(a, [e, inner, root], [false, true], sail), mat);
     if (o.claw ?? true) s.hard(`wing${side}3`, spikeGeo(w, w.clone().add(V(x * 0.02 * R, R * 0.09, R * 0.03)), 0.016 * R * th, 4, undefined, 2), 'skin', HORN);
   });
 }
@@ -216,6 +219,8 @@ interface FiendOpt {
   tailTip?: 'spade' | 'barb' | 'none';
   wings?: number;
   wingMat?: CMat;
+  /** Ragged notches in the wings' trailing edges (0 .. 0.4). */
+  wingTatter?: number;
   arms2?: boolean;
   skin: number;
   skinSurface: Surface;
@@ -290,7 +295,7 @@ function fiendLook(c: LookCtx, o: FiendOpt): CreatureLook {
       else fleshHead(s, { size: headK, snout: 0.45, brow: 1.6, jaw: 1.15, teeth: TOOTH, ears: 0.7, eyes: 1.5, ...o.face });
       if (o.horns) horns(s, o.horns, headK * H, o.hornLen ?? 1, o.hornCol ?? HORN);
       if (o.tail) demonTail(s, 0.032 * H * Math.sqrt(t), o.tailTip ?? 'none');
-      if (o.wings) demonWings(s, { mat: o.wingMat ?? 'alt', thick: 1 });
+      if (o.wings) demonWings(s, { mat: o.wingMat ?? 'alt', thick: 1, tatter: o.wingTatter });
       if (o.spines) backSpines(s, o.spines, 0.05, 0.075 * t, o.hornCol ?? HORN);
       if (o.weapon) weapon(s, o.weapon, { steel: o.steel ?? IRON, size: o.weaponSize ?? 1, glow: o.weaponGlow });
       o.extra?.(s, H);

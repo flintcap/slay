@@ -330,15 +330,24 @@ function glacierTitan(s: Sculpt, H: number): void {
     const p = ch.clone().add(V((r() - 0.5) * 0.28 * H, (0.05 + r() * 0.08) * H, -(0.05 + r() * 0.08) * H));
     s.ball('chest', p, V((0.05 + r() * 0.04) * H, (0.035 + r() * 0.03) * H, (0.05 + r() * 0.03) * H), { mat: 'alt', k: 0.015 * H });
   }
-  crystals(s, 'chest', ch.clone().add(V(0, 0.12 * H, -0.1 * H)), 14, 0.26 * H, 0.04 * H, 79, V(0, 1, -0.5), 0.55);
+  // A cold light deep in the ice, so it reads as glacier under warm torches.
+  crystals(s, 'chest', ch.clone().add(V(0, 0.12 * H, -0.1 * H)), 14, 0.26 * H, 0.04 * H, 79, V(0, 1, -0.5), 0.55, 'alt', [0.75, 0.95, 1.25], 0.3);
   s.pair((side, x) => {
     const a = s.j(`arm${side}`);
     s.ball(`arm${side}`, a.clone().add(V(x * 0.03 * H, 0.04 * H, -0.01 * H)), V(0.075 * H, 0.055 * H, 0.07 * H), { mat: 'alt', k: 0.01 * H });
-    crystals(s, `arm${side}`, a.clone().add(V(x * 0.04 * H, 0.06 * H, -0.01 * H)), 9, 0.17 * H, 0.032 * H, 83 + x, V(x * 0.6, 1, -0.2), 0.5);
+    crystals(s, `arm${side}`, a.clone().add(V(x * 0.04 * H, 0.06 * H, -0.01 * H)), 9, 0.17 * H, 0.032 * H, 83 + x, V(x * 0.6, 1, -0.2), 0.5, 'alt', [0.75, 0.95, 1.25], 0.3);
     // Fists sheathed in ice.
     const w = s.j(`hand${side}`);
     const t = s.j(`hand${side}Tip`);
-    facet(s, `hand${side}`, lerpV(w, t, 0.45), V(0.055 * H, 0.06 * H, 0.055 * H), 85 + x, 'alt', 0.008 * H);
+    // A clump of ice blocks round each fist, shards bristling off the knuckles.
+    const fc = lerpV(w, t, 0.45);
+    const fr = seq(85 + x);
+    for (let i = 0; i < 5; i++) {
+      const o = V((fr() - 0.5) * 0.06 * H, (fr() - 0.5) * 0.07 * H, (fr() - 0.5) * 0.06 * H);
+      const sz = (0.028 + fr() * 0.016) * H;
+      facet(s, `hand${side}`, fc.clone().add(o), V(sz, sz * (0.8 + fr() * 0.5), sz * (0.8 + fr() * 0.4)), 91 + i * 7 + x, 'alt', 0.005 * H);
+    }
+    crystals(s, `hand${side}`, lerpV(w, t, 0.75), 5, 0.07 * H, 0.016 * H, 95 + x, t.clone().sub(w).normalize().add(V(x * 0.4, 0, 0.3)), 0.6, 'alt', [0.75, 0.95, 1.25], 0.3);
     crystals(s, `fore${side}`, lerpV(s.j(`fore${side}`), w, 0.5).add(V(x * 0.03 * H, 0, -0.02 * H)), 3, 0.09 * H, 0.018 * H, 87 + x, V(x, 0.3, -0.4), 0.3);
   });
   // A crack in the chest shows the blue heart.
@@ -569,11 +578,12 @@ const ELEMENTAL: Record<string, LookFactory> = {
       kind: 'giant',
       rig: { hip: 0.41, shoulders: 0.23, hips: 0.095, arms: 1.3, hunch: 0.45, head: 0.65, armOut: 0.45 },
       // Lifted from 0x587898: in dungeon light the body read as black glass.
-      skin: { surface: 'ice', tint: 0xa0c0e4 },
+      // Frozen stone under the ice: glossy ice all over read as rubber.
+      skin: { surface: 'stone', tint: 0xa8b2c4 },
       alt: { surface: 'ice', tint: 0xd0ecff },
       sculpt: glacierTitan,
       paint: {
-        skin: { grime: 0.3, ao: 0.9, mottle: { scale: 5, amount: 0.4, col: [0.45, 0.5, 0.6] }, top: { amount: 0.55, col: [1.7, 1.75, 1.8] } },
+        skin: { grime: 0.25, ao: 0.8, mottle: { scale: 6, amount: 0.4, col: [0.7, 0.72, 0.8] }, top: { amount: 0.7, col: [1.9, 1.95, 2.05] } },
         alt: { base: [1.35, 1.45, 1.55], grime: 0.05, ao: 0.5, top: { amount: 0.5, col: [1.4, 1.45, 1.5] } },
       },
       soft: { alt: 0.008 },

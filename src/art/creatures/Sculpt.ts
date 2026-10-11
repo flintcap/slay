@@ -304,6 +304,75 @@ export function membraneGeo(root: THREE.Vector3, rim: THREE.Vector3[], thick = 0
   return g;
 }
 
+/**
+ * A wing sail: a fan from `root` through finger tips `rim`, subdivided so it
+ * billows. Segments marked free (`free[i]` for rim[i]..rim[i+1]) are a
+ * trailing edge: they scallop in toward the root, bow out along `bulge`, and
+ * with `tatter` get ragged notches. Other segments (seams, spars) stay
+ * straight so panels meet. A flat fan reads as a plank; this reads as skin.
+ */
+export function sailGeo(root: THREE.Vector3, rim: THREE.Vector3[], free: boolean[], o: { thick?: number; billow?: number; scallop?: number; tatter?: number; bulge: THREE.Vector3; steps?: number; rings?: number }): THREE.BufferGeometry {
+  const thick = o.thick ?? 0.01;
+  const M = o.steps ?? 4;
+  const K = o.rings ?? 4;
+  const pos: number[] = [];
+  const idx: number[] = [];
+  const cols = (rim.length - 1) * M + 1;
+  // A column per rim sample, each a row of K+1 points root to edge.
+  const grid: THREE.Vector3[][] = [];
+  const nrm: THREE.Vector3[] = [];
+  for (let c = 0; c < cols; c++) {
+    const i = Math.min(rim.length - 2, Math.floor(c / M));
+    const t = c / M - i;
+    const a = rim[i]!;
+    const b = rim[i + 1]!;
+    const fr = free[i] ?? false;
+    const edge = a.clone().lerp(b, t);
+    const n = a.clone().sub(root).cross(b.clone().sub(root)).normalize();
+    if (n.dot(o.bulge) < 0) n.negate();
+    const s = Math.sin(Math.PI * t);
+    if (fr) {
+      // Ragged notches from a fixed hash of the sample, no randomness.
+      const h = Math.abs(Math.sin(c * 12.9898 + rim.length * 78.233) * 43758.5453) % 1;
+      edge.lerp(root, (o.scallop ?? 0.16) * s + (o.tatter ?? 0) * (h > 0.55 ? h - 0.35 : 0) * s);
+    }
+    const L = edge.distanceTo(root);
+    const col: THREE.Vector3[] = [];
+    for (let k = 0; k <= K; k++) {
+      const r = k / K;
+      const p = root.clone().lerp(edge, r);
+      if (fr) p.addScaledVector(n, (o.billow ?? 0.08) * L * s * Math.sin(r * Math.PI * 0.6));
+      col.push(p);
+    }
+    grid.push(col);
+    nrm.push(n);
+  }
+  for (const sgn of [1, -1]) {
+    const o0 = pos.length / 3;
+    for (let c = 0; c < cols; c++) {
+      for (let k = 0; k <= K; k++) {
+        const p = grid[c]![k]!.clone().addScaledVector(nrm[c]!, thick * 0.5 * sgn);
+        pos.push(p.x, p.y, p.z);
+      }
+    }
+    for (let c = 0; c < cols - 1; c++) {
+      for (let k = 0; k < K; k++) {
+        const v00 = o0 + c * (K + 1) + k;
+        const v01 = v00 + 1;
+        const v10 = v00 + K + 1;
+        const v11 = v10 + 1;
+        if (sgn > 0) idx.push(v00, v01, v11, v00, v11, v10);
+        else idx.push(v00, v11, v01, v00, v10, v11);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
 /** A box, rotated and placed (hard plates, blades). */
 export function boxGeo(c: THREE.Vector3, size: THREE.Vector3, q?: THREE.Quaternion): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(size.x, size.y, size.z);
