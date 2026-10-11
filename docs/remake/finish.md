@@ -60,8 +60,12 @@ Speed:
   now charges three's allocations to the calling game code, and what is
   left is number boxing spread through the creature IK and AI maths, no
   single owner. Update time stays 2.9 to 3.7 ms against 6. Left as is.
-- [ ] S2 depth 9 forest 1.60M triangles against 1.5M.
-- [ ] S3 depth 12 perf never measured.
+- [x] S2 depth 9 forest 1.60M triangles against 1.5M. Measured where they
+  went: thorn bushes 212k (canes halved), and monster shadows 176k against
+  128k drawn (bodies well out of view no longer cast). Now 1.47M; depth 1
+  went from 1.36M to 1.21M and 489 to 455 draw calls.
+- [x] S3 depth 12 perf never measured. Tundra, 135 monsters: 424 draw
+  calls, 1.20M triangles, 1.8 ms update, 177 KB a step. All within budget.
 - [x] S4 first town visit builds the nine townsfolk in about 28 s; build
   over several frames or off the main loop. Done: a worker meshes them at
   boot (`art/npc/FolkWorker.ts`); cold first visit 41.9 s to 14.2 s.

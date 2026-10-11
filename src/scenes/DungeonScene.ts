@@ -1100,7 +1100,7 @@ export class DungeonScene extends GameScene {
       const dz = e.root.position.z - pz;
       _viewBall.center.copy(e.root.position);
       _viewBall.radius = 4 + 2 * e.sizeScale;
-      e.inView = _view.intersectsSphere(_viewBall);
+      e.setInView(_view.intersectsSphere(_viewBall));
       // Far away: leave it in the world and visible (frustum culling already
       // handles the draw cost), just stop simulating it.
       // A monster already dying always finishes falling, wherever it is: its

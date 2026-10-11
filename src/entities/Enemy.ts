@@ -270,11 +270,26 @@ export class Enemy implements Combatant {
   /** The creature animator (read its `creature` for hit and release events). */
   readonly rig: RigAnimator | null;
   /**
-   * Set by the scene each step: false while the body is well outside the
-   * camera's view. The living pose is only solved while it is true (the
-   * monster still thinks and moves); a fall always plays out.
+   * False while the body is well outside the camera's view (the scene calls
+   * `setInView` each step). The living pose is only solved, and the body
+   * only casts a shadow, while it is true; the monster still thinks and
+   * moves, and a fall always plays out.
    */
   inView = true;
+  private shadowCasters: THREE.Mesh[] | null = null;
+
+  setInView(v: boolean): void {
+    if (v === this.inView) return;
+    this.inView = v;
+    if (!this.shadowCasters) {
+      const list: THREE.Mesh[] = [];
+      this.root.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh && o.castShadow) list.push(o as THREE.Mesh);
+      });
+      this.shadowCasters = list;
+    }
+    for (const m of this.shadowCasters) m.castShadow = v;
+  }
   protected readonly baseSpeed: number;
   protected readonly bodyRoot: THREE.Group;
 
