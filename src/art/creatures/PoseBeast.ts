@@ -68,10 +68,11 @@ export function poseQuadruped(a: CreatureAnimator): void {
   const prowl = a.style.idle === 'prowl' ? 1 : 0;
   a.rot('neck', 0.1 + 0.15 * prowl);
   a.rot('head', -0.05);
+  const wag = a.spin(1, 1.5 + 2 * g);
   for (let i = 1; i <= 8; i++) {
     const n = `tail${i}`;
     if (!a.has(n)) break;
-    a.rot(n, 0.1 - 0.12 * run * g, Math.sin(a.time * (1.5 + 2 * g) + a.offset - i * 0.55) * (0.1 + 0.1 * g), 0);
+    a.rot(n, 0.1 - 0.12 * run * g, Math.sin(wag - i * 0.55) * (0.1 + 0.1 * g), 0);
   }
 
   // Locomotion: walk bob, gallop flex.
@@ -319,7 +320,7 @@ export function poseFlyer(a: CreatureAnimator): void {
 
   // Wingbeat: a fast downstroke, a slower folded upstroke. Bats beat fast, wyverns slow.
   const rate = (11 - 6 * heavy) * (1 + 0.25 * g);
-  const ph = a.time * rate + a.offset;
+  const ph = a.spin(0, rate);
   let amp = 0.75 + 0.15 * g;
   // Casting or shooting: the wings flare wide and hold.
   const flare = a.phase === 'cast' ? ramp(t, 0, 0.3) * (1 - ramp(t, 0.85, 1)) : 0;
@@ -481,7 +482,7 @@ export function poseSerpent(a: CreatureAnimator): void {
   const heavy = a.style.heavy;
   if (a.phase === 'death') return deathSerpent(a, f, tl);
   // Slither: a wave runs from head to tail, bigger toward the tail.
-  const ph = a.cycle * TAU * 2 + a.time * 0.8 * (1 - g);
+  const ph = a.cycle * TAU * 2 + a.spin(2, 0.8 * (1 - g)) - a.offset;
   const amp = 0.18 + 0.22 * g;
   for (let i = 0; i < tl.length; i++) {
     const k = (i + 1) / tl.length;
@@ -547,7 +548,7 @@ export function poseSerpent(a: CreatureAnimator): void {
 function deathSerpent(a: CreatureAnimator, f: string[], tl: string[]): void {
   const u = a.deathT;
   const H = a.hipY;
-  const thrash = (1 - ramp(u, 0.1, 0.5)) * Math.sin(a.t * 14);
+  const thrash = ramp(u, 0, 0.3) * (1 - ramp(u, 0.25, 0.6)) * Math.sin(a.t * 14);
   const drop = ramp(u, 0.15, 0.7);
   // The front falls to the floor, the body curls and rolls to show its belly.
   for (let i = 0; i < f.length; i++) a.rot(f[i]!, 0.5 * drop, 0.3 * thrash + 0.25 * drop * a.fallDir, 0);

@@ -66,12 +66,19 @@ export function fidget(a: CreatureAnimator): { name: string; w: number; t: numbe
   return { name: a.fidget, w: ramp(t, 0, 0.25) * (1 - ramp(t, 0.7, 1)) * (1 - a.gait), t };
 }
 
-/** A body falling from above and landing: height share left, and the landing crouch (0..1). */
-export function dropFall(u: number, end = 0.5): { y: number; crouch: number } {
+/**
+ * A body falling from above and landing: height share left, and the landing
+ * crouch (0..1). `land` is the speed it still has at touchdown (0 eases to a
+ * stop in the air, 1 lands moving, as a real fall does); `rate` is how fast
+ * the crouch takes the weight, matched to that speed so the knees catch the
+ * body instead of stopping it dead.
+ */
+export function dropFall(u: number, end = 0.5, land = 0, rate = 30): { y: number; crouch: number } {
   const f = clamp01(u / end);
-  const y = (1 - f) * (1 - f);
+  // Hermite from rest at the top to `land` at the floor; land 0 keeps the old ease.
+  const y = land > 0 ? (2 * f * f * f - 3 * f * f + 1) - land * (f * f * f - f * f) : (1 - f) * (1 - f);
   // The landing squat builds over a few frames rather than in one.
-  const crouch = u < end ? 0 : (1 - Math.exp(-(u - end) * 30)) * Math.exp(-(u - end) * 9) * (1 - ramp(u, 0.85, 1)) + settle(u, end, 30, 12) * 0.12;
+  const crouch = u < end ? 0 : (1 - Math.exp(-(u - end) * rate)) * Math.exp(-(u - end) * 9) * (1 - ramp(u, 0.85, 1)) + settle(u, end, 30, 12) * 0.12;
   return { y, crouch: Math.max(0, crouch) };
 }
 

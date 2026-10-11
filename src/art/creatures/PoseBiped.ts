@@ -73,14 +73,35 @@ const MELEE: Partial<Record<AttackKind, [Key, Key]>> = {
 // ---------------------------------------------------------------------------
 
 export function poseBiped(a: CreatureAnimator): void {
-  if (a.phase === 'death') return deathUpright(a);
+  if (a.phase === 'death') {
+    deathUpright(a);
+    return arms2(a);
+  }
   stance(a);
   locomotion(a);
   idle(a);
   action(a);
+  arms2(a);
   flinchTrunk(a, 1 - 0.4 * a.style.heavy);
   staggerUpright(a);
   if (a.phase === 'spawn') spawnUpright(a);
+}
+
+/**
+ * A second pair of arms shadows the first a little behind it in strength,
+ * held forward in a guard of their own that slackens as the body dies.
+ */
+function arms2(a: CreatureAnimator): void {
+  if (!a.has('arm2L')) return;
+  const live = a.phase === 'death' ? 1 - ramp(a.deathT, 0, 0.45) : 1;
+  for (const s of ['L', 'R'] as const) {
+    a.echo(`arm${s}`, `arm2${s}`, 0.6);
+    a.echo(`fore${s}`, `fore2${s}`, 0.6);
+    a.echo(`hand${s}`, `hand2${s}`, 0.5);
+    const ph = a.time * 1.4 + a.offset + (s === 'L' ? 0 : 1.7);
+    a.rotS(`arm2${s}`, s, (-0.45 + Math.sin(ph) * 0.08) * live, 0, 0.1 * live);
+    a.rot(`fore2${s}`, (-0.8 + Math.sin(ph + 0.6) * 0.1) * live);
+  }
 }
 
 /** The specter: an upright trunk over robes, no legs. */
@@ -461,27 +482,27 @@ function spawnUpright(a: CreatureAnimator): void {
   switch (a.style.spawn) {
     case 'drop':
     case 'swoop': {
-      const d = dropFall(u, 0.5);
+      const d = dropFall(u, 0.5, 0.7, 20);
       a.body(0, d.y * H * 2.6, 0, -0.1 * d.y, 0, 0);
-      if (u < 0.5) {
-        a.ikW = 0;
-        a.rot('legL', -0.3);
-        a.rot('legR', -0.1);
-        a.rot('shinL', 0.4);
-        a.rot('shinR', 0.6);
-        a.rotS('armL', 'L', -0.8, 0, 0.9);
-        a.rotS('armR', 'R', -0.8, 0, 0.9);
-        a.rotS('wingL', 'L', -0.3, -0.8, 0.8);
-        a.rotS('wingR', 'R', -0.3, -0.8, 0.8);
-      } else {
-        // The landing: down into the knees, one hand to the floor, up.
-        const c = d.crouch;
-        a.move('hips', 0, -0.4 * a.hipY * c, -0.05 * a.hipY * c);
-        a.rot('spine', 0.6 * c);
-        a.rot('head', -0.5 * c);
-        a.rotS('armL', 'L', -0.6 * c, 0, 0.3 * c);
-        a.rotS('armR', 'R', -0.3 * c, 0, 0.7 * c);
-      }
+      // In the air: legs tucked, arms and wings out. The pose hands over to
+      // the landing across touchdown instead of snapping off.
+      const air = 1 - ramp(u, 0.44, 0.62);
+      a.ikW = ramp(u, 0.46, 0.58);
+      a.rot('legL', -0.3 * air);
+      a.rot('legR', -0.1 * air);
+      a.rot('shinL', 0.4 * air);
+      a.rot('shinR', 0.6 * air);
+      a.rotS('armL', 'L', -0.8 * air, 0, 0.9 * air);
+      a.rotS('armR', 'R', -0.8 * air, 0, 0.9 * air);
+      a.rotS('wingL', 'L', -0.3 * air, -0.8 * air, 0.8 * air);
+      a.rotS('wingR', 'R', -0.3 * air, -0.8 * air, 0.8 * air);
+      // The landing: down into the knees, one hand to the floor, up.
+      const c = d.crouch;
+      a.move('hips', 0, -0.4 * a.hipY * c, -0.05 * a.hipY * c);
+      a.rot('spine', 0.6 * c);
+      a.rot('head', -0.5 * c);
+      a.rotS('armL', 'L', -0.6 * c, 0, 0.3 * c);
+      a.rotS('armR', 'R', -0.3 * c, 0, 0.7 * c);
       return;
     }
     case 'assemble': {

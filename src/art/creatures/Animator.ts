@@ -83,6 +83,8 @@ interface Leg {
   lift: number;
 }
 
+/** How long a faded-from pose keeps its momentum, seconds (time constant). */
+const FADE_COAST = 0.07;
 const _v = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _q = new THREE.Quaternion();
@@ -174,6 +176,13 @@ export class CreatureAnimator {
   private fadeDur = 0.15;
   private snapQ: THREE.Quaternion[];
   private snapP: THREE.Vector3[];
+  /** The pose written the frame before last, and how each bone was moving when a fade began. */
+  private prevQ: THREE.Quaternion[];
+  private prevP: THREE.Vector3[];
+  private snapW: THREE.Vector3[];
+  private snapV: THREE.Vector3[];
+  private fadeT = 0;
+  private lastDt = 1 / 60;
   private hasPose = false;
   private prevLegPhase: number[];
   /** Hips height at bind: the yardstick for strides. */
@@ -218,6 +227,10 @@ export class CreatureAnimator {
     this.lPos = this.names.map(() => new THREE.Vector3());
     this.snapQ = this.names.map(() => new THREE.Quaternion());
     this.snapP = this.names.map(() => new THREE.Vector3());
+    this.prevQ = this.names.map(() => new THREE.Quaternion());
+    this.prevP = this.names.map(() => new THREE.Vector3());
+    this.snapW = this.names.map(() => new THREE.Vector3());
+    this.snapV = this.names.map(() => new THREE.Vector3());
     this.pose = new PoseBuf(n);
     this.hipY = Math.max(0.1, info.hipY);
     this.rootBody = bones.root ?? null;
@@ -320,6 +333,29 @@ export class CreatureAnimator {
   rotS(name: string, side: 'L' | 'R', x: number, y = 0, z = 0): void {
     const s = side === 'L' ? 1 : -1;
     this.rot(name, x, y * s, z * s);
+  }
+
+  private readonly spins = new Float64Array(4);
+
+  /**
+   * A phase that advances at `rate` radians a second. It is integrated, so a
+   * rate that changes with speed never makes the phase jump (time * rate
+   * would). Call once a frame per slot.
+   */
+  spin(slot: number, rate: number): number {
+    this.spins[slot] = this.spins[slot]! + rate * this.dt;
+    return this.spins[slot]! + this.offset;
+  }
+
+  /** Adds `k` times one bone's current turn to another (a second arm pair shadowing the first). */
+  echo(from: string, to: string, k: number): void {
+    const i = this.index[from];
+    const j = this.index[to];
+    if (i === undefined || j === undefined) return;
+    const r = this.pose.rot;
+    r[j * 3] += r[i * 3]! * k;
+    r[j * 3 + 1] += r[i * 3 + 1]! * k;
+    r[j * 3 + 2] += r[i * 3 + 2]! * k;
   }
 
   /** Moves a bone from its rest place (its parent's space), model units. */
@@ -429,7 +465,7 @@ export class CreatureAnimator {
     const prevPhase = this.phase;
     if (o.deathT > 0) {
       if (this.phase !== 'death') {
-        this.beginFade(0.08);
+        this.beginFade(0.16);
         this.phase = 'death';
         this.t = 0;
         // Fall away from the last blow, or a side chosen for it.
@@ -542,11 +578,27 @@ export class CreatureAnimator {
 
   private beginFade(dur: number): void {
     if (!this.hasPose) return;
+    const k = 1 / Math.max(1e-3, this.lastDt);
     for (let i = 0; i < this.names.length; i++) {
-      this.snapQ[i]!.copy(this.bonesArr[i]!.quaternion);
-      this.snapP[i]!.copy(this.bonesArr[i]!.position);
+      const bq = this.bonesArr[i]!.quaternion;
+      const bp = this.bonesArr[i]!.position;
+      this.snapQ[i]!.copy(bq);
+      this.snapP[i]!.copy(bp);
+      // The turn and travel of the last frame, per second: the snapshot keeps
+      // moving that way and eases to a stop, so a fade never freezes a limb
+      // mid-swing (the jolt a plain snapshot gives).
+      _q.copy(this.prevQ[i]!).invert().premultiply(bq);
+      if (_q.w < 0) _q.set(-_q.x, -_q.y, -_q.z, -_q.w);
+      const ang = 2 * Math.acos(Math.min(1, _q.w));
+      const sn = Math.sqrt(Math.max(0, 1 - _q.w * _q.w));
+      const w = this.snapW[i]!;
+      if (sn < 1e-6) w.set(0, 0, 0);
+      else w.set(_q.x / sn, _q.y / sn, _q.z / sn).multiplyScalar(Math.min(ang * k, 25));
+      this.snapV[i]!.copy(bp).sub(this.prevP[i]!).multiplyScalar(k);
+      if (this.snapV[i]!.lengthSq() > 100 * this.hipY * this.hipY) this.snapV[i]!.setLength(10 * this.hipY);
     }
     this.fade = 0;
+    this.fadeT = 0;
     this.fadeDur = dur;
   }
 
@@ -656,13 +708,24 @@ export class CreatureAnimator {
     }
 
     // Write, crossfading from the snapshot.
-    if (this.fade < 1) this.fade = Math.min(1, this.fade + this.dt / Math.max(0.01, this.fadeDur));
+    if (this.fade < 1) {
+      this.fade = Math.min(1, this.fade + this.dt / Math.max(0.01, this.fadeDur));
+      this.fadeT += this.dt;
+    }
     const f = this.fade < 1 ? this.fade * this.fade * (3 - 2 * this.fade) : 1;
+    // Seconds of motion the snapshot has carried on for, easing out.
+    const coast = FADE_COAST * (1 - Math.exp(-this.fadeT / FADE_COAST));
     for (let i = 0; i < n; i++) {
       const bone = this.bonesArr[i]!;
+      this.prevQ[i]!.copy(bone.quaternion);
+      this.prevP[i]!.copy(bone.position);
       if (f < 1) {
-        bone.quaternion.copy(this.snapQ[i]!).slerp(this.lQuat[i]!, f);
-        bone.position.copy(this.snapP[i]!).lerp(this.lPos[i]!, f);
+        const w = this.snapW[i]!;
+        const wl = w.length();
+        if (wl > 1e-6) _q.setFromAxisAngle(_v.copy(w).divideScalar(wl), wl * coast).multiply(this.snapQ[i]!);
+        else _q.copy(this.snapQ[i]!);
+        bone.quaternion.copy(_q).slerp(this.lQuat[i]!, f);
+        bone.position.copy(this.snapP[i]!).addScaledVector(this.snapV[i]!, coast).lerp(this.lPos[i]!, f);
       } else {
         bone.quaternion.copy(this.lQuat[i]!);
         bone.position.copy(this.lPos[i]!);
@@ -671,6 +734,7 @@ export class CreatureAnimator {
     const root = this.rootBody;
     if (root) root.scale.set(P.spread, P.squash, P.spread);
     this.hasPose = true;
+    this.lastDt = this.dt || this.lastDt;
   }
 
   /** Model-space transforms from local ones, parents first. */
