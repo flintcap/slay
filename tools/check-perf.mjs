@@ -162,17 +162,26 @@ for (const depth of DEPTHS) {
   // Sum allocation by function, walking the sampled call tree.
   const byFn = new Map();
   let allocBytes = 0;
-  const walk = (node) => {
+  // The same bytes charged to the nearest game frame above them, so a
+  // Vector3 made in three's code counts against the game code that asked.
+  const byCaller = new Map();
+  const isLib = (url) => !url || /three\.|node_modules|^node:/.test(url);
+  const nameFrame = (f) => `${f.functionName || '(anon)'} ${(f.url || '').split('/').slice(-2).join('/')}:${f.lineNumber + 1}`;
+  const walk = (node, caller) => {
     const self = node.selfSize ?? 0;
     allocBytes += self;
+    const f = node.callFrame;
+    const here = isLib(f.url) ? caller : nameFrame(f);
     if (self > 0) {
-      const f = node.callFrame;
-      const where = `${f.functionName || '(anon)'} ${(f.url || '').split('/').slice(-2).join('/')}:${f.lineNumber + 1}`;
+      const where = nameFrame(f);
       byFn.set(where, (byFn.get(where) ?? 0) + self);
+      const who = here ?? where;
+      byCaller.set(who, (byCaller.get(who) ?? 0) + self);
     }
-    for (const c of node.children ?? []) walk(c);
+    for (const c of node.children ?? []) walk(c, here);
   };
-  walk(profile.head);
+  walk(profile.head, null);
+  const topCallers = [...byCaller.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
   const allocKBPerStep = +(allocBytes / 1024 / 30).toFixed(1);
   const topAlloc = [...byFn.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
 
@@ -290,7 +299,7 @@ for (const depth of DEPTHS) {
     };
   });
 
-  const row = { depth, ...floor, ...gpu, ...cpu, allocKBPerStep, topAlloc };
+  const row = { depth, ...floor, ...gpu, ...cpu, allocKBPerStep, topAlloc, topCallers };
   rows.push(row);
   const over = Object.entries(BUDGET).filter(([k, v]) => row[k] > v);
   console.log(
@@ -308,6 +317,8 @@ for (const depth of DEPTHS) {
   if (showAlloc || row.allocKBPerStep > BUDGET.allocKBPerStep) {
     console.log('  biggest allocators (KB per step):');
     for (const [where, b] of topAlloc) console.log(`    ${(b / 1024 / 30).toFixed(1).padStart(8)}  ${where}`);
+    console.log('  biggest allocating game code (library calls charged to the caller):');
+    for (const [where, b] of row.topCallers) console.log(`    ${(b / 1024 / 30).toFixed(1).padStart(8)}  ${where}`);
   }
 }
 
@@ -319,5 +330,5 @@ console.log(
     ? `\nOK — every measured floor fits the budget.`
     : `\nFAILED — ${failures.length} over budget${failures.length ? `: ${failures.join(', ')}` : ''}${pageErrors.length ? `, ${pageErrors.length} page errors` : ''}.`,
 );
-console.log(JSON.stringify({ budget: BUDGET, rows: rows.map(({ topAlloc, owners, passes, camera, ...r }) => r) }));
+console.log(JSON.stringify({ budget: BUDGET, rows: rows.map(({ topAlloc, topCallers, owners, passes, camera, ...r }) => r) }));
 process.exit(failures.length === 0 && pageErrors.length === 0 ? 0 : 1);

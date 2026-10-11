@@ -355,6 +355,18 @@ export class Residents {                            // built by Town.ts, exposed
   `Clothes.ts`; NPC coat cuts are added to `CHEST_CUTS` under `npc.*` names.
 - Budgets (checked by `tools/check-npcdraws.mjs`): at most 16 meshes a
   resident, all nine within 240 draws with one shadow pass.
+- Meshing them is slow on a cold cache, so `main.ts` calls
+  `prewarmTownsfolk()` (`Prewarm.ts`) at boot: a module worker
+  (`FolkWorker.ts`) runs `buildFolk` for every id and posts each meshed part
+  back. Fire and forget; where workers fail the town meshes them itself.
+
+```ts
+// src/art/hero/MeshCache.ts (the shared cache the worker fills)
+export function loadMeshCache(): Promise<void>;     // reads IndexedDB once
+export function meshCached(key: string, build: () => THREE.BufferGeometry): THREE.BufferGeometry;
+export function onMeshed(fn: ((key: string, raw: RawGeo) => void) | null): void; // each fresh part (the worker)
+export function adoptMeshes(entries: ReadonlyArray<readonly [string, RawGeo]>): void; // parts meshed elsewhere
+```
 
 ## `src/entities/MonsterModels.ts` — owned by creatures
 
@@ -631,6 +643,8 @@ export class DungeonMesh {
   worldToTile(x: number, z: number): { x: number; y: number };
   /** Ground height at a world point: tile steps indoors, the terrain outdoors. */
   floorY(x: number, z: number): number;
+  /** The biome art of the zone a tile is in (maps can join biomes). */
+  artAt(tileX: number, tileY: number): BiomeArt;
   dispose(): void;
 }
 /**

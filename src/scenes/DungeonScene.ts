@@ -62,6 +62,10 @@ import { disposePropLibrary } from '../world/Props';
 import { PropRemains } from '../art/props/Remains';
 import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
 
+const _view = new THREE.Frustum();
+const _viewMat = new THREE.Matrix4();
+const _viewBall = new THREE.Sphere();
+
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
   shrine: 'Pray at the shrine',
@@ -1086,10 +1090,17 @@ export class DungeonScene extends GameScene {
     const pz = this.player.position.z;
     const LEASH = 38;
     const LEASH2 = LEASH * LEASH;
+    // What the camera saw last frame, for skipping the pose of bodies well
+    // out of view (the margin keeps edge bodies and their shadows posed).
+    _viewMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+    _view.setFromProjectionMatrix(_viewMat);
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i]!;
       const dx = e.root.position.x - px;
       const dz = e.root.position.z - pz;
+      _viewBall.center.copy(e.root.position);
+      _viewBall.radius = 4 + 2 * e.sizeScale;
+      e.inView = _view.intersectsSphere(_viewBall);
       // Far away: leave it in the world and visible (frustum culling already
       // handles the draw cost), just stop simulating it.
       // A monster already dying always finishes falling, wherever it is: its

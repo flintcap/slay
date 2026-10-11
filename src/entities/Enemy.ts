@@ -269,6 +269,12 @@ export class Enemy implements Combatant {
   protected readonly rng: Rng;
   /** The creature animator (read its `creature` for hit and release events). */
   readonly rig: RigAnimator | null;
+  /**
+   * Set by the scene each step: false while the body is well outside the
+   * camera's view. The living pose is only solved while it is true (the
+   * monster still thinks and moves); a fall always plays out.
+   */
+  inView = true;
   protected readonly baseSpeed: number;
   protected readonly bodyRoot: THREE.Group;
 
@@ -806,7 +812,7 @@ export class Enemy implements Combatant {
         this.action = 'idle';
       }
     }
-    this.rig?.update(dt, {
+    if (this.inView) this.rig?.update(dt, {
       locomotion: this.locomotion,
       action: this.spawnT > 0 ? 'spawn' : this.action,
       actionT: this.spawnT > 0 ? 1 - this.spawnT : this.actionT,

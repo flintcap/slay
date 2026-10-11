@@ -835,11 +835,11 @@ function tickProjectiles(dt: number, ctx: CombatContext): void {
     p.y += p.vy * dt;
     p.z += p.vz * dt;
     p.mesh.position.set(p.x, p.y, p.z);
-    p.fx?.setEndpoint?.(_projAt.set(p.x, p.y, p.z));
-    if (p.spin !== 0) {
-      p.mesh.rotation.z += p.spin * dt;
-    } else {
-      p.mesh.lookAt(p.x + p.vx, p.y + p.vy, p.z + p.vz);
+    p.fx?.setEndpoint?.(_projAt.copy(p.mesh.position));
+    // Only solid shots show their mesh; an effect-drawn bolt needs no turn.
+    if (p.mesh.visible) {
+      if (p.spin !== 0) p.mesh.rotation.z += p.spin * dt;
+      else p.mesh.lookAt(p.x + p.vx, p.y + p.vy, p.z + p.vz);
     }
 
     if (p.trail && ctx.rng.next() < dt * (p.fx ? 8 : 22)) {
