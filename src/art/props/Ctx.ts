@@ -49,7 +49,7 @@ export interface PropPalette {
 
 const PAL: Record<BiomeId, PropPalette> = {
   crypt: {
-    stone: 'stone.crypt', rock: 'stone.crypt', wood: 'prop.timber.dark', planks: 'prop.planks.dark', bark: 'wood.bark',
+    stone: 'stone.crypt', rock: 'stone.crypt', wood: 'prop.timber', planks: 'prop.planks', bark: 'wood.bark',
     iron: 'prop.iron.rust', fine: 'prop.bronze', cloth: 'cloth.tattered', clothTint: 0x5a2622, bone: 'bone.old',
     stain: 0x4a5040, stainAmt: 0.55, accent: 0x9fb8ff, flame: 0xffa040, leaf: 0x4a5236,
   },
@@ -133,15 +133,17 @@ export interface BuildCtx {
   /** The biome's own torch colour. */
   glow: number;
   outdoor: boolean;
+  /** Used-state for interactables: 'open', 'spent', 'pulled'. Undefined = as placed. */
+  state?: string;
 }
 
 export type Builder = (k: PropKit, c: BuildCtx) => void;
 
 const OUTDOOR = new Set<BiomeId>(['darkForest', 'swamp', 'desert', 'tundra', 'ashwaste', 'hell']);
 
-export function makeCtx(art: BiomeArt, rng: Rng, variant: number): BuildCtx {
+export function makeCtx(art: BiomeArt, rng: Rng, variant: number, state?: string): BuildCtx {
   const biome = art.id;
-  return { art, biome, rng, variant, pal: paletteFor(biome), glow: art.lightColor, outdoor: OUTDOOR.has(biome) };
+  return { art, biome, rng, variant, pal: paletteFor(biome), glow: art.lightColor, outdoor: OUTDOOR.has(biome), state };
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +158,7 @@ export const M = {
   bark: (c: BuildCtx, o: PropMatOpts = {}) => propMat(c.pal.bark, o),
   iron: (c: BuildCtx, o: PropMatOpts = {}) => propMat(c.pal.iron, o),
   fine: (c: BuildCtx, o: PropMatOpts = {}) => propMat(c.pal.fine, o),
-  cloth: (c: BuildCtx, o: PropMatOpts = {}) => propMat(c.pal.cloth, { tint: c.pal.clothTint, side: THREE.DoubleSide, grime: 0.6, ...o }),
+  cloth: (c: BuildCtx, o: PropMatOpts = {}) => propMat(c.pal.cloth, { base: c.pal.clothTint, side: THREE.DoubleSide, grime: 0.6, ...o }),
   bone: (c: BuildCtx, o: PropMatOpts = {}) => propMat(c.pal.bone, o),
 };
 

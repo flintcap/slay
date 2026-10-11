@@ -153,6 +153,8 @@ export function propSurfaceKeys(): string[] {
 export interface PropMatOpts {
   /** Multiplicative colour on top of the key's own. */
   tint?: number;
+  /** Target mid-tone, replacing the key's own (the scan is recoloured toward it). */
+  base?: number;
   /** Scales the key's roughness. */
   rough?: number;
   metal?: number;
@@ -367,11 +369,11 @@ function cached<T extends THREE.Material>(key: string, make: () => T): T {
  * ships as a broken material.
  */
 export function propMat(key: string, o: PropMatOpts = {}): THREE.MeshStandardMaterial {
-  const ck = `pm|${key}|${o.tint ?? -1}|${o.rough ?? 1}|${o.metal ?? -1}|${o.scale ?? 1}|${o.bump ?? 1}|${o.emissive ?? -1}|${o.emissiveIntensity ?? -1}|${o.crackGlow ? 1 : 0}|${o.grime ?? 1}|${o.grimeHeight ?? 0.55}|${o.side ?? 0}|${o.transparent ? 1 : 0}|${o.opacity ?? 1}`;
+  const ck = `pm|${key}|${o.tint ?? -1}|${o.base ?? -1}|${o.rough ?? 1}|${o.metal ?? -1}|${o.scale ?? 1}|${o.bump ?? 1}|${o.emissive ?? -1}|${o.emissiveIntensity ?? -1}|${o.crackGlow ? 1 : 0}|${o.grime ?? 1}|${o.grimeHeight ?? 0.55}|${o.side ?? 0}|${o.transparent ? 1 : 0}|${o.opacity ?? 1}`;
   return cached(ck, () => {
     const r = resolve(key);
     const m = new THREE.MeshStandardMaterial({ name: `prop:${key}`, vertexColors: true });
-    m.color = tintFor(r, o.tint);
+    m.color = tintFor(o.base !== undefined ? { ...r, base: o.base } : r, o.tint);
     m.roughness = o.rough ?? 1;
     m.metalness = o.metal ?? r.metal;
     m.envMapIntensity = m.metalness > 0.5 ? 1.3 : 1.0;

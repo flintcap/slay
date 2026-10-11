@@ -26,6 +26,8 @@ export interface PropLightSpec {
   forward: number;
   /** Shine in the biome's own torch colour (`art.lightColor`) instead of `color`. */
   mood?: boolean;
+  /** Shine in the biome's fire colour (the palette's flame), for open fires. */
+  fire?: boolean;
 }
 
 export interface PropDef {
@@ -102,7 +104,7 @@ export const PROP_DEFS: Record<string, PropDef> = {
     blocks: true,
     variants: 3,
     scaleJitter: 0.08,
-    light: { color: 0xff8a3c, intensity: 9, distance: 17, height: 1.45, flicker: 1, forward: 0, mood: true },
+    light: { color: 0xff8a3c, intensity: 9, distance: 17, height: 1.45, flicker: 1, forward: 0, fire: true },
   }),
   candleCluster: P('candleCluster', {
     radius: 0,
@@ -130,7 +132,7 @@ export const PROP_DEFS: Record<string, PropDef> = {
     blocks: true,
     variants: 3,
     scaleJitter: 0.08,
-    light: { color: 0xff8a3c, intensity: 8, distance: 15, height: 0.9, flicker: 1, forward: 0, mood: true },
+    light: { color: 0xff8a3c, intensity: 8, distance: 15, height: 0.9, flicker: 1, forward: 0, fire: true },
   }),
 
   // --- pillars ---------------------------------------------------------------

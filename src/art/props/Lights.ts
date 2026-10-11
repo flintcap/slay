@@ -231,7 +231,7 @@ const brazier: Builder = (k, c) => {
   }));
   k.add(coals(), coal, { y: top - 0.04 });
   k.add(propMat('prop.timber.charred'), log(0.4, 0.035, k.rng, { seg: 5 }), { y: top - 0.02, x: -0.15, rz: -1.3, ry: k.rng.range(0, 3) }, 0.7);
-  k.flame(flameMat(c.glow), fireGeo(0.18, 0.6, k.rng, 5), top, 0);
+  k.flame(flameMat(c.pal.flame), fireGeo(0.18, 0.6, k.rng, 5), top, 0);
 };
 
 const candleCluster: Builder = (k, c) => {
@@ -239,9 +239,9 @@ const candleCluster: Builder = (k, c) => {
   const n = 3 + c.variant * 2;
   const flames: THREE.BufferGeometry[] = [];
   // A puddle of old wax that the candles stand in.
-  const puddle = lathe([[0.0001, 0.02], [0.18, 0.015], [0.24, 0], [0.0001, 0]], 12);
+  const puddle = lathe([[0.0001, 0.015], [0.13, 0.012], [0.19, 0], [0.0001, 0]], 12);
   jag(puddle, k.rng, 0.02, 8);
-  k.add(wax, puddle, undefined, 0.85);
+  k.add(wax, puddle, undefined, 0.6);
   if (c.variant === 2) k.add(M.bone(c), skull(k.rng, 0.9), { y: 0.09, ry: k.rng.range(-0.6, 0.6) }, 0.85);
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + k.rng.range(-0.4, 0.4);
@@ -313,7 +313,7 @@ const lanternPost: Builder = (k, c) => {
   k.add(glowMat(c.glow, 1.0), box(0.16, 0.2, 0.16, 0.004), { y: y0 + 0.035, z: lz }, 0.8);
   if (c.variant === 2) {
     // A tattered rag tied under the arm.
-    const rag = propMat('cloth.rags', { tint: c.pal.clothTint, side: THREE.DoubleSide });
+    const rag = propMat('cloth.rags', { base: c.pal.clothTint, side: THREE.DoubleSide });
     k.add(rag, mottle(shade(new THREE.PlaneGeometry(0.16, 0.5, 2, 5), 0.8), k.rng, 0.4), { y: 2.1, z: 0.12, ry: Math.PI / 2 });
   }
   k.flame(flameMat(c.glow), flameGeo(0.1, 0.03, k.rng), y0 + 0.05, lz);
@@ -367,7 +367,7 @@ const campfire: Builder = (k, c) => {
     const pot = lathe([[0.0001, 0], [0.1, 0.01], [0.15, 0.08], [0.15, 0.18], [0.12, 0.24], [0.13, 0.26], [0.11, 0.26], [0.1, 0.22]], 10);
     k.add(iron, pot, { y: 0.44 }, 0.5);
   }
-  k.flame(flameMat(c.glow), fireGeo(0.22, 0.6, k.rng, 6), 0.06, 0);
+  k.flame(flameMat(c.pal.flame), fireGeo(0.22, 0.6, k.rng, 6), 0.06, 0);
 };
 
 export const LIGHTS: Record<string, Builder> = {

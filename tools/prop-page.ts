@@ -8,6 +8,7 @@
  * triangles, draw calls (layers + flame), build time.
  */
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { allSetNames, preloadSets } from '../src/art/TextureSets';
 import { assetsPending, preloadAssets } from '../src/core/Assets';
 import { propTextureFiles, propMat } from '../src/art/props/PropMats';
@@ -22,6 +23,7 @@ const INK = '#c9d1de';
 const DIM = '#7d8796';
 
 let renderer: THREE.WebGLRenderer | null = null;
+let envTex: THREE.Texture | null = null;
 
 function studio(w: number, h: number): THREE.WebGLRenderer {
   if (!renderer) {
@@ -32,6 +34,11 @@ function studio(w: number, h: number): THREE.WebGLRenderer {
     renderer.shadowMap.enabled = true;
   }
   renderer.setSize(w, h, false);
+  if (!envTex) {
+    const pm = new THREE.PMREMGenerator(renderer);
+    envTex = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+  }
   return renderer;
 }
 
@@ -89,8 +96,10 @@ export async function kinds(ids: string[], biomes: string[]): Promise<string> {
     const def = propDef(kind);
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x101216);
-    scene.add(new THREE.HemisphereLight(0x8090b0, 0x2a2420, 0.9));
-    const key = new THREE.DirectionalLight(0xffe0c0, 1.6);
+    scene.environment = envTex;
+    scene.environmentIntensity = 0.18;
+    scene.add(new THREE.HemisphereLight(0x8090b0, 0x2a2420, 1.6));
+    const key = new THREE.DirectionalLight(0xffe0c0, 2.4);
     key.position.set(3, 6, 4);
     key.castShadow = true;
     key.shadow.mapSize.set(512, 512);

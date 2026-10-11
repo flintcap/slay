@@ -311,7 +311,16 @@ export function torus(r: number, tube: number, radial = 6, tubular = 16, arc = M
 
 /** Revolve `[radius, y]` pairs around Y (urns, bowls, candles, columns). Base-anchored as authored. */
 export function lathe(profile: Array<[number, number]>, seg = 12): THREE.BufferGeometry {
-  return latheGeo(profile, seg);
+  // Faces point outward when the profile runs bottom, out, up, in (counter-
+  // clockwise in the r/y plane). Profiles written top-first are turned round,
+  // so a builder never ships an inside-out cap or mound.
+  let area = 0;
+  for (let i = 0; i < profile.length; i++) {
+    const [r0, y0] = profile[i]!;
+    const [r1, y1] = profile[(i + 1) % profile.length]!;
+    area += r0 * y1 - r1 * y0;
+  }
+  return latheGeo(area < 0 ? [...profile].reverse() : profile, seg);
 }
 
 /**

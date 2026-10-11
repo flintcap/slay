@@ -11,11 +11,18 @@ import type { BiomeArt } from '../../world/Biomes';
 import { hash2 } from '../Noise';
 import { hashString, streamFor } from '../../core/RNG';
 import { PropKit } from './Kit';
-import { makeCtx, type Builder } from './Ctx';
+import { makeCtx, paletteFor, type Builder } from './Ctx';
 import { propDef, type PropLightSpec } from './Defs';
 import { disposePropMats } from './PropMats';
 import { LIGHTS } from './Lights';
 import { STONE } from './Stone';
+import { CRYPT } from './Crypt';
+import { WILD } from './Wild';
+import { ELEMENTS } from './Elements';
+import { WORKS } from './Works';
+import { HIVE } from './Hive';
+import { CONTAINERS } from './Containers';
+import { DETAIL } from './Detail';
 
 export interface PropLayer {
   geometry: THREE.BufferGeometry;
@@ -41,11 +48,25 @@ export interface PropTemplate {
 export const KIND_GROUPS: Record<string, string[]> = {
   lights: Object.keys(LIGHTS),
   stone: Object.keys(STONE),
+  crypt: Object.keys(CRYPT),
+  wild: Object.keys(WILD),
+  elements: Object.keys(ELEMENTS),
+  works: Object.keys(WORKS),
+  hive: Object.keys(HIVE),
+  containers: Object.keys(CONTAINERS),
+  detail: Object.keys(DETAIL),
 };
 
 const BUILDERS: Record<string, Builder> = {
   ...LIGHTS,
   ...STONE,
+  ...CRYPT,
+  ...WILD,
+  ...ELEMENTS,
+  ...WORKS,
+  ...HIVE,
+  ...CONTAINERS,
+  ...DETAIL,
 };
 
 /** True when the new library can build this kind. */
@@ -75,7 +96,9 @@ export function libraryTemplate(kind: string, art: BiomeArt, _seed: number, vari
   const k = new PropKit(rng);
   build(k, makeCtx(art, rng, variant));
   const out = k.done();
-  const light = def.light ? { ...def.light, color: def.light.mood ? art.lightColor : def.light.color } : null;
+  const light = def.light
+    ? { ...def.light, color: def.light.fire ? paletteFor(art.id).flame : def.light.mood ? art.lightColor : def.light.color }
+    : null;
   const tmpl: PropTemplate = {
     kind,
     variant,
