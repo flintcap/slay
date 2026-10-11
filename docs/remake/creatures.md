@@ -1,6 +1,6 @@
 # Stream: creatures (every monster and boss body and animation)
 
-Status: in progress
+Status: done
 
 Goal: monsters look and move like Diablo II and Path of Exile monsters:
 distinct silhouettes per family, grim materials, heavy and readable motion.
@@ -26,7 +26,7 @@ Remake from nothing.
   know at a glance, phase changes you can see.
 - [x] Ranks and affixes. (wip(creatures): bodies stay where they fall; rank rims in plate colours; mini-boss crown; boss phases burn hotter) Champion, elite, rare and affix looks (tints, auras,
   size) that read at a glance without hiding the model.
-- [ ] Switch and clean. Delete old `MonsterModels.ts` builders and the old
+- [x] Switch and clean. (creatures: switch every monster to its creature body; delete the old builders and the old animator; creatures: boss portraits rendered from the boss bodies, in an iron medallion, ready before the fight) Delete old `MonsterModels.ts` builders and the old
   `MonsterAnimation.ts` and every reference. Boss portraits redrawn from the
   new models.
 
@@ -82,22 +82,46 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 - Tools: `node tools/creature-sheet.mjs <lineup|big|side|poses|game> --ids=...`
   renders sheets; `node tools/check-monster-anim.mjs [--all]` checks motion.
 
-## Next up
+## Handover
 
-1. Switch and clean: delete the old builders in `MonsterModels.ts` and
-   `LegacyRigAnimator` in `MonsterAnimation.ts` (every id has a look now;
-   keep the exact rng draws in `buildMonsterModel`); grep shows no
-   references.
-2. Boss portraits (`src/art/BossPortraits.ts`) drawn from the new models.
-3. Polish if time: ashen prophet's plank wings, hive queen's dim wings, a
-   plainer stalker prime, boss triangle counts over 12k (13k to 18.7k).
+What exists now:
+
+- Every monster (127) and boss (24) is a creature: a look per id in
+  `src/art/creatures/Look*.ts` (rig, SDF sculpt, materials, motion style),
+  baked once into one to three skinned meshes (`Creature.ts`, `Bake.ts`,
+  IndexedDB cache in `Store.ts`) and instanced per spawn. Ids with no look
+  of their own would get `genericLook` (none today).
+- Motion: `Animator.ts` (`CreatureAnimator`, and the `RigAnimator` face the
+  game holds) with per-rig posers (`Pose*.ts`): IK feet, idles, gaits, two
+  or more attacks, casts, hits, staggers, real falls, spawns from the
+  ground or from above.
+- Bodies stay where they fall (`leaveCorpse`, 36 kept). Rank rims in the
+  nameplate colours, a mini-boss crown, boss phases burn hotter.
+- `src/entities/MonsterModels.ts` is now only the door: archetypes,
+  `buildMonsterModel` (exact old rng draws), release and dispose. The old
+  builders and `src/art/MonsterAnimation.ts` are gone.
+- Boss portraits are rendered from the boss bodies (`BossPortraits.ts`),
+  prepared when the boss is built, cached in localStorage.
+- Tools: `creature-sheet.mjs` (`lineup`, `game`, `big`, `side`, `poses`,
+  `ranks`), `check-monster-anim.mjs` (monsters and bosses),
+  `art-sheet.mjs bosses` (portraits).
+
+Left for `finish`:
+
+- Polish: ashen prophet's wings read as planks, hive queen's wings are dim,
+  stalker prime is plain, glacier fists, the djinn is dark.
+- Some boss bodies run 13k to 18.7k triangles (budget 12k); one boss is on
+  screen at a time, so it is safe, but they could be trimmed.
+- First bakes on a cold cache take 150 to 500 ms per monster and 0.6 to
+  2.9 s per boss on the main thread; a worker would hide them.
+- A boss portrait opens a second WebGL context once per boss (then cached);
+  if that ever hitches, render it with the main renderer instead.
 
 ## Notes for resume
 
-- The switch is live per id: `buildMonsterModel` uses the new creature when
-  `hasLook(id)` (id found from the visual object by reference), else the old
-  builder. `RigAnimator` wraps `CreatureAnimator` or the old animator. Both
-  keep the exact old rng draws.
+- `buildMonsterModel` always builds the creature (look found from the
+  visual object by reference, else the generic look). `RigAnimator` wraps
+  `CreatureAnimator`. Both keep the exact old rng draws.
 - Bakes run on the main thread at first spawn (about 150 to 500 ms each,
   cold); IndexedDB `slay-creature-meshes` makes repeats free. If floor loads
   stall, move baking to a worker.
