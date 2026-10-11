@@ -35,20 +35,31 @@ rendered icon hashes).
 
 ## Next up
 
-1. Look system: build `src/art/items/Geo.ts` (geometry kit), `Mats.ts`
-   (item materials, object-space triplanar), `Parts.ts` (collect parts per
-   material slot, merge), `Features.ts` (unique and set decorations). The
-   look itself (`src/art/ItemLook.ts`, `src/art/items/Designs.ts`) is
-   written and in CONTRACTS.md.
-2. Weapons: `src/art/items/Weapons.ts`, one authored cut per base.
-3. Then armour, jewellery, icons, drops, switch and clean (see milestones).
+1. Armour, shields and jewellery: `src/art/items/Offhand.ts` (shields,
+   quivers), `Wear.ts` (helms, chests, gloves, boots, belts), `Trinkets.ts`
+   (amulets, rings, charms, gems, runes, potions, materials). Register each
+   in `Families.ts`.
+2. Switch `src/art/ItemModels.ts` to `buildItem` (keep its exports), new
+   drop model lying on the floor (keep the beam, pool, sigil, dropLight names
+   for vfx).
+3. Icons rendered from the models (`src/art/items/IconRender.ts`), then the
+   "every base looks different" check, textures, delete the old painters.
 
 ## Notes for resume
 
-- heroes runs at the same time and draws armour from your ItemLook
+- Built so far (in `src/art/items/`): Geo, Mats, Parts, Kit, Features,
+  Designs, Blades (swords, daggers), Weapons (axes, maces, polearms), Ranged
+  (bows, crossbows), Casters (wands, staves, scepters, orbs), Model
+  (`buildItem`), Families (builder table). Not yet used by the game.
+- Look at them: `SLAY_PORT=4326 timeout 900 node tools/item-sheet.mjs
+  axe,bow --out=<dir>` (any category name, or uniques, sets, rarity
+  --base=). Takes seconds.
+- Bows lie in the YZ plane (limbs up and down, bowed toward -Z, the arrow
+  flies +Z), as the old bow did; everything else is wide on X, thin on Z.
+- heroes draws armour from your ItemLook
   (`src/art/hero/Armour.ts` reads palette, trimKey, trimTint, glowColor,
   stone, kind, baseTier, family, hasTrim, hasGems, hasRunes, glow, accent).
   Never drop or rename those.
 - Held items: grip at origin, business end along +Y, wide on X, thin on Z.
-- Plan: `src/art/ItemModels.ts` and `src/art/Icons.ts` stay as the public
+- `src/art/ItemModels.ts` and `src/art/Icons.ts` stay as the public
   facades (many files import them); the old builders inside are replaced.
