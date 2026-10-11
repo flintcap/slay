@@ -131,6 +131,12 @@ Testing costs the owner's usage. Spend it only where it buys certainty.
   separate image reads. Never reread an image you already judged.
 - **Read files in parts.** Search first, then read only the lines you need.
   Do not reread a file you already read unless it changed.
+- **One browser at a time on the whole machine.** The machine has 4 cores
+  and every browser run renders in software. Two at once make both several
+  times slower. Wrap every browser run in the shared lock, so runs queue
+  instead of fighting:
+  `flock /tmp/slay-browser.lock timeout 2700 node tools/<tool>.mjs ...`
+  Never start a second browser run of your own while one is going.
 - **No helper agents.** Do not spawn sub-agents.
 - **Good enough wins.** When a check passes the quality bar, stop and move
   on. Do not keep polishing to shave the last bit.
