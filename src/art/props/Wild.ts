@@ -19,15 +19,15 @@ function leafMat(c: BuildCtx, tint = c.pal.leaf) {
 }
 
 /** A branch and its children, as tubes, into `out`. */
-function branch(out: THREE.BufferGeometry[], from: THREE.Vector3, dir: THREE.Vector3, len: number, r: number, rng: Rng, depth: number): void {
+function branch(out: THREE.BufferGeometry[], from: THREE.Vector3, dir: THREE.Vector3, len: number, r: number, rng: Rng, depth: number, seg = 5, steps = 8): void {
   const pts = branchPath(from, dir, len, rng, 0.35, 4);
-  out.push(tube(pts, r, r * 0.35, 5, 8));
+  out.push(tube(pts, r, r * 0.35, seg, steps));
   if (depth <= 0) return;
   const n = rng.int(1, 2);
   for (let i = 0; i < n; i++) {
     const at = pts[rng.int(1, pts.length - 2)]!;
     const d = dir.clone().add(V(rng.range(-0.9, 0.9), rng.range(-0.1, 0.5), rng.range(-0.9, 0.9))).normalize();
-    branch(out, at, d, len * rng.range(0.45, 0.65), r * 0.5, rng, depth - 1);
+    branch(out, at, d, len * rng.range(0.45, 0.65), r * 0.5, rng, depth - 1, seg, steps);
   }
 }
 
@@ -153,7 +153,9 @@ const thornBush: Builder = (k, c) => {
   for (let i = 0; i < n; i++) {
     const a = k.rng.range(0, Math.PI * 2);
     const d = V(Math.cos(a), k.rng.range(0.4, 1.2), Math.sin(a)).normalize();
-    branch(parts, V(0, 0, 0), d, k.rng.range(0.45, 0.8), 0.032, k.rng, 1);
+    // Thin canes: four sides and five steps (half the tree branches' cost).
+    // A dense forest floor holds about a hundred of these in view.
+    branch(parts, V(0, 0, 0), d, k.rng.range(0.45, 0.8), 0.032, k.rng, 1, 4, 5);
   }
   // Thorns along the canes.
   for (let i = 0; i < 24; i++) {
