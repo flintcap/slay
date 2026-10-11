@@ -49,6 +49,8 @@ const PORT = Number(process.env.SLAY_PORT ?? 4333);
 const WARM = process.argv.includes('--warm');
 const PROFILE = process.argv.includes('--profile');
 const TEXLOG = process.argv.includes('--texlog');
+// --census: count what the scene graph holds in the map, branch by branch.
+const CENSUS = process.argv.includes('--census');
 const ONLY = arg('only')?.split(',') ?? ['menus', 'select', 'view', 'areas', 'fight'];
 const [VW, VH] = (arg('size') ?? '480x270').split('x').map(Number);
 const FIGHT_FRAMES = Number(arg('fight') ?? 300);
@@ -325,6 +327,36 @@ async function visit(label) {
       window.SLAY.debug.godMode(true);
       await new Promise((r) => setTimeout(r, 2000));
     });
+    if (CENSUS) {
+      // What the scene graph walks every frame, by top-level branch.
+      const rows = await page.evaluate(() => {
+        const scene = window.SLAY.engine.currentScene.scene;
+        const out = [];
+        let all = 0;
+        let auto = 0;
+        for (const c of scene.children) {
+          let n = 0;
+          let a = 0;
+          let meshes = 0;
+          let transp = 0;
+          c.traverse((o) => {
+            n++;
+            if (o.matrixAutoUpdate) a++;
+            if (o.isMesh || o.isPoints || o.isSprite) {
+              meshes++;
+              const m = Array.isArray(o.material) ? o.material[0] : o.material;
+              if (m?.transparent) transp++;
+            }
+          });
+          all += n;
+          auto += a;
+          out.push(`${(c.name || c.type).slice(0, 28).padEnd(28)} objects ${String(n).padStart(5)}  auto ${String(a).padStart(5)}  drawables ${String(meshes).padStart(5)}  transparent ${transp}`);
+        }
+        out.unshift(`scene: ${all} objects, ${auto} with matrixAutoUpdate`);
+        return out;
+      });
+      for (const r of rows) console.log(`      census ${r}`);
+    }
   }
   if (ONLY.includes('menus')) {
     await seg('menus: map pause open', async () => {

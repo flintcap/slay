@@ -4,6 +4,7 @@ import type { SceneId } from '../types';
 import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { save } from '../core/Save';
+import { drawItemIconsNow } from '../art/Icons';
 import { addItemToInventory } from '../sim/Inventory';
 import { Random, randomSeed } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
@@ -198,6 +199,8 @@ export class TownScene extends GameScene {
     } else {
       toast(`Welcome back, ${character.name}.`, 'info');
     }
+    // The pack's icons, drawn behind the curtain rather than in play.
+    await drawItemIconsNow([...Object.values(character.equipment), ...character.inventory]);
   }
 
   private descend(): void {

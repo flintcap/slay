@@ -171,7 +171,11 @@ function pump(): void {
 
 function schedulePump(): void {
   if (pumping) return;
-  pumping = requestAnimationFrame(pump);
+  // In the idle time after a frame, not at its start: an icon picked up mid
+  // fight no longer adds its drawing to the frame that is about to render.
+  // Capped, so a busy fight still sees its icons within a second.
+  const idle = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  pumping = idle ? idle(pump, { timeout: 1000 }) : requestAnimationFrame(pump);
 }
 
 /**
@@ -209,6 +213,41 @@ export function warmItemIcons(items: Iterable<Item | null>): void {
     pending.set(key, item);
   }
   if (pending.size > 0) schedulePump();
+}
+
+/**
+ * Draws the icons for `items` now, one per task, until all are drawn or
+ * `budgetMs` has passed; for a scene to call behind its loading curtain.
+ *
+ * The icons are rendered in a WebGL context of their own. Its first use (the
+ * context, its lighting and a shader per kind of material) and each icon
+ * after it used to land on frames in play: the pack's icons were drawn in
+ * the background right after a scene opened, a long frame or several in the
+ * first seconds of every visit. Whatever the budget leaves is drawn in the
+ * background as before.
+ */
+export async function drawItemIconsNow(items: Iterable<Item | null | undefined>, budgetMs = 1500): Promise<void> {
+  const t0 = performance.now();
+  const ok = await Promise.race([
+    itemScansReady().then(() => true),
+    new Promise<boolean>((r) => setTimeout(() => r(false), budgetMs)),
+  ]);
+  if (!ok) return;
+  scansReady = true;
+  const gen = generation;
+  for (const item of items) {
+    if (!item) continue;
+    if (performance.now() - t0 > budgetMs || gen !== generation) break;
+    const key = iconKeyFor(item);
+    if (itemCache.has(key) || encoding.has(key)) continue;
+    pending.delete(key);
+    try {
+      drawItemIconAsync(item, key);
+    } catch {
+      /* drawn later, or the slot keeps its fallback */
+    }
+    await new Promise((r) => setTimeout(r, 0));
+  }
 }
 
 /**

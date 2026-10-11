@@ -43,7 +43,7 @@ import { NameplateLayer } from '../ui/Nameplates';
 import { CombatTextLayer } from '../ui/CombatText';
 import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
-import { affixIconUri } from '../art/Icons';
+import { affixIconUri, drawItemIconsNow } from '../art/Icons';
 import { runtime as hudRuntime } from '../ui/Widgets';
 import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
@@ -518,7 +518,12 @@ export class DungeonScene extends GameScene {
       setTimeout(() => toast(this.run.quest.name, 'epic'), 800);
     }
     audio.music(this.biome.music, 2.0);
-    await this.bossPortraitReady();
+    // The pack's icons, drawn behind the curtain rather than in play.
+    const held = save.account.current;
+    await Promise.all([
+      this.bossPortraitReady(),
+      held ? drawItemIconsNow([...Object.values(held.equipment), ...held.inventory]) : null,
+    ]);
   }
 
   /**
