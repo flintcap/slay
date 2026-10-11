@@ -115,7 +115,7 @@ export function shortsSpec(body: BodyMesh, _female: boolean): GarmentSpec {
     thickness: (x, y, z) => 0.008 + 0.003 * Math.sin(Math.atan2(x, z) * 7 + y * 14) * Math.min(1, Math.max(0, (3.6 * h - y) / h)),
     clips: [up(4.36 * h), shinCut(body, true, 0.6), shinCut(body, false, 0.6)],
     cell: 0.01,
-    tris: 2400,
+    tris: 1500,
     yRange: [0.9 * h, 4.5 * h],
   };
 }
@@ -133,7 +133,7 @@ export function chestWrapSpec(body: BodyMesh): GarmentSpec {
     thickness: (x, y, z) => 0.0065 + 0.0025 * Math.sin(Math.atan2(x, z) * 5 + y * 10) * Math.min(1, Math.max(0, (5.0 * h - y) / h)),
     clips: [neck, down(3.95 * h), limbCut(body, 'upperArmL', 'foreArmL', 0.5), limbCut(body, 'upperArmR', 'foreArmR', 0.5)],
     cell: 0.01,
-    tris: 2600,
+    tris: 1500,
     skinGroups: [G.torso, G.armL, G.armR],
     yRange: [3.85 * h, 6.45 * h],
   };
@@ -147,7 +147,7 @@ export function beltSpec(body: BodyMesh): GarmentSpec {
     thickness: 0.011,
     clips: [up(4.31 * h), down(4.23 * h)],
     cell: 0.007,
-    tris: 700,
+    tris: 450,
     yRange: [4.15 * h, 4.4 * h],
   };
 }

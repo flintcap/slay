@@ -392,6 +392,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       for (const [kitName, kit] of Object.entries(KITS)) {
         const hero = buildHero(HERO_LOOKS[cls], `${cls}-${kitName}`);
         const t0 = performance.now();
+        const hidden = new Set<string>();
         for (const id of kit) {
           const base = ITEM_BASES.find((b) => b.id === id);
           if (!base) {
@@ -399,15 +400,17 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
             continue;
           }
           try {
-            wearArmour(hero, base.slot as EquipSlot, { baseId: base.id, rarity: 'unique' }, base.visual);
+            wearArmour(hero, base.slot as EquipSlot, { baseId: base.id, rarity: 'unique' }, base.visual)?.hides.forEach((h) => hidden.add(h));
           } catch (e) {
             bad(`${cls} ${id}: ${String(e).slice(0, 160)}`);
           }
         }
+        setHeroHidden(hero, hidden);
         const ms = performance.now() - t0;
         let tris = 0;
         let draws = 0;
-        hero.root.traverse((o) => {
+        // What is drawn: parts the gear hides cost nothing.
+        hero.root.traverseVisible((o) => {
           const m = o as THREE.Mesh;
           if (!m.isMesh) return;
           draws++;
@@ -748,6 +751,37 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
    * Gear makes the look: one class (--class=, default all) bare, in starter,
    * mid and elite gear, in a full set and in uniques, holding its weapons.
    */
+  async wear(f) {
+    // Every base of one worn slot on one hero, framed on that slot: --slot= --class= --rarity= --unique= --set=
+    profileBodies(true);
+    const cls = (f.class ?? 'warden') as CharClassId;
+    const slot = f.slot ?? 'chest';
+    const rarity = (f.rarity ?? 'normal') as ItemRarity;
+    const bases = ITEM_BASES.filter((b) => b.slot === slot);
+    const frameOf: Record<string, { y: number; dist: number }> = { helm: { y: 0.9, dist: 1.5 }, chest: { y: 0.55, dist: 3.6 }, gloves: { y: 0.55, dist: 2.6 }, boots: { y: 0.15, dist: 1.8 }, belt: { y: 0.52, dist: 1.6 } };
+    const fr = frameOf[slot] ?? { y: 0.52, dist: 4.2 };
+    const cols = Number(f.cols ?? 6);
+    const TW = 220;
+    const TH = slot === 'chest' ? 380 : 260;
+    const rows = Math.ceil(bases.length / cols);
+    const { c, g } = sheet(TW * cols, TH * rows);
+    bases.forEach((base, i) => {
+      const hero = buildHero(HERO_LOOKS[cls], `${cls}-wear-${i}`);
+      const ident = { baseId: base.id, rarity, uniqueId: f.unique, setId: f.set };
+      const worn = wearArmour(hero, base.slot as EquipSlot, ident, base.visual);
+      setHeroHidden(hero, new Set(worn?.hides ?? []));
+      const H = HERO_LOOKS[cls].shape.height;
+      const x = (i % cols) * TW;
+      const y = Math.floor(i / cols) * TH;
+      const yaw = Number(f.yaw ?? 0.5);
+      // Gloves: close on the left hand, from above, where the back of the hand shows.
+      const tgt = slot === 'gloves' ? hero.body.joints.handL.clone().lerp(hero.body.joints.foreArmL, 0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw) : new THREE.Vector3(0, H * fr.y, 0);
+      shoot(g, hero.root, { x, y, w: TW, h: TH, yaw, target: tgt, dist: slot === 'gloves' ? 1.3 : fr.dist, pitch: slot === 'gloves' ? 0.6 : undefined });
+      g.fillStyle = INK;
+      g.fillText(base.id, x + 6, y + 16);
+    });
+    return c.toDataURL('image/png');
+  },
   async dressed(f) {
     profileBodies(true);
     const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
