@@ -441,6 +441,8 @@ export interface ManyLegShape {
   sting?: boolean;
   /** Head ahead of the body (insects), share of body. */
   head?: number;
+  /** Knee height above the hip, share of ride height (spiders high, insects low). */
+  knee?: number;
 }
 
 export function manyLegRig(kind: 'spider' | 'insect', s: ManyLegShape): CreatureRig {
@@ -483,7 +485,7 @@ export function manyLegRig(kind: 'spider' | 'insect', s: ManyLegShape): Creature
         b.end(`tip${i}${side}`, `foot${i}${side}`, tip.clone().add(V(0, -0.35 * B, -0.15 * B)));
         continue;
       }
-      const kn = hip.clone().addScaledVector(dir, reach * 0.45).add(V(0, R * 0.75, 0));
+      const kn = hip.clone().addScaledVector(dir, reach * 0.45).add(V(0, R * (s.knee ?? 0.75), 0));
       const tip = hip.clone().addScaledVector(dir, reach);
       tip.y = 0;
       b.bone(name, 'body', hip);

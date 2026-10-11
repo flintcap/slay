@@ -99,6 +99,22 @@ function cost(root: THREE.Object3D): { tris: number; calls: number } {
 }
 
 /** Drives the animator into a named state, the way Enemy does. */
+/** Height span the posed body occupies (bone joints, world space), so hovering bodies stay in frame. */
+function posedSpan(m: { bones: Record<string, THREE.Bone>; root: THREE.Object3D }, info: CreatureInfo, sz: number): { h: number; cy: number } {
+  m.root.updateMatrixWorld(true);
+  let lo = Infinity;
+  let hi = -Infinity;
+  const p = new THREE.Vector3();
+  for (const b of Object.values(m.bones)) {
+    b.getWorldPosition(p);
+    lo = Math.min(lo, p.y);
+    hi = Math.max(hi, p.y);
+  }
+  const top = Math.max(info.height * sz, hi + info.height * sz * 0.12);
+  const bottom = Math.max(0, Math.min(lo - info.height * sz * 0.1, top - info.height * sz));
+  return { h: top - bottom, cy: (top + bottom) * 0.5 };
+}
+
 function drive(anim: CreatureAnimator, root: THREE.Object3D, state: string): void {
   const dt = 1 / 30;
   let t = 0;
@@ -203,7 +219,8 @@ export async function lineup(ids: string[], mood: 'studio' | 'dungeon' = 'studio
       const info = m.root.userData.creature as CreatureInfo;
       const k = cost(m.root);
       const sz = m.look.size ?? 1;
-      frame(cam, info.height * sz, yaw, info.height * sz * 0.5, 0.15, info.length * sz);
+      const span = posedSpan(m, info, sz);
+      frame(cam, span.h, yaw, span.cy, 0.15, info.length * sz);
       r.render(scene, cam);
       line2 = `${k.tris} tris ${k.calls} calls ${m.ms.toFixed(0)}ms`;
     } catch (err) {

@@ -602,10 +602,15 @@ export class CreatureAnimator {
         // Stance: from +S/2 to -S/2, at ground speed.
         along = S * (0.5 - p / duty);
       } else {
+        // Swing: a Hermite curve whose end slopes match the stance's, so the
+        // foot leaves and meets the floor at rest in the world (no jolt at
+        // lift-off or touch-down), and a lift bump with flat ends.
         const u = (p - duty) / (1 - duty);
-        const su = u * u * (3 - 2 * u);
-        along = S * (-0.5 + su);
-        lift = Math.sin(u * Math.PI) * liftH;
+        const m = (-(1 - duty) / duty) * S;
+        const u2 = u * u;
+        const u3 = u2 * u;
+        along = (2 * u3 - 3 * u2 + 1) * (-0.5 * S) + (u3 - 2 * u2 + u) * m + (-2 * u3 + 3 * u2) * (0.5 * S) + (u3 - u2) * m;
+        lift = 16 * u2 * (1 - u) * (1 - u) * liftH;
       }
       along *= g;
       lift *= g;
@@ -711,6 +716,16 @@ export class CreatureAnimator {
     const t = _t.copy(leg.target);
     // Blend toward where the pose itself put the end joint.
     if (this.ikW < 1) t.lerp(this.mPos[leg.end]!, 1 - this.ikW);
+    // Soft reach: near full stretch the knee would race to straight in a
+    // frame; ease the last tenth of the reach so it straightens smoothly.
+    const reach = leg.l1 + leg.l2;
+    const d = t.distanceTo(a);
+    const soft = reach * 0.88;
+    if (d > soft && d > 1e-6) {
+      const span = reach - soft;
+      const dd = soft + span * (1 - Math.exp(-(d - soft) / span));
+      t.sub(a).multiplyScalar(dd / d).add(a);
+    }
     const pi = this.parent[leg.upper]!;
     const pq = pi >= 0 ? this.mQuat[pi]! : bodyQ;
     const pole = _v3.copy(leg.def.pole).applyQuaternion(pq);

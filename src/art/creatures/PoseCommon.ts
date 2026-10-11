@@ -70,7 +70,8 @@ export function fidget(a: CreatureAnimator): { name: string; w: number; t: numbe
 export function dropFall(u: number, end = 0.5): { y: number; crouch: number } {
   const f = clamp01(u / end);
   const y = (1 - f) * (1 - f);
-  const crouch = u < end ? 0 : Math.exp(-(u - end) * 9) * (1 - ramp(u, 0.85, 1)) + settle(u, end, 30, 12) * 0.2;
+  // The landing squat builds over a few frames rather than in one.
+  const crouch = u < end ? 0 : (1 - Math.exp(-(u - end) * 30)) * Math.exp(-(u - end) * 9) * (1 - ramp(u, 0.85, 1)) + settle(u, end, 30, 12) * 0.12;
   return { y, crouch: Math.max(0, crouch) };
 }
 

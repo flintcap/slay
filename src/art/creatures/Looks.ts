@@ -14,6 +14,7 @@ import { genericLook } from './LookGeneric';
 import { UNDEAD } from './LookUndead';
 import { HUMANOID } from './LookHumanoid';
 import { BEAST } from './LookBeast';
+import { BUG } from './LookBug';
 
 export interface LookCtx {
   id: string;
@@ -30,6 +31,7 @@ const FACTORIES: Record<string, LookFactory> = {
   ...UNDEAD,
   ...HUMANOID,
   ...BEAST,
+  ...BUG,
 };
 
 let ids: WeakMap<MonsterVisual, { id: string; family: string; scale: number }> | null = null;

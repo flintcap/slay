@@ -82,10 +82,10 @@ export function poseBug(a: CreatureAnimator): void {
       break;
     }
     case 'strike': {
-      const hit = ramp(t, 0, 0.14);
+      const hit = ramp(t, 0, 0.26);
       const back = ramp(t, 0.42 + 0.15 * heavy, 1);
       bugMove(a, (1 - hit) * (1 - back), hit * (1 - back));
-      a.body(0, settle(t, 0.14, 24, 10) * 0.03 * R, 0);
+      a.body(0, settle(t, 0.26, 24, 10) * 0.03 * R, 0);
       break;
     }
     case 'cast': {
@@ -189,7 +189,7 @@ function spawnBug(a: CreatureAnimator, flying: boolean): void {
   if (a.style.spawn === 'drop' || flying) {
     // Lowers from the dark on a thread (or drops in on its wings), legs folded, then spreads them and lands.
     const d = dropFall(u, 0.55);
-    a.body(0, d.y * H * 4, 0, 0, d.y * 2, 0);
+    a.body(0, d.y * H * 4, 0, 0, d.y * 0.8, 0);
     const curl = 1 - ramp(u, 0.4, 0.6);
     a.ikW *= 1 - curl;
     for (let i = 0; i < 4; i++) {
@@ -214,7 +214,18 @@ function deathBug(a: CreatureAnimator, flying: boolean): void {
   const twitch = (1 - ramp(u, 0.3, 0.9)) * Math.sin(a.t * 30);
   // Legs curl in under the body as the nerves give.
   const curl = ramp(u, 0.1, 0.6);
-  a.ikW = 1 - ramp(u, 0, 0.25);
+  // A flyer's legs were already hanging free; a walker's let go of the floor.
+  a.ikW = flying ? 0 : 1 - ramp(u, 0, 0.25);
+  if (flying) {
+    // The hanging-leg pose it flew with lets go as the legs curl.
+    const hang = 1 - curl;
+    for (let i = 0; i < 4; i++) {
+      a.rotS(`leg${i}L`, 'L', (0.2 * i - 0.2) * hang, 0, -0.5 * hang);
+      a.rotS(`leg${i}R`, 'R', (0.2 * i - 0.2) * hang, 0, -0.5 * hang);
+      a.rotS(`knee${i}L`, 'L', 0, 0, -0.6 * hang);
+      a.rotS(`knee${i}R`, 'R', 0, 0, -0.6 * hang);
+    }
+  }
   for (let i = 0; i < 4; i++) {
     const tw = twitch * (i % 2 ? 0.15 : -0.15);
     a.rotS(`leg${i}L`, 'L', tw, 0, -0.5 * curl);
@@ -229,13 +240,17 @@ function deathBug(a: CreatureAnimator, flying: boolean): void {
   if (a.style.death === 'flip' || flying) {
     // Over onto its back.
     const f = clamp01((u - 0.1) / 0.5);
-    const roll = a.fallDir * Math.PI * f * f;
+    // Eased in and out, so the shell settles rather than stopping dead.
+    const e = f * f * (3 - 2 * f);
+    const roll = a.fallDir * Math.PI * e;
     const hop = Math.sin(Math.PI * f) * 0.6 * R;
     const cr = Math.cos(roll);
-    // Body centre ends a carapace's depth above the floor, belly up.
-    const start = flying ? R * 1.6 : R;
-    const want = thick + (start - thick) * Math.max(0, cr);
-    a.body(Math.sin(roll) * start * 0.6, want - start * cr + hop + thud(u, 0.6) * R, 0, 0, a.fallYaw, roll);
+    // Body centre ends a carapace's depth above the floor, belly up; a flyer
+    // starts from its hover height (the hover adds 1.6 R above the hips).
+    // The height eases down with the roll, with no corner half way over.
+    const start = flying ? R * 2.6 : R;
+    const want = thick + (start - thick) * (flying ? 1 - f * f : 0.5 + 0.5 * Math.cos(Math.PI * e));
+    a.body(Math.sin(roll) * R * 0.6, want - R * cr + hop * (flying ? 0 : 1) + thud(u, 0.6) * R, 0, 0, a.fallYaw, roll);
     a.rot('abdomen', 0.2 * curl);
   } else {
     // Sags flat, legs splayed out.
