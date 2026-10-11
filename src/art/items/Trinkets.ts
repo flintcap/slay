@@ -551,7 +551,7 @@ export function buildRing(P: Parts): void {
       P.add('dark', box(0.006, 0.0015, 0.008, 0), { p: [0, R + 0.0105, 0] });
       P.add('dark', box(0.014, 0.0015, 0.003, 0), { p: [0, R + 0.0105, -0.004] });
       for (const s of [-1, 1]) P.add('dark', sphere(0.0018, 6, 4), { p: [s * 0.008, R + 0.0102, 0.005] });
-      spots.push({ p: v3(0, 0, 0.0095), n: FRONT, s: 0.007 });
+      spots.push({ p: v3(0.011, R + 0.006, 0.007), n: v3(0.5, 0.3, 1), s: 0.006 });
       break;
     }
     case 'band': {
@@ -627,6 +627,16 @@ export function buildRing(P: Parts): void {
   }
   dressGems(P, spots);
   frontAnchors(P, v3(), R);
+  // Decorations sit on the band, never in the hole.
+  P.anchors.points.length = 0;
+  for (let i = 0; i < 10; i++) {
+    const a = PI / 2 + 0.5 + (i / 9) * (PI * 2 - 1);
+    const n = v3(Math.cos(a), Math.sin(a), 0.4);
+    P.point(v3(Math.cos(a) * (R + 0.004), Math.sin(a) * (R + 0.004), 0.003), n, 0.006);
+  }
+  P.anchors.face = { p: v3(0, R + 0.006, 0.004), n: v3(0, 0.6, 1).normalize(), s: 0.008 };
+  P.anchors.head = { p: v3(0, R, 0), r: 0.012 };
+  P.anchors.axis = { a: v3(0, R * 0.7, 0), b: v3(0, R * 1.08, 0), r: 0.004 };
 }
 
 // ===========================================================================
