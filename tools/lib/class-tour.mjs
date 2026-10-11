@@ -4,7 +4,8 @@
  * menu, through the real keys, clicks and prompts wherever the game has one.
  *
  * Starts in town with the freshly forged hero; ends in the second area of a
- * map, ready for check-flow's pause steps.
+ * map. `part` 'town' stops after the town panels, 'dungeon' skips the town
+ * talk and panels: under load the whole tour outruns one 45-minute run.
  */
 
 const TOWN_PANELS = [
@@ -13,7 +14,9 @@ const TOWN_PANELS = [
 ];
 const DUNGEON_PANELS = ['inventory', 'character', 'skills', 'map', 'questLog', 'journal', 'lootFilter', 'legacy', 'settings'];
 
-export async function classTour({ page, step, arrive, key, frames, setName, classId }) {
+export async function classTour({ page, step, arrive, key, frames, setName, classId, part = 'all' }) {
+  const town = part !== 'dungeon';
+  const down = part !== 'town';
   /** Every open panel's id-ish class list, for messages. */
   const openPanels = () =>
     page.evaluate(() =>
@@ -85,7 +88,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     return c;
   });
 
-  await step('a townsperson talks when you press E by them', async () => {
+  if (town) await step('a townsperson talks when you press E by them', async () => {
     await page.waitForTimeout(1500);
     await closeAll();
     const spot = await page.evaluate(() => {
@@ -101,7 +104,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     return spot.id;
   });
 
-  await step('the merchant talks, and option 1 opens the trade', async () => {
+  if (town) await step('the merchant talks, and option 1 opens the trade', async () => {
     const at = await page.evaluate(() => {
       const it = window.SLAY.engine.currentScene.interactables.find((i) => i.id === 'vendor');
       return { x: it.pos.x, z: it.pos.z };
@@ -117,7 +120,8 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     return 'vendor opened';
   });
 
-  await step('every town panel opens and closes', () => tourPanels(TOWN_PANELS));
+  if (town) await step('every town panel opens and closes', () => tourPanels(TOWN_PANELS));
+  if (!down) return;
 
   await step('a geared hero of the class (level 20, six skills on the bar)', async () => {
     const n = await page.evaluate(async (cls) => {
@@ -242,21 +246,35 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     const drops = await page.evaluate(() => window.SLAY.engine.currentScene.loot.filter((l) => l.item && !l.hidden).map((l) => ({ uid: l.item.uid, x: l.pos.x, z: l.pos.z })));
     let got = 0;
     const missed = [];
-    for (const d of drops.slice(0, 8)) {
-      await standAt(d.x + 0.8, d.z);
-      await frames(page, 6);
-      const box = await page.evaluate((uid) => {
-        const el = [...document.querySelectorAll('.glabel')].find((e) => e.dataset.key?.startsWith(`${uid}|`) && getComputedStyle(e).display !== 'none');
+    // The worn piece first: it is the one the next step puts back on.
+    drops.sort((a, b) => (b.uid === worn.uid) - (a.uid === worn.uid));
+    for (const d of drops.slice(0, 6)) {
+      // Stand by it with the camera on the hero (a walk would have brought it
+      // along), then find its label: one round trip.
+      const box = await page.evaluate(async (dd) => {
+        const s = window.SLAY.engine.currentScene;
+        const entry = s.loot.find((l) => l.item?.uid === dd.uid);
+        if (!entry) return { gone: true };
+        s.player.root.position.set(dd.x + 0.8, s.player.root.position.y, dd.z);
+        s.player.stop();
+        s.rig.follow(s.player.root);
+        s.rig.snap();
+        for (let i = 0; i < 4; i++) await new Promise((r) => requestAnimationFrame(r));
+        const el = [...document.querySelectorAll('.glabel')].find((e) => e.dataset.key?.startsWith(`${dd.uid}|`) && e.style.display !== 'none');
         const r = el?.getBoundingClientRect();
-        return r && r.width > 0 ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
-      }, d.uid);
-      if (!box) {
-        missed.push(`${d.uid}: no label`);
+        if (r && r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+        const shown = [...document.querySelectorAll('.glabel')].filter((e) => e.style.display !== 'none').length;
+        return { none: true, shown, rarity: entry.item.rarity, d: +Math.hypot(entry.pos.x - s.player.root.position.x, entry.pos.z - s.player.root.position.z).toFixed(1) };
+      }, d);
+      if (box.gone) continue;
+      if (box.none) {
+        missed.push(`${d.uid}: no label (${box.rarity}, ${box.d}m, ${box.shown} labels shown)`);
         continue;
       }
       await page.mouse.click(box.x, box.y);
-      await frames(page, 4);
-      const inPack = await page.evaluate((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid);
+      const inPack = await page
+        .waitForFunction((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid, { timeout: 20_000, polling: 200 })
+        .then(() => true, () => false);
       if (inPack) got++;
       else missed.push(`${d.uid}: click did not pick it up`);
     }

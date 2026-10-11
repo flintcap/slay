@@ -40,6 +40,8 @@ if (OUT) mkdirSync(OUT, { recursive: true });
 // scene time, which can take many minutes under software rendering.
 const SHOTS = process.argv.find((a) => a.startsWith('--shots='))?.slice(8).split(',');
 const CLASS = process.argv.find((a) => a.startsWith('--class='))?.slice(8);
+// `--part=town` or `--part=dungeon`: half the class tour (see tools/lib/class-tour.mjs).
+const PART = process.argv.find((a) => a.startsWith('--part='))?.slice(7) ?? 'all';
 const CLASS_ORDER = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
 if (CLASS && !CLASS_ORDER.includes(CLASS)) {
   console.log(`unknown class ${CLASS}`);
@@ -167,7 +169,7 @@ await step('Enter forges the character and enters town', async () => {
 });
 
 if (CLASS) {
-  await (await import('./lib/class-tour.mjs')).classTour({ page, step, arrive, key, frames, visible, secs, classId: CLASS, setName: (n) => (name = n) });
+  await (await import('./lib/class-tour.mjs')).classTour({ page, step, arrive, key, frames, visible, secs, classId: CLASS, part: PART, setName: (n) => (name = n) });
   skipRest = true;
 } else
   await step('the gate takes you down to depth 1', async () => {
