@@ -26,6 +26,15 @@ looks wrong or weak against the Diablo II / Path of Exile bar in `PLAN.md`.
   walk never inherits a wide idle stance, feet do not slide. Check with
   live-game strips (side and camera) at walk and run, two classes, before
   and after.
+- [ ] Equipment art (owner). Inventory icons (weapons, armour, jewellery,
+  gems, potions), weapons and shields in the hands (game and paperdoll),
+  armour worn on each class (bare, starter, mid, full set, uniques), items
+  on the ground. Bar: bases distinct, higher tiers grander, uniques and
+  sets striking and their own, materials read (metal, leather, cloth,
+  bone, wood, gems), icons readable at grid size, nothing clips, floats,
+  wrong scale or wrong grip, every piece visibly changes the hero. Keep
+  the item contracts in `CONTRACTS.md` (grip at origin, business end +Y);
+  `check-item-icons` passes with no look-alike bases. Looks only.
 - [ ] Motion check. Watch heroes and monsters walk, attack, cast, get hit and
   die in the live game (short frame sequences). Feet do not slide, hits land
   on the hit frame, effects line up with hands and weapons.
