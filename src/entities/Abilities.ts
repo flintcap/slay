@@ -26,6 +26,8 @@ import type {
 import type { NavGrid } from '../world/Nav';
 import type { FXSystem } from '../fx/Particles';
 import type { DecalSystem } from '../fx/Decals';
+import type { EffectHandle } from '../fx/Effects';
+import { HAZARD_GLOW, monsterFX } from '../fx/MonsterFX';
 import type { Enemy } from './Enemy';
 
 // ---------------------------------------------------------------------------
@@ -501,6 +503,14 @@ export function typeColor(type: DamageType): number {
 }
 
 function impactFx(ctx: CombatContext, type: DamageType, x: number, y: number, z: number, count = 14): void {
+  const fx = monsterFX();
+  if (fx) {
+    // The school's full hit: burst, light and (for big ones) a mark. Its sound
+    // and shake belong to the ability.
+    const scale = Math.min(2.2, count / 14);
+    fx.impact(type, x, y, z, { scale, sfx: null, shake: 0, hitStop: 0, light: 0.7, decal: scale > 1.2 });
+    return;
+  }
   ctx.fx.burst(FX_FOR_TYPE[type], x, y, z, { count, color: COLOR_FOR_TYPE[type] });
 }
 
@@ -605,9 +615,13 @@ interface Projectile {
   applies: StatusApplication[] | null;
   knockback: number;
   spin: number;
+  /** The lit, trailed look the effect system flies alongside (mesh hidden). */
+  fx: EffectHandle | null;
 }
 
 const projectiles: Projectile[] = [];
+const _projAt = new THREE.Vector3();
+const _projFrom = new THREE.Vector3();
 const projectileGeoCache = new Map<string, THREE.BufferGeometry>();
 const projectileMatCache = new Map<number, THREE.MeshBasicMaterial>();
 
@@ -720,6 +734,7 @@ export function fireProjectile(
       applies: null,
       knockback: 0,
       spin: 0,
+      fx: null,
     };
     projectiles.push(proj);
   }
@@ -757,6 +772,25 @@ export function fireProjectile(
     ctx.scene.add(proj.mesh);
   }
   proj.mesh.visible = true;
+  // With the effect system bound, bolts, shards and orbs fly as the school's
+  // own lit, trailed body; rocks and spinning rings keep their solid mesh.
+  proj.fx?.stop();
+  proj.fx = null;
+  const shape = opts.shape ?? 'orb';
+  const fx = monsterFX();
+  if (fx && shape !== 'rock' && shape !== 'ring') {
+    proj.mesh.visible = false;
+    proj.fx = fx.projectile(_projFrom.set(p.x, originY, p.z), _projFrom, {
+      element: type,
+      color: opts.color,
+      carried: true,
+      shape: shape === 'bolt' ? 'bolt' : undefined,
+      size: 0.16 * s * (shape === 'blob' ? 1.25 : shape === 'shard' ? 0.9 : 1),
+      flare: true,
+      impact: false,
+      trail: undefined,
+    });
+  }
 }
 
 /** Fan of projectiles centred on a heading. */
@@ -808,13 +842,14 @@ function tickProjectiles(dt: number, ctx: CombatContext): void {
     p.y += p.vy * dt;
     p.z += p.vz * dt;
     p.mesh.position.set(p.x, p.y, p.z);
+    p.fx?.setEndpoint?.(_projAt.set(p.x, p.y, p.z));
     if (p.spin !== 0) {
       p.mesh.rotation.z += p.spin * dt;
     } else {
       p.mesh.lookAt(p.x + p.vx, p.y + p.vy, p.z + p.vz);
     }
 
-    if (p.trail && ctx.rng.next() < dt * 22) {
+    if (p.trail && ctx.rng.next() < dt * (p.fx ? 8 : 22)) {
       ctx.fx.burst(p.trail, p.x, p.y, p.z, { count: 2, color: (p.mesh.material as THREE.MeshBasicMaterial).color.getHex() });
     }
 
@@ -859,6 +894,8 @@ function tickProjectiles(dt: number, ctx: CombatContext): void {
 function retireProjectile(p: Projectile, _ctx: CombatContext): void {
   p.active = false;
   p.mesh.visible = false;
+  p.fx?.stop();
+  p.fx = null;
   p.owner = null;
   p.onImpact = null;
 }
@@ -985,6 +1022,13 @@ export function spawnHazard(
     h.mesh.parent?.remove(h.mesh);
     ctx.scene.add(h.mesh);
   }
+  // With the effect system bound, the zone is a living floor glow (burning
+  // ground, bubbling poison, frost, crawling arcs, a void) instead of a flat
+  // tinted disc. It fades itself out when the hazard's time is up.
+  if (monsterFX()) {
+    h.mesh.visible = false;
+    ctx.decals.glow(HAZARD_GLOW[type], x, z, radius, h.life, opts.color ?? type, 1.3);
+  }
   ctx.decals.add(opts.decal ?? (type === 'fire' ? 'scorch' : 'stain'), x, z, radius);
 }
 
@@ -998,10 +1042,12 @@ function tickHazards(dt: number, ctx: CombatContext): void {
       h.owner = null;
       continue;
     }
-    const fade = clamp(h.life / Math.max(0.001, h.maxLife * 0.35), 0, 1);
-    const mat = h.mesh.material as THREE.MeshBasicMaterial;
-    mat.opacity = 0.42 * fade;
-    h.mesh.scale.setScalar(h.radius * (1 + Math.sin(ctx.elapsed * 3 + h.pulse) * 0.03));
+    if (h.mesh.visible) {
+      const fade = clamp(h.life / Math.max(0.001, h.maxLife * 0.35), 0, 1);
+      const mat = h.mesh.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.42 * fade;
+      h.mesh.scale.setScalar(h.radius * (1 + Math.sin(ctx.elapsed * 3 + h.pulse) * 0.03));
+    }
     h.accum += dt;
     const period = 1 / Math.max(0.1, h.tickRate);
     // Stepping in bites at once. Hazards used to bite only on their own tick,
@@ -1134,6 +1180,8 @@ export function resetAbilityWorld(): void {
     p.active = false;
     p.owner = null;
     p.onImpact = null;
+    p.fx?.stop();
+    p.fx = null;
     p.mesh.parent?.remove(p.mesh);
   }
   projectiles.length = 0;

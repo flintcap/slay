@@ -296,7 +296,7 @@ const FRAG = /* glsl */ `
         float sw = gf(vec2(a * 2.0 + r * 4.0 - uTime * 1.5, r * 3.0) + seed);
         float area = 1.0 - smoothstep(0.7, 1.0, r);
         float rim = exp(-pow((r - 0.85 - (sw - 0.5) * 0.1) / 0.07, 2.0));
-        heat = rim + area * sw * 0.25;
+        heat = rim * 0.7 + area * sw * 0.25;
         cov = rim * 0.8 + area * 0.6;
         occl = area * 0.7;
       } else if (kind < 28.5) {    // wedge: flame or frost on the ground in a cone

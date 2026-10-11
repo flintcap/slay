@@ -24,11 +24,13 @@ import type {
   BossDef,
   BossPhase,
   DamagePacket,
+  DamageType,
   MonsterDef,
   MonsterRank,
   Rng,
 } from '../types';
 import { events } from '../core/Events';
+import { monsterFX } from '../fx/MonsterFX';
 import { prepareBossPortrait } from '../art/BossPortraits';
 import { Enemy, depthCurve } from './Enemy';
 import {
@@ -212,8 +214,21 @@ export class Boss extends Enemy {
       this.staggerTimer = 1.1;
       this.buff('phase_stagger', 1.1, { invulnerable: 1 });
       const p = this.root.position;
-      ctx.fx.burst('bossSlam', p.x, 1.2 * this.sizeScale, p.z, { count: 60, scale: 4 });
-      ctx.decals.add('crack', p.x, p.z, 6 * this.sizeScale);
+      // The phase erupts in the school its new kit fights with.
+      let school: DamageType = 'physical';
+      for (const id of this.abilityIds) {
+        const t = getAbility(id)?.damageType;
+        if (t && t !== 'physical') {
+          school = t;
+          break;
+        }
+      }
+      const fx = monsterFX();
+      if (fx) fx.bossPhase(p.x, p.z, this.sizeScale, school);
+      else {
+        ctx.fx.burst('bossSlam', p.x, 1.2 * this.sizeScale, p.z, { scale: 2 });
+        ctx.decals.add('crack', p.x, p.z, 6 * this.sizeScale);
+      }
       events.emit('shake', { amount: 1.0, duration: 0.6 });
       // Everyone gets pushed off — a free reposition beat for both sides.
       const packet: DamagePacket = {

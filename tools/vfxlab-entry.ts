@@ -14,6 +14,7 @@ import { DecalSystem, decalKinds } from '../src/fx/Decals';
 import { EffectSystem, SCHOOLS, ELEMENTS, MATERIAL_BURST, MATERIAL_MARK, type School } from '../src/fx/Effects';
 import { BodyFX } from '../src/fx/BodyFX';
 import { LootFX } from '../src/fx/LootFX';
+import { HAZARD_GLOW } from '../src/fx/MonsterFX';
 import { buildMonsterModel, RigAnimator, monsterArchetype } from '../src/entities/MonsterModels';
 import { getMonster } from '../src/data/monsters';
 import { Random } from '../src/core/RNG';
@@ -255,6 +256,27 @@ const SCENES: Record<string, LabScene> = {
         out.push({ at: i * 0.012, fn: () => effects.explosion(Math.sin(i * 2.1) * 2.2, 0.4, Math.cos(i * 1.7) * 2.2, { element: s, radius: 2.5 }) });
         out.push({ at: i * 0.01, fn: () => { effects.projectile(v(-7, 1.2, row(i, 18, 10)), v(7, 1.2, -row(i, 18, 10)), { element: s }); } });
       }
+      return out;
+    },
+  },
+  monsters: {
+    shot: 0.5,
+    plan: () => {
+      // Monster shots fly on their own physics; the kit carries their look.
+      const types = ['fire', 'cold', 'lightning', 'poison', 'arcane'] as const;
+      const out: Plan[] = types.map((t, i) => ({
+        at: 0,
+        fn: () => {
+          const z = row(i, 5, 7) - 1;
+          const h = effects.projectile(v(-7, 1.2, z), v(-7, 1.2, z), { element: t, carried: true, size: 0.16, impact: false });
+          const at = v(0, 0, 0);
+          tickers.push((_dt, tt) => h.setEndpoint?.(at.set(-7 + tt * 13, 1.2 + Math.sin(tt * 9 + i) * 0.15, z)));
+        },
+      }));
+      (['fire', 'poison', 'cold', 'lightning', 'arcane', 'physical'] as const).forEach((t, i) => {
+        out.push({ at: 0, fn: () => { decals.glow(HAZARD_GLOW[t], row(i, 6, 12), 4.2, 1.3, 5, t, 1.3); } });
+      });
+      out.push({ at: 0.22, fn: () => effects.bossPhase(5.5, -4.5, 1.2, 'arcane') });
       return out;
     },
   },

@@ -26,6 +26,11 @@ import type { School } from './kit/Palette';
 /** Options for `burst`. `count` 12 means "as authored". */
 export type BurstOpts = EmitOpts;
 
+/** Largest count multiplier a burst honours (count 36 = three times authored). */
+const MAX_COUNT_MUL = 3;
+/** Largest sprite scale a burst honours. */
+const MAX_BURST_SCALE = 3.5;
+
 const _v = new THREE.Vector3();
 const _c = new THREE.Color();
 const _w = new THREE.Color();
@@ -37,6 +42,8 @@ export class FXSystem {
   private scene: THREE.Scene;
   private quality: QualityProfile;
   private text: WorldText | null = null;
+  /** Scratch options for a capped burst (never allocates). */
+  private readonly capped: BurstOpts = {};
   private time = 0;
   /** Global size multiplier for the whole look. */
   scale = 1;
@@ -91,7 +98,15 @@ export class FXSystem {
   /** Fires a named emitter. Unknown ids fall back to `hit.physical`, never throw. */
   burst(id: string, x: number, y: number, z: number, opts?: BurstOpts): void {
     const em = EMITTERS[id] ?? EMITTERS['hit.physical']!;
-    const countMul = opts?.count !== undefined ? opts.count / 12 : 1;
+    // Older callers ask for absolute counts (60) and huge scales (6); against
+    // authored emitters that is five stacked bursts of giant sprites. Cap both.
+    if (opts && opts.scale !== undefined && opts.scale > MAX_BURST_SCALE) {
+      const c = this.capped;
+      c.count = opts.count; c.color = opts.color; c.dir = opts.dir; c.speed = opts.speed; c.life = opts.life;
+      c.ring = opts.ring; c.scatter = opts.scatter; c.school = opts.school; c.scale = MAX_BURST_SCALE;
+      opts = c;
+    }
+    const countMul = opts?.count !== undefined ? Math.min(MAX_COUNT_MUL, opts.count / 12) : 1;
     const school = opts?.school ?? em.school;
     const keyed = em.keyed === true;
     for (let i = 0; i < em.layers.length; i++) this.emit(em.layers[i]!, school, x, y, z, opts, countMul, keyed);
@@ -104,8 +119,10 @@ export class FXSystem {
     const core = layer.count <= 2;
     const budget = this.frameBudget;
     const room = (core ? budget : budget * 0.8) - this.frameSpawned;
-    let mul = core ? countMul : countMul * this.quality.fxScale * this.throttle;
-    const want = layer.count * (core ? Math.max(1, Math.round(mul)) : mul);
+    // The single flash or ring at a burst's heart is drawn once, whatever the
+    // count: stacking them only whitens the frame.
+    let mul = core ? 1 : countMul * this.quality.fxScale * this.throttle;
+    const want = layer.count * mul;
     if (want > room) {
       this.clipped++;
       if (room < 1 || core) return;

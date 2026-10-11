@@ -19,6 +19,7 @@ import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { LootFX } from '../fx/LootFX';
 import { EffectSystem, ELEMENTS, type School } from '../fx/Effects';
+import { bindMonsterFX, monsterFX } from '../fx/MonsterFX';
 import { BodyFX } from '../fx/BodyFX';
 import { Player } from '../entities/Player';
 import { CombatControls } from '../entities/Controls';
@@ -256,6 +257,8 @@ export class DungeonScene extends GameScene {
     this.effects.setCamera(this.camera);
     this.skills = new SkillRunner(this.effects);
     this.lootFx = new LootFX(this.effects);
+    // Monster shots, hazards and boss phases draw through the full effect kit.
+    bindMonsterFX(this.effects);
     this.body = new BodyFX(this.effects);
   }
 
@@ -2046,6 +2049,7 @@ export class DungeonScene extends GameScene {
     // the scene is done with it, so drop its event subscriptions too. Every
     // visit used to leave one listening to combos and evades.
     this.skills.feel.dispose();
+    if (monsterFX() === this.effects) bindMonsterFX(null);
     this.effects.dispose();
     this.fx.dispose();
     this.decals.dispose();

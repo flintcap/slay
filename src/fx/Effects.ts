@@ -195,6 +195,11 @@ export interface ProjectileOpts {
   shed?: string;
   /** false skips the flare at the caster's hand. */
   flare?: boolean;
+  /**
+   * The caller flies it: `setEndpoint` moves it each frame (monster shots with
+   * their own physics) and `stop` ends it. It never arrives on its own.
+   */
+  carried?: boolean;
 }
 
 export interface BeamOpts {
@@ -356,6 +361,8 @@ class Live {
   body = Body.Core;
   fam = Fam.Core;
   flag = false;
+  /** A projectile its caller moves (see `ProjectileOpts.carried`). */
+  carried = false;
   readonly a = new THREE.Vector3();
   readonly b = new THREE.Vector3();
   readonly c = new THREE.Vector3();
@@ -391,6 +398,7 @@ class Live {
     this.radius = this.r1 = this.height = this.width = this.half = this.count = this.acc = this.style = 0;
     this.power = 1;
     this.flag = false;
+    this.carried = false;
     this.npts = 0;
     this.emitter = '';
     this.shed = null;
@@ -553,6 +561,17 @@ export class EffectSystem {
       this.lights.flash(p.x, p.y, p.z, e.look.light, 4, 4, 0.12);
       e.acc = 0;
       this.sfx('block.magic', p.x, p.z);
+      return;
+    }
+    if (e.kind === K.Proj && e.carried) {
+      // Carried shots: the old position becomes the tail, so the body and its
+      // wake point along the flight.
+      const d = e.c.distanceTo(p);
+      if (d < 1e-4) return;
+      e.a.copy(e.c);
+      e.b.copy(p);
+      e.c.copy(p);
+      e.acc += d;
       return;
     }
     e.b.copy(p);
@@ -718,6 +737,8 @@ export class EffectSystem {
     e.target = opts.target ?? null;
     e.onHit = opts.onHit ?? null;
     e.flag = opts.impact !== false;
+    e.carried = !!opts.carried;
+    if (e.carried) e.dur = opts.maxLife ?? 12;
     e.body = body;
     e.a.copy(from);
     e.b.copy(to);
@@ -758,7 +779,7 @@ export class EffectSystem {
       if (this.quality.fxScale >= 0.5) e.light = this.lights.hold(from.x, from.y, from.z, e.look.light, 2.2 + size * 6, 4 + size * 8, school === 'fire' ? 0.35 : school === 'lightning' ? 0.6 : 0.1);
     }
 
-    this.sfx(el.sfxCast, from.x, from.z);
+    if (!e.carried) this.sfx(el.sfxCast, from.x, from.z);
     if (opts.flare !== false && !isArrow) {
       _v1.set(to.x - from.x, 0, to.z - from.z).normalize();
       this.castFlare(school, from.x, from.y, from.z, { scale: Math.max(0.6, Math.min(1.6, size / 0.3)), dir: _v1 });
@@ -792,6 +813,20 @@ export class EffectSystem {
 
   private upProj(e: Live, dt: number): boolean {
     if (e.stopped || e.t > e.dur) return false;
+    if (e.carried) {
+      const p = e.c;
+      this.placeProj(e, 0);
+      if (e.rib) this.ribbons.pushPoint(e.rib, p.x, p.y, p.z);
+      if (e.light) this.lights.move(e.light, p.x, p.y, p.z);
+      if (e.emitter) {
+        const step = this.fx.pressure > 0.7 ? 0.8 : 0.42;
+        while (e.acc >= step) {
+          e.acc -= step;
+          this.fx.burst(e.emitter, p.x, p.y, p.z, { scale: 0.75 * e.scale });
+        }
+      } else e.acc = 0;
+      return true;
+    }
     if (e.target && e.homing) {
       const t = e.target();
       if (t) e.b.lerp(t, Math.min(1, e.homing * dt * 6));
@@ -944,6 +979,28 @@ export class EffectSystem {
     this.trauma(opts.shake ?? Math.min(0.75, 0.32 * scale));
     if (this.rig) this.rig.hitStop(0.055, 0.06);
     this.sfx('spell.explosion', x, z);
+  }
+
+  /**
+   * A boss changes phase: power bursts up out of the body in its school, the
+   * floor breaks and two waves throw the light across the room. `size` is the
+   * boss's model scale. Shake and knockback are the caller's.
+   */
+  bossPhase(x: number, z: number, size: number, school: School = 'physical'): void {
+    const el = element(school);
+    const l = lookOf(school);
+    const y = floorAt(x, z);
+    this.fx.burst('bossSlam', x, y + 0.2, z, { scale: size * 1.2 });
+    this.fx.burst(el.castEmitter, x, y + 1.4 * size, z, { scale: size * 1.6 });
+    if (school !== 'physical') this.fx.burst(el.emitter, x, y + 1.0 * size, z, { scale: size * 1.2, count: 18 });
+    this.pulse(Fam.Column, COLUMN_STYLE.light, x, y, z, 0.5 * size, 1.2 * size, 7 * size, 0.8, l, 0.9);
+    this.pulse(Fam.Core, CORE_STYLE.flare, x, y + 1.3 * size, z, 0.8 * size, 2.4 * size, 0, 0.35, l, 1.0);
+    this.nova(x, z, 5 * size, { element: school, duration: 0.6, thickness: 0.2 });
+    this.nova(x, z, 8 * size, { element: school, duration: 0.95, thickness: 0.08, particles: false });
+    this.flash(x, y + 2 * size, z, l.light, 30, 14 + 4 * size, 0.55);
+    this.decals.add('crater', x, z, 2.2 * size);
+    this.decals.add('crack', x, z, 6 * size);
+    if (el.glowDecal) this.decals.add(el.glowDecal, x, z, 3 * size);
   }
 
   /** An expanding wave along the floor. */
