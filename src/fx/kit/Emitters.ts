@@ -107,6 +107,7 @@ const R_VOID = [0xe0a0ff, 0x5a18a8, 0x0a0218] as const;
 const R_ASH = [0xb0a8a0, 0x5a544e, 0x1a1816] as const;
 const R_SPORE = [0xf0ffa0, 0xa8c838, 0x3a4a10] as const;
 const R_SNOW = [0xffffff, 0xd8e8f8, 0x8aa0b8] as const;
+const R_ICHOR = [0xc8d860, 0x6a7a18, 0x1e2606] as const;
 
 // ---------------------------------------------------------------------------
 // Per-school layers
@@ -118,7 +119,7 @@ function flash(size: number, life = 0.12, emit = 0.9): Layer {
 
 const HIT: Record<School, Layer[]> = {
   physical: [
-    L({ sprite: SPRITE.spark, count: 12, speed: [4, 10], spread: 0.6, size: [0.04, 0.08], grow: 0.4, life: [0.12, 0.3], heat: [1, 0.45], emit: 1.1, occl: 0, gravity: -14, drag: 4, stretch: 1.5, fade: 1.2 }),
+    L({ sprite: SPRITE.spark, count: 16, speed: [4, 10], spread: 0.6, size: [0.05, 0.1], grow: 0.4, life: [0.14, 0.32], heat: [1, 0.45], emit: 1.1, occl: 0, gravity: -14, drag: 4, stretch: 1.5, fade: 1.2 }),
     flash(0.65, 0.08, 0.7),
     L({ sprite: SPRITE.slash, count: 1, speed: [0, 0], radius: 0, size: [0.9, 1.0], grow: 1.25, life: [0.09, 0.12], heat: [1, 0.3], emit: 0.8, occl: 0, spin: 0.5, fade: 2 }),
     L({ sprite: SPRITE.smoke, count: 3, ramp: R_DUST, speed: [0.5, 1.6], spread: 0.9, size: [0.2, 0.32], grow: 2.0, life: [0.4, 0.8], heat: [0.2, 0], emit: 0.25, occl: 0.45, gravity: 0.2, drag: 3, turb: 0.2, tint: false }),
@@ -274,12 +275,38 @@ Object.assign(E, {
   },
 });
 
+// What flies off a struck body that does not bleed (fx/Materials.ts).
+Object.assign(E, {
+  'chips.bone': {
+    school: 'bone',
+    layers: [
+      L({ sprite: SPRITE.bone, count: 7, speed: [2, 5], spread: 0.7, up: 0.4, size: [0.06, 0.12], grow: 1, life: [0.7, 1.1], heat: [0.8, 0.6], emit: 0.5, occl: 0.9, gravity: -14, drag: 1, spin: 9, ground: true, fade: 3 }),
+      L({ sprite: SPRITE.smoke, count: 2, ramp: R_DUST, speed: [0.4, 1.2], radius: 0.1, size: [0.22, 0.34], grow: 1.8, life: [0.4, 0.7], heat: [0.2, 0], emit: 0.25, occl: 0.45, gravity: 0.2, drag: 3, tint: false }),
+    ],
+  },
+  'chips.stone': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.rock, count: 7, ramp: R_STONE, speed: [2.5, 6], spread: 0.7, up: 0.4, size: [0.06, 0.12], grow: 1, life: [0.7, 1.1], heat: [0.5, 0.4], emit: 0.3, occl: 1, gravity: -15, drag: 0.8, spin: 8, ground: true, fade: 3, tint: false }),
+      L({ sprite: SPRITE.spark, count: 6, speed: [4, 9], spread: 0.6, size: [0.035, 0.06], grow: 0.4, life: [0.1, 0.25], heat: [1, 0.45], emit: 1.1, occl: 0, gravity: -14, drag: 4, stretch: 1.4, fade: 1.2 }),
+      L({ sprite: SPRITE.smoke, count: 2, ramp: R_STONE, speed: [0.4, 1.2], radius: 0.1, size: [0.25, 0.38], grow: 2, life: [0.5, 0.8], heat: [0.2, 0], emit: 0.2, occl: 0.5, gravity: 0.2, drag: 3, tint: false }),
+    ],
+  },
+  ichor: {
+    school: 'poison',
+    layers: [
+      L({ sprite: SPRITE.drop, count: 12, ramp: R_ICHOR, speed: [2, 5], spread: 0.6, up: 0.35, size: [0.05, 0.1], grow: 0.9, life: [0.5, 0.9], heat: [0.6, 0.4], emit: 0.35, occl: 0.9, gravity: -14, drag: 1, stretch: 0.5, ground: true, fade: 3, tint: false }),
+      L({ sprite: SPRITE.splat, count: 2, ramp: R_ICHOR, speed: [0.4, 1.2], size: [0.18, 0.28], grow: 1.6, life: [0.18, 0.3], heat: [0.5, 0.3], emit: 0.3, occl: 0.7, drag: 4, tint: false }),
+    ],
+  },
+});
+
 Object.assign(E, {
   blood: {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 16, ramp: R_BLOOD, speed: [2, 6], spread: 0.6, up: 0.35, size: [0.045, 0.1], grow: 0.9, life: [0.5, 1.0], heat: [0.6, 0.4], emit: 0.3, occl: 0.95, gravity: -14, drag: 1, stretch: 0.5, ground: true, fade: 3, tint: false }),
-      L({ sprite: SPRITE.splat, count: 3, ramp: R_BLOOD, speed: [0.4, 1.2], size: [0.18, 0.3], grow: 1.6, life: [0.18, 0.3], heat: [0.5, 0.3], emit: 0.25, occl: 0.7, drag: 4, tint: false }),
+      L({ sprite: SPRITE.drop, count: 16, ramp: R_BLOOD, speed: [2, 6], spread: 0.6, up: 0.35, size: [0.06, 0.13], grow: 0.9, life: [0.5, 1.0], heat: [0.7, 0.4], emit: 0.45, occl: 0.95, gravity: -14, drag: 1, stretch: 0.5, ground: true, fade: 3, tint: false }),
+      L({ sprite: SPRITE.splat, count: 3, ramp: R_BLOOD, speed: [0.4, 1.2], size: [0.26, 0.4], grow: 1.6, life: [0.2, 0.32], heat: [0.6, 0.3], emit: 0.4, occl: 0.7, drag: 4, tint: false }),
     ],
   },
   gib: {

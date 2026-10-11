@@ -35,6 +35,14 @@ crashes, docs true, published.
      `chestKindFor(interact)` from `world/Props.ts` for the kind, so a rare
      chest draws as the rare chest model.
 
+- From vfx (creatures and items are done, so these are yours):
+  1. `Enemy.rig` is protected; `DungeonScene.watchBody` reads it with a cast
+     (`(e as unknown as { rig }).rig?.creature`). Expose a public read-only
+     `rig` getter on `Enemy` and drop the cast.
+  2. `ItemModels` still builds `beam`, `pool`, `sigil` and `dropLight`
+     children on dropped items. `LootFX` hides them and draws its own pooled
+     beacons, so stop building them (saves meshes and a light per drop).
+
 - The cancelled overhaul's quality stream never took its final speed numbers
   or ran the soak (see `docs/overhaul/quality.md`). Those tools are
   `tools/check-perf.mjs` and `tools/check-soak.mjs`.

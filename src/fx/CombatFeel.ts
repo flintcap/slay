@@ -200,12 +200,17 @@ export class CombatFeel {
   private heroDown = false;
   private nextEvade = 0;
   private nextCombo = 0;
+  private nextBlock = 0;
+  private shieldHand: THREE.Object3D | null = null;
 
   constructor(effects: EffectSystem) {
     this.effects = effects;
     this.unsubs.push(
       events.on('combat:combo', (e) => this.onCombo(e.x, e.y, e.z, e.bonusPct)),
       events.on('player:evaded', () => this.onEvade()),
+      events.on('sfx', (e) => {
+        if (e.id === 'block') this.onBlock();
+      }),
     );
   }
 
@@ -244,6 +249,26 @@ export class CombatFeel {
       this.effects.fx.burst('dodge', p.x, 0.9, p.z, { count: 12, scale: 1 });
     }
     audio.play('player.evade', { volume: 0.9 });
+  }
+
+  /**
+   * A blow stopped on the shield: sparks off the boss of the shield, a warm
+   * flash on the hero and a small jolt. Rate-limited like the evade.
+   */
+  private onBlock(): void {
+    if (this.clock < this.nextBlock) return;
+    this.nextBlock = this.clock + 0.12;
+    const h = this.hero;
+    if (!h) return;
+    if (!this.shieldHand || !this.shieldHand.parent) this.shieldHand = h.getObjectByName('socket:offHand') ?? null;
+    const at = _dir;
+    if (this.shieldHand) {
+      this.shieldHand.updateWorldMatrix(true, false);
+      at.setFromMatrixPosition(this.shieldHand.matrixWorld);
+    } else at.set(h.position.x, 1.1, h.position.z);
+    this.effects.fx.burst('block', at.x, at.y, at.z, { scale: 0.9 });
+    this.effects.flash(at.x, at.y + 0.2, at.z, 0xffe2a8, 6, 5, 0.12);
+    this.addTrauma(0.08);
   }
 
   /** The hero just lost control of their body: a dull thud and a ringing. */
@@ -447,6 +472,10 @@ export class CombatFeel {
     const frac = taken / Math.max(1, maxLife);
     if (this.clock >= this.nextPlayerHurt) {
       this.nextPlayerHurt = this.clock + 0.12;
+      const h = this.hero;
+      if (h && frac > 0.01) {
+        this.effects.fx.burst('blood', h.position.x, 1.15, h.position.z, { count: Math.round(5 + Math.min(10, frac * 60)), scale: 0.7 });
+      }
       audio.play('player.hurt', { volume: Math.min(1.3, 0.55 + frac * 3) });
     }
     if (frac > 0.14) {

@@ -1480,7 +1480,6 @@ export class SkillRunner {
     });
     this.strike(target, this.tune(packet, target), ctx, 'melee', player.position.x, player.position.z);
     this.effects.meleeHit(target.root.position.x, 1.0, target.root.position.z, {
-      color: ELEMENTS.physical?.core ?? 0xffffff,
       sfx: null,
       shake: 0,
     });
@@ -1512,6 +1511,9 @@ export class SkillRunner {
     return list;
   }
 
+  /** The school of the last weapon swing, for the swing ribbon (fx/BodyFX). */
+  swingSchool: School = 'physical';
+
   private meleeSwing(
     player: Player,
     facing: THREE.Vector3,
@@ -1528,6 +1530,7 @@ export class SkillRunner {
     const origin = player.position;
     const half = arc * 0.5;
     let hits = 0;
+    if (playVisual && !this.atContact) this.swingSchool = type in ELEMENTS ? (type as School) : 'physical';
     // The swing is heard whether or not it connects: whoosh, then impact.
     if (playVisual && !this.atContact) {
       audio.play(kind === 'heavy' ? 'swing.heavy' : `swing.${this.weaponSound}`, {
@@ -1572,7 +1575,7 @@ export class SkillRunner {
       // Sound and camera come from the feel layer, which knows the weapon and
       // the body it met; the impact here is the picture only.
       this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, {
-        dir: facing, color: ELEMENTS[type]?.core, sfx: null, shake: 0, crit: mp.crit,
+        dir: facing, element: this.swingSchool, sfx: null, shake: 0, crit: mp.crit,
         hitStop: 0,
       });
       hits++;

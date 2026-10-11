@@ -66,6 +66,7 @@ import {
 import { getMonster, MONSTERS, pickMonstersForDepth } from '../data/monsters';
 import { getAffix, MONSTER_AFFIXES } from '../data/monsterAffixes';
 import { BOSSES } from '../data/bosses';
+import { hitMaterial, MATERIAL_BURST, MATERIAL_MARK } from '../fx/Materials';
 import { getStatus, type StatusDef } from '../data/statuses';
 import { powerHooks } from '../sim/ItemPowers';
 import { resolveCombo, type ComboHit } from './Combos';
@@ -1012,7 +1013,7 @@ export class Enemy implements Combatant {
           this.dotShow = 0.55;
         }
         if (ctx.rng.next() < dt * 3) {
-          ctx.fx.burst(s.dotType === 'poison' ? 'poison' : s.dotType === 'fire' ? 'hit.fire' : 'blood',
+          ctx.fx.burst(s.dotType === 'poison' ? 'poison' : s.dotType === 'fire' ? 'hit.fire' : MATERIAL_BURST[hitMaterial(this.family)],
             this.root.position.x, this.centerY, this.root.position.z, { count: 2, color: typeColor(s.dotType) });
         }
       }
@@ -1187,15 +1188,18 @@ export class Enemy implements Combatant {
       y: this.centerY,
       z: this.root.position.z,
     });
-    ctx.fx.burst(type === 'physical' ? 'blood' : `hit.${type}`, this.root.position.x, this.centerY, this.root.position.z, {
+    // What flies off depends on what the body is made of (fx/Effects).
+    const mat = hitMaterial(this.family);
+    ctx.fx.burst(type === 'physical' ? MATERIAL_BURST[mat] : `hit.${type}`, this.root.position.x, this.centerY, this.root.position.z, {
       count: working.crit ? 20 : 10,
       color: typeColor(type),
     });
     // Mark the floor. Hits used to be pure particles, so a fight left no trace
     // and the only blood on the ground was one pool where something died.
-    if (type === 'physical' && this.family !== 'construct' && ctx.rng.chance(working.crit ? 0.9 : 0.45)) {
+    const mark = MATERIAL_MARK[mat];
+    if (type === 'physical' && mark && ctx.rng.chance(working.crit ? 0.9 : 0.45)) {
       ctx.decals.splatter(
-        'bloodSplatter',
+        mark,
         this.root.position.x, this.root.position.z,
         (working.crit ? 0.55 : 0.36) * this.sizeScale,
         working.crit ? 3 : 1,
@@ -1302,12 +1306,17 @@ export class Enemy implements Combatant {
     this.motionOverride = null;
 
     const p = this.root.position;
-    ctx.fx.burst(this.family === 'construct' ? 'dust' : 'blood', p.x, this.centerY, p.z, {
+    const mat = hitMaterial(this.family);
+    ctx.fx.burst(MATERIAL_BURST[mat], p.x, this.centerY, p.z, {
       count: 26,
       color: this.def.visual.glow ?? 0xaa2020,
     });
-    if (this.family === 'construct') {
+    if (mat === 'stone' || mat === 'ether') {
       ctx.decals.splatter('ash', p.x, p.z, 0.7 * this.sizeScale, 3);
+    } else if (mat === 'bone') {
+      ctx.decals.splatter('bone', p.x, p.z, 0.7 * this.sizeScale, 3);
+    } else if (mat === 'ichor') {
+      ctx.decals.splatter('stain', p.x, p.z, 0.75 * this.sizeScale, 3);
     } else {
       // A pool where the body fell, and thrown blood around it.
       ctx.decals.splatter('gore', p.x, p.z, 0.62 * this.sizeScale, 2);

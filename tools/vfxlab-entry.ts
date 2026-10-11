@@ -11,9 +11,12 @@ import * as THREE from 'three';
 import { Renderer } from '../src/core/Renderer';
 import { FXSystem } from '../src/fx/Particles';
 import { DecalSystem, decalKinds } from '../src/fx/Decals';
-import { EffectSystem, SCHOOLS, ELEMENTS, type School } from '../src/fx/Effects';
+import { EffectSystem, SCHOOLS, ELEMENTS, MATERIAL_BURST, MATERIAL_MARK, type School } from '../src/fx/Effects';
 import { BodyFX } from '../src/fx/BodyFX';
 import { LootFX } from '../src/fx/LootFX';
+import { buildMonsterModel, RigAnimator, monsterArchetype } from '../src/entities/MonsterModels';
+import { getMonster } from '../src/data/monsters';
+import { Random } from '../src/core/RNG';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const label = document.getElementById('label')!;
@@ -74,6 +77,34 @@ function dummy(x: number, z: number): THREE.Object3D {
   return g;
 }
 const dummies: THREE.Object3D[] = [];
+/** Per-step drivers a scene adds (creature rigs); cleared on reset. */
+const tickers: Array<(dt: number, t: number) => void> = [];
+
+/** A real monster at (x, z), facing the camera, striking at `at` seconds. */
+function monster(id: string, x: number, z: number, at: number, action: 'attack' | 'cast', school: School): void {
+  const def = getMonster(id);
+  if (!def) return;
+  const rng = new Random(0x51a7 + x * 31 + z);
+  const m = buildMonsterModel(def.visual, rng, def.scale, { family: def.family });
+  m.root.position.set(x, 0, z);
+  m.root.rotation.y = Math.PI * 0.25;
+  scene.add(m.root);
+  dummies.push(m.root);
+  const rig = new RigAnimator(m.root, m.bones, monsterArchetype(def.visual.body), rng);
+  body.bindCreature(m.root, rig.creature, () => school);
+  // Melee runs as the game drives it: a windup, then a fresh attack that the
+  // animator reads as the strike (its `hit` fires early in the strike).
+  const windup = action === 'attack' ? 0.3 : 0;
+  const dur = action === 'attack' ? 0.4 : 0.6;
+  tickers.push((dt, t) => {
+    const w = (t - at) / Math.max(1e-3, windup);
+    const k = (t - at - windup) / dur;
+    const inWind = windup > 0 && w >= 0 && w < 1;
+    const live = k >= 0 && k <= 1;
+    const actionT = inWind ? w : live ? k : 0;
+    rig.update(dt, { locomotion: 0, action: inWind || live ? action : 'idle', actionT, time: t, deathT: 0 });
+  });
+}
 
 type Plan = { at: number; fn: () => void };
 interface LabScene {
@@ -156,7 +187,7 @@ const SCENES: Record<string, LabScene> = {
     },
   },
   swings: {
-    shot: 0.2,
+    shot: 0.16,
     plan: () => {
       const out: Plan[] = [];
       SCHOOLS.forEach((s, i) => {
@@ -164,6 +195,39 @@ const SCENES: Record<string, LabScene> = {
         out.push({ at: 0, fn: () => body.labSwing(x, 0, s, i * 0.9) });
       });
       return out;
+    },
+  },
+  melee: {
+    shot: 0.2,
+    plan: () => {
+      const out: Plan[] = [];
+      const mats = ['flesh', 'bone', 'stone', 'ichor', 'ether'] as const;
+      mats.forEach((m, i) => {
+        const x = row(i, 5, 10);
+        dummy(x, 0.9);
+        const school: School = i === 4 ? 'lightning' : i === 3 ? 'poison' : 'physical';
+        out.push({ at: 0, fn: () => body.labSwing(x, -0.4, school, 0) });
+        out.push({
+          at: 0.1,
+          fn: () => {
+            effects.meleeHit(x, 1.0, 0.9, { element: school, crit: i === 0, sfx: null, shake: 0, hitStop: 0 });
+            fx.burst(MATERIAL_BURST[m], x, 1.0, 0.9, { count: 12 });
+            const mark = MATERIAL_MARK[m];
+            if (mark) decals.splatter(mark, x, 0.9, 0.4, 2);
+          },
+        });
+      });
+      return out;
+    },
+  },
+  creatures: {
+    shot: 0.44,
+    plan: () => {
+      monster('skeleton_duelist', -4.5, 0, 0.02, 'attack', 'physical');
+      monster('crypt_ghoul', -1.5, 0, 0.02, 'attack', 'physical');
+      monster('corpse_hound', 1.5, 0, 0.02, 'attack', 'physical');
+      monster('banshee', 4.5, 0, 0.12, 'cast', 'cold');
+      return [];
     },
   },
   loot: {
@@ -206,10 +270,20 @@ function reset(): void {
   loot.clear();
   for (const d of dummies) scene.remove(d);
   dummies.length = 0;
+  tickers.length = 0;
 }
 
+let sceneT = 0;
+let settling = false;
 function step(dt: number): void {
   clock += dt;
+  if (!settling) {
+    sceneT += dt;
+    for (const tk of tickers) tk(dt, sceneT);
+  }
+  // The game renders every frame, which refreshes bone matrices; the lab
+  // steps many frames per picture, so it refreshes them itself.
+  scene.updateMatrixWorld();
   effects.update(dt, clock, camera);
   body.update(dt, camera);
   loot.update(dt);
@@ -227,7 +301,10 @@ async function run(name: string): Promise<boolean> {
   let k = 0;
   const dt = 1 / 60;
   // Let the floor settle a beat so nothing from the last scene lingers.
+  settling = true;
   for (let i = 0; i < 6; i++) step(dt);
+  settling = false;
+  sceneT = 0;
   while (t <= sc.shot) {
     while (k < plan.length && plan[k]!.at <= t + 1e-6) plan[k++]!.fn();
     step(dt);

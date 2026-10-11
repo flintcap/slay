@@ -18,7 +18,8 @@ import { FXSystem } from '../fx/Particles';
 import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { LootFX } from '../fx/LootFX';
-import { EffectSystem } from '../fx/Effects';
+import { EffectSystem, ELEMENTS, type School } from '../fx/Effects';
+import { BodyFX } from '../fx/BodyFX';
 import { Player } from '../entities/Player';
 import { CombatControls } from '../entities/Controls';
 import { planMiniBoss, attachMiniBoss } from '../entities/MiniBoss';
@@ -173,6 +174,8 @@ export class DungeonScene extends GameScene {
   private loot: GroundLoot[] = [];
   /** Drop arcs, landings, pickups and the gold magnet. */
   private lootFx: LootFX;
+  /** Swing ribbons and status looks on every body (fx/BodyFX). */
+  private body: BodyFX;
   private rng!: Random;
 
   private keyDir = new THREE.Vector3();
@@ -253,6 +256,18 @@ export class DungeonScene extends GameScene {
     this.effects.setCamera(this.camera);
     this.skills = new SkillRunner(this.effects);
     this.lootFx = new LootFX(this.effects);
+    this.body = new BodyFX(this.effects);
+  }
+
+  /** Hooks a monster or boss up to swing ribbons, release flares and status looks. */
+  private watchBody(e: Enemy, lit = false): void {
+    // The creature animator's events; Enemy keeps its rig protected.
+    const rig = (e as unknown as { rig: { creature?: Parameters<BodyFX['bindCreature']>[1] } | null }).rig;
+    const t = e.def.damageType;
+    const school: School = t in ELEMENTS ? (t as School) : 'physical';
+    this.body.bindCreature(e.root, rig?.creature ?? null, () => school);
+    const s = e.sizeScale;
+    this.body.trackQuery(e.root, e, { height: 1.75 * s, radius: Math.max(0.3, e.hitRadius * 0.9), lit });
   }
 
   async enter(payload?: unknown): Promise<void> {
@@ -277,6 +292,8 @@ export class DungeonScene extends GameScene {
     this.run = generateRun(depth, seed, character.classId);
     this.player = new Player(character, seed);
     this.scene.add(this.player.root);
+    this.body.bindHero(this.player, () => this.skills.swingSchool);
+    this.body.trackList(this.player.root, this.player.status, { height: 1.8, radius: 0.38, lit: true });
     this.controls = new CombatControls(this.player, {
       cast: (id, target) => this.skills.cast(id, this.player, target, this.ctxCache ?? this.context(), this.enemies, this.boss),
       basic: (target) => this.skills.basicAttack(this.player, target, this.ctxCache ?? this.context(), this.enemies, this.boss),
@@ -572,6 +589,7 @@ export class DungeonScene extends GameScene {
       enemy.root.position.copy(wp);
       this.scene.add(enemy.root);
       this.enemies.push(enemy);
+      this.watchBody(enemy);
     }
 
     // Boss floor: the fight owns the arena, and the exit stays sealed until
@@ -589,6 +607,7 @@ export class DungeonScene extends GameScene {
           : this.mesh.tileToWorld(this.level.exit.x, this.level.exit.y);
         this.boss.root.position.copy(centre);
         this.scene.add(this.boss.root);
+        this.watchBody(this.boss, true);
         const ar = this.level.arena;
         if (ar) {
           // The gate is the gap in the arena's shell: the walkable tiles of
@@ -1180,6 +1199,7 @@ export class DungeonScene extends GameScene {
     hudRuntime.minions = this.skills.minionSummary();
     this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);
+    this.body.update(dt, this.camera);
     this.mesh.update(dt, elapsed, this.player.position);
     this.passiveMovement(dt, ctx);
     this.passiveTick(dt, ctx);
@@ -1985,6 +2005,7 @@ export class DungeonScene extends GameScene {
   }
 
   override dispose(): void {
+    this.body.clear();
     for (const off of this.offs) off();
     this.offs = [];
     this.powers?.dispose();

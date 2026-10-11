@@ -99,6 +99,8 @@ function element(s: School | undefined): ElementLook {
   return ELEMENTS[s ?? 'physical'] ?? ELEMENTS.physical;
 }
 
+export { hitMaterial, MATERIAL_BURST, MATERIAL_MARK, type HitMaterial } from './Materials';
+
 /** Ribbon looks for projectile trails and swings. */
 export interface RibbonPreset {
   kind: RibbonKind;
@@ -644,12 +646,16 @@ export class EffectSystem {
     if (opts.sfx !== null) this.sfx(opts.sfx ?? el.sfxHit, x, z);
   }
 
-  /** A melee hit on flesh: the physical impact plus blood. */
-  meleeHit(x: number, y: number, z: number, opts: ImpactOpts = {}): void {
+  /**
+   * A weapon meeting a body: steel sparks, a slash flash and the swing's
+   * element if it carries one. What flies off the body (blood, chips, ichor)
+   * is the body's own business: `Enemy.takeDamage` throws it by material.
+   */
+  meleeHit(x: number, y: number, z: number, opts: ImpactOpts & { element?: School } = {}): void {
     const scale = opts.scale ?? 1;
-    this.fx.burst('blood', x, y, z, { scale, dir: opts.dir });
     this.impact('physical', x, y, z, { ...opts, decal: false });
-    if (scale > 0.8) this.decals.add('bloodSplatter', x, z, 0.5 * scale);
+    const s = opts.element;
+    if (s && s !== 'physical') this.fx.burst(element(s).emitter, x, y, z, { scale: scale * 0.8, dir: opts.dir, count: 7 });
   }
 
   /** A kill: gore, a pool, a light pop, a slow-motion beat for big ones. */

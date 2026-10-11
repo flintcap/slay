@@ -538,20 +538,22 @@ export class BodyFX {
     if (!rig) return () => {};
     const a = this.takeActor(root, school);
     const tip = root.getObjectByName('socket:weapon') ?? null;
-    const handR = root.getObjectByName('socket:handR') ?? null;
-    const handL = root.getObjectByName('socket:handL') ?? null;
     a.b = tip ?? root.getObjectByName('socket:mouth') ?? null;
-    if (tip && (handR || handL)) {
+    if (tip) {
+      // Creatures strike with the limb or jaw that carries the weapon socket,
+      // so the edge runs from that bone's joint (walking up the chain while
+      // it is too short to read: a wrist becomes the elbow) to the tip.
       root.updateWorldMatrix(true, true);
-      const scale = root.getWorldScale(_v).y;
+      const min = 0.18 * root.getWorldScale(_v).y;
       _b.setFromMatrixPosition(tip.matrixWorld);
-      const dR = handR ? _a.setFromMatrixPosition(handR.matrixWorld).distanceTo(_b) : Infinity;
-      const dL = handL ? _a.setFromMatrixPosition(handL.matrixWorld).distanceTo(_b) : Infinity;
-      const hand = dR <= dL ? handR : handL;
-      const d = Math.min(dR, dL);
-      if (d > 0.22 * scale && d < 2.8 * scale) {
-        a.edge = Edge.Sockets;
-        a.a = hand;
+      let bone: THREE.Object3D | null = tip.parent;
+      for (let up = 0; up < 3 && bone && (bone as THREE.Bone).isBone; up++) {
+        if (_a.setFromMatrixPosition(bone.matrixWorld).distanceTo(_b) >= min) {
+          a.edge = Edge.Sockets;
+          a.a = bone;
+          break;
+        }
+        bone = bone.parent;
       }
     }
     const gen = a.gen;
@@ -700,8 +702,13 @@ export class BodyFX {
     this.clock += dt;
     for (const l of this.labs) if (l.active) this.upLab(l, dt);
 
-    for (let i = 0; i < this.actors.length; i++) {
+    for (let i = this.actors.length - 1; i >= 0; i--) {
       const a = this.actors[i]!;
+      // A body taken out of the scene lets go of its animator.
+      if (!a.root || !a.root.parent) {
+        this.dropActor(a);
+        continue;
+      }
       this.sample(a);
       if (a.after > 0) {
         a.after -= dt;
