@@ -886,7 +886,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     walls: [
       { palette: 'stone.granite', weight: 7, repeat: 1, tint: 0x93aec4 },
       // Untinted, the ice walls were a white sheet of glare beside the hero.
-      { palette: 'crystal.ice', weight: 3, repeat: 0.9, tint: 0x7890a2, emissiveIntensity: 0.08 },
+      { palette: 'crystal.ice', weight: 3, repeat: 0.9, tint: 0x546c7e, roughness: 1.8, emissiveIntensity: 0.06 },
     ],
     trim: { palette: 'metal.steel', weight: 1, roughness: 0.3, metalness: 0.9 },
     baseTrim: 'stone.granite',
