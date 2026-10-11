@@ -456,7 +456,7 @@ export function chain(a: THREE.Vector3, b: THREE.Vector3, drop: number, link = 0
 
 /** A crude human skull, centred, facing +Z. About 0.2 m. */
 export function skull(rng: Rng, s = 1): THREE.BufferGeometry {
-  const cranium = new THREE.SphereGeometry(0.1 * s, 10, 8);
+  const cranium = new THREE.SphereGeometry(0.1 * s, 9, 7);
   cranium.scale(0.9, 0.95, 1.1);
   cranium.translate(0, 0.03 * s, -0.01 * s);
   const jaw = new THREE.BoxGeometry(0.11 * s, 0.07 * s, 0.09 * s);
@@ -481,15 +481,17 @@ export function skull(rng: Rng, s = 1): THREE.BufferGeometry {
 
 /** A long bone (femur-ish) along X, centred. */
 export function longBone(len: number, r: number): THREE.BufferGeometry {
-  const shaftG = new THREE.CylinderGeometry(r * 0.7, r * 0.7, len * 0.8, 6);
+  // A few pixels on screen and hundreds to a floor: kept to about 40
+  // triangles. Open shaft (the knobs close it), a double knob at one end
+  // as one squashed ball.
+  const shaftG = new THREE.CylinderGeometry(r * 0.7, r * 0.7, len * 0.8, 5, 1, true);
   shaftG.rotateZ(Math.PI / 2);
-  const k1 = new THREE.SphereGeometry(r * 1.25, 5, 4);
-  k1.translate(-len * 0.42, 0, r * 0.4);
-  const k2 = new THREE.SphereGeometry(r * 1.25, 5, 4);
-  k2.translate(-len * 0.42, 0, -r * 0.4);
-  const k3 = new THREE.SphereGeometry(r * 1.3, 5, 4);
-  k3.translate(len * 0.42, 0, 0);
-  return merge([shaftG, k1, k2, k3]);
+  const k1 = new THREE.SphereGeometry(r * 1.3, 5, 3);
+  k1.scale(1, 1, 1.5);
+  k1.translate(-len * 0.42, 0, 0);
+  const k2 = new THREE.SphereGeometry(r * 1.3, 5, 3);
+  k2.translate(len * 0.42, 0, 0);
+  return merge([shaftG, k1, k2]);
 }
 
 /** A thin flat disc on the ground (y ≈ 0): stains, rugs, seals. */
