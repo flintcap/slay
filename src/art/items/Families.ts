@@ -11,6 +11,7 @@ import { buildBow, buildCrossbow } from './Ranged';
 import { buildOrb, buildScepter, buildStaff, buildWand } from './Casters';
 import { buildQuiver, buildShield } from './Offhand';
 import { buildBelt, buildBoots, buildChest, buildGloves, buildHelm } from './Wear';
+import { buildAmulet, buildCharm, buildGem, buildMaterial, buildPotion, buildRing, buildRune } from './Trinkets';
 
 export type FamilyBuilder = (P: Parts) => void;
 
@@ -31,4 +32,11 @@ export const FAMILY_BUILDERS: Partial<Record<string, FamilyBuilder>> = {
   gloves: buildGloves,
   boots: buildBoots,
   belt: buildBelt,
+  amulet: buildAmulet,
+  ring: buildRing,
+  charm: buildCharm,
+  gem: buildGem,
+  rune: buildRune,
+  potion: buildPotion,
+  material: buildMaterial,
 };

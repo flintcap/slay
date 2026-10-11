@@ -33,7 +33,12 @@ export type Slot =
   | 'blood'
   | 'glass'
   | 'liquid'
-  | 'leaf';
+  | 'leaf'
+  | 'leather' // pouches, wraps, hides
+  | 'iron' // plain iron whatever the palette
+  | 'obsidian' // black glassy stone
+  | 'tint' // steel tinted with the glow colour (shards, ingots)
+  | 'clay';
 
 /** A point a decoration can sit on: position, outward normal, scale. */
 export interface Hardpoint {
@@ -125,6 +130,16 @@ export class Parts {
         return liquidMat(L.glowColor);
       case 'leaf':
         return itemSurface('cloth.silk|0x3a6a2a', { wear: 0.3 });
+      case 'leather':
+        return itemSurface('leather.worn', { wear });
+      case 'iron':
+        return itemSurface('metal.iron', { wear });
+      case 'obsidian':
+        return itemSurface('stone.obsidian', { wear: 0.2 });
+      case 'tint':
+        return itemSurface('metal.steel', { wear: 0.3, tint: L.glowColor });
+      case 'clay':
+        return itemSurface('stone.brick|0xb0683a', { wear: 0.5 });
     }
   }
 
