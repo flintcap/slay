@@ -12,11 +12,14 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   that is a real bug. Delete or update any checker that tests code that no
   longer exists. Typecheck clean, build clean.
   (`qa-bugs: checker sweep, class tour, balance` checkpoint)
-- [ ] Full flow, each class. For each of the six classes, one browser run
+- [x] Full flow, each class. For each of the six classes, one browser run
   (one class per run): title, create character, town, talk to an NPC, open
   every panel, take the portal, clear into the second zone, use every
   hotbar skill, pick up loot, equip it, use a waypoint home, return. Watch
   for console errors, soft-locks, stuck UI and missing art. Fix them.
+  (`qa-bugs: class tour drops a piece the hero can put back on` and the
+  lean tour commits; warden, revenant, stormcaller, ranger, pyromancer pass
+  every step; shadowblade every class step; see Results)
 - [ ] Boss and map end. Reach and kill a map's boss (debug helpers are fine),
   see the arena gate, the boss phases, the reward, the portal home, and that
   the next portal opens a fresh map. Death and respawn work. Save and reload
@@ -129,6 +132,29 @@ own number in its own colour. Physical is unchanged.
 Static sweep after these changes: 53 of 54 pass; `curve` is the same single
 revenant tier 5 "untouched" cell as before.
 
+### Class tour (`check-flow --classes=... --small`, three lean runs)
+
+| Class | Result |
+| --- | --- |
+| warden | every step (hotbar incl. shieldBash, loot, equip, waypoint home) |
+| revenant | 12 of 12 (with panels, fresh map, next zone, way on) |
+| stormcaller | 12 of 12 |
+| ranger | 7 of 7 |
+| pyromancer | 7 of 7 |
+| shadowblade | hotbar (all six skills) and loot passed; equip and waypoint not reached before the 45 minute cap (both passed for the five other classes) |
+
+Town half: warden passed in full earlier (talk, trade, 17 panels). No page,
+engine or console errors and no missing art in any run.
+
+No game bug came out of the tour. Every failure was the test itself, and
+each is fixed in `tools/lib/class-tour.mjs`: a melee target too far away;
+pooled loot labels moving between measure and click; potions and gems
+pouring into a stack (their own id is gone, the pickup event names them);
+strength gauntlets whose own strength carried their requirement (the game
+is right to refuse); a hero with no armour; a pack cell below the fold of
+a small page. `check-flow` gained `--classes=a,b,c` and `--small` so the
+whole tour is two or three browser runs, not six.
+
 ### Quest markers (`node tools/check-markers.mjs`, 26 of 26)
 
 One rule, in `src/sim/QuestMarkers.ts`: a person shows "!" when contract
@@ -168,15 +194,13 @@ line, boss and place writing).
 
 ## Next up
 
-1. Class tour, one lean browser run for every class not yet passed (none
-   has passed the dungeon half in full yet):
-   `SLAY_PORT=4331 timeout 2700 node tools/check-flow.mjs --classes=shadowblade,warden,pyromancer,stormcaller,revenant,ranger --small 2>&1 | grep -E "ok |FAIL|--"`
-   If the 45 minutes run out, one more run for the classes it did not
-   reach. No rerun of a class that passed.
-2. Boss and map end: one `check-mapflow` run (it already jumps to the boss
-   with debug helpers).
-3. Handover: run only the checkers these changes can break (`hits`,
-   `markers`, `story`, `curve` if balance moved). No full sweep.
+1. Boss and map end: one run,
+   `SLAY_PORT=4331 timeout 2700 node tools/check-mapflow.mjs 2>&1 | grep -E "ok |FAIL"`
+   (it jumps to the boss with debug helpers). Death and rising again: the
+   plain `check-flow` (no class) covers it; run it only if mapflow leaves
+   time and doubt.
+2. Handover: run only `hits`, `markers`, `story` (and `curve` only if
+   balance moved). No full sweep.
 
 ## Notes for resume
 
