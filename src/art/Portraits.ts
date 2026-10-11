@@ -109,7 +109,29 @@ function releaseLater(): void {
   }, IDLE_MS);
 }
 
-async function render(classId: CharClassId, size: number): Promise<string> {
+/**
+ * Portraits draw one at a time, each in an idle moment. The select screen
+ * asks for all six at once; drawn together, each one's posing, drawing and
+ * PNG encoding landed in the same few frames of the screen's first second.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+function idleSlot(): Promise<void> {
+  return new Promise((r) => {
+    const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    if (ric) ric(() => r(), { timeout: 500 });
+    else requestAnimationFrame(() => r());
+  });
+}
+function render(classId: CharClassId, size: number): Promise<string> {
+  const run = queue.then(async () => {
+    await idleSlot();
+    return renderNow(classId, size);
+  });
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+async function renderNow(classId: CharClassId, size: number): Promise<string> {
   const { buildClassHero } = await import('../scenes/HeroModel');
   // The boot worker may be meshing this hero right now: wait for it rather
   // than meshing the same body again here, a freeze of seconds.
