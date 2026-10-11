@@ -245,7 +245,13 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
       window.__picked = new Set();
       S.events.on('loot:pickedUp', ({ item }) => window.__picked.add(item.uid));
       // A piece the hero can surely wear: take it off and drop it.
-      const slot = ['head', 'gloves', 'boots', 'belt', 'chest'].find((k) => c.equipment[k]);
+      // Not one whose own attributes carry its requirement: the game rightly
+      // refuses to put that back on (the shadowblade's strength gauntlets).
+      // Armour first; a hero in robes and nothing else falls back to a ring
+      // or an amulet (the weapons stay, the skills want them).
+      const worn = ['head', 'gloves', 'boots', 'belt', 'chest', 'amulet', 'ring1', 'ring2'].filter((k) => c.equipment[k]);
+      if (!worn.length) throw new Error(`nothing worn to drop: ${Object.keys(c.equipment).filter((k) => c.equipment[k]).join(', ') || 'no gear at all'}`);
+      const slot = worn.find((k) => S.debug.wearableWithout?.(k) ?? true) ?? worn[0];
       const item = c.equipment[slot];
       c.equipment[slot] = null;
       S.events.emit('item:unequipped', { item });

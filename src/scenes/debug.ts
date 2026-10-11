@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import type { BiomeId, CharClassId, ItemRarity } from '../types';
+import type { BiomeId, CharClassId, Item, ItemRarity } from '../types';
 import type { Engine } from '../core/Engine';
 import { save } from '../core/Save';
 import { events } from '../core/Events';
 import { Random, randomSeed } from '../core/RNG';
-import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem, isWornOffHand } from '../sim/Character';
+import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem, isWornOffHand, meetsRequirements } from '../sim/Character';
+import { computeStats } from '../sim/Stats';
 import { rollItem, newItem, getBase } from '../sim/Loot';
 import { buildDropModel } from '../art/ItemModels';
 import { itemIconUri, requestItemIcon, clearIconCaches } from '../art/Icons';
@@ -138,6 +139,24 @@ export function installDebug(engine: Engine): Record<string, unknown> {
     warpTo(where: 'entry' | 'exit' | { x: number; y: number }): void {
       const s = engine.currentScene;
       if (s instanceof DungeonScene) s.debugWarpTo(where);
+    },
+
+    /**
+     * Whether the piece worn in `slot` could be put back on once taken off:
+     * its own attributes do not count toward its own requirement, so a
+     * strength piece that carries the strength it needs cannot be.
+     */
+    wearableWithout(slot: string): boolean {
+      const c = save.account.current;
+      const eq = c?.equipment as Record<string, Item | null | undefined> | undefined;
+      const item = eq?.[slot];
+      if (!c || !eq || !item) return false;
+      eq[slot] = null;
+      try {
+        return meetsRequirements(c, item, computeStats(c)).ok;
+      } finally {
+        eq[slot] = item;
+      }
     },
 
     godMode(on = true): void {
