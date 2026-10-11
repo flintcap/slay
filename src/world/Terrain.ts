@@ -518,12 +518,12 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
     for (let gx = 0; gx < GW; gx++) {
       const gi = gy * GW + gx;
       const d = dist[gi]!;
-      if (d < 1 || d > 4.6) continue;
+      if (d < 1 || d > 4.2) continue;
       const z = zoneW[gi]! > 0.5 ? 1 : 0;
       const edge = looks[z]!.edge;
       if (edge !== 'trees' && edge !== 'deadTrees') continue;
       // Dense at the front of the tree line, thinning behind it.
-      const p = edge === 'trees' ? (d < 2.2 ? 0.62 : 0.3) : d < 2.2 ? 0.34 : 0.12;
+      const p = edge === 'trees' ? (d < 2.2 ? 0.6 : 0.2) : d < 2.2 ? 0.34 : 0.12;
       if (!drng.chance(p)) continue;
       const tx = gx - MARGIN + drng.range(0.15, 0.85);
       const ty = gy - MARGIN + drng.range(0.15, 0.85);
@@ -731,9 +731,11 @@ function trunk(rng: Rng, kind: 'trees' | 'deadTrees'): THREE.BufferGeometry {
 
 function canopy(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const n = rng.int(4, 6);
+  // Three or four big clumps: the canopies were the largest triangle cost on
+  // an outdoor map (check-perf), drawn twice for the sun's shadow.
+  const n = rng.int(3, 4);
   for (let i = 0; i < n; i++) {
-    const s = rng.range(1.1, 1.8);
+    const s = rng.range(1.35, 2.05);
     const g = lump(new THREE.IcosahedronGeometry(s, 1), rng.fork(`c${i}`), 0.3);
     const a = rng.range(0, Math.PI * 2);
     const rr = i === 0 ? 0 : rng.range(0.6, 1.5);
