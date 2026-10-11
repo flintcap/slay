@@ -1,6 +1,6 @@
 # Stream: ground (assets pipeline, world textures, terrain, lighting)
 
-Status: in progress
+Status: done
 
 Goal: the world looks like Diablo II or Path of Exile. Photo-based CC0
 textures, heavy stone and wet earth, deep shadows, warm torch pools, open sky
@@ -41,7 +41,7 @@ outdoors. Remake from nothing; delete the old painted textures.
   must still read clearly.
 - [x] Town ground and sky. (wip(ground): town ground as one splatted sheet with tracks and mud; paler town paths in d9e9f4a) Night camp: moonlit hemisphere and moon key, warm fire and lantern pools, one splatted ground sheet (grass, dirt, stony, mud). Terrain, paths, mud, lighting and mood for the
   town (buildings belong to props).
-- [ ] Verify and clean. Renders of every biome indoor and outdoor, speed
+- [x] Verify and clean. (ground: dead code sweep; ground: a tree on every stub of blocked ground in the open; ground: final render pass) Renders of every biome indoor and outdoor, speed
   check (draw calls under 900), dead code removed.
 
 ## Checkers
@@ -51,11 +51,51 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Next up
 
-1. Verify and clean: `check-perf` (town and busy maps under 900 draw calls),
-   `check-ghost`, `check-roof`, `check-blockers`, `check-decalheight`,
-   `check-assets`, then a last render of every biome with
-   `tools/shoot-ground.mjs` and a dead code sweep in my files.
-2. Then "Finishing a stream": Status done, Handover, QUEUE.md (ground to Done).
+Nothing. The stream is done; see Handover.
+
+## Handover
+
+What exists now:
+
+- Asset pipeline: `src/core/Assets.ts` (loader, preloader with the
+  `assets:progress` event, fallbacks, anisotropy from the quality preset via
+  `setAssetAnisotropy`, called in `Renderer.setQuality`).
+  `tools/check-assets.mjs` checks every file under `public/assets/` against
+  `ASSETS.md`. `tools/bundle-artifact.mjs` writes `dist-single/files.json`.
+- Materials: CC0 photo sets in `public/assets/textures/world/`, listed in
+  `src/art/TextureSets.ts`; surface keys in `src/art/SurfaceLibrary.ts`;
+  `surface()` in `src/art/Materials.ts`; level materials (world-space and
+  triplanar, 4 splat layers, cutaway and roof dissolve) in
+  `src/art/WorldMaterial.ts`; liquids in `src/art/Liquids.ts`.
+- Indoor levels: `src/world/DungeonBuilder.ts` (wall kits, arches, ruins,
+  veins, bedrock lid, light pools, shafts, colliders, props grounding).
+- Outdoor levels: `src/world/Terrain.ts` (heightfield, zone seams, edge kinds,
+  instanced tree blocks). Every stub of blocked ground in the open gets a
+  tree, so nothing you bump into is invisible.
+- Lighting and post: `src/world/Lighting.ts` (light mood per biome),
+  `src/core/Renderer.ts` (bloom, grade, vignette, grain, haze; GTAO only on
+  Ultra). Per-biome look in `ART` and `grade` in `src/world/Biomes.ts`.
+- Ambience: `src/world/Ambience.ts` (motes, drips, rings).
+- Render tool: `tools/shoot-ground.mjs` (one frame per biome, story cards
+  hidden, monsters cleared). Last renders: every biome plus the town, in
+  `shots/ground/` (not committed).
+
+Checks at the end: `check-assets`, `check-roof`, `check-blockers`,
+`check-decalheight` and `check-ghost` pass; typecheck is zero.
+`check-perf --preview --depths=0,1`: town 399 draw calls and 634k triangles,
+forest 472 draw calls and 1.45M triangles, both within budget.
+
+Left for `finish`:
+
+- `check-perf` depth 1 is over on memory churn (411 KB per step against 200),
+  with AI at 79% of the update. That is monsters, not the ground.
+- `check-perf` at depth 12 timed out twice under three-agent load; not rerun.
+- The void spire is still a strong violet by design (the endgame look). Tone
+  it further if it reads as too much next to the other biomes.
+- Requests still open in `props.md` (teal prop lights) and `vfx.md` (bright
+  fight rings, grey discs).
+- `src/world/Town.ts` imports `CharClassId` without using it (not ground's
+  line).
 
 ## Notes for resume
 
