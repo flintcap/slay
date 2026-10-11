@@ -62,16 +62,43 @@ try {
           ([v, sp]) => {
             const sc = window.SLAY.engine.currentScene;
             const rig = sc.rig;
-            rig.zoomBias = -6;
-            rig.distanceMul = 0.5;
+            // Side: close and low. Camera: the game's angle, a little closer
+            // (any closer and the rig's framing pushes the hero off the top).
+            rig.zoomBias = v === 'side' ? -6 : -2;
+            rig.distanceMul = v === 'side' ? 0.5 : 0.85;
             rig.opts.lookAhead = 0;
             if (rig.opts.lookAheadMax !== undefined) rig.opts.lookAheadMax = 0;
             if (rig.__pitch0 === undefined) rig.__pitch0 = rig.opts.pitch;
             rig.opts.pitch = v === 'side' ? 0.12 : rig.__pitch0;
-            // Open ground in the south of the town, room to run east. Both
-            // views run the same way: across the screen, as the player sees
-            // most strides.
-            sc.player.position.set(-8, 0, 12);
+            // Both views run the same way: screen right, across the screen,
+            // as the player sees most strides. The key turns with the camera,
+            // so find a lane of open ground that way: 9 m clear of walls by
+            // a metre and a half, inside the palisade.
+            const yaw = rig.yaw ?? 0;
+            const dx = Math.cos(yaw);
+            const dz = -Math.sin(yaw);
+            const cols = sc.town?.colliders ?? [];
+            const clear = (x0, z0) => {
+              for (let t = 0; t <= 9; t += 0.5) {
+                const x = x0 + dx * t;
+                const z = z0 + dz * t;
+                if (Math.hypot(x, z) > 19) return false;
+                for (const c of cols) if (Math.abs(x - c.x) < c.w / 2 + 1.5 && Math.abs(z - c.z) < c.d / 2 + 1.5) return false;
+              }
+              return true;
+            };
+            let at = [-4, 8];
+            search: for (let r = 0; r < 18; r += 1)
+              for (let a = 0; a < 24; a++) {
+                const x = r * Math.cos((a / 24) * Math.PI * 2);
+                const z = 8 + r * Math.sin((a / 24) * Math.PI * 2);
+                if (clear(x, z)) {
+                  at = [x, z];
+                  break search;
+                }
+              }
+            sc.player.position.set(at[0], 0, at[1]);
+            window.__gaitAt = at;
             sc.player.stats.moveSpeed = sp === 'walk' ? -60 : 0;
           },
           [view, speed],
@@ -82,7 +109,7 @@ try {
         await frames(page, 14);
         const box = await heroBox();
         // From above the body hides the legs: frame wider so the feet show.
-        const size = Math.round(Math.min(VH, Math.max(90, box.h * (view === 'side' ? 1.35 : 2.6))));
+        const size = Math.round(Math.min(VH, Math.max(90, box.h * (view === 'side' ? 1.35 : 1.8))));
         const cx = Math.round(Math.min(VW - size / 2, Math.max(size / 2, box.x)));
         const cy = Math.round(Math.min(VH - size / 2, Math.max(size / 2, box.y)));
         const tiles = [];
@@ -102,16 +129,17 @@ try {
           await hold(false);
           await frames(page, 1);
         }
-        await page.keyboard.up(key);
         const info = await page.evaluate(() => {
           const a = window.SLAY.engine.currentScene.player.animator;
           const g = a.gaitInfo;
           return `speed ${g.speed.toFixed(2)} m/s, ${g.freq.toFixed(2)} Hz, run ${g.runW.toFixed(2)}`;
         });
+        await page.keyboard.up(key);
         const out = path.join(OUT, `gait-${cls}-${speed}-${view}${TAG ? '-' + TAG : ''}.png`);
         execFileSync('montage', [...tiles, '-tile', `${N}x1`, '-geometry', '+0+0', '-resize', '180x180', out]);
         rmSync(tmp, { recursive: true, force: true });
-        log(`ok    ${path.basename(out)}  ${info}  (centre ${cx},${cy})`);
+        const at = await page.evaluate(() => window.__gaitAt);
+        log(`ok    ${path.basename(out)}  ${info}  (from ${at.map((v) => v.toFixed(1))}, centre ${cx},${cy}, hero ${Math.round(box.h)} px)`);
         await frames(page, 10);
       }
     }
