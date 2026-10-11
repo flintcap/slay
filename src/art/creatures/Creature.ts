@@ -11,7 +11,6 @@
  * by hiding the body. Size per rank is the caller's scale.
  */
 import * as THREE from 'three';
-import type { Rng } from '../../types';
 import { CREATURE_SOCKETS, type CreatureRig, type CreatureSocket } from './Rig';
 import { CMATS, Sculpt, type CMat, type SculptQuality } from './Sculpt';
 import { bakeSculpt, sculptKey } from './Bake';
@@ -31,6 +30,12 @@ export interface CreatureLook {
   mats: Partial<Record<CMat, CreatureMatDef>>;
   style: Partial<MotionStyle>;
   tier?: CreatureTier;
+  /**
+   * Whole-body size on top of the monster's own scale. Looks are sculpted at
+   * a comfortable working size; this lands them at their real size once the
+   * data's scale is applied (a dire rat is scale 0.5, so its look sets 2.2).
+   */
+  size?: number;
 }
 
 export interface CreatureModel {
@@ -173,7 +178,8 @@ export function instanceCreature(look: CreatureLook, scale: number, opts: BuildO
   );
   const tier = rankTier(opts.rank);
   const rr = RANK_RIM[tier]!;
-  const bucket = scaleBucket(scale);
+  const sz = scale * (look.size ?? 1);
+  const bucket = scaleBucket(sz);
   root.traverse((o) => {
     const sm = o as THREE.SkinnedMesh;
     if (!sm.isSkinnedMesh) return;
@@ -192,7 +198,7 @@ export function instanceCreature(look: CreatureLook, scale: number, opts: BuildO
   root.userData.monsterSkeleton = own;
   root.userData.creature = proto.info;
   root.userData.creatureKey = proto.look.key;
-  root.scale.setScalar(scale);
+  root.scale.setScalar(sz);
   return { root, bones, skeleton: own, proto };
 }
 

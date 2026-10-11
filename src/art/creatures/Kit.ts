@@ -6,7 +6,7 @@
  * as shares of `H` unless said otherwise.
  */
 import * as THREE from 'three';
-import type { CMat, PrimOpt, RGB, Sculpt } from './Sculpt';
+import type { CMat, RGB, Sculpt } from './Sculpt';
 import { boxGeo, ringGeo, spikeGeo, tubeGeo } from './Sculpt';
 
 export const V = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);

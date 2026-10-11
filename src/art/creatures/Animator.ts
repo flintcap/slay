@@ -87,6 +87,9 @@ const _v = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
+const _fkU = new THREE.Quaternion();
+const _fkL = new THREE.Quaternion();
+const _fkE = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _s = new THREE.Vector3();
 const _t = new THREE.Vector3();
@@ -643,6 +646,8 @@ export class CreatureAnimator {
     if (this.ikW > 0.001) {
       const bodyQ = ri !== undefined ? this.mQuat[ri]! : _q2.identity();
       for (const leg of this.legs) this.solveLeg(leg, bodyQ);
+      // Partly solved legs moved their joints; bring model space back in step.
+      if (this.ikW < 0.999) this.fk();
     }
 
     // Write, crossfading from the snapshot.
@@ -685,6 +690,23 @@ export class CreatureAnimator {
   }
 
   private solveLeg(leg: Leg, bodyQ: THREE.Quaternion): void {
+    // Below full weight the solved turns blend with the posed ones, so a leg
+    // handing over from IK to the pose (deaths, lunges) never flips its knee.
+    const w = this.ikW;
+    if (w < 0.999) {
+      _fkU.copy(this.lQuat[leg.upper]!);
+      _fkL.copy(this.lQuat[leg.lower]!);
+      _fkE.copy(this.lQuat[leg.end]!);
+    }
+    this.solveLegFull(leg, bodyQ);
+    if (w < 0.999) {
+      this.lQuat[leg.upper]!.copy(_fkU.slerp(this.lQuat[leg.upper]!, w));
+      this.lQuat[leg.lower]!.copy(_fkL.slerp(this.lQuat[leg.lower]!, w));
+      this.lQuat[leg.end]!.copy(_fkE.slerp(this.lQuat[leg.end]!, w));
+    }
+  }
+
+  private solveLegFull(leg: Leg, bodyQ: THREE.Quaternion): void {
     const a = this.mPos[leg.upper]!;
     const t = _t.copy(leg.target);
     // Blend toward where the pose itself put the end joint.

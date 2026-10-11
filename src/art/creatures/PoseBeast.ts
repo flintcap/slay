@@ -84,6 +84,7 @@ export function poseQuadruped(a: CreatureAnimator): void {
     a.body(0, bob - Math.abs(Math.sin(c)) * 0.03 * W * run * g, 0, rock, 0, Math.max(-0.2, Math.min(0.2, -a.yawRate * 0.06)) * g);
     a.rot('hips', -flex * 0.6, 0.05 * walk * g * Math.cos(c), 0.04 * walk * g * Math.sin(c));
     a.rot('spine', flex, 0, 0);
+    a.rot('tail1', flex * 0.55, 0, 0);
     a.rot('chest', -flex * 0.5 + 0.08 * run * g, -0.05 * walk * g * Math.cos(c), 0);
     // Head steadies against the body: counter-bob.
     a.rot('neck', 0.12 * run * g - rock * 0.8 + 0.04 * Math.cos(2 * c) * g * walk);
@@ -98,7 +99,7 @@ export function poseQuadruped(a: CreatureAnimator): void {
   }
   // A frog or toad bounds instead of striding.
   if (a.style.gait === 'hop' && g > 0.05) {
-    const hp = Math.abs(Math.sin(c * Math.PI * 0.5 + c * 0.5));
+    const hp = Math.sin(c * 0.5);
     a.body(0, hp * 0.25 * W * g, 0, -0.15 * hp * g);
   }
 
@@ -259,8 +260,8 @@ function deathQuad(a: CreatureAnimator): void {
   const kick = 1 - ramp(u, 0.0, 0.45);
   if (a.style.death === 'collapse' || a.style.death === 'crash') {
     // Legs fold under it and it settles on its belly, head down on the floor.
-    const fold = ramp(u, 0, a.style.death === 'crash' ? 0.6 : 0.45);
-    a.ikW = 1 - ramp(u, 0, 0.3);
+    const fold = ramp(u, 0, a.style.death === 'crash' ? 0.7 : 0.62);
+    a.ikW = 1 - ramp(u, 0, 0.5);
     a.body(0, -(W * 0.62) * fold + thud(u, 0.45) * W, 0, 0, a.fallYaw * 0.5, 0.12 * a.fallDir * fold);
     for (const s of ['L', 'R'] as const) {
       a.rot(`fLeg${s}`, -1.0 * fold);
@@ -318,12 +319,11 @@ export function poseFlyer(a: CreatureAnimator): void {
 
   // Wingbeat: a fast downstroke, a slower folded upstroke. Bats beat fast, wyverns slow.
   const rate = (11 - 6 * heavy) * (1 + 0.25 * g);
-  let ph = a.time * rate + a.offset;
+  const ph = a.time * rate + a.offset;
   let amp = 0.75 + 0.15 * g;
   // Casting or shooting: the wings flare wide and hold.
   const flare = a.phase === 'cast' ? ramp(t, 0, 0.3) * (1 - ramp(t, 0.85, 1)) : 0;
   amp *= 1 - 0.6 * flare;
-  if (flare > 0) ph = ph * (1 - 0.5 * flare);
   wings(a, ph, amp, flare);
   // The body lifts on each downstroke.
   const lift = -Math.cos(ph) * 0.05 * Y;
@@ -350,9 +350,9 @@ export function poseFlyer(a: CreatureAnimator): void {
 
   // Attacks.
   if (a.phase === 'windup' || a.phase === 'strike') {
-    const wind = a.phase === 'windup' ? ramp(t, 0, 0.5) : 1 - ramp(t, 0, 0.15);
-    const hit = a.phase === 'strike' ? ramp(t, 0, 0.15) * (1 - ramp(t, 0.45, 1)) : 0;
-    const back = a.phase === 'strike' ? ramp(t, 0.45, 1) : 0;
+    const wind = a.phase === 'windup' ? ramp(t, 0, 0.5) : 1 - ramp(t, 0, 0.32);
+    const hit = a.phase === 'strike' ? ramp(t, 0, 0.32) * (1 - ramp(t, 0.55, 1)) : 0;
+    const back = a.phase === 'strike' ? ramp(t, 0.55, 1) : 0;
     const w = wind * (1 - back);
     if (a.style.ranged && !a.struck) {
       // Screech or spit: rear back, then thrust the head out.
@@ -500,8 +500,8 @@ export function poseSerpent(a: CreatureAnimator): void {
 
   const t = a.t;
   if (a.phase === 'windup' || a.phase === 'strike' || a.phase === 'cast') {
-    const wind = a.phase === 'strike' ? 1 - ramp(t, 0, 0.12) : ramp(t, 0, 0.5);
-    const hit = a.phase === 'strike' ? ramp(t, 0, 0.12) * (1 - ramp(t, 0.45 + 0.15 * heavy, 1)) : 0;
+    const wind = a.phase === 'strike' ? 1 - ramp(t, 0, 0.36) : ramp(t, 0, 0.5);
+    const hit = a.phase === 'strike' ? ramp(t, 0, 0.36) * (1 - ramp(t, 0.6 + 0.15 * heavy, 1)) : 0;
     const cast = a.phase === 'cast' ? ramp(t, 0, 0.5) * (1 - ramp(t, 0.92, 1)) : 0;
     const ranged = a.style.ranged && !a.struck && a.phase === 'windup';
     const lash = a.attack === 'lash' || a.attack === 'swing';
@@ -525,7 +525,7 @@ export function poseSerpent(a: CreatureAnimator): void {
       }
       a.rot('head', 0.25 * Math.max(w, k) - 0.1 * out);
       a.rot('jaw', 0.9 * Math.max(w * 0.6, out) + 0.5 * k);
-      a.body(0, 0, -0.06 * L * w + 0.18 * L * out);
+      a.body(0, 0, -0.05 * L * w + 0.14 * L * out);
     }
   }
   const fl = a.flinch;
@@ -547,12 +547,12 @@ export function poseSerpent(a: CreatureAnimator): void {
 function deathSerpent(a: CreatureAnimator, f: string[], tl: string[]): void {
   const u = a.deathT;
   const H = a.hipY;
-  const thrash = (1 - ramp(u, 0.1, 0.5)) * Math.sin(a.t * 22);
+  const thrash = (1 - ramp(u, 0.1, 0.5)) * Math.sin(a.t * 14);
   const drop = ramp(u, 0.15, 0.7);
   // The front falls to the floor, the body curls and rolls to show its belly.
   for (let i = 0; i < f.length; i++) a.rot(f[i]!, 0.5 * drop, 0.3 * thrash + 0.25 * drop * a.fallDir, 0);
   const coil = a.style.death === 'coil' ? 0.45 : 0.18;
-  for (let i = 0; i < tl.length; i++) a.rot(tl[i]!, 0, (coil * drop + 0.25 * thrash) * a.fallDir, 0);
+  for (let i = 0; i < tl.length; i++) a.rot(tl[i]!, 0, (coil * drop + 0.2 * thrash * (1 - 0.6 * (i / tl.length))) * a.fallDir, 0);
   a.rot('head', 0.3 * drop, 0, 0.6 * drop * a.fallDir);
   a.rot('jaw', 0.7 * ramp(u, 0.2, 0.6));
   a.body(0, -0.3 * H * drop + thud(u, 0.7) * H, 0, 0, a.fallYaw, 0.9 * a.fallDir * drop);

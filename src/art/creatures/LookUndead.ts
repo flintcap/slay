@@ -298,7 +298,7 @@ export function quadChestR(chest: number, narrow = 0.78): THREE.Vector3 {
 /** A four-legged body: barrel, haunches, legs, paws or hooves. Shared with the beasts. */
 export function quadBody(
   s: Sculpt,
-  o: { girth: number; chest: number; belly?: number; legR: number; gaunt?: number; paws?: 'claw' | 'hoof' | 'pad'; mat?: 'skin' | 'alt'; haunch?: number; neckR?: number; narrow?: number },
+  o: { girth: number; chest: number; belly?: number; legR: number; gaunt?: number; paws?: 'claw' | 'hoof' | 'pad'; mat?: 'skin' | 'alt'; haunch?: number; neckR?: number; narrow?: number; muscle?: number; barrel?: number },
 ): void {
   const mat = o.mat ?? 'skin';
   const hp = s.j('hips');
@@ -311,11 +311,32 @@ export function quadBody(
   // The waist tucks up under a gaunt body.
   s.ball('spine', sp.clone().add(V(0, -0.03 + gaunt * g * 0.25, 0)), V(g * (0.95 - gaunt * 0.3) * nw, g * (1.0 - gaunt * 0.3), (ch.z - hp.z) * 0.38), { mat, k: 0.05 });
   s.ball('chest', quadChest(s, o.chest), quadChestR(o.chest, nw), { mat, k: 0.05 });
+  // A living animal's ribcage runs back from the chest and tapers into the waist.
+  const barrel = o.barrel ?? 0;
+  if (barrel > 0) {
+    const rc = lerpV(ch, sp, 0.45).add(V(0, -0.03 - o.chest * 0.1, 0));
+    s.ball('chest', rc, V(o.chest * 0.85 * nw, o.chest * (0.95 + 0.1 * barrel), (ch.z - sp.z) * (0.55 + 0.25 * barrel)), { mat, k: 0.06 });
+  }
   if (o.belly) s.ball('spine', sp.clone().add(V(0, -g * 0.6, 0.05)), V(o.belly, o.belly * 0.8, o.belly * 1.6), { mat, k: 0.05 });
   // Neck.
   s.limb('neck', ch.clone().add(V(0, 0.02, 0.04)), s.j('head'), (o.neckR ?? g * 0.55), (o.neckR ?? g * 0.55) * 0.75, { mat, k: 0.04 });
   const r = o.legR;
-  s.pair((side) => {
+  const mu = o.muscle ?? 0;
+  s.pair((side, x) => {
+    if (mu > 0) {
+      // Shoulder blade and upper arm, thigh and haunch: the mass that carries the stride.
+      const fl = s.j(`fLeg${side}`);
+      const fe = s.j(`fShin${side}`);
+      s.ball(`fLeg${side}`, lerpV(fl, fe, 0.3).add(V(x * r * 0.15, 0, r * 0.2)), V(r * (1.3 + 0.5 * mu), fl.distanceTo(fe) * (0.42 + 0.06 * mu), r * (1.8 + 0.8 * mu)), { mat, k: r * 1.2 });
+      const hl = s.j(`hLeg${side}`);
+      const hk = s.j(`hShin${side}`);
+      s.ball(`hLeg${side}`, lerpV(hl, hk, 0.32).add(V(x * r * 0.2, 0, -r * 0.3)), V(r * (1.5 + 0.6 * mu), hl.distanceTo(hk) * (0.45 + 0.08 * mu), r * (2.2 + 1.0 * mu)), { mat, k: r * 1.3 });
+      // Forearm and gaskin keep some meat.
+      const fw = s.j(`fFoot${side}`);
+      s.ball(`fShin${side}`, lerpV(fe, fw, 0.25), V(r * (0.85 + 0.2 * mu), fe.distanceTo(fw) * 0.3, r * (0.95 + 0.25 * mu)), { mat, k: r * 0.6 });
+      const hc = s.j(`hHock${side}`);
+      s.ball(`hShin${side}`, lerpV(hk, hc, 0.22), V(r * 0.8, hk.distanceTo(hc) * 0.3, r * (0.9 + 0.15 * mu)), { mat, k: r * 0.8 });
+    }
     // Front: shoulder blade into the leg.
     s.ball(`fLeg${side}`, s.j(`fLeg${side}`).add(V(0, 0.02, -0.01)), V(r * 1.2, r * 2.2, r * 1.6), { mat, k: 0.03 });
     s.limb(`fLeg${side}`, s.j(`fLeg${side}`), s.j(`fShin${side}`), r * 1.1, r * 0.8, { mat, k: 0.02, blendAt: s.j(`fLeg${side}`), blendR: r * 3 });

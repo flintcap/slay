@@ -153,7 +153,7 @@ function drive(anim: CreatureAnimator, root: THREE.Object3D, state: string): voi
 }
 
 function frame(cam: THREE.PerspectiveCamera, h: number, yaw: number, cy: number, pitch = 0.18, len = 0): void {
-  const size = Math.max(h, len * 0.7, 0.6) * 1.4;
+  const size = Math.max(h, len * (0.7 + 0.45 * Math.abs(Math.sin(yaw))), 0.6) * 1.4;
   const dist = (size * 0.5) / Math.tan((cam.fov * Math.PI) / 360) + len * 0.3;
   cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, cy + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
   cam.lookAt(0, cy, 0);
@@ -202,7 +202,8 @@ export async function lineup(ids: string[], mood: 'studio' | 'dungeon' = 'studio
       drive(m.anim, m.root, 'idle');
       const info = m.root.userData.creature as CreatureInfo;
       const k = cost(m.root);
-      frame(cam, info.height, yaw, info.height * 0.5, 0.15, info.length);
+      const sz = m.look.size ?? 1;
+      frame(cam, info.height * sz, yaw, info.height * sz * 0.5, 0.15, info.length * sz);
       r.render(scene, cam);
       line2 = `${k.tris} tris ${k.calls} calls ${m.ms.toFixed(0)}ms`;
     } catch (err) {
@@ -242,7 +243,8 @@ export async function poses(ids: string[]): Promise<string> {
         scene.add(m.root);
         drive(m.anim, m.root, STATES[col]!);
         const info = m.root.userData.creature as CreatureInfo;
-        frame(cam, info.height * 1.1, 1.1, info.height * 0.5, 0.2, info.length * 1.3);
+        const sz = m.look.size ?? 1;
+        frame(cam, info.height * 1.1 * sz, 1.1, info.height * 0.5 * sz, 0.2, info.length * 1.3 * sz);
         r.render(scene, cam);
       } catch (err) {
         console.log(String((err as Error).stack ?? err));

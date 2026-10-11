@@ -134,7 +134,7 @@ function run(id: string): Row {
         if (pv) {
           const step = p.clone().sub(pv);
           const before = prevStep.get(n);
-          const whip = (st.label === 'strike' || st.label === 'spawn' || st.label === 'hit walking') && WHIP.test(n);
+          const whip = (st.label === 'strike' || st.label === 'spawn' || st.label === 'hit walking') && (WHIP.test(n) || (info?.kind === 'serpent' && n === 'head'));
           if (before && !whip) {
             const jump = step.distanceTo(before) / hipY;
             if (jump > pop) {
