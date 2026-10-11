@@ -90,3 +90,16 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
 - The published build packs assets: `assets/packs.json` plus seven `.wasm`
   packs. The dev server has no packs and fetches loose files.
 - Do not change stats, balance or monster counts.
+
+- **Lean testing (hard rule, PROTOCOL.md "Lean testing", commit 5716a63).**
+  Testing burns the owner's usage.
+  - Find the cost with CPU profiles and code reading first. A browser run
+    only confirms.
+  - One short perf run before and one after per milestone, same settings.
+    Never around every edit.
+  - Batch several speed fixes, then measure once.
+  - Garbage and CPU checks headless where possible.
+  - The full soak runs once, at handover only.
+  - Print summary numbers only (p50, p95, p99, worst) through `grep` or
+    `tail`. Never dump frame logs into context.
+  - Once a target is met, move on.
