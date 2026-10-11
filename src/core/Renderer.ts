@@ -392,6 +392,10 @@ export class Renderer {
     });
     this.gl.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pixelRatioCap));
     this.gl.setSize(window.innerWidth, window.innerHeight);
+    // Reading back every program's info logs on first use is three more
+    // round trips to the GPU per shader, each one a wait. The dev server keeps
+    // them so a broken shader still says why.
+    this.gl.debug.checkShaderErrors = !!import.meta.env.DEV;
 
     // ACES Filmic is the reason this looks like a game and not a tech demo:
     // it rolls highlights off instead of clipping them to flat white.

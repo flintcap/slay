@@ -141,6 +141,25 @@ async function visit(label) {
     const ls = await page.evaluate(([a, b]) => window.__lt.long.filter(([t]) => t >= a && t < b).map(([, d]) => d), [t0, t1]);
     const top = ls.slice().sort((x, y) => y - x).slice(0, 6);
     console.log(`[${label}] ${name}: ${Math.round(t1 - t0)} ms; ${ls.length} long tasks, ${ls.reduce((x, y) => x + y, 0)} ms, biggest ${top.join(', ')}`);
+    // Programs first built during this phase, and the materials that use them.
+    const progs = await page.evaluate(() => {
+      const gl = window.SLAY?.engine?.renderer?.gl;
+      if (!gl) return null;
+      const seen = (window.__lt.progSeen ??= new Set());
+      const fresh = gl.info.programs.filter((q) => !seen.has(q));
+      for (const q of fresh) seen.add(q);
+      const scene = window.SLAY.engine.currentScene?.scene;
+      const names = fresh.map((prog) => {
+        const out = new Set();
+        scene?.traverse((o) => {
+          const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+          for (const m of ms) if (gl.properties.get(m)?.currentProgram === prog) out.add(`${o.name || o.parent?.name || o.type}/${m.name || m.type}`);
+        });
+        return [...out].slice(0, 2).join(' ') || prog.name;
+      });
+      return { total: gl.info.programs.length, names };
+    });
+    if (progs) console.log(`    programs: ${progs.total} alive, ${progs.names.length} new${progs.names.length && progs.names.length <= 40 ? `: ${progs.names.join(' | ')}` : ''}`);
     if (PROFILE && profiles.length) printProfile(name, profiles[profiles.length - 1][1]);
     return { name, t0: Math.round(t0), ms: Math.round(t1 - t0) };
   };
@@ -204,22 +223,37 @@ async function visit(label) {
           }
           if (scene.boss) stops.push(scene.boss);
           window.__lt.stops = [];
+          // Shader programs built on the way, and whose: a program first
+          // linked mid-play is a stall the load could have taken.
+          const gl = window.SLAY.engine.renderer.gl;
+          const seen = new Set(gl.info.programs);
+          const whose = (prog) => {
+            const out = new Set();
+            scene.scene.traverse((o) => {
+              const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+              for (const m of ms) if (gl.properties.get(m)?.currentProgram === prog) out.add(`${o.name || o.parent?.name || o.type}/${m.name || m.type}`);
+            });
+            return [...out].slice(0, 3).join(' ') || prog.name;
+          };
           for (const e of stops) {
             const t = performance.now();
             p.position.set(e.root.position.x + 4, p.position.y, e.root.position.z + 4);
             p.root.position.copy(p.position);
             for (let i = 0; i < frames; i++) await raf();
-            window.__lt.stops.push([Math.round(t), e === scene.boss ? 'boss' : e.def?.id ?? '?']);
+            const fresh = gl.info.programs.filter((q) => !seen.has(q));
+            for (const q of fresh) seen.add(q);
+            window.__lt.stops.push([Math.round(t), e === scene.boss ? 'boss' : e.def?.id ?? '?', fresh.map(whose)]);
           }
         }, { stopsMax: STOPS, frames: STOP_FRAMES }),
       );
       const lt = await page.evaluate(() => window.__lt);
       console.log(`walk stops (ms, monster, long tasks until the next stop):`);
       for (let i = 0; i < (lt.stops ?? []).length; i++) {
-        const [t, id] = lt.stops[i];
+        const [t, id, progs] = lt.stops[i];
         const end = lt.stops[i + 1]?.[0] ?? Infinity;
         const ls = lt.long.filter(([a]) => a >= t && a < end).map(([, d]) => d);
         console.log(`  ${String(t).padStart(7)}  ${String(id).padEnd(24)} ${ls.join(', ')}`);
+        if (progs?.length) console.log(`           ${progs.length} new programs: ${progs.join(' | ')}`);
       }
       // Then fight (the soak's autopilot: attack the nearest, a hotbar skill
       // every 25 frames), so first casts, hits, deaths and summons show.

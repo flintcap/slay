@@ -13,6 +13,13 @@ session, as published.
   (pack downloads, texture decode, mesh building, shader compile) and cut
   them: show progress, load in the background, build lazily, warm shaders
   behind the loading card.
+- [ ] Owner-reported lag (top priority, ahead of garbage and mix). The owner
+  played the published game on a real machine and still feels lag in:
+  (a) the main menus, (b) character creation and select, (c) attacking
+  enemies, (d) enemies coming into view, (e) loading new areas while moving
+  through a map. For each, find what costs the time and cut it. Real
+  hardware has a GPU, so first-use shader compiles and main-thread building
+  matter most. Report frame spikes over 50 ms, not only averages.
 - [ ] Hitches. First sight of a monster or boss stalls 0.15 to 2.9 s while its
   body is built. Move that work off the frame (worker, prebuild during map
   load for the map's monster list, or spread over frames). Same for any other
