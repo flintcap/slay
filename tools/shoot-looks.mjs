@@ -9,6 +9,7 @@
  *   ... --class=ranger   the hero (default warden)
  *   ... --wait=90        frames to let the monsters come on before the shot
  *   ... --spot=water     stand on a shore instead of the busiest room
+ *   ... --seq=6          then six more shots three frames apart (motion)
  */
 import { mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -21,6 +22,8 @@ const CLS = arg('class', 'warden');
 const WAIT = Number(arg('wait', 90));
 /** `water`: stand on a shore instead of in the busiest room. */
 const SPOT = arg('spot', 'monsters');
+/** Extra frames after shot b, `--seq=6` shots three frames apart (motion check). */
+const SEQ = Number(arg('seq', 0));
 mkdirSync(OUT, { recursive: true });
 
 const t0 = Date.now();
@@ -111,6 +114,10 @@ try {
       await frames(page, WAIT);
       await shoot(`l-${b}-b`);
       log(`fx before b: ${JSON.stringify(await probe())}`);
+      for (let k = 0; k < SEQ; k++) {
+        await frames(page, 3);
+        await shoot(`l-${b}-s${k}`);
+      }
     } catch (e) {
       ok = false;
       log(`failed ${b}: ${String(e.message).slice(0, 200)}`);

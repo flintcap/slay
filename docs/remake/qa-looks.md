@@ -19,6 +19,13 @@ looks wrong or weak against the Diablo II / Path of Exile bar in `PLAN.md`.
 - [ ] Known leftovers. Kraken pauldrons (blobby), armour quilting (faint),
   ashen prophet and hive queen wings, stalker prime (plain), glacier titan
   fists, void spire readability.
+- [ ] Hero walk (owner, top priority). Legs too spread, not fluid. Aim:
+  narrow step width near a centre line, hips sway and turn, knees bend
+  smoothly, heel strike then roll to toe, arms swing against the legs,
+  upper body turns against the hips, walk and run blend with no snap, the
+  walk never inherits a wide idle stance, feet do not slide. Check with
+  live-game strips (side and camera) at walk and run, two classes, before
+  and after.
 - [ ] Motion check. Watch heroes and monsters walk, attack, cast, get hit and
   die in the live game (short frame sequences). Feet do not slide, hits land
   on the hit frame, effects line up with hands and weapons.
@@ -35,9 +42,10 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
    Before: `wear.png`, `close1/`; after: `close2/`, `close5/`.
 2. FIXED. Kraken pauldrons were seven blended balls: now a ribbed, spined
    shell with a whorl.
-3. Outdoor water (dark forest "Hangman's Copse"): the pool is square tiles
-   with stair-step edges, pale blue-grey, reads as a tiled floor.
-   (`l-darkForest-a.png`)
+3. FIXED (shape). Outdoor water (dark forest): the pool was square tiles
+   with stair-step edges, standing above the bank. Now below the bank, the
+   shore curves (`fix2/l-darkForest-a.png`). Still pale from the sky
+   reflection: dimmed on water in `Liquids.ts`, not yet seen in a render.
 4. FIXED. Bosses. Ashen prophet and harpies: real feathered wings (coverts
    and flight feathers, `featherWings`). Stalker prime: dark chitin plates
    on the shoulders and spine. Hive queen: raised amber wings. Glacier

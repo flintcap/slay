@@ -227,6 +227,18 @@ export function liquidSurface(style: LiquidStyle, color: number, glow: number): 
         ].join('\n'),
       )
       .replace(
+        '#include <lights_fragment_maps>',
+        [
+          '#include <lights_fragment_maps>',
+          // Water at night took the shared pale sky's reflection and read as
+          // ice or a tiled floor; it should hold the dark. (Scene-wide
+          // environment intensity overrides the material's own setting.)
+          '#if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )',
+          `radiance *= ${style === 'water' ? '0.3' : '1.0'};`,
+          '#endif',
+        ].join('\n'),
+      )
+      .replace(
         '#include <emissivemap_fragment>',
         [
           '#include <emissivemap_fragment>',
@@ -237,7 +249,7 @@ export function liquidSurface(style: LiquidStyle, color: number, glow: number): 
         ].join('\n'),
       );
   };
-  mat.customProgramCacheKey = () => 'liquidSurface';
+  mat.customProgramCacheKey = () => `liquidSurface|${style === 'water' ? 'w' : 'o'}`;
   return {
     material: mat,
     update(elapsed: number): void {
