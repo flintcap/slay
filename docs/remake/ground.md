@@ -39,7 +39,7 @@ outdoors. Remake from nothing; delete the old painted textures.
   bloom only on magic and fire, vignette. Forest moonlight, desert harsh low
   sun and heat haze, hell red underglow, frozen blue. Hero, monsters and loot
   must still read clearly.
-- [ ] Town ground and sky. Terrain, paths, mud, lighting and mood for the
+- [x] Town ground and sky. (wip(ground): town ground as one splatted sheet with tracks and mud; paler town paths in d9e9f4a) Night camp: moonlit hemisphere and moon key, warm fire and lantern pools, one splatted ground sheet (grass, dirt, stony, mud). Terrain, paths, mud, lighting and mood for the
   town (buildings belong to props).
 - [ ] Verify and clean. Renders of every biome indoor and outdoor, speed
   check (draw calls under 900), dead code removed.
@@ -51,14 +51,27 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Next up
 
-1. Indoor builder (in progress): `WallKit` in Biomes.ts ('masonry' gets
-   pilasters, plinth, cornice; 'rough' gets displaced rock faces from
-   `roughFace`). Render a crypt and a cave and check both. Then arches over
-   doorways and per-biome kit tuning (tomb, ice cave, keep).
-2. Outdoor builder: heightfield with `aSplat` layers, ART entries for the six
-   new biomes.
+Done in code (wip commits, not yet ticked until renders pass): wall kits
+(masonry: plinth, cornice, string course, pilasters; rough: displaced rock),
+doorway arches, outdoor terrain (`src/world/Terrain.ts`: heightfield, 4-layer
+splat, zone seam blend, tree lines, dunes, cliffs, ruins with ragged tops),
+exits by kind, ART for all six new biomes, light moods (`src/world/Lighting.ts`),
+light from below, heat haze, per-biome grades.
+
+1. Render `biome-crypt`, `biome-caverns`, `biome-frostvault`, `biome-desertTomb`
+   (indoor) and `biome-darkForest`, `biome-swamp`, `biome-desert`,
+   `biome-tundra`, `biome-hell` (outdoor) at 1280x720, fix what looks wrong,
+   then tick Indoor builder, Outdoor builder, Lighting and post.
+2. Verify and clean: `check-perf` draw calls under 900 (town and a busy map),
+   dead code sweep in DungeonBuilder (old puddle/look fallbacks).
 
 ## Notes for resume
+
+- Renders are slow when three agents render at once (a 1920x1080 dungeon shot
+  took 25 minutes). Use `--width=1280 --height=720` and at most three shots
+  per run.
+- Wall lights (`art.wallLight`) shine in `art.lightColor`, not the prop's
+  stock colour, so biome variants keep their mood.
 
 - From maps: the zone generators are on and emit `ruin`, `deepWater`,
   `bridge` and `ice`. maps made the one-line edit in DungeonBuilder's
