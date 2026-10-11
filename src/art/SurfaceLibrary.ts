@@ -47,6 +47,9 @@ const S = (set: TextureSetName, base: number | undefined, rough: [number, number
   ...extra,
 });
 
+// The ice scan is a hard white crackle. At its own 2 m and a near-mirror
+// roughness it turned every crystal wall and ice floor into glitter static
+// under the torches; crystal keys wear it larger, duller and flatter.
 const LIB: Record<string, Def> = {
   // Stone
   'stone.crypt': S('slab', 0x6b6a63, [0.62, 0.96], 0, 1.0, { tintAmount: 0.6 }),
@@ -99,9 +102,9 @@ const LIB: Record<string, Def> = {
   'hair.dark': S('fur', 0x2a2420, [0.38, 0.62], 0, 0.5),
   'hair.fair': S('fur', 0x8a6d43, [0.38, 0.62], 0, 0.5),
   // Crystal
-  'crystal.void': S('ice', 0x3b2f5c, [0.05, 0.24], 0, 1.1, { tintAmount: 0.9, emissive: 0x7a4ad6, emissiveIntensity: 0.9 }),
-  'crystal.ice': S('ice', 0x9dc2d7, [0.03, 0.2], 0, 1.0, { tintAmount: 0.7, emissive: 0x2f6a8c, emissiveIntensity: 0.28 }),
-  'crystal.arcane': S('ice', 0x2f6a7a, [0.04, 0.22], 0, 1.05, { tintAmount: 0.9, emissive: 0x2ad0e6, emissiveIntensity: 1.0 }),
+  'crystal.void': S('ice', 0x3b2f5c, [0.18, 0.42], 0, 0.7, { metres: 4.5, tintAmount: 0.9, emissive: 0x7a4ad6, emissiveIntensity: 0.9 }),
+  'crystal.ice': S('ice', 0x9dc2d7, [0.18, 0.42], 0, 0.7, { metres: 4.5, tintAmount: 0.7, emissive: 0x2f6a8c, emissiveIntensity: 0.28 }),
+  'crystal.arcane': S('ice', 0x2f6a7a, [0.18, 0.42], 0, 0.7, { metres: 4.5, tintAmount: 0.9, emissive: 0x2ad0e6, emissiveIntensity: 1.0 }),
   // Ground
   'ground.cobble': S('cobble', 0x5f5b54, [0.6, 0.98], 0, 1.2, { tintAmount: 0.5 }),
   'ground.dirt': S('dirt', 0x564734, [0.72, 1.0], 0, 1.15, { tintAmount: 0.5 }),

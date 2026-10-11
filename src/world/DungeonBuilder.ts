@@ -798,8 +798,10 @@ export class DungeonMesh {
     const hotTiles: Array<{ x: number; y: number; h: number }> = [];
     // The glow lives in a crack texture: a bare additive tile read as a lit
     // square on the floor (w10 hive and foundry).
+    // At full colour the cracks read as bright cartoon squiggles lying on
+    // the stone (caverns, w-ground renders): a dimmer glow sits in it.
     const veinMat = new THREE.MeshBasicMaterial({
-      color: art.veinColor,
+      color: new THREE.Color(art.veinColor).multiplyScalar(0.6),
       map: crackTexture(),
       transparent: true,
       opacity: 1,
