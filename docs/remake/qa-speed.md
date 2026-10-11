@@ -3,7 +3,12 @@
 Status: in progress
 
 Goal: the game loads quickly, runs smoothly and stays steady over a long
-session, as published.
+session, as published. Widened by the owner: this stream is the
+optimization and performance stream. The aim is the smoothest, lag-free
+play we can get, not only meeting budgets. Never change gameplay, stats or
+monster counts. Before and after numbers are measured under the same
+conditions. Software rendering here is slow: judge GPU work by draw calls,
+triangles, overdraw and shader counts, and CPU work by measured ms.
 
 ## Milestones
 
@@ -20,6 +25,26 @@ session, as published.
   through a map. For each, find what costs the time and cut it. Real
   hardware has a GPU, so first-use shader compiles and main-thread building
   matter most. Report frame spikes over 50 ms, not only averages.
+- [ ] Frame pacing. A steady 60 fps on a mid-range laptop GPU in town, on
+  busy maps and in boss fights. Measure p95, p99 and worst frame, not only
+  averages. Remove every recurring spike over 33 ms and every one-off spike
+  over 50 ms we can find.
+- [ ] The CPU frame. Profile update and render per system (AI, pathfinding,
+  animation and IK, skinning, effects, UI and damage text, audio) and cut
+  the biggest: update far or offscreen monsters less often, cache paths,
+  pool and reuse, no per-frame allocation or DOM layout, batch HUD updates.
+- [ ] The GPU frame. Draw calls and instancing; shadow cost (resolution,
+  which lights cast, static shadow caching); overdraw from particles and
+  glows; post-processing cost; texture memory and mipmaps; shader count
+  (merge material variants).
+- [ ] A real quality ladder in Settings: Low, Medium, High, Ultra, each
+  setting shadows, post, effect density, view distance and resolution
+  scale. An optional auto mode drops a step when frames run long and steps
+  back up when there is room. Defaults give smooth play first.
+- [ ] Loading. New areas build without freezing play (across frames or in
+  a worker), and what the next area needs is warmed ahead of time.
+- [ ] A permanent perf check in `tools/` that records frame-time stats for
+  town, a busy map and a boss fight, and fails on regressions.
 - [ ] Hitches. First sight of a monster or boss stalls 0.15 to 2.9 s while its
   body is built. Move that work off the frame (worker, prebuild during map
   load for the map's monster list, or spread over frames). Same for any other
