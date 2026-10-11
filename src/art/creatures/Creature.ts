@@ -191,6 +191,12 @@ export function instanceCreature(look: CreatureLook, scale: number, opts: BuildO
     const sm = o as THREE.SkinnedMesh;
     if (!sm.isSkinnedMesh) return;
     sm.bind(own, sm.bindMatrix);
+    // Culled on the shared mesh's generous sphere (set in \`prototype\`). Left
+    // empty, three.js works one out on the first frame by posing every
+    // vertex through the bones: per part, per monster, all at once on the
+    // first frame of a floor (most of a second), and it then kept that one
+    // pose's tight sphere for good, so a lunge could be culled half drawn.
+    if (sm.geometry.boundingSphere) sm.boundingSphere = sm.geometry.boundingSphere.clone();
     const matName = sm.userData.mat as CMat;
     const def = proto.look.mats[matName] ?? proto.look.mats.skin!;
     // Texel density follows the world size; rank adds its rim and a hotter glow.

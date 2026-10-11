@@ -68,6 +68,9 @@ import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
 const _viewBall = new THREE.Sphere();
+/** A monster root's world-matrix walk, live and frozen (see the enemy loop in update). */
+const MATRIX_WALK = THREE.Object3D.prototype.updateMatrixWorld;
+const MATRIX_FROZEN = function (this: THREE.Object3D): void {};
 
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
@@ -1194,7 +1197,11 @@ export class DungeonScene extends GameScene {
           live = _view.intersectsSphere(_viewBall);
         }
       }
-      e.root.matrixWorldAutoUpdate = live;
+      // three.js has no switch that skips a subtree (matrixWorldAutoUpdate
+      // skips one node and still walks its children), so the root's own
+      // walk is swapped for one that does nothing while it is out of sight.
+      const walk = live ? MATRIX_WALK : MATRIX_FROZEN;
+      if (e.root.updateMatrixWorld !== walk) e.root.updateMatrixWorld = walk;
       // Far away: leave it in the world and visible (frustum culling already
       // handles the draw cost), just stop simulating it.
       // A monster already dying always finishes falling, wherever it is: its

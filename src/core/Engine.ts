@@ -521,13 +521,22 @@ export class Engine {
       // so anything that does change (a setting being tried) still shows,
       // and at once when the canvas is resized, which clears it.
       const cv = this.renderer.canvas;
+      // Behind a fully down curtain nothing drawn is seen. Drawing there was
+      // worse than wasted: a scene still loading was drawn every frame, and
+      // each draw of a shader not yet linked waited for its link right there,
+      // so the side-by-side linking `prime` starts (compileAsync) ran one
+      // program at a time instead. The warm frame `prime` draws itself.
       const held =
-        this.paused &&
-        !this.transitioning &&
-        tu1 - this.lastDraw < PAUSED_FRAME_MS &&
-        cv.width === this.drawnW &&
-        cv.height === this.drawnH;
-      if (held) this.heldDt += dt;
+        curtainDown ||
+        (this.paused &&
+          !this.transitioning &&
+          tu1 - this.lastDraw < PAUSED_FRAME_MS &&
+          cv.width === this.drawnW &&
+          cv.height === this.drawnH);
+      if (held) {
+        // A load's seconds are not time the picture should catch up on.
+        if (!curtainDown) this.heldDt += dt;
+      }
       else {
         try {
           this.renderer.render(scene.scene, scene.camera, dt + this.heldDt, this.elapsed);
@@ -589,14 +598,30 @@ function nextFrame(): Promise<void> {
 
 let fadeEl: HTMLElement | null = null;
 
+/**
+ * True while the fade overlay is fully down: nothing drawn can be seen, so
+ * the loop does not draw (see `loop`). Set when a fade to black has run its
+ * course, cleared the moment a fade back up starts.
+ */
+let curtainDown = false;
+let fadeSerial = 0;
+
 /** Drives the fullscreen fade overlay declared in index.html. */
 export function fadeTo(opacity: number, ms: number): Promise<void> {
   if (!fadeEl) fadeEl = document.getElementById('fade');
   if (!fadeEl) return Promise.resolve();
+  const serial = ++fadeSerial;
+  if (opacity < 1) curtainDown = false;
   fadeEl.style.transition = `opacity ${ms}ms ease`;
   fadeEl.style.pointerEvents = opacity > 0.5 ? 'all' : 'none';
   // Force a reflow so the transition actually runs when opacity is re-set.
   void fadeEl.offsetHeight;
   fadeEl.style.opacity = String(opacity);
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise((r) =>
+    setTimeout(() => {
+      // A later fade (one back up) owns the state now.
+      if (serial === fadeSerial && opacity >= 1) curtainDown = true;
+      r();
+    }, ms),
+  );
 }
