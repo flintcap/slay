@@ -259,6 +259,14 @@ const SCENES: Record<string, LabScene> = {
       return out;
     },
   },
+  ways: {
+    shot: 0.45,
+    plan: () => [
+      { at: 0, fn: () => effects.gateway(-4, 0, 0, 0x7ec8ff, 'open') },
+      { at: 0.2, fn: () => effects.gateway(0, 0, 0, 0xffc861, 'use') },
+      { at: 0.1, fn: () => effects.levelUp(4, 0, 0) },
+    ],
+  },
   monsters: {
     shot: 0.5,
     plan: () => {

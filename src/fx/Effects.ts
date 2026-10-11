@@ -1523,6 +1523,28 @@ export class EffectSystem {
     this.sfx('spell.teleportIn', x, z);
   }
 
+  /**
+   * A way between places: `open` when a portal tears open (a spiralling
+   * shaft, a rune ring that lingers, a wave), `use` when someone steps
+   * through (motes pulled in, a bright shaft). Sound is the caller's.
+   */
+  gateway(x: number, y: number, z: number, color: number, kind: 'open' | 'use' = 'open'): void {
+    const l = lookOf('arcane', color);
+    this.fx.burst('portal', x, y + 1.0, z, { color, scale: kind === 'open' ? 1.4 : 1.1 });
+    if (kind === 'open') {
+      this.pulse(Fam.Column, COLUMN_STYLE.swirl, x, y, z, 1.3, 0.8, 3.6, 1.1, l, 0.8);
+      this.pulse(Fam.Column, COLUMN_STYLE.light, x, y, z, 0.35, 0.9, 4.8, 0.7, l, 0.9);
+      this.decals.glow('runeCircle', x, z, 2.0, 2.6, color, 1.1, 0, 0.5);
+      this.nova(x, z, 3.2, { color, duration: 0.5, particles: false, element: 'arcane', thickness: 0.12 });
+      this.flash(x, y + 1.4, z, l.light, 20, 11, 0.5);
+      this.trauma(0.12);
+    } else {
+      this.pulse(Fam.Column, COLUMN_STYLE.light, x, y, z, 0.6, 0.3, 4.2, 0.45, l, 1.1);
+      this.decals.glow('shockRing', x, z, 1.8, 0.45, color, 1.2);
+      this.flash(x, y + 1.0, z, l.light, 16, 8, 0.35);
+    }
+  }
+
   /** Runs `fn` after `seconds` on the effect clock (so it respects hit-stop). Never culled. */
   delay(seconds: number, fn: () => void): EffectHandle {
     const e = this.spawn(K.Delay, true);

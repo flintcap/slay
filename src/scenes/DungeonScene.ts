@@ -1789,7 +1789,7 @@ export class DungeonScene extends GameScene {
     this.exitPos.copy(at);
     this.exitOpen = true;
 
-    this.fx.burst('portal', at.x, 1.0, at.z, { count: 120, color: 0x7ec8ff, scale: 1.6 });
+    this.effects.gateway(at.x, at.y, at.z, 0x7ec8ff, 'open');
     audio.play('portal');
     toast('The way home has opened.', 'epic');
   }
@@ -1928,7 +1928,7 @@ export class DungeonScene extends GameScene {
     this.nearWaypoint = false;
     toast('', 'info');
     audio.play('portal');
-    this.fx.burst('portal', this.waypoint.position.x, 0.6, this.waypoint.position.z, { count: 60, color: 0xffc861 });
+    this.effects.gateway(this.waypoint.position.x, this.waypoint.position.y, this.waypoint.position.z, 0xffc861, 'use');
     save.touch();
     save.flush();
     void this.engine.goTo('town');

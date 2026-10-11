@@ -617,50 +617,41 @@ interface Projectile {
   spin: number;
   /** The lit, trailed look the effect system flies alongside (mesh hidden). */
   fx: EffectHandle | null;
+  /** Colour of the shot's trail bursts. */
+  tint: number;
 }
 
 const projectiles: Projectile[] = [];
 const _projAt = new THREE.Vector3();
 const _projFrom = new THREE.Vector3();
 const projectileGeoCache = new Map<string, THREE.BufferGeometry>();
-const projectileMatCache = new Map<number, THREE.MeshBasicMaterial>();
+const projectileMatCache = new Map<number, THREE.Material>();
+
+/** Shots that are solid things in the air (a thrown rock, a spinning ring). */
+function isSolidShot(shape: string): boolean {
+  return shape === 'rock' || shape === 'ring';
+}
 
 function projGeometry(shape: string): THREE.BufferGeometry {
-  let g = projectileGeoCache.get(shape);
+  const key = shape === 'ring' ? 'ring' : 'rock';
+  let g = projectileGeoCache.get(key);
   if (g) return g;
-  switch (shape) {
-    case 'bolt':
-      g = new THREE.ConeGeometry(0.09, 0.7, 6);
-      g.rotateX(Math.PI * 0.5);
-      break;
-    case 'shard':
-      g = new THREE.OctahedronGeometry(0.18, 0);
-      g.scale(0.6, 0.6, 1.9);
-      break;
-    case 'blob':
-      g = new THREE.IcosahedronGeometry(0.22, 0);
-      break;
-    case 'rock':
-      g = new THREE.DodecahedronGeometry(0.3, 0);
-      break;
-    case 'ring':
-      g = new THREE.TorusGeometry(0.28, 0.07, 6, 12);
-      break;
-    case 'orb':
-    default:
-      g = new THREE.SphereGeometry(0.2, 10, 8);
-      break;
-  }
-  projectileGeoCache.set(shape, g);
+  if (key === 'ring') g = new THREE.TorusGeometry(0.28, 0.07, 6, 12);
+  else g = new THREE.DodecahedronGeometry(0.3, 0);
+  projectileGeoCache.set(key, g);
   return g;
 }
 
-function projMaterial(color: number): THREE.MeshBasicMaterial {
-  let m = projectileMatCache.get(color);
+/** A thrown rock is lit stone; a ring is the colour of its magic. */
+function projMaterial(shape: string, color: number): THREE.Material {
+  const key = shape === 'ring' ? color : -1;
+  let m = projectileMatCache.get(key);
   if (m) return m;
-  m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false });
+  m = key === -1
+    ? new THREE.MeshStandardMaterial({ color: 0x6a6056, roughness: 0.92 })
+    : new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false });
   m.userData.shared = true;
-  projectileMatCache.set(color, m);
+  projectileMatCache.set(key, m);
   return m;
 }
 
@@ -709,7 +700,7 @@ export function fireProjectile(
   let proj = projectiles.find((q) => !q.active);
   const color = opts.color ?? COLOR_FOR_TYPE[type];
   if (!proj) {
-    const mesh = new THREE.Mesh(projGeometry(opts.shape ?? 'orb'), projMaterial(color));
+    const mesh = new THREE.Mesh(projGeometry(opts.shape ?? 'orb'), projMaterial(opts.shape ?? 'orb', color));
     mesh.frustumCulled = false;
     proj = {
       active: false,
@@ -735,12 +726,13 @@ export function fireProjectile(
       knockback: 0,
       spin: 0,
       fx: null,
+      tint: 0,
     };
     projectiles.push(proj);
   }
 
   proj.mesh.geometry = projGeometry(opts.shape ?? 'orb');
-  proj.mesh.material = projMaterial(color);
+  proj.mesh.material = projMaterial(opts.shape ?? 'orb', color);
   const s = opts.scaleMul ?? 1;
   proj.mesh.scale.setScalar(s);
   proj.active = true;
@@ -764,6 +756,7 @@ export function fireProjectile(
   proj.applies = opts.applies ?? null;
   proj.knockback = opts.knockback ?? 0;
   proj.spin = opts.spin ?? 0;
+  proj.tint = color;
   proj.mesh.position.set(proj.x, proj.y, proj.z);
   proj.mesh.lookAt(toX, originY, toZ);
   if (!proj.mesh.parent) ctx.scene.add(proj.mesh);
@@ -771,15 +764,15 @@ export function fireProjectile(
     proj.mesh.parent.remove(proj.mesh);
     ctx.scene.add(proj.mesh);
   }
-  proj.mesh.visible = true;
-  // With the effect system bound, bolts, shards and orbs fly as the school's
-  // own lit, trailed body; rocks and spinning rings keep their solid mesh.
+  // Rocks and spinning rings are solid meshes. Bolts, shards, blobs and orbs
+  // fly as the school's own lit, trailed body from the effect kit (nothing is
+  // drawn when no effect system is bound: headless checks).
+  const shape = opts.shape ?? 'orb';
+  proj.mesh.visible = isSolidShot(shape);
   proj.fx?.stop();
   proj.fx = null;
-  const shape = opts.shape ?? 'orb';
   const fx = monsterFX();
-  if (fx && shape !== 'rock' && shape !== 'ring') {
-    proj.mesh.visible = false;
+  if (fx && !isSolidShot(shape)) {
     proj.fx = fx.projectile(_projFrom.set(p.x, originY, p.z), _projFrom, {
       element: type,
       color: opts.color,
@@ -850,7 +843,7 @@ function tickProjectiles(dt: number, ctx: CombatContext): void {
     }
 
     if (p.trail && ctx.rng.next() < dt * (p.fx ? 8 : 22)) {
-      ctx.fx.burst(p.trail, p.x, p.y, p.z, { count: 2, color: (p.mesh.material as THREE.MeshBasicMaterial).color.getHex() });
+      ctx.fx.burst(p.trail, p.x, p.y, p.z, { count: 2, color: p.tint });
     }
 
     // Ground, wall, and prop collision.
@@ -917,9 +910,7 @@ interface Hazard {
   type: DamageType;
   ability: string;
   owner: Combatant | null;
-  mesh: THREE.Mesh;
   applies: StatusApplication[] | null;
-  pulse: number;
   /** Hazards that pull the player toward the centre. */
   pull: number;
   /** Whether the player stood in it last frame (entering bites at once). */
@@ -927,23 +918,6 @@ interface Hazard {
 }
 
 const hazards: Hazard[] = [];
-let hazardGeo: THREE.BufferGeometry | null = null;
-const hazardMatCache = new Map<number, THREE.MeshBasicMaterial>();
-
-function hazardMaterial(color: number): THREE.MeshBasicMaterial {
-  let m = hazardMatCache.get(color);
-  if (m) return m;
-  m = new THREE.MeshBasicMaterial({
-    color,
-    transparent: true,
-    opacity: 0.42,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
-  m.userData.shared = true;
-  hazardMatCache.set(color, m);
-  return m;
-}
 
 export interface HazardOpts {
   color?: number;
@@ -966,16 +940,8 @@ export function spawnHazard(
   ability: string,
   opts: HazardOpts = {},
 ): void {
-  if (!hazardGeo) {
-    hazardGeo = new THREE.CircleGeometry(1, 24);
-    hazardGeo.rotateX(-Math.PI * 0.5);
-  }
-  const color = opts.color ?? COLOR_FOR_TYPE[type];
   let h = hazards.find((q) => !q.active);
   if (!h) {
-    const mesh = new THREE.Mesh(hazardGeo, hazardMaterial(color));
-    mesh.frustumCulled = false;
-    mesh.renderOrder = 2;
     h = {
       active: false,
       x: 0,
@@ -989,15 +955,12 @@ export function spawnHazard(
       type: 'fire',
       ability: '',
       owner: null,
-      mesh,
       applies: null,
-      pulse: 0,
       pull: 0,
       inside: false,
     };
     hazards.push(h);
   }
-  h.mesh.material = hazardMaterial(color);
   h.active = true;
   h.x = x;
   h.z = z;
@@ -1011,24 +974,12 @@ export function spawnHazard(
   h.ability = ability;
   h.owner = self;
   h.applies = opts.applies ?? null;
-  h.pulse = ctx.rng.next() * TAU;
   h.pull = opts.pull ?? 0;
   // Ground laid down under you ticks as before; only walking into it bites at once.
   h.inside = playerInCircle(ctx, x, z, radius);
-  h.mesh.position.set(x, 0.06, z);
-  h.mesh.scale.setScalar(radius);
-  h.mesh.visible = true;
-  if (h.mesh.parent !== ctx.scene) {
-    h.mesh.parent?.remove(h.mesh);
-    ctx.scene.add(h.mesh);
-  }
-  // With the effect system bound, the zone is a living floor glow (burning
-  // ground, bubbling poison, frost, crawling arcs, a void) instead of a flat
-  // tinted disc. It fades itself out when the hazard's time is up.
-  if (monsterFX()) {
-    h.mesh.visible = false;
-    ctx.decals.glow(HAZARD_GLOW[type], x, z, radius, h.life, opts.color ?? type, 1.3);
-  }
+  // The zone is a living floor glow (burning ground, bubbling poison, frost,
+  // crawling arcs, a void) that fades itself out when the hazard's time is up.
+  ctx.decals.glow(HAZARD_GLOW[type], x, z, radius, h.life, opts.color ?? type, 1.3);
   ctx.decals.add(opts.decal ?? (type === 'fire' ? 'scorch' : 'stain'), x, z, radius);
 }
 
@@ -1038,15 +989,8 @@ function tickHazards(dt: number, ctx: CombatContext): void {
     h.life -= dt;
     if (h.life <= 0) {
       h.active = false;
-      h.mesh.visible = false;
       h.owner = null;
       continue;
-    }
-    if (h.mesh.visible) {
-      const fade = clamp(h.life / Math.max(0.001, h.maxLife * 0.35), 0, 1);
-      const mat = h.mesh.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.42 * fade;
-      h.mesh.scale.setScalar(h.radius * (1 + Math.sin(ctx.elapsed * 3 + h.pulse) * 0.03));
     }
     h.accum += dt;
     const period = 1 / Math.max(0.1, h.tickRate);
@@ -1188,7 +1132,6 @@ export function resetAbilityWorld(): void {
   for (const h of hazards) {
     h.active = false;
     h.owner = null;
-    h.mesh.parent?.remove(h.mesh);
   }
   hazards.length = 0;
   delayed.length = 0;
@@ -1203,10 +1146,6 @@ export function disposeAbilityWorld(): void {
   projectileGeoCache.clear();
   for (const m of projectileMatCache.values()) m.dispose();
   projectileMatCache.clear();
-  for (const m of hazardMatCache.values()) m.dispose();
-  hazardMatCache.clear();
-  hazardGeo?.dispose();
-  hazardGeo = null;
 }
 
 // ---------------------------------------------------------------------------
