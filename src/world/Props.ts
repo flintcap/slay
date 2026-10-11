@@ -22,10 +22,12 @@
 import * as THREE from 'three';
 import type { BiomeDef, DungeonLevel, DungeonRoom, PropPlacement, Rng } from '../types';
 import { Noise, clamp, hash2 } from '../art/Noise';
-import { biomeArt, type BiomeArt } from './Biomes';
+import { biomeArt, isOutdoorBiome, type BiomeArt } from './Biomes';
+import { dressingFor, type Dressing, type Pool } from '../art/props/Dressing';
 import {
   T_DOOR,
   T_FLOOR,
+  T_RUIN,
   T_LAVA,
   T_RUBBLE,
   T_EXIT,
@@ -52,7 +54,10 @@ const SHRINE_TYPES = ['power', 'ward', 'haste', 'fortune', 'wrath', 'vitality'];
 
 interface PlaceCtx {
   level: DungeonLevel;
-  art: BiomeArt;
+  /** Dressing of each zone (index = zone id); one entry when the level has no zones. */
+  dress: Dressing[];
+  /** Open sky per zone. */
+  outdoor: boolean[];
   rng: Rng;
   noise: Noise;
   w: number;
@@ -75,16 +80,20 @@ interface PlaceCtx {
 
 /** Builds the full prop list for a level. */
 export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): PropPlacement[] {
-  // The run's dressed version of the biome, so a flooded crypt gets the
-  // flooded crypt's clutter rather than the plain one's.
-  const art = biomeArt(biome.id, level.variant);
+  // Each zone is dressed as its own biome, in the run's variant where that
+  // biome has it, so a flooded crypt gets the flooded crypt's clutter and a
+  // forest zone beside it keeps its stumps.
+  const zones = level.zones && level.zones.length > 0 ? level.zones : null;
+  const dress = zones ? zones.map((z) => dressingFor(z.biome, level.variant)) : [dressingFor(biome.id, level.variant)];
+  const outdoor = zones ? zones.map((z) => z.outdoor) : [isOutdoorBiome(biome.id)];
   const w = level.width;
   const h = level.height;
   const roomOf = (level as DungeonLevel & { roomOf?: Int16Array }).roomOf ?? buildRoomIndex(level);
 
   const ctx: PlaceCtx = {
     level,
-    art,
+    dress,
+    outdoor,
     rng,
     noise: new Noise((level.seed ^ 0x91d3) >>> 0),
     w,
@@ -112,10 +121,12 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
   for (const s of level.spawns) markKeepClear(ctx, s.x, s.y);
 
   placeWallLights(ctx);
+  placeOpenLights(ctx);
   placeRoomFeatures(ctx);
   placePillars(ctx);
   placeInteractables(ctx);
   placeWallDressing(ctx);
+  placeEdgeDressing(ctx);
   placeScatter(ctx);
   placeGroundDetail(ctx);
   placeLiquidProps(ctx);
@@ -136,6 +147,25 @@ function buildRoomIndex(level: DungeonLevel): Int16Array {
     }
   }
   return idx;
+}
+
+/** Zone index of a tile (0 when the level has no zones). */
+function zoneAt(ctx: PlaceCtx, x: number, y: number): number {
+  const z = ctx.level.zoneOf;
+  if (!z || ctx.dress.length < 2) return 0;
+  const cx = Math.min(ctx.w - 1, Math.max(0, Math.round(x)));
+  const cy = Math.min(ctx.h - 1, Math.max(0, Math.round(y)));
+  return Math.min(ctx.dress.length - 1, z[cy * ctx.w + cx] ?? 0);
+}
+
+/** What the tile's zone is dressed with. */
+function dressAt(ctx: PlaceCtx, x: number, y: number): Dressing {
+  return ctx.dress[zoneAt(ctx, x, y)]!;
+}
+
+/** True when the tile's zone has open sky. */
+function outdoorAt(ctx: PlaceCtx, x: number, y: number): boolean {
+  return ctx.outdoor[zoneAt(ctx, x, y)] ?? false;
 }
 
 function tile(ctx: PlaceCtx, x: number, y: number): number {
@@ -248,7 +278,17 @@ interface WallFace {
   dir: number;
 }
 
-/** Every floor tile that has a wall on exactly one side, grouped into runs. */
+/**
+ * Can something hang on the wall at (wx, wy), seen from floor tile (x, y)?
+ * Indoors every wall is masonry. Outdoors a blocked tile is the ground rising
+ * into a tree line, dune or cliff, and only a ruin is a wall you can mount a
+ * torch or a banner on.
+ */
+function mountable(ctx: PlaceCtx, x: number, y: number, wx: number, wy: number): boolean {
+  return !outdoorAt(ctx, x, y) || tile(ctx, wx, wy) === T_RUIN;
+}
+
+/** Every floor tile that has a mountable wall on one side, grouped into runs. */
 function wallRuns(ctx: PlaceCtx): WallFace[][] {
   const runs: WallFace[][] = [];
   const dirs = [
@@ -266,6 +306,7 @@ function wallRuns(ctx: PlaceCtx): WallFace[][] {
         if (v !== T_FLOOR && v !== T_RUBBLE && v !== T_EXIT && v !== T_ARRIVAL) continue;
         if (walkable(ctx, x + dir.dx, y + dir.dy)) continue;
         if (tile(ctx, x + dir.dx, y + dir.dy) === 0) continue; // outside the shell
+        if (!mountable(ctx, x, y, x + dir.dx, y + dir.dy)) continue;
         const key = dir.axis === 'x' ? y : x;
         let list = lines.get(key);
         if (!list) {
@@ -296,11 +337,11 @@ function wallRuns(ctx: PlaceCtx): WallFace[][] {
 
 function placeWallLights(ctx: PlaceCtx): void {
   const runs = wallRuns(ctx);
-  const kind = ctx.art.wallLight;
-  const spacing = Math.max(3, ctx.art.wallLightSpacing);
-
   for (const run of runs) {
     if (run.length < 3) continue;
+    const mid = run[run.length >> 1]!;
+    const d = dressAt(ctx, mid.x, mid.y);
+    const spacing = Math.max(3, d.wallLightSpacing);
     // Centre the pattern in the run so both ends read as deliberate.
     const n = run.length;
     const count = Math.max(1, Math.floor((n - 1) / spacing) + 1);
@@ -312,15 +353,20 @@ function placeWallLights(ctx: PlaceCtx): void {
       const f = run[idx];
       // A light every single run would be too many; longer runs matter more.
       if (n < 5 && ctx.rng.chance(0.45)) continue;
-      emit(ctx, f.x, f.y, kind, f.rotation);
+      emit(ctx, f.x, f.y, d.wallLight, f.rotation);
     }
   }
 
-  // Braziers punctuate the big rooms, where wall sconces alone leave the middle
-  // dark and flat.
+  // Standing lights punctuate the big indoor rooms, where wall lights alone
+  // leave the middle dark and flat.
   for (const room of ctx.level.rooms) {
     if (room.w < 9 || room.h < 9) continue;
-    if (!ctx.rng.chance(0.55)) continue;
+    const cx = Math.round(room.center.x);
+    const cy = Math.round(room.center.y);
+    if (outdoorAt(ctx, cx, cy)) continue;
+    const pool = dressAt(ctx, cx, cy).standLight;
+    if (pool.length === 0 || !ctx.rng.chance(0.55)) continue;
+    const kind = pickWeighted(ctx, pool);
     const corners = [
       { x: room.x + 2, y: room.y + 2 },
       { x: room.x + room.w - 3, y: room.y + 2 },
@@ -330,9 +376,46 @@ function placeWallLights(ctx: PlaceCtx): void {
     const use = ctx.rng.chance(0.5) ? corners : ctx.rng.shuffle(corners.slice()).slice(0, 2);
     for (const c of use) {
       if (!walkable(ctx, c.x, c.y)) continue;
-      emit(ctx, c.x, c.y, 'brazier', ctx.rng.range(0, Math.PI * 2));
+      emit(ctx, c.x, c.y, kind, ctx.rng.range(0, Math.PI * 2));
     }
   }
+}
+
+/**
+ * Outdoors there are no walls to hang lights on, so the light stands in the
+ * open: a lantern post, a brazier, a camp. One per patch of open ground about
+ * ten tiles across, on a tile with room around it, so the dark between pools
+ * stays dark.
+ */
+function placeOpenLights(ctx: PlaceCtx): void {
+  const CELL = 10;
+  for (let gy = 0; gy < ctx.h; gy += CELL) {
+    for (let gx = 0; gx < ctx.w; gx += CELL) {
+      if (!ctx.rng.chance(0.8)) continue;
+      for (let t = 0; t < 14; t++) {
+        const x = gx + ctx.rng.int(1, CELL - 2);
+        const y = gy + ctx.rng.int(1, CELL - 2);
+        if (x < 2 || y < 2 || x >= ctx.w - 2 || y >= ctx.h - 2) continue;
+        if (tile(ctx, x, y) !== T_FLOOR || isOccupied(ctx, x, y)) continue;
+        if (!outdoorAt(ctx, x, y)) continue;
+        if (openness(ctx, x, y) < 8) continue;
+        const pool = dressAt(ctx, x, y).standLight;
+        if (pool.length === 0) break;
+        if (emit(ctx, x, y, pickWeighted(ctx, pool), ctx.rng.range(0, Math.PI * 2))) break;
+      }
+    }
+  }
+}
+
+/** Walkable tiles among the eight around (x, y). */
+function openness(ctx: PlaceCtx, x: number, y: number): number {
+  let open = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if ((dx || dy) && walkable(ctx, x + dx, y + dy)) open++;
+    }
+  }
+  return open;
 }
 
 // --- room features ---------------------------------------------------------
@@ -341,6 +424,7 @@ function placeRoomFeatures(ctx: PlaceCtx): void {
   for (const room of ctx.level.rooms) {
     const cx = room.center.x;
     const cy = room.center.y;
+    const d = dressAt(ctx, cx, cy);
 
     if (room.kind === 'shrine') {
       const type = ctx.rng.pick(SHRINE_TYPES);
@@ -366,7 +450,7 @@ function placeRoomFeatures(ctx: PlaceCtx): void {
         const px = Math.round(cx + Math.cos(a) * ringR);
         const py = Math.round(cy + Math.sin(a) * ringR);
         if (!walkable(ctx, px, py)) continue;
-        const kind = i % 2 === 0 ? 'brazier' : pickWeighted(ctx, ctx.art.featureProps);
+        const kind = i % 2 === 0 ? (d.standLight.length > 0 ? pickWeighted(ctx, d.standLight) : 'brazier') : pickWeighted(ctx, d.feature);
         emit(ctx, px, py, kind, -a + Math.PI / 2);
       }
       continue;
@@ -396,7 +480,7 @@ function placeRoomFeatures(ctx: PlaceCtx): void {
 
     if (room.w < 6 || room.h < 6) continue;
     const big = room.w >= 11 && room.h >= 11;
-    const pool = big && ctx.art.landmarks && ctx.art.landmarks.length > 0 ? ctx.art.landmarks : ctx.art.featureProps;
+    const pool = big && d.landmark.length > 0 ? d.landmark : d.feature;
     // Big rooms always get their hero; mid rooms nearly always do. A room
     // with nothing in it is a corridor that got lost.
     if (!big && !ctx.rng.chance(0.85)) continue;
@@ -465,11 +549,13 @@ function placeNear(
 // --- pillars ---------------------------------------------------------------
 
 function placePillars(ctx: PlaceCtx): void {
-  const kind = ctx.art.pillar;
-  if (!kind) return;
   for (const room of ctx.level.rooms) {
     if (room.w < 9 || room.h < 9) continue;
     if (room.kind === 'entry' || room.kind === 'boss') continue;
+    // Open sky has no roof to hold up.
+    if (outdoorAt(ctx, room.center.x, room.center.y)) continue;
+    const kind = dressAt(ctx, room.center.x, room.center.y).pillar;
+    if (!kind) continue;
     if (!ctx.rng.chance(0.7)) continue;
 
     const inset = 2;
@@ -506,6 +592,7 @@ function placeInteractables(ctx: PlaceCtx): void {
   for (const room of ctx.level.rooms) {
     const cx = room.center.x;
     const cy = room.center.y;
+    const box = dressAt(ctx, cx, cy).breakables;
 
     if (room.kind === 'treasure') {
       const n = rng.int(2, 3);
@@ -513,37 +600,56 @@ function placeInteractables(ctx: PlaceCtx): void {
         const a = (i / n) * Math.PI * 2 + rng.range(0, 1);
         const px = Math.round(cx + Math.cos(a) * rng.range(1, 2.6));
         const py = Math.round(cy + Math.sin(a) * rng.range(1, 2.6));
-        placeNear(ctx, px, py, 2, 'chest', i === 0 ? 'chest.rare' : 'chest.normal');
+        placeChest(ctx, px, py, i === 0 ? 'chest.rare' : 'chest.normal');
       }
-      scatterAround(ctx, room, ['urn', 'barrel', 'crate'], 4);
+      scatterAround(ctx, room, box, 4);
     } else if (room.kind === 'vault') {
-      placeNear(ctx, cx, cy, 2, 'chest', 'chest.vault');
-      // A lever on the wall opens it — the builder wires the interaction.
-      const face = nearestWallFace(ctx, cx, cy, 5);
-      if (face) emit(ctx, face.x, face.y, 'lever', face.rotation, 'lever.vault');
-      scatterAround(ctx, room, ['urn', 'crate'], 5);
+      // A lever on the wall opens it. With no wall to hang one on, the vault
+      // would stay barred for ever, so it is a rare chest instead.
+      const before = ctx.out.length;
+      if (placeChest(ctx, cx, cy, 'chest.vault')) {
+        const chest = ctx.out[before]!;
+        const face = nearestWallFace(ctx, cx, cy, 5);
+        if (!face || !emit(ctx, face.x, face.y, 'lever', face.rotation, 'lever.vault')) {
+          chest.kind = chestKindFor('chest.rare');
+          chest.interact = 'chest.rare';
+        }
+      }
+      scatterAround(ctx, room, box, 5);
     } else if (room.kind === 'ambush') {
       // Cover that looks lootable is the bait.
-      scatterAround(ctx, room, ['barrel', 'crate', 'urn'], 6);
-      if (rng.chance(0.5)) placeNear(ctx, cx, cy, 2, 'chest', 'chest.normal');
+      scatterAround(ctx, room, box, 6);
+      if (rng.chance(0.5)) placeChest(ctx, cx, cy, 'chest.normal');
     } else if (room.kind === 'quest') {
       placeNear(ctx, cx, cy, 2, 'altar', 'quest.altar');
-      scatterAround(ctx, room, ['urn', 'candleCluster'], 4);
+      scatterAround(ctx, room, [...box, { kind: 'candleCluster', weight: 3 }], 4);
     } else if (room.kind === 'normal' && rng.chance(0.75)) {
       // Scale with the room. A flat one-to-three put the same two barrels in a
       // six-tile chamber and in a seventeen-tile hall room.
-      scatterAround(ctx, room, ['barrel', 'crate', 'urn'], clamp(Math.round((room.w * room.h) / 45), 1, 7));
+      scatterAround(ctx, room, box, clamp(Math.round((room.w * room.h) / 45), 1, 7));
     }
 
-    // Bookcases go flat against a wall, never free-standing.
-    if ((room.kind === 'normal' || room.kind === 'quest') && room.w >= 8 && room.h >= 8 && rng.chance(0.28)) {
+    // Bookcases go flat against an indoor wall, never free-standing.
+    if ((room.kind === 'normal' || room.kind === 'quest') && room.w >= 8 && room.h >= 8 && !outdoorAt(ctx, cx, cy) && rng.chance(0.28)) {
       const face = nearestWallFace(ctx, cx, cy, 8);
       if (face) emit(ctx, face.x, face.y, 'bookcase', face.rotation, 'bookcase');
     }
   }
 }
 
-function scatterAround(ctx: PlaceCtx, room: DungeonRoom, kinds: string[], count: number): void {
+/** The chest model for a payload's tier: plain, rare (dark wood, black iron) or the vault's. */
+export function chestKindFor(interact: string): string {
+  if (interact === 'chest.vault') return 'chestVault';
+  if (interact === 'chest.rare') return 'chestRare';
+  return 'chest';
+}
+
+function placeChest(ctx: PlaceCtx, x: number, y: number, interact: string): boolean {
+  return placeNear(ctx, Math.round(x), Math.round(y), 2, chestKindFor(interact), interact);
+}
+
+function scatterAround(ctx: PlaceCtx, room: DungeonRoom, kinds: Pool, count: number): void {
+  if (kinds.length === 0) return;
   for (let i = 0; i < count * 4 && count > 0; i++) {
     const x = room.x + ctx.rng.int(0, Math.max(0, room.w - 1));
     const y = room.y + ctx.rng.int(0, Math.max(0, room.h - 1));
@@ -552,7 +658,7 @@ function scatterAround(ctx: PlaceCtx, room: DungeonRoom, kinds: string[], count:
     const nextToWall =
       !walkable(ctx, x - 1, y) || !walkable(ctx, x + 1, y) || !walkable(ctx, x, y - 1) || !walkable(ctx, x, y + 1);
     if (!nextToWall && ctx.rng.chance(0.6)) continue;
-    const kind = ctx.rng.pick(kinds);
+    const kind = pickWeighted(ctx, kinds);
     if (emit(ctx, x, y, kind, ctx.rng.range(0, Math.PI * 2), propDef(kind).interact)) count--;
   }
 }
@@ -573,6 +679,7 @@ function nearestWallFace(ctx: PlaceCtx, cx: number, cy: number, r: number): Wall
         const dir = dirs[d];
         if (walkable(ctx, x + dir.dx, y + dir.dy)) continue;
         if (tile(ctx, x + dir.dx, y + dir.dy) === 0) continue;
+        if (!mountable(ctx, x, y, x + dir.dx, y + dir.dy)) continue;
         const dd = (x - cx) * (x - cx) + (y - cy) * (y - cy);
         if (dd < bestD) {
           bestD = dd;
@@ -587,8 +694,6 @@ function nearestWallFace(ctx: PlaceCtx, cx: number, cy: number, r: number): Wall
 // --- wall dressing ---------------------------------------------------------
 
 function placeWallDressing(ctx: PlaceCtx): void {
-  const pool = ctx.art.wallProps.filter((p) => p.kind !== ctx.art.wallLight);
-  if (pool.length === 0) return;
   const runs = wallRuns(ctx);
   for (const run of runs) {
     if (run.length < 2) continue;
@@ -596,8 +701,38 @@ function placeWallDressing(ctx: PlaceCtx): void {
     for (let i = 0; i < attempts; i++) {
       if (!ctx.rng.chance(0.5)) continue;
       const f = run[ctx.rng.int(0, run.length - 1)];
-      const kind = pickWeighted(ctx, pool);
-      emit(ctx, f.x, f.y, kind, f.rotation);
+      const pool = dressAt(ctx, f.x, f.y).wall;
+      if (pool.length === 0) continue;
+      emit(ctx, f.x, f.y, pickWeighted(ctx, pool), f.rotation);
+    }
+  }
+}
+
+/**
+ * Outdoors the tree line, reed bed or dune is drawn by the ground; what sits
+ * at its foot is ours. Boulders, ferns, thorn and roots gather in clumps along
+ * the walkable fringe, so the edge reads as a place things pile up, not as a
+ * line where the floor stops.
+ */
+function placeEdgeDressing(ctx: PlaceCtx): void {
+  const n = ctx.noise;
+  const ox = ctx.rng.range(0, 200);
+  for (let y = 1; y < ctx.h - 1; y++) {
+    for (let x = 1; x < ctx.w - 1; x++) {
+      if (tile(ctx, x, y) !== T_FLOOR || isOccupied(ctx, x, y)) continue;
+      if (!outdoorAt(ctx, x, y)) continue;
+      // Only at the foot of risen ground: water and ruins have their own edges.
+      let rise = false;
+      for (let d = 0; d < 4 && !rise; d++) {
+        const v = tile(ctx, x + (d === 0 ? -1 : d === 1 ? 1 : 0), y + (d === 2 ? -1 : d === 3 ? 1 : 0));
+        if (!isWalkableValue(v) && v !== T_WATER && v !== T_RUIN && v !== T_LAVA) rise = true;
+      }
+      if (!rise || nearEntry(ctx, x, y, 3)) continue;
+      const clump = n.fbm((x + ox) * 0.13, y * 0.13 + 40, 2) * 0.5 + 0.5;
+      if (!ctx.rng.chance(clamp((clump - 0.35) * 0.55, 0, 0.3))) continue;
+      const pool = dressAt(ctx, x, y).edge;
+      if (pool.length === 0) continue;
+      emit(ctx, x, y, pickWeighted(ctx, pool), ctx.rng.range(0, Math.PI * 2));
     }
   }
 }
@@ -611,8 +746,6 @@ function nearEntry(ctx: PlaceCtx, x: number, y: number, r: number): boolean {
 // --- clutter scatter -------------------------------------------------------
 
 function placeScatter(ctx: PlaceCtx): void {
-  const pool = ctx.art.props;
-  if (pool.length === 0) return;
   const n = ctx.noise;
   // Two noise fields: one selects where clutter clumps, one decorrelates the
   // density so clumps have soft edges rather than hard blobs.
@@ -675,6 +808,8 @@ function placeScatter(ctx: PlaceCtx): void {
       const density = baseDensity * Math.pow(clump, 2.0) * 3.2 * wallHug * (0.55 + drift * 0.9);
       if (!ctx.rng.chance(clamp(density, 0, 0.6))) continue;
 
+      const pool = dressAt(ctx, x, y).clutter;
+      if (pool.length === 0) continue;
       const kind = bossRoom
         ? pickWeighted(ctx, pool.filter((p) => !propDef(p.kind).blocks))
         : pickWeighted(ctx, pool);
@@ -697,8 +832,6 @@ function placeScatter(ctx: PlaceCtx): void {
  * has is drifts and bare patches between them.
  */
 function placeGroundDetail(ctx: PlaceCtx): void {
-  const pool = ctx.art.detailProps;
-  if (!pool || pool.length === 0) return;
   const n = ctx.noise;
   const ox = ctx.rng.range(0, 200);
   const oy = ctx.rng.range(0, 200);
@@ -724,6 +857,8 @@ function placeGroundDetail(ctx: PlaceCtx): void {
       const density = 0.5 * Math.pow(drift, 1.5) * (0.45 + grain * 1.1) * edge;
       if (!ctx.rng.chance(clamp(density, 0, 0.78))) continue;
 
+      const pool = dressAt(ctx, x, y).detail;
+      if (pool.length === 0) continue;
       const kind = pickWeighted(ctx, pool);
       emit(ctx, x, y, kind, ctx.rng.range(0, Math.PI * 2));
     }
@@ -731,20 +866,19 @@ function placeGroundDetail(ctx: PlaceCtx): void {
 }
 
 function placeLiquidProps(ctx: PlaceCtx): void {
-  const pool = ctx.art.props.filter((p) => propDef(p.kind).placement === 'liquid');
-  if (pool.length === 0) return;
   for (let y = 1; y < ctx.h - 1; y++) {
     for (let x = 1; x < ctx.w - 1; x++) {
       if (tile(ctx, x, y) !== T_WATER) continue;
       if (isOccupied(ctx, x, y)) continue;
-      if (!ctx.rng.chance(0.12)) continue;
+      const pool = dressAt(ctx, x, y).liquid;
+      if (pool.length === 0 || !ctx.rng.chance(0.12)) continue;
       const kind = pickWeighted(ctx, pool);
       emit(ctx, x, y, kind, ctx.rng.range(0, Math.PI * 2));
     }
   }
 }
 
-function pickWeighted(ctx: PlaceCtx, pool: Array<{ kind: string; weight: number }>): string {
+function pickWeighted(ctx: PlaceCtx, pool: Pool): string {
   if (pool.length === 0) return 'rubblePile';
   return ctx.rng.weighted(pool, (p) => p.weight).kind;
 }
