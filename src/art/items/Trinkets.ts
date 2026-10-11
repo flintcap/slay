@@ -82,12 +82,14 @@ function gemStone(fam: string, s: number): { geos: Array<{ slot: Slot; g: THREE.
     case 'topaz':
       return one(gem(s * 1.1, 'marquise'));
     case 'emerald': {
-      const g = lathe([[0, -s * 0.3], [s * 0.42, -s * 0.12], [s * 0.5, 0], [s * 0.5, s * 0.08], [s * 0.38, s * 0.2], [0, s * 0.2]], 4, { smooth: false, phase: PI / 4 });
-      g.scale(1, 1, 1.4);
+      // Step cut: an oblong with clipped corners and stepped crown rings.
+      const g = lathe([[0, -s * 0.3], [s * 0.3, -s * 0.2], [s * 0.46, -s * 0.06], [s * 0.5, 0], [s * 0.5, s * 0.06], [s * 0.44, s * 0.13], [s * 0.36, s * 0.19], [s * 0.3, s * 0.22], [0, s * 0.22]], 8, { smooth: false, phase: PI / 8 });
+      g.scale(0.9, 1, 1.4);
       return one(g);
     }
     case 'diamond': {
-      const g = lathe([[0, -s * 0.5], [s * 0.5, 0], [s * 0.5, s * 0.05], [s * 0.36, s * 0.2], [s * 0.24, s * 0.28], [0, s * 0.28]], 12, { smooth: false });
+      // Brilliant: eight broad facets so the crown catches light in planes.
+      const g = lathe([[0, -s * 0.55], [s * 0.24, -s * 0.3], [s * 0.5, 0], [s * 0.5, s * 0.04], [s * 0.4, s * 0.16], [s * 0.27, s * 0.27], [0, s * 0.27]], 8, { smooth: false, phase: PI / 8 });
       return one(g);
     }
     case 'amethyst': {
@@ -145,7 +147,7 @@ export function buildGem(P: Parts): void {
   const [fam = 'ruby', quality = 'normal'] = idParts(P, 'gem');
   let q = QUALITIES.indexOf(quality);
   if (q < 0) q = 2;
-  const s = 0.05 + q * 0.011;
+  const s = 0.058 + q * 0.009;
   const seed = hashString(P.look.cut) & 0xffff;
   if (fam === 'skull') {
     // A carved stone skull: chipped ones lose the jaw line, divine ones grow a crest.

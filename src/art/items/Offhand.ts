@@ -166,9 +166,10 @@ export function buildShield(P: Parts): void {
       rivetRing(10, R * 0.9, 'dark', 0.006);
       break;
     case 'rings':
-      for (const k of [0.45, 0.68, 0.88]) P.add('main', torus(R * k, 0.007, 4, 40), { p: [0, 0, zf(0, R * k) + thick * 0.5] });
-      boss(R * 0.26, 'main');
-      rivetRing(8, R * 0.56, 'dark');
+      // Bold enough to read at grid size; the middle ring dark against the plate.
+      for (const k of [0.45, 0.68, 0.88]) P.add(k === 0.68 ? 'dark' : 'main', torus(R * k, 0.011, 4, 40), { p: [0, 0, zf(0, R * k) + thick * 0.5] });
+      boss(R * 0.28, 'main');
+      rivetRing(8, R * 0.56, 'dark', 0.011);
       break;
     case 'moon': {
       // A face in the crescent, stars in the hollow.
@@ -210,23 +211,23 @@ export function buildShield(P: Parts): void {
       break;
     }
     case 'rivets':
-      P.add('main', box(0.03, c.h * 1.8, 0.012, 0.004), { p: [0, -c.h * 0.05, zf(0, 0) + thick * 0.5] });
+      P.add('main', box(0.05, c.h * 1.8, 0.02, 0.006), { p: [0, -c.h * 0.05, zf(0, 0) + thick * 0.5] });
       for (let row = 0; row < 9; row++) {
-        for (const x of [-c.w * 0.85, c.w * 0.85]) {
+        for (const x of [-c.w * 0.82, c.w * 0.82]) {
           const p = front(x, -c.h * 0.9 + row * c.h * 0.22);
-          P.add('dark', sphere(0.006, 6, 4), { p: [p.x, p.y, p.z] });
+          P.add('dark', sphere(0.011, 6, 4), { p: [p.x, p.y, p.z] });
         }
       }
       for (const y of [-c.h * 0.5, c.h * 0.4]) {
-        const band = [front(-c.w, y), front(0, y, 0.002), front(c.w, y)];
-        P.add('dark', tube(curve(band, 12), 0.006, 4));
+        const band = [front(-c.w, y), front(0, y, 0.004), front(c.w, y)];
+        P.add('dark', tube(curve(band, 12), 0.012, 4));
       }
-      faceP = front(0, c.h * 0.15, 0.012);
+      boss(R * 0.32, 'main');
       break;
     case 'spine': {
       P.add('trim', box(0.06, c.h * 1.85, 0.03, 0.01), { p: [0, 0, zf(0, 0) + thick * 0.5 + 0.008] });
       for (const s of [-1, 1]) P.add('dark', spike(0.06, 0.012, 4), { p: [s * c.w * 0.7, -c.h - 0.04, 0], r: [PI, 0, 0] });
-      for (const y of [-c.h * 0.7, 0, c.h * 0.6]) P.add('trim', box(c.w * 1.6, 0.012, 0.01, 0.003), { p: [0, y, zf(0, y) + thick * 0.5] });
+      for (const y of [-c.h * 0.7, 0, c.h * 0.6]) P.add('trim', box(c.w * 1.6, 0.024, 0.016, 0.004), { p: [0, y, zf(0, y) + thick * 0.5] });
       faceP = front(0, c.h * 0.3, 0.03);
       break;
     }
