@@ -31,6 +31,7 @@ import * as THREE from 'three';
 import type { Rng } from '../types';
 import type { Archetype } from '../entities/MonsterModels';
 import { Random } from '../core/RNG';
+import { CreatureAnimator, type CreatureInfo } from './creatures/Animator';
 
 export type RigAction = 'idle' | 'walk' | 'attack' | 'cast' | 'hit' | 'death' | 'spawn';
 
@@ -112,7 +113,7 @@ const _v = new THREE.Vector3();
  * covers every monster in the game, costs a few dozen float ops per bone, and
  * never needs an animation asset.
  */
-export class RigAnimator {
+class LegacyRigAnimator {
   readonly archetype: Archetype;
   private readonly rest: Record<string, Rest> = {};
   private readonly list: Rest[] = [];
@@ -1224,5 +1225,40 @@ export class RigAnimator {
   /** Which way this one falls, fixed per monster. */
   private side(): number {
     return Math.sin(this.offset * 7.3) >= 0 ? 1 : -1;
+  }
+}
+
+/**
+ * Drives a monster rig. A creature built by `src/art/creatures/` gets the
+ * creature animator (feet planted by IK, per-rig poses, real falls); anything
+ * else keeps the older procedural animator until its look is remade. Both make
+ * exactly one draw from the caller's stream.
+ */
+export class RigAnimator {
+  readonly archetype: Archetype;
+  /** The creature animator, when the body is a remade creature. */
+  readonly creature: CreatureAnimator | null;
+  private readonly legacy: LegacyRigAnimator | null;
+
+  constructor(root: THREE.Object3D, bones: Record<string, THREE.Bone>, archetype: Archetype, rng: Rng) {
+    this.archetype = archetype;
+    const info = root.userData?.creature as CreatureInfo | undefined;
+    this.creature = info ? new CreatureAnimator(root, bones, info, rng) : null;
+    this.legacy = info ? null : new LegacyRigAnimator(root, bones, archetype, rng);
+  }
+
+  update(dt: number, o: RigDriveOpts): void {
+    if (this.creature) this.creature.update(dt, o);
+    else this.legacy!.update(dt, o);
+  }
+
+  /** A heavy hit or stagger from a direction (world yaw the blow came from). */
+  react(kind: 'hit' | 'stagger', fromYaw?: number): void {
+    this.creature?.react(kind, fromYaw);
+  }
+
+  /** Boss phase: later phases stand lower, glow hotter and move harder. */
+  setPhase(i: number): void {
+    this.creature?.setPhase(i);
   }
 }

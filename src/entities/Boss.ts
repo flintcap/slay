@@ -187,6 +187,8 @@ export class Boss extends Enemy {
     const phase = this.bossDef.phases[index];
     if (!phase || index === this.phaseIndex) return;
     this.phaseIndex = index;
+    // The body shows the phase: stands lower, glows hotter, moves harder.
+    this.rig?.setPhase(index);
 
     // Swap the whole kit. `abilityIds` is a mutable array behind a readonly
     // binding, so we rewrite it in place rather than rebuilding the entity.

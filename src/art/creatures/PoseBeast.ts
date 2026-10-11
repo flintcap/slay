@@ -137,7 +137,7 @@ export function poseQuadruped(a: CreatureAnimator): void {
       break;
     }
     case 'strike': {
-      const hit = ramp(t, 0, 0.15);
+      const hit = ramp(t, 0, 0.24);
       const back = ramp(t, 0.42 + 0.15 * heavy, 1);
       quadMove(a, a.attack, (1 - hit) * (1 - back), hit * (1 - back), hindZ, frontZ);
       a.rot('chest', settle(t, 0.15, 20, 9) * 0.08);
@@ -282,7 +282,9 @@ function deathQuad(a: CreatureAnimator): void {
   const fall = f * f;
   a.ikW = 1 - ramp(u, 0, 0.25);
   const roll = a.fallDir * (flip ? Math.PI : 1.5) * fall;
-  const thick = W * (flip ? 0.55 : 0.45);
+  // Lying on its side the body rests about a shoulder-width up; on its back, half its depth.
+  const hw = Math.abs(a.info.joints.fLegL?.x ?? W * 0.3);
+  const thick = flip ? W * 0.4 : Math.min(W * 0.42, Math.max(W * 0.18, hw * 1.5));
   // Rolling about the floor line: the body centre swings out and down.
   const cr = Math.cos(roll);
   const want = thick + (W - thick) * Math.max(0, cr);

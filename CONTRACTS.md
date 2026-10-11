@@ -300,12 +300,62 @@ snapshot dodge hurt stagger stun down death deathFwd`. `attack1` and
 dagger, spear, two-hander, staff, wand, bow, shield, unarmed) and chain into
 combos on their own.
 
-## `src/entities/MonsterModels.ts` — owned by MONSTERS
+## `src/entities/MonsterModels.ts` — owned by creatures
 
 ```ts
-export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number):
+export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number, opts?: { family?: string; rank?: string }):
   { root: THREE.Group; bones: Record<string, THREE.Bone>; skeleton: THREE.Skeleton | null };
+export function releaseMonsterModel(root: THREE.Object3D): void; // per spawn: its bone texture
+export function disposeMonsterModels(): void;                    // scene exit: prototypes, bakes, materials
+export class RigAnimator {                                       // re-exported from src/art/MonsterAnimation.ts
+  constructor(root: THREE.Object3D, bones: Record<string, THREE.Bone>, archetype: Archetype, rng: Rng);
+  update(dt: number, o: { locomotion: number; action: RigAction; actionT: number; time: number; deathT: number }): void;
+  react(kind: 'hit' | 'stagger', fromYaw?: number): void;        // optional extra flinch from a direction
+  setPhase(i: number): void;                                     // boss phase (Boss.enterPhase calls it)
+  readonly creature: CreatureAnimator | null;                    // events and sockets, below
+}
 ```
+
+Build and animator each make a fixed number of draws from the caller's
+stream (build: one pick, one fork per new variant of the old cache key, one
+pick, two jitters; animator: one), so packs, affixes and AI rolls after a
+spawn stay where they were tuned.
+
+## Creature rigs — `src/art/creatures/*` — owned by creatures
+
+Every monster and boss is a skinned creature: one to three draw calls
+(materials `skin`, `alt`, `metal`), identity bind rotations, character space
++X left, +Y up, +Z forward, the floor at y = 0 before `scale`.
+
+Rig kinds and their bones (`*L` bones have an `*R` twin):
+
+| kind | used for | bones |
+|---|---|---|
+| `biped`, `brute`, `giant` | skeletons, ghouls, cultists, demons, golems | `hips spine chest neck head jaw armL foreL handL legL shinL footL`, optional `hockL` (digitigrade), `arm2L fore2L hand2L`, `tail1..n`, `wingL wingL2 wingL3` |
+| `quadruped` | hounds, wolves, bears, lions, stags | `hips spine chest neck head jaw fLegL fShinL fFootL hLegL hShinL hHockL hFootL tail1..n` |
+| `spider`, `insect` | spiders, ticks, beetles, mantises, wasps | `body abdomen sting head mandL leg{i}L knee{i}L foot{i}L wingL wingL2` |
+| `serpent` | basilisks, worms, vines, larvae | `body f1..fn head jaw t1..tn` |
+| `flyer` | bats, harpies, wyverns, djinn | `body chest neck head jaw wingL wingL2 wingL3`, optional arms, legs, tail |
+| `specter` | wraiths, banshees, shades | `hips spine chest neck head jaw armL foreL handL robeF1 robeF2` (and `B L R`) |
+| `ooze` | slimes, puddings, amalgams | `body top lobe{i} podL podL2` |
+| `floater` | eyes, pylons, wisps, totems | `core eye crown orb{i} ten{i}_{k}` |
+| `swarm` | wisp clouds, gales | `core mote{i}` |
+
+Sockets, as `Object3D`s named `socket:<name>` under the root and riding a
+bone: `head`, `mouth`, `chest`, `core`, `handL`, `handR`, `weapon` (the
+weapon tip, or the mouth or sting of an unarmed body). Read with
+`creatureSocket(root, name)`; world position via `getWorldPosition`.
+
+Events (`rig.creature?.on(event, fn)`), fired from inside `update`:
+
+- `hit` at a strike's moment of impact (`clip`: the attack kind, `side`).
+- `release` when a ranged or cast action lets go (arrow, spit, bolt).
+- `step` when a foot plants (`side`), for footstep sounds and dust.
+- `end` when a one-shot finishes.
+
+Timing follows `Enemy`'s drive: the wind-up is `attack` or `cast` for
+`windup + 0.1` s, the strike a fresh `attack` of 0.4 s (impact at about 15 %
+of it), death runs `deathT` 0..1 over 0.8 s and the body is down by 0.8.
 
 ## `src/audio/Audio.ts` — owned by audio
 

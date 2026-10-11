@@ -1,14 +1,19 @@
 /**
  * Entry point for `tools/check-monster-anim.mjs`.
  *
- * One real monster per archetype, built by `buildMonsterModel` and driven by
- * the real `RigAnimator` exactly as `Enemy` drives it: spawn, stand, walk and
- * run with the model really moving, a telegraphed attack and its strike, a
- * cast, a hit while walking, and a death. Every frame each bone's position in
- * the model's own space is read back. Reports, per archetype: any NaN, the
- * biggest one-frame jump of any bone (a second difference, in hip heights, so
- * a goblin and a colossus are judged alike), where the hips end after death,
- * and how far the legs actually swing when walking (they must move).
+ * Real monsters, built by `buildMonsterModel` and driven by the real
+ * `RigAnimator` exactly as `Enemy` drives it: spawn, stand, walk and run with
+ * the model really moving, a telegraphed attack and its strike, a cast, a hit
+ * while walking, and a death. Every frame each bone's position in the model's
+ * own space is read back. Reports, per monster: any NaN, the biggest one-frame
+ * jump of any bone (a second difference, in hip heights, so a goblin and a
+ * colossus are judged alike), where the hips end after death, how far the
+ * feet travel when running (they must step), and whether the body is still
+ * lying there at the end of its death.
+ *
+ * Remade creatures are checked one per rig kind and style (every look that
+ * moves differently); `--all` checks every remade monster. Bodies not yet
+ * remade are checked one per old archetype.
  *
  * No renderer and no browser.
  */
@@ -16,8 +21,11 @@ import * as THREE from 'three';
 import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../src/entities/MonsterModels';
 import { MONSTERS } from '../src/data/monsters';
 import { Random } from '../src/core/RNG';
+import { hasLook, lookFor } from '../src/art/creatures/Looks';
+import type { CreatureInfo } from '../src/art/creatures/Animator';
 
 const DT = 1 / 60;
+const ALL = ((globalThis as { process?: { argv: string[] } }).process?.argv ?? []).includes('--all');
 
 interface Step {
   label: string;
@@ -44,17 +52,26 @@ const SCRIPT: Step[] = [
 ];
 
 interface Row {
-  archetype: string;
+  kind: string;
   monster: string;
+  /** Whether the body is a remade creature. */
+  remade: boolean;
+  /** Whether it walks on legs (feet must step). */
+  legged: boolean;
+  /** Whether it may vanish or scatter at death (specters, swarms, oozes). */
+  fades: boolean;
   nan: boolean;
   /** Biggest bone jump, hip heights per frame squared, and where. */
   pop: number;
   popAt: string;
   /** Hips height after death, hip heights. */
   deadHips: number;
-  /** Angle the first leg bone sweeps through while running, radians. */
+  /** Remade legged bodies: how far a foot travels fore and aft while running, hip heights. Old bodies: leg bone sweep, radians. */
   legSwing: number;
 }
+
+/** Limb ends that are meant to whip in a strike, a spawn or a hit. */
+const WHIP = /elbow|Knee|knee|fore|hand|foot|Foot|toe|Toe|tip|Tip|mote|jaw|shin|Shin|hock|Hock|snout|mand|sting|tail|wing|ten|orb|pod|robe/;
 
 function run(id: string): Row {
   const def = MONSTERS.find((m) => m.id === id)!;
@@ -66,8 +83,10 @@ function run(id: string): Row {
   scene.add(holder);
   const arche = monsterArchetype(def.visual.body);
   const anim = new RigAnimator(model.root, model.bones, arche, rng);
-  const hips = model.bones.hips;
-  const hipY = hips.position.y || 1;
+  const info = model.root.userData.creature as CreatureInfo | undefined;
+  const remade = !!info;
+  const hips = model.bones.hips ?? model.bones.body ?? model.bones.core ?? Object.values(model.bones)[1]!;
+  const hipY = (remade ? info!.hipY : hips.position.y) || 1;
   const names = Object.keys(model.bones);
   const prev = new Map<string, THREE.Vector3>();
   const prevStep = new Map<string, THREE.Vector3>();
@@ -78,8 +97,14 @@ function run(id: string): Row {
   let time = 0;
   let legMin = Infinity;
   let legMax = -Infinity;
-  const legBone = model.bones.hipL ?? model.bones.legHip0L ?? model.bones.shoulderL ?? null;
+  const legs = info?.legs ?? [];
+  const flying = info ? info.style.gait === 'glide' || info.style.gait === 'slither' || info.style.gait === 'roll' : false;
+  const legged = remade ? legs.length > 0 && !flying : ['humanoid', 'quadruped', 'colossal', 'insectoid', 'arachnid'].includes(arche);
+  const foot = remade && legs.length ? model.bones[legs[0]!.end]! : null;
+  const legBone = !remade ? (model.bones.hipL ?? model.bones.legHip0L ?? model.bones.shoulderL ?? null) : null;
+  const fades = remade ? ['fade', 'scatter', 'splat', 'melt', 'shatter'].includes(String(info!.style.death)) || info!.kind === 'swarm' : arche === 'swarm';
   let deadHips = 0;
+  const hipsName = names.includes('hips') ? 'hips' : hips.name;
 
   for (const st of SCRIPT) {
     const frames = Math.round(st.seconds / DT);
@@ -92,25 +117,24 @@ function run(id: string): Row {
       if (st.len) actionT = Math.min(1, actionT + DT / st.len);
       if (st.death) deathT += DT * 1.25;
       if (spawnT > 0) spawnT = Math.max(0, spawnT - DT * 1.6);
-      const action: RigAction = spawnT > 0 ? 'spawn' : st.action && actionT < 1 ? st.action : 'idle';
+      const action: RigAction = spawnT > 0 ? 'spawn' : st.action && actionT < 1 ? st.action : st.death ? 'death' : 'idle';
       anim.update(DT, {
         locomotion: Math.min(1, st.speed / 3.2),
         action,
-        actionT: spawnT > 0 ? 1 - spawnT : actionT,
+        actionT: spawnT > 0 ? 1 - spawnT : st.death ? Math.min(1, deathT) : actionT,
         time,
         deathT: st.death ? Math.min(1, deathT) : 0,
       });
       scene.updateMatrixWorld(true);
       inv.copy(model.root.matrixWorld).invert();
       for (const n of names) {
-        const p = model.bones[n].getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);
+        const p = model.bones[n]!.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);
         if (!Number.isFinite(p.x + p.y + p.z)) nan = true;
         const pv = prev.get(n);
         if (pv) {
           const step = p.clone().sub(pv);
           const before = prevStep.get(n);
-          // The ends of limbs are meant to whip in a strike or a spawn.
-          const whip = (st.label === 'strike' || st.label === 'spawn') && /elbow|Knee|hand|foot|Foot|tip|Tip|mote|jaw/.test(n);
+          const whip = (st.label === 'strike' || st.label === 'spawn' || st.label === 'hit walking') && WHIP.test(n);
           if (before && !whip) {
             const jump = step.distanceTo(before) / hipY;
             if (jump > pop) {
@@ -122,29 +146,44 @@ function run(id: string): Row {
         }
         prev.set(n, p);
       }
-      if (st.label === 'run' && legBone && f > 20) {
-        const a = legBone.rotation.x + legBone.rotation.y;
-        legMin = Math.min(legMin, a);
-        legMax = Math.max(legMax, a);
+      if (st.label === 'run' && f > 20) {
+        if (foot) {
+          const z = foot.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv).z / hipY;
+          legMin = Math.min(legMin, z);
+          legMax = Math.max(legMax, z);
+        } else if (legBone) {
+          const a = legBone.rotation.x + legBone.rotation.y;
+          legMin = Math.min(legMin, a);
+          legMax = Math.max(legMax, a);
+        }
       }
-      if (st.death) deadHips = hips.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv).y / hipY;
+      if (st.death) deadHips = model.bones[hipsName]!.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv).y / hipY;
     }
   }
   return {
-    archetype: arche,
+    kind: info ? info.kind : arche,
     monster: id,
+    remade,
+    legged,
+    fades,
     nan,
     pop: +pop.toFixed(3),
     popAt,
     deadHips: +deadHips.toFixed(2),
-    legSwing: +(legMax - legMin).toFixed(2),
+    legSwing: Number.isFinite(legMax - legMin) ? +(legMax - legMin).toFixed(2) : 0,
   };
 }
 
-// One monster per archetype, the first the bestiary lists.
 const picked = new Map<string, string>();
 for (const m of MONSTERS) {
-  const a = monsterArchetype(m.visual.body);
-  if (!picked.has(a)) picked.set(a, m.id);
+  if (hasLook(m.id)) {
+    const look = lookFor(m.visual, m.family);
+    const st = look.style;
+    const sig = ALL ? m.id : `${look.rig().kind}|${st.gait}|${st.spawn}|${st.death}|${st.armed}|${(st.attacks ?? []).join(',')}`;
+    if (!picked.has(sig)) picked.set(sig, m.id);
+  } else {
+    const sig = `old|${monsterArchetype(m.visual.body)}`;
+    if (!picked.has(sig)) picked.set(sig, m.id);
+  }
 }
 console.log(JSON.stringify([...picked.values()].map(run)));

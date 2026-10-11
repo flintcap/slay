@@ -45,12 +45,38 @@ export function key(a: CreatureAnimator, k: Key, w: number, mirror = false): voi
   }
 }
 
-/** Blends a wind-up key into an impact key and back: the shape of every strike. */
+/** Trunk bones turn slower than limbs whip: the body leads, the arm follows through. */
+const TRUNK = /^(\$hips|\$body|hips|spine|chest|neck|head|body|abdomen)$/;
+const splitCache = new WeakMap<Key, [Key, Key]>();
+
+function split(k: Key): [Key, Key] {
+  let hit = splitCache.get(k);
+  if (!hit) {
+    const trunk: Record<string, readonly number[]> = {};
+    const limbs: Record<string, readonly number[]> = {};
+    for (const n in k) (TRUNK.test(n) ? trunk : limbs)[n] = k[n]!;
+    hit = [trunk, limbs];
+    splitCache.set(k, hit);
+  }
+  return hit;
+}
+
+/**
+ * Blends a wind-up key into an impact key and back: the shape of every
+ * strike. Limbs reach the impact at `impact`; the trunk takes a little over
+ * twice as long, so a blow whips without the whole body snapping.
+ */
 export function strike(a: CreatureAnimator, wind: Key, hit: Key, t: number, impact = 0.15, hold = 0.45, mirror = false, w = 1): void {
-  const sw = t <= 0 ? 0 : t >= impact ? 1 : smoothT(t / impact);
   const rw = t <= hold ? 0 : t >= 1 ? 1 : smoothT((t - hold) / (1 - hold));
-  key(a, wind, (1 - sw) * (1 - rw) * w, mirror);
-  key(a, hit, sw * (1 - rw) * w, mirror);
+  const [wt, wl] = split(wind);
+  const [ht, hl] = split(hit);
+  const sl = t <= 0 ? 0 : t >= impact ? 1 : smoothT(t / impact);
+  const ti = Math.min(hold, impact * (2.3 + 1.4 * a.style.heavy));
+  const st = t <= 0 ? 0 : t >= ti ? 1 : smoothT(t / ti);
+  key(a, wl, (1 - sl) * (1 - rw) * w, mirror);
+  key(a, hl, sl * (1 - rw) * w, mirror);
+  key(a, wt, (1 - st) * (1 - rw) * w, mirror);
+  key(a, ht, st * (1 - rw) * w, mirror);
 }
 
 function smoothT(t: number): number {

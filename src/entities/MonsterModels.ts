@@ -32,6 +32,8 @@ import { Noise } from '../art/Noise';
 import { buildItemModel } from '../art/ItemModels';
 import { compactModel } from '../art/ModelBudget';
 import { Random } from '../core/RNG';
+import { hasLook, lookFor, monsterIdOf } from '../art/creatures/Looks';
+import { disposeCreatures, instanceCreature, releaseCreature } from '../art/creatures/Creature';
 
 // ---------------------------------------------------------------------------
 // Archetypes
@@ -1778,6 +1780,8 @@ const WEAPON_PALETTE: Record<string, string> = {
  */
 export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number, opts: MonsterLookOpts = {}): MonsterModel {
   const key = cacheKey(visual, opts);
+  const id = monsterIdOf(visual);
+  if (id && hasLook(id)) return buildCreatureModel(visual, rng, scale, opts, key);
   let variants = prototypeCache.get(key);
   if (!variants) {
     variants = [];
@@ -1817,10 +1821,39 @@ export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number
 }
 
 /**
+ * How many variants each old-style key has "built". A creature has one
+ * prototype per look, but it makes the same draws the old variant pool made
+ * (one pick, one fork per new variant, one pick, two jitters), so packs,
+ * affixes and AI rolls after a spawn land where they were tuned.
+ */
+const virtualVariants = new Map<string, number>();
+
+function buildCreatureModel(visual: MonsterVisual, rng: Rng, scale: number, opts: MonsterLookOpts, key: string): MonsterModel {
+  let have = virtualVariants.get(key) ?? prototypeCache.get(key)?.length ?? 0;
+  const wanted = Math.min(VARIANTS_PER_KEY, 1 + Math.floor(rng.next() * VARIANTS_PER_KEY));
+  while (have < wanted) {
+    rng.fork(`proto:${key}:${have}`);
+    have++;
+  }
+  virtualVariants.set(key, have);
+  rng.next();
+  const look = lookFor(visual, opts.family, opts.rank);
+  const m = instanceCreature(look, scale, { rank: opts.rank });
+  m.root.scale.x *= rng.range(0.96, 1.04);
+  m.root.scale.z *= rng.range(0.96, 1.04);
+  m.root.updateMatrixWorld(true);
+  return { root: m.root, bones: m.bones, skeleton: m.skeleton };
+}
+
+/**
  * Frees what one spawned monster owns: its skeleton's bone texture. Geometry
  * and materials belong to the shared prototype cache and are left alone.
  */
 export function releaseMonsterModel(root: THREE.Object3D): void {
+  if (root.userData?.creature) {
+    releaseCreature(root);
+    return;
+  }
   const skel = root.userData?.monsterSkeleton as THREE.Skeleton | undefined;
   if (skel) {
     skel.dispose();
@@ -1830,6 +1863,8 @@ export function releaseMonsterModel(root: THREE.Object3D): void {
 
 /** Releases every cached prototype, geometry and material. Call between runs. */
 export function disposeMonsterModels(): void {
+  disposeCreatures();
+  virtualVariants.clear();
   for (const variants of prototypeCache.values()) {
     for (const p of variants) {
       p.root.traverse((o) => {

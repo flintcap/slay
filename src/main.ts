@@ -91,6 +91,8 @@ async function main(): Promise<void> {
   // visit come back from IndexedDB in milliseconds.
   const { loadMeshCache } = await import('./art/hero/MeshCache');
   await loadMeshCache();
+  const { loadCreatureBakes } = await import('./art/creatures/Store');
+  await loadCreatureBakes();
 
   // Teach the item-model builder how to find a base's authored visual. Done
   // here rather than inside art/ so the art layer keeps no compile-time

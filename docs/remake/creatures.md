@@ -8,7 +8,7 @@ Remake from nothing.
 
 ## Milestones
 
-- [ ] Inventory and rigs. List every monster, boss and mini-boss and its
+- [x] Inventory and rigs. (creatures: inventory, rigs contract, undead switched on per id) List every monster, boss and mini-boss and its
   family (write it under "Design"). Design new rigs from nothing: humanoid,
   hunched brute, quadruped, spider or insect, serpent, flyer, amorphous, giant.
   Write attach points (mouth, hands, weapon tip, chest) and hit and release
@@ -37,21 +37,79 @@ sheet render if there is none.
 
 ## Design
 
-(to be written in milestone 1)
+### Inventory (127 monsters, 24 bosses, mini-bosses promoted from monsters)
+
+| family | n | ids | rigs |
+|---|---|---|---|
+| undead | 17 | skeleton rattler, archer, warden, duelist, ballista, bone conjurer, crypt/plague ghoul, rotting bloat, corpse hound, wraith, banshee, gravebound knight, grave titan, mortician lich, barrow shade, sepulcher choir | biped, brute, giant, quadruped, specter |
+| humanoid | 14 | goblin scrapper, bomber, bandit cutthroat, crossbow, cultist zealot, acolyte, dark priest, inquisitor, troglodyte, sunken zealot, ashen marauder, blood chanter, warlock apostate, iron captain | biped, brute |
+| demon | 13 | imp scamperer, fleshripper, hellhound, infernal archer, pit brute, succubus lash, void stalker, ember fiend, soulbinder, chaos maw, balor lieutenant, sin eater, brimstone hulk | biped (digitigrade, tails, wings), quadruped, giant, flyer |
+| beast | 14 | dire rat, cave bat, gorge wolf, pack alpha, crag bear, saber prowler, harpy screecher, basilisk, gulper frog, tunnel worm, wyvern whelp, rime stag, ashen lion, chasm leviathan | quadruped, flyer, serpent |
+| construct | 13 | scarab drone, animated armor, clockwork sentry, arc pylon, iron golem, forge smith, brass stalker, siege automaton, rune guardian, arcane sentry totem, colossus frame, mercury construct, obsidian warden | insect, biped, giant, spider, floater |
+| insect | 13 | hive drone, hornet swarmer, spitter beetle, lance mantis, burrow tick, web spinner, carapace warden, hive nurse, venom wasp, chitin reaver, acid larva, royal guard beetle, broodmother spawn | insect, spider, serpent |
+| aberration | 11 | whisper wisp, watcher eye, gazer tyrant, thought eater, tentacle horror, null walker, flesh amalgam, dimensional lurker, star spawn, mirror image, unmaker | swarm, floater, biped, ooze, flyer, giant |
+| elemental | 12 | ember wisp, fire elemental, magma hulk, frost shard, ice revenant, lightning wisp, storm djinn, living gale, obsidian elemental, tide caller, void ember, glacier titan | floater, biped, giant, flyer, swarm |
+| plant | 10 | spore pod, thorn creeper, strangler vine, bloom cannon, fungal shambler, deathcap priest, blight flower, ancient treant, root horror, corpse bloom | ooze, serpent, floater, biped, giant |
+| ooze | 10 | ooze spawn, green slime, acid ooze, tar crawler, gelatinous mass, magma ooze, plague pudding, glass gel, void slime, devourer pudding | ooze |
+
+Bosses (each its own look, 4 to 6 m tall in game): Gharruth the bone king,
+Sae-lith broodmother, Grell the butcher, warden Calix, hound master Vess, Ylph
+the ooze sovereign, archivist Moln, forgefather Hurn, tidewarden Nheru,
+plaguelord Ossik, the gaze of Uln, rimeheart Valdr, the ashen prophet Kaveh,
+iron conqueror Malek, treant elder Vhoss, stalker prime Nul, stormcrown
+Azhek, hive queen Zsarra, Ordrach the lich of seven seals, magma sovereign
+Ixthar, void herald Shessi, Vareth-Kar colossus of the deep, Ghaal the first
+devourer, the Gaunt King. Mini-bosses are elite or rare promotions of
+monsters: same look, rank rim and glow, plus mini-boss flair.
+
+### How a creature is made
+
+- A look (`src/art/creatures/Look*.ts`, one factory per monster id) picks a
+  rig (`Rig.ts`), sculpts its body as signed distance shapes per material
+  (`Sculpt.ts`, helpers in `Kit.ts`, weapons in `Arms.ts`), and names its
+  materials and motion style.
+- `Bake.ts` meshes, decimates, weights and paints it once (vertex colour for
+  occlusion and grime, a glow channel for eyes, boils and runes); hard parts
+  (teeth, claws, ribs, weapons, eyes) ride one bone rigidly. `Store.ts`
+  keeps bakes in IndexedDB so a second visit costs nothing.
+- `Materials.ts`: triplanar CC0 scans (bone, flesh, fur, iron...) or drawn
+  normals (scales, chitin), painted glow, rank rim light.
+- `Animator.ts` plants feet with two-bone IK and calls a poser per rig kind
+  (`PoseBiped`, `PoseBeast`, `PoseBug`, `PoseBlob`), driven by `MotionStyle`
+  (attacks, spawn, death, idle, gait, heavy).
+- Budgets: small/normal/big/boss tiers, about 2.5k/4.5k/6.5k/12k triangles,
+  at most three draw calls.
+- Tools: `node tools/creature-sheet.mjs <lineup|big|side|poses|game> --ids=...`
+  renders sheets; `node tools/check-monster-anim.mjs [--all]` checks motion.
 
 ## Next up
 
-1. Run Setup in `docs/remake/PROTOCOL.md`.
-2. Read `src/entities/MonsterModels.ts` (`buildMonsterModel`, `Archetype`),
-   `src/art/MonsterAnimation.ts` (`RigAnimator`), `src/data/monsters.ts`,
-   `src/data/bosses.ts`, and how `src/entities/Enemy.ts` drives them.
-3. Write the inventory and rigs, push, then start on undead.
+1. Humanoid looks (`LookHumanoid.ts`): goblins, bandits, cultists, priests,
+   inquisitor, troglodyte, zealots, marauder, chanter, warlock, iron captain.
+   Register in `Looks.ts` FACTORIES. Render with
+   `SLAY_PORT=4325 timeout 900 node tools/creature-sheet.mjs lineup --ids=family:humanoid --out=<scratch>`.
+2. Then beasts, insects, demons, constructs, elementals, aberrations,
+   plants, oozes, then the 24 bosses.
+3. Corpses that stay (a static skinned copy left at deathT 1, capped), rank
+   rims to match nameplates (champion 0x6f8cff, elite 0xf5d76e, rare
+   0xffa040), mini-boss flair, boss phase glow.
+4. Switch and clean: when every id has a look, delete the old builders in
+   `MonsterModels.ts` and `LegacyRigAnimator` in `MonsterAnimation.ts`;
+   boss portraits from the new models.
 
 ## Notes for resume
 
-- heroes deleted the old `BodyKit.ts`; `MonsterModels.ts` now imports
-  `mergeSkinned` and `skinRigid` from `src/art/hero/Skinning.ts` (same
-  signatures). One import line changed, nothing else.
-- maps may have added biomes and moved families; read `src/data/monsters.ts`
-  and the biome list fresh.
+- The switch is live per id: `buildMonsterModel` uses the new creature when
+  `hasLook(id)` (id found from the visual object by reference), else the old
+  builder. `RigAnimator` wraps `CreatureAnimator` or the old animator. Both
+  keep the exact old rng draws.
+- Bakes run on the main thread at first spawn (about 150 to 500 ms each,
+  cold); IndexedDB `slay-creature-meshes` makes repeats free. If floor loads
+  stall, move baking to a worker.
+- Painted glow smears on coarse meshes. Eyes, boils, gems and candle flames
+  are rigid parts (`s.eye`, `s.boil`); keep painted glow for broad soft areas.
+- `Enemy.ts` (not ours) sinks bodies after deathT 1 and removes them at 1.45.
+  Corpses that stay must be a copy we leave behind, not a change there.
+- heroes deleted the old `BodyKit.ts`; `MonsterModels.ts` imports
+  `mergeSkinned` and `skinRigid` from `src/art/hero/Skinning.ts`.
 - Do not change monster stats or counts. Never make monsters weaker or fewer.
