@@ -605,9 +605,11 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
   caverns: {
     id: 'caverns',
     landmarks: [{ kind: 'crystalCluster', weight: 6 }, { kind: 'shrine', weight: 1 }],
-    grade: { contrast: 1.06, saturation: 1.05, shadowTint: 0x3f8f88, highlightTint: 0xd8ffe8, splitTone: 0.42, vignette: 0.48, vignetteTint: 0x4a7a76, bloomStrength: 0.72, bloomThreshold: 0.86 },
+    grade: { contrast: 1.08, saturation: 0.9, shadowTint: 0x2e4c4a, highlightTint: 0xe0f4e8, splitTone: 0.38, vignette: 0.52, vignetteTint: 0x24302e, bloomStrength: 0.72, bloomThreshold: 0.86 },
     grime: 0x1e2a22,
-    wetness: 0.55,
+    // At 0.55 the wet sheen and the teal grade turned the rock walls into
+    // glowing green glass (final render). Damp, not glazed.
+    wetness: 0.35,
     surfaceVariation: 0.9,
     wallHeight: 4.4,
     ceiling: 'broken',
@@ -621,16 +623,18 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     ],
     walls: [
       { palette: 'stone.cave', weight: 9, repeat: 0.7 },
-      { palette: 'crystal.gem', weight: 1, repeat: 1, emissive: 0x1a5a66, emissiveIntensity: 0.6 },
+      // A crystal room is a hint of glow in the rock. The full arcane glow
+      // on walls and trim made whole rooms of green glass (final render).
+      { palette: 'crystal.gem', weight: 1, repeat: 1, tint: 0x5a7a78, emissive: 0x1a5a66, emissiveIntensity: 0.2 },
     ],
-    trim: { palette: 'crystal.gem', weight: 1, roughness: 0.25 },
+    trim: { palette: 'stone.cave', weight: 1, tint: 0x8a9a90 },
     baseTrim: 'stone.cave',
     liquid: 'water',
     liquidColor: 0x0f3a40,
     liquidEmissive: 0x0a2e34,
     wallLight: 'glowShroom',
     wallLightSpacing: 6,
-    lightColor: 0x53f0c8,
+    lightColor: 0x78d8bc,
     lightIntensity: 4.2,
     lightDistance: 11,
     bounceColor: 0x1e5a52,
@@ -736,7 +740,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
   sunkenTemple: {
     id: 'sunkenTemple',
     landmarks: [{ kind: 'idolHead', weight: 5 }, { kind: 'fountain', weight: 4 }, { kind: 'statue', weight: 2 }],
-    grade: { contrast: 1.06, saturation: 1.06, shadowTint: 0x2f7f8f, highlightTint: 0xffe0a0, splitTone: 0.45, vignette: 0.46, vignetteTint: 0x3a7480, bloomStrength: 0.7, bloomThreshold: 0.88 },
+    grade: { contrast: 1.08, saturation: 0.94, shadowTint: 0x2a4c56, highlightTint: 0xffe0a0, splitTone: 0.42, vignette: 0.5, vignetteTint: 0x22343a, bloomStrength: 0.7, bloomThreshold: 0.88 },
     grime: 0x1f3229,
     wetness: 0.65,
     surfaceVariation: 0.85,
@@ -758,8 +762,9 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     trim: { palette: 'metal.gold', weight: 1, roughness: 0.28, metalness: 1 },
     baseTrim: 'stone.marble',
     liquid: 'water',
-    liquidColor: 0x0d4a56,
-    liquidEmissive: 0x0a3a48,
+    // A flooded floor in bright teal read as a glowing pool, not drowned stone.
+    liquidColor: 0x0c2a32,
+    liquidEmissive: 0x06222a,
     wallLight: 'templeLantern',
     wallLightSpacing: 8,
     lightColor: 0xffd27a,
@@ -880,7 +885,8 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     ],
     walls: [
       { palette: 'stone.granite', weight: 7, repeat: 1, tint: 0x93aec4 },
-      { palette: 'crystal.ice', weight: 3, repeat: 0.9 },
+      // Untinted, the ice walls were a white sheet of glare beside the hero.
+      { palette: 'crystal.ice', weight: 3, repeat: 0.9, tint: 0x7890a2, emissiveIntensity: 0.08 },
     ],
     trim: { palette: 'metal.steel', weight: 1, roughness: 0.3, metalness: 0.9 },
     baseTrim: 'stone.granite',
@@ -993,7 +999,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
   voidspire: {
     id: 'voidspire',
     landmarks: [{ kind: 'voidRift', weight: 4 }, { kind: 'obelisk', weight: 3 }],
-    grade: { contrast: 1.12, saturation: 0.78, shadowTint: 0x3c3454, highlightTint: 0xe8d4e4, splitTone: 0.45, vignette: 0.56, vignetteTint: 0x2a2038, bloomStrength: 0.72, bloomThreshold: 0.88 },
+    grade: { contrast: 1.12, saturation: 0.72, shadowTint: 0x3a3448, highlightTint: 0xe8d4e4, splitTone: 0.45, vignette: 0.56, vignetteTint: 0x2a2038, bloomStrength: 0.72, bloomThreshold: 0.88 },
     grime: 0x1a1028,
     wetness: 0.12,
     surfaceVariation: 0.7,
@@ -1014,16 +1020,18 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     ],
     walls: [
       { palette: 'stone.obsidian', weight: 6, repeat: 1 },
-      { palette: 'crystal.void', weight: 4, repeat: 0.8 },
+      // At the palette's own glow (0.9) the crystal walls and trim lit the
+      // whole spire violet (final render). Glowing edges, dark faces.
+      { palette: 'crystal.void', weight: 4, repeat: 0.8, emissiveIntensity: 0.3 },
     ],
-    trim: { palette: 'crystal.void', weight: 1 },
+    trim: { palette: 'crystal.void', weight: 1, emissiveIntensity: 0.35 },
     baseTrim: 'stone.obsidian',
     liquid: 'voidwater',
     liquidColor: 0x22123a,
     liquidEmissive: 0x4a2a7c,
     wallLight: 'voidFlame',
     wallLightSpacing: 7,
-    lightColor: 0xbc98dc,
+    lightColor: 0xb4a2cc,
     lightIntensity: 6.2,
     lightDistance: 13,
     bounceColor: 0x3a2a5a,
