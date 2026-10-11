@@ -58,8 +58,8 @@ const LOGO_SVG = `
 const TAGLINES = [
   'Descend. Die. Descend again.',
   'The vault remembers. Nobody else will.',
-  'Every floor is new. Every death is final.',
-  'There is always another stair.',
+  'Every map is new. Every death is final.',
+  'There is always another portal.',
 ];
 
 export class TitlePanel {

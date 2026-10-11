@@ -173,7 +173,7 @@ export const LEGACY_UNLOCKS: LegacyUnlock[] = [
   { id: 'bounties', rank: 2, name: 'Bounty Board', desc: 'The board by the gate posts bounties with real rewards.' },
   { id: 'gambler', rank: 3, name: 'The Gambler', desc: 'A dealer in sealed goods sets up shop. Pay gold, take your chances.' },
   { id: 'enchanter', rank: 5, name: 'The Enchanter', desc: 'Reforge one affix of an item, or imbue a rare with a power.' },
-  { id: 'waypoints', rank: 7, name: 'Waypoints', desc: 'Begin a descent from any depth milestone you have reached.' },
+  { id: 'waypoints', rank: 7, name: 'Waypoints', desc: 'Begin a map from any tier milestone you have reached.' },
   { id: 'pacts', rank: 9, name: 'Pacts', desc: 'Take on dangers by choice before a descent, for greater rewards.' },
   { id: 'stashTab', rank: 12, name: 'Vault Extension', desc: 'One more tab in the shared stash.' },
   { id: 'perkCap', rank: 20, name: 'Mastery', desc: 'Every perk can be raised two ranks higher.' },

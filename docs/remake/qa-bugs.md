@@ -21,10 +21,12 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   see the arena gate, the boss phases, the reward, the portal home, and that
   the next portal opens a fresh map. Death and respawn work. Save and reload
   mid-map works (old saves too).
-- [ ] Text and UI leftovers. Any text that still talks about stairs, floors
+- [x] Text and UI leftovers. Any text that still talks about stairs, floors
   or depth where the new map flow means zones, maps and tiers. Tooltips and
   HUD read right with the new items and maps. Do not restyle the HUD or menus.
-  (text fixes committed; still to check by eye in a render)
+  (`qa-bugs: last text leftovers: tier and map, not depth, floor, stair`;
+  checked by grep and reading, per the lean rule; the town HUD text read
+  right in the quest marker renders)
 - [x] Balance check (owner's rule: make classes stronger, never make monsters
   weaker or fewer). `check-curve` fails 8 of 30 at deep tiers 12 and 40.
   Find why. If the fix is making classes stronger (scaling, skills, passives),
@@ -156,6 +158,14 @@ maps, areas and tiers (pause menu, settings, onboarding, death screen,
 title, legacy, memorial, contracts, waypoint picker, town toast, map
 modifier and objective lines, difficulty guidance). Story prose is unchanged.
 
+Last pass (grep of every player-facing string): the difficulty picker's
+pros ("no elites until depth 7" now "tier 7"), two title taglines ("Every
+floor is new", "another stair" now map and portal), the Waypoints unlock
+("any depth milestone" now "any tier milestone") and the unused tier
+summary line. Left as they are: "floor" meaning the ground (loot filter,
+map modifiers, skill text) and flavour quotes (the death screen's stair
+line, boss and place writing).
+
 ## Next up
 
 1. Class tour, one lean browser run for every class not yet passed (none
@@ -165,8 +175,7 @@ modifier and objective lines, difficulty guidance). Story prose is unchanged.
    reach. No rerun of a class that passed.
 2. Boss and map end: one `check-mapflow` run (it already jumps to the boss
    with debug helpers).
-3. Text leftovers: grep and read code only. No browser.
-4. Handover: run only the checkers these changes can break (`hits`,
+3. Handover: run only the checkers these changes can break (`hits`,
    `markers`, `story`, `curve` if balance moved). No full sweep.
 
 ## Notes for resume

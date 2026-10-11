@@ -713,12 +713,12 @@ export function effectiveDepth(depth: number, modifierIds: readonly string[]): n
   return d;
 }
 
-/** One-line summary for the depth-select screen. */
+/** One-line summary of a tier (monster and item level). */
 export function describeDepth(depth: number): string {
   const s = monsterScaling(depth, 'normal');
   const r = depthRewards(depth);
   return (
-    `Depth ${depth} — monster level ${s.level}, ~${s.life} life, ~${s.damage} per hit. ` +
+    `Tier ${depth}: monster level ${s.level}, ~${s.life} life, ~${s.damage} per hit. ` +
     `Item level ${r.ilvl}, +${Math.round(r.magicFind)}% magic find.`
   );
 }
