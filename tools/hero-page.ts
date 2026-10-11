@@ -557,6 +557,8 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       ['idle', () => still, 1, 6, 0.5],
       ['walk', () => straight(1.6), 2, 0, Math.PI / 2],
       ['run', () => straight(4.6), 2, 0, Math.PI / 2],
+      ['walk, front', () => straight(1.6), 2, 0, 0.05],
+      ['run, front', () => straight(4.6), 2, 0, 0.05],
       ['start, stop', startStop, 0.2, 2.2, Math.PI / 2],
       ['turn', turnInPlace, 0.3, 2.4, 0.3],
       ['circle', () => circle(3.4, 3), 2, 1.2, Math.PI / 2],
