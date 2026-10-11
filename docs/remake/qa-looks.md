@@ -131,3 +131,12 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
 - A new biome takes about 15 minutes to load in the test browser. Render a
   few at a time, each run under the 45-minute limit.
 - Do not change stats, balance or monster counts. Looks only.
+- **Lean testing is a hard rule** (PROTOCOL.md "Lean testing", 5716a63).
+  Batch fixes, then one render per batch, never one per fix. Gait: one strip
+  per batch of walk changes, front and side in one sheet. Survey and
+  equipment review: one small contact sheet per area (biomes, gear worn,
+  icons), each looked at once. Before and after only at the start and end of
+  a milestone. Motion check: short clips of a few heroes and monsters, not
+  all. Once it meets the bar, stop and move on.
+- `tools/shoot-gear.mjs --classes=a,b` films worn gear live in town: a row
+  per gear level (bare, starter, mid, elite), game camera, close, mid attack.
