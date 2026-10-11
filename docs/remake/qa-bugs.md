@@ -25,12 +25,13 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   or depth where the new map flow means zones, maps and tiers. Tooltips and
   HUD read right with the new items and maps. Do not restyle the HUD or menus.
   (text fixes committed; still to check by eye in a render)
-- [ ] Balance check (owner's rule: make classes stronger, never make monsters
+- [x] Balance check (owner's rule: make classes stronger, never make monsters
   weaker or fewer). `check-curve` fails 8 of 30 at deep tiers 12 and 40.
   Find why. If the fix is making classes stronger (scaling, skills, passives),
   do it and show the curve passes. If it needs anything else, write it under
   "Results" for the owner instead of changing it.
-  (classes made stronger: 8 of 30 down to 0 to 2 of 30; see Results)
+  (classes stronger plus the owner-approved reflect fix: 1 of 30 left, an
+  "untouched" revenant at tier 5; see Results)
 - [ ] Handover.
 
 ## Results
@@ -66,18 +67,17 @@ What changed (classes stronger only):
   Pyromancer life per level 1.4 -> 2.0 and per vitality 2.5 -> 3;
   shadowblade 1.9 -> 2.4 and 3 -> 3.5; revenant 1.8 -> 2.4 and 2.5 -> 3.
 
-Result: 2 of 30 fail on a full run (revenant at tier 5 is "untouched": wins
-without losing 15% life; revenant at tier 40 packs). Run on its own
-(`--classes=revenant`) all five revenant cells pass, so these two are on the
-edge and move with the order the classes are fought in (the curve harness
-carries some state from class to class).
+- `src/entities/Enemy.ts` (owner approved, relayed by the coordinator):
+  the `reflect_damage` affix now reflects its 22% only of the damage the
+  monster actually absorbed, capped at its life before the hit. No
+  overkill. The share and every other monster number are unchanged.
 
-For the owner (not changed, it would make monsters weaker):
-
-- The `reflect_damage` affix reflects overkill and has no cap. Capping it
-  (to the monster's remaining life, or a share of the hero's life like the
-  run modifier) is what makes deep packs fair for big-hitting builds. More
-  hero life cannot fix it for long: reflect grows with hero damage.
+Result: 1 of 30 fails (was 8). Nothing is walled. The one failure is the
+revenant at tier 5 being "untouched" (it wins without losing 15% life or
+drinking a potion). Making classes stronger cannot fix that; it is on the
+edge (low 90% and 92%, the line is 85%) and passes when the revenant is run
+on its own (`--classes=revenant`), because the curve harness carries some
+state from class to class.
 
 ### Text
 
