@@ -13,18 +13,26 @@
  *
  * Remade creatures are checked one per rig kind and style (every look that
  * moves differently); `--all` checks every remade monster. Bodies not yet
- * remade are checked one per old archetype.
+ * remade are checked one per old archetype. Bosses are checked the same way,
+ * built at boss rank.
  *
  * No renderer and no browser.
  */
 import * as THREE from 'three';
 import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../src/entities/MonsterModels';
 import { MONSTERS } from '../src/data/monsters';
+import { BOSSES } from '../src/data/bosses';
 import { Random } from '../src/core/RNG';
 import { hasLook, lookFor } from '../src/art/creatures/Looks';
 import type { CreatureInfo } from '../src/art/creatures/Animator';
 
 const DT = 1 / 60;
+
+/** Every body to check: the monsters, then the bosses (built at boss rank). */
+const ENTRIES = [
+  ...MONSTERS.map((m) => ({ id: m.id, visual: m.visual, family: m.family, scale: m.scale, boss: false })),
+  ...BOSSES.map((b) => ({ id: b.id, visual: b.visual, family: b.family, scale: b.scale, boss: true })),
+];
 const ALL = ((globalThis as { process?: { argv: string[] } }).process?.argv ?? []).includes('--all');
 
 interface Step {
@@ -74,9 +82,9 @@ interface Row {
 const WHIP = /elbow|Knee|knee|fore|hand|foot|Foot|toe|Toe|tip|Tip|mote|jaw|shin|Shin|hock|Hock|snout|mand|sting|tail|wing|ten|orb|pod|robe/;
 
 function run(id: string): Row {
-  const def = MONSTERS.find((m) => m.id === id)!;
+  const def = ENTRIES.find((m) => m.id === id)!;
   const rng = new Random(0x3a11);
-  const model = buildMonsterModel(def.visual, rng, def.scale ?? 1, { family: def.family });
+  const model = buildMonsterModel(def.visual, rng, def.scale ?? 1, { family: def.family, rank: def.boss ? 'boss' : undefined });
   const scene = new THREE.Scene();
   const holder = new THREE.Group();
   holder.add(model.root);
@@ -175,11 +183,11 @@ function run(id: string): Row {
 }
 
 const picked = new Map<string, string>();
-for (const m of MONSTERS) {
+for (const m of ENTRIES) {
   if (hasLook(m.id)) {
     const look = lookFor(m.visual, m.family);
     const st = look.style;
-    const sig = ALL ? m.id : `${look.rig().kind}|${st.gait}|${st.spawn}|${st.death}|${st.armed}|${(st.attacks ?? []).join(',')}`;
+    const sig = ALL ? m.id : `${m.boss ? 'boss|' : ''}${look.rig().kind}|${st.gait}|${st.spawn}|${st.death}|${st.armed}|${(st.attacks ?? []).join(',')}`;
     if (!picked.has(sig)) picked.set(sig, m.id);
   } else {
     const sig = `old|${monsterArchetype(m.visual.body)}`;

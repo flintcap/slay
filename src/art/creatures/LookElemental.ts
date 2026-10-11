@@ -777,4 +777,4 @@ function tideLook(c: LookCtx): CreatureLook {
   };
 }
 
-export { ELEMENTAL, bolt, crystals, facet, prism, drips, walkLook, wispLook };
+export { ELEMENTAL, bolt, crystals, facet, prism, drips, fire, walkLook, wispLook };

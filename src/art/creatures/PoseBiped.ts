@@ -608,8 +608,10 @@ function fallForward(a: CreatureAnimator, buckleEnd: number, fallStart: number, 
   a.rotS('armR', 'R', 0.3 * buckle - 0.6 * fall, 0, 0.15 * buckle + 0.35 * fall);
   a.rot('foreL', -0.3 * buckle * (1 - fall) - 0.4 * fall);
   a.rot('foreR', -0.3 * buckle * (1 - fall) - 0.9 * fall);
-  a.rotS('wingL', 'L', 0.2 * fall, 0.4 * fall, 0.5 * fall);
-  a.rotS('wingR', 'R', 0.2 * fall, 0.4 * fall, 0.5 * fall);
+  // Wings follow through past the impact (a wide span stopping dead jolts at the tips).
+  const ft = u > fallEnd ? 0.4 * (1 - Math.exp(-(u - fallEnd) / 0.06)) : 0;
+  a.rotS('wingL', 'L', 0.2 * fall + ft, 0.4 * fall, 0.5 * fall);
+  a.rotS('wingR', 'R', 0.2 * fall + ft, 0.4 * fall, 0.5 * fall);
   for (let i = 1; i <= 6; i++) a.rot(`tail${i}`, 0.15 * fall, 0.25 * fall * a.fallDir, 0);
   const bounce = thud(u, fallEnd, weight);
   a.body(0, 0.02 * H * fall + bounce * H, 0, 1.42 * fall + bounce, a.fallYaw, sideRoll * fall);

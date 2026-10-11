@@ -21,6 +21,8 @@ import { ELEMENTAL } from './LookElemental';
 import { ABERRATION } from './LookAberration';
 import { PLANT } from './LookPlant';
 import { OOZE } from './LookOoze';
+import { BOSS_A } from './LookBoss';
+import { BOSS_B } from './LookBoss2';
 
 export interface LookCtx {
   id: string;
@@ -44,6 +46,8 @@ const FACTORIES: Record<string, LookFactory> = {
   ...ABERRATION,
   ...PLANT,
   ...OOZE,
+  ...BOSS_A,
+  ...BOSS_B,
 };
 
 let ids: WeakMap<MonsterVisual, { id: string; family: string; scale: number }> | null = null;

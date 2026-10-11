@@ -68,7 +68,8 @@ const RANK_RIM: Array<{ rim: number; strength: number; glow: number }> = [
   { rim: 0x000000, strength: 0, glow: 1 },
   { rim: 0x3f7bff, strength: 0.55, glow: 1.25 },
   { rim: 0xb15cff, strength: 0.6, glow: 1.4 },
-  { rim: 0xffb238, strength: 0.65, glow: 1.5 },
+  // A boss's rim stays low: its silhouette and colours are its own, the ember only edges it.
+  { rim: 0xff7a30, strength: 0.28, glow: 1.5 },
 ];
 
 const TIERS: Record<CreatureTier, { cells: number; tris: Record<CMat, number> }> = {
