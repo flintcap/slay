@@ -14,7 +14,13 @@ const TOWN_PANELS = [
 ];
 const DUNGEON_PANELS = ['inventory', 'character', 'skills', 'map', 'questLog', 'journal', 'lootFilter', 'legacy', 'settings'];
 
-export async function classTour({ page, step, arrive, key, frames, setName, classId, part = 'all' }) {
+/**
+ * `blind: false` skips the steps that do not depend on the class (panels,
+ * a fresh map, the next zone, the way on): a run of several classes does
+ * them once, with the first. `picked: false` skips the character-select
+ * check (only the first class of a run came through character select).
+ */
+export async function classTour({ page, step, arrive, key, frames, setName, classId, part = 'all', blind = true, picked = true }) {
   const town = part !== 'dungeon';
   const down = part !== 'town';
   /** Every open panel's id-ish class list, for messages. */
@@ -82,7 +88,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
       [x, z],
     );
 
-  await step('class is the one picked at character select', async () => {
+  if (picked) await step('class is the one picked at character select', async () => {
     const c = await page.evaluate(() => window.SLAY.save.account.current?.classId);
     if (c !== classId) throw new Error(`forged a ${c}`);
     return c;
@@ -234,6 +240,10 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
       // This step is about picking things up, not surviving: a slow frame
       // next to a live pack must not kill the hero mid-step.
       S.debug.godMode(true);
+      // A potion, gem or rune picked up pours into the stack already in the
+      // pack and its own uid is gone; the pickup event still names it.
+      window.__picked = new Set();
+      S.events.on('loot:pickedUp', ({ item }) => window.__picked.add(item.uid));
       // A piece the hero can surely wear: take it off and drop it.
       const slot = ['head', 'gloves', 'boots', 'belt', 'chest'].find((k) => c.equipment[k]);
       const item = c.equipment[slot];
@@ -283,7 +293,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
         }, d);
         if (box.gone) {
           // Taken already (an earlier click that landed on a moved label).
-          taken = await page.evaluate((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid);
+          taken = await page.evaluate((uid) => window.__picked.has(uid) || window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid);
           if (!taken) why = `left the ground but is not in the pack (${box.where})`;
           break;
         }
@@ -293,7 +303,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
         }
         await page.mouse.click(box.x, box.y);
         taken = await page
-          .waitForFunction((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid, { timeout: 8_000, polling: 200 })
+          .waitForFunction((uid) => window.__picked.has(uid) || window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid, { timeout: 8_000, polling: 200 })
           .then(() => true, () => false);
         if (!taken) {
           const st = await page.evaluate(({ uid, x, y }) => {
@@ -334,7 +344,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     return `${worn.name} -> ${worn.slot}`;
   });
 
-  await step('every panel opens and closes down here', () => tourPanels(DUNGEON_PANELS));
+  if (blind) await step('every panel opens and closes down here', () => tourPanels(DUNGEON_PANELS));
 
   await step('[E] at the waypoint goes home', async () => {
     const wp = await page.evaluate(() => {
@@ -349,7 +359,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
   });
 
   let firstMap = null;
-  await step('the portal again opens a fresh map', async () => {
+  if (blind) await step('the portal again opens a fresh map', async () => {
     await page.waitForTimeout(1000);
     await closeAll();
     const at = await page.evaluate(() => {
@@ -368,7 +378,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     return firstMap.name;
   });
 
-  await step('walking into the next zone raises its banner', async () => {
+  if (blind) await step('walking into the next zone raises its banner', async () => {
     const r = await page.evaluate(async () => {
       const S = window.SLAY;
       const s = S.engine.currentScene;
@@ -396,7 +406,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     return r.got;
   });
 
-  await step('the way on leads into the next area', async () => {
+  if (blind) await step('the way on leads into the next area', async () => {
     const r = await page.evaluate(async () => {
       const s = window.SLAY.engine.currentScene;
       const from = s.levelIndex;

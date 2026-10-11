@@ -158,17 +158,28 @@ modifier and objective lines, difficulty guidance). Story prose is unchanged.
 
 ## Next up
 
-1. Run the class tour's dungeon half, one class per run, in the
-   foreground:
-   `SLAY_PORT=4331 timeout 2700 node tools/check-flow.mjs --class=<id> --part=dungeon`
-   for shadowblade (loot step now retries, has god mode and says where a
-   lost drop went), warden (skill target now 1.8 m), then pyromancer,
-   stormcaller, revenant, ranger.
-2. Run `SLAY_PORT=4331 timeout 2700 node tools/check-mapflow.mjs`.
-3. Run the plain `check-flow` once for death and rise again.
-4. Look at a town and a dungeon render for the text milestone.
+1. Class tour, one lean browser run for every class not yet passed (none
+   has passed the dungeon half in full yet):
+   `SLAY_PORT=4331 timeout 2700 node tools/check-flow.mjs --classes=shadowblade,warden,pyromancer,stormcaller,revenant,ranger --small 2>&1 | grep -E "ok |FAIL|--"`
+   If the 45 minutes run out, one more run for the classes it did not
+   reach. No rerun of a class that passed.
+2. Boss and map end: one `check-mapflow` run (it already jumps to the boss
+   with debug helpers).
+3. Text leftovers: grep and read code only. No browser.
+4. Handover: run only the checkers these changes can break (`hits`,
+   `markers`, `story`, `curve` if balance moved). No full sweep.
 
 ## Notes for resume
+
+- LEAN TESTING (owner's hard rule, PROTOCOL.md "Lean testing"): cheapest
+  check first; one browser run per milestone; no rerun of a passing check;
+  no full checker sweep at handover, only the checkers the changes can
+  break; output through `tail`/`grep`; look at each image once, contact
+  sheets over many reads; no helper agents. For qa-bugs: the class tour is
+  one run of every class still left (`--classes=... --small`), the boss
+  and map end one `check-mapflow` run, text by grep only.
+- Never end a turn to wait on a run: start it in the background and wait
+  in the foreground with a bounded `until grep` loop under `timeout`.
 
 - Browser boot is slow under software rendering. Run one class or one map
   per browser run. Under load one frame can take several seconds, so do

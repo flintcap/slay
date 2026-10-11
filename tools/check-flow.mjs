@@ -39,18 +39,26 @@ if (OUT) mkdirSync(OUT, { recursive: true });
 // `--shots=death` (or `charSelect`): only those photographs. Each one waits for
 // scene time, which can take many minutes under software rendering.
 const SHOTS = process.argv.find((a) => a.startsWith('--shots='))?.slice(8).split(',');
-const CLASS = process.argv.find((a) => a.startsWith('--class='))?.slice(8);
+// `--classes=a,b,c`: the dungeon half for several classes in one browser
+// run (the first comes through character select; the class-blind steps run
+// once, with it). Cheaper than one run per class.
+const CLASSES = process.argv.find((a) => a.startsWith('--classes='))?.slice(10).split(',').filter(Boolean);
+const CLASS = CLASSES?.[0] ?? process.argv.find((a) => a.startsWith('--class='))?.slice(8);
 // `--part=town` or `--part=dungeon`: half the class tour (see tools/lib/class-tour.mjs).
-const PART = process.argv.find((a) => a.startsWith('--part='))?.slice(7) ?? 'all';
+const PART = CLASSES ? 'dungeon' : process.argv.find((a) => a.startsWith('--part='))?.slice(7) ?? 'all';
+// `--small`: an 854x480 page. Software GL draws it about twice as fast.
+const SMALL = process.argv.includes('--small');
 const CLASS_ORDER = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
-if (CLASS && !CLASS_ORDER.includes(CLASS)) {
-  console.log(`unknown class ${CLASS}`);
-  process.exit(1);
+for (const c of CLASSES ?? (CLASS ? [CLASS] : [])) {
+  if (!CLASS_ORDER.includes(c)) {
+    console.log(`unknown class ${c}`);
+    process.exit(1);
+  }
 }
 
 const T0 = Date.now();
 const secs = () => `${Math.round((Date.now() - T0) / 1000)}s`.padStart(6);
-const { page, close, pageErrors, consoleErrors, bootMs } = await bootGame({ fallbackPort: 4302, bootTimeoutMs: 1_500_000 });
+const { page, close, pageErrors, consoleErrors, bootMs } = await bootGame({ fallbackPort: 4302, bootTimeoutMs: 1_500_000, ...(SMALL ? { viewport: { width: 854, height: 480 } } : {}) });
 console.log(`${secs()}  booted in ${Math.round(bootMs / 1000)}s`);
 
 const results = [];
@@ -168,8 +176,22 @@ await step('Enter forges the character and enters town', async () => {
   return 'saved';
 });
 
+const perClass = [];
 if (CLASS) {
-  await (await import('./lib/class-tour.mjs')).classTour({ page, step, arrive, key, frames, visible, secs, classId: CLASS, part: PART, setName: (n) => (name = n) });
+  const { classTour } = await import('./lib/class-tour.mjs');
+  const list = CLASSES ?? [CLASS];
+  for (let i = 0; i < list.length; i++) {
+    // One class failing must not stop the next one's tour.
+    if (i > 0) {
+      stopped = false;
+      console.log(`${secs()}  --    ${list[i]}`);
+    }
+    const from = results.length;
+    await classTour({ page, step, arrive, key, frames, visible, secs, classId: list[i], part: PART, setName: (n) => (name = n), blind: i === 0, picked: i === 0 });
+    const mine = results.slice(from);
+    perClass.push({ cls: list[i], ok: mine.filter((r) => r.ok).length, of: mine.length, failed: mine.filter((r) => !r.ok).map((r) => r.name) });
+  }
+  if (CLASSES) stopped = false;
   skipRest = true;
 } else
   await step('the gate takes you down to depth 1', async () => {
@@ -273,6 +295,7 @@ const consoleBad = CLASS ? consoleErrors : [];
 for (const e of consoleBad) console.log(`console error: ${e}`);
 const artFailed = missingArt?.failed?.length ?? 0;
 if (CLASS) console.log(`assets: ${missingArt?.loaded} loaded, failed: ${JSON.stringify(missingArt?.failed ?? null)}`);
+for (const p of perClass) if (CLASSES) console.log(`${p.failed.length ? 'FAIL' : 'ok  '} ${p.cls}: ${p.ok}/${p.of} steps${p.failed.length ? `; failed: ${p.failed.join('; ')}` : ''}`);
 const ok = bad.length === 0 && !stopped && pageErrors.length === 0 && engineErrors.length === 0 && consoleBad.length === 0 && artFailed === 0;
-console.log(`${ok ? 'ok  ' : 'FAIL'} flow${CLASS ? ` (${CLASS})` : ''}: ${results.length - bad.length}/${results.length} steps, ${pageErrors.length} page errors, ${engineErrors.length} engine errors${CLASS ? `, ${consoleBad.length} console errors, ${artFailed} failed art files` : ''}, ${secs().trim()}`);
+console.log(`${ok ? 'ok  ' : 'FAIL'} flow${CLASS ? ` (${(CLASSES ?? [CLASS]).join(', ')})` : ''}: ${results.length - bad.length}/${results.length} steps, ${pageErrors.length} page errors, ${engineErrors.length} engine errors${CLASS ? `, ${consoleBad.length} console errors, ${artFailed} failed art files` : ''}, ${secs().trim()}`);
 process.exit(ok ? 0 : 1);
