@@ -56,8 +56,8 @@ export const CLASSES: CharClassDef[] = [
       'schedule them: light everything, let it cook, then pull the whole room open at once. Robes optional. ' +
       'Eyebrows are a luxury.',
     base: { strength: 14, dexterity: 16, vitality: 20, energy: 35 },
-    perLevel: { life: 1.4, mana: 2.2, attackRating: 2.5 },
-    lifePerVit: 2.5,
+    perLevel: { life: 2.0, mana: 2.2, attackRating: 2.5 },
+    lifePerVit: 3,
     manaPerEnr: 2,
     trees: ['conflagration', 'cinders', 'sunfire'],
     color: 0xff7a1e,
@@ -72,8 +72,8 @@ export const CLASSES: CharClassDef[] = [
       'Shadowblades trade armour for arithmetic: a single opening, a coated edge, and the target is already ' +
       'dead — it simply has not been told yet.',
     base: { strength: 20, dexterity: 32, vitality: 20, energy: 15 },
-    perLevel: { life: 1.9, mana: 1.3, attackRating: 8 },
-    lifePerVit: 3,
+    perLevel: { life: 2.4, mana: 1.3, attackRating: 8 },
+    lifePerVit: 3.5,
     manaPerEnr: 1.5,
     trees: ['venom', 'shadowcraft', 'bladework'],
     color: 0x5ad18f,
@@ -104,8 +104,8 @@ export const CLASSES: CharClassDef[] = [
       'raise them, bind them, spend them. What the dungeon takes from him he takes from everything else, one ' +
       'stolen heartbeat at a time.',
     base: { strength: 18, dexterity: 18, vitality: 24, energy: 30 },
-    perLevel: { life: 1.8, mana: 2, attackRating: 3 },
-    lifePerVit: 2.5,
+    perLevel: { life: 2.4, mana: 2, attackRating: 3 },
+    lifePerVit: 3,
     manaPerEnr: 2,
     trees: ['ossuary', 'blight', 'gravepact'],
     color: 0x8ce0c8,

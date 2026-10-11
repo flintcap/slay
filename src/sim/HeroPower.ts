@@ -20,11 +20,11 @@
 import type { Stats } from '../types';
 
 /** Levels up to here use the sheet as it stands. */
-export const FROM_LEVEL = 8;
+export const FROM_LEVEL = 7;
 /** Damage multiplier per level past `FROM_LEVEL`. */
-export let DAMAGE_PER = 1.135;
+export let DAMAGE_PER = 1.15;
 /** Life multiplier per level past `FROM_LEVEL`. */
-export let LIFE_PER = 1.13;
+export let LIFE_PER = 1.17;
 
 /** For tuning tools only: try other rates. */
 export function tuneHeroPower(damagePer: number, lifePer: number): void {

@@ -21,8 +21,8 @@
  *   -> [E] at the waypoint home -> portal again (a fresh map)
  *   -> walk into the next zone and through the way on into the next area
  *
- * then the loop above carries on from the pause menu. Console errors and
- * failed art files fail it too in this mode.
+ * and stops there (a plain run covers the rest of the loop). Console errors
+ * and failed art files fail it too in this mode. One class per run.
  *
  * Fails on any page error or any step that does not arrive. Slow under
  * software rendering (each scene build is minutes when the machine is busy),
@@ -53,8 +53,11 @@ console.log(`${secs()}  booted in ${Math.round(bootMs / 1000)}s`);
 
 const results = [];
 let stopped = false;
+// The class tour ends after its own steps: the loop below is class-blind and
+// a plain run covers it, and both together outrun one 45-minute browser run.
+let skipRest = false;
 const step = async (name, fn) => {
-  if (stopped) return;
+  if (stopped || skipRest) return;
   const t = Date.now();
   try {
     const detail = await fn();
@@ -163,8 +166,10 @@ await step('Enter forges the character and enters town', async () => {
   return 'saved';
 });
 
-if (CLASS) await (await import('./lib/class-tour.mjs')).classTour({ page, step, arrive, key, frames, visible, secs, classId: CLASS, setName: (n) => (name = n) });
-else
+if (CLASS) {
+  await (await import('./lib/class-tour.mjs')).classTour({ page, step, arrive, key, frames, visible, secs, classId: CLASS, setName: (n) => (name = n) });
+  skipRest = true;
+} else
   await step('the gate takes you down to depth 1', async () => {
     await page.evaluate(() => window.SLAY.events.emit('ui:open', { panel: 'descend' }));
     await arrive('dungeon');

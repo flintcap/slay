@@ -32,25 +32,38 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
   };
   const errorsNow = () => page.evaluate(() => window.SLAY.engine.errors.size);
   const waitFor = (fn, arg, timeout = 120_000) => page.waitForFunction(fn, arg, { timeout, polling: 250 });
-  /** Opens each panel through the bus and closes it with Escape. */
+  /**
+   * Opens each panel through the bus and closes it with Escape, all inside the
+   * page: under software rendering every round trip waits for a frame, and a
+   * frame can take seconds when the machine is busy.
+   */
   const tourPanels = async (ids) => {
-    const bad = [];
-    for (const id of ids) {
-      const before = await errorsNow();
-      await page.evaluate((p) => window.SLAY.events.emit('ui:open', { panel: p }), id);
-      await frames(page, 4);
-      await page.waitForTimeout(300);
-      const open = await openPanels();
-      if (!open.length) bad.push(`${id} did not open`);
-      // A panel that opens settings-style tabs or nested screens may need a
-      // few presses; closeAll throws if one is stuck.
-      try {
-        await closeAll();
-      } catch (err) {
-        bad.push(`${id}: ${err.message}`);
+    const bad = await page.evaluate(async (list) => {
+      const S = window.SLAY;
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+      const open = () =>
+        [...document.querySelectorAll('.panel-wrap.is-open, .modal-wrap.is-open')].filter((e) => getComputedStyle(e).visibility !== 'hidden');
+      const esc = () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }));
+      const out = [];
+      for (const id of list) {
+        const before = S.engine.errors.size;
+        S.events.emit('ui:open', { panel: id });
+        await frame();
+        await frame();
+        if (!document.querySelector('.panel-wrap.is-open, .modal-wrap.is-open')) out.push(`${id} did not open`);
+        for (let i = 0; i < 6 && document.querySelector('.panel-wrap.is-open, .modal-wrap.is-open'); i++) {
+          esc();
+          await frame();
+        }
+        // Closed panels fade before they hide; give it a moment.
+        for (let i = 0; i < 40 && open().length; i++) await new Promise((r) => setTimeout(r, 50));
+        const left = open().map((e) => e.className.replace(/\s+/g, ' ').trim());
+        if (left.length) out.push(`${id}: Escape left open ${left.join(' | ')}`);
+        if (S.debug.panelOpen('pause')) out.push(`${id}: Escape went on to open the pause menu`);
+        if (S.engine.errors.size > before) out.push(`${id} raised an engine error`);
       }
-      if ((await errorsNow()) > before) bad.push(`${id} raised an engine error`);
-    }
+      return out;
+    }, ids);
     if (bad.length) throw new Error(bad.join('; '));
     return `${ids.length} panels`;
   };
@@ -146,7 +159,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
       e.root.position.set(pp.x + 2, e.root.position.y, pp.z + 1);
       e.takeDamage({ amount: 1e7, type: 'physical', crit: false, source: 'player' }, s.context());
     }
-    for (let i = 0; i < 20; i++) await new Promise((r) => requestAnimationFrame(r));
+    for (let i = 0; i < 8; i++) await new Promise((r) => requestAnimationFrame(r));
     return `${near.length} near`;
   }));
 
@@ -198,7 +211,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
           .then(() => true, () => false);
       }
       rows.push(`${id}${fired ? '' : ' (REFUSED)'}`);
-      await frames(page, 20);
+      await frames(page, 6);
     }
     const refused = rows.filter((r) => r.includes('REFUSED'));
     if (!rows.length) throw new Error('nothing on the hotbar');
@@ -221,7 +234,9 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
       const pp = s.player.root.position;
       const near = s.enemies.filter((e) => e.life > 0).sort((a, b) => a.root.position.distanceTo(pp) - b.root.position.distanceTo(pp));
       for (const e of near.slice(0, 10)) e.takeDamage({ amount: 1e7, type: 'physical', crit: false, source: 'player' }, s.context());
-      for (let i = 0; i < 90; i++) await new Promise((r) => requestAnimationFrame(r));
+      // Bodies pay out 0.25 s into the fall; wait for that, not a frame count.
+      for (let i = 0; i < 300 && near.slice(0, 10).some((e) => !e.lootGranted); i++) await new Promise((r) => requestAnimationFrame(r));
+      for (let i = 0; i < 10; i++) await new Promise((r) => requestAnimationFrame(r));
       return { slot, uid: item.uid, name: item.name };
     });
     const drops = await page.evaluate(() => window.SLAY.engine.currentScene.loot.filter((l) => l.item && !l.hidden).map((l) => ({ uid: l.item.uid, x: l.pos.x, z: l.pos.z })));
