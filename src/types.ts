@@ -556,6 +556,11 @@ export interface GameSettings {
   musicVolume: number;
   sfxVolume: number;
   quality: 'low' | 'medium' | 'high' | 'ultra';
+  /**
+   * Auto quality (core/AutoQuality.ts): steps below `quality` when frames run
+   * long and back up when there is room. `quality` is the most it will use.
+   */
+  autoQuality?: boolean;
   showDamageNumbers: boolean;
   screenShake: number;
   cameraDistance: number;

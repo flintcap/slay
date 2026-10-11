@@ -321,7 +321,17 @@ function patchFog(): void {
 }
 
 export interface QualityProfile {
-  shadowMapSize: number;
+  /** Multiplier on every shadow-casting light's own map size (256 to 4096). */
+  shadowScale: number;
+  /** Whether point and spot lights (torches, braziers) cast shadows. */
+  pointShadows: boolean;
+  /**
+   * View distance: multiplier on how far around the hero the sun and moon
+   * draw shadows (their shadow camera's extent).
+   */
+  viewScale: number;
+  /** Multiplier on the pixel ratio: below 1 draws fewer pixels and scales up. */
+  renderScale: number;
   shadows: boolean;
   ao: boolean;
   bloom: boolean;
@@ -336,12 +346,28 @@ export interface QualityProfile {
 // on a busy outdoor map that was ~580 of 1430 draw calls (check-perf, dark
 // forest). The world material already darkens wall feet and corners itself,
 // so the default preset goes without and only Ultra keeps it.
+//
+// Each step sets shadows (map size, which lights cast, how far they reach),
+// post (AO, bloom, edge smoothing), effect density, and resolution (the pixel
+// ratio cap and a render scale). High is the intended look. The auto mode
+// (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowMapSize: 1024, shadows: true, ao: false, bloom: true, smaa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35 },
-  medium: { shadowMapSize: 2048, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6 },
-  high: { shadowMapSize: 2048, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0 },
-  ultra: { shadowMapSize: 4096, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4 },
+  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35 },
+  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6 },
+  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0 },
+  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4 },
 };
+
+/** Pixel ratio for a profile on this screen. */
+function pixelRatioFor(q: QualityProfile): number {
+  return Math.min(window.devicePixelRatio || 1, q.pixelRatioCap) * q.renderScale;
+}
+
+interface ShadowBase {
+  size: number;
+  casts: boolean;
+  extent: [number, number, number, number] | null;
+}
 
 /**
  * Owns the WebGL context and the full post chain. Scenes hand it a
@@ -390,7 +416,7 @@ export class Renderer {
       stencil: false,
       depth: true,
     });
-    this.gl.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pixelRatioCap));
+    this.gl.setPixelRatio(pixelRatioFor(this.quality));
     this.gl.setSize(window.innerWidth, window.innerHeight);
     // Reading back every program's info logs on first use is three more
     // round trips to the GPU per shader, each one a wait. The dev server keeps
@@ -493,7 +519,7 @@ export class Renderer {
     });
 
     this.composer = new EffectComposer(this.gl, target);
-    this.composer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pixelRatioCap));
+    this.composer.setPixelRatio(pixelRatioFor(this.quality));
     this.composer.setSize(w, h);
 
     // Placeholder scene/camera; swapped every frame by render().
@@ -546,8 +572,9 @@ export class Renderer {
     if (name === this.qualityName) return;
     this.qualityName = name;
     this.quality = QUALITY[name];
-    this.gl.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pixelRatioCap));
+    this.gl.setPixelRatio(pixelRatioFor(this.quality));
     this.gl.shadowMap.enabled = this.quality.shadows;
+    if (this.shadowScene) this.applyShadows(this.shadowScene);
     // Every asset texture, the world sets included, now and later.
     setAssetAnisotropy(this.quality.anisotropy);
     this.composer.dispose();
@@ -565,6 +592,53 @@ export class Renderer {
 
   get qualityLevel(): GameSettings['quality'] {
     return this.qualityName;
+  }
+
+  /** The scene `applyShadows` last fitted, refitted when the quality changes. */
+  private shadowScene: THREE.Scene | null = null;
+
+  /**
+   * Fits a scene's shadow-casting lights to the quality: each light's map
+   * size times `shadowScale`, point and spot shadows only where the profile
+   * has them, and the sun's or moon's reach times `viewScale`. Each light's
+   * own settings are remembered the first time, so a step back up restores
+   * them exactly. The engine calls this before it compiles a scene, since
+   * how many lights cast shadows is part of every lit shader.
+   */
+  applyShadows(scene: THREE.Scene): void {
+    this.shadowScene = scene;
+    const q = this.quality;
+    scene.traverse((o) => {
+      const l = o as THREE.DirectionalLight | THREE.PointLight | THREE.SpotLight;
+      if (!l.isLight || !l.shadow) return;
+      let base = l.userData.shadowBase as ShadowBase | undefined;
+      if (!base) {
+        if (!l.castShadow) return;
+        const c = (l as THREE.DirectionalLight).isDirectionalLight ? (l.shadow.camera as THREE.OrthographicCamera) : null;
+        base = { size: l.shadow.mapSize.x, casts: true, extent: c ? [c.left, c.right, c.top, c.bottom] : null };
+        l.userData.shadowBase = base;
+      }
+      const point = !(l as THREE.DirectionalLight).isDirectionalLight;
+      l.castShadow = base.casts && (!point || q.pointShadows);
+      const size = Math.max(256, Math.min(4096, Math.round(base.size * q.shadowScale)));
+      if (l.shadow.mapSize.x !== size) {
+        l.shadow.mapSize.set(size, size);
+        // three.js makes the map again at the new size on the next frame.
+        l.shadow.map?.dispose();
+        l.shadow.map = null;
+      }
+      if (base.extent) {
+        const c = l.shadow.camera as THREE.OrthographicCamera;
+        const k = q.viewScale;
+        c.left = base.extent[0] * k;
+        c.right = base.extent[1] * k;
+        c.top = base.extent[2] * k;
+        c.bottom = base.extent[3] * k;
+        c.updateProjectionMatrix();
+      }
+      // A held shadow (the title's) is drawn again at its new size.
+      l.shadow.needsUpdate = true;
+    });
   }
 
   private onResize = (): void => {

@@ -32,10 +32,10 @@ const TABS: Array<{ id: TabId; label: string; icon: string }> = [
 ];
 
 const QUALITY_NOTES: Record<QualityId, string> = {
-  low: 'Shadows at low resolution, no ambient occlusion, a third of the particles. For older laptops.',
-  medium: 'Sharper shadows and edge smoothing, no ambient occlusion. A good balance on integrated graphics.',
-  high: 'Sharp shadows, edge smoothing and the full particle budget. The intended look.',
-  ultra: 'Ambient occlusion, very sharp shadows, extra particles and full-resolution rendering on high-density screens.',
+  low: 'Soft sun shadows only, no glow, no torch shadows, a third of the particles, 80% resolution. For older laptops.',
+  medium: 'Torch shadows and glow, lighter shadows, no edge smoothing, 60% of the particles, 90% resolution. Integrated graphics.',
+  high: 'Sharp shadows, glow, edge smoothing and the full particle budget. The intended look.',
+  ultra: 'Ambient occlusion, very sharp shadows reaching further, extra particles and full resolution on high-density screens.',
 };
 
 /**
@@ -277,6 +277,14 @@ export class SettingsPanel {
       ).root,
     );
     this.content.appendChild(note);
+    this.content.appendChild(
+      new Toggle('Auto quality', s.autoQuality !== false, (v) => {
+        s.autoQuality = v;
+        // Off: back to exactly the quality chosen above, at once.
+        if (!v) attempt(() => this.engine.renderer.setQuality(s.quality), undefined);
+        this.commit();
+      }, 'Steps below the quality above when frames run slow, and back up when there is room').root,
+    );
     this.content.appendChild(
       new Slider('Camera distance', s.cameraDistance, 0.6, 1.8, 0.05, (v) => {
         s.cameraDistance = v;

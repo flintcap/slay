@@ -1179,6 +1179,22 @@ export class DungeonScene extends GameScene {
       _viewBall.center.copy(e.root.position);
       _viewBall.radius = 4 + 2 * e.sizeScale;
       e.setInView(_view.intersectsSphere(_viewBall));
+      // A living body well out of view (it is not posed and casts no shadow)
+      // also stops having its thirty-odd bones' world matrices rebuilt every
+      // frame: with a floor's hundred-plus monsters that was the largest
+      // piece of every frame's JavaScript. Checked at both where it is and
+      // where its frozen matrices still put it, so nothing frozen is drawn.
+      let live = !e.alive;
+      if (!live) {
+        _viewBall.radius += 6;
+        live = _view.intersectsSphere(_viewBall);
+        if (!live) {
+          const m = e.root.matrixWorld.elements;
+          _viewBall.center.set(m[12]!, m[13]!, m[14]!);
+          live = _view.intersectsSphere(_viewBall);
+        }
+      }
+      e.root.matrixWorldAutoUpdate = live;
       // Far away: leave it in the world and visible (frustum culling already
       // handles the draw cost), just stop simulating it.
       // A monster already dying always finishes falling, wherever it is: its

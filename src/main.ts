@@ -79,6 +79,12 @@ async function main(): Promise<void> {
   await tick();
   const engine = new Engine(canvas);
   engine.renderer.setQuality(save.settings.quality);
+  {
+    // Steps below the chosen quality when frames run long, back up when
+    // there is room (Settings: Auto quality).
+    const { AutoQuality } = await import('./core/AutoQuality');
+    engine.autoQuality = new AutoQuality(engine.renderer, () => save.settings);
+  }
 
   boot(0.34, 'Weaving materials…');
   await tick();

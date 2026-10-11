@@ -149,6 +149,13 @@ export class Engine {
   /** Wall time across the same frames, for an fps that is an average, not one sample. */
   private fpsWall = 0;
 
+  /**
+   * The auto quality mode (core/AutoQuality.ts), set by main. Fed the length
+   * of each frame of play; frames behind a pause, a curtain or a hidden tab
+   * say nothing about how the game runs.
+   */
+  autoQuality: { frame(ms: number): void } | null = null;
+
   /** True only for a pause the engine applied itself when the tab went away. */
   private autoPaused = false;
 
@@ -353,6 +360,13 @@ export class Engine {
       this.report('render', err);
     }
     try {
+      // Shadow casters and map sizes for the current quality first: how many
+      // lights cast shadows is part of every lit shader compiled below.
+      this.renderer.applyShadows(next.scene);
+    } catch (err) {
+      this.report('render', err);
+    }
+    try {
       await Promise.all([
         Promise.race([this.renderer.compileAsync(next.scene, next.camera), new Promise<void>((r) => setTimeout(r, 15000))]),
         // Textures still decoding would otherwise upload on a frame in play.
@@ -537,6 +551,14 @@ export class Engine {
       p.total[p.i] = tr1 - tu0;
       p.i = (p.i + 1) % p.upd.length;
       if (p.count < p.upd.length) p.count++;
+
+      if (this.autoQuality && !this.paused && !this.transitioning && !document.hidden) {
+        try {
+          this.autoQuality.frame(raw * 1000);
+        } catch (err) {
+          this.report('render', err);
+        }
+      }
     }
 
     try {

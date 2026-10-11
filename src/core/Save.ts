@@ -38,6 +38,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.55,
   sfxVolume: 0.85,
   quality: 'high',
+  autoQuality: true,
   showDamageNumbers: true,
   screenShake: 1,
   cameraDistance: 1,
