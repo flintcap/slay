@@ -89,7 +89,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
     startStatPoints: 0,
     startSkillPoints: 0,
     statPointsPerLevel: 0,
-    pros: ['Enemies hit much softer', 'No elite packs until depth 7', 'Faster health and mana recovery'],
+    pros: ['Enemies hit much softer', 'No elite packs until tier 7', 'Faster health and mana recovery'],
     cons: ['Much less experience', 'Far worse loot quality', 'Less gold'],
   },
   {
@@ -116,7 +116,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
     startStatPoints: 0,
     startSkillPoints: 1,
     statPointsPerLevel: 0,
-    pros: ['Enemies hit softer', 'No elite packs until depth 4', 'One extra skill point to start'],
+    pros: ['Enemies hit softer', 'No elite packs until tier 4', 'One extra skill point to start'],
     cons: ['Less experience', 'Slightly worse loot'],
   },
   {
@@ -150,7 +150,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
     id: 'zealot',
     name: 'Zealot',
     blurb: 'It hits back.',
-    guidance: 'A real fight from depth 2. Worth it for the loot if you know your build.',
+    guidance: 'A real fight from tier 2. Worth it for the loot if you know your build.',
     color: 0xe0a24a,
     rank: 4,
     monsterLife: 1.3,
@@ -171,7 +171,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
     startSkillPoints: 0,
     statPointsPerLevel: 1,
     pros: ['+40% experience', '+50% better loot', 'One extra attribute point every level'],
-    cons: ['Enemies are tougher and hit harder', 'Elite packs from depth 2', 'Elites carry an extra power'],
+    cons: ['Enemies are tougher and hit harder', 'Elite packs from tier 2', 'Elites carry an extra power'],
   },
   {
     id: 'nemesis',
@@ -203,7 +203,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
       'Elites always drop something extra',
       'Two extra attribute points every level',
     ],
-    cons: ['Enemies are far tougher', 'Elite packs from depth 1', 'You take 18% more damage'],
+    cons: ['Enemies are far tougher', 'Elite packs from tier 1', 'You take 18% more damage'],
   },
   {
     id: 'damned',
@@ -237,7 +237,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
     ],
     cons: [
       'Enemies more than double in strength',
-      'Elite packs everywhere from depth 1',
+      'Elite packs everywhere from tier 1',
       'Elites carry two extra powers',
       'You take 32% more damage and heal slowly',
     ],
