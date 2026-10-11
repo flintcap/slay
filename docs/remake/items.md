@@ -1,6 +1,6 @@
 # Stream: items (item models, icons, unique and set designs)
 
-Status: not started
+Status: in progress
 
 Goal: same items and stats, all-new looks in the style of Diablo II and Path
 of Exile. Base items look like base items but each base is distinct. Uniques
@@ -35,13 +35,20 @@ rendered icon hashes).
 
 ## Next up
 
-1. Run Setup in `docs/remake/PROTOCOL.md`.
-2. Read `src/art/ItemModels.ts` (`buildItemModel`, `buildDropModel`,
-   `ItemShape`), `ItemLook.ts`, `Icons.ts` (`itemIconUri`), and
-   `src/data/itemBases.ts`, `uniques.ts`, `sets.ts`.
-3. Write the ItemLook contract, push, then start on weapons.
+1. Look system: build `src/art/items/Geo.ts` (geometry kit), `Mats.ts`
+   (item materials, object-space triplanar), `Parts.ts` (collect parts per
+   material slot, merge), `Features.ts` (unique and set decorations). The
+   look itself (`src/art/ItemLook.ts`, `src/art/items/Designs.ts`) is
+   written and in CONTRACTS.md.
+2. Weapons: `src/art/items/Weapons.ts`, one authored cut per base.
+3. Then armour, jewellery, icons, drops, switch and clean (see milestones).
 
 ## Notes for resume
 
-- heroes runs at the same time and draws armour from your ItemLook.
+- heroes runs at the same time and draws armour from your ItemLook
+  (`src/art/hero/Armour.ts` reads palette, trimKey, trimTint, glowColor,
+  stone, kind, baseTier, family, hasTrim, hasGems, hasRunes, glow, accent).
+  Never drop or rename those.
 - Held items: grip at origin, business end along +Y, wide on X, thin on Z.
+- Plan: `src/art/ItemModels.ts` and `src/art/Icons.ts` stay as the public
+  facades (many files import them); the old builders inside are replaced.

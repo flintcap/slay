@@ -111,14 +111,69 @@ export function lathe(profile: Array<[number, number]>, segments?: number): THRE
 export function mergeGeometries(list: THREE.BufferGeometry[]): THREE.BufferGeometry;
 ```
 
-## `src/art/ItemModels.ts` — owned by ART
+## Items — `src/art/ItemModels.ts`, `ItemLook.ts`, `Icons.ts`, `src/art/items/*` — owned by items
 
 ```ts
-/** Builds a 3D model for an item from its base's `visual` block. */
-export function buildItemModel(visual: ItemVisual, rng: Rng, rarity: ItemRarity): THREE.Object3D;
-/** Small mesh used for ground drops (with rarity-tinted light shaft). */
+// src/art/ItemModels.ts (the public facade; builders live in src/art/items/)
+/** A held / shown model. Grip at the origin, business end along +Y, wide on X, thin on Z. Metres. */
+export function buildItemModel(visual: ItemVisual, rng: Rng, rarity: ItemRarity, ident?: ItemIdent): THREE.Object3D;
+/** The item lying on the floor, plus the rarity glow (vfx owns the beam's look). */
 export function buildDropModel(item: Item, rng: Rng): THREE.Object3D;
+export type ItemIdent = Pick<Item, 'baseId'> & Partial<Pick<Item, 'uniqueId' | 'setId'>>;
 ```
+
+Unknown or free-form shapes ('sword', 'bow', 'staff' from monsters and NPCs)
+resolve to the closest family; a model never fails to build.
+
+### `ItemLook`: what an item looks like (items → heroes)
+
+`itemLook(item, visual)` from `src/art/ItemLook.ts`. Cached, pure data, no
+three.js objects. It extends `GearLook` (`src/art/GearLook.ts`), so every
+field heroes already reads keeps its meaning; uniques and sets now change
+them (a unique's `palette` is its design's material, a set's `trimKey` is the
+set's trim). Fields added by items are marked new.
+
+```ts
+interface ItemLook extends GearLook {
+  // From GearLook (unchanged meaning):
+  palette: string;        // main surface key; may carry an inline tint 'cloth.silk|0x5a2618'
+  family: 'metal' | 'leather' | 'cloth' | 'bone' | 'other';
+  kind: string;           // the sub-type after the dot of visual.shape ('plate', 'robe', 'horned')
+  rarityTier: number;     // 0 normal .. 4 mythic/ancient
+  baseTier: number;       // 0 entry, 1 mid, 2 elite
+  rank: number; trimKey: string; trimTint?: number; accent: number;
+  glow: number;           // emissive strength, 0 for none
+  ornate: number; hasTrim: boolean; hasFittings: boolean; hasGems: boolean; hasRunes: boolean;
+  unique: boolean; set: boolean; signature: number;
+  // Colour ladder:
+  stone: number;          // gem colour
+  glowColor: number;      // runes, inlays, auras
+  iconRank: number;       // 0 normal .. 6 ancient
+  iconTrim: string; iconTrimTint?: number;   // legacy, kept for old drawers
+  // New:
+  baseId: string;
+  category: ItemCategory | 'unknown';
+  silhouette: string;     // visual.shape lower-cased: 'sword.broad', 'helm.horned', 'dagger'
+  cut: string;            // the base's own cut in its family (the base id); every base differs
+  material: 'metal' | 'wood' | 'leather' | 'cloth' | 'bone' | 'crystal' | 'stone' | 'flesh';
+  keys: { main; second; wood; trim; cloth: string };   // surface keys per part (may carry |0xRRGGBB)
+  colors: { main; second; wood; trim; cloth; glow; stone: number };   // the same as sRGB hex
+  gemCount: number;       // gem settings to show, 0..6
+  wear: number;           // 0 pristine .. 1 battered
+  features: Feature[];    // 'wings' | 'horns' | 'spikes' | 'flames' | 'frost' | 'chains' | 'skulls' | ... (Designs.ts)
+  emblem?: Emblem;        // a set's badge: 'hand' | 'flame' | 'skull' | 'snowflake' | 'bolt' | 'crown' | ...
+  motif?: SetMotif;       // set pieces: { color, second, trim, emblem, features, wear }
+  design?: UniqueDesign;  // uniques: { main?, second?, trim?, glow?, stone?, features, cut?, wear? }
+  cutOverride?: Record<string, number | string | boolean>;
+}
+/** sRGB colour of a surface key with an optional inline tint. */
+export function keyColor(key: string): number;
+```
+
+Worn armour (heroes) keeps reading `palette`, `trimKey`/`trimTint`,
+`glowColor`, `stone`, `kind`, `baseTier` and the ornament flags. It may also
+use `keys.second`/`keys.cloth` for linings and tabards, `features` for extra
+shapes (horns, wings, spikes) and `emblem` for a set badge.
 
 ## `src/art/CharacterModels.ts` — owned by ART
 
