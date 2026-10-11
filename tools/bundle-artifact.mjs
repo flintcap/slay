@@ -28,7 +28,10 @@ import path from 'node:path';
 // typechecked, everything built, the bundle was written, and none of the new
 // work was in it. Building here makes that impossible.
 console.log('building single-file bundle...');
-execFileSync('npx', ['vite', 'build', '--config', 'vite.config.single.ts'], {
+// `--no-minify` keeps function names readable, for CPU profiles
+// (`tools/check-loadtime.mjs --profile`). Never publish that build.
+const minify = process.argv.includes('--no-minify') ? ['--minify', 'false'] : [];
+execFileSync('npx', ['vite', 'build', '--config', 'vite.config.single.ts', ...minify], {
   stdio: ['ignore', 'ignore', 'inherit'],
 });
 

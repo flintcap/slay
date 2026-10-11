@@ -10,12 +10,19 @@
  * It also opens the IndexedDB cache itself, so parts stored on an earlier
  * visit are read rather than meshed again, and new ones are stored for the
  * next visit. Anything that fails here only means the town meshes it itself.
+ *
+ * Before the townsfolk it meshes the heroes the select screen shows first
+ * (`heroes`: class ids, each in its field kit), since that screen comes
+ * before the town. A cold first visit used to mesh that hero on the main
+ * thread as the screen opened.
  */
 import { loadMeshCache, onMeshed, type RawGeo } from '../hero/MeshCache';
 import { buildFolk } from './Folk';
+import { buildClassHero } from '../../scenes/HeroModel';
+import type { CharClassId } from '../../types';
 
 interface Scope {
-  onmessage: ((e: MessageEvent<{ ids: string[] }>) => void) | null;
+  onmessage: ((e: MessageEvent<{ ids: string[]; heroes?: string[] }>) => void) | null;
   postMessage(msg: unknown, transfer: Transferable[]): void;
 }
 const scope = self as unknown as Scope;
@@ -24,13 +31,17 @@ scope.onmessage = async (e) => {
   await loadMeshCache();
   let batch: Array<[string, RawGeo]> = [];
   onMeshed((key, raw) => batch.push([key, raw]));
-  for (const id of e.data.ids) {
+  const jobs: Array<[string, () => void]> = [
+    ...(e.data.heroes ?? []).map((id): [string, () => void] => [`hero:${id}`, () => buildClassHero(id as CharClassId).dispose()]),
+    ...e.data.ids.map((id): [string, () => void] => [id, () => buildFolk(id)]),
+  ];
+  for (const [id, job] of jobs) {
     try {
-      buildFolk(id);
+      job();
     } catch {
-      // The town builds this one itself.
+      // The screen that needs it builds it itself.
     }
-    // One resident at a time, so a town entered half way through still gains.
+    // One at a time, so a screen entered half way through still gains.
     const transfer: Transferable[] = [];
     for (const [, raw] of batch) {
       transfer.push(raw.index.buffer);

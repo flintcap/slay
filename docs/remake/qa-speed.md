@@ -1,6 +1,6 @@
 # Stream: qa-speed (quality pass 2: is it fast and steady)
 
-Status: not started
+Status: in progress
 
 Goal: the game loads quickly, runs smoothly and stays steady over a long
 session, as published.

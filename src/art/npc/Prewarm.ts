@@ -1,11 +1,13 @@
 /**
- * SLAY — start meshing the townsfolk in a worker at boot (see FolkWorker.ts).
+ * SLAY — start meshing the first select-screen hero and the townsfolk in a
+ * worker at boot (see FolkWorker.ts).
  *
  * Fire and forget. Where workers are not allowed (a strict page policy, an
  * old browser) nothing happens and the town meshes its residents as before.
  */
 import { adoptMeshes, type RawGeo } from '../hero/MeshCache';
 import { NPC_LOOK_IDS } from './Folk';
+import { CLASSES } from '../../data/classes';
 
 type Reply = { entries: Array<[string, RawGeo]>; id: string } | { done: true };
 
@@ -33,5 +35,6 @@ export function prewarmTownsfolk(): void {
     else adoptMeshes(r.entries);
   };
   worker.onerror = stop;
-  worker.postMessage({ ids: [...NPC_LOOK_IDS] });
+  // The select screen opens on the first class; mesh that hero before the town.
+  worker.postMessage({ ids: [...NPC_LOOK_IDS], heroes: CLASSES.slice(0, 1).map((c) => c.id) });
 }

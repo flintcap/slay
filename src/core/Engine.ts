@@ -304,13 +304,37 @@ export class Engine {
       this.active = null;
       throw err;
     }
-    // Prime: build shaders now so the first visible frame is not a hitch.
+    await this.prime(next);
+    this.clock.getDelta();
+  }
+
+  /**
+   * Builds every shader the scene needs while the curtain is still down, so
+   * the first visible frame is not a hitch.
+   *
+   * `compileAsync` hands every program to the driver at once and waits without
+   * blocking; where the browser has KHR_parallel_shader_compile they link side
+   * by side off the main thread. Then one frame drawn behind the curtain
+   * builds what `compile` cannot see (shadow depth programs, the post chain)
+   * and waits out any link still pending. Before, that wait landed on the
+   * first frame of the fade-in: seconds of a frozen half-faded screen on a
+   * cold shader cache.
+   */
+  private async prime(next: GameScene): Promise<void> {
+    const gl = this.renderer.gl;
     try {
-      this.renderer.gl.compile(next.scene, next.camera);
+      await Promise.race([
+        gl.compileAsync(next.scene, next.camera),
+        new Promise<void>((r) => setTimeout(r, 15000)),
+      ]);
     } catch (err) {
       this.report('render', err);
     }
-    this.clock.getDelta();
+    try {
+      this.renderer.render(next.scene, next.camera, 0, this.elapsed);
+    } catch (err) {
+      this.report('render', err);
+    }
   }
 
   /** Where to send the player when `id` cannot be entered or keeps failing. */
