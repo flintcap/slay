@@ -42,6 +42,10 @@ crashes, docs true, published.
   2. `ItemModels` still builds `beam`, `pool`, `sigil` and `dropLight`
      children on dropped items. `LootFX` hides them and draws its own pooled
      beacons, so stop building them (saves meshes and a light per drop).
+  3. `check-perf` depth 1 garbage is 304 KB per step (ground saw 411). The
+     top allocator is `tickProjectiles` (52 KB): `Nav.lineOfSight` calls
+     `worldToTile`, which returns a new object, twice per shot per step.
+     `Enemy.hasStatus`/`stacksOf` build a closure per call too.
 
 - The cancelled overhaul's quality stream never took its final speed numbers
   or ran the soak (see `docs/overhaul/quality.md`). Those tools are

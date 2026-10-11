@@ -74,12 +74,16 @@ export function lookBitsOf(id: string): number {
 /** Something whose running statuses can be listed by id. */
 export interface StatusList {
   list(): ReadonlyArray<{ id: string }>;
+  /** How many are running; 0 skips `list()` (which may build an array). */
+  readonly size?: number;
 }
 
 /** Something that answers status questions one id at a time (Enemy). */
 export interface StatusQuery {
   hasStatus(id: string): boolean;
   readonly isBleeding: boolean;
+  /** False skips the per-id questions: every look but bleeding is a debuff. */
+  readonly isDebuffed?: boolean;
 }
 
 /** Ids worth asking a `StatusQuery` about: every id that has a look. */
@@ -92,6 +96,7 @@ function lookIds(): string[] {
 /** The look bits of a status list (the hero's container). */
 export function looksOfList(src: StatusList): number {
   let b = 0;
+  if (src.size === 0) return 0;
   const l = src.list();
   for (let i = 0; i < l.length; i++) b |= lookBitsOf(l[i]!.id);
   return b;
@@ -99,6 +104,9 @@ export function looksOfList(src: StatusList): number {
 
 /** The look bits of a body that can only be asked one id at a time. */
 export function looksOfQuery(src: StatusQuery): number {
+  // Polled for every monster: most carry nothing, so ask the cheap,
+  // allocation-free question first.
+  if (src.isDebuffed === false) return src.isBleeding ? LOOK.bleeding : 0;
   let b = src.isBleeding ? LOOK.bleeding : 0;
   const list = lookIds();
   for (let i = 0; i < list.length; i++) if (src.hasStatus(list[i]!)) b |= lookBitsOf(list[i]!);
