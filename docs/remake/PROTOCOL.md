@@ -105,6 +105,36 @@ them against the quality bar. `shots/` is not committed.
 - **Leave nothing running.** Before you end, no server, browser or checker
   you started may still be alive. Kill by PID, never `pkill -f`.
 
+## Lean testing (owner's rule: testing must not burn usage)
+
+Testing costs the owner's usage. Spend it only where it buys certainty.
+
+- **Cheapest check first.** Read the code and reason. Then typecheck. Then
+  the one headless checker for the system you touched
+  (`node tools/run-checks.mjs --only=<name>`). A browser run is the last
+  resort, only for things a headless check cannot see (looks, motion, real
+  frame times).
+- **Batch, then verify once.** Make all the fixes for a milestone, then run
+  one browser check for the lot. Never one browser run per fix.
+- **Smallest run that answers the question.** One scene, one biome, one
+  class, few shots, small frames. Never the whole tour or full soak to check
+  one change. Full sweeps happen once, at handover, if at all.
+- **No repeat runs.** Do not rerun a passing check "to be sure". Do not
+  rerun the full checker sweep; run only the checkers your change can break.
+- **Before and after only at the ends.** Take "before" numbers or renders
+  once at the start of a milestone and "after" once at the end, not around
+  every edit.
+- **Read output small.** Pipe checker and browser output through `tail` or
+  `grep` for the summary lines. Never dump whole logs or JSON into context.
+- **Look at images sparingly.** Look at each render once. Prefer one contact
+  sheet (`convert`/`montage` several PNGs into one small image) over many
+  separate image reads. Never reread an image you already judged.
+- **Read files in parts.** Search first, then read only the lines you need.
+  Do not reread a file you already read unless it changed.
+- **No helper agents.** Do not spawn sub-agents.
+- **Good enough wins.** When a check passes the quality bar, stop and move
+  on. Do not keep polishing to shave the last bit.
+
 ## Pause
 
 The owner pauses by saying so. Claude sends every running agent a message
