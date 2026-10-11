@@ -219,6 +219,8 @@ async function play({ n, settleMs, settleFrames, fight }) {
   const tris = [];
   const info = e.renderer.gl.info;
   const auto = info.autoReset;
+  // Programs alive before, to name any made while playing.
+  const had = new Set(info.programs ?? []);
   const start = performance.now();
   let last = start;
   let lastDraws = F.draws;
@@ -259,6 +261,9 @@ async function play({ n, settleMs, settleFrames, fight }) {
     links: F.links.filter((t) => t >= start && t <= end).length,
     texKB: Math.round(F.tex.filter(([t]) => t >= start && t <= end).reduce((z, x) => z + x[1], 0) / 1024),
     programs: info.programs?.length ?? 0,
+    // What each program made while playing was for: three names a program
+    // after its material type or shader name.
+    newPrograms: (info.programs ?? []).filter((q) => !had.has(q)).map((q) => String(q.name ?? '?') + ' ' + String(q.cacheKey ?? '').slice(0, 60)),
   };
 }
 
@@ -280,6 +285,7 @@ try {
     console.log(`  update  ${f(r.update)}`);
     console.log(`  cpu     ${f(r.cpu)}`);
     console.log(`  draw calls ${r.drawCalls}, triangles ${r.triangles}, programs ${r.programs}, linked while playing ${r.links}, uploaded while playing ${r.texKB} KB`);
+    for (const n of r.newPrograms) console.log(`  new while playing: ${n}`);
   }
   await page.close();
 } finally {

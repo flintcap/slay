@@ -48,7 +48,8 @@ const STOP_FRAMES = Number(arg('stop-frames') ?? 24);
 const FIGHT_FRAMES = Number(arg('fight') ?? 250);
 const [VW, VH] = (arg('size') ?? '1280x720').split('x').map(Number);
 
-const server = await serveSingle(PORT);
+// --dir: serve another build (a baseline built in a scratch copy).
+const server = await serveSingle(PORT, arg('dir') ?? 'dist-single');
 
 const profile = mkdtempSync(path.join(tmpdir(), 'slay-loadtime-'));
 const context = await chromium.launchPersistentContext(profile, {

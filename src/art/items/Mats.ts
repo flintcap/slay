@@ -346,3 +346,24 @@ export function glassMat(): THREE.MeshStandardMaterial {
     return m;
   });
 }
+
+/**
+ * One small mesh in each kind of item material, for the curtain's warm-up
+ * (DungeonScene.warmup). A drop's first glowing rune, gem or flask linked
+ * its shader on the frame it fell, mid-fight. Materials are the shared
+ * ones; only the returned geometry is the caller's to free.
+ */
+export function itemLookStandIns(): { meshes: THREE.Mesh[]; geometry: THREE.BufferGeometry } {
+  const geometry = new THREE.BoxGeometry(0.01, 0.01, 0.01);
+  const mats: THREE.Material[] = [
+    itemSurface('metal.steel'),
+    glowMat(0xffffff),
+    gemMat(0xffffff),
+    crystalMat(0xffffff, 0.5),
+    ghostMat(0xffffff),
+    stringMat(),
+    liquidMat(0xffffff),
+    glassMat(),
+  ];
+  return { meshes: mats.map((m) => new THREE.Mesh(geometry, m)), geometry };
+}

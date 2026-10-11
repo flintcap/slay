@@ -141,3 +141,9 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   - Print summary numbers only (p50, p95, p99, worst) through `grep` or
     `tail`. Never dump frame logs into context.
   - Once a target is met, move on.
+- **One browser at a time (PROTOCOL.md, cf0c485).** Wrap every browser
+  run as `flock /tmp/slay-browser.lock timeout 2700 node tools/<tool>.mjs`.
+  Numbers taken while other agents' browsers ran are noisy (load near 18
+  on 4 cores): compare before and after only from runs inside the lock.
+  Everything in Results before this note was taken outside the lock; the
+  links, uploads and JS-time numbers hold, wall times do not.

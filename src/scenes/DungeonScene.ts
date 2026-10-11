@@ -40,6 +40,7 @@ import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
 import { SkillRunner, weaponStyle, MINION_MONSTER } from './SkillRunner';
 import { NameplateLayer, type PlateTarget } from '../ui/Nameplates';
+import { itemLookStandIns } from '../art/items/Mats';
 import { CombatTextLayer } from '../ui/CombatText';
 import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
@@ -235,6 +236,8 @@ export class DungeonScene extends GameScene {
   } | null = null;
   /** Summonable bodies built for the area's warm-up (see `warmSummons`). */
   private summonWarm: THREE.Object3D[] = [];
+  /** The warm-up's item material stand-ins share this box (see `warmup`). */
+  private lootWarmGeo: THREE.BufferGeometry | null = null;
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   private heroAura: THREE.Mesh | null = null;
@@ -284,7 +287,15 @@ export class DungeonScene extends GameScene {
   override warmup(): THREE.Object3D | null {
     const roots: THREE.Object3D[] = this.enemies.map((e) => e.root);
     if (this.boss) roots.push(this.boss.root);
-    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm];
+    // Every kind of item material, for what monsters drop mid-fight.
+    let looks: ReturnType<typeof itemLookStandIns> | null = null;
+    try {
+      looks = itemLookStandIns();
+    } catch {
+      looks = null;
+    }
+    this.lootWarmGeo = looks?.geometry ?? null;
+    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm, ...(looks?.meshes ?? [])];
     if (!list.length) return null;
     const g = new THREE.Group();
     g.name = 'warmup';
@@ -295,6 +306,8 @@ export class DungeonScene extends GameScene {
   override warmupDone(): void {
     for (const root of this.summonWarm) releaseCreature(root);
     this.summonWarm = [];
+    this.lootWarmGeo?.dispose();
+    this.lootWarmGeo = null;
   }
 
   /**
