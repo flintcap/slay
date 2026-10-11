@@ -89,7 +89,7 @@ export class RunDirector {
         if (kept) names.push(item.name);
       }
       this.earn(m.renown);
-      toast(`Depth ${m.depth} milestone: ${m.gold} gold${names.length ? `, ${names.join(', ')}` : ''}. A waypoint is set.`, 'epic');
+      toast(`Tier ${m.depth} milestone: ${m.gold} gold${names.length ? `, ${names.join(', ')}` : ''}. A waypoint is set.`, 'epic');
     }
   }
 
@@ -110,7 +110,7 @@ export class RunDirector {
     if (this.depth > l.stats.deepest) {
       amount += RENOWN.newDepth(this.depth);
       l.stats.deepest = this.depth;
-      toast(`New deepest descent: depth ${this.depth}`, 'epic');
+      toast(`New highest tier: ${this.depth}`, 'epic');
     }
     this.earn(amount);
     this.bounty('clear');

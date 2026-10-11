@@ -243,7 +243,7 @@ export class DeathScene extends GameScene {
     ctx.fillRect(W / 2 - 110, 200, 220, 3);
     const cls = CLASSES.find((c) => c.id === data.classId)?.name;
     carve(cls ? `${cls}, level ${data.level ?? 1}` : `Level ${data.level ?? 1}`, 250, 32, '600');
-    carve(`Fell on Depth ${data.depth ?? 0}`, 300, 32, '600');
+    carve(`Fell on Tier ${data.depth ?? 0}`, 300, 32, '600');
     // A small cross of crossed lines as a mark.
     ctx.strokeStyle = 'rgba(8, 8, 10, 0.8)';
     ctx.lineWidth = 5;

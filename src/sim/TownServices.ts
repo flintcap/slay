@@ -306,28 +306,28 @@ export const BOUNTY_KINDS: BountyKindDef[] = [
     weight: 10,
     target: (d, rng) => Math.round((60 + d * 3) * rng.range(0.9, 1.25) / 5) * 5,
     worth: 1,
-    text: (b) => `Slay ${b.target} monsters at depth ${b.minDepth} or deeper`,
+    text: (b) => `Slay ${b.target} monsters at tier ${b.minDepth} or higher`,
   },
   {
     kind: 'elites',
     weight: 8,
     target: (d, rng) => Math.round((6 + d * 0.25) * rng.range(0.9, 1.2)),
     worth: 1.2,
-    text: (b) => `Slay ${b.target} champions or elites at depth ${b.minDepth} or deeper`,
+    text: (b) => `Slay ${b.target} champions or elites at tier ${b.minDepth} or higher`,
   },
   {
     kind: 'boss',
     weight: 6,
     target: () => 1,
     worth: 1.3,
-    text: (b) => `Slay the master of a descent at depth ${b.minDepth} or deeper`,
+    text: (b) => `Slay the master of a map at tier ${b.minDepth} or higher`,
   },
   {
     kind: 'clear',
     weight: 5,
     target: () => 1,
     worth: 1.4,
-    text: (b) => `Clear a descent at depth ${b.minDepth} or deeper`,
+    text: (b) => `Clear a map at tier ${b.minDepth} or higher`,
   },
   {
     kind: 'events',
@@ -335,7 +335,7 @@ export const BOUNTY_KINDS: BountyKindDef[] = [
     target: (d) => (d >= 20 ? 3 : 2),
     worth: 1.1,
     text: (b) =>
-      `Survive ${b.target} dungeon events (cursed chests, ambushes, bargains, runners) at depth ${b.minDepth} or deeper`,
+      `Survive ${b.target} dungeon events (cursed chests, ambushes, bargains, runners) at tier ${b.minDepth} or higher`,
   },
 ];
 

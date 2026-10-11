@@ -602,7 +602,7 @@ export const RUN_MODIFIERS: RunModifierDef[] = [
     color: 0xc678dd,
     icon: 'mirror',
   }),
-  M('deepDark', 'The Deep Dark', 'Depth scaling for this run is calculated as if it were 10 tiers deeper.', {
+  M('deepDark', 'The Deep Dark', 'Tier scaling for this run is calculated as if it were 10 tiers deeper.', {
     minDepth: 35,
     behavior: 'depthOffset',
     params: { depth: 10 },
