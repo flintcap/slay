@@ -184,6 +184,8 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
           ok = real(id, ...rest);
         } finally {
           window.__casts.push([id, ok]);
+          (window.__lastCasts ??= []).push(id);
+          if (window.__lastCasts.length > 4) window.__lastCasts.shift();
         }
         return ok;
       };
@@ -212,9 +214,17 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
           e.root.position.set(pp.x + 1.8, e.root.position.y, pp.z);
           const v = new S.THREE.Vector3(pp.x + 1.8, 1, pp.z).project(s.camera);
           window.__casts.length = 0;
-          return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight };
+          const x = ((v.x + 1) / 2) * innerWidth;
+          const y = ((1 - v.y) / 2) * innerHeight;
+          if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            const r = (n) => (Number.isFinite(n) ? n.toFixed(1) : String(n));
+            const cp = s.camera.position;
+            return { bad: `hero at ${r(pp.x)},${r(pp.y)},${r(pp.z)}, camera at ${r(cp.x)},${r(cp.y)},${r(cp.z)}, life ${r(pl.life)}, last casts ${JSON.stringify(window.__lastCasts ?? [])}` };
+          }
+          return { x, y };
         });
         if (!aim) throw new Error('no monster left to aim at');
+        if (aim.bad) throw new Error(`could not aim before ${id}: ${aim.bad}`);
         await page.mouse.move(aim.x, aim.y);
         await frames(page, 2);
         await page.keyboard.press(String(i + 1));
@@ -335,18 +345,30 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     await waitFor(() => window.SLAY.debug.panelOpen('inventory'), null, 30_000);
     await frames(page, 4);
     const box = await page.evaluate((uid) => {
-      const c = window.SLAY.save.account.current;
+      const S = window.SLAY;
+      window.__toasts = [];
+      S.events.on('toast', (t) => t?.text && window.__toasts.push(t.text));
+      const c = S.save.account.current;
       const at = c.inventory.findIndex((it) => it?.uid === uid);
       const grid = [...document.querySelectorAll('.panel-inventory .itemgrid')].find((g) => g.children.length === 60);
-      const r = grid?.children[at]?.getBoundingClientRect();
-      return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2, at } : null;
+      const cell = grid?.children[at];
+      // A small page can leave the lower rows of the pack below the fold.
+      cell?.scrollIntoView?.({ block: 'center' });
+      const r = cell?.getBoundingClientRect();
+      if (!r) return null;
+      const x = r.x + r.width / 2;
+      const y = r.y + r.height / 2;
+      const top = document.elementFromPoint(x, y);
+      return { x, y, at, inView: x >= 0 && y >= 0 && x < innerWidth && y < innerHeight, hits: !!top && (cell === top || cell.contains(top)), top: top?.className?.toString().slice(0, 60) ?? 'nothing' };
     }, worn.uid);
     if (!box) throw new Error('could not find it in the pack grid');
     await page.mouse.click(box.x, box.y, { button: 'right' });
     await frames(page, 4);
-    const on = await page.evaluate(([slot, uid]) => window.SLAY.save.account.current.equipment[slot]?.uid === uid, [worn.slot, worn.uid]);
+    const after = await page.evaluate(([slot, uid]) => ({ on: window.SLAY.save.account.current.equipment[slot]?.uid === uid, toasts: window.__toasts.slice(-3) }), [worn.slot, worn.uid]);
     await closeAll();
-    if (!on) throw new Error(`${worn.name} is not in ${worn.slot}`);
+    if (!after.on) {
+      throw new Error(`${worn.name} is not in ${worn.slot} (pack slot ${box.at} at ${Math.round(box.x)},${Math.round(box.y)}, ${box.inView ? 'in view' : 'off screen'}, under the click: ${box.hits ? 'its cell' : box.top}; toasts: ${after.toasts.join(' / ') || 'none'})`);
+    }
     return `${worn.name} -> ${worn.slot}`;
   });
 
