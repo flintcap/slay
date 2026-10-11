@@ -1,6 +1,6 @@
 # Stream: creatures (every monster and boss body and animation)
 
-Status: not started
+Status: in progress
 
 Goal: monsters look and move like Diablo II and Path of Exile monsters:
 distinct silhouettes per family, grim materials, heavy and readable motion.
