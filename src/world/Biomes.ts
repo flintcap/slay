@@ -1020,7 +1020,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     baseTrim: 'stone.obsidian',
     liquid: 'voidwater',
     liquidColor: 0x22123a,
-    liquidEmissive: 0x5a2c9c,
+    liquidEmissive: 0x4a2a7c,
     wallLight: 'voidFlame',
     wallLightSpacing: 7,
     lightColor: 0xbc98dc,
@@ -1030,8 +1030,8 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     shaftDensity: 0.45,
     shaftColor: 0xb090e0,
     // Dense bright veins read as purple squiggles over the whole floor.
-    veinDensity: 0.12,
-    veinColor: 0x9050c8,
+    veinDensity: 0.07,
+    veinColor: 0x6a3a98,
     props: [
       { kind: 'voidShard', weight: 10 },
       { kind: 'floatingStone', weight: 7 },

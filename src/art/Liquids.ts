@@ -119,8 +119,9 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     metalness: 0.2,
     opacity: 1,
     // At 1.2 (2.4 in the seams) every void pool bloomed into a flat magenta
-    // sheet that swamped the walkway in the w14 spire render.
-    emissiveIntensity: 0.6,
+    // sheet that swamped the walkway, and at 0.6 it was still a loud blue
+    // field. The void is mostly dark with faint seams.
+    emissiveIntensity: 0.3,
   },
 };
 
