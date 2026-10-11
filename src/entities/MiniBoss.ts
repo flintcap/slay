@@ -29,6 +29,7 @@ import type { MonsterRank, MonsterRole, Rng, SpawnPoint } from '../types';
 import type { NamedRare } from '../data/namedRares';
 import type { Enemy, MiniBossHook } from './Enemy';
 import { events } from '../core/Events';
+import { miniBossFlair } from '../art/creatures/Creature';
 import { getMonster, MONSTERS } from '../data/monsters';
 import {
   after,
@@ -152,6 +153,10 @@ export function planMiniBoss(
 export function attachMiniBoss(e: Enemy, plan: Pick<MiniBossPlan, 'kind'>): MiniBossController {
   const c = new MiniBossController(e, plan.kind);
   e.miniBoss = c;
+  // The body wears it too: a burning crown in its rank's colour.
+  e.root.traverse((o) => {
+    if (o.userData?.creature) miniBossFlair(o, e.rank);
+  });
   return c;
 }
 

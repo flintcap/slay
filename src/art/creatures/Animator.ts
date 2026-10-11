@@ -29,6 +29,7 @@ import { aimQuat, twoBoneIk } from '../hero/Ik';
 import type { LegChain, RigKind } from './Rig';
 import { PoseBuf, STYLE_DEFAULT, clamp01, type AttackKind, type MotionStyle } from './Motion';
 import { POSERS } from './Posers';
+import { heatCreature, leaveCorpse } from './Creature';
 
 export type RigAction = 'idle' | 'walk' | 'attack' | 'cast' | 'hit' | 'death' | 'spawn';
 
@@ -148,6 +149,8 @@ export class CreatureAnimator {
   /** Death and spawn progress. */
   deathT = 0;
   spawnT = 0;
+  /** Whether this death has already left its body on the floor. */
+  private corpseLeft = false;
   /** A seeded stream for idle fidgets and move choice. */
   readonly rng: Random;
   /** Per-instance offset so a pack does not move in step. */
@@ -311,6 +314,8 @@ export class CreatureAnimator {
     this.bossPhase = i;
     this.stagger = 1;
     this.flinchV += 10;
+    // Later phases glow hotter.
+    heatCreature(this.root, i);
   }
 
   // -- pose helpers for posers -----------------------------------------------------
@@ -425,6 +430,14 @@ export class CreatureAnimator {
     const poser = POSERS[this.kind];
     poser(this);
     this.solve();
+    // Once the fall has landed, the body stays where it fell.
+    if (o.deathT >= 1 && !this.corpseLeft) {
+      this.corpseLeft = true;
+      // Ghosts fade, swarms and hovering wisps come apart: nothing is left of them.
+      const d = this.style.death;
+      const wisp = d === 'scatter' && this.style.idle === 'hover';
+      if (d !== 'fade' && !wisp && this.kind !== 'swarm') leaveCorpse(this.root);
+    }
   }
 
   /** Where the body went this frame. */
