@@ -47,9 +47,9 @@ interface LiquidTuning {
 
 const TUNING: Record<LiquidStyle, LiquidTuning> = {
   water: {
-    // A near-mirror rippled surface broke every torch and the hero light
-    // into glitter specks (caverns). Calmer slopes, a touch of roughness.
-    ripple: 0.32,
+    // A near-mirror rippled surface broke every torch, the hero light and
+    // the forest moon into white glitter specks. Low slopes, a satin sheen.
+    ripple: 0.2,
     speed: 0.16,
     scaleA: 5.5,
     scaleB: 2.3,
@@ -59,7 +59,7 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     rim: 0.2,
     rimColor: 0x4c6266,
     molten: 0,
-    roughness: 0.2,
+    roughness: 0.42,
     metalness: 0.1,
     opacity: 0.84,
     emissiveIntensity: 0.6,
@@ -118,7 +118,9 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     roughness: 0.3,
     metalness: 0.2,
     opacity: 1,
-    emissiveIntensity: 1.2,
+    // At 1.2 (2.4 in the seams) every void pool bloomed into a flat magenta
+    // sheet that swamped the walkway in the w14 spire render.
+    emissiveIntensity: 0.6,
   },
 };
 
@@ -230,7 +232,7 @@ export function liquidSurface(style: LiquidStyle, color: number, glow: number): 
           // Water: a faint caustic shimmer where the two layers peak together.
           // Molten: the glow lives in the seams only.
           'float lqCaustic = smoothstep(0.62, 0.8, lqA.r * 0.5 + lqB.g * 0.5);',
-          'totalEmissiveRadiance *= uLqTune.w > 0.5 ? lqHeat * (1.0 + lqHeat) : (0.6 + lqCaustic * 1.4);',
+          'totalEmissiveRadiance *= uLqTune.w > 0.5 ? lqHeat * (1.0 + lqHeat) : (0.6 + lqCaustic * 0.5);',
         ].join('\n'),
       );
   };

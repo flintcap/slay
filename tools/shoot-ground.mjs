@@ -25,6 +25,8 @@ const t0 = Date.now();
 const log = (m) => console.log(`[${Math.round((Date.now() - t0) / 1000)}s] ${m}`);
 const { page, close, pageErrors } = await bootGame({ fallbackPort: 4322, preview: true, viewport: { width: W, height: H } });
 log('booted');
+// Story and first-sight cards queue up and cover the middle of the frame.
+await page.addStyleTag({ content: '.story-card { display: none !important; }' });
 let ok = true;
 const shoot = async (name) => {
   await frames(page, 30);
@@ -65,9 +67,6 @@ try {
         },
         [b, AT],
       );
-      // A place's first-sight card covers the middle of the frame.
-      await frames(page, 10);
-      await page.getByText('Close', { exact: true }).click({ timeout: 3000 }).catch(() => {});
       await shoot(`g-${b}${AT === 'mid' ? '' : '-' + AT}`);
     } catch (e) {
       ok = false;
