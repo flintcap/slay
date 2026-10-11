@@ -386,17 +386,25 @@ export function skirt(s: Sculpt, o: { len: number; flare: number; top?: number; 
     const wantSide = o.sides ?? true;
     const r0 = 0.085 * H;
     const r1 = r0 + o.flare * H;
-    // Panels as flat boxes from the waist, tilted out toward the hem.
+    // Each panel hangs as three strips of uneven length with gaps between,
+    // tilted out toward the hem: a ragged robe, where one flat box per panel
+    // read as boards.
+    const rnd = seq(Math.round(H * 1000) + (x > 0 ? 7 : 0));
     const panel = (ang: number) => {
-      const dx = Math.sin(ang);
-      const dz = Math.cos(ang);
-      const a = V(x * dx * r0, topY, dz * r0);
-      const b = V(x * dx * r1, botY, dz * r1);
-      const c = lerpV(a, b, 0.5);
-      const dir = b.clone().sub(a);
-      const q = quatAlong(dir);
-      // Width across the panel.
-      s.box(at(c.y), c, V(0.06 * H + o.flare * 0.45 * H, dir.length() * 0.5, th), { mat, q: q.multiply(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), x * ang)), k: 0.02 * H, round: th * 0.8 });
+      const wTot = 0.06 * H + o.flare * 0.45 * H;
+      const rm = (r0 + r1) * 0.5;
+      for (let i = 0; i < 3; i++) {
+        const sa = ang + ((i - 1) * 2 * wTot) / (3 * rm);
+        const dx = Math.sin(sa);
+        const dz = Math.cos(sa);
+        const bot = botY + rnd() * 0.07 * H * (i === 1 ? 0.4 : 1);
+        const a = V(x * dx * r0, topY, dz * r0);
+        const b = V(x * dx * (r1 + (rnd() - 0.5) * 0.02 * H), bot, dz * (r1 + (rnd() - 0.5) * 0.02 * H));
+        const c = lerpV(a, b, 0.5);
+        const dir = b.clone().sub(a);
+        const q = quatAlong(dir);
+        s.box(at(c.y), c, V(wTot * 0.3, dir.length() * 0.5, th), { mat, q: q.multiply(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), x * sa + (rnd() - 0.5) * 0.3)), k: 0.012 * H, round: th * 0.8 });
+      }
     };
     if (wantFront) panel(0.35);
     if (wantSide) panel(1.45);

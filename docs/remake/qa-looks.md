@@ -38,10 +38,14 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
 3. Outdoor water (dark forest "Hangman's Copse"): the pool is square tiles
    with stair-step edges, pale blue-grey, reads as a tiled floor.
    (`l-darkForest-a.png`)
-4. Bosses: ashen prophet's wing is one long plank; stalker prime is a plain
-   grey mannequin; hive queen shows no wings; glacier titan is glossy
-   rubber with cube fists; void herald and gaunt king carry the same plank
-   bat wings. (`big-*.png`)
+4. FIXED. Bosses. Ashen prophet and harpies: real feathered wings (coverts
+   and flight feathers, `featherWings`). Stalker prime: dark chitin plates
+   on the shoulders and spine. Hive queen: raised amber wings. Glacier
+   titan: frozen stone body, ice slabs and crystals with a faint cold light,
+   ice-block fists. Demon bat wings (void herald, gaunt king, imps, balor):
+   membranes now billow and scallop between the spars (`sailGeo`), the
+   gaunt king's ragged. Before: `big-*.png`; after: `boss3/`, `boss4/`,
+   `boss5/`.
 5. Fights: telegraph rings and pools crowd round the hero in packs; bright
    white-hot rims. Effects probe in `run*.log`.
 6. Monsters away from the hero's light read as black silhouettes (crypt,
@@ -51,8 +55,8 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
 
 ## Next up
 
-1. Finish the survey renders: foundry, desert, hell (running), then
-   sunkenTemple, hive, frostvault, ashwaste, voidspire, tundra, desertTomb,
+1. Finish the survey renders (crypt, darkForest, caverns, swamp, foundry,
+   desert done): hell, then sunkenTemple, hive, frostvault, ashwaste, voidspire, tundra, desertTomb,
    the town (`shoot-town.mjs`), monster sheets per family
    (`creature-sheet.mjs game --ids=family:<f>`), the other three classes in
    `hero-sheet.mjs dressed`.

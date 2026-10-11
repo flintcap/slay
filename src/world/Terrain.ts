@@ -332,6 +332,7 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
       let zw = 0;
       let zn = 0;
       let special = 0;
+      let wet = 0;
       for (const ty of ys) {
         for (const tx of xs) {
           const gi = g(tx, ty);
@@ -347,6 +348,7 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
             nearH = near[gi]!;
           }
           if (v === T_ICE || v === T_LAVA || v === T_WATER || v === T_DEEP_WATER) special = 1;
+          if (v === T_WATER) wet = 1;
         }
       }
       const vi = j * VW + i;
@@ -356,7 +358,11 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
       vopen[vi] = od / zn;
       vspecial[vi] = special;
       if (openN > 0) {
-        vh[vi] = openSum / openN + noise.simplex2(wx * 0.7, wz * 0.7) * 0.025;
+        // Banks of a pool wander up and down so the waterline, where the
+        // pool's flat surface meets this slope, curves instead of following
+        // the tile grid.
+        const bank = wet && openN > 1 ? noise.simplex2(wx * 0.31 + 17, wz * 0.31 - 5) * 0.14 : 0;
+        vh[vi] = openSum / openN + noise.simplex2(wx * 0.7, wz * 0.7) * 0.025 + bank;
         vdist[vi] = 0;
       } else {
         const d = Math.max(0.5, dmin - 0.5);

@@ -1151,8 +1151,18 @@ export class DungeonMesh {
 
             // Liquid surface.
             if (v === T_WATER || v === T_LAVA) {
-              surfs[LIQ].flat(wx, hy + 0.13, wz, HALF, true, x % 4, y % 4, 1, this.shoreContact(x, y, v));
+              // Outdoors the bed under a pool is sunk (Terrain.ts), so the
+              // surface sits a little below the bank and the ground's own
+              // slope draws the shore. Standing above the bank, it showed
+              // every tile's square edge as a stair step.
+              surfs[LIQ].flat(wx, outdoor ? hy - OUTDOOR_LIQ_DROP : hy + 0.13, wz, HALF, true, x % 4, y % 4, 1, this.shoreContact(x, y, v));
               if (v === T_LAVA || art.liquid === 'voidwater') hotTiles.push({ x, y, h: hy });
+            } else if (outdoor) {
+              // A bank tile beside a pool carries the pool's surface on under
+              // it, hidden by the rising ground except where the slope dips
+              // below: that dip is the shoreline, curved, not tile-square.
+              const ly = this.bankLiquidLevel(x, y, hy);
+              if (ly !== null) surfs[LIQ].flat(wx, ly, wz, HALF, true, x % 4, y % 4, 1, [1, 1, 1, 1]);
             }
 
             // Drips: off the ceiling into the water and the puddles below it.
@@ -1286,6 +1296,27 @@ export class DungeonMesh {
    * much of the bank each corner touches. Drives froth on water and the cooled
    * crust at the edge of lava.
    */
+  /**
+   * The liquid level to carry under an outdoor bank tile: the highest pool
+   * among its eight neighbours that does not stand above the bank itself, or
+   * null when no pool touches it.
+   */
+  private bankLiquidLevel(x: number, y: number, hy: number): number | null {
+    const W = this.level.width;
+    let best: number | null = null;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nv = this.tile(x + dx, y + dy);
+        if (nv !== T_WATER && nv !== T_LAVA) continue;
+        const ly = this.heights[(y + dy) * W + x + dx] * STEP_HEIGHT - OUTDOOR_LIQ_DROP;
+        if (ly > hy - 0.05) continue;
+        if (best === null || ly > best) best = ly;
+      }
+    }
+    return best;
+  }
+
   private shoreContact(x: number, y: number, self: number): number[] {
     const bank = (tx: number, ty: number): number => (this.tile(tx, ty) === self ? 0 : 1);
     const out: number[] = [];
@@ -2649,6 +2680,9 @@ function wholeRepeat(repeat: number, uvSpan: number): boolean {
   const span = uvSpan * q;
   return Math.abs(span - Math.round(span)) < 1e-6;
 }
+/** Outdoor pools sit this far below their tile's walking height (see the liquid surface). */
+const OUTDOOR_LIQ_DROP = 0.1;
+
 const DX4 = [1, -1, 0, 0];
 const DY4 = [0, 0, 1, -1];
 
