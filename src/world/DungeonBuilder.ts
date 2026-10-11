@@ -649,6 +649,26 @@ export class DungeonMesh {
   /** Where the hole in the roof is centred. Written every frame. */
   private readonly heroXZ = new THREE.Vector2();
 
+  /** Each zone biome's art, built once. */
+  private readonly zoneArts = new Map<string, BiomeArt>();
+
+  /**
+   * The art of the zone a tile lies in, so a forest zone beside a crypt zone
+   * dresses its props as forest. Levels without zones use the level's art.
+   */
+  artAt(tileX: number, tileY: number): BiomeArt {
+    const { zones, zoneOf, width } = this.level;
+    if (!zones || !zoneOf) return this.art;
+    const z = zones[zoneOf[tileY * width + tileX] ?? 0];
+    if (!z || z.biome === this.biome.id) return this.art;
+    let a = this.zoneArts.get(z.biome);
+    if (!a) {
+      a = biomeArt(z.biome, this.level.variant);
+      this.zoneArts.set(z.biome, a);
+    }
+    return a;
+  }
+
   constructor(level: DungeonLevel, biome: BiomeDef, rng: Rng) {
     this.level = level;
     this.biome = biome;
@@ -1951,16 +1971,17 @@ export class DungeonMesh {
 
   private buildProps(rng: Rng): void {
     const level = this.level;
-    const art = this.art;
 
-    // Group placements by kind+variant so each becomes one InstancedMesh set.
-    const groups = new Map<string, { kind: string; variant: number; list: PropPlacement[] }>();
+    // Group placements by kind, variant and zone biome so each becomes one
+    // InstancedMesh set, built with the art of the zone it stands in.
+    const groups = new Map<string, { kind: string; variant: number; art: BiomeArt; list: PropPlacement[] }>();
     for (const p of level.props) {
       const variant = variantFor(p.kind, p.x, p.y);
-      const key = `${p.kind}|${variant}`;
+      const art = this.artAt(p.x, p.y);
+      const key = `${p.kind}|${variant}|${art.id}`;
       let g = groups.get(key);
       if (!g) {
-        g = { kind: p.kind, variant, list: [] };
+        g = { kind: p.kind, variant, art, list: [] };
         groups.set(key, g);
       }
       g.list.push(p);
@@ -1976,16 +1997,15 @@ export class DungeonMesh {
       const def = propDef(g.kind);
       let tmpl: PropTemplate;
       try {
-        tmpl = propTemplate(g.kind, art, level.seed, g.variant);
+        tmpl = propTemplate(g.kind, g.art, level.seed, g.variant);
       } catch {
         continue;
       }
       const n = g.list.length;
       if (n === 0) continue;
-      // The biome's own wall light shines in the biome's light colour (its
-      // flame mesh already does), so a variant's mood is not undone by the
-      // prop's stock colour: no teal pools in an orange-lit forest.
-      const lightColour = g.kind === art.wallLight ? art.lightColor : tmpl.light?.color ?? 0xffffff;
+      // Wall lights already resolve to the biome's light colour (`mood`) and
+      // fires to its flame, in the template itself.
+      const lightColour = tmpl.light?.color ?? 0xffffff;
 
       // Precompute transforms once; every layer and the flame share them.
       const xs = new Float32Array(n);

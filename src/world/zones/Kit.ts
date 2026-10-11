@@ -17,7 +17,7 @@
  */
 
 import type { BiomeId, DungeonRoom, LayoutKind, Rng, Vec2 } from '../../types';
-import { Grid, T_FLOOR, isWalkableValue } from '../Layouts';
+import { Grid, T_FLOOR } from '../Layouts';
 
 /** What a generator is handed. */
 export interface ZoneCtx {
@@ -350,30 +350,6 @@ export function addRoundRoom(ctx: ZoneCtx, cx: number, cy: number, r: number, ki
 // ---------------------------------------------------------------------------
 // Analysis
 // ---------------------------------------------------------------------------
-
-/** 4-way BFS distance over walkable tiles. -1 where unreached. */
-export function bfs(g: Grid, from: Vec2): Int32Array {
-  const n = g.w * g.h;
-  const d = new Int32Array(n).fill(-1);
-  const q = new Int32Array(n);
-  const s = from.y * g.w + from.x;
-  if (s < 0 || s >= n || !isWalkableValue(g.t[s])) return d;
-  let head = 0;
-  let tail = 0;
-  d[s] = 0;
-  q[tail++] = s;
-  while (head < tail) {
-    const c = q[head++];
-    const cx = c % g.w;
-    const cy = (c / g.w) | 0;
-    const nd = d[c] + 1;
-    if (cx > 0 && d[c - 1] < 0 && isWalkableValue(g.t[c - 1])) { d[c - 1] = nd; q[tail++] = c - 1; }
-    if (cx < g.w - 1 && d[c + 1] < 0 && isWalkableValue(g.t[c + 1])) { d[c + 1] = nd; q[tail++] = c + 1; }
-    if (cy > 0 && d[c - g.w] < 0 && isWalkableValue(g.t[c - g.w])) { d[c - g.w] = nd; q[tail++] = c - g.w; }
-    if (cy < g.h - 1 && d[c + g.w] < 0 && isWalkableValue(g.t[c + g.w])) { d[c + g.w] = nd; q[tail++] = c + g.w; }
-  }
-  return d;
-}
 
 /** The landing pad every port gets, so arrival never puts you in a thicket. */
 export function landing(ctx: ZoneCtx, p: Vec2, r = 2.6): void {

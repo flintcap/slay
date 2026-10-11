@@ -96,34 +96,6 @@ export function radialGlowTexture(size = 128, power = 2.2): THREE.DataTexture {
 }
 
 /**
- * A vertical light-shaft gradient: dense at the base, fading upward, with faint
- * striations so it does not read as a flat cone.
- */
-export function beamTexture(size = 64, seed = 7): THREE.DataTexture {
-  const key = `beam|${size}|${seed}`;
-  const hit = utilCache.get(key);
-  if (hit) return hit;
-  const data = new Uint8Array(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    const v = y / (size - 1);
-    for (let x = 0; x < size; x++) {
-      const u = x / (size - 1);
-      const edgeFade = Math.sin(u * Math.PI);
-      const stri = 0.75 + 0.25 * vnoise(u * 8, v * 3, 8, 3, seed);
-      const a = clamp01(Math.pow(1 - v, 1.5) * edgeFade * stri);
-      const o = (y * size + x) * 4;
-      data[o] = 255;
-      data[o + 1] = 255;
-      data[o + 2] = 255;
-      data[o + 3] = (a * 255) | 0;
-    }
-  }
-  const tex = finishUtil(key, data, size, false);
-  tex.wrapS = THREE.RepeatWrapping;
-  return tex;
-}
-
-/**
  * A procedural rune ring — concentric arcs, glyph ticks and an inner sigil.
  * Used as an emissive decal on high-rarity gear and on caster telegraphs.
  */

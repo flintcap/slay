@@ -161,7 +161,6 @@ export function mask(bones: HeroBone[], extras: number[] = [], w = 1): Float32Ar
 export const ARM_L: HeroBone[] = ['clavL', 'upperArmL', 'foreArmL', 'handL', 'fingersL', 'fingerTipsL', 'thumbL'];
 export const ARM_R: HeroBone[] = ['clavR', 'upperArmR', 'foreArmR', 'handR', 'fingersR', 'fingerTipsR', 'thumbR'];
 export const TRUNK: HeroBone[] = ['spine', 'chest', 'neck', 'head'];
-export const LEGS: HeroBone[] = ['thighL', 'shinL', 'footL', 'toeL', 'thighR', 'shinR', 'footR', 'toeR'];
 
 const _e = new THREE.Euler();
 const _q = new THREE.Quaternion();

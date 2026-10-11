@@ -323,8 +323,3 @@ export const PROP_DEFS: Record<string, PropDef> = {
 export function propDef(kind: string): PropDef {
   return PROP_DEFS[kind] ?? PROP_DEFS.rubblePile!;
 }
-
-/** True when a kind has its own definition. */
-export function hasPropDef(kind: string): boolean {
-  return Object.prototype.hasOwnProperty.call(PROP_DEFS, kind);
-}

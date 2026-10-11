@@ -408,8 +408,3 @@ export function buildFolk(id: string): FolkModel {
   const loops = registerJob(who, spec.job, spec.posture, spec.talk);
   return { id: who, root: hero.root, bones: rig.bones as unknown as Record<string, THREE.Bone>, hero, grip: spec.grip, loops };
 }
-
-/** The job a resident does, for tools. */
-export function folkJob(id: NpcLookId): JobKind {
-  return SPECS[id].job;
-}

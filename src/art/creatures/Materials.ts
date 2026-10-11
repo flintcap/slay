@@ -415,11 +415,6 @@ export function cloneCreatureMaterial(src: THREE.Material, over: Partial<Creatur
   return m;
 }
 
-/** The live uniforms of a creature material (for phase glow and rank rims). */
-export function creatureUniforms(m: THREE.Material): CreatureUniforms | null {
-  return (m.userData.creature as { u: CreatureUniforms } | undefined)?.u ?? null;
-}
-
 /** Disposes every shared creature material (between runs). Textures belong to the texture sets. */
 export function disposeCreatureMaterials(): void {
   for (const m of cache.values()) m.dispose();

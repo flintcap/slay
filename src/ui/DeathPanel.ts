@@ -180,7 +180,7 @@ export class DeathPanel {
     this.inner.appendChild(who);
 
     const killer = div('dth-killer');
-    killer.appendChild(span('', `Fell on Depth ${s.depth}, slain by `));
+    killer.appendChild(span('', `Fell on Tier ${s.depth}, slain by `));
     const b = document.createElement('b');
     b.textContent = s.killedBy;
     killer.appendChild(b);
@@ -220,7 +220,7 @@ export class DeathPanel {
     };
     keep('stash', 'The vault and everything in it');
     keep('coin', `${fmtInt(save.account.bankGold)} banked gold`);
-    keep('descend', `Best depth ${Math.max(save.account.bestDepth, s.depth)}`);
+    keep('descend', `Best tier ${Math.max(save.account.bestDepth, s.depth)}`);
     kept.appendChild(row);
     this.inner.appendChild(kept);
 

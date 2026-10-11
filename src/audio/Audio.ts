@@ -8,8 +8,7 @@
  * the id rules in `Bank.ts`, music in `Score.ts`, ambience in `Beds.ts`.
  */
 
-import type { DamageType } from '../types';
-import { bankIds, resolveSound, soundPriority as bankPriority } from './Bank';
+import { resolveSound, soundPriority as bankPriority } from './Bank';
 import { SampleEngine } from './SampleEngine';
 
 export type { PlayOpts } from './SampleEngine';
@@ -17,20 +16,12 @@ export type { PlayOpts } from './SampleEngine';
 /** The one engine. Silent until the first gesture, and silent for any file that is missing. */
 export const audio = new SampleEngine();
 
-/** Element ids the sound bank understands, for tooling. */
-export const AUDIO_ELEMENTS: readonly DamageType[] = ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane'];
-
 /**
  * True when `id` plays a recorded sound, directly or through its family. Used
  * by the static checks to prove nothing the game asks for is silent.
  */
 export function resolvesSound(id: string): boolean {
   return resolveSound(id) !== null;
-}
-
-/** Every sound id with recordings, for a debug browser. */
-export function soundIds(): string[] {
-  return bankIds();
 }
 
 /**

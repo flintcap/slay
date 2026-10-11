@@ -266,7 +266,6 @@ const CUTTERS: Record<TradePiece, Cutter> = {
 
   /** Forearms burned white from wrist to elbow: shiny, puckered, blotched at the edges. */
   scars(k) {
-    const h = k.h;
     for (const L of [true, false]) {
       const S = L ? 'L' : 'R';
       const e = k.j[`foreArm${S}`];

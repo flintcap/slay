@@ -77,7 +77,7 @@ export function mountTransitions(): void {
     if (p.to === 'dungeon') {
       const depth = Math.max(1, Number((p.payload as { depth?: number } | undefined)?.depth ?? 1));
       k = p.from === 'dungeon' ? 'Deeper still' : 'Descending';
-      t = `Depth ${depth}`;
+      t = `Tier ${depth}`;
     } else if (p.to === 'town') {
       k = p.from === 'dungeon' ? 'Climbing out' : 'Returning';
       t = 'The Town';

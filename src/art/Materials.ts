@@ -23,9 +23,8 @@ import * as THREE from 'three';
 import {
   radialGlowTexture,
   runeRingTexture,
-  beamTexture,
 } from '../fx/UtilityTextures';
-import { resolveSurface, surfaceKeys, surfaceBaseColor, type SurfaceDef } from './SurfaceLibrary';
+import { resolveSurface, surfaceBaseColor, type SurfaceDef } from './SurfaceLibrary';
 import { setTextures, preloadSets, TEXTURE_SETS, type TextureSetName } from './TextureSets';
 
 export { surfaceBaseColor };
@@ -235,10 +234,6 @@ export function surfaceVariant(key: string, opts: SurfaceOpts): THREE.MeshStanda
   return mat;
 }
 
-export function paletteKeys(): string[] {
-  return surfaceKeys();
-}
-
 /** Emissive/animated materials for magic, lava, runes and enchanted trim. */
 export function emissiveMaterial(color: number, intensity = 1.6): THREE.MeshStandardMaterial {
   const ck = `${color}|${intensity}`;
@@ -294,11 +289,6 @@ export function additiveMaterial(
   return mat;
 }
 
-/** The vertical rarity shaft over a ground drop. */
-export function beamMaterial(color: number): THREE.MeshBasicMaterial {
-  return additiveMaterial(color, { map: beamTexture(), opacity: 0.55, side: THREE.DoubleSide });
-}
-
 /** A glowing rune decal, for high-rarity gear and caster telegraphs. */
 export function runeMaterial(color: number, seed = 11): THREE.MeshBasicMaterial {
   return additiveMaterial(color, { map: runeRingTexture(256, seed), opacity: 0.9, side: THREE.DoubleSide });
@@ -338,11 +328,8 @@ export async function warmMaterials(onProgress: (p: number, label: string) => vo
   onProgress(0.92, 'Kindling the runes…');
   await nextFrame();
   radialGlowTexture();
-  beamTexture();
   runeRingTexture();
   emissiveMaterial(0xffa040, 1.8);
   emissiveMaterial(0x6f8cff, 1.6);
-  // Pre-create the rarity beam materials so the first drop does not hitch.
-  for (const c of [0xc8c8c8, 0x6f8cff, 0xf5d76e, 0x33d64a, 0xb8874a, 0xc060ff, 0xff5a33]) beamMaterial(c);
   onProgress(1, 'Materials ready');
 }

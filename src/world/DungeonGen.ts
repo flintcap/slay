@@ -58,7 +58,7 @@ import {
 } from './Layouts';
 import { type ZonePlan, buildArea } from './zones/Area';
 import { planMap, zoneHeat } from './MapGen';
-import { placeProps } from './Props';
+import { chestKindFor, placeProps } from './Props';
 
 // ---------------------------------------------------------------------------
 // Contract exports
@@ -690,8 +690,8 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
       zonesTotal,
       budgetScale,
       next: map.areas[i + 1]?.[0],
+      variant: variantOf(map.areas[i]![0]!.biome),
     });
-    level.variant = variantOf(level.biome);
     levels.push(level);
   }
 
@@ -710,6 +710,8 @@ export interface AreaContext {
   budgetScale: number;
   /** First zone of the next area, which decides how the way on looks. */
   next?: ZonePlan;
+  /** The dressed version of the area's first biome, set before props are placed. */
+  variant?: string;
 }
 
 /**
@@ -802,6 +804,8 @@ export function generateLevel(
     zoneOf: area.zoneOf,
     arena: area.arena,
   };
+  // Props dress in the map's variant, so it must be known before placement.
+  if (actx?.variant !== undefined) level.variant = actx.variant;
 
   // --- Ways on, and the way home ----------------------------------------
   const exitZone = area.zoneOf[exit.y * g.w + exit.x] ?? 0;
@@ -1076,7 +1080,7 @@ function ensureInteractables(
     b.interact = interact;
     return true;
   };
-  if (!hasChest) plant(pref(['treasure', 'normal', 'ambush', 'shrine']), 'chest', 'chest.rare', rng.range(0, Math.PI * 2));
+  if (!hasChest) plant(pref(['treasure', 'normal', 'ambush', 'shrine']), chestKindFor('chest.rare'), 'chest.rare', rng.range(0, Math.PI * 2));
   if (wantsAltar && !hasAltar) plant(pref(['quest', 'normal', 'treasure', 'shrine']), 'altar', 'quest.altar', 0);
   const shrineRooms = pref(['shrine', 'normal', 'ambush', 'treasure']);
   for (let i = shrines; i < shrinesWanted; i++) {

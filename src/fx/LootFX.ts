@@ -60,11 +60,6 @@ interface Flight {
   spin: THREE.Object3D | null;
 }
 
-/** Model parts an item may carry that this module draws itself instead. */
-function isDropDressing(o: THREE.Object3D): boolean {
-  return o.name === 'beam' || o.name === 'pool' || o.name === 'sigil' || o.name === 'dropLight';
-}
-
 /** A resting drop's beam of light, floor pool and (for the best) a real light. */
 class Beacon {
   active = false;
@@ -247,7 +242,6 @@ export class LootFX {
     let spin: THREE.Object3D | null = null;
     root.traverse((o) => {
       if (o.name === 'spin') spin = o;
-      if (isDropDressing(o)) o.visible = false;
     });
     const dist = Math.hypot(entry.pos.x - from.x, entry.pos.z - from.z);
     const f: Flight = {

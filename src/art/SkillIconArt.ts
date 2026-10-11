@@ -584,8 +584,3 @@ export function paintAffixIcon(x: Ctx, behavior: string | undefined, color: numb
   x.stroke(circleP(64, 64, 63));
   x.restore();
 }
-
-/** Every pictogram name, for sheets and tests. */
-export function glyphNames(): string[] {
-  return Object.keys(GLYPHS);
-}

@@ -61,11 +61,6 @@ function idOf(v: MonsterVisual): { id: string; family: string; scale: number } |
   return ids.get(v) ?? null;
 }
 
-/** The monster id a visual belongs to, if it is one of the data's. */
-export function monsterIdOf(v: MonsterVisual): string | null {
-  return idOf(v)?.id ?? null;
-}
-
 /** Whether a monster id has a look of its own (else the generic one). */
 export function hasLook(id: string): boolean {
   return !!FACTORIES[id];
@@ -86,9 +81,4 @@ export function lookFor(v: MonsterVisual, family?: string, rank?: string): Creat
   if (!f) look.key = key;
   looks.set(key, look);
   return look;
-}
-
-/** Every monster id with a look of its own. */
-export function lookIds(): string[] {
-  return Object.keys(FACTORIES);
 }

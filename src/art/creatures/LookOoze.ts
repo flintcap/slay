@@ -9,7 +9,7 @@
  * glass shards, stars, a mouth that is most of the body.
  */
 import * as THREE from 'three';
-import type { LookCtx, LookFactory } from './Looks';
+import type { LookFactory } from './Looks';
 import type { RGB, Sculpt } from './Sculpt';
 import { ballGeo, boxGeo, spikeGeo, tubeGeo } from './Sculpt';
 import { V, lerpV, seq } from './Kit';

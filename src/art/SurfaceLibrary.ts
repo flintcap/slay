@@ -231,11 +231,6 @@ export function resolveSurface(key: string): SurfaceDef {
   return out;
 }
 
-/** Every authored key (not aliases). */
-export function surfaceKeys(): string[] {
-  return Object.keys(LIB);
-}
-
 /**
  * The surface's mid-tone as sRGB hex: its `base`, or the scan's own average.
  * For model code that wants "the colour of iron" without a texture.

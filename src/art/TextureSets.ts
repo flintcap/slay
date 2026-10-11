@@ -88,10 +88,6 @@ export function isTextureSet(name: string): name is TextureSetName {
   return Object.prototype.hasOwnProperty.call(TEXTURE_SETS, name);
 }
 
-export function setInfo(name: TextureSetName): TextureSetInfo {
-  return TEXTURE_SETS[name];
-}
-
 export interface SetTextures {
   albedo: THREE.Texture;
   normal: THREE.Texture;

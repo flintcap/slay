@@ -433,14 +433,6 @@ export function chain(a: V3, b: V3, links: number, size: number): THREE.BufferGe
   return out;
 }
 
-/** Bends geometry along X as a function of y (curved blades, bowed limbs). */
-export function bendX(geo: THREE.BufferGeometry, f: (y: number) => number): THREE.BufferGeometry {
-  const pos = geo.getAttribute('position') as THREE.BufferAttribute;
-  for (let i = 0; i < pos.count; i++) pos.setX(i, pos.getX(i) + f(pos.getY(i)));
-  geo.computeVertexNormals();
-  return geo;
-}
-
 /** Deterministic hash noise in -1..1 for jitter that never uses Math.random. */
 export function jitter(i: number, seed: number): number {
   let h = Math.imul(i + 1, 374761393) ^ Math.imul(seed + 7, 668265263);

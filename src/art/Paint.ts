@@ -86,15 +86,6 @@ export function saturate(n: number, t: number): number {
   return (f(r) << 16) | (f(g) << 8) | f(b);
 }
 
-/** Parses '0xRRGGBB', '#rrggbb' or a number. */
-export function parseColor(v: string | number | undefined, fallback: number): number {
-  if (typeof v === 'number') return v;
-  if (!v) return fallback;
-  const s = v.trim().replace(/^#/, '0x');
-  const n = Number(s);
-  return Number.isFinite(n) ? n : fallback;
-}
-
 // ---------------------------------------------------------------------------
 // Canvases
 // ---------------------------------------------------------------------------
@@ -133,17 +124,6 @@ export function scratch(slot: string, w: number, h = w): { c: HTMLCanvasElement;
     s.x.clearRect(0, 0, w, h);
   }
   return s;
-}
-
-/** Resets the transient state a helper may have left on a context. */
-export function resetCtx(x: Ctx): void {
-  x.globalAlpha = 1;
-  x.globalCompositeOperation = 'source-over';
-  x.shadowBlur = 0;
-  x.shadowColor = 'rgba(0,0,0,0)';
-  x.shadowOffsetX = 0;
-  x.shadowOffsetY = 0;
-  x.filter = 'none';
 }
 
 // ---------------------------------------------------------------------------
@@ -208,15 +188,6 @@ export function rrectP(x: number, y: number, w: number, h: number, r: number): P
   p.arcTo(x, y + h, x, y, rr);
   p.arcTo(x, y, x + w, y, rr);
   p.closePath();
-  return p;
-}
-
-/** A ring (annulus) as one even-odd path. */
-export function ringP(cx: number, cy: number, r0: number, r1: number, sx = 1): Path2D {
-  const p = new Path2D();
-  p.ellipse(cx, cy, r1 * sx, r1, 0, 0, Math.PI * 2);
-  p.moveTo(cx + r0 * sx, cy);
-  p.ellipse(cx, cy, r0 * sx, r0, 0, 0, Math.PI * 2, true);
   return p;
 }
 
@@ -566,13 +537,6 @@ export function rampOf(n: number, metal = 0, tex: TexKind | null = 'fine', texAm
   return mat([sink(n, 0.78), sink(n, 0.48), n, lift(n, 0.28), lift(n, 0.7)], metal, tex, texAmt);
 }
 
-export function tintMat(m: Mat, tint: number, t: number): Mat {
-  return {
-    ...m,
-    c: m.c.map((v) => mixC(v, sink(tint, 1 - luma(v) * 1.1), t)) as Mat['c'],
-  };
-}
-
 /** The value ramp across a form, from the lit side `a` to the shadow side `b`. */
 export function rampGradient(x: Ctx, m: Mat, a: Pt, b: Pt): CanvasGradient {
   const g = x.createLinearGradient(a[0], a[1], b[0], b[1]);
@@ -672,19 +636,6 @@ export function glow(x: Ctx, cx: number, cy: number, r: number, color: number, a
   g.addColorStop(1, css(color, 0));
   x.fillStyle = g;
   x.fillRect(cx - r, cy - r, r * 2, r * 2);
-  x.restore();
-}
-
-/** A soft dark pool — ambient occlusion under an object or in a recess. */
-export function shadowPool(x: Ctx, cx: number, cy: number, rx: number, ry: number, a = 0.6): void {
-  x.save();
-  x.translate(cx, cy);
-  x.scale(1, ry / rx);
-  const g = x.createRadialGradient(0, 0, 0, 0, 0, rx);
-  g.addColorStop(0, `rgba(0,0,0,${a})`);
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  x.fillStyle = g;
-  x.fillRect(-rx, -rx, rx * 2, rx * 2);
   x.restore();
 }
 

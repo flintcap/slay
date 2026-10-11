@@ -393,18 +393,3 @@ export function dressingFor(biome: BiomeId, variant?: string): Dressing {
   }
   return d;
 }
-
-/** Every prop kind any dressing can name, for checkers. */
-export function dressedKinds(): string[] {
-  const out = new Set<string>();
-  const add = (d: Partial<Dressing>): void => {
-    if (d.wallLight) out.add(d.wallLight);
-    if (d.pillar) out.add(d.pillar);
-    for (const k of ['standLight', 'clutter', 'wall', 'edge', 'feature', 'landmark', 'detail', 'liquid', 'breakables'] as const) {
-      for (const e of d[k] ?? []) out.add(e.kind);
-    }
-  };
-  for (const d of Object.values(BY_BIOME)) add(d);
-  for (const vs of Object.values(VARIANTS)) for (const d of Object.values(vs ?? {})) add(d);
-  return [...out];
-}

@@ -159,8 +159,6 @@ export class HeroAnimator {
   private legs: [LegGeo, LegGeo];
   private arms: { L: ArmGeo; R: ArmGeo };
   private body: StanceBody;
-  /** Pelvis bind height. */
-  private pelvisY: number;
   private legLen: number;
 
   /** Global playback multiplier: hit-stop, slow motion, haste. */
@@ -242,7 +240,6 @@ export class HeroAnimator {
     this.solver = new PoseSolver(joints);
     this.chest = bones.chest!;
     const h = joints.head.y / 6.62;
-    this.pelvisY = joints.pelvis.y;
     const leg = (s: 'L' | 'R'): LegGeo => {
       const hip = joints[`thigh${s}`];
       const knee = joints[`shin${s}`];

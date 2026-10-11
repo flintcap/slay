@@ -288,11 +288,6 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** Remap from one range to another without clamping. */
-export function remap(v: number, a0: number, a1: number, b0: number, b1: number): number {
-  return b0 + ((v - a0) / (a1 - a0 || 1e-6)) * (b1 - b0);
-}
-
 /** Cheap deterministic hash for per-pixel grain, no table lookup. */
 export function hash2(x: number, y: number): number {
   let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);

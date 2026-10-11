@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import type { Rng } from '../../types';
-import { PropKit, WALL_FACE, box, chain, cloth, cone, cyl, disc, jag, lathe, log, longBone, merge, mottle, rock, seat, shade, shadeY, skull, sphere, torus, tube } from './Kit';
+import { PropKit, WALL_FACE, box, chain, cloth, cone, cyl, jag, lathe, log, longBone, merge, mottle, rock, seat, shade, shadeY, skull, sphere, torus, tube } from './Kit';
 import { type BuildCtx, type Builder, M } from './Ctx';
 import { flameMat, propMat } from './PropMats';
 import { weather } from './Stone';

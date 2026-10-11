@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import type { Feature } from './Designs';
 import type { Emblem } from './Designs';
-import { Parts, type Hardpoint, type Slot } from './Parts';
+import { Parts, type Hardpoint } from './Parts';
 import { box, chain, cone, curve, cyl, gem, horn, jitter, lathe, slab, smoothOutline, sphere, torus, tube, v3, type V3 } from './Geo';
 import { skull } from './Kit';
 

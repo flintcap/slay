@@ -8,7 +8,7 @@
  * flicker grows them from the wick.
  */
 import * as THREE from 'three';
-import { PropKit, WALL_FACE, box, cone, cyl, jag, lathe, log, merge, mottle, rock, shade, shadeY, sphere, torus, tube, chain, skull } from './Kit';
+import { PropKit, WALL_FACE, box, cone, cyl, jag, lathe, log, merge, mottle, rock, shadeY, sphere, torus, tube, chain, skull } from './Kit';
 import { type BuildCtx, type Builder, M, fireGeo, flameGeo } from './Ctx';
 import { flameMat, glowMat, propMat } from './PropMats';
 

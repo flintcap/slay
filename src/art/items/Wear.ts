@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import type { Parts, Slot } from './Parts';
 import { box, cone, curve, cyl, horn, lathe, loft, rough, slab, sphere, spike, torus, tube, v3, type V3 } from './Geo';
-import { aim, cutOf, dressGems, runes, skull, smooth, type V2 } from './Kit';
+import { aim, cutOf, dressGems, runes, smooth, type V2 } from './Kit';
 
 const PI = Math.PI;
 

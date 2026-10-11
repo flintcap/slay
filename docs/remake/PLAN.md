@@ -106,7 +106,8 @@ in the queue starts. Order:
 ## File ownership
 
 Each stream edits only what it owns. Anything else is shared: small additive
-edits only (new lines, new exports), never rewrites.
+edits only (new lines, new exports), never rewrites. The lists name the files
+as they are after the remake; the old files each stream replaced are deleted.
 
 - **maps**: `src/world/DungeonGen.ts`, `Layouts.ts`, `Nav.ts`, `Biomes.ts`
   (gameplay fields: ids, names, families, layouts, depths, music keys),
@@ -114,28 +115,26 @@ edits only (new lines, new exports), never rewrites.
   `RunModifiers.ts`, the level-change flow in `src/scenes/DungeonScene.ts`
   (allowed to restructure that part), biome references in `src/data/*`,
   `src/ui/MapPanel.ts` (minimap only), the portal flow in `src/scenes/TownScene.ts`.
-- **ground**: `src/core/Assets.ts`, `src/core/Renderer.ts`, `src/art/Textures.ts`,
-  `Materials.ts`, `Palettes.ts`, `Noise.ts`, `WorldSurface.ts`, `Liquids.ts`,
-  `src/world/DungeonBuilder.ts`, `src/world/Ambience.ts`, `Biomes.ts` (look
+- **ground**: `src/core/Assets.ts`, `src/core/Renderer.ts`, `src/art/Materials.ts`,
+  `TextureSets.ts`, `SurfaceLibrary.ts`, `WorldMaterial.ts`, `Noise.ts`, `Liquids.ts`,
+  `src/world/DungeonBuilder.ts`, `Terrain.ts`, `Lighting.ts`, `src/world/Ambience.ts`, `Biomes.ts` (look
   fields: fog, light, palettes, particles), town terrain and lighting in
   `src/world/Town.ts`, `tools/bundle-artifact.mjs`, `tools/check-assets.mjs`,
   `ASSETS.md` layout, `public/assets/textures/` world folders.
 - **audio**: `src/audio/*`, `public/assets/sounds/`, `public/assets/music/`.
-- **heroes**: `src/art/CharacterModels.ts`, `BodyKit.ts`, `Animation.ts`,
-  `Secondary.ts`, `WornGear.ts`, `GearLook.ts`, `Portraits.ts`,
-  `src/scenes/HeroModel.ts`, new `src/art/hero/*`, `public/assets/textures/hero/`.
-- **creatures**: `src/entities/MonsterModels.ts`, `src/art/MonsterAnimation.ts`,
-  `src/art/BossPortraits.ts`, new `src/art/creatures/*`, the visual parts of
+- **heroes**: `src/art/GearLook.ts`, `Portraits.ts`, `src/scenes/HeroModel.ts`,
+  `src/art/hero/*`, `public/assets/textures/hero/`.
+- **creatures**: `src/entities/MonsterModels.ts`, `src/art/BossPortraits.ts`,
+  `src/art/creatures/*`, the visual parts of
   `src/entities/Boss.ts` and `MiniBoss.ts`, `public/assets/textures/creatures/`.
 - **items**: `src/art/hero/Armour.ts`, `Cape.ts`, `Garment.ts` and the
   clothing fields of `src/art/hero/Looks.ts` (heroes is done; items took them
-  over for "Gear makes the look"), `src/art/ItemModels.ts`, `ItemLook.ts`, `Icons.ts`, `IconKit.ts`,
-  `IconArmor.ts`, `IconWeapons.ts`, `IconTrinkets.ts`, `ItemIconArt.ts`,
-  `Glyphs.ts`, new `src/art/items/*`, `public/assets/textures/items/`.
+  over for "Gear makes the look"), `src/art/ItemModels.ts`, `ItemLook.ts`, `Icons.ts`,
+  `Glyphs.ts`, `src/art/items/*`, `public/assets/textures/items/`.
 - **props**: `src/world/Props.ts`, `src/art/Meshes.ts`, buildings and dressing
   in `src/world/Town.ts` and `TownLife.ts`, the visual parts of
   `src/scenes/TownStations.ts`, new `src/art/props/*`, `public/assets/textures/props/`.
-- **npcs**: `src/art/NpcModels.ts`, new `src/art/npc/*`, NPC placement and
+- **npcs**: `src/art/npc/*`, NPC placement and
   behaviour visuals in `src/scenes/TownScene.ts`.
 - **vfx**: `src/fx/*`, the visual parts of `src/scenes/SkillRunner.ts`,
   `src/art/SkillIconArt.ts` only if a skill's look changes, `public/assets/textures/fx/`.

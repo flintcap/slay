@@ -141,11 +141,6 @@ const PROP_LIB: Record<string, PropSurfaceDef> = {
   'prop.gold': PS('ironplate', 0xb88f3e, [0.16, 0.42], 1, 0.6, { metres: 0.9 }),
 };
 
-/** Every authored prop key, for checkers. */
-export function propSurfaceKeys(): string[] {
-  return Object.keys(PROP_LIB);
-}
-
 // ---------------------------------------------------------------------------
 // Options and resolution
 // ---------------------------------------------------------------------------
@@ -464,9 +459,4 @@ export function ghostMat(color: number, opacity: number, o: { additive?: boolean
 export function disposePropMats(): void {
   for (const m of cache.values()) m.dispose();
   cache.clear();
-}
-
-/** How many prop materials are alive (perf checks). */
-export function propMatCount(): number {
-  return cache.size;
 }

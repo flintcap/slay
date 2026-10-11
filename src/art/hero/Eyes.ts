@@ -6,12 +6,20 @@
 import * as THREE from 'three';
 import { skinRigid, heroBoneIndex } from './Skinning';
 
-const irisCache = new Map<number, THREE.CanvasTexture>();
+const irisCache = new Map<number, THREE.Texture>();
 
 /** Sclera, iris and pupil painted on an equirectangular map; the iris sits at u = 0.5 (facing +Z). */
-function irisTexture(iris: number): THREE.CanvasTexture {
+function irisTexture(iris: number): THREE.Texture {
   const hit = irisCache.get(iris);
   if (hit) return hit;
+  if (typeof document === 'undefined') {
+    // Headless (Node checkers): no canvas to paint on, so a plain sclera.
+    const flat = new THREE.DataTexture(new Uint8Array([216, 200, 188, 255]), 1, 1);
+    flat.colorSpace = THREE.SRGBColorSpace;
+    flat.needsUpdate = true;
+    irisCache.set(iris, flat);
+    return flat;
+  }
   const W = 128;
   const c = document.createElement('canvas');
   c.width = W;

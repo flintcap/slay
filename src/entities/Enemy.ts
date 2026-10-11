@@ -267,7 +267,8 @@ export class Enemy implements Combatant {
   ai: AIBrain | null;
 
   protected readonly rng: Rng;
-  protected readonly rig: RigAnimator | null;
+  /** The creature animator (read its `creature` for hit and release events). */
+  readonly rig: RigAnimator | null;
   protected readonly baseSpeed: number;
   protected readonly bodyRoot: THREE.Group;
 

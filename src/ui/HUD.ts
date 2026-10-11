@@ -566,7 +566,7 @@ export class HUD {
     this.minimapCanvas.style.height = `${MINIMAP_PX}px`;
     this.minimapCtx = this.minimapCanvas.getContext('2d');
     this.minimapCtx?.scale(dpr, dpr);
-    this.minimapLabel = div('minimap-label', 'Depth 0');
+    this.minimapLabel = div('minimap-label', 'Tier 0');
     const mapFrame = div('minimap-frame');
     const mapBtn = div('minimap-expand');
     mapBtn.innerHTML = iconSvg('map', { size: 14 });

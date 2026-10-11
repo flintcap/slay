@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import type { ItemLook } from '../ItemLook';
 import { Parts, type Hardpoint, type Slot } from './Parts';
-import { box, cone, curve, cyl, gem, horn, jitter, lathe, mergeSeams, slab, smoothOutline, sphere, torus, tube, v3, xf, type V3 } from './Geo';
+import { box, cone, curve, cyl, gem, horn, jitter, lathe, mergeSeams, slab, smoothOutline, sphere, torus, tube, v3, type V3 } from './Geo';
 
 export type Wrap = 'leather' | 'cord' | 'wire' | 'bone' | 'wood' | 'ribbed' | 'cloth';
 export type GuardKind = 'none' | 'bar' | 'crescent' | 'drooping' | 'disc' | 'block' | 'swept' | 'cup' | 'ringed' | 'winged' | 'sun' | 'lugs' | 'claw' | 'shell';
@@ -299,7 +299,6 @@ export function langets(P: Parts, y0: number, y1: number, r: number, slot: Slot 
   }
 }
 
-export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 export const smooth = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a));

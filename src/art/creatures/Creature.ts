@@ -372,8 +372,3 @@ export function disposeCreatures(): void {
   releaseBakes();
   disposeCreatureMaterials();
 }
-
-/** How many prototypes are alive (for tests and the perf overlay). */
-export function creaturePrototypeCount(): number {
-  return prototypes.size;
-}

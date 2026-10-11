@@ -343,8 +343,3 @@ export function glassMat(): THREE.MeshStandardMaterial {
     return m;
   });
 }
-
-/** Every file the item materials read, for a preloader. */
-export function itemTextureFiles(): string[] {
-  return Object.values(ITEM_SETS).flatMap((s) => [`${s.dir}/albedo.webp`, `${s.dir}/normal.webp`]);
-}

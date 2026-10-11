@@ -155,9 +155,6 @@ function dropSheet(entries: Entry[], cols: number, w = 220, h = 220): string {
     const item = { uid: `u${i}`, baseId: e.baseId, rarity: e.rarity } as unknown as Item;
     const drop = buildDropModel(item, rng);
     drop.position.y = 0.28;
-    drop.traverse((o) => {
-      if (o.name === 'beam') o.visible = false;
-    });
     scene.add(drop);
     const cam = new THREE.PerspectiveCamera(35, w / (h - 20), 0.1, 50);
     cam.position.set(0, 2.6, 1.9);

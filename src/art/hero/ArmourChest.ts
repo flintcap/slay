@@ -10,7 +10,6 @@
  * adds trim, a breast stone and glowing runes; uniques and sets add a cape
  * and their features (`ArmourFeatures.ts`).
  */
-import * as THREE from 'three';
 import { G } from './Anatomy';
 import type { GarmentSpec } from './Garment';
 import type { Clip } from './Mesher';

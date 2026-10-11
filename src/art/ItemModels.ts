@@ -9,8 +9,8 @@
  *  - `buildItemModel`: the item itself, for a hand, a rack or a showcase.
  *    Grip (or wear point) at the origin, business end along +Y, wide on X,
  *    thin on Z. Bows lie in the YZ plane. `hero/Hold.ts` puts it in a fist.
- *  - `buildDropModel`: the item lying on the floor, with the rarity beam,
- *    pool and sigil the loot effects drive (their look belongs to vfx).
+ *  - `buildDropModel`: the item lying on the floor. Its beam and floor glow
+ *    are drawn by `fx/LootFX.ts` (vfx owns them).
  *
  * Unknown or free-form shapes ('sword', 'torch', 'greatsword' from monsters
  * and NPCs) resolve to the closest family; a model never fails to build.
@@ -18,25 +18,10 @@
 
 import * as THREE from 'three';
 import { RARITY_COLOR, type Item, type ItemRarity, type ItemVisual, type Rng } from '../types';
-import { additiveMaterial, beamMaterial } from './Materials';
-import { radialGlowTexture, runeRingTexture } from '../fx/UtilityTextures';
 import { buildItem, type ItemFamily } from './items/Model';
-
-/** A model family. Same names as the builder families in `items/Model.ts`. */
-export type ItemShape = ItemFamily;
 
 /** Who an item is, beyond its base visual: enough to find its set colour or unique design. */
 export type ItemIdent = Pick<Item, 'baseId'> & Partial<Pick<Item, 'uniqueId' | 'setId'>>;
-
-const RARITY_TIER: Record<ItemRarity, number> = {
-  normal: 0,
-  magic: 1,
-  rare: 2,
-  set: 3,
-  unique: 3,
-  mythic: 4,
-  ancient: 4,
-};
 
 /**
  * Builds a 3D model for an item from its base's `visual` block. `rng` is kept
@@ -116,18 +101,16 @@ const MIN_FLOOR_SIZE = 0.3;
 const MAX_FLOOR_SIZE = 1.3;
 
 /**
- * The ground drop: the item lying still on the floor, with a rarity-tinted
- * light shaft and a glow pooled beneath it. The root rests at `REST_Y`; the
- * item and the floor glow sit that far below it, on the floor itself.
+ * The ground drop: the item lying still on the floor. The root rests at
+ * `REST_Y`; the item sits that far below it, on the floor itself. The beam
+ * and floor glow are LootFX's pooled beacons, not part of the model.
  *
- * Children the loot effects find by name: `spin` (the item, tumbled in
- * flight), `beam`, `pool`, `sigil`, `dropLight`.
+ * Children the loot effects find by name: `spin` (the item, tumbled in flight).
  */
 export function buildDropModel(item: Item, rng: Rng): THREE.Object3D {
   const visual = (visualResolver ? visualResolver(item) : undefined) ?? { shape: item.baseId || 'sword', palette: 'metal.steel', ornate: 0.4 };
   const rarity = item.rarity;
   const color = (dropColorHook ? dropColorHook(item) : undefined) ?? RARITY_COLOR[rarity] ?? 0xc8c8c8;
-  const tier = RARITY_TIER[rarity] ?? 0;
 
   const root = new THREE.Group();
   root.name = `drop:${item.baseId}`;
@@ -156,49 +139,6 @@ export function buildDropModel(item: Item, rng: Rng): THREE.Object3D {
   // Bottom of the item on the floor, a hair above it to stay out of the ground.
   spin.position.y = -REST_Y + (size.y * scale) / 2 + 0.004;
   root.add(spin);
-
-  const floor = new THREE.Group();
-  floor.position.y = -REST_Y;
-  root.add(floor);
-
-  // Light shaft.
-  const beamH = 1.5 + tier * 0.35;
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.055 + tier * 0.012, 0.2 + tier * 0.035, beamH, 14, 1, true), beamMaterial(color));
-  beam.position.y = beamH * 0.5;
-  beam.renderOrder = 3;
-  beam.name = 'beam';
-  floor.add(beam);
-
-  // Floor pool.
-  const poolSize = Math.max(0.85, longest * scale * 1.1) + tier * 0.16;
-  const pool = new THREE.Mesh(
-    new THREE.PlaneGeometry(poolSize, poolSize),
-    additiveMaterial(color, { map: radialGlowTexture(128, 2.6), opacity: 0.55 + tier * 0.08 }),
-  );
-  pool.rotation.x = -Math.PI * 0.5;
-  pool.position.y = 0.012;
-  pool.renderOrder = 2;
-  pool.name = 'pool';
-  floor.add(pool);
-
-  if (tier >= 2) {
-    const sigil = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), additiveMaterial(color, { map: runeRingTexture(256, 17), opacity: 0.5 }));
-    sigil.rotation.x = -Math.PI * 0.5;
-    sigil.position.y = 0.018;
-    sigil.userData.spin = -0.35;
-    sigil.name = 'sigil';
-    floor.add(sigil);
-  }
-  if (tier >= 4) {
-    // A brighter second pool rather than a real light: a light would change
-    // the scene's light count and recompile every shader in the dungeon.
-    const halo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), additiveMaterial(color, { map: radialGlowTexture(128, 1.7), opacity: 0.4 }));
-    halo.rotation.x = -Math.PI * 0.5;
-    halo.position.y = 0.008;
-    halo.renderOrder = 1;
-    halo.name = 'dropLight';
-    floor.add(halo);
-  }
 
   root.userData.rarity = rarity;
   root.userData.color = color;

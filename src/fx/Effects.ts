@@ -31,7 +31,7 @@ import { InstancedPool, type SlotHandle } from './kit/Instanced';
 import { makeCores, makeBeams, makeColumns, makeShells, CORE_STYLE, BEAM_STYLE, COLUMN_STYLE, SHELL_STYLE } from './kit/Shapes';
 import { RibbonBatch, type RibbonHandle, type RibbonKind } from './kit/Ribbons';
 import { LightPool, type LightHandle } from './kit/Lights';
-import { SolidPool, type SolidHandle, type SolidShape } from './kit/Solids';
+import { SolidPool, type SolidHandle } from './kit/Solids';
 import type { GroundHandle } from './kit/Ground';
 import { floorAt } from './kit/Floor';
 import { FX_EXPOSURE } from './kit/Exposure';

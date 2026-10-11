@@ -264,11 +264,9 @@ export class DungeonScene extends GameScene {
 
   /** Hooks a monster or boss up to swing ribbons, release flares and status looks. */
   private watchBody(e: Enemy, lit = false): void {
-    // The creature animator's events; Enemy keeps its rig protected.
-    const rig = (e as unknown as { rig: { creature?: Parameters<BodyFX['bindCreature']>[1] } | null }).rig;
     const t = e.def.damageType;
     const school: School = t in ELEMENTS ? (t as School) : 'physical';
-    this.body.bindCreature(e.root, rig?.creature ?? null, () => school);
+    this.body.bindCreature(e.root, e.rig?.creature ?? null, () => school);
     const s = e.sizeScale;
     this.body.trackQuery(e.root, e, { height: 1.75 * s, radius: Math.max(0.3, e.hitRadius * 0.9), lit });
   }
@@ -503,7 +501,8 @@ export class DungeonScene extends GameScene {
     this.mesh = new DungeonMesh(this.level, this.biome, levelRng);
     this.scene.add(this.mesh.root);
     this.remains?.dispose();
-    this.remains = new PropRemains(biomeArt(this.biome.id, this.level.variant), levelRng.fork('remains'));
+    const mesh = this.mesh;
+    this.remains = new PropRemains((x, y) => mesh.artAt(x, y), levelRng.fork('remains'));
     this.scene.add(this.remains.root);
     // Blood, scorch and telegraphs are flat quads. Without this they sit at
     // world zero, which is only the floor on the lowest height band: everywhere
@@ -1927,7 +1926,7 @@ export class DungeonScene extends GameScene {
     this.transitioning = true;
     this.nearWaypoint = false;
     toast('', 'info');
-    audio.play('portal');
+    audio.play('waypoint', { x: this.waypoint.position.x, z: this.waypoint.position.z });
     this.effects.gateway(this.waypoint.position.x, this.waypoint.position.y, this.waypoint.position.z, 0xffc861, 'use');
     save.touch();
     save.flush();

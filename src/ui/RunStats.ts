@@ -6,8 +6,8 @@
  * of that was recorded anywhere, so it is gathered here from the event bus.
  *
  * A "run" starts when the player walks from anywhere that is not the dungeon
- * into the dungeon, and ends on the way out (town or death). Stairs between
- * floors of the same depth do not restart it.
+ * into the dungeon, and ends on the way out (town or death). Moving between
+ * the areas of one map does not restart it.
  *
  * This also keeps `Character.playtime` honest. Nothing ever advanced it, so
  * every "time survived" and "played" figure in the game read zero.

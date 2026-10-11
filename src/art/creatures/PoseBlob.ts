@@ -24,7 +24,6 @@ export function poseOoze(a: CreatureAnimator): void {
   const H = a.info.height;
   const g = a.gait;
   const heavy = a.style.heavy;
-  const c = a.cycle * TAU;
   if (a.phase === 'death') return deathOoze(a);
   // Rolling forward: it heaves up and spreads, twice a stride, but never
   // faster than a mass can heave (small fast oozes would buzz).

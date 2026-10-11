@@ -75,14 +75,15 @@ const _s = new THREE.Vector3(1, 1, 1);
 
 export class PropRemains {
   readonly root = new THREE.Group();
-  private readonly art: BiomeArt;
+  /** The art of the zone a tile lies in. */
+  private readonly artAt: (tileX: number, tileY: number) => BiomeArt;
   private readonly rng: Rng;
   private readonly shapes = new Map<string, PieceShape[]>();
   private readonly pieces: Piece[] = [];
   private readonly owned: THREE.BufferGeometry[] = [];
 
-  constructor(art: BiomeArt, rng: Rng) {
-    this.art = art;
+  constructor(artAt: (tileX: number, tileY: number) => BiomeArt, rng: Rng) {
+    this.artAt = artAt;
     this.rng = rng;
     this.root.name = 'remains';
   }
@@ -101,7 +102,7 @@ export class PropRemains {
     if (!state) return false;
     let tmpl;
     try {
-      tmpl = remainsTemplate(it.propKind, this.art, variantFor(it.propKind, it.tileX, it.tileY), state);
+      tmpl = remainsTemplate(it.propKind, this.artAt(it.tileX, it.tileY), variantFor(it.propKind, it.tileX, it.tileY), state);
     } catch {
       return false;
     }
@@ -125,7 +126,7 @@ export class PropRemains {
    * (the hero); pieces fly away from it.
    */
   smash(it: UsedProp, rotation: number, from?: { x: number; z: number }): void {
-    const shapes = this.shapesFor(it.propKind);
+    const shapes = this.shapesFor(it.propKind, this.artAt(it.tileX, it.tileY));
     if (shapes.length === 0) return;
     const s = scaleFor(it.propKind, it.tileX, it.tileY);
     let ax = 0;
@@ -227,14 +228,15 @@ export class PropRemains {
   }
 
   /** The piece shapes of a breakable, built once per biome from the same materials as the prop. */
-  private shapesFor(kind: string): PieceShape[] {
-    const hit = this.shapes.get(kind);
+  private shapesFor(kind: string, art: BiomeArt): PieceShape[] {
+    const key = `${kind}|${art.id}`;
+    const hit = this.shapes.get(key);
     if (hit) return hit;
-    const rng = streamFor(hashString(`debris|${kind}|${this.art.id}`), 'prop');
-    const c = makeCtx(this.art, rng, 0);
+    const rng = streamFor(hashString(`debris|${kind}|${art.id}`), 'prop');
+    const c = makeCtx(art, rng, 0);
     const list = kind === 'barrel' ? barrelPieces(c, rng) : kind === 'crate' ? cratePieces(c, rng) : kind === 'urn' ? urnPieces(c, rng) : [];
     for (const s of list) this.owned.push(s.geometry);
-    this.shapes.set(kind, list);
+    this.shapes.set(key, list);
     return list;
   }
 }

@@ -8,7 +8,8 @@
  *   node tools/run-checks.mjs --skip=wallhug
  *   node tools/run-checks.mjs --browser --no-build   # reuse the current dist/
  *
- * A checker is "browser" if it drives Chromium; everything else bundles an
+ * A checker is "browser" if it drives Chromium (itself or through a `*-sheet.mjs`
+ * render tool); everything else bundles an
  * entry with `vite build --ssr` and runs it under Node. Browser checkers run
  * strictly one after another so they never share `SLAY_PORT`.
  *
@@ -49,7 +50,7 @@ const all = readdirSync(TOOLS)
   .map((f) => {
     const name = f.slice(6, -4);
     const src = readFileSync(path.join(TOOLS, f), 'utf8');
-    return { name, file: path.join(TOOLS, f), browser: /chromium|bootGame/.test(src) };
+    return { name, file: path.join(TOOLS, f), browser: /chromium|bootGame|-sheet\.mjs/.test(src) };
   })
   .filter((c) => (only ? only.includes(c.name) : true))
   .filter((c) => !skip.has(c.name))

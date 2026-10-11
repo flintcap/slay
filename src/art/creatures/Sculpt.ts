@@ -212,7 +212,6 @@ export class Sculpt {
 // ---------------------------------------------------------------------------
 
 const _q = new THREE.Quaternion();
-const _up = V(0, 1, 0);
 
 /** A cone (spike, horn, claw, tooth) from `a` pointing to `b`, base radius r. Curves toward `bend` if given. */
 export function spikeGeo(a: THREE.Vector3, b: THREE.Vector3, r: number, seg = 5, bend?: THREE.Vector3, rings = 3): THREE.BufferGeometry {
@@ -393,9 +392,4 @@ export function ringGeo(c: THREE.Vector3, r: number, tube: number, n: THREE.Vect
   g.applyQuaternion(_q);
   g.translate(c.x, c.y, c.z);
   return g;
-}
-
-/** Turns +Y onto a direction. */
-export function alongDir(dir: THREE.Vector3): THREE.Quaternion {
-  return new THREE.Quaternion().setFromUnitVectors(_up, dir.clone().normalize());
 }

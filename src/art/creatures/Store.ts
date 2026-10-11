@@ -93,11 +93,6 @@ export function releaseBakes(): void {
   memory.clear();
 }
 
-/** Bakes made this session and how many came back from storage, for checkers. */
-export function bakeStats(): { memory: number; stored: number } {
-  return { memory: memory.size, stored: stored.size };
-}
-
 /**
  * Reads every stored bake into memory. Call once at boot; resolves (never
  * rejects) within a few seconds whatever happens.

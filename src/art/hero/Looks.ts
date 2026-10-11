@@ -113,7 +113,3 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     stoop: 0.1,
   },
 };
-
-export function heroLook(classId: CharClassId): HeroLook {
-  return HERO_LOOKS[classId] ?? HERO_LOOKS.warden;
-}

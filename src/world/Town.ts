@@ -17,7 +17,7 @@
  */
 
 import * as THREE from 'three';
-import type { CharClassId, Rng } from '../types';
+import type { Rng } from '../types';
 import { Noise, clamp } from '../art/Noise';
 import { surface } from '../art/Materials';
 import { worldMaterial, WORLD_ENV_ATTRIBUTE, WORLD_SPLAT_ATTRIBUTE } from '../art/WorldMaterial';
@@ -210,47 +210,6 @@ function buildBulbs(ctx: Ctx): void {
   ctx.bulbMesh = inst;
 }
 
-function add(ctx: Ctx, geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, ry = 0): THREE.Mesh {
-  keep(ctx, geo);
-  const m = new THREE.Mesh(geo, mat);
-  m.position.set(x, y, z);
-  m.rotation.y = ry;
-  m.castShadow = true;
-  m.receiveShadow = true;
-  ctx.root.add(m);
-  return m;
-}
-
-function addBox(
-  ctx: Ctx, w: number, h: number, d: number,
-  x: number, y: number, z: number,
-  mat: THREE.Material, ry = 0, collide = false,
-): THREE.Mesh {
-  const m = add(ctx, new THREE.BoxGeometry(w, h, d), mat, x, y + h / 2, z, ry);
-  // The collider used to be `max(w, d)` on both axes, which is rotation-proof
-  // and wrong: a 5x1 wall got a 5x5 box, so two metres of open ground on each
-  // side of it were solid. Take the real axis-aligned bounds of the rotated
-  // rectangle instead — that is (w, d) when it is square-on and (d, w) when it
-  // is turned a quarter, with the correct in-between for anything else.
-  if (collide) {
-    const c = Math.abs(Math.cos(ry));
-    const s = Math.abs(Math.sin(ry));
-    ctx.colliders.push({ x, z, w: w * c + d * s, d: w * s + d * c });
-  }
-  return m;
-}
-
-function addCyl(
-  ctx: Ctx, rt: number, rb: number, h: number, seg: number,
-  x: number, y: number, z: number,
-  mat: THREE.Material, collide = false,
-): THREE.Mesh {
-  const m = add(ctx, new THREE.CylinderGeometry(rt, rb, h, seg), mat, x, y + h / 2, z);
-  if (collide) ctx.colliders.push({ x, z, w: rb * 2, d: rb * 2 });
-  return m;
-}
-
-/** A warm point light plus its emissive bulb, registered for flicker. */
 /**
  * `lit` decides whether this lantern is a real light or only a glowing bulb.
  *

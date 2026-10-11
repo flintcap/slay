@@ -23,7 +23,6 @@ import type { Rng } from '../types';
 
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
-const _c = new THREE.Vector3();
 const _n = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
@@ -404,22 +403,6 @@ export function displace(geo: THREE.BufferGeometry, rng: Rng, amount: number, sc
   return geo;
 }
 
-/** Bends a geometry around the X axis — capes, banners, curved plate. */
-export function bend(geo: THREE.BufferGeometry, amount: number, axis: 'x' | 'z' = 'z'): THREE.BufferGeometry {
-  const pos = geo.getAttribute('position') as THREE.BufferAttribute;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const z = pos.getZ(i);
-    if (axis === 'z') pos.setZ(i, z + x * x * amount);
-    else pos.setX(i, x + z * z * amount);
-    void y;
-  }
-  pos.needsUpdate = true;
-  geo.computeVertexNormals();
-  return geo;
-}
-
 /** Tapers along Y: scale 1 at the bottom, `top` at the top. */
 export function taper(geo: THREE.BufferGeometry, top: number, bottom = 1): THREE.BufferGeometry {
   const pos = geo.getAttribute('position') as THREE.BufferAttribute;
@@ -434,29 +417,6 @@ export function taper(geo: THREE.BufferGeometry, top: number, bottom = 1): THREE
     const k = lerp(bottom, top, t);
     pos.setX(i, pos.getX(i) * k);
     pos.setZ(i, pos.getZ(i) * k);
-  }
-  pos.needsUpdate = true;
-  geo.computeVertexNormals();
-  return geo;
-}
-
-/** Twists around Y by `radians` from bottom to top. */
-export function twist(geo: THREE.BufferGeometry, radians: number): THREE.BufferGeometry {
-  const pos = geo.getAttribute('position') as THREE.BufferAttribute;
-  geo.computeBoundingBox();
-  const bb = geo.boundingBox;
-  if (!bb) return geo;
-  const y0 = bb.min.y;
-  const span = Math.max(1e-5, bb.max.y - y0);
-  for (let i = 0; i < pos.count; i++) {
-    const t = (pos.getY(i) - y0) / span;
-    const a = t * radians;
-    const ca = Math.cos(a);
-    const sa = Math.sin(a);
-    const x = pos.getX(i);
-    const z = pos.getZ(i);
-    pos.setX(i, x * ca - z * sa);
-    pos.setZ(i, x * sa + z * ca);
   }
   pos.needsUpdate = true;
   geo.computeVertexNormals();
@@ -888,39 +848,6 @@ export function spike(length: number, radius: number, sides = 6, curve = 0.2): T
   const base = new THREE.Vector3(0, 0, 0);
   const down = new THREE.Vector3(0, -1, 0);
   for (let j = 0; j < sides; j++) g.tri(base, pts[0][j], pts[0][(j + 1) % sides], down);
-  return g.build();
-}
-
-/**
- * A faceted gemstone: a table, a crown of facets and a pointed pavilion.
- * Flat-shaded so every facet catches its own highlight.
- */
-export function gem(radius: number, sides = 8, tableRatio = 0.55): THREE.BufferGeometry {
-  const g = new GeoBuilder();
-  g.uvScale = 0.2;
-  const crownY = radius * 0.42;
-  const girdleY = radius * 0.1;
-  const tipY = -radius * 1.15;
-  const table: THREE.Vector3[] = [];
-  const crown: THREE.Vector3[] = [];
-  const girdle: THREE.Vector3[] = [];
-  for (let j = 0; j < sides; j++) {
-    const a = (j / sides) * Math.PI * 2;
-    const a2 = ((j + 0.5) / sides) * Math.PI * 2;
-    table.push(new THREE.Vector3(Math.cos(a) * radius * tableRatio, crownY, Math.sin(a) * radius * tableRatio));
-    crown.push(new THREE.Vector3(Math.cos(a2) * radius * 0.86, girdleY + radius * 0.14, Math.sin(a2) * radius * 0.86));
-    girdle.push(new THREE.Vector3(Math.cos(a) * radius, girdleY, Math.sin(a) * radius));
-  }
-  const centreTop = new THREE.Vector3(0, crownY, 0);
-  const tip = new THREE.Vector3(0, tipY, 0);
-  const up = new THREE.Vector3(0, 1, 0);
-  for (let j = 0; j < sides; j++) {
-    const j2 = (j + 1) % sides;
-    g.tri(centreTop, table[j], table[j2], up);
-    g.quad(table[j], girdle[j], crown[j], table[j2]);
-    g.quad(table[j2], crown[j], girdle[j2], table[j2]);
-    g.tri(girdle[j], tip, girdle[j2]);
-  }
   return g.build();
 }
 

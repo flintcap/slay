@@ -2,7 +2,7 @@
  * SLAY — biome definitions.
  *
  * Each biome is a complete visual identity: fog, ambient, key light, material
- * palette, accent/emissive colour, ceiling treatment, liquid, prop vocabulary
+ * palette, accent/emissive colour, ceiling treatment, liquid
  * and preferred layouts. The rule of thumb applied here is *a screenshot with
  * no UI must be unambiguous* — crypt cannot be mistaken for frostvault, hive
  * cannot be mistaken for foundry. That means each one commits hard to a hue
@@ -10,7 +10,7 @@
  * toward the same grey-brown mush.
  *
  * `BiomeDef` is the contract type consumed by everyone. `BiomeArt` is the
- * extended, world-owned config that the dungeon builder and prop placer read.
+ * extended, world-owned config that the dungeon builder reads (props dress from `art/props/Dressing.ts`).
  */
 
 import type { BiomeDef, BiomeId, LayoutKind, MonsterFamily, Rng } from '../types';
@@ -67,9 +67,6 @@ export interface BiomeArt {
   liquid: LiquidKind;
   liquidColor: number;
   liquidEmissive: number;
-  /** Primary wall-light prop and its spacing in tiles. */
-  wallLight: string;
-  wallLightSpacing: number;
   /** Colour + reach of a single torch pool. */
   lightColor: number;
   lightIntensity: number;
@@ -82,25 +79,6 @@ export interface BiomeArt {
   /** Emissive floor-crack veins (lava, void, ice glow). 0 disables. */
   veinDensity: number;
   veinColor: number;
-  /** Weighted prop vocabulary. Keys resolve in Props.ts. */
-  props: Array<{ kind: string; weight: number }>;
-  /** Props that hug walls rather than sitting in the open. */
-  wallProps: Array<{ kind: string; weight: number }>;
-  /** Big set-dressing placed at room centres. */
-  featureProps: Array<{ kind: string; weight: number }>;
-  /**
-   * The hero piece for a big room (11x11 and up), stood on an inlaid floor
-   * seal. Falls back to `featureProps` when absent.
-   */
-  landmarks?: Array<{ kind: string; weight: number }>;
-  /**
-   * Ground detail: grit, chips, drifts, growth. Scattered far more densely than
-   * clutter because none of it blocks, collides or casts a shadow. This is the
-   * layer that stops a floor reading as a plane with objects on it.
-   */
-  detailProps: Array<{ kind: string; weight: number }>;
-  /** Pillar prop used on room grids, or null for none. */
-  pillar: string | null;
   /** How cracked/damaged the floor reads, 0..1. */
   damage: number;
   /** Puddle coverage 0..1 — reflective patches. */
@@ -538,7 +516,6 @@ export function biomeForDepth(depth: number, rng: Rng): BiomeId {
 const ART: Partial<Record<BiomeId, BiomeArt>> = {
   crypt: {
     id: 'crypt',
-    landmarks: [{ kind: 'ossuary', weight: 5 }, { kind: 'statue', weight: 3 }, { kind: 'altar', weight: 2 }],
     grade: { contrast: 1.1, saturation: 0.96, shadowTint: 0x5a78a8, highlightTint: 0xffc890, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x6a7a9a },
     grime: 0x2b2620,
     wetness: 0.22,
@@ -563,8 +540,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     liquid: 'water',
     liquidColor: 0x14202a,
     liquidEmissive: 0x000000,
-    wallLight: 'torch',
-    wallLightSpacing: 7,
     lightColor: 0xff8a3c,
     lightIntensity: 6.5,
     lightDistance: 13,
@@ -573,30 +548,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     shaftColor: 0xbfd0ff,
     veinDensity: 0,
     veinColor: 0x000000,
-    props: [
-      { kind: 'sarcophagus', weight: 5 },
-      { kind: 'bonepile', weight: 6 },
-      { kind: 'barrel', weight: 3 },
-      { kind: 'urn', weight: 4 },
-      { kind: 'rubblePile', weight: 4 },
-      { kind: 'candleCluster', weight: 3 },
-      { kind: 'brokenColumn', weight: 3 },
-    ],
-    wallProps: [
-      { kind: 'torch', weight: 10 },
-      { kind: 'wallSkull', weight: 3 },
-      { kind: 'bookcase', weight: 2 },
-      { kind: 'chain', weight: 3 },
-      { kind: 'banner', weight: 2 },
-    ],
-    featureProps: [
-      { kind: 'sarcophagus', weight: 5 },
-      { kind: 'brazier', weight: 6 },
-      { kind: 'altar', weight: 3 },
-      { kind: 'statue', weight: 4 },
-    ],
-    detailProps: [{ kind: 'boneChips', weight: 7 }, { kind: 'pebbles', weight: 6 }, { kind: 'ashDrift', weight: 3 }, { kind: 'mossPatch', weight: 2 }],
-    pillar: 'pillarGothic',
     damage: 0.35,
     puddles: 0.1,
     roomMaterialVariance: 0.3,
@@ -604,7 +555,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   caverns: {
     id: 'caverns',
-    landmarks: [{ kind: 'crystalCluster', weight: 6 }, { kind: 'shrine', weight: 1 }],
     grade: { contrast: 1.08, saturation: 0.9, shadowTint: 0x2e4c4a, highlightTint: 0xe0f4e8, splitTone: 0.38, vignette: 0.52, vignetteTint: 0x24302e, bloomStrength: 0.72, bloomThreshold: 0.86 },
     grime: 0x1e2a22,
     // At 0.55 the wet sheen and the teal grade turned the rock walls into
@@ -632,8 +582,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     liquid: 'water',
     liquidColor: 0x0f3a40,
     liquidEmissive: 0x0a2e34,
-    wallLight: 'glowShroom',
-    wallLightSpacing: 6,
     lightColor: 0x78d8bc,
     lightIntensity: 4.2,
     lightDistance: 11,
@@ -642,26 +590,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     shaftColor: 0x7fffe0,
     veinDensity: 0.12,
     veinColor: 0x2affc0,
-    props: [
-      { kind: 'stalagmite', weight: 10 },
-      { kind: 'rockCluster', weight: 7 },
-      { kind: 'mushroomCluster', weight: 5 },
-      { kind: 'bonepile', weight: 2 },
-      { kind: 'crystalShard', weight: 4 },
-      { kind: 'barrel', weight: 1 },
-    ],
-    wallProps: [
-      { kind: 'glowShroom', weight: 10 },
-      { kind: 'rootTangle', weight: 4 },
-      { kind: 'crystalShard', weight: 5 },
-    ],
-    featureProps: [
-      { kind: 'crystalCluster', weight: 8 },
-      { kind: 'stalagmite', weight: 5 },
-      { kind: 'shrine', weight: 2 },
-    ],
-    detailProps: [{ kind: 'pebbles', weight: 7 }, { kind: 'mossPatch', weight: 6 }, { kind: 'sporeTuft', weight: 5 }, { kind: 'grassTuft', weight: 3 }],
-    pillar: 'stalacColumn',
     damage: 0.15,
     puddles: 0.4,
     roomMaterialVariance: 0.2,
@@ -669,7 +597,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   foundry: {
     id: 'foundry',
-    landmarks: [{ kind: 'forge', weight: 5 }, { kind: 'smeltingVat', weight: 4 }],
     // Cool shadows against the furnace light. Warm on warm (the first grade)
     // turned every surface the same red and the frame lost its depth.
     grade: { contrast: 1.12, saturation: 0.98, shadowTint: 0x4a5874, highlightTint: 0xffb060, splitTone: 0.42, vignette: 0.52, vignetteTint: 0x6a4030, lift: [0.008, 0.005, 0.006], bloomStrength: 0.75, bloomRadius: 0.6, bloomThreshold: 0.86 },
@@ -699,8 +626,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     liquid: 'lava',
     liquidColor: 0xff4a10,
     liquidEmissive: 0xff7a20,
-    wallLight: 'forgeSconce',
-    wallLightSpacing: 6,
     lightColor: 0xff6a1e,
     lightIntensity: 8.5,
     lightDistance: 15,
@@ -709,29 +634,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     shaftColor: 0xff9a50,
     veinDensity: 0.3,
     veinColor: 0xff5a14,
-    props: [
-      { kind: 'anvil', weight: 6 },
-      { kind: 'pipeCluster', weight: 8 },
-      { kind: 'crate', weight: 4 },
-      { kind: 'barrel', weight: 4 },
-      { kind: 'ingotStack', weight: 5 },
-      { kind: 'gear', weight: 5 },
-      { kind: 'rubblePile', weight: 3 },
-    ],
-    wallProps: [
-      { kind: 'forgeSconce', weight: 10 },
-      { kind: 'pipeRun', weight: 8 },
-      { kind: 'chain', weight: 5 },
-      { kind: 'valveWheel', weight: 4 },
-    ],
-    featureProps: [
-      { kind: 'forge', weight: 8 },
-      { kind: 'anvil', weight: 6 },
-      { kind: 'brazier', weight: 4 },
-      { kind: 'smeltingVat', weight: 5 },
-    ],
-    detailProps: [{ kind: 'slagChunk', weight: 8 }, { kind: 'scorchMark', weight: 5 }, { kind: 'pebbles', weight: 4 }, { kind: 'ashDrift', weight: 3 }],
-    pillar: 'pillarIron',
     damage: 0.5,
     puddles: 0.05,
     roomMaterialVariance: 0.4,
@@ -739,7 +641,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   sunkenTemple: {
     id: 'sunkenTemple',
-    landmarks: [{ kind: 'idolHead', weight: 5 }, { kind: 'fountain', weight: 4 }, { kind: 'statue', weight: 2 }],
     grade: { contrast: 1.08, saturation: 0.94, shadowTint: 0x2a4c56, highlightTint: 0xffe0a0, splitTone: 0.42, vignette: 0.5, vignetteTint: 0x22343a, bloomStrength: 0.7, bloomThreshold: 0.88 },
     grime: 0x1f3229,
     wetness: 0.65,
@@ -765,8 +666,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     // A flooded floor in bright teal read as a glowing pool, not drowned stone.
     liquidColor: 0x0c2a32,
     liquidEmissive: 0x06222a,
-    wallLight: 'templeLantern',
-    wallLightSpacing: 8,
     lightColor: 0xffd27a,
     lightIntensity: 5.5,
     lightDistance: 14,
@@ -775,29 +674,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     shaftColor: 0x9ff0ff,
     veinDensity: 0.05,
     veinColor: 0x50e0ff,
-    props: [
-      { kind: 'urn', weight: 6 },
-      { kind: 'brokenColumn', weight: 7 },
-      { kind: 'statue', weight: 5 },
-      { kind: 'rubblePile', weight: 4 },
-      { kind: 'lilyPad', weight: 4 },
-      { kind: 'rootTangle', weight: 3 },
-      { kind: 'crate', weight: 2 },
-    ],
-    wallProps: [
-      { kind: 'templeLantern', weight: 10 },
-      { kind: 'banner', weight: 4 },
-      { kind: 'wallRelief', weight: 6 },
-      { kind: 'rootTangle', weight: 4 },
-    ],
-    featureProps: [
-      { kind: 'altar', weight: 7 },
-      { kind: 'statue', weight: 7 },
-      { kind: 'fountain', weight: 5 },
-      { kind: 'shrine', weight: 4 },
-    ],
-    detailProps: [{ kind: 'sandDrift', weight: 7 }, { kind: 'mossPatch', weight: 6 }, { kind: 'pebbles', weight: 5 }, { kind: 'shellFragment', weight: 3 }],
-    pillar: 'pillarFluted',
     damage: 0.45,
     puddles: 0.65,
     roomMaterialVariance: 0.35,
@@ -805,7 +681,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   hive: {
     id: 'hive',
-    landmarks: [{ kind: 'broodMound', weight: 6 }],
     grade: { contrast: 1.1, saturation: 0.88, shadowTint: 0x5a4a72, highlightTint: 0xffd070, splitTone: 0.45, vignette: 0.55, vignetteTint: 0x3a2a3a, bloomStrength: 0.72 },
     grime: 0x2c1a26,
     wetness: 0.45,
@@ -829,8 +704,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     liquid: 'sludge',
     liquidColor: 0x3a5a12,
     liquidEmissive: 0x2a4a08,
-    wallLight: 'eggSac',
-    wallLightSpacing: 5,
     lightColor: 0xffc23c,
     lightIntensity: 4.8,
     lightDistance: 10,
@@ -839,27 +712,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     shaftColor: 0xd08aff,
     veinDensity: 0.35,
     veinColor: 0xffb02a,
-    props: [
-      { kind: 'eggSac', weight: 9 },
-      { kind: 'webClump', weight: 8 },
-      { kind: 'chitinSpike', weight: 7 },
-      { kind: 'cocoon', weight: 6 },
-      { kind: 'bonepile', weight: 4 },
-      { kind: 'fleshGrowth', weight: 5 },
-    ],
-    wallProps: [
-      { kind: 'eggSac', weight: 10 },
-      { kind: 'webSheet', weight: 9 },
-      { kind: 'cocoon', weight: 6 },
-      { kind: 'chitinSpike', weight: 5 },
-    ],
-    featureProps: [
-      { kind: 'broodMound', weight: 8 },
-      { kind: 'eggSac', weight: 6 },
-      { kind: 'shrine', weight: 2 },
-    ],
-    detailProps: [{ kind: 'shellFragment', weight: 8 }, { kind: 'sporeTuft', weight: 5 }, { kind: 'mossPatch', weight: 4 }, { kind: 'boneChips', weight: 3 }],
-    pillar: 'chitinColumn',
     damage: 0.2,
     puddles: 0.25,
     roomMaterialVariance: 0.15,
@@ -867,7 +719,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   frostvault: {
     id: 'frostvault',
-    landmarks: [{ kind: 'iceMonolith', weight: 5 }, { kind: 'statue', weight: 2 }],
     grade: { exposure: 0.96, contrast: 1.08, saturation: 0.9, shadowTint: 0x5f8fd0, highlightTint: 0xf0f8ff, splitTone: 0.5, vignette: 0.4, vignetteTint: 0x6a8ab0, bloomStrength: 0.55, bloomThreshold: 1.0 },
     grime: 0x34465a,
     wetness: 0.3,
@@ -893,8 +744,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     liquid: 'ice',
     liquidColor: 0x7fd0f0,
     liquidEmissive: 0x2a6a90,
-    wallLight: 'iceLantern',
-    wallLightSpacing: 8,
     lightColor: 0x9fdcff,
     lightIntensity: 5.0,
     lightDistance: 14,
@@ -903,28 +752,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     shaftColor: 0xd8f0ff,
     veinDensity: 0.18,
     veinColor: 0x6fd8ff,
-    props: [
-      { kind: 'iceShard', weight: 10 },
-      { kind: 'frozenCorpse', weight: 5 },
-      { kind: 'crate', weight: 3 },
-      { kind: 'sarcophagus', weight: 4 },
-      { kind: 'rubblePile', weight: 3 },
-      { kind: 'crystalShard', weight: 5 },
-    ],
-    wallProps: [
-      { kind: 'iceLantern', weight: 10 },
-      { kind: 'icicleRow', weight: 9 },
-      { kind: 'chain', weight: 3 },
-      { kind: 'banner', weight: 2 },
-    ],
-    featureProps: [
-      { kind: 'iceMonolith', weight: 8 },
-      { kind: 'sarcophagus', weight: 5 },
-      { kind: 'shrine', weight: 3 },
-      { kind: 'brazier', weight: 3 },
-    ],
-    detailProps: [{ kind: 'iceCrust', weight: 8 }, { kind: 'pebbles', weight: 5 }, { kind: 'boneChips', weight: 3 }, { kind: 'sandDrift', weight: 2 }],
-    pillar: 'pillarIce',
     damage: 0.25,
     puddles: 0.3,
     roomMaterialVariance: 0.3,
@@ -932,7 +759,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   ashwaste: {
     id: 'ashwaste',
-    landmarks: [{ kind: 'obelisk', weight: 4 }, { kind: 'statue', weight: 2 }],
     // Cool, ashen shadows under a hot sky. Warm on warm rendered the whole
     // frame one red, floor, walls and monsters alike.
     grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x585a66, highlightTint: 0xffa070, splitTone: 0.42, vignette: 0.5, vignetteTint: 0x4a3a34, lift: [0.01, 0.009, 0.009] },
@@ -959,8 +785,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     liquid: 'lava',
     liquidColor: 0xd8400c,
     liquidEmissive: 0xff6a20,
-    wallLight: 'brazier',
-    wallLightSpacing: 10,
     lightColor: 0xff8f4a,
     lightIntensity: 6.0,
     lightDistance: 13,
@@ -969,28 +793,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     shaftColor: 0xffb070,
     veinDensity: 0.1,
     veinColor: 0xff5a1a,
-    props: [
-      { kind: 'brokenColumn', weight: 8 },
-      { kind: 'rubblePile', weight: 10 },
-      { kind: 'deadTree', weight: 6 },
-      { kind: 'boneSpire', weight: 5 },
-      { kind: 'statue', weight: 3 },
-      { kind: 'crate', weight: 2 },
-      { kind: 'rockCluster', weight: 6 },
-    ],
-    wallProps: [
-      { kind: 'brazier', weight: 8 },
-      { kind: 'banner', weight: 5 },
-      { kind: 'wallRelief', weight: 3 },
-    ],
-    featureProps: [
-      { kind: 'obelisk', weight: 8 },
-      { kind: 'brazier', weight: 6 },
-      { kind: 'altar', weight: 4 },
-      { kind: 'deadTree', weight: 5 },
-    ],
-    detailProps: [{ kind: 'ashDrift', weight: 8 }, { kind: 'scorchMark', weight: 6 }, { kind: 'boneChips', weight: 5 }, { kind: 'pebbles', weight: 4 }],
-    pillar: 'pillarBroken',
     damage: 0.75,
     puddles: 0.02,
     roomMaterialVariance: 0.35,
@@ -998,7 +800,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   voidspire: {
     id: 'voidspire',
-    landmarks: [{ kind: 'voidRift', weight: 4 }, { kind: 'obelisk', weight: 3 }],
     grade: { contrast: 1.12, saturation: 0.72, shadowTint: 0x3a3448, highlightTint: 0xe8d4e4, splitTone: 0.45, vignette: 0.56, vignetteTint: 0x2a2038, bloomStrength: 0.72, bloomThreshold: 0.88 },
     grime: 0x1a1028,
     wetness: 0.12,
@@ -1029,8 +830,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     liquid: 'voidwater',
     liquidColor: 0x22123a,
     liquidEmissive: 0x4a2a7c,
-    wallLight: 'voidFlame',
-    wallLightSpacing: 7,
     lightColor: 0xb4a2cc,
     lightIntensity: 6.2,
     lightDistance: 13,
@@ -1040,26 +839,6 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     // Dense bright veins read as purple squiggles over the whole floor.
     veinDensity: 0.07,
     veinColor: 0x6a3a98,
-    props: [
-      { kind: 'voidShard', weight: 10 },
-      { kind: 'floatingStone', weight: 7 },
-      { kind: 'obelisk', weight: 5 },
-      { kind: 'runeStone', weight: 6 },
-      { kind: 'bonepile', weight: 3 },
-      { kind: 'crystalShard', weight: 5 },
-    ],
-    wallProps: [
-      { kind: 'voidFlame', weight: 10 },
-      { kind: 'runeStone', weight: 6 },
-      { kind: 'chain', weight: 3 },
-    ],
-    featureProps: [
-      { kind: 'voidRift', weight: 9 },
-      { kind: 'obelisk', weight: 6 },
-      { kind: 'altar', weight: 4 },
-    ],
-    detailProps: [{ kind: 'voidMote', weight: 7 }, { kind: 'pebbles', weight: 5 }, { kind: 'ashDrift', weight: 3 }, { kind: 'boneChips', weight: 2 }],
-    pillar: 'pillarVoid',
     damage: 0.3,
     puddles: 0.08,
     roomMaterialVariance: 0.25,
@@ -1136,7 +915,6 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
         lightColor: 0xffc46a,
         lightIntensity: 8.4,
         lightDistance: 16,
-        wallLightSpacing: 4,
         bounceColor: 0x6a4a2a,
         shaftDensity: 0.3,
         puddles: 0,
@@ -1436,8 +1214,6 @@ export function biomeArt(id: BiomeId, variant?: string): BiomeArt {
 // liquid and grade. Each starts from its closest old look.
 // ---------------------------------------------------------------------------
 
-const W = (kind: string, weight: number): { kind: string; weight: number } => ({ kind, weight });
-
 ART.darkForest = {
   ...ART.caverns!,
   id: 'darkForest',
@@ -1457,8 +1233,6 @@ ART.darkForest = {
   liquid: 'water',
   liquidColor: 0x0a1612,
   liquidEmissive: 0x000000,
-  wallLight: 'glowShroom',
-  wallLightSpacing: 14,
   lightColor: 0xffa860,
   lightIntensity: 4.5,
   lightDistance: 12,
@@ -1466,12 +1240,6 @@ ART.darkForest = {
   shaftDensity: 0.25,
   shaftColor: 0xa8c0e0,
   veinDensity: 0,
-  props: [W('rockCluster', 8), W('mushroomCluster', 7), W('rootTangle', 6), W('deadTree', 4), W('bonepile', 2), W('runeStone', 1)],
-  wallProps: [W('rootTangle', 8), W('mushroomCluster', 6), W('rockCluster', 5)],
-  featureProps: [W('runeStone', 4), W('rockCluster', 5), W('deadTree', 4), W('shrine', 2)],
-  landmarks: [W('runeStone', 5), W('shrine', 2), W('statue', 2)],
-  detailProps: [W('mossPatch', 7), W('grassTuft', 7), W('pebbles', 5), W('sporeTuft', 3)],
-  pillar: null,
   damage: 0.2,
   puddles: 0.15,
   grade: { contrast: 1.1, saturation: 0.82, shadowTint: 0x2a4a5a, highlightTint: 0xd8e0c8, splitTone: 0.5, vignette: 0.58, vignetteTint: 0x0a1418 },
@@ -1496,20 +1264,12 @@ ART.swamp = {
   liquid: 'sludge',
   liquidColor: 0x1a2412,
   liquidEmissive: 0x000000,
-  wallLight: 'glowShroom',
-  wallLightSpacing: 14,
   lightColor: 0xc8e070,
   lightIntensity: 3.8,
   lightDistance: 11,
   bounceColor: 0x223018,
   shaftDensity: 0,
   veinDensity: 0,
-  props: [W('deadTree', 8), W('rootTangle', 7), W('mushroomCluster', 5), W('bonepile', 3), W('lilyPad', 4), W('rockCluster', 3)],
-  wallProps: [W('rootTangle', 8), W('deadTree', 4), W('mushroomCluster', 4)],
-  featureProps: [W('deadTree', 6), W('runeStone', 2), W('shrine', 2)],
-  landmarks: [W('runeStone', 3), W('statue', 2), W('shrine', 2)],
-  detailProps: [W('mossPatch', 8), W('grassTuft', 6), W('sporeTuft', 4), W('pebbles', 3)],
-  pillar: null,
   damage: 0.2,
   puddles: 0.45,
   grade: { contrast: 1.08, saturation: 0.78, shadowTint: 0x2a3a22, highlightTint: 0xd8e0a0, splitTone: 0.5, vignette: 0.6, vignetteTint: 0x10180c },
@@ -1534,20 +1294,12 @@ ART.desert = {
   liquid: 'none',
   liquidColor: 0x2a3a40,
   liquidEmissive: 0x000000,
-  wallLight: 'brazier',
-  wallLightSpacing: 16,
   lightColor: 0xffb060,
   lightIntensity: 4.5,
   lightDistance: 12,
   bounceColor: 0x6a4a2a,
   shaftDensity: 0,
   veinDensity: 0,
-  props: [W('rockCluster', 9), W('brokenColumn', 6), W('bonepile', 4), W('rubblePile', 5), W('urn', 2), W('obelisk', 1)],
-  wallProps: [W('rockCluster', 8), W('brokenColumn', 4), W('rubblePile', 4)],
-  featureProps: [W('obelisk', 5), W('brokenColumn', 5), W('statue', 3), W('altar', 2)],
-  landmarks: [W('obelisk', 5), W('statue', 3)],
-  detailProps: [W('pebbles', 7), W('boneChips', 3), W('scorchMark', 2)],
-  pillar: null,
   damage: 0.3,
   puddles: 0,
   grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x4a4a6a, highlightTint: 0xffdcb0, splitTone: 0.48, vignette: 0.48, vignetteTint: 0x3a2818, haze: 0.8 },
@@ -1572,16 +1324,8 @@ ART.tundra = {
   liquid: 'water',
   liquidColor: 0x1a3040,
   liquidEmissive: 0x000000,
-  wallLight: 'iceLantern',
-  wallLightSpacing: 16,
   shaftDensity: 0,
   veinDensity: 0,
-  props: [W('iceShard', 8), W('rockCluster', 8), W('frozenCorpse', 3), W('deadTree', 4), W('bonepile', 2)],
-  wallProps: [W('iceShard', 7), W('rockCluster', 6)],
-  featureProps: [W('iceMonolith', 5), W('iceShard', 5), W('runeStone', 2)],
-  landmarks: [W('iceMonolith', 5), W('statue', 2)],
-  detailProps: [W('pebbles', 6), W('boneChips', 2)],
-  pillar: null,
   damage: 0.15,
   puddles: 0,
   grade: { contrast: 1.08, saturation: 0.78, shadowTint: 0x3a5a7a, highlightTint: 0xe0f0ff, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x1a2a3a },
@@ -1606,8 +1350,6 @@ ART.hell = {
   liquid: 'lava',
   liquidColor: 0xd03008,
   liquidEmissive: 0xff4a10,
-  wallLight: 'brazier',
-  wallLightSpacing: 12,
   lightColor: 0xff6a30,
   lightIntensity: 6,
   lightDistance: 13,
@@ -1615,12 +1357,6 @@ ART.hell = {
   shaftDensity: 0,
   veinDensity: 0.14,
   veinColor: 0xff4a10,
-  props: [W('boneSpire', 7), W('rockCluster', 7), W('bonepile', 6), W('obelisk', 2), W('fleshGrowth', 3), W('brazier', 2)],
-  wallProps: [W('boneSpire', 6), W('rockCluster', 6), W('brazier', 3)],
-  featureProps: [W('obelisk', 5), W('boneSpire', 5), W('altar', 3), W('brazier', 4)],
-  landmarks: [W('obelisk', 5), W('altar', 3)],
-  detailProps: [W('ashDrift', 7), W('scorchMark', 6), W('boneChips', 5)],
-  pillar: null,
   damage: 0.35,
   puddles: 0,
   grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x3a3038, highlightTint: 0xffc090, splitTone: 0.42, vignette: 0.52, vignetteTint: 0x2a1410, haze: 0.45 },
@@ -1647,14 +1383,8 @@ ART.desertTomb = {
   trim: { palette: 'stone.temple', weight: 1, tint: 0xb8a080 },
   baseTrim: 'stone.temple',
   liquid: 'none',
-  wallLight: 'torch',
-  wallLightSpacing: 6,
   lightColor: 0xffa050,
   bounceColor: 0x4a3420,
-  props: [W('sarcophagus', 6), W('urn', 8), W('brokenColumn', 5), W('bonepile', 4), W('rubblePile', 4), W('statue', 2), W('chest', 1)],
-  wallProps: [W('torch', 8), W('wallRelief', 6), W('urn', 4)],
-  featureProps: [W('sarcophagus', 6), W('statue', 4), W('altar', 3), W('obelisk', 2)],
-  landmarks: [W('sarcophagus', 4), W('obelisk', 3), W('statue', 3)],
   grade: { contrast: 1.1, saturation: 0.9, shadowTint: 0x4a3a5a, highlightTint: 0xffc080, splitTone: 0.45, vignette: 0.52, vignetteTint: 0x2a1a10 },
 };
 

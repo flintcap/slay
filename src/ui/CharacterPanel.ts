@@ -223,7 +223,7 @@ export class CharacterPanel {
     this.identity.appendChild(xpRow);
 
     const facts = div('char-facts');
-    facts.appendChild(this.fact('Deepest', `Depth ${c.depthRecord}`, 'descend'));
+    facts.appendChild(this.fact('Deepest', `Tier ${c.depthRecord}`, 'descend'));
     facts.appendChild(this.fact('Survived', duration(c.playtime), 'hourglass'));
     facts.appendChild(this.fact('Gold', fmtInt(c.gold), 'coin'));
     facts.appendChild(this.fact('Life', fmt(st.life), 'life'));

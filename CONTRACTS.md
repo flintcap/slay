@@ -44,7 +44,6 @@ export function warmMaterials(onProgress: (p: number, label: string) => void): P
  */
 export function surface(key: string, opts?: SurfaceOpts): THREE.MeshStandardMaterial;
 export function surfaceVariant(key: string, opts: SurfaceOpts): THREE.MeshStandardMaterial;
-export function paletteKeys(): string[];
 /** The key's base colour (sRGB hex): what a flat-coloured copy should use. */
 export function surfaceBaseColor(key: string): number;
 
@@ -93,7 +92,7 @@ export function setWorldRoof(x: number, z: number, radius: number): void;
 export function addWorldCutaway<M extends THREE.Material>(mat: M): M;
 ```
 
-Small effect textures (glow, beam, rune ring, web, crack, macro noise) live in
+Small effect textures (glow, rune ring, web, crack, macro noise) live in
 `src/fx/UtilityTextures.ts`, owned by vfx.
 
 ## `src/art/Meshes.ts` — owned by ART
@@ -117,7 +116,7 @@ export function mergeGeometries(list: THREE.BufferGeometry[]): THREE.BufferGeome
 // src/art/ItemModels.ts (the public facade; builders live in src/art/items/)
 /** A held / shown model. Grip at the origin, business end along +Y, wide on X, thin on Z. Metres. */
 export function buildItemModel(visual: ItemVisual, rng: Rng, rarity: ItemRarity, ident?: ItemIdent): THREE.Object3D;
-/** The item lying on the floor, plus the rarity glow (vfx owns the beam's look). */
+/** The item lying on the floor, nothing else: LootFX draws its beam and floor glow. */
 export function buildDropModel(item: Item, rng: Rng): THREE.Object3D;
 export type ItemIdent = Pick<Item, 'baseId'> & Partial<Pick<Item, 'uniqueId' | 'setId'>>;
 ```
@@ -537,8 +536,7 @@ light-adding effect shader. `EffectSystem.update` lowers it while flashes
 pile up so a busy fight stays coloured. Telegraphs ignore it.
 
 `LootFX` draws resting drops' beams, floor pools and lights itself, pooled.
-Any child of an item model named `beam`, `pool`, `sigil` or `dropLight` is
-hidden when the drop is launched and never shown again.
+Item drop models carry no beam, pool or light of their own.
 
 ## `src/sim/Stats.ts` — owned by CHARACTER
 

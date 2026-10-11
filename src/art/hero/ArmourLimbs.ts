@@ -279,7 +279,6 @@ export function boots(k: Kit): Anchor[] {
     const s = L ? 1 : -1;
     const gl = L ? G.legL : G.legR;
     const gf = L ? G.footL : G.footR;
-    const K = k.j[bone('shin', L)];
     const A = k.j[bone('foot', L)];
     const T = k.j[bone('toe', L)];
     const fwd = T.clone().sub(A).setY(0).normalize();

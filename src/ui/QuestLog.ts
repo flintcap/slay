@@ -108,7 +108,7 @@ export class QuestLogPanel {
   private ensure(): void {
     if (this.quest) return;
     this.quest = {
-      name: runtime.depth > 0 ? `Descent — Depth ${runtime.depth}` : 'Contract',
+      name: runtime.depth > 0 ? `Tier ${runtime.depth} contract` : 'Contract',
       flavor: 'The guild pays by the corpse and asks no questions about method.',
       objectives: [],
       complete: false,
@@ -119,7 +119,7 @@ export class QuestLogPanel {
     clear(this.body);
     const q = this.quest;
     if (!q || (!q.objectives.length && !q.complete)) {
-      this.body.appendChild(emptyState('No active contract. Take the stairs down and one will find you.', 'quest'));
+      this.body.appendChild(emptyState('No active contract. Step through a town portal and one will find you.', 'quest'));
       return;
     }
 
@@ -161,7 +161,7 @@ export class QuestLogPanel {
     if (q.complete) {
       const done = div('trade-note');
       done.appendChild(icon('check', { size: 13 }));
-      done.appendChild(span('', 'Contract fulfilled. Collect at the stairs.'));
+      done.appendChild(span('', 'Contract fulfilled. Paid when you clear the map.'));
       this.body.appendChild(done);
     }
   }

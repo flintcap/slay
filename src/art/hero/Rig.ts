@@ -224,11 +224,6 @@ export function heroJoints(s: BodyShape): JointMap {
   return j;
 }
 
-/** Direction from one joint to the next in the bind pose. */
-export function boneDir(j: JointMap, from: HeroBone, to: HeroBone): THREE.Vector3 {
-  return j[to].clone().sub(j[from]).normalize();
-}
-
 /**
  * A socket's frame in character space at rest, as position plus basis.
  *

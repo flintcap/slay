@@ -57,11 +57,6 @@ export type SpriteName = keyof typeof SPRITE;
 
 /** Sprites that are eight-frame flipbooks. */
 export const FLIPBOOKS = new Set<number>([SPRITE.flame, SPRITE.smoke, SPRITE.gas, SPRITE.fireball]);
-/** Sprites with eight random variants along their row (one picked per particle). */
-export const VARIANTS = new Map<number, number>([
-  [SPRITE.arc, 8],
-  [SPRITE.rune, 4],
-]);
 
 // ---------------------------------------------------------------------------
 // Deterministic noise (no Math.random anywhere in the kit)

@@ -10,7 +10,6 @@
  *
  * Contract: grip at the origin, head toward +Y, blades toward +X, thin on Z.
  */
-import * as THREE from 'three';
 import type { Parts, Slot } from './Parts';
 import { blade, box, cone, curve, cyl, gem, horn, lathe, rough, slab, sphere, spike, torus, tube, v3, xf, type V3 } from './Geo';
 import {
