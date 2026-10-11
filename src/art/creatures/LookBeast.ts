@@ -125,32 +125,63 @@ function batWings(s: Sculpt, o: { thick: number; mat?: CMat; claw?: boolean }): 
   });
 }
 
-/** Feathered wings: a covert panel over the arm, then long flight feathers fanned back off the hand and forearm (harpy). */
+/** One feather: a pointed vane from `root` along `dir`, `w` wide across `side`. */
+function featherGeo(root: THREE.Vector3, dir: THREE.Vector3, side: THREE.Vector3, len: number, w: number, thick: number): THREE.BufferGeometry {
+  const at = (u: number, x: number) => root.clone().addScaledVector(dir, len * u).addScaledVector(side, w * x);
+  return membraneGeo(root, [at(0.05, 0.45), at(0.45, 0.55), at(0.82, 0.32), at(1, 0), at(0.82, -0.28), at(0.4, -0.42), at(0.05, -0.35)], thick, 0);
+}
+
+/**
+ * Feathered wings: thin arm bones, three rows of short coverts lapping each
+ * other over the arm, then long flight feathers fanned back off the hand and
+ * forearm, each its own pointed vane (harpy, the ashen prophet). Rows of
+ * separate feathers, so a wing never reads as one plank.
+ */
 function featherWings(s: Sculpt, o: { len: number; mat?: CMat; col?: RGB }): void {
   const mat = o.mat ?? 'alt';
+  const col = o.col ?? [0.62, 0.56, 0.5];
+  const dark: RGB = [col[0] * 0.7, col[1] * 0.68, col[2] * 0.66];
+  const pale: RGB = [Math.min(1.5, col[0] * 1.25), Math.min(1.5, col[1] * 1.22), Math.min(1.5, col[2] * 1.2)];
   s.pair((side) => {
     const a = s.j(`wing${side}`);
     const e = s.j(`wing${side}2`);
     const w = s.j(`wing${side}3`);
     const tip = s.j(`wing${side}Tip`);
     const R = a.distanceTo(tip);
-    s.limb(`wing${side}`, a, e, 0.032 * R, 0.024 * R, { mat, k: 0.02 });
-    s.limb(`wing${side}2`, e, w, 0.024 * R, 0.016 * R, { mat, k: 0.02 });
-    const back = V(0, -0.1, -1).normalize();
-    // Coverts: a thick panel along the arm.
-    s.hard(`wing${side}`, membraneGeo(a, [e, e.clone().addScaledVector(back, R * 0.24), a.clone().addScaledVector(back, R * 0.28)], 0.012 * R, 0.05), mat, o.col);
-    s.hard(`wing${side}2`, membraneGeo(e, [w, w.clone().addScaledVector(back, R * 0.2), e.clone().addScaledVector(back, R * 0.24)], 0.012 * R, 0.05), mat, o.col);
-    // Flight feathers: long blades fanning from the hand and forearm.
+    s.limb(`wing${side}`, a, e, 0.024 * R, 0.018 * R, { mat, k: 0.02 });
+    s.limb(`wing${side}2`, e, w, 0.018 * R, 0.012 * R, { mat, k: 0.02 });
+    // Feathers trail back and down off the arm, so the spread wing reads
+    // from the front as well as from above.
+    const back = V(0, -0.55, -0.85).normalize();
+    const up = V(0, 1, 0);
+    const th = Math.max(0.004, 0.004 * R);
+    // Coverts: three rows over the arm and forearm, the top row shortest.
+    const bones: Array<[string, THREE.Vector3, THREE.Vector3]> = [[`wing${side}`, a, e], [`wing${side}2`, e, w]];
+    for (let row = 0; row < 3; row++) {
+      for (const [bone, p0, p1] of bones) {
+        const along = p1.clone().sub(p0);
+        const n = 5;
+        for (let i = 0; i < n; i++) {
+          const t = (i + 0.5 + (row % 2) * 0.5) / (n + 0.5);
+          const root = lerpV(p0, p1, t).addScaledVector(back, R * 0.035 * row).addScaledVector(up, -0.01 * R * row);
+          const dir = back.clone().addScaledVector(along.clone().normalize(), 0.25).normalize();
+          const sideV = along.clone().normalize();
+          const len = R * (0.13 + 0.07 * row) * (bone.endsWith('2') ? 0.9 : 1);
+          s.hard(bone, featherGeo(root, dir, sideV, len, (along.length() / n) * 1.5, th), mat, row === 0 ? dark : col);
+        }
+      }
+    }
+    // Flight feathers: long vanes fanning from the hand and forearm.
     const out = tip.clone().sub(w).normalize();
-    const n = 9;
+    const n = 13;
     for (let i = 0; i < n; i++) {
       const t = i / (n - 1);
-      const onHand = t < 0.55;
-      const root = onHand ? lerpV(tip, w, t / 0.55) : lerpV(w, e, (t - 0.55) / 0.45);
-      const dir = out.clone().lerp(back, Math.min(1, 0.25 + t * 1.1)).normalize();
-      const len = o.len * (onHand ? 0.55 - t * 0.2 : 0.42 - (t - 0.55) * 0.3);
-      const end = root.clone().addScaledVector(dir, len);
-      s.hard(onHand ? `wing${side}3` : `wing${side}2`, membraneGeo(root, [root.clone().addScaledVector(back, len * 0.15), end, root.clone().addScaledVector(out, len * 0.12)], 0.006 * R, 0.04), mat, o.col);
+      const onHand = t < 0.5;
+      const root = onHand ? lerpV(tip, w, t / 0.5) : lerpV(w, e, (t - 0.5) / 0.5);
+      const dir = out.clone().lerp(back, Math.min(1, 0.2 + t * 1.15)).normalize();
+      const len = o.len * (onHand ? 0.58 - t * 0.22 : 0.44 - (t - 0.5) * 0.3);
+      const sideV = new THREE.Vector3().crossVectors(dir, up).normalize();
+      s.hard(onHand ? `wing${side}3` : `wing${side}2`, featherGeo(root, dir, sideV, len, len * 0.2, th), mat, i % 3 === 1 ? pale : col);
     }
   });
 }

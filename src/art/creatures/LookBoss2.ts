@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import type { CreatureLook } from './Creature';
 import type { LookCtx, LookFactory } from './Looks';
 import type { RGB, Sculpt } from './Sculpt';
-import { ballGeo, boxGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { ballGeo, boxGeo, membraneGeo, spikeGeo, tubeGeo } from './Sculpt';
 import { bipedRig, type BipedShape } from './Rig';
 import { V, boneLimbs, claws, fleshArms, fleshLegs, lerpV, pauldron, quatAlong, ribcage, seq, skirt, skull, trunk } from './Kit';
 import { weapon } from './Arms';
@@ -277,7 +277,7 @@ const BOSS_B: Record<string, LookFactory> = {
         thick: 0.95,
         digitigrade: true,
         arms2: true,
-        skin: 0x4a4256,
+        skin: 0x3a3346,
         skinSurface: 'hide',
         alt: { surface: 'chitin', tint: 0x1a1620 },
         claws: 0.1,
@@ -303,11 +303,28 @@ const BOSS_B: Record<string, LookFactory> = {
             const w = s.j(`hand${side}`);
             s.hard(`fore${side}`, spikeGeo(lerpV(f, w, 0.2), w.clone().add(w.clone().sub(f).multiplyScalar(0.9)).add(V(x * 0.02 * H, 0.02 * H, 0)), 0.014 * H, 4, V(x * 0.02 * H, 0, -0.02 * H), 3), 'alt');
           });
-          backSpines(s, 9, 0.06, 0.07, [0.15, 0.12, 0.18]);
+          backSpines(s, 9, 0.09, 0.1, [0.15, 0.12, 0.18]);
+          // Starved: the ribs stand out of the skin.
+          ribcage(s, { w: 0.07, d: 0.052, ribs: 6, r: 0.006, mat: 'alt', col: [0.55, 0.5, 0.6] });
+          // Black chitin over the shoulders and down the spine, lapping plates.
+          s.pair((side, x) => {
+            const sh = s.j(`arm${side}`);
+            for (let i = 0; i < 3; i++) {
+              const c = sh.clone().add(V(x * (0.01 + i * 0.012) * H, (0.035 - i * 0.03) * H, -0.005 * H));
+              s.ball(`arm${side}`, c, V((0.05 - i * 0.008) * H, 0.022 * H, (0.055 - i * 0.008) * H), { mat: 'alt', k: 0.003 * H });
+            }
+            s.hard(`arm${side}`, spikeGeo(sh.clone().add(V(x * 0.02 * H, 0.04 * H, -0.01 * H)), sh.clone().add(V(x * 0.06 * H, 0.16 * H, -0.05 * H)), 0.012 * H, 4, undefined, 2), 'alt');
+          });
+          const ch = s.j('chest');
+          const hp = s.j('hips');
+          for (let i = 0; i < 6; i++) {
+            const c = lerpV(ch, hp, i / 6).add(V(0, 0.03 * H, -0.06 * H));
+            s.ball('chest', c, V(0.035 * H, 0.03 * H, 0.016 * H), { mat: 'alt', k: 0.003 * H });
+          }
           // A ragged shroud of skin about the hips.
           skirt(s, { len: 0.55, flare: 0.06, top: 0.02, thick: 0.008, front: false });
         },
-        paintSkin: { base: [1.3, 1.25, 1.35], grime: 0.4, ao: 0.9, mottle: { scale: 6, amount: 0.35, col: [0.45, 0.4, 0.55] }, tips: { amount: 0.4, col: [0.3, 0.25, 0.35] } },
+        paintSkin: { base: [1.05, 1.0, 1.15], grime: 0.55, ao: 0.95, mottle: { scale: 7, amount: 0.45, col: [0.3, 0.26, 0.38] }, tips: { amount: 0.55, col: [0.16, 0.13, 0.2] }, veins: { scale: 9, cut: 0.94, glow: 0, col: [0.16, 0.12, 0.2] } },
         style: { heavy: 0.3, attacks: ['claw', 'lunge', 'thrust'], armed: 'none', idle: 'prowl', gait: 'stalk', spawn: 'form', death: 'collapse' },
       }),
     ),
@@ -407,7 +424,18 @@ const BOSS_B: Record<string, LookFactory> = {
             s.hard('head', spikeGeo(p, p.clone().add(V(Math.sin(ang) * B * 0.45, B * (0.95 - Math.abs(ang) * 0.2), -B * 0.3)), B * 0.09, 4, V(0, 0, -B * 0.12), 2), 'metal', [0.95, 0.7, 0.25], i === 3 ? 0.6 : 0);
           }
           bugLegs(s, { r: B * 0.09, spines: 2 });
-          bugWings(s, { len: 1.2, w: B * 0.7, mat: 'metal' });
+          // Wings raised over the abdomen like a cloak of amber glass, veined
+          // dark, standing clear of the body so they read from above.
+          s.pair((side, x) => {
+            const n = `wing${side}`;
+            if (!s.has(n)) return;
+            const base = s.j(n).add(V(0, B * 0.55, -B * 0.1));
+            const end = base.clone().add(V(x * B * 1.5, B * 1.15, -B * 2.1));
+            const perp = V(x * B * 0.75, -B * 0.1, B * 0.25);
+            const rim = [lerpV(base, end, 0.25).add(perp.clone().multiplyScalar(0.7)), lerpV(base, end, 0.7).add(perp), end, lerpV(base, end, 0.75).sub(perp.clone().multiplyScalar(0.45)), lerpV(base, end, 0.3).sub(perp.clone().multiplyScalar(0.3))];
+            s.hard(n, membraneGeo(base, rim, 0.01 * B, 0.06), 'alt', [1.15, 0.8, 0.35], 0.35);
+            for (const r of [rim[0]!, rim[1]!, end, rim[3]!]) s.hard(n, tubeGeo([base, lerpV(base, r, 0.55), r], () => B * 0.025, 3), 'metal', [0.16, 0.11, 0.07]);
+          });
           if (s.has('scytheL')) s.pair((side) => s.hard(`scythe${side}`, spikeGeo(s.j(`scythe${side}`), s.j(`scythe${side}Tip`), B * 0.08, 4, V(0, B * 0.2, B * 0.1), 3), 'metal', [0.25, 0.18, 0.1]));
         },
         paint: { base: [1.3, 1.25, 1.2], grime: 0.3, ao: 0.9, bands: { axis: 'z', period: 0.16, amount: 0.3 }, top: { amount: 0.25, col: [1.3, 1.15, 0.85] } },

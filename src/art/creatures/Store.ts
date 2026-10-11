@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 
 /** Bump when the baker, painter or weights change in a way the key does not see. */
-export const BAKE_VERSION = 3;
+export const BAKE_VERSION = 4;
 
 const DB = 'slay-creature-meshes';
 const STORE = 'bakes';
