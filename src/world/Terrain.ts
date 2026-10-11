@@ -522,8 +522,22 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
       const z = zoneW[gi]! > 0.5 ? 1 : 0;
       const edge = looks[z]!.edge;
       if (edge !== 'trees' && edge !== 'deadTrees') continue;
+      // A stub of blocked ground in the open (no tile around it deeper than
+      // the front row) is too narrow for the bank to rise: without a trunk
+      // it is an invisible wall (check-ghost, swamp). Always plant one.
+      let thin = d < 1.5;
+      for (let oy = -1; oy <= 1 && thin; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          const nx = gx + ox;
+          const ny = gy + oy;
+          if (nx >= 0 && ny >= 0 && nx < GW && ny < GH && dist[ny * GW + nx]! > 1.5) {
+            thin = false;
+            break;
+          }
+        }
+      }
       // Dense at the front of the tree line, thinning behind it.
-      const p = edge === 'trees' ? (d < 2.2 ? 0.6 : 0.2) : d < 2.2 ? 0.34 : 0.12;
+      const p = thin ? 1 : edge === 'trees' ? (d < 2.2 ? 0.6 : 0.2) : d < 2.2 ? 0.34 : 0.12;
       if (!drng.chance(p)) continue;
       const tx = gx - MARGIN + drng.range(0.15, 0.85);
       const ty = gy - MARGIN + drng.range(0.15, 0.85);

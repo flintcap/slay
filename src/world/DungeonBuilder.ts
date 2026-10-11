@@ -2003,9 +2003,13 @@ export class DungeonMesh {
         zs[i] = this.tileZ(p.y) - fz * off;
         // Ground to the lowest floor this tile touches, not the tile's own
         // height. See `propGroundHeight`.
+        // Outdoors the ground is the smooth heightfield, not tile steps: on
+        // the step height a crate sank to its lid in the swamp (check-ghost).
         ys[i] = def.placement === 'wall' || def.placement === 'liquid'
           ? this.floorHeight(p.x, p.y)
-          : propGroundHeight(level, p.x, p.y) * STEP_HEIGHT;
+          : this.terrain
+            ? this.terrain.heightAt(xs[i]!, zs[i]!)
+            : propGroundHeight(level, p.x, p.y) * STEP_HEIGHT;
         rot[i] = yaw;
         sc[i] = scaleFor(g.kind, p.x, p.y);
       }
