@@ -39,7 +39,7 @@ import { grantXp } from '../sim/Character';
 import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
 import { SkillRunner, weaponStyle, MINION_MONSTER } from './SkillRunner';
-import { NameplateLayer } from '../ui/Nameplates';
+import { NameplateLayer, type PlateTarget } from '../ui/Nameplates';
 import { CombatTextLayer } from '../ui/CombatText';
 import { GroundLabelLayer } from '../ui/GroundLabels';
 import { setActiveDifficulty, activeDifficulty } from '../data/difficulties';
@@ -206,6 +206,7 @@ export class DungeonScene extends GameScene {
   private aimPoint = new THREE.Vector3();
   /** Reused each frame; ground loot can number in the dozens. */
   private labelScratch: Array<{ item: Item; root: THREE.Object3D; pos: THREE.Vector3 }> = [];
+  private plateScratch: PlateTarget[] = [];
   private offs: Array<() => void> = [];
   private aiCursor = 0;
   private exitPos = new THREE.Vector3();
@@ -1296,10 +1297,13 @@ export class DungeonScene extends GameScene {
     if (this.plates) {
       // Your own summons get a bar too. They are effects with a body rather
       // than monsters, so the runner adapts them into plate targets.
-      const targets = [
-        ...(this.boss ? [...this.enemies, this.boss] : this.enemies),
-        ...this.skills.minionPlates(),
-      ];
+      // One list kept and refilled: spread into new arrays it was two
+      // arrays of every monster on the floor, every frame.
+      const targets = this.plateScratch;
+      targets.length = 0;
+      for (const e of this.enemies) targets.push(e);
+      if (this.boss) targets.push(this.boss);
+      for (const m of this.skills.minionPlates()) targets.push(m);
       this.plates.update(
         this.camera,
         targets,
