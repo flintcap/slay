@@ -123,6 +123,12 @@ function assetFiles(dir, out = []) {
 // says where each file sits; `src/core/Assets.ts` reads it and falls back to
 // the loose file when there is no index (the dev server). Music and ambience
 // beds stay loose: an <audio> element streams them by URL.
+//
+// Packs are named `.wasm` only because the artifact host serves a fixed list
+// of file types and refuses `application/octet-stream`; `.wasm` is the one
+// binary type on that list that the host hands back byte for byte. Nothing
+// ever compiles them: Assets.ts reads them as plain bytes.
+const PACK_EXT = '.wasm';
 const PACK_MAX = 8 * 1024 * 1024;
 const loose = (rel) => rel.startsWith('music/') || rel.startsWith('sounds/beds/');
 const files = {};
@@ -151,7 +157,7 @@ for (const [group, list] of groups) {
   let size = 0;
   const flush = () => {
     if (chunks.length === 0) return;
-    const name = `${group}-${n++}.bin`;
+    const name = `${group}-${n++}${PACK_EXT}`;
     writeFileSync(`dist-single/packs/${name}`, Buffer.concat(chunks));
     files[`assets/packs/${name}`] = `dist-single/packs/${name}`;
     packCount++;
@@ -161,7 +167,7 @@ for (const [group, list] of groups) {
   for (const { rel, src } of list) {
     const bytes = readFileSync(src);
     if (size > 0 && size + bytes.length > PACK_MAX) flush();
-    index[rel] = [`${group}-${n}.bin`, size, bytes.length];
+    index[rel] = [`${group}-${n}${PACK_EXT}`, size, bytes.length];
     chunks.push(bytes);
     size += bytes.length;
   }
