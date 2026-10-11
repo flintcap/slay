@@ -129,6 +129,58 @@ export class HitFlash {
     return out;
   }
 
+  /**
+   * Stand-ins wearing the flash material, one per kind of mesh under `roots`
+   * (plain, skinned, instanced, morphed), for a scene's warm-up.
+   *
+   * The flash is one material, but three.js builds a program per kind of mesh
+   * it lands on: a skinned body and a rigid shield each need their own. Each
+   * was linked on the first hit that touched it, a stall mid-swing on a real
+   * GPU. The stand-ins share the meshes' geometry and skeletons and own
+   * nothing; dropping them is enough.
+   */
+  standIns(roots: Iterable<THREE.Object3D>): THREE.Object3D[] {
+    let mat = this.pool[0];
+    if (!mat) {
+      mat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true });
+      this.pool.push(mat);
+    }
+    const kinds = new Map<string, THREE.Object3D>();
+    for (const root of roots) {
+      for (const m of this.meshesOf(root)) {
+        const g = m.geometry;
+        const skinned = (m as THREE.SkinnedMesh).isSkinnedMesh === true;
+        const inst = (m as THREE.InstancedMesh).isInstancedMesh === true;
+        const morph = Object.keys(g.morphAttributes).sort().join(',');
+        const tinted = inst && (m as THREE.InstancedMesh).instanceColor !== null;
+        const key = `${skinned}|${inst}|${tinted}|${morph}`;
+        if (kinds.has(key)) continue;
+        let s: THREE.Mesh;
+        if (skinned) {
+          const sm = m as THREE.SkinnedMesh;
+          const k = new THREE.SkinnedMesh(g, mat);
+          // With a bind matrix given, bind() leaves the shared skeleton alone.
+          k.bind(sm.skeleton, sm.bindMatrix);
+          s = k;
+        } else if (inst) {
+          const im = m as THREE.InstancedMesh;
+          const k = new THREE.InstancedMesh(g, mat, 1);
+          // The real mesh's buffers: the stand-in draws its first instance.
+          k.instanceMatrix = im.instanceMatrix;
+          k.instanceColor = im.instanceColor;
+          s = k;
+        } else {
+          s = new THREE.Mesh(g, mat);
+        }
+        s.frustumCulled = false;
+        s.castShadow = false;
+        s.receiveShadow = false;
+        kinds.set(key, s);
+      }
+    }
+    return [...kinds.values()];
+  }
+
   update(dt: number): void {
     if (this.active.size === 0) return;
     for (const slot of this.active.values()) {

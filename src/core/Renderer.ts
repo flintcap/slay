@@ -659,6 +659,42 @@ export class Renderer {
     this.composer.render(dt);
   }
 
+  /**
+   * Builds the shader programs `root` will need, as the composer draws them.
+   *
+   * A program's key includes the target it draws into: drawn straight to the
+   * screen three.js bakes tone mapping and sRGB output into every shader,
+   * drawn into a render target it leaves them to the output pass. Every frame
+   * of this game goes through the composer's targets, but `compile()` with
+   * nothing bound builds the screen versions, which no frame then uses. So
+   * each warm-up compiled programs nobody drew with and the real ones were
+   * still linked on first sight. Binding the composer's buffer first builds
+   * the ones the frames use.
+   *
+   * `scene` lends lights, fog and environment when `root` is not a scene.
+   */
+  compile(root: THREE.Object3D, camera: THREE.Camera, scene?: THREE.Scene): void {
+    const prev = this.gl.getRenderTarget();
+    this.gl.setRenderTarget(this.composer.readBuffer);
+    try {
+      this.gl.compile(root, camera, scene ?? null);
+    } finally {
+      this.gl.setRenderTarget(prev);
+    }
+  }
+
+  /** `compile`, waiting for the driver to finish where it links in parallel. */
+  compileAsync(root: THREE.Object3D, camera: THREE.Camera, scene?: THREE.Scene): Promise<unknown> {
+    const prev = this.gl.getRenderTarget();
+    this.gl.setRenderTarget(this.composer.readBuffer);
+    try {
+      // compile() runs synchronously inside; only the readiness poll is async.
+      return this.gl.compileAsync(root, camera, scene ?? null);
+    } finally {
+      this.gl.setRenderTarget(prev);
+    }
+  }
+
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
     this.composer.dispose();

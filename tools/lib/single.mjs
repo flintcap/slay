@@ -33,7 +33,8 @@ export async function serveSingle(port, dir = 'dist-single') {
       res.end(pageHtml);
       return;
     }
-    const src = files[url];
+    // files.json paths are relative to the project the bundle was built in.
+    const src = files[url] && path.resolve(dir, '..', files[url]);
     if (!src || !existsSync(src)) {
       res.writeHead(404);
       res.end();

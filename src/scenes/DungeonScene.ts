@@ -266,6 +266,21 @@ export class DungeonScene extends GameScene {
     this.body = new BodyFX(this.effects);
   }
 
+  /**
+   * Stand-ins for the hit flash on every kind of body in the area (see
+   * `HitFlash.standIns`), so the first blow that lands does not link a shader.
+   */
+  override warmup(): THREE.Object3D | null {
+    const roots: THREE.Object3D[] = this.enemies.map((e) => e.root);
+    if (this.boss) roots.push(this.boss.root);
+    const list = this.skills.feel.flash.standIns(roots);
+    if (!list.length) return null;
+    const g = new THREE.Group();
+    g.name = 'warmup';
+    g.add(...list);
+    return g;
+  }
+
   /** Hooks a monster or boss up to swing ribbons, release flares and status looks. */
   private watchBody(e: Enemy, lit = false): void {
     const t = e.def.damageType;
@@ -458,6 +473,18 @@ export class DungeonScene extends GameScene {
       setTimeout(() => toast(this.run.quest.name, 'epic'), 800);
     }
     audio.music(this.biome.music, 2.0);
+    await this.bossPortraitReady();
+  }
+
+  /**
+   * Waits, behind the loading curtain, for the boss's intro portrait. It is
+   * drawn in a context of its own (shaders compiled, textures sent), which
+   * used to land a second or so into play on a real GPU. Capped, so a slow
+   * render only costs it the wait it would have had anyway.
+   */
+  private async bossPortraitReady(): Promise<void> {
+    if (!this.boss) return;
+    await Promise.race([this.boss.portrait.catch(() => ''), new Promise((r) => setTimeout(r, 4000))]);
   }
 
   /** Tears down the current level and builds the next. */
@@ -650,7 +677,7 @@ export class DungeonScene extends GameScene {
           affixIconUri(b, c);
         }
       }
-      this.engine.renderer.gl.compile(this.scene, this.camera);
+      this.engine.renderer.compile(this.scene, this.camera);
 
       // Compiling programs is not enough: every generated PBR texture is
       // uploaded to the GPU lazily, on the first frame the material is actually
@@ -1757,6 +1784,10 @@ export class DungeonScene extends GameScene {
         const { fadeTo } = await import('../core/Engine');
         await fadeTo(1, 320);
         this.loadLevel(this.levelIndex + 1);
+        // The new area's shaders link behind the curtain, not during the fade-in.
+        await this.bossPortraitReady();
+        await this.engine.prime(this);
+        this.engine.clock.getDelta();
         await fadeTo(0, 420);
         this.transitioning = false;
       })();

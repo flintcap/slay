@@ -39,6 +39,11 @@ export class TitleScene extends GameScene {
   private t = 0;
   private nextPulse = 4.5;
   private pulse = 0;
+  /** Lights whose shadow maps are drawn once (see `holdShadows`). */
+  private still: Array<THREE.DirectionalLight | THREE.PointLight> = [];
+  private shadowsOn = false;
+  /** A lost and restored GPU context comes back with empty shadow maps. */
+  private onRestored = (): void => this.holdShadows(true);
   private mouse = new THREE.Vector2();
   private mouseSmooth = new THREE.Vector2();
   private onMove = (e: PointerEvent): void => {
@@ -222,14 +227,35 @@ export class TitleScene extends GameScene {
     this.camera.position.set(REST.x + 2.5, REST.y + 3.4, REST.z + 9);
     this.camera.lookAt(LOOK);
 
+    // Nothing that casts a shadow here ever moves (the camera does, but a
+    // shadow map is drawn from the light), so both maps are drawn once rather
+    // than every frame: seven extra passes over the ruin each frame, for a
+    // picture that never changed.
+    this.still = [moon, ...this.torches.filter((t) => t.light.castShadow).map((t) => t.light)];
+    for (const l of this.still) l.shadow.autoUpdate = false;
+    this.holdShadows(true);
+    this.engine.renderer.canvas.addEventListener('webglcontextrestored', this.onRestored);
+
     window.addEventListener('pointermove', this.onMove, { passive: true });
 
     audio.music('menu', 2.5);
     events.emit('ui:open', { panel: 'title' });
   }
 
+  /**
+   * Redraws the held shadow maps when they may have gone: shadows switched
+   * back on in the settings, or the GPU context lost and given back.
+   */
+  private holdShadows(force = false): void {
+    const on = this.engine.renderer.gl.shadowMap.enabled;
+    const again = force || (on && !this.shadowsOn);
+    this.shadowsOn = on;
+    if (again) for (const l of this.still) l.shadow.needsUpdate = true;
+  }
+
   override update(dt: number, elapsed: number): void {
     this.t += dt;
+    this.holdShadows();
 
     // Intro push-in: an ease-out over the first 4.5 seconds, while the logo
     // resolves. After that the camera only drifts.
@@ -275,6 +301,7 @@ export class TitleScene extends GameScene {
 
   override dispose(): void {
     window.removeEventListener('pointermove', this.onMove);
+    this.engine.renderer.canvas.removeEventListener('webglcontextrestored', this.onRestored);
     this.atmosphere.dispose();
     this.fx.dispose();
     events.emit('ui:close', { panel: 'title' });

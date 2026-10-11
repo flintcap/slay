@@ -18,6 +18,9 @@ export interface CaughtError {
   scene: SceneId | null;
 }
 
+/** While paused, the world is redrawn at most this often (ms). */
+const PAUSED_FRAME_MS = 100;
+
 /** Frames in a row a scene may fail before the engine pulls the player out. */
 const FAILS_BEFORE_RECOVERY = 30;
 
@@ -50,6 +53,14 @@ export abstract class GameScene {
   abstract update(dt: number, elapsed: number): void;
   /** Release GPU resources. */
   abstract dispose(): void;
+
+  /**
+   * Optional: stand-ins for looks the scene puts on later, so their shader
+   * programs are built behind the loading curtain instead of on the frame
+   * they first show. Returned objects are added for one unseen frame and
+   * removed; they must share geometry and materials, never own them.
+   */
+  warmup?(): THREE.Object3D | null;
 
   /** Optional: called when the window regains focus after a pause. */
   onResume?(): void;
@@ -137,6 +148,13 @@ export class Engine {
 
   /** True only for a pause the engine applied itself when the tab went away. */
   private autoPaused = false;
+
+  /** When the last frame was drawn, and at what canvas size (see `loop`). */
+  private lastDraw = 0;
+  private drawnW = 0;
+  private drawnH = 0;
+  /** Frame time not yet handed to the renderer while a paused frame is held. */
+  private heldDt = 0;
 
   /**
    * Every distinct error caught anywhere in the game, keyed by place and
@@ -320,11 +338,19 @@ export class Engine {
    * first frame of the fade-in: seconds of a frozen half-faded screen on a
    * cold shader cache.
    */
-  private async prime(next: GameScene): Promise<void> {
-    const gl = this.renderer.gl;
+  async prime(next: GameScene): Promise<void> {
+    // Looks the scene will only wear later (a hit flash, an effect first
+    // cast), on stand-ins that are compiled with it and drawn once, unseen.
+    let extra: THREE.Object3D | null = null;
+    try {
+      extra = next.warmup?.() ?? null;
+      if (extra) next.scene.add(extra);
+    } catch (err) {
+      this.report('render', err);
+    }
     try {
       await Promise.race([
-        gl.compileAsync(next.scene, next.camera),
+        this.renderer.compileAsync(next.scene, next.camera),
         new Promise<void>((r) => setTimeout(r, 15000)),
       ]);
     } catch (err) {
@@ -335,6 +361,7 @@ export class Engine {
     } catch (err) {
       this.report('render', err);
     }
+    extra?.removeFromParent();
   }
 
   /** Where to send the player when `id` cannot be entered or keeps failing. */
@@ -449,11 +476,31 @@ export class Engine {
         }
       }
       const tu1 = performance.now();
-      try {
-        this.renderer.render(scene.scene, scene.camera, dt, this.elapsed);
-      } catch (err) {
-        failed = true;
-        this.report('render', err);
+      // A paused world draws the same picture every frame: nothing in it
+      // updates. Behind the pause menu and the settings it was still drawn
+      // in full sixty times a second (shadows, bloom, the blur of the menu's
+      // backdrop over it), for nothing. It is redrawn a few times a second,
+      // so anything that does change (a setting being tried) still shows,
+      // and at once when the canvas is resized, which clears it.
+      const cv = this.renderer.canvas;
+      const held =
+        this.paused &&
+        !this.transitioning &&
+        tu1 - this.lastDraw < PAUSED_FRAME_MS &&
+        cv.width === this.drawnW &&
+        cv.height === this.drawnH;
+      if (held) this.heldDt += dt;
+      else {
+        try {
+          this.renderer.render(scene.scene, scene.camera, dt + this.heldDt, this.elapsed);
+        } catch (err) {
+          failed = true;
+          this.report('render', err);
+        }
+        this.heldDt = 0;
+        this.lastDraw = tu1;
+        this.drawnW = cv.width;
+        this.drawnH = cv.height;
       }
       const tr1 = performance.now();
       if (failed) {

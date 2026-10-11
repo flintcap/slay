@@ -123,6 +123,13 @@ export class Boss extends Enemy {
     return this.bossDef.phases[this.phaseIndex] ?? null;
   }
 
+  /**
+   * The intro-card portrait being rendered. Its render builds an offscreen
+   * context and compiles shaders, so the area waits for it behind the
+   * loading curtain rather than let it land mid-play.
+   */
+  readonly portrait: Promise<string>;
+
   /** True while a barrier phase's guards are still alive. */
   barrierUp = false;
 
@@ -166,7 +173,7 @@ export class Boss extends Enemy {
     // Immune to the soft CC that trivialises large targets.
     this.buff('boss_stability', Number.MAX_SAFE_INTEGER, {});
     // Its intro-card portrait, rendered from this body before the fight.
-    void prepareBossPortrait(def.id, 96);
+    this.portrait = prepareBossPortrait(def.id, 96);
   }
 
   // --- engagement ----------------------------------------------------------

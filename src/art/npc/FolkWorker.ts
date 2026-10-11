@@ -11,10 +11,10 @@
  * visit are read rather than meshed again, and new ones are stored for the
  * next visit. Anything that fails here only means the town meshes it itself.
  *
- * Before the townsfolk it meshes the heroes the select screen shows first
- * (`heroes`: class ids, each in its field kit), since that screen comes
- * before the town. A cold first visit used to mesh that hero on the main
- * thread as the screen opened.
+ * Before the townsfolk it meshes the heroes the select screen shows
+ * (`heroes`: class ids, each in its field kit, in the order the screen
+ * offers them), since that screen comes before the town. A cold first visit
+ * used to mesh each hero on the main thread as its class was picked.
  */
 import { loadMeshCache, onMeshed, type RawGeo } from '../hero/MeshCache';
 import { buildFolk } from './Folk';

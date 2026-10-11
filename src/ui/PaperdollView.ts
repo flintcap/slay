@@ -149,6 +149,18 @@ export class PaperdollView {
     this.hero?.dress(eq);
   }
 
+  /**
+   * Builds the figure and draws it once, unseen, so the first opening of the
+   * inventory does not have to. That first opening used to make the context,
+   * compile the hero's shaders in it and send it every texture the hero
+   * wears (about 50 MB) on the frame the panel appeared. Called behind the
+   * loading curtain.
+   */
+  warm(c: Character): void {
+    this.setCharacter(c);
+    if (this.hero) this.renderer?.render(this.scene, this.camera);
+  }
+
   /** Points the camera at the model's own bounds, so proportions never matter. */
   private frame(obj: THREE.Object3D): void {
     obj.updateMatrixWorld(true);

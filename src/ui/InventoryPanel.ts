@@ -412,6 +412,18 @@ export class InventoryPanel {
     events.on('loot:gold', () => {
       if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
+    // The figure is built while the curtain is down on the way into the
+    // world, not on the frame the panel first opens (PaperdollView.warm).
+    events.on('scene:loading', (p) => {
+      if (p.to !== 'town' && p.to !== 'dungeon') return;
+      const c = save.account.current;
+      if (!c) return;
+      try {
+        this.view.warm(c);
+      } catch {
+        /* the panel builds it on opening, as before */
+      }
+    });
   }
 
   open(): void {

@@ -1,5 +1,5 @@
 /**
- * SLAY — start meshing the first select-screen hero and the townsfolk in a
+ * SLAY — start meshing the select-screen heroes and the townsfolk in a
  * worker at boot (see FolkWorker.ts).
  *
  * Fire and forget. Where workers are not allowed (a strict page policy, an
@@ -35,6 +35,9 @@ export function prewarmTownsfolk(): void {
     else adoptMeshes(r.entries);
   };
   worker.onerror = stop;
-  // The select screen opens on the first class; mesh that hero before the town.
-  worker.postMessage({ ids: [...NPC_LOOK_IDS], heroes: CLASSES.slice(0, 1).map((c) => c.id) });
+  // The select screen comes before the town and shows every class in turn,
+  // starting with the first: mesh those heroes first, in that order. Each one
+  // used to be meshed on the main thread the moment its card was picked, a
+  // freeze of seconds per class on a first visit.
+  worker.postMessage({ ids: [...NPC_LOOK_IDS], heroes: CLASSES.map((c) => c.id) });
 }

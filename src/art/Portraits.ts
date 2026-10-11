@@ -7,9 +7,10 @@
  * the face in shadow. What the select screen shows is exactly the body that
  * walks into town.
  *
- * Rendered once per class and size in a small offscreen context, cached in
- * memory and in localStorage (keyed by the mesh version, so a changed body
- * redraws). Until a portrait is ready the slot shows a dark frame.
+ * Rendered once per class and size in a small offscreen context shared by
+ * every class (see `portraitRenderer`), cached in memory and in localStorage
+ * (keyed by the mesh version, so a changed body redraws). Until a portrait is
+ * ready the slot shows a dark frame.
  */
 import * as THREE from 'three';
 import { assetStats } from '../core/Assets';
@@ -72,6 +73,42 @@ async function texturesSettled(ms: number): Promise<void> {
   }
 }
 
+/**
+ * One offscreen context for every class portrait, kept a while between them.
+ *
+ * Each portrait used to make its own context and throw it away: a new
+ * context, every hero shader compiled again in it and every texture sent
+ * again, on the frame a class card was first picked. The six heroes share
+ * most of their materials, so one context compiles them once.
+ */
+let shared: THREE.WebGLRenderer | null = null;
+let idle = 0;
+const IDLE_MS = 20000;
+
+function portraitRenderer(): THREE.WebGLRenderer {
+  window.clearTimeout(idle);
+  if (!shared) {
+    shared = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    shared.setPixelRatio(1);
+    shared.setClearAlpha(0);
+    shared.outputColorSpace = THREE.SRGBColorSpace;
+    shared.toneMapping = THREE.ACESFilmicToneMapping;
+    shared.toneMappingExposure = 1.1;
+  }
+  return shared;
+}
+
+/** Frees the shared context once no portrait has been asked for in a while. */
+function releaseLater(): void {
+  window.clearTimeout(idle);
+  idle = window.setTimeout(() => {
+    if (pending.size) return releaseLater();
+    shared?.dispose();
+    shared?.forceContextLoss();
+    shared = null;
+  }, IDLE_MS);
+}
+
 async function render(classId: CharClassId, size: number): Promise<string> {
   const { buildClassHero } = await import('../scenes/HeroModel');
   const hero = buildClassHero(classId);
@@ -104,14 +141,9 @@ async function render(classId: CharClassId, size: number): Promise<string> {
   camera.position.copy(aim).add(new THREE.Vector3(0.25, 0.08, 1.75));
   camera.lookAt(aim);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  const renderer = portraitRenderer();
   try {
-    renderer.setPixelRatio(1);
     renderer.setSize(size, size, false);
-    renderer.setClearAlpha(0);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
     renderer.render(scene, camera);
     const cv = document.createElement('canvas');
     cv.width = cv.height = size;
@@ -122,8 +154,7 @@ async function render(classId: CharClassId, size: number): Promise<string> {
     return cv.toDataURL('image/png');
   } finally {
     hero.dispose();
-    renderer.dispose();
-    renderer.forceContextLoss();
+    releaseLater();
   }
 }
 
