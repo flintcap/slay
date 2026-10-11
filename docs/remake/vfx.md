@@ -1,6 +1,6 @@
 # Stream: vfx (every skill, attack, status and loot effect)
 
-Status: not started
+Status: in progress
 
 Goal: every skill and attack effect remade from nothing in the Diablo II and
 Path of Exile style: punchy, readable, elemental, lit.
