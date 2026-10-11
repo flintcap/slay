@@ -8,22 +8,22 @@ and sets have their own shapes, colours and designs.
 
 ## Milestones
 
-- [ ] Look system. New `ItemLook` descriptor: silhouette family, materials
+- [x] Look system. (5c39846 "wip(items): ItemLook extended with cuts, designs and set motifs; contract written") New `ItemLook` descriptor: silhouette family, materials
   (metal, wood, leather, cloth, bone), colours, trim, gems, glow, wear.
   Entries per base, per unique, per set (sets share a motif). Write the shape
   to `CONTRACTS.md` early; heroes draws armour from it.
 - [ ] Weapons. Every base weapon its own model; higher tiers look finer.
   Every unique weapon a custom design. Set weapons carry their set's motif.
   CC0 metal, wood and leather textures under `public/assets/textures/items/`.
-- [ ] Armour, shields and jewellery. Ground models for every base. Helmets,
+- [x] Armour, shields and jewellery. (7fb0b32 "wip(items): shields, quivers, helms, body armour, gloves, boots, belts", c699d7b "wip(items): amulets, rings, charms, gems, runes, potions, materials") Ground models for every base. Helmets,
   chests, gloves, boots, belts, shields, rings, amulets, charms, gems,
   potions. Uniques and sets distinct.
 - [ ] Icons. Inventory art in the D2 and PoE style: rendered from the new 3D
   models with good lighting, sized to the item's grid footprint, over a dark
   background. Uniques and sets readable at a glance.
-- [ ] Ground drops. How items lie on the floor, their labels' look stays with
+- [x] Ground drops. (3f858d9 "items: game builds every item from the new families; drops lie still on the floor") How items lie on the floor, their labels' look stays with
   HUD; drop beams belong to vfx.
-- [ ] Gear makes the look (owner's rule, see PLAN.md). A hero with nothing
+- [x] Gear makes the look (870a065 "items: bare heroes wear plain undyed linens (gear makes the look, part 1)", 39cbd26 "items: every armour base has its own cut on the body (gear makes the look, part 2)") (owner's rule, see PLAN.md). A hero with nothing
   equipped wears only plain cloth linens in plain undyed tones: take the
   class costume off the bare hero (the shadowblade's hood and mask, class
   cloth colours, sashes) and keep body, face and hair. Every slot visibly
@@ -47,31 +47,37 @@ rendered icon hashes).
 
 ## Next up
 
-1. Armour, shields and jewellery: `src/art/items/Offhand.ts` (shields,
-   quivers), `Wear.ts` (helms, chests, gloves, boots, belts), `Trinkets.ts`
-   (amulets, rings, charms, gems, runes, potions, materials). Register each
-   in `Families.ts`.
-2. Switch `src/art/ItemModels.ts` to `buildItem` (keep its exports), new
-   drop model lying on the floor (keep the beam, pool, sigil, dropLight names
-   for vfx).
-3. Icons rendered from the models (`src/art/items/IconRender.ts`), then the
-   "every base looks different" check, textures, delete the old painters.
+1. Icons rendered from the models: `src/art/items/IconRender.ts` (one shared
+   offscreen renderer, dark backdrop, sized to the grid footprint, cached
+   data URIs). Switch `src/art/Icons.ts` to it and keep its exports.
+2. The "every base looks different" check (hash rendered icons per base).
+3. Weapon textures: `tools/fetch-item-textures.mjs` pulls Poly Haven CC0
+   into `/tmp/slay-downloads/items/`, writes WebP to
+   `public/assets/textures/items/`, rows in `ASSETS.md`, `check-assets`.
+   Then tick Weapons.
+4. Switch and clean: delete the old icon painters and builders, grep proof.
 
 ## Notes for resume
 
-- Built so far (in `src/art/items/`): Geo, Mats, Parts, Kit, Features,
-  Designs, Blades (swords, daggers), Weapons (axes, maces, polearms), Ranged
-  (bows, crossbows), Casters (wands, staves, scepters, orbs), Model
-  (`buildItem`), Families (builder table). Not yet used by the game.
-- Look at them: `SLAY_PORT=4326 timeout 900 node tools/item-sheet.mjs
-  axe,bow --out=<dir>` (any category name, or uniques, sets, rarity
-  --base=). Takes seconds.
-- Bows lie in the YZ plane (limbs up and down, bowed toward -Z, the arrow
-  flies +Z), as the old bow did; everything else is wide on X, thin on Z.
-- heroes draws armour from your ItemLook
-  (`src/art/hero/Armour.ts` reads palette, trimKey, trimTint, glowColor,
-  stone, kind, baseTier, family, hasTrim, hasGems, hasRunes, glow, accent).
-  Never drop or rename those.
+- Item models live in `src/art/items/` (Geo, Mats, Parts, Kit, Features,
+  Designs, Blades, Weapons, Ranged, Casters, Offhand, Wear, Trinkets, Model,
+  Families). `src/art/ItemModels.ts` is the facade and already uses them.
+- Item sheet: `SLAY_PORT=4326 timeout 900 node tools/item-sheet.mjs
+  axe,bow --out=<dir>` (category names, or uniques, sets, rarity --base=).
 - Held items: grip at origin, business end along +Y, wide on X, thin on Z.
-- `src/art/ItemModels.ts` and `src/art/Icons.ts` stay as the public
-  facades (many files import them); the old builders inside are replaced.
+  Bows lie in the YZ plane. Drops: root at 0.28, the lying model at -0.28.
+- Worn armour: `src/art/hero/Armour.ts` (entry, merges parts per material),
+  `ArmourKit.ts` (clips, ray hits, materials, fittings), `ArmourChest.ts`
+  (17 cuts), `ArmourHead.ts` (13 helms), `ArmourLimbs.ts` (gloves, boots,
+  belts, 10 each), `ArmourFeatures.ts` (32 unique and set features).
+- Bump `ARMOUR_REV` in Armour.ts whenever a cut function changes: functions
+  are not in the garment mesh cache key. `TRI_SCALE` 0.8 keeps budgets.
+- A CutClip's `cut` is the distance to the region to REMOVE: negative inside
+  means cut away. Getting the sign wrong deletes the whole piece.
+- Budgets (hero check): bare body 24k tris; dressed 60k tris and 32 draws,
+  counted on visible meshes only. Heavy kit is about 48k and 22 draws.
+- Look at worn gear: `tools/hero-sheet.mjs` sheets `wear` (--slot --class
+  --rarity --unique --set) and `dressed` (each class bare, starter, mid,
+  elite, set, unique).
+- heroes no longer reads ItemLook directly; items owns Armour, Cape,
+  Garment and the clothing fields of Looks.

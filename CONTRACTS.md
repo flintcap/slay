@@ -125,6 +125,16 @@ export type ItemIdent = Pick<Item, 'baseId'> & Partial<Pick<Item, 'uniqueId' | '
 Unknown or free-form shapes ('sword', 'bow', 'staff' from monsters and NPCs)
 resolve to the closest family; a model never fails to build.
 
+A drop lies still on the floor: its root sits at y = 0.28 (the old hover
+height, so labels and beams line up) and the lying model is a child offset by
+-0.28, resting on the ground. It does not bob or spin.
+
+Worn armour (`src/art/hero/Armour.ts`, owned by items since heroes finished):
+`wearArmour(hero, slot, item, visual): WornArmour | null` grows chest, helm,
+gloves, boots and belt as shells of the hero's body field, one cut per base
+(`ItemLook.cut`). `WornArmour` is `{ object, hides }`, unchanged. A bare hero
+wears plain undyed linens (`Garment.ts`), with no class costume.
+
 ### `ItemLook`: what an item looks like (items → heroes)
 
 `itemLook(item, visual)` from `src/art/ItemLook.ts`. Cached, pure data, no
