@@ -25,7 +25,7 @@ import { Random, randomSeed } from '../core/RNG';
 import { checkName, type NameCheck } from './names';
 import { menuKey } from './MenuNav';
 import { skillIconUri } from '../art/Icons';
-import { classPortraitUri } from '../art/Portraits';
+import { classPortrait, classPortraitPlaceholder, classPortraitUri } from '../art/Portraits';
 import {
   Panel,
   div,
@@ -525,12 +525,15 @@ export class CharSelectPanel {
     d.appendChild(trees);
   }
 
-  /** The painted class portrait, floated into the top of the detail column. */
+  /** The class portrait (rendered from its hero), floated into the top of the detail column. */
   private portrait(classId: CharClassId): HTMLElement {
     const img = document.createElement('img');
     img.className = 'csx-portrait';
     img.alt = '';
-    attempt(() => (img.src = classPortraitUri(classId, 216)), '');
+    attempt(() => (img.src = classPortraitUri(classId, 216) || classPortraitPlaceholder(classId, 216)), '');
+    void classPortrait(classId, 216).then((uri) => {
+      if (uri) img.src = uri;
+    });
     return img;
   }
 

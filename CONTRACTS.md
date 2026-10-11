@@ -175,25 +175,35 @@ Worn armour (heroes) keeps reading `palette`, `trimKey`/`trimTint`,
 use `keys.second`/`keys.cloth` for linings and tabards, `features` for extra
 shapes (horns, wings, spikes) and `emblem` for a set badge.
 
-## `src/art/CharacterModels.ts` — owned by ART
+## `src/scenes/HeroModel.ts` — owned by heroes
+
+The one place the game builds a player hero: body, worn armour, held items and
+the animator. Play (`Player`), the paperdoll, character select, the showcase
+and the class portraits all use it.
 
 ```ts
-/**
- * Builds a rigged player model. The skeleton bone names are fixed so the
- * animation layer can drive any class: 'root','hips','spine','chest','head',
- * 'shoulderL/R','elbowL/R','handL/R','hipL/R','kneeL/R','footL/R'.
- */
-export function buildPlayerModel(classId: CharClassId, rng: Rng): { root: THREE.Group; skeleton: THREE.Skeleton; bones: Record<string, THREE.Bone> };
-/** Attaches an equipped item's model to the correct hand/body socket. */
-export function attachToSocket(model: THREE.Object3D, bones: Record<string, THREE.Bone>, slot: EquipSlot, mesh: THREE.Object3D): void;
+export const VISUAL_SLOTS: EquipSlot[];   // slots that put geometry on the body
+export function weaponGrip(category: string | undefined, twoHanded: boolean): string;   // from hero/Hold.ts
+export class DressedHero {
+  constructor(classId: CharClassId, seed?: number);
+  readonly root: THREE.Group; readonly bones: Record<string, THREE.Bone>; readonly animator: HeroAnimator;
+  dress(pieces: Partial<Record<EquipSlot, Piece | null>>): boolean;   // rebuilds only changed slots; true if any changed
+  objectFor(slot: EquipSlot): THREE.Object3D | null;
+  dispose(): void;   // leaves cached meshes and shared materials alone
+}
+export function buildClassHero(classId: CharClassId): HeroModel;      // in its field kit, for select screens
+export function buildCharacterHero(c: Character): HeroModel;          // in its real gear
 ```
+
+Class portraits (`src/art/Portraits.ts`): `classPortrait(classId, size):
+Promise<string>` renders the class hero head and shoulders and caches the data
+URI (memory and localStorage); `classPortraitUri` returns a ready one or ''.
 
 ## Hero rig — `src/art/hero/*` — owned by heroes
 
 Every player class and every townsperson stands on this rig and is driven by
 the hero animator. Bone and socket names below are stable: they will not be
-renamed. (The old `CharacterModels` rig with `hips`, `shoulderL`, `elbowL`,
-`hipL`, `kneeL` is being replaced by this one and will be deleted.)
+renamed.
 
 **Space.** Character space: +X the character's left, +Y up, +Z forward, feet on
 y = 0. Every bone has an identity rotation in the bind pose, so at rest a

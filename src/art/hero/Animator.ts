@@ -325,7 +325,7 @@ export class HeroAnimator {
     this.hasLast = false;
   }
 
-  /** The carry grip for two-handed things (kept for the old API). */
+  /** The carry grip for two-handed things: picks the stance a staff, bow or great weapon asks for. */
   setGrip(grip: CarryGrip): void {
     if (grip !== 'none') this.setWeapon(grip);
   }
@@ -629,12 +629,6 @@ export class HeroAnimator {
     this.flinchK = clamp(strength, 0, 1.6);
     this.flinchSide = -this.flinchSide;
   }
-
-  /** Kept for the old API: movement code's extra lean. */
-  setLean(_bias: number): void {}
-
-  /** Kept for the old API: townspeople's trades are the npcs stream's. */
-  setPersona(_id: string): void {}
 
   /** What a status is doing to the body; cheap when unchanged. */
   setCondition(c: BodyCondition): void {

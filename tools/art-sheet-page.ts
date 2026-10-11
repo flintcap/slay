@@ -288,30 +288,21 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return dropSheet();
   },
 
-  /** Every class portrait at full size and at a 96px card size. */
+  /** Every class portrait (rendered from its hero) at full size and at a 96px card size. */
   async portraits() {
-    const { classPortraitUri } = await import('../src/art/Portraits');
-    const ids = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+    const { classPortrait } = await import('../src/art/Portraits');
+    const ids = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'] as const;
     const { c, g } = sheet(3 * 266 + 10, 2 * (256 + 110) + 10);
     const t0 = performance.now();
     for (let i = 0; i < ids.length; i++) {
       const x = 10 + (i % 3) * 266;
       const y = 10 + Math.floor(i / 3) * 366;
-      g.drawImage(await img(classPortraitUri(ids[i]!, 256)), x, y);
-      g.drawImage(await img(classPortraitUri(ids[i]!, 96)), x, y + 262);
+      g.drawImage(await img(await classPortrait(ids[i]!, 256)), x, y);
+      g.drawImage(await img(await classPortrait(ids[i]!, 96)), x, y + 262);
       g.fillStyle = INK;
       g.fillText(ids[i]!, x + 170, y + 300);
     }
-    const total = performance.now() - t0;
-    const { paintClassPortrait } = await import('../src/art/Portraits');
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = 256;
-    const t1 = performance.now();
-    for (const id of ids) paintClassPortrait(cv.getContext('2d')!, id);
-    const paint = (performance.now() - t1) / ids.length;
-    const t2 = performance.now();
-    for (let i = 0; i < 6; i++) cv.toDataURL('image/png');
-    c.dataset.note = `${(total / 12).toFixed(1)}ms per portrait first time; repaint ${paint.toFixed(1)}ms, encode ${((performance.now() - t2) / 6).toFixed(1)}ms`;
+    c.dataset.note = `${((performance.now() - t0) / 12).toFixed(0)}ms per portrait first time (meshing included)`;
     return c;
   },
 

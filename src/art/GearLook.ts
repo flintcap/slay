@@ -2,7 +2,7 @@
  * SLAY — one answer to "what does this item look like", shared by every place
  * an item is drawn.
  *
- * Worn armour (`WornGear`), held weapons and ground drops (`ItemModels`) and
+ * Worn armour (`hero/Armour.ts`, through `ItemLook`), held weapons and ground drops (`ItemModels`) and
  * icons all have to agree: a mythic Archon Plate should be the same gold and
  * the same violet glow on the floor, in the bag and on your back. This module
  * turns an item and its base visual into that look — palette, trim metal,

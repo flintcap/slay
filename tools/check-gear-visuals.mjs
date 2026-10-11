@@ -1,5 +1,6 @@
 /**
- * Verifies that equipped gear actually attaches geometry to the player skeleton.
+ * Verifies that equipped gear actually puts geometry on the player: held
+ * items in the hand sockets, armour grown on the body.
  *
  * Scene-graph inspection, not a screenshot: the container has no GPU and full
  * renders time out, but the socket tree is exactly what "gear changes your look"
@@ -68,6 +69,15 @@ const result = await page.evaluate(async () => {
       (found[slot] ??= []).push({ bone: name, tris: Math.round(tris) });
     }
   }
+  // Armour is grown on the body: a `worn:<slot>` group of skinned meshes.
+  player.root.traverse((o) => {
+    if (!o.name?.startsWith('worn:')) return;
+    let tris = 0;
+    o.traverse((m) => {
+      if (m.isMesh && m.geometry) tris += (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position?.count ?? 0) / 3;
+    });
+    (found[o.name.slice(5)] ??= []).push({ worn: true, tris: Math.round(tris) });
+  });
   return {
     equipped: Object.fromEntries(
       Object.entries(c.equipment)

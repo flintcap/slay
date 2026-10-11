@@ -15,10 +15,8 @@
 import * as THREE from 'three';
 import type { CharClassId, EquipSlot, Item, ItemRarity, MonsterVisual } from '../src/types';
 import { Random } from '../src/core/RNG';
-import * as CM from '../src/art/CharacterModels';
-import { buildItemModel } from '../src/art/ItemModels';
-import { compactModel } from '../src/art/ModelBudget';
-import { Animator } from '../src/art/Animation';
+import { DressedHero, type Piece } from '../src/scenes/HeroModel';
+import { HeroAnimator } from '../src/art/hero/Animator';
 import { ITEM_BASES } from '../src/data/itemBases';
 import { MONSTERS } from '../src/data/monsters';
 import { BOSSES } from '../src/data/bosses';
@@ -218,38 +216,23 @@ function fakeItem(baseId: string, rarity: ItemRarity): Item {
 
 interface Figure {
   root: THREE.Object3D;
-  animator: Animator | null;
+  animator: HeroAnimator | null;
 }
 
 /** Builds and dresses a character exactly the way `Player` does. */
 export function dressed(cls: CharClassId, tier: Tier): Figure {
   const kit: Kit = tier === 'bare' ? {} : KITS[cls][tier];
-  const worn = new Set<EquipSlot>(Object.keys(kit) as EquipSlot[]);
-  const built = CM.buildPlayerModel(cls, new Random(0x9d0117), worn);
-  const holder = new THREE.Group();
-  holder.add(built.root);
-  const anim = new Animator(built.bones);
-  anim.play('idle', { fade: 0 });
-  const rng = new Random(7);
-  const wear = (CM as unknown as Record<string, unknown>).wearItem as
-    | ((body: THREE.Object3D, bones: Record<string, THREE.Bone>, slot: EquipSlot, item: Item, visual: unknown) => THREE.Object3D | null)
-    | undefined;
+  const hero = new DressedHero(cls, 0x9d0117);
+  const pieces: Partial<Record<EquipSlot, Piece>> = {};
   for (const [slot, [baseId, rarity]] of Object.entries(kit)) {
-    const base = baseById.get(baseId);
-    if (!base) continue;
-    const item = fakeItem(baseId, rarity);
-    const s = slot as EquipSlot;
-    const onBody = wear ? wear(built.root, built.bones, s, item, base.visual) : null;
-    if (onBody) continue;
-    const socketKey = base.category === 'quiver' ? 'quiver' : undefined;
-    const grip = s === 'mainHand' || s === 'offHand' ? CM.weaponGrip(base.category, base.slot === 'twoHand') : undefined;
-    const mesh = compactModel(buildItemModel(base.visual, rng, rarity));
-    CM.attachToSocket(holder, built.bones, s, mesh, socketKey, grip);
+    if (baseById.get(baseId)) pieces[slot as EquipSlot] = fakeItem(baseId, rarity);
   }
-  const main = kit.mainHand ? baseById.get(kit.mainHand[0]) : undefined;
-  anim.setGrip(CM.carryGrip(main?.category, main?.slot === 'twoHand'));
-  for (let i = 0; i < 24; i++) anim.update(1 / 30);
-  return { root: holder, animator: anim };
+  hero.dress(pieces);
+  const holder = new THREE.Group();
+  holder.add(hero.root);
+  hero.animator.play('idle', { fade: 0 });
+  for (let i = 0; i < 24; i++) hero.animator.update(1 / 30);
+  return { root: holder, animator: hero.animator };
 }
 
 // ---------------------------------------------------------------------------
@@ -561,7 +544,7 @@ async function npcSheet(from: number, to: number): Promise<string> {
       const built = build(ids[i]!, new Random(99 + i));
       const holder = new THREE.Group();
       holder.add(built.root);
-      const anim = new Animator(built.bones);
+      const anim = new HeroAnimator(built.bones);
       const carry = mod!.npcCarryGrip as ((id: string) => 'none' | 'twoHand' | 'staff' | 'bow') | undefined;
       if (carry) anim.setGrip(carry(ids[i]!));
       anim.play('idle', { fade: 0 });

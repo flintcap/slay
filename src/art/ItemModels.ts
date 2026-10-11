@@ -16,8 +16,8 @@
  *    a rim and a boss.
  *
  * Orientation contract: weapons are authored with the grip at the origin and
- * the business end running along **+Y**. `CharacterModels.attachToSocket`
- * rotates that into the fist. Armour pieces are authored around the origin in
+ * the business end running along **+Y**. `hero/Hold.ts` (`holdItem`)
+ * puts that in the fist. Armour pieces are authored around the origin in
  * the orientation they are worn.
  */
 
@@ -1808,7 +1808,7 @@ function buildQuiver(kit: Kit, g: THREE.Group): void {
 
 // Armour drops are authored upright, facing +Z, centred near the origin: the
 // way they stand on the floor and the way their icons show them. (Worn armour
-// is built separately, fitted to each body, by `WornGear`.)
+// is built separately, fitted to each body, by `hero/Armour.ts`.)
 
 /** A lathe flattened front to back: torsos, helms, cuffs. */
 function oval(profile: Array<[number, number]>, depth = 0.7, segments = 18): THREE.BufferGeometry {
@@ -2496,7 +2496,7 @@ const BUILDERS: Record<ItemShape, (kit: Kit, g: THREE.Group) => void> = {
 /**
  * Builds a 3D model for an item from its base's `visual` block. The result is
  * authored with the grip (weapons) or the wear point (armour) at the origin, so
- * `CharacterModels.attachToSocket` can drop it straight into a bone.
+ * `hero/Hold.ts` can put it straight into a hand socket.
  */
 export function buildItemModel(visual: ItemVisual, rng: Rng, rarity: ItemRarity, ident?: ItemIdent): THREE.Object3D {
   const { shape, sub } = resolveModelShape(visual.shape, visual.palette, visual.ornate);
