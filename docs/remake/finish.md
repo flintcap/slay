@@ -82,8 +82,10 @@ Looks (polish, no stat changes):
   the guard, as it should. No change.
 - [x] L4 one real dungeon frame with monsters in view, looked at. Depth 3
   (the bleached reach, desert): the low evening sun sits behind the pack as
-  the camera sees it, so every monster read as a black cut-out. Desert
-  fill lifted from 0.85 to 1.3.
+  the camera sees it, so every monster read as a black cut-out. A fill
+  lift (0.85 to 1.3) barely showed; turning the desert sun to 55 degrees
+  left of the camera's bearing (azimuth 290 to 350, fill 1.0) gives the
+  pack lit faces and still long shadows. Retaken and looked at.
 
 Checks never run by their stream:
 

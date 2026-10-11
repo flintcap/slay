@@ -13,7 +13,8 @@
  * (published path, relative to the page -> source path, relative to the repo
  * root), the shape the `files` option takes. The game fetches each one by the
  * same relative path (`core/Assets.ts` `assetUrl`), and falls back when one is
- * missing, so a page published without them still runs.
+ * missing, so a page published without them still runs. Worker scripts the
+ * build emits beside the bundle (`dist-single/assets/*.js`) go in the same map.
  */
 import { readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -122,6 +123,19 @@ for (const full of assetFiles('public/assets').sort()) {
   files[src.replace(/^public\//, '')] = src;
   assetBytes += statSync(full).size;
 }
+// Worker scripts cannot be inlined: the build emits each one beside the page
+// (`assets/FolkWorker-<hash>.js`, the townsfolk mesher) and the page asks for
+// it by that relative path. Missing, the town meshes its residents itself.
+let workers = 0;
+for (const entry of readdirSync('dist-single/assets', { withFileTypes: true })) {
+  if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+  const src = `dist-single/assets/${entry.name}`;
+  if (!js.includes(`assets/${entry.name}`)) continue;
+  files[`assets/${entry.name}`] = src;
+  assetBytes += statSync(src).size;
+  workers++;
+}
+if (workers === 0) console.log('note: no worker script found beside the bundle');
 writeFileSync('dist-single/files.json', JSON.stringify(files, null, 2) + '\n');
 const count = Object.keys(files).length;
 console.log(

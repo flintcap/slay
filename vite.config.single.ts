@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
 
 /**
- * Single-file build for the playable artifact. The game already ships zero
- * external assets, so inlining every chunk and the stylesheet yields one
- * self-contained HTML document that runs offline.
+ * Single-file build for the playable artifact: every chunk and the stylesheet
+ * inlined into one bundle that `tools/bundle-artifact.mjs` folds into a page.
+ * The CC0 files in `public/assets/` and the townsfolk worker script are not
+ * inlined; they are published beside the page (`dist-single/files.json`), and
+ * the game runs without them.
  */
 export default defineConfig({
   base: './',

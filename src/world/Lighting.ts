@@ -55,10 +55,11 @@ const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
   },
   // A low, hard evening sun: long shadows, hot highlights, warm bounce.
   desert: {
-    // Fill 0.85 left every monster's sun-side away from the camera, so the
-    // whole pack read as black cut-outs; 1.3 keeps the shadows long and hard.
-    sky: 0x8a96b0, ground: 0x6a5642, fill: 1.3,
-    key: 0xffe0bc, keyIntensity: 3.0, elevation: 24, azimuth: 290,
+    // The sun stands 55 degrees off the camera's bearing (45), to its left.
+    // At 290 it sat behind the pack as the camera sees it and every monster
+    // read as a black cut-out on bright sand.
+    sky: 0x8a96b0, ground: 0x6a5642, fill: 1.0,
+    key: 0xffe0bc, keyIntensity: 3.0, elevation: 24, azimuth: 350,
     fog: 0x3a2818, fogDensity: 0.016,
     hero: { color: 0xffd8b0, intensity: 14, distance: 12 },
   },
