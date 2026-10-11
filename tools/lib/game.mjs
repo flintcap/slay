@@ -35,8 +35,10 @@ export async function bootGame({
     () => false,
   );
   if (held) throw new Error(`port ${port} is already in use by another server; stop it first`);
+  // SLAY_OUTDIR serves another build (an older one kept for a before/after).
+  const outDir = process.env.SLAY_OUTDIR ? ['--outDir', process.env.SLAY_OUTDIR] : [];
   const args = preview
-    ? ['vite', 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1']
+    ? ['vite', 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1', ...outDir]
     : ['vite', '--port', String(port), '--strictPort', '--host', '127.0.0.1'];
   const server = spawn('npx', args, {
     cwd: ROOT,

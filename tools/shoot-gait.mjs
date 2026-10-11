@@ -2,7 +2,7 @@
  * Live-game gait strips: the hero walking and running in town, framed close,
  * one frame per game frame (1/20 s under software rendering). Two views: the
  * side (camera dropped low, hero crossing the screen) and the game's own
- * camera (hero running toward it). One PNG strip per class, view and speed.
+ * camera, close in. One PNG strip per class, view and speed.
  *
  *   npm run build
  *   SLAY_PORT=4332 timeout 1800 node tools/shoot-gait.mjs --out=shots/gait --classes=warden,ranger
@@ -57,7 +57,7 @@ try {
     await frames(page, 30);
     for (const speed of SPEEDS) {
       for (const view of VIEWS) {
-        const key = view === 'side' ? 'd' : 's';
+        const key = 'd';
         await page.evaluate(
           ([v, sp]) => {
             const sc = window.SLAY.engine.currentScene;
@@ -68,30 +68,10 @@ try {
             if (rig.opts.lookAheadMax !== undefined) rig.opts.lookAheadMax = 0;
             if (rig.__pitch0 === undefined) rig.__pitch0 = rig.opts.pitch;
             rig.opts.pitch = v === 'side' ? 0.12 : rig.__pitch0;
-            // A clear lane: 12 m of open ground along the run, a metre and a
-            // half from every wall, so the hero never fetches up on a post.
-            const cols = sc.town?.colliders ?? [];
-            const dx = v === 'side' ? 1 : 0;
-            const dz = v === 'side' ? 0 : 1;
-            const clear = (x0, z0) => {
-              for (let t = 0; t <= 12; t += 0.5) {
-                const x = x0 + dx * t;
-                const z = z0 + dz * t;
-                for (const c of cols) if (Math.abs(x - c.x) < c.w / 2 + 1.5 && Math.abs(z - c.z) < c.d / 2 + 1.5) return false;
-              }
-              return true;
-            };
-            let at = [-6, 12];
-            search: for (let r = 0; r < 30; r += 1)
-              for (let a = 0; a < 16; a++) {
-                const x = -6 + r * Math.cos((a / 16) * Math.PI * 2);
-                const z = 6 + r * Math.sin((a / 16) * Math.PI * 2);
-                if (clear(x, z)) {
-                  at = [x, z];
-                  break search;
-                }
-              }
-            sc.player.position.set(at[0], 0, at[1]);
+            // Open ground in the south of the town, room to run east. Both
+            // views run the same way: across the screen, as the player sees
+            // most strides.
+            sc.player.position.set(-8, 0, 12);
             sc.player.stats.moveSpeed = sp === 'walk' ? -60 : 0;
           },
           [view, speed],
@@ -106,7 +86,7 @@ try {
         const cx = Math.round(Math.min(VW - size / 2, Math.max(size / 2, box.x)));
         const cy = Math.round(Math.min(VH - size / 2, Math.max(size / 2, box.y)));
         const tiles = [];
-        const tmp = path.join(OUT, `tmp-${cls}-${speed}-${view}`);
+        const tmp = path.join(OUT, `tmp-${cls}-${speed}-${view}${TAG ? '-' + TAG : ''}`);
         mkdirSync(tmp, { recursive: true });
         // Freeze the game for each shot: a software frame takes seconds, and
         // the hero must not run out of the crop while it is taken.

@@ -76,6 +76,18 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
    carried under them, so the shore curves. (Check `fix1/`.)
 12. Foundry: the hero warped onto a forge prop (render tool only). Black
    wall blocks with orange rims read fine.
+13. Hero walk and run (owner). The run read as a string of lunges: the
+   swinging foot was held back (an eased swing), trailed far behind, and
+   the hips sank to reach it, so the back knee nearly touched the floor.
+   A wide idle stance carried into the stride. Starts froze the feet on a
+   walking beat while the body was already running. Now (`Gait.ts`,
+   `Animator.ts`): a narrow track near the centre line, little toe-out,
+   the swing keeps pace with the body, the heel kicks up behind, the hips
+   drop only for feet on the floor, a quicker blend into the run, an early
+   step for a foot left far behind, less crouch walking. No foot slide
+   (`check-hero`). Offline: `motion/clips-*-before.png` vs
+   `clips-*-after7.png` (new row "walk to run" checks the blend). Live:
+   `gait/gait-<class>-<speed>-<view>-before|after.png`.
 
 ## Next up
 
@@ -91,6 +103,11 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
 - `tools/shoot-looks.mjs --biomes=a,b` renders biomes with monsters left in
   and logs which effects fired (2-3 biomes per run, about 13 minutes each).
 - Sheets can run on a second port (4342) while a game render holds 4332.
+- `tools/shoot-gait.mjs` films the hero striding in town, frozen for each
+  shot so it stays in the crop. About 5 minutes a strip. `SLAY_OUTDIR=<dir>`
+  serves a kept older build, so before and after can render side by side.
+- `hero-sheet.mjs clips --class=<c>` shows the gait offline in under a
+  minute: use it to iterate, the live strips to confirm.
 
 - A new biome takes about 15 minutes to load in the test browser. Render a
   few at a time, each run under the 45-minute limit.
