@@ -25,7 +25,12 @@ const ok = (cond, what, detail = '') => {
   if (!cond) problems.push(what);
 };
 
-const { page, close, pageErrors } = await bootGame({ fallbackPort: 4321 });
+// `--from-boss`: skip 1 to 4 (map, zones, way on, gate) and start at the
+// real boss kill. For a rerun when the first part already passed.
+const FROM_BOSS = process.argv.includes('--from-boss');
+// `--small`: an 854x480 page, which software GL draws about twice as fast.
+const SMALL = process.argv.includes('--small');
+const { page, close, pageErrors } = await bootGame({ fallbackPort: 4321, ...(SMALL ? { viewport: { width: 854, height: 480 } } : {}) });
 try {
   await page.evaluate(async () => {
     localStorage.clear();
@@ -37,6 +42,7 @@ try {
   await page.evaluate(() => window.SLAY.debug.godMode(true));
   await frames(page, 20);
 
+  if (!FROM_BOSS) {
   // 1. A map, a waypoint.
   const m = await page.evaluate(() => {
     const s = window.SLAY.engine.currentScene;
@@ -151,6 +157,8 @@ try {
     ok(gate.sealed && gate.blocked && gate.bars, 'walking in seals the gate');
     ok(gate.awake, 'walking in wakes the boss');
     ok(gate.opened && gate.free, 'the gate opens when the boss falls');
+  }
+
   }
 
   // 4b. A real boss kill on a fresh map: phases, the reward, the way home.

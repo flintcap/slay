@@ -195,7 +195,7 @@ line, boss and place writing).
 ## Next up
 
 1. Boss and map end: one run,
-   `SLAY_PORT=4331 timeout 2700 node tools/check-mapflow.mjs 2>&1 | grep -E "ok |FAIL"`
+   `SLAY_PORT=4331 flock /tmp/slay-browser.lock timeout 2700 node tools/check-mapflow.mjs 2>&1 | grep -E "ok |FAIL"`
    (it jumps to the boss with debug helpers). Death and rising again: the
    plain `check-flow` (no class) covers it; run it only if mapflow leaves
    time and doubt.
@@ -211,6 +211,9 @@ line, boss and place writing).
   sheets over many reads; no helper agents. For qa-bugs: the class tour is
   one run of every class still left (`--classes=... --small`), the boss
   and map end one `check-mapflow` run, text by grep only.
+- ONE BROWSER AT A TIME on the whole machine (PROTOCOL.md, cf0c485):
+  wrap every browser run as
+  `flock /tmp/slay-browser.lock timeout 2700 node tools/<tool>.mjs ...`.
 - Never end a turn to wait on a run: start it in the background and wait
   in the foreground with a bounded `until grep` loop under `timeout`.
 
