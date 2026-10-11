@@ -1,6 +1,6 @@
 # Stream: npcs (town NPC looks and animations)
 
-Status: not started
+Status: in progress
 
 Goal: every townsperson remade on the new hero rig, each one recognisable,
 with life: working, idling, turning to talk.
