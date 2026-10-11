@@ -10,6 +10,7 @@ import { FXSystem } from '../fx/Particles';
 import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { Player } from '../entities/Player';
+import { folkMeshed, heroMeshed } from '../art/npc/Prewarm';
 import { buildTown, type TownBuild } from '../world/Town';
 import { setFogShape } from '../core/Renderer';
 import { setActiveDifficulty } from '../data/difficulties';
@@ -72,7 +73,7 @@ export class TownScene extends GameScene {
     this.decals = new DecalSystem(this.scene, engine.renderer.quality);
   }
 
-  enter(): void {
+  async enter(): Promise<void> {
     const character = save.account.current;
     if (!character) {
       // Reaching town without a character means a broken flow — recover rather
@@ -82,6 +83,9 @@ export class TownScene extends GameScene {
     }
 
     setActiveDifficulty(character.difficulty as never);
+    // The boot worker may still be meshing the townsfolk and this hero: wait
+    // for it behind the curtain rather than meshing them all again here.
+    await Promise.all([folkMeshed(), heroMeshed(character.classId)]);
     const rng = new Random(0x70b6);
     this.town = buildTown(rng);
     this.scene.add(this.town.root);

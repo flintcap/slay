@@ -90,3 +90,32 @@ export function heroMeshed(classId: string, capMs = 20000): Promise<void> {
     });
   });
 }
+
+/**
+ * Resolves once the worker has sent back every townsfolk body (or has none
+ * left to send), after `capMs` at most. The town waits here behind its
+ * curtain: building them itself meshed the same nine residents a second time
+ * on the main thread, the longest freeze of a first visit. They move to the
+ * front of the worker's queue.
+ */
+export function folkMeshed(capMs = 60000): Promise<void> {
+  const left = NPC_LOOK_IDS.filter((id) => pending.has(id));
+  if (left.length === 0 || !worker) return Promise.resolve();
+  try {
+    // Last asked goes first: ask in reverse to keep their order.
+    for (let i = left.length - 1; i >= 0; i--) worker.postMessage({ first: left[i] });
+  } catch {
+    /* the worker is gone; the cap below still lets the build go ahead */
+  }
+  return new Promise<void>((resolve) => {
+    let n = left.length;
+    const t = setTimeout(resolve, capMs);
+    for (const id of left) {
+      pending.get(id)!.push(() => {
+        if (--n > 0) return;
+        clearTimeout(t);
+        resolve();
+      });
+    }
+  });
+}
