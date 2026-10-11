@@ -8,6 +8,6 @@ vfx, finish). Published as version 29.
 
 Quality pass 2:
 Running: qa-bugs, qa-looks, qa-speed
-Waiting: (none)
+Waiting: qa-legend (starts when the first of the three finishes)
 Done: (none)
 Paused: no
