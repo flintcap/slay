@@ -991,6 +991,14 @@ const FIXED: Record<string, ActionDef> = {
   deathFwd: fall(true, 0.8, true),
 };
 
+/**
+ * Adds a named action (townsfolk at their work, a talk gesture) that `play`
+ * then plays like any other. Names already in use are left alone.
+ */
+export function registerAction(name: string, def: ActionDef): void {
+  if (!(name in FIXED)) FIXED[name] = def;
+}
+
 /** Every action name the game plays. */
 export const ACTION_NAMES = [
   'attack1',
