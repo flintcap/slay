@@ -29,6 +29,7 @@ import type {
   Rng,
 } from '../types';
 import { events } from '../core/Events';
+import { prepareBossPortrait } from '../art/BossPortraits';
 import { Enemy, depthCurve } from './Enemy';
 import {
   after,
@@ -162,6 +163,8 @@ export class Boss extends Enemy {
     if (this.ai) this.ai.fixateOnPlayer = true;
     // Immune to the soft CC that trivialises large targets.
     this.buff('boss_stability', Number.MAX_SAFE_INTEGER, {});
+    // Its intro-card portrait, rendered from this body before the fight.
+    void prepareBossPortrait(def.id, 96);
   }
 
   // --- engagement ----------------------------------------------------------
