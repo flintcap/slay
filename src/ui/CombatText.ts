@@ -50,6 +50,29 @@ interface Entry {
   base: number;
   /** Fixed screen offset in px, so hero numbers sit either side of the head. */
   ox: number;
+  /** The number painted once at rest size, and once at its biggest pop. */
+  rest?: Sprite;
+  peak?: Sprite;
+}
+
+/**
+ * An entry's text painted once into its own small canvas, reused every frame
+ * until the text changes. `ox`, `oy` are where the text's centre sits in it,
+ * in CSS px.
+ */
+interface Sprite {
+  c: HTMLCanvasElement;
+  x: CanvasRenderingContext2D;
+  key: string;
+  ox: number;
+  oy: number;
+  w: number;
+  h: number;
+}
+
+/** The biggest a kind of number ever draws (see the scale in `update`). */
+function peakScale(kind: Kind): number {
+  return kind === 'crit' ? 1.7 : kind === 'level' ? 1.2 : 1.28;
 }
 
 /** A running total stops absorbing hits after this long and a new one starts. */
@@ -342,9 +365,6 @@ export class CombatTextLayer {
     this.textScale = Number.isFinite(ts) && ts > 0 ? ts : 1;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.w, this.h);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round';
 
     let write = 0;
     for (let i = 0; i < this.entries.length; i++) {
@@ -382,9 +402,77 @@ export class CombatTextLayer {
     this.entries.length = write;
   }
 
+  /**
+   * Draws one number. The text is painted into a sprite once (and again only
+   * when it changes) and copied each frame. Painting it every frame (a font
+   * parse, an outline, a blurred halo and a gradient per number) was the
+   * biggest single cost of a busy fight's frame in the profile.
+   */
   private drawEntry(ctx: CanvasRenderingContext2D, e: Entry, x: number, y: number, scale: number, alpha: number): void {
-    const size = e.size * scale * this.textScale;
+    const atRest = Math.abs(scale - 1) < 1e-3;
+    const top = atRest ? 1 : peakScale(e.kind);
+    const s = this.sprite(e, top, atRest ? 'rest' : 'peak');
+    if (!s) return;
+    const f = scale / top;
     ctx.globalAlpha = alpha;
+    ctx.drawImage(s.c, x - s.ox * f, y - s.oy * f, s.w * f, s.h * f);
+    ctx.globalAlpha = 1;
+  }
+
+  /** The entry painted at `scale`, from its cache when nothing has changed. */
+  private sprite(e: Entry, scale: number, slot: 'rest' | 'peak'): Sprite | null {
+    const key = `${e.text}|${e.size}|${e.stacks > 2 ? e.stacks : 0}|${e.fill}|${this.textScale}|${this.dpr}|${scale}`;
+    const have = e[slot];
+    if (have && have.key === key) return have;
+    let s = have;
+    if (!s) {
+      const c = document.createElement('canvas');
+      const x = c.getContext('2d');
+      if (!x) return null;
+      s = { c, x, key: '', ox: 0, oy: 0, w: 0, h: 0 };
+      e[slot] = s;
+    }
+    s.key = key;
+    const x = s.x;
+    const size = e.size * scale * this.textScale;
+    const glow = e.kind === 'crit' || e.kind === 'level';
+    this.setFont(x, e, size);
+    const tw = x.measureText(e.text).width;
+    const lw = Math.max(3, size * 0.16);
+    // Room for the outline, the halo (its blur is in canvas pixels) and a
+    // pixel of antialiasing.
+    const pad = lw * 0.5 + (glow ? 16 / this.dpr + 4 : 0) + 2;
+    let right = tw * 0.5 + pad;
+    let below = size * 0.62 + pad;
+    const stacked = e.stacks > 2 && (e.kind === 'hit' || e.kind === 'crit');
+    const tag = `x${e.stacks}`;
+    const small = `800 ${Math.round(size * 0.5)}px 'Segoe UI', system-ui, sans-serif`;
+    if (stacked) {
+      x.font = small;
+      const sw = x.measureText(tag).width;
+      right = Math.max(right, tw * 0.5 + size * 0.42 + sw * 0.5 + 4);
+      below = Math.max(below, size * 0.15 + size * 0.36 + 4);
+    }
+    const left = tw * 0.5 + pad;
+    const above = size * 0.62 + pad;
+    s.ox = left;
+    s.oy = above;
+    s.w = left + right;
+    s.h = above + below;
+    // Resizing clears it and resets the context's state.
+    s.c.width = Math.max(1, Math.ceil(s.w * this.dpr));
+    s.c.height = Math.max(1, Math.ceil(s.h * this.dpr));
+    s.w = s.c.width / this.dpr;
+    s.h = s.c.height / this.dpr;
+    x.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.lineJoin = 'round';
+    this.paint(x, e, left, above, size, small, tag, stacked);
+    return s;
+  }
+
+  private setFont(ctx: CanvasRenderingContext2D, e: Entry, size: number): void {
     if (e.kind === 'word' || e.kind === 'level') {
       ctx.font = `700 ${size}px 'Cinzel', 'Trajan Pro', 'Palatino Linotype', Palatino, Georgia, serif`;
       ctx.letterSpacing = e.kind === 'level' ? '6px' : '2px';
@@ -392,7 +480,20 @@ export class CombatTextLayer {
       ctx.font = `900 ${size}px 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif`;
       ctx.letterSpacing = '0px';
     }
+  }
 
+  /** The number itself, centred on (x, y): what used to be drawn every frame. */
+  private paint(
+    ctx: CanvasRenderingContext2D,
+    e: Entry,
+    x: number,
+    y: number,
+    size: number,
+    small: string,
+    tag: string,
+    stacked: boolean,
+  ): void {
+    this.setFont(ctx, e, size);
     if (e.kind === 'crit' || e.kind === 'level') {
       // Warm halo so the big ones punch through a bright effect.
       ctx.shadowColor = e.kind === 'crit' ? 'rgba(255,170,60,0.85)' : 'rgba(255,210,120,0.9)';
@@ -421,18 +522,17 @@ export class CombatTextLayer {
     }
     ctx.fillText(e.text, x, y);
 
-    if (e.stacks > 2 && (e.kind === 'hit' || e.kind === 'crit')) {
+    if (stacked) {
       // A small multiplier tells you the number is a running total.
       // Measure the number in its own font before switching to the small one.
       const tx = x + ctx.measureText(e.text).width * 0.5 + size * 0.42;
-      ctx.font = `800 ${Math.round(size * 0.5)}px 'Segoe UI', system-ui, sans-serif`;
+      ctx.font = small;
       ctx.lineWidth = 3;
       ctx.strokeStyle = e.edge;
-      ctx.strokeText(`x${e.stacks}`, tx, y + size * 0.15);
+      ctx.strokeText(tag, tx, y + size * 0.15);
       ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.fillText(`x${e.stacks}`, tx, y + size * 0.15);
+      ctx.fillText(tag, tx, y + size * 0.15);
     }
-    ctx.globalAlpha = 1;
   }
 
   /** Drop everything on screen (floor change). */

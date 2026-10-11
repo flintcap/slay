@@ -35,6 +35,8 @@
  * --warm plays it all a second time in the same browser profile (a returning
  * player: IndexedDB caches filled). --only=a,b runs some segments.
  * --profile adds the heaviest JavaScript functions of each segment.
+ * --texlog names who sent textures to the GPU in each segment (by call
+ * stack), to find an upload that repeats every frame.
  */
 import { chromium } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -46,6 +48,7 @@ const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.spli
 const PORT = Number(process.env.SLAY_PORT ?? 4333);
 const WARM = process.argv.includes('--warm');
 const PROFILE = process.argv.includes('--profile');
+const TEXLOG = process.argv.includes('--texlog');
 const ONLY = arg('only')?.split(',') ?? ['menus', 'select', 'view', 'areas', 'fight'];
 const [VW, VH] = (arg('size') ?? '480x270').split('x').map(Number);
 const FIGHT_FRAMES = Number(arg('fight') ?? 300);
@@ -64,9 +67,9 @@ const context = await chromium.launchPersistentContext(profileDir, {
 });
 
 // Before any page script: frame stamps, and what each frame sent to the GPU.
-await context.addInitScript(() => {
+await context.addInitScript((texlog) => {
   const w = window;
-  const L = (w.__lag = { frames: [], links: [], tex: [], buf: [], ctx: [], long: [] });
+  const L = (w.__lag = { frames: [], links: [], tex: [], buf: [], ctx: [], long: [], texBy: new Map() });
   const now = () => performance.now();
   L.draws = 0;
   L.drawLog = [];
@@ -107,7 +110,18 @@ await context.addInitScript(() => {
       wrap(n, () => L.draws++);
     }
     for (const n of ['texImage2D', 'texSubImage2D', 'texImage3D', 'texSubImage3D', 'compressedTexImage2D']) {
-      wrap(n, (args) => L.tex.push([now(), size(args)]));
+      wrap(n, (args) => {
+        const b = size(args);
+        L.tex.push([now(), b]);
+        if (!texlog) return;
+        // The first frames of ours outside three.js say who asked.
+        const st = (new Error().stack ?? '').split('\n').slice(2).map((x) => x.trim().replace(/^at /, '').replace(/\(?https?:[^)]*\/([^/):]+):(\d+):\d+\)?/, '$1:$2'));
+        const k = st.slice(0, 7).join(' < ');
+        const r = L.texBy.get(k) ?? [0, 0];
+        r[0]++;
+        r[1] += b;
+        L.texBy.set(k, r);
+      });
     }
     wrap('bufferData', (args) => {
       const d = args[1];
@@ -133,7 +147,7 @@ await context.addInitScript(() => {
     requestAnimationFrame(sample);
   };
   requestAnimationFrame(sample);
-});
+}, TEXLOG);
 
 const raf = () => new Promise((r) => requestAnimationFrame(r));
 
@@ -155,7 +169,10 @@ async function visit(label) {
   const seg = async (name, fn, a) => {
     if (PROFILE) await cdp.send('Profiler.start');
     // The page clock at the profile's start, to place samples in frames.
-    const t0 = await page.evaluate(() => performance.now());
+    const t0 = await page.evaluate(() => {
+      window.__lag.texBy.clear();
+      return performance.now();
+    });
     await page.evaluate(fn, a);
     const t1 = await page.evaluate(() => performance.now());
     const prof = PROFILE ? (await cdp.send('Profiler.stop')).profile : null;
@@ -229,6 +246,10 @@ async function visit(label) {
         [t0, t1],
       );
       if (wins.length) printProfile(prof, { t0, wins });
+    }
+    if (TEXLOG) {
+      const by = await page.evaluate(() => [...window.__lag.texBy.entries()].sort((x, y) => y[1][1] - x[1][1]).slice(0, 6));
+      for (const [k, [n, b]] of by) console.log(`      tex ${Math.round(b / 1024)} KB in ${n} uploads: ${k.slice(0, 400)}`);
     }
   };
 
