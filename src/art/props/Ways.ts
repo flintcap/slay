@@ -151,8 +151,17 @@ void main() {
   gl_FragColor = vec4(uColor * pow(1.0 - r, 2.0) * 0.9 * wave, 1.0);
 }`;
 
+export interface PortalOpts {
+  width?: number;
+  height?: number;
+  /** Its point light's intensity and reach. */
+  light?: [number, number];
+  /** False keeps it facing its own +Z (the town gate) instead of the camera. */
+  billboard?: boolean;
+}
+
 /** The town portal: a standing oval of light. `color` is its hue. */
-export function buildPortal(color = 0x7ec8ff): WayLook {
+export function buildPortal(color = 0x7ec8ff, o: PortalOpts = {}): WayLook {
   const owned: THREE.BufferGeometry[] = [];
   const mats: THREE.Material[] = [];
   const uniforms = { uTime: { value: 0 }, uColor: { value: new THREE.Color(color) } };
@@ -170,8 +179,9 @@ export function buildPortal(color = 0x7ec8ff): WayLook {
     return m;
   };
   const face = new THREE.Group();
-  const W = 1.5;
-  const H = 2.5;
+  const W = o.width ?? 1.5;
+  const H = o.height ?? 2.5;
+  const [lightI, lightD] = o.light ?? [14, 16];
   const lift = 0.2;
   const veil = new THREE.PlaneGeometry(W, H);
   owned.push(veil);
@@ -190,15 +200,15 @@ export function buildPortal(color = 0x7ec8ff): WayLook {
   face.add(rim);
 
   // A pool of glow on the ground at its foot.
-  const poolGeo = new THREE.PlaneGeometry(3.2, 3.2);
+  const poolGeo = new THREE.PlaneGeometry(W * 2.1, W * 2.1);
   poolGeo.rotateX(-Math.PI / 2);
   poolGeo.translate(0, 0.03, 0);
   owned.push(poolGeo);
   const pool = new THREE.Mesh(poolGeo, additive(POOL_FRAG));
   pool.renderOrder = 1;
 
-  const light = new THREE.PointLight(color, 14, 16, 2);
-  light.position.set(0, 1.4, 0.4);
+  const light = new THREE.PointLight(color, lightI, lightD, 2);
+  light.position.set(0, lift + H * 0.55, 0.4);
 
   const root = new THREE.Group();
   root.name = 'portal';
@@ -216,8 +226,8 @@ export function buildPortal(color = 0x7ec8ff): WayLook {
       t += dt;
       uniforms.uTime.value = t;
       face.position.y = Math.sin(t * 1.7) * 0.05;
-      light.intensity = 12 + Math.sin(t * 5.3) * 1.5 + Math.sin(t * 2.1) * 1.5;
-      if (camera) {
+      light.intensity = lightI * (0.86 + Math.sin(t * 5.3) * 0.1 + Math.sin(t * 2.1) * 0.1);
+      if (camera && o.billboard !== false) {
         camera.getWorldPosition(camPos);
         root.getWorldPosition(here);
         face.rotation.y = Math.atan2(camPos.x - here.x, camPos.z - here.z) - root.rotation.y;

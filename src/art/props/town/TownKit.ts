@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import type { Rng } from '../../../types';
 import { biomeArt } from '../../../world/Biomes';
-import { PropKit, clean, merge, shade, xf, type Shade, type Xf } from '../Kit';
+import { PropKit, box, clean, merge, shade, xf, type Shade, type Xf } from '../Kit';
 import { makeCtx, paletteFor, type BuildCtx, type PropPalette } from '../Ctx';
 import { libraryTemplate } from '../Library';
 import { propMat } from '../PropMats';
@@ -61,6 +61,14 @@ export const TM = {
   cloth: (base: number) => propMat('cloth.homespun', { base, side: THREE.DoubleSide, grime: 0.6 }),
   needles: () => propMat('foliage.pine', { base: 0x2c3a26, side: THREE.DoubleSide, grime: 0 }),
   straw: () => propMat('prop.thatch.old', { grime: 0.3 }),
+  leather: () => propMat('leather.worn', { grime: 0.5 }),
+  hide: () => propMat('leather.worn', { base: 0x6a5440, side: THREE.DoubleSide, grime: 0.4 }),
+  herb: () => propMat('foliage.pine', { base: 0x4a5a30, grime: 0 }),
+  bronze: () => propMat('prop.bronze', { grime: 0.3 }),
+  banner: () => propMat('cloth.banner', { side: THREE.DoubleSide, grime: 0.5 }),
+  rope: () => propMat('leather.worn', { base: 0x6a5a44, grime: 0.2 }),
+  linen: () => propMat('cloth.linen', { side: THREE.DoubleSide, grime: 0.3 }),
+  wax: () => propMat('cloth.linen', { base: 0xd8c8a0, grime: 0 }),
 };
 
 export type Collider = { x: number; z: number; w: number; d: number };
@@ -85,7 +93,7 @@ function placement(x: number, y: number, z: number, ry: number, s: number): THRE
  * dropped in with `kit` / `template`.
  */
 export class TownBatch {
-  private readonly buckets = new Map<THREE.Material, { cast: boolean; list: THREE.BufferGeometry[] }>();
+  private readonly buckets = new Map<string, { mat: THREE.Material; cast: boolean; list: THREE.BufferGeometry[] }>();
   readonly colliders: Collider[] = [];
 
   /** Adds a shape under a material after a transform and a tone. */
@@ -133,7 +141,8 @@ export class TownBatch {
       this.colliders.push({ x, z, w: Math.abs(w * c) + Math.abs(d * s), d: Math.abs(w * s) + Math.abs(d * c) });
       return this;
     }
-    const cell = 0.9;
+    // Fine enough that a turned corner never pokes more than ~10 cm past its boxes.
+    const cell = 0.5;
     const nx = Math.max(1, Math.ceil(w / cell));
     const nz = Math.max(1, Math.ceil(d / cell));
     const cw = w / nx;
@@ -153,11 +162,12 @@ export class TownBatch {
   /** Merges every bucket into one mesh under `root`; returns the geometries made. */
   flush(root: THREE.Object3D): THREE.BufferGeometry[] {
     const made: THREE.BufferGeometry[] = [];
-    for (const [mat, b] of this.buckets) {
+    for (const b of this.buckets.values()) {
       if (b.list.length === 0) continue;
       const geo = merge(b.list);
+      for (const g of b.list) g.dispose();
       made.push(geo);
-      const mesh = new THREE.Mesh(geo, mat);
+      const mesh = new THREE.Mesh(geo, b.mat);
       mesh.castShadow = b.cast;
       mesh.receiveShadow = true;
       // Merged bounds span the town; culling would be all or nothing anyway.
@@ -171,18 +181,9 @@ export class TownBatch {
 
   private push(mat: THREE.Material, geo: THREE.BufferGeometry, cast: boolean): void {
     // Shadow casters and non-casters of one material go in separate meshes.
-    let b = this.buckets.get(mat);
-    if (b && b.cast !== cast) {
-      const alt = (mat.userData.townNoCast ??= mat.clone()) as THREE.Material;
-      if (!cast) {
-        alt.userData = { ...mat.userData, shared: true };
-        b = this.buckets.get(alt);
-        if (!b) this.buckets.set(alt, (b = { cast: false, list: [] }));
-        b.list.push(geo);
-        return;
-      }
-    }
-    if (!b) this.buckets.set(mat, (b = { cast, list: [] }));
+    const key = `${mat.uuid}|${cast ? 1 : 0}`;
+    let b = this.buckets.get(key);
+    if (!b) this.buckets.set(key, (b = { mat, cast, list: [] }));
     b.list.push(geo);
   }
 }
@@ -196,4 +197,115 @@ export function piece(batch: TownBatch, rng: Rng, build: PieceBuilder, x: number
   const k = new PropKit(r);
   build(k, townCtx(r, variant));
   batch.kit(k, x, y, z, ry, s);
+}
+
+// ---------------------------------------------------------------------------
+// Building in a turned frame
+// ---------------------------------------------------------------------------
+
+/**
+ * A building's own frame: local +Z is its front, local X runs along it.
+ * Shapes, kits, templates and footprints given in local coordinates land in
+ * the batch turned and moved into the town.
+ */
+export class Site {
+  readonly c: number;
+  readonly s: number;
+
+  constructor(readonly batch: TownBatch, readonly x: number, readonly z: number, readonly ry = 0, readonly y = 0) {
+    this.c = Math.cos(ry);
+    this.s = Math.sin(ry);
+  }
+
+  /** World position of a local point. */
+  wx(lx: number, lz: number): number {
+    return this.x + lx * this.c + lz * this.s;
+  }
+
+  wz(lx: number, lz: number): number {
+    return this.z - lx * this.s + lz * this.c;
+  }
+
+  world(lx: number, ly: number, lz: number): THREE.Vector3 {
+    return new THREE.Vector3(this.wx(lx, lz), this.y + ly, this.wz(lx, lz));
+  }
+
+  private t(t: Xf = {}): Xf {
+    const lx = t.x ?? 0;
+    const lz = t.z ?? 0;
+    return { ...t, x: this.wx(lx, lz), y: this.y + (t.y ?? 0), z: this.wz(lx, lz), ry: this.ry + (t.ry ?? 0) };
+  }
+
+  add(mat: THREE.Material, geo: THREE.BufferGeometry, t?: Xf, tone?: Shade, cast = true): this {
+    this.batch.add(mat, geo, this.t(t), tone, cast);
+    return this;
+  }
+
+  /** A chamfered box whose bottom sits at `t.y`. */
+  box(mat: THREE.Material, w: number, h: number, d: number, t: Xf = {}, tone?: Shade, bevel = 0.025, cast = true): this {
+    return this.add(mat, box(w, h, d, bevel), { ...t, y: (t.y ?? 0) + (h / 2) * (t.sy ?? t.s ?? 1) }, tone, cast);
+  }
+
+  kit(k: PropKit, lx: number, lz: number, ry = 0, s = 1, ly = 0, cast = true): this {
+    this.batch.kit(k, this.wx(lx, lz), this.y + ly, this.wz(lx, lz), this.ry + ry, s, cast);
+    return this;
+  }
+
+  template(kind: string, variant: number, lx: number, lz: number, ry = 0, s = 1, ly = 0): this {
+    this.batch.template(kind, variant, this.wx(lx, lz), this.wz(lx, lz), this.ry + ry, s, this.y + ly);
+    return this;
+  }
+
+  /** A solid footprint in local coordinates (`ry` turns it further). */
+  solid(lx: number, lz: number, w: number, d: number, ry = 0): this {
+    this.batch.solid(this.wx(lx, lz), this.wz(lx, lz), w, d, this.ry + ry);
+    return this;
+  }
+
+  /**
+   * One square-on box inside a turned square `size` across (a chimney, a
+   * stack): small things read better as one box than as a handful of slivers.
+   */
+  block(lx: number, lz: number, size: number): this {
+    // A touch past inscribed: the faces poke out under 10 cm, the corners in under 25.
+    const k = Math.min(size, (1.2 * size) / (Math.abs(this.c) + Math.abs(this.s)));
+    this.batch.solid(this.wx(lx, lz), this.wz(lx, lz), k, k);
+    return this;
+  }
+}
+
+/**
+ * A gable: a triangle `w` wide and `h` tall standing on y = 0, `t` thick
+ * along Z, centred. The end wall under a pitched roof.
+ */
+export function gable(w: number, h: number, t: number): THREE.BufferGeometry {
+  const sh = new THREE.Shape();
+  sh.moveTo(-w / 2, 0);
+  sh.lineTo(w / 2, 0);
+  sh.lineTo(0, h);
+  sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false });
+  g.translate(0, 0, -t / 2);
+  return g;
+}
+
+/** A lantern a building carries: Town.ts turns each into a bulb, and a light when `lit`. */
+export interface LanternSpec {
+  x: number;
+  y: number;
+  z: number;
+  color: number;
+  intensity: number;
+  distance: number;
+  flicker: number;
+  radius: number;
+  lit: boolean;
+}
+
+/** Cloth that moves in the wind: Town.ts swings it on its shared gust. */
+export interface SwayItem {
+  obj: THREE.Object3D;
+  phase: number;
+  amp: number;
+  axis: 'x' | 'z';
 }
