@@ -188,11 +188,22 @@ function paint(
     }
     if (spec.veins) {
       const vv = spec.veins;
-      const ridge = 1 - Math.abs(noise.simplex3(x * vv.scale, y * vv.scale + 3.7, z * vv.scale));
-      const ridge2 = 1 - Math.abs(noise.simplex3(x * vv.scale * 2.1 + 5, y * vv.scale * 2.1, z * vv.scale * 2.1 - 2));
-      const t = sstep(vv.cut, 1, Math.max(ridge, ridge2 * 0.96));
+      // A vein thinner than the mesh's vertex spacing aliases into blotches
+      // (camouflage, not cracks). Where it would, the network is drawn
+      // coarser (up to about twice the cell) and its lines a little wider,
+      // so each crack spans a couple of vertices; the fine second octave
+      // drops out, and the glow dims to keep the overall heat.
+      const band = 1 - vv.cut;
+      const sp = 0.018 * H;
+      const sc = Math.max(vv.scale * 0.45, Math.min(vv.scale, band / (sp * 1.3)));
+      const b1 = Math.max(band, sp * sc * 1.3);
+      const b2 = Math.max(band, sp * sc * 2.1 * 1.3);
+      const w2 = clamp01((band / b2 - 0.4) / 0.6);
+      const ridge = 1 - Math.abs(noise.simplex3(x * sc, y * sc + 3.7, z * sc));
+      const ridge2 = w2 > 0 ? 1 - Math.abs(noise.simplex3(x * sc * 2.1 + 5, y * sc * 2.1, z * sc * 2.1 - 2)) : 0;
+      const t = Math.max(sstep(1 - b1, 1, ridge), sstep(1 - b2, 1, ridge2) * 0.96 * w2);
       if (t > 0) {
-        gl = Math.max(gl, t * vv.glow);
+        gl = Math.max(gl, t * vv.glow * Math.sqrt(band / b1));
         if (vv.col) {
           r += (vv.col[0] - r) * t;
           g += (vv.col[1] - g) * t;
