@@ -51,9 +51,15 @@ Dead code:
 
 Speed:
 
-- [ ] S1 per-step garbage over budget (304 to 411 KB against 200):
+- [x] S1 per-step garbage over budget (304 to 411 KB against 200):
   `Nav.lineOfSight`/`worldToTile` in shot ticks, `Enemy.hasStatus`/`stacksOf`
-  closures, monster AI, HeroModel.
+  closures, monster AI, HeroModel. Fixed what had a cause: line of sight
+  and status queries allocate nothing, effect-drawn shots skip a hidden
+  `lookAt`, monsters well out of view skip their pose solve. Still 290 to
+  440 KB at depth 1 (the number swings run to run): `check-perf --alloc`
+  now charges three's allocations to the calling game code, and what is
+  left is number boxing spread through the creature IK and AI maths, no
+  single owner. Update time stays 2.9 to 3.7 ms against 6. Left as is.
 - [ ] S2 depth 9 forest 1.60M triangles against 1.5M.
 - [ ] S3 depth 12 perf never measured.
 - [x] S4 first town visit builds the nine townsfolk in about 28 s; build
@@ -89,7 +95,8 @@ Looks (polish, no stat changes):
 
 Checks never run by their stream:
 
-- [ ] C1 `check-skills` for warden and shadowblade (one class a run).
+- [x] C1 `check-skills` for warden and shadowblade (one class a run).
+  Warden 25 of 25 working, shadowblade 23 of 23; none refused, none threw.
 - [ ] C2 `check-soak`, small settings first.
 
 Noted, not planned (owner's call or low value):

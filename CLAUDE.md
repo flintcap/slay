@@ -50,4 +50,6 @@ The remake plan lives in `docs/remake/` (start with `PLAN.md`).
 - `CONTRACTS.md` documents the function signatures modules expose to each other.
 - All randomness goes through seeded streams in `src/core/RNG.ts`. Never `Math.random`.
 - `npm run typecheck` must stay at zero errors.
-- `node tools/screenshot.mjs --out=shots --shots=town,dungeon` renders real frames. Boot takes minutes under software rendering.
+- `node tools/screenshot.mjs --out=shots --shots=town,dungeon` renders real frames from the `npm run build` output. A first level takes minutes under software rendering.
+- `node tools/run-checks.mjs` runs the fast checkers (`--only=a,b` for some). Browser checks (`check-perf`, `check-skills`, `check-soak`) run one at a time, each inside `timeout`.
+- `node tools/bundle-artifact.mjs` builds the one-page artifact (`dist-single/slay.html`) and the list of files to publish beside it (`dist-single/files.json`).
