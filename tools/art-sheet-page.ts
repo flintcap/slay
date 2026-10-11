@@ -69,7 +69,8 @@ const RCOL: Record<ItemRarity, string> = {
 export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
   /** Every base at 64px, normal rarity, with its id. */
   async items() {
-    const bases = ITEM_BASES;
+    const match = (window as unknown as { __match?: string[] }).__match;
+    const bases = match ? ITEM_BASES.filter((b) => match.some((m) => b.id.startsWith(m))) : ITEM_BASES;
     const S = 64;
     const CW = 84;
     const CH = 84;

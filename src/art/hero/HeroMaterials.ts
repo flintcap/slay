@@ -443,7 +443,8 @@ export function gearMaterial(key: string, opts: { tint?: number; metalness?: num
     const metal = opts.metalness ?? (def.metal > 0.5 ? 0.6 : def.metal);
     const m = new THREE.MeshStandardMaterial({
       color,
-      roughness: opts.roughness ?? Math.max(0.35, (def.rough[0] + def.rough[1]) * 0.6),
+      // Metal keeps some grain: a smoother floor blows out to white under the town's sky.
+      roughness: opts.roughness ?? Math.max(metal > 0.5 ? 0.42 : 0.35, (def.rough[0] + def.rough[1]) * 0.6),
       metalness: metal,
       envMapIntensity: metal > 0.5 ? 1.35 : 1,
     });

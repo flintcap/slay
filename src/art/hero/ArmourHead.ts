@@ -173,7 +173,11 @@ const HELMS: Record<string, HelmFn> = {
     headShell(k, 'helm', 'main', F, [k.above(6.3), holes(breaths)], 0.0105, { edge: [k.above(6.3)] });
     shadow(k, k.H(0, 7.0, 0.36), V(0.26 * h, 0.05 * h, 0.06 * h));
     shadow(k, k.H(0, 6.68, 0.42), V(0.17 * h, 0.1 * h, 0.05 * h));
-    k.fit(k.trimmed ? 'trim' : 'main', G.head, 0.005).box(k.H(0, 7.6, -0.08), V(0.02 * h, 0.05 * h, 0.4 * h), 0.015 * h, 0.05 * h);
+    // A raised comb and a rivet line in darker iron, so the bowl reads as
+    // forged plates rather than a smooth egg.
+    const T = k.fit(k.trimmed ? 'trim' : 'iron', G.head, 0.005);
+    T.box(k.H(0, 7.66, -0.08), V(0.026 * h, 0.12 * h, 0.46 * h), 0.015 * h, 0.06 * h);
+    rivetRing(k, 7.16, 12, 0.46, k.trimmed ? 'trim' : 'iron');
     k.hides.push('hair', 'beard', 'brows');
   },
   'helm.great'(k) {

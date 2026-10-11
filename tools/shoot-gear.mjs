@@ -1,7 +1,8 @@
 /**
  * Worn gear in the live game: each class in town at each gear level (bare,
  * starter, mid, elite), seen from the game's own camera, close in, and in the
- * middle of an attack. One PNG sheet per class: a row per gear level.
+ * middle of a stride. One PNG sheet per class: a row per gear level. (Town
+ * has no attacks: the attack poses are in `hero-sheet.mjs stances`.)
  *
  *   npm run build
  *   SLAY_PORT=4332 timeout 2700 node tools/shoot-gear.mjs --out=shots/gear --classes=warden,ranger
@@ -80,44 +81,53 @@ const shot = async (file, mul) => {
 let ok = true;
 try {
   for (const cls of CLASSES) {
-    await page.evaluate((c) => window.SLAY.debug.makeCharacter(c, 40, 7), cls);
+    await page.evaluate((c) => {
+      const S = window.SLAY;
+      S.debug.makeCharacter(c, 90, 7);
+      // Enough of every stat that no piece is refused for its requirements.
+      const a = S.save.account.current.allocated;
+      a.strength += 400;
+      a.dexterity += 400;
+    }, cls);
     await page.evaluate(() => window.SLAY.engine.goTo('town'));
     await frames(page, 30);
     const tmp = path.join(OUT, `tmp-${cls}`);
     mkdirSync(tmp, { recursive: true });
     const tiles = [];
     for (const kit of KITS) {
-      await page.evaluate(
+      const missed = await page.evaluate(
         ([k, armour, held, rarity]) => {
           const S = window.SLAY;
           const c = S.save.account.current;
           for (const s of Object.keys(c.equipment)) c.equipment[s] = null;
-          if (k !== 'bare') for (const id of [...held, ...armour]) S.debug.equip(id, 40, rarity);
+          const missed = [];
+          if (k !== 'bare') for (const id of [...held, ...armour]) if (!S.debug.equip(id, 90, rarity)) missed.push(id);
           const sc = S.engine.currentScene;
           sc.player.refreshStats();
           // Open ground (the gait strips' lane), facing the camera a little.
           sc.player.position.set(-9.9, 0, -1.9);
+          return missed;
         },
         [kit, ARMOUR[kit], HELD[cls], RARITY[kit]],
       );
-      await frames(page, 12);
+      await frames(page, 8);
       await view('camera');
-      await frames(page, 4);
+      await frames(page, 3);
       const a = path.join(tmp, `${kit}-a.png`);
       await shot(a, 1.6);
       await view('close');
-      await frames(page, 4);
+      await frames(page, 3);
       const b = path.join(tmp, `${kit}-b.png`);
       await shot(b, 1.25);
-      // Mid swing: the attack, toward screen right.
-      await page.evaluate(() => window.SLAY.debug.attack(1, 0.3));
-      await frames(page, 5);
+      // Mid stride, along the open lane (keys turn with the camera).
+      await page.keyboard.down('d');
+      await frames(page, 10);
       const c = path.join(tmp, `${kit}-c.png`);
       await shot(c, 1.25);
-      await page.evaluate(() => window.SLAY.debug.stopAttack());
-      await frames(page, 12);
+      await page.keyboard.up('d');
+      await frames(page, 4);
       tiles.push(a, b, c);
-      log(`ok    ${cls} ${kit}`);
+      log(`ok    ${cls} ${kit}${missed.length ? `  NOT EQUIPPED ${missed.join(' ')}` : ''}`);
     }
     const out = path.join(OUT, `gear-${cls}.png`);
     execFileSync('montage', [...tiles, '-tile', '3x', '-geometry', '300x300+2+2', '-background', '#101014', out]);

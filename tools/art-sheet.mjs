@@ -78,6 +78,8 @@ if (flags.list) {
   const names = await page.evaluate(async () => Object.keys((await import('/tools/art-sheet-page.ts')).SHEETS));
   console.log(names.join('\n'));
 } else {
+  // --match=gem.,shield. limits the items sheet to bases with those prefixes.
+  if (flags.match) await page.evaluate((m) => (window.__match = String(m).split(',')), flags.match);
   for (const name of wanted) {
     const t0 = Date.now();
     const res = await page.evaluate(async (n) => {
