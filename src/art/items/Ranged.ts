@@ -98,8 +98,10 @@ function limbGeo(c: BowCut, s: number, zOff = 0, scale = 1): THREE.BufferGeometr
     const p = limbPoint(c, t, s).add(v3(0, 0, zOff));
     const q = limbPoint(c, Math.min(1, t + 0.02), s).sub(limbPoint(c, Math.max(0, t - 0.02), s)).normalize();
     const nrm = v3(0, -q.z, q.y).normalize();
-    const wx = c.w * scale * (1 - 0.55 * t);
-    const wn = c.t * scale * (1 - 0.4 * t);
+    // Drawn bolder than life: at the game's distance a true-to-size limb
+    // is a hairline and the bow reads as a stick.
+    const wx = c.w * scale * 1.7 * (1 - 0.5 * t);
+    const wn = c.t * scale * 2.5 * (1 - 0.45 * t);
     const ring: V3[] = [];
     const sides = c.limb === 'crystal' ? 4 : 8;
     for (let k = 0; k < sides; k++) {
@@ -122,7 +124,7 @@ export function buildBow(P: Parts): void {
   const rs: Slot = c.limb === 'crystal' ? 'trim' : limbSlot;
   switch (c.riser) {
     case 'plain':
-      P.add(rs, lathe([[0.012, -0.12], [0.017, -0.07], [0.017, 0.07], [0.012, 0.12]], 8), {});
+      P.add(rs, lathe([[0.016, -0.12], [0.022, -0.07], [0.022, 0.07], [0.016, 0.12]], 8), {});
       break;
     case 'shelf':
       P.add(rs, box(0.03, 0.26, 0.03, 0.008), { p: [0, 0, 0.004] });
@@ -152,8 +154,8 @@ export function buildBow(P: Parts): void {
         const a = limbPoint(c, i / n + 0.02, s);
         const b = limbPoint(c, (i + 1) / n - 0.02, s);
         const pts = curve([a, limbPoint(c, (i + 0.5) / n, s), b], 6);
-        P.add(limbSlot, tube(pts, (t) => c.w * (1 - 0.5 * (i + t) / n) * (1 + 0.2 * Math.sin(t * PI)), 7));
-        P.add(limbSlot, sphere(c.w * (1.15 - 0.5 * i / n), 7, 5), { p: [b.x, b.y, b.z] });
+        P.add(limbSlot, tube(pts, (t) => 1.35 * c.w * (1 - 0.5 * (i + t) / n) * (1 + 0.2 * Math.sin(t * PI)), 7));
+        P.add(limbSlot, sphere(1.35 * c.w * (1.15 - 0.5 * i / n), 7, 5), { p: [b.x, b.y, b.z] });
       }
     } else {
       P.add(limbSlot, limbGeo(c, s));

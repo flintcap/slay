@@ -35,7 +35,9 @@ export interface HeroLook {
 }
 
 /** Undyed linen and a plain cord, the bare hero's clothes. */
-const UNDYED = 0xb0a48a;
+// Grey-brown, cooler and darker than any skin, so a bare hero reads as
+// dressed in rough cloth, not as a naked body (it nearly matched skin).
+const UNDYED = 0x8e8672;
 const CORD = 0x6a5a44;
 
 export const HERO_LOOKS: Record<CharClassId, HeroLook> = {

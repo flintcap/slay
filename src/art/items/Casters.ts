@@ -257,7 +257,9 @@ const STAFF_BY_SHAPE: Record<string, string> = {
 
 export function buildStaff(P: Parts): void {
   const L = P.look;
-  const c = cutOf(STAFF_CUTS, STAFF_BY_SHAPE, L, 'staff.long');
+  const c0 = cutOf(STAFF_CUTS, STAFF_BY_SHAPE, L, 'staff.long');
+  // Stouter than life, so a staff reads as one from the game's camera.
+  const c = { ...c0, r: c0.r * 1.25 };
   let shaft: Slot = c.shaft;
   if (shaft === 'main' && L.material === 'crystal') shaft = 'wood';
   if (shaft === 'main' && L.material === 'metal') shaft = 'wood';
@@ -269,9 +271,12 @@ export function buildStaff(P: Parts): void {
   const plainShaft = (y1: number, knots = 0) => haft(P, -0.2, y1, c.r, shaft, { taper: 0.9, knots, seed: L.signature });
   switch (c.kind) {
     case 'short':
+      // A quarterstaff whose top swells into a knotted burl, bound in iron.
       plainShaft(top);
-      for (const y of [-0.2, top]) P.add('dark', cyl(c.r * 1.15, c.r * 1.15, 0.05, 10), { p: [0, y, 0] });
-      P.add('dark', sphere(c.r * 1.2, 8, 6), { p: [0, top + 0.03, 0] });
+      P.add('dark', cyl(c.r * 1.15, c.r * 1.15, 0.05, 10), { p: [0, -0.2, 0] });
+      P.add(shaft, rough(sphere(c.r * 2.1, 10, 8), 0.005, L.signature % 13, 22), { p: [0, top + 0.05, 0], s: [1, 1.35, 1] });
+      band(P, top - 0.015, c.r * 1.05, 0.03, 'dark');
+      headP = v3(0, top + 0.06, 0);
       break;
     case 'long': {
       // A shepherd's crook.

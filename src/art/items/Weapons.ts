@@ -544,10 +544,10 @@ interface PoleCut {
 }
 
 const POLE_CUTS: Record<string, PoleCut> = {
-  'spear.spear': { len: 1.55, r: 0.016, head: 'leaf', hl: 0.26, hw: 0.034, haft: 'wood', butt: 'cap' },
+  'spear.spear': { len: 1.55, r: 0.016, head: 'leaf', hl: 0.32, hw: 0.044, haft: 'wood', butt: 'cap' },
   'spear.warspear': { len: 1.7, r: 0.017, head: 'winged', hl: 0.34, hw: 0.04, haft: 'wood', butt: 'spike', tassel: true },
   'spear.hyperion': { len: 1.75, r: 0.017, head: 'flame', hl: 0.42, hw: 0.04, haft: 'main', butt: 'ball', bands: 3 },
-  'spear.pike': { len: 2.1, r: 0.016, head: 'awl', hl: 0.22, hw: 0.014, haft: 'wood', butt: 'none' },
+  'spear.pike': { len: 2.1, r: 0.016, head: 'awl', hl: 0.28, hw: 0.02, haft: 'wood', butt: 'none' },
   'spear.lance': { len: 2.0, r: 0.022, head: 'lance', hl: 1.2, hw: 0.05, haft: 'main', butt: 'cap' },
   'spear.ghost': { len: 2.0, r: 0.015, head: 'shard', hl: 0.48, hw: 0.04, haft: 'main', butt: 'spike' },
   'spear.worldspine': { len: 2.05, r: 0.018, head: 'spine', hl: 0.4, hw: 0.04, haft: 'bone', butt: 'spike' },
@@ -582,7 +582,10 @@ const leafHalf = (t: number) => (0.35 + 0.65 * Math.sin(PI * Math.min(1, t / 0.7
 
 export function buildPole(P: Parts): void {
   const L = P.look;
-  const c = cutOf(POLE_CUTS, POLE_BY_SHAPE, L, 'spear.spear');
+  const c0 = cutOf(POLE_CUTS, POLE_BY_SHAPE, L, 'spear.spear');
+  // Hafts a little stouter than life so a pole reads at the game's distance
+  // as a weapon, not a line.
+  const c = { ...c0, r: c0.r * 1.2 };
   const fit = fittingSlot(c.haft);
   const main: Slot = L.material === 'bone' ? 'bone' : L.material === 'crystal' ? 'crystal' : 'main';
   const top = c.len;

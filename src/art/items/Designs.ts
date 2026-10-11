@@ -132,7 +132,7 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'uq.wormskull': { main: 'bone.old', second: 'flesh.rotted', glow: 0x9ac04a, features: ['vines', 'eyes'], wear: 0.7 },
   'uq.steelclash': { main: 'metal.bronze', second: 'leather.worn', glow: 0xffd88a, glowStrength: 0.3, features: ['bells', 'rivets'], wear: 0.6 },
   'uq.nightsmoke': { main: 'cloth.silk|0x6e7280', trim: 'metal.silver', glow: 0xb8c4d8, features: ['smoke', 'tatters'], wear: 0.2 },
-  'uq.bloodrise': { main: 'metal.dark', second: 'leather.fine|0x501414', glow: 0xb01818, features: ['blood', 'teeth'], wear: 0.6 },
+  'uq.bloodrise': { main: 'metal.dark', second: 'leather.fine|0x501414', trim: 'metal.bloodgold', glow: 0xb01818, features: ['blood', 'teeth', 'spikes'], wear: 0.6 },
   'uq.civerbs': { main: 'wood.rotted', second: 'cloth.tattered', trim: 'metal.iron', glow: 0x9ad8c8, features: ['rivets', 'chains', 'bells'], wear: 0.8 },
   'uq.gorefoot': { main: 'leather.fine|0x5a1a14', trim: 'metal.dark', glow: 0xc02018, features: ['blood', 'spikes'], wear: 0.6 },
   'uq.venomward': { main: 'metal.verdigris', second: 'leather.worn|0x30401c', glow: 0x5ac84a, features: ['vines', 'thorns'], wear: 0.6 },

@@ -574,6 +574,8 @@ async function dropSheet(): Promise<HTMLCanvasElement> {
     floor.rotation.x = -Math.PI / 2;
     scene.add(floor);
     const drop = buildDropModel(fakeItem(id, r, r === 'unique' ? { uniqueId: 'u.' + id } : r === 'set' ? { setId: 's.' + id } : {}), new Random(3));
+    // The loot code rests a landed drop's root this high (REST_Y in ItemModels).
+    drop.position.y = 0.28;
     scene.add(drop);
     const cam = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
     cam.position.set(0, 2.2, 2.6);

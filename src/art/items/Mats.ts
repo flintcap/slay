@@ -240,7 +240,10 @@ export function itemSurface(key: string, o: ItemSurfaceOpts = {}): THREE.MeshSta
     // Torch-lit dungeons have little to reflect: full metal reads as black.
     // Keep some diffuse, and let the scratches carry the shine.
     const metal = o.metalness ?? (metalLike ? 0.72 - wear * 0.2 : def.metal);
-    const rough = o.roughness ?? Math.min(0.95, (def.rough[0] * 0.6 + def.rough[1] * 0.4) * (metalLike ? 0.9 : 1) + wear * 0.18);
+    // A flat blade at low roughness mirrors one patch of a dark room and
+    // turns black or sky blue with the angle, which reads as painted
+    // plastic. A floor keeps it grey steel with a soft sheen at any angle.
+    const rough = o.roughness ?? Math.min(0.95, Math.max(metalLike ? 0.3 : 0, (def.rough[0] * 0.6 + def.rough[1] * 0.4) * (metalLike ? 0.9 : 1) + wear * 0.18));
     if (wear > 0.5) color.multiplyScalar(1 - (wear - 0.5) * 0.25);
     const m = new THREE.MeshStandardMaterial({
       color,

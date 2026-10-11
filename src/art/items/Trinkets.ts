@@ -260,8 +260,11 @@ export function buildRune(P: Parts): void {
   let idx = RUNES.findIndex((r) => r.id === L.cut);
   if (idx < 0) idx = hashString(L.cut) % 33;
   const tier = Math.min(5, Math.floor(idx / 6));
-  const W = 0.048 * (1 + 0.1 * jitter(idx, 3));
-  const H = 0.062 * (1 + 0.08 * jitter(idx, 4));
+  // Alternate runes of a tier stand tall or sit wide, so two that share a
+  // stroke still differ at a glance.
+  const wide = idx % 2 === 1;
+  const W = 0.048 * (1 + 0.1 * jitter(idx, 3)) * (wide ? 1.12 : 0.92);
+  const H = 0.062 * (1 + 0.08 * jitter(idx, 4)) * (wide ? 0.92 : 1.06);
   const D = 0.026;
   const outline = runeOutline(tier, W, H, idx);
   const stone: Slot = tier >= 4 ? 'obsidian' : 'main';
