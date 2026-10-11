@@ -71,6 +71,8 @@ const _viewBall = new THREE.Sphere();
 /** A monster root's world-matrix walk, live and frozen (see the enemy loop in update). */
 const MATRIX_WALK = THREE.Object3D.prototype.updateMatrixWorld;
 const MATRIX_FROZEN = function (this: THREE.Object3D): void {};
+/** Monster roots hidden because they were frozen, to show again on thaw. */
+const hiddenFar = new WeakSet<THREE.Object3D>();
 
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
@@ -1200,8 +1202,19 @@ export class DungeonScene extends GameScene {
       // three.js has no switch that skips a subtree (matrixWorldAutoUpdate
       // skips one node and still walks its children), so the root's own
       // walk is swapped for one that does nothing while it is out of sight.
+      // It is hidden too, so the renderer's culling pass does not walk its
+      // parts either (a hidden node's subtree is skipped whole). Only a
+      // body this hid is shown again.
       const walk = live ? MATRIX_WALK : MATRIX_FROZEN;
-      if (e.root.updateMatrixWorld !== walk) e.root.updateMatrixWorld = walk;
+      if (e.root.updateMatrixWorld !== walk) {
+        e.root.updateMatrixWorld = walk;
+        if (!live) {
+          if (e.root.visible) {
+            e.root.visible = false;
+            hiddenFar.add(e.root);
+          }
+        } else if (hiddenFar.delete(e.root) && !e.readyToRemove) e.root.visible = true;
+      }
       // Far away: leave it in the world and visible (frustum culling already
       // handles the draw cost), just stop simulating it.
       // A monster already dying always finishes falling, wherever it is: its
