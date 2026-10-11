@@ -15,7 +15,9 @@ import { setFogShape } from '../core/Renderer';
 import { setActiveDifficulty } from '../data/difficulties';
 import { dialogue, openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
 import { npcForStation } from '../data/story/npcs';
-import { mountTownStations } from './TownStations';
+import { STATIONS, mountTownStations } from './TownStations';
+import { QuestMarkerLayer } from '../fx/QuestMarkers';
+import { BOARD, townMarkers, type MarkerSpot, type QuestMarker } from '../sim/QuestMarkers';
 import { planDescent } from './DescentPlanner';
 
 /** Interaction points the player can walk up to and press E on. */
@@ -54,6 +56,11 @@ export class TownScene extends GameScene {
   private smokeAccum = 0;
   /** The resident whose trade the player last opened; they face the player while near. */
   private engagedNpc: string | null = null;
+  /** The "?" and "!" over people's heads (and the bounty board). */
+  questMarkers: QuestMarkerLayer | null = null;
+  private markerState: Partial<Record<MarkerSpot, QuestMarker>> = {};
+  private markerAccum = Infinity;
+  private markerAt = new THREE.Vector3();
 
   constructor(engine: Engine) {
     super();
@@ -142,6 +149,7 @@ export class TownScene extends GameScene {
     this.interactables.push(...storyTalkSpots(spots));
     // The gambler, the enchanter and the bounty board (Legacy unlocks).
     this.offs.push(mountTownStations(this.scene, this.town.colliders, this.interactables));
+    this.questMarkers = new QuestMarkerLayer(this.scene);
 
     // Equipping has to change the model now, not whenever the stat sheet next
     // happens to be recomputed. `item:equipped` was fired into the void, so new
@@ -150,6 +158,11 @@ export class TownScene extends GameScene {
     this.offs.push(
       events.on('item:equipped', () => this.player?.refreshStats()),
       events.on('item:unequipped', () => this.player?.refreshStats()),
+      // Taking, finishing or handing in work fires a refresh: ask again now,
+      // not on the next tick.
+      events.on('ui:refresh', () => {
+        this.markerAccum = Infinity;
+      }),
       // There is nowhere to put a dropped item in town, so it goes back in the
       // pack rather than vanishing. Better to refuse than to eat it.
       events.on('loot:discard', ({ item }) => {
@@ -258,12 +271,42 @@ export class TownScene extends GameScene {
     }
 
     this.town.update(dt, elapsed);
+    this.updateMarkers(dt, elapsed);
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
     this.rig.update(dt, elapsed);
     this.fx.update(dt, elapsed);
     this.decals.update(dt);
     audio.setListener(this.player.position.x, this.player.position.z, this.player.root.rotation.y);
+  }
+
+  /**
+   * Who has work, asked several times a second (and at once after any
+   * refresh), drawn over the head of whoever it is wherever they stand.
+   */
+  private updateMarkers(dt: number, elapsed: number): void {
+    const layer = this.questMarkers;
+    if (!layer) return;
+    this.markerAccum += dt;
+    if (this.markerAccum >= 0.2) {
+      this.markerAccum = 0;
+      try {
+        this.markerState = townMarkers(save.account, save.account.current);
+      } catch {
+        this.markerState = {};
+      }
+    }
+    const res = this.town.residents;
+    for (const [spot, kind] of Object.entries(this.markerState) as Array<[MarkerSpot, QuestMarker]>) {
+      let at: THREE.Vector3 | null = null;
+      if (kind && spot === BOARD) {
+        const st = STATIONS.find((x) => x.id === 'bounties');
+        if (st) at = this.markerAt.set(st.at[0], 2.35, st.at[1]);
+      } else if (kind && res.headTop(spot, this.markerAt)) {
+        at = this.markerAt;
+      }
+      layer.set(spot, kind, at, elapsed);
+    }
   }
 
   /**
@@ -303,6 +346,8 @@ export class TownScene extends GameScene {
     this.heroLight?.removeFromParent();
     this.heroLight = null;
     this.player?.dispose();
+    this.questMarkers?.dispose();
+    this.questMarkers = null;
     this.town?.dispose();
     this.fx.dispose();
     this.decals.dispose();

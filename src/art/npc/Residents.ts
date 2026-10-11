@@ -66,6 +66,8 @@ interface Resident {
   look: number;
   lookYaw: number;
   speed: number;
+  /** Height of the top of the head (hat and hair included) over the head bone; measured once, on first ask. */
+  crown?: number;
 }
 
 const _q = new THREE.Quaternion();
@@ -81,6 +83,38 @@ function wrap(a: number): number {
 function turnToward(from: number, to: number, step: number): number {
   const d = wrap(to - from);
   return from + Math.max(-step, Math.min(step, d));
+}
+
+const _v = new THREE.Vector3();
+const _box = new THREE.Box3();
+
+/**
+ * How far the top of the model rises over `head` (world space), counting only
+ * what sits round the head: a hat brim or hood counts, a staff held up beside
+ * them does not. Skinned parts are measured in their current pose.
+ */
+function crownOver(root: THREE.Object3D, head: THREE.Vector3): number {
+  const reach = 0.42;
+  let top = head.y + 0.12;
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || !m.geometry?.getAttribute('position')) return;
+    const n = m.geometry.getAttribute('position').count;
+    if ((m as THREE.SkinnedMesh).isSkinnedMesh) {
+      for (let i = 0; i < n; i++) {
+        m.getVertexPosition(i, _v);
+        _v.applyMatrix4(m.matrixWorld);
+        if (_v.y > top && Math.hypot(_v.x - head.x, _v.z - head.z) < reach) top = _v.y;
+      }
+      return;
+    }
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+    _box.copy(m.geometry.boundingBox!).applyMatrix4(m.matrixWorld);
+    const cx = (_box.min.x + _box.max.x) / 2;
+    const cz = (_box.min.z + _box.max.z) / 2;
+    if (_box.max.y > top && Math.hypot(cx - head.x, cz - head.z) < reach) top = _box.max.y;
+  });
+  return top - head.y;
 }
 
 /** The town's people, built and placed, and their routines. */
@@ -158,6 +192,22 @@ export class Residents {
   where(id: string): THREE.Vector3 | null {
     const r = this.list.find((x) => x.place.id === id);
     return r ? r.folk.root.position : null;
+  }
+
+  /**
+   * The top of a resident's head now, hat included, in world space: the head
+   * bone follows them as they walk, kneel and turn, and the height of what
+   * sits on it is measured once. False if there is no such resident.
+   */
+  headTop(id: string, out: THREE.Vector3): boolean {
+    const r = this.list.find((x) => x.place.id === id);
+    const head = r?.folk.bones.head;
+    if (!r || !head) return false;
+    r.folk.root.updateWorldMatrix(true, true);
+    head.getWorldPosition(out);
+    r.crown ??= crownOver(r.folk.root, out);
+    out.y += r.crown;
+    return true;
   }
 
   /** Which way a resident faces now (radians), or 0. */

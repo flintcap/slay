@@ -41,6 +41,13 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   physical stays as it is. Prove each with a headless check.
   (`qa-bugs: owner's play bugs: two blades, venom, damage colours`;
   `check-hits` 32 of 32; see Results)
+- [ ] Quest markers (owner's request). Town NPCs show a yellow "?" when
+  they have a quest to take and a green "!" when one is ready to hand in
+  (hand-in wins), nothing otherwise, updated the moment the state changes.
+  One source of truth (offer, turnIn or nothing per NPC). Drawn in the game
+  camera above each head: bold, a little glow, a gentle bob, seen over
+  buildings, never in a hat. Minimap too if simple. Headless check (offer,
+  taken, ready, handed in) and one town render with both kinds.
 - [ ] Handover.
 
 ## Results
