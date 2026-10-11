@@ -134,17 +134,20 @@ modifier and objective lines, difficulty guidance). Story prose is unchanged.
 
 ## Next up
 
-1. Run the class tour's dungeon half, one class per run:
+1. Quest markers: run the town render with both kinds,
+   `SLAY_PORT=4331 timeout 2700 node tools/shot-markers.mjs --out=shots/qa-bugs`,
+   and look at both shots by eye (the "!" over Renn, a "?" elsewhere, clear
+   of hats, readable over roofs). `check-markers` (static) already passes
+   26 of 26.
+2. Run the class tour's dungeon half, one class per run, in the
+   foreground:
    `SLAY_PORT=4331 timeout 2700 node tools/check-flow.mjs --class=<id> --part=dungeon`
-   for warden again, then pyromancer, shadowblade, stormcaller, revenant,
-   ranger. Warden's town half passed in full (talk, trade, 17 panels, no
-   errors). Warden's dungeon half: portal, no errors, no missing art; one
-   run refused `shieldBash` from its key (an earlier run fired it). If it
-   fails again for the same reason, note it and move on.
-2. Run `SLAY_PORT=4331 timeout 2700 node tools/check-mapflow.mjs` (now also
-   kills a boss, takes the portal home, opens a fresh map, reloads mid-map).
-3. Run the plain `check-flow` once for death and rise again.
-4. Look at a town and a dungeon render for the text milestone.
+   for shadowblade (loot step now retries, has god mode and says where a
+   lost drop went), warden (skill target now 1.8 m), then pyromancer,
+   stormcaller, revenant, ranger.
+3. Run `SLAY_PORT=4331 timeout 2700 node tools/check-mapflow.mjs`.
+4. Run the plain `check-flow` once for death and rise again.
+5. Look at a town and a dungeon render for the text milestone.
 
 ## Notes for resume
 
@@ -157,3 +160,8 @@ modifier and objective lines, difficulty guidance). Story prose is unchanged.
 - `check-hits` (static) proves the owner's three bugs: two blades, venom,
   damage colours. Run it after touching SkillRunner, Enemy statuses or
   CombatText.
+- `check-markers` (static) proves the quest markers' rule and states;
+  `tools/shot-markers.mjs` renders the town with both kinds.
+- Shadowblade loot step: run 1 missed a click (label pooled and moved),
+  run 2 saw drops leave the ground without reaching the pack. The step now
+  retries, turns on god mode and reports scene, area and life on a loss.
