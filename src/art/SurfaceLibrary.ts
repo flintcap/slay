@@ -67,7 +67,8 @@ const LIB: Record<string, Def> = {
   'metal.bronze': S('steel', 0x8a6a3c, [0.22, 0.6], 1, 0.7),
   'metal.gold': S('steel', 0xd0a94a, [0.08, 0.32], 1, 0.6),
   'metal.rusted': S('rust', 0x6d4527, [0.55, 0.98], 0.45, 1.25, { tintAmount: 0.5 }),
-  'metal.dark': S('iron', 0x3a3c41, [0.24, 0.6], 1, 0.8),
+  // Lifted from 0x3a3c41 at full metal: under torch light it read as black.
+  'metal.dark': S('iron', 0x4a4d54, [0.24, 0.6], 0.85, 0.8),
   'metal.silver': S('steel', 0xb2b8bf, [0.06, 0.3], 1, 0.5),
   'metal.copper': S('steel', 0x9a5f3c, [0.18, 0.55], 1, 0.7),
   'metal.verdigris': S('rust', 0x4f7a6a, [0.5, 0.9], 0.3, 1.1, { tintAmount: 0.8 }),

@@ -7,9 +7,9 @@ crashes, docs true, published.
 
 ## Milestones
 
-- [ ] Requests. Do every request other streams left for a stream that has
+- [x] Requests. Do every request other streams left for a stream that has
   finished (search "Notes for resume" in every progress file).
-- [ ] Dead code. Find and delete code nothing calls any more, old assets and
+- [x] Dead code. Find and delete code nothing calls any more, old assets and
   old checkers. `tsc` clean, build clean.
 - [ ] Speed. Draw calls (under 900 in town and a busy map), triangles,
   textures, load time, memory, garbage per frame. Fix the worst.
@@ -26,28 +26,28 @@ fixed, or marked "won't" with the reason.
 
 Requests (fixes other streams asked for):
 
-- [ ] R1 props: `generateRun` sets `level.variant` after props are placed.
+- [x] R1 props: `generateRun` sets `level.variant` after props are placed.
   Pass the variant into `generateLevel` so props dress in it.
-- [ ] R2 props: `ensureInteractables` plants `chest.rare` as kind `chest`;
+- [x] R2 props: `ensureInteractables` plants `chest.rare` as kind `chest`;
   use `chestKindFor`.
-- [ ] R3 vfx/creatures: public read-only `Enemy.rig`; drop the cast in
+- [x] R3 vfx/creatures: public read-only `Enemy.rig`; drop the cast in
   `DungeonScene.watchBody`.
-- [ ] R4 vfx/items: `ItemModels` stops building `beam`, `pool`, `sigil`,
+- [x] R4 vfx/items: `ItemModels` stops building `beam`, `pool`, `sigil`,
   `dropLight` on drops (LootFX owns beacons).
-- [ ] R5 ground: `DungeonBuilder.buildProps` builds templates with each
+- [x] R5 ground: `DungeonBuilder.buildProps` builds templates with each
   zone's biome art; wall-light line uses `tmpl.light?.color`; drop BiomeArt
   prop vocabulary fields nothing reads.
-- [ ] R6 audio: play `waypoint` on waypoint travel.
-- [ ] R7 maps: tips, quest log and run stats text that still says "stairs"
+- [x] R6 audio: play `waypoint` on waypoint travel.
+- [x] R7 maps: tips, quest log and run stats text that still says "stairs"
   or "depth". (`T_STAIRS_*` aliases: already gone, grep 0.)
-- [ ] R8 npcs/props: `check-npcdraws` fails headless in `irisTexture`.
-- [ ] R9 heroes: `PLAN.md` still lists deleted files under heroes.
-- [ ] R10 ground: `Town.ts` imports `CharClassId` without using it.
+- [x] R8 npcs/props: `check-npcdraws` fails headless in `irisTexture`.
+- [x] R9 heroes: `PLAN.md` still lists deleted files under heroes.
+- [x] R10 ground: `Town.ts` imports `CharClassId` without using it.
 
 Dead code:
 
-- [ ] D1 items: unused brushes in `src/art/Paint.ts`.
-- [ ] D2 a sweep for exports nothing imports, old checkers and old assets.
+- [x] D1 items: unused brushes in `src/art/Paint.ts`.
+- [x] D2 a sweep for exports nothing imports, old checkers and old assets.
 
 Speed:
 
@@ -56,8 +56,9 @@ Speed:
   closures, monster AI, HeroModel.
 - [ ] S2 depth 9 forest 1.60M triangles against 1.5M.
 - [ ] S3 depth 12 perf never measured.
-- [ ] S4 first town visit builds the nine townsfolk in about 28 s; build
-  over several frames or off the main loop.
+- [x] S4 first town visit builds the nine townsfolk in about 28 s; build
+  over several frames or off the main loop. Done: a worker meshes them at
+  boot (`art/npc/FolkWorker.ts`); cold first visit 41.9 s to 14.2 s.
 - [ ] S5 first build per monster (150 to 500 ms) and boss (0.6 to 2.9 s) on
   the main thread.
 - [ ] S6 boss bodies 13k to 18.7k triangles against 12k.
@@ -84,7 +85,8 @@ Noted, not planned (owner's call or low value):
 - creatures: a boss portrait opens a second WebGL context once per boss.
 - npcs: Renn's hand-on-hip floats a little; ledger and map read flat from
   far; walkers do not path round buildings.
-- maps: `check-curve` fails 3 of 30, same as before the remake.
+- maps: `check-curve` fails 8 of 30 now (deep tiers 12 and 40 run hot or
+  cold). That is balance, which this stream must not touch.
 
 ## Next up
 
