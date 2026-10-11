@@ -70,6 +70,45 @@ const TYPE_FILL: Record<string, string> = {
   bleed: '#ff5a50',
 };
 
+/** The colour a hit of this damage type is drawn in. Physical is bone white. */
+export function numberFill(type: DamageType): string {
+  return TYPE_FILL[type] ?? TYPE_FILL.physical!;
+}
+
+/**
+ * One hit as the numbers to draw: the hit's own type, then each element whose
+ * flat damage rode on it (`DamagePacket.parts`), each in its own colour. The
+ * amounts add up to the hit.
+ */
+export function numberParts(
+  amount: number,
+  type: DamageType,
+  parts?: Partial<Record<DamageType, number>>,
+): Array<{ type: DamageType; amount: number }> {
+  if (!parts) return [{ type, amount }];
+  const out: Array<{ type: DamageType; amount: number }> = [];
+  let rest = amount;
+  for (const k of Object.keys(parts) as DamageType[]) {
+    const share = parts[k] ?? 0;
+    if (k === type || !(share > 0)) continue;
+    const v = amount * Math.min(1, share);
+    // A sliver under one point would print as a stray "1".
+    if (v < 1) continue;
+    out.push({ type: k, amount: v });
+    rest -= v;
+  }
+  if (rest >= 1 || out.length === 0) out.unshift({ type, amount: Math.max(rest, out.length ? 0 : amount) });
+  return out;
+}
+
+/**
+ * Running totals are kept per target, per kind and per element: a fire tick
+ * folding into a sword's number used to take the sword's colour.
+ */
+export function numberKey(target: string, type: DamageType, crit: boolean): string {
+  return !target ? '' : `${crit ? 'crit' : 'hit'}:${type}:${target}`;
+}
+
 const MAX_ENTRIES = 90;
 /** Hits on one target closer together than this become one growing number. */
 const STACK_WINDOW = 0.32;
@@ -124,7 +163,9 @@ export class CombatTextLayer {
     this.offs.push(
       events.on('enemy:damaged', (e) => {
         if (!show()) return;
-        this.damage(e.amount, e.x, e.y + 0.35, e.z, e.type, e.crit, e.id);
+        for (const part of numberParts(e.amount, e.type, e.parts)) {
+          this.damage(part.amount, e.x, e.y + 0.35, e.z, part.type, e.crit, e.id);
+        }
       }),
       events.on('player:damaged', (e) => {
         if (!show() || e.amount <= 0) return;
@@ -168,8 +209,8 @@ export class CombatTextLayer {
    * crits often otherwise piled a dozen big numbers on one spot.
    */
   damage(amount: number, x: number, y: number, z: number, type: DamageType, crit: boolean, target = ''): void {
-    const fill = TYPE_FILL[type] ?? TYPE_FILL.physical!;
-    const key = !target ? '' : crit ? `crit:${target}` : `hit:${target}`;
+    const fill = numberFill(type);
+    const key = numberKey(target, type, crit);
     if (key && this.merge(key, amount)) return;
     const n = this.spawnCount++;
     const fan = ((n * 7) % 5) - 2;

@@ -27,6 +27,8 @@ export interface GameEvents {
     id: string;
     amount: number;
     type: DamageType;
+    /** Shares of `amount` that were another element (`DamagePacket.parts`). */
+    parts?: Partial<Record<DamageType, number>>;
     crit: boolean;
     x: number;
     y: number;

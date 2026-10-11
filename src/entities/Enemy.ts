@@ -961,6 +961,8 @@ export class Enemy implements Combatant {
         existing.magnitude = Math.max(existing.magnitude, app.magnitude);
         existing.stacks = Math.min(cap, existing.stacks + (app.stacks ?? 0));
         if (app.tickScale && app.tickScale !== 1) existing.dotPerSecond *= app.tickScale;
+        // A harder blow's venom takes over from a weaker one.
+        if (app.power) existing.dotPerSecond = Math.max(existing.dotPerSecond, this.dotRate(app));
         continue;
       }
       const def = statusDef(app.id);
@@ -971,17 +973,29 @@ export class Enemy implements Combatant {
         magnitude: app.magnitude,
         stacks: app.stacks ?? 1,
         dotType,
-        // The catalogue's `perSecond` is the shape of the effect; the depth
-        // curve is what makes it hurt as much at depth 40 as at depth 1.
-        dotPerSecond: dotType
-          ? depthCurve(this.depth).damage * 0.035 * (def?.dot?.perSecond ?? 6) * app.magnitude * (app.tickScale ?? 1)
-          : 0,
+        dotPerSecond: dotType ? this.dotRate(app) : 0,
       });
       if (isControl(app.id)) {
         this.rootTimer = Math.max(this.rootTimer, app.duration);
         this.interrupt(ctx);
       }
     }
+  }
+
+  /**
+   * Damage per second per stack for a damage-over-time application.
+   *
+   * The catalogue's `perSecond` is the shape of the effect; the depth curve is
+   * what makes it hurt as much at depth 40 as at depth 1. The hero's poison
+   * also scales with the blow that delivered it (`power`), whichever is more:
+   * on the depth curve alone a Viper Strike's three stacks ticked for a
+   * fraction of one swing, so poisoning something did nothing you could see.
+   */
+  private dotRate(app: StatusApplication): number {
+    const def = statusDef(app.id);
+    if (!def?.dot) return 0;
+    const curve = depthCurve(this.depth).damage * 0.035 * def.dot.perSecond;
+    return Math.max(curve, app.power ?? 0) * app.magnitude * (app.tickScale ?? 1);
   }
 
   private get isImmuneToControl(): boolean {
@@ -1211,6 +1225,8 @@ export class Enemy implements Combatant {
       id: this.id,
       amount: taken,
       type,
+      // A conversion (Transformer, a combo) makes the whole hit one element.
+      parts: type === working.type ? working.parts : undefined,
       crit: working.crit,
       x: this.root.position.x,
       y: this.centerY,
@@ -1243,7 +1259,7 @@ export class Enemy implements Combatant {
       const push = clamp(working.knockback, 0, 6) / Math.max(0.6, this.sizeScale);
       this.moveBy(Math.sin(a) * push * 0.35, Math.cos(a) * push * 0.35, ctx);
     }
-    if (working.applies?.length) this.applyStatuses(working.applies, ctx);
+    if (working.applies?.length) this.applyStatuses(venomOf(working, working.applies), ctx);
 
     // Elements leave a mark. A skill that names its own statuses above keeps
     // them; everything else afflicts whatever its damage type is made of, which
@@ -1254,7 +1270,7 @@ export class Enemy implements Combatant {
       if (affliction && ctx.rng.chance(chance)) {
         const def = statusDef(affliction);
         this.applyStatuses(
-          [{ id: affliction, duration: def?.baseDuration ?? 4, magnitude: 1, stacks: 1 }],
+          venomOf(working, [{ id: affliction, duration: def?.baseDuration ?? 4, magnitude: 1, stacks: 1 }]),
           ctx,
         );
       }
@@ -1955,6 +1971,27 @@ const LEGACY_ALIASES: Record<string, string> = {
   slow: 'slowed',
   web: 'entangled',
 };
+
+/**
+ * Each second, a stack of the hero's poison deals this share of the blow
+ * that applied it, scaled by the status's own strength (Poisoned is 5, so
+ * 4% a second: a stack is worth about a third of the hit over its 8s).
+ */
+const VENOM_SHARE = 0.04 / 5;
+
+/** The hero's poison statuses on a blow, given that blow's power. */
+function venomOf(packet: DamagePacket, list: StatusApplication[]): StatusApplication[] {
+  if (packet.source !== 'player') return list;
+  let out: StatusApplication[] | null = null;
+  for (let i = 0; i < list.length; i++) {
+    const app = list[i]!;
+    const dot = statusDef(app.id)?.dot;
+    if (!dot || dot.type !== 'poison' || app.power) continue;
+    out ??= list.slice();
+    out[i] = { ...app, power: packet.amount * VENOM_SHARE * dot.perSecond };
+  }
+  return out ?? list;
+}
 
 /** Resolves an id through the aliases and into the authored catalogue. */
 function statusDef(id: string): StatusDef | undefined {

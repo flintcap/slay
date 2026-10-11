@@ -226,6 +226,9 @@ const SELF_BUFF_STATUS: Record<string, string> = {
   consumeAshes: 'inspired',
 };
 
+/** Coat Blades, for its poison chance (read on every coated blow). */
+const COAT = SKILLS.find((s) => s.id === 'coatBlades');
+
 const SKILL_STATUS: Record<string, string> = {
   // Curses and marks
   weaken: 'weakened',
@@ -262,6 +265,7 @@ const SKILL_STATUS: Record<string, string> = {
   ignite: 'immolated',
   noxiousCloud: 'envenomed',
   envenomBurst: 'envenomed',
+  plagueVial: 'plagued',
 
   // Traps and impacts
   snareTrap: 'rooted',
@@ -520,6 +524,8 @@ export class SkillRunner {
    * this before they resolve anything.
    */
   private caster: Player | null = null;
+  /** When Paralytic Toxin last stunned each target, for its internal cooldown. */
+  private poisonStunAt = new Map<string, number>();
   private tmp = new THREE.Vector3();
   /** Pending off-hand blow from a dual-wield basic attack. */
   private swingParity = 0;
@@ -529,6 +535,10 @@ export class SkillRunner {
     ctx: CombatContext;
     enemies: Enemy[];
     boss: Boss | null;
+    player: Player;
+    /** The action the main hand started; anything newer cancels the off hand. */
+    id: number;
+    attackTime: number;
   } | null = null;
   private tmp2 = new THREE.Vector3();
   private tmp3 = new THREE.Vector3();
@@ -555,6 +565,7 @@ export class SkillRunner {
    * the camera kicks.
    */
   private strike(t: Target, packet: DamagePacket, ctx: CombatContext, kind: HitKind, fromX: number, fromZ: number): void {
+    packet = this.coated(packet, kind, ctx);
     const before = t.life;
     t.takeDamage(packet, ctx);
     try {
@@ -563,6 +574,36 @@ export class SkillRunner {
       // Presentation must never take the hit itself down with it.
       console.warn('[feel] hit report failed', err);
     }
+  }
+
+  /**
+   * Coat Blades: while the coat is on, a weapon blow may leave Poisoned.
+   *
+   * The coat's flat poison has always ridden on every hit (it is the skill's
+   * stat table), but the poison itself never did: the hit stayed physical, so
+   * a coated blade never poisoned anything and the 25% in the tooltip was
+   * read by nothing.
+   */
+  private coated(packet: DamagePacket, kind: HitKind, ctx: CombatContext): DamagePacket {
+    const p = this.caster;
+    if (!p || packet.source !== 'player' || (kind !== 'melee' && kind !== 'heavy')) return packet;
+    if (!p.status.has('skill.coatBlades')) return packet;
+    const rank = skillRank(p.character, 'coatBlades');
+    if (rank <= 0) return packet;
+    const params = COAT?.params ?? {};
+    const n = (k: string, d: number): number => (typeof params[k] === 'number' ? (params[k] as number) : d);
+    const chance = n('poisonChance', 25) + n('chancePerRank', 3) * (rank - 1);
+    if (!ctx.rng.chance(Math.min(1, chance / 100))) return packet;
+    const e = p.passives;
+    const poison: StatusApplication = {
+      id: 'poisoned',
+      duration: 8 + e.dotDurationSec,
+      magnitude: 1 + e.dotDamagePct / 100,
+      stacks: 1,
+      maxStacks: Math.floor(e.dotMaxStacks),
+      tickScale: 1 + e.dotTickPct / 100,
+    };
+    return { ...packet, applies: [...(packet.applies ?? []), poison] };
   }
 
   /** Attempt to cast. Returns false if on cooldown, unaffordable, or busy. */
@@ -706,7 +747,36 @@ export class SkillRunner {
         // A committed single-target skill lands like one: heavier stop, harder
         // shove. Wide sweeps hit many things and stay crisp instead.
         const heavy = !wide && (scale >= 1.6 || /heavy|smash|crush|execute/i.test(def.effect ?? ''));
-        this.meleeSwing(player, dir, num('arc', wide ? 2.2 : 1.3), num('reach', 2.3), makePacket, ctx, enemies, boss, type, true, heavy ? 'heavy' : 'melee');
+        // `radius` is how far the skill says it reaches (Cleave 2.8m, Death
+        // Lotus 4m); it was never read, so every swing reached 2.3m.
+        const reach = num('reach', num('radius', 2.3));
+        const arc = num('arc', wide ? 2.2 : 1.3);
+        const kind: HitKind = heavy ? 'heavy' : 'melee';
+        this.meleeSwing(player, dir, arc, reach, makePacket, ctx, enemies, boss, type, true, kind);
+        // Multi-hit skills: Double Strike's two, Massacre's five, Death Lotus's
+        // eight. `hits` was never read, so each landed once.
+        const hits = Math.max(1, Math.floor(num('hits', 1)));
+        if (hits > 1) {
+          const id = player.actionId;
+          const first = player.contactIn;
+          const gap = Math.min(0.08, (attackTime * 0.8) / hits);
+          const facing = dir.clone();
+          for (let i = 1; i < hits; i++) {
+            this.pendingSwings.push({
+              t: first + gap * i,
+              run: () => {
+                if (player.actionId !== id || !player.alive) return;
+                this.atContact = true;
+                this.caster = player;
+                try {
+                  this.meleeSwing(player, facing, arc, reach, makePacket, ctx, enemies, boss, type, true, kind);
+                } finally {
+                  this.atContact = false;
+                }
+              },
+            });
+          }
+        }
         break;
       }
 
@@ -1245,43 +1315,65 @@ export class SkillRunner {
     }
 
     const attackTime = 0.42 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
+    const dual = isDualWielding(player);
     // Basic melee alternates its two swings, so holding the button reads as a
-    // combo rather than one animation stuttering.
+    // combo rather than one animation stuttering. With two blades the main
+    // hand always opens (the right blade), and the off hand answers below.
     this.swingParity = (this.swingParity + 1) % 2;
-    player.beginAction(this.swingParity === 0 ? 'attack1' : 'attack2', attackTime);
+    player.beginAction(this.swingParity === 0 ? 'attack1' : 'attack2', attackTime, dual ? 'R' : undefined);
     this.meleeSwing(player, dir, 1.5, 2.4, packet, ctx, enemies, boss, 'physical');
 
-    // Dual wield: the off-hand weapon follows the main one.
+    // Dual wield: both blades strike, main hand first, the off hand a beat
+    // after it connects. The off hand hits for a share of the sheet's damage
+    // (the sheet carries both weapons, so the second blade is in both blows),
+    // which is what keeps two one-handers ahead of one without doubling it.
     //
-    // Fighting with two blades only ever swung one of them, which made the
-    // second weapon pure stat padding. The off-hand lands slightly later and
-    // for less, the way it does everywhere else in the genre, so two one-handed
-    // weapons beat one but do not simply double your damage.
-    if (isDualWielding(player)) {
-      this.offHandTimer = attackTime * 0.45;
-      this.offHandSwing = { dir: dir.clone(), ctx, enemies, boss };
+    // This used to be a second hit with no swing behind it: the body only ever
+    // swung the right blade, and the left one never moved.
+    if (dual) {
+      this.offHandTimer = Math.max(player.contactIn + 0.02, attackTime * 0.4);
+      this.offHandSwing = { dir: dir.clone(), ctx, enemies, boss, player, id: player.actionId, attackTime };
     }
     return true;
   }
 
-  /** Fires the delayed off-hand blow queued by a dual-wield basic attack. */
-  tickOffHand(dt: number, player: Player): void {
-    if (!this.offHandSwing) return;
+  /**
+   * Swings the off hand queued by a dual-wield basic attack, and lands its
+   * blow on the left blade's contact frame. `update` calls this every frame;
+   * a dodge or a new action before it swings cancels it.
+   */
+  tickOffHand(dt: number): void {
+    const queued = this.offHandSwing;
+    if (!queued) return;
     this.offHandTimer -= dt;
     if (this.offHandTimer > 0) return;
-    const queued = this.offHandSwing;
     this.offHandSwing = null;
-    if (!player.alive) return;
+    const player = queued.player;
+    if (!player.alive || player.actionId !== queued.id || !isDualWielding(player)) return;
     const packet = (mult = 1): DamagePacket =>
       rollDamage(player.stats, queued.ctx.rng, {
-        // Off-hand hits for a share of the main hand, which is what stops a
-        // second weapon from being a flat damage doubler.
         scale: mult * OFFHAND_SCALE,
         type: 'physical',
         ability: 'Attack',
         source: 'player',
       });
-    this.meleeSwing(player, queued.dir, 1.4, 2.3, packet, queued.ctx, queued.enemies, queued.boss, 'physical');
+    const contact = player.offHandBlow(queued.attackTime);
+    const prevSound = this.weaponSound;
+    this.pendingSwings.push({
+      t: contact,
+      run: () => {
+        if (player.actionId !== queued.id || !player.alive) return;
+        this.atContact = true;
+        this.caster = player;
+        try {
+          this.meleeSwing(player, queued.dir, 1.4, 2.3, packet, queued.ctx, queued.enemies, queued.boss, 'physical');
+        } finally {
+          this.atContact = false;
+        }
+      },
+    });
+    // The whoosh of the second blade, as the main hand's swing has its own.
+    audio.play(`swing.${prevSound}`, { x: player.position.x, z: player.position.z, volume: 0.75 });
   }
 
   /**
@@ -1358,6 +1450,15 @@ export class SkillRunner {
     const mapped = SKILL_STATUS[def.id];
     if (mapped && getStatus(mapped)) {
       return [{ id: mapped, duration, magnitude, stacks: 1, maxStacks: extraStacks, tickScale }];
+    }
+    // Poison skills say how many stacks of Poisoned they leave: Viper Strike
+    // three, Venom Dart four, Death Lotus one a hit. Nothing read the number,
+    // so they poisoned only on the element's own chance, a stack at a time.
+    const poisonStacks = Math.floor(num('poisonStacks', num('poisonPerHit', 0)));
+    if (poisonStacks > 0 && getStatus('poisoned')) {
+      const rank = this.caster ? skillRank(this.caster.character, def.id) : 1;
+      const longer = num('durationPerRank', 0) * Math.max(0, rank - 1);
+      return [{ id: 'poisoned', duration: duration + longer, magnitude, stacks: poisonStacks, maxStacks: extraStacks, tickScale }];
     }
     if (riderOnly) return [];
     const id = `skill.${def.id}`;
@@ -1631,7 +1732,7 @@ export class SkillRunner {
       e.convertToLightningPct > 0 &&
       (packet.type === 'fire' || packet.type === 'cold' || packet.type === 'physical')
     ) {
-      packet = { ...packet, type: 'lightning' };
+      packet = { ...packet, type: 'lightning', parts: undefined };
     }
     const mul = damageMultiplier(
       e,
@@ -1745,9 +1846,27 @@ export class SkillRunner {
         }
       }
 
+      // --- Corrosive Edge, Scorch: an element's hits leave a mark --------
+      for (const h of e.onHitStatuses) {
+        if (packet.type !== h.type || t.life <= 0) continue;
+        if (ctx.rng.chance(Math.min(1, h.chance / 100))) {
+          t.applyStatuses([{ id: h.id, duration: h.duration, magnitude: 1, stacks: 1 }], ctx);
+        }
+      }
+
       // --- Paralytic Toxin ------------------------------------------------
-      if (e.poisonStunStacks > 0 && t.stacksOf('envenomed') >= e.poisonStunStacks) {
-        t.applyStatuses([{ id: 'stunned', duration: e.poisonStunSec, magnitude: 1 }], ctx);
+      // It counted Envenomed alone, which stacks to three, so "at 5 stacks"
+      // never came. Poisoned is the venom tree's stack; both count.
+      const venom = t.stacksOf('poisoned') + t.stacksOf('envenomed');
+      if (e.poisonSlows && venom > 0 && t.life > 0) {
+        t.applyStatuses([{ id: 'slowed', duration: 2, magnitude: 1, stacks: 1 }], ctx);
+      }
+      if (e.poisonStunStacks > 0 && venom >= e.poisonStunStacks && t.life > 0) {
+        const last = this.poisonStunAt.get(t.id) ?? -Infinity;
+        if (ctx.elapsed - last >= e.poisonStunCd) {
+          this.poisonStunAt.set(t.id, ctx.elapsed);
+          t.applyStatuses([{ id: 'stunned', duration: e.poisonStunSec, magnitude: 1 }], ctx);
+        }
       }
 
       // --- Blood Curse ----------------------------------------------------
@@ -2164,6 +2283,7 @@ export class SkillRunner {
     if (!live) return;
     this.runTime += dt;
 
+    this.tickOffHand(dt);
     for (let i = this.pendingSwings.length - 1; i >= 0; i--) {
       const sw = this.pendingSwings[i]!;
       sw.t -= dt;

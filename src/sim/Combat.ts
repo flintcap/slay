@@ -146,8 +146,18 @@ export function rollDamage(stats: Stats, rng: Rng, opts: RollOpts = {}): DamageP
   const elemPct = 1 + stats.elementalDamagePct / 100;
 
   let amount: number;
+  let parts: DamagePacket['parts'];
   if (type === 'physical') {
     amount = weapon + flatElem * elemPct;
+    // The elemental adds ride on the swing as one packet, but they are still
+    // fire, cold or poison: remember their share so the number can say so.
+    // Shares do not change with scale or crit, so they are taken here.
+    if (flatElem > 0 && amount > 0) {
+      for (const [el, key] of ELEMENTAL_FLAT) {
+        const v = stats[key] ?? 0;
+        if (v > 0) (parts ??= {})[el] = (v * elemPct) / amount;
+      }
+    }
   } else {
     amount = (weapon + flatElem) * elemPct;
   }
@@ -171,6 +181,7 @@ export function rollDamage(stats: Stats, rng: Rng, opts: RollOpts = {}): DamageP
   if (opts.ability) packet.ability = opts.ability;
   if (opts.knockback) packet.knockback = opts.knockback;
   if (opts.applies && opts.applies.length > 0) packet.applies = opts.applies;
+  if (parts) packet.parts = parts;
   return packet;
 }
 

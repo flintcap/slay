@@ -27,7 +27,7 @@
  * touches the scene, so it stays testable without a browser.
  */
 
-import type { Character } from '../types';
+import type { Character, DamageType } from '../types';
 import { SKILL_BY_ID } from '../data/skills';
 import { applyPowerPassives } from './ItemPowers';
 
@@ -176,6 +176,15 @@ export interface PassiveEffects {
   /** Poison at this many stacks stuns. 0 = never. */
   poisonStunStacks: number;
   poisonStunSec: number;
+  /** Seconds before Paralytic Toxin can stun the same target again. */
+  poisonStunCd: number;
+  /** Poisoned targets are also Slowed (Paralytic Toxin). */
+  poisonSlows: boolean;
+  /**
+   * Hits of a damage type that leave a status: Corrosive Edge (poison leaves
+   * Corroded), Scorch (fire leaves Scorched). Chance in percent.
+   */
+  onHitStatuses: Array<{ type: DamageType; id: string; chance: number; duration: number }>;
 
   // --- shadow and clones --------------------------------------------------
   cloneCount: number;
@@ -320,6 +329,9 @@ function emptyEffects(): PassiveEffects {
     resistPiercePct: 0,
     poisonStunStacks: 0,
     poisonStunSec: 0,
+    poisonStunCd: 0,
+    poisonSlows: false,
+    onHitStatuses: [],
     cloneCount: 0,
     clonePowerPct: 0,
     stealthReductionPct: 0,
@@ -440,6 +452,13 @@ const RULES: Record<string, Contribution> = {
   },
   scorch: (e, r, id) => {
     e.dotDamagePct += param(id, 'burnPerRank', 6) * r;
+    // "Your fire hits apply Scorched" was in the tooltip and nowhere else.
+    e.onHitStatuses.push({
+      type: 'fire',
+      id: 'scorched',
+      chance: param(id, 'chance', 35) + param(id, 'chancePerRank', 4) * (r - 1),
+      duration: param(id, 'duration', 8),
+    });
   },
   smolder: (e, r, id) => {
     e.dotMaxStacks += Math.floor(r / Math.max(1, param(id, 'stacksPerRanks', 4)));
@@ -598,6 +617,18 @@ const RULES: Record<string, Contribution> = {
       e.poisonStunSec,
       param(id, 'stunDuration', 1.5) + param(id, 'stunPerRank', 0.05) * (r - 1),
     );
+    e.poisonStunCd = Math.max(e.poisonStunCd, param(id, 'internalCd', 8));
+    e.poisonSlows = true;
+  },
+  corrosiveEdge: (e, r, id) => {
+    // Its attack speed comes from the skill's stat table; this is the rest of
+    // the tooltip, which nothing read: poison hits apply Corroded.
+    e.onHitStatuses.push({
+      type: 'poison',
+      id: 'corroded',
+      chance: param(id, 'chance', 30) + param(id, 'chancePerRank', 3.5) * (r - 1),
+      duration: param(id, 'duration', 8),
+    });
   },
   bloodToxin: (e, r, id) => {
     e.resistPiercePct = Math.min(

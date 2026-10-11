@@ -131,7 +131,13 @@ export class Player {
     this.life = this.stats.life;
     this.mana = this.stats.mana;
 
-    this.refreshEquipmentVisuals();
+    // The full recompute, passives included. Passives were only ever worked
+    // out by `refreshStats`, which nothing called on arrival, so every passive
+    // skill (Toxicology, Corrosive Edge, the masteries) did nothing in a fresh
+    // town or map until a level-up, a gear change or a buff happened to call it.
+    this.refreshStats();
+    this.life = this.stats.life;
+    this.mana = this.stats.mana;
   }
 
   /** Recompute stats after a gear or skill change, preserving resource ratios. */
@@ -253,7 +259,7 @@ export class Player {
   }
 
   /** Lock out movement for an attack/cast and play the matching clip. */
-  beginAction(clip: string, duration: number): void {
+  beginAction(clip: string, duration: number, side?: 'L' | 'R'): void {
     this.actionLock = duration;
     this.actionTotal = duration;
     this.actionSerial++;
@@ -266,7 +272,25 @@ export class Player {
       speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)),
       restart: true,
       contact: this.contactAt > 0 ? this.contactAt : Math.min(0.1, duration * 0.3),
+      side,
     });
+  }
+
+  /**
+   * The off hand's blow inside a dual-wield attack: the left blade swings
+   * while the action the main hand started still holds the body. Returns the
+   * seconds until it connects, which is when its damage should land.
+   */
+  offHandBlow(duration: number): number {
+    const contact = Math.max(0.05, Math.min(CONTACT_CAP, CLIP_CONTACT.attack2! * duration));
+    this.animator.play('attack2', {
+      fade: 0.06,
+      speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)),
+      restart: true,
+      contact,
+      side: 'L',
+    });
+    return contact;
   }
 
   /** Identifies the current action. Changes when a new one starts or a dodge cuts it off. */

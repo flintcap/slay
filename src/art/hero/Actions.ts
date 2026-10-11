@@ -77,6 +77,8 @@ export interface ActionDef {
   steps?: ActionStep[];
   /** Spell light in the hands, natural time to 0..1, and which hands. */
   glow?: { at: (t: number) => number; hands: 'left' | 'right' | 'both' };
+  /** The hand a weapon blow strikes with. */
+  side?: Side;
 }
 
 type Arm = [number, number, number, number, number?, number?, number?];
@@ -180,6 +182,7 @@ function blow(b: Blow): ActionDef {
   return {
     contact: th,
     event: 'hit',
+    side,
     recover: tf,
     full: true,
     plantFeet: true,
@@ -1030,12 +1033,20 @@ export const ACTION_NAMES = [
  * The action to play for a name, with what is held. `combo` counts blows in
  * a row and picks the next in the weapon's chain.
  */
-export function actionFor(name: string, kind: MoveKind, combo: number): ActionDef {
+export function actionFor(name: string, kind: MoveKind, combo: number, side?: Side): ActionDef {
   switch (name) {
     case 'attack1':
     case 'attack2': {
       if (kind === 'bow') return SHOT;
       const chain = CHAINS[kind];
+      // Asked for a hand (two blades: the main hand, then the off hand): the
+      // next blow in the chain struck with it, so the chain still varies.
+      if (side) {
+        for (let i = 0; i < chain.length; i++) {
+          const a = chain[(combo + i) % chain.length]!;
+          if (a.side === side) return a;
+        }
+      }
       return chain[combo % chain.length]!;
     }
     case 'thrust':

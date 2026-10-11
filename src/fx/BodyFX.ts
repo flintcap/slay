@@ -174,8 +174,12 @@ class Actor {
   gen = 0;
   root: THREE.Object3D | null = null;
   edge = Edge.None;
-  /** Held: the `hold:mainHand` node. Sockets: the hand. */
+  /** Held: the `hold:<heldSlot>` node. Sockets: the hand. */
   a: THREE.Object3D | null = null;
+  /** Held: which hand's item this actor traces (a hero has one per hand). */
+  heldSlot: 'mainHand' | 'offHand' = 'mainHand';
+  /** Held: when to look for the item again after finding the hand empty. */
+  seekAt = 0;
   /** Sockets: the weapon tip. */
   b: THREE.Object3D | null = null;
   /** Held: grip-to-tip length along +Y; the hilt edge sits partway up. */
@@ -485,6 +489,8 @@ export class BodyFX {
     a.castHands = null;
     a.release = null;
     a.hero = false;
+    a.heldSlot = 'mainHand';
+    a.seekAt = 0;
     a.head = a.count = 0;
     a.rib = null;
     a.after = 0;
@@ -534,10 +540,18 @@ export class BodyFX {
     const anim = hero.animator;
     a.castHands = () => anim.castHands;
     const gen = a.gen;
-    a.unsub.push(anim.on('hit', () => this.onHit(a, gen)));
+    // The off hand traces its own blade: with two weapons the left one strikes
+    // too, and its smear has to come from the left hand, not the right.
+    const off = this.takeActor(hero.root, school);
+    off.hero = true;
+    off.edge = Edge.Held;
+    off.heldSlot = 'offHand';
+    const offGen = off.gen;
+    a.unsub.push(anim.on('hit', (e) => (e.side === 'L' ? this.onHit(off, offGen) : this.onHit(a, gen))));
     a.unsub.push(anim.on('release', () => this.onRelease(a, gen)));
     return () => {
       if (a.gen === gen && a.active) this.dropActor(a);
+      if (off.gen === offGen && off.active) this.dropActor(off);
     };
   }
 
@@ -583,8 +597,16 @@ export class BodyFX {
   private refreshHeld(a: Actor): void {
     const root = a.root!;
     if (a.a && a.a.parent) return;
-    a.a = root.getObjectByName('hold:mainHand') ?? null;
-    if (!a.a) return;
+    // An empty hand is looked for twice a second, not walked every frame.
+    if (this.clock < a.seekAt) {
+      a.a = null;
+      return;
+    }
+    a.a = root.getObjectByName(`hold:${a.heldSlot}`) ?? null;
+    if (!a.a) {
+      a.seekAt = this.clock + 0.5;
+      return;
+    }
     // Measure the held thing along the grip once: hilt and tip of its edge.
     let maxY = 0.35;
     let minY = 0;

@@ -1031,6 +1031,13 @@ export interface DamagePacket {
   knockback?: number;
   /** Status effects to apply on hit. */
   applies?: StatusApplication[];
+  /**
+   * Shares of `amount` (0..1) that are another element's flat damage riding
+   * on this hit: a poison coat or a fire-damage ring on a physical swing. The
+   * hit is mitigated as one packet; the share only decides how the damage
+   * number is drawn, so each element shows in its own colour.
+   */
+  parts?: Partial<Record<DamageType, number>>;
 }
 
 export interface StatusApplication {
@@ -1042,6 +1049,12 @@ export interface StatusApplication {
   maxStacks?: number;
   /** Multiplies how fast the effect ticks. Pyre Mastery. */
   tickScale?: number;
+  /**
+   * Damage per second per stack taken from the blow that applied it, before
+   * magnitude and tick rate. Set by the monster for the hero's poison, so a
+   * venom scales with the hand that delivered it. Absent: the depth curve.
+   */
+  power?: number;
 }
 
 export interface StatusEffectDef {

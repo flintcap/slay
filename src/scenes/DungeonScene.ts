@@ -1210,7 +1210,6 @@ export class DungeonScene extends GameScene {
     this.dungeonEvents?.update(dt);
     this.runMods?.update(dt);
     hudRuntime.minions = this.skills.minionSummary();
-    this.skills.tickOffHand(dt, this.player);
     this.effects.update(dt, elapsed);
     this.body.update(dt, this.camera);
     this.mesh.update(dt, elapsed, this.player.position);

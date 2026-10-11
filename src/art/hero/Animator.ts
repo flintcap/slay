@@ -55,6 +55,8 @@ export interface PlayOpts {
   onEnd?: () => void;
   /** Plays even while a condition (stunned, knocked down) holds the body. */
   force?: boolean;
+  /** For a weapon blow: the hand that strikes. Two blades use both. */
+  side?: 'L' | 'R';
 }
 
 const LOCO = new Set(['idle', 'walk', 'run']);
@@ -460,7 +462,7 @@ export class HeroAnimator {
       this.combo = this.elapsed - this.lastAttackAt < 1.0 ? this.combo + 1 : 0;
       this.lastAttackAt = this.elapsed;
     }
-    const def = actionFor(resolved, this.kind, this.combo);
+    const def = actionFor(resolved, this.kind, this.combo, opts.side);
     const { keys, times, holds } = this.bake(def, attack ? (this.combo % 2 ? -1 : 1) : this.flinchSide);
     const speed = opts.speed ?? 1;
     let warp = speed;
@@ -778,7 +780,7 @@ export class HeroAnimator {
     } else tr.t += dt * tr.speed;
     if (c !== undefined && !tr.fired && before < c && tr.t >= c) {
       tr.fired = true;
-      if (tr.def.event) this.emit(tr.def.event, { clip: tr.name });
+      if (tr.def.event) this.emit(tr.def.event, { clip: tr.name, side: tr.def.side });
     }
     const end = tr.times[tr.times.length - 1]!;
     if (tr.t >= end) {

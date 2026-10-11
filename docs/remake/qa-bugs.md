@@ -32,6 +32,13 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   "Results" for the owner instead of changing it.
   (classes stronger plus the owner-approved reflect fix: 1 of 30 left, an
   "untouched" revenant at tier 5; see Results)
+- [ ] Owner's play bugs (do first). (1) Shadowblade dual wield: with two
+  weapons the off hand must really attack, in the game logic and in the
+  animation, and its weapon must really deal damage. (2) Coat Blades does
+  nothing: no Poisoned on hit, no green marker, no extra damage; check Viper
+  Strike and the rest of the Venom tree too. (3) Elemental damage numbers
+  must show their element's colour (fire, cold, lightning, poison, arcane);
+  physical stays as it is. Prove each with a headless check.
 - [ ] Handover.
 
 ## Results

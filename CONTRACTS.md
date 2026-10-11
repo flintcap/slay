@@ -307,7 +307,9 @@ shoot slam thrust lunge channel point plant stomp roar hurl blink skyshot
 snapshot dodge hurt stagger stun down death deathFwd`. `attack1` and
 `attack2` resolve to the move for whatever weapon is held (sword, axe, mace,
 dagger, spear, two-hander, staff, wand, bow, shield, unarmed) and chain into
-combos on their own.
+combos on their own. `play(name, { side: 'L' | 'R' })` asks for a blow struck
+with that hand (two blades: the basic attack's main hand opens with `R`, and
+`Player.offHandBlow` swings the left); `hit` then carries the same `side`.
 
 **Extra actions.** Other streams can add named actions without editing
 `Actions.ts`. A registered name never replaces a built-in one, and calling it
@@ -579,7 +581,11 @@ export function skillRank(c: Character, skillId: string): number;
 ## `src/sim/Combat.ts` — owned by CHARACTER
 
 ```ts
-/** Rolls a damage packet from an attacker's stats. */
+/**
+ * Rolls a damage packet from an attacker's stats. A physical packet with flat
+ * elemental adds carries their shares in `parts` (drawn as their own numbers;
+ * `enemy:damaged` passes them on).
+ */
 export function rollDamage(stats: Stats, rng: Rng, opts?: { scale?: number; type?: DamageType; ability?: string; source?: string }): DamagePacket;
 /** Applies resistances, armour and block. Returns damage actually taken. */
 export function mitigate(packet: DamagePacket, defender: Stats, rng: Rng): { amount: number; blocked: boolean; type: DamageType };
