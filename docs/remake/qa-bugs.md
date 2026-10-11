@@ -39,7 +39,8 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   Strike and the rest of the Venom tree too. (3) Elemental damage numbers
   must show their element's colour (fire, cold, lightning, poison, arcane);
   physical stays as it is. Prove each with a headless check.
-  (all three fixed; `check-hits` 32 of 32; see Results)
+  (`qa-bugs: owner's play bugs: two blades, venom, damage colours`;
+  `check-hits` 32 of 32; see Results)
 - [ ] Handover.
 
 ## Results
@@ -126,11 +127,13 @@ modifier and objective lines, difficulty guidance). Story prose is unchanged.
 
 ## Next up
 
-1. Run the class tour, one class per run:
-   `SLAY_PORT=4331 timeout 2700 node tools/check-flow.mjs --class=warden`
-   then pyromancer, shadowblade, stormcaller, revenant, ranger. The first try
-   (before the panel tour moved inside the page) timed out at the hotbar
-   step after 45 minutes; everything before it passed.
+1. Run the class tour's dungeon half, one class per run:
+   `SLAY_PORT=4331 timeout 2700 node tools/check-flow.mjs --class=<id> --part=dungeon`
+   for warden again, then pyromancer, shadowblade, stormcaller, revenant,
+   ranger. Warden's town half passed in full (talk, trade, 17 panels, no
+   errors). Warden's dungeon half: portal, no errors, no missing art; one
+   run refused `shieldBash` from its key (an earlier run fired it). If it
+   fails again for the same reason, note it and move on.
 2. Run `SLAY_PORT=4331 timeout 2700 node tools/check-mapflow.mjs` (now also
    kills a boss, takes the portal home, opens a fresh map, reloads mid-map).
 3. Run the plain `check-flow` once for death and rise again.
@@ -144,3 +147,6 @@ modifier and objective lines, difficulty guidance). Story prose is unchanged.
 - `tools/lib/class-tour.mjs` is the class tour that `check-flow --class=`
   runs. `check-mapflow` holds the boss and map-end steps.
 - `check-curve` results shift a little with which classes run together.
+- `check-hits` (static) proves the owner's three bugs: two blades, venom,
+  damage colours. Run it after touching SkillRunner, Enemy statuses or
+  CombatText.
