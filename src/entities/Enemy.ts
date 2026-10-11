@@ -1197,6 +1197,9 @@ export class Enemy implements Combatant {
       if (taken <= 0) return;
     }
 
+    // What the body actually had to give: reflect works off this, so a blow
+    // far past zero does not come back bigger than the monster was.
+    const absorbed = Math.min(taken, Math.max(0, this.life));
     this.life -= taken;
     // How far past zero the blow landed. Cataclysm carries this to the pack.
     this.overkill = this.life < 0 ? -this.life : 0;
@@ -1275,7 +1278,7 @@ export class Enemy implements Combatant {
         ctx.damagePlayer(back);
       } else if (a.behavior === 'reflect_damage') {
         const back = rollPacket(this, ctx, 0.1, working.type, 'reflect');
-        back.amount = taken * (a.params?.ratio ?? 0.2);
+        back.amount = absorbed * (a.params?.ratio ?? 0.2);
         ctx.damagePlayer(back);
       } else if (a.behavior === 'illusionist' && ctx.rng.chance(0.06)) {
         summon(this, ctx, 'mirror_image', a.params?.count ?? 2, 2.2);
