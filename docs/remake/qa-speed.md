@@ -12,13 +12,13 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
 
 ## Milestones
 
-- [ ] Load time. Measure title-screen time and first town and first map time
+- [x] Load time. Measure title-screen time and first town and first map time
   from the published bundle (`tools/bundle-artifact.mjs`, served with the
   packs as `tools/verify-single.mjs` or similar does). Find the biggest waits
   (pack downloads, texture decode, mesh building, shader compile) and cut
   them: show progress, load in the background, build lazily, warm shaders
   behind the loading card.
-- [ ] Owner-reported lag (top priority, ahead of garbage and mix). The owner
+- [x] Owner-reported lag (top priority, ahead of garbage and mix). The owner
   played the published game on a real machine and still feels lag in:
   (a) the main menus, (b) character creation and select, (c) attacking
   enemies, (d) enemies coming into view, (e) loading new areas while moving
@@ -43,9 +43,9 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   back up when there is room. Defaults give smooth play first.
 - [ ] Loading. New areas build without freezing play (across frames or in
   a worker), and what the next area needs is warmed ahead of time.
-- [ ] A permanent perf check in `tools/` that records frame-time stats for
+- [x] A permanent perf check in `tools/` that records frame-time stats for
   town, a busy map and a boss fight, and fails on regressions.
-- [ ] Hitches. First sight of a monster or boss stalls 0.15 to 2.9 s while its
+- [x] Hitches. First sight of a monster or boss stalls 0.15 to 2.9 s while its
   body is built. Move that work off the frame (worker, prebuild during map
   load for the map's monster list, or spread over frames). Same for any other
   stall over 50 ms you find.
@@ -98,19 +98,37 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   far monsters' matrices frozen and hidden from the cull pass.
 - Glide JS (126 frames, `--profile`): matrix work 839 ms before, 238 ms
   after the freeze.
+- Load time, `check-loadtime.mjs`, cold, inside the browser lock, back to
+  back (before 8d9fb82 from a scratch copy, after 04d1d12):
+
+  | phase | before ms | after ms | long tasks before (total, biggest) | after |
+  |---|---|---|---|---|
+  | title | 27415 | 21904 | boot 20442, 13061 | 11606, 8001 |
+  | select screen | 53395 | 44488 | 30096, 17577 | 11425, 7228 |
+  | first town | 81740 | 89365 | 77087, 20671 | 55159, 8157 |
+  | first map | 55241 | 43928 | 33170, 9726 | 31985, 8307 |
+
+  First town takes a little longer because it now waits behind the
+  curtain for the boot worker's townsfolk instead of meshing them again on
+  the main thread; the longest freeze there fell from 20.7 s to 8.2 s.
+- Standing check, `check-frames.mjs` (published bundle, 480x270, software,
+  120 frames after settling): baseline in `tools/perf-frames.json`. With
+  the hidden-object and item-material warm-up, the boss fight links no
+  program while playing (was 1, a 2.9 s cpu frame here) and the map fight
+  likewise; uploads in the boss fight are bone textures only.
 - Garbage, `check-perf --alloc --depths=1`: 298 KB a step (was 290 to 440;
   budget 200). Not under the line yet.
 
 ## Next up
 
-1. Read `check-lag` after3 (published bundle) against before1; write the
-   five lag spots into Results.
-2. `check-frames.mjs --save` once for the baseline (town, busy map, boss).
-3. Load time A/B (`check-loadtime.mjs`, baseline bundle in scratch).
-4. Garbage: 298 KB/step at depth 1 (budget 200). Sources by
-   `check-perf --alloc` on an unminified build: tickProjectiles,
-   creature solve/solveLegFull, Enemy.update, DungeonScene.update.
-5. Soak in parts once at handover; mix check headless.
+1. Sound mix: `check-mix.mjs` once, inside the browser lock.
+2. Garbage: 298 KB/step at depth 1 (budget 200). Named by `check-perf
+   --alloc` on an unminified build: tickProjectiles, creature
+   solve/solveLegFull, Enemy.update, DungeonScene.update. No obvious
+   allocation in their source; likely number boxing. Low value: minor GC.
+3. Loading: next area warmed ahead during play (not done; everything
+   builds behind the curtain now, with no drawing while it is down).
+4. Soak in parts once at handover, then Handover.
 
 ## Notes for resume
 
