@@ -264,6 +264,19 @@ export function textureReady(tex: THREE.Texture): Promise<boolean> {
   return Promise.resolve(!!tex.userData.loaded);
 }
 
+/**
+ * Resolves once every texture asked for so far holds its image (or never
+ * will), or after `ms`. A texture that lands after a scene's first frame is
+ * uploaded, mipmaps and all, on whatever frame it is first drawn in; waiting
+ * for them behind a loading curtain keeps those uploads off the play.
+ */
+export function texturesSettled(ms: number): Promise<void> {
+  const waiting: Array<Promise<unknown>> = [];
+  for (const e of textures.values()) if (!e.tex.userData.loaded) waiting.push(e.ready);
+  if (!waiting.length) return Promise.resolve();
+  return Promise.race([Promise.allSettled(waiting).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
+}
+
 /** Evicts a file's textures and decoded image. Materials still holding it keep the GPU copy until disposed. */
 export function releaseAssetTexture(rel: string): void {
   for (const [k, e] of textures) {

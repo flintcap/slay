@@ -4,6 +4,7 @@ import { Input } from './Input';
 import type { SceneId } from '../types';
 import { events } from './Events';
 import { save } from './Save';
+import { texturesSettled } from './Assets';
 
 /** One distinct error the engine caught, with how often it has happened. */
 export interface CaughtError {
@@ -61,6 +62,8 @@ export abstract class GameScene {
    * removed; they must share geometry and materials, never own them.
    */
   warmup?(): THREE.Object3D | null;
+  /** Optional: the warm-up frame is drawn; free what `warmup` built. */
+  warmupDone?(): void;
 
   /** Optional: called when the window regains focus after a pause. */
   onResume?(): void;
@@ -336,7 +339,8 @@ export class Engine {
    * builds what `compile` cannot see (shadow depth programs, the post chain)
    * and waits out any link still pending. Before, that wait landed on the
    * first frame of the fade-in: seconds of a frozen half-faded screen on a
-   * cold shader cache.
+   * cold shader cache. The frame also waits (briefly) for textures still
+   * decoding, so their uploads happen here too rather than in play.
    */
   async prime(next: GameScene): Promise<void> {
     // Looks the scene will only wear later (a hit flash, an effect first
@@ -349,9 +353,10 @@ export class Engine {
       this.report('render', err);
     }
     try {
-      await Promise.race([
-        this.renderer.compileAsync(next.scene, next.camera),
-        new Promise<void>((r) => setTimeout(r, 15000)),
+      await Promise.all([
+        Promise.race([this.renderer.compileAsync(next.scene, next.camera), new Promise<void>((r) => setTimeout(r, 15000))]),
+        // Textures still decoding would otherwise upload on a frame in play.
+        texturesSettled(2000),
       ]);
     } catch (err) {
       this.report('render', err);
@@ -362,6 +367,11 @@ export class Engine {
       this.report('render', err);
     }
     extra?.removeFromParent();
+    try {
+      next.warmupDone?.();
+    } catch (err) {
+      this.report('render', err);
+    }
   }
 
   /** Where to send the player when `id` cannot be entered or keeps failing. */

@@ -43,7 +43,8 @@ const MINION_NAME: Record<string, string> = {
   livingFlame: 'Living Flame',
 };
 
-const MINION_MONSTER: Record<string, string> = {
+/** The monster body each summoning skill raises (read by the scene's warm-up too). */
+export const MINION_MONSTER: Readonly<Record<string, string>> = {
   raiseSkeleton: 'skeleton_rattler',
   skeletalMage: 'skeleton_archer',
   grandOssuary: 'skeleton_warden',

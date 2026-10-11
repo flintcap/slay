@@ -1076,6 +1076,22 @@ export function setSummonFactory(fn: SummonFactory): void {
   summonFactory = fn;
 }
 
+/**
+ * The monster each summoning ability calls up, for warm-ups that build those
+ * bodies before the fight. Kept beside `summon` so a new summoner is added
+ * to both.
+ */
+export const SUMMONED_BY: Readonly<Record<string, string>> = {
+  split_self: 'ooze_spawn',
+  summon_adds: 'skeleton_rattler',
+  raise_dead: 'skeleton_rattler',
+  summon_swarm: 'hive_drone',
+  summon_imps: 'imp_scamperer',
+  summon_totem: 'arcane_sentry_totem',
+  resurrect_ally: 'skeleton_rattler',
+  mirror_images: 'mirror_image',
+};
+
 export function summon(
   self: Combatant,
   ctx: CombatContext,

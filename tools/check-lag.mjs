@@ -68,8 +68,11 @@ await context.addInitScript(() => {
   const w = window;
   const L = (w.__lag = { frames: [], links: [], tex: [], buf: [], ctx: [], long: [] });
   const now = () => performance.now();
+  L.draws = 0;
+  L.drawLog = [];
   const tick = (t) => {
     L.frames.push(t);
+    L.drawLog.push([t, L.draws]);
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -99,6 +102,10 @@ await context.addInitScript(() => {
       };
     };
     wrap('linkProgram', () => L.links.push(now()));
+    // Draw calls, the main thread's own cost per frame on any GPU.
+    for (const n of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced']) {
+      wrap(n, () => L.draws++);
+    }
     for (const n of ['texImage2D', 'texSubImage2D', 'texImage3D', 'texSubImage3D', 'compressedTexImage2D']) {
       wrap(n, (args) => L.tex.push([now(), size(args)]));
     }
@@ -147,6 +154,7 @@ async function visit(label) {
   /** Runs `fn` in the page and reports the frames it covered. */
   const seg = async (name, fn, a) => {
     if (PROFILE) await cdp.send('Profiler.start');
+    // The page clock at the profile's start, to place samples in frames.
     const t0 = await page.evaluate(() => performance.now());
     await page.evaluate(fn, a);
     const t1 = await page.evaluate(() => performance.now());
@@ -178,6 +186,8 @@ async function visit(label) {
             };
           });
         const upd = inside(L.eng, a, b).map((x) => x[1]);
+        const dl = L.drawLog.filter((x) => x[0] >= a && x[0] <= b);
+        const drawsPerFrame = dl.length > 1 ? Math.round((dl.at(-1)[1] - dl[0][1]) / (dl.length - 1)) : 0;
         return {
           frames: iv.length,
           p50: Math.round(q(0.5)),
@@ -189,6 +199,7 @@ async function visit(label) {
           texKB: Math.round(inside(L.tex, a, b).reduce((z, x) => z + x[1], 0) / 1024),
           ctx: inside(L.ctx, a, b).length,
           updMax: Math.round(Math.max(0, ...upd)),
+          drawsPerFrame,
           updOver50: upd.filter((x) => x > 50).length,
           long: inside(L.long, a, b).map((x) => Math.round(x[1])).sort((x, y) => y - x).slice(0, 5),
           worst,
@@ -199,12 +210,26 @@ async function visit(label) {
     summary.push([name, r]);
     console.log(
       `[${label}] ${name}: ${r.frames} frames, p50 ${r.p50} p95 ${r.p95} max ${r.max} ms; >50 ms: ${r.over50}, >100 ms: ${r.over100}; ` +
-        `programs linked ${r.links}, textures ${r.texKB} KB, contexts ${r.ctx}; update max ${r.updMax} ms (${r.updOver50} over 50); long tasks ${r.long.join(', ')}`,
+        `programs linked ${r.links}, textures ${r.texKB} KB, contexts ${r.ctx}; draw calls a frame ${r.drawsPerFrame}; update max ${r.updMax} ms (${r.updOver50} over 50); long tasks ${r.long.join(', ')}`,
     );
     for (const w of r.worst) {
       console.log(`      ${String(w.ms).padStart(5)} ms at +${w.at}: links ${w.links}, tex ${w.texKB} KB, buf ${w.bufKB} KB, ctx ${w.ctx}, update ${w.upd}, render ${w.ren}`);
     }
-    if (prof) printProfile(prof);
+    if (prof) {
+      printProfile(prof);
+      // What ran inside the slow updates and the long tasks, on their own.
+      const wins = await page.evaluate(
+        ([a, b]) => {
+          const L = window.__lag;
+          const w = [];
+          for (const [t, u, r] of L.eng) if (t >= a && t <= b && u > 50) w.push([t - u - r - 4, t]);
+          for (const [t, d] of L.long) if (t >= a && t <= b) w.push([t, t + d]);
+          return w;
+        },
+        [t0, t1],
+      );
+      if (wins.length) printProfile(prof, { t0, wins });
+    }
   };
 
   const frames = async (n) => {
@@ -233,7 +258,13 @@ async function visit(label) {
     const classes = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
     for (const id of classes.slice(1).concat(classes[0])) {
       await seg(`select: show ${id}`, async (cid) => {
-        window.SLAY.events.emit('ui:open', { panel: `class:${cid}` });
+        // Pick the class's row the way a player does, so the panel's detail
+        // (portrait, skill icons) is built as well as the hero on the plinth.
+        const rows = [...document.querySelectorAll('.csx-row')];
+        const ids = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+        const row = rows[ids.indexOf(cid)];
+        if (row) row.click();
+        else window.SLAY.events.emit('ui:open', { panel: `class:${cid}` });
         await new Promise((r) => setTimeout(r, 1500));
       }, id);
     }
@@ -419,28 +450,58 @@ async function visit(label) {
   }
 
   // One line per segment, for before / after tables.
-  console.log(`\n${label} summary (frames over ${SPIKE} ms, worst ms, programs linked):`);
-  for (const [name, r] of summary) console.log(`  ${name.padEnd(36)} ${String(r.over50).padStart(4)}  ${String(r.max).padStart(6)}  ${String(r.links).padStart(4)}`);
+  console.log(`\n${label} summary (frames over ${SPIKE} ms, worst ms, programs linked, contexts, draw calls a frame):`);
+  for (const [name, r] of summary) {
+    console.log(`  ${name.padEnd(36)} ${String(r.over50).padStart(4)}  ${String(r.max).padStart(6)}  ${String(r.links).padStart(4)}  ${String(r.ctx).padStart(3)}  ${String(r.drawsPerFrame).padStart(5)}`);
+  }
   if (errors.length) console.log(`page errors:\n  ${[...new Set(errors)].slice(0, 6).join('\n  ')}`);
   await page.close();
   return summary;
 }
 
-/** The heaviest JavaScript, by self time. Native GL calls are left out. */
-function printProfile(prof) {
+/**
+ * The heaviest JavaScript, by self time and by time inside (callees
+ * included). Native GL calls are left out. With `only`, just the samples
+ * that fall inside its windows (page clock, ms; `t0` is the page clock when
+ * the profile started).
+ */
+function printProfile(prof, only) {
   const self = new Map();
+  const incl = new Map();
   const byId = new Map(prof.nodes.map((n) => [n.id, n]));
+  const parent = new Map();
+  for (const n of prof.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+  const label = (n) => {
+    const f = n.callFrame;
+    return f.url ? `${f.functionName || '(anon)'} ${f.url.split('/').pop()}:${f.lineNumber + 1}` : null;
+  };
+  let at = prof.startTime;
   for (let i = 0; i < prof.samples.length; i++) {
+    const dt = (prof.timeDeltas[i] ?? 0);
+    at += dt;
+    if (only) {
+      const t = only.t0 + (at - prof.startTime) / 1000;
+      if (!only.wins.some(([a, b]) => t >= a && t <= b)) continue;
+    }
     const n = byId.get(prof.samples[i]);
     if (!n) continue;
-    const f = n.callFrame;
-    if (!f.url) continue;
-    const k = `${f.functionName || '(anon)'} ${f.url.split('/').pop()}:${f.lineNumber + 1}`;
-    self.set(k, (self.get(k) ?? 0) + (prof.timeDeltas[i] ?? 0) / 1000);
+    const ms = dt / 1000;
+    const k = label(n);
+    if (k) self.set(k, (self.get(k) ?? 0) + ms);
+    const seen = new Set();
+    for (let id = n.id; id !== undefined; id = parent.get(id)) {
+      const kk = label(byId.get(id));
+      if (!kk || seen.has(kk)) continue;
+      seen.add(kk);
+      incl.set(kk, (incl.get(kk) ?? 0) + ms);
+    }
   }
-  const top = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const top = (m, k) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, k);
   const js = [...self.values()].reduce((a, b) => a + b, 0);
-  console.log(`      JS self ${Math.round(js)} ms; heaviest: ${top.map(([k, v]) => `${Math.round(v)} ${k}`).join(' | ')}`);
+  const head = only ? `slow updates and long tasks (${only.wins.length})` : 'segment';
+  console.log(`      ${head}: JS self ${Math.round(js)} ms`);
+  console.log(`        self: ${top(self, 10).map(([k, v]) => `${Math.round(v)} ${k}`).join(' | ')}`);
+  console.log(`        inside: ${top(incl, 16).map(([k, v]) => `${Math.round(v)} ${k}`).join(' | ')}`);
 }
 
 try {

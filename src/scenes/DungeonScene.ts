@@ -38,7 +38,7 @@ import { emissiveMaterial } from '../art/Materials';
 import { grantXp } from '../sim/Character';
 import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
-import { SkillRunner, weaponStyle } from './SkillRunner';
+import { SkillRunner, weaponStyle, MINION_MONSTER } from './SkillRunner';
 import { NameplateLayer } from '../ui/Nameplates';
 import { CombatTextLayer } from '../ui/CombatText';
 import { GroundLabelLayer } from '../ui/GroundLabels';
@@ -58,6 +58,9 @@ import { legacyXpMultiplier } from '../sim/Legacy';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 import { disposeAbilityWorld } from '../entities/Abilities';
 import { disposeMonsterModels } from '../entities/MonsterModels';
+import { SUMMONED_BY } from '../entities/Abilities';
+import { lookFor } from '../art/creatures/Looks';
+import { instanceCreature, releaseCreature } from '../art/creatures/Creature';
 import { disposePropLibrary } from '../world/Props';
 import { PropRemains } from '../art/props/Remains';
 import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
@@ -224,6 +227,8 @@ export class DungeonScene extends GameScene {
     colliders: Array<{ x: number; z: number; w: number; d: number }>;
     rise: number;
   } | null = null;
+  /** Summonable bodies built for the area's warm-up (see `warmSummons`). */
+  private summonWarm: THREE.Object3D[] = [];
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   private heroAura: THREE.Mesh | null = null;
@@ -273,12 +278,52 @@ export class DungeonScene extends GameScene {
   override warmup(): THREE.Object3D | null {
     const roots: THREE.Object3D[] = this.enemies.map((e) => e.root);
     if (this.boss) roots.push(this.boss.root);
-    const list = this.skills.feel.flash.standIns(roots);
+    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm];
     if (!list.length) return null;
     const g = new THREE.Group();
     g.name = 'warmup';
     g.add(...list);
     return g;
+  }
+
+  override warmupDone(): void {
+    for (const root of this.summonWarm) releaseCreature(root);
+    this.summonWarm = [];
+  }
+
+  /**
+   * Bodies this area may call up mid-fight: what its monsters summon and what
+   * the hero's own summoning skills raise. Each was baked (sculpted, meshed,
+   * its textures painted) on the frame it was first summoned, a stall of up
+   * to seconds in the middle of a fight. Built here, behind the curtain, with
+   * exactly the look and size the summon will ask for, so the summon finds
+   * them in the creature cache. No random draws: looks are fixed per monster.
+   */
+  private warmSummons(): void {
+    this.warmupDone();
+    const want = new Map<string, { def: (typeof MONSTERS)[number]; minion: boolean }>();
+    const ask = (id: string | undefined, minion: boolean): void => {
+      if (!id || want.has(`${id}|${minion}`)) return;
+      const def = MONSTERS.find((m) => m.id === id);
+      if (def) want.set(`${id}|${minion}`, { def, minion });
+    };
+    const casters: Enemy[] = this.boss ? [...this.enemies, this.boss] : this.enemies;
+    for (const e of casters) for (const a of e.abilityIds) ask(SUMMONED_BY[a], false);
+    for (const ph of this.boss?.bossDef.phases ?? []) for (const a of ph.abilities) ask(SUMMONED_BY[a], false);
+    const c = this.player.character;
+    for (const sk of [...c.hotbar, ...Object.keys(c.skills)]) ask(sk ? MINION_MONSTER[sk] : undefined, true);
+    for (const { def, minion } of want.values()) {
+      try {
+        // As the summon factory builds them: a normal-rank monster of its
+        // family, or a hero's minion at 0.92 of its size with no family.
+        const m = minion
+          ? instanceCreature(lookFor(def.visual), (def.scale ?? 1) * 0.92, {})
+          : instanceCreature(lookFor(def.visual, def.family, 'normal'), def.scale, { rank: 'normal' });
+        this.summonWarm.push(m.root);
+      } catch {
+        /* the summon builds it itself, as before */
+      }
+    }
   }
 
   /** Hooks a monster or boss up to swing ribbons, release flares and status looks. */
@@ -677,6 +722,7 @@ export class DungeonScene extends GameScene {
           affixIconUri(b, c);
         }
       }
+      this.warmSummons();
       this.engine.renderer.compile(this.scene, this.camera);
 
       // Compiling programs is not enough: every generated PBR texture is
