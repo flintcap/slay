@@ -66,7 +66,6 @@ export interface Interactable {
 
 const CHUNK = 32;
 const MAX_TORCH_LIGHTS = 8;
-const SHADOW_LIGHTS = 2;
 const HALF = TILE_SIZE * 0.5;
 /**
  * How much of the lid is cut away around the player, in world units.
@@ -2205,7 +2204,6 @@ export class DungeonMesh {
       // The atmosphere survives: flames are emissive and bloom, the biome key
       // light still casts, and the player carries their own aura.
       l.castShadow = false;
-      void SHADOW_LIGHTS;
       // Stays visible for the renderer's whole life. Toggling a light's
       // `visible` flag changes the scene's light count, and three.js keys the
       // shader program cache on that count, so every material in the scene

@@ -386,8 +386,8 @@ const VOIDSPIRE = def(
 
 // ---------------------------------------------------------------------------
 // The map remake's biomes (docs/remake/maps.md). Gameplay fields are maps'.
-// The colour fields are a first pass for ground to replace; until ground
-// writes their `ART`, `biomeArt` lends each the look in `LOOK_FALLBACK`.
+// Their looks are the `ART` entries further down; a biome added later with
+// no `ART` yet borrows the crypt's (outdoor ones lose the roof).
 // ---------------------------------------------------------------------------
 
 /** DARK FOREST — the first ground outside the walls. Moonlight through a canopy, a path the trees did not agree to. */
@@ -534,19 +534,6 @@ export function biomeForDepth(depth: number, rng: Rng): BiomeId {
 // ---------------------------------------------------------------------------
 // Art configuration per biome
 // ---------------------------------------------------------------------------
-
-/**
- * The old biome whose art a new biome borrows until ground writes its own
- * (maps -> ground contract). Outdoor borrowers also lose the roof.
- */
-const LOOK_FALLBACK: Partial<Record<BiomeId, BiomeId>> = {
-  darkForest: 'caverns',
-  swamp: 'sunkenTemple',
-  desert: 'ashwaste',
-  desertTomb: 'crypt',
-  tundra: 'frostvault',
-  hell: 'foundry',
-};
 
 const ART: Partial<Record<BiomeId, BiomeArt>> = {
   crypt: {
@@ -1662,11 +1649,11 @@ ART.desertTomb = {
   grade: { contrast: 1.1, saturation: 0.9, shadowTint: 0x4a3a5a, highlightTint: 0xffc080, splitTone: 0.45, vignette: 0.52, vignetteTint: 0x2a1a10 },
 };
 
-/** A biome's own art, or the borrowed look of `LOOK_FALLBACK`. */
+/** A biome's own art, or the crypt's until it has one (maps -> ground contract). */
 function ownArt(id: BiomeId): BiomeArt {
   const own = ART[id];
   if (own) return own;
-  const from = ART[LOOK_FALLBACK[id] ?? 'crypt'] ?? ART.crypt!;
+  const from = ART.crypt!;
   return BY_ID[id]?.outdoor ? { ...from, id, ceiling: 'open', ceilingHoles: 0 } : { ...from, id };
 }
 

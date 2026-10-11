@@ -58,6 +58,10 @@ try {
             const r = rooms[Math.floor(rooms.length / 2)] ?? sc.level.rooms[0];
             s.debug.warpTo({ x: Math.round(r.center.x), y: Math.round(r.center.y) });
           } else s.debug.warpTo(at);
+          // The ground is what is judged here: send the monsters away so
+          // their spells do not fill the frame.
+          for (const e of sc.enemies ?? []) e.root?.removeFromParent();
+          if (sc.enemies) sc.enemies.length = 0;
         },
         [b, AT],
       );
