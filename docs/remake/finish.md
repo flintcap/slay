@@ -101,7 +101,11 @@ Checks never run by their stream:
 
 - [x] C1 `check-skills` for warden and shadowblade (one class a run).
   Warden 25 of 25 working, shadowblade 23 of 23; none refused, none threw.
-- [ ] C2 `check-soak`, small settings first.
+- [ ] C2 `check-soak`, small settings first. 3 runs x 2 floors x 150
+  frames, depth 2: PASS after the two leak fixes (drops on the floor, each
+  floor's stairs and arch). Town geometries 268, 268, 267 lap after lap
+  (they climbed about 20 a lap before), heap 148 to 149 MB, 0 errors,
+  update 1 to 2.7 ms. Next: two biomes (`--cycle=2`).
 
 Noted, not planned (owner's call or low value):
 
@@ -115,8 +119,9 @@ Noted, not planned (owner's call or low value):
 
 ## Next up
 
-1. C2: `check-soak`, small settings first (`--runs=2 --floors=2
-   --frames=150 --cycle=1`), then the default 3 x 3.
+1. C2: small soak passes. Run two biomes inside the 45 minute limit:
+   `--runs=4 --floors=2 --frames=100 --cycle=2` (the default 3 x 3 x 300
+   takes about 90 minutes here, over the limit).
 2. Docs: check ASSETS.md against `check-assets`; CONTRACTS and CLAUDE.md
    are brought up to date.
 3. Publish: `node tools/bundle-artifact.mjs`; the page, `files.json`, the
