@@ -61,7 +61,7 @@ function floorCard(def: BossDef, depth: number): void {
   const v = BOSS_VOICES[def.id];
   if (!v) return;
   showCard({
-    kicker: depth > 0 ? `Found on tier ${depth}` : 'Found on the boss floor',
+    kicker: depth > 0 ? `Found on tier ${depth}` : 'Found in a boss arena',
     title: v.floor.title,
     text: v.floor.text,
     source: v.floor.source,

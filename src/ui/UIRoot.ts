@@ -236,7 +236,7 @@ class MemorialPanel {
       sum.appendChild(c);
     };
     cell(String(fallen.length), 'Fallen');
-    cell(`D${deepest}`, 'Deepest grave');
+    cell(`T${deepest}`, 'Deepest grave');
     cell(most > 1 ? nemesis : '-', most > 1 ? `Nemesis · ${most} kills` : 'Nemesis');
     this.list.appendChild(sum);
     for (const f of fallen) {
@@ -249,7 +249,7 @@ class MemorialPanel {
       body.appendChild(
         span('fallen-detail', `Level ${f.level} ${classById(f.classId)?.name ?? f.classId}, slain by ${f.killedBy} · ${timeAgo(f.at)}`)
       );
-      const depth = span('fallen-depth', `D${f.depth}`);
+      const depth = span('fallen-depth', `T${f.depth}`);
       add(row, mark, body, depth);
       this.list.appendChild(row);
     }

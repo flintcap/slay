@@ -178,7 +178,7 @@ export class LegacyPanel {
     const tally = section('Codex and tally', 'book');
     tally.body.appendChild(statLine('Uniques found', `${codex.uniquesFound} / ${codex.uniques}`, { icon: 'star' }));
     tally.body.appendChild(statLine('Set pieces found', `${codex.setsFound} / ${codex.sets}`, { icon: 'shield' }));
-    tally.body.appendChild(statLine('Deepest depth', String(l.stats.deepest), { icon: 'skull' }));
+    tally.body.appendChild(statLine('Deepest tier', String(l.stats.deepest), { icon: 'skull' }));
     tally.body.appendChild(statLine('Descents', fmtInt(l.stats.runs)));
     tally.body.appendChild(statLine('Descents cleared', fmtInt(l.stats.clears)));
     tally.body.appendChild(statLine('Monsters slain', fmtInt(l.stats.kills)));

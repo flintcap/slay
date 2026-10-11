@@ -97,7 +97,7 @@ export function planDescent(c: Character, go: (depth: number, pacts: string[]) =
     'Descend from where you would, or from any milestone the account has reached.',
     depths.map((d, i) => ({
       id: String(d),
-      title: i === 0 ? `Depth ${d}` : `Waypoint: depth ${d}`,
+      title: i === 0 ? `Tier ${d}` : `Waypoint: tier ${d}`,
       gain: i === 0 ? 'The next descent for this character' : 'A milestone your legacy has already claimed',
     })),
     (id) => {

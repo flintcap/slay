@@ -1526,7 +1526,7 @@ export const QUESTS: QuestDefEx[] = [
     minDepth: 30,
     weight: 45,
     objectives: [
-      { kind: 'reach', filter: 'marker:deep', base: 1, perDepth: 0, desc: `Reach the floor of the tier` },
+      { kind: 'reach', filter: 'marker:deep', base: 1, perDepth: 0, desc: `Reach the last area of the map` },
       { kind: 'slayElite', filter: 'rank:elite', base: 12, perDepth: 0.6, desc: `Break {n} of what is stationed there` },
       { kind: 'boss', filter: 'boss:any', base: 1, perDepth: 0, desc: `Kill whatever the bottom keeps` },
     ],

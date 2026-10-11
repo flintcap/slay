@@ -108,7 +108,7 @@ const HINTS: Record<string, Hint> = {
   },
   map: {
     id: 'map',
-    text: 'Press {M} for the map. Every floor has a way down, and the last one has a boss.',
+    text: 'Press {M} for the map. Each map runs through several areas, and the last one has a boss.',
     where: 'dungeon',
     done: key('KeyM'),
     patience: 14,

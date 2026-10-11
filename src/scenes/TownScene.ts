@@ -176,7 +176,7 @@ export class TownScene extends GameScene {
 
     if (!save.hasUnlock('tutorial.town')) {
       save.unlock('tutorial.town');
-      toast('Walk to the glowing gate to descend.', 'info');
+      toast('Walk to the glowing portal to open a map.', 'info');
       setTimeout(() => toast('Press T to spend your skill point first.', 'good'), 3400);
     } else {
       toast(`Welcome back, ${character.name}.`, 'info');

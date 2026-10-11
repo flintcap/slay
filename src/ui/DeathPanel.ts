@@ -197,7 +197,7 @@ export class DeathPanel {
       d.append(div('dth-stat-v', value), div('dth-stat-l', label));
       stats.appendChild(d);
     };
-    stat(String(s.depth), s.isRecord ? 'New record' : 'Depth reached', s.isRecord ? 'is-record' : '');
+    stat(String(s.depth), s.isRecord ? 'New record' : 'Tier reached', s.isRecord ? 'is-record' : '');
     stat(fmtInt(s.kills), s.elites > 0 ? `Kills · ${s.elites} elite` : 'Kills');
     stat(fmtInt(s.gold), 'Gold found');
     stat(s.seconds > 0 ? duration(s.seconds) : '-', 'Time below');

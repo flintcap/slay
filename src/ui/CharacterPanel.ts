@@ -348,7 +348,7 @@ export class CharacterPanel {
         cell,
         `${RESIST_LABEL[dt]} Resistance`,
         `<p>Reduces incoming ${RESIST_LABEL[dt].toLowerCase()} damage by ${Math.round(v)}%.</p>` +
-          `<p class="tt-explain-how">Soft cap is 75%. Deeper floors apply a resistance penalty, so overcapping is not wasted.</p>`
+          `<p class="tt-explain-how">Soft cap is 75%. Higher tiers apply a resistance penalty, so overcapping is not wasted.</p>`
       );
       grid.appendChild(cell);
     }

@@ -538,7 +538,7 @@ export const RUN_MODIFIERS: RunModifierDef[] = [
     color: 0x6fa8ff,
     icon: 'echo',
   }),
-  M('timeless', 'Timeless', 'After 8 minutes on a floor, every enemy becomes permanently Enraged.', {
+  M('timeless', 'Timeless', 'After 8 minutes in an area, every enemy becomes permanently Enraged.', {
     minDepth: 25,
     behavior: 'softEnrage',
     params: { seconds: 480 },
@@ -602,7 +602,7 @@ export const RUN_MODIFIERS: RunModifierDef[] = [
     color: 0xc678dd,
     icon: 'mirror',
   }),
-  M('deepDark', 'The Deep Dark', 'Depth scaling for this run is calculated as if it were 10 floors deeper.', {
+  M('deepDark', 'The Deep Dark', 'Depth scaling for this run is calculated as if it were 10 tiers deeper.', {
     minDepth: 35,
     behavior: 'depthOffset',
     params: { depth: 10 },

@@ -36,7 +36,7 @@ let pending: { npc: string; chain: string } | null = null;
 function objectiveList(step: ChainStep): HTMLElement {
   const box = div('dlg-reward');
   const where = div('dlg-obj');
-  where.textContent = `The stair opens on ${stepWhere(step)}.`;
+  where.textContent = `A portal opens on ${stepWhere(step)}.`;
   box.appendChild(where);
   for (const o of step.objectives) {
     const line = div('dlg-obj');

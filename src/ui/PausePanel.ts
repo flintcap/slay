@@ -111,14 +111,14 @@ export class PausePanel {
     if (inDungeon) {
       items.push({
         label: 'Return to Town',
-        hint: 'Keep what you carry. This floor resets.',
+        hint: 'Keep what you carry. This map is lost.',
         onSelect: () =>
           modal({
             title: 'Leave the dungeon?',
             icon: 'warn',
             tone: 'danger',
             body:
-              '<p>You walk back to town with everything you are carrying. The floor resets, and anything still on the ground down here is lost.</p>',
+              '<p>You walk back to town with everything you are carrying. This map is lost, and anything still on the ground down here goes with it.</p>',
             confirmLabel: 'Return to town',
             onConfirm: () => {
               this.close();
@@ -139,7 +139,7 @@ export class PausePanel {
           icon: 'warn',
           tone: 'danger',
           body: inDungeon
-            ? '<p>Your character is saved and will be waiting in town. Progress on this dungeon floor is not.</p>'
+            ? '<p>Your character is saved and will be waiting in town. Progress on this map is not.</p>'
             : '<p>Your character is saved and will be waiting.</p>',
           confirmLabel: 'Quit',
           onConfirm: () => {

@@ -208,7 +208,7 @@ export class TitlePanel {
       d.append(div('ttl-stat-v', v), div('ttl-stat-l', l));
       stats.appendChild(d);
     };
-    stat(String(acct.bestDepth), 'Best depth');
+    stat(String(acct.bestDepth), 'Best tier');
     stat(String(roster.length), 'Living');
     stat(String(acct.fallen.length), 'Fallen');
     stat(fmtInt(acct.bankGold), 'Banked gold');

@@ -290,7 +290,7 @@ export interface RunModifierDef {
 
 export const RUN_MODIFIERS: RunModifierDef[] = [
   { id: 'mod.swarm', name: 'Teeming', desc: 'Monster packs are {v}% larger.', minDepth: 1, weight: 10, maxTier: 4 },
-  { id: 'mod.elites', name: 'Warband', desc: '{v}% more elite packs roam the floor.', minDepth: 4, weight: 9, maxTier: 4 },
+  { id: 'mod.elites', name: 'Warband', desc: '{v}% more elite packs roam the map.', minDepth: 4, weight: 9, maxTier: 4 },
   { id: 'mod.hardened', name: 'Hardened', desc: 'Enemies have {v}% more life.', minDepth: 2, weight: 9, maxTier: 5 },
   { id: 'mod.savage', name: 'Savage', desc: 'Enemies deal {v}% more damage.', minDepth: 5, weight: 8, maxTier: 5 },
   { id: 'mod.swift', name: 'Swift', desc: 'Enemies move {v}% faster.', minDepth: 4, weight: 7, maxTier: 3 },
@@ -302,7 +302,7 @@ export const RUN_MODIFIERS: RunModifierDef[] = [
   { id: 'mod.ambush', name: 'Ambush', desc: 'Packs lie in wait and open from cover.', minDepth: 6, weight: 6, maxTier: 2 },
   { id: 'mod.greed', name: 'Hoard', desc: 'Treasure is {v}% richer, guarded by rares.', minDepth: 1, weight: 8, maxTier: 4 },
   { id: 'mod.fragile', name: 'Brittle Bones', desc: 'You deal {v}% more damage, but lose {v}% of every resistance.', minDepth: 25, weight: 5, maxTier: 3 },
-  { id: 'mod.hunted', name: 'Hunted', desc: 'A stalker follows you through every floor.', minDepth: 30, weight: 4, maxTier: 2 },
+  { id: 'mod.hunted', name: 'Hunted', desc: 'A stalker follows you through every area.', minDepth: 30, weight: 4, maxTier: 2 },
   { id: 'mod.unstable', name: 'Unstable', desc: 'Elites detonate on death.', minDepth: 22, weight: 5, maxTier: 3 },
   { id: 'mod.drain', name: 'Leeching', desc: 'Enemies drain {v}% of damage dealt as life.', minDepth: 28, weight: 5, maxTier: 3 },
   { id: 'mod.void', name: 'Unravelling', desc: 'Reality tears open, spilling voidspawn.', minDepth: 45, weight: 4, maxTier: 3 },
@@ -414,8 +414,8 @@ export const QUESTS: QuestDef[] = [
     minDepth: 1,
     weight: 8,
     objectives: [
-      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Reach the lowest floor' },
-      { kind: 'boss', base: 1, perDepth: 0, desc: 'Slay the floor’s master' },
+      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Reach the last area' },
+      { kind: 'boss', base: 1, perDepth: 0, desc: 'Slay the map’s master' },
     ],
     rewardGold: 1,
     rewardXp: 1.3,
@@ -476,7 +476,7 @@ export const QUESTS: QuestDef[] = [
     // second objective that can actually be done: the lowest floor.
     objectives: [
       { kind: 'escort', base: 1, perDepth: 0, desc: 'Keep the cartographer alive' },
-      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Bring him to the lowest floor' },
+      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Bring him to the last area' },
     ],
     rewardGold: 1.8,
     rewardXp: 1.6,

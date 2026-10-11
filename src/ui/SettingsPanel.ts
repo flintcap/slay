@@ -324,7 +324,7 @@ export class SettingsPanel {
       }, 'Floating combat text over enemies').root,
     );
     this.content.appendChild(
-      new Toggle('Floor title cards', s.titleCards !== false, (v) => {
+      new Toggle('Area title cards', s.titleCards !== false, (v) => {
         s.titleCards = v;
         this.commit();
       }, 'The name of each place as you arrive').root,
