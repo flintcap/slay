@@ -51,8 +51,10 @@ export function poseOoze(a: CreatureAnimator): void {
   const t = a.t;
   const ranged = a.style.ranged && !a.struck && a.phase === 'windup';
   if (a.phase === 'windup' || a.phase === 'strike') {
-    const wind = a.phase === 'windup' ? ramp(t, 0, ranged ? a.releaseAt() * 0.85 : 0.5) : 1 - ramp(t, 0, 0.14);
-    const hit = a.phase === 'strike' ? ramp(t, 0, 0.14) * (1 - ramp(t, 0.45 + 0.15 * heavy, 1)) : ranged ? ramp(t, a.releaseAt() - 0.02, Math.min(1, a.releaseAt() + 0.1)) : 0;
+    // A heavy mass takes longer to throw itself over (and must not teleport).
+    const fast = 0.14 + 0.4 * heavy;
+    const wind = a.phase === 'windup' ? ramp(t, 0, ranged ? a.releaseAt() * 0.85 : 0.5) : 1 - ramp(t, 0, fast);
+    const hit = a.phase === 'strike' ? ramp(t, 0, fast) * (1 - ramp(t, 0.45 + 0.15 * heavy, 1)) : ranged ? ramp(t, a.releaseAt() - 0.02, Math.min(1, a.releaseAt() + 0.1)) : 0;
     if (ranged || a.attack === 'hurl') {
       // Spit: draw in tall, then heave it out.
       sq *= 1 + 0.25 * wind * (1 - hit) - 0.2 * hit;
@@ -66,9 +68,9 @@ export function poseOoze(a: CreatureAnimator): void {
       sq *= 1 + 0.08 * wind - 0.05 * hit;
     } else {
       // Engulf or slam: rise up tall and throw itself over the target.
-      sq *= 1 + 0.35 * wind - 0.4 * hit;
-      a.body(0, 0, -0.05 * H * wind + 0.35 * H * hit, 0.5 * hit);
-      a.rot('top', -0.3 * wind + 0.7 * hit);
+      sq *= 1 + 0.35 * wind - (0.4 - 0.15 * heavy) * hit;
+      a.body(0, 0, -0.05 * H * wind + (0.35 - 0.12 * heavy) * H * hit, 0.5 * hit);
+      a.rot('top', -0.3 * wind + (0.7 - 0.2 * heavy) * hit);
       a.rotS('podL', 'L', -1.4 * wind + 0.6 * hit, 0, 0.5 * wind);
       a.rotS('podR', 'R', -1.4 * wind + 0.6 * hit, 0, 0.5 * wind);
     }
@@ -97,7 +99,11 @@ export function poseOoze(a: CreatureAnimator): void {
     }
   }
   a.pose.squash *= sq;
-  a.pose.spread *= 1 / Math.sqrt(Math.max(0.2, sq));
+  // Keeps its volume as it squashes; a smooth floor so a mass welling up from
+  // a puddle does not hold wide and then snap in.
+  const d = sq - 0.3;
+  const floor = d > 0.2 ? sq : d < -0.2 ? 0.3 : 0.3 + ((d + 0.2) * (d + 0.2)) / 0.8;
+  a.pose.spread *= 1 / Math.sqrt(floor);
 }
 
 function deathOoze(a: CreatureAnimator): void {

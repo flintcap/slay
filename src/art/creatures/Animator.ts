@@ -336,6 +336,10 @@ export class CreatureAnimator {
   }
 
   private readonly spins = new Float64Array(80);
+  private snapSquash = 1;
+  private snapSpread = 1;
+  private outSquash = 1;
+  private outSpread = 1;
 
   /**
    * A phase that advances at `rate` radians a second. It is integrated, so a
@@ -598,6 +602,8 @@ export class CreatureAnimator {
       this.snapV[i]!.copy(bp).sub(this.prevP[i]!).multiplyScalar(k);
       if (this.snapV[i]!.lengthSq() > 100 * this.hipY * this.hipY) this.snapV[i]!.setLength(10 * this.hipY);
     }
+    this.snapSquash = this.outSquash;
+    this.snapSpread = this.outSpread;
     this.fade = 0;
     this.fadeT = 0;
     this.fadeDur = dur;
@@ -732,8 +738,13 @@ export class CreatureAnimator {
         bone.position.copy(this.lPos[i]!);
       }
     }
+    // Squash and stretch crossfade too, so a change of move never pops the body's size.
+    const sq = f < 1 ? this.snapSquash + (P.squash - this.snapSquash) * f : P.squash;
+    const sp = f < 1 ? this.snapSpread + (P.spread - this.snapSpread) * f : P.spread;
+    this.outSquash = sq;
+    this.outSpread = sp;
     const root = this.rootBody;
-    if (root) root.scale.set(P.spread, P.squash, P.spread);
+    if (root) root.scale.set(sp, sq, sp);
     this.hasPose = true;
     this.lastDt = this.dt || this.lastDt;
   }
