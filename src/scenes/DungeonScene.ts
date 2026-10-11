@@ -2032,6 +2032,19 @@ export class DungeonScene extends GameScene {
     for (const e of this.enemies) e.dispose();
     this.enemies = [];
     this.boss?.dispose();
+    // Drops still on the floor: a level change disposed them, leaving the
+    // dungeon did not (the soak saw town geometries climb after floors with
+    // kills).
+    for (const l of this.loot) {
+      l.root.removeFromParent();
+      disposeObject(l.root);
+    }
+    this.loot = [];
+    if (this.arenaGate?.bars) {
+      this.arenaGate.bars.removeFromParent();
+      disposeObject(this.arenaGate.bars);
+    }
+    this.arenaGate = null;
     this.mesh?.dispose();
     this.remains?.dispose();
     this.remains = null;

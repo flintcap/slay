@@ -11,7 +11,7 @@ crashes, docs true, published.
   finished (search "Notes for resume" in every progress file).
 - [x] Dead code. Find and delete code nothing calls any more, old assets and
   old checkers. `tsc` clean, build clean.
-- [ ] Speed. Draw calls (under 900 in town and a busy map), triangles,
+- [x] Speed. Draw calls (under 900 in town and a busy map), triangles,
   textures, load time, memory, garbage per frame. Fix the worst.
 - [ ] Long play test. A headless soak (`check-soak`) through many maps:
   errors, leaks, slowdowns. Fix what it finds.
@@ -115,7 +115,12 @@ Noted, not planned (owner's call or low value):
 
 ## Next up
 
-1. Work the checklist top down: requests, dead code, speed, looks, checks.
+1. C2: `check-soak`, small settings first (`--runs=2 --floors=2
+   --frames=150 --cycle=1`), then the default 3 x 3.
+2. Docs: check ASSETS.md against `check-assets`; CONTRACTS and CLAUDE.md
+   are brought up to date.
+3. Publish: `node tools/bundle-artifact.mjs`; the page, `files.json`, the
+   worker script in it.
 
 ## Notes for resume
 
