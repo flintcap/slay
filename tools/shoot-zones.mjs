@@ -39,6 +39,7 @@ try {
       const todo = plan[li].filter((z) => !shot.has(z.biome));
       if (!todo.length) continue;
       for (const z of todo) {
+        if (shot.has(z.biome)) continue;
         const where = await page.evaluate(
           async ({ li, zid }) => {
             const s = window.SLAY.engine.currentScene;
@@ -75,7 +76,12 @@ try {
         if (!where) continue;
         await frames(page, 10);
         const file = path.join(OUT, `${z.biome}.png`);
-        await page.screenshot({ path: file });
+        // Software rendering can take a while over a big frame.
+        const took = await page.screenshot({ path: file, timeout: 180000 }).then(
+          () => true,
+          (e) => (console.log(`miss  ${z.biome}: ${String(e).split('\n')[0]}`), false),
+        );
+        if (!took) continue;
         shot.add(z.biome);
         console.log(`shot  ${z.biome.padEnd(13)} ${z.name}  (${where.map}, tier ${where.tier})`);
       }
