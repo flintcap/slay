@@ -1,6 +1,6 @@
 # Stream: qa-looks (quality pass 2: does everything look right)
 
-Status: not started
+Status: in progress
 
 Goal: look at every part of the remade game in real renders and fix what
 looks wrong or weak against the Diablo II / Path of Exile bar in `PLAN.md`.
