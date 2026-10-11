@@ -7,8 +7,7 @@
  * distinct materials they use (the floor a merge can reach). No renderer.
  */
 import * as THREE from 'three';
-import { buildNpcModel, NPC_LOOK_IDS } from '../src/art/NpcModels';
-import { Random } from '../src/core/RNG';
+import { buildFolk, NPC_LOOK_IDS } from '../src/art/npc/Folk';
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -17,8 +16,10 @@ function visibleInTree(o: THREE.Object3D): boolean {
   return true;
 }
 
-const rows = NPC_LOOK_IDS.map((id, i) => {
-  const { root } = buildNpcModel(id, new Random(1000 + i));
+const rows = NPC_LOOK_IDS.map((id) => {
+  const t0 = Date.now();
+  const { root } = buildFolk(id);
+  const ms = Date.now() - t0;
   let meshes = 0;
   let skinned = 0;
   let shadow = 0;
@@ -41,6 +42,6 @@ const rows = NPC_LOOK_IDS.map((id, i) => {
     parts.push(`${m.name || mat.name || '?'} [${mat.type}] ${size.toFixed(2)}m ${Math.round(t)}t`);
   });
   if (process.env.NPC_DUMP) console.log(id, '\n  ' + parts.join('\n  '));
-  return { id, meshes, skinned, shadow, materials: mats.size, tris: Math.round(tris) };
+  return { id, meshes, skinned, shadow, materials: mats.size, tris: Math.round(tris), ms };
 });
 console.log(JSON.stringify({ rows }));

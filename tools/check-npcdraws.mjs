@@ -47,7 +47,7 @@ for (const r of rows) {
   if (over) bad++;
   total += r.meshes + r.shadow;
   console.log(
-    `${over ? 'FAIL' : 'ok  '}  ${r.id.padEnd(9)} ${String(r.meshes).padStart(3)} meshes (${r.skinned} skinned, ${r.shadow} cast shadow), ${r.materials} materials, ${r.tris} tris`,
+    `${over ? 'FAIL' : 'ok  '}  ${r.id.padEnd(9)} ${String(r.meshes).padStart(3)} meshes (${r.skinned} skinned, ${r.shadow} cast shadow), ${r.materials} materials, ${r.tris} tris${r.ms !== undefined ? `, ${r.ms} ms` : ''}`,
   );
 }
 console.log(`\nall residents: ${total} draw calls (colour + one shadow pass, budget ${MAX_TOTAL})`);

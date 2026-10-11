@@ -143,16 +143,16 @@ function parts(kind: PropKind): PropPart[] {
     case 'broom': {
       // A besom: a long haft down out of the little finger, a bundle of twigs at the floor.
       return [
-        { geo: rod(-1.15, 0.22, 0.016, 0.014, 7), key: 'wood.oak|0x9a7a50' },
-        { geo: at(lathe([[0.001, 0], [0.09, 0.02], [0.08, 0.16], [0.035, 0.32], [0.02, 0.36], [0.001, 0.37]], 9), 0, -1.48, 0), key: 'wood.oak|0xb09858' },
-        { geo: at(ring(0.03, 0.006, 10, 4), 0, -1.16, 0, Math.PI / 2, 0, 0), key: 'leather.worn' },
+        { geo: rod(-0.72, 0.45, 0.016, 0.014, 7), key: 'wood.oak|0x9a7a50' },
+        { geo: at(lathe([[0.001, 0], [0.09, 0.02], [0.08, 0.14], [0.035, 0.27], [0.02, 0.3], [0.001, 0.31]], 9), 0, -1.0, 0), key: 'wood.oak|0xb09858' },
+        { geo: at(ring(0.03, 0.006, 10, 4), 0, -0.72, 0, Math.PI / 2, 0, 0), key: 'leather.worn' },
       ];
     }
     case 'spade': {
       return [
         { geo: rod(-0.95, 0.2, 0.017, 0.015, 7), key: 'wood.oak|0x8a6a44' },
         { geo: at(beveledBox(0.13, 0.03, 0.03, 0.008), 0, 0.22, 0), key: 'wood.oak|0x8a6a44' },
-        { geo: at(taperedBox(0.18, 0.012, 0.2, 0.01, 0.26, 0.004), 0, -1.08, 0), key: 'metal.rusted' },
+        { geo: at(taperedBox(0.18, 0.012, 0.2, 0.01, 0.26, 0.004), 0, -1.08, 0), key: 'metal.iron' },
       ];
     }
     case 'tankard': {
@@ -235,17 +235,23 @@ function mirrorZ(geo: THREE.BufferGeometry): THREE.BufferGeometry {
   return geo;
 }
 
-/** What a resident holds: a prop, which hand, and an extra turn in the grip. */
+/**
+ * What a resident holds or hangs on the body: a prop, where, and an extra
+ * offset and turn. In a hand ('L', 'R') the offset is in the grip frame; on
+ * the body ('beltL', 'beltR', 'back') it is in character space (+X the
+ * character's left, +Y up, +Z ahead) from the socket's point, unturned.
+ */
 export interface HeldProp {
   kind: PropKind;
-  hand: 'L' | 'R';
-  /** Extra offset and turn in the grip frame (metres, radians). */
+  hand: 'L' | 'R' | 'beltL' | 'beltR' | 'back';
+  /** Extra offset and turn (metres, radians). */
   at?: [number, number, number];
   turn?: [number, number, number];
 }
 
 const _m = new THREE.Matrix4();
 const _sock = new THREE.Matrix4();
+const _pos = new THREE.Vector3();
 
 /**
  * Puts props in hand: each part placed at its socket in the bind pose,
@@ -257,9 +263,15 @@ export function bakeProps(rig: HeroRig, held: HeldProp[], name: string): THREE.S
   const rootInv = rig.root.matrixWorld.clone().invert();
   const byKey = new Map<string, { geos: THREE.BufferGeometry[]; mat: THREE.Material }>();
   for (const h of held) {
-    const slot = h.hand === 'L' ? 'offHand' : 'mainHand';
+    const inHand = h.hand === 'L' || h.hand === 'R';
+    const slot = h.hand === 'L' ? 'offHand' : h.hand === 'R' ? 'mainHand' : h.hand;
     const socket = rig.sockets[slot];
     _sock.multiplyMatrices(rootInv, socket.matrixWorld);
+    if (!inHand) {
+      // Body props keep the character's axes: only the socket's point counts.
+      _pos.setFromMatrixPosition(_sock);
+      _sock.makeTranslation(_pos.x, _pos.y, _pos.z);
+    }
     const t = h.at ?? [0, 0, 0];
     const r = h.turn ?? [0, 0, 0];
     _m.compose(new THREE.Vector3(t[0], t[1], t[2]), new THREE.Quaternion().setFromEuler(new THREE.Euler(r[0], r[1], r[2])), new THREE.Vector3(1, 1, 1));
