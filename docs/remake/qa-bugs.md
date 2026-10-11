@@ -32,13 +32,14 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   "Results" for the owner instead of changing it.
   (classes stronger plus the owner-approved reflect fix: 1 of 30 left, an
   "untouched" revenant at tier 5; see Results)
-- [ ] Owner's play bugs (do first). (1) Shadowblade dual wield: with two
+- [x] Owner's play bugs (do first). (1) Shadowblade dual wield: with two
   weapons the off hand must really attack, in the game logic and in the
   animation, and its weapon must really deal damage. (2) Coat Blades does
   nothing: no Poisoned on hit, no green marker, no extra damage; check Viper
   Strike and the rest of the Venom tree too. (3) Elemental damage numbers
   must show their element's colour (fire, cold, lightning, poison, arcane);
   physical stays as it is. Prove each with a headless check.
+  (all three fixed; `check-hits` 32 of 32; see Results)
 - [ ] Handover.
 
 ## Results
@@ -85,6 +86,36 @@ drinking a potion). Making classes stronger cannot fix that; it is on the
 edge (low 90% and 92%, the line is 85%) and passes when the revenant is run
 on its own (`--classes=revenant`), because the curve harness carries some
 state from class to class.
+
+### Owner's play bugs (`node tools/check-hits.mjs`, 32 of 32)
+
+Dual wield. How it is meant to work (the code's own design): both blades
+strike on every basic attack, the main hand first and the off hand a beat
+later for 62% of the sheet. The sheet adds both weapons' damage, so the
+off-hand weapon counts in both blows and in every skill (two daggers deal
+2.9x one dagger; a stronger off-hand blade raises it again). What was
+broken: the second blow had no swing behind it, the body only ever swung the
+right blade, and only the dungeon scene ticked it. Now the left blade swings
+and the off-hand blow lands on its contact frame; the left blade has its own
+swing trail.
+
+Coat Blades and the Venom tree. Coat Blades never poisoned: its 25% chance
+was read by nothing and its poison rode inside a physical hit. Viper Strike,
+Venom Dart and Death Lotus never applied their stated stacks. Death Lotus,
+Double Strike and Massacre landed one hit instead of 8, 2 and 5. Corrosive
+Edge and Scorch had no on-hit code. Paralytic Toxin counted the wrong
+status. Poison ticked for a sliver of one swing. And every passive skill did
+nothing in a fresh town or map until a level-up or gear change, because the
+hero never worked out passives on arrival. All fixed; the hero's poison now
+ticks for 4% of the blow a second per stack (or the old curve, if higher).
+
+Damage numbers. Elemental skills already passed their type, but running
+totals merged every hit on a target into the first hit's colour, and flat
+elemental damage on a swing was drawn as physical. Now each element is its
+own number in its own colour. Physical is unchanged.
+
+Static sweep after these changes: 53 of 54 pass; `curve` is the same single
+revenant tier 5 "untouched" cell as before.
 
 ### Text
 
