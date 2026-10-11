@@ -728,6 +728,10 @@ export class Enemy {
   life: number; maxLife: number;
   /** The creature animator; `rig.creature` raises the hit and release frame events. */
   readonly rig: RigAnimator | null;
+  /** The scene says each step whether the body is near the camera's view;
+   *  out of view it skips its pose solve and casts no shadow. Default true. */
+  inView: boolean;                                  // read it; change it through setInView
+  setInView(v: boolean): void;
   update(dt: number, ctx: CombatContext): void;
   takeDamage(packet: DamagePacket, ctx: CombatContext): void;
   dispose(): void;
