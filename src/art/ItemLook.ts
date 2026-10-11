@@ -34,9 +34,9 @@ import { gearLook, type GearLook } from './GearLook';
 import { resolveSurface } from './SurfaceLibrary';
 import { TEXTURE_SETS } from './TextureSets';
 import { ITEM_BASES } from '../data/itemBases';
-import { fallbackMotif, SET_MOTIFS, UNIQUE_DESIGNS, type Emblem, type Feature, type SetMotif, type UniqueDesign } from './items/Designs';
+import { fallbackMotif, FINISHES, SET_MOTIFS, UNIQUE_DESIGNS, type Aura, type Emblem, type Feature, type Finish, type SetMotif, type UniqueDesign } from './items/Designs';
 
-export type { Emblem, Feature } from './items/Designs';
+export type { Aura, Emblem, Feature, Finish } from './items/Designs';
 
 /** What the main body of a piece is made of. */
 export type ItemMaterialKind = 'metal' | 'wood' | 'leather' | 'cloth' | 'bone' | 'crystal' | 'stone' | 'flesh';
@@ -102,6 +102,12 @@ export interface ItemLook extends GearLook {
   design?: UniqueDesign;
   /** Design cut overrides, merged by the family builder. */
   cutOverride?: Record<string, number | string | boolean>;
+  /** The living effect round a set piece or unique ('none' on plain items). */
+  aura: Aura;
+  /** Surface finish of a set piece or unique: shine and roughness of its main and trim. */
+  finish?: Finish;
+  /** Faint inner light of the main surface, in the glow colour (from the finish). */
+  sheen: number;
 }
 
 const ICON_RANK: Record<ItemRarity, number> = { normal: 0, magic: 1, rare: 2, set: 3, unique: 4, mythic: 5, ancient: 6 };
@@ -225,9 +231,11 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
   const design = item.uniqueId ? UNIQUE_DESIGNS[item.uniqueId] : undefined;
   const motif = isSet ? SET_MOTIFS[item.setId ?? ''] ?? fallbackMotif(item.setId ?? item.baseId, h) : undefined;
 
-  // Set pieces wear their set's colour on the main surface too, so a set piece
-  // never reads as the plain base with a different trim.
-  const palette = design?.main ?? (motif ? motifPalette(visual.palette || 'metal.steel', motif.color) : visual.palette || 'metal.steel');
+  // Set pieces wear their set's palette on the main surface: its metal on
+  // plate, its leather on hide, its cloth on robes. Bone, wood and crystal
+  // bases keep their stuff, washed toward the set's colour.
+  const basePal = visual.palette || 'metal.steel';
+  const palette = design?.main ?? (motif ? setPalette(basePal, motif) : basePal);
   const pal0 = palette.split('|')[0]!;
   const material = materialOf(palette);
   const tier = gear.baseTier;
@@ -239,14 +247,14 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
   const trimTint = motif ? washed(motif.color, 0.3) : design?.trim ? undefined : wt?.tint ?? gear.trimTint;
 
   const stone = design?.stone ?? motif?.color ?? stoneFor(rarity, h, identity, visual.glow);
-  const glowColor = design?.glow ?? motif?.color ?? glowFor(rarity, visual.glow);
+  const glowColor = design?.glow ?? motif?.glow ?? glowFor(rarity, visual.glow);
 
   // Grips go from rawhide to fine leather as the base climbs.
   const second = design?.second ?? motif?.second ?? (material === 'leather' ? pal0 : tier >= 2 || rank >= 2 ? 'leather.fine' : 'leather.worn');
   const wood0 = material === 'wood' ? palette : design?.second?.startsWith('wood') ? design.second : tier >= 2 ? 'wood.polished' : tier >= 1 ? 'wood.oak|0x7a5a3a' : 'wood.oak';
   // A set's hafts and staves take its colour as well.
   const wood = motif && material !== 'wood' ? motifPalette(wood0, motif.color) : wood0;
-  const cloth = motif?.second.startsWith('cloth') ? motif.second : design?.second?.startsWith('cloth') ? design.second : material === 'cloth' ? palette : rank >= 2 ? 'cloth.banner' : 'cloth.undyed';
+  const cloth = motif ? (motif.second.startsWith('cloth') ? motif.second : motif.cloth) : design?.second?.startsWith('cloth') ? design.second : material === 'cloth' ? palette : rank >= 2 ? 'cloth.banner' : 'cloth.undyed';
 
   const glow =
     design?.glowStrength !== undefined
@@ -273,6 +281,7 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
     Math.max(0, (rarity === 'normal' ? 0.65 : rarity === 'magic' ? 0.5 : rarity === 'rare' ? 0.35 : 0.2) - tier * 0.12);
 
   const keys: ItemLookKeys = { main: palette, second, wood, trim: trimKey, cloth };
+  const finish: Finish | undefined = design?.finish ?? motif?.finish;
   const look: ItemLook = {
     ...gear,
     palette,
@@ -304,13 +313,44 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
     },
     gemCount,
     wear,
-    features: [...(design?.features ?? motif?.features ?? [])],
+    // A set's sculpt comes first, so every piece carries it.
+    features: design ? [...design.features] : motif ? [motif.sculpt, ...motif.features.filter((f) => f !== motif.sculpt)] : [],
     emblem: motif?.emblem,
     motif,
     design,
     cutOverride: design?.cut,
+    aura: design?.aura ?? motif?.aura ?? 'none',
+    finish,
+    sheen: finish ? FINISHES[finish].sheen : 0,
   };
   return look;
+}
+
+/**
+ * Metalness and roughness of a set piece's or unique's main surface, from its
+ * finish. Leather and cloth keep their own metalness and only take the
+ * gloss of a lacquered or polished finish.
+ */
+export function surfaceFinish(look: Pick<ItemLook, 'finish' | 'material'>): { metalness?: number; roughness?: number } {
+  if (!look.finish) return {};
+  const f = FINISHES[look.finish];
+  if (look.material === 'metal') return { metalness: f.metalness, roughness: f.roughness };
+  if (look.material === 'leather' || look.material === 'cloth') return { roughness: Math.max(0.38, f.roughness) };
+  return { roughness: f.roughness };
+}
+
+/** A set piece's main surface: the set's own metal, leather or cloth for that stuff. */
+function setPalette(key: string, motif: SetMotif): string {
+  switch (materialOf(key)) {
+    case 'metal':
+      return motif.metal;
+    case 'leather':
+      return motif.leather;
+    case 'cloth':
+      return motif.cloth;
+    default:
+      return motifPalette(key, motif.color);
+  }
 }
 
 function mulColor(a: number, b: number): number {

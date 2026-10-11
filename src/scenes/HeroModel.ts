@@ -7,6 +7,7 @@ import { buildHero, setHeroHidden, type HeroModel as HeroBody } from '../art/her
 import { HERO_LOOKS } from '../art/hero/Looks';
 import { wearArmour, removeArmour, type WornArmour } from '../art/hero/Armour';
 import { holdItem, weaponGrip } from '../art/hero/Hold';
+import { dressOutfit } from '../art/items/Outfit';
 
 export { weaponGrip };
 import { HeroAnimator, type OffHand } from '../art/hero/Animator';
@@ -66,6 +67,9 @@ export class DressedHero {
   readonly bones: Record<string, THREE.Bone>;
   private held = new Map<EquipSlot, Held>();
   private rng: Random;
+  /** Set glow and auras (`items/Outfit.ts`), and the set pieces they were made for. */
+  private outfit: THREE.Object3D[] = [];
+  private outfitKey = '';
 
   constructor(
     readonly classId: CharClassId,
@@ -85,6 +89,10 @@ export class DressedHero {
    */
   dress(pieces: Partial<Record<EquipSlot, Piece | null | undefined>>): boolean {
     let changed = false;
+    // Rings and amulets show nothing, but they count toward a set's glow.
+    const outfitKey = Object.entries(pieces)
+      .map(([s, p]) => (p && (p.setId || p.uniqueId) ? `${s}:${p.uid ?? p.baseId}:${p.setId ?? p.uniqueId}` : ''))
+      .join('|');
     for (const slot of VISUAL_SLOTS) {
       const p = pieces[slot];
       const key = p ? `${p.uid ?? ''}|${p.baseId}|${p.rarity}|${p.upgrade ?? 0}` : '';
@@ -99,6 +107,7 @@ export class DressedHero {
         this.held.set(slot, { key });
       }
     }
+    if (changed || outfitKey !== this.outfitKey) this.relight(pieces, outfitKey);
     if (!changed) return false;
     const hides = new Set<string>();
     for (const h of this.held.values()) h.worn?.hides.forEach((k) => hides.add(k));
@@ -111,6 +120,23 @@ export class DressedHero {
     return true;
   }
 
+  /** Lights set pieces for how complete their set is and puts on set and unique auras. */
+  private relight(pieces: Partial<Record<EquipSlot, Piece | null | undefined>>, key: string): void {
+    this.outfitKey = key;
+    for (const o of this.outfit) {
+      o.removeFromParent();
+      (o as THREE.Points).geometry?.dispose();
+    }
+    this.outfit = [];
+    const worn = new Map<EquipSlot, WornArmour>();
+    for (const [slot, h] of this.held) if (h.worn) worn.set(slot, h.worn);
+    try {
+      this.outfit = dressOutfit(this.body, pieces, worn, (id) => getBase(id)?.visual);
+    } catch {
+      // Glow is dressing: never let it break a hero.
+    }
+  }
+
   /** Grows armour on the body, or puts a model in the right socket. */
   private put(slot: EquipSlot, p: Piece): Omit<Held, 'key'> {
     const base = getBase(p.baseId);
@@ -119,7 +145,8 @@ export class DressedHero {
     if (worn) return { worn };
     const model = compactModel(buildItemModel(visual, this.rng, p.rarity, p));
     model.traverse((o) => {
-      o.castShadow = true;
+      // An aura's particles cast no shadow.
+      o.castShadow = !o.userData.aura;
       // So a poison coat can glow on the blade and nowhere else.
       if (slot === 'mainHand' || slot === 'offHand') o.userData.weaponPart = true;
     });

@@ -19,6 +19,9 @@
 import * as THREE from 'three';
 import { RARITY_COLOR, type Item, type ItemRarity, type ItemVisual, type Rng } from '../types';
 import { buildItem, type ItemFamily } from './items/Model';
+import { buildAura } from './items/Aura';
+import type { Aura } from './items/Designs';
+import { hashString } from '../core/RNG';
 
 /** Who an item is, beyond its base visual: enough to find its set colour or unique design. */
 export type ItemIdent = Pick<Item, 'baseId'> & Partial<Pick<Item, 'uniqueId' | 'setId'>>;
@@ -32,6 +35,19 @@ export function buildItemModel(visual: ItemVisual, _rng: Rng, rarity: ItemRarity
   const built = buildItem(visual, rarity, ident ? { baseId: ident.baseId, uniqueId: ident.uniqueId, setId: ident.setId } : undefined);
   const k = HELD_SCALE[built.family];
   if (k) built.group.scale.setScalar(k);
+  // Uniques and set pieces carry their aura in the hand: a column round the business end.
+  const L = built.look;
+  if (L.aura !== 'none' && (L.unique || L.set)) {
+    const box = new THREE.Box3().setFromObject(built.group);
+    const size = box.getSize(new THREE.Vector3());
+    const strength = L.set ? 0.4 : L.rarityTier >= 4 ? 0.85 : 0.55;
+    const aura = buildAura(L.aura, L.glowColor, { radius: Math.max(0.05, Math.max(size.x, size.z) * 0.45 + 0.02), height: Math.max(0.15, size.y), strength, seed: hashString(`${L.baseId}|${ident?.uniqueId ?? ident?.setId ?? ''}`) });
+    if (aura) {
+      aura.position.y = box.min.y / (k || 1);
+      aura.scale.setScalar(1 / (k || 1));
+      built.group.add(aura);
+    }
+  }
   return built.group;
 }
 
@@ -117,6 +133,9 @@ export function buildDropModel(item: Item, rng: Rng): THREE.Object3D {
 
   // The item, laid down, centred on its own middle so a tumble turns about it.
   const model = buildItemModel(visual, rng, rarity, item);
+  // Its aura rises from the floor, not along the lying blade: lift it out and stand it up below.
+  const held = model.children.find((c) => c.userData.aura) as THREE.Points | undefined;
+  held?.removeFromParent();
   poseForDrop(model);
   const yaw = new THREE.Group();
   yaw.add(model);
@@ -139,6 +158,16 @@ export function buildDropModel(item: Item, rng: Rng): THREE.Object3D {
   // Bottom of the item on the floor, a hair above it to stay out of the ground.
   spin.position.y = -REST_Y + (size.y * scale) / 2 + 0.004;
   root.add(spin);
+
+  if (held) {
+    const fp = Math.max(size.x, size.z) * scale;
+    const aura = buildAura(held.userData.aura as Aura, held.userData.auraColor as number, { radius: Math.min(0.5, Math.max(0.12, fp * 0.45)), height: 0.55, strength: 0.6, seed: hashString(`drop|${item.uid ?? item.baseId}`) });
+    held.geometry.dispose();
+    if (aura) {
+      aura.position.y = -REST_Y;
+      root.add(aura);
+    }
+  }
 
   root.userData.rarity = rarity;
   root.userData.color = color;

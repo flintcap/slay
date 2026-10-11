@@ -15,11 +15,11 @@
  */
 import * as THREE from 'three';
 import type { Feature, ItemLook } from '../ItemLook';
-import { keyColor } from '../ItemLook';
+import { keyColor, surfaceFinish } from '../ItemLook';
 import { G } from './Anatomy';
 import type { BodyMesh } from './Body';
 import type { GarmentSpec } from './Garment';
-import { fabricMaterial, gearMaterial, glowMaterial } from './HeroMaterials';
+import { fabricMaterial, gearMaterial, glowingTwin, glowMaterial } from './HeroMaterials';
 import type { Clip, Inflate } from './Mesher';
 import { Field, FieldBuilder, type Prim } from './Sdf';
 import type { HeroBone } from './Rig';
@@ -163,6 +163,12 @@ export class Kit {
     this.mats.set(k, gearMaterial(key));
   }
 
+  /** Which of the piece's slots a material fills, if any. */
+  keyOf(m: THREE.Material): MatKey | undefined {
+    for (const [k, x] of this.mats) if (x === m) return k;
+    return undefined;
+  }
+
   /** Puts a ready material in one of the piece's slots (a patterned twin of what is there). */
   useMat(k: MatKey, m: THREE.Material): void {
     this.mats.set(k, m);
@@ -173,9 +179,12 @@ export class Kit {
     if (m) return m;
     const L = this.look;
     switch (k) {
-      case 'main':
-        m = gearMaterial(L.palette);
+      case 'main': {
+        m = gearMaterial(L.palette, surfaceFinish(L));
+        // Gilt, pearl and frosted finishes carry a faint light of their own.
+        if (L.sheen > 0) m = glowingTwin(m, L.glowColor, L.sheen);
         break;
+      }
       case 'trim':
         m = gearMaterial(L.trimKey, { tint: L.trimTint, metalness: L.trimKey.startsWith('metal') ? 0.8 : undefined });
         break;

@@ -48,10 +48,248 @@ const PREF: Record<Feature, Role[]> = {
   tatters: ['hip', 'back', 'shoulder', 'cuff', 'temple'],
   barnacles: ['shoulder', 'chest', 'knee', 'cuff', 'temple'],
   arrows: ['back', 'shoulder', 'chest', 'shin'],
+  dragons: ['shoulder', 'crown', 'knee', 'hand', 'buckle', 'hip'],
+  claws: ['hand', 'shoulder', 'knee', 'buckle', 'crown'],
+  antlers: ['crown', 'temple', 'shoulder', 'knee', 'buckle'],
+  crowns: ['crown', 'brow', 'shoulder', 'buckle', 'knee'],
+  moons: ['shoulder', 'brow', 'chest', 'buckle', 'knee', 'hand'],
+  bolts: ['shoulder', 'crown', 'cuff', 'shin', 'buckle'],
+  spiders: ['chest', 'back', 'shoulder', 'hand', 'buckle', 'brow'],
+  serpents: ['shoulder', 'cuff', 'shin', 'hip', 'temple', 'crown'],
+  laurels: ['temple', 'brow', 'chest', 'buckle', 'shin'],
 };
 
 const DOWN = V(0, -1, 0);
 const UP = V(0, 1, 0);
+
+// ---------------------------------------------------------------------------
+// Sculpted signatures: the shapes that tell a set or a unique from across
+// the screen. Each one is a few bold prims, so it survives the mesher's cell
+// and reads as a silhouette at the game camera.
+// ---------------------------------------------------------------------------
+
+type FB = ReturnType<Kit['fit']>;
+
+/** Which way a sculpt at this anchor faces, and which way is its up. */
+function sculptFrame(a: Anchor): { fwd: THREE.Vector3; up: THREE.Vector3; side: THREE.Vector3; sd: number } {
+  const sd = a.p.x >= 0 ? 1 : -1;
+  let fwd: THREE.Vector3;
+  if (a.role === 'shoulder') fwd = V(sd * 0.55, 0.12, 0.85).normalize();
+  else if (a.role === 'crown') fwd = V(0, 0.12, 1).normalize();
+  else if (a.role === 'temple') fwd = V(sd * 0.35, 0.2, 0.9).normalize();
+  else fwd = a.n.clone().addScaledVector(UP, 0.25).normalize();
+  const side = new THREE.Vector3().crossVectors(UP, fwd).normalize();
+  const up = new THREE.Vector3().crossVectors(fwd, side).normalize();
+  return { fwd, up, side, sd };
+}
+
+/** A dragon's head: skull, long snout, open jaw, swept horns, lit eyes, a crest down the neck. */
+function dragonHead(M: FB, B: FB, G: FB, base: THREE.Vector3, fwd: THREE.Vector3, up: THREE.Vector3, side: THREE.Vector3, s: number): void {
+  const c = base.clone().addScaledVector(up, 0.28 * s);
+  const q = basis(side, up);
+  M.ellipsoid(c, V(0.3 * s, 0.26 * s, 0.34 * s), 0.06 * s, q);
+  // Neck down into the plate.
+  M.cone(base.clone().addScaledVector(fwd, -0.2 * s), c, 0.26 * s, 0.22 * s, 0.08 * s);
+  const snoutEnd = c.clone().addScaledVector(fwd, 0.85 * s).addScaledVector(up, -0.02 * s);
+  M.cone(c, snoutEnd, 0.2 * s, 0.1 * s, 0.05 * s);
+  // Nostril bumps and a brow ridge.
+  for (const k of [1, -1]) {
+    M.ellipsoid(snoutEnd.clone().addScaledVector(side, k * 0.06 * s).addScaledVector(up, 0.06 * s), V(0.05 * s, 0.04 * s, 0.05 * s), 0.02 * s);
+    M.cone(c.clone().addScaledVector(side, k * 0.16 * s).addScaledVector(up, 0.12 * s).addScaledVector(fwd, 0.18 * s), c.clone().addScaledVector(side, k * 0.12 * s).addScaledVector(up, 0.2 * s).addScaledVector(fwd, -0.05 * s), 0.07 * s, 0.05 * s, 0.03 * s);
+  }
+  // The jaw hangs open.
+  const jaw0 = c.clone().addScaledVector(up, -0.16 * s).addScaledVector(fwd, -0.05 * s);
+  const jaw1 = c.clone().addScaledVector(fwd, 0.72 * s).addScaledVector(up, -0.34 * s);
+  M.cone(jaw0, jaw1, 0.15 * s, 0.07 * s, 0.04 * s);
+  // Fangs.
+  for (const k of [1, -1]) {
+    const t = snoutEnd.clone().addScaledVector(fwd, -0.12 * s).addScaledVector(side, k * 0.07 * s).addScaledVector(up, -0.08 * s);
+    B.cone(t, t.clone().addScaledVector(up, -0.16 * s), 0.035 * s, 0.006 * s, 0.006 * s);
+    const t2 = jaw1.clone().addScaledVector(fwd, -0.1 * s).addScaledVector(side, k * 0.06 * s).addScaledVector(up, 0.04 * s);
+    B.cone(t2, t2.clone().addScaledVector(up, 0.13 * s), 0.03 * s, 0.005 * s, 0.005 * s);
+  }
+  // Swept-back horns.
+  for (const k of [1, -1]) {
+    const h0 = c.clone().addScaledVector(side, k * 0.18 * s).addScaledVector(up, 0.16 * s).addScaledVector(fwd, -0.1 * s);
+    const h1 = h0.clone().addScaledVector(fwd, -0.45 * s).addScaledVector(up, 0.25 * s).addScaledVector(side, k * 0.1 * s);
+    const h2 = h1.clone().addScaledVector(fwd, -0.35 * s).addScaledVector(up, 0.28 * s);
+    B.cone(h0, h1, 0.08 * s, 0.05 * s, 0.02 * s);
+    B.cone(h1, h2, 0.05 * s, 0.008 * s, 0.01 * s);
+  }
+  // A crest of spines down the neck.
+  for (let j = 0; j < 3; j++) {
+    const p = c.clone().addScaledVector(fwd, -(0.2 + j * 0.2) * s).addScaledVector(up, (0.22 - j * 0.07) * s);
+    M.cone(p, p.clone().addScaledVector(up, (0.2 - j * 0.04) * s).addScaledVector(fwd, -0.1 * s), 0.06 * s, 0.006 * s, 0.01 * s);
+  }
+  // Eyes lit from within.
+  for (const k of [1, -1]) G.ellipsoid(c.clone().addScaledVector(fwd, 0.2 * s).addScaledVector(side, k * 0.17 * s).addScaledVector(up, 0.07 * s), V(0.06 * s, 0.04 * s, 0.06 * s), 0.01 * s);
+}
+
+/** Places a sculpted signature. False when `f` is not one. */
+function sculpt(k: Kit, f: Feature, a: Anchor, fit: (m: MatKey) => FB): boolean {
+  const s = a.s;
+  const { u, v } = frame(a.n);
+  const at = (du: number, dv: number, dn: number) => a.p.clone().addScaledVector(u, du * s).addScaledVector(v, dv * s).addScaledVector(a.n, dn * s);
+  const metal = k.look.material === 'metal';
+  switch (f) {
+    case 'dragons': {
+      const { fwd, up, side } = sculptFrame(a);
+      const big = a.role === 'shoulder' || a.role === 'crown' ? 1.15 : 0.95;
+      dragonHead(fit(metal ? 'main' : 'trim'), fit('bone'), fit('glow'), at(0, 0, 0.02), fwd, up, side, s * big);
+      return true;
+    }
+    case 'claws': {
+      const F = fit(metal ? 'trim' : 'dark');
+      const { fwd, sd } = sculptFrame(a);
+      const out = a.role === 'shoulder' ? V(sd, 0.2, 0).normalize() : a.n;
+      for (let j = 0; j < 4; j++) {
+        const b = at((j - 1.5) * 0.24, 0.1, 0.05);
+        const m = b.clone().addScaledVector(out, 0.42 * s).addScaledVector(UP, 0.3 * s).addScaledVector(fwd, 0.08 * s);
+        const t = m.clone().addScaledVector(out, 0.22 * s).addScaledVector(UP, -0.28 * s).addScaledVector(fwd, 0.12 * s);
+        F.cone(b, m, 0.09 * s, 0.06 * s, 0.02 * s);
+        F.cone(m, t, 0.06 * s, 0.006 * s, 0.01 * s);
+      }
+      return true;
+    }
+    case 'antlers': {
+      const F = fit('bone');
+      const sides = a.role === 'crown' ? [1, -1] : [a.p.x >= 0 ? 1 : -1];
+      for (const sd of sides) {
+        const out = V(sd, 0, 0);
+        const p0 = a.role === 'crown' ? a.p.clone().add(V(sd * 0.32 * s, -0.15 * s, 0)) : at(0, 0, 0.02);
+        const p1 = p0.clone().addScaledVector(out, 0.5 * s).addScaledVector(UP, 0.55 * s).add(V(0, 0, -0.1 * s));
+        const p2 = p1.clone().addScaledVector(out, 0.35 * s).addScaledVector(UP, 0.65 * s).add(V(0, 0, -0.15 * s));
+        const p3 = p2.clone().addScaledVector(out, 0.1 * s).addScaledVector(UP, 0.55 * s);
+        F.cone(p0, p1, 0.11 * s, 0.08 * s, 0.02 * s);
+        F.cone(p1, p2, 0.08 * s, 0.06 * s, 0.02 * s);
+        F.cone(p2, p3, 0.06 * s, 0.01 * s, 0.01 * s);
+        // Tines branch forward and out.
+        for (const [q, l, o] of [[p1, 0.42, 0.1], [p2, 0.38, -0.25], [p2.clone().lerp(p3, 0.5), 0.3, 0.3]] as const) {
+          const tip = q.clone().addScaledVector(out, o * s).addScaledVector(UP, l * s).add(V(0, 0, 0.3 * s));
+          F.cone(q, tip, 0.05 * s, 0.006 * s, 0.01 * s);
+        }
+      }
+      return true;
+    }
+    case 'crowns': {
+      const F = fit(k.trimmed ? 'trim' : 'gold');
+      const Gm = fit('gem');
+      if (a.role === 'crown') {
+        const n = 7;
+        for (let j = 0; j < n; j++) {
+          const t = (j / n) * Math.PI * 2;
+          const dir = V(Math.sin(t), 0, Math.cos(t));
+          const b = a.p.clone().addScaledVector(dir, 1.05 * s).addScaledVector(UP, -0.35 * s);
+          const tall = j === 0 ? 1.15 : 0.75 + 0.15 * Math.cos(t * 2);
+          F.cone(b, b.clone().addScaledVector(UP, tall * s).addScaledVector(dir, 0.12 * s), 0.13 * s, 0.01 * s, 0.03 * s);
+          if (j % 2 === 0) Gm.ellipsoid(b.clone().addScaledVector(dir, 0.1 * s).addScaledVector(UP, 0.1 * s), V(0.08 * s, 0.08 * s, 0.08 * s), 0.01 * s);
+        }
+      } else {
+        for (let j = -1; j <= 1; j++) {
+          const b = at(j * 0.32, 0, 0.04);
+          F.cone(b, b.clone().addScaledVector(a.n, (j === 0 ? 0.7 : 0.48) * s).addScaledVector(UP, 0.2 * s), 0.1 * s, 0.008 * s, 0.02 * s);
+        }
+        Gm.ellipsoid(at(0, -0.15, 0.08), V(0.09 * s, 0.09 * s, 0.07 * s), 0.01 * s);
+      }
+      return true;
+    }
+    case 'moons': {
+      const F = fit('trim');
+      const { fwd, side } = sculptFrame(a);
+      const c = a.role === 'crown' ? a.p.clone().addScaledVector(UP, 0.5 * s) : at(0, 0, 0.35);
+      const ax = a.role === 'shoulder' || a.role === 'crown' ? side : u;
+      const ay = UP.clone().addScaledVector(fwd, 0.1).normalize();
+      const R = 0.55 * s;
+      const m = 9;
+      let prev: THREE.Vector3 | null = null;
+      for (let j = 0; j <= m; j++) {
+        const t = -Math.PI * 0.75 + (j / m) * Math.PI * 1.5;
+        const p = c.clone().addScaledVector(ax, Math.sin(t) * R).addScaledVector(ay, Math.cos(t) * R * -1);
+        const w = 0.13 * Math.sin(((j / m) * 0.9 + 0.05) * Math.PI) * s + 0.015 * s;
+        if (prev) F.cone(prev, p, w, w, 0.02 * s);
+        prev = p;
+      }
+      fit('glow').ellipsoid(c.clone().addScaledVector(ay, -0.05 * s), V(0.12 * s, 0.12 * s, 0.12 * s), 0.02 * s);
+      return true;
+    }
+    case 'bolts': {
+      const F = fit('glow');
+      const T = fit('trim');
+      const { side } = sculptFrame(a);
+      for (const k2 of [-1, 1]) {
+        const lat = a.role === 'shoulder' || a.role === 'crown' ? side : u;
+        const p0 = a.p.clone().addScaledVector(lat, k2 * 0.22 * s).addScaledVector(a.n, 0.03 * s);
+        const p1 = p0.clone().addScaledVector(a.n, 0.35 * s).addScaledVector(UP, 0.3 * s).addScaledVector(lat, k2 * 0.18 * s);
+        const p2 = p1.clone().addScaledVector(UP, 0.12 * s).addScaledVector(lat, -k2 * 0.2 * s);
+        const p3 = p2.clone().addScaledVector(a.n, 0.3 * s).addScaledVector(UP, 0.35 * s).addScaledVector(lat, k2 * 0.22 * s);
+        T.cone(p0, p1, 0.07 * s, 0.06 * s, 0.01 * s);
+        F.cone(p1, p2, 0.06 * s, 0.05 * s, 0.01 * s);
+        F.cone(p2, p3, 0.05 * s, 0.006 * s, 0.01 * s);
+      }
+      return true;
+    }
+    case 'spiders': {
+      const D = fit('dark');
+      const c = at(0, 0, 0.12);
+      const q = basis(u, v);
+      D.ellipsoid(c.clone().addScaledVector(v, -0.18 * s), V(0.24 * s, 0.3 * s, 0.17 * s), 0.04 * s, q);
+      D.ellipsoid(c.clone().addScaledVector(v, 0.17 * s), V(0.16 * s, 0.15 * s, 0.12 * s), 0.04 * s, q);
+      for (let j = 0; j < 4; j++) {
+        for (const k2 of [-1, 1]) {
+          const root = c.clone().addScaledVector(v, (0.22 - j * 0.1) * s).addScaledVector(u, k2 * 0.1 * s);
+          const knee = root.clone().addScaledVector(u, k2 * 0.32 * s).addScaledVector(v, (0.18 - j * 0.14) * s).addScaledVector(a.n, 0.2 * s);
+          const foot = knee.clone().addScaledVector(u, k2 * 0.22 * s).addScaledVector(v, (0.12 - j * 0.12) * s).addScaledVector(a.n, -0.3 * s);
+          D.cone(root, knee, 0.04 * s, 0.035 * s, 0.01 * s);
+          D.cone(knee, foot, 0.035 * s, 0.01 * s, 0.01 * s);
+        }
+      }
+      // An hourglass of venom on its back, and its eyes.
+      const G = fit('glow');
+      G.ellipsoid(c.clone().addScaledVector(v, -0.18 * s).addScaledVector(a.n, 0.15 * s), V(0.08 * s, 0.13 * s, 0.04 * s), 0.01 * s, q);
+      for (const k2 of [-1, 1]) G.ellipsoid(c.clone().addScaledVector(v, 0.27 * s).addScaledVector(u, k2 * 0.05 * s).addScaledVector(a.n, 0.09 * s), V(0.035 * s, 0.035 * s, 0.035 * s), 0.005 * s);
+      return true;
+    }
+    case 'serpents': {
+      const F = fit(metal ? 'trim' : 'main');
+      const lat = a.role === 'shoulder' ? sculptFrame(a).side : u;
+      const fw = new THREE.Vector3().crossVectors(lat, a.n).normalize();
+      // One and a half turns coiled flat on the plate, rising.
+      let prev: THREE.Vector3 | null = null;
+      const m = 14;
+      for (let j = 0; j <= m; j++) {
+        const t = (j / m) * Math.PI * 3;
+        const r = (0.45 - 0.15 * (j / m)) * s;
+        const p = a.p.clone().addScaledVector(lat, Math.cos(t) * r).addScaledVector(fw, Math.sin(t) * r).addScaledVector(a.n, (0.05 + 0.08 * (j / m)) * s);
+        const w = (0.06 + 0.05 * (j / m)) * s;
+        if (prev) F.cone(prev, p, w, w, 0.02 * s);
+        prev = p;
+      }
+      // The neck rears up and the head strikes forward.
+      const neck0 = prev!;
+      const neck1 = neck0.clone().addScaledVector(a.n, 0.45 * s).addScaledVector(UP, 0.25 * s);
+      const head = neck1.clone().addScaledVector(fw, 0.2 * s).addScaledVector(UP, 0.08 * s);
+      F.cone(neck0, neck1, 0.11 * s, 0.1 * s, 0.03 * s);
+      F.cone(neck1, head, 0.1 * s, 0.13 * s, 0.03 * s);
+      F.ellipsoid(head.clone().addScaledVector(fw, 0.08 * s), V(0.14 * s, 0.09 * s, 0.18 * s), 0.03 * s, basis(lat, UP));
+      for (const k2 of [-1, 1]) fit('glow').ellipsoid(head.clone().addScaledVector(lat, k2 * 0.08 * s).addScaledVector(UP, 0.05 * s).addScaledVector(fw, 0.08 * s), V(0.035 * s, 0.03 * s, 0.035 * s), 0.005 * s);
+      return true;
+    }
+    case 'laurels': {
+      const F = fit('gold');
+      const lat = a.role === 'temple' ? V(0, 0, 1) : u;
+      for (const k2 of [-1, 1]) {
+        for (let j = 0; j < 5; j++) {
+          const t = 0.2 + j * 0.28;
+          const p = at(0, 0, 0.05).addScaledVector(lat, k2 * Math.sin(t) * 0.5 * s).addScaledVector(UP, (Math.cos(t) * -0.45 + 0.2) * s);
+          const dir = lat.clone().multiplyScalar(k2 * Math.cos(t)).addScaledVector(UP, Math.sin(t)).normalize();
+          F.ellipsoid(p, V(0.06 * s, 0.13 * s, 0.025 * s), 0.01 * s, basis(dir.clone().cross(a.n).normalize(), dir));
+        }
+      }
+      return true;
+    }
+  }
+  return false;
+}
 
 /** Places one feature at one anchor. */
 function place(k: Kit, f: Feature, a: Anchor, i: number): void {
@@ -59,6 +297,7 @@ function place(k: Kit, f: Feature, a: Anchor, i: number): void {
   const { u, v } = frame(a.n);
   const at = (du: number, dv: number, dn: number) => a.p.clone().addScaledVector(u, du * s).addScaledVector(v, dv * s).addScaledVector(a.n, dn * s);
   const fit = (m: MatKey) => k.fit(m, a.g, 0.005);
+  if (sculpt(k, f, a, fit)) return;
   switch (f) {
     case 'spikes': {
       const F = fit(k.look.material === 'metal' ? 'main' : 'trim');
@@ -343,6 +582,8 @@ function place(k: Kit, f: Feature, a: Anchor, i: number): void {
 
 /** How many anchors a feature takes on one piece. */
 const SPREAD: Partial<Record<Feature, number>> = { wings: 1, halo: 1, chains: 2, arrows: 1, web: 2 };
+/** Features that dress both sides of the head from the crown alone. */
+const PAIRED = new Set<Feature>(['horns', 'antlers', 'crowns']);
 
 /** Dresses a piece with its unique's or set's features. */
 export function dress(k: Kit, anchors: Anchor[]): void {
@@ -356,7 +597,8 @@ export function dress(k: Kit, anchors: Anchor[]): void {
       const used: Anchor[] = [];
       for (const role of pref) {
         for (const a of anchors) if (a.role === role && used.length < want && (!free || !taken.has(a))) used.push(a);
-        if (used.length >= Math.min(want, 2)) break;
+        const n = used.length + (PAIRED.has(f) && used.some((a) => a.role === 'crown') ? 1 : 0);
+        if (n >= Math.min(want, 2)) break;
       }
       return used;
     };

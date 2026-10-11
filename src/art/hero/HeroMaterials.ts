@@ -478,6 +478,24 @@ export function patternedMaterial(m: THREE.Material, pattern: ArmourPattern, h: 
   });
 }
 
+/**
+ * A twin of a gear material lit from within: a set's trims once two pieces
+ * are worn, a full set's whole outfit, a unique's inlays. Shared and cached
+ * like the material it twins.
+ */
+export function glowingTwin(m: THREE.Material, color: number, intensity: number): THREE.Material {
+  if (!(m instanceof THREE.MeshStandardMaterial) || intensity <= 0) return m;
+  const o = triOptsOf.get(m);
+  return shared(`lit|${m.uuid}|${color}|${intensity.toFixed(3)}`, () => {
+    const c = m.clone();
+    if (o) triplanar(c, o);
+    c.emissive.set(color);
+    c.emissiveIntensity = intensity;
+    c.name = `${m.name}+lit`;
+    return c;
+  });
+}
+
 /** Glowing runes, gems and inlays. */
 export function glowMaterial(color: number, intensity: number): THREE.MeshStandardMaterial {
   return shared(`glow|${color}|${intensity}`, () => {

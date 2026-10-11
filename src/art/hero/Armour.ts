@@ -26,6 +26,7 @@ import { chest } from './ArmourChest';
 import { helm } from './ArmourHead';
 import { belt, boots, gloves } from './ArmourLimbs';
 import { dress } from './ArmourFeatures';
+import { glowingTwin } from './HeroMaterials';
 
 /**
  * Every part's triangle target is scaled by this: a fully dressed hero must
@@ -103,6 +104,9 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     mesh.userData.sharedGeometry = true;
+    // Which of the piece's materials this is, so a set's glow can light its trims later.
+    mesh.userData.armourMat = k.keyOf(mat);
+    mesh.userData.baseMaterial = mat;
     group.add(mesh);
     mesh.bind(hero.rig.skeleton, new THREE.Matrix4());
   }
@@ -112,6 +116,24 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
   }
   if (look.glow > 0 && look.hasRunes) group.userData.glow = look.glowColor;
   return { object: group, hides: k.hides };
+}
+
+/**
+ * Lights a worn set piece for how much of its set is worn: stage 0 as
+ * built, 1 its trims glow in the set's colour (two pieces or more), 2 the
+ * whole piece shines and the trims burn brighter (the full set).
+ */
+export function lightArmour(worn: WornArmour, stage: number, color: number): void {
+  for (const o of worn.object.children) {
+    const mesh = o as THREE.SkinnedMesh;
+    const base = mesh.userData.baseMaterial as THREE.Material | undefined;
+    if (!base) continue;
+    const key = mesh.userData.armourMat as string | undefined;
+    let lit = 0;
+    if (key === 'trim' || key === 'gold' || key === 'chain') lit = stage >= 2 ? 0.6 : stage >= 1 ? 0.32 : 0;
+    else if (key === 'main' || key === 'strap' || key === 'bone') lit = stage >= 2 ? 0.14 : 0;
+    mesh.material = lit > 0 ? glowingTwin(base, color, lit) : base;
+  }
 }
 
 /** Takes a worn piece off: its meshes, and any bones it hung on the rig. */

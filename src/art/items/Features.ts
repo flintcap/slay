@@ -64,7 +64,183 @@ function alongAxis(F: Frame, t: number, out = v3()): V3 {
   return out.copy(F.a).lerp(F.b, t);
 }
 
+/** A matrix taking local X to `x`, Y to `y` (made square) and Z to their cross, at `p`. */
+function frameAt(p: V3, x: V3, y: V3): THREE.Matrix4 {
+  const Y = y.clone().normalize();
+  const X = x.clone().addScaledVector(Y, -x.dot(Y)).normalize();
+  const Z = new THREE.Vector3().crossVectors(X, Y);
+  return new THREE.Matrix4().makeBasis(X, Y, Z).setPosition(p);
+}
+
+/** Long things (blades, hafts) against broad ones (shields, armour, trinkets). */
+function isLong(F: Frame): boolean {
+  return F.len > F.r * 5;
+}
+
+/** A dragon's head in local space (+Y the snout, +Z its crown), placed by `m`. */
+function dragonHead(P: Parts, m: THREE.Matrix4, s: number, metal: 'main' | 'trim'): void {
+  const T = (x: number, y: number, z: number) => new THREE.Matrix4().makeTranslation(x * s, y * s, z * s);
+  const skullG = sphere(s * 0.5, 12, 9);
+  skullG.scale(1, 1.15, 0.85);
+  P.add(metal, skullG, m.clone().multiply(T(0, 0, 0)));
+  // Snout, upper and the open lower jaw.
+  P.add(metal, cyl(s * 0.16, s * 0.3, s * 0.95, 9), m.clone().multiply(T(0, 0.55, 0.06)));
+  P.add(metal, cyl(s * 0.1, s * 0.2, s * 0.8, 8), m.clone().multiply(T(0, 0.45, -0.32)).multiply(new THREE.Matrix4().makeRotationX(-0.35)));
+  // Brow ridges and swept horns.
+  for (const k of [-1, 1]) {
+    const ridge = sphere(s * 0.16, 8, 6);
+    ridge.scale(1, 2, 0.7);
+    P.add(metal, ridge, m.clone().multiply(T(k * 0.26, 0.2, 0.3)));
+    const h = horn(s * 1.2, s * 0.15, 1.1, 7);
+    P.add('bone', h, m.clone().multiply(T(k * 0.25, -0.1, 0.32)).multiply(frameAt(v3(0, 0, 0), v3(k, 0, 0), v3(k * 0.3, -1, 0.8))));
+    // Fangs.
+    P.add('bone', cone(s * 0.05, s * 0.22, 5), m.clone().multiply(T(k * 0.12, 0.9, -0.1)).multiply(new THREE.Matrix4().makeRotationX(Math.PI)));
+    P.add('bone', cone(s * 0.04, s * 0.18, 5), m.clone().multiply(T(k * 0.09, 0.75, -0.4)));
+    // Eyes.
+    P.add('glow', sphere(s * 0.09, 8, 6), m.clone().multiply(T(k * 0.25, 0.3, 0.18)));
+  }
+  // Spines down the neck.
+  for (let j = 0; j < 3; j++) P.add(metal, cone(s * 0.08, s * (0.35 - j * 0.07), 5), m.clone().multiply(T(0, -0.3 - j * 0.25, 0.38 - j * 0.06)).multiply(new THREE.Matrix4().makeRotationX(-0.5)));
+}
+
+type SculptName = 'dragons' | 'claws' | 'antlers' | 'crowns' | 'moons' | 'bolts' | 'spiders' | 'serpents' | 'laurels';
+
+const SCULPTS: Record<SculptName, (P: Parts, F: Frame) => void> = {
+  dragons(P, F) {
+    const metal = P.look.material === 'metal' ? 'main' : 'trim';
+    if (isLong(F)) {
+      // The blade or haft comes out of a dragon's jaws.
+      const s = Math.max(0.03, F.r * 1.6);
+      dragonHead(P, frameAt(F.a.clone().addScaledVector(F.dir, s * 0.2), F.side, F.dir), s, metal);
+    } else {
+      const f = F.face;
+      const s = Math.max(0.035, f.s * 1.3);
+      dragonHead(P, frameAt(f.p.clone().addScaledVector(f.n, s * 0.3), F.side, f.n), s, metal);
+    }
+  },
+  claws(P, F) {
+    const pts = isLong(F) ? null : pick(F.points, 4, F.seed + 5);
+    const c = isLong(F) ? F.head.p : F.face.p;
+    const s = isLong(F) ? F.head.r : F.face.s * 1.2;
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 0.4;
+      const out = pts?.[i]?.n ?? F.side.clone().multiplyScalar(Math.cos(a)).add(v3(0, 0, Math.sin(a))).normalize();
+      const p = pts?.[i]?.p ?? c.clone().addScaledVector(out, s * 0.8);
+      const h = horn(Math.max(0.03, s * 1.1), Math.max(0.006, s * 0.16), 1.6, 6);
+      P.add('dark', h, frameAt(p, out.clone().cross(F.dir).lengthSq() > 1e-4 ? out.clone().cross(F.dir) : F.side, out));
+    }
+  },
+  antlers(P, F) {
+    const s = Math.max(0.04, F.head.r * 2);
+    for (const k of [-1, 1]) {
+      const p0 = F.head.p.clone().addScaledVector(F.side, k * F.head.r * 0.7);
+      const out = F.side.clone().multiplyScalar(k);
+      const p1 = p0.clone().addScaledVector(out, s * 0.5).addScaledVector(F.dir, s * 0.5);
+      const p2 = p1.clone().addScaledVector(out, s * 0.3).addScaledVector(F.dir, s * 0.7);
+      const beam = curve([p0, p1, p2], 12);
+      P.add('bone', tube(beam, (t) => s * (0.09 - 0.07 * t), 6, { capB: true }));
+      for (const [q, l] of [[p1, 0.45], [p1.clone().lerp(p2, 0.6), 0.4], [p2, 0.3]] as const) {
+        const dir = F.dir.clone().addScaledVector(out, -0.3).add(v3(0, 0, 0.4)).normalize();
+        P.add('bone', cone(s * 0.04, s * l, 5), frameAt(q.clone().addScaledVector(dir, s * l * 0.5), out, dir));
+      }
+    }
+  },
+  crowns(P, F) {
+    const c = F.head.p;
+    const R = F.head.r * 1.05;
+    const n = 7;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const out = F.side.clone().multiplyScalar(Math.cos(a)).add(F.dir.clone().cross(F.side).multiplyScalar(Math.sin(a))).normalize();
+      const h = F.head.r * (i % 2 ? 0.7 : 1.1);
+      const p = c.clone().addScaledVector(out, R).addScaledVector(F.dir, h * 0.5);
+      P.add('gold', cone(F.head.r * 0.16, h, 5), frameAt(p, out, F.dir));
+      if (i % 2 === 0) P.add('gem', gem(F.head.r * 0.2, 'round'), frameAt(c.clone().addScaledVector(out, R * 1.02), F.dir, out));
+    }
+    P.add('gold', torus(R, F.head.r * 0.08, 5, 24), frameAt(c, F.side, F.dir.clone().cross(F.side)));
+  },
+  moons(P, F) {
+    const f = F.face;
+    const s = Math.max(0.03, isLong(F) ? F.r * 2.2 : f.s * 1.2);
+    const ol = smoothOutline([[0.2, 1], [-0.6, 0.6], [-0.75, -0.2], [-0.2, -0.9], [0.4, -0.85], [-0.2, -0.5], [-0.3, 0.2], [0.05, 0.75]], 36).map(([x, y]) => [x * s, y * s] as [number, number]);
+    const p = isLong(F) ? F.a.clone().addScaledVector(F.dir, F.len * 0.12) : f.p.clone().addScaledVector(f.n, s * 0.1);
+    // The crescent stands proud of the surface, a light at its heart.
+    const m = frameAt(p, F.side, F.dir);
+    P.add('trim', slab(ol, s * 0.18, { bevel: s * 0.04 }), m);
+    P.add('glow', sphere(s * 0.18, 10, 7), m.clone().multiply(new THREE.Matrix4().makeTranslation(s * 0.15, 0, s * 0.1)));
+  },
+  bolts(P, F) {
+    const s = Math.max(0.04, isLong(F) ? F.len * 0.22 : F.face.s * 1.6);
+    const ol: Array<[number, number]> = [[-0.15, 1], [0.5, 1], [0.15, 0.2], [0.55, 0.2], [-0.3, -1], [0, -0.1], [-0.4, -0.1]];
+    for (const k of [-1, 1]) {
+      const p = isLong(F) ? F.a.clone().lerp(F.b, k > 0 ? 0.35 : 0.6).addScaledVector(F.side, k * F.r * 1.3) : F.face.p.clone().addScaledVector(F.side, k * F.face.s * 0.9);
+      const g = slab(ol.map(([x, y]) => [x * s * 0.35 * k, y * s * 0.5] as [number, number]), s * 0.06, { bevel: s * 0.01 });
+      P.add('glow', g, frameAt(p, F.side, F.dir));
+    }
+  },
+  spiders(P, F) {
+    const f = F.face;
+    const s = Math.max(0.03, isLong(F) ? F.r * 2 : f.s * 1.1);
+    const p = isLong(F) ? F.a.clone().addScaledVector(F.dir, F.len * 0.1).add(v3(0, 0, F.r * 0.8)) : f.p.clone().addScaledVector(f.n, s * 0.2);
+    const m = frameAt(p, F.side, F.dir);
+    const T = (x: number, y: number, z: number) => new THREE.Matrix4().makeTranslation(x * s, y * s, z * s);
+    const abd = sphere(s * 0.38, 10, 8);
+    abd.scale(0.85, 1.1, 0.7);
+    P.add('dark', abd, m.clone().multiply(T(0, -0.3, 0.1)));
+    P.add('dark', sphere(s * 0.22, 9, 7), m.clone().multiply(T(0, 0.2, 0.08)));
+    const mark = sphere(s * 0.12, 8, 6);
+    mark.scale(0.7, 1.4, 0.4);
+    P.add('glow', mark, m.clone().multiply(T(0, -0.3, 0.33)));
+    for (let j = 0; j < 4; j++) {
+      for (const k of [-1, 1]) {
+        const root = v3(k * 0.12, 0.25 - j * 0.12, 0.08).multiplyScalar(s);
+        const knee = v3(k * 0.55, 0.4 - j * 0.32, 0.35).multiplyScalar(s);
+        const foot = v3(k * 0.85, 0.35 - j * 0.42, -0.1).multiplyScalar(s);
+        const leg = tube([root, knee, foot].map((q) => q.applyMatrix4(m)), s * 0.035, 4);
+        P.add('dark', leg);
+      }
+    }
+  },
+  serpents(P, F) {
+    const pts: V3[] = [];
+    const n = 40;
+    const side2 = F.dir.clone().cross(F.side).normalize();
+    const R = F.r * 1.35;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const a = t * Math.PI * 2 * 2.2;
+      pts.push(alongAxis(F, 0.05 + t * 0.6).addScaledVector(F.side, Math.cos(a) * R).addScaledVector(side2, Math.sin(a) * R));
+    }
+    P.add('trim', tube(pts, (t) => F.r * (0.18 + 0.12 * t), 6));
+    // The head rears off the coil, eyes lit.
+    const last = pts[pts.length - 1]!;
+    const out = last.clone().sub(alongAxis(F, 0.65)).normalize();
+    const hp = last.clone().addScaledVector(out, F.r * 0.6).addScaledVector(F.dir, F.r * 0.5);
+    const head = sphere(F.r * 0.45, 9, 7);
+    head.scale(0.8, 1.4, 0.6);
+    const m = frameAt(hp, F.side, F.dir.clone().add(out).normalize());
+    P.add('trim', head, m);
+    for (const k of [-1, 1]) P.add('glow', sphere(F.r * 0.1, 6, 5), m.clone().multiply(new THREE.Matrix4().makeTranslation(k * F.r * 0.22, F.r * 0.2, F.r * 0.15)));
+  },
+  laurels(P, F) {
+    const c = isLong(F) ? F.a.clone().addScaledVector(F.dir, F.r * 0.6) : F.face.p.clone().addScaledVector(F.face.n, F.face.s * 0.1);
+    const s = isLong(F) ? F.r * 2.6 : F.face.s * 1.4;
+    const n = isLong(F) ? F.dir.clone().cross(F.side).normalize() : F.face.n;
+    const up = isLong(F) ? F.dir : n.clone().cross(F.side).normalize();
+    for (const k of [-1, 1]) {
+      for (let j = 0; j < 5; j++) {
+        const t = 0.25 + j * 0.27;
+        const p = c.clone().addScaledVector(F.side, k * Math.sin(t) * s * 0.55).addScaledVector(up, (-Math.cos(t) * 0.5 + 0.1) * s);
+        const dir = F.side.clone().multiplyScalar(k * Math.cos(t)).addScaledVector(up, Math.sin(t)).normalize();
+        const leaf = slab(smoothOutline([[0, -1], [0.4, -0.2], [0, 1], [-0.4, -0.2]], 16).map(([x, y]) => [x * s * 0.1, y * s * 0.2] as [number, number]), s * 0.02, { bevel: 0 });
+        P.add('gold', leaf, frameAt(p, dir.clone().cross(n).normalize(), dir));
+      }
+    }
+  },
+};
+
 const FEATURES: Record<Feature, (P: Parts, F: Frame) => void> = {
+  ...SCULPTS,
   arrows(P, F) {
     const pts = pick(F.points, 4, F.seed);
     pts.forEach((h, i) => {

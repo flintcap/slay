@@ -12,7 +12,7 @@
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { ItemLook } from '../ItemLook';
+import { surfaceFinish, type ItemLook } from '../ItemLook';
 import { crystalMat, gemMat, ghostMat, glowMat, glassMat, itemSurface, liquidMat, stringMat } from './Mats';
 import { clean, xf, type V3, type Xf } from './Geo';
 
@@ -97,13 +97,14 @@ export class Parts {
     switch (slot) {
       case 'main':
         if (L.material === 'crystal') return crystalMat(L.colors.main, L.glowColor, 0.35 + L.glow * 0.25);
-        return itemSurface(L.keys.main, { wear });
+        return itemSurface(L.keys.main, { wear, ...surfaceFinish(L), ...(L.sheen > 0 ? { emissive: L.glowColor, emissiveIntensity: L.sheen } : {}) });
       case 'second':
         return itemSurface(L.keys.second, { wear: Math.min(1, wear + 0.15) });
       case 'wood':
         return itemSurface(L.keys.wood, { wear });
       case 'trim':
-        return itemSurface(L.keys.trim, { wear: wear * 0.6, tint: L.trimTint });
+        // Set and unique trims carry a little of their glow, so the signature reads on the floor and in the hand.
+        return itemSurface(L.keys.trim, { wear: wear * 0.6, tint: L.trimTint, ...(L.aura !== 'none' && (L.glow > 0 || L.set) ? { emissive: L.glowColor, emissiveIntensity: 0.12 } : {}) });
       case 'cloth':
         return itemSurface(L.keys.cloth, { wear });
       case 'dark':
