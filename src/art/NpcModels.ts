@@ -29,6 +29,7 @@ import { surface } from './Materials';
 import { beveledBox, limb, ring, taperedBox, lathe } from './Meshes';
 import { Random } from '../core/RNG';
 import { buildHero, setHeroHidden, type HeroModel } from './hero/Hero';
+import { QUALITY_RESIDENT } from './hero/Body';
 import type { HeroLook } from './hero/Looks';
 import { wearArmour } from './hero/Armour';
 import { holdItem, weaponGrip } from './hero/Hold';
@@ -397,7 +398,7 @@ export interface NpcModel {
  */
 export function buildNpcModel(id: string, rng: Rng = new Random(1)): NpcModel {
   const spec = SPECS[id as NpcLookId] ?? SPECS.hesk;
-  const hero = buildHero(spec.look, `npc-${id}`);
+  const hero = buildHero(spec.look, `npc-${id}`, QUALITY_RESIDENT);
   const rig = hero.rig;
   const hides = new Set<string>();
   for (const w of spec.wear) {

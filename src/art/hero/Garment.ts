@@ -37,7 +37,7 @@ export function garment(
   spec: GarmentSpec,
 ): THREE.BufferGeometry {
   return meshCached(
-    `garment|${body.hash}|${name}|${JSON.stringify(spec)}`,
+    `garment|${body.hash}|${body.garmentScale}|${name}|${JSON.stringify(spec)}`,
     () => {
       const keep = new Set(spec.groups);
       const base = body.anatomy.field.select((p) => keep.has(p.group));
@@ -49,7 +49,7 @@ export function garment(
         field,
         body.anatomy,
         box,
-        spec.cell ?? 0.01,
+        (spec.cell ?? 0.01) * body.garmentScale,
         spec.clips,
         spec.thickness,
         spec.tris ?? 1800,

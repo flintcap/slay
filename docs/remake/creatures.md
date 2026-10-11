@@ -49,6 +49,9 @@ sheet render if there is none.
 
 ## Notes for resume
 
+- heroes deleted the old `BodyKit.ts`; `MonsterModels.ts` now imports
+  `mergeSkinned` and `skinRigid` from `src/art/hero/Skinning.ts` (same
+  signatures). One import line changed, nothing else.
 - maps may have added biomes and moved families; read `src/data/monsters.ts`
   and the biome list fresh.
 - Do not change monster stats or counts. Never make monsters weaker or fewer.

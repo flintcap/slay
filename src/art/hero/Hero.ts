@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 import { buildRig, type HeroRig } from './Rig';
-import { meshBody, type BodyMesh } from './Body';
+import { meshBody, QUALITY_HIGH, type BodyMesh, type BodyQuality } from './Body';
 import { eyeGeometry, eyeMaterial } from './Eyes';
 import type { HeroLook } from './Looks';
 import { fabricMaterial, skinMaterial } from './HeroMaterials';
@@ -30,8 +30,8 @@ function skinned(geo: THREE.BufferGeometry, mat: THREE.Material, rig: HeroRig, n
   return m;
 }
 
-export function buildHero(look: HeroLook, name = 'hero'): HeroModel {
-  const body = meshBody(look.shape, look.face);
+export function buildHero(look: HeroLook, name = 'hero', quality: BodyQuality = QUALITY_HIGH): HeroModel {
+  const body = meshBody(look.shape, look.face, quality);
   const rig = buildRig(look.shape, name);
   skinned(body.skin, skinMaterial(look), rig, `${name}:skin`);
   const e = body.anatomy.eyes;

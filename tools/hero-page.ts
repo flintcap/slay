@@ -426,6 +426,27 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
         lines.push(`${cls} ${kitName}: ${tris} tris, ${draws} draws, dressed in ${ms | 0} ms`);
       }
     }
+    // Camp residents: on the hero rig, coarser, and quick enough to build cold.
+    {
+      const NM = await import('../src/art/NpcModels');
+      let total = 0;
+      for (const id of NM.NPC_LOOK_IDS) {
+        const t0 = performance.now();
+        try {
+          const npc = NM.buildNpcModel(id, new Random(9));
+          new HeroAnimator(npc.bones).update(1 / 30);
+          let draws = 0;
+          npc.root.traverse((o) => {
+            if ((o as THREE.Mesh).isMesh) draws++;
+          });
+          if (draws > 16) bad(`resident ${id}: ${draws} draw calls, budget 16`);
+        } catch (e) {
+          bad(`resident ${id}: ${String(e).slice(0, 160)}`);
+        }
+        total += performance.now() - t0;
+      }
+      lines.push(`residents: ${NM.NPC_LOOK_IDS.length} built cold in ${total | 0} ms`);
+    }
     // Cost: one animator frame, with a cape to swing.
     {
       const a = actor(list[0]!, CLASS_STANCE[list[0]!], 'timing', 'plate');

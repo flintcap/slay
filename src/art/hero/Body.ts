@@ -28,6 +28,8 @@ export interface BodyMesh {
   hash: string;
   /** Milliseconds it took to build. */
   ms: number;
+  /** Multiplies every garment's and armour piece's cell size (1 for heroes). */
+  garmentScale: number;
 }
 
 export interface BodyQuality {
@@ -38,6 +40,8 @@ export interface BodyQuality {
   bodyTris: number;
   headTris: number;
   handTris: number;
+  /** Multiplies garment and armour cell sizes on this body (default 1). */
+  garmentScale?: number;
 }
 
 export const QUALITY_HIGH: BodyQuality = {
@@ -47,6 +51,20 @@ export const QUALITY_HIGH: BodyQuality = {
   bodyTris: 7600,
   headTris: 3800,
   handTris: 1600,
+};
+
+/**
+ * Townspeople: seen from the game camera and never up close on a plinth, so
+ * meshed coarser, which is several times faster on a cold first visit.
+ */
+export const QUALITY_RESIDENT: BodyQuality = {
+  bodyCell: 0.0135,
+  headCell: 0.0055,
+  handCell: 0.0045,
+  bodyTris: 5200,
+  headTris: 2200,
+  handTris: 900,
+  garmentScale: 1.45,
 };
 
 let PROFILE = false;
@@ -144,7 +162,7 @@ export function meshBody(shape: BodyShape, opts: AnatomyOpts = {}, q: BodyQualit
   const anatomy = bodyField(shape, joints, opts);
   const hash = anatomy.field.hash();
   const skin = meshCached(`body|${hash}|${JSON.stringify(q)}`, () => meshSkin(anatomy, opts, q));
-  const out: BodyMesh = { skin, anatomy, joints, hash, ms: performance.now() - t0 };
+  const out: BodyMesh = { skin, anatomy, joints, hash, ms: performance.now() - t0, garmentScale: q.garmentScale ?? 1 };
   cache.set(k, out);
   return out;
 }
