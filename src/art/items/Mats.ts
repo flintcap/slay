@@ -98,13 +98,19 @@ function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
         `#include <common>
 uniform float triScale;
 varying vec3 vTriPos;
-varying vec3 vTriN;`,
+varying vec3 vTriN;
+varying vec3 vO2V0;
+varying vec3 vO2V1;
+varying vec3 vO2V2;`,
       )
       .replace(
         '#include <worldpos_vertex>',
         `#include <worldpos_vertex>
 vTriPos = position * triScale;
-vTriN = normal;`,
+vTriN = normal;
+vO2V0 = normalMatrix[ 0 ];
+vO2V1 = normalMatrix[ 1 ];
+vO2V2 = normalMatrix[ 2 ];`,
       );
     sh.fragmentShader = sh.fragmentShader
       .replace(
@@ -116,7 +122,10 @@ uniform float triNormalScale;
 uniform float triRoughVar;
 uniform float triGain;
 varying vec3 vTriPos;
-varying vec3 vTriN;`,
+varying vec3 vTriN;
+varying vec3 vO2V0;
+varying vec3 vO2V1;
+varying vec3 vO2V2;`,
       )
       .replace(
         '#include <map_fragment>',
@@ -146,7 +155,7 @@ roughnessFactor = clamp( roughnessFactor * mix( 1.0, triR * 1.4, triRoughVar ), 
   ty = vec3( ty.xy + triNb.xz, abs( ty.z ) * triNb.y );
   tz = vec3( tz.xy + triNb.xy, abs( tz.z ) * triNb.z );
   vec3 bn = normalize( tx.zyx * triW.x + ty.xzy * triW.y + tz.xyz * triW.z );
-  normal = normalize( normalMatrix * bn );
+  normal = normalize( mat3( vO2V0, vO2V1, vO2V2 ) * bn );
   #ifdef DOUBLE_SIDED
     normal *= faceDirection;
   #endif
