@@ -3,7 +3,7 @@
 At most three streams run at once. When one finishes, the next waiting one
 starts.
 
-Running: props, vfx
+Running: vfx
 Waiting, in order: finish
-Done: audio, maps, heroes, items, creatures, ground, npcs
+Done: audio, maps, heroes, items, creatures, ground, npcs, props
 Paused: no

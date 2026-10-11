@@ -1,6 +1,6 @@
 # Stream: props (every prop, interactable and town building)
 
-Status: in progress
+Status: done
 
 Goal: every object in the world remade from nothing to match the new ground
 and lighting. Diablo II and Path of Exile dressing: grim, worn, heavy.
@@ -23,8 +23,10 @@ and lighting. Diablo II and Path of Exile dressing: grim, worn, heavy.
   stations (forge, stash, vendor stalls), dressing.
   (wip(props): the town rebuilt: timber-frame houses, smithy, shop, strongroom, apothecary, gatehouse, palisade;
   old camp builders grep buildForge|buildWagon|buildPalisade|buildCampfire in Town.ts: 0)
-- [ ] Switch and clean. Delete old `Props.ts` builders and every reference.
+- [x] Switch and clean. Delete old `Props.ts` builders and every reference.
   Colliders match the new meshes (`check-ghost`, `check-blockers`).
+  (wip(props): old prop builders deleted; every kind comes from the prop library;
+  grep makeStream|buildTorch|buildBrazier|buildFlatWall|buildMisc: 0)
 
 ## Checkers
 
@@ -39,16 +41,42 @@ minutes a spot while other agents render). Prop contact sheets:
 `SLAY_PORT=4327 timeout 600 node tools/prop-sheet.mjs kinds --ids=<kinds|group> --biomes=a,b`
 (writes `shots/props/`).
 
-## Next up
+## Handover
 
-1. Switch and clean. The old builders are gone from `src/world/Props.ts`
-   (placement only now; `propTemplate` hands every kind to
-   `art/props/Library.ts`, unknown kinds draw as `rubblePile`). Left: run
-   the browser checks with `timeout` on port 4327: `check-interact`,
-   `check-ghost`, `check-perf`. Headless ones pass (propkit, dressing,
-   blockers, props, townprops, town, assets).
-2. Then "Finishing a stream": Status done, Handover, props to Done in
-   `QUEUE.md`, push.
+What exists now:
+
+- Dungeon props: `src/art/props/`. `Defs.ts` (every kind: placement,
+  radius, blocks, light), `Kit.ts` (geometry kit), `PropMats.ts` (materials
+  on ground's texture sets), `Ctx.ts` (per-biome palettes), builder files by
+  family (Lights, Stone, Crypt, Wild, Elements, Works, Hive, Containers,
+  Detail), `Library.ts` (cached templates, `remainsTemplate` for opened,
+  spent and pulled states), `Dressing.ts` (per-biome and per-zone prop
+  vocabulary). Breakables burst into real pieces; chests come by tier.
+- Placement: `src/world/Props.ts` (placement only; `propTemplate` hands every
+  kind to the library, unknown kinds draw as `rubblePile`).
+- Town: `src/art/props/town/` (`TownKit`, `Houses`, `Works`, `Layout`).
+  `src/world/Town.ts` owns the ground, lights and residents and calls
+  `buildTownProps`. The town measures 425 draw calls (budget 900) and 22
+  lights with the hero's (budget 24).
+- Checkers, all passing: check-propkit, check-dressing, check-blockers,
+  check-props, check-townprops, check-town, check-assets, check-interact,
+  check-ghost. Renders: `tools/shoot-town.mjs`, `tools/prop-sheet.mjs`.
+
+Left for `finish`:
+
+- `check-perf --preview --depths=0,1,9`: the town is within budget. Depth 9
+  (dark forest, 132 monsters) draws 1.60M triangles against 1.5M, and depths
+  1 and 9 allocate 310 to 470 KB a step against 200 (monster AI is 70 to 80%
+  of the update; HeroModel is a top allocator). Bones and skulls were
+  halved, which cut crypt floors' prop triangles by 20% but moved that
+  forest frame only 1%. How the rest splits between monster bodies,
+  ground's trees and forest props is not measured yet.
+- `check-npcdraws` fails headless in `irisTexture` (the heroes' eye texture
+  needs `document`). Not a props file.
+- Ground request 1 in `ground.md` (templates built with the zone biome's
+  art, not the level's) is DungeonBuilder's, not props'.
+- check-propkit warns that `cart` and `tent` spill past their colliders
+  (0.57 m and 0.85 m): low parts (shafts, guy lines) you step over.
 
 ## Notes for resume
 
@@ -63,8 +91,6 @@ minutes a spot while other agents render). Prop contact sheets:
   south or east side of a building, never under a roof seen from behind.
 - Town lights: 21 with intensity against a cap of 23 (check-perf allows 24
   with the hero's). Lantern specs carry `lit`; unlit ones are bulbs only.
-- `check-npcdraws` fails headless in `irisTexture` (heroes' eye texture
-  needs `document`). Not a props file; left for finish.
 
 - New prop code lives in `src/art/props/`: `Kit.ts` (geometry kit),
   `PropMats.ts` (materials on ground's texture sets; `tint` multiplies,
