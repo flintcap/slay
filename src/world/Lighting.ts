@@ -79,9 +79,11 @@ const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
     hero: { color: 0xffd0a0, intensity: 24, distance: 15 },
   },
   // No sky to speak of. The light comes up from the lava.
+  // At fill 1.1 and key 1.9 the basalt steppe rendered near black and the
+  // pack read only by its name plates.
   hell: {
-    sky: 0x3a2c2c, ground: 0x3a1c14, fill: 1.1,
-    key: 0xffb890, keyIntensity: 1.9, elevation: 48, azimuth: 120,
+    sky: 0x4a3432, ground: 0x4a2216, fill: 1.45,
+    key: 0xffb890, keyIntensity: 2.6, elevation: 48, azimuth: 120,
     fog: 0x140c0a, fogDensity: 0.024,
     under: { color: 0xff4a18, intensity: 0.4 },
     hero: { color: 0xffd0a0, intensity: 40, distance: 17 },

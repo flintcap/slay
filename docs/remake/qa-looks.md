@@ -189,3 +189,7 @@ gold trim and spikes so its icon stops matching its base.
   all. Once it meets the bar, stop and move on.
 - `tools/shoot-gear.mjs --classes=a,b` films worn gear live in town: a row
   per gear level (bare, starter, mid, elite), game camera, close, mid attack.
+- **One browser at a time, queued** (PROTOCOL.md, cf0c485). The machine has
+  4 cores; never run two of your own renders at once. Wrap every browser
+  run: `flock /tmp/slay-browser.lock timeout 2700 node tools/<tool>.mjs ...`
+  so runs from all agents queue.
