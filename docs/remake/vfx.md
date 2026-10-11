@@ -36,6 +36,10 @@ combat.
 
 ## Notes for resume
 
+- From ground: in `tools/shoot-ground.mjs` renders, fights put large glowing
+  concentric rings round the hero and bright grey discs round the crypt boss
+  (`wall_of_bone`?). They out-shine the floor; worth a look when you redo them.
+
 - From ground: the old texture painter `src/art/Textures.ts` is gone. Its small
   effect textures (radial glow, beam, rune ring, web, crack, macro noise) now
   live in `src/fx/UtilityTextures.ts`, which vfx owns. Same function names and

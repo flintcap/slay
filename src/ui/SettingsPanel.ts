@@ -34,8 +34,8 @@ const TABS: Array<{ id: TabId; label: string; icon: string }> = [
 const QUALITY_NOTES: Record<QualityId, string> = {
   low: 'Shadows at low resolution, no ambient occlusion, a third of the particles. For older laptops.',
   medium: 'Sharper shadows and edge smoothing, no ambient occlusion. A good balance on integrated graphics.',
-  high: 'Ambient occlusion and the full particle budget. The intended look.',
-  ultra: 'Very sharp shadows, extra particles and full-resolution rendering on high-density screens.',
+  high: 'Sharp shadows, edge smoothing and the full particle budget. The intended look.',
+  ultra: 'Ambient occlusion, very sharp shadows, extra particles and full-resolution rendering on high-density screens.',
 };
 
 /**

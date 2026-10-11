@@ -26,15 +26,15 @@ outdoors. Remake from nothing; delete the old painted textures.
   `Palettes.ts`, `WorldSurface.ts` if unused). Keep only small utility
   textures fx still uses, moved to a file vfx owns if needed (note it in
   `vfx.md`).
-- [ ] Indoor builder. Thick masonry walls with real depth, pillars, arches,
+- [x] Indoor builder. (wip(ground): wall kits, doorway arches, outdoor terrain with tree lines; checked in renders by wip(ground): calmer ice and crystal, dimmer floor cracks, muted hive and void spire) Thick masonry walls with real depth, pillars, arches,
   floor tiles with grime and cracks, wall bases and tops, per-biome kits
   (crypt, tomb, ice cave, cave, keep). No see-through walls; the roof dissolve
   around the hero must still work.
-- [ ] Outdoor builder. Open sky, heightfield ground with blended materials
+- [x] Outdoor builder. (wip(ground): exits drawn by kind, trees planted in culled blocks; wip(ground): wall lights in the biome's own colour, ragged ruin tops; dull dark sludge, no scattered lava crust) Open sky, heightfield ground with blended materials
   (path vs grass vs mud), cliffs, tree-line walls built from real trunks and
   canopy, dunes, ice sheets, lava rivers, water with banks. Reads maps'
   `zones`/`zoneOf` and blends at zone edges.
-- [ ] Lighting and post. Dark and gritty: low ambient, a hero light radius
+- [x] Lighting and post. (wip(ground): light moods per biome, light from below, heat haze; grain scaled to the light, brighter night forests) Dark and gritty: low ambient, a hero light radius
   like D2, warm torch pools, shadows, fog per biome, colour grading per biome,
   bloom only on magic and fire, vignette. Forest moonlight, desert harsh low
   sun and heat haze, hell red underglow, frozen blue. Hero, monsters and loot
@@ -51,25 +51,24 @@ outdoors. Remake from nothing; delete the old painted textures.
 
 ## Next up
 
-Done in code (wip commits, not yet ticked until renders pass): wall kits
-(masonry: plinth, cornice, string course, pilasters; rough: displaced rock),
-doorway arches, outdoor terrain (`src/world/Terrain.ts`: heightfield, 4-layer
-splat, zone seam blend, tree lines, dunes, cliffs, ruins with ragged tops),
-exits by kind, ART for all six new biomes, light moods (`src/world/Lighting.ts`),
-light from below, heat haze, per-biome grades.
-
-1. Render `biome-crypt`, `biome-caverns`, `biome-frostvault`, `biome-desertTomb`
-   (indoor) and `biome-darkForest`, `biome-swamp`, `biome-desert`,
-   `biome-tundra`, `biome-hell` (outdoor) at 1280x720, fix what looks wrong,
-   then tick Indoor builder, Outdoor builder, Lighting and post.
-2. Verify and clean: `check-perf` draw calls under 900 (town and a busy map),
-   dead code sweep in DungeonBuilder (old puddle/look fallbacks).
+1. Verify and clean: `check-perf` (town and busy maps under 900 draw calls),
+   `check-ghost`, `check-roof`, `check-blockers`, `check-decalheight`,
+   `check-assets`, then a last render of every biome with
+   `tools/shoot-ground.mjs` and a dead code sweep in my files.
+2. Then "Finishing a stream": Status done, Handover, QUEUE.md (ground to Done).
 
 ## Notes for resume
+
+- Requests left in props.md (teal prop lights) and vfx.md (bright fight rings).
 
 - From maps: in the swamp zone render (`tools/shoot-zones.mjs`, tier 3) the
   floating motes are so many and so bright that the frame washes out to white
   and the ground is hard to read. Worth a look when you tune the swamp.
+- Look renders: `SLAY_PORT=4322 timeout 2700 node tools/shoot-ground.mjs
+  --biomes=crypt,darkForest,...` (one boot, loads the area of each biome,
+  hero in a middle room, monsters cleared, 1024x576). About 2 minutes a
+  biome. `tools/screenshot.mjs` biome shots warp to the boss and take far
+  longer.
 - Renders are slow when three agents render at once (a 1920x1080 dungeon shot
   took 25 minutes). Use `--width=1280 --height=720` and at most three shots
   per run.
@@ -93,11 +92,8 @@ light from below, heat haze, per-biome grades.
   Props.ts still imports the old names, which stay as aliases. Please switch
   Props.ts to the new names when you next touch it. DungeonScene draws the
   waypoint ring at `level.waypoint`; props are kept off it.
-- From maps: six new biomes (`darkForest`, `swamp`, `desert`, `desertTomb`,
-  `tundra`, `hell`) have no `ART` entry yet. `biomeArt()` lends them an old
-  look (`LOOK_FALLBACK` in Biomes.ts) and takes the roof off the outdoor ones.
-  Add real `ART` entries when you build their looks; the fallback then stops
-  applying on its own.
+- Every biome has its own `ART` entry. A biome added later without one
+  borrows the crypt's look (outdoor ones lose the roof); `LOOK_FALLBACK` is gone.
 
 - maps runs at the same time and will add tile kinds and zones. Draw unknown
   tile kinds as blocking walls until you support them.

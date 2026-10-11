@@ -4,6 +4,7 @@
  *   SLAY_PORT=4309 node tools/check-perf.mjs                  # the standard floors
  *   SLAY_PORT=4309 node tools/check-perf.mjs --depths=1,12    # just these depths (0 is the town)
  *   SLAY_PORT=4309 node tools/check-perf.mjs --alloc          # also list who allocates
+ *   SLAY_PORT=4309 node tools/check-perf.mjs --preview        # the built game (npm run build first)
  *
  * Frame time under software rendering says nothing about a player's machine,
  * so this measures what does not depend on the GPU, at the densest knot of
@@ -53,7 +54,9 @@ const DEPTHS = (arg('depths') ?? '0,1,6,12,20,32').split(',').map(Number);
 const SEED = Number(arg('seed') ?? 424242);
 const showAlloc = process.argv.includes('--alloc');
 
-const { page, close, pageErrors, bootMs } = await bootGame({ fallbackPort: 4309 });
+// --preview serves the built game (npm run build first): far quicker to load
+// a floor than the dev server's unbundled modules on a busy machine.
+const { page, close, pageErrors, bootMs } = await bootGame({ fallbackPort: 4309, preview: process.argv.includes('--preview') });
 console.log(`booted in ${(bootMs / 1000).toFixed(0)}s`);
 const cdp = await page.context().newCDPSession(page);
 await cdp.send('HeapProfiler.enable');

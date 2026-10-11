@@ -34,6 +34,12 @@ screenshots.
 
 ## Notes for resume
 
+- From ground: the biome's wall light (`art.wallLight`) now shines in
+  `art.lightColor` (DungeonBuilder). Other lit props keep their template
+  colour: `mushroomCluster` and friends throw saturated teal pools in the
+  dark forest. When you rebuild them, pick colours that sit in the biome's
+  mood (or read `art.lightColor`).
+
 - Town `addBox` colliders take the AABB of the rotated rectangle.
 - Wall-prop colliders are offset by `wallOffset` along the prop's rotation.
 - Request from maps: `Props.ts` still imports `T_STAIRS_DOWN` and `T_STAIRS_UP`.

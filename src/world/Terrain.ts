@@ -603,7 +603,7 @@ function rise(edge: EdgeKind, d: number, wx: number, wz: number, noise: Noise): 
  * cutaway, so a tree between camera and hero opens like a wall does.
  */
 /** Side of a square block of trees, metres. */
-const TREE_BLOCK = 36;
+const TREE_BLOCK = 56;
 
 /** The shared shapes and materials one kind of tree is planted from. */
 interface TreeKit {
@@ -653,7 +653,8 @@ function plantTrees(kit: TreeKit, sites: Array<{ x: number; y: number; z: number
     const mine = sites.filter((_, i) => i % V === v);
     if (!mine.length) continue;
     const tm = new THREE.InstancedMesh(kit.trunks[v]!, kit.bark, mine.length);
-    tm.castShadow = true;
+    // A living tree's shadow is its canopy's; only bare trunks cast their own.
+    tm.castShadow = kit.kind === 'deadTrees';
     tm.receiveShadow = true;
     tm.name = `${kit.kind}:trunk`;
     const cg = kit.canopies[v];

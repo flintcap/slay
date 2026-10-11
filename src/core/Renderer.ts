@@ -331,10 +331,14 @@ export interface QualityProfile {
   fxScale: number;
 }
 
+// GTAO draws the whole scene a second time for its normal and depth buffer:
+// on a busy outdoor map that was ~580 of 1430 draw calls (check-perf, dark
+// forest). The world material already darkens wall feet and corners itself,
+// so the default preset goes without and only Ultra keeps it.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
   low: { shadowMapSize: 1024, shadows: true, ao: false, bloom: true, smaa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35 },
   medium: { shadowMapSize: 2048, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6 },
-  high: { shadowMapSize: 2048, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0 },
+  high: { shadowMapSize: 2048, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0 },
   ultra: { shadowMapSize: 4096, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4 },
 };
 
