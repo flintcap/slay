@@ -10,6 +10,8 @@ import { profileBodies } from '../src/art/hero/Body';
 import { buildHero, setHeroHidden } from '../src/art/hero/Hero';
 import { wearArmour } from '../src/art/hero/Armour';
 import { ITEM_BASES } from '../src/data/itemBases';
+import { SET_PIECES } from '../src/data/sets';
+import { UNIQUES } from '../src/data/uniques';
 import type { EquipSlot, ItemRarity } from '../src/types';
 import { HERO_LOOKS } from '../src/art/hero/Looks';
 import { loadMeshCache } from '../src/art/hero/MeshCache';
@@ -739,6 +741,68 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       [0.35, Math.PI * 0.5, Math.PI].forEach((yaw, k) => shoot(g, hero.root, { x: ox + k * TW, y: oy, w: TW, h: TH, yaw, target: tgt, dist: 4.4 }));
       g.fillStyle = INK;
       g.fillText(`${cls} ${f.kit ?? own[cls]} ${ms | 0}ms`, ox + 8, oy + 18);
+    });
+    return c.toDataURL('image/png');
+  },
+  /**
+   * Gear makes the look: one class (--class=, default all) bare, in starter,
+   * mid and elite gear, in a full set and in uniques, holding its weapons.
+   */
+  async dressed(f) {
+    profileBodies(true);
+    const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
+    const bodySlots = ['helm', 'chest', 'gloves', 'boots', 'belt'];
+    const setFor = (cls: CharClassId): string[] => {
+      // The set with the most worn pieces, a different one per class.
+      const bySet = new Map<string, string[]>();
+      for (const p of SET_PIECES) {
+        const b = ITEM_BASES.find((x) => x.id === p.baseId);
+        if (!b || !bodySlots.includes(b.slot)) continue;
+        bySet.set(p.setId, [...(bySet.get(p.setId) ?? []), p.baseId + '|' + p.setId]);
+      }
+      const sets = [...bySet.values()].sort((a, b) => b.length - a.length);
+      return sets[CLASSES.indexOf(cls) % Math.max(1, sets.length)] ?? [];
+    };
+    const uniquesFor = (cls: CharClassId): string[] =>
+      bodySlots.flatMap((slot) => {
+        const us = UNIQUES.filter((u) => ITEM_BASES.find((b) => b.id === u.baseId)?.slot === slot);
+        const u = us[(CLASSES.indexOf(cls) * 3) % Math.max(1, us.length)];
+        return u ? [`${u.baseId}|${u.id}`] : [];
+      });
+    const columns: Array<{ label: string; ids: (cls: CharClassId) => string[]; rarity: ItemRarity }> = [
+      { label: 'bare', ids: () => [], rarity: 'normal' },
+      { label: 'starter', ids: () => ['helm.cap', 'chest.quilted', 'gloves.leather', 'boots.boots', 'belt.sash'], rarity: 'normal' },
+      { label: 'mid', ids: () => ['helm.full', 'chest.chainmail', 'gloves.war', 'boots.war', 'belt.war'], rarity: 'magic' },
+      { label: 'elite', ids: () => ['helm.spired', 'chest.archon', 'gloves.ogre', 'boots.myrmidon', 'belt.colossus'], rarity: 'rare' },
+      { label: 'set', ids: setFor, rarity: 'set' },
+      { label: 'uniques', ids: uniquesFor, rarity: 'unique' },
+    ];
+    const TW = 230;
+    const TH = 440;
+    const { c, g } = sheet(TW * columns.length, TH * list.length);
+    list.forEach((cls, row) => {
+      columns.forEach((col, k) => {
+        const hero = buildHero(HERO_LOOKS[cls], `${cls}-${col.label}`);
+        const hidden = new Set<string>();
+        for (const entry of col.ids(cls)) {
+          const [id, extra] = entry.split('|');
+          const base = ITEM_BASES.find((b) => b.id === id);
+          if (!base) continue;
+          const ident = { baseId: base.id, rarity: col.rarity, uniqueId: col.rarity === 'unique' ? extra : undefined, setId: col.rarity === 'set' ? extra : undefined };
+          wearArmour(hero, base.slot as EquipSlot, ident, base.visual)?.hides.forEach((h) => hidden.add(h));
+        }
+        setHeroHidden(hero, hidden);
+        if (col.label !== 'bare') {
+          for (const [slot, id, grip] of STANCE_ITEMS[CLASS_STANCE[cls]]) {
+            const base = ITEM_BASES.find((b) => b.id === id);
+            if (base) holdItem(hero.rig, slot, buildItemModel(base.visual, new Random(7), col.rarity), grip);
+          }
+        }
+        const tgt = new THREE.Vector3(0, HERO_LOOKS[cls].shape.height * 0.52, 0);
+        shoot(g, hero.root, { x: k * TW, y: row * TH, w: TW, h: TH, yaw: 0.45, target: tgt, dist: 4.4 });
+        g.fillStyle = INK;
+        g.fillText(`${cls} ${col.label}`, k * TW + 8, row * TH + 18);
+      });
     });
     return c.toDataURL('image/png');
   },

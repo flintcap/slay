@@ -37,10 +37,10 @@ export function buildHero(look: HeroLook, name = 'hero', quality: BodyQuality = 
   const e = body.anatomy.eyes;
   const eyes = skinned(eyeGeometry(e.L, e.R, e.r), eyeMaterial(look.eyes.iris, look.eyes.glow), rig, `${name}:eyes`);
   eyes.castShadow = false;
-  // Undergarments: what a hero wears under any armour.
+  // Plain linens: what every hero wears with nothing equipped (gear makes the look).
   const female = look.shape.sex === 'female';
   skinned(garment(body, 'shorts', shortsSpec(body, female)), fabricMaterial('linen', look.linen), rig, `${name}:shorts`);
-  if (female) skinned(garment(body, 'wrap', chestWrapSpec(body)), fabricMaterial('linen', look.linen), rig, `${name}:wrap`);
+  skinned(garment(body, 'wrap', chestWrapSpec(body)), fabricMaterial('linen', look.linen), rig, `${name}:wrap`);
   skinned(garment(body, 'belt', beltSpec(body)), fabricMaterial('leather', look.leather, 0.7), rig, `${name}:belt`);
   for (const p of headParts(body, look)) skinned(p.geo, p.mat, rig, `${name}:${p.name}`);
   rig.root.userData.heroLook = look;

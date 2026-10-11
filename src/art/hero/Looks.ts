@@ -17,10 +17,14 @@ export interface HeroLook {
   dead?: boolean;
   hair: { cut: HairCut; color: number; beard?: 0 | 1 | 2; brows?: number };
   eyes: { iris: number; glow?: number };
-  /** Undergarment colours. */
+  /**
+   * What a hero wears with nothing equipped: plain undyed linens and a cord
+   * at the waist, the same for every class. Gear makes the look (see "Gear
+   * makes the look" in docs/remake/PLAN.md); hoods and masks are helmets.
+   */
   linen: number;
   leather: number;
-  /** Class cloth: hoods, masks, sashes. */
+  /** Cloth for anything the body itself wears (the same undyed linen). */
   cloth: number;
   hood?: boolean;
   mask?: boolean;
@@ -30,6 +34,10 @@ export interface HeroLook {
   stoop: number;
 }
 
+/** Undyed linen and a plain cord, the bare hero's clothes. */
+const UNDYED = 0xb0a48a;
+const CORD = 0x6a5a44;
+
 export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
   warden: {
     shape: { sex: 'male', height: 1.88, build: 0.9, shoulders: 1.08 },
@@ -37,9 +45,9 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     skin: 0xc08a68,
     hair: { cut: 'crop', color: 0x3a2a1e, beard: 2 },
     eyes: { iris: 0x5a4632 },
-    linen: 0x8a7e6a,
-    leather: 0x4a3424,
-    cloth: 0x7a1e1a,
+    linen: UNDYED,
+    leather: CORD,
+    cloth: UNDYED,
     accent: 0xd8b45a,
     stoop: 0.05,
   },
@@ -49,9 +57,9 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     skin: 0xe2b49a,
     hair: { cut: 'long', color: 0x9a3a18 },
     eyes: { iris: 0x4a6a3a },
-    linen: 0x9a8e7c,
-    leather: 0x5a3020,
-    cloth: 0x6a1a12,
+    linen: UNDYED,
+    leather: CORD,
+    cloth: UNDYED,
     accent: 0xff7a2a,
     stoop: 0,
   },
@@ -61,11 +69,9 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     skin: 0x8a5a40,
     hair: { cut: 'knot', color: 0x141010 },
     eyes: { iris: 0x2a2018 },
-    linen: 0x3a3a40,
-    leather: 0x2a2220,
-    cloth: 0x585e68,
-    hood: true,
-    mask: true,
+    linen: UNDYED,
+    leather: CORD,
+    cloth: UNDYED,
     accent: 0x4ad69a,
     stoop: 0.35,
   },
@@ -75,9 +81,9 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     skin: 0xd6aa90,
     hair: { cut: 'braids', color: 0x8a96a8, beard: 1 },
     eyes: { iris: 0x4a6a8a },
-    linen: 0x8a909a,
-    leather: 0x3a3430,
-    cloth: 0x2a3a5a,
+    linen: UNDYED,
+    leather: CORD,
+    cloth: UNDYED,
     accent: 0x6fc8ff,
     stoop: 0.05,
   },
@@ -88,9 +94,9 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     dead: true,
     hair: { cut: 'none', color: 0x000000 },
     eyes: { iris: 0x7ce0a0, glow: 0x7ce0a0 },
-    linen: 0x4a4a40,
-    leather: 0x2a2620,
-    cloth: 0x3a4a40,
+    linen: UNDYED,
+    leather: CORD,
+    cloth: UNDYED,
     accent: 0x7ce0a0,
     stoop: 0.6,
   },
@@ -100,9 +106,9 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     skin: 0xd8a888,
     hair: { cut: 'ponytail', color: 0xb08a50 },
     eyes: { iris: 0x5a7a4a },
-    linen: 0x8a8270,
-    leather: 0x5a3e28,
-    cloth: 0x4a5a34,
+    linen: UNDYED,
+    leather: CORD,
+    cloth: UNDYED,
     accent: 0x7fc46a,
     stoop: 0.1,
   },
