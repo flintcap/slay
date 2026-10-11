@@ -51,7 +51,7 @@ export interface MotionStyle {
   /** Stride length as a multiple of leg length (default by gait). */
   stride?: number;
   /** Holds a weapon in the right hand (shapes the guard and the moves). */
-  armed?: 'one' | 'two' | 'bow' | 'staff' | 'none';
+  armed?: 'one' | 'two' | 'bow' | 'crossbow' | 'staff' | 'none';
 }
 
 export const STYLE_DEFAULT: MotionStyle = {

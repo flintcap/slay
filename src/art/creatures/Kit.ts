@@ -7,7 +7,7 @@
  */
 import * as THREE from 'three';
 import type { CMat, PrimOpt, RGB, Sculpt } from './Sculpt';
-import { spikeGeo, tubeGeo } from './Sculpt';
+import { boxGeo, ringGeo, spikeGeo, tubeGeo } from './Sculpt';
 
 export const V = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
 
@@ -446,7 +446,7 @@ export function cuirass(s: Sculpt, o: { w: number; d: number; mat?: CMat; belly?
 }
 
 /** A helm: a dome over the skull, with a face slit and optional crest or horns. */
-export function helm(s: Sculpt, o: { size?: number; mat?: CMat; crest?: number; horns?: number; visor?: boolean; col?: RGB }): void {
+export function helm(s: Sculpt, o: { size?: number; mat?: CMat; crest?: number; horns?: number; visor?: boolean; col?: RGB; eyes?: number }): void {
   const H = s.rig.height;
   const k = (o.size ?? 1) * H;
   const mat = o.mat ?? 'metal';
@@ -456,7 +456,7 @@ export function helm(s: Sculpt, o: { size?: number; mat?: CMat; crest?: number; 
     // Face plate and the eye slit.
     s.box('head', c.clone().add(V(0, -0.03 * k, 0.05 * k)), V(0.052 * k, 0.04 * k, 0.028 * k), { mat, k: 0.008 * k, round: 0.012 * k });
     s.box('head', c.clone().add(V(0, -0.0 * k, 0.08 * k)), V(0.045 * k, 0.006 * k, 0.03 * k), { mat, sub: true, k: 0.003 * k });
-    s.glow(c.clone().add(V(0, 0, 0.07 * k)), 0.03 * k, 0.8);
+    if (o.eyes !== 0) s.pair((_side, x) => s.eye('head', c.clone().add(V(x * 0.02 * k, 0, 0.066 * k)), 0.006 * k, o.eyes ?? 0.9));
   }
   if (o.crest) s.box('head', c.clone().add(V(0, 0.065 * k, -0.01 * k)), V(0.008 * k, 0.025 * k * o.crest, 0.07 * k), { mat, k: 0.004 * k });
   if (o.horns) {
@@ -464,5 +464,60 @@ export function helm(s: Sculpt, o: { size?: number; mat?: CMat; crest?: number; 
       const b = c.clone().add(V(x * 0.055 * k, 0.02 * k, 0));
       s.hard('head', spikeGeo(b, b.clone().add(V(x * 0.1 * k * o.horns!, 0.05 * k * o.horns!, 0.02 * k)), 0.016 * k, 6, V(0, 0.06 * k * o.horns!, 0.0), 4), mat, o.col);
     });
+  }
+}
+
+/**
+ * A cape from the shoulders to the calves. The upper half rides the chest,
+ * the lower half the hips, so a stride does not drag the whole cloak.
+ */
+export function cape(s: Sculpt, o: { len?: number; w?: number; mat?: CMat; torn?: number } = {}): void {
+  const H = s.rig.height;
+  const mat = o.mat ?? 'alt';
+  const ch = s.j('chest');
+  const hp = s.j('hips');
+  const w = (o.w ?? 0.13) * H;
+  const top = ch.clone().add(V(0, 0.08 * H, -0.075 * H));
+  const mid = V(0, hp.y + 0.02 * H, hp.z - 0.1 * H);
+  const bot = V(0, Math.max(0.05 * H, hp.y * (1 - (o.len ?? 0.75))), hp.z - 0.16 * H);
+  const th = 0.008 * H;
+  const q1 = quatAlong(mid.clone().sub(top));
+  const q2 = quatAlong(bot.clone().sub(mid));
+  s.box('chest', lerpV(top, mid, 0.5), V(w, top.distanceTo(mid) * 0.5, th), { mat, q: q1, k: 0.02 * H, round: th });
+  s.box('hips', lerpV(mid, bot, 0.5), V(w * 1.2, mid.distanceTo(bot) * 0.5, th), { mat, q: q2, k: 0.03 * H, round: th });
+  // Collar.
+  s.ball('chest', s.j('neck').add(V(0, -0.02 * H, -0.03 * H)), V(0.11 * H, 0.03 * H, 0.06 * H), { mat, k: 0.02 * H });
+  if (o.torn) {
+    const r = seq(Math.round(H * 977));
+    for (let i = 0; i < 5; i++) {
+      const x = (i / 4 - 0.5) * w * 2;
+      const a = bot.clone().add(V(x, 0.02 * H, 0));
+      s.hard('hips', spikeGeo(a, a.clone().add(V(x * 0.1, -(0.05 + r() * 0.08) * H * o.torn, -0.02 * H)), 0.02 * H, 3, undefined, 2), mat);
+    }
+  }
+}
+
+/** A cloth mask or scarf over the lower face. */
+export function mask(s: Sculpt, o: { size?: number; mat?: CMat } = {}): void {
+  const k = (o.size ?? 1) * s.rig.height;
+  const c = s.j('head').add(V(0, 0.02 * k, 0.03 * k));
+  s.ball('head', c, V(0.058 * k, 0.03 * k, 0.05 * k), { mat: o.mat ?? 'alt', k: 0.01 * k });
+  s.ball('chest', s.j('neck').add(V(0, 0.0, 0.01 * k)), V(0.05 * k, 0.025 * k, 0.045 * k), { mat: o.mat ?? 'alt', k: 0.01 * k });
+}
+
+/** A belt with pouches, or a satchel strap across the chest. */
+export function belt(s: Sculpt, o: { pouches?: number; strap?: boolean; mat?: CMat; col?: RGB } = {}): void {
+  const H = s.rig.height;
+  const mat = o.mat ?? 'alt';
+  const hp = s.j('hips');
+  s.hard('hips', ringGeo(hp.clone().add(V(0, 0.035 * H, 0.005 * H)), 0.085 * H, 0.008 * H, V(0, 1, 0), 14), mat, o.col ?? [0.35, 0.25, 0.18]);
+  for (let i = 0; i < (o.pouches ?? 0); i++) {
+    const a = 0.6 + i * 0.7;
+    const p = hp.clone().add(V(Math.sin(a) * 0.09 * H, 0.015 * H, Math.cos(a) * 0.07 * H));
+    s.hard('hips', boxGeo(p, V(0.035 * H, 0.04 * H, 0.022 * H)), mat, o.col ?? [0.4, 0.3, 0.2]);
+  }
+  if (o.strap) {
+    const ch = s.j('chest');
+    s.hard('chest', tubeGeo([ch.clone().add(V(0.08 * H, 0.09 * H, 0.03 * H)), ch.clone().add(V(0, 0.0, 0.085 * H)), ch.clone().add(V(-0.09 * H, -0.08 * H, 0.04 * H))], () => 0.007 * H, 4), mat, o.col ?? [0.35, 0.25, 0.18]);
   }
 }

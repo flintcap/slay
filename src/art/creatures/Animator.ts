@@ -454,7 +454,7 @@ export class CreatureAnimator {
           this.beginFade(0.16);
         }
       } else if (a === 'cast') {
-        this.phase = this.style.ranged && this.style.armed === 'bow' ? 'shoot' : 'cast';
+        this.phase = this.style.ranged && (this.style.armed === 'bow' || this.style.armed === 'crossbow') ? 'shoot' : 'cast';
         this.beginFade(0.16);
       } else if (a === 'hit') {
         this.phase = 'hit';
