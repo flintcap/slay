@@ -856,3 +856,35 @@ const STRIDE: Record<string, number> = {
   slither: 1.4,
   roll: 3.2,
 };
+
+/**
+ * Drives a monster spawn: the face `Enemy`, `Boss` and summons hold. Every
+ * monster is a creature now, so this is the creature animator behind the
+ * old constructor (which also took the visual's archetype). It makes exactly
+ * one draw from the caller's stream.
+ */
+export class RigAnimator {
+  readonly archetype: string;
+  readonly creature: CreatureAnimator;
+
+  constructor(root: THREE.Object3D, bones: Record<string, THREE.Bone>, archetype: string, rng: Rng) {
+    this.archetype = archetype;
+    const info = root.userData?.creature as CreatureInfo | undefined;
+    if (!info) throw new Error('RigAnimator: not a creature body');
+    this.creature = new CreatureAnimator(root, bones, info, rng);
+  }
+
+  update(dt: number, o: RigDriveOpts): void {
+    this.creature.update(dt, o);
+  }
+
+  /** A heavy hit or stagger from a direction (world yaw the blow came from). */
+  react(kind: 'hit' | 'stagger', fromYaw?: number): void {
+    this.creature.react(kind, fromYaw);
+  }
+
+  /** Boss phase: later phases stand lower, glow hotter and move harder. */
+  setPhase(i: number): void {
+    this.creature.setPhase(i);
+  }
+}

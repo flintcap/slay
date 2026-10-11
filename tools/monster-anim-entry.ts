@@ -184,14 +184,10 @@ function run(id: string): Row {
 
 const picked = new Map<string, string>();
 for (const m of ENTRIES) {
-  if (hasLook(m.id)) {
-    const look = lookFor(m.visual, m.family);
-    const st = look.style;
-    const sig = ALL ? m.id : `${m.boss ? 'boss|' : ''}${look.rig().kind}|${st.gait}|${st.spawn}|${st.death}|${st.armed}|${(st.attacks ?? []).join(',')}`;
-    if (!picked.has(sig)) picked.set(sig, m.id);
-  } else {
-    const sig = `old|${monsterArchetype(m.visual.body)}`;
-    if (!picked.has(sig)) picked.set(sig, m.id);
-  }
+  // A monster without a look of its own wears the generic one: always check it.
+  const look = lookFor(m.visual, m.family);
+  const st = look.style;
+  const sig = ALL || !hasLook(m.id) ? m.id : `${m.boss ? 'boss|' : ''}${look.rig().kind}|${st.gait}|${st.spawn}|${st.death}|${st.armed}|${(st.attacks ?? []).join(',')}`;
+  if (!picked.has(sig)) picked.set(sig, m.id);
 }
 console.log(JSON.stringify([...picked.values()].map(run)));

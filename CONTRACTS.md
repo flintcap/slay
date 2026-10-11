@@ -315,14 +315,14 @@ combos on their own.
 ```ts
 export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number, opts?: { family?: string; rank?: string }):
   { root: THREE.Group; bones: Record<string, THREE.Bone>; skeleton: THREE.Skeleton | null };
-export function releaseMonsterModel(root: THREE.Object3D): void; // per spawn: its bone texture
-export function disposeMonsterModels(): void;                    // scene exit: prototypes, bakes, materials
-export class RigAnimator {                                       // re-exported from src/art/MonsterAnimation.ts
-  constructor(root: THREE.Object3D, bones: Record<string, THREE.Bone>, archetype: Archetype, rng: Rng);
+export function releaseMonsterModel(root: THREE.Object3D): void; // per spawn: its bone texture, private materials
+export function disposeMonsterModels(): void;                    // scene exit: prototypes, bakes, materials, corpses
+export class RigAnimator {                                       // re-exported from src/art/creatures/Animator.ts
+  constructor(root: THREE.Object3D, bones: Record<string, THREE.Bone>, archetype: string, rng: Rng);
   update(dt: number, o: { locomotion: number; action: RigAction; actionT: number; time: number; deathT: number }): void;
   react(kind: 'hit' | 'stagger', fromYaw?: number): void;        // optional extra flinch from a direction
   setPhase(i: number): void;                                     // boss phase (Boss.enterPhase calls it)
-  readonly creature: CreatureAnimator | null;                    // events and sockets, below
+  readonly creature: CreatureAnimator;                           // events and sockets, below
 }
 ```
 
@@ -330,6 +330,11 @@ Build and animator each make a fixed number of draws from the caller's
 stream (build: one pick, one fork per new variant of the old cache key, one
 pick, two jitters; animator: one), so packs, affixes and AI rolls after a
 spawn stay where they were tuned.
+
+When a death reaches `deathT` 1 the animator leaves a frozen copy of the
+body in the scene (the root's top ancestor) and hides the live root, so
+whatever `Enemy` does with the root afterwards is not seen. Ghosts, swarms
+and wisps leave nothing. `disposeMonsterModels` clears the corpses.
 
 ## Creature rigs — `src/art/creatures/*` — owned by creatures
 
