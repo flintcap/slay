@@ -565,11 +565,6 @@ export function spriteAtlas(): THREE.DataTexture {
   return tex;
 }
 
-/** UV origin (bottom-left) of a cell, in 0..1. */
-export function cellOrigin(cell: number): [number, number] {
-  return [(cell & 7) / GRID, (GRID - 1 - (cell >> 3)) / GRID];
-}
-
 /** GLSL: UV of a cell given a 0..1 local uv. */
 export const GLSL_CELL = /* glsl */ `
   vec2 cellUv(float cell, vec2 uv) {

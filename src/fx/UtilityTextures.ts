@@ -317,7 +317,3 @@ export function crackTexture(size = 256, seed = 23): THREE.DataTexture {
   return tex;
 }
 
-export function disposeUtilityTextures(): void {
-  for (const t of utilCache.values()) t.dispose();
-  utilCache.clear();
-}

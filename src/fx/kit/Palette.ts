@@ -63,16 +63,6 @@ export function ramp(school: School | undefined): SchoolRamp {
   return RAMPS[school ?? 'physical'] ?? RAMPS.physical;
 }
 
-/** Rarity colours for drop beams. Mirrors the item label colours. */
-export const RARITY_BEAM: Record<string, number> = {
-  normal: 0xbfb8a8,
-  magic: 0x5a7cff,
-  rare: 0xffd23a,
-  set: 0x34e05a,
-  unique: 0xd8782a,
-  gold: 0xffc63a,
-};
-
 // ---------------------------------------------------------------------------
 // Colour packing
 // ---------------------------------------------------------------------------
@@ -105,23 +95,6 @@ export const GLSL_UNPACK = /* glsl */ `
 /** Linear THREE.Color of an sRGB hex, written into `out`. */
 export function linear(hex: number, out: THREE.Color): THREE.Color {
   return out.setHex(hex);
-}
-
-/**
- * Pushes a tint toward a school's body: a skill's own colour shifts the hue a
- * little but keeps the school's saturation, so no skill ever arrives white.
- */
-export function tintToward(hex: number | undefined, school: School): number {
-  const r = ramp(school);
-  if (hex === undefined) return r.body;
-  const hr = (hex >> 16) & 255;
-  const hg = (hex >> 8) & 255;
-  const hb = hex & 255;
-  const max = Math.max(hr, hg, hb);
-  const min = Math.min(hr, hg, hb);
-  // A near-grey tint (white cores, beige) says nothing about hue: use the body.
-  if (max - min < 40) return r.body;
-  return hex;
 }
 
 /** Mixes two sRGB hex colours. */
