@@ -231,20 +231,9 @@ export function resolveSurface(key: string): SurfaceDef {
   return out;
 }
 
-/** True when the key (or its alias) names an authored surface. */
-export function hasSurface(key: string): boolean {
-  const lower = key.toLowerCase();
-  return !!LIB[key] || !!LIB[lower] || ALIASES[lower] !== undefined || (lower.startsWith('tex.') && isTextureSet(lower.slice(4)));
-}
-
 /** Every authored key (not aliases). */
 export function surfaceKeys(): string[] {
   return Object.keys(LIB);
-}
-
-/** Every key that resolves to an authored surface, aliases included. */
-export function allSurfaceKeys(): string[] {
-  return [...Object.keys(LIB), ...Object.keys(ALIASES)];
 }
 
 /**

@@ -26,8 +26,7 @@ import {
   beamTexture,
 } from '../fx/UtilityTextures';
 import { resolveSurface, surfaceKeys, surfaceBaseColor, type SurfaceDef } from './SurfaceLibrary';
-import { setTextures, setTextureAnisotropy, preloadSets, TEXTURE_SETS, type TextureSetName } from './TextureSets';
-import { setAssetAnisotropy } from '../core/Assets';
+import { setTextures, preloadSets, TEXTURE_SETS, type TextureSetName } from './TextureSets';
 
 export { surfaceBaseColor };
 
@@ -240,11 +239,6 @@ export function paletteKeys(): string[] {
   return surfaceKeys();
 }
 
-/** The texture set a key is drawn from. */
-export function surfaceSet(key: string): TextureSetName {
-  return resolveSurface(key).set;
-}
-
 /** Emissive/animated materials for magic, lava, runes and enchanted trim. */
 export function emissiveMaterial(color: number, intensity = 1.6): THREE.MeshStandardMaterial {
   const ck = `${color}|${intensity}`;
@@ -275,36 +269,6 @@ export function emissiveMaterial(color: number, intensity = 1.6): THREE.MeshStan
 // ---------------------------------------------------------------------------
 // Specialist materials used by the model builders
 // ---------------------------------------------------------------------------
-
-/**
- * A faceted gemstone. Physical material so it gets real transmission and a
- * clearcoat: gems are the one place where the extra shader cost pays for
- * itself, and there are only ever a handful on screen.
- */
-export function gemMaterial(color: number, opts: { glow?: number; rough?: number } = {}): THREE.MeshPhysicalMaterial {
-  const ck = `gem|${color}|${opts.glow ?? 0}|${opts.rough ?? 0.06}`;
-  const hit = miscCache.get(ck);
-  if (hit) return hit as THREE.MeshPhysicalMaterial;
-  const c = new THREE.Color(color);
-  const mat = new THREE.MeshPhysicalMaterial({
-    name: `gem:${color.toString(16)}`,
-    color: c.clone().multiplyScalar(0.55),
-    emissive: c,
-    emissiveIntensity: opts.glow ?? 0.35,
-    roughness: opts.rough ?? 0.06,
-    metalness: 0.0,
-    transmission: 0.55,
-    thickness: 0.35,
-    ior: 1.9,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.05,
-    transparent: true,
-    opacity: 0.92,
-  });
-  mat.userData.shared = true;
-  miscCache.set(ck, mat);
-  return mat;
-}
 
 /** Additive, unlit, depth-read-only: light shafts, rune glows, aura shells. */
 export function additiveMaterial(
@@ -340,33 +304,9 @@ export function runeMaterial(color: number, seed = 11): THREE.MeshBasicMaterial 
   return additiveMaterial(color, { map: runeRingTexture(256, seed), opacity: 0.9, side: THREE.DoubleSide });
 }
 
-/** A soft round glow billboard. */
-export function glowSpriteMaterial(color: number, opacity = 0.8): THREE.SpriteMaterial {
-  const ck = `sprite|${color}|${opacity}`;
-  const hit = miscCache.get(ck);
-  if (hit) return hit as THREE.SpriteMaterial;
-  const mat = new THREE.SpriteMaterial({
-    map: radialGlowTexture(),
-    color: new THREE.Color(color),
-    transparent: true,
-    opacity,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-  mat.userData.shared = true;
-  miscCache.set(ck, mat);
-  return mat;
-}
-
 // ---------------------------------------------------------------------------
 // Quality + warm-up
 // ---------------------------------------------------------------------------
-
-/** Wire the renderer's quality profile into the texture loader. */
-export function applyMaterialQuality(quality: { anisotropy: number }): void {
-  setTextureAnisotropy(quality.anisotropy);
-  setAssetAnisotropy(quality.anisotropy);
-}
 
 /**
  * The sets a first dungeon, the town and the hero are guaranteed to touch.
@@ -405,19 +345,4 @@ export async function warmMaterials(onProgress: (p: number, label: string) => vo
   // Pre-create the rarity beam materials so the first drop does not hitch.
   for (const c of [0xc8c8c8, 0x6f8cff, 0xf5d76e, 0x33d64a, 0xb8874a, 0xc060ff, 0xff5a33]) beamMaterial(c);
   onProgress(1, 'Materials ready');
-}
-
-/** Drop every cached material. Textures stay resident in the asset cache. */
-export function disposeMaterials(): void {
-  for (const m of surfaceCache.values()) m.dispose();
-  for (const m of emissiveCache.values()) m.dispose();
-  for (const m of miscCache.values()) m.dispose();
-  surfaceCache.clear();
-  emissiveCache.clear();
-  miscCache.clear();
-}
-
-/** Counts for the debug overlay. */
-export function materialStats(): { surfaces: number; emissives: number; misc: number } {
-  return { surfaces: surfaceCache.size, emissives: emissiveCache.size, misc: miscCache.size };
 }

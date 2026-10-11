@@ -227,11 +227,6 @@ export function releaseAssetTexture(rel: string): void {
   });
 }
 
-/** True when a file is known to be missing or undecodable this session. */
-export function assetFailed(rel: string): boolean {
-  return failed.has(rel);
-}
-
 // ---------------------------------------------------------------------------
 // Preloading
 // ---------------------------------------------------------------------------
@@ -285,11 +280,6 @@ export async function preloadAssets(
     total = 0;
   }
   return { ok: list.length - missing.length, missing };
-}
-
-/** Files still in flight across every preload call. */
-export function assetsPending(): number {
-  return Math.max(0, total - done);
 }
 
 /** Counts for the debug overlay and checkers. */

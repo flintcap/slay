@@ -19,7 +19,7 @@
  */
 
 import * as THREE from 'three';
-import type { BiomeDef, DungeonLevel, DungeonRoom, PropPlacement, Rng } from '../types';
+import type { BiomeDef, DungeonLevel, PropPlacement, Rng } from '../types';
 import { Noise, clamp, lerp } from '../art/Noise';
 import { biomeArt, wallKitOf, type BiomeArt, type FloorVariant, type WallKit } from './Biomes';
 import {
@@ -617,11 +617,9 @@ export class DungeonMesh {
   private readonly lights: THREE.PointLight[] = [];
   private readonly flames: FlameMesh[] = [];
 
-  private poolMesh: THREE.InstancedMesh | null = null;
   /** The level's animated liquid, if it has any liquid tiles. */
   private liquid: LiquidSurface | null = null;
   private drips: Drips | null = null;
-  private shafts: THREE.Mesh | null = null;
   private shaftMat: THREE.MeshBasicMaterial | null = null;
 
   private readonly ownedGeo: THREE.BufferGeometry[] = [];
@@ -2187,7 +2185,6 @@ export class DungeonMesh {
     if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
     inst.computeBoundingSphere();
     this.root.add(inst);
-    this.poolMesh = inst;
   }
 
   // --- light pool ---------------------------------------------------------
@@ -2311,7 +2308,6 @@ export class DungeonMesh {
     mesh.renderOrder = 5;
     mesh.castShadow = false;
     mesh.receiveShadow = false;
-    this.shafts = mesh;
     this.root.add(mesh);
   }
 
@@ -2577,8 +2573,6 @@ export class DungeonMesh {
     this.chunks.length = 0;
     this.torches.length = 0;
     this.flames.length = 0;
-    this.poolMesh = null;
-    this.shafts = null;
     this.shaftMat = null;
   }
 }

@@ -8,6 +8,7 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { PMREMGenerator } from 'three';
 import type { GameSettings } from '../types';
+import { setAssetAnisotropy } from './Assets';
 
 /**
  * Colour-grade / lens pass.
@@ -543,6 +544,8 @@ export class Renderer {
     this.quality = QUALITY[name];
     this.gl.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pixelRatioCap));
     this.gl.shadowMap.enabled = this.quality.shadows;
+    // Every asset texture, the world sets included, now and later.
+    setAssetAnisotropy(this.quality.anisotropy);
     this.composer.dispose();
     this.buildComposer();
 

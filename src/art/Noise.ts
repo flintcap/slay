@@ -288,19 +288,9 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-export function smootherstep(edge0: number, edge1: number, x: number): number {
-  const t = clamp01((x - edge0) / (edge1 - edge0 || 1e-6));
-  return t * t * t * (t * (t * 6 - 15) + 10);
-}
-
 /** Remap from one range to another without clamping. */
 export function remap(v: number, a0: number, a1: number, b0: number, b1: number): number {
   return b0 + ((v - a0) / (a1 - a0 || 1e-6)) * (b1 - b0);
-}
-
-/** Map [-1,1] noise output to [0,1]. */
-export function unipolar(v: number): number {
-  return v * 0.5 + 0.5;
 }
 
 /** Cheap deterministic hash for per-pixel grain, no table lookup. */

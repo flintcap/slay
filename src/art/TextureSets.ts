@@ -99,7 +99,6 @@ export interface SetTextures {
 }
 
 const resident = new Map<TextureSetName, SetTextures>();
-let anisotropy = 4;
 
 function file(name: TextureSetName, map: 'albedo' | 'normal' | 'emissive'): string {
   return `textures/world/${name}/${map}.webp`;
@@ -110,17 +109,13 @@ export function setTextures(name: TextureSetName): SetTextures {
   const hit = resident.get(name);
   if (hit) return hit;
   const info: TextureSetInfo = TEXTURE_SETS[name];
-  const albedo = loadTexture(file(name, 'albedo'), { srgb: true, fallback: info.avg, fallbackAlpha: 128, anisotropy });
+  const albedo = loadTexture(file(name, 'albedo'), { srgb: true, fallback: info.avg, fallbackAlpha: 128 });
   // Flat normal, mid roughness.
-  const normal = loadTexture(file(name, 'normal'), { srgb: false, fallback: 0x8080ff, fallbackAlpha: 200, anisotropy });
-  const emissive = info.emissive ? loadTexture(file(name, 'emissive'), { srgb: true, fallback: 0x000000, anisotropy }) : null;
+  const normal = loadTexture(file(name, 'normal'), { srgb: false, fallback: 0x8080ff, fallbackAlpha: 200 });
+  const emissive = info.emissive ? loadTexture(file(name, 'emissive'), { srgb: true, fallback: 0x000000 }) : null;
   const out = { albedo, normal, emissive };
   resident.set(name, out);
   return out;
-}
-
-export function setTextureAnisotropy(n: number): void {
-  anisotropy = n;
 }
 
 /** Every file a set needs, for the preloader. */
