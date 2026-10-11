@@ -8,6 +8,7 @@
  *   SLAY_PORT=4332 timeout 2700 node tools/shoot-looks.mjs --out=shots/qa-looks --biomes=crypt,hell
  *   ... --class=ranger   the hero (default warden)
  *   ... --wait=90        frames to let the monsters come on before the shot
+ *   ... --spot=water     stand on a shore instead of the busiest room
  */
 import { mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -18,6 +19,8 @@ const OUT = path.resolve(arg('out', 'shots/qa-looks'));
 const BIOMES = String(arg('biomes', 'crypt')).split(',').filter(Boolean);
 const CLS = arg('class', 'warden');
 const WAIT = Number(arg('wait', 90));
+/** `water`: stand on a shore instead of in the busiest room. */
+const SPOT = arg('spot', 'monsters');
 mkdirSync(OUT, { recursive: true });
 
 const t0 = Date.now();
@@ -63,7 +66,7 @@ try {
   await page.evaluate((c) => window.SLAY.debug.makeCharacter(c, 20, 7), CLS);
   for (const b of BIOMES) {
     try {
-      const info = await page.evaluate(async (biome) => {
+      const info = await page.evaluate(async ([biome, spot]) => {
         const s = window.SLAY;
         await s.debug.previewBiome(biome, 8, false);
         const sc = s.engine.currentScene;
@@ -77,9 +80,29 @@ try {
           return (sc.enemies ?? []).filter((e) => Math.hypot(e.root.position.x - w.x, e.root.position.z - w.z) < 14).length;
         };
         const r = [...rooms].sort((a, b) => near(b) - near(a))[0] ?? sc.level.rooms[0];
-        s.debug.warpTo({ x: Math.round(r.center.x), y: Math.round(r.center.y) });
+        let to = { x: Math.round(r.center.x), y: Math.round(r.center.y) };
+        if (spot === 'water') {
+          // A water tile with about half water round it, to look at a shore.
+          const L = sc.level;
+          const W = L.width;
+          const T_WATER = 4;
+          let best = Infinity;
+          for (let y = 3; y < L.height - 3; y++) {
+            for (let x = 3; x < W - 3; x++) {
+              if (L.tiles[y * W + x] !== T_WATER) continue;
+              let n = 0;
+              for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (L.tiles[(y + dy) * W + x + dx] === T_WATER) n++;
+              const score = Math.abs(n - 24);
+              if (score < best) {
+                best = score;
+                to = { x, y };
+              }
+            }
+          }
+        }
+        s.debug.warpTo(to);
         return { enemies: (sc.enemies ?? []).length, kinds: [...new Set((sc.enemies ?? []).map((e) => e.def?.id))].slice(0, 12) };
-      }, b);
+      }, [b, SPOT]);
       log(`${b}: ${JSON.stringify(info)}`);
       await probe();
       await frames(page, 20);

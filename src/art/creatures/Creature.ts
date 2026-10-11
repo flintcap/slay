@@ -66,6 +66,9 @@ export function rankTier(rank: string | undefined): number {
  * silhouette's edge, so the rank reads at a glance and the body underneath
  * stays the body.
  */
+/** The faint edge on unranked monsters (dimmer and greyer than any rank's). */
+const NORMAL_RIM = { rim: 0x56607a, strength: 0.32 };
+
 const RANK_RIM: Record<string, { rim: number; strength: number; glow: number }> = {
   normal: { rim: 0x000000, strength: 0, glow: 1 },
   champion: { rim: 0x6f8cff, strength: 0.55, glow: 1.25 },
@@ -194,8 +197,10 @@ export function instanceCreature(look: CreatureLook, scale: number, opts: BuildO
     sm.material = creatureMaterial({
       ...def,
       scale: bucket,
-      rim: tier ? rr.rim : def.rim,
-      rimStrength: tier ? rr.strength : def.rimStrength,
+      // Plain monsters get a faint cold edge so they still read as shapes
+      // out past the torchlight; ranked ones keep their coloured rims.
+      rim: tier ? rr.rim : def.rim ?? NORMAL_RIM.rim,
+      rimStrength: tier ? rr.strength : def.rim !== undefined ? def.rimStrength : NORMAL_RIM.strength,
       glowIntensity: (def.glowIntensity ?? 2.4) * rr.glow,
     });
   });

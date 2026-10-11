@@ -47,11 +47,27 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
    gaunt king's ragged. Before: `big-*.png`; after: `boss3/`, `boss4/`,
    `boss5/`.
 5. Fights: telegraph rings and pools crowd round the hero in packs; bright
-   white-hot rims. Effects probe in `run*.log`.
+   white-hot rims (hell: hellhound breath cones drew a huge glowing star).
+   PARTLY FIXED: telegraph edges now keep the attack's colour and only run
+   white-hot as the strike lands (`Ground.ts`). Sizes are gameplay, left.
 6. Monsters away from the hero's light read as black silhouettes (crypt,
    dark forest).
 7. Item icons: good overall (`icons.png`, `icons2/`). Ward of Aeon is a
    plain slab; kraken shell icon looks like plate mail.
+8. FIXED. Robes and skirts (lich, void herald, gaunt king, prophet, cultist
+   bosses) were flat boards: now ragged strips of uneven length (`skirt`).
+   After: `skirt/`.
+9. FIXED. Painted veins finer than the mesh read as camouflage blotches
+   (brimstone hulk, balor, hellhound): drawn coarser now (`Bake.ts`).
+   Before: `fam/game-family-demon.png`; after: `veins2/`.
+10. FIXED. Rune guardian was a floating crate: chin, cheek flanges, stone
+   horns. Mercury construct: drips, beads, eye pits, pools. After: `cons/`.
+11. Hell (burning steppe): a glowing square grid on the ground. Outdoor
+   vein quads were flat per tile over rolling ground: now draped on the
+   terrain in quarters. Outdoor pools now sit below the bank with the bank
+   carried under them, so the shore curves. (Check `fix1/`.)
+12. Foundry: the hero warped onto a forge prop (render tool only). Black
+   wall blocks with orange rims read fine.
 
 ## Next up
 
