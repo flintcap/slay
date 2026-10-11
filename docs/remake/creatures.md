@@ -84,11 +84,14 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 
 ## Next up
 
-1. Constructs (family construct, 13 ids), then elementals (12),
-   aberrations (11), plants (10), oozes (10). One `Look<Family>.ts` each,
-   registered in `Looks.ts`. Demons are done in `LookDemon.ts` (its
-   `fiendLook`, `demonWings`, `horns`, `eyesAt`, `backSpines` are exported
-   for reuse). Then tick "Demons, elementals and the rest".
+1. Aberrations (family aberration, 11 ids), plants (10), oozes (10). One
+   `Look<Family>.ts` each, registered in `Looks.ts`. Done so far: demons
+   (`LookDemon.ts`: `fiendLook`, `demonWings`, `horns`, `eyesAt`,
+   `backSpines`, `flames`), constructs (`LookConstruct.ts`: `botLook`,
+   `floatLook`, `gear`, `lens`, `mechArms`, `mechLegs`, `shield`),
+   elementals (`LookElemental.ts`: `walkLook`, `wispLook`, `fire`, `bolt`,
+   `crystals`, `facet`, `prism`, `drips`). Then tick "Demons, elementals
+   and the rest".
 2. Then the 24 bosses (4 to 6 m in game).
 3. Corpses that stay (a static skinned copy left at deathT 1, capped), rank
    rims to match nameplates (champion 0x6f8cff, elite 0xf5d76e, rare
@@ -131,4 +134,8 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 - `node <scratch>/run-ssr.mjs <scratch>/cr_trace2.ts <id> <bone> <step>`
   replays check-monster-anim and prints one bone's per-frame jump (keep a
   copy of it in the scratchpad if you need it; it is not in the repo).
+- Some scans render dark under a tint (`flesh`, `stone`): for a true
+  colour use `ice` or `crystal` with a `rough` override on the mat, or
+  paint `base` above 1.
+- Floater orbits use spin slot 3; swarm motes use slots 8 and up.
 - Do not change monster stats or counts. Never make monsters weaker or fewer.
