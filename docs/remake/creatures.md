@@ -15,7 +15,7 @@ Remake from nothing.
   frame events to `CONTRACTS.md`.
 - [x] Undead and humanoid foes. (wip(creatures): humanoid looks (goblins, bandits, cultists, priests, zealots, captain), crossbow aim, capes and tunics) Skeletons, zombies, ghouls, wraiths,
   cultists, bandits, mummies, whatever the list holds.
-- [ ] Beasts and insects. Wolves, spiders, bats, scorpions, hive things,
+- [x] Beasts and insects. (wip(creatures): insect looks (drones, hornets, wasps, nurse, beetles, mantis, reaver, tick, spinner, brood spawn, acid larva), soft IK reach, jolt-free foot swing) Wolves, spiders, bats, scorpions, hive things,
   swamp creatures.
 - [ ] Demons, elementals and the rest. Imps, hellhounds, golems, frost and
   fire things, void things.
@@ -84,12 +84,12 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 
 ## Next up
 
-1. Insects (`LookBug.ts`, family insect, 13 ids incl. spiders and acid
-   larva): many-leg rig and `PoseBug.ts`. `acid_larva` is the one old body
-   that fails check-monster-anim (run:tail 0.38); its remake fixes that.
-   Then tick "Beasts and insects" (beasts are in `LookBeast.ts`).
-2. Then demons, constructs, elementals, aberrations, plants, oozes, then the
-   24 bosses.
+1. Constructs (family construct, 13 ids), then elementals (12),
+   aberrations (11), plants (10), oozes (10). One `Look<Family>.ts` each,
+   registered in `Looks.ts`. Demons are done in `LookDemon.ts` (its
+   `fiendLook`, `demonWings`, `horns`, `eyesAt`, `backSpines` are exported
+   for reuse). Then tick "Demons, elementals and the rest".
+2. Then the 24 bosses (4 to 6 m in game).
 3. Corpses that stay (a static skinned copy left at deathT 1, capped), rank
    rims to match nameplates (champion 0x6f8cff, elite 0xf5d76e, rare
    0xffa040), mini-boss flair, boss phase glow.
@@ -119,4 +119,16 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
   lunges never flip a knee.
 - Render one family: `SLAY_PORT=4325 timeout 900 node tools/creature-sheet.mjs lineup --ids=family:<f> --out=<scratch>`;
   `side` and `big` and `poses` sheets take the same ids.
+- Crossfades keep momentum: a faded-from pose coasts on with the turn it
+  had and eases to a stop (`FADE_COAST`), so a fade never freezes a limb.
+- Phases whose rate changes with speed go through `a.spin(slot, rate)`
+  (integrated), never `time * rate`, which jumps when the rate changes.
+  Slots in use: 0 flyer wingbeat, 1 quadruped tail wag, 2 serpent drift.
+- Glowing cracks (`veins` paint) look like blotches on coarse meshes: keep
+  `cut` at 0.93 or more and glow at 0.7 or less.
+- A biped's second arm pair (`arms2`) shadows the first (`echo`) in
+  `PoseBiped.ts`.
+- `node <scratch>/run-ssr.mjs <scratch>/cr_trace2.ts <id> <bone> <step>`
+  replays check-monster-anim and prints one bone's per-frame jump (keep a
+  copy of it in the scratchpad if you need it; it is not in the repo).
 - Do not change monster stats or counts. Never make monsters weaker or fewer.
