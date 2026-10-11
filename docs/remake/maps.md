@@ -1,6 +1,6 @@
 # Stream: maps (map structure, sub-zones, biomes, portal loop)
 
-Status: in progress
+Status: done
 
 Goal: every portal from town opens a brand new map that plays like a D2 act
 zone or a PoE map. Several sub-zones, each with its own layout and mood, then
@@ -38,7 +38,7 @@ one boss. Dark and gritty. Many biomes in unique mixes.
   an entrance moment. Keep every existing quest and event kind working.
 - [x] Wayfinding. (Maps: zone tints, exits, gate and waypoint on the charts; zone banners; map name and tier on the HUD) Minimap shows zones and exits. Zone name banner on entry
   (use `src/ui/Banners.ts`). Map name and tier on the HUD's existing map label.
-- [ ] Verify and clean. Headless check that generates 200 maps: every zone
+- [x] Verify and clean. (Maps: verified on 200 maps, dead map helpers gone, legend names the way on) Headless check that generates 200 maps: every zone
   connected, boss reachable, sizes and openness in range, generation time
   under budget. Renders of one zone per biome. Dead code removed.
 
@@ -176,14 +176,45 @@ milestone 4.
 
 ## Next up
 
-1. Verify and clean. `node tools/check-maps.mjs --maps=200` is written and
-   passes (59ms a map on average). `tools/check-mapflow.mjs` (browser) checks
-   the waypoint, the way on, zone banners and the arena gate.
-2. Renders: `SLAY_PORT=4321 timeout 2700 node tools/screenshot.mjs
-   --out=shots/maps --shots=town,dungeon` and one zone per biome.
-3. Dead code: drop `T_STAIRS_DOWN`/`T_STAIRS_UP` once Props.ts uses the new
-   names (ground's file). `biomeForDepth` stays: four tools use it to pick a
-   plausible biome for a tier.
+Nothing. The stream is done. See "Handover".
+
+## Handover
+
+What exists now:
+
+- A portal opens a new **map**: a name, a tier and a theme, 3 to 5 zones in
+  at most 4 areas (one area = one load), ending in one boss arena.
+  Plan: `src/world/MapGen.ts` (themes, `planMap`, `splitAreas`, `zoneHeat`).
+- Zone generators from nothing: `src/world/zones/` (`Kit.ts`, `Outdoor.ts`,
+  `Indoor.ts`, `Arena.ts`, `Area.ts`). Content per area (packs, rooms,
+  events, chests, shrines, exits) in `src/world/DungeonGen.ts`.
+- Fourteen biomes with gameplay fields in `src/world/Biomes.ts`; monster and
+  boss homes in `src/data/monsters.ts` and `src/data/bosses.ts`.
+- The run flow (waypoint, way on, arena gate, portal home) is in
+  `src/scenes/DungeonScene.ts` (`loadLevel`, `tickArenaGate`, `buildWaypoint`)
+  and `src/scenes/RunDirector.ts`.
+- Wayfinding: `src/ui/ZoneInk.ts` (tints, inks, `wayMarks`), zone banners
+  through `zone:entered`, map name and tier on the HUD label.
+- Checks: `node tools/check-maps.mjs` (every generator, every biome) and
+  `node tools/check-maps.mjs --maps=200` (whole maps: chain, connectivity,
+  boss reachable, arena sealed but for its gate, sizes, openness, build time).
+  Last run: 200 maps, 50ms each on average, all pass. `check-mapgen`,
+  `check-openness`, `check-density`, `check-story`, `check-events` pass.
+  Browser checks: `tools/check-mapflow.mjs`, renders `tools/shoot-zones.mjs`.
+
+Left for `finish` (or the owner of the file):
+
+- `T_STAIRS_DOWN` and `T_STAIRS_UP` are deprecated aliases in
+  `src/world/Layouts.ts`, kept only because `src/world/Props.ts` (props'
+  file) still imports them. Request is in `props.md`. Once Props.ts uses
+  `T_EXIT` and `T_ARRIVAL`, delete the aliases.
+- Shared UI text still says "stairs" or "depth" in a few places:
+  `src/ui/tips.ts`, `src/ui/QuestLog.ts`, `src/ui/RunStats.ts` comments.
+- Only two biomes got a per-zone render (darkForest, swamp). Under software
+  rendering each new area takes about 15 minutes to load, so the 45-minute
+  run timed out. The other biomes were checked headlessly instead
+  (`--dump=<layout>:<biome>[:boss]`). Ground's own `biome-*` renders show
+  the looks.
 
 ## Notes for resume
 

@@ -67,6 +67,9 @@ light from below, heat haze, per-biome grades.
 
 ## Notes for resume
 
+- From maps: in the swamp zone render (`tools/shoot-zones.mjs`, tier 3) the
+  floating motes are so many and so bright that the frame washes out to white
+  and the ground is hard to read. Worth a look when you tune the swamp.
 - Renders are slow when three agents render at once (a 1920x1080 dungeon shot
   took 25 minutes). Use `--width=1280 --height=720` and at most three shots
   per run.
