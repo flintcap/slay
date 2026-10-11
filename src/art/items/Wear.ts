@@ -448,7 +448,15 @@ export function buildChest(P: Parts): void {
       }
       belt('second');
       P.add('trim', box(0.03, 0.026, 0.008, 0.003), { p: [0, T0 + 0.05, TD * 0.88] });
-      if (c.kind === 'studded') studs('trim', 6, 7, 0.0055);
+      if (c.kind === 'studded') {
+        // Big iron studs in rows, and riveted plates on the shoulders.
+        studs('trim', 6, 6, 0.0105);
+        for (const sd of [-1, 1]) {
+          const g = sphere(0.07, 12, 8, );
+          g.scale(1, 0.45, 0.9);
+          P.add('trim', g, { p: [sd * TW * 0.92, T0 + TH * 0.97, 0], r: [0, 0, -sd * 0.35] });
+        }
+      }
       if (c.kind === 'wyrmhide') {
         for (let r = 0; r < 7; r++) {
           for (let k = 0; k < 6; k++) {
@@ -773,7 +781,7 @@ export function buildBoots(P: Parts): void {
   const main: Slot = L.material === 'bone' ? 'bone' : 'main';
   const plated = ['greaves', 'war', 'myrmidon'].includes(c.kind);
   const spots: Array<{ p: V3; n: V3; s: number }> = [];
-  const shaftTop = c.kind === 'slippers' ? 0.07 : c.kind === 'scarabshell' ? 0.16 : plated || c.kind === 'gale' ? 0.3 : 0.24;
+  const shaftTop = c.kind === 'slippers' ? 0.07 : c.kind === 'scarabshell' ? 0.16 : c.kind === 'sharkskin' ? 0.19 : plated || c.kind === 'gale' ? 0.3 : 0.24;
   const r = c.kind === 'heavy' ? 0.05 : 0.045;
   const toe = c.kind === 'slippers' ? 'curl' : c.kind === 'wyrmhide' || c.kind === 'sharkskin' ? 'point' : plated ? 'square' : 'round';
   // The sole, the foot and the shaft.
@@ -793,7 +801,9 @@ export function buildBoots(P: Parts): void {
       P.add('second', torus(r * 1.1, 0.008, 5, 16), { p: [0, shaftTop, 0], r: [PI / 2, 0, 0] });
       break;
     case 'sharkskin':
-      P.add(main, slab([[0, 0], [0.04, 0.02], [0.012, 0.07], [0, 0.06]], 0.004), { p: [0, shaftTop * 0.55, -r * 0.95], r: [0, -PI / 2, 0] });
+      // A tall fin down the back and a folded cuff: low, sleek, grey.
+      P.add(main, slab([[0, 0], [0.04, 0.02], [0.012, 0.07], [0, 0.06]], 0.005), { p: [0, shaftTop * 0.35, -r * 0.95], r: [0, -PI / 2, 0], s: [1.7, 1.7, 1] });
+      P.add('second', lathe([[r * 1.06, shaftTop - 0.035], [r * 1.22, shaftTop - 0.02], [r * 1.18, shaftTop + 0.006], [r * 1.04, shaftTop + 0.008]], 16, { sz: 1.05 }));
       for (let i = 0; i < 4; i++) P.add('dark', box(0.002, 0.03, 0.002), { p: [r * 0.95, 0.08 + i * 0.03, 0], r: [0.3, 0, 0] });
       break;
     case 'greaves':
@@ -837,6 +847,8 @@ export function buildBoots(P: Parts): void {
         P.add(main, sphere(0.012, 6, 4), aim(v3(Math.sin(a) * r * 1.02, y, Math.cos(a) * r * 1.02), v3(Math.sin(a), 0, Math.cos(a)), [1, 0.4, 1.2]));
       }
       for (let i = 0; i < 3; i++) P.add('bone', cone(0.006, 0.025, 4), { p: [(i - 1) * 0.015, 0.012, 0.205], r: [PI / 2, 0, 0] });
+      // A ridge of bone spines up the back of the shaft.
+      for (let i = 0; i < 4; i++) P.add('bone', horn(0.035 - i * 0.004, 0.008, 0.6, 5), { p: [0, 0.08 + i * 0.045, -r * 1.0], r: [-PI / 2 - 0.5, 0, 0] });
       break;
     }
     case 'gale': {

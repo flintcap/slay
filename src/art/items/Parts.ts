@@ -109,7 +109,8 @@ export class Parts {
       case 'dark':
         return itemSurface('metal.dark', { wear: Math.max(0.5, wear) });
       case 'bone':
-        return itemSurface('bone.pale', { wear });
+        // Bone pieces carry their own bone (and a set's colour); fittings on other things stay pale.
+        return itemSurface(L.material === 'bone' ? L.keys.main : 'bone.pale', { wear });
       case 'gold':
         return itemSurface('metal.gold', { wear: wear * 0.5 });
       case 'gem':

@@ -114,7 +114,9 @@ function limbGeo(c: BowCut, s: number, zOff = 0, scale = 1): THREE.BufferGeometr
 export function buildBow(P: Parts): void {
   const L = P.look;
   const c = cutOf(BOW_CUTS, BOW_BY_SHAPE, L, 'bow.short');
-  const limbSlot: Slot = c.limb === 'wood' && L.material === 'metal' ? 'main' : c.limb === 'wood' ? (L.material === 'bone' ? 'bone' : 'main') : c.limb;
+  // A unique's limbs are made of its own main material, whatever the base's are.
+  const limbSlot: Slot =
+    c.limb === 'wood' && L.material === 'metal' ? 'main' : c.limb === 'wood' ? (L.material === 'bone' ? 'bone' : 'main') : L.design?.main && c.limb === 'bone' ? 'main' : c.limb;
   // The riser and grip.
   grip(P, -0.06, 0.06, 0.016, c.wrap);
   const rs: Slot = c.limb === 'crystal' ? 'trim' : limbSlot;
@@ -150,8 +152,8 @@ export function buildBow(P: Parts): void {
         const a = limbPoint(c, i / n + 0.02, s);
         const b = limbPoint(c, (i + 1) / n - 0.02, s);
         const pts = curve([a, limbPoint(c, (i + 0.5) / n, s), b], 6);
-        P.add('bone', tube(pts, (t) => c.w * (1 - 0.5 * (i + t) / n) * (1 + 0.2 * Math.sin(t * PI)), 7));
-        P.add('bone', sphere(c.w * (1.15 - 0.5 * i / n), 7, 5), { p: [b.x, b.y, b.z] });
+        P.add(limbSlot, tube(pts, (t) => c.w * (1 - 0.5 * (i + t) / n) * (1 + 0.2 * Math.sin(t * PI)), 7));
+        P.add(limbSlot, sphere(c.w * (1.15 - 0.5 * i / n), 7, 5), { p: [b.x, b.y, b.z] });
       }
     } else {
       P.add(limbSlot, limbGeo(c, s));

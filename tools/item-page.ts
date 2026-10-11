@@ -229,7 +229,7 @@ function iconPixels(e: Entry): Float32Array {
   const big = document.createElement('canvas');
   big.width = big.height = 128;
   const bx = big.getContext('2d')!;
-  drawItemIcon(bx, { baseId: e.baseId, rarity: e.rarity, visual: e.visual, uniqueId: e.uniqueId, setId: e.setId });
+  drawItemIcon(bx, { baseId: e.baseId, rarity: e.rarity, visual: e.visual, uniqueId: e.uniqueId, setId: e.setId }, { bare: true });
   const small = document.createElement('canvas');
   small.width = small.height = 48;
   const sx = small.getContext('2d', { willReadFrequently: true })!;
@@ -280,6 +280,8 @@ function distinctCheck(f: Record<string, string>): string {
     return v;
   };
   const compare = (group: string, list: Entry[]): void => {
+    // Runes of one tier share their stone by design (as in D2); the glyph alone must differ.
+    const floor = group === 'rune' ? min * 0.5 : min;
     let worst = Infinity;
     let pair = '';
     for (let i = 0; i < list.length; i++) {
@@ -289,7 +291,7 @@ function distinctCheck(f: Record<string, string>): string {
           worst = d;
           pair = `${list[i]!.label} / ${list[j]!.label}`;
         }
-        if (d < min) fails.push(`${group}: ${list[i]!.label} and ${list[j]!.label} look the same (${d.toFixed(4)})`);
+        if (d < floor) fails.push(`${group}: ${list[i]!.label} and ${list[j]!.label} look the same (${d.toFixed(4)})`);
       }
     }
     if (list.length > 1) lines.push(`${group.padEnd(24)} ${String(list.length).padStart(3)}  closest ${worst.toFixed(4)}  ${pair}`);
@@ -320,7 +322,9 @@ function distinctCheck(f: Record<string, string>): string {
     specials += list.length;
     if (list.length > 1) compare(`on ${baseId}`, list);
     for (const e of list) {
-      const plain: Entry = { label: `plain ${baseId}`, visual: b.visual, rarity: e.rarity, baseId };
+      // A set piece always carries its set, so it is judged against a rare of its base;
+      // a unique against its base at the unique's own rarity.
+      const plain: Entry = { label: `plain ${baseId}`, visual: b.visual, rarity: e.rarity === 'set' ? 'rare' : e.rarity, baseId };
       const d = pixelDiff(px(e), px(plain));
       if (d < worstPlain) {
         worstPlain = d;
@@ -375,7 +379,20 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     const from = Number(f.from ?? 0);
     const max = Number(f.max ?? 48);
     let entries: Entry[];
-    if (f.uniques) {
+    if (f.ids) {
+      // Each named unique (uq.*) or set (set.*:baseId) beside its plain base at the same rarity.
+      entries = [];
+      for (const id of f.ids.split('+')) {
+        const u = UNIQUES.find((x) => x.id === id);
+        const sp = id.startsWith('set.') ? SET_PIECES.find((x) => x.setId === id.split(':')[0] && (!id.includes(':') || x.baseId === id.split(':')[1])) : undefined;
+        const baseId = u?.baseId ?? sp?.baseId;
+        const b = baseId ? baseById.get(baseId) : undefined;
+        if (!b) continue;
+        const rarity = (u?.rarity ?? 'set') as ItemRarity;
+        entries.push({ label: u?.name ?? sp!.name, visual: b.visual, rarity, baseId: b.id, uniqueId: u?.id, setId: sp?.setId });
+        entries.push({ label: `plain ${b.name}`, visual: b.visual, rarity: rarity === 'set' ? 'rare' : rarity, baseId: b.id });
+      }
+    } else if (f.uniques) {
       entries = UNIQUES.filter((u) => baseById.has(u.baseId) && (!f.cat || baseById.get(u.baseId)!.category === f.cat)).map((u) => ({
         label: u.name,
         visual: baseById.get(u.baseId)!.visual,

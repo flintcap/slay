@@ -179,6 +179,21 @@ export function keyColor(key: string): number {
   return mul(16) | mul(8) | mul(0);
 }
 
+/** A surface key washed toward a set's colour: named outright on colourless scans, multiplied on coloured ones. */
+function motifPalette(key: string, color: number): string {
+  const [pal, tint] = key.split('|');
+  const def = resolveSurface(pal!);
+  const hex = (n: number) => `0x${n.toString(16).padStart(6, '0')}`;
+  if (def.base !== undefined) return `${pal}|${hex(mixColor(keyColor(key), color, 0.38))}`;
+  const t = tint !== undefined && Number.isFinite(Number(tint)) ? Number(tint) : 0xffffff;
+  return `${pal}|${hex(mulColor(t, washed(color, 0.6)))}`;
+}
+
+function mixColor(a: number, b: number, t: number): number {
+  const ch = (s: number) => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t) << s;
+  return ch(16) | ch(8) | ch(0);
+}
+
 function washed(color: number, amount: number): number {
   const ch = (s: number) => Math.round(255 + (((color >> s) & 255) - 255) * amount) << s;
   return ch(16) | ch(8) | ch(0);
@@ -210,7 +225,9 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
   const design = item.uniqueId ? UNIQUE_DESIGNS[item.uniqueId] : undefined;
   const motif = isSet ? SET_MOTIFS[item.setId ?? ''] ?? fallbackMotif(item.setId ?? item.baseId, h) : undefined;
 
-  const palette = design?.main ?? (visual.palette || 'metal.steel');
+  // Set pieces wear their set's colour on the main surface too, so a set piece
+  // never reads as the plain base with a different trim.
+  const palette = design?.main ?? (motif ? motifPalette(visual.palette || 'metal.steel', motif.color) : visual.palette || 'metal.steel');
   const pal0 = palette.split('|')[0]!;
   const material = materialOf(palette);
   const tier = gear.baseTier;
@@ -226,7 +243,9 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
 
   // Grips go from rawhide to fine leather as the base climbs.
   const second = design?.second ?? motif?.second ?? (material === 'leather' ? pal0 : tier >= 2 || rank >= 2 ? 'leather.fine' : 'leather.worn');
-  const wood = material === 'wood' ? palette : design?.second?.startsWith('wood') ? design.second : tier >= 2 ? 'wood.polished' : tier >= 1 ? 'wood.oak|0x7a5a3a' : 'wood.oak';
+  const wood0 = material === 'wood' ? palette : design?.second?.startsWith('wood') ? design.second : tier >= 2 ? 'wood.polished' : tier >= 1 ? 'wood.oak|0x7a5a3a' : 'wood.oak';
+  // A set's hafts and staves take its colour as well.
+  const wood = motif && material !== 'wood' ? motifPalette(wood0, motif.color) : wood0;
   const cloth = motif?.second.startsWith('cloth') ? motif.second : design?.second?.startsWith('cloth') ? design.second : material === 'cloth' ? palette : rank >= 2 ? 'cloth.banner' : 'cloth.undyed';
 
   const glow =

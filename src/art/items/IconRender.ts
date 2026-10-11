@@ -49,6 +49,11 @@ interface Pose {
   roll: number;
   /** Fill of the frame: 1 touches the edges. */
   fill: number;
+  /**
+   * Smallest half-height of the frame, in metres. Gems are framed at one
+   * scale, so a chipped stone shows small and a perfect one fills the slot.
+   */
+  ref?: number;
 }
 
 function poseFor(family: ItemFamily, size: THREE.Vector3): Pose {
@@ -56,7 +61,8 @@ function poseFor(family: ItemFamily, size: THREE.Vector3): Pose {
   if (family === 'quiver') return { yaw: 0.4, pitch: 0.1, roll: -0.45, fill: 0.9 };
   if (DIAGONAL.has(family)) return { yaw: 0.4, pitch: 0.08, roll: -Math.PI / 4, fill: 0.98 };
   if (family === 'ring') return { yaw: 0.3, pitch: 0.55, roll: 0, fill: 0.72 };
-  if (family === 'gem' || family === 'rune' || family === 'charm' || family === 'material') return { yaw: 0.45, pitch: 0.3, roll: 0, fill: 0.7 };
+  if (family === 'gem') return { yaw: 0.45, pitch: 0.3, roll: 0, fill: 0.7, ref: 0.1 };
+  if (family === 'rune' || family === 'charm' || family === 'material') return { yaw: 0.45, pitch: 0.3, roll: 0, fill: 0.7 };
   if (family === 'amulet' || family === 'potion') return { yaw: 0.35, pitch: 0.15, roll: 0, fill: 0.84 };
   // Circlets and crowns are low rings: look down into them.
   if (family === 'helm' && size.y < size.x * 0.5) return { yaw: 0.2, pitch: 0.7, roll: 0, fill: 0.86 };
@@ -148,7 +154,7 @@ function renderModel(spec: IconSpec): Shot | null {
   tmpBox.setFromObject(holder);
   const c = tmpBox.getCenter(tmpC);
   const s = tmpBox.getSize(tmpV);
-  const half = Math.max(1e-3, Math.max(s.x, s.y) / 2 / pose.fill);
+  const half = Math.max(1e-3, Math.max(s.x, s.y) / 2 / pose.fill, pose.ref ?? 0);
   cam.left = -half;
   cam.right = half;
   cam.top = half;
@@ -190,8 +196,9 @@ function fallback(out: Ctx, rc: number): void {
  * Draws the icon for one item onto `out`, a clear 128px canvas context.
  * Synchronous: builds the model, renders it, composites the rarity look.
  */
-export function drawItemIcon(out: Ctx, spec: IconSpec): void {
-  const rank = RANK[spec.rarity] ?? 0;
+export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } = {}): void {
+  // `bare` draws the model alone, with no rarity light: for comparing pictures.
+  const rank = opts.bare ? 0 : RANK[spec.rarity] ?? 0;
   const rc = RARITY_COLOR[spec.rarity] ?? 0xc8c8c8;
   let shot: Shot | null = null;
   try {
@@ -245,6 +252,10 @@ export function drawItemIcon(out: Ctx, spec: IconSpec): void {
   layer.x.imageSmoothingEnabled = true;
   layer.x.imageSmoothingQuality = 'high';
   layer.x.drawImage(renderer.domElement, 0, 0, ICON_SIZE, ICON_SIZE);
+  if (opts.bare) {
+    out.drawImage(layer.c, 0, 0);
+    return;
+  }
   const haloC = rank >= 3 ? glowC : rc;
   composite(out, layer.c, {
     shadow: 0.75,

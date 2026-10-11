@@ -199,16 +199,35 @@ const STROKES: Array<[V2, V2] | 'loop'> = [
   'loop',
 ];
 
-/** Stroke sets with two or three strokes, stepped through so neighbours differ. */
+/**
+ * Stroke sets of three strokes, chosen so runes of one tier (one stone shape)
+ * share as few strokes as possible: each rune takes the set furthest from the
+ * ones its tier already uses, then from all runes so far.
+ */
 const GLYPHS: number[] = (() => {
-  const masks: number[] = [];
-  for (let m = 0; m < 1 << STROKES.length; m++) {
+  const bits = (m: number) => {
     let c = 0;
     for (let b = 0; b < STROKES.length; b++) if (m & (1 << b)) c++;
-    if (c === 2 || c === 3) masks.push(m);
-  }
+    return c;
+  };
+  const masks: number[] = [];
+  for (let m = 0; m < 1 << STROKES.length; m++) if (bits(m) === 3) masks.push(m);
   const out: number[] = [];
-  for (let i = 0; i < 33; i++) out.push(masks[(i * 37 + 5) % masks.length]!);
+  for (let i = 0; i < 33; i++) {
+    const tier = out.slice(Math.floor(i / 6) * 6, i);
+    let best = masks[0]!;
+    let score = -1;
+    for (const m of masks) {
+      if (out.includes(m)) continue;
+      const near = (list: number[]) => list.reduce((lo, o) => Math.min(lo, bits(m ^ o)), 12);
+      const sc = near(tier) * 16 + near(out);
+      if (sc > score) {
+        score = sc;
+        best = m;
+      }
+    }
+    out.push(best);
+  }
   return out;
 })();
 
@@ -253,8 +272,8 @@ export function buildRune(P: Parts): void {
   if (tier === 5) P.add('gold', rim(outline, 0, 0.004));
   if (tier === 5) for (const [x, y] of circle2(0, 0, 1, 8)) P.add('gold', sphere(0.004, 6, 4), { p: [x * W * 1.1, y * H * 1.05, D * 0.5] });
   // The glyph: a carved groove with light inside.
-  const gw = W * 0.5;
-  const gh = H * 0.62;
+  const gw = W * 0.62;
+  const gh = H * 0.72;
   const z = D * 0.5 + 0.0005;
   const stroke = (a: V2, b: V2) => {
     const ax = a[0] * gw;
@@ -263,18 +282,21 @@ export function buildRune(P: Parts): void {
     const by = b[1] * gh;
     const len = Math.hypot(bx - ax, by - ay);
     const ang = Math.atan2(by - ay, bx - ax);
-    P.add('dark', box(len + 0.006, 0.0105, 0.002, 0), { p: [(ax + bx) / 2, (ay + by) / 2, z - 0.0006], r: [0, 0, ang] });
-    P.add('glow', box(len + 0.002, 0.0055, 0.002, 0), { p: [(ax + bx) / 2, (ay + by) / 2, z + 0.0003], r: [0, 0, ang] });
+    P.add('dark', box(len + 0.007, 0.0145, 0.002, 0), { p: [(ax + bx) / 2, (ay + by) / 2, z - 0.0006], r: [0, 0, ang] });
+    P.add('glow', box(len + 0.003, 0.0078, 0.002, 0), { p: [(ax + bx) / 2, (ay + by) / 2, z + 0.0003], r: [0, 0, ang] });
   };
   stroke([0, -1], [0, 1]);
   const mask = GLYPHS[idx % GLYPHS.length]!;
   STROKES.forEach((st, b) => {
     if (!(mask & (1 << b))) return;
     if (st === 'loop') {
-      P.add('dark', torus(gw * 0.32, 0.005, 4, 16), { p: [-gw * 0.45, gh * 0.1, z - 0.0006], s: [1, 1, 0.2] });
-      P.add('glow', torus(gw * 0.32, 0.0026, 4, 16), { p: [-gw * 0.45, gh * 0.1, z + 0.0004], s: [1, 1, 0.4] });
+      P.add('dark', torus(gw * 0.32, 0.007, 4, 16), { p: [-gw * 0.45, gh * 0.1, z - 0.0006], s: [1, 1, 0.2] });
+      P.add('glow', torus(gw * 0.32, 0.0038, 4, 16), { p: [-gw * 0.45, gh * 0.1, z + 0.0004], s: [1, 1, 0.4] });
     } else stroke(st[0], st[1]);
   });
+  // Its place in the tier, as glowing pips down the right-hand edge.
+  const place = (idx % 6) + 1;
+  for (let i = 0; i < place; i++) P.add('glow', sphere(0.0035, 6, 4), { p: [W * 0.74, gh * (0.55 - i * 0.22), z + 0.001] });
   frontAnchors(P, v3(), Math.max(W, H));
 }
 

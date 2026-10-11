@@ -18,7 +18,7 @@ and sets have their own shapes, colours and designs.
 - [x] Armour, shields and jewellery. (7fb0b32 "wip(items): shields, quivers, helms, body armour, gloves, boots, belts", c699d7b "wip(items): amulets, rings, charms, gems, runes, potions, materials") Ground models for every base. Helmets,
   chests, gloves, boots, belts, shields, rings, amulets, charms, gems,
   potions. Uniques and sets distinct.
-- [ ] Icons. Inventory art in the D2 and PoE style: rendered from the new 3D
+- [x] Icons. ("items: inventory icons rendered from the models; every base, unique and set piece draws its own") Inventory art in the D2 and PoE style: rendered from the new 3D
   models with good lighting, sized to the item's grid footprint, over a dark
   background. Uniques and sets readable at a glance.
 - [x] Ground drops. (3f858d9 "items: game builds every item from the new families; drops lie still on the floor") How items lie on the floor, their labels' look stays with
@@ -41,21 +41,19 @@ and sets have their own shapes, colours and designs.
 
 ## Checkers
 
-`check-items`, `check-jewelry`, `check-gear-visuals`, `check-dupe`,
+`check-items`, `check-jewelry`, `check-gear-visuals`, `check-dupe`, `check-item-icons`,
 `tools/art-sheet.mjs`. Add an "every base looks different" check (compare
 rendered icon hashes).
 
 ## Next up
 
-1. Icons rendered from the models: `src/art/items/IconRender.ts` (one shared
-   offscreen renderer, dark backdrop, sized to the grid footprint, cached
-   data URIs). Switch `src/art/Icons.ts` to it and keep its exports.
-2. The "every base looks different" check (hash rendered icons per base).
-3. Weapon textures: `tools/fetch-item-textures.mjs` pulls Poly Haven CC0
+1. Weapon textures: `tools/fetch-item-textures.mjs` pulls Poly Haven CC0
    into `/tmp/slay-downloads/items/`, writes WebP to
    `public/assets/textures/items/`, rows in `ASSETS.md`, `check-assets`.
    Then tick Weapons.
-4. Switch and clean: delete the old icon painters and builders, grep proof.
+2. Switch and clean: delete `IconArmor`, `IconWeapons`, `IconTrinkets`,
+   `ItemIconArt`, `IconKit` (nothing imports them now) and any old builders
+   left in `ItemModels.ts`; grep proof in the commit message.
 
 ## Notes for resume
 
@@ -79,5 +77,12 @@ rendered icon hashes).
 - Look at worn gear: `tools/hero-sheet.mjs` sheets `wear` (--slot --class
   --rarity --unique --set) and `dressed` (each class bare, starter, mid,
   elite, set, unique).
+- Icons: `src/art/items/IconRender.ts` (`drawItemIcon`), one shared WebGL
+  renderer, poses per family (long weapons on the diagonal, gems at one
+  fixed scale so grades show size). `Icons.ts` caches and schedules it.
+  `item-sheet.mjs icons` (--cat, --uniques, --sets, --ids=uq.x+set.y:base)
+  shows them; `check-item-icons.mjs` fails on look-alikes.
+- Set pieces tint their main surface and hafts toward the set colour
+  (`motifPalette` in ItemLook.ts); bone pieces use their own bone key.
 - heroes no longer reads ItemLook directly; items owns Armour, Cape,
   Garment and the clothing fields of Looks.
