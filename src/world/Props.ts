@@ -37,340 +37,12 @@ import { emissiveMaterial, surface } from '../art/Materials';
 import { displace, lathe, mergeGeometries, stoneBlock } from '../art/Meshes';
 import { webTexture } from '../fx/UtilityTextures';
 
-// ---------------------------------------------------------------------------
-// Definitions
-// ---------------------------------------------------------------------------
-
-export type PropPlacementKind = 'floor' | 'wall' | 'feature' | 'liquid' | 'ceiling' | 'detail';
-
-export interface PropLightSpec {
-  color: number;
-  intensity: number;
-  distance: number;
-  /** Height above the prop's base, in world units. */
-  height: number;
-  /** 0 = steady, 1 = wild. Drives the noise flicker in the builder. */
-  flicker: number;
-  /** Forward offset from the prop origin along its facing. */
-  forward: number;
-}
-
-export interface PropDef {
-  kind: string;
-  placement: PropPlacementKind;
-  /** Collision radius in world units. 0 = walk-through. */
-  radius: number;
-  blocks: boolean;
-  variants: number;
-  /** ±jitter applied to instance scale. */
-  scaleJitter: number;
-  /** Random yaw allowed (floor props) vs snapped to the wall normal. */
-  freeRotate: boolean;
-  castShadow: boolean;
-  receiveShadow: boolean;
-  light?: PropLightSpec;
-  /** Distance from tile centre toward the wall, for wall-mounted props. */
-  wallOffset?: number;
-  /** Default interact payload when placed as an interactable. */
-  interact?: string;
-  /** Renders with additive/transparent blending (webs, void rifts, flames). */
-  ghost?: boolean;
-}
-
-function P(kind: string, o: Partial<PropDef>): PropDef {
-  return {
-    kind,
-    placement: 'floor',
-    radius: 0.35,
-    blocks: false,
-    variants: 3,
-    scaleJitter: 0.16,
-    freeRotate: true,
-    castShadow: true,
-    receiveShadow: true,
-    ...o,
-  };
-}
-
-/**
- * Ground detail: too small to matter, too many to leave out.
- *
- * No collision, no shadow, no blocking. The placement pass is allowed to be
- * far more generous with these than with clutter precisely because none of
- * that is true of them.
- */
-function DETAIL(kind: string): PropDef {
-  return P(kind, {
-    placement: 'detail',
-    radius: 0,
-    blocks: false,
-    variants: 4,
-    scaleJitter: 0.3,
-    castShadow: false,
-    receiveShadow: true,
-  });
-}
-
-const TORCH_LIGHT = (color: number, i = 6.5, d = 13, flicker = 1): PropLightSpec => ({
-  color,
-  intensity: i,
-  distance: d,
-  height: 2.05,
-  flicker,
-  forward: 0.28,
-});
-
-export const PROP_DEFS: Record<string, PropDef> = {
-  // --- wall lights -------------------------------------------------------
-  torch: P('torch', {
-    placement: 'wall',
-    radius: 0,
-    variants: 2,
-    freeRotate: false,
-    wallOffset: 0.72,
-    light: TORCH_LIGHT(0xff8a3c, 6.5, 13, 1),
-  }),
-  forgeSconce: P('forgeSconce', {
-    placement: 'wall',
-    radius: 0,
-    variants: 2,
-    freeRotate: false,
-    wallOffset: 0.7,
-    light: TORCH_LIGHT(0xff6a1e, 8.5, 15, 0.85),
-  }),
-  templeLantern: P('templeLantern', {
-    placement: 'wall',
-    radius: 0,
-    variants: 2,
-    freeRotate: false,
-    wallOffset: 0.68,
-    light: TORCH_LIGHT(0xffd27a, 5.5, 14, 0.45),
-  }),
-  iceLantern: P('iceLantern', {
-    placement: 'wall',
-    radius: 0,
-    variants: 2,
-    freeRotate: false,
-    wallOffset: 0.68,
-    light: TORCH_LIGHT(0x9fdcff, 5.0, 14, 0.3),
-  }),
-  glowShroom: P('glowShroom', {
-    placement: 'wall',
-    radius: 0,
-    variants: 3,
-    freeRotate: false,
-    wallOffset: 0.66,
-    castShadow: false,
-    light: TORCH_LIGHT(0x53f0c8, 4.2, 11, 0.25),
-  }),
-  eggSac: P('eggSac', {
-    placement: 'wall',
-    radius: 0.3,
-    variants: 3,
-    freeRotate: false,
-    wallOffset: 0.62,
-    light: TORCH_LIGHT(0xffc23c, 4.8, 10, 0.35),
-  }),
-  voidFlame: P('voidFlame', {
-    placement: 'wall',
-    radius: 0,
-    variants: 2,
-    freeRotate: false,
-    wallOffset: 0.7,
-    light: TORCH_LIGHT(0xff3ce0, 6.2, 13, 0.7),
-  }),
-  brazier: P('brazier', {
-    placement: 'feature',
-    // A brazier is a narrow bowl on a tripod. At 0.55 its collider was a metre
-    // and a bit across, so you bounced off thin air a half-tile away from it.
-    radius: 0.3,
-    blocks: true,
-    variants: 2,
-    light: { color: 0xff8a3c, intensity: 9, distance: 17, height: 1.5, flicker: 1, forward: 0 },
-  }),
-
-  // --- pillars -----------------------------------------------------------
-  pillarGothic: P('pillarGothic', { radius: 0.62, blocks: true, variants: 2, freeRotate: false, scaleJitter: 0.05 }),
-  pillarIron: P('pillarIron', { radius: 0.6, blocks: true, variants: 2, freeRotate: false, scaleJitter: 0.05 }),
-  pillarFluted: P('pillarFluted', { radius: 0.62, blocks: true, variants: 2, freeRotate: false, scaleJitter: 0.05 }),
-  pillarIce: P('pillarIce', { radius: 0.62, blocks: true, variants: 2, freeRotate: false, scaleJitter: 0.08 }),
-  pillarBroken: P('pillarBroken', { radius: 0.55, blocks: true, variants: 3, scaleJitter: 0.14 }),
-  pillarVoid: P('pillarVoid', { radius: 0.6, blocks: true, variants: 2, freeRotate: false, scaleJitter: 0.06 }),
-  stalacColumn: P('stalacColumn', { radius: 0.68, blocks: true, variants: 3, scaleJitter: 0.18 }),
-  chitinColumn: P('chitinColumn', { radius: 0.6, blocks: true, variants: 3, scaleJitter: 0.16 }),
-
-  // --- crypt -------------------------------------------------------------
-  sarcophagus: P('sarcophagus', { radius: 0.85, blocks: true, variants: 3, freeRotate: false, scaleJitter: 0.06 }),
-  bonepile: P('bonepile', { radius: 0.4, variants: 4, castShadow: true }),
-  candleCluster: P('candleCluster', {
-    radius: 0.2,
-    variants: 3,
-    light: { color: 0xffb060, intensity: 2.2, distance: 6, height: 0.7, flicker: 1, forward: 0 },
-  }),
-  brokenColumn: P('brokenColumn', { radius: 0.5, blocks: true, variants: 4, scaleJitter: 0.2 }),
-  wallSkull: P('wallSkull', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.7, castShadow: false }),
-  chain: P('chain', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.62, castShadow: false }),
-  banner: P('banner', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.7, castShadow: false }),
-  statue: P('statue', { placement: 'feature', radius: 0.6, blocks: true, variants: 3, scaleJitter: 0.08 }),
-  altar: P('altar', { placement: 'feature', radius: 0.8, blocks: true, variants: 2, freeRotate: false, scaleJitter: 0.05 }),
-  // No shadow: dozens per screen in the open-sky biomes, each a handful of
-  // stones, cost more in the sun's shadow pass than they gave back.
-  rubblePile: P('rubblePile', { radius: 0.45, variants: 4, scaleJitter: 0.22, castShadow: false }),
-
-  // --- caverns -----------------------------------------------------------
-  stalagmite: P('stalagmite', { radius: 0.35, variants: 4, scaleJitter: 0.3 }),
-  rockCluster: P('rockCluster', { radius: 0.5, variants: 4, scaleJitter: 0.25 }),
-  mushroomCluster: P('mushroomCluster', { radius: 0.3, variants: 3, castShadow: false }),
-  crystalShard: P('crystalShard', { radius: 0.28, variants: 4, scaleJitter: 0.3 }),
-  crystalCluster: P('crystalCluster', { placement: 'feature', radius: 0.7, blocks: true, variants: 3, scaleJitter: 0.2 }),
-  rootTangle: P('rootTangle', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.66, castShadow: false }),
-
-  // --- foundry -----------------------------------------------------------
-  anvil: P('anvil', { radius: 0.45, blocks: true, variants: 2, scaleJitter: 0.06 }),
-  pipeCluster: P('pipeCluster', { radius: 0.45, blocks: true, variants: 3, freeRotate: false }),
-  pipeRun: P('pipeRun', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.6 }),
-  valveWheel: P('valveWheel', { placement: 'wall', radius: 0, variants: 2, freeRotate: false, wallOffset: 0.66, castShadow: false }),
-  gear: P('gear', { radius: 0.55, blocks: true, variants: 3, scaleJitter: 0.2 }),
-  ingotStack: P('ingotStack', { radius: 0.4, variants: 3 }),
-  forge: P('forge', {
-    placement: 'feature',
-    radius: 0.9,
-    blocks: true,
-    variants: 2,
-    freeRotate: false,
-    light: { color: 0xff5a14, intensity: 11, distance: 16, height: 1.1, flicker: 0.8, forward: 0 },
-  }),
-  smeltingVat: P('smeltingVat', {
-    placement: 'feature',
-    radius: 0.85,
-    blocks: true,
-    variants: 2,
-    light: { color: 0xff7a20, intensity: 7, distance: 12, height: 1.4, flicker: 0.5, forward: 0 },
-  }),
-
-  // --- temple ------------------------------------------------------------
-  wallRelief: P('wallRelief', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.74, castShadow: false }),
-  fountain: P('fountain', { placement: 'feature', radius: 1.0, blocks: true, variants: 2, scaleJitter: 0.04 }),
-  lilyPad: P('lilyPad', { placement: 'liquid', radius: 0, variants: 3, castShadow: false }),
-
-  // --- hive --------------------------------------------------------------
-  webClump: P('webClump', { radius: 0.3, variants: 3, castShadow: false, ghost: true }),
-  webSheet: P('webSheet', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.68, castShadow: false, ghost: true }),
-  chitinSpike: P('chitinSpike', { radius: 0.3, variants: 4, scaleJitter: 0.3 }),
-  cocoon: P('cocoon', { radius: 0.35, variants: 3, freeRotate: false }),
-  fleshGrowth: P('fleshGrowth', { radius: 0.4, variants: 4, castShadow: false }),
-  broodMound: P('broodMound', { placement: 'feature', radius: 1.0, blocks: true, variants: 2 }),
-
-  // --- frostvault --------------------------------------------------------
-  iceShard: P('iceShard', { radius: 0.3, variants: 4, scaleJitter: 0.3 }),
-  icicleRow: P('icicleRow', { placement: 'wall', radius: 0, variants: 3, freeRotate: false, wallOffset: 0.66, castShadow: false }),
-  frozenCorpse: P('frozenCorpse', { radius: 0.4, blocks: true, variants: 3 }),
-  iceMonolith: P('iceMonolith', { placement: 'feature', radius: 0.8, blocks: true, variants: 2, scaleJitter: 0.1 }),
-
-  // --- ashwaste ----------------------------------------------------------
-  deadTree: P('deadTree', { radius: 0.4, blocks: true, variants: 3, scaleJitter: 0.25 }),
-  boneSpire: P('boneSpire', { radius: 0.45, blocks: true, variants: 3, scaleJitter: 0.25 }),
-  obelisk: P('obelisk', { placement: 'feature', radius: 0.7, blocks: true, variants: 2, scaleJitter: 0.1 }),
-
-  // --- voidspire ---------------------------------------------------------
-  voidShard: P('voidShard', { radius: 0.3, variants: 4, scaleJitter: 0.3 }),
-  floatingStone: P('floatingStone', { radius: 0, variants: 4, scaleJitter: 0.3, castShadow: false }),
-  runeStone: P('runeStone', { radius: 0.4, blocks: true, variants: 3 }),
-  voidRift: P('voidRift', {
-    placement: 'feature',
-    radius: 0,
-    variants: 2,
-    ghost: true,
-    castShadow: false,
-    light: { color: 0xd040ff, intensity: 7, distance: 15, height: 1.6, flicker: 0.6, forward: 0 },
-  }),
-
-  // --- interactables -----------------------------------------------------
-  chest: P('chest', { radius: 0.5, blocks: true, variants: 3, freeRotate: false, interact: 'chest', scaleJitter: 0.04 }),
-  barrel: P('barrel', { radius: 0.38, blocks: true, variants: 3, interact: 'barrel', scaleJitter: 0.08 }),
-  crate: P('crate', { radius: 0.42, blocks: true, variants: 3, interact: 'crate', scaleJitter: 0.1 }),
-  urn: P('urn', { radius: 0.3, blocks: false, variants: 4, interact: 'urn', scaleJitter: 0.14 }),
-  bookcase: P('bookcase', { placement: 'wall', radius: 0.4, blocks: true, variants: 3, freeRotate: false, wallOffset: 0.62, interact: 'bookcase' }),
-  shrine: P('shrine', {
-    placement: 'feature',
-    radius: 0.6,
-    blocks: true,
-    variants: 3,
-    freeRotate: false,
-    interact: 'shrine',
-    light: { color: 0x9fd8ff, intensity: 6, distance: 12, height: 1.5, flicker: 0.35, forward: 0 },
-  }),
-  lever: P('lever', { placement: 'wall', radius: 0, variants: 2, freeRotate: false, wallOffset: 0.68, interact: 'lever', castShadow: false }),
-
-  // --- landmarks -----------------------------------------------------------
-  //
-  // A room needs one thing the eye goes to first. From a camera twelve metres
-  // up, the strongest focal point is not a tall object but a shape on the
-  // floor: an inlaid seal reads across the whole room, frames whatever stands
-  // on it, and costs one flat instanced batch. Seals carry no collision and
-  // cast no shadow; the hero piece that stands on them does the blocking.
-  floorSeal: P('floorSeal', {
-    placement: 'detail',
-    radius: 0,
-    variants: 3,
-    scaleJitter: 0,
-    castShadow: false,
-    receiveShadow: true,
-  }),
-  arenaSeal: P('arenaSeal', {
-    placement: 'detail',
-    radius: 0,
-    variants: 2,
-    scaleJitter: 0,
-    castShadow: false,
-    receiveShadow: true,
-  }),
-  ossuary: P('ossuary', {
-    placement: 'feature',
-    radius: 0.9,
-    blocks: true,
-    variants: 2,
-    scaleJitter: 0.05,
-    light: { color: 0xffb060, intensity: 3.2, distance: 8, height: 1.5, flicker: 1, forward: 0 },
-  }),
-  idolHead: P('idolHead', { placement: 'feature', radius: 1.0, blocks: true, variants: 2, scaleJitter: 0.08 }),
-  goldHoard: P('goldHoard', {
-    placement: 'feature',
-    radius: 0.7,
-    blocks: true,
-    variants: 2,
-    scaleJitter: 0.06,
-    light: { color: 0xffc860, intensity: 2.4, distance: 6, height: 0.9, flicker: 0.2, forward: 0 },
-  }),
-  gibbet: P('gibbet', { placement: 'feature', radius: 0.45, blocks: true, variants: 2, scaleJitter: 0.06 }),
-
-  // --- ground detail -----------------------------------------------------
-  //
-  // The layer that makes a floor read as a place rather than a plane.
-  //
-  // A floor covered in barrels and columns is not detailed, it is an obstacle
-  // course; what a finished level actually has is a great deal of small stuff
-  // nobody looks at directly — grit, chips, drifts, growth. Everything here is
-  // tiny, blocks nothing, casts no shadow and has zero collision radius, so it
-  // can be scattered an order of magnitude more densely than the clutter layer
-  // without changing how the floor plays or costing a shadow pass.
-  pebbles: DETAIL('pebbles'),
-  boneChips: DETAIL('boneChips'),
-  ashDrift: DETAIL('ashDrift'),
-  mossPatch: DETAIL('mossPatch'),
-  sporeTuft: DETAIL('sporeTuft'),
-  iceCrust: DETAIL('iceCrust'),
-  slagChunk: DETAIL('slagChunk'),
-  shellFragment: DETAIL('shellFragment'),
-  sandDrift: DETAIL('sandDrift'),
-  voidMote: DETAIL('voidMote'),
-  scorchMark: DETAIL('scorchMark'),
-  grassTuft: DETAIL('grassTuft'),
-};
-
-export function propDef(kind: string): PropDef {
-  return PROP_DEFS[kind] ?? PROP_DEFS.rubblePile;
-}
+// Definitions live in `art/props/Defs.ts`; templates in `art/props/Library.ts`.
+import { propDef, type PropDef } from '../art/props/Defs';
+import { hasBuilder, libraryTemplate, disposeLibrary } from '../art/props/Library';
+export { propDef, PROP_DEFS, type PropDef, type PropLightSpec, type PropPlacementKind } from '../art/props/Defs';
+export { variantFor, scaleFor, type PropTemplate, type PropLayer } from '../art/props/Library';
+import type { PropLightSpec } from '../art/props/Defs';
 
 // ---------------------------------------------------------------------------
 // Placement
@@ -1147,14 +819,14 @@ function enforceConnectivity(ctx: PlaceCtx): void {
 // Geometry
 // ---------------------------------------------------------------------------
 
-export interface PropLayer {
+interface PropLayer {
   geometry: THREE.BufferGeometry;
   material: THREE.Material;
   /** Additive/transparent layers are drawn without shadows and after opaques. */
   ghost?: boolean;
 }
 
-export interface PropTemplate {
+interface PropTemplate {
   kind: string;
   variant: number;
   layers: PropLayer[];
@@ -2737,6 +2409,7 @@ function build(kind: string, ctx: BuildCtx): ReturnType<Builder> {
 
 /** Cached template for a prop kind. Variants are deterministic per index. */
 export function propTemplate(kind: string, art: BiomeArt, seed: number, variant: number): PropTemplate {
+  if (hasBuilder(kind)) return libraryTemplate(kind, art, seed, variant);
   const key = `${kind}|${art.id}|${variant}`;
   const hit = templateCache.get(key);
   if (hit) return hit;
@@ -2762,19 +2435,6 @@ export function propTemplate(kind: string, art: BiomeArt, seed: number, variant:
   return tmpl;
 }
 
-/** Deterministic variant index for a placement, so no extra data is stored. */
-export function variantFor(kind: string, x: number, y: number): number {
-  const n = Math.max(1, propDef(kind).variants);
-  return Math.floor(hash2(x * 31 + 7, y * 17 + 3) * n) % n;
-}
-
-/** Deterministic scale jitter for a placement. */
-export function scaleFor(kind: string, x: number, y: number): number {
-  const j = propDef(kind).scaleJitter;
-  if (j <= 0) return 1;
-  return 1 + (hash2(x * 13 + 91, y * 57 + 5) * 2 - 1) * j;
-}
-
 /** Frees every geometry and material the prop library allocated. */
 export function disposePropLibrary(): void {
   for (const g of ownedGeometries) g.dispose();
@@ -2783,6 +2443,7 @@ export function disposePropLibrary(): void {
   ownedMaterials.length = 0;
   templateCache.clear();
   materialCache.clear();
+  disposeLibrary();
 }
 
 // --- tiny local rng (templates must not consume the caller's stream) --------
