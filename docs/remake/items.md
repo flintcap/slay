@@ -23,6 +23,18 @@ and sets have their own shapes, colours and designs.
   background. Uniques and sets readable at a glance.
 - [ ] Ground drops. How items lie on the floor, their labels' look stays with
   HUD; drop beams belong to vfx.
+- [ ] Gear makes the look (owner's rule, see PLAN.md). A hero with nothing
+  equipped wears only plain cloth linens in plain undyed tones: take the
+  class costume off the bare hero (the shadowblade's hood and mask, class
+  cloth colours, sashes) and keep body, face and hair. Every slot visibly
+  changes the hero: helmets (hoods, masks and cowls become helmet bases),
+  chest pieces that replace the linen shirt (robes, leathers, mail, plate),
+  gloves, boots, belts, shoulders where the base has them, capes or cloaks.
+  Each armour base reads differently on the body, higher tiers look grander,
+  uniques and sets are the most striking. Check with a render sheet: each
+  class bare, in starter gear, in mid gear, in a full set, and in uniques.
+  You now own `src/art/hero/Armour.ts`, `Cape.ts`, `Garment.ts` and the
+  clothing fields of `Looks.ts` (heroes is done).
 - [ ] Switch and clean. Delete old `ItemModels.ts` builders, old icon
   painters (`IconArmor`, `IconWeapons`, `IconTrinkets`, `ItemIconArt`,
   `IconKit` if unused) and every reference.

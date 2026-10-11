@@ -127,7 +127,9 @@ edits only (new lines, new exports), never rewrites.
 - **creatures**: `src/entities/MonsterModels.ts`, `src/art/MonsterAnimation.ts`,
   `src/art/BossPortraits.ts`, new `src/art/creatures/*`, the visual parts of
   `src/entities/Boss.ts` and `MiniBoss.ts`, `public/assets/textures/creatures/`.
-- **items**: `src/art/ItemModels.ts`, `ItemLook.ts`, `Icons.ts`, `IconKit.ts`,
+- **items**: `src/art/hero/Armour.ts`, `Cape.ts`, `Garment.ts` and the
+  clothing fields of `src/art/hero/Looks.ts` (heroes is done; items took them
+  over for "Gear makes the look"), `src/art/ItemModels.ts`, `ItemLook.ts`, `Icons.ts`, `IconKit.ts`,
   `IconArmor.ts`, `IconWeapons.ts`, `IconTrinkets.ts`, `ItemIconArt.ts`,
   `Glyphs.ts`, new `src/art/items/*`, `public/assets/textures/items/`.
 - **props**: `src/world/Props.ts`, `src/art/Meshes.ts`, buildings and dressing
@@ -186,6 +188,16 @@ Write each one into `CONTRACTS.md` the moment it is settled.
 
 - Monsters expose the same hit and release frame events as heroes, and named
   attach points (mouth, hands, weapon tip, chest) for effects.
+
+## Gear makes the look (owner's rule)
+
+Just like Diablo and Path of Exile, **the gear is what gives a character their
+look**. With nothing equipped, every hero is just a body in plain cloth
+linens: their own body, face and hair, but no class costume (no hoods, masks,
+robes, sashes or class colours on the clothes). Every equipped item visibly
+changes the hero, and a fully geared hero looks completely different from a
+bare one. Two heroes of the same class in different gear must look clearly
+different. Uniques and sets are the most striking pieces you can wear.
 
 ## Quality bar
 
