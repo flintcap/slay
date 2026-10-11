@@ -77,7 +77,7 @@ const SPECS: Record<NpcLookId, FolkSpec> = {
       accent: 0xd8b45a,
     }),
     wear: [
-      { slot: 'chest', visual: { shape: 'npc.coat', palette: 'cloth.undyed|0x46566a' } },
+      { slot: 'chest', visual: { shape: 'npc.coat', palette: 'cloth.undyed|0x52647c' } },
       { trade: 'shawl', palette: 'cloth.undyed|0x5a3048' },
       { slot: 'belt', visual: { shape: 'belt.belt', palette: 'leather.worn|0x3a2a20' }, baseId: 'belt.belt' },
       { slot: 'boots', visual: { shape: 'boots.light', palette: 'leather.fine|0x3a2a22' }, baseId: 'boots.light' },
@@ -120,7 +120,7 @@ const SPECS: Record<NpcLookId, FolkSpec> = {
       accent: 0x9ad8a0,
     }),
     wear: [
-      { slot: 'chest', visual: { shape: 'npc.habit', palette: 'cloth.undyed|0x5c5e66' } },
+      { slot: 'chest', visual: { shape: 'npc.habit', palette: 'cloth.undyed|0x6e7078' } },
       { trade: 'wimple', palette: 'cloth.undyed|0x23232a', cloth: 'cloth.linen|0xf0ece4' },
       { slot: 'belt', visual: { shape: 'belt.sash', palette: 'cloth.linen|0xe8e2d8' }, baseId: 'belt.sash' },
       { slot: 'boots', visual: { shape: 'boots.silk', palette: 'leather.fine|0x2a2420' }, baseId: 'boots.silk' },
@@ -166,8 +166,8 @@ const SPECS: Record<NpcLookId, FolkSpec> = {
       accent: 0x9ab0c0,
     }),
     wear: [
-      { slot: 'chest', visual: { shape: 'npc.gravecoat', palette: 'cloth.undyed|0x5a5446' } },
-      { trade: 'hood', palette: 'cloth.tattered|0x4a4438' },
+      { slot: 'chest', visual: { shape: 'npc.gravecoat', palette: 'cloth.undyed|0x6a604c' } },
+      { trade: 'hood', palette: 'cloth.tattered|0x5a5242' },
       { slot: 'boots', visual: { shape: 'boots.heavy', palette: 'leather.worn' }, baseId: 'boots.heavy' },
     ],
     legs: 0x4a4236,
@@ -233,7 +233,7 @@ const SPECS: Record<NpcLookId, FolkSpec> = {
       accent: 0xf5d76e,
     }),
     wear: [
-      { slot: 'chest', visual: { shape: 'npc.doublet', palette: 'cloth.silk|0x5a2430' }, rarity: 'magic' },
+      { slot: 'chest', visual: { shape: 'npc.doublet', palette: 'cloth.silk|0x7a2a3a' }, rarity: 'magic' },
       { trade: 'cap', palette: 'cloth.silk|0x3a2a4a', second: 'cloth.banner|0xc8a040' },
       { slot: 'belt', visual: { shape: 'belt.sash', palette: 'cloth.banner|0xc8a040' }, baseId: 'belt.sash' },
       { slot: 'boots', visual: { shape: 'boots.light', palette: 'leather.fine|0x5a3a22' }, baseId: 'boots.sharkskin' },

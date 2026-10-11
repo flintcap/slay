@@ -316,12 +316,12 @@ function mortar(q: Posture): Record<string, ActionDef> {
     head(p, 0.45);
     breathe(p, b);
   };
+  // The bowl stays cradled; the pestle hand rests over her heart.
   const pray = (b: number, nod: number): PoseFn => (p, c) => {
     carry(p, q, 0);
-    reach(p, c, 'L', [0.025, 1.2, 0.24], [-0.15, 0.95, 0.2], 0.0, 0.2);
-    reach(p, c, 'R', [-0.025, 1.2, 0.24], [0.15, 0.95, 0.2], 0.0, 0.2);
-    p.fist('L', 0.15);
-    p.fist('R', 0.15);
+    bowl(p);
+    reach(p, c, 'R', [0.03, 1.3, 0.16], [0.6, 0.75, 0.2], 0.0, 0.2);
+    p.fist('R', 0.85);
     trunk(p, 0, 0.1);
     head(p, 0.55 + nod);
     breathe(p, b);

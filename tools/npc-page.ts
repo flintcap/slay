@@ -116,8 +116,10 @@ async function actor(id: string): Promise<Actor> {
 function pose(a: Actor, loop: string, t: number): void {
   a.anim.reset();
   a.anim.setGrip(a.folk.grip);
-  a.anim.play(loop, { fade: 0, restart: true });
   const dt = 1 / 30;
+  // The stance blends in over a second or so; settle it first.
+  for (let s = 0; s < 2; s += dt) a.anim.update(dt);
+  a.anim.play(loop, { fade: 0, restart: true });
   for (let s = 0; s < t; s += dt) a.anim.update(dt);
   a.folk.root.updateMatrixWorld(true);
 }

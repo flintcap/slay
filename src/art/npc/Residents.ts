@@ -136,9 +136,10 @@ export class Residents {
       // Nobody keeps time with anybody else.
       speed: rng.range(0.88, 1.08),
     };
-    // Start part way through their loop, so the town is not in step.
+    // Settle into their stance (a staff swings upright over a second or so),
+    // and start part way through their loop, so the town is not in step.
     anim.play(folk.loops.work, { fade: 0, speed: r.speed });
-    for (let i = 0, n = rng.int(0, 40); i < n; i++) anim.update(1 / 10);
+    for (let i = 0, n = 20 + rng.int(0, 40); i < n; i++) anim.update(1 / 10);
     return r;
   }
 
