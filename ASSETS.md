@@ -10,6 +10,10 @@ Layout: `textures/world/<material>/` (ground: floors, walls, terrain),
 are relative to `public/assets/`. Textures are WebP (at most 1024 px), sounds
 and music OGG Vorbis.
 
+Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
+(-0.5 dBFS) and re-encoded at Vorbis q4, since the originals decoded up to
++13 dBFS and clipped the mix.
+
 | Path | Source page | Author | Licence |
 | --- | --- | --- | --- |
 | music/boss.dread/01.ogg | https://opengameart.org/content/great-boss | Spring Spring | CC0 |
