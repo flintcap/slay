@@ -415,10 +415,10 @@ Object.assign(E, {
     school: 'fire',
     layers: [
       flash(2.2, 0.12),
-      L({ sprite: SPRITE.fireball, count: 6, speed: [1, 3.5], radius: 0.3, size: [0.9, 1.4], grow: 1.8, life: [0.5, 0.85], heat: [1, 0.05], emit: 0.9, occl: 0.4, gravity: 1.8, drag: 3, turb: 0.4, spin: 1 }),
+      L({ sprite: SPRITE.fireball, count: 9, speed: [1, 3.5], up: 0.7, radius: 0.35, size: [1.0, 1.6], grow: 1.9, life: [0.5, 0.85], heat: [1, 0.05], emit: 0.85, occl: 0.45, gravity: 2.4, drag: 3, turb: 0.5, spin: 1 }),
       L({ sprite: SPRITE.ember, count: 26, speed: [5, 12], up: 0.4, size: [0.04, 0.08], life: [0.6, 1.4], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: -5, drag: 1.5, stretch: 0.8, ground: true }),
       L({ sprite: SPRITE.smoke, count: 6, ramp: 'smoke', speed: [0.6, 1.8], up: 1, radius: 0.5, size: [0.9, 1.4], grow: 2.2, life: [1.4, 2.2], heat: [0.35, 0], emit: 0.45, occl: 0.6, gravity: 1.0, drag: 1.5, turb: 0.3, stagger: 0.12, tint: false }),
-      L({ sprite: SPRITE.shock, count: 1, speed: [0, 0], radius: 0, size: [1.2, 1.2], grow: 4.5, life: [0.3, 0.32], heat: [1, 0.1], emit: 0.7, occl: 0, flat: true, fade: 1.2 }),
+      L({ sprite: SPRITE.shock, count: 1, speed: [0, 0], radius: 0, size: [1.2, 1.2], grow: 4.5, life: [0.3, 0.32], heat: [1, 0.1], emit: 0.4, occl: 0, flat: true, fade: 1.2 }),
     ],
   },
   impact: {

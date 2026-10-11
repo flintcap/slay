@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { InstancedPool } from './Instanced';
 import { GLSL_UNPACK } from './Palette';
+import { FX_EXPOSURE, GLSL_EXPOSURE } from './Exposure';
 
 const GLSL_NOISE = /* glsl */ `
   float fxh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -82,6 +83,7 @@ const CORE_VERT = /* glsl */ `
 `;
 
 const CORE_FRAG = /* glsl */ `
+  ${GLSL_EXPOSURE}
   uniform float uTime;
   varying vec2 vP;
   ${COMMON_VARYINGS}
@@ -164,7 +166,7 @@ const CORE_FRAG = /* glsl */ `
     if (cov < 0.003) discard;
     vec3 col = fxRamp(vTail, vBody, vCore, heat);
     vec3 light = col * vEmit * (0.2 + 1.1 * heat);
-    gl_FragColor = vec4(light * cov, cov * occl);
+    gl_FragColor = vec4(light * cov * uExposure, cov * occl);
   }
 `;
 
@@ -172,7 +174,7 @@ export function makeCores(capacity: number): InstancedPool {
   const base = new THREE.PlaneGeometry(1, 1);
   const mat = new THREE.ShaderMaterial({
     name: 'fx-cores',
-    uniforms: { uTime: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
     vertexShader: CORE_VERT,
     fragmentShader: CORE_FRAG,
     side: THREE.DoubleSide,
@@ -213,6 +215,7 @@ const BEAM_VERT = /* glsl */ `
 `;
 
 const BEAM_FRAG = /* glsl */ `
+  ${GLSL_EXPOSURE}
   uniform float uTime;
   varying vec2 vQ;
   varying float vLen;
@@ -270,7 +273,7 @@ const BEAM_FRAG = /* glsl */ `
     if (cov < 0.003) discard;
     vec3 col = fxRamp(vTail, vBody, vCore, heat);
     vec3 light = col * vEmit * (0.2 + 1.1 * heat);
-    gl_FragColor = vec4(light * cov, cov * occl);
+    gl_FragColor = vec4(light * cov * uExposure, cov * occl);
   }
 `;
 
@@ -292,7 +295,7 @@ export function makeBeams(capacity: number): InstancedPool {
   base.setIndex(idx);
   const mat = new THREE.ShaderMaterial({
     name: 'fx-beams',
-    uniforms: { uTime: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
     vertexShader: BEAM_VERT,
     fragmentShader: BEAM_FRAG,
     side: THREE.DoubleSide,
@@ -329,6 +332,7 @@ const COLUMN_VERT = /* glsl */ `
 `;
 
 const COLUMN_FRAG = /* glsl */ `
+  ${GLSL_EXPOSURE}
   uniform float uTime;
   varying vec2 vUv;
   varying float vFacing;
@@ -372,7 +376,7 @@ const COLUMN_FRAG = /* glsl */ `
     if (cov < 0.003) discard;
     vec3 col = fxRamp(vTail, vBody, vCore, heat);
     vec3 light = col * vEmit * (0.2 + 1.1 * heat);
-    gl_FragColor = vec4(light * cov, cov * occl);
+    gl_FragColor = vec4(light * cov * uExposure, cov * occl);
   }
 `;
 
@@ -381,7 +385,7 @@ export function makeColumns(capacity: number): InstancedPool {
   base.translate(0, 0.5, 0);
   const mat = new THREE.ShaderMaterial({
     name: 'fx-columns',
-    uniforms: { uTime: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
     vertexShader: COLUMN_VERT,
     fragmentShader: COLUMN_FRAG,
     side: THREE.DoubleSide,
@@ -416,6 +420,7 @@ const SHELL_VERT = /* glsl */ `
 `;
 
 const SHELL_FRAG = /* glsl */ `
+  ${GLSL_EXPOSURE}
   uniform float uTime;
   varying vec3 vLocal;
   varying float vRim;
@@ -465,7 +470,7 @@ const SHELL_FRAG = /* glsl */ `
     if (cov < 0.003) discard;
     vec3 col = fxRamp(vTail, vBody, vCore, heat);
     vec3 light = col * vEmit * (0.2 + 1.1 * heat);
-    gl_FragColor = vec4(light * cov, cov * occl);
+    gl_FragColor = vec4(light * cov * uExposure, cov * occl);
   }
 `;
 
@@ -473,7 +478,7 @@ export function makeShells(capacity: number): InstancedPool {
   const base = new THREE.SphereGeometry(1, 24, 16);
   const mat = new THREE.ShaderMaterial({
     name: 'fx-shells',
-    uniforms: { uTime: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
     vertexShader: SHELL_VERT,
     fragmentShader: SHELL_FRAG,
     side: THREE.DoubleSide,

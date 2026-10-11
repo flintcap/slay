@@ -24,6 +24,7 @@ import * as THREE from 'three';
 import { markRange, markAll } from './Upload';
 import { spriteAtlas, GLSL_CELL, FLIPBOOKS } from './Atlas';
 import { GLSL_UNPACK } from './Palette';
+import { FX_EXPOSURE, GLSL_EXPOSURE } from './Exposure';
 
 const VERT = /* glsl */ `
   uniform float uTime;
@@ -137,6 +138,7 @@ const VERT = /* glsl */ `
 `;
 
 const FRAG = /* glsl */ `
+  ${GLSL_EXPOSURE}
   uniform sampler2D uAtlas;
   uniform vec3 uFogColor;
   uniform float uFogDensity;
@@ -180,7 +182,7 @@ const FRAG = /* glsl */ `
       f = clamp(f, 0.0, 1.0);
       rgb = rgb * (1.0 - f) + uFogColor * occl * f;
     }
-    gl_FragColor = vec4(rgb, occl);
+    gl_FragColor = vec4(rgb * uExposure, occl);
   }
 `;
 
@@ -266,6 +268,7 @@ export class ParticleField {
       name: 'fx-particles',
       uniforms: {
         uTime: { value: 0 },
+        uExposure: FX_EXPOSURE,
         uScale: { value: 1 },
         uAtlas: { value: spriteAtlas() },
         uFogColor: { value: new THREE.Color(0) },

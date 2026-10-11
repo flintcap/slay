@@ -25,6 +25,7 @@ import * as THREE from 'three';
 import { markRange, markAll } from './Upload';
 import { premultiplied } from './Particles';
 import { GLSL_UNPACK } from './Palette';
+import { FX_EXPOSURE, GLSL_EXPOSURE } from './Exposure';
 
 export const GROUND = {
   // marks
@@ -85,6 +86,7 @@ const VERT = /* glsl */ `
 `;
 
 const FRAG = /* glsl */ `
+  ${GLSL_EXPOSURE}
   precision highp float;
   uniform float uTime;
   varying vec2 vP;
@@ -327,7 +329,7 @@ const FRAG = /* glsl */ `
       heat = clamp(heat, 0.0, 1.0);
       float alpha = clamp(cov, 0.0, 1.0) * fadeIn * fadeOut;
       if (alpha < 0.003) discard;
-      rgb = ramp3(heat) * vEmit * (0.2 + 1.1 * heat) * alpha;
+      rgb = ramp3(heat) * vEmit * (0.2 + 1.1 * heat) * alpha * uExposure;
       gl_FragColor = vec4(rgb, clamp(occl, 0.0, 1.0) * fadeIn * fadeOut);
       return;
     }
@@ -453,7 +455,7 @@ export class GroundLayer {
     this.gen = new Int32Array(this.capacity);
     this.mat = new THREE.ShaderMaterial({
       name: `fx-ground-${name}`,
-      uniforms: { uTime: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
       vertexShader: VERT,
       fragmentShader: FRAG,
       side: THREE.DoubleSide,

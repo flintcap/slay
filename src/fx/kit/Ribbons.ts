@@ -16,6 +16,7 @@
 import * as THREE from 'three';
 import { premultiplied } from './Particles';
 import { GLSL_UNPACK, packLinear, ramp, mixHex, darken, type School } from './Palette';
+import { FX_EXPOSURE, GLSL_EXPOSURE } from './Exposure';
 
 export type RibbonKind = 'swing' | 'trail' | 'bolt';
 const KIND_ID: Record<RibbonKind, number> = { swing: 0, trail: 1, bolt: 2 };
@@ -41,6 +42,7 @@ const VERT = /* glsl */ `
 `;
 
 const FRAG = /* glsl */ `
+  ${GLSL_EXPOSURE}
   uniform float uTime;
   varying vec2 vUv;
   varying vec4 vLook;
@@ -87,7 +89,7 @@ const FRAG = /* glsl */ `
     cov = clamp(cov, 0.0, 1.0);
     if (cov < 0.003) discard;
     // Ribbons are light: they hide only a touch of what is behind them.
-    gl_FragColor = vec4(light * cov, cov * 0.12);
+    gl_FragColor = vec4(light * cov * uExposure, cov * 0.12);
   }
 `;
 
@@ -179,7 +181,7 @@ export class RibbonBatch {
 
     this.mat = new THREE.ShaderMaterial({
       name: 'fx-ribbons',
-      uniforms: { uTime: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
       vertexShader: VERT,
       fragmentShader: FRAG,
       side: THREE.DoubleSide,

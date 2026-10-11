@@ -179,6 +179,8 @@ class Actor {
   castL: THREE.Object3D | null = null;
   castR: THREE.Object3D | null = null;
   castHands: (() => 'left' | 'right' | 'both' | null) | null = null;
+  /** Hero: the school to flare on `release`, or null for none (arrows). */
+  release: (() => School | null) | null = null;
   readonly hist = new Float32Array(H * 7);
   head = 0;
   count = 0;
@@ -473,6 +475,7 @@ export class BodyFX {
     a.a = a.b = null;
     a.castL = a.castR = null;
     a.castHands = null;
+    a.release = null;
     a.hero = false;
     a.head = a.count = 0;
     a.rib = null;
@@ -492,6 +495,7 @@ export class BodyFX {
     a.root = a.a = a.b = a.castL = a.castR = null;
     a.school = null;
     a.castHands = null;
+    a.release = null;
     const i = this.actors.indexOf(a);
     if (i >= 0) {
       const last = this.actors.pop()!;
@@ -502,7 +506,8 @@ export class BodyFX {
 
   /**
    * Binds the hero: swing ribbons from whatever the main hand holds, on the
-   * animator's `hit` frame, and a hand flare on `release`. Returns the unbind.
+   * animator's `hit` frame, and a hand flare on `release` in the school
+   * `release` names (null skips it: a bow shot has no flare). Returns the unbind.
    */
   bindHero(
     hero: {
@@ -510,9 +515,11 @@ export class BodyFX {
       animator: { on(ev: 'hit' | 'release', fn: (e: { clip: string; side?: 'L' | 'R' }) => void): () => void; readonly castHands: 'left' | 'right' | 'both' | null };
     },
     school: () => School,
+    release: () => School | null = school,
   ): () => void {
     const a = this.takeActor(hero.root, school);
     a.hero = true;
+    a.release = release;
     a.edge = Edge.Held;
     a.castL = hero.root.getObjectByName('socket:castL') ?? null;
     a.castR = hero.root.getObjectByName('socket:castR') ?? null;
@@ -654,17 +661,27 @@ export class BodyFX {
   private onRelease(a: Actor, gen: number): void {
     if (a.gen !== gen || !a.active) return;
     if (a.root && !a.root.visible) return;
-    const s = a.school?.() ?? 'arcane';
-    let src: THREE.Object3D | null = null;
+    const s = a.hero && a.release ? a.release() : (a.school?.() ?? 'arcane');
+    if (!s) return;
     if (a.hero) {
+      // The flare rides the casting hand, or both hands for a two-handed cast.
       const hands = a.castHands?.() ?? 'right';
-      src = hands === 'left' ? a.castL : a.castR;
-      if (!src && a.a) src = a.a;
-    } else src = a.b;
-    if (!src) return;
+      if (hands === 'both' && a.castL && a.castR) {
+        this.flareAt(a.castL, s, 0.6);
+        this.flareAt(a.castR, s, 0.6);
+        return;
+      }
+      const src = (hands === 'left' ? a.castL : a.castR) ?? a.a;
+      if (src) this.flareAt(src, s, 0.8);
+      return;
+    }
+    if (a.b) this.flareAt(a.b, s, 0.55);
+  }
+
+  private flareAt(src: THREE.Object3D, s: School, scale: number): void {
     src.updateWorldMatrix(true, false);
     _v.setFromMatrixPosition(src.matrixWorld);
-    this.effects.castFlare(s, _v.x, _v.y, _v.z, { scale: a.hero ? 0.7 : 0.55, light: a.hero ? 0.6 : 0.4 });
+    this.effects.castFlare(s, _v.x, _v.y, _v.z, { scale, light: scale * 0.75 });
   }
 
   /** Lab: a hero-sized swing at (x, z) facing `yaw`, sweeping over 0.15 s. */

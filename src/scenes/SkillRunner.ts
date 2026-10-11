@@ -335,6 +335,9 @@ function shiftHue(hex: number, seed: number): number {
   return (to(ch(h + 1 / 3)) << 16) | (to(ch(h)) << 8) | to(ch(h - 1 / 3));
 }
 
+/** Hero clips whose animation has a release frame (see `art/hero/Actions.ts`). */
+const RELEASE_CLIPS = new Set(['cast', 'point', 'hurl', 'plant', 'roar', 'blink', 'shoot', 'snapshot', 'skyshot']);
+
 /**
  * The animation a skill plays.
  *
@@ -628,7 +631,7 @@ export class SkillRunner {
     // the skill's own id: still unmistakably fire, no longer indistinguishable
     // from the fire skill next to it.
     const school = schoolOf(def);
-    const color = shiftHue(ELEMENTS[school]?.core ?? 0xffe3b0, hashId(def.id));
+    const color = shiftHue(ELEMENTS[school]?.body ?? 0xc9a070, hashId(def.id));
 
     const makePacket = (mult = 1): DamagePacket => {
       const p = rollDamage(player.stats, ctx.rng, {
@@ -680,9 +683,15 @@ export class SkillRunner {
     // The cast beat. Projectiles flare themselves as they leave the hand, and a
     // plain weapon swing's beat is the swing itself; everything else gathers
     // its school's power at the caster first, so no spell starts in mid-air.
+    //
+    // A clip with a release frame (cast, point, hurl, shoot...) flares at the
+    // casting hand on that frame instead (`BodyFX` reads `releaseSchool`), so
+    // the flash lands when the hand opens, not when the button is pressed.
     const selfCast = def.targeting === 'self';
     const swing = family === 'melee' || family === 'cleave' || family === 'whirlwind' || family === 'dash';
-    if (family !== 'projectile' && family !== 'bolt' && !(swing && school === 'physical')) {
+    const released = RELEASE_CLIPS.has(clip);
+    this.releaseSchool = released && !(school === 'physical' && (holding === 'ranged' || swing)) ? school : null;
+    if (!released && family !== 'projectile' && family !== 'bolt' && !(swing && school === 'physical')) {
       this.effects.castFlare(school, origin.x, selfCast ? 1.0 : origin.y, origin.z, {
         scale: selfCast ? 1.25 : 0.9,
         dir: selfCast ? undefined : dir,
@@ -748,7 +757,7 @@ export class SkillRunner {
             element: school,
             color,
             shed: sig.trail,
-            flare: i === 0,
+            flare: i === 0 && !released,
             speed: num('speed', 17),
             size: num('radius', 0.42) * sig.size,
             onHit: (p) => {
@@ -1208,9 +1217,10 @@ export class SkillRunner {
       // animation put archers through a two-handed overhead gesture with a bow
       // in their hands, which is the most wrong an archer can look.
       player.beginAction(style === 'ranged' ? 'shoot' : 'cast', castTime);
+      this.releaseSchool = style === 'ranged' ? null : 'arcane';
 
       const type: DamageType = style === 'ranged' ? 'physical' : 'arcane';
-      const colour = style === 'ranged' ? 0xd8c9a0 : (ELEMENTS.arcane?.core ?? 0xff7de8);
+      const colour = style === 'ranged' ? 0xd8c9a0 : (ELEMENTS.arcane?.body ?? 0xa040e0);
       // Arrows leave the bow hand, spells leave the chest. A projectile that
       // starts at the sternum reads as coming out of the character's ribs.
       const from = player.position.clone().setY(style === 'ranged' ? 1.28 : 1.05);
@@ -1227,6 +1237,7 @@ export class SkillRunner {
         color: colour,
         speed: style === 'ranged' ? 30 : 19,
         size: style === 'ranged' ? 0.24 : 0.4,
+        flare: false,
         onHit: (p) => this.pointDamage(p, 0.5, packet, ctx, enemies, boss, 'projectile', from),
       });
       audio.play(style === 'ranged' ? 'cast.physical' : 'cast.arcane');
@@ -1513,6 +1524,8 @@ export class SkillRunner {
 
   /** The school of the last weapon swing, for the swing ribbon (fx/BodyFX). */
   swingSchool: School = 'physical';
+  /** The school the hero's next release frame flares in; null for none. */
+  releaseSchool: School | null = null;
 
   private meleeSwing(
     player: Player,
@@ -1773,7 +1786,7 @@ export class SkillRunner {
           this.effects.beam(
             t.root.position.clone().setY(1.1),
             best.root.position.clone().setY(1.1),
-            { element: 'lightning', color: ELEMENTS.lightning?.core ?? 0xffe066, duration: 0.16, width: 0.1 },
+            { element: 'lightning', color: ELEMENTS.lightning?.body ?? 0x6aa8ff, duration: 0.16, width: 0.1 },
           );
         }
       }
@@ -2522,7 +2535,7 @@ export class SkillRunner {
     const scale = skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) * share;
     const packet = (m = 1): DamagePacket =>
       rollDamage(player.stats, ctx.rng, { scale: scale * m, type: 'physical', ability: def.name, source: 'player' });
-    const color = shiftHue(ELEMENTS.physical?.core ?? 0xffe3b0, hashId(def.id));
+    const color = shiftHue(ELEMENTS.physical?.body ?? 0xc9a070, hashId(def.id));
     const swingRate = 1 / (1 + player.passives.minionAttackSpeedPct / 100);
     this.addTurret(
       x, z, Infinity, 1.1 * swingRate, 2.6, packet, 'physical', color, true, def.id,

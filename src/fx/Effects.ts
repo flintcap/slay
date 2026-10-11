@@ -34,6 +34,7 @@ import { LightPool, type LightHandle } from './kit/Lights';
 import { SolidPool, type SolidHandle, type SolidShape } from './kit/Solids';
 import type { GroundHandle } from './kit/Ground';
 import { floorAt } from './kit/Floor';
+import { FX_EXPOSURE } from './kit/Exposure';
 
 // ---------------------------------------------------------------------------
 // Element looks
@@ -67,6 +68,15 @@ export interface ElementLook {
   sfxHit: string;
   sfxCast: string;
 }
+
+/** Impact sprites against the impact's own scale. */
+const IMPACT_SPRITE = 1.3;
+/** Flash light (summed intensity) that may stack before effects dim. */
+const GLARE_FREE = 90;
+/** Seconds for piled-up glare to fall by e. */
+const GLARE_DECAY = 0.35;
+/** Effects never dim below this share of their light. */
+const EXPOSURE_FLOOR = 0.5;
 
 const MARK: Record<School, [string, string | undefined]> = {
   physical: ['dust', undefined],
@@ -447,6 +457,8 @@ export class EffectSystem {
   private free: Live[] = [];
   private stamp = 0;
   private clock = 0;
+  /** Recent flash light (decays): how much brightness is piling up right now. */
+  private glare = 0;
   private liveAuras = 0;
   /** Decorative effects dropped by the budget since boot. */
   culled = 0;
@@ -574,7 +586,8 @@ export class EffectSystem {
 
   /** A one-shot point light (sRGB colour). */
   flash(x: number, y: number, z: number, color: number, intensity = 8, distance = 9, duration = 0.16): void {
-    this.lights.flash(x, y, z, color, intensity, distance, duration);
+    this.glare += intensity;
+    this.lights.flash(x, y, z, color, intensity * FX_EXPOSURE.value, distance, duration);
   }
 
   /** The cast beat: a gathering flare at the caster's hand and a light on their armour. */
@@ -617,15 +630,18 @@ export class EffectSystem {
   impact(school: School, x: number, y: number, z: number, opts: ImpactOpts = {}): void {
     const el = element(school);
     const scale = opts.scale ?? 1;
+    // Sprites a little larger than the mark and shake: a hit must read from
+    // the game camera, 15 m up.
+    const ps = scale * IMPACT_SPRITE;
     const base = opts.crit ? 18 : 12;
     const count = Math.max(3, Math.round(base * (opts.density ?? 1)));
     if (opts.emitter && opts.emitter !== el.emitter) {
-      this.fx.burst(opts.emitter, x, y, z, { color: opts.color, scale, dir: opts.dir, count, school });
-      this.fx.burst(el.emitter, x, y, z, { scale: scale * 0.7, dir: opts.dir, count: 6 });
+      this.fx.burst(opts.emitter, x, y, z, { color: opts.color, scale: ps, dir: opts.dir, count, school });
+      this.fx.burst(el.emitter, x, y, z, { scale: ps * 0.7, dir: opts.dir, count: 6 });
     } else {
-      this.fx.burst(el.emitter, x, y, z, { scale, dir: opts.dir, count });
+      this.fx.burst(el.emitter, x, y, z, { scale: ps, dir: opts.dir, count });
     }
-    if (opts.crit) this.fx.burst('crit', x, y, z, { scale: scale * 0.9 });
+    if (opts.crit) this.fx.burst('crit', x, y, z, { scale: ps * 0.9 });
 
     if (opts.light !== 0) {
       const boost = (opts.light ?? 1) * (opts.crit ? 1.7 : 1);
@@ -917,10 +933,11 @@ export class EffectSystem {
     if (school !== 'fire') this.fx.burst(el.emitter, x, y + 0.3, z, { scale: scale * 1.2, count: 14 });
     this.flash(x, y + 0.6, z, l.light, 34 * scale, 14 * scale + 4, 0.34);
     // The ball itself: a hot core that swells and dies in a third of a second.
+    // It sits up off the floor so it reads as a ball, not a plate on the stone.
     this.pulse(Fam.Core, school === 'fire' ? CORE_STYLE.fireball : school === 'lightning' ? CORE_STYLE.plasma : school === 'cold' ? CORE_STYLE.frost : school === 'poison' ? CORE_STYLE.glob : CORE_STYLE.orb,
-      x, y + 0.5 * scale, z, 1.2 * scale, 3.4 * scale, 0, 0.32, l, 1.2);
-    // A squat front that rolls out along the floor.
-    this.pulse(Fam.Shell, SHELL_STYLE.front, x, floorAt(x, z), z, 0.4 * r, r * 1.05, 0.35, 0.4, l, 0.9);
+      x, y + 0.85 * scale, z, 0.8 * scale, 1.9 * scale, 0, 0.26, l, 1.1);
+    // The billowing ball is the burst's fireball sprites; the floor front is
+    // the nova below. A big core or a second front read as a glowing plate.
     this.decals.add(el.decal, x, z, r * 0.75);
     if (school === 'fire') this.decals.glow('firePool', x, z, r * 0.6, 2.6, 'fire', 1.6);
     this.nova(x, z, r, { element: school, color: opts.color, duration: 0.45, particles: false });
@@ -1467,13 +1484,14 @@ export class EffectSystem {
   /** Level up: a golden shaft, rings on the floor, a real light bloom. */
   levelUp(x: number, y: number, z: number): void {
     const gold = lookOf('fire', 0xffc040);
-    this.fx.burst('levelup', x, y, z, { scale: 1.2 });
-    this.pulse(Fam.Column, COLUMN_STYLE.light, x, y, z, 0.6, 1.1, 9, 1.3, gold, 1.3);
-    this.pulse(Fam.Column, COLUMN_STYLE.swirl, x, y, z, 1.2, 0.9, 3, 1.0, gold, 0.8);
-    this.flash(x, y + 1.2, z, 0xffc040, 40, 18, 0.7);
-    this.decals.glow('shockRing', x, z, 3.4, 0.8, 0xffc040, 1.6);
-    this.decals.glow('shockRing', x, z, 5.0, 1.1, 0xffe090, 1.3, 0, 0, 0.12);
-    this.decals.glow('runeCircle', x, z, 2.6, 1.8, 0xffc040, 1.3, 0, 0.6);
+    // A slim gold shaft and one ring: a moment of light on the hero, not a
+    // flood over the room.
+    this.fx.burst('levelup', x, y, z, { scale: 0.9 });
+    this.pulse(Fam.Column, COLUMN_STYLE.light, x, y, z, 0.45, 0.75, 6, 1.1, gold, 0.85);
+    this.pulse(Fam.Column, COLUMN_STYLE.swirl, x, y, z, 0.9, 0.7, 2.4, 0.9, gold, 0.6);
+    this.flash(x, y + 1.2, z, 0xffc040, 18, 10, 0.6);
+    this.decals.glow('shockRing', x, z, 2.8, 0.7, 0xffc040, 1.3);
+    this.decals.glow('runeCircle', x, z, 1.9, 1.6, 0xffc040, 1.0, 0, 0.6);
     this.trauma(0.2);
     if (this.rig) this.rig.punchIn(0.07, 0.9);
     this.sfx('levelup', x, z);
@@ -1591,6 +1609,13 @@ export class EffectSystem {
     this.clock += dt;
     if (camera) this.camera = camera;
     this.lights.update(dt);
+    // Exposure: one blast is full brightness; a pile of them dims every
+    // effect together (fast down, slow back up) so a busy fight stays coloured
+    // instead of going white.
+    this.glare *= Math.exp(-dt / GLARE_DECAY);
+    const want = Math.max(EXPOSURE_FLOOR, Math.min(1, Math.sqrt(GLARE_FREE / Math.max(GLARE_FREE, this.glare))));
+    const ex = FX_EXPOSURE.value;
+    FX_EXPOSURE.value = ex + (want - ex) * Math.min(1, dt * (want < ex ? 14 : 2.5));
     // Index loop over a list that may grow while we walk it (a delay firing a projectile).
     for (let i = 0; i < this.live.length; ) {
       const e = this.live[i]!;
@@ -1653,6 +1678,8 @@ export class EffectSystem {
     this.solids.clear();
     this.lights.clear();
     this.liveAuras = 0;
+    this.glare = 0;
+    FX_EXPOSURE.value = 1;
   }
 
   dispose(): void {
