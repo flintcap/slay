@@ -66,7 +66,7 @@ page.setDefaultTimeout(1_800_000);
 page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 400)));
 page.on('console', (m) => {
   const t = m.type();
-  if (t === 'error' || t === 'warning') console.log(`[page ${t}]`, m.text().slice(0, 300));
+  if (t === 'error' || t === 'warning') console.log(`[page ${t}]`, m.text().slice(0, t === 'error' ? 4000 : 300));
   else if (t === 'log') console.log(m.text());
 });
 await page.route(`http://127.0.0.1:${PORT}/__creatures`, (r) =>

@@ -166,7 +166,7 @@ export function skull(s: Sculpt, o: { size?: number; mat?: CMat; teeth?: RGB; br
     });
   }
   // Eyes: the sockets burn.
-  if (o.glow !== 0) s.pair((_side, x) => s.glow(c.clone().add(V(x * 0.021 * k, -0.002 * k, 0.058 * k)), 0.016 * k, o.glow ?? 1));
+  if (o.glow !== 0) s.pair((_side, x) => s.eye('head', c.clone().add(V(x * 0.021 * k, -0.002 * k, 0.052 * k)), 0.009 * k, o.glow ?? 1));
 }
 
 /** A ribcage of hard rib arcs round the chest bone, a sternum, and the spine column. */
@@ -357,7 +357,7 @@ export function fleshHead(s: Sculpt, o: { size?: number; snout?: number; brow?: 
       s.hard('jaw', spikeGeo(b, b.clone().add(V(0, 0.016 * k, 0.002 * k)), 0.0045 * k, 4, undefined, 1), 'skin', o.teeth);
     }
   }
-  if (o.eyes !== 0) s.pair((_side, x) => s.glow(c.clone().add(V(x * 0.024 * k, 0.0, 0.06 * k)), 0.013 * k, o.eyes ?? 1));
+  if (o.eyes !== 0) s.pair((_side, x) => s.eye('head', c.clone().add(V(x * 0.024 * k, 0.0, 0.058 * k)), 0.008 * k, o.eyes ?? 1));
 }
 
 // ---------------------------------------------------------------------------

@@ -153,7 +153,7 @@ function drive(anim: CreatureAnimator, root: THREE.Object3D, state: string): voi
 }
 
 function frame(cam: THREE.PerspectiveCamera, h: number, yaw: number, cy: number, pitch = 0.18, len = 0): void {
-  const size = Math.max(h, len * 0.7, 0.6) * 1.15;
+  const size = Math.max(h, len * 0.7, 0.6) * 1.4;
   const dist = (size * 0.5) / Math.tan((cam.fov * Math.PI) / 360) + len * 0.3;
   cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, cy + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
   cam.lookAt(0, cy, 0);
@@ -177,12 +177,12 @@ function sheet(cols: number, cw: number, ch: number, rows: number, title: string
   return { c, g };
 }
 
-export async function lineup(ids: string[], mood: 'studio' | 'dungeon' = 'studio'): Promise<string> {
+export async function lineup(ids: string[], mood: 'studio' | 'dungeon' = 'studio', big = false, yaw = 0.6): Promise<string> {
   await ready();
   const list = entries(ids);
-  const cols = Math.min(6, list.length);
-  const cw = 230;
-  const chh = 290;
+  const cols = Math.min(big ? 3 : 6, list.length);
+  const cw = big ? 460 : 230;
+  const chh = big ? 580 : 290;
   const rows = Math.ceil(list.length / cols);
   const { c, g } = sheet(cols, cw, chh, rows, `creatures: ${ids.join(' ')}`);
   const r = studio(cw, chh - 40);
@@ -202,7 +202,7 @@ export async function lineup(ids: string[], mood: 'studio' | 'dungeon' = 'studio
       drive(m.anim, m.root, 'idle');
       const info = m.root.userData.creature as CreatureInfo;
       const k = cost(m.root);
-      frame(cam, info.height, 0.6, info.height * 0.5, 0.15, info.length);
+      frame(cam, info.height, yaw, info.height * 0.5, 0.15, info.length);
       r.render(scene, cam);
       line2 = `${k.tris} tris ${k.calls} calls ${m.ms.toFixed(0)}ms`;
     } catch (err) {
@@ -260,6 +260,8 @@ export async function poses(ids: string[]): Promise<string> {
 export const SHEETS: Record<string, (ids: string[]) => Promise<string>> = {
   lineup: (ids) => lineup(ids),
   game: (ids) => lineup(ids, 'dungeon'),
+  big: (ids) => lineup(ids, 'studio', true),
+  side: (ids) => lineup(ids, 'studio', true, Math.PI / 2),
   poses,
 };
 

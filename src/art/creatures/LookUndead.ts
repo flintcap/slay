@@ -7,7 +7,7 @@ import { bipedRig, quadRig, specterRig } from './Rig';
 import type { CreatureLook } from './Creature';
 import type { LookCtx, LookFactory } from './Looks';
 import type { Sculpt } from './Sculpt';
-import { spikeGeo, tubeGeo } from './Sculpt';
+import { ballGeo, spikeGeo, tubeGeo } from './Sculpt';
 import { weapon, type WeaponKind } from './Arms';
 import {
   V,
@@ -165,8 +165,9 @@ export function ghoulLook(c: LookCtx, plague: boolean): CreatureLook {
         for (let i = 0; i < 9; i++) {
           const b = i < 5 ? 'chest' : i < 7 ? 'armL' : 'shinR';
           const p = s.j(b).add(V((r() - 0.5) * 0.12 * H, (r() - 0.5) * 0.1 * H, (r() - 0.2) * 0.08 * H));
-          s.ball(b, p, (0.014 + r() * 0.012) * H, { k: 0.006 * H });
-          s.glow(p, 0.02 * H, 0.9);
+          const br = (0.012 + r() * 0.01) * H;
+          s.ball(b, p, br, { k: 0.006 * H });
+          s.boil(b, p.clone().add(V(0, 0, br * 0.55)), br * 0.6, 0.85, [0.75, 0.9, 0.35]);
         }
       }
       if (c.visual.weapon === 'sword' || c.visual.weapon === 'dagger') {
@@ -179,7 +180,7 @@ export function ghoulLook(c: LookCtx, plague: boolean): CreatureLook {
         grime: 0.6,
         ao: 0.9,
         mottle: { scale: 5, amount: 0.5, col: plague ? [0.42, 0.5, 0.22] : [0.5, 0.38, 0.36] },
-        veins: plague ? { scale: 9, cut: 0.82, glow: 0.4, col: [0.5, 0.7, 0.2] } : undefined,
+        veins: plague ? { scale: 9, cut: 0.94, glow: 0, col: [0.45, 0.55, 0.25] } : undefined,
       };
       s.paint.alt = { grime: 0.7, ao: 0.8 };
       s.lumps.skin = { amp: 0.004, scale: 22 };
@@ -215,17 +216,19 @@ function bloatLook(c: LookCtx): CreatureLook {
         const a = r() * Math.PI * 1.4 - 0.7;
         const y = hp.y + (r() - 0.3) * 0.25 * H;
         const p = V(Math.sin(a) * 0.17 * H, y, hp.z + 0.1 * H + Math.cos(a) * 0.14 * H);
-        s.ball(p.y > sp.y ? 'spine' : 'hips', p, (0.015 + r() * 0.02) * H, { k: 0.008 * H });
-        if (r() > 0.4) s.glow(p, 0.03 * H, 1);
+        const pr = (0.015 + r() * 0.02) * H;
+        const pb = p.y > sp.y ? 'spine' : 'hips';
+        s.ball(pb, p, pr, { k: 0.008 * H });
+        if (r() > 0.4) s.boil(pb, p.clone().add(V(Math.sin(a) * pr * 0.5, 0, Math.cos(a) * pr * 0.5)), pr * 0.65, 0.9, [0.8, 0.9, 0.4]);
       }
-      s.glow(hp.clone().add(V(0, 0.05 * H, 0.27 * H)), 0.05 * H, 0.8);
+      s.glow(hp.clone().add(V(0, 0.05 * H, 0.27 * H)), 0.03 * H, 0.7);
       for (let i = 0; i < 5; i++) {
         const y = hp.y - 0.05 * H + i * 0.05 * H;
         s.hard('hips', tubeGeo([V(-0.03 * H, y, hp.z + 0.26 * H - Math.abs(i - 2) * 0.02 * H), V(0.03 * H, y + 0.01 * H, hp.z + 0.26 * H - Math.abs(i - 2) * 0.02 * H)], () => 0.004 * H, 3), 'skin', [0.2, 0.15, 0.1]);
       }
       skirt(s, { len: 0.4, flare: 0.05, top: -0.02, sides: true, thick: 0.008 });
       weapon(s, 'cleaver', { steel: RUST, size: 1.1 });
-      s.paint.skin = { grime: 0.5, ao: 0.9, mottle: { scale: 4, amount: 0.6, col: [0.55, 0.45, 0.3] }, veins: { scale: 6, cut: 0.8, glow: 0.35, col: [0.4, 0.6, 0.15] } };
+      s.paint.skin = { grime: 0.5, ao: 0.9, mottle: { scale: 4, amount: 0.6, col: [0.55, 0.45, 0.3] }, veins: { scale: 6, cut: 0.94, glow: 0, col: [0.45, 0.5, 0.3] } };
       s.lumps.skin = { amp: 0.012, scale: 9 };
     },
     mats: {
@@ -246,15 +249,35 @@ export function corpseHoundLook(c: LookCtx): CreatureLook {
   const glow = c.visual.glow ?? 0xff4040;
   return {
     key: `id:${c.id}`,
-    rig: () => quadRig({ withers: 0.82, length: 0.95, width: 0.15, neck: 0.42, neckRise: 0.35, head: 0.45, tail: 4, tailLen: 0.55, slope: -0.02 }),
+    rig: () => quadRig({ withers: 0.7, length: 1.0, width: 0.13, neck: 0.4, neckRise: 0.3, head: 0.5, tail: 4, tailLen: 0.5, slope: -0.05 }),
     sculpt: (s) => {
-      const W = 0.82;
-      quadBody(s, { girth: 0.17, chest: 0.21, belly: 0.1, legR: 0.045, gaunt: 1, paws: 'claw' });
-      houndHead(s, { len: 0.45, w: 0.1, teeth: true, ears: 0.7, glow: 1.3 });
-      // Exposed ribs down its flank and a ridge of spine.
+      const chest = 0.17;
+      quadBody(s, { girth: 0.12, chest, legR: 0.036, gaunt: 1, paws: 'claw', narrow: 0.7 });
+      houndHead(s, { len: 0.5, w: 0.095, teeth: true, ears: 0.8, glow: 1.3 });
+      // Ribs bared down both flanks, laid on the chest, and a ridge of spine.
+      const C = quadChest(s, chest);
+      const R = quadChestR(chest, 0.7);
       for (let i = 0; i < 6; i++) {
-        const z = s.j('chest').z - i * 0.07;
-        s.pair((_side, x) => s.hard('spine', tubeGeo([V(x * 0.04, 0.95 * W, z), V(x * 0.16 * W, 0.78 * W, z + 0.02), V(x * 0.1 * W, 0.6 * W, z + 0.04)], () => 0.009, 4), 'skin', BONE));
+        const z = C.z + R.z * (0.35 - i * 0.24);
+        const zz = (z - C.z) / R.z;
+        const f = Math.sqrt(Math.max(0.05, 1 - zz * zz)) * 1.06;
+        s.pair((_side, x) => {
+          const pts: THREE.Vector3[] = [];
+          for (let k = 0; k <= 4; k++) {
+            const a = 0.25 + (k / 4) * 2.2;
+            pts.push(V(x * Math.sin(a) * R.x * f, C.y + Math.cos(a) * R.y * f, z + k * 0.012));
+          }
+          s.hard(i < 3 ? 'chest' : 'spine', tubeGeo(pts, () => 0.008, 4), 'skin', BONE);
+        });
+      }
+      let prevB = s.j('hips');
+      for (const n of ['spine', 'chest', 'neck']) {
+        const p = s.j(n);
+        for (let k = 0; k < 3; k++) {
+          const q = lerpV(prevB, p, k / 3).add(V(0, 0.1, 0));
+          s.hard(n, spikeGeo(q, q.clone().add(V(0, 0.035, -0.012)), 0.012, 4, undefined, 1), 'skin', BONE);
+        }
+        prevB = p;
       }
       s.paint.skin = { grime: 0.6, ao: 0.9, mottle: { scale: 5, amount: 0.55, col: [0.55, 0.3, 0.28] }, tips: { amount: 0.3, col: [0.3, 0.25, 0.2] } };
       s.lumps.skin = { amp: 0.004, scale: 20 };
@@ -264,19 +287,30 @@ export function corpseHoundLook(c: LookCtx): CreatureLook {
   };
 }
 
+/** Centre and radii of a quadruped's chest (deep, narrow), for parts laid on it. */
+export function quadChest(s: Sculpt, _chest: number): THREE.Vector3 {
+  return s.j('chest').add(V(0, -0.05, 0.02));
+}
+export function quadChestR(chest: number, narrow = 0.78): THREE.Vector3 {
+  return V(chest * 0.9 * narrow, chest * 1.1, chest);
+}
+
 /** A four-legged body: barrel, haunches, legs, paws or hooves. Shared with the beasts. */
 export function quadBody(
   s: Sculpt,
-  o: { girth: number; chest: number; belly?: number; legR: number; gaunt?: number; paws?: 'claw' | 'hoof' | 'pad'; mat?: 'skin' | 'alt'; haunch?: number; neckR?: number },
+  o: { girth: number; chest: number; belly?: number; legR: number; gaunt?: number; paws?: 'claw' | 'hoof' | 'pad'; mat?: 'skin' | 'alt'; haunch?: number; neckR?: number; narrow?: number },
 ): void {
   const mat = o.mat ?? 'skin';
   const hp = s.j('hips');
   const sp = s.j('spine');
   const ch = s.j('chest');
   const g = o.girth;
-  s.ball('hips', hp.clone().add(V(0, -0.02, 0.02)), V(g * 0.95, g * 1.0, g * 1.1 * (o.haunch ?? 1)), { mat });
-  s.ball('spine', sp.clone().add(V(0, -0.03, 0)), V(g * (o.gaunt ? 0.75 : 0.95), g * (o.gaunt ? 0.85 : 1.0), (ch.z - hp.z) * 0.38), { mat, k: 0.05 });
-  s.ball('chest', ch.clone().add(V(0, -0.05, 0.02)), V(o.chest * 0.9, o.chest * 1.1, o.chest), { mat, k: 0.05 });
+  const nw = o.narrow ?? 0.78;
+  const gaunt = o.gaunt ?? 0;
+  s.ball('hips', hp.clone().add(V(0, -0.02, 0.02)), V(g * 0.95 * nw, g * 1.0, g * 1.1 * (o.haunch ?? 1)), { mat });
+  // The waist tucks up under a gaunt body.
+  s.ball('spine', sp.clone().add(V(0, -0.03 + gaunt * g * 0.25, 0)), V(g * (0.95 - gaunt * 0.3) * nw, g * (1.0 - gaunt * 0.3), (ch.z - hp.z) * 0.38), { mat, k: 0.05 });
+  s.ball('chest', quadChest(s, o.chest), quadChestR(o.chest, nw), { mat, k: 0.05 });
   if (o.belly) s.ball('spine', sp.clone().add(V(0, -g * 0.6, 0.05)), V(o.belly, o.belly * 0.8, o.belly * 1.6), { mat, k: 0.05 });
   // Neck.
   s.limb('neck', ch.clone().add(V(0, 0.02, 0.04)), s.j('head'), (o.neckR ?? g * 0.55), (o.neckR ?? g * 0.55) * 0.75, { mat, k: 0.04 });
@@ -343,7 +377,7 @@ export function houndHead(s: Sculpt, o: { len: number; w: number; teeth?: boolea
   }
   if (o.ears) s.pair((_side, x) => s.hard('head', spikeGeo(h.clone().add(V(x * w * 0.6, w * 0.6, -0.02)), h.clone().add(V(x * w * 0.9, w * (0.6 + 1.1 * o.ears!), -0.06)), w * 0.32, 4, undefined, 2), mat));
   if (o.horns) s.pair((_side, x) => s.hard('head', spikeGeo(h.clone().add(V(x * w * 0.5, w * 0.7, 0.02)), h.clone().add(V(x * w * 1.6 * o.horns!, w * 1.6 * o.horns!, -w * 1.2 * o.horns!)), w * 0.25, 5, V(0, w * 0.4, -w * 0.5), 4), 'skin', [0.25, 0.2, 0.17]));
-  if (o.glow !== 0) s.pair((_side, x) => s.glow(h.clone().add(V(x * w * 0.55, w * 0.25, w * 0.75)), w * 0.25, o.glow ?? 1));
+  if (o.glow !== 0) s.pair((_side, x) => s.eye('head', h.clone().add(V(x * w * 0.5, w * 0.25, w * 0.72)), w * 0.12, o.glow ?? 1));
 }
 
 // ---------------------------------------------------------------------------
@@ -368,8 +402,13 @@ export function specterLook(c: LookCtx, o: { veil?: boolean; choir?: boolean; cl
         s.limb(`fore${side}`, s.j(`fore${side}`), s.j(`hand${side}`), 0.016 * H, 0.012 * H, { mat: 'skin' });
         claws(s, `hand${side}`, `hand${side}Tip`, 4, o.claws ?? 0.09, 0.005, 'skin', [0.15, 0.15, 0.18], 0.4);
         // Sleeves hang from the arms in tatters.
-        s.limb(`arm${side}`, s.j(`arm${side}`).add(V(0, 0.02 * H, 0)), s.j(`fore${side}`).add(V(0, -0.04 * H, -0.02 * H)), 0.045 * H, 0.06 * H, { mat: 'alt', k: 0.02 * H });
-        s.limb(`fore${side}`, s.j(`fore${side}`), lerpV(s.j(`fore${side}`), s.j(`hand${side}`), 0.8).add(V(0, -0.05 * H, 0)), 0.05 * H, 0.065 * H, { mat: 'alt', k: 0.02 * H });
+        s.limb(`arm${side}`, s.j(`arm${side}`).add(V(0, 0.01 * H, 0)), s.j(`fore${side}`).add(V(0, -0.01 * H, -0.01 * H)), 0.032 * H, 0.03 * H, { mat: 'alt', k: 0.015 * H });
+        const cuff = lerpV(s.j(`fore${side}`), s.j(`hand${side}`), 0.85).add(V(0, -0.025 * H, 0));
+        s.limb(`fore${side}`, s.j(`fore${side}`), cuff, 0.03 * H, 0.045 * H, { mat: 'alt', k: 0.012 * H });
+        // Hollow the cuff so the bony hand comes out of darkness.
+        s.limb(`fore${side}`, lerpV(s.j(`fore${side}`), cuff, 0.6), cuff.clone().addScaledVector(cuff.clone().sub(s.j(`fore${side}`)).normalize(), 0.03 * H), 0.012 * H, 0.036 * H, { mat: 'alt', sub: true, k: 0.006 * H });
+        // A rag hanging from each sleeve.
+        s.hard(`fore${side}`, spikeGeo(cuff.clone().add(V(0, -0.02 * H, -0.02 * H)), cuff.clone().add(V(0, -0.16 * H, -0.06 * H)), 0.03 * H, 3, undefined, 2), 'alt');
       });
       // The shroud: a hood, a mantle and four trailing robe chains.
       hood(s, { size: 1.05, peak: 1.2, open: 1.15 });
@@ -398,10 +437,14 @@ export function specterLook(c: LookCtx, o: { veil?: boolean; choir?: boolean; cl
       if (o.choir) {
         // A ring of candles and a bell-like collar.
         s.hard('chest', tubeGeo([ch.clone().add(V(-0.14 * H, 0.08 * H, 0.05 * H)), ch.clone().add(V(0, 0.1 * H, 0.1 * H)), ch.clone().add(V(0.14 * H, 0.08 * H, 0.05 * H))], () => 0.012 * H, 5), 'metal', [0.7, 0.55, 0.3], 0.3);
-        for (let i = 0; i < 3; i++) s.glow(ch.clone().add(V((i - 1) * 0.12 * H, 0.14 * H, 0.06 * H)), 0.03 * H, 1.5);
+        for (let i = 0; i < 3; i++) {
+          const cp = ch.clone().add(V((i - 1) * 0.12 * H, 0.105 * H, 0.08 * H - Math.abs(i - 1) * 0.04 * H));
+          s.hard('chest', tubeGeo([cp, cp.clone().add(V(0, 0.04 * H, 0))], () => 0.008 * H, 5), 'metal', [0.85, 0.8, 0.65]);
+          s.boil('chest', cp.clone().add(V(0, 0.055 * H, 0)), 0.008 * H, 1, [1, 0.9, 0.6]);
+        }
       }
-      s.glow(ch.clone().add(V(0, 0, 0.05 * H)), 0.06 * H, 0.5);
-      s.paint.skin = { grime: 0.2, ao: 0.6, veins: { scale: 8, cut: 0.75, glow: 0.5 } };
+      s.glow(ch.clone().add(V(0, 0, 0.06 * H)), 0.035 * H, 0.45);
+      s.paint.skin = { grime: 0.2, ao: 0.6, veins: { scale: 8, cut: 0.94, glow: 0.4 } };
       s.paint.alt = { grime: 0.1, ao: 0.6, mottle: { scale: 3, amount: 0.5, col: [0.4, 0.4, 0.5] }, tips: { amount: 0.6, col: [0.1, 0.1, 0.12] } };
       s.soft.alt = 0.08;
     },
@@ -443,9 +486,11 @@ function graveTitanLook(c: LookCtx): CreatureLook {
         const p = lerpV(s.j('hips'), s.j('neck'), i / 6).add(V((r() - 0.5) * 0.04 * H, 0.02 * H, -0.12 * H));
         s.hard(i < 3 ? 'spine' : 'chest', spikeGeo(p, p.clone().add(V(0, 0.06 * H, -0.08 * H)), 0.018 * H, 5, undefined, 2), 'skin', BONE);
       }
-      s.glow(s.j('chest').add(V(0, 0, 0.06 * H)), 0.08 * H, 1.2);
+      // A green heart burns inside the cage.
+      s.boil('chest', s.j('chest').add(V(0, 0, 0.03 * H)), 0.035 * H, 1, [0.7, 1, 0.8]);
+      s.glow(s.j('chest').add(V(0, 0, 0.06 * H)), 0.05 * H, 0.35);
       s.paint.skin = { grime: 0.5, ao: 0.95, mottle: { scale: 6, amount: 0.3, col: [0.5, 0.42, 0.3] } };
-      s.paint.alt = { grime: 0.55, ao: 0.9, mottle: { scale: 3, amount: 0.5, col: [0.35, 0.4, 0.3] }, veins: { scale: 5, cut: 0.82, glow: 0.4 } };
+      s.paint.alt = { grime: 0.55, ao: 0.9, mottle: { scale: 3, amount: 0.5, col: [0.35, 0.4, 0.3] }, veins: { scale: 5, cut: 0.94, glow: 0, col: [0.4, 0.45, 0.35] } };
       s.lumps.alt = { amp: 0.015, scale: 7 };
     },
     mats: {
@@ -485,7 +530,7 @@ function lichLook(c: LookCtx): CreatureLook {
       s.hard('head', tubeGeoRing(hc, 0.06 * H, 0.008 * H), 'metal', [0.55, 0.5, 0.4]);
       weapon(s, 'staff', { glow: 1.6, size: 1.1, wood: [0.18, 0.16, 0.2] });
       // A phylactery on the chest.
-      s.glow(s.j('chest').add(V(0, 0.02 * H, 0.1 * H)), 0.035 * H, 2);
+      s.hard('chest', ballGeo(s.j('chest').add(V(0, 0.02 * H, 0.1 * H)), 0.022 * H, 0), 'skin', [0.6, 1, 0.8], 1);
       s.paint.skin = { grime: 0.3, ao: 0.9, mottle: { scale: 7, amount: 0.3, col: [0.4, 0.38, 0.3] } };
       s.paint.alt = { grime: 0.4, ao: 0.85, bands: { axis: 'y', period: 0.22, amount: 0.25 }, mottle: { scale: 4, amount: 0.3, col: [0.3, 0.5, 0.4] } };
     },

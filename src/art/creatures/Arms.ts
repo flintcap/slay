@@ -10,7 +10,7 @@
  */
 import * as THREE from 'three';
 import type { CMat, RGB, Sculpt } from './Sculpt';
-import { ballGeo, bladeGeo, boxGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { ballGeo, bladeGeo, boxGeo, slabGeo, spikeGeo, tubeGeo } from './Sculpt';
 import { V, lerpV, quatAlong } from './Kit';
 
 export const WEAPON_DIR = V(0, 0.36, 0.93).normalize();
@@ -34,13 +34,27 @@ export interface WeaponOpt {
   mat?: CMat;
 }
 
+const KIND_SIZE: Partial<Record<WeaponKind, number>> = {
+  sword: 0.72,
+  dagger: 0.8,
+  cleaver: 0.8,
+  axe: 0.66,
+  mace: 0.72,
+  greataxe: 0.78,
+  hammer: 0.85,
+  scythe: 0.85,
+  spear: 0.9,
+  staff: 0.9,
+};
+
 const WOOD: RGB = [0.32, 0.22, 0.14];
 const STEEL: RGB = [0.62, 0.6, 0.56];
 
 /** Puts a weapon in a hand. */
 export function weapon(s: Sculpt, kind: WeaponKind, o: WeaponOpt = {}): void {
   const H = s.rig.height;
-  const k = (o.size ?? 1) * H;
+  // Sized for the body: one-handers about 0.4 of body height long, polearms near it.
+  const k = (o.size ?? 1) * H * (KIND_SIZE[kind] ?? 1);
   const side = o.side ?? (kind === 'bow' ? 'L' : 'R');
   const handB = `hand${side}`;
   if (!s.has(handB)) return;
@@ -78,17 +92,19 @@ export function weapon(s: Sculpt, kind: WeaponKind, o: WeaponOpt = {}): void {
     case 'axe':
     case 'greataxe': {
       const big = kind === 'greataxe' ? 1.45 : 1;
-      haft(-0.18 * big, 0.5 * big, 0.012 * big);
+      haft(big > 1 ? -0.3 : -0.06, 0.5 * big, 0.013 * big);
       const top = at(0.44 * big);
-      // Crescent head: blades fanning from the haft toward the edge side.
-      const w = 0.16 * big * k;
-      for (const u of [-1, 0, 1]) {
-        const base = top.clone().addScaledVector(d, u * 0.05 * big * k);
-        const end = base.clone().addScaledVector(EDGE, w).addScaledVector(d, u * 0.07 * big * k);
-        s.hard(handB, bladeGeo(base, end, 0.06 * big * k, 0.014 * big * k, d, 0.15), mat, steel, o.glow);
+      // A bearded head: a wedge flaring from the haft to a wide edge.
+      const w = 0.17 * big * k;
+      const root = top.clone().addScaledVector(EDGE, 0.01 * k);
+      const edge = top.clone().addScaledVector(EDGE, w).addScaledVector(d, -0.02 * big * k);
+      s.hard(handB, slabGeo(root, edge, d, 0.07 * big * k, 0.2 * big * k, 0.03 * big * k, 0.006 * k), mat, steel, o.glow);
+      if (big > 1) {
+        const edge2 = top.clone().addScaledVector(EDGE, -w * 0.8).addScaledVector(d, -0.02 * big * k);
+        s.hard(handB, slabGeo(top.clone().addScaledVector(EDGE, -0.01 * k), edge2, d, 0.07 * big * k, 0.17 * big * k, 0.03 * big * k, 0.006 * k), mat, steel, o.glow);
       }
       // Back spike.
-      s.hard(handB, spikeGeo(top, top.clone().addScaledVector(EDGE, -0.08 * big * k), 0.018 * big * k, 4, undefined, 1), mat, steel);
+      if (big <= 1) s.hard(handB, spikeGeo(top, top.clone().addScaledVector(EDGE, -0.08 * big * k), 0.018 * big * k, 4, undefined, 1), mat, steel);
       break;
     }
     case 'scythe': {

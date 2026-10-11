@@ -166,6 +166,22 @@ export class Sculpt {
     return this;
   }
 
+  /**
+   * A burning eye: a small rigid ball that glows at full strength, plus a faint
+   * painted halo. Painted glow alone smears over a coarse head; this stays a
+   * crisp point at any mesh resolution.
+   */
+  eye(bone: string, c: THREE.Vector3, r: number, amount = 1): this {
+    this.hard(bone, ballGeo(c, r, 1), 'skin', [0.6, 0.6, 0.6], Math.min(1, amount));
+    if (amount > 0.3) this.regions.push({ c: c.clone(), r: r * 1.2, glow: Math.min(1, amount) * 0.2, mats: ['skin'] });
+    return this;
+  }
+
+  /** A glowing boil, pustule or gem: a rigid half-sunk ball, crisp at any mesh resolution. */
+  boil(bone: string, c: THREE.Vector3, r: number, glow = 0.8, col: RGB = [0.9, 0.85, 0.5]): this {
+    return this.hard(bone, ballGeo(c, r, 1), 'skin', col, glow);
+  }
+
   /** Paints colour onto the surface inside a sphere. */
   tint(c: THREE.Vector3, r: number, col: RGB, mats?: CMat[]): this {
     this.regions.push({ c: c.clone(), r, col, mats });
@@ -323,6 +339,35 @@ export function bladeGeo(a: THREE.Vector3, b: THREE.Vector3, w: number, thick: n
     idx.push(4 + s, 8, 4 + s1);
   }
   idx.push(0, 1, 2, 0, 2, 3);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  const ng = g.toNonIndexed();
+  ng.computeVertexNormals();
+  g.dispose();
+  return ng;
+}
+
+/**
+ * A flat slab from `a` to `b` whose width (along `wide`) and thickness change
+ * from one end to the other: axe heads, cleavers, plates, fins.
+ */
+export function slabGeo(a: THREE.Vector3, b: THREE.Vector3, wide: THREE.Vector3, w0: number, w1: number, t0: number, t1: number): THREE.BufferGeometry {
+  const d = b.clone().sub(a).normalize();
+  const e = wide.clone().addScaledVector(d, -wide.dot(d)).normalize();
+  const f = d.clone().cross(e).normalize();
+  const pos: number[] = [];
+  for (const [p, w, t] of [[a, w0, t0], [b, w1, t1]] as const) {
+    for (const [u, v] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
+      const q = p.clone().addScaledVector(e, u * w * 0.5).addScaledVector(f, v * t * 0.5);
+      pos.push(q.x, q.y, q.z);
+    }
+  }
+  const idx = [0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7];
+  for (let s = 0; s < 4; s++) {
+    const s1 = (s + 1) % 4;
+    idx.push(s, 4 + s1, 4 + s, s, s1, 4 + s1);
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx);

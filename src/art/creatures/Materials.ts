@@ -313,7 +313,7 @@ vec4 triNz = texture2D( triNormal, vTriPos.xy );
 #endif`,
       )
       .replace('#include <color_fragment>', `#if defined( USE_COLOR )
-  diffuseColor.rgb *= vColor * 2.0;
+  diffuseColor.rgb *= vColor.rgb * 2.0;
 #endif`)
       .replace(
         '#include <roughnessmap_fragment>',
@@ -340,7 +340,7 @@ roughnessFactor = clamp( roughnessFactor * mix( 1.0, triR * 1.4, 0.75 ), 0.04, 1
         `#include <emissivemap_fragment>
 totalEmissiveRadiance += glowColor * ( vGlow * glowIntensity );
 // Painted glow also brightens what it sits in, so an eye reads as lit, not as a dot.
-diffuseColor.rgb = mix( diffuseColor.rgb, glowColor * 0.35, clamp( vGlow * 1.5, 0.0, 1.0 ) );
+diffuseColor.rgb = mix( diffuseColor.rgb, glowColor * 0.35, clamp( ( vGlow - 0.3 ) * 1.8, 0.0, 1.0 ) );
 if ( rimStrength > 0.0 ) {
   float rimF = 1.0 - clamp( dot( normal, normalize( vViewPosition ) ), 0.0, 1.0 );
   totalEmissiveRadiance += rimColor * ( pow( rimF, 2.6 ) * rimStrength );
