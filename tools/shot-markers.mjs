@@ -9,6 +9,9 @@
  * Prints what each spot shows and where each marker lands on screen against
  * its head, and fails if either kind is missing or a marker sits below the
  * top of its head.
+ *
+ * Renders the `npm run build` output (like screenshot.mjs): run the build
+ * first. The dev server is too slow to take a shot under software GL.
  */
 import { mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -24,7 +27,7 @@ const ok = (cond, what, detail = '') => {
   if (!cond) problems.push(what);
 };
 
-const { page, close, pageErrors } = await bootGame({ fallbackPort: 4331 });
+const { page, close, pageErrors } = await bootGame({ fallbackPort: 4331, preview: true });
 try {
   await page.evaluate(async () => {
     localStorage.clear();
@@ -87,7 +90,7 @@ try {
 
   const wide = await frame(false);
   const fileWide = path.join(OUT, 'town-markers.png');
-  await page.screenshot({ path: fileWide });
+  await page.screenshot({ path: fileWide, timeout: 240_000 });
   console.log(`shot  ${fileWide}  ${Math.round(statSync(fileWide).size / 1024)} KB`);
   for (const m of wide) console.log(`      ${m.spot.padEnd(9)} ${m.kind.padEnd(7)} foot ${m.foot.x},${m.foot.y}${m.foot.on ? '' : ' (off screen)'}  head top ${m.headTop ? `${m.headTop.x},${m.headTop.y}` : '-'}  gap ${m.gap ?? '-'} m`);
   const onScreen = wide.filter((m) => m.foot.on);
@@ -97,7 +100,7 @@ try {
 
   const near = await frame(true);
   const fileNear = path.join(OUT, 'town-markers-near.png');
-  await page.screenshot({ path: fileNear });
+  await page.screenshot({ path: fileNear, timeout: 240_000 });
   console.log(`shot  ${fileNear}  ${Math.round(statSync(fileNear).size / 1024)} KB`);
   const rn = near.find((m) => m.spot === 'renn');
   if (rn) console.log(`      renn close: foot ${rn.foot.x},${rn.foot.y}  head top ${rn.headTop?.x},${rn.headTop?.y}`);

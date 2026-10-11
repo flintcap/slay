@@ -41,13 +41,15 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   physical stays as it is. Prove each with a headless check.
   (`qa-bugs: owner's play bugs: two blades, venom, damage colours`;
   `check-hits` 32 of 32; see Results)
-- [ ] Quest markers (owner's request). Town NPCs show a yellow "?" when
+- [x] Quest markers (owner's request). Town NPCs show a yellow "?" when
   they have a quest to take and a green "!" when one is ready to hand in
   (hand-in wins), nothing otherwise, updated the moment the state changes.
   One source of truth (offer, turnIn or nothing per NPC). Drawn in the game
   camera above each head: bold, a little glow, a gentle bob, seen over
   buildings, never in a hat. Minimap too if simple. Headless check (offer,
   taken, ready, handed in) and one town render with both kinds.
+  (`qa-bugs: quest markers over town NPCs`; `check-markers` 26 of 26;
+  `shot-markers` renders both kinds; see Results)
 - [ ] Handover.
 
 ## Results
@@ -125,6 +127,28 @@ own number in its own colour. Physical is unchanged.
 Static sweep after these changes: 53 of 54 pass; `curve` is the same single
 revenant tier 5 "untouched" cell as before.
 
+### Quest markers (`node tools/check-markers.mjs`, 26 of 26)
+
+One rule, in `src/sim/QuestMarkers.ts`: a person shows "!" when contract
+work for them is ready to hand in, "?" when they have a contract to give
+now, and nothing otherwise (a taken contract still being worked shows
+nothing). Hand-in wins. The bounty board has no keeper, so it is its own
+spot: "?" while the hero has a free hand, "!" when a bounty is done. Run
+quests come with the map and have no giver, so they mark nobody.
+
+The town asks five times a second and at once on any refresh, so a marker
+changes the moment work is taken, finished or handed in. The marker is a
+bold glyph with a dark rim and a glow, drawn over everything (it reads
+over roofs) with a gentle bob, its foot 0.22 m over the top of the head,
+hat included (`Residents.headTop`). On a fresh account six people show
+"?" (Hesk, Kale, Vell, Corvane, Renn, Wenna); Marrow, the Listener and
+Gilder show nothing until their chains open.
+
+Render: `SLAY_PORT=4331 timeout 2700 node tools/shot-markers.mjs` (after
+`npm run build`) puts both kinds in one town shot plus a close shot of
+Renn's "!"; every marker sat 0.22 to 0.29 m clear of its head. Not on the
+minimap: in town the minimap has no map to draw on ("no map").
+
 ### Text
 
 UI text that still said floors, depth or stairs for the map flow now says
@@ -134,20 +158,15 @@ modifier and objective lines, difficulty guidance). Story prose is unchanged.
 
 ## Next up
 
-1. Quest markers: run the town render with both kinds,
-   `SLAY_PORT=4331 timeout 2700 node tools/shot-markers.mjs --out=shots/qa-bugs`,
-   and look at both shots by eye (the "!" over Renn, a "?" elsewhere, clear
-   of hats, readable over roofs). `check-markers` (static) already passes
-   26 of 26.
-2. Run the class tour's dungeon half, one class per run, in the
+1. Run the class tour's dungeon half, one class per run, in the
    foreground:
    `SLAY_PORT=4331 timeout 2700 node tools/check-flow.mjs --class=<id> --part=dungeon`
    for shadowblade (loot step now retries, has god mode and says where a
    lost drop went), warden (skill target now 1.8 m), then pyromancer,
    stormcaller, revenant, ranger.
-3. Run `SLAY_PORT=4331 timeout 2700 node tools/check-mapflow.mjs`.
-4. Run the plain `check-flow` once for death and rise again.
-5. Look at a town and a dungeon render for the text milestone.
+2. Run `SLAY_PORT=4331 timeout 2700 node tools/check-mapflow.mjs`.
+3. Run the plain `check-flow` once for death and rise again.
+4. Look at a town and a dungeon render for the text milestone.
 
 ## Notes for resume
 

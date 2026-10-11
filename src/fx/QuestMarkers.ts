@@ -20,7 +20,7 @@ const LOOK: Record<Kind, { glyph: string; fill: string; glow: string }> = {
 };
 
 /** World height of a marker, metres. */
-const SIZE = 0.95;
+const SIZE = 1.1;
 /** Clear air between the top of the head and the bottom of the glyph. */
 const GAP = 0.22;
 /** Bob height and rate. */
