@@ -1,19 +1,19 @@
 /**
  * Procedural inventory, skill, status and affix icons — the public surface.
  *
- * Everything is painted to a canvas at generation time and cached as an image
- * URI. No image files, no icon fonts — the game ships zero assets.
+ * Everything is drawn to a canvas at generation time and cached as an image
+ * URI. No image files, no icon fonts.
  *
- * The painting lives elsewhere and this module only caches and schedules it:
+ * The drawing lives elsewhere and this module only caches and schedules it:
  *
- *  - item icons: `ItemIconArt` (families in `IconWeapons`, `IconArmor`,
- *    `IconTrinkets`, kit and rarity looks in `IconKit`)
+ *  - item icons: rendered from the item's own 3D model by
+ *    `items/IconRender`, with the rarity look composited on top
  *  - skill, status and affix icons: `SkillIconArt`, over the pictogram
  *    vocabulary in `Glyphs`
  *  - the brushes underneath all of it: `Paint`
  */
-import type { Item, DamageType } from '../types';
-import { paintItemIcon } from './ItemIconArt';
+import type { Item, DamageType, ItemVisual } from '../types';
+import { drawItemIcon as renderItemIcon, type IconSpec } from './items/IconRender';
 import { paintSkillIcon, paintStatusIcon, paintAffixIcon } from './SkillIconArt';
 import { makeCanvas } from './Paint';
 import { SKILL_BY_ID, TREE_BY_ID, SKILL_TREES } from '../data/skills';
@@ -35,8 +35,7 @@ function scratchCanvas(size = S): { c: HTMLCanvasElement; x: CanvasRenderingCont
   return scratch;
 }
 
-// Item icons are painted by ./ItemIconArt (families in IconWeapons, IconArmor, IconTrinkets).
-export { potionColor } from './IconTrinkets';
+export { potionColor } from './items/IconRender';
 
 // ---------------------------------------------------------------------------
 // Public: item icons
@@ -56,6 +55,13 @@ export function setIconBaseResolver(fn: typeof baseLookup): void {
   // stale icon land in a slot a frame later.
   pending.clear();
   listeners.clear();
+}
+
+/** What the icon renderer needs for an item: its base's authored visual and identity. */
+function specFor(item: Item): IconSpec {
+  const v = baseLookup?.(item.baseId)?.visual;
+  const visual: ItemVisual | undefined = v?.shape ? { shape: v.shape, palette: v.palette ?? 'metal.steel', ornate: v.ornate, glow: v.glow } : undefined;
+  return { baseId: item.baseId, rarity: item.rarity, visual, uniqueId: item.uniqueId, setId: item.setId };
 }
 
 /** The properties that actually change an item's art. */
@@ -80,7 +86,7 @@ const BLANK =
 /**
  * Icons are drawn a few at a time, off the frame that asked for them.
  *
- * Drawing one is a canvas render plus a PNG encode, and opening a full pack is
+ * Drawing one is a model build, a render and a PNG encode, and opening a full pack is
  * a hundred of those back to back — enough to lock the window for most of a
  * second the first time you press I. Nothing about that work needs to happen
  * before the panel appears, so it doesn't: the grid renders immediately with
@@ -105,9 +111,8 @@ function deliver(key: string, uri: string): void {
 }
 
 /**
- * Paints now, encodes later. The PNG encode is as expensive as the painting,
- * and `toBlob` does it off the main thread, so the frame only pays for the
- * brushwork.
+ * Draws now, encodes later. `toBlob` does the PNG encode off the main thread,
+ * so the frame only pays for the render.
  */
 function drawItemIconAsync(item: Item, key: string): void {
   const gen = generation;
@@ -115,7 +120,7 @@ function drawItemIconAsync(item: Item, key: string): void {
   c.width = 128;
   c.height = 128;
   const x = c.getContext('2d')!;
-  paintItemIcon(x, { baseId: item.baseId, rarity: item.rarity, base: baseLookup?.(item.baseId), identity: item.uniqueId ?? item.setId });
+  renderItemIcon(x, specFor(item));
   if (typeof c.toBlob !== 'function' || typeof URL?.createObjectURL !== 'function') {
     const uri = c.toDataURL('image/png');
     itemCache.set(key, uri);
@@ -205,14 +210,8 @@ export function itemIconUri(item: Item): string {
 }
 
 function drawItemIcon(item: Item, key: string): string {
-  const base = baseLookup?.(item.baseId);
   const { c, x } = scratchCanvas();
-  paintItemIcon(x, {
-    baseId: item.baseId,
-    rarity: item.rarity,
-    base,
-    identity: item.uniqueId ?? item.setId,
-  });
+  renderItemIcon(x, specFor(item));
   const uri = c.toDataURL('image/png');
   itemCache.set(key, uri);
   return uri;

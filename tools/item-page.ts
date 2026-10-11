@@ -7,6 +7,10 @@
  *   uniques    every unique (--cat= to narrow, --rarity=mythic|ancient)
  *   sets       every set piece (--set= to narrow)
  *   rarity     one base (--base=) at every rarity
+ *   distinct   check: every base, unique and set piece has an icon of its own
+ *              (--min= the smallest mean difference over covered pixels, default 0.05)
+ *   icons      inventory icons on slot backdrops: --cat= (or all bases), --rarity=,
+ *              --uniques, --sets; each shown at full size and at the game's 52px
  */
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -17,6 +21,7 @@ import type { Item, ItemRarity, ItemVisual } from '../src/types';
 import { buildItem } from '../src/art/items/Model';
 import { buildDropModel, setItemVisualResolver } from '../src/art/ItemModels';
 import { Random } from '../src/core/RNG';
+import { drawItemIcon } from '../src/art/items/IconRender';
 
 const BG = '#121318';
 const INK = '#c9d1de';
@@ -179,6 +184,157 @@ function familySheet(cat: string, f: Record<string, string>): string {
   return render(entries, Number(f.cols ?? 7));
 }
 
+/** Inventory icons on the slot's own backdrop, at full size and at the game's 52px. */
+function iconSheet(entries: Entry[], cols: number): string {
+  const W = 150;
+  const H = 196;
+  const rows = Math.max(1, Math.ceil(entries.length / cols));
+  const c = document.createElement('canvas');
+  c.width = cols * W;
+  c.height = rows * H;
+  const g = c.getContext('2d')!;
+  g.fillStyle = BG;
+  g.fillRect(0, 0, c.width, c.height);
+  const icon = document.createElement('canvas');
+  icon.width = icon.height = 128;
+  const ix = icon.getContext('2d')!;
+  const slot = (x: number, y: number, s: number): void => {
+    const gr = g.createRadialGradient(x + s / 2, y + s * 0.3, 0, x + s / 2, y + s * 0.3, s * 0.85);
+    gr.addColorStop(0, '#1d1812');
+    gr.addColorStop(1, '#0c0a07');
+    g.fillStyle = gr;
+    g.fillRect(x, y, s, s);
+  };
+  entries.forEach((e, i) => {
+    const x = (i % cols) * W + 4;
+    const y = Math.floor(i / cols) * H + 4;
+    ix.clearRect(0, 0, 128, 128);
+    drawItemIcon(ix, { baseId: e.baseId, rarity: e.rarity, visual: e.visual, uniqueId: e.uniqueId, setId: e.setId });
+    slot(x, y, 128);
+    g.drawImage(icon, x, y);
+    slot(x + 88, y + 132, 52);
+    g.drawImage(icon, x + 88, y + 132, 52, 52);
+    g.fillStyle = RARITY_INK[e.rarity] ?? INK;
+    g.font = '11px monospace';
+    g.fillText(e.label.slice(0, 12), x, y + 146);
+    g.fillStyle = '#7a8090';
+    g.font = '10px monospace';
+    g.fillText(e.baseId.slice(0, 13), x, y + 160);
+  });
+  return c.toDataURL('image/png');
+}
+
+/** A rendered icon shrunk to 48px, for comparing pictures. */
+function iconPixels(e: Entry): Float32Array {
+  const big = document.createElement('canvas');
+  big.width = big.height = 128;
+  const bx = big.getContext('2d')!;
+  drawItemIcon(bx, { baseId: e.baseId, rarity: e.rarity, visual: e.visual, uniqueId: e.uniqueId, setId: e.setId });
+  const small = document.createElement('canvas');
+  small.width = small.height = 48;
+  const sx = small.getContext('2d', { willReadFrequently: true })!;
+  sx.drawImage(big, 0, 0, 48, 48);
+  const d = sx.getImageData(0, 0, 48, 48).data;
+  const out = new Float32Array(48 * 48 * 3);
+  for (let i = 0, j = 0; i < d.length; i += 4, j += 3) {
+    // Premultiply by alpha: the slot behind is dark, so a clear pixel reads as black.
+    const a = d[i + 3]! / 255;
+    out[j] = (d[i]! / 255) * a;
+    out[j + 1] = (d[i + 1]! / 255) * a;
+    out[j + 2] = (d[i + 2]! / 255) * a;
+  }
+  return out;
+}
+
+/**
+ * Mean colour difference over the pixels either icon covers, so a thin spear
+ * is judged on the spear and not on the empty slot around it.
+ */
+function pixelDiff(a: Float32Array, b: Float32Array): number {
+  let t = 0;
+  let n = 0;
+  for (let i = 0; i < a.length; i += 3) {
+    const la = a[i]! + a[i + 1]! + a[i + 2]!;
+    const lb = b[i]! + b[i + 1]! + b[i + 2]!;
+    if (la < 0.03 && lb < 0.03) continue;
+    t += Math.abs(a[i]! - b[i]!) + Math.abs(a[i + 1]! - b[i + 1]!) + Math.abs(a[i + 2]! - b[i + 2]!);
+    n += 3;
+  }
+  return n ? t / n : 0;
+}
+
+/**
+ * Every base reads as its own item: no two bases of one category, no two
+ * uniques or set pieces on one base, and no unique or set piece against its
+ * plain base at the same rarity, may draw (nearly) the same icon.
+ */
+function distinctCheck(f: Record<string, string>): string {
+  const min = Number(f.min ?? 0.05);
+  const lines: string[] = [];
+  const fails: string[] = [];
+  const cache = new Map<string, Float32Array>();
+  const px = (e: Entry): Float32Array => {
+    const k = `${e.baseId}|${e.rarity}|${e.uniqueId ?? ''}|${e.setId ?? ''}`;
+    let v = cache.get(k);
+    if (!v) cache.set(k, (v = iconPixels(e)));
+    return v;
+  };
+  const compare = (group: string, list: Entry[]): void => {
+    let worst = Infinity;
+    let pair = '';
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const d = pixelDiff(px(list[i]!), px(list[j]!));
+        if (d < worst) {
+          worst = d;
+          pair = `${list[i]!.label} / ${list[j]!.label}`;
+        }
+        if (d < min) fails.push(`${group}: ${list[i]!.label} and ${list[j]!.label} look the same (${d.toFixed(4)})`);
+      }
+    }
+    if (list.length > 1) lines.push(`${group.padEnd(24)} ${String(list.length).padStart(3)}  closest ${worst.toFixed(4)}  ${pair}`);
+  };
+  const cats = [...new Set(ITEM_BASES.map((b) => b.category))];
+  for (const cat of cats) {
+    compare(cat, ITEM_BASES.filter((b) => b.category === cat).map((b) => ({ label: b.id, visual: b.visual, rarity: 'normal' as ItemRarity, baseId: b.id })));
+  }
+  // Uniques and set pieces: against each other on one base, and against the plain base.
+  const special = new Map<string, Entry[]>();
+  for (const u of UNIQUES) {
+    const b = baseById.get(u.baseId);
+    if (!b) continue;
+    const e: Entry = { label: u.id, visual: b.visual, rarity: u.rarity as ItemRarity, baseId: b.id, uniqueId: u.id };
+    special.set(b.id, [...(special.get(b.id) ?? []), e]);
+  }
+  for (const p of SET_PIECES) {
+    const b = baseById.get(p.baseId);
+    if (!b) continue;
+    const e: Entry = { label: `${p.setId}:${p.name}`, visual: b.visual, rarity: 'set', baseId: b.id, setId: p.setId };
+    special.set(b.id, [...(special.get(b.id) ?? []), e]);
+  }
+  let specials = 0;
+  let worstPlain = Infinity;
+  let worstPlainPair = '';
+  for (const [baseId, list] of special) {
+    const b = baseById.get(baseId)!;
+    specials += list.length;
+    if (list.length > 1) compare(`on ${baseId}`, list);
+    for (const e of list) {
+      const plain: Entry = { label: `plain ${baseId}`, visual: b.visual, rarity: e.rarity, baseId };
+      const d = pixelDiff(px(e), px(plain));
+      if (d < worstPlain) {
+        worstPlain = d;
+        worstPlainPair = `${e.label} / ${plain.label}`;
+      }
+      if (d < min) fails.push(`${e.label} looks like a plain ${baseId} (${d.toFixed(4)})`);
+    }
+  }
+  lines.push(`${specials} uniques and set pieces; closest to its plain base ${worstPlain.toFixed(4)}  ${worstPlainPair}`);
+  lines.push(`${cache.size} icons rendered, ${fails.length} too alike (min ${min})`);
+  for (const l of fails.slice(0, 60)) lines.push(`  ${l}`);
+  return JSON.stringify({ pass: fails.length === 0, lines });
+}
+
 export const SHEETS: Record<string, (f: Record<string, string>) => Promise<string>> = {
   async uniques(f) {
     const list = UNIQUES.filter((u) => {
@@ -211,6 +367,29 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     }).slice(0, Number(f.max ?? 30));
     const rarity = asRarity(f.rarity, 'rare');
     return dropSheet(list.map((b) => ({ label: b.name, visual: b.visual, rarity, baseId: b.id })), Number(f.cols ?? 6));
+  },
+  async distinct(f) {
+    return distinctCheck(f);
+  },
+  async icons(f) {
+    const from = Number(f.from ?? 0);
+    const max = Number(f.max ?? 48);
+    let entries: Entry[];
+    if (f.uniques) {
+      entries = UNIQUES.filter((u) => baseById.has(u.baseId) && (!f.cat || baseById.get(u.baseId)!.category === f.cat)).map((u) => ({
+        label: u.name,
+        visual: baseById.get(u.baseId)!.visual,
+        rarity: u.rarity as ItemRarity,
+        baseId: u.baseId,
+        uniqueId: u.id,
+      }));
+    } else if (f.sets) {
+      entries = SET_PIECES.filter((p) => baseById.has(p.baseId)).map((p) => ({ label: p.name, visual: baseById.get(p.baseId)!.visual, rarity: 'set' as ItemRarity, baseId: p.baseId, setId: p.setId }));
+    } else {
+      const rarity = asRarity(f.rarity, 'normal');
+      entries = ITEM_BASES.filter((b) => !f.cat || b.category === f.cat).map((b) => ({ label: b.name, visual: b.visual, rarity, baseId: b.id }));
+    }
+    return iconSheet(entries.slice(from, from + max), Number(f.cols ?? 8));
   },
   async rarity(f) {
     const b = baseById.get(f.base ?? 'sword.short') ?? ITEM_BASES[0]!;

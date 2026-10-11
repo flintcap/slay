@@ -1,0 +1,287 @@
+/**
+ * SLAY — inventory icons rendered from the item models.
+ *
+ * The icon is the same model the hero holds and the floor shows, built by
+ * `buildItem`, lit like a studio shot (warm key from the upper left, cool rim
+ * from behind) and framed to fill a square slot. Long weapons lie on the
+ * diagonal, so a sword reads as long and a dagger as short; armour, shields
+ * and trinkets stand upright with a small turn.
+ *
+ * Rarity adds a pool of its colour behind the object and a halo around it.
+ * Uniques and better get rays, mythic and ancient get motes, so they read at a
+ * glance. The slot draws its own dark backdrop; the icon itself is
+ * transparent.
+ *
+ * One small WebGL renderer is shared by every icon and made on first use.
+ * Without WebGL the icon falls back to a plain rarity-coloured mark.
+ */
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import type { ItemRarity, ItemVisual } from '../../types';
+import { RARITY_COLOR } from '../../types';
+import { Random, hashString } from '../../core/RNG';
+import { composite, css, glow, scratch, type Ctx } from '../Paint';
+import { buildItem, type ItemFamily } from './Model';
+
+/** What an icon is drawn from. */
+export interface IconSpec {
+  baseId: string;
+  rarity: ItemRarity;
+  /** The base's authored visual block; the look system resolves the base id alone without it. */
+  visual?: ItemVisual;
+  uniqueId?: string;
+  setId?: string;
+}
+
+/** Output size of an icon, in pixels. */
+export const ICON_SIZE = 128;
+/** Internal render size: drawn at twice the size, then scaled down for smooth edges. */
+const DRAW = 256;
+
+const RANK: Record<ItemRarity, number> = { normal: 0, magic: 1, rare: 2, set: 3, unique: 4, mythic: 5, ancient: 6 };
+
+/** Families shown on the diagonal, business end to the upper right. */
+const DIAGONAL = new Set<ItemFamily>(['sword', 'dagger', 'axe', 'mace', 'spear', 'wand', 'staff', 'scepter', 'crossbow', 'bow', 'quiver']);
+
+interface Pose {
+  yaw: number;
+  pitch: number;
+  roll: number;
+  /** Fill of the frame: 1 touches the edges. */
+  fill: number;
+}
+
+function poseFor(family: ItemFamily, size: THREE.Vector3): Pose {
+  if (family === 'bow') return { yaw: Math.PI / 2 - 0.4, pitch: 0, roll: -Math.PI / 4, fill: 0.98 };
+  if (family === 'quiver') return { yaw: 0.4, pitch: 0.1, roll: -0.45, fill: 0.9 };
+  if (DIAGONAL.has(family)) return { yaw: 0.4, pitch: 0.08, roll: -Math.PI / 4, fill: 0.98 };
+  if (family === 'ring') return { yaw: 0.3, pitch: 0.55, roll: 0, fill: 0.72 };
+  if (family === 'gem' || family === 'rune' || family === 'charm' || family === 'material') return { yaw: 0.45, pitch: 0.3, roll: 0, fill: 0.7 };
+  if (family === 'amulet' || family === 'potion') return { yaw: 0.35, pitch: 0.15, roll: 0, fill: 0.84 };
+  // Circlets and crowns are low rings: look down into them.
+  if (family === 'helm' && size.y < size.x * 0.5) return { yaw: 0.2, pitch: 0.7, roll: 0, fill: 0.86 };
+  // Boots turn to show the toe.
+  if (family === 'boots') return { yaw: 1.05, pitch: 0.12, roll: 0, fill: 0.86 };
+  if (family === 'belt') return { yaw: 0.35, pitch: 0.45, roll: 0, fill: 0.9 };
+  // Wide flat things (shields, chests) stand square on; everything else turns a little more.
+  const flat = size.z < Math.min(size.x, size.y) * 0.35;
+  return { yaw: flat ? 0.3 : 0.5, pitch: 0.16, roll: 0, fill: 0.86 };
+}
+
+let renderer: THREE.WebGLRenderer | null = null;
+let failed = false;
+let stage: { scene: THREE.Scene; holder: THREE.Group; cam: THREE.OrthographicCamera } | null = null;
+
+function studio(): THREE.WebGLRenderer | null {
+  if (failed) return null;
+  if (renderer && renderer.getContext().isContextLost()) {
+    renderer.dispose();
+    renderer = null;
+    stage = null;
+  }
+  if (!renderer) {
+    try {
+      const canvas = document.createElement('canvas');
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+    } catch {
+      failed = true;
+      return null;
+    }
+    renderer.setPixelRatio(1);
+    renderer.setSize(DRAW, DRAW, false);
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.3;
+  }
+  if (!stage) {
+    const scene = new THREE.Scene();
+    const pm = new THREE.PMREMGenerator(renderer);
+    scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+    scene.environmentIntensity = 1.1;
+    scene.add(new THREE.HemisphereLight(0xa8b0c8, 0x2a2018, 0.7));
+    const key = new THREE.DirectionalLight(0xffe6c8, 3.0);
+    key.position.set(-2.5, 3.2, 4);
+    scene.add(key);
+    const fillL = new THREE.DirectionalLight(0xc8d4ff, 0.6);
+    fillL.position.set(3, 0.5, 3);
+    scene.add(fillL);
+    const rim = new THREE.DirectionalLight(0x9cc0ff, 2.0);
+    rim.position.set(2.5, 2, -4);
+    scene.add(rim);
+    const holder = new THREE.Group();
+    scene.add(holder);
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
+    stage = { scene, holder, cam };
+  }
+  return renderer;
+}
+
+/** What `renderModel` reports back for compositing. */
+interface Shot {
+  glowColor: number;
+  stone: number;
+}
+
+const tmpBox = new THREE.Box3();
+const tmpV = new THREE.Vector3();
+const tmpC = new THREE.Vector3();
+
+/** Renders the model onto the shared renderer's canvas. Null when there is no WebGL. */
+function renderModel(spec: IconSpec): Shot | null {
+  const r = studio();
+  if (!r || !stage) return null;
+  const visual = spec.visual ?? { shape: spec.baseId, palette: 'metal.steel' };
+  const built = buildItem(visual, spec.rarity, { baseId: spec.baseId, uniqueId: spec.uniqueId, setId: spec.setId });
+  const obj = built.group;
+  const { holder, cam, scene } = stage;
+  const size0 = tmpBox.setFromObject(obj).getSize(tmpV).clone();
+  const pose = poseFor(built.family, size0);
+  // Yaw and pitch turn the item inside; the roll lays it on the diagonal outside.
+  const inner = new THREE.Group();
+  inner.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+  inner.add(obj);
+  holder.rotation.set(0, 0, pose.roll);
+  holder.add(inner);
+  holder.updateMatrixWorld(true);
+  tmpBox.setFromObject(holder);
+  const c = tmpBox.getCenter(tmpC);
+  const s = tmpBox.getSize(tmpV);
+  const half = Math.max(1e-3, Math.max(s.x, s.y) / 2 / pose.fill);
+  cam.left = -half;
+  cam.right = half;
+  cam.top = half;
+  cam.bottom = -half;
+  cam.near = 0.01;
+  cam.far = s.z + 20;
+  cam.position.set(c.x, c.y, c.z + s.z / 2 + 10);
+  cam.lookAt(c);
+  cam.updateProjectionMatrix();
+  try {
+    r.render(scene, cam);
+  } finally {
+    holder.remove(inner);
+    obj.traverse((o) => {
+      const m = o as THREE.Mesh;
+      // Materials are shared and cached by the item kit; geometry is this build's own.
+      if (m.isMesh) m.geometry.dispose();
+    });
+  }
+  return { glowColor: built.look.glowColor, stone: built.look.stone };
+}
+
+/** The mark drawn when there is no WebGL: a faceted stone in the rarity colour. */
+function fallback(out: Ctx, rc: number): void {
+  out.fillStyle = css(rc, 0.85);
+  out.strokeStyle = css(0x000000, 0.7);
+  out.lineWidth = 3;
+  out.beginPath();
+  out.moveTo(64, 22);
+  out.lineTo(100, 64);
+  out.lineTo(64, 106);
+  out.lineTo(28, 64);
+  out.closePath();
+  out.fill();
+  out.stroke();
+}
+
+/**
+ * Draws the icon for one item onto `out`, a clear 128px canvas context.
+ * Synchronous: builds the model, renders it, composites the rarity look.
+ */
+export function drawItemIcon(out: Ctx, spec: IconSpec): void {
+  const rank = RANK[spec.rarity] ?? 0;
+  const rc = RARITY_COLOR[spec.rarity] ?? 0xc8c8c8;
+  let shot: Shot | null = null;
+  try {
+    shot = renderModel(spec);
+  } catch (e) {
+    // A broken model must never cost the player their inventory.
+    if (typeof console !== 'undefined') console.warn('[icons] render failed', spec.baseId, e);
+    shot = null;
+  }
+  const glowC = shot?.glowColor ?? rc;
+
+  // Rarity backdrop: a soft pool of the rarity's light behind the object.
+  if (rank >= 1) {
+    const a = [0, 0.1, 0.14, 0.2, 0.26, 0.32, 0.36][rank]!;
+    const g = out.createRadialGradient(64, 64, 4, 64, 64, 64);
+    g.addColorStop(0, css(rc, a));
+    g.addColorStop(0.6, css(rc, a * 0.35));
+    g.addColorStop(1, css(rc, 0));
+    out.fillStyle = g;
+    out.fillRect(0, 0, ICON_SIZE, ICON_SIZE);
+  }
+  if (rank >= 4) {
+    // Rays behind uniques and better.
+    out.save();
+    out.globalCompositeOperation = 'lighter';
+    out.translate(64, 64);
+    const n = rank >= 5 ? 12 : 8;
+    for (let i = 0; i < n; i++) {
+      out.rotate((Math.PI * 2) / n);
+      const g = out.createLinearGradient(0, 0, 0, -64);
+      g.addColorStop(0, css(glowC, 0));
+      g.addColorStop(0.3, css(glowC, 0.12 + (rank - 4) * 0.04));
+      g.addColorStop(1, css(glowC, 0));
+      out.fillStyle = g;
+      out.beginPath();
+      out.moveTo(0, 0);
+      out.lineTo(-7, -64);
+      out.lineTo(7, -64);
+      out.closePath();
+      out.fill();
+    }
+    out.restore();
+  }
+
+  if (!shot || !renderer) {
+    fallback(out, rc);
+    return;
+  }
+  const layer = scratch('iconRenderLayer', ICON_SIZE);
+  layer.x.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
+  layer.x.imageSmoothingEnabled = true;
+  layer.x.imageSmoothingQuality = 'high';
+  layer.x.drawImage(renderer.domElement, 0, 0, ICON_SIZE, ICON_SIZE);
+  const haloC = rank >= 3 ? glowC : rc;
+  composite(out, layer.c, {
+    shadow: 0.75,
+    shadowBlur: 5,
+    dx: 2,
+    dy: 3,
+    halo: [0, 0.35, 0.4, 0.6, 0.75, 0.85, 0.9][rank]!,
+    haloColor: haloC,
+    haloBlur: [0, 5, 6, 8, 9, 11, 12][rank]!,
+  });
+  if (rank >= 5) {
+    // Motes for mythic, embers for ancient.
+    const rnd = new Random(hashString(`${spec.baseId}|${spec.rarity}|${spec.uniqueId ?? spec.setId ?? ''}`));
+    for (let i = 0; i < 5; i++) {
+      const px = 10 + rnd.next() * 108;
+      const py = 8 + rnd.next() * 112;
+      const r = 1 + rnd.next() * 1.8;
+      glow(out, px, py, r * 3, glowC, 0.8);
+      out.fillStyle = css(0xffffff, 0.85);
+      out.beginPath();
+      out.arc(px, py, r * 0.45, 0, Math.PI * 2);
+      out.fill();
+    }
+  }
+}
+
+/** Which liquid a potion holds, from its id or name. */
+export function potionColor(hay: string): number {
+  const h = hay.toLowerCase();
+  const life = /heal|life|health|blood|crimson|rejuv/.test(h);
+  const mana = /mana|azure|sapphire|spirit|arcane|rejuv/.test(h);
+  if (life && mana) return 0xb060ff;
+  if (mana) return 0x3aa0ff;
+  if (life) return 0xe03a4a;
+  if (/antidote|venom|poison/.test(h)) return 0x6cc02c;
+  if (/thaw|frost|cold/.test(h)) return 0x7fd8ff;
+  if (/stamina|haste/.test(h)) return 0xe0c040;
+  if (/oil|fire/.test(h)) return 0xff7a2a;
+  return 0xe03a4a;
+}

@@ -389,9 +389,9 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return c;
   },
 
-  /** Timing breakdown: paint versus PNG encode, over every base. */
+  /** Timing breakdown: render versus PNG encode, over every base. */
   async perf() {
-    const { paintItemIcon } = await import('../src/art/ItemIconArt');
+    const { drawItemIcon } = await import('../src/art/items/IconRender');
     const c = document.createElement('canvas');
     c.width = c.height = 128;
     const x = c.getContext('2d')!;
@@ -400,14 +400,14 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     for (const b of ITEM_BASES) {
       x.clearRect(0, 0, 128, 128);
       const t0 = performance.now();
-      paintItemIcon(x, { baseId: b.id, rarity: 'rare', base: b });
+      drawItemIcon(x, { baseId: b.id, rarity: 'rare', visual: b.visual });
       const t1 = performance.now();
       c.toDataURL('image/png');
       enc += performance.now() - t1;
       paint += t1 - t0;
     }
     const n = ITEM_BASES.length;
-    c.dataset.note = `paint ${(paint / n).toFixed(2)}ms, encode ${(enc / n).toFixed(2)}ms per icon`;
+    c.dataset.note = `render ${(paint / n).toFixed(2)}ms, encode ${(enc / n).toFixed(2)}ms per icon`;
     return c;
   },
 };
