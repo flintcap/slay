@@ -184,6 +184,76 @@ Worn armour (heroes) keeps reading `palette`, `trimKey`/`trimTint`,
 use `keys.second`/`keys.cloth` for linings and tabards, `features` for extra
 shapes (horns, wings, spikes) and `emblem` for a set badge.
 
+### Signatures: every set and unique (qa-legend)
+
+The per-id signature data lives in `src/art/items/Designs.ts`
+(`SET_MOTIFS`, `UNIQUE_DESIGNS`) and is the design bible's source of truth;
+`tools/check-legend.mjs` holds it to these rules:
+
+- Every set in `src/data/sets.ts` has a `SetMotif` and every unique, mythic
+  and ancient in `src/data/uniques.ts` has a `UniqueDesign`.
+- No two sets share a palette (main metal, leather, cloth and glow colour
+  together) or a sculpt. Every unique's look (base, main, trim, glow,
+  features) differs from every other unique's.
+
+```ts
+type Aura = 'none' | 'soft' | 'embers' | 'ash' | 'frost' | 'sparkles' | 'shine' | 'wisp' | 'smoke' | 'drips' | 'sparks' | 'motes' | 'souls';
+type Finish = 'polished' | 'lacquer' | 'satin' | 'matte' | 'frosted' | 'blackened' | 'weathered' | 'gilt' | 'pearl';
+interface SetMotif {
+  name: string;           // the palette in words
+  color: number;          // stones, emblem
+  glow: number;           // glow and aura colour (ItemLook.glowColor)
+  metal: string; leather: string; cloth: string;   // main surface by the base's material
+  second: string; trim: string;
+  finish: Finish;
+  sculpt: Feature;        // the set's sculpted motif, first in ItemLook.features, unique among sets
+  emblem: Emblem; features: Feature[]; aura: Aura; wear: number;
+}
+interface UniqueDesign { /* as before */ aura: Aura; finish?: Finish; }
+// ItemLook gains:
+aura: Aura;               // 'none' on plain items
+finish?: Finish;
+sheen: number;            // faint inner light of the main surface, in glowColor
+export function surfaceFinish(look): { metalness?: number; roughness?: number };
+```
+
+Sculpts (new `Feature`s, drawn on the body by `hero/ArmourFeatures.ts` and on
+models by `items/Features.ts`): `dragons`, `claws`, `antlers`, `crowns`,
+`moons`, `bolts`, `spiders`, `serpents`, `laurels`.
+
+Glow and auras:
+- `items/Aura.ts`: `buildAura(kind, color, { radius, height, strength, seed })`
+  returns one `THREE.Points` (one draw call, animated in the shader) or null.
+- `buildItemModel` adds the item's aura to uniques and set pieces in the
+  hand; `buildDropModel` stands it up on the floor.
+- `items/Outfit.ts`: `dressOutfit(hero, pieces, worn, visualOf)`, called by
+  `DressedHero.dress`, lights worn set pieces by pieces worn
+  (`hero/Armour.ts` `lightArmour`: 2 pieces the trims glow, the full set the
+  whole outfit shines), raises the set's aura at 3 pieces and up (stronger
+  with each), and puts each worn unique's aura on its bone. At most 3 auras
+  on a hero.
+- `hero/HeroMaterials.ts` `glowingTwin(material, color, intensity)`: a
+  cached emissive twin of a gear material.
+
+| Set | Palette | Motif (sculpt) | Finish | Glow and aura |
+| --- | --- | --- | --- | --- |
+| The Bloodied Hand (`set.bloodied`) | blood-red lacquer and black iron | claws, hand emblem, blood | lacquer | drips, 0xff1c1c |
+| Vestments of the Kindled (`set.kindled`) | scorched crimson and candle flame | flames, flame emblem, cracks | matte | embers, 0xffb83a |
+| Trail of the Quick (`set.quickstep`) | moss leather and bright silver | feathers, feather emblem, tatters | satin | wisp, 0x8affb0 |
+| Bonefetter Regalia (`set.bonefetter`) | bone and verdigris, corpse-light | skulls, skull emblem, bones | weathered | souls, 0xb8ff5a |
+| Grave Warden's Watch (`set.gravewarden`) | grave bronze and lantern amber | eyes, eye emblem, rivets, runes | weathered | motes, 0xffb030 |
+| Frostwrought Panoply (`set.frostwrought`) | ice blue and frosted silver | crystals, snowflake emblem, frost | frosted | frost, 0x8ad0ff |
+| The Stormbound Circuit (`set.stormbound`) | storm navy and burnished copper | bolts, bolt emblem, coils | polished | sparks, 0x9ae8ff |
+| Venomthread Weave (`set.venomthread`) | black silk and venom green | spiders, web emblem, web | satin | drips, 0x60ff30 |
+| Aegis of the Iron Vow (`set.ironvow`) | gunmetal and royal blue | chains, shield emblem, rivets | polished | soft, 0x5a8aff |
+| Ashwalker's Legacy (`set.ashwalker`) | blackened iron and ember cracks | dragons, ember emblem, cracks, scales | blackened | ash, 0xff4a10 |
+| The Gilded Compact (`set.gilded`) | full gold with a gold shine | coins, coin emblem, gilded | gilt | shine, 0xffd040 |
+| Nightfall Communion (`set.nightfall`) | void violet and black | moons, moon emblem, smoke | satin | smoke, 0x9064ff |
+| Regalia of the Sundered Sky (`set.sunderedsky`) | white and silver with a white glow | stars, star emblem, halo | pearl | sparkles, 0xf0f4ff |
+| Warplate of the Last Legion (`set.lastlegion`) | polished brass and legion crimson | wings, laurel emblem, laurels, tatters | polished | embers, 0xff7040 |
+| The Hollow King's Court (`set.hollowking`) | obsidian and pale gold, spectral cyan | antlers, crown emblem, spikes, smoke | satin | souls, 0x50f0e0 |
+
+
 ## `src/scenes/HeroModel.ts` — owned by heroes
 
 The one place the game builds a player hero: body, worn armour, held items and
