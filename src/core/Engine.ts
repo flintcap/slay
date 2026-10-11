@@ -366,6 +366,27 @@ export class Engine {
     } catch (err) {
       this.report('render', err);
     }
+    // Hidden things too: pooled effects, shots and bars wait hidden until
+    // first used, and three.js compiles and draws only what is visible, so
+    // each linked its shader on the frame it first showed (one mid-fight
+    // link a fight). Shown for the compile and the warm frame, then hidden
+    // again. Anything holding a light stays as it is: a light switched on
+    // here would change the light count every lit shader is built for.
+    const unhidden: THREE.Object3D[] = [];
+    try {
+      next.scene.traverse((o) => {
+        if (o.visible || (o as THREE.Light).isLight) return;
+        let lit = false;
+        o.traverse((c) => {
+          if ((c as THREE.Light).isLight) lit = true;
+        });
+        if (lit) return;
+        o.visible = true;
+        unhidden.push(o);
+      });
+    } catch (err) {
+      this.report('render', err);
+    }
     try {
       await Promise.all([
         Promise.race([this.renderer.compileAsync(next.scene, next.camera), new Promise<void>((r) => setTimeout(r, 15000))]),
@@ -393,7 +414,14 @@ export class Engine {
       this.report('render', err);
     } finally {
       for (const o of culled) o.frustumCulled = true;
+      for (const o of unhidden) o.visible = false;
     }
+    // The warm frame's shadow maps held the hidden casters: a shadow drawn
+    // only on demand (the title's) is drawn again on the first real frame.
+    next.scene.traverse((o) => {
+      const l = o as THREE.DirectionalLight;
+      if (l.isLight && l.shadow) l.shadow.needsUpdate = true;
+    });
     extra?.removeFromParent();
     try {
       next.warmupDone?.();

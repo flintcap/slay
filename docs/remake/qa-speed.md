@@ -69,8 +69,37 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   (`core/AutoQuality.ts`, on by default, chosen quality is its top) steps
   down at median > 22 ms or p90 > 30 ms and back up after 20 calm seconds.
   `check-quality.mjs`: no black screen across low, medium, ultra, high, low.
-- Lag spots and the rest: filled in below from `check-lag` (before 8d9fb82,
-  after this stream, same machine, 480x270, software rendering, shared CPU).
+- Owner's five lag spots, `check-lag --stops=6 --fight=200`, cold visit,
+  published bundle. Before is 8d9fb82, after is 195dd7a. Same machine,
+  480x270, software rendering, CPU shared with two other agents. Every
+  software frame is slow, so the count of frames over 50 ms says little in
+  a map; what carries to a real GPU is programs linked, uploads and JS
+  time inside a frame.
+
+  | spot | before: worst ms, links | after: worst ms, links |
+  |---|---|---|
+  | (a) title idle / settings | 1550, 0 / 233, 0 | 1267, 0 / 617, 0 |
+  | (b) select open | 18449, 30, 1 context | 5300, 21, 1 context |
+  | (b) show each class | 10083 to 14399, 4 to 6, new context each | 0 to 1917, 0 to 2, no context |
+  | town enter (curtain) | 19233, 55 | 16216, 42 |
+  | map enter (curtain) | 17699, 63 | 11483, 38 |
+  | (d) glide, enemies into view | 6333, 4 links, 7.8 MB up | 4633, 0 links, 5.9 MB up |
+  | (c) fight | 7250, 2 links, update max 465 | 6600, 0 links, update max 135 |
+  | (e) next area (curtain) | 17733, 59 | 8916, 38 |
+  | (e) first 5 s in new area | 3150, 0 | 2217, 0 |
+
+  What did it: shaders compiled with the composer's target bound, a warm
+  frame with culling off and every texture uploaded behind the curtain, no
+  drawing while the curtain is down (prime's side-by-side linking used to
+  be undone by the loop), the select heroes and townsfolk taken from the
+  boot worker instead of meshed again, item icons drawn behind the curtain
+  and then in idle moments, portraits one at a time, combat text from
+  cached sprites, creature cull spheres set instead of posed per vertex,
+  far monsters' matrices frozen and hidden from the cull pass.
+- Glide JS (126 frames, `--profile`): matrix work 839 ms before, 238 ms
+  after the freeze.
+- Garbage, `check-perf --alloc --depths=1`: 298 KB a step (was 290 to 440;
+  budget 200). Not under the line yet.
 
 ## Next up
 

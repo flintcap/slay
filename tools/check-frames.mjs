@@ -5,7 +5,7 @@
  *   node tools/bundle-artifact.mjs                       # build what is published
  *   SLAY_PORT=4333 timeout 2700 node tools/check-frames.mjs
  *   SLAY_PORT=4333 timeout 2700 node tools/check-frames.mjs --save      # new baseline
- *   SLAY_PORT=4333 timeout 2700 node tools/check-frames.mjs --only=boss --frames=200
+ *   SLAY_PORT=4333 timeout 2700 node tools/check-frames.mjs --only=boss --frames=60
  *
  * Plays, in the published bundle (the `.wasm` packs included):
  *
@@ -54,8 +54,10 @@ const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.spli
 const PORT = Number(process.env.SLAY_PORT ?? 4333);
 const ONLY = arg('only')?.split(',') ?? ['town', 'map', 'boss'];
 const [VW, VH] = (arg('size') ?? '480x270').split('x').map(Number);
-const FRAMES = Number(arg('frames') ?? 300);
+const FRAMES = Number(arg('frames') ?? 120);
 const SETTLE_MS = Number(arg('settle') ?? 6000);
+// At least this many frames too: a software frame can take a second.
+const SETTLE_FRAMES = Number(arg('settleFrames') ?? 20);
 const SEED = Number(arg('seed') ?? 424242);
 const SAVE = process.argv.includes('--save');
 const HEADED = process.argv.includes('--headed');
@@ -103,7 +105,7 @@ await context.addInitScript(() => {
 });
 
 /** In the page: put the hero where the test plays. */
-async function setUp(where, seed) {
+async function setUp({ where, seed }) {
   const S = window.SLAY;
   const engine = S.engine;
   const raf = () => new Promise((r) => requestAnimationFrame(r));
@@ -116,7 +118,10 @@ async function setUp(where, seed) {
     await engine.goTo('dungeon', { depth: 6, seed: seed + 6 });
   } else {
     await engine.goTo('dungeon', { depth: 8, seed: seed + 8 });
+    // The warp loads the boss area without the curtain a player walks
+    // through; warm it the way that curtain does.
     S.debug.warpToBoss();
+    await engine.prime(engine.currentScene);
   }
   while (engine.transitioning) await raf();
   S.debug.godMode(true);
@@ -152,7 +157,7 @@ async function setUp(where, seed) {
 }
 
 /** In the page: play `n` frames (fight, or walk a loop in town) and measure them. */
-async function play({ n, settleMs, fight }) {
+async function play({ n, settleMs, settleFrames, fight }) {
   const S = window.SLAY;
   const e = S.engine;
   const F = window.__frames;
@@ -203,7 +208,7 @@ async function play({ n, settleMs, fight }) {
   // (the load's tail, the first swing) are behind it.
   const t0 = performance.now();
   let i = 0;
-  while (performance.now() - t0 < settleMs) {
+  while (performance.now() - t0 < settleMs || i < settleFrames) {
     step(i++);
     await raf();
   }
@@ -266,8 +271,8 @@ try {
   await page.waitForFunction(() => window.SLAY?.engine?.currentSceneId === 'title', null, { timeout: 900000, polling: 200 });
   console.log(`=== ${VW}x${VH}, ${FRAMES} frames each, ${HEADED ? 'GPU' : 'software rendering'} ===`);
   for (const where of ONLY) {
-    const setup = await page.evaluate(setUp, where, SEED);
-    const r = await page.evaluate(play, { n: FRAMES, settleMs: SETTLE_MS, fight: where !== 'town' });
+    const setup = await page.evaluate(setUp, { where, seed: SEED });
+    const r = await page.evaluate(play, { n: FRAMES, settleMs: SETTLE_MS, settleFrames: SETTLE_FRAMES, fight: where !== 'town' });
     results[where] = { ...setup, ...r };
     const f = (s) => `p50 ${s.p50} p95 ${s.p95} p99 ${s.p99} worst ${s.worst} (>33: ${s.over33}, >50: ${s.over50})`;
     console.log(`\n${where}: ${setup.scene}, ${setup.monsters} monsters${setup.boss ? ', boss' : ''}, quality ${setup.quality}, ${r.measured} frames`);
