@@ -17,7 +17,7 @@ Remake from nothing.
   cultists, bandits, mummies, whatever the list holds.
 - [x] Beasts and insects. (wip(creatures): insect looks (drones, hornets, wasps, nurse, beetles, mantis, reaver, tick, spinner, brood spawn, acid larva), soft IK reach, jolt-free foot swing) Wolves, spiders, bats, scorpions, hive things,
   swamp creatures.
-- [ ] Demons, elementals and the rest. Imps, hellhounds, golems, frost and
+- [x] Demons, elementals and the rest. (wip(creatures): ooze looks (spawn, slimes, tar, gelatinous cube, magma, plague, glass, void, devourer)) Imps, hellhounds, golems, frost and
   fire things, void things.
 - [ ] Animation. Per rig: idle, walk, run, two or more attacks, cast, hit,
   stagger, death (a real fall, then the body stays), spawn (climb from the
@@ -84,19 +84,21 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 
 ## Next up
 
-1. Aberrations (family aberration, 11 ids), plants (10), oozes (10). One
-   `Look<Family>.ts` each, registered in `Looks.ts`. Done so far: demons
-   (`LookDemon.ts`: `fiendLook`, `demonWings`, `horns`, `eyesAt`,
-   `backSpines`, `flames`), constructs (`LookConstruct.ts`: `botLook`,
-   `floatLook`, `gear`, `lens`, `mechArms`, `mechLegs`, `shield`),
-   elementals (`LookElemental.ts`: `walkLook`, `wispLook`, `fire`, `bolt`,
-   `crystals`, `facet`, `prism`, `drips`). Then tick "Demons, elementals
-   and the rest".
-2. Then the 24 bosses (4 to 6 m in game).
-3. Corpses that stay (a static skinned copy left at deathT 1, capped), rank
+1. The 24 bosses (4 to 6 m in game), one look each, in a new
+   `LookBoss.ts` (split it if it grows past about 1500 lines). Reuse the
+   family helpers: demons (`LookDemon.ts`: `fiendLook`, `demonWings`,
+   `horns`, `eyesAt`, `backSpines`, `flames`), constructs
+   (`LookConstruct.ts`: `botLook`, `floatLook`, `gear`, `lens`, `mechArms`,
+   `mechLegs`, `shield`), elementals (`LookElemental.ts`: `walkLook`,
+   `wispLook`, `bolt`, `crystals`, `facet`, `prism`), aberrations
+   (`LookAberration.ts`: `blobLook`, `eyeLook`, `tentacle`, `eyeball`,
+   `maw`, `squidHead`, `hangers`), plants (`LookPlant.ts`: `cap`, `leaf`,
+   `thorns`, `branch`, `petals`, `mossBeard`), oozes (`LookOoze.ts`:
+   `mass`, `drips`, `bubbles`, `skullAt`).
+2. Corpses that stay (a static skinned copy left at deathT 1, capped), rank
    rims to match nameplates (champion 0x6f8cff, elite 0xf5d76e, rare
    0xffa040), mini-boss flair, boss phase glow.
-4. Switch and clean: when every id has a look, delete the old builders in
+3. Switch and clean: when every id has a look, delete the old builders in
    `MonsterModels.ts` and `LegacyRigAnimator` in `MonsterAnimation.ts`;
    boss portraits from the new models.
 
@@ -128,7 +130,7 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
   (integrated), never `time * rate`, which jumps when the rate changes.
   Slots in use: 0 flyer wingbeat, 1 quadruped tail wag, 2 serpent drift.
 - Glowing cracks (`veins` paint) look like blotches on coarse meshes: keep
-  `cut` at 0.93 or more and glow at 0.7 or less.
+  `cut` at 0.95 or more and glow at 0.45 or less, or leave them out.
 - A biped's second arm pair (`arms2`) shadows the first (`echo`) in
   `PoseBiped.ts`.
 - `node <scratch>/run-ssr.mjs <scratch>/cr_trace2.ts <id> <bone> <step>`
@@ -137,5 +139,13 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 - Some scans render dark under a tint (`flesh`, `stone`): for a true
   colour use `ice` or `crystal` with a `rough` override on the mat, or
   paint `base` above 1.
-- Floater orbits use spin slot 3; swarm motes use slots 8 and up.
+- Floater orbits use spin slot 3; ooze heave slot 4; swarm motes use
+  slots 8 and up. `a.strideRate` gives the gait's cycles per second.
+- Crossfades also carry the root squash and spread, so a fade from a
+  squashed pose does not snap.
+- Fast strikes pop on small or low bodies (the check divides by hip
+  height). Scale the wind and hit ramps by `heavy` (see `fast` in
+  `poseOoze`, `go` in `poseSerpent`) and keep throws small.
+- The `jelly` surface (opacity 0.5) shows rigid parts sunk inside it (the
+  gelatinous cube's skeleton).
 - Do not change monster stats or counts. Never make monsters weaker or fewer.
