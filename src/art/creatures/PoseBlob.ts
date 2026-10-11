@@ -130,13 +130,15 @@ export function poseFloater(a: CreatureAnimator): void {
   const dart = Math.floor(a.time * 0.6 + a.offset);
   const look = (nameHash(String(dart), 3) - 0.5) * 0.9 * idleWeight(a);
   a.rot('eye', (nameHash(String(dart), 5) - 0.5) * 0.4 * idleWeight(a), look, 0);
-  a.rot('crown', 0, a.time * 0.3 * spin, Math.sin(a.time * 1.1) * 0.05);
+  // Integrated, so the orbit speeds up for a cast without jumping.
+  const orbit = a.spin(3, 0.9 * spin);
+  a.rot('crown', 0, orbit / 3, Math.sin(a.time * 1.1) * 0.05);
   // Orbiting satellites.
   for (let i = 0; i < 12; i++) {
     const n = `orb${i}`;
     if (!a.has(n)) break;
     const p = localBind(a, n, 'core');
-    const ang = a.time * 0.9 * spin + a.offset;
+    const ang = orbit;
     const c = Math.cos(ang);
     const s = Math.sin(ang);
     const out = 1 + 0.3 * (spin - 1) * 0.3;
@@ -154,8 +156,9 @@ export function poseFloater(a: CreatureAnimator): void {
     }
   }
   if (a.phase === 'windup' || a.phase === 'strike') {
-    const wind = a.phase === 'windup' ? ramp(t, 0, 0.6) : 1 - ramp(t, 0, 0.14);
-    const hit = a.phase === 'strike' ? ramp(t, 0, 0.14) * (1 - ramp(t, 0.5, 1)) : 0;
+    // Tall floaters (pylons, totems) swing their tops far, so the lunge eases in.
+    const wind = a.phase === 'windup' ? ramp(t, 0, 0.6) : 1 - ramp(t, 0, 0.26);
+    const hit = a.phase === 'strike' ? ramp(t, 0, 0.26) * (1 - ramp(t, 0.55, 1)) : 0;
     const ranged = a.style.ranged && !a.struck && a.phase === 'windup';
     const fly = ranged ? ramp(t, a.releaseAt() - 0.02, Math.min(1, a.releaseAt() + 0.1)) : 0;
     // Draws back and swells, then lunges (or recoils as its bolt leaves).
@@ -189,8 +192,9 @@ function deathFloater(a: CreatureAnimator): void {
   const shake = (1 - ramp(u, 0.1, 0.35)) * Math.sin(a.t * 40) * 0.1;
   const f = clamp01((u - 0.15) / 0.45);
   const fall = f * f;
-  const rest = Math.max(0, R * 0.75 - Y);
-  a.body(shake * R, (rest) * fall + thud(u, 0.6, 1.4) * Y, 0, 0.7 * fall * a.fallDir, a.fallYaw, shake + 0.4 * fall * a.fallDir);
+  // Down until the core rests on the floor.
+  const drop = Math.max(0, Y - R * 0.75);
+  a.body(shake * R, -drop * fall + thud(u, 0.6, 1.4) * Y, 0, 0.7 * fall * a.fallDir, a.fallYaw, shake + 0.4 * fall * a.fallDir);
   for (let i = 0; i < 12; i++) {
     const n = `orb${i}`;
     if (!a.has(n)) break;
