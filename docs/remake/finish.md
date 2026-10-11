@@ -189,11 +189,9 @@ What exists now:
 
 Left for the owner:
 
-- Publishing. `files.json` lists 866 files. One publish takes at most 255
-  files, and one artifact version holds at most 511, so all 866 cannot sit
-  beside one page. Either publish the page with a chosen subset (the game
-  falls back when a file is missing; music, 23.2 MB, is the easy cut), or
-  trim the asset set. Owner's call.
+- Publishing: solved after this handover. The bundler folds 820 files into
+  seven `.wasm`-named packs plus `assets/packs.json` (54 files in all);
+  published as version 29 in two publishes (64 MB per publish limit).
 - `check-curve` fails 8 of 30 (deep tiers 12 and 40). Balance: not touched.
 - Looks left as sculpt work: kraken pauldrons, quilting, prophet and queen
   wings, stalker prime, glacier titan fists.

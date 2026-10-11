@@ -91,6 +91,14 @@ textures.
 | vfx | `vfx.md` | Every skill effect, attack effect, telegraph, status and loot effect | 4329 |
 | finish | `finish.md` | Dead code sweep, speed, long play test, docs, final publish | 4330 |
 
+## Quality pass 2
+
+After the remake: `qa-bugs` (does everything work, port 4331), `qa-looks`
+(does everything look right, port 4332), `qa-speed` (is it fast and steady,
+port 4333). Same protocol. qa-bugs may fix bugs in any file; qa-looks may
+edit any art file for looks only; qa-speed may edit any file for speed only.
+Each explains every change outside its usual area in the commit message.
+
 ## Batches
 
 Only **three agents run at once** (owner's rule). When one finishes, the next

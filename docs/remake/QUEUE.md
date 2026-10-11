@@ -3,7 +3,11 @@
 At most three streams run at once. When one finishes, the next waiting one
 starts.
 
-Running: none
-Waiting, in order: none
-Done: audio, maps, heroes, items, creatures, ground, npcs, props, vfx, finish
+Remake: done (audio, maps, ground, heroes, items, creatures, props, npcs,
+vfx, finish). Published as version 29.
+
+Quality pass 2:
+Running: qa-bugs, qa-looks, qa-speed
+Waiting: (none)
+Done: (none)
 Paused: no
