@@ -712,6 +712,8 @@ export class Enemy {
   readonly root: THREE.Group;
   readonly id: string;
   life: number; maxLife: number;
+  /** The creature animator; `rig.creature` raises the hit and release frame events. */
+  readonly rig: RigAnimator | null;
   update(dt: number, ctx: CombatContext): void;
   takeDamage(packet: DamagePacket, ctx: CombatContext): void;
   dispose(): void;

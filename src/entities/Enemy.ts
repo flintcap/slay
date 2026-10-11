@@ -897,12 +897,15 @@ export class Enemy implements Combatant {
 
   /** True when the named status is running. */
   hasStatus(id: string): boolean {
-    return this.statuses.some((s) => s.id === id);
+    // Plain loops: these run per monster per step, and a closure per call adds up.
+    for (const s of this.statuses) if (s.id === id) return true;
+    return false;
   }
 
   /** How many stacks of a status are running. Zero when it is not. */
   stacksOf(id: string): number {
-    return this.statuses.find((s) => s.id === id)?.stacks ?? 0;
+    for (const s of this.statuses) if (s.id === id) return s.stacks ?? 0;
+    return 0;
   }
 
   /** True when anything the player put on it is still running. */

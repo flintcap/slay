@@ -146,7 +146,17 @@ export class NavGrid {
 
   /** Tile containing a world position. */
   worldToTile(wx: number, wz: number): Vec2 {
-    return { x: Math.floor(wx / TILE_SIZE + this.halfW), y: Math.floor(wz / TILE_SIZE + this.halfH) };
+    return { x: this.tileX(wx), y: this.tileY(wz) };
+  }
+
+  /** World x to tile column, without allocating (hot paths call this per shot per step). */
+  private tileX(wx: number): number {
+    return Math.floor(wx / TILE_SIZE + this.halfW);
+  }
+
+  /** World z to tile row. */
+  private tileY(wz: number): number {
+    return Math.floor(wz / TILE_SIZE + this.halfH);
   }
 
   // --- queries ------------------------------------------------------------
@@ -160,8 +170,7 @@ export class NavGrid {
 
   /** World-space walkability. */
   walkableWorld(wx: number, wz: number): boolean {
-    const t = this.worldToTile(wx, wz);
-    return this.walkable(t.x, t.y);
+    return this.walkable(this.tileX(wx), this.tileY(wz));
   }
 
   /** Movement cost multiplier at a tile; Infinity when blocked. */
@@ -198,9 +207,7 @@ export class NavGrid {
    * squeezes between — otherwise agents shoot through wall corners.
    */
   lineOfSight(ax: number, ay: number, bx: number, by: number): boolean {
-    const a = this.worldToTile(ax, ay);
-    const b = this.worldToTile(bx, by);
-    return this.tileLineOfSight(a.x, a.y, b.x, b.y);
+    return this.tileLineOfSight(this.tileX(ax), this.tileY(ay), this.tileX(bx), this.tileY(by));
   }
 
   /** Tile-space line of sight. */

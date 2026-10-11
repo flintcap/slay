@@ -291,12 +291,10 @@ const check = (ok: boolean, msg: string): void => {
   const mkDrop = (x: number, z: number) => {
     const root = new THREE.Group();
     floor.add(root);
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
-    beam.name = 'beam';
     const spin = new THREE.Group();
     spin.name = 'spin';
-    root.add(beam, spin);
-    return { root, pos: new THREE.Vector3(x, 0, z), gold: 0, beam };
+    root.add(spin);
+    return { root, pos: new THREE.Vector3(x, 0, z), gold: 0 };
   };
   const from = new THREE.Vector3(0, 0, 0);
   const a = mkDrop(1.2, 0.4);
@@ -304,7 +302,7 @@ const check = (ok: boolean, msg: string): void => {
   loot.launch(a, from, 'magic');
   loot.launch(b, from, 'unique');
   check(loot.owns(a.root) && loot.owns(b.root), 'a launched drop is not owned while in flight');
-  check(!a.beam.visible, 'a drop shows its beam while still in the air');
+  check(!loot.hasBeacon(a.root), 'a drop raises its beam while still in the air');
   let peak = 0;
   for (let i = 0; i < 120; i++) {
     loot.update(1 / 60);
@@ -312,7 +310,6 @@ const check = (ok: boolean, msg: string): void => {
   }
   check(peak > 1, `drops do not arc (peak height ${peak.toFixed(2)})`);
   check(Math.abs(a.root.position.x - 1.2) < 1e-6 && Math.abs(a.root.position.z - 0.4) < 1e-6, 'a drop did not land where the scene put it');
-  check(!a.beam.visible, 'a landed drop shows the item model\'s own beam (the loot layer draws beams now)');
   check(loot.hasBeacon(a.root) && columns === 2, `landed drops did not raise their beams of light (${columns} lit)`);
   check(!loot.owns(a.root), 'a landed item is still held by the loot layer');
   check(beams >= 1 && punches >= 1, 'a unique landed without its pillar of light');
