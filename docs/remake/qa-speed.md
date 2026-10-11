@@ -34,12 +34,26 @@ session, as published.
 
 ## Next up
 
-1. Run Setup in `docs/remake/PROTOCOL.md`.
-2. Read `docs/remake/finish.md` (Handover), `src/core/Assets.ts` (packs) and
-   `tools/check-perf.mjs`.
-3. Start with load time.
+1. Load time: compare `tools/check-loadtime.mjs` before (baseline bundle of
+   8d9fb82, built in a scratch copy) and after, back to back.
+2. Hitches: `check-loadtime.mjs --walk` tours the first map; look for long
+   tasks per stop.
+3. Garbage: `check-perf --preview --alloc --depths=1`.
+4. Soak in parts: `check-soak --preview --part=i/3` for i = 1..3.
+5. Mix: `check-mix.mjs` (scenes and every id alone).
 
 ## Notes for resume
+
+- Tools this stream added: `tools/check-loadtime.mjs` (published bundle,
+  boot steps, phases, requests, long tasks; `--profile` splits JS from
+  GPU waits, `--walk` tours the map), `tools/lib/single.mjs` (serves
+  `dist-single` the way the host does), `tools/check-mix.mjs` (taps the
+  mix buses in real-time audio). `bundle-artifact.mjs --no-minify` gives
+  readable profiles; never publish that build.
+- Headless Chromium here has no KHR_parallel_shader_compile, and every GPU
+  call is software. Profiles: "native/GPU wait" (toBlob, toDataURL,
+  getProgramInfoLog, getContext, onFirstUse) is mostly SwiftShader work and
+  says little about a real machine; JS self time is what transfers.
 
 - The published build packs assets: `assets/packs.json` plus seven `.wasm`
   packs. The dev server has no packs and fetches loose files.

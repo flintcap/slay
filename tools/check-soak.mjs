@@ -3,6 +3,17 @@
  *
  *   SLAY_PORT=4309 node tools/check-soak.mjs                 # 3 runs x 3 floors
  *   SLAY_PORT=4309 node tools/check-soak.mjs --runs=6 --floors=4 --frames=400 --cycle=2
+ *   SLAY_PORT=4309 node tools/check-soak.mjs --preview --part=2/3   # one third of the default soak
+ *
+ * The default (3 runs x 3 floors x 300 frames) takes about 90 minutes under
+ * software rendering, over the 45 minute limit for one check. `--part=i/n`
+ * plays only runs i, i+n, i+2n... of the same schedule (same depths, same
+ * seeds) in its own session, after a short warm-up lap at the first of its
+ * depths so the caches meant to persist are already full, and judges leaks
+ * from the end of that lap. Run every part to cover the whole schedule.
+ * `--preview` serves the built game (npm run build first), which boots in a
+ * fraction of the dev server's time; `--size=960x540` shrinks the window,
+ * which costs software rendering far less and changes nothing measured.
  *
  * Each run: town -> dungeon (depths cycle, `--cycle` of them) -> fight through
  * `--floors` levels through the scene's own level change -> back to town.
@@ -35,11 +46,21 @@ const START_DEPTH = arg('depth', 2);
 // leaks are judged from the end of the first lap on, so a new biome is not
 // mistaken for a leak and a real leak still shows on every lap after.
 const CYCLE = Math.max(1, arg('cycle', 2));
+const sarg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
+const [PART, PARTS] = (sarg('part') ?? '1/1').split('/').map(Number);
+const [VW, VH] = (sarg('size') ?? '1280x720').split('x').map(Number);
+const depthOf = (run) => START_DEPTH + 3 * (run % CYCLE);
+// The runs this session plays, by their index in the full schedule.
+const MINE = Array.from({ length: RUNS }, (_, r) => r).filter((r) => r % PARTS === PART - 1);
+const WARM = PARTS > 1;
 
 const { page, close, pageErrors, bootMs } = await bootGame({
   fallbackPort: 4309,
+  preview: process.argv.includes('--preview'),
+  viewport: { width: VW, height: VH },
   extraArgs: ['--js-flags=--expose-gc', '--enable-precise-memory-info'],
 });
+if (PARTS > 1) console.log(`part ${PART} of ${PARTS}: runs ${MINE.join(', ')} of 0..${RUNS - 1}, after a warm-up lap`);
 console.log(`booted in ${(bootMs / 1000).toFixed(0)}s; ${RUNS} runs x ${FLOORS} floors, ${FRAMES} frames each\n`);
 const t0 = Date.now();
 
@@ -136,14 +157,16 @@ const fight = (frames) =>
 
 const town = [];
 const floors = [];
-let depth = START_DEPTH;
 await page.evaluate(() => window.SLAY.engine.goTo('town'));
 town.push(await snapshot());
 console.log(`town   heap ${town[0].heapMB}MB  geo ${town[0].geometries}  tex ${town[0].textures}  prog ${town[0].programs}  objects ${town[0].objects}  dom ${town[0].domNodes}`);
 
-for (let run = 0; run < RUNS; run++) {
+// A warm-up lap (parts only): one short floor at the first depth this part
+// plays, then town, so leaks are judged after caches meant to persist fill.
+const schedule = [...(WARM && MINE.length ? [{ run: -1, depth: depthOf(MINE[0]), floors: 1, frames: 60 }] : []), ...MINE.map((r) => ({ run: r, depth: depthOf(r), floors: FLOORS, frames: FRAMES }))];
+for (const { run, depth, floors: nFloors, frames } of schedule) {
   await page.evaluate((d) => window.SLAY.engine.goTo('dungeon', { depth: d, seed: 9000 + d }), depth);
-  for (let f = 0; f < FLOORS; f++) {
+  for (let f = 0; f < nFloors; f++) {
     const ok = await page.evaluate(async (f) => {
       const e = window.SLAY.engine;
       const s = e.currentScene;
@@ -158,11 +181,11 @@ for (let run = 0; run < RUNS; run++) {
       return true;
     }, f);
     if (!ok) break;
-    const r = await fight(FRAMES);
+    const r = await fight(frames);
     const errs = await page.evaluate(() => window.SLAY.engine.errorCount ?? 0);
-    floors.push({ run, depth, floor: f, ...r, errors: errs });
+    if (run >= 0) floors.push({ run, depth, floor: f, ...r, errors: errs });
     console.log(
-      `run ${run} depth ${depth} floor ${f}: update ${r.updateMs}ms, killed ${r.killed}, ${r.left} left, errors so far ${errs}`,
+      `${run < 0 ? 'warm-up' : `run ${run}`} depth ${depth} floor ${f}: update ${r.updateMs}ms, killed ${r.killed}, ${r.left} left, errors so far ${errs}`,
     );
   }
   await page.evaluate(() => window.SLAY.engine.goTo('town'));
@@ -171,7 +194,6 @@ for (let run = 0; run < RUNS; run++) {
   console.log(
     `town   heap ${snap.heapMB}MB  geo ${snap.geometries}  tex ${snap.textures}  prog ${snap.programs}  objects ${snap.objects}  dom ${snap.domNodes}  errors ${snap.errors}`,
   );
-  depth = START_DEPTH + 3 * ((run + 1) % CYCLE);
 }
 
 const caught = await page.evaluate(() => [...window.SLAY.engine.errors.values()].map((e) => ({ ...e })));
@@ -186,10 +208,11 @@ for (const e of pageErrors) problems.push(`page error: ${e}`);
 
 // Compare the last return to town with the one that ended the first lap
 // (the first lap warms caches that are meant to persist).
-if (town.length >= CYCLE + 2) {
-  const a = town[CYCLE];
+const lapEnd = WARM ? 1 : CYCLE;
+if (town.length >= lapEnd + 2) {
+  const a = town[lapEnd];
   const b = town[town.length - 1];
-  const visits = town.length - 1 - CYCLE;
+  const visits = town.length - 1 - lapEnd;
   const grow = (k, slack) => {
     if (b[k] - a[k] > slack) problems.push(`${k} grew ${a[k]} -> ${b[k]} over ${visits} more round trips`);
   };

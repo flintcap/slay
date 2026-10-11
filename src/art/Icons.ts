@@ -116,10 +116,9 @@ function deliver(key: string, uri: string): void {
  */
 function drawItemIconAsync(item: Item, key: string): void {
   const gen = generation;
-  const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 128;
-  const x = c.getContext('2d')!;
+  // CPU-backed, like every icon canvas (see `makeCanvas`): the encode below
+  // must not wait on the GPU.
+  const { c, x } = makeCanvas(128);
   renderItemIcon(x, specFor(item));
   if (typeof c.toBlob !== 'function' || typeof URL?.createObjectURL !== 'function') {
     const uri = c.toDataURL('image/png');

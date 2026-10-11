@@ -115,7 +115,7 @@ async function render(classId: CharClassId, size: number): Promise<string> {
     renderer.render(scene, camera);
     const cv = document.createElement('canvas');
     cv.width = cv.height = size;
-    const g = cv.getContext('2d')!;
+    const g = cv.getContext('2d', { willReadFrequently: true })!;
     backdrop(g, size, classId);
     g.drawImage(renderer.domElement, 0, 0, size, size);
     frame(g, size);
@@ -171,7 +171,7 @@ export function classPortrait(classId: CharClassId, size = 256): Promise<string>
 export function classPortraitPlaceholder(classId: string, size = 256): string {
   const cv = document.createElement('canvas');
   cv.width = cv.height = size;
-  const g = cv.getContext('2d');
+  const g = cv.getContext('2d', { willReadFrequently: true });
   if (!g) return '';
   backdrop(g, size, classId);
   frame(g, size);

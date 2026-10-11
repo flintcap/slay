@@ -157,7 +157,7 @@ async function render(id: string, size: number): Promise<string> {
     renderer.render(scene, camera);
     const cv = document.createElement('canvas');
     cv.width = cv.height = size;
-    const g = cv.getContext('2d')!;
+    const g = cv.getContext('2d', { willReadFrequently: true })!;
     g.drawImage(renderer.domElement, 0, 0, size, size);
     medallion(g, size, light);
     return cv.toDataURL('image/png');

@@ -90,11 +90,21 @@ export function saturate(n: number, t: number): number {
 // Canvases
 // ---------------------------------------------------------------------------
 
+/**
+ * A small canvas for painting icons, chips and texture tiles.
+ *
+ * CPU-backed (`willReadFrequently`): everything painted here is read back,
+ * as a PNG (`toDataURL`, `toBlob`), into another canvas or into a texture.
+ * Reading a GPU canvas back waits for the GPU to finish all its queued work
+ * first, shader compiles for a map that is loading included, so a status chip
+ * drawn while a floor was loading stalled the frame for as long as the GPU
+ * was busy. At these sizes the CPU paints as fast and never waits.
+ */
 export function makeCanvas(w: number, h = w): { c: HTMLCanvasElement; x: Ctx } {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
-  const x = c.getContext('2d')!;
+  const x = c.getContext('2d', { willReadFrequently: true })!;
   x.imageSmoothingEnabled = true;
   x.imageSmoothingQuality = 'high';
   return { c, x };
