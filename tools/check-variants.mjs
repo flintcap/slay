@@ -4,7 +4,7 @@
  *   node tools/check-variants.mjs
  *
  * Fails when a variant never rolls, when its patch changes nothing a player
- * would notice, or when a single run wears more than one.
+ * would notice, or when one map wears two variants of the same biome.
  */
 import { build } from 'vite';
 import { rmSync, mkdirSync } from 'node:fs';

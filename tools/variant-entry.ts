@@ -76,12 +76,21 @@ const RUNS = 900;
 for (let i = 0; i < RUNS; i++) {
   const depth = 1 + (i % 30);
   const run = generateRun(depth, 0x3c71 + i * 6151, 'warden');
-  const key = `${run.biome}|${run.variant ?? 'plain'}`;
-  const row = byKey.get(key);
-  if (row) row.rolled++;
-  // Every floor of a run must wear the same variant, or the descent reads as
-  // three different places bolted together.
-  if (run.levels.some((l) => (l.variant ?? 'plain') !== (run.variant ?? 'plain'))) splitRuns++;
+  // A map crosses several biomes, each in its own variant. Every area of one
+  // biome must wear the same one, or two areas of one place read as two.
+  const worn = new Map<string, string>();
+  let split = false;
+  for (const l of run.levels) {
+    const v = l.variant ?? 'plain';
+    const had = worn.get(l.biome);
+    if (had === undefined) worn.set(l.biome, v);
+    else if (had !== v) split = true;
+  }
+  for (const [biome, v] of worn) {
+    const row = byKey.get(`${biome}|${v}`);
+    if (row) row.rolled++;
+  }
+  if (split) splitRuns++;
 }
 
 console.log(

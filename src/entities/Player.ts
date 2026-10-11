@@ -600,7 +600,7 @@ export class Player {
       // Darken as it fades, so a veiled hero reads as a shadow rather than a
       // ghost of themselves.
       mat.color.copy(mat.userData.baseColor as THREE.Color).multiplyScalar(0.35 + dim * 0.65);
-      if (mesh.userData.weaponPart) {
+      if (mesh.userData.weaponPart && mat.emissive) {
         mat.emissive.setHex(coated ? 0x2fbf4a : (mat.userData.baseEmissive as number) ?? 0x000000);
         mat.emissiveIntensity = coated ? 1.5 : 1;
       }
@@ -620,12 +620,13 @@ export class Player {
     const m = mesh.material;
     if (Array.isArray(m)) return null;
     const std = m as THREE.MeshStandardMaterial;
-    if (!std || !std.isMaterial) return null;
+    // Glows and eyes may be unlit (basic) materials: no emissive, but a colour.
+    if (!std || !std.isMaterial || !std.color) return null;
     if (!std.userData.playerOwned) {
       const copy = std.clone() as THREE.MeshStandardMaterial;
       copy.userData = { ...std.userData, playerOwned: true, shared: false };
       copy.userData.baseColor = copy.color.clone();
-      copy.userData.baseEmissive = copy.emissive.getHex();
+      copy.userData.baseEmissive = copy.emissive?.getHex() ?? 0;
       // A clone drops shader patches (the hero's triplanar maps): keep them.
       copy.onBeforeCompile = std.onBeforeCompile;
       copy.customProgramCacheKey = std.customProgramCacheKey;

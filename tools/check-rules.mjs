@@ -4,11 +4,12 @@
  *   node tools/check-rules.mjs
  *
  * Static, instant. Ten streams edit this game at once; these are the rules
- * none of them may break (CLAUDE.md, docs/overhaul/PLAN.md):
+ * none of them may break (CLAUDE.md, docs/remake/PLAN.md):
  *
  *  - no `Math.random` outside `src/core/RNG.ts`: every roll is seeded
- *  - no asset files: nothing in the repo or imported by source is an image,
- *    model, sound or font file; everything is generated in code
+ *  - asset files only under `public/assets/` (free CC0 textures and sounds,
+ *    each in ASSETS.md, which `check-assets` checks), never imported by
+ *    source: they load by URL through `core/Assets.ts`
  *  - no `console.log` left in shipped source (warn/error are fine)
  *  - no `debugger` statements
  */
@@ -35,8 +36,9 @@ const rel = (p) => path.relative(ROOT, p);
 const all = walk(ROOT);
 const problems = [];
 
-// Asset files anywhere in the tree.
-for (const p of all) if (ASSET.test(p)) problems.push(`asset file in the repo: ${rel(p)}`);
+// Asset files anywhere in the tree but the CC0 library.
+const LIBRARY = /^public[\\/]assets[\\/]/;
+for (const p of all) if (ASSET.test(p) && !LIBRARY.test(rel(p))) problems.push(`asset file outside public/assets: ${rel(p)}`);
 
 /** Source with comments and string contents blanked, so prose cannot trip a rule. */
 function code(text) {
@@ -63,7 +65,7 @@ for (const p of all.filter((f) => /[\\/]src[\\/].*\.(ts|js|css|html)$/.test(f) |
 for (const p of problems) console.log(`  FAIL ${p}`);
 console.log(
   problems.length === 0
-    ? 'OK — seeded randomness only, no asset files, no stray console.log or debugger.'
+    ? 'OK — seeded randomness only, assets only in public/assets, no stray console.log or debugger.'
     : `\nFAILED — ${problems.length} rule violations.`,
 );
 process.exit(problems.length === 0 ? 0 : 1);

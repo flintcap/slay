@@ -19,7 +19,8 @@ interface RawAttr {
   array: Float32Array | Uint16Array | Uint32Array;
   itemSize: number;
 }
-interface RawGeo {
+/** A meshed part as plain arrays: what IndexedDB stores and a worker posts. */
+export interface RawGeo {
   attrs: Record<string, RawAttr>;
   index: Uint32Array | Uint16Array;
 }
@@ -27,6 +28,21 @@ interface RawGeo {
 const memory = new Map<string, THREE.BufferGeometry>();
 const stored = new Map<string, RawGeo>();
 let db: IDBDatabase | null = null;
+/** Told about every part meshed here (the town prewarm worker collects them). */
+let meshed: ((key: string, raw: RawGeo) => void) | null = null;
+
+/** Watch every part this context meshes, or stop with null. */
+export function onMeshed(fn: ((key: string, raw: RawGeo) => void) | null): void {
+  meshed = fn;
+}
+
+/**
+ * Parts meshed elsewhere (a worker) join the stored cache, so the next build
+ * that needs one reads it instead of meshing. Parts already here are skipped.
+ */
+export function adoptMeshes(entries: ReadonlyArray<readonly [string, RawGeo]>): void {
+  for (const [k, raw] of entries) if (!memory.has(k) && !stored.has(k)) stored.set(k, raw);
+}
 
 function toRaw(g: THREE.BufferGeometry): RawGeo {
   const attrs: Record<string, RawAttr> = {};
@@ -70,7 +86,9 @@ export function meshCached(key: string, build: () => THREE.BufferGeometry): THRE
   // Shared by every hero that uses it: disposers leave it alone.
   g.userData.cached = true;
   memory.set(k, g);
-  put(k, toRaw(g));
+  const fresh = toRaw(g);
+  put(k, fresh);
+  meshed?.(k, fresh);
   return g;
 }
 

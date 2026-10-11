@@ -91,6 +91,9 @@ async function main(): Promise<void> {
   // visit come back from IndexedDB in milliseconds.
   const { loadMeshCache } = await import('./art/hero/MeshCache');
   await loadMeshCache();
+  // The nine townsfolk mesh in a worker while the player is on the menus.
+  const { prewarmTownsfolk } = await import('./art/npc/Prewarm');
+  prewarmTownsfolk();
   const { loadCreatureBakes } = await import('./art/creatures/Store');
   await loadCreatureBakes();
 

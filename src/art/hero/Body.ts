@@ -107,7 +107,7 @@ export function meshPart(
   // body under it does.
   const sk = skinWeights(anatomy.field, anatomy.chains, s.pos, GROUP_COUNT, { groups });
   const t3 = performance.now();
-  if (PROFILE) console.log(`part prims=${field.n} raw=${raw.index.length / 3} mesh=${(t1 - t0) | 0} evals=${EVALS.calls} avgPrims=${(EVALS.prims / EVALS.calls).toFixed(1)} simp=${(t2 - t1) | 0} rest=${(t3 - t2) | 0}`);
+  if (PROFILE) console.debug(`part prims=${field.n} raw=${raw.index.length / 3} mesh=${(t1 - t0) | 0} evals=${EVALS.calls} avgPrims=${(EVALS.prims / EVALS.calls).toFixed(1)} simp=${(t2 - t1) | 0} rest=${(t3 - t2) | 0}`);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(s.pos, 3));
   g.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
