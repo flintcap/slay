@@ -201,8 +201,10 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
             .filter((x) => x.life > 0)
             .sort((a, b) => a.root.position.distanceTo(pp) - b.root.position.distanceTo(pp))[0];
           if (!e) return null;
-          e.root.position.set(pp.x + 3, e.root.position.y, pp.z);
-          const v = new S.THREE.Vector3(pp.x + 3, 1, pp.z).project(s.camera);
+          // Inside melee reach: this tests the key, not the walk to a monster
+          // (a 3m gap sent melee skills on a chase that a wall could stop).
+          e.root.position.set(pp.x + 1.8, e.root.position.y, pp.z);
+          const v = new S.THREE.Vector3(pp.x + 1.8, 1, pp.z).project(s.camera);
           window.__casts.length = 0;
           return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight };
         });
@@ -249,34 +251,55 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
     // The worn piece first: it is the one the next step puts back on.
     drops.sort((a, b) => (b.uid === worn.uid) - (a.uid === worn.uid));
     for (const d of drops.slice(0, 6)) {
-      // Stand by it with the camera on the hero (a walk would have brought it
-      // along), then find its label: one round trip.
-      const box = await page.evaluate(async (dd) => {
-        const s = window.SLAY.engine.currentScene;
-        const entry = s.loot.find((l) => l.item?.uid === dd.uid);
-        if (!entry) return { gone: true };
-        s.player.root.position.set(dd.x + 0.8, s.player.root.position.y, dd.z);
-        s.player.stop();
-        s.rig.follow(s.player.root);
-        s.rig.snap();
-        for (let i = 0; i < 4; i++) await new Promise((r) => requestAnimationFrame(r));
-        const el = [...document.querySelectorAll('.glabel')].find((e) => e.dataset.key?.startsWith(`${dd.uid}|`) && e.style.display !== 'none');
-        const r = el?.getBoundingClientRect();
-        if (r && r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-        const shown = [...document.querySelectorAll('.glabel')].filter((e) => e.style.display !== 'none').length;
-        return { none: true, shown, rarity: entry.item.rarity, d: +Math.hypot(entry.pos.x - s.player.root.position.x, entry.pos.z - s.player.root.position.z).toFixed(1) };
-      }, d);
-      if (box.gone) continue;
-      if (box.none) {
-        missed.push(`${d.uid}: no label (${box.rarity}, ${box.d}m, ${box.shown} labels shown)`);
-        continue;
+      // Labels are pooled and re-laid out every frame, and under load a frame
+      // can take seconds: the box measured in one round trip can belong to a
+      // different drop by the time the click lands. So measure, click, and if
+      // it was not taken, measure again (three tries) before calling it a miss.
+      let taken = false;
+      let why = '';
+      for (let attempt = 0; attempt < 3 && !taken; attempt++) {
+        // Stand by it with the camera on the hero (a walk would have brought
+        // it along), then find its label: one round trip.
+        const box = await page.evaluate(async (dd) => {
+          const s = window.SLAY.engine.currentScene;
+          const entry = s.loot.find((l) => l.item?.uid === dd.uid);
+          if (!entry) return { gone: true };
+          s.player.root.position.set(dd.x + 0.8, s.player.root.position.y, dd.z);
+          s.player.stop();
+          s.rig.follow(s.player.root);
+          s.rig.snap();
+          for (let i = 0; i < 4; i++) await new Promise((r) => requestAnimationFrame(r));
+          const el = [...document.querySelectorAll('.glabel')].find((e) => e.dataset.key?.startsWith(`${dd.uid}|`) && e.style.display !== 'none');
+          const r = el?.getBoundingClientRect();
+          if (r && r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          const shown = [...document.querySelectorAll('.glabel')].filter((e) => e.style.display !== 'none').length;
+          return { none: true, shown, rarity: entry.item.rarity, d: +Math.hypot(entry.pos.x - s.player.root.position.x, entry.pos.z - s.player.root.position.z).toFixed(1) };
+        }, d);
+        if (box.gone) {
+          // Taken already (an earlier click that landed on a moved label).
+          taken = await page.evaluate((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid);
+          if (!taken) why = 'left the ground but is not in the pack';
+          break;
+        }
+        if (box.none) {
+          why = `no label (${box.rarity}, ${box.d}m, ${box.shown} labels shown)`;
+          continue;
+        }
+        await page.mouse.click(box.x, box.y);
+        taken = await page
+          .waitForFunction((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid, { timeout: 8_000, polling: 200 })
+          .then(() => true, () => false);
+        if (!taken) {
+          const st = await page.evaluate(({ uid, x, y }) => {
+            const c = window.SLAY.save.account.current;
+            const hit = document.elementFromPoint(x, y)?.closest('.glabel');
+            return { free: c.inventory.filter((it) => !it).length, under: hit ? (hit.dataset.key?.split('|')[0] ?? 'other label') : 'no label', same: hit?.dataset.key?.startsWith(`${uid}|`) ?? false };
+          }, { uid: d.uid, x: box.x, y: box.y });
+          why = `click did not pick it up (${st.free} free slots, under the click: ${st.same ? 'its label' : st.under})`;
+        }
       }
-      await page.mouse.click(box.x, box.y);
-      const inPack = await page
-        .waitForFunction((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid, { timeout: 20_000, polling: 200 })
-        .then(() => true, () => false);
-      if (inPack) got++;
-      else missed.push(`${d.uid}: click did not pick it up`);
+      if (taken) got++;
+      else missed.push(`${d.uid}: ${why}`);
     }
     const wornInPack = await page.evaluate((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), worn.uid);
     if (!wornInPack) throw new Error(`the dropped ${worn.name} was not picked up; ${missed.join('; ')}`);
