@@ -865,3 +865,15 @@ and music OGG Vorbis.
 | `textures/items/wood/normal.webp` | https://polyhaven.com/a/fine_grained_wood | Rob Tuytel | CC0 1.0 |
 | `textures/items/leather/albedo.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
 | `textures/items/leather/normal.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
+| `textures/props/planks/albedo.webp` | https://polyhaven.com/a/weathered_planks | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/props/planks/normal.webp` | https://polyhaven.com/a/weathered_planks | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/props/timber/albedo.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
+| `textures/props/timber/normal.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
+| `textures/props/thatch/albedo.webp` | https://polyhaven.com/a/thatch_roof_angled | Rob Tuytel, Dimitrios Savva | CC0 1.0 |
+| `textures/props/thatch/normal.webp` | https://polyhaven.com/a/thatch_roof_angled | Rob Tuytel, Dimitrios Savva | CC0 1.0 |
+| `textures/props/slate/albedo.webp` | https://polyhaven.com/a/roof_slates_02 | Rob Tuytel | CC0 1.0 |
+| `textures/props/slate/normal.webp` | https://polyhaven.com/a/roof_slates_02 | Rob Tuytel | CC0 1.0 |
+| `textures/props/masonry/albedo.webp` | https://polyhaven.com/a/castle_wall_slates | Rob Tuytel | CC0 1.0 |
+| `textures/props/masonry/normal.webp` | https://polyhaven.com/a/castle_wall_slates | Rob Tuytel | CC0 1.0 |
+| `textures/props/ironplate/albedo.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
+| `textures/props/ironplate/normal.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
