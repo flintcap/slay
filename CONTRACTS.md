@@ -466,13 +466,18 @@ Events the engine listens to: `sfx`, `music`, `settings:changed`,
 `ui:open`/`ui:close`, `loot:pickedUp` (pickup by item kind), `boss:engaged`
 (the boss intro sting).
 
-## `src/fx/Particles.ts` / `src/fx/Effects.ts` — owned by FX
+## `src/fx/Particles.ts` / `src/fx/Effects.ts` — owned by vfx
+
+Built on the pooled kit in `src/fx/kit/` (particles, ribbons, lights,
+instanced shapes, solids, ground). Nothing allocates per frame. The effect
+lab `tools/vfxlab.html` (rendered by `tools/check-decals.mjs`) shows every
+family on a dark floor in seconds.
 
 ```ts
 /** One pooled GPU particle system per scene. Scenes create it and tick it. */
 export class FXSystem {
   constructor(scene: THREE.Scene, quality: QualityProfile);
-  update(dt: number, elapsed: number): void;
+  update(dt: number, elapsed: number, camera?: THREE.Camera): void;
   /** Named emitters: 'hit.physical','hit.fire','blood','embers','dust','heal',
    *  'levelup','portal','bossSlam','crit','frost','shock','poison','void'. */
   burst(id: string, x: number, y: number, z: number, opts?: { count?: number; color?: number; scale?: number; dir?: THREE.Vector3 }): void;
@@ -492,7 +497,26 @@ export class DecalSystem {
   update(dt: number): void;
   dispose(): void;
 }
+
+/** Effects that live on bodies (src/fx/BodyFX.ts). */
+export class BodyFX {
+  constructor(effects: EffectSystem);
+  /** Swing ribbon from the held weapon on the animator's `hit`; hand flare on `release`. Returns the unbind. */
+  bindHero(hero: { root; animator }, school: () => School): () => void;
+  /** Same for a creature: hand-to-`socket:weapon` ribbon on `hit`, flare at the tip or mouth on `release`. */
+  bindCreature(root: THREE.Object3D, rig: CreatureAnimator | null, school: () => School): () => void;
+  /** Wear status looks (burning, chilled, frozen, shocked, poisoned, bleeding, stunned, cursed). Bodies taken out of the scene drop out. */
+  trackQuery(obj: THREE.Object3D, src: { hasStatus(id): boolean; isBleeding: boolean }, opts?: { height?; radius?; lit? }): void;
+  trackList(obj: THREE.Object3D, src: StatusContainer, opts?: { height?; radius?; lit? }): void;
+  untrack(obj: THREE.Object3D): void;
+  update(dt: number, camera?: THREE.Camera): void;
+  clear(): void;
+}
 ```
+
+`LootFX` draws resting drops' beams, floor pools and lights itself, pooled.
+Any child of an item model named `beam`, `pool`, `sigil` or `dropLight` is
+hidden when the drop is launched and never shown again.
 
 ## `src/sim/Stats.ts` — owned by CHARACTER
 

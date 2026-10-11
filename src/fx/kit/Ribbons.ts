@@ -63,7 +63,7 @@ const FRAG = /* glsl */ `
     if (kind < 0.5) {
       // Swing: the swept surface. Hottest at the tip edge and at the head.
       float tip = smoothstep(0.15, 1.0, v);
-      float streak = 0.55 + 0.45 * n1(v * 18.0 + seed * 31.0);
+      float streak = 0.78 + 0.22 * n1(v * 7.0 + seed * 31.0);
       float head = smoothstep(0.55, 1.0, u);
       heat = clamp(fade * (0.35 + 0.65 * tip) * (0.6 + 0.6 * head) * streak, 0.0, 1.0);
       cov = smoothstep(0.0, 0.25, v) * fade * (0.35 + 0.65 * tip) * streak;
@@ -238,8 +238,11 @@ export class RibbonBatch {
     return !!h && this.live[h.slot] === 1 && this.gen[h.slot] === h.gen;
   }
 
-  /** Adds a point given both edges (swing: hilt and tip). */
-  pushEdges(h: RibbonHandle | null, ax: number, ay: number, az: number, bx: number, by: number, bz: number): void {
+  /**
+   * Adds a point given both edges (swing: hilt and tip). `age` back-dates the
+   * point, so a swing replayed from history fades from its oldest end first.
+   */
+  pushEdges(h: RibbonHandle | null, ax: number, ay: number, az: number, bx: number, by: number, bz: number, age = 0): void {
     if (!this.ok(h) || this.retired[h.slot]) return;
     const s = h.slot;
     const i = this.head[s]!;
@@ -247,7 +250,7 @@ export class RibbonBatch {
     const P = this.pts;
     P[o] = ax; P[o + 1] = ay; P[o + 2] = az;
     P[o + 3] = bx; P[o + 4] = by; P[o + 5] = bz;
-    P[o + 6] = this.time;
+    P[o + 6] = this.time - age;
     this.head[s] = (i + 1) % this.N;
     if (this.count[s]! < this.N) this.count[s]!++;
   }
@@ -255,6 +258,13 @@ export class RibbonBatch {
   /** Adds a centre point (trail, bolt). Edges are found at draw time. */
   pushPoint(h: RibbonHandle | null, x: number, y: number, z: number): void {
     this.pushEdges(h, x, y, z, x, y, z);
+  }
+
+  /** Drops every point but keeps the slot and look: a flickering bolt redraws its path. */
+  reset(h: RibbonHandle | null): void {
+    if (!this.ok(h)) return;
+    this.head[h.slot] = 0;
+    this.count[h.slot] = 0;
   }
 
   /** Points stop being added; the ribbon fades out and frees itself. */

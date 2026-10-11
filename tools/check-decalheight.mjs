@@ -63,16 +63,16 @@ console.log(
 
 // Numbers are history. What matters is that the wiring is still there.
 const decals = readFileSync(path.join(ROOT, 'src/fx/Decals.ts'), 'utf8');
+const ground = readFileSync(path.join(ROOT, 'src/fx/kit/Ground.ts'), 'utf8');
 const scene = readFileSync(path.join(ROOT, 'src/scenes/DungeonScene.ts'), 'utf8');
+const asks = (decals.match(/this\.groundAt\(/g) ?? []).length;
 const rules = [
-  ['stains carry a ground height', /attribute float iGround; \/\/ floor height under the stain/, decals],
-  ['stains are drawn on it', /iGround \+ position\.y, iXform\.y \+ rot\.y \* radius \* 2\.0\)/, decals],
-  ['telegraphs carry one too', /attribute float iGround; \/\/ floor height under the marker/, decals],
-  ['telegraphs are drawn on it', /vec3 wpos = vec3\(iXform\.x \+ rot\.x, iGround \+ position\.y, iXform\.y \+ rot\.y\);/, decals],
-  ['both attributes are uploaded', /\[this\.attrs\.iGround, 1\]/, decals],
+  ['floor marks carry a ground height', /attribute vec4 iE;\s+\/\/ floor y/, ground],
+  ['they are drawn on it', /vec3 wp = vec3\(iX\.x \+ rot\.x, iE\.x \+ lift, iX\.y \+ rot\.y\);/, ground],
+  ['the height is uploaded', /A\.iE\[o\] = g\.y;/, ground],
+  ['telegraphs use the same layer', /this\.tells = new GroundLayer\(/, decals],
   ['the system takes a floor probe', /setGround\(fn: \(x: number, z: number\) => number\)/, decals],
-  ['stains ask for it', /layer\.add\(\n\s*x, z, this\.groundAt\(x, z\),/, decals],
-  ['telegraphs ask for it', /A\.iGround\.array\[slot\] = this\.groundAt\(x, z\);/, decals],
+  ['marks, glows and telegraphs ask for it', { test: () => asks >= 3 }, decals],
   ['the dungeon supplies the real floor', /this\.decals\.setGround\(\(x, z\) => this\.mesh\.floorY\(x, z\)\);/, scene],
 ];
 console.log('\nand the wiring is still there:');

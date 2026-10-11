@@ -83,6 +83,11 @@ export interface Emitter {
   /** The school whose ramp `ramp: 'school'` layers use. */
   school: School;
   layers: Layer[];
+  /**
+   * Element-keyed emitters (hit.fire, cast.cold...) keep their curated ramp
+   * whatever colour a caller passes: an element always reads the same.
+   */
+  keyed?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,10 +216,63 @@ const TRAIL: Record<School, Layer[]> = {
 
 const E: Record<string, Emitter> = {};
 for (const s of Object.keys(HIT) as School[]) {
-  E[`hit.${s}`] = { school: s, layers: HIT[s] };
-  E[`cast.${s}`] = { school: s, layers: CAST[s] };
-  E[`trail.${s}`] = { school: s, layers: TRAIL[s] };
+  E[`hit.${s}`] = { school: s, layers: HIT[s], keyed: true };
+  E[`cast.${s}`] = { school: s, layers: CAST[s], keyed: true };
+  E[`trail.${s}`] = { school: s, layers: TRAIL[s], keyed: true };
 }
+
+// Status looks worn on bodies, fired a few times a second by BodyFX: each
+// burst is a handful of large, long-lived sprites rather than a spray.
+Object.assign(E, {
+  'status.burn': {
+    school: 'fire',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.flame, count: 2, speed: [0.2, 0.6], up: 1, radius: 0.06, size: [0.34, 0.52], grow: 0.7, life: [0.35, 0.55], heat: [1, 0.15], emit: 1.0, occl: 0.2, gravity: 3, drag: 2, turb: 0.4 }),
+      L({ sprite: SPRITE.ember, count: 2, speed: [0.4, 1.2], up: 1, size: [0.035, 0.06], grow: 0.4, life: [0.6, 1.0], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: 1.5, turb: 0.8 }),
+      L({ sprite: SPRITE.smoke, count: 1, ramp: 'smoke', speed: [0.2, 0.5], up: 1, size: [0.35, 0.5], grow: 2, life: [0.8, 1.2], heat: [0.3, 0], emit: 0.4, occl: 0.5, gravity: 0.9, turb: 0.2, tint: false }),
+    ],
+  },
+  'status.chill': {
+    school: 'cold',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.smoke, count: 1, speed: [0.1, 0.3], size: [0.35, 0.55], grow: 1.8, life: [0.8, 1.2], heat: [0.5, 0.1], emit: 0.6, occl: 0.2, gravity: -0.35, drag: 2 }),
+      L({ sprite: SPRITE.ember, count: 2, ramp: R_SNOW, speed: [0.1, 0.4], size: [0.035, 0.06], life: [0.7, 1.1], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -0.8, turb: 0.4, tint: false }),
+      L({ sprite: SPRITE.crystal, count: 1, speed: [0, 0.1], size: [0.12, 0.18], grow: 1.1, life: [0.35, 0.5], heat: [1, 0.4], emit: 0.9, occl: 0.05, spin: 2 }),
+    ],
+  },
+  'status.shock': {
+    school: 'lightning',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.arc, variants: 8, count: 1, speed: [0, 0], radius: 0.05, size: [0.35, 0.5], grow: 1, life: [0.06, 0.1], heat: [1, 0.8], emit: 1.0, occl: 0, fade: 1 }),
+      L({ sprite: SPRITE.spark, count: 2, speed: [1.5, 3.5], size: [0.03, 0.05], life: [0.12, 0.25], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -8, drag: 3, stretch: 1.2 }),
+    ],
+  },
+  'status.poison': {
+    school: 'poison',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.drip, count: 2, speed: [0.05, 0.2], size: [0.07, 0.11], life: [0.6, 0.9], heat: [0.8, 0.4], emit: 0.85, occl: 0.5, gravity: -9, stretch: 0.3, ground: true }),
+      L({ sprite: SPRITE.bubble, count: 1, speed: [0.1, 0.3], up: 1, size: [0.07, 0.12], grow: 1.2, life: [0.6, 1.0], heat: [0.9, 0.5], emit: 0.9, occl: 0.1, gravity: 0.6, turb: 0.3 }),
+      L({ sprite: SPRITE.gas, count: 1, speed: [0.05, 0.2], size: [0.45, 0.65], grow: 1.6, life: [0.9, 1.3], heat: [0.5, 0.05], emit: 0.6, occl: 0.4, turb: 0.3, spin: 0.5 }),
+    ],
+  },
+  'status.bleed': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.drop, count: 3, ramp: R_BLOOD, speed: [0.2, 0.8], spread: 0.4, size: [0.05, 0.09], grow: 0.9, life: [0.5, 0.8], heat: [0.6, 0.4], emit: 0.3, occl: 0.95, gravity: -14, drag: 1, stretch: 0.5, ground: true, fade: 3, tint: false }),
+    ],
+  },
+  'status.curse': {
+    school: 'arcane',
+    layers: [
+      L({ sprite: SPRITE.mote, count: 2, ramp: R_VOID, speed: [0.05, 0.25], size: [0.07, 0.12], grow: 0.6, life: [0.8, 1.2], heat: [1, 0.3], emit: 1.0, occl: 0, gravity: -0.5, drag: 1, turb: 0.4, tint: false }),
+      L({ sprite: SPRITE.gas, count: 1, ramp: R_VOID, speed: [0.05, 0.2], size: [0.45, 0.6], grow: 1.5, life: [0.8, 1.2], heat: [0.35, 0], emit: 0.45, occl: 0.55, gravity: -0.2, turb: 0.25, tint: false }),
+    ],
+  },
+});
 
 Object.assign(E, {
   blood: {
@@ -487,7 +545,7 @@ const _d = new THREE.Vector3();
  * Writes one layer into the field. `mul` scales the count (quality, pressure,
  * the caller's count). Returns how many particles were written.
  */
-export function emitLayer(field: ParticleField, rng: Rng, layer: Layer, school: School, x: number, y: number, z: number, o: EmitOpts | undefined, mul: number): number {
+export function emitLayer(field: ParticleField, rng: Rng, layer: Layer, school: School, x: number, y: number, z: number, o: EmitOpts | undefined, mul: number, keyed = false): number {
   // Single-sprite layers (flashes, rings) never thin out: one is the effect.
   const want = layer.count <= 2 ? layer.count * Math.max(1, Math.round(mul)) : layer.count * mul;
   let n = Math.floor(want);
@@ -503,7 +561,7 @@ export function emitLayer(field: ParticleField, rng: Rng, layer: Layer, school: 
   let body: number;
   let tail: number;
   let emit = layer.emit;
-  const tinted = layer.tint && o?.color !== undefined;
+  const tinted = layer.tint && !keyed && o?.color !== undefined;
   if (tinted) {
     const t = tintPacked(o!.color!);
     core = t.core; body = t.body; tail = t.tail;

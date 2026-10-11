@@ -273,18 +273,24 @@ const check = (ok: boolean, msg: string): void => {
 {
   let beams = 0;
   let punches = 0;
+  let columns = 0;
   const stub = {
     cameraRig: { punchIn: () => { punches++; } },
     fx: { burst: () => {} },
-    decals: { add: () => {} },
+    decals: { add: () => {}, glow: () => ({}), glows: { end: () => {} } },
+    columns: { alloc: () => { columns++; return {}; }, set: () => {}, put: () => {}, free: () => { columns--; } },
+    lights: { hold: () => null, release: () => {} },
+    lookFor: () => ({ core: 0, body: 0, tail: 0, glow: 1, light: 0 }),
     flash: () => {},
     beam: () => { beams++; },
     nova: () => {},
     chance: () => true,
   } as unknown as EffectSystem;
   const loot = new LootFX(stub);
+  const floor = new THREE.Group();
   const mkDrop = (x: number, z: number) => {
     const root = new THREE.Group();
+    floor.add(root);
     const beam = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
     beam.name = 'beam';
     const spin = new THREE.Group();
@@ -306,7 +312,8 @@ const check = (ok: boolean, msg: string): void => {
   }
   check(peak > 1, `drops do not arc (peak height ${peak.toFixed(2)})`);
   check(Math.abs(a.root.position.x - 1.2) < 1e-6 && Math.abs(a.root.position.z - 0.4) < 1e-6, 'a drop did not land where the scene put it');
-  check(a.beam.visible && a.beam.scale.y === 1, 'a landed drop never showed its full beam');
+  check(!a.beam.visible, 'a landed drop shows the item model\'s own beam (the loot layer draws beams now)');
+  check(loot.hasBeacon(a.root) && columns === 2, `landed drops did not raise their beams of light (${columns} lit)`);
   check(!loot.owns(a.root), 'a landed item is still held by the loot layer');
   check(beams >= 1 && punches >= 1, 'a unique landed without its pillar of light');
 

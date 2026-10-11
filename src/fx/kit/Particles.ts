@@ -21,6 +21,7 @@
  */
 
 import * as THREE from 'three';
+import { markRange, markAll } from './Upload';
 import { spriteAtlas, GLSL_CELL, FLIPBOOKS } from './Atlas';
 import { GLSL_UNPACK } from './Palette';
 
@@ -326,9 +327,7 @@ export class ParticleField {
     const n = this.hi - lo + 1;
     for (const k of ATTRS) {
       const a = this.attrs[k];
-      a.clearUpdateRanges();
-      a.addUpdateRange(lo * LAYOUT[k], n * LAYOUT[k]);
-      a.needsUpdate = true;
+      markRange(a, lo * LAYOUT[k], n * LAYOUT[k]);
     }
     this.lo = Infinity;
     this.hi = -Infinity;
@@ -355,9 +354,7 @@ export class ParticleField {
 
   clear(): void {
     this.arrays.iTime.fill(0);
-    const a = this.attrs.iTime;
-    a.clearUpdateRanges();
-    a.needsUpdate = true;
+    markAll(this.attrs.iTime);
     this.head = 0;
     this.high = 0;
     this.geo.instanceCount = 0;

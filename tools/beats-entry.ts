@@ -157,7 +157,7 @@ function sweep(skill: SkillDef): Beats {
       effects.update(DT, now);
       fx.update(DT, now);
       decals.update(DT);
-      live.push({ t: now, n: effects.liveCount + effects.trails.liveCount });
+      live.push({ t: now, n: effects.liveCount + effects.ribbons.liveCount });
       for (const e of [...a.enemies]) {
         a.ctx.playerPos.copy(player.position);
         e.update(DT, a.ctx);

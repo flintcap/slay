@@ -22,6 +22,7 @@
  */
 
 import * as THREE from 'three';
+import { markRange, markAll } from './Upload';
 import { premultiplied } from './Particles';
 import { GLSL_UNPACK } from './Palette';
 
@@ -64,7 +65,9 @@ const VERT = /* glsl */ `
     float s = sin(iX.w);
     vec2 local = position.xz * 2.0;   // -1..1
     vec2 scaled = local * iX.z * alive;
-    vec2 rot = vec2(scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c);
+    // Rotation follows the game's heading convention: local +y points along
+    // (sin r, cos r), the way a body facing r looks.
+    vec2 rot = vec2(scaled.x * c + scaled.y * s, -scaled.x * s + scaled.y * c);
     // Lift scales with kind so stacked layers never fight: marks lowest.
     float lift = kind < 15.5 ? 0.012 : kind < 31.5 ? 0.02 : 0.028;
     vec3 wp = vec3(iX.x + rot.x, iE.x + lift, iX.y + rot.y);
@@ -130,14 +133,14 @@ const FRAG = /* glsl */ `
     float cov = 0.0;
     float occl = 0.0;
     vec3 rgb = vec3(0.0);
-    bool lit = true;
+
 
     float fadeIn = smoothstep(0.0, max(vE.y, 1e-3), vAge);
     float fadeOut = 1.0 - smoothstep(0.7, 1.0, t);
 
     if (kind < 15.5) {
       // ------------------------------------------------------------ marks
-      lit = false;
+
       float n = gf(wp * 1.6);
       float edge = 0.0;
       vec3 base = vBody;
@@ -368,12 +371,12 @@ const FRAG = /* glsl */ `
     heat = clamp(edge * (0.75 + 0.25 * pulse * (0.4 + imminent)) + inner + front * 0.6 + filled * (0.12 + hatch * 0.1) + imminent * pulse * 0.15 * inside, 0.0, 1.0);
     float light = heat;
     // The landing flash.
-    light += post * (1.0 - post) * 3.0 * inside;
+    light += post * (1.0 - post) * 2.0 * (edge + inside * 0.3);
     float fadeStart = smoothstep(0.0, 0.08, tt);
     float alive = 1.0 - post;
     vec3 col = ramp3(clamp(light, 0.0, 1.0)) * vEmit * (0.2 + 1.1 * clamp(light, 0.0, 1.2));
-    float cov = clamp(edge + inner + front * 0.7 + filled * 0.35 + hatch * 0.1, 0.0, 1.0);
-    rgb = col * cov * fadeStart * mix(alive, 1.0, 0.0) + vBody * vEmit * post * (1.0 - post) * 2.0 * inside;
+    cov = clamp(edge + inner + front * 0.7 + filled * 0.35 + hatch * 0.1, 0.0, 1.0);
+    rgb = col * cov * fadeStart * alive + vBody * vEmit * post * (1.0 - post) * 0.7 * inside;
     float oc = shadowA * fadeStart * alive;
     if (oc < 0.003 && dot(rgb, rgb) < 1e-6) discard;
     gl_FragColor = vec4(rgb, oc);
@@ -539,9 +542,7 @@ export class GroundLayer {
     const n = this.hi - this.lo + 1;
     for (const k of LAYOUT) {
       const a = this.attr[k];
-      a.clearUpdateRanges();
-      a.addUpdateRange(this.lo * 4, n * 4);
-      a.needsUpdate = true;
+      markRange(a, this.lo * 4, n * 4);
     }
     this.lo = Infinity;
     this.hi = -Infinity;
@@ -549,9 +550,7 @@ export class GroundLayer {
 
   clear(): void {
     this.arr.iT.fill(0);
-    const a = this.attr.iT;
-    a.clearUpdateRanges();
-    a.needsUpdate = true;
+    markAll(this.attr.iT);
     this.head = 0;
     this.high = 0;
     this.geo.instanceCount = 0;
