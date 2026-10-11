@@ -19,7 +19,7 @@ looks wrong or weak against the Diablo II / Path of Exile bar in `PLAN.md`.
 - [ ] Known leftovers. Kraken pauldrons (blobby), armour quilting (faint),
   ashen prophet and hive queen wings, stalker prime (plain), glacier titan
   fists, void spire readability.
-- [ ] Hero walk (owner, top priority). Legs too spread, not fluid. Aim:
+- [x] Hero walk (owner, top priority). `qa-looks: hero walk and run, narrow track, heel kick, no lunge`. Legs too spread, not fluid. Aim:
   narrow step width near a centre line, hips sway and turn, knees bend
   smoothly, heel strike then roll to toe, arms swing against the legs,
   upper body turns against the hips, walk and run blend with no snap, the
@@ -102,8 +102,11 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
    drop only for feet on the floor, a quicker blend into the run, an early
    step for a foot left far behind, less crouch walking. No foot slide
    (`check-hero`). Offline: `motion/clips-*-before.png` vs
-   `clips-*-after7.png` (new row "walk to run" checks the blend). Live:
-   `gait/gait-<class>-<speed>-<view>-before|after.png`.
+   `clips-*-after7.png` (new row "walk to run" checks the blend). Live
+   (warden and ranger, walk and run, side and game camera):
+   `gait/gait-<class>-<speed>-<view>-before|after.png`. The live run no
+   longer splits into lunges; the heel tucks up behind. The walk changed
+   less (it was already close to the line).
 
 ## Next up
 
