@@ -1,6 +1,6 @@
 # Stream: finish (cleanup, speed, long play test, publish)
 
-Status: not started
+Status: in progress
 
 Goal: tie the remake together. Nothing old left behind, fast enough, no
 crashes, docs true, published.
@@ -19,10 +19,76 @@ crashes, docs true, published.
 - [ ] Publish. Bundle with `node tools/bundle-artifact.mjs` and hand Claude
   the page and the asset file list.
 
+## Leftovers checklist
+
+Gathered from every stream's Handover and "Notes for resume". Ticked when
+fixed, or marked "won't" with the reason.
+
+Requests (fixes other streams asked for):
+
+- [ ] R1 props: `generateRun` sets `level.variant` after props are placed.
+  Pass the variant into `generateLevel` so props dress in it.
+- [ ] R2 props: `ensureInteractables` plants `chest.rare` as kind `chest`;
+  use `chestKindFor`.
+- [ ] R3 vfx/creatures: public read-only `Enemy.rig`; drop the cast in
+  `DungeonScene.watchBody`.
+- [ ] R4 vfx/items: `ItemModels` stops building `beam`, `pool`, `sigil`,
+  `dropLight` on drops (LootFX owns beacons).
+- [ ] R5 ground: `DungeonBuilder.buildProps` builds templates with each
+  zone's biome art; wall-light line uses `tmpl.light?.color`; drop BiomeArt
+  prop vocabulary fields nothing reads.
+- [ ] R6 audio: play `waypoint` on waypoint travel.
+- [ ] R7 maps: tips, quest log and run stats text that still says "stairs"
+  or "depth". (`T_STAIRS_*` aliases: already gone, grep 0.)
+- [ ] R8 npcs/props: `check-npcdraws` fails headless in `irisTexture`.
+- [ ] R9 heroes: `PLAN.md` still lists deleted files under heroes.
+- [ ] R10 ground: `Town.ts` imports `CharClassId` without using it.
+
+Dead code:
+
+- [ ] D1 items: unused brushes in `src/art/Paint.ts`.
+- [ ] D2 a sweep for exports nothing imports, old checkers and old assets.
+
+Speed:
+
+- [ ] S1 per-step garbage over budget (304 to 411 KB against 200):
+  `Nav.lineOfSight`/`worldToTile` in shot ticks, `Enemy.hasStatus`/`stacksOf`
+  closures, monster AI, HeroModel.
+- [ ] S2 depth 9 forest 1.60M triangles against 1.5M.
+- [ ] S3 depth 12 perf never measured.
+- [ ] S4 first town visit builds the nine townsfolk in about 28 s; build
+  over several frames or off the main loop.
+- [ ] S5 first build per monster (150 to 500 ms) and boss (0.6 to 2.9 s) on
+  the main thread.
+- [ ] S6 boss bodies 13k to 18.7k triangles against 12k.
+
+Looks (polish, no stat changes):
+
+- [ ] L1 items: `metal.dark` too dark under torches; kraken pauldrons
+  blobby; quilting faint.
+- [ ] L2 creatures: ashen prophet wings like planks, hive queen wings dim,
+  stalker prime plain, glacier titan fists, storm djinn dark.
+- [ ] L3 heroes: warden's field kit sword sits high in the hand on the
+  select screen.
+- [ ] L4 one real dungeon frame with monsters in view, looked at.
+
+Checks never run by their stream:
+
+- [ ] C1 `check-skills` for warden and shadowblade (one class a run).
+- [ ] C2 `check-soak`, small settings first.
+
+Noted, not planned (owner's call or low value):
+
+- audio: a listening pass by ear is not possible here; loudness stays
+  balanced by measurement. Effects decode to about 86 MB once loaded.
+- creatures: a boss portrait opens a second WebGL context once per boss.
+- npcs: Renn's hand-on-hip floats a little; ledger and map read flat from
+  far; walkers do not path round buildings.
+- maps: `check-curve` fails 3 of 30, same as before the remake.
+
 ## Next up
 
-1. Run Setup in `docs/remake/PROTOCOL.md`.
-2. Read every other progress file's Handover section.
+1. Work the checklist top down: requests, dead code, speed, looks, checks.
 
 ## Notes for resume
 
