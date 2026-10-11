@@ -17,7 +17,7 @@
  */
 
 import type { BiomeId, DungeonRoom, LayoutKind, Rng, Vec2 } from '../../types';
-import { Grid, T_FLOOR, T_VOID, isWalkableValue } from '../Layouts';
+import { Grid, T_FLOOR, isWalkableValue } from '../Layouts';
 
 /** What a generator is handed. */
 export interface ZoneCtx {
@@ -375,32 +375,7 @@ export function bfs(g: Grid, from: Vec2): Int32Array {
   return d;
 }
 
-/** Nearest walkable tile to `p` by spiral search, or `p` if none is close. */
-export function nearestWalkable(g: Grid, p: Vec2, maxR = 12): Vec2 {
-  if (isWalkableValue(g.get(p.x, p.y))) return p;
-  for (let r = 1; r <= maxR; r++) {
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-        if (isWalkableValue(g.get(p.x + dx, p.y + dy))) return { x: p.x + dx, y: p.y + dy };
-      }
-    }
-  }
-  return p;
-}
-
-/** Every walkable tile reached from `from`, as a mask. */
-export function reachMask(g: Grid, from: Vec2): Uint8Array {
-  const d = bfs(g, from);
-  const m = new Uint8Array(d.length);
-  for (let i = 0; i < d.length; i++) if (d[i] >= 0) m[i] = 1;
-  return m;
-}
-
 /** The landing pad every port gets, so arrival never puts you in a thicket. */
 export function landing(ctx: ZoneCtx, p: Vec2, r = 2.6): void {
   disc(ctx, p.x, p.y, r, T_FLOOR);
 }
-
-/** True for void (uncarved rock, forest, dune). */
-export const isVoid = (v: number): boolean => v === T_VOID;

@@ -494,7 +494,7 @@ export class DungeonScene extends GameScene {
     this.engine.renderer.setGrade(biomeArt(this.biome.id, this.level?.variant).grade);
     // Fog and the clear colour belong to the light mood (applyBiomeLighting).
 
-    // Place the player at the entry stairs.
+    // Place the player at the arrival point.
     const entry = this.mesh.tileToWorld(this.level.entry.x, this.level.entry.y);
     this.player.position.copy(entry);
     this.player.stop();
@@ -564,7 +564,7 @@ export class DungeonScene extends GameScene {
     }
 
     // Boss floor: the fight owns the arena, and the exit stays sealed until
-    // the boss dies — otherwise killing it on the stairs would end the run
+    // the boss dies — otherwise killing it beside the portal home would end the run
     // before the player can pick up what it dropped.
     this.exitOpen = !this.level.isBossLevel;
     this.returnPortal = null;

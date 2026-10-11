@@ -2,7 +2,7 @@
  * SLAY — the full-screen map.
  *
  * Draws the current DungeonLevel to a canvas at a readable scale: explored
- * tiles only, rooms tinted by kind, stairs and quest markers called out, and
+ * tiles only, rooms tinted by kind, exits and quest markers called out, and
  * the player where they actually are. Pan by dragging, zoom on the wheel.
  */
 
@@ -41,7 +41,7 @@ const ROOM_LABEL: Partial<Record<DungeonRoom['kind'], string>> = {
   vault: 'Vault',
   quest: 'Quest',
   entry: 'Entrance',
-  exit: 'Stairs Down',
+  exit: 'Way On',
 };
 
 export class MapPanel {
@@ -87,8 +87,10 @@ export class MapPanel {
     const rows: Array<[string, string]> = [
       [FLOOR_FILL, 'Explored floor'],
       [EDGE_INK, 'Wall'],
-      ['#ffd66b', 'Stairs down'],
-      ['#7fb0ff', 'Stairs up'],
+      ['#ffd66b', 'Way on'],
+      ['#ff6a4d', 'Arena gate'],
+      ['#ffc861', 'Waypoint to town'],
+      ['#7fb0ff', 'Where you arrived'],
       ['#d8a83a', 'Treasure'],
       ['#b06cff', 'Shrine'],
       ['#e0503c', 'Boss chamber'],

@@ -36,3 +36,7 @@ screenshots.
 
 - Town `addBox` colliders take the AABB of the rotated rectangle.
 - Wall-prop colliders are offset by `wallOffset` along the prop's rotation.
+- Request from maps: `Props.ts` still imports `T_STAIRS_DOWN` and `T_STAIRS_UP`.
+  Switch them to `T_EXIT` and `T_ARRIVAL` (same values, from `world/Layouts.ts`),
+  then delete the two deprecated aliases at the top of `Layouts.ts`.
+  `grep -rn T_STAIRS_ src` should then show 0 hits.

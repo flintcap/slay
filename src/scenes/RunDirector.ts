@@ -102,7 +102,7 @@ export class RunDirector {
     }
   }
 
-  /** The run's last stairs were taken. Banks the clear and any new record. */
+  /** The portal home after the boss was taken. Banks the clear and any new record. */
   onRunCleared(): void {
     const l = legacyOf(this.account);
     l.stats.clears++;

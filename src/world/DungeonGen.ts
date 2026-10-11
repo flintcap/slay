@@ -752,7 +752,7 @@ export function generateLevel(
   const g = area.grid;
   const rooms = area.rooms;
 
-  // --- Stairs ------------------------------------------------------------
+  // --- Arrival and exit ------------------------------------------------
   // The zone generators leave a landing at both ports. On the boss floor the
   // way on opens in the middle of the arena once the boss is down.
   const entry = area.entry;
@@ -893,7 +893,7 @@ export const PLANT_STAIR_CLEARANCE = 6;
 
 /**
  * Finds open tiles for set pieces: fully surrounded by floor, well clear of
- * the stairs, not on a spawn or another prop, one per room, room centres
+ * the arrival and exit, not on a spawn or another prop, one per room, room centres
  * first. Rooms are tried in the order given; `anywhere` falls back to a scan
  * of the whole floor when every room is used up or too cramped.
  */
@@ -966,7 +966,7 @@ class Planter {
     }
     return null;
   }
-  /** A floor tile with exactly one way in, clear of the stairs and of everything placed. */
+  /** A floor tile with exactly one way in, clear of the arrival, the exit and of everything placed. */
   deadEnd(x: number, y: number): boolean {
     const L = this.level;
     if (x < 1 || y < 1 || x >= L.width - 1 || y >= L.height - 1) return false;
@@ -979,7 +979,7 @@ class Planter {
     const far = (p: Vec2) => Math.abs(p.x - x) + Math.abs(p.y - y) >= PLANT_STAIR_CLEARANCE;
     return ways === 1 && far(L.entry) && far(L.exit);
   }
-  /** Bare floor in the clear of the stairs: a candidate for `noCut`. */
+  /** Bare floor in the clear of the arrival and exit: a candidate for `noCut`. */
   private corridor(x: number, y: number): boolean {
     const L = this.level;
     if (x < 1 || y < 1 || x >= L.width - 1 || y >= L.height - 1) return false;
@@ -1183,13 +1183,6 @@ function nearestRoom(rooms: DungeonRoom[], p: Vec2, maxD: number): DungeonRoom |
 
 function firstWalkable(g: Grid): Vec2 {
   for (let i = 0; i < g.t.length; i++) {
-    if (isWalkableValue(g.t[i])) return { x: i % g.w, y: (i / g.w) | 0 };
-  }
-  return { x: 1, y: 1 };
-}
-
-function lastWalkable(g: Grid): Vec2 {
-  for (let i = g.t.length - 1; i >= 0; i--) {
     if (isWalkableValue(g.t[i])) return { x: i % g.w, y: (i / g.w) | 0 };
   }
   return { x: 1, y: 1 };
@@ -1563,26 +1556,6 @@ function gatherPackSpots(g: Grid, sx: number, sy: number, count: number, used: S
 // ---------------------------------------------------------------------------
 // Utilities used by scenes / debug
 // ---------------------------------------------------------------------------
-
-/** All rooms of a given kind. */
-export function roomsOfKind(level: DungeonLevel, kind: DungeonRoom['kind']): DungeonRoom[] {
-  return level.rooms.filter((r) => r.kind === kind);
-}
-
-/** The room containing a tile, or null. */
-export function roomAt(level: DungeonLevel, x: number, y: number): DungeonRoom | null {
-  const ex = levelExtras(level);
-  if (ex) {
-    if (x < 0 || y < 0 || x >= level.width || y >= level.height) return null;
-    const id = ex.roomOf[y * level.width + x];
-    if (id < 0) return null;
-    return level.rooms.find((r) => r.id === id) ?? null;
-  }
-  for (const r of level.rooms) {
-    if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return r;
-  }
-  return null;
-}
 
 /** The zone a tile belongs to, or null on a level without zones. */
 export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | null {
