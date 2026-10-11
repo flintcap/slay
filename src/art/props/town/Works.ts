@@ -327,7 +327,11 @@ export function fireRing(site: Site, rng: Rng): void {
     if (i % 2 === 0) {
       const b = Math.cos(a + 0.5) * 4.6;
       const c = Math.sin(a + 0.5) * 4.6;
-      site.add(TM.canvas(), cyl(0.17, 0.17, 1.5, 9).translate(0, -0.75, 0), { x: b, y: 0.17, z: c, rz: Math.PI / 2, ry: -a }, 0.85);
+      // A rolled blanket, tied twice: dull, so it does not glow under the fire.
+      site.add(TM.hide(), cyl(0.17, 0.17, 1.5, 9).translate(0, -0.75, 0), { x: b, y: 0.17, z: c, rz: Math.PI / 2, ry: -a }, 0.5);
+      for (const u of [-0.45, 0.45]) {
+        site.add(TM.rope(), new THREE.TorusGeometry(0.175, 0.02, 4, 10).rotateY(Math.PI / 2), { x: b + Math.cos(a) * u, y: 0.17, z: c + Math.sin(a) * u, ry: -a }, 0.7, false);
+      }
     }
   }
 }
