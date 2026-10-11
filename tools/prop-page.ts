@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { allSetNames, preloadSets } from '../src/art/TextureSets';
-import { assetsPending, preloadAssets } from '../src/core/Assets';
+import { assetStats, preloadAssets } from '../src/core/Assets';
 import { propTextureFiles, propMat } from '../src/art/props/PropMats';
 import { KIND_GROUPS, libraryTemplate } from '../src/art/props/Library';
 import { propDef } from '../src/art/props/Defs';
@@ -73,7 +73,11 @@ export async function kinds(ids: string[], biomes: string[]): Promise<string> {
       /* reported per cell below */
     }
   }
-  for (let i = 0; i < 300 && assetsPending() > 0; i++) await new Promise((r) => setTimeout(r, 100));
+  const pending = (): number => {
+    const a = assetStats();
+    return a.textures - a.loaded - a.failed.length;
+  };
+  for (let i = 0; i < 300 && pending() > 0; i++) await new Promise((r) => setTimeout(r, 100));
   await new Promise((r) => setTimeout(r, 300));
   const cw = 230;
   const chh = 250;
