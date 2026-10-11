@@ -1,6 +1,6 @@
 # Stream: qa-legend (signature looks for every unique and set)
 
-Status: not started
+Status: in progress
 
 Goal (owner's words): unique items should have unique designs, patterns and
 glow effects. For example, a set's chest piece could have dragons on the
