@@ -50,16 +50,18 @@ export class CapeSpring {
       const k = i / Math.max(1, n - 1);
       // Bone 0 is relative to the chest; its children relative to it, so a
       // share of the total angle goes on each.
-      const share = i === 0 ? 1 : 0.35;
+      // Kept small: with a few bones the shares add up, and at 0.35 a running
+      // cape rose past level and streamed out flat behind like a banner.
+      const share = i === 0 ? 1 : 0.18;
       let tx = i === 0 ? inp.pitch : 0;
       tx += (0.05 * Math.max(0, inp.fwd) + 0.04 * Math.min(8, Math.max(0, inp.accel))) * share * (0.7 + k);
-      tx += Math.max(0, inp.legBack) * (i === 0 ? 0.15 : 0.05);
+      if (i === 0) tx += Math.max(0, inp.legBack) * 0.15;
       tx -= inp.vy * 0.05 * k;
       // Flutter: a fast ripple down the cloth, stronger toward the hem.
       tx += Math.sin(this.t * (6 + 2 * speed) - i * 1.3) * 0.025 * Math.min(1, speed / 3) * k;
       let tz = (i === 0 ? -inp.roll : 0) - (0.06 * inp.side + 0.05 * inp.yawRate) * share;
       tz = Math.max(-0.5, Math.min(0.5, tz));
-      tx = Math.max(i === 0 ? -0.1 : -0.25, Math.min(i === 0 ? 1.2 : 0.6, tx));
+      tx = Math.max(i === 0 ? -0.1 : -0.25, Math.min(i === 0 ? 0.9 : 0.3, tx));
       const stiff = 70 - 35 * k;
       const damp = 2 * Math.sqrt(stiff) * 0.55;
       this.vx[i]! += (stiff * (tx - this.ax[i]!) - damp * this.vx[i]!) * dt;

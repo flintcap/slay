@@ -42,10 +42,10 @@ export function buildItemModel(visual: ItemVisual, _rng: Rng, rarity: ItemRarity
  */
 const HELD_SCALE: Partial<Record<ItemFamily, number>> = {
   sword: 1.25,
-  dagger: 1.3,
+  dagger: 1.45,
   axe: 1.15,
   mace: 1.1,
-  wand: 1.35,
+  wand: 1.5,
   scepter: 1.35,
   staff: 1.12,
   spear: 1.1,
