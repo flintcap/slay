@@ -39,14 +39,67 @@ export function assetUrl(rel: string): string {
  * so callers can fall back instead of throwing.
  */
 export function fetchAsset(rel: string): Promise<ArrayBuffer | null> {
-  let p = cache.get(rel);
+  const key = rel.replace(/^\/+/, '');
+  let p = cache.get(key);
   if (!p) {
-    p = fetch(assetUrl(rel))
-      .then((r) => (r.ok ? r.arrayBuffer() : null))
-      .catch(() => null);
-    cache.set(rel, p);
+    p = packIndex().then((index) => {
+      const entry = index?.[key];
+      return entry ? fromPack(entry) : fetchLoose(key);
+    });
+    cache.set(key, p);
   }
   return p;
+}
+
+function fetchLoose(rel: string): Promise<ArrayBuffer | null> {
+  return fetch(assetUrl(rel))
+    .then((r) => (r.ok ? r.arrayBuffer() : null))
+    .catch(() => null);
+}
+
+// ---------------------------------------------------------------------------
+// Packs
+// ---------------------------------------------------------------------------
+//
+// The published build folds most files into a few packs (the artifact host
+// caps how many files one page may carry; see `tools/bundle-artifact.mjs`).
+// `assets/packs.json` maps each file to [pack, offset, length]. With no index
+// (the dev server answers with its HTML page, which fails to parse) every file
+// is fetched loose, as before.
+
+type PackEntry = [pack: string, offset: number, length: number];
+
+let indexPromise: Promise<Record<string, PackEntry> | null> | null = null;
+const packs = new Map<string, Promise<ArrayBuffer | null>>();
+/** Entries not yet sliced out of each pack; at zero the pack's bytes are let go. */
+const packLeft = new Map<string, number>();
+
+function packIndex(): Promise<Record<string, PackEntry> | null> {
+  if (!indexPromise) {
+    indexPromise = fetch(assetUrl('packs.json'))
+      .then((r) => (r.ok ? (r.json() as Promise<Record<string, PackEntry>>) : null))
+      .then((index) => {
+        if (!index || typeof index !== 'object') return null;
+        for (const [pack] of Object.values(index)) packLeft.set(pack, (packLeft.get(pack) ?? 0) + 1);
+        return index;
+      })
+      .catch(() => null);
+  }
+  return indexPromise;
+}
+
+async function fromPack([pack, offset, length]: PackEntry): Promise<ArrayBuffer | null> {
+  let p = packs.get(pack);
+  if (!p) {
+    p = fetchLoose(`packs/${pack}`);
+    packs.set(pack, p);
+  }
+  const bytes = await p;
+  const left = (packLeft.get(pack) ?? 1) - 1;
+  packLeft.set(pack, left);
+  if (left <= 0) packs.delete(pack);
+  if (!bytes || offset + length > bytes.byteLength) return null;
+  return bytes.slice(offset, offset + length);
 }
 
 // ---------------------------------------------------------------------------

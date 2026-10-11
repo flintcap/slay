@@ -16,7 +16,7 @@
  * missing, so a page published without them still runs. Worker scripts the
  * build emits beside the bundle (`dist-single/assets/*.js`) go in the same map.
  */
-import { readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, statSync, readdirSync, rmSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -116,13 +116,60 @@ function assetFiles(dir, out = []) {
   }
   return out;
 }
+// The artifact host takes at most 511 files per version (255 per publish),
+// and the game ships nearly 900. Everything the game reads as bytes
+// (`fetchAsset`) is folded into a few packs of at most PACK_MAX bytes, grouped
+// by folder so one pack holds things that load together. `assets/packs.json`
+// says where each file sits; `src/core/Assets.ts` reads it and falls back to
+// the loose file when there is no index (the dev server). Music and ambience
+// beds stay loose: an <audio> element streams them by URL.
+const PACK_MAX = 8 * 1024 * 1024;
+const loose = (rel) => rel.startsWith('music/') || rel.startsWith('sounds/beds/');
 const files = {};
 let assetBytes = 0;
+rmSync('dist-single/packs', { recursive: true, force: true });
+mkdirSync('dist-single/packs', { recursive: true });
+const groups = new Map();
 for (const full of assetFiles('public/assets').sort()) {
   const src = full.split(path.sep).join('/');
-  files[src.replace(/^public\//, '')] = src;
+  const rel = src.replace(/^public\/assets\//, '');
   assetBytes += statSync(full).size;
+  if (loose(rel)) {
+    files[`assets/${rel}`] = src;
+    continue;
+  }
+  const parts = rel.split('/');
+  const group = parts[0] === 'textures' ? `textures-${parts[1]}` : parts[0];
+  if (!groups.has(group)) groups.set(group, []);
+  groups.get(group).push({ rel, src });
 }
+const index = {};
+let packCount = 0;
+for (const [group, list] of groups) {
+  let n = 0;
+  let chunks = [];
+  let size = 0;
+  const flush = () => {
+    if (chunks.length === 0) return;
+    const name = `${group}-${n++}.bin`;
+    writeFileSync(`dist-single/packs/${name}`, Buffer.concat(chunks));
+    files[`assets/packs/${name}`] = `dist-single/packs/${name}`;
+    packCount++;
+    chunks = [];
+    size = 0;
+  };
+  for (const { rel, src } of list) {
+    const bytes = readFileSync(src);
+    if (size > 0 && size + bytes.length > PACK_MAX) flush();
+    index[rel] = [`${group}-${n}.bin`, size, bytes.length];
+    chunks.push(bytes);
+    size += bytes.length;
+  }
+  flush();
+}
+writeFileSync('dist-single/packs.json', JSON.stringify(index));
+files['assets/packs.json'] = 'dist-single/packs.json';
+console.log(`packed ${Object.keys(index).length} files into ${packCount} packs`);
 // Worker scripts cannot be inlined: the build emits each one beside the page
 // (`assets/FolkWorker-<hash>.js`, the townsfolk mesher) and the page asks for
 // it by that relative path. Missing, the town meshes its residents itself.
@@ -140,5 +187,6 @@ writeFileSync('dist-single/files.json', JSON.stringify(files, null, 2) + '\n');
 const count = Object.keys(files).length;
 console.log(
   `wrote dist-single/files.json (${count} asset files, ${(assetBytes / 1024 / 1024).toFixed(1)} MB)` +
-    (count > 255 ? ' — more than 255 files: publish in several calls to the same url' : ''),
+    (count > 255 ? ' — more than 255 files: publish in several calls to the same url' : '') +
+    (count > 511 ? ' — OVER the 511-file limit for one artifact version' : ''),
 );
