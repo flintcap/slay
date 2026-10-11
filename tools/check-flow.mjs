@@ -11,6 +11,19 @@
  *   -> Continue -> town -> descend -> die -> death screen (fallen, saved?)
  *   -> Rise Again -> character select -> Escape -> title
  *
+ * `--class=<id>` (warden, pyromancer, shadowblade, stormcaller, revenant,
+ * ranger) picks that class at character select and adds the class tour:
+ *
+ *   town: talk to a keeper and take their trade, open every panel
+ *   -> a geared hero of that class -> walk to the portal and press E
+ *   -> fire every hotbar skill with its key -> kill a pack, click the loot,
+ *   right-click a piece of it on -> open every panel down there
+ *   -> [E] at the waypoint home -> portal again (a fresh map)
+ *   -> walk into the next zone and through the way on into the next area
+ *
+ * then the loop above carries on from the pause menu. Console errors and
+ * failed art files fail it too in this mode.
+ *
  * Fails on any page error or any step that does not arrive. Slow under
  * software rendering (each scene build is minutes when the machine is busy),
  * so it is a milestone check, not a per-edit one.
@@ -26,10 +39,16 @@ if (OUT) mkdirSync(OUT, { recursive: true });
 // `--shots=death` (or `charSelect`): only those photographs. Each one waits for
 // scene time, which can take many minutes under software rendering.
 const SHOTS = process.argv.find((a) => a.startsWith('--shots='))?.slice(8).split(',');
+const CLASS = process.argv.find((a) => a.startsWith('--class='))?.slice(8);
+const CLASS_ORDER = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+if (CLASS && !CLASS_ORDER.includes(CLASS)) {
+  console.log(`unknown class ${CLASS}`);
+  process.exit(1);
+}
 
 const T0 = Date.now();
 const secs = () => `${Math.round((Date.now() - T0) / 1000)}s`.padStart(6);
-const { page, close, pageErrors, bootMs } = await bootGame({ fallbackPort: 4302, bootTimeoutMs: 1_500_000 });
+const { page, close, pageErrors, consoleErrors, bootMs } = await bootGame({ fallbackPort: 4302, bootTimeoutMs: 1_500_000 });
 console.log(`${secs()}  booted in ${Math.round(bootMs / 1000)}s`);
 
 const results = [];
@@ -134,6 +153,8 @@ await step('Enter opens character select', async () => {
 
 await step('Enter forges the character and enters town', async () => {
   await page.waitForTimeout(800);
+  // Down the class list to the one asked for (the list is CLASSES order).
+  for (let i = 0; i < CLASS_ORDER.indexOf(CLASS ?? 'warden'); i++) await key('ArrowDown');
   await key('Enter');
   await arrive('town');
   const cur = await page.evaluate(() => window.SLAY.save.account.current?.name ?? null);
@@ -142,11 +163,13 @@ await step('Enter forges the character and enters town', async () => {
   return 'saved';
 });
 
-await step('the gate takes you down to depth 1', async () => {
-  await page.evaluate(() => window.SLAY.events.emit('ui:open', { panel: 'descend' }));
-  await arrive('dungeon');
-  return `depth ${await page.evaluate(() => window.SLAY.engine.currentScene?.run?.depth)}`;
-});
+if (CLASS) await (await import('./lib/class-tour.mjs')).classTour({ page, step, arrive, key, frames, visible, secs, classId: CLASS, setName: (n) => (name = n) });
+else
+  await step('the gate takes you down to depth 1', async () => {
+    await page.evaluate(() => window.SLAY.events.emit('ui:open', { panel: 'descend' }));
+    await arrive('dungeon');
+    return `depth ${await page.evaluate(() => window.SLAY.engine.currentScene?.run?.depth)}`;
+  });
 
 await step('Escape pauses, Escape resumes', async () => {
   await page.waitForTimeout(1000);
@@ -232,11 +255,17 @@ await step('Escape goes back to the title', async () => {
 });
 
 const engineErrors = await page.evaluate(() => [...(window.SLAY?.engine?.errors?.values() ?? [])].map((e) => `${e.where}: ${e.message}`)).catch(() => []);
+// Art files that failed to load (the game falls back, but the art is missing).
+const missingArt = CLASS ? await page.evaluate(() => window.SLAY.debug.assets?.()).catch(() => null) : null;
 await close();
 
 const bad = results.filter((r) => !r.ok);
 for (const e of pageErrors) console.log(`page error: ${e}`);
 for (const e of engineErrors) console.log(`engine error: ${e}`);
-const ok = bad.length === 0 && !stopped && pageErrors.length === 0 && engineErrors.length === 0;
-console.log(`${ok ? 'ok  ' : 'FAIL'} flow: ${results.length - bad.length}/${results.length} steps, ${pageErrors.length} page errors, ${engineErrors.length} engine errors, ${secs().trim()}`);
+const consoleBad = CLASS ? consoleErrors : [];
+for (const e of consoleBad) console.log(`console error: ${e}`);
+const artFailed = missingArt?.failed?.length ?? 0;
+if (CLASS) console.log(`assets: ${missingArt?.loaded} loaded, failed: ${JSON.stringify(missingArt?.failed ?? null)}`);
+const ok = bad.length === 0 && !stopped && pageErrors.length === 0 && engineErrors.length === 0 && consoleBad.length === 0 && artFailed === 0;
+console.log(`${ok ? 'ok  ' : 'FAIL'} flow${CLASS ? ` (${CLASS})` : ''}: ${results.length - bad.length}/${results.length} steps, ${pageErrors.length} page errors, ${engineErrors.length} engine errors${CLASS ? `, ${consoleBad.length} console errors, ${artFailed} failed art files` : ''}, ${secs().trim()}`);
 process.exit(ok ? 0 : 1);

@@ -1,6 +1,6 @@
 # Stream: qa-bugs (quality pass 2: does everything work)
 
-Status: not started
+Status: in progress
 
 Goal: after the remake, every part of the game works end to end with no
 errors, no soft-locks and nothing broken on screen. Fix what you find.
