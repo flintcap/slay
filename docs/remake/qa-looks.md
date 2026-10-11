@@ -35,6 +35,13 @@ looks wrong or weak against the Diablo II / Path of Exile bar in `PLAN.md`.
   wrong scale or wrong grip, every piece visibly changes the hero. Keep
   the item contracts in `CONTRACTS.md` (grip at origin, business end +Y);
   `check-item-icons` passes with no look-alike bases. Looks only.
+  Worn gear weighs most: judge it in the live camera and close up, every
+  class at each gear level, standing and moving (walk, attack, cast), slot
+  by slot (helm on head and hair, chest, shoulders, gloves, boots, belt,
+  cape, and weapons for one hand, two hands, dual, staff, bow, shield).
+  Fix clipping, floating, wrong scale, sliding in motion, look-alike bases,
+  flat or toy-like pieces. Per-set and per-unique signature designs belong
+  to qa-legend: note findings for it under Results, do not build them.
 - [ ] Motion check. Watch heroes and monsters walk, attack, cast, get hit and
   die in the live game (short frame sequences). Feet do not slide, hits land
   on the hit frame, effects line up with hands and weapons.
