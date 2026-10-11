@@ -480,6 +480,8 @@ export class FXSystem {
   update(dt: number, elapsed: number, camera?: THREE.Camera): void;
   /** Named emitters: 'hit.physical','hit.fire','blood','embers','dust','heal',
    *  'levelup','portal','bossSlam','crit','frost','shock','poison','void'. */
+  /** `count` 12 = as authored, capped at 3x; `scale` capped at 3.5. A burst's
+   *  single heart flash or ring is drawn once whatever the count. */
   burst(id: string, x: number, y: number, z: number, opts?: { count?: number; color?: number; scale?: number; dir?: THREE.Vector3 }): void;
   /** Continuous ambient emitter tied to a biome. */
   setAmbient(kind: string | null, bounds: THREE.Box3): void;
@@ -502,7 +504,7 @@ export class DecalSystem {
 export class BodyFX {
   constructor(effects: EffectSystem);
   /** Swing ribbon from the held weapon on the animator's `hit`; hand flare on `release`. Returns the unbind. */
-  bindHero(hero: { root; animator }, school: () => School): () => void;
+  bindHero(hero: { root; animator }, school: () => School, release?: () => School | null): () => void;
   /** Same for a creature: hand-to-`socket:weapon` ribbon on `hit`, flare at the tip or mouth on `release`. */
   bindCreature(root: THREE.Object3D, rig: CreatureAnimator | null, school: () => School): () => void;
   /** Wear status looks (burning, chilled, frozen, shocked, poisoned, bleeding, stunned, cursed). Bodies taken out of the scene drop out. */
@@ -513,6 +515,26 @@ export class BodyFX {
   clear(): void;
 }
 ```
+
+`EffectSystem` extras used across streams:
+
+```ts
+/** A boss phase change erupting in `school` (shake and knockback are the caller's). */
+bossPhase(x: number, z: number, size: number, school?: School): void;
+/** A portal tearing open, or someone stepping through one. */
+gateway(x: number, y: number, z: number, color: number, kind?: 'open' | 'use'): void;
+/** `carried: true`: the caller flies the shot with `handle.setEndpoint(p)` and ends it with `stop()`. */
+projectile(from, to, opts: ProjectileOpts & { carried?: boolean }): EffectHandle;
+```
+
+`src/fx/MonsterFX.ts`: the dungeon scene calls `bindMonsterFX(effects)`, and
+monster code (`entities/`) reads `monsterFX()` for kit projectiles, hit
+recipes and boss phases. `HAZARD_GLOW[type]` names the floor glow a hazard
+of each damage type uses.
+
+`src/fx/kit/Exposure.ts`: `FX_EXPOSURE` is one uniform shared by every
+light-adding effect shader. `EffectSystem.update` lowers it while flashes
+pile up so a busy fight stays coloured. Telegraphs ignore it.
 
 `LootFX` draws resting drops' beams, floor pools and lights itself, pooled.
 Any child of an item model named `beam`, `pool`, `sigil` or `dropLight` is

@@ -647,6 +647,10 @@ export class EffectSystem {
 
   /** The full impact recipe: particles, light, floor mark, trauma, hit-stop, sound. */
   impact(school: School, x: number, y: number, z: number, opts: ImpactOpts = {}): void {
+    this.impactAt(school, x, y, z, opts, opts.decal !== false);
+  }
+
+  private impactAt(school: School, x: number, y: number, z: number, opts: ImpactOpts, mark: boolean): void {
     const el = element(school);
     const scale = opts.scale ?? 1;
     // Sprites a little larger than the mark and shake: a hit must read from
@@ -668,7 +672,7 @@ export class EffectSystem {
       this.flash(x, y, z, l.light, 9 * scale * boost, 7 * scale + 3, 0.15 + 0.05 * scale);
     }
 
-    if (opts.decal !== false && scale > 0.55) {
+    if (mark && scale > 0.55) {
       const r = 0.5 * scale * this.rng.range(0.85, 1.2);
       const mark = school === 'physical' && scale >= 1.2 ? 'crater' : el.decal;
       this.decals.add(mark, x, z, r);
@@ -688,7 +692,7 @@ export class EffectSystem {
    */
   meleeHit(x: number, y: number, z: number, opts: ImpactOpts & { element?: School } = {}): void {
     const scale = opts.scale ?? 1;
-    this.impact('physical', x, y, z, { ...opts, decal: false });
+    this.impactAt('physical', x, y, z, opts, false);
     const s = opts.element;
     if (s && s !== 'physical') this.fx.burst(element(s).emitter, x, y, z, { scale: scale * 0.8, dir: opts.dir, count: 7 });
   }
