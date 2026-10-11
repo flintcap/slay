@@ -26,7 +26,7 @@ looks wrong or weak against the Diablo II / Path of Exile bar in `PLAN.md`.
   walk never inherits a wide idle stance, feet do not slide. Check with
   live-game strips (side and camera) at walk and run, two classes, before
   and after.
-- [ ] Equipment art (owner). Inventory icons (weapons, armour, jewellery,
+- [x] Equipment art (owner). `qa-looks: equipment art, worn gear and icons`. Inventory icons (weapons, armour, jewellery,
   gems, potions), weapons and shields in the hands (game and paperdoll),
   armour worn on each class (bare, starter, mid, full set, uniques), items
   on the ground. Bar: bases distinct, higher tiers grander, uniques and
@@ -108,14 +108,63 @@ Survey so far (worst first). Renders in `shots/qa-looks/` (not committed).
    longer splits into lunges; the heel tucks up behind. The walk changed
    less (it was already close to the line).
 
+### Equipment art (worst first)
+
+Live renders: `shoot-gear.mjs` (each class in town, game camera, close,
+mid stride), plus offline `hero-sheet.mjs dressed|stances` and
+`art-sheet.mjs items|models|drops`. Renders in `shots/qa-looks/gear*/`.
+
+14. FIXED. Running cape streamed out flat behind the hero like a banner
+    (every class with a cape, live stride frames). The top bone added the
+    chest's lean instead of cancelling it, so the lean doubled, and the
+    heel kick fed it a near-half-turn. Now it hangs behind the walk and
+    trails at a slant on the run (`Secondary.ts`; `cape/` before,
+    `cape2/` after).
+15. FIXED. Bare hero read as naked: the undyed linens were the colour of
+    skin. Now a cooler grey-brown (`Looks.ts`).
+16. FIXED. Bows were a thin stick at game distance: limbs, bone segments
+    and riser drawn bolder.
+17. FIXED. Blades and worn metal blew out to mirror black, blue or white
+    (worst in town under the sky). Roughness floors on item metal (0.3)
+    and worn metal (0.42).
+18. FIXED. Staffs and spears were thin poles; the short staff had no head.
+    Stouter shafts, bigger heads, a burl on the short staff.
+19. FIXED. The full helm was a smooth white egg. Now a raised comb and a
+    rivet line in darker iron.
+20. FIXED. Daggers and wands were near invisible in the hand at game
+    distance: shown a little larger (`HELD_SCALE`).
+21. FIXED. Icons: emerald was a flat square (now an oblong step cut),
+    diamond a blob (eight broad facets), chipped gems tiny (bigger floor),
+    tower, pavise and round shields plain slabs (bold bands, rivets, boss).
+    `check-item-icons` was failing before this pass (rune.ort / rune.sol,
+    uq.bloodrise): now passes, 650 icons, 0 alike.
+22. FIXED (sheet only). The ground drops sheet showed nothing: drops sat
+    below its floor. In game they rest at `REST_Y` and read fine.
+23. OK. Paperdoll (`check-paperdoll.mjs warden ranger`): the hero, held
+    weapon and shield read in the panel. Its screenshot now waits up to
+    10 minutes (it timed out at 30 s under a busy software renderer).
+24. OK. Gear makes the look: bare linens, quilted starter, mail and full
+    helm at mid, dark spired helm, white plate, gold belt, mail skirt and
+    red cape at elite. Each level changes the whole outline. No clipping
+    or floating seen at walk in the live frames; feet stay planted.
+25. Left. Opal is a plain milky blob (flecks faint). Spear icons are close
+    to each other (they pass the checker). The pyromancer's wand is still
+    small next to a staff, by design.
+
+For qa-legend (do not build here): several elite and set looks share the
+spired helm silhouette; Ward of Aeons is a plain tower with a clock face;
+Kraken armour reads as plain plate from the game camera; Bloodrise got only
+gold trim and spikes so its icon stops matching its base.
+
 ## Next up
 
-1. Finish the survey renders (crypt, darkForest, caverns, swamp, foundry,
-   desert done): hell, then sunkenTemple, hive, frostvault, ashwaste, voidspire, tundra, desertTomb,
-   the town (`shoot-town.mjs`), monster sheets per family
-   (`creature-sheet.mjs game --ids=family:<f>`), the other three classes in
-   `hero-sheet.mjs dressed`.
-2. Fix list items 3-6 top down; then the motion check.
+1. Survey the biomes not yet seen (hell, sunkenTemple, hive, frostvault,
+   ashwaste, voidspire, tundra, desertTomb) and the town: small frames,
+   one contact sheet, looked at once. Check the water dimming, the
+   normal-monster rim and hell veins there too.
+2. Fix the worst of what it shows, as one batch, one render.
+3. Motion check: short live clips of a few heroes and monsters.
+4. Handover.
 
 ## Notes for resume
 

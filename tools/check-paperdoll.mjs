@@ -72,7 +72,7 @@ for (const cls of list) {
   await page.waitForTimeout(4000);
   const panel = await page.$('[data-panel="inventory"] .panel');
   const name = cls.replace(':', '-');
-  await panel.screenshot({ path: `shots/paperdoll-${name}.png` });
+  await panel.screenshot({ path: `shots/paperdoll-${name}.png`, timeout: 600000 });
   console.log(`wrote shots/paperdoll-${name}.png`);
 }
 
