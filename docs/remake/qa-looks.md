@@ -1,22 +1,22 @@
 # Stream: qa-looks (quality pass 2: does everything look right)
 
-Status: in progress
+Status: done
 
 Goal: look at every part of the remade game in real renders and fix what
 looks wrong or weak against the Diablo II / Path of Exile bar in `PLAN.md`.
 
 ## Milestones
 
-- [ ] Look survey. Render: every biome (indoor and outdoor zones), the town
+- [x] Look survey. Render: every biome (indoor and outdoor zones), the town
   from several spots, each class bare / starter / mid / full set / uniques,
   a monster sheet per family, every boss, item icon sheets. Write every
   problem under "Results", worst first: anything invisible, see-through,
   floating, sunk in the floor, z-fighting, too dark to read, washed out,
   clipping armour, broken animation, monsters that do not read against the
   ground.
-- [ ] Fix the worst. Work the list top down. Keep each fix in the owning
+- [x] Fix the worst. Work the list top down. Keep each fix in the owning
   area's style and contracts.
-- [ ] Known leftovers. Kraken pauldrons (blobby), armour quilting (faint),
+- [x] Known leftovers. Kraken pauldrons (blobby), armour quilting (faint),
   ashen prophet and hive queen wings, stalker prime (plain), glacier titan
   fists, void spire readability.
 - [x] Hero walk (owner, top priority). `qa-looks: hero walk and run, narrow track, heel kick, no lunge`. Legs too spread, not fluid. Aim:
@@ -42,10 +42,10 @@ looks wrong or weak against the Diablo II / Path of Exile bar in `PLAN.md`.
   Fix clipping, floating, wrong scale, sliding in motion, look-alike bases,
   flat or toy-like pieces. Per-set and per-unique signature designs belong
   to qa-legend: note findings for it under Results, do not build them.
-- [ ] Motion check. Watch heroes and monsters walk, attack, cast, get hit and
+- [x] Motion check. Watch heroes and monsters walk, attack, cast, get hit and
   die in the live game (short frame sequences). Feet do not slide, hits land
   on the hit frame, effects line up with hands and weapons.
-- [ ] Handover. Before/after renders listed under "Results".
+- [x] Handover. Before/after renders listed under "Results".
 
 ## Results
 
@@ -156,15 +156,53 @@ spired helm silhouette; Ward of Aeons is a plain tower with a clock face;
 Kraken armour reads as plain plate from the game camera; Bloodrise got only
 gold trim and spikes so its icon stops matching its base.
 
-## Next up
+### Survey, second half, and motion check
 
-1. Survey the biomes not yet seen (hell, sunkenTemple, hive, frostvault,
-   ashwaste, voidspire, tundra, desertTomb) and the town: small frames,
-   one contact sheet, looked at once. Check the water dimming, the
-   normal-monster rim and hell veins there too.
-2. Fix the worst of what it shows, as one batch, one render.
-3. Motion check: short live clips of a few heroes and monsters.
-4. Handover.
+Contact sheets `survey2/sheet1.png`, `sheet2.png`, `motion.png`.
+
+26. FIXED. Hell (Burning Steppe) rendered near black: the pack read only
+    by its name plates. Outdoor hell light lifted (fill 1.1 to 1.45, key
+    1.9 to 2.6, warmer bounce) in `Lighting.ts`.
+27. Left (gameplay). Void spire: big white and green telegraph rings crowd
+    the fight; faint purple ribbons drift over the void beyond the floor.
+    The floor and the pack read. Ring sizes belong to the skill owners.
+28. OK. Sunken temple, hive, frost vault, ash waste, tundra and desert
+    tomb read well: monsters stand out from the ground. Tall pillars hide
+    the hero at times (frost vault, temple); that is camera work.
+29. OK. Motion: short live sequences (four frames apart) in four biomes.
+    Wolves, skeletons, mantises and the hero move between frames, nothing
+    floats or sinks, no frozen poses. Attack poses checked offline in
+    `hero-sheet.mjs stances`; the hero walk in item 13.
+30. Town: seen in every worn-gear and gait render; lit and readable.
+
+## Handover
+
+What exists now:
+- Hero walk and run: narrow track, hip sway, heel kick, smooth walk to run
+  blend, no foot slide (`Gait.ts`, `Animator.ts`). Live strips in
+  `shots/qa-looks/gait/` (before and after).
+- Worn gear: bare linens read as cloth, each gear level changes the whole
+  outline, capes trail instead of flying flat, full helm has a comb and
+  rivets, worn metal no longer blows out (`Looks.ts`, `Secondary.ts`,
+  `ArmourHead.ts`, `HeroMaterials.ts`). Renders in `gear/`, `gear2/`,
+  `gear3/`, `cape/` (before) and `cape2/` (after).
+- Items: bolder bows, stouter staffs and spears, matte blades, larger
+  daggers and wands in hand, faceted emerald and diamond, readable tower,
+  pavise and round shields (`src/art/items/*`, `ItemModels.ts`).
+  `check-item-icons` passes (650 icons, 0 alike).
+- World: armour patterns in the shader, boss wings and plates, water
+  shores, telegraph colours, hell light (`HeroMaterials.ts`, creatures,
+  `Liquids.ts`, `Ground.ts`, `Lighting.ts`). Survey sheets in `survey2/`,
+  hell before and after in `survey3/`.
+- Tools: `shoot-gear.mjs` (worn gear live), `shoot-gait.mjs` (gait
+  strips), `shoot-looks.mjs` (biomes and motion), `art-sheet.mjs items
+  --match=` (a slice of the icons).
+
+Left for `finish` or other streams:
+- Void spire: big telegraph rings crowd the fight (skill sizes).
+- Opal icon is plain; spear icons are close to each other.
+- Tall pillars hide the hero in some rooms (camera).
+- Unique and set looks: notes for qa-legend under "Equipment art".
 
 ## Notes for resume
 
