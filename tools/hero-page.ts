@@ -221,6 +221,15 @@ function startStop(): Drive {
     m.rotation.y = 0;
   };
 }
+/** Speeds up steadily from a walk to a run, to see the blend has no snap. */
+function ramp(v0: number, v1: number, secs: number): Drive {
+  let z = 0;
+  return (t, m, dt) => {
+    z += (v0 + (v1 - v0) * Math.min(1, t / secs)) * dt;
+    m.position.set(0, 0, z);
+    m.rotation.y = 0;
+  };
+}
 /** Turns on the spot, half a turn and back, at the player's turn rate. */
 function turnInPlace(): Drive {
   let yaw = 0;
@@ -560,6 +569,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       ['walk, front', () => straight(1.6), 2, 0, 0.05],
       ['run, front', () => straight(4.6), 2, 0, 0.05],
       ['start, stop', startStop, 0.2, 2.2, Math.PI / 2],
+      ['walk to run', () => ramp(1.6, 4.6, 2.4), 0.6, 1.8, Math.PI / 2],
       ['turn', turnInPlace, 0.3, 2.4, 0.3],
       ['circle', () => circle(3.4, 3), 2, 1.2, Math.PI / 2],
     ];

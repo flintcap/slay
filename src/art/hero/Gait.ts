@@ -151,13 +151,18 @@ export class Gait {
     const yaw = inp.yaw + Math.max(-0.7, Math.min(0.7, inp.yawRate * ahead));
     const c = Math.cos(yaw);
     const s = Math.sin(yaw);
-    const narrow = 1 - 0.45 * this.runW * this.moveW;
-    const lx = st.x * narrow;
+    // Moving, the feet come in to a narrow track near the centre line, about
+    // a foot's width apart walking and closer running, whatever the stance
+    // stood at: a wide fighting stance carried into the stride read as a
+    // straddle. The toe-out mostly goes too.
+    const side = i === 0 ? 1 : -1;
+    const track = side * this.body.legLen * lerp(0.06, 0.034, this.runW);
+    const lx = lerp(st.x, track, this.moveW);
     const lz = st.z * (1 - this.moveW);
     return {
       x: inp.x + inp.vx * (ahead + lead) + lx * c + lz * s,
       z: inp.z + inp.vz * (ahead + lead) - lx * s + lz * c,
-      yaw: yaw + st.yaw,
+      yaw: yaw + st.yaw * (1 - 0.7 * this.moveW),
     };
   }
 
@@ -170,10 +175,13 @@ export class Gait {
     else if (this.moving && (speed < 0.22 || inp.rooted)) this.stop();
 
     const runTarget = smooth((speed - 2.2) / 1.4);
-    this.runW += (runTarget - this.runW) * Math.min(1, dt * 5);
+    // Quick into a run, slow out of it: a body that has already sped up
+    // with the feet still on a walking beat leaves a foot planted far
+    // behind (a lunge on every start).
+    this.runW += (runTarget - this.runW) * Math.min(1, dt * (runTarget > this.runW ? 10 : 5));
     const moveTarget = this.moving ? Math.min(1, speed / 1.2) : 0;
     this.moveW += (moveTarget - this.moveW) * Math.min(1, dt * 8);
-    this.duty = lerp(0.6, 0.36, this.runW);
+    this.duty = lerp(0.6, 0.32, this.runW);
     this.freq = this.cadence(speed);
     if (this.moving) this.phase = (this.phase + this.freq * dt) % 1;
 
@@ -231,7 +239,11 @@ export class Gait {
       // Lift-off: the foot's share of the cycle on the ground is spent.
       // (Lifting at the phase it actually leaves at keeps the swing from
       // jumping when the duty shrinks under a planted foot.)
-      if (phi >= duty && phi < 0.985 && f.since > 0.05) this.lift(f, true, phi);
+      // A foot left too far behind (a sudden start, a shove) goes early.
+      const sp = Math.max(1e-3, this.speed);
+      const behind = -((f.x - inp.x) * inp.vx + (f.z - inp.z) * inp.vz) / sp;
+      const early = behind > 0.5 * this.body.legLen && phi > 0.2;
+      if ((phi >= duty || early) && phi < 0.985 && f.since > 0.05) this.lift(f, true, phi);
       else {
         // Rolling over the planted foot: heel strike down to flat, then up onto the ball.
         const q = Math.min(1, phi / duty);
@@ -253,7 +265,9 @@ export class Gait {
     const s = wrapped ? 1 : Math.min(1, Math.max(f.s, (phi - f.dutyAtLift) / (1 - f.dutyAtLift)));
     f.s = s;
     const tLand = ((1 - s) * (1 - f.dutyAtLift)) / this.freq;
-    const lead = (duty / this.freq) * 0.5;
+    // Lands a little less ahead than it leaves behind when running: under
+    // the body, not reaching out in front.
+    const lead = (duty / this.freq) * lerp(0.5, 0.42, this.runW);
     const d = this.desired(inp, i, tLand, lead);
     this.swingTo(f, d, s, true);
     if (s >= 1) this.land(f, i);
@@ -279,7 +293,11 @@ export class Gait {
 
   private swingTo(f: Foot, d: { x: number; z: number; yaw: number }, s: number, stride: boolean, height?: number): void {
     const run = stride ? this.runW : 0;
-    const e = smooth(run > 0 ? Math.pow(s, 1 + 0.35 * run) : s);
+    // The foot keeps pace with the body through the swing: behind the hip
+    // early (heel up), under it at mid swing, ahead only to land. Held back
+    // longer it trailed far behind, the pelvis sank to reach it and the run
+    // read as a string of lunges with the back knee near the floor.
+    const e = smooth(s);
     f.x = lerp(f.sx, d.x, e);
     f.z = lerp(f.sz, d.z, e);
     f.yaw = f.syaw + wrapAngle(d.yaw - f.syaw) * e;
@@ -287,9 +305,14 @@ export class Gait {
     const L = this.body.legLen;
     if (stride) {
       const walkH = 0.1 * L * Math.min(1.2, 0.4 + dist / (0.7 * L));
-      const runH = 0.28 * L;
+      // Running, the heel kicks up behind straight after toe-off (the knee
+      // folds) and the foot comes through high, then reaches down to land.
+      // A foot that trailed low along the floor read as a lunge, the legs
+      // split wide in every frame.
+      const runH = 0.5 * L;
       const h = lerp(walkH, runH, run);
-      const prof = lerp(Math.sin(Math.PI * Math.pow(s, 0.85)), Math.sin(Math.PI * s) * (1.3 - 0.6 * s), run);
+      const kick = s < 0.3 ? Math.sin((Math.PI / 2) * (s / 0.3)) : Math.pow(Math.cos((Math.PI / 2) * ((s - 0.3) / 0.7)), 1.4);
+      const prof = lerp(Math.sin(Math.PI * Math.pow(s, 0.85)), kick, run);
       f.lift = h * Math.max(0, prof);
       const pLand = lerp(-0.26, -0.06, this.runW) * this.moveW;
       f.pitch = f.spitch * (1 - smooth(Math.min(1, s / 0.45))) + pLand * smooth(s);

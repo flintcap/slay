@@ -885,9 +885,11 @@ export class HeroAnimator {
     // The stride.
     const ph = g.phase * TAU;
     const mid = ph - g.duty * Math.PI; // left mid-stance at 0
-    const bob = (0.022 * (1 - rw) * Math.cos(2 * mid) - 0.03 * rw * Math.cos(2 * mid) - 0.045 * rw) * L * mw;
-    const sway = 0.026 * L * mw * (1 - 0.6 * rw) * Math.cos(mid);
-    p.shift(sway, bob - 0.012 * L * mw, 0);
+    const bob = (0.022 * (1 - rw) * Math.cos(2 * mid) - 0.03 * rw * Math.cos(2 * mid) - 0.03 * rw) * L * mw;
+    // The hips ride over the planted foot; the knees stay soft through the
+    // stride (a locked stance leg made the walk stiff and stilted).
+    const sway = 0.032 * L * mw * (1 - 0.6 * rw) * Math.cos(mid);
+    p.shift(sway, bob - (0.01 + 0.02 * rw) * L * mw, 0);
     const pelYaw = -0.13 * mw * Math.cos(ph);
     const pelRoll = 0.06 * mw * (1 - 0.3 * rw) * Math.cos(mid);
     const counter = (0.2 + 0.08 * rw) * mw * Math.cos(ph);
@@ -995,16 +997,22 @@ export class HeroAnimator {
       targets[i]!.set(gx + az * sp, ay + f.lift, gz + az * cp);
       footQ[i]!.setFromEuler(_e.set(th, psi, 0, 'YXZ'));
     }
-    // Lower the pelvis until every foot is in reach, knees never locked.
+    // Lower the pelvis until every foot on the floor is in reach, knees
+    // never locked. A foot in the air pulls the hips down only as it leaves
+    // and as it lands (eased, so nothing pops): mid swing the leg simply
+    // straightens toward it. Sinking for a swinging foot crouched the run.
     if (legIk > 0) {
       let drop = 0;
       for (let i = 0; i < 2; i++) {
         const hip = S.pos[this.legs[i]!.thigh]!;
         const t = targets[i]!;
+        const f = this.gait.feet[i]!;
+        const w = f.planted ? 1 : f.s < 0.25 ? 1 - smooth(f.s / 0.25) : f.s > 0.7 ? smooth((f.s - 0.7) / 0.3) : 0;
+        if (w <= 0) continue;
         const reach = (this.legs[i]!.l1 + this.legs[i]!.l2) * 0.985;
         const d2 = (t.x - hip.x) ** 2 + (t.z - hip.z) ** 2;
         const maxY = t.y + Math.sqrt(Math.max(0, reach * reach - d2));
-        drop = Math.max(drop, hip.y - maxY);
+        drop = Math.max(drop, (hip.y - maxY) * w);
       }
       if (drop > 0) {
         p.c[CH.pelvisY]! -= drop * legIk;
