@@ -37,7 +37,7 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   which lights cast, static shadow caching); overdraw from particles and
   glows; post-processing cost; texture memory and mipmaps; shader count
   (merge material variants).
-- [ ] A real quality ladder in Settings: Low, Medium, High, Ultra, each
+- [x] A real quality ladder in Settings: Low, Medium, High, Ultra, each
   setting shadows, post, effect density, view distance and resolution
   scale. An optional auto mode drops a step when frames run long and steps
   back up when there is room. Defaults give smooth play first.
@@ -62,17 +62,26 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
 
 ## Results
 
-(fill in)
+- Quality ladder (ac11ae4): Low, Medium, High, Ultra each set shadow map
+  size per light, torch shadows, sun shadow reach, AO, bloom, SMAA, effect
+  density, pixel ratio cap and render scale. High is the old look. The old
+  `shadowMapSize` field (never applied) is gone. Auto quality
+  (`core/AutoQuality.ts`, on by default, chosen quality is its top) steps
+  down at median > 22 ms or p90 > 30 ms and back up after 20 calm seconds.
+  `check-quality.mjs`: no black screen across low, medium, ultra, high, low.
+- Lag spots and the rest: filled in below from `check-lag` (before 8d9fb82,
+  after this stream, same machine, 480x270, software rendering, shared CPU).
 
 ## Next up
 
-1. Load time: compare `tools/check-loadtime.mjs` before (baseline bundle of
-   8d9fb82, built in a scratch copy) and after, back to back.
-2. Hitches: `check-loadtime.mjs --walk` tours the first map; look for long
-   tasks per stop.
-3. Garbage: `check-perf --preview --alloc --depths=1`.
-4. Soak in parts: `check-soak --preview --part=i/3` for i = 1..3.
-5. Mix: `check-mix.mjs` (scenes and every id alone).
+1. Read `check-lag` after3 (published bundle) against before1; write the
+   five lag spots into Results.
+2. `check-frames.mjs --save` once for the baseline (town, busy map, boss).
+3. Load time A/B (`check-loadtime.mjs`, baseline bundle in scratch).
+4. Garbage: 298 KB/step at depth 1 (budget 200). Sources by
+   `check-perf --alloc` on an unminified build: tickProjectiles,
+   creature solve/solveLegFull, Enemy.update, DungeonScene.update.
+5. Soak in parts once at handover; mix check headless.
 
 ## Notes for resume
 
