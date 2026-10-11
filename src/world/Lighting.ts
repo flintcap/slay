@@ -41,17 +41,17 @@ const HERO_INDOOR = { color: 0xffd2a0, intensity: 34, distance: 17 };
 const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
   // Moonlight through the canopy: blue key, green-black bounce.
   darkForest: {
-    sky: 0x3a5078, ground: 0x141a10, fill: 1.15,
-    key: 0xa8c4f0, keyIntensity: 2.6, elevation: 50, azimuth: 215,
-    fog: 0x0a1018, fogDensity: 0.03,
-    hero: { color: 0xffc890, intensity: 30, distance: 16 },
+    sky: 0x3a5078, ground: 0x141a10, fill: 1.6,
+    key: 0xa8c4f0, keyIntensity: 3.4, elevation: 56, azimuth: 215,
+    fog: 0x0a1018, fogDensity: 0.028,
+    hero: { color: 0xffc890, intensity: 46, distance: 18 },
   },
   // Overcast and thick: low yellow-green murk.
   swamp: {
-    sky: 0x44563c, ground: 0x1c2412, fill: 1.25,
-    key: 0xc0d0a4, keyIntensity: 2.0, elevation: 44, azimuth: 160,
-    fog: 0x121a10, fogDensity: 0.04,
-    hero: { color: 0xffd09a, intensity: 28, distance: 15 },
+    sky: 0x44563c, ground: 0x1c2412, fill: 1.6,
+    key: 0xc0d0a4, keyIntensity: 2.7, elevation: 48, azimuth: 160,
+    fog: 0x121a10, fogDensity: 0.036,
+    hero: { color: 0xffd09a, intensity: 42, distance: 17 },
   },
   // A low, hard evening sun: long shadows, hot highlights, warm bounce.
   desert: {
@@ -77,11 +77,11 @@ const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
   },
   // No sky to speak of. The light comes up from the lava.
   hell: {
-    sky: 0x2a1c1c, ground: 0x4a1c12, fill: 0.95,
-    key: 0xffa478, keyIntensity: 1.5, elevation: 48, azimuth: 120,
-    fog: 0x180c0a, fogDensity: 0.026,
-    under: { color: 0xff4a18, intensity: 0.55 },
-    hero: { color: 0xffc898, intensity: 28, distance: 15 },
+    sky: 0x3a2c2c, ground: 0x3a1c14, fill: 1.1,
+    key: 0xffb890, keyIntensity: 1.9, elevation: 48, azimuth: 120,
+    fog: 0x140c0a, fogDensity: 0.024,
+    under: { color: 0xff4a18, intensity: 0.4 },
+    hero: { color: 0xffd0a0, intensity: 40, distance: 17 },
   },
 };
 

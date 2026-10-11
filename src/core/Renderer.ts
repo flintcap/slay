@@ -121,9 +121,13 @@ const GradeShader = {
       float vig = smoothstep(0.9, 0.2, r2 * uVignette * 2.6);
       col *= mix(uVignetteTint, vec3(1.0), vig);
 
-      // Grain, applied in linear so it survives tone mapping naturally.
+      // Grain, proportional to the light. A flat amount added in linear
+      // light is invisible in a torch pool and a snowstorm in the dark (the
+      // sRGB curve blows a 0.02 step at black up to a fifth of the range),
+      // which read as coloured static over every shadow.
       float g = ign(gl_FragCoord.xy + fract(uTime) * 137.0) - 0.5;
-      col += g * uGrain * (0.35 + (1.0 - luma));
+      col *= 1.0 + g * uGrain * 3.0;
+      col += g * 0.0012;
 
       gl_FragColor = vec4(max(col, 0.0), 1.0);
     }

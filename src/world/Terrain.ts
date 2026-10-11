@@ -451,9 +451,14 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
             const pathy = smooth(0.84, 0.95, ridge + (pn - 0.5) * 0.08);
             const patch = smooth(0.62, 0.78, pn) * 0.7;
             const trod = d > 0 ? 0 : smooth(0.8, 2.0, vopen[vi]!) * Math.max(pathy, patch) * 0.95;
-            const spec = vspecial[vi]! * 0.9 + (lk.edge === 'rock' || lk.edge === 'cliff' ? smooth(0.62, 0.8, pn) * 0.35 : 0);
-            const rest = Math.max(0, 1 - rock);
-            wsum[so.rock] += rock * zf;
+            // The special layer (lava crust, ice, banks) only where the tiles
+            // say so: scattered patches of glowing crust read as red static.
+            // Rocky ground breaks up with bare rock instead.
+            const spec = vspecial[vi]! * 0.9;
+            const bare = lk.edge === 'rock' || lk.edge === 'cliff' ? smooth(0.62, 0.8, pn) * 0.3 : 0;
+            const rockW = rock + (1 - rock) * bare;
+            const rest = Math.max(0, 1 - rockW);
+            wsum[so.rock] += rockW * zf;
             wsum[so.special] += rest * spec * zf;
             wsum[so.trodden] += rest * (1 - spec) * trod * zf;
             wsum[so.base] += rest * (1 - spec) * (1 - trod) * zf;

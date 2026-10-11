@@ -122,11 +122,11 @@ export function installDebug(engine: Engine): Record<string, unknown> {
      * contract director for the rest of the session), and the hero is put in
      * that last area. For renders only.
      */
-    async previewBiome(biome: BiomeId, depth = 8): Promise<void> {
+    async previewBiome(biome: BiomeId, depth = 8, boss = true): Promise<void> {
       setRunDirector(() => ({ biome }));
       await engine.goTo('dungeon', { depth });
       const s = engine.currentScene;
-      if (s instanceof DungeonScene) s.debugWarpToBoss();
+      if (boss && s instanceof DungeonScene) s.debugWarpToBoss();
     },
 
     warpToBoss(): void {
