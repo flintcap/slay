@@ -1041,9 +1041,22 @@ export class DungeonMesh {
               if (this.rawTile(x, y) === T_RUIN) {
                 const keep = this.kit;
                 this.kit = 'masonry';
-                const top = hy + 1.6 + (hashTile(x, y, level.seed ^ 0x2c1) % 9) * 0.12;
-                this.emitWall(surfs, x, y, wx, wz, hy, top, wallMats.length, WALL0, TRIM, BASE, surfs[CAPS]);
+                const top = this.ruinTop(x, y);
+                this.emitWall(surfs, x, y, wx, wz, hy, top, wallMats.length, WALL0, TRIM, BASE, surfs[CAPS], true);
                 this.kit = keep;
+                // Broken tops step up and down along the run: close each step
+                // with a face where the next ruin tile stands lower.
+                for (let d = 0; d < 4; d++) {
+                  const nx = x + DX4[d];
+                  const ny = y + DY4[d];
+                  if (this.rawTile(nx, ny) !== T_RUIN) continue;
+                  const nTop = this.ruinTop(nx, ny);
+                  if (nTop >= top - 0.01) continue;
+                  surfs[WALL0]!.wall(
+                    wx + DX4[d] * HALF, nTop, wz + DY4[d] * HALF, DX4[d], DY4[d], TILE_SIZE, top - nTop, 1,
+                    (top - nTop) / TILE_SIZE, 0, nTop / TILE_SIZE, false, nTop - hy, top - hy,
+                  );
+                }
               }
               continue;
             }
@@ -1327,6 +1340,8 @@ export class DungeonMesh {
      * hole you see the void through.
      */
     caps: Surf,
+    /** A broken outdoor ruin: plain stone on a plinth, no cornice or piers. */
+    ruin = false,
   ): void {
     const wallH = topY - hy;
     // Deterministic wall variant, clumped so it reads as masonry courses rather
@@ -1383,6 +1398,8 @@ export class DungeonMesh {
       base.wall(fx + DX4[d] * bd, nh - 0.1, fz + DY4[d] * bd, DX4[d], DY4[d], TILE_SIZE, bh + 0.1, 1, 0.3);
       base.ledge(fx, nh + bh, fz, DX4[d], DY4[d], TILE_SIZE, bd, true);
 
+      if (ruin) continue;
+
       // Cornice: overhang at the top, plus its underside so it catches shadow.
       const ch = 0.3;
       const cd = 0.19;
@@ -1423,6 +1440,13 @@ export class DungeonMesh {
     // top is the cut edge of the room and has to stay standing when the lid
     // opens.
     caps.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
+  }
+
+  /** Top of a broken ruin wall: knee to head height, ragged along the run. */
+  private ruinTop(x: number, y: number): number {
+    const hy = this.heights[y * this.level.width + x] * STEP_HEIGHT;
+    const n = this.noise.simplex2(x * 0.45 + 31, y * 0.45 - 7) * 0.5 + 0.5;
+    return hy + 0.7 + n * 1.5 + (hashTile(x, y, this.level.seed ^ 0x2c1) % 5) * 0.14;
   }
 
   /**
@@ -1959,6 +1983,10 @@ export class DungeonMesh {
       }
       const n = g.list.length;
       if (n === 0) continue;
+      // The biome's own wall light shines in the biome's light colour (its
+      // flame mesh already does), so a variant's mood is not undone by the
+      // prop's stock colour: no teal pools in an orange-lit forest.
+      const lightColour = g.kind === art.wallLight ? art.lightColor : tmpl.light?.color ?? 0xffffff;
 
       // Precompute transforms once; every layer and the flame share them.
       const xs = new Float32Array(n);
@@ -2076,7 +2104,7 @@ export class DungeonMesh {
                 ys[i] + tmpl.light.height * sc[i],
                 zs[i] + fz * tmpl.light.forward,
               ),
-              color: new THREE.Color(tmpl.light.color),
+              color: new THREE.Color(lightColour),
               intensity: tmpl.light.intensity,
               distance: tmpl.light.distance,
               flicker: tmpl.light.flicker,
@@ -2096,7 +2124,7 @@ export class DungeonMesh {
               ys[i] + tmpl.light.height * sc[i],
               zs[i] + fz * tmpl.light.forward,
             ),
-            color: new THREE.Color(tmpl.light.color),
+            color: new THREE.Color(lightColour),
             intensity: tmpl.light.intensity,
             distance: tmpl.light.distance,
             flicker: tmpl.light.flicker,
