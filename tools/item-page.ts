@@ -13,8 +13,10 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { ITEM_BASES } from '../src/data/itemBases';
 import { UNIQUES } from '../src/data/uniques';
 import { SET_PIECES } from '../src/data/sets';
-import type { ItemRarity, ItemVisual } from '../src/types';
+import type { Item, ItemRarity, ItemVisual } from '../src/types';
 import { buildItem } from '../src/art/items/Model';
+import { buildDropModel, setItemVisualResolver } from '../src/art/ItemModels';
+import { Random } from '../src/core/RNG';
 
 const BG = '#121318';
 const INK = '#c9d1de';
@@ -123,6 +125,49 @@ function render(entries: Entry[], cols: number, w = 170, h = 230): string {
   return c.toDataURL('image/png');
 }
 
+/** Drops on a stone floor, camera high and to the south like the game's. */
+function dropSheet(entries: Entry[], cols: number, w = 220, h = 220): string {
+  const rows = Math.max(1, Math.ceil(entries.length / cols));
+  const c = document.createElement('canvas');
+  c.width = cols * w;
+  c.height = rows * h;
+  const g = c.getContext('2d')!;
+  g.fillStyle = BG;
+  g.fillRect(0, 0, c.width, c.height);
+  const rng = new Random(7);
+  setItemVisualResolver((it) => baseById.get(it.baseId)?.visual);
+  entries.forEach((e, i) => {
+    const r = studio(w, h - 20);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x24262c);
+    scene.add(new THREE.HemisphereLight(0xb0b8d0, 0x302820, 1.0));
+    const key = new THREE.DirectionalLight(0xffe0c0, 2.4);
+    key.position.set(2, 5, 3);
+    scene.add(key);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshStandardMaterial({ color: 0x4a4640, roughness: 0.95 }));
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+    const item = { uid: `u${i}`, baseId: e.baseId, rarity: e.rarity } as unknown as Item;
+    const drop = buildDropModel(item, rng);
+    drop.position.y = 0.28;
+    drop.traverse((o) => {
+      if (o.name === 'beam') o.visible = false;
+    });
+    scene.add(drop);
+    const cam = new THREE.PerspectiveCamera(35, w / (h - 20), 0.1, 50);
+    cam.position.set(0, 2.6, 1.9);
+    cam.lookAt(0, 0.05, 0);
+    r.render(scene, cam);
+    const x = (i % cols) * w;
+    const y = Math.floor(i / cols) * h;
+    g.drawImage(r.domElement, x, y);
+    g.fillStyle = INK;
+    g.font = '11px monospace';
+    g.fillText(e.baseId.slice(0, 30), x + 4, y + h - 6);
+  });
+  return c.toDataURL('image/png');
+}
+
 function asRarity(v: string | undefined, def: ItemRarity): ItemRarity {
   return (RARITIES as string[]).includes(v ?? '') ? (v as ItemRarity) : def;
 }
@@ -154,6 +199,18 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       list.map((p) => ({ label: p.name, visual: baseById.get(p.baseId)!.visual, rarity: 'set' as ItemRarity, baseId: p.baseId, setId: p.setId })),
       Number(f.cols ?? 8),
     );
+  },
+  async drops(f) {
+    // One base per category (or --cat=), as dropped, seen from the play camera.
+    const seen = new Set<string>();
+    const list = ITEM_BASES.filter((b) => {
+      if (f.cat) return b.category === f.cat;
+      if (seen.has(b.category)) return false;
+      seen.add(b.category);
+      return true;
+    }).slice(0, Number(f.max ?? 30));
+    const rarity = asRarity(f.rarity, 'rare');
+    return dropSheet(list.map((b) => ({ label: b.name, visual: b.visual, rarity, baseId: b.id })), Number(f.cols ?? 6));
   },
   async rarity(f) {
     const b = baseById.get(f.base ?? 'sword.short') ?? ITEM_BASES[0]!;

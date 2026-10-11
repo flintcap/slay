@@ -82,7 +82,7 @@ if (text['src/data/quests.ts'] || text['src/sim/Quests.ts']) {
 // --- item model shapes -----------------------------------------------------
 {
   const builders = new Set(
-    [...text['src/art/ItemModels.ts'].matchAll(/^\s{2}(\w+):\s*build\w+,?$/gm)].map((m) => m[1]),
+    [...(text['src/art/items/Families.ts'] ?? '').matchAll(/^\s{2}(\w+):\s*build\w+,?$/gm)].map((m) => m[1]),
   );
   const used = [...new Set([...text['src/data/itemBases.ts'].matchAll(/'([\w.]+)',\s*'[\w.]+'\s*\)/g)].map((m) => m[1]))];
   void used;
