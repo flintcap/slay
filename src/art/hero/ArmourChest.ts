@@ -706,7 +706,7 @@ export function chest(k: Kit): Anchor[] {
   const cut: ChestCut = { ...(CHEST_CUTS[look.cut] ?? fallbackCut(look.kind, look.baseTier)) };
   k.hides.push('wrap');
   if (cut.layer === 'robe') k.hides.push('shorts');
-  if (cut.tint && !look.design?.main) k.setMat('main', cut.tint);
+  if (cut.tint && !look.design?.main && !look.motif) k.setMat('main', cut.tint);
   const t = cut.t;
 
   if (cut.under) {

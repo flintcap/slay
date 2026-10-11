@@ -10,7 +10,8 @@ import { profileBodies } from '../src/art/hero/Body';
 import { buildHero, setHeroHidden } from '../src/art/hero/Hero';
 import { wearArmour } from '../src/art/hero/Armour';
 import { ITEM_BASES } from '../src/data/itemBases';
-import { SET_PIECES } from '../src/data/sets';
+import { SET_PIECES, SETS } from '../src/data/sets';
+import { DressedHero, type Piece } from '../src/scenes/HeroModel';
 import { UNIQUES } from '../src/data/uniques';
 import type { EquipSlot, ItemRarity } from '../src/types';
 import { HERO_LOOKS } from '../src/art/hero/Looks';
@@ -863,6 +864,70 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
         g.fillStyle = INK;
         g.fillText(`${cls} ${col.label}`, k * TW + 8, row * TH + 18);
       });
+    });
+    return c.toDataURL('image/png');
+  },
+  /**
+   * Signature looks (qa-legend): every set worn in full (--of=sets, the
+   * default) on each class in --class= (default warden,pyromancer), or every
+   * unique worn or held alone (--of=uniques, --slot= to narrow), through the
+   * game's own DressedHero so set glow and auras show. --sets=a,b narrows.
+   */
+  async legend(f) {
+    await scansReady();
+    profileBodies(true);
+    const classes = (f.class ?? 'warden,pyromancer').split(',') as CharClassId[];
+    const slotOf = (id: string): EquipSlot | null => {
+      const b = ITEM_BASES.find((x) => x.id === id);
+      if (!b) return null;
+      const s = b.slot as string;
+      return s === 'twoHand' ? 'mainHand' : s === 'none' ? null : (s as EquipSlot);
+    };
+    const cells: Array<{ label: string; cls: CharClassId; pieces: Partial<Record<EquipSlot, Piece>> }> = [];
+    if ((f.of ?? 'sets') === 'sets') {
+      for (const set of SETS.filter((x) => !f.sets || f.sets.split(',').some((k) => x.id.includes(k)))) {
+        for (const cls of classes) {
+          const pieces: Partial<Record<EquipSlot, Piece>> = {};
+          for (const p of set.pieces) {
+            let slot = slotOf(p.baseId);
+            if (!slot) continue;
+            if (slot === 'ring1' && pieces.ring1) slot = 'ring2';
+            if (slot === 'mainHand' && pieces.mainHand) slot = 'offHand';
+            pieces[slot] = { baseId: p.baseId, rarity: 'set', setId: set.id, uid: p.id };
+          }
+          cells.push({ label: `${set.id.slice(4)} ${cls}`, cls, pieces });
+        }
+      }
+    } else {
+      const list = UNIQUES.filter((u) => {
+        const s = slotOf(u.baseId);
+        return s && (!f.slot || f.slot.split(',').includes(s));
+      });
+      list.forEach((u, i) => {
+        const slot = slotOf(u.baseId)!;
+        cells.push({ label: u.name, cls: classes[i % classes.length]!, pieces: { [slot]: { baseId: u.baseId, rarity: u.rarity, uniqueId: u.id, uid: u.id } } });
+      });
+    }
+    const from = Number(f.from ?? 0);
+    const todo = cells.slice(from, from + Number(f.max ?? 30));
+    const cols = Number(f.cols ?? 6);
+    const TW = Number(f.tw ?? 200);
+    const TH = Number(f.th ?? 330);
+    const { c, g } = sheet(TW * cols, TH * Math.ceil(todo.length / cols));
+    todo.forEach((cell, i) => {
+      const hero = new DressedHero(cell.cls, 7 + i);
+      hero.dress(cell.pieces);
+      hero.animator.play('idle', { fade: 0 });
+      hero.animator.update(0.4);
+      const H = HERO_LOOKS[cell.cls].shape.height;
+      const close = f.of === 'uniques';
+      const slot = Object.keys(cell.pieces)[0];
+      const y = f.ty ? Number(f.ty) : !close ? 0.5 : slot === 'helm' ? 0.9 : slot === 'boots' ? 0.15 : 0.55;
+      const near = close && slot !== 'chest' && slot !== 'mainHand' && slot !== 'offHand';
+      shoot(g, hero.root, { x: (i % cols) * TW, y: Math.floor(i / cols) * TH, w: TW, h: TH, yaw: Number(f.yaw ?? 0.55), target: new THREE.Vector3(0, H * y, 0), dist: f.dist ? Number(f.dist) : near ? 2.2 : 4.0, pitch: 0.12 });
+      g.fillStyle = INK;
+      g.fillText(cell.label, (i % cols) * TW + 6, Math.floor(i / cols) * TH + 16);
+      hero.dispose();
     });
     return c.toDataURL('image/png');
   },

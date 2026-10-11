@@ -99,14 +99,14 @@ export type Finish = 'polished' | 'lacquer' | 'satin' | 'matte' | 'frosted' | 'b
 /** Metalness, roughness and a faint inner light (in the glow colour) per finish. */
 export const FINISHES: Record<Finish, { metalness?: number; roughness: number; sheen: number }> = {
   polished: { metalness: 0.8, roughness: 0.26, sheen: 0 },
-  lacquer: { metalness: 0.3, roughness: 0.22, sheen: 0.04 },
-  satin: { roughness: 0.42, sheen: 0.03 },
+  lacquer: { metalness: 0.3, roughness: 0.22, sheen: 0.02 },
+  satin: { roughness: 0.42, sheen: 0 },
   matte: { metalness: 0.25, roughness: 0.82, sheen: 0 },
-  frosted: { metalness: 0.55, roughness: 0.5, sheen: 0.1 },
+  frosted: { metalness: 0.55, roughness: 0.5, sheen: 0.05 },
   blackened: { metalness: 0.5, roughness: 0.62, sheen: 0 },
-  weathered: { metalness: 0.45, roughness: 0.7, sheen: 0.02 },
-  gilt: { metalness: 0.9, roughness: 0.2, sheen: 0.12 },
-  pearl: { metalness: 0.5, roughness: 0.3, sheen: 0.16 },
+  weathered: { metalness: 0.45, roughness: 0.7, sheen: 0 },
+  gilt: { metalness: 0.9, roughness: 0.2, sheen: 0.06 },
+  pearl: { metalness: 0.5, roughness: 0.3, sheen: 0.08 },
 };
 
 /**
@@ -166,7 +166,7 @@ export interface UniqueDesign {
 export const SET_MOTIFS: Record<string, SetMotif> = {
   // Early sets.
   'set.bloodied': { name: 'blood-red lacquer and black iron', color: 0xff2a2a, glow: 0xff1c1c, metal: 'metal.steel|0x8c1616', leather: 'leather.fine|0x6a1210', cloth: 'cloth.silk|0x5a0e10', second: 'leather.dark', trim: 'metal.blackiron', finish: 'lacquer', sculpt: 'claws', emblem: 'hand', features: ['blood'], aura: 'drips', wear: 0.55 },
-  'set.kindled': { name: 'scorched crimson and candle flame', color: 0xff8a1a, glow: 0xffb83a, metal: 'metal.copper|0xb06040', leather: 'leather.fine|0x5a2416', cloth: 'cloth.wool|0x6a2418', second: 'cloth.linen|0x9a3c1c', trim: 'metal.copper', finish: 'matte', sculpt: 'flames', emblem: 'flame', features: ['cracks'], aura: 'embers', wear: 0.35 },
+  'set.kindled': { name: 'scorched crimson and candle flame', color: 0xff8a1a, glow: 0xffb83a, metal: 'metal.copper|0xb06040', leather: 'leather.fine|0x5a2416', cloth: 'cloth.wool|0x7a1a14', second: 'cloth.linen|0x9a3c1c', trim: 'metal.copper', finish: 'matte', sculpt: 'flames', emblem: 'flame', features: ['cracks'], aura: 'embers', wear: 0.35 },
   'set.quickstep': { name: 'moss leather and bright silver', color: 0x7aff9a, glow: 0x8affb0, metal: 'metal.silver|0xd0e6d0', leather: 'leather.fine|0x3e5a2c', cloth: 'cloth.wool|0x46603a', second: 'leather.worn|0x4c5e3a', trim: 'metal.silver', finish: 'satin', sculpt: 'feathers', emblem: 'feather', features: ['tatters'], aura: 'wisp', wear: 0.3 },
   // Mid sets.
   'set.bonefetter': { name: 'bone and verdigris, corpse-light', color: 0xc0ff70, glow: 0xb8ff5a, metal: 'metal.verdigris', leather: 'leather.worn|0x5a6a50', cloth: 'cloth.tattered|0x5a5a4c', second: 'cloth.tattered|0x4a4a3c', trim: 'bone.old', finish: 'weathered', sculpt: 'skulls', emblem: 'skull', features: ['bones'], aura: 'souls', wear: 0.6 },

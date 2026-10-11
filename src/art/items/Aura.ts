@@ -22,7 +22,7 @@ interface AuraKind {
   swirl: number;
   /** Random hop each tick (sparks), metres. */
   jump: number;
-  /** Sprite size, pixels at 600 px of screen height and 1 m. */
+  /** Sprite size in the world, units of 6 mm. */
   size: number;
   /** 0 steady .. 1 winks on and off. */
   twinkle: number;
@@ -80,7 +80,8 @@ void main() {
   vSeed = aSeed.x + uTime * (0.5 + aSeed.y);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uSize * projectionMatrix[1][1] * 300.0 / max(0.2, -mv.z);
+  // uSize is the sprite's world size in units of 6 mm, drawn for a 600 px tall view.
+  gl_PointSize = uSize * projectionMatrix[1][1] * 1.8 / max(0.2, -mv.z);
 }
 `;
 

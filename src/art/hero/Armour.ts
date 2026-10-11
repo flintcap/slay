@@ -130,8 +130,8 @@ export function lightArmour(worn: WornArmour, stage: number, color: number): voi
     if (!base) continue;
     const key = mesh.userData.armourMat as string | undefined;
     let lit = 0;
-    if (key === 'trim' || key === 'gold' || key === 'chain') lit = stage >= 2 ? 0.6 : stage >= 1 ? 0.32 : 0;
-    else if (key === 'main' || key === 'strap' || key === 'bone') lit = stage >= 2 ? 0.14 : 0;
+    if (key === 'trim' || key === 'gold' || key === 'chain') lit = stage >= 2 ? 0.42 : stage >= 1 ? 0.24 : 0;
+    else if (key === 'main' || key === 'strap' || key === 'bone') lit = stage >= 2 ? 0.035 : 0;
     mesh.material = lit > 0 ? glowingTwin(base, color, lit) : base;
   }
 }

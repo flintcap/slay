@@ -429,7 +429,7 @@ export function belt(k: Kit): Anchor[] {
   const look = k.look;
   const cut = BELTS[look.cut] ?? (look.kind === 'sash' ? BELTS['belt.sash']! : look.kind === 'chain' ? BELTS['belt.girdle']! : BELTS['belt.belt']!);
   k.hides.push('belt');
-  if (cut.tint && !look.design?.main) k.setMat('main', cut.tint);
+  if (cut.tint && !look.design?.main && !look.motif) k.setMat('main', cut.tint);
   const clips: Clip[] = [k.below(cut.hi), k.above(cut.lo)];
   const twist: F3 | number = cut.cords ? (x, y, z) => cut.t + 0.003 * Math.abs(Math.sin(Math.atan2(x, z) * 30 + y * 400)) : cut.tails ? (x, y, z) => cut.t + 0.002 * Math.sin(y * 300 + Math.atan2(x, z) * 3) : cut.t;
   k.edged('belt', cut.mat, {
