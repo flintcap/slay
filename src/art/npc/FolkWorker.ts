@@ -14,7 +14,8 @@
  * Before the townsfolk it meshes the heroes the select screen shows
  * (`heroes`: class ids, each in its field kit, in the order the screen
  * offers them), since that screen comes before the town. A cold first visit
- * used to mesh each hero on the main thread as its class was picked.
+ * used to mesh each hero on the main thread as its class was picked. A
+ * screen that needs one sooner sends `first` and it is meshed next.
  */
 import { loadMeshCache, onMeshed, type RawGeo } from '../hero/MeshCache';
 import { buildFolk } from './Folk';
@@ -22,20 +23,36 @@ import { buildClassHero } from '../../scenes/HeroModel';
 import type { CharClassId } from '../../types';
 
 interface Scope {
-  onmessage: ((e: MessageEvent<{ ids: string[]; heroes?: string[] }>) => void) | null;
+  onmessage: ((e: MessageEvent<{ ids?: string[]; heroes?: string[]; first?: string }>) => void) | null;
   postMessage(msg: unknown, transfer: Transferable[]): void;
 }
 const scope = self as unknown as Scope;
 
-scope.onmessage = async (e) => {
+/** Work not yet done, in order. A screen waiting on one moves it to the front. */
+let jobs: Array<[string, () => void]> = [];
+let running = false;
+
+scope.onmessage = (e) => {
+  const first = e.data.first;
+  if (first !== undefined) {
+    const i = jobs.findIndex(([id]) => id === first);
+    if (i > 0) jobs.unshift(...jobs.splice(i, 1));
+    return;
+  }
+  jobs = [
+    ...(e.data.heroes ?? []).map((id): [string, () => void] => [`hero:${id}`, () => buildClassHero(id as CharClassId).dispose()]),
+    ...(e.data.ids ?? []).map((id): [string, () => void] => [id, () => buildFolk(id)]),
+  ];
+  if (!running) void run();
+};
+
+async function run(): Promise<void> {
+  running = true;
   await loadMeshCache();
   let batch: Array<[string, RawGeo]> = [];
   onMeshed((key, raw) => batch.push([key, raw]));
-  const jobs: Array<[string, () => void]> = [
-    ...(e.data.heroes ?? []).map((id): [string, () => void] => [`hero:${id}`, () => buildClassHero(id as CharClassId).dispose()]),
-    ...e.data.ids.map((id): [string, () => void] => [id, () => buildFolk(id)]),
-  ];
-  for (const [id, job] of jobs) {
+  for (let next = jobs.shift(); next; next = jobs.shift()) {
+    const [id, job] = next;
     try {
       job();
     } catch {
@@ -54,6 +71,8 @@ scope.onmessage = async (e) => {
       scope.postMessage({ entries: batch, id }, []);
     }
     batch = [];
+    // Let a "this one first" message in before picking the next job.
+    await new Promise((r) => setTimeout(r, 0));
   }
   scope.postMessage({ done: true }, []);
-};
+}

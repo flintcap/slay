@@ -12,6 +12,7 @@ import { CLASSES } from '../data/classes';
 import { buildRift, buildAtmosphere, type RiftHandle, type AtmosphereHandle } from './MenuStage';
 import { buildClassHero, buildCharacterHero, classColor, flourishClip, type HeroModel } from './HeroModel';
 import { classPortrait } from '../art/Portraits';
+import { heroMeshed } from '../art/npc/Prewarm';
 
 /**
  * Character select and creation: a hero on a plinth under a pool of light,
@@ -31,6 +32,9 @@ export class CharSelectScene extends GameScene {
   private podium = new THREE.Group();
   private current: HeroModel | null = null;
   private showing = '';
+  /** The hero last asked for, which may still be meshing in the worker. */
+  private wanted = '';
+  private gone = false;
   private keyLight!: THREE.PointLight;
   private rimLight!: THREE.PointLight;
   private poolLight!: THREE.SpotLight;
@@ -186,7 +190,7 @@ export class CharSelectScene extends GameScene {
     window.addEventListener('pointerup', this.onUp);
 
     // Start on whatever the panel last asked for, or the first class.
-    this.showClass((CLASSES[0]?.id ?? 'warden') as CharClassId, false);
+    await this.showClass((CLASSES[0]?.id ?? 'warden') as CharClassId, false);
 
     const handler = (p: { panel: string }): void => {
       if (p.panel.startsWith('class:')) {
@@ -236,18 +240,32 @@ export class CharSelectScene extends GameScene {
     this.dragging = false;
   };
 
-  private showClass(id: CharClassId, announce: boolean): void {
+  // A hero the boot worker has not sent back yet is waited for, not meshed
+  // here: meshing it on the main thread froze the screen for seconds on a
+  // first visit while the worker was busy with the same body. The hero on
+  // the plinth stays until the new one is ready. A later pick wins.
+  private showClass(id: CharClassId, announce: boolean): Promise<void> {
     const key = `class:${id}`;
-    if (this.showing === key) return;
-    this.swap(buildClassHero(id), key, announce);
+    if (this.showing === key) this.wanted = key;
+    if (this.wanted === key) return Promise.resolve();
+    this.wanted = key;
+    return heroMeshed(id).then(() => {
+      if (this.gone || this.wanted !== key) return;
+      this.swap(buildClassHero(id), key, announce);
+    });
   }
 
   private showCharacter(charId: string): void {
     const key = `char:${charId}`;
-    if (this.showing === key) return;
+    if (this.showing === key) this.wanted = key;
+    if (this.wanted === key) return;
     const c = save.roster.find((x) => x.id === charId);
     if (!c) return;
-    this.swap(buildCharacterHero(c), key, true);
+    this.wanted = key;
+    void heroMeshed(c.classId).then(() => {
+      if (this.gone || this.wanted !== key) return;
+      this.swap(buildCharacterHero(c), key, true);
+    });
   }
 
   private swap(next: HeroModel, key: string, announce: boolean): void {
@@ -323,6 +341,7 @@ export class CharSelectScene extends GameScene {
   }
 
   override dispose(): void {
+    this.gone = true;
     this.offSelect?.();
     window.removeEventListener('resize', this.layoutCamera);
     this.engine.renderer.canvas.removeEventListener('pointerdown', this.onDown);

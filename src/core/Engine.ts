@@ -361,10 +361,24 @@ export class Engine {
     } catch (err) {
       this.report('render', err);
     }
+    // The warm frame draws the whole scene, not just what the camera sees, so
+    // every mesh's buffers and every texture reach the GPU now. Before, each
+    // part of a map uploaded on the frame it first came into view: a hitch
+    // per room, per monster, while walking. Culling is put back right after.
+    const culled: THREE.Object3D[] = [];
     try {
+      this.renderer.upload(next.scene);
+      next.scene.traverse((o) => {
+        if (o.frustumCulled) {
+          o.frustumCulled = false;
+          culled.push(o);
+        }
+      });
       this.renderer.render(next.scene, next.camera, 0, this.elapsed);
     } catch (err) {
       this.report('render', err);
+    } finally {
+      for (const o of culled) o.frustumCulled = true;
     }
     extra?.removeFromParent();
     try {

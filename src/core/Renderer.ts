@@ -695,6 +695,39 @@ export class Renderer {
     }
   }
 
+  /**
+   * Sends every texture under `root` to the GPU now.
+   *
+   * three.js uploads a texture (and builds its mipmaps) on the first frame
+   * that draws it, so a body coming into view for the first time paid for its
+   * skin, megabytes on a big monster, on that frame. Compiling a scene does not
+   * upload anything. Hidden objects count too: a pooled effect sheet is
+   * uploaded here rather than on its first cast. Textures still loading have
+   * nothing to send and are skipped; they upload when they arrive, as before.
+   */
+  upload(root: THREE.Object3D): void {
+    const seen = new Set<THREE.Texture>();
+    const take = (v: unknown): void => {
+      const t = v as THREE.Texture | null | undefined;
+      if (t && t.isTexture && !t.isRenderTargetTexture) seen.add(t);
+    };
+    root.traverse((o) => {
+      const m = (o as THREE.Mesh).material;
+      if (!m) return;
+      for (const mat of Array.isArray(m) ? m : [m]) {
+        for (const k in mat) take((mat as unknown as Record<string, unknown>)[k]);
+        const u = (mat as THREE.ShaderMaterial).uniforms;
+        if (u) for (const k in u) take(u[k]?.value);
+      }
+    });
+    const s = root as THREE.Scene;
+    if (s.isScene) {
+      take(s.background);
+      take(s.environment);
+    }
+    for (const t of seen) this.gl.initTexture(t);
+  }
+
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
     this.composer.dispose();

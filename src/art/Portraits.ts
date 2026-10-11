@@ -111,6 +111,10 @@ function releaseLater(): void {
 
 async function render(classId: CharClassId, size: number): Promise<string> {
   const { buildClassHero } = await import('../scenes/HeroModel');
+  // The boot worker may be meshing this hero right now: wait for it rather
+  // than meshing the same body again here, a freeze of seconds.
+  const { heroMeshed } = await import('./npc/Prewarm');
+  await heroMeshed(classId);
   const hero = buildClassHero(classId);
   const look = LOOK[classId] ?? LOOK.warden!;
   const scene = new THREE.Scene();
