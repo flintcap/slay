@@ -501,14 +501,17 @@ export function poseSerpent(a: CreatureAnimator): void {
 
   const t = a.t;
   if (a.phase === 'windup' || a.phase === 'strike' || a.phase === 'cast') {
-    const wind = a.phase === 'strike' ? 1 - ramp(t, 0, 0.36) : ramp(t, 0, 0.5);
-    const hit = a.phase === 'strike' ? ramp(t, 0, 0.36) * (1 - ramp(t, 0.6 + 0.15 * heavy, 1)) : 0;
+    const go = 0.36 + 0.25 * heavy;
+    const wind = a.phase === 'strike' ? 1 - ramp(t, 0, go) : ramp(t, 0, 0.5);
+    const hit = a.phase === 'strike' ? ramp(t, 0, go) * (1 - ramp(t, 0.6 + 0.15 * heavy, 1)) : 0;
     const cast = a.phase === 'cast' ? ramp(t, 0, 0.5) * (1 - ramp(t, 0.92, 1)) : 0;
     const ranged = a.style.ranged && !a.struck && a.phase === 'windup';
     const lash = a.attack === 'lash' || a.attack === 'swing';
     if (lash && !ranged) {
       // The tail sweeps round.
-      for (let i = 0; i < tl.length; i++) a.rot(tl[i]!, 0, (-0.35 * wind + 0.45 * hit) * (1 + i * 0.2), 0);
+      // Spread over however many segments the tail has: about two radians end to end.
+      const per = 2.2 / Math.max(1, tl.length * (1 + 0.1 * (tl.length - 1)));
+      for (let i = 0; i < tl.length; i++) a.rot(tl[i]!, 0, (-0.3 * wind + 0.4 * hit) * per * (1 + i * 0.2), 0);
       a.rot('body', 0, -0.25 * wind + 0.35 * hit, 0);
     } else if ((a.attack === 'slam' || a.attack === 'engulf') && !ranged) {
       // Rear high and crash down.

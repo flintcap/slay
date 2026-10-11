@@ -55,7 +55,9 @@ function maw(s: Sculpt, bone: string, c: THREE.Vector3, r: number, n: THREE.Vect
   const u = (Math.abs(d.y) < 0.9 ? V(0, 1, 0) : V(1, 0, 0)).cross(d).normalize();
   const v = d.clone().cross(u).normalize();
   s.ball(bone, c, r, { sub: true, k: r * 0.3 });
-  s.glow(c.clone().addScaledVector(d, -r * 0.6), r * 0.6, glow, [0.5, 0.1, 0.2]);
+  // A dark throat with a glint deep inside, not a lit disc.
+  s.tint(c, r * 1.05, [0.18, 0.06, 0.08]);
+  if (glow > 0) s.glow(c.clone().addScaledVector(d, -r * 0.9), r * 0.35, glow, [0.5, 0.1, 0.2]);
   for (let i = 0; i < teeth; i++) {
     const a = (i / teeth) * Math.PI * 2;
     const p = c.clone().addScaledVector(u, Math.cos(a) * r * 0.95).addScaledVector(v, Math.sin(a) * r * 0.95).addScaledVector(d, r * 0.1);
@@ -170,10 +172,10 @@ function hangers(s: Sculpt, n: number, r: number, mat: CMat = 'skin'): void {
     for (let k = 1; k <= 3; k++) {
       const b = `ten${i}_${k}`;
       if (!s.has(b)) return;
-      s.limb(b, s.j(prev), s.j(b), r / k, (r * 0.8) / k, { mat, k: r * 0.4 });
+      s.limb(b, s.j(prev), s.j(b), r * (1.15 - 0.22 * k), r * (1 - 0.22 * k), { mat, k: r * 0.4 });
       prev = b;
     }
-    s.limb(prev, s.j(prev), s.j(`ten${i}Tip`), r * 0.25, r * 0.05, { mat, k: r * 0.2 });
+    s.limb(prev, s.j(prev), s.j(`ten${i}Tip`), r * 0.34, r * 0.12, { mat, k: r * 0.2 });
   }
 }
 

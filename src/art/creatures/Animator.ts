@@ -345,7 +345,7 @@ export class CreatureAnimator {
    * A phase that advances at `rate` radians a second. It is integrated, so a
    * rate that changes with speed never makes the phase jump (time * rate
    * would). Call once a frame per slot. Slots: 0 flyer wingbeat, 1 tail wag,
-   * 2 serpent drift, 3 floater orbit, 8 and up one per swarm mote.
+   * 2 serpent drift, 3 floater orbit, 4 ooze heave, 8 and up one per swarm mote.
    */
   spin(slot: number, rate: number): number {
     this.spins[slot] = this.spins[slot]! + rate * this.dt;
@@ -631,6 +631,11 @@ export class CreatureAnimator {
     return base - this.run * 0.2;
   }
 
+  /** Gait cycles a second (strides from distance covered). */
+  get strideRate(): number {
+    return this.rate;
+  }
+
   get legCount(): number {
     return this.legs.length;
   }
@@ -836,5 +841,5 @@ const STRIDE: Record<string, number> = {
   hop: 1.4,
   glide: 1.5,
   slither: 1.4,
-  roll: 1.2,
+  roll: 3.2,
 };

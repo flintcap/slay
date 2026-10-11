@@ -26,8 +26,9 @@ export function poseOoze(a: CreatureAnimator): void {
   const heavy = a.style.heavy;
   const c = a.cycle * TAU;
   if (a.phase === 'death') return deathOoze(a);
-  // Rolling forward: it heaves up and spreads, twice a stride.
-  const heave = Math.sin(c * 2) * g;
+  // Rolling forward: it heaves up and spreads, twice a stride, but never
+  // faster than a mass can heave (small fast oozes would buzz).
+  const heave = Math.sin(a.spin(4, TAU * 2 * Math.min(a.strideRate, 1.6))) * g;
   const br = Math.sin(a.time * (1.6 - 0.6 * heavy) + a.offset);
   let sq = 1 + 0.1 * heave + 0.03 * br * (1 - g);
   a.rot('top', 0.25 * g * a.vel.z + 0.06 * heave, 0, -0.25 * g * a.vel.x);
@@ -52,7 +53,7 @@ export function poseOoze(a: CreatureAnimator): void {
   const ranged = a.style.ranged && !a.struck && a.phase === 'windup';
   if (a.phase === 'windup' || a.phase === 'strike') {
     // A heavy mass takes longer to throw itself over (and must not teleport).
-    const fast = 0.14 + 0.4 * heavy;
+    const fast = 0.32 + 0.24 * heavy;
     const wind = a.phase === 'windup' ? ramp(t, 0, ranged ? a.releaseAt() * 0.85 : 0.5) : 1 - ramp(t, 0, fast);
     const hit = a.phase === 'strike' ? ramp(t, 0, fast) * (1 - ramp(t, 0.45 + 0.15 * heavy, 1)) : ranged ? ramp(t, a.releaseAt() - 0.02, Math.min(1, a.releaseAt() + 0.1)) : 0;
     if (ranged || a.attack === 'hurl') {
@@ -69,8 +70,8 @@ export function poseOoze(a: CreatureAnimator): void {
     } else {
       // Engulf or slam: rise up tall and throw itself over the target.
       sq *= 1 + 0.35 * wind - (0.4 - 0.15 * heavy) * hit;
-      a.body(0, 0, -0.05 * H * wind + (0.35 - 0.12 * heavy) * H * hit, 0.5 * hit);
-      a.rot('top', -0.3 * wind + (0.7 - 0.2 * heavy) * hit);
+      a.body(0, 0, -0.05 * H * wind + (0.26 - 0.06 * heavy) * H * hit, 0.4 * hit);
+      a.rot('top', -0.3 * wind + (0.55 - 0.1 * heavy) * hit);
       a.rotS('podL', 'L', -1.4 * wind + 0.6 * hit, 0, 0.5 * wind);
       a.rotS('podR', 'R', -1.4 * wind + 0.6 * hit, 0, 0.5 * wind);
     }
