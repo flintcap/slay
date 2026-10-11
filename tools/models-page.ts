@@ -520,14 +520,8 @@ export const SHEETS: Record<string, () => Promise<string>> = {
 
 async function npcSheet(from: number, to: number): Promise<string> {
   {
-    let mod: Record<string, unknown> | null = null;
-    try {
-      const path = '/src/art/NpcModels.ts';
-      mod = (await import(/* @vite-ignore */ path)) as Record<string, unknown>;
-    } catch {
-      mod = null;
-    }
-    const ids = (mod && Array.isArray(mod.NPC_LOOK_IDS) ? (mod.NPC_LOOK_IDS as string[]) : []).slice(from, to);
+    const Folk = await import('../src/art/npc/Folk');
+    const ids = [...Folk.NPC_LOOK_IDS].slice(from, to);
     const cw = 200;
     const ch = 320;
     const n = Math.max(1, ids.length);
@@ -540,14 +534,12 @@ async function npcSheet(from: number, to: number): Promise<string> {
     const figs: THREE.Object3D[] = [];
     const report: string[] = [];
     for (let i = 0; i < ids.length; i++) {
-      const build = mod!.buildNpcModel as (id: string, rng: Random) => { root: THREE.Object3D; bones: Record<string, THREE.Bone> };
-      const built = build(ids[i]!, new Random(99 + i));
+      const built = Folk.buildFolk(ids[i]!);
       const holder = new THREE.Group();
       holder.add(built.root);
       const anim = new HeroAnimator(built.bones);
-      const carry = mod!.npcCarryGrip as ((id: string) => 'none' | 'twoHand' | 'staff' | 'bow') | undefined;
-      if (carry) anim.setGrip(carry(ids[i]!));
-      anim.play('idle', { fade: 0 });
+      anim.setGrip(built.grip);
+      anim.play(built.loops.rest, { fade: 0 });
       for (let t = 0; t < 24; t++) anim.update(1 / 30);
       const x = 10 + i * cw * 2;
       drawCell(g, r, scene, cam, holder, 0.45, x, 24, cw, ch);

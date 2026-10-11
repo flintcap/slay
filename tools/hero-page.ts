@@ -433,12 +433,12 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     }
     // Camp residents: on the hero rig, coarser, and quick enough to build cold.
     {
-      const NM = await import('../src/art/NpcModels');
+      const NM = await import('../src/art/npc/Folk');
       let total = 0;
       for (const id of NM.NPC_LOOK_IDS) {
         const t0 = performance.now();
         try {
-          const npc = NM.buildNpcModel(id, new Random(9));
+          const npc = NM.buildFolk(id);
           new HeroAnimator(npc.bones).update(1 / 30);
           let draws = 0;
           npc.root.traverse((o) => {

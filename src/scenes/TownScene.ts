@@ -13,7 +13,8 @@ import { Player } from '../entities/Player';
 import { buildTown, type TownBuild } from '../world/Town';
 import { setFogShape } from '../core/Renderer';
 import { setActiveDifficulty } from '../data/difficulties';
-import { openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
+import { dialogue, openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
+import { npcForStation } from '../data/story/npcs';
 import { mountTownStations } from './TownStations';
 import { planDescent } from './DescentPlanner';
 
@@ -51,6 +52,8 @@ export class TownScene extends GameScene {
   private offs: Array<() => void> = [];
   private smokeSpots: THREE.Vector3[] = [];
   private smokeAccum = 0;
+  /** The resident whose trade the player last opened; they face the player while near. */
+  private engagedNpc: string | null = null;
 
   constructor(engine: Engine) {
     super();
@@ -220,6 +223,8 @@ export class TownScene extends GameScene {
       walkableAt: (x, z) => Math.hypot(x, z) < 21.4 || (z < -15 && z > -24 && Math.abs(x) < 5.5),
     }, this.keyDir.lengthSq() > 0 ? this.keyDir : null);
 
+    this.attendResidents();
+
     // Proximity prompt for the nearest service.
     let best: Interactable | null = null;
     let bestD = Infinity;
@@ -238,6 +243,7 @@ export class TownScene extends GameScene {
       audio.play('ui.open');
       // The keeper of a station talks first; their trade is the first option.
       if (!openDialogueFor(best.id)) events.emit('ui:open', { panel: best.panel });
+      this.engagedNpc = best.id.startsWith('talk:') ? best.id.slice(5) : (npcForStation(best.id)?.id ?? null);
     }
 
     if (this.heroLight) {
@@ -258,6 +264,30 @@ export class TownScene extends GameScene {
     this.fx.update(dt, elapsed);
     this.decals.update(dt);
     audio.setListener(this.player.position.x, this.player.position.z, this.player.root.rotation.y);
+  }
+
+  /**
+   * The townsfolk turn to the player: whoever they are talking to faces them
+   * and talks; the keeper whose trade is open faces them; heads follow anyone
+   * who walks close. Talk points of the residents who wander go with them.
+   */
+  private attendResidents(): void {
+    const res = this.town.residents;
+    const d = dialogue();
+    const talking = d.isOpen ? d.npc.id : null;
+    if (this.engagedNpc) {
+      const at = res.where(this.engagedNpc);
+      if (!at || at.distanceTo(this.player.position) > 4) this.engagedNpc = null;
+    }
+    res.attend(this.player.position, talking, this.engagedNpc);
+    for (const it of this.interactables) {
+      if (!it.id.startsWith('talk:')) continue;
+      const id = it.id.slice(5);
+      const at = res.where(id);
+      if (!at) continue;
+      const yaw = res.facing(id);
+      it.pos.set(at.x + Math.sin(yaw) * 0.9, 0, at.z + Math.cos(yaw) * 0.9);
+    }
   }
 
   override dispose(): void {

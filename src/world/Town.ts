@@ -24,15 +24,15 @@ import { worldMaterial, WORLD_ENV_ATTRIBUTE, WORLD_SPLAT_ATTRIBUTE } from '../ar
 import { CampLife } from './TownLife';
 import { mergeGeometries, rock } from '../art/Meshes';
 import { buildTownProps } from '../art/props/town/Layout';
-import { buildNpcModel, npcCarryGrip } from '../art/NpcModels';
+import { Residents, townPlaces } from '../art/npc/Residents';
 import { disposeObject } from '../core/Engine';
-import { HeroAnimator } from '../art/hero/Animator';
-import { Random } from '../core/RNG';
 
 export interface TownBuild {
   root: THREE.Group;
   colliders: Array<{ x: number; z: number; w: number; d: number }>;
   npcSpots: Record<string, THREE.Vector3>;
+  /** The townsfolk: where they are, and who they attend to (`Residents.attend`). */
+  residents: Residents;
   portalSpot: THREE.Vector3;
   /** Emitter positions the scene feeds to its particle system. */
   smokeSpots: THREE.Vector3[];
@@ -66,7 +66,6 @@ interface Ctx {
   spin: Array<{ obj: THREE.Object3D; speed: number; axis: 'y' | 'x' }>;
   /** Things that sway: banners, washing, hanging pelts. */
   sway: Array<{ obj: THREE.Object3D; phase: number; amp: number; axis: 'x' | 'z' }>;
-  npcs: HeroAnimator[];
   /** Static geometry accumulating per material, merged before hand-off. */
   batches: Map<string, THREE.BufferGeometry[]>;
   smoke: THREE.Vector3[];
@@ -295,45 +294,6 @@ function addLantern(
   ctx.flames.push({ light, base: intensity, phase: ctx.rng.range(0, 100), flicker, bulb });
 }
 
-/**
- * A camp resident, built for their trade by `NpcModels` (the models stream).
- * Idle-animated, so the place is never a still life.
- */
-function npc(ctx: Ctx, who: string, x: number, z: number, facing: number, seed: number): void {
-  try {
-    const built = buildNpcModel(who, new Random(seed));
-    built.root.position.set(x, 0, z);
-    built.root.rotation.y = facing;
-    built.root.traverse((o) => {
-      const mm = o as THREE.Mesh;
-      if (mm.isMesh) {
-        // castShadow is left as `buildNpcModel` set it: small parts (eyes,
-        // buttons, a bottle) cast none there, and forcing it back on here put
-        // about a hundred extra draws into the moon's shadow pass.
-        mm.receiveShadow = true;
-        // Worn gear ships unculled, so all nine residents were drawn in every
-        // pass, every shadow face included, wherever the camera looked. A
-        // resident barely moves: a generous sphere round the bone it hangs
-        // from (no part is further than ~2 m from any bone) culls safely.
-        if ((mm as THREE.SkinnedMesh).isSkinnedMesh) {
-          (mm as THREE.SkinnedMesh).boundingSphere = new THREE.Sphere(new THREE.Vector3(), 2.4);
-          mm.frustumCulled = true;
-        }
-      }
-    });
-    ctx.root.add(built.root);
-    // The hero animator drives residents like anyone else on the hero rig.
-    const anim = new HeroAnimator(built.bones);
-    anim.setGrip(npcCarryGrip(who));
-    anim.play('idle', { fade: 0 });
-    anim.timeScale = 0.7 + (seed % 7) * 0.06;
-    ctx.npcs.push(anim);
-    ctx.colliders.push({ x, z, w: 0.8, d: 0.8 });
-  } catch {
-    // A camp with one fewer resident beats a camp that fails to load.
-  }
-}
-
 // ---------------------------------------------------------------------------
 
 export function buildTown(rng: Rng): TownBuild {
@@ -342,7 +302,7 @@ export function buildTown(rng: Rng): TownBuild {
 
   const ctx: Ctx = {
     root, colliders: [], geo: [], mat: [], lights: [], flames: [], bulbs: [], bulbMesh: null, spin: [], sway: [],
-    npcs: [], batches: new Map(), smoke: [], glows: [], rng, noise: new Noise(0x70ad),
+    batches: new Map(), smoke: [], glows: [], rng, noise: new Noise(0x70ad),
   };
 
   const mats: Mats = {
@@ -458,20 +418,10 @@ export function buildTown(rng: Rng): TownBuild {
   buildGlows(ctx);
 
   // --- residents ---------------------------------------------------------
-  npc(ctx, 'kale', forgeAt.x + 2.0, forgeAt.z + 2.5, -2.3, 101);
-  npc(ctx, 'hesk', wagonAt.x - 1.2, wagonAt.z + 2.9, -1.5, 202);
-  npc(ctx, 'corvane', stashAt.x + 1.6, stashAt.z + 0.4, 1.2, 303);
-  npc(ctx, 'marrow', cairnAt.x - 1.3, cairnAt.z + 0.6, -1.1, 404);
-  npc(ctx, 'gilder', -3.6, 4.4, 0.6, 505);
-  npc(ctx, 'wenna', 3.4, 4.8, -0.7, 606);
-  npc(ctx, 'listener', -1.2, -14.6, 0.15, 707);
-  npc(ctx, 'renn', 2.0, -14.4, -0.15, 808);
-  // Sister Vell, who kept the apothecary with no one behind the counter.
-  {
-    const vx = alchemyAt.x + 1.3;
-    const vz = alchemyAt.z + 0.5;
-    npc(ctx, 'vell', vx, vz, Math.atan2(npcSpots.alchemist.x - vx, npcSpots.alchemist.z - vz), 909);
-  }
+  // The townsfolk and their routines live in `art/npc/Residents.ts`.
+  const residents = new Residents(ctx.root, ctx.colliders, townPlaces({
+    forge: forgeAt, wagon: wagonAt, stash: stashAt, alchemy: alchemyAt, cairn: cairnAt, alchemist: npcSpots.alchemist,
+  }));
   mergeStatic(ctx);
   buildBulbs(ctx);
 
@@ -510,6 +460,7 @@ export function buildTown(rng: Rng): TownBuild {
     root,
     colliders: ctx.colliders,
     npcSpots,
+    residents,
     portalSpot,
     smokeSpots: ctx.smoke,
     update(dt: number, elapsed: number): void {
@@ -542,7 +493,7 @@ export function buildTown(rng: Rng): TownBuild {
         if (w.axis === 'x') w.obj.rotation.x = a;
         else w.obj.rotation.z = a;
       }
-      for (const a of ctx.npcs) a.update(dt);
+      residents.update(dt);
       town.update(dt);
       life.update(elapsed);
     },
@@ -566,7 +517,6 @@ export function buildTown(rng: Rng): TownBuild {
       ctx.flames.length = 0;
       ctx.spin.length = 0;
       ctx.sway.length = 0;
-      ctx.npcs.length = 0;
       root.clear();
     },
   };

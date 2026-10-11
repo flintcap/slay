@@ -310,6 +310,53 @@ snapshot dodge hurt stagger stun down death deathFwd`. `attack1` and
 dagger, spear, two-hander, staff, wand, bow, shield, unarmed) and chain into
 combos on their own.
 
+**Extra actions.** Other streams can add named actions without editing
+`Actions.ts`. A registered name never replaces a built-in one, and calling it
+again with the same name does nothing:
+
+```ts
+// src/art/hero/Actions.ts
+export function registerAction(name: string, def: ActionDef): void;
+```
+
+## Townsfolk — `src/art/npc/*` — owned by npcs
+
+The nine townspeople stand on the hero rig and are driven by the hero
+animator. Their looks are in `Folk.ts`, their work, rest and talk loops are in
+`Jobs.ts` (registered as `npc.<id>.work|work2|rest|talk`), and their life in
+town is in `Residents.ts`.
+
+```ts
+// src/art/npc/Folk.ts
+export const NPC_LOOK_IDS: readonly ['hesk','kale','vell','corvane','marrow','renn','listener','gilder','wenna'];
+export function buildFolk(id: string): {
+  id; root: THREE.Group; bones: Record<string, THREE.Bone>; hero: HeroModel;
+  grip: CarryGrip;                                  // pass to animator.setGrip
+  loops: { work: string; work2?: string; rest: string; talk: string };
+};
+
+// src/art/npc/Residents.ts
+export class Residents {                            // built by Town.ts, exposed as TownBuild.residents
+  attend(player: THREE.Vector3 | null, talking: string | null, engaged?: string | null): void;
+  where(id: string): THREE.Vector3 | null;          // live position (wanderers move)
+  facing(id: string): number;
+  update(dt: number): void;                         // called from TownBuild.update
+}
+```
+
+- `TownScene` calls `attend` every frame: `talking` is the story id of the
+  resident in an open conversation (`dialogue().npc.id`); `engaged` is the
+  keeper whose trade the player last opened. They stop, turn to the player,
+  and talk; heads follow a player who comes near.
+- Each resident adds one 0.8 × 0.8 collider to `TownBuild.colliders` and moves
+  it as they walk.
+- Props in hand are baked into the body and merged with clothes by material:
+  `bakeProps(rig, held, name)` in `HandProps.ts`. Trade clothes (apron, hood,
+  wimple, hats, shawl, kerchief, blindfold, burn scars) are `wearPiece` in
+  `Clothes.ts`; NPC coat cuts are added to `CHEST_CUTS` under `npc.*` names.
+- Budgets (checked by `tools/check-npcdraws.mjs`): at most 16 meshes a
+  resident, all nine within 240 draws with one shadow pass.
+
 ## `src/entities/MonsterModels.ts` — owned by creatures
 
 ```ts
