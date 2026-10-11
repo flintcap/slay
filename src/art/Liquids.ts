@@ -63,14 +63,16 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     emissiveIntensity: 0.6,
   },
   sludge: {
-    ripple: 0.3,
+    // Under an open sky the moon caught every ripple of a glossy, frothy
+    // sludge: the fens read as white-green static. Flat, dull, dark scum.
+    ripple: 0.16,
     speed: 0.05,
     scaleA: 4,
     scaleB: 1.7,
-    rim: 0.7,
-    rimColor: 0x6a7a2a,
+    rim: 0.4,
+    rimColor: 0x3a4420,
     molten: 0,
-    roughness: 0.28,
+    roughness: 0.55,
     metalness: 0.05,
     opacity: 0.96,
     emissiveIntensity: 0.6,

@@ -67,7 +67,7 @@ const LOOKS: Partial<Record<BiomeId, TerrainLook>> = {
     wet: 0.25,
   },
   swamp: {
-    base: L('tex.mud', 0x8c9078),
+    base: L('tex.mud', 0xa8ac90),
     trodden: L('tex.tracks', 0x9a9480),
     rock: L('tex.roots', 0x7a7a68),
     special: L('tex.moss', 0x8a9070),

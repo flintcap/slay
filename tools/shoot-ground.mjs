@@ -1,12 +1,12 @@
 /**
- * Ground look renders: one frame per biome in the first area of a map, the
- * hero at the way in (or near the way on). Lean on purpose (one boot, no boss
+ * Ground look renders: one frame per biome in the first area of a map
+ * that holds it, the hero in a middle room. Lean on purpose (one boot, no boss
  * warp, small frames) so it fits the 45 minute limit while other agents
  * render too.
  *
  *   npm run build
  *   SLAY_PORT=4322 timeout 2700 node tools/shoot-ground.mjs --out=shots/ground --biomes=crypt,darkForest
- *   ... --at=exit   stand near the way on instead of the way in
+ *   ... --at=entry|exit  stand at the way in or near the way on (default: a middle room)
  *   ... --town      also the town
  */
 import { mkdirSync, statSync } from 'node:fs';
@@ -16,7 +16,7 @@ import { bootGame, frames } from './lib/game.mjs';
 const arg = (k, d) => process.argv.find((s) => s.startsWith(`--${k}=`))?.slice(k.length + 3) ?? d;
 const OUT = path.resolve(arg('out', 'shots/ground'));
 const BIOMES = String(arg('biomes', 'crypt,darkForest')).split(',').filter(Boolean);
-const AT = arg('at', 'entry');
+const AT = arg('at', 'mid');
 const W = Number(arg('width', 1024));
 const H = Number(arg('height', 576));
 mkdirSync(OUT, { recursive: true });
@@ -46,12 +46,22 @@ try {
         async ([biome, at]) => {
           const s = window.SLAY;
           await s.debug.previewBiome(biome, 8, false);
+          // The map's first area may be another biome: load the first area
+          // that is (or holds a zone of) the one asked for.
+          const sc = s.engine.currentScene;
+          const i = sc.run.levels.findIndex((l) => l.biome === biome || (l.zones ?? []).some((z) => z.biome === biome));
+          if (i >= 0 && i !== sc.levelIndex) await sc.loadLevel(i);
           s.debug.godMode(true);
-          s.debug.warpTo(at);
+          if (at === 'mid') {
+            // The middle room of the area, away from the arrival piece.
+            const rooms = sc.level.rooms.filter((r) => r.kind !== 'entry' && r.kind !== 'exit');
+            const r = rooms[Math.floor(rooms.length / 2)] ?? sc.level.rooms[0];
+            s.debug.warpTo({ x: Math.round(r.center.x), y: Math.round(r.center.y) });
+          } else s.debug.warpTo(at);
         },
         [b, AT],
       );
-      await shoot(`g-${b}${AT === 'entry' ? '' : '-' + AT}`);
+      await shoot(`g-${b}${AT === 'mid' ? '' : '-' + AT}`);
     } catch (e) {
       ok = false;
       log(`failed ${b}: ${String(e.message).slice(0, 200)}`);
