@@ -126,6 +126,8 @@ class Surf {
     us: number,
     env?: readonly number[],
     mirror = 0,
+    /** Per-corner heights (in `env` order) to drape the quad over ground that is not flat. */
+    ys?: readonly number[],
   ): void {
     const n = up ? 1 : -1;
     const order: Array<[number, number]> = up
@@ -145,7 +147,7 @@ class Surf {
     const mv = mirror & 2 ? -1 : 1;
     for (let k = 0; k < 4; k++) {
       const [dx, dz] = order[k]!;
-      this.pos.push(cx + dx * half, y, cz + dz * half);
+      this.pos.push(cx + dx * half, ys ? ys[k]! : y, cz + dz * half);
       this.nor.push(0, n, 0);
       this.uv.push(u0 + (mu * dx * 0.5 + 0.5) * us, v0 + (mv * dz * 0.5 + 0.5) * us);
       this.env.push(env ? env[k]! : this.defEnv);
@@ -1184,7 +1186,19 @@ export class DungeonMesh {
               if (n > 1 - art.veinDensity * 0.5) {
                 // Whole tile, UVs continuous across tiles (one repeat per 4
                 // tiles) so the cracks run on from one tile into the next.
-                surfs[VEIN].flat(wx, hy + 0.02, wz, HALF, true, x * 0.25, y * 0.25, 0.25);
+                if (this.terrain) {
+                  // Outdoors the ground rolls: drape the veins over it in four
+                  // quarters that match the terrain's vertices. One flat quad
+                  // per tile floated in places and sank in others, and its
+                  // straight edges drew a glowing grid across the steppe.
+                  const q = HALF / 2;
+                  for (const [sx, sz] of FLAT_CORNERS) {
+                    const qx = wx + sx * q;
+                    const qz = wz + sz * q;
+                    const ys = FLAT_CORNERS.map(([dx, dz]) => this.terrain!.heightAt(qx + dx * q, qz + dz * q) + 0.04);
+                    surfs[VEIN].flat(qx, hy, qz, q, true, x * 0.25 + (sx > 0 ? 0.125 : 0), y * 0.25 + (sz > 0 ? 0.125 : 0), 0.125, undefined, 0, ys);
+                  }
+                } else surfs[VEIN].flat(wx, hy + 0.02, wz, HALF, true, x * 0.25, y * 0.25, 0.25);
               }
             }
 

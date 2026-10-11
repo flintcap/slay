@@ -370,7 +370,9 @@ const FRAG = /* glsl */ `
     // Danger darkens the floor and takes the attack's colour; light lives on
     // the edges and the growing front, not in a bright disc.
     float shadowA = inside * (0.28 + 0.22 * filled);
-    heat = clamp(edge * (0.75 + 0.25 * pulse * (0.4 + imminent)) + inner + front * 0.6 + filled * (0.12 + hatch * 0.1) + imminent * pulse * 0.15 * inside, 0.0, 1.0);
+    // The edge holds the attack's own colour; it only runs white-hot as the
+    // strike lands, so packs of telegraphs do not wash the hero out.
+    heat = clamp(edge * (0.58 + 0.22 * pulse * (0.4 + imminent) + 0.15 * imminent) + inner + front * 0.6 + filled * (0.12 + hatch * 0.1) + imminent * pulse * 0.15 * inside, 0.0, 1.0);
     float light = heat;
     // The landing flash.
     light += post * (1.0 - post) * 2.0 * (edge + inside * 0.3);
