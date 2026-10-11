@@ -11,6 +11,7 @@ import { FXSystem } from '../fx/Particles';
 import { CLASSES } from '../data/classes';
 import { buildRift, buildAtmosphere, type RiftHandle, type AtmosphereHandle } from './MenuStage';
 import { buildClassHero, buildCharacterHero, classColor, flourishClip, type HeroModel } from './HeroModel';
+import { classPortrait } from '../art/Portraits';
 
 /**
  * Character select and creation: a hero on a plinth under a pool of light,
@@ -60,7 +61,7 @@ export class CharSelectScene extends GameScene {
     this.fx = new FXSystem(this.scene, engine.renderer.quality);
   }
 
-  enter(): void {
+  async enter(): Promise<void> {
     const rng = new Random(0xc1a55);
     const scene = this.scene;
     this.engine.renderer.applyEnvironment(scene, 0.55);
@@ -199,6 +200,13 @@ export class CharSelectScene extends GameScene {
 
     audio.music('menu', 1.5);
     events.emit('ui:open', { panel: 'charSelect' });
+
+    // The detail column opens on a portrait (the current character's class,
+    // or the first class). Its first render makes the portrait context and
+    // compiles the hero's shaders in it; done here it happens behind the
+    // curtain instead of during the fade-in. Capped, and cached after.
+    const first = (save.account.current?.classId ?? save.roster[0]?.classId ?? CLASSES[0]?.id ?? 'warden') as CharClassId;
+    await Promise.race([classPortrait(first, 216).catch(() => ''), new Promise((r) => setTimeout(r, 4000))]);
   }
 
   /**
