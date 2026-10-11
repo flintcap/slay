@@ -474,6 +474,27 @@ interface QuestTrack {
   objectives: Array<{ desc: string; progress: number; target: number; done: boolean }>;
 }
 
+
+/** The last number each element was given for each CSS variable (see `setVar`). */
+const shownVars = new WeakMap<HTMLElement, Record<string, number>>();
+
+/**
+ * Sets a CSS variable to a number, only when the number changed. The HUD
+ * sets these every frame, and an inline style write restyles the element
+ * even when the value is the same as before: eight of them a frame for
+ * cooldowns that were mostly sitting at zero.
+ */
+function setVar(el: HTMLElement, name: string, v: number): void {
+  let shown = shownVars.get(el);
+  if (!shown) {
+    shown = {};
+    shownVars.set(el, shown);
+  }
+  if (shown[name] === v) return;
+  shown[name] = v;
+  el.style.setProperty(name, String(v));
+}
+
 export class HUD {
   readonly root: HTMLDivElement;
 
@@ -1042,7 +1063,7 @@ export class HUD {
     // longest one we have seen so the sweep empties smoothly.
     if (dashCd > this.dashMax) this.dashMax = dashCd;
     const dk = this.dashMax > 0 ? Math.min(1, dashCd / this.dashMax) : 0;
-    this.dashSlot.style.setProperty('--cd', String(dk));
+    setVar(this.dashSlot, '--cd', dk);
     const dashOn = dashCd > 0.001;
     if (this.dashWasOn && !dashOn) this.flashReady(this.dashSlot);
     this.dashWasOn = dashOn;
@@ -1189,7 +1210,7 @@ export class HUD {
       const rank = c.skills[id] ?? 0;
       const total = def?.cooldown ? attempt(() => def.cooldown?.(rank) ?? 0, 0) : 0;
       const k = total > 0 ? Math.max(0, Math.min(1, remain / total)) : 0;
-      slotEl.style.setProperty('--cd', String(k));
+      setVar(slotEl, '--cd', k);
       const onCd = k > 0.001;
       slotEl.classList.toggle('on-cd', onCd);
 
@@ -1341,7 +1362,7 @@ export class HUD {
       if (i < list.length) {
         const s = list[i]!;
         const k = s.duration > 0 ? Math.max(0, Math.min(1, s.remaining / s.duration)) : 0;
-        el.style.setProperty('--k', String(1 - k));
+        setVar(el, '--k', 1 - k);
         // Seconds left under the chip; only rewritten when the number changes.
         const tEl = el.querySelector<HTMLElement>('.buff-time');
         if (tEl) {
@@ -1356,7 +1377,7 @@ export class HUD {
       if (!p) continue;
       // A permanent summon has no arc to sweep; it is full until it dies.
       const k = Number.isFinite(p.left) ? Math.max(0, Math.min(1, p.left / 30)) : 1;
-      el.style.setProperty('--k', String(1 - k));
+      setVar(el, '--k', 1 - k);
       const n = el.querySelector<HTMLElement>('.buff-stacks');
       if (n) n.textContent = String(p.count);
     }
