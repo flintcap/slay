@@ -13,7 +13,7 @@ Remake from nothing.
   hunched brute, quadruped, spider or insect, serpent, flyer, amorphous, giant.
   Write attach points (mouth, hands, weapon tip, chest) and hit and release
   frame events to `CONTRACTS.md`.
-- [ ] Undead and humanoid foes. Skeletons, zombies, ghouls, wraiths,
+- [x] Undead and humanoid foes. (wip(creatures): humanoid looks (goblins, bandits, cultists, priests, zealots, captain), crossbow aim, capes and tunics) Skeletons, zombies, ghouls, wraiths,
   cultists, bandits, mummies, whatever the list holds.
 - [ ] Beasts and insects. Wolves, spiders, bats, scorpions, hive things,
   swamp creatures.
@@ -84,12 +84,12 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 
 ## Next up
 
-1. Humanoid looks (`LookHumanoid.ts`): goblins, bandits, cultists, priests,
-   inquisitor, troglodyte, zealots, marauder, chanter, warlock, iron captain.
-   Register in `Looks.ts` FACTORIES. Render with
-   `SLAY_PORT=4325 timeout 900 node tools/creature-sheet.mjs lineup --ids=family:humanoid --out=<scratch>`.
-2. Then beasts, insects, demons, constructs, elementals, aberrations,
-   plants, oozes, then the 24 bosses.
+1. Insects (`LookBug.ts`, family insect, 13 ids incl. spiders and acid
+   larva): many-leg rig and `PoseBug.ts`. `acid_larva` is the one old body
+   that fails check-monster-anim (run:tail 0.38); its remake fixes that.
+   Then tick "Beasts and insects" (beasts are in `LookBeast.ts`).
+2. Then demons, constructs, elementals, aberrations, plants, oozes, then the
+   24 bosses.
 3. Corpses that stay (a static skinned copy left at deathT 1, capped), rank
    rims to match nameplates (champion 0x6f8cff, elite 0xf5d76e, rare
    0xffa040), mini-boss flair, boss phase glow.
@@ -112,4 +112,11 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
   Corpses that stay must be a copy we leave behind, not a change there.
 - heroes deleted the old `BodyKit.ts`; `MonsterModels.ts` imports
   `mergeSkinned` and `skinRigid` from `src/art/hero/Skinning.ts`.
+- In-game size is look size times the data's `scale` (a dire rat is 0.5,
+  a leviathan 2.4). Sculpt at a working size and set `size` on the look so
+  the product lands right (`CreatureLook.size`).
+- IK hands over to the pose by blending joint turns (`ikW`), so deaths and
+  lunges never flip a knee.
+- Render one family: `SLAY_PORT=4325 timeout 900 node tools/creature-sheet.mjs lineup --ids=family:<f> --out=<scratch>`;
+  `side` and `big` and `poses` sheets take the same ids.
 - Do not change monster stats or counts. Never make monsters weaker or fewer.
