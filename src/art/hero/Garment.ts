@@ -52,7 +52,8 @@ export function garment(
         (spec.cell ?? 0.01) * body.garmentScale,
         spec.clips,
         spec.thickness,
-        spec.tris ?? 1800,
+        // A coarser body (townspeople) gets fewer triangles to match.
+        Math.round((spec.tris ?? 1800) / (body.garmentScale * body.garmentScale)),
         spec.skinGroups ?? spec.groups,
         true,
       );

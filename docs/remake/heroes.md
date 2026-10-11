@@ -1,6 +1,6 @@
 # Stream: heroes (player bodies, faces, skeleton, animation, worn armour)
 
-Status: in progress
+Status: done
 
 Goal: every class looks and moves like a Diablo II or Path of Exile hero.
 Whole body, face, walk, attacks: remade from nothing. Delete the old body kit
@@ -30,15 +30,17 @@ and animator when done.
   (aimed, self, ground), channel, dodge, hit react, stun, knockdown, death.
   Anticipation, weight and follow-through. Hit and release frames match
   `src/entities/Abilities.ts` and `src/scenes/SkillRunner.ts`.
-- [ ] Switch and clean. Character select, paperdoll, town and dungeon all use
+- [x] Switch and clean. (`heroes: switch to the new hero everywhere, delete the old body kit and animator, portraits from the models`) Character select, paperdoll, town and dungeon all use
   the new hero. Delete `BodyKit.ts`, the old `Animation.ts` clips and every
   reference. Class portraits redrawn from the new models.
 
 ## Checkers
 
-`check-body`, `check-clips`, `check-footplant`, `check-grips`, `check-equip`,
-`check-gear-visuals`, `tools/art-sheet.mjs`. Update or replace them as the
-new system lands.
+`check-hero` replaces the old body checkers (`check-body`, `check-footplant`,
+`check-grips`, `check-strikes`, `check-reactions`, `solve-grips`,
+`shot-poses`, `pose-sheet`, all deleted with the old body). Still useful:
+`check-clips`, `check-equip`, `check-gear-visuals` (held items and worn
+armour), `models-sheet.mjs classes,npcs`, `art-sheet.mjs portraits`.
 
 New: `SLAY_PORT=4324 timeout 900 node tools/check-hero.mjs` (heights, soles,
 skin weights, budgets, eyes, cache). Sheets to look at:
@@ -87,21 +89,43 @@ lands exactly on the game's contact time.
 
 ## Next up
 
-1. Switch and clean. Character select, paperdoll, town and dungeon build
-   `buildHero` + `HeroAnimator` (via `src/scenes/HeroModel.ts`), hold weapons
-   with `holdItem`, and pass the weapon category to `setWeapon(grip,
-   category)` so spears pick the spear chain. Call `loadMeshCache()` at boot.
-   Then delete `BodyKit.ts`, the old `Animation.ts` and every reference (keep
-   what `NpcModels.ts`, `Town` and `MonsterModels.ts` import working:
-   `Skinning.ts` has `mergeSkinned`/`skinRigid` replacements), update the old
-   tools that import the old animator, redraw portraits, and show zero grep
-   hits for the old names in the commit.
+Nothing: every milestone is ticked. See "Handover".
 
 Render: `SLAY_PORT=4324 timeout 900 node tools/hero-sheet.mjs bodies,faces,extremities,poses,gear,clips,stances [--class=warden] [--kit=plate] [--rarity=unique] [--stance=shield]`
 writes `shots/heroes/*.png` in seconds. Check: `node tools/check-hero.mjs`.
 Actions: `hero-sheet.mjs actions --class=warden --stance=oneHand [--weapon=axe]
 --actions=attack1#0,attack1#1,slam` (two views a row, contact frame
 outlined, a post where the foe stands); `probe` prints hand and blade per key.
+
+## Handover
+
+- **What exists.** Every player hero is `DressedHero` in
+  `src/scenes/HeroModel.ts`: `buildHero(look)` (body, face, hair, eyes,
+  undergarments) + armour grown from `ItemLook` (`hero/Armour.ts`) + held
+  items in hand sockets (`hero/Hold.ts`, `weaponGrip`) + `HeroAnimator`.
+  `Player`, the paperdoll (`ui/PaperdollView.ts`), character select
+  (`buildClassHero`, `buildCharacterHero`), the showcase scene and the class
+  portraits all go through it. The rig and events are in `CONTRACTS.md`
+  ("Hero rig", "src/scenes/HeroModel.ts").
+- **Portraits** (`src/art/Portraits.ts`): rendered from the class hero in its
+  field kit, head and shoulders, in a throwaway offscreen context, cached in
+  memory and localStorage (key carries `MESH_VERSION`). The select panel
+  shows a dark class-coloured frame until it lands.
+- **Camp residents** were bridged onto the hero rig (`src/art/NpcModels.ts`,
+  `QUALITY_RESIDENT` in `hero/Body.ts`: coarser cells and fewer triangles).
+  npcs owns the real remake; see their notes.
+- **Deleted:** `BodyKit.ts`, `CharacterModels.ts`, `Animation.ts`,
+  `WornGear.ts`, old `Secondary.ts`, the painted portraits, and the old body
+  tools. `MonsterModels.ts` takes `mergeSkinned`/`skinRigid` from
+  `hero/Skinning.ts`. `GearLook.ts` stays: `ItemLook` (items) builds on it.
+- **Boot:** `main.ts` calls `loadMeshCache()`. A cold first visit meshes the
+  player (3-5 s) and nine residents (about 20 s headless); later visits read
+  IndexedDB in milliseconds. Town measured under SwiftShader: 686 draw calls
+  (old body: 800), frame time the same as before.
+- **Left for `finish`:** meshing on the main thread is the one cost worth
+  moving (a worker, or building residents over several frames); the field
+  kit sword on the select plinth sits a little high in the hand; `PLAN.md`
+  still lists the deleted files under heroes' ownership.
 
 ## Notes for resume
 
