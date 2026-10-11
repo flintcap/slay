@@ -13,7 +13,7 @@ import { MONSTERS } from '../src/data/monsters';
 import { BOSSES } from '../src/data/bosses';
 import { preloadSets } from '../src/art/TextureSets';
 import { lookFor } from '../src/art/creatures/Looks';
-import { instanceCreature, rankTier } from '../src/art/creatures/Creature';
+import { clearCorpses, instanceCreature, miniBossFlair, rankTier } from '../src/art/creatures/Creature';
 import { CreatureAnimator, type RigAction, type CreatureInfo } from '../src/art/creatures/Animator';
 import { Random } from '../src/core/RNG';
 
@@ -276,12 +276,56 @@ export async function poses(ids: string[]): Promise<string> {
   return c.toDataURL('image/png');
 }
 
+const RANK_COLS = ['normal', 'champion', 'elite', 'rare', 'mini-boss', 'corpse'];
+
+/** One row per monster: each rank's look, the mini-boss crown, and the body it leaves. */
+export async function ranks(ids: string[]): Promise<string> {
+  await ready();
+  const list = entries(ids);
+  const cw = 200;
+  const chh = 240;
+  const { c, g } = sheet(RANK_COLS.length, cw, chh, list.length, `ranks: ${RANK_COLS.join(' ')}`);
+  const r = studio(cw, chh - 20);
+  const cam = new THREE.PerspectiveCamera(32, cw / (chh - 20), 0.05, 200);
+  for (let row = 0; row < list.length; row++) {
+    const e = list[row]!;
+    for (let col = 0; col < RANK_COLS.length; col++) {
+      const what = RANK_COLS[col]!;
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1c1f27);
+      lights(scene, 'dungeon');
+      scene.add(new THREE.Mesh(new THREE.CircleGeometry(6, 32).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2b2a28, roughness: 1 })));
+      try {
+        const rank = what === 'mini-boss' ? 'rare' : what === 'corpse' ? 'elite' : what;
+        const m = build(e, rank);
+        scene.add(m.root);
+        if (what === 'mini-boss') miniBossFlair(m.root, rank);
+        drive(m.anim, m.root, what === 'corpse' ? 'death' : 'idle');
+        const info = m.root.userData.creature as CreatureInfo;
+        const sz = m.look.size ?? 1;
+        frame(cam, info.height * 1.1 * sz, 0.7, info.height * 0.5 * sz, 0.25, info.length * 1.3 * sz);
+        r.render(scene, cam);
+      } catch (err) {
+        console.log(String((err as Error).stack ?? err));
+      }
+      const x = col * cw;
+      const y = row * chh + 28;
+      g.drawImage(r.domElement, x, y);
+      g.fillStyle = DIM;
+      g.fillText(col === 0 ? e.id.slice(0, 22) : what, x + 4, y + chh - 6);
+    }
+  }
+  clearCorpses();
+  return c.toDataURL('image/png');
+}
+
 export const SHEETS: Record<string, (ids: string[]) => Promise<string>> = {
   lineup: (ids) => lineup(ids),
   game: (ids) => lineup(ids, 'dungeon'),
   big: (ids) => lineup(ids, 'studio', true),
   side: (ids) => lineup(ids, 'studio', true, Math.PI / 2),
   poses,
+  ranks,
 };
 
 void rankTier;

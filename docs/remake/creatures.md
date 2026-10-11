@@ -19,12 +19,12 @@ Remake from nothing.
   swamp creatures.
 - [x] Demons, elementals and the rest. (wip(creatures): ooze looks (spawn, slimes, tar, gelatinous cube, magma, plague, glass, void, devourer)) Imps, hellhounds, golems, frost and
   fire things, void things.
-- [ ] Animation. Per rig: idle, walk, run, two or more attacks, cast, hit,
+- [x] Animation. (wip(creatures): bodies stay where they fall; rank rims in plate colours; mini-boss crown; boss phases burn hotter) Per rig: idle, walk, run, two or more attacks, cast, hit,
   stagger, death (a real fall, then the body stays), spawn (climb from the
   ground, drop from above).
-- [ ] Bosses and mini-bosses. Each boss unique, large, with a silhouette you
+- [x] Bosses and mini-bosses. (wip(creatures): all 24 boss looks, sized 4 to 6 m by scale; bosses in the anim check) Each boss unique, large, with a silhouette you
   know at a glance, phase changes you can see.
-- [ ] Ranks and affixes. Champion, elite, rare and affix looks (tints, auras,
+- [x] Ranks and affixes. (wip(creatures): bodies stay where they fall; rank rims in plate colours; mini-boss crown; boss phases burn hotter) Champion, elite, rare and affix looks (tints, auras,
   size) that read at a glance without hiding the model.
 - [ ] Switch and clean. Delete old `MonsterModels.ts` builders and the old
   `MonsterAnimation.ts` and every reference. Boss portraits redrawn from the
@@ -84,23 +84,13 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 
 ## Next up
 
-1. The 24 bosses (4 to 6 m in game), one look each, in a new
-   `LookBoss.ts` (split it if it grows past about 1500 lines). Reuse the
-   family helpers: demons (`LookDemon.ts`: `fiendLook`, `demonWings`,
-   `horns`, `eyesAt`, `backSpines`, `flames`), constructs
-   (`LookConstruct.ts`: `botLook`, `floatLook`, `gear`, `lens`, `mechArms`,
-   `mechLegs`, `shield`), elementals (`LookElemental.ts`: `walkLook`,
-   `wispLook`, `bolt`, `crystals`, `facet`, `prism`), aberrations
-   (`LookAberration.ts`: `blobLook`, `eyeLook`, `tentacle`, `eyeball`,
-   `maw`, `squidHead`, `hangers`), plants (`LookPlant.ts`: `cap`, `leaf`,
-   `thorns`, `branch`, `petals`, `mossBeard`), oozes (`LookOoze.ts`:
-   `mass`, `drips`, `bubbles`, `skullAt`).
-2. Corpses that stay (a static skinned copy left at deathT 1, capped), rank
-   rims to match nameplates (champion 0x6f8cff, elite 0xf5d76e, rare
-   0xffa040), mini-boss flair, boss phase glow.
-3. Switch and clean: when every id has a look, delete the old builders in
-   `MonsterModels.ts` and `LegacyRigAnimator` in `MonsterAnimation.ts`;
-   boss portraits from the new models.
+1. Switch and clean: delete the old builders in `MonsterModels.ts` and
+   `LegacyRigAnimator` in `MonsterAnimation.ts` (every id has a look now;
+   keep the exact rng draws in `buildMonsterModel`); grep shows no
+   references.
+2. Boss portraits (`src/art/BossPortraits.ts`) drawn from the new models.
+3. Polish if time: ashen prophet's plank wings, hive queen's dim wings, a
+   plainer stalker prime, boss triangle counts over 12k (13k to 18.7k).
 
 ## Notes for resume
 
@@ -114,7 +104,16 @@ monsters: same look, rank rim and glow, plus mini-boss flair.
 - Painted glow smears on coarse meshes. Eyes, boils, gems and candle flames
   are rigid parts (`s.eye`, `s.boil`); keep painted glow for broad soft areas.
 - `Enemy.ts` (not ours) sinks bodies after deathT 1 and removes them at 1.45.
-  Corpses that stay must be a copy we leave behind, not a change there.
+  The animator leaves a frozen copy (`leaveCorpse` in `Creature.ts`) in the
+  scene at deathT 1 and hides the live body; 36 stay, oldest cleared first,
+  all cleared by `disposeCreatures`. Ghosts (`fade`), swarms and hovering
+  wisps leave nothing.
+- Rank rims use the nameplate colours (`RANK_RIM`); the boss rim is soft
+  (.28) so boss colours survive. Mini-bosses get a spiked crown on the
+  head socket (`miniBossFlair`, from `MiniBoss.ts`). Boss phases swap to
+  private hotter materials (`heatCreature`, from `setPhase`).
+- `creature-sheet.mjs ranks --ids=...` renders normal, champion, elite,
+  rare, mini-boss and corpse side by side.
 - heroes deleted the old `BodyKit.ts`; `MonsterModels.ts` imports
   `mergeSkinned` and `skinRigid` from `src/art/hero/Skinning.ts`.
 - In-game size is look size times the data's `scale` (a dire rat is 0.5,

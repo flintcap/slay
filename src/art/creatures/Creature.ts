@@ -236,7 +236,7 @@ export function miniBossFlair(root: THREE.Object3D, rank: string): void {
     }
     const geo = mergeGeometries(parts);
     for (const p of parts) p.dispose();
-    const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 2.2, roughness: 0.4, metalness: 0.6 });
+    const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.75, roughness: 0.45, metalness: 0.5 });
     f = { geo, mat };
     flairs.set(col, f);
   }
