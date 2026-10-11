@@ -40,6 +40,13 @@ const DWELL = Number(arg('dwell') ?? 5);
 // --walk: after the map loads, stand by monster after monster and then the
 // boss, as a player exploring would, and list the stalls on the way.
 const WALK = process.argv.includes('--walk');
+// --no-select: straight from the title to town (a shorter run).
+const SELECT = !process.argv.includes('--no-select');
+// Stops on the walk, and frames at each; frames of the fight after it.
+const STOPS = Number(arg('stops') ?? 10);
+const STOP_FRAMES = Number(arg('stop-frames') ?? 24);
+const FIGHT_FRAMES = Number(arg('fight') ?? 250);
+const [VW, VH] = (arg('size') ?? '1280x720').split('x').map(Number);
 
 const server = await serveSingle(PORT);
 
@@ -47,7 +54,7 @@ const profile = mkdtempSync(path.join(tmpdir(), 'slay-loadtime-'));
 const context = await chromium.launchPersistentContext(profile, {
   executablePath: CHROME_PATH,
   args: CHROME_ARGS,
-  viewport: { width: 1280, height: 720 },
+  viewport: { width: VW, height: VH },
 });
 
 // Installed before any page script: boot-bar steps and long tasks, stamped
@@ -119,21 +126,28 @@ async function visit(label) {
   await page.waitForFunction(() => window.SLAY?.engine?.currentSceneId === 'title', null, { timeout: 900000, polling: 100 });
   const titleAt = await page.evaluate(() => Math.round(performance.now()));
   await cut('boot');
+  console.log(`[${label}] title scene live at ${titleAt} ms`);
+  if (PROFILE) printProfile('boot', profiles[profiles.length - 1][1]);
   // Let the boot screen fade and the title settle, as a player would see it.
   await page.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
   await cut('title, 1.5 s');
 
+  // Each phase reports as it ends, so a run cut short still says something.
   const phase = async (name, fn, a) => {
     const t0 = await page.evaluate(() => performance.now());
     await page.evaluate(fn, a);
     const t1 = await page.evaluate(() => performance.now());
     await cut(name);
+    const ls = await page.evaluate(([a, b]) => window.__lt.long.filter(([t]) => t >= a && t < b).map(([, d]) => d), [t0, t1]);
+    const top = ls.slice().sort((x, y) => y - x).slice(0, 6);
+    console.log(`[${label}] ${name}: ${Math.round(t1 - t0)} ms; ${ls.length} long tasks, ${ls.reduce((x, y) => x + y, 0)} ms, biggest ${top.join(', ')}`);
+    if (PROFILE && profiles.length) printProfile(name, profiles[profiles.length - 1][1]);
     return { name, t0: Math.round(t0), ms: Math.round(t1 - t0) };
   };
   const phases = [];
   // The way a new player goes: a moment on the title, the select screen,
   // then town with a fresh warden.
-  phases.push(
+  if (SELECT) phases.push(
     await phase('select screen', async () => {
       localStorage.clear();
       window.SLAY.save.hardReset();
@@ -141,9 +155,13 @@ async function visit(label) {
       for (let i = 0; i < 10; i++) await new Promise((r) => requestAnimationFrame(r));
     }),
   );
-  phases.push(await phase(`select, ${DWELL} s dwell`, (s) => new Promise((r) => setTimeout(r, s * 1000)), DWELL));
+  if (SELECT) phases.push(await phase(`select, ${DWELL} s dwell`, (s) => new Promise((r) => setTimeout(r, s * 1000)), DWELL));
   phases.push(
     await phase('first town', async () => {
+      if (window.SLAY.engine.currentSceneId === 'title') {
+        localStorage.clear();
+        window.SLAY.save.hardReset();
+      }
       window.SLAY.debug.makeCharacter('warden', 1, 4242);
       await window.SLAY.engine.goTo('town');
       for (let i = 0; i < 10; i++) await new Promise((r) => requestAnimationFrame(r));
@@ -158,7 +176,7 @@ async function visit(label) {
     );
     if (WALK) {
       phases.push(
-        await phase('walk the map', async () => {
+        await phase('walk the map', async ({ stopsMax, frames }) => {
           const scene = window.SLAY.engine.currentScene;
           window.SLAY.debug.godMode(true);
           const raf = () => new Promise((r) => requestAnimationFrame(r));
@@ -168,7 +186,7 @@ async function visit(label) {
           const left = (scene.enemies ?? []).filter((e) => e !== scene.boss);
           const stops = [];
           let at = p.position.clone();
-          while (left.length && stops.length < 24) {
+          while (left.length && stops.length < stopsMax) {
             let bi = 0;
             let bd = Infinity;
             left.forEach((e, i) => {
@@ -190,21 +208,29 @@ async function visit(label) {
             const t = performance.now();
             p.position.set(e.root.position.x + 4, p.position.y, e.root.position.z + 4);
             p.root.position.copy(p.position);
-            for (let i = 0; i < 40; i++) await raf();
+            for (let i = 0; i < frames; i++) await raf();
             window.__lt.stops.push([Math.round(t), e === scene.boss ? 'boss' : e.def?.id ?? '?']);
           }
-        }),
+        }, { stopsMax: STOPS, frames: STOP_FRAMES }),
       );
+      const lt = await page.evaluate(() => window.__lt);
+      console.log(`walk stops (ms, monster, long tasks until the next stop):`);
+      for (let i = 0; i < (lt.stops ?? []).length; i++) {
+        const [t, id] = lt.stops[i];
+        const end = lt.stops[i + 1]?.[0] ?? Infinity;
+        const ls = lt.long.filter(([a]) => a >= t && a < end).map(([, d]) => d);
+        console.log(`  ${String(t).padStart(7)}  ${String(id).padEnd(24)} ${ls.join(', ')}`);
+      }
       // Then fight (the soak's autopilot: attack the nearest, a hotbar skill
       // every 25 frames), so first casts, hits, deaths and summons show.
       phases.push(
-        await phase('fight', async () => {
+        await phase('fight', async (frames) => {
           const e = window.SLAY.engine;
           const scene = e.currentScene;
           const input = e.input;
           const raf = () => new Promise((r) => requestAnimationFrame(r));
           const v = new scene.player.position.constructor();
-          for (let i = 0; i < 500; i++) {
+          for (let i = 0; i < frames; i++) {
             if (e.currentScene !== scene) break;
             const p = scene.player.position;
             let best = null;
@@ -236,7 +262,7 @@ async function visit(label) {
             await raf();
           }
           input.mouseRight = false;
-        }),
+        }, FIGHT_FRAMES),
       );
     }
     // A few seconds of play in the map: what stalls once the fade is up.
@@ -277,16 +303,6 @@ async function visit(label) {
     const top = ls.map(([, d]) => d).sort((x, y) => y - x).slice(0, 6);
     console.log(`  ${name.padEnd(16)} ${String(ls.length).padStart(4)}  ${String(sum).padStart(7)}  ${top.join(', ')}`);
   }
-  if (lt.stops?.length) {
-    console.log('walk stops (ms, monster, long tasks in the next 40 frames):');
-    for (let i = 0; i < lt.stops.length; i++) {
-      const [t, id] = lt.stops[i];
-      const end = lt.stops[i + 1]?.[0] ?? Infinity;
-      const ls = lt.long.filter(([a]) => a >= t && a < end).map(([, d]) => d);
-      console.log(`  ${String(t).padStart(7)}  ${String(id).padEnd(24)} ${ls.join(', ')}`);
-    }
-  }
-  for (const [name, prof] of profiles) printProfile(name, prof);
   if (errors.length) console.log(`errors:\n  ${[...new Set(errors)].slice(0, 6).join('\n  ')}`);
   const out = { label, mbps: MBPS, titleMs: titleAt, phases: phases.map((p) => [p.name, p.ms]), totalKB, errors: errors.length };
   console.log(JSON.stringify(out));
