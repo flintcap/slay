@@ -22,6 +22,17 @@ import type { Stance } from '../src/art/hero/Stances';
 import type { HeroModel } from '../src/art/hero/Hero';
 import { buildItemModel } from '../src/art/ItemModels';
 import { Random } from '../src/core/RNG';
+import { allSetNames, setTextures } from '../src/art/TextureSets';
+import { textureReady } from '../src/core/Assets';
+
+/** Every world texture set decoded, so a sheet shows the scans and not their flat fallbacks. */
+async function scansReady(): Promise<void> {
+  const ts = allSetNames().flatMap((n) => {
+    const t = setTextures(n);
+    return [t.albedo, t.normal];
+  });
+  await Promise.all(ts.map((t) => textureReady(t)));
+}
 
 const BG = '#16181e';
 const INK = '#c9d1de';
@@ -753,16 +764,18 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
    */
   async wear(f) {
     // Every base of one worn slot on one hero, framed on that slot: --slot= --class= --rarity= --unique= --set=
+    await scansReady();
     profileBodies(true);
     const cls = (f.class ?? 'warden') as CharClassId;
     const slot = f.slot ?? 'chest';
     const rarity = (f.rarity ?? 'normal') as ItemRarity;
-    const bases = ITEM_BASES.filter((b) => b.slot === slot);
+    const bases = ITEM_BASES.filter((b) => b.slot === slot && (!f.bases || f.bases.split(',').includes(b.id)));
     const frameOf: Record<string, { y: number; dist: number }> = { helm: { y: 0.9, dist: 1.5 }, chest: { y: 0.55, dist: 3.6 }, gloves: { y: 0.55, dist: 2.6 }, boots: { y: 0.15, dist: 1.8 }, belt: { y: 0.52, dist: 1.6 } };
-    const fr = frameOf[slot] ?? { y: 0.52, dist: 4.2 };
+    const fr0 = frameOf[slot] ?? { y: 0.52, dist: 4.2 };
+    const fr = { y: Number(f.y ?? fr0.y), dist: Number(f.dist ?? fr0.dist) };
     const cols = Number(f.cols ?? 6);
-    const TW = 220;
-    const TH = slot === 'chest' ? 380 : 260;
+    const TW = Number(f.tw ?? 220);
+    const TH = Number(f.th ?? (slot === 'chest' ? 380 : 260));
     const rows = Math.ceil(bases.length / cols);
     const { c, g } = sheet(TW * cols, TH * rows);
     bases.forEach((base, i) => {
@@ -783,6 +796,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     return c.toDataURL('image/png');
   },
   async dressed(f) {
+    await scansReady();
     profileBodies(true);
     const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
     const bodySlots = ['helm', 'chest', 'gloves', 'boots', 'belt'];

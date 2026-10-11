@@ -15,6 +15,7 @@ import type { GarmentSpec } from './Garment';
 import type { Clip } from './Mesher';
 import { Field, FieldBuilder, alongY, rot, type Prim } from './Sdf';
 import { Kit, V, basis, fract, hem, smooth, type Anchor, type F3, type MatKey } from './ArmourKit';
+import { patternedMaterial, type ArmourPattern } from './HeroMaterials';
 
 type Layer = 'gambeson' | 'robe' | 'jerkin' | 'hauberk' | 'scales' | 'cuirass';
 type Pattern = 'plain' | 'folds' | 'quilt' | 'lace' | 'rings' | 'chain' | 'scales' | 'hide' | 'splints' | 'shell' | 'fluted' | 'lames';
@@ -168,26 +169,41 @@ function arc(k: Kit): (x: number, z: number) => number {
   return (x, z) => Math.atan2(x, z - cz) * R;
 }
 
-/** The surface pressed into a layer, as a thickness. */
+/** Patterns drawn in the shader (`ARMOUR_PATTERNS`): the mesh under them stays smooth. */
+const RELIEF: Partial<Record<Pattern, ArmourPattern>> = { quilt: 'quilt', rings: 'rings', scales: 'scales', hide: 'hide', splints: 'splints', shell: 'shell' };
+
+/**
+ * A layer's material, with its pattern drawn in when the pattern is a relief.
+ * The twin takes the slot for the whole piece, so the parts cut from it
+ * after the layer (pauldrons, a coif) carry the same relief and still merge
+ * into one draw.
+ */
+function reliefMat(k: Kit, mat: MatKey, p: Pattern): MatKey {
+  const r = RELIEF[p];
+  if (r) k.useMat(mat, patternedMaterial(k.mat(mat), r, k.h));
+  return mat;
+}
+
+/**
+ * The surface pressed into a layer, as a thickness. Fine reliefs (quilting,
+ * rings, scales, splints, a shell's ridges) are drawn by the material
+ * instead (`reliefMat`): pressed into the mesh they were finer than its
+ * cells and came out as crumpled facets.
+ */
 function patterned(k: Kit, p: Pattern, t: number): F3 {
   const h = k.h;
   const U = arc(k);
   switch (p) {
     case 'plain':
     case 'chain':
+    case 'quilt':
+    case 'rings':
+    case 'scales':
+    case 'hide':
+    case 'splints':
       return () => t;
     case 'folds':
       return (x, y, z) => t + Math.max(-0.003, Math.sin(Math.atan2(x, z) * 9 + Math.sin(y * 9) * 0.6) * 0.011 * smooth(4.0 * h, 1.4 * h, y));
-    case 'quilt': {
-      const row = 0.07;
-      const col = 0.085;
-      return (x, y, z) => {
-        const r = Math.floor(y / row);
-        const fy = fract(y / row);
-        const fu = fract(U(x, z) / col + (r & 1) * 0.5);
-        return t + 0.0045 * Math.sin(Math.PI * fy) * (0.5 + 0.5 * Math.sin(Math.PI * fu));
-      };
-    }
     case 'lace':
       // A laced seam down the front, panel seams down the sides.
       return (x, y, z) => {
@@ -197,43 +213,9 @@ function patterned(k: Kit, p: Pattern, t: number): F3 {
         const side = 1 - smooth(0.004, 0.012, Math.abs(Math.abs(U(x, z)) - 0.2));
         return t - 0.0035 * front * seam + cross * front - 0.0015 * side;
       };
-    case 'rings': {
-      const s = 0.03;
-      return (x, y, z) => {
-        const r = Math.floor(y / s);
-        const fu = fract(U(x, z) / s + (r & 1) * 0.5) - 0.5;
-        const fy = fract(y / s) - 0.5;
-        const d = Math.hypot(fu, fy);
-        return t + 0.0032 * Math.max(0, 1 - Math.abs(d - 0.3) / 0.13);
-      };
-    }
-    case 'scales':
-    case 'hide': {
-      const sw = p === 'scales' ? 0.05 : 0.032;
-      const sh = p === 'scales' ? 0.038 : 0.026;
-      const depth = p === 'scales' ? 0.0065 : 0.0045;
-      return (x, y, z) => {
-        const r = Math.floor(-y / sh);
-        const fy = fract(-y / sh);
-        const fu = fract(U(x, z) / sw + (r & 1) * 0.5) * 2 - 1;
-        const edge = 1 - 0.45 * fu * fu;
-        const bump = fy < edge ? fy / edge : 0.15;
-        return t + depth * bump;
-      };
-    }
-    case 'splints':
-      return (x, y, z) => {
-        const fu = fract(U(x, z) / 0.046);
-        const strip = fu > 0.12 && fu < 0.88 ? 1 : 0;
-        const gap = fract(y / 0.17) < 0.07 ? 0 : 1;
-        return t + 0.0055 * strip * gap;
-      };
     case 'shell':
-      return (x, y, z) => {
-        const fy = fract(-y / 0.085);
-        const keel = 1 - smooth(0, 0.14 * h, Math.abs(x));
-        return t + 0.0075 * fy * fy + 0.004 * keel * smooth(0, 0.2 * h, z);
-      };
+      // The keel stays in the mesh; the growth ridges are drawn.
+      return (x, _y, z) => t + 0.004 * (1 - smooth(0, 0.14 * h, Math.abs(x))) * smooth(0, 0.2 * h, z);
     case 'fluted':
       return (x, y, z) => {
         const f = Math.cos((U(x, z) / 0.042) * Math.PI);
@@ -270,7 +252,7 @@ function layer(
   k: Kit,
   name: string,
   mat: MatKey,
-  o: { sleeve: number; hem: number; t: F3; neck: [number, number]; flare?: number; tris?: number; skirtPad?: number; trimW?: number; extra?: Prim[]; noTrim?: boolean },
+  o: { sleeve: number; hem: number; t: F3; neck: [number, number]; flare?: number; tris?: number; skirtPad?: number; trimW?: number; extra?: Prim[]; noTrim?: boolean; relief?: Pattern },
 ): { spec: GarmentSpec; clips: Clip[] } {
   const h = k.h;
   const arms = o.sleeve > 0;
@@ -295,8 +277,9 @@ function layer(
     tris: o.tris ?? (long ? 4600 : 3600),
     yRange: [(o.hem - 0.15) * h, 6.6 * h],
   };
-  if (o.noTrim) k.shell(name, mat, spec);
-  else k.edged(name, mat, spec, o.trimW ?? 0.07);
+  const m = o.relief ? reliefMat(k, mat, o.relief) : mat;
+  if (o.noTrim) k.shell(name, m, spec);
+  else k.edged(name, m, spec, o.trimW ?? 0.07);
   return { spec, clips };
 }
 
@@ -343,14 +326,33 @@ function pauldrons(k: Kit, kind: Pauldron, n: number, cut: ChestCut): void {
       return k.onLimb(up, fore, 0.02 + 0.15 * i, V(s * 0.75, 0.66, -0.05), [g, G.torso]);
     };
     if (kind === 'shell') {
-      // A nautilus whorl, coiling down the arm.
+      // A ribbed sea shell over the shoulder: a broad dome, ridges fanning
+      // from its crown, spines round its rim and a curl of whorl on top.
+      const hp = lameAt(0);
+      const q = alongY(hp.n);
+      const crown = hp.p.clone().addScaledVector(hp.n, 0.1 * h);
+      F.ellipsoid(crown, V(0.56 * h, 0.26 * h, 0.52 * h), 0.01 * h, q);
+      const top = crown.clone().addScaledVector(hp.n, 0.25 * h);
+      const rim = (a: number, r = 1) => crown.clone().add(V(s * Math.cos(a) * 0.54 * h * r, -0.06 * h, Math.sin(a) * 0.5 * h * r));
       for (let i = 0; i < 7; i++) {
-        const a = i * 0.75;
-        const r = (0.32 - 0.035 * i) * h;
-        const hp = lameAt(0);
-        const c = hp.p.clone().add(V(s * Math.cos(a) * 0.22 * h, Math.sin(a) * 0.2 * h - 0.05 * h * i, -0.02 * h)).addScaledVector(hp.n, 0.05 * h);
-        F.ellipsoid(c, V(r, r * 0.8, r * 0.9), 0.03 * h, rot(0, 0, s * a));
+        const a = -1.35 + i * 0.45;
+        F.cone(top, rim(a, 1.02), 0.04 * h, 0.06 * h, 0.012 * h);
       }
+      const sp = k.fit('bone', g);
+      for (let i = 0; i < 5; i++) {
+        const a = -1.2 + i * 0.6;
+        const p0 = rim(a, 0.98);
+        const out = p0.clone().sub(crown).normalize();
+        sp.cone(p0, p0.clone().addScaledVector(out, 0.3 * h).add(V(0, 0.06 * h, 0)), 0.055 * h, 0.004 * h, 0.01 * h);
+      }
+      // The whorl: three shrinking turns on the crown.
+      const c0 = top.clone().add(V(s * 0.04 * h, 0.12 * h, -0.1 * h));
+      const at = (u: number) => {
+        const a = u * Math.PI * 1.8;
+        const R = 0.24 * h * (1 - 0.68 * u);
+        return c0.clone().add(V(s * 0.06 * h * u, Math.sin(a) * R, Math.cos(a) * R));
+      };
+      for (let i = 0; i < 8; i++) F.cone(at(i / 8), at((i + 1) / 8), 0.1 * h * (1 - 0.7 * (i / 8)), 0.1 * h * (1 - 0.7 * ((i + 1) / 8)), 0.005 * h);
       continue;
     }
     for (let i = 0; i < Math.max(1, n); i++) {
@@ -561,7 +563,7 @@ function collar(k: Kit, kind: Collar, mat: MatKey): void {
   if (kind === 'coif' || kind === 'mantle') {
     const mail = kind === 'coif';
     const clips: Clip[] = [k.neck(mail ? 6.15 : 6.0, mail ? 6.3 : 6.22), k.above(mail ? 5.45 : 5.25), k.sleeve(true, mail ? 0.35 : 0.5), k.sleeve(false, mail ? 0.35 : 0.5)];
-    k.edged(mail ? 'coif' : 'mantle', mail ? 'chain' : mat, {
+    k.edged(mail ? 'coif' : 'mantle', mail ? reliefMat(k, 'chain', 'rings') : mat, {
       groups: [G.torso, G.armL, G.armR],
       thickness: hem(mail ? patterned(k, 'rings', 0.0145) : 0.03, clips.map((c) => k.inside(c)), 0.03 * h, 0.6),
       clips,
@@ -708,7 +710,7 @@ export function chest(k: Kit): Anchor[] {
   const t = cut.t;
 
   if (cut.under) {
-    layer(k, 'hauberk', 'chain', { sleeve: cut.under.sleeve, hem: cut.under.hem, t: patterned(k, 'chain', 0.0085), neck: [6.05, 6.25], noTrim: true });
+    layer(k, 'hauberk', 'chain', { sleeve: cut.under.sleeve, hem: cut.under.hem, t: patterned(k, 'chain', 0.0085), neck: [6.05, 6.25], noTrim: true, relief: 'rings' });
   }
   const mat: MatKey = 'main';
   if (cut.layer === 'cuirass') {
@@ -717,13 +719,14 @@ export function chest(k: Kit): Anchor[] {
     const front = k.around(5.3, 0).p.z;
     if (cut.keel === 2) F.box(V(0, 5.25 * h, front - 0.22 * h), V(0.26 * h, 0.62 * h, 0.26 * h), 0.04 * h, 0.2 * h, rot(0, Math.PI / 4, 0));
     else if (cut.keel) F.ellipsoid(V(0, 5.3 * h, front - 0.12 * h), V(0.4 * h, 0.66 * h, 0.17 * h), 0.2 * h);
-    layer(k, 'cuirass', mat, { sleeve: 0, hem: cut.hem, t: patterned(k, cut.pattern, t + 0.003 * look.baseTier), neck: [6.02, 6.22], extra: F.prims, trimW: 0.07 });
+    layer(k, 'cuirass', mat, { sleeve: 0, hem: cut.hem, t: patterned(k, cut.pattern, t + 0.003 * look.baseTier), neck: [6.02, 6.22], extra: F.prims, trimW: 0.07, relief: cut.pattern });
   } else {
     const mailKey: MatKey = cut.layer === 'hauberk' && look.material === 'metal' ? 'chain' : mat;
     layer(k, cut.layer, mailKey, {
       sleeve: cut.sleeve,
       hem: cut.hem,
       t: patterned(k, cut.pattern, t),
+      relief: cut.pattern,
       neck: cut.layer === 'robe' ? [5.92, 6.2] : cut.layer === 'jerkin' ? [5.9, 6.18] : [6.02, 6.24],
       flare: cut.flare ?? (cut.layer === 'robe' ? 1.2 : 0.5),
       skirtPad: cut.layer === 'robe' ? 0.1 : 0.08,

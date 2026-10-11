@@ -24,7 +24,33 @@ const t0 = Date.now();
 const log = (m) => console.log(`[${Math.round((Date.now() - t0) / 1000)}s] ${m}`);
 const { page, close, pageErrors } = await bootGame({ fallbackPort: 4332, preview: true, viewport: { width: 1024, height: 576 } });
 log('booted');
-await page.addStyleTag({ content: '.story-card { display: none !important; }' });
+await page.addStyleTag({ content: '.story-card, *:has(> .ob-head) { display: none !important; }' });
+// What effects fire, by call and colour, so a loud one in a frame can be named.
+const probe = () =>
+  page.evaluate(() => {
+    const sc = window.SLAY.engine.currentScene;
+    const log = (window.__fxlog ??= {});
+    const wrap = (obj, names, tag) => {
+      if (!obj || obj.__wrapped) return;
+      obj.__wrapped = true;
+      for (const n of names) {
+        const f = obj[n];
+        if (typeof f !== 'function') continue;
+        obj[n] = function (...a) {
+          const nums = a.filter((v) => typeof v === 'number');
+          const o = a.find((v) => v && typeof v === 'object' && !v.isVector3 && !v.isObject3D) ?? {};
+          const key = `${tag}.${n}${typeof a[0] === 'string' ? ':' + a[0] : ''} r=${(o.radius ?? nums[nums.length > 3 ? 3 : 2] ?? '').toString().slice(0, 4)} c=${(o.color ?? nums.find((v) => v > 0xffff) ?? '').toString(16)}`;
+          log[key] = (log[key] ?? 0) + 1;
+          return f.apply(this, a);
+        };
+      }
+    };
+    wrap(sc.effects, ['nova', 'slam', 'cone', 'summonCircle', 'aura', 'shield', 'whirlwind', 'explosion', 'levelUp', 'bossPhase', 'meteor', 'cast', 'teleportIn', 'castFlare'], 'fx');
+    wrap(sc.decals, ['telegraph', 'telegraphEx', 'glow', 'add'], 'decal');
+    const out = { ...log };
+    for (const k of Object.keys(log)) delete log[k];
+    return out;
+  });
 let ok = true;
 const shoot = async (name) => {
   const file = path.join(OUT, `${name}.png`);
@@ -55,10 +81,13 @@ try {
         return { enemies: (sc.enemies ?? []).length, kinds: [...new Set((sc.enemies ?? []).map((e) => e.def?.id))].slice(0, 12) };
       }, b);
       log(`${b}: ${JSON.stringify(info)}`);
+      await probe();
       await frames(page, 20);
       await shoot(`l-${b}-a`);
+      log(`fx before a: ${JSON.stringify(await probe())}`);
       await frames(page, WAIT);
       await shoot(`l-${b}-b`);
+      log(`fx before b: ${JSON.stringify(await probe())}`);
     } catch (e) {
       ok = false;
       log(`failed ${b}: ${String(e.message).slice(0, 200)}`);

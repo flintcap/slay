@@ -43,13 +43,91 @@ interface TriOpts {
   roughVar: number;
   /** Multiplies the albedo map so its average lands on 1 (default 1.6, for scans pulled to 0.62). */
   albedoGain?: number;
+  /** A relief pressed into the surface in the shader (quilting, mail rings, scales): see `ARMOUR_PATTERNS`. */
+  pattern?: { kind: number; h: number };
 }
+
+/** The options each triplanar material was made with, so a patterned twin can be made from it. */
+const triOptsOf = new WeakMap<THREE.Material, TriOpts>();
+
+/**
+ * Armour reliefs drawn in the shader instead of pressed into the mesh. A
+ * relief a few centimetres across is finer than the mesher's cells and the
+ * decimator's budget, and pressed into the mesh it came out as crumpled
+ * facets and blotches. Here it is an exact height in bind space: the normal
+ * bends round it and its grooves darken, and it fades to its average where
+ * it would be finer than a few pixels.
+ */
+export const ARMOUR_PATTERNS = { quilt: 1, rings: 2, scales: 3, hide: 4, splints: 5, shell: 6 } as const;
+export type ArmourPattern = keyof typeof ARMOUR_PATTERNS;
+
+const PATTERN_GLSL = `
+uniform float patH;
+varying vec3 vPatPos;
+float patArc( vec3 p ) {
+  return atan( p.x, p.z + 0.04 * patH ) * 0.62 * patH;
+}
+float patHeight( vec3 p ) {
+  float U = patArc( p );
+#if PAT_KIND == 1
+  // Diamond quilting: puffed cells between stitched seams.
+  float u = U / 0.085;
+  float v = p.y / 0.085;
+  float pa = sin( PI * fract( u + v ) );
+  float pb = sin( PI * fract( u - v ) );
+  return sqrt( max( 0.0, pa * pb ) );
+#elif PAT_KIND == 2
+  // Mail: rows of interlocking rings.
+  float s = 0.024;
+  float r = floor( p.y / s );
+  vec2 f = vec2( fract( U / s + mod( r, 2.0 ) * 0.5 ), fract( p.y / s ) ) - 0.5;
+  float d = length( f );
+  return max( 0.0, 1.0 - abs( d - 0.3 ) / 0.14 );
+#elif PAT_KIND == 3 || PAT_KIND == 4
+  // Overlapping scales, each row over the one below.
+  #if PAT_KIND == 3
+    vec2 sz = vec2( 0.05, 0.038 );
+  #else
+    vec2 sz = vec2( 0.034, 0.027 );
+  #endif
+  float r = floor( -p.y / sz.y );
+  float fy = fract( -p.y / sz.y );
+  float fu = fract( U / sz.x + mod( r, 2.0 ) * 0.5 ) * 2.0 - 1.0;
+  float edge = 1.0 - 0.45 * fu * fu;
+  return fy < edge ? fy / edge : 0.12;
+#elif PAT_KIND == 5
+  // Splints: upright strips in bands.
+  float fu = fract( U / 0.046 );
+  float strip = smoothstep( 0.06, 0.14, fu ) * ( 1.0 - smoothstep( 0.86, 0.94, fu ) );
+  float fy = fract( p.y / 0.17 );
+  float gap = smoothstep( 0.03, 0.08, fy );
+  return strip * gap;
+#else
+  // A shell of broad curved plates, each lapping the one below, with growth lines.
+  float r = floor( -p.y / 0.065 );
+  float fy = fract( -p.y / 0.065 );
+  float fu = fract( U / 0.15 + mod( r, 2.0 ) * 0.5 ) * 2.0 - 1.0;
+  float edge = 1.0 - 0.3 * fu * fu;
+  float k = fy < edge ? fy / edge : 0.08;
+  return k * k * 0.85 + 0.15 * ( 0.5 + 0.5 * sin( k * 18.85 ) );
+#endif
+}
+`;
+
+/** Depth of each relief in metres, and the period it repeats at (for the fade). */
+const PATTERN_DEPTH: Record<number, [number, number]> = { 1: [0.006, 0.085], 2: [0.0022, 0.024], 3: [0.006, 0.038], 4: [0.0045, 0.027], 5: [0.005, 0.046], 6: [0.007, 0.065] };
 
 /** Patches a standard material to sample its maps triplanar in bind space. */
 function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
-  const key = `tri|${o.albedo ? 'a' : ''}`;
+  const key = `tri|${o.albedo ? 'a' : ''}|${o.pattern?.kind ?? 0}`;
+  triOptsOf.set(m, o);
   m.customProgramCacheKey = () => key;
+  const pat = o.pattern;
   m.onBeforeCompile = (sh) => {
+    if (pat) {
+      sh.uniforms.patH = { value: pat.h };
+      sh.defines = { ...(sh.defines ?? {}), TRI_PATTERN: '', PAT_KIND: String(pat.kind), PAT_DEPTH: PATTERN_DEPTH[pat.kind]![0].toFixed(5), PAT_PERIOD: PATTERN_DEPTH[pat.kind]![1].toFixed(4) };
+    }
     sh.uniforms.triAlbedo = { value: o.albedo ?? null };
     sh.uniforms.triNormal = { value: o.normal };
     sh.uniforms.triScale = { value: o.scale };
@@ -66,11 +144,17 @@ varying vec3 vTriPos;
 varying vec3 vTriN;
 varying vec3 vB2V0;
 varying vec3 vB2V1;
-varying vec3 vB2V2;`,
+varying vec3 vB2V2;
+#ifdef TRI_PATTERN
+varying vec3 vPatPos;
+#endif`,
       )
       .replace(
         '#include <worldpos_vertex>',
         `#include <worldpos_vertex>
+#ifdef TRI_PATTERN
+vPatPos = position;
+#endif
 vTriPos = position * triScale;
 vTriN = normal;
 #ifdef USE_SKINNING
@@ -95,11 +179,21 @@ varying vec3 vTriPos;
 varying vec3 vTriN;
 varying vec3 vB2V0;
 varying vec3 vB2V1;
-varying vec3 vB2V2;`,
+varying vec3 vB2V2;
+#ifdef TRI_PATTERN
+${PATTERN_GLSL}
+#endif`,
       )
       .replace(
         '#include <map_fragment>',
         `vec3 triNb = normalize( vTriN );
+#ifdef TRI_PATTERN
+  // Fade the relief out where it repeats in fewer than a few pixels.
+  float patPx = length( fwidth( vPatPos ) );
+  float patFade = 1.0 - smoothstep( PAT_PERIOD * 0.12, PAT_PERIOD * 0.3, patPx );
+  float patH0 = patHeight( vPatPos );
+  diffuseColor.rgb *= mix( 0.8, mix( 0.62, 1.08, patH0 ), patFade );
+#endif
 vec3 triW = pow( abs( triNb ), vec3( 4.0 ) );
 triW /= ( triW.x + triW.y + triW.z );
 vec4 triNx = texture2D( triNormal, vTriPos.zy );
@@ -128,6 +222,19 @@ roughnessFactor = clamp( roughnessFactor * mix( 1.0, triR * 1.4, triRoughVar ), 
   ty = vec3( ty.xy + triNb.xz, abs( ty.z ) * triNb.y );
   tz = vec3( tz.xy + triNb.xy, abs( tz.z ) * triNb.z );
   vec3 bn = normalize( tx.zyx * triW.x + ty.xzy * triW.y + tz.xyz * triW.z );
+#ifdef TRI_PATTERN
+  {
+    // Bend the bind normal round the relief: its gradient along the surface.
+    const float e = 0.0012;
+    vec3 g = vec3(
+      patHeight( vPatPos + vec3( e, 0.0, 0.0 ) ) - patHeight( vPatPos - vec3( e, 0.0, 0.0 ) ),
+      patHeight( vPatPos + vec3( 0.0, e, 0.0 ) ) - patHeight( vPatPos - vec3( 0.0, e, 0.0 ) ),
+      patHeight( vPatPos + vec3( 0.0, 0.0, e ) ) - patHeight( vPatPos - vec3( 0.0, 0.0, e ) )
+    ) * ( PAT_DEPTH / ( 2.0 * e ) );
+    g -= dot( g, triNb ) * triNb;
+    bn = normalize( bn - g * 1.4 * patFade );
+  }
+#endif
   normal = normalize( mat3( vB2V0, vB2V1, vB2V2 ) * bn );
   #ifdef DOUBLE_SIDED
     normal *= faceDirection;
@@ -351,6 +458,22 @@ export function gearMaterial(key: string, opts: { tint?: number; metalness?: num
     });
     m.name = `hero-gear:${def.key}`;
     return m;
+  });
+}
+
+/**
+ * A twin of a triplanar gear or cloth material with a relief drawn in (see
+ * `ARMOUR_PATTERNS`). `h` is the body's head unit, which the relief is laid
+ * out round. Materials made some other way come back unchanged.
+ */
+export function patternedMaterial(m: THREE.Material, pattern: ArmourPattern, h: number): THREE.Material {
+  const o = triOptsOf.get(m);
+  if (!o || !(m instanceof THREE.MeshStandardMaterial)) return m;
+  return shared(`pat|${m.uuid}|${pattern}|${h.toFixed(4)}`, () => {
+    const c = m.clone();
+    triplanar(c, { ...o, pattern: { kind: ARMOUR_PATTERNS[pattern], h } });
+    c.name = `${m.name}+${pattern}`;
+    return c;
   });
 }
 

@@ -163,6 +163,11 @@ export class Kit {
     this.mats.set(k, gearMaterial(key));
   }
 
+  /** Puts a ready material in one of the piece's slots (a patterned twin of what is there). */
+  useMat(k: MatKey, m: THREE.Material): void {
+    this.mats.set(k, m);
+  }
+
   mat(k: MatKey): THREE.Material {
     let m = this.mats.get(k);
     if (m) return m;
