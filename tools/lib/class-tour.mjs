@@ -231,6 +231,9 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
       const S = window.SLAY;
       const s = S.engine.currentScene;
       const c = S.save.account.current;
+      // This step is about picking things up, not surviving: a slow frame
+      // next to a live pack must not kill the hero mid-step.
+      S.debug.godMode(true);
       // A piece the hero can surely wear: take it off and drop it.
       const slot = ['head', 'gloves', 'boots', 'belt', 'chest'].find((k) => c.equipment[k]);
       const item = c.equipment[slot];
@@ -263,7 +266,10 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
         const box = await page.evaluate(async (dd) => {
           const s = window.SLAY.engine.currentScene;
           const entry = s.loot.find((l) => l.item?.uid === dd.uid);
-          if (!entry) return { gone: true };
+          if (!entry) {
+            const p = s.player;
+            return { gone: true, where: `${s.constructor?.name ?? '?'} area ${s.levelIndex ?? '?'}, life ${Math.round(p?.life ?? -1)}, ${s.loot?.length ?? '?'} on the ground` };
+          }
           s.player.root.position.set(dd.x + 0.8, s.player.root.position.y, dd.z);
           s.player.stop();
           s.rig.follow(s.player.root);
@@ -278,7 +284,7 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
         if (box.gone) {
           // Taken already (an earlier click that landed on a moved label).
           taken = await page.evaluate((uid) => window.SLAY.save.account.current.inventory.some((it) => it?.uid === uid), d.uid);
-          if (!taken) why = 'left the ground but is not in the pack';
+          if (!taken) why = `left the ground but is not in the pack (${box.where})`;
           break;
         }
         if (box.none) {
