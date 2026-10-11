@@ -382,13 +382,32 @@ function quicksilver(s: Sculpt, H: number): void {
   // Left hand: drawn out into points.
   s.ball('handL', lerpV(s.j('handL'), s.j('handLTip'), 0.3), V(0.02 * H, 0.03 * H, 0.012 * H), { k: 0.01 * H });
   claws(s, 'handL', 'handLTip', 4, 0.07, 0.008, 'skin', undefined, 0.3);
-  // Drips running off it.
+  // Drips running off it: the chest, the hips, the arms, the jaw.
   const r = seq(41);
-  for (let i = 0; i < 6; i++) {
-    const bone = i % 2 ? 'chest' : 'hips';
-    const p = s.j(bone).add(V((r() - 0.5) * 0.14 * H, -0.05 * H, (r() - 0.3) * 0.1 * H));
-    s.hard(bone, spikeGeo(p, p.clone().add(V(0, -(0.03 + r() * 0.05) * H, 0)), 0.01 * H, 5, undefined, 2), 'skin');
+  const dripFrom = ['chest', 'hips', 'chest', 'hips', 'foreL', 'foreR', 'armL', 'armR', 'head', 'chest', 'hips', 'spine'];
+  for (let i = 0; i < dripFrom.length; i++) {
+    const bone = dripFrom[i]!;
+    const spread = bone === 'head' ? 0.04 : bone.startsWith('fore') || bone.startsWith('arm') ? 0.03 : 0.14;
+    const p = s.j(bone).add(V((r() - 0.5) * spread * H, (bone === 'head' ? 0.0 : -0.05) * H, (r() - 0.2) * spread * 0.7 * H));
+    s.hard(bone, spikeGeo(p, p.clone().add(V(0, -(0.04 + r() * 0.08) * H, 0)), (0.008 + r() * 0.006) * H, 5, undefined, 2), 'skin');
   }
+  // Beads of metal standing up out of the shoulders and back, as if it is
+  // still settling into shape.
+  for (let i = 0; i < 9; i++) {
+    const p = s.j('chest').add(V((r() - 0.5) * 0.22 * H, (0.02 + r() * 0.06) * H, -(0.02 + r() * 0.06) * H));
+    s.ball('chest', p, (0.012 + r() * 0.014) * H, { k: 0.012 * H });
+  }
+  // Shallow eye pits with a cold light in them, so it has a face to read.
+  const h = s.j('head').add(V(0, 0.05 * H, 0.012 * H));
+  s.pair((_side, x) => {
+    s.ball('head', h.clone().add(V(x * 0.02 * H, 0.004 * H, 0.055 * H)), V(0.014 * H, 0.008 * H, 0.012 * H), { sub: true, k: 0.006 * H });
+    s.eye('head', h.clone().add(V(x * 0.02 * H, 0.004 * H, 0.048 * H)), 0.006 * H, 1.4);
+  });
+  // It pools where it stands.
+  s.pair((side) => {
+    const f = s.j(`foot${side}`);
+    s.ball(`foot${side}`, V(f.x, 0.008 * H, f.z + 0.02 * H), V(0.06 * H, 0.008 * H, 0.07 * H), { k: 0.012 * H });
+  });
 }
 
 function obsidian(s: Sculpt, H: number): void {
@@ -613,6 +632,18 @@ const CONSTRUCT: Record<string, LookFactory> = {
         s.box('core', c0.clone().add(V(0, R * 0.3, R * 0.42)), V(R * 0.7, R * 0.1, R * 0.12), { k: R * 0.04, round: R * 0.05 });
         s.box('core', c0.clone().add(V(0, -R * 0.15, R * 0.45)), V(R * 0.14, R * 0.3, R * 0.12), { k: R * 0.04, round: R * 0.05 });
         s.box('core', c0.clone().add(V(0, -R * 0.62, R * 0.38)), V(R * 0.4, R * 0.05, R * 0.12), { sub: true, k: R * 0.02 });
+        // A heavy chin and cheek flanges so it reads as a carved head, not a
+        // crate; a broken crest of stone horns above the brow.
+        s.box('core', c0.clone().add(V(0, -R * 0.88, R * 0.12)), V(R * 0.48, R * 0.22, R * 0.34), { k: R * 0.06, round: R * 0.08 });
+        s.pair((_side, x) => {
+          const q = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), x * 0.35);
+          s.box('core', c0.clone().add(V(x * R * 0.78, -R * 0.1, R * 0.05)), V(R * 0.12, R * 0.62, R * 0.36), { mat: 'alt', k: R * 0.05, round: R * 0.05, q });
+        });
+        for (let i = 0; i < 3; i++) {
+          const x = (i - 1) * R * 0.42;
+          const b = c0.clone().add(V(x, R * 0.82, -R * 0.05));
+          s.hard('core', spikeGeo(b, b.clone().add(V(x * 0.7, R * (i === 1 ? 0.75 : 0.5), -R * 0.25)), R * (i === 1 ? 0.16 : 0.12), 4, undefined, 1), 'alt');
+        }
         s.pair((_side, x) => {
           s.ball('core', c0.clone().add(V(x * R * 0.32, R * 0.12, R * 0.45)), V(R * 0.16, R * 0.11, R * 0.12), { sub: true, k: R * 0.03 });
           s.eye('core', c0.clone().add(V(x * R * 0.32, R * 0.12, R * 0.36)), R * 0.09, 1.8);
