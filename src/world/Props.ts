@@ -28,8 +28,8 @@ import {
   T_FLOOR,
   T_LAVA,
   T_RUBBLE,
-  T_STAIRS_DOWN,
-  T_STAIRS_UP,
+  T_EXIT,
+  T_ARRIVAL,
   T_WATER,
   isWalkableValue,
 } from './Layouts';
@@ -591,7 +591,7 @@ function wallRuns(ctx: PlaceCtx): WallFace[][] {
     for (let y = 1; y < ctx.h - 1; y++) {
       for (let x = 1; x < ctx.w - 1; x++) {
         const v = tile(ctx, x, y);
-        if (v !== T_FLOOR && v !== T_RUBBLE && v !== T_STAIRS_DOWN && v !== T_STAIRS_UP) continue;
+        if (v !== T_FLOOR && v !== T_RUBBLE && v !== T_EXIT && v !== T_ARRIVAL) continue;
         if (walkable(ctx, x + dir.dx, y + dir.dy)) continue;
         if (tile(ctx, x + dir.dx, y + dir.dy) === 0) continue; // outside the shell
         const key = dir.axis === 'x' ? y : x;

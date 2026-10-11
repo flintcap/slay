@@ -1,6 +1,6 @@
 # Stream: props (every prop, interactable and town building)
 
-Status: not started
+Status: in progress
 
 Goal: every object in the world remade from nothing to match the new ground
 and lighting. Diablo II and Path of Exile dressing: grim, worn, heavy.
@@ -42,7 +42,5 @@ screenshots.
 
 - Town `addBox` colliders take the AABB of the rotated rectangle.
 - Wall-prop colliders are offset by `wallOffset` along the prop's rotation.
-- Request from maps: `Props.ts` still imports `T_STAIRS_DOWN` and `T_STAIRS_UP`.
-  Switch them to `T_EXIT` and `T_ARRIVAL` (same values, from `world/Layouts.ts`),
-  then delete the two deprecated aliases at the top of `Layouts.ts`.
-  `grep -rn T_STAIRS_ src` should then show 0 hits.
+- Done: Props.ts uses `T_EXIT`/`T_ARRIVAL`; the `T_STAIRS_*` aliases are gone
+  from `Layouts.ts` (grep T_STAIRS_: 0).

@@ -45,10 +45,6 @@ export const T_CHASM = 6;
 export const T_EXIT = 7;
 /** Where the hero lands in an area. Walkable. */
 export const T_ARRIVAL = 8;
-/** @deprecated Old names, kept only until Props.ts (ground) moves to T_EXIT and T_ARRIVAL. */
-export const T_STAIRS_DOWN = T_EXIT;
-/** @deprecated See T_STAIRS_DOWN. */
-export const T_STAIRS_UP = T_ARRIVAL;
 export const T_RUBBLE = 9;
 /** Masonry standing in the open. Blocks. */
 export const T_RUIN = 10;
