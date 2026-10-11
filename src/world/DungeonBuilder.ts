@@ -515,7 +515,9 @@ export function applyBiomeLighting(
 
 /** Unlit black for the inside of a way on: it reads as depth, not as a surface. */
 function voidMaterial(): THREE.MeshBasicMaterial {
-  return new THREE.MeshBasicMaterial({ color: 0x030304, toneMapped: false, side: THREE.DoubleSide });
+  const m = new THREE.MeshBasicMaterial({ color: 0x030304, toneMapped: false, side: THREE.DoubleSide });
+  m.userData.levelOwned = true; // made fresh per level: buildStairs hands it to dispose()
+  return m;
 }
 
 /** A small light just inside a way on: the cue that reads as "go here". */
@@ -1689,6 +1691,21 @@ export class DungeonMesh {
     }
     this.root.add(arch);
     this.colliders.push({ x: entry.x, z: entry.z - 1.1, w: 3.0, d: 0.9 });
+    // Every block above is this level's own: hand them to dispose(), or each
+    // floor left its stairs and arch on the GPU after you went on (the soak
+    // run counted them growing every lap).
+    const owned = new Set(this.ownedGeo);
+    for (const g of [way, arch]) {
+      g.traverse((o) => {
+        const geo = (o as THREE.Mesh).isMesh && !(o as THREE.InstancedMesh).isInstancedMesh ? (o as THREE.Mesh).geometry : null;
+        if (geo && !owned.has(geo)) {
+          owned.add(geo);
+          this.ownedGeo.push(geo);
+        }
+        const mat = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).material : null;
+        if (mat && !Array.isArray(mat) && mat.userData.levelOwned && !this.ownedMat.includes(mat)) this.ownedMat.push(mat);
+      });
+    }
   }
 
   /** Stairs down: a well sunk into the floor with a flight running into it. */
