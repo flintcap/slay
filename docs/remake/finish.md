@@ -1,6 +1,6 @@
 # Stream: finish (cleanup, speed, long play test, publish)
 
-Status: in progress
+Status: done
 
 Goal: tie the remake together. Nothing old left behind, fast enough, no
 crashes, docs true, published.
@@ -13,11 +13,23 @@ crashes, docs true, published.
   old checkers. `tsc` clean, build clean.
 - [x] Speed. Draw calls (under 900 in town and a busy map), triangles,
   textures, load time, memory, garbage per frame. Fix the worst.
-- [ ] Long play test. A headless soak (`check-soak`) through many maps:
-  errors, leaks, slowdowns. Fix what it finds.
-- [ ] Docs. `CONTRACTS.md`, `CLAUDE.md`, `ASSETS.md` accurate.
-- [ ] Publish. Bundle with `node tools/bundle-artifact.mjs` and hand Claude
-  the page and the asset file list.
+- [x] Long play test. A headless soak (`check-soak`) through many maps:
+  errors, leaks, slowdowns. Fix what it finds. "finish: leaving the dungeon
+  disposes drops still on the floor", "finish: each floor's stairs and
+  entry arch freed on leaving"; then 3 x 2 floors (one biome) and 4 x 2
+  floors (two biomes, depths 2 and 5) both PASS: 0 errors, town geometries
+  flat (261 to 264 after the first lap), heap flat, no slowdown.
+- [x] Docs. `CONTRACTS.md`, `CLAUDE.md`, `ASSETS.md` accurate. Every
+  name CONTRACTS.md gives (183) exists in `src/`; every `src/` and `tools/`
+  path the docs name exists; CLAUDE.md's commands run; `check-assets`
+  865 files, 865 ledger rows.
+- [x] Publish. Bundle with `node tools/bundle-artifact.mjs` and hand Claude
+  the page and the asset file list. `dist-single/slay.html` (3.40 MB) and
+  `dist-single/files.json` (866 files, 64.3 MB: 865 CC0 files plus the
+  townsfolk worker script). `check-assets` passes. The page, served the way
+  the host wraps it and with no asset files beside it, reached the title
+  with no console errors (`tools/verify-single.mjs`). Not published here:
+  that is the owner's step.
 
 ## Leftovers checklist
 
@@ -101,11 +113,15 @@ Checks never run by their stream:
 
 - [x] C1 `check-skills` for warden and shadowblade (one class a run).
   Warden 25 of 25 working, shadowblade 23 of 23; none refused, none threw.
-- [ ] C2 `check-soak`, small settings first. 3 runs x 2 floors x 150
-  frames, depth 2: PASS after the two leak fixes (drops on the floor, each
-  floor's stairs and arch). Town geometries 268, 268, 267 lap after lap
-  (they climbed about 20 a lap before), heap 148 to 149 MB, 0 errors,
-  update 1 to 2.7 ms. Next: two biomes (`--cycle=2`).
+- [x] C2 `check-soak`, small settings first. Found two leaks (drops left on
+  the floor when leaving, each floor's stairs and entry arch), both fixed:
+  town geometries climbed about 20 a lap before, now flat.
+  `--runs=3 --floors=2 --frames=150 --cycle=1`: PASS, geometries 268, 268,
+  267, heap 148 to 149 MB, update 1 to 2.7 ms.
+  `--runs=4 --floors=2 --frames=100 --cycle=2` (depths 2 and 5): PASS,
+  geometries 261 to 264, heap 157 to 158 MB, textures 139 to 140, update
+  1.1 to 5.3 ms, 0 errors. The default 3 x 3 x 300 takes about 90 minutes
+  under software rendering, over the 45 minute limit for one check.
 
 Noted, not planned (owner's call or low value):
 
@@ -119,13 +135,7 @@ Noted, not planned (owner's call or low value):
 
 ## Next up
 
-1. C2: small soak passes. Run two biomes inside the 45 minute limit:
-   `--runs=4 --floors=2 --frames=100 --cycle=2` (the default 3 x 3 x 300
-   takes about 90 minutes here, over the limit).
-2. Docs: check ASSETS.md against `check-assets`; CONTRACTS and CLAUDE.md
-   are brought up to date.
-3. Publish: `node tools/bundle-artifact.mjs`; the page, `files.json`, the
-   worker script in it.
+Nothing. Every milestone is ticked; see Handover.
 
 ## Notes for resume
 
@@ -153,3 +163,38 @@ Noted, not planned (owner's call or low value):
 - The cancelled overhaul's quality stream never took its final speed numbers
   or ran the soak (see `docs/overhaul/quality.md`). Those tools are
   `tools/check-perf.mjs` and `tools/check-soak.mjs`.
+
+## Handover
+
+What exists now:
+
+- Every request other streams left is done (R1 to R10), dead code and old
+  checkers are gone (D1, D2), and the speed items are fixed or marked
+  won't with the reason (S1 to S6).
+- Speed, measured with `tools/check-perf.mjs --preview`: town 444 draw
+  calls and 936k triangles; depth 1 455 and 1.21M; depth 9 532 and 1.47M;
+  depth 12 424 and 1.20M. Update time 1.8 to 3.7 ms. Per-step garbage is
+  still over its 200 KB line at depth 1 (290 to 440 KB, no single owner);
+  `check-perf --alloc` now names the game code that causes it.
+- Townsfolk are meshed in a worker at boot (`src/art/npc/FolkWorker.ts`,
+  `MeshCache` in `CONTRACTS.md`). Monsters well out of view skip their pose
+  solve and cast no shadow (`Enemy.setInView`).
+- Leaving a dungeon now frees the drops on the floor, the arena gate, and
+  each floor's stairs and entry arch. Before, about 20 GPU geometries were
+  left behind every lap. `check-soak` passes over one and two biomes.
+- `CONTRACTS.md`, `CLAUDE.md` and `ASSETS.md` match the code; `check-assets`
+  passes with 865 files and 865 ledger rows.
+- The publish bundle: `node tools/bundle-artifact.mjs` writes
+  `dist-single/slay.html` and `dist-single/files.json`.
+
+Left for the owner:
+
+- Publishing. `files.json` lists 866 files. One publish takes at most 255
+  files, and one artifact version holds at most 511, so all 866 cannot sit
+  beside one page. Either publish the page with a chosen subset (the game
+  falls back when a file is missing; music, 23.2 MB, is the easy cut), or
+  trim the asset set. Owner's call.
+- `check-curve` fails 8 of 30 (deep tiers 12 and 40). Balance: not touched.
+- Looks left as sculpt work: kraken pauldrons, quilting, prophet and queen
+  wings, stalker prime, glacier titan fists.
+- Per-step garbage: number boxing in the creature IK and AI maths.
