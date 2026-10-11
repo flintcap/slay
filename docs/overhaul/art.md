@@ -57,7 +57,7 @@ All milestones done. Leftovers a successor could pick up:
 - Milestone 3 closing notes:
   - `src/art/ItemLook.ts` `itemLook(item, visual)` = `gearLook()` plus the art ladder: trim
     (magic silver, rare/unique gold, mythic gold tinted violet, ancient gold tinted red, set silver
-    tinted with `setColor(setId)`), `stone`, `glowColor`, `iconTrim`. Icons (`ItemIconArt`),
+    tinted with `setColor(setId)`), `stone`, `glowColor`, `iconTrim`. Icons (now `items/IconRender`),
     `ItemModels` and `WornGear.buildWorn` all use it. Set icons now carry their set's colour
     (stone, aura, washed trim), not one shared green.
   - `buildItemModel(visual, rng, rarity, ident?)` takes the item (baseId/uniqueId/setId); Player,
@@ -111,13 +111,11 @@ frame rate, not slow icons. No change needed.
   pores, weave, mottle, crack, scales, mail, hammered), `solid()` (ramp + texture + AO +
   rim + outline), `gem()`, `glow()`, `glint()`, `spec()`, `emissiveStroke()`,
   `composite()`. One light, top left, screen space. All randomness via `core/RNG`.
-- **Item icons:** `src/art/ItemIconArt.ts` resolves `visual.shape` ('sword.great',
-  'dagger.wavy', 'gem.ruby'...) into family + sub-type and dispatches to painters in
-  `IconWeapons.ts` (diagonal frame, tip top-right, light from local -x, x widened 1.22),
-  `IconArmor.ts` and `IconTrinkets.ts` (upright frame). Kit, materials and rarity looks in
-  `IconKit.ts`. Rarity ladder: normal bare, magic silver + edge enchant, rare gold + stone,
-  set verdigris + green, unique gold + own stone (hashed from uniqueId) + runes + rays,
-  mythic void-gold + motes, ancient blood-gold + embers.
+- **Item icons:** (remake) rendered from the item's own 3D model by
+  `src/art/items/IconRender.ts`: long weapons on the diagonal, tip top-right, armour and
+  trinkets upright, gems at one scale. Rarity ladder composited on top: magic and rare a pool
+  and halo of the rarity colour, unique and better rays, mythic motes, ancient embers. The
+  old painted icon modules are gone.
 - Icon cache key is now `baseId|rarity|uniqueId-or-setId` (sockets never changed the art).
 - `requestItemIcon` / `warmItemIcons` paint on the frame but encode with `canvas.toBlob`
   (off-thread) and cache a `blob:` URL; `itemIconUri` stays synchronous (data URI) for the

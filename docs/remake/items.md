@@ -1,6 +1,6 @@
 # Stream: items (item models, icons, unique and set designs)
 
-Status: in progress
+Status: done
 
 Goal: same items and stats, all-new looks in the style of Diablo II and Path
 of Exile. Base items look like base items but each base is distinct. Uniques
@@ -35,7 +35,7 @@ and sets have their own shapes, colours and designs.
   class bare, in starter gear, in mid gear, in a full set, and in uniques.
   You now own `src/art/hero/Armour.ts`, `Cape.ts`, `Garment.ts` and the
   clothing fields of `Looks.ts` (heroes is done).
-- [ ] Switch and clean. Delete old `ItemModels.ts` builders, old icon
+- [x] Switch and clean. ("items: switch and clean; the old painted item icons are gone") Delete old `ItemModels.ts` builders, old icon
   painters (`IconArmor`, `IconWeapons`, `IconTrinkets`, `ItemIconArt`,
   `IconKit` if unused) and every reference.
 
@@ -47,10 +47,7 @@ rendered icon hashes).
 
 ## Next up
 
-1. Switch and clean: delete `IconArmor`, `IconWeapons`, `IconTrinkets`,
-   `ItemIconArt`, `IconKit` (nothing imports them now) and any old builders
-   left in `ItemModels.ts`; grep proof in the commit message.
-2. Finishing a stream: Status done, Handover, QUEUE Done.
+Nothing: every milestone is ticked. See Handover.
 
 ## Notes for resume
 
@@ -87,3 +84,35 @@ rendered icon hashes).
   (`motifPalette` in ItemLook.ts); bone pieces use their own bone key.
 - heroes no longer reads ItemLook directly; items owns Armour, Cape,
   Garment and the clothing fields of Looks.
+
+## Handover
+
+What exists now:
+
+- Every item is built from code in `src/art/items/` by `buildItem`, one model
+  per base (weapons, shields, quivers, orbs, armour, jewellery, gems, runes,
+  potions, materials). Uniques have their own designs and sets their motif
+  (`Designs.ts`). `src/art/ItemModels.ts` is the facade the game uses for
+  held models and floor drops; `ItemLook.ts` is the look descriptor.
+- Worn armour is grown on the hero's body (`src/art/hero/Armour*.ts`); a bare
+  hero wears plain linens (`Garment.ts`, `Looks.ts`).
+- Inventory icons are rendered from the models (`src/art/items/IconRender.ts`,
+  behind `src/art/Icons.ts`).
+- CC0 item textures in `public/assets/textures/items/`, fetched by
+  `tools/fetch-item-textures.mjs`, listed in `ASSETS.md`.
+- Checkers: `check-items`, `check-jewelry`, `check-dupe`,
+  `check-gear-visuals`, `check-item-icons` (every base, unique and set piece
+  draws its own icon), `check-hero` for worn budgets. Sheets:
+  `tools/item-sheet.mjs` (families, uniques, sets, drops, icons) and
+  `tools/hero-sheet.mjs` (`wear`, `dressed`).
+
+Left for `finish`:
+
+- `metal.dark` reads very dark under torch light; the kraken pauldrons look
+  blobby; quilting on the quilted coat is faint.
+- A few brushes in `src/art/Paint.ts` (`parseColor`, `resetCtx`, `ringP`,
+  `tintMat`, `shadowPool`, `bezel`) were only used by the old icon painters;
+  Paint is shared, so they were left in place.
+- An icon drawn synchronously (`itemIconUri`) before the item scans decode
+  uses flat maps; the deferred path waits for them.
+
