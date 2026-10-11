@@ -568,11 +568,12 @@ const ELEMENTAL: Record<string, LookFactory> = {
       height: 1.85,
       kind: 'giant',
       rig: { hip: 0.41, shoulders: 0.23, hips: 0.095, arms: 1.3, hunch: 0.45, head: 0.65, armOut: 0.45 },
-      skin: { surface: 'ice', tint: 0x587898 },
+      // Lifted from 0x587898: in dungeon light the body read as black glass.
+      skin: { surface: 'ice', tint: 0xa0c0e4 },
       alt: { surface: 'ice', tint: 0xd0ecff },
       sculpt: glacierTitan,
       paint: {
-        skin: { grime: 0.45, ao: 0.9, mottle: { scale: 5, amount: 0.4, col: [0.45, 0.5, 0.6] }, top: { amount: 0.55, col: [1.7, 1.75, 1.8] } },
+        skin: { grime: 0.3, ao: 0.9, mottle: { scale: 5, amount: 0.4, col: [0.45, 0.5, 0.6] }, top: { amount: 0.55, col: [1.7, 1.75, 1.8] } },
         alt: { base: [1.35, 1.45, 1.55], grime: 0.05, ao: 0.5, top: { amount: 0.5, col: [1.4, 1.45, 1.5] } },
       },
       soft: { alt: 0.008 },
@@ -645,8 +646,9 @@ function djinnLook(c: LookCtx): CreatureLook {
       s.soft.alt = 0.06;
     },
     mats: {
-      skin: { surface: 'ice', tint: 0x6a9ad8, glow, glowIntensity: 2.6, rough: 0.55 },
-      alt: { surface: 'shade', tint: 0x7a8498, glow, glowIntensity: 2.6 },
+      // Both lifted (from 0x6a9ad8 and 0x7a8498): the djinn read as a dark shape.
+      skin: { surface: 'ice', tint: 0x9cc4f4, glow, glowIntensity: 2.6, rough: 0.55 },
+      alt: { surface: 'shade', tint: 0xc4ccdc, glow, glowIntensity: 2.6 },
       metal: { surface: 'gold', tint: 0xd0a850, glow },
     },
     style: { heavy: 0.2, attacks: ['hurl', 'lash'], ranged: true, castBoth: true, spawn: 'swoop', death: 'crash', idle: 'hover', gait: 'glide', armed: 'none' },

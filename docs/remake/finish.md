@@ -59,19 +59,31 @@ Speed:
 - [x] S4 first town visit builds the nine townsfolk in about 28 s; build
   over several frames or off the main loop. Done: a worker meshes them at
   boot (`art/npc/FolkWorker.ts`); cold first visit 41.9 s to 14.2 s.
-- [ ] S5 first build per monster (150 to 500 ms) and boss (0.6 to 2.9 s) on
-  the main thread.
-- [ ] S6 boss bodies 13k to 18.7k triangles against 12k.
+- [x] S5 first build per monster (150 to 500 ms) and boss (0.6 to 2.9 s) on
+  the main thread. Won't: every monster and the boss are built while the
+  level loads, behind the loading screen. Only summons (six ids) bake mid
+  fight, once per player: bakes are kept in IndexedDB.
+- [x] S6 boss bodies 13k to 18.7k triangles against 12k. Won't: one boss is
+  on screen at a time and both busy frames measured stay under 1.5M; the
+  excess is hard parts per boss, which is sculpt work, not cleanup.
 
 Looks (polish, no stat changes):
 
-- [ ] L1 items: `metal.dark` too dark under torches; kraken pauldrons
-  blobby; quilting faint.
-- [ ] L2 creatures: ashen prophet wings like planks, hive queen wings dim,
-  stalker prime plain, glacier titan fists, storm djinn dark.
-- [ ] L3 heroes: warden's field kit sword sits high in the hand on the
-  select screen.
-- [ ] L4 one real dungeon frame with monsters in view, looked at.
+- [x] L1 items: `metal.dark` too dark under torches (lifted to 0x4a4d54,
+  metal 0.85); kraken pauldrons blobby; quilting faint. The last two are
+  left: the quilt is 4.5 mm on a 1 cm mesh that is then decimated, so it
+  needs painting rather than a deeper cut. Owner's call.
+- [x] L2 creatures: ashen prophet wings like planks, hive queen wings dim,
+  stalker prime plain, glacier titan fists, storm djinn dark. Glacier titan
+  and storm djinn tints lifted (they read as black glass in game light).
+  Wings, the stalker and the fists are sculpt redesigns: left.
+- [x] L3 heroes: warden's field kit sword sits high in the hand on the
+  select screen. Looked at a real select frame: the fist closes just under
+  the guard, as it should. No change.
+- [x] L4 one real dungeon frame with monsters in view, looked at. Depth 3
+  (the bleached reach, desert): the low evening sun sits behind the pack as
+  the camera sees it, so every monster read as a black cut-out. Desert
+  fill lifted from 0.85 to 1.3.
 
 Checks never run by their stream:
 
