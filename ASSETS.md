@@ -857,3 +857,11 @@ and music OGG Vorbis.
 | `textures/hero/suede/normal.webp` | https://polyhaven.com/a/scuba_suede | colormass, Rico Cilliers | CC0 1.0 |
 | `textures/hero/hessian/albedo.webp` | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 1.0 |
 | `textures/hero/hessian/normal.webp` | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/items/metal/albedo.webp` | https://ambientcg.com/view?id=Metal038 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/items/metal/normal.webp` | https://ambientcg.com/view?id=Metal038 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/items/hammered/albedo.webp` | https://polyhaven.com/a/rusty_metal_02 | Rob Tuytel | CC0 1.0 |
+| `textures/items/hammered/normal.webp` | https://polyhaven.com/a/rusty_metal_02 | Rob Tuytel | CC0 1.0 |
+| `textures/items/wood/albedo.webp` | https://polyhaven.com/a/fine_grained_wood | Rob Tuytel | CC0 1.0 |
+| `textures/items/wood/normal.webp` | https://polyhaven.com/a/fine_grained_wood | Rob Tuytel | CC0 1.0 |
+| `textures/items/leather/albedo.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
+| `textures/items/leather/normal.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |

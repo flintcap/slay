@@ -13,7 +13,7 @@
  *  - the brushes underneath all of it: `Paint`
  */
 import type { Item, DamageType, ItemVisual } from '../types';
-import { drawItemIcon as renderItemIcon, type IconSpec } from './items/IconRender';
+import { drawItemIcon as renderItemIcon, itemScansReady, type IconSpec } from './items/IconRender';
 import { paintSkillIcon, paintStatusIcon, paintAffixIcon } from './SkillIconArt';
 import { makeCanvas } from './Paint';
 import { SKILL_BY_ID, TREE_BY_ID, SKILL_TREES } from '../data/skills';
@@ -141,8 +141,22 @@ function drawItemIconAsync(item: Item, key: string): void {
   }, 'image/png');
 }
 
+/** The item scans have decoded; until then deferred icons wait rather than bake flat maps. */
+let scansReady = false;
+let scansAsked = false;
+
 function pump(): void {
   pumping = 0;
+  if (!scansReady) {
+    if (!scansAsked) {
+      scansAsked = true;
+      void itemScansReady().then(() => {
+        scansReady = true;
+        if (pending.size > 0) schedulePump();
+      });
+    }
+    return;
+  }
   const t0 = performance.now();
   for (const [key, item] of pending) {
     pending.delete(key);

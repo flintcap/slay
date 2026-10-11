@@ -21,7 +21,7 @@ import type { Item, ItemRarity, ItemVisual } from '../src/types';
 import { buildItem } from '../src/art/items/Model';
 import { buildDropModel, setItemVisualResolver } from '../src/art/ItemModels';
 import { Random } from '../src/core/RNG';
-import { drawItemIcon } from '../src/art/items/IconRender';
+import { drawItemIcon, itemScansReady } from '../src/art/items/IconRender';
 
 const BG = '#121318';
 const INK = '#c9d1de';
@@ -419,4 +419,12 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
 
 for (const cat of new Set(ITEM_BASES.map((b) => b.category))) {
   SHEETS[cat] = async (f) => familySheet(cat, f);
+}
+
+// Every sheet waits for the item scans, so nothing is drawn with flat maps.
+for (const [name, fn] of Object.entries(SHEETS)) {
+  SHEETS[name] = async (f) => {
+    await itemScansReady();
+    return fn(f);
+  };
 }

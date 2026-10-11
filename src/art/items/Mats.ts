@@ -16,7 +16,7 @@
  * Materials are shared and cached; never mutate or dispose one.
  */
 import * as THREE from 'three';
-import { loadTexture } from '../../core/Assets';
+import { loadTexture, textureReady } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
 
@@ -35,15 +35,38 @@ const ITEM_SETS: Record<string, ItemSet> = {
   leather: { dir: 'textures/items/leather', metres: 0.18, gray: true },
 };
 
+function itemScan(name: string): { albedo: THREE.Texture; normal: THREE.Texture } {
+  const s = ITEM_SETS[name]!;
+  return {
+    albedo: loadTexture(`${s.dir}/albedo.webp`, { srgb: true, fallback: 0x9e9e9e, fallbackAlpha: 128 }),
+    normal: loadTexture(`${s.dir}/normal.webp`, { srgb: false, fallback: 0x8080ff, fallbackAlpha: 160 }),
+  };
+}
+
+let scansReady: Promise<void> | null = null;
+
+/**
+ * Resolves once every item scan has decoded (or failed for good). Icons wait
+ * on it, so an icon is never baked with the flat fallback maps.
+ */
+export function itemScansReady(): Promise<void> {
+  if (!scansReady) {
+    const waits: Array<Promise<boolean>> = [];
+    for (const name of Object.keys(ITEM_SETS)) {
+      const t = itemScan(name);
+      waits.push(textureReady(t.albedo), textureReady(t.normal));
+    }
+    scansReady = Promise.all(waits).then(() => undefined);
+  }
+  return scansReady;
+}
+
 /** Which scan dresses a surface family, and how big a tile is on an item. */
 function scanFor(family: string, key: string): { tex: { albedo: THREE.Texture; normal: THREE.Texture }; metres: number; gray: boolean } {
   const item = (name: string) => {
     const s = ITEM_SETS[name]!;
     return {
-      tex: {
-        albedo: loadTexture(`${s.dir}/albedo.webp`, { srgb: true, fallback: 0x9e9e9e, fallbackAlpha: 128 }),
-        normal: loadTexture(`${s.dir}/normal.webp`, { srgb: false, fallback: 0x8080ff, fallbackAlpha: 160 }),
-      },
+      tex: itemScan(name),
       metres: s.metres,
       gray: s.gray,
     };

@@ -12,7 +12,7 @@ and sets have their own shapes, colours and designs.
   (metal, wood, leather, cloth, bone), colours, trim, gems, glow, wear.
   Entries per base, per unique, per set (sets share a motif). Write the shape
   to `CONTRACTS.md` early; heroes draws armour from it.
-- [ ] Weapons. Every base weapon its own model; higher tiers look finer.
+- [x] Weapons. (a4a9a25, b138546, 97d4175 models; "items: CC0 item textures for blades, iron, hafts and grips") Every base weapon its own model; higher tiers look finer.
   Every unique weapon a custom design. Set weapons carry their set's motif.
   CC0 metal, wood and leather textures under `public/assets/textures/items/`.
 - [x] Armour, shields and jewellery. (7fb0b32 "wip(items): shields, quivers, helms, body armour, gloves, boots, belts", c699d7b "wip(items): amulets, rings, charms, gems, runes, potions, materials") Ground models for every base. Helmets,
@@ -47,13 +47,10 @@ rendered icon hashes).
 
 ## Next up
 
-1. Weapon textures: `tools/fetch-item-textures.mjs` pulls Poly Haven CC0
-   into `/tmp/slay-downloads/items/`, writes WebP to
-   `public/assets/textures/items/`, rows in `ASSETS.md`, `check-assets`.
-   Then tick Weapons.
-2. Switch and clean: delete `IconArmor`, `IconWeapons`, `IconTrinkets`,
+1. Switch and clean: delete `IconArmor`, `IconWeapons`, `IconTrinkets`,
    `ItemIconArt`, `IconKit` (nothing imports them now) and any old builders
    left in `ItemModels.ts`; grep proof in the commit message.
+2. Finishing a stream: Status done, Handover, QUEUE Done.
 
 ## Notes for resume
 
@@ -82,6 +79,10 @@ rendered icon hashes).
   fixed scale so grades show size). `Icons.ts` caches and schedules it.
   `item-sheet.mjs icons` (--cat, --uniques, --sets, --ids=uq.x+set.y:base)
   shows them; `check-item-icons.mjs` fails on look-alikes.
+- Item textures: `tools/fetch-item-textures.mjs` (metal: ambientCG
+  Metal038; hammered: Poly Haven rusty_metal_02; wood: fine_grained_wood;
+  leather: leather_white). `Mats.ts` projects them triplanar;
+  `itemScansReady()` makes icons wait for them.
 - Set pieces tint their main surface and hafts toward the set colour
   (`motifPalette` in ItemLook.ts); bone pieces use their own bone key.
 - heroes no longer reads ItemLook directly; items owns Armour, Cape,

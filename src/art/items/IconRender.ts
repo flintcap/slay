@@ -23,6 +23,8 @@ import { Random, hashString } from '../../core/RNG';
 import { composite, css, glow, scratch, type Ctx } from '../Paint';
 import { buildItem, type ItemFamily } from './Model';
 
+export { itemScansReady } from './Mats';
+
 /** What an icon is drawn from. */
 export interface IconSpec {
   baseId: string;
