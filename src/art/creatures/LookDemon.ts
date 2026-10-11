@@ -356,7 +356,7 @@ function quiver(s: Sculpt, H: number): void {
 }
 
 /** A crown of flame: glowing tongues rising off the head and shoulders. */
-function flames(s: Sculpt, bone: string, at: THREE.Vector3, n: number, len: number, spread: number, seed: number, col: RGB = [1, 0.55, 0.2]): void {
+export function flames(s: Sculpt, bone: string, at: THREE.Vector3, n: number, len: number, spread: number, seed: number, col: RGB = [1, 0.55, 0.2]): void {
   const r = seq(seed);
   for (let i = 0; i < n; i++) {
     const a = (i / Math.max(1, n - 1) - 0.5) * Math.PI * 1.2;

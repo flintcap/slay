@@ -228,18 +228,18 @@ export function poseSwarm(a: CreatureAnimator): void {
   const form = a.phase === 'spawn' ? ramp(a.spawnT, 0, 0.8) : 1;
   const dead = a.phase === 'death';
   a.body(0, Math.sin(a.time * 1.2 + a.offset) * 0.05 * Y, 0, 0.2 * g, 0, 0);
-  for (let i = 0; i < 64; i++) {
+  for (let i = 0; i < 72; i++) {
     const n = `mote${i}`;
     if (!a.has(n)) break;
     const p = localBind(a, n, 'core');
     const sp = (0.8 + nameHash(n, 1) * 1.6) * (1 + (1 - tight) * 2);
-    const ang = a.time * sp + nameHash(n, 2) * TAU;
+    const ang = a.spin(8 + i, sp) + nameHash(n, 2) * TAU;
     const c = Math.cos(ang);
     const s = Math.sin(ang);
     const r = tight * (1 + (1 - form) * 3);
     let x = (p.x * c + p.z * s) * r;
     let z = (-p.x * s + p.z * c) * r;
-    let y = p.y * r + Math.sin(a.time * 3 * sp + i) * 0.1 * R;
+    let y = p.y * r + Math.sin(3 * ang + i) * 0.1 * R;
     // Trails behind as it moves; surges forward to strike.
     z -= g * 0.3 * R * nameHash(n, 3) - surge * R * (0.6 + nameHash(n, 5));
     if (dead) {
@@ -251,7 +251,7 @@ export function poseSwarm(a: CreatureAnimator): void {
       y += (0.03 - Y - y) * fall;
     }
     a.move(n, x - p.x, y - p.y, z - p.z);
-    a.rot(n, a.time * sp * 2, a.time * sp, 0);
+    a.rot(n, ang * 2, ang, 0);
   }
   const fl = a.flinch;
   a.body(-a.flinchSide * 0.1 * R * fl, 0, -0.15 * R * fl);

@@ -335,12 +335,13 @@ export class CreatureAnimator {
     this.rot(name, x, y * s, z * s);
   }
 
-  private readonly spins = new Float64Array(4);
+  private readonly spins = new Float64Array(80);
 
   /**
    * A phase that advances at `rate` radians a second. It is integrated, so a
    * rate that changes with speed never makes the phase jump (time * rate
-   * would). Call once a frame per slot.
+   * would). Call once a frame per slot. Slots: 0 flyer wingbeat, 1 tail wag,
+   * 2 serpent drift, 3 floater orbit, 8 and up one per swarm mote.
    */
   spin(slot: number, rate: number): number {
     this.spins[slot] = this.spins[slot]! + rate * this.dt;
