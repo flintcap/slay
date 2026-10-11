@@ -1,6 +1,6 @@
 # Stream: qa-bugs (quality pass 2: does everything work)
 
-Status: in progress
+Status: done
 
 Goal: after the remake, every part of the game works end to end with no
 errors, no soft-locks and nothing broken on screen. Fix what you find.
@@ -20,10 +20,13 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   (`qa-bugs: class tour drops a piece the hero can put back on` and the
   lean tour commits; warden, revenant, stormcaller, ranger, pyromancer pass
   every step; shadowblade every class step; see Results)
-- [ ] Boss and map end. Reach and kill a map's boss (debug helpers are fine),
+- [x] Boss and map end. Reach and kill a map's boss (debug helpers are fine),
   see the arena gate, the boss phases, the reward, the portal home, and that
   the next portal opens a fresh map. Death and respawn work. Save and reload
   mid-map works (old saves too).
+  (`qa-bugs: mapflow can start at the boss; one-browser lock noted`;
+  `check-mapflow` all pass, plain `check-flow` 12 of 12, `check-save` 19
+  of 19; see Results)
 - [x] Text and UI leftovers. Any text that still talks about stairs, floors
   or depth where the new map flow means zones, maps and tiers. Tooltips and
   HUD read right with the new items and maps. Do not restyle the HUD or menus.
@@ -55,7 +58,7 @@ errors, no soft-locks and nothing broken on screen. Fix what you find.
   taken, ready, handed in) and one town render with both kinds.
   (`qa-bugs: quest markers over town NPCs`; `check-markers` 26 of 26;
   `shot-markers` renders both kinds; see Results)
-- [ ] Handover.
+- [x] Handover.
 
 ## Results
 
@@ -132,6 +135,21 @@ own number in its own colour. Physical is unchanged.
 Static sweep after these changes: 53 of 54 pass; `curve` is the same single
 revenant tier 5 "untouched" cell as before.
 
+### Boss and map end (`check-mapflow`, `check-flow`, `check-save`)
+
+- `check-mapflow`: the map, its waypoint, the tier on the HUD, the zone
+  banner, the way on, the arena gate (waits, three tiles, seals, wakes the
+  boss, opens on the kill) passed in the first run, which then ran out of
+  its 45 minutes in the boss kill on a loaded machine. The second run
+  (`--from-boss --small`): the gate seals, the boss goes through its
+  phases and dies, 14 drops, the way home and the gate open, the portal
+  clears the map, goes home and banks the tier, the next portal opens a
+  fresh map (tier 7), a reload mid-map keeps the hero and the pack,
+  Continue goes to town, [E] at a waypoint goes home. No page errors.
+- Plain `check-flow --small`: 12 of 12 (pause, return to town, quit to
+  title, Continue, die, death screen keeps the fallen, rise again).
+- `check-save` (old and damaged saves): 19 of 19.
+
 ### Class tour (`check-flow --classes=... --small`, three lean runs)
 
 | Class | Result |
@@ -192,15 +210,42 @@ summary line. Left as they are: "floor" meaning the ground (loot filter,
 map modifiers, skill text) and flavour quotes (the death screen's stair
 line, boss and place writing).
 
-## Next up
+## Handover
 
-1. Boss and map end: one run,
-   `SLAY_PORT=4331 flock /tmp/slay-browser.lock timeout 2700 node tools/check-mapflow.mjs 2>&1 | grep -E "ok |FAIL"`
-   (it jumps to the boss with debug helpers). Death and rising again: the
-   plain `check-flow` (no class) covers it; run it only if mapflow leaves
-   time and doubt.
-2. Handover: run only `hits`, `markers`, `story` (and `curve` only if
-   balance moved). No full sweep.
+What exists now:
+
+- Owner's play bugs fixed and proved (`node tools/check-hits.mjs`, 32
+  cases): two blades both strike and both swing; Coat Blades and the
+  Venom tree poison and tick; elemental damage numbers wear their
+  element's colour. Every passive skill now works on arrival (the hero
+  never worked out passives until a level-up or gear change).
+- Quest markers over town NPCs: `src/sim/QuestMarkers.ts` (the one rule),
+  `src/fx/QuestMarkers.ts` (the drawing), `Residents.headTop`, wired in
+  `TownScene`. Proved by `node tools/check-markers.mjs` (26 cases) and
+  `tools/shot-markers.mjs` (town render with both kinds).
+- Balance: hero power and the three frailest classes stronger; the
+  owner-approved reflect cap. `check-curve` 1 of 30 left (see below).
+- Text: map, area and tier wording everywhere a player reads it.
+- Test tools: `check-flow --classes=a,b,c --small` (the whole class tour
+  in two or three browser runs), `check-mapflow --from-boss --small`, a
+  sturdier class tour (`tools/lib/class-tour.mjs`), `debug.wearableWithout`.
+
+Left for the owner or `finish`:
+
+- `check-curve`: the revenant at tier 5 wins "untouched" (passes when run
+  alone; class strength cannot fix "too easy"). Nothing is walled.
+- Dual wield is "both strike": the off hand hits for 62% of the sheet and
+  the sheet adds both weapons. If you want hands to alternate instead,
+  say so.
+- Coat Blades' flat poison damage stays always on (a passive), on top of
+  the new poison on hit while the coat is up.
+- Skill `arc` values are in degrees but still act as a full circle; left
+  alone so no class gets weaker.
+- Burning and bleed from other classes still tick from the depth curve
+  only (the hero's poison now scales with the blow).
+- The shadowblade's class tour reached hotbar and loot; equip and the
+  waypoint were cut by the 45 minute cap (both passed for the other five).
+- Quest markers are not on the minimap: the minimap has no town map.
 
 ## Notes for resume
 
