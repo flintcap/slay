@@ -92,8 +92,8 @@ interface BlobOpt {
   radius: number;
   lobes?: number;
   sculpt: (s: Sculpt, H: number, R: number) => void;
-  skin: { surface: Surface; tint: number };
-  alt?: { surface: Surface; tint: number };
+  skin: { surface: Surface; tint: number; rough?: number };
+  alt?: { surface: Surface; tint: number; rough?: number };
   metal?: { surface: Surface; tint: number };
   paint?: Partial<Record<CMat, PaintSpec>>;
   style: Partial<MotionStyle>;
@@ -117,8 +117,8 @@ function blobLook(c: LookCtx, o: BlobOpt): CreatureLook {
       s.paint.metal = o.paint?.metal ?? { grime: 0.3, ao: 0.7 };
     },
     mats: {
-      skin: { surface: o.skin.surface, tint: o.skin.tint, glow },
-      alt: { surface: o.alt?.surface ?? 'slime', tint: o.alt?.tint ?? 0xe8e0d0, glow },
+      skin: { surface: o.skin.surface, tint: o.skin.tint, glow, rough: o.skin.rough },
+      alt: { surface: o.alt?.surface ?? 'slime', tint: o.alt?.tint ?? 0xe8e0d0, glow, rough: o.alt?.rough },
       metal: { surface: o.metal?.surface ?? 'bone', tint: o.metal?.tint ?? 0xc8bca0, glow },
     },
     style: { heavy: 0.6, attacks: ['engulf', 'lash', 'thrust'], spawn: 'emerge', death: 'splat', idle: 'breathe', gait: 'roll', armed: 'none', ...o.style },

@@ -45,7 +45,8 @@ export type Surface =
   | 'lava'
   | 'slime'
   | 'shade'
-  | 'crystal';
+  | 'crystal'
+  | 'jelly';
 
 interface SurfaceDef {
   set: TextureSetName | 'scales' | 'chitin' | 'smooth';
@@ -85,6 +86,8 @@ const SURFACES: Record<Surface, SurfaceDef> = {
   slime: { set: 'smooth', metres: 0.5, rough: 0.16, metal: 0, normal: 0.5, gain: 1, opacity: 0.86 },
   shade: { set: 'cloth', metres: 0.4, rough: 0.95, metal: 0, normal: 0.8, gain: 1.5, opacity: 0.88 },
   crystal: { set: 'ice', metres: 0.7, rough: 0.08, metal: 0.1, normal: 0.6, gain: 1.6 },
+  /** Clear gel: what it swallowed shows through. */
+  jelly: { set: 'smooth', metres: 0.5, rough: 0.08, metal: 0, normal: 0.35, gain: 1, opacity: 0.5 },
 };
 
 export interface CreatureMatDef {

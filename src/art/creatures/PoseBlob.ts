@@ -89,9 +89,10 @@ export function poseOoze(a: CreatureAnimator): void {
   if (a.phase === 'spawn') {
     const u = a.spawnT;
     if (a.style.spawn === 'drop') {
-      const d = dropFall(u, 0.45);
+      const d = dropFall(u, 0.45, 0, 11);
       a.body(0, d.y * H * 4, 0);
-      sq *= u < 0.45 ? 1.25 : 1 - 0.5 * d.crouch;
+      // Stretched as it falls, easing round just before it lands, then the splat squat.
+      sq *= 1 + 0.22 * (1 - ramp(u, 0.25, 0.45)) - 0.4 * d.crouch;
     } else {
       // Wells up out of a puddle.
       const k = ramp(u, 0, 0.8);
