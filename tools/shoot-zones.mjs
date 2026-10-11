@@ -2,7 +2,7 @@
  * One render per biome, taken inside a real map (docs/remake/maps.md).
  *
  *   npm run build
- *   SLAY_PORT=4321 timeout 2700 node tools/shoot-zones.mjs --out=shots/maps
+ *   SLAY_PORT=4321 timeout 2700 node tools/shoot-zones.mjs --out=shots/maps [--biomes=hell,swamp] [--tiers=3,8]
  *
  * Opens maps at a spread of tiers and, for each zone in a biome not yet
  * shot, loads its area, stands the hero in the middle of the zone and takes
@@ -15,7 +15,9 @@ import { bootGame, frames } from './lib/game.mjs';
 const arg = (k, d) => process.argv.find((s) => s.startsWith(`--${k}=`))?.slice(k.length + 3) ?? d;
 const OUT = path.resolve(arg('out', 'shots/maps'));
 mkdirSync(OUT, { recursive: true });
-const TIERS = [3, 8, 14, 20, 26, 34, 45, 60];
+const TIERS = arg('tiers', '3,8,14,20,26,34,45,60').split(',').map(Number);
+// --biomes=a,b: shoot only these (to finish a run that ran out of time).
+const ONLY = arg('biomes', '') ? new Set(arg('biomes', '').split(',')) : null;
 
 const { page, close, pageErrors } = await bootGame({ fallbackPort: 4321, preview: true });
 const shot = new Set();
@@ -36,7 +38,7 @@ try {
       window.SLAY.engine.currentScene.run.levels.map((l) => (l.zones ?? []).map((z) => ({ id: z.id, biome: z.biome, name: z.name }))),
     );
     for (let li = 0; li < plan.length; li++) {
-      const todo = plan[li].filter((z) => !shot.has(z.biome));
+      const todo = plan[li].filter((z) => !shot.has(z.biome) && (!ONLY || ONLY.has(z.biome)));
       if (!todo.length) continue;
       for (const z of todo) {
         if (shot.has(z.biome)) continue;
