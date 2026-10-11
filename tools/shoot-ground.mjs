@@ -65,6 +65,9 @@ try {
         },
         [b, AT],
       );
+      // A place's first-sight card covers the middle of the frame.
+      await frames(page, 10);
+      await page.getByText('Close', { exact: true }).click({ timeout: 3000 }).catch(() => {});
       await shoot(`g-${b}${AT === 'mid' ? '' : '-' + AT}`);
     } catch (e) {
       ok = false;

@@ -54,6 +54,7 @@ export class Drips {
   private readonly near: number[] = [];
   private nearTimer = 0;
   private salt = 0;
+  private readonly fade = new THREE.Color();
 
   constructor(sites: DripSite[], colour: number) {
     this.sites = sites;
@@ -68,12 +69,14 @@ export class Drips {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
-    const rg = new THREE.RingGeometry(0.82, 1, 24);
+    const rg = new THREE.RingGeometry(0.88, 1, 24);
     rg.rotateX(-Math.PI / 2);
+    // Faint, and faded out as it spreads (instance colour: additive black is
+    // nothing). Bright white rings popping off read as floating hoops.
     const rm = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(colour).lerp(new THREE.Color(0xffffff), 0.5),
+      color: new THREE.Color(colour).lerp(new THREE.Color(0xffffff), 0.3),
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.22,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -93,6 +96,7 @@ export class Drips {
     for (let i = 0; i < POOL; i++) {
       this.dropMesh.setMatrixAt(i, zero);
       this.ringMesh.setMatrixAt(i, zero);
+      this.ringMesh.setColorAt(i, this.fade.setScalar(1));
       this.drops.push({ site: -1, t: -seq(i, 3) * 3, fall: 1, period: 3 });
     }
   }
@@ -147,7 +151,8 @@ export class Drips {
         this.ringMesh.setMatrixAt(i, ZERO);
       } else {
         const k = (d.t - d.fall) / RING_LIFE;
-        const r = 0.08 + k * 0.55;
+        const r = 0.06 + k * 0.42;
+        this.ringMesh.setColorAt(i, this.fade.setScalar(Math.max(0, 1 - k) ** 1.5));
         this.q.identity();
         this.p.set(st.x, st.floor + 0.03, st.z);
         // Fade by shrinking the band to nothing rather than per-instance alpha.
@@ -159,6 +164,7 @@ export class Drips {
     }
     this.dropMesh.instanceMatrix.needsUpdate = true;
     this.ringMesh.instanceMatrix.needsUpdate = true;
+    if (this.ringMesh.instanceColor) this.ringMesh.instanceColor.needsUpdate = true;
   }
 
   private hide(i: number): void {

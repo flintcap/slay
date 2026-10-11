@@ -1009,8 +1009,8 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     floors: [
       // The void palettes glow in every crack (emissive 0.35 and 0.9): over
       // a whole floor that was the w15 electric ripple. A faint glow only.
-      { palette: 'stone.obsidian', weight: 7, repeat: 1, roughness: 0.5, metalness: 0.2, emissiveIntensity: 0.08 },
-      { palette: 'crystal.void', weight: 3, repeat: 0.9, roughness: 0.6, tint: 0x9a92b0, emissiveIntensity: 0.15 },
+      { palette: 'stone.obsidian', weight: 7, repeat: 1, emissiveIntensity: 0.08 },
+      { palette: 'crystal.void', weight: 3, repeat: 0.9, tint: 0x9a92b0, emissiveIntensity: 0.15 },
     ],
     walls: [
       { palette: 'stone.obsidian', weight: 6, repeat: 1 },
@@ -1023,7 +1023,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     liquidEmissive: 0x6a10c0,
     wallLight: 'voidFlame',
     wallLightSpacing: 7,
-    lightColor: 0xd078e8,
+    lightColor: 0xbc98dc,
     lightIntensity: 6.2,
     lightDistance: 13,
     bounceColor: 0x3a2a5a,

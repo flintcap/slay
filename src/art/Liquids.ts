@@ -47,7 +47,9 @@ interface LiquidTuning {
 
 const TUNING: Record<LiquidStyle, LiquidTuning> = {
   water: {
-    ripple: 0.55,
+    // A near-mirror rippled surface broke every torch and the hero light
+    // into glitter specks (caverns). Calmer slopes, a touch of roughness.
+    ripple: 0.32,
     speed: 0.16,
     scaleA: 5.5,
     scaleB: 2.3,
@@ -57,7 +59,7 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     rim: 0.2,
     rimColor: 0x4c6266,
     molten: 0,
-    roughness: 0.05,
+    roughness: 0.2,
     metalness: 0.1,
     opacity: 0.84,
     emissiveIntensity: 0.6,
