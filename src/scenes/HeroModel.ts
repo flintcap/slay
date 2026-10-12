@@ -37,10 +37,11 @@ function offHandKind(category: string | undefined): OffHand {
   switch (category) {
     case 'shield':
       return 'shield';
+    case 'dagger':
+      return 'dagger';
     case 'sword':
     case 'axe':
     case 'mace':
-    case 'dagger':
     case 'wand':
     case 'scepter':
       return 'weapon';

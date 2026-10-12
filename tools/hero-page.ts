@@ -141,6 +141,14 @@ const STANCE_ITEMS: Record<Stance, Array<['mainHand' | 'offHand', string, string
     ['mainHand', 'sword.broad', 'sword'],
     ['offHand', 'sword.short', 'sword'],
   ],
+  bladeDagger: [
+    ['mainHand', 'axe.hand', 'axe'],
+    ['offHand', 'dagger.dirk', 'dagger'],
+  ],
+  daggerBlade: [
+    ['mainHand', 'dagger.kris', 'dagger'],
+    ['offHand', 'sword.short', 'sword'],
+  ],
   shield: [
     ['mainHand', 'sword.broad', 'sword'],
     ['offHand', 'shield.heater', 'shield'],

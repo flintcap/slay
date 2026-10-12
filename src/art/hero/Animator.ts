@@ -36,7 +36,8 @@ export interface HeroEventInfo {
 
 export type CarryGrip = 'none' | 'twoHand' | 'staff' | 'bow';
 export type BodyCondition = 'none' | 'stunned' | 'frozen' | 'down' | 'rooted';
-export type OffHand = 'none' | 'shield' | 'weapon' | 'focus';
+/** What the off hand holds; a dagger is carried low, a longer weapon upright. */
+export type OffHand = 'none' | 'shield' | 'weapon' | 'dagger' | 'focus';
 
 export interface PlayOpts {
   /** Crossfade in seconds. */

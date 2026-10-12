@@ -371,6 +371,8 @@ export function moveKind(stance: Stance, grip: string, category?: string): MoveK
       return 'dagger';
     case 'dual':
     case 'dualBlade':
+    case 'bladeDagger':
+    case 'daggerBlade':
       return 'dual';
     case 'shield':
       return 'shield';

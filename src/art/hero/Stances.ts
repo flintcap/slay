@@ -9,7 +9,19 @@
 import type { Pose } from './Pose';
 import { CH } from './Pose';
 
-export type Stance = 'unarmed' | 'oneHand' | 'dagger' | 'wand' | 'dual' | 'dualBlade' | 'shield' | 'twoHand' | 'staff' | 'bow';
+export type Stance =
+  | 'unarmed'
+  | 'oneHand'
+  | 'dagger'
+  | 'wand'
+  | 'dual'
+  | 'dualBlade'
+  | 'bladeDagger'
+  | 'daggerBlade'
+  | 'shield'
+  | 'twoHand'
+  | 'staff'
+  | 'bow';
 
 export interface StanceBody {
   /** 0 lean .. 1 heavy: heavy arms hang further out to clear the body. */
@@ -66,6 +78,31 @@ function feet(b: StanceBody, width: number, lead: number, toe = 0.12): [StanceFe
   ];
 }
 
+// One hand's carry in the two-weapon stances, so a long blade and a dagger
+// can share a body: the long one upright, the dagger low and reversed.
+const sgn = (side: 'L' | 'R') => (side === 'L' ? 1 : -1);
+
+/** A sword, axe or mace held up and ready, point up, tipped forward and out. */
+function longIdle(p: Pose, b: StanceBody, side: 'L' | 'R'): void {
+  p.arm(side, side === 'R' ? 0.36 : 0.32, 0.36 + 0.1 * b.build, 0.02, side === 'R' ? 0.95 : 0.9, -0.95, -0.1, 0.3);
+  p.reach(side, [sgn(side) * 0.8 * b.h, (side === 'R' ? 4.05 : 4.0) * b.h, (side === 'R' ? 0.85 : 0.8) * b.h], [sgn(side) * 0.12, 1, 0.22]);
+  p.fist(side, 1);
+}
+function longMove(p: Pose, b: StanceBody, side: 'L' | 'R', run: number): void {
+  p.arm(side, 0.2, 0.32 + 0.1 * b.build, 0.02, 0.75 + 0.4 * run, -0.65, 0, 0.1);
+  p.reach(side, [sgn(side) * 0.8 * b.h, 4.0 * b.h, 0.7 * b.h], [sgn(side) * 0.12, 1, 0.35 + 0.2 * run]);
+  p.fist(side, 1);
+}
+/** A dagger low and forward, point back along the forearm. */
+function daggerIdle(p: Pose, b: StanceBody, side: 'L' | 'R'): void {
+  p.arm(side, side === 'R' ? 0.35 : 0.3, 0.3 + 0.1 * b.build, 0.3, side === 'R' ? 1.2 : 1.1, 0, 0, 0.2);
+  p.fist(side, 1);
+}
+function daggerMove(p: Pose, b: StanceBody, side: 'L' | 'R', run: number): void {
+  p.arm(side, 0.15, 0.28 + 0.1 * b.build, 0.2, 0.9 + 0.4 * run, 0, 0, 0.3);
+  p.fist(side, 1);
+}
+
 export const STANCES: Record<Stance, StanceDef> = {
   unarmed: {
     idle(p, b) {
@@ -87,13 +124,13 @@ export const STANCES: Record<Stance, StanceDef> = {
   // Sword, axe or mace in the right hand, held up and ready; left hand loose.
   oneHand: {
     idle(p, b) {
-      p.arm('R', 0.38, 0.26 + 0.1 * b.build, 0.05, 0.95, -0.9, -0.1, 0.3);
+      p.arm('R', 0.38, 0.34 + 0.1 * b.build, 0.05, 0.95, -0.9, -0.1, 0.3);
       p.fist('R', 1);
       relaxed(p, 'L', b, 0.25, 0.7);
       p.add('chest', 0.04, -0.08, 0);
     },
     move(p, b, run) {
-      p.arm('R', 0.2, 0.2 + 0.1 * b.build, 0.05, 0.75 + 0.4 * run, -0.6, 0, 0.05);
+      p.arm('R', 0.2, 0.28 + 0.1 * b.build, 0.05, 0.75 + 0.4 * run, -0.6, 0, 0.05);
       p.fist('R', 1);
       relaxed(p, 'L', b);
       runArm(p, 'L', b, run);
@@ -105,14 +142,14 @@ export const STANCES: Record<Stance, StanceDef> = {
   // Daggers ride low and reversed, point back along the forearm.
   dagger: {
     idle(p, b) {
-      p.arm('R', 0.3, 0.2 + 0.1 * b.build, 0.3, 1.25, -0.2, 0.2, 0);
+      p.arm('R', 0.3, 0.28 + 0.1 * b.build, 0.3, 1.25, -0.2, 0.2, 0);
       p.fist('R', 1);
       relaxed(p, 'L', b, 0.3, 0.9);
       p.add('spine', 0.06, 0, 0);
       p.add('chest', 0.06, -0.06, 0);
     },
     move(p, b, run) {
-      p.arm('R', 0.15, 0.18 + 0.1 * b.build, 0.2, 0.9 + 0.4 * run, -0.2, 0.2, 0);
+      p.arm('R', 0.15, 0.26 + 0.1 * b.build, 0.2, 0.9 + 0.4 * run, -0.2, 0.2, 0);
       p.fist('R', 1);
       relaxed(p, 'L', b);
       runArm(p, 'L', b, run);
@@ -143,16 +180,16 @@ export const STANCES: Record<Stance, StanceDef> = {
   // A blade in each hand, both low and forward, weight on the balls of the feet.
   dual: {
     idle(p, b) {
-      p.arm('R', 0.35, 0.22 + 0.1 * b.build, 0.3, 1.2, 0, 0, 0.2);
-      p.arm('L', 0.3, 0.22 + 0.1 * b.build, 0.3, 1.1, 0, 0, 0.2);
+      p.arm('R', 0.35, 0.3 + 0.1 * b.build, 0.3, 1.2, 0, 0, 0.2);
+      p.arm('L', 0.3, 0.3 + 0.1 * b.build, 0.3, 1.1, 0, 0, 0.2);
       p.fist('R', 1);
       p.fist('L', 1);
       p.add('spine', 0.06, 0, 0);
       p.add('chest', 0.05, 0, 0);
     },
     move(p, b, run) {
-      p.arm('R', 0.15, 0.2 + 0.1 * b.build, 0.2, 0.9 + 0.4 * run, 0, 0, 0.3);
-      p.arm('L', 0.15, 0.2 + 0.1 * b.build, 0.2, 0.9 + 0.4 * run, 0, 0, 0.3);
+      p.arm('R', 0.15, 0.28 + 0.1 * b.build, 0.2, 0.9 + 0.4 * run, 0, 0, 0.3);
+      p.arm('L', 0.15, 0.28 + 0.1 * b.build, 0.2, 0.9 + 0.4 * run, 0, 0, 0.3);
       p.fist('R', 1);
       p.fist('L', 1);
     },
@@ -165,33 +202,56 @@ export const STANCES: Record<Stance, StanceDef> = {
   // low, turned-in carry pointed long blades across the body, crossing.)
   dualBlade: {
     idle(p, b) {
-      p.arm('R', 0.36, 0.28 + 0.1 * b.build, 0.02, 0.95, -0.95, -0.1, 0.3);
-      p.arm('L', 0.32, 0.28 + 0.1 * b.build, 0.02, 0.9, -0.95, -0.1, 0.3);
-      // Each blade placed point-up, tipped a touch forward and out.
-      p.reach('R', [-0.66 * b.h, 4.05 * b.h, 0.85 * b.h], [-0.12, 1, 0.22]);
-      p.reach('L', [0.66 * b.h, 4.0 * b.h, 0.8 * b.h], [0.12, 1, 0.22]);
-      p.fist('R', 1);
-      p.fist('L', 1);
+      longIdle(p, b, 'R');
+      longIdle(p, b, 'L');
       p.add('chest', 0.04, 0, 0);
     },
     move(p, b, run) {
-      p.arm('R', 0.2, 0.24 + 0.1 * b.build, 0.02, 0.75 + 0.4 * run, -0.65, 0, 0.1);
-      p.arm('L', 0.2, 0.24 + 0.1 * b.build, 0.02, 0.75 + 0.4 * run, -0.65, 0, 0.1);
-      p.reach('R', [-0.66 * b.h, 4.0 * b.h, 0.7 * b.h], [-0.12, 1, 0.35 + 0.2 * run]);
-      p.reach('L', [0.66 * b.h, 4.0 * b.h, 0.7 * b.h], [0.12, 1, 0.35 + 0.2 * run]);
-      p.fist('R', 1);
-      p.fist('L', 1);
+      longMove(p, b, 'R', run);
+      longMove(p, b, 'L', run);
     },
     swing: [0.45, 0.45],
     feet: (b) => feet(b, 0.46, 0.22),
     crouch: 0.014,
+  },
+  // A long blade in the main hand held upright, a dagger in the off hand low.
+  bladeDagger: {
+    idle(p, b) {
+      longIdle(p, b, 'R');
+      daggerIdle(p, b, 'L');
+      p.add('spine', 0.03, 0, 0);
+      p.add('chest', 0.05, -0.03, 0);
+    },
+    move(p, b, run) {
+      longMove(p, b, 'R', run);
+      daggerMove(p, b, 'L', run);
+    },
+    swing: [0.6, 0.45],
+    feet: (b) => feet(b, 0.46, 0.24),
+    crouch: 0.016,
+  },
+  // A dagger in the main hand low, a long blade in the off hand upright.
+  daggerBlade: {
+    idle(p, b) {
+      daggerIdle(p, b, 'R');
+      longIdle(p, b, 'L');
+      p.add('spine', 0.03, 0, 0);
+      p.add('chest', 0.05, 0.03, 0);
+    },
+    move(p, b, run) {
+      daggerMove(p, b, 'R', run);
+      longMove(p, b, 'L', run);
+    },
+    swing: [0.45, 0.6],
+    feet: (b) => feet(b, 0.46, 0.24),
+    crouch: 0.016,
   },
   // Shield on the left forearm across the body, weapon ready behind it.
   shield: {
     idle(p, b) {
       p.arm('L', 0.55, 0.15 + 0.08 * b.build, 1.0, 1.55, 0.4, 0, 0);
       p.fist('L', 1);
-      p.arm('R', 0.38, 0.26 + 0.1 * b.build, 0.05, 0.95, -0.9, -0.1, 0.3);
+      p.arm('R', 0.38, 0.34 + 0.1 * b.build, 0.05, 0.95, -0.9, -0.1, 0.3);
       p.fist('R', 1);
       p.add('chest', 0.03, -0.04, 0);
     },
@@ -267,7 +327,7 @@ export const STANCES: Record<Stance, StanceDef> = {
 };
 
 /** The stance for what is held: the main hand's grip and the off hand. */
-export function stanceFor(grip: string, offHand: 'none' | 'shield' | 'weapon' | 'focus'): Stance {
+export function stanceFor(grip: string, offHand: 'none' | 'shield' | 'weapon' | 'dagger' | 'focus'): Stance {
   switch (grip) {
     case 'twoHand':
       return 'twoHand';
@@ -278,12 +338,12 @@ export function stanceFor(grip: string, offHand: 'none' | 'shield' | 'weapon' | 
     case 'wand':
       return offHand === 'shield' ? 'shield' : 'wand';
     case 'dagger':
-      return offHand === 'weapon' ? 'dual' : offHand === 'shield' ? 'shield' : 'dagger';
+      return offHand === 'dagger' ? 'dual' : offHand === 'weapon' ? 'daggerBlade' : offHand === 'shield' ? 'shield' : 'dagger';
     case 'sword':
     case 'axe':
     case 'mace':
     case 'oneHand':
-      return offHand === 'weapon' ? 'dualBlade' : offHand === 'shield' ? 'shield' : 'oneHand';
+      return offHand === 'weapon' ? 'dualBlade' : offHand === 'dagger' ? 'bladeDagger' : offHand === 'shield' ? 'shield' : 'oneHand';
     default:
       return offHand === 'shield' ? 'shield' : 'unarmed';
   }
