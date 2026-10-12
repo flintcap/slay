@@ -1,8 +1,9 @@
 /**
  * SLAY — choosing a descent at the gate.
  *
- * Without Legacy unlocks the gate simply opens on the next depth, as it always
- * did. With **Waypoints** (rank 7) it offers every claimed depth milestone
+ * The gate opens on the next depth, and the player may step down to any
+ * tier already cleared to replay it (a lower tier never lowers the record).
+ * With **Waypoints** (rank 7) it also offers every claimed depth milestone
  * deeper than that, so a new life can start where an old one got to. With
  * **Pacts** (rank 9) it then offers three dangers to take on by choice: each is
  * a run modifier at full strength, and each one taken makes the descent's
@@ -18,7 +19,7 @@ import { save } from '../core/Save';
 import { hasUnlock, descentOptions } from '../sim/Legacy';
 import { hashString, Random } from '../core/RNG';
 import { RUN_MODIFIERS } from '../world/DungeonGen';
-import { offerChoice } from '../ui/ChoiceSeam';
+import { offerChoice, offerGate } from '../ui/ChoiceSeam';
 import { modValue } from './RunModifiers';
 
 /** Modifiers that act during play, so taking one after generation is real. */
@@ -88,21 +89,13 @@ export function planDescent(c: Character, go: (depth: number, pacts: string[]) =
       },
     );
   };
-  if (depths.length <= 1) {
-    choosePacts(depths[0]!);
-    return;
-  }
-  offerChoice(
-    'Waypoints',
-    'Descend from where you would, or from any milestone the account has reached.',
-    depths.map((d, i) => ({
-      id: String(d),
-      title: i === 0 ? `Tier ${d}` : `Waypoint: tier ${d}`,
-      gain: i === 0 ? 'The next descent for this character' : 'A milestone your legacy has already claimed',
-    })),
-    (id) => {
-      if (!id) return; // walked away: stay in camp
-      choosePacts(Number(id));
+  // The gate always asks which tier: the deepest open one first, any tier
+  // below it to replay, and Legacy waypoints past it (ui/GatePanel.ts).
+  offerGate(
+    { top: depths[0]!, record: c.depthRecord, waypoints: depths.slice(1), level: c.level },
+    (depth) => {
+      if (depth === null) return; // walked away: stay in camp
+      choosePacts(depth);
     },
   );
 }

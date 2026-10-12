@@ -18,7 +18,8 @@ import { ChoicePanel } from './ChoicePanel';
 import { GamblerPanel } from './GamblerPanel';
 import { EnchanterPanel } from './EnchanterPanel';
 import { BountyPanel } from './BountyPanel';
-import { setChoiceHandler } from './ChoiceSeam';
+import { setChoiceHandler, setGateHandler } from './ChoiceSeam';
+import { GatePanel } from './GatePanel';
 
 let choicePanel: ChoicePanel | null = null;
 
@@ -45,6 +46,12 @@ export function mountDepthUI(): void {
   choicePanel.panel.mount(root);
   registerPanel('choice', choicePanel);
   setChoiceHandler((title, subtitle, options, onPick) => choicePanel!.offer(title, subtitle, options, onPick));
+
+  // The gate's tier choice, before every descent from town.
+  const gatePanel = new GatePanel();
+  gatePanel.panel.mount(root);
+  registerPanel('gate', gatePanel);
+  setGateHandler((offer, onPick) => gatePanel.ask(offer, onPick));
 
   // Town services, opened from their stations in camp (scenes/TownStations).
   const gambler = new GamblerPanel();

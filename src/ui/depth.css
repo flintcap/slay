@@ -153,3 +153,50 @@
   border-radius: 3px;
   cursor: help;
 }
+
+/* The gate's tier choice before a descent (ui/GatePanel.ts). */
+.gate-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--sunken);
+  border: 1px solid var(--panel-3);
+  border-radius: 4px;
+}
+.gate-step {
+  width: 34px;
+  height: 34px;
+}
+.gate-step:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.gate-tier {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.gate-num {
+  font-size: calc(30px * var(--text-scale, 1));
+  line-height: 1.05;
+}
+.gate-tag {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.gate-tag.is-top {
+  color: var(--gold);
+}
+.gate-tag.is-way {
+  color: var(--good);
+}
+.gate-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

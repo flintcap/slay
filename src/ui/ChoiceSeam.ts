@@ -33,3 +33,36 @@ export function offerChoice(title: string, subtitle: string, options: ChoiceOpti
   }
   handler(title, subtitle, options, onPick);
 }
+
+/** What the gate offers before a descent (ui/GatePanel.ts). */
+export interface GateOffer {
+  /** The deepest tier this character may start: the one after their best clear. */
+  top: number;
+  /** Their best clear, 0 for none. */
+  record: number;
+  /** Legacy waypoints deeper than `top`, if unlocked. */
+  waypoints: number[];
+  /** The hero's level, for the danger reading. */
+  level: number;
+}
+
+export type GateHandler = (offer: GateOffer, onPick: (depth: number | null) => void) => void;
+
+let gate: GateHandler | null = null;
+
+export function setGateHandler(h: GateHandler | null): void {
+  gate = h;
+}
+
+/**
+ * Asks which tier to descend to. `onPick` gets the depth, or null when the
+ * player walks away. Without the UI it goes to the top tier, as the gate
+ * always did.
+ */
+export function offerGate(offer: GateOffer, onPick: (depth: number | null) => void): void {
+  if (!gate) {
+    onPick(offer.top);
+    return;
+  }
+  gate(offer, onPick);
+}
