@@ -7,6 +7,9 @@
  *   npm run build
  *   SLAY_PORT=4332 timeout 1800 node tools/shoot-gait.mjs --out=shots/gait --classes=warden,ranger
  *   ... --speeds=walk,run   walk is the hero slowed to about 1.8 m/s
+ *   ... --speeds=zig        running side to side: the run key flips to the
+ *                           other way at a quarter and three quarters of the
+ *                           strip, so it shows two reversals
  *   ... --n=12              frames per strip
  */
 import { mkdirSync, rmSync } from 'node:fs';
@@ -100,6 +103,10 @@ try {
             sc.player.position.set(at[0], 0, at[1]);
             window.__gaitAt = at;
             sc.player.stats.moveSpeed = sp === 'walk' ? -60 : 0;
+            if (sp === 'zig') {
+              // Start at the far end of the lane so both legs of the zigzag fit.
+              sc.player.position.set(at[0] + dx, 0, at[1] + dz);
+            }
           },
           [view, speed],
         );
@@ -118,7 +125,13 @@ try {
         // Freeze the game for each shot: a software frame takes seconds, and
         // the hero must not run out of the crop while it is taken.
         const hold = (v) => page.evaluate((p) => (window.SLAY.engine.paused = p), v);
+        let held = key;
         for (let k = 0; k < N; k++) {
+          if (speed === 'zig' && (k === Math.round(N / 4) || k === Math.round((3 * N) / 4))) {
+            await page.keyboard.up(held);
+            held = held === 'd' ? 'a' : 'd';
+            await page.keyboard.down(held);
+          }
           await hold(true);
           const b = await heroBox();
           const x = Math.round(Math.min(VW - size, Math.max(0, b.x - size / 2)));
@@ -134,7 +147,7 @@ try {
           const g = a.gaitInfo;
           return `speed ${g.speed.toFixed(2)} m/s, ${g.freq.toFixed(2)} Hz, run ${g.runW.toFixed(2)}`;
         });
-        await page.keyboard.up(key);
+        await page.keyboard.up(held);
         const out = path.join(OUT, `gait-${cls}-${speed}-${view}${TAG ? '-' + TAG : ''}.png`);
         execFileSync('montage', [...tiles, '-tile', `${N}x1`, '-geometry', '+0+0', '-resize', '180x180', out]);
         rmSync(tmp, { recursive: true, force: true });
