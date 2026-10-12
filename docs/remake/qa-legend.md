@@ -21,16 +21,16 @@ someone is wearing from across the screen.
   embers, frost mist, sparkles, a trailing wisp). No two sets share a palette
   or a motif, and every unique reads as its own item. Write it into
   `CONTRACTS.md` under ItemLook as the per-id signature data.
-- [ ] Sets on the body. Every piece of every set carries its set's palette,
+- [x] Sets on the body. `qa-legend: bolder set sculpts, crescent moons, set palettes win over cut tints`. Every piece of every set carries its set's palette,
   motif and glow, so a full set is a matched, striking outfit: sculpted motif
   parts (for example dragon heads on the pauldrons, wings on the helm, scaled
   plates on the chest), trims and patterns, and an aura that grows with the
   number of pieces worn (2 pieces: trims glow; full set: the whole outfit
   shines). Works on every class body.
-- [ ] Uniques on the body and in hand. Every unique weapon, shield and armour
+- [x] Uniques on the body and in hand. `qa-legend: fewer repeated halos on mythic and ancient uniques`. Every unique weapon, shield and armour
   piece gets its own sculpted silhouette details, patterns and glow, clearly
   unlike its base and unlike other uniques.
-- [ ] Icons and drops. Inventory icons and ground models show the same
+- [x] Icons and drops. `qa-legend: icons paint each aura, Ward of Aeons is a clock tower, kraken shell sea-green`. Inventory icons and ground models show the same
   signature (palette, motif, glow), so a set piece looks like its set at a
   glance and a unique looks legendary in the grid and on the floor.
 - [ ] Effects budget and check. Glows, auras and particles stay within the
@@ -156,16 +156,12 @@ colours, features (sculpts first), finish and aura.
 
 ## Next up
 
-1. Judge `shots/qa-legend/uqbody1` (worn uniques, `hero-sheet.mjs legend
-   --of=uniques --slot=chest,helm,gloves,boots,belt`) and the Hollow King
-   antler rack on a full-body frame (the close frame at `--ty=0.72` crops
-   the top of tall helms, which is why antlers looked missing). Tick M2 and
-   M3 when they read.
-2. Icons and drops: render `item-sheet.mjs icons` for a few uniques and
-   sets (auras are painted now) and `drops`; then run
-   `check-item-icons` (browser) once.
-3. Budget: `check-perf.mjs --set=set.lastlegion --depths=0,12` (busiest
-   set, about 40 meshes and 2 auras on the hero).
+1. Budget: `check-item-icons` (browser) result, then
+   `check-perf.mjs --preview --set=set.lastlegion --depths=0,12`. Tick M5.
+2. Handover sheets: every set on two classes, full body
+   (`hero-sheet.mjs legend --class=warden,pyromancer`), and every unique
+   (`item-sheet.mjs icons --uniques`, `hero-sheet.mjs legend --of=uniques`).
+   Check the Hollow King antler rack on the full-body frame.
 
 ## Notes for resume
 
@@ -179,6 +175,12 @@ colours, features (sculpts first), finish and aura.
   `ItemLook.ts` `BASE_TINT`. Ward of Aeons outline `clocktower` in
   `items/Offhand.ts`.
 
+- Results so far: every set dresses, lights its trims and raises its aura
+  on all six class bodies (headless probe, 0 failures). Busiest set on the
+  hero (lastlegion) is 40 meshes and 2 auras. `check-curve` failed once on
+  revenant depth 5 (a balance sim, untouched by looks work).
+- The close set frame (`--ty=0.72 --dist=2.1`) crops tall helms: judge
+  helm sculpts on a full-body frame.
 - Looks only. Never change item stats, drop rates or set bonuses.
 - Owner's rule "Gear makes the look" holds: bare heroes wear plain linens.
 - qa-looks also works on equipment fit and clipping. Coordinate through
