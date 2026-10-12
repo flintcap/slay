@@ -4207,7 +4207,7 @@ const VOLLEY = build('volley', [
   },
   {
     id: 'endlessQuiver', name: 'Endless Quiver',
-    desc: 'Every third shot costs no mana. +1% mana regeneration per rank.',
+    desc: 'Every third shot costs no mana. +1 mana regeneration per rank.',
     tier: 3, col: 2, icon: 'quiver', req: ['fanFire'],
     stat: { manaRegen: per(1), mana: per(6) },
   },

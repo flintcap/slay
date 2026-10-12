@@ -485,7 +485,7 @@ export class DungeonScene extends GameScene {
       consume: (it) => {
         this.mesh.removeInteractable(it);
         this.nav.setBlocked(it.tileX, it.tileY, false);
-        if (this.nearProp === it) this.nearProp = null;
+        this.forgetProp(it);
         this.leaveRemains(it);
       },
       dropItem: (item, at) => this.dropItem(item, at),
@@ -654,6 +654,7 @@ export class DungeonScene extends GameScene {
 
     this.levelIndex = index;
     this.level = this.run.levels[index]!;
+    if (this.nearProp) toast('', 'info');
     this.nearProp = null;
     this.vaultOpen = false;
     this.biome = BIOMES.find((b) => b.id === this.level.biome) ?? BIOMES[0]!;
@@ -1723,9 +1724,20 @@ export class DungeonScene extends GameScene {
     if (family !== 'barrel' && family !== 'crate' && family !== 'urn') return;
     this.mesh.removeInteractable(it);
     this.nav.setBlocked(it.tileX, it.tileY, false);
-    if (this.nearProp === it) this.nearProp = null;
+    this.forgetProp(it);
     this.leaveRemains(it);
     this.smash(it);
+  }
+
+  /**
+   * A prop that went away by some road other than [E] (a swing, a dungeon
+   * event) takes its prompt with it. Clearing only `nearProp` left the toast
+   * on screen, and the next prop prompt was the only thing that could replace it.
+   */
+  private forgetProp(it: Interactable): void {
+    if (this.nearProp !== it) return;
+    this.nearProp = null;
+    toast('', 'info');
   }
 
   /** What a used prop leaves: its opened, spent or pulled look, or its broken pieces. */

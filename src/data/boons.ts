@@ -61,7 +61,7 @@ export const BOON_STATUSES: StatusDef[] = [
     'shield',
   ),
   boon('boon.quicksilver', 'Quicksilver', '+25% movement, +20% attack and cast speed.', { moveSpeed: 25, attackSpeed: 20, castSpeed: 20 }, 0x8fe0ff, 'speed'),
-  boon('boon.soulwell', 'Soul Well', '+100% mana regeneration and +15% cast speed.', { manaRegen: 100, castSpeed: 15 }, 0x4a7cff, 'mana'),
+  boon('boon.soulwell', 'Soul Well', '+10 mana regeneration and +15% cast speed.', { manaRegen: 10, castSpeed: 15 }, 0x4a7cff, 'mana'),
   boon(
     'boon.hunted',
     'Marked for the Hunt',

@@ -469,7 +469,12 @@ export function computeStats(c: Character): Stats {
   out.critDamage += DERIVE.baseCritDamage;
   out.defense += out.dexterity * DERIVE.dexDefense;
   out.lifeRegen += DERIVE.baseLifeRegen;
-  out.manaRegen += DERIVE.baseManaRegen + out.energy * DERIVE.enrManaRegen;
+  // Gear reads "+X% Mana Regeneration" and means it: a percent of what the
+  // hero regenerates, not X mana every second. Counted flat, one ring out of
+  // the vault outran every skill in the book and the bar never moved.
+  out.manaRegen =
+    (skills.manaRegen + status.manaRegen + DERIVE.baseManaRegen + out.energy * DERIVE.enrManaRegen) *
+    Math.max(0, 1 + gear.manaRegen / 100);
   out.minDamage += DERIVE.baseMinDamage;
   out.maxDamage += DERIVE.baseMaxDamage;
 
