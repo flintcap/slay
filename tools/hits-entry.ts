@@ -4,7 +4,7 @@
  * What a hit does, through the real skill runner, player and monster:
  *
  *  - Two blades: the hands take turns, right then left, one blow per swing
- *    at twice a single weapon's swing rate; the left arm really swings, and
+ *    faster than a single weapon (0.32 s a swing against 0.42 s); the left arm really swings, and
  *    the off-hand weapon's damage counts.
  *  - Venom: Coat Blades poisons on hit while it is up, its poison shows as
  *    its own number, Poisoned ticks, and the Venom skills leave the stacks
@@ -168,8 +168,8 @@ const one = flurry('dagger.dagger', null);
 const strong = flurry('dagger.dagger', 'dagger.boneknife');
 check('two daggers in a shadowblade\'s hands are dual wielding', pair.dual && !one.dual, `pair ${pair.dual}, one ${one.dual}`);
 check(
-  'each swing lands one blow; two blades swing twice as often',
-  pair.blows === pair.attacks && one.blows === one.attacks && pair.attacks >= one.attacks * 1.8,
+  'each swing lands one blow; two blades swing faster than one',
+  pair.blows === pair.attacks && one.blows === one.attacks && pair.attacks >= one.attacks * 1.2 && pair.attacks <= one.attacks * 1.5,
   `two blades: ${pair.blows} blows in ${pair.attacks} swings; one blade: ${one.blows} in ${one.attacks}`,
 );
 check(

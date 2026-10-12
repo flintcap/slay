@@ -169,6 +169,9 @@ export interface PassiveEffects {
   /** Every Nth attack is a guaranteed critical. 0 = never. */
   guaranteedCritEvery: number;
   guaranteedCritBonusPct: number;
+  /** The Unseen Blade: a kill from the veil keeps it and adds this many seconds, up to the cap. */
+  veilKillExtendSec: number;
+  veilKillCapSec: number;
   /** Damage against a target scaled by how much life it is missing. */
   vsMissingLifePct: number;
   /** Poison ignores this much of the target's poison resistance. */
@@ -325,6 +328,8 @@ function emptyEffects(): PassiveEffects {
     critBladePct: 0,
     guaranteedCritEvery: 0,
     guaranteedCritBonusPct: 0,
+    veilKillExtendSec: 0,
+    veilKillCapSec: 0,
     vsMissingLifePct: 0,
     resistPiercePct: 0,
     poisonStunStacks: 0,
@@ -716,6 +721,8 @@ const RULES: Record<string, Contribution> = {
   theUnseenBlade: (e, r, id) => {
     e.guaranteedCritBonusPct += param(id, 'critDamage', 40) + param(id, 'critPerRank', 5) * (r - 1);
     e.stealthReductionPct += 10;
+    e.veilKillExtendSec = Math.max(e.veilKillExtendSec, param(id, 'extendPerKill', 1.5) + param(id, 'perRank', 0.15) * (r - 1));
+    e.veilKillCapSec = Math.max(e.veilKillCapSec, param(id, 'cap', 20));
   },
   thousandCuts: (e, r, id) => {
     // Crits stack critical damage; the ceiling is what the skill promises.

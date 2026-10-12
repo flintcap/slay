@@ -97,15 +97,23 @@ const CASTER_CATEGORIES: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
 
 /** Resolves the style of whatever is in the character's main hand. */
 /**
- * Each blade's blow with two blades, as a share of the sheet (which carries
- * both weapons). The hands take turns, one blow per swing, at twice the swing
- * rate of a single weapon: the same two blows a beat, the same damage per
- * second, the same hits for on-hit effects as when both struck every attack
- * (main hand 100%, off hand 62%).
+ * Two blades: the hands take turns, one blow per swing, every DUAL_SWING
+ * seconds (one blade swings every 0.42 s). At 0.21 s, twice a single weapon's
+ * rate, the hero flailed at five swings a second; slower swings that each hit
+ * harder keep the same damage per second: both weapons' worth (main hand
+ * 100%, off hand 62%) every 0.42 s, as a share of the sheet, which carries
+ * both weapons.
  */
-const DUAL_BLOW_SCALE = (1 + 0.62) / 2;
+const DUAL_SWING = 0.32;
+const DUAL_BLOW_SCALE = ((1 + 0.62) * DUAL_SWING) / 0.42;
 /** With two blades, the main hand's share of a one-blow melee skill; the off hand lands the rest. */
 const DUAL_SKILL_MAIN = 0.6;
+/**
+ * A melee skill with two blades takes this much longer than with one, so the
+ * left blade's swing finishes before the next cast; its blows hit harder by
+ * the same factor, so damage per second is unchanged.
+ */
+const DUAL_SKILL_TIME = 1.35;
 
 /**
  * True when both hands hold a melee weapon.
@@ -240,6 +248,7 @@ const SELF_BUFF_STATUS: Record<string, string> = {
 const COAT = SKILLS.find((s) => s.id === 'coatBlades');
 /** Every skill's display name, which is what a skill's damage packet carries as `ability`. */
 const SKILL_NAMES = new Set(SKILLS.map((s) => s.name));
+const UMBRAL_AMBUSH = SKILLS.find((s) => s.id === 'umbralAmbush')?.name ?? 'Umbral Ambush';
 
 const SKILL_STATUS: Record<string, string> = {
   // Curses and marks
@@ -569,6 +578,7 @@ export class SkillRunner {
     packet = this.coated(packet, kind, ctx);
     const before = t.life;
     t.takeDamage(packet, ctx);
+    this.veilAfterHit(packet, kind, before > 0 && t.life <= 0);
     try {
       this.feel.hit(t, packet, {
         kind, fromX, fromZ, lifeBefore: before, weapon: this.weaponSound,
@@ -578,6 +588,26 @@ export class SkillRunner {
       // Presentation must never take the hit itself down with it.
       console.warn('[feel] hit report failed', err);
     }
+  }
+
+  /**
+   * Striking from the veil gives you away: the blow lands (with the veil's
+   * guaranteed critical) and the veil drops at the end of the frame, so every
+   * target of the same swing or volley still gets that critical. A kill by
+   * Umbral Ambush keeps it; with The Unseen Blade any kill keeps it and adds
+   * time. Minions, procs and damage over time do not reveal you.
+   */
+  private veilAfterHit(packet: DamagePacket, kind: HitKind, killed: boolean): void {
+    const p = this.caster;
+    if (!p || kind === 'minion' || kind === 'proc' || packet.source !== 'player') return;
+    const veil = p.status.get('veiled');
+    if (!veil) return;
+    const e = p.passives;
+    if (killed && (packet.ability === UMBRAL_AMBUSH || e.veilKillExtendSec > 0)) {
+      if (e.veilKillExtendSec > 0) veil.remaining = Math.min(Math.max(veil.remaining, e.veilKillCapSec), veil.remaining + e.veilKillExtendSec);
+      return;
+    }
+    this.veilBreak = true;
   }
 
   /**
@@ -758,7 +788,11 @@ export class SkillRunner {
           switch (family) {
             case 'melee':
             case 'cleave': {
-              player.beginAction(clip, attackTime);
+              const dual = isDualWielding(player);
+              const k = dual ? DUAL_SKILL_TIME : 1;
+              const skillTime = attackTime * k;
+              const blowPacket = dual ? (m = 1): DamagePacket => makePacket(m * k) : makePacket;
+              player.beginAction(clip, skillTime);
               const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
               // A committed single-target skill lands like one: heavier stop, harder
               // shove. Wide sweeps hit many things and stay crisp instead.
@@ -775,17 +809,18 @@ export class SkillRunner {
               // skill strikes with both. A one-blow skill splits its damage across
               // the two blades (same total, a hit from each); a multi-hit skill's
               // blows keep their damage and the left blade swings among them.
-              const dual = isDualWielding(player);
               const split = dual && hits === 1;
-              const mainPacket = split ? (m = 1): DamagePacket => makePacket(m * DUAL_SKILL_MAIN) : makePacket;
+              const mainPacket = split ? (m = 1): DamagePacket => blowPacket(m * DUAL_SKILL_MAIN) : blowPacket;
               this.meleeSwing(player, dir, arc, reach, mainPacket, ctx, enemies, boss, type, true, kind, sound.hit);
               if (dual) {
                 const facing = dir.clone();
+                // The left blade swings in what is left of the skill's time.
+                const leftTime = Math.max(0.15, skillTime - player.contactIn);
                 this.pendingSwings.push({
                   t: player.contactIn,
                   run: () => {
                     if (!player.alive) return;
-                    const contact = player.handBlow('L', attackTime);
+                    const contact = player.handBlow('L', leftTime);
                     if (!split) return;
                     this.pendingSwings.push({
                       t: contact,
@@ -795,7 +830,7 @@ export class SkillRunner {
                         this.atContact = true;
                         this.caster = player;
                         try {
-                          const off = (m = 1): DamagePacket => makePacket(m * (1 - DUAL_SKILL_MAIN));
+                          const off = (m = 1): DamagePacket => blowPacket(m * (1 - DUAL_SKILL_MAIN));
                           this.meleeSwing(player, facing, arc, reach, off, ctx, enemies, boss, type, true, kind, sound.hit);
                         } finally {
                           this.atContact = false;
@@ -808,7 +843,7 @@ export class SkillRunner {
               if (hits > 1) {
                 const id = player.actionId;
                 const first = player.contactIn;
-                const gap = Math.min(0.08, (attackTime * 0.8) / hits);
+                const gap = Math.min(0.08, (skillTime * 0.8) / hits);
                 const facing = dir.clone();
                 for (let i = 1; i < hits; i++) {
                   this.pendingSwings.push({
@@ -818,7 +853,7 @@ export class SkillRunner {
                       this.atContact = true;
                       this.caster = player;
                       try {
-                        this.meleeSwing(player, facing, arc, reach, makePacket, ctx, enemies, boss, type, true, kind, sound.hit);
+                        this.meleeSwing(player, facing, arc, reach, blowPacket, ctx, enemies, boss, type, true, kind, sound.hit);
                       } finally {
                         this.atContact = false;
                       }
@@ -1364,7 +1399,7 @@ export class SkillRunner {
     const dual = isDualWielding(player);
     // Two blades take turns, right then left, each swing half as long as a
     // single weapon's (see DUAL_BLOW_SCALE).
-    const attackTime = (dual ? 0.21 : 0.42) / Math.max(0.4, 1 + player.attackSpeedPct / 100);
+    const attackTime = (dual ? DUAL_SWING : 0.42) / Math.max(0.4, 1 + player.attackSpeedPct / 100);
     // Basic melee alternates its two swings, so holding the button reads as a
     // combo rather than one animation stuttering. With two blades the right
     // blade opens and the left answers.
@@ -1941,6 +1976,8 @@ export class SkillRunner {
    * keep Flurry's stacks alive while hits keep connecting.
    */
   landedHits = 0;
+  /** A blow landed from the veil this frame; the veil drops next update. */
+  private veilBreak = false;
   /** Increments per summon so a pack fans out rather than stacking. */
   private summonSerial = 0;
   /** A Resonance repeat waiting for the next frame. */
@@ -2295,6 +2332,10 @@ export class SkillRunner {
     const live = this.tickCtx;
     if (!live) return;
     this.runTime += dt;
+    if (this.veilBreak) {
+      this.veilBreak = false;
+      this.caster?.status.remove('veiled');
+    }
 
     for (let i = this.pendingSwings.length - 1; i >= 0; i--) {
       const sw = this.pendingSwings[i]!;
