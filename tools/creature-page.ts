@@ -240,7 +240,7 @@ export async function lineup(ids: string[], mood: 'studio' | 'dungeon' = 'studio
 
 const STATES = ['idle', 'walk', 'run', 'windup', 'strike', 'cast', 'hit', 'stagger', 'spawn', 'death'];
 
-export async function poses(ids: string[]): Promise<string> {
+export async function poses(ids: string[], yaw = 1.1): Promise<string> {
   await ready();
   const list = entries(ids);
   const cw = 150;
@@ -261,7 +261,7 @@ export async function poses(ids: string[]): Promise<string> {
         drive(m.anim, m.root, STATES[col]!);
         const info = m.root.userData.creature as CreatureInfo;
         const sz = m.look.size ?? 1;
-        frame(cam, info.height * 1.1 * sz, 1.1, info.height * 0.5 * sz, 0.2, info.length * 1.3 * sz);
+        frame(cam, info.height * 1.1 * sz, yaw, info.height * 0.5 * sz, 0.2, info.length * 1.3 * sz);
         r.render(scene, cam);
       } catch (err) {
         console.log(String((err as Error).stack ?? err));
@@ -321,6 +321,8 @@ export async function ranks(ids: string[]): Promise<string> {
 
 export const SHEETS: Record<string, (ids: string[]) => Promise<string>> = {
   lineup: (ids) => lineup(ids),
+  /** The poses seen nearly face on. */
+  posesFront: (ids) => poses(ids, 0.3),
   game: (ids) => lineup(ids, 'dungeon'),
   big: (ids) => lineup(ids, 'studio', true),
   side: (ids) => lineup(ids, 'studio', true, Math.PI / 2),

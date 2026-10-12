@@ -142,6 +142,7 @@ function prototype(look: CreatureLook): Prototype {
     length: rig.length,
     hipY: rig.hipY,
     style,
+    grip: s.grip,
   };
   for (const m of meshes) {
     const def = look.mats[m.mat] ?? look.mats.skin!;

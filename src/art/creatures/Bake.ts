@@ -52,7 +52,7 @@ export function sculptKey(s: Sculpt, q: SculptQuality): string {
     eatS(m);
   }
   for (const p of s.parts) {
-    eatS(`${p.bone}|${p.mat}|${p.col ?? ''}|${p.glow ?? ''}`);
+    eatS(`${p.bone}|${p.mat}|${p.col ?? ''}|${p.glow ?? ''}|${p.pull ? `${p.pull.bone}${p.pull.near.toArray().join()}${p.pull.r}` : ''}`);
     eatF(p.geo.getAttribute('position').array as Float32Array);
   }
   for (const r of s.regions) eatF([r.c.x, r.c.y, r.c.z, r.r, ...(r.col ?? [9, 9, 9]), r.glow ?? -1, (r.mats ?? []).length]);
@@ -342,8 +342,11 @@ export function bakeSculpt(s: Sculpt, q: SculptQuality, times?: BakeTimes): Bake
       const si = new Uint16Array(nv * 4);
       const sw = new Float32Array(nv * 4);
       const bi = s.group(part.bone);
+      const pull = part.pull;
+      const pb = pull ? s.group(pull.bone) : bi;
       for (let i = 0; i < nv; i++) {
-        si[i * 4] = bi;
+        const near = pull && (pos[i * 3]! - pull.near.x) ** 2 + (pos[i * 3 + 1]! - pull.near.y) ** 2 + (pos[i * 3 + 2]! - pull.near.z) ** 2 < pull.r * pull.r;
+        si[i * 4] = near ? pb : bi;
         sw[i * 4] = 1;
       }
       const pc = paint(s, m, all, pos, nor, { ...s.paint[m], veins: undefined, mottle: undefined }, part.col, part.glow);

@@ -164,7 +164,18 @@ export function weapon(s: Sculpt, kind: WeaponKind, o: WeaponOpt = {}): void {
         pts.push(g.clone().addScaledVector(axis, t * L).addScaledVector(up, t * t * 0.09 * k));
       }
       s.hard(handB, tubeGeo(pts, (t) => (0.011 - 0.006 * Math.abs(t - 0.5) * 2) * k + 0.003 * k, 5), mat, wood);
-      s.hard(handB, tubeGeo([pts[0]!, pts[8]!], () => 0.0025 * k, 3), mat, [0.75, 0.72, 0.62]);
+      const nock = lerpV(pts[0]!, pts[8]!, 0.5);
+      const freeB = side === 'L' ? 'handR' : 'handL';
+      if (s.has(freeB)) {
+        // The string's middle is bound to the other hand's fingers, so it
+        // runs tip, fingers, tip: straight while the hand rests on it, a V
+        // when the hand draws it back.
+        const fg = lerpV(s.j(freeB), s.j(`${freeB}Tip`), 0.55);
+        s.parts.push({ bone: handB, geo: tubeGeo([pts[0]!, fg, pts[8]!], () => 0.0025 * k, 3), mat, col: [0.75, 0.72, 0.62], pull: { bone: freeB, near: fg, r: 0.01 * k } });
+        s.grip = { kind: 'bow', holder: handB, free: side === 'L' ? 'R' : 'L', hold: nock, grip: g.clone(), freeGrip: fg };
+      } else {
+        s.hard(handB, tubeGeo([pts[0]!, pts[8]!], () => 0.0025 * k, 3), mat, [0.75, 0.72, 0.62]);
+      }
       break;
     }
     case 'crossbow': {
@@ -178,6 +189,9 @@ export function weapon(s: Sculpt, kind: WeaponKind, o: WeaponOpt = {}): void {
       }
       s.hard(handB, tubeGeo(pts, () => 0.012 * k, 5), mat, steel);
       s.hard(handB, tubeGeo([pts[0]!, at(0.18), pts[6]!], () => 0.003 * k, 3), mat, [0.75, 0.72, 0.62]);
+      const freeB = side === 'L' ? 'handR' : 'handL';
+      // The other hand under the stock, behind the bow.
+      if (s.has(freeB)) s.grip = { kind: 'crossbow', holder: handB, free: side === 'L' ? 'R' : 'L', hold: at(0.14), grip: g.clone(), freeGrip: lerpV(s.j(freeB), s.j(`${freeB}Tip`), 0.55) };
       break;
     }
   }

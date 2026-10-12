@@ -41,7 +41,9 @@ const LASH_H: Key = { $hips: [0, -0.06, 0.06], spine: [0.2, 0.3], chest: [0.15, 
 const STOMP_W: Key = { $hips: [-0.06, 0.04, -0.03], spine: [-0.1], chest: [-0.15], armL: [-0.3, 0, 0.7], armR: [-0.3, 0, -0.7], head: [0.2] };
 const STOMP_H: Key = { $hips: [0.02, -0.16, 0.04], spine: [0.35], chest: [0.25], armL: [0.2, 0, 0.9], armR: [0.2, 0, -0.9], head: [-0.2], jaw: [0.5] };
 // Bow: left arm holds the bow out, right draws to the cheek.
-const DRAW: Key = { spine: [0.02, 0.35], chest: [0, 0.35], head: [0, -0.6], armL: [-1.5, 0, -0.1], foreL: [-0.05], handL: [0.1], armR: [-1.35, 0.4, -0.75], foreR: [-2.0], handR: [0.2] };
+// Added over the carry (`armed` bow): the bow arm comes up level and straight;
+// the string hand is placed by the animator's grip solve.
+const DRAW: Key = { spine: [0.02, 0.35], chest: [0, 0.35], head: [0, -0.6], armL: [-0.95, 0, -0.05], foreL: [0.7], handL: [0.1], armR: [-1.0, 0.4, -0.75], foreR: [-1.0], handR: [0.2] };
 const LOOSE: Key = { armR: [0.2, 0.15, -0.25], foreR: [0.6], chest: [-0.05], head: [-0.05] };
 // Crossbow: stock to the shoulder, both hands on it; the shot kicks it up.
 const AIM: Key = { chest: [0, 0.18], head: [0.05, -0.18], armR: [-1.15, 0.25, -0.05], foreR: [-0.75], handR: [0.1], armL: [-1.35, 0, -0.5], foreL: [-0.55] };
@@ -177,13 +179,14 @@ function stance(a: CreatureAnimator): void {
       a.rot('foreL', -1.2);
       break;
     case 'bow':
-      a.rotS('armL', 'L', -0.4, 0, 0.12);
-      a.rot('foreL', -0.25);
-      a.rotS('armR', 'R', -0.1, 0, 0.12);
-      a.rot('foreR', -0.35);
+      // Carried low in front, an arrow on the string, the right hand on it.
+      a.rotS('armL', 'L', -0.6, 0, -0.55);
+      a.rot('foreL', -0.75);
+      a.rotS('armR', 'R', -0.3, 0, 0.1);
+      a.rot('foreR', -0.8);
       break;
     case 'crossbow':
-      a.rotS('armR', 'R', -0.45, 0, 0.1);
+      a.rotS('armR', 'R', -0.45, 0, -0.45);
       a.rot('foreR', -1.0);
       a.rotS('armL', 'L', -0.6, 0, -0.3);
       a.rot('foreL', -1.15);
@@ -435,12 +438,17 @@ function bowPose(a: CreatureAnimator, t: number, rel: number): void {
   const draw = ramp(t, 0, rel * 0.8);
   const loose = ramp(t, rel - 0.01, Math.min(1, rel + 0.06));
   if (a.style.armed === 'crossbow') {
-    key(a, AIM, draw * (1 - ramp(t, rel + 0.15, 1) * 0.7));
+    const aim = draw * (1 - ramp(t, rel + 0.15, 1) * 0.7);
+    key(a, AIM, aim);
+    // The animator turns the stock onto the target as the aim comes up.
+    a.bowDraw = draw;
     key(a, KICK, loose * (1 - ramp(t, rel + 0.05, rel + 0.3)));
     return;
   }
   key(a, DRAW, draw);
   key(a, LOOSE, loose * (1 - ramp(t, rel + 0.1, 1) * 0.6));
+  // The string comes back with the drawing hand and snaps forward on the loose.
+  a.bowDraw = draw * (1 - loose);
   // The draw strains a little before the release.
   a.rot('armR', Math.sin(a.time * 40) * 0.01 * draw * (1 - loose));
 }

@@ -27,6 +27,7 @@ import type { Rng } from '../../types';
 import { Random } from '../../core/RNG';
 import { aimQuat, twoBoneIk } from '../hero/Ik';
 import type { LegChain, RigKind } from './Rig';
+import type { WeaponGrip } from './Sculpt';
 import { PoseBuf, STYLE_DEFAULT, clamp01, type AttackKind, type MotionStyle } from './Motion';
 import { POSERS } from './Posers';
 import { heatCreature, leaveCorpse } from './Creature';
@@ -61,6 +62,35 @@ export interface CreatureInfo {
   length: number;
   hipY: number;
   style: MotionStyle;
+  /** A bow or crossbow the free hand holds too. */
+  grip?: WeaponGrip;
+}
+
+/** One arm, shoulder to hand, solved onto a point. */
+interface ArmChain {
+  upper: number;
+  lower: number;
+  end: number;
+  l1: number;
+  l2: number;
+  bindUpper: THREE.Vector3;
+  bindLower: THREE.Vector3;
+  /** Elbow direction, bind pose: down, out and back. */
+  pole: THREE.Vector3;
+}
+
+/** Both arms on a two-handed weapon. */
+interface GripArm {
+  def: WeaponGrip;
+  holder: number;
+  head: number;
+  /** The free arm, reaching for the string or the stock. */
+  free: ArmChain;
+  /** The carrying arm, raised to the shoulder when a crossbow aims. */
+  carry: ArmChain | null;
+  /** Inverse of the weapon's bind frame (stock, limbs), and which way its limbs run. */
+  restTurnInv: THREE.Quaternion;
+  sideSign: number;
 }
 
 /** The phase of the current one-shot, as the poser sees it. */
@@ -98,6 +128,15 @@ const _s = new THREE.Vector3();
 const _t = new THREE.Vector3();
 const _knee = new THREE.Vector3();
 const _d = new THREE.Vector3();
+const _gp = new THREE.Vector3();
+const _gg = new THREE.Vector3();
+const _go = new THREE.Vector3();
+const _gd = new THREE.Vector3();
+const _ga = new THREE.Vector3();
+const _gh = new THREE.Vector3();
+const _q3 = new THREE.Quaternion();
+const _q3b = new THREE.Quaternion();
+const _m1 = new THREE.Matrix4();
 const TAU = Math.PI * 2;
 
 export class CreatureAnimator {
@@ -163,6 +202,9 @@ export class CreatureAnimator {
   private fidgetWait: number;
   /** 0..1 how much the legs follow their planned feet. */
   ikW = 1;
+  /** How far a bow is drawn (0 resting on the string .. 1 at the cheek), or how far a crossbow is raised to aim; set by the poser. */
+  bowDraw = 0;
+  private gripArm: GripArm | null = null;
   /** Which way the body fell (radians in its own frame), chosen at death. */
   fallYaw = 0;
   fallDir = 1;
@@ -267,6 +309,41 @@ export class CreatureAnimator {
     let ll = 0;
     for (const l of this.legs) ll = Math.max(ll, l.l1 + l.l2);
     this.legLen = ll > 0 ? ll : this.hipY;
+
+    // Two hands on a bow or crossbow: the free arm reaches for it every frame.
+    const gd = info.grip;
+    const holder = gd ? this.index[gd.holder] : undefined;
+    if (gd && holder !== undefined) {
+      const free = this.armChain(info, gd.free);
+      const carry = this.armChain(info, gd.free === 'L' ? 'R' : 'L');
+      // The weapon's bind frame: stock forward, limbs level across it.
+      const fr = gd.hold.clone().sub(gd.grip).normalize();
+      const sd = new THREE.Vector3(0, 1, 0).cross(fr).normalize();
+      const sideSign = sd.x >= 0 ? 1 : -1;
+      sd.multiplyScalar(sideSign);
+      const restTurnInv = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(fr, sd, fr.clone().cross(sd))).invert();
+      if (free) this.gripArm = { def: gd, holder, head: this.index.head ?? this.index.neck ?? this.index.chest ?? free.upper, free, carry, restTurnInv, sideSign };
+    }
+  }
+
+  private armChain(info: CreatureInfo, F: 'L' | 'R'): ArmChain | null {
+    const upper = this.index[`arm${F}`];
+    const lower = this.index[`fore${F}`];
+    const end = this.index[`hand${F}`];
+    if (upper === undefined || lower === undefined || end === undefined) return null;
+    const a = info.joints[`arm${F}`]!;
+    const k = info.joints[`fore${F}`]!;
+    const e = info.joints[`hand${F}`]!;
+    return {
+      upper,
+      lower,
+      end,
+      l1: a.distanceTo(k),
+      l2: k.distanceTo(e),
+      bindUpper: k.clone().sub(a).normalize(),
+      bindLower: e.clone().sub(k).normalize(),
+      pole: new THREE.Vector3(F === 'L' ? 0.8 : -0.8, -0.5, -0.4).normalize(),
+    };
   }
 
   // -- events ------------------------------------------------------------------
@@ -425,6 +502,7 @@ export class CreatureAnimator {
     this.tickFidget(step);
 
     this.pose.clear();
+    this.bowDraw = 0;
     this.ikW = this.legs.length ? 1 : 0;
     this.planFeet(stride);
     const poser = POSERS[this.kind];
@@ -731,6 +809,7 @@ export class CreatureAnimator {
       // Partly solved legs moved their joints; bring model space back in step.
       if (this.ikW < 0.999) this.fk();
     }
+    if (this.gripArm) this.solveGrip(this.gripArm);
 
     // Write, crossfading from the snapshot.
     if (this.fade < 1) {
@@ -786,6 +865,89 @@ export class CreatureAnimator {
   boneModel(name: string, out: THREE.Vector3): THREE.Vector3 {
     const i = this.index[name];
     return i === undefined ? out.set(0, 0, 0) : out.copy(this.mPos[i]!);
+  }
+
+  /** A point bound to bone `i` at bind position `p`, where the pose has put it. */
+  private posed(i: number, p: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
+    return out.copy(p).sub(this.bindModel[i]!).applyQuaternion(this.mQuat[i]!).add(this.mPos[i]!);
+  }
+
+  /**
+   * Both hands on the weapon. A bow: the free hand on the string, drawn back
+   * toward the cheek as `bowDraw` rises. A crossbow: the free hand under the
+   * stock; while aiming (`bowDraw`) the carrying hand brings the stock up to
+   * the shoulder, pointing where the body faces.
+   */
+  private solveGrip(G: GripArm): void {
+    const d = G.def;
+    const w = this.bowDraw;
+    if (d.kind === 'crossbow' && G.carry) {
+      // The carrying arm is placed outright: low and ready at the hip, or
+      // with `bowDraw` raised to the shoulder. The stock pitches up from
+      // pointing at the floor ahead to the line of sight, a short turn.
+      const C = G.carry;
+      const ri = this.index.root;
+      const fwd = _gd.set(0, -0.45 + 0.4 * w, 1).normalize();
+      if (ri !== undefined) fwd.applyQuaternion(this.mQuat[ri]!);
+      const sh = this.mPos[C.upper]!;
+      const reach = C.l1 + C.l2;
+      // Aimed: just ahead of the shoulder, a touch in toward the chin.
+      _ga.copy(sh).addScaledVector(fwd, 0.42 * reach).lerp(this.mPos[G.head]!, 0.12);
+      _ga.y = sh.y - 0.06 * reach;
+      // Ready: in front of the hip, in toward the middle.
+      _gh.set(sh.x * 0.6, sh.y - 0.62 * reach, sh.z);
+      if (ri !== undefined) _gh.sub(this.mPos[ri]!);
+      _gh.addScaledVector(fwd, 0.3 * reach);
+      if (ri !== undefined) _gh.add(this.mPos[ri]!);
+      // The stock along that line, the bow's limbs level across it. Bind
+      // turns are identity, so the hand's model turn is the weapon's.
+      const side = _gg.set(0, 1, 0);
+      if (ri !== undefined) side.applyQuaternion(this.mQuat[ri]!);
+      side.cross(fwd).normalize().multiplyScalar(G.sideSign);
+      _m1.makeBasis(fwd, side, _gp.crossVectors(fwd, side));
+      this.solveArm(C, d.grip, _gp.copy(_gh).lerp(_ga, w), _q3b.setFromRotationMatrix(_m1).multiply(G.restTurnInv));
+    }
+    const hold = this.posed(G.holder, d.hold, _gp);
+    if (d.kind === 'bow' && w > 0) {
+      // Straight back from the bow's grip through the string, as far as the cheek.
+      const dir = _go.copy(hold).sub(this.posed(G.holder, d.grip, _gg));
+      if (dir.lengthSq() > 1e-8) {
+        dir.normalize();
+        const back = Math.max(0, _gg.copy(this.mPos[G.head]!).sub(hold).dot(dir));
+        hold.addScaledVector(dir, back * w);
+      }
+    }
+    this.solveArm(G.free, d.freeGrip, hold);
+  }
+
+  /**
+   * An arm onto a point: the hand keeps its posed turn and the arm is solved
+   * so the fingers (`finger`, bind pose), not the wrist, land on `target`.
+   */
+  private solveArm(C: ArmChain, finger: THREE.Vector3, target: THREE.Vector3, handTurn?: THREE.Quaternion): void {
+    const pi = this.parent[C.upper]!;
+    const pq = pi >= 0 ? this.mQuat[pi]! : _q3.identity();
+    const pole = _v3.copy(C.pole).applyQuaternion(pq);
+    const a = this.mPos[C.upper]!;
+    const hold = _gh.copy(target);
+    for (let pass = 0; pass < 2; pass++) {
+      const t = _t.copy(hold).sub(_go.copy(finger).sub(this.bindModel[C.end]!).applyQuaternion(handTurn ?? this.mQuat[C.end]!));
+      const reach = (C.l1 + C.l2) * 0.98;
+      const dist = t.distanceTo(a);
+      if (dist > reach) t.sub(a).multiplyScalar(reach / dist).add(a);
+      twoBoneIk(a, t, C.l1, C.l2, pole, _knee);
+      const up = this.mQuat[C.upper]!;
+      aimQuat(C.bindUpper, C.pole, _d.subVectors(_knee, a), pole, up);
+      this.lQuat[C.upper]!.copy(_q.copy(pq).invert().multiply(up));
+      const lq = this.mQuat[C.lower]!;
+      aimQuat(C.bindLower, C.pole, _d.subVectors(t, _knee), pole, lq);
+      this.lQuat[C.lower]!.copy(_q.copy(up).invert().multiply(lq));
+      this.mPos[C.lower]!.copy(_knee);
+      if (handTurn) this.lQuat[C.end]!.copy(_q.copy(lq).invert().multiply(handTurn));
+      this.mQuat[C.end]!.multiplyQuaternions(lq, this.lQuat[C.end]!);
+      this.mPos[C.end]!.copy(t);
+    }
+    this.fk(Math.min(C.upper, C.lower, C.end));
   }
 
   private solveLeg(leg: Leg, bodyQ: THREE.Quaternion): void {

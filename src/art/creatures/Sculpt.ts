@@ -78,6 +78,23 @@ export interface HardPart {
   mat: CMat;
   col?: RGB;
   glow?: number;
+  /** Vertices within `r` of `near` follow this bone instead (a bowstring's nock follows the drawing hand). */
+  pull?: { bone: string; near: THREE.Vector3; r: number };
+}
+
+/** A two-handed weapon: where the free hand takes hold of it, bind pose, character space. */
+export interface WeaponGrip {
+  kind: 'bow' | 'crossbow';
+  /** The hand that carries the weapon. */
+  holder: string;
+  /** The hand that reaches for it. */
+  free: 'L' | 'R';
+  /** The point the free hand holds: the string's middle, or the stock. Moves with `holder`. */
+  hold: THREE.Vector3;
+  /** Where the weapon is gripped in the holder's hand (bows draw away from it). */
+  grip: THREE.Vector3;
+  /** Where the free hand's fingers close, bind pose. */
+  freeGrip: THREE.Vector3;
 }
 
 export interface SculptQuality {
@@ -100,6 +117,8 @@ export class Sculpt {
   readonly lumps: Partial<Record<CMat, { amp: number; scale: number }>> = {};
   /** Scale on the default smooth-union radius. */
   k = 0.02;
+  /** Set by `weapon()` for bows and crossbows, so the animator can put the other hand on it. */
+  grip?: WeaponGrip;
   private readonly index: Record<string, number>;
 
   constructor(readonly rig: CreatureRig) {
