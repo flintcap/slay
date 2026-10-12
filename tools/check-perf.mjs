@@ -5,6 +5,7 @@
  *   SLAY_PORT=4309 node tools/check-perf.mjs --depths=1,12    # just these depths (0 is the town)
  *   SLAY_PORT=4309 node tools/check-perf.mjs --alloc          # also list who allocates
  *   SLAY_PORT=4309 node tools/check-perf.mjs --preview        # the built game (npm run build first)
+ *   SLAY_PORT=4309 node tools/check-perf.mjs --set=set.lastlegion  # the hero in a full set (glow, auras)
  *
  * Frame time under software rendering says nothing about a player's machine,
  * so this measures what does not depend on the GPU, at the densest knot of
@@ -23,6 +24,7 @@
  * numbers, what leaves most of a 16.7 ms frame for drawing.
  */
 import { bootGame } from './lib/game.mjs';
+import { readFileSync } from 'node:fs';
 
 const BUDGET = {
   drawCalls: 900,
@@ -52,6 +54,14 @@ const BUDGET = {
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
 const DEPTHS = (arg('depths') ?? '0,1,6,12,20,32').split(',').map(Number);
 const SEED = Number(arg('seed') ?? 424242);
+// --set=<id>: wear every piece of that set, so its glow and auras are measured.
+const SET_ID = arg('set');
+const SET_BASES = SET_ID
+  ? [...readFileSync(new URL('../src/data/sets.ts', import.meta.url), 'utf8').matchAll(/\['(set\.[a-z]+)\.[a-z0-9]+', (?:'[^']*'|"[^"]*"), '([a-z0-9.]+)'/g)]
+      .filter((m) => m[1] === SET_ID)
+      .map((m) => m[2])
+  : [];
+if (SET_ID && !SET_BASES.length) throw new Error(`no pieces found for ${SET_ID}`);
 const showAlloc = process.argv.includes('--alloc');
 
 // --preview serves the built game (npm run build first): far quicker to load
@@ -67,6 +77,23 @@ await page.evaluate((seed) => {
   // Seeded: the hero's gear is part of every frame measured.
   window.SLAY.debug.makeCharacter('warden', 30, seed);
 }, SEED);
+if (SET_ID) {
+  const worn = await page.evaluate(({ setId, bases }) => {
+    const c = window.SLAY.save.account.current;
+    let n = 0;
+    for (const b of bases) {
+      const uid = window.SLAY.debug.equip(b, 70, 'rare');
+      const item = uid && Object.values(c.equipment).find((it) => it && it.uid === uid);
+      if (!item) continue;
+      // Only the look follows from these two; the measure is draw cost, not stats.
+      item.rarity = 'set';
+      item.setId = setId;
+      n++;
+    }
+    return n;
+  }, { setId: SET_ID, bases: SET_BASES });
+  console.log(`wearing ${worn}/${SET_BASES.length} pieces of ${SET_ID}`);
+}
 
 const rows = [];
 for (const depth of DEPTHS) {

@@ -234,6 +234,14 @@ Glow and auras:
   on a hero.
 - `hero/HeroMaterials.ts` `glowingTwin(material, color, intensity)`: a
   cached emissive twin of a gear material.
+- Icons (`items/IconRender.ts`) paint the same aura from `auraStyle(kind)`:
+  big soft kinds bloom behind the item, small bright ones sit on top with
+  drift trails. Seeded by the item's identity, so an icon never changes.
+- `ItemLook.ts` `BASE_TINT`: a base whose own palette is too plain to read
+  (Kraken Shell) gets a tint there, so icon, drop and body agree.
+- Draw cost: a hero in the busiest full set is about 40 meshes and 2 or 3
+  auras. `node tools/check-perf.mjs --set=<set id>` measures a floor with
+  that set worn.
 
 | Set | Palette | Motif (sculpt) | Finish | Glow and aura |
 | --- | --- | --- | --- | --- |
