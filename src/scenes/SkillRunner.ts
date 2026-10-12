@@ -95,8 +95,14 @@ const RANGED_CATEGORIES: ItemCategory[] = ['bow', 'crossbow'];
 const CASTER_CATEGORIES: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
 
 /** Resolves the style of whatever is in the character's main hand. */
-/** How hard the off-hand hits relative to the main hand. */
-const OFFHAND_SCALE = 0.62;
+/**
+ * Each blade's blow with two blades, as a share of the sheet (which carries
+ * both weapons). The hands take turns, one blow per swing, at twice the swing
+ * rate of a single weapon: the same two blows a beat, the same damage per
+ * second, the same hits for on-hit effects as when both struck every attack
+ * (main hand 100%, off hand 62%).
+ */
+const DUAL_BLOW_SCALE = (1 + 0.62) / 2;
 
 /**
  * True when both hands hold a melee weapon.
@@ -528,19 +534,8 @@ export class SkillRunner {
   /** When Paralytic Toxin last stunned each target, for its internal cooldown. */
   private poisonStunAt = new Map<string, number>();
   private tmp = new THREE.Vector3();
-  /** Pending off-hand blow from a dual-wield basic attack. */
+  /** Which swing of the basic combo is next; with two blades, which hand. */
   private swingParity = 0;
-  private offHandTimer = 0;
-  private offHandSwing: {
-    dir: THREE.Vector3;
-    ctx: CombatContext;
-    enemies: Enemy[];
-    boss: Boss | null;
-    player: Player;
-    /** The action the main hand started; anything newer cancels the off hand. */
-    id: number;
-    attackTime: number;
-  } | null = null;
   private tmp2 = new THREE.Vector3();
   private tmp3 = new THREE.Vector3();
 
@@ -1315,66 +1310,19 @@ export class SkillRunner {
       return true;
     }
 
-    const attackTime = 0.42 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
     const dual = isDualWielding(player);
+    // Two blades take turns, right then left, each swing half as long as a
+    // single weapon's (see DUAL_BLOW_SCALE).
+    const attackTime = (dual ? 0.21 : 0.42) / Math.max(0.4, 1 + player.attackSpeedPct / 100);
     // Basic melee alternates its two swings, so holding the button reads as a
-    // combo rather than one animation stuttering. With two blades the main
-    // hand always opens (the right blade), and the off hand answers below.
+    // combo rather than one animation stuttering. With two blades the right
+    // blade opens and the left answers.
     this.swingParity = (this.swingParity + 1) % 2;
-    player.beginAction(this.swingParity === 0 ? 'attack1' : 'attack2', attackTime, dual ? 'R' : undefined);
-    this.meleeSwing(player, dir, 1.5, 2.4, packet, ctx, enemies, boss, 'physical');
-
-    // Dual wield: both blades strike, main hand first, the off hand a beat
-    // after it connects. The off hand hits for a share of the sheet's damage
-    // (the sheet carries both weapons, so the second blade is in both blows),
-    // which is what keeps two one-handers ahead of one without doubling it.
-    //
-    // This used to be a second hit with no swing behind it: the body only ever
-    // swung the right blade, and the left one never moved.
-    if (dual) {
-      this.offHandTimer = Math.max(player.contactIn + 0.02, attackTime * 0.4);
-      this.offHandSwing = { dir: dir.clone(), ctx, enemies, boss, player, id: player.actionId, attackTime };
-    }
+    const side = dual ? (this.swingParity === 0 ? 'R' : 'L') : undefined;
+    player.beginAction(this.swingParity === 0 ? 'attack1' : 'attack2', attackTime, side);
+    const blow = dual ? (mult = 1): DamagePacket => packet(mult * DUAL_BLOW_SCALE) : packet;
+    this.meleeSwing(player, dir, 1.5, 2.4, blow, ctx, enemies, boss, 'physical');
     return true;
-  }
-
-  /**
-   * Swings the off hand queued by a dual-wield basic attack, and lands its
-   * blow on the left blade's contact frame. `update` calls this every frame;
-   * a dodge or a new action before it swings cancels it.
-   */
-  tickOffHand(dt: number): void {
-    const queued = this.offHandSwing;
-    if (!queued) return;
-    this.offHandTimer -= dt;
-    if (this.offHandTimer > 0) return;
-    this.offHandSwing = null;
-    const player = queued.player;
-    if (!player.alive || player.actionId !== queued.id || !isDualWielding(player)) return;
-    const packet = (mult = 1): DamagePacket =>
-      rollDamage(player.stats, queued.ctx.rng, {
-        scale: mult * OFFHAND_SCALE,
-        type: 'physical',
-        ability: 'Attack',
-        source: 'player',
-      });
-    const contact = player.offHandBlow(queued.attackTime);
-    const prevSound = this.weaponSound;
-    this.pendingSwings.push({
-      t: contact,
-      run: () => {
-        if (player.actionId !== queued.id || !player.alive) return;
-        this.atContact = true;
-        this.caster = player;
-        try {
-          this.meleeSwing(player, queued.dir, 1.4, 2.3, packet, queued.ctx, queued.enemies, queued.boss, 'physical');
-        } finally {
-          this.atContact = false;
-        }
-      },
-    });
-    // The whoosh of the second blade, as the main hand's swing has its own.
-    audio.play(`swing.${prevSound}`, { x: player.position.x, z: player.position.z, volume: 0.75 });
   }
 
   /**
@@ -2284,7 +2232,6 @@ export class SkillRunner {
     if (!live) return;
     this.runTime += dt;
 
-    this.tickOffHand(dt);
     for (let i = this.pendingSwings.length - 1; i >= 0; i--) {
       const sw = this.pendingSwings[i]!;
       sw.t -= dt;

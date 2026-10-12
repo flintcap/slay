@@ -3,8 +3,9 @@
  *
  * What a hit does, through the real skill runner, player and monster:
  *
- *  - Two blades: each basic attack lands a blow from each hand, the left arm
- *    really swings for the second, and the off-hand weapon's damage counts.
+ *  - Two blades: the hands take turns, right then left, one blow per swing
+ *    at twice a single weapon's swing rate; the left arm really swings, and
+ *    the off-hand weapon's damage counts.
  *  - Venom: Coat Blades poisons on hit while it is up, its poison shows as
  *    its own number, Poisoned ticks, and the Venom skills leave the stacks
  *    they promise (Viper Strike, Venom Dart, Death Lotus, Plague Vial,
@@ -130,47 +131,36 @@ function scene(cls: CharClassId, skills: Record<string, number>, gear: Partial<R
 
 interface Flurry {
   dual: boolean;
+  /** Basic attacks started while the button was held. */
   attacks: number;
-  /** Blows that landed, per attack. */
-  perAttack: number[];
+  /** Blows that landed. */
+  blows: number;
   total: number;
   left: number;
   right: number;
-  /** Off-hand blows that landed within two frames of a left-hand swing. */
+  /** Blows that landed within two frames of a left-hand swing. */
   onLeftSwing: number;
-  offBlows: number;
 }
 
-function flurry(main: string, off: string | null, attacks = 12): Flurry {
+/** Holds the attack button for `seconds`: a new swing whenever the last ends. */
+function flurry(main: string, off: string | null, seconds = 7): Flurry {
   const gear: Partial<Record<EquipSlot, string>> = { mainHand: main };
   if (off) gear.offHand = off;
   const s = scene('shadowblade', {}, gear, 11);
   const dual = isDualWielding(s.player);
-  const perAttack: number[] = [];
-  let offBlows = 0;
-  let onLeftSwing = 0;
-  for (let i = 0; i < attacks; i++) {
-    const from = s.packets.length;
-    const ok = s.runner.basicAttack(s.player, s.at.clone(), s.ctx, [s.foe], null);
-    if (!ok) {
-      perAttack.push(0);
-      s.tick(0.3);
-      continue;
-    }
-    s.tick(0.6);
-    const mine = s.packets.slice(from).filter((x) => x.p.ability === 'Attack');
-    perAttack.push(mine.length);
-    if (mine.length >= 2) {
-      offBlows++;
-      const t = mine[1]!.t;
-      if (s.swings.some((w) => w.side === 'L' && Math.abs(w.t - t) <= DT * 2.5)) onLeftSwing++;
-    }
+  let attacks = 0;
+  for (let t = 0; t < seconds; t += DT) {
+    if (!s.player.isBusy && s.runner.basicAttack(s.player, s.at.clone(), s.ctx, [s.foe], null)) attacks++;
+    s.tick(DT);
   }
-  const total = s.packets.filter((x) => x.p.ability === 'Attack').reduce((n, x) => n + x.p.amount, 0);
+  s.tick(0.5);
+  const mine = s.packets.filter((x) => x.p.ability === 'Attack');
+  const total = mine.reduce((n, x) => n + x.p.amount, 0);
+  const onLeftSwing = mine.filter((x) => s.swings.some((w) => w.side === 'L' && Math.abs(w.t - x.t) <= DT * 2.5)).length;
   const left = s.swings.filter((w) => w.side === 'L').length;
   const right = s.swings.filter((w) => w.side === 'R').length;
   s.done();
-  return { dual, attacks, perAttack, total, left, right, onLeftSwing, offBlows };
+  return { dual, attacks, blows: mine.length, total, left, right, onLeftSwing };
 }
 
 const pair = flurry('dagger.dagger', 'dagger.dagger');
@@ -178,24 +168,24 @@ const one = flurry('dagger.dagger', null);
 const strong = flurry('dagger.dagger', 'dagger.boneknife');
 check('two daggers in a shadowblade\'s hands are dual wielding', pair.dual && !one.dual, `pair ${pair.dual}, one ${one.dual}`);
 check(
-  'each basic attack lands a blow from each hand',
-  pair.perAttack.every((n) => n === 2) && one.perAttack.every((n) => n === 1),
-  `two blades: ${pair.perAttack.join(' ')}; one blade: ${one.perAttack.join(' ')}`,
+  'each swing lands one blow; two blades swing twice as often',
+  pair.blows === pair.attacks && one.blows === one.attacks && pair.attacks >= one.attacks * 1.8,
+  `two blades: ${pair.blows} blows in ${pair.attacks} swings; one blade: ${one.blows} in ${one.attacks}`,
 );
 check(
-  'the left arm swings: one right and one left blade swing per attack',
-  pair.left >= pair.attacks && pair.right >= pair.attacks,
-  `${pair.right} right, ${pair.left} left in ${pair.attacks} attacks`,
+  'the hands take turns: right, left, right, left',
+  pair.left > 0 && Math.abs(pair.left - pair.right) <= 1 && pair.left + pair.right >= pair.attacks - 1,
+  `${pair.right} right, ${pair.left} left in ${pair.attacks} swings`,
 );
 check(
-  'the off-hand blow lands on the left blade\'s swing',
-  pair.offBlows > 0 && pair.onLeftSwing === pair.offBlows,
-  `${pair.onLeftSwing} of ${pair.offBlows}`,
+  'every left swing lands its blow',
+  pair.left > 0 && pair.onLeftSwing >= pair.left - 1,
+  `${pair.onLeftSwing} blows on ${pair.left} left swings`,
 );
 check(
   'a second blade adds its damage',
   pair.total > one.total * 1.5,
-  `two blades ${Math.round(pair.total)} vs one ${Math.round(one.total)} (x${(pair.total / Math.max(1, one.total)).toFixed(2)})`,
+  `two blades ${Math.round(pair.total)} vs one ${Math.round(one.total)} in 7 s (x${(pair.total / Math.max(1, one.total)).toFixed(2)})`,
 );
 check(
   'a stronger off-hand blade hits harder',

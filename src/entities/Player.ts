@@ -276,23 +276,6 @@ export class Player {
     });
   }
 
-  /**
-   * The off hand's blow inside a dual-wield attack: the left blade swings
-   * while the action the main hand started still holds the body. Returns the
-   * seconds until it connects, which is when its damage should land.
-   */
-  offHandBlow(duration: number): number {
-    const contact = Math.max(0.05, Math.min(CONTACT_CAP, CLIP_CONTACT.attack2! * duration));
-    this.animator.play('attack2', {
-      fade: 0.06,
-      speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)),
-      restart: true,
-      contact,
-      side: 'L',
-    });
-    return contact;
-  }
-
   /** Identifies the current action. Changes when a new one starts or a dodge cuts it off. */
   get actionId(): number {
     return this.actionSerial;
