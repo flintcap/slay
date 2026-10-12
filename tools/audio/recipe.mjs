@@ -52,12 +52,9 @@ export const ROOTS = {
   wind: 'wind/wind/',
   yell: 'yelling sounds/yelling sounds/',
   hurt: 'death sound effect/',
-  cure: 'curemagic/',
   rsfx: 'SFX/SFX/',
   scifi: 'sci-fi-sfx/',
   shatter: 'IceShatters_0/IceShatters/',
-  portal4: 'tts/',
-  porta: 'PortalSFX/PortalSFX/',
   mw: '100-CC0-wood-metal-SFX/',
   msfx1: 'monster_sfx_pack/monster_sfx_pack/',
   msfx2: 'monster_sfx_pack_2/monster_sfx_pack_2/',
@@ -140,14 +137,25 @@ export const SFX = {
     x('acc', 'bottle-glass-uncork-03.wav', { mix: [x('rsp', 'inventory/bubble2.wav', { delay: 300, gain: -2 })] }),
     x('acc', 'vial-glass-round-uncork-01.wav', { mix: [x('rsp', 'inventory/bubble3.wav', { delay: 280, gain: -3 })] }),
   ],
+  // A rift tearing open: wind rushing through, a low choir hum, the ground rumbling.
   portal: [
-    x('portal4', '1.mp3', { t: 2.6, fadeOut: 0.8 }),
-    x('porta', 'porta.ogg', { rate: 0.8, mix: [x('scifi', 'teleport_02.ogg', { gain: -8, lp: 3000 })] }),
-    x('tele', 'teleport.wav', { rate: 0.85 }),
+    x('wwoosh', 'wind woosh loop.ogg', {
+      t: 2.4,
+      rate: 0.6,
+      fadeIn: 0.2,
+      fadeOut: 0.8,
+      mix: [x('chant', 'chant23.wav', { ss: 0.5, t: 2.4, rate: 0.5, fadeOut: 0.8, gain: -5 }), x('rumble', 'rumble.wav', { ss: 2, t: 2.4, fadeOut: 0.8, gain: -4 })],
+    }),
+    x('farboom', 'nenadsimic__muffled distant explosion.ogg', { t: 2, fadeOut: 0.6, mix: [x('whoosh', 'whoosh2_0.wav', { rate: 0.6, gain: -2 })] }),
+    x('gbreath', 'ghostbreath.flac', { t: 2.2, rate: 0.7, fadeOut: 0.7, mix: [x('wwoosh', 'wind woosh loop.ogg', { t: 2, rate: 0.8, gain: -3 })] }),
   ],
+  // Old stone waking: a deep gong, grinding stone and a breath of wind.
   waypoint: [
-    x('cure', 'Cure2.wav', { mix: [x('c100', 'gong_02.ogg', { rate: 0.6, gain: -9 })] }),
-    x('magic', 'magical_1.ogg', { mix: [x('c100', 'bell_01.ogg', { rate: 0.6, gain: -8 })] }),
+    x('c100', 'gong_02.ogg', {
+      rate: 0.6,
+      mix: [x('sdoor', 'stone_door.ogg', { t: 1.5, fadeOut: 0.4, gain: -4 }), x('wwoosh', 'wind woosh loop.ogg', { t: 1.6, rate: 0.8, fadeIn: 0.2, fadeOut: 0.5, gain: -6 })],
+    }),
+    x('ki', 'impactBell_heavy_001.ogg', { rate: 0.6, mix: [x('chant', 'chant11.wav', { rate: 0.7, fadeIn: 0.2, gain: -6 })] }),
   ],
   stairs: [x('sdoor', 'stone_door.ogg'), x('c100', 'door_01.ogg', { rate: 0.75, t: 2.2, fadeOut: 0.5, lp: 3000 })],
   door: [x('kr', 'doorOpen_1.ogg'), x('kr', 'doorOpen_2.ogg'), x('mw', 'door_open_01.ogg', { rate: 0.85 })],
@@ -157,8 +165,8 @@ export const SFX = {
     x('mw', 'lock_open_01.ogg', { mix: [x('kr', 'creak3.ogg', { delay: 300, gain: -3 })] }),
   ],
   shrine: [
-    x('cure', 'Cure7.wav', { mix: [x('c100', 'gong_01.ogg', { rate: 0.5, gain: -10 })] }),
-    x('magic', 'magical_3.ogg', { mix: [x('c100', 'gong_02.ogg', { rate: 0.5, gain: -10 })] }),
+    x('c100', 'gong_01.ogg', { rate: 0.5, gain: -2, mix: [x('chant', 'chant23.wav', { ss: 0.5, t: 2, rate: 0.8, fadeIn: 0.3, fadeOut: 0.6, gain: -4 })] }),
+    x('c100', 'gong_02.ogg', { rate: 0.55, gain: -2, mix: [x('chant', 'chant11.wav', { rate: 0.7, fadeIn: 0.2, gain: -4 })] }),
   ],
 
   // --- weapons --------------------------------------------------------------
@@ -236,8 +244,8 @@ export const SFX = {
   'arrow.thunk': [...xs('ki', 'impactWood_light_00#.ogg', [0, 1, 2], { rate: 0.9 }), x('mw', 'wood_hit_02.ogg')],
   block: [...xs('shield', 'impact.#.ogg', [1, 2, 3, 6, 7]), x('ki', 'impactPlate_heavy_002.ogg')],
   'block.magic': [
-    x('ki', 'impactGlass_medium_000.ogg', { mix: [x('magic', 'magical_6.ogg', { t: 0.6, gain: -6 })] }),
-    x('elec', 'shieldhit.wav'),
+    x('ki', 'impactGlass_medium_000.ogg', { mix: [x('shield', 'impact.5.ogg', { gain: -4 })] }),
+    x('shield', 'impact.8.ogg', { mix: [x('ki', 'impactSoft_heavy_002.ogg', { rate: 0.7, gain: -4 })] }),
     x('ki', 'impactBell_heavy_001.ogg', { rate: 0.8, hp: 300 }),
   ],
   parry: [...xs('sword20', SC + 'sword_clash.#.ogg', [1, 2, 5, 8]), ...xs('tiny', 'sword-clash-0#.wav', [3, 5])],
@@ -299,17 +307,37 @@ export const SFX = {
     x('battle', 'swish_3.wav', { rate: 0.6, mix: [x('c100b', 'sfx100v2_air_03.ogg', { gain: -3 })] }),
     x('c100b', 'sfx100v2_air_02.ogg', { t: 0.8 }),
     x('whoosh', 'whoosh2_0.wav', { t: 0.9 }),
+    // Steel drawn with a grunt behind it.
+    x('wpn', 'seax-unsheathe-01.wav', { mix: [x('yell', '3grunt3.wav', { gain: -4 })] }),
   ],
   'cast.fire': [...xs('r80', 'spell_fire_0#.ogg', [1, 2, 5, 6]), x('fball', '105016__julien-matthey__jm-fx-fireball-01.wav', { t: 1.2 }), x('ignite', 'ignition.flac')],
-  'cast.cold': [x('freeze', 'freeze.wav', { t: 1.2 }), x('ice', 'ice.wav'), x('ice', 'ice.wav', { rate: 0.85, mix: [x('shatter', 'LedasLuzta2.ogg', { gain: -8 })] })],
-  'cast.lightning': [x('elec', 'teleport_1.wav'), x('buzz', 'buzz.ogg', { t: 0.8 }), x('elec', 'hit.wav', { t: 1 }), x('elec', 'charge.wav', { t: 0.9 })],
+  'cast.cold': [
+    x('freeze', 'freeze.wav', { t: 1.2 }),
+    x('ice', 'ice.wav'),
+    x('ice', 'ice.wav', { rate: 0.85, mix: [x('shatter', 'LedasLuzta2.ogg', { gain: -8 })] }),
+    x('ice', 'coldsnap.wav', { t: 1.2 }),
+  ],
+  // Lightning snaps and cracks: sparks, a firecracker crack, a short thunder clap.
+  'cast.lightning': [
+    x('spark', 'spark.wav', { mix: [x('bang', 'bang_02.ogg', { lp: 6000, gain: -6 })] }),
+    x('spark', 'continuousspark.wav', { rate: 0.85, mix: [x('c100b', 'sfx100v2_thunder_01.ogg', { t: 0.8, gain: -6 })] }),
+    x('elec', 'death_1.wav', { t: 0.8 }),
+    x('elec', 'groundhit.wav', { mix: [x('spark', 'spark.wav', { gain: -4 })] }),
+  ],
   'cast.poison': [
     x('water', 'bubble_01.ogg'),
     x('water', 'bubble_03.ogg'),
     ...[1, 2].map((n) => x('creat', `spit_0${n}.ogg`, { mix: [x('water', 'bubble_02.ogg', { gain: -6 })] })),
     x('creat', 'burble_01.ogg'),
+    x('steam', 'steam hisses - Marker #2.wav', { t: 0.9, mix: [x('water', 'bubble_02.ogg', { gain: -6 })] }),
   ],
-  'cast.arcane': [...xs('magic', 'magical_#.ogg', [1, 3, 5, 6], { t: 1.2 }), x('r80', 'spell_01.ogg'), x('r80', 'spell_02.ogg'), x('rsp', 'battle/magic1.wav')],
+  // Arcane is a low hum or a rush of air, never a chime: a choir slowed to a drone under a whoosh.
+  'cast.arcane': [
+    x('whoosh', 'whoosh2_0.wav', { rate: 0.7, t: 1, mix: [x('chant', 'chant23.wav', { ss: 0.5, t: 1, rate: 0.5, fadeIn: 0.15, fadeOut: 0.4, gain: -6 })] }),
+    x('sand', 'sand-spell.flac', { rate: 0.75, lp: 3000 }),
+    x('gbreath', 'ghostbreath.flac', { t: 1.2, rate: 0.8, fadeOut: 0.4, mix: [x('swish', 'swish-6.wav', { rate: 0.6, gain: -4 })] }),
+    x('wwoosh', 'wind woosh loop.ogg', { t: 1, rate: 0.8, fadeIn: 0.1, fadeOut: 0.4, mix: [x('chant', 'chant11.wav', { rate: 0.5, gain: -8 })] }),
+  ],
 
   // --- spells: impact -------------------------------------------------------
   'impact.fire': [
@@ -323,13 +351,23 @@ export const SFX = {
     x('ki', 'impactGlass_heavy_000.ogg'),
     x('bfh', 'bfh1_glass_breaking_01.ogg'),
   ],
-  'impact.lightning': [x('elec', 'groundhit.wav'), x('elec', 'hit.wav', { t: 0.8 }), x('c100b', 'sfx100v2_thunder_01.ogg', { t: 1.2 }), x('buzz', 'buzz.ogg', { t: 0.6 })],
-  'impact.poison': [...xs('water', 'splash_##.ogg', [6, 9, 10]), x('water', 'slime_09.ogg'), x('creat2', 'slime_05.ogg')],
+  'impact.lightning': [
+    x('elec', 'groundhit.wav', { mix: [x('c100b', 'sfx100v2_thunder_01.ogg', { t: 1, gain: -4 })] }),
+    x('spark', 'continuousspark.wav', { mix: [x('bang', 'bang_04.ogg', { gain: -3 })] }),
+    x('c100b', 'sfx100v2_thunder_01.ogg', { t: 1.2 }),
+    x('elec', 'death_1.wav', { t: 0.9 }),
+  ],
+  'impact.poison': [
+    ...xs('water', 'splash_##.ogg', [6, 9, 10]),
+    x('water', 'slime_09.ogg'),
+    x('creat2', 'slime_05.ogg'),
+    x('steam', 'steam hisses - Marker #4.wav', { t: 0.7, mix: [x('water', 'splash_06.ogg', { gain: -3 })] }),
+  ],
+  // A dull thump and a rush of air.
   'impact.arcane': [
-    x('magic', 'magical_6.ogg', { t: 0.8 }),
-    x('r80', 'spell_02.ogg'),
-    x('scifi', 'weird_02.ogg', { lp: 4000 }),
-    x('ki', 'impactGlass_light_001.ogg', { mix: [x('magic', 'magical_1.ogg', { t: 0.7, gain: -6 })] }),
+    x('ki', 'impactSoft_heavy_001.ogg', { rate: 0.7, gain: -3, mix: [x('whoosh', 'whoosh2_0.wav', { rev: true, t: 0.6, gain: -4 })] }),
+    x('sand', 'sand-spell.flac', { ss: 0.3, t: 0.7, rate: 0.8, gain: -3, mix: [x('ki', 'impactSoft_heavy_002.ogg', { rate: 0.7, gain: -2 })] }),
+    x('ki', 'impactPunch_heavy_002.ogg', { rate: 0.6, lp: 2500, gain: -3, mix: [x('gbreath', 'ghostbreath.flac', { t: 0.8, gain: -4 })] }),
   ],
 
   // --- spells: novas, beams, cones -----------------------------------------
@@ -343,16 +381,33 @@ export const SFX = {
     x('fball', '105016__julien-matthey__jm-fx-fireball-01.wav'),
   ],
   'nova.cold': [x('shatter', 'LedasLuzta4.ogg', { mix: [x('freeze', 'freeze.wav', { gain: -4 })] }), x('shatter', 'LedasLuzta33.ogg'), x('freeze', 'freeze.wav')],
-  'nova.lightning': [x('c100b', 'sfx100v2_thunder_01.ogg', { t: 2, fadeOut: 0.6 }), x('elec', 'deathboom.wav', { t: 2, fadeOut: 0.6 })],
+  'nova.lightning': [
+    x('c100b', 'sfx100v2_thunder_01.ogg', { t: 2, fadeOut: 0.6 }),
+    x('thunder', 'rain-thunder.ogg', { ss: 22.2, t: 2.4, fadeOut: 0.8, mix: [x('spark', 'continuousspark.wav', { gain: -4 })] }),
+  ],
   'nova.poison': [
     x('water', 'splash_01.ogg', { rate: 0.8, mix: [x('water', 'loop_bubbles_1.ogg', { t: 1.2, gain: -6 })] }),
     x('water', 'splash_05.ogg', { rate: 0.8, mix: [x('water', 'bubble_01.ogg', { gain: -4, delay: 100 })] }),
     x('creat', 'burble_02.ogg', { rate: 0.7 }),
   ],
-  'nova.arcane': [x('magic', 'magical_4.ogg'), x('magic', 'magical_7.ogg'), x('scifi', 'teleport_02.ogg', { lp: 4000 }), x('drain', 'qubodup-PowerDrain.ogg', { t: 1.5, fadeOut: 0.4 })],
-  'beam.lightning': [x('elec', 'snaploop.wav', { t: 1.5 }), x('elec', 'crackleelectricityloop.wav', { loops: 3 })],
+  // A blast of air out from the caster over a deep thump and a low drone.
+  'nova.arcane': [
+    x('wwoosh', 'wind woosh loop.ogg', {
+      t: 1.4,
+      rate: 0.7,
+      fadeIn: 0.05,
+      fadeOut: 0.6,
+      mix: [x('bang', 'cannon_04.ogg', { lp: 900, gain: -3 }), x('chant', 'chant23.wav', { ss: 0.5, t: 1.4, rate: 0.5, fadeOut: 0.6, gain: -6 })],
+    }),
+    x('farboom', 'nenadsimic__muffled distant explosion.ogg', { t: 1.8, fadeOut: 0.6, mix: [x('whoosh', 'whoosh2_0.wav', { rate: 0.6, gain: -3 })] }),
+    x('sand', 'sand-spell.flac', { rate: 0.6, mix: [x('ki', 'impactSoft_heavy_003.ogg', { rate: 0.6, gain: -2 })] }),
+  ],
+  'beam.lightning': [x('elec', 'snaploop.wav', { t: 1.5 }), x('elec', 'crackleelectricityloop.wav', { loops: 3 }), x('spark', 'continuousspark.wav', { loops: 5 })],
   'beam.fire': [x('flame', 'flame.ogg', { mix: [x('crackle', 'fire-1.ogg', { t: 1.2, gain: -3 })] }), x('r80', 'spell_fire_03.ogg')],
-  'beam.arcane': [x('drain', 'qubodup-PowerDrain.ogg', { t: 1.2 }), x('magic', 'magical_5.ogg', { t: 1.2 })],
+  'beam.arcane': [
+    x('wwoosh', 'wind woosh loop.ogg', { t: 1.2, rate: 0.6, fadeIn: 0.15, fadeOut: 0.4, mix: [x('chant', 'chant23.wav', { ss: 0.5, t: 1.2, rate: 0.5, gain: -6 })] }),
+    x('rsfx', 'Background/Hollow Wind.wav', { t: 1.2, rate: 0.7, fadeIn: 0.15, fadeOut: 0.4 }),
+  ],
   'cone.fire': [x('fball', '105016__julien-matthey__jm-fx-fireball-01.wav', { rate: 0.9 }), x('r80', 'spell_fire_04.ogg')],
   'cone.cold': [x('freeze', 'freeze.wav', { ss: 0.2 }), x('ice', 'ice.wav', { rate: 0.8, mix: [x('freeze', 'freeze.wav', { gain: -6 })] })],
   'cone.poison': [x('creat', 'spit_02.ogg', { rate: 0.8 }), x('creat', 'burble_02.ogg'), x('creat', 'spit_03.ogg', { rate: 0.8 })],
@@ -361,7 +416,7 @@ export const SFX = {
   'spell.explosion': [
     ...xs('bang', 'bang_0#.ogg', [1, 3, 9], { rate: 0.85, lp: 5000 }),
     x('boom', 'explosion.wav'),
-    x('scifi', 'explosion_01.ogg', { lp: 3000 }),
+    x('bang', 'cannon_03.ogg', { lp: 3000 }),
   ],
   'spell.meteor': [
     x('farboom', 'nenadsimic__muffled distant explosion.ogg', { t: 2.5, fadeOut: 0.8, mix: [x('bang', 'cannon_02.ogg', { rate: 0.7, gain: -2 })] }),
@@ -370,34 +425,79 @@ export const SFX = {
   'spell.thunder': [
     x('c100b', 'sfx100v2_thunder_01.ogg', { t: 3, fadeOut: 1 }),
     x('c100b', 'sfx100v2_thunder_01.ogg', { rate: 0.85, t: 3, fadeOut: 1 }),
-    x('elec', 'deathboom.wav', { t: 2.5, fadeOut: 0.8 }),
+    x('thunder', 'rain-thunder.ogg', { ss: 25.4, t: 2.6, fadeOut: 0.9 }),
   ],
-  'spell.chainLightning': [x('elec', 'snaploop.wav', { t: 0.9 }), x('elec', 'teleport_1.wav'), x('buzz', 'buzz.ogg', { ss: 0.1, t: 0.7 })],
+  'spell.chainLightning': [
+    x('elec', 'snaploop.wav', { t: 0.9 }),
+    x('spark', 'continuousspark.wav', { mix: [x('bang', 'bang_05.ogg', { gain: -6 })] }),
+    x('spark', 'spark.wav', { mix: [x('c100b', 'sfx100v2_thunder_01.ogg', { t: 0.7, gain: -6 })] }),
+  ],
   'spell.volley': [
     x('battle', 'Bow.wav', { mix: [x('battle', 'Bow.wav', { delay: 70, rate: 1.06, gain: -2 }), x('battle', 'Bow.wav', { delay: 150, rate: 0.94, gain: -3 })] }),
     x('wpn', 'arrow-feathers-02.wav', { mix: [x('battle', 'Bow.wav', { gain: -1 }), x('battle', 'Bow.wav', { delay: 110, rate: 1.1, gain: -3 })] }),
   ],
   'spell.whirlwind': [x('whoosh', 'whoosh2_0.wav', { t: 1.6, fadeOut: 0.5 }), x('wwoosh', 'wind woosh loop.ogg', { t: 1.5, fadeIn: 0.2, fadeOut: 0.5 })],
+  // Bone and earth: bones cracking and rattling up out of rumbling ground.
   'spell.summon': [
     x('earth', 'Earth Element Magic Spell_3.ogg'),
-    x('gbreath', 'ghostbreath.flac', { t: 2, fadeOut: 0.6 }),
-    x('portal4', '2.mp3', { t: 2, fadeOut: 0.6 }),
+    x('bonebreak', 'Deep Break 3.wav', {
+      mix: [
+        x('bones', '2.ogg', { delay: 120, gain: -3 }),
+        x('bones', '6.ogg', { delay: 260, gain: -4 }),
+        x('rumble', 'rumble.wav', { t: 1.5, fadeIn: 0.1, fadeOut: 0.5, gain: -4 }),
+      ],
+    }),
+    x('gbreath', 'ghostbreath.flac', { t: 2, fadeOut: 0.6, mix: [x('bfh', 'bfh1_rock_breaking_01.ogg', { gain: -4 })] }),
   ],
+  // A ward is steel: a shield struck, mail settling.
   'spell.shield': [
-    x('elec', 'shieldhit.wav'),
-    x('elec', 'powerup.wav', { t: 1.2 }),
-    x('ki', 'impactBell_heavy_000.ogg', { rate: 0.8, mix: [x('magic', 'magical_2.ogg', { t: 1, gain: -6 })] }),
+    x('shield', 'impact.3.ogg', { mix: [x('rsp', 'inventory/chainmail1.wav', { gain: -4 })] }),
+    x('shield', 'impact.7.ogg', { rate: 0.85, mix: [x('mw', 'metal_sheet_02.ogg', { gain: -4 })] }),
+    x('ki', 'impactBell_heavy_000.ogg', { rate: 0.6, lp: 2500, mix: [x('rsp', 'inventory/armor-light.wav', { gain: -3 })] }),
   ],
-  'spell.heal': xs('cure', 'Cure#.wav', [1, 3, 4, 5]),
+  // A breath and a soft low choir, no chimes.
+  'spell.heal': [
+    x('chant', 'chant23.wav', { ss: 0.5, t: 1.4, fadeIn: 0.25, fadeOut: 0.5, mix: [x('c100b', 'sfx100v2_air_01.ogg', { t: 1.2, gain: -8 })] }),
+    x('chant', 'chant11.wav', { fadeIn: 0.2, fadeOut: 0.4, mix: [x('whoosh', 'whoosh2_0.wav', { rate: 0.8, gain: -8 })] }),
+    x('tiny', 'water-pour-01.wav', { t: 1.2, fadeOut: 0.4, mix: [x('chant', 'chant23.wav', { ss: 0.6, t: 1.2, rate: 0.9, gain: -5 })] }),
+  ],
   'spell.curse': [
     x('ghost', 'ghost.wav', { t: 1.8, fadeOut: 0.5 }),
-    x('drain', 'qubodup-PowerDrain.ogg', { t: 1.6, rate: 0.8, fadeOut: 0.5 }),
+    x('chant', 'chant18.wav', { ss: 3, t: 1.6, rate: 0.6, fadeIn: 0.2, fadeOut: 0.5 }),
     x('moan', 'qubodup-GhostMoan05.wav'),
   ],
-  'spell.teleportOut': [x('tele', 'teleport.wav'), x('scifi', 'teleport_01.ogg', { lp: 5000 }), x('porta', 'porta.ogg')],
-  'spell.teleportIn': [x('scifi', 'teleport_02.ogg', { t: 1.2, lp: 5000 }), x('tele', 'teleport.wav', { rev: true, fadeIn: 0.1 }), x('elec', 'teleport_1.wav', { rate: 0.85 })],
-  buff: [x('magic', 'magical_2.ogg'), x('magic', 'magical_5.ogg'), x('cure', 'Cure8.wav')],
-  debuff: [x('drain', 'qubodup-PowerDrain.ogg', { t: 1, rate: 0.7 }), x('ghost', 'ghost.wav', { t: 1, fadeOut: 0.3 }), x('creat2', 'weird_06.ogg', { rate: 0.7 })],
+  // Gone in a rush of air.
+  'spell.teleportOut': [
+    x('whoosh', 'whoosh2_0.wav', { mix: [x('ki', 'impactSoft_medium_001.ogg', { rate: 0.7, gain: -4 })] }),
+    x('wwoosh', 'wind woosh loop.ogg', { t: 0.8, rate: 1.2, fadeIn: 0.03, fadeOut: 0.4 }),
+    x('gbreath', 'ghostbreath.flac', { t: 0.8, rate: 1.2, fadeOut: 0.3, mix: [x('swish', 'swish-11.wav', { gain: -3 })] }),
+  ],
+  // Air sucked back in, and boots landing.
+  'spell.teleportIn': [
+    x('whoosh', 'whoosh2_0.wav', { rev: true, fadeIn: 0.05, gain: -2 }),
+    x('wwoosh', 'wind woosh loop.ogg', { t: 0.8, rev: true, rate: 1.2, fadeIn: 0.1, gain: -2 }),
+    x('swish', 'swish-12.wav', { rate: 0.7, gain: -2, mix: [x('ki', 'impactSoft_heavy_001.ogg', { rate: 0.7, gain: -3 })] }),
+  ],
+  // Buffs sound like what they are. Each school has its own (buff.<school>);
+  // physical buffs, auras and stances fall back to this one: buckles, mail and a low breath.
+  buff: [
+    x('kr', 'beltHandle1.ogg', { mix: [x('whoosh', 'whoosh2_0.wav', { rate: 0.7, gain: -6 })] }),
+    x('rsp', 'inventory/chainmail2.wav', { mix: [x('c100b', 'sfx100v2_air_02.ogg', { t: 0.8, gain: -6 })] }),
+    x('wpn', 'sheath-buckle-01.wav', { mix: [x('chant', 'chant11.wav', { rate: 0.6, gain: -8 })] }),
+  ],
+  'buff.fire': [x('ignite', 'ignition.flac'), x('flame', 'flame.ogg', { t: 1.2, fadeOut: 0.4 })],
+  'buff.cold': [x('freeze', 'freeze.wav', { t: 1 }), x('ice', 'coldsnap.wav', { t: 1 })],
+  'buff.lightning': [x('spark', 'continuousspark.wav', { mix: [x('elec', 'death_1.wav', { t: 0.8, gain: -4 })] }), x('elec', 'snaploop.wav', { t: 0.8 })],
+  'buff.poison': [x('steam', 'steam hisses - Marker #1.wav', { t: 1 }), x('water', 'bubble_03.ogg', { mix: [x('steam', 'steam hisses - Marker #3.wav', { t: 0.8, gain: -4 })] })],
+  'buff.arcane': [
+    x('wwoosh', 'wind woosh loop.ogg', { t: 1, rate: 0.7, fadeIn: 0.1, fadeOut: 0.4, mix: [x('chant', 'chant23.wav', { ss: 0.5, t: 1, rate: 0.5, gain: -5 })] }),
+    x('gbreath', 'ghostbreath.flac', { t: 1.2, rate: 0.8, fadeOut: 0.4 }),
+  ],
+  debuff: [
+    x('ghost', 'ghost.wav', { t: 1, fadeOut: 0.3, gain: -2 }),
+    x('moan', 'qubodup-GhostMoan03.wav', { t: 1.2, fadeOut: 0.3, gain: -2 }),
+    x('chant', 'chant18.wav', { ss: 3, t: 1, rate: 0.55, fadeIn: 0.1, fadeOut: 0.3, gain: -2 }),
+  ],
   slam: [
     ...[1, 3, 7].map((n, i) => x('c100', `slam_0${n}.ogg`, { rate: 0.7, mix: [x('ki', `impactMining_00${i}.ogg`, { rate: 0.7 })] })),
     x('bfh', 'bfh1_rock_breaking_01.ogg', { rate: 0.8 }),
@@ -565,7 +665,12 @@ export const SFX = {
   'amb.buzz': [...xs('creat', 'bug_0#.ogg', [1, 2]), ...xs('creat2', 'bug_0#.ogg', [5, 6, 7])],
   'amb.squelch': xs('mud', 'mud_##.ogg', [2, 3, 4, 17]),
   'amb.creak': [...xs('kr', 'creak#.ogg', [1, 2, 3]), ...xs('mw', 'wood_squeak_0#.ogg', [1, 2]), x('tiny', 'floor-creak-01.wav')],
-  'amb.shimmer': [x('magic', 'magical_1.ogg', { lp: 2500 }), x('c100', 'bell_03.ogg', { rate: 0.5, lp: 2000 }), x('scifi', 'loop_ambient_weird.ogg', { fadeIn: 0.5, fadeOut: 0.8 })],
+  // Something old and holy nearby: a far choir, a low gong, a breath. No chimes.
+  'amb.shimmer': [
+    x('chant', 'chant23.wav', { ss: 0.5, t: 2, rate: 0.6, fadeIn: 0.5, fadeOut: 0.8, lp: 2500 }),
+    x('c100', 'gong_02.ogg', { rate: 0.5, lp: 2000 }),
+    x('gbreath', 'ghostbreath.flac', { t: 2.5, fadeIn: 0.5, fadeOut: 0.8 }),
+  ],
   'amb.howl': [x('creat', 'howl.ogg', { rate: 0.7, lp: 2500 }), x('rsp', 'NPC/misc/wolfman.wav', { rate: 0.7, lp: 2000 })],
   'amb.crackle': [x('crackle', 'fire-1.ogg', { slices: 4 }), x('flame', 'flame.ogg')],
 };

@@ -271,6 +271,9 @@ function family(id: string): string | null {
       return 'block';
     case 'spell':
       return 'cast.arcane';
+    case 'buff':
+      // buff.<school> where the school has its own; physical and the rest use the plain one.
+      return 'buff';
     case 'ui':
       return 'ui.click';
     case 'boss':
@@ -288,7 +291,8 @@ const MONSTER_LIFT: Record<string, number> = { elemental: 1.7, plant: 1.4, ooze:
 
 /** Mix settings for a bank id. */
 export function soundDef(id: string): SoundDef {
-  const own = DEFS[id];
+  // buff.<school> mixes like the plain buff.
+  const own = DEFS[id] ?? (id.startsWith('buff.') ? DEFS['buff'] : undefined);
   const base: SoundDef = { ...DEFAULT };
   if (id.startsWith('monster.')) {
     base.vol = (id.endsWith('.death') ? 0.75 : 0.6) * (MONSTER_LIFT[id.split('.')[1] ?? ''] ?? 1);

@@ -1006,7 +1006,8 @@ export class SkillRunner {
           density: sig.density,
           decal: false,
           shake: 0,
-          sfx: 'buff',
+          // A shout is a voice; every other buff sounds like its school.
+          sfx: family === 'shout' ? 'warcry' : `buff.${school}`,
         });
         break;
       }

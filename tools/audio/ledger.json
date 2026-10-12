@@ -228,13 +228,13 @@
   "bang"
  ],
  "sounds/amb.shimmer/01.ogg": [
-  "magic"
+  "chant"
  ],
  "sounds/amb.shimmer/02.ogg": [
   "c100"
  ],
  "sounds/amb.shimmer/03.ogg": [
-  "scifi"
+  "gbreath"
  ],
  "sounds/amb.squelch/01.ogg": [
   "mud"
@@ -301,10 +301,11 @@
   "mw"
  ],
  "sounds/beam.arcane/01.ogg": [
-  "drain"
+  "wwoosh",
+  "chant"
  ],
  "sounds/beam.arcane/02.ogg": [
-  "magic"
+  "rsfx"
  ],
  "sounds/beam.fire/01.ogg": [
   "flame",
@@ -318,6 +319,9 @@
  ],
  "sounds/beam.lightning/02.ogg": [
   "elec"
+ ],
+ "sounds/beam.lightning/03.ogg": [
+  "spark"
  ],
  "sounds/beds/cave/01.ogg": [
   "drip"
@@ -384,10 +388,11 @@
  ],
  "sounds/block.magic/01.ogg": [
   "ki",
-  "magic"
+  "shield"
  ],
  "sounds/block.magic/02.ogg": [
-  "elec"
+  "shield",
+  "ki"
  ],
  "sounds/block.magic/03.ogg": [
   "ki"
@@ -474,35 +479,65 @@
  "sounds/boss.windup/04.ogg": [
   "bang"
  ],
+ "sounds/buff.arcane/01.ogg": [
+  "wwoosh",
+  "chant"
+ ],
+ "sounds/buff.arcane/02.ogg": [
+  "gbreath"
+ ],
+ "sounds/buff.cold/01.ogg": [
+  "freeze"
+ ],
+ "sounds/buff.cold/02.ogg": [
+  "ice"
+ ],
+ "sounds/buff.fire/01.ogg": [
+  "ignite"
+ ],
+ "sounds/buff.fire/02.ogg": [
+  "flame"
+ ],
+ "sounds/buff.lightning/01.ogg": [
+  "spark",
+  "elec"
+ ],
+ "sounds/buff.lightning/02.ogg": [
+  "elec"
+ ],
+ "sounds/buff.poison/01.ogg": [
+  "steam"
+ ],
+ "sounds/buff.poison/02.ogg": [
+  "water",
+  "steam"
+ ],
  "sounds/buff/01.ogg": [
-  "magic"
+  "kr",
+  "whoosh"
  ],
  "sounds/buff/02.ogg": [
-  "magic"
+  "rsp",
+  "c100b"
  ],
  "sounds/buff/03.ogg": [
-  "cure"
+  "wpn",
+  "chant"
  ],
  "sounds/cast.arcane/01.ogg": [
-  "magic"
+  "whoosh",
+  "chant"
  ],
  "sounds/cast.arcane/02.ogg": [
-  "magic"
+  "sand"
  ],
  "sounds/cast.arcane/03.ogg": [
-  "magic"
+  "gbreath",
+  "swish"
  ],
  "sounds/cast.arcane/04.ogg": [
-  "magic"
- ],
- "sounds/cast.arcane/05.ogg": [
-  "r80"
- ],
- "sounds/cast.arcane/06.ogg": [
-  "r80"
- ],
- "sounds/cast.arcane/07.ogg": [
-  "rsp"
+  "wwoosh",
+  "chant"
  ],
  "sounds/cast.cold/01.ogg": [
   "freeze"
@@ -513,6 +548,9 @@
  "sounds/cast.cold/03.ogg": [
   "ice",
   "shatter"
+ ],
+ "sounds/cast.cold/04.ogg": [
+  "ice"
  ],
  "sounds/cast.fire/01.ogg": [
   "r80"
@@ -533,16 +571,19 @@
   "ignite"
  ],
  "sounds/cast.lightning/01.ogg": [
-  "elec"
+  "spark",
+  "bang"
  ],
  "sounds/cast.lightning/02.ogg": [
-  "buzz"
+  "spark",
+  "c100b"
  ],
  "sounds/cast.lightning/03.ogg": [
   "elec"
  ],
  "sounds/cast.lightning/04.ogg": [
-  "elec"
+  "elec",
+  "spark"
  ],
  "sounds/cast.physical/01.ogg": [
   "battle",
@@ -553,6 +594,10 @@
  ],
  "sounds/cast.physical/03.ogg": [
   "whoosh"
+ ],
+ "sounds/cast.physical/04.ogg": [
+  "wpn",
+  "yell"
  ],
  "sounds/cast.poison/01.ogg": [
   "water"
@@ -570,6 +615,10 @@
  ],
  "sounds/cast.poison/05.ogg": [
   "creat"
+ ],
+ "sounds/cast.poison/06.ogg": [
+  "steam",
+  "water"
  ],
  "sounds/chest/01.ogg": [
   "acc",
@@ -651,13 +700,13 @@
   "mud"
  ],
  "sounds/debuff/01.ogg": [
-  "drain"
- ],
- "sounds/debuff/02.ogg": [
   "ghost"
  ],
+ "sounds/debuff/02.ogg": [
+  "moan"
+ ],
  "sounds/debuff/03.ogg": [
-  "creat2"
+  "chant"
  ],
  "sounds/door/01.ogg": [
   "kr"
@@ -1076,17 +1125,16 @@
   "rsp"
  ],
  "sounds/impact.arcane/01.ogg": [
-  "magic"
+  "ki",
+  "whoosh"
  ],
  "sounds/impact.arcane/02.ogg": [
-  "r80"
+  "sand",
+  "ki"
  ],
  "sounds/impact.arcane/03.ogg": [
-  "scifi"
- ],
- "sounds/impact.arcane/04.ogg": [
   "ki",
-  "magic"
+  "gbreath"
  ],
  "sounds/impact.cold/01.ogg": [
   "shatter"
@@ -1117,16 +1165,18 @@
   "boom"
  ],
  "sounds/impact.lightning/01.ogg": [
-  "elec"
+  "elec",
+  "c100b"
  ],
  "sounds/impact.lightning/02.ogg": [
-  "elec"
+  "spark",
+  "bang"
  ],
  "sounds/impact.lightning/03.ogg": [
   "c100b"
  ],
  "sounds/impact.lightning/04.ogg": [
-  "buzz"
+  "elec"
  ],
  "sounds/impact.poison/01.ogg": [
   "water"
@@ -1142,6 +1192,10 @@
  ],
  "sounds/impact.poison/05.ogg": [
   "creat2"
+ ],
+ "sounds/impact.poison/06.ogg": [
+  "steam",
+  "water"
  ],
  "sounds/jump/01.ogg": [
   "wpn"
@@ -1706,16 +1760,17 @@
   "zomb"
  ],
  "sounds/nova.arcane/01.ogg": [
-  "magic"
+  "wwoosh",
+  "bang",
+  "chant"
  ],
  "sounds/nova.arcane/02.ogg": [
-  "magic"
+  "farboom",
+  "whoosh"
  ],
  "sounds/nova.arcane/03.ogg": [
-  "scifi"
- ],
- "sounds/nova.arcane/04.ogg": [
-  "drain"
+  "sand",
+  "ki"
  ],
  "sounds/nova.cold/01.ogg": [
   "shatter",
@@ -1742,7 +1797,8 @@
   "c100b"
  ],
  "sounds/nova.lightning/02.ogg": [
-  "elec"
+  "thunder",
+  "spark"
  ],
  "sounds/nova.physical/01.ogg": [
   "c100",
@@ -1915,14 +1971,17 @@
   "yell"
  ],
  "sounds/portal/01.ogg": [
-  "portal4"
+  "wwoosh",
+  "chant",
+  "rumble"
  ],
  "sounds/portal/02.ogg": [
-  "porta",
-  "scifi"
+  "farboom",
+  "whoosh"
  ],
  "sounds/portal/03.ogg": [
-  "tele"
+  "gbreath",
+  "wwoosh"
  ],
  "sounds/potion/01.ogg": [
   "acc",
@@ -1978,12 +2037,12 @@
   "battle"
  ],
  "sounds/shrine/01.ogg": [
-  "cure",
-  "c100"
+  "c100",
+  "chant"
  ],
  "sounds/shrine/02.ogg": [
-  "magic",
-  "c100"
+  "c100",
+  "chant"
  ],
  "sounds/skillpoint/01.ogg": [
   "kr",
@@ -2012,16 +2071,18 @@
   "elec"
  ],
  "sounds/spell.chainLightning/02.ogg": [
-  "elec"
+  "spark",
+  "bang"
  ],
  "sounds/spell.chainLightning/03.ogg": [
-  "buzz"
+  "spark",
+  "c100b"
  ],
  "sounds/spell.curse/01.ogg": [
   "ghost"
  ],
  "sounds/spell.curse/02.ogg": [
-  "drain"
+  "chant"
  ],
  "sounds/spell.curse/03.ogg": [
   "moan"
@@ -2039,19 +2100,19 @@
   "boom"
  ],
  "sounds/spell.explosion/05.ogg": [
-  "scifi"
+  "bang"
  ],
  "sounds/spell.heal/01.ogg": [
-  "cure"
+  "chant",
+  "c100b"
  ],
  "sounds/spell.heal/02.ogg": [
-  "cure"
+  "chant",
+  "whoosh"
  ],
  "sounds/spell.heal/03.ogg": [
-  "cure"
- ],
- "sounds/spell.heal/04.ogg": [
-  "cure"
+  "tiny",
+  "chant"
  ],
  "sounds/spell.meteor/01.ogg": [
   "farboom",
@@ -2062,41 +2123,49 @@
   "bfh"
  ],
  "sounds/spell.shield/01.ogg": [
-  "elec"
+  "shield",
+  "rsp"
  ],
  "sounds/spell.shield/02.ogg": [
-  "elec"
+  "shield",
+  "mw"
  ],
  "sounds/spell.shield/03.ogg": [
   "ki",
-  "magic"
+  "rsp"
  ],
  "sounds/spell.summon/01.ogg": [
   "earth"
  ],
  "sounds/spell.summon/02.ogg": [
-  "gbreath"
+  "bonebreak",
+  "bones",
+  "rumble"
  ],
  "sounds/spell.summon/03.ogg": [
-  "portal4"
+  "gbreath",
+  "bfh"
  ],
  "sounds/spell.teleportIn/01.ogg": [
-  "scifi"
+  "whoosh"
  ],
  "sounds/spell.teleportIn/02.ogg": [
-  "tele"
+  "wwoosh"
  ],
  "sounds/spell.teleportIn/03.ogg": [
-  "elec"
+  "swish",
+  "ki"
  ],
  "sounds/spell.teleportOut/01.ogg": [
-  "tele"
+  "whoosh",
+  "ki"
  ],
  "sounds/spell.teleportOut/02.ogg": [
-  "scifi"
+  "wwoosh"
  ],
  "sounds/spell.teleportOut/03.ogg": [
-  "porta"
+  "gbreath",
+  "swish"
  ],
  "sounds/spell.thunder/01.ogg": [
   "c100b"
@@ -2105,7 +2174,7 @@
   "c100b"
  ],
  "sounds/spell.thunder/03.ogg": [
-  "elec"
+  "thunder"
  ],
  "sounds/spell.volley/01.ogg": [
   "battle"
@@ -2347,11 +2416,12 @@
   "yell"
  ],
  "sounds/waypoint/01.ogg": [
-  "cure",
-  "c100"
+  "c100",
+  "sdoor",
+  "wwoosh"
  ],
  "sounds/waypoint/02.ogg": [
-  "magic",
-  "c100"
+  "ki",
+  "chant"
  ]
 }

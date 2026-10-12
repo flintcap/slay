@@ -1,6 +1,6 @@
 # Stream: fix-uisound (menu and level-up sounds, dark and gritty)
 
-Status: in progress
+Status: done
 
 Owner's words: "A lot of the menu level up sounds effects sound scifi like
 not like a dark gritty rpg sound effect".
@@ -12,13 +12,15 @@ not like a dark gritty rpg sound effect".
   tabs, hover, confirm, error, inventory, equip) and mark each one that sounds
   synthetic, bleepy or sci-fi (read the ASSETS.md source and listen by
   inspecting spectrum/length with ffmpeg if needed).
+  Done in "UI sounds: wood, iron and parchment clicks, deep bell and choir level-up".
 - [x] Replace them with CC0 sounds that fit Diablo II / Path of Exile: leather
   and parchment for panels, metal and wood clicks for buttons, a deep bell or
   low choir swell plus a metal ring for level-up, coin clinks for gold. Kenney
   RPG Audio, Kenney Interface (pick the organic ones only) and CC0 OpenGameArt
   packs. Process with ffmpeg (trim, fade, loudness match the rest of the UI
   bus). Every file in ASSETS.md. Delete the replaced files.
-- [ ] Skill sounds (owner, added later): "skill sounds need to be worked too
+  Done in "UI sounds: wood, iron and parchment clicks, deep bell and choir level-up".
+- [x] Skill sounds (owner, added later): "skill sounds need to be worked too
   to sound more like what the skill is, they're also too sci-fi sounding with
   a lot of chimes". Go through every skill sound id (cast.*, nova.*, beam.*,
   bolt and projectile flights, impacts, shouts, buffs, summons, traps,
@@ -29,8 +31,10 @@ not like a dark gritty rpg sound effect".
   earth. Remove chimes, bleeps, sweeps and synth tones. Dark, heavy, organic,
   like Diablo II and Path of Exile. Same CC0 rules, loudness matched to the
   current skill bus.
-- [ ] Check: `check-assets`, the audio checker in `tools/` that covers the
+  Done in "Skill sounds: thunder, sparks, hiss, bone and steel; arcane hums, no chimes".
+- [x] Check: `check-assets`, the audio checker in `tools/` that covers the
   bank, typecheck. Handover with a list of old and new sounds.
+  Done in "Skill sounds: thunder, sparks, hiss, bone and steel; arcane hums, no chimes".
 
 ## Survey (UI and reward sounds)
 
@@ -54,6 +58,61 @@ incoherent chanting), `anvil` (themightyglider, hammer on anvil), `bells`
 
 Wiring: `ui.levelup` (spending a skill point, respec) now plays `skillpoint`
 instead of the full level-up toll.
+
+## Skill sounds
+
+Synthetic or chimey before (all replaced; the source packs are deleted from
+packs.mjs: magic, cure, drain, buzz, tele, porta, portal4):
+
+- cast.lightning, impact.lightning, nova.lightning, spell.thunder,
+  spell.chainLightning: faxcorp synth sweeps (charge, teleport, powerup),
+  a synth boom and an electric buzz tone. Now BMacZero sparks, firecracker
+  cracks, two real thunder recordings, noisy crackles.
+- cast.arcane, impact.arcane, nova.arcane, beam.arcane: JaggedStone magical
+  shimmers, rubberduck sci-fi weird/teleport, a synth power drain. Now low
+  whooshes, wind, sand rush, ghost breath, a choir slowed to a drone, thumps.
+- spell.heal: Cure synth chimes. Now a soft low choir with a breath.
+- spell.shield, block.magic: synth shield hit and power-up. Now shield
+  impacts, chainmail, metal sheet.
+- spell.summon: space portal hum. Now deep bone breaks, bone rattles,
+  ground rumble, rock.
+- spell.teleportOut/In, portal: sci-fi teleports and portal hums. Now rushing
+  air, reversed whooshes, a thump on landing; the portal is wind, a low drone
+  and rumble.
+- spell.curse, debuff: synth drain. Now ghost, moans and low chant.
+- buff: magical and Cure chimes. Now buckles, mail and a low breath, and each
+  school has its own: buff.fire (ignition, flame), buff.cold (freeze crackle),
+  buff.lightning (sparks), buff.poison (steam hiss, bubbles), buff.arcane
+  (low wind and drone). Shouts now play `warcry` (voices).
+- waypoint, shrine, amb.shimmer: Cure/magical chimes and bright bells. Now
+  deep gongs, stone grinding, low choir.
+- spell.explosion: sci-fi explosion layer swapped for a cannon boom.
+- Added layers that were missing: cast.physical gets steel drawn with a
+  grunt, cast.cold a cold snap, cast.poison and impact.poison a steam hiss.
+
+Kept (already organic): cast.fire, impact.fire, nova.fire, beam.fire,
+cone.*, impact.cold, nova.cold, nova.physical, nova.poison, slam,
+spell.meteor, spell.volley, spell.whirlwind, shoot.physical, telegraphs.
+
+Wiring (sound only): SkillRunner plays `warcry` for shout skills and
+`buff.<school>` for other buffs (Bank folds an unknown buff.<school> onto
+`buff` and mixes it like `buff`).
+
+Loudness: every changed id was compared to its old files (mean dB); the
+louder ones were trimmed with take gains so each id sits within about 1-2 dB
+of where it was.
+
+## Handover
+
+- All sound changes live in tools/audio/recipe.mjs and packs.mjs; the built
+  files are in public/assets/sounds/<id>/, rows in ASSETS.md.
+- New CC0 packs: chant (OwlishMedia), anvil (themightyglider), bells (PWL),
+  spark (BMacZero), steam (bart), sand (qubodup), rumble (cinameng), bones
+  (congusbongus), bonebreak (Zane Little Music).
+- Left for later: the `void` ambience bed still has a slowed sci-fi loop
+  layer, and aberration monster voices use rubberduck "alien" sounds. Neither
+  was in this stream's scope.
+- Not checked in a browser (owner's lean rule). Worth a listen in game.
 
 ## Notes for resume
 

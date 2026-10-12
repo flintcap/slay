@@ -92,9 +92,9 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/amb.moan/04.ogg | https://opengameart.org/content/ghost-monster-voice-moaning-growling | qubodup | CC0 |
 | sounds/amb.rumble/01.ogg | https://opengameart.org/content/muffled-distant-explosion | NenadSimic | CC0 |
 | sounds/amb.rumble/02.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck | CC0 |
-| sounds/amb.shimmer/01.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
+| sounds/amb.shimmer/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia | CC0 |
 | sounds/amb.shimmer/02.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck | CC0 |
-| sounds/amb.shimmer/03.ogg | https://opengameart.org/content/50-cc0-sci-fi-sfx | rubberduck | CC0 |
+| sounds/amb.shimmer/03.ogg | https://opengameart.org/content/ghost-breath | qubodup | CC0 |
 | sounds/amb.squelch/01.ogg | https://opengameart.org/content/25-cc0-mud-sfx | rubberduck | CC0 |
 | sounds/amb.squelch/02.ogg | https://opengameart.org/content/25-cc0-mud-sfx | rubberduck | CC0 |
 | sounds/amb.squelch/03.ogg | https://opengameart.org/content/25-cc0-mud-sfx | rubberduck | CC0 |
@@ -116,12 +116,13 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/arrow.thunk/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/arrow.thunk/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/arrow.thunk/04.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck | CC0 |
-| sounds/beam.arcane/01.ogg | https://opengameart.org/content/energy-drain | qubodup | CC0 |
-| sounds/beam.arcane/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
+| sounds/beam.arcane/01.ogg | https://opengameart.org/content/wind-whoosh-loop | SketchMan3 + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/beam.arcane/02.ogg | https://opengameart.org/content/random-sfx | Écrivain | CC0 |
 | sounds/beam.fire/01.ogg | https://opengameart.org/content/catching-fire | themightyglider + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
 | sounds/beam.fire/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/beam.lightning/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
 | sounds/beam.lightning/02.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
+| sounds/beam.lightning/03.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero | CC0 |
 | sounds/beds/cave/01.ogg | https://opengameart.org/content/dripping-water-loop | qubodup | CC0 |
 | sounds/beds/dungeon/01.ogg | https://opengameart.org/content/loopable-dungeon-ambience | JaggedStone | CC0 |
 | sounds/beds/fire/01.ogg | https://opengameart.org/content/fireplace-sound-loop | PagDev | CC0 |
@@ -143,8 +144,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/beds/wind.soft/02.ogg | https://opengameart.org/content/wind1 | Luke.RUSTLTD | CC0 |
 | sounds/beds/wind/01.ogg | https://opengameart.org/content/wind1 | Luke.RUSTLTD | CC0 |
 | sounds/beds/wind/02.ogg | https://opengameart.org/content/wind1 | Luke.RUSTLTD | CC0 |
-| sounds/block.magic/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + JaggedStone (opengameart.org/content/magic-spell-sfx) | CC0 |
-| sounds/block.magic/02.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
+| sounds/block.magic/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + StarNinjas (opengameart.org/content/10-impactshield-blocks) | CC0 |
+| sounds/block.magic/02.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/block.magic/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/block/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas | CC0 |
 | sounds/block/02.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas | CC0 |
@@ -171,37 +172,47 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/boss.windup/02.ogg | https://opengameart.org/content/big-scary-troll-sounds | Darsycho | CC0 |
 | sounds/boss.windup/03.ogg | https://opengameart.org/content/big-scary-troll-sounds | Darsycho | CC0 |
 | sounds/boss.windup/04.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck | CC0 |
-| sounds/buff/01.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/buff/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/buff/03.ogg | https://opengameart.org/content/cure-magic | Someoneman | CC0 |
-| sounds/cast.arcane/01.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/cast.arcane/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/cast.arcane/03.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/cast.arcane/04.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/cast.arcane/05.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
-| sounds/cast.arcane/06.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
-| sounds/cast.arcane/07.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
+| sounds/buff.arcane/01.ogg | https://opengameart.org/content/wind-whoosh-loop | SketchMan3 + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/buff.arcane/02.ogg | https://opengameart.org/content/ghost-breath | qubodup | CC0 |
+| sounds/buff.cold/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude | CC0 |
+| sounds/buff.cold/02.ogg | https://opengameart.org/content/ice-spells | bart | CC0 |
+| sounds/buff.fire/01.ogg | https://opengameart.org/content/flare-ignition | qubodup | CC0 |
+| sounds/buff.fire/02.ogg | https://opengameart.org/content/catching-fire | themightyglider | CC0 |
+| sounds/buff.lightning/01.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + faxcorp (opengameart.org/content/electricity-game-sound-pack) | CC0 |
+| sounds/buff.lightning/02.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
+| sounds/buff.poison/01.ogg | https://opengameart.org/content/steam-release-sounds | bart | CC0 |
+| sounds/buff.poison/02.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + bart (opengameart.org/content/steam-release-sounds) | CC0 |
+| sounds/buff/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
+| sounds/buff/02.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
+| sounds/buff/03.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/cast.arcane/01.ogg | https://opengameart.org/content/air-whoosh | pyranostudios + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/cast.arcane/02.ogg | https://opengameart.org/content/sand-spell | qubodup | CC0 |
+| sounds/cast.arcane/03.ogg | https://opengameart.org/content/ghost-breath | qubodup + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
+| sounds/cast.arcane/04.ogg | https://opengameart.org/content/wind-whoosh-loop | SketchMan3 + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | sounds/cast.cold/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude | CC0 |
 | sounds/cast.cold/02.ogg | https://opengameart.org/content/ice-spells | bart | CC0 |
 | sounds/cast.cold/03.ogg | https://opengameart.org/content/ice-spells | bart + IgnasD (opengameart.org/content/ice-breakingshattering) | CC0 |
+| sounds/cast.cold/04.ogg | https://opengameart.org/content/ice-spells | bart | CC0 |
 | sounds/cast.fire/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/cast.fire/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/cast.fire/03.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/cast.fire/04.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/cast.fire/05.ogg | https://opengameart.org/content/fireball-1 | diligentcircle | CC0 |
 | sounds/cast.fire/06.ogg | https://opengameart.org/content/flare-ignition | qubodup | CC0 |
-| sounds/cast.lightning/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
-| sounds/cast.lightning/02.ogg | https://opengameart.org/content/electric-buzz | themightyglider | CC0 |
+| sounds/cast.lightning/01.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) | CC0 |
+| sounds/cast.lightning/02.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
 | sounds/cast.lightning/03.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
-| sounds/cast.lightning/04.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
+| sounds/cast.lightning/04.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp + BMacZero (opengameart.org/content/electricity-sound-effects-0) | CC0 |
 | sounds/cast.physical/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
 | sounds/cast.physical/02.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck | CC0 |
 | sounds/cast.physical/03.ogg | https://opengameart.org/content/air-whoosh | pyranostudios | CC0 |
+| sounds/cast.physical/04.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + HaelDB (opengameart.org/content/male-gruntyelling-sounds) | CC0 |
 | sounds/cast.poison/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck | CC0 |
 | sounds/cast.poison/02.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck | CC0 |
 | sounds/cast.poison/03.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/cast.poison/04.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/cast.poison/05.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
+| sounds/cast.poison/06.ogg | https://opengameart.org/content/steam-release-sounds | bart + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/chest/01.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/chest/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/chest/03.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
@@ -224,9 +235,9 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/death.normal/01.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
 | sounds/death.normal/02.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
 | sounds/death.normal/03.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
-| sounds/debuff/01.ogg | https://opengameart.org/content/energy-drain | qubodup | CC0 |
-| sounds/debuff/02.ogg | https://opengameart.org/content/ghost | Ogrebane | CC0 |
-| sounds/debuff/03.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
+| sounds/debuff/01.ogg | https://opengameart.org/content/ghost | Ogrebane | CC0 |
+| sounds/debuff/02.ogg | https://opengameart.org/content/ghost-monster-voice-moaning-growling | qubodup | CC0 |
+| sounds/debuff/03.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia | CC0 |
 | sounds/door/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/door/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/door/03.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck | CC0 |
@@ -235,10 +246,10 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/drop.magic/03.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/drop.rare/01.ogg | https://opengameart.org/content/metal-impact-sounds | BMacZero + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
 | sounds/drop.rare/02.ogg | https://opengameart.org/content/metal-impact-sounds | BMacZero + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
-| sounds/drop.set/01.ogg | https://opengameart.org/content/bell-dingschimes | pwl + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
-| sounds/drop.set/02.ogg | https://opengameart.org/content/bell-dingschimes | pwl | CC0 |
-| sounds/drop.unique/01.ogg | https://opengameart.org/content/bell-dingschimes | pwl + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
-| sounds/drop.unique/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + pwl (opengameart.org/content/bell-dingschimes) | CC0 |
+| sounds/drop.set/01.ogg | https://opengameart.org/content/bell-dingschimes | PWL + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/drop.set/02.ogg | https://opengameart.org/content/bell-dingschimes | PWL | CC0 |
+| sounds/drop.unique/01.ogg | https://opengameart.org/content/bell-dingschimes | PWL + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/drop.unique/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
 | sounds/footstep.dirt/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/footstep.dirt/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/footstep.dirt/03.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
@@ -357,10 +368,9 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/howl/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/howl/02.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/howl/03.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
-| sounds/impact.arcane/01.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/impact.arcane/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
-| sounds/impact.arcane/03.ogg | https://opengameart.org/content/50-cc0-sci-fi-sfx | rubberduck | CC0 |
-| sounds/impact.arcane/04.ogg | https://kenney.nl/assets/impact-sounds | Kenney + JaggedStone (opengameart.org/content/magic-spell-sfx) | CC0 |
+| sounds/impact.arcane/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
+| sounds/impact.arcane/02.ogg | https://opengameart.org/content/sand-spell | qubodup + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/impact.arcane/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney + qubodup (opengameart.org/content/ghost-breath) | CC0 |
 | sounds/impact.cold/01.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD | CC0 |
 | sounds/impact.cold/02.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD | CC0 |
 | sounds/impact.cold/03.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD | CC0 |
@@ -370,15 +380,16 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/impact.fire/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/impact.fire/03.ogg | https://opengameart.org/content/catching-fire | themightyglider + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
 | sounds/impact.fire/04.ogg | https://opengameart.org/content/explosion-0 | TinyWorlds | CC0 |
-| sounds/impact.lightning/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
-| sounds/impact.lightning/02.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
+| sounds/impact.lightning/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
+| sounds/impact.lightning/02.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) | CC0 |
 | sounds/impact.lightning/03.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck | CC0 |
-| sounds/impact.lightning/04.ogg | https://opengameart.org/content/electric-buzz | themightyglider | CC0 |
+| sounds/impact.lightning/04.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
 | sounds/impact.poison/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck | CC0 |
 | sounds/impact.poison/02.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck | CC0 |
 | sounds/impact.poison/03.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck | CC0 |
 | sounds/impact.poison/04.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck | CC0 |
 | sounds/impact.poison/05.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
+| sounds/impact.poison/06.ogg | https://opengameart.org/content/steam-release-sounds | bart + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/jump/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle | CC0 |
 | sounds/jump/02.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle | CC0 |
 | sounds/jump/03.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle | CC0 |
@@ -391,8 +402,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/kill.multi/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/land/01.ogg | https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud | TinyWorlds + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/land/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/levelup/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
-| sounds/levelup/02.ogg | https://opengameart.org/content/bell-dingschimes | pwl + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/levelup/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/levelup/02.ogg | https://opengameart.org/content/bell-dingschimes | PWL + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
 | sounds/loot.clink/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/loot.clink/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/loot.clink/03.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
@@ -402,8 +413,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/loot.grab/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/loot.grab/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/loot.grab/03.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
-| sounds/loot.legendary/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + pwl (opengameart.org/content/bell-dingschimes) + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/loot.legendary/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + pwl (opengameart.org/content/bell-dingschimes) + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/loot.legendary/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + PWL (opengameart.org/content/bell-dingschimes) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/loot.legendary/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + PWL (opengameart.org/content/bell-dingschimes) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | sounds/loot.toss/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/loot.toss/02.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/monster.aberration.aggro/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
@@ -558,10 +569,9 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/monster.undead.hurt/02.ogg | https://opengameart.org/content/zombies-sound-pack | artisticdude | CC0 |
 | sounds/monster.undead.hurt/03.ogg | https://opengameart.org/content/zombies-sound-pack | artisticdude | CC0 |
 | sounds/monster.undead.hurt/04.ogg | https://opengameart.org/content/zombies-sound-pack | artisticdude | CC0 |
-| sounds/nova.arcane/01.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/nova.arcane/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/nova.arcane/03.ogg | https://opengameart.org/content/50-cc0-sci-fi-sfx | rubberduck | CC0 |
-| sounds/nova.arcane/04.ogg | https://opengameart.org/content/energy-drain | qubodup | CC0 |
+| sounds/nova.arcane/01.ogg | https://opengameart.org/content/wind-whoosh-loop | SketchMan3 + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/nova.arcane/02.ogg | https://opengameart.org/content/muffled-distant-explosion | NenadSimic + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
+| sounds/nova.arcane/03.ogg | https://opengameart.org/content/sand-spell | qubodup + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/nova.cold/01.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD + artisticdude (opengameart.org/content/freeze-spell-0) | CC0 |
 | sounds/nova.cold/02.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD | CC0 |
 | sounds/nova.cold/03.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude | CC0 |
@@ -569,7 +579,7 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/nova.fire/02.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
 | sounds/nova.fire/03.ogg | https://opengameart.org/content/fireball-1 | diligentcircle | CC0 |
 | sounds/nova.lightning/01.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck | CC0 |
-| sounds/nova.lightning/02.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
+| sounds/nova.lightning/02.ogg | https://opengameart.org/content/rain-long-thunder | WuxiaScrub + BMacZero (opengameart.org/content/electricity-sound-effects-0) | CC0 |
 | sounds/nova.physical/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/nova.physical/02.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck | CC0 |
 | sounds/nova.poison/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck | CC0 |
@@ -624,14 +634,14 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/player.hurtHeavy/03.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/player.hurtHeavy/04.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/player.stunned/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + HaelDB (opengameart.org/content/male-gruntyelling-sounds) | CC0 |
-| sounds/portal/01.ogg | https://opengameart.org/content/4-space-portal-sounds | Écrivain | CC0 |
-| sounds/portal/02.ogg | https://opengameart.org/content/portal-sound | IgnasD + rubberduck (opengameart.org/content/50-cc0-sci-fi-sfx) | CC0 |
-| sounds/portal/03.ogg | https://opengameart.org/content/teleport-spell | Ogrebane | CC0 |
+| sounds/portal/01.ogg | https://opengameart.org/content/wind-whoosh-loop | SketchMan3 + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) + cinameng (opengameart.org/content/rumble-fx) | CC0 |
+| sounds/portal/02.ogg | https://opengameart.org/content/muffled-distant-explosion | NenadSimic + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
+| sounds/portal/03.ogg | https://opengameart.org/content/ghost-breath | qubodup + SketchMan3 (opengameart.org/content/wind-whoosh-loop) | CC0 |
 | sounds/potion/01.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/potion/02.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/potion/03.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/quest.complete/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/quest.complete/02.ogg | https://opengameart.org/content/bell-dingschimes | pwl + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/quest.complete/02.ogg | https://opengameart.org/content/bell-dingschimes | PWL + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
 | sounds/roar/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/roar/02.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
 | sounds/roar/03.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
@@ -642,8 +652,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/shoot.physical/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
 | sounds/shoot.physical/02.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
 | sounds/shoot.physical/03.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Ogrebane (opengameart.org/content/battle-sound-effects) | CC0 |
-| sounds/shrine/01.ogg | https://opengameart.org/content/cure-magic | Someoneman + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
-| sounds/shrine/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/shrine/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/shrine/02.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | sounds/skillpoint/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
 | sounds/skillpoint/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/slam/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
@@ -651,37 +661,36 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/slam/03.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/slam/04.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck | CC0 |
 | sounds/spell.chainLightning/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
-| sounds/spell.chainLightning/02.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
-| sounds/spell.chainLightning/03.ogg | https://opengameart.org/content/electric-buzz | themightyglider | CC0 |
+| sounds/spell.chainLightning/02.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) | CC0 |
+| sounds/spell.chainLightning/03.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
 | sounds/spell.curse/01.ogg | https://opengameart.org/content/ghost | Ogrebane | CC0 |
-| sounds/spell.curse/02.ogg | https://opengameart.org/content/energy-drain | qubodup | CC0 |
+| sounds/spell.curse/02.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia | CC0 |
 | sounds/spell.curse/03.ogg | https://opengameart.org/content/ghost-monster-voice-moaning-growling | qubodup | CC0 |
 | sounds/spell.explosion/01.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck | CC0 |
 | sounds/spell.explosion/02.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck | CC0 |
 | sounds/spell.explosion/03.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck | CC0 |
 | sounds/spell.explosion/04.ogg | https://opengameart.org/content/explosion-0 | TinyWorlds | CC0 |
-| sounds/spell.explosion/05.ogg | https://opengameart.org/content/50-cc0-sci-fi-sfx | rubberduck | CC0 |
-| sounds/spell.heal/01.ogg | https://opengameart.org/content/cure-magic | Someoneman | CC0 |
-| sounds/spell.heal/02.ogg | https://opengameart.org/content/cure-magic | Someoneman | CC0 |
-| sounds/spell.heal/03.ogg | https://opengameart.org/content/cure-magic | Someoneman | CC0 |
-| sounds/spell.heal/04.ogg | https://opengameart.org/content/cure-magic | Someoneman | CC0 |
+| sounds/spell.explosion/05.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck | CC0 |
+| sounds/spell.heal/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
+| sounds/spell.heal/02.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
+| sounds/spell.heal/03.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | sounds/spell.meteor/01.ogg | https://opengameart.org/content/muffled-distant-explosion | NenadSimic + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) | CC0 |
 | sounds/spell.meteor/02.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
-| sounds/spell.shield/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
-| sounds/spell.shield/02.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
-| sounds/spell.shield/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney + JaggedStone (opengameart.org/content/magic-spell-sfx) | CC0 |
+| sounds/spell.shield/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/spell.shield/02.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
+| sounds/spell.shield/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/spell.summon/01.ogg | https://opengameart.org/content/earth-element-magic-spell | qubodup | CC0 |
-| sounds/spell.summon/02.ogg | https://opengameart.org/content/ghost-breath | qubodup | CC0 |
-| sounds/spell.summon/03.ogg | https://opengameart.org/content/4-space-portal-sounds | Écrivain | CC0 |
-| sounds/spell.teleportIn/01.ogg | https://opengameart.org/content/50-cc0-sci-fi-sfx | rubberduck | CC0 |
-| sounds/spell.teleportIn/02.ogg | https://opengameart.org/content/teleport-spell | Ogrebane | CC0 |
-| sounds/spell.teleportIn/03.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
-| sounds/spell.teleportOut/01.ogg | https://opengameart.org/content/teleport-spell | Ogrebane | CC0 |
-| sounds/spell.teleportOut/02.ogg | https://opengameart.org/content/50-cc0-sci-fi-sfx | rubberduck | CC0 |
-| sounds/spell.teleportOut/03.ogg | https://opengameart.org/content/portal-sound | IgnasD | CC0 |
+| sounds/spell.summon/02.ogg | https://opengameart.org/content/deep-bone-crackbreak-sfx | Zane Little Music + congusbongus (opengameart.org/content/bones-rattle) + cinameng (opengameart.org/content/rumble-fx) | CC0 |
+| sounds/spell.summon/03.ogg | https://opengameart.org/content/ghost-breath | qubodup + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/spell.teleportIn/01.ogg | https://opengameart.org/content/air-whoosh | pyranostudios | CC0 |
+| sounds/spell.teleportIn/02.ogg | https://opengameart.org/content/wind-whoosh-loop | SketchMan3 | CC0 |
+| sounds/spell.teleportIn/03.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/spell.teleportOut/01.ogg | https://opengameart.org/content/air-whoosh | pyranostudios + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/spell.teleportOut/02.ogg | https://opengameart.org/content/wind-whoosh-loop | SketchMan3 | CC0 |
+| sounds/spell.teleportOut/03.ogg | https://opengameart.org/content/ghost-breath | qubodup + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
 | sounds/spell.thunder/01.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck | CC0 |
 | sounds/spell.thunder/02.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck | CC0 |
-| sounds/spell.thunder/03.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
+| sounds/spell.thunder/03.ogg | https://opengameart.org/content/rain-long-thunder | WuxiaScrub | CC0 |
 | sounds/spell.volley/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
 | sounds/spell.volley/02.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Ogrebane (opengameart.org/content/battle-sound-effects) | CC0 |
 | sounds/spell.whirlwind/01.ogg | https://opengameart.org/content/air-whoosh | pyranostudios | CC0 |
@@ -761,8 +770,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/warcry/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/warcry/02.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/warcry/03.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
-| sounds/waypoint/01.ogg | https://opengameart.org/content/cure-magic | Someoneman + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
-| sounds/waypoint/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/waypoint/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + bonebrah (opengameart.org/content/stone-door) + SketchMan3 (opengameart.org/content/wind-whoosh-loop) | CC0 |
+| sounds/waypoint/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | `textures/world/slab/albedo.webp` | https://polyhaven.com/a/rock_tile_floor | Charlotte Baglioni | CC0 1.0 |
 | `textures/world/slab/normal.webp` | https://polyhaven.com/a/rock_tile_floor | Charlotte Baglioni | CC0 1.0 |
 | `textures/world/lava_crust/albedo.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
