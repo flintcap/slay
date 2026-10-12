@@ -1,6 +1,6 @@
 # Stream: qa-legend (signature looks for every unique and set)
 
-Status: in progress
+Status: done
 
 Goal (owner's words): unique items should have unique designs, patterns and
 glow effects. For example, a set's chest piece could have dragons on the
@@ -38,7 +38,7 @@ someone is wearing from across the screen.
   a full set worn. `check-item-icons` still passes (no look-alikes). Add a
   check that no two sets share a palette and that every set and unique has a
   signature entry.
-- [ ] Handover with a render sheet: every set worn in full on two classes,
+- [x] Handover with a render sheet. `qa-legend: Sundered Sky linen at full white`: every set worn in full on two classes,
   and every unique in hand or worn.
 
 ## Design
@@ -156,11 +156,44 @@ colours, features (sculpts first), finish and aura.
 
 ## Next up
 
-1. Handover sheets: every set on two classes, full body
-   (`hero-sheet.mjs legend --class=warden,pyromancer`), and every unique
-   (`item-sheet.mjs icons --uniques`, `hero-sheet.mjs legend --of=uniques`).
-   Check the Hollow King antler rack on the full-body frame. Then
-   "Finishing a stream".
+Nothing. Stream done; see Handover.
+
+## Handover
+
+What exists now:
+- Every set (15) has its own palette, finish, sculpted signature, emblem,
+  glow colour and aura; every unique (83) has its own look signature and an
+  aura. Data: `src/art/items/Designs.ts` (`SET_MOTIFS`, `UNIQUE_DESIGNS`).
+  Table of all of them under "Design" above and in `CONTRACTS.md`
+  ("Signatures: every set and unique").
+- Sculpts on the body (`hero/ArmourFeatures.ts` `sculpt()`): dragons,
+  claws, antlers, crowns, moons, bolts, spiders, serpents, laurels, plus
+  bolder skulls, eyes, chains and feathers. Set signatures are scaled up.
+- Set glow by pieces worn (`items/Outfit.ts`, `hero/Armour.ts`
+  `lightArmour`): 2 pieces the trims glow, full set the whole outfit
+  shines, 3+ pieces raise the set's aura. Worn uniques carry their aura.
+  Works on all six class bodies.
+- Auras in hand and on the floor (`ItemModels.ts`), painted into icons
+  (`items/IconRender.ts` `paintAura`).
+- Ward of Aeons is a clock tower (`items/Offhand.ts` `clocktower`); Kraken
+  Shell is sea-green everywhere (`ItemLook.ts` `BASE_TINT`).
+- Checks: `tools/check-legend.mjs` (static, in run-checks) guards
+  signatures; `check-perf --set=<id>` measures a full set worn.
+
+Render sheets (in `shots/qa-legend/`, not committed; rebuild with the
+commands): `handover-sets` (every set on warden and pyromancer,
+`hero-sheet.mjs legend --class=warden,pyromancer --cols=6 --max=30`),
+`handover-fix` (Hollow King and Sundered Sky after the last fixes),
+`m4/icons.png` and `handover-icons2` (every unique's icon,
+`item-sheet.mjs icons --uniques --max=40`, then `--from=40 --max=48`),
+`uqbody1` (every worn unique), `uq1`/`uq2` (every unique model).
+
+Left for `finish`:
+- Sundered Sky is warm white (linen); silk reads lilac. A neutral white
+  cloth texture would make it pure white.
+- Depth 12 is over budget on programs, textures and garbage per step with
+  or without a set (qa-speed's area).
+- `check-curve` failed once (revenant depth 5): a balance sim, not looks.
 
 ## Notes for resume
 
