@@ -118,6 +118,7 @@ export class Gait {
   /** Small settling steps still allowed after stopping. */
   private settle = 0;
   private placed = false;
+  private lastYaw = 0;
 
   constructor(readonly body: GaitBody) {}
 
@@ -137,6 +138,7 @@ export class Gait {
     this.moving = false;
     this.moveW = 0;
     this.placed = true;
+    this.lastYaw = inp.yaw;
   }
 
   /** Cadence for a ground speed, scaled to leg length (long legs stride slower). */
@@ -185,6 +187,15 @@ export class Gait {
     this.freq = this.cadence(speed);
     if (this.moving) this.phase = (this.phase + this.freq * dt) % 1;
 
+    // A snap turn on the move (a reversal, a hard cut sideways) swings the
+    // feet round with the hips, as a game hero's legs do, instead of leaving
+    // them planted along the old line: the body pivoted over them and the
+    // legs did the splits. Slow curves keep their planted feet.
+    const dyaw = wrapAngle(inp.yaw - this.lastYaw);
+    this.lastYaw = inp.yaw;
+    const spin = dt > 0 && this.moving ? smooth((Math.abs(dyaw) / dt - 3) / 5) : 0;
+    if (spin > 0) this.swivel(inp.x, inp.z, dyaw * spin);
+
     for (let i = 0; i < 2; i++) {
       const f = this.feet[i]!;
       f.since += dt;
@@ -192,6 +203,23 @@ export class Gait {
       if (!f.planted && !f.phased) this.stepClock(f, i, dt, inp);
     }
     if (!this.moving && !inp.rooted && !inp.hold) this.standingSteps(inp);
+  }
+
+  /** Turns both feet (and their swing starts) by `a` about the body. */
+  private swivel(cx: number, cz: number, a: number): void {
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    const turn = (x: number, z: number): [number, number] => {
+      const dx = x - cx;
+      const dz = z - cz;
+      return [cx + dx * c + dz * s, cz - dx * s + dz * c];
+    };
+    for (const f of this.feet) {
+      [f.x, f.z] = turn(f.x, f.z);
+      [f.sx, f.sz] = turn(f.sx, f.sz);
+      f.yaw += a;
+      f.syaw += a;
+    }
   }
 
   private start(inp: GaitInput): void {
@@ -267,7 +295,10 @@ export class Gait {
     const tLand = ((1 - s) * (1 - f.dutyAtLift)) / this.freq;
     // Lands a little less ahead than it leaves behind when running: under
     // the body, not reaching out in front.
-    const lead = (duty / this.freq) * lerp(0.5, 0.42, this.runW);
+    // Facing across the travel (mid-pivot), a foot reaching ahead lands out
+    // to the body's side: land it under the hip instead.
+    const fwd = (inp.vx * Math.sin(inp.yaw) + inp.vz * Math.cos(inp.yaw)) / Math.max(1e-3, this.speed);
+    const lead = (duty / this.freq) * lerp(0.5, 0.42, this.runW) * Math.max(0, fwd);
     const d = this.desired(inp, i, tLand, lead);
     this.swingTo(f, d, s, true);
     if (s >= 1) this.land(f, i);
