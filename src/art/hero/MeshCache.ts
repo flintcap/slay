@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 
 /** Bump when the mesher, decimator, weights or painting change. */
-export const MESH_VERSION = 4;
+export const MESH_VERSION = 5;
 
 const DB = 'slay-hero-meshes';
 const STORE = 'parts';

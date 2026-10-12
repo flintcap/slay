@@ -240,14 +240,17 @@ function paintSkin(anatomy: BodyField, geo: THREE.BufferGeometry, dead: boolean)
   const f = anatomy.field;
   const h = anatomy.h;
   const out = new Float32Array(pos.length);
-  type Spot = { c: THREE.Vector3; r: number; col: [number, number, number] };
+  /** A colour spot; `r` is a radius, or per-axis radii for a flattened one (lips, the mouth line). */
+  type Spot = { c: THREE.Vector3; r: number | THREE.Vector3; col: [number, number, number] };
   const H = (x: number, y: number, z: number) => new THREE.Vector3(x * h, y * h, z * h);
   const spots: Spot[] = [];
   const both = (x: number, y: number, z: number, r: number, col: [number, number, number]) => {
     spots.push({ c: H(x, y, z), r: r * h, col }, { c: H(-x, y, z), r: r * h, col });
   };
   if (!dead) {
-    spots.push({ c: H(0, 6.7, 0.42), r: 0.085 * h, col: [0.86, 0.6, 0.6] });
+    spots.push({ c: H(0, 6.7, 0.42), r: 0.085 * h, col: [0.9, 0.7, 0.7] });
+    // The lips themselves, a clear rose band (the line between them is `mouthGeometry`).
+    spots.push({ c: H(0, 6.698, 0.42), r: H(0.12, 0.045, 0.06), col: [0.72, 0.44, 0.44] });
     spots.push({ c: H(0, 6.86, 0.5), r: 0.07 * h, col: [1.0, 0.86, 0.84] });
     both(0.22, 6.84, 0.3, 0.13, [1.0, 0.88, 0.86]);
     both(0.37, 6.96, -0.06, 0.13, [1.0, 0.84, 0.8]);
@@ -281,7 +284,7 @@ function paintSkin(anatomy: BodyField, geo: THREE.BufferGeometry, dead: boolean)
       const dx = x - s.c.x;
       const dy = y - s.c.y;
       const dz = z - s.c.z;
-      const k = Math.exp(-(dx * dx + dy * dy + dz * dz) / (s.r * s.r));
+      const k = typeof s.r === 'number' ? Math.exp(-(dx * dx + dy * dy + dz * dz) / (s.r * s.r)) : Math.exp(-((dx / s.r.x) ** 2 + (dy / s.r.y) ** 2 + (dz / s.r.z) ** 2));
       if (k < 0.01) continue;
       r *= 1 + (s.col[0] - 1) * k;
       g *= 1 + (s.col[1] - 1) * k;

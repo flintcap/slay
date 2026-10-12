@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { buildRig, type HeroRig } from './Rig';
 import { meshBody, QUALITY_HIGH, type BodyMesh, type BodyQuality } from './Body';
-import { eyeGeometry, eyeMaterial } from './Eyes';
+import { eyeGeometry, eyeMaterial, mouthGeometry, mouthMaterial } from './Eyes';
 import type { HeroLook } from './Looks';
 import { fabricMaterial, skinMaterial } from './HeroMaterials';
 import { beltSpec, chestWrapSpec, garment, shortsSpec } from './Garment';
@@ -37,6 +37,7 @@ export function buildHero(look: HeroLook, name = 'hero', quality: BodyQuality = 
   const e = body.anatomy.eyes;
   const eyes = skinned(eyeGeometry(e.L, e.R, e.r), eyeMaterial(look.eyes.iris, look.eyes.glow), rig, `${name}:eyes`);
   eyes.castShadow = false;
+  if (!look.face.skull) skinned(mouthGeometry(body.anatomy.field, body.anatomy.h), mouthMaterial(), rig, `${name}:mouth`).castShadow = false;
   // Plain linens: what every hero wears with nothing equipped (gear makes the look).
   const female = look.shape.sex === 'female';
   skinned(garment(body, 'shorts', shortsSpec(body, female)), fabricMaterial('linen', look.linen), rig, `${name}:shorts`);

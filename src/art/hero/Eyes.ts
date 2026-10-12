@@ -103,3 +103,33 @@ export function eyeGeometry(L: THREE.Vector3, R: THREE.Vector3, r: number): THRE
   skinRigid(out, heroBoneIndex('head'));
   return out;
 }
+
+/**
+ * The line where the lips part: a thin dark tube laid on the face's own
+ * surface (found by marching the body field in from the front), so a mouth
+ * reads even where the face mesh is too coarse to carve one. Bound to the head.
+ */
+export function mouthGeometry(field: { eval(x: number, y: number, z: number): number }, h: number): THREE.BufferGeometry {
+  const y = 6.698 * h;
+  const pts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 8; i++) {
+    const x = (i / 8 - 0.5) * 0.19 * h;
+    // In from the front to the skin, then a hair under it. The tolerance
+    // stops on the lips' outer surface, not down in the fine carved line
+    // between them that the mesh smooths over.
+    let z = 0.6 * h;
+    while (z > 0.2 * h && field.eval(x, y, z) > 0.008 * h) z -= 0.002 * h;
+    // The corners turn up a touch and tuck in.
+    const e = Math.abs(i / 4 - 1);
+    pts.push(new THREE.Vector3(x, y + 0.004 * h * e * e, z - 0.003 * h - 0.006 * h * e * e));
+  }
+  const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.0085 * h, 5, false);
+  g.deleteAttribute('uv');
+  skinRigid(g, heroBoneIndex('head'));
+  return g;
+}
+
+/** Dark, a little wet. */
+export function mouthMaterial(): THREE.Material {
+  return new THREE.MeshStandardMaterial({ color: 0x2a1412, roughness: 0.45, metalness: 0 });
+}
