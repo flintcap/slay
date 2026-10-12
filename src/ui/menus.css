@@ -44,7 +44,7 @@
   background: none;
   border: 0;
   border-radius: 2px;
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   outline: none;
   transition: color 200ms ease, transform 320ms var(--mn-ease-out), background 260ms ease;
 }
@@ -153,7 +153,7 @@
 
 .mn-item.is-disabled {
   opacity: 0.35;
-  cursor: default;
+  cursor: var(--cursor-glove);
 }
 
 /* A brief flash on activation, so a keyboard confirm is felt. */
@@ -576,7 +576,7 @@
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--mn-hair);
   border-radius: var(--radius);
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 .csx-back:hover {
@@ -643,7 +643,7 @@
   background: none;
   border: 0;
   border-radius: 99px;
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   transition: color 160ms ease, background 200ms ease;
 }
 .csx-tab:hover {
@@ -687,7 +687,7 @@
   background: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.15));
   border: 1px solid transparent;
   border-radius: var(--radius);
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   overflow: hidden;
   animation: ttlSlide 500ms var(--mn-ease-out) both;
   animation-delay: calc(var(--i) * 45ms);
@@ -1096,7 +1096,7 @@
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius);
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   transition: border-color 160ms ease, color 160ms ease, background 200ms ease, transform 200ms var(--mn-ease-out);
 }
 .csx-dif:hover {
@@ -1169,7 +1169,7 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--mn-hair);
   border-radius: var(--radius);
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   transition: color 160ms ease, background 160ms ease;
 }
 .csx-dice:hover {
@@ -1215,7 +1215,7 @@
   border: 1px solid #3a2a0c;
   border-radius: var(--radius);
   box-shadow: 0 0 0 1px rgba(255, 232, 160, 0.35) inset, 0 6px 22px -6px rgba(201, 162, 39, 0.6), var(--shadow-2);
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   overflow: hidden;
   transition: transform 160ms var(--mn-ease-out), filter 160ms ease, box-shadow 200ms ease;
 }
@@ -1269,7 +1269,7 @@
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius);
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 .csx-retire:hover {
@@ -1785,7 +1785,7 @@
   background: none;
   border: 0;
   border-radius: var(--radius);
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   transition: color 160ms ease, background 200ms ease;
 }
 .stg-tab:hover {
@@ -1817,7 +1817,7 @@
   color: var(--ink-4);
   background: none;
   border: 0;
-  cursor: pointer;
+  cursor: var(--cursor-hot);
 }
 .stg-reset:hover {
   color: var(--ink-2);
@@ -2442,7 +2442,7 @@ body.reduce-motion .dth * {
   color: var(--ink-4);
   background: none;
   border: 0;
-  cursor: pointer;
+  cursor: var(--cursor-hot);
 }
 .ob-close:hover {
   color: var(--ink);

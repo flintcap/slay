@@ -77,7 +77,7 @@ export class EnchanterPanel {
     list.style.maxHeight = '22vh';
     for (const it of items) {
       const card = div(`depth-card${it.uid === this.selected ? ' is-done' : ''}`);
-      card.style.cursor = 'pointer';
+      card.style.cursor = 'var(--cursor-hot)';
       const b = div('depth-card-body');
       const worn = Object.values(c.equipment).includes(it);
       add(b, itemName(it), span('depth-dim', `${worn ? 'Worn' : 'In pack'} · item level ${it.ilvl}${it.enchantedMod ? ' · reforged' : ''}`));

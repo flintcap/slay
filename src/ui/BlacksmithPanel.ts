@@ -279,7 +279,7 @@ export class BlacksmithPanel {
         } else {
           cell.title = 'Empty — click to set a gem or rune';
         }
-        cell.style.cursor = 'pointer';
+        cell.style.cursor = 'var(--cursor-hot)';
         cell.addEventListener('click', () => this.openSocketPicker(item, i));
         strip.appendChild(cell);
       });
@@ -369,7 +369,7 @@ export class BlacksmithPanel {
             : 'No effect in this item'
         )
       );
-      row.style.cursor = 'pointer';
+      row.style.cursor = 'var(--cursor-hot)';
       row.addEventListener('click', () => {
         const r = attempt(() => insertGem(item, gem.baseId, index), { ok: false, reason: 'Failed' });
         if (!r.ok) {

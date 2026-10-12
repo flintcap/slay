@@ -248,7 +248,7 @@
   background: linear-gradient(180deg, rgba(46, 38, 25, 0.7) 0%, rgba(29, 24, 17, 0.7) 100%);
   border: 1px solid #3d3122;
   border-radius: var(--radius);
-  cursor: pointer;
+  cursor: var(--cursor-hot);
   transition: color 120ms ease, border-color 140ms ease, background 140ms ease;
 }
 .dlg-opt:hover,
@@ -367,7 +367,7 @@
   background: none;
   border: 0;
   border-left: 2px solid transparent;
-  cursor: pointer;
+  cursor: var(--cursor-hot);
 }
 .jr-item:hover {
   color: var(--ink);
@@ -380,7 +380,7 @@
 }
 .jr-item.is-locked {
   color: var(--ink-4);
-  cursor: default;
+  cursor: var(--cursor-glove);
 }
 .jr-item-sub {
   display: block;
