@@ -33,7 +33,7 @@ someone is wearing from across the screen.
 - [x] Icons and drops. `qa-legend: icons paint each aura, Ward of Aeons is a clock tower, kraken shell sea-green`. Inventory icons and ground models show the same
   signature (palette, motif, glow), so a set piece looks like its set at a
   glance and a unique looks legendary in the grid and on the floor.
-- [ ] Effects budget and check. Glows, auras and particles stay within the
+- [x] Effects budget and check. `qa-legend: check-perf --set= lifts requirements so the set is really worn`. Glows, auras and particles stay within the
   draw call and frame budgets (town and busy maps under 900 draw calls) with
   a full set worn. `check-item-icons` still passes (no look-alikes). Add a
   check that no two sets share a palette and that every set and unique has a
@@ -156,12 +156,11 @@ colours, features (sculpts first), finish and aura.
 
 ## Next up
 
-1. Budget: `check-item-icons` (browser) result, then
-   `check-perf.mjs --preview --set=set.lastlegion --depths=0,12`. Tick M5.
-2. Handover sheets: every set on two classes, full body
+1. Handover sheets: every set on two classes, full body
    (`hero-sheet.mjs legend --class=warden,pyromancer`), and every unique
    (`item-sheet.mjs icons --uniques`, `hero-sheet.mjs legend --of=uniques`).
-   Check the Hollow King antler rack on the full-body frame.
+   Check the Hollow King antler rack on the full-body frame. Then
+   "Finishing a stream".
 
 ## Notes for resume
 
@@ -179,6 +178,12 @@ colours, features (sculpts first), finish and aura.
   on all six class bodies (headless probe, 0 failures). Busiest set on the
   hero (lastlegion) is 40 meshes and 2 auras. `check-curve` failed once on
   revenant depth 5 (a balance sim, untouched by looks work).
+- Budget, `check-perf --preview --set=set.lastlegion --depths=0,12`: town
+  484 draw calls (455 without the set), depth 12 415 (386 without). Far
+  under 900. `check-item-icons`: 650 icons, 0 too alike, PASS. Depth 12 is
+  over on programs (112 without the set, 114 with), textures (257 / 254)
+  and garbage per step (212 / 223 KB) with or without the set: a note for
+  qa-speed, not caused by the set.
 - The close set frame (`--ty=0.72 --dist=2.1`) crops tall helms: judge
   helm sculpts on a full-body frame.
 - Looks only. Never change item stats, drop rates or set bonuses.

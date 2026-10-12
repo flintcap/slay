@@ -80,6 +80,10 @@ await page.evaluate((seed) => {
 if (SET_ID) {
   const worn = await page.evaluate(({ setId, bases }) => {
     const c = window.SLAY.save.account.current;
+    // Lift the hero past every piece's requirements: this measures looks.
+    c.level = Math.max(c.level, 99);
+    c.allocated.strength += 400;
+    c.allocated.dexterity += 400;
     let n = 0;
     for (const b of bases) {
       const uid = window.SLAY.debug.equip(b, 70, 'rare');
