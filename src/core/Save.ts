@@ -2,6 +2,7 @@ import type { AccountSave, Character, GameSettings, Item } from '../types';
 import { events } from './Events';
 import { bindsAreValid, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from './Access';
 import { UNIQUE_TEXT } from '../data/story/uniqueText';
+import { RUNES } from '../data/gems';
 
 /**
  * The primary save. The key still says v1 because it predates versioning; the
@@ -191,6 +192,11 @@ class Repairer {
     // takes its current name. Silent, because nothing was damaged.
     if (isStr(it.uniqueId) && !isStr(it.setId)) {
       const name = UNIQUE_TEXT[it.uniqueId]?.name;
+      if (name && it.name !== name) it.name = name;
+    }
+    // Runes took SLAY's own names; one picked up before then takes its new one.
+    if (it.baseId.startsWith('rune.')) {
+      const name = RUNES.find((r) => r.id === it.baseId)?.name;
       if (name && it.name !== name) it.name = name;
     }
     return it;

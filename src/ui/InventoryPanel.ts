@@ -32,6 +32,7 @@ import {
   registerDrop,
   drag,
   contextMenu,
+  splitStackDialog,
   modal,
   countTo,
   fmt,
@@ -50,7 +51,7 @@ import {
 } from './Widgets';
 import { PaperdollView } from './PaperdollView';
 import { potionKind } from '../sim/Potions';
-import { sortInventory, stackCount, setStackCount } from '../sim/Inventory';
+import { moveBetween, sortInventory, splitStack, stackCount, setStackCount } from '../sim/Inventory';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -386,13 +387,18 @@ export class InventoryPanel {
       source: 'inventory',
       accepts: (p) => !!p.item,
       onDrop: (p, index) => this.dropIntoInventory(p, index),
+      onClick: (item, i, ev) => {
+        if (ev.shiftKey && item) this.askSplit(item, i);
+      },
       onRightClick: (item, _i, ev) => this.onRightClick(item, ev),
     });
 
     const hint = div('inv-hint');
     hint.appendChild(span('', 'Right-click to equip or drink · drag a gem onto gear to socket it · drag onto the ground to drop · hold '));
     hint.appendChild(span('keycap', 'Shift'));
-    hint.appendChild(span('', ' and right-click for more'));
+    hint.appendChild(span('', ' and right-click for more, or '));
+    hint.appendChild(span('keycap', 'Shift'));
+    hint.appendChild(span('', ' and click a stack to split it'));
 
     // Dragging an item out of the window and letting go throws it away, which
     // is how the whole genre does it and was the one thing the pack could not
@@ -509,11 +515,36 @@ export class InventoryPanel {
     this.itemMenu(item, ev);
   }
 
+  /** Asks how many to take off the stack at pack slot `index`, then splits it. */
+  private askSplit(item: Item, index: number): void {
+    const c = save.account.current;
+    if (!c) return;
+    const held = stackCount(item);
+    if (held < 2) return;
+    splitStackDialog(attempt(() => itemDisplayName(item), 'stack'), held, (n) => {
+      normalizeInventory(c);
+      const at = c.inventory[index]?.uid === item.uid ? index : invIndexOf(c, item);
+      if (at < 0 || !splitStack(c.inventory, at, n)) {
+        events.emit('toast', { text: 'No empty slot to split into.', kind: 'bad' });
+        return;
+      }
+      save.touch();
+      events.emit('sfx', { id: 'ui.click' });
+      events.emit('ui:refresh', {});
+      this.refresh();
+    });
+  }
+
   /** Everything you can do with an item that is not "wear it" or "drink it". */
   private itemMenu(item: Item, ev: MouseEvent): void {
     const c = save.account.current;
     if (!c) return;
+    const at = invIndexOf(c, item);
+    const split = stackCount(item) > 1 && at >= 0
+      ? [{ label: 'Split stack', icon: 'bag', hint: 'Shift+click', onPick: () => this.askSplit(item, at) }]
+      : [];
     contextMenu(ev.clientX, ev.clientY, [
+      ...split,
       {
         label: 'Send to Vault',
         icon: 'stash',
@@ -612,10 +643,8 @@ export class InventoryPanel {
     if (p.kind === 'inventory' && p.index !== undefined) {
       const from = p.index;
       if (from === index) return true;
-      const a = c.inventory[from] ?? null;
-      const b = c.inventory[index] ?? null;
-      c.inventory[index] = a;
-      c.inventory[from] = b;
+      // Same kind of stack: pour it in. Anything else trades places.
+      moveBetween(c.inventory, from, c.inventory, index);
       save.touch();
       this.refresh();
       return true;

@@ -1861,6 +1861,24 @@ export function modal(opts: ModalOpts): void {
   requestAnimationFrame(() => wrap.classList.add('is-open'));
 }
 
+/**
+ * Asks how many to take off a stack of `held` (at least 2). Starts at half;
+ * quick picks for one, half, and all but one.
+ */
+export function splitStackDialog(name: string, held: number, onSplit: (n: number) => void): void {
+  const half = Math.max(1, Math.floor(held / 2));
+  let n = half;
+  const body = div('split-body');
+  body.appendChild(div('split-note', `Take some off this stack of ${held}. They go in the first empty slot.`));
+  const slider = new Slider('Take out', n, 1, held - 1, 1, (v) => (n = v), (v) => `${v}, leaving ${held - v}`);
+  body.appendChild(slider.root);
+  const quick = row('split-quick');
+  const picks: Array<[string, number]> = [['One', 1], ['Half', half], ['All but one', held - 1]];
+  for (const [label, v] of picks) add(quick, new Button({ label, variant: 'ghost', small: true, onClick: () => slider.set(v) }).root);
+  body.appendChild(quick);
+  modal({ title: `Split ${name}`, body, icon: 'bag', confirmLabel: 'Split', onConfirm: () => onSplit(n) });
+}
+
 // ---------------------------------------------------------------------------
 // Number animation
 // ---------------------------------------------------------------------------

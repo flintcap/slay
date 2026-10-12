@@ -11,7 +11,7 @@ import type { Item, ItemRarity } from '../types';
 import { events } from '../core/Events';
 import { save, STASH_TAB_SIZE } from '../core/Save';
 import { itemDisplayName } from '../sim/Loot';
-import { sortSlots } from '../sim/Inventory';
+import { moveBetween, sortSlots, splitStack, stackCount } from '../sim/Inventory';
 import { ItemGrid, normalizeInventory, invFirstFree } from './InventoryPanel';
 import {
   scheduleRefresh,
@@ -28,6 +28,7 @@ import {
   safeBase,
   attempt,
   modal,
+  splitStackDialog,
   type DragPayload,
 } from './Widgets';
 
@@ -129,6 +130,9 @@ export class StashPanel {
       source: 'stash',
       accepts: (p) => !!p.item,
       onDrop: (p, i) => this.dropIntoStash(p, i),
+      onClick: (item, i, ev) => {
+        if (ev.shiftKey && item) this.askSplit(item, 'stash', this.tabOffset() + i);
+      },
       onRightClick: (item, i) => this.toPack(item, i),
     });
     left.appendChild(this.stashGrid.root);
@@ -154,6 +158,9 @@ export class StashPanel {
       source: 'inventory',
       accepts: (p) => !!p.item,
       onDrop: (p, i) => this.dropIntoPack(p, i),
+      onClick: (item, i, ev) => {
+        if (ev.shiftKey && item) this.askSplit(item, 'pack', i);
+      },
       onRightClick: (item) => this.toVault(item),
     });
     right.appendChild(this.packGrid.root);
@@ -280,9 +287,8 @@ export class StashPanel {
     if (!p.item) return false;
 
     if (p.kind === 'stash' && p.index !== undefined) {
-      const a = acct.stash[p.index] ?? null;
-      acct.stash[p.index] = acct.stash[target] ?? null;
-      acct.stash[target] = a;
+      // Same kind of stack: pour it in. Anything else trades places.
+      moveBetween(acct.stash, p.index, acct.stash, target);
       save.touch();
       this.refresh();
       return true;
@@ -292,9 +298,7 @@ export class StashPanel {
     if (!c) return false;
 
     if (p.kind === 'inventory' && p.index !== undefined) {
-      const displaced = acct.stash[target] ?? null;
-      acct.stash[target] = p.item;
-      c.inventory[p.index] = displaced;
+      moveBetween(c.inventory, p.index, acct.stash, target);
       save.touch();
       events.emit('ui:refresh', {});
       return true;
@@ -314,22 +318,46 @@ export class StashPanel {
     normalizeInventory(c);
 
     if (p.kind === 'stash' && p.index !== undefined) {
-      const displaced = c.inventory[index] ?? null;
-      c.inventory[index] = p.item;
-      acct.stash[p.index] = displaced;
+      moveBetween(acct.stash, p.index, c.inventory, index);
       save.touch();
       events.emit('ui:refresh', {});
       return true;
     }
     if (p.kind === 'inventory' && p.index !== undefined) {
-      const a = c.inventory[p.index] ?? null;
-      c.inventory[p.index] = c.inventory[index] ?? null;
-      c.inventory[index] = a;
+      moveBetween(c.inventory, p.index, c.inventory, index);
       save.touch();
       this.refresh();
       return true;
     }
     return false;
+  }
+
+  /**
+   * Shift+click on a stack: ask how many, then split them off into the first
+   * empty slot of the same side (the open tab, for the vault).
+   */
+  private askSplit(item: Item, side: 'stash' | 'pack', index: number): void {
+    const held = stackCount(item);
+    if (held < 2) return;
+    splitStackDialog(attempt(() => itemDisplayName(item), 'stack'), held, (n) => {
+      const c = save.account.current;
+      let ok = false;
+      if (side === 'stash') {
+        const start = this.tabOffset();
+        ok = save.account.stash[index]?.uid === item.uid && splitStack(save.account.stash, index, n, start, start + STASH_TAB_SIZE);
+      } else if (c) {
+        normalizeInventory(c);
+        ok = c.inventory[index]?.uid === item.uid && splitStack(c.inventory, index, n);
+      }
+      if (!ok) {
+        events.emit('toast', { text: 'No empty slot to split into.', kind: 'bad' });
+        return;
+      }
+      save.touch();
+      events.emit('sfx', { id: 'ui.click' });
+      events.emit('ui:refresh', {});
+      this.refresh();
+    });
   }
 
   private toVault(item: Item | null): void {

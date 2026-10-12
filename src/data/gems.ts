@@ -240,6 +240,46 @@ const RUNE_ROWS: RuneRow[] = [
   ['Zod', 66, 'skillLevels', 1, 'skillLevels', 1, 'skillLevels', 1],
 ];
 
+/**
+ * What the player sees. The row keys stay as the item ids (rune.el and so
+ * on) so saved stashes still load; the names are SLAY's own.
+ */
+const RUNE_NAMES: Record<string, string> = {
+  El: 'Ashk',
+  Eld: 'Brem',
+  Tir: 'Corv',
+  Nef: 'Dagh',
+  Eth: 'Esk',
+  Ith: 'Fenn',
+  Tal: 'Gest',
+  Ral: 'Hask',
+  Ort: 'Irn',
+  Thul: 'Juv',
+  Amn: 'Kell',
+  Sol: 'Lorn',
+  Shael: 'Murr',
+  Dol: 'Nadd',
+  Hel: 'Orsk',
+  Io: 'Pell',
+  Lum: 'Quor',
+  Ko: 'Rusk',
+  Fal: 'Skarn',
+  Lem: 'Thren',
+  Pul: 'Uld',
+  Um: 'Vosk',
+  Mal: 'Wend',
+  Ist: 'Xev',
+  Gul: 'Yrr',
+  Vex: 'Zorn',
+  Ohm: 'Kharvos',
+  Lo: 'Seradyn',
+  Sur: 'Ulmarr',
+  Ber: 'Thessik',
+  Jah: 'Vorhal',
+  Cham: 'Ixamund',
+  Zod: 'Slay',
+};
+
 const RUNE_COLORS = [0xd8a860, 0xd89a50, 0xd88c44, 0xd87e38, 0xd8702c, 0xd86220];
 
 export const RUNES: RuneDef[] = RUNE_ROWS.map((row, i) => {
@@ -247,7 +287,7 @@ export const RUNES: RuneDef[] = RUNE_ROWS.map((row, i) => {
   const order = i + 1;
   return {
     id: `rune.${name.toLowerCase()}`,
-    name: `${name} Rune`,
+    name: `${RUNE_NAMES[name] ?? name} Rune`,
     order,
     levelReq,
     color: RUNE_COLORS[Math.min(RUNE_COLORS.length - 1, Math.floor(i / 6))],
@@ -299,36 +339,36 @@ const SHIELDS: ItemCategory[] = ['shield'];
 const CASTER: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
 
 export const RUNEWORDS: RunewordDef[] = [
-  rw('rw.steel', 'Steel', ['rune.tir', 'rune.el'], ['sword', 'axe', 'mace'], 'The first thing a smith learns to write.', [
+  rw('rw.steel', 'Tempered', ['rune.tir', 'rune.el'], ['sword', 'axe', 'mace'], 'The first thing a smith learns to write.', [
     ['enhancedDamage', 25],
     ['attackSpeed', 20],
     ['maxDamage', 3],
   ]),
-  rw('rw.nadir', 'Nadir', ['rune.nef', 'rune.tir'], HEAD, 'Worn low, so nothing sees your face.', [
+  rw('rw.nadir', 'Low Ebb', ['rune.nef', 'rune.tir'], HEAD, 'Worn low, so nothing sees your face.', [
     ['enhancedDefense', 50],
     ['defense', 10],
     ['goldFind', -33],
     ['magicFind', 12],
   ]),
-  rw('rw.malice', 'Malice', ['rune.ith', 'rune.el', 'rune.eth'], MELEE, 'It wants the fight more than you do.', [
+  rw('rw.malice', 'Spite', ['rune.ith', 'rune.el', 'rune.eth'], MELEE, 'It wants the fight more than you do.', [
     ['enhancedDamage', 33],
     ['lifeRegen', -5],
     ['attackRating', 100],
     ['critChance', 4],
   ]),
-  rw('rw.stealth', 'Stealth', ['rune.tal', 'rune.eth'], BODY, 'The cloth does not rustle. Nothing about you does.', [
+  rw('rw.stealth', 'Hush', ['rune.tal', 'rune.eth'], BODY, 'The cloth does not rustle. Nothing about you does.', [
     ['moveSpeed', 12],
     ['castSpeed', 12],
     ['dexterity', 6],
     ['manaRegen', 15],
   ]),
-  rw('rw.lore', 'Lore', ['rune.ort', 'rune.sol'], HEAD, 'Whispers the answer half a beat before you need it.', [
+  rw('rw.lore', 'Old Words', ['rune.ort', 'rune.sol'], HEAD, 'Whispers the answer half a beat before you need it.', [
     ['skillLevels', 1],
     ['energy', 10],
     ['lightningResist', 30],
     ['damageReduction', 7],
   ]),
-  rw('rw.ancients-pledge', "Ancient's Pledge", ['rune.ral', 'rune.ort', 'rune.tal'], SHIELDS, 'Sworn to the wall, not the sword.', [
+  rw('rw.ancients-pledge', 'Elder Oath', ['rune.ral', 'rune.ort', 'rune.tal'], SHIELDS, 'Sworn to the wall, not the sword.', [
     ['enhancedDefense', 50],
     ['fireResist', 43],
     ['coldResist', 48],
@@ -336,21 +376,21 @@ export const RUNEWORDS: RunewordDef[] = [
     ['poisonResist', 48],
     ['physicalResist', 10],
   ]),
-  rw('rw.spirit', 'Spirit', ['rune.tal', 'rune.thul', 'rune.ort', 'rune.amn'], ['sword', 'staff', 'scepter', 'shield'], 'Four notes, and the air holds them.', [
+  rw('rw.spirit', 'Kindled Will', ['rune.tal', 'rune.thul', 'rune.ort', 'rune.amn'], ['sword', 'staff', 'scepter', 'shield'], 'Four notes, and the air holds them.', [
     ['skillLevels', 2],
     ['castSpeed', 30],
     ['mana', 100],
     ['life', 55],
     ['manaRegen', 20],
   ]),
-  rw('rw.insight', 'Insight', ['rune.ral', 'rune.tir', 'rune.tal', 'rune.sol'], ['spear', 'staff', 'scepter'], 'A quiet certainty that outlasts your mana bar.', [
+  rw('rw.insight', 'Inner Eye', ['rune.ral', 'rune.tir', 'rune.tal', 'rune.sol'], ['spear', 'staff', 'scepter'], 'A quiet certainty that outlasts your mana bar.', [
     ['manaRegen', 60],
     ['skillLevels', 1],
     ['attackRating', 200],
     ['enhancedDamage', 200],
     ['critChance', 5],
   ]),
-  rw('rw.smoke', 'Smoke', ['rune.nef', 'rune.lum'], BODY, 'You were standing right there a moment ago.', [
+  rw('rw.smoke', 'Ashveil', ['rune.nef', 'rune.lum'], BODY, 'You were standing right there a moment ago.', [
     ['enhancedDefense', 75],
     ['fireResist', 50],
     ['coldResist', 50],
@@ -358,13 +398,13 @@ export const RUNEWORDS: RunewordDef[] = [
     ['poisonResist', 50],
     ['energy', 10],
   ]),
-  rw('rw.rhyme', 'Rhyme', ['rune.shael', 'rune.eth'], SHIELDS, 'Every blow answered in kind.', [
+  rw('rw.rhyme', 'Cadence', ['rune.shael', 'rune.eth'], SHIELDS, 'Every blow answered in kind.', [
     ['blockChance', 20],
     ['magicFind', 25],
     ['goldFind', 50],
     ['poisonResist', 25],
   ]),
-  rw('rw.honor', 'Honor', ['rune.amn', 'rune.el', 'rune.ith', 'rune.tir', 'rune.sol'], MELEE, 'You will be told, afterwards, that it was clean.', [
+  rw('rw.honor', 'Fealty', ['rune.amn', 'rune.el', 'rune.ith', 'rune.tir', 'rune.sol'], MELEE, 'You will be told, afterwards, that it was clean.', [
     ['enhancedDamage', 160],
     ['lifeSteal', 7],
     ['strength', 10],
@@ -372,28 +412,28 @@ export const RUNEWORDS: RunewordDef[] = [
     ['attackRating', 250],
     ['skillLevels', 1],
   ]),
-  rw('rw.crescent-moon', 'Crescent Moon', ['rune.shael', 'rune.um', 'rune.tir'], ['sword', 'axe', 'spear'], 'A thin white line where the armour used to be.', [
+  rw('rw.crescent-moon', 'Waning Blade', ['rune.shael', 'rune.um', 'rune.tir'], ['sword', 'axe', 'spear'], 'A thin white line where the armour used to be.', [
     ['enhancedDamage', 220],
     ['lightningDamage', 45],
     ['physicalResist', 12],
     ['manaSteal', 9],
     ['critChance', 8],
   ]),
-  rw('rw.duress', 'Duress', ['rune.shael', 'rune.um', 'rune.thul'], BODY, 'Pressure applied evenly, from every direction at once.', [
+  rw('rw.duress', 'Strain', ['rune.shael', 'rune.um', 'rune.thul'], BODY, 'Pressure applied evenly, from every direction at once.', [
     ['enhancedDefense', 160],
     ['enhancedDamage', 30],
     ['coldDamage', 60],
     ['physicalResist', 15],
     ['critDamage', 40],
   ]),
-  rw('rw.chaos', 'Chaos', ['rune.fal', 'rune.ohm', 'rune.um'], ['axe', 'mace', 'sword'], 'It does not swing so much as arrive.', [
+  rw('rw.chaos', 'Riot', ['rune.fal', 'rune.ohm', 'rune.um'], ['axe', 'mace', 'sword'], 'It does not swing so much as arrive.', [
     ['enhancedDamage', 290],
     ['attackSpeed', 35],
     ['arcaneDamage', 90],
     ['areaDamagePct', 40],
     ['skillLevels', 1],
   ]),
-  rw('rw.call-to-arms', 'Call To Arms', ['rune.amn', 'rune.ral', 'rune.mal', 'rune.ist', 'rune.ohm'], ALL_WEAPON, 'A horn note that reaches the parts of you that had given up.', [
+  rw('rw.call-to-arms', 'Rally Horn', ['rune.amn', 'rune.ral', 'rune.mal', 'rune.ist', 'rune.ohm'], ALL_WEAPON, 'A horn note that reaches the parts of you that had given up.', [
     ['skillLevels', 2],
     ['enhancedDamage', 300],
     ['lifeSteal', 8],
@@ -401,7 +441,7 @@ export const RUNEWORDS: RunewordDef[] = [
     ['magicFind', 40],
     ['attackSpeed', 40],
   ]),
-  rw('rw.enigma', 'Enigma', ['rune.jah', 'rune.ith', 'rune.ber'], BODY, 'Nobody agrees on where it takes you. Everybody agrees it does.', [
+  rw('rw.enigma', 'Unmapped', ['rune.jah', 'rune.ith', 'rune.ber'], BODY, 'Nobody agrees on where it takes you. Everybody agrees it does.', [
     ['skillLevels', 2],
     ['moveSpeed', 45],
     ['strength', 25],
@@ -409,14 +449,14 @@ export const RUNEWORDS: RunewordDef[] = [
     ['damageReduction', 14],
     ['magicFind', 80],
   ]),
-  rw('rw.infinity', 'Infinity', ['rune.ber', 'rune.mal', 'rune.ber', 'rune.ist'], ['spear', 'staff'], 'The far end of it has not been located.', [
+  rw('rw.infinity', 'Endless Coil', ['rune.ber', 'rune.mal', 'rune.ber', 'rune.ist'], ['spear', 'staff'], 'The far end of it has not been located.', [
     ['enhancedDamage', 320],
     ['lightningDamage', 260],
     ['elementalDamagePct', 55],
     ['skillLevels', 2],
     ['cooldownReduction', 12],
   ]),
-  rw('rw.breath-of-the-dying', 'Breath of the Dying', ['rune.vex', 'rune.hel', 'rune.el', 'rune.eld', 'rune.zod', 'rune.eth'], ALL_WEAPON, 'The last thing a great many things ever heard.', [
+  rw('rw.breath-of-the-dying', 'Last Gasp', ['rune.vex', 'rune.hel', 'rune.el', 'rune.eld', 'rune.zod', 'rune.eth'], ALL_WEAPON, 'The last thing a great many things ever heard.', [
     ['enhancedDamage', 400],
     ['lifeSteal', 14],
     ['attackRating', 500],
@@ -425,14 +465,14 @@ export const RUNEWORDS: RunewordDef[] = [
     ['critDamage', 90],
     ['skillLevels', 1],
   ]),
-  rw('rw.hand-of-justice', 'Hand of Justice', ['rune.sur', 'rune.cham', 'rune.amn', 'rune.lo'], ALL_WEAPON, 'It does not care whose hand it is in.', [
+  rw('rw.hand-of-justice', 'Verdict', ['rune.sur', 'rune.cham', 'rune.amn', 'rune.lo'], ALL_WEAPON, 'It does not care whose hand it is in.', [
     ['enhancedDamage', 360],
     ['attackSpeed', 45],
     ['fireDamage', 220],
     ['critChance', 14],
     ['lifeSteal', 9],
   ]),
-  rw('rw.dream', 'Dream', ['rune.io', 'rune.jah', 'rune.pul'], HEAD, 'You wake up already holding the sword.', [
+  rw('rw.dream', 'Waking Sleep', ['rune.io', 'rune.jah', 'rune.pul'], HEAD, 'You wake up already holding the sword.', [
     ['skillLevels', 1],
     ['lightningDamage', 180],
     ['life', 130],
@@ -440,14 +480,14 @@ export const RUNEWORDS: RunewordDef[] = [
     ['magicFind', 35],
     ['castSpeed', 30],
   ]),
-  rw('rw.grief', 'Grief', ['rune.eth', 'rune.tir', 'rune.lo', 'rune.mal', 'rune.ral'], ['sword', 'axe'], 'Cuts what it is pointed at and a little of what it is not.', [
+  rw('rw.grief', 'Mourning Edge', ['rune.eth', 'rune.tir', 'rune.lo', 'rune.mal', 'rune.ral'], ['sword', 'axe'], 'Cuts what it is pointed at and a little of what it is not.', [
     ['minDamage', 200],
     ['maxDamage', 240],
     ['attackSpeed', 40],
     ['critDamage', 110],
     ['physicalResist', 10],
   ]),
-  rw('rw.heart-of-the-oak', 'Heart of the Oak', ['rune.ko', 'rune.vex', 'rune.pul', 'rune.thul'], CASTER, 'Old wood remembers every winter it survived.', [
+  rw('rw.heart-of-the-oak', 'Rootheart', ['rune.ko', 'rune.vex', 'rune.pul', 'rune.thul'], CASTER, 'Old wood remembers every winter it survived.', [
     ['skillLevels', 3],
     ['castSpeed', 40],
     ['mana', 160],

@@ -178,6 +178,44 @@ export function moveBetween(from: Slots, fromIndex: number, to: Slots, toIndex: 
   return true;
 }
 
+/**
+ * Takes `n` units off the stack at `index` into a new stack in the first
+ * free slot of [start, end) (the whole container by default). The new stack
+ * is a copy of the old one with its own uid. False if there is no room or
+ * `n` would empty the stack.
+ */
+export function splitStack(slots: Slots, index: number, n: number, start = 0, end = slots.length): boolean {
+  const item = slots[index];
+  if (!item || !isStackableItem(item)) return false;
+  const held = stackCount(item);
+  n = Math.floor(n);
+  if (n < 1 || n >= held) return false;
+  let free = -1;
+  for (let i = Math.max(0, start); i < Math.min(end, slots.length); i++) {
+    if (!slots[i]) {
+      free = i;
+      break;
+    }
+  }
+  if (free < 0) return false;
+  const part = JSON.parse(JSON.stringify(item)) as StackedItem;
+  part.uid = freshUid(item.uid);
+  setStackCount(part, n);
+  setStackCount(item, held - n);
+  slots[free] = part;
+  return true;
+}
+
+/** A uid not used by anything carried or stashed, derived from `from`. */
+function freshUid(from: string): string {
+  const used = new Set<string>();
+  for (const s of save.account.stash) if (s) used.add(s.uid);
+  for (const s of save.account.current?.inventory ?? []) if (s) used.add(s.uid);
+  let k = 1;
+  while (used.has(`${from}~${k}`)) k++;
+  return `${from}~${k}`;
+}
+
 export function swapSlots(slots: Slots, a: number, b: number): boolean {
   return moveBetween(slots, a, slots, b);
 }
