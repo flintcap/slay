@@ -9,7 +9,7 @@
 import type { Pose } from './Pose';
 import { CH } from './Pose';
 
-export type Stance = 'unarmed' | 'oneHand' | 'dagger' | 'wand' | 'dual' | 'shield' | 'twoHand' | 'staff' | 'bow';
+export type Stance = 'unarmed' | 'oneHand' | 'dagger' | 'wand' | 'dual' | 'dualBlade' | 'shield' | 'twoHand' | 'staff' | 'bow';
 
 export interface StanceBody {
   /** 0 lean .. 1 heavy: heavy arms hang further out to clear the body. */
@@ -160,6 +160,32 @@ export const STANCES: Record<Stance, StanceDef> = {
     feet: (b) => feet(b, 0.48, 0.22),
     crouch: 0.02,
   },
+  // A sword, axe or mace in each hand: both held up and ready like the
+  // one-hander's, the blades upright and a little apart. (The dagger pair's
+  // low, turned-in carry pointed long blades across the body, crossing.)
+  dualBlade: {
+    idle(p, b) {
+      p.arm('R', 0.36, 0.28 + 0.1 * b.build, 0.02, 0.95, -0.95, -0.1, 0.3);
+      p.arm('L', 0.32, 0.28 + 0.1 * b.build, 0.02, 0.9, -0.95, -0.1, 0.3);
+      // Each blade placed point-up, tipped a touch forward and out.
+      p.reach('R', [-0.66 * b.h, 4.05 * b.h, 0.85 * b.h], [-0.12, 1, 0.22]);
+      p.reach('L', [0.66 * b.h, 4.0 * b.h, 0.8 * b.h], [0.12, 1, 0.22]);
+      p.fist('R', 1);
+      p.fist('L', 1);
+      p.add('chest', 0.04, 0, 0);
+    },
+    move(p, b, run) {
+      p.arm('R', 0.2, 0.24 + 0.1 * b.build, 0.02, 0.75 + 0.4 * run, -0.65, 0, 0.1);
+      p.arm('L', 0.2, 0.24 + 0.1 * b.build, 0.02, 0.75 + 0.4 * run, -0.65, 0, 0.1);
+      p.reach('R', [-0.66 * b.h, 4.0 * b.h, 0.7 * b.h], [-0.12, 1, 0.35 + 0.2 * run]);
+      p.reach('L', [0.66 * b.h, 4.0 * b.h, 0.7 * b.h], [0.12, 1, 0.35 + 0.2 * run]);
+      p.fist('R', 1);
+      p.fist('L', 1);
+    },
+    swing: [0.45, 0.45],
+    feet: (b) => feet(b, 0.46, 0.22),
+    crouch: 0.014,
+  },
   // Shield on the left forearm across the body, weapon ready behind it.
   shield: {
     idle(p, b) {
@@ -257,7 +283,7 @@ export function stanceFor(grip: string, offHand: 'none' | 'shield' | 'weapon' | 
     case 'axe':
     case 'mace':
     case 'oneHand':
-      return offHand === 'weapon' ? 'dual' : offHand === 'shield' ? 'shield' : 'oneHand';
+      return offHand === 'weapon' ? 'dualBlade' : offHand === 'shield' ? 'shield' : 'oneHand';
     default:
       return offHand === 'shield' ? 'shield' : 'unarmed';
   }

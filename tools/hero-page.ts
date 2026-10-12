@@ -137,6 +137,10 @@ const STANCE_ITEMS: Record<Stance, Array<['mainHand' | 'offHand', string, string
     ['mainHand', 'dagger.kris', 'dagger'],
     ['offHand', 'dagger.dirk', 'dagger'],
   ],
+  dualBlade: [
+    ['mainHand', 'sword.broad', 'sword'],
+    ['offHand', 'sword.short', 'sword'],
+  ],
   shield: [
     ['mainHand', 'sword.broad', 'sword'],
     ['offHand', 'shield.heater', 'shield'],
@@ -706,7 +710,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       const oy = Math.floor(i / 3) * TH;
       const idle = actor(cls, st, `${cls}-${st}-i`);
       simulate(idle, 0, 1.5, still);
-      shootActor(g, idle, ox, oy, TW, TH, 0.6);
+      shootActor(g, idle, ox, oy, TW, TH, f.yaw !== undefined ? Number(f.yaw) : 0.6);
       const walk = actor(cls, st, `${cls}-${st}-w`);
       simulate(walk, 0, 2.3, straight(1.6));
       shootActor(g, walk, ox + TW, oy, TW, TH, 1.1);
