@@ -24,6 +24,7 @@ import {
 import { itemStats, itemDisplayName, newItem, getBase } from '../sim/Loot';
 import { getSocketable, socketBonuses } from '../data/gems';
 import { addItemToInventory } from '../sim/Inventory';
+import { INV_COLS, INV_ROWS } from '../sim/Grid';
 import { materialName, materialColor } from '../data/materials';
 import { Random, randomSeed } from '../core/RNG';
 import { requestItemIcon } from '../art/Icons';
@@ -87,9 +88,9 @@ export class BlacksmithPanel {
     left.appendChild(lhd);
 
     this.packGrid = new ItemGrid({
-      cols: 6,
-      rows: 8,
-      size: 46,
+      cols: INV_COLS,
+      rows: INV_ROWS,
+      size: 36,
       source: 'craft',
       accepts: (p) => !!p.item,
       onDrop: (p) => this.pick(p),

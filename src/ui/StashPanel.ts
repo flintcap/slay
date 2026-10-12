@@ -11,8 +11,9 @@ import type { Item, ItemRarity } from '../types';
 import { events } from '../core/Events';
 import { save, STASH_TAB_SIZE } from '../core/Save';
 import { itemDisplayName } from '../sim/Loot';
-import { moveBetween, sortSlots, splitStack, stackCount } from '../sim/Inventory';
-import { ItemGrid, normalizeInventory, invFirstFree } from './InventoryPanel';
+import { moveBetween, sortStashTab, splitStack, stackCount } from '../sim/Inventory';
+import { findFit, tabArea, INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS } from '../sim/Grid';
+import { ItemGrid, normalizeInventory, invFirstFree, placeOrFit } from './InventoryPanel';
 import {
   scheduleRefresh,
   Panel,
@@ -32,8 +33,10 @@ import {
   type DragPayload,
 } from './Widgets';
 
-const TAB_COLS = 12;
-const TAB_ROWS = 10;
+const TAB_COLS = STASH_COLS;
+const TAB_ROWS = STASH_ROWS;
+/** Cell size on this screen: both grids side by side have to fit. */
+const CELL = 42;
 
 export class StashPanel {
   readonly panel: Panel;
@@ -57,7 +60,7 @@ export class StashPanel {
     this.panel.frame.classList.add('panel-stash');
 
     const wrap = div('trade-wrap');
-    wrap.style.gridTemplateColumns = 'minmax(0,1fr) 320px';
+    wrap.style.gridTemplateColumns = 'minmax(0,1fr) auto';
 
     // --- vault side -------------------------------------------------------
     const left = div('trade-col');
@@ -108,11 +111,7 @@ export class StashPanel {
       icon: 'sparkle',
       small: true,
       onClick: () => {
-        const start = this.tabIndex * STASH_TAB_SIZE;
-        const slice = save.account.stash.slice(start, start + STASH_TAB_SIZE);
-        sortSlots(slice);
-        for (let i = 0; i < STASH_TAB_SIZE; i++) save.account.stash[start + i] = slice[i] ?? null;
-        save.touch();
+        sortStashTab(this.tabIndex);
         this.quietNext = true;
         this.refresh();
         this.stashGrid.playSort();
@@ -126,7 +125,7 @@ export class StashPanel {
     this.stashGrid = new ItemGrid({
       cols: TAB_COLS,
       rows: TAB_ROWS,
-      size: 46,
+      size: CELL,
       source: 'stash',
       accepts: (p) => !!p.item,
       onDrop: (p, i) => this.dropIntoStash(p, i),
@@ -152,9 +151,9 @@ export class StashPanel {
     right.appendChild(rhd);
 
     this.packGrid = new ItemGrid({
-      cols: 6,
-      rows: 10,
-      size: 46,
+      cols: INV_COLS,
+      rows: INV_ROWS,
+      size: CELL,
       source: 'inventory',
       accepts: (p) => !!p.item,
       onDrop: (p, i) => this.dropIntoPack(p, i),
@@ -287,8 +286,11 @@ export class StashPanel {
     if (!p.item) return false;
 
     if (p.kind === 'stash' && p.index !== undefined) {
-      // Same kind of stack: pour it in. Anything else trades places.
-      moveBetween(acct.stash, p.index, acct.stash, target);
+      // Same kind of stack: pour it in. Onto one item: trade places.
+      if (!moveBetween(acct.stash, p.index, acct.stash, target)) {
+        events.emit('toast', { text: 'It will not fit there.', kind: 'bad' });
+        return false;
+      }
       save.touch();
       this.refresh();
       return true;
@@ -298,7 +300,10 @@ export class StashPanel {
     if (!c) return false;
 
     if (p.kind === 'inventory' && p.index !== undefined) {
-      moveBetween(c.inventory, p.index, acct.stash, target);
+      if (!placeOrFit(c.inventory, p.index, acct.stash, target)) {
+        events.emit('toast', { text: 'No room in this tab for that.', kind: 'bad' });
+        return false;
+      }
       save.touch();
       events.emit('ui:refresh', {});
       return true;
@@ -318,13 +323,19 @@ export class StashPanel {
     normalizeInventory(c);
 
     if (p.kind === 'stash' && p.index !== undefined) {
-      moveBetween(acct.stash, p.index, c.inventory, index);
+      if (!placeOrFit(acct.stash, p.index, c.inventory, index)) {
+        events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
+        return false;
+      }
       save.touch();
       events.emit('ui:refresh', {});
       return true;
     }
     if (p.kind === 'inventory' && p.index !== undefined) {
-      moveBetween(c.inventory, p.index, c.inventory, index);
+      if (!moveBetween(c.inventory, p.index, c.inventory, index)) {
+        events.emit('toast', { text: 'It will not fit there.', kind: 'bad' });
+        return false;
+      }
       save.touch();
       this.refresh();
       return true;
@@ -365,9 +376,11 @@ export class StashPanel {
     if (!c || !item) return;
     const at = c.inventory.findIndex((i) => i?.uid === item.uid);
     if (at < 0) return;
-    const free = save.account.stash.indexOf(null);
+    // The open tab first, then any tab with room.
+    let free = findFit(save.account.stash, item, tabArea(this.tabIndex));
+    if (free < 0) free = findFit(save.account.stash, item);
     if (free < 0) {
-      events.emit('toast', { text: 'The vault is full.', kind: 'bad' });
+      events.emit('toast', { text: 'No room in the vault for that.', kind: 'bad' });
       return;
     }
     save.account.stash[free] = item;
@@ -381,9 +394,9 @@ export class StashPanel {
     const c = save.account.current;
     if (!c || !item) return;
     normalizeInventory(c);
-    const free = invFirstFree(c);
+    const free = invFirstFree(c, item);
     if (free < 0) {
-      events.emit('toast', { text: 'Your pack is full.', kind: 'bad' });
+      events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
       return;
     }
     c.inventory[free] = item;

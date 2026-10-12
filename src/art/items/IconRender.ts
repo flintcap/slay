@@ -35,10 +35,25 @@ export interface IconSpec {
   visual?: ItemVisual;
   uniqueId?: string;
   setId?: string;
+  /**
+   * The item's block in the pack, in cells, when it is not square. The icon
+   * is drawn at that shape, so a staff stands the full height of its four
+   * cells instead of shrinking to fit one.
+   */
+  shape?: { w: number; h: number };
 }
 
 /** Output size of an icon, in pixels. */
 export const ICON_SIZE = 128;
+/** Output pixels per cell for a shaped icon. */
+export const ICON_CELL = 80;
+
+/** The canvas size an icon is drawn at. */
+export function iconCanvasSize(spec: IconSpec): { w: number; h: number } {
+  const sh = spec.shape;
+  if (!sh || sh.w === sh.h) return { w: ICON_SIZE, h: ICON_SIZE };
+  return { w: ICON_CELL * sh.w, h: ICON_CELL * sh.h };
+}
 /** Internal render size: drawn at twice the size, then scaled down for smooth edges. */
 const DRAW = 256;
 
@@ -60,7 +75,11 @@ interface Pose {
   ref?: number;
 }
 
-function poseFor(family: ItemFamily, size: THREE.Vector3): Pose {
+function poseFor(family: ItemFamily, size: THREE.Vector3, tall = false): Pose {
+  // In a tall block, long things stand straight up, business end high.
+  if (tall && family === 'bow') return { yaw: Math.PI / 2 - 0.4, pitch: 0, roll: 0, fill: 0.94 };
+  if (tall && family === 'quiver') return { yaw: 0.4, pitch: 0.1, roll: -0.12, fill: 0.9 };
+  if (tall && DIAGONAL.has(family)) return { yaw: 0.4, pitch: 0.08, roll: 0, fill: 0.94 };
   if (family === 'bow') return { yaw: Math.PI / 2 - 0.4, pitch: 0, roll: -Math.PI / 4, fill: 0.98 };
   if (family === 'quiver') return { yaw: 0.4, pitch: 0.1, roll: -0.45, fill: 0.9 };
   if (DIAGONAL.has(family)) return { yaw: 0.4, pitch: 0.08, roll: -Math.PI / 4, fill: 0.98 };
@@ -80,6 +99,9 @@ function poseFor(family: ItemFamily, size: THREE.Vector3): Pose {
 
 let renderer: THREE.WebGLRenderer | null = null;
 let failed = false;
+/** The renderer's current drawing size, so a shaped icon only resizes when it must. */
+let drawW = DRAW;
+let drawH = DRAW;
 let stage: { scene: THREE.Scene; holder: THREE.Group; cam: THREE.OrthographicCamera } | null = null;
 
 function studio(): THREE.WebGLRenderer | null {
@@ -99,6 +121,8 @@ function studio(): THREE.WebGLRenderer | null {
     }
     renderer.setPixelRatio(1);
     renderer.setSize(DRAW, DRAW, false);
+    drawW = DRAW;
+    drawH = DRAW;
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -143,12 +167,21 @@ const tmpC = new THREE.Vector3();
 function renderModel(spec: IconSpec): Shot | null {
   const r = studio();
   if (!r || !stage) return null;
+  const out = iconCanvasSize(spec);
+  const aspect = out.w / out.h;
+  const dw = out.w * 2;
+  const dh = out.h * 2;
+  if (dw !== drawW || dh !== drawH) {
+    r.setSize(dw, dh, false);
+    drawW = dw;
+    drawH = dh;
+  }
   const visual = spec.visual ?? { shape: spec.baseId, palette: 'metal.steel' };
   const built = buildItem(visual, spec.rarity, { baseId: spec.baseId, uniqueId: spec.uniqueId, setId: spec.setId });
   const obj = built.group;
   const { holder, cam, scene } = stage;
   const size0 = tmpBox.setFromObject(obj).getSize(tmpV).clone();
-  const pose = poseFor(built.family, size0);
+  const pose = poseFor(built.family, size0, aspect < 1);
   // Yaw and pitch turn the item inside; the roll lays it on the diagonal outside.
   const inner = new THREE.Group();
   inner.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
@@ -159,9 +192,9 @@ function renderModel(spec: IconSpec): Shot | null {
   tmpBox.setFromObject(holder);
   const c = tmpBox.getCenter(tmpC);
   const s = tmpBox.getSize(tmpV);
-  const half = Math.max(1e-3, Math.max(s.x, s.y) / 2 / pose.fill, pose.ref ?? 0);
-  cam.left = -half;
-  cam.right = half;
+  const half = Math.max(1e-3, Math.max(s.y, s.x / aspect) / 2 / pose.fill, pose.ref ?? 0);
+  cam.left = -half * aspect;
+  cam.right = half * aspect;
   cam.top = half;
   cam.bottom = -half;
   cam.near = 0.01;
@@ -192,6 +225,8 @@ function renderModel(spec: IconSpec): Shot | null {
 function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'back' | 'front'): void {
   const st = auraStyle(kind);
   if (!st) return;
+  const W = out.canvas.width;
+  const H = out.canvas.height;
   const big = st.size >= 20;
   if (big !== (layer === 'back')) return;
   const rnd = new Random(hashString(`icon-aura|${seed}`));
@@ -199,8 +234,8 @@ function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'ba
   out.save();
   out.globalCompositeOperation = 'lighter';
   for (let i = 0; i < n; i++) {
-    const px = 14 + rnd.next() * 100;
-    const py = 12 + rnd.next() * 104;
+    const px = (14 + rnd.next() * 100) * (W / ICON_SIZE);
+    const py = (12 + rnd.next() * 104) * (H / ICON_SIZE);
     if (big) {
       const r = 10 + rnd.next() * (st.size >= 60 ? 22 : 12);
       glow(out, px, py, r, color, st.size >= 60 ? 0.28 : 0.4);
@@ -245,24 +280,32 @@ function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'ba
 
 /** The mark drawn when there is no WebGL: a faceted stone in the rarity colour. */
 function fallback(out: Ctx, rc: number): void {
+  const cx = out.canvas.width / 2;
+  const cy = out.canvas.height / 2;
   out.fillStyle = css(rc, 0.85);
   out.strokeStyle = css(0x000000, 0.7);
   out.lineWidth = 3;
   out.beginPath();
-  out.moveTo(64, 22);
-  out.lineTo(100, 64);
-  out.lineTo(64, 106);
-  out.lineTo(28, 64);
+  out.moveTo(cx, cy - 42);
+  out.lineTo(cx + 36, cy);
+  out.lineTo(cx, cy + 42);
+  out.lineTo(cx - 36, cy);
   out.closePath();
   out.fill();
   out.stroke();
 }
 
 /**
- * Draws the icon for one item onto `out`, a clear 128px canvas context.
+ * Draws the icon for one item onto `out`, a clear canvas context sized by
+ * `iconCanvasSize` (128px square unless the item has a shape).
  * Synchronous: builds the model, renders it, composites the rarity look.
  */
 export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } = {}): void {
+  const W = out.canvas.width;
+  const H = out.canvas.height;
+  const cx = W / 2;
+  const cy = H / 2;
+  const R = Math.max(W, H) / 2;
   // `bare` draws the model alone, with no rarity light: for comparing pictures.
   const rank = opts.bare ? 0 : RANK[spec.rarity] ?? 0;
   const rc = RARITY_COLOR[spec.rarity] ?? 0xc8c8c8;
@@ -279,30 +322,30 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
   // Rarity backdrop: a soft pool of the rarity's light behind the object.
   if (rank >= 1) {
     const a = [0, 0.1, 0.14, 0.2, 0.26, 0.32, 0.36][rank]!;
-    const g = out.createRadialGradient(64, 64, 4, 64, 64, 64);
+    const g = out.createRadialGradient(cx, cy, 4, cx, cy, R);
     g.addColorStop(0, css(rc, a));
     g.addColorStop(0.6, css(rc, a * 0.35));
     g.addColorStop(1, css(rc, 0));
     out.fillStyle = g;
-    out.fillRect(0, 0, ICON_SIZE, ICON_SIZE);
+    out.fillRect(0, 0, W, H);
   }
   if (rank >= 4) {
     // Rays behind uniques and better.
     out.save();
     out.globalCompositeOperation = 'lighter';
-    out.translate(64, 64);
+    out.translate(cx, cy);
     const n = rank >= 5 ? 12 : 8;
     for (let i = 0; i < n; i++) {
       out.rotate((Math.PI * 2) / n);
-      const g = out.createLinearGradient(0, 0, 0, -64);
+      const g = out.createLinearGradient(0, 0, 0, -R);
       g.addColorStop(0, css(glowC, 0));
       g.addColorStop(0.3, css(glowC, 0.12 + (rank - 4) * 0.04));
       g.addColorStop(1, css(glowC, 0));
       out.fillStyle = g;
       out.beginPath();
       out.moveTo(0, 0);
-      out.lineTo(-7, -64);
-      out.lineTo(7, -64);
+      out.lineTo(-7, -R);
+      out.lineTo(7, -R);
       out.closePath();
       out.fill();
     }
@@ -313,11 +356,11 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
     fallback(out, rc);
     return;
   }
-  const layer = scratch('iconRenderLayer', ICON_SIZE);
-  layer.x.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
+  const layer = scratch('iconRenderLayer', W, H);
+  layer.x.clearRect(0, 0, W, H);
   layer.x.imageSmoothingEnabled = true;
   layer.x.imageSmoothingQuality = 'high';
-  layer.x.drawImage(renderer.domElement, 0, 0, ICON_SIZE, ICON_SIZE);
+  layer.x.drawImage(renderer.domElement, 0, 0, W, H);
   if (opts.bare) {
     out.drawImage(layer.c, 0, 0);
     return;
@@ -339,8 +382,8 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
     // Motes for mythic, embers for ancient.
     const rnd = new Random(hashString(`${spec.baseId}|${spec.rarity}|${spec.uniqueId ?? spec.setId ?? ''}`));
     for (let i = 0; i < 5; i++) {
-      const px = 10 + rnd.next() * 108;
-      const py = 8 + rnd.next() * 112;
+      const px = (10 + rnd.next() * 108) * (W / ICON_SIZE);
+      const py = (8 + rnd.next() * 112) * (H / ICON_SIZE);
       const r = 1 + rnd.next() * 1.8;
       glow(out, px, py, r * 3, glowC, 0.8);
       out.fillStyle = css(0xffffff, 0.85);

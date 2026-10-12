@@ -37,6 +37,7 @@ import { getBase, requiredLevel } from './Loot';
 import { legacyStartingBonus } from './Legacy';
 import { repairTownState } from './TownServices';
 import { ONE_HAND_MELEE } from '../data/itemBases';
+import { findFit, firstFreeCell, freeCells } from './Grid';
 
 // ---------------------------------------------------------------------------
 // Creation
@@ -324,12 +325,13 @@ function derivedStartingSkill(classId: CharClassId): string | null {
 // Inventory plumbing
 // ---------------------------------------------------------------------------
 
-export function firstFreeInventorySlot(c: Character): number {
-  return c.inventory.indexOf(null);
+/** Where `item` would go in the pack (its whole block), or the first open cell. */
+export function firstFreeInventorySlot(c: Character, item?: Item): number {
+  return item ? findFit(c.inventory, item) : firstFreeCell(c.inventory);
 }
 
 export function addToInventory(c: Character, item: Item): boolean {
-  const i = firstFreeInventorySlot(c);
+  const i = findFit(c.inventory, item);
   if (i < 0) return false;
   c.inventory[i] = item;
   return true;
@@ -344,9 +346,7 @@ export function removeFromInventory(c: Character, uidToRemove: string): Item | n
 }
 
 export function inventoryFreeSlots(c: Character): number {
-  let n = 0;
-  for (const slot of c.inventory) if (!slot) n++;
-  return n;
+  return freeCells(c.inventory);
 }
 
 // ---------------------------------------------------------------------------
@@ -699,10 +699,14 @@ export function equipItem(
 
   // The incoming item may already be sitting in the inventory; that slot frees
   // up, so it counts toward the room available for displaced gear.
+  // Items take blocks of cells, so counting free cells is not enough: try
+  // fitting each displaced piece into a copy of the pack first.
   const fromInventory = c.inventory.some((it) => it?.uid === item.uid);
-  const room = inventoryFreeSlots(c) + (fromInventory ? 1 : 0);
-  if (displaced.length > room) {
-    return { ok: false, reason: 'Not enough inventory space.' };
+  const trial = c.inventory.map((it) => (it?.uid === item.uid ? null : it));
+  for (const d of displaced) {
+    const at = findFit(trial, d);
+    if (at < 0) return { ok: false, reason: 'Not enough inventory space.' };
+    trial[at] = d;
   }
 
   if (fromInventory) removeFromInventory(c, item.uid);

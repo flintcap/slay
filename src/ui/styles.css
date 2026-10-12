@@ -1806,8 +1806,10 @@ input.slider::-moz-range-thumb {
 }
 
 .itemgrid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(var(--cols, 10), var(--cell, 50px));
+  grid-auto-rows: var(--cell, 50px);
   gap: 4px;
   padding: 9px;
   background: linear-gradient(180deg, rgba(6, 5, 4, 0.75), rgba(10, 8, 6, 0.5));
@@ -4449,7 +4451,7 @@ input.slider::-moz-range-thumb {
 
 .inv-wrap {
   display: grid;
-  grid-template-columns: 392px 1fr;
+  grid-template-columns: 412px 1fr;
   gap: var(--s5);
 }
 .inv-left {
@@ -4461,10 +4463,12 @@ input.slider::-moz-range-thumb {
 .paperdoll {
   position: relative;
   display: grid;
-  /* Slots down each flank, the live figure filling the column between them. */
-  grid-template-columns: 58px 1fr 58px;
-  grid-template-rows: repeat(5, auto);
-  gap: var(--s3);
+  /* Slots down each flank, the live figure filling the column between them.
+     The flanks are a grid of the same cells the pack uses, so each slot is
+     the shape of what it holds: two by four for a weapon, one for a ring. */
+  grid-template-columns: 44px 44px 1fr 44px 44px;
+  grid-template-rows: repeat(10, 44px);
+  gap: 4px;
   padding: var(--s4);
   background:
     radial-gradient(ellipse 70% 60% at 50% 45%, rgba(60, 48, 30, 0.35), transparent 70%),
@@ -4472,11 +4476,16 @@ input.slider::-moz-range-thumb {
   border-radius: var(--radius);
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.7), var(--hairline);
   grid-template-areas:
-    'helm   fig amulet'
-    'mh     fig oh'
-    'gloves fig chest'
-    'belt   fig ring1'
-    'boots  fig ring2';
+    'helm   helm   fig amulet amulet'
+    'helm   helm   fig chest  chest'
+    'mh     mh     fig chest  chest'
+    'mh     mh     fig chest  chest'
+    'mh     mh     fig oh     oh'
+    'mh     mh     fig oh     oh'
+    'gloves gloves fig oh     oh'
+    'gloves gloves fig oh     oh'
+    'boots  boots  fig belt   belt'
+    'boots  boots  fig ring1  ring2';
 }
 .paperdoll-crest {
   position: absolute;
@@ -4488,6 +4497,7 @@ input.slider::-moz-range-thumb {
 }
 .paperdoll-figure {
   grid-area: fig;
+  margin: 0 6px;
   position: relative;
   display: flex;
   align-items: center;
@@ -4533,9 +4543,8 @@ input.slider::-moz-range-thumb {
 }
 .pd-slot {
   position: relative;
-  width: 58px !important;
-  height: 58px !important;
   justify-self: center;
+  align-self: center;
   border-radius: 5px;
 }
 /* An empty equipment socket is engraved into the plate: a faint gilt rim
@@ -6784,4 +6793,58 @@ input.slider::-moz-range-thumb {
 .minimap-expand:active,
 .hud-quest:active {
   transform: translateY(1px);
+}
+
+
+/* --- the item grid: big items cover blocks of cells ---------------------- */
+
+/* The footprint shows where a held item would land: gold where it fits,
+   amber where it would trade places with one item, red where it cannot go. */
+.igrid-landing {
+  position: absolute;
+  z-index: 7;
+  pointer-events: none;
+  display: none;
+  border-radius: 3px;
+  background: rgba(120, 220, 140, 0.16);
+  box-shadow: inset 0 0 0 2px rgba(150, 240, 160, 0.85), 0 0 14px rgba(120, 220, 140, 0.35);
+}
+.igrid-landing.is-on {
+  display: block;
+}
+.igrid-landing.is-swap {
+  background: rgba(255, 200, 90, 0.16);
+  box-shadow: inset 0 0 0 2px rgba(255, 214, 120, 0.9), 0 0 14px rgba(255, 200, 90, 0.35);
+}
+.igrid-landing.is-no {
+  background: rgba(230, 70, 60, 0.18);
+  box-shadow: inset 0 0 0 2px rgba(240, 90, 80, 0.9), 0 0 14px rgba(230, 70, 60, 0.35);
+}
+/* The footprint does the pointing; the cell under the cursor stays still. */
+.itemgrid.is-sized .islot.drop-hover {
+  outline: none;
+  transform: none;
+}
+/* A big item lifts less, or it reads as jumping out of its block. */
+.itemgrid.is-sized .islot.is-big:not(.is-empty):hover {
+  transform: translateY(-1px);
+}
+.islot.is-big .islot-img {
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+}
+
+/* The merchant's shelf pager. */
+.shop-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  margin-top: var(--s2);
+}
+.shop-page {
+  min-width: 90px;
+  text-align: center;
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
 }

@@ -53,6 +53,7 @@ import {
 import { PaperdollView } from './PaperdollView';
 import { potionKind } from '../sim/Potions';
 import { moveBetween, sortInventory, splitStack, stackCount, setStackCount } from '../sim/Inventory';
+import { findFit, firstFreeCell, fitsAt, freeCells, itemSize, INV_COLS, INV_ROWS } from '../sim/Grid';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -69,15 +70,18 @@ export function invIndexOf(c: Character, item: Item): number {
   return -1;
 }
 
-export function invFirstFree(c: Character): number {
+/**
+ * Where `item` would go in the pack: the first place its whole block fits.
+ * Without an item, the first cell nothing covers.
+ */
+export function invFirstFree(c: Character, item?: Item): number {
   normalizeInventory(c);
-  for (let i = 0; i < c.inventory.length; i++) if (!c.inventory[i]) return i;
-  return -1;
+  return item ? findFit(c.inventory, item) : firstFreeCell(c.inventory);
 }
 
 export function invAdd(c: Character, item: Item): boolean {
   if (invIndexOf(c, item) >= 0) return true;
-  const i = invFirstFree(c);
+  const i = invFirstFree(c, item);
   if (i < 0) return false;
   c.inventory[i] = item;
   return true;
@@ -106,11 +110,26 @@ export function invConsumeOne(c: Character, item: Item): void {
   setStackCount(item, held - 1);
 }
 
+/** Cells in use in the pack. */
 export function invCount(c: Character): number {
   normalizeInventory(c);
-  let n = 0;
-  for (const it of c.inventory) if (it) n++;
-  return n;
+  return c.inventory.length - freeCells(c.inventory);
+}
+
+/**
+ * Moves the item at `fromIndex` so its corner sits on `toIndex`; if it cannot
+ * go exactly there, into the first place it fits on that side. False when
+ * there is no room for it at all.
+ */
+export function placeOrFit(from: Array<Item | null>, fromIndex: number, to: Array<Item | null>, toIndex: number): boolean {
+  if (moveBetween(from, fromIndex, to, toIndex)) return true;
+  const item = from[fromIndex];
+  if (!item || from === to) return false;
+  const at = findFit(to, item);
+  if (at < 0) return false;
+  from[fromIndex] = null;
+  to[at] = item;
+  return true;
 }
 
 /**
@@ -137,8 +156,8 @@ export function doEquip(c: Character, item: Item, slot?: EquipSlot): { ok: boole
 export function doUnequip(c: Character, slot: EquipSlot): boolean {
   const item = c.equipment[slot];
   if (!item) return false;
-  if (invFirstFree(c) < 0) {
-    events.emit('toast', { text: 'Your pack is full.', kind: 'bad' });
+  if (invIndexOf(c, item) < 0 && invFirstFree(c, item) < 0) {
+    events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
     return false;
   }
   const ok = attempt(() => unequipItem(c, slot), false);
@@ -159,34 +178,59 @@ export interface ItemGridOpts {
   rows: number;
   size?: number;
   source: DragKind;
-  /** Called when something is dropped onto cell `index`. Return true if handled. */
-  onDrop?: (payload: DragPayload, index: number) => boolean;
+  /**
+   * Items cover blocks of cells, as in the pack and the vault (the default).
+   * Off, every item takes one cell, for a plain list such as a shop shelf.
+   */
+  sized?: boolean;
+  /**
+   * Called when something is dropped. `index` is where its top-left corner
+   * goes; `under` is the cell under the pointer, or the item covering it,
+   * which is what a gem dropped onto gear is aimed at. Return true if handled.
+   */
+  onDrop?: (payload: DragPayload, index: number, under: number) => boolean;
   accepts?: (payload: DragPayload, index: number) => boolean;
   onClick?: (item: Item | null, index: number, ev: MouseEvent) => void;
   onRightClick?: (item: Item | null, index: number, ev: MouseEvent) => void;
   hoverPrice?: (item: Item) => { gold: number; label: string } | undefined;
 }
 
+/** Space between cells, in px. Matches `.itemgrid { gap }`. */
+const GRID_GAP = 4;
+
 export class ItemGrid {
   readonly root: HTMLDivElement;
   readonly slots: ItemSlot[] = [];
   private opts: ItemGridOpts;
+  private readonly size: number;
+  private readonly sized: boolean;
   /** Uid last shown in each cell, so a new arrival can be made to flash. */
   private shown: string[] = [];
   private primed = false;
+  /** What the grid is showing: the backing array and where this grid starts in it. */
+  private items: Array<Item | null> = [];
+  private offset = 0;
+  /** For each cell, the cell of the item covering it, or -1. */
+  private cover: Int32Array;
+  /** Where a held item would land: green to fit, gold to swap, red when it cannot. */
+  private landing: HTMLDivElement;
 
   constructor(opts: ItemGridOpts) {
     this.opts = opts;
     const size = opts.size ?? 50;
-    this.root = div('itemgrid');
+    this.size = size;
+    this.sized = opts.sized !== false;
+    this.root = div(this.sized ? 'itemgrid is-sized' : 'itemgrid');
     this.root.style.setProperty('--cols', String(opts.cols));
     this.root.style.setProperty('--cell', `${size}px`);
     const total = opts.cols * opts.rows;
+    this.cover = new Int32Array(total).fill(-1);
     for (let i = 0; i < total; i++) {
       const slot = new ItemSlot({
         size,
         source: opts.source,
         index: i,
+        shaped: this.sized,
         hoverContext: { source: opts.source },
         onClick: (item, ev) => opts.onClick?.(item, i, ev),
         onRightClick: (item, ev) => opts.onRightClick?.(item, i, ev),
@@ -194,12 +238,97 @@ export class ItemGrid {
       registerDrop(
         slot.root,
         (p) => (opts.accepts ? opts.accepts(p, i) : !!p.item),
-        (p) => opts.onDrop?.(p, i) ?? false
+        (p) => this.drop(p, i)
       );
       slot.root.style.setProperty('--i', String(i));
+      if (this.sized) {
+        slot.root.style.gridColumn = `${(i % opts.cols) + 1}`;
+        slot.root.style.gridRow = `${Math.floor(i / opts.cols) + 1}`;
+      }
       this.slots.push(slot);
       this.root.appendChild(slot.root);
     }
+    this.landing = div('igrid-landing');
+    if (this.sized) {
+      this.root.appendChild(this.landing);
+      // The thin gaps between cells catch a drop too. The grid is a target
+      // in its own right but without the target styling, which the cells own.
+      registerDrop(
+        this.root,
+        (p) => (opts.accepts ? opts.accepts(p, 0) : !!p.item),
+        (p) => this.drop(p, this.cellAt(drag.x, drag.y))
+      );
+      this.root.classList.remove('drop-target');
+      drag.moveHooks.add((x, y) => this.preview(x, y));
+      drag.endHooks.add(() => this.landing.classList.remove('is-on'));
+    }
+  }
+
+  /** The cell under a point, clamped to the grid. */
+  private cellAt(x: number, y: number): number {
+    const r = this.root.getBoundingClientRect();
+    const cs = getComputedStyle(this.root);
+    const pl = parseFloat(cs.paddingLeft) || 0;
+    const pt = parseFloat(cs.paddingTop) || 0;
+    const step = this.size + GRID_GAP;
+    const c = Math.max(0, Math.min(this.opts.cols - 1, Math.floor((x - r.left - pl + GRID_GAP / 2) / step)));
+    const row = Math.max(0, Math.min(this.opts.rows - 1, Math.floor((y - r.top - pt + GRID_GAP / 2) / step)));
+    return row * this.opts.cols + c;
+  }
+
+  /** Where a held item's top-left corner goes when the pointer is over `cell`. */
+  private anchorFor(p: DragPayload, cell: number): number {
+    if (!this.sized || !p.item) return cell;
+    const { w, h } = itemSize(p.item);
+    const cols = this.opts.cols;
+    const gx = Math.min(w - 1, Math.max(0, Math.floor((p.grab?.fx ?? 0.5) * w)));
+    const gy = Math.min(h - 1, Math.max(0, Math.floor((p.grab?.fy ?? 0.5) * h)));
+    const c = Math.max(0, Math.min(cols - w, (cell % cols) - gx));
+    const r = Math.max(0, Math.min(this.opts.rows - h, Math.floor(cell / cols) - gy));
+    return r * cols + c;
+  }
+
+  private drop(p: DragPayload, cell: number): boolean {
+    if (this.sized) cell = this.cellAt(drag.x, drag.y);
+    const under = this.cover[cell] >= 0 ? this.cover[cell]! : cell;
+    return this.opts.onDrop?.(p, this.anchorFor(p, cell), under) ?? false;
+  }
+
+  /** Shows where the held item would land, and whether it can. */
+  private preview(x: number, y: number): void {
+    const p = drag.payload;
+    const r = this.root.getBoundingClientRect();
+    const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && r.width > 0;
+    if (!p?.item || !inside || (this.opts.accepts && !this.opts.accepts(p, 0))) {
+      this.landing.classList.remove('is-on');
+      return;
+    }
+    const at = this.anchorFor(p, this.cellAt(x, y));
+    const { w, h } = itemSize(p.item);
+    const cols = this.opts.cols;
+    const c0 = at % cols;
+    const r0 = Math.floor(at / cols);
+    // What it would sit on, not counting itself.
+    const hit = new Set<string>();
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        const k = this.cover[(r0 + dy) * cols + c0 + dx] ?? -1;
+        const it = k >= 0 ? this.items[this.offset + k] : null;
+        if (it && it.uid !== p.item.uid) hit.add(it.uid);
+      }
+    }
+    const step = this.size + GRID_GAP;
+    const cs = getComputedStyle(this.root);
+    const pl = parseFloat(cs.paddingLeft) || 0;
+    const pt = parseFloat(cs.paddingTop) || 0;
+    const st = this.landing.style;
+    st.left = `${pl + c0 * step}px`;
+    st.top = `${pt + r0 * step}px`;
+    st.width = `${w * this.size + (w - 1) * GRID_GAP}px`;
+    st.height = `${h * this.size + (h - 1) * GRID_GAP}px`;
+    this.landing.classList.add('is-on');
+    this.landing.classList.toggle('is-swap', hit.size === 1);
+    this.landing.classList.toggle('is-no', hit.size > 1);
   }
 
   /**
@@ -207,16 +336,57 @@ export class ItemGrid {
    * such as a sort or a tab switch where everything would light at once.
    */
   setItems(items: Array<Item | null>, offset = 0, quiet = false): void {
+    this.items = items;
+    this.offset = offset;
+    const cols = this.opts.cols;
+    const rows = this.opts.rows;
+    if (this.sized) {
+      this.cover.fill(-1);
+      for (let i = 0; i < this.slots.length; i++) {
+        const it = items[offset + i];
+        if (!it || this.cover[i] >= 0) continue;
+        const { w, h } = itemSize(it);
+        const c0 = i % cols;
+        const r0 = Math.floor(i / cols);
+        for (let dy = 0; dy < h && r0 + dy < rows; dy++) {
+          for (let dx = 0; dx < w && c0 + dx < cols; dx++) {
+            const k = (r0 + dy) * cols + c0 + dx;
+            if (this.cover[k] < 0) this.cover[k] = i;
+          }
+        }
+      }
+    }
     for (let i = 0; i < this.slots.length; i++) {
-      const item = items[offset + i] ?? null;
+      const slot = this.slots[i];
+      let item = items[offset + i] ?? null;
+      if (this.sized) {
+        const owner = this.cover[i];
+        if (owner >= 0 && owner !== i) {
+          // Covered by a bigger item: this cell is part of its block.
+          slot.root.style.display = 'none';
+          item = null;
+        } else {
+          slot.root.style.display = '';
+          let w = 1;
+          let h = 1;
+          if (item) {
+            const sz = itemSize(item);
+            w = Math.min(sz.w, cols - (i % cols));
+            h = Math.min(sz.h, rows - Math.floor(i / cols));
+          }
+          slot.root.style.gridColumn = `${(i % cols) + 1} / span ${w}`;
+          slot.root.style.gridRow = `${Math.floor(i / cols) + 1} / span ${h}`;
+          slot.setSpan(w, h, this.size, GRID_GAP);
+        }
+      }
       const uid = item?.uid ?? '';
       const arrived = this.primed && !quiet && uid !== '' && this.shown[i] !== uid;
       this.shown[i] = uid;
-      this.slots[i].setItem(item);
-      if (arrived) this.slots[i].flash();
+      slot.setItem(item);
+      if (arrived) slot.flash();
       if (item && this.opts.hoverPrice) {
         const p = this.opts.hoverPrice(item);
-        this.slots[i].root.dataset.price = p ? String(p.gold) : '';
+        slot.root.dataset.price = p ? String(p.gold) : '';
       }
     }
     this.primed = true;
@@ -261,6 +431,23 @@ const PAPERDOLL: EquipSlot[] = [
   'ring2',
 ];
 
+/** Paperdoll slot sizes, in cells, matching what each slot holds in the pack. */
+const PD_CELLS: Record<EquipSlot, [number, number]> = {
+  helm: [2, 2],
+  amulet: [1, 1],
+  mainHand: [2, 4],
+  chest: [2, 3],
+  offHand: [2, 4],
+  gloves: [2, 2],
+  belt: [2, 1],
+  ring1: [1, 1],
+  boots: [2, 2],
+  ring2: [1, 1],
+};
+/** One paperdoll cell and the gap between cells, in px. Matches `.paperdoll`. */
+const PD_CELL = 44;
+const PD_GAP = 4;
+
 /** Set on the panel while the character view is being dragged to spin. */
 const SPIN_HINT = 'Drag to turn';
 
@@ -285,7 +472,7 @@ export class InventoryPanel {
       title: 'Equipment',
       subtitle: 'What you carry is what you lose',
       icon: 'bag',
-      width: 1010,
+      width: 1030,
       // The figure animates, so it must not keep drawing behind a closed panel.
       onClose: () => this.view.stop(),
     });
@@ -306,8 +493,12 @@ export class InventoryPanel {
     doll.appendChild(stage);
 
     for (const s of PAPERDOLL) {
+      const [cw, ch] = PD_CELLS[s];
       const slot = new ItemSlot({
-        size: 58,
+        size: PD_CELL,
+        width: cw * PD_CELL + (cw - 1) * PD_GAP,
+        height: ch * PD_CELL + (ch - 1) * PD_GAP,
+        shaped: true,
         source: 'equipment',
         slot: s,
         placeholder: SLOT_ICON[s],
@@ -353,7 +544,7 @@ export class InventoryPanel {
     const packHd = div('inv-packhd');
     const cap = div('inv-cap');
     cap.appendChild(icon('bag', { size: 13 }));
-    this.capacityEl = span('inv-cap-v', '0 / 60');
+    this.capacityEl = span('inv-cap-v', `0 / ${INV_COLS * INV_ROWS}`);
     cap.appendChild(this.capacityEl);
 
     const gold = div('inv-gold');
@@ -382,12 +573,12 @@ export class InventoryPanel {
     add(packHd, cap, sortBtn.root, gold);
 
     this.grid = new ItemGrid({
-      cols: 10,
-      rows: 6,
+      cols: INV_COLS,
+      rows: INV_ROWS,
       size: 50,
       source: 'inventory',
       accepts: (p) => !!p.item,
-      onDrop: (p, index) => this.dropIntoInventory(p, index),
+      onDrop: (p, index, under) => this.dropIntoInventory(p, index, under),
       onClick: (item, i, ev) => {
         if (ev.shiftKey && item) this.askSplit(item, i);
       },
@@ -628,19 +819,19 @@ export class InventoryPanel {
     return host.sockets.length > 0;
   }
 
-  private dropIntoInventory(p: DragPayload, index: number): boolean {
+  private dropIntoInventory(p: DragPayload, index: number, under = index): boolean {
     const c = save.account.current;
     if (!c || !p.item) return false;
     normalizeInventory(c);
 
     // A gem landing on a socketed item goes in it, rather than trading places.
-    if (this.trySocket(p.item, c.inventory[index] ?? null)) return true;
+    if (this.trySocket(p.item, c.inventory[under] ?? null)) return true;
 
     if (p.kind === 'equipment' && p.slot) {
       if (!doUnequip(c, p.slot)) return false;
-      // Place it exactly where the player dropped it if that cell is free.
+      // Set it down where the player dropped it if it fits there.
       const at = invIndexOf(c, p.item);
-      if (at >= 0 && !c.inventory[index]) {
+      if (at >= 0 && at !== index && fitsAt(c.inventory, p.item, index, at)) {
         c.inventory[at] = null;
         c.inventory[index] = p.item;
       }
@@ -651,26 +842,22 @@ export class InventoryPanel {
     if (p.kind === 'inventory' && p.index !== undefined) {
       const from = p.index;
       if (from === index) return true;
-      // Same kind of stack: pour it in. Anything else trades places.
-      moveBetween(c.inventory, from, c.inventory, index);
+      // Same kind of stack: pour it in. Onto one item: trade places. Across
+      // two or more, it will not go.
+      if (!moveBetween(c.inventory, from, c.inventory, index)) {
+        events.emit('toast', { text: 'It will not fit there.', kind: 'bad' });
+        return false;
+      }
       save.touch();
       this.refresh();
       return true;
     }
 
     if (p.kind === 'stash' && p.index !== undefined) {
-      const stash = save.account.stash;
-      if (c.inventory[index]) {
-        const free = invFirstFree(c);
-        if (free < 0) {
-          events.emit('toast', { text: 'Your pack is full.', kind: 'bad' });
-          return false;
-        }
-        c.inventory[free] = p.item;
-      } else {
-        c.inventory[index] = p.item;
+      if (!placeOrFit(save.account.stash, p.index, c.inventory, index)) {
+        events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
+        return false;
       }
-      stash[p.index] = null;
       save.touch();
       events.emit('ui:refresh', {});
       return true;

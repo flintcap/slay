@@ -823,6 +823,12 @@ export interface DragPayload {
   index?: number;
   slot?: EquipSlot;
   tab?: number;
+  /**
+   * Where on the item it was picked up, as fractions of its width and height.
+   * A grid uses it to set a big item down under the pointer the way it was
+   * held, rather than by its top-left corner.
+   */
+  grab?: { fx: number; fy: number };
 }
 
 type DropHandler = (payload: DragPayload) => boolean;
@@ -855,15 +861,25 @@ class DragController {
   private lastX = 0;
   private tilt = 0;
   private onEnd: (() => void) | null = null;
+  /** Where the ghost hangs from the pointer, in px from its top-left. */
+  private hold = { x: 26, y: 26 };
+  /** The pointer, last seen. */
+  x = 0;
+  y = 0;
+  /** Called on every pointer move while something is held. */
+  readonly moveHooks = new Set<(x: number, y: number) => void>();
+  /** Called when a drag ends, dropped or not. */
+  readonly endHooks = new Set<() => void>();
 
   get active(): boolean {
     return this.payload !== null;
   }
 
-  begin(payload: DragPayload, ev: PointerEvent, ghostHtml: string, onEnd?: () => void): void {
+  begin(payload: DragPayload, ev: PointerEvent, ghostHtml: string, onEnd?: () => void, hold?: { x: number; y: number }): void {
     if (this.payload) this.cancel();
     this.payload = payload;
     this.onEnd = onEnd ?? null;
+    this.hold = hold ?? { x: 26, y: 26 };
 
     const g = div('drag-ghost');
     // The body tilts with the swing of the pointer, so the item feels held
@@ -899,6 +915,7 @@ class DragController {
 
   private onMove = (e: PointerEvent): void => {
     this.move(e.clientX, e.clientY);
+    for (const fn of this.moveHooks) fn(e.clientX, e.clientY);
     const under = this.targetUnder(e.clientX, e.clientY);
     if (under !== this.hovered) {
       this.hovered?.classList.remove('drop-hover');
@@ -956,6 +973,8 @@ class DragController {
   private onUp = (e: PointerEvent): void => {
     const payload = this.payload;
     if (!payload) return;
+    this.x = e.clientX;
+    this.y = e.clientY;
     const node = this.targetUnder(e.clientX, e.clientY);
     if (node) {
       const t = dropTargets.get(node);
@@ -973,8 +992,10 @@ class DragController {
   };
 
   private move(x: number, y: number): void {
+    this.x = x;
+    this.y = y;
     if (!this.ghost) return;
-    this.ghost.style.transform = `translate3d(${x - 26}px, ${y - 26}px, 0)`;
+    this.ghost.style.transform = `translate3d(${x - this.hold.x}px, ${y - this.hold.y}px, 0)`;
     const swing = Math.max(-14, Math.min(14, (x - this.lastX) * 0.9));
     this.tilt += (swing - this.tilt) * 0.35;
     this.lastX = x;
@@ -996,6 +1017,7 @@ class DragController {
     const cb = this.onEnd;
     this.onEnd = null;
     cb?.();
+    for (const fn of this.endHooks) fn();
   }
 }
 
@@ -1571,6 +1593,11 @@ export interface ItemSlotOpts {
   index?: number;
   slot?: EquipSlot;
   tab?: number;
+  /** A box that is not square, in px (the paperdoll's weapon and armour slots). */
+  width?: number;
+  height?: number;
+  /** Draw the item at its pack shape, so a staff stands tall instead of shrinking. */
+  shaped?: boolean;
   draggable?: boolean;
   hoverContext?: ItemHoverContext;
   onClick?: (item: Item | null, ev: MouseEvent) => void;
@@ -1584,12 +1611,21 @@ export class ItemSlot {
   private inner: HTMLDivElement;
   private opts: ItemSlotOpts;
 
+  /** The slot's box in px. */
+  private boxW: number;
+  private boxH: number;
+  /** Cells covered, in a grid. */
+  private spanW = 1;
+  private spanH = 1;
+
   constructor(opts: ItemSlotOpts = {}) {
     this.opts = opts;
     this.root = div('islot ui-interactive');
-    if (opts.size) {
-      this.root.style.width = `${opts.size}px`;
-      this.root.style.height = `${opts.size}px`;
+    this.boxW = opts.width ?? opts.size ?? 52;
+    this.boxH = opts.height ?? opts.size ?? 52;
+    if (opts.size || opts.width || opts.height) {
+      this.root.style.width = `${this.boxW}px`;
+      this.root.style.height = `${this.boxH}px`;
     }
     this.inner = div('islot-inner');
     this.root.appendChild(this.inner);
@@ -1614,6 +1650,24 @@ export class ItemSlot {
     this.render();
   }
 
+  /**
+   * Makes the slot cover a `w` x `h` block of a grid whose cells are `cell` px
+   * with `gap` px between them.
+   */
+  setSpan(w: number, h: number, cell: number, gap: number): void {
+    const bw = w * cell + (w - 1) * gap;
+    const bh = h * cell + (h - 1) * gap;
+    if (w === this.spanW && h === this.spanH && bw === this.boxW && bh === this.boxH) return;
+    this.spanW = w;
+    this.spanH = h;
+    this.boxW = bw;
+    this.boxH = bh;
+    this.root.style.width = `${bw}px`;
+    this.root.style.height = `${bh}px`;
+    this.root.classList.toggle('is-big', w * h > 1);
+    if (this.item) this.render();
+  }
+
   private enableDrag(): void {
     let sx = 0;
     let sy = 0;
@@ -1630,9 +1684,18 @@ export class ItemSlot {
       armed = false;
       hoverHooks.hide?.();
       const item = this.item;
+      // The ghost is the item at the size it has here, hanging from the
+      // pointer at the spot it was picked up.
+      const rect = this.root.getBoundingClientRect();
+      const gw = Math.round(rect.width) || this.boxW;
+      const gh = Math.round(rect.height) || this.boxH;
+      const hx = Math.max(0, Math.min(gw, sx - rect.left));
+      const hy = Math.max(0, Math.min(gh, sy - rect.top));
+      const form = this.opts.shaped ? 'shaped' : 'square';
       const ghost =
-        `<div class="islot islot-ghost" data-rarity="${item.rarity}" style="--rc:${rarityHex(item.rarity)}">` +
-        `<div class="islot-inner"><img class="islot-img" src="${itemIconUri(item)}" alt="" draggable="false"></div></div>`;
+        `<div class="islot islot-ghost" data-rarity="${item.rarity}" style="--rc:${rarityHex(item.rarity)};width:${gw}px;height:${gh}px">` +
+        `<div class="islot-inner"><img class="islot-img" src="${itemIconUri(item, form)}" alt="" draggable="false" ` +
+        `style="width:${Math.round(gw * 0.92)}px;height:${Math.round(gh * 0.92)}px"></div></div>`;
       this.root.classList.add('is-source');
       drag.begin(
         {
@@ -1641,10 +1704,12 @@ export class ItemSlot {
           index: this.opts.index,
           slot: this.opts.slot,
           tab: this.opts.tab,
+          grab: { fx: gw > 0 ? hx / gw : 0.5, fy: gh > 0 ? hy / gh : 0.5 },
         },
         e,
         ghost,
-        () => this.root.classList.remove('is-source')
+        () => this.root.classList.remove('is-source'),
+        { x: hx, y: hy }
       );
     });
     this.root.addEventListener('pointerup', () => {
@@ -1704,7 +1769,12 @@ export class ItemSlot {
     this.root.style.setProperty('--rc', rc);
 
     const art = div('islot-art');
-    const px = Math.round((this.opts.size ?? 52) * 0.78);
+    // The art fills nearly the whole box: a single cell, or the whole block a
+    // big item covers, drawn at that shape.
+    const fill = this.spanW * this.spanH > 1 || this.boxW !== this.boxH ? 0.92 : 0.88;
+    const pw = Math.round(this.boxW * fill);
+    const ph = Math.round(this.boxH * fill);
+    const form = this.opts.shaped ? 'shaped' : 'square';
     // Drawing an icon is a canvas render plus a PNG encode. A full pack is a
     // hundred of them, which is why opening the inventory used to lock up the
     // first time. The grid goes up straight away and the art fills in over the
@@ -1713,12 +1783,16 @@ export class ItemSlot {
     img.className = 'islot-img';
     img.alt = '';
     img.draggable = false;
-    img.style.width = `${px}px`;
-    img.style.height = `${px}px`;
-    img.src = requestItemIcon(item, (uri) => {
-      // The slot may have been given a different item while we were drawing.
-      if (this.item === item) img.src = uri;
-    });
+    img.style.width = `${pw}px`;
+    img.style.height = `${ph}px`;
+    img.src = requestItemIcon(
+      item,
+      (uri) => {
+        // The slot may have been given a different item while we were drawing.
+        if (this.item === item) img.src = uri;
+      },
+      form
+    );
     art.appendChild(img);
     this.inner.appendChild(art);
 

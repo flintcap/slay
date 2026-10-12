@@ -602,7 +602,7 @@ export class DungeonScene extends GameScene {
     const held = save.account.current;
     await Promise.all([
       this.bossPortraitReady(),
-      held ? drawItemIconsNow([...Object.values(held.equipment), ...held.inventory]) : null,
+      held ? drawItemIconsNow([...Object.values(held.equipment), ...held.inventory], 1500, 'shaped') : null,
     ]);
   }
 

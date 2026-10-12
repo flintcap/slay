@@ -41,7 +41,8 @@ await server.listen();
 const CHROME = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium';
 const browser = await chromium.launch({
   executablePath: existsSync(CHROME) ? CHROME : undefined,
-  args: ['--no-sandbox'],
+  // Software WebGL, so item icons render from their models instead of blanks.
+  args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const errors = [];
 for (const name of WANT) {

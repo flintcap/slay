@@ -15,7 +15,8 @@ import { rollItem, vendorPrice, itemDisplayName, rarityRank, createItem, getBase
 import { Random, randomSeed } from '../core/RNG';
 import { ItemGrid, normalizeInventory, invFirstFree, invRemove } from './InventoryPanel';
 import { recordSale, buyBackList, buyBackPrice, takeBack } from '../sim/BuyBack';
-import { addItemToInventory, setStackCount } from '../sim/Inventory';
+import { addItemToInventory, moveBetween, setStackCount } from '../sim/Inventory';
+import { INV_COLS, INV_ROWS, itemSize, packInto, type Area } from '../sim/Grid';
 import {
   scheduleRefresh,
   Panel,
@@ -39,6 +40,33 @@ const PRECIOUS: ItemRarity[] = ['set', 'unique', 'mythic', 'ancient'];
 
 const STOCK_SIZE = 40;
 
+/**
+ * The shelf is a grid like the pack, items at their real size. What does not
+ * fit on one page goes on the next.
+ */
+const SHOP_COLS = 10;
+const SHOP_ROWS = 6;
+const SHOP_AREA: Area = { start: 0, cols: SHOP_COLS, rows: SHOP_ROWS };
+
+/** Lays a list of wares out on as many grid pages as it takes. */
+function shelfPages(items: Item[]): Array<Array<Item | null>> {
+  // Tallest first packs the shelf tightest, and reads like a weapon rack.
+  let left = [...items].sort((a, b) => {
+    const sa = itemSize(a);
+    const sb = itemSize(b);
+    return sb.h - sa.h || sb.w - sa.w;
+  });
+  const pages: Array<Array<Item | null>> = [];
+  while (left.length > 0 && pages.length < 50) {
+    const page = new Array<Item | null>(SHOP_COLS * SHOP_ROWS).fill(null);
+    const before = left.length;
+    left = packInto(page, SHOP_AREA, left);
+    pages.push(page);
+    if (left.length === before) break;
+  }
+  if (pages.length === 0) pages.push(new Array<Item | null>(SHOP_COLS * SHOP_ROWS).fill(null));
+  return pages;
+}
 /**
  * What the apothecary keeps behind the counter.
  *
@@ -87,6 +115,10 @@ export class VendorPanel {
   private stock: Array<Item | null> = new Array(STOCK_SIZE).fill(null);
   private stockGrid: ItemGrid;
   private packGrid: ItemGrid;
+  /** Which shelf page is showing, and the pager under the shelf. */
+  private page = 0;
+  private pageLabel!: HTMLSpanElement;
+  private pager!: HTMLDivElement;
   private goldEl: HTMLSpanElement;
   private restockEl: HTMLDivElement;
   private restockBtn!: Button;
@@ -129,6 +161,7 @@ export class VendorPanel {
       'stock',
       (id) => {
         this.tab = id === 'buyback' ? 'buyback' : 'stock';
+        this.page = 0;
         this.refresh();
       },
     );
@@ -138,23 +171,32 @@ export class VendorPanel {
     left.appendChild(lhd);
 
     this.stockGrid = new ItemGrid({
-      cols: 8,
-      rows: 5,
-      size: 50,
+      cols: SHOP_COLS,
+      rows: SHOP_ROWS,
+      size: 44,
       source: 'vendor',
-      accepts: () => false,
-      onClick: (item, i) => {
+      // Dropping something from your pack onto the shelf sells it.
+      accepts: (p) => p.kind === 'inventory' && !!p.item,
+      onDrop: (p) => this.sellFromDrag(p),
+      onClick: (item) => {
         if (!item) return;
         if (this.tab === 'buyback') this.buyBack(item);
-        else this.buy(item, i);
+        else this.buy(item);
       },
-      onRightClick: (item, i) => {
+      onRightClick: (item) => {
         if (!item) return;
         if (this.tab === 'buyback') this.buyBack(item);
-        else this.buy(item, i);
+        else this.buy(item);
       },
     });
     left.appendChild(this.stockGrid.root);
+
+    this.pager = div('shop-pager');
+    const prev = new Button({ label: '‹ Prev', variant: 'ghost', small: true, onClick: () => this.turn(-1) });
+    const next = new Button({ label: 'Next ›', variant: 'ghost', small: true, onClick: () => this.turn(1) });
+    this.pageLabel = span('shop-page', 'Page 1 / 1');
+    add(this.pager, prev.root, this.pageLabel, next.root);
+    left.appendChild(this.pager);
 
     const buyHint = div('inv-hint', 'Click an item to buy it.');
     left.appendChild(buyHint);
@@ -188,12 +230,13 @@ export class VendorPanel {
     right.appendChild(rhd);
 
     this.packGrid = new ItemGrid({
-      cols: 8,
-      rows: 8,
-      size: 50,
+      cols: INV_COLS,
+      rows: INV_ROWS,
+      size: 44,
       source: 'inventory',
       accepts: (p) => p.kind === 'inventory' && !!p.item,
-      onDrop: (p) => this.sellFromDrag(p),
+      // Inside the pack a drag rearranges it, as everywhere else.
+      onDrop: (p, index) => this.rearrange(p, index),
       onClick: (item) => this.trySell(item),
       onRightClick: (item) => this.trySell(item),
     });
@@ -314,13 +357,12 @@ export class VendorPanel {
   refresh(): void {
     const c = save.account.current;
     const shelf = buyBackList();
-    if (this.tab === 'buyback') {
-      const items: Array<Item | null> = shelf.map((e) => e.item);
-      while (items.length < STOCK_SIZE) items.push(null);
-      this.stockGrid.setItems(items, 0, true);
-    } else {
-      this.stockGrid.setItems(this.stock, 0, true);
-    }
+    const wares = this.tab === 'buyback' ? shelf.map((e) => e.item) : this.stock.filter((it): it is Item => !!it);
+    const pages = shelfPages(wares);
+    this.page = Math.max(0, Math.min(this.page, pages.length - 1));
+    this.stockGrid.setItems(pages[this.page]!, 0, true);
+    this.pageLabel.textContent = `Page ${this.page + 1} / ${pages.length}`;
+    this.pager.style.visibility = pages.length > 1 ? '' : 'hidden';
     this.tabs.setTabs(
       [
         { id: 'stock', label: 'For Sale' },
@@ -377,7 +419,14 @@ export class VendorPanel {
 
   // -- transactions --------------------------------------------------------
 
-  private buy(item: Item | null, index: number): void {
+  /** Flips the shelf a page forward or back. */
+  private turn(dir: number): void {
+    this.page += dir;
+    events.emit('sfx', { id: 'ui.click' });
+    this.refresh();
+  }
+
+  private buy(item: Item | null): void {
     const c = save.account.current;
     if (!c || !item) return;
     const price = attempt(() => vendorPrice(item, true), item.value ?? 0);
@@ -386,14 +435,15 @@ export class VendorPanel {
       return;
     }
     normalizeInventory(c);
-    const free = invFirstFree(c);
+    const free = invFirstFree(c, item);
     if (free < 0) {
-      events.emit('toast', { text: 'Your pack is full.', kind: 'bad' });
+      events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
       return;
     }
     c.gold -= price;
     c.inventory[free] = item;
-    this.stock[index] = null;
+    const index = this.stock.findIndex((it) => it?.uid === item.uid);
+    if (index >= 0) this.stock[index] = null;
     save.touch();
     events.emit('sfx', { id: 'ui.buy' });
     events.emit('toast', {
@@ -402,6 +452,19 @@ export class VendorPanel {
       rarity: item.rarity,
     });
     events.emit('ui:refresh', {});
+  }
+
+  private rearrange(p: DragPayload, index: number): boolean {
+    const c = save.account.current;
+    if (!c || !p.item || p.index === undefined) return false;
+    normalizeInventory(c);
+    if (!moveBetween(c.inventory, p.index, c.inventory, index)) {
+      events.emit('toast', { text: 'It will not fit there.', kind: 'bad' });
+      return false;
+    }
+    save.touch();
+    this.refresh();
+    return true;
   }
 
   private sellFromDrag(p: DragPayload): boolean {
@@ -463,8 +526,8 @@ export class VendorPanel {
       events.emit('toast', { text: `You need ${fmtInt(price - c.gold)} more gold.`, kind: 'bad' });
       return;
     }
-    if (invFirstFree(c) < 0) {
-      events.emit('toast', { text: 'Your pack is full.', kind: 'bad' });
+    if (invFirstFree(c, item) < 0) {
+      events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
       return;
     }
     const back = takeBack(item.uid);

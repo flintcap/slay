@@ -13,7 +13,8 @@
  *  - the brushes underneath all of it: `Paint`
  */
 import type { Item, DamageType, ItemVisual } from '../types';
-import { drawItemIcon as renderItemIcon, itemScansReady, type IconSpec } from './items/IconRender';
+import { drawItemIcon as renderItemIcon, iconCanvasSize, itemScansReady, type IconSpec } from './items/IconRender';
+import { iconShape } from '../sim/Grid';
 import { paintSkillIcon, paintStatusIcon, paintAffixIcon } from './SkillIconArt';
 import { makeCanvas } from './Paint';
 import { SKILL_BY_ID, TREE_BY_ID, SKILL_TREES } from '../data/skills';
@@ -57,22 +58,30 @@ export function setIconBaseResolver(fn: typeof baseLookup): void {
   listeners.clear();
 }
 
+/**
+ * Which picture of an item to draw. `square` is the classic one; `shaped`
+ * matches the item's block in the pack, so a staff is drawn tall.
+ */
+export type IconForm = 'square' | 'shaped';
+
 /** What the icon renderer needs for an item: its base's authored visual and identity. */
-function specFor(item: Item): IconSpec {
+function specFor(item: Item, form: IconForm = 'square'): IconSpec {
   const v = baseLookup?.(item.baseId)?.visual;
   const visual: ItemVisual | undefined = v?.shape ? { shape: v.shape, palette: v.palette ?? 'metal.steel', ornate: v.ornate, glow: v.glow } : undefined;
-  return { baseId: item.baseId, rarity: item.rarity, visual, uniqueId: item.uniqueId, setId: item.setId };
+  const shape = form === 'shaped' ? iconShape(item) : undefined;
+  return { baseId: item.baseId, rarity: item.rarity, visual, uniqueId: item.uniqueId, setId: item.setId, shape };
 }
 
 /** The properties that actually change an item's art. */
-function iconKeyFor(item: Item): string {
+function iconKeyFor(item: Item, form: IconForm = 'square'): string {
   // Uniques and set pieces share a base with plain drops but not a picture.
-  return `${item.baseId}|${item.rarity}|${item.uniqueId ?? item.setId ?? ''}`;
+  const sh = form === 'shaped' ? iconShape(item) : undefined;
+  return `${item.baseId}|${item.rarity}|${item.uniqueId ?? item.setId ?? ''}${sh ? `|${sh.w}x${sh.h}` : ''}`;
 }
 
 /** A cached icon, or null if it has not been drawn yet. */
-export function cachedItemIcon(item: Item): string | null {
-  return itemCache.get(iconKeyFor(item)) ?? null;
+export function cachedItemIcon(item: Item, form: IconForm = 'square'): string | null {
+  return itemCache.get(iconKeyFor(item, form)) ?? null;
 }
 
 /** A fully transparent 1x1, so a slot waiting on its icon renders as empty. */
@@ -92,7 +101,7 @@ const BLANK =
  * before the panel appears, so it doesn't: the grid renders immediately with
  * blank slots and each icon drops in as it is drawn.
  */
-const pending = new Map<string, Item>();
+const pending = new Map<string, { item: Item; form: IconForm }>();
 const listeners = new Map<string, Array<(uri: string) => void>>();
 /** Keys painted and waiting on the browser's PNG encoder. */
 const encoding = new Set<string>();
@@ -114,12 +123,14 @@ function deliver(key: string, uri: string): void {
  * Draws now, encodes later. `toBlob` does the PNG encode off the main thread,
  * so the frame only pays for the render.
  */
-function drawItemIconAsync(item: Item, key: string): void {
+function drawItemIconAsync(item: Item, key: string, form: IconForm): void {
   const gen = generation;
   // CPU-backed, like every icon canvas (see `makeCanvas`): the encode below
   // must not wait on the GPU.
-  const { c, x } = makeCanvas(128);
-  renderItemIcon(x, specFor(item));
+  const spec = specFor(item, form);
+  const dim = iconCanvasSize(spec);
+  const { c, x } = makeCanvas(dim.w, dim.h);
+  renderItemIcon(x, spec);
   if (typeof c.toBlob !== 'function' || typeof URL?.createObjectURL !== 'function') {
     const uri = c.toDataURL('image/png');
     itemCache.set(key, uri);
@@ -157,13 +168,13 @@ function pump(): void {
     return;
   }
   const t0 = performance.now();
-  for (const [key, item] of pending) {
+  for (const [key, job] of pending) {
     pending.delete(key);
     if (itemCache.has(key)) {
       deliver(key, itemCache.get(key)!);
       continue;
     }
-    drawItemIconAsync(item, key);
+    drawItemIconAsync(job.item, key, job.form);
     if (performance.now() - t0 > ICON_BUDGET_MS) break;
   }
   if (pending.size > 0) schedulePump();
@@ -186,11 +197,11 @@ function schedulePump(): void {
  * is available. Callers that genuinely cannot wait (a drag ghost, which must
  * exist the instant the pointer moves) should use `itemIconUri`.
  */
-export function requestItemIcon(item: Item, onReady: (uri: string) => void): string {
-  const key = iconKeyFor(item);
+export function requestItemIcon(item: Item, onReady: (uri: string) => void, form: IconForm = 'square'): string {
+  const key = iconKeyFor(item, form);
   const hit = itemCache.get(key);
   if (hit) return hit;
-  if (!encoding.has(key)) pending.set(key, item);
+  if (!encoding.has(key)) pending.set(key, { item, form });
   let waiting = listeners.get(key);
   if (!waiting) {
     waiting = [];
@@ -205,12 +216,12 @@ export function requestItemIcon(item: Item, onReady: (uri: string) => void): str
  * Queues icons for items the player is holding, so they are already drawn by
  * the time the pack is opened. Costs nothing when they are all cached.
  */
-export function warmItemIcons(items: Iterable<Item | null>): void {
+export function warmItemIcons(items: Iterable<Item | null | undefined>, form: IconForm = 'square'): void {
   for (const item of items) {
     if (!item) continue;
-    const key = iconKeyFor(item);
+    const key = iconKeyFor(item, form);
     if (itemCache.has(key) || pending.has(key) || encoding.has(key)) continue;
-    pending.set(key, item);
+    pending.set(key, { item, form });
   }
   if (pending.size > 0) schedulePump();
 }
@@ -226,7 +237,7 @@ export function warmItemIcons(items: Iterable<Item | null>): void {
  * first seconds of every visit. Whatever the budget leaves is drawn in the
  * background as before.
  */
-export async function drawItemIconsNow(items: Iterable<Item | null | undefined>, budgetMs = 1500): Promise<void> {
+export async function drawItemIconsNow(items: Iterable<Item | null | undefined>, budgetMs = 1500, form: IconForm = 'square'): Promise<void> {
   const t0 = performance.now();
   const ok = await Promise.race([
     itemScansReady().then(() => true),
@@ -238,11 +249,11 @@ export async function drawItemIconsNow(items: Iterable<Item | null | undefined>,
   for (const item of items) {
     if (!item) continue;
     if (performance.now() - t0 > budgetMs || gen !== generation) break;
-    const key = iconKeyFor(item);
+    const key = iconKeyFor(item, form);
     if (itemCache.has(key) || encoding.has(key)) continue;
     pending.delete(key);
     try {
-      drawItemIconAsync(item, key);
+      drawItemIconAsync(item, key, form);
     } catch {
       /* drawn later, or the slot keeps its fallback */
     }
@@ -254,16 +265,25 @@ export async function drawItemIconsNow(items: Iterable<Item | null | undefined>,
  * Returns a data-URI icon for an item, drawing it now if it is not cached.
  * Prefer `requestItemIcon` anywhere a blank frame is acceptable.
  */
-export function itemIconUri(item: Item): string {
-  const key = iconKeyFor(item);
+export function itemIconUri(item: Item, form: IconForm = 'square'): string {
+  const key = iconKeyFor(item, form);
   const hit = itemCache.get(key);
   if (hit) return hit;
-  return drawItemIcon(item, key);
+  return drawItemIcon(item, key, form);
 }
 
-function drawItemIcon(item: Item, key: string): string {
+function drawItemIcon(item: Item, key: string, form: IconForm): string {
+  const spec = specFor(item, form);
+  const dim = iconCanvasSize(spec);
+  if (dim.w !== dim.h) {
+    const { c, x } = makeCanvas(dim.w, dim.h);
+    renderItemIcon(x, spec);
+    const uri = c.toDataURL('image/png');
+    itemCache.set(key, uri);
+    return uri;
+  }
   const { c, x } = scratchCanvas();
-  renderItemIcon(x, specFor(item));
+  renderItemIcon(x, spec);
   const uri = c.toDataURL('image/png');
   itemCache.set(key, uri);
   return uri;

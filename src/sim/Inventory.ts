@@ -23,6 +23,19 @@ import { INVENTORY_SIZE, STASH_TAB_SIZE, save } from '../core/Save';
 import { getBase, rarityRank, vendorPrice } from './Loot';
 import { isStackableCategory } from '../data/itemBases';
 import { getMaterial } from '../data/materials';
+import {
+  areaAt,
+  areasOf,
+  findFit,
+  firstFreeCell,
+  freeCells,
+  itemSize,
+  occupancy,
+  overlaps,
+  packInto,
+  tabArea,
+  type Area,
+} from './Grid';
 
 export { INVENTORY_SIZE, STASH_TAB_SIZE };
 
@@ -98,15 +111,17 @@ function pour(to: Item, from: Item): { moved: number; remaining: number } {
 
 export type Slots = Array<Item | null>;
 
-export function firstFreeSlot(slots: Slots): number {
-  for (let i = 0; i < slots.length; i++) if (!slots[i]) return i;
-  return -1;
+/**
+ * Where an item would go: the first place its whole block fits. Without an
+ * item, the first cell nothing covers.
+ */
+export function firstFreeSlot(slots: Slots, item?: Item): number {
+  return item ? findFit(slots, item) : firstFreeCell(slots);
 }
 
+/** Cells nothing covers. */
 export function freeSlotCount(slots: Slots): number {
-  let n = 0;
-  for (const s of slots) if (!s) n++;
-  return n;
+  return freeCells(slots);
 }
 
 export function findSlotOf(slots: Slots, uid: string): number {
@@ -116,7 +131,7 @@ export function findSlotOf(slots: Slots, uid: string): number {
 
 /** True if there is room for the item, counting partial stacks as room. */
 export function hasRoomFor(slots: Slots, item: Item): boolean {
-  if (firstFreeSlot(slots) >= 0) return true;
+  if (findFit(slots, item) >= 0) return true;
   if (!isStackableItem(item)) return false;
   const cap = maxStack(item);
   for (const s of slots) {
@@ -142,7 +157,7 @@ export function addToSlots(slots: Slots, item: Item): boolean {
     if (left <= 0) return true;
     setStackCount(item, left);
   }
-  const free = firstFreeSlot(slots);
+  const free = findFit(slots, item);
   if (free < 0) return false;
   slots[free] = item;
   return true;
@@ -156,26 +171,67 @@ export function removeFromSlots(slots: Slots, uid: string): Item | null {
   return item;
 }
 
-/** Moves or swaps between two indices in (possibly different) containers. */
+/**
+ * Puts the item anchored at `fromIndex` down with its top-left corner on
+ * `toIndex`, in the same container or another one.
+ *
+ * Onto empty cells it just moves. Onto exactly one item it pours a matching
+ * stack, or trades places: the item it lands on goes back where the moved one
+ * came from, or failing that to the first place it fits. Across two or more
+ * items, or off the edge of the grid, nothing happens and it returns false.
+ */
 export function moveBetween(from: Slots, fromIndex: number, to: Slots, toIndex: number): boolean {
   if (fromIndex < 0 || fromIndex >= from.length) return false;
   if (toIndex < 0 || toIndex >= to.length) return false;
   const moving = from[fromIndex];
   if (!moving) return false;
-  const target = to[toIndex];
   if (from === to && fromIndex === toIndex) return true;
 
-  if (target && canStack(target, moving)) {
-    const result = pour(target, moving);
+  const area = areaAt(to, toIndex);
+  const hit = overlaps(area, occupancy(to, area, from === to ? fromIndex : -1), toIndex, itemSize(moving));
+  if (!hit || hit.length > 1) return false;
+
+  if (hit.length === 0) {
+    from[fromIndex] = null;
+    to[toIndex] = moving;
+    return true;
+  }
+
+  const otherAt = hit[0]!;
+  const other = to[otherAt]!;
+  if (canStack(other, moving)) {
+    const result = pour(other, moving);
     if (result.moved > 0) {
       if (result.remaining <= 0) from[fromIndex] = null;
       return true;
     }
   }
 
-  from[fromIndex] = target ?? null;
+  // Trade places. Lift both, set the moved one down, then find the other a home.
+  from[fromIndex] = null;
+  to[otherAt] = null;
   to[toIndex] = moving;
-  return true;
+  const homeArea = areaAt(from, fromIndex);
+  let home = -1;
+  const back = overlaps(homeArea, occupancy(from, homeArea), fromIndex, itemSize(other));
+  if (back && back.length === 0) home = fromIndex;
+  if (home < 0) home = findFit(from, other, homeArea);
+  if (home >= 0) {
+    from[home] = other;
+    return true;
+  }
+  if (from !== to) {
+    const there = findFit(to, other, area);
+    if (there >= 0) {
+      to[there] = other;
+      return true;
+    }
+  }
+  // No room for it anywhere: put everything back as it was.
+  to[toIndex] = null;
+  to[otherAt] = other;
+  from[fromIndex] = moving;
+  return false;
 }
 
 /**
@@ -190,13 +246,8 @@ export function splitStack(slots: Slots, index: number, n: number, start = 0, en
   const held = stackCount(item);
   n = Math.floor(n);
   if (n < 1 || n >= held) return false;
-  let free = -1;
-  for (let i = Math.max(0, start); i < Math.min(end, slots.length); i++) {
-    if (!slots[i]) {
-      free = i;
-      break;
-    }
-  }
+  // Stacks take one cell, so any cell nothing covers will do.
+  const free = firstFreeCell(slots, Math.max(0, start), Math.min(end, slots.length));
   if (free < 0) return false;
   const part = JSON.parse(JSON.stringify(item)) as StackedItem;
   part.uid = freshUid(item.uid);
@@ -269,12 +320,27 @@ function compareItems(a: Item, b: Item): number {
 }
 
 /**
- * Compacts, merges every stack it can, then sorts by category, rarity and
- * level. Mutates in place and returns the same array.
+ * Merges every stack it can, then packs each grid again in order of
+ * category, rarity and level. Mutates in place and returns the same array.
  */
 export function sortSlots(slots: Slots): Slots {
+  for (const area of areasOf(slots)) sortArea(slots, area);
+  return slots;
+}
+
+/** Biggest first: what a tidy pack needs when the plain order leaves gaps. */
+function byBulk(a: Item, b: Item): number {
+  const sa = itemSize(a);
+  const sb = itemSize(b);
+  return sb.w * sb.h - sa.w * sa.h || sb.h - sa.h || compareItems(a, b);
+}
+
+/** Sorts one grid. If the sorted order will not pack, nothing moves. */
+export function sortArea(slots: Slots, area: Area): void {
+  const end = Math.min(slots.length, area.start + area.cols * area.rows);
+  const before = slots.slice(area.start, end);
   const items: Item[] = [];
-  for (const s of slots) if (s) items.push(s);
+  for (const s of before) if (s) items.push(s);
 
   // Merge stacks first so sorting does not leave five half-stacks of dust.
   const merged: Item[] = [];
@@ -289,9 +355,13 @@ export function sortSlots(slots: Slots): Slots {
     merged.push(item);
   }
 
+  // In order first; if that leaves something out, biggest first; if even that
+  // fails, the grid goes back exactly as it was.
   merged.sort(compareItems);
-  for (let i = 0; i < slots.length; i++) slots[i] = i < merged.length ? merged[i] : null;
-  return slots;
+  if (packInto(slots, area, merged).length === 0) return;
+  merged.sort(byBulk);
+  if (packInto(slots, area, merged).length === 0) return;
+  for (let i = 0; i < before.length; i++) slots[area.start + i] = before[i] ?? null;
 }
 
 /** Merges partial stacks without reordering anything. */
@@ -344,7 +414,7 @@ export function inventoryFreeSlots(character: Character): number {
 }
 
 export function inventoryIsFull(character: Character): boolean {
-  return firstFreeSlot(ensureInventory(character)) < 0;
+  return freeCells(ensureInventory(character)) === 0;
 }
 
 export function findInInventory(character: Character, uid: string): Item | null {
@@ -477,13 +547,13 @@ export function moveStashToInventory(character: Character, stashIndex: number, i
 
 export function sortStash(): void {
   // Sort each tab independently so nothing jumps between tabs unexpectedly.
-  const stash = stashSlots();
-  for (let tab = 0; tab < stashTabCount(); tab++) {
-    const { start, end } = stashTabRange(tab);
-    const slice = stash.slice(start, Math.min(end, stash.length));
-    sortSlots(slice);
-    for (let i = 0; i < slice.length; i++) stash[start + i] = slice[i];
-  }
+  for (let tab = 0; tab < stashTabCount(); tab++) sortArea(stashSlots(), tabArea(tab));
+  save.touch();
+}
+
+/** Sorts one vault tab. */
+export function sortStashTab(tab: number): void {
+  sortArea(stashSlots(), tabArea(tab));
   save.touch();
 }
 

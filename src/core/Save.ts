@@ -3,6 +3,7 @@ import { events } from './Events';
 import { bindsAreValid, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from './Access';
 import { UNIQUE_TEXT } from '../data/story/uniqueText';
 import { RUNES } from '../data/gems';
+import { INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS, findFit, repairLayout } from '../sim/Grid';
 
 /**
  * The primary save. The key still says v1 because it predates versioning; the
@@ -26,10 +27,16 @@ export const QUARANTINE_KEY = 'slay.account.quarantine';
  */
 export const SAVE_VERSION = 2;
 
-export const STASH_TAB_SIZE = 120; // 12 x 10 grid per tab
+export const STASH_TAB_SIZE = STASH_COLS * STASH_ROWS; // 12 x 10 grid per tab
 export const DEFAULT_STASH_TABS = 4;
+/** Tabs a player can buy. */
 export const MAX_STASH_TABS = 10;
-export const INVENTORY_SIZE = 60;
+/**
+ * Tabs a vault may hold at all. Above the buying cap only because a vault
+ * from before items took more than one cell may need extra room to unpack.
+ */
+export const STASH_TAB_CEILING = 40;
+export const INVENTORY_SIZE = INV_COLS * INV_ROWS;
 
 /** How often, at most, the backup copy is refreshed during play. */
 const BACKUP_INTERVAL_MS = 2 * 60 * 1000;
@@ -351,10 +358,10 @@ export function migrateAccount(raw: unknown): { data: AccountSave; report: LoadR
   // Tabs are never fewer than the items need: a damaged count must not push
   // a whole tab of someone's vault into the quarantine.
   const minTabs = Array.isArray(s.stash) ? Math.ceil(s.stash.length / STASH_TAB_SIZE) : 1;
-  out.stashTabs = fx.num(s.stashTabs, Math.max(DEFAULT_STASH_TABS, minTabs), 'stashTabs', 1, MAX_STASH_TABS, true);
-  if (out.stashTabs < Math.min(MAX_STASH_TABS, minTabs)) {
-    fx.note(`stashTabs: ${out.stashTabs} -> ${Math.min(MAX_STASH_TABS, minTabs)} to fit the vault`);
-    out.stashTabs = Math.min(MAX_STASH_TABS, minTabs);
+  out.stashTabs = fx.num(s.stashTabs, Math.max(DEFAULT_STASH_TABS, minTabs), 'stashTabs', 1, STASH_TAB_CEILING, true);
+  if (out.stashTabs < Math.min(STASH_TAB_CEILING, minTabs)) {
+    fx.note(`stashTabs: ${out.stashTabs} -> ${Math.min(STASH_TAB_CEILING, minTabs)} to fit the vault`);
+    out.stashTabs = Math.min(STASH_TAB_CEILING, minTabs);
   }
   out.stash = fx.slots(s.stash, STASH_TAB_SIZE * out.stashTabs, 'stash');
   out.bankGold = fx.num(s.bankGold, 0, 'bankGold', 0);
@@ -413,9 +420,52 @@ export function migrateAccount(raw: unknown): { data: AccountSave; report: LoadR
   if (cur && !seen.has(cur.id)) roster.unshift(cur);
   out.current = cur;
   out.roster = roster;
+  fitGrids(out, fx);
 
   report.quarantined = fx.quarantine.length;
   return { data: out, report, quarantine: fx.quarantine };
+}
+
+/**
+ * Items cover blocks of cells. A pack or vault saved before that (or damaged)
+ * can have items lying on top of each other; this unpacks them. Items in a
+ * legal spot stay where they are. What a pack cannot hold goes to the vault,
+ * and the vault grows tabs, past the buying cap if it must, before anything
+ * is set aside.
+ */
+function fitGrids(out: AccountSave, fx: Repairer): void {
+  const spill: Item[] = [];
+  const heroes = new Set<Character>(out.roster);
+  if (out.current) heroes.add(out.current);
+  for (const c of heroes) {
+    const extra = c.inventory.slice(INVENTORY_SIZE).filter((it): it is Item => !!it);
+    c.inventory.length = INVENTORY_SIZE;
+    for (let i = 0; i < INVENTORY_SIZE; i++) if (c.inventory[i] === undefined) c.inventory[i] = null;
+    const left = repairLayout(c.inventory);
+    for (const it of [...extra, ...left]) {
+      const at = findFit(c.inventory, it);
+      if (at >= 0) c.inventory[at] = it;
+      else {
+        fx.note(`${c.name}: no room in the pack for ${it.name}, moved to the vault`);
+        spill.push(it);
+      }
+    }
+  }
+  spill.push(...repairLayout(out.stash));
+  for (const it of spill) {
+    let at = findFit(out.stash, it);
+    while (at < 0 && out.stashTabs < STASH_TAB_CEILING) {
+      out.stashTabs++;
+      out.stash.push(...new Array<Item | null>(STASH_TAB_SIZE).fill(null));
+      fx.note(`stash: added tab ${out.stashTabs} to fit everything`);
+      at = findFit(out.stash, it);
+    }
+    if (at >= 0) out.stash[at] = it;
+    else {
+      fx.note(`stash: no room for ${it.name}, set aside`);
+      fx.quarantine.push({ where: 'stash', item: it });
+    }
+  }
 }
 
 function sanitizeSettings(s: Record<string, unknown>, fx: Repairer): GameSettings {
@@ -785,12 +835,12 @@ export class SaveManager {
   }
 
   /** First free stash index, or -1. */
-  firstFreeStashSlot(): number {
-    return this.data.stash.indexOf(null);
+  firstFreeStashSlot(item?: Item): number {
+    return item ? findFit(this.data.stash, item) : this.data.stash.indexOf(null);
   }
 
   stashItem(item: Item): boolean {
-    const i = this.firstFreeStashSlot();
+    const i = this.firstFreeStashSlot(item);
     if (i < 0) return false;
     this.data.stash[i] = item;
     this.touch();

@@ -924,7 +924,7 @@ export class HUD {
       this.refreshPotions();
       // Draw its inventory icon now, in the quiet frames after the pickup,
       // rather than all of them at once the next time the pack is opened.
-      attempt(() => warmItemIcons([p.item]), undefined);
+      attempt(() => warmItemIcons([p.item], 'shaped'), undefined);
     });
     on('depth:changed', (p) => {
       // A new floor means a new grid and a new tile mapping, so anything we
@@ -1150,8 +1150,8 @@ export class HUD {
     // cached, so this is free after the first pass and means pressing I on a
     // loaded character does not have to draw sixty icons before it can paint.
     attempt(() => {
-      warmItemIcons(c.inventory);
-      warmItemIcons(Object.values(c.equipment));
+      warmItemIcons(c.inventory, 'shaped');
+      warmItemIcons(Object.values(c.equipment), 'shaped');
     }, undefined);
   }
 

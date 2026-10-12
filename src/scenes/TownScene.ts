@@ -206,7 +206,7 @@ export class TownScene extends GameScene {
     const items = [...Object.values(character.equipment), ...character.inventory];
     this.offs.push(
       events.on('scene:change', (p) => {
-        if (p.to === 'town') afterCurtain(() => void drawItemIconsNow(items));
+        if (p.to === 'town') afterCurtain(() => void drawItemIconsNow(items, 1500, 'shaped'));
       })
     );
   }
