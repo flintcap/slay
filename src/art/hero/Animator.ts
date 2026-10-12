@@ -888,11 +888,11 @@ export class HeroAnimator {
     // Grounded: the hips carried low and nearly level, a small bob, the
     // knees bent all through the stride (a locked stance leg made the walk
     // stiff and stilted; a big bob read as bouncing).
-    const bob = (0.014 * (1 - rw) * Math.cos(2 * mid) - 0.016 * rw * Math.cos(2 * mid) - 0.02 * rw) * L * mw;
+    const bob = (0.014 * (1 - rw) * Math.cos(2 * mid) - 0.016 * rw * Math.cos(2 * mid) - 0.008 * rw) * L * mw;
     // The hips ride a little over the planted foot; the track is narrow, so
     // they need not swing far.
     const sway = 0.022 * L * mw * (1 - 0.6 * rw) * Math.cos(mid);
-    p.shift(sway, bob - (0.04 + 0.02 * rw) * L * mw, 0);
+    p.shift(sway, bob - (0.012 + 0.008 * rw) * L * mw, 0);
     const pelYaw = -0.13 * mw * Math.cos(ph);
     const pelRoll = 0.035 * mw * (1 - 0.3 * rw) * Math.cos(mid);
     const counter = (0.2 + 0.08 * rw) * mw * Math.cos(ph);
@@ -1013,7 +1013,7 @@ export class HeroAnimator {
         const f = this.gait.feet[i]!;
         const w = f.planted ? 1 : f.s < 0.25 ? 1 - smooth(f.s / 0.25) : f.s > 0.7 ? smooth((f.s - 0.7) / 0.3) : 0;
         if (w <= 0) continue;
-        const reach = (this.legs[i]!.l1 + this.legs[i]!.l2) * 0.985;
+        const reach = (this.legs[i]!.l1 + this.legs[i]!.l2) * 0.993;
         const d2 = (t.x - hip.x) ** 2 + (t.z - hip.z) ** 2;
         const maxY = t.y + Math.sqrt(Math.max(0, reach * reach - d2));
         drop = Math.max(drop, (hip.y - maxY) * w);

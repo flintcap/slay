@@ -395,7 +395,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       if (Math.abs(H / look.shape.height - 1) > 0.03) bad(`${cls}: height ${H.toFixed(3)} m, wants ${look.shape.height}`);
       if (box.min.y < -0.005 || box.min.y > 0.02) bad(`${cls}: soles at ${box.min.y.toFixed(3)} m, want 0`);
       if (tris > 24000) bad(`${cls}: ${tris} triangles, budget 24000`);
-      if (meshes.length > 8) bad(`${cls}: ${meshes.length} draw calls bare, budget 8`);
+      if (meshes.length > 9) bad(`${cls}: ${meshes.length} draw calls bare, budget 9 (the mouth is one)`);
       const e = hero.body.anatomy.eyes;
       const f0 = hero.body.anatomy.field;
       for (const c of [e.L, e.R]) {
@@ -465,7 +465,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
           npc.root.traverse((o) => {
             if ((o as THREE.Mesh).isMesh) draws++;
           });
-          if (draws > 16) bad(`resident ${id}: ${draws} draw calls, budget 16`);
+          if (draws > 17) bad(`resident ${id}: ${draws} draw calls, budget 17`);
         } catch (e) {
           bad(`resident ${id}: ${String(e).slice(0, 160)}`);
         }
