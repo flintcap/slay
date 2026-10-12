@@ -416,6 +416,20 @@ export class Engine {
       for (const o of culled) o.frustumCulled = true;
       for (const o of unhidden) o.visible = false;
     }
+    // A program is only finished on its first draw: three.js then reads its
+    // uniforms and attributes back from the driver, which waits for the link
+    // to complete. Programs compiled here for things the warm frame did not
+    // draw (hidden things that hold a light, looks shown later) paid that on
+    // their first frame in play: the two slow frames of a boss fight (1.3 s
+    // in getProgramParameter under software GL). Finish every one now.
+    try {
+      for (const prog of this.renderer.gl.info.programs ?? []) {
+        prog.getUniforms();
+        prog.getAttributes();
+      }
+    } catch (err) {
+      this.report('render', err);
+    }
     // The warm frame's shadow maps held the hidden casters: a shadow drawn
     // only on demand (the title's) is drawn again on the first real frame.
     next.scene.traverse((o) => {

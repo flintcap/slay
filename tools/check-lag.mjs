@@ -490,7 +490,7 @@ async function visit(label) {
       const lightsAndKeys = () => {
         const sc = window.SLAY.engine.currentScene;
         const n = { dir: 0, dirShadow: 0, point: 0, pointShadow: 0, spot: 0, spotShadow: 0, hemi: 0 };
-        sc.scene.traverse((o) => {
+        sc.scene.traverseVisible((o) => {
           if (!o.isLight) return;
           if (o.isDirectionalLight) (n.dir++, o.castShadow && n.dirShadow++);
           else if (o.isPointLight) (n.point++, o.castShadow && n.pointShadow++);
