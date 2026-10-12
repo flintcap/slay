@@ -430,8 +430,9 @@ export class Gait {
       // Running, the heel kicks up behind straight after toe-off (the knee
       // folds) and the foot comes through high, then reaches down to land.
       // A foot that trailed low along the floor read as a lunge, the legs
-      // split wide in every frame.
-      const runH = 0.44 * L;
+      // split wide in every frame. Not too high either: half a leg read as
+      // prancing, the knee thrown up at every stride.
+      const runH = 0.34 * L;
       const h = lerp(walkH, runH, run);
       const kick = s < 0.3 ? Math.sin((Math.PI / 2) * (s / 0.3)) : Math.pow(Math.cos((Math.PI / 2) * ((s - 0.3) / 0.7)), 1.4);
       const prof = lerp(Math.sin(Math.PI * Math.pow(s, 0.85)), kick, run);
