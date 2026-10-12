@@ -897,16 +897,16 @@ export class HeroAnimator {
     const pelRoll = 0.035 * mw * (1 - 0.3 * rw) * Math.cos(mid);
     const counter = (0.2 + 0.08 * rw) * mw * Math.cos(ph);
     // Lean into speed and acceleration, on a spring so it settles.
-    const leanTarget = (0.05 + 0.19 * rw) * mw + clamp(this.accel * 0.025, -0.12, 0.18);
+    const leanTarget = (0.03 + 0.09 * rw) * mw + clamp(this.accel * 0.025, -0.12, 0.18);
     this.leanVel += ((leanTarget - this.lean) * 90 - this.leanVel * 14) * dt;
     this.lean += this.leanVel * dt;
     const speed = Math.hypot(this.vx, this.vz);
     const bank = clamp(-this.yawRate * speed * 0.02, -0.22, 0.22);
     // Turning in place: the hips follow the feet, the shoulders lead.
     const twist = clamp(g.footTwist(this.yaw) * 0.55, -0.5, 0.5) * (1 - mw);
-    p.add('pelvis', this.lean * 0.4, pelYaw + twist, pelRoll + bank);
-    p.add('spine', this.lean * 0.3, counter * 0.45 - twist * 0.5, -pelRoll * 0.5);
-    p.add('chest', this.lean * 0.3, counter * 0.55 - twist * 0.5, -pelRoll * 0.3);
+    p.add('pelvis', this.lean * 0.2, pelYaw + twist, pelRoll + bank);
+    p.add('spine', this.lean * 0.4, counter * 0.45 - twist * 0.5, -pelRoll * 0.5);
+    p.add('chest', this.lean * 0.4, counter * 0.55 - twist * 0.5, -pelRoll * 0.3);
     // The head stays level and looks where the body goes.
     const trunkPitch = p.get('pelvis', 0) + p.get('spine', 0) + p.get('chest', 0);
     const trunkYaw = p.get('pelvis', 1) + p.get('spine', 1) + p.get('chest', 1);

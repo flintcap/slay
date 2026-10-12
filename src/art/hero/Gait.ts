@@ -162,7 +162,7 @@ export class Gait {
    */
   cadence(v: number): number {
     const k = Math.sqrt(0.88 / this.body.legLen);
-    return Math.min(3.3, Math.max(0.75, (0.9 + 0.3 * v + 0.12 * Math.max(0, v - 2)) * k));
+    return Math.min(3.6, Math.max(0.75, (0.9 + 0.3 * v + 0.22 * Math.max(0, v - 2)) * k));
   }
 
   /** Where foot `i` should stand, `ahead` seconds from now, world. */
@@ -241,7 +241,7 @@ export class Gait {
     this.moveW += (moveTarget - this.moveW) * Math.min(1, dt * 8);
     // Running, each foot stays down a good share of the beat: a short float,
     // grounded rather than bounding.
-    this.duty = lerp(0.58, 0.36, this.runW);
+    this.duty = lerp(0.58, 0.42, this.runW);
     this.freq = this.cadence(speed);
     if (this.moving) this.phase = (this.phase + this.freq * dt) % 1;
 
@@ -432,7 +432,7 @@ export class Gait {
       // A foot that trailed low along the floor read as a lunge, the legs
       // split wide in every frame. Not too high either: half a leg read as
       // prancing, the knee thrown up at every stride.
-      const runH = 0.34 * L;
+      const runH = 0.28 * L;
       const h = lerp(walkH, runH, run);
       const kick = s < 0.3 ? Math.sin((Math.PI / 2) * (s / 0.3)) : Math.pow(Math.cos((Math.PI / 2) * ((s - 0.3) / 0.7)), 1.4);
       const prof = lerp(Math.sin(Math.PI * Math.pow(s, 0.85)), kick, run);
