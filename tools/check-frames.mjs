@@ -43,6 +43,10 @@
  *
  * --save writes the numbers as the new baseline (do it on a quiet machine,
  * and say in the commit why the baseline moved).
+ *
+ * --profile also samples the CPU while each place plays and prints the ten
+ * functions with the most self time (JavaScript only; the GPU wait and
+ * idle are left out), to find what an update spike was.
  */
 import { chromium } from '@playwright/test';
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -58,6 +62,7 @@ const FRAMES = Number(arg('frames') ?? 120);
 const SETTLE_MS = Number(arg('settle') ?? 6000);
 // At least this many frames too: a software frame can take a second.
 const SETTLE_FRAMES = Number(arg('settleFrames') ?? 20);
+const PROFILE = process.argv.includes('--profile');
 const SEED = Number(arg('seed') ?? 424242);
 const SAVE = process.argv.includes('--save');
 const HEADED = process.argv.includes('--headed');
@@ -277,7 +282,28 @@ try {
   console.log(`=== ${VW}x${VH}, ${FRAMES} frames each, ${HEADED ? 'GPU' : 'software rendering'} ===`);
   for (const where of ONLY) {
     const setup = await page.evaluate(setUp, { where, seed: SEED });
+    const cdp = PROFILE ? await page.context().newCDPSession(page) : null;
+    if (cdp) {
+      await cdp.send('Profiler.enable');
+      await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+      await cdp.send('Profiler.start');
+    }
     const r = await page.evaluate(play, { n: FRAMES, settleMs: SETTLE_MS, settleFrames: SETTLE_FRAMES, fight: where !== 'town' });
+    if (cdp) {
+      const { profile } = await cdp.send('Profiler.stop');
+      const byId = new Map(profile.nodes.map((nd) => [nd.id, nd]));
+      const self = new Map();
+      const dts = profile.timeDeltas ?? [];
+      profile.samples.forEach((id, k) => {
+        const f = byId.get(id)?.callFrame;
+        if (!f || ['(idle)', '(program)', '(garbage collector)', '(root)'].includes(f.functionName)) return;
+        if (!f.url && !f.functionName) return;
+        const key = `${f.functionName || '(anon)'} ${(f.url || 'native').split('/').pop()}:${f.lineNumber + 1}`;
+        self.set(key, (self.get(key) ?? 0) + (dts[k + 1] ?? dts[k] ?? 0) / 1000);
+      });
+      r.topSelf = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, ms]) => [k, Math.round(ms)]);
+      await cdp.detach().catch(() => {});
+    }
     results[where] = { ...setup, ...r };
     const f = (s) => `p50 ${s.p50} p95 ${s.p95} p99 ${s.p99} worst ${s.worst} (>33: ${s.over33}, >50: ${s.over50})`;
     console.log(`\n${where}: ${setup.scene}, ${setup.monsters} monsters${setup.boss ? ', boss' : ''}, quality ${setup.quality}, ${r.measured} frames`);
@@ -286,6 +312,7 @@ try {
     console.log(`  cpu     ${f(r.cpu)}`);
     console.log(`  draw calls ${r.drawCalls}, triangles ${r.triangles}, programs ${r.programs}, linked while playing ${r.links}, uploaded while playing ${r.texKB} KB`);
     for (const n of r.newPrograms) console.log(`  new while playing: ${n}`);
+    for (const [k, ms] of r.topSelf ?? []) console.log(`  self ${String(ms).padStart(6)} ms  ${k}`);
   }
   await page.close();
 } finally {
