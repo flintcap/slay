@@ -576,6 +576,8 @@ export interface GameSettings {
   reduceMotion?: boolean;
   /** Small frame-rate readout in the corner. */
   showFps?: boolean;
+  /** The quest list under the minimap folded down to its header (ui/HUD.ts). */
+  trackerHidden?: boolean;
   /** Multiplier on every UI type size (accessibility). 1 = as designed. */
   textScale?: number;
   /** Swap rarity colours for a palette every colour-vision type can tell apart. */

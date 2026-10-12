@@ -558,6 +558,8 @@ export class HUD {
   private bossVisible = false;
   private quest: QuestTrack | null = null;
   private tracker: HTMLDivElement;
+  private trackerHd: HTMLDivElement;
+  private trackerBody: HTMLDivElement;
   private trackerKey = '';
   private trackerAccum = 1;
   private offs: Array<() => void> = [];
@@ -607,9 +609,20 @@ export class HUD {
     this.questBox.addEventListener('click', () => events.emit('ui:open', { panel: 'questLog' }));
 
     // Everything else you have taken on, quiet, under the run's contract.
+    // Its header folds it away (and back), remembered with the settings.
     this.tracker = div('hud-tracker ui-interactive');
-    this.tracker.title = 'Open the journal (J)';
-    this.tracker.addEventListener('click', () => events.emit('ui:open', { panel: 'journal' }));
+    this.trackerHd = div('hud-track-hd');
+    this.trackerHd.title = 'Hide or show the quest list';
+    this.trackerHd.addEventListener('click', () => {
+      save.settings.trackerHidden = !save.settings.trackerHidden;
+      save.touch();
+      this.trackerKey = '';
+      attempt(() => this.renderTracker(), undefined);
+    });
+    this.trackerBody = div('hud-track-body');
+    this.trackerBody.title = 'Open the journal (J)';
+    this.trackerBody.addEventListener('click', () => events.emit('ui:open', { panel: 'journal' }));
+    add(this.tracker, this.trackerHd, this.trackerBody);
 
     this.toastStack = div('toast-stack');
     add(topRight, mapWrap, this.questBox, this.tracker, this.toastStack);
@@ -1610,15 +1623,20 @@ export class HUD {
         );
       }
     }
-    const key = JSON.stringify(rows);
+    const hidden = !!save.settings.trackerHidden;
+    const key = JSON.stringify([hidden, rows]);
     if (key === this.trackerKey) return;
     this.trackerKey = key;
-    clear(this.tracker);
     this.tracker.style.display = rows.length ? '' : 'none';
+    this.tracker.classList.toggle('folded', hidden);
+    const ready = rows.filter((r) => r.done).length;
+    this.trackerHd.textContent = `Quests ${rows.length}${ready ? ` · ${ready} ready` : ''} ${hidden ? '+' : '\u2212'}`;
+    clear(this.trackerBody);
+    if (hidden) return;
     for (const r of rows) {
       const row = div(`hud-track${r.done ? ' done' : ''}`);
       add(row, span('hud-track-title', r.title), span('hud-track-note', r.note));
-      this.tracker.appendChild(row);
+      this.trackerBody.appendChild(row);
     }
   }
 

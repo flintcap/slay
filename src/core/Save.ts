@@ -49,6 +49,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   showFps: false,
   textScale: 1,
   colorBlindRarity: false,
+  trackerHidden: false,
   keybinds: {},
 };
 
