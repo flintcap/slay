@@ -7,7 +7,7 @@ Remake: done (audio, maps, ground, heroes, items, creatures, props, npcs,
 vfx, finish). Published as version 29.
 
 Quality pass 2:
-Running: none
+Running: fix-gait, fix-uisound
 Waiting: none
 Done: qa-looks, qa-bugs, qa-legend, qa-speed
 Paused: no
