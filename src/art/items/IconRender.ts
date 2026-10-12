@@ -22,6 +22,8 @@ import { RARITY_COLOR } from '../../types';
 import { Random, hashString } from '../../core/RNG';
 import { composite, css, glow, scratch, type Ctx } from '../Paint';
 import { buildItem, type ItemFamily } from './Model';
+import { auraStyle } from './Aura';
+import type { Aura } from './Designs';
 
 export { itemScansReady } from './Mats';
 
@@ -130,6 +132,7 @@ function studio(): THREE.WebGLRenderer | null {
 interface Shot {
   glowColor: number;
   stone: number;
+  aura: Aura;
 }
 
 const tmpBox = new THREE.Box3();
@@ -176,7 +179,68 @@ function renderModel(spec: IconSpec): Shot | null {
       if (m.isMesh) m.geometry.dispose();
     });
   }
-  return { glowColor: built.look.glowColor, stone: built.look.stone };
+  return { glowColor: built.look.glowColor, stone: built.look.stone, aura: built.look.aura };
+}
+
+/**
+ * Paints an item's aura into its icon, so a unique or set piece shows the
+ * same light in the bag as it does in the world: big soft kinds (smoke,
+ * souls, frost, a soft glow) bloom behind the item, small bright kinds
+ * (embers, sparks, sparkles, drips) sit on top with trails showing which
+ * way they drift.
+ */
+function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'back' | 'front'): void {
+  const st = auraStyle(kind);
+  if (!st) return;
+  const big = st.size >= 20;
+  if (big !== (layer === 'back')) return;
+  const rnd = new Random(hashString(`icon-aura|${seed}`));
+  const n = big ? Math.max(3, Math.round(st.count * 0.4)) : Math.max(6, Math.round(st.count * 0.5));
+  out.save();
+  out.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i++) {
+    const px = 14 + rnd.next() * 100;
+    const py = 12 + rnd.next() * 104;
+    if (big) {
+      const r = 10 + rnd.next() * (st.size >= 60 ? 22 : 12);
+      glow(out, px, py, r, color, st.size >= 60 ? 0.28 : 0.4);
+      continue;
+    }
+    const r = 1 + rnd.next() * 1.3 + st.size * 0.05;
+    glow(out, px, py, r * 3.2, color, 0.85);
+    if (Math.abs(st.rise) > 0.15) {
+      // A short streak behind it: up for embers and ash, down for drips.
+      const len = r * (5 + rnd.next() * 4);
+      const dir = st.rise > 0 ? 1 : -1;
+      const g = out.createLinearGradient(px, py, px, py + dir * len);
+      g.addColorStop(0, css(color, 0.55));
+      g.addColorStop(1, css(color, 0));
+      out.strokeStyle = g;
+      out.lineWidth = r * 0.9;
+      out.beginPath();
+      out.moveTo(px, py);
+      out.lineTo(px, py + dir * len);
+      out.stroke();
+    }
+    if (st.twinkle >= 0.8) {
+      out.strokeStyle = css(0xffffff, 0.7);
+      out.lineWidth = 0.8;
+      const l = r * 2.6;
+      out.beginPath();
+      out.moveTo(px - l, py);
+      out.lineTo(px + l, py);
+      out.moveTo(px, py - l);
+      out.lineTo(px, py + l);
+      out.stroke();
+    }
+    if (st.core > 0.4) {
+      out.fillStyle = css(0xffffff, 0.85);
+      out.beginPath();
+      out.arc(px, py, r * 0.45, 0, Math.PI * 2);
+      out.fill();
+    }
+  }
+  out.restore();
 }
 
 /** The mark drawn when there is no WebGL: a faceted stone in the rarity colour. */
@@ -259,6 +323,8 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
     return;
   }
   const haloC = rank >= 3 ? glowC : rc;
+  const auraSeed = `${spec.baseId}|${spec.rarity}|${spec.uniqueId ?? spec.setId ?? ''}`;
+  paintAura(out, shot.aura, glowC, auraSeed, 'back');
   composite(out, layer.c, {
     shadow: 0.75,
     shadowBlur: 5,
@@ -268,7 +334,8 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
     haloColor: haloC,
     haloBlur: [0, 5, 6, 8, 9, 11, 12][rank]!,
   });
-  if (rank >= 5) {
+  paintAura(out, shot.aura, glowC, auraSeed, 'front');
+  if (rank >= 5 && shot.aura === 'none') {
     // Motes for mythic, embers for ancient.
     const rnd = new Random(hashString(`${spec.baseId}|${spec.rarity}|${spec.uniqueId ?? spec.setId ?? ''}`));
     for (let i = 0; i < 5; i++) {

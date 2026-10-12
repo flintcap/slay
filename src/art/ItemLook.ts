@@ -207,6 +207,15 @@ function washed(color: number, amount: number): number {
 
 type Ident = Pick<Item, 'baseId' | 'rarity' | 'uniqueId' | 'setId'>;
 
+/**
+ * Bases whose own palette is too plain to read from the game camera get a
+ * tint here, so the icon, the drop and the worn piece all agree.
+ */
+const BASE_TINT: Record<string, string> = {
+  // A deep sea-green shell, not one more dark plate.
+  'chest.kraken': 'metal.dark|0x2c5a5e',
+};
+
 const cache = new Map<string, ItemLook>();
 
 /** The shared look of one item. Cheap and cached: a few lookups and one hash. */
@@ -234,7 +243,7 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
   // Set pieces wear their set's palette on the main surface: its metal on
   // plate, its leather on hide, its cloth on robes. Bone, wood and crystal
   // bases keep their stuff, washed toward the set's colour.
-  const basePal = visual.palette || 'metal.steel';
+  const basePal = BASE_TINT[item.baseId] ?? (visual.palette || 'metal.steel');
   const palette = design?.main ?? (motif ? setPalette(basePal, motif) : basePal);
   const pal0 = palette.split('|')[0]!;
   const material = materialOf(palette);

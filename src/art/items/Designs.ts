@@ -182,7 +182,7 @@ export const SET_MOTIFS: Record<string, SetMotif> = {
   // Endgame sets.
   'set.sunderedsky': { name: 'white and silver with a white glow', color: 0xffffff, glow: 0xf0f4ff, metal: 'metal.silver|0xf4f6ff', leather: 'leather.fine|0xe8e4dc', cloth: 'cloth.silk|0xf0eee8', second: 'cloth.silk|0xdcdcec', trim: 'metal.silver', finish: 'pearl', sculpt: 'stars', emblem: 'star', features: ['halo'], aura: 'sparkles', wear: 0 },
   'set.lastlegion': { name: 'polished brass and legion crimson', color: 0xff4a2a, glow: 0xff7040, metal: 'metal.brass', leather: 'leather.fine|0x6a1a14', cloth: 'cloth.banner|0x8a1c1a', second: 'cloth.banner|0x8a1c1a', trim: 'metal.gold', finish: 'polished', sculpt: 'wings', emblem: 'laurel', features: ['laurels', 'tatters'], aura: 'embers', wear: 0.3 },
-  'set.hollowking': { name: 'obsidian and pale gold, spectral cyan', color: 0x6affe8, glow: 0x50f0e0, metal: 'metal.blackiron|0x2a2a30', leather: 'leather.dark|0x18161c', cloth: 'cloth.silk|0x1a1222', second: 'cloth.silk|0x1a1222', trim: 'metal.gold|0xd8c890', finish: 'satin', sculpt: 'antlers', emblem: 'crown', features: ['spikes', 'smoke'], aura: 'souls', wear: 0.1 },
+  'set.hollowking': { name: 'obsidian and pale gold, spectral cyan', color: 0x6affe8, glow: 0x50f0e0, metal: 'metal.blackiron|0x2a2a30', leather: 'leather.dark|0x18161c', cloth: 'cloth.silk|0x1a1222', second: 'cloth.silk|0x1a1222', trim: 'metal.gold|0xd8c890', finish: 'satin', sculpt: 'antlers', emblem: 'crown', features: ['gilded', 'smoke'], aura: 'souls', wear: 0.1 },
 };
 
 /** A set we have no motif for still gets a stable colour. */

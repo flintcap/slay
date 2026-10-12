@@ -20,7 +20,7 @@ const PI = Math.PI;
 // SHIELDS
 // ===========================================================================
 
-type Outline = 'round' | 'heater' | 'kite' | 'dragon' | 'monarch' | 'tower' | 'pavise' | 'luna' | 'grim';
+type Outline = 'round' | 'heater' | 'kite' | 'dragon' | 'monarch' | 'tower' | 'pavise' | 'luna' | 'grim' | 'clocktower';
 type Face = 'buckler' | 'defender' | 'ridge' | 'planks' | 'rings' | 'moon' | 'cross' | 'scales' | 'crown' | 'rivets' | 'spine' | 'sun' | 'spokes' | 'skull' | 'nest' | 'clock';
 
 interface ShieldCut {
@@ -53,7 +53,7 @@ const SHIELD_CUTS: Record<string, ShieldCut> = {
   'shield.bone': { outline: 'round', w: 0.25, h: 0.25, face: 'spokes', dish: 0.03, rim: 'none', plate: 'bone' },
   'shield.grim': { outline: 'grim', w: 0.24, h: 0.3, face: 'skull', dish: 0.04, rim: 'bone', plate: 'bone' },
   'shield.trollnest': { outline: 'round', w: 0.28, h: 0.28, face: 'nest', dish: 0.08, rim: 'none', plate: 'main' },
-  'shield.aeons': { outline: 'tower', w: 0.28, h: 0.5, face: 'clock', dish: 0.06, barrel: true, rim: 'trim', plate: 'main' },
+  'shield.aeons': { outline: 'clocktower', w: 0.28, h: 0.5, face: 'clock', dish: 0.06, barrel: true, rim: 'trim', plate: 'main' },
 };
 
 const SHIELD_BY_SHAPE: Record<string, string> = {
@@ -80,6 +80,13 @@ function shieldOutline(o: Outline, w: number, h: number): V2[] {
       return [[w, h * 0.78], [w * 0.62, h * 0.9], [w * 0.5, h * 1.06], [w * 0.3, h * 0.88], [0, h * 1.1], [-w * 0.3, h * 0.88], [-w * 0.5, h * 1.06], [-w * 0.62, h * 0.9], [-w, h * 0.78], ...qb([-w, h * 0.78], [-w * 0.95, -h * 0.35], [0, -h], 14).slice(1), ...qb([0, -h], [w * 0.95, -h * 0.35], [w, h * 0.78], 14).slice(1, -1)];
     case 'tower':
       return [[-w, -h], [w, -h], [w, h * 0.85], ...arc2(0, h * 0.85, w, h * 0.15, 0, PI, 12).slice(1, -1), [-w, h * 0.85]];
+    case 'clocktower': {
+      // A tower with a great round clock face rising out of its top.
+      const cy = h * 0.6;
+      const R = w * 1.1;
+      const a0 = Math.atan2(-Math.sqrt(R * R - w * w), w);
+      return [[-w, -h], [w, -h], ...arc2(0, cy, R, R, a0, PI - a0, 28)];
+    }
     case 'pavise':
       return [[-w * 0.92, -h], [w * 0.92, -h], [w, h * 0.7], [w * 0.7, h * 0.92], [0, h], [-w * 0.7, h * 0.92], [-w, h * 0.7]];
     case 'luna': {
@@ -283,7 +290,7 @@ export function buildShield(P: Parts): void {
       break;
     }
     case 'clock': {
-      const p0 = front(0, c.h * 0.15);
+      const p0 = front(0, c.outline === 'clocktower' ? c.h * 0.6 : c.h * 0.15);
       for (const k of [0.4, 0.7, 0.95]) P.add('trim', torus(c.w * k, 0.006, 4, 40), { p: [p0.x, p0.y, p0.z + 0.004] });
       for (let i = 0; i < 12; i++) {
         const a = (i / 12) * PI * 2;

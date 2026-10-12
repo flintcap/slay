@@ -153,20 +153,22 @@ function sculpt(k: Kit, f: Feature, a: Anchor, fit: (m: MatKey) => FB): boolean 
     }
     case 'antlers': {
       const F = fit('bone');
+      // A crown carries a full rack, larger than the crest it grows from.
+      const S = a.s * (a.role === 'crown' ? 1.45 : 1);
       const sides = a.role === 'crown' ? [1, -1] : [a.p.x >= 0 ? 1 : -1];
       for (const sd of sides) {
         const out = V(sd, 0, 0);
-        const p0 = a.role === 'crown' ? a.p.clone().add(V(sd * 0.32 * s, -0.15 * s, 0)) : at(0, 0, 0.02);
-        const p1 = p0.clone().addScaledVector(out, 0.5 * s).addScaledVector(UP, 0.55 * s).add(V(0, 0, -0.1 * s));
-        const p2 = p1.clone().addScaledVector(out, 0.35 * s).addScaledVector(UP, 0.65 * s).add(V(0, 0, -0.15 * s));
-        const p3 = p2.clone().addScaledVector(out, 0.1 * s).addScaledVector(UP, 0.55 * s);
-        F.cone(p0, p1, 0.14 * s, 0.1 * s, 0.025 * s);
-        F.cone(p1, p2, 0.1 * s, 0.075 * s, 0.02 * s);
-        F.cone(p2, p3, 0.075 * s, 0.012 * s, 0.01 * s);
+        const p0 = a.role === 'crown' ? a.p.clone().add(V(sd * 0.32 * S, -0.15 * S, 0)) : at(0, 0, 0.02);
+        const p1 = p0.clone().addScaledVector(out, 0.5 * S).addScaledVector(UP, 0.55 * S).add(V(0, 0, -0.1 * S));
+        const p2 = p1.clone().addScaledVector(out, 0.35 * S).addScaledVector(UP, 0.65 * S).add(V(0, 0, -0.15 * S));
+        const p3 = p2.clone().addScaledVector(out, 0.1 * S).addScaledVector(UP, 0.55 * S);
+        F.cone(p0, p1, 0.14 * S, 0.1 * S, 0.025 * S);
+        F.cone(p1, p2, 0.1 * S, 0.075 * S, 0.02 * S);
+        F.cone(p2, p3, 0.075 * S, 0.012 * S, 0.01 * S);
         // Tines branch forward and out.
         for (const [q, l, o] of [[p1, 0.42, 0.1], [p2, 0.38, -0.25], [p2.clone().lerp(p3, 0.5), 0.3, 0.3]] as const) {
-          const tip = q.clone().addScaledVector(out, o * s).addScaledVector(UP, l * s).add(V(0, 0, 0.3 * s));
-          F.cone(q, tip, 0.065 * s, 0.008 * s, 0.01 * s);
+          const tip = q.clone().addScaledVector(out, o * S).addScaledVector(UP, l * S).add(V(0, 0, 0.3 * S));
+          F.cone(q, tip, 0.065 * S, 0.008 * S, 0.01 * S);
         }
       }
       return true;
