@@ -173,6 +173,11 @@ interface GroundLoot {
  * the floor, and the player. This is the integration point for every other
  * system in the game.
  */
+/** How far (m) the hero must be from every boss gate tile's centre before it shuts: past the 2 m tile and their own body. */
+const GATE_CLEAR = 3.2;
+/** And for how long (s), so a step in and back out does not trap anyone. */
+const GATE_DELAY = 0.4;
+
 export class DungeonScene extends GameScene {
   readonly id: SceneId = 'dungeon';
   camera: THREE.PerspectiveCamera;
@@ -247,6 +252,8 @@ export class DungeonScene extends GameScene {
   private arenaGate: {
     tiles: Array<{ x: number; y: number }>;
     sealed: boolean;
+    /** Seconds the hero has stood clear of the gate inside the arena; it shuts at GATE_DELAY. */
+    clearFor: number;
     bars: THREE.Group | null;
     colliders: Array<{ x: number; z: number; w: number; d: number }>;
     rise: number;
@@ -748,7 +755,7 @@ export class DungeonScene extends GameScene {
             }
           }
           this.boss.dormant = true;
-          this.arenaGate = { tiles, sealed: false, bars: null, colliders: [], rise: 0 };
+          this.arenaGate = { tiles, sealed: false, clearFor: 0, bars: null, colliders: [], rise: 0 };
         }
       }
     }
@@ -2028,7 +2035,18 @@ export class DungeonScene extends GameScene {
     const boss = this.boss;
     const bossUp = !!boss && boss.life > 0;
     if (!g.sealed && bossUp && this.player.alive) {
-      if (inside(this.player.position.x, this.player.position.z) && inside(boss!.root.position.x, boss!.root.position.z)) {
+      // Shut only once the hero is well past the gate (GATE_CLEAR from every
+      // gate tile) and has stayed there a moment: shutting the instant the
+      // hero touched the arena's edge dropped the bars onto them, stuck in
+      // the gate's collider.
+      const px = this.player.position.x;
+      const pz = this.player.position.z;
+      const clear = inside(px, pz) && g.tiles.every((t) => {
+        const w = this.mesh.tileToWorld(t.x, t.y);
+        return Math.hypot(w.x - px, w.z - pz) > GATE_CLEAR;
+      });
+      g.clearFor = clear && inside(boss!.root.position.x, boss!.root.position.z) ? g.clearFor + dt : 0;
+      if (g.clearFor >= GATE_DELAY) {
         this.sealArena(g);
         boss!.dormant = false;
         boss!.engage(ctx);
