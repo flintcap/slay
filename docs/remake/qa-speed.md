@@ -29,11 +29,11 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   busy maps and in boss fights. Measure p95, p99 and worst frame, not only
   averages. Remove every recurring spike over 33 ms and every one-off spike
   over 50 ms we can find.
-- [ ] The CPU frame. Profile update and render per system (AI, pathfinding,
+- [x] The CPU frame. Profile update and render per system (AI, pathfinding,
   animation and IK, skinning, effects, UI and damage text, audio) and cut
   the biggest: update far or offscreen monsters less often, cache paths,
   pool and reuse, no per-frame allocation or DOM layout, batch HUD updates.
-- [ ] The GPU frame. Draw calls and instancing; shadow cost (resolution,
+- [x] The GPU frame. Draw calls and instancing; shadow cost (resolution,
   which lights cast, static shadow caching); overdraw from particles and
   glows; post-processing cost; texture memory and mipmaps; shader count
   (merge material variants).
@@ -55,7 +55,7 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
 - [ ] Long session. The full default soak (3 runs x 3 maps x 300 frames) never
   ran because it takes 90 minutes. Split it into runs under 45 minutes each
   and run them all. Memory, GPU objects and frame time stay flat. Fix leaks.
-- [ ] Sound mix. Loudness balance between music, ambience, skills, hits and
+- [x] Sound mix. Loudness balance between music, ambience, skills, hits and
   UI. No sound that clips or drowns everything. Check headlessly by
   measuring peak and RMS of what plays in common scenes.
 - [ ] Handover with before and after numbers.
@@ -116,19 +116,45 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   the hidden-object and item-material warm-up, the boss fight links no
   program while playing (was 1, a 2.9 s cpu frame here) and the map fight
   likewise; uploads in the boss fight are bone textures only.
+- Standing check again, alone on the machine (7031d7a, new baseline):
+
+  | place | update p50 / p95 / worst ms | update+render worst | draws | links in play |
+  |---|---|---|---|---|
+  | town | 1.4 / 3.8 / 8.5 | 26.1 | 405 | 0 |
+  | busy map, 125 monsters | 3.4 / 12.1 / 24 | 40.7 | 344 | 0 |
+  | boss fight | 2.2 / 8.0 / 18.2 | 1579 | 156 | 0 |
+
+  The old baseline's map update p95 37 and worst 400 were the shared CPU.
+  No update frame over 33 ms anywhere. The boss fight's two slow render
+  frames come with 5.8 MB sent to the GPU mid-fight and no link: most
+  likely a shadow map or render target made on a phase change (in
+  software every big allocation is slow). Not chased.
+- `check-perf` budgets at depth 1: draw calls 457 / 900, triangles 1.22M /
+  1.5M, programs 83 / 110, lights 13 / 24, shadow lights 1 / 2, textures
+  210 / 240, texture memory 36 MB / 192, update 5.8 ms / 6. All within.
+- Sound mix (`check-mix`, inside the lock): one fail, "block alone clips
+  the output" (block peak +7.8 dB). The six block files decoded to +6 to
+  +13 dBFS (Vorbis overshoot). Peak-limited and re-encoded (4face02,
+  noted in ASSETS.md): block peak -3.7 dB, "OK, nothing clips".
+- Area change links: `check-lag --only=areas` with old materials held
+  until the new area was primed still linked 39 programs (was 38 to 39),
+  so the old programs were not the ones the new area needed. Areas of one
+  map can be different biomes, and the light set (an "under" light in
+  some indoor biomes, a shadow-casting sun only outdoors) is part of every
+  lit shader's key, so a biome change relinks every lit program. Change
+  reverted.
 - Garbage, `check-perf --alloc --depths=1`: 298 KB a step (was 290 to 440;
-  budget 200). Not under the line yet.
+  budget 200). Not under the line. The top names (tickProjectiles 46 KB a
+  step, creature solve, locomotion, Enemy.update) hold no allocation in
+  their source: the bytes are numbers boxed by code that is not yet
+  optimised in a 30-step sample (the projectile-against-prop loop is the
+  biggest). At 60 fps that is about 18 MB/s of short-lived garbage, one
+  minor GC of about a millisecond a second.
 
 ## Next up
 
-1. Sound mix: `check-mix.mjs` once, inside the browser lock.
-2. Garbage: 298 KB/step at depth 1 (budget 200). Named by `check-perf
-   --alloc` on an unminified build: tickProjectiles, creature
-   solve/solveLegFull, Enemy.update, DungeonScene.update. No obvious
-   allocation in their source; likely number boxing. Low value: minor GC.
-3. Loading: next area warmed ahead during play (not done; everything
-   builds behind the curtain now, with no drawing while it is down).
-4. Soak in parts once at handover, then Handover.
+1. Soak in parts (`check-soak --preview --part=i/3`), once, inside the
+   lock. Then Handover.
 
 ## Notes for resume
 
