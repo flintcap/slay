@@ -1153,9 +1153,11 @@ export class AIBrain {
       }
     }
     if (!best) {
-      // Fall back to the basic attack when in reach.
+      // Fall back to the basic attack when in reach. Only for monsters that
+      // have one: a Bone Archer's attack range is its bow's, and with the
+      // arrow on cooldown it swung a fist at the air from 13 metres.
       const basic = getAbility('basic_strike');
-      if (basic && d <= this.def.attackRange + self.hitRadius && self.abilityReady('basic_strike', ctx)) {
+      if (basic && self.abilityIds.includes('basic_strike') && d <= this.def.attackRange + self.hitRadius && self.abilityReady('basic_strike', ctx)) {
         return basic;
       }
       return null;
