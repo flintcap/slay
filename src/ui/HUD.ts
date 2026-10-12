@@ -47,6 +47,10 @@ import { skillIconUri, statusIconUri, warmItemIcons } from '../art/Icons';
 import { setPrimaryAttack, setHotbarSlot } from '../sim/Character';
 import { SKILL_BY_ID } from '../data/skills';
 import { BOSSES } from '../data/bosses';
+import { CHAINS } from '../data/story/chains';
+import { NPCS } from '../data/story/npcs';
+import { carriedContract, chainStep, stepState } from '../sim/Chains';
+import { bountyText, heldBounties } from '../sim/TownServices';
 import { zoneInks, zoneInkAt, newKindInk, wayMarks } from './ZoneInk';
 
 // Tile ids as stored in DungeonLevel.tiles (mirrors world/Layouts TILE_VALUES).
@@ -553,6 +557,9 @@ export class HUD {
   private bossLife = 1;
   private bossVisible = false;
   private quest: QuestTrack | null = null;
+  private tracker: HTMLDivElement;
+  private trackerKey = '';
+  private trackerAccum = 1;
   private offs: Array<() => void> = [];
   private shown = false;
   private lastHotbarKey = '';
@@ -599,8 +606,13 @@ export class HUD {
     this.questBox.style.display = 'none';
     this.questBox.addEventListener('click', () => events.emit('ui:open', { panel: 'questLog' }));
 
+    // Everything else you have taken on, quiet, under the run's contract.
+    this.tracker = div('hud-tracker ui-interactive');
+    this.tracker.title = 'Open the journal (J)';
+    this.tracker.addEventListener('click', () => events.emit('ui:open', { panel: 'journal' }));
+
     this.toastStack = div('toast-stack');
-    add(topRight, mapWrap, this.questBox, this.toastStack);
+    add(topRight, mapWrap, this.questBox, this.tracker, this.toastStack);
 
     // --- top-center: boss bar --------------------------------------------
     // A framed plate: skull caps at each end, a pale trail that shows the
@@ -1008,6 +1020,11 @@ export class HUD {
 
   update(dt: number, elapsed: number): void {
     if (!this.shown) return;
+    this.trackerAccum += dt;
+    if (this.trackerAccum >= 1) {
+      this.trackerAccum = 0;
+      attempt(() => this.renderTracker(), undefined);
+    }
 
     const scene = this.engine.currentScene as unknown as object | null;
     const probe = scene ? probeScene(scene) : null;
@@ -1556,6 +1573,52 @@ export class HUD {
       track.appendChild(fill);
       add(row, line, track);
       this.questBox.appendChild(row);
+    }
+  }
+
+  /**
+   * The quiet list under the minimap: contracts taken from people in town
+   * (and who to hand them to once done) and bounties held from the board.
+   * The contract this descent is working is left out down here, since the
+   * run's own box above already shows it. Rebuilt only when it changes.
+   */
+  private renderTracker(): void {
+    const c = save.account.current;
+    const rows: Array<{ title: string; note: string; done: boolean }> = [];
+    if (c) {
+      const carried = this.quest ? carriedContract()?.chain.id : undefined;
+      for (const chain of CHAINS) {
+        const index = chainStep(chain);
+        const step = chain.steps[index];
+        if (!step) continue;
+        const st = stepState(chain, index);
+        if (st !== 'active' && st !== 'ready') continue;
+        if (st === 'active' && chain.id === carried) continue;
+        const giver = NPCS[step.giver ?? chain.giver]?.name ?? 'the giver';
+        rows.push(
+          st === 'ready'
+            ? { title: step.title, note: `Back to ${giver}`, done: true }
+            : { title: step.title, note: `Tier ${step.minDepth}+`, done: false },
+        );
+      }
+      for (const b of heldBounties(c)) {
+        const text = bountyText(b).replace(/\s*\([^)]*\)/g, '');
+        rows.push(
+          b.state === 'done'
+            ? { title: text, note: 'Claim at the board', done: true }
+            : { title: text, note: `${Math.min(b.progress, b.target)}/${b.target}`, done: false },
+        );
+      }
+    }
+    const key = JSON.stringify(rows);
+    if (key === this.trackerKey) return;
+    this.trackerKey = key;
+    clear(this.tracker);
+    this.tracker.style.display = rows.length ? '' : 'none';
+    for (const r of rows) {
+      const row = div(`hud-track${r.done ? ' done' : ''}`);
+      add(row, span('hud-track-title', r.title), span('hud-track-note', r.note));
+      this.tracker.appendChild(row);
     }
   }
 

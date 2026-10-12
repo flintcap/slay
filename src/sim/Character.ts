@@ -33,7 +33,7 @@ import {
 } from '../data/skills';
 import { MAX_LEVEL, computeStats, effectiveRank, xpForLevel } from './Stats';
 import { skillPointsForLevel, statPointsForLevel } from './Progression';
-import { getBase } from './Loot';
+import { getBase, requiredLevel } from './Loot';
 import { legacyStartingBonus } from './Legacy';
 import { repairTownState } from './TownServices';
 import { ONE_HAND_MELEE } from '../data/itemBases';
@@ -621,7 +621,9 @@ export function meetsRequirements(c: Character, item: Item, stats?: Stats): { ok
   if (base.classes && base.classes.length > 0 && !base.classes.includes(c.classId)) {
     return { ok: false, reason: 'Your class cannot use this.' };
   }
-  const levelReq = base.levelReq + item.upgrade;
+  // The unique's or set piece's own level counts too, as the tooltip says:
+  // it used to be left out, so a level 10 unique went on at level 7.
+  const levelReq = Math.max(base.levelReq + item.upgrade, requiredLevel(item));
   if (c.level < levelReq) return { ok: false, reason: `Requires level ${levelReq}.` };
 
   const s = stats ?? computeStats(c);
