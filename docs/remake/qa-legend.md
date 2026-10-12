@@ -156,13 +156,16 @@ colours, features (sculpts first), finish and aura.
 
 ## Next up
 
-1. Sets on the body: render `hero-sheet.mjs legend` (add the sheet to
-   `tools/hero-page.ts`: every set worn in full on two classes) and judge the
-   sculpts (dragons, claws, antlers, crowns, moons, bolts, spiders, serpents,
-   laurels in `hero/ArmourFeatures.ts`), the set palettes and the glow
-   stages (`items/Outfit.ts`, `hero/Armour.ts` `lightArmour`). Fix, then tick.
-2. Uniques: `item-sheet.mjs uniques` sheets and a worn-uniques row.
-3. Icons and drops: paint each aura into the icon (`items/IconRender.ts`).
+1. Judge `shots/qa-legend/uqbody1` (worn uniques, `hero-sheet.mjs legend
+   --of=uniques --slot=chest,helm,gloves,boots,belt`) and the Hollow King
+   antler rack on a full-body frame (the close frame at `--ty=0.72` crops
+   the top of tall helms, which is why antlers looked missing). Tick M2 and
+   M3 when they read.
+2. Icons and drops: render `item-sheet.mjs icons` for a few uniques and
+   sets (auras are painted now) and `drops`; then run
+   `check-item-icons` (browser) once.
+3. Budget: `check-perf.mjs --set=set.lastlegion --depths=0,12` (busiest
+   set, about 40 meshes and 2 auras on the hero).
 
 ## Notes for resume
 
@@ -172,6 +175,9 @@ colours, features (sculpts first), finish and aura.
   (`SCULPTS`); particles `items/Aura.ts`; set glow and body auras
   `items/Outfit.ts`, called from `DressedHero.dress` (`HeroModel.ts`);
   hand and floor auras in `ItemModels.ts`. Checker `tools/check-legend.mjs`.
+  Icon auras `items/IconRender.ts` `paintAura`. Plain-base tints
+  `ItemLook.ts` `BASE_TINT`. Ward of Aeons outline `clocktower` in
+  `items/Offhand.ts`.
 
 - Looks only. Never change item stats, drop rates or set bonuses.
 - Owner's rule "Gear makes the look" holds: bare heroes wear plain linens.
