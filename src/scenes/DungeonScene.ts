@@ -1246,6 +1246,14 @@ export class DungeonScene extends GameScene {
         return isWalkable(this.level, t.x, t.y);
       },
     }, this.keyDir.lengthSq() > 0 ? this.keyDir : null);
+    // Stand on the floor: raised and sunken floors left the hero at the
+    // height of the tile they arrived on, legs sunk into a step up. Eased so
+    // a step reads as a step, not a pop.
+    {
+      const pp = this.player.position;
+      const gy = this.mesh.floorY(pp.x, pp.z);
+      pp.y += (gy - pp.y) * Math.min(1, dt * 16);
+    }
 
     // Only monsters near the player think. Aggro persists for the whole floor,
     // so without a leash every monster the player has ever disturbed keeps
@@ -1310,6 +1318,7 @@ export class DungeonScene extends GameScene {
       const m = onMinion === null ? undefined : ctx.minions?.find((q) => q.id === onMinion);
       if (m) this.aimPos.set(m.x, 0, m.z);
       else this.aimPos.copy(this.player.position);
+      e.groundTarget = this.mesh.floorY(e.root.position.x, e.root.position.z);
       // One broken monster must not end the frame for everything after it.
       try {
         e.update(dt, ctx);
@@ -1321,6 +1330,7 @@ export class DungeonScene extends GameScene {
     this.aimPos.copy(this.player.position);
 
     try {
+      if (this.boss) this.boss.groundTarget = this.mesh.floorY(this.boss.root.position.x, this.boss.root.position.z);
       this.boss?.update(dt, ctx);
       this.tickArenaGate(dt, ctx);
     } catch (err) {

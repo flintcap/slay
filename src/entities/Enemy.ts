@@ -307,6 +307,14 @@ export class Enemy implements Combatant {
   private actionT = 0;
   private actionLen = 0;
   private deathT = 0;
+  /**
+   * The floor under the body, eased so a step up or down reads as a step.
+   * The scene sets `groundTarget` from the level each frame; raised and
+   * sunken floors used to leave every body at the height it spawned at.
+   */
+  groundY = 0;
+  groundTarget = 0;
+  private grounded = false;
   private spawnT = 1;
   private hitFlash = 0;
   private locomotion = 0;
@@ -618,7 +626,7 @@ export class Enemy implements Combatant {
   }
 
   private get centerY(): number {
-    return 0.7 * this.sizeScale;
+    return this.groundY + 0.7 * this.sizeScale;
   }
 
   // --- ability runner ------------------------------------------------------
@@ -750,10 +758,16 @@ export class Enemy implements Combatant {
     if (this.disposed) return;
     tickAbilityWorld(dt, ctx);
 
+    if (!this.grounded) {
+      this.grounded = true;
+      this.groundY = this.groundTarget;
+    } else this.groundY += (this.groundTarget - this.groundY) * Math.min(1, dt * 16);
+
     if (!this.alive) {
       this.tickDeath(dt, ctx);
       return;
     }
+    if (!this.motionOverride) this.root.position.y = this.groundY;
 
     // A non-finite position (a bad motion target, a zero-length push) makes
     // an invisible monster that every area check still hits, and its damage
@@ -763,7 +777,7 @@ export class Enemy implements Combatant {
       this.lastGoodX = pos.x;
       this.lastGoodZ = pos.z;
     } else {
-      pos.set(this.lastGoodX, 0, this.lastGoodZ);
+      pos.set(this.lastGoodX, this.groundY, this.lastGoodZ);
       this.motionOverride = null;
       enemyPositionRepairs++;
     }
@@ -889,7 +903,7 @@ export class Enemy implements Combatant {
     const p = this.root.position;
     p.x = m.fromX + (m.toX - m.fromX) * k;
     p.z = m.fromZ + (m.toZ - m.fromZ) * k;
-    p.y = m.arc > 0 ? Math.sin(k * Math.PI) * m.arc : 0;
+    p.y = this.groundY + (m.arc > 0 ? Math.sin(k * Math.PI) * m.arc : 0);
     if (m.trample && !m.trample.hit) {
       const d = dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
       if (d < m.trample.radius + 0.6) {
@@ -900,7 +914,7 @@ export class Enemy implements Combatant {
       }
     }
     if (k >= 1) {
-      p.y = 0;
+      p.y = this.groundY;
       const land = m.onLand;
       this.motionOverride = null;
       land?.(this, ctx);
@@ -1514,7 +1528,7 @@ export class Enemy implements Combatant {
     if (this.deathT > 1) {
       const s = Math.max(0, 1 - (this.deathT - 1) * 1.6);
       this.bodyRoot.scale.setScalar(this.sizeScale * (0.6 + s * 0.4));
-      this.root.position.y = -(1 - s) * 1.4 * this.sizeScale;
+      this.root.position.y = this.groundY - (1 - s) * 1.4 * this.sizeScale;
       if (this.aura) this.aura.visible = false;
     }
     if (this.deathT >= 1.45) this.readyToRemove = true;
