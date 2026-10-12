@@ -2343,6 +2343,10 @@ input.slider::-moz-range-thumb {
   font-size: var(--fs-xs);
   color: #cfe6ff;
 }
+.tt-socket-gives {
+  margin-left: auto;
+  color: var(--magic, #8fb4ff);
+}
 .tt-socket-row.is-empty {
   color: var(--ink-4);
 }

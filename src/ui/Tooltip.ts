@@ -18,7 +18,7 @@ import { itemFlavor } from '../data/story/itemFlavor';
 import { requestItemIcon } from '../art/Icons';
 import { computeStats } from '../sim/Stats';
 import { save } from '../core/Save';
-import { getGem } from '../data/gems';
+import { getGem, socketBonuses } from '../data/gems';
 import {
   add,
   clear,
@@ -322,6 +322,14 @@ class TooltipManager {
           const row = div('tt-socket-row');
           row.appendChild(cell);
           row.appendChild(span('tt-socket-name', gem?.name ?? s.gemId));
+          // What the stone gives in this kind of item; already counted in the
+          // character's stats (sim/Loot socketStats), shown so it is seen.
+          const gives = base
+            ? attempt(() => socketBonuses(s.gemId as string, base.category), [])
+                .map((b) => modLine({ stat: b.stat, value: Math.max(1, Math.round(b.value)), kind: 'implicit' } as ItemMod).replace(' %', '%'))
+                .join(', ')
+            : '';
+          if (gives) row.appendChild(span('tt-socket-gives', gives));
           strip.appendChild(row);
         } else {
           const row = div('tt-socket-row is-empty');
