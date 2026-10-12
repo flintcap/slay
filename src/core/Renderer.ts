@@ -340,6 +340,13 @@ export interface QualityProfile {
   anisotropy: number;
   /** Multiplier on particle budgets and decal counts. */
   fxScale: number;
+  /**
+   * Frames per shadow-map redraw. The shadow pass draws nearly every caster a
+   * second time (check-perf: 178 shadow draws beside 199 colour ones), so
+   * the lower steps redraw it every other frame. Map and matrix stay paired,
+   * so a held shadow lags a frame rather than sliding.
+   */
+  shadowEvery: number;
 }
 
 // GTAO draws the whole scene a second time for its normal and depth buffer:
@@ -352,10 +359,10 @@ export interface QualityProfile {
 // ratio cap and a render scale). High is the intended look. The auto mode
 // (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35 },
-  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6 },
-  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0 },
-  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4 },
+  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowEvery: 2 },
+  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowEvery: 2 },
+  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowEvery: 1 },
+  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowEvery: 1 },
 };
 
 /** Pixel ratio for a profile on this screen. */
@@ -404,6 +411,7 @@ export class Renderer {
 
   /** Transient grade state driven by gameplay. */
   private hurt = 0;
+  private shadowFrame = 0;
   private lowLife = 0;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -713,6 +721,7 @@ export class Renderer {
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera, dt: number, elapsed: number): void {
+    const sceneChanged = this.currentScene !== scene;
     if (this.currentScene !== scene || this.currentCamera !== camera) {
       this.currentScene = scene;
       this.currentCamera = camera;
@@ -729,6 +738,12 @@ export class Renderer {
     this.gradePass.uniforms.uHurt.value = this.hurt;
     this.gradePass.uniforms.uLowLife.value = this.lowLife;
     this.gradePass.uniforms.uTime.value = elapsed;
+
+    // A new scene always gets its shadows on its first frame.
+    const every = this.quality.shadowEvery;
+    const sm = this.gl.shadowMap;
+    sm.autoUpdate = every <= 1;
+    if (!sm.autoUpdate) sm.needsUpdate = this.shadowFrame++ % every === 0 || sceneChanged;
 
     this.composer.render(dt);
   }

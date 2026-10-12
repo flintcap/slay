@@ -59,6 +59,17 @@ interface Plate {
   chips: HTMLDivElement;
   /** What the DOM currently shows, so we only touch it on change. */
   key: string;
+  /** The data the key was last built from, to skip rebuilding it each frame. */
+  src: PlateData | null;
+  srcName: string;
+  srcLevel: number;
+  srcRank: string;
+  srcAffixes: number;
+  srcTitle: string | undefined;
+  /** Last written screen spot and opacity. */
+  sx: number;
+  sy: number;
+  op: number;
   pct: number;
   /** Where the trail sits, and when the last hit landed (ms). */
   trail: number;
@@ -172,6 +183,15 @@ export class NameplateLayer {
       barTrail,
       chips,
       key: '',
+      src: null,
+      srcName: '',
+      srcLevel: -1,
+      srcRank: '',
+      srcAffixes: -1,
+      srcTitle: undefined,
+      sx: NaN,
+      sy: NaN,
+      op: -1,
       pct: -1,
       trail: -1,
       hitAt: 0,
@@ -183,6 +203,15 @@ export class NameplateLayer {
 
   /** Rebuilds a plate's text only when its identity actually changed. */
   private paint(p: Plate, d: PlateData): void {
+    // Same monster as last frame and nothing it shows has changed: the common
+    // case, checked without building the key string.
+    if (p.src === d && p.srcName === d.name && p.srcLevel === d.level && p.srcRank === d.rank && p.srcAffixes === d.affixes.length && p.srcTitle === d.title) return;
+    p.src = d;
+    p.srcName = d.name;
+    p.srcLevel = d.level;
+    p.srcRank = d.rank;
+    p.srcAffixes = d.affixes.length;
+    p.srcTitle = d.title;
     const key = `${d.name}|${d.title ?? ''}|${d.rank}|${d.level}|${d.affixes.join(',')}`;
     if (p.key === key) return;
     p.key = key;
@@ -311,15 +340,26 @@ export class NameplateLayer {
       // Fade with distance so the far edge of the pack does not shout.
       const reach = c.ordinary ? Math.min(this.maxDistance, this.ordinaryDistance) : this.maxDistance;
       const fade = c.dist > reach * 0.75 ? 1 - (c.dist - reach * 0.75) / (reach * 0.25) : 1;
-      plate.root.style.transform = `translate(-50%,-100%) translate(${c.sx.toFixed(1)}px, ${c.sy.toFixed(1)}px)`;
-      plate.root.style.opacity = String(Math.max(0, Math.min(1, fade)));
-      plate.root.style.display = '';
+      if (Math.abs(c.sx - plate.sx) > 0.2 || Math.abs(c.sy - plate.sy) > 0.2) {
+        plate.sx = c.sx;
+        plate.sy = c.sy;
+        plate.root.style.transform = `translate(-50%,-100%) translate(${c.sx.toFixed(1)}px, ${c.sy.toFixed(1)}px)`;
+      }
+      const op = Math.round(Math.max(0, Math.min(1, fade)) * 50) / 50;
+      if (op !== plate.op) {
+        plate.op = op;
+        plate.root.style.opacity = String(op);
+      }
+      if (plate.root.style.display) plate.root.style.display = '';
     }
     // Drop references so a disposed scene's monsters are not kept alive.
     for (let i = 0; i < n; i++) this.cands[i]!.t = null as unknown as PlateTarget;
 
     for (const p of this.pool) {
-      if (!p.inUse) p.root.style.display = 'none';
+      if (!p.inUse && p.root.style.display !== 'none') {
+        p.root.style.display = 'none';
+        p.src = null;
+      }
     }
   }
 
