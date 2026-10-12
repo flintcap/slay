@@ -6,34 +6,35 @@
     "quality": "high",
     "measured": 120,
     "frame": {
-      "p50": 529.9,
-      "p95": 8787.1,
-      "p99": 9558.8,
-      "worst": 10099.1,
-      "over33": 119,
-      "over50": 116
+      "p50": 81.2,
+      "p95": 2853.5,
+      "p99": 2995.2,
+      "worst": 4195.2,
+      "over33": 101,
+      "over50": 77
     },
     "update": {
-      "p50": 2,
-      "p95": 13.8,
-      "p99": 21.5,
-      "worst": 66.5,
-      "over33": 1,
-      "over50": 1
+      "p50": 1.4,
+      "p95": 3.8,
+      "p99": 8.5,
+      "worst": 8.5,
+      "over33": 0,
+      "over50": 0
     },
     "cpu": {
-      "p50": 14.3,
-      "p95": 69.2,
-      "p99": 201,
-      "worst": 266.6,
-      "over33": 14,
-      "over50": 9
+      "p50": 11.7,
+      "p95": 21.4,
+      "p99": 25.7,
+      "worst": 26.1,
+      "over33": 0,
+      "over50": 0
     },
-    "drawCalls": 404,
-    "triangles": 879536,
+    "drawCalls": 405,
+    "triangles": 880878,
     "links": 0,
     "texKB": 2730,
-    "programs": 46
+    "programs": 47,
+    "newPrograms": []
   },
   "map": {
     "scene": "dungeon",
@@ -42,34 +43,35 @@
     "quality": "high",
     "measured": 120,
     "frame": {
-      "p50": 752,
-      "p95": 6280.5,
-      "p99": 6784.3,
-      "worst": 8747.4,
-      "over33": 117,
-      "over50": 117
+      "p50": 172.4,
+      "p95": 2127.4,
+      "p99": 2267.5,
+      "worst": 2285.4,
+      "over33": 113,
+      "over50": 100
     },
     "update": {
-      "p50": 5.3,
-      "p95": 37.1,
-      "p99": 115.8,
-      "worst": 217.1,
-      "over33": 6,
-      "over50": 4
+      "p50": 3.4,
+      "p95": 12.1,
+      "p99": 19.6,
+      "worst": 24,
+      "over33": 0,
+      "over50": 0
     },
     "cpu": {
-      "p50": 16.9,
-      "p95": 122.1,
-      "p99": 224.8,
-      "worst": 314.5,
-      "over33": 19,
-      "over50": 8
+      "p50": 12.8,
+      "p95": 27.4,
+      "p99": 30.2,
+      "worst": 40.7,
+      "over33": 1,
+      "over50": 0
     },
-    "drawCalls": 333,
-    "triangles": 1206098,
-    "links": 1,
-    "texKB": 3531,
-    "programs": 74
+    "drawCalls": 344,
+    "triangles": 1211786,
+    "links": 0,
+    "texKB": 3486,
+    "programs": 76,
+    "newPrograms": []
   },
   "boss": {
     "scene": "dungeon",
@@ -78,33 +80,34 @@
     "quality": "high",
     "measured": 120,
     "frame": {
-      "p50": 519.5,
-      "p95": 4046.3,
-      "p99": 4583.2,
-      "worst": 4948.8,
-      "over33": 117,
-      "over50": 114
+      "p50": 243.9,
+      "p95": 1524.9,
+      "p99": 1617.5,
+      "worst": 1819.9,
+      "over33": 115,
+      "over50": 113
     },
     "update": {
-      "p50": 3,
-      "p95": 24,
-      "p99": 63.6,
-      "worst": 139.5,
-      "over33": 5,
-      "over50": 2
+      "p50": 2.2,
+      "p95": 8,
+      "p99": 17.3,
+      "worst": 18.2,
+      "over33": 0,
+      "over50": 0
     },
     "cpu": {
-      "p50": 15.9,
-      "p95": 76.3,
-      "p99": 175.2,
-      "worst": 2102,
-      "over33": 17,
-      "over50": 10
+      "p50": 8.2,
+      "p95": 23.9,
+      "p99": 960.1,
+      "worst": 1579,
+      "over33": 2,
+      "over50": 2
     },
-    "drawCalls": 163,
-    "triangles": 602024,
-    "links": 1,
-    "texKB": 6523,
-    "programs": 102
+    "drawCalls": 156,
+    "triangles": 596450,
+    "links": 0,
+    "texKB": 5857,
+    "programs": 105,
+    "newPrograms": []
   }
 }
