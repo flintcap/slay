@@ -152,7 +152,8 @@ function sculpt(k: Kit, f: Feature, a: Anchor, fit: (m: MatKey) => FB): boolean 
       return true;
     }
     case 'antlers': {
-      const F = fit('bone');
+      // A set's rack is spectral, lit in its glow, so it stands out from the crest it grows from.
+      const F = fit(k.look.motif?.sculpt === 'antlers' ? 'glow' : 'bone');
       // A crown carries a full rack, larger than the crest it grows from.
       const S = a.s * (a.role === 'crown' ? 1.45 : 1);
       const sides = a.role === 'crown' ? [1, -1] : [a.p.x >= 0 ? 1 : -1];
