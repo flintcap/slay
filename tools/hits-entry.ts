@@ -193,6 +193,23 @@ check(
   `dagger+bone knife ${Math.round(strong.total)} vs dagger+dagger ${Math.round(pair.total)}`,
 );
 
+// Skills strike with both blades too: the left arm swings after the right
+// lands, and a one-blow skill lands a blow from each.
+for (const [id, name, oneBlow] of [['viperStrike', 'Viper Strike', true], ['doubleStrike', 'Double Strike', false]] as const) {
+  const s = scene('shadowblade', { [id]: 5 }, { mainHand: 'dagger.dagger', offHand: 'dagger.dagger' }, 41);
+  const from = s.swings.length;
+  const cast = s.cast(id);
+  s.tick(0.8);
+  const left = s.swings.slice(from).filter((w) => w.side === 'L').length;
+  const blows = s.packets.filter((x) => x.p.ability === name).length;
+  s.done();
+  check(
+    `two blades: ${name} swings the left blade too`,
+    cast && left >= 1 && (!oneBlow || blows === 2),
+    `cast ${cast}, ${left} left swings, ${blows} blows`,
+  );
+}
+
 // --- venom ----------------------------------------------------------------------
 
 const DUAL = { mainHand: 'dagger.dagger', offHand: 'dagger.dagger' } as const;

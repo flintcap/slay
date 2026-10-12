@@ -276,6 +276,23 @@ export class Player {
     });
   }
 
+  /**
+   * One blade's blow inside an action already running (two blades: the off
+   * hand answering a skill the main hand led). Plays that hand's swing
+   * without starting a new action; returns the seconds until it connects.
+   */
+  handBlow(side: 'L' | 'R', duration: number): number {
+    const contact = Math.max(0.05, Math.min(CONTACT_CAP, CLIP_CONTACT.attack2! * duration));
+    this.animator.play('attack2', {
+      fade: 0.06,
+      speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)),
+      restart: true,
+      contact,
+      side,
+    });
+    return contact;
+  }
+
   /** Identifies the current action. Changes when a new one starts or a dodge cuts it off. */
   get actionId(): number {
     return this.actionSerial;

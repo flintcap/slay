@@ -103,6 +103,8 @@ const CASTER_CATEGORIES: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
  * (main hand 100%, off hand 62%).
  */
 const DUAL_BLOW_SCALE = (1 + 0.62) / 2;
+/** With two blades, the main hand's share of a one-blow melee skill; the off hand lands the rest. */
+const DUAL_SKILL_MAIN = 0.6;
 
 /**
  * True when both hands hold a melee weapon.
@@ -748,10 +750,43 @@ export class SkillRunner {
         const reach = num('reach', num('radius', 2.3));
         const arc = num('arc', wide ? 2.2 : 1.3);
         const kind: HitKind = heavy ? 'heavy' : 'melee';
-        this.meleeSwing(player, dir, arc, reach, makePacket, ctx, enemies, boss, type, true, kind);
         // Multi-hit skills: Double Strike's two, Massacre's five, Death Lotus's
         // eight. `hits` was never read, so each landed once.
         const hits = Math.max(1, Math.floor(num('hits', 1)));
+        // Two blades: the off hand answers once the main hand lands, so a
+        // skill strikes with both. A one-blow skill splits its damage across
+        // the two blades (same total, a hit from each); a multi-hit skill's
+        // blows keep their damage and the left blade swings among them.
+        const dual = isDualWielding(player);
+        const split = dual && hits === 1;
+        const mainPacket = split ? (m = 1): DamagePacket => makePacket(m * DUAL_SKILL_MAIN) : makePacket;
+        this.meleeSwing(player, dir, arc, reach, mainPacket, ctx, enemies, boss, type, true, kind);
+        if (dual) {
+          const facing = dir.clone();
+          this.pendingSwings.push({
+            t: player.contactIn,
+            run: () => {
+              if (!player.alive) return;
+              const contact = player.handBlow('L', attackTime);
+              if (!split) return;
+              this.pendingSwings.push({
+                t: contact,
+                // Lands even if a new action has started: it is half the skill's damage.
+                run: () => {
+                  if (!player.alive) return;
+                  this.atContact = true;
+                  this.caster = player;
+                  try {
+                    const off = (m = 1): DamagePacket => makePacket(m * (1 - DUAL_SKILL_MAIN));
+                    this.meleeSwing(player, facing, arc, reach, off, ctx, enemies, boss, type, true, kind);
+                  } finally {
+                    this.atContact = false;
+                  }
+                },
+              });
+            },
+          });
+        }
         if (hits > 1) {
           const id = player.actionId;
           const first = player.contactIn;

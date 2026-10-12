@@ -100,7 +100,8 @@ export function createCharacter(
     level: 1,
     xp: 0,
     statPoints: dif.startStatPoints,
-    skillPoints: 1 + dif.startSkillPoints,
+    // The class's starter skill is granted below; no free point on top (owner).
+    skillPoints: dif.startSkillPoints,
     allocated: { strength: 0, dexterity: 0, vitality: 0, energy: 0 },
     skills: {},
     hotbar: [null, null, null, null, null, null],
