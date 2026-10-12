@@ -1,6 +1,6 @@
 # Stream: qa-speed (quality pass 2: is it fast and steady)
 
-Status: in progress
+Status: handed over, four milestones open (see Handover)
 
 Goal: the game loads quickly, runs smoothly and stays steady over a long
 session, as published. Widened by the owner: this stream is the
@@ -150,11 +150,65 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   optimised in a 30-step sample (the projectile-against-prop loop is the
   biggest). At 60 fps that is about 18 MB/s of short-lived garbage, one
   minor GC of about a millisecond a second.
+- Long session, the full default soak in three parts (`check-soak
+  --preview --part=i/3`), inside the lock, 111 minutes in all: no errors,
+  no slowdown; heap 103 to 106, 108 to 113 and 102 to 105 MB a part;
+  geometries, textures and scene objects flat. Parts 1 and 3 fail one
+  line: programs grew 58 to 66 and 56 to 64 (slack 6); part 2 grew 60 to
+  66 and passed. Not a lost material: three keeps one program per
+  material per lighting setup it has been drawn under
+  (`materialProperties.programs`, freed only on dispose), and the shared
+  cached materials (hero, items, effects) meet a new setup with each new
+  biome. So the count climbs with biomes seen and stops there. Every part
+  ends at 64 to 66.
 
-## Next up
+## Handover
 
-1. Soak in parts (`check-soak --preview --part=i/3`), once, inside the
-   lock. Then Handover.
+What exists now:
+
+- Speed fixes across boot, menus, select, town, maps and fights (see
+  Results): shaders linked and textures sent behind the curtain, no
+  drawing while it is down, select heroes and townsfolk from the boot
+  worker, icons and portraits drawn in idle moments, far monsters frozen
+  and hidden from the cull pass, creature cull spheres set, combat text
+  cached, HUD writes only on change, hidden pooled objects and item looks
+  compiled at warm-up.
+- Quality ladder Low to Ultra with auto mode (`core/AutoQuality.ts`,
+  `core/Renderer.ts` QUALITY table, Settings toggle).
+- Checks: `tools/check-frames.mjs` (standing perf check, baseline
+  `tools/perf-frames.json`, `--profile`), `tools/check-lag.mjs` (the
+  owner's five spots), `tools/check-loadtime.mjs`, `tools/check-mix.mjs`.
+
+Before and after, same machine, 480x270, software rendering:
+
+| what | before | after |
+|---|---|---|
+| title screen ready | 27.4 s | 21.9 s |
+| select screen ready | 53.4 s | 44.5 s |
+| first map ready | 55.2 s | 43.9 s |
+| longest freeze, first town | 20.7 s | 8.2 s |
+| show each class on select | 10 to 14 s, 4 to 6 links | under 1.9 s, 0 to 2 links |
+| glide past monsters, links | 4 | 0 |
+| fight, links / worst update | 2 / 465 ms | 0 / 135 ms |
+| next area, links | 59 | 38 to 39 |
+| busy map update p95 (quiet) | not measured quiet | 12.1 ms |
+| block sound peak | +7.8 dB (clips) | -3.7 dB |
+
+Left for `finish` (milestones still open):
+
+1. Garbage: 298 KB a step at depth 1 against 200. Boxed numbers in
+   not-yet-optimised code; low value (about 1 ms of minor GC a second).
+2. Frame pacing: the boss fight has two slow render frames with 5.8 MB
+   sent to the GPU mid-fight and no link. Find what allocates
+   (`check-frames --only=boss --profile` on a `--no-minify` bundle).
+3. Loading ahead: an area change still links about 39 programs when the
+   next area is another biome, because the light set is in every lit
+   shader's key. Fix by giving every biome the same light set (zero
+   intensity where unused) or by compiling the next biome's set during
+   play. The shadow-casting sun outdoors only is the hard part.
+4. Long session: the soak's program line (see Results). Either accept it
+   as a cache and widen that slack with a note, or free per-setup
+   programs on a biome change.
 
 ## Notes for resume
 
