@@ -162,7 +162,7 @@ export class Gait {
    */
   cadence(v: number): number {
     const k = Math.sqrt(0.88 / this.body.legLen);
-    return Math.min(3.6, Math.max(0.75, (0.9 + 0.3 * v + 0.22 * Math.max(0, v - 2)) * k));
+    return Math.min(3.6, Math.max(0.75, (0.9 + 0.3 * v + 0.3 * Math.max(0, v - 2)) * k));
   }
 
   /** Where foot `i` should stand, `ahead` seconds from now, world. */
@@ -385,7 +385,7 @@ export class Gait {
     // Facing across the travel (mid-pivot), a foot reaching ahead lands out
     // to the body's side: land it under the hip instead.
     const fwd = (inp.vx * Math.sin(inp.yaw) + inp.vz * Math.cos(inp.yaw)) / Math.max(1e-3, this.speed);
-    const lead = (duty / this.freq) * lerp(0.5, 0.42, this.runW) * Math.max(0, fwd);
+    const lead = (duty / this.freq) * lerp(0.5, 0.3, this.runW) * Math.max(0, fwd);
     const d = this.desired(inp, i, tLand, lead);
     this.swingTo(f, d, s, true);
     if (s >= 1) this.land(f, i);
@@ -432,7 +432,7 @@ export class Gait {
       // A foot that trailed low along the floor read as a lunge, the legs
       // split wide in every frame. Not too high either: half a leg read as
       // prancing, the knee thrown up at every stride.
-      const runH = 0.28 * L;
+      const runH = 0.22 * L;
       const h = lerp(walkH, runH, run);
       const kick = s < 0.3 ? Math.sin((Math.PI / 2) * (s / 0.3)) : Math.pow(Math.cos((Math.PI / 2) * ((s - 0.3) / 0.7)), 1.4);
       const prof = lerp(Math.sin(Math.PI * Math.pow(s, 0.85)), kick, run);

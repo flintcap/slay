@@ -914,21 +914,25 @@ export class HeroAnimator {
     // The hips ride a little over the planted foot; the track is narrow, so
     // they need not swing far.
     const sway = 0.022 * L * mw * (1 - 0.6 * rw) * Math.cos(mid);
-    p.shift(sway, bob - (0.012 + 0.008 * rw) * L * mw, 0);
+    // Running, the hips ride a little ahead, so the feet strike under the
+    // body and push off behind it. Carried upright over the feet, the knees
+    // came up in front and the run read as sitting on a chair.
+    p.shift(sway, bob - (0.012 + 0.004 * rw) * L * mw, 0.05 * L * rw * mw);
     const pelYaw = -0.13 * mw * Math.cos(ph);
     const pelRoll = 0.035 * mw * (1 - 0.3 * rw) * Math.cos(mid);
     const counter = (0.2 + 0.08 * rw) * mw * Math.cos(ph);
     // Lean into speed and acceleration, on a spring so it settles.
-    const leanTarget = (0.03 + 0.09 * rw) * mw + clamp(this.accel * 0.025, -0.12, 0.18);
+    // A run leans well into it from the hips; a walk barely leans at all.
+    const leanTarget = (0.03 + 0.19 * rw) * mw + clamp(this.accel * 0.025, -0.12, 0.18);
     this.leanVel += ((leanTarget - this.lean) * 90 - this.leanVel * 14) * dt;
     this.lean += this.leanVel * dt;
     const speed = Math.hypot(this.vx, this.vz);
     const bank = clamp(-this.yawRate * speed * 0.02, -0.22, 0.22);
     // Turning in place: the hips follow the feet, the shoulders lead.
     const twist = clamp(g.footTwist(this.yaw) * 0.55, -0.5, 0.5) * (1 - mw);
-    p.add('pelvis', this.lean * 0.2, pelYaw + twist, pelRoll + bank);
-    p.add('spine', this.lean * 0.4, counter * 0.45 - twist * 0.5, -pelRoll * 0.5);
-    p.add('chest', this.lean * 0.4, counter * 0.55 - twist * 0.5, -pelRoll * 0.3);
+    p.add('pelvis', this.lean * 0.35, pelYaw + twist, pelRoll + bank);
+    p.add('spine', this.lean * 0.35, counter * 0.45 - twist * 0.5, -pelRoll * 0.5);
+    p.add('chest', this.lean * 0.3, counter * 0.55 - twist * 0.5, -pelRoll * 0.3);
     // The head stays level and looks where the body goes.
     const trunkPitch = p.get('pelvis', 0) + p.get('spine', 0) + p.get('chest', 0);
     const trunkYaw = p.get('pelvis', 1) + p.get('spine', 1) + p.get('chest', 1);
