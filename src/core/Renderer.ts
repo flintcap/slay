@@ -518,12 +518,15 @@ export class Renderer {
     this.bloom = undefined;
     this.smaa = undefined;
 
-    // HDR float target so bloom has real headroom above 1.0.
+    // HDR float target so bloom has real headroom above 1.0. With AO it keeps
+    // its depth as a texture, so the AO pass reads the frame's own depth
+    // rather than drawing the whole scene again for it.
     const target = new THREE.WebGLRenderTarget(w, h, {
       type: THREE.HalfFloatType,
       colorSpace: THREE.LinearSRGBColorSpace,
       samples: 0,
       depthBuffer: true,
+      depthTexture: this.quality.ao ? new THREE.DepthTexture(w, h) : null,
     });
 
     this.composer = new EffectComposer(this.gl, target);
@@ -551,6 +554,9 @@ export class Renderer {
         screenSpaceRadius: false,
       });
       hideSpritesFromAO(this.gtao);
+      // Normals rebuilt from depth: GTAO's own normal pass drew every mesh a
+      // second time (about as many draw calls as the frame itself).
+      this.gtao.setGBuffer(this.composer.readBuffer.depthTexture ?? undefined);
       this.composer.addPass(this.gtao);
     }
 
@@ -740,6 +746,11 @@ export class Renderer {
     this.gradePass.uniforms.uTime.value = elapsed;
 
     // A new scene always gets its shadows on its first frame.
+    // The composer swaps its two targets as passes run, so the one the scene
+    // is drawn into (and whose depth AO reads) can change from frame to frame.
+    const depth = this.composer.readBuffer.depthTexture;
+    if (this.gtao && depth && this.gtao.depthTexture !== depth) this.gtao.setGBuffer(depth);
+
     const every = this.quality.shadowEvery;
     const sm = this.gl.shadowMap;
     sm.autoUpdate = every <= 1;
