@@ -344,6 +344,17 @@ export class HeroAnimator {
     this.kind = moveKind(this.stance, this.grip, this.category);
   }
 
+  /** Holds whatever `from` holds, in the same stance (a double of a hero). */
+  copyCarry(from: HeroAnimator): void {
+    this.offHand = from.offHand;
+    this.setWeapon(from.grip, from.category);
+  }
+
+  /** The pelvis's bind position, which play moves; a copy of the rig is reset to it. */
+  restPelvis(): THREE.Vector3 {
+    return this.solver.offset[BONE_INDEX.pelvis]!.clone();
+  }
+
   /** Picks a stance directly. */
   setStance(s: Stance): void {
     if (s === this.stance) return;

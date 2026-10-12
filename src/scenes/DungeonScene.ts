@@ -33,6 +33,7 @@ import { NavGrid } from '../world/Nav';
 import { variantLabel, biomeArt } from '../world/Biomes';
 import { namedRare } from '../data/namedRares';
 import { rollDrops, rollItem, rollPotion } from '../sim/Loot';
+import { skillRank } from '../sim/Character';
 import { buildDropModel } from '../art/ItemModels';
 import { emissiveMaterial } from '../art/Materials';
 import { grantXp } from '../sim/Character';
@@ -298,6 +299,20 @@ export class DungeonScene extends GameScene {
     this.effects.setRig(this.rig);
     this.effects.setCamera(this.camera);
     this.skills = new SkillRunner(this.effects);
+    // Summons walk the same walls and props as the hero, read live per floor.
+    const scene = this;
+    this.skills.setWalkWorld({
+      get colliders() {
+        return scene.mesh?.colliders ?? [];
+      },
+      walkableAt: (x, z) => {
+        if (!this.mesh) return true;
+        const t = this.mesh.worldToTile(x, z);
+        return isWalkable(this.level, t.x, t.y);
+      },
+      path: (fx, fz, tx, tz) => this.nav?.path({ x: fx, y: fz }, { x: tx, y: tz }) ?? [],
+      floorY: (x, z) => this.mesh?.floorY(x, z) ?? 0,
+    });
     this.lootFx = new LootFX(this.effects);
     // Monster shots, hazards and boss phases draw through the full effect kit.
     bindMonsterFX(this.effects);
@@ -326,7 +341,14 @@ export class DungeonScene extends GameScene {
     } catch {
       veil = [];
     }
-    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm, ...(looks?.meshes ?? []), ...veil];
+    // And a Shadow Clone's dark double, for a hero who has the skill.
+    let shade: THREE.Object3D[] = [];
+    try {
+      if (skillRank(this.player.character, 'shadowClone') > 0) shade = this.player.shadowStandIns();
+    } catch {
+      shade = [];
+    }
+    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade];
     if (!list.length) return null;
     const g = new THREE.Group();
     g.name = 'warmup';

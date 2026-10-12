@@ -7,7 +7,9 @@ import { skillSound } from '../audio/SkillSounds';
 import { SKILLS } from '../data/skills';
 import { rollDamage, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
-import type { Player } from '../entities/Player';
+import { releaseShadowDouble, type Player } from '../entities/Player';
+import type { HeroAnimator } from '../art/hero/Animator';
+import { canStandAt, lineClear, stepBody, type WalkWorld } from '../world/BodyWalk';
 import { Enemy, type CombatContext } from '../entities/Enemy';
 import { installMonsterAudio } from '../audio/MonsterAudio';
 import type { MinionTarget } from '../entities/Abilities';
@@ -87,6 +89,16 @@ const MINION_LEASH = 16;
 const MINION_SPEED = 3.4;
 /** How close a minion heels when there is nothing to fight. */
 const MINION_FOLLOW = 3.2;
+/**
+ * How far from you a summon will fight. Past it, it leaves the fight and
+ * comes back; well past it (stuck behind a wall, left behind), it steps out
+ * of the dark at your side.
+ */
+const MINION_TETHER = 9;
+const SHADOW_TETHER = 7;
+const MINION_RECALL = 18;
+/** A summon's body, for walls and props. */
+const MINION_RADIUS = 0.3;
 
 /** How the equipped main hand wants to be fought with. */
 export type WeaponStyle = 'melee' | 'ranged' | 'caster' | 'unarmed';
@@ -1127,7 +1139,8 @@ export class SkillRunner {
           const elites = Math.floor(mp.minionEliteCount);
           const elitePower = 1 + mp.minionElitePowerPct / 100;
           const swingRate = 1 / (1 + mp.minionAttackSpeedPct / 100);
-          const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel');
+          // A Shadow Clone is you in shadow, so it fights with your blades.
+          const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel') || def.id === 'shadowClone';
           // Make room before raising anything. Oldest of this skill goes first, so
           // pressing the button at the cap always does something visible.
           if (!isTotem) this.trimSummons(def.id, Math.max(0, cap - count));
@@ -2200,7 +2213,19 @@ export class SkillRunner {
     actionT: number;
     /** Pulls monsters off you well past the nearest-target rule. */
     taunt: boolean;
+    /** A Shadow Clone's hero body is driven by the hero's own animator. */
+    hero: HeroAnimator | null;
+    /** Waypoints round whatever stands between it and where it is going. */
+    route: Array<{ x: number; y: number }>;
+    replanIn: number;
   }> = [];
+
+  /** The level's walls and props, so summons walk round them (set by the scene). */
+  private walk: WalkWorld | null = null;
+
+  setWalkWorld(w: WalkWorld | null): void {
+    this.walk = w;
+  }
 
   private heatTimer = 0;
 
@@ -2416,10 +2441,32 @@ export class SkillRunner {
 
       // A summoned creature walks. Totems have no body and stay put.
       if (t.body) {
+        const owner = this.caster;
+        const tether = t.hero ? SHADOW_TETHER : MINION_TETHER;
+        const ownerGap = owner ? Math.hypot(owner.position.x - t.body.position.x, owner.position.z - t.body.position.z) : 0;
+        // Left far behind, or stuck where it cannot get back: it steps out of
+        // the dark beside you rather than being lost.
+        if (owner && ownerGap > MINION_RECALL) {
+          const a = (t.index * 2.39996) % (Math.PI * 2);
+          let rx = owner.position.x + Math.cos(a) * 1.4;
+          let rz = owner.position.z + Math.sin(a) * 1.4;
+          if (this.walk && !canStandAt(this.walk, rx, rz, MINION_RADIUS)) {
+            rx = owner.position.x;
+            rz = owner.position.z;
+          }
+          t.body.position.x = rx;
+          t.body.position.z = rz;
+          t.route = [];
+          this.effects.teleportIn(rx, 0.1, rz, t.color);
+        }
+
+        // Only what is near you is worth a fight: a summon that chases across
+        // the floor is a summon you never see.
         let chase: Target | null = null;
         let chaseD = Infinity;
         for (const e of this.allTargets(enemies, boss)) {
           const d = this.groundDistance(e.root.position, t.body.position);
+          if (owner && this.groundDistance(e.root.position, owner.position) > tether) continue;
           if (d < chaseD && d <= MINION_LEASH) {
             chaseD = d;
             chase = e;
@@ -2433,7 +2480,6 @@ export class SkillRunner {
         // No enemy in reach: heel. A summon that plants itself where it was
         // raised is useless the moment you walk on, which is exactly how the
         // skeletons read before this.
-        const owner = this.caster;
         let goalX = chase ? chase.root.position.x : owner?.position.x ?? t.body.position.x;
         let goalZ = chase ? chase.root.position.z : owner?.position.z ?? t.body.position.z;
         let hold = chase ? stand : MINION_FOLLOW;
@@ -2450,15 +2496,47 @@ export class SkillRunner {
         const gap = Math.hypot(dx, dz);
         if (gap > 0.05) t.facing = Math.atan2(dx, dz);
         if (gap > hold) {
-          const inv = 1 / Math.max(0.0001, gap);
+          // Toward the goal, or the next waypoint round what is in the way.
+          let wx = goalX;
+          let wz = goalZ;
+          const w = this.walk;
+          if (w) {
+            t.replanIn -= dt;
+            const px = t.body.position.x;
+            const pz = t.body.position.z;
+            if (lineClear(w, px, pz, goalX, goalZ, MINION_RADIUS)) t.route = [];
+            else if ((t.route.length === 0 || t.replanIn <= 0) && w.path) {
+              t.route = w.path(px, pz, goalX, goalZ);
+              t.replanIn = 0.5;
+            }
+            while (t.route.length && Math.hypot(t.route[0]!.x - px, t.route[0]!.y - pz) < 0.45) t.route.shift();
+            if (t.route.length) {
+              wx = t.route[0]!.x;
+              wz = t.route[0]!.y;
+            }
+          }
+          const sx = wx - t.body.position.x;
+          const sz = wz - t.body.position.z;
+          const sgap = Math.max(0.0001, Math.hypot(sx, sz));
+          if (t.route.length && sgap > 0.05) t.facing = Math.atan2(sx, sz);
           // A minion that cannot keep up is a minion you never see again, so it
           // runs harder the further behind it falls.
           const speed = chase ? MINION_SPEED : MINION_SPEED * (gap > 8 ? 1.8 : 1.15);
-          const step = Math.min(speed * dt, gap - hold);
-          t.body.position.x += dx * inv * step;
-          t.body.position.z += dz * inv * step;
-          moving = 1;
+          const step = Math.min(speed * dt, t.route.length ? sgap : gap - hold);
+          const ox = t.body.position.x;
+          const oz = t.body.position.z;
+          if (w) {
+            const to = stepBody(w, ox, oz, (sx / sgap) * step, (sz / sgap) * step, MINION_RADIUS);
+            t.body.position.x = to.x;
+            t.body.position.z = to.z;
+          } else {
+            t.body.position.x += (sx / sgap) * step;
+            t.body.position.z += (sz / sgap) * step;
+          }
+          moving = Math.hypot(t.body.position.x - ox, t.body.position.z - oz) > step * 0.2 ? 1 : 0;
         }
+        const fy = this.walk?.floorY?.(t.body.position.x, t.body.position.z);
+        if (fy !== undefined) t.body.position.y += (fy - t.body.position.y) * Math.min(1, dt * 16);
         t.x = t.body.position.x;
         t.z = t.body.position.z;
         t.body.rotation.y = t.facing;
@@ -2472,6 +2550,19 @@ export class SkillRunner {
         const fade = Number.isFinite(t.left) ? Math.min(1, Math.max(0, t.left)) : 1;
         t.body.scale.setScalar(t.body.scale.x > 0 ? t.body.scale.x : 1);
         t.body.visible = t.left > 0;
+        if (t.hero) {
+          // Between blows it walks, runs or stands as you do.
+          if (t.actionT <= 0 && t.life > 0) {
+            const sp = moving ? (chase ? MINION_SPEED : MINION_SPEED * 1.4) : 0;
+            if (sp > 0) t.hero.play(sp > 4 ? 'run' : 'walk', { fade: 0.14, speed: sp / 4.2 });
+            else t.hero.play('idle', { fade: 0.2 });
+          }
+          if (t.life <= 0 && t.left > 0 && t.action !== 'death') {
+            t.action = 'death';
+            t.hero.play('death', { fade: 0.1, once: true, hold: true, force: true });
+          }
+          t.hero.update(dt);
+        }
         t.anim?.update(dt, {
           locomotion: t.gait,
           action: t.action,
@@ -2497,6 +2588,14 @@ export class SkillRunner {
           if (t.body) {
             t.action = t.melee ? 'attack' : 'cast';
             t.actionT = 1;
+            // The double swings your weapon, the blow landing as the hit does.
+            if (t.hero) {
+              const bx = best.root.position.x - t.x;
+              const bz = best.root.position.z - t.z;
+              t.facing = Math.atan2(bx, bz);
+              t.body.rotation.y = t.facing;
+              t.hero.play('attack1', { fade: 0.06, restart: true, speed: 1.3, contact: 0.12 });
+            }
           }
           // Marrow Feast: what the army bites, you swallow.
           const owner = this.caster;
@@ -2585,13 +2684,35 @@ export class SkillRunner {
       this.removeBody(oldest.body);
       this.turrets.shift();
     }
+    // Raised where it can stand: not inside a wall or a barrel.
+    const w = this.walk;
+    const owner = this.caster;
+    if (w && owner && !canStandAt(w, x, z, MINION_RADIUS)) {
+      x = owner.position.x;
+      z = owner.position.z;
+    }
     const fx = this.effects.summonCircle(x, z, melee ? 0.7 : 0.55, duration, color);
     this.effects.teleportIn(x, 0.1, z, color);
 
     // Give it a body if the skill names one.
     let body: THREE.Object3D | null = null;
     let anim: RigAnimator | null = null;
-    const monsterId = skillId ? MINION_MONSTER[skillId] : undefined;
+    let hero: HeroAnimator | null = null;
+    // Shadow Clone raises a dark double of the hero, not a monster.
+    if (skillId === 'shadowClone' && this.caster) {
+      try {
+        const d = this.caster.shadowDouble();
+        d.root.position.set(x, this.walk?.floorY?.(x, z) ?? 0, z);
+        d.root.rotation.y = this.caster.root.rotation.y;
+        this.effects.scene.add(d.root);
+        body = d.root;
+        hero = d.animator;
+      } catch {
+        body = null;
+        hero = null;
+      }
+    }
+    const monsterId = skillId && !body ? MINION_MONSTER[skillId] : undefined;
     const mdef = monsterId ? MONSTERS.find((m) => m.id === monsterId) : undefined;
     if (mdef) {
       try {
@@ -2614,7 +2735,7 @@ export class SkillRunner {
       x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx,
       body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 1,
       index: this.summonSerial++, skillId: skillId ?? '', life: minionLife, maxLife: minionLife,
-      taunt,
+      taunt, hero, route: [], replanIn: 0,
     });
   }
 
@@ -2759,6 +2880,11 @@ export class SkillRunner {
   /** Takes a minion's body out of the scene and frees what it owns. */
   private removeBody(body: THREE.Object3D | null): void {
     if (!body) return;
+    if (body.userData.shadowDouble) {
+      releaseShadowDouble(body);
+      this.feel.forget(body);
+      return;
+    }
     body.parent?.remove(body);
     // Geometry and materials are shared prototypes owned by the model cache and
     // released by `disposeMonsterModels`; each clone owns only its skeleton's

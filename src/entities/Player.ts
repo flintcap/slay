@@ -7,6 +7,7 @@ import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
 import { HeroAnimator, type BodyCondition } from '../art/hero/Animator';
 import { DressedHero } from '../scenes/HeroModel';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
@@ -25,6 +26,24 @@ export interface PlayerContext {
 
 const TMP = new THREE.Vector3();
 const TMP2 = new THREE.Vector3();
+
+/** What a Shadow Clone is made of: near black, lit from inside in violet. Shared. */
+const SHADOW_MAT = new THREE.MeshStandardMaterial({
+  color: 0x0a0712,
+  roughness: 0.6,
+  metalness: 0.15,
+  emissive: 0x2a1046,
+  emissiveIntensity: 0.85,
+});
+
+/** Frees a shadow double's skeletons. Geometry is the hero's; the material is shared. */
+export function releaseShadowDouble(root: THREE.Object3D): void {
+  root.removeFromParent();
+  root.traverse((o) => {
+    const sk = (o as THREE.SkinnedMesh).isSkinnedMesh ? (o as THREE.SkinnedMesh).skeleton : null;
+    sk?.dispose();
+  });
+}
 
 /**
  * Equipment slots that put geometry on the body. Rings and amulets are left
@@ -668,6 +687,63 @@ export class Player {
    * scene's warmup: drawn once behind the loading curtain so the shaders are
    * linked before the first Veil. Skinned copies share the hero's skeleton.
    */
+  /**
+   * A dark double of this hero as they stand now: the same body, armour and
+   * weapons, with its own skeleton and animator, all in shadow. What Shadow
+   * Clone raises (scenes/SkillRunner.ts). The caller owns it; free it with
+   * `releaseShadowDouble`.
+   */
+  shadowDouble(): { root: THREE.Object3D; animator: HeroAnimator } {
+    const copy = cloneSkinned(this.hero.root);
+    const drop: THREE.Object3D[] = [];
+    copy.traverse((o) => {
+      // Lights, glows and auras would read as the hero's own; a shadow has none.
+      if ((o as THREE.Light).isLight || (o as THREE.Points).isPoints || (o as THREE.Sprite).isSprite || (o as THREE.Line).isLine) {
+        drop.push(o);
+        return;
+      }
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.material = SHADOW_MAT;
+      mesh.castShadow = false;
+    });
+    for (const o of drop) o.removeFromParent();
+    const bones: Record<string, THREE.Bone> = {};
+    copy.traverse((o) => {
+      if ((o as THREE.Bone).isBone) bones[o.name] = o as THREE.Bone;
+    });
+    // The copy was taken mid-step; its animator reads the bind from the bones.
+    bones.pelvis?.position.copy(this.animator.restPelvis());
+    const animator = new HeroAnimator(bones);
+    animator.copyCarry(this.animator);
+    const root = new THREE.Group();
+    root.name = 'shadow-double';
+    root.userData.shadowDouble = true;
+    root.add(copy);
+    animator.follow(root);
+    animator.play('idle', { fade: 0 });
+    return { root, animator };
+  }
+
+  /** The shadow material's programs, linked behind the curtain rather than on first cast. */
+  shadowStandIns(): THREE.Object3D[] {
+    const out: THREE.Object3D[] = [];
+    const seen = new Set<string>();
+    this.hero.root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const key = `${(mesh as THREE.SkinnedMesh).isSkinnedMesh ? 1 : 0}|${Object.keys(mesh.geometry.morphAttributes).join(',')}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const copy = mesh.clone(false) as THREE.Mesh;
+      copy.material = SHADOW_MAT;
+      copy.frustumCulled = false;
+      copy.castShadow = false;
+      out.push(copy);
+    });
+    return out;
+  }
+
   veilStandIns(): THREE.Object3D[] {
     const out: THREE.Object3D[] = [];
     const seen = new Set<string>();
