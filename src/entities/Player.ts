@@ -112,6 +112,9 @@ export class Player {
   private bodyFade = 1;
   private appliedFade = 1;
   private appliedCoat = false;
+  /** Each mesh's own opaque material, and each one's see-through veil twin. */
+  private ownMats = new WeakMap<THREE.Mesh, THREE.MeshStandardMaterial>();
+  private veilMats = new WeakMap<THREE.MeshStandardMaterial, THREE.MeshStandardMaterial>();
 
   constructor(character: Character, seed = 1) {
     this.character = character;
@@ -620,20 +623,66 @@ export class Player {
     this.root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
-      const mat = this.ownMaterial(mesh);
-      if (!mat) return;
-      mat.transparent = translucent;
-      mat.opacity = 0.15 + dim * 0.85;
-      mat.depthWrite = !translucent;
+      const own = this.ownMaterial(mesh);
+      if (!own) return;
+      // Fading swaps to a see-through twin rather than flipping `transparent`
+      // on the one material: that flip is a new shader program for every part
+      // of the hero, linked on the frame Veil was first cast (seconds, cold).
+      // The twins are compiled behind the loading curtain (`veilStandIns`).
+      const veil = translucent ? this.veilMaterial(own) : null;
+      const mat = veil ?? own;
+      if (mesh.material !== mat) mesh.material = mat;
+      mat.opacity = veil ? 0.15 + dim * 0.85 : 1;
       // Darken as it fades, so a veiled hero reads as a shadow rather than a
       // ghost of themselves.
-      mat.color.copy(mat.userData.baseColor as THREE.Color).multiplyScalar(0.35 + dim * 0.65);
+      mat.color.copy(own.userData.baseColor as THREE.Color).multiplyScalar(0.35 + dim * 0.65);
       if (mesh.userData.weaponPart && mat.emissive) {
-        mat.emissive.setHex(coated ? 0x2fbf4a : (mat.userData.baseEmissive as number) ?? 0x000000);
+        mat.emissive.setHex(coated ? 0x2fbf4a : (own.userData.baseEmissive as number) ?? 0x000000);
         mat.emissiveIntensity = coated ? 1.5 : 1;
       }
-      mat.needsUpdate = fadeChanged !== coatChanged;
     });
+  }
+
+  /**
+   * One copy of each hero part wearing its see-through veil material, for the
+   * scene's warmup: drawn once behind the loading curtain so the shaders are
+   * linked before the first Veil. Skinned copies share the hero's skeleton.
+   */
+  veilStandIns(): THREE.Object3D[] {
+    const out: THREE.Object3D[] = [];
+    const seen = new Set<string>();
+    this.root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const own = this.ownMaterial(mesh);
+      if (!own) return;
+      const veil = this.veilMaterial(own);
+      const key = `${veil.uuid}|${(mesh as THREE.SkinnedMesh).isSkinnedMesh ? 1 : 0}|${Object.keys(mesh.geometry.morphAttributes).join(',')}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const copy = mesh.clone(false) as THREE.Mesh;
+      copy.material = veil;
+      copy.frustumCulled = false;
+      copy.castShadow = false;
+      out.push(copy);
+    });
+    return out;
+  }
+
+  /** The see-through twin of one of this player's own materials, made once. */
+  private veilMaterial(own: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
+    let veil = this.veilMats.get(own);
+    if (!veil) {
+      veil = own.clone() as THREE.MeshStandardMaterial;
+      veil.userData = { ...own.userData, playerOwned: true, veilOf: own.uuid };
+      veil.onBeforeCompile = own.onBeforeCompile;
+      veil.customProgramCacheKey = own.customProgramCacheKey;
+      veil.transparent = true;
+      veil.depthWrite = false;
+      veil.opacity = 0.42;
+      this.veilMats.set(own, veil);
+    }
+    return veil;
   }
 
   /**
@@ -650,6 +699,11 @@ export class Player {
     const std = m as THREE.MeshStandardMaterial;
     // Glows and eyes may be unlit (basic) materials: no emissive, but a colour.
     if (!std || !std.isMaterial || !std.color) return null;
+    // Already wearing its veil twin: hand back the opaque original.
+    if (std.userData.veilOf) {
+      const own = this.ownMats.get(mesh);
+      if (own) return own;
+    }
     if (!std.userData.playerOwned) {
       const copy = std.clone() as THREE.MeshStandardMaterial;
       copy.userData = { ...std.userData, playerOwned: true, shared: false };
@@ -659,8 +713,10 @@ export class Player {
       copy.onBeforeCompile = std.onBeforeCompile;
       copy.customProgramCacheKey = std.customProgramCacheKey;
       mesh.material = copy;
+      this.ownMats.set(mesh, copy);
       return copy;
     }
+    this.ownMats.set(mesh, std);
     return std;
   }
 

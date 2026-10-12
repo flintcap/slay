@@ -319,7 +319,14 @@ export class DungeonScene extends GameScene {
       looks = null;
     }
     this.lootWarmGeo = looks?.geometry ?? null;
-    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm, ...(looks?.meshes ?? [])];
+    // The hero's see-through Veil look, linked now rather than on first cast.
+    let veil: THREE.Object3D[] = [];
+    try {
+      veil = this.player.veilStandIns();
+    } catch {
+      veil = [];
+    }
+    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm, ...(looks?.meshes ?? []), ...veil];
     if (!list.length) return null;
     const g = new THREE.Group();
     g.name = 'warmup';
