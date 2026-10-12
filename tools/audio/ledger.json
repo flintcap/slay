@@ -479,51 +479,6 @@
  "sounds/boss.windup/04.ogg": [
   "bang"
  ],
- "sounds/buff.arcane/01.ogg": [
-  "wwoosh",
-  "chant"
- ],
- "sounds/buff.arcane/02.ogg": [
-  "gbreath"
- ],
- "sounds/buff.cold/01.ogg": [
-  "freeze"
- ],
- "sounds/buff.cold/02.ogg": [
-  "ice"
- ],
- "sounds/buff.fire/01.ogg": [
-  "ignite"
- ],
- "sounds/buff.fire/02.ogg": [
-  "flame"
- ],
- "sounds/buff.lightning/01.ogg": [
-  "spark",
-  "elec"
- ],
- "sounds/buff.lightning/02.ogg": [
-  "elec"
- ],
- "sounds/buff.poison/01.ogg": [
-  "steam"
- ],
- "sounds/buff.poison/02.ogg": [
-  "water",
-  "steam"
- ],
- "sounds/buff/01.ogg": [
-  "kr",
-  "whoosh"
- ],
- "sounds/buff/02.ogg": [
-  "rsp",
-  "c100b"
- ],
- "sounds/buff/03.ogg": [
-  "wpn",
-  "chant"
- ],
  "sounds/cast.arcane/01.ogg": [
   "whoosh",
   "chant"
@@ -698,15 +653,6 @@
  "sounds/death.normal/03.ogg": [
   "bfh",
   "mud"
- ],
- "sounds/debuff/01.ogg": [
-  "ghost"
- ],
- "sounds/debuff/02.ogg": [
-  "moan"
- ],
- "sounds/debuff/03.ogg": [
-  "chant"
  ],
  "sounds/door/01.ogg": [
   "kr"
@@ -2873,15 +2819,6 @@
  "sounds/spell.chainLightning/03.ogg": [
   "spark",
   "c100b"
- ],
- "sounds/spell.curse/01.ogg": [
-  "ghost"
- ],
- "sounds/spell.curse/02.ogg": [
-  "chant"
- ],
- "sounds/spell.curse/03.ogg": [
-  "moan"
  ],
  "sounds/spell.explosion/01.ogg": [
   "bang"

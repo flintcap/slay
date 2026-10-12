@@ -734,11 +734,6 @@ export const SFX = {
     x('chant', 'chant11.wav', { fadeIn: 0.2, fadeOut: 0.4, mix: [x('whoosh', 'whoosh2_0.wav', { rate: 0.8, gain: -8 })] }),
     x('tiny', 'water-pour-01.wav', { t: 1.2, fadeOut: 0.4, mix: [x('chant', 'chant23.wav', { ss: 0.6, t: 1.2, rate: 0.9, gain: -5 })] }),
   ],
-  'spell.curse': [
-    x('ghost', 'ghost.wav', { t: 1.8, fadeOut: 0.5 }),
-    x('chant', 'chant18.wav', { ss: 3, t: 1.6, rate: 0.6, fadeIn: 0.2, fadeOut: 0.5 }),
-    x('moan', 'qubodup-GhostMoan05.wav'),
-  ],
   // Gone in a rush of air.
   'spell.teleportOut': [
     x('whoosh', 'whoosh2_0.wav', { mix: [x('ki', 'impactSoft_medium_001.ogg', { rate: 0.7, gain: -4 })] }),
@@ -750,26 +745,6 @@ export const SFX = {
     x('whoosh', 'whoosh2_0.wav', { rev: true, fadeIn: 0.05, gain: -2 }),
     x('wwoosh', 'wind woosh loop.ogg', { t: 0.8, rev: true, rate: 1.2, fadeIn: 0.1, gain: -2 }),
     x('swish', 'swish-12.wav', { rate: 0.7, gain: -2, mix: [x('ki', 'impactSoft_heavy_001.ogg', { rate: 0.7, gain: -3 })] }),
-  ],
-  // Buffs sound like what they are. Each school has its own (buff.<school>);
-  // physical buffs, auras and stances fall back to this one: buckles, mail and a low breath.
-  buff: [
-    x('kr', 'beltHandle1.ogg', { mix: [x('whoosh', 'whoosh2_0.wav', { rate: 0.7, gain: -6 })] }),
-    x('rsp', 'inventory/chainmail2.wav', { mix: [x('c100b', 'sfx100v2_air_02.ogg', { t: 0.8, gain: -6 })] }),
-    x('wpn', 'sheath-buckle-01.wav', { mix: [x('chant', 'chant11.wav', { rate: 0.6, gain: -8 })] }),
-  ],
-  'buff.fire': [x('ignite', 'ignition.flac'), x('flame', 'flame.ogg', { t: 1.2, fadeOut: 0.4 })],
-  'buff.cold': [x('freeze', 'freeze.wav', { t: 1 }), x('ice', 'coldsnap.wav', { t: 1 })],
-  'buff.lightning': [x('spark', 'continuousspark.wav', { mix: [x('elec', 'death_1.wav', { t: 0.8, gain: -4 })] }), x('elec', 'snaploop.wav', { t: 0.8 })],
-  'buff.poison': [x('steam', 'steam hisses - Marker #1.wav', { t: 1 }), x('water', 'bubble_03.ogg', { mix: [x('steam', 'steam hisses - Marker #3.wav', { t: 0.8, gain: -4 })] })],
-  'buff.arcane': [
-    x('wwoosh', 'wind woosh loop.ogg', { t: 1, rate: 0.7, fadeIn: 0.1, fadeOut: 0.4, mix: [x('chant', 'chant23.wav', { ss: 0.5, t: 1, rate: 0.5, gain: -5 })] }),
-    x('gbreath', 'ghostbreath.flac', { t: 1.2, rate: 0.8, fadeOut: 0.4 }),
-  ],
-  debuff: [
-    x('ghost', 'ghost.wav', { t: 1, fadeOut: 0.3, gain: -2 }),
-    x('moan', 'qubodup-GhostMoan03.wav', { t: 1.2, fadeOut: 0.3, gain: -2 }),
-    x('chant', 'chant18.wav', { ss: 3, t: 1, rate: 0.55, fadeIn: 0.1, fadeOut: 0.3, gain: -2 }),
   ],
   slam: [
     ...[1, 3, 7].map((n, i) => x('c100', `slam_0${n}.ogg`, { rate: 0.7, mix: [x('ki', `impactMining_00${i}.ogg`, { rate: 0.7 })] })),

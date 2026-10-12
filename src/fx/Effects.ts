@@ -334,7 +334,7 @@ class Live {
   gen = 0;
   active = false;
   essential = false;
-  /** Started inside `EffectSystem.quietly`: makes no sound, now or when it lands. */
+  /** Started inside `EffectSystem.beginQuiet`: makes no sound, now or when it lands. */
   quiet = false;
   stopped = false;
   born = 0;
@@ -586,22 +586,26 @@ export class EffectSystem {
     events.emit('sfx', { id, x, z, pitch });
   }
 
-  /** Above zero while `quietly` runs, and while a quiet effect updates. */
+  /** Above zero between `beginQuiet` and `endQuiet`, and while a quiet effect updates. */
   private hush = 0;
 
   /**
-   * Runs `fn` with every sound its effects would make silenced, including the
-   * ones they make later: a projectile landing, a delayed blast, a slam
-   * coming down. A player skill sounds like the skill (`audio/SkillSounds.ts`),
-   * not like the projectiles, novas and teleports it is drawn with.
+   * From here until `endQuiet`, effects make no sound, and neither do the
+   * ones they start, now or later: a projectile landing, a delayed blast, a
+   * slam coming down. A player skill sounds like the skill
+   * (`audio/SkillSounds.ts`), not like the projectiles, novas and teleports
+   * it is drawn with. Calls nest; pair each with `endQuiet` in a `finally`.
+   *
+   * A begin/end pair rather than a callback, so the stand-in effects the
+   * headless checks use (which answer every call and run every callback
+   * later) cannot delay the skill itself.
    */
-  quietly<T>(fn: () => T): T {
+  beginQuiet(): void {
     this.hush++;
-    try {
-      return fn();
-    } finally {
-      this.hush--;
-    }
+  }
+
+  endQuiet(): void {
+    this.hush = Math.max(0, this.hush - 1);
   }
 
   private trauma(amount: number): void {
@@ -1727,14 +1731,16 @@ export class EffectSystem {
       const e = this.live[i]!;
       let alive: boolean;
       // A quiet effect stays quiet when it lands, and so does anything it starts.
-      if (e.quiet) this.hush++;
+      // Read once: the slot can be released and reused while it steps.
+      const quiet = e.quiet;
+      if (quiet) this.hush++;
       try {
         alive = this.step(e, dt);
       } catch (err) {
         console.error('[fx] effect update threw', err);
         alive = false;
       } finally {
-        if (e.quiet) this.hush--;
+        if (quiet) this.hush--;
       }
       if (alive) {
         i++;

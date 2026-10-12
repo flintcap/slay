@@ -15,7 +15,7 @@
  *   minion  each time a summon it raised attacks.
  *
  * While a skill runs, the effects it is drawn with make no sound of their own
- * (`EffectSystem.quietly`) and a skill's blow plays no weapon-hit layer, so
+ * (`EffectSystem.beginQuiet`) and a skill's blow plays no weapon-hit layer, so
  * nothing else is heard in place of these. The monster struck still answers
  * with its own body and voice.
  */
