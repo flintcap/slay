@@ -334,6 +334,8 @@ class Live {
   gen = 0;
   active = false;
   essential = false;
+  /** Started inside `EffectSystem.quietly`: makes no sound, now or when it lands. */
+  quiet = false;
   stopped = false;
   born = 0;
   t = 0;
@@ -388,6 +390,7 @@ class Live {
 
   reset(): void {
     this.essential = false;
+    this.quiet = false;
     this.stopped = false;
     this.t = 0;
     this.dur = 0;
@@ -520,6 +523,7 @@ export class EffectSystem {
     e.gen = (e.gen + 1) | 0;
     e.active = true;
     e.essential = essential;
+    e.quiet = this.hush > 0;
     e.born = this.stamp++;
     this.live.push(e);
     return e;
@@ -578,7 +582,26 @@ export class EffectSystem {
   }
 
   private sfx(id: string, x: number, z: number, pitch?: number): void {
+    if (this.hush > 0) return;
     events.emit('sfx', { id, x, z, pitch });
+  }
+
+  /** Above zero while `quietly` runs, and while a quiet effect updates. */
+  private hush = 0;
+
+  /**
+   * Runs `fn` with every sound its effects would make silenced, including the
+   * ones they make later: a projectile landing, a delayed blast, a slam
+   * coming down. A player skill sounds like the skill (`audio/SkillSounds.ts`),
+   * not like the projectiles, novas and teleports it is drawn with.
+   */
+  quietly<T>(fn: () => T): T {
+    this.hush++;
+    try {
+      return fn();
+    } finally {
+      this.hush--;
+    }
   }
 
   private trauma(amount: number): void {
@@ -1703,11 +1726,15 @@ export class EffectSystem {
     for (let i = 0; i < this.live.length; ) {
       const e = this.live[i]!;
       let alive: boolean;
+      // A quiet effect stays quiet when it lands, and so does anything it starts.
+      if (e.quiet) this.hush++;
       try {
         alive = this.step(e, dt);
       } catch (err) {
         console.error('[fx] effect update threw', err);
         alive = false;
+      } finally {
+        if (e.quiet) this.hush--;
       }
       if (alive) {
         i++;

@@ -1,6 +1,6 @@
 # Stream: fix-skillsound (one sound per skill, sounding like the skill)
 
-Status: not started
+Status: in progress
 
 Owner's words: "im hearing different sounds for the same skill. skills need
 one sound that sounds how the skill should sound. a blink should be a quick

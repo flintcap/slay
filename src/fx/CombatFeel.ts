@@ -71,6 +71,12 @@ export interface HitReport {
   /** Life before the blow, so the feel can see what actually landed. */
   lifeBefore: number;
   weapon?: WeaponSound;
+  /**
+   * A player skill's blow. The skill plays its own landing sound
+   * (audio/SkillSounds.ts), so the weapon and arrow layers stay out of it;
+   * the body struck still answers.
+   */
+  skill?: boolean;
 }
 
 /** Anything that can say whether a straight floor move is clear. */
@@ -359,7 +365,9 @@ export class CombatFeel {
     const x = p.x;
     const z = p.z;
     const physical = type === 'physical';
-    if ((r.kind === 'melee' || r.kind === 'heavy') && physical) {
+    if (r.skill) {
+      // The skill's own hit sound has it.
+    } else if ((r.kind === 'melee' || r.kind === 'heavy') && physical) {
       audio.play(WEAPON_SOUND[r.weapon ?? 'blade'], { x, z, volume: r.kind === 'heavy' ? 1.15 : 1 });
       if (r.kind === 'heavy') audio.play('hit.heavy', { x, z });
     } else if (r.kind === 'projectile' && physical) {

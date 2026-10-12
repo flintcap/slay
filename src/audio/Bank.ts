@@ -40,6 +40,19 @@ export interface SoundDef {
 
 const DEFAULT: SoundDef = { vol: 0.8, jitter: 0.05, volJitter: 0.08, rate: 1, prio: 1, max: 4, gap: 0.03, bus: 'sfx', send: 0.25, with: [] };
 
+/** A summon's attack: heard all fight long, so quieter and the first to give way. */
+const MINION: Partial<SoundDef> = { vol: 0.55, prio: 0, max: 2 };
+/** A swing or a throw: the whoosh before the blow (the old swing.* level). */
+const WHOOSH: Partial<SoundDef> = { vol: 0.65, jitter: 0.04 };
+/** The blow or shot landing (the old hit.* level). */
+const LANDS: Partial<SoundDef> = { vol: 0.85 };
+/** The biggest things a hero does: a falling rock, a thunderbolt, a broken floor. */
+const BOOM: Partial<SoundDef> = { vol: 1, send: 0.5, max: 2 };
+/** Sparks are all peak and little body; lifted so they sit with the rest. */
+const SPARK: Partial<SoundDef> = { vol: 0.95 };
+/** A shout is a voice, mixed like the old warcry. */
+const SHOUT: Partial<SoundDef> = { vol: 0.9, max: 1, gap: 0.3, send: 0.45 };
+
 /** Per-id overrides. Anything not listed uses DEFAULT plus the family rules in `defFor`. */
 const DEFS: Record<string, Partial<SoundDef>> = {
   // --- interface ------------------------------------------------------------
@@ -154,6 +167,74 @@ const DEFS: Record<string, Partial<SoundDef>> = {
   'loot.clink': { vol: 0.5, prio: 0, max: 3 },
   'loot.grab': { vol: 0.5, prio: 1, max: 2 },
   'loot.legendary': { vol: 1, prio: 2, max: 1, gap: 0.6, jitter: 0, send: 0.55 },
+
+  // --- player skills (which skill plays which: SkillSounds.ts) ----------------
+  // Everything else under `skill.` takes soundDef's skill rule.
+  'skill.storm.zap': MINION,
+  'skill.bone.slash': MINION,
+  'skill.bone.bolt': MINION,
+  'skill.clay.slam': MINION,
+  'skill.clone.strike': MINION,
+  'skill.viper.bite': MINION,
+  'skill.fire.wispShot': MINION,
+  'skill.swing.blade': WHOOSH,
+  'skill.swing.quick': WHOOSH,
+  'skill.swing.heavy': WHOOSH,
+  'skill.swing.wide': WHOOSH,
+  'skill.swing.flurry': WHOOSH,
+  'skill.swing.double': WHOOSH,
+  'skill.swing.ruin': WHOOSH,
+  'skill.swing.lotus': WHOOSH,
+  'skill.swing.shadow': WHOOSH,
+  'skill.swing.shield': WHOOSH,
+  'skill.throw.dart': WHOOSH,
+  'skill.throw.vial': WHOOSH,
+  'skill.throw.fan': WHOOSH,
+  'skill.throw.knife': WHOOSH,
+  'skill.shield.throw': WHOOSH,
+  'skill.arrow.hit': LANDS,
+  'skill.arrow.mark': LANDS,
+  'skill.arrow.heavy': LANDS,
+  'skill.arrow.barb': LANDS,
+  'skill.arrow.ricochet': LANDS,
+  'skill.knife.hit': LANDS,
+  'skill.shield.bash': LANDS,
+  'skill.hit.cleave': LANDS,
+  'skill.hit.rend': LANDS,
+  'skill.hit.gash': LANDS,
+  'skill.hit.crush': LANDS,
+  'skill.hit.sunder': LANDS,
+  'skill.hit.maim': LANDS,
+  'skill.hit.whirl': LANDS,
+  'skill.hit.massacre': LANDS,
+  'skill.hit.viper': LANDS,
+  'skill.hit.backstab': LANDS,
+  'skill.hit.ambush': LANDS,
+  'skill.hit.execute': LANDS,
+  'skill.hit.precise': LANDS,
+  'skill.hit.tendon': LANDS,
+  'skill.hit.ruin': BOOM,
+  'skill.fire.meteor': BOOM,
+  'skill.fire.annihilate': BOOM,
+  'skill.fire.sun': BOOM,
+  'skill.supernova': BOOM,
+  'skill.storm.strike': BOOM,
+  'skill.storm.skyfall': BOOM,
+  'skill.storm.eye': BOOM,
+  'skill.quake': BOOM,
+  'skill.bone.nova': BOOM,
+  'skill.storm.spark': SPARK,
+  'skill.storm.orb': SPARK,
+  'skill.storm.orbHit': SPARK,
+  'skill.storm.arc': SPARK,
+  'skill.storm.chain': SPARK,
+  'skill.storm.discharge': SPARK,
+  'skill.storm.charge': SPARK,
+  'skill.shout.battle': SHOUT,
+  'skill.shout.rally': SHOUT,
+  'skill.shout.fear': SHOUT,
+  'skill.shout.taunt': SHOUT,
+  'skill.shout.herald': { ...SHOUT, ...BOOM, max: 1 },
 };
 
 /** Elements the family rules understand. */
@@ -315,6 +396,12 @@ export function soundDef(id: string): SoundDef {
     base.bus = 'amb';
     base.send = 0.6;
     base.jitter = 0.1;
+  } else if (id.startsWith('skill.')) {
+    // The hero's own skill (SkillSounds.ts): one recording, and it must be heard.
+    base.vol = 0.8;
+    base.prio = 2;
+    base.max = 3;
+    base.send = 0.4;
   } else if (/^(cast|impact|nova|beam|cone)\./.test(id)) {
     base.vol = id.startsWith('nova.') ? 0.9 : 0.75;
     base.max = 3;

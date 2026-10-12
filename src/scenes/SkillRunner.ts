@@ -3,6 +3,7 @@ import { reportError } from '../core/Engine';
 import type { DamagePacket, DamageType, StatusApplication } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
+import { skillSound } from '../audio/SkillSounds';
 import { SKILLS } from '../data/skills';
 import { rollDamage, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
@@ -237,6 +238,8 @@ const SELF_BUFF_STATUS: Record<string, string> = {
 
 /** Coat Blades, for its poison chance (read on every coated blow). */
 const COAT = SKILLS.find((s) => s.id === 'coatBlades');
+/** Every skill's display name, which is what a skill's damage packet carries as `ability`. */
+const SKILL_NAMES = new Set(SKILLS.map((s) => s.name));
 
 const SKILL_STATUS: Record<string, string> = {
   // Curses and marks
@@ -567,7 +570,10 @@ export class SkillRunner {
     const before = t.life;
     t.takeDamage(packet, ctx);
     try {
-      this.feel.hit(t, packet, { kind, fromX, fromZ, lifeBefore: before, weapon: this.weaponSound }, ctx.nav);
+      this.feel.hit(t, packet, {
+        kind, fromX, fromZ, lifeBefore: before, weapon: this.weaponSound,
+        skill: packet.ability !== undefined && SKILL_NAMES.has(packet.ability),
+      }, ctx.nav);
     } catch (err) {
       // Presentation must never take the hit itself down with it.
       console.warn('[feel] hit report failed', err);
@@ -737,549 +743,558 @@ export class SkillRunner {
       });
     }
 
-    switch (family) {
-      case 'melee':
-      case 'cleave': {
-        player.beginAction(clip, attackTime);
-        const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
-        // A committed single-target skill lands like one: heavier stop, harder
-        // shove. Wide sweeps hit many things and stay crisp instead.
-        const heavy = !wide && (scale >= 1.6 || /heavy|smash|crush|execute/i.test(def.effect ?? ''));
-        // `radius` is how far the skill says it reaches (Cleave 2.8m, Death
-        // Lotus 4m); it was never read, so every swing reached 2.3m.
-        const reach = num('reach', num('radius', 2.3));
-        const arc = num('arc', wide ? 2.2 : 1.3);
-        const kind: HitKind = heavy ? 'heavy' : 'melee';
-        // Multi-hit skills: Double Strike's two, Massacre's five, Death Lotus's
-        // eight. `hits` was never read, so each landed once.
-        const hits = Math.max(1, Math.floor(num('hits', 1)));
-        // Two blades: the off hand answers once the main hand lands, so a
-        // skill strikes with both. A one-blow skill splits its damage across
-        // the two blades (same total, a hit from each); a multi-hit skill's
-        // blows keep their damage and the left blade swings among them.
-        const dual = isDualWielding(player);
-        const split = dual && hits === 1;
-        const mainPacket = split ? (m = 1): DamagePacket => makePacket(m * DUAL_SKILL_MAIN) : makePacket;
-        this.meleeSwing(player, dir, arc, reach, mainPacket, ctx, enemies, boss, type, true, kind);
-        if (dual) {
-          const facing = dir.clone();
-          this.pendingSwings.push({
-            t: player.contactIn,
-            run: () => {
-              if (!player.alive) return;
-              const contact = player.handBlow('L', attackTime);
-              if (!split) return;
-              this.pendingSwings.push({
-                t: contact,
-                // Lands even if a new action has started: it is half the skill's damage.
-                run: () => {
-                  if (!player.alive) return;
-                  this.atContact = true;
-                  this.caster = player;
-                  try {
-                    const off = (m = 1): DamagePacket => makePacket(m * (1 - DUAL_SKILL_MAIN));
-                    this.meleeSwing(player, facing, arc, reach, off, ctx, enemies, boss, type, true, kind);
-                  } finally {
-                    this.atContact = false;
-                  }
+    // The skill's own sound, and only that: one recording per stage, picked
+    // in audio/SkillSounds.ts. The effects drawn below stay silent, and so do
+    // the sounds they would make later as they land.
+    const sound = skillSound(def.id);
+    if (sound.cast) audio.play(sound.cast, { x: origin.x, z: origin.z });
+    const hitAt = (p: { x: number; z: number }): void => {
+      if (sound.hit) audio.play(sound.hit, { x: p.x, z: p.z });
+    };
+
+    this.casting = true;
+    try {
+      this.effects.quietly(() => {
+          switch (family) {
+            case 'melee':
+            case 'cleave': {
+              player.beginAction(clip, attackTime);
+              const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
+              // A committed single-target skill lands like one: heavier stop, harder
+              // shove. Wide sweeps hit many things and stay crisp instead.
+              const heavy = !wide && (scale >= 1.6 || /heavy|smash|crush|execute/i.test(def.effect ?? ''));
+              // `radius` is how far the skill says it reaches (Cleave 2.8m, Death
+              // Lotus 4m); it was never read, so every swing reached 2.3m.
+              const reach = num('reach', num('radius', 2.3));
+              const arc = num('arc', wide ? 2.2 : 1.3);
+              const kind: HitKind = heavy ? 'heavy' : 'melee';
+              // Multi-hit skills: Double Strike's two, Massacre's five, Death Lotus's
+              // eight. `hits` was never read, so each landed once.
+              const hits = Math.max(1, Math.floor(num('hits', 1)));
+              // Two blades: the off hand answers once the main hand lands, so a
+              // skill strikes with both. A one-blow skill splits its damage across
+              // the two blades (same total, a hit from each); a multi-hit skill's
+              // blows keep their damage and the left blade swings among them.
+              const dual = isDualWielding(player);
+              const split = dual && hits === 1;
+              const mainPacket = split ? (m = 1): DamagePacket => makePacket(m * DUAL_SKILL_MAIN) : makePacket;
+              this.meleeSwing(player, dir, arc, reach, mainPacket, ctx, enemies, boss, type, true, kind, sound.hit);
+              if (dual) {
+                const facing = dir.clone();
+                this.pendingSwings.push({
+                  t: player.contactIn,
+                  run: () => {
+                    if (!player.alive) return;
+                    const contact = player.handBlow('L', attackTime);
+                    if (!split) return;
+                    this.pendingSwings.push({
+                      t: contact,
+                      // Lands even if a new action has started: it is half the skill's damage.
+                      run: () => {
+                        if (!player.alive) return;
+                        this.atContact = true;
+                        this.caster = player;
+                        try {
+                          const off = (m = 1): DamagePacket => makePacket(m * (1 - DUAL_SKILL_MAIN));
+                          this.meleeSwing(player, facing, arc, reach, off, ctx, enemies, boss, type, true, kind, sound.hit);
+                        } finally {
+                          this.atContact = false;
+                        }
+                      },
+                    });
+                  },
+                });
+              }
+              if (hits > 1) {
+                const id = player.actionId;
+                const first = player.contactIn;
+                const gap = Math.min(0.08, (attackTime * 0.8) / hits);
+                const facing = dir.clone();
+                for (let i = 1; i < hits; i++) {
+                  this.pendingSwings.push({
+                    t: first + gap * i,
+                    run: () => {
+                      if (player.actionId !== id || !player.alive) return;
+                      this.atContact = true;
+                      this.caster = player;
+                      try {
+                        this.meleeSwing(player, facing, arc, reach, makePacket, ctx, enemies, boss, type, true, kind, sound.hit);
+                      } finally {
+                        this.atContact = false;
+                      }
+                    },
+                  });
+                }
+              }
+              break;
+            }
+
+            case 'whirlwind': {
+              player.beginAction('attack2', attackTime * 1.4);
+              this.meleeSwing(player, dir, Math.PI * 2, num('reach', 2.8), makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
+              break;
+            }
+
+            case 'projectile':
+            case 'bolt': {
+              player.beginAction(clip, castTime);
+              const range = num('range', 18);
+              const count = Math.max(1, Math.floor(num('count', 1)));
+              const spread = num('spread', 0.16);
+              const pierce = Math.floor(num('pierce', 0));
+              const splash = num('splash', 0);
+
+              // Forked Bolt adds shots either side of the original at reduced power.
+              const fp = player.passives;
+              const forks = type === 'lightning' ? Math.floor(fp.forkCount) : 0;
+              const shots = count + forks;
+              for (let i = 0; i < shots; i++) {
+                const isFork = i >= count;
+                const a = isFork
+                  ? (i - count - (forks - 1) / 2) * (fp.forkSpread || 0.35) + (forks > 1 ? 0 : 0.35)
+                  : count === 1
+                    ? 0
+                    : (i - (count - 1) / 2) * spread;
+                const forkScale = isFork ? fp.forkDamagePct / 100 : 1;
+                const d = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
+                const from = origin.clone();
+                // A piercing shot does not stop at the first body — it flies until a
+                // wall stops it. Using the first-hit distance meant `pierce` changed
+                // nothing: the arrow ended at the same monster, and the line damage
+                // it applied covered only the stretch up to that monster. Pierce Shot
+                // and every skill built on it pierced exactly one target.
+                //
+                // Anything else stops at the first thing it would actually hit, so
+                // the visual lands on the target instead of sailing through it.
+                const stop =
+                  pierce > 0
+                    ? this.wallStop(from, d, range, ctx, num('radius', 0.42))
+                    : this.firstHitAlong(from, d, range, enemies, boss, num('radius', 0.42), ctx);
+                const to = from.clone().addScaledVector(d, stop);
+
+                this.effects.projectile(from, to, {
+                  element: school,
+                  color,
+                  shed: sig.trail,
+                  flare: i === 0 && !released,
+                  speed: num('speed', 17),
+                  size: num('radius', 0.42) * sig.size,
+                  onHit: (p) => {
+                    const hit = (m = 1): DamagePacket => makePacket(m * forkScale);
+                    if (pierce > 0) {
+                      // Piercing shots damage everything along the flight path.
+                      this.lineDamage(from, d, stop, num('radius', 0.42) * 2, hit, ctx, enemies, boss);
+                    } else if (splash > 0) {
+                      this.areaDamage(p, splash, hit, ctx, enemies, boss);
+                    } else {
+                      this.pointDamage(p, num('radius', 0.42), hit, ctx, enemies, boss, 'projectile', from);
+                    }
+                    hitAt(p);
+                  },
+                });
+              }
+              break;
+            }
+
+            case 'nova': {
+              player.beginAction(clip, castTime);
+              const radius = num('radius', 5.2);
+              this.effects.nova(player.position.x, player.position.z, radius, {
+                element: school,
+                color,
+                emitter: sig.emitter,
+                density: sig.density,
+                mark: true,
+              });
+              this.areaDamage(player.position, radius, makePacket, ctx, enemies, boss);
+              break;
+            }
+
+            case 'slam': {
+              player.beginAction('attack2', attackTime * 1.5);
+              const radius = num('radius', 4.0);
+              const at = target.clone().setY(0);
+              // The wind-up is what gives a slam weight; damage lands on the beat.
+              this.effects.slam(at.x, at.z, radius, {
+                element: school,
+                color,
+                emitter: sig.emitter,
+                density: sig.density,
+                windup: num('windup', 0.25),
+                onFire: () => {
+                  this.areaDamage(at, radius, () => makePacket(1.25), ctx, enemies, boss, 'heavy');
+                  hitAt(at);
                 },
               });
-            },
-          });
-        }
-        if (hits > 1) {
-          const id = player.actionId;
-          const first = player.contactIn;
-          const gap = Math.min(0.08, (attackTime * 0.8) / hits);
-          const facing = dir.clone();
-          for (let i = 1; i < hits; i++) {
-            this.pendingSwings.push({
-              t: first + gap * i,
-              run: () => {
-                if (player.actionId !== id || !player.alive) return;
-                this.atContact = true;
-                this.caster = player;
-                try {
-                  this.meleeSwing(player, facing, arc, reach, makePacket, ctx, enemies, boss, type, true, kind);
-                } finally {
-                  this.atContact = false;
-                }
-              },
-            });
-          }
-        }
-        break;
-      }
+              break;
+            }
 
-      case 'whirlwind': {
-        player.beginAction('attack2', attackTime * 1.4);
-        this.meleeSwing(player, dir, Math.PI * 2, num('reach', 2.8), makePacket, ctx, enemies, boss, type);
-        break;
-      }
+            case 'meteor': {
+              player.beginAction(clip, castTime);
+              const radius = num('radius', 3.4);
+              const at = target.clone().setY(0);
+              // The cast sound is the call going up (an archer looses skyward, a
+              // caster's gather); the hit sound is the sky answering.
+              this.effects.meteor(at.x, at.z, {
+                radius,
+                element: school,
+                color,
+                emitter: sig.emitter,
+                density: sig.density,
+                onHit: (p) => {
+                  this.areaDamage(p, radius, () => makePacket(1.4), ctx, enemies, boss);
+                  hitAt(p);
+                },
+              });
+              break;
+            }
 
-      case 'projectile':
-      case 'bolt': {
-        player.beginAction(clip, castTime);
-        const range = num('range', 18);
-        const count = Math.max(1, Math.floor(num('count', 1)));
-        const spread = num('spread', 0.16);
-        const pierce = Math.floor(num('pierce', 0));
-        const splash = num('splash', 0);
+            case 'beam': {
+              player.beginAction(clip, castTime);
+              const length = num('length', 12);
+              const to = origin.clone().addScaledVector(dir, length);
+              this.effects.beam(origin, to, {
+                element: school,
+                color,
+                width: num('width', 1.1) * sig.size,
+                endBurst: true,
+                emitter: sig.emitter,
+              });
+              this.lineDamage(player.position, dir, length, num('width', 1.1), makePacket, ctx, enemies, boss);
+              break;
+            }
 
-        // Forked Bolt adds shots either side of the original at reduced power.
-        const fp = player.passives;
-        const forks = type === 'lightning' ? Math.floor(fp.forkCount) : 0;
-        const shots = count + forks;
-        for (let i = 0; i < shots; i++) {
-          const isFork = i >= count;
-          const a = isFork
-            ? (i - count - (forks - 1) / 2) * (fp.forkSpread || 0.35) + (forks > 1 ? 0 : 0.35)
-            : count === 1
-              ? 0
-              : (i - (count - 1) / 2) * spread;
-          const forkScale = isFork ? fp.forkDamagePct / 100 : 1;
-          const d = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
-          const from = origin.clone();
-          // A piercing shot does not stop at the first body — it flies until a
-          // wall stops it. Using the first-hit distance meant `pierce` changed
-          // nothing: the arrow ended at the same monster, and the line damage
-          // it applied covered only the stretch up to that monster. Pierce Shot
-          // and every skill built on it pierced exactly one target.
-          //
-          // Anything else stops at the first thing it would actually hit, so
-          // the visual lands on the target instead of sailing through it.
-          const stop =
-            pierce > 0
-              ? this.wallStop(from, d, range, ctx, num('radius', 0.42))
-              : this.firstHitAlong(from, d, range, enemies, boss, num('radius', 0.42), ctx);
-          const to = from.clone().addScaledVector(d, stop);
+            case 'cone': {
+              player.beginAction(clip, castTime);
+              const reach = num('reach', 6.5);
+              const half = num('arc', 1.1) * 0.5;
+              this.effects.cone(player.position.clone().setY(1.0), dir, half, reach, {
+                element: school,
+                color,
+                emitter: sig.emitter,
+                density: sig.density,
+              });
+              this.meleeSwing(player, dir, half * 2, reach, makePacket, ctx, enemies, boss, type, false, 'melee', sound.hit);
+              break;
+            }
 
-          this.effects.projectile(from, to, {
-            element: school,
-            color,
-            shed: sig.trail,
-            flare: i === 0 && !released,
-            speed: num('speed', 17),
-            size: num('radius', 0.42) * sig.size,
-            onHit: (p) => {
-              const hit = (m = 1): DamagePacket => makePacket(m * forkScale);
-              if (pierce > 0) {
-                // Piercing shots damage everything along the flight path.
-                this.lineDamage(from, d, stop, num('radius', 0.42) * 2, hit, ctx, enemies, boss);
-              } else if (splash > 0) {
-                this.areaDamage(p, splash, hit, ctx, enemies, boss);
-              } else {
-                this.pointDamage(p, num('radius', 0.42), hit, ctx, enemies, boss, 'projectile', from);
+            case 'chain': {
+              player.beginAction(clip, castTime);
+              this.chainLightning(player, target, Math.floor(num('jumps', 4)), num('range', 7), makePacket, ctx, enemies, boss, type, color, sound.hit);
+              break;
+            }
+
+            case 'dash': {
+              player.dodge(dir.x, dir.z, true);
+              this.meleeSwing(player, dir, Math.PI, num('reach', 2.4), makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
+              break;
+            }
+
+            case 'heal': {
+              player.beginAction(clip, castTime * 0.7);
+              player.heal(num('amount', 30) * (1 + rank * 0.15));
+              this.effects.impact('arcane', player.position.x, 1.0, player.position.z, {
+                color: 0x7dffb0,
+                decal: false,
+                shake: 0,
+                sfx: null,
+              });
+              break;
+            }
+
+            case 'buff':
+            case 'aura':
+            case 'stance':
+            case 'shout':
+            case 'banner':
+            case 'self':
+            case 'absorb': {
+              player.beginAction(clip, castTime * 0.7);
+              // Commanding Presence and Standard Bearer widen and strengthen what an
+              // oath, aura or banner does. `applyBuff` reads the same numbers.
+              this.applyBuff(player, def, rank, num, color);
+              // Sworn Brother: a spectral Warden rises where the standard goes in.
+              if (family === 'banner') this.raiseSwornBrother(player, target, ctx);
+              this.effects.impact(school, player.position.x, 1.0, player.position.z, {
+                color,
+                emitter: sig.emitter,
+                density: sig.density,
+                decal: false,
+                shake: 0,
+                sfx: null,
+              });
+              break;
+            }
+
+            // -- persistent ground ------------------------------------------------
+            // Fifteen skills across four classes describe leaving something burning,
+            // choking or freezing on the floor. None of them left anything: the
+            // family had no handler, so every one fired a plain bolt.
+            case 'ground':
+            case 'trap':
+            case 'ward': {
+              player.beginAction(clip, castTime);
+              // Scorched Earth and Standard Bearer both make what you leave on the
+              // floor last longer and hit harder.
+              const groundLife = 1 + player.passives.groundDurationPct / 100;
+              const groundHit = 1 + player.passives.groundDamagePct / 100;
+              const radius = num('radius', 3.2) + (ctx.auraRadiusBonus ?? 0);
+              const duration = num('duration', 6) * groundLife;
+              const at = target.clone().setY(0);
+              this.addZone(
+                at.x, at.z, radius, duration,
+                num('tickRate', 0.5),
+                // Ticking damage is a fraction of the hit it would be as a burst, or
+                // standing in a field would out-damage every direct skill in the game.
+                (m = 1) => makePacket(m * num('tickScale', 0.28) * groundHit),
+                type, color, sig.emitter,
+                this.statusFor(def, num, color),
+              );
+              this.effects.nova(at.x, at.z, radius, { element: school, color, emitter: sig.emitter, density: sig.density });
+              break;
+            }
+
+            // -- summons ----------------------------------------------------------
+            // Nine skills summon. Nothing was ever summoned. A minion here is a
+            // guardian that holds its ground and fights: a real presence with a real
+            // lifetime, without a full pet AI it would have to path and follow.
+            case 'summon':
+            case 'minion': {
+              player.beginAction('point', castTime);
+              // A creature stays until something kills it; only a totem runs down.
+              const isTotem = (def.effect ?? '').includes('totem');
+              // Bone Mastery, Marrow Feast and the minion capstones all land here.
+              const mp = player.passives;
+              // Shadow Legion and Mirror Gambit only touch the clone summons; every
+              // other summon keeps the minion numbers.
+              const isClone = (def.effect ?? '').includes('clone');
+              const count = Math.max(1, Math.floor(num('count', 1)));
+              // Only a totem has a lifetime. A creature is permanent.
+              const life = isTotem
+                ? num('duration', 20) * (1 + mp.minionDurationPct / 100)
+                : Infinity;
+
+              // The cap: what the skill grants, plus ranks, plus the minion passives,
+              // stopped at the number the fight is balanced around.
+              const cap = Math.min(
+                SUMMON_ABSOLUTE_CAP,
+                SUMMON_HARD_CAP[def.id] ?? 6,
+                Math.max(1, num('baseCap', 1))
+                  + Math.floor(rank / Math.max(1, num('maxPerRanks', 99)))
+                  + Math.floor(isClone ? mp.cloneCount : mp.minionCapBonus),
+              );
+              const minionPower = 1 + (isClone ? mp.clonePowerPct : mp.minionDamagePct) / 100;
+              // Skeletal Knight and Death Knight upgrade the first few summons.
+              const elites = Math.floor(mp.minionEliteCount);
+              const elitePower = 1 + mp.minionElitePowerPct / 100;
+              const swingRate = 1 / (1 + mp.minionAttackSpeedPct / 100);
+              const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel');
+              // Make room before raising anything. Oldest of this skill goes first, so
+              // pressing the button at the cap always does something visible.
+              if (!isTotem) this.trimSummons(def.id, Math.max(0, cap - count));
+
+              const room = isTotem ? count : Math.max(0, cap - this.countSummons(def.id));
+              if (room === 0) {
+                events.emit('toast', { text: `${def.name} is at its limit.`, kind: 'info' });
+                break;
               }
-            },
-          });
-        }
-        audio.play(`cast.${school}`);
-        break;
-      }
+              for (let i = 0; i < Math.min(count, room); i++) {
+                const a = (i / count) * Math.PI * 2;
+                const spread = 1.2 + count * 0.25;
+                this.addTurret(
+                  player.position.x + Math.cos(a) * spread,
+                  player.position.z + Math.sin(a) * spread,
+                  life,
+                  num('attackRate', melee ? 1.1 : 1.6) * swingRate,
+                  num('range', melee ? 2.6 : 11),
+                  (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower * (i < elites ? elitePower : 1)),
+                  type, color, melee, def.id,
+                  // A share of your own pool, which is how the skill descriptions
+                  // read it — "40% of your life" and so on.
+                  Math.max(20, player.stats.life * (num('lifePct', 40) / 100) * (1 + mp.minionLifePct / 100)),
+                  // Sentinels and clones are written to pull aggro; the rest hold a
+                  // line only by standing in the way.
+                  num('taunts', num('taunt', 0)) > 0,
+                );
+              }
+              break;
+            }
 
-      case 'nova': {
-        player.beginAction(clip, castTime);
-        const radius = num('radius', 5.2);
-        this.effects.nova(player.position.x, player.position.z, radius, {
-          element: school,
-          color,
-          emitter: sig.emitter,
-          density: sig.density,
-          mark: true,
-        });
-        this.areaDamage(player.position, radius, makePacket, ctx, enemies, boss);
-        audio.play(`nova.${school}`);
-        break;
-      }
+            // -- curses and debuffs -----------------------------------------------
+            // Nine skills between them, and all nine only dealt damage. A curse that
+            // deals damage is not a curse.
+            case 'curse':
+            case 'debuff':
+            case 'apply': {
+              player.beginAction('point', castTime);
+              const radius = num('radius', family === 'apply' ? 0.9 : 4.5);
+              const at = target.clone().setY(0);
+              const applies = this.statusFor(def, num, color);
+              let touched = 0;
+              for (const t of this.allTargets(enemies, boss)) {
+                if (this.groundDistance(t.root.position, at) > radius + t.hitRadius) continue;
+                t.applyStatuses(applies, ctx);
+                this.effects.impact(school, t.root.position.x, 1.0, t.root.position.z, {
+                  color, emitter: sig.emitter, density: sig.density * 0.6, decal: false, shake: 0, sfx: null,
+                });
+                touched++;
+              }
+              this.effects.nova(at.x, at.z, radius, {
+                element: school, color, emitter: sig.emitter, density: sig.density * 0.5, particles: touched > 0,
+              });
+              // A curse that names no status still has to do something, or ranking it
+              // is a wasted point.
+              if (applies.length === 0) this.areaDamage(at, radius, makePacket, ctx, enemies, boss);
+              break;
+            }
 
-      case 'slam': {
-        player.beginAction('attack2', attackTime * 1.5);
-        const radius = num('radius', 4.0);
-        const at = target.clone().setY(0);
-        // The wind-up is what gives a slam weight; damage lands on the beat.
-        this.effects.slam(at.x, at.z, radius, {
-          element: school,
-          color,
-          emitter: sig.emitter,
-          density: sig.density,
-          windup: num('windup', 0.25),
-          onFire: () => this.areaDamage(at, radius, () => makePacket(1.25), ctx, enemies, boss, 'heavy'),
-        });
-        audio.play('slam');
-        break;
-      }
+            // -- channelled tethers -------------------------------------------------
+            case 'channel': {
+              player.beginAction('channel', castTime * 1.6);
+              const range = num('range', 12);
+              const stop = this.firstHitAlong(origin, dir, range, enemies, boss, 0.5, ctx);
+              const end = origin.clone().addScaledVector(dir, stop);
+              this.effects.beam(origin, end, {
+                element: school, color, width: num('width', 0.5),
+                duration: num('duration', 0.5), endBurst: true,
+                emitter: sig.emitter, density: sig.density,
+              });
+              this.lineDamage(origin, dir, stop, num('width', 0.9), makePacket, ctx, enemies, boss);
+              break;
+            }
 
-      case 'meteor': {
-        player.beginAction(clip, castTime);
-        const radius = num('radius', 3.4);
-        const at = target.clone().setY(0);
-        // The call goes up a beat before anything comes down: an archer looses
-        // skyward, a caster's gather rings out. Without this the second before
-        // the sky answers was dead air.
-        audio.play(school === 'physical' ? 'shoot.physical' : `cast.${school}`, {
-          x: origin.x, z: origin.z, volume: 0.9,
-        });
-        this.effects.meteor(at.x, at.z, {
-          radius,
-          element: school,
-          color,
-          emitter: sig.emitter,
-          density: sig.density,
-          onHit: (p) => this.areaDamage(p, radius, () => makePacket(1.4), ctx, enemies, boss),
-        });
-        break;
-      }
+            // -- strike from above --------------------------------------------------
+            case 'sky': {
+              player.beginAction(clip, castTime);
+              const at = target.clone().setY(0);
+              const radius = num('radius', 2.6);
+              this.effects.meteor(at.x, at.z, {
+                radius, color, element: school, emitter: sig.emitter, density: sig.density,
+                onHit: (p) => {
+                  this.areaDamage(p, radius, makePacket, ctx, enemies, boss);
+                  hitAt(p);
+                },
+              });
+              break;
+            }
 
-      case 'beam': {
-        player.beginAction(clip, castTime);
-        const length = num('length', 12);
-        const to = origin.clone().addScaledVector(dir, length);
-        this.effects.beam(origin, to, {
-          element: school,
-          color,
-          width: num('width', 1.1) * sig.size,
-          endBurst: true,
-          emitter: sig.emitter,
-        });
-        this.lineDamage(player.position, dir, length, num('width', 1.1), makePacket, ctx, enemies, boss);
-        audio.play(`beam.${school}`);
-        break;
-      }
+            // -- a line of broken ground --------------------------------------------
+            case 'wave': {
+              player.beginAction('slam', attackTime);
+              const range = num('range', 9);
+              const width = num('width', 2.2);
+              this.effects.cone(origin, dir, 0.22, range, {
+                element: school, color, emitter: sig.emitter, density: sig.density,
+              });
+              this.lineDamage(player.position, dir, range, width, makePacket, ctx, enemies, boss, 'heavy');
+              this.effects.slam(player.position.x, player.position.z, width * 0.8, {
+                element: school, color, windup: 0, emitter: sig.emitter, density: sig.density,
+              });
+              break;
+            }
 
-      case 'cone': {
-        player.beginAction(clip, castTime);
-        const reach = num('reach', 6.5);
-        const half = num('arc', 1.1) * 0.5;
-        this.effects.cone(player.position.clone().setY(1.0), dir, half, reach, {
-          element: school,
-          color,
-          emitter: sig.emitter,
-          density: sig.density,
-        });
-        this.meleeSwing(player, dir, half * 2, reach, makePacket, ctx, enemies, boss, type, false);
-        audio.play(`cone.${school}`);
-        break;
-      }
+            // -- leaps and blinks ---------------------------------------------------
+            case 'leap': {
+              player.beginAction('dodge', 0.34);
+              const range = num('range', 7);
+              const stop = this.wallStop(player.position, dir, range, ctx, 0.5);
+              // "Leap to a point up to N metres away": the point clicked, not always
+              // the full distance. Landing past the pack it was aimed at meant the
+              // blow came down on empty floor.
+              const reach = Math.min(stop, Math.max(1.5, this.groundDistance(target, player.position)));
+              const land = player.position.clone().addScaledVector(dir, reach);
+              this.effects.teleportOut(player.position.x, 0.6, player.position.z, color);
+              player.position.set(land.x, 0, land.z);
+              this.effects.teleportIn(land.x, 0.6, land.z, color);
+              const radius = num('radius', 2.8);
+              this.effects.slam(land.x, land.z, radius, {
+                element: school, color, windup: 0, emitter: sig.emitter, density: sig.density,
+              });
+              this.areaDamage(land, radius, makePacket, ctx, enemies, boss, 'heavy');
+              break;
+            }
 
-      case 'chain': {
-        player.beginAction(clip, castTime);
-        this.chainLightning(player, target, Math.floor(num('jumps', 4)), num('range', 7), makePacket, ctx, enemies, boss, type, color);
-        audio.play('chain');
-        break;
-      }
+            case 'teleport': {
+              player.beginAction('blink', 0.26);
+              const range = num('range', 9);
+              const stop = this.wallStop(player.position, dir, Math.min(range, dir.length() > 0 ? range : range), ctx, 0.5);
+              const want = target.clone().setY(0);
+              const reach = Math.min(stop, this.groundDistance(want, player.position));
+              const land = player.position.clone().addScaledVector(dir, reach);
+              // Blink's parting gift: a burst where you were standing.
+              if (num('exitBurst', 0) > 0) {
+                const from = player.position.clone().setY(0);
+                const r = num('radius', 3);
+                this.effects.explosion(from.x, 0.8, from.z, { radius: r, element: school, color });
+                this.areaDamage(from, r, makePacket, ctx, enemies, boss);
+              }
+              this.effects.teleportOut(player.position.x, 0.9, player.position.z, color);
+              player.position.set(land.x, 0, land.z);
+              this.effects.teleportIn(land.x, 0.9, land.z, color);
+              // A strike teleport arrives swinging.
+              if ((def.effect ?? '').includes('strike') || (def.effect ?? '').includes('chain')) {
+                this.meleeSwing(player, dir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false, 'melee', sound.hit);
+              }
+              break;
+            }
 
-      case 'dash': {
-        player.dodge(dir.x, dir.z);
-        this.meleeSwing(player, dir, Math.PI, num('reach', 2.4), makePacket, ctx, enemies, boss, type);
-        break;
-      }
+            // -- detonations and corpse work ----------------------------------------
+            // These consume something already on the field: a stack of damage over
+            // time, or a body. Both land as a burst centred on what they consume.
+            case 'detonate':
+            case 'corpse':
+            case 'point':
+            case 'aoe':
+            case 'capstone': {
+              player.beginAction(clip, castTime);
+              const radius = num('radius', family === 'point' ? 1.2 : 4);
+              const at = family === 'aoe' || family === 'capstone' ? player.position.clone().setY(0) : target.clone().setY(0);
+              this.effects.explosion(at.x, 0.8, at.z, { radius, element: school, color });
+              this.effects.nova(at.x, at.z, radius, {
+                element: school, color, emitter: sig.emitter, density: sig.density,
+              });
+              this.areaDamage(at, radius, (m = 1) => makePacket(m * num('burstScale', 1)), ctx, enemies, boss);
+              // A capstone is the top of a tree; it leaves the ground burning too.
+              if (family === 'capstone') {
+                this.addZone(
+                  at.x, at.z, radius, num('duration', 5), 0.5,
+                  (m = 1) => makePacket(m * 0.3), type, color, sig.emitter,
+                );
+              }
+              this.applyBuff(player, def, rank, num, color);
+              break;
+            }
 
-      case 'heal': {
-        player.beginAction(clip, castTime * 0.7);
-        player.heal(num('amount', 30) * (1 + rank * 0.15));
-        this.effects.impact('arcane', player.position.x, 1.0, player.position.z, {
-          color: 0x7dffb0,
-          decal: false,
-          shake: 0,
-          sfx: 'heal',
-        });
-        break;
-      }
-
-      case 'buff':
-      case 'aura':
-      case 'stance':
-      case 'shout':
-      case 'banner':
-      case 'self':
-      case 'absorb': {
-        player.beginAction(clip, castTime * 0.7);
-        // Commanding Presence and Standard Bearer widen and strengthen what an
-        // oath, aura or banner does. `applyBuff` reads the same numbers.
-        this.applyBuff(player, def, rank, num, color);
-        // Sworn Brother: a spectral Warden rises where the standard goes in.
-        if (family === 'banner') this.raiseSwornBrother(player, target, ctx);
-        this.effects.impact(school, player.position.x, 1.0, player.position.z, {
-          color,
-          emitter: sig.emitter,
-          density: sig.density,
-          decal: false,
-          shake: 0,
-          // A shout is a voice; every other buff sounds like its school.
-          sfx: family === 'shout' ? 'warcry' : `buff.${school}`,
-        });
-        break;
-      }
-
-      // -- persistent ground ------------------------------------------------
-      // Fifteen skills across four classes describe leaving something burning,
-      // choking or freezing on the floor. None of them left anything: the
-      // family had no handler, so every one fired a plain bolt.
-      case 'ground':
-      case 'trap':
-      case 'ward': {
-        player.beginAction(clip, castTime);
-        // Scorched Earth and Standard Bearer both make what you leave on the
-        // floor last longer and hit harder.
-        const groundLife = 1 + player.passives.groundDurationPct / 100;
-        const groundHit = 1 + player.passives.groundDamagePct / 100;
-        const radius = num('radius', 3.2) + (ctx.auraRadiusBonus ?? 0);
-        const duration = num('duration', 6) * groundLife;
-        const at = target.clone().setY(0);
-        this.addZone(
-          at.x, at.z, radius, duration,
-          num('tickRate', 0.5),
-          // Ticking damage is a fraction of the hit it would be as a burst, or
-          // standing in a field would out-damage every direct skill in the game.
-          (m = 1) => makePacket(m * num('tickScale', 0.28) * groundHit),
-          type, color, sig.emitter,
-          this.statusFor(def, num, color),
-        );
-        this.effects.nova(at.x, at.z, radius, { element: school, color, emitter: sig.emitter, density: sig.density });
-        audio.play(`nova.${school}`);
-        break;
-      }
-
-      // -- summons ----------------------------------------------------------
-      // Nine skills summon. Nothing was ever summoned. A minion here is a
-      // guardian that holds its ground and fights: a real presence with a real
-      // lifetime, without a full pet AI it would have to path and follow.
-      case 'summon':
-      case 'minion': {
-        player.beginAction('point', castTime);
-        // A creature stays until something kills it; only a totem runs down.
-        const isTotem = (def.effect ?? '').includes('totem');
-        // Bone Mastery, Marrow Feast and the minion capstones all land here.
-        const mp = player.passives;
-        // Shadow Legion and Mirror Gambit only touch the clone summons; every
-        // other summon keeps the minion numbers.
-        const isClone = (def.effect ?? '').includes('clone');
-        const count = Math.max(1, Math.floor(num('count', 1)));
-        // Only a totem has a lifetime. A creature is permanent.
-        const life = isTotem
-          ? num('duration', 20) * (1 + mp.minionDurationPct / 100)
-          : Infinity;
-
-        // The cap: what the skill grants, plus ranks, plus the minion passives,
-        // stopped at the number the fight is balanced around.
-        const cap = Math.min(
-          SUMMON_ABSOLUTE_CAP,
-          SUMMON_HARD_CAP[def.id] ?? 6,
-          Math.max(1, num('baseCap', 1))
-            + Math.floor(rank / Math.max(1, num('maxPerRanks', 99)))
-            + Math.floor(isClone ? mp.cloneCount : mp.minionCapBonus),
-        );
-        const minionPower = 1 + (isClone ? mp.clonePowerPct : mp.minionDamagePct) / 100;
-        // Skeletal Knight and Death Knight upgrade the first few summons.
-        const elites = Math.floor(mp.minionEliteCount);
-        const elitePower = 1 + mp.minionElitePowerPct / 100;
-        const swingRate = 1 / (1 + mp.minionAttackSpeedPct / 100);
-        const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel');
-        // Make room before raising anything. Oldest of this skill goes first, so
-        // pressing the button at the cap always does something visible.
-        if (!isTotem) this.trimSummons(def.id, Math.max(0, cap - count));
-
-        const room = isTotem ? count : Math.max(0, cap - this.countSummons(def.id));
-        if (room === 0) {
-          events.emit('toast', { text: `${def.name} is at its limit.`, kind: 'info' });
-          break;
-        }
-        for (let i = 0; i < Math.min(count, room); i++) {
-          const a = (i / count) * Math.PI * 2;
-          const spread = 1.2 + count * 0.25;
-          this.addTurret(
-            player.position.x + Math.cos(a) * spread,
-            player.position.z + Math.sin(a) * spread,
-            life,
-            num('attackRate', melee ? 1.1 : 1.6) * swingRate,
-            num('range', melee ? 2.6 : 11),
-            (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower * (i < elites ? elitePower : 1)),
-            type, color, melee, def.id,
-            // A share of your own pool, which is how the skill descriptions
-            // read it — "40% of your life" and so on.
-            Math.max(20, player.stats.life * (num('lifePct', 40) / 100) * (1 + mp.minionLifePct / 100)),
-            // Sentinels and clones are written to pull aggro; the rest hold a
-            // line only by standing in the way.
-            num('taunts', num('taunt', 0)) > 0,
-          );
-        }
-        // Heard through the summoning circle (`spell.summon`); the id that used
-        // to be played here named no sound at all.
-        break;
-      }
-
-      // -- curses and debuffs -----------------------------------------------
-      // Nine skills between them, and all nine only dealt damage. A curse that
-      // deals damage is not a curse.
-      case 'curse':
-      case 'debuff':
-      case 'apply': {
-        player.beginAction('point', castTime);
-        const radius = num('radius', family === 'apply' ? 0.9 : 4.5);
-        const at = target.clone().setY(0);
-        const applies = this.statusFor(def, num, color);
-        let touched = 0;
-        for (const t of this.allTargets(enemies, boss)) {
-          if (this.groundDistance(t.root.position, at) > radius + t.hitRadius) continue;
-          t.applyStatuses(applies, ctx);
-          this.effects.impact(school, t.root.position.x, 1.0, t.root.position.z, {
-            color, emitter: sig.emitter, density: sig.density * 0.6, decal: false, shake: 0, sfx: null,
-          });
-          touched++;
-        }
-        this.effects.nova(at.x, at.z, radius, {
-          element: school, color, emitter: sig.emitter, density: sig.density * 0.5, particles: touched > 0,
-        });
-        // A curse that names no status still has to do something, or ranking it
-        // is a wasted point.
-        if (applies.length === 0) this.areaDamage(at, radius, makePacket, ctx, enemies, boss);
-        audio.play('spell.curse', { x: at.x, z: at.z });
-        break;
-      }
-
-      // -- channelled tethers -------------------------------------------------
-      case 'channel': {
-        player.beginAction('channel', castTime * 1.6);
-        const range = num('range', 12);
-        const stop = this.firstHitAlong(origin, dir, range, enemies, boss, 0.5, ctx);
-        const end = origin.clone().addScaledVector(dir, stop);
-        this.effects.beam(origin, end, {
-          element: school, color, width: num('width', 0.5),
-          duration: num('duration', 0.5), endBurst: true,
-          emitter: sig.emitter, density: sig.density,
-        });
-        this.lineDamage(origin, dir, stop, num('width', 0.9), makePacket, ctx, enemies, boss);
-        audio.play(`beam.${school}`);
-        break;
-      }
-
-      // -- strike from above --------------------------------------------------
-      case 'sky': {
-        player.beginAction(clip, castTime);
-        const at = target.clone().setY(0);
-        const radius = num('radius', 2.6);
-        this.effects.meteor(at.x, at.z, {
-          radius, color, element: school, emitter: sig.emitter, density: sig.density,
-          onHit: (p) => this.areaDamage(p, radius, makePacket, ctx, enemies, boss),
-        });
-        audio.play(`cast.${school}`);
-        break;
-      }
-
-      // -- a line of broken ground --------------------------------------------
-      case 'wave': {
-        player.beginAction('slam', attackTime);
-        const range = num('range', 9);
-        const width = num('width', 2.2);
-        this.effects.cone(origin, dir, 0.22, range, {
-          element: school, color, emitter: sig.emitter, density: sig.density,
-        });
-        this.lineDamage(player.position, dir, range, width, makePacket, ctx, enemies, boss, 'heavy');
-        this.effects.slam(player.position.x, player.position.z, width * 0.8, {
-          element: school, color, windup: 0, emitter: sig.emitter, density: sig.density,
-        });
-        audio.play('nova.physical');
-        break;
-      }
-
-      // -- leaps and blinks ---------------------------------------------------
-      case 'leap': {
-        player.beginAction('dodge', 0.34);
-        const range = num('range', 7);
-        const stop = this.wallStop(player.position, dir, range, ctx, 0.5);
-        // "Leap to a point up to N metres away": the point clicked, not always
-        // the full distance. Landing past the pack it was aimed at meant the
-        // blow came down on empty floor.
-        const reach = Math.min(stop, Math.max(1.5, this.groundDistance(target, player.position)));
-        const land = player.position.clone().addScaledVector(dir, reach);
-        this.effects.teleportOut(player.position.x, 0.6, player.position.z, color);
-        player.position.set(land.x, 0, land.z);
-        this.effects.teleportIn(land.x, 0.6, land.z, color);
-        const radius = num('radius', 2.8);
-        this.effects.slam(land.x, land.z, radius, {
-          element: school, color, windup: 0, emitter: sig.emitter, density: sig.density,
-        });
-        this.areaDamage(land, radius, makePacket, ctx, enemies, boss, 'heavy');
-        audio.play(`nova.${school}`, { x: land.x, z: land.z });
-        break;
-      }
-
-      case 'teleport': {
-        player.beginAction('blink', 0.26);
-        const range = num('range', 9);
-        const stop = this.wallStop(player.position, dir, Math.min(range, dir.length() > 0 ? range : range), ctx, 0.5);
-        const want = target.clone().setY(0);
-        const reach = Math.min(stop, this.groundDistance(want, player.position));
-        const land = player.position.clone().addScaledVector(dir, reach);
-        // Blink's parting gift: a burst where you were standing.
-        if (num('exitBurst', 0) > 0) {
-          const from = player.position.clone().setY(0);
-          const r = num('radius', 3);
-          this.effects.explosion(from.x, 0.8, from.z, { radius: r, element: school, color });
-          this.areaDamage(from, r, makePacket, ctx, enemies, boss);
-        }
-        this.effects.teleportOut(player.position.x, 0.9, player.position.z, color);
-        player.position.set(land.x, 0, land.z);
-        this.effects.teleportIn(land.x, 0.9, land.z, color);
-        // A strike teleport arrives swinging.
-        if ((def.effect ?? '').includes('strike') || (def.effect ?? '').includes('chain')) {
-          this.meleeSwing(player, dir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false);
-        }
-        break;
-      }
-
-      // -- detonations and corpse work ----------------------------------------
-      // These consume something already on the field: a stack of damage over
-      // time, or a body. Both land as a burst centred on what they consume.
-      case 'detonate':
-      case 'corpse':
-      case 'point':
-      case 'aoe':
-      case 'capstone': {
-        player.beginAction(clip, castTime);
-        const radius = num('radius', family === 'point' ? 1.2 : 4);
-        const at = family === 'aoe' || family === 'capstone' ? player.position.clone().setY(0) : target.clone().setY(0);
-        this.effects.explosion(at.x, 0.8, at.z, { radius, element: school, color });
-        this.effects.nova(at.x, at.z, radius, {
-          element: school, color, emitter: sig.emitter, density: sig.density,
-        });
-        this.areaDamage(at, radius, (m = 1) => makePacket(m * num('burstScale', 1)), ctx, enemies, boss);
-        // A capstone is the top of a tree; it leaves the ground burning too.
-        if (family === 'capstone') {
-          this.addZone(
-            at.x, at.z, radius, num('duration', 5), 0.5,
-            (m = 1) => makePacket(m * 0.3), type, color, sig.emitter,
-          );
-        }
-        this.applyBuff(player, def, rank, num, color);
-        audio.play(`impact.${school}`);
-        break;
-      }
-
-      default: {
-        // An unknown effect id falls back to a delivery the character can
-        // actually perform, rather than always to a swing: falling back to
-        // melee put every bow user through a sword animation, hitting nothing,
-        // on every cast of anything the runner did not recognise.
-        if (holding === 'ranged' || holding === 'caster') {
-          player.beginAction(clip, castTime);
-          const from = player.position.clone().setY(holding === 'ranged' ? 1.28 : 1.05);
-          const stop = this.firstHitAlong(from, dir, 18, enemies, boss, 0.4, ctx);
-          this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
-            element: school,
-            color,
-            shed: sig.trail,
-            speed: holding === 'ranged' ? 30 : 20,
-            size: holding === 'ranged' ? 0.24 : 0.36,
-            onHit: (pt) => this.pointDamage(pt, 0.6, makePacket, ctx, enemies, boss, 'projectile', from),
-          });
-        } else {
-          player.beginAction(clip, attackTime);
-          this.meleeSwing(player, dir, 1.4, 2.3, makePacket, ctx, enemies, boss, type);
-        }
-        break;
-      }
+            default: {
+              // An unknown effect id falls back to a delivery the character can
+              // actually perform, rather than always to a swing: falling back to
+              // melee put every bow user through a sword animation, hitting nothing,
+              // on every cast of anything the runner did not recognise.
+              if (holding === 'ranged' || holding === 'caster') {
+                player.beginAction(clip, castTime);
+                const from = player.position.clone().setY(holding === 'ranged' ? 1.28 : 1.05);
+                const stop = this.firstHitAlong(from, dir, 18, enemies, boss, 0.4, ctx);
+                this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
+                  element: school,
+                  color,
+                  shed: sig.trail,
+                  speed: holding === 'ranged' ? 30 : 20,
+                  size: holding === 'ranged' ? 0.24 : 0.36,
+                  onHit: (pt) => {
+                    this.pointDamage(pt, 0.6, makePacket, ctx, enemies, boss, 'projectile', from);
+                    hitAt(pt);
+                  },
+                });
+              } else {
+                player.beginAction(clip, attackTime);
+                this.meleeSwing(player, dir, 1.4, 2.3, makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
+              }
+              break;
+            }
+          }
+      });
+    } finally {
+      this.casting = false;
     }
 
     return true;
@@ -1625,13 +1640,17 @@ export class SkillRunner {
     type: DamageType,
     playVisual = true,
     kind: HitKind = 'melee',
+    hitSfx: string | null = null,
   ): void {
     const origin = player.position;
     const half = arc * 0.5;
     let hits = 0;
+    let firstX = 0;
+    let firstZ = 0;
     if (playVisual && !this.atContact) this.swingSchool = type in ELEMENTS ? (type as School) : 'physical';
     // The swing is heard whether or not it connects: whoosh, then impact.
-    if (playVisual && !this.atContact) {
+    // A skill's swing is its own cast sound instead (audio/SkillSounds.ts).
+    if (playVisual && !this.atContact && !this.casting) {
       audio.play(kind === 'heavy' ? 'swing.heavy' : `swing.${this.weaponSound}`, {
         x: origin.x, z: origin.z, volume: 0.9,
       });
@@ -1650,7 +1669,7 @@ export class SkillRunner {
           this.atContact = true;
           this.echoScale = echo;
           try {
-            this.meleeSwing(player, dir, arc, reach, packet, ctx, enemies, boss, type, playVisual, kind);
+            this.meleeSwing(player, dir, arc, reach, packet, ctx, enemies, boss, type, playVisual, kind, hitSfx);
           } finally {
             this.atContact = false;
             this.echoScale = prev;
@@ -1677,10 +1696,15 @@ export class SkillRunner {
         dir: facing, element: this.swingSchool, sfx: null, shake: 0, crit: mp.crit,
         hitStop: 0,
       });
+      if (hits === 0) {
+        firstX = t.root.position.x;
+        firstZ = t.root.position.z;
+      }
       hits++;
     }
 
-    void hits;
+    // A skill blow that connects is heard once, at the first body it met.
+    if (hits > 0 && hitSfx) audio.play(hitSfx, { x: firstX, z: firstZ });
   }
 
   /**
@@ -1926,6 +1950,8 @@ export class SkillRunner {
    * a blow lands when the blade arrives, not on the click.
    */
   private pendingSwings: Array<{ t: number; run: () => void }> = [];
+  /** True while `cast` runs, so a skill's swing plays its own sound, not the weapon's. */
+  private casting = false;
   private atContact = false;
   private echoing = false;
   /** What the echo pays, applied to every packet it throws. */
@@ -2042,7 +2068,8 @@ export class SkillRunner {
     enemies: Enemy[],
     boss: Boss | null,
     type: DamageType,
-    color: number
+    color: number,
+    hitSfx: string | null = null,
   ): void {
     const pool = this.allTargets(enemies, boss);
     if (pool.length === 0) return;
@@ -2071,6 +2098,7 @@ export class SkillRunner {
       const p = packet();
       p.amount *= Math.pow(0.82, j);
       this.strike(best, this.tune(p, best), ctx, 'chain', from.x, from.z);
+      if (hitSfx) audio.play(hitSfx, { x: to.x, z: to.z });
       from = to;
     }
   }
@@ -2434,18 +2462,23 @@ export class SkillRunner {
             );
           }
           const to = best.root.position.clone().setY(1.0);
-          if (t.melee) {
-            this.strike(best, t.packet(), ctx, 'minion', t.x, t.z);
-            this.effects.impact(t.type, to.x, to.y, to.z, { color: t.color, scale: 0.7, shake: 0 });
-          } else {
-            this.effects.projectile(from.clone(), to, {
-              element: t.type,
-              color: t.color,
-              speed: 26,
-              size: 0.18,
-              onHit: (p) => this.pointDamage(p, 0.9, t.packet, ctx, enemies, boss, 'minion'),
-            });
-          }
+          // One voice per summon: the sound its skill gives it, nothing else.
+          const voice = skillSound(t.skillId).minion;
+          if (voice) audio.play(voice, { x: t.x, z: t.z });
+          this.effects.quietly(() => {
+            if (t.melee) {
+              this.strike(best, t.packet(), ctx, 'minion', t.x, t.z);
+              this.effects.impact(t.type, to.x, to.y, to.z, { color: t.color, scale: 0.7, shake: 0, sfx: null });
+            } else {
+              this.effects.projectile(from.clone(), to, {
+                element: t.type,
+                color: t.color,
+                speed: 26,
+                size: 0.18,
+                onHit: (p) => this.pointDamage(p, 0.9, t.packet, ctx, enemies, boss, 'minion'),
+              });
+            }
+          });
         }
       }
       if (t.left <= 0) {

@@ -355,7 +355,11 @@ export class Player {
     return Math.max(this.dodgeCd, this.dodgeTime > 0 ? this.dodgeTime : 0);
   }
 
-  dodge(dirX: number, dirZ: number): boolean {
+  /**
+   * Rolls along (dirX, dirZ). `quiet` leaves the sound to the caller: a dash
+   * skill plays its own (audio/SkillSounds.ts), not the plain dodge.
+   */
+  dodge(dirX: number, dirZ: number, quiet = false): boolean {
     // A real cooldown. Without one the dash was limited only by its own 0.32s
     // animation, so holding the key was simply a faster way to move and there
     // was never a moment where committing to it cost anything.
@@ -378,7 +382,7 @@ export class Player {
     this.dodgeCd = this.dodgeCdMax;
     this.animator.play('dodge', { fade: 0.05 });
     this.targetFacing = Math.atan2(this.dodgeDir.x, this.dodgeDir.z);
-    events.emit('sfx', { id: 'dodge' });
+    if (!quiet) events.emit('sfx', { id: 'dodge' });
     return true;
   }
 
