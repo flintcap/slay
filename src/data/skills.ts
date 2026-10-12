@@ -1748,7 +1748,7 @@ const VENOM = build('venom', [
     dmg: [0.8, 0.13],
     type: 'poison',
     fx: 'melee.strike',
-    p: { poisonStacks: 3, duration: 8, durationPerRank: 0.3 },
+    p: { poisonStacks: 3, duration: 8, durationPerRank: 0.3, single: 1 },
   },
   {
     id: 'coatBlades',
@@ -1999,7 +1999,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     dmg: [1.1, 0.18],
     type: 'physical',
     fx: 'teleport.strike',
-    p: { range: 7, rangePerRank: 0.12, backstab: 1, critBonus: 50 },
+    p: { range: 7, rangePerRank: 0.12, backstab: 1, critBonus: 50, single: 1 },
   },
   {
     id: 'veil',
@@ -2076,7 +2076,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     dmg: [3.2, 0.5],
     type: 'physical',
     fx: 'melee.ambush',
-    p: { requiresStealth: 1, alwaysCrit: 1, killKeepsStealth: 1 },
+    p: { requiresStealth: 1, alwaysCrit: 1, killKeepsStealth: 1, single: 1 },
   },
   {
     id: 'darkPact',
@@ -2209,7 +2209,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     dmg: [5, 0.7],
     type: 'physical',
     fx: 'melee.execute',
-    p: { threshold: 15, perRank: 1, bossMultiplier: 100, refundOnKill: 1 },
+    p: { threshold: 15, perRank: 1, bossMultiplier: 100, refundOnKill: 1, single: 1 },
   },
   {
     id: 'shadowMastery',
@@ -2241,7 +2241,7 @@ const BLADEWORK = build('bladework', [
     dmg: [1.2, 0.2],
     type: 'physical',
     fx: 'melee.strike',
-    p: { critBonus: 15, critPerRank: 1.5, speedBonus: 15 },
+    p: { critBonus: 15, critPerRank: 1.5, speedBonus: 15, single: 1 },
   },
   {
     id: 'bladeMastery',
@@ -2281,7 +2281,7 @@ const BLADEWORK = build('bladework', [
     dmg: [1.1, 0.18],
     type: 'physical',
     fx: 'melee.strike',
-    p: { cripple: 6, attackSpeedDown: 20 },
+    p: { cripple: 6, attackSpeedDown: 20, single: 1 },
   },
   {
     id: 'deadlyAim',
@@ -2308,7 +2308,7 @@ const BLADEWORK = build('bladework', [
     dmg: [0.85, 0.15],
     type: 'physical',
     fx: 'melee.multiSlash',
-    p: { hits: 2, inheritCrit: 1, arc: 60, radius: 2.2 },
+    p: { hits: 2, inheritCrit: 1, arc: 60, radius: 2.2, single: 1 },
   },
   {
     id: 'exploitWeakness',

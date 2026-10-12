@@ -47,6 +47,8 @@ interface Scene {
   now(): number;
   tick(sec: number): void;
   cast(id: string): boolean;
+  /** Another pinned monster at a point, for "who else got hit". */
+  bystander(x: number, z: number): Enemy;
   done(): void;
 }
 
@@ -120,7 +122,13 @@ function scene(cls: CharClassId, skills: Record<string, number>, gear: Partial<R
       player.position.set(0, 0, 0);
       return runner.cast(id, player, at.clone(), a.ctx, a.enemies, null);
     },
-    done() {
+    bystander(x, z) {
+      const e = a.spawn(def, x, z);
+      e.maxLife = e.life = 1e8;
+      e.rootTimer = 999;
+      return e;
+    },
+done() {
       offShown();
       offSwing();
     },
@@ -370,6 +378,20 @@ for (const el of ELEMENTS) {
     mine.length > 0 && drawn.some((p) => p.type === 'physical'),
     drawn.map((p) => `${p.type} ${Math.round(p.amount)}`).join(', ') || 'no numbers',
   );
+  s.done();
+}
+
+// --- single target -----------------------------------------------------------------
+// Reported: "shadowblade's skills are single target but they hit several enemies".
+for (const id of ['viperStrike', 'preciseCut', 'crippleTendon', 'doubleStrike', 'assassinate']) {
+  const s = scene('shadowblade', { [id]: 5 }, DUAL, 41);
+  const side = [s.bystander(-0.8, 1.6), s.bystander(0.8, 1.6)];
+  s.cast(id);
+  s.tick(1.2);
+  const struck = side.filter((e) => e.life < e.maxLife).length;
+  const name = SKILLS.find((k) => k.id === id)!.name;
+  const aimed = s.packets.some((x) => x.p.ability === name);
+  check(`${name} hits only the enemy it was aimed at`, aimed && struck === 0, `aimed ${aimed}, bystanders hit ${struck}`);
   s.done();
 }
 

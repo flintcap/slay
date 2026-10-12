@@ -821,13 +821,17 @@ export class SkillRunner {
           // Multi-hit skills: Double Strike's two, Massacre's five, Death Lotus's
           // eight. `hits` was never read, so each landed once.
           const hits = Math.max(1, Math.floor(num('hits', 1)));
+          // A skill written against one enemy hits one enemy: the one you aimed at.
+          const single = num('single', 0) > 0;
+          const most = single ? 1 : Infinity;
+          const focus = single ? { x: target.x, z: target.z } : null;
           // Two blades: the off hand answers once the main hand lands, so a
           // skill strikes with both. A one-blow skill splits its damage across
           // the two blades (same total, a hit from each); a multi-hit skill's
           // blows keep their damage and the left blade swings among them.
           const split = dual && hits === 1;
           const mainPacket = split ? (m = 1): DamagePacket => blowPacket(m * DUAL_SKILL_MAIN) : blowPacket;
-          this.meleeSwing(player, dir, arc, reach, mainPacket, ctx, enemies, boss, type, true, kind, sound.hit);
+          this.meleeSwing(player, dir, arc, reach, mainPacket, ctx, enemies, boss, type, true, kind, sound.hit, most, focus);
           if (dual) {
             const facing = dir.clone();
             // The left blade swings in what is left of the skill's time.
@@ -847,7 +851,7 @@ export class SkillRunner {
                     this.caster = player;
                     try {
                       const off = (m = 1): DamagePacket => blowPacket(m * (1 - DUAL_SKILL_MAIN));
-                      this.meleeSwing(player, facing, arc, reach, off, ctx, enemies, boss, type, true, kind, sound.hit);
+                      this.meleeSwing(player, facing, arc, reach, off, ctx, enemies, boss, type, true, kind, sound.hit, most, focus);
                     } finally {
                       this.atContact = false;
                     }
@@ -869,7 +873,7 @@ export class SkillRunner {
                   this.atContact = true;
                   this.caster = player;
                   try {
-                    this.meleeSwing(player, facing, arc, reach, blowPacket, ctx, enemies, boss, type, true, kind, sound.hit);
+                    this.meleeSwing(player, facing, arc, reach, blowPacket, ctx, enemies, boss, type, true, kind, sound.hit, most, focus);
                   } finally {
                     this.atContact = false;
                   }
@@ -1287,7 +1291,11 @@ export class SkillRunner {
           this.effects.teleportIn(land.x, 0.9, land.z, color);
           // A strike teleport arrives swinging.
           if ((def.effect ?? '').includes('strike') || (def.effect ?? '').includes('chain')) {
-            this.meleeSwing(player, dir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false, 'melee', sound.hit);
+            const single = num('single', 0) > 0;
+            this.meleeSwing(
+              player, dir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false, 'melee', sound.hit,
+              single ? 1 : Infinity, single ? { x: land.x, z: land.z } : null,
+            );
           }
           break;
         }
@@ -1695,6 +1703,9 @@ export class SkillRunner {
     playVisual = true,
     kind: HitKind = 'melee',
     hitSfx: string | null = null,
+    /** A single-target skill hits this many, nearest `focus` first. */
+    maxTargets = Infinity,
+    focus: { x: number; z: number } | null = null,
   ): void {
     const origin = player.position;
     const half = arc * 0.5;
@@ -1723,7 +1734,7 @@ export class SkillRunner {
           this.atContact = true;
           this.echoScale = echo;
           try {
-            this.meleeSwing(player, dir, arc, reach, packet, ctx, enemies, boss, type, playVisual, kind, hitSfx);
+            this.meleeSwing(player, dir, arc, reach, packet, ctx, enemies, boss, type, playVisual, kind, hitSfx, maxTargets, focus);
           } finally {
             this.atContact = false;
             this.echoScale = prev;
@@ -1733,14 +1744,24 @@ export class SkillRunner {
       return;
     }
 
-    for (const t of this.allTargets(enemies, boss)) {
+    let caught = this.allTargets(enemies, boss).filter((t) => {
       const to = this.tmp2.copy(t.root.position).sub(origin).setY(0);
       const dist = to.length();
-      if (dist > reach + t.hitRadius) continue;
+      if (dist > reach + t.hitRadius) return false;
       if (arc < Math.PI * 1.99) {
         to.normalize();
-        if (facing.dot(to) < Math.cos(half)) continue;
+        if (facing.dot(to) < Math.cos(half)) return false;
       }
+      return true;
+    });
+    // A single-target skill takes the one you aimed at, not the whole arc.
+    if (caught.length > maxTargets) {
+      const fx = focus?.x ?? origin.x;
+      const fz = focus?.z ?? origin.z;
+      const d2 = (t: Target): number => (t.root.position.x - fx) ** 2 + (t.root.position.z - fz) ** 2;
+      caught = caught.sort((a, b) => d2(a) - d2(b)).slice(0, maxTargets);
+    }
+    for (const t of caught) {
       const mp = this.tune(packet(), t);
       this.strike(t, mp, ctx, kind, origin.x, origin.z);
       this.afterHit(mp, t, ctx, enemies, boss);
