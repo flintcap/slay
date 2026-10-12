@@ -1245,6 +1245,7 @@ export class DungeonScene extends GameScene {
         const t = this.mesh.worldToTile(x, z);
         return isWalkable(this.level, t.x, t.y);
       },
+      path: (fx, fz, tx, tz) => this.nav.path({ x: fx, y: fz }, { x: tx, y: tz }),
     }, this.keyDir.lengthSq() > 0 ? this.keyDir : null);
     // Stand on the floor: raised and sunken floors left the hero at the
     // height of the tile they arrived on, legs sunk into a step up. Eased so

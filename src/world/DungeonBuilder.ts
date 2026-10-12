@@ -609,7 +609,8 @@ export class DungeonMesh {
    * interactable layer was scenery. This is the index that makes it reachable.
    */
   readonly interactables: Interactable[] = [];
-  readonly colliders: Array<{ x: number; z: number; w: number; d: number }> = [];
+  /** Boxes; a round prop's has `r` too, and the player meets it as a circle. */
+  readonly colliders: Array<{ x: number; z: number; w: number; d: number; r?: number }> = [];
 
   private readonly level: DungeonLevel;
   private readonly art: BiomeArt;
@@ -2463,11 +2464,15 @@ export class DungeonMesh {
       const s = scaleFor(p.kind, p.x, p.y);
       const r = def.radius * s * 2;
       const off = def.placement === 'wall' ? (def.wallOffset ?? 0.7) : 0;
+      // Floor props are met as circles a little inside their drawn edge, so
+      // the body rolls round a barrel or pillar instead of catching on the
+      // corners of a box drawn round it. Wall props stay boxes (flat backs).
       this.colliders.push({
         x: this.tileX(p.x) - Math.sin(p.rotation) * off,
         z: this.tileZ(p.y) - Math.cos(p.rotation) * off,
         w: r,
         d: r,
+        ...(def.placement === 'wall' ? {} : { r: r * 0.5 * 0.85 }),
       });
     }
   }

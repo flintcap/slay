@@ -12,9 +12,15 @@ import type { Rng } from '../types';
 import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
 
 export interface PlayerContext {
-  colliders: Array<{ x: number; z: number; w: number; d: number }>;
+  /** Boxes, or circles where `r` is set (round props: barrels, pillars). */
+  colliders: Array<{ x: number; z: number; w: number; d: number; r?: number }>;
   /** Returns true if the world position is standing on walkable ground. */
   walkableAt(x: number, z: number): boolean;
+  /**
+   * Waypoints (world x, z as x, y) around whatever is in the way, ending on
+   * the destination. Empty when there is no way. Optional: town has none.
+   */
+  path?(fromX: number, fromZ: number, toX: number, toZ: number): Array<{ x: number; y: number }>;
 }
 
 const TMP = new THREE.Vector3();
@@ -73,8 +79,20 @@ export class Player {
   /** Radius used for collision and for enemies deciding when they're in range. */
   readonly radius = 0.42;
 
+  /**
+   * The body's footprint for walls and props. Smaller than `radius` (reach):
+   * a wide footprint snagged on every barrel and door frame.
+   */
+  private readonly bodyR = 0.32;
   /** Current click-to-move destination, or null when idle/keyboard-driven. */
   private moveTarget: THREE.Vector3 | null = null;
+  /** The way round obstacles to `moveTarget`, next waypoint first. */
+  private route: Array<{ x: number; y: number }> = [];
+  /** The destination `route` was planned for, and when to plan again. */
+  private routeFor: THREE.Vector3 | null = null;
+  private replanIn = 0;
+  /** Seconds a click-to-move order has made no headway. */
+  private stuckFor = 0;
   private velocity = new THREE.Vector3();
   private facing = 0;
   private targetFacing = 0;
@@ -768,10 +786,18 @@ export class Player {
       const dist = TMP.length();
       if (dist < 0.22) {
         this.moveTarget = null;
+        this.route = [];
       } else {
-        TMP.divideScalar(dist);
-        dirX = TMP.x;
-        dirZ = TMP.z;
+        // Walk the way round anything in between, not straight into it.
+        const way = this.steer(dt, ctx);
+        if (way) {
+          dirX = way.x - this.root.position.x;
+          dirZ = way.y - this.root.position.z;
+        } else {
+          TMP.divideScalar(dist);
+          dirX = TMP.x;
+          dirZ = TMP.z;
+        }
       }
     }
 
@@ -802,37 +828,146 @@ export class Player {
   }
 
   /**
-   * Move with wall sliding: try the full step, then each axis alone. Without
-   * the per-axis retry the player sticks on every corner, which feels awful.
+   * The next point to walk at for a click-to-move order, or null to head
+   * straight for it. Plans a route when the straight line is blocked (a
+   * table, a pillar, a wall corner between you and the click), plans again
+   * when the order changes or stalls, and drops waypoints as they are reached.
+   */
+  private steer(dt: number, ctx: PlayerContext): { x: number; y: number } | null {
+    const t = this.moveTarget;
+    if (!t || !ctx.path) return null;
+    const p = this.root.position;
+    this.replanIn -= dt;
+    const changed = !this.routeFor || this.routeFor.distanceToSquared(t) > 0.25;
+    if (changed || (this.stuckFor > 0.2 && this.replanIn <= 0)) {
+      this.routeFor = t.clone();
+      this.replanIn = 0.4;
+      this.route = this.lineClear(p.x, p.z, t.x, t.z, ctx) ? [] : ctx.path(p.x, p.z, t.x, t.z);
+      // The route's last point is the tile it could reach; the click itself
+      // is the goal once the way to it is open.
+      if (this.route.length) this.route[this.route.length - 1] = { x: t.x, y: t.z };
+    }
+    // Skip waypoints already reached, or ones the next can be seen past.
+    while (this.route.length) {
+      const w = this.route[0]!;
+      const near = (w.x - p.x) ** 2 + (w.y - p.z) ** 2 < 0.35 * 0.35;
+      const next = this.route[1];
+      if (near || (next && this.lineClear(p.x, p.z, next.x, next.y, ctx))) this.route.shift();
+      else break;
+    }
+    return this.route[0] ?? null;
+  }
+
+  /** True when the body could walk the straight line from a to b. */
+  private lineClear(ax: number, az: number, bx: number, bz: number, ctx: PlayerContext): boolean {
+    const d = Math.hypot(bx - ax, bz - az);
+    const n = Math.max(1, Math.ceil(d / 0.3));
+    for (let i = 1; i <= n; i++) {
+      const k = i / n;
+      if (!this.canStand(ax + (bx - ax) * k, az + (bz - az) * k, ctx)) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Moves the body, sliding round whatever it meets. The step is taken, then
+   * the body is pushed back out of anything it went into, along the surface
+   * normal: flat faces slide, box corners and round props roll the body
+   * round them instead of catching it. Speed along the surface is kept (the
+   * old per-axis retry cut it on every touch). If the push leaves it
+   * somewhere it cannot stand, each axis is tried alone, then nothing.
    */
   private tryMove(dx: number, dz: number, ctx: PlayerContext): void {
     const p = this.root.position;
-    if (this.canStand(p.x + dx, p.z + dz, ctx)) {
-      p.x += dx;
-      p.z += dz;
-      return;
+    const ox = p.x;
+    const oz = p.z;
+    let nx = ox + dx;
+    let nz = oz + dz;
+    const r = this.bodyR;
+    for (let pass = 0; pass < 3; pass++) {
+      let pushed = false;
+      for (const c of ctx.colliders) {
+        let px: number;
+        let pz: number;
+        let reach: number;
+        if (c.r !== undefined) {
+          px = c.x;
+          pz = c.z;
+          reach = c.r + r;
+        } else {
+          const hw = c.w * 0.5;
+          const hd = c.d * 0.5;
+          if (Math.abs(nx - c.x) > hw + r || Math.abs(nz - c.z) > hd + r) continue;
+          px = Math.max(c.x - hw, Math.min(c.x + hw, nx));
+          pz = Math.max(c.z - hd, Math.min(c.z + hd, nz));
+          reach = r;
+        }
+        let ex = nx - px;
+        let ez = nz - pz;
+        const e = Math.hypot(ex, ez);
+        if (e >= reach) continue;
+        if (e < 1e-5) {
+          // Centre inside the box: out the way it came in.
+          ex = ox - nx;
+          ez = oz - nz;
+          const m = Math.hypot(ex, ez) || 1;
+          ex /= m;
+          ez /= m;
+        } else {
+          ex /= e;
+          ez /= e;
+        }
+        const depth = reach - e + 1e-4;
+        nx += ex * depth;
+        nz += ez * depth;
+        // Velocity into the surface goes; along it stays.
+        const vn = this.velocity.x * ex + this.velocity.z * ez;
+        if (vn < 0) {
+          this.velocity.x -= vn * ex;
+          this.velocity.z -= vn * ez;
+        }
+        pushed = true;
+      }
+      if (!pushed) break;
     }
-    if (this.canStand(p.x + dx, p.z, ctx)) {
-      p.x += dx;
-      this.velocity.z *= 0.4;
-      return;
+    if (this.canStand(nx, nz, ctx)) {
+      p.x = nx;
+      p.z = nz;
+    } else if (this.canStand(ox + dx, oz, ctx)) {
+      p.x = ox + dx;
+    } else if (this.canStand(ox, oz + dz, ctx)) {
+      p.z = oz + dz;
+    } else {
+      this.velocity.set(0, 0, 0);
     }
-    if (this.canStand(p.x, p.z + dz, ctx)) {
-      p.z += dz;
-      this.velocity.x *= 0.4;
-      return;
-    }
-    this.velocity.set(0, 0, 0);
-    this.moveTarget = null;
+    // An order that has stopped getting anywhere plans again, and is given up
+    // only if that does not help.
+    const want = dx * dx + dz * dz;
+    const got = (p.x - ox) ** 2 + (p.z - oz) ** 2;
+    if (this.moveTarget && want > 1e-8 && got < want * 0.04) {
+      this.stuckFor += 1 / 60;
+      if (this.stuckFor > 1.2) {
+        this.moveTarget = null;
+        this.route = [];
+        this.stuckFor = 0;
+      }
+    } else this.stuckFor = Math.max(0, this.stuckFor - 1 / 30);
   }
 
   private canStand(x: number, z: number, ctx: PlayerContext): boolean {
     if (!ctx.walkableAt(x, z)) return false;
-    const r = this.radius;
+    const r = this.bodyR - 0.01;
     for (const c of ctx.colliders) {
-      const hw = c.w * 0.5 + r;
-      const hd = c.d * 0.5 + r;
-      if (Math.abs(x - c.x) < hw && Math.abs(z - c.z) < hd) return false;
+      if (c.r !== undefined) {
+        const rr = c.r + r;
+        if ((x - c.x) ** 2 + (z - c.z) ** 2 < rr * rr) return false;
+        continue;
+      }
+      const hw = c.w * 0.5;
+      const hd = c.d * 0.5;
+      const qx = Math.max(0, Math.abs(x - c.x) - hw);
+      const qz = Math.max(0, Math.abs(z - c.z) - hd);
+      if (qx * qx + qz * qz < r * r) return false;
     }
     return true;
   }
