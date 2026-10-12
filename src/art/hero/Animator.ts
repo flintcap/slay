@@ -1035,7 +1035,8 @@ export class HeroAnimator {
         const f = this.gait.feet[i]!;
         const w = f.planted ? 1 : f.s < 0.25 ? 1 - smooth(f.s / 0.25) : f.s > 0.7 ? smooth((f.s - 0.7) / 0.3) : 0;
         if (w <= 0) continue;
-        const reach = (this.legs[i]!.l1 + this.legs[i]!.l2) * 0.993;
+        // Never quite locked; standing still, nearly straight.
+        const reach = (this.legs[i]!.l1 + this.legs[i]!.l2) * (0.998 - 0.005 * this.gait.moveW);
         const d2 = (t.x - hip.x) ** 2 + (t.z - hip.z) ** 2;
         const maxY = t.y + Math.sqrt(Math.max(0, reach * reach - d2));
         drop = Math.max(drop, (hip.y - maxY) * w);

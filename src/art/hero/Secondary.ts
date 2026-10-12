@@ -26,6 +26,9 @@ export interface SwingInput {
   vy: number;
 }
 
+/** How far the cape hangs out from the back at rest, radians at the shoulders. */
+const REST_TILT = 0.14;
+
 export class CapeSpring {
   private ax: Float32Array;
   private vx: Float32Array;
@@ -57,6 +60,10 @@ export class CapeSpring {
       let tx = i === 0 ? -inp.pitch : 0;
       tx += (0.05 * Math.max(0, inp.fwd) + 0.04 * Math.min(8, Math.max(0, inp.accel))) * share * (0.7 + k);
       if (i === 0) tx += Math.min(1, Math.max(0, inp.legBack)) * 0.15;
+      // Standing still it hangs a touch out from the back, clear of the
+      // shoulder blades and the arms held out with weapons. (Straight down,
+      // the body showed through it at rest; moving, the stride already did this.)
+      if (i === 0) tx += REST_TILT;
       tx -= inp.vy * 0.05 * k;
       // Flutter: a fast ripple down the cloth, stronger toward the hem.
       tx += Math.sin(this.t * (6 + 2 * speed) - i * 1.3) * 0.025 * Math.min(1, speed / 3) * k;

@@ -705,6 +705,33 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     }
     return JSON.stringify({ pass: true, lines });
   },
+  /** Knee bend standing still, every class and stance: degrees off straight, left and right. */
+  async knees(f) {
+    await loadMeshCache();
+    const classes = (f.class ?? 'warden,pyromancer,shadowblade,stormcaller,revenant,ranger').split(',') as CharClassId[];
+    const list = f.stance ? (f.stance.split(',') as Stance[]) : STANCE_LIST;
+    const lines: string[] = [];
+    const bend = (a: Actor, side: 'L' | 'R') => {
+      const b = a.hero.rig.bones as unknown as Record<string, THREE.Bone>;
+      const hip = b[`thigh${side}`]!.getWorldPosition(new THREE.Vector3());
+      const knee = b[`shin${side}`]!.getWorldPosition(new THREE.Vector3());
+      const ankle = b[`foot${side}`]!.getWorldPosition(new THREE.Vector3());
+      const u = knee.clone().sub(hip).normalize();
+      const w = ankle.clone().sub(knee).normalize();
+      return THREE.MathUtils.radToDeg(Math.acos(Math.min(1, u.dot(w))));
+    };
+    for (const cls of classes) {
+      const row = [cls.padEnd(12)];
+      for (const st of list) {
+        const a = actor(cls, st, `${cls}-${st}-knee`);
+        simulate(a, 0, 1.5, still);
+        a.world.updateMatrixWorld(true);
+        row.push(`${st} ${bend(a, 'L').toFixed(0)}/${bend(a, 'R').toFixed(0)}`);
+      }
+      lines.push(row.join('  '));
+    }
+    return JSON.stringify({ pass: true, lines });
+  },
   /** Every stance on one class: standing, mid-walk, mid-run. */
   async stances(f) {
     await loadMeshCache();

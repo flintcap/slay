@@ -119,7 +119,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [1, 1],
     feet: (b) => feet(b, 0.4, 0.12),
-    crouch: 0.006,
+    crouch: 0.0021,
   },
   // Sword, axe or mace in the right hand, held up and ready; left hand loose.
   oneHand: {
@@ -137,7 +137,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [1, 0.45],
     feet: (b) => feet(b, 0.42, 0.22),
-    crouch: 0.012,
+    crouch: 0.0042,
   },
   // Daggers ride low and reversed, point back along the forearm.
   dagger: {
@@ -156,7 +156,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [1, 0.6],
     feet: (b) => feet(b, 0.46, 0.25),
-    crouch: 0.02,
+    crouch: 0.007,
   },
   // A wand held low and out ahead; the free hand half open.
   wand: {
@@ -175,7 +175,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [1, 0.6],
     feet: (b) => feet(b, 0.4, 0.14),
-    crouch: 0.006,
+    crouch: 0.0021,
   },
   // A blade in each hand, both low and forward, weight on the balls of the feet.
   dual: {
@@ -195,7 +195,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [0.6, 0.6],
     feet: (b) => feet(b, 0.48, 0.22),
-    crouch: 0.02,
+    crouch: 0.007,
   },
   // A sword, axe or mace in each hand: both held up and ready like the
   // one-hander's, the blades upright and a little apart. (The dagger pair's
@@ -212,7 +212,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [0.45, 0.45],
     feet: (b) => feet(b, 0.46, 0.22),
-    crouch: 0.014,
+    crouch: 0.0049,
   },
   // A long blade in the main hand held upright, a dagger in the off hand low.
   bladeDagger: {
@@ -228,7 +228,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [0.6, 0.45],
     feet: (b) => feet(b, 0.46, 0.24),
-    crouch: 0.016,
+    crouch: 0.0056,
   },
   // A dagger in the main hand low, a long blade in the off hand upright.
   daggerBlade: {
@@ -244,7 +244,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [0.45, 0.6],
     feet: (b) => feet(b, 0.46, 0.24),
-    crouch: 0.016,
+    crouch: 0.0056,
   },
   // Shield on the left forearm across the body, weapon ready behind it.
   shield: {
@@ -263,7 +263,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [0.25, 0.45],
     feet: (b) => feet(b, 0.46, 0.24),
-    crouch: 0.014,
+    crouch: 0.0049,
   },
   // Both hands on the haft, weapon up across the body.
   twoHand: {
@@ -286,7 +286,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [0.1, 0.12],
     feet: (b) => feet(b, 0.5, 0.2, 0.2),
-    crouch: 0.018,
+    crouch: 0.0063,
   },
   // A tall staff in the right hand, planted like a walking staff.
   staff: {
@@ -304,7 +304,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [1, 0.3],
     feet: (b) => feet(b, 0.4, 0.12),
-    crouch: 0.006,
+    crouch: 0.0021,
   },
   // Bow in the left hand, low and canted; the string hand free.
   bow: {
@@ -322,7 +322,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     },
     swing: [0.5, 1],
     feet: (b) => feet(b, 0.42, 0.14),
-    crouch: 0.008,
+    crouch: 0.0028,
   },
 };
 
