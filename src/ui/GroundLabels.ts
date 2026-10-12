@@ -120,7 +120,9 @@ export class GroundLabelLayer {
       if (e.button !== 0) return;
       e.stopPropagation();
       e.preventDefault();
-      if (!e.shiftKey) this.onPickUp?.(label.uid);
+      // Shift too: items the loot filter hides only show while Shift is
+      // held, so a Shift+click is the only way to take one.
+      this.onPickUp?.(label.uid);
     });
 
     this.pool.push(label);
