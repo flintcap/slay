@@ -93,6 +93,8 @@ export class Player {
   private replanIn = 0;
   /** Seconds a click-to-move order has made no headway. */
   private stuckFor = 0;
+  /** Which way the body last stepped round something head on: 1 left, -1 right. */
+  private slipSide = 1;
   private velocity = new THREE.Vector3();
   private facing = 0;
   private targetFacing = 0;
@@ -881,9 +883,67 @@ export class Player {
     const p = this.root.position;
     const ox = p.x;
     const oz = p.z;
-    let nx = ox + dx;
-    let nz = oz + dz;
+    const want = dx * dx + dz * dz;
+    const hit = this.resolve(ox + dx, oz + dz, ox, oz, ctx);
+    let nx = hit.x;
+    let nz = hit.z;
+    // Head on into something round (or a box corner dead ahead): the push
+    // undoes the whole step and nothing is left along the surface, so the
+    // body would stand there pressing. Step round it instead, on the side the
+    // order leans to, else the side it last went round, so it never dithers.
+    if (hit.nx !== 0 || hit.nz !== 0) {
+      const got = (nx - ox) ** 2 + (nz - oz) ** 2;
+      if (got < want * 0.25 && want > 1e-8) {
+        let tx = -hit.nz;
+        let tz = hit.nx;
+        const lean = (tx * dx + tz * dz) / Math.sqrt(want);
+        if (Math.abs(lean) > 0.08) this.slipSide = lean > 0 ? 1 : -1;
+        tx *= this.slipSide;
+        tz *= this.slipSide;
+        const step = Math.sqrt(want);
+        const slip = this.resolve(ox + tx * step, oz + tz * step, ox, oz, ctx);
+        if (this.canStand(slip.x, slip.z, ctx)) {
+          nx = slip.x;
+          nz = slip.z;
+        }
+      }
+    }
+    if (this.canStand(nx, nz, ctx)) {
+      p.x = nx;
+      p.z = nz;
+    } else if (this.canStand(ox + dx, oz, ctx)) {
+      p.x = ox + dx;
+    } else if (this.canStand(ox, oz + dz, ctx)) {
+      p.z = oz + dz;
+    } else {
+      this.velocity.set(0, 0, 0);
+    }
+    // An order that has stopped getting anywhere plans again, and is given up
+    // only if that does not help.
+    const got = (p.x - ox) ** 2 + (p.z - oz) ** 2;
+    if (this.moveTarget && want > 1e-8 && got < want * 0.04) {
+      this.stuckFor += 1 / 60;
+      if (this.stuckFor > 1.2) {
+        this.moveTarget = null;
+        this.route = [];
+        this.stuckFor = 0;
+      }
+    } else this.stuckFor = Math.max(0, this.stuckFor - 1 / 30);
+  }
+
+  /**
+   * Pushes a body at (x, z), arriving from (ox, oz), back out of everything
+   * it overlaps, along each surface's normal. Velocity into a surface is
+   * removed; along it is kept. Returns where it ends and the normal of the
+   * deepest contact (0, 0 when it touched nothing).
+   */
+  private resolve(x: number, z: number, ox: number, oz: number, ctx: PlayerContext): { x: number; z: number; nx: number; nz: number } {
     const r = this.bodyR;
+    let nx = x;
+    let nz = z;
+    let best = 0;
+    let bnx = 0;
+    let bnz = 0;
     for (let pass = 0; pass < 3; pass++) {
       let pushed = false;
       for (const c of ctx.colliders) {
@@ -920,7 +980,11 @@ export class Player {
         const depth = reach - e + 1e-4;
         nx += ex * depth;
         nz += ez * depth;
-        // Velocity into the surface goes; along it stays.
+        if (depth > best) {
+          best = depth;
+          bnx = ex;
+          bnz = ez;
+        }
         const vn = this.velocity.x * ex + this.velocity.z * ez;
         if (vn < 0) {
           this.velocity.x -= vn * ex;
@@ -930,28 +994,7 @@ export class Player {
       }
       if (!pushed) break;
     }
-    if (this.canStand(nx, nz, ctx)) {
-      p.x = nx;
-      p.z = nz;
-    } else if (this.canStand(ox + dx, oz, ctx)) {
-      p.x = ox + dx;
-    } else if (this.canStand(ox, oz + dz, ctx)) {
-      p.z = oz + dz;
-    } else {
-      this.velocity.set(0, 0, 0);
-    }
-    // An order that has stopped getting anywhere plans again, and is given up
-    // only if that does not help.
-    const want = dx * dx + dz * dz;
-    const got = (p.x - ox) ** 2 + (p.z - oz) ** 2;
-    if (this.moveTarget && want > 1e-8 && got < want * 0.04) {
-      this.stuckFor += 1 / 60;
-      if (this.stuckFor > 1.2) {
-        this.moveTarget = null;
-        this.route = [];
-        this.stuckFor = 0;
-      }
-    } else this.stuckFor = Math.max(0, this.stuckFor - 1 / 30);
+    return { x: nx, z: nz, nx: bnx, nz: bnz };
   }
 
   private canStand(x: number, z: number, ctx: PlayerContext): boolean {

@@ -2,7 +2,7 @@
  * Click-to-move reaches where you click. Enters a few levels, then from
  * random standing spots orders the hero to random reachable spots 4 to 14 m
  * away (round props, wall corners and all in between) and steps the hero's
- * own movement at 60 Hz, no rendering, until it arrives or 8 s pass.
+ * own movement at 60 Hz, no rendering, until it arrives or runs out of time for the walk.
  * Prints how many arrived; PASS at 95% or better.
  *
  *   SLAY_PORT=4343 timeout 1500 node tools/check-walk.mjs [--levels=3] [--tries=40]
@@ -43,9 +43,13 @@ for (let L = 0; L < LEVELS; L++) {
       const fails = [];
       let arrived = 0;
       let n = 0;
-      for (let k = 0; k < tries * 4 && n < tries; k++) {
+      for (let k = 0; k < tries * 30 && n < tries; k++) {
         const a = open[Math.floor(rnd() * open.length)];
-        const b = open[Math.floor(rnd() * open.length)];
+        // The destination: a walkable tile near the start, as a click is.
+        const bx = a[0] + Math.round((rnd() - 0.5) * 14);
+        const by = a[1] + Math.round((rnd() - 0.5) * 14);
+        if (!gen.isWalkable(level, bx, by)) continue;
+        const b = [bx, by];
         const A = nav.tileToWorld(a[0], a[1]);
         const B = nav.tileToWorld(b[0], b[1]);
         const d = Math.hypot(A.x - B.x, A.y - B.y);
@@ -58,12 +62,21 @@ for (let L = 0; L < LEVELS; L++) {
         if (!p.canStand(A.x, A.y, ctx) || !p.canStand(B.x, B.y, ctx)) continue;
         n++;
         p.moveTo(B.x, B.y);
+        // Time for the walk the level asks for (a short hop across a wall can
+        // be a long way round), at a slow 3 m/s, plus two seconds.
+        let len = 0;
+        let q = A;
+        for (const w of route) {
+          len += Math.hypot(w.x - q.x, w.y - q.y);
+          q = w;
+        }
+        const limit = 2 + len / 3;
         let t = 0;
-        for (; t < 8; t += 1 / 60) {
+        for (; t < limit; t += 1 / 60) {
           p.updateMovement(1 / 60, ctx, null);
           if (Math.hypot(p.root.position.x - B.x, p.root.position.z - B.y) < 0.4) break;
         }
-        if (t < 8) arrived++;
+        if (t < limit) arrived++;
         else fails.push(`${a}->${b} ended ${Math.hypot(p.root.position.x - B.x, p.root.position.z - B.y).toFixed(1)} m short`);
       }
       return { depth, n, arrived, fails: fails.slice(0, 5) };
