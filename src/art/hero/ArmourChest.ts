@@ -153,9 +153,9 @@ function skirt(k: Kit, hemY: number, flare = 1, pad = 0.08): Prim[] {
     }
     const drop = 4.05 - y;
     // Wide enough at the diagonals to clear both thighs, not only at the sides.
-    const grow = 1 + 0.07 * flare * drop;
+    const grow = 1 + 0.05 * flare * drop;
     const rx = (base.x * 1.08 + pad * h) * grow;
-    const half = ((base.zf - base.zb) / 2 * 1.12 + pad * h) * (1 + 0.05 * flare * drop);
+    const half = ((base.zf - base.zb) / 2 * 1.08 + pad * h) * (1 + 0.04 * flare * drop);
     const cz = (base.zf + base.zb) / 2;
     F.ellipsoid(V(0, y * h, cz), V(rx, ((top - bottom) / n) * 1.25 * h, half), 0.28 * h);
   }

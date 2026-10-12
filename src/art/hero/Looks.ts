@@ -54,7 +54,7 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     stoop: 0.05,
   },
   pyromancer: {
-    shape: { sex: 'female', height: 1.74, build: 0.25 },
+    shape: { sex: 'female', height: 1.74, build: 0.25, hips: 0.95 },
     face: { rugged: 0 },
     skin: 0xe2b49a,
     hair: { cut: 'long', color: 0x9a3a18 },
@@ -66,7 +66,7 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     stoop: 0,
   },
   shadowblade: {
-    shape: { sex: 'female', height: 1.72, build: 0.42 },
+    shape: { sex: 'female', height: 1.72, build: 0.28, hips: 0.92 },
     face: { rugged: 0.15 },
     skin: 0x8a5a40,
     hair: { cut: 'knot', color: 0x141010 },
@@ -103,7 +103,7 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     stoop: 0.6,
   },
   ranger: {
-    shape: { sex: 'female', height: 1.76, build: 0.48 },
+    shape: { sex: 'female', height: 1.76, build: 0.4, hips: 0.95 },
     face: { rugged: 0.25 },
     skin: 0xd8a888,
     hair: { cut: 'ponytail', color: 0xb08a50 },

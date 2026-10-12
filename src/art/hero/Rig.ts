@@ -151,7 +151,7 @@ export function shoulderHalf(s: BodyShape): number {
 /** Hip joint half-width, metres. */
 export function hipHalf(s: BodyShape): number {
   const h = headUnit(s);
-  const base = s.sex === 'male' ? 0.36 : 0.42;
+  const base = s.sex === 'male' ? 0.34 : 0.37;
   return h * (base + 0.02 * s.build) * (s.hips ?? 1);
 }
 

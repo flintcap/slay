@@ -82,7 +82,7 @@ export function bodyField(shape: BodyShape, j: JointMap, opts: AnatomyOpts = {})
   F.group = G.torso;
   const ribW = (male ? 0.6 : 0.52) * mass * h + (sw - 0.7 * h) * 0.3;
   const waistW = (male ? 0.5 : 0.45) * mass * h;
-  const pelW = hw + (male ? 0.27 : 0.27) * h * mass;
+  const pelW = hw + (male ? 0.23 : 0.2) * h * mass;
   const depth = (male ? 0.4 : 0.37) * mass * h;
   // Ribcage: the widest mass of the trunk, tipped back a touch.
   F.ellipsoid(H(0, 5.28, -0.02), V(ribW * 0.96, 0.74 * h, depth * 1.02), 0, rot(-0.08));
@@ -95,7 +95,7 @@ export function bodyField(shape: BodyShape, j: JointMap, opts: AnatomyOpts = {})
   // Lower belly over the pelvis, the front curve under the navel.
   F.ellipsoid(H(0, 4.12, 0.12), V(waistW * 0.82, 0.36 * h, depth * 0.62), 0.12 * h);
   // Glutes.
-  for (const s of [1, -1]) F.ellipsoid(H(s * 0.22 * (hw / (0.36 * h)), 3.84, -0.16), V(0.27 * h * mass, 0.34 * h, 0.24 * h * mass), 0.16 * h);
+  for (const s of [1, -1]) F.ellipsoid(H(s * 0.2 * (hw / (0.36 * h)), 3.86, -0.12), V(0.21 * h * mass, 0.3 * h, 0.18 * h * mass), 0.14 * h);
   // Chest: pectorals on a man, breasts on a woman.
   if (male) {
     for (const s of [1, -1]) {
@@ -241,7 +241,7 @@ export function bodyField(shape: BodyShape, j: JointMap, opts: AnatomyOpts = {})
     const An = j[L ? 'footL' : 'footR'];
     const To = j[L ? 'toeL' : 'toeR'];
     F.group = L ? G.legL : G.legR;
-    const th = (male ? 0.32 : 0.33) * h * mass * (1 + 0.1 * muscle);
+    const th = (male ? 0.3 : 0.28) * h * mass * (1 + 0.1 * muscle);
     const thighDir = Kn.clone().sub(Hp).normalize();
     // The thigh starts high and wide, inside the pelvis.
     const top = Hp.clone().add(H(side * 0.02, 0.1, 0));

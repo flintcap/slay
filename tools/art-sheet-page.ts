@@ -307,6 +307,51 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return c;
   },
 
+  /** Every class full length in its field kit and bare: front, side and back, to judge proportions. */
+  async bodies() {
+    const THREE = await import('three');
+    const { DressedHero, buildClassHero } = await import('../src/scenes/HeroModel');
+    const ids = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'] as const;
+    const W = 120;
+    const H = 240;
+    const views = [0, Math.PI / 2, Math.PI];
+    const { c, g } = sheet(ids.length * (2 * views.length * W + 16) + 10, H + 40);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    renderer.setSize(W, H, false);
+    const scene = new THREE.Scene();
+    scene.add(new THREE.HemisphereLight(0xb0b8c8, 0x302820, 1.2));
+    const key = new THREE.DirectionalLight(0xffffff, 2.4);
+    scene.add(key);
+    const camera = new THREE.PerspectiveCamera(18, W / H, 0.1, 30);
+    let x = 10;
+    for (const id of ids) {
+      for (const bare of [false, true]) {
+        const model = bare ? null : buildClassHero(id);
+        const hero = bare ? new DressedHero(id, 1) : null;
+        const root = model?.root ?? hero!.root;
+        const anim = model?.animator ?? hero!.animator;
+        if (hero) anim.play('idle', { fade: 0 });
+        scene.add(root);
+        for (let i = 0; i < 30; i++) anim.update(1 / 30);
+        for (const yaw of views) {
+          camera.position.set(Math.sin(yaw) * 7, 1.0, Math.cos(yaw) * 7);
+          camera.lookAt(0, 0.92, 0);
+          key.position.set(Math.sin(yaw + 0.6) * 4, 4, Math.cos(yaw + 0.6) * 4);
+          renderer.render(scene, camera);
+          g.drawImage(renderer.domElement, x, 10, W, H);
+          x += W;
+        }
+        root.removeFromParent();
+        (model ?? hero!).dispose();
+      }
+      g.fillStyle = INK;
+      g.fillText(id, x - 2 * views.length * W + 4, H + 30);
+      x += 16;
+    }
+    renderer.dispose();
+    return c;
+  },
+
   /** The boot and loading key art at a desktop and a phone shape. */
   async keyart() {
     const { keyArtCanvas } = await import('../src/art/KeyArt');
