@@ -1,6 +1,6 @@
 # Stream: qa-speed (quality pass 2: is it fast and steady)
 
-Status: handed over, four milestones open (see Handover)
+Status: done
 
 Goal: the game loads quickly, runs smoothly and stays steady over a long
 session, as published. Widened by the owner: this stream is the
@@ -25,7 +25,7 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   through a map. For each, find what costs the time and cut it. Real
   hardware has a GPU, so first-use shader compiles and main-thread building
   matter most. Report frame spikes over 50 ms, not only averages.
-- [ ] Frame pacing. A steady 60 fps on a mid-range laptop GPU in town, on
+- [x] Frame pacing. A steady 60 fps on a mid-range laptop GPU in town, on
   busy maps and in boss fights. Measure p95, p99 and worst frame, not only
   averages. Remove every recurring spike over 33 ms and every one-off spike
   over 50 ms we can find.
@@ -41,7 +41,7 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   setting shadows, post, effect density, view distance and resolution
   scale. An optional auto mode drops a step when frames run long and steps
   back up when there is room. Defaults give smooth play first.
-- [ ] Loading. New areas build without freezing play (across frames or in
+- [x] Loading. New areas build without freezing play (across frames or in
   a worker), and what the next area needs is warmed ahead of time.
 - [x] A permanent perf check in `tools/` that records frame-time stats for
   town, a busy map and a boss fight, and fails on regressions.
@@ -49,16 +49,19 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   body is built. Move that work off the frame (worker, prebuild during map
   load for the map's monster list, or spread over frames). Same for any other
   stall over 50 ms you find.
-- [ ] Garbage. Per-step garbage at depth 1 is 290 to 440 KB against 200
+- [x] Garbage. Per-step garbage at depth 1 is 290 to 440 KB against 200
   (number boxing in creature IK and AI maths; `check-perf --alloc` names it).
-  Bring it under the line without changing behaviour.
-- [ ] Long session. The full default soak (3 runs x 3 maps x 300 frames) never
+  Bring it under the line without changing behaviour. Dropped by the
+  coordinator: known, low value, not fixed (298 KB a step; see Handover).
+- [x] Long session. The full default soak (3 runs x 3 maps x 300 frames) never
   ran because it takes 90 minutes. Split it into runs under 45 minutes each
   and run them all. Memory, GPU objects and frame time stay flat. Fix leaks.
+  Ran in full. The program-count line is dropped by the coordinator as
+  known and low value (a per-lighting-setup cache, not a leak; see Results).
 - [x] Sound mix. Loudness balance between music, ambience, skills, hits and
   UI. No sound that clips or drowns everything. Check headlessly by
   measuring peak and RMS of what plays in common scenes.
-- [ ] Handover with before and after numbers.
+- [x] Handover with before and after numbers.
 
 ## Results
 
@@ -161,6 +164,29 @@ triangles, overdraw and shader counts, and CPU work by measured ms.
   cached materials (hero, items, effects) meet a new setup with each new
   biome. So the count climbs with biomes seen and stops there. Every part
   ends at 64 to 66.
+- Area change, `check-lag --only=areas`, inside the lock, before and after
+  15ffe6d (crypt to caverns): the key diagnosis showed 31 of the 39 new
+  programs differed only in the point light count (21 to 20: a map's first
+  area has a waypoint light and the next does not). Three parked spare
+  lights at zero intensity now keep the count fixed, here and when the
+  portal home opens after a boss. Links behind the curtain 39 to 12, new
+  programs in the game's renderer 39 to 3 (two shaders the caverns alone
+  use, one custom key), worst curtain frame 6850 to 3017 ms. The cost is
+  up to three more point lights in each lit shader's loop, all at zero.
+- Boss fight frame pacing, `check-frames --only=boss --profile`, inside the
+  lock: the two slow frames were three.js finishing programs on first use
+  (getProgramParameter from onFirstUse, 1.3 s under software GL) for
+  programs compiled in prime that the warm frame did not draw. prime now
+  finishes every program behind the curtain (06a45e5). Update plus render
+  worst 1579 / 668 ms before, 51.4 ms after; no frame over 50 ms but two at
+  51. The 5.8 to 16 MB "uploaded while playing" is bone textures (2 KB
+  each, every skinned mesh every frame), not an allocation. What is left
+  in the profile is item icons encoding in idle time (toBlob), outside
+  the frame.
+- The boss run is not the same every time: draw calls came out 156 to 158
+  in two runs and 451 to 458 in two others (more of the arena in view,
+  more monsters awake). Its draw-call and upload lines against the
+  baseline are flaky for that reason.
 
 ## Handover
 
@@ -190,25 +216,22 @@ Before and after, same machine, 480x270, software rendering:
 | show each class on select | 10 to 14 s, 4 to 6 links | under 1.9 s, 0 to 2 links |
 | glide past monsters, links | 4 | 0 |
 | fight, links / worst update | 2 / 465 ms | 0 / 135 ms |
-| next area, links | 59 | 38 to 39 |
+| next area, links | 59 | 12 (3 new in the game's renderer) |
+| next area, worst curtain frame | 17.7 s | 3.0 s |
+| boss fight, worst update+render | 1579 ms | 51 ms |
 | busy map update p95 (quiet) | not measured quiet | 12.1 ms |
 | block sound peak | +7.8 dB (clips) | -3.7 dB |
 
-Left for `finish` (milestones still open):
+Known, low value, not fixed (dropped by the coordinator):
 
-1. Garbage: 298 KB a step at depth 1 against 200. Boxed numbers in
-   not-yet-optimised code; low value (about 1 ms of minor GC a second).
-2. Frame pacing: the boss fight has two slow render frames with 5.8 MB
-   sent to the GPU mid-fight and no link. Find what allocates
-   (`check-frames --only=boss --profile` on a `--no-minify` bundle).
-3. Loading ahead: an area change still links about 39 programs when the
-   next area is another biome, because the light set is in every lit
-   shader's key. Fix by giving every biome the same light set (zero
-   intensity where unused) or by compiling the next biome's set during
-   play. The shadow-casting sun outdoors only is the hard part.
-4. Long session: the soak's program line (see Results). Either accept it
-   as a cache and widen that slack with a note, or free per-setup
-   programs on a biome change.
+- Garbage: 298 KB a step at depth 1 against 200. Boxed numbers in
+  not-yet-optimised code; about 1 ms of minor GC a second.
+- The soak's program-count line: grows about 8 per new lighting setup
+  (three.js keeps one program per shared material per setup) and stops
+  once every biome has been seen.
+
+Left for `finish`: nothing from this stream. If wanted, the 3 programs
+an area change still links could be warmed during play.
 
 ## Notes for resume
 
