@@ -885,16 +885,19 @@ export class HeroAnimator {
     // The stride.
     const ph = g.phase * TAU;
     const mid = ph - g.duty * Math.PI; // left mid-stance at 0
-    const bob = (0.022 * (1 - rw) * Math.cos(2 * mid) - 0.03 * rw * Math.cos(2 * mid) - 0.03 * rw) * L * mw;
-    // The hips ride over the planted foot; the knees stay soft through the
-    // stride (a locked stance leg made the walk stiff and stilted).
-    const sway = 0.032 * L * mw * (1 - 0.6 * rw) * Math.cos(mid);
-    p.shift(sway, bob - (0.01 + 0.02 * rw) * L * mw, 0);
+    // Grounded: the hips carried low and nearly level, a small bob, the
+    // knees bent all through the stride (a locked stance leg made the walk
+    // stiff and stilted; a big bob read as bouncing).
+    const bob = (0.014 * (1 - rw) * Math.cos(2 * mid) - 0.016 * rw * Math.cos(2 * mid) - 0.02 * rw) * L * mw;
+    // The hips ride a little over the planted foot; the track is narrow, so
+    // they need not swing far.
+    const sway = 0.022 * L * mw * (1 - 0.6 * rw) * Math.cos(mid);
+    p.shift(sway, bob - (0.04 + 0.02 * rw) * L * mw, 0);
     const pelYaw = -0.13 * mw * Math.cos(ph);
-    const pelRoll = 0.06 * mw * (1 - 0.3 * rw) * Math.cos(mid);
+    const pelRoll = 0.035 * mw * (1 - 0.3 * rw) * Math.cos(mid);
     const counter = (0.2 + 0.08 * rw) * mw * Math.cos(ph);
     // Lean into speed and acceleration, on a spring so it settles.
-    const leanTarget = (0.05 + 0.24 * rw) * mw + clamp(this.accel * 0.025, -0.12, 0.18);
+    const leanTarget = (0.05 + 0.19 * rw) * mw + clamp(this.accel * 0.025, -0.12, 0.18);
     this.leanVel += ((leanTarget - this.lean) * 90 - this.leanVel * 14) * dt;
     this.lean += this.leanVel * dt;
     const speed = Math.hypot(this.vx, this.vz);
@@ -909,14 +912,15 @@ export class HeroAnimator {
     const trunkYaw = p.get('pelvis', 1) + p.get('spine', 1) + p.get('chest', 1);
     p.add('neck', -trunkPitch * 0.3, -trunkYaw * 0.35, -(pelRoll + bank) * 0.3);
     p.add('head', -trunkPitch * 0.35, -trunkYaw * 0.45, -(pelRoll + bank) * 0.4);
-    // Arms swing against the legs, a beat behind.
+    // Arms swing against the legs, a beat behind: low and tight, a short
+    // pump from the shoulder, never flailing.
     const arm = Math.cos(ph - 0.35);
-    const amp = (0.34 + 0.24 * rw) * mw;
+    const amp = (0.28 + 0.12 * rw) * mw;
     const [sl, sr] = stance.swing;
     p.add('upperArmR', amp * arm * sr, 0, 0);
     p.add('upperArmL', -amp * arm * sl, 0, 0);
-    p.add('foreArmR', (0.12 + 0.3 * rw) * mw * Math.max(0, arm) * sr, 0, 0);
-    p.add('foreArmL', (0.12 + 0.3 * rw) * mw * Math.max(0, -arm) * sl, 0, 0);
+    p.add('foreArmR', (0.1 + 0.2 * rw) * mw * Math.max(0, arm) * sr, 0, 0);
+    p.add('foreArmL', (0.1 + 0.2 * rw) * mw * Math.max(0, -arm) * sl, 0, 0);
 
     // Standing: breathing, weight drifting from foot to foot, a look around.
     const still = 1 - mw;

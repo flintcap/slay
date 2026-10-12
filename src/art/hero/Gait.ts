@@ -118,6 +118,17 @@ export class Gait {
   /** Small settling steps still allowed after stopping. */
   private settle = 0;
   private placed = false;
+  /** Seconds the body has been nearly still while still striding. */
+  private slowT = 0;
+  /** In a snap turn: the feet swing round with the hips. */
+  private spinning = false;
+  private lastX = 0;
+  private lastZ = 0;
+  /** Ground acceleration, smoothed, world XZ. */
+  private ax = 0;
+  private az = 0;
+  private lvx = 0;
+  private lvz = 0;
   private lastYaw = 0;
 
   constructor(readonly body: GaitBody) {}
@@ -139,18 +150,28 @@ export class Gait {
     this.moveW = 0;
     this.placed = true;
     this.lastYaw = inp.yaw;
+    this.lastX = inp.x;
+    this.lastZ = inp.z;
   }
 
-  /** Cadence for a ground speed, scaled to leg length (long legs stride slower). */
+  /**
+   * Cadence for a ground speed, scaled to leg length (long legs stride
+   * slower). A run quickens more than a walk: short, quick steps, the speed
+   * from the beat rather than from reaching (a long stride at running speed
+   * read as the legs splayed fore and aft).
+   */
   cadence(v: number): number {
     const k = Math.sqrt(0.88 / this.body.legLen);
-    return Math.min(2.6, Math.max(0.75, (0.8 + 0.3 * v) * k));
+    return Math.min(3.3, Math.max(0.75, (0.9 + 0.3 * v + 0.12 * Math.max(0, v - 2)) * k));
   }
 
   /** Where foot `i` should stand, `ahead` seconds from now, world. */
   private desired(inp: GaitInput, i: number, ahead: number, lead = 0): { x: number; z: number; yaw: number } {
     const st = inp.stance[i]!;
-    const yaw = inp.yaw + Math.max(-0.7, Math.min(0.7, inp.yawRate * ahead));
+    // Ahead of a curve the foot turns to where the body will face. Not in a
+    // snap turn: the feet already swing round with the hips there, and the
+    // guess overshot the end of the turn, a foot thrown out to the side.
+    const yaw = inp.yaw + (this.spinning ? 0 : Math.max(-0.7, Math.min(0.7, inp.yawRate * ahead)));
     const c = Math.cos(yaw);
     const s = Math.sin(yaw);
     // Moving, the feet come in to a narrow track near the centre line, about
@@ -161,9 +182,32 @@ export class Gait {
     const track = side * this.body.legLen * lerp(0.06, 0.034, this.runW);
     const lx = lerp(st.x, track, this.moveW);
     const lz = st.z * (1 - this.moveW);
+    // Braking or speeding up bends the path the body takes to the landing:
+    // the velocity eases toward where it is heading (as the mover's does),
+    // so a reversal lands the foot near the hip, not out along the old line.
+    const r = 10;
+    let tx = inp.vx + this.ax / r;
+    let tz = inp.vz + this.az / r;
+    const cap = Math.max(this.speed, 6);
+    const tm = Math.hypot(tx, tz);
+    if (tm > cap) {
+      tx *= cap / tm;
+      tz *= cap / tm;
+    }
+    const t = Math.min(ahead, 0.3);
+    const ease = (1 - Math.exp(-r * t)) / r;
+    let mx = tx * t + (inp.vx - tx) * ease + inp.vx * (ahead - t + lead);
+    let mz = tz * t + (inp.vz - tz) * ease + inp.vz * (ahead - t + lead);
+    if (this.spinning) {
+      // Mid snap turn the feet ride sideways with the body (see update), so
+      // they aim along the new heading only.
+      const fw = mx * s + mz * c;
+      mx = fw * s;
+      mz = fw * c;
+    }
     return {
-      x: inp.x + inp.vx * (ahead + lead) + lx * c + lz * s,
-      z: inp.z + inp.vz * (ahead + lead) - lx * s + lz * c,
+      x: inp.x + mx + lx * c + lz * s,
+      z: inp.z + mz - lx * s + lz * c,
       yaw: yaw + st.yaw * (1 - 0.7 * this.moveW),
     };
   }
@@ -172,9 +216,21 @@ export class Gait {
     if (!this.placed) this.place(inp);
     const speed = Math.hypot(inp.vx, inp.vz);
     this.speed = speed;
-    // Hysteresis: start at a real walk, stop only when nearly still.
+    // Where the body is heading next: a reversal brakes hard, and a foot
+    // aimed by the old velocity alone landed far out along the old line.
+    if (dt > 0) {
+      const k = Math.min(1, dt * 20);
+      this.ax += ((inp.vx - this.lvx) / dt - this.ax) * k;
+      this.az += ((inp.vz - this.lvz) / dt - this.az) * k;
+    }
+    this.lvx = inp.vx;
+    this.lvz = inp.vz;
+    // Hysteresis: start at a real walk, stop only when nearly still, and
+    // still for a moment: a reversal passes through zero speed, and stopping
+    // there dropped a swinging foot mid stride.
+    this.slowT = this.moving && speed < 0.22 ? this.slowT + dt : 0;
     if (!this.moving && speed > 0.45 && !inp.rooted) this.start(inp);
-    else if (this.moving && (speed < 0.22 || inp.rooted)) this.stop();
+    else if (this.moving && (this.slowT > 0.12 || inp.rooted)) this.stop();
 
     const runTarget = smooth((speed - 2.2) / 1.4);
     // Quick into a run, slow out of it: a body that has already sped up
@@ -183,7 +239,9 @@ export class Gait {
     this.runW += (runTarget - this.runW) * Math.min(1, dt * (runTarget > this.runW ? 10 : 5));
     const moveTarget = this.moving ? Math.min(1, speed / 1.2) : 0;
     this.moveW += (moveTarget - this.moveW) * Math.min(1, dt * 8);
-    this.duty = lerp(0.6, 0.32, this.runW);
+    // Running, each foot stays down a good share of the beat: a short float,
+    // grounded rather than bounding.
+    this.duty = lerp(0.58, 0.36, this.runW);
     this.freq = this.cadence(speed);
     if (this.moving) this.phase = (this.phase + this.freq * dt) % 1;
 
@@ -193,8 +251,28 @@ export class Gait {
     // legs did the splits. Slow curves keep their planted feet.
     const dyaw = wrapAngle(inp.yaw - this.lastYaw);
     this.lastYaw = inp.yaw;
-    const spin = dt > 0 && this.moving ? smooth((Math.abs(dyaw) / dt - 3) / 5) : 0;
-    if (spin > 0) this.swivel(inp.x, inp.z, dyaw * spin);
+    // Once a snap turn starts, the feet go round with it to the end: let go
+    // part way, the tail of the turn swung the hips past planted feet and
+    // left them out to the side.
+    const rate = dt > 0 ? Math.abs(dyaw) / dt : 0;
+    if (!this.moving || rate < 1.5) this.spinning = false;
+    else if (rate > 5) this.spinning = true;
+    if (this.spinning) {
+      this.swivel(inp.x, inp.z, dyaw);
+      // Mid turn the body still slides along its old line, across its new
+      // heading: the feet ride along sideways rather than being left wide.
+      const rx = Math.cos(inp.yaw);
+      const rz = -Math.sin(inp.yaw);
+      const side = (inp.x - this.lastX) * rx + (inp.z - this.lastZ) * rz;
+      for (const f of this.feet) {
+        f.x += rx * side;
+        f.z += rz * side;
+        f.sx += rx * side;
+        f.sz += rz * side;
+      }
+    }
+    this.lastX = inp.x;
+    this.lastZ = inp.z;
 
     for (let i = 0; i < 2; i++) {
       const f = this.feet[i]!;
@@ -270,7 +348,11 @@ export class Gait {
       // A foot left too far behind (a sudden start, a shove) goes early.
       const sp = Math.max(1e-3, this.speed);
       const behind = -((f.x - inp.x) * inp.vx + (f.z - inp.z) * inp.vz) / sp;
-      const early = behind > 0.5 * this.body.legLen && phi > 0.2;
+      // So does one left out to the side, the body having slid past it in a
+      // reversal: planted on, it held the legs wide apart.
+      const side = (f.x - inp.x) * Math.cos(inp.yaw) - (f.z - inp.z) * Math.sin(inp.yaw);
+      const wide = Math.abs(side - (i === 0 ? 1 : -1) * this.body.legLen * 0.05) > 0.2 * this.body.legLen;
+      const early = (behind > 0.45 * this.body.legLen && phi > 0.1) || (wide && phi > 0.08);
       if ((phi >= duty || early) && phi < 0.985 && f.since > 0.05) this.lift(f, true, phi);
       else {
         // Rolling over the planted foot: heel strike down to flat, then up onto the ball.
@@ -284,6 +366,11 @@ export class Gait {
           const t = (q - qh) / (1 - qh);
           f.pitch = pToe * t * t;
         }
+        // A foot the body has run on past (a start, out of a reversal)
+        // comes up onto its toes whatever the beat says, so the hips need
+        // not sink to keep it on the floor.
+        const L = this.body.legLen;
+        if (behind > 0.2 * L) f.pitch = Math.max(f.pitch, pToe * smooth((behind - 0.2 * L) / (0.25 * L)));
         f.pitch *= this.moveW;
       }
       return;
@@ -328,7 +415,11 @@ export class Gait {
     // early (heel up), under it at mid swing, ahead only to land. Held back
     // longer it trailed far behind, the pelvis sank to reach it and the run
     // read as a string of lunges with the back knee near the floor.
-    const e = smooth(s);
+    // Running, the foot leaves quickly and comes through under the hip with
+    // the heel tucked up, then eases down onto its spot: eased in as well, it
+    // hung far behind early in the swing, a long back leg in every frame.
+    const m0 = 0.8 * run;
+    const e = s <= 0 ? 0 : s >= 1 ? 1 : s * s * (3 - 2 * s) + m0 * s * (1 - s) * (1 - s);
     f.x = lerp(f.sx, d.x, e);
     f.z = lerp(f.sz, d.z, e);
     f.yaw = f.syaw + wrapAngle(d.yaw - f.syaw) * e;
@@ -340,7 +431,7 @@ export class Gait {
       // folds) and the foot comes through high, then reaches down to land.
       // A foot that trailed low along the floor read as a lunge, the legs
       // split wide in every frame.
-      const runH = 0.5 * L;
+      const runH = 0.44 * L;
       const h = lerp(walkH, runH, run);
       const kick = s < 0.3 ? Math.sin((Math.PI / 2) * (s / 0.3)) : Math.pow(Math.cos((Math.PI / 2) * ((s - 0.3) / 0.7)), 1.4);
       const prof = lerp(Math.sin(Math.PI * Math.pow(s, 0.85)), kick, run);
