@@ -283,9 +283,12 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
   /** Named uniques and sets: the glowing few beside some that do not glow. */
   async glow() {
     const ids = [
-      'sword.gladius@uq.hexfire', 'sword.phase@uq.azurewrath', 'bow.hydra@uq.windforce', 'sword.sunblade@an.the-long-noon',
-      'sword.godslayer@my.iceblink', 'mace.sanctified@an.mourning-star', 'sword.falchion@uq.griswold', 'sword.short@uq.rixots',
-      'mace.club@uq.felloak', 'axe.berserker@my.beast', 'sword.broad#set.gilded', 'sword.broad#set.ironvow',
+      // One of each glow style: flame, shimmer, spectral, frost, void, storm, pulse, rim.
+      'sword.gladius@uq.hexfire', 'sword.phase@uq.azurewrath', 'bow.hydra@uq.windforce', 'sword.godslayer@my.iceblink',
+      'mace.sanctified@an.mourning-star', 'spear.ghost@uq.thunderstroke', 'orb.eldritch@uq.eschutas', 'sword.broad#set.sunderedsky',
+      'sword.broad#set.gilded', 'wand.unearthed@uq.deathsweb',
+      // These do not glow.
+      'sword.falchion@uq.griswold', 'mace.club@uq.felloak',
     ];
     return modelSheet(ids, ['unique'], 3);
   },

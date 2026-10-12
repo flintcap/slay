@@ -42,7 +42,7 @@ export function buildItemModel(visual: ItemVisual, _rng: Rng, rarity: ItemRarity
     const box = new THREE.Box3().setFromObject(built.group);
     const size = box.getSize(new THREE.Vector3());
     const strength = L.set ? 0.45 : L.rarityTier >= 4 ? 0.9 : 0.65;
-    glowShell(built.group, L.glowColor, strength, 0.012);
+    glowShell(built.group, L.glowColor, strength, 0.012, L.glowStyle);
     const aura = buildAura(L.aura, L.glowColor, { radius: Math.max(0.05, Math.max(size.x, size.z) * 0.45 + 0.02), height: Math.max(0.15, size.y), strength, seed: hashString(`${L.baseId}|${ident?.uniqueId ?? ident?.setId ?? ''}`) });
     if (aura) {
       aura.position.y = box.min.y / (k || 1);

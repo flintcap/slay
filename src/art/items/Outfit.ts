@@ -18,7 +18,7 @@ import { hashString } from '../../core/RNG';
 import { itemLook } from '../ItemLook';
 import { lightArmour, type WornArmour } from '../hero/Armour';
 import type { HeroModel } from '../hero/Hero';
-import { GLOWING_SETS, SET_MOTIFS } from './Designs';
+import { GLOWING_SETS, glowStyleOf, SET_MOTIFS } from './Designs';
 import { buildAura, glowTwins } from './Aura';
 
 type Ident = Pick<Item, 'baseId' | 'rarity'> & Partial<Pick<Item, 'uniqueId' | 'setId'>>;
@@ -84,7 +84,7 @@ export function dressOutfit(
       // Every worn piece of the set glows round its outline, brighter as it fills.
       const glow = full ? 0.85 : 0.3 + 0.4 * (best.n / best.total);
       for (const [slot, w] of worn) {
-        if (pieces[slot]?.setId === best.id && !pieces[slot]?.uniqueId) out.push(...glowTwins(w.object, motif.glow, glow, 0.012));
+        if (pieces[slot]?.setId === best.id && !pieces[slot]?.uniqueId) out.push(...glowTwins(w.object, motif.glow, glow, 0.012, glowStyleOf(motif.aura, motif.glowStyle)));
       }
       const aura = buildAura(motif.aura, motif.glow, { radius: 0.42, height: Math.min(2.2, height * 1.05), strength: full ? 1.2 : 0.35 + 0.5 * (best.n / best.total), seed: hashString(best.id) });
       if (aura) {
@@ -104,7 +104,7 @@ export function dressOutfit(
     if (!visual) continue;
     const look = itemLook({ baseId: p.baseId, rarity: p.rarity, uniqueId: p.uniqueId, setId: p.setId }, visual);
     if (look.aura === 'none') continue;
-    out.push(...glowTwins(worn.get(slot)!.object, look.glowColor, look.rarityTier >= 4 ? 0.6 : 0.45, 0.012));
+    out.push(...glowTwins(worn.get(slot)!.object, look.glowColor, look.rarityTier >= 4 ? 0.6 : 0.45, 0.012, look.glowStyle));
     if (sparks >= MAX_AURAS) continue;
     const bone = bones[where.bone] ?? hero.root;
     const aura = buildAura(look.aura, look.glowColor, { radius: where.r, height: where.h, strength: look.rarityTier >= 4 ? 0.9 : 0.6, seed: hashString(p.uniqueId) });

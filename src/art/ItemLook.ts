@@ -34,7 +34,7 @@ import { gearLook, type GearLook } from './GearLook';
 import { resolveSurface } from './SurfaceLibrary';
 import { TEXTURE_SETS } from './TextureSets';
 import { ITEM_BASES } from '../data/itemBases';
-import { fallbackMotif, FINISHES, GLOWING_SETS, GLOWING_UNIQUES, SET_MOTIFS, UNIQUE_DESIGNS, type Aura, type Emblem, type Feature, type Finish, type SetMotif, type UniqueDesign } from './items/Designs';
+import { fallbackMotif, FINISHES, GLOWING_SETS, GLOWING_UNIQUES, glowStyleOf, SET_MOTIFS, UNIQUE_DESIGNS, type Aura, type GlowStyle, type Emblem, type Feature, type Finish, type SetMotif, type UniqueDesign } from './items/Designs';
 
 export type { Aura, Emblem, Feature, Finish } from './items/Designs';
 
@@ -104,6 +104,8 @@ export interface ItemLook extends GearLook {
   cutOverride?: Record<string, number | string | boolean>;
   /** The living effect round a set piece or unique ('none' on plain items). */
   aura: Aura;
+  /** How the glow moves over it, when it has one. */
+  glowStyle: GlowStyle;
   /** Surface finish of a set piece or unique: shine and roughness of its main and trim. */
   finish?: Finish;
   /** Faint inner light of the main surface, in the glow colour (from the finish). */
@@ -332,6 +334,7 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
     aura: design
       ? (GLOWING_UNIQUES.has(item.uniqueId ?? '') ? design.aura : 'none')
       : motif && GLOWING_SETS.has(item.setId ?? '') ? motif.aura : 'none',
+    glowStyle: design ? glowStyleOf(design.aura, design.glowStyle) : motif ? glowStyleOf(motif.aura, motif.glowStyle) : 'rim',
     finish,
     sheen: finish ? FINISHES[finish].sheen : 0,
   };

@@ -21,7 +21,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Random } from '../../core/RNG';
-import type { Aura } from './Designs';
+import type { Aura, GlowStyle } from './Designs';
 
 /** How each kind of aura moves and looks. */
 interface AuraKind {
@@ -217,23 +217,59 @@ export function auraStyle(kind: Aura): { size: number; rise: number; twinkle: nu
 // ---------------------------------------------------------------------------
 // The glow shell.
 
+/** Value noise, shared by both halves of the shell. */
+const NOISE = /* glsl */ `
+float shHash(vec3 p) {
+  p = fract(p * 0.3183099 + 0.1);
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+float shNoise(vec3 x) {
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(shHash(i), shHash(i + vec3(1, 0, 0)), f.x), mix(shHash(i + vec3(0, 1, 0)), shHash(i + vec3(1, 1, 0)), f.x), f.y),
+    mix(mix(shHash(i + vec3(0, 0, 1)), shHash(i + vec3(1, 0, 1)), f.x), mix(shHash(i + vec3(0, 1, 1)), shHash(i + vec3(1, 1, 1)), f.x), f.y),
+    f.z);
+}
+`;
+
+/** Style numbers, as the shader reads them. */
+const STYLE_ID: Record<GlowStyle, number> = { rim: 0, pulse: 1, flame: 2, shimmer: 3, frost: 4, storm: 5, void: 6, spectral: 7 };
+
 const SHELL_VERT = /* glsl */ `
 #include <common>
 #include <skinning_pars_vertex>
 uniform float uThick;
+uniform float uStyle;
+uniform float uTime;
 varying vec3 vN;
 varying vec3 vV;
+varying vec3 vObj;
+varying float vLift;
+${NOISE}
 void main() {
   #include <beginnormal_vertex>
   #include <skinbase_vertex>
   #include <skinnormal_vertex>
   #include <begin_vertex>
   #include <skinning_vertex>
+  vObj = transformed;
+  // Flames and ghost-light stand off the surface in moving tongues.
+  float lift = 0.0;
+  if (uStyle > 1.5 && uStyle < 2.5) {
+    float f = shNoise(transformed * 9.0 - vec3(0.0, uTime * 2.6, 0.0));
+    lift = f * f * 2.6;
+  } else if (uStyle > 6.5) {
+    lift = shNoise(transformed * 5.0 + vec3(0.0, -uTime * 0.9, uTime * 0.3)) * 2.2;
+  }
+  vLift = lift;
   vec4 mv = modelViewMatrix * vec4(transformed, 1.0);
   vec3 n = normalize(normalMatrix * objectNormal);
   // Pushed out in view space, so the shell is the same few millimetres
   // whatever scale the item is drawn at.
-  mv.xyz += n * uThick;
+  mv.xyz += n * uThick * (1.0 + lift);
   vN = n;
   vV = isOrthographic ? vec3(0.0, 0.0, 1.0) : normalize(-mv.xyz);
   gl_Position = projectionMatrix * mv;
@@ -244,16 +280,64 @@ const SHELL_FRAG = /* glsl */ `
 uniform vec3 uColor;
 uniform float uGain;
 uniform float uTime;
+uniform float uStyle;
 varying vec3 vN;
 varying vec3 vV;
+varying vec3 vObj;
+varying float vLift;
+${NOISE}
 void main() {
   float facing = abs(dot(normalize(vN), normalize(vV)));
-  // Bright at the silhouette, a faint wash over the face.
   float rim = pow(1.0 - facing, 2.4);
-  float a = 0.05 + rim;
-  // A slow breath, so it reads as light and not paint.
-  float breath = 0.82 + 0.18 * sin(uTime * 1.9);
-  gl_FragColor = vec4(uColor * a * uGain * breath, 1.0);
+  float t = uTime;
+  vec3 col = uColor;
+  float a;
+  if (uStyle < 0.5) {
+    // Rim: a steady halo, breathing.
+    a = (0.05 + rim) * (0.82 + 0.18 * sin(t * 1.9));
+  } else if (uStyle < 1.5) {
+    // Pulse: lub-dub, then rest.
+    float b = fract(t * 0.9);
+    float beat = exp(-b * 9.0) + 0.65 * exp(-max(0.0, b - 0.2) * 9.0) * step(0.2, b);
+    a = (0.04 + rim) * (0.35 + 1.1 * beat);
+  } else if (uStyle < 2.5) {
+    // Flame: flickering tongues, hot white-yellow where they are thickest.
+    float f = shNoise(vObj * 12.0 - vec3(0.0, t * 3.4, 0.0));
+    col = mix(uColor, vec3(1.0, 0.86, 0.55), clamp(vLift * 0.2 + f * 0.2, 0.0, 0.5));
+    a = (0.03 + rim * 1.0 + vLift * 0.06) * (0.5 + 0.6 * f);
+  } else if (uStyle < 3.5) {
+    // Shimmer: a band of light sweeping along, and glints winking.
+    float band = fract((vObj.y * 1.6 + vObj.x * 0.6) * 0.7 - t * 0.45);
+    band = exp(-pow((band - 0.5) * 9.0, 2.0));
+    float glint = pow(shNoise(vObj * 55.0 + vec3(floor(t * 5.0))), 14.0) * 5.0;
+    col = mix(uColor, vec3(1.0), band * 0.5 + glint * 0.3);
+    a = 0.04 + rim * 0.85 + band * 0.75 + glint;
+  } else if (uStyle < 4.5) {
+    // Frost: cold and steady, ice crystals catching the light.
+    float c = pow(shNoise(vObj * 42.0 + vec3(0.0, floor(t * 3.0), 0.0)), 10.0) * 4.0;
+    col = mix(uColor, vec3(0.92, 0.97, 1.0), 0.25 + c * 0.4);
+    a = 0.06 + rim * 1.05 + c;
+  } else if (uStyle < 5.5) {
+    // Storm: arcs crawling over it, the odd flash.
+    float tick = floor(t * 11.0);
+    float r = 1.0 - abs(shNoise(vObj * 13.0 + vec3(0.0, 0.0, tick * 1.7)) * 2.0 - 1.0);
+    float arc = pow(r, 14.0) * 2.4;
+    float flash = step(0.9, shHash(vec3(floor(t * 7.0), 1.3, 2.1)));
+    col = mix(uColor, vec3(1.0), clamp(arc * 0.5 + flash * 0.4, 0.0, 0.8));
+    a = 0.03 + rim * (0.85 + 0.9 * flash) + arc;
+  } else if (uStyle < 6.5) {
+    // Void: dark smoke turning through the light.
+    float n = shNoise(vObj * 6.0 + vec3(t * 0.35, t * 0.2, -t * 0.3));
+    n = smoothstep(0.25, 0.85, n);
+    col = mix(uColor * 0.55, mix(uColor, vec3(1.0), 0.35), n);
+    a = (0.03 + rim * 1.5) * (0.4 + 1.2 * n);
+  } else {
+    // Spectral: ghost-light rising off it.
+    float n = shNoise(vObj * 7.0 - vec3(0.0, t * 1.2, 0.0));
+    col = mix(uColor, vec3(0.9, 1.0, 1.0), 0.2);
+    a = (0.04 + rim * 0.9) * (0.35 + n) + vLift * 0.12;
+  }
+  gl_FragColor = vec4(col * a * uGain, 1.0);
 }
 `;
 
@@ -261,8 +345,8 @@ void main() {
 const shellTime = { value: 0 };
 const shellMats = new Map<string, THREE.ShaderMaterial>();
 
-function shellMaterial(color: number, strength: number, thick: number): THREE.ShaderMaterial {
-  const key = `${color}|${strength.toFixed(2)}|${thick.toFixed(3)}`;
+function shellMaterial(color: number, strength: number, thick: number, style: GlowStyle): THREE.ShaderMaterial {
+  const key = `${style}|${color}|${strength.toFixed(2)}|${thick.toFixed(3)}`;
   let m = shellMats.get(key);
   if (m) return m;
   m = new THREE.ShaderMaterial({
@@ -271,6 +355,7 @@ function shellMaterial(color: number, strength: number, thick: number): THREE.Sh
       // Past the bloom threshold at the edges, so the halo spreads.
       uGain: { value: 0.9 + 1.5 * strength },
       uThick: { value: thick },
+      uStyle: { value: STYLE_ID[style] },
       uTime: shellTime,
     },
     vertexShader: SHELL_VERT,
@@ -309,7 +394,7 @@ function solid(m: THREE.Mesh): boolean {
  * A glow round a still model (a weapon, a shield, a ring): its solid meshes
  * merged into one shell under `root`, one draw call. `thick` is metres.
  */
-export function glowShell(root: THREE.Object3D, color: number, strength: number, thick: number): THREE.Mesh | null {
+export function glowShell(root: THREE.Object3D, color: number, strength: number, thick: number, style: GlowStyle = 'rim'): THREE.Mesh | null {
   root.updateMatrixWorld(true);
   const inv = root.matrixWorld.clone().invert();
   const rel = new THREE.Matrix4();
@@ -336,7 +421,7 @@ export function glowShell(root: THREE.Object3D, color: number, strength: number,
   if (parts.length > 1) for (const g of parts) g.dispose();
   if (!geo) return null;
   geo.computeBoundingSphere();
-  const mesh = new THREE.Mesh(geo, shellMaterial(color, strength, thick));
+  const mesh = new THREE.Mesh(geo, shellMaterial(color, strength, thick, style));
   markShell(mesh, color);
   root.add(mesh);
   return mesh;
@@ -347,9 +432,9 @@ export function glowShell(root: THREE.Object3D, color: number, strength: number,
  * same geometry and bones, so it bends with the body. The twins share the
  * piece's geometry; take them off with `removeFromParent`, never dispose.
  */
-export function glowTwins(group: THREE.Object3D, color: number, strength: number, thick: number): THREE.Object3D[] {
+export function glowTwins(group: THREE.Object3D, color: number, strength: number, thick: number, style: GlowStyle = 'rim'): THREE.Object3D[] {
   const out: THREE.Object3D[] = [];
-  const mat = shellMaterial(color, strength, thick);
+  const mat = shellMaterial(color, strength, thick, style);
   for (const o of [...group.children]) {
     const m = o as THREE.SkinnedMesh;
     if (!m.isSkinnedMesh || !solid(m)) continue;

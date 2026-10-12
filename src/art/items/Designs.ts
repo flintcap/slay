@@ -93,6 +93,41 @@ export type Aura =
   | 'motes' // slow floating dust of light
   | 'souls'; // pale wisps rising and fading
 
+/**
+ * How a glowing item's light moves over it (`items/Aura.ts`, the glow shell).
+ * Each aura kind has a style of its own (`glowStyleOf`); a design can pick
+ * another.
+ */
+export type GlowStyle =
+  | 'rim' // a steady halo at the edges, breathing slowly
+  | 'pulse' // a heartbeat: two quick throbs and a rest
+  | 'flame' // tongues of fire licking up off the surface
+  | 'shimmer' // a band of light sweeping along it, with glints
+  | 'frost' // a cold glow with ice crystals winking in it
+  | 'storm' // lightning crawling over it, with sudden flashes
+  | 'void' // dark smoke swirling through the light
+  | 'spectral'; // ghost-light rising off it in wisps
+
+const STYLE_OF: Record<Exclude<Aura, 'none'>, GlowStyle> = {
+  soft: 'rim',
+  embers: 'flame',
+  ash: 'flame',
+  frost: 'frost',
+  sparkles: 'shimmer',
+  shine: 'shimmer',
+  wisp: 'spectral',
+  smoke: 'void',
+  drips: 'pulse',
+  sparks: 'storm',
+  motes: 'rim',
+  souls: 'spectral',
+};
+
+/** The glow style for an aura, unless the design names its own. */
+export function glowStyleOf(aura: Aura, own?: GlowStyle): GlowStyle {
+  return own ?? (aura === 'none' ? 'rim' : STYLE_OF[aura]);
+}
+
 /** How a surface is finished: the shine of its metal and leather. */
 export type Finish = 'polished' | 'lacquer' | 'satin' | 'matte' | 'frosted' | 'blackened' | 'weathered' | 'gilt' | 'pearl';
 
@@ -139,6 +174,8 @@ export interface SetMotif {
   /** Extra features after the sculpt. */
   features: Feature[];
   aura: Aura;
+  /** How its glow moves, when not its aura's own style. */
+  glowStyle?: GlowStyle;
   /** 0 pristine .. 1 battered. */
   wear: number;
 }
@@ -160,6 +197,8 @@ export interface UniqueDesign {
   wear?: number;
   /** Its living effect. Every unique has one. */
   aura: Aura;
+  /** How its glow moves, when not its aura's own style. */
+  glowStyle?: GlowStyle;
   finish?: Finish;
 }
 
@@ -180,7 +219,7 @@ export const SET_MOTIFS: Record<string, SetMotif> = {
   'set.gilded': { name: 'full gold with a gold shine', color: 0xffd25a, glow: 0xffd040, metal: 'metal.gold', leather: 'leather.fine|0xc89a3a', cloth: 'cloth.silk|0xd8b048', second: 'cloth.banner|0x5c1a2c', trim: 'metal.gold', finish: 'gilt', sculpt: 'coins', emblem: 'coin', features: ['gilded'], aura: 'shine', wear: 0.05 },
   'set.nightfall': { name: 'void violet and black', color: 0x9a6aff, glow: 0x9064ff, metal: 'metal.blackiron|0x4a3a6a', leather: 'leather.dark|0x2a1c40', cloth: 'cloth.silk|0x1c162c', second: 'cloth.silk|0x1c162c', trim: 'metal.voidgold', finish: 'satin', sculpt: 'moons', emblem: 'moon', features: ['smoke'], aura: 'smoke', wear: 0.2 },
   // Endgame sets.
-  'set.sunderedsky': { name: 'white and silver with a white glow', color: 0xffffff, glow: 0xf0f4ff, metal: 'metal.silver|0xf4f6ff', leather: 'leather.fine|0xe8e4dc', cloth: 'cloth.white', second: 'cloth.white', trim: 'metal.silver', finish: 'pearl', sculpt: 'stars', emblem: 'star', features: ['halo'], aura: 'sparkles', wear: 0 },
+  'set.sunderedsky': { name: 'white and silver with a white glow', color: 0xffffff, glow: 0xf0f4ff, metal: 'metal.silver|0xf4f6ff', leather: 'leather.fine|0xe8e4dc', cloth: 'cloth.white', second: 'cloth.white', trim: 'metal.silver', finish: 'pearl', sculpt: 'stars', emblem: 'star', features: ['halo'], glowStyle: 'rim', aura: 'sparkles', wear: 0 },
   'set.lastlegion': { name: 'polished brass and legion crimson', color: 0xff4a2a, glow: 0xff7040, metal: 'metal.brass', leather: 'leather.fine|0x6a1a14', cloth: 'cloth.banner|0x8a1c1a', second: 'cloth.banner|0x8a1c1a', trim: 'metal.gold', finish: 'polished', sculpt: 'wings', emblem: 'laurel', features: ['laurels', 'tatters'], aura: 'embers', wear: 0.3 },
   'set.hollowking': { name: 'obsidian and pale gold, spectral cyan', color: 0x6affe8, glow: 0x50f0e0, metal: 'metal.blackiron|0x2a2a30', leather: 'leather.dark|0x18161c', cloth: 'cloth.silk|0x1a1222', second: 'cloth.silk|0x1a1222', trim: 'metal.gold|0xd8c890', finish: 'satin', sculpt: 'antlers', emblem: 'crown', features: ['gilded', 'smoke'], aura: 'souls', wear: 0.1 },
 };
@@ -228,7 +267,7 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'uq.gazehell': { main: 'bone.old|0x9a8a7a', trim: 'metal.dark', glow: 0xff5a1a, features: ['dragons', 'eyes', 'flames'], wear: 0.6, aura: 'embers' },
   'uq.silkweave': { main: 'cloth.silk|0xd0c8b8', trim: 'metal.silver', glow: 0xe8e0ff, features: ['web'], wear: 0.2, aura: 'wisp' },
   'uq.chancecast': { main: 'metal.gold', second: 'cloth.banner|0x5a1a2a', glow: 0xffd860, stone: 0x3ad07a, features: ['coins', 'gilded'], wear: 0.3, aura: 'shine', finish: 'gilt' },
-  'uq.ravenfrost': { main: 'metal.silver|0xb8d8ff', stone: 0x9ad8ff, glow: 0xa8e0ff, features: ['frost'], wear: 0.1, aura: 'frost', finish: 'frosted' },
+  'uq.ravenfrost': { main: 'metal.silver|0xb8d8ff', stone: 0x9ad8ff, glow: 0xa8e0ff, features: ['frost'], wear: 0.1, glowStyle: 'void', aura: 'frost', finish: 'frosted' },
   'uq.bulkathos': { main: 'metal.gold', stone: 0xff6a80, glow: 0xffb0c0, features: ['chains'], cut: { twin: true }, wear: 0.5, aura: 'soft' },
   'uq.thegravenspine': { main: 'wood.rotted|0x8a8070', trim: 'bone.old', glow: 0x9ad8c0, features: ['bones', 'eyes'], wear: 0.6, aura: 'souls' },
   'uq.widowmaker': { main: 'metal.voidgold', second: 'wood.polished|0x8a1020', trim: 'metal.dark', glow: 0xc02040, features: ['tatters', 'thorns'], wear: 0.3, aura: 'smoke', finish: 'lacquer' },
@@ -253,8 +292,8 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'uq.soj': { main: 'metal.gold', stone: 0x5aa0ff, glow: 0x8ac0ff, features: ['coins'], wear: 0.3, aura: 'motes' },
   'uq.carrionwind': { main: 'metal.dark', stone: 0x7ac04a, glow: 0x8ad050, features: ['smoke'], wear: 0.5, aura: 'smoke' },
   'uq.thunderstroke': { main: 'metal.gold', second: 'wood.charred', trim: 'metal.silver', glow: 0xf0e05a, features: ['bolts', 'coils'], wear: 0.2, aura: 'sparks' },
-  'uq.deathsweb': { main: 'crystal.void|0x3a5a2a', second: 'bone.old', glow: 0x7ac84a, features: ['web'], wear: 0.3, aura: 'souls' },
-  'uq.eschutas': { main: 'crystal.ice|0xffa070', trim: 'metal.gold', glow: 0xff6a30, stone: 0x6ac0ff, features: ['stars', 'cracks'], cut: { split: true }, wear: 0, aura: 'embers' },
+  'uq.deathsweb': { main: 'crystal.void|0x3a5a2a', second: 'bone.old', glow: 0x7ac84a, features: ['web'], wear: 0.3, glowStyle: 'void', aura: 'souls' },
+  'uq.eschutas': { main: 'crystal.ice|0xffa070', trim: 'metal.gold', glow: 0xff6a30, stone: 0x6ac0ff, features: ['stars', 'cracks'], cut: { split: true }, wear: 0, glowStyle: 'pulse', aura: 'embers' },
   'uq.herald': { main: 'metal.gold', second: 'cloth.banner|0x7a1a1e', trim: 'metal.silver', glow: 0xffe8a0, features: ['laurels', 'tatters', 'gilded'], wear: 0.3, aura: 'shine' },
   'uq.lastwish': { main: 'metal.dark', trim: 'metal.gold', glow: 0xf0e05a, features: ['stars', 'cracks'], wear: 0.6, aura: 'sparkles' },
   // ---- mythic ------------------------------------------------------------
@@ -262,7 +301,7 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'my.harlequin': { main: 'metal.gold', second: 'cloth.banner|0x7a1a3a', stone: 0x5a8cff, glow: 0xff6ab0, features: ['bells'], cut: { jester: true }, wear: 0.1, aura: 'sparkles' },
   'my.tyraelsmight': { main: 'metal.silver', second: 'cloth.linen|0xd8d0c0', trim: 'metal.gold', glow: 0xfff0c0, features: ['wings', 'halo'], wear: 0, aura: 'motes', finish: 'pearl' },
   'my.chainsofhonor': { main: 'metal.steel', second: 'cloth.banner|0xa01e1e', trim: 'metal.gold', glow: 0xffd070, features: ['chains', 'gilded'], wear: 0.2, aura: 'shine' },
-  'my.the-oculus': { main: 'crystal.void|0x4a3070', trim: 'metal.voidgold', stone: 0xfff0a0, glow: 0x8a60ff, features: ['eyes', 'stars'], wear: 0, aura: 'wisp' },
+  'my.the-oculus': { main: 'crystal.void|0x4a3070', trim: 'metal.voidgold', stone: 0xfff0a0, glow: 0x8a60ff, features: ['eyes', 'stars'], wear: 0, glowStyle: 'pulse', aura: 'wisp' },
   'my.wizardspike': { main: 'crystal.ice|0xc8d8ff', second: 'leather.fine|0x1a1a3a', trim: 'metal.silver', glow: 0x80b0ff, features: ['runes', 'frost'], wear: 0, aura: 'frost' },
   'my.the-reapers-toll': { main: 'metal.verdigris', second: 'wood.charred', trim: 'metal.dark', glow: 0x9ad8b8, features: ['skulls', 'coins'], cut: { scythe: true }, wear: 0.5, aura: 'souls' },
   'my.beast': { main: 'metal.bloodgold', second: 'leather.fine|0x3a2418', glow: 0xd04020, features: ['teeth', 'tatters'], wear: 0.5, aura: 'embers' },
@@ -271,15 +310,15 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'my.spirit-of-the-forge': { main: 'metal.dark', second: 'leather.fine|0x2a1a10', trim: 'metal.copper', glow: 0xff6a10, features: ['cracks', 'flames'], wear: 0.4, aura: 'embers' },
   'my.nightwing': { main: 'metal.dark', stone: 0x6ab0ff, glow: 0x6ab0ff, features: ['wings', 'smoke'], wear: 0, aura: 'wisp' },
   'my.stoneofthevoid': { main: 'metal.voidgold', stone: 0x1a1030, glow: 0x8a60ff, features: ['moons', 'smoke'], wear: 0, aura: 'smoke' },
-  'my.seraphshymn': { main: 'metal.silver', stone: 0xfff0c0, glow: 0xfff0c0, features: ['wings', 'halo'], wear: 0, aura: 'motes', finish: 'pearl' },
+  'my.seraphshymn': { main: 'metal.silver', stone: 0xfff0c0, glow: 0xfff0c0, features: ['wings', 'halo'], wear: 0, glowStyle: 'shimmer', aura: 'motes', finish: 'pearl' },
   // ---- ancient -----------------------------------------------------------
-  'an.worldbreaker': { main: 'stone.crypt|0x5a5048', second: 'metal.dark', trim: 'metal.bloodgold', glow: 0xff3a10, features: ['cracks', 'spikes'], wear: 0.5, aura: 'ash' },
+  'an.worldbreaker': { main: 'stone.crypt|0x5a5048', second: 'metal.dark', trim: 'metal.bloodgold', glow: 0xff3a10, features: ['cracks', 'spikes'], wear: 0.5, glowStyle: 'pulse', aura: 'ash' },
   'an.the-long-noon': { main: 'metal.gold', second: 'leather.fine|0x5a2a10', trim: 'metal.gold', glow: 0xffc040, features: ['halo', 'flames'], wear: 0, aura: 'shine', finish: 'gilt' },
-  'an.eternity': { main: 'metal.bloodgold', stone: 0xff6aa0, glow: 0xff6aa0, features: ['serpents', 'runes'], cut: { seamless: true }, wear: 0, aura: 'sparkles' },
-  'an.the-first-word': { main: 'wood.bark', second: 'wood.polished', trim: 'metal.gold', glow: 0xfff0a0, features: ['leaves', 'runes', 'vines'], wear: 0, aura: 'motes' },
-  'an.mourning-star': { main: 'metal.dark', second: 'cloth.silk|0x101014', trim: 'metal.silver', glow: 0xc0c8ff, features: ['stars', 'tatters'], wear: 0.2, aura: 'sparkles', finish: 'blackened' },
+  'an.eternity': { main: 'metal.bloodgold', stone: 0xff6aa0, glow: 0xff6aa0, features: ['serpents', 'runes'], cut: { seamless: true }, wear: 0, glowStyle: 'rim', aura: 'sparkles' },
+  'an.the-first-word': { main: 'wood.bark', second: 'wood.polished', trim: 'metal.gold', glow: 0xfff0a0, features: ['leaves', 'runes', 'vines'], wear: 0, glowStyle: 'spectral', aura: 'motes' },
+  'an.mourning-star': { main: 'metal.dark', second: 'cloth.silk|0x101014', trim: 'metal.silver', glow: 0xc0c8ff, features: ['stars', 'tatters'], wear: 0.2, glowStyle: 'void', aura: 'sparkles', finish: 'blackened' },
   'an.the-hollow-crown': { main: 'metal.dark', trim: 'metal.voidgold', stone: 0x08060c, glow: 0x8a40ff, features: ['crowns', 'spikes', 'smoke'], cut: { hollow: true }, wear: 0.3, aura: 'smoke' },
-  'an.godsblood-shroud': { main: 'cloth.silk|0x44101c', trim: 'metal.bloodgold', glow: 0xff3a5a, features: ['eyes', 'stars'], wear: 0, aura: 'souls' },
+  'an.godsblood-shroud': { main: 'cloth.silk|0x44101c', trim: 'metal.bloodgold', glow: 0xff3a5a, features: ['eyes', 'stars'], wear: 0, glowStyle: 'pulse', aura: 'souls' },
 };
 
 /**
