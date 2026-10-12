@@ -500,14 +500,24 @@ export class HeroAnimator {
     const holds: boolean[] = [];
     const pel = BONE_INDEX.pelvis * 3;
     const reaches = { L: false, R: false };
+    // A stance may hold its hands by reach (two swords carried upright); an
+    // action swings by its angles, so it starts from the stance's arms
+    // without that reach. Kept, it pinned both hands where the stance holds
+    // them through every key, and no swing showed.
+    const start = this.scratch.copy(this.stanceIdle).c.slice();
+    for (const ch of REACH_CHANNELS) start[ch] = 0;
+    const from = (p: Pose) => {
+      p.c.set(start);
+      return p;
+    };
     for (const key of def.keys) {
-      const p = this.scratch.copy(this.stanceIdle);
+      const p = from(this.scratch);
       key.pose(p, ctx);
       if (p.c[CH.reachL]! > 0) reaches.L = true;
       if (p.c[CH.reachR]! > 0) reaches.R = true;
     }
     for (const key of def.keys) {
-      const p = this.scratch.copy(this.stanceIdle);
+      const p = from(this.scratch);
       key.pose(p, ctx);
       // A hand placed in any key is placed in all of them: the others reach
       // for where their angles would put it, so the curve runs through.
