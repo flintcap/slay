@@ -16,10 +16,102 @@ export interface WalkWorld extends PlayerContext {
   floorY?(x: number, z: number): number;
 }
 
+type Collider = PlayerContext['colliders'][number];
+
+/**
+ * Colliders bucketed by 2 m cells, so a body asks about the dozen things
+ * near it rather than every wall and prop on the floor (several hundred).
+ * Rebuilt when the list changes length (a prop broken, a floor loaded).
+ */
+interface Grid {
+  len: number;
+  minX: number;
+  minZ: number;
+  cols: number;
+  rows: number;
+  cells: Collider[][];
+  /** Colliders that walk about; never bucketed, always asked about. */
+  movers: Collider[];
+  stamp: Map<Collider, number>;
+  serial: number;
+}
+const CELL = 2;
+const grids = new WeakMap<readonly Collider[], Grid>();
+
+function gridFor(cs: readonly Collider[]): Grid {
+  let g = grids.get(cs);
+  if (g && g.len === cs.length) return g;
+  let minX = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxZ = -Infinity;
+  const ext = (c: Collider) => (c.r !== undefined ? [c.r, c.r] : [c.w * 0.5, c.d * 0.5]);
+  const movers: Collider[] = [];
+  for (const c of cs) {
+    if (c.moves) {
+      movers.push(c);
+      continue;
+    }
+    const [hx, hz] = ext(c);
+    minX = Math.min(minX, c.x - hx!);
+    minZ = Math.min(minZ, c.z - hz!);
+    maxX = Math.max(maxX, c.x + hx!);
+    maxZ = Math.max(maxZ, c.z + hz!);
+  }
+  if (!Number.isFinite(minX)) minX = minZ = maxX = maxZ = 0;
+  const cols = Math.max(1, Math.ceil((maxX - minX) / CELL) + 1);
+  const rows = Math.max(1, Math.ceil((maxZ - minZ) / CELL) + 1);
+  const cells: Collider[][] = Array.from({ length: cols * rows }, () => []);
+  for (const c of cs) {
+    if (c.moves) continue;
+    const [hx, hz] = ext(c);
+    const x0 = Math.floor((c.x - hx! - minX) / CELL);
+    const x1 = Math.floor((c.x + hx! - minX) / CELL);
+    const z0 = Math.floor((c.z - hz! - minZ) / CELL);
+    const z1 = Math.floor((c.z + hz! - minZ) / CELL);
+    for (let zi = z0; zi <= z1; zi++) for (let xi = x0; xi <= x1; xi++) cells[zi * cols + xi]!.push(c);
+  }
+  g = { len: cs.length, minX, minZ, cols, rows, cells, movers, stamp: new Map(), serial: 0 };
+  grids.set(cs, g);
+  return g;
+}
+
+const nearOut: Collider[] = [];
+
+/**
+ * The colliders that could touch a circle of `reach` round (x, z). The array
+ * is reused by the next call; read it before asking again.
+ */
+export function collidersNear(cs: readonly Collider[], x: number, z: number, reach: number): readonly Collider[] {
+  nearOut.length = 0;
+  if (cs.length < 24) {
+    for (const c of cs) nearOut.push(c);
+    return nearOut;
+  }
+  const g = gridFor(cs);
+  const serial = ++g.serial;
+  // Round props can be wider than a cell; a margin of one cell covers them.
+  const x0 = Math.max(0, Math.floor((x - reach - g.minX) / CELL) - 1);
+  const x1 = Math.min(g.cols - 1, Math.floor((x + reach - g.minX) / CELL) + 1);
+  const z0 = Math.max(0, Math.floor((z - reach - g.minZ) / CELL) - 1);
+  const z1 = Math.min(g.rows - 1, Math.floor((z + reach - g.minZ) / CELL) + 1);
+  for (let zi = z0; zi <= z1; zi++) {
+    for (let xi = x0; xi <= x1; xi++) {
+      for (const c of g.cells[zi * g.cols + xi]!) {
+        if (g.stamp.get(c) === serial) continue;
+        g.stamp.set(c, serial);
+        nearOut.push(c);
+      }
+    }
+  }
+  for (const c of g.movers) nearOut.push(c);
+  return nearOut;
+}
+
 /** True when a body of radius `r` fits at (x, z). */
 export function canStandAt(w: WalkWorld, x: number, z: number, r: number): boolean {
   if (!w.walkableAt(x, z)) return false;
-  for (const c of w.colliders) {
+  for (const c of collidersNear(w.colliders, x, z, r)) {
     if (c.r !== undefined) {
       const rr = c.r + r;
       if ((x - c.x) ** 2 + (z - c.z) ** 2 < rr * rr) return false;
@@ -36,9 +128,10 @@ export function canStandAt(w: WalkWorld, x: number, z: number, r: number): boole
 function pushOut(w: WalkWorld, x: number, z: number, ox: number, oz: number, r: number): { x: number; z: number } {
   let nx = x;
   let nz = z;
+  const near = [...collidersNear(w.colliders, x, z, r + 0.5)];
   for (let pass = 0; pass < 3; pass++) {
     let pushed = false;
-    for (const c of w.colliders) {
+    for (const c of near) {
       let px: number;
       let pz: number;
       let reach: number;

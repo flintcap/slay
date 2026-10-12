@@ -46,6 +46,8 @@ interface Collider {
   z: number;
   w: number;
   d: number;
+  /** A resident walks; collision does not bucket them with the walls. */
+  moves?: boolean;
 }
 
 type Mode = 'work' | 'work2' | 'rest' | 'move' | 'talk' | 'face';
@@ -151,7 +153,7 @@ export class Residents {
     const anim = new HeroAnimator(folk.bones);
     anim.setGrip(folk.grip);
     anim.follow(folk.root);
-    const collider = { x: place.x, z: place.z, w: 0.8, d: 0.8 };
+    const collider = { x: place.x, z: place.z, w: 0.8, d: 0.8, moves: true };
     colliders.push(collider);
     const rng = new Random(place.seed);
     const r: Resident = {
@@ -203,8 +205,11 @@ export class Residents {
     const r = this.list.find((x) => x.place.id === id);
     const head = r?.folk.bones.head;
     if (!r || !head) return false;
-    r.folk.root.updateWorldMatrix(true, true);
-    head.getWorldPosition(out);
+    // Up the chain to the head only: the whole body below it is not needed,
+    // and redoing every bone and mesh of it each frame was the town's
+    // biggest source of garbage.
+    head.updateWorldMatrix(true, false);
+    out.setFromMatrixPosition(head.matrixWorld);
     r.crown ??= crownOver(r.folk.root, out);
     out.y += r.crown;
     return true;

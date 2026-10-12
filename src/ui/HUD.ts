@@ -553,6 +553,7 @@ export class HUD {
   private goldReadout: HTMLSpanElement;
 
   private minimapAccum = 0;
+  private orbAccum = 1;
   private bossMax = 1;
   private bossLife = 1;
   private bossVisible = false;
@@ -1072,8 +1073,14 @@ export class HUD {
 
     this.lifeOrb.set(life, runtime.maxLife);
     this.manaOrb.set(mana, runtime.maxMana);
-    this.lifeOrb.draw(elapsed, dt);
-    this.manaOrb.draw(elapsed, dt);
+    // Thirty times a second is plenty for the liquid, and halves what two
+    // gradient-filled canvases cost the main thread.
+    this.orbAccum += dt;
+    if (this.orbAccum >= 1 / 31) {
+      this.lifeOrb.draw(elapsed, this.orbAccum);
+      this.manaOrb.draw(elapsed, this.orbAccum);
+      this.orbAccum = 0;
+    }
 
     // Cooldowns.
     const cds = pl?.cooldowns;

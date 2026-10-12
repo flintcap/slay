@@ -2504,10 +2504,13 @@ export class SkillRunner {
             t.replanIn -= dt;
             const px = t.body.position.x;
             const pz = t.body.position.z;
-            if (lineClear(w, px, pz, goalX, goalZ, MINION_RADIUS)) t.route = [];
-            else if ((t.route.length === 0 || t.replanIn <= 0) && w.path) {
-              t.route = w.path(px, pz, goalX, goalZ);
-              t.replanIn = 0.5;
+            // Looked at a few times a second, not every frame: a straight-line
+            // test against the floor's colliders for each of a dozen summons
+            // was most of their cost.
+            if (t.replanIn <= 0) {
+              t.replanIn = 0.3 + (t.index % 4) * 0.03;
+              if (lineClear(w, px, pz, goalX, goalZ, MINION_RADIUS)) t.route = [];
+              else if (w.path) t.route = w.path(px, pz, goalX, goalZ);
             }
             while (t.route.length && Math.hypot(t.route[0]!.x - px, t.route[0]!.y - pz) < 0.45) t.route.shift();
             if (t.route.length) {

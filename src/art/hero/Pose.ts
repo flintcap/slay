@@ -187,6 +187,9 @@ interface SideAxes {
  * Turns channels into bone rotations for one body, and runs forward
  * kinematics in rig space (the rig root's local frame).
  */
+/** Scratch for `refreshBelow`, which runs several times a frame per hero. */
+const _sub = new Uint8Array(64);
+
 export class PoseSolver {
   readonly local: THREE.Quaternion[] = HERO_BONES.map(() => new THREE.Quaternion());
   readonly world: THREE.Quaternion[] = HERO_BONES.map(() => new THREE.Quaternion());
@@ -317,7 +320,7 @@ export class PoseSolver {
 
   /** Recomputes every descendant of bone `i` (bones are stored parents first). */
   refreshBelow(i: number): void {
-    const inSub = new Uint8Array(BONE_COUNT);
+    const inSub = _sub.fill(0);
     inSub[i] = 1;
     for (let k = i + 1; k < BONE_COUNT; k++) {
       const pk = PARENT_INDEX[k]!;

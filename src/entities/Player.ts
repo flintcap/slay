@@ -8,13 +8,14 @@ import { events } from '../core/Events';
 import { HeroAnimator, type BodyCondition } from '../art/hero/Animator';
 import { DressedHero } from '../scenes/HeroModel';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { collidersNear } from '../world/BodyWalk';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
 
 export interface PlayerContext {
-  /** Boxes, or circles where `r` is set (round props: barrels, pillars). */
-  colliders: Array<{ x: number; z: number; w: number; d: number; r?: number }>;
+  /** Boxes, or circles where `r` is set (round props: barrels, pillars). `moves` marks one that walks (a resident). */
+  colliders: Array<{ x: number; z: number; w: number; d: number; r?: number; moves?: boolean }>;
   /** Returns true if the world position is standing on walkable ground. */
   walkableAt(x: number, z: number): boolean;
   /**
@@ -1020,9 +1021,11 @@ export class Player {
     let best = 0;
     let bnx = 0;
     let bnz = 0;
+    // Only what is near: a floor holds several hundred colliders.
+    const near = [...collidersNear(ctx.colliders, x, z, r + Math.hypot(x - ox, z - oz) + 0.5)];
     for (let pass = 0; pass < 3; pass++) {
       let pushed = false;
-      for (const c of ctx.colliders) {
+      for (const c of near) {
         let px: number;
         let pz: number;
         let reach: number;
@@ -1076,7 +1079,7 @@ export class Player {
   private canStand(x: number, z: number, ctx: PlayerContext): boolean {
     if (!ctx.walkableAt(x, z)) return false;
     const r = this.bodyR - 0.01;
-    for (const c of ctx.colliders) {
+    for (const c of collidersNear(ctx.colliders, x, z, r)) {
       if (c.r !== undefined) {
         const rr = c.r + r;
         if ((x - c.x) ** 2 + (z - c.z) ** 2 < rr * rr) return false;
