@@ -5,6 +5,7 @@ import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { save } from '../core/Save';
 import { drawItemIconsNow } from '../art/Icons';
+import { afterCurtain } from '../core/Idle';
 import { addItemToInventory } from '../sim/Inventory';
 import { Random, randomSeed } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
@@ -199,8 +200,15 @@ export class TownScene extends GameScene {
     } else {
       toast(`Welcome back, ${character.name}.`, 'info');
     }
-    // The pack's icons, drawn behind the curtain rather than in play.
-    await drawItemIconsNow([...Object.values(character.equipment), ...character.inventory]);
+    // The pack's icons. Town is safe ground, so they are drawn in the idle
+    // time after the curtain lifts rather than holding the curtain down; by
+    // the first run they are cached and the dungeon's curtain skips them.
+    const items = [...Object.values(character.equipment), ...character.inventory];
+    this.offs.push(
+      events.on('scene:change', (p) => {
+        if (p.to === 'town') afterCurtain(() => void drawItemIconsNow(items));
+      })
+    );
   }
 
   private descend(): void {

@@ -8,6 +8,7 @@
  */
 
 import type { Character, EquipSlot, Item } from '../types';
+import { afterCurtain } from '../core/Idle';
 import { RARITY_ORDER } from '../types';
 import { events } from '../core/Events';
 import { save, INVENTORY_SIZE } from '../core/Save';
@@ -418,17 +419,24 @@ export class InventoryPanel {
     events.on('loot:gold', () => {
       if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
-    // The figure is built while the curtain is down on the way into the
-    // world, not on the frame the panel first opens (PaperdollView.warm).
-    events.on('scene:loading', (p) => {
-      if (p.to !== 'town' && p.to !== 'dungeon') return;
+    // The figure is built ahead of time, not on the frame the panel first
+    // opens (PaperdollView.warm). On the way into a run that happens behind
+    // the curtain; town is safe ground, so there it waits for idle time after
+    // the curtain lifts instead of making the loading screen longer.
+    const warm = () => {
       const c = save.account.current;
-      if (!c) return;
+      if (!c || this.panel.isOpen) return;
       try {
         this.view.warm(c);
       } catch {
         /* the panel builds it on opening, as before */
       }
+    };
+    events.on('scene:loading', (p) => {
+      if (p.to === 'dungeon') warm();
+    });
+    events.on('scene:change', (p) => {
+      if (p.to === 'town') afterCurtain(warm, 2500);
     });
   }
 
