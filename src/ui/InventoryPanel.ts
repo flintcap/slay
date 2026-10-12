@@ -504,9 +504,15 @@ export class InventoryPanel {
         placeholder: SLOT_ICON[s],
         placeholderLabel: '',
         hoverContext: { source: 'equipment' },
-        onRightClick: (item) => {
+        onRightClick: (item, ev) => {
           const c = save.account.current;
           if (!c || !item) return;
+          // Ctrl drops it straight on the floor. Real right button only: on a
+          // Mac, Ctrl+click is how a one-button mouse right-clicks at all.
+          if (ev.ctrlKey && ev.button === 2) {
+            this.discard({ kind: 'equipment', item, slot: s });
+            return;
+          }
           doUnequip(c, s);
         },
       });
@@ -590,7 +596,9 @@ export class InventoryPanel {
     hint.appendChild(span('keycap', 'Shift'));
     hint.appendChild(span('', ' and right-click for more, or '));
     hint.appendChild(span('keycap', 'Shift'));
-    hint.appendChild(span('', ' and click a stack to split it'));
+    hint.appendChild(span('', ' and click a stack to split it, or '));
+    hint.appendChild(span('keycap', 'Ctrl'));
+    hint.appendChild(span('', ' and right-click to drop'));
 
     // Dragging an item out of the window and letting go throws it away, which
     // is how the whole genre does it and was the one thing the pack could not
@@ -685,6 +693,13 @@ export class InventoryPanel {
     const c = save.account.current;
     if (!c || !item) return;
 
+    // Ctrl drops it on the floor: the quick way to clear a pack mid-dungeon.
+    // Real right button only: on a Mac, Ctrl+click is a right-click.
+    if (ev.ctrlKey && ev.button === 2) {
+      this.discard({ kind: 'inventory', item });
+      return;
+    }
+
     // Shift opens the full menu for anything, including gear — plain
     // right-click equips, so without this there was no way to reach the menu
     // for an item you could wear.
@@ -766,6 +781,7 @@ export class InventoryPanel {
       {
         label: 'Drop on the ground',
         icon: 'trash',
+        hint: 'Ctrl+right-click',
         onPick: () => this.discard({ kind: 'inventory', item }),
       },
     ], attempt(() => item.name, 'Item'));

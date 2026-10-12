@@ -235,6 +235,22 @@ function hoverFirst(rarities: string[], extra?: (s: HTMLElement) => boolean): vo
 }
 
 const scenarios2: Record<string, () => void> = {
+  /** Ctrl+right-click a plain item in the pack: it should leave the pack. */
+  ctrldrop() {
+    events.emit('ui:open', { panel: 'inventory' });
+    setTimeout(() => {
+      const ch = save.account.current!;
+      const before = ch.inventory.filter(Boolean).length;
+      const slots = [...document.querySelectorAll<HTMLElement>('.itemgrid .islot:not(.is-empty)')];
+      const pick = slots.find((x) => (x.dataset.rarity === 'normal' || x.dataset.rarity === 'magic') && !/potion/.test(x.dataset.base ?? ''));
+      pick?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, ctrlKey: true }));
+      setTimeout(() => {
+        const after = ch.inventory.filter(Boolean).length;
+        events.emit('toast', { text: `ctrldrop ${pick?.dataset.rarity}: ${before} -> ${after}`, kind: 'info' });
+        console.log(`CTRLDROP ${before} -> ${after}`);
+      }, 200);
+    }, 300);
+  },
   /** The blacksmith with a rare weapon on the anvil. */
   smith() {
     events.emit('ui:open', { panel: 'blacksmith' });
