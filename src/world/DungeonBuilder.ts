@@ -527,6 +527,8 @@ function exitGlow(color: number, y: number, z: number, intensity = 9): THREE.Poi
   const l = new THREE.PointLight(color, intensity, 9, 2);
   l.position.set(0, y, z);
   l.castShadow = false;
+  // Counted by DungeonScene.balanceLights, which keeps the light count fixed.
+  l.name = 'way:light';
   return l;
 }
 

@@ -91,6 +91,8 @@ export function buildWaypoint(art: BiomeArt): WayLook {
 
   const light = new THREE.PointLight(0xffb85a, 6, 9, 2);
   light.position.set(0, 1.0, 0);
+  // Counted by DungeonScene.balanceLights, which keeps the light count fixed.
+  light.name = 'way:light';
 
   const root = new THREE.Group();
   root.name = 'waypoint';
@@ -209,6 +211,8 @@ export function buildPortal(color = 0x7ec8ff, o: PortalOpts = {}): WayLook {
 
   const light = new THREE.PointLight(color, lightI, lightD, 2);
   light.position.set(0, lift + H * 0.55, 0.4);
+  // Counted by DungeonScene.balanceLights, which keeps the light count fixed.
+  light.name = 'way:light';
 
   const root = new THREE.Group();
   root.name = 'portal';

@@ -74,6 +74,20 @@ const MATRIX_WALK = THREE.Object3D.prototype.updateMatrixWorld;
 const MATRIX_FROZEN = function (this: THREE.Object3D): void {};
 /** Monster roots hidden because they were frozen, to show again on thaw. */
 const hiddenFar = new WeakSet<THREE.Object3D>();
+/**
+ * Point lights the ways on may hold at once (an exit's glow, the waypoint,
+ * the portal home). Spares make up the rest, so the count never moves.
+ */
+const WAY_LIGHT_SLOTS = 3;
+
+/** True when a light is in `scene` and every node above it is shown. */
+function shownIn(o: THREE.Object3D, scene: THREE.Object3D): boolean {
+  for (let n: THREE.Object3D | null = o; n; n = n.parent) {
+    if (!n.visible) return false;
+    if (n === scene) return true;
+  }
+  return false;
+}
 
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
@@ -221,6 +235,9 @@ export class DungeonScene extends GameScene {
   private nearWaypoint = false;
   /** The waypoint's and the return portal's looks (props stream). */
   private waypointLook: WayLook | null = null;
+  /** Zero-intensity stand-ins, and the way-on lights they balance (balanceLights). */
+  private readonly spareLights: THREE.PointLight[] = [];
+  private wayLights: THREE.Object3D[] = [];
   private portalLook: WayLook | null = null;
   /** Opened chests, spent shrines and smashed pieces left on this floor. */
   private remains: PropRemains | null = null;
@@ -507,6 +524,14 @@ export class DungeonScene extends GameScene {
     this.heroLight = new THREE.PointLight(0xffd9a8, 30, 22, 2);
     this.heroLight.castShadow = false;
     this.scene.add(this.heroLight);
+    // Parked lights that stand in for ways on an area does not have.
+    for (let i = 0; i < WAY_LIGHT_SLOTS; i++) {
+      const spare = new THREE.PointLight(0x000000, 0, 1, 2);
+      spare.castShadow = false;
+      spare.name = 'spare:light';
+      this.scene.add(spare);
+      this.spareLights.push(spare);
+    }
 
     this.heroAura = new THREE.Mesh(
       new THREE.PlaneGeometry(9, 9),
@@ -640,6 +665,7 @@ export class DungeonScene extends GameScene {
     }
     this.nearWaypoint = false;
     if (this.level.waypoint) this.buildWaypoint(this.mesh.tileToWorld(this.level.waypoint.x, this.level.waypoint.y));
+    this.findWayLights();
 
     // Spawn the level's monsters.
     // Most floors promote one pack leader to a mini-boss with a mechanic of
@@ -1153,8 +1179,37 @@ export class DungeonScene extends GameScene {
     };
   }
 
+  /** Collects the way-on lights in the scene, then balances the count. */
+  private findWayLights(): void {
+    const found: THREE.Object3D[] = [];
+    this.scene.traverse((o) => {
+      if ((o as THREE.PointLight).isPointLight && o.name === 'way:light') found.push(o);
+    });
+    this.wayLights = found;
+    this.balanceLights();
+  }
+
+  /**
+   * Keeps the number of point lights the same in every area and all through
+   * play. three.js builds each lit shader for an exact light count, so one
+   * light more or less relinked every lit shader: the waypoint in a map's
+   * first area and not the next made an area change link 39 programs behind
+   * the curtain, and the portal home opening after a boss did the same in
+   * play. A parked spare (no intensity, so nothing changes on screen) shows
+   * for each way-on light that is missing.
+   */
+  private balanceLights(): void {
+    let ways = 0;
+    for (const l of this.wayLights) if (shownIn(l, this.scene)) ways++;
+    for (let i = 0; i < this.spareLights.length; i++) {
+      const want = i < WAY_LIGHT_SLOTS - ways;
+      if (this.spareLights[i]!.visible !== want) this.spareLights[i]!.visible = want;
+    }
+  }
+
   override update(rawDt: number, elapsed: number): void {
     if (!this.player || this.transitioning) return;
+    this.balanceLights();
     // Hit-stop and slow motion: the world runs on the rig's dilated clock,
     // while the rig itself counts down in real time (see `rig.update` below).
     const dt = rawDt * this.rig.worldScale;
@@ -1929,6 +1984,7 @@ export class DungeonScene extends GameScene {
     group.position.copy(at);
     this.scene.add(group);
     this.returnPortal = group;
+    this.findWayLights();
 
     this.exitPos.copy(at);
     this.exitOpen = true;

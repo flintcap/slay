@@ -484,6 +484,24 @@ async function visit(label) {
       return sc?.id === 'dungeon' && sc.levelIndex + 1 < sc.run.levels.length;
     });
     if (more) {
+      // What the area change asks of the shader cache: the light set and
+      // biome either side, and how each new program's key differs from the
+      // nearest program of the same shader that was already there.
+      const lightsAndKeys = () => {
+        const sc = window.SLAY.engine.currentScene;
+        const n = { dir: 0, dirShadow: 0, point: 0, pointShadow: 0, spot: 0, spotShadow: 0, hemi: 0 };
+        sc.scene.traverse((o) => {
+          if (!o.isLight) return;
+          if (o.isDirectionalLight) (n.dir++, o.castShadow && n.dirShadow++);
+          else if (o.isPointLight) (n.point++, o.castShadow && n.pointShadow++);
+          else if (o.isSpotLight) (n.spot++, o.castShadow && n.spotShadow++);
+          else if (o.isHemisphereLight) n.hemi++;
+        });
+        const fog = sc.scene.fog ? (sc.scene.fog.isFogExp2 ? 'exp2' : 'linear') : 'none';
+        const keys = (window.SLAY.engine.renderer.gl.info.programs ?? []).map((q) => [String(q.name ?? '?'), String(q.cacheKey ?? '')]);
+        return { biome: sc.level?.biome, lights: n, fog, env: !!sc.scene.environment, keys };
+      };
+      const before = await page.evaluate(lightsAndKeys);
       await seg('areas: next area, curtain down', async () => {
         const scene = window.SLAY.engine.currentScene;
         const from = scene.levelIndex;
@@ -498,6 +516,32 @@ async function visit(label) {
         }
         while (scene.transitioning && performance.now() - t0 < 180000) await new Promise((r) => setTimeout(r, 20));
       });
+      const after = await page.evaluate(lightsAndKeys);
+      const had = new Set(before.keys.map((k) => k[1]));
+      const fresh = after.keys.filter((k) => !had.has(k[1]));
+      console.log(`      area change: ${before.biome} -> ${after.biome}; lights ${JSON.stringify(before.lights)} -> ${JSON.stringify(after.lights)}; fog ${before.fog} -> ${after.fog}; env ${before.env} -> ${after.env}`);
+      const diffs = new Map();
+      let unmatched = 0;
+      for (const [name, key] of fresh) {
+        const parts = key.split(',');
+        let best = null;
+        for (const [n2, k2] of before.keys) {
+          if (n2 !== name) continue;
+          const q = k2.split(',');
+          if (q.length !== parts.length) continue;
+          const d = [];
+          for (let i = 0; i < q.length; i++) if (q[i] !== parts[i]) d.push(`${i}:${q[i].slice(0, 24)}>${parts[i].slice(0, 24)}`);
+          if (!best || d.length < best.length) best = d;
+        }
+        if (!best) {
+          unmatched++;
+          continue;
+        }
+        const tag = best.join(' ') || '(same key)';
+        diffs.set(tag, (diffs.get(tag) ?? 0) + 1);
+      }
+      console.log(`      ${fresh.length} new programs; ${unmatched} with no program of that shader before`);
+      for (const [tag, c] of [...diffs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)) console.log(`      ${String(c).padStart(3)} x  ${tag.slice(0, 300)}`);
       await seg('areas: first 5 s in the new area', () => new Promise((r) => setTimeout(r, 5000)));
     }
   }

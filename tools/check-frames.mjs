@@ -78,7 +78,7 @@ const context = await chromium.launchPersistentContext(profileDir, {
 });
 
 // Before any page script: frame stamps, links, uploads and draws.
-await context.addInitScript(() => {
+await context.addInitScript((PROFILE_UP) => {
   const w = window;
   const F = (w.__frames = { links: [], tex: [], draws: 0, tris: 0 });
   const now = () => performance.now();
@@ -104,10 +104,12 @@ await context.addInitScript(() => {
     wrap('linkProgram', () => F.links.push(now()));
     for (const n of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced']) wrap(n, () => F.draws++);
     for (const n of ['texImage2D', 'texSubImage2D', 'texImage3D', 'texSubImage3D', 'compressedTexImage2D']) {
-      wrap(n, (args) => F.tex.push([now(), size(args)]));
+      wrap(n, (args) => {
+        F.tex.push([now(), size(args), n, args.filter((a) => typeof a === 'number').slice(0, 8).join(' '), PROFILE_UP ? new Error().stack.split('\n').slice(2, 7).map((l) => l.trim().replace(/\(?https?:\/\/[^/]+\//, '(')).join(' < ') : '']);
+      });
     }
   }
-});
+}, PROFILE);
 
 /** In the page: put the hero where the test plays. */
 async function setUp({ where, seed }) {
@@ -226,6 +228,7 @@ async function play({ n, settleMs, settleFrames, fight }) {
   const auto = info.autoReset;
   // Programs alive before, to name any made while playing.
   const had = new Set(info.programs ?? []);
+  if (window.__profileMeasured) console.profile('measured');
   const start = performance.now();
   let last = start;
   let lastDraws = F.draws;
@@ -245,6 +248,7 @@ async function play({ n, settleMs, settleFrames, fight }) {
     lastDraws = F.draws;
     tris.push(info.render.triangles);
   }
+  if (window.__profileMeasured) console.profileEnd('measured');
   info.autoReset = auto;
   input.mouseRight = false;
   input.mouseLeft = false;
@@ -265,6 +269,13 @@ async function play({ n, settleMs, settleFrames, fight }) {
     triangles: med(tris),
     links: F.links.filter((t) => t >= start && t <= end).length,
     texKB: Math.round(F.tex.filter(([t]) => t >= start && t <= end).reduce((z, x) => z + x[1], 0) / 1024),
+    // The biggest uploads while playing, with their size arguments (and,
+    // under --profile, where they came from).
+    topUploads: F.tex
+      .filter(([t]) => t >= start && t <= end)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([t, b, fn, dims, from]) => `${Math.round(b / 1024)} KB ${fn}(${dims}) at +${Math.round(t - start)} ms ${from}`.slice(0, 400)),
     programs: info.programs?.length ?? 0,
     // What each program made while playing was for: three names a program
     // after its material type or shader name.
@@ -283,14 +294,16 @@ try {
   for (const where of ONLY) {
     const setup = await page.evaluate(setUp, { where, seed: SEED });
     const cdp = PROFILE ? await page.context().newCDPSession(page) : null;
+    let measured = null;
     if (cdp) {
       await cdp.send('Profiler.enable');
       await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
-      await cdp.send('Profiler.start');
+      measured = new Promise((res) => cdp.once('Profiler.consoleProfileFinished', (ev) => res(ev.profile)));
+      await page.evaluate(() => (window.__profileMeasured = true));
     }
     const r = await page.evaluate(play, { n: FRAMES, settleMs: SETTLE_MS, settleFrames: SETTLE_FRAMES, fight: where !== 'town' });
     if (cdp) {
-      const { profile } = await cdp.send('Profiler.stop');
+      const profile = await measured;
       const byId = new Map(profile.nodes.map((nd) => [nd.id, nd]));
       const self = new Map();
       const dts = profile.timeDeltas ?? [];
@@ -302,6 +315,23 @@ try {
         self.set(key, (self.get(key) ?? 0) + (dts[k + 1] ?? dts[k] ?? 0) / 1000);
       });
       r.topSelf = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, ms]) => [k, Math.round(ms)]);
+      // Who called the top three, three frames up, by the same time.
+      const parent = new Map();
+      for (const nd of profile.nodes) for (const c of nd.children ?? []) parent.set(c, nd.id);
+      const name = (f) => `${f.functionName || '(anon)'}:${f.lineNumber + 1}`;
+      r.callers = [];
+      for (const [top] of r.topSelf.slice(0, 3)) {
+        const via = new Map();
+        profile.samples.forEach((id, k) => {
+          const f = byId.get(id)?.callFrame;
+          if (!f || `${f.functionName || '(anon)'} ${(f.url || 'native').split('/').pop()}:${f.lineNumber + 1}` !== top) return;
+          const chain = [];
+          for (let q = parent.get(id); q !== undefined && chain.length < 4; q = parent.get(q)) chain.push(name(byId.get(q).callFrame));
+          const c = chain.join(' < ');
+          via.set(c, (via.get(c) ?? 0) + (dts[k + 1] ?? dts[k] ?? 0) / 1000);
+        });
+        for (const [c, ms] of [...via.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)) r.callers.push(`${top.split(' ')[0]} ${Math.round(ms)} ms < ${c}`);
+      }
       await cdp.detach().catch(() => {});
     }
     results[where] = { ...setup, ...r };
@@ -313,6 +343,8 @@ try {
     console.log(`  draw calls ${r.drawCalls}, triangles ${r.triangles}, programs ${r.programs}, linked while playing ${r.links}, uploaded while playing ${r.texKB} KB`);
     for (const n of r.newPrograms) console.log(`  new while playing: ${n}`);
     for (const [k, ms] of r.topSelf ?? []) console.log(`  self ${String(ms).padStart(6)} ms  ${k}`);
+    for (const c of r.callers ?? []) console.log(`  via ${c}`);
+    if (PROFILE) for (const u of r.topUploads.slice(0, 2)) console.log(`  upload ${u}`);
   }
   await page.close();
 } finally {
