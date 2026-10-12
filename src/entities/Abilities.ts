@@ -106,6 +106,11 @@ export interface MinionTarget {
   z: number;
   /** Taunting minions pull attention well past the nearest-target rule. */
   taunt: boolean;
+  /**
+   * How many monsters a taunt can hold at once. Past that, the rest treat it
+   * like any other summon. Unset means no limit.
+   */
+  tauntHold?: number;
 }
 
 /**

@@ -1167,6 +1167,8 @@ export class SkillRunner {
               // Sentinels and clones are written to pull aggro; the rest hold a
               // line only by standing in the way.
               num('taunts', num('taunt', 0)) > 0,
+              // How many it can hold. A Shadow Clone pulls one, not the room.
+              num('tauntHold', Infinity),
             );
           }
           break;
@@ -2213,6 +2215,8 @@ export class SkillRunner {
     actionT: number;
     /** Pulls monsters off you well past the nearest-target rule. */
     taunt: boolean;
+    /** How many monsters the taunt can hold at once. */
+    tauntHold: number;
     /** A Shadow Clone's hero body is driven by the hero's own animator. */
     hero: HeroAnimator | null;
     /** Waypoints round whatever stands between it and where it is going. */
@@ -2332,7 +2336,7 @@ export class SkillRunner {
     const out: MinionTarget[] = [];
     for (const t of this.turrets) {
       if (!t.body || t.maxLife <= 0 || t.life <= 0 || t.left <= 0) continue;
-      out.push({ id: t.index, x: t.body.position.x, z: t.body.position.z, taunt: t.taunt });
+      out.push({ id: t.index, x: t.body.position.x, z: t.body.position.z, taunt: t.taunt, tauntHold: t.tauntHold });
     }
     return out;
   }
@@ -2678,6 +2682,8 @@ export class SkillRunner {
     minionLife = 0,
     /** Whether this one actively pulls monsters off you. */
     taunt = false,
+    /** How many monsters the taunt can hold at once. */
+    tauntHold = Infinity,
   ): void {
     // A backstop only. Per-skill caps do the real work; this stops a runaway
     // from ever building an unbounded list.
@@ -2738,7 +2744,7 @@ export class SkillRunner {
       x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx,
       body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 1,
       index: this.summonSerial++, skillId: skillId ?? '', life: minionLife, maxLife: minionLife,
-      taunt, hero, route: [], replanIn: 0,
+      taunt, tauntHold, hero, route: [], replanIn: 0,
     });
   }
 

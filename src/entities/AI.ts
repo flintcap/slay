@@ -68,6 +68,39 @@ const MINION_SWITCH_MARGIN = 1.5;
 const MINION_KEEP_MARGIN = 5;
 /** A taunting summon counts as this fraction of its real distance. */
 const TAUNT_PULL = 0.3;
+/** Seconds a taunt claim lasts without being renewed. Brains renew every think. */
+const TAUNT_CLAIM_TTL = 1;
+
+/**
+ * Which brains a taunting summon is holding, and when each last renewed its
+ * claim. A Shadow Clone holds one monster, not the room; this is how the
+ * second monster knows the clone is already spoken for.
+ */
+const tauntClaims = new Map<number, Map<object, number>>();
+
+/** Live claims on summon `id` by brains other than `self`. */
+function othersHolding(id: number, self: object, now: number): number {
+  const claims = tauntClaims.get(id);
+  if (!claims) return 0;
+  let n = 0;
+  for (const [brain, at] of claims) {
+    // Stale, or from an earlier level whose clock ran higher.
+    if (now - at > TAUNT_CLAIM_TTL || at > now) claims.delete(brain);
+    else if (brain !== self) n++;
+  }
+  if (claims.size === 0) tauntClaims.delete(id);
+  return n;
+}
+
+function setClaim(id: number | null, self: object, now: number): void {
+  for (const [mid, claims] of tauntClaims) {
+    if (mid !== id && claims.delete(self) && claims.size === 0) tauntClaims.delete(mid);
+  }
+  if (id === null) return;
+  let claims = tauntClaims.get(id);
+  if (!claims) tauntClaims.set(id, (claims = new Map()));
+  claims.set(self, now);
+}
 
 // ---------------------------------------------------------------------------
 // Role profiles — the whole personality of a monster in one table row
@@ -553,6 +586,7 @@ export class AIBrain {
     const list = ctx.minions;
     if (this.fixateOnPlayer || !list?.length) {
       this.anchorId = null;
+      setClaim(null, this, ctx.elapsed);
       return;
     }
     const p = this.self.root.position;
@@ -561,29 +595,35 @@ export class AIBrain {
     let best: (typeof list)[number] | null = null;
     let bestScore = Infinity;
     let bestReal = Infinity;
+    let bestPulls = false;
     for (const m of list) {
       const real = dist(p.x, p.z, m.x, m.z);
       if (real > MINION_NOTICE) continue;
-      const score = m.taunt ? real * TAUNT_PULL : real;
+      // A taunt only pulls while it has a free hand. A full one is just a body.
+      const pulls = m.taunt && othersHolding(m.id, this, ctx.elapsed) < (m.tauntHold ?? Infinity);
+      const score = pulls ? real * TAUNT_PULL : real;
       if (score < bestScore) {
         bestScore = score;
         bestReal = real;
         best = m;
+        bestPulls = pulls;
       }
     }
     if (!best) {
       this.anchorId = null;
+      setClaim(null, this, ctx.elapsed);
       return;
     }
     // Already committed to this one? Hold on to it for longer.
     const holding = this.anchorId === best.id;
     const margin = holding ? MINION_KEEP_MARGIN : MINION_SWITCH_MARGIN;
-    if (best.taunt || bestReal <= toPlayer + margin) {
+    if (bestPulls || bestReal <= toPlayer + margin) {
       this.anchor.set(best.x, 0, best.z);
       this.anchorId = best.id;
     } else {
       this.anchorId = null;
     }
+    setClaim(bestPulls && this.anchorId !== null ? best.id : null, this, ctx.elapsed);
   }
 
   private think(ctx: CombatContext): void {

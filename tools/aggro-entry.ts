@@ -31,6 +31,8 @@ const nav = {
 
 const hero = new THREE.Vector3();
 const aim = new THREE.Vector3();
+/** One clock for every case, so taunt claims age the way they do in a run. */
+let clock = 100;
 
 function makeCtx(minions: MinionTarget[]): CombatContext {
   return {
@@ -43,7 +45,7 @@ function makeCtx(minions: MinionTarget[]): CombatContext {
     fx: shrug,
     decals: shrug,
     rng: new Random(7),
-    elapsed: 100,
+    elapsed: clock,
     enemies: [],
     scene: new THREE.Scene(),
     minions,
@@ -70,8 +72,10 @@ function run(
   e.ai!.wake(ctx, false);
   for (let i = 0; i < 12; i++) {
     ctx.playerPos.copy(hero);
+    ctx.elapsed = clock += 0.2;
     e.ai!.update(0.2, ctx);
   }
+  clock += 10;
   const want = e.ai!.desired;
   const dPlayer = Math.hypot(want.x - playerAt.x, want.z - playerAt.z);
   let dMinion = Infinity;
@@ -158,5 +162,36 @@ check(
   'player',
   'player',
 );
+
+// A Shadow Clone holds one monster, not the room. Three come at you; one
+// peels off for the clone and the other two keep coming.
+{
+  // The clone stands behind the pack, so only its taunt can turn them.
+  hero.set(0, 0, 4);
+  const clone: MinionTarget = { id: 9, x: 0, z: 22, taunt: true, tauntHold: 1 };
+  const ctx = makeCtx([clone]);
+  const rng = new Random(5);
+  const pack = [-2, 0, 2].map((x) => {
+    const e = new Enemy(def, 'normal', [], 5, rng);
+    e.root.position.set(x, 0, 12);
+    e.ai!.wake(ctx, false);
+    return e;
+  });
+  for (let i = 0; i < 12; i++) {
+    ctx.elapsed = clock += 0.2;
+    for (const e of pack) {
+      ctx.playerPos.copy(hero);
+      e.ai!.update(0.2, ctx);
+    }
+  }
+  clock += 10;
+  const held = pack.filter((e) => e.ai!.aggroMinion === clone.id).length;
+  cases.push({
+    name: `clone holds only one of three (${held})`,
+    fighting: held === 1 ? 'minion' : 'player',
+    goesToward: 'neither',
+    ok: held === 1,
+  });
+}
 
 console.log(JSON.stringify({ cases }));

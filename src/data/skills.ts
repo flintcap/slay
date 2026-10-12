@@ -2051,7 +2051,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     mana: [16, 0.9],
     cd: [22, 0.6, 10],
     fx: 'summon.clone',
-    p: { baseCap: 1, maxPerRanks: 5, count: 1, damagePct: 45, perRank: 5, taunt: 1, lifePct: 55 },
+    p: { baseCap: 1, maxPerRanks: 5, count: 1, damagePct: 45, perRank: 5, taunt: 1, tauntHold: 1, lifePct: 55 },
   },
   {
     id: 'fleetfoot',
