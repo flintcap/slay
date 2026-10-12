@@ -280,6 +280,15 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     const ids = ['sword.short', 'axe.war', 'staff.archon', 'bow.long'];
     return modelSheet(ids, ['unique', 'unique', 'unique', 'unique', 'set', 'set'], 1);
   },
+  /** Named uniques and sets: the glowing few beside some that do not glow. */
+  async glow() {
+    const ids = [
+      'sword.gladius@uq.hexfire', 'sword.phase@uq.azurewrath', 'bow.hydra@uq.windforce', 'sword.sunblade@an.the-long-noon',
+      'sword.godslayer@my.iceblink', 'mace.sanctified@an.mourning-star', 'sword.falchion@uq.griswold', 'sword.short@uq.rixots',
+      'mace.club@uq.felloak', 'axe.berserker@my.beast', 'sword.broad#set.gilded', 'sword.broad#set.ironvow',
+    ];
+    return modelSheet(ids, ['unique'], 3);
+  },
   /** Armour, jewellery and consumable models (what drops on the floor). */
   async modelsArmor() {
     return modelSheet(ARMOR_PICKS, ['normal', 'rare', 'unique'], 2);
@@ -527,15 +536,23 @@ async function modelSheet(ids: string[], rarities: ItemRarity[], identMode: numb
   let buildMs = 0;
   let builds = 0;
   for (let i = 0; i < ids.length; i++) {
-    const id = ids[i]!;
+    // Mode 3 names the item: `base@uniqueId` or `base#setId`.
+    const raw = ids[i]!;
+    const id = raw.split(/[@#]/)[0]!;
+    const tag = raw.slice(id.length);
     const base = baseById.get(id);
     if (!base?.visual) continue;
     const col = Math.floor(i / perCol);
     const row = i % perCol;
     for (let k = 0; k < COLS; k++) {
-      const r = rarities[k]!;
+      let r = rarities[k]!;
       const vary = identMode === 1 ? k : 0;
-      const ident = { baseId: id, uniqueId: r === 'unique' ? `u.${id}.${vary}` : undefined, setId: r === 'set' ? `s.${vary}.${id}` : undefined };
+      let ident = { baseId: id, uniqueId: r === 'unique' ? `u.${id}.${vary}` : undefined, setId: r === 'set' ? `s.${vary}.${id}` : undefined };
+      if (identMode === 3) {
+        const who = tag.slice(1);
+        r = tag[0] === '#' ? 'set' : who.startsWith('an.') ? 'ancient' : who.startsWith('my.') ? 'mythic' : 'unique';
+        ident = { baseId: id, uniqueId: tag[0] === '@' ? who : undefined, setId: tag[0] === '#' ? who : undefined };
+      }
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x15161b);
       scene.environment = env;
@@ -581,7 +598,7 @@ async function modelSheet(ids: string[], rarities: ItemRarity[], identMode: numb
       g.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
       if (k === 0) {
         g.fillStyle = INK;
-        g.fillText(id, x + (COLS * CELL) / 2, y + CELL + 1);
+        g.fillText(identMode === 3 ? tag.slice(1) : id, x + (COLS * CELL) / 2, y + CELL + 1);
       }
     }
   }

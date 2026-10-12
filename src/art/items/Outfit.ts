@@ -1,11 +1,12 @@
 /**
  * SLAY — what a hero's gear does together.
  *
- * A set lights up as it is completed, the way Diablo II's sets turned green
- * and Path of Exile's uniques shine: two pieces and the trims of every worn
- * piece glow in the set's colour; three or more and the set's aura rises
- * round the hero, stronger with each piece; the full set and the whole
- * outfit shines. Worn uniques carry their own aura at the part they cover.
+ * Only the few glowing sets and uniques (`Designs.ts`: GLOWING_SETS,
+ * GLOWING_UNIQUES) light up. A glowing set lights as it is completed: two
+ * pieces and the trims of every worn piece glow in the set's colour; three
+ * or more and every piece glows round its outline (with sparks, for the
+ * sparky kinds), stronger with each piece; the full set and the whole
+ * outfit shines. A glowing worn unique glows round its own outline.
  *
  * Called by `DressedHero.dress` after the pieces are grown. Returns the aura
  * objects it added, which the caller takes off before the next call.
@@ -17,12 +18,12 @@ import { hashString } from '../../core/RNG';
 import { itemLook } from '../ItemLook';
 import { lightArmour, type WornArmour } from '../hero/Armour';
 import type { HeroModel } from '../hero/Hero';
-import { SET_MOTIFS } from './Designs';
-import { buildAura } from './Aura';
+import { GLOWING_SETS, SET_MOTIFS } from './Designs';
+import { buildAura, glowTwins } from './Aura';
 
 type Ident = Pick<Item, 'baseId' | 'rarity'> & Partial<Pick<Item, 'uniqueId' | 'setId'>>;
 
-/** At most this many auras on one hero: each is a draw call. */
+/** At most this many spark columns on one hero: each is a draw call. */
 const MAX_AURAS = 3;
 
 /** Where a worn unique's aura sits: the bone it follows, its radius and height, and its foot. */
@@ -61,7 +62,7 @@ export function dressOutfit(
   // Set pieces glow as the set fills.
   for (const [slot, w] of worn) {
     const p = pieces[slot];
-    if (!p?.setId || p.uniqueId) continue;
+    if (!p?.setId || p.uniqueId || !GLOWING_SETS.has(p.setId)) continue;
     const motif = SET_MOTIFS[p.setId];
     if (!motif) continue;
     const total = getSet(p.setId)?.pieces.length ?? 99;
@@ -70,6 +71,7 @@ export function dressOutfit(
   // The set's aura: three pieces and up, the fullest set wins.
   let best: { id: string; n: number; total: number } | null = null;
   for (const [id, n] of counts) {
+    if (!GLOWING_SETS.has(id)) continue;
     const total = getSet(id)?.pieces.length ?? 99;
     if (n >= 3 && (!best || n / total > best.n / best.total)) best = { id, n, total };
   }
@@ -79,6 +81,11 @@ export function dressOutfit(
     const motif = SET_MOTIFS[best.id];
     if (motif) {
       const full = best.n >= best.total;
+      // Every worn piece of the set glows round its outline, brighter as it fills.
+      const glow = full ? 0.85 : 0.3 + 0.4 * (best.n / best.total);
+      for (const [slot, w] of worn) {
+        if (pieces[slot]?.setId === best.id && !pieces[slot]?.uniqueId) out.push(...glowTwins(w.object, motif.glow, glow, 0.012));
+      }
       const aura = buildAura(motif.aura, motif.glow, { radius: 0.42, height: Math.min(2.2, height * 1.05), strength: full ? 1.2 : 0.35 + 0.5 * (best.n / best.total), seed: hashString(best.id) });
       if (aura) {
         hero.root.add(aura);
@@ -88,14 +95,17 @@ export function dressOutfit(
   }
   // Worn uniques: their own aura where they sit, best first.
   const order: EquipSlot[] = ['chest', 'helm', 'boots', 'gloves', 'belt'];
+  let sparks = out.filter((o) => (o as THREE.Points).isPoints).length;
   for (const slot of order) {
-    if (out.length >= MAX_AURAS) break;
     const p = pieces[slot];
     const where = WORN_AURA[slot];
     if (!p?.uniqueId || !where || !worn.has(slot)) continue;
     const visual = visualOf(p.baseId);
     if (!visual) continue;
     const look = itemLook({ baseId: p.baseId, rarity: p.rarity, uniqueId: p.uniqueId, setId: p.setId }, visual);
+    if (look.aura === 'none') continue;
+    out.push(...glowTwins(worn.get(slot)!.object, look.glowColor, look.rarityTier >= 4 ? 0.6 : 0.45, 0.012));
+    if (sparks >= MAX_AURAS) continue;
     const bone = bones[where.bone] ?? hero.root;
     const aura = buildAura(look.aura, look.glowColor, { radius: where.r, height: where.h, strength: look.rarityTier >= 4 ? 0.9 : 0.6, seed: hashString(p.uniqueId) });
     if (!aura) continue;
@@ -107,6 +117,7 @@ export function dressOutfit(
     aura.scale.setScalar(1 / Math.max(0.01, s));
     bone.add(aura);
     out.push(aura);
+    sparks++;
   }
   return out;
 }

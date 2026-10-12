@@ -3,6 +3,14 @@
  * dragon-scaled outfit, frost mist sinking off ice plate, gold glints on a
  * gilded set, souls drifting up from a necromancer's crown.
  *
+ * Two layers. The glow itself is a shell (`glowShell`, `glowTwins`): the
+ * item's own surface pushed out a few millimetres and lit at its edges, so
+ * the light hugs the silhouette and the bloom pass spreads it into a halo.
+ * Over it, for the kinds that are made of sparks (embers, sparks, glints,
+ * drips, ash), a few small points; the soft kinds (a halo, frost, souls,
+ * smoke, wisps, motes) are the shell alone, as round blobs read as floating
+ * circles rather than light.
+ *
  * One `THREE.Points` per aura, one draw call. Every particle's path is a
  * closed loop worked out in the vertex shader from the clock, so nothing is
  * updated on the CPU and an aura costs the same standing or running. One
@@ -11,6 +19,7 @@
  * Seeded (`core/RNG.ts`): the same item always throws the same particles.
  */
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Random } from '../../core/RNG';
 import type { Aura } from './Designs';
 
@@ -119,7 +128,8 @@ function material(kind: Exclude<Aura, 'none'>, color: number, height: number, st
       uRise: { value: k.rise },
       uSwirl: { value: k.swirl },
       uJump: { value: k.jump },
-      uSize: { value: k.size },
+      // Small: a spark, not a disc.
+      uSize: { value: k.size * 0.6 },
       uSpread: { value: k.spread },
       uHeight: { value: height },
       uColor: { value: new THREE.Color(color) },
@@ -150,11 +160,23 @@ export interface AuraOpts {
   seed: number;
 }
 
-/** The aura as one Points object, or null for 'none'. Add it under whatever it should follow. */
+/** Kinds that throw particles over their glow, and how many of the full count. */
+const SPARKY: Partial<Record<Aura, number>> = { embers: 0.45, sparks: 0.45, sparkles: 0.4, shine: 0.4, drips: 0.5, ash: 0.4 };
+
+/** True when the kind throws particles over its glow (see `SPARKY`). */
+export function auraHasSparks(kind: Aura): boolean {
+  return SPARKY[kind] !== undefined;
+}
+
+/**
+ * The aura's particles as one Points object, or null for 'none' and for the
+ * soft kinds, which are the glow shell alone. Add it under whatever it should follow.
+ */
 export function buildAura(kind: Aura, color: number, o: AuraOpts): THREE.Points | null {
-  if (kind === 'none' || !KINDS[kind]) return null;
+  const share = SPARKY[kind];
+  if (kind === 'none' || !KINDS[kind] || share === undefined) return null;
   const k = KINDS[kind];
-  const n = Math.max(3, Math.round(k.count * Math.max(0.2, o.strength) * Math.max(0.6, Math.min(1.6, o.radius * 2.5 + o.height * 0.4))));
+  const n = Math.max(3, Math.round(share * k.count * Math.max(0.2, o.strength) * Math.max(0.6, Math.min(1.6, o.radius * 2.5 + o.height * 0.4))));
   const rng = new Random(o.seed >>> 0 || 1);
   const pos = new Float32Array(n * 3);
   const seed = new Float32Array(n * 4);
@@ -190,4 +212,157 @@ export function auraStyle(kind: Aura): { size: number; rise: number; twinkle: nu
   if (kind === 'none' || !KINDS[kind]) return null;
   const k = KINDS[kind];
   return { size: k.size, rise: k.rise, twinkle: k.twinkle, core: k.core, count: k.count };
+}
+
+// ---------------------------------------------------------------------------
+// The glow shell.
+
+const SHELL_VERT = /* glsl */ `
+#include <common>
+#include <skinning_pars_vertex>
+uniform float uThick;
+varying vec3 vN;
+varying vec3 vV;
+void main() {
+  #include <beginnormal_vertex>
+  #include <skinbase_vertex>
+  #include <skinnormal_vertex>
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  vec4 mv = modelViewMatrix * vec4(transformed, 1.0);
+  vec3 n = normalize(normalMatrix * objectNormal);
+  // Pushed out in view space, so the shell is the same few millimetres
+  // whatever scale the item is drawn at.
+  mv.xyz += n * uThick;
+  vN = n;
+  vV = isOrthographic ? vec3(0.0, 0.0, 1.0) : normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
+}
+`;
+
+const SHELL_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uGain;
+uniform float uTime;
+varying vec3 vN;
+varying vec3 vV;
+void main() {
+  float facing = abs(dot(normalize(vN), normalize(vV)));
+  // Bright at the silhouette, a faint wash over the face.
+  float rim = pow(1.0 - facing, 2.4);
+  float a = 0.05 + rim;
+  // A slow breath, so it reads as light and not paint.
+  float breath = 0.82 + 0.18 * sin(uTime * 1.9);
+  gl_FragColor = vec4(uColor * a * uGain * breath, 1.0);
+}
+`;
+
+/** One clock for every shell, set by whichever draws first in a frame. */
+const shellTime = { value: 0 };
+const shellMats = new Map<string, THREE.ShaderMaterial>();
+
+function shellMaterial(color: number, strength: number, thick: number): THREE.ShaderMaterial {
+  const key = `${color}|${strength.toFixed(2)}|${thick.toFixed(3)}`;
+  let m = shellMats.get(key);
+  if (m) return m;
+  m = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      // Past the bloom threshold at the edges, so the halo spreads.
+      uGain: { value: 0.9 + 1.5 * strength },
+      uThick: { value: thick },
+      uTime: shellTime,
+    },
+    vertexShader: SHELL_VERT,
+    fragmentShader: SHELL_FRAG,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  m.name = 'aura:shell';
+  m.userData.shared = true;
+  shellMats.set(key, m);
+  return m;
+}
+
+function markShell(o: THREE.Mesh, color: number): void {
+  o.name = 'aura:shell';
+  o.renderOrder = 3;
+  o.castShadow = false;
+  o.receiveShadow = false;
+  o.userData.aura = 'shell';
+  o.userData.auraColor = color;
+  o.onBeforeRender = () => {
+    shellTime.value = (performance.now() / 1000) % 3600;
+  };
+}
+
+/** Meshes worth outlining: solid ones, not glows, decals or particles of their own. */
+function solid(m: THREE.Mesh): boolean {
+  if (!m.isMesh || m.userData.aura) return false;
+  const mat = m.material as THREE.Material | THREE.Material[];
+  const one = Array.isArray(mat) ? mat[0] : mat;
+  return !!one && !one.transparent && one.blending === THREE.NormalBlending;
+}
+
+/**
+ * A glow round a still model (a weapon, a shield, a ring): its solid meshes
+ * merged into one shell under `root`, one draw call. `thick` is metres.
+ */
+export function glowShell(root: THREE.Object3D, color: number, strength: number, thick: number): THREE.Mesh | null {
+  root.updateMatrixWorld(true);
+  const inv = root.matrixWorld.clone().invert();
+  const rel = new THREE.Matrix4();
+  const parts: THREE.BufferGeometry[] = [];
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!solid(m) || (m as unknown as THREE.SkinnedMesh).isSkinnedMesh) return;
+    const src = m.geometry;
+    const pos = src.getAttribute('position');
+    if (!pos) return;
+    let g = new THREE.BufferGeometry();
+    g.setAttribute('position', pos.clone());
+    const nrm = src.getAttribute('normal');
+    if (nrm) g.setAttribute('normal', nrm.clone());
+    if (src.index) g.setIndex(src.index.clone());
+    if (g.index) g = g.toNonIndexed();
+    if (!nrm) g.computeVertexNormals();
+    rel.multiplyMatrices(inv, m.matrixWorld);
+    g.applyMatrix4(rel);
+    parts.push(g);
+  });
+  if (!parts.length) return null;
+  const geo = parts.length === 1 ? parts[0]! : mergeGeometries(parts, false);
+  if (parts.length > 1) for (const g of parts) g.dispose();
+  if (!geo) return null;
+  geo.computeBoundingSphere();
+  const mesh = new THREE.Mesh(geo, shellMaterial(color, strength, thick));
+  markShell(mesh, color);
+  root.add(mesh);
+  return mesh;
+}
+
+/**
+ * A glow round worn armour: a twin of each skinned mesh in `group`, on the
+ * same geometry and bones, so it bends with the body. The twins share the
+ * piece's geometry; take them off with `removeFromParent`, never dispose.
+ */
+export function glowTwins(group: THREE.Object3D, color: number, strength: number, thick: number): THREE.Object3D[] {
+  const out: THREE.Object3D[] = [];
+  const mat = shellMaterial(color, strength, thick);
+  for (const o of [...group.children]) {
+    const m = o as THREE.SkinnedMesh;
+    if (!m.isSkinnedMesh || !solid(m)) continue;
+    const twin = new THREE.SkinnedMesh(m.geometry, mat);
+    twin.frustumCulled = false;
+    twin.position.copy(m.position);
+    twin.quaternion.copy(m.quaternion);
+    twin.scale.copy(m.scale);
+    markShell(twin, color);
+    twin.userData.sharedGeometry = true;
+    group.add(twin);
+    twin.bind(m.skeleton, m.bindMatrix);
+    out.push(twin);
+  }
+  return out;
 }

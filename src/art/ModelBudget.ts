@@ -38,6 +38,8 @@ export function compactModel<T extends THREE.Object3D>(root: T): T {
     if (!m.isMesh || (m as unknown as THREE.SkinnedMesh).isSkinnedMesh || (m as unknown as THREE.InstancedMesh).isInstancedMesh) return;
     if (Array.isArray(m.material) || !m.material || (m.material as THREE.MeshStandardMaterial).vertexColors) return;
     if (movesOnItsOwn(m, root)) return;
+    // A glow shell keeps its own mesh: it is told apart by its userData.
+    if (m.userData.aura) return;
     const key = `${m.material.uuid}|${m.renderOrder}`;
     let g = groups.get(key);
     if (!g) {

@@ -34,7 +34,7 @@ import { gearLook, type GearLook } from './GearLook';
 import { resolveSurface } from './SurfaceLibrary';
 import { TEXTURE_SETS } from './TextureSets';
 import { ITEM_BASES } from '../data/itemBases';
-import { fallbackMotif, FINISHES, SET_MOTIFS, UNIQUE_DESIGNS, type Aura, type Emblem, type Feature, type Finish, type SetMotif, type UniqueDesign } from './items/Designs';
+import { fallbackMotif, FINISHES, GLOWING_SETS, GLOWING_UNIQUES, SET_MOTIFS, UNIQUE_DESIGNS, type Aura, type Emblem, type Feature, type Finish, type SetMotif, type UniqueDesign } from './items/Designs';
 
 export type { Aura, Emblem, Feature, Finish } from './items/Designs';
 
@@ -328,7 +328,10 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
     motif,
     design,
     cutOverride: design?.cut,
-    aura: design?.aura ?? motif?.aura ?? 'none',
+    // Only the chosen few glow (`GLOWING_SETS`, `GLOWING_UNIQUES`).
+    aura: design
+      ? (GLOWING_UNIQUES.has(item.uniqueId ?? '') ? design.aura : 'none')
+      : motif && GLOWING_SETS.has(item.setId ?? '') ? motif.aura : 'none',
     finish,
     sheen: finish ? FINISHES[finish].sheen : 0,
   };

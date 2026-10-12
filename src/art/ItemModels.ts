@@ -19,7 +19,7 @@
 import * as THREE from 'three';
 import { RARITY_COLOR, type Item, type ItemRarity, type ItemVisual, type Rng } from '../types';
 import { buildItem, type ItemFamily } from './items/Model';
-import { buildAura } from './items/Aura';
+import { buildAura, glowShell } from './items/Aura';
 import type { Aura } from './items/Designs';
 import { hashString } from '../core/RNG';
 
@@ -35,12 +35,14 @@ export function buildItemModel(visual: ItemVisual, _rng: Rng, rarity: ItemRarity
   const built = buildItem(visual, rarity, ident ? { baseId: ident.baseId, uniqueId: ident.uniqueId, setId: ident.setId } : undefined);
   const k = HELD_SCALE[built.family];
   if (k) built.group.scale.setScalar(k);
-  // Uniques and set pieces carry their aura in the hand: a column round the business end.
+  // The few glowing uniques and set pieces (`GLOWING_UNIQUES`, `GLOWING_SETS`)
+  // glow round their outline, and the sparky kinds throw a few sparks too.
   const L = built.look;
   if (L.aura !== 'none' && (L.unique || L.set)) {
     const box = new THREE.Box3().setFromObject(built.group);
     const size = box.getSize(new THREE.Vector3());
-    const strength = L.set ? 0.4 : L.rarityTier >= 4 ? 0.85 : 0.55;
+    const strength = L.set ? 0.45 : L.rarityTier >= 4 ? 0.9 : 0.65;
+    glowShell(built.group, L.glowColor, strength, 0.012);
     const aura = buildAura(L.aura, L.glowColor, { radius: Math.max(0.05, Math.max(size.x, size.z) * 0.45 + 0.02), height: Math.max(0.15, size.y), strength, seed: hashString(`${L.baseId}|${ident?.uniqueId ?? ident?.setId ?? ''}`) });
     if (aura) {
       aura.position.y = box.min.y / (k || 1);
@@ -134,7 +136,7 @@ export function buildDropModel(item: Item, rng: Rng): THREE.Object3D {
   // The item, laid down, centred on its own middle so a tumble turns about it.
   const model = buildItemModel(visual, rng, rarity, item);
   // Its aura rises from the floor, not along the lying blade: lift it out and stand it up below.
-  const held = model.children.find((c) => c.userData.aura) as THREE.Points | undefined;
+  const held = model.children.find((c) => c.userData.aura && (c as THREE.Points).isPoints) as THREE.Points | undefined;
   held?.removeFromParent();
   poseForDrop(model);
   const yaw = new THREE.Group();

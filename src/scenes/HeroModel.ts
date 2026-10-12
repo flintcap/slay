@@ -126,7 +126,8 @@ export class DressedHero {
     this.outfitKey = key;
     for (const o of this.outfit) {
       o.removeFromParent();
-      (o as THREE.Points).geometry?.dispose();
+      // Glow twins draw on the armour's own (cached) geometry.
+      if (!o.userData.sharedGeometry) (o as THREE.Points).geometry?.dispose();
     }
     this.outfit = [];
     const worn = new Map<EquipSlot, WornArmour>();

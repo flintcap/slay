@@ -281,3 +281,48 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'an.the-hollow-crown': { main: 'metal.dark', trim: 'metal.voidgold', stone: 0x08060c, glow: 0x8a40ff, features: ['crowns', 'spikes', 'smoke'], cut: { hollow: true }, wear: 0.3, aura: 'smoke' },
   'an.godsblood-shroud': { main: 'cloth.silk|0x44101c', trim: 'metal.bloodgold', glow: 0xff3a5a, features: ['eyes', 'stars'], wear: 0, aura: 'souls' },
 };
+
+/**
+ * The few sets and uniques that glow. A glow is a reward, so most gear goes
+ * without: the gold and the white sets, the elemental ones, and a handful of
+ * famous weapons and crowns. Every ancient glows. The rest keep their
+ * colours, sculpts and emblems, and their aura kind is ignored.
+ */
+export const GLOWING_SETS: ReadonlySet<string> = new Set([
+  'set.gilded',
+  'set.sunderedsky',
+  'set.kindled',
+  'set.frostwrought',
+  'set.stormbound',
+  'set.hollowking',
+]);
+
+export const GLOWING_UNIQUES: ReadonlySet<string> = new Set([
+  // Uniques.
+  'uq.hexfire',
+  'uq.frostwind',
+  'uq.skystrike',
+  'uq.ravenfrost',
+  'uq.hellslayer',
+  'uq.azurewrath',
+  'uq.windforce',
+  'uq.crownofages',
+  'uq.thunderstroke',
+  'uq.deathsweb',
+  'uq.eschutas',
+  // Mythics.
+  'my.tyraelsmight',
+  'my.the-oculus',
+  'my.iceblink',
+  'my.spirit-of-the-forge',
+  'my.stoneofthevoid',
+  'my.seraphshymn',
+  // Ancients: all of them.
+  'an.worldbreaker',
+  'an.the-long-noon',
+  'an.eternity',
+  'an.the-first-word',
+  'an.mourning-star',
+  'an.the-hollow-crown',
+  'an.godsblood-shroud',
+]);
