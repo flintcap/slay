@@ -612,11 +612,11 @@
  ],
  "sounds/craft.success/01.ogg": [
   "tiny",
-  "magic"
+  "clink"
  ],
  "sounds/craft.success/02.ogg": [
   "mw",
-  "magic"
+  "anvil"
  ],
  "sounds/crit/01.ogg": [
   "ki",
@@ -682,22 +682,23 @@
   "r80"
  ],
  "sounds/drop.rare/02.ogg": [
-  "c100"
+  "clink",
+  "r80"
  ],
  "sounds/drop.set/01.ogg": [
-  "c100",
-  "ki"
+  "bells",
+  "r80"
  ],
  "sounds/drop.set/02.ogg": [
-  "c100"
+  "bells"
  ],
  "sounds/drop.unique/01.ogg": [
-  "c100",
-  "magic"
+  "bells",
+  "clink"
  ],
  "sounds/drop.unique/02.ogg": [
-  "c100",
-  "cure"
+  "ki",
+  "bells"
  ],
  "sounds/footstep.dirt/01.ogg": [
   "kr"
@@ -1186,14 +1187,14 @@
   "ki"
  ],
  "sounds/levelup/01.ogg": [
-  "magic",
-  "c100",
-  "cure"
+  "ki",
+  "chant",
+  "clink"
  ],
  "sounds/levelup/02.ogg": [
-  "magic",
-  "c100",
-  "cure"
+  "bells",
+  "chant",
+  "c100"
  ],
  "sounds/loot.clink/01.ogg": [
   "r80"
@@ -1224,12 +1225,13 @@
  ],
  "sounds/loot.legendary/01.ogg": [
   "c100",
-  "magic"
+  "bells",
+  "chant"
  ],
  "sounds/loot.legendary/02.ogg": [
   "ki",
-  "c100",
-  "cure"
+  "bells",
+  "chant"
  ],
  "sounds/loot.toss/01.ogg": [
   "swish"
@@ -1854,8 +1856,8 @@
   "kr"
  ],
  "sounds/pickup.rare/01.ogg": [
-  "magic",
-  "r80"
+  "r80",
+  "kr"
  ],
  "sounds/pickup.rare/02.ogg": [
   "clink",
@@ -1935,10 +1937,12 @@
   "rsp"
  ],
  "sounds/quest.complete/01.ogg": [
-  "done"
+  "c100",
+  "kr"
  ],
  "sounds/quest.complete/02.ogg": [
-  "kj",
+  "bells",
+  "chant",
   "c100"
  ],
  "sounds/roar/01.ogg": [
@@ -1982,10 +1986,12 @@
   "c100"
  ],
  "sounds/skillpoint/01.ogg": [
-  "magic"
+  "kr",
+  "clink"
  ],
  "sounds/skillpoint/02.ogg": [
-  "magic"
+  "kr",
+  "ki"
  ],
  "sounds/slam/01.ogg": [
   "c100",
@@ -2224,16 +2230,16 @@
   "kr"
  ],
  "sounds/ui.click/01.ogg": [
-  "ku"
+  "kr"
  ],
  "sounds/ui.click/02.ogg": [
-  "ku"
+  "r80"
  ],
  "sounds/ui.click/03.ogg": [
-  "ku"
+  "mw"
  ],
  "sounds/ui.click/04.ogg": [
-  "ku"
+  "acc"
  ],
  "sounds/ui.close/01.ogg": [
   "kr"
@@ -2257,22 +2263,22 @@
   "kr"
  ],
  "sounds/ui.error/01.ogg": [
-  "kf"
+  "mw"
  ],
  "sounds/ui.error/02.ogg": [
-  "kf"
+  "acc"
  ],
  "sounds/ui.error/03.ogg": [
-  "kf"
+  "r80"
  ],
  "sounds/ui.hover/01.ogg": [
-  "ku"
+  "mw"
  ],
  "sounds/ui.hover/02.ogg": [
-  "ku"
+  "kr"
  ],
  "sounds/ui.hover/03.ogg": [
-  "ku"
+  "acc"
  ],
  "sounds/ui.open/01.ogg": [
   "kr"
@@ -2284,13 +2290,13 @@
   "kr"
  ],
  "sounds/ui.select/01.ogg": [
-  "kf"
+  "kr"
  ],
  "sounds/ui.select/02.ogg": [
-  "kf"
+  "r80"
  ],
  "sounds/ui.select/03.ogg": [
-  "kr"
+  "c100"
  ],
  "sounds/ui.sell/01.ogg": [
   "kr"

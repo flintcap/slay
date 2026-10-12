@@ -214,8 +214,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/cone.poison/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/cone.poison/02.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/cone.poison/03.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
-| sounds/craft.success/01.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + JaggedStone (opengameart.org/content/magic-spell-sfx) | CC0 |
-| sounds/craft.success/02.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + JaggedStone (opengameart.org/content/magic-spell-sfx) | CC0 |
+| sounds/craft.success/01.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/craft.success/02.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + themightyglider (opengameart.org/content/hammer-on-anvil) | CC0 |
 | sounds/crit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/crit/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/crit/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
@@ -234,11 +234,11 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/drop.magic/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/drop.magic/03.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/drop.rare/01.ogg | https://opengameart.org/content/metal-impact-sounds | BMacZero + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
-| sounds/drop.rare/02.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck | CC0 |
-| sounds/drop.set/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/drop.set/02.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck | CC0 |
-| sounds/drop.unique/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + JaggedStone (opengameart.org/content/magic-spell-sfx) | CC0 |
-| sounds/drop.unique/02.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Someoneman (opengameart.org/content/cure-magic) | CC0 |
+| sounds/drop.rare/02.ogg | https://opengameart.org/content/metal-impact-sounds | BMacZero + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/drop.set/01.ogg | https://opengameart.org/content/bell-dingschimes | pwl + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/drop.set/02.ogg | https://opengameart.org/content/bell-dingschimes | pwl | CC0 |
+| sounds/drop.unique/01.ogg | https://opengameart.org/content/bell-dingschimes | pwl + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/drop.unique/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + pwl (opengameart.org/content/bell-dingschimes) | CC0 |
 | sounds/footstep.dirt/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/footstep.dirt/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/footstep.dirt/03.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
@@ -391,8 +391,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/kill.multi/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/land/01.ogg | https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud | TinyWorlds + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/land/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/levelup/01.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone + rubberduck (opengameart.org/content/100-cc0-sfx) + Someoneman (opengameart.org/content/cure-magic) | CC0 |
-| sounds/levelup/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone + rubberduck (opengameart.org/content/100-cc0-sfx) + Someoneman (opengameart.org/content/cure-magic) | CC0 |
+| sounds/levelup/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/levelup/02.ogg | https://opengameart.org/content/bell-dingschimes | pwl + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
 | sounds/loot.clink/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/loot.clink/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
 | sounds/loot.clink/03.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
@@ -402,8 +402,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/loot.grab/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/loot.grab/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/loot.grab/03.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
-| sounds/loot.legendary/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + JaggedStone (opengameart.org/content/magic-spell-sfx) | CC0 |
-| sounds/loot.legendary/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-sfx) + Someoneman (opengameart.org/content/cure-magic) | CC0 |
+| sounds/loot.legendary/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + pwl (opengameart.org/content/bell-dingschimes) + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/loot.legendary/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + pwl (opengameart.org/content/bell-dingschimes) + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | sounds/loot.toss/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/loot.toss/02.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/monster.aberration.aggro/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
@@ -606,7 +606,7 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/pickup.kind.weapon/05.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
 | sounds/pickup.magic/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/pickup.magic/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/pickup.rare/01.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/pickup.rare/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/pickup.rare/02.ogg | https://opengameart.org/content/metal-impact-sounds | BMacZero + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/player.death/01.ogg | https://opengameart.org/content/hurt-death-sound-effect-for-character | Badre-Eddine | CC0 |
 | sounds/player.death/02.ogg | https://opengameart.org/content/hurt-death-sound-effect-for-character | Badre-Eddine | CC0 |
@@ -630,8 +630,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/potion/01.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/potion/02.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/potion/03.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
-| sounds/quest.complete/01.ogg | https://opengameart.org/content/completion-sound | HaelDB | CC0 |
-| sounds/quest.complete/02.ogg | https://kenney.nl/assets/music-jingles | Kenney + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/quest.complete/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/quest.complete/02.ogg | https://opengameart.org/content/bell-dingschimes | pwl + owlishmedia (opengameart.org/content/creepy-incoherent-chanting) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
 | sounds/roar/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/roar/02.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
 | sounds/roar/03.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
@@ -644,8 +644,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/shoot.physical/03.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Ogrebane (opengameart.org/content/battle-sound-effects) | CC0 |
 | sounds/shrine/01.ogg | https://opengameart.org/content/cure-magic | Someoneman + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
 | sounds/shrine/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
-| sounds/skillpoint/01.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
-| sounds/skillpoint/02.ogg | https://opengameart.org/content/magic-spell-sfx | JaggedStone | CC0 |
+| sounds/skillpoint/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/skillpoint/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/slam/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/slam/02.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/slam/03.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
@@ -722,10 +722,10 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/ui.buy/01.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
 | sounds/ui.buy/02.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
 | sounds/ui.buy/03.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
-| sounds/ui.click/01.ogg | https://kenney.nl/assets/ui-audio | Kenney | CC0 |
-| sounds/ui.click/02.ogg | https://kenney.nl/assets/ui-audio | Kenney | CC0 |
-| sounds/ui.click/03.ogg | https://kenney.nl/assets/ui-audio | Kenney | CC0 |
-| sounds/ui.click/04.ogg | https://kenney.nl/assets/ui-audio | Kenney | CC0 |
+| sounds/ui.click/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
+| sounds/ui.click/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
+| sounds/ui.click/03.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck | CC0 |
+| sounds/ui.click/04.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle | CC0 |
 | sounds/ui.close/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/ui.close/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/ui.close/03.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
@@ -733,18 +733,18 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/ui.equip/02.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
 | sounds/ui.equip/03.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
 | sounds/ui.equip/04.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
-| sounds/ui.error/01.ogg | https://kenney.nl/assets/interface-sounds | Kenney | CC0 |
-| sounds/ui.error/02.ogg | https://kenney.nl/assets/interface-sounds | Kenney | CC0 |
-| sounds/ui.error/03.ogg | https://kenney.nl/assets/interface-sounds | Kenney | CC0 |
-| sounds/ui.hover/01.ogg | https://kenney.nl/assets/ui-audio | Kenney | CC0 |
-| sounds/ui.hover/02.ogg | https://kenney.nl/assets/ui-audio | Kenney | CC0 |
-| sounds/ui.hover/03.ogg | https://kenney.nl/assets/ui-audio | Kenney | CC0 |
+| sounds/ui.error/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck | CC0 |
+| sounds/ui.error/02.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle | CC0 |
+| sounds/ui.error/03.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
+| sounds/ui.hover/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck | CC0 |
+| sounds/ui.hover/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
+| sounds/ui.hover/03.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle | CC0 |
 | sounds/ui.open/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/ui.open/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/ui.open/03.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
-| sounds/ui.select/01.ogg | https://kenney.nl/assets/interface-sounds | Kenney | CC0 |
-| sounds/ui.select/02.ogg | https://kenney.nl/assets/interface-sounds | Kenney | CC0 |
-| sounds/ui.select/03.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
+| sounds/ui.select/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
+| sounds/ui.select/02.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
+| sounds/ui.select/03.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck | CC0 |
 | sounds/ui.sell/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
 | sounds/ui.sell/02.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
 | sounds/ui.sell/03.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |

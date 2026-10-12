@@ -63,7 +63,6 @@ export const ROOTS = {
   msfx2: 'monster_sfx_pack_2/monster_sfx_pack_2/',
   msfx3: 'monster-sounds-volume-2/Monster-Sounds-Volume-2/',
   dark: 'dark_ambiences/dark_ambiences/',
-  kj: '',
 };
 
 /** One take. */
@@ -82,27 +81,60 @@ const SC = 'sword_clash_-_starninjas_0/';
 
 export const SFX = {
   // --- interface ------------------------------------------------------------
-  'ui.click': [...xs('ku', 'click#.ogg', [1, 2, 3], { rate: 0.9, lp: 6000 }), x('ku', 'mouseclick1.ogg', { rate: 0.85, lp: 5000 })],
-  'ui.hover': xs('ku', 'rollover#.ogg', [2, 3, 5], { lp: 4000 }),
+  // Wood, iron, leather and parchment only: no synth clicks, bleeps or chimes.
+  'ui.click': [
+    x('kr', 'metalClick.ogg', { t: 0.12 }),
+    x('r80', 'lock_01.ogg', { t: 0.12, lp: 6000 }),
+    x('mw', 'wood_hit_04.ogg', { t: 0.1, rate: 1.1, lp: 5000 }),
+    x('acc', 'wood-bowl-hit-wood-spoon-01.wav', { t: 0.1, lp: 5000 }),
+  ],
+  'ui.hover': [
+    x('mw', 'wood_hit_09.ogg', { t: 0.06, hp: 200, lp: 2500, gain: -6 }),
+    x('kr', 'cloth1.ogg', { t: 0.08, lp: 3000, gain: -6 }),
+    x('acc', 'wood-bowl-hit-wood-spoon-01.wav', { t: 0.06, rate: 0.8, lp: 3000, gain: -1 }),
+  ],
   'ui.open': [x('kr', 'bookOpen.ogg'), x('kr', 'handleSmallLeather.ogg'), x('kr', 'handleSmallLeather2.ogg')],
   'ui.close': [x('kr', 'bookClose.ogg'), x('kr', 'dropLeather.ogg'), x('kr', 'cloth4.ogg')],
   'ui.tab': xs('kr', 'bookFlip#.ogg', [1, 2, 3]),
-  'ui.select': [...xs('kf', 'select_00#.ogg', [1, 3], { rate: 0.8, lp: 5000 }), x('kr', 'metalClick.ogg')],
-  'ui.error': xs('kf', 'error_00#.ogg', [6, 7, 8], { rate: 0.8, lp: 3500 }),
+  'ui.select': [x('kr', 'metalLatch.ogg'), x('r80', 'lock_03.ogg', { t: 0.25 }), x('c100', 'key_open_01.ogg', { t: 0.3 })],
+  // A lock that will not give: a dull wooden knock, or a key that rattles and holds.
+  'ui.error': [
+    x('mw', 'wood_close_01.ogg', { rate: 0.75, lp: 2000 }),
+    x('acc', 'keyhole-lockbox-turn-02.wav', { t: 0.4, lp: 4000 }),
+    x('r80', 'lock_02.ogg', { rate: 0.7, lp: 2500, t: 0.35 }),
+  ],
   'ui.equip': [x('rsp', 'inventory/chainmail1.wav'), x('rsp', 'inventory/chainmail2.wav'), x('rsp', 'inventory/armor-light.wav'), x('kr', 'beltHandle1.ogg')],
   'ui.unequip': [x('kr', 'beltHandle2.ogg'), x('kr', 'clothBelt.ogg'), x('rsp', 'inventory/cloth-heavy.wav')],
   'ui.buy': [x('rsp', 'inventory/coin.wav'), x('rsp', 'inventory/coin2.wav'), x('kr', 'handleCoins.ogg')],
   'ui.sell': [x('kr', 'handleCoins2.ogg'), x('rsp', 'inventory/coin3.wav'), x('r80', 'item_coins_01.ogg')],
   'craft.success': [
-    x('tiny', 'metal-hammer-hit-01.wav', { t: 1.4, mix: [x('magic', 'magical_6.ogg', { delay: 120, gain: -9 })] }),
-    x('mw', 'hammer_01.ogg', { rate: 0.85, mix: [x('magic', 'magical_2.ogg', { delay: 90, gain: -9, t: 1 })] }),
+    // Hammer on the anvil, and the iron ringing after it.
+    x('tiny', 'metal-hammer-hit-01.wav', { t: 1.4, mix: [x('clink', 'bing1.wav', { rate: 0.6, delay: 40, gain: -8 })] }),
+    x('mw', 'hammer_01.ogg', { rate: 0.85, mix: [x('anvil', 'forger_0.ogg', { t: 0.9, gain: -6 })] }),
   ],
-  skillpoint: [x('magic', 'magical_2.ogg', { t: 1.2 }), x('magic', 'magical_5.ogg', { t: 1.2 })],
+  // Spending a point: a page pressed shut and a small iron ring.
+  skillpoint: [
+    x('kr', 'bookPlace1.ogg', { mix: [x('clink', 'bong1.wav', { rate: 0.8, t: 0.8, gain: -6 })] }),
+    x('kr', 'bookPlace2.ogg', { mix: [x('ki', 'impactBell_heavy_002.ogg', { rate: 0.8, gain: -8 })] }),
+  ],
+  // A deep bell toll under a low choir swell, with a metal ring on top.
   levelup: [
-    x('magic', 'magical_4.ogg', { mix: [x('c100', 'bell_03.ogg', { rate: 0.8, gain: -6 }), x('cure', 'Cure6.wav', { gain: -8, delay: 150 })] }),
-    x('magic', 'magical_7.ogg', { mix: [x('c100', 'bell_01.ogg', { rate: 0.7, gain: -6 }), x('cure', 'Cure2.wav', { gain: -8, delay: 120 })] }),
+    x('ki', 'impactBell_heavy_001.ogg', {
+      rate: 0.7,
+      gain: -2,
+      mix: [x('chant', 'chant23.wav', { ss: 0.35, t: 2.2, rate: 0.9, fadeIn: 0.3, fadeOut: 0.8, gain: -3 }), x('clink', 'bing1.wav', { rate: 0.8, delay: 30, gain: -10 })],
+    }),
+    x('bells', 'bell_ding3.wav', {
+      rate: 0.75,
+      gain: -2,
+      mix: [x('chant', 'chant11.wav', { ss: 0.1, rate: 0.85, fadeIn: 0.25, fadeOut: 0.5, gain: -3 }), x('c100', 'gong_02.ogg', { rate: 0.8, gain: -6 })],
+    }),
   ],
-  'quest.complete': [x('done', 'gmae.wav'), x('kj', 'Hit jingles/jingles_HIT01.ogg', { mix: [x('c100', 'bell_03.ogg', { rate: 0.9, gain: -10 })] })],
+  // A deep toll and the quest book closing.
+  'quest.complete': [
+    x('c100', 'gong_02.ogg', { rate: 0.85, mix: [x('kr', 'bookClose.ogg', { gain: -4 })] }),
+    x('bells', 'bell_ding3.wav', { rate: 0.7, gain: -2, mix: [x('chant', 'chant11.wav', { rate: 0.8, fadeIn: 0.2, gain: -6 }), x('c100', 'paper_03.ogg', { gain: -6 })] }),
+  ],
   potion: [
     x('acc', 'bottle-glass-uncork-01.wav', { mix: [x('rsp', 'inventory/bubble.wav', { delay: 260, gain: -2 })] }),
     x('acc', 'bottle-glass-uncork-03.wav', { mix: [x('rsp', 'inventory/bubble2.wav', { delay: 300, gain: -2 })] }),
@@ -480,21 +512,25 @@ export const SFX = {
   'loot.toss': xs('swish', 'swish-#.wav', [11, 12], { rate: 0.7, lp: 3000 }),
   'loot.clink': [...xs('r80', 'item_misc_0#.ogg', [1, 2, 3]), x('clink', 'clink1_0.wav'), x('clink', 'clink2.wav'), x('clink', 'clink3.wav')],
   'loot.grab': [x('kr', 'handleSmallLeather.ogg'), x('kr', 'cloth3.ogg'), x('rsp', 'inventory/cloth.wav')],
-  // The pillar-of-light moment: a deep gong under a bright bell.
+  // The pillar-of-light moment: a deep gong and bell under a low choir.
   'loot.legendary': [
-    x('c100', 'gong_01.ogg', { rate: 0.45, mix: [x('c100', 'bell_03.ogg', { rate: 0.8, gain: -4 }), x('magic', 'magical_4.ogg', { gain: -6 })] }),
-    x('ki', 'impactBell_heavy_001.ogg', { rate: 0.5, mix: [x('c100', 'bell_01.ogg', { gain: -3 }), x('cure', 'Cure6.wav', { gain: -6 })] }),
+    x('c100', 'gong_02.ogg', {
+      rate: 0.7,
+      gain: -1.5,
+      mix: [x('bells', 'bell_ding3.wav', { rate: 0.8, gain: -4 }), x('chant', 'chant23.wav', { ss: 0.35, t: 2.4, fadeIn: 0.3, fadeOut: 0.8, gain: -6 })],
+    }),
+    x('ki', 'impactBell_heavy_001.ogg', { rate: 0.55, mix: [x('bells', 'bell_ding3.wav', { rate: 0.9, gain: -3 }), x('chant', 'chant11.wav', { rate: 0.75, fadeIn: 0.2, gain: -6 })] }),
   ],
   'drop.magic': xs('r80', 'item_gem_0#.ogg', [1, 2, 3], { rate: 0.9 }),
-  'drop.rare': [x('clink', 'bing1.wav', { mix: [x('r80', 'item_gem_04.ogg', { gain: -3 })] }), x('c100', 'bell_02.ogg', { rate: 1.2 })],
-  'drop.set': [x('c100', 'bell_01.ogg', { rate: 0.9, mix: [x('ki', 'impactGlass_light_000.ogg', { gain: -4 })] }), x('c100', 'bell_02.ogg', { rate: 0.8 })],
-  // Unique and above: a bright bell. loot.legendary lays the deep gong under it.
+  'drop.rare': [x('clink', 'bing1.wav', { mix: [x('r80', 'item_gem_04.ogg', { gain: -3 })] }), x('clink', 'bong1.wav', { mix: [x('r80', 'item_gem_04.ogg', { gain: -3 })] })],
+  'drop.set': [x('bells', 'bell_ding2.wav', { rate: 0.85, mix: [x('r80', 'item_gem_03.ogg', { gain: -4 })] }), x('bells', 'bell_ding3.wav', { rate: 1.1 })],
+  // Unique and above: a deep bell with iron ringing. loot.legendary lays the gong and choir under it.
   'drop.unique': [
-    x('c100', 'bell_03.ogg', { mix: [x('magic', 'magical_4.ogg', { gain: -5 })] }),
-    x('c100', 'bell_01.ogg', { rate: 0.85, mix: [x('cure', 'Cure7.wav', { gain: -6 })] }),
+    x('bells', 'bell_ding3.wav', { mix: [x('clink', 'bing1.wav', { gain: -6 })] }),
+    x('ki', 'impactBell_heavy_001.ogg', { rate: 0.85, mix: [x('bells', 'bell_ding2.wav', { rate: 0.8, gain: -6 })] }),
   ],
   'pickup.magic': [x('r80', 'item_gem_02.ogg', { mix: [x('kr', 'handleSmallLeather.ogg', { gain: -5 })] }), x('r80', 'item_gem_03.ogg', { mix: [x('kr', 'cloth3.ogg', { gain: -5 })] })],
-  'pickup.rare': [x('magic', 'magical_6.ogg', { t: 0.7, mix: [x('r80', 'item_gem_04.ogg')] }), x('clink', 'bing1.wav', { mix: [x('kr', 'handleSmallLeather2.ogg', { gain: -4 })] })],
+  'pickup.rare': [x('r80', 'item_gem_04.ogg', { mix: [x('kr', 'handleSmallLeather.ogg', { gain: -4 })] }), x('clink', 'bing1.wav', { mix: [x('kr', 'handleSmallLeather2.ogg', { gain: -4 })] })],
   'pickup.kind.weapon': [...xs('kr', 'drawKnife#.ogg', [1, 2, 3]), x('rsp', 'battle/sword-unsheathe.wav'), x('rsp', 'battle/sword-unsheathe3.wav')],
   'pickup.kind.armor': [x('rsp', 'inventory/chainmail1.wav'), x('rsp', 'inventory/chainmail2.wav'), x('rsp', 'inventory/armor-light.wav'), x('rsp', 'inventory/cloth-heavy.wav')],
   'pickup.kind.jewel': [x('rsp', 'inventory/beads.wav'), x('r80', 'item_gem_03.ogg'), x('rsp', 'inventory/metal-small2.wav')],

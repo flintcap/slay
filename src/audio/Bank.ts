@@ -174,7 +174,8 @@ const ALIASES: Record<string, string> = {
   'dodge': 'player.evade',
   'equip': 'ui.equip',
   'unequip': 'ui.unequip',
-  'ui.levelup': 'levelup',
+  // Spending a skill point is a small sound, not the level-up toll.
+  'ui.levelup': 'skillpoint',
   'click': 'ui.click',
   'button': 'ui.click',
   'select': 'ui.select',

@@ -26,9 +26,6 @@ export const PACKS = {
   // --- Kenney -----------------------------------------------------------------
   kr: kenney('rpg-audio', 'https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip', 'rpg'),
   ki: kenney('impact-sounds', 'https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip', 'impact'),
-  kf: kenney('interface-sounds', 'https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip', 'iface'),
-  ku: kenney('ui-audio', 'https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenney_ui-audio.zip', 'ui'),
-  kj: kenney('music-jingles', 'https://kenney.nl/media/pages/assets/music-jingles/f37e530b9e-1677590399/kenney_music-jingles.zip', 'jingles'),
 
   // --- OpenGameArt: effects -----------------------------------------------------
   rsp: oga('rpg-sound-pack', 'artisticdude', ['rpg_sound_pack.zip']),
@@ -81,7 +78,6 @@ export const PACKS = {
   crow: oga('crow-caw', 'zeroisnotnull', ['crow_caw.wav']),
   yell: oga('male-gruntyelling-sounds', 'HaelDB', ['yelling%20sounds.zip']),
   hurt: oga('hurt-death-sound-effect-for-character', 'Badre-Eddine', ['death%20sound%20effect.zip']),
-  done: oga('completion-sound', 'HaelDB', ['gmae.wav']),
   drain: oga('energy-drain', 'qubodup', ['qubodup-PowerDrain.ogg']),
   gbreath: oga('ghost-breath', 'qubodup', ['ghostbreath.flac']),
   ghost: oga('ghost', 'Ogrebane', ['ghost.wav']),
@@ -107,6 +103,9 @@ export const PACKS = {
   msfx3: oga('monster-sound-pack-volume-1', 'Ogrebane', ['monster-sounds-volume-2.zip']),
   dark: oga('dark-ambiences', 'Ogrebane', ['dark_ambiences.zip']),
   laugh: oga('evil-laugh', 'AntumDeluge', ['laugh-evil-1.ogg']),
+  chant: oga('creepy-incoherent-chanting', 'owlishmedia', ['Creepychanting.zip']),
+  anvil: oga('hammer-on-anvil', 'themightyglider', ['forger_0.ogg']),
+  bells: oga('bell-dingschimes', 'pwl', ['bell_ding1.wav', 'bell_ding2.wav', 'bell_ding3.wav', 'bell_ding4.wav']),
 
   // --- OpenGameArt: music ----------------------------------------------------------
   mMenu: oga('tragic-ambient-main-menu', 'HaelDB', ['ambientmain_0.ogg'], 'm-tragic-ambient'),
