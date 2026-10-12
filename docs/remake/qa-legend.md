@@ -189,8 +189,6 @@ commands): `handover-sets` (every set on warden and pyromancer,
 `uqbody1` (every worn unique), `uq1`/`uq2` (every unique model).
 
 Left for `finish`:
-- Sundered Sky is warm white (linen); silk reads lilac. A neutral white
-  cloth texture would make it pure white.
 - Depth 12 is over budget on programs, textures and garbage per step with
   or without a set (qa-speed's area).
 - `check-curve` failed once (revenant depth 5): a balance sim, not looks.

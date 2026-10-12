@@ -86,6 +86,8 @@ const LIB: Record<string, Def> = {
   'cloth.linen': S('cloth', 0xa79880, [0.7, 0.98], 0, 0.5),
   'cloth.undyed': S('cloth', 0x8f8471, [0.72, 0.98], 0, 0.55),
   'cloth.silk': S('cloth', 0x604a70, [0.24, 0.52], 0, 0.4),
+  // Undyed bleached cloth with no hue of its own, for white gear (qa-legend: Sundered Sky).
+  'cloth.white': S('cloth', 0xe4e4e8, [0.4, 0.75], 0, 0.4),
   'cloth.tattered': S('cloth', 0x695e51, [0.72, 0.99], 0, 0.7),
   'cloth.banner': S('cloth', 0x7a2e26, [0.6, 0.92], 0, 0.5),
   // Leather
