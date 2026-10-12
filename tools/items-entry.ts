@@ -294,6 +294,15 @@ const PROBES: Record<keyof PowerEffects, Probe> = {
   sentryInterval: (id) => PROBES.sentryPct(id),
   shatterRadius: (id) => { const w = world(id); w.enemies[0]!.statuses.add('chilled'); w.rt.onKill(w.enemies[0]! as never); return w.enemies[1]!.statuses.has('frozen'); },
   pyreKillPct: (id) => { const w = world(id); w.rt.onKill(w.enemies[0]! as never); return w.enemies[1]!.hits.some((h) => h.ability === 'Pyre'); },
+  emberPrintPct: (id) => {
+    // Walk through the first monster's spot; the prints behind you burn it.
+    const w = world(id);
+    for (let i = 0; i <= 12; i++) {
+      w.player.position.set(0, 0, i * 0.25);
+      w.rt.update(0.1);
+    }
+    return w.enemies[0]!.hits.some((h) => h.ability === 'Warm Prints') && w.enemies[0]!.statuses.has('burning');
+  },
 };
 
 const runtimeRows: Array<{ power: string; field: string; ok: boolean }> = [];

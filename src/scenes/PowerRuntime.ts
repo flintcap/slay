@@ -45,7 +45,14 @@ export interface PowerHost {
 }
 
 /** Hits the runtime throws itself. They never trigger further procs. */
-const PROC_ABILITIES = new Set(['Cleave', 'Pierce', 'Return', 'Echo', 'Sentry', 'Rot Cyclone', 'Pyre', 'Shatter']);
+const PROC_ABILITIES = new Set(['Cleave', 'Pierce', 'Return', 'Echo', 'Sentry', 'Rot Cyclone', 'Pyre', 'Shatter', 'Warm Prints']);
+
+/** Metres walked between two burning footprints. */
+const PRINT_STRIDE = 0.85;
+/** Seconds a footprint keeps burning. */
+const PRINT_LIFE = 3;
+/** How close to a print counts as standing in it. */
+const PRINT_REACH = 0.6;
 
 interface Scheduled {
   t: number;
@@ -73,6 +80,11 @@ export class PowerRuntime {
   private manaProcCd = 0;
   /** Overflowing Ward's pool, in life points. */
   ward = 0;
+  /** Warm Prints: the footprints still burning, and where the last one fell. */
+  private prints: Array<{ x: number; z: number; left: number }> = [];
+  private lastPrint: THREE.Vector3 | null = null;
+  private printSide = 1;
+  private printTimer = 0;
 
   constructor(host: PowerHost) {
     this.host = host;
@@ -394,6 +406,9 @@ export class PowerRuntime {
       else this.ward = Math.min(cap, this.ward);
     }
 
+    if (p.emberPrintPct > 0) this.tickPrints(dt);
+    else if (this.prints.length) this.prints.length = 0;
+
     if (p.rotAuraPct > 0 && p.rotAuraRadius > 0) {
       this.rotTimer -= dt;
       if (this.rotTimer <= 0) {
@@ -434,6 +449,54 @@ export class PowerRuntime {
           );
         }
       }
+    }
+  }
+
+  /**
+   * Warm Prints. Every stride leaves a burning footprint, left and right in
+   * turn, and whatever follows you through them pays for it. Monsters chase
+   * you, so they walk your trail.
+   */
+  private tickPrints(dt: number): void {
+    const player = this.host.player();
+    const pos = player.position;
+    const last = (this.lastPrint ??= pos.clone());
+    const dx = pos.x - last.x;
+    const dz = pos.z - last.z;
+    const moved = Math.hypot(dx, dz);
+    if (moved > 4) {
+      // A blink or a portal, not a step.
+      last.copy(pos);
+    } else if (moved >= PRINT_STRIDE) {
+      this.printSide = -this.printSide;
+      const side = 0.15 * this.printSide;
+      const x = pos.x - (dz / moved) * side;
+      const z = pos.z + (dx / moved) * side;
+      this.prints.push({ x, z, left: PRINT_LIFE });
+      if (this.prints.length > 18) this.prints.shift();
+      this.host.decals.add('burn', x, z, 0.32, Math.atan2(dx, dz), PRINT_LIFE);
+      this.host.fx.burst('embers', x, 0.1, z, { count: 3, scale: 0.6 });
+      last.copy(pos);
+    }
+
+    for (let i = this.prints.length - 1; i >= 0; i--) {
+      if ((this.prints[i]!.left -= dt) <= 0) this.prints.splice(i, 1);
+    }
+
+    this.printTimer -= dt;
+    if (this.printTimer > 0 || !this.prints.length) return;
+    this.printTimer = 0.5;
+    const ctx = this.host.context();
+    for (const e of this.allTargets()) {
+      const ex = e.root.position.x;
+      const ez = e.root.position.z;
+      const reach = (PRINT_REACH + e.hitRadius) ** 2;
+      if (!this.prints.some((q) => (q.x - ex) ** 2 + (q.z - ez) ** 2 <= reach)) continue;
+      const packet = rollDamage(player.stats, ctx.rng, {
+        scale: this.fx.emberPrintPct / 100, type: 'fire', ability: 'Warm Prints', source: 'player',
+      });
+      packet.applies = [{ id: 'burning', duration: 2, magnitude: 1, stacks: 1 }];
+      e.takeDamage(packet, ctx);
     }
   }
 
@@ -492,5 +555,6 @@ export class PowerRuntime {
     this.queue = [];
     this.lastType.clear();
     this.wished.clear();
+    this.prints = [];
   }
 }

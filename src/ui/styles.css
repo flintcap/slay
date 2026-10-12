@@ -2475,6 +2475,21 @@ input.slider::-moz-range-thumb {
   font-style: italic;
   color: var(--ink-4);
 }
+.tt-power {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: #f0c27a;
+}
+.tt-power-name {
+  font-weight: 700;
+  color: #ff9a4a;
+  margin-right: 6px;
+}
+.tt-power-text {
+  color: #e8d8bc;
+}
+
 .tt-hook {
   margin-top: 9px;
   padding: 6px 9px;

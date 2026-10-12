@@ -108,7 +108,7 @@ export const UNIQUES: UniqueDef[] = [
   u('uq.hotspur', 'Hotspur', 'boots.boots', 9, 8,
     'The previous owner walked out of a foundry and kept walking.',
     [['fireDamage', 8, 16], ['fireResist', 25, 40], ['life', 20, 35], ['moveSpeed', 8, 12]],
-    { hook: 'Leaves a warm print on stone.', weight: 110 }),
+    { hook: 'Leaves a warm print on stone.', weight: 110, special: 'emberPrints' }),
 
   u('uq.pluckeye', 'Pluckeye', 'bow.short', 8, 7,
     'Named for what it does, not for who made it.',

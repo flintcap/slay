@@ -147,6 +147,10 @@ export interface PowerEffects {
   shatterRadius: number;
   /** Kills leave burning ground at this weapon percentage. */
   pyreKillPct: number;
+
+  // --- on the move ------------------------------------------------------
+  /** Footsteps leave burning prints that hurt what stands on them. */
+  emberPrintPct: number;
 }
 
 export function emptyPowerEffects(): PowerEffects {
@@ -198,6 +202,7 @@ export function emptyPowerEffects(): PowerEffects {
     sentryInterval: 0,
     shatterRadius: 0,
     pyreKillPct: 0,
+    emberPrintPct: 0,
   };
 }
 
@@ -780,6 +785,15 @@ const DEFS: PowerDef[] = [
       p.goldToLifePct += 4 * m;
     },
     affix: { on: ['jewelry'], min: 0.5, max: 1, ilvl: 5, weight: 50, word: 'of Gilded Blood' },
+  },
+  {
+    id: 'emberPrints',
+    name: 'Warm Prints',
+    desc: (m) =>
+      `Your footsteps burn on the stone for 3 seconds. Anything standing in one takes ${pct(30 * m)} weapon damage as fire every half second and catches light.`,
+    runtime: (p, m) => {
+      p.emberPrintPct += 30 * m;
+    },
   },
   {
     id: 'poisonNova',

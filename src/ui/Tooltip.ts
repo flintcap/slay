@@ -13,6 +13,7 @@ import { itemTooltipLines, itemDisplayName, vendorPrice, itemStats, modLine, req
 import { meetsRequirements } from '../sim/Character';
 import { getAffix } from '../data/affixes';
 import { getUnique } from '../data/uniques';
+import { powerLines } from '../sim/ItemPowers';
 import { getSet } from '../data/sets';
 import { itemFlavor } from '../data/story/itemFlavor';
 import { requestItemIcon } from '../art/Icons';
@@ -348,6 +349,16 @@ class TooltipManager {
     // --- unique hook and flavour --------------------------------------------
     const uq = item.uniqueId ? attempt(() => getUnique(item.uniqueId as string) ?? null, null) : null;
     if (uq?.hook) host.appendChild(div('tt-hook', uq.hook));
+
+    // --- powers: what the item does, in exact numbers -----------------------
+    // The hook is a line of character; this is the rule. Without it a unique
+    // read "leaves a warm print on stone" and never said what that meant.
+    for (const p of attempt(() => powerLines(item), [])) {
+      const row = div('tt-power');
+      row.appendChild(span('tt-power-name', p.name));
+      row.appendChild(span('tt-power-text', p.text));
+      host.appendChild(row);
+    }
 
     // --- requirements ------------------------------------------------------
     if (base) {
