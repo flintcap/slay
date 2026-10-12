@@ -144,8 +144,11 @@ export class SampleEngine {
   }
 
   private buildGraph(ctx: AudioContext): void {
+    // Every bus mixes here, then a gentle limiter so a screen-clearing nova
+    // cannot clip, then the master volume. The master sits after the limiter:
+    // in front of it, turning the master down only fed the limiter less, and
+    // it squeezed loud sounds less in turn, so they barely got quieter.
     const master = ctx.createGain();
-    // A gentle limiter so a screen-clearing nova cannot clip the output.
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -10;
     limiter.knee.value = 8;
@@ -153,8 +156,11 @@ export class SampleEngine {
     limiter.attack.value = 0.003;
     limiter.release.value = 0.2;
     master.connect(limiter);
-    limiter.connect(ctx.destination);
-    this.master = master;
+    const out = ctx.createGain();
+    out.gain.value = this.masterGain();
+    limiter.connect(out);
+    out.connect(ctx.destination);
+    this.master = out;
     for (const b of ['sfx', 'ui', 'amb', 'music'] as const) {
       const g = ctx.createGain();
       g.connect(master);
@@ -221,7 +227,7 @@ export class SampleEngine {
   private onVisibility = (): void => {
     const ctx = this.ctx;
     if (!ctx || !this.master) return;
-    this.master.gain.setTargetAtTime(document.hidden || this.muted ? 0 : this.masterVol, ctx.currentTime, 0.08);
+    this.master.gain.setTargetAtTime(document.hidden || this.muted ? 0 : this.masterGain(), ctx.currentTime, 0.08);
   };
 
   // -------------------------------------------------------------------------
@@ -517,6 +523,16 @@ export class SampleEngine {
     this.camYaw = yaw;
   }
 
+  /**
+   * The master slider as a gain: squared like the others so it feels even
+   * across its travel, and scaled so the default (0.8) is as loud as it was.
+   */
+  private masterGain(): number {
+    const v = this.masterVol;
+    // Above the default it climbs straight to 1, so full volume cannot clip.
+    return v <= 0.8 ? v * v * 1.25 : 0.8 + (v - 0.8);
+  }
+
   applySettings(settings: GameSettings): void {
     this.masterVol = clamp01(settings.masterVolume ?? 0.8);
     this.sfxVol = clamp01(settings.sfxVolume ?? 0.85);
@@ -525,7 +541,7 @@ export class SampleEngine {
     if (!ctx) return;
     const t = ctx.currentTime;
     // Squared: sliders feel even across their travel.
-    this.master?.gain.setTargetAtTime(document.hidden || this.muted ? 0 : this.masterVol, t, 0.05);
+    this.master?.gain.setTargetAtTime(document.hidden || this.muted ? 0 : this.masterGain(), t, 0.05);
     this.buses.sfx?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 1.1, t, 0.05);
     this.buses.ui?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 1.1, t, 0.05);
     this.buses.amb?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 0.9, t, 0.1);
@@ -549,7 +565,7 @@ export class SampleEngine {
     this.muted = v;
     const ctx = this.ctx;
     if (!ctx || !this.master) return;
-    this.master.gain.setTargetAtTime(v || document.hidden ? 0 : this.masterVol, ctx.currentTime, 0.05);
+    this.master.gain.setTargetAtTime(v || document.hidden ? 0 : this.masterGain(), ctx.currentTime, 0.05);
   }
 
   /** Exposed for debug overlays. */
