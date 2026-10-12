@@ -1,6 +1,6 @@
 # Stream: fix-gait (hero walk and run in the style of Path of Exile)
 
-Status: in progress
+Status: done
 
 Owner's words: "copy the gait from path of exile". Earlier: "legs are doing
 splits as you move side to side and should stay under you", "legs too spread
@@ -28,17 +28,39 @@ What a PoE hero's locomotion looks like:
   Check with the headless sim and `check-hero` first.
   (wip(fix-gait): quicker shorter run, grounded hips, feet stay under the
   body in reversals; check-hero PASS)
-- [ ] One browser check: `shoot-gait.mjs` side and camera strips for two
+- [x] One browser check: `shoot-gait.mjs` side and camera strips for two
   classes, walk and run, plus one side-to-side reversal strip (add a
   `--zigzag` option if needed). Fix what reads wrong, one more batch at most.
-- [ ] Handover: before and after strips listed, check-hero PASS.
+  (`--speeds=zig` added. Read wrong: the run swing threw the knee up high,
+  a prance. Fixed in wip(fix-gait): lower run swing (no high-knee prance).)
+- [x] Handover: before and after strips listed, check-hero PASS.
 
-## Next up
+## Handover
 
-- Milestone 2: one browser run, `npm run build` then
-  `SLAY_PORT=4335 flock /tmp/slay-browser.lock timeout 2700 node tools/shoot-gait.mjs --out=shots/fix-gait --classes=warden,ranger --speeds=walk,run,zig --n=12`
-  (`zig` is new: the run key flips at a quarter and three quarters of the
-  strip). Look at one contact sheet of the strips, fix what reads wrong.
+What exists now:
+- `src/art/hero/Gait.ts`: quicker, shorter run steps (2.6 Hz at the base
+  4.6 m/s, cadence keeps rising with move speed up to 3.3 Hz, like PoE
+  speeding its run up), feet down 36% of the beat, swing leaves fast and
+  tucks under the hip at 0.34 leg high. Reversals: snap turns latch so the
+  feet swivel to the end of the turn and ride sideways with the body; foot
+  aims follow the body's braking; feet left wide or behind lift early and
+  roll onto their toes; a reversal no longer stops and restarts the gait.
+- `src/art/hero/Animator.ts`: hips lower and nearly level, smaller bob, roll
+  and sway, a little less lean, tighter arm swing.
+- `tools/shoot-gait.mjs --speeds=zig`: a side-to-side reversal strip.
+
+Strips (not committed, `shots/` is ignored), all from this stream's build:
+- `shots/fix-gait/gait-{warden,ranger}-{walk,run,zig}-{side,camera}.png`
+  (before the last fix: the high-knee run).
+- `shots/fix-gait/gait-{warden,ranger}-run-side-b2.png` (after).
+- No before strips from the old code (the two-run browser budget went on
+  after and fix). The "before" is the headless numbers below.
+
+check-hero: PASS (slide, drift and float 0.0 mm for every class).
+
+Left for later: the brief crouch in a reversal (both feet down, knees out
+for a frame or two) reads fine but could be softened; the camera view is
+small at 31 px, so judge the gait from the side strips.
 
 ## Notes for resume
 
@@ -52,7 +74,7 @@ What a PoE hero's locomotion looks like:
   - walk 1.84 m/s: 1.38 -> 1.48 Hz, knee never straighter than 19 deg (was 4).
 - What changed: cadence quickens with run speed (speed from the beat, cap
   3.3 Hz), run duty 0.36, swing leaves fast and tucks under the hip, swing
-  lift 0.44 leg; foot aims follow the body's braking (reversals); a snap turn
+  lift 0.34 leg; foot aims follow the body's braking (reversals); a snap turn
   latches (feet swivel to the end of the turn, ride sideways with the body,
   no yaw guess); a planted foot left wide or behind lifts early and rolls onto
   its toes; stopping waits 0.12 s of near-zero speed (a reversal no longer
