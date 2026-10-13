@@ -95,7 +95,7 @@ function needsReach(skillId: string | null): boolean {
   const def = getSkill(skillId);
   if (!def) return false;
   const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
-  return family === 'melee' || family === 'cleave' || family === 'whirlwind';
+  return family === 'melee' || family === 'cleave' || family === 'whirlwind' || (family === 'rite' && !def.params?.['range']);
 }
 
 export class CombatControls {

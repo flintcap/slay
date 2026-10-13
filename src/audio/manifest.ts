@@ -291,6 +291,8 @@ export const SAMPLE_COUNTS: Record<string, number> = {
   "skill.light.form": 1,
   "skill.light.radiance": 1,
   "skill.nightfall": 1,
+  "skill.pal.toll": 1,
+  "skill.pal.tollHit": 1,
   "skill.poison.burst": 1,
   "skill.poison.cloud": 1,
   "skill.poison.dart": 1,

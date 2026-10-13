@@ -323,7 +323,8 @@ export type CharClassId =
   | 'shadowblade' // the Rogue: dex crit / poison
   | 'revenant'    // summoner / life-drain
   | 'ranger'      // bow / crossbow marksman
-  | 'shapeshifter'; // big cat, wolf and bear forms
+  | 'shapeshifter' // big cat, wolf and bear forms
+  | 'paladin';    // mace or sword and shield, one aura at a time
 
 export interface CharClassDef {
   id: CharClassId;

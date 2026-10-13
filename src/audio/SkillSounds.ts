@@ -21,6 +21,7 @@
  */
 
 import { SHIFTER_SOUNDS } from './shifterSounds';
+import { PALADIN_SOUNDS } from './PaladinSounds';
 
 export interface SkillSound {
   cast: string | null;
@@ -32,6 +33,7 @@ const s = (cast: string | null, hit: string | null = null, minion: string | null
 
 /** Skill id -> its sounds. Every active skill has a row; `tools/check-skillsound.mjs` proves it. */
 export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
+  ...PALADIN_SOUNDS,
   // --- Ranger: bows, traps and the wild ------------------------------------
   pierceShot: s('skill.bow.pierce', 'skill.arrow.hit'),
   huntersMark: s('skill.bow.mark', 'skill.arrow.mark'),

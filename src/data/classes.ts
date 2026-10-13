@@ -9,6 +9,7 @@
  *  - Revenant  an army does the killing; you manage its life and its death.
  *  - Ranger    range is the resource; every skill trades distance for damage.
  *  - Shapeshifter  a man who fights as a cat, a wolf or a bear (`classSkills/shapeshifterClass.ts`).
+ *  - Paladin   one target at a time, one aura at a time; iron, smoke and bells.
  *
  * Ids are what saves hold, so the Knight is still `warden` and the Rogue
  * `shadowblade` underneath; only `name` and the words are what a player sees.
@@ -21,6 +22,7 @@
 
 import type { CharClassDef, CharClassId } from '../types';
 import { SHAPESHIFTER_CLASS, SHAPESHIFTER_EQUIP } from './classSkills/shapeshifterClass';
+import { PALADIN, PALADIN_EQUIP, PALADIN_HINTS, PALADIN_TAGLINES } from './classSkills/paladinClass';
 
 /** Base life/mana every character starts with before class scaling. */
 export const BASE_LIFE = 35;
@@ -118,6 +120,7 @@ export const CLASSES: CharClassDef[] = [
     startingGear: ['bow.short', 'quiver.ragged'],
   },
   SHAPESHIFTER_CLASS,
+  PALADIN,
 ];
 
 export const CLASS_BY_ID: Record<CharClassId, CharClassDef> = CLASSES.reduce(
@@ -157,6 +160,7 @@ export const STARTING_SKILL_HINTS: Record<CharClassId, string[]> = {
   revenant: ['boneSpear', 'raiseSkeleton', 'siphonLife', 'weaken'],
   ranger: ['pierceShot', 'huntersMark', 'rollAway', 'snareTrap'],
   shapeshifter: ['rake'],
+  paladin: PALADIN_HINTS,
 };
 
 /** Flavour lines used by the character select screen when hovering a class. */
@@ -167,6 +171,7 @@ export const CLASS_TAGLINES: Record<CharClassId, string[]> = {
   revenant: ['The army is the weapon.', 'Corpses are ammunition.', 'Steal what you cannot survive.'],
   ranger: ['Distance is the build.', 'Never let them arrive.', 'The floor is the trap.'],
   shapeshifter: ['Three skins, one hunger.', 'Cat for the kill, wolf for the hunt, bear for the wall.', 'The man is only the first shape.'],
+  paladin: PALADIN_TAGLINES,
 };
 
 
@@ -227,6 +232,7 @@ export const CLASS_EQUIP: Record<CharClassId, ClassEquipRules> = {
     note: 'Revenants bind their dead through a focus or a warding shield.',
   },
   shapeshifter: SHAPESHIFTER_EQUIP,
+  paladin: PALADIN_EQUIP,
 };
 
 export function equipRules(classId: CharClassId): ClassEquipRules {

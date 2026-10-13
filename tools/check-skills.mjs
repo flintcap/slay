@@ -31,6 +31,7 @@ const WEAPON = {
   mage: 'staff.short',
   revenant: 'wand.bone',
   shapeshifter: 'mace.club',
+  paladin: 'mace.club',
 };
 
 if (!existsSync('dist/index.html')) {

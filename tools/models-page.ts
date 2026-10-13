@@ -203,6 +203,11 @@ const KITS: Record<CharClassId, Record<Exclude<Tier, 'bare'>, Kit>> = {
     mid: { mainHand: ['axe.war', 'rare'], chest: ['chest.studded', 'rare'], helm: ['helm.skullcap', 'magic'], gloves: ['gloves.heavy', 'magic'], boots: ['boots.heavy', 'rare'], belt: ['belt.troll', 'magic'] },
     top: { mainHand: ['staff.worldtree', 'mythic'], chest: ['chest.wyrmhide', 'unique'], helm: ['helm.bone', 'set'], gloves: ['gloves.ogre', 'set'], boots: ['boots.myrmidon', 'mythic'], belt: ['belt.worldheart', 'unique'] },
   },
+  paladin: {
+    low: { mainHand: ['mace.club', 'normal'], offHand: ['shield.buckler', 'normal'], chest: ['chest.quilted', 'normal'], boots: ['boots.boots', 'normal'] },
+    mid: { mainHand: ['mace.flanged', 'magic'], offHand: ['shield.heater', 'rare'], chest: ['chest.splint', 'rare'], helm: ['helm.great', 'magic'], gloves: ['gloves.heavy', 'magic'], boots: ['boots.greaves', 'rare'], belt: ['belt.war', 'magic'] },
+    top: { mainHand: ['mace.sanctified', 'mythic'], offHand: ['shield.monarch', 'unique'], chest: ['chest.sacred', 'mythic'], helm: ['helm.great', 'unique'], gloves: ['gloves.war', 'set'], boots: ['boots.war', 'unique'], belt: ['belt.girdle', 'set'] },
+  },
 };
 
 const CLASSES = Object.keys(KITS) as CharClassId[];

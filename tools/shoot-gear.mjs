@@ -33,6 +33,7 @@ const HELD = {
   shadowblade: ['dagger.kris', 'dagger.dirk'],
   revenant: ['sword.great'],
   ranger: ['bow.long'],
+  paladin: ['mace.flanged', 'shield.heater'],
 };
 
 const t0 = Date.now();

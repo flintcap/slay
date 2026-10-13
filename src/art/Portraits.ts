@@ -25,6 +25,7 @@ const LOOK: Record<string, { light: number; ground: number }> = {
   revenant: { light: 0x9ae0c8, ground: 0x14201c },
   ranger: { light: 0xc8d890, ground: 0x1a2012 },
   shapeshifter: { light: 0xe09050, ground: 0x22140c },
+  paladin: { light: 0xf0d090, ground: 0x221a12 },
 };
 
 const PORTRAIT_VERSION = `p1.${MESH_VERSION}`;

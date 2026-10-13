@@ -147,7 +147,7 @@ section('Save migration');
 // ---------------------------------------------------------------------------
 section('References');
 
-const CLASS_IDS = new Set(['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'shapeshifter']);
+const CLASS_IDS = new Set(['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'shapeshifter', 'paladin']);
 const chapterIds = new Set(CHAPTERS.map((c) => c.id));
 
 /** Every id a condition names must exist. Chain refs are checked once chains exist. */

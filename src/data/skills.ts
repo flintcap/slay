@@ -20,6 +20,7 @@
 import type { CharClassId, SkillDef, SkillTreeDef } from '../types';
 import { build, dim, MAX_SKILL_RANK, per, syn, type SynergyLink } from './classSkills/kit';
 import { SHIFTER_SKILLS, SHIFTER_SYNERGIES, SHIFTER_TREES } from './classSkills/shapeshifter';
+import { PALADIN_SKILLS, PALADIN_SYNERGIES, PALADIN_TREES } from './classSkills/paladin';
 
 export { MAX_SKILL_RANK, type SynergyLink };
 
@@ -134,6 +135,7 @@ export const SKILL_TREES: SkillTreeDef[] = [
     blurb: 'Life is fungible. Take theirs, spend yours, and refuse to stay dead.',
   },
   ...SHIFTER_TREES,
+  ...PALADIN_TREES,
 ];
 
 export const TREE_BY_ID: Record<string, SkillTreeDef> = Object.create(null);
@@ -3429,6 +3431,7 @@ export const SKILLS: SkillDef[] = [
   ...BLIGHT,
   ...GRAVEPACT,
   ...SHIFTER_SKILLS,
+  ...PALADIN_SKILLS,
 ];
 
 export const SKILL_BY_ID: Record<string, SkillDef> = Object.create(null);
@@ -3685,6 +3688,7 @@ export const SYNERGIES: SynergyLink[] = [
   syn('darkenTheSky', 'arrowRain', 10),
   syn('darkenTheSky', 'volleyMastery', 8),
   ...SHIFTER_SYNERGIES,
+  ...PALADIN_SYNERGIES,
 ];
 
 const SYNERGIES_BY_TARGET: Record<string, SynergyLink[]> = Object.create(null);

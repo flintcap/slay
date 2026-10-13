@@ -34,7 +34,7 @@ import { depthCurve } from '../src/entities/Enemy';
 
 bindLegacyAccount(() => save.account);
 const problems: string[] = [];
-const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'shapeshifter'];
+const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'shapeshifter', 'paladin'];
 const REPORT_AT = [1, 3, 5, 10, 15, 20, 30];
 const RANK_XP: Record<MonsterRank, number> = { boss: 22, rare: 5, elite: 3.2, champion: 1.9, normal: 1 };
 

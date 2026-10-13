@@ -38,6 +38,8 @@ const HANDLED = new Set([
   'point', 'aoe', 'capstone',
   // The Shapeshifter's family, run by scenes/ShifterRunner.ts.
   'shift',
+  // The Paladin's single-target weapon skills (scenes/paladin/Rites.ts).
+  'rite',
 ]);
 
 rmSync(OUT, { recursive: true, force: true });

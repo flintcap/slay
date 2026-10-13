@@ -117,4 +117,19 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     accent: 0xc46a34,
     stoop: 0.22,
   },
+  // A big, older man who stands straight: shaved head, a short grizzled
+  // beard, pale scarred skin and pale grey eyes. Taller and broader than the
+  // Knight, and nothing like him in the face.
+  paladin: {
+    shape: { sex: 'male', height: 1.92, build: 0.8, shoulders: 1.06 },
+    face: { rugged: 0.75 },
+    skin: 0xd0a68a,
+    hair: { cut: 'shaved', color: 0x7a7468, beard: 1, brows: 0.8 },
+    eyes: { iris: 0x8a929a },
+    linen: UNDYED,
+    leather: CORD,
+    cloth: UNDYED,
+    accent: 0xe8cf96,
+    stoop: 0,
+  },
 };

@@ -14,7 +14,7 @@ import { soundFiles } from '../src/audio/Bank';
 
 /** What a class fights with, which decides some clip choices. Unknown classes swing. */
 const STYLE: Record<string, 'melee' | 'ranged' | 'caster'> = {
-  warden: 'melee', shadowblade: 'melee', ranger: 'ranged', mage: 'caster', revenant: 'caster',
+  warden: 'melee', shadowblade: 'melee', ranger: 'ranged', mage: 'caster', revenant: 'caster', paladin: 'melee',
 };
 
 const rows: Record<string, unknown>[] = [];

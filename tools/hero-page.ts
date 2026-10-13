@@ -37,7 +37,7 @@ async function scansReady(): Promise<void> {
 
 const BG = '#16181e';
 const INK = '#c9d1de';
-const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'];
+const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'paladin'];
 
 let renderer: THREE.WebGLRenderer | null = null;
 let envTex: THREE.Texture | null = null;
@@ -169,6 +169,7 @@ const CLASS_STANCE: Record<CharClassId, Stance> = {
   revenant: 'twoHand',
   ranger: 'bow',
   shapeshifter: 'oneHand',
+  paladin: 'shield',
 };
 
 interface Actor {
@@ -817,7 +818,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
   async gear(f) {
     profileBodies(true);
     const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
-    const own: Record<CharClassId, string> = { warden: 'heavy', mage: 'caster', shadowblade: 'leather', revenant: 'bone', ranger: 'scale', shapeshifter: 'mail' };
+    const own: Record<CharClassId, string> = { warden: 'heavy', mage: 'caster', shadowblade: 'leather', revenant: 'bone', ranger: 'scale', shapeshifter: 'mail', paladin: 'plate' };
     const rarity = (f.rarity ?? 'rare') as ItemRarity;
     const TW = 260;
     const TH = 480;

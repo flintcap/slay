@@ -12,7 +12,7 @@
 
 /** What each effect family's handler draws, in plain words. Mirrors `SkillRunner.cast`. */
 export const FAMILY_DRAWING: Readonly<Record<string, string>> = {
-  melee: 'weapon swing', cleave: 'weapon swing', whirlwind: 'spinning swing',
+  melee: 'weapon swing', cleave: 'weapon swing', whirlwind: 'spinning swing', rite: 'single-target blow',
   projectile: 'projectile', bolt: 'projectile',
   nova: 'expanding ring', slam: 'cratered landing', meteor: 'falling strike', sky: 'falling strike',
   beam: 'beam', cone: 'cone spray', chain: 'chained arcs', dash: 'dash swing',

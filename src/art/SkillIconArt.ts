@@ -81,6 +81,7 @@ const CLASS_LOOK: Record<string, ClassLook> = {
   ranger: { ring: GLYPH_MATS.WOOD, tex: 'grain', light: 0xc8d890, ground: 0x1a2012 },
   // Raw hide on the ring and amber firelight: the woods, not the forge.
   shapeshifter: { ring: rampOf(0x6a4428, 0.05, 'pores', 0.4), tex: 'pores', light: 0xe09050, ground: 0x22140c },
+  paladin: { ring: rampOf(0x6a5638, 0.75, 'hammered', 0.35), tex: 'pores', light: 0xe8cf96, ground: 0x221a12 },
 };
 
 const NEUTRAL: ClassLook = { ring: GLYPH_MATS.IRON, tex: 'fine', light: 0xd8c8a8, ground: 0x1c1c22 };
@@ -153,6 +154,7 @@ const ICON_MAP: Record<string, string> = {
   // Revenant — gravepact
   siphon: 'chalice^drip', 'ward-spirit': 'ghost^aura', 'wisp-soul': 'ghost', 'pact-blood': 'hand^drip', 'chill-aura': 'flake^aura',
   'fang-dark': 'fang', 'cage-soul': 'cage', 'drain-beam': 'beam', embrace: 'hand^aura', revenant: 'ghost^rise', harvest: 'scythe',
+  'toll-blow': 'hammer^impact',
   'nova-blood': 'drop^nova', undying: 'heart^aura', tether: 'chain', covenant: 'rune', 'second-death': 'skull^rise',
   scythe: 'scythe^spin', 'mastery-grave': 'scythe^mastery',
   // Ranger

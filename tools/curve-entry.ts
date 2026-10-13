@@ -91,7 +91,7 @@ setMonsterCatalog({
   },
 });
 
-const ALL_CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'];
+const ALL_CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'paladin'];
 const CLASSES_RUN = (arg('classes')?.split(',') as CharClassId[] | undefined) ?? ALL_CLASSES;
 const trace = process.argv.includes('--trace');
 // Experiment knobs: scale the hero's damage and life to see what the curve needs.
@@ -179,6 +179,7 @@ const STYLE: Record<CharClassId, string[]> = {
   revenant: ['wand', 'staff', 'scepter'],
   ranger: ['bow', 'crossbow'],
   shapeshifter: ['mace', 'axe', 'staff', 'spear'],
+  paladin: ['mace', 'scepter'],
 };
 
 const SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];

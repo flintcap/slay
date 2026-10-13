@@ -25,9 +25,10 @@ const FAMILIES = new Set([
   'dash', 'heal', 'buff', 'aura', 'stance', 'shout', 'banner', 'self', 'absorb', 'ground', 'trap', 'ward',
   'summon', 'minion', 'curse', 'debuff', 'apply', 'channel', 'sky', 'wave', 'leap', 'teleport',
   'detonate', 'corpse', 'point', 'aoe', 'capstone',
+  'rite',
 ]);
 // Families whose cast plays the skill's hit sound where it lands.
-const HITS = new Set(['melee', 'cleave', 'whirlwind', 'projectile', 'bolt', 'slam', 'meteor', 'cone', 'chain', 'dash', 'sky', 'teleport', 'default']);
+const HITS = new Set(['melee', 'cleave', 'whirlwind', 'projectile', 'bolt', 'slam', 'meteor', 'cone', 'chain', 'dash', 'sky', 'teleport', 'rite', 'default']);
 // Families that raise something that fights, and so need a minion sound.
 const RAISES = new Set(['summon', 'minion']);
 

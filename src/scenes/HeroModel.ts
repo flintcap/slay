@@ -271,6 +271,8 @@ export function flourishClip(classId: CharClassId): string {
       return 'cast';
     case 'ranger':
       return 'shoot';
+    case 'paladin':
+      return 'slam';
     default:
       return 'attack2';
   }

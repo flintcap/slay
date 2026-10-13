@@ -77,6 +77,12 @@ export const COMBOS: Record<CharClassId, ComboDef> = {
     color: 0xc0302a,
     applies: [{ id: 'bleeding', duration: 5, magnitude: 1, stacks: 2 }],
   },
+  paladin: {
+    name: 'Verdict',
+    desc: 'Beats two dents into the target\'s armour for 6s.',
+    color: 0xe8cf96,
+    applies: [{ id: 'dented', duration: 6, magnitude: 1, stacks: 2 }],
+  },
 };
 
 /**

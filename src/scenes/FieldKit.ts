@@ -61,5 +61,14 @@ export const FIELD_KIT: Record<CharClassId, Partial<Record<EquipSlot, string>>> 
     boots: 'boots.heavy',
     belt: 'belt.troll',
   },
+  paladin: {
+    mainHand: 'mace.club',
+    offHand: 'shield.heater',
+    helm: 'helm.great',
+    chest: 'chest.splint',
+    gloves: 'gloves.gauntlets',
+    boots: 'boots.greaves',
+    belt: 'belt.girdle',
+  },
 };
 

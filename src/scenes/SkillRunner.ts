@@ -27,6 +27,7 @@ import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
 import { releasesAt, skillAction } from '../art/hero/gestures';
 import { runShift, type ShiftKit } from './ShifterRunner';
+import { castRite, riteRefusal, type RiteHost } from './paladin/Rites';
 
 /**
  * What a summon actually looks like.
@@ -497,6 +498,8 @@ export function weaponStyle(player: Player): WeaponStyle {
     const cat = getBase(item.baseId)?.category;
     if (!cat) return 'unarmed';
     if (RANGED_CATEGORIES.includes(cat)) return 'ranged';
+    // A Paladin's scepter is a short mace with a reliquary on the end.
+    if (cat === 'scepter' && player.character.classId === 'paladin') return 'melee';
     if (CASTER_CATEGORIES.includes(cat)) return 'caster';
     if (MELEE_CATEGORIES.includes(cat)) return 'melee';
   } catch {
@@ -608,6 +611,35 @@ export class SkillRunner {
     // Monsters voice their own wind-ups, swings and spells through the
     // documented `notifyAbility` hook.
     installMonsterAudio(Enemy.prototype as never);
+    this.riteHost = {
+      effects,
+      land: (t, packet, kind, fromX, fromZ, world) => this.landRite(t, packet, kind, fromX, fromZ, world),
+      later: (seconds, fn) => this.pendingSwings.push({ t: seconds, run: fn }),
+      sound: (id, x, z) => { if (id) audio.play(id, { x, z }); },
+    };
+  }
+
+  /** What the Paladin's weapon skills borrow from the runner (`paladin/Rites.ts`). */
+  private readonly riteHost: RiteHost;
+
+  /** One Paladin blow on one target, through the whole hit pipeline. */
+  private landRite(
+    t: Target, packet: DamagePacket, kind: HitKind, fromX: number, fromZ: number,
+    world: { ctx: CombatContext; enemies: Enemy[]; boss: Boss | null; player: Player },
+  ): DamagePacket {
+    this.caster = world.player;
+    const tuned = this.tune(packet, t);
+    this.atContact = true;
+    try {
+      this.strike(t, tuned, world.ctx, kind, fromX, fromZ);
+      this.afterHit(tuned, t, world.ctx, world.enemies, world.boss);
+      this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, {
+        element: this.swingSchool, sfx: null, shake: 0, crit: tuned.crit, hitStop: 0,
+      });
+    } finally {
+      this.atContact = false;
+    }
+    return tuned;
   }
 
   /**
@@ -726,6 +758,14 @@ export class SkillRunner {
         audio.play('ui.error');
         return false;
       }
+    }
+
+    // A Paladin skill wants its own weapon: a mace or a sword, or a shield.
+    const refusal = riteRefusal(def, player);
+    if (refusal) {
+      events.emit('toast', { text: refusal, kind: 'bad' });
+      audio.play('ui.error');
+      return false;
     }
 
     const cost = def.manaCost ? def.manaCost(rank) : 0;
@@ -1364,6 +1404,16 @@ export class SkillRunner {
         case 'shift': {
           runShift(this.shiftKit(player, ctx, enemies, boss, type, sound.hit, def, num, color), {
             def, rank, player, target, dir, origin, ctx, type, color, clip, attackTime, castTime, makePacket, num, hitAt,
+          });
+          break;
+        }
+
+        // The Paladin's weapon skills: one enemy, one blow (paladin/Rites.ts).
+        case 'rite': {
+          this.swingSchool = 'physical';
+          castRite(this.riteHost, {
+            def, rank, player, aim: target.clone().setY(0), ctx, enemies, boss,
+            packet: makePacket, num, school, color, attackTime, hitSound: sound.hit,
           });
           break;
         }
