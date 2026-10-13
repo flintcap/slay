@@ -35,22 +35,17 @@ Design notes
 - [x] M2 Mace tree: 18 skills, rules, statuses, icons. (`feat(paladin): M2 Mace tree`)
 - [x] M3 Blade tree: 18 skills, rules, statuses, icons. (`feat(paladin): M3 Blade tree`)
 - [x] M4 Aura tree: 18 skills, aura handler + look, rules, icons. (`feat(paladin): M4 Aura tree`)
-- [ ] M5 A unique gesture per active skill (sword+shield, mace+shield, two-hander all read).
+- [x] M5 A unique gesture per active skill (sword+shield, mace+shield, two-hander all read). (`feat(paladin): M5 gestures`)
 - [x] M6 A unique VFX look per active skill. (`wip(paladin): a motif for every active skill, drawn where the blow lands`)
 - [x] M7 A unique sound per active skill (CC0, layered takes). (built with each tree; `check-unique` sounds ok, levels in line with the other classes)
 - [ ] M8 Story and NPC lines, tools class lists, balance (curve passes every depth), in-game skill check green.
 
 ## Next up
 
-M5: the 32 gestures are written (`src/art/hero/gestures/paladin.ts`,
-committed as wip) and `check-unique` clips are ok. Left: read the sheets
-(`<scratchpad>/render-g.sh` renders mace+shield, sword+shield, Aura and a
-two-hander pass with `tools/hero-sheet.mjs actions --class=paladin --front`),
-fix any pose that reads badly, tick M5.
-
-Then M8: story lines, class lists and the two-kit `check-skills` are in
-(wip). Left: `npm run build && flock /tmp/slay-browser.lock timeout 1500 node
-tools/check-skills.mjs --classes=paladin` green, then Finishing a stream.
+M8: story lines, class lists and the two-kit `check-skills` are in. Left:
+`npm run build && SLAY_PORT=4342 flock /tmp/slay-browser.lock timeout 1500
+node tools/check-skills.mjs --classes=paladin --port=4342` green (no
+refused, no did-nothing, no threw), then Finishing a stream.
 
 ## Notes for resume
 
@@ -68,7 +63,10 @@ tools/check-skills.mjs --classes=paladin` green, then Finishing a stream.
   Gate: `RANK_ONLY=a,b node tools/check-rankpower.mjs` must say "all grow".
 - Rites that fly (Hurl the Censer) land on a timer, not on the projectile's
   `onHit`: the headless checks run with a dummy effect system.
-- Shield skills use the `lunge` body clip until M5 gives them gestures.
+- Gestures (M5): `src/art/hero/gestures/paladin.ts`. Shield skills carry
+  `alt.great` keys for a two-hander. Sheets: `node tools/hero-sheet.mjs
+  actions --class=paladin --front --stance=shield|twoHand --weapon=mace|sword
+  --actions=skill.<id>,...` (under the browser lock).
 - `tools/rankpower-entry.ts` hands a Blade skill a short sword
   (`TREE_WEAPON`), since the Paladin starts with a mace. `check-skills`
   (M8) will need the same for Blade skills.
