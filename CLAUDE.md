@@ -41,6 +41,8 @@ Long is fine for drafts, scripts, posts, and documents. This whole style guide i
 ## Owner preferences
 
 - When I ask for something "like" or "in the style of" another game, do not copy it 1:1. Use the same idea and theme, but make it our own: our own names, our own art, our own numbers.
+- Every skill must get stronger with each rank (damage, strength, time, size), not only cheaper or faster. New skills go through `src/data/skillPower.ts` and `node tools/check-rankpower.mjs`.
+- Caster weapons (wands, staffs, orbs) have no basic attack. A caster's attacks come only from spells.
 
 ## Project
 

@@ -167,6 +167,8 @@ interface ActiveStatus {
   stacks: number;
   dotType: DamageType | null;
   dotPerSecond: number;
+  /** Stat changes set by the application (a curse at its rank), over the def's. */
+  mods?: Partial<Stats>;
 }
 
 interface ActiveBuff {
@@ -977,6 +979,7 @@ export class Enemy implements Combatant {
         if (app.tickScale && app.tickScale !== 1) existing.dotPerSecond *= app.tickScale;
         // A harder blow's venom takes over from a weaker one.
         if (app.power) existing.dotPerSecond = Math.max(existing.dotPerSecond, this.dotRate(app));
+        if (app.mods) existing.mods = app.mods;
         continue;
       }
       const def = statusDef(app.id);
@@ -988,6 +991,7 @@ export class Enemy implements Combatant {
         stacks: app.stacks ?? 1,
         dotType,
         dotPerSecond: dotType ? this.dotRate(app) : 0,
+        ...(app.mods ? { mods: app.mods } : {}),
       });
       if (isControl(app.id)) {
         this.rootTimer = Math.max(this.rootTimer, app.duration);
@@ -1027,13 +1031,17 @@ export class Enemy implements Combatant {
   private statusAdjustedStats(): Stats {
     let out: Stats | null = null;
     for (const s of this.statuses) {
-      const mods = statusDef(s.id)?.mods;
+      const own = s.mods;
+      const mods = own ?? statusDef(s.id)?.mods;
       if (!mods) continue;
       if (!out) out = { ...this.stats };
+      // A rank's own numbers are already the full effect; only the def's
+      // reference numbers scale by magnitude.
+      const scale = own ? s.stacks : s.magnitude * s.stacks;
       for (const [k, v] of Object.entries(mods)) {
         const key = k as keyof Stats;
         if (typeof v !== 'number') continue;
-        (out[key] as number) = ((out[key] as number) ?? 0) + v * s.magnitude * s.stacks;
+        (out[key] as number) = ((out[key] as number) ?? 0) + v * scale;
       }
     }
     return out ?? this.stats;

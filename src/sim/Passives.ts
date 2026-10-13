@@ -166,6 +166,8 @@ export interface PassiveEffects {
   critBladeChance: number;
   critBladeRange: number;
   critBladePct: number;
+  /** Antivenom: poison that would hit you heals this share of it instead. */
+  poisonHealPct: number;
   /** Every Nth attack is a guaranteed critical. 0 = never. */
   guaranteedCritEvery: number;
   guaranteedCritBonusPct: number;
@@ -326,6 +328,7 @@ function emptyEffects(): PassiveEffects {
     critBladeChance: 0,
     critBladeRange: 0,
     critBladePct: 0,
+    poisonHealPct: 0,
     guaranteedCritEvery: 0,
     guaranteedCritBonusPct: 0,
     veilKillExtendSec: 0,
@@ -523,6 +526,9 @@ const RULES: Record<string, Contribution> = {
   },
 
   // ----------------------------------------------------------------- rogue
+  antivenom: (e, r, id) => {
+    e.poisonHealPct += param(id, 'healPct', 30) + param(id, 'perRank', 3) * (r - 1);
+  },
   toxicology: (e, r, id) => {
     e.dotDamagePct += param(id, 'damagePerRank', 9) * r;
     e.dotDurationSec += param(id, 'durationPerRank', 0.4) * r;

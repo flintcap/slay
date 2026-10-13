@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Character, Stats, DamagePacket, EquipSlot } from '../types';
+import type { Character, Stats, DamagePacket, EquipSlot, StatusApplication } from '../types';
 import { charmKey, computeStats } from '../sim/Stats';
 import { mitigate } from '../sim/Combat';
 import { StatusContainer, adoptStatuses, releaseAdopted } from '../sim/Status';
@@ -238,8 +238,17 @@ export class Player {
   }
 
   /** Applies a buff or debuff and refreshes the stat sheet. */
-  applyStatus(id: string, duration: number, magnitude = 1, stacks = 1): boolean {
-    const ok = this.status.apply({ id, duration, magnitude, stacks }, 'player');
+  applyStatus(
+    id: string,
+    duration: number,
+    magnitude = 1,
+    stacks = 1,
+    extra: { mods?: Partial<Stats>; absorb?: number } = {},
+  ): boolean {
+    const app: StatusApplication = { id, duration, magnitude, stacks };
+    if (extra.mods) app.mods = extra.mods;
+    if (extra.absorb !== undefined) app.absorb = extra.absorb;
+    const ok = this.status.apply(app, 'player');
     if (ok) this.refreshStats();
     return ok;
   }
@@ -460,6 +469,11 @@ export class Player {
     if (this.dodgeTime > 0) {
       // Slipped it. Said out loud so the feel layer can reward a timed evade.
       if (packet.amount > 0) events.emit('player:evaded', { ability: packet.ability ?? '', source: packet.source });
+      return 0;
+    }
+    // Antivenom: poison feeds you instead.
+    if (packet.type === 'poison' && this.passives.poisonHealPct > 0) {
+      this.heal(packet.amount * this.passives.poisonHealPct / 100);
       return 0;
     }
     const result = mitigate(packet, this.stats, rng);

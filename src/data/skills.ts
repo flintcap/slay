@@ -295,7 +295,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'fortressStance',
     name: 'Fortress Stance',
-    desc: 'Root yourself for 6s: +120% defense, +20% block chance and immunity to knockback and stun (+8% defense per rank). You cannot move.',
+    desc: 'Root yourself for 6s: +120% defense, +20% block chance (+0.5% per rank) and immunity to knockback and stun (+8% defense per rank). You cannot move.',
     tier: 5,
     col: 0,
     icon: 'fortress',
@@ -747,7 +747,7 @@ const OATH = build('oath', [
   {
     id: 'tauntingRoar',
     name: 'Taunting Roar',
-    desc: 'Forces every enemy within 9m to attack you for 5s and applies Vulnerable (+25% damage taken) for 8s.',
+    desc: 'Forces every enemy within 9m to attack you for 5s and applies Vulnerable (+25% damage taken, +1.5% per rank) for 8s (+0.2s per rank).',
     tier: 3,
     col: 2,
     icon: 'taunt',
@@ -1426,7 +1426,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'veil',
     name: 'Veil',
-    desc: 'Vanish for 6s (+0.3s per rank). Enemies lose you, and your next attack is a guaranteed critical strike.',
+    desc: 'Vanish for 6s (+0.3s per rank). Enemies lose you, and your next attack is a guaranteed critical strike with +20% critical damage (+4% per rank).',
     tier: 1,
     col: 1,
     icon: 'cloak',
@@ -1515,7 +1515,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'vanish',
     name: 'Vanish',
-    desc: 'Drop all aggro, clear one crowd-control effect, and reset the cooldown of Shadow Step. 8s of Phasing.',
+    desc: 'Drop all aggro, clear one crowd-control effect, and reset the cooldown of Shadow Step. 8s of Phasing (+0.25s per rank) at +40% movement speed (+1.5% per rank).',
     tier: 3,
     col: 2,
     icon: 'vanish',
@@ -2227,7 +2227,7 @@ const FROST = build('frost', [
   {
     id: 'iceArmor',
     name: 'Ice Armor',
-    desc: 'A shell of ice wraps you for 12s (+0.3s per rank) and soaks up incoming damage until it breaks.',
+    desc: 'Rime armours you for 2 minutes (+3s per rank, up to 3 minutes): +30% defense (+6% per rank), +10% cold resistance (+1.5% per rank) and +3 damage reduction (+0.6 per rank), under a shell that soaks 12% of your life (+2% per rank) before it cracks.',
     tier: 2,
     col: 2,
     icon: 'armor-ice',
@@ -2237,7 +2237,7 @@ const FROST = build('frost', [
     cd: [18, 0.4, 8],
     type: 'cold',
     fx: 'buff.absorb',
-    p: { duration: 12, durationPerRank: 0.3 },
+    p: { duration: 120, durationPerRank: 3 },
   },
   {
     id: 'glacialSpike',
@@ -2684,7 +2684,7 @@ const BLIGHT = build('blight', [
   {
     id: 'weaken',
     name: 'Weaken',
-    desc: 'Curse everything within 7m: -35% damage dealt for 10s (+0.5s per rank).',
+    desc: 'Curse everything within 7m: -35% damage dealt (+1% per rank, up to -55%) for 10s (+0.5s per rank).',
     tier: 1,
     col: 0,
     icon: 'curse-weak',
@@ -3308,14 +3308,14 @@ const WILDCRAFT = build('wildcraft', [
   },
   {
     id: 'venomCoat', name: 'Venom Coat',
-    desc: 'Arrows carry poison for 20s. Every hit applies a stacking poison dot.',
+    desc: 'Arrows carry poison for 20s: +5 poison damage (+3 per rank) on every hit, and every hit applies a stacking poison dot.',
     tier: 3, col: 1, icon: 'vial', req: ['thornBarrier'], t: 'self',
     mana: [14, 0.8], cd: [24, 0.6, 12], type: 'poison',
     fx: 'buff', p: { duration: 20, dotScale: 0.35 },
   },
   {
     id: 'camouflage', name: 'Camouflage',
-    desc: 'Stand still and disappear. Breaking it grants a guaranteed critical hit.',
+    desc: 'Stand still and disappear for 8s (+0.3s per rank). Breaking it grants a guaranteed critical hit with +30% critical damage (+5% per rank).',
     tier: 3, col: 2, icon: 'stealth', req: ['survivalist'], t: 'self',
     mana: [12, 0.7], cd: [22, 0.7, 10], fx: 'buff',
     p: { duration: 8, critBonus: 100 },

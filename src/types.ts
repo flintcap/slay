@@ -1067,6 +1067,14 @@ export interface StatusApplication {
    * venom scales with the hand that delivered it. Absent: the depth curve.
    */
   power?: number;
+  /**
+   * Stat changes for this application in place of the def's own. A skill
+   * buff builds them from its rank, so ten points in it are worth more than
+   * one.
+   */
+  mods?: Partial<Stats>;
+  /** Damage this application soaks, in place of `def.absorb * magnitude`. */
+  absorb?: number;
 }
 
 export interface StatusEffectDef {

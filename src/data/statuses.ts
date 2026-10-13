@@ -577,6 +577,18 @@ export const STATUSES: StatusDef[] = [
     icon: 'bubble',
     tags: ['buff'],
   }),
+  // Ice Armor. The shell soaks hits until it cracks; the rime under it keeps
+  // you hard for the rest of the spell. Its numbers come from the rank
+  // (`data/skillPower.ts`).
+  def('frostArmor', 'Ice Armor', 1, {
+    desc: 'Rime hardens over you: more defense, cold resistance and damage reduction, under a shell that soaks hits.',
+    mods: mods({ enhancedDefense: 30, coldResist: 10, damageReduction: 3 }),
+    absorb: 1,
+    baseDuration: 120,
+    color: 0x9fdcff,
+    icon: 'bubble',
+    tags: ['buff'],
+  }),
   def('regenerating', 'Regenerating', 1, {
     desc: 'Wounds knit closed — life restored every second.',
     hot: 8,

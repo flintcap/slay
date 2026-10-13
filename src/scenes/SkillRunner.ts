@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FOE_POWER, SELF_POWER, burstGrowth, grownMods, minionLifeGrowth, scaleMods, scaleShred } from '../data/skillPower';
 import { reportError } from '../core/Engine';
 import type { DamagePacket, DamageType, StatusApplication } from '../types';
 import { events } from '../core/Events';
@@ -784,7 +785,16 @@ export class SkillRunner {
     player.faceTowards(target.x, target.z);
 
     // Rank with +skills, and the synergies the tree shows (combat's `skillDamageScale`).
-    const scale = skillDamageScale(player.character.skills, player.stats.skillLevels, def.id);
+    const params = def.params ?? {};
+    const num = (k: string, d: number): number => {
+      const v = params[k];
+      return typeof v === 'number' ? v : d;
+    };
+    // A skill with no damage ladder (a detonation, a drain, a summon's blows)
+    // still hits harder a rank: `data/skillPower.ts` says how much.
+    const scale =
+      skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) *
+      (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num));
     const type: DamageType = def.damageType ?? 'physical';
     // Every skill of a damage type used the one element colour, so a whole
     // tree of fire skills was the same orange on screen. Shift it by a hash of
@@ -807,12 +817,6 @@ export class SkillRunner {
 
     const attackTime = 0.42 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
     const castTime = 0.5 / Math.max(0.4, 1 + player.stats.castSpeed / 100);
-
-    const params = def.params ?? {};
-    const num = (k: string, d: number): number => {
-      const v = params[k];
-      return typeof v === 'number' ? v : d;
-    };
 
     // Whatever this skill inflicts rides on every packet it produces, so a
     // maiming strike maims whether the runner delivered it as a swing, a
@@ -1150,6 +1154,39 @@ export class SkillRunner {
           // Commanding Presence and Standard Bearer widen and strengthen what an
           // oath, aura or banner does. `applyBuff` reads the same numbers.
           this.applyBuff(player, def, rank, num, color);
+          // A war cry reaches the monsters around you too: fear, weakness, taunt.
+          if (family === 'shout' && FOE_POWER[def.id]) {
+            const applies = this.statusFor(def, num, color);
+            const reach = num('radius', 8) + (ctx.auraRadiusBonus ?? 0);
+            for (const t of this.allTargets(enemies, boss)) {
+              if (this.groundDistance(t.root.position, player.position) > reach + t.hitRadius) continue;
+              t.applyStatuses(applies, ctx);
+            }
+          }
+          // A shout with a damage ladder (Herald of Ruin) is a blast as well.
+          if (family === 'shout' && def.damageScale) {
+            const at = player.position.clone().setY(0);
+            this.areaDamage(at, num('radius', 8) + (ctx.auraRadiusBonus ?? 0), makePacket, ctx, enemies, boss);
+          }
+          // A damage aura (Bone Storm, Pestilence, Gravechill) hurts what stands
+          // in it for as long as it lasts, and moves with you.
+          if (family === 'aura' && def.damageScale) {
+            for (let i = this.zones.length - 1; i >= 0; i--) {
+              if (this.zones[i]!.skillId !== def.id) continue;
+              this.zones[i]!.fx?.stop();
+              this.zones.splice(i, 1);
+            }
+            const radius = num('radius', 4) + (ctx.auraRadiusBonus ?? 0);
+            this.addZone(
+              player.position.x, player.position.z, radius, num('duration', 30), num('tickRate', 0.5),
+              makePacket, type, color, sig.emitter, this.statusFor(def, num, color, true),
+            );
+            const zone = this.zones[this.zones.length - 1]!;
+            zone.fx?.stop();
+            zone.fx = this.effects.aura(player.root, { radius, color, element: school, groundRing: true });
+            zone.follow = player.root;
+            zone.skillId = def.id;
+          }
           // Sworn Brother: a spectral Knight rises where the standard goes in.
           if (family === 'banner') this.raiseSwornBrother(player, target, ctx);
           this.effects.impact(school, player.position.x, 1.0, player.position.z, {
@@ -1198,6 +1235,14 @@ export class SkillRunner {
         case 'summon':
         case 'minion': {
           player.beginAction(own ?? 'point', castTime);
+          // Reassemble mends the host rather than adding to it.
+          if (def.effect === 'minion.heal') {
+            this.healAll(player, num('healPct', 40) + num('perRank', 3) * Math.max(0, rank - 1), true);
+            this.effects.nova(player.position.x, player.position.z, num('radius', 10), {
+              element: school, color, emitter: sig.emitter, density: sig.density * 0.5,
+            });
+            break;
+          }
           // A creature stays until something kills it; only a totem runs down.
           const isTotem = (def.effect ?? '').includes('totem');
           // Bone Mastery, Marrow Feast and the minion capstones all land here.
@@ -1249,7 +1294,7 @@ export class SkillRunner {
               type, color, melee, def.id,
               // A share of your own pool, which is how the skill descriptions
               // read it — "40% of your life" and so on.
-              Math.max(20, player.stats.life * (num('lifePct', 40) / 100) * (1 + mp.minionLifePct / 100)),
+              Math.max(20, player.stats.life * (num('lifePct', 40) / 100) * minionLifeGrowth(def.id, Math.max(0, rank - 1), num) * (1 + mp.minionLifePct / 100)),
               // Sentinels and clones are written to pull aggro; the rest hold a
               // line only by standing in the way.
               num('taunts', num('taunt', 0)) > 0,
@@ -1285,6 +1330,24 @@ export class SkillRunner {
           // A curse that names no status still has to do something, or ranking it
           // is a wasted point.
           if (applies.length === 0) this.areaDamage(at, radius, makePacket, ctx, enemies, boss);
+          // Doom Brand: the brand goes off on everything it marked when the
+          // time runs out, wherever the marked have walked to.
+          if (def.effect === 'curse.delayedBurst') {
+            const marked = this.allTargets(enemies, boss).filter(
+              (t) => this.groundDistance(t.root.position, at) <= radius + t.hitRadius,
+            );
+            this.pendingSwings.push({
+              t: num('delay', 6),
+              run: () => {
+                for (const t of marked) {
+                  if (t.life <= 0) continue;
+                  const p = t.root.position;
+                  this.effects.explosion(p.x, 0.9, p.z, { radius: 1.6, element: school, color });
+                  this.pointDamage(p.clone().setY(0), 0.6, makePacket, ctx, enemies, boss, 'area');
+                }
+              },
+            });
+          }
           break;
         }
 
@@ -1397,7 +1460,10 @@ export class SkillRunner {
           this.effects.nova(at.x, at.z, radius, {
             element: school, color, emitter: sig.emitter, density: sig.density,
           });
-          this.areaDamage(at, radius, (m = 1) => makePacket(m * num('burstScale', 1)), ctx, enemies, boss);
+          const dealt = this.areaDamage(at, radius, (m = 1) => makePacket(m * num('burstScale', 1)), ctx, enemies, boss);
+          // Gorefeast drinks what it tears open: a share of the burst, more a rank.
+          const drink = num('healPct', 0) + num('healPerRank', 0) * Math.max(0, rank - 1);
+          if (drink > 0 && dealt > 0) player.heal(dealt * drink / 100);
           // A capstone is the top of a tree; it leaves the ground burning too.
           if (family === 'capstone') {
             this.addZone(
@@ -1497,11 +1563,14 @@ export class SkillRunner {
     boss: Boss | null
   ): boolean {
     if (player.isBusy || !player.alive) return false;
+    const style = weaponStyle(player);
+    // A wand, a staff or a focus does not hit anything by itself: every bolt a
+    // caster throws is a spell.
+    if (style === 'caster' || (style === 'unarmed' && casterOffHand(player))) return false;
     this.setCaster(player, enemies, boss);
 
     player.faceTowards(target.x, target.z);
     const dir = this.tmp.copy(target).sub(player.position).setY(0).normalize().clone();
-    const style = weaponStyle(player);
 
     const packet = (mult = 1): DamagePacket =>
       rollDamage(player.stats, ctx.rng, {
@@ -1512,36 +1581,28 @@ export class SkillRunner {
       });
 
     // The weapon decides what a basic attack even is.
-    if (style === 'ranged' || style === 'caster') {
+    if (style === 'ranged') {
       const castTime = 0.46 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
-      // A bow is drawn and loosed; only a spell is cast. Sharing the casting
-      // animation put archers through a two-handed overhead gesture with a bow
-      // in their hands, which is the most wrong an archer can look.
-      player.beginAction(style === 'ranged' ? 'shoot' : 'cast', castTime);
-      this.releaseSchool = style === 'ranged' ? null : 'arcane';
-
-      const type: DamageType = style === 'ranged' ? 'physical' : 'arcane';
-      const colour = style === 'ranged' ? 0xd8c9a0 : (ELEMENTS.arcane?.body ?? 0xa040e0);
-      // Arrows leave the bow hand, spells leave the chest. A projectile that
-      // starts at the sternum reads as coming out of the character's ribs.
-      const from = player.position.clone().setY(style === 'ranged' ? 1.28 : 1.05);
-      if (style === 'ranged') {
-        // Offset to the bow side so the shot lines up with the weapon.
-        from.addScaledVector(this.tmp.set(dir.z, 0, -dir.x), 0.16);
-      }
-      const range = style === 'ranged' ? 20 : 16;
-      const stop = this.firstHitAlong(from, dir, range, enemies, boss, 0.4, ctx);
+      // A bow is drawn and loosed. Sharing the casting animation put archers
+      // through a two-handed overhead gesture with a bow in their hands.
+      player.beginAction('shoot', castTime);
+      this.releaseSchool = null;
+      // Arrows leave the bow hand, offset to the bow side so the shot lines up
+      // with the weapon.
+      const from = player.position.clone().setY(1.28);
+      from.addScaledVector(this.tmp.set(dir.z, 0, -dir.x), 0.16);
+      const stop = this.firstHitAlong(from, dir, 20, enemies, boss, 0.4, ctx);
       const to = from.clone().addScaledVector(dir, stop);
 
       this.effects.projectile(from, to, {
-        element: type,
-        color: colour,
-        speed: style === 'ranged' ? 30 : 19,
-        size: style === 'ranged' ? 0.24 : 0.4,
+        element: 'physical',
+        color: 0xd8c9a0,
+        speed: 30,
+        size: 0.24,
         flare: false,
         onHit: (p) => this.pointDamage(p, 0.5, packet, ctx, enemies, boss, 'projectile', from),
       });
-      audio.play(style === 'ranged' ? 'cast.physical' : 'cast.arcane');
+      audio.play('cast.physical');
       return true;
     }
 
@@ -1626,6 +1687,30 @@ export class SkillRunner {
     const extraStacks = Math.floor(e?.dotMaxStacks ?? 0);
     const tickScale = 1 + (e?.dotTickPct ?? 0) / 100;
     const named = typeof def.params?.statusId === 'string' ? (def.params.statusId as string) : null;
+    // What this rank leaves on a monster (`data/skillPower.ts`).
+    const foe = FOE_POWER[def.id];
+    if (foe) {
+      const rank = this.caster ? skillRank(this.caster.character, def.id) : 1;
+      const power = foe(Math.max(0, rank - 1), num);
+      const id = power.status ?? named ?? SKILL_STATUS[def.id] ?? null;
+      if (id && getStatus(id)) {
+        const longer = e?.dotDurationSec ?? 0;
+        const stretch = 1 + (e?.curseDurationPct ?? 0) / 100;
+        const out: StatusApplication[] = [{
+          id,
+          duration: ((power.duration ?? num('duration', 8)) + longer) * stretch,
+          magnitude: (power.magnitude ?? 1) * Math.max(dotBonus, curseBonus),
+          stacks: 1,
+          maxStacks: extraStacks,
+          tickScale,
+          ...(power.mods ? { mods: curseBonus !== 1 ? scaleShred(power.mods, curseBonus) : power.mods } : {}),
+        }];
+        if (power.also && getStatus(power.also.status)) {
+          out.push({ id: power.also.status, duration: power.also.duration * stretch, magnitude: 1, stacks: 1, ...(power.also.mods ? { mods: power.also.mods } : {}) });
+        }
+        return out;
+      }
+    }
     if (named && getStatus(named)) {
       return [{ id: named, duration, magnitude, stacks: 1, maxStacks: extraStacks, tickScale }];
     }
@@ -1659,19 +1744,39 @@ export class SkillRunner {
   ): void {
     const e = player.passives;
     const auraScale = 1 + e.auraStrengthPct / 100;
+    // What this rank buys (`data/skillPower.ts`): the stats, the ward, the time.
+    const k = Math.max(0, rank - 1);
+    const power = SELF_POWER[def.id]?.(k, num) ?? {};
     const duration =
-      (num('duration', 10) + num('durationPerRank', 0) * (rank - 1)) * (1 + e.groundDurationPct / 100);
+      (power.duration ?? num('duration', 10) + num('durationPerRank', 0) * k) * (1 + e.groundDurationPct / 100);
 
     // Prefer the authored status this skill is meant to grant, so the buff
     // carries real modifiers instead of being a decorative icon. Only skills
     // with nothing authored fall back to a synthesized placeholder named after
     // the skill, which at least reads correctly in the tooltip.
-    const authored = SELF_BUFF_STATUS[def.id] ?? null;
+    const authored = power.status ?? SELF_BUFF_STATUS[def.id] ?? null;
     const id = authored && getStatus(authored) ? authored : `skill.${def.id}`;
     if (!getStatus(id)) {
       synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);
     }
-    player.applyStatus(id, Math.max(1, duration), auraScale, 1);
+    // Commanding Presence and Standard Bearer strengthen every number here too.
+    const raw = power.mods ?? grownMods(getStatus(id)?.mods, k);
+    const mods = raw && auraScale !== 1 ? scaleMods(raw, auraScale) : raw;
+    const absorb =
+      power.absorb !== undefined || power.absorbLifePct !== undefined
+        ? ((power.absorb ?? 0) + player.stats.life * (power.absorbLifePct ?? 0) / 100) * auraScale
+        : undefined;
+    player.applyStatus(id, Math.max(1, duration), auraScale, 1, { mods, absorb });
+    if (power.healPct) this.healAll(player, power.healPct * auraScale);
+  }
+
+  /** Heals you and every minion you have standing, by a share of maximum life. */
+  private healAll(player: Player, pct: number, minionsOnly = false): void {
+    if (!minionsOnly) player.heal(player.stats.life * pct / 100);
+    for (const t of this.turrets) {
+      if (t.life <= 0) continue;
+      t.life = Math.min(t.maxLife, t.life + t.maxLife * pct / 100);
+    }
   }
 
   /** Distance along `dir` to the nearest target, or `max` if nothing is hit. */
@@ -1870,6 +1975,9 @@ export class SkillRunner {
       const to = this.tmp2.copy(t.root.position).sub(origin).setY(0);
       const dist = to.length();
       if (dist > reach + t.hitRadius) return false;
+      // Standing inside its body (a step that lands on the one you clicked)
+      // is in front of you whichever way you face.
+      if (dist <= t.hitRadius) return true;
       if (arc < Math.PI * 1.99) {
         to.normalize();
         if (facing.dot(to) < Math.cos(half)) return false;
@@ -2217,7 +2325,8 @@ export class SkillRunner {
     enemies: Enemy[],
     boss: Boss | null,
     kind: HitKind = 'area',
-  ): void {
+  ): number {
+    let dealt = 0;
     for (const t of this.allTargets(enemies, boss)) {
       // On the floor, not through the air: a meteor lands from above, and its
       // blast should not shrink because the impact was measured from height.
@@ -2230,7 +2339,9 @@ export class SkillRunner {
       // Knocked away from the middle of the blast.
       this.strike(t, ap, ctx, kind, center.x, center.z);
       this.afterHit(ap, t, ctx, enemies, boss);
+      dealt += ap.amount;
     }
+    return dealt;
   }
 
   private lineDamage(
@@ -2327,6 +2438,10 @@ export class SkillRunner {
     /** Applied to anything caught in it, for slows, fear and the like. */
     applies?: StatusApplication[];
     fx: EffectHandle | null;
+    /** A damage aura rides on its caster rather than staying put. */
+    follow?: THREE.Object3D;
+    /** The skill that laid it, so a recast replaces it. */
+    skillId?: string;
   }> = [];
 
   private turrets: Array<{
@@ -2557,6 +2672,10 @@ export class SkillRunner {
 
     for (let i = this.zones.length - 1; i >= 0; i--) {
       const z = this.zones[i]!;
+      if (z.follow) {
+        z.x = z.follow.position.x;
+        z.z = z.follow.position.z;
+      }
       z.left -= dt;
       z.accum += dt;
       if (z.accum >= z.tick) {

@@ -44,6 +44,8 @@ export const LOOK = {
   bleeding: 32,
   stunned: 64,
   cursed: 128,
+  /** Ice Armor: a thin rime shell that glints, not the dull chill of a debuff. */
+  rimed: 256,
 } as const;
 export type StatusLook = keyof typeof LOOK;
 
@@ -58,7 +60,8 @@ export function lookBitsOf(id: string): number {
   if (def) {
     const tags = def.tags as readonly StatusTag[];
     const has = (t: StatusTag): boolean => tags.includes(t);
-    if (id === 'frozen' || id === 'petrified') b |= LOOK.frozen;
+    if (id === 'frostArmor') b |= LOOK.rimed;
+    else if (id === 'frozen' || id === 'petrified') b |= LOOK.frozen;
     else if (has('cold')) b |= LOOK.chilled;
     if (id === 'stunned' || id === 'knockedDown' || id === 'confused') b |= LOOK.stunned;
     if (has('fire') && (has('dot') || def.dot?.type === 'fire')) b |= LOOK.burning;
@@ -118,7 +121,7 @@ export function looksOfQuery(src: StatusQuery): number {
 // ---------------------------------------------------------------------------
 
 const POLL = 0.16;
-const N_LOOKS = 8;
+const N_LOOKS = 9;
 /** History samples per actor (a sixth of a second at 60 Hz). */
 const H = 10;
 /** Seconds of history a swing replays. */
@@ -374,6 +377,10 @@ export class BodyFX {
     if (shown && m & LOOK.frozen) {
       const rr = r * 1.15;
       this.setShell(b, SHELL_STYLE.ice, x, y + h * 0.48, z, 0.8, rr, (h * 0.58) / rr, 'cold');
+    } else if (shown && m & LOOK.rimed) {
+      // Close to the body and faint, so the hero still reads through it.
+      const rr = r * 1.08;
+      this.setShell(b, SHELL_STYLE.ice, x, y + h * 0.5, z, 0.32 + 0.06 * Math.sin(this.clock * 1.7), rr, (h * 0.56) / rr, 'cold');
     } else if (shown && m & LOOK.chilled) {
       this.setShell(b, SHELL_STYLE.aura, x, y, z, 0.35, r * 1.2, h / (r * 1.2), 'cold');
     } else if (shown && m & LOOK.cursed) {
@@ -412,6 +419,10 @@ export class BodyFX {
     if (m & LOOK.burning && acc[0]! > 0.09) {
       acc[0] = 0;
       fx.burst('status.burn', this.px(), y + rng.range(0.15, h * 0.8), this.pz());
+    }
+    if (m & LOOK.rimed && acc[8]! > 0.32) {
+      acc[8] = 0;
+      fx.burst('status.chill', this.px(), y + rng.range(0.3, h * 0.95), this.pz());
     }
     if (m & (LOOK.chilled | LOOK.frozen) && acc[1]! > (m & LOOK.frozen ? 0.4 : 0.18)) {
       acc[1] = 0;

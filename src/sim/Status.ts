@@ -35,6 +35,8 @@ export interface ActiveStatus {
   absorb: number;
   /** Accumulator so DoTs tick on a fixed cadence rather than per frame. */
   tick: number;
+  /** Stat changes set by the application, used in place of `def.mods`. */
+  mods?: Partial<Stats>;
 }
 
 /** What a tick produced. The caller applies it — the container never damages. */
@@ -138,8 +140,9 @@ export class StatusContainer {
         magnitude,
         stacks: Math.min(addStacks, def.maxStacks),
         sourceId,
-        absorb: (def.absorb ?? 0) * magnitude,
+        absorb: app.absorb ?? (def.absorb ?? 0) * magnitude,
         tick: 0,
+        ...(app.mods ? { mods: app.mods } : {}),
       });
       this.invalidate();
       return true;
@@ -172,7 +175,10 @@ export class StatusContainer {
         existing.magnitude = Math.max(existing.magnitude, magnitude);
         break;
     }
-    if (def.absorb) existing.absorb = Math.max(existing.absorb, def.absorb * existing.magnitude);
+    if (app.absorb !== undefined) existing.absorb = Math.max(existing.absorb, app.absorb);
+    else if (def.absorb) existing.absorb = Math.max(existing.absorb, def.absorb * existing.magnitude);
+    // A recast carries the caster's current rank.
+    if (app.mods) existing.mods = app.mods;
     existing.sourceId = sourceId;
     this.invalidate();
     return true;
@@ -306,7 +312,9 @@ export class StatusContainer {
       const taken = Math.min(st.absorb, left);
       st.absorb -= taken;
       left -= taken;
-      if (st.absorb <= 0) {
+      // A pure ward is gone once it is spent; armour that also hardens you
+      // keeps doing that for the rest of its time.
+      if (st.absorb <= 0 && !(st.mods ?? st.def.mods)) {
         this.active.delete(st.id);
         this.invalidate();
       }
@@ -403,10 +411,11 @@ export class StatusContainer {
     if (this.modCache) return this.modCache;
     const out: Partial<Stats> = {};
     for (const st of this.active.values()) {
-      if (!st.def.mods) continue;
+      const m = st.mods ?? st.def.mods;
+      if (!m) continue;
       const scale = st.def.maxStacks > 1 ? st.stacks : 1;
-      for (const key of Object.keys(st.def.mods) as StatKey[]) {
-        const v = st.def.mods[key];
+      for (const key of Object.keys(m) as StatKey[]) {
+        const v = m[key];
         if (v === undefined) continue;
         out[key] = (out[key] ?? 0) + v * scale;
       }

@@ -463,11 +463,12 @@ wpn('wand.burnt', 'Burnt Wand', 'wand', 1, 48, 12, 12, 26, 54, 1.45, 'wand', 'wo
   imp: [{ stat: 'castSpeed', min: 11, max: 18 }],
 });
 
+// The femur is the Revenant's alone: a thighbone carved to call the dead.
 // The bottom of the necromantic wand ladder. The Revenant starts holding this
 // one: `wand.bone` sits at level 10 and the class was being handed a weapon it
 // could not equip for its first nine levels.
 wpn('wand.femur', 'Femur Wand', 'wand', 1, 1, 4, 4, 4, 9, 1.3, 'wand.bone', 'bone.pale', {
-  classes: CASTERS,
+  classes: ['revenant'],
   imp: [{ stat: 'manaRegen', min: 1, max: 2 }],
 });
 wpn('wand.bone', 'Bone Wand', 'wand', 1, 10, 6, 6, 9, 19, 1.3, 'wand.bone', 'bone.pale', {

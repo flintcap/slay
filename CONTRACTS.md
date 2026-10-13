@@ -670,6 +670,25 @@ export function mitigate(packet: DamagePacket, defender: Stats, rng: Rng): { amo
 export function hitChance(attackRating: number, defenderDefense: number, attackerLevel: number, defenderLevel: number): number;
 ```
 
+## `src/data/skillPower.ts` — what a rank buys (every class)
+
+Every skill must be stronger at a higher rank, not only cheaper or faster
+(`tools/check-rankpower.mjs` casts each one at rank 1 and 10). A skill with a
+`dmg` ladder grows through it. Any other skill writes its numbers here; the
+skill runner reads them. `k` is ranks past the first.
+
+```ts
+export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower>; // buff on you: status?, mods?, duration?, absorb?, absorbLifePct?, healPct?
+export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower>;   // curse/mark/shout on monsters: status?, mods?, duration?, magnitude?, also?
+export function burstGrowth(id: string, k: number, n: Num): number;        // hit multiplier for a skill with no dmg ladder (default +8% a rank)
+export function minionLifeGrowth(id: string, k: number, n: Num): number;   // summon body (default +4% a rank)
+export function grownMods(base: Partial<Stats> | undefined, k: number): Partial<Stats> | undefined; // unlisted buffs: bonuses +6% a rank
+```
+
+`StatusApplication.mods` and `.absorb` set one application's stat changes and
+ward in place of the def's, on the hero (`Player.applyStatus(..., { mods, absorb })`)
+and on monsters. A ward with stat changes keeps its stats after the ward breaks.
+
 ## `src/sim/Loot.ts` — owned by ITEMS
 
 ```ts
