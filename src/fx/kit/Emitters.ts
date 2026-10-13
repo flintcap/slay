@@ -697,6 +697,14 @@ export function emitLayer(field: ParticleField, rng: Rng, layer: Layer, school: 
   return n;
 }
 
+/**
+ * Adds emitters a class keeps in a file of its own (the Shapeshifter's are in
+ * `fx/shifter/emitters.ts`). An id already taken is left as it is.
+ */
+export function registerEmitters(more: Readonly<Record<string, Emitter>>): void {
+  for (const [id, em] of Object.entries(more)) if (!E[id]) E[id] = em;
+}
+
 /** Every emitter id, for the checkers. */
 export function emitterIds(): string[] {
   return Object.keys(EMITTERS).sort();

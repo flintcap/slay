@@ -18,6 +18,11 @@ import type { CombatContext, Enemy } from '../entities/Enemy';
 import type { Boss } from '../entities/Boss';
 import type { EffectSystem } from '../fx/Effects';
 import type { HitKind } from '../fx/CombatFeel';
+import type { BeastForm } from '../art/hero/forms/BeastBody';
+import { FORM_OF_TREE, FORM_SKILL } from '../entities/Shapeshift';
+import { formChange } from '../fx/shifter/ShifterFX';
+import { audio } from '../audio/Audio';
+import { skillSound } from '../audio/SkillSounds';
 
 export type ShiftTarget = Enemy | Boss;
 
@@ -84,6 +89,39 @@ function withStatus(p: DamagePacket, a: StatusApplication): DamagePacket {
 }
 
 // ---------------------------------------------------------------------------
+// Changing shape
+// ---------------------------------------------------------------------------
+
+const FORM_INDEX: readonly BeastForm[] = ['cat', 'wolf', 'bear'];
+
+/**
+ * Changes the hero's shape with its effect. `sound` plays the form's own
+ * change sound (an auto-shift; a form skill's cast already sounds).
+ */
+function change(k: ShiftKit, player: Player, dir: THREE.Vector3, to: BeastForm | null, sound: boolean): boolean {
+  const from = player.shape.form;
+  if (!player.shape.become(to)) return false;
+  formChange(k.effects, player.position, dir, from, to);
+  if (sound) {
+    const id = skillSound(FORM_SKILL[to ?? from ?? 'cat']).cast;
+    if (id) audio.play(id, { x: player.position.x, z: player.position.z });
+  }
+  return true;
+}
+
+/**
+ * A form skill: Shadowcat, Grey Wolf, Great Bear. Changes you into it, or,
+ * if you are in it already, back into a man. The body swells into the new
+ * shape (`FormBody`), the old pelt is shed, and the form's numbers go on.
+ */
+const form: Handler = (k, c) => {
+  const want = FORM_INDEX[Math.floor(c.num('form', 0))] ?? 'cat';
+  const to = c.player.shape.form === want ? null : want;
+  c.player.beginAction(c.clip, c.castTime * 1.1);
+  change(k, c.player, c.dir, to, false);
+};
+
+// ---------------------------------------------------------------------------
 // Feral
 // ---------------------------------------------------------------------------
 
@@ -116,6 +154,7 @@ const rake: Handler = (k, c) => {
 // ---------------------------------------------------------------------------
 
 const HANDLERS: Record<string, Handler> = {
+  form,
   rake,
 };
 
@@ -127,6 +166,9 @@ export function runShift(k: ShiftKit, c: ShiftCast): boolean {
   const sub = (c.def.effect ?? '').split('.')[1] ?? '';
   const h = HANDLERS[sub];
   if (!h) return false;
+  // Every tree skill is fought in its tree's form: out of it, change first.
+  const want = FORM_OF_TREE[c.def.treeId];
+  if (sub !== 'form' && want && c.player.shape.form !== want) change(k, c.player, c.dir, want, true);
   h(k, c);
   return true;
 }

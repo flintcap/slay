@@ -13,6 +13,7 @@ import { collidersNear } from '../world/BodyWalk';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
+import { Shapeshift } from './Shapeshift';
 
 export interface PlayerContext {
   /** Boxes, or circles where `r` is set (round props: barrels, pillars). `moves` marks one that walks (a resident). */
@@ -146,6 +147,8 @@ export class Player {
   private rng: Rng;
   /** The body, its gear and its animator (`src/scenes/HeroModel.ts`). */
   private hero: DressedHero;
+  /** A Shapeshifter's beast form (`Shapeshift.ts`); a man for every other class. */
+  readonly shape: Shapeshift;
 
   /** Set by DungeonScene when the player has no business moving (dead, cutscene). */
   frozen = false;
@@ -173,6 +176,7 @@ export class Player {
     this.animator = this.hero.animator;
     // The animator reads real ground motion from the body so feet plant.
     this.animator.follow(this.root);
+    this.shape = new Shapeshift(this, this.hero);
 
     this.stats = computeStats(character);
     this.life = this.stats.life;
@@ -654,6 +658,7 @@ export class Player {
 
     this.animator.setCondition(this.bodyCondition);
     this.animator.update(dt);
+    this.shape.update(dt);
     this.updateBodyTint(dt);
   }
 

@@ -11,6 +11,8 @@ import { dressOutfit } from '../art/items/Outfit';
 
 export { weaponGrip };
 import { HeroAnimator, type OffHand } from '../art/hero/Animator';
+import { FormBody } from '../art/hero/forms/FormBody';
+import type { BeastForm } from '../art/hero/forms/BeastBody';
 import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import { FIELD_KIT } from './FieldKit';
@@ -71,6 +73,10 @@ export class DressedHero {
   /** Set glow and auras (`items/Outfit.ts`), and the set pieces they were made for. */
   private outfit: THREE.Object3D[] = [];
   private outfitKey = '';
+  /** The man's parts his gear hides, kept so a beast form can give them back. */
+  private ownHidden = new Set<string>();
+  /** A Shapeshifter's beast bodies (`art/hero/forms/`), made on first need. */
+  private formBody: FormBody | null = null;
 
   constructor(
     readonly classId: CharClassId,
@@ -113,6 +119,8 @@ export class DressedHero {
     const hides = new Set<string>();
     for (const h of this.held.values()) h.worn?.hides.forEach((k) => hides.add(k));
     setHeroHidden(this.body, hides);
+    this.ownHidden = hides;
+    this.formBody?.reapply(hides);
     // What is held picks the stance and the chain of blows.
     const main = pieces.mainHand ? getBase(pieces.mainHand.baseId) : undefined;
     const off = pieces.offHand ? getBase(pieces.offHand.baseId) : undefined;
@@ -183,6 +191,29 @@ export class DressedHero {
     }
   }
 
+  /** The beast form shown (a Shapeshifter's), or null for the man. */
+  get form(): BeastForm | null {
+    return this.formBody?.form ?? null;
+  }
+
+  /** Turns the hero into a beast form, or back into the man with null. */
+  setForm(form: BeastForm | null): void {
+    if (!form && !this.formBody) return;
+    this.formBody ??= new FormBody(this.body, this.animator);
+    this.formBody.set(form, this.ownHidden);
+  }
+
+  /** Meshes the beast forms in idle time, so the first change costs no frame. */
+  prewarmForms(): void {
+    this.formBody ??= new FormBody(this.body, this.animator);
+    this.formBody.prewarm();
+  }
+
+  /** The form's swell and tail; call once a frame after the animator. */
+  updateForm(dt: number): void {
+    this.formBody?.update(dt);
+  }
+
   /** The held or worn object for a slot, if any. */
   objectFor(slot: EquipSlot): THREE.Object3D | null {
     const h = this.held.get(slot);
@@ -190,6 +221,7 @@ export class DressedHero {
   }
 
   dispose(): void {
+    this.formBody?.dispose();
     for (const slot of [...this.held.keys()]) this.clear(slot);
     this.root.removeFromParent();
     disposeTree(this.root);

@@ -495,6 +495,8 @@ export function clipFor(effect: string | undefined, holding: WeaponStyle, skillI
 }
 
 export function weaponStyle(player: Player): WeaponStyle {
+  // A beast fights with what it grew, whatever is in the pack.
+  if (player.shape?.form) return 'melee';
   const item = player.character.equipment.mainHand;
   if (!item) return 'unarmed';
   try {

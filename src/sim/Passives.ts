@@ -31,6 +31,7 @@ import type { Character, DamageType } from '../types';
 import { SKILL_BY_ID } from '../data/skills';
 import { applyPowerPassives } from './ItemPowers';
 import { emptyPaladinEffects, PALADIN_RULES, type PaladinEffects } from './passives/paladin';
+import { SHIFTER_RULES } from './shifterPassives';
 
 /** A skill's rank, after +skills. Mirrors `Stats.effectiveRank`. */
 function rankOf(c: Character, id: string): number {
@@ -765,6 +766,8 @@ const RULES: Record<string, Contribution> = {
   },
   // The Paladin's rules live in their own file.
   ...PALADIN_RULES,
+  // The Shapeshifter's, kept in their own file.
+  ...SHIFTER_RULES,
 };
 
 /** Every skill this engine knows how to run. */

@@ -418,6 +418,31 @@ export function hairMaterial(color: number): THREE.MeshStandardMaterial {
   });
 }
 
+/**
+ * A beast's pelt (the Shapeshifter's forms): the hair strands at a coarser
+ * tile and a deeper ridge, coloured by the pelt painted in vertex colours,
+ * matte except where the guard hairs catch the light.
+ */
+export function furMaterial(sheen = 0.68): THREE.MeshStandardMaterial {
+  return shared(`fur|${sheen}`, () => {
+    const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: sheen, metalness: 0, vertexColors: true });
+    const t = strands();
+    // One tile every 5 cm: thicker strands than a man's hair.
+    triplanar(m, { albedo: t.albedo, normal: t.normal, scale: 1 / 0.05, normalScale: 1.6, roughVar: 0.9, albedoGain: 1.25 });
+    m.name = 'hero-fur';
+    return m;
+  });
+}
+
+/** Claws, fangs and horn: dark at the root, pale and polished at the tip (vertex colours). */
+export function hornMaterial(): THREE.MeshStandardMaterial {
+  return shared('horn', () => {
+    const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.32, metalness: 0.05, vertexColors: true });
+    m.name = 'hero-horn';
+    return m;
+  });
+}
+
 /** Tile size on armour by family: a plate shows its hammering, a mail its rings. */
 const GEAR_METRES: Record<string, number> = { metal: 0.45, leather: 0.3, cloth: 0.25, bone: 0.4 };
 
