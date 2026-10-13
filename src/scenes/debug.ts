@@ -741,7 +741,7 @@ export function installDebug(engine: Engine): Record<string, unknown> {
      * Nothing here is inferred. A skill that reports `fired` but no damage and
      * no effects did nothing, whatever its description says.
      */
-    async skillAudit(classId: CharClassId): Promise<Array<Record<string, unknown>>> {
+    async skillAudit(classId: CharClassId, trees?: string[]): Promise<Array<Record<string, unknown>>> {
       const scene = engine.currentScene as unknown as {
         player?: Record<string, unknown>;
         enemies?: Array<Record<string, unknown>>;
@@ -760,7 +760,7 @@ export function installDebug(engine: Engine): Record<string, unknown> {
 
       const def = CLASSES.find((k) => k.id === classId);
       if (!def) return [{ error: `unknown class ${classId}` }];
-      const list = SKILLS.filter((s) => def.trees.includes(s.treeId) && s.targeting !== 'passive');
+      const list = SKILLS.filter((s) => def.trees.includes(s.treeId) && (!trees || trees.includes(s.treeId)) && s.targeting !== 'passive');
 
       // A known-open stage: the level's own entrance, which generation
       // guarantees is walkable and clear.
@@ -776,6 +776,8 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       const rows: Array<Record<string, unknown>> = [];
 
       for (const s of list) {
+        // A line per skill, so a slow software-rendered run shows it is moving.
+        console.info(`[audit] ${s.id}`);
         // Reset the world around this one skill.
         c.skills[s.id] = 3;
         (pl.position as THREE.Vector3).copy(stage);

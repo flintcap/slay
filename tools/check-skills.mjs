@@ -40,7 +40,10 @@ const WEAPON = {
  * shield, his Blade tree a sword.
  */
 const KITS = {
-  paladin: [['mace.club', 'shield.heater'], ['sword.short', 'shield.heater']],
+  paladin: [
+    { gear: ['mace.club', 'shield.heater'], trees: ['palMace', 'palAura'] },
+    { gear: ['sword.short', 'shield.heater'], trees: ['palBlade'] },
+  ],
 };
 
 /** How well one audit row did: threw < refused < fired < fired and hit. */
@@ -89,6 +92,9 @@ const browser = await chromium.launch({
 let page = await browser.newPage({ viewport: { width: 700, height: 440 } });
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
+/** The audit's own line per skill, so a slow run shows it is moving. */
+const echo = (m) => m.text().startsWith('[audit]') && console.log('    ' + m.text().slice(8));
+page.on('console', echo);
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 900000, polling: 500 });
 
@@ -106,6 +112,7 @@ for (const cls of CLASSES) {
         try { await page.close(); } catch {}
         page = await browser.newPage({ viewport: { width: 700, height: 440 } });
         page.on('pageerror', (er) => pageErrors.push(String(er).slice(0, 200)));
+        page.on('console', echo);
         await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
         await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 900000, polling: 500 });
       }
@@ -121,23 +128,28 @@ for (const cls of CLASSES) {
 
 async function runClass(cls) {
   let best = null;
-  for (const kit of KITS[cls] ?? [[WEAPON[cls] ?? 'sword.short']]) {
+  for (const kit of KITS[cls] ?? [{ gear: [WEAPON[cls] ?? 'sword.short'] }]) {
+    console.log(`  ${cls}: ${kit.gear.join(' + ')}${kit.trees ? ` (${kit.trees.join(', ')})` : ''}`);
     const rows = await page.evaluate(
-      async ([c, gear]) => {
+      async ([c, gear, trees]) => {
         window.SLAY.debug.makeCharacter(c, 60);
         for (const g of gear) window.SLAY.debug.equip(g, 40);
         await window.SLAY.engine.goTo('dungeon', { depth: 1 });
         for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
         window.SLAY.debug.godMode(true);
-        return window.SLAY.debug.skillAudit(c);
+        return window.SLAY.debug.skillAudit(c, trees);
       },
-      [cls, kit]
+      [cls, kit.gear, kit.trees ?? null]
     );
     if (!best) best = rows;
-    else best = best.map((r) => {
-      const o = rows.find((x) => x.id === r.id);
-      return o && showing(o) > showing(r) ? o : r;
-    });
+    else {
+      // A skill seen in both kits keeps its better showing; one seen in only one is added.
+      best = best.map((r) => {
+        const o = rows.find((x) => x.id === r.id);
+        return o && showing(o) > showing(r) ? o : r;
+      });
+      for (const o of rows) if (!best.some((r) => r.id === o.id)) best.push(o);
+    }
   }
   return best;
 }
