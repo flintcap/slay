@@ -1,6 +1,6 @@
 # Stream: anims (every skill 1 of 1)
 
-Status: in progress
+Status: done
 Port: SLAY_PORT=4341
 
 ## Goal
@@ -66,7 +66,7 @@ that still looks like it holds a shield.
 - [x] M5 Revenant: a gesture per active skill (caster with a wand/staff). (Give every Revenant skill its own gesture)
 - [x] M6 VFX: every active skill game-wide has its own visual signature (Mage included). (Every active skill draws its own motif: a shape in a motion over its family look)
 - [x] M7 Sounds: no two skills share a sound file. (Every active skill has its own sound: 27 new takes for skills that shared one)
-- [ ] M8 Final: uniqueness check green for the existing 5 classes, in-game skill check green.
+- [x] M8 Final: uniqueness check green for the existing 5 classes, in-game skill check green. (check-unique green for all seven classes; check-skills dropped by owner request after Knight, Rogue and Ranger passed)
 
 ## Checks for this stream
 
@@ -87,7 +87,24 @@ pending; a class with some gestures must be fully unique).
 
 ## Next up
 
-M8: run `npm run build && flock /tmp/slay-browser.lock timeout 1500 node tools/check-skills.mjs --classes=warden,shadowblade,ranger,revenant,mage` (log to a file, retry once, then skip and note). `check-unique` is green for all seven classes. M6 look pass is done: all 133 motifs of the five classes rendered on the scratch sheet; slashes, puffs (now `puff.*` bursts at cloud scale), embers and fangs were fixed from it. Fast checks: beats (paladin consecratedGround), curve, sweep (paladin rites refused, reassemble now heals) and town (gamble) fail on the shared branch, not from this stream.
+Nothing: the stream is done. See Handover.
+
+## Handover
+
+What exists now:
+
+- Every active skill of all seven classes is one of one: its own gesture, its own look (family drawing plus a motif) and its own sound. `node tools/check-unique.mjs` proves it and runs in `run-checks` as `unique`. Counts: warden 25, mage 33, shadowblade 23, revenant 30, ranger 22 (this stream), shapeshifter 26 and paladin 32 (their streams).
+- Gestures: `src/art/hero/gestures/{knight,rogue,ranger,revenant}.ts` (mage was already done).
+- Motifs: `src/fx/Motifs.ts` (76 shapes, 25 motions), drawn by `EffectSystem.motif` in `src/fx/Effects.ts`, chosen per skill in `SKILL_MOTIFS` (`src/fx/SkillLooks.ts`), fired from `SkillRunner.drawMotif`. New drawings: 12 glyph core styles (`kit/Shapes.ts`), 7 solids (`kit/Solids.ts`), 6 `puff.*` bursts (`kit/Emitters.ts`). check-vfx fails if a motif names a missing emitter or mark.
+- Sounds: 27 new CC0 takes (`tools/audio/recipe.mjs`, the "one of one" block), mapped in `src/audio/SkillSounds.ts`, listed in ASSETS.md.
+- Look pass: all 133 motifs of the five classes were rendered and the weak ones fixed (slashes, puffs, embers, fangs).
+
+M8 in-game check (`check-skills`): Knight 25 of 25, Rogue 23 of 23, Ranger 22 of 22 working (buffs are visual only, as they should be). The five-class run did not fit its 1500 s cap; the Revenant run hit the cap and the browser closed under it; the Mage run was stopped. The owner then dropped check-skills; M8 counts on check-unique.
+
+Left for `finish`:
+
+- Run `check-skills` for revenant and mage one class at a time with a longer cap (revenant needs more than 1500 s here).
+- Fast checks failing on the shared branch, not from this stream: beats (paladin consecratedGround), curve, sweep (paladin rites refused; reassemble was fixed upstream after), town (gamble offers a weapon the class cannot use).
 
 ## Notes for resume
 
