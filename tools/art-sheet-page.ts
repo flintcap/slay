@@ -514,7 +514,7 @@ const MODEL_PICKS = [
 const ARMOR_PICKS = [
   'helm.cap', 'helm.full', 'helm.bone', 'helm.circlet', 'chest.quilted', 'chest.leather', 'chest.chainmail', 'chest.scale',
   'chest.plate', 'gloves.leather', 'gloves.gauntlets', 'gloves.silk', 'boots.boots', 'boots.greaves', 'boots.slippers',
-  'belt.sash', 'belt.belt', 'belt.girdle', 'amulet.amulet', 'ring.ring', 'charm.small', 'charm.grand', 'potion.heal.greater',
+  'belt.sash', 'belt.belt', 'belt.girdle', 'amulet.amulet', 'ring.ring', 'charm.small', 'charm.medium', 'charm.large', 'charm.grand', 'potion.heal.greater',
   'potion.rejuv.full', 'potion.antidote', 'gem.ruby.normal', 'rune.el', 'dust.grave',
 ];
 

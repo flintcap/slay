@@ -29,7 +29,7 @@ import { BASE_LIFE, BASE_MANA, getClass } from '../data/classes';
 import { HARD_SKILL_RANK_CAP, SKILL_BY_ID } from '../data/skills';
 import { passiveEffects } from './Passives';
 import { peekStatuses } from './Status';
-import { itemStats, setBonusesFor } from './Loot';
+import { getBase, itemStats, requiredLevel, setBonusesFor } from './Loot';
 import { applyPowerStats } from './ItemPowers';
 import { applyLegacyStats } from './Legacy';
 import { applyHeroPower } from './HeroPower';
@@ -330,7 +330,49 @@ export function gearStats(c: Character): Stats {
     }
   }
   addStats(out, setBonusStats(c.equipment));
+  addStats(out, charmStats(c));
   return out;
+}
+
+/** True for an item that works from the pack. */
+export function isCharm(item: Item | null | undefined): boolean {
+  if (!item) return false;
+  try {
+    return getBase(item.baseId).category === 'charm';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What the charms in the pack lend. Only the pack: a charm in the vault is a
+ * charm on a shelf. A charm the hero is too young for does nothing yet, and a
+ * named charm counts once however many copies are carried.
+ */
+export function charmStats(c: Character): Stats {
+  const out = emptyStats();
+  const named = new Set<string>();
+  for (const item of c.inventory ?? []) {
+    if (!isCharm(item) || !item) continue;
+    if (requiredLevel(item) > c.level) continue;
+    if (item.uniqueId) {
+      if (named.has(item.uniqueId)) continue;
+      named.add(item.uniqueId);
+    }
+    try {
+      addStats(out, itemStats(item));
+    } catch {
+      // A malformed charm must never brick the stat sheet.
+    }
+  }
+  return out;
+}
+
+/** A key that changes whenever the charms that count change. */
+export function charmKey(c: Character): string {
+  let key = '';
+  for (const item of c.inventory ?? []) if (item && isCharm(item)) key += item.uid + ',';
+  return key + c.level;
 }
 
 // ---------------------------------------------------------------------------

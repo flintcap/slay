@@ -59,8 +59,9 @@ export function sizeOfBase(base: ItemBase | undefined): Size {
       return ONE;
     case 'charm':
       if (base.id === 'charm.small') return ONE;
-      if (base.id === 'charm.large') return { w: 1, h: 2 };
-      return { w: 1, h: 3 };
+      if (base.id === 'charm.medium') return { w: 1, h: 2 };
+      if (base.id === 'charm.large') return { w: 1, h: 3 };
+      return { w: 2, h: 3 };
     case 'dagger':
     case 'wand':
       return { w: 1, h: 2 };

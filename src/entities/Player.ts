@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Character, Stats, DamagePacket, EquipSlot } from '../types';
-import { computeStats } from '../sim/Stats';
+import { charmKey, computeStats } from '../sim/Stats';
 import { mitigate } from '../sim/Combat';
 import { StatusContainer, adoptStatuses, releaseAdopted } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
@@ -186,6 +186,9 @@ export class Player {
     this.life = this.stats.life;
     this.mana = this.stats.mana;
   }
+
+  private charmCheck = 0;
+  private charmSeen: string | null = null;
 
   /** Recompute stats after a gear or skill change, preserving resource ratios. */
   refreshStats(): void {
@@ -592,6 +595,18 @@ export class Player {
       });
     }
     if (res.dirty) this.refreshStats();
+    // Charms work from the pack, and the pack changes through a dozen doors
+    // (pickup, drag, vendor, vault). Watch what is carried instead.
+    this.charmCheck -= dt;
+    if (this.charmCheck <= 0) {
+      this.charmCheck = 0.4;
+      const key = charmKey(this.character);
+      if (key !== this.charmSeen) {
+        const first = this.charmSeen === null;
+        this.charmSeen = key;
+        if (!first) this.refreshStats();
+      }
+    }
     if (this.life <= 0 && this.alive === false) {
       /* death is handled below by the damage path */
     }

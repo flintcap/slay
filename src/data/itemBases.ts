@@ -1142,15 +1142,13 @@ misc('ring.eternity', 'Eternity Loop', 'ring', 'ring1', 88, 'ring', 'metal.mithr
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
 });
 
+// Charms do nothing in a hand. Carried in the pack they lend their power, so
+// every cell of the pack is a choice between loot and strength. The bigger the
+// charm, the more it can hold and the more room it takes.
 misc('charm.small', 'Small Charm', 'charm', 'none', 1, 'charm.small', 'crystal.gem', { glow: 0x6f8cff });
-misc('charm.large', 'Large Charm', 'charm', 'none', 12, 'charm.large', 'crystal.gem', { glow: 0x6f8cff });
-misc('charm.grand', 'Grand Charm', 'charm', 'none', 25, 'charm.grand', 'crystal.gem', { glow: 0x8fa8ff });
-misc('charm.sacred', 'Sacred Charm', 'charm', 'none', 50, 'charm.grand', 'metal.gold', { ornate: 0.6, glow: 0xffd24a });
-misc('charm.eternal', 'Eternal Charm', 'charm', 'none', 75, 'charm.grand', 'crystal.void', {
-  ornate: 0.8,
-  glow: 0xc060ff,
-  imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
-});
+misc('charm.medium', 'Medium Charm', 'charm', 'none', 8, 'charm.medium', 'crystal.gem', { glow: 0x6f8cff });
+misc('charm.large', 'Large Charm', 'charm', 'none', 16, 'charm.large', 'crystal.gem', { glow: 0x7f9cff });
+misc('charm.grand', 'Grand Charm', 'charm', 'none', 28, 'charm.grand', 'crystal.gem', { glow: 0x8fa8ff });
 
 // ===========================================================================
 // CONSUMABLES

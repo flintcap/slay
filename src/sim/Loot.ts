@@ -167,6 +167,9 @@ function affixAllowed(affix: (typeof ALL_AFFIXES)[number], base: ItemBase, rarit
     if (!affix.slots.includes(base.slot)) return false;
   }
   if (affix.minRarity && RARITY_RANK[rarity] < RARITY_RANK[affix.minRarity]) return false;
+  if (affix.bases && !affix.bases.includes(base.id)) return false;
+  // A charm rolls its own size's ladders and nothing that can land anywhere.
+  if (base.category === 'charm' && !affix.bases) return false;
   return true;
 }
 
@@ -239,8 +242,22 @@ export function rerollOneMod(item: Item, index: number, rng: Rng): ItemMod | nul
   return mod;
 }
 
+/** Lines on a rare charm, by size. */
+const CHARM_RARE_LINES: Record<string, number> = {
+  'charm.small': 2,
+  'charm.medium': 3,
+  'charm.large': 3,
+  'charm.grand': 4,
+};
+
 /** How many prefixes and suffixes a rarity gets. */
 function affixBudget(base: ItemBase, rarity: ItemRarity, rng: Rng): { prefixes: number; suffixes: number } {
+  // A rare charm holds more lines the more room it takes.
+  if (base.category === 'charm' && rarity === 'rare') {
+    const total = CHARM_RARE_LINES[base.id] ?? 3;
+    const prefixes = Math.ceil(total / 2) - (rng.chance(0.5) && total % 2 === 1 ? 1 : 0);
+    return { prefixes, suffixes: total - prefixes };
+  }
   switch (rarity) {
     case 'magic': {
       const two = rng.chance(0.62);
@@ -275,6 +292,17 @@ function rollAffixes(base: ItemBase, ilvl: number, rarity: ItemRarity, rng: Rng)
   for (let i = 0; i < budget.suffixes; i++) {
     const mod = rollOneAffix(base, ilvl, rarity, 'suffix', used, rng);
     if (mod) mods.push(mod);
+  }
+  // A charm's lines are few and lopsided (most are suffixes), so a line that
+  // found nothing on its side takes one from the other rather than leaving
+  // the charm a blank stone.
+  if (base.category === 'charm') {
+    const want = budget.prefixes + budget.suffixes;
+    for (let tries = 0; mods.length < want && tries < 4; tries++) {
+      const kind = tries % 2 === 0 ? 'suffix' : 'prefix';
+      const mod = rollOneAffix(base, ilvl, rarity, kind, used, rng);
+      if (mod) mods.push(mod);
+    }
   }
   return mods;
 }
@@ -640,7 +668,10 @@ export function rollItem(
   // producing an empty item.
   if (rarity === 'ancient' || rarity === 'mythic' || rarity === 'unique') {
     const pool = uniquePool(rarity, lvl).filter((d) => {
-      if (opts.category && getBase(d.baseId).category !== opts.category) return false;
+      const cat = getBase(d.baseId).category;
+      // Charms drop through `rollCharm` only, at their own rate.
+      if (cat === 'charm' && opts.category !== 'charm') return false;
+      if (opts.category && cat !== opts.category) return false;
       return uniqueDropWeight(d, lvl) > 0;
     });
     if (pool.length > 0) {
@@ -677,6 +708,47 @@ export function rollItem(
   item.sockets = rollSockets(base, lvl, rarity, rng);
   item.value = vendorPrice(item, false) * 4;
   return item;
+}
+
+// ---------------------------------------------------------------------------
+// Charms
+// ---------------------------------------------------------------------------
+
+/** Chance a kill of this rank drops a charm. */
+const CHARM_DROP_CHANCE: Record<MonsterRank, number> = {
+  normal: 0.006,
+  champion: 0.03,
+  elite: 0.06,
+  rare: 0.1,
+  boss: 0.45,
+};
+
+/** How often each size turns up once its level is reached. */
+const CHARM_SIZE_WEIGHT: Record<string, number> = {
+  'charm.small': 44,
+  'charm.medium': 28,
+  'charm.large': 18,
+  'charm.grand': 10,
+};
+
+/**
+ * A charm: never plain (a charm with nothing on it would be a stone), most
+ * often magic, sometimes rare, and very rarely one of the named ones. Magic
+ * find lifts the odds of the better two.
+ */
+export function rollCharm(ilvl: number, rng: Rng, magicFind = 0, baseId?: string): Item {
+  const lvl = Math.max(1, Math.round(ilvl));
+  const sizes = ALL_BASES.filter((b) => b.category === 'charm' && b.levelReq <= lvl && (!baseId || b.id === baseId));
+  const base = sizes.length
+    ? rng.weighted(sizes, (b) => CHARM_SIZE_WEIGHT[b.id] ?? 10)
+    : getBase(baseId ?? 'charm.small');
+  const mf = magicFindFactor(Math.max(0, magicFind), 600);
+  if (rng.chance(0.03 * mf)) {
+    const pool = uniquePool('unique', lvl).filter((d) => d.baseId === base.id && uniqueDropWeight(d, lvl) > 0);
+    if (pool.length) return buildUniqueItem(rng.weighted(pool, (d) => uniqueDropWeight(d, lvl)), lvl, rng);
+  }
+  const rarity: ItemRarity = rng.chance(Math.min(0.5, 0.16 * mf)) ? 'rare' : 'magic';
+  return createItem(base.id, lvl, rng, rarity);
 }
 
 /** Rolls a gem, rune or material as a droppable item instance. */
@@ -797,6 +869,8 @@ export function rollDrops(
 
   const potion = rollPotion(lvl, rank, rng);
   if (potion) items.push(potion);
+
+  if (rng.chance(CHARM_DROP_CHANCE[rank] ?? 0)) items.push(rollCharm(lvl, rng, mf));
 
   // Gold. Scales with depth and rank, then gold find, then a wide variance so
   // the numbers on screen never look metronomic.
@@ -1293,6 +1367,10 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
   if (item.name !== base.name) push(base.name, COLOR.dim);
   push(typeLine(base), COLOR.dim);
   if (item.corrupted) push('Corrupted', COLOR.bad);
+  if (base.category === 'charm') {
+    push('Works from your pack', COLOR.implicit);
+    if (item.uniqueId) push('Only one of these counts at a time', COLOR.dim);
+  }
 
   // --- base values --------------------------------------------------------
   blank();

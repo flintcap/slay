@@ -429,6 +429,57 @@ export const UNIQUE_TEXT: Record<string, UniqueText> = {
     name: 'Spirefoot',
     flavor: `The Spire stands on two legs of stone. These were cut from the same quarry, and they have not moved either.`,
   },
+  // ---------------------------------------------------------------------------
+  // Charms
+  // ---------------------------------------------------------------------------
+  'uq.charm.widowpebble': {
+    name: 'The Widow\'s Pebble',
+    flavor: `Maudie Thorn kept it in her cheek the winter her husband went down the stairs, so she would not say his name aloud.`,
+  },
+  'uq.charm.emberstone': {
+    name: 'Ember in a Stone',
+    flavor: `Picked out of the kiln after the potter's house burned. It is still warm, and it is still angry.`,
+  },
+  'uq.charm.pellmother': {
+    name: 'Pellmother\'s Eye',
+    flavor: `The old woman by the well read fortunes with it, and only ever told the bad ones.`,
+  },
+  'uq.charm.corranfingers': {
+    name: 'Two Fingers of Ash Corran',
+    flavor: `Corran held the gate alone for a night. In the morning these were what they found of him, still pointing down.`,
+  },
+  'uq.charm.hangknot': {
+    name: 'The Hangman\'s Knot',
+    flavor: `Cut from the gallows on the fen when the rope was replaced. The new rope never held as well.`,
+  },
+  'uq.charm.lanternmoth': {
+    name: 'Lantern-Moth Fetish',
+    flavor: `Moths came to the lamp in the low tunnels and would not leave. Someone tied them to a bone so they would at least be useful.`,
+  },
+  'uq.charm.ninthbell': {
+    name: 'Plaque of the Ninth Bell',
+    flavor: `There were nine bells in the chapel tower. Eight were melted for blades. The ninth asked to be left alone.`,
+  },
+  'uq.charm.saltwife': {
+    name: 'Saltwife\'s Tally',
+    flavor: `A bone scored with every coin she was ever owed. She was owed a great many, and she collected.`,
+  },
+  'uq.charm.mutepsalm': {
+    name: 'The Mute Psalm',
+    flavor: `The words were scraped off the bone one at a time by a monk who had taken a vow of silence and regretted it.`,
+  },
+  'uq.charm.drownedidol': {
+    name: 'The Drowned Idol',
+    flavor: `The fen took the lower village in one night. The idol was the only thing that floated back.`,
+  },
+  'uq.charm.lastherd': {
+    name: 'Horn of the Last Herd',
+    flavor: `The herders blew it to call the cattle home off the hill. The last time it was blown, something else came.`,
+  },
+  'uq.charm.ninateeth': {
+    name: 'Crown of Nine Teeth',
+    flavor: `Nine teeth from nine mouths that each tried to bite the same watchman. He kept them, strung them, and wore his luck.`,
+  },
 };
 
 export const SET_TEXT: Record<string, { name?: string; blurb?: string }> = {

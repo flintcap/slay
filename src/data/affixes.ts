@@ -51,9 +51,10 @@ const RANGED: ItemCategory[] = ['bow', 'crossbow'];
 const CASTER: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
 const ARMOR: ItemCategory[] = ['helm', 'chest', 'gloves', 'pants', 'boots', 'belt', 'shield'];
 const SHIELD_ONLY: ItemCategory[] = ['shield'];
-const JEWELRY: ItemCategory[] = ['ring', 'amulet', 'charm'];
-const BOOTS_JEWELRY: ItemCategory[] = ['boots', 'ring', 'amulet', 'charm'];
-const HANDS: ItemCategory[] = ['gloves', 'ring', 'amulet', 'charm'];
+// Charms roll their own ladders (see CHARMS below), never jewellery's.
+const JEWELRY: ItemCategory[] = ['ring', 'amulet'];
+const BOOTS_JEWELRY: ItemCategory[] = ['boots', 'ring', 'amulet'];
+const HANDS: ItemCategory[] = ['gloves', 'ring', 'amulet'];
 /** Anything that can carry offensive properties: weapons plus jewellery. */
 const OFFENSIVE: ItemCategory[] = [...WEAPONS, ...JEWELRY];
 const DEFENSIVE: ItemCategory[] = [...ARMOR, 'orb', 'quiver', ...JEWELRY];
@@ -933,19 +934,6 @@ named(suf('suf.twohand.reaver', '+{v}% Area Damage', 'areaDamagePct', 'areaDamag
   [80, 63, 80],
 ], { categories: ['axe', 'mace', 'spear'], rarity: 0.4 }), 'of the Reaver');
 
-named(pre('pre.charm.grand', '+{v} to All Skills', 'skillLevels', 'skillLevels', [
-  [40, 1, 1],
-  [70, 1, 1],
-  [90, 2, 2],
-], { categories: ['charm'], minRarity: 'magic', rarity: 0.25 }), 'Hallowed');
-
-named(suf('suf.charm.vital', '+{v} to Life', 'life', 'lifeFlat', [
-  [1, 15, 30],
-  [16, 31, 55],
-  [34, 56, 90],
-  [52, 91, 140],
-  [72, 141, 210],
-], { categories: ['charm'], rarity: 0.8 }), 'of Vita');
 
 named(suf('suf.quiver.hunt', '+{v} to Maximum Damage', 'maxDamage', 'maxDamage', [
   [10, 12, 20],
@@ -1066,6 +1054,78 @@ named(suf('suf.any.falcon', '+{v} to Dexterity', 'dexterity', 'dexterity', [
   [68, 59, 74],
   [84, 75, 95],
 ], { categories: [...ARMOR, ...JEWELRY, ...RANGED, 'dagger'], rarity: 0.3 }), 'of the Falcon');
+
+// ===========================================================================
+// CHARMS
+// ===========================================================================
+//
+// A charm works from the pack, so a full pack of them is the strongest build
+// in the game unless each one is small. Every charm ladder is a jewellery
+// ladder cut down for the charm's size: a Small Charm holds about a third of
+// a ring's line, a Grand Charm most of one. Per cell of pack the small ones
+// are the most efficient; only Grand Charms can hold the lines that change a
+// build (skills, crits, cast speed), which is what their six cells pay for.
+
+const CHARM_SIZES: Array<{ base: string; scale: number; from: number }> = [
+  { base: 'charm.small', scale: 0.3, from: 1 },
+  { base: 'charm.medium', scale: 0.45, from: 8 },
+  { base: 'charm.large', scale: 0.6, from: 16 },
+  { base: 'charm.grand', scale: 0.8, from: 28 },
+];
+
+/** Lines any charm can hold. */
+const CHARM_STATS: StatKey[] = [
+  'life', 'mana', 'strength', 'dexterity', 'vitality', 'energy', 'attackRating', 'minDamage', 'maxDamage',
+  'fireDamage', 'coldDamage', 'lightningDamage', 'poisonDamage', 'fireResist', 'coldResist',
+  'lightningResist', 'poisonResist', 'arcaneResist', 'magicFind', 'goldFind', 'lifeRegen', 'manaRegen',
+  'defense', 'moveSpeed',
+];
+/** Lines only a Grand Charm can hold. */
+const GRAND_STATS: StatKey[] = ['critChance', 'critDamage', 'elementalDamagePct', 'enhancedDamage', 'attackSpeed', 'castSpeed'];
+
+function charmLadders(): void {
+  const jewel = (a: AffixDef): boolean =>
+    !a.categories || a.categories.length === 0 || a.categories.includes('ring') || a.categories.includes('amulet');
+  const source = new Map<string, AffixDef>();
+  for (const a of AFFIX_LIST) {
+    if (!jewel(a) || a.slots) continue;
+    const key = a.stat;
+    if (!source.has(key)) source.set(key, a);
+  }
+  for (const [i, size] of CHARM_SIZES.entries()) {
+    const stats = size.base === 'charm.grand' ? [...CHARM_STATS, ...GRAND_STATS] : CHARM_STATS;
+    for (const stat of stats) {
+      const src = source.get(stat);
+      if (!src) continue;
+      const tiers: AffixTier[] = src.tiers.map((t) => {
+        const min = Math.max(1, Math.round(t.min * size.scale));
+        return { ...t, ilvl: Math.max(t.ilvl, size.from), min, max: Math.max(min, Math.round(t.max * size.scale)) };
+      });
+      const def: AffixDef = {
+        id: `charm.${i}.${stat}`,
+        label: src.label,
+        stat,
+        kind: src.kind,
+        group: `charm.${stat}`,
+        tiers,
+        categories: ['charm'],
+        bases: [size.base],
+      };
+      AFFIX_LIST.push(def);
+      const word = NAME_WORDS.get(src.id);
+      if (word) NAME_WORDS.set(def.id, word);
+    }
+  }
+  // The rarest line in the pack: one more rank to every skill, Grand only.
+  const hallowed = pre('charm.3.skillLevels', '+{v} to All Skills', 'skillLevels', 'charm.skillLevels', [[45, 1, 1]], {
+    categories: ['charm'],
+    minRarity: 'magic',
+    rarity: 0.12,
+  });
+  hallowed.bases = ['charm.grand'];
+  NAME_WORDS.set(hallowed.id, 'Hallowed');
+}
+charmLadders();
 
 // ===========================================================================
 // Export

@@ -677,47 +677,47 @@ export function buildCharm(P: Parts): void {
       // A carved bone plaque with a glowing mark and a bead on a cord.
       const out: V2[] = smoothOutline([[-0.024, -0.045], [0.024, -0.045], [0.028, 0.0], [0.022, 0.045], [-0.022, 0.045], [-0.028, 0]], 32);
       P.add('bone', slab(out, 0.009));
-      P.add('glow', torus(0.01, 0.0016, 3, 16), { p: [0, 0.012, 0.0048] });
-      P.add('glow', box(0.0025, 0.03, 0.002, 0), { p: [0, -0.016, 0.0048] });
-      for (const s of [-1, 1]) P.add('glow', box(0.012, 0.0022, 0.002, 0), { p: [s * 0.006, -0.022, 0.0048], r: [0, 0, s * 0.6] });
+      // A crow's-foot rune: one stroke, two branches, three cut notches.
+      P.add('glow', box(0.0025, 0.05, 0.002, 0), { p: [0, -0.004, 0.0048] });
+      for (const s of [-1, 1]) P.add('glow', box(0.0024, 0.022, 0.002, 0), { p: [s * 0.007, 0.024, 0.0048], r: [0, 0, s * 0.55] });
+      for (let i = 0; i < 3; i++) P.add('glow', box(0.008, 0.0018, 0.002, 0), { p: [0, -0.02 + i * 0.008, 0.0048], r: [0, 0, 0.35] });
       P.add('string', tube(curve([v3(0, 0.045, 0), v3(0.01, 0.06, 0), v3(0.02, 0.05, 0.004), v3(0.026, 0.03, 0.006)], 10), 0.0012, 3));
       P.add('gem', sphere(0.006, 8, 6), { p: [0.026, 0.026, 0.006] });
       break;
     }
     case 'grand': {
-      // A horn totem bound with leather, two feathers trailing.
-      P.add('bone', horn(0.12, 0.016, 0.9, 9), { p: [0.02, -0.06, 0], r: [0, 0, 0.35] });
-      for (const y of [-0.035, -0.015]) P.add('leather', torus(0.016, 0.003, 4, 14), { p: [0.014, y, 0], r: [PI / 2, 0, -0.1] });
-      for (let f = 0; f < 2; f++) {
-        const feather: V2[] = [[0, 0], [0.006, -0.012], [0.004, -0.045], [0, -0.05], [-0.004, -0.045], [-0.005, -0.012]];
-        P.add('cloth', slab(feather, 0.002), { p: [0.008 + f * 0.01, -0.04, 0.006], r: [0, 0, -0.2 - f * 0.3] });
+      // Two horns bound into a totem with leather, a skull at the binding,
+      // feathers trailing and old marks that still burn.
+      P.add('bone', horn(0.13, 0.026, 0.85, 10), { p: [0.016, -0.06, 0], r: [0, 0, 0.3] });
+      P.add('bone', horn(0.1, 0.02, 0.9, 9), { p: [-0.012, -0.058, -0.004], r: [0, PI, 0.38] });
+      for (const y of [-0.04, -0.026, -0.012]) P.add('leather', torus(0.024, 0.0036, 4, 16), { p: [0.004, y, 0], r: [PI / 2, 0, -0.08] });
+      for (let f = 0; f < 3; f++) {
+        const feather: V2[] = [[0, 0], [0.007, -0.014], [0.005, -0.05], [0, -0.056], [-0.005, -0.05], [-0.006, -0.014]];
+        P.add('cloth', slab(feather, 0.002), { p: [-0.014 + f * 0.012, -0.05, 0.01], r: [0, 0, 0.35 - f * 0.35] });
       }
-      P.add('glow', sphere(0.004, 8, 6), { p: [0.016, -0.025, 0.017] });
-      for (let i = 0; i < 3; i++) P.add('glow', box(0.007, 0.0016, 0.002, 0), { p: [-0.004 + i * 0.002, 0.01 + i * 0.012, 0.012], r: [0, 0, 0.6] });
+      skull(P, 'bone', v3(0.002, -0.03, 0.022), 0.036);
+      P.add('glow', sphere(0.0045, 8, 6), { p: [-0.004, -0.028, 0.04] });
+      P.add('glow', sphere(0.0045, 8, 6), { p: [0.009, -0.028, 0.04] });
+      for (let i = 0; i < 3; i++) P.add('glow', box(0.008, 0.0018, 0.002, 0), { p: [0.022 + i * 0.002, 0.008 + i * 0.013, 0.016], r: [0, 0, 0.6] });
       break;
     }
-    case 'sacred': {
-      // A gold sunburst with a stone at its heart.
-      P.add('gold', lathe([[0, -0.003], [0.024, -0.003], [0.026, 0.002], [0.02, 0.004], [0, 0.005]], 24), { r: [PI / 2, 0, 0] });
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * PI * 2;
-        const len = i % 2 ? 0.018 : 0.03;
-        const ray: V2[] = [[-0.004, 0], [0, len], [0.004, 0]];
-        P.add('gold', slab(ray, 0.003), { p: [Math.cos(a) * 0.022, Math.sin(a) * 0.022, 0], r: [0, 0, a - PI / 2] });
+    case 'medium': {
+      // Two finger bones crossed and lashed with dyed cord, an iron ring to
+      // hang it by and a mark scratched into the knuckle that still glows.
+      for (const s of [-1, 1]) {
+        const tilt = s * 0.32;
+        P.add('bone', cyl(0.0045, 0.0055, 0.07, 8), { r: [0, 0, tilt] });
+        for (const e of [-1, 1]) {
+          const dx = -Math.sin(tilt) * 0.035 * e;
+          const dy = Math.cos(tilt) * 0.035 * e;
+          P.add('bone', sphere(0.0072, 10, 8), { p: [dx, dy, 0], s: [1, 0.8, 0.85] });
+        }
       }
-      setGem(P, v3(0, 0, 0.004), FRONT, 0.018, true, 'round');
-      break;
-    }
-    case 'eternal': {
-      // A void hourglass in a dark frame.
-      P.add('main', cone(0.018, 0.034, 6), { p: [0, 0.017, 0], r: [PI, 0, 0] });
-      P.add('main', cone(0.018, 0.034, 6), { p: [0, -0.017, 0] });
-      P.add('glow', sphere(0.004, 8, 6), { p: [0, 0, 0] });
-      for (const y of [-0.036, 0.036]) P.add('dark', cyl(0.024, 0.024, 0.005, 6), { p: [0, y, 0] });
-      for (let i = 0; i < 3; i++) {
-        const a = (i / 3) * PI * 2 + PI / 6;
-        P.add('dark', cyl(0.002, 0.002, 0.072, 5), { p: [Math.cos(a) * 0.021, 0, Math.sin(a) * 0.021] });
-      }
+      for (let i = 0; i < 4; i++) P.add('leather', torus(0.0085, 0.0018, 4, 14), { p: [0, -0.006 + i * 0.004, 0], r: [PI / 2, 0, (i % 2 ? 0.3 : -0.3)] });
+      P.add('dark', torus(0.008, 0.0016, 4, 16), { p: [0, 0.052, 0] });
+      P.add('string', tube(curve([v3(0, 0.044, 0), v3(-0.004, 0.05, 0.002), v3(0, 0.06, 0)], 8), 0.001, 3));
+      for (let i = 0; i < 3; i++) P.add('glow', box(0.0018, 0.008 - i * 0.002, 0.0015, 0), { p: [-0.003 + i * 0.003, 0.03 + (i % 2) * 0.002, 0.0062], r: [0, 0, 0.25 - i * 0.25] });
+      P.add('gem', sphere(0.0035, 8, 6), { p: [0.006, -0.03, 0.004] });
       break;
     }
     default: {

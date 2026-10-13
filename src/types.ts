@@ -309,6 +309,8 @@ export interface AffixDef {
   group: string;
   /** Only rolls on items of at least this rarity. */
   minRarity?: ItemRarity;
+  /** Restrict to these base ids (each charm size has its own ladders). */
+  bases?: string[];
 }
 
 // ---------------------------------------------------------------------------

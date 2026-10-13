@@ -331,6 +331,19 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'uq.lastrank': { main: 'metal.steel', second: 'leather.worn|0x3a2418', trim: 'metal.bronze', glow: 0xd0c0a0, glowStrength: 0, features: ['skulls', 'chains', 'rivets'], wear: 0.75, aura: 'ash', finish: 'weathered' },
   'my.rootbound': { main: 'metal.verdigris', second: 'leather.worn|0x2a3a1c', glow: 0x7ad060, features: ['vines', 'leaves', 'crystals'], wear: 0.4, aura: 'motes' },
   'an.spirefoot': { main: 'metal.mithril', trim: 'metal.gold', stone: 0xffd070, glow: 0xffd070, features: ['laurels', 'crowns', 'gilded'], wear: 0, aura: 'shine', finish: 'gilt' },
+  // Charms: each named one is its own object, never a recoloured plain charm.
+  'uq.charm.widowpebble': { main: 'stone.obsidian|0x2a2c34', stone: 0x9ab8ff, glow: 0xa8c4ff, features: ['tatters'], wear: 0.6, aura: 'motes' },
+  'uq.charm.emberstone': { main: 'stone.ash|0x3a1a10', glow: 0xff6a1e, features: ['cracks', 'smoke'], wear: 0.7, aura: 'embers' },
+  'uq.charm.pellmother': { main: 'bone.old', stone: 0x70e0c0, glow: 0x80f0d0, features: ['eyes', 'thorns', 'chains'], wear: 0.5, aura: 'wisp' },
+  'uq.charm.corranfingers': { main: 'bone.old', second: 'leather.worn|0x5a1a14', glow: 0xffc070, features: ['rivets', 'blood'], wear: 0.8, aura: 'ash' },
+  'uq.charm.hangknot': { main: 'cloth.rag|0x6a5838', glow: 0x8ad050, features: ['chains', 'blood'], wear: 0.9, aura: 'drips' },
+  'uq.charm.lanternmoth': { main: 'bone.old', glow: 0xffe08a, features: ['wings', 'feathers'], wear: 0.4, aura: 'sparkles' },
+  'uq.charm.ninthbell': { main: 'metal.bronze', trim: 'metal.dark', glow: 0xfff0c0, features: ['bells', 'runes'], wear: 0.5, aura: 'soft' },
+  'uq.charm.saltwife': { main: 'bone.old', trim: 'metal.silver', glow: 0xd8e8f0, features: ['coins', 'cracks'], wear: 0.6, aura: 'shine' },
+  'uq.charm.mutepsalm': { main: 'bone.old', glow: 0xb0c8ff, features: ['runes', 'ghost'], wear: 0.3, aura: 'souls' },
+  'uq.charm.drownedidol': { main: 'stone.sunken|0x1e3a3a', second: 'leather.worn|0x203028', glow: 0x60d0c0, features: ['barnacles', 'scales'], wear: 0.8, aura: 'drips', glowStyle: 'pulse' },
+  'uq.charm.lastherd': { main: 'bone.old', second: 'leather.fine|0x4a2418', glow: 0xffa040, features: ['horns', 'tatters'], wear: 0.6, aura: 'ash' },
+  'uq.charm.ninateeth': { main: 'bone.old', trim: 'metal.gold', glow: 0xff4a3a, features: ['teeth', 'crowns', 'skulls'], wear: 0.5, aura: 'souls', glowStyle: 'spectral' },
 };
 
 /**

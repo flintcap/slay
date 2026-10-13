@@ -651,6 +651,70 @@ export const UNIQUES: UniqueDef[] = [
     [['life', 500, 700], ['vitality', 50, 70], ['damageReduction', 18, 25], ['physicalResist', 15, 22],
      ['enhancedDefense', 450, 600], ['moveSpeed', 15, 22], ['skillLevels', 2, 2]],
     { hook: 'Once every ninety seconds, death is declined.', special: 'cheatDeath', sockets: 2 }),
+
+  // =========================================================================
+  // CHARMS. They work from the pack; only one copy of each counts.
+  // =========================================================================
+
+  u('uq.charm.widowpebble', 'The Widow\'s Pebble', 'charm.small', 10, 9,
+    'Maudie Thorn kept it in her cheek the winter her husband went down the stairs, so she would not say his name aloud.',
+    [['life', 18, 28], ['magicFind', 7, 11], ['lightningResist', 8, 12]],
+    { weight: 100 }),
+
+  u('uq.charm.emberstone', 'Ember in a Stone', 'charm.small', 30, 27,
+    'Picked out of the kiln after the potter\'s house burned. It is still warm, and it is still angry.',
+    [['fireDamage', 5, 11], ['fireResist', 12, 18], ['life', 22, 32]],
+    { weight: 100 }),
+
+  u('uq.charm.pellmother', 'Pellmother\'s Eye', 'charm.small', 62, 56,
+    'The old woman by the well read fortunes with it, and only ever told the bad ones.',
+    [['critChance', 2, 3], ['attackRating', 70, 110], ['life', 30, 42], ['coldResist', 6, 9], ['poisonResist', 6, 9]],
+    { weight: 100 }),
+
+  u('uq.charm.corranfingers', 'Two Fingers of Ash Corran', 'charm.medium', 18, 16,
+    'Corran held the gate alone for a night. In the morning these were what they found of him, still pointing down.',
+    [['strength', 6, 9], ['dexterity', 6, 9], ['life', 28, 42], ['attackRating', 40, 70]],
+    { weight: 100 }),
+
+  u('uq.charm.hangknot', 'The Hangman\'s Knot', 'charm.medium', 40, 36,
+    'Cut from the gallows on the fen when the rope was replaced. The new rope never held as well.',
+    [['lifeSteal', 2, 3], ['maxDamage', 6, 10], ['poisonResist', 15, 22]],
+    { weight: 100 }),
+
+  u('uq.charm.lanternmoth', 'Lantern-Moth Fetish', 'charm.medium', 64, 58,
+    'Moths came to the lamp in the low tunnels and would not leave. Someone tied them to a bone so they would at least be useful.',
+    [['moveSpeed', 5, 7], ['mana', 40, 60], ['coldResist', 12, 16], ['lightningResist', 12, 16], ['magicFind', 14, 20]],
+    { weight: 100 }),
+
+  u('uq.charm.ninthbell', 'Plaque of the Ninth Bell', 'charm.large', 26, 23,
+    'There were nine bells in the chapel tower. Eight were melted for blades. The ninth asked to be left alone.',
+    [['defense', 60, 90], ['vitality', 8, 12], ['fireResist', 8, 12], ['coldResist', 8, 12], ['lightningResist', 8, 12]],
+    { weight: 100 }),
+
+  u('uq.charm.saltwife', 'Saltwife\'s Tally', 'charm.large', 48, 44,
+    'A bone scored with every coin she was ever owed. She was owed a great many, and she collected.',
+    [['goldFind', 30, 45], ['magicFind', 20, 30], ['life', 48, 68]],
+    { weight: 100 }),
+
+  u('uq.charm.mutepsalm', 'The Mute Psalm', 'charm.large', 70, 64,
+    'The words were scraped off the bone one at a time by a monk who had taken a vow of silence and regretted it.',
+    [['energy', 14, 20], ['mana', 70, 90], ['castSpeed', 6, 8], ['lightningDamage', 10, 38]],
+    { weight: 100 }),
+
+  u('uq.charm.drownedidol', 'The Drowned Idol', 'charm.grand', 40, 36,
+    'The fen took the lower village in one night. The idol was the only thing that floated back.',
+    [['skillLevels', 1, 1], ['life', 60, 90], ['fireResist', 10, 14], ['coldResist', 10, 14], ['lightningResist', 10, 14], ['poisonResist', 10, 14]],
+    { weight: 100 }),
+
+  u('uq.charm.lastherd', 'Horn of the Last Herd', 'charm.grand', 66, 60,
+    'The herders blew it to call the cattle home off the hill. The last time it was blown, something else came.',
+    [['skillLevels', 1, 1], ['strength', 14, 20], ['vitality', 14, 20], ['enhancedDamage', 20, 30], ['critDamage', 14, 22]],
+    { weight: 100 }),
+
+  u('uq.charm.ninateeth', 'Crown of Nine Teeth', 'charm.grand', 86, 80,
+    'Nine teeth from nine mouths that each tried to bite the same watchman. He kept them, strung them, and wore his luck.',
+    [['skillLevels', 1, 1], ['strength', 12, 18], ['dexterity', 12, 18], ['vitality', 12, 18], ['energy', 12, 18], ['fireResist', 15, 20], ['coldResist', 15, 20], ['lightningResist', 15, 20], ['poisonResist', 15, 20], ['magicFind', 12, 18], ['life', 80, 120]],
+    { weight: 100 }),
 ];
 
 // ---------------------------------------------------------------------------
