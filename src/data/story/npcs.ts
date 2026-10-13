@@ -49,6 +49,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'hesk.warden', when: { cls: 'warden' }, text: `Knights buy shields and never sell them. Bad for business. Good for knights.` },
       { id: 'hesk.pyro', when: { cls: 'mage' }, text: `I keep the lamp oil on the high shelf while you are in the wagon. Nothing personal.` },
       { id: 'hesk.revenant', when: { cls: 'revenant' }, text: `A revenant. You have died once already, so you know what things are worth. Haggle accordingly.` },
+      { id: 'hesk.shifter', when: { cls: 'shapeshifter' }, text: `You wore the bear into my wagon last time. I am charging you for the doorframe. Come in as a man or come in through the gap you made.` },
       { id: 'hesk.many', when: { fallen: 5 }, text: `{fallen} names on the wall from your account, and every one of them bought rope. Buy rope.` },
     ],
     topics: [
@@ -113,6 +114,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'kale.warden', when: { cls: 'warden' }, text: `A knight's shield should be scored on the face and clean on the rim. Show me yours and I will tell you how you fight.` },
       { id: 'kale.shadow', when: { cls: 'shadowblade' }, text: `Small blades. Fine work. I do not trust either, and I sharpen both.` },
       { id: 'kale.ranger', when: { cls: 'ranger' }, text: `Bowstaves are not my trade. Arrowheads are. Bring me the ones you pull out of things.` },
+      { id: 'kale.shifter', when: { cls: 'shapeshifter' }, text: `You want a weapon for a man whose hands turn into paws. I can make it. I cannot make it survive the turning. Bring it back bent and I will straighten it.` },
     ],
     topics: [
       {
@@ -180,6 +182,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'vell.g5', text: `You are bleeding into your own boot. Sit down.` },
       { id: 'vell.revenant', when: { cls: 'revenant' }, text: `No pulse worth the name and your colour is wrong. On you that is health. Sit anyway.` },
       { id: 'vell.storm', when: { cls: 'mage' }, text: `Your hair is standing on end and your fingers are cold. Do not touch the glassware.` },
+      { id: 'vell.shifter', when: { cls: 'shapeshifter' }, text: `Your pulse is a cat's, your bruises are a bear's and your teeth are not yours at all. Which one of you am I dosing today?` },
     ],
     topics: [
       {
@@ -285,6 +288,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'marrow.g4', text: `Grief is a job like any other. Somebody has to keep the tools.` },
       { id: 'marrow.g5', text: `Do not take it as pessimism. I dig for everyone.` },
       { id: 'marrow.revenant', when: { cls: 'revenant' }, text: `You have been on a wall before, I think. It shows in how you read mine.` },
+      { id: 'marrow.shifter', when: { cls: 'shapeshifter' }, text: `If the wall ever gets you, I will need to know which shape to cut. I will cut the man. The others never sat still for me.` },
     ],
     topics: [
       {
@@ -476,6 +480,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'wenna.g3', text: `Distances are advisory down there. Trust the walls, not the map.` },
       { id: 'wenna.g4', text: `If you find a brass survey pin, bring it up. Even if it is somewhere it should not be. Especially then.` },
       { id: 'wenna.ranger', when: { cls: 'ranger' }, text: `A ranger! Your people mapped the descent by walking it. Your maps are terrible and they are the only ones that work.` },
+      { id: 'wenna.shifter', when: { cls: 'shapeshifter' }, text: `You walk the stair on two legs going down and four coming back. Tell me your count in both. I suspect the wolf is right.` },
     ],
     topics: [
       {

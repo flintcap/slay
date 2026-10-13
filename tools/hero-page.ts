@@ -37,7 +37,7 @@ async function scansReady(): Promise<void> {
 
 const BG = '#16181e';
 const INK = '#c9d1de';
-const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'paladin'];
+const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'paladin', 'shapeshifter'];
 
 let renderer: THREE.WebGLRenderer | null = null;
 let envTex: THREE.Texture | null = null;

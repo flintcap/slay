@@ -159,7 +159,7 @@ export const STARTING_SKILL_HINTS: Record<CharClassId, string[]> = {
   shadowblade: ['viperStrike', 'shadowStep', 'preciseCut', 'coatBlades'],
   revenant: ['boneSpear', 'raiseSkeleton', 'siphonLife', 'weaken'],
   ranger: ['pierceShot', 'huntersMark', 'rollAway', 'snareTrap'],
-  shapeshifter: ['rake'],
+  shapeshifter: ['rake', 'snap', 'maul', 'catForm'],
   paladin: PALADIN_HINTS,
 };
 

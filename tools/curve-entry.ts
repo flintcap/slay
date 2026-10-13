@@ -91,7 +91,7 @@ setMonsterCatalog({
   },
 });
 
-const ALL_CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'paladin'];
+const ALL_CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'paladin', 'shapeshifter'];
 const CLASSES_RUN = (arg('classes')?.split(',') as CharClassId[] | undefined) ?? ALL_CLASSES;
 const trace = process.argv.includes('--trace');
 // Experiment knobs: scale the hero's damage and life to see what the curve needs.

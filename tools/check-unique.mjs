@@ -18,7 +18,7 @@
 import { runEntry } from './feel-harness.mjs';
 
 /** Classes whose skills must already be unique. Others may be pending. */
-const OWNED = new Set(['warden', 'shadowblade', 'ranger', 'mage', 'revenant']);
+const OWNED = new Set(['warden', 'shadowblade', 'ranger', 'mage', 'revenant', 'shapeshifter']);
 const list = process.argv.includes('--list');
 
 const rows = await runEntry('tools/unique-entry.ts', '.unique');
