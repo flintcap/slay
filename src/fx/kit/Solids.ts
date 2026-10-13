@@ -11,7 +11,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export const SOLID = { arrow: 0, shard: 1, spear: 2, rock: 3, spike: 4 } as const;
+export const SOLID = {
+  arrow: 0, shard: 1, spear: 2, rock: 3, spike: 4,
+  // Skill motif pieces (`fx/Motifs.ts`).
+  blade: 5, thorn: 6, crystal: 7, cinder: 8, fang: 9, saw: 10, feather: 11,
+} as const;
 export type SolidShape = keyof typeof SOLID;
 
 export interface SolidHandle {
@@ -85,6 +89,103 @@ function rockGeo(): THREE.BufferGeometry {
   return g;
 }
 
+/** Vertex-colours a part, for shapes built from differently coloured pieces. */
+function tint(g: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
+  const g2 = g.index ? g.toNonIndexed() : g;
+  const c = new THREE.Color(hex);
+  const n = g2.getAttribute('position').count;
+  const arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  g2.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  g2.deleteAttribute('uv');
+  return g2;
+}
+
+/** A thrown knife: a steel blade, a dark grip, a brass guard. */
+function bladeGeo(): THREE.BufferGeometry {
+  const edge = new THREE.BoxGeometry(0.07, 0.012, 0.52);
+  edge.translate(0, 0, 0.12);
+  const tip = new THREE.ConeGeometry(0.05, 0.16, 4);
+  tip.rotateX(Math.PI / 2);
+  tip.scale(1, 0.25, 1);
+  tip.translate(0, 0, 0.46);
+  const guard = new THREE.BoxGeometry(0.16, 0.03, 0.03);
+  guard.translate(0, 0, -0.15);
+  const grip = new THREE.CylinderGeometry(0.022, 0.026, 0.28, 6);
+  grip.rotateX(Math.PI / 2);
+  grip.translate(0, 0, -0.3);
+  const parts = [tint(edge, 0xc8ccd4), tint(tip, 0xe0e4ea), tint(guard, 0x9a7a3a), tint(grip, 0x2a1c14)];
+  const g = mergeGeometries(parts, false)!;
+  for (const q of parts) q.dispose();
+  return g;
+}
+
+/** Bends a +Z shape sideways along its length, like a thorn or a fang. */
+function hook(g: THREE.BufferGeometry, amount: number): THREE.BufferGeometry {
+  const p = g.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) {
+    const z = p.getZ(i) + 0.5;
+    p.setY(i, p.getY(i) + amount * z * z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+function thornGeo(): THREE.BufferGeometry {
+  const g = new THREE.ConeGeometry(0.11, 1, 5, 4);
+  g.rotateX(Math.PI / 2);
+  return hook(g, 0.28);
+}
+
+function crystalGeo(): THREE.BufferGeometry {
+  const mid = new THREE.CylinderGeometry(0.15, 0.15, 0.5, 6, 1, true);
+  const top = new THREE.ConeGeometry(0.15, 0.25, 6);
+  top.translate(0, 0.375, 0);
+  const bot = new THREE.ConeGeometry(0.15, 0.25, 6);
+  bot.rotateX(Math.PI);
+  bot.translate(0, -0.375, 0);
+  const parts = [mid.toNonIndexed(), top.toNonIndexed(), bot.toNonIndexed()];
+  for (const q of parts) q.deleteAttribute('uv');
+  const g = mergeGeometries(parts, false)!;
+  for (const q of [mid, top, bot, ...parts]) q.dispose();
+  g.rotateX(Math.PI / 2);
+  g.computeVertexNormals();
+  return g;
+}
+
+function fangGeo(): THREE.BufferGeometry {
+  const g = new THREE.ConeGeometry(0.13, 1, 7, 4);
+  g.rotateX(Math.PI / 2);
+  g.scale(1, 0.75, 1);
+  return hook(g, -0.22);
+}
+
+/** A toothed wheel, its face to +Z: rolled about its length, it spins like a saw. */
+function sawGeo(): THREE.BufferGeometry {
+  const g = new THREE.CylinderGeometry(0.5, 0.5, 0.05, 24, 1);
+  const p = g.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const z = p.getZ(i);
+    const r = Math.hypot(x, z);
+    if (r < 0.4) continue;
+    const a = Math.atan2(z, x);
+    const tooth = Math.round((a / (Math.PI * 2)) * 24) % 2 === 0 ? 1 : 0.78;
+    p.setX(i, x * tooth);
+    p.setZ(i, z * tooth);
+  }
+  g.rotateX(Math.PI / 2);
+  g.computeVertexNormals();
+  return g;
+}
+
+function featherGeo(): THREE.BufferGeometry {
+  const g = new THREE.ConeGeometry(0.12, 1, 4, 3);
+  g.rotateX(-Math.PI / 2);
+  g.scale(1, 0.12, 1);
+  return hook(g, 0.08);
+}
+
 function spikeGeo(): THREE.BufferGeometry {
   // Ground spike: base at the origin, point up +Y (rotated to +Z for the shared layout).
   const g = new THREE.ConeGeometry(0.22, 1, 5);
@@ -121,8 +222,16 @@ export class SolidPool {
       new THREE.MeshStandardMaterial({ color: 0xe8dcc0, emissive: 0x6a7040, emissiveIntensity: 0.35, roughness: 0.6 }),
       new THREE.MeshStandardMaterial({ color: 0x5e554c, roughness: 0.95 }),
       new THREE.MeshStandardMaterial({ color: 0xe0d4b8, roughness: 0.6, emissive: 0x302810, emissiveIntensity: 0.3 }),
+      // blade, thorn, crystal, cinder, fang, saw, feather
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.75 }),
+      new THREE.MeshStandardMaterial({ color: 0x2e3c18, emissive: 0x58a020, emissiveIntensity: 0.55, roughness: 0.55 }),
+      new THREE.MeshStandardMaterial({ color: 0xc8a8ff, emissive: 0x7038e0, emissiveIntensity: 1.1, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.85 }),
+      new THREE.MeshStandardMaterial({ color: 0x2a1a12, emissive: 0xff5a14, emissiveIntensity: 1.5, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0xf0e8d0, emissive: 0x3a6a10, emissiveIntensity: 0.35, roughness: 0.45 }),
+      new THREE.MeshStandardMaterial({ color: 0x8e9098, roughness: 0.35, metalness: 0.85 }),
+      new THREE.MeshStandardMaterial({ color: 0x8a7a66, roughness: 0.8, side: THREE.DoubleSide }),
     ];
-    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo()];
+    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo()];
     for (let k = 0; k < geos.length; k++) {
       const mesh = new THREE.InstancedMesh(geos[k]!, mats[k]!, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

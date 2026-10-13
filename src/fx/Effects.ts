@@ -35,6 +35,7 @@ import { SolidPool, type SolidHandle } from './kit/Solids';
 import type { GroundHandle } from './kit/Ground';
 import { floorAt } from './kit/Floor';
 import { FX_EXPOSURE } from './kit/Exposure';
+import { MOTIF_SHAPES, MOTIF_MOTIONS, Path, pieceCap, thin, type MotifDraw, type MotifShape, type MotifMotion, type MotifFrame, type Piece } from './Motifs';
 
 // ---------------------------------------------------------------------------
 // Element looks
@@ -310,6 +311,8 @@ const enum K {
   Aura,
   Shield,
   Pulse,
+  /** One piece of a skill motif: a glow, a solid or a crescent on its own path. */
+  Mote,
 }
 
 /** Which instanced family a Pulse animates. */
@@ -363,6 +366,9 @@ class Live {
   body = Body.Core;
   fam = Fam.Core;
   flag = false;
+  /** Motes: what draws the piece (0 core, 1 solid, 2 crescent) and its path (`Motifs.Path`). */
+  mote = 0;
+  path = 0;
   /** A projectile its caller moves (see `ProjectileOpts.carried`). */
   carried = false;
   readonly a = new THREE.Vector3();
@@ -401,6 +407,8 @@ class Live {
     this.radius = this.r1 = this.height = this.width = this.half = this.count = this.acc = this.style = 0;
     this.power = 1;
     this.flag = false;
+    this.mote = 0;
+    this.path = 0;
     this.carried = false;
     this.npts = 0;
     this.emitter = '';
@@ -444,6 +452,15 @@ const _UP = new THREE.Vector3(0, 1, 0);
 const NOVA_STEPS = 5;
 const CONE_TICK = 0.06;
 const BOLT_SEGS = 12;
+
+/** Where a motif piece ends up, in floor-relative metres. */
+function pieceEnd(p: Piece): [number, number, number] {
+  if (p.path === Path.Swirl) {
+    const a = p.a0 + p.sweep;
+    return [p.sx + Math.cos(a) * p.r1, p.ey, p.sz + Math.sin(a) * p.r1];
+  }
+  return [p.ex, p.ey, p.ez];
+}
 
 // ---------------------------------------------------------------------------
 // EffectSystem
@@ -1607,6 +1624,198 @@ export class EffectSystem {
     this.sfx('levelup', x, z);
   }
 
+  // -- skill motifs ---------------------------------------------------------------------
+
+  /**
+   * A skill's own drawing (`fx/Motifs.ts`): `shape` laid out in `motion`
+   * round `frame`, in the skill's school and colour, starting `delay`
+   * seconds from now. Pure decoration: nothing waits on it and the budget
+   * may drop it.
+   */
+  motif(shape: MotifShape, motion: MotifMotion, frame: MotifFrame, opts: { element?: School; color?: number; delay?: number; size?: number } = {}): void {
+    const draw: MotifDraw = MOTIF_SHAPES[shape];
+    const school = opts.element ?? 'arcane';
+    const l = lookOf(school, opts.color);
+    const lead = Math.max(0, opts.delay ?? 0);
+    const size = opts.size ?? 1;
+    let cap = pieceCap(draw);
+    if (this.quality.fxScale < 0.5) cap = Math.max(2, Math.ceil(cap * 0.5));
+    const ps = thin(MOTIF_MOTIONS[motion](frame, this.rng), cap);
+    const fy = floorAt(frame.x, frame.z);
+    const tint = opts.color !== undefined && saturated(opts.color) ? opts.color : undefined;
+    const outward = (p: Piece): number => {
+      const [x, , z] = pieceEnd(p);
+      const dx = x - frame.x;
+      const dz = z - frame.z;
+      return dx * dx + dz * dz > 0.09 ? Math.atan2(dz, dx) : Math.atan2(frame.fz, frame.fx);
+    };
+    switch (draw.k) {
+      case 'core':
+      case 'solid':
+      case 'slash':
+        for (const p of ps) this.mote(draw, p, lead, size, school, l, tint, fy, outward(p));
+        break;
+      case 'column':
+        for (const p of ps) {
+          const [x, , z] = pieceEnd(p);
+          const r = draw.size * size * p.grow;
+          this.delay(lead + p.delay, () => this.pulse(Fam.Column, COLUMN_STYLE[draw.style], x, floorAt(x, z), z, r * 0.6, r, draw.height * size, p.dur + 0.3, l, 1.0));
+        }
+        break;
+      case 'shell':
+        for (const p of ps) {
+          const [x, y, z] = pieceEnd(p);
+          const r = draw.size * size * p.grow;
+          this.delay(lead + p.delay, () => this.pulse(Fam.Shell, SHELL_STYLE[draw.style], x, floorAt(x, z) + Math.max(0, y - 0.6), z, r * 0.4, r, 0, p.dur + 0.25, l, 0.9));
+        }
+        break;
+      case 'glow':
+        for (const p of ps) {
+          const [x, , z] = pieceEnd(p);
+          const a = outward(p);
+          // Floor rotation follows the heading convention: +y along (sin r, cos r).
+          this.decals.glow(draw.kind, x, z, draw.size * size * p.grow, draw.life, tint ?? school, 1.4, Math.atan2(Math.cos(a), Math.sin(a)), draw.kind === 'wedge' ? 0.5 : 0, lead + p.delay);
+        }
+        break;
+      case 'mark':
+        for (const p of ps) {
+          const [x, , z] = pieceEnd(p);
+          const a = outward(p);
+          this.delay(lead + p.delay + p.dur * 0.3, () => this.decals.add(draw.kind, x, z, draw.size * size * p.grow * this.rng.range(0.85, 1.15), a));
+        }
+        break;
+      case 'arc': {
+        const pts = ps.map((p) => {
+          const [x, y, z] = pieceEnd(p);
+          return new THREE.Vector3(x, fy + y + 0.3, z);
+        });
+        if (pts.length >= 3) {
+          let seg = 0;
+          for (let i = 1; i < pts.length; i++) seg += pts[i]!.distanceTo(pts[i - 1]!);
+          if (pts[0]!.distanceTo(pts[pts.length - 1]!) < (2 * seg) / (pts.length - 1)) pts.push(pts[0]!.clone());
+        }
+        this.delay(lead + (ps[0]?.delay ?? 0), () => this.chainLightning(pts, { color: tint, duration: 0.4, jumpDelay: 0.03, width: draw.width * size, silent: true }));
+        break;
+      }
+      case 'puff':
+        for (const p of ps) {
+          const [x, y, z] = pieceEnd(p);
+          this.delay(lead + p.delay, () => this.fx.burst(draw.emitter, x, fy + Math.max(0.2, y), z, { scale: draw.scale * size * p.grow, color: tint, school }));
+        }
+        break;
+    }
+    this.delay(lead, () => this.flash(frame.x, fy + 1.3, frame.z, l.light, 5, 6, 0.22));
+  }
+
+  /** Starts one moving piece of a motif. */
+  private mote(draw: MotifDraw, p: Piece, lead: number, size: number, school: School, l: Look, tint: number | undefined, fy: number, facing: number): void {
+    const e = this.spawn(K.Mote);
+    e.school = school;
+    e.look = l;
+    e.color = tint;
+    e.a.set(p.sx, fy + p.sy, p.sz);
+    e.b.set(p.ex, fy + p.ey, p.ez);
+    e.c.copy(e.a);
+    e.d.copy(e.a);
+    e.t = -(lead + p.delay);
+    e.dur = Math.max(0.1, p.dur);
+    e.path = p.path;
+    e.arc = p.arc;
+    e.radius = p.r0;
+    e.r1 = p.r1;
+    e.half = p.a0;
+    e.speed = p.sweep;
+    e.power = p.grow;
+    e.emitter = '';
+    if (draw.k === 'core') {
+      e.mote = 0;
+      e.size = draw.size * size * p.grow * 1.6;
+      e.style = CORE_STYLE[draw.style];
+      e.flag = 'trail' in draw && !!draw.trail;
+      this.take(e, this.cores);
+      this.putCore(e.slot, e.a.x, e.a.y, e.a.z, e.size, 0, 1, 0, 0, l, 1, e.style, 0, (e.born % 97) / 97);
+    } else if (draw.k === 'solid') {
+      e.mote = 1;
+      e.size = draw.size * size * p.grow;
+      e.solid = this.solids.alloc(draw.shape);
+      e.emitter = ('land' in draw && draw.land) || '';
+      // Spin about the length, radians a second: saws whirl, knives and crystals turn.
+      e.style = draw.shape === 'saw' ? 18 : draw.shape === 'shard' || draw.shape === 'crystal' ? 3 : draw.shape === 'blade' ? 9 : 0;
+    } else if (draw.k === 'slash') {
+      e.mote = 2;
+      e.size = draw.size * size * p.grow;
+      e.half = facing - 1.2;
+      e.speed = 2.4;
+      if (e.b.y < fy + 0.7) e.b.y = fy + 0.7;
+    }
+  }
+
+  private upMote(e: Live): boolean {
+    if (e.stopped) return false;
+    if (e.t < 0) return true;
+    const k = Math.min(1, e.t / e.dur);
+    const p = e.c;
+    e.d.copy(p);
+    switch (e.path) {
+      case Path.Line: {
+        const u = 1 - (1 - k) * (1 - k);
+        p.lerpVectors(e.a, e.b, u);
+        p.y += Math.sin(Math.PI * k) * e.arc;
+        break;
+      }
+      case Path.Fall:
+        p.lerpVectors(e.a, e.b, k * k);
+        break;
+      case Path.Swirl: {
+        const r = e.radius + (e.r1 - e.radius) * k;
+        const a = e.half + e.speed * k;
+        p.set(e.a.x + Math.cos(a) * r, e.a.y + (e.b.y - e.a.y) * k, e.a.z + Math.sin(a) * r);
+        break;
+      }
+      case Path.Rise: {
+        const u = Math.min(1, k * 3.5);
+        p.lerpVectors(e.a, e.b, 1 - Math.pow(1 - u, 3));
+        break;
+      }
+      default:
+        p.copy(e.b);
+    }
+    const first = !e.acc;
+    e.acc = 1;
+    const env = Math.min(1, k * 6) * Math.min(1, (1 - k) * 4);
+    const moving = e.path === Path.Line || e.path === Path.Fall || e.path === Path.Swirl;
+    _v1.subVectors(p, e.d);
+    if (!moving || first || _v1.lengthSq() < 1e-8) _v1.copy(_UP);
+    _v1.normalize();
+    if (e.mote === 0) {
+      const grow = e.path === Path.Hold ? 0.6 + 0.6 * k : 1;
+      this.putCore(e.slot, p.x, p.y, p.z, e.size * grow, _v1.x, _v1.y, _v1.z, moving && e.flag ? 0.8 : 0, e.look, 1, e.style, env, (e.born % 97) / 97);
+      if (e.flag) {
+        if (!e.rib && !first) e.rib = this.ribbons.start('trail', { life: 0.3, width: e.size * 0.35, school: e.school, color: e.color, emit: 1 });
+        this.ribbons.pushPoint(e.rib, p.x, p.y, p.z);
+      }
+    } else if (e.mote === 1) {
+      const len = e.size * (e.path === Path.Rise ? 0.35 + 0.65 * env : Math.max(0.05, env));
+      this.solids.place(e.solid, p.x, p.y, p.z, _v1.x, _v1.y, _v1.z, e.t * e.style, len, len * (e.path === Path.Rise ? 0.9 : 1));
+      if (first && e.path === Path.Rise && e.emitter) this.fx.burst(e.emitter, e.b.x, floorAt(e.b.x, e.b.z) + 0.1, e.b.z, { count: 4, scale: 0.5, school: e.school });
+    } else {
+      if (first) e.rib = this.ribbons.start('swing', { school: e.school, color: e.color, life: 0.2, emit: e.school === 'physical' ? 0.85 : 1.1 });
+      const a = e.half + e.speed * (1 - Math.pow(1 - k, 2));
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const lift = 0.3 * Math.sin(k * Math.PI);
+      this.ribbons.pushEdges(e.rib, e.b.x + c * e.size * 0.45, e.b.y + lift, e.b.z + s * e.size * 0.45, e.b.x + c * e.size, e.b.y + lift * 1.6, e.b.z + s * e.size);
+    }
+    if (k >= 1) {
+      if ((e.path === Path.Line || e.path === Path.Fall) && e.mote !== 2) {
+        const em = e.emitter || element(e.school).emitter;
+        this.fx.burst(em, p.x, p.y, p.z, { count: 3, scale: 0.45, school: e.school, color: e.color });
+      }
+      return false;
+    }
+    return true;
+  }
+
   // -- named casts ----------------------------------------------------------------------
 
   /** Resolves an `effect` id to a concrete visual; unknown ids fall back by context. */
@@ -1710,6 +1919,7 @@ export class EffectSystem {
       case K.Aura: return this.upAura(e, dt);
       case K.Shield: return this.upShield(e, dt);
       case K.Pulse: return this.upPulse(e);
+      case K.Mote: return this.upMote(e);
     }
     return false;
   }

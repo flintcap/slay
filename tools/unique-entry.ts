@@ -30,6 +30,7 @@ for (const c of CLASSES) {
       gesture: hasGesture(s.id),
       look: visualSignature(s.id, s.effect),
       motif: s.id in SKILL_MOTIFS,
+      pair: SKILL_MOTIFS[s.id] ? `${SKILL_MOTIFS[s.id]!.shape} ${SKILL_MOTIFS[s.id]!.motion}` : null,
       sounds: [...new Set(files)],
     });
   }

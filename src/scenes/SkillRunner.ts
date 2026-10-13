@@ -28,6 +28,7 @@ import { damageMultiplier } from '../sim/Passives';
 import { releasesAt, skillAction } from '../art/hero/gestures';
 import { runShift, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteHost } from './paladin/Rites';
+import { SKILL_MOTIFS, motifAt } from '../fx/SkillLooks';
 
 /**
  * What a summon actually looks like.
@@ -1445,12 +1446,34 @@ export class SkillRunner {
           break;
         }
       }
+      // The skill's own drawing on top of its family's (`fx/SkillLooks.ts`).
+      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, player.contactIn, num('radius', 2.5));
     } finally {
       this.effects.endQuiet();
       this.casting = false;
     }
 
     return true;
+  }
+
+  /**
+   * Draws a skill's motif: its own shape in its own motion, at the caster,
+   * the point aimed at or just in front, landing with the blow or the release.
+   */
+  private drawMotif(id: string, family: string, targeting: string | undefined, origin: THREE.Vector3, target: THREE.Vector3, dir: THREE.Vector3, school: School, color: number, contactIn: number, radius: number): void {
+    const motif = SKILL_MOTIFS[id];
+    if (!motif) return;
+    const at = motifAt(family, targeting, motif);
+    const front = family === 'projectile' || family === 'bolt' ? 0.6 : 1.1;
+    const x = at === 'self' ? origin.x : at === 'target' ? target.x : origin.x + dir.x * front;
+    const z = at === 'self' ? origin.z : at === 'target' ? target.z : origin.z + dir.z * front;
+    const fx = Math.abs(dir.x) + Math.abs(dir.z) > 1e-4 ? dir.x : 0;
+    const fz = Math.abs(dir.x) + Math.abs(dir.z) > 1e-4 ? dir.z : 1;
+    const lead = family === 'dash' || family === 'teleport' ? 0 : contactIn > 0 ? contactIn : 0.1;
+    this.effects.motif(motif.shape, motif.motion, {
+      x, z, fx, fz, ox: origin.x, oz: origin.z, tx: target.x, tz: target.z,
+      radius: Math.max(1.2, Math.min(4, radius)),
+    }, { element: school, color, delay: lead, size: motif.size });
   }
 
   /**

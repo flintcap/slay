@@ -52,7 +52,11 @@ const COMMON_VERT_SETUP = /* glsl */ `
 // Cores
 // ---------------------------------------------------------------------------
 
-export const CORE_STYLE = { orb: 0, fireball: 1, plasma: 2, flare: 3, glob: 4, frost: 5, void: 6, soft: 7, bone: 8 } as const;
+export const CORE_STYLE = {
+  orb: 0, fireball: 1, plasma: 2, flare: 3, glob: 4, frost: 5, void: 6, soft: 7, bone: 8,
+  // Glyphs: drawn shapes rather than glows, for skill motifs (`fx/Motifs.ts`).
+  skull: 9, rune: 10, crescent: 11, star: 12, ring: 13, eye: 14, petal: 15, smoke: 16, cross: 17, hex: 18, claw: 19, heart: 20,
+} as const;
 export type CoreStyle = keyof typeof CORE_STYLE;
 
 const CORE_VERT = /* glsl */ `
@@ -154,12 +158,121 @@ const CORE_FRAG = /* glsl */ `
       heat = pow(max(0.0, 1.0 - r), 2.4);
       cov = heat;
       occl = 0.0;
-    } else {
+    } else if (style < 8.5) {
       // Bone spirit: a pale skull-white heart, sickly halo.
       float n = fxf(p * 3.0 + vec2(t * 3.0, seed));
       heat = pow(max(0.0, 1.0 - r * 1.1), 2.0) * 1.2 + n * 0.3 * smoothstep(1.0, 0.4, r);
       cov = smoothstep(1.0, 0.35, r + (n - 0.5) * 0.3);
       occl = 0.25;
+    } else {
+      // Glyphs. Upright on screen when still: q.y is up, q.x across.
+      vec2 q = vec2(p.y, p.x);
+      float a = atan(q.y, q.x);
+      float spin = t * 1.5 + seed;
+      float n = fxn(q * 5.0 + vec2(seed, t * 2.0));
+      if (style < 9.5) {
+        // Skull: a pale cranium and jaw with burning eye sockets.
+        float head = length((q - vec2(0.0, 0.16)) * vec2(1.0, 1.08)) - 0.6;
+        vec2 jq = abs(q - vec2(0.0, -0.42)) - vec2(0.3, 0.2);
+        float jaw = length(max(jq, 0.0)) + min(max(jq.x, jq.y), 0.0) - 0.06;
+        float sk = min(head, jaw);
+        float eyes = length(vec2(abs(q.x) - 0.24, q.y - 0.06)) - 0.15;
+        float nose = max(abs(q.x) * 1.6 + (q.y + 0.12) * 0.9, -(q.y + 0.24));
+        float teeth = step(0.5, fract(q.x * 7.0)) * step(abs(q.y + 0.42), 0.05);
+        float hole = min(eyes, nose - 0.06);
+        cov = smoothstep(0.04, -0.02, sk) * (1.0 - smoothstep(0.03, -0.03, hole) * 0.85) * (1.0 - teeth * 0.6);
+        heat = 0.32 + 0.25 * n + smoothstep(0.12, -0.06, eyes) * 1.2 + smoothstep(0.05, -0.02, sk) * 0.1;
+        cov = max(cov, smoothstep(0.1, -0.05, eyes) * 0.9);
+        occl = 0.45;
+      } else if (style < 10.5) {
+        // Rune wheel: a ring, ticks around it and a turning triangle inside.
+        float ring = exp(-pow((r - 0.8) / 0.05, 2.0));
+        float ticks = step(0.82, abs(cos((a + spin * 0.3) * 6.0))) * step(abs(r - 0.66), 0.07);
+        float ta = a - spin;
+        float tri = cos(3.14159 / 3.0) / cos(mod(ta, 2.0944) - 1.0472) * 0.48;
+        float tri2 = exp(-pow((r - tri) / 0.035, 2.0));
+        cov = clamp(ring + ticks + tri2, 0.0, 1.0);
+        heat = 0.55 + 0.45 * cov;
+        occl = 0.0;
+      } else if (style < 11.5) {
+        // Crescent: a curved blade of light, horns up.
+        float outer = length(q) - 0.82;
+        float inner = length(q - vec2(0.0, 0.34)) - 0.7;
+        float d = max(outer, -inner);
+        cov = smoothstep(0.03, -0.03, d);
+        heat = 0.5 + 0.6 * smoothstep(0.0, -0.12, d) * smoothstep(-0.25, -0.05, d) + 0.2 * n;
+        occl = 0.0;
+      } else if (style < 12.5) {
+        // Star: five sharp points round a white heart.
+        float k = abs(cos((a + 1.5708) * 2.5));
+        float edge = 0.3 + 0.6 * pow(k, 6.0);
+        cov = smoothstep(edge + 0.04, edge - 0.04, r);
+        heat = pow(max(0.0, 1.0 - r * 1.2), 1.4) * 1.4 + 0.25;
+        occl = 0.0;
+      } else if (style < 13.5) {
+        // Ring: a hollow hoop with a bright rim.
+        float w = exp(-pow((r - 0.72) / 0.09, 2.0));
+        cov = w + 0.12 * smoothstep(0.75, 0.0, r);
+        heat = 0.4 + w * 0.7 + 0.2 * n;
+        occl = 0.0;
+      } else if (style < 14.5) {
+        // Eye: an almond lid, a burning iris and a black slit.
+        float lid = length(vec2(q.x * 0.62, abs(q.y) + 0.55)) - 0.82;
+        float iris = r - 0.34;
+        float slit = abs(q.x) - 0.06 * (1.0 - abs(q.y) * 2.0);
+        cov = smoothstep(0.03, -0.03, lid) * (1.0 - smoothstep(0.02, -0.02, max(slit, iris)) * 0.9);
+        heat = 0.25 + smoothstep(0.05, -0.08, iris) * 1.0 + 0.2 * n;
+        occl = 0.5;
+      } else if (style < 15.5) {
+        // Petal or leaf: a pointed blade with a bright vein.
+        float d = length(vec2(abs(q.x) + 0.5, q.y)) - 0.78;
+        float vein = exp(-q.x * q.x * 220.0) * step(abs(q.y), 0.7);
+        cov = smoothstep(0.03, -0.03, d);
+        heat = 0.35 + 0.5 * smoothstep(0.0, -0.3, d) + vein * 0.6;
+        occl = 0.35;
+      } else if (style < 16.5) {
+        // Smoke: a dark, rolling puff that hides what is behind it.
+        float w = fxf(q * 2.2 + vec2(seed, -t * 0.8));
+        float d = r + (w - 0.5) * 0.6;
+        cov = smoothstep(0.95, 0.4, d) * 0.85;
+        heat = 0.08 + 0.18 * w;
+        occl = 0.95;
+      } else if (style < 17.5) {
+        // Cross: a long upright bar and a short one, white-hot where they meet.
+        float v = max(abs(q.x) - 0.11, abs(q.y + 0.05) - 0.85);
+        float h = max(abs(q.y - 0.3) - 0.11, abs(q.x) - 0.5);
+        float d = min(v, h);
+        cov = smoothstep(0.04, -0.04, d) + 0.25 * smoothstep(0.9, 0.0, r);
+        heat = 0.55 + 0.6 * smoothstep(0.5, 0.0, length(q - vec2(0.0, 0.3)));
+        occl = 0.0;
+      } else if (style < 18.5) {
+        // Hex sigil: a six-sided frame with a hot point in the middle.
+        float ha = mod(a + spin * 0.4, 1.0472) - 0.5236;
+        float hr = r * cos(ha) / 0.866;
+        float frame = exp(-pow((hr - 0.72) / 0.05, 2.0));
+        float dot0 = exp(-r * r * 30.0);
+        cov = clamp(frame + dot0 + 0.1 * smoothstep(0.7, 0.0, hr), 0.0, 1.0);
+        heat = 0.5 + 0.5 * cov;
+        occl = 0.0;
+      } else if (style < 19.5) {
+        // Claw: three raking slashes.
+        float s = q.x - q.y * 0.35;
+        float bands = abs(fract(s * 2.2 + 0.5) - 0.5);
+        float m = step(abs(s), 0.75) * smoothstep(0.85, 0.3, abs(q.y));
+        cov = smoothstep(0.12, 0.04, bands) * m;
+        heat = 0.5 + 0.7 * smoothstep(0.08, 0.0, bands) * m;
+        occl = 0.2;
+      } else {
+        // Heart: a dark beating heart, glowing at its core.
+        vec2 h = vec2(abs(q.x), q.y * 1.15 + 0.2);
+        float d = length(h - vec2(0.3, 0.3)) - 0.36;
+        float tip = (h.x + (0.65 - h.y)) * 0.7071 - 0.36;
+        d = min(d, max(tip, -h.y + 0.05));
+        float beat = 0.8 + 0.2 * sin(t * 9.0 + seed);
+        cov = smoothstep(0.03, -0.03, d / beat);
+        heat = 0.3 + 0.8 * smoothstep(0.0, -0.35, d) * beat;
+        occl = 0.6;
+      }
     }
     heat = clamp(heat, 0.0, 1.0);
     cov = clamp(cov, 0.0, 1.0) * fade;

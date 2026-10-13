@@ -5,7 +5,7 @@
  * skills may share:
  *   - a body clip (each plays its own `skill.<id>` gesture),
  *   - a visual signature (what is drawn, colour and size aside: see
- *     `src/fx/SkillLooks.ts`), or
+ *     `src/fx/SkillLooks.ts`), or a motif (its own shape in its own motion), or
  *   - a sound file.
  *
  * A class this stream does not own that has no gestures yet (a class still
@@ -56,10 +56,14 @@ for (const c of classes) {
 console.log('');
 report('clips', shared((r) => r.clip, pendingClip));
 report('visuals', shared((r) => r.look, pendingLook));
+report('motifs', shared((r) => r.pair ?? [], pendingLook));
 report('sounds', shared((r) => r.sounds, new Set()));
 const missing = rows.filter((r) => !pendingClip.has(r.cls) && !r.gesture).map((r) => `${r.cls}:${r.id}`);
 console.log(`no gesture: ${missing.length}${missing.length && list ? ' - ' + missing.join(', ') : ''}`);
 if (missing.length) fails.push('gestures');
+const bare = rows.filter((r) => !pendingLook.has(r.cls) && !r.motif).map((r) => `${r.cls}:${r.id}`);
+console.log(`no motif: ${bare.length}${bare.length && list ? ' - ' + bare.join(', ') : ''}`);
+if (bare.length) fails.push('motifs');
 
 if (fails.length) console.log(`FAIL: shared ${fails.join(', ')}`);
 else console.log('OK: every active skill has its own gesture, look and sound.');
