@@ -30,6 +30,7 @@
 import type { Character, DamageType } from '../types';
 import { SKILL_BY_ID } from '../data/skills';
 import { applyPowerPassives } from './ItemPowers';
+import { emptyPaladinEffects, PALADIN_RULES, type PaladinEffects } from './passives/paladin';
 
 /** A skill's rank, after +skills. Mirrors `Stats.effectiveRank`. */
 function rankOf(c: Character, id: string): number {
@@ -263,6 +264,9 @@ export interface PassiveEffects {
   bloodTideAmplifyPct: number;
   bloodTideChains: number;
   bloodTideRadius: number;
+
+  /** The Paladin's own numbers (`passives/paladin.ts`). */
+  pal: PaladinEffects;
 }
 
 function emptyEffects(): PassiveEffects {
@@ -379,6 +383,7 @@ function emptyEffects(): PassiveEffects {
     bloodTideAmplifyPct: 0,
     bloodTideChains: 0,
     bloodTideRadius: 0,
+    pal: emptyPaladinEffects(),
   };
 }
 
@@ -758,6 +763,8 @@ const RULES: Record<string, Contribution> = {
     e.cheatDeathNovaPct = Math.max(e.cheatDeathNovaPct, param(id, 'damagePct', 100));
     e.cheatDeathRadius = Math.max(e.cheatDeathRadius, 8);
   },
+  // The Paladin's rules live in their own file.
+  ...PALADIN_RULES,
 };
 
 /** Every skill this engine knows how to run. */

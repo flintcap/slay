@@ -945,6 +945,17 @@ export class Enemy implements Combatant {
     return 0;
   }
 
+  /** Ends a status outright and says how many stacks it had (the Paladin spends his dents). */
+  consumeStatus(id: string): number {
+    for (let i = 0; i < this.statuses.length; i++) {
+      const s = this.statuses[i]!;
+      if (s.id !== id) continue;
+      this.statuses.splice(i, 1);
+      return s.stacks ?? 0;
+    }
+    return 0;
+  }
+
   /** True when anything the player put on it is still running. */
   get isDebuffed(): boolean {
     for (const s of this.statuses) {

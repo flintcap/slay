@@ -36,6 +36,8 @@ export interface RiteHost {
   later(seconds: number, fn: () => void): void;
   /** Plays a skill sound at a point. */
   sound(id: string | null, x: number, z: number): void;
+  /** How far a body can travel from `from` along `dir` before a wall, up to `max`. */
+  clear(from: THREE.Vector3, dir: THREE.Vector3, max: number, ctx: CombatContext): number;
 }
 
 /** One press of a rite. */
@@ -58,8 +60,8 @@ export interface RiteCast {
   hitSound: string | null;
 }
 
-/** Which weapon a skill wants in hand. */
-type Grip = 'blunt' | 'blade' | 'shield';
+/** Which weapon a skill wants in hand. `any` is the censer, which hangs off the belt. */
+type Grip = 'blunt' | 'blade' | 'shield' | 'any';
 
 const BLUNT: ItemCategory[] = ['mace', 'scepter'];
 const BLADE: ItemCategory[] = ['sword'];
@@ -73,26 +75,69 @@ interface Rite {
   kind: HitKind;
   /** How far the blow reaches from the hero, before the target's body. */
   reach: number;
+  /** A shield rush: he closes this far on the target before the blow lands. */
+  rush?: number;
+  /** Needs no target: it is something he does to himself. */
+  self?: boolean;
   /** What happens at the contact frame, on the chosen target (null when it whiffs). */
   land(r: RiteCast, host: RiteHost, t: Target | null): void;
 }
 
 const v3 = new THREE.Vector3();
+const dirV = new THREE.Vector3();
 
-/** A status application built from the skill's own `duration`. */
+/** A status application. */
 function status(id: string, duration: number, stacks = 1, magnitude = 1): StatusApplication {
   return { id, duration, magnitude, stacks };
 }
 
-/** Lands `mult` times the skill on `t`, with `extra` riders, from the hero. */
+/** A number that grows with rank: `key` at rank 1, plus `key + 'PerRank'` each rank after. */
+function ranked(r: RiteCast, key: string, base: number, perRank: number): number {
+  return r.num(key, base) + r.num(`${key}PerRank`, perRank) * Math.max(0, r.rank - 1);
+}
+
+// --- the Paladin's own passives, spent on each blow ---------------------------
+
+/** Mace blows landed since the last Toll (The Last Bell), per hero. */
+const tolls = new WeakMap<Player, number>();
+
+/** True when the target has been broken open: Staggered, Rung or Dented. */
+function broken(t: Target): boolean {
+  return t.hasStatus('staggered') || t.hasStatus('rung') || t.stacksOf('dented') > 0;
+}
+
+/**
+ * Lands `mult` times the skill on `t`, with `extra` riders, from the hero.
+ * Crushing Weight and The Last Bell are read here, so every Mace blow
+ * honours them without each skill remembering to.
+ */
 function blow(r: RiteCast, host: RiteHost, t: Target, mult = 1, extra: StatusApplication[] = [], kind?: HitKind, knockback = 0): DamagePacket {
-  const p = r.packet(mult);
-  if (extra.length) p.applies = [...(p.applies ?? []), ...extra];
+  const pal = r.player.passives.pal;
+  let m = mult;
+  const riders = [...extra];
+  if (pal.vsBrokenPct > 0 && broken(t)) m *= 1 + pal.vsBrokenPct / 100;
+  if (pal.tollEvery > 0 && r.def.treeId === 'palMace') {
+    const n = (tolls.get(r.player) ?? 0) + 1;
+    if (n >= pal.tollEvery) {
+      tolls.set(r.player, 0);
+      m *= 1 + pal.tollPct / 100;
+      riders.push(status('rung', pal.tollRingSec));
+    } else {
+      tolls.set(r.player, n);
+    }
+  }
+  const p = r.packet(m);
+  if (riders.length) p.applies = [...(p.applies ?? []), ...riders];
   if (knockback > 0) p.knockback = Math.max(p.knockback ?? 0, knockback);
   const rite = RITES[r.def.id];
   const landed = host.land(t, p, kind ?? rite?.kind ?? 'melee', r.player.position.x, r.player.position.z, r);
   host.sound(r.hitSound, t.root.position.x, t.root.position.z);
   return landed;
+}
+
+/** Ends every dent on the target and says how many there were. */
+function spendDents(t: Target): number {
+  return t.consumeStatus('dented');
 }
 
 const RITES: Record<string, Rite> = {
@@ -106,6 +151,132 @@ const RITES: Record<string, Rite> = {
     land(r, host, t) {
       if (!t) return;
       blow(r, host, t, 1, [status('staggered', r.num('duration', 2))]);
+    },
+  },
+  shieldCrack: {
+    grip: 'shield',
+    clip: 'lunge',
+    time: 0.9,
+    kind: 'heavy',
+    reach: 2.2,
+    land(r, host, t) {
+      if (!t) return;
+      blow(r, host, t, 1, [status('rung', ranked(r, 'stun', 1, 0.03))], 'heavy', r.num('knockback', 1.5));
+    },
+  },
+  anvilfall: {
+    grip: 'blunt',
+    clip: 'slam',
+    time: 1.55,
+    kind: 'heavy',
+    reach: 2.7,
+    land(r, host, t) {
+      if (!t) return;
+      blow(r, host, t, 1, [status('dented', r.num('duration', 6), Math.round(r.num('dents', 2)))]);
+    },
+  },
+  doorbreaker: {
+    grip: 'shield',
+    clip: 'lunge',
+    time: 1.1,
+    kind: 'heavy',
+    reach: 2.2,
+    rush: 9,
+    land(r, host, t) {
+      if (!t) return;
+      blow(r, host, t, 1, [status('staggered', r.num('duration', 2))], 'heavy', r.num('knockback', 3));
+    },
+  },
+  knell: {
+    grip: 'blunt',
+    clip: 'slam',
+    time: 1.35,
+    kind: 'heavy',
+    reach: 2.6,
+    land(r, host, t) {
+      if (!t) return;
+      blow(r, host, t, 1);
+      // The iron is still ringing: a second, smaller blow from inside the helm.
+      host.later(r.num('echoDelay', 0.55), () => {
+        if (t.life <= 0 || !r.player.alive) return;
+        blow(r, host, t, r.num('echo', 0.5), [status('rung', ranked(r, 'ring', 0.6, 0.02))], 'melee');
+      });
+    },
+  },
+  pilgrimsMaul: {
+    grip: 'blunt',
+    clip: 'slam',
+    time: 1.7,
+    kind: 'heavy',
+    reach: 2.7,
+    land(r, host, t) {
+      if (!t) return;
+      const dents = spendDents(t);
+      blow(r, host, t, 1 + dents * r.num('perDent', 0.3));
+    },
+  },
+  barTheDoor: {
+    grip: 'shield',
+    clip: 'cast',
+    time: 0.8,
+    kind: 'melee',
+    reach: 0,
+    self: true,
+    land(r) {
+      r.player.applyStatus('barred', ranked(r, 'duration', 5, 0.15));
+    },
+  },
+  hurlCenser: {
+    grip: 'any',
+    clip: 'hurl',
+    time: 1.1,
+    kind: 'heavy',
+    reach: 14,
+    land(r, host, t) {
+      if (!t) return;
+      const from = r.player.position.clone().setY(1.3);
+      const to = t.root.position.clone().setY(1.0);
+      host.effects.projectile(from, to, {
+        element: 'fire',
+        color: 0xd08a40,
+        speed: r.num('speed', 18),
+        arc: 1.2,
+        homing: 0.8,
+        target: () => (t.life > 0 ? t.root.position : null),
+        onHit: () => {
+          if (t.life <= 0) return;
+          blow(r, host, t, 1, [status('smoked', ranked(r, 'duration', 4, 0.1))]);
+        },
+      });
+    },
+  },
+  relicBash: {
+    grip: 'shield',
+    clip: 'lunge',
+    time: 1.0,
+    kind: 'heavy',
+    reach: 2.2,
+    land(r, host, t) {
+      if (!t) return;
+      const dents = spendDents(t);
+      blow(r, host, t, 1);
+      if (dents > 0) {
+        const pct = ranked(r, 'healPct', 3, 0.15) * dents;
+        r.player.heal(r.player.stats.life * (pct / 100));
+      }
+    },
+  },
+  ironVerdict: {
+    grip: 'blunt',
+    clip: 'slam',
+    time: 2.0,
+    kind: 'heavy',
+    reach: 2.8,
+    land(r, host, t) {
+      if (!t) return;
+      // Rings longer the more of its armour is already beaten in.
+      const ring = Math.min(r.num('ringCap', 2.5), r.num('ring', 0.4) + r.num('ringPerDent', 0.4) * t.stacksOf('dented'));
+      blow(r, host, t, 1, [status('rung', ring)]);
     },
   },
 };
@@ -178,19 +349,55 @@ export function pickOne(player: Player, aim: THREE.Vector3, enemies: Enemy[], bo
   return best;
 }
 
+/** Carries the hero up to the target over `seconds`, stopping at walls and short of its body. */
+function rushTo(host: RiteHost, r: RiteCast, t: Target, seconds: number): void {
+  const p = r.player;
+  const from = p.position.clone();
+  dirV.set(t.root.position.x - from.x, 0, t.root.position.z - from.z);
+  const gap = dirV.length();
+  if (gap < 0.01) return;
+  dirV.divideScalar(gap);
+  const want = Math.max(0, gap - t.hitRadius - 0.9);
+  const go = Math.min(want, host.clear(from, dirV, want, r.ctx));
+  if (go <= 0.2) return;
+  const dir = dirV.clone();
+  const steps = 8;
+  for (let i = 1; i <= steps; i++) {
+    host.later((seconds * i) / steps, () => {
+      if (!p.alive) return;
+      const k = i / steps;
+      p.position.set(from.x + dir.x * go * k, p.position.y, from.z + dir.z * go * k);
+    });
+  }
+}
+
 /** Runs one press of a rite. The runner has already paid for it. */
 export function castRite(host: RiteHost, r: RiteCast): void {
   const rite = RITES[r.def.id];
   if (!rite) return;
   const p = r.player;
-  const target = pickOne(p, r.aim, r.enemies, r.boss, rite.reach);
+  const target = rite.self ? null : pickOne(p, r.aim, r.enemies, r.boss, rite.rush ?? rite.reach);
   if (target) p.faceTowards(target.root.position.x, target.root.position.z);
   p.beginAction(skillAction(r.def.id) ?? rite.clip, r.attackTime * rite.time);
   const id = p.actionId;
+  if (target && rite.rush) rushTo(host, r, target, p.contactIn * 0.9);
   host.later(p.contactIn, () => {
     if (p.actionId !== id || !p.alive) return;
+    if (rite.self) {
+      rite.land(r, host, null);
+      return;
+    }
     // Still there, still in reach at the moment the blow arrives.
     const t = target && target.life > 0 && Math.hypot(target.root.position.x - p.position.x, target.root.position.z - p.position.z) - target.hitRadius <= rite.reach + 0.6 ? target : null;
     rite.land(r, host, t);
   });
+}
+
+/**
+ * Bellguard: a blow turned on the Paladin's shield leaves the attacker
+ * Staggered. Called by the dungeon's passive defence when a hit is blocked.
+ */
+export function paladinBlocked(player: Player, attacker: Target, ctx: CombatContext): void {
+  const sec = player.passives.pal.blockStaggerSec;
+  if (sec > 0 && attacker.life > 0) attacker.applyStatuses([status('staggered', sec)], ctx);
 }

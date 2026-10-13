@@ -66,6 +66,7 @@ import { instanceCreature, releaseCreature } from '../art/creatures/Creature';
 import { disposePropLibrary } from '../world/Props';
 import { PropRemains } from '../art/props/Remains';
 import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
+import { paladinBlocked } from './paladin/Rites';
 
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
@@ -913,6 +914,9 @@ export class DungeonScene extends GameScene {
         }
       }
     }
+
+    // Bellguard: a blow turned on the Paladin's shield staggers whoever threw it.
+    if (blocked && attacker) paladinBlocked(this.player, attacker, ctx);
 
     // Retribution builds a charge on every block and spends it on the next hit.
     if (blocked && e.retributionPctPerBlock > 0) {

@@ -154,7 +154,12 @@ const ICON_MAP: Record<string, string> = {
   // Revenant — gravepact
   siphon: 'chalice^drip', 'ward-spirit': 'ghost^aura', 'wisp-soul': 'ghost', 'pact-blood': 'hand^drip', 'chill-aura': 'flake^aura',
   'fang-dark': 'fang', 'cage-soul': 'cage', 'drain-beam': 'beam', embrace: 'hand^aura', revenant: 'ghost^rise', harvest: 'scythe',
-  'toll-blow': 'hammer^impact',
+  // Paladin: Mace.
+  'toll-blow': 'mace^impact', 'hallowed-iron': 'mace:2', 'shield-crack': 'shield^burst', anvilfall: 'anvil^impact',
+  'forged-faith': 'anvil^aura', doorbreaker: 'shield^impact', knell: 'bell:2', 'crushing-weight': 'boulder^impact',
+  bellguard: 'bell^aura', 'pilgrim-maul': 'mace:1^impact', 'iron-penance': 'crack^chain', 'bar-door': 'tower^field',
+  'hurl-censer': 'censer:1', 'weight-stone': 'boulder', 'relic-bash': 'chalice^impact', 'last-bell': 'bell:1^rise',
+  'iron-verdict': 'mace:2^burst', unbroken: 'helm^aura',
   'nova-blood': 'drop^nova', undying: 'heart^aura', tether: 'chain', covenant: 'rune', 'second-death': 'skull^rise',
   scythe: 'scythe^spin', 'mastery-grave': 'scythe^mastery',
   // Ranger
@@ -489,6 +494,8 @@ const STATUS_MAP: Record<string, string> = {
   skull: 'skull', snowflake: 'flake', spark: 'bolt', spike: 'spikes', star: 'star', stars: 'star:1', stone: 'boulder',
   swirl: 'swirl', target: 'target', tower: 'tower', vial: 'vial', vine: 'leaf:1', void: 'rift', ward: 'shield', wilt: 'wilt',
   wing: 'wing:1', wisp: 'ghost',
+  // Paladin.
+  bell: 'bell:2', censer: 'censer',
 };
 
 /**

@@ -618,6 +618,7 @@ export class SkillRunner {
       land: (t, packet, kind, fromX, fromZ, world) => this.landRite(t, packet, kind, fromX, fromZ, world),
       later: (seconds, fn) => this.pendingSwings.push({ t: seconds, run: fn }),
       sound: (id, x, z) => { if (id) audio.play(id, { x, z }); },
+      clear: (from, dir, max, ctx) => this.wallStop(from, dir, max, ctx, 0.5),
     };
   }
 
