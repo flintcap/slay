@@ -87,7 +87,7 @@ pending; a class with some gestures must be fully unique).
 
 ## Next up
 
-M6: motifs are drawn and `check-unique` is green (visuals, motifs, sounds). Finish the look pass: render every motif in the game with the scratch sheet (`shoot-motifs.mjs`, six motifs a shot, labelled), fix any that do not read, then tick M6 and run M8 (`npm run build && flock /tmp/slay-browser.lock timeout 1500 node tools/check-skills.mjs --classes=warden,shadowblade,ranger,revenant,mage`).
+M6: all 133 motifs of the five classes rendered once (scratch sheet, cleared crypt room). Fixed from it: slashes were too small, motif puffs fired ambient-only ids (spores, snow, bubbles, motes fell back to a plain hit; now `puff.*` bursts, and check-vfx proves every motif emitter exists), embers burned white (now trail fire, cores glow at 0.78), fangs now venom green. Left: puffs (blood spray, spore clouds, bubbles, snowfall, dust) still did not show on the sheet although check counts 28 to 127 particles each; reshoot only those (`SHOTS=1,1,2,4 node shoot-motifs.mjs motifs.json out 0 0 rend,noxiousCloud,blightBolt,wintersBreath,shieldCharge,smokeBomb`), fix, tick M6, then M8 (`npm run build && flock /tmp/slay-browser.lock timeout 1500 node tools/check-skills.mjs --classes=warden,shadowblade,ranger,revenant,mage`). Fast checks: beats (paladin consecratedGround), curve, sweep (paladin rites refused, reassemble now heals) and town (gamble) fail on the shared branch, not from this stream.
 
 ## Notes for resume
 
