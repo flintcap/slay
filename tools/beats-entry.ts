@@ -22,7 +22,7 @@ import { arena, shrug } from './combat-arena';
 import { SKILLS, TREE_BY_ID } from '../src/data/skills';
 import { SkillRunner } from '../src/scenes/SkillRunner';
 import { Player } from '../src/entities/Player';
-import { createCharacter, grantXp } from '../src/sim/Character';
+import { createCharacter, equipItem, grantXp } from '../src/sim/Character';
 import { MONSTERS } from '../src/data/monsters';
 import { Random } from '../src/core/RNG';
 import { FXSystem } from '../src/fx/Particles';
@@ -97,10 +97,15 @@ spy(effects, 'fx', (k) => !NOT_DRAWING.has(k));
 spy(fx, 'p', (k) => k === 'burst' || k === 'emitCustom');
 spy(decals, 'd', (k) => ['add', 'splatter', 'telegraph', 'telegraphEx'].includes(k));
 
+/** A tree whose skills want other gear than the class starts with (as in the sweep). */
+const TREE_WEAPON: Record<string, string> = { palBlade: 'sword.short' };
+
 function heroFor(skill: SkillDef): Character {
   const cls = TREE_BY_ID[skill.treeId]!.classId;
   const c = createCharacter('Beats', cls, new Random(3));
   for (let i = 0; i < 40 && c.level < 20; i++) grantXp(c, 1e6);
+  const want = TREE_WEAPON[skill.treeId];
+  if (want) equipItem(c, { uid: `${want}:beats`, baseId: want, name: want, rarity: 'normal', ilvl: 1, mods: [], upgrade: 0, sockets: [], value: 0 }, 'mainHand');
   c.skills = { [skill.id]: 5 };
   for (const r of skill.requires ?? []) c.skills[r] = 5;
   return c;
@@ -114,6 +119,8 @@ interface Beats {
   impact: boolean | null;
   impactSound: boolean | null;
   firstHit: number;
+  /** False for a skill with no damage of its own: a slow, a ward, a shape. */
+  owesBlow: boolean;
   note: string;
 }
 
@@ -218,7 +225,7 @@ function sweep(skill: SkillDef): Beats {
     for (const s of seen.slice(0, 60)) console.error(`  ${(s.t - t0).toFixed(2)} see ${s.what}`);
     for (const h of heard.slice(0, 40)) console.error(`  ${(h.t - t0).toFixed(2)} hear ${h.id}`);
   }
-  return { family, cast, castSound, travel, impact, impactSound, firstHit: firstHit >= 0 ? firstHit - t0 : -1, note: notes.join(' ') };
+  return { family, cast, castSound, travel, impact, impactSound, firstHit: firstHit >= 0 ? firstHit - t0 : -1, owesBlow: !!(skill.damageScale || skill.damageType), note: notes.join(' ') };
 }
 
 const rows: Array<{ id: string } & Beats> = [];
@@ -228,7 +235,7 @@ for (const s of SKILLS) {
   try {
     rows.push({ id: s.id, ...sweep(s) });
   } catch (err) {
-    rows.push({ id: s.id, family: '?', cast: false, castSound: false, travel: null, impact: null, impactSound: null, firstHit: -1, note: `threw ${String(err).slice(0, 120)}` });
+    rows.push({ id: s.id, family: '?', cast: false, castSound: false, travel: null, impact: null, impactSound: null, firstHit: -1, owesBlow: true, note: `threw ${String(err).slice(0, 120)}` });
   }
 }
 void shrug;

@@ -26,7 +26,7 @@ for (const r of res.rows) {
   if (r.travel === false) why.push('invisible in flight');
   if (r.impact === false) why.push('no impact visual');
   if (r.impactSound === false) why.push('silent impact');
-  if (r.firstHit < 0 && !res.noImpact.includes(r.family) && !r.note) why.push('never landed a blow');
+  if (r.firstHit < 0 && r.owesBlow && !res.noImpact.includes(r.family) && !r.note) why.push('never landed a blow');
   if (why.length) fails.push(`${r.id} [${r.family}]: ${why.join(', ')}`);
 }
 console.log('family        skills  landed  travel-checked');
