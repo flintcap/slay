@@ -38,6 +38,10 @@ Talk to me like I am smart but not technical. Sixth-grade reading level. Short s
 
 Long is fine for drafts, scripts, posts, and documents. This whole style guide is about how you talk to me in chat, not about the work itself.
 
+## Owner preferences
+
+- When I ask for something "like" or "in the style of" another game, do not copy it 1:1. Use the same idea and theme, but make it our own: our own names, our own art, our own numbers.
+
 ## Project
 
 SLAY is an endless dungeon RPG roguelike in Three.js. Models, props and effects
