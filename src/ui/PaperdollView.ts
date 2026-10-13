@@ -18,12 +18,8 @@ import type { Character } from '../types';
 import { DressedHero, VISUAL_SLOTS } from '../scenes/HeroModel';
 
 /** Panel-sized viewport. Small enough that a second GL context is cheap. */
-const WIDTH = 238;
+const WIDTH = 188;
 const HEIGHT = 572;
-/** How far the figure sways either side when left alone, in radians. */
-const SWAY = 0.35;
-/** Room round the fitted figure, as a share of its size. */
-const MARGIN = 1.08;
 
 export class PaperdollView {
   readonly root: HTMLDivElement;
@@ -138,6 +134,7 @@ export class PaperdollView {
       this.hero = new DressedHero(c.classId, 0x9d0117);
       this.rig.add(this.hero.root);
       this.hero.animator.play('idle', { fade: 0 });
+      this.frame(this.hero.root);
     }
 
     const eq = c.equipment;
@@ -150,9 +147,6 @@ export class PaperdollView {
     // Armour is grown on the body and weapons held, exactly as in the world;
     // only the slots that changed are rebuilt.
     this.hero?.dress(eq);
-    // A spear overhead or a greatsword out to the side reaches past the body:
-    // fit what is held and worn, every time it changes.
-    this.frame();
   }
 
   /**
@@ -167,54 +161,18 @@ export class PaperdollView {
     if (this.hero) this.renderer?.render(this.scene, this.camera);
   }
 
-  /**
-   * Points the camera at the dressed figure's own posed bounds, gear and all,
-   * so nothing is cut off: not a helm's crest, the boots, or a weapon held
-   * high or wide. Proportions never matter.
-   */
-  private frame(): void {
-    const hero = this.hero;
-    if (!hero) return;
-    hero.animator.update(1 / 60);
-    // Sampled at both ends of the resting sway and facing front, so what
-    // sticks out front or back stays in frame as the figure turns. Only what
-    // is drawn solid counts: hidden parts and floating motes do not.
-    const spin = this.rig.rotation.y;
-    const box = new THREE.Box3();
-    const pts: number[] = [];
-    const v = new THREE.Vector3();
-    for (const turn of [-SWAY, 0, SWAY]) {
-      this.rig.rotation.y = turn;
-      this.rig.updateMatrixWorld(true);
-      hero.root.traverseVisible((o) => {
-        const m = o as THREE.Mesh;
-        if (!m.isMesh || (m.material as THREE.Material).transparent) return;
-        const n = m.geometry.getAttribute('position')?.count ?? 0;
-        const step = Math.max(1, Math.floor(n / 1500));
-        for (let i = 0; i < n; i += step) {
-          m.getVertexPosition(i, v).applyMatrix4(m.matrixWorld);
-          pts.push(v.x, v.y, v.z);
-          box.expandByPoint(v);
-        }
-      });
-    }
-    this.rig.rotation.y = spin;
-    this.rig.updateMatrixWorld(true);
-    if (box.isEmpty() || !Number.isFinite(box.min.y)) return;
-    const midX = (box.max.x + box.min.x) * 0.5;
-    const midY = (box.max.y + box.min.y) * 0.5;
-    // Back far enough that every point lands inside the frame, with a little
-    // room all round for the idle's breath. A point nearer the lens shows
-    // bigger, so each is fitted at its own depth.
-    const tanV = Math.tan((this.camera.fov * Math.PI) / 360) / MARGIN;
-    const tanH = tanV * this.camera.aspect;
-    let dist = 1;
-    for (let i = 0; i < pts.length; i += 3) {
-      const need = pts[i + 2]! + Math.max(Math.abs(pts[i]! - midX) / tanH, Math.abs(pts[i + 1]! - midY) / tanV);
-      if (need > dist) dist = need;
-    }
-    this.camera.position.set(midX, midY, dist);
-    this.camera.lookAt(midX, midY, 0);
+  /** Points the camera at the model's own bounds, so proportions never matter. */
+  private frame(obj: THREE.Object3D): void {
+    obj.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(obj);
+    if (!Number.isFinite(box.min.y) || box.isEmpty()) return;
+    const height = Math.max(0.5, box.max.y - box.min.y);
+    const mid = (box.max.y + box.min.y) * 0.5;
+    // Fit the height into the vertical FOV with headroom at both ends, so a
+    // tall helm crest and the boots both stay inside the viewport.
+    const dist = (height * 0.72) / Math.tan((this.camera.fov * Math.PI) / 360);
+    this.camera.position.set(0, mid, dist);
+    this.camera.lookAt(0, mid, 0);
   }
 
   start(): void {
@@ -232,7 +190,7 @@ export class PaperdollView {
       if (this.dragging) this.holdFor = 3;
       else if ((this.holdFor -= dt) <= 0) {
         this.swayT += dt;
-        const rest = Math.sin(this.swayT * 0.4) * SWAY;
+        const rest = Math.sin(this.swayT * 0.4) * 0.35;
         const target = rest + Math.round((this.spin - rest) / (Math.PI * 2)) * Math.PI * 2;
         this.spin += (target - this.spin) * (1 - Math.pow(0.35, dt));
       }
