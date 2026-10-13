@@ -187,6 +187,7 @@ const ACTS: Record<string, Act> = {
       const p = r.player;
       const t = pickOne(p, r.aim, r.enemies, r.boss, r.num('range', 14));
       if (t) p.faceTowards(t.root.position.x, t.root.position.z);
+      if (t) r.landAt = t.root.position.clone().setY(0);
       const id = p.actionId;
       host.later(p.contactIn, () => {
         if (p.actionId !== id || !t || t.life <= 0) return;
@@ -210,6 +211,7 @@ const ACTS: Record<string, Act> = {
       const p = r.player;
       const t = pickOne(p, r.aim, r.enemies, r.boss, r.num('range', 12));
       if (t) p.faceTowards(t.root.position.x, t.root.position.z);
+      if (t) r.landAt = t.root.position.clone().setY(0);
       // The bell is called at the release and takes its time to fall; once
       // called it comes down whatever he does next.
       host.later(p.contactIn + r.num('fall', 0.7), () => {

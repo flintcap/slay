@@ -12,10 +12,11 @@
 
 import type { MotifShape, MotifMotion } from './Motifs';
 import { SHIFTER_DRAWING, SHIFTER_MOTIFS } from './shifter/motifs';
+import { PALADIN_DRAWING, PALADIN_MOTIFS } from './paladin/motifs';
 
 /** What each effect family's handler draws, in plain words. Mirrors `SkillRunner.cast`. */
 export const FAMILY_DRAWING: Readonly<Record<string, string>> = {
-  melee: 'weapon swing', cleave: 'weapon swing', whirlwind: 'spinning swing', rite: 'single-target blow', vigil: 'ring of candles at the feet',
+  melee: 'weapon swing', cleave: 'weapon swing', whirlwind: 'spinning swing',
   projectile: 'projectile', bolt: 'projectile',
   nova: 'expanding ring', slam: 'cratered landing', meteor: 'falling strike', sky: 'falling strike',
   beam: 'beam', cone: 'cone spray', chain: 'chained arcs', dash: 'dash swing',
@@ -28,6 +29,7 @@ export const FAMILY_DRAWING: Readonly<Record<string, string>> = {
   channel: 'tether beam', wave: 'ground wave', leap: 'leap landing', teleport: 'blink',
   detonate: 'explosion', corpse: 'explosion', point: 'explosion', aoe: 'explosion', capstone: 'explosion',
   ...SHIFTER_DRAWING,
+  ...PALADIN_DRAWING,
 };
 
 /** Where a motif is drawn. */
@@ -207,6 +209,7 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   explosiveTip: m('flares', 'shatter'),
   darkenTheSky: m('arrows', 'fall'),
   ...SHIFTER_MOTIFS,
+  ...PALADIN_MOTIFS,
 };
 
 /** Families drawn at the caster, at the point aimed at, or just in front. */

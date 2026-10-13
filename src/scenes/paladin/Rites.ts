@@ -48,6 +48,8 @@ export interface RiteCast {
   player: Player;
   /** Where the press aimed, on the floor. */
   aim: THREE.Vector3;
+  /** Set by the cast: where the blow will land, for the skill's motif. */
+  landAt?: THREE.Vector3;
   ctx: CombatContext;
   enemies: Enemy[];
   boss: Boss | null;
@@ -567,12 +569,22 @@ function stepTo(host: RiteHost, r: RiteCast, t: Target, how: 'flank' | 'behind',
 }
 
 /** Runs one press of a rite. The runner has already paid for it. */
+/** The aimed point, brought in to arm's reach: where a blow that found no one lands. */
+function inReach(p: Player, aim: THREE.Vector3, reach: number): THREE.Vector3 {
+  const dx = aim.x - p.position.x;
+  const dz = aim.z - p.position.z;
+  const d = Math.hypot(dx, dz);
+  const k = d > reach ? reach / d : 1;
+  return new THREE.Vector3(p.position.x + dx * k, 0, p.position.z + dz * k);
+}
+
 export function castRite(host: RiteHost, r: RiteCast): void {
   const rite = RITES[r.def.id];
   if (!rite) return;
   const p = r.player;
   const target = rite.self ? null : pickOne(p, r.aim, r.enemies, r.boss, rite.rush ?? rite.reach);
   if (target) p.faceTowards(target.root.position.x, target.root.position.z);
+  if (!rite.self) r.landAt = target ? target.root.position.clone().setY(0) : inReach(p, r.aim, rite.reach);
   p.beginAction(skillAction(r.def.id) ?? rite.clip, r.attackTime * rite.time);
   const id = p.actionId;
   if (target && rite.rush) rushTo(host, r, target, p.contactIn * 0.9);

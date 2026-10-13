@@ -28,8 +28,8 @@ import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
 import { releasesAt, skillAction } from '../art/hero/gestures';
 import { runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
-import { castRite, riteRefusal, type RiteHost } from './paladin/Rites';
-import { castVigil, snuffVigil, tickVigils, type VigilHost } from './paladin/Vigils';
+import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
+import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { SKILL_MOTIFS, motifAt } from '../fx/SkillLooks';
 
 /**
@@ -1502,19 +1502,23 @@ export class SkillRunner {
         // The Paladin's weapon skills: one enemy, one blow (paladin/Rites.ts).
         case 'rite': {
           this.swingSchool = 'physical';
-          castRite(this.riteHost, {
+          const rc: RiteCast = {
             def, rank, player, aim: target.clone().setY(0), ctx, enemies, boss,
             packet: makePacket, num, school, color, attackTime, hitSound: sound.hit,
-          });
+          };
+          castRite(this.riteHost, rc);
+          if (rc.landAt) target = rc.landAt;
           break;
         }
 
         // The Paladin's auras, vows and censures (paladin/Vigils.ts).
         case 'vigil': {
-          castVigil(this.vigilHost, {
+          const vc: VigilCast = {
             def, rank, player, aim: target.clone().setY(0), ctx, enemies, boss,
             packet: makePacket, num, school, color, attackTime, castTime, hitSound: sound.hit,
-          });
+          };
+          castVigil(this.vigilHost, vc);
+          if (vc.landAt) target = vc.landAt;
           break;
         }
 
