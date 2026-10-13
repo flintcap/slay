@@ -110,6 +110,8 @@ export class CharSelectPanel {
   private nameMsg: HTMLDivElement;
   private difRow: HTMLDivElement;
   private difCards = new Map<DifficultyId, HTMLButtonElement>();
+  /** The same tiers on the roster bar, for the selected character. */
+  private rosterDifCards = new Map<DifficultyId, HTMLButtonElement>();
   private beginBtn: HTMLButtonElement;
   private beginLabel: HTMLSpanElement;
 
@@ -178,24 +180,7 @@ export class CharSelectPanel {
     this.createBar = div('csx-create');
     const difBox = div('csx-field');
     difBox.appendChild(div('csx-label', 'Difficulty'));
-    this.difRow = div('csx-difrow');
-    for (const d of DIFFICULTIES) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'csx-dif';
-      b.style.setProperty('--dc', '#' + d.color.toString(16).padStart(6, '0'));
-      b.append(span('csx-dif-pips', '◆'.repeat(Math.min(5, d.rank))), span('csx-dif-name', d.name));
-      b.addEventListener('click', () => this.setDifficulty(d.id));
-      tip(
-        b,
-        d.name,
-        `<p><i>${esc(d.blurb)}</i></p><p>${esc(d.guidance)}</p>` +
-          (d.pros.length ? `<p style="color:var(--good)">${d.pros.map((x) => '+ ' + esc(x)).join('<br>')}</p>` : '') +
-          (d.cons.length ? `<p style="color:var(--bad)">${d.cons.map((x) => '- ' + esc(x)).join('<br>')}</p>` : ''),
-      );
-      this.difCards.set(d.id, b);
-      this.difRow.appendChild(b);
-    }
+    this.difRow = this.difficultyRow(this.difCards, (id) => this.setDifficulty(id));
     difBox.appendChild(this.difRow);
 
     const nameBox = div('csx-field csx-namefield');
@@ -253,7 +238,11 @@ export class CharSelectPanel {
     this.playBtn.className = 'csx-go';
     this.playBtn.append(span('csx-go-label', 'Play'), span('csx-go-sub', 'Return to town'));
     this.playBtn.addEventListener('click', () => this.play());
-    this.rosterBar.append(this.retireBtn, this.playBtn);
+    // A character's difficulty can change between runs, never inside one.
+    const rosterDif = div('csx-field csx-rosterdif');
+    rosterDif.appendChild(div('csx-label', 'Difficulty'));
+    rosterDif.appendChild(this.difficultyRow(this.rosterDifCards, (id) => this.setCharacterDifficulty(id)));
+    this.rosterBar.append(rosterDif, this.retireBtn, this.playBtn);
 
     this.bottom.append(this.createBar, this.rosterBar);
     root.appendChild(this.bottom);
@@ -339,6 +328,45 @@ export class CharSelectPanel {
     } else {
       events.emit('ui:open', { panel: `class:${this.selectedClass}` });
     }
+  }
+
+  /** One button per tier, with its trade-offs in the tooltip. */
+  private difficultyRow(cards: Map<DifficultyId, HTMLButtonElement>, pick: (id: DifficultyId) => void): HTMLDivElement {
+    const row = div('csx-difrow');
+    for (const d of DIFFICULTIES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'csx-dif';
+      b.style.setProperty('--dc', '#' + d.color.toString(16).padStart(6, '0'));
+      b.append(span('csx-dif-pips', '◆'.repeat(Math.min(5, d.rank))), span('csx-dif-name', d.name));
+      b.addEventListener('click', () => pick(d.id));
+      tip(
+        b,
+        d.name,
+        `<p><i>${esc(d.blurb)}</i></p><p>${esc(d.guidance)}</p>` +
+          (d.pros.length ? `<p style="color:var(--good)">${d.pros.map((x) => '+ ' + esc(x)).join('<br>')}</p>` : '') +
+          (d.cons.length ? `<p style="color:var(--bad)">${d.cons.map((x) => '- ' + esc(x)).join('<br>')}</p>` : ''),
+      );
+      cards.set(d.id, b);
+      row.appendChild(b);
+    }
+    return row;
+  }
+
+  /**
+   * Moves the selected character to another tier. Only here, between runs:
+   * the next town and every floor after it use the new tier. What creation
+   * granted (gold, points) stays as it was.
+   */
+  private setCharacterDifficulty(id: DifficultyId): void {
+    const c = save.roster.find((x) => x.id === this.selectedChar);
+    if (!c || c.difficulty === id) return;
+    events.emit('sfx', { id: 'ui.click' });
+    c.difficulty = id;
+    save.touch();
+    save.flush();
+    this.retireArmed = false;
+    this.render();
   }
 
   private setDifficulty(id: DifficultyId): void {
@@ -604,6 +632,10 @@ export class CharSelectPanel {
   private syncRoster(): void {
     const c = save.roster.find((x) => x.id === this.selectedChar);
     this.playBtn.disabled = !c;
+    for (const [key, el] of this.rosterDifCards) {
+      el.classList.toggle('is-on', !!c && (c.difficulty ?? DEFAULT_DIFFICULTY) === key);
+      el.disabled = !c;
+    }
     this.retireBtn.replaceChildren(
       icon('trash', { size: 13 }),
       span('', this.retireArmed ? `Retire ${c?.name ?? ''} forever?` : 'Retire'),
