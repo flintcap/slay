@@ -504,6 +504,14 @@ export function weaponStyle(player: Player): WeaponStyle {
   return 'unarmed';
 }
 
+/** True when the off hand holds a caster's focus (an orb, a wand). */
+export function casterOffHand(player: Player): boolean {
+  const item = player.character.equipment.offHand;
+  if (!item) return false;
+  const cat = getBase(item.baseId)?.category;
+  return !!cat && CASTER_CATEGORIES.includes(cat);
+}
+
 /** What the main hand sounds like when it lands. */
 export function weaponSoundOf(player: Player): WeaponSound {
   const item = player.character.equipment.mainHand;

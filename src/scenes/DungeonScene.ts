@@ -39,7 +39,7 @@ import { emissiveMaterial } from '../art/Materials';
 import { grantXp } from '../sim/Character';
 import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
-import { SkillRunner, weaponStyle, MINION_MONSTER } from './SkillRunner';
+import { SkillRunner, weaponStyle, casterOffHand, MINION_MONSTER } from './SkillRunner';
 import { NameplateLayer, type PlateTarget } from '../ui/Nameplates';
 import { itemLookStandIns } from '../art/items/Mats';
 import { CombatTextLayer } from '../ui/CombatText';
@@ -436,6 +436,7 @@ export class DungeonScene extends GameScene {
       basic: (target) => this.skills.basicAttack(this.player, target, this.ctxCache ?? this.context(), this.enemies, this.boss),
       melee: () => {
         const style = weaponStyle(this.player);
+        if (style === 'unarmed' && casterOffHand(this.player)) return false;
         return style === 'melee' || style === 'unarmed';
       },
       // Swinging at a barrel should break it. Nobody presses a use key on a

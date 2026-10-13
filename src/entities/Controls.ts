@@ -239,7 +239,11 @@ export class CombatControls {
     // Attack-move: out of reach in melee, walk in and strike on arrival. Only
     // with a monster to walk to; clicking bare ground still swings on the spot
     // rather than turning the attack button into a second move key.
-    if (target && !stand && this.hooks.melee() && this.gapTo(target) > MELEE_REACH) {
+    // A spell on the attack button casts from where you stand, whatever is in
+    // your hands.
+    const assigned = p.character.primaryAttack ?? null;
+    const reach = assigned && this.skillReady(assigned) ? needsReach(assigned) : true;
+    if (target && !stand && reach && this.hooks.melee() && this.gapTo(target) > MELEE_REACH) {
       this.beginPursuit(target, null);
       return;
     }

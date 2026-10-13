@@ -203,10 +203,10 @@ export const CLASS_EQUIP: Record<CharClassId, ClassEquipRules> = {
     note: 'Knights fight with a blade and a planted shield.',
   },
   mage: {
-    denied: ['bow', 'crossbow', 'mace', 'shield'],
+    denied: ['bow', 'crossbow', 'mace'],
     dualWield: false,
-    offHandExtra: ['orb'],
-    note: 'Mages channel through a focus, not a shield.',
+    offHandExtra: ['orb', 'shield'],
+    note: 'Mages channel through a focus or hold a shield.',
   },
   shadowblade: {
     // No shields, ever. Two blades instead.

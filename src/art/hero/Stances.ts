@@ -294,21 +294,21 @@ export const STANCES: Record<Stance, StanceDef> = {
   staff: {
     idle(p, b) {
       p.arm('R', 0.45, 0.16 + 0.08 * b.build, 0.4, 1.3, -0.3, 0, 0);
-      p.reach('R', [-0.55 * b.h, 4.15 * b.h, 0.95 * b.h], [0.42, 1, 0.22]);
+      p.reach('R', [-0.55 * b.h, 4.15 * b.h, 1.1 * b.h], [0.36, 1, 0.45]);
       p.fist('R', 1);
       p.fist('L', 1);
       p.add('chest', 0.03, -0.06, 0);
       p.c[CH.offGrip] = 1;
-      p.c[CH.gripGap] = -1.5 * b.h;
+      p.c[CH.gripGap] = -1.15 * b.h;
     },
     move(p, b, run) {
       p.arm('R', 0.4, 0.16 + 0.08 * b.build, 0.4, 1.3, -0.3, 0, 0);
-      p.reach('R', [-0.55 * b.h, 4.15 * b.h, (0.95 + 0.15 * run) * b.h], [0.42, 1, 0.3 + 0.25 * run]);
+      p.reach('R', [-0.55 * b.h, 4.15 * b.h, (1.1 + 0.15 * run) * b.h], [0.36, 1, 0.5 + 0.25 * run]);
       p.fist('R', 1);
       p.fist('L', 1);
       p.add('chest', 0.02, -0.05, 0);
       p.c[CH.offGrip] = 1;
-      p.c[CH.gripGap] = -1.5 * b.h;
+      p.c[CH.gripGap] = -1.15 * b.h;
     },
     swing: [0.1, 0.12],
     feet: (b) => feet(b, 0.42, 0.14),

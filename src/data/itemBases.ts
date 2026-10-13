@@ -1429,7 +1429,7 @@ export function maxSockets(base: ItemBase): number {
  */
 const CLASS_PREFERENCE: Record<CharClassId, Partial<Record<ItemCategory, number>>> = {
   warden: { sword: 2.2, axe: 2.2, mace: 2.2, spear: 1.8, shield: 2.4, chest: 1.5, helm: 1.3, dagger: 0.5, wand: 0.15, staff: 0.25, orb: 0.15, bow: 0.6, crossbow: 0.6, scepter: 0.9 },
-  mage: { wand: 2.4, staff: 2.4, orb: 2.4, scepter: 1.4, dagger: 1.0, boots: 1.3, sword: 0.5, axe: 0.3, mace: 0.3, spear: 0.5, bow: 0.3, crossbow: 0.3, shield: 0.3, chest: 0.9 },
+  mage: { wand: 2.4, staff: 2.4, orb: 2.4, scepter: 1.4, dagger: 1.0, boots: 1.3, sword: 0.5, axe: 0.3, mace: 0.3, spear: 0.5, bow: 0.3, crossbow: 0.3, shield: 0.9, chest: 0.9 },
   shadowblade: { dagger: 2.6, sword: 1.6, bow: 1.8, crossbow: 1.6, gloves: 1.5, boots: 1.5, axe: 0.8, mace: 0.5, staff: 0.3, wand: 0.5, orb: 0.4, spear: 0.8, shield: 0.7 },
   revenant: { wand: 2.4, scepter: 2.0, orb: 2.0, dagger: 1.4, staff: 1.6, shield: 1.2, amulet: 1.3, sword: 0.7, axe: 0.5, mace: 0.6, spear: 0.5, bow: 0.35, crossbow: 0.35 },
   ranger: { bow: 3.0, crossbow: 2.8, quiver: 2.4, gloves: 1.5, boots: 1.6, dagger: 1.2, sword: 0.9, spear: 0.9, axe: 0.5, mace: 0.2, staff: 0.2, wand: 0.2, orb: 0.2, shield: 0.15 },

@@ -624,12 +624,22 @@ export function createItem(baseId: string, ilvl: number, rng: Rng, rarity: ItemR
 // rollItem
 // ---------------------------------------------------------------------------
 
+/**
+ * Uniques and sets come in slowly: a quarter of the full rate at the first
+ * portal, the full rate from item level 30. Three uniques in the first hour
+ * made every later one feel cheap.
+ */
+function earlyRamp(rarity: ItemRarity, ilvl: number): number {
+  if (rarity !== 'unique' && rarity !== 'set') return 1;
+  return Math.min(1, 0.25 + 0.75 * Math.max(0, ilvl - 1) / 29);
+}
+
 function rollRarity(ilvl: number, magicFind: number, rng: Rng): ItemRarity {
   const roll = rng.next();
   let acc = 0;
   for (const tier of RARITY_CHANCE) {
     if (ilvl < tier.minIlvl) continue;
-    acc += tier.chance * magicFindFactor(magicFind, tier.mfCap);
+    acc += tier.chance * earlyRamp(tier.rarity, ilvl) * magicFindFactor(magicFind, tier.mfCap);
     if (roll < acc) return tier.rarity;
   }
   return 'normal';
@@ -743,7 +753,7 @@ export function rollCharm(ilvl: number, rng: Rng, magicFind = 0, baseId?: string
     ? rng.weighted(sizes, (b) => CHARM_SIZE_WEIGHT[b.id] ?? 10)
     : getBase(baseId ?? 'charm.small');
   const mf = magicFindFactor(Math.max(0, magicFind), 600);
-  if (rng.chance(0.03 * mf)) {
+  if (rng.chance(0.03 * mf * earlyRamp('unique', lvl))) {
     const pool = uniquePool('unique', lvl).filter((d) => d.baseId === base.id && uniqueDropWeight(d, lvl) > 0);
     if (pool.length) return buildUniqueItem(rng.weighted(pool, (d) => uniqueDropWeight(d, lvl)), lvl, rng);
   }
