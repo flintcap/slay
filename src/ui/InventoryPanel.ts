@@ -418,18 +418,18 @@ export class ItemGrid {
 // Panel
 // ---------------------------------------------------------------------------
 
-/** Tab order: down the body, then the left flank, then the right. */
+/** Tab order: down the body on the left, then the hands on the right. */
 const PAPERDOLL: EquipSlot[] = [
   'helm',
+  'amulet',
   'chest',
   'belt',
   'legs',
   'boots',
   'gloves',
   'ring1',
-  'mainHand',
-  'amulet',
   'ring2',
+  'mainHand',
   'offHand',
 ];
 
@@ -489,7 +489,7 @@ export class InventoryPanel {
     this.crest = div('paperdoll-crest');
     doll.appendChild(this.crest);
 
-    // The live figure stands behind the middle column of slots.
+    // The live figure stands in the middle, with the slots down each side.
     const stage = div('paperdoll-figure');
     stage.appendChild(this.view.root);
     stage.appendChild(div('pd-view-hint', SPIN_HINT));
