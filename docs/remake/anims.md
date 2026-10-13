@@ -64,7 +64,7 @@ that still looks like it holds a shield.
 - [x] M3 Rogue: a gesture per active skill (daggers / dual blades). (Give every Rogue skill its own gesture)
 - [x] M4 Ranger: a gesture per active skill (bow skills are draws, but each different). (Give every Ranger skill its own gesture)
 - [x] M5 Revenant: a gesture per active skill (caster with a wand/staff). (Give every Revenant skill its own gesture)
-- [ ] M6 VFX: every active skill game-wide has its own visual signature (Mage included).
+- [x] M6 VFX: every active skill game-wide has its own visual signature (Mage included). (Every active skill draws its own motif: a shape in a motion over its family look)
 - [x] M7 Sounds: no two skills share a sound file. (Every active skill has its own sound: 27 new takes for skills that shared one)
 - [ ] M8 Final: uniqueness check green for the existing 5 classes, in-game skill check green.
 
@@ -87,7 +87,7 @@ pending; a class with some gestures must be fully unique).
 
 ## Next up
 
-M6: all 133 motifs of the five classes rendered once (scratch sheet, cleared crypt room). Fixed from it: slashes were too small, motif puffs fired ambient-only ids (spores, snow, bubbles, motes fell back to a plain hit; now `puff.*` bursts, and check-vfx proves every motif emitter exists), embers burned white (now trail fire, cores glow at 0.78), fangs now venom green. Left: puffs (blood spray, spore clouds, bubbles, snowfall, dust) still did not show on the sheet although check counts 28 to 127 particles each; reshoot only those (`SHOTS=1,1,2,4 node shoot-motifs.mjs motifs.json out 0 0 rend,noxiousCloud,blightBolt,wintersBreath,shieldCharge,smokeBomb`), fix, tick M6, then M8 (`npm run build && flock /tmp/slay-browser.lock timeout 1500 node tools/check-skills.mjs --classes=warden,shadowblade,ranger,revenant,mage`). Fast checks: beats (paladin consecratedGround), curve, sweep (paladin rites refused, reassemble now heals) and town (gamble) fail on the shared branch, not from this stream.
+M8: run `npm run build && flock /tmp/slay-browser.lock timeout 1500 node tools/check-skills.mjs --classes=warden,shadowblade,ranger,revenant,mage` (log to a file, retry once, then skip and note). `check-unique` is green for all seven classes. M6 look pass is done: all 133 motifs of the five classes rendered on the scratch sheet; slashes, puffs (now `puff.*` bursts at cloud scale), embers and fangs were fixed from it. Fast checks: beats (paladin consecratedGround), curve, sweep (paladin rites refused, reassemble now heals) and town (gamble) fail on the shared branch, not from this stream.
 
 ## Notes for resume
 
