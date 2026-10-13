@@ -19,4 +19,15 @@ export const PALADIN_SOUNDS: Readonly<Record<string, SkillSound>> = {
   hurlCenser: s('skill.pal.censer', 'skill.pal.censerHit'),
   relicBash: s('skill.pal.relic', 'skill.pal.relicHit'),
   ironVerdict: s('skill.pal.verdict', 'skill.pal.verdictHit'),
+  // --- Blade -----------------------------------------------------------------
+  oathCut: s('skill.pal.oath', 'skill.pal.oathHit'),
+  turnTheBlade: s('skill.pal.turn', 'skill.pal.turnHit'),
+  twinVerse: s('skill.pal.twin', 'skill.pal.twinHit'),
+  feint: s('skill.pal.feint', 'skill.pal.feintHit'),
+  litany: s('skill.pal.litany', 'skill.pal.litanyHit'),
+  confessionThrust: s('skill.pal.confess', 'skill.pal.confessHit'),
+  crosswise: s('skill.pal.cross', 'skill.pal.crossHit'),
+  mercyStroke: s('skill.pal.mercy', 'skill.pal.mercyHit'),
+  sevenfold: s('skill.pal.seven', 'skill.pal.sevenHit'),
+  lastRites: s('skill.pal.rites', 'skill.pal.ritesHit'),
 };

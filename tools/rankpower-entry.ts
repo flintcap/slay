@@ -11,7 +11,7 @@ import { arena, caseLog } from './combat-arena';
 import { SKILLS, TREE_BY_ID } from '../src/data/skills';
 import { SkillRunner } from '../src/scenes/SkillRunner';
 import { Player } from '../src/entities/Player';
-import { createCharacter } from '../src/sim/Character';
+import { createCharacter, equipItem } from '../src/sim/Character';
 import { MONSTERS } from '../src/data/monsters';
 import { Random } from '../src/core/RNG';
 import type { CharClassId, DamagePacket } from '../src/types';
@@ -49,6 +49,9 @@ const fx: any = new Proxy(function () {}, {
 const sumMods = (m: Record<string, number> | undefined): number =>
   m ? Object.values(m).reduce((a, v) => a + Math.abs(v), 0) : 0;
 
+/** Trees whose skills need a weapon the class does not start with. */
+const TREE_WEAPON: Record<string, string> = { palBlade: 'sword.short' };
+
 function measure(classId: CharClassId, id: string, rank: number): number[] {
   const a = arena({ seed: 5 });
   const def = MONSTERS.find((m) => m.role === 'brute' && m.weight > 0) ?? MONSTERS[0]!;
@@ -56,6 +59,11 @@ function measure(classId: CharClassId, id: string, rank: number): number[] {
   e.maxLife = e.life = 1e7;
   const c = createCharacter('Test', classId, new Random(5));
   c.skills = { [id]: rank };
+  // A tree that needs another weapon than the class starts with gets it here.
+  const want = TREE_WEAPON[SKILLS.find((s) => s.id === id)?.treeId ?? ''];
+  if (want) {
+    equipItem(c, { uid: `${want}:test`, baseId: want, name: want, rarity: 'normal', ilvl: 1, mods: [], upgrade: 0, sockets: [], value: 0 }, 'mainHand');
+  }
   const player = new Player(c, 1);
   player.mana = 1e6;
   player.life = player.stats.life * 0.3;

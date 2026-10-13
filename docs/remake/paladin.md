@@ -33,7 +33,7 @@ Design notes
 
 - [x] M1 Class def, look (male), field kit, portrait, select screen words; selectable and playable with a starter skill. (`feat(paladin): M1 class, look, kit, Tolling Blow starter`)
 - [x] M2 Mace tree: 18 skills, rules, statuses, icons. (`feat(paladin): M2 Mace tree`)
-- [ ] M3 Blade tree: 18 skills, rules, statuses, icons.
+- [x] M3 Blade tree: 18 skills, rules, statuses, icons. (`feat(paladin): M3 Blade tree`)
 - [ ] M4 Aura tree: 18 skills, aura handler + look, rules, icons.
 - [ ] M5 A unique gesture per active skill (sword+shield, mace+shield, two-hander all read).
 - [ ] M6 A unique VFX look per active skill.
@@ -42,15 +42,18 @@ Design notes
 
 ## Next up
 
-M3 Blade tree. Statuses `opened`, `exposed`, `parrying` are already in
-`paladinStatuses.ts`. Author the 18 Blade skills (design list below) in
-`paladin.ts` as `BLADE`, their rites in `Rites.ts` (grip `blade`), Blade
-rules in `sim/passives/paladin.ts` (redPsalm -> vsBleedingPct,
-answerInSteel -> blockCounterChance, theFifthVerse -> guaranteedCritEvery,
-redRosary -> new `pal.critOpens`), Blade synergies, icons (new sword-ish
-glyphs in `PaladinGlyphs.ts`), sounds (`PaladinSounds.ts` + takes). Gate:
-typecheck, `--only=skilldepth,skillsound,passives,wiring`, and
-`RANK_ONLY=<blade actives> node tools/check-rankpower.mjs` says all grow.
+M4 Aura tree (design list below). New effect family `vigil`: a runner in
+`src/scenes/paladin/Vigils.ts`, hooked by one `case 'vigil'` in
+`SkillRunner.cast`, plus `vigil` in the tool family lists (skillsound-entry
+FAMILIES/HITS, check-coverage, SkillLooks FAMILY_DRAWING). One aura at a time
+(Twin Wick capstone allows two), a persistent toggle with a ring at the feet.
+Aura statuses in `paladinStatuses.ts`, rules in `sim/passives/paladin.ts`,
+glyphs (candle, rood, writ) in `PaladinGlyphs.ts`, icons in `SkillIconArt.ts`,
+sounds in `PaladinSounds.ts` + takes. Every non-dmg skill needs a
+`SELF_POWER` / `FOE_POWER` row. Gate: typecheck,
+`--only=skilldepth,skillsound,passives,wiring` (skilldepth then fails only
+for other classes), and `RANK_ONLY=<aura actives> node tools/check-rankpower.mjs`
+says all grow.
 
 ## Notes for resume
 
@@ -61,6 +64,9 @@ typecheck, `--only=skilldepth,skillsound,passives,wiring`, and
 - Rites that fly (Hurl the Censer) land on a timer, not on the projectile's
   `onHit`: the headless checks run with a dummy effect system.
 - Shield skills use the `lunge` body clip until M5 gives them gestures.
+- `tools/rankpower-entry.ts` hands a Blade skill a short sword
+  (`TREE_WEAPON`), since the Paladin starts with a mace. `check-skills`
+  (M8) will need the same for Blade skills.
 - Where the class lives: `src/data/classSkills/{kit,paladin,paladinClass,paladinStatuses}.ts`,
   `src/scenes/paladin/Rites.ts` (effect family `rite`, single target, hooked
   by one `case 'rite'` in `SkillRunner.cast`), `src/audio/PaladinSounds.ts`,

@@ -2604,6 +2604,16 @@
   "clink",
   "steam"
  ],
+ "sounds/skill.pal.confess/01.ogg": [
+  "sword20",
+  "kr",
+  "rsp"
+ ],
+ "sounds/skill.pal.confessHit/01.ogg": [
+  "ki",
+  "r80",
+  "chant"
+ ],
  "sounds/skill.pal.crack/01.ogg": [
   "swish",
   "kr"
@@ -2612,6 +2622,13 @@
   "shield",
   "clink",
   "bells"
+ ],
+ "sounds/skill.pal.cross/01.ogg": [
+  "swish"
+ ],
+ "sounds/skill.pal.crossHit/01.ogg": [
+  "sword20",
+  "kr"
  ],
  "sounds/skill.pal.door/01.ogg": [
   "rsp",
@@ -2622,12 +2639,28 @@
   "shield",
   "ki"
  ],
+ "sounds/skill.pal.feint/01.ogg": [
+  "kr",
+  "swish"
+ ],
+ "sounds/skill.pal.feintHit/01.ogg": [
+  "sword20",
+  "ki"
+ ],
  "sounds/skill.pal.knell/01.ogg": [
   "swish"
  ],
  "sounds/skill.pal.knellHit/01.ogg": [
   "c100",
   "ki"
+ ],
+ "sounds/skill.pal.litany/01.ogg": [
+  "chant",
+  "swish"
+ ],
+ "sounds/skill.pal.litanyHit/01.ogg": [
+  "kr",
+  "r80"
  ],
  "sounds/skill.pal.maul/01.ogg": [
   "battle",
@@ -2637,6 +2670,24 @@
   "ki",
   "mw",
   "bfh"
+ ],
+ "sounds/skill.pal.mercy/01.ogg": [
+  "kr",
+  "heart"
+ ],
+ "sounds/skill.pal.mercyHit/01.ogg": [
+  "sword20",
+  "ki",
+  "bells"
+ ],
+ "sounds/skill.pal.oath/01.ogg": [
+  "sword20",
+  "kr"
+ ],
+ "sounds/skill.pal.oathHit/01.ogg": [
+  "kr",
+  "ki",
+  "r80"
  ],
  "sounds/skill.pal.relic/01.ogg": [
   "kr",
@@ -2648,6 +2699,23 @@
   "bells",
   "clink"
  ],
+ "sounds/skill.pal.rites/01.ogg": [
+  "chant",
+  "kr"
+ ],
+ "sounds/skill.pal.ritesHit/01.ogg": [
+  "sword20",
+  "ki",
+  "c100"
+ ],
+ "sounds/skill.pal.seven/01.ogg": [
+  "melee3",
+  "swish"
+ ],
+ "sounds/skill.pal.sevenHit/01.ogg": [
+  "r80",
+  "ki"
+ ],
  "sounds/skill.pal.toll/01.ogg": [
   "swish",
   "rsp"
@@ -2655,6 +2723,22 @@
  "sounds/skill.pal.tollHit/01.ogg": [
   "ki",
   "clink"
+ ],
+ "sounds/skill.pal.turn/01.ogg": [
+  "sword20",
+  "kr"
+ ],
+ "sounds/skill.pal.turnHit/01.ogg": [
+  "sword20",
+  "ki",
+  "bells"
+ ],
+ "sounds/skill.pal.twin/01.ogg": [
+  "swish"
+ ],
+ "sounds/skill.pal.twinHit/01.ogg": [
+  "r80",
+  "kr"
  ],
  "sounds/skill.pal.verdict/01.ogg": [
   "chant",

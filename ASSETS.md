@@ -882,18 +882,38 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.pal.bar/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
 | sounds/skill.pal.censer/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + artisticdude (opengameart.org/content/swishes-sound-pack) + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
 | sounds/skill.pal.censerHit/01.ogg | https://opengameart.org/content/flare-ignition | qubodup + BMacZero (opengameart.org/content/metal-impact-sounds) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
+| sounds/skill.pal.confess/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/skill.pal.confessHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | sounds/skill.pal.crack/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.pal.crackHit/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + BMacZero (opengameart.org/content/metal-impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
+| sounds/skill.pal.cross/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.pal.crossHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.pal.door/01.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.pal.doorHit/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + StarNinjas (opengameart.org/content/10-impactshield-blocks) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.pal.feint/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
+| sounds/skill.pal.feintHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.pal.knell/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/skill.pal.knellHit/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.pal.litany/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
+| sounds/skill.pal.litanyHit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
 | sounds/skill.pal.maul/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.pal.maulHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.pal.mercy/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + bart (opengameart.org/content/heartbeat-sounds) | CC0 |
+| sounds/skill.pal.mercyHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
+| sounds/skill.pal.oath/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.oathHit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
 | sounds/skill.pal.relic/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + artisticdude (opengameart.org/content/swishes-sound-pack) + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/skill.pal.relicHit/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + PWL (opengameart.org/content/bell-dingschimes) + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/skill.pal.rites/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.ritesHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/skill.pal.seven/01.ogg | https://opengameart.org/content/3-melee-sounds | remaxim + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
+| sounds/skill.pal.sevenHit/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.pal.toll/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/skill.pal.tollHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/skill.pal.turn/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.turnHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
+| sounds/skill.pal.twin/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.pal.twinHit/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.pal.verdict/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + Ogrebane (opengameart.org/content/battle-sound-effects) | CC0 |
 | sounds/skill.pal.verdictHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + cinameng (opengameart.org/content/rumble-fx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/skillpoint/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |

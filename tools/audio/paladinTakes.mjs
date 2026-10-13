@@ -10,6 +10,8 @@
 const x = (pack, file, o = {}) => ({ pack, file, ...o });
 const BELL = (n) => `impactBell_heavy_00${n}.ogg`;
 const PLATE = (n) => `impactPlate_heavy_00${n}.ogg`;
+const SW = 'sword_-_starninjas_1/sword - StarNinjas/';
+const SC = 'sword_clash_-_starninjas_0/';
 
 export const PALADIN_TAKES = {
   // --- Mace ------------------------------------------------------------------
@@ -42,4 +44,36 @@ export const PALADIN_TAKES = {
   // Iron Verdict: a voice under the wind-up, then the great bell and the ground giving.
   'skill.pal.verdict': x('chant', 'chant5.wav', { ss: 0.4, t: 1.1, rate: 0.6, fadeIn: 0.1, fadeOut: 0.4, gain: -5, mix: [x('battle', 'swish_3.wav', { rate: 0.45, gain: -1 })] }),
   'skill.pal.verdictHit': x('ki', BELL(0), { rate: 0.42, t: 2.2, fadeOut: 1.1, mix: [x('ki', PLATE(2), { rate: 0.6 }), x('rumble', 'rumble.wav', { t: 1.2, fadeOut: 0.6, gain: -4 }), x('bfh', 'bfh1_rock_breaking_01.ogg', { rate: 0.6, gain: -5 })] }),
+
+  // --- Blade -----------------------------------------------------------------
+  // Oath Cut: steel drawn a hand's breadth, then a short wet cut.
+  'skill.pal.oath': x('sword20', SW + 'sword.3.ogg', { rate: 1.1, hp: 300, mix: [x('kr', 'drawKnife2.ogg', { rate: 1.0, gain: -6 })] }),
+  'skill.pal.oathHit': x('kr', 'knifeSlice2.ogg', { rate: 0.9, mix: [x('ki', 'impactPlate_light_002.ogg', { rate: 1.1, gain: -6 }), x('r80', 'blade_02.ogg', { rate: 1.2, gain: -9 })] }),
+  // Turn the Blade: steel turned on steel and held, then the answer with a thin chime.
+  'skill.pal.turn': x('sword20', SC + 'sword_clash.4.ogg', { rate: 1.15, mix: [x('kr', 'metalClick.ogg', { rate: 0.9, gain: -4 })] }),
+  'skill.pal.turnHit': x('sword20', SW + 'sword.7.ogg', { rate: 0.85, mix: [x('ki', 'impactMetal_light_003.ogg', { gain: -3 }), x('bells', 'bell_ding2.wav', { rate: 1.3, t: 0.5, fadeOut: 0.3, gain: -12 })] }),
+  // Twin Verse: two fast strokes, the second a touch higher.
+  'skill.pal.twin': x('swish', 'swish-7.wav', { rate: 1.2, mix: [x('swish', 'swish-5.wav', { rate: 1.3, delay: 160, gain: -2 })] }),
+  'skill.pal.twinHit': x('r80', 'blade_01.ogg', { rate: 1.05, mix: [x('kr', 'knifeSlice.ogg', { rate: 1.1, gain: -4 })] }),
+  // Feint: a cloak flicked and one quick step, then a cut from the side.
+  'skill.pal.feint': x('kr', 'cloth2.ogg', { rate: 1.2, mix: [x('kr', 'footstep08.ogg', { rate: 1.2, delay: 60, gain: -2 }), x('swish', 'swish-2.wav', { rate: 1.25, delay: 150, gain: -2 })] }),
+  'skill.pal.feintHit': x('sword20', SW + 'sword.9.ogg', { rate: 0.95, mix: [x('ki', 'impactPunch_medium_001.ogg', { gain: -5 })] }),
+  // Litany: a murmured line under five strokes; each cut a small dry slice.
+  'skill.pal.litany': x('chant', 'chant14.wav', { ss: 0.2, t: 0.9, rate: 1.1, fadeOut: 0.3, gain: -8, mix: [x('swish', 'swish-3.wav', { rate: 1.4 }), x('swish', 'swish-8.wav', { rate: 1.4, delay: 120, gain: -1 }), x('swish', 'swish-13.wav', { rate: 1.4, delay: 240, gain: -2 })] }),
+  'skill.pal.litanyHit': x('kr', 'knifeSlice.ogg', { rate: 1.3, mix: [x('r80', 'blade_03.ogg', { rate: 1.4, gain: -7 })] }),
+  // Confession Thrust: boots and mail in a lunge, then a deep thrust and a breath let out.
+  'skill.pal.confess': x('sword20', SW + 'sword.5.ogg', { rate: 0.8, mix: [x('kr', 'footstep01.ogg', { rate: 0.9, gain: -3 }), x('rsp', 'inventory/chainmail1.wav', { rate: 1.1, gain: -9 })] }),
+  'skill.pal.confessHit': x('ki', 'impactPunch_heavy_001.ogg', { rate: 0.9, mix: [x('r80', 'blade_02.ogg', { rate: 0.75, gain: -2 }), x('chant', 'chant9.wav', { ss: 0.3, t: 0.6, rate: 0.9, fadeOut: 0.3, gain: -12 })] }),
+  // Crosswise: two long strokes crossing.
+  'skill.pal.cross': x('swish', 'swish-10.wav', { mix: [x('swish', 'swish-12.wav', { rate: 0.95, delay: 200 })] }),
+  'skill.pal.crossHit': x('sword20', SC + 'sword_clash.7.ogg', { rate: 0.9, mix: [x('kr', 'knifeSlice2.ogg', { rate: 0.8, gain: -4 })] }),
+  // Mercy Stroke: a knife drawn slow over a slow heartbeat, then one clean blow and a far bell.
+  'skill.pal.mercy': x('kr', 'drawKnife3.ogg', { rate: 0.85, mix: [x('heart', 'heartbeat_slow_0.wav', { t: 0.8, fadeOut: 0.3, gain: -6 })] }),
+  'skill.pal.mercyHit': x('sword20', SW + 'sword.1.ogg', { rate: 0.75, mix: [x('ki', 'impactSoft_heavy_004.ogg', { gain: -3 }), x('bells', 'bell_ding3.wav', { rate: 0.6, t: 0.9, fadeOut: 0.5, gain: -12 })] }),
+  // Sevenfold: a blur of thin strokes; each thrust a light tick of steel.
+  'skill.pal.seven': x('melee3', 'sword sound.wav', { rate: 1.3, mix: [x('swish', 'swish-1.wav', { rate: 1.6, delay: 90, gain: -3 }), x('swish', 'swish-4.wav', { rate: 1.6, delay: 180, gain: -4 }), x('swish', 'swish-6.wav', { rate: 1.6, delay: 270, gain: -5 })] }),
+  'skill.pal.sevenHit': x('r80', 'blade_03.ogg', { rate: 1.25, mix: [x('ki', 'impactPlate_light_004.ogg', { rate: 1.3, gain: -8 })] }),
+  // Last Rites: a low voice and a cloak in the dark, then the blade through and a small bell.
+  'skill.pal.rites': x('chant', 'chant18.wav', { ss: 1, t: 1.0, rate: 0.7, fadeIn: 0.1, fadeOut: 0.4, gain: -6, mix: [x('kr', 'cloth4.ogg', { rate: 0.8, gain: -4 })] }),
+  'skill.pal.ritesHit': x('sword20', SW + 'sword.10.ogg', { rate: 0.7, mix: [x('ki', 'impactPunch_heavy_004.ogg', { rate: 0.7, gain: -2 }), x('c100', 'bell_02.ogg', { rate: 0.55, gain: -8 })] }),
 };
