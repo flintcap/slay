@@ -25,6 +25,7 @@ import { ClawFX, FeralFX, TeethFX, formChange } from '../fx/shifter/ShifterFX';
 import { SHIFTER_SELF_POWER, bristleReflect, ursaLifePct } from '../data/shifterPower';
 import { getSkill } from '../data/skills';
 import { effectiveSkillRank } from '../sim/Character';
+import { heroPower } from '../sim/HeroPower';
 import { audio } from '../audio/Audio';
 import { skillSound } from '../audio/SkillSounds';
 import '../data/shifterStatuses';
@@ -664,10 +665,13 @@ const ursaMajor: Handler = (k, c) => {
   const kk = Math.max(0, c.rank - 1);
   const power = SHIFTER_SELF_POWER.ursaMajor!(kk, c.num);
   // A share of the bear's life as flat life, and that much more of it filled.
+  // Flat life shows on the sheet times the hero's level power, so a recast
+  // takes off what the last one shows, not its flat number (or it compounds).
+  const mul = heroPower(c.player.character.level).life || 1;
   const given = c.player.status.get('ss.ursaMajor')?.mods?.life ?? 0;
-  const life = Math.round(((c.player.stats.life - given) * ursaLifePct(kk, c.num)) / 100);
+  const life = Math.round(((c.player.stats.life - given * mul) * ursaLifePct(kk, c.num)) / 100 / mul);
   c.player.applyStatus('ss.ursaMajor', power.duration ?? 12, 1, 1, { mods: { ...(power.mods ?? {}), life } });
-  c.player.heal(Math.max(0, life - given));
+  c.player.heal(Math.max(0, (life - given) * mul));
   ClawFX.ursa(k.effects, c.player.position, c.dir);
 };
 

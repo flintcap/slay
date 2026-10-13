@@ -25,6 +25,7 @@ import { getSkill } from '../data/skills';
 import { effectiveSkillRank } from '../sim/Character';
 import { tickShifterFX } from '../fx/shifter/ShifterFX';
 import { SHIFTER_SELF_POWER } from '../data/shifterPower';
+import { heroPower } from '../sim/HeroPower';
 
 /** A leap or a rush the hero is in the middle of (Pounce, Lunge, Overrun...). */
 interface Trip {
@@ -152,10 +153,15 @@ export class Shapeshift {
       out[k] = Math.round(v * 10) / 10;
     }
     if (raw.lifePct) {
-      // A share of the man's life: the sheet's life less what this form already gives.
+      // A share of the man's life: the sheet's life less what this form already
+      // gives. The sheet multiplies flat life by the hero's level power after
+      // the statuses, so the form's own life shows on it that many times over;
+      // taking off only the flat number let the share feed on itself every
+      // refresh until the bear had twenty times the man's life.
+      const mul = heroPower(c.level).life || 1;
       const given = this.player.status.get(FORM_STATUS[form])?.mods?.life ?? 0;
-      const man = Math.max(1, this.player.stats.life - given);
-      out.life = Math.round((out.life ?? 0) + (man * raw.lifePct) / 100);
+      const man = Math.max(1, this.player.stats.life - given * mul);
+      out.life = Math.round((out.life ?? 0) + (man * raw.lifePct) / 100 / mul);
     }
     return out;
   }
