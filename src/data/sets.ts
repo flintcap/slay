@@ -136,10 +136,12 @@ set(
     ['set.kindled.wand', 'Kindling', 'wand.bone', [['fireDamage', 10, 20], ['castSpeed', 6, 10], ['skillLevels', 1, 1]]],
     ['set.kindled.chest', 'Kindled Robe', 'chest.quilted', [['mana', 25, 45], ['fireResist', 15, 25], ['enhancedDefense', 30, 50]]],
     ['set.kindled.helm', 'Kindled Cowl', 'helm.cap', [['energy', 5, 9], ['manaRegen', 12, 20], ['fireDamage', 6, 14]]],
+    ['set.kindled.legs', 'Kindled Breeches', 'pants.silk', [['mana', 20, 35], ['fireResist', 15, 25], ['castSpeed', 5, 8]]],
   ],
   [
     [2, '+15% Cast Speed, +25% Fire Resistance', [['castSpeed', 15], ['fireResist', 25]]],
     [3, '+1 to All Skills, +25% Elemental Damage, Adds 30 Fire Damage', [['skillLevels', 1], ['elementalDamagePct', 25], ['fireDamage', 30]]],
+    [4, '+20% Cast Speed, +60 Mana, +10 Mana Regeneration', [['castSpeed', 20], ['mana', 60], ['manaRegen', 10]]],
   ],
 );
 
@@ -154,10 +156,12 @@ set(
     ['set.quickstep.boots', 'Quickstep Treads', 'boots.heavy', [['moveSpeed', 10, 15], ['dexterity', 6, 10], ['defense', 12, 20]]],
     ['set.quickstep.dagger', 'Quickstep Fang', 'dagger.dirk', [['attackSpeed', 8, 13], ['critChance', 4, 7], ['maxDamage', 6, 11]]],
     ['set.quickstep.gloves', 'Quickstep Wraps', 'gloves.heavy', [['attackSpeed', 8, 12], ['dexterity', 5, 9], ['maxDamage', 5, 9]]],
+    ['set.quickstep.legs', 'Quickstep Leggings', 'pants.studded', [['moveSpeed', 6, 10], ['dexterity', 6, 10], ['defense', 18, 28]]],
   ],
   [
     [2, '+18% Movement Speed, +12 Dexterity', [['moveSpeed', 18], ['dexterity', 12]]],
     [3, '+25% Attack Speed, +10% Critical Strike Chance, +45% Critical Strike Damage', [['attackSpeed', 25], ['critChance', 10], ['critDamage', 45]]],
+    [4, '+12% Movement Speed, +20 Dexterity, +80 Life', [['moveSpeed', 12], ['dexterity', 20], ['life', 80]]],
   ],
 );
 
@@ -217,11 +221,13 @@ set(
     ['set.frostwrought.chest', 'Frostwrought Plate', 'chest.splint', [['enhancedDefense', 100, 155], ['coldResist', 25, 40], ['life', 80, 130]]],
     ['set.frostwrought.gloves', 'Frostwrought Grips', 'gloves.war', [['coldDamage', 25, 50], ['attackSpeed', 8, 13], ['strength', 8, 14]]],
     ['set.frostwrought.helm', 'Frostwrought Visor', 'helm.grim', [['coldResist', 25, 40], ['enhancedDefense', 80, 125], ['critDamage', 25, 45]]],
+    ['set.frostwrought.legs', 'Frostwrought Chausses', 'pants.chausses', [['coldResist', 25, 40], ['enhancedDefense', 90, 140], ['vitality', 10, 16]]],
   ],
   [
     [2, 'Adds 60 Cold Damage, +30% Cold Resistance', [['coldDamage', 60], ['coldResist', 30]]],
     [3, '+35% Elemental Damage, +60% Critical Strike Damage', [['elementalDamagePct', 35], ['critDamage', 60]]],
     [4, 'Adds 160 Cold Damage, +40% Cold Resistance, +15% Attack Speed — chilled enemies shatter on death', [['coldDamage', 160], ['coldResist', 40], ['attackSpeed', 15], ['areaDamagePct', 35]]],
+    [5, '+180 Life, +10% Damage Reduction, +40% Elemental Damage', [['life', 180], ['damageReduction', 10], ['elementalDamagePct', 40]]],
   ],
 );
 
@@ -284,12 +290,14 @@ set(
     ['set.ironvow.helm', 'Vowhelm', 'helm.great', [['enhancedDefense', 120, 190], ['vitality', 18, 28], ['damageReduction', 4, 7]]],
     ['set.ironvow.mace', 'Vowbreaker', 'mace.truncheon', [['enhancedDamage', 130, 200], ['lifeSteal', 3, 5], ['areaDamagePct', 15, 25]]],
     ['set.ironvow.belt', 'Vowcord', 'belt.vampirefang', [['life', 120, 190], ['damageReduction', 3, 6], ['lifeRegen', 20, 32]]],
+    ['set.ironvow.legs', 'Vowguard', 'pants.cuisses', [['enhancedDefense', 140, 210], ['vitality', 16, 26], ['blockChance', 4, 7]]],
   ],
   [
     [2, '+12% Block Chance, +150 Defense', [['blockChance', 12], ['defense', 150]]],
     [3, '+14% Damage Reduction, +250 Life', [['damageReduction', 14], ['life', 250]]],
     [4, '+15% Physical Resistance, +45 Life Regeneration', [['physicalResist', 15], ['lifeRegen', 45]]],
     [5, '+200% Enhanced Defense, +25% Block Chance, +8% Life Stolen per Hit — blocking reflects the blow', [['enhancedDefense', 200], ['blockChance', 25], ['lifeSteal', 8], ['critDamage', 60]]],
+    [6, '+350 Life, +10% Damage Reduction, +20% Physical Resistance', [['life', 350], ['damageReduction', 10], ['physicalResist', 20]]],
   ],
 );
 
@@ -399,6 +407,7 @@ set(
     ['set.lastlegion.gloves', 'Last Grip', 'gloves.eclipse', [['attackSpeed', 18, 27], ['critChance', 8, 13], ['strength', 22, 35]]],
     ['set.lastlegion.boots', 'Last March', 'boots.gale', [['moveSpeed', 18, 28], ['enhancedDefense', 200, 300], ['attackSpeed', 8, 13]]],
     ['set.lastlegion.belt', 'Last Cord', 'belt.worldheart', [['life', 280, 420], ['damageReduction', 6, 10], ['lifeRegen', 50, 80]]],
+    ['set.lastlegion.legs', 'Last Ground', 'pants.legion', [['enhancedDefense', 240, 360], ['vitality', 30, 45], ['physicalResist', 6, 10]], 2],
   ],
   [
     [2, '+30% Attack Speed, +200% Enhanced Damage', [['attackSpeed', 30], ['enhancedDamage', 200]]],
@@ -406,6 +415,7 @@ set(
     [4, '+15% Critical Strike Chance, +180% Critical Strike Damage', [['critChance', 15], ['critDamage', 180]]],
     [5, '+15% Physical Resistance, +12% Life Stolen per Hit', [['physicalResist', 15], ['lifeSteal', 12]]],
     [6, '+2 to All Skills, +350% Enhanced Damage, +300% Enhanced Defense — you cannot be knocked back or stunned', [['skillLevels', 2], ['enhancedDamage', 350], ['enhancedDefense', 300], ['areaDamagePct', 70]]],
+    [7, '+600 Life, +15% Damage Reduction, +250% Enhanced Damage', [['life', 600], ['damageReduction', 15], ['enhancedDamage', 250]]],
   ],
 );
 

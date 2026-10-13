@@ -822,7 +822,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     const slot = f.slot ?? 'chest';
     const rarity = (f.rarity ?? 'normal') as ItemRarity;
     const bases = ITEM_BASES.filter((b) => b.slot === slot && (!f.bases || f.bases.split(',').includes(b.id)));
-    const frameOf: Record<string, { y: number; dist: number }> = { helm: { y: 0.9, dist: 1.5 }, chest: { y: 0.55, dist: 3.6 }, gloves: { y: 0.55, dist: 2.6 }, boots: { y: 0.15, dist: 1.8 }, belt: { y: 0.52, dist: 1.6 } };
+    const frameOf: Record<string, { y: number; dist: number }> = { helm: { y: 0.9, dist: 1.5 }, chest: { y: 0.55, dist: 3.6 }, gloves: { y: 0.55, dist: 2.6 }, boots: { y: 0.15, dist: 1.8 }, legs: { y: 0.3, dist: 2.6 }, belt: { y: 0.52, dist: 1.6 } };
     const fr0 = frameOf[slot] ?? { y: 0.52, dist: 4.2 };
     const fr = { y: Number(f.y ?? fr0.y), dist: Number(f.dist ?? fr0.dist) };
     const cols = Number(f.cols ?? 6);
@@ -851,7 +851,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     await scansReady();
     profileBodies(true);
     const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
-    const bodySlots = ['helm', 'chest', 'gloves', 'boots', 'belt'];
+    const bodySlots = ['helm', 'chest', 'gloves', 'legs', 'boots', 'belt'];
     const setFor = (cls: CharClassId): string[] => {
       // The set with the most worn pieces, a different one per class.
       const bySet = new Map<string, string[]>();
@@ -961,7 +961,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       const H = HERO_LOOKS[cell.cls].shape.height;
       const close = f.of === 'uniques';
       const slot = Object.keys(cell.pieces)[0];
-      const y = f.ty ? Number(f.ty) : !close ? 0.5 : slot === 'helm' ? 0.9 : slot === 'boots' ? 0.15 : 0.55;
+      const y = f.ty ? Number(f.ty) : !close ? 0.5 : slot === 'helm' ? 0.9 : slot === 'boots' ? 0.15 : slot === 'legs' ? 0.32 : 0.55;
       const near = close && slot !== 'chest' && slot !== 'mainHand' && slot !== 'offHand';
       shoot(g, hero.root, { x: (i % cols) * TW, y: Math.floor(i / cols) * TH, w: TW, h: TH, yaw: Number(f.yaw ?? 0.55), target: new THREE.Vector3(0, H * y, 0), dist: f.dist ? Number(f.dist) : near ? 2.2 : 4.0, pitch: 0.12 });
       g.fillStyle = INK;

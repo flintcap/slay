@@ -347,7 +347,7 @@ for (const p of POWERS) {
 const setRows: Array<{ id: string; pieces: number; statsOk: boolean; powerOk: boolean }> = [];
 for (const s of SETS) {
   const eq: Partial<Record<string, Item>> = {};
-  const slots = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];
+  const slots = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];
   s.pieces.forEach((piece, i) => {
     const it = createItem(piece.baseId, piece.ilvl, new Random(17 + i), 'normal');
     it.rarity = 'set';

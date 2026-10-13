@@ -27,7 +27,7 @@ import { FIELD_KIT } from './FieldKit';
  */
 
 /** Slots that put geometry on the body. Rings and amulets show nothing at play distance. */
-export const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt'];
+export const VISUAL_SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt'];
 
 /** What a slot holds, as far as its looks go. */
 export type Piece = Pick<Item, 'baseId' | 'rarity'> & Partial<Pick<Item, 'uid' | 'upgrade' | 'uniqueId' | 'setId'>>;

@@ -382,6 +382,53 @@ export const UNIQUE_TEXT: Record<string, UniqueText> = {
     name: 'Shroud of the Sleeper',
     flavor: `It is breathing, slowly. So is what it was taken from.`,
   },
+  // ---------------------------------------------------------------------------
+  // Pants
+  // ---------------------------------------------------------------------------
+  'uq.mudlark': {
+    name: "Mudlark's Breeches",
+    flavor: `Pulled out of the river mud below Stairhead. Nobody asked after the owner.`,
+  },
+  'uq.hearthwool': {
+    name: 'Hearthwool',
+    flavor: `Knitted by the stove in the Lamp, one row a night, all winter.`,
+  },
+  'uq.gatewarden': {
+    name: 'Gatewarden',
+    flavor: `The gate on the first tier fell. The man who held it did not.`,
+  },
+  'uq.brambleshanks': {
+    name: 'Brambleshanks',
+    flavor: `Every stud was hammered in by a hand that had bled on a bramble that day.`,
+  },
+  'uq.stillwater': {
+    name: 'Stillwater',
+    flavor: `Woven at the bottom of the cistern, where the water has not moved in a hundred years.`,
+  },
+  'uq.anvilknees': {
+    name: 'Anvilknees',
+    flavor: `Beaten on the big anvil at the Works, by a smith who wanted something that would not kneel.`,
+  },
+  'uq.wyrmhaunch': {
+    name: 'Wyrmhaunch',
+    flavor: `Cut from the hide of the wyrm under the Works. The hide is still warm.`,
+  },
+  'uq.nightstride': {
+    name: 'Nightstride',
+    flavor: `Sewn on the roof of the Archive, by the light of stars that are no longer there.`,
+  },
+  'uq.lastrank': {
+    name: 'The Last Rank',
+    flavor: `The last line of the old guard held the stair for nine days. These are what was left standing.`,
+  },
+  'my.rootbound': {
+    name: 'Rootbound',
+    flavor: `Caul planted a tree where the dead lay. The roots came up through the floor and into these.`,
+  },
+  'an.spirefoot': {
+    name: 'Spirefoot',
+    flavor: `The Spire stands on two legs of stone. These were cut from the same quarry, and they have not moved either.`,
+  },
 };
 
 export const SET_TEXT: Record<string, { name?: string; blurb?: string }> = {

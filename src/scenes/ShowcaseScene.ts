@@ -112,7 +112,7 @@ export class ShowcaseScene extends GameScene {
         (b) => b.slot === 'mainHand' || b.slot === 'twoHand' || b.slot === 'offHand'
       );
       const armour = ITEM_BASES.filter((b) =>
-        ['helm', 'chest', 'gloves', 'boots', 'belt'].includes(String(b.slot))
+        ['helm', 'chest', 'gloves', 'legs', 'boots', 'belt'].includes(String(b.slot))
       );
       const pool = kind === 'rarity' ? [weapons[page % weapons.length]!] : [...weapons, ...armour];
 

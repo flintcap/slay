@@ -154,6 +154,22 @@ export const UNIQUES: UniqueDef[] = [
     [['enhancedDamage', 90, 130], ['arcaneDamage', 15, 28], ['skillLevels', 1, 1], ['mana', -40, -20]],
     { hook: 'Devastating against the undead, awkward against everything else.', special: 'undeadSlayer', weight: 85 }),
 
+  // Pants.
+  u('uq.mudlark', "Mudlark's Breeches", 'pants.trousers', 5, 4,
+    'Pulled out of the river mud below Stairhead.',
+    [['life', 15, 25], ['vitality', 4, 7], ['moveSpeed', 5, 8], ['poisonResist', 20, 30]],
+    { hook: 'Each kill puts a little life back.', special: 'killLife', weight: 110 }),
+
+  u('uq.hearthwool', 'Hearthwool', 'pants.silk', 8, 6,
+    'Knitted by the stove in the Lamp, one row a night, all winter.',
+    [['mana', 20, 35], ['energy', 5, 9], ['fireResist', 20, 30], ['manaRegen', 10, 20]],
+    { hook: 'Keeps a caster warm and full.', weight: 105 }),
+
+  u('uq.gatewarden', 'Gatewarden', 'pants.chausses', 16, 14,
+    'The gate on the first tier fell. The man who held it did not.',
+    [['enhancedDefense', 50, 80], ['vitality', 6, 10], ['life', 30, 50], ['physicalResist', 3, 5]],
+    { hook: 'Melee attackers take a share of the damage they deal you.', special: 'thorns', weight: 100 }),
+
   // =========================================================================
   // MID — levels 20-50. Where builds start committing to a direction.
   // =========================================================================
@@ -309,6 +325,22 @@ export const UNIQUES: UniqueDef[] = [
      ['critChance', 6, 10]],
     { hook: 'The fastest caster weapon in the game, and it barely cuts.', weight: 90 }),
 
+  // Pants.
+  u('uq.brambleshanks', 'Brambleshanks', 'pants.studded', 26, 24,
+    'Every stud was hammered in by a hand that had bled on a bramble that day.',
+    [['enhancedDefense', 80, 120], ['dexterity', 10, 15], ['attackSpeed', 8, 12], ['lifeSteal', 2, 4]],
+    { hook: 'Critical strikes leave them bleeding.', special: 'critBleed', weight: 95 }),
+
+  u('uq.stillwater', 'Stillwater', 'pants.mystic', 32, 30,
+    'Woven at the bottom of the cistern, where the water has not moved in a hundred years.',
+    [['castSpeed', 12, 18], ['mana', 50, 80], ['manaRegen', 20, 35], ['coldResist', 25, 40]],
+    { hook: 'Enemies near you are slowed and weakened.', special: 'slowAura', weight: 90 }),
+
+  u('uq.anvilknees', 'Anvilknees', 'pants.cuisses', 40, 36,
+    'Beaten on the big anvil at the Works, by a smith who wanted something that would not kneel.',
+    [['enhancedDefense', 120, 170], ['strength', 12, 20], ['life', 60, 100], ['damageReduction', 4, 7]],
+    { hook: 'You cannot be stunned, knocked down or knocked back.', special: 'unstoppable', weight: 90 }),
+
   // =========================================================================
   // LATE — levels 50-75. Fully-formed build engines.
   // =========================================================================
@@ -452,6 +484,24 @@ export const UNIQUES: UniqueDef[] = [
      ['attackSpeed', -15, -8], ['magicFind', 50, 80]],
     { hook: 'Enemies you strike are cursed to drop more.', special: 'wishCurse', weight: 74 }),
 
+  // Pants.
+  u('uq.wyrmhaunch', 'Wyrmhaunch', 'pants.drakeskin', 52, 48,
+    'Cut from the hide of the wyrm under the Works. The hide is still warm.',
+    [['fireResist', 40, 55], ['fireDamage', 30, 60], ['life', 120, 180], ['enhancedDefense', 140, 190]],
+    { hook: 'Your hits splash molten slag.', special: 'moltenTrail', weight: 85 }),
+
+  u('uq.nightstride', 'Nightstride', 'pants.astral', 58, 54,
+    'Sewn on the roof of the Archive, by the light of stars that are no longer there.',
+    [['skillLevels', 1, 1], ['castSpeed', 18, 26], ['mana', 120, 180], ['elementalDamagePct', 20, 30],
+     ['enhancedDefense', 120, 170]],
+    { hook: 'When a hit leaves you low, you blink away.', special: 'panicBlink', weight: 82 }),
+
+  u('uq.lastrank', 'The Last Rank', 'pants.legion', 64, 60,
+    'The last line of the old guard held the stair for nine days. These are what was left standing.',
+    [['enhancedDefense', 180, 240], ['vitality', 20, 30], ['life', 150, 230], ['damageReduction', 6, 10],
+     ['physicalResist', 6, 10]],
+    { hook: 'Arrows and spells hit you for less.', special: 'rangedDR', weight: 80 }),
+
   // =========================================================================
   // MYTHIC — depth 60+, roughly one in nine hundred drops.
   // =========================================================================
@@ -543,6 +593,12 @@ export const UNIQUES: UniqueDef[] = [
      ['life', 250, 380], ['mana', 250, 380], ['cooldownReduction', 18, 25]],
     { hook: 'Allied summons and party members inherit half your regeneration.', special: 'hymnAura' }),
 
+  m('my.rootbound', 'Rootbound', 'pants.legion', 76, 72,
+    'Caul planted a tree where the dead lay. The roots came up through the floor and into these.',
+    [['life', 300, 420], ['vitality', 30, 45], ['damageReduction', 12, 18], ['physicalResist', 10, 15],
+     ['fireResist', 30, 45], ['coldResist', 30, 45], ['lightningResist', 30, 45], ['poisonResist', 30, 45]],
+    { hook: 'You heal a share of your life every second, in a fight or out of one.', special: 'combatRegen', sockets: 1 }),
+
   // =========================================================================
   // ANCIENT — depth 80+, boss-weighted, roughly one in nine thousand.
   // =========================================================================
@@ -590,6 +646,11 @@ export const UNIQUES: UniqueDef[] = [
      ['elementalDamagePct', 55, 75], ['arcaneResist', 70, 95], ['damageReduction', 10, 16],
      ['cooldownReduction', 20, 28]],
     { hook: 'Your mana pool is also your life pool. Nothing else can hurt you.', special: 'mythicManaShield', sockets: 2 }),
+  a('an.spirefoot', 'Spirefoot', 'pants.titan', 92, 88,
+    'The Spire stands on two legs of stone. These were cut from the same quarry, and they have not moved either.',
+    [['life', 500, 700], ['vitality', 50, 70], ['damageReduction', 18, 25], ['physicalResist', 15, 22],
+     ['enhancedDefense', 450, 600], ['moveSpeed', 15, 22], ['skillLevels', 2, 2]],
+    { hook: 'Once every ninety seconds, death is declined.', special: 'cheatDeath', sockets: 2 }),
 ];
 
 // ---------------------------------------------------------------------------

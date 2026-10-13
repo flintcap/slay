@@ -18,8 +18,8 @@ import type { Character } from '../types';
 import { DressedHero, VISUAL_SLOTS } from '../scenes/HeroModel';
 
 /** Panel-sized viewport. Small enough that a second GL context is cheap. */
-const WIDTH = 176;
-const HEIGHT = 384;
+const WIDTH = 196;
+const HEIGHT = 524;
 
 export class PaperdollView {
   readonly root: HTMLDivElement;

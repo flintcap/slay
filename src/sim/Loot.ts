@@ -367,6 +367,7 @@ const NOUN_GROUPS: Record<string, string[]> = {
   helm: ['Crown', 'Visage', 'Gaze', 'Brow', 'Mask', 'Vigil', 'Halo', 'Skull', 'Cowl', 'Helm'],
   chest: ['Guard', 'Shell', 'Hide', 'Coat', 'Ward', 'Carapace', 'Bulwark', 'Weave', 'Mantle', 'Shroud'],
   gloves: ['Grasp', 'Grip', 'Touch', 'Clutch', 'Hand', 'Talon', 'Fist', 'Knuckle', 'Palm', 'Snare'],
+  pants: ['Stance', 'Hold', 'Root', 'Ground', 'Haunch', 'Kneel', 'Brace', 'Footing', 'Greave', 'Legs'],
   boots: ['Stride', 'Tread', 'Trail', 'Step', 'Walk', 'Pace', 'Trek', 'March', 'Gait', 'Course'],
   belt: ['Cord', 'Girth', 'Clasp', 'Wrap', 'Bind', 'Loop', 'Cinch', 'Knot', 'Girdle', 'Sash'],
   shield: ['Wall', 'Ward', 'Bastion', 'Guard', 'Face', 'Rampart', 'Barrier', 'Aegis', 'Refuge', 'Stand'],
@@ -398,6 +399,8 @@ function nounGroupFor(category: ItemCategory): string {
       return 'chest';
     case 'gloves':
       return 'gloves';
+    case 'pants':
+      return 'pants';
     case 'boots':
       return 'boots';
     case 'belt':
@@ -1103,6 +1106,7 @@ const CATEGORY_LABEL: Record<ItemCategory, string> = {
   helm: 'Helm',
   chest: 'Body Armor',
   gloves: 'Gloves',
+  pants: 'Pants',
   boots: 'Boots',
   belt: 'Belt',
   amulet: 'Amulet',

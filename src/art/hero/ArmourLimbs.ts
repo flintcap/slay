@@ -389,6 +389,209 @@ export function boots(k: Kit): Anchor[] {
 }
 
 // ---------------------------------------------------------------------------
+// Pants
+// ---------------------------------------------------------------------------
+
+interface PantsCut {
+  /** Where the legs end: 1..2 knee to ankle. Below the linens' hem they hug the shin, tucked into a boot. */
+  hem: number;
+  /**
+   * Cloth off the skin. Never more than the bare linen trousers stand, so
+   * every coat, belt and boot cut to cover those covers these as well.
+   */
+  t: number;
+  /** What the legs themselves are made of. */
+  shell: MatKey;
+  folds?: number;
+  quilt?: boolean;
+  scales?: boolean;
+  patches?: boolean;
+  studs?: boolean;
+  laces?: boolean;
+  stripe?: boolean;
+  sash?: boolean;
+  wraps?: boolean;
+  knee?: 'pad' | 'cop' | 'fan' | 'spike';
+  cuisse?: 'plate' | 'lames';
+  tassets?: number;
+  runes?: boolean;
+}
+
+const PANTS: Record<string, PantsCut> = {
+  'pants.trousers': { hem: 1.9, t: 0.0078, shell: 'main', folds: 0.0022, patches: true, laces: true },
+  'pants.studded': { hem: 1.9, t: 0.0085, shell: 'main', studs: true, knee: 'pad', stripe: true },
+  'pants.drakeskin': { hem: 1.92, t: 0.0078, shell: 'main', scales: true, laces: true, knee: 'pad', runes: true },
+  'pants.chausses': { hem: 1.92, t: 0.0085, shell: 'chain', knee: 'cop' },
+  'pants.cuisses': { hem: 1.92, t: 0.0085, shell: 'chain', cuisse: 'plate', knee: 'fan', tassets: 2 },
+  'pants.legion': { hem: 1.92, t: 0.0082, shell: 'strap', quilt: true, cuisse: 'lames', knee: 'spike', tassets: 4 },
+  'pants.silk': { hem: 1.9, t: 0.0075, shell: 'main', folds: 0.003, sash: true, wraps: true },
+  'pants.mystic': { hem: 1.92, t: 0.0078, shell: 'main', folds: 0.002, stripe: true, sash: true, runes: true },
+  'pants.astral': { hem: 1.92, t: 0.0078, shell: 'main', wraps: true, stripe: true, runes: true },
+  'pants.titan': { hem: 1.92, t: 0.0085, shell: 'strap', quilt: true, cuisse: 'lames', knee: 'spike', tassets: 4, runes: true },
+};
+
+/**
+ * Pants, waist to ankle. Their icon is this same cut on a stand-in body
+ * (`PantsModel.ts`), so what the pack shows is what the hero wears.
+ */
+export function pants(k: Kit): Anchor[] {
+  const h = k.h;
+  const look = k.look;
+  const cut = PANTS[look.cut] ?? (look.kind === 'plate' ? PANTS['pants.chausses']! : look.kind === 'silk' ? PANTS['pants.silk']! : PANTS['pants.trousers']!);
+  k.hides.push('shorts');
+  const knee = k.j.shinL;
+  const ankle = k.j.footL;
+  const hipY = k.j.thighL.y;
+  // Where the bare linens end: every boot already rises over this line.
+  const linenHem = knee.y + (ankle.y - knee.y) * 0.6;
+  const round = (x: number, z: number) => Math.atan2(x - Math.sign(x) * Math.abs(knee.x), z);
+  const base: F3 = (x, y, z) => {
+    let t = cut.t;
+    const a = round(x, z);
+    if (cut.folds) t += cut.folds * Math.sin(a * 7 + y * 14) * smooth(hipY, hipY - h, y);
+    // Padded rows, as a gambeson's.
+    if (cut.quilt) t += 0.0022 * Math.sin(fract(y / (0.12 * h)) * Math.PI) - 0.0011;
+    if (cut.scales) {
+      const r = Math.floor(-y / 0.022);
+      const fu = fract((a * 0.07) / 0.026 + (r & 1) * 0.5) * 2 - 1;
+      const fy = fract(-y / 0.022);
+      t += 0.0026 * (fy < 1 - 0.4 * fu * fu ? fy : 0.1);
+    }
+    // Tucked in: below the linens' hem the cloth hugs the shin, under any boot.
+    t += (0.0022 - t) * smooth(linenHem + 0.015, linenHem - 0.04, y);
+    // Under the shirt's hem the waist lies flat, so the shirt hangs over it.
+    return t + (0.0035 - t) * smooth(3.86 * h, 3.98 * h, y);
+  };
+  const waist = k.below(4.36);
+  const hems = SIDES.map((L) => k.leg(L, cut.hem));
+  const clips = [waist, ...hems];
+  const thickness = hem(base, clips.map((c) => k.inside(c)), 0.025 * h, 0.85);
+  const spec = {
+    groups: [G.torso, G.legL, G.legR],
+    thickness,
+    clips,
+    cell: 0.009,
+    tris: 2600,
+    yRange: [0.4 * h, 4.45 * h] as [number, number],
+  };
+  k.edged('pants', cut.shell, spec, 0.05, [waist]);
+  if (cut.stripe) {
+    // A band of trim down each outer seam.
+    const seam: Clip = { cut: (x, _y, z) => Math.cos(round(x, z) - Math.sign(x) * Math.PI * 0.5) - 0.94 };
+    k.shell('pants-stripe', 'trim', { ...spec, thickness: (x, y, z) => thickness(x, y, z) + 0.0018, clips: [...clips, seam, k.above(linenHem / h + 0.1)], tris: 700 });
+  }
+
+  const anchors: Anchor[] = [];
+  for (const L of SIDES) {
+    const s = L ? 1 : -1;
+    const gl = L ? G.legL : G.legR;
+    const thigh = bone('thigh', L);
+    const shin = bone('shin', L);
+    const kneeHit = k.onLimb(thigh, shin, 0.98, V(0, 0, 1), [gl]);
+    const front = k.onLimb(thigh, shin, 0.5, V(0, 0, 1), [gl]);
+    const hip = k.onLimb(thigh, shin, 0.14, V(s, 0, 0.2), [gl]);
+    const below = k.onLimb(shin, bone('foot', L), 0.12, V(s, 0, 0.5), [gl]);
+    const along = k.j[shin].clone().sub(k.j[thigh]).normalize();
+    if (cut.patches) {
+      k.fit('strap', gl, 0.0045).ellipsoid(kneeHit.p.clone().addScaledVector(kneeHit.n, cut.t), V(0.15 * h, 0.02 * h, 0.19 * h), 0.008 * h, basis(V(1, 0, 0), kneeHit.n));
+    }
+    if (cut.studs) {
+      const Fs = k.fit(k.trimmed ? 'trim' : 'iron', gl, 0.004);
+      for (let i = 0; i < 6; i++) {
+        for (const off of [0.4, -0.4]) {
+          const q = k.onLimb(thigh, shin, 0.14 + i * 0.13, V(s, 0, off), [gl]);
+          Fs.ellipsoid(q.p.clone().addScaledVector(q.n, cut.t + 0.002), V(0.028 * h, 0.028 * h, 0.028 * h), 0.004 * h);
+        }
+      }
+    }
+    if (cut.laces) {
+      // Lacing up the outer seam of the thigh.
+      const Fl = k.fit('strap', gl, 0.004);
+      for (let i = 0; i < 5; i++) {
+        const q = k.onLimb(thigh, shin, 0.12 + i * 0.12, V(s, 0, 0), [gl]);
+        const c = q.p.clone().addScaledVector(q.n, cut.t + 0.002);
+        const tilt = new THREE.Quaternion().setFromAxisAngle(q.n, 0.7 * s);
+        Fl.box(c, V(0.07 * h, 0.012 * h, 0.01 * h), 0.004 * h, 0.002 * h, basis(along.clone().cross(q.n), along).premultiply(tilt));
+      }
+    }
+    if (cut.wraps) {
+      // Bands wound round the leg under the knee.
+      const Fw = k.fit(look.rarityTier >= 1 ? 'trim' : 'cloth', gl, 0.0045);
+      for (let b = 0; b < 2; b++) {
+        for (let j = 0; j < 10; j++) {
+          const a = (j / 10) * Math.PI * 2;
+          const q = k.onLimb(shin, bone('foot', L), 0.06 + b * 0.09, V(Math.sin(a), 0, Math.cos(a)), [gl]);
+          Fw.ellipsoid(q.p.clone().addScaledVector(q.n, cut.t), V(0.08 * h, 0.025 * h, 0.08 * h), 0.02 * h, alongY(q.n));
+        }
+      }
+    }
+    if (cut.knee === 'pad') {
+      k.fit('strap', gl, 0.0045).ellipsoid(kneeHit.p.clone().addScaledVector(kneeHit.n, cut.t + 0.01 * h), V(0.17 * h, 0.05 * h, 0.2 * h), 0.012 * h, basis(V(1, 0, 0), kneeHit.n));
+      if (k.trimmed) k.fit('trim', gl, 0.004).ellipsoid(kneeHit.p.clone().addScaledVector(kneeHit.n, cut.t + 0.05 * h), V(0.04 * h, 0.04 * h, 0.03 * h), 0.005 * h);
+    } else if (cut.knee) {
+      const Fk = k.fit('main', gl, 0.0055);
+      const c = kneeHit.p.clone().addScaledVector(kneeHit.n, 0.04 * h);
+      Fk.ellipsoid(c, V(0.19 * h, 0.2 * h, 0.08 * h), 0.015 * h);
+      if (cut.knee === 'fan' || cut.knee === 'spike') Fk.ellipsoid(c.clone().add(V(s * 0.17 * h, 0, -0.06 * h)), V(0.04 * h, 0.22 * h, 0.18 * h), 0.015 * h, rot(0, s * 0.3, 0));
+      if (cut.knee === 'spike') k.fit('trim', gl, 0.005).cone(c, c.clone().add(V(0, 0.06 * h, 0.3 * h)), 0.07 * h, 0.005 * h, 0.02 * h);
+      if (k.trimmed) k.fit('trim', gl, 0.005).ellipsoid(c.clone().addScaledVector(kneeHit.n, 0.05 * h), V(0.05 * h, 0.05 * h, 0.03 * h), 0.006 * h);
+    }
+    if (cut.cuisse === 'plate') {
+      const top = k.onLimb(thigh, shin, 0.18, V(0, 0, 1), [gl]);
+      const bot = k.onLimb(thigh, shin, 0.8, V(0, 0, 1), [gl]);
+      const c = top.p.clone().lerp(bot.p, 0.5).addScaledVector(front.n, 0.03 * h);
+      const len = top.p.distanceTo(bot.p) * 0.55;
+      const q = alongY(bot.p.clone().sub(top.p).normalize());
+      k.fit('main', gl, 0.0055).ellipsoid(c, V(0.25 * h, len, 0.08 * h), 0.015 * h, q);
+      if (k.trimmed) k.fit('trim', gl, 0.005).ellipsoid(bot.p.clone().addScaledVector(bot.n, 0.07 * h), V(0.22 * h, 0.025 * h, 0.04 * h), 0.006 * h, q);
+    } else if (cut.cuisse === 'lames') {
+      const Fl = k.fit('main', gl, 0.0055);
+      for (let i = 0; i < 3; i++) {
+        const q = k.onLimb(thigh, shin, 0.22 + i * 0.22, V(0, 0, 1), [gl]);
+        const c = q.p.clone().addScaledVector(q.n, 0.025 * h);
+        Fl.ellipsoid(c, V(0.27 * h, 0.13 * h, 0.07 * h), 0.006 * h, alongY(along).multiply(rot(0.12, 0, 0)));
+        if (k.trimmed) for (const e of [-1, 1]) k.fit('trim', gl, 0.004).ellipsoid(c.clone().add(V(e * 0.2 * h, 0, 0)).addScaledVector(q.n, 0.05 * h), V(0.025 * h, 0.025 * h, 0.02 * h), 0.004 * h);
+      }
+    }
+    if (cut.runes || look.hasRunes) {
+      const Gl = k.fit('glow', gl, 0.004);
+      for (let i = 0; i < 4; i++) {
+        const q = k.onLimb(thigh, shin, 0.2 + i * 0.18, V(s, 0, 0.15), [gl]);
+        Gl.box(q.p.clone().addScaledVector(q.n, cut.t + 0.004), V(0.022 * h, 0.045 * h, 0.006 * h), 0.003 * h, 0.002 * h, new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), q.n.clone().setY(0).normalize()));
+      }
+    }
+    anchors.push({ p: kneeHit.p.clone().addScaledVector(kneeHit.n, 0.04 * h), n: kneeHit.n, g: gl, s: 0.15 * h, role: 'knee' });
+    anchors.push({ p: hip.p.clone().addScaledVector(hip.n, cut.t + 0.004), n: hip.n, g: gl, s: 0.14 * h, role: 'hip' });
+    // Boots cover the shins: the front of the thigh carries what a shin would.
+    anchors.push({ p: front.p.clone().addScaledVector(front.n, cut.t + (cut.cuisse ? 0.1 * h : 0.004)), n: front.n, g: gl, s: 0.14 * h, role: 'shin' });
+    anchors.push({ p: below.p.clone().addScaledVector(below.n, cut.t + 0.004), n: below.n, g: gl, s: 0.12 * h, role: 'cuff' });
+  }
+  if (cut.sash) {
+    // A sash's ends hang at the left hip.
+    const at = k.around(4.26, 1.25);
+    const tan = new THREE.Vector3().crossVectors(V(0, 1, 0), at.n).normalize();
+    const Fs = k.fit(look.rarityTier >= 1 ? 'trim' : 'cloth', G.torso, 0.0045);
+    Fs.ellipsoid(at.p.clone().addScaledVector(at.n, 0.02 * h), V(0.07 * h, 0.06 * h, 0.04 * h), 0.01 * h);
+    for (const e of [-1, 1]) {
+      const c = at.p.clone().addScaledVector(at.n, 0.03 * h).addScaledVector(tan, e * 0.05 * h).add(V(0, -0.36 * h, 0));
+      Fs.ellipsoid(c, V(0.055 * h, 0.36 * h, 0.012 * h), 0.004 * h, basis(tan, V(0, 1, 0).addScaledVector(tan, e * 0.12)));
+    }
+  }
+  for (let i = 0; i < (cut.tassets ?? 0); i++) {
+    // Plates hung from the waist over the hips and thighs.
+    const n = cut.tassets!;
+    const a = n === 2 ? (i ? 0.45 : -0.45) : (i - (n - 1) / 2) * 0.75;
+    const at = k.around(4.12, a, [G.torso, G.legL, G.legR]);
+    const tan = new THREE.Vector3().crossVectors(V(0, 1, 0), at.n).normalize();
+    const c = at.p.clone().addScaledVector(at.n, 0.05 * h).add(V(0, -0.2 * h, 0));
+    const q = basis(tan, V(0, 1, 0).addScaledVector(at.n, -0.25));
+    k.fit('main', G.torso, 0.005).box(c, V(0.2 * h, 0.28 * h, 0.014 * h), 0.012 * h, 0.002 * h, q);
+    if (k.trimmed) k.fit('trim', G.torso, 0.0045).box(c.clone().add(V(0, -0.27 * h, 0)).addScaledVector(at.n, 0.01 * h), V(0.2 * h, 0.022 * h, 0.018 * h), 0.008 * h, 0.002 * h, q);
+  }
+  return anchors;
+}
+
+// ---------------------------------------------------------------------------
 // Belts
 // ---------------------------------------------------------------------------
 

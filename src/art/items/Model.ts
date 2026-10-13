@@ -16,6 +16,7 @@ import { Parts } from './Parts';
 import { BLADE_BY_SHAPE, BLADE_CUTS, buildBlade, withOverride } from './Blades';
 import { addFeatures } from './Features';
 import { FAMILY_BUILDERS } from './Families';
+import { buildPantsGroup } from '../hero/PantsModel';
 
 export type ItemFamily =
   | 'sword'
@@ -34,6 +35,7 @@ export type ItemFamily =
   | 'helm'
   | 'chest'
   | 'gloves'
+  | 'pants'
   | 'boots'
   | 'belt'
   | 'amulet'
@@ -61,6 +63,7 @@ const CATEGORY_FAMILY: Record<string, ItemFamily> = {
   helm: 'helm',
   chest: 'chest',
   gloves: 'gloves',
+  pants: 'pants',
   boots: 'boots',
   belt: 'belt',
   amulet: 'amulet',
@@ -117,6 +120,9 @@ const HINTS: Array<[string, ItemFamily]> = [
   ['robe', 'chest'],
   ['glove', 'gloves'],
   ['gauntlet', 'gloves'],
+  ['pants', 'pants'],
+  ['trouser', 'pants'],
+  ['legging', 'pants'],
   ['boot', 'boots'],
   ['greave', 'boots'],
   ['belt', 'belt'],
@@ -164,6 +170,20 @@ function fallbackSword(P: Parts): void {
 export function buildItem(visual: ItemVisual, rarity: ItemRarity, ident?: ItemIdentity): BuiltItem {
   const look = itemLook({ baseId: ident?.baseId ?? visual.shape, rarity, uniqueId: ident?.uniqueId, setId: ident?.setId }, visual);
   const family = familyOf(look);
+  if (family === 'pants') {
+    try {
+      // Cut on a body, as the hero wears them.
+      const group = buildPantsGroup(look);
+      group.name = `item:${look.cut}:${rarity}`;
+      group.userData.shape = family;
+      group.userData.rarity = rarity;
+      group.userData.accent = look.glowColor;
+      group.userData.anchors = {};
+      return { group, look, family };
+    } catch (err) {
+      if (typeof console !== 'undefined') console.warn(`pants model ${look.cut} failed, using a plain blade`, err);
+    }
+  }
   let P = new Parts(look);
   try {
     if (family === 'sword' || family === 'dagger') {
@@ -198,6 +218,8 @@ export function buildItemFeatures(visual: ItemVisual, rarity: ItemRarity, ident?
   const look = itemLook({ baseId: ident?.baseId ?? visual.shape, rarity, uniqueId: ident?.uniqueId, setId: ident?.setId }, visual);
   if (!look.features.length && !look.emblem) return null;
   const family = familyOf(look);
+  // Pants wear their features as they are cut, icon and body alike.
+  if (family === 'pants') return null;
   const base = new Parts(look);
   const F = new Parts(look);
   try {

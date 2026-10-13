@@ -132,6 +132,7 @@ export const GAMBLE_OFFERS: GambleOffer[] = [
   { id: 'helm', name: 'Helm', categories: ['helm'], priceMul: 1.0 },
   { id: 'chest', name: 'Body Armour', categories: ['chest'], priceMul: 1.15 },
   { id: 'gloves', name: 'Gloves', categories: ['gloves'], priceMul: 0.9 },
+  { id: 'pants', name: 'Pants', categories: ['pants'], priceMul: 1.0 },
   { id: 'boots', name: 'Boots', categories: ['boots'], priceMul: 0.9 },
   { id: 'belt', name: 'Belt', categories: ['belt'], priceMul: 0.85 },
   { id: 'ring', name: 'Ring', categories: ['ring'], priceMul: 1.4 },

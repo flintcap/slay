@@ -259,6 +259,7 @@ const EQUIP_SLOTS: readonly EquipSlot[] = [
   'helm',
   'chest',
   'gloves',
+  'legs',
   'boots',
   'belt',
   'amulet',

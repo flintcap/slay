@@ -22,7 +22,7 @@ import { Random } from '../src/core/RNG';
 import type { Character, EquipSlot, Item } from '../src/types';
 
 const SLOTS: EquipSlot[] = [
-  'mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt', 'amulet', 'ring1', 'ring2',
+  'mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt', 'amulet', 'ring1', 'ring2',
 ];
 
 /** Every uid the character holds anywhere, with how many places it sits in. */

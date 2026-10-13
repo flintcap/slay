@@ -963,6 +963,58 @@ arm('gloves.eclipse', 'Gauntlets of the Eclipse', 'gloves', 'gloves', 83, 138, 0
 });
 
 // ===========================================================================
+// PANTS — every pair rolls vitality. Leather, mail and plate, and silk.
+// ===========================================================================
+
+arm('pants.trousers', 'Trousers', 'pants', 'legs', 1, 0, 0, 4, 'pants.light', 'cloth.wool|0x3e3226', {
+  imp: [{ stat: 'vitality', min: 2, max: 4 }],
+});
+arm('pants.studded', 'Studded Leggings', 'pants', 'legs', 22, 30, 0, 24, 'pants.light', 'leather.studded', {
+  ornate: 0.2,
+  imp: [{ stat: 'vitality', min: 5, max: 9 }],
+});
+arm('pants.drakeskin', 'Drakeskin Leggings', 'pants', 'legs', 48, 48, 0, 46, 'pants.light', 'leather.dark', {
+  ornate: 0.36,
+  glow: 0xd8632a,
+  imp: [{ stat: 'vitality', min: 9, max: 15 }, { stat: 'fireResist', min: 8, max: 16 }],
+});
+
+arm('pants.chausses', 'Mail Chausses', 'pants', 'legs', 12, 40, 0, 30, 'pants.plate', 'metal.iron', {
+  imp: [{ stat: 'vitality', min: 3, max: 6 }],
+});
+arm('pants.cuisses', 'Plate Cuisses', 'pants', 'legs', 36, 82, 0, 64, 'pants.plate', 'metal.steel', {
+  ornate: 0.26,
+  imp: [{ stat: 'vitality', min: 6, max: 11 }],
+});
+arm('pants.legion', 'Legion Legplates', 'pants', 'legs', 60, 130, 0, 104, 'pants.plate', 'metal.dark', {
+  ornate: 0.42,
+  imp: [{ stat: 'vitality', min: 10, max: 16 }, { stat: 'damageReduction', min: 2, max: 5 }],
+});
+
+arm('pants.silk', 'Silk Trousers', 'pants', 'legs', 4, 0, 0, 3, 'pants.silk', 'cloth.silk|0x6a4a8a', {
+  imp: [{ stat: 'vitality', min: 2, max: 3 }, { stat: 'mana', min: 6, max: 12 }],
+});
+arm('pants.mystic', 'Mystic Breeches', 'pants', 'legs', 30, 16, 0, 18, 'pants.silk', 'cloth.silk|0x2a3a7a', {
+  ornate: 0.3,
+  glow: 0x8fa8ff,
+  imp: [{ stat: 'vitality', min: 4, max: 8 }, { stat: 'manaRegen', min: 4, max: 9 }],
+});
+arm('pants.astral', 'Astral Leggings', 'pants', 'legs', 54, 26, 0, 34, 'pants.silk', 'cloth.silk|0xd8d0f0', {
+  ornate: 0.44,
+  glow: 0xc8b8ff,
+  imp: [{ stat: 'vitality', min: 8, max: 13 }, { stat: 'castSpeed', min: 6, max: 12 }],
+});
+
+arm('pants.titan', 'Legplates of the Titan', 'pants', 'legs', 82, 170, 0, 150, 'pants.plate', 'metal.mithril', {
+  ornate: 0.62,
+  glow: 0xf0c060,
+  imp: [
+    { stat: 'vitality', min: 16, max: 26 },
+    { stat: 'damageReduction', min: 4, max: 8 },
+  ],
+});
+
+// ===========================================================================
 // BOOTS — every boot rolls movement speed.
 // ===========================================================================
 
@@ -1300,6 +1352,7 @@ export const EQUIPMENT_CATEGORIES: ItemCategory[] = [
   'helm',
   'chest',
   'gloves',
+  'pants',
   'boots',
   'belt',
   'amulet',
@@ -1320,7 +1373,7 @@ export const WEAPON_CATEGORIES: ItemCategory[] = [
   'scepter',
 ];
 
-export const ARMOR_CATEGORIES: ItemCategory[] = ['helm', 'chest', 'gloves', 'boots', 'belt', 'shield'];
+export const ARMOR_CATEGORIES: ItemCategory[] = ['helm', 'chest', 'gloves', 'pants', 'boots', 'belt', 'shield'];
 export const JEWELRY_CATEGORIES: ItemCategory[] = ['amulet', 'ring', 'charm'];
 
 export function isWeapon(base: ItemBase): boolean {
@@ -1355,6 +1408,8 @@ export function maxSockets(base: ItemBase): number {
     case 'boots':
     case 'belt':
       return base.levelReq >= 40 ? 2 : 1;
+    case 'pants':
+      return base.levelReq >= 30 ? 3 : 2;
     case 'helm':
       return base.levelReq >= 30 ? 3 : 2;
     case 'chest':

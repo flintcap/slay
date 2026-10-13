@@ -91,6 +91,8 @@ function poseFor(family: ItemFamily, size: THREE.Vector3, tall = false): Pose {
   if (family === 'helm' && size.y < size.x * 0.5) return { yaw: 0.2, pitch: 0.7, roll: 0, fill: 0.86 };
   // Boots turn to show the toe.
   if (family === 'boots') return { yaw: 1.05, pitch: 0.12, roll: 0, fill: 0.86 };
+  // Pants stand square on, turned a little to show the cut down the outer seam.
+  if (family === 'pants') return { yaw: 0.35, pitch: 0.06, roll: 0, fill: 0.9 };
   if (family === 'belt') return { yaw: 0.35, pitch: 0.45, roll: 0, fill: 0.9 };
   // Wide flat things (shields, chests) stand square on; everything else turns a little more.
   const flat = size.z < Math.min(size.x, size.y) * 0.35;

@@ -181,7 +181,7 @@ const STYLE: Record<CharClassId, string[]> = {
   ranger: ['bow', 'crossbow'],
 };
 
-const SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];
+const SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];
 
 function buildHero(classId: CharClassId, depth: number): { c: Character; level: number; tree: string } {
   const level = levelAt(classId, depth);

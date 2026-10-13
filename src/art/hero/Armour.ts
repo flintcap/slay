@@ -15,28 +15,18 @@
  * where they bend. Parts that share a material are merged into one mesh.
  */
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { EquipSlot, Item, ItemVisual } from '../../types';
 import { itemLook } from '../ItemLook';
-import { garment } from './Garment';
 import type { HeroModel } from './Hero';
 import { buildCape } from './Cape';
 import { Kit, type Anchor } from './ArmourKit';
 import { chest } from './ArmourChest';
 import { helm } from './ArmourHead';
-import { belt, boots, gloves } from './ArmourLimbs';
+import { belt, boots, gloves, pants } from './ArmourLimbs';
+import { meshPiece } from './ArmourMesh';
 import { dress } from './ArmourFeatures';
 import { glowingTwin } from './HeroMaterials';
 import { iconFeatures, iconHelm, wearsIcon } from './ArmourIcon';
-
-/**
- * Every part's triangle target is scaled by this: a fully dressed hero must
- * stay inside the 60k budget the hero checks hold it to.
- */
-const TRI_SCALE = 0.8;
-
-/** Bump when a cut's functions change (thickness and cut functions are not in the mesh cache key). */
-const ARMOUR_REV = 5;
 
 /** What wearing a piece does. */
 export interface WornArmour {
@@ -48,23 +38,17 @@ export interface WornArmour {
 
 /** Slots this module dresses. Weapons and shields stay socketed models. */
 export function wearsOnBody(slot: EquipSlot): boolean {
-  return slot === 'chest' || slot === 'helm' || slot === 'gloves' || slot === 'boots' || slot === 'belt';
+  return slot === 'chest' || slot === 'helm' || slot === 'gloves' || slot === 'legs' || slot === 'boots' || slot === 'belt';
 }
 
-const merged = new Map<string, THREE.BufferGeometry>();
-
-/** One geometry for several parts of one material; cached by the parts it joins. */
-function mergeParts(geos: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  if (geos.length === 1) return geos[0]!;
-  const key = geos.map((g) => g.uuid).join('|');
-  const hit = merged.get(key);
-  if (hit) return hit;
-  const g = mergeGeometries(geos, false);
-  if (!g) return geos[0]!;
-  g.computeBoundingSphere();
-  if (merged.size > 400) merged.clear();
-  merged.set(key, g);
-  return g;
+/** Cuts a piece on a body: its parts, and the anchors its features sit on. */
+export function cutPiece(k: Kit, slot: EquipSlot): Anchor[] {
+  if (slot === 'chest') return chest(k);
+  if (slot === 'helm') return helm(k);
+  if (slot === 'gloves') return gloves(k);
+  if (slot === 'legs') return pants(k);
+  if (slot === 'boots') return boots(k);
+  return belt(k);
 }
 
 /**
@@ -75,41 +59,26 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
   if (!wearsOnBody(slot)) return null;
   const look = itemLook(item, visual);
   const k = new Kit(hero.body, look, slot);
-  let anchors: Anchor[];
-  if (slot === 'chest') anchors = chest(k);
-  else if (slot === 'helm') anchors = helm(k);
-  else if (slot === 'gloves') anchors = gloves(k);
-  else if (slot === 'boots') anchors = boots(k);
-  else anchors = belt(k);
+  const anchors = cutPiece(k, slot);
   // Sets and uniques wear their icon's features (a helm, its whole icon) in place of the body's own.
-  const icon = wearsIcon(item);
+  // Pants are the exception: their icon is cut on a body too, so it already wears these.
+  const icon = wearsIcon(item) && slot !== 'legs';
   if (!icon) dress(k, anchors);
   const parts = icon && slot === 'helm' ? [] : k.finish();
 
   const group = new THREE.Group();
   group.name = `worn:${slot}`;
   hero.rig.root.add(group);
-  // Fittings differ between uniques and sets of one base: their prims are in the cache key.
-  const byMat = new Map<THREE.Material, { geos: THREE.BufferGeometry[]; names: string[] }>();
-  for (const p of parts) {
-    p.spec.tris = Math.round((p.spec.tris ?? 1800) * TRI_SCALE);
-    const geo = garment(hero.body, `a${ARMOUR_REV}:${slot}:${look.cut}:${p.name}`, p.spec);
-    if (!geo.getIndex() || geo.getIndex()!.count === 0) continue;
-    let e = byMat.get(p.mat);
-    if (!e) byMat.set(p.mat, (e = { geos: [], names: [] }));
-    e.geos.push(geo);
-    e.names.push(p.name);
-  }
-  for (const [mat, e] of byMat) {
-    const mesh = new THREE.SkinnedMesh(mergeParts(e.geos), mat);
+  for (const e of meshPiece(hero.body, slot, look.cut, parts)) {
+    const mesh = new THREE.SkinnedMesh(e.geo, e.mat);
     mesh.name = `${slot}:${e.names[0]}`;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     mesh.userData.sharedGeometry = true;
     // Which of the piece's materials this is, so a set's glow can light its trims later.
-    mesh.userData.armourMat = k.keyOf(mat);
-    mesh.userData.baseMaterial = mat;
+    mesh.userData.armourMat = k.keyOf(e.mat);
+    mesh.userData.baseMaterial = e.mat;
     group.add(mesh);
     mesh.bind(hero.rig.skeleton, new THREE.Matrix4());
   }

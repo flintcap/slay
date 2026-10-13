@@ -89,6 +89,7 @@ export function sizeOfBase(base: ItemBase | undefined): Size {
     case 'belt':
       return { w: 2, h: 1 };
     case 'chest':
+    case 'pants':
       return { w: 2, h: 3 };
     default:
       return ONE;

@@ -418,17 +418,19 @@ export class ItemGrid {
 // Panel
 // ---------------------------------------------------------------------------
 
+/** Tab order: down the body, then the left flank, then the right. */
 const PAPERDOLL: EquipSlot[] = [
   'helm',
-  'amulet',
-  'mainHand',
   'chest',
-  'offHand',
-  'gloves',
   'belt',
-  'ring1',
+  'legs',
   'boots',
+  'gloves',
+  'ring1',
+  'mainHand',
+  'amulet',
   'ring2',
+  'offHand',
 ];
 
 /** Paperdoll slot sizes, in cells, matching what each slot holds in the pack. */
@@ -441,6 +443,7 @@ const PD_CELLS: Record<EquipSlot, [number, number]> = {
   gloves: [2, 2],
   belt: [2, 1],
   ring1: [1, 1],
+  legs: [2, 3],
   boots: [2, 2],
   ring2: [1, 1],
 };
@@ -486,7 +489,7 @@ export class InventoryPanel {
     this.crest = div('paperdoll-crest');
     doll.appendChild(this.crest);
 
-    // The live figure sits in the middle column, with the slots down each side.
+    // The live figure stands behind the middle column of slots.
     const stage = div('paperdoll-figure');
     stage.appendChild(this.view.root);
     stage.appendChild(div('pd-view-hint', SPIN_HINT));

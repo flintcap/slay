@@ -198,6 +198,8 @@ export const ICONS: Record<string, string> = {
     '<path d="M5 6.4 9.2 4.2 12 5.8l2.8-1.6L19 6.4l-.9 6.2c0 4.9-2.6 7.6-6.1 8.9-3.5-1.3-6.1-4-6.1-8.9z"/><path d="M12 5.8v15.7"/><path d="M6.4 11.6h11.2"/>',
   gloves:
     '<path d="M8 21v-7.6a1.9 1.9 0 0 1 3.8 0V6.6a1.6 1.6 0 0 1 3.2 0v5.8"/><path d="M15 12.4v-2a1.6 1.6 0 0 1 3.2 0v6.2c0 2.6-1.6 4.4-3.4 4.4H8"/><path d="M8 15.2 5.6 13"/>',
+  pants:
+    '<path d="M6.4 2.8h11.2l1 18.4h-4.4L12 9.6 9.8 21.2H5.4z"/><path d="M6.4 5.6h11.2"/><path d="M12 5.6v4"/>',
   boots:
     '<path d="M8.4 3h4.4v8.4c0 1.8 1.8 2.8 3.6 3.6l2.6 1.2v4.8H8.4z"/><path d="M8.4 17h11"/><path d="M12.8 8.2h-4.4"/>',
   belt:
@@ -600,6 +602,7 @@ export const SLOT_LABEL: Record<EquipSlot, string> = {
   helm: 'Helm',
   chest: 'Body Armour',
   gloves: 'Gloves',
+  legs: 'Legs',
   boots: 'Boots',
   belt: 'Belt',
   amulet: 'Amulet',
@@ -613,6 +616,7 @@ export const SLOT_ICON: Record<EquipSlot, string> = {
   helm: 'helm',
   chest: 'chest',
   gloves: 'gloves',
+  legs: 'pants',
   boots: 'boots',
   belt: 'belt',
   amulet: 'amulet',

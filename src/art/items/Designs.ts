@@ -319,6 +319,18 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'an.mourning-star': { main: 'metal.dark', second: 'cloth.silk|0x101014', trim: 'metal.silver', glow: 0xc0c8ff, features: ['stars', 'tatters'], wear: 0.2, glowStyle: 'void', aura: 'sparkles', finish: 'blackened' },
   'an.the-hollow-crown': { main: 'metal.dark', trim: 'metal.voidgold', stone: 0x08060c, glow: 0x8a40ff, features: ['crowns', 'spikes', 'smoke'], cut: { hollow: true }, wear: 0.3, aura: 'smoke' },
   'an.godsblood-shroud': { main: 'cloth.silk|0x44101c', trim: 'metal.bloodgold', glow: 0xff3a5a, features: ['eyes', 'stars'], wear: 0, glowStyle: 'pulse', aura: 'souls' },
+  // ---- pants -------------------------------------------------------------
+  'uq.mudlark': { main: 'cloth.wool|0x2e2418', trim: 'metal.iron', glow: 0x8a9a6a, glowStrength: 0, features: ['tatters', 'rivets'], wear: 0.85, aura: 'drips', finish: 'matte' },
+  'uq.hearthwool': { main: 'cloth.wool|0x4e2012', trim: 'metal.copper', glow: 0xff8a40, features: ['flames', 'runes'], wear: 0.3, aura: 'embers' },
+  'uq.gatewarden': { main: 'metal.iron', trim: 'metal.bronze', glow: 0xc0a080, glowStrength: 0, features: ['spikes', 'rivets'], wear: 0.6, aura: 'ash' },
+  'uq.brambleshanks': { main: 'leather.fine|0x2e3a1c', trim: 'metal.dark', glow: 0x6ab040, features: ['thorns', 'vines'], wear: 0.5, aura: 'drips' },
+  'uq.stillwater': { main: 'cloth.silk|0x1e3450', trim: 'metal.silver', glow: 0x9ad8ff, features: ['frost', 'runes'], wear: 0.15, aura: 'frost', finish: 'frosted' },
+  'uq.anvilknees': { main: 'metal.dark', trim: 'metal.iron', glow: 0xff9040, glowStrength: 0, features: ['horns', 'rivets'], wear: 0.7, aura: 'ash', finish: 'blackened' },
+  'uq.wyrmhaunch': { main: 'leather.fine|0x4a1a10', trim: 'metal.bloodgold', glow: 0xff6020, features: ['scales', 'flames', 'dragons'], wear: 0.3, aura: 'embers' },
+  'uq.nightstride': { main: 'cloth.silk|0x1a1a3a', trim: 'metal.silver', glow: 0xc8b8ff, features: ['stars', 'moons'], wear: 0.1, aura: 'sparkles' },
+  'uq.lastrank': { main: 'metal.steel', second: 'leather.worn|0x3a2418', trim: 'metal.bronze', glow: 0xd0c0a0, glowStrength: 0, features: ['skulls', 'chains', 'rivets'], wear: 0.75, aura: 'ash', finish: 'weathered' },
+  'my.rootbound': { main: 'metal.verdigris', second: 'leather.worn|0x2a3a1c', glow: 0x7ad060, features: ['vines', 'leaves', 'crystals'], wear: 0.4, aura: 'motes' },
+  'an.spirefoot': { main: 'metal.mithril', trim: 'metal.gold', stone: 0xffd070, glow: 0xffd070, features: ['laurels', 'crowns', 'gilded'], wear: 0, aura: 'shine', finish: 'gilt' },
 };
 
 /**
@@ -349,6 +361,8 @@ export const GLOWING_UNIQUES: ReadonlySet<string> = new Set([
   'uq.thunderstroke',
   'uq.deathsweb',
   'uq.eschutas',
+  'uq.wyrmhaunch',
+  'uq.nightstride',
   // Mythics.
   'my.tyraelsmight',
   'my.the-oculus',
@@ -356,6 +370,7 @@ export const GLOWING_UNIQUES: ReadonlySet<string> = new Set([
   'my.spirit-of-the-forge',
   'my.stoneofthevoid',
   'my.seraphshymn',
+  'my.rootbound',
   // Ancients: all of them.
   'an.worldbreaker',
   'an.the-long-noon',
@@ -364,4 +379,5 @@ export const GLOWING_UNIQUES: ReadonlySet<string> = new Set([
   'an.mourning-star',
   'an.the-hollow-crown',
   'an.godsblood-shroud',
+  'an.spirefoot',
 ]);

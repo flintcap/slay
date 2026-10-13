@@ -292,6 +292,7 @@ const CATEGORY_ORDER: ItemCategory[] = [
   'helm',
   'chest',
   'gloves',
+  'pants',
   'boots',
   'belt',
   'amulet',

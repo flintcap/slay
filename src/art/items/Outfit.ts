@@ -30,6 +30,7 @@ const MAX_AURAS = 3;
 const WORN_AURA: Partial<Record<EquipSlot, { bone: string; r: number; h: number; y: number }>> = {
   chest: { bone: 'chest', r: 0.3, h: 0.7, y: -0.25 },
   helm: { bone: 'head', r: 0.2, h: 0.4, y: 0.05 },
+  legs: { bone: 'pelvis', r: 0.3, h: 0.6, y: -0.6 },
   boots: { bone: 'root', r: 0.3, h: 0.35, y: 0 },
   gloves: { bone: 'handR', r: 0.12, h: 0.3, y: -0.1 },
   belt: { bone: 'pelvis', r: 0.3, h: 0.3, y: -0.1 },
@@ -94,7 +95,7 @@ export function dressOutfit(
     }
   }
   // Worn uniques: their own aura where they sit, best first.
-  const order: EquipSlot[] = ['chest', 'helm', 'boots', 'gloves', 'belt'];
+  const order: EquipSlot[] = ['chest', 'helm', 'legs', 'boots', 'gloves', 'belt'];
   let sparks = out.filter((o) => (o as THREE.Points).isPoints).length;
   for (const slot of order) {
     const p = pieces[slot];

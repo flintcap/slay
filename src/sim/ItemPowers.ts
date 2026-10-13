@@ -945,7 +945,7 @@ export const POWER_AFFIXES: readonly PowerDef[] = DEFS.filter((d) => !!d.affix);
 // ---------------------------------------------------------------------------
 
 const EQUIP_SLOTS: readonly EquipSlot[] = [
-  'mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt', 'amulet', 'ring1', 'ring2',
+  'mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt', 'amulet', 'ring1', 'ring2',
 ];
 
 /** Every power one item carries on its own, with magnitude. */
@@ -1024,7 +1024,7 @@ export function powerEffects(c: Pick<Character, 'equipment'>): PowerEffects {
 const MELEE_CATS: ItemCategory[] = ['sword', 'axe', 'mace', 'dagger', 'spear'];
 const RANGED_CATS: ItemCategory[] = ['bow', 'crossbow'];
 const CASTER_CATS: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
-const ARMOR_CATS: ItemCategory[] = ['helm', 'chest', 'gloves', 'boots', 'belt'];
+const ARMOR_CATS: ItemCategory[] = ['helm', 'chest', 'gloves', 'pants', 'boots', 'belt'];
 const JEWELRY_CATS: ItemCategory[] = ['ring', 'amulet'];
 
 /** The kinds an item category counts as, for power-affix eligibility. */

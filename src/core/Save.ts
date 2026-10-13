@@ -60,7 +60,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   keybinds: {},
 };
 
-const EQUIP_SLOTS = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];
+const EQUIP_SLOTS = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];
 
 function emptyAccount(): AccountSave {
   return {

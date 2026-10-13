@@ -18,7 +18,7 @@
 import * as THREE from 'three';
 import { loadTexture, textureReady } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
-import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
+import { allSetNames, setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
 
 /** An item texture set: folder under textures/items/ and the tile size on an item, metres. */
 interface ItemSet {
@@ -54,6 +54,11 @@ export function itemScansReady(): Promise<void> {
     const waits: Array<Promise<boolean>> = [];
     for (const name of Object.keys(ITEM_SETS)) {
       const t = itemScan(name);
+      waits.push(textureReady(t.albedo), textureReady(t.normal));
+    }
+    // Pants are drawn in the hero's own gear materials (see `hero/PantsModel.ts`).
+    for (const name of allSetNames()) {
+      const t = setTextures(name);
       waits.push(textureReady(t.albedo), textureReady(t.normal));
     }
     scansReady = Promise.all(waits).then(() => undefined);
