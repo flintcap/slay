@@ -775,8 +775,47 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.shield.ring/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/skill.shield.throw/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
 | sounds/skill.shield.wall/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/skill.shift.bearForm/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.shift.bearHug.hit/01.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.shift.bearHug/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.shift.bloodHowl/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
+| sounds/skill.shift.bloodmoon/01.ogg | https://opengameart.org/content/heartbeat-sounds | bart + rubberduck (opengameart.org/content/80-cc0-creature-sfx) | CC0 |
+| sounds/skill.shift.bristle/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/80-cc0-creture-sfx-2) | CC0 |
+| sounds/skill.shift.callThePack.bite/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
+| sounds/skill.shift.callThePack/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
+| sounds/skill.shift.catForm/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + SketchMan3 (opengameart.org/content/wind-whoosh-loop) | CC0 |
+| sounds/skill.shift.goForTheThroat.hit/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-creature-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.shift.goForTheThroat/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + TinyWorlds (opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | CC0 |
+| sounds/skill.shift.hammerfall.hit/01.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.shift.hammerfall/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
+| sounds/skill.shift.hamstring.hit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/25-cc0-mud-sfx) + TinyWorlds (opengameart.org/content/5-hit-sounds-dying) | CC0 |
+| sounds/skill.shift.hamstring/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.shift.huntingHowl/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
+| sounds/skill.shift.killingDance.hit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
+| sounds/skill.shift.killingDance/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.shift.lunge.hit/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.shift.lunge/01.ogg | https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud | TinyWorlds + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
+| sounds/skill.shift.maul.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Kenney (kenney.nl/assets/rpg-audio) + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
+| sounds/skill.shift.maul/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/80-cc0-creature-sfx) | CC0 |
+| sounds/skill.shift.nightHunt/01.ogg | https://opengameart.org/content/dark-ambiences | Ogrebane + rubberduck (opengameart.org/content/80-cc0-creture-sfx-2) | CC0 |
+| sounds/skill.shift.overrun.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.shift.overrun/01.ogg | https://opengameart.org/content/osare-minotaur-sounds | HaelDB + TinyWorlds (opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | CC0 |
+| sounds/skill.shift.pounce.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-creature-sfx) + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.shift.pounce/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
 | sounds/skill.shift.rake.hit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
 | sounds/skill.shift.rake/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/80-cc0-creature-sfx) | CC0 |
+| sounds/skill.shift.rattlingRoar/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + Darsycho (opengameart.org/content/big-scary-troll-sounds) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.shift.reapingSwipe.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.shift.reapingSwipe/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.shift.slink/01.ogg | https://opengameart.org/content/ghost-breath | qubodup + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.shift.snap.hit/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.shift.snap/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
+| sounds/skill.shift.throatTear.hit/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-creature-sfx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.shift.throatTear/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
+| sounds/skill.shift.ursaMajor/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + qubodup (opengameart.org/content/earth-element-magic-spell) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.shift.wolfForm/01.ogg | https://opengameart.org/content/monster-snarls | Darsycho + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.shift.worry.hit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) + rubberduck (opengameart.org/content/80-cc0-creature-sfx) | CC0 |
+| sounds/skill.shift.worry/01.ogg | https://opengameart.org/content/monster-snarls | Darsycho | CC0 |
 | sounds/skill.shout.battle/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/skill.shout.fear/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/skill.shout.herald/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) + cinameng (opengameart.org/content/rumble-fx) | CC0 |

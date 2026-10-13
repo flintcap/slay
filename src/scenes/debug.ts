@@ -19,6 +19,7 @@ import { runtime } from '../ui/Widgets';
 import { insertGem } from '../sim/Crafting';
 import { assetStats } from '../core/Assets';
 import { setRunDirector } from '../world/DungeonGen';
+import { shifterDebug } from './shifterDebug';
 
 /**
  * Debug surface exposed as `window.SLAY.debug`. The Playwright screenshot
@@ -27,6 +28,7 @@ import { setRunDirector } from '../world/DungeonGen';
  */
 export function installDebug(engine: Engine): Record<string, unknown> {
   return {
+    ...shifterDebug(engine),
     /** Asset loader counts: textures made, textures holding their real image, files that failed. */
     assets: () => assetStats(),
     /** Create a fully playable character at `level`, geared and skilled up (`seed` to repeat one). */

@@ -2881,6 +2881,114 @@
   "shield",
   "rsp"
  ],
+ "sounds/skill.shift.bearForm/01.ogg": [
+  "creat",
+  "ki",
+  "bfh"
+ ],
+ "sounds/skill.shift.bearHug.hit/01.ogg": [
+  "bfh",
+  "ki"
+ ],
+ "sounds/skill.shift.bearHug/01.ogg": [
+  "creat",
+  "kr"
+ ],
+ "sounds/skill.shift.bloodHowl/01.ogg": [
+  "creat",
+  "water"
+ ],
+ "sounds/skill.shift.bloodmoon/01.ogg": [
+  "heart",
+  "creat"
+ ],
+ "sounds/skill.shift.bristle/01.ogg": [
+  "kr",
+  "creat2"
+ ],
+ "sounds/skill.shift.callThePack.bite/01.ogg": [
+  "creat"
+ ],
+ "sounds/skill.shift.callThePack/01.ogg": [
+  "creat"
+ ],
+ "sounds/skill.shift.catForm/01.ogg": [
+  "creat",
+  "wwoosh"
+ ],
+ "sounds/skill.shift.goForTheThroat.hit/01.ogg": [
+  "water",
+  "creat",
+  "ki"
+ ],
+ "sounds/skill.shift.goForTheThroat/01.ogg": [
+  "creat2",
+  "dsteps"
+ ],
+ "sounds/skill.shift.hammerfall.hit/01.ogg": [
+  "bfh",
+  "ki"
+ ],
+ "sounds/skill.shift.hammerfall/01.ogg": [
+  "creat2"
+ ],
+ "sounds/skill.shift.hamstring.hit/01.ogg": [
+  "kr",
+  "mud",
+  "hit5"
+ ],
+ "sounds/skill.shift.hamstring/01.ogg": [
+  "swish"
+ ],
+ "sounds/skill.shift.huntingHowl/01.ogg": [
+  "creat"
+ ],
+ "sounds/skill.shift.killingDance.hit/01.ogg": [
+  "kr",
+  "mud"
+ ],
+ "sounds/skill.shift.killingDance/01.ogg": [
+  "swish",
+  "kr"
+ ],
+ "sounds/skill.shift.lunge.hit/01.ogg": [
+  "creat2",
+  "ki"
+ ],
+ "sounds/skill.shift.lunge/01.ogg": [
+  "dsteps",
+  "whoosh"
+ ],
+ "sounds/skill.shift.maul.hit/01.ogg": [
+  "ki",
+  "kr",
+  "mud"
+ ],
+ "sounds/skill.shift.maul/01.ogg": [
+  "swish",
+  "creat"
+ ],
+ "sounds/skill.shift.nightHunt/01.ogg": [
+  "dark",
+  "creat2"
+ ],
+ "sounds/skill.shift.overrun.hit/01.ogg": [
+  "ki",
+  "bfh"
+ ],
+ "sounds/skill.shift.overrun/01.ogg": [
+  "mino",
+  "dsteps"
+ ],
+ "sounds/skill.shift.pounce.hit/01.ogg": [
+  "ki",
+  "creat",
+  "kr"
+ ],
+ "sounds/skill.shift.pounce/01.ogg": [
+  "kr",
+  "whoosh"
+ ],
  "sounds/skill.shift.rake.hit/01.ogg": [
   "kr",
   "mud"
@@ -2888,6 +2996,54 @@
  "sounds/skill.shift.rake/01.ogg": [
   "swish",
   "creat"
+ ],
+ "sounds/skill.shift.rattlingRoar/01.ogg": [
+  "creat",
+  "troll",
+  "bfh"
+ ],
+ "sounds/skill.shift.reapingSwipe.hit/01.ogg": [
+  "ki",
+  "kr"
+ ],
+ "sounds/skill.shift.reapingSwipe/01.ogg": [
+  "swish"
+ ],
+ "sounds/skill.shift.slink/01.ogg": [
+  "gbreath",
+  "kr"
+ ],
+ "sounds/skill.shift.snap.hit/01.ogg": [
+  "creat",
+  "ki"
+ ],
+ "sounds/skill.shift.snap/01.ogg": [
+  "creat"
+ ],
+ "sounds/skill.shift.throatTear.hit/01.ogg": [
+  "water",
+  "creat",
+  "bfh"
+ ],
+ "sounds/skill.shift.throatTear/01.ogg": [
+  "creat2"
+ ],
+ "sounds/skill.shift.ursaMajor/01.ogg": [
+  "creat2",
+  "earth",
+  "bfh"
+ ],
+ "sounds/skill.shift.wolfForm/01.ogg": [
+  "snarl",
+  "kr"
+ ],
+ "sounds/skill.shift.worry.hit/01.ogg": [
+  "kr",
+  "water",
+  "creat"
+ ],
+ "sounds/skill.shift.worry/01.ogg": [
+  "snarl"
  ],
  "sounds/skill.shout.battle/01.ogg": [
   "yell"

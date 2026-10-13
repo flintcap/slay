@@ -77,7 +77,8 @@ for (const s of SKILLS) {
   }
   check(row.cast !== null, `${s.id} makes no sound when cast`);
   if (row.hit !== null) check(HITS.has(family), `${s.id} has a hit sound, but its family "${family}" never plays one`);
-  if (RAISES.has(family)) check(row.minion !== null, `${s.id} raises a ${family} with no minion sound`);
+  // A Shapeshifter skill that raises a pack (`ShifterRunner.SHIFTER_MINIONS`) needs one too.
+  if (RAISES.has(family) || s.effect === 'shift.callThePack') check(row.minion !== null, `${s.id} raises a ${family} with no minion sound`);
   else check(row.minion === null, `${s.id} has a minion sound, but its family "${family}" raises nothing`);
   if (family === 'teleport' && row.cast) quick.push(row.cast);
   rows.push({ id: s.id, name: s.name, family, ...row });

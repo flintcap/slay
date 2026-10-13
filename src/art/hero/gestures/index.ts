@@ -7,5 +7,6 @@ import './knight';
 import './rogue';
 import './ranger';
 import './revenant';
+import './shapeshifter';
 
 export { skillAction, releasesAt, strikesAt, hasGesture, gestureIds } from '../SkillActions';

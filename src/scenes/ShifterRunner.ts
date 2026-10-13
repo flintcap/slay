@@ -613,6 +613,7 @@ const overrun: Handler = (k, c) => {
     },
     land: () => {
       hit(dist);
+      c.hitAt(to);
       ClawFX.overrunFurrow(k.effects, from, to);
     },
   });
@@ -631,6 +632,7 @@ const reapingSwipe: Handler = (k, c) => {
     for (const t of k.targets()) if (t.alive && t.root.position.distanceTo(at) <= radius) n++;
     const bonus = 1 + (c.num('perTarget', 8) * Math.min(n, c.num('maxTargets', 5))) / 100;
     k.area(at, radius, () => c.makePacket(bonus), 'heavy');
+    if (n > 0) c.hitAt(at);
   });
 };
 

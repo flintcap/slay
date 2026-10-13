@@ -642,7 +642,8 @@ export class BodyFX {
     if (a.edge === Edge.Held) {
       this.refreshHeld(a);
       const n = a.a;
-      if (!n || !n.visible) return false;
+      // A hidden holder (a Shapeshifter's socket in beast form) draws no smear.
+      if (!n || !n.visible || (n.parent && !n.parent.visible) || (n.parent?.parent && !n.parent.parent.visible)) return false;
       _a.set(0, a.hilt, 0).applyMatrix4(n.matrixWorld);
       _b.set(0, a.len * 1.04, 0).applyMatrix4(n.matrixWorld);
       return true;
