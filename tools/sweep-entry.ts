@@ -19,7 +19,7 @@ import { SKILLS, TREE_BY_ID } from '../src/data/skills';
 import { CLASSES } from '../src/data/classes';
 import { SkillRunner } from '../src/scenes/SkillRunner';
 import { Player } from '../src/entities/Player';
-import { createCharacter, grantXp } from '../src/sim/Character';
+import { createCharacter, equipItem, grantXp } from '../src/sim/Character';
 import { ABILITIES, getAbility } from '../src/entities/Abilities';
 import { MONSTERS } from '../src/data/monsters';
 import { Random } from '../src/core/RNG';
@@ -36,9 +36,14 @@ const DT = 1 / 30;
 
 // --- skills ---------------------------------------------------------------------
 
+/** A tree whose skills want another weapon than the class starts with. */
+const TREE_WEAPON: Record<string, string> = { palBlade: 'sword.short' };
+
 function heroFor(skill: SkillDef): Character {
   const cls = TREE_BY_ID[skill.treeId]!.classId;
   const c = createCharacter('Sweep', cls, new Random(3));
+  const want = TREE_WEAPON[skill.treeId];
+  if (want) equipItem(c, { uid: `${want}:sweep`, baseId: want, name: want, rarity: 'normal', ilvl: 1, mods: [], upgrade: 0, sockets: [], value: 0 }, 'mainHand');
   for (let i = 0; i < 40 && c.level < 20; i++) grantXp(c, 1e6);
   c.skills = { [skill.id]: 5 };
   for (const r of skill.requires ?? []) c.skills[r] = 5;
