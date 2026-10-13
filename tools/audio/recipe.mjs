@@ -364,6 +364,38 @@ export const SKILL_TAKES = {
   'skill.reap': x('battle', 'swish_3.wav', { rate: 0.5, lp: 2500, mix: [x('moan', moan(1), { t: 1.2, rate: 0.7, gain: -4 }), x('whoosh', 'whoosh2_0.wav', { t: 0.8, rate: 0.6, gain: -4 })] }),
   // The Shapeshifter (tools/audio/shifter-takes.mjs).
   ...SHIFTER_TAKES,
+
+  // --- one of one: skills that used to share a recording ------------------------
+  // Owner: every skill is its own. Each of these was a second or third skill on
+  // someone else's take; now it has its own, in the same family of sound.
+  'skill.charge.hit': x('shield', 'impact.9.ogg', { rate: 0.75, mix: [x('ki', 'impactPlate_heavy_003.ogg', { gain: -3 }), x('bfh', 'bfh1_hit_02.ogg', { rate: 0.8, gain: -6 })] }),
+  'skill.swing.gash': x('sword20', SW + 'sword.7.ogg', { rate: 0.9 }),
+  'skill.swing.maim': x('sword20', SW + 'sword.9.ogg', { rate: 0.85, mix: [x('wpn', 'sheath-squeeze-03.wav', { gain: -9 })] }),
+  'skill.swing.sunder': x('sword20', SW + 'sword.2.ogg', { rate: 0.6, lp: 2500, mix: [x('yell', '3grunt2.wav', { gain: -6 })] }),
+  'skill.hit.blades': x('wpn', 'sword-knife-clash-07.wav', { mix: [x('kr', 'knifeSlice.ogg', { delay: 90, rate: 1.15, gain: -4 })] }),
+  'skill.storm.ballHit': x('elec', 'hit.wav', { rate: 0.8, mix: [x('elec', 'deathboom.wav', { t: 0.5, gain: -5 }), x('bang', 'bang_07.ogg', { lp: 5000, gain: -6 })] }),
+  'skill.swing.viper': x('swish', 'swish-12.wav', { rate: 1.15, mix: [x('water', 'slime_04.ogg', { rate: 1.4, gain: -10 })] }),
+  'skill.swing.assassin': x('wpn', 'seax-unsheathe-02.wav', { t: 0.5, mix: [x('swish', 'swish-13.wav', { delay: 120, rate: 0.9 })] }),
+  'skill.swing.tendon': x('swish', 'swish-2.wav', { rate: 1.1, hp: 600 }),
+  'skill.hit.lotus': x('kr', 'knifeSlice.ogg', { rate: 0.95, mix: [x('water', 'splash_03.ogg', { rate: 1.3, gain: -6 }), x('kr', 'knifeSlice2.ogg', { delay: 80, rate: 1.2, gain: -4 })] }),
+  'skill.coat.arrows': x('wpn', 'arrow-grab-from-quiver-05.wav', { mix: [x('acc', 'vial-glass-round-uncork-01.wav', { gain: -4 }), x('water', 'bubble_03.ogg', { delay: 150, gain: -3 })] }),
+  'skill.hit.void': x('r80', 'blade_03.ogg', { rate: 0.8, lp: 3000, mix: [x('gbreath', 'ghostbreath.flac', { t: 0.4, rev: true, gain: -5 })] }),
+  'skill.hit.double': x('wpn', 'sword-knife-clash-12.wav', { mix: [x('wpn', 'sword-knife-clash-19.wav', { delay: 110, rate: 1.05, gain: -2 })] }),
+  'skill.knife.spree': x('ki', 'impactWood_light_003.ogg', { rate: 1.1, mix: [x('wpn', 'knife-sheathe-03.wav', { t: 0.25, gain: -6 })] }),
+  'skill.bone.hack': x('swish', 'swish-11.wav', { rate: 0.9, mix: [x('mw', 'wood_cracking_04.ogg', { rate: 1.3, hp: 400, gain: -4 }), x('r80', 'wood_03.ogg', { rate: 1.3, gain: -3 })] }),
+  'skill.bone.horde': x('swish', 'swish-6.wav', { rate: 0.8, mix: [x('r80', 'stones_02.ogg', { rate: 1.4, gain: -5 }), x('ki', 'impactPunch_medium_003.ogg', { delay: 60, gain: -5 })] }),
+  'skill.arrow.cripple': x('ki', 'impactWood_light_004.ogg', { rate: 0.8, mix: [x('mw', 'wood_cracking_01.ogg', { rate: 1.4, hp: 500, gain: -6 })] }),
+  'skill.arrow.twin': x('ki', 'impactWood_light_001.ogg', { rate: 1.05, mix: [x('ki', 'impactWood_light_003.ogg', { delay: 90, rate: 0.95, gain: -2 })] }),
+  'skill.arrow.fan': x('ki', 'impactGeneric_light_002.ogg', { mix: [x('ki', 'impactWood_light_002.ogg', { delay: 40, gain: -3 }), x('ki', 'impactWood_light_000.ogg', { delay: 85, gain: -5 })] }),
+  'skill.bow.grave': x('kr', 'creak3.ogg', { rate: 0.7, mix: [x('battle', 'Bow.wav', { delay: 420, rate: 0.75, gain: 3 }), x('moan', moan(3), { t: 0.8, delay: 420, rate: 0.9, gain: -10 })] }),
+  'skill.arrow.grave': x('ki', 'impactPunch_heavy_003.ogg', { rate: 0.7, mix: [x('ki', 'impactWood_heavy_003.ogg', { rate: 0.7, gain: -2 }), x('r80', 'wood_05.ogg', { rate: 0.6, gain: -4 })] }),
+  'skill.bow.cripple': x('battle', 'Bow.wav', { rate: 0.95, lp: 5000, mix: [x('wpn', 'arrow-grab-from-quiver-01.wav', { t: 0.3, gain: -5 })] }),
+  'skill.bow.ricochet': x('battle', 'Bow.wav', { rate: 1.08, mix: [x('kr', 'metalClick.ogg', { delay: 40, gain: -8 })] }),
+  'skill.bow.fire': x('battle', 'Bow.wav', { rate: 0.97, mix: [x('ignite', 'ignition.flac', { t: 0.5, gain: -6 })] }),
+  // A rising run of four strings.
+  'skill.bow.fanFire': x('battle', 'Bow.wav', { rate: 1.12, mix: [70, 140, 210].map((d, i) => x('battle', 'Bow.wav', { delay: d, rate: 1.18 + 0.06 * i, gain: -2 - 2 * i })) }),
+  'skill.bow.darken': x('battle', 'Bow.wav', { rate: 0.8, mix: [x('battle', 'Bow.wav', { delay: 60, rate: 0.85, gain: -2 }), x('wind', 'Wind3.ogg', { t: 1.2, fadeIn: 0.1, fadeOut: 0.4, gain: -6 })] }),
+  'skill.arrow.storm': x('ki', 'impactWood_heavy_000.ogg', { rate: 0.9, mix: [40, 100, 170, 240, 330, 420].map((d, i) => x('ki', `impactWood_light_00${(i + 2) % 5}.ogg`, { delay: d, rate: 0.8 + 0.06 * i, gain: -1 - i })) }),
 };
 
 // ---------------------------------------------------------------------------

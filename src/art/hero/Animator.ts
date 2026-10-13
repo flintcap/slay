@@ -320,6 +320,14 @@ export class HeroAnimator {
     return () => set!.delete(fn);
   }
 
+  /**
+   * A second blow inside the playing action, from `side`: a skill's own
+   * two-blade gesture strikes with the off hand too, without a new clip.
+   */
+  strike(clip: string, side: 'L' | 'R'): void {
+    this.emit('hit', { clip, side });
+  }
+
   private emit(ev: HeroEvent, info: HeroEventInfo): void {
     const set = this.listeners.get(ev);
     if (set) for (const fn of set) fn(info);

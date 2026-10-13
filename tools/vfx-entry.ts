@@ -162,12 +162,20 @@ check((bySchool.bone ?? 0) >= 3, `only ${bySchool.bone ?? 0} skills draw as bone
   check(effects.liveCount === 0, `${effects.liveCount} effects still alive after the fight ended`);
   check(hits > 500, `only ${hits} projectiles reported landing`);
   // Every family is one draw call: count meshes that would draw.
+  // Solids are one family: one hidden mesh per shape, and only shapes with
+  // something flying draw, so they count once (the budget below lost the
+  // five it used to spend on them).
   let meshes = 0;
+  let solidShapes = 0;
   scene.traverse((o) => {
-    if ((o as THREE.Mesh).isMesh) meshes++;
+    if (!(o as THREE.Mesh).isMesh) return;
+    if (o.name.startsWith('fx:solid-')) solidShapes++;
+    else meshes++;
   });
+  if (solidShapes) meshes++;
   notes.meshes = meshes;
-  check(meshes <= 16, `${meshes} fx meshes in the scene; the kit should stay near one per family`);
+  notes.solidShapes = solidShapes;
+  check(meshes <= 12, `${meshes} fx meshes in the scene; the kit should stay near one per family`);
 
   // Bodies wearing every status look, swinging: nothing grows, all of it lets go.
   const bodies = new BodyFX(effects);

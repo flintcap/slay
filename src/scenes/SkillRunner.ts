@@ -914,6 +914,14 @@ export class SkillRunner {
                 // A skill's own gesture strikes with both blades itself; the
                 // off hand's blow lands a beat after the main hand's.
                 const contact = own ? Math.min(0.12, leftTime * 0.4) : player.handBlow('L', leftTime);
+                if (own) {
+                  this.pendingSwings.push({
+                    t: contact,
+                    run: () => {
+                      if (player.alive) player.animator.strike(own, 'L');
+                    },
+                  });
+                }
                 if (!split) return;
                 this.pendingSwings.push({
                   t: contact,
