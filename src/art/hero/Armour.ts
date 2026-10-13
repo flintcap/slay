@@ -115,10 +115,13 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
   }
   if (icon) {
     for (const mesh of slot === 'helm' ? iconHelm(hero, item, visual) : iconFeatures(hero, slot, item, visual)) {
+      // A set's glow lifts the icon's parts a little, as it lifts a piece's cloth;
+      // parts with a light of their own keep it.
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      // So a set's glow lights the icon's metal as it lights a trim.
-      mesh.userData.armourMat = (mat.metalness ?? 0) > 0.5 ? 'trim' : 'main';
-      mesh.userData.baseMaterial = mat;
+      if (!(mat.emissiveIntensity > 0 && mat.emissive?.getHex())) {
+        mesh.userData.armourMat = 'main';
+        mesh.userData.baseMaterial = mat;
+      }
       group.add(mesh);
     }
   }

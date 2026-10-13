@@ -437,7 +437,8 @@ export function glowTwins(group: THREE.Object3D, color: number, strength: number
   const mat = shellMaterial(color, strength, thick, style);
   for (const o of [...group.children]) {
     const m = o as THREE.SkinnedMesh;
-    if (!m.isSkinnedMesh || !solid(m)) continue;
+    // Worn icon parts are thin (wings, spikes, rings): a shell round them is all glow.
+    if (!m.isSkinnedMesh || !solid(m) || m.userData.iconPart) continue;
     const twin = new THREE.SkinnedMesh(m.geometry, mat);
     twin.frustumCulled = false;
     twin.position.copy(m.position);

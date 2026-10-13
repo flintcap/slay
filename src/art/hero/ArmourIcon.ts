@@ -119,7 +119,7 @@ function skinRigid(hero: HeroModel, src: THREE.Object3D, p: Placement, name: str
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(idx, 4));
     geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(wts, 4));
     geo.computeBoundingSphere();
-    const skinned = new THREE.SkinnedMesh(geo, mesh.material);
+    const skinned = new THREE.SkinnedMesh(geo, wornMaterial(mesh.material as THREE.Material));
     skinned.name = `${name}:${mesh.name}`;
     skinned.castShadow = mesh.castShadow;
     skinned.receiveShadow = mesh.receiveShadow;
@@ -130,6 +130,29 @@ function skinRigid(hero: HeroModel, src: THREE.Object3D, p: Placement, name: str
     out.push(skinned);
   });
   return out;
+}
+
+/**
+ * An icon is lit for a dark slot in the pack; on a hero under the game's bloom
+ * the same glow blows out into a white blob. Worn, its lights burn lower.
+ */
+const WORN_GLOW = 0.4;
+const dimmed = new Map<string, THREE.Material>();
+
+function wornMaterial(m: THREE.Material): THREE.Material {
+  const lit = m instanceof THREE.MeshStandardMaterial && m.emissiveIntensity > 0 && m.emissive.getHex() !== 0;
+  const ghost = m instanceof THREE.MeshBasicMaterial && m.blending === THREE.AdditiveBlending;
+  if (!lit && !ghost) return m;
+  let d = dimmed.get(m.uuid);
+  if (!d) {
+    d = m.clone();
+    if (lit) (d as THREE.MeshStandardMaterial).emissiveIntensity *= WORN_GLOW;
+    else d.opacity *= WORN_GLOW + 0.2;
+    d.name = `${m.name}+worn`;
+    d.userData.shared = true;
+    dimmed.set(m.uuid, d);
+  }
+  return d;
 }
 
 function flipWinding(geo: THREE.BufferGeometry): void {
