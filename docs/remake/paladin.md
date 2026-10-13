@@ -1,6 +1,6 @@
 # Stream: paladin
 
-Status: in progress
+Status: done
 Port: SLAY_PORT=4342
 
 ## The owner's brief
@@ -38,14 +38,47 @@ Design notes
 - [x] M5 A unique gesture per active skill (sword+shield, mace+shield, two-hander all read). (`feat(paladin): M5 gestures`)
 - [x] M6 A unique VFX look per active skill. (`wip(paladin): a motif for every active skill, drawn where the blow lands`)
 - [x] M7 A unique sound per active skill (CC0, layered takes). (built with each tree; `check-unique` sounds ok, levels in line with the other classes)
-- [ ] M8 Story and NPC lines, tools class lists, balance (curve passes every depth), in-game skill check green.
+- [x] M8 Story and NPC lines, tools class lists, balance (curve passes every depth), in-game skill check green. (`check-skills --classes=paladin`: 32 of 32 working)
 
 ## Next up
 
-M8: story lines, class lists and the two-kit `check-skills` are in. Left:
-`npm run build && SLAY_PORT=4342 flock /tmp/slay-browser.lock timeout 1500
-node tools/check-skills.mjs --classes=paladin --port=4342` green (no
-refused, no did-nothing, no threw), then Finishing a stream.
+Nothing: every milestone is ticked. See Handover.
+
+## Handover
+
+What exists: a male Paladin (`paladin`), selectable and playable, with three
+trees of 18 skills each (54 skills, 32 of them active):
+- Mace (`palMace`): 10 actives, family `rite` (one enemy, one blow), Dents,
+  Rung, Stagger, shield bashes. Capstone The Last Bell.
+- Blade (`palBlade`): 10 actives, family `rite`, Opened bleeds that
+  confess, Exposed, ripostes. Capstone Red Rosary.
+- Aura (`palAura`): 12 actives, family `vigil` (one ring of candles at his
+  feet at a time, Twin Wick allows two), plus Anoint, Censure, Martyr's Vow
+  and The Last Hour. Capstone Twin Wick.
+
+Where it lives:
+- Data: `src/data/classSkills/{paladin,paladinClass,paladinStatuses,kit}.ts`,
+  per-rank numbers for skills without a damage ladder in `src/data/skillPower.ts`.
+- Rules: `src/sim/passives/paladin.ts`.
+- Runners: `src/scenes/paladin/Rites.ts` and `src/scenes/paladin/Vigils.ts`,
+  one `case` each in `SkillRunner.cast`; the ring is `src/fx/paladin/VigilRing.ts`.
+- Look: `src/art/hero/gestures/paladin.ts` (32 gestures, shield skills with
+  two-hander keys), `src/fx/paladin/motifs.ts` (32 motifs), icons in
+  `src/art/SkillIconArt.ts` and `src/art/PaladinGlyphs.ts`.
+- Sound: `src/audio/PaladinSounds.ts`, takes in `tools/audio/paladinTakes.mjs`,
+  files `public/assets/sounds/skill.pal.*` (54, each in ASSETS.md).
+- Words: town lines in `src/data/story/npcs.ts` (Hesk, Kale, Vell, Marrow,
+  Renn), `CLASS_NAMES` in `src/sim/Story.ts`.
+- Tools that hand Blade skills a sword: `tools/rankpower-entry.ts`,
+  `tools/sweep-entry.ts` (`TREE_WEAPON`), `tools/check-skills.mjs` (`KITS`).
+
+Checks green for Paladin: typecheck, build, unique (clips, visuals, motifs,
+sounds), rankpower (all 32 grow), skilldepth, sweep, curve at depth 1, 5, 12,
+25 and 40, check-skills 32 of 32 working.
+
+Left for `finish`: nothing Paladin-only. Seen and not ours: on the branch
+tip `curve` fails for mage at depth 1, 5 and 12 and for shadowblade and
+ranger at 12.
 
 ## Notes for resume
 
@@ -99,8 +132,11 @@ refused, no did-nothing, no threw), then Finishing a stream.
 - Motifs (M6) live in `src/fx/paladin/motifs.ts`, spread into
   `SKILL_MOTIFS` by one line. A rite or a censure sets `landAt` on its cast
   so the motif lands on the enemy it found, not on the cursor.
-- `check-skills` audits the Paladin twice (mace+shield, sword+shield, see
-  `KITS`) and keeps each skill's best showing.
+- `check-skills` audits the Paladin in two kits (shield+mace for Mace and
+  Aura, shield+sword for Blade, see `KITS`), logging a line per skill.
+- `debug.equip` drops what the hands held when the backpack is full
+  (makeCharacter fills it with rolls it cannot wear), so a checker's hero
+  really holds the weapon it asked for.
 
 ## Design (planned skills, by tree and tier)
 
