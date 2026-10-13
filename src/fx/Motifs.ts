@@ -117,15 +117,15 @@ export const MOTIF_SHAPES = {
   arcs: { k: 'arc', width: 0.16 },
   slashes: { k: 'slash', size: 1.5 },
   // Particle bursts.
-  'smoke clouds': { k: 'puff', emitter: 'smoke', scale: 0.8 },
-  'dust clouds': { k: 'puff', emitter: 'puff.dust', scale: 1.1 },
-  'spore clouds': { k: 'puff', emitter: 'puff.spores', scale: 0.9 },
-  'steam jets': { k: 'puff', emitter: 'steam', scale: 0.8 },
-  snowfall: { k: 'puff', emitter: 'puff.snow', scale: 0.9 },
-  'blood spray': { k: 'puff', emitter: 'puff.blood', scale: 0.9 },
-  bubbles: { k: 'puff', emitter: 'puff.bubbles', scale: 0.8 },
-  'ash flurries': { k: 'puff', emitter: 'ash', scale: 0.9 },
-  motes: { k: 'puff', emitter: 'puff.motes', scale: 0.9 },
+  'smoke clouds': { k: 'puff', emitter: 'smoke', scale: 1.4 },
+  'dust clouds': { k: 'puff', emitter: 'puff.dust', scale: 1.8 },
+  'spore clouds': { k: 'puff', emitter: 'puff.spores', scale: 1.8 },
+  'steam jets': { k: 'puff', emitter: 'steam', scale: 1.4 },
+  snowfall: { k: 'puff', emitter: 'puff.snow', scale: 1.6 },
+  'blood spray': { k: 'puff', emitter: 'puff.blood', scale: 1.6 },
+  bubbles: { k: 'puff', emitter: 'puff.bubbles', scale: 1.8 },
+  'ash flurries': { k: 'puff', emitter: 'ash', scale: 1.5 },
+  motes: { k: 'puff', emitter: 'puff.motes', scale: 1.6 },
 } as const satisfies Record<string, MotifDraw>;
 
 export type MotifShape = keyof typeof MOTIF_SHAPES;

@@ -107,6 +107,7 @@ const R_VOID = [0xe0a0ff, 0x5a18a8, 0x0a0218] as const;
 const R_ASH = [0xb0a8a0, 0x5a544e, 0x1a1816] as const;
 const R_SPORE = [0xf0ffa0, 0xa8c838, 0x3a4a10] as const;
 const R_SNOW = [0xffffff, 0xd8e8f8, 0x8aa0b8] as const;
+const R_GORE = [0xe82a20, 0xa00e0c, 0x3a0404] as const;
 const R_ICHOR = [0xc8d860, 0x6a7a18, 0x1e2606] as const;
 
 // ---------------------------------------------------------------------------
@@ -517,8 +518,8 @@ Object.assign(E, {
   'puff.blood': {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 18, ramp: R_BLOOD, speed: [3, 7], spread: 0.5, up: 0.6, size: [0.08, 0.16], grow: 0.9, life: [0.5, 0.9], heat: [1, 0.5], emit: 0.7, occl: 0.9, gravity: -12, drag: 1, stretch: 0.6, ground: true, fade: 3, tint: false }),
-      L({ sprite: SPRITE.splat, count: 3, ramp: R_BLOOD, speed: [0.6, 1.6], size: [0.35, 0.5], grow: 1.6, life: [0.25, 0.4], heat: [0.9, 0.4], emit: 0.6, occl: 0.6, drag: 4, tint: false }),
+      L({ sprite: SPRITE.drop, count: 18, ramp: R_GORE, speed: [3, 7], spread: 0.5, up: 0.6, size: [0.08, 0.16], grow: 0.9, life: [0.5, 0.9], heat: [1, 0.5], emit: 0.7, occl: 0.9, gravity: -12, drag: 1, stretch: 0.6, ground: true, fade: 3, tint: false }),
+      L({ sprite: SPRITE.splat, count: 3, ramp: R_GORE, speed: [0.6, 1.6], size: [0.35, 0.5], grow: 1.6, life: [0.25, 0.4], heat: [0.9, 0.4], emit: 0.6, occl: 0.6, drag: 4, tint: false }),
     ],
   },
 } satisfies Record<string, Emitter>);
