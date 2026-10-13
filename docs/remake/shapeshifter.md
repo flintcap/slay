@@ -1,6 +1,6 @@
 # Stream: shapeshifter
 
-Status: waiting
+Status: in progress
 Port: SLAY_PORT=4343
 
 ## The owner's brief

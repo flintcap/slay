@@ -1,5 +1,5 @@
 /**
- * SLAY — the five playable classes.
+ * SLAY — the playable classes.
  *
  * Each class is a distinct *engine*, not a palette swap:
  *
@@ -8,6 +8,7 @@
  *  - Rogue     burst windows out of stealth, poison between them.
  *  - Revenant  an army does the killing; you manage its life and its death.
  *  - Ranger    range is the resource; every skill trades distance for damage.
+ *  - Shapeshifter  a man who fights as a cat, a wolf or a bear (`classSkills/shapeshifterClass.ts`).
  *
  * Ids are what saves hold, so the Knight is still `warden` and the Rogue
  * `shadowblade` underneath; only `name` and the words are what a player sees.
@@ -19,6 +20,7 @@
  */
 
 import type { CharClassDef, CharClassId } from '../types';
+import { SHAPESHIFTER_CLASS, SHAPESHIFTER_EQUIP } from './classSkills/shapeshifterClass';
 
 /** Base life/mana every character starts with before class scaling. */
 export const BASE_LIFE = 35;
@@ -115,6 +117,7 @@ export const CLASSES: CharClassDef[] = [
     color: 0x7fc46a,
     startingGear: ['bow.short', 'quiver.ragged'],
   },
+  SHAPESHIFTER_CLASS,
 ];
 
 export const CLASS_BY_ID: Record<CharClassId, CharClassDef> = CLASSES.reduce(
@@ -153,6 +156,7 @@ export const STARTING_SKILL_HINTS: Record<CharClassId, string[]> = {
   shadowblade: ['viperStrike', 'shadowStep', 'preciseCut', 'coatBlades'],
   revenant: ['boneSpear', 'raiseSkeleton', 'siphonLife', 'weaken'],
   ranger: ['pierceShot', 'huntersMark', 'rollAway', 'snareTrap'],
+  shapeshifter: ['rake', 'savageBite', 'maul', 'pounce'],
 };
 
 /** Flavour lines used by the character select screen when hovering a class. */
@@ -162,6 +166,7 @@ export const CLASS_TAGLINES: Record<CharClassId, string[]> = {
   shadowblade: ['One window is enough.', 'Poison does the waiting.', 'Crit or leave.'],
   revenant: ['The army is the weapon.', 'Corpses are ammunition.', 'Steal what you cannot survive.'],
   ranger: ['Distance is the build.', 'Never let them arrive.', 'The floor is the trap.'],
+  shapeshifter: ['Three skins, one hunger.', 'Cat for the kill, wolf for the hunt, bear for the wall.', 'The man is only the first shape.'],
 };
 
 
@@ -221,6 +226,7 @@ export const CLASS_EQUIP: Record<CharClassId, ClassEquipRules> = {
     offHandExtra: ['orb', 'shield'],
     note: 'Revenants bind their dead through a focus or a warding shield.',
   },
+  shapeshifter: SHAPESHIFTER_EQUIP,
 };
 
 export function equipRules(classId: CharClassId): ClassEquipRules {
