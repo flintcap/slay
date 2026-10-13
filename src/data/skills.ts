@@ -17,7 +17,10 @@
  * knobs it reads. Nothing here imports Three.js — this file is pure data.
  */
 
-import type { CharClassId, DamageType, SkillDef, SkillTargeting, SkillTreeDef, StatKey } from '../types';
+import type { CharClassId, SkillDef, SkillTreeDef } from '../types';
+import { build, dim, MAX_SKILL_RANK, per, syn, type SynergyLink } from './classSkills/kit';
+
+export { MAX_SKILL_RANK, type SynergyLink };
 
 // ---------------------------------------------------------------------------
 // Gating
@@ -28,81 +31,11 @@ export const TIER_POINTS: readonly number[] = [0, 0, 4, 9, 15, 22, 30];
 /** Character level required for tier N. */
 export const TIER_LEVEL: readonly number[] = [0, 1, 6, 12, 18, 24, 30];
 
-export const MAX_SKILL_RANK = 20;
 /** Ranks above `maxRank` only come from +skills gear, and cap here. */
 export const HARD_SKILL_RANK_CAP = 40;
 
-// ---------------------------------------------------------------------------
-// Scaling helpers
-// ---------------------------------------------------------------------------
-
-const r1 = (n: number): number => Math.round(n * 10) / 10;
-
-/** Linear: value at rank 1 is `a`, each further rank adds `b`. */
-const lin = (a: number, b: number) => (r: number): number => r1(a + b * (r - 1));
-/** Straight per-rank: `b` per rank, zero at rank 0. */
-const per = (b: number) => (r: number): number => r1(b * r);
-/**
- * Diminishing: approaches `cap`, closing `k` of the remaining gap each rank.
- * Used for anything that must never reach 100% (block, resistance, dodge).
- */
-const dim = (cap: number, k: number) => (r: number): number => r1(cap * (1 - Math.pow(1 - k, r)));
-
-const mana = (a: number, b: number) => (r: number): number => Math.max(0, r1(a + b * (r - 1)));
-const cool = (a: number, b: number, min = 0.4) => (r: number): number => Math.max(min, r1(a - b * (r - 1)));
-
-// ---------------------------------------------------------------------------
-// Authoring shape
-// ---------------------------------------------------------------------------
-
-interface Spec {
-  id: string;
-  name: string;
-  desc: string;
-  tier: number;
-  col: number;
-  icon: string;
-  /** Defaults to 20. Capstones and one-per-run skills use lower caps. */
-  max?: number;
-  req?: string[];
-  /** Defaults to 'passive'. */
-  t?: SkillTargeting;
-  /** [rank-1 cost, per-rank delta] */
-  mana?: [number, number];
-  /** [rank-1 cooldown, per-rank reduction, floor] */
-  cd?: [number, number] | [number, number, number];
-  /** [rank-1 damage multiplier, per-rank delta] */
-  dmg?: [number, number];
-  type?: DamageType;
-  fx?: string;
-  p?: Record<string, number | number[]>;
-  stat?: Partial<Record<StatKey, (r: number) => number>>;
-}
-
-function build(treeId: string, specs: Spec[]): SkillDef[] {
-  return specs.map((s): SkillDef => {
-    const out: SkillDef = {
-      id: s.id,
-      treeId,
-      name: s.name,
-      desc: s.desc,
-      tier: s.tier,
-      column: s.col,
-      maxRank: s.max ?? MAX_SKILL_RANK,
-      targeting: s.t ?? 'passive',
-      icon: s.icon,
-    };
-    if (s.req) out.requires = s.req;
-    if (s.mana) out.manaCost = mana(s.mana[0], s.mana[1]);
-    if (s.cd) out.cooldown = cool(s.cd[0], s.cd[1], s.cd[2]);
-    if (s.dmg) out.damageScale = lin(s.dmg[0], s.dmg[1]);
-    if (s.type) out.damageType = s.type;
-    if (s.fx) out.effect = s.fx;
-    if (s.p) out.params = s.p;
-    if (s.stat) out.passive = s.stat;
-    return out;
-  });
-}
+// The authoring helpers (`build`, `per`, `dim`, `syn`, ...) live in
+// `classSkills/kit.ts`, so a class can keep its trees in a file of its own.
 
 // ---------------------------------------------------------------------------
 // Trees
@@ -3537,23 +3470,6 @@ export function tierLevelRequirement(tier: number): number {
 // ---------------------------------------------------------------------------
 // Synergies
 // ---------------------------------------------------------------------------
-
-/**
- * `target` gains `pctPerRank`% damage (or effect strength, for skills without a
- * damage roll) for every rank invested in `source`. Both must live in the same
- * tree. This is the D2 mechanic that turns 20 points into a build.
- */
-export interface SynergyLink {
-  target: string;
-  source: string;
-  pctPerRank: number;
-}
-
-const syn = (target: string, source: string, pctPerRank: number): SynergyLink => ({
-  target,
-  source,
-  pctPerRank,
-});
 
 export const SYNERGIES: SynergyLink[] = [
   // Bulwark
