@@ -108,6 +108,12 @@ function sweepSkill(skill: SkillDef): Seen {
   );
   if (/below \d+% life|execute/i.test(skill.desc)) foes[0]!.life = foes[0]!.maxLife * 0.1;
   if (/Veiled/.test(skill.desc)) player.applyStatus('veiled', 10, 1, 1);
+  // A skill that mends the host needs a hurt host to mend.
+  if (skill.effect === 'minion.heal') {
+    player.character.skills.raiseSkeleton = 1;
+    runner.cast('raiseSkeleton', player, target, a.ctx, a.enemies, null);
+    for (const t of (runner as unknown as { turrets: Array<{ life: number; maxLife: number }> }).turrets) t.life = t.maxLife * 0.1;
+  }
   (player as unknown as { cooldowns?: Map<string, number> }).cooldowns?.clear();
   tick(0.6);
   // A prerequisite may have carried the hero somewhere: back to the line.
@@ -118,6 +124,7 @@ function sweepSkill(skill: SkillDef): Seen {
     statuses: foes.map((e) => new Set((e as unknown as { statuses: Array<{ id: string }> }).statuses.map((x) => x.id))),
     mine: new Set(player.statuses.map((s) => s.id)),
     minions: runner.minionSummary().reduce((n, m) => n + m.count, 0),
+    hostLife: runner.minionSummary().reduce((n, m) => n + m.life, 0),
     at: player.position.clone(),
     life: foes.map((e) => e.life),
   };
@@ -135,6 +142,7 @@ function sweepSkill(skill: SkillDef): Seen {
   for (const s of player.statuses) if (!before.mine.has(s.id)) what.push(`self:${s.id}`);
   const minions = runner.minionSummary().reduce((n, m) => n + m.count, 0);
   if (minions > before.minions) what.push(`${minions - before.minions} minions`);
+  if (runner.minionSummary().reduce((n, m) => n + m.life, 0) > before.hostLife + 1) what.push('mended minions');
   if (player.position.distanceTo(before.at) > 2) what.push(`moved ${player.position.distanceTo(before.at).toFixed(1)}m`);
   return { what: [...new Set(what)] };
 }
