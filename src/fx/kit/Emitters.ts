@@ -484,6 +484,45 @@ Object.assign(E, {
   },
 } satisfies Record<string, Emitter>);
 
+// Puffs a skill motif throws (`fx/Motifs.ts`): small clouds of matter, each
+// bright enough to read on a dark floor, and one burst each (the ambient
+// kinds of the same name drift for minutes and cannot be fired).
+Object.assign(E, {
+  'puff.spores': {
+    school: 'poison',
+    layers: [
+      L({ sprite: SPRITE.mote, count: 14, ramp: R_SPORE, speed: [0.4, 1.4], up: 0.8, radius: 0.4, size: [0.06, 0.12], grow: 1, life: [0.9, 1.6], heat: [1, 0.4], emit: 0.9, occl: 0, gravity: 0.4, drag: 1.5, turb: 0.6 }),
+      L({ sprite: SPRITE.smoke, count: 3, ramp: R_SPORE, speed: [0.2, 0.6], up: 0.5, radius: 0.25, size: [0.5, 0.8], grow: 1.8, life: [0.8, 1.3], heat: [0.5, 0], emit: 0.4, occl: 0.3, gravity: 0.3, drag: 2, turb: 0.3, tint: false }),
+    ],
+  },
+  'puff.snow': {
+    school: 'cold',
+    layers: [
+      L({ sprite: SPRITE.ember, count: 16, ramp: R_SNOW, speed: [0.6, 1.8], up: 0.6, radius: 0.35, size: [0.04, 0.08], grow: 1, life: [0.8, 1.4], heat: [1, 0.5], emit: 0.8, occl: 0.2, gravity: -1.2, drag: 1.2, turb: 0.5, fade: 1 }),
+      L({ sprite: SPRITE.smoke, count: 2, ramp: R_STEAM, speed: [0.3, 0.8], radius: 0.2, size: [0.5, 0.7], grow: 1.6, life: [0.5, 0.8], heat: [0.5, 0], emit: 0.4, occl: 0.2, drag: 2, tint: false }),
+    ],
+  },
+  'puff.bubbles': {
+    school: 'poison',
+    layers: [L({ sprite: SPRITE.bubble, count: 10, ramp: R_SPORE, speed: [0.3, 1], up: 1.5, radius: 0.3, size: [0.07, 0.15], grow: 1.3, life: [0.6, 1.1], heat: [1, 0.5], emit: 0.9, occl: 0.1, gravity: 1, drag: 1.5, turb: 0.4 })],
+  },
+  'puff.motes': {
+    school: 'arcane',
+    layers: [L({ sprite: SPRITE.mote, count: 14, ramp: R_WHITE, speed: [0.4, 1.3], up: 1, radius: 0.35, size: [0.05, 0.1], grow: 0.6, life: [0.7, 1.2], heat: [1, 0.4], emit: 1.0, occl: 0, gravity: 0.8, drag: 1.5, turb: 0.5 })],
+  },
+  'puff.dust': {
+    school: 'physical',
+    layers: [L({ sprite: SPRITE.smoke, count: 6, ramp: R_DUST, speed: [0.8, 2], up: 0.3, disc: true, radius: 0.4, size: [0.45, 0.7], grow: 2.2, life: [0.7, 1.2], heat: [0.45, 0.05], emit: 0.4, occl: 0.4, gravity: 0.3, drag: 3, turb: 0.25, tint: false })],
+  },
+  'puff.blood': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.drop, count: 18, ramp: R_BLOOD, speed: [3, 7], spread: 0.5, up: 0.6, size: [0.08, 0.16], grow: 0.9, life: [0.5, 0.9], heat: [1, 0.5], emit: 0.7, occl: 0.9, gravity: -12, drag: 1, stretch: 0.6, ground: true, fade: 3, tint: false }),
+      L({ sprite: SPRITE.splat, count: 3, ramp: R_BLOOD, speed: [0.6, 1.6], size: [0.35, 0.5], grow: 1.6, life: [0.25, 0.4], heat: [0.9, 0.4], emit: 0.6, occl: 0.6, drag: 4, tint: false }),
+    ],
+  },
+} satisfies Record<string, Emitter>);
+
 /** Every named emitter. */
 export const EMITTERS: Readonly<Record<string, Emitter>> = E;
 

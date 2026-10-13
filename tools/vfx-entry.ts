@@ -20,6 +20,7 @@ import { resolvesSound } from '../src/audio/Audio';
 import { SKILLS } from '../src/data/skills';
 import { particleFor, schoolOf } from '../src/scenes/SkillRunner';
 import type { QualityProfile } from '../src/core/Renderer';
+import { MOTIF_SHAPES, type MotifDraw } from '../src/fx/Motifs';
 
 const fails: string[] = [];
 const notes: Record<string, unknown> = {};
@@ -66,6 +67,14 @@ for (const school of SCHOOLS) {
   const b = RAMPS[school].body;
   const r = (b >> 16) & 255, g = (b >> 8) & 255, bl = b & 255;
   check(Math.max(r, g, bl) - Math.min(r, g, bl) >= 120, `${school}: body colour #${b.toString(16)} is not saturated`);
+}
+
+// --- skill motifs fire real emitters and lay real marks -----------------------
+// (a missing emitter silently falls back to a plain physical hit)
+for (const [name, d] of Object.entries(MOTIF_SHAPES) as [string, MotifDraw][]) {
+  if (d.k === 'puff') check(emitters.has(d.emitter), `motif "${name}": emitter "${d.emitter}" does not exist`);
+  if (d.k === 'solid' && d.land) check(emitters.has(d.land), `motif "${name}": landing emitter "${d.land}" does not exist`);
+  if (d.k === 'mark') check(decals.has(d.kind), `motif "${name}": mark "${d.kind}" is not a decal kind`);
 }
 
 // --- floor -------------------------------------------------------------------
