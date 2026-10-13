@@ -1,6 +1,6 @@
 # Stream: shapeshifter
 
-Status: in progress
+Status: done
 Port: SLAY_PORT=4343
 
 ## The owner's brief
@@ -45,23 +45,50 @@ Design notes
 - [x] M5 Claw tree: 18 skills, rules, statuses, icons.
 - [x] M6 Form motion (idle, move, attack chain per form) and a unique gesture per active skill.
 - [x] M7 A unique VFX look and a unique sound per active skill (CC0, layered takes).
-- [ ] M8 Story and NPC lines, tools class lists, balance (curve passes every depth), in-game skill check green.
+- [x] M8 Story and NPC lines, tools class lists, balance (curve passes every depth), in-game skill check green.
 
 ## Next up
 
-M1 to M7 are in and pushed. M8 so far: camp lines (Hesk, Kale, Vell, Marrow,
-Wenna), STARTING_SKILL_HINTS, shapeshifter in the curve, hero sheet and the
-strict list of check-unique. Curve passes every depth (`node tools/check-curve.mjs
---classes=shapeshifter`), rank power says all grow, unique and skilldepth green.
-In-game skill check: all 26 actives cast and work (`node tools/check-skills.mjs
---classes=shapeshifter --port=4343`; it exits 1 at the end only because it
-writes `shots/skill-audit.json` and `shots/` may not exist). Form and skill
-shots look right; they showed the bear's life share compounding (fixed in
-Shapeshift.modsFor and Ursa Major).
-Left, in this order:
-1. Read `scratchpad/shoot2.log` (`--forms=0 --skills=maul,ursaMajor,worry,hammerfall`):
-   bear life should read about 1.4x the man's, not 25x.
-2. Tick M8, then finish: Status done, Handover, push.
+Nothing. Every milestone is in and pushed. See Handover.
+
+## Handover
+
+What exists now:
+- A male Shapeshifter with three trees of 18 skills each (54 in all, 26 of
+  them actives): Feral (Shadowcat, speed and single-target kills), Teeth (Grey
+  Wolf, bites, howls, frenzy and a summoned pack), Claw (Great Bear, tank and
+  cleave). Data in `src/data/classSkills/shapeshifter.ts`, class in
+  `shapeshifterClass.ts`, passives in `src/sim/shifterPassives.ts`.
+- Forms are statuses (`form.cat`, `form.wolf`, `form.bear`), run by
+  `src/entities/Shapeshift.ts`. Each carries its rank's mods (from
+  `src/data/shifterPower.ts`); the bear also gets a share of the man's life.
+  Hotbar rule is auto-shift: any tree skill used in the wrong shape first
+  changes you, then fires. The form skill used in its own form turns you back.
+- Beast bodies, stances and basic blows: `src/art/hero/forms/`. A gesture per
+  active: `src/art/hero/gestures/shapeshifter.ts`.
+- Skill handlers: `src/scenes/ShifterRunner.ts` (family `shift`). Effects:
+  `src/fx/shifter/` (ShifterFX, emitters, motifs). Sounds: 39 layered CC0
+  takes in `tools/audio/shifter-takes.mjs`, rows in `src/audio/shifterSounds.ts`,
+  every file listed in ASSETS.md.
+- Icons `src/art/icons/shifterIcons.ts`, glyphs `src/art/ShifterGlyphs.ts`.
+- Camp lines for Hesk, Kale, Vell, Marrow and Wenna; starting hints; in the
+  curve, hero sheet and strict uniqueness lists.
+- Debug: `SLAY.debug.shiftTo(form)` and `shiftCast(id)`; shots with
+  `tools/shoot-shifter.mjs` (checks for broken numbers in the scene too).
+
+Checks: typecheck 0, curve passes every depth for shapeshifter, rank power
+all grow (26 actives), check-skills 26 of 26 working, unique, skillsound,
+skilldepth, passives, wiring, story, starter, hotbar, assets, audio all pass.
+
+Left for `finish`:
+- `tools/check-skills.mjs` exits 1 at the very end if `shots/` does not exist
+  (it writes `shots/skill-audit.json`). Not a skill problem.
+- The curve does not model forms, so its numbers are the man only; forms only
+  add power on top.
+- One hammerfall frame once rendered black under software rendering; a
+  reshoot with a broken-number scan was clean. Worth a glance on real GPUs.
+- Checks failing before this stream and not mine: curve for mage and others,
+  beats (paladin), sweep (reassemble), town (mage gamble).
 
 ## Notes for resume
 

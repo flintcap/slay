@@ -76,9 +76,19 @@ try {
       await shoot(`skill-${id}-a`);
       await frames(page, 10);
       await shoot(`skill-${id}-b`);
-      log(`${id}: fired ${fired}`);
-      if (!fired) ok = false;
+      // A broken number (NaN) anywhere in the scene can black out the whole frame.
+      const nan = await page.evaluate(() => {
+        const out = [];
+        window.SLAY.engine.currentScene.scene?.traverse?.((o) => {
+          const v = [o.position.x, o.position.y, o.position.z, o.scale.x, o.scale.y, o.scale.z, o.quaternion.x];
+          if (v.some((n) => !Number.isFinite(n)) && out.length < 8) out.push(`${o.type}:${o.name || '?'}`);
+        });
+        return out;
+      });
+      log(`${id}: fired ${fired}${nan.length ? `  NaN in ${nan.join(', ')}` : ''}`);
+      if (!fired || nan.length) ok = false;
       await frames(page, 40);
+      await shoot(`skill-${id}-c`);
     } catch (e) {
       ok = false;
       log(`failed ${id}: ${String(e.message).slice(0, 200)}`);
