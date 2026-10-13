@@ -227,7 +227,7 @@ export class SolidPool {
       new THREE.MeshStandardMaterial({ color: 0x2e3c18, emissive: 0x58a020, emissiveIntensity: 0.55, roughness: 0.55 }),
       new THREE.MeshStandardMaterial({ color: 0xc8a8ff, emissive: 0x7038e0, emissiveIntensity: 1.1, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.85 }),
       new THREE.MeshStandardMaterial({ color: 0x2a1a12, emissive: 0xff5a14, emissiveIntensity: 1.5, roughness: 0.9 }),
-      new THREE.MeshStandardMaterial({ color: 0xf0e8d0, emissive: 0x3a6a10, emissiveIntensity: 0.35, roughness: 0.45 }),
+      new THREE.MeshStandardMaterial({ color: 0xdce6a8, emissive: 0x5ec41a, emissiveIntensity: 0.85, roughness: 0.45 }),
       new THREE.MeshStandardMaterial({ color: 0x8e9098, roughness: 0.35, metalness: 0.85 }),
       new THREE.MeshStandardMaterial({ color: 0x8a7a66, roughness: 0.8, side: THREE.DoubleSide }),
     ];
