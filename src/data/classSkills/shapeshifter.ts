@@ -248,7 +248,7 @@ const FERAL = build('feral', [
   {
     id: 'nightHunt',
     name: 'Night Hunt',
-    desc: 'The dark comes with you for 8s (+0.4s per rank): +25% movement speed, +25% critical chance and +50% critical damage, and every Feral skill you use lands as a strike out of shadow.',
+    desc: 'The dark comes with you for 8s (+0.4s per rank): +25% movement speed, +25% critical chance (+1% per rank) and +50% critical damage (+3% per rank), and Feral skills cost no mana while it lasts.',
     tier: 6,
     col: 0,
     icon: 'ss-nighthunt',
@@ -258,7 +258,7 @@ const FERAL = build('feral', [
     mana: [25, 1],
     cd: [40, 0.8, 20],
     fx: 'shift.nightHunt',
-    p: { duration: 8, durationR: 0.4, moveSpeed: 25, crit: 25, critDamage: 50 },
+    p: { duration: 8, durationR: 0.4, moveSpeed: 25, crit: 25, critR: 1, critDamage: 50, critDamageR: 3 },
   },
   {
     id: 'nightKing',
@@ -403,7 +403,7 @@ const TEETH = build('teeth', [
   {
     id: 'callThePack',
     name: 'Call the Pack',
-    desc: 'Two grey wolves come out of the dark and fight beside you (one more every 6 ranks). Each bites for 45% of your weapon damage and has 30% of your life.',
+    desc: 'Two grey wolves come out of the dark and fight beside you (one more every 6 ranks). Each bites for 45% of your weapon damage (+3% per rank) and has 30% of your life (+1% per rank).',
     tier: 4,
     col: 0,
     icon: 'ss-callthepack',
@@ -413,12 +413,12 @@ const TEETH = build('teeth', [
     cd: [20, 0.5, 10],
     type: 'physical',
     fx: 'shift.callThePack',
-    p: { count: 2, perRanks: 6, minionScale: 0.45, lifePct: 30, attackRate: 1.0, range: 2.4 },
+    p: { count: 2, perRanks: 6, minionScale: 0.45, minionScaleR: 0.03, lifePct: 30, lifePctR: 1, attackRate: 1.0, range: 2.4 },
   },
   {
     id: 'bloodHowl',
     name: 'Blood Howl',
-    desc: 'A low, wet howl. Heals you and your wolves 10% of life at once, and for 8s every hit steals +6% life (+0.4% per rank).',
+    desc: 'A low, wet howl. Heals you and your wolves 10% of life at once (+0.5% per rank), and for 8s every hit steals +6% life (+0.4% per rank).',
     tier: 4,
     col: 1,
     icon: 'ss-bloodhowl',
@@ -427,7 +427,7 @@ const TEETH = build('teeth', [
     mana: [12, 0.6],
     cd: [20, 0.4, 10],
     fx: 'shift.bloodHowl',
-    p: { duration: 8, leech: 6, leechR: 0.4, heal: 10, radius: 10 },
+    p: { duration: 8, leech: 6, leechR: 0.4, heal: 10, healR: 0.5, radius: 10 },
   },
   {
     id: 'alpha',
@@ -480,7 +480,7 @@ const TEETH = build('teeth', [
   {
     id: 'bloodmoon',
     name: 'Bloodmoon',
-    desc: 'The moon comes up red in your eyes for 10s: Pack Frenzy goes to full and stays there, +40% damage, and every hit steals +10% life.',
+    desc: 'The moon comes up red in your eyes for 10s (+0.5s per rank): Pack Frenzy goes to full and stays there, +40% damage (+2% per rank), and every hit steals +10% life (+0.5% per rank).',
     tier: 6,
     col: 0,
     icon: 'ss-bloodmoon',
@@ -490,7 +490,7 @@ const TEETH = build('teeth', [
     mana: [30, 1.2],
     cd: [45, 1, 20],
     fx: 'shift.bloodmoon',
-    p: { duration: 10, durationR: 0.5, damage: 40, leech: 10 },
+    p: { duration: 10, durationR: 0.5, damage: 40, damageR: 2, leech: 10, leechR: 0.5 },
   },
   {
     id: 'lastWolf',
@@ -559,7 +559,7 @@ const CLAW = build('claw', [
   {
     id: 'rattlingRoar',
     name: 'Rattling Roar',
-    desc: 'Roar in their faces. Every enemy within 7m flinches (0.6s stun) and is Weakened for 5s (+0.2s per rank).',
+    desc: 'Roar in their faces. Every enemy within 7m flinches (0.6s stun) and is Rattled for 5s (+0.2s per rank): it deals 20% less damage (+1.5% per rank).',
     tier: 2,
     col: 0,
     icon: 'ss-roar',
@@ -568,7 +568,7 @@ const CLAW = build('claw', [
     mana: [8, 0.4],
     cd: [10, 0.3, 5],
     fx: 'shift.rattlingRoar',
-    p: { radius: 7, duration: 5, durationR: 0.2, stun: 0.6 },
+    p: { radius: 7, duration: 5, durationR: 0.2, stun: 0.6, weaken: 20, weakenR: 1.5 },
   },
   {
     id: 'fatReserves',
@@ -716,7 +716,7 @@ const CLAW = build('claw', [
   {
     id: 'ursaMajor',
     name: 'Ursa Major',
-    desc: 'Grow into the great bear of the old stories for 12s (+0.5s per rank): bigger still, +30% life, +30% damage, and your swipes reach 40% further.',
+    desc: 'Grow into the great bear of the old stories for 12s (+0.5s per rank): bigger still, +30% life (+1.5% per rank), +30% damage (+2% per rank), and your swipes reach 40% further.',
     tier: 6,
     col: 0,
     icon: 'ss-ursamajor',
@@ -726,7 +726,7 @@ const CLAW = build('claw', [
     mana: [30, 1.2],
     cd: [50, 1, 25],
     fx: 'shift.ursaMajor',
-    p: { duration: 12, durationR: 0.5, life: 30, damage: 30, reach: 40, scale: 1.18 },
+    p: { duration: 12, durationR: 0.5, life: 30, lifeR: 1.5, damage: 30, damageR: 2, reach: 40, scale: 1.18 },
   },
   {
     id: 'clawMastery',

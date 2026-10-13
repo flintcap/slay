@@ -27,7 +27,7 @@ import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
 import { releasesAt, skillAction } from '../art/hero/gestures';
-import { runShift, type ShiftKit } from './ShifterRunner';
+import { runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilHost } from './paladin/Vigils';
 import { SKILL_MOTIFS, motifAt } from '../fx/SkillLooks';
@@ -53,6 +53,7 @@ const MINION_NAME: Record<string, string> = {
 
 /** The monster body each summoning skill raises (read by the scene's warm-up too). */
 export const MINION_MONSTER: Readonly<Record<string, string>> = {
+  ...SHIFTER_MINIONS,
   raiseSkeleton: 'skeleton_rattler',
   skeletalMage: 'skeleton_archer',
   grandOssuary: 'skeleton_warden',
@@ -3202,6 +3203,12 @@ export class SkillRunner {
       },
       wallStop: (from, dir, max, radius) => this.wallStop(from, dir, max, ctx, radius),
       statuses: (riderOnly) => this.statusFor(def, num, color, riderOnly),
+      raise: (x, z, o) => {
+        this.caster = player;
+        this.addTurret(x, z, Infinity, o.rate, o.range, o.packet, type, color, true, def.id, o.life, false);
+      },
+      pack: () => this.countSummons(def.id),
+      trim: (keep) => this.trimSummons(def.id, keep),
     };
   }
 

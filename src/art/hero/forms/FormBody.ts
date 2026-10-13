@@ -57,6 +57,8 @@ export class FormBody {
   private scaleNow = 1;
   private scaleVel = 0;
   private prewarmed = false;
+  /** Grown past the form's own size (Ursa Major), 1 for none. */
+  extra = 1;
 
   constructor(
     private readonly hero: HeroModel,
@@ -139,7 +141,7 @@ export class FormBody {
       this.showSelf(ownHidden);
     }
     this.animator.setForm(form);
-    const target = form ? BEAST_BUILD[form].scale : 1;
+    const target = form ? BEAST_BUILD[form].scale * this.extra : 1;
     this.animator.bodyScale = target;
     // The change starts from the size the body was, a touch shrunk, and
     // swells past the new size before it settles.
@@ -207,7 +209,8 @@ export class FormBody {
 
   /** Root scale and the tail. Call once a frame after the animator. */
   update(dt: number): void {
-    const target = this.form ? BEAST_BUILD[this.form].scale : 1;
+    const target = this.form ? BEAST_BUILD[this.form].scale * this.extra : 1;
+    this.animator.bodyScale = target;
     if (Math.abs(this.scaleNow - target) > 1e-4 || Math.abs(this.scaleVel) > 1e-4) {
       // A stiff spring, a little under-damped: the swell overshoots once.
       const k = 260;

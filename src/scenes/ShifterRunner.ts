@@ -54,6 +54,12 @@ export interface ShiftKit {
   wallStop(from: THREE.Vector3, dir: THREE.Vector3, max: number, radius: number): number;
   /** The status a skill names (`params.statusId` or the runner's table). */
   statuses(riderOnly: boolean): StatusApplication[];
+  /** Raises one of this skill's creatures at (x, z): it bites with `packet` and has `life`. */
+  raise(x: number, z: number, o: { packet: (m?: number) => DamagePacket; life: number; rate: number; range: number }): void;
+  /** How many of this skill's creatures stand now. */
+  pack(): number;
+  /** Lets the oldest of this skill's creatures go until `keep` are left. */
+  trim(keep: number): void;
 }
 
 /** One cast, already paid for. */

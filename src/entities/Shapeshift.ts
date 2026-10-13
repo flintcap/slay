@@ -15,6 +15,7 @@
  * +skill ring put on shows straight away. The status is the truth: the body
  * follows it (into a new floor, after a death).
  */
+import * as THREE from 'three';
 import type { StatKey } from '../types';
 import type { Player } from './Player';
 import type { DressedHero } from '../scenes/HeroModel';
@@ -22,6 +23,21 @@ import type { BeastForm } from '../art/hero/forms/BeastBody';
 import { getStatus, registerStatus, type StatusDef } from '../data/statuses';
 import { getSkill } from '../data/skills';
 import { effectiveSkillRank } from '../sim/Character';
+import { tickShifterFX } from '../fx/shifter/ShifterFX';
+
+/** A leap or a rush the hero is in the middle of (Pounce, Lunge, Overrun...). */
+interface Trip {
+  from: THREE.Vector3;
+  to: THREE.Vector3;
+  t: number;
+  time: number;
+  /** Peak height of the arc, metres; 0 runs along the floor. */
+  height: number;
+  /** 0 even pace; 1 eases out (a leap lands soft); -1 eases in (a charge builds). */
+  ease: number;
+  step?: (at: THREE.Vector3, u: number) => void;
+  land?: () => void;
+}
 
 /** The skill that is each form. */
 export const FORM_SKILL: Readonly<Record<BeastForm, string>> = { cat: 'catForm', wolf: 'wolfForm', bear: 'bearForm' };
@@ -108,6 +124,7 @@ export class Shapeshift {
   private recheck = 0;
   /** The mods each form status was last given, to skip refreshes that change nothing. */
   private given = new Map<BeastForm, string>();
+  private trip: Trip | null = null;
 
   constructor(
     private readonly player: Player,
@@ -176,6 +193,8 @@ export class Shapeshift {
     if (now) {
       this.player.status.remove(FORM_STATUS[now]);
       this.given.delete(now);
+      // Ursa Major is the bear's; a man or a cat cannot keep it.
+      if (now === 'bear') this.player.status.remove('ss.ursaMajor');
     }
     if (form) this.give(form, true);
     else this.player.refreshStats();
@@ -198,11 +217,65 @@ export class Shapeshift {
     this.player.applyStatus(FORM_STATUS[form], FOREVER);
   }
 
+  /**
+   * Carries the hero to `to` over `time` seconds, `height` metres up at the
+   * top of the arc. `step` runs each frame on the way, `land` once at the end.
+   * A new trip replaces one under way (its `land` still runs).
+   */
+  travel(to: THREE.Vector3, time: number, height: number, o: { ease?: number; step?: (at: THREE.Vector3, u: number) => void; land?: () => void } = {}): void {
+    this.finishTrip();
+    this.trip = {
+      from: this.player.position.clone(),
+      to: to.clone().setY(this.player.position.y),
+      t: 0,
+      time: Math.max(0.05, time),
+      height,
+      ease: o.ease ?? 0,
+      step: o.step,
+      land: o.land,
+    };
+    this.player.faceTowards(to.x, to.z);
+  }
+
+  /** True while a leap or rush is carrying the hero. */
+  get travelling(): boolean {
+    return this.trip !== null;
+  }
+
+  private finishTrip(): void {
+    const t = this.trip;
+    if (!t) return;
+    this.trip = null;
+    this.player.position.x = t.to.x;
+    this.player.position.z = t.to.z;
+    this.hero.root.position.y = 0;
+    t.land?.();
+  }
+
+  private moveTrip(dt: number): void {
+    const t = this.trip;
+    if (!t) return;
+    t.t += dt;
+    const u = Math.min(1, t.t / t.time);
+    const e = t.ease > 0 ? 1 - (1 - u) * (1 - u) : t.ease < 0 ? u * u : u;
+    const p = this.player.position;
+    p.x = t.from.x + (t.to.x - t.from.x) * e;
+    p.z = t.from.z + (t.to.z - t.from.z) * e;
+    this.hero.root.position.y = t.height * 4 * u * (1 - u);
+    t.step?.(p, u);
+    if (u >= 1) this.finishTrip();
+  }
+
   /** Once a frame: the body follows the status, the numbers follow the ranks. */
   update(dt: number): void {
     const form = this.form;
     if (this.hero.form !== form) this.hero.setForm(form);
+    this.moveTrip(dt);
+    const ursa = form === 'bear' && this.player.status.has('ss.ursaMajor');
+    const grow = getSkill('ursaMajor')?.params?.scale;
+    this.hero.setFormScale(ursa ? (typeof grow === 'number' ? grow : 1.18) : 1);
     this.hero.updateForm(dt);
+    tickShifterFX(dt);
     this.recheck -= dt;
     if (form && this.recheck <= 0) {
       this.recheck = 1;

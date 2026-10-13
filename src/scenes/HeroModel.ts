@@ -214,6 +214,11 @@ export class DressedHero {
     this.formBody?.update(dt);
   }
 
+  /** Grows the beast past its own size (1 for none); eased in by `updateForm`. */
+  setFormScale(k: number): void {
+    if (this.formBody) this.formBody.extra = k;
+  }
+
   /** The held or worn object for a slot, if any. */
   objectFor(slot: EquipSlot): THREE.Object3D | null {
     const h = this.held.get(slot);
