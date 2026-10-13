@@ -126,7 +126,11 @@ export class Residents {
   private talking: string | null = null;
   private engaged: string | null = null;
 
-  constructor(parent: THREE.Object3D, colliders: Collider[], places: ResidentPlace[]) {
+  /** The ground's height under a point; the folk stand on it. */
+  private ground: (x: number, z: number) => number;
+
+  constructor(parent: THREE.Object3D, colliders: Collider[], places: ResidentPlace[], ground: (x: number, z: number) => number = () => 0) {
+    this.ground = ground;
     for (const place of places) {
       try {
         this.list.push(this.make(parent, colliders, place));
@@ -138,7 +142,7 @@ export class Residents {
 
   private make(parent: THREE.Object3D, colliders: Collider[], place: ResidentPlace): Resident {
     const folk = buildFolk(place.id);
-    folk.root.position.set(place.x, 0, place.z);
+    folk.root.position.set(place.x, this.ground(place.x, place.z), place.z);
     folk.root.rotation.y = place.facing;
     folk.root.traverse((o) => {
       const m = o as THREE.SkinnedMesh;
@@ -279,6 +283,7 @@ export class Residents {
             const step = Math.min(left, pace * dt);
             root.position.x += (gx / left) * step;
             root.position.z += (gz / left) * step;
+            root.position.y = this.ground(root.position.x, root.position.z);
           }
         }
       } else if (r.timer <= 0) {

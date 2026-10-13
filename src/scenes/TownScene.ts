@@ -91,6 +91,8 @@ export class TownScene extends GameScene {
     const rng = new Random(0x70b6);
     this.town = buildTown(rng);
     this.scene.add(this.town.root);
+    const town = this.town;
+    this.decals.setGround((x, z) => town.groundY(x, z));
 
     this.engine.renderer.applyEnvironment(this.scene, 0.9);
     // The camp is a night exterior with no ceiling to bounce off, so it lands
@@ -118,7 +120,7 @@ export class TownScene extends GameScene {
 
     this.player = new Player(character, 12345);
     // Arrive on the south path, facing the fire and the gate beyond it.
-    this.player.position.set(0, 0, 8);
+    this.player.position.set(0, this.town.groundY(0, 8), 8);
     this.scene.add(this.player.root);
 
     // Soft and high: at 12 and 2.3 m the hero's pale linen rendered white-hot
@@ -250,6 +252,13 @@ export class TownScene extends GameScene {
       // Inside the palisade, plus the ramp out through the gate.
       walkableAt: (x, z) => Math.hypot(x, z) < 21.4 || (z < -15 && z > -24 && Math.abs(x) < 5.5),
     }, this.keyDir.lengthSq() > 0 ? this.keyDir : null);
+    // Stand on the ground. The camp is trodden into hollows and rises; at a
+    // flat zero the feet sank into every rise. Eased, as below, so a bump
+    // reads as a bump, not a pop.
+    {
+      const pp = this.player.position;
+      pp.y += (this.town.groundY(pp.x, pp.z) - pp.y) * Math.min(1, dt * 16);
+    }
 
     this.attendResidents();
 

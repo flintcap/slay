@@ -36,6 +36,8 @@ export interface TownBuild {
   portalSpot: THREE.Vector3;
   /** Emitter positions the scene feeds to its particle system. */
   smokeSpots: THREE.Vector3[];
+  /** The ground's height under a point: the camp is not flat, so walkers stand on this. */
+  groundY(x: number, z: number): number;
   update(dt: number, elapsed: number): void;
   dispose(): void;
 }
@@ -285,7 +287,7 @@ export function buildTown(rng: Rng): TownBuild {
     hide: safeSurface('leather.worn', { repeat: 3, side: THREE.DoubleSide }),
   };
 
-  buildGround(ctx, mats);
+  const groundY = buildGround(ctx, mats);
   buildFire(ctx);
 
   const npcSpots: Record<string, THREE.Vector3> = {};
@@ -380,7 +382,7 @@ export function buildTown(rng: Rng): TownBuild {
   // The townsfolk and their routines live in `art/npc/Residents.ts`.
   const residents = new Residents(ctx.root, ctx.colliders, townPlaces({
     forge: forgeAt, wagon: wagonAt, stash: stashAt, alchemy: alchemyAt, cairn: cairnAt, alchemist: npcSpots.alchemist,
-  }));
+  }), groundY);
   mergeStatic(ctx);
   buildBulbs(ctx);
 
@@ -422,6 +424,7 @@ export function buildTown(rng: Rng): TownBuild {
     residents,
     portalSpot,
     smokeSpots: ctx.smoke,
+    groundY,
     update(dt: number, elapsed: number): void {
       for (const f of ctx.flames) {
         const slow = ctx.noise.simplex2(elapsed * 1.5 + f.phase, f.phase * 0.31);
@@ -583,7 +586,7 @@ function smooth(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-function buildGround(ctx: Ctx, m: Mats): void {
+function buildGround(ctx: Ctx, m: Mats): (x: number, z: number) => number {
   // One sheet from the fire out past the palisade into the trees: no planes
   // stacked a few centimetres apart, so no seams and no green showing
   // through the dirt where two surfaces crossed.
@@ -657,6 +660,7 @@ function buildGround(ctx: Ctx, m: Mats): void {
       [ctx.rng.range(0, 3), ctx.rng.range(0, 3), ctx.rng.range(0, 3)],
     );
   }
+  return (x, z) => at(x, z).y;
 }
 
 /**

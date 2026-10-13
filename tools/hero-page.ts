@@ -732,6 +732,35 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     }
     return JSON.stringify({ pass: true, lines });
   },
+  /** Ankle and toe height over the floor, standing, walking and running, against the rest pose's. */
+  async feet(f) {
+    await loadMeshCache();
+    const classes = (f.class ?? 'warden,pyromancer,shadowblade,stormcaller,revenant,ranger').split(',') as CharClassId[];
+    const lines: string[] = ['class        rest ankle/toe   stand            walk (min)       run (min)'];
+    const y = (a: Actor, bone: string) => (a.hero.rig.bones as unknown as Record<string, THREE.Bone>)[bone]!.getWorldPosition(new THREE.Vector3()).y;
+    for (const cls of classes) {
+      const row = [cls.padEnd(12)];
+      const j = actor(cls, CLASS_STANCE[cls], `${cls}-feet-rest`).hero.rig.joints;
+      row.push(`${j.footL.y.toFixed(3)}/${j.toeL.y.toFixed(3)}`.padEnd(16));
+      const idle = actor(cls, CLASS_STANCE[cls], `${cls}-feet-i`);
+      simulate(idle, 0, 1.5, still);
+      idle.world.updateMatrixWorld(true);
+      row.push(`${Math.min(y(idle, 'footL'), y(idle, 'footR')).toFixed(3)}/${Math.min(y(idle, 'toeL'), y(idle, 'toeR')).toFixed(3)}`.padEnd(16));
+      for (const speed of [1.6, 4.6]) {
+        const a = actor(cls, CLASS_STANCE[cls], `${cls}-feet-${speed}`);
+        let fa = 9, ft = 9;
+        for (let t = 0; t < 2.4; t += 0.05) {
+          simulate(a, t, t + 0.05, straight(speed));
+          a.world.updateMatrixWorld(true);
+          fa = Math.min(fa, y(a, 'footL'), y(a, 'footR'));
+          ft = Math.min(ft, y(a, 'toeL'), y(a, 'toeR'));
+        }
+        row.push(`${fa.toFixed(3)}/${ft.toFixed(3)}`.padEnd(16));
+      }
+      lines.push(row.join(' '));
+    }
+    return JSON.stringify({ pass: true, lines });
+  },
   /** Every stance on one class: standing, mid-walk, mid-run. */
   async stances(f) {
     await loadMeshCache();
