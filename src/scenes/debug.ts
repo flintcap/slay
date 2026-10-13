@@ -4,7 +4,7 @@ import type { Engine } from '../core/Engine';
 import { save } from '../core/Save';
 import { events } from '../core/Events';
 import { Random, randomSeed } from '../core/RNG';
-import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem, isWornOffHand, meetsRequirements } from '../sim/Character';
+import { createCharacter, grantXp, allocateSkill, allocateStat, equipItem, isWornOffHand, meetsRequirements, slotsFor } from '../sim/Character';
 import { computeStats } from '../sim/Stats';
 import { rollItem, newItem, getBase } from '../sim/Loot';
 import { buildDropModel } from '../art/ItemModels';
@@ -182,7 +182,22 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       const base = getBase(baseId);
       if (!base) return null;
       const item = newItem(base, ilvl, rarity, new Random(randomSeed()));
-      const res = equipItem(c, item);
+      let res = equipItem(c, item);
+      if (!res.ok && /inventory space/i.test(res.reason ?? '')) {
+        // makeCharacter's rejected rolls fill the backpack, so the swap has
+        // nowhere to put what the hands held: a test hero just drops it (both
+        // hands when a two-hander is involved).
+        const legal = slotsFor(item, c.classId);
+        for (const s of legal) delete c.equipment[s];
+        const main = c.equipment.mainHand;
+        if (legal.includes('mainHand') || legal.includes('offHand')) {
+          if (getBase(item.baseId).slot === 'twoHand' || (main && getBase(main.baseId).slot === 'twoHand')) {
+            delete c.equipment.mainHand;
+            delete c.equipment.offHand;
+          }
+        }
+        res = equipItem(c, item);
+      }
       if (!res.ok) {
         addItemToInventory(c, item);
         return null;

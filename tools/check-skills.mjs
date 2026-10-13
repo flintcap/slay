@@ -41,8 +41,9 @@ const WEAPON = {
  */
 const KITS = {
   paladin: [
-    { gear: ['mace.club', 'shield.heater'], trees: ['palMace', 'palAura'] },
-    { gear: ['sword.short', 'shield.heater'], trees: ['palBlade'] },
+    // Shield first: with the off hand free, a one-hander would land there.
+    { gear: ['shield.heater', 'mace.club'], trees: ['palMace', 'palAura'] },
+    { gear: ['shield.heater', 'sword.short'], trees: ['palBlade'] },
   ],
 };
 
