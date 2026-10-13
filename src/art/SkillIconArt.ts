@@ -160,6 +160,12 @@ const ICON_MAP: Record<string, string> = {
   bellguard: 'bell^aura', 'pilgrim-maul': 'mace:1^impact', 'iron-penance': 'crack^chain', 'bar-door': 'tower^field',
   'hurl-censer': 'censer:1', 'weight-stone': 'boulder', 'relic-bash': 'chalice^impact', 'last-bell': 'bell:1^rise',
   'iron-verdict': 'mace:2^burst', unbroken: 'helm^aura',
+  // Paladin: Blade.
+  'oath-cut': 'sword^impact', 'blade-catechism': 'scroll', 'turn-blade': 'sword^spin', 'twin-verse': 'sword^chain',
+  'red-psalm': 'drop^aura', feint: 'footprints^speed', litany: 'scroll:1', 'measured-step': 'footprints',
+  'answer-steel': 'sword^rise', confession: 'sword^speed', 'whetted-faith': 'sword^aura', crosswise: 'dagger:1^burst',
+  'mercy-stroke': 'hourglass^impact', 'fifth-verse': 'scroll^rise', sevenfold: 'dagger:2^speed', 'red-rosary': 'rosary:1',
+  'last-rites': 'sword^burst', 'saints-reach': 'lance^rise',
   'nova-blood': 'drop^nova', undying: 'heart^aura', tether: 'chain', covenant: 'rune', 'second-death': 'skull^rise',
   scythe: 'scythe^spin', 'mastery-grave': 'scythe^mastery',
   // Ranger

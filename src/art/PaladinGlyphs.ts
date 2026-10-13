@@ -9,6 +9,8 @@
  *   mace    a flanged mace. v1 two crossed, v2 haloed.
  *   bell    a bronze bell. v1 cracked, v2 ringing.
  *   censer  a pierced censer on its chain, smoking. v1 swung.
+ *   scroll  a scorched parchment with lines of text. v1 a blade through it, v2 burning.
+ *   rosary  a loop of dark beads with an iron cross. v1 dripping.
  */
 import type { Glyph, Tone } from './Glyphs';
 import {
@@ -199,4 +201,88 @@ const censer: Glyph = (x, t, v) => {
   }
 };
 
-export const PALADIN_GLYPHS: Record<string, Glyph> = { mace, bell, censer };
+// ---------------------------------------------------------------------------
+// Scroll
+// ---------------------------------------------------------------------------
+
+const PARCHMENT = mat([0x2a1a0c, 0x5c4024, 0x9a7a52, 0xcdb48a, 0xf2e2c0], 0, 'fine', 0.35);
+
+const scroll: Glyph = (x, t, v) => {
+  const k = v % 3;
+  if (k === 1) {
+    // The blade behind the page, point down.
+    x.save();
+    x.translate(64, 64);
+    x.rotate(-0.35);
+    x.translate(-64, -64);
+    obj(x, polyP([[64, 118], [70, 104], [70, 20], [58, 20], [58, 104]]), IRON, t, [58, 20], [70, 118], 0.8);
+    obj(x, rrectP(46, 14, 36, 7, 2), BRONZE, t, [46, 14], [82, 21], 0.4);
+    obj(x, rrectP(60, 0, 8, 14, 2), LEATHER, t, [60, 0], [68, 14], 0.3);
+    x.restore();
+  }
+  // A sheet with a ragged, scorched bottom edge and rolled ends.
+  const sheet = smoothP([[34, 28], [94, 28], [96, 70], [90, 92], [80, 86], [70, 96], [58, 88], [46, 96], [36, 88], [32, 70]], 0.25);
+  obj(x, sheet, PARCHMENT, t, [32, 28], [96, 96], 1.2);
+  obj(x, rrectP(28, 20, 72, 12, 6), PARCHMENT, t, [28, 20], [100, 32], 0.6);
+  x.save();
+  x.clip(sheet);
+  x.strokeStyle = 'rgba(40,20,10,.75)';
+  x.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    const y = 40 + i * 9;
+    x.beginPath();
+    x.moveTo(42, y);
+    x.lineTo(86 - (i % 2) * 10, y);
+    x.stroke();
+  }
+  // Char along the torn edge.
+  glow(x, 64, 96, 30, sink(t.dark, 0.3), 0.8, 'multiply');
+  x.restore();
+  if (k === 2) {
+    for (const [fx, fy, r] of [[46, 92, 9], [64, 96, 12], [82, 90, 9]] as const) {
+      const f = smoothP([[fx, fy - r * 2.2], [fx + r * 0.7, fy - r * 0.6], [fx + r * 0.5, fy + r * 0.4], [fx - r * 0.5, fy + r * 0.4], [fx - r * 0.7, fy - r * 0.6]], 0.45);
+      x.save();
+      x.fillStyle = css(t.glow, 0.85);
+      x.shadowColor = css(t.glow, 0.9);
+      x.shadowBlur = 10;
+      x.fill(f);
+      x.restore();
+    }
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Rosary
+// ---------------------------------------------------------------------------
+
+const BEAD = mat([0x140606, 0x3a0c0c, 0x6a1a18, 0x9a3a30, 0xd88a78], 0.3, 'fine', 0.2);
+
+const rosary: Glyph = (x, t, v) => {
+  glow(x, 64, 56, 44, t.glow, 0.4);
+  // A loop of beads.
+  const n = 14;
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+    const bx = 64 + Math.cos(a) * 32;
+    const by = 50 + Math.sin(a) * 28;
+    obj(x, circleP(bx, by, i % 5 === 0 ? 6 : 4.5), BEAD, t, [bx - 6, by - 6], [bx + 6, by + 6], 0.3);
+  }
+  // The tail and its iron cross.
+  for (let i = 0; i < 3; i++) obj(x, circleP(64, 84 + i * 8, 4), BEAD, t, [60, 80 + i * 8], [68, 88 + i * 8], 0.3);
+  const cross = new Path2D();
+  cross.addPath(rrectP(60, 104, 8, 22, 2));
+  cross.addPath(rrectP(53, 110, 22, 7, 2));
+  obj(x, cross, IRON, t, [53, 104], [75, 126], 0.6);
+  if (v % 2 === 1) {
+    for (const [dx, dy] of [[40, 70], [88, 68], [64, 82]] as const) {
+      const d = smoothP([[dx, dy], [dx + 3, dy + 7], [dx, dy + 11], [dx - 3, dy + 7]], 0.5);
+      x.save();
+      x.fillStyle = css(0xa01810, 0.95);
+      x.fill(d);
+      x.restore();
+    }
+  }
+  glint(x, 50, 26, 4, lift(t.core, 0.4), 0.7);
+};
+
+export const PALADIN_GLYPHS: Record<string, Glyph> = { mace, bell, censer, scroll, rosary };

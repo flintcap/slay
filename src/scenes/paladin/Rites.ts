@@ -69,6 +69,8 @@ const BLADE: ItemCategory[] = ['sword'];
 
 interface Rite {
   grip: Grip;
+  /** A step before the blow: to his side of the target, or round behind it. */
+  step?: 'flank' | 'behind';
   /** The body clip until the skill has a gesture of its own. */
   clip: string;
   /** Action length as a multiple of one swing. */
@@ -112,11 +114,12 @@ function broken(t: Target): boolean {
  * Crushing Weight and The Last Bell are read here, so every Mace blow
  * honours them without each skill remembering to.
  */
-function blow(r: RiteCast, host: RiteHost, t: Target, mult = 1, extra: StatusApplication[] = [], kind?: HitKind, knockback = 0): DamagePacket {
+function blow(r: RiteCast, host: RiteHost, t: Target, mult = 1, extra: StatusApplication[] = [], kind?: HitKind, knockback = 0, opens = 0): DamagePacket {
   const pal = r.player.passives.pal;
   let m = mult;
   const riders = [...extra];
   if (pal.vsBrokenPct > 0 && broken(t)) m *= 1 + pal.vsBrokenPct / 100;
+  if (pal.vsOpenedPct > 0 && t.hasStatus('opened')) m *= 1 + pal.vsOpenedPct / 100;
   if (pal.tollEvery > 0 && r.def.treeId === 'palMace') {
     const n = (tolls.get(r.player) ?? 0) + 1;
     if (n >= pal.tollEvery) {
@@ -128,12 +131,34 @@ function blow(r: RiteCast, host: RiteHost, t: Target, mult = 1, extra: StatusApp
     }
   }
   const p = r.packet(m);
+  if (opens > 0) riders.push(opened(r, p.amount, opens));
   if (riders.length) p.applies = [...(p.applies ?? []), ...riders];
   if (knockback > 0) p.knockback = Math.max(p.knockback ?? 0, knockback);
   const rite = RITES[r.def.id];
   const landed = host.land(t, p, kind ?? rite?.kind ?? 'melee', r.player.position.x, r.player.position.z, r);
   host.sound(r.hitSound, t.root.position.x, t.root.position.z);
+  // Red Rosary: a critical cut opens the vein on its own.
+  if (landed.crit && pal.critOpens > 0 && t.life > 0) t.applyStatuses([opened(r, landed.amount, pal.critOpens)], r.ctx);
   return landed;
+}
+
+/**
+ * An Opened wound from a cut of `amount`: it bleeds a share of the cut each
+ * second, per stack, so a deep cut runs deeper than the depth curve alone.
+ */
+function opened(r: RiteCast, amount: number, stacks: number): StatusApplication {
+  return { id: 'opened', duration: r.num('bleedTime', 5), magnitude: 1, stacks, power: amount * r.num('bleedShare', 0.12) };
+}
+
+/** `n` blows, `gap` seconds apart, the first now. `each(i)` lands blow `i`. */
+function flurry(host: RiteHost, r: RiteCast, t: Target, n: number, gap: number, each: (i: number) => void): void {
+  each(0);
+  for (let i = 1; i < n; i++) {
+    host.later(gap * i, () => {
+      if (t.life <= 0 || !r.player.alive) return;
+      each(i);
+    });
+  }
 }
 
 /** Ends every dent on the target and says how many there were. */
@@ -277,6 +302,136 @@ const RITES: Record<string, Rite> = {
       blow(r, host, t, 1, [status('rung', ring)]);
     },
   },
+  // ----------------------------------------------------------------- Blade
+  oathCut: {
+    grip: 'blade',
+    clip: 'thrust',
+    time: 0.8,
+    kind: 'melee',
+    reach: 2.5,
+    land(r, host, t) {
+      if (!t) return;
+      blow(r, host, t, 1, [], 'melee', 0, 1);
+    },
+  },
+  turnTheBlade: {
+    grip: 'blade',
+    clip: 'thrust',
+    time: 0.7,
+    kind: 'heavy',
+    reach: 2.6,
+    self: true,
+    land(r, host) {
+      // Blade up for a moment, then the answer, at whoever is closest in front.
+      const window = r.num('window', 1.2);
+      r.player.applyStatus('parrying', window);
+      host.later(window, () => {
+        if (!r.player.alive) return;
+        const t = pickOne(r.player, r.player.position.clone().add(forward(r.player, 1.5)), r.enemies, r.boss, 2.6);
+        if (!t) return;
+        r.player.faceTowards(t.root.position.x, t.root.position.z);
+        blow(r, host, t, 1, [status('exposed', r.num('duration', 3))], 'heavy');
+      });
+    },
+  },
+  twinVerse: {
+    grip: 'blade',
+    clip: 'attack2',
+    time: 1.0,
+    kind: 'melee',
+    reach: 2.5,
+    land(r, host, t) {
+      if (!t) return;
+      flurry(host, r, t, 2, r.num('gap', 0.16), () => blow(r, host, t, 1, [], 'melee', 0, 1));
+    },
+  },
+  feint: {
+    grip: 'blade',
+    clip: 'thrust',
+    time: 0.9,
+    kind: 'melee',
+    reach: 2.5,
+    step: 'flank',
+    land(r, host, t) {
+      if (!t) return;
+      blow(r, host, t, 1, [status('exposed', ranked(r, 'duration', 4, 0.1))]);
+    },
+  },
+  litany: {
+    grip: 'blade',
+    clip: 'attack1',
+    time: 1.5,
+    kind: 'melee',
+    reach: 2.5,
+    land(r, host, t) {
+      if (!t) return;
+      flurry(host, r, t, Math.round(r.num('cuts', 5)), r.num('gap', 0.12), () => blow(r, host, t, 1, [], 'melee', 0, 1));
+    },
+  },
+  confessionThrust: {
+    grip: 'blade',
+    clip: 'lunge',
+    time: 1.1,
+    kind: 'heavy',
+    reach: 2.5,
+    rush: 5,
+    land(r, host, t) {
+      if (!t) return;
+      // Every open wound confesses at once.
+      const cuts = t.consumeStatus('opened');
+      blow(r, host, t, 1 + cuts * r.num('perCut', 0.4), [], 'heavy');
+    },
+  },
+  crosswise: {
+    grip: 'blade',
+    clip: 'attack2',
+    time: 1.1,
+    kind: 'melee',
+    reach: 2.5,
+    land(r, host, t) {
+      if (!t) return;
+      flurry(host, r, t, 2, r.num('gap', 0.2), (i) => blow(r, host, t, 1, i === 1 ? [status('exposed', r.num('duration', 5))] : [], i === 1 ? 'heavy' : 'melee'));
+    },
+  },
+  mercyStroke: {
+    grip: 'blade',
+    clip: 'thrust',
+    time: 1.0,
+    kind: 'heavy',
+    reach: 2.5,
+    land(r, host, t) {
+      if (!t) return;
+      // Below the line, a lesser thing is simply finished. Bosses are never small enough.
+      const line = ranked(r, 'threshold', 15, 0.5) / 100;
+      const mercy = t !== r.boss && t.life / Math.max(1, t.maxLife) <= line;
+      blow(r, host, t, mercy ? r.num('mercyMult', 8) : 1, [], 'heavy');
+    },
+  },
+  sevenfold: {
+    grip: 'blade',
+    clip: 'attack1',
+    time: 1.6,
+    kind: 'melee',
+    reach: 2.5,
+    land(r, host, t) {
+      if (!t) return;
+      const n = Math.round(r.num('cuts', 7));
+      flurry(host, r, t, n, r.num('gap', 0.09), (i) =>
+        i === n - 1 ? blow(r, host, t, 1, [status('exposed', r.num('duration', 5))], 'heavy', 0, 2) : blow(r, host, t, 1));
+    },
+  },
+  lastRites: {
+    grip: 'blade',
+    clip: 'lunge',
+    time: 1.3,
+    kind: 'heavy',
+    reach: 2.5,
+    step: 'behind',
+    land(r, host, t) {
+      if (!t) return;
+      blow(r, host, t, 1, [status('exposed', r.num('duration', 6))], 'heavy', 0, Math.round(r.num('opens', 3)));
+    },
+  },
 };
 
 /** True when the skill is a Paladin rite this module runs. */
@@ -369,6 +524,48 @@ function rushTo(host: RiteHost, r: RiteCast, t: Target, seconds: number): void {
   }
 }
 
+/** One metre (times `d`) the way the hero faces. */
+function forward(p: Player, d: number): THREE.Vector3 {
+  return new THREE.Vector3(Math.sin(p.root.rotation.y) * d, 0, Math.cos(p.root.rotation.y) * d);
+}
+
+/**
+ * A quick step before the blow: `flank` to the side of the target (a feint),
+ * `behind` round to its back. Walls cut it short; it never leaves reach.
+ */
+function stepTo(host: RiteHost, r: RiteCast, t: Target, how: 'flank' | 'behind', seconds: number): void {
+  const p = r.player;
+  const from = p.position.clone();
+  const tp = t.root.position;
+  dirV.set(tp.x - from.x, 0, tp.z - from.z);
+  const gap = dirV.length();
+  if (gap < 0.01) return;
+  dirV.divideScalar(gap);
+  const want = new THREE.Vector3();
+  if (how === 'behind') {
+    want.set(tp.x + dirV.x * (t.hitRadius + 0.9), 0, tp.z + dirV.z * (t.hitRadius + 0.9));
+  } else {
+    // Left or right, whichever side the cursor is on.
+    const side = (r.aim.x - from.x) * dirV.z - (r.aim.z - from.z) * dirV.x >= 0 ? 1 : -1;
+    const off = t.hitRadius + 1.0;
+    want.set(tp.x - dirV.x * off * 0.6 + dirV.z * off * side, 0, tp.z - dirV.z * off * 0.6 - dirV.x * off * side);
+  }
+  const move = want.clone().sub(from).setY(0);
+  const len = move.length();
+  if (len < 0.2) return;
+  move.divideScalar(len);
+  const go = Math.min(len, host.clear(from, move, len, r.ctx));
+  const steps = 5;
+  for (let i = 1; i <= steps; i++) {
+    host.later((seconds * i) / steps, () => {
+      if (!p.alive) return;
+      const k = i / steps;
+      p.position.set(from.x + move.x * go * k, p.position.y, from.z + move.z * go * k);
+      if (t.life > 0) p.faceTowards(t.root.position.x, t.root.position.z);
+    });
+  }
+}
+
 /** Runs one press of a rite. The runner has already paid for it. */
 export function castRite(host: RiteHost, r: RiteCast): void {
   const rite = RITES[r.def.id];
@@ -379,6 +576,7 @@ export function castRite(host: RiteHost, r: RiteCast): void {
   p.beginAction(skillAction(r.def.id) ?? rite.clip, r.attackTime * rite.time);
   const id = p.actionId;
   if (target && rite.rush) rushTo(host, r, target, p.contactIn * 0.9);
+  if (target && rite.step) stepTo(host, r, target, rite.step, p.contactIn * 0.8);
   host.later(p.contactIn, () => {
     if (p.actionId !== id || !p.alive) return;
     if (rite.self) {

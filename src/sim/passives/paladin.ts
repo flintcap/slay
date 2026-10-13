@@ -24,10 +24,14 @@ export interface PaladinEffects {
   tollRingSec: number;
   /** Bellguard: a blocked attacker is Staggered for this long. 0 = never. */
   blockStaggerSec: number;
+  /** Red Rosary: a critical rite leaves this many Opened stacks. */
+  critOpens: number;
+  /** Red Rosary: more damage against an Opened target. */
+  vsOpenedPct: number;
 }
 
 export function emptyPaladinEffects(): PaladinEffects {
-  return { vsBrokenPct: 0, tollEvery: 0, tollPct: 0, tollRingSec: 0, blockStaggerSec: 0 };
+  return { vsBrokenPct: 0, tollEvery: 0, tollPct: 0, tollRingSec: 0, blockStaggerSec: 0, critOpens: 0, vsOpenedPct: 0 };
 }
 
 function param(id: string, key: string, dflt: number): number {
@@ -59,5 +63,24 @@ export const PALADIN_RULES: Record<string, Rule> = {
     e.pal.tollEvery = Math.max(2, Math.round(param(id, 'every', 4)));
     e.pal.tollPct += param(id, 'pct', 60) + param(id, 'pctPerRank', 4) * (r - 1);
     e.pal.tollRingSec = Math.max(e.pal.tollRingSec, param(id, 'ring', 0.8));
+  },
+
+  // ----------------------------------------------------------------- Blade
+  redPsalm: (e, r, id) => {
+    e.vsBleedingPct += param(id, 'pctPerRank', 6) * r;
+  },
+  answerInSteel: (e, r, id) => {
+    e.blockCounterChance += param(id, 'chance', 12) + param(id, 'chancePerRank', 1.5) * (r - 1);
+    e.blockCounterPct = Math.max(e.blockCounterPct, param(id, 'counterPct', 140));
+  },
+  theFifthVerse: (e, r, id) => {
+    const every = Math.max(2, Math.round(param(id, 'every', 5)));
+    e.guaranteedCritEvery = e.guaranteedCritEvery > 0 ? Math.min(e.guaranteedCritEvery, every) : every;
+    e.guaranteedCritBonusPct += param(id, 'pct', 20) + param(id, 'pctPerRank', 3) * (r - 1);
+  },
+  redRosary: (e, r, id) => {
+    e.pal.critOpens = Math.max(e.pal.critOpens, Math.round(param(id, 'stacks', 1) + Math.floor((r - 1) / param(id, 'stackEvery', 6))));
+    e.pal.vsOpenedPct += param(id, 'pct', 15) + param(id, 'pctPerRank', 2) * (r - 1);
+    e.dotTickPct += param(id, 'tickPct', 20);
   },
 };
