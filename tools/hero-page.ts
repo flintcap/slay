@@ -623,6 +623,8 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       [Number(f.view ?? 0.7), 0.15, 3.9],
       [Number(f.view ?? 0.7) + 0.5, 0.95, 4.4],
     ];
+    // `--front`: the three-quarter view only, half the sheet to read.
+    if (f.front) views.length = 1;
     const { c, g } = sheet(TW * COLS, TH * list.length * views.length);
     list.forEach((spec, row) => {
       const [name, n] = spec.split('#') as [string, string | undefined];

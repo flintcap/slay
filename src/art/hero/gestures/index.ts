@@ -3,5 +3,6 @@
  * sure every `skill.<id>` action exists. One file per class.
  */
 import './mage';
+import './knight';
 
-export { skillAction, releasesAt, hasGesture, gestureIds } from '../SkillActions';
+export { skillAction, releasesAt, strikesAt, hasGesture, gestureIds } from '../SkillActions';

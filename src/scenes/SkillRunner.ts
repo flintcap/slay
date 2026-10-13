@@ -392,8 +392,6 @@ const HANDLER_CLIP: Record<string, string> = {
 /** The clip the body actually plays for a skill, for audits. */
 export function bodyClip(effect: string | undefined, holding: WeaponStyle, skillId: string): string {
   const family = (effect ?? 'melee').split('.')[0] ?? 'melee';
-  // A dash is the dodge itself, whatever gesture the skill has.
-  if (family === 'dash') return 'dodge';
   return skillAction(skillId) ?? HANDLER_CLIP[family] ?? clipFor(effect, holding, skillId);
 }
 
@@ -863,7 +861,9 @@ export class SkillRunner {
               t: player.contactIn,
               run: () => {
                 if (!player.alive) return;
-                const contact = player.handBlow('L', leftTime);
+                // A skill's own gesture strikes with both blades itself; the
+                // off hand's blow lands a beat after the main hand's.
+                const contact = own ? Math.min(0.12, leftTime * 0.4) : player.handBlow('L', leftTime);
                 if (!split) return;
                 this.pendingSwings.push({
                   t: contact,
@@ -1063,7 +1063,8 @@ export class SkillRunner {
         }
 
         case 'dash': {
-          player.dodge(dir.x, dir.z, true);
+          // The dodge's own move, under the skill's own gesture when it has one.
+          player.dodge(dir.x, dir.z, true, own ?? 'dodge');
           this.meleeSwing(player, dir, Math.PI, num('reach', 2.4), makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
           break;
         }

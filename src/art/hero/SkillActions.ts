@@ -18,7 +18,7 @@
  * the same numbers on both arms make a symmetric pose.
  */
 import { CH, type Pose, type Side } from './Pose';
-import { kit, registerAction, type ActionCtx, type ActionDef, type ActionKey, type ActionStep, type Place } from './Actions';
+import { kit, registerAction, type ActionCtx, type ActionDef, type ActionKey, type ActionStep, type MoveKind, type Place } from './Actions';
 
 const { k, rest, place, trunk, weight, glowAt } = kit;
 
@@ -39,6 +39,11 @@ export interface G {
   /** Finger curl, 1 a fist. */
   fistR?: number;
   fistL?: number;
+  /**
+   * Both hands stay on a two-handed haft (a greatsword, a staff, a spear):
+   * the off hand follows the grip even though `R` moved it.
+   */
+  grip?: boolean;
 }
 
 export interface Spec {
@@ -51,11 +56,26 @@ export interface Spec {
   steps?: ActionStep[];
   glow?: 'left' | 'right' | 'both';
   loop?: boolean;
+  /**
+   * A weapon blow: the contact key is when the blade lands (damage waits for
+   * it, see `Player.contactDelay`) and the weapon leaves a swing smear there.
+   * `side` is the hand that strikes.
+   */
+  hit?: boolean;
+  side?: Side;
+  /**
+   * The same keys for one weapon (by `Actions.MoveKind`), one pose per key in
+   * `keys` order; null keeps the main pose. A shield skill with a greatsword
+   * in hand bashes with the haft instead.
+   */
+  alt?: Partial<Record<MoveKind, Array<G | null>>>;
 }
 
-function pose(g: G): (p: Pose, c: ActionCtx) => void {
+function pose(main: G, i: number, alt: Spec['alt']): (p: Pose, c: ActionCtx) => void {
   return (p, c) => {
+    const g = alt?.[c.kind]?.[i] ?? main;
     if (g.R) place(p, c, 'R', g.R);
+    if (g.grip) p.c[CH.offGrip] = 1;
     if (g.L) {
       // The off hand leaves a two-handed haft to make the gesture.
       p.c[CH.offGrip] = 0;
@@ -71,12 +91,20 @@ function pose(g: G): (p: Pose, c: ActionCtx) => void {
 
 function gesture(s: Spec): ActionDef {
   const keys: ActionKey[] = s.loop ? [] : [k(0, rest)];
-  for (const [t, g, hold] of s.keys) keys.push(k(t, pose(g), hold ?? false));
+  s.keys.forEach(([t, g, hold], i) => keys.push(k(t, pose(g, i, s.alt), hold ?? false)));
   if (!s.loop) keys.push(k(s.end ?? 0.8, rest));
   const def: ActionDef = { keys, full: true, plantFeet: true };
   if (s.loop) {
     def.loop = true;
     def.glow = { at: () => 1, hands: s.glow ?? 'both' };
+  } else if (s.hit) {
+    const c = s.contact ?? s.keys[1]?.[0] ?? 0.25;
+    const end = s.end ?? 0.8;
+    def.contact = c;
+    def.event = 'hit';
+    def.side = s.side ?? 'R';
+    def.recover = c + (end - c) * 0.45;
+    if (s.glow) def.glow = { at: glowAt(Math.min(0.04, c * 0.3), c, c + (end - c) * 0.5), hands: s.glow };
   } else {
     const c = s.contact ?? s.keys[1]?.[0] ?? 0.25;
     const end = s.end ?? 0.8;
@@ -99,6 +127,19 @@ export const PUSH: Place = [1.45, 0.2, 0.75, 0.3, 1.1, -0.9];
 export const UP: Place = [2.95, 0.2, 0.3, 0.15, 0.5, -0.3];
 /** Hanging easy at the side. */
 export const DOWN: Place = [0.15, 0.35, 0, 0.5, 0.2];
+/**
+ * A weapon hand placed rather than turned: where the grip is, in metres on a
+ * 1.88 m body (+x to the character's left, y up from the floor, +z ahead), and
+ * which way the blade points. Mirrored for the left hand. `cock` and `flex`
+ * set the wrist.
+ */
+export const reach = (at: [number, number, number], dir: [number, number, number], cock = 0.5, flex = 0): Place => ({
+  at: [at[0] * 4, at[1] * 4, at[2] * 4],
+  dir,
+  cock,
+  flex,
+});
+
 /** Out to the side at the shoulder. */
 export const OUT: Place = [0.25, 1.45, 0.2, 0.2, 0.6, -0.6];
 /** Arms crossed in front of the chest. */
@@ -140,5 +181,11 @@ export function skillAction(skillId: string): string | null {
 export function releasesAt(action: string): boolean {
   if (!action.startsWith('skill.')) return false;
   const s = ALL[action.slice(6)];
-  return !!s && !s.loop;
+  return !!s && !s.loop && !s.hit;
+}
+
+/** True for a skill action that is a weapon blow (its contact key is the hit). */
+export function strikesAt(action: string): boolean {
+  if (!action.startsWith('skill.')) return false;
+  return !!ALL[action.slice(6)]?.hit;
 }

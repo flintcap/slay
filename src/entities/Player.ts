@@ -6,6 +6,7 @@ import { StatusContainer, adoptStatuses, releaseAdopted } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
 import { HeroAnimator, type BodyCondition } from '../art/hero/Animator';
+import { strikesAt } from '../art/hero/gestures';
 import { DressedHero } from '../scenes/HeroModel';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { collidersNear } from '../world/BodyWalk';
@@ -64,12 +65,15 @@ export const CLIP_CONTACT: Readonly<Record<string, number>> = {
   lunge: 0.32,
   stomp: 0.38,
 };
+/** Contact share of a skill's own weapon-blow gesture (`SkillActions` `hit`). */
+const SKILL_BLOW_CONTACT = 0.35;
 /** No swing waits longer than this to connect, however slow the weapon. */
 export const CONTACT_CAP = 0.16;
 
 /** Seconds from the start of an action to its contact frame. */
 export function contactDelay(clip: string, duration: number): number {
-  const f = CLIP_CONTACT[clip];
+  // A skill's own weapon blow lands where a plain swing would.
+  const f = CLIP_CONTACT[clip] ?? (strikesAt(clip) ? SKILL_BLOW_CONTACT : undefined);
   return f === undefined ? 0 : Math.min(CONTACT_CAP, f * Math.max(0, duration));
 }
 
@@ -402,7 +406,7 @@ export class Player {
    * Rolls along (dirX, dirZ). `quiet` leaves the sound to the caller: a dash
    * skill plays its own (audio/SkillSounds.ts), not the plain dodge.
    */
-  dodge(dirX: number, dirZ: number, quiet = false): boolean {
+  dodge(dirX: number, dirZ: number, quiet = false, clip = 'dodge'): boolean {
     // A real cooldown. Without one the dash was limited only by its own 0.32s
     // animation, so holding the key was simply a faster way to move and there
     // was never a moment where committing to it cost anything.
@@ -423,7 +427,8 @@ export class Player {
     this.actionLock = 0.32;
     this.actionTotal = 0.32;
     this.dodgeCd = this.dodgeCdMax;
-    this.animator.play('dodge', { fade: 0.05 });
+    // A dash skill moves the same way but plays its own gesture.
+    this.animator.play(clip, { fade: 0.05 });
     this.targetFacing = Math.atan2(this.dodgeDir.x, this.dodgeDir.z);
     if (!quiet) events.emit('sfx', { id: 'dodge' });
     return true;
