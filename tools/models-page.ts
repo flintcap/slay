@@ -198,6 +198,11 @@ const KITS: Record<CharClassId, Record<Exclude<Tier, 'bare'>, Kit>> = {
     mid: { mainHand: ['bow.composite', 'rare'], offHand: ['quiver.hunters', 'magic'], chest: ['chest.studded', 'rare'], helm: ['helm.cap', 'magic'], gloves: ['gloves.leather', 'magic'], boots: ['boots.heavy', 'rare'], belt: ['belt.light', 'magic'] },
     top: { mainHand: ['bow.matron', 'mythic'], offHand: ['quiver.endless', 'unique'], chest: ['chest.wyrmhide', 'set'], helm: ['helm.casque', 'unique'], gloves: ['gloves.bramble', 'set'], boots: ['boots.gale', 'mythic'], belt: ['belt.troll', 'unique'] },
   },
+  shapeshifter: {
+    low: { mainHand: ['mace.club', 'normal'], chest: ['chest.leather', 'normal'], boots: ['boots.boots', 'normal'] },
+    mid: { mainHand: ['axe.war', 'rare'], chest: ['chest.studded', 'rare'], helm: ['helm.skullcap', 'magic'], gloves: ['gloves.heavy', 'magic'], boots: ['boots.heavy', 'rare'], belt: ['belt.troll', 'magic'] },
+    top: { mainHand: ['staff.worldtree', 'mythic'], chest: ['chest.wyrmhide', 'unique'], helm: ['helm.bone', 'set'], gloves: ['gloves.ogre', 'set'], boots: ['boots.myrmidon', 'mythic'], belt: ['belt.worldheart', 'unique'] },
+  },
 };
 
 const CLASSES = Object.keys(KITS) as CharClassId[];

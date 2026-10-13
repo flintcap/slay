@@ -43,7 +43,7 @@ await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 420000, polling: 500 });
 
 const classes = process.argv.slice(2);
-const list = classes.length ? classes : ['warden', 'shadowblade', 'mage', 'revenant', 'ranger'];
+const list = classes.length ? classes : ['warden', 'shadowblade', 'mage', 'revenant', 'ranger', 'shapeshifter'];
 mkdirSync('shots', { recursive: true });
 
 for (const cls of list) {

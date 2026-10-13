@@ -102,4 +102,19 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     accent: 0x7fc46a,
     stoop: 0.1,
   },
+  shapeshifter: {
+    // Rangy and heavy in the shoulder, weathered by the drowned woods, long
+    // braided hair with a short beard, and amber eyes that catch the light
+    // the way an animal's do.
+    shape: { sex: 'male', height: 1.9, build: 0.72, shoulders: 1.05 },
+    face: { rugged: 0.8 },
+    skin: 0xa87656,
+    hair: { cut: 'braids', color: 0x2a1e16, beard: 1 },
+    eyes: { iris: 0xc8902a, glow: 0x6a4410 },
+    linen: UNDYED,
+    leather: CORD,
+    cloth: UNDYED,
+    accent: 0xc46a34,
+    stoop: 0.22,
+  },
 };

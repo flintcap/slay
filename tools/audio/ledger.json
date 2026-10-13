@@ -2558,6 +2558,14 @@
   "shield",
   "rsp"
  ],
+ "sounds/skill.shift.rake.hit/01.ogg": [
+  "kr",
+  "mud"
+ ],
+ "sounds/skill.shift.rake/01.ogg": [
+  "swish",
+  "creat"
+ ],
  "sounds/skill.shout.battle/01.ogg": [
   "yell"
  ],

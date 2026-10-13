@@ -14,65 +14,10 @@
  * the `shift.*` family, run by `scenes/ShifterRunner.ts`.
  *
  * Pure data, spread into `data/skills.ts`. Nothing here imports skills.ts at
- * run time (the helpers are this file's own), so there is no import cycle.
+ * run time (the helpers come from `kit.ts`), so there is no import cycle.
  */
-import type { DamageType, SkillDef, SkillTargeting, SkillTreeDef, StatKey } from '../../types';
-
-// ---------------------------------------------------------------------------
-// Authoring helpers (the same shapes `data/skills.ts` uses)
-// ---------------------------------------------------------------------------
-
-const MAX = 20;
-const r1 = (n: number): number => Math.round(n * 10) / 10;
-const lin = (a: number, b: number) => (r: number): number => r1(a + b * (r - 1));
-const per = (b: number) => (r: number): number => r1(b * r);
-const dim = (cap: number, k: number) => (r: number): number => r1(cap * (1 - Math.pow(1 - k, r)));
-const mana = (a: number, b: number) => (r: number): number => Math.max(0, r1(a + b * (r - 1)));
-const cool = (a: number, b: number, min = 0.4) => (r: number): number => Math.max(min, r1(a - b * (r - 1)));
-
-interface Spec {
-  id: string;
-  name: string;
-  desc: string;
-  tier: number;
-  col: number;
-  icon: string;
-  max?: number;
-  req?: string[];
-  t?: SkillTargeting;
-  mana?: [number, number];
-  cd?: [number, number] | [number, number, number];
-  dmg?: [number, number];
-  type?: DamageType;
-  fx?: string;
-  p?: Record<string, number | number[]>;
-  stat?: Partial<Record<StatKey, (r: number) => number>>;
-}
-
-function build(treeId: string, specs: Spec[]): SkillDef[] {
-  return specs.map((s): SkillDef => {
-    const out: SkillDef = {
-      id: s.id,
-      treeId,
-      name: s.name,
-      desc: s.desc,
-      tier: s.tier,
-      column: s.col,
-      maxRank: s.max ?? MAX,
-      targeting: s.t ?? 'passive',
-      icon: s.icon,
-    };
-    if (s.req) out.requires = s.req;
-    if (s.mana) out.manaCost = mana(s.mana[0], s.mana[1]);
-    if (s.cd) out.cooldown = cool(s.cd[0], s.cd[1], s.cd[2]);
-    if (s.dmg) out.damageScale = lin(s.dmg[0], s.dmg[1]);
-    if (s.type) out.damageType = s.type;
-    if (s.fx) out.effect = s.fx;
-    if (s.p) out.params = s.p;
-    if (s.stat) out.passive = s.stat;
-    return out;
-  });
-}
+import type { SkillDef, SkillTreeDef } from '../../types';
+import { build, dim, per, syn, type SynergyLink } from './kit';
 
 // ---------------------------------------------------------------------------
 // Trees
@@ -143,7 +88,8 @@ const CLAW = build('claw', []);
 export const SHIFTER_SKILLS: SkillDef[] = [...FERAL, ...TEETH, ...CLAW];
 
 /** Same-tree synergies, spread into `SYNERGIES`. */
-export const SHIFTER_SYNERGIES: Array<{ target: string; source: string; pctPerRank: number }> = [];
+export const SHIFTER_SYNERGIES: SynergyLink[] = [];
 
 void per;
 void dim;
+void syn;

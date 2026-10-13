@@ -156,7 +156,7 @@ export const STARTING_SKILL_HINTS: Record<CharClassId, string[]> = {
   shadowblade: ['viperStrike', 'shadowStep', 'preciseCut', 'coatBlades'],
   revenant: ['boneSpear', 'raiseSkeleton', 'siphonLife', 'weaken'],
   ranger: ['pierceShot', 'huntersMark', 'rollAway', 'snareTrap'],
-  shapeshifter: ['rake', 'savageBite', 'maul', 'pounce'],
+  shapeshifter: ['rake'],
 };
 
 /** Flavour lines used by the character select screen when hovering a class. */

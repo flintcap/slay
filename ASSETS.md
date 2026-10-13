@@ -775,6 +775,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.shield.ring/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/skill.shield.throw/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
 | sounds/skill.shield.wall/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/skill.shift.rake.hit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
+| sounds/skill.shift.rake/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/80-cc0-creature-sfx) | CC0 |
 | sounds/skill.shout.battle/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/skill.shout.fear/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/skill.shout.herald/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) + cinameng (opengameart.org/content/rumble-fx) | CC0 |

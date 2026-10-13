@@ -304,6 +304,8 @@ export const SAMPLE_COUNTS: Record<string, number> = {
   "skill.shield.ring": 1,
   "skill.shield.throw": 1,
   "skill.shield.wall": 1,
+  "skill.shift.rake": 1,
+  "skill.shift.rake.hit": 1,
   "skill.shout.battle": 1,
   "skill.shout.fear": 1,
   "skill.shout.herald": 1,

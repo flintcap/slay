@@ -178,6 +178,7 @@ const STYLE: Record<CharClassId, string[]> = {
   shadowblade: ['dagger', 'sword'],
   revenant: ['wand', 'staff', 'scepter'],
   ranger: ['bow', 'crossbow'],
+  shapeshifter: ['mace', 'axe', 'staff', 'spear'],
 };
 
 const SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];

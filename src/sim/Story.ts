@@ -173,6 +173,7 @@ const CLASS_NAMES: Record<string, string> = {
   shadowblade: 'rogue',
   revenant: 'revenant',
   ranger: 'ranger',
+  shapeshifter: 'shapeshifter',
 };
 
 function className(id: string): string {

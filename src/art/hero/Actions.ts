@@ -17,6 +17,7 @@
  */
 import { CH, type Pose, type Side } from './Pose';
 import type { Stance, StanceBody } from './Stances';
+import { FORM_CHAINS, type FormKind } from './forms/FormActions';
 
 export type MoveKind =
   | 'blade'
@@ -30,7 +31,9 @@ export type MoveKind =
   | 'wand'
   | 'bow'
   | 'shield'
-  | 'unarmed';
+  | 'unarmed'
+  // A Shapeshifter's forms (forms/FormActions.ts).
+  | FormKind;
 
 export interface ActionCtx extends StanceBody {
   stance: Stance;
@@ -360,6 +363,7 @@ const CHAINS: Record<MoveKind, ActionDef[]> = {
   wand: [flick],
   bow: [], // a bow's attack is a shot
   unarmed: [punch('R'), punch('L'), punch('R', true)],
+  ...FORM_CHAINS,
 };
 
 /** Which chain of blows a stance and weapon category swing. */
@@ -384,6 +388,10 @@ export function moveKind(stance: Stance, grip: string, category?: string): MoveK
       return 'wand';
     case 'bow':
       return 'bow';
+    case 'cat':
+    case 'wolf':
+    case 'bear':
+      return stance;
     default:
       return 'unarmed';
   }

@@ -64,6 +64,7 @@ const PLAYSTYLE: Record<CharClassId, string> = {
   shadowblade: 'Strike from outside their awareness. Crits, poison stacks, and a dodge on a short leash.',
   revenant: 'Bring a crowd. Your dead do the work while you drain the living to stay standing.',
   ranger: 'Open at the far wall and keep it there. Traps behind you, arrows ahead, and a step back for every step they take.',
+  shapeshifter: 'Change shape mid-fight. The cat kills one fast, the wolf bites and howls with the pack, the bear holds the door.',
 };
 
 const ROLE: Record<CharClassId, string> = {
@@ -72,6 +73,7 @@ const ROLE: Record<CharClassId, string> = {
   shadowblade: 'Crit · Poison',
   revenant: 'Summons · Drain',
   ranger: 'Bow · Traps',
+  shapeshifter: 'Forms · Melee',
 };
 
 /** How much there is to juggle, 1 to 3. Shown as pips so a first-timer can pick. */
@@ -81,6 +83,7 @@ const COMPLEXITY: Record<CharClassId, number> = {
   mage: 2,
   revenant: 3,
   shadowblade: 3,
+  shapeshifter: 2,
 };
 
 type Mode = 'new' | 'roster';

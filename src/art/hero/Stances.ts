@@ -8,6 +8,7 @@
  */
 import type { Pose } from './Pose';
 import { CH } from './Pose';
+import { FORM_STANCES, type FormStance } from './forms/FormStances';
 
 export type Stance =
   | 'unarmed'
@@ -21,7 +22,9 @@ export type Stance =
   | 'shield'
   | 'twoHand'
   | 'staff'
-  | 'bow';
+  | 'bow'
+  // A Shapeshifter's forms (forms/FormStances.ts).
+  | FormStance;
 
 export interface StanceBody {
   /** 0 lean .. 1 heavy: heavy arms hang further out to clear the body. */
@@ -332,6 +335,7 @@ export const STANCES: Record<Stance, StanceDef> = {
     feet: (b) => feet(b, 0.42, 0.14),
     crouch: 0.0028,
   },
+  ...FORM_STANCES,
 };
 
 /** The stance for what is held: the main hand's grip and the off hand. */

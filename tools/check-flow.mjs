@@ -48,7 +48,7 @@ const CLASS = CLASSES?.[0] ?? process.argv.find((a) => a.startsWith('--class='))
 const PART = CLASSES ? 'dungeon' : process.argv.find((a) => a.startsWith('--part='))?.slice(7) ?? 'all';
 // `--small`: an 854x480 page. Software GL draws it about twice as fast.
 const SMALL = process.argv.includes('--small');
-const CLASS_ORDER = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'];
+const CLASS_ORDER = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'shapeshifter'];
 for (const c of CLASSES ?? (CLASS ? [CLASS] : [])) {
   if (!CLASS_ORDER.includes(c)) {
     console.log(`unknown class ${c}`);

@@ -52,5 +52,14 @@ export const FIELD_KIT: Record<CharClassId, Partial<Record<EquipSlot, string>>> 
     boots: 'boots.wyrmhide',
     belt: 'belt.belt',
   },
+  // Hide and rough leather, a skull cap and a heavy belt: a man of the woods.
+  shapeshifter: {
+    mainHand: 'mace.club',
+    helm: 'helm.skullcap',
+    chest: 'chest.leather',
+    gloves: 'gloves.heavy',
+    boots: 'boots.heavy',
+    belt: 'belt.troll',
+  },
 };
 

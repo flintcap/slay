@@ -185,6 +185,14 @@ export class HeroAnimator {
   private stanceW = 1;
   private grip = 'none';
   private offHand: OffHand = 'none';
+  /** A Shapeshifter's form stance, which outranks what the hands hold (`forms/FormStances.ts`). */
+  private form: Stance | null = null;
+  /**
+   * How much the body is scaled up in the world (a Shapeshifter's bear is
+   * bigger than his man). Ground motion is read in the body's own size so
+   * the stride still fits the floor it covers.
+   */
+  bodyScale = 1;
 
   // Ground motion.
   private followed: THREE.Object3D | null = null;
@@ -336,20 +344,29 @@ export class HeroAnimator {
   setWeapon(grip: string, category?: string): void {
     this.grip = grip;
     this.category = category;
-    this.setStance(stanceFor(this.grip, this.offHand));
+    this.setStance(this.form ?? stanceFor(this.grip, this.offHand));
+    this.kind = moveKind(this.stance, this.grip, this.category);
+  }
+
+  /** Stands as a beast form (its own stance and blows), or as what the hands hold with null. */
+  setForm(form: Stance | null): void {
+    this.form = form;
+    this.setStance(form ?? stanceFor(this.grip, this.offHand));
     this.kind = moveKind(this.stance, this.grip, this.category);
   }
 
   /** What the off hand holds. */
   setOffHand(kind: OffHand): void {
     this.offHand = kind;
-    this.setStance(stanceFor(this.grip, this.offHand));
+    this.setStance(this.form ?? stanceFor(this.grip, this.offHand));
     this.kind = moveKind(this.stance, this.grip, this.category);
   }
 
   /** Holds whatever `from` holds, in the same stance (a double of a hero). */
   copyCarry(from: HeroAnimator): void {
     this.offHand = from.offHand;
+    this.form = from.form;
+    this.bodyScale = from.bodyScale;
     this.setWeapon(from.grip, from.category);
   }
 
@@ -753,8 +770,8 @@ export class HeroAnimator {
       this.lastYaw = yaw;
       this.hasLast = true;
     }
-    const dx = x - this.lastX;
-    const dz = z - this.lastZ;
+    const dx = (x - this.lastX) / this.bodyScale;
+    const dz = (z - this.lastZ) / this.bodyScale;
     const dyaw = wrapAngle(yaw - this.lastYaw);
     this.lastX = x;
     this.lastZ = z;

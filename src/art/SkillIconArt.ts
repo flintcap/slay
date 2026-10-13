@@ -18,6 +18,7 @@
  * class's own colour. Passives sit smaller inside a hexagonal plate.
  */
 import type { DamageType } from '../types';
+import { SHIFTER_ICONS } from './icons/shifterIcons';
 import { GLYPHS, type Glyph, type Tone, GLYPH_MATS, paintRay, paintEnergy, dropPath } from './Glyphs';
 import {
   type Ctx,
@@ -78,6 +79,8 @@ const CLASS_LOOK: Record<string, ClassLook> = {
   shadowblade: { ring: rampOf(0x2c3138, 0.9, 'brushed', 0.3), tex: 'mottle', light: 0x6ad8a0, ground: 0x0e1a16 },
   revenant: { ring: GLYPH_MATS.BONE, tex: 'crack', light: 0x9ae0c8, ground: 0x14201c },
   ranger: { ring: GLYPH_MATS.WOOD, tex: 'grain', light: 0xc8d890, ground: 0x1a2012 },
+  // Raw hide on the ring and amber firelight: the woods, not the forge.
+  shapeshifter: { ring: rampOf(0x6a4428, 0.05, 'pores', 0.4), tex: 'pores', light: 0xe09050, ground: 0x22140c },
 };
 
 const NEUTRAL: ClassLook = { ring: GLYPH_MATS.IRON, tex: 'fine', light: 0xd8c8a8, ground: 0x1c1c22 };
@@ -157,6 +160,7 @@ const ICON_MAP: Record<string, string> = {
   crit: 'target^impact', skull: 'skull', trap: 'trap^field', boots: 'boot', spikes: 'spikes', thorns: 'leaf^burst', heart: 'heart',
   stealth: 'figure^aura', gear: 'gear', arrows: 'arrow:2', speed: 'feather^speed', cone: 'arrow:2^burst', rain: 'arrow^rain',
   bounce: 'arrow^chain', quiver: 'quiver', multi: 'arrow:2^multi',
+  ...SHIFTER_ICONS,
 };
 
 /** Effect family -> pictogram, for names nobody mapped. */

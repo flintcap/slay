@@ -36,6 +36,8 @@ const HANDLED = new Set([
   'ground', 'trap', 'ward', 'summon', 'minion', 'curse', 'debuff', 'apply',
   'channel', 'sky', 'wave', 'leap', 'teleport', 'detonate', 'corpse',
   'point', 'aoe', 'capstone',
+  // The Shapeshifter's family, run by scenes/ShifterRunner.ts.
+  'shift',
 ]);
 
 rmSync(OUT, { recursive: true, force: true });

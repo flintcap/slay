@@ -290,6 +290,7 @@ const STARTING_SKILL: Record<CharClassId, string> = {
   shadowblade: 'preciseCut', // fast single-target crit strike
   revenant: 'boneSpear',   // piercing bone shard
   ranger: 'pierceShot',    // a shot that runs through the whole rank
+  shapeshifter: 'rake',    // three fast swipes as the cat
 };
 
 /**

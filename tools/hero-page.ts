@@ -156,6 +156,10 @@ const STANCE_ITEMS: Record<Stance, Array<['mainHand' | 'offHand', string, string
   twoHand: [['mainHand', 'sword.great', 'twoHand']],
   staff: [['mainHand', 'staff.long', 'staff']],
   bow: [['offHand', 'bow.long', 'bow']],
+  // The Shapeshifter's beast forms hold nothing.
+  cat: [],
+  wolf: [],
+  bear: [],
 };
 const STANCE_LIST = Object.keys(STANCE_ITEMS) as Stance[];
 const CLASS_STANCE: Record<CharClassId, Stance> = {
@@ -164,6 +168,7 @@ const CLASS_STANCE: Record<CharClassId, Stance> = {
   shadowblade: 'dual',
   revenant: 'twoHand',
   ranger: 'bow',
+  shapeshifter: 'oneHand',
 };
 
 interface Actor {
@@ -812,7 +817,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
   async gear(f) {
     profileBodies(true);
     const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
-    const own: Record<CharClassId, string> = { warden: 'heavy', mage: 'caster', shadowblade: 'leather', revenant: 'bone', ranger: 'scale' };
+    const own: Record<CharClassId, string> = { warden: 'heavy', mage: 'caster', shadowblade: 'leather', revenant: 'bone', ranger: 'scale', shapeshifter: 'mail' };
     const rarity = (f.rarity ?? 'rare') as ItemRarity;
     const TW = 260;
     const TH = 480;

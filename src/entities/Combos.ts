@@ -71,6 +71,12 @@ export const COMBOS: Record<CharClassId, ComboDef> = {
     color: 0xffe070,
     applies: [{ id: 'vulnerable', duration: 6, magnitude: 1 }],
   },
+  shapeshifter: {
+    name: 'Gore',
+    desc: 'Tears the wound open: 2 stacks of Bleeding for 5s.',
+    color: 0xc0302a,
+    applies: [{ id: 'bleeding', duration: 5, magnitude: 1, stacks: 2 }],
+  },
 };
 
 /**

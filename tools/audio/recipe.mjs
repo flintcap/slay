@@ -21,6 +21,8 @@
  * Everything here is CC0; see packs.mjs for the source pages.
  */
 
+import { SHIFTER_TAKES } from './shifter-takes.mjs';
+
 /** Folder inside each pack where its files live, so takes can use short names. */
 export const ROOTS = {
   rsp: 'rpg_sound_pack/RPG Sound Pack/',
@@ -358,6 +360,8 @@ export const SKILL_TAKES = {
   'skill.soul.tether': x('r80', 'chain_02.ogg', { rate: 0.8, mix: [x('moan', moan(2), { t: 1, gain: -5 })] }),
   'skill.revenant.form': x('bonebreak', brk(10), { mix: [x('moan', moan(5), { t: 1.5, rate: 0.6, gain: -3 }), x('ki', 'impactSoft_heavy_000.ogg', { rate: 0.5, gain: -3 })] }),
   'skill.reap': x('battle', 'swish_3.wav', { rate: 0.5, lp: 2500, mix: [x('moan', moan(1), { t: 1.2, rate: 0.7, gain: -4 }), x('whoosh', 'whoosh2_0.wav', { t: 0.8, rate: 0.6, gain: -4 })] }),
+  // The Shapeshifter (tools/audio/shifter-takes.mjs).
+  ...SHIFTER_TAKES,
 };
 
 // ---------------------------------------------------------------------------

@@ -20,6 +20,8 @@
  * with its own body and voice.
  */
 
+import { SHIFTER_SOUNDS } from './shifterSounds';
+
 export interface SkillSound {
   cast: string | null;
   hit: string | null;
@@ -179,6 +181,9 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   soulTether: s('skill.soul.tether'),
   revenantForm: s('skill.revenant.form'),
   reaping: s('skill.reap'),
+
+  // --- Shapeshifter (audio/shifterSounds.ts) ------------------------------------
+  ...SHIFTER_SOUNDS,
 };
 
 const SILENT: SkillSound = { cast: null, hit: null, minion: null };

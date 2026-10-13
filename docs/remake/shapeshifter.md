@@ -38,7 +38,7 @@ Design notes
 
 ## Milestones
 
-- [ ] M1 Class def, look (male), field kit, portrait, select screen words; selectable and playable with a starter skill.
+- [x] M1 Class def, look (male), field kit, portrait, select screen words; selectable and playable with a starter skill.
 - [ ] M2 Form system: transform skill family, three humanoid forms built in code, change effect, gear hiding, hotbar rule.
 - [ ] M3 Feral tree: 18 skills, rules, statuses, icons.
 - [ ] M4 Teeth tree: 18 skills, rules, statuses, icons.
@@ -49,8 +49,30 @@ Design notes
 
 ## Next up
 
-Start at M1.
+M2, in this order:
+1. `furMaterial()` and a claw material exported from `src/art/hero/HeroMaterials.ts`.
+2. `src/art/hero/forms/FormBody.ts`: put the `meshBeast` meshes, tail and eyes on the
+   hero, hide human body, gear and held models, set root scale and `animator.setForm`.
+3. `src/entities/Shapeshift.ts`: the Player's form, form statuses (`form.cat` /
+   `form.wolf` / `form.bear`), auto-shift in the `shift` case, weaponStyle rule.
+4. Form skills `catForm`, `wolfForm`, `bearForm`, change FX in `src/fx/shifter/`,
+   change sounds, `src/scenes/shifterDebug.ts`, `tools/shoot-shifter.mjs`.
 
 ## Notes for resume
 
-(none yet)
+- Hotbar rule: **auto-shift**. Any tree skill used out of its form first turns
+  the hero into that form (the change plays, then the skill). Why: it keeps the
+  hotbar to skills, never a dance of form button then skill, and it still reads
+  clearly because the change effect and the body say which form you are in.
+  The form skill itself turns you back into a man when used in its form.
+- Done (M1): class def `src/data/classSkills/shapeshifterClass.ts`, trees in
+  `src/data/classSkills/shapeshifter.ts`, look in `Looks.ts`, field kit, portrait,
+  select words, Gore combo, starter skill Rake (`src/scenes/ShifterRunner.ts`,
+  family `shift`, sub `shift.rake`).
+- Form stances and basic blows are in `src/art/hero/forms/` (FormStances,
+  FormActions), hooked by one line each into Stances.ts / Actions.ts;
+  `Animator.setForm()` picks them. Beast meshes are `forms/BeastBody.ts`.
+- Checks that fail before my work too: curve (shadowblade, ranger at depth 12),
+  economy (warden at depth 20).
+- Checks that fail until the trees are written: skilldepth (no synergies yet),
+  unique (shapeshifter shows as pending).

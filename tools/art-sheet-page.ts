@@ -304,7 +304,7 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
   /** Every class portrait (rendered from its hero) at full size and at a 96px card size. */
   async portraits() {
     const { classPortrait } = await import('../src/art/Portraits');
-    const ids = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'] as const;
+    const ids = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'shapeshifter'] as const;
     const { c, g } = sheet(3 * 266 + 10, 2 * (256 + 110) + 10);
     const t0 = performance.now();
     for (let i = 0; i < ids.length; i++) {
@@ -323,7 +323,7 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
   async bodies() {
     const THREE = await import('three');
     const { DressedHero, buildClassHero } = await import('../src/scenes/HeroModel');
-    const ids = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'] as const;
+    const ids = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'shapeshifter'] as const;
     const W = 120;
     const H = 240;
     const views = [0, Math.PI / 2, Math.PI];

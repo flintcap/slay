@@ -26,6 +26,7 @@ import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
 import { releasesAt, skillAction } from '../art/hero/gestures';
+import { runShift, type ShiftKit } from './ShifterRunner';
 
 /**
  * What a summon actually looks like.
@@ -1356,6 +1357,14 @@ export class SkillRunner {
             );
           }
           this.applyBuff(player, def, rank, num, color);
+          break;
+        }
+
+        // The Shapeshifter's skills (scenes/ShifterRunner.ts).
+        case 'shift': {
+          runShift(this.shiftKit(player, ctx, enemies, boss, type, sound.hit, def, num, color), {
+            def, rank, player, target, dir, origin, ctx, type, color, clip, attackTime, castTime, makePacket, num, hitAt,
+          });
           break;
         }
 
@@ -2913,6 +2922,63 @@ export class SkillRunner {
   }
 
   /** How many bodies this skill currently has standing. */
+  /** This runner's hit helpers, bound to one Shapeshifter cast (scenes/ShifterRunner.ts). */
+  private shiftKit(
+    player: Player,
+    ctx: CombatContext,
+    enemies: Enemy[],
+    boss: Boss | null,
+    type: DamageType,
+    hitSfx: string | null,
+    def: { id: string; name: string; params?: Record<string, number | number[] | string> },
+    num: (k: string, d: number) => number,
+    color: number,
+  ): ShiftKit {
+    return {
+      effects: this.effects,
+      swing: (facing, arc, reach, packet, o = {}) => {
+        const now = o.now ?? false;
+        const prev = this.atContact;
+        if (now) {
+          this.atContact = true;
+          this.caster = player;
+        }
+        try {
+          this.meleeSwing(player, facing, arc, reach, packet, ctx, enemies, boss, type, o.visual ?? true, o.kind ?? 'melee', hitSfx, o.most ?? Infinity, o.focus ?? null);
+        } finally {
+          this.atContact = prev;
+        }
+      },
+      area: (center, radius, packet, kind) => {
+        this.caster = player;
+        this.areaDamage(center, radius, packet, ctx, enemies, boss, kind);
+      },
+      line: (origin, dir, length, width, packet, kind) => {
+        this.caster = player;
+        this.lineDamage(origin, dir, length, width, packet, ctx, enemies, boss, kind);
+      },
+      point: (at, radius, packet, kind) => {
+        this.caster = player;
+        this.pointDamage(at, radius, packet, ctx, enemies, boss, kind);
+      },
+      targets: () => this.allTargets(enemies, boss),
+      later: (t, run, keep = false) => {
+        // The action that is playing when the beat is queued, not when the kit was made.
+        const id = player.actionId;
+        this.pendingSwings.push({
+          t,
+          run: () => {
+            if (!player.alive || (!keep && player.actionId !== id)) return;
+            this.caster = player;
+            run();
+          },
+        });
+      },
+      wallStop: (from, dir, max, radius) => this.wallStop(from, dir, max, ctx, radius),
+      statuses: (riderOnly) => this.statusFor(def, num, color, riderOnly),
+    };
+  }
+
   private countSummons(skillId: string): number {
     let n = 0;
     for (const t of this.turrets) if (t.skillId === skillId && t.body) n++;

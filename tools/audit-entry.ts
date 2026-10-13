@@ -13,6 +13,7 @@ const CLASS_WEAPON: Record<string, 'melee' | 'ranged' | 'caster'> = {
   ranger: 'ranged',
   mage: 'caster',
   revenant: 'caster',
+  shapeshifter: 'melee',
 };
 
 const rows: Record<string, unknown>[] = [];
