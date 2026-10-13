@@ -4,7 +4,7 @@
  */
 import { SKILLS } from '../src/data/skills';
 import { CLASSES } from '../src/data/classes';
-import { clipFor, particleFor } from '../src/scenes/SkillRunner';
+import { bodyClip, particleFor } from '../src/scenes/SkillRunner';
 
 /** What each class actually fights with, which decides some clip choices. */
 const CLASS_WEAPON: Record<string, 'melee' | 'ranged' | 'caster'> = {
@@ -32,7 +32,7 @@ for (const def of CLASSES) {
       tree: s.treeId,
       effect: s.effect ?? null,
       family: (s.effect ?? 'melee').split('.')[0],
-      clip: clipFor(s.effect, style, s.id),
+      clip: bodyClip(s.effect, style, s.id),
       emitter: sig.emitter,
       trail: sig.trail,
       density: +sig.density.toFixed(2),

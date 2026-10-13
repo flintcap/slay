@@ -27,6 +27,8 @@ import { actionFor, moveKind, type ActionCtx, type ActionDef, type MoveKind } fr
 export { ACTION_NAMES } from './Actions';
 import { aimQuat, twoBoneIk } from './Ik';
 import { CapeSpring } from './Secondary';
+// Every skill's own gesture registers itself with the action table.
+import './SkillActions';
 
 export type HeroEvent = 'hit' | 'release' | 'step' | 'end';
 export interface HeroEventInfo {

@@ -98,6 +98,19 @@ for (const [label, key] of [['animation clip', 'clip'], ['particle emitter', 'em
   for (const [v, n] of sorted.slice(0, 8)) console.log(`    ${String(v).padEnd(14)}${n}`);
 }
 
+// Every active skill should move the body its own way. List, per class, the
+// clips more than one of its skills still share.
+console.log('\nshared animations, per class (each skill should have its own):');
+for (const cls of [...new Set(active.map((r) => r.cls))]) {
+  const by = {};
+  for (const r of active.filter((x) => x.cls === cls)) (by[r.clip] ??= []).push(r.id);
+  const shared = Object.entries(by).filter(([, ids]) => ids.length > 1);
+  const n = shared.reduce((a, [, ids]) => a + ids.length, 0);
+  const total = active.filter((x) => x.cls === cls).length;
+  console.log(`  ${cls.padEnd(12)} ${String(total - n).padStart(3)} of ${String(total).padStart(3)} unique`);
+  for (const [clip, ids] of shared) console.log(`      ${clip.padEnd(10)} ${ids.join(', ')}`);
+}
+
 // A skill's full visual signature — the combination that should never repeat.
 const sigs = {};
 for (const r of active) {

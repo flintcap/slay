@@ -25,6 +25,7 @@ import { MONSTERS } from '../data/monsters';
 import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
+import { releasesAt, skillAction } from '../art/hero/SkillActions';
 
 /**
  * What a summon actually looks like.
@@ -378,6 +379,25 @@ function shiftHue(hex: number, seed: number): number {
 const RELEASE_CLIPS = new Set(['cast', 'point', 'hurl', 'plant', 'roar', 'blink', 'shoot', 'snapshot', 'skyshot']);
 
 /**
+ * Families whose handler in `cast` plays a clip of its own rather than the one
+ * `clipFor` picks. Kept beside `clipFor` so `bodyClip` can tell the audit what
+ * the body really does.
+ */
+const HANDLER_CLIP: Record<string, string> = {
+  whirlwind: 'attack2', slam: 'attack2', channel: 'channel', wave: 'slam',
+  leap: 'dodge', teleport: 'blink', dash: 'dodge',
+  summon: 'point', minion: 'point', curse: 'point', debuff: 'point', apply: 'point',
+};
+
+/** The clip the body actually plays for a skill, for audits. */
+export function bodyClip(effect: string | undefined, holding: WeaponStyle, skillId: string): string {
+  const family = (effect ?? 'melee').split('.')[0] ?? 'melee';
+  // A dash is the dodge itself, whatever gesture the skill has.
+  if (family === 'dash') return 'dodge';
+  return skillAction(skillId) ?? HANDLER_CLIP[family] ?? clipFor(effect, holding, skillId);
+}
+
+/**
  * The animation a skill plays.
  *
  * `skillId` is what splits skills that share an effect family. Five warden
@@ -386,6 +406,9 @@ const RELEASE_CLIPS = new Set(['cast', 'point', 'hurl', 'plant', 'roar', 'blink'
  * id is the only part that differs, so the id is what decides.
  */
 export function clipFor(effect: string | undefined, holding: WeaponStyle, skillId = ''): string {
+  // A skill with a gesture of its own (`art/hero/SkillActions.ts`) plays it.
+  const own = skillAction(skillId);
+  if (own) return own;
   const raw = (effect ?? 'melee').toLowerCase();
   const [family, sub] = raw.split('.');
   const f = family ?? 'melee';
@@ -767,6 +790,8 @@ export class SkillRunner {
     // onto `cast` or `attack1`, so a ground slam, a war cry, a channelled beam
     // and a thrown bolt were all the same gesture.
     const clip = clipFor(def.effect, holding, def.id);
+    // Branches below that pick their own clip still defer to a skill's own gesture.
+    const own = skillAction(def.id);
     const sig = particleFor(def.id, type);
 
     // The cast beat. Projectiles flare themselves as they leave the hand, and a
@@ -778,7 +803,7 @@ export class SkillRunner {
     // the flash lands when the hand opens, not when the button is pressed.
     const selfCast = def.targeting === 'self';
     const swing = family === 'melee' || family === 'cleave' || family === 'whirlwind' || family === 'dash';
-    const released = RELEASE_CLIPS.has(clip);
+    const released = RELEASE_CLIPS.has(clip) || releasesAt(clip);
     this.releaseSchool = released && !(school === 'physical' && (holding === 'ranged' || swing)) ? school : null;
     if (!released && family !== 'projectile' && family !== 'bolt' && !(swing && school === 'physical')) {
       this.effects.castFlare(school, origin.x, selfCast ? 1.0 : origin.y, origin.z, {
@@ -883,7 +908,7 @@ export class SkillRunner {
         }
 
         case 'whirlwind': {
-          player.beginAction('attack2', attackTime * 1.4);
+          player.beginAction(own ?? 'attack2', attackTime * 1.4);
           this.meleeSwing(player, dir, Math.PI * 2, num('reach', 2.8), makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
           break;
         }
@@ -964,7 +989,7 @@ export class SkillRunner {
         }
 
         case 'slam': {
-          player.beginAction('attack2', attackTime * 1.5);
+          player.beginAction(own ?? 'attack2', attackTime * 1.5);
           const radius = num('radius', 4.0);
           const at = target.clone().setY(0);
           // The wind-up is what gives a slam weight; damage lands on the beat.
@@ -1113,7 +1138,7 @@ export class SkillRunner {
         // lifetime, without a full pet AI it would have to path and follow.
         case 'summon':
         case 'minion': {
-          player.beginAction('point', castTime);
+          player.beginAction(own ?? 'point', castTime);
           // A creature stays until something kills it; only a totem runs down.
           const isTotem = (def.effect ?? '').includes('totem');
           // Bone Mastery, Marrow Feast and the minion capstones all land here.
@@ -1182,7 +1207,7 @@ export class SkillRunner {
         case 'curse':
         case 'debuff':
         case 'apply': {
-          player.beginAction('point', castTime);
+          player.beginAction(own ?? 'point', castTime);
           const radius = num('radius', family === 'apply' ? 0.9 : 4.5);
           const at = target.clone().setY(0);
           const applies = this.statusFor(def, num, color);
@@ -1206,7 +1231,7 @@ export class SkillRunner {
 
         // -- channelled tethers -------------------------------------------------
         case 'channel': {
-          player.beginAction('channel', castTime * 1.6);
+          player.beginAction(own ?? 'channel', castTime * 1.6);
           const range = num('range', 12);
           const stop = this.firstHitAlong(origin, dir, range, enemies, boss, 0.5, ctx);
           const end = origin.clone().addScaledVector(dir, stop);
@@ -1236,7 +1261,7 @@ export class SkillRunner {
 
         // -- a line of broken ground --------------------------------------------
         case 'wave': {
-          player.beginAction('slam', attackTime);
+          player.beginAction(own ?? 'slam', attackTime);
           const range = num('range', 9);
           const width = num('width', 2.2);
           this.effects.cone(origin, dir, 0.22, range, {
@@ -1251,7 +1276,7 @@ export class SkillRunner {
 
         // -- leaps and blinks ---------------------------------------------------
         case 'leap': {
-          player.beginAction('dodge', 0.34);
+          player.beginAction(own ?? 'dodge', 0.34);
           const range = num('range', 7);
           const stop = this.wallStop(player.position, dir, range, ctx, 0.5);
           // "Leap to a point up to N metres away": the point clicked, not always
@@ -1271,7 +1296,7 @@ export class SkillRunner {
         }
 
         case 'teleport': {
-          player.beginAction('blink', 0.26);
+          player.beginAction(own ?? 'blink', 0.26);
           const range = num('range', 9);
           const stop = this.wallStop(player.position, dir, Math.min(range, dir.length() > 0 ? range : range), ctx, 0.5);
           const want = target.clone().setY(0);

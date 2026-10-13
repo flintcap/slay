@@ -81,7 +81,7 @@ export interface ActionDef {
   side?: Side;
 }
 
-type Arm = [number, number, number, number, number?, number?, number?];
+export type Arm = [number, number, number, number, number?, number?, number?];
 type PoseFn = ActionKey['pose'];
 
 const k = (t: number, pose: PoseFn, hold = false): ActionKey => ({ t, pose, hold });
@@ -121,7 +121,7 @@ interface Reach {
   cock?: number;
   flex?: number;
 }
-type Place = Arm | Reach;
+export type Place = Arm | Reach;
 
 /** Metres on a 1.88 m body to heads, for writing reaches by eye. */
 const M = (x: number, y: number, z: number): [number, number, number] => [x * 4, y * 4, z * 4];
@@ -996,6 +996,9 @@ const FIXED: Record<string, ActionDef> = {
   death: fall(false, 0.8, true),
   deathFwd: fall(true, 0.8, true),
 };
+
+/** What `SkillActions.ts` builds its gestures from. */
+export const kit = { k, rest, arm, place, trunk, weight, glowAt };
 
 /**
  * Adds a named action (townsfolk at their work, a talk gesture) that `play`
