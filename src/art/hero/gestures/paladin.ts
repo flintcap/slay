@@ -53,7 +53,7 @@ const MACE: Record<string, Spec> = {
     hit: true,
     keys: [
       [0.14, { R: reach([-0.42, 0.9, -0.42], [-0.15, -0.55, -0.82]), L: GUARD, turn: -0.55, down: 0.2, lean: 0.15 }, true],
-      [0.24, { R: reach([-0.2, 2.0, -0.08], [0.0, 0.75, -0.66]), L: GUARD, turn: -0.15, lean: -0.22, head: -0.1 }],
+      [0.24, { R: reach([-0.2, 2.0, -0.08], [0.0, 0.75, -0.66]), L: HUG, turn: -0.15, lean: -0.22, head: -0.1 }],
       [0.34, { R: reach([-0.1, 1.15, 0.66], [0.0, -0.6, 0.8]), L: HUG, turn: 0.1, lean: 0.38, down: 0.25, fwd: 0.22 }],
       [0.5, { R: reach([-0.12, 1.05, 0.6], [0.0, -0.55, 0.83]), L: HUG, turn: 0.1, lean: 0.4, down: 0.28, fwd: 0.2 }],
     ],

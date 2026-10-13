@@ -36,19 +36,21 @@ Design notes
 - [x] M3 Blade tree: 18 skills, rules, statuses, icons. (`feat(paladin): M3 Blade tree`)
 - [x] M4 Aura tree: 18 skills, aura handler + look, rules, icons. (`feat(paladin): M4 Aura tree`)
 - [ ] M5 A unique gesture per active skill (sword+shield, mace+shield, two-hander all read).
-- [ ] M6 A unique VFX look per active skill.
-- [ ] M7 A unique sound per active skill (CC0, layered takes).
+- [x] M6 A unique VFX look per active skill. (`wip(paladin): a motif for every active skill, drawn where the blow lands`)
+- [x] M7 A unique sound per active skill (CC0, layered takes). (built with each tree; `check-unique` sounds ok, levels in line with the other classes)
 - [ ] M8 Story and NPC lines, tools class lists, balance (curve passes every depth), in-game skill check green.
 
 ## Next up
 
-M5 gestures, all 32 actives at once (check-unique keeps the class
-"pending" until the first gesture exists, then wants every one). Each needs
-its own clip in the anims stream's gesture system (`src/art/hero/gestures`,
-`skillAction(id)`), and it must read with sword+shield, mace+shield and a
-two-hander. Rites already call `skillAction(id) ?? rite.clip`, and vigils
-`skillAction(id) ?? act.clip / 'cast'`, so a gesture row is all a skill
-needs. Gate: typecheck, `node tools/check-unique.mjs` clips ok for paladin.
+M5: the 32 gestures are written (`src/art/hero/gestures/paladin.ts`,
+committed as wip) and `check-unique` clips are ok. Left: read the sheets
+(`<scratchpad>/render-g.sh` renders mace+shield, sword+shield, Aura and a
+two-hander pass with `tools/hero-sheet.mjs actions --class=paladin --front`),
+fix any pose that reads badly, tick M5.
+
+Then M8: story lines, class lists and the two-kit `check-skills` are in
+(wip). Left: `npm run build && flock /tmp/slay-browser.lock timeout 1500 node
+tools/check-skills.mjs --classes=paladin` green, then Finishing a stream.
 
 ## Notes for resume
 
@@ -90,9 +92,17 @@ needs. Gate: typecheck, `node tools/check-unique.mjs` clips ok for paladin.
   copy, put them back).
 - Baseline before this stream: `curve` failed 2 cases (shadowblade d12,
   ranger d12) and `unique` failed (anims stream mid-work). Not ours.
-- `skilldepth` fails for Paladin until the trees have synergies and a second
-  combo-able skill (M2 to M4). Paladin passes `curve` at every depth with
-  only Tolling Blow.
+- `skilldepth` passes for Paladin since M4: Mace 14 links into 9 skills,
+  Blade 14 into 10, Aura 9 into 3, and 22 skills combo for Verdict.
+- `curve`: Paladin passes at every depth (1, 5, 12, 25, 40) with all three
+  trees. On the branch tip after the shapeshifter's commits, mage fails at
+  depth 1, 5 and 12 too (not touched by this stream; Paladin code runs only
+  for the `rite` and `vigil` families).
+- Motifs (M6) live in `src/fx/paladin/motifs.ts`, spread into
+  `SKILL_MOTIFS` by one line. A rite or a censure sets `landAt` on its cast
+  so the motif lands on the enemy it found, not on the cursor.
+- `check-skills` audits the Paladin twice (mace+shield, sword+shield, see
+  `KITS`) and keeps each skill's best showing.
 
 ## Design (planned skills, by tree and tier)
 
