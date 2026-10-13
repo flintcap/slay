@@ -65,7 +65,7 @@ that still looks like it holds a shield.
 - [x] M4 Ranger: a gesture per active skill (bow skills are draws, but each different). (Give every Ranger skill its own gesture)
 - [x] M5 Revenant: a gesture per active skill (caster with a wand/staff). (Give every Revenant skill its own gesture)
 - [ ] M6 VFX: every active skill game-wide has its own visual signature (Mage included).
-- [ ] M7 Sounds: no two skills share a sound file.
+- [x] M7 Sounds: no two skills share a sound file. (Every active skill has its own sound: 27 new takes for skills that shared one)
 - [ ] M8 Final: uniqueness check green for the existing 5 classes, in-game skill check green.
 
 ## Checks for this stream
@@ -87,11 +87,13 @@ pending; a class with some gestures must be fully unique).
 
 ## Next up
 
-M6: give every active skill its own visual motif (`SKILL_MOTIFS` in `src/fx/SkillLooks.ts`), drawn by `EffectSystem.motif` from `SkillRunner.cast`, until `node tools/check-unique.mjs` shows `visuals ok`.
+M6: motifs are drawn and `check-unique` is green (visuals, motifs, sounds). Finish the look pass: render every motif in the game with the scratch sheet (`shoot-motifs.mjs`, six motifs a shot, labelled), fix any that do not read, then tick M6 and run M8 (`npm run build && flock /tmp/slay-browser.lock timeout 1500 node tools/check-skills.mjs --classes=warden,shadowblade,ranger,revenant,mage`).
 
 ## Notes for resume
 
 - `node tools/check-unique.mjs [--list]` (entry `tools/unique-entry.ts`) is the uniqueness check. It fails on shared clips, visual signatures or sound files, and on skills with no gesture. Classes outside the five are pending until they have one gesture / one motif.
 - Gesture spec additions (SkillActions.ts): `hit` + `side` make a weapon blow (event 'hit', damage waits for it via `Player.contactDelay` / `strikesAt`), `grip` keeps both hands on a haft, `alt.<MoveKind>` gives one weapon its own keys, `reach()` places a weapon hand in metres. Dash skills play their own gesture (`Player.dodge(..., clip)`); with two blades a skill's own gesture skips the off-hand `attack2` blow.
 - Render sheets: `SLAY_PORT=4341 flock /tmp/slay-browser.lock timeout 900 node tools/hero-sheet.mjs actions --class=<id> [--stance=twoHand] --front=1 --actions=skill.a,... --out=shots/anims/<x>` (47 s for 25 rows; `--front` drops the top view). Crop with `convert ... -crop 1680x1500 +repage -resize 45%`.
-- Visual signatures come from `src/fx/SkillLooks.ts`: the family drawing plus a per-skill motif (`SKILL_MOTIFS`, empty until M6).
+- Visual signatures come from `src/fx/SkillLooks.ts`: the family drawing plus a per-skill motif (`SKILL_MOTIFS`). A motif is a shape in a motion (`src/fx/Motifs.ts`: `MOTIF_SHAPES`, `MOTIF_MOTIONS`), drawn by `EffectSystem.motif` (pieces are `K.Mote` records) from `SkillRunner.drawMotif`, at the caster, the target or in front (`motifAt`), timed to the blow or release. New drawings: 12 glyph core styles in `kit/Shapes.ts` (skull, rune, crescent, star, ring, eye, petal, smoke, cross, hex, claw, heart) and 7 solids in `kit/Solids.ts` (blade, thorn, crystal, cinder, fang, saw, feather). `check-unique` also fails if two skills share a motif pair.
+- Sounds: new ids built one `--only=<id>` at a time; the packs `spark`, `steam`, `bones`, `bonebreak` are not in /tmp/slay-downloads here, so new takes avoid them. ASSETS.md: restore HEAD order and insert only the new rows after the last `sounds/skill.` row.
+- Two-blade skills with their own gesture fire `HeroAnimator.strike(clip, 'L')` at the off-hand contact, so the off blade trails and `check-hits` sees a left swing.
