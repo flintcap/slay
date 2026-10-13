@@ -62,7 +62,7 @@ that still looks like it holds a shield.
 - [x] M1 Uniqueness check that fails on any shared clip or VFX signature, game-wide. (Add a game-wide uniqueness check for clips, looks and sounds)
 - [x] M2 Knight: a gesture per active skill (sword+shield and two-hander both read). (Give every Knight skill its own gesture)
 - [x] M3 Rogue: a gesture per active skill (daggers / dual blades). (Give every Rogue skill its own gesture)
-- [ ] M4 Ranger: a gesture per active skill (bow skills are draws, but each different).
+- [x] M4 Ranger: a gesture per active skill (bow skills are draws, but each different). (Give every Ranger skill its own gesture)
 - [ ] M5 Revenant: a gesture per active skill (caster with a wand/staff).
 - [ ] M6 VFX: every active skill game-wide has its own visual signature (Mage included).
 - [ ] M7 Sounds: no two skills share a sound file.
@@ -87,7 +87,7 @@ pending; a class with some gestures must be fully unique).
 
 ## Next up
 
-M4: write `src/art/hero/gestures/ranger.ts` (bow draws, each different), one gesture per active skill, and import it in `gestures/index.ts`.
+M5: write `src/art/hero/gestures/revenant.ts` (caster with a wand or staff; render with `--stance=staff` and `--stance=wand`), one gesture per active skill, and import it in `gestures/index.ts`.
 
 ## Notes for resume
 
