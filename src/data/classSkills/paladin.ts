@@ -193,7 +193,7 @@ const MACE = build('palMace', [
   {
     id: 'barTheDoor',
     name: 'Bar the Door',
-    desc: 'Set the shield and lean in. For 5s (+0.15s per rank): +20% block chance and +10 damage reduction. Needs a shield.',
+    desc: 'Set the shield and lean in. For 5s (+0.15s per rank): +20% block chance and +10 damage reduction (+0.5 each per rank). Needs a shield.',
     tier: 4,
     col: 2,
     icon: 'bar-door',
@@ -202,7 +202,7 @@ const MACE = build('palMace', [
     mana: [7, 0.3],
     cd: [16, 0.3, 9],
     fx: 'rite.bar',
-    p: { duration: 5, durationPerRank: 0.15 },
+    p: { duration: 5, durationPerRank: 0.15, block: 20, blockPerRank: 0.5, dr: 10, drPerRank: 0.5 },
   },
   // --------------------------------------------------------------- tier 5
   {

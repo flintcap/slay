@@ -21,6 +21,7 @@ import type { HitKind } from '../../fx/CombatFeel';
 import type { EffectSystem, School } from '../../fx/Effects';
 import { getBase } from '../../sim/Loot';
 import { skillAction } from '../../art/hero/SkillActions';
+import { SELF_POWER } from '../../data/skillPower';
 
 type Target = Enemy | Boss;
 
@@ -223,7 +224,9 @@ const RITES: Record<string, Rite> = {
     reach: 0,
     self: true,
     land(r) {
-      r.player.applyStatus('barred', ranked(r, 'duration', 5, 0.15));
+      // How much it holds at this rank lives with every other buff's numbers.
+      const pw = SELF_POWER.barTheDoor?.(Math.max(0, r.rank - 1), r.num) ?? {};
+      r.player.applyStatus('barred', pw.duration ?? ranked(r, 'duration', 5, 0.15), 1, 1, { mods: pw.mods });
     },
   },
   hurlCenser: {
@@ -236,17 +239,12 @@ const RITES: Record<string, Rite> = {
       if (!t) return;
       const from = r.player.position.clone().setY(1.3);
       const to = t.root.position.clone().setY(1.0);
-      host.effects.projectile(from, to, {
-        element: 'fire',
-        color: 0xd08a40,
-        speed: r.num('speed', 18),
-        arc: 1.2,
-        homing: 0.8,
-        target: () => (t.life > 0 ? t.root.position : null),
-        onHit: () => {
-          if (t.life <= 0) return;
-          blow(r, host, t, 1, [status('smoked', ranked(r, 'duration', 4, 0.1))]);
-        },
+      const speed = r.num('speed', 18);
+      // The censer is drawn in flight; the blow lands when it would arrive.
+      host.effects.projectile(from, to, { element: 'fire', color: 0xd08a40, speed, arc: 1.2, impact: false });
+      host.later(from.distanceTo(to) / speed, () => {
+        if (t.life <= 0) return;
+        blow(r, host, t, 1, [status('smoked', ranked(r, 'duration', 4, 0.1))]);
       });
     },
   },

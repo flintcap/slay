@@ -122,6 +122,12 @@ export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
   revenantForm: (k, n) => ({
     mods: { enhancedDamage: n('damagePct', 50) + n('perRank', 4) * k, damageReduction: n('dr', 30) + k },
   }),
+
+  // Paladin
+  barTheDoor: (k, n) => ({
+    duration: r1(n('duration', 5) + n('durationPerRank', 0.15) * k),
+    mods: { blockChance: r1(n('block', 20) + n('blockPerRank', 0.5) * k), damageReduction: r1(n('dr', 10) + n('drPerRank', 0.5) * k) },
+  }),
 };
 
 export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower> = {
