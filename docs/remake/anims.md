@@ -60,7 +60,7 @@ that still looks like it holds a shield.
 ## Milestones
 
 - [x] M1 Uniqueness check that fails on any shared clip or VFX signature, game-wide. (Add a game-wide uniqueness check for clips, looks and sounds)
-- [ ] M2 Knight: a gesture per active skill (sword+shield and two-hander both read).
+- [x] M2 Knight: a gesture per active skill (sword+shield and two-hander both read). (Give every Knight skill its own gesture)
 - [ ] M3 Rogue: a gesture per active skill (daggers / dual blades).
 - [ ] M4 Ranger: a gesture per active skill (bow skills are draws, but each different).
 - [ ] M5 Revenant: a gesture per active skill (caster with a wand/staff).
@@ -87,9 +87,11 @@ pending; a class with some gestures must be fully unique).
 
 ## Next up
 
-M2: write `src/art/hero/gestures/knight.ts` (warden), one gesture per active skill.
+M3: write `src/art/hero/gestures/rogue.ts` (shadowblade, dual daggers), one gesture per active skill, and import it in `gestures/index.ts`.
 
 ## Notes for resume
 
 - `node tools/check-unique.mjs [--list]` (entry `tools/unique-entry.ts`) is the uniqueness check. It fails on shared clips, visual signatures or sound files, and on skills with no gesture. Classes outside the five are pending until they have one gesture / one motif.
+- Gesture spec additions (SkillActions.ts): `hit` + `side` make a weapon blow (event 'hit', damage waits for it via `Player.contactDelay` / `strikesAt`), `grip` keeps both hands on a haft, `alt.<MoveKind>` gives one weapon its own keys, `reach()` places a weapon hand in metres. Dash skills play their own gesture (`Player.dodge(..., clip)`); with two blades a skill's own gesture skips the off-hand `attack2` blow.
+- Render sheets: `SLAY_PORT=4341 flock /tmp/slay-browser.lock timeout 900 node tools/hero-sheet.mjs actions --class=<id> [--stance=twoHand] --front=1 --actions=skill.a,... --out=shots/anims/<x>` (47 s for 25 rows; `--front` drops the top view). Crop with `convert ... -crop 1680x1500 +repage -resize 45%`.
 - Visual signatures come from `src/fx/SkillLooks.ts`: the family drawing plus a per-skill motif (`SKILL_MOTIFS`, empty until M6).
