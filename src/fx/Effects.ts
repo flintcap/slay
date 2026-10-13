@@ -1789,7 +1789,8 @@ export class EffectSystem {
     _v1.normalize();
     if (e.mote === 0) {
       const grow = e.path === Path.Hold ? 0.6 + 0.6 * k : 1;
-      this.putCore(e.slot, p.x, p.y, p.z, e.size * grow, _v1.x, _v1.y, _v1.z, moving && e.flag ? 0.8 : 0, e.look, 1, e.style, env, (e.born % 97) / 97);
+      // A little under full glow: small cores at full glow burn white and lose their school's colour.
+      this.putCore(e.slot, p.x, p.y, p.z, e.size * grow, _v1.x, _v1.y, _v1.z, moving && e.flag ? 0.8 : 0, e.look, 0.78, e.style, env, (e.born % 97) / 97);
       if (e.flag) {
         if (!e.rib && !first) e.rib = this.ribbons.start('trail', { life: 0.3, width: e.size * 0.35, school: e.school, color: e.color, emit: 1 });
         this.ribbons.pushPoint(e.rib, p.x, p.y, p.z);

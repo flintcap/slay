@@ -44,7 +44,7 @@ export type MotifDraw =
  */
 export const MOTIF_SHAPES = {
   // Glows and glyphs (they fly).
-  embers: { k: 'core', style: 'fireball', size: 0.32 },
+  embers: { k: 'core', style: 'fireball', size: 0.32, trail: true },
   sparks: { k: 'core', style: 'plasma', size: 0.28 },
   flares: { k: 'core', style: 'flare', size: 0.5 },
   globs: { k: 'core', style: 'glob', size: 0.34 },
