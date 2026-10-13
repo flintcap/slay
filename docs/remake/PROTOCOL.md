@@ -105,6 +105,19 @@ them against the quality bar. `shots/` is not committed.
 - **Leave nothing running.** Before you end, no server, browser or checker
   you started may still be alive. Kill by PID, never `pkill -f`.
 
+## Wave 3 testing rules (owner, these override anything looser above)
+
+- **Tests stay minimal**, but their result must be readable: print a short
+  pass/fail summary you can quote.
+- **Anything longer than 7 minutes must be shown not stuck.** Run long
+  checks with output to a log file, and look at it: if the log has not grown
+  for 7 minutes, the run is stuck. Kill it by PID and count it as a failure.
+- **One retry, then skip.** A check that fails (or gets stuck) is retried
+  once. If it fails again, skip it, write it under "Notes for resume" with
+  the reason, and move on.
+- **Browser runs share one lock**: wrap every browser run in
+  `flock /tmp/slay-browser.lock timeout <secs> ...`.
+
 ## Lean testing (owner's rule: testing must not burn usage)
 
 Testing costs the owner's usage. Spend it only where it buys certainty.
