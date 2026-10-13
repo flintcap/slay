@@ -63,7 +63,7 @@ that still looks like it holds a shield.
 - [x] M2 Knight: a gesture per active skill (sword+shield and two-hander both read). (Give every Knight skill its own gesture)
 - [x] M3 Rogue: a gesture per active skill (daggers / dual blades). (Give every Rogue skill its own gesture)
 - [x] M4 Ranger: a gesture per active skill (bow skills are draws, but each different). (Give every Ranger skill its own gesture)
-- [ ] M5 Revenant: a gesture per active skill (caster with a wand/staff).
+- [x] M5 Revenant: a gesture per active skill (caster with a wand/staff). (Give every Revenant skill its own gesture)
 - [ ] M6 VFX: every active skill game-wide has its own visual signature (Mage included).
 - [ ] M7 Sounds: no two skills share a sound file.
 - [ ] M8 Final: uniqueness check green for the existing 5 classes, in-game skill check green.
@@ -87,7 +87,7 @@ pending; a class with some gestures must be fully unique).
 
 ## Next up
 
-M5: write `src/art/hero/gestures/revenant.ts` (caster with a wand or staff; render with `--stance=staff` and `--stance=wand`), one gesture per active skill, and import it in `gestures/index.ts`.
+M6: give every active skill its own visual motif (`SKILL_MOTIFS` in `src/fx/SkillLooks.ts`), drawn by `EffectSystem.motif` from `SkillRunner.cast`, until `node tools/check-unique.mjs` shows `visuals ok`.
 
 ## Notes for resume
 
