@@ -34,6 +34,18 @@ const WEAPON = {
   paladin: 'mace.club',
 };
 
+/**
+ * A class whose trees want different gear is audited once per kit, and each
+ * skill keeps its best showing: the Paladin's Mace tree wants a mace and a
+ * shield, his Blade tree a sword.
+ */
+const KITS = {
+  paladin: [['mace.club', 'shield.heater'], ['sword.short', 'shield.heater']],
+};
+
+/** How well one audit row did: threw < refused < fired < fired and hit. */
+const showing = (r) => (r.error ? 0 : !r.fired ? 1 : r.hits ? 3 : 2);
+
 if (!existsSync('dist/index.html')) {
   console.error('No dist/ build. Run `npm run build` first.');
   process.exit(1);
@@ -106,18 +118,6 @@ for (const cls of CLASSES) {
   all[cls] = rows;
   report(cls, rows);
 }
-
-/**
- * A class whose trees want different gear is audited once per kit, and each
- * skill keeps its best showing: the Paladin's Mace tree wants a mace and a
- * shield, his Blade tree a sword.
- */
-const KITS = {
-  paladin: [['mace.club', 'shield.heater'], ['sword.short', 'shield.heater']],
-};
-
-/** How well one audit row did: threw < refused < fired < fired and hit. */
-const showing = (r) => (r.error ? 0 : !r.fired ? 1 : r.hits ? 3 : 2);
 
 async function runClass(cls) {
   let best = null;
