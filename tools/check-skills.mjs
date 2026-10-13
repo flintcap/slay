@@ -107,18 +107,39 @@ for (const cls of CLASSES) {
   report(cls, rows);
 }
 
+/**
+ * A class whose trees want different gear is audited once per kit, and each
+ * skill keeps its best showing: the Paladin's Mace tree wants a mace and a
+ * shield, his Blade tree a sword.
+ */
+const KITS = {
+  paladin: [['mace.club', 'shield.heater'], ['sword.short', 'shield.heater']],
+};
+
+/** How well one audit row did: threw < refused < fired < fired and hit. */
+const showing = (r) => (r.error ? 0 : !r.fired ? 1 : r.hits ? 3 : 2);
+
 async function runClass(cls) {
-  return page.evaluate(
-    async ([c, weapon]) => {
-      window.SLAY.debug.makeCharacter(c, 60);
-      window.SLAY.debug.equip(weapon, 40);
-      await window.SLAY.engine.goTo('dungeon', { depth: 1 });
-      for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
-      window.SLAY.debug.godMode(true);
-      return window.SLAY.debug.skillAudit(c);
-    },
-    [cls, WEAPON[cls] ?? 'sword.short']
-  );
+  let best = null;
+  for (const kit of KITS[cls] ?? [[WEAPON[cls] ?? 'sword.short']]) {
+    const rows = await page.evaluate(
+      async ([c, gear]) => {
+        window.SLAY.debug.makeCharacter(c, 60);
+        for (const g of gear) window.SLAY.debug.equip(g, 40);
+        await window.SLAY.engine.goTo('dungeon', { depth: 1 });
+        for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
+        window.SLAY.debug.godMode(true);
+        return window.SLAY.debug.skillAudit(c);
+      },
+      [cls, kit]
+    );
+    if (!best) best = rows;
+    else best = best.map((r) => {
+      const o = rows.find((x) => x.id === r.id);
+      return o && showing(o) > showing(r) ? o : r;
+    });
+  }
+  return best;
 }
 
 function report(cls, rows) {

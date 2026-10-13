@@ -174,6 +174,7 @@ const CLASS_NAMES: Record<string, string> = {
   revenant: 'revenant',
   ranger: 'ranger',
   shapeshifter: 'shapeshifter',
+  paladin: 'paladin',
 };
 
 function className(id: string): string {

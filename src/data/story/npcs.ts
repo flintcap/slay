@@ -50,6 +50,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'hesk.pyro', when: { cls: 'mage' }, text: `I keep the lamp oil on the high shelf while you are in the wagon. Nothing personal.` },
       { id: 'hesk.revenant', when: { cls: 'revenant' }, text: `A revenant. You have died once already, so you know what things are worth. Haggle accordingly.` },
       { id: 'hesk.shifter', when: { cls: 'shapeshifter' }, text: `You wore the bear into my wagon last time. I am charging you for the doorframe. Come in as a man or come in through the gap you made.` },
+      { id: 'hesk.paladin', when: { cls: 'paladin' }, text: `Candles by the gross, again. Whatever you are praying for down there, it is costing you four coppers a night.` },
       { id: 'hesk.many', when: { fallen: 5 }, text: `{fallen} names on the wall from your account, and every one of them bought rope. Buy rope.` },
     ],
     topics: [
@@ -115,6 +116,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'kale.shadow', when: { cls: 'shadowblade' }, text: `Small blades. Fine work. I do not trust either, and I sharpen both.` },
       { id: 'kale.ranger', when: { cls: 'ranger' }, text: `Bowstaves are not my trade. Arrowheads are. Bring me the ones you pull out of things.` },
       { id: 'kale.shifter', when: { cls: 'shapeshifter' }, text: `You want a weapon for a man whose hands turn into paws. I can make it. I cannot make it survive the turning. Bring it back bent and I will straighten it.` },
+      { id: 'kale.paladin', when: { cls: 'paladin' }, text: `Every dent in that mace head is a word you meant. I can take them out. You will only put them back.` },
     ],
     topics: [
       {
@@ -183,6 +185,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'vell.revenant', when: { cls: 'revenant' }, text: `No pulse worth the name and your colour is wrong. On you that is health. Sit anyway.` },
       { id: 'vell.storm', when: { cls: 'mage' }, text: `Your hair is standing on end and your fingers are cold. Do not touch the glassware.` },
       { id: 'vell.shifter', when: { cls: 'shapeshifter' }, text: `Your pulse is a cat's, your bruises are a bear's and your teeth are not yours at all. Which one of you am I dosing today?` },
+      { id: 'vell.paladin', when: { cls: 'paladin' }, text: `Wax burns on both wrists and smoke in your lungs. Your order calls that devotion. I call it Tuesday. Sit.` },
     ],
     topics: [
       {
@@ -289,6 +292,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'marrow.g5', text: `Do not take it as pessimism. I dig for everyone.` },
       { id: 'marrow.revenant', when: { cls: 'revenant' }, text: `You have been on a wall before, I think. It shows in how you read mine.` },
       { id: 'marrow.shifter', when: { cls: 'shapeshifter' }, text: `If the wall ever gets you, I will need to know which shape to cut. I will cut the man. The others never sat still for me.` },
+      { id: 'marrow.paladin', when: { cls: 'paladin' }, text: `You say the words over the ones you put down. Good. Somebody ought to, and I am tired.` },
     ],
     topics: [
       {
@@ -326,6 +330,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'renn.g3', text: `Eleven guards. Two hundred souls. One gate. Sleep well.` },
       { id: 'renn.g4', text: `The bell has rung twice in my service. Both times nothing came through. Both times something had tried.` },
       { id: 'renn.g5', text: `You go down of your own will. I have never understood it, and I have stopped saying so.` },
+      { id: 'renn.paladin', when: { cls: 'paladin' }, text: `You ring yours on purpose, I hear. Do it below. If I hear a bell up here I will assume the worst and I will be right.` },
     ],
     topics: [
       {
