@@ -1,6 +1,6 @@
 # Stream: anims (every skill 1 of 1)
 
-Status: waiting
+Status: in progress
 Port: SLAY_PORT=4341
 
 ## Goal
@@ -59,7 +59,7 @@ that still looks like it holds a shield.
 
 ## Milestones
 
-- [ ] M1 Uniqueness check that fails on any shared clip or VFX signature, game-wide.
+- [x] M1 Uniqueness check that fails on any shared clip or VFX signature, game-wide. (Add a game-wide uniqueness check for clips, looks and sounds)
 - [ ] M2 Knight: a gesture per active skill (sword+shield and two-hander both read).
 - [ ] M3 Rogue: a gesture per active skill (daggers / dual blades).
 - [ ] M4 Ranger: a gesture per active skill (bow skills are draws, but each different).
@@ -87,8 +87,9 @@ pending; a class with some gestures must be fully unique).
 
 ## Next up
 
-Start at M1.
+M2: write `src/art/hero/gestures/knight.ts` (warden), one gesture per active skill.
 
 ## Notes for resume
 
-(none yet)
+- `node tools/check-unique.mjs [--list]` (entry `tools/unique-entry.ts`) is the uniqueness check. It fails on shared clips, visual signatures or sound files, and on skills with no gesture. Classes outside the five are pending until they have one gesture / one motif.
+- Visual signatures come from `src/fx/SkillLooks.ts`: the family drawing plus a per-skill motif (`SKILL_MOTIFS`, empty until M6).
