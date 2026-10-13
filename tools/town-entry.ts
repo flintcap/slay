@@ -92,7 +92,7 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
 // 2. The Gambler
 // ---------------------------------------------------------------------------
 {
-  const c = createCharacter('Gambler', 'pyromancer', new Random(4));
+  const c = createCharacter('Gambler', 'mage', new Random(4));
   c.level = 20;
   save.account.current = c;
   const prices: Record<string, number> = {};

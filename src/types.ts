@@ -316,10 +316,9 @@ export interface AffixDef {
 // ---------------------------------------------------------------------------
 
 export type CharClassId =
-  | 'warden'      // martial, bleed / bulwark
-  | 'pyromancer'  // fire / arcane caster
-  | 'shadowblade' // dex crit / poison
-  | 'stormcaller' // lightning / mobility
+  | 'warden'      // the Knight: martial, bleed / bulwark
+  | 'mage'        // fire, lightning and cold caster
+  | 'shadowblade' // the Rogue: dex crit / poison
   | 'revenant'    // summoner / life-drain
   | 'ranger';     // bow / crossbow marksman
 

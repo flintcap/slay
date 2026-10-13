@@ -168,10 +168,9 @@ export function fillStory(text: string): string {
 }
 
 const CLASS_NAMES: Record<string, string> = {
-  warden: 'warden',
-  pyromancer: 'pyromancer',
-  shadowblade: 'shadowblade',
-  stormcaller: 'stormcaller',
+  warden: 'knight',
+  mage: 'mage',
+  shadowblade: 'rogue',
   revenant: 'revenant',
   ranger: 'ranger',
 };

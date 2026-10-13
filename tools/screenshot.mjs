@@ -178,14 +178,14 @@ const drivers = {
   dungeonDeep: async () => {
     await page.evaluate(async () => {
       const s = window.SLAY;
-      if (s.debug?.makeCharacter) s.debug.makeCharacter('pyromancer', 40);
+      if (s.debug?.makeCharacter) s.debug.makeCharacter('mage', 40);
       await s.engine.goTo('dungeon', { depth: 24 });
     });
   },
   boss: async () => {
     await page.evaluate(async () => {
       const s = window.SLAY;
-      if (s.debug?.makeCharacter) s.debug.makeCharacter('stormcaller', 30);
+      if (s.debug?.makeCharacter) s.debug.makeCharacter('mage', 30);
       await s.engine.goTo('dungeon', { depth: 12 });
       s.debug?.warpToBoss?.();
     });
@@ -199,7 +199,7 @@ const drivers = {
       const s = window.SLAY;
       // A shallow floor: cheap to build under software rendering, and the
       // numbers are fed by the timer below rather than a real fight.
-      if (s.debug?.makeCharacter) s.debug.makeCharacter('stormcaller', 12);
+      if (s.debug?.makeCharacter) s.debug.makeCharacter('mage', 12);
       await s.engine.goTo('dungeon', { depth: 2 });
       s.debug?.godMode?.(true);
     });
@@ -252,7 +252,7 @@ const drivers = {
   skills: async () => {
     await page.evaluate(async () => {
       const s = window.SLAY;
-      if (!s.save.account.current && s.debug?.makeCharacter) s.debug.makeCharacter('pyromancer', 30);
+      if (!s.save.account.current && s.debug?.makeCharacter) s.debug.makeCharacter('mage', 30);
       if (s.engine.currentSceneId !== 'town') await s.engine.goTo('town');
       s.events.emit('ui:open', { panel: 'skills' });
     });

@@ -97,7 +97,7 @@ export const DERIVE = {
    * Elemental damage percent per point of energy.
    *
    * Strength has always bought enhanced damage; energy bought mana and nothing
-   * else. That makes the caster attribute purely defensive, so a pyromancer's
+   * else. That makes the caster attribute purely defensive, so a mage's
    * thirty-five starting energy paid for no offence at all and their damage was
    * whatever weapon happened to be in their hand — which for them is a wand
    * doing two to four. Measured, their opening attack hit for four where every
@@ -111,7 +111,7 @@ export const DERIVE = {
    * against a warden's sword doing three to six and a ranger's bow doing more;
    * the whole point of the attribute is that it, not the stick in their hand,
    * is where a spellcaster's damage comes from. At this rate a starting
-   * pyromancer's thirty-five energy is worth about forty-five percent, which
+   * mage's thirty-five energy is worth about forty-five percent, which
    * puts their opening attack alongside the classes that swing metal.
    */
   enrElementalPct: 1.3,

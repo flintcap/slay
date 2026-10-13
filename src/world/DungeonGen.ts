@@ -569,7 +569,7 @@ export function zoneBudget(depth: number, floorTiles: number, heat: number): num
   // cap is where the change belongs.
   // A crowd from floor one.
   //
-  // This was briefly cut back after a level-one pyromancer could not survive
+  // This was briefly cut back after a level-one mage could not survive
   // it. That was the wrong end to fix: the crowd is the game, and the class was
   // the problem — a caster whose main attribute bought no damage at all. The
   // attribute is fixed, so the crowd comes back.

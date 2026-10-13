@@ -20,9 +20,8 @@ import type { CharClassId } from '../types';
 /** Class colours: the back light and the ground behind the bust. */
 const LOOK: Record<string, { light: number; ground: number }> = {
   warden: { light: 0xe0b860, ground: 0x2a2216 },
-  pyromancer: { light: 0xff8a3a, ground: 0x2e1408 },
+  mage: { light: 0x9a8aff, ground: 0x1a1430 },
   shadowblade: { light: 0x6ad8a0, ground: 0x0e1a16 },
-  stormcaller: { light: 0xb0c8ff, ground: 0x141a2e },
   revenant: { light: 0x9ae0c8, ground: 0x14201c },
   ranger: { light: 0xc8d890, ground: 0x1a2012 },
 };

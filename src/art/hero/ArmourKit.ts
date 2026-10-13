@@ -8,7 +8,7 @@
  *
  * `Kit` holds the context of one piece on one body: the item's look, the
  * hero's joints, cut helpers, a ray caster that finds the body's surface (so
- * a rivet sits on a broad warden and a slight pyromancer alike), and the
+ * a rivet sits on a broad knight and a slight mage alike), and the
  * material buckets. The cut tables live in `ArmourChest.ts`,
  * `ArmourHead.ts` and `ArmourLimbs.ts`; unique and set decorations in
  * `ArmourFeatures.ts`.

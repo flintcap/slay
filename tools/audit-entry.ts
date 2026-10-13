@@ -11,8 +11,7 @@ const CLASS_WEAPON: Record<string, 'melee' | 'ranged' | 'caster'> = {
   warden: 'melee',
   shadowblade: 'melee',
   ranger: 'ranged',
-  pyromancer: 'caster',
-  stormcaller: 'caster',
+  mage: 'caster',
   revenant: 'caster',
 };
 

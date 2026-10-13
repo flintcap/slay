@@ -66,7 +66,7 @@ interface Log {
   dodges: number;
 }
 
-function world(classId: 'warden' | 'pyromancer' = 'warden') {
+function world(classId: 'warden' | 'mage' = 'warden') {
   const c = createCharacter('Test', classId, new Random(1));
   const player = new Player(c, 1);
   const input = new FakeInput();
@@ -142,7 +142,7 @@ const check = (name: string, ok: boolean, detail: string): void => {
 
 /** A caster with its opener moved from right click onto hotbar slot 1. */
 function casterOnBar() {
-  const w = world('pyromancer');
+  const w = world('mage');
   const id = w.c.primaryAttack!;
   setPrimaryAttack(w.c, null);
   w.c.hotbar[0] = id;
@@ -204,7 +204,7 @@ function casterOnBar() {
 
 // 5. Holding attack with an unaffordable skill falls back quietly.
 {
-  const w = world('pyromancer');
+  const w = world('mage');
   w.player.mana = 0;
   w.player.stats.manaRegen = 0;
   w.input.worldPoint.set(0, 0, 5);

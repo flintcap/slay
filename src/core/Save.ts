@@ -3,6 +3,7 @@ import { events } from './Events';
 import { bindsAreValid, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from './Access';
 import { UNIQUE_TEXT } from '../data/story/uniqueText';
 import { RUNES } from '../data/gems';
+import { migrateClassId } from '../data/classes';
 import { INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS, findFit, repairLayout } from '../sim/Grid';
 
 /**
@@ -245,6 +246,8 @@ class Repairer {
       return null;
     }
     const c = v as unknown as Character;
+    // The Pyromancer and the Stormcaller became the Mage.
+    c.classId = migrateClassId(c.classId);
     if (!isStr(c.id) || !c.id) {
       c.id = `recovered-${Date.now().toString(36)}-${this.repairs.length}`;
       this.note(`${where}: character had no id`);
@@ -373,7 +376,7 @@ export function migrateAccount(raw: unknown): { data: AccountSave; report: LoadR
       if (!isObj(f)) continue;
       out.fallen.push({
         name: isStr(f.name) ? f.name : 'Nameless',
-        classId: (isStr(f.classId) ? f.classId : 'warden') as AccountSave['fallen'][number]['classId'],
+        classId: migrateClassId(isStr(f.classId) ? f.classId : 'warden'),
         level: finite(f.level) ? f.level : 1,
         depth: finite(f.depth) ? f.depth : 0,
         killedBy: isStr(f.killedBy) ? f.killedBy : 'something',

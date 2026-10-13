@@ -46,8 +46,8 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'hesk.g4', text: `Everything down there was up here once. Remember that when you price a find.` },
       { id: 'hesk.g5', text: `The dead are terrible customers and excellent suppliers.` },
       { id: 'hesk.g6', text: `I stock rope. Nobody buys rope. Everybody, at some point, wants rope.` },
-      { id: 'hesk.warden', when: { cls: 'warden' }, text: `Wardens buy shields and never sell them. Bad for business. Good for wardens.` },
-      { id: 'hesk.pyro', when: { cls: 'pyromancer' }, text: `I keep the lamp oil on the high shelf while you are in the wagon. Nothing personal.` },
+      { id: 'hesk.warden', when: { cls: 'warden' }, text: `Knights buy shields and never sell them. Bad for business. Good for knights.` },
+      { id: 'hesk.pyro', when: { cls: 'mage' }, text: `I keep the lamp oil on the high shelf while you are in the wagon. Nothing personal.` },
       { id: 'hesk.revenant', when: { cls: 'revenant' }, text: `A revenant. You have died once already, so you know what things are worth. Haggle accordingly.` },
       { id: 'hesk.many', when: { fallen: 5 }, text: `{fallen} names on the wall from your account, and every one of them bought rope. Buy rope.` },
     ],
@@ -110,7 +110,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'kale.g3', text: `Good iron is patient. Be more like the iron.` },
       { id: 'kale.g4', text: `I have reforged the same sword nine times for six people. It is still the sword. They were not still the people.` },
       { id: 'kale.g5', text: `You have been swinging off the wrist again. It shows in the edge.` },
-      { id: 'kale.warden', when: { cls: 'warden' }, text: `A warden's shield should be scored on the face and clean on the rim. Show me yours and I will tell you how you fight.` },
+      { id: 'kale.warden', when: { cls: 'warden' }, text: `A knight's shield should be scored on the face and clean on the rim. Show me yours and I will tell you how you fight.` },
       { id: 'kale.shadow', when: { cls: 'shadowblade' }, text: `Small blades. Fine work. I do not trust either, and I sharpen both.` },
       { id: 'kale.ranger', when: { cls: 'ranger' }, text: `Bowstaves are not my trade. Arrowheads are. Bring me the ones you pull out of things.` },
     ],
@@ -179,7 +179,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
       { id: 'vell.g4', text: `Come back damaged rather than not at all.` },
       { id: 'vell.g5', text: `You are bleeding into your own boot. Sit down.` },
       { id: 'vell.revenant', when: { cls: 'revenant' }, text: `No pulse worth the name and your colour is wrong. On you that is health. Sit anyway.` },
-      { id: 'vell.storm', when: { cls: 'stormcaller' }, text: `Your hair is standing on end. It always is. Do not touch the glassware.` },
+      { id: 'vell.storm', when: { cls: 'mage' }, text: `Your hair is standing on end and your fingers are cold. Do not touch the glassware.` },
     ],
     topics: [
       {

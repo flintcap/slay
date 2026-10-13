@@ -89,7 +89,7 @@ const engine = {
   goTo: async () => {},
 };
 
-makeCharacter((new URLSearchParams(location.search).get('class') as CharClassId) || 'pyromancer', 28);
+makeCharacter((new URLSearchParams(location.search).get('class') as CharClassId) || 'mage', 28);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 mountUI(engine as any);
 

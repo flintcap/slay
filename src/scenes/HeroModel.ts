@@ -266,8 +266,7 @@ export function classColor(classId: CharClassId): number {
 /** Which one-shot shows a class off best when it steps onto the plinth. */
 export function flourishClip(classId: CharClassId): string {
   switch (classId) {
-    case 'pyromancer':
-    case 'stormcaller':
+    case 'mage':
     case 'revenant':
       return 'cast';
     case 'ranger':

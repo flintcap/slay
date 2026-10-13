@@ -9,10 +9,10 @@
  *    back to their words, then to the effect family.
  *  - **What it does** — a modifier drawn around the pictogram: a nova ring, a
  *    rain of streaks, motion lines, a chain arc, a laurel for masteries.
- *  - **Whose it is** — the class frame: Warden iron and rivets, Pyromancer
- *    bronze over embers, Shadowblade blackened steel and smoke, Stormcaller
- *    silver, Revenant bone, Ranger wood and leather. Pips on the frame count the
- *    tree (one, two or three), so siblings across trees stay apart.
+ *  - **Whose it is** — the class frame: Knight iron and rivets, Mage violet
+ *    bronze over cracks, Rogue blackened steel and smoke, Revenant bone, Ranger
+ *    wood and leather. Pips on the frame count the tree (one, two or three), so
+ *    siblings across trees stay apart.
  *
  * Element sets the light: fire burns orange, cold is blue, physical takes the
  * class's own colour. Passives sit smaller inside a hexagonal plate.
@@ -74,9 +74,8 @@ interface ClassLook {
 
 const CLASS_LOOK: Record<string, ClassLook> = {
   warden: { ring: GLYPH_MATS.IRON, tex: 'hammered', light: 0xe0b860, ground: 0x2a2216 },
-  pyromancer: { ring: rampOf(0x9a6030, 0.85, 'hammered', 0.3), tex: 'crack', light: 0xff8a3a, ground: 0x2e1408 },
+  mage: { ring: rampOf(0x6a5aa0, 0.85, 'hammered', 0.3), tex: 'crack', light: 0x9a8aff, ground: 0x1a1430 },
   shadowblade: { ring: rampOf(0x2c3138, 0.9, 'brushed', 0.3), tex: 'mottle', light: 0x6ad8a0, ground: 0x0e1a16 },
-  stormcaller: { ring: GLYPH_MATS.STEEL, tex: 'brushed', light: 0xb0c8ff, ground: 0x141a2e },
   revenant: { ring: GLYPH_MATS.BONE, tex: 'crack', light: 0x9ae0c8, ground: 0x14201c },
   ranger: { ring: GLYPH_MATS.WOOD, tex: 'grain', light: 0xc8d890, ground: 0x1a2012 },
 };
@@ -93,60 +92,51 @@ const NEUTRAL: ClassLook = { ring: GLYPH_MATS.IRON, tex: 'fine', light: 0xd8c8a8
  * three, an open eye or a closed one).
  */
 const ICON_MAP: Record<string, string> = {
-  // Warden — bulwark
+  // Knight — bulwark
   'shield-raise': 'shield^rise', plate: 'helm', stance: 'boot^field', bash: 'shield^impact', deflect: 'shield:1^spin',
   guard: 'shield:1', charge: 'shield^speed', anvil: 'anvil', counter: 'sword^cross', 'bubble-shield': 'bubble',
   boulder: 'boulder', 'spike-shield': 'shield:1^burst', fortress: 'tower', 'oath-stone': 'rune:2', discus: 'gear^spin',
   'crown-shield': 'crown^aura', 'broken-oath': 'crack', wall: 'tower:1',
-  // Warden — carnage
+  // Knight — carnage
   cleave: 'axe^impact', rend: 'claw', cleaver: 'axe:1', gash: 'claw^drip', nose: 'drop^impact', overhead: 'hammer^impact',
   shard: 'bone:1^burst', whet: 'sword^rise', hamstring: 'boot^drip', whirl: 'axe:1^spin', artery: 'drop', chalice: 'chalice',
   axe: 'axe', feast: 'skull^drip', flurry: 'claw^multi', tide: 'wave', ruin: 'skull:1^impact', grip: 'fist',
-  // Warden — oath
+  // Knight — oath
   shout: 'horn^nova', fist: 'fist^impact', drill: 'arrow^spin', horn: 'horn', iron: 'fist^aura', roar: 'skull:1^nova',
   banner: 'banner', crest: 'shield^aura', taunt: 'eye^nova', 'blood-oath': 'drop^aura', stomp: 'boot^impact', scar: 'claw^aura',
   'two-banners': 'banner:1', fissure: 'crack^field', 'thorn-crest': 'spikes^aura', sworn: 'sword^aura', 'skull-horn': 'skull:1',
   'ghost-knight': 'helm:1^aura',
-  // Pyromancer — conflagration
+  // Mage — fire
   'bolt-fire': 'flame^speed', 'mastery-fire': 'flame^mastery', 'nova-fire': 'flame^nova', lance: 'beam^impact', scorch: 'flame:1^field',
   fireball: 'orb^speed', stream: 'beam', kindle: 'flame', blast: 'nova', eruption: 'flame^rise', burst: 'nova^burst',
   shimmer: 'wave', 'rain-fire': 'flame^rain', core: 'orb^aura', dragon: 'wing:1^burst', 'chain-fire': 'flame^chain', nuke: 'sun',
   'soul-fire': 'skull:2',
-  // Pyromancer — cinders
-  match: 'flame:1', touch: 'hand', cloud: 'cloud', 'wall-fire': 'flame^wall', smoke: 'cloud^drip', 'aura-fire': 'flame^aura',
-  field: 'flame^field', pyre: 'flame:1^field', inhale: 'lungs', wisp: 'ghost', spread: 'flame^multi', 'ash-ground': 'crack^field',
-  bier: 'skull^field', eternal: 'hourglass', shroud: 'figure^aura', fuse: 'coil', phoenix: 'wing:1', 'infinite-fire': 'rune:3^aura',
-  // Pyromancer — sunfire
-  'bolt-arcane': 'star^speed', well: 'rune^field', 'ward-fire': 'bubble', 'brand-sun': 'brand', blink: 'rift', radiance: 'sun^aura',
-  meteor: 'boulder^speed', sun: 'sun', mirror: 'mirror', supernova: 'sun^nova', star: 'star', conduit: 'beam', eclipse: 'sun:2',
-  'anvil-sun': 'anvil^aura', 'light-form': 'figure^aura', 'second-sun': 'sun^cross', helios: 'crown^nova', corona: 'sun:2^aura',
-  // Shadowblade — venom
+  // Rogue — venom
   fang: 'fang', vial: 'vial', flask: 'vial:1', dart: 'arrow^drip', acid: 'drop:1', 'cloud-green': 'cloud', nerve: 'hand^drip',
   garden: 'leaf:1', 'throw-vial': 'vial:1^speed', syringe: 'dagger^drip', 'burst-green': 'nova', trail: 'footprints',
   'heart-green': 'heart', lotus: 'leaf:1^aura', antidote: 'vial^aura', apex: 'star^mastery', serpent: 'serpent',
   'mastery-poison': 'drop^mastery',
-  // Shadowblade — shadowcraft
+  // Rogue — shadowcraft
   step: 'footprints', cloak: 'figure^aura', eye: 'eye', 'smoke-bomb': 'cloud^burst', clone: 'figure:1', boot: 'boot',
   ambush: 'dagger^impact', pact: 'hand^aura', vanish: 'figure^speed', legion: 'figure:2', silhouette: 'figure', nightfall: 'moon',
   'mirror-dark': 'mirror', 'void-walk': 'rift', gloom: 'cloud', unseen: 'eye:2', execute: 'scythe', 'mastery-shadow': 'moon^mastery',
-  // Shadowblade — bladework
+  // Rogue — bladework
   cut: 'sword^speed', 'mastery-blade': 'dagger^mastery', fan: 'dagger:2', tendon: 'boot^drip', aim: 'target:1', double: 'dagger:1',
   chink: 'crack', 'whirl-dash': 'dagger^spin', knives: 'dagger:2^spin', edge: 'sword', momentum: 'swirl', lethal: 'skull',
   phantom: 'ghost', finish: 'skull^impact', thousand: 'dagger:2^nova', form: 'figure^rise', parry: 'sword^cross',
-  // Stormcaller — tempest
+  // Mage — lightning
   spark: 'bolt', 'mastery-lightning': 'bolt^mastery', 'nova-shock': 'bolt^nova', chain: 'bolt^chain', clap: 'hand^nova',
   conduct: 'coil', 'strike-down': 'cloud:1', fork: 'bolt^multi', orb: 'orb', storm: 'cloud:1^rain', fury: 'bolt^burst',
   ball: 'orb^speed', 'sky-lance': 'beam', overload: 'orb^burst', ionize: 'swirl^aura', 'eye-storm': 'eye:1^aura',
   pillar: 'bolt^field', 'mastery-storm': 'cloud:1^mastery',
-  // Stormcaller — galewalk
-  gust: 'swirl', dash: 'boot^speed', swift: 'feather^speed', cyclone: 'tornado', tail: 'feather', leap: 'boot^rise',
-  mistral: 'wave', dance: 'figure^spin', shear: 'claw', hurricane: 'swirl:1', airborne: 'wing:1', 'trail-lightning': 'footprints',
-  'veil-storm': 'bubble', maelstrom: 'swirl:1^aura', zephyr: 'feather^aura', 'never-grounded': 'wing:1^rise', skyfall: 'bolt^rain',
-  'aura-wind': 'swirl^aura',
-  // Stormcaller — conduit
-  'field-static': 'bolt^field', capacitor: 'coil^aura', rod: 'totem', discharge: 'nova', weave: 'chain', superconduct: 'beam^chain',
-  totem: 'totem', polarize: 'anchor', overcharge: 'orb^rise', echo: 'wave^nova', 'burst-static': 'nova^chain', circuit: 'gear',
-  'shield-volt': 'shield^chain', transformer: 'coil^cross', 'great-arc': 'beam^nova', coil: 'coil', 'mastery-conduit': 'coil^mastery',
+  // Mage — cold
+  'shard-ice': 'flake^speed', 'mastery-cold': 'flake^mastery', 'nova-frost': 'flake^nova', 'lance-ice': 'lance^impact',
+  'bite-frost': 'fang^aura', 'armor-ice': 'hexshield^aura', 'spike-ice': 'spikes^impact', 'crack-cold': 'crack^aura',
+  'field-rime': 'flake^field', blizzard: 'flake^rain', permafrost: 'hourglass^aura', 'step-frost': 'footprints^aura',
+  'orb-frost': 'orb^spin', 'heart-winter': 'heart^field', 'breath-frost': 'lungs^burst', zero: 'flake^cross',
+  comet: 'star^impact', 'edge-winter': 'split^aura',
+  // Shared by more than one class
+  dash: 'boot^speed', leap: 'boot^rise',
   // Revenant — ossuary
   'bone-spear': 'bone^speed', skeleton: 'skull', 'bone-armor': 'bone:1^aura', 'skele-mage': 'skull:2', 'mastery-bone': 'bone^mastery',
   'skull-spirit': 'ghost^rise', golem: 'boulder^rise', cage: 'cage', marrow: 'bone:1^drip', 'bone-storm': 'bone^spin', lord: 'crown',

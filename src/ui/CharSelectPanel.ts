@@ -60,18 +60,16 @@ function rollName(rng: Random): string {
 /** Rough playstyle copy per class, keyed off the class id. */
 const PLAYSTYLE: Record<CharClassId, string> = {
   warden: 'Stand in the middle of it. Bleed them out, soak the hits, and never give ground.',
-  pyromancer: 'Delete packs before they close. Enormous burst, paper-thin if a single elite reaches you.',
+  mage: 'Burn a pack, chain lightning through the next, freeze the one that gets close. Huge damage, paper-thin if an elite reaches you.',
   shadowblade: 'Strike from outside their awareness. Crits, poison stacks, and a dodge on a short leash.',
-  stormcaller: 'Never stop moving. Chain lightning between targets while you blink across the room.',
   revenant: 'Bring a crowd. Your dead do the work while you drain the living to stay standing.',
   ranger: 'Open at the far wall and keep it there. Traps behind you, arrows ahead, and a step back for every step they take.',
 };
 
 const ROLE: Record<CharClassId, string> = {
   warden: 'Bulwark · Bleed',
-  pyromancer: 'Fire · Arcane',
+  mage: 'Fire · Lightning · Cold',
   shadowblade: 'Crit · Poison',
-  stormcaller: 'Lightning · Mobility',
   revenant: 'Summons · Drain',
   ranger: 'Bow · Traps',
 };
@@ -80,9 +78,8 @@ const ROLE: Record<CharClassId, string> = {
 const COMPLEXITY: Record<CharClassId, number> = {
   warden: 1,
   ranger: 2,
-  pyromancer: 2,
+  mage: 2,
   revenant: 3,
-  stormcaller: 3,
   shadowblade: 3,
 };
 

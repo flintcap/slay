@@ -223,6 +223,18 @@ export function repairCharacter(c: Character): boolean {
   // after the first saves; build or repair the block.
   if (repairTownState(c)) changed = true;
 
+  // Ranks in skills the class no longer has go back as points: the
+  // Pyromancer and Stormcaller trees that did not make it into the Mage, and
+  // any skill since removed from the game.
+  const trees = new Set(CLASS_BY_ID[c.classId]?.trees ?? []);
+  for (const [id, rank] of Object.entries(c.skills)) {
+    const def = SKILL_BY_ID[id];
+    if (def && trees.has(def.treeId)) continue;
+    delete c.skills[id];
+    if (rank > 0) c.skillPoints += Math.floor(rank);
+    changed = true;
+  }
+
   // Right click must always point at something castable, or the basic attack.
   if (c.primaryAttack && (c.skills[c.primaryAttack] ?? 0) <= 0) {
     c.primaryAttack = null;
@@ -269,14 +281,13 @@ export function repairCharacter(c: Character): boolean {
 
 /**
  * Each class opens with its own signature attack. These are hand-picked rather
- * than derived so the first thirty seconds of a Pyromancer and a Warden feel
+ * than derived so the first thirty seconds of a Mage and a Knight feel
  * like different games, which is the whole point of picking a class.
  */
 const STARTING_SKILL: Record<CharClassId, string> = {
   warden: 'cleave',        // wide arc, hits the whole pack
-  pyromancer: 'firebolt',  // ranged fire dart
+  mage: 'firebolt',        // ranged fire dart
   shadowblade: 'preciseCut', // fast single-target crit strike
-  stormcaller: 'sparkbolt',  // erratic piercing lightning
   revenant: 'boneSpear',   // piercing bone shard
   ranger: 'pierceShot',    // a shot that runs through the whole rank
 };

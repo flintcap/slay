@@ -278,13 +278,13 @@ async function visit(label) {
       await window.SLAY.engine.goTo('charSelect');
       await new Promise((r) => setTimeout(r, 1500));
     });
-    const classes = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+    const classes = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'];
     for (const id of classes.slice(1).concat(classes[0])) {
       await seg(`select: show ${id}`, async (cid) => {
         // Pick the class's row the way a player does, so the panel's detail
         // (portrait, skill icons) is built as well as the hero on the plinth.
         const rows = [...document.querySelectorAll('.csx-row')];
-        const ids = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+        const ids = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'];
         const row = rows[ids.indexOf(cid)];
         if (row) row.click();
         else window.SLAY.events.emit('ui:open', { panel: `class:${cid}` });

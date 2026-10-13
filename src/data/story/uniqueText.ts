@@ -433,7 +433,7 @@ export const UNIQUE_TEXT: Record<string, UniqueText> = {
 
 export const SET_TEXT: Record<string, { name?: string; blurb?: string }> = {
   'set.bloodied': { blurb: `Three pieces of a company of sellswords that stopped taking prisoners on the fourth tier.` },
-  'set.kindled': { blurb: `A novice pyromancer burned down her own order. These are what was left of it.` },
+  'set.kindled': { blurb: `A novice mage burned down her own order. These are what was left of it.` },
   'set.quickstep': { blurb: `Nobody who wore these was ever hit. Nobody who wore these was ever hit twice.` },
   'set.bonefetter': { blurb: `Worn by a revenant who kept his household staff on after their deaths. They are still on the books.` },
   'set.gravewarden': { blurb: `Four hundred nights on the palisade at Stairhead, and not one thing came over it.` },

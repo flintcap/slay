@@ -91,7 +91,7 @@ function domPreview(): void {
     a.playtime = 7420;
     a.gold = 4120;
     save.setCharacter(a);
-    const b = createCharacter('Nyxora', 'pyromancer', rng);
+    const b = createCharacter('Nyxora', 'mage', rng);
     b.depthRecord = 3;
     save.setCharacter(b);
     save.account.bankGold = 18250;

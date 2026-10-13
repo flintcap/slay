@@ -388,7 +388,7 @@ function emptyEffects(): PassiveEffects {
 type Contribution = (e: PassiveEffects, r: number, id: string) => void;
 
 const RULES: Record<string, Contribution> = {
-  // ---------------------------------------------------------------- warden
+  // ---------------------------------------------------------------- knight
   riposte: (e, r, id) => {
     e.blockCounterChance += param(id, 'procChance', 20) + param(id, 'procPerRank', 4) * (r - 1);
     e.blockCounterPct = Math.max(e.blockCounterPct, 110);
@@ -450,11 +450,7 @@ const RULES: Record<string, Contribution> = {
     e.drPerOath += param(id, 'drPerOath', 2);
   },
 
-  // ------------------------------------------------------------ pyromancer
-  cinderTouch: (e, r, id) => {
-    e.dotDurationSec += param(id, 'durationPerRank', 0.5) * r;
-    e.dotDamagePct += param(id, 'damagePerRank', 5) * r;
-  },
+  // ------------------------------------------------------------ mage, fire
   scorch: (e, r, id) => {
     e.dotDamagePct += param(id, 'burnPerRank', 6) * r;
     // "Your fire hits apply Scorched" was in the tooltip and nowhere else.
@@ -465,55 +461,13 @@ const RULES: Record<string, Contribution> = {
       duration: param(id, 'duration', 8),
     });
   },
-  smolder: (e, r, id) => {
-    e.dotMaxStacks += Math.floor(r / Math.max(1, param(id, 'stacksPerRanks', 4)));
-    e.dotDamagePct += param(id, 'damagePerRank', 4) * r;
-  },
-  pyreMastery: (e, r, id) => {
-    e.dotDamagePct += param(id, 'damagePerRank', 8) * r;
-    e.dotTickPct += param(id, 'tickRatePerRank', 3) * r;
-  },
   combustion: (e, r, id) => {
     e.killExplodePct += param(id, 'pct', 80) + param(id, 'perRank', 10) * (r - 1);
     e.killExplodeRadius = Math.max(e.killExplodeRadius, param(id, 'radius', 3.5));
   },
-  wildfire: (e, r, id) => {
-    e.dotSpreadInterval = param(id, 'interval', 2);
-    e.dotSpreadRadius = Math.max(e.dotSpreadRadius, param(id, 'radius', 5));
-    e.dotSpreadStacks += param(id, 'stacks', 1) + Math.floor(r / Math.max(1, param(id, 'stacksPerRanks', 6)));
-  },
-  scorchedEarth: (e, r, id) => {
-    e.groundDurationPct += param(id, 'durationPerRank', 12) * r;
-    e.groundDamagePct += param(id, 'damagePerRank', 6) * r;
-  },
-  everburning: (e, r, id) => {
-    e.dotDamagePct += param(id, 'magnitudePerRank', 8) * r;
-    e.dotDurationSec += 3;
-  },
-  phoenixHeart: (e, r, id) => {
-    e.cheatDeathCooldown = e.cheatDeathCooldown > 0
-      ? Math.min(e.cheatDeathCooldown, Math.max(30, param(id, 'cooldown', 120) - param(id, 'cdPerRank', 8) * (r - 1)))
-      : Math.max(30, param(id, 'cooldown', 120) - param(id, 'cdPerRank', 8) * (r - 1));
-    e.cheatDeathHealPct = Math.max(e.cheatDeathHealPct, param(id, 'healPct', 100));
-    e.cheatDeathInvuln = Math.max(e.cheatDeathInvuln, param(id, 'invuln', 3));
-    e.cheatDeathNovaPct = Math.max(e.cheatDeathNovaPct, param(id, 'novaScale', 400));
-    e.cheatDeathRadius = Math.max(e.cheatDeathRadius, 6);
-  },
-  plagueOfEmbers: (e, r, id) => {
-    e.dotSpreadDecay = Math.max(
-      0.02,
-      (param(id, 'decayPct', 10) - param(id, 'decayPerRank', 0.4) * (r - 1)) / 100,
-    );
-    e.dotSpreadRadius = Math.max(e.dotSpreadRadius, 5);
-    if (e.dotSpreadInterval === 0) e.dotSpreadInterval = 2;
-  },
   emberSoul: (e, r, id) => {
     e.missingManaPct += param(id, 'pctPer10', 1) * r;
     e.missingManaCap = Math.max(e.missingManaCap, param(id, 'cap', 60));
-  },
-  arcaneConduit: (e, r, id) => {
-    e.maxManaPct += param(id, 'pctPerRankPer200', 1) * r;
-    e.maxManaCap = Math.max(e.maxManaCap, param(id, 'cap', 80));
   },
   cataclysm: (e, r, id) => {
     e.overkillCarryPct += param(id, 'carryPct', 60) + param(id, 'perRank', 3) * (r - 1);
@@ -524,7 +478,7 @@ const RULES: Record<string, Contribution> = {
     e.overkillRadius = Math.max(e.overkillRadius, param(id, 'radius', 8));
   },
 
-  // ----------------------------------------------------------- stormcaller
+  // ------------------------------------------------------- mage, lightning
   conductance: (e, r, id) => {
     // Shocked enemies take more from everything, which is the debuff branch of
     // the conditional multiplier rather than a lightning-only bonus.
@@ -542,68 +496,33 @@ const RULES: Record<string, Contribution> = {
     );
     e.forkSpread = Math.max(e.forkSpread, (param(id, 'spreadAngle', 20) * Math.PI) / 180);
   },
-  tailwind: (e, r, id) => {
-    e.momentumMovePct += param(id, 'castSpeed', 20) + param(id, 'perRank', 2) * (r - 1);
-    e.momentumMoveCap = Math.max(e.momentumMoveCap, param(id, 'distance', 5));
-    e.momentumDamageShare = Math.max(e.momentumDamageShare, param(id, 'damage', 15) / 100);
+
+  // ------------------------------------------------------------ mage, cold
+  frostbite: (e, r, id) => {
+    e.onHitStatuses.push({
+      type: 'cold',
+      id: 'chilled',
+      chance: param(id, 'chance', 15) + param(id, 'chancePerRank', 3) * (r - 1),
+      duration: param(id, 'duration', 3),
+    });
   },
-  airborne: (e, r, id) => {
-    e.momentumDamageShare += (param(id, 'pctPerRank', 1.5) * r) / 100;
-    e.momentumMoveCap = Math.max(e.momentumMoveCap, param(id, 'perMetres', 3) * param(id, 'maxStacks', 10));
+  shatterpoint: (e, r, id) => {
+    e.vsDebuffedPct += param(id, 'pctPerRank', 5) * r;
   },
-  thunderRun: (e, r, id) => {
-    e.trailDamagePct += 60 + 11 * (r - 1);
-    e.trailRadius = Math.max(e.trailRadius, param(id, 'width', 2));
+  permafrost: (e, r, id) => {
+    e.curseDurationPct += param(id, 'durationPerRank', 6) * r;
   },
-  arcWeave: (e, r, id) => {
-    e.arcChance = Math.min(
-      param(id, 'chanceCap', 70),
-      e.arcChance + param(id, 'chancePerRank', 15) * r,
-    );
-    e.arcRadius = Math.max(e.arcRadius, param(id, 'range', 7));
-    e.arcDamagePct = Math.max(e.arcDamagePct, param(id, 'damagePct', 50));
-  },
-  superconductor: (e, r, id) => {
-    e.conductSharePct += param(id, 'pct', 40) + param(id, 'perRank', 5) * (r - 1);
-    e.conductRadius = Math.max(e.conductRadius, param(id, 'radius', 8));
-  },
-  resonance: (e, r, id) => {
-    e.echoChance = Math.min(
-      param(id, 'chanceCap', 45),
-      e.echoChance + param(id, 'chancePerRank', 10) * r,
-    );
-    e.echoDamagePct = Math.max(e.echoDamagePct, param(id, 'damagePct', 50));
-  },
-  transformer: (e, r, id) => {
-    e.convertToLightningPct = Math.min(
-      param(id, 'cap', 60),
-      e.convertToLightningPct + param(id, 'pctPerRank', 5) * r,
-    );
-  },
-  conduitMastery: (e, r, id) => {
-    e.dotMaxStacks += param(id, 'stacksPerRank', 2) * r;
-    e.vsDebuffedPct += param(id, 'detonatePerRank', 4) * r;
-  },
-  neverGrounded: (e, r, id) => {
-    // Damage that builds the further you have run and decays when you stop.
-    e.momentumDamageShare += (param(id, 'pctPerMetre', 1) + param(id, 'perRank', 0.1) * (r - 1)) / 100;
-    e.momentumMoveCap = Math.max(
-      e.momentumMoveCap,
-      param(id, 'cap', 120) + param(id, 'capPerRank', 8) * (r - 1),
-    );
-  },
-  theGreatArc: (e, r, id) => {
-    // The lightning capstone is the overkill chain wearing a different coat:
-    // a kill throws what it spilled at everything within twenty metres.
-    e.overkillCarryPct += param(id, 'carryPct', 80) + param(id, 'perRank', 2) * (r - 1);
-    e.overkillChains = Math.max(e.overkillChains, param(id, 'maxCascade', 24));
-    e.overkillRadius = Math.max(e.overkillRadius, param(id, 'radius', 20));
-    e.arcChance = Math.max(e.arcChance, 100);
-    e.arcRadius = Math.max(e.arcRadius, param(id, 'radius', 20) * 0.4);
-    e.arcDamagePct = Math.max(e.arcDamagePct, 60);
+  absoluteZero: (e, r, id) => {
+    e.onHitStatuses.push({
+      type: 'cold',
+      id: 'frozen',
+      chance: param(id, 'chance', 10) + param(id, 'perRank', 1) * (r - 1),
+      duration: param(id, 'duration', 1.5),
+    });
+    e.vsDebuffedPct += param(id, 'pctPerRank', 2) * r;
   },
 
-  // ----------------------------------------------------------- shadowblade
+  // ----------------------------------------------------------------- rogue
   toxicology: (e, r, id) => {
     e.dotDamagePct += param(id, 'damagePerRank', 9) * r;
     e.dotDurationSec += param(id, 'durationPerRank', 0.4) * r;

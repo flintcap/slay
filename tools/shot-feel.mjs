@@ -93,7 +93,7 @@ async function frames(n) {
 // Into a dungeon, monsters out of the way, camera settled.
 await page.evaluate(async () => {
   const s = window.SLAY;
-  s.debug.makeCharacter('pyromancer', 20);
+  s.debug.makeCharacter('mage', 20);
   await s.engine.goTo('dungeon', { depth: 1 });
 });
 await frames(40);

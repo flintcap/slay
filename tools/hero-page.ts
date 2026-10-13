@@ -37,7 +37,7 @@ async function scansReady(): Promise<void> {
 
 const BG = '#16181e';
 const INK = '#c9d1de';
-const CLASSES: CharClassId[] = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'];
 
 let renderer: THREE.WebGLRenderer | null = null;
 let envTex: THREE.Texture | null = null;
@@ -160,9 +160,8 @@ const STANCE_ITEMS: Record<Stance, Array<['mainHand' | 'offHand', string, string
 const STANCE_LIST = Object.keys(STANCE_ITEMS) as Stance[];
 const CLASS_STANCE: Record<CharClassId, Stance> = {
   warden: 'shield',
-  pyromancer: 'wand',
+  mage: 'staff',
   shadowblade: 'dual',
-  stormcaller: 'staff',
   revenant: 'twoHand',
   ranger: 'bow',
 };
@@ -708,7 +707,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
   /** Knee bend standing still, every class and stance: degrees off straight, left and right. */
   async knees(f) {
     await loadMeshCache();
-    const classes = (f.class ?? 'warden,pyromancer,shadowblade,stormcaller,revenant,ranger').split(',') as CharClassId[];
+    const classes = (f.class ?? 'warden,mage,shadowblade,revenant,ranger').split(',') as CharClassId[];
     const list = f.stance ? (f.stance.split(',') as Stance[]) : STANCE_LIST;
     const lines: string[] = [];
     const bend = (a: Actor, side: 'L' | 'R') => {
@@ -735,7 +734,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
   /** Ankle and toe height over the floor, standing, walking and running, against the rest pose's. */
   async feet(f) {
     await loadMeshCache();
-    const classes = (f.class ?? 'warden,pyromancer,shadowblade,stormcaller,revenant,ranger').split(',') as CharClassId[];
+    const classes = (f.class ?? 'warden,mage,shadowblade,revenant,ranger').split(',') as CharClassId[];
     const lines: string[] = ['class        rest ankle/toe   stand            walk (min)       run (min)'];
     const y = (a: Actor, bone: string) => (a.hero.rig.bones as unknown as Record<string, THREE.Bone>)[bone]!.getWorldPosition(new THREE.Vector3()).y;
     for (const cls of classes) {
@@ -811,7 +810,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
   async gear(f) {
     profileBodies(true);
     const list = f.class ? (f.class.split(',') as CharClassId[]) : CLASSES;
-    const own: Record<CharClassId, string> = { warden: 'heavy', pyromancer: 'caster', shadowblade: 'leather', stormcaller: 'mail', revenant: 'bone', ranger: 'scale' };
+    const own: Record<CharClassId, string> = { warden: 'heavy', mage: 'caster', shadowblade: 'leather', revenant: 'bone', ranger: 'scale' };
     const rarity = (f.rarity ?? 'rare') as ItemRarity;
     const TW = 260;
     const TH = 480;
@@ -937,14 +936,14 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
   },
   /**
    * Signature looks (qa-legend): every set worn in full (--of=sets, the
-   * default) on each class in --class= (default warden,pyromancer), or every
+   * default) on each class in --class= (default warden,mage), or every
    * unique worn or held alone (--of=uniques, --slot= to narrow), through the
    * game's own DressedHero so set glow and auras show. --sets=a,b narrows.
    */
   async legend(f) {
     await scansReady();
     profileBodies(true);
-    const classes = (f.class ?? 'warden,pyromancer').split(',') as CharClassId[];
+    const classes = (f.class ?? 'warden,mage').split(',') as CharClassId[];
     const slotOf = (id: string): EquipSlot | null => {
       const b = ITEM_BASES.find((x) => x.id === id);
       if (!b) return null;

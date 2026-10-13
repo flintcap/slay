@@ -128,7 +128,7 @@ set(
 set(
   'set.kindled',
   'Vestments of the Kindled',
-  'A novice pyromancer burned down her own order. These are what was left.',
+  'A novice mage burned down her own order. These are what was left.',
   12,
   14,
   115,

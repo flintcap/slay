@@ -91,7 +91,7 @@ setMonsterCatalog({
   },
 });
 
-const ALL_CLASSES: CharClassId[] = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+const ALL_CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'];
 const CLASSES_RUN = (arg('classes')?.split(',') as CharClassId[] | undefined) ?? ALL_CLASSES;
 const trace = process.argv.includes('--trace');
 // Experiment knobs: scale the hero's damage and life to see what the curve needs.
@@ -174,9 +174,8 @@ const WEAPON_CATS = new Set(['sword', 'axe', 'mace', 'dagger', 'spear', 'bow', '
 /** The weapons each class's skills are built around. */
 const STYLE: Record<CharClassId, string[]> = {
   warden: ['sword', 'axe', 'mace', 'spear'],
-  pyromancer: ['wand', 'staff', 'scepter'],
+  mage: ['wand', 'staff', 'scepter'],
   shadowblade: ['dagger', 'sword'],
-  stormcaller: ['staff', 'wand', 'scepter'],
   revenant: ['wand', 'staff', 'scepter'],
   ranger: ['bow', 'crossbow'],
 };

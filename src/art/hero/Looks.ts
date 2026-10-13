@@ -53,7 +53,7 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     accent: 0xd8b45a,
     stoop: 0.05,
   },
-  pyromancer: {
+  mage: {
     shape: { sex: 'female', height: 1.74, build: 0.25, hips: 0.95 },
     face: { rugged: 0 },
     skin: 0xe2b49a,
@@ -62,7 +62,7 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     linen: UNDYED,
     leather: CORD,
     cloth: UNDYED,
-    accent: 0xff7a2a,
+    accent: 0x9a8aff,
     stoop: 0,
   },
   shadowblade: {
@@ -76,18 +76,6 @@ export const HERO_LOOKS: Record<CharClassId, HeroLook> = {
     cloth: UNDYED,
     accent: 0x4ad69a,
     stoop: 0.35,
-  },
-  stormcaller: {
-    shape: { sex: 'male', height: 1.84, build: 0.35, shoulders: 0.98 },
-    face: { rugged: 0.55 },
-    skin: 0xd6aa90,
-    hair: { cut: 'braids', color: 0x8a96a8, beard: 1 },
-    eyes: { iris: 0x4a6a8a },
-    linen: UNDYED,
-    leather: CORD,
-    cloth: UNDYED,
-    accent: 0x6fc8ff,
-    stoop: 0.05,
   },
   revenant: {
     shape: { sex: 'male', height: 1.84, build: 0.2, wasted: 0.85 },

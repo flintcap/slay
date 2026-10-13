@@ -178,7 +178,7 @@ const KITS: Record<CharClassId, Record<Exclude<Tier, 'bare'>, Kit>> = {
     mid: { mainHand: ['sword.broad', 'magic'], offHand: ['shield.kite', 'rare'], chest: ['chest.chainmail', 'rare'], helm: ['helm.helm', 'magic'], gloves: ['gloves.gauntlets', 'magic'], boots: ['boots.greaves', 'rare'], belt: ['belt.belt', 'magic'] },
     top: { mainHand: ['sword.conquest', 'mythic'], offHand: ['shield.aegis', 'unique'], chest: ['chest.archon', 'mythic'], helm: ['helm.corona', 'unique'], gloves: ['gloves.eclipse', 'set'], boots: ['boots.myrmidon', 'unique'], belt: ['belt.colossus', 'set'] },
   },
-  pyromancer: {
+  mage: {
     low: { mainHand: ['wand.wand', 'normal'], chest: ['chest.quilted', 'normal'], boots: ['boots.slippers', 'normal'] },
     mid: { mainHand: ['staff.battle', 'rare'], chest: ['chest.ghost', 'rare'], helm: ['helm.circlet', 'magic'], gloves: ['gloves.silk', 'magic'], boots: ['boots.slippers', 'rare'], belt: ['belt.sash', 'magic'] },
     top: { mainHand: ['staff.eldritch', 'mythic'], chest: ['chest.aeonshroud', 'unique'], helm: ['helm.diadem', 'mythic'], gloves: ['gloves.sorcerer', 'set'], boots: ['boots.wyrmhide', 'unique'], belt: ['belt.spiderweb', 'set'] },
@@ -187,11 +187,6 @@ const KITS: Record<CharClassId, Record<Exclude<Tier, 'bare'>, Kit>> = {
     low: { mainHand: ['dagger.dagger', 'normal'], chest: ['chest.leather', 'normal'], boots: ['boots.boots', 'normal'] },
     mid: { mainHand: ['dagger.kris', 'rare'], offHand: ['dagger.dirk', 'magic'], chest: ['chest.studded', 'rare'], helm: ['helm.cap', 'magic'], gloves: ['gloves.leather', 'rare'], boots: ['boots.heavy', 'magic'], belt: ['belt.light', 'magic'] },
     top: { mainHand: ['dagger.mindrender', 'mythic'], offHand: ['dagger.nightblade', 'unique'], chest: ['chest.wyrmhide', 'unique'], helm: ['helm.skullcap', 'set'], gloves: ['gloves.bramble', 'set'], boots: ['boots.sharkskin', 'mythic'], belt: ['belt.vampirefang', 'unique'] },
-  },
-  stormcaller: {
-    low: { mainHand: ['staff.short', 'normal'], chest: ['chest.quilted', 'normal'], boots: ['boots.boots', 'normal'] },
-    mid: { mainHand: ['wand.yew', 'rare'], offHand: ['orb.eagle', 'magic'], chest: ['chest.scale', 'rare'], helm: ['helm.circlet', 'magic'], gloves: ['gloves.silk', 'magic'], boots: ['boots.heavy', 'rare'], belt: ['belt.girdle', 'magic'] },
-    top: { mainHand: ['staff.worldtree', 'mythic'], chest: ['chest.kraken', 'unique'], helm: ['helm.coronet', 'set'], gloves: ['gloves.sorcerer', 'unique'], boots: ['boots.gale', 'unique'], belt: ['belt.worldheart', 'mythic'] },
   },
   revenant: {
     low: { mainHand: ['wand.femur', 'normal'], chest: ['chest.quilted', 'normal'] },

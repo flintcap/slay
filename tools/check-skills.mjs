@@ -28,8 +28,7 @@ const WEAPON = {
   warden: 'sword.short',
   shadowblade: 'dagger.dirk',
   ranger: 'bow.short',
-  pyromancer: 'wand.wand',
-  stormcaller: 'staff.long',
+  mage: 'staff.short',
   revenant: 'wand.bone',
 };
 

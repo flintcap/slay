@@ -43,7 +43,6 @@ const MINION_NAME: Record<string, string> = {
   claySentinel: 'Clay Sentinel',
   swornBrother: 'Sworn Brother',
   shadowClone: 'Shadow',
-  livingFlame: 'Living Flame',
 };
 
 /** The monster body each summoning skill raises (read by the scene's warm-up too). */
@@ -54,7 +53,6 @@ export const MINION_MONSTER: Readonly<Record<string, string>> = {
   claySentinel: 'animated_armor',
   swornBrother: 'bandit_cutthroat',
   shadowClone: 'bandit_cutthroat',
-  livingFlame: 'ember_wisp',
 };
 
 /**
@@ -75,7 +73,6 @@ const SUMMON_HARD_CAP: Record<string, number> = {
   skeletalMage: 8,
   claySentinel: 3,
   shadowClone: 6,
-  livingFlame: 5,
   swornBrother: 3,
   viperGod: 2,
   grandOssuary: 16,
@@ -241,19 +238,11 @@ const SELF_BUFF_STATUS: Record<string, string> = {
   fortressStance: 'stoneform',
   guardStance: 'fortitude',
   aegis: 'shielded',
-  flameWard: 'warded',
-  voltaicShield: 'shielded',
+  iceArmor: 'shielded',
   boneArmor: 'shielded',
-  sunbrand: 'might',
-  lucentForm: 'sanctified',
-  ashenShroud: 'evasion',
-  stormveil: 'evasion',
-  overchargeSkill: 'overcharged',
-  chargeUp: 'overcharged',
   thunderstorm: 'overcharged',
   bloodPact: 'siphoning',
   revenantForm: 'frenzy',
-  consumeAshes: 'inspired',
 };
 
 /** Coat Blades, for its poison chance (read on every coated blow). */
@@ -285,7 +274,6 @@ const SKILL_STATUS: Record<string, string> = {
   crippling: 'crippled',
   crippleTendon: 'crippled',
   maim: 'crippled',
-  polarize: 'brittle',
   sunder: 'brittle',
   rend: 'rent',
   gash: 'hemorrhage',
@@ -294,15 +282,25 @@ const SKILL_STATUS: Record<string, string> = {
 
   // Blinding smoke and darkness
   nightfall: 'blinded',
-  eclipse: 'blinded',
   smokeBomb: 'blinded',
   scattershot: 'blinded',
 
   // Elemental afflictions named outright by the skill
-  ignite: 'immolated',
   noxiousCloud: 'envenomed',
   envenomBurst: 'envenomed',
   plagueVial: 'plagued',
+
+  // Cold: a chill on the light spells, a freeze on the heavy ones
+  frostShard: 'chilled',
+  frostNova: 'chilled',
+  rimeField: 'chilled',
+  blizzard: 'chilled',
+  frozenOrb: 'chilled',
+  iceLance: 'brittle',
+  glacialSpike: 'frozen',
+  frostStep: 'frozen',
+  wintersBreath: 'frozen',
+  glacialComet: 'frozen',
 
   // Traps and impacts
   snareTrap: 'rooted',
@@ -318,9 +316,9 @@ const SKILL_STATUS: Record<string, string> = {
  * buffs, wards and curses still need a colour and a sound.
  */
 const TREE_SCHOOL: Record<string, School> = {
-  conflagration: 'fire', cinders: 'fire', sunfire: 'fire',
+  conflagration: 'fire',
   venom: 'poison', blight: 'poison',
-  tempest: 'lightning', conduit: 'lightning', galewalk: 'lightning',
+  tempest: 'lightning', frost: 'cold',
   ossuary: 'bone', gravepact: 'arcane', shadowcraft: 'arcane',
 };
 
@@ -1068,7 +1066,7 @@ export class SkillRunner {
           // Commanding Presence and Standard Bearer widen and strengthen what an
           // oath, aura or banner does. `applyBuff` reads the same numbers.
           this.applyBuff(player, def, rank, num, color);
-          // Sworn Brother: a spectral Warden rises where the standard goes in.
+          // Sworn Brother: a spectral Knight rises where the standard goes in.
           if (family === 'banner') this.raiseSwornBrother(player, target, ctx);
           this.effects.impact(school, player.position.x, 1.0, player.position.z, {
             color,
@@ -1811,7 +1809,7 @@ export class SkillRunner {
     if (!p) return packet;
     const e = p.passives;
     // Transformer converts part of every other school into lightning, which is
-    // the school the Stormcaller's whole tree scales.
+    // the school the Mage's lightning tree scales.
     if (
       e.convertToLightningPct > 0 &&
       (packet.type === 'fire' || packet.type === 'cold' || packet.type === 'physical')
@@ -2840,9 +2838,9 @@ export class SkillRunner {
   }
 
   /**
-   * Sworn Brother is ranked as a passive, so it is never cast: its Warden rises
+   * Sworn Brother is ranked as a passive, so it is never cast: its Knight rises
    * whenever a banner is planted. It used to only raise minion stats, and the
-   * Warden has no other minion, so the tier-6 capstone did nothing at all.
+   * Knight has no other minion, so the tier-6 capstone did nothing at all.
    * Up to `baseCap` (+1 per `maxPerRanks` ranks) stand at once; planting at the
    * cap recycles the oldest, like every other summon.
    */

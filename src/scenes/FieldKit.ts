@@ -18,13 +18,12 @@ export const FIELD_KIT: Record<CharClassId, Partial<Record<EquipSlot, string>>> 
     boots: 'boots.war',
     belt: 'belt.war',
   },
-  pyromancer: {
-    mainHand: 'wand.wand',
-    offHand: 'orb.cracked',
-    helm: 'helm.circlet',
+  mage: {
+    mainHand: 'staff.short',
+    helm: 'helm.coronet',
     chest: 'chest.dusk',
     gloves: 'gloves.silk',
-    boots: 'boots.slippers',
+    boots: 'boots.gale',
     belt: 'belt.sash',
   },
   shadowblade: {
@@ -34,14 +33,6 @@ export const FIELD_KIT: Record<CharClassId, Partial<Record<EquipSlot, string>>> 
     gloves: 'gloves.bramble',
     boots: 'boots.sharkskin',
     belt: 'belt.light',
-  },
-  stormcaller: {
-    mainHand: 'staff.short',
-    helm: 'helm.coronet',
-    chest: 'chest.ghost',
-    gloves: 'gloves.silk',
-    boots: 'boots.gale',
-    belt: 'belt.spiderweb',
   },
   revenant: {
     mainHand: 'wand.femur',

@@ -29,9 +29,8 @@ const RARITY = { bare: 'normal', starter: 'normal', mid: 'magic', elite: 'rare' 
 // What each class holds, main hand first (the same as the hero sheets).
 const HELD = {
   warden: ['sword.broad', 'shield.heater'],
-  pyromancer: ['wand.wand'],
+  mage: ['staff.long'],
   shadowblade: ['dagger.kris', 'dagger.dirk'],
-  stormcaller: ['staff.long'],
   revenant: ['sword.great'],
   ranger: ['bow.long'],
 };

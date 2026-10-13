@@ -146,7 +146,7 @@ function misc(
   return b;
 }
 
-const CASTERS: CharClassId[] = ['pyromancer', 'stormcaller', 'revenant'];
+const CASTERS: CharClassId[] = ['mage', 'revenant'];
 
 // ===========================================================================
 // SWORDS — the reference weapon. Narrow damage band, middling speed.
@@ -700,7 +700,7 @@ arm('shield.aeons', 'Ward of Aeons', 'shield', 'offHand', 84, 170, 0, 172, 'shie
 
 // The bottom of the ladder. Every other off-hand family starts at level one —
 // there was no orb below level eight, so a caster's off-hand sat empty for the
-// first eight levels and the pyromancer, whose whole kit is one wand, opened
+// first eight levels and a caster whose whole kit was one wand opened
 // the game with half the damage of anyone else.
 arm('orb.cracked', 'Cracked Focus', 'orb', 'offHand', 1, 0, 0, 0, 'orb', 'crystal.gem', {
   classes: CASTERS,
@@ -1425,15 +1425,14 @@ export function maxSockets(base: ItemBase): number {
 }
 
 /**
- * Class weighting for drop rolls. Not a hard restriction (a warden can pick up
+ * Class weighting for drop rolls. Not a hard restriction (a knight can pick up
  * a staff and sell it) — it just biases the table so most of what you find is
  * something you could plausibly use.
  */
 const CLASS_PREFERENCE: Record<CharClassId, Partial<Record<ItemCategory, number>>> = {
   warden: { sword: 2.2, axe: 2.2, mace: 2.2, spear: 1.8, shield: 2.4, chest: 1.5, helm: 1.3, dagger: 0.5, wand: 0.15, staff: 0.25, orb: 0.15, bow: 0.6, crossbow: 0.6, scepter: 0.9 },
-  pyromancer: { wand: 2.4, staff: 2.4, orb: 2.4, scepter: 1.4, dagger: 1.0, sword: 0.5, axe: 0.3, mace: 0.4, spear: 0.3, bow: 0.3, crossbow: 0.3, shield: 0.7, chest: 0.9 },
+  mage: { wand: 2.4, staff: 2.4, orb: 2.4, scepter: 1.4, dagger: 1.0, boots: 1.3, sword: 0.5, axe: 0.3, mace: 0.3, spear: 0.5, bow: 0.3, crossbow: 0.3, shield: 0.3, chest: 0.9 },
   shadowblade: { dagger: 2.6, sword: 1.6, bow: 1.8, crossbow: 1.6, gloves: 1.5, boots: 1.5, axe: 0.8, mace: 0.5, staff: 0.3, wand: 0.5, orb: 0.4, spear: 0.8, shield: 0.7 },
-  stormcaller: { staff: 2.2, wand: 2.0, orb: 2.2, spear: 1.4, scepter: 1.3, boots: 1.6, sword: 0.6, axe: 0.4, mace: 0.4, dagger: 0.8, bow: 0.6, crossbow: 0.5, shield: 0.7 },
   revenant: { wand: 2.4, scepter: 2.0, orb: 2.0, dagger: 1.4, staff: 1.6, shield: 1.2, amulet: 1.3, sword: 0.7, axe: 0.5, mace: 0.6, spear: 0.5, bow: 0.35, crossbow: 0.35 },
   ranger: { bow: 3.0, crossbow: 2.8, quiver: 2.4, gloves: 1.5, boots: 1.6, dagger: 1.2, sword: 0.9, spear: 0.9, axe: 0.5, mace: 0.2, staff: 0.2, wand: 0.2, orb: 0.2, shield: 0.15 },
 };

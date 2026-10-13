@@ -2177,9 +2177,66 @@
   "water",
   "steam"
  ],
+ "sounds/skill.cold.armor/01.ogg": [
+  "freeze",
+  "shatter"
+ ],
+ "sounds/skill.cold.blizzard/01.ogg": [
+  "wind",
+  "ice"
+ ],
+ "sounds/skill.cold.breath/01.ogg": [
+  "freeze",
+  "whoosh"
+ ],
+ "sounds/skill.cold.comet/01.ogg": [
+  "bang",
+  "shatter",
+  "bfh"
+ ],
+ "sounds/skill.cold.cometCall/01.ogg": [
+  "whoosh",
+  "ice"
+ ],
  "sounds/skill.cold.grave/01.ogg": [
   "freeze",
   "moan"
+ ],
+ "sounds/skill.cold.lance/01.ogg": [
+  "ice",
+  "whoosh"
+ ],
+ "sounds/skill.cold.nova/01.ogg": [
+  "ice",
+  "shatter"
+ ],
+ "sounds/skill.cold.orb/01.ogg": [
+  "wind",
+  "ice"
+ ],
+ "sounds/skill.cold.orbHit/01.ogg": [
+  "shatter"
+ ],
+ "sounds/skill.cold.rime/01.ogg": [
+  "freeze"
+ ],
+ "sounds/skill.cold.shard/01.ogg": [
+  "ice",
+  "swish"
+ ],
+ "sounds/skill.cold.shardHit/01.ogg": [
+  "shatter"
+ ],
+ "sounds/skill.cold.spike/01.ogg": [
+  "ice"
+ ],
+ "sounds/skill.cold.spikeHit/01.ogg": [
+  "shatter",
+  "bfh"
+ ],
+ "sounds/skill.cold.step/01.ogg": [
+  "c100b",
+  "ice"
  ],
  "sounds/skill.corpse.burst/01.ogg": [
   "water",

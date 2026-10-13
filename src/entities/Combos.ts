@@ -46,23 +46,18 @@ export const COMBOS: Record<CharClassId, ComboDef> = {
     color: 0xffc070,
     stagger: 0.8,
   },
-  pyromancer: {
-    name: 'Flashpoint',
-    desc: 'Sets the target Burning with 3 stacks.',
-    color: 0xff7a30,
-    applies: [{ id: 'burning', duration: 5, magnitude: 1, stacks: 3 }],
+  mage: {
+    name: 'Overload',
+    desc: '40% of the hit arcs to the nearest other enemy, and the target is Chilled for 3s.',
+    color: 0x9a8aff,
+    arc: 0.4,
+    applies: [{ id: 'chilled', duration: 3, magnitude: 1, stacks: 1 }],
   },
   shadowblade: {
     name: 'Exploit',
     desc: 'The hit is always a critical strike.',
     color: 0xb0ff60,
     crit: true,
-  },
-  stormcaller: {
-    name: 'Overload',
-    desc: '40% of the hit arcs to the nearest other enemy.',
-    color: 0x80d0ff,
-    arc: 0.4,
   },
   revenant: {
     name: 'Reap',

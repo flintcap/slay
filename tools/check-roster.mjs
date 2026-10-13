@@ -37,7 +37,7 @@ const out = await page.evaluate(async () => {
   const RNG = await import('/src/core/RNG.ts');
   const save = window.SLAY.save;
   const made = [];
-  for (const [name, cls] of [['Aldra', 'warden'], ['Ves', 'ranger'], ['Nim', 'pyromancer']]) {
+  for (const [name, cls] of [['Aldra', 'warden'], ['Ves', 'ranger'], ['Nim', 'mage']]) {
     const c = CH.createCharacter(name, cls, new RNG.Random(RNG.randomSeed()), 'seeker');
     save.setCharacter(c);
     made.push(`${c.name}/${c.classId}`);

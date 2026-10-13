@@ -302,7 +302,7 @@ report.effects = effects;
 // --- 4. Waypoints and pacts -------------------------------------------------
 {
   const acct = save.account;
-  const c = createCharacter('Fresh', 'stormcaller', new Random(9));
+  const c = createCharacter('Fresh', 'mage', new Random(9));
   acct.current = c;
   legacyOf(acct).milestones = [5, 10, 15];
   const wp = LEGACY_UNLOCKS.find((u) => u.id === 'waypoints')!;

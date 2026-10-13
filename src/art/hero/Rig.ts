@@ -119,7 +119,7 @@ export const SOCKET_BONE: Record<HeroSocket, HeroBone> = {
   castR: 'handR',
 };
 
-/** What a body is: the numbers that make a warden and a pyromancer differ. */
+/** What a body is: the numbers that make a knight and a mage differ. */
 export interface BodyShape {
   sex: 'male' | 'female';
   /** Floor to crown, metres. */

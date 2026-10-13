@@ -684,6 +684,21 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.clone/01.ogg | https://opengameart.org/content/ghost-breath | qubodup + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
 | sounds/skill.coat.venom/01.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
 | sounds/skill.cold.grave/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
+| sounds/skill.cold.armor/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude + IgnasD (opengameart.org/content/ice-breakingshattering) | CC0 |
+| sounds/skill.cold.blizzard/01.ogg | https://opengameart.org/content/wind | IgnasD + bart (opengameart.org/content/ice-spells) | CC0 |
+| sounds/skill.cold.breath/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
+| sounds/skill.cold.comet/01.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck + IgnasD (opengameart.org/content/ice-breakingshattering) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.cold.cometCall/01.ogg | https://opengameart.org/content/air-whoosh | pyranostudios + bart (opengameart.org/content/ice-spells) | CC0 |
+| sounds/skill.cold.lance/01.ogg | https://opengameart.org/content/ice-spells | bart + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
+| sounds/skill.cold.nova/01.ogg | https://opengameart.org/content/ice-spells | bart + IgnasD (opengameart.org/content/ice-breakingshattering) | CC0 |
+| sounds/skill.cold.orb/01.ogg | https://opengameart.org/content/wind | IgnasD + bart (opengameart.org/content/ice-spells) | CC0 |
+| sounds/skill.cold.orbHit/01.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD | CC0 |
+| sounds/skill.cold.rime/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude | CC0 |
+| sounds/skill.cold.shard/01.ogg | https://opengameart.org/content/ice-spells | bart + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
+| sounds/skill.cold.shardHit/01.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD | CC0 |
+| sounds/skill.cold.spike/01.ogg | https://opengameart.org/content/ice-spells | bart | CC0 |
+| sounds/skill.cold.spikeHit/01.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.cold.step/01.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck + bart (opengameart.org/content/ice-spells) | CC0 |
 | sounds/skill.corpse.burst/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) + Zane Little Music (opengameart.org/content/deep-bone-crackbreak-sfx) | CC0 |
 | sounds/skill.curse.amplify/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia | CC0 |
 | sounds/skill.curse.confuse/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia | CC0 |

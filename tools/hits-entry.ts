@@ -310,7 +310,7 @@ const stacksAfter = (skills: Record<string, number>, cast: string[], status: str
 {
   const fire = SKILLS.find((k) => k.id === 'fireball') ?? SKILLS.find((k) => k.damageType === 'fire' && (k.effect ?? '').startsWith('projectile'));
   if (fire) {
-    const s = scene('pyromancer', { [fire.id]: 5, scorch: 10 }, {}, 23);
+    const s = scene('mage', { [fire.id]: 5, scorch: 10 }, {}, 23);
     for (let i = 0; i < 5 && !s.foe.hasStatus('scorched'); i++) {
       s.cast(fire.id);
       s.tick(0.8);

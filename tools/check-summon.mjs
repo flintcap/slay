@@ -59,8 +59,6 @@ const r = await page.evaluate(async () => {
     claySentinel: 'revenant',
     swornBrother: 'warden',
     shadowClone: 'shadowblade',
-    livingFlame: 'pyromancer',
-    lightningRod: 'stormcaller',
   };
   // Sworn Brother is ranked like a passive and rises from a planted banner,
   // so it is tested by planting one.
@@ -131,7 +129,7 @@ for (const x of r) {
   );
 }
 // Totems are meant to be bodiless; everything else must show up.
-const BODILESS = new Set(['lightningRod']);
+const BODILESS = new Set([]);
 const broken = r.filter((x) => !x.fired || x.summoned <= 0 || (!BODILESS.has(x.id) && x.withBody === 0));
 if (broken.length) {
   console.log(`\nFAILED — ${broken.map((x) => x.id).join(', ')}`);

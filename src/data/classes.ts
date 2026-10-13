@@ -3,12 +3,16 @@
  *
  * Each class is a distinct *engine*, not a palette swap:
  *
- *  - Warden      pays life and position for damage; wants to be hit.
- *  - Pyromancer  stacks burn on everything and detonates it.
- *  - Shadowblade  burst windows out of stealth, poison between them.
- *  - Stormcaller  never stands still; damage comes from chaining and charge.
- *  - Revenant    an army does the killing; you manage its life and its death.
- *  - Ranger      range is the resource; every skill trades distance for damage.
+ *  - Knight    pays life and position for damage; wants to be hit.
+ *  - Mage      fire to burn, lightning to chain, cold to hold them still.
+ *  - Rogue     burst windows out of stealth, poison between them.
+ *  - Revenant  an army does the killing; you manage its life and its death.
+ *  - Ranger    range is the resource; every skill trades distance for damage.
+ *
+ * Ids are what saves hold, so the Knight is still `warden` and the Rogue
+ * `shadowblade` underneath; only `name` and the words are what a player sees.
+ * The Pyromancer and the Stormcaller were folded into the Mage: saves that
+ * still name them are moved across by `migrateClassId`.
  *
  * `lifePerVit` / `manaPerEnr` and `perLevel` are the numbers that make that
  * true at the sheet level; the skill trees make it true at the keyboard.
@@ -33,10 +37,10 @@ export const BASE_MANA = 15;
 export const CLASSES: CharClassDef[] = [
   {
     id: 'warden',
-    name: 'Warden',
+    name: 'Knight',
     title: 'Oathkeeper of the Broken Gate',
     blurb:
-      'The last order sworn to hold the stair. Wardens fight with a shield planted and a blade already wet — ' +
+      'The last order sworn to hold the stair. Knights fight with a shield planted and a blade already wet — ' +
       'every wound they take is a debt the dark repays with interest. They do not dodge. They do not retreat. ' +
       'They open arteries and wait.',
     base: { strength: 30, dexterity: 20, vitality: 25, energy: 10 },
@@ -48,28 +52,28 @@ export const CLASSES: CharClassDef[] = [
     startingGear: ['sword.short', 'shield.buckler'],
   },
   {
-    id: 'pyromancer',
-    name: 'Pyromancer',
-    title: 'Keeper of the Second Sun',
+    id: 'mage',
+    name: 'Mage',
+    title: 'Keeper of the Three Weathers',
     blurb:
-      'They stole fire from something that is still looking for it. A pyromancer does not cast spells so much as ' +
-      'schedule them: light everything, let it cook, then pull the whole room open at once. Robes optional. ' +
-      'Eyebrows are a luxury.',
-    base: { strength: 14, dexterity: 16, vitality: 20, energy: 35 },
-    perLevel: { life: 2.0, mana: 2.2, attackRating: 2.5 },
-    lifePerVit: 3,
-    manaPerEnr: 2,
-    trees: ['conflagration', 'cinders', 'sunfire'],
-    color: 0xff7a1e,
-    startingGear: ['wand.wand', 'orb.cracked'],
+      'They learned the fire in the Works, the storm on the Spire, and the cold at the bottom of the cistern. ' +
+      'A mage chooses which of the three to be: burn a room and let it cook, chain one bolt through the whole ' +
+      'pack, or lock them in ice and break them where they stand. Robes optional. Eyebrows are a luxury.',
+    base: { strength: 15, dexterity: 20, vitality: 20, energy: 33 },
+    perLevel: { life: 1.8, mana: 2.1, attackRating: 3 },
+    lifePerVit: 2.8,
+    manaPerEnr: 1.9,
+    trees: ['conflagration', 'tempest', 'frost'],
+    color: 0x9a8aff,
+    startingGear: ['staff.short'],
   },
   {
     id: 'shadowblade',
-    name: 'Shadowblade',
+    name: 'Rogue',
     title: 'The Quiet Between Heartbeats',
     blurb:
       'A guild that officially never existed and unofficially took the contract on the god of this place. ' +
-      'Shadowblades trade armour for arithmetic: a single opening, a coated edge, and the target is already ' +
+      'Rogues trade armour for arithmetic: a single opening, a coated edge, and the target is already ' +
       'dead — it simply has not been told yet.',
     base: { strength: 20, dexterity: 32, vitality: 20, energy: 15 },
     perLevel: { life: 2.4, mana: 1.3, attackRating: 8 },
@@ -78,22 +82,6 @@ export const CLASSES: CharClassDef[] = [
     trees: ['venom', 'shadowcraft', 'bladework'],
     color: 0x5ad18f,
     startingGear: ['dagger.dagger', 'dagger.dagger'],
-  },
-  {
-    id: 'stormcaller',
-    name: 'Stormcaller',
-    title: 'Voice of the Standing Weather',
-    blurb:
-      'Storms do not travel underground. This one followed her anyway. The stormcaller fights the way lightning ' +
-      'moves — never twice through the same air, always toward the shortest path to something conductive — and ' +
-      'the charge she leaves behind does half the killing.',
-    base: { strength: 16, dexterity: 26, vitality: 20, energy: 30 },
-    perLevel: { life: 1.6, mana: 2, attackRating: 4 },
-    lifePerVit: 2.5,
-    manaPerEnr: 1.75,
-    trees: ['tempest', 'galewalk', 'conduit'],
-    color: 0x6fc9ff,
-    startingGear: ['staff.short'],
   },
   {
     id: 'revenant',
@@ -114,7 +102,7 @@ export const CLASSES: CharClassDef[] = [
   {
     id: 'ranger',
     name: 'Ranger',
-    title: 'Warden of the Long Shot',
+    title: 'Keeper of the Long Shot',
     blurb:
       'They learned the dungeon by mapping the distances in it. A ranger opens at the far wall and spends the ' +
       'whole fight keeping it there — traps behind, arrows ahead, and a step back for every step you take. ' +
@@ -145,6 +133,15 @@ export function getClass(id: CharClassId): CharClassDef {
 
 export const CLASS_IDS: readonly CharClassId[] = CLASSES.map((c) => c.id);
 
+/** Classes that were folded into another, by their old id. */
+const FOLDED: Record<string, CharClassId> = { pyromancer: 'mage', stormcaller: 'mage' };
+
+/** A class id as a save holds it, brought up to the classes there are now. */
+export function migrateClassId(id: string): CharClassId {
+  if (id in CLASS_BY_ID) return id as CharClassId;
+  return FOLDED[id] ?? 'warden';
+}
+
 /**
  * Per-class starting hotbar hints. The character factory binds whichever of
  * these the character can actually use at level 1; the rest are suggestions the
@@ -152,9 +149,8 @@ export const CLASS_IDS: readonly CharClassId[] = CLASSES.map((c) => c.id);
  */
 export const STARTING_SKILL_HINTS: Record<CharClassId, string[]> = {
   warden: ['cleave', 'rend', 'shieldWall', 'battleCry'],
-  pyromancer: ['firebolt', 'ignite', 'emberNova', 'flameWard'],
+  mage: ['firebolt', 'sparkbolt', 'frostShard', 'emberNova'],
   shadowblade: ['viperStrike', 'shadowStep', 'preciseCut', 'coatBlades'],
-  stormcaller: ['sparkbolt', 'staticField', 'gust', 'chargeUp'],
   revenant: ['boneSpear', 'raiseSkeleton', 'siphonLife', 'weaken'],
   ranger: ['pierceShot', 'huntersMark', 'rollAway', 'snareTrap'],
 };
@@ -162,9 +158,8 @@ export const STARTING_SKILL_HINTS: Record<CharClassId, string[]> = {
 /** Flavour lines used by the character select screen when hovering a class. */
 export const CLASS_TAGLINES: Record<CharClassId, string[]> = {
   warden: ['Blocks into bleeds.', 'Wants the hit.', 'Slow, immovable, inevitable.'],
-  pyromancer: ['Everything burns twice.', 'Detonation over damage.', 'Glass, but the room is on fire.'],
+  mage: ['Burn it, chain it, or freeze it.', 'Three weathers, one hand.', 'Glass, but the room is on fire.'],
   shadowblade: ['One window is enough.', 'Poison does the waiting.', 'Crit or leave.'],
-  stormcaller: ['Never stand still.', 'The chain is the build.', 'Charge, discharge, repeat.'],
   revenant: ['The army is the weapon.', 'Corpses are ammunition.', 'Steal what you cannot survive.'],
   ranger: ['Distance is the build.', 'Never let them arrive.', 'The floor is the trap.'],
 };
@@ -188,8 +183,8 @@ export interface ClassEquipRules {
 }
 
 /**
- * What each class may hold. These are identity, not balance: a Shadowblade
- * fighting from behind a kite shield is not a Shadowblade, and a Warden who
+ * What each class may hold. These are identity, not balance: a Rogue
+ * fighting from behind a kite shield is not a Rogue, and a Knight who
  * cannot plant a shield loses the whole point of the class.
  */
 export const CLASS_EQUIP: Record<CharClassId, ClassEquipRules> = {
@@ -205,26 +200,20 @@ export const CLASS_EQUIP: Record<CharClassId, ClassEquipRules> = {
     denied: ['bow', 'crossbow', 'wand', 'staff', 'orb'],
     dualWield: false,
     offHandExtra: [],
-    note: 'Wardens fight with a blade and a planted shield.',
+    note: 'Knights fight with a blade and a planted shield.',
   },
-  pyromancer: {
-    denied: ['bow', 'crossbow', 'spear', 'shield'],
+  mage: {
+    denied: ['bow', 'crossbow', 'mace', 'shield'],
     dualWield: false,
     offHandExtra: ['orb'],
-    note: 'Pyromancers channel through a focus, not a shield.',
+    note: 'Mages channel through a focus, not a shield.',
   },
   shadowblade: {
     // No shields, ever. Two blades instead.
     denied: ['shield', 'staff', 'mace', 'crossbow'],
     dualWield: true,
     offHandExtra: ['sword', 'axe', 'dagger', 'quiver'],
-    note: 'Shadowblades carry a second blade where a shield would go.',
-  },
-  stormcaller: {
-    denied: ['crossbow', 'mace', 'shield'],
-    dualWield: false,
-    offHandExtra: ['orb'],
-    note: 'Stormcallers keep one hand free to conduct.',
+    note: 'Rogues carry a second blade where a shield would go.',
   },
   revenant: {
     denied: ['bow', 'crossbow', 'spear'],

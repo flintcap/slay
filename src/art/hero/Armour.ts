@@ -11,7 +11,7 @@
  * (`ArmourFeatures.ts`) and, on the chest, a cape in their colour.
  *
  * Every piece is a shell of the hero's own body field (see `Garment.ts`) plus
- * fittings, so it fits a broad warden and a slight pyromancer alike and bends
+ * fittings, so it fits a broad knight and a slight mage alike and bends
  * where they bend. Parts that share a material are merged into one mesh.
  */
 import * as THREE from 'three';

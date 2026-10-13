@@ -11,7 +11,7 @@
  *   -> Continue -> town -> descend -> die -> death screen (fallen, saved?)
  *   -> Rise Again -> character select -> Escape -> title
  *
- * `--class=<id>` (warden, pyromancer, shadowblade, stormcaller, revenant,
+ * `--class=<id>` (warden, mage, shadowblade, revenant,
  * ranger) picks that class at character select and adds the class tour:
  *
  *   town: talk to a keeper and take their trade, open every panel
@@ -48,7 +48,7 @@ const CLASS = CLASSES?.[0] ?? process.argv.find((a) => a.startsWith('--class='))
 const PART = CLASSES ? 'dungeon' : process.argv.find((a) => a.startsWith('--part='))?.slice(7) ?? 'all';
 // `--small`: an 854x480 page. Software GL draws it about twice as fast.
 const SMALL = process.argv.includes('--small');
-const CLASS_ORDER = ['warden', 'pyromancer', 'shadowblade', 'stormcaller', 'revenant', 'ranger'];
+const CLASS_ORDER = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger'];
 for (const c of CLASSES ?? (CLASS ? [CLASS] : [])) {
   if (!CLASS_ORDER.includes(c)) {
     console.log(`unknown class ${c}`);

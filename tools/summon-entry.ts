@@ -14,7 +14,6 @@ const HARD_CAP: Record<string, number> = {
   skeletalMage: 8,
   claySentinel: 3,
   shadowClone: 6,
-  livingFlame: 5,
   swornBrother: 3,
   viperGod: 2,
   grandOssuary: 16,

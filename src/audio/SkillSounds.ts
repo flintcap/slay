@@ -54,7 +54,7 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   venomCoat: s('skill.coat.venom'),
   camouflage: s('skill.camo'),
 
-  // --- Warden: shield, steel and voice -------------------------------------
+  // --- Knight: shield, steel and voice -------------------------------------
   shieldWall: s('skill.shield.wall'),
   shieldBash: s('skill.swing.shield', 'skill.shield.bash'),
   guardStance: s('skill.stance.guard'),
@@ -83,7 +83,7 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   warStomp: s('skill.stomp'),
   earthshatter: s('skill.quake'),
 
-  // --- Pyromancer: fire roars, light hums -----------------------------------
+  // --- Mage, fire: roars and whoomps ---------------------------------------
   firebolt: s('skill.fire.bolt', 'skill.fire.hit'),
   emberNova: s('skill.fire.nova'),
   flameLance: s('skill.fire.lance'),
@@ -94,31 +94,8 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   firestorm: s('skill.fire.storm'),
   dragonsBreath: s('skill.fire.breath'),
   annihilate: s('skill.fire.annihilate'),
-  ignite: s('skill.fire.ignite'),
-  ashCloud: s('skill.fire.ash'),
-  wallOfFlame: s('skill.fire.wall'),
-  immolate: s('skill.fire.immolate'),
-  emberField: s('skill.fire.embers'),
-  consumeAshes: s('skill.fire.consume'),
-  livingFlame: s('skill.fire.wisp', null, 'skill.fire.wispShot'),
-  funeralPyre: s('skill.fire.pyre'),
-  ashenShroud: s('skill.fire.shroud'),
-  theLongBurn: s('skill.fire.longBurn'),
-  arcaneBolt: s('skill.arcane.bolt', 'skill.arcane.hit'),
-  flameWard: s('skill.fire.ward'),
-  sunbrand: s('skill.fire.brand'),
-  // Owner: "a blink should be a quick air sound".
-  blink: s('skill.blink'),
-  radiance: s('skill.light.radiance'),
-  meteor: s('skill.fire.meteorCall', 'skill.fire.meteor'),
-  supernova: s('skill.supernova'),
-  eclipse: s('skill.eclipse'),
-  sunsAnvil: s('skill.fire.anvil'),
-  lucentForm: s('skill.light.form'),
-  secondSun: s('skill.fire.sun'),
-  heliosLance: s('skill.fire.helios'),
 
-  // --- Shadowblade: quick steel, hiss and shadow ----------------------------
+  // --- Rogue: quick steel, hiss and shadow ----------------------------------
   viperStrike: s('skill.swing.quick', 'skill.hit.viper'),
   coatBlades: s('skill.coat.venom'),
   venomDart: s('skill.throw.dart', 'skill.poison.dart'),
@@ -143,7 +120,7 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   whirlingBlades: s('skill.dash.blades', 'skill.hit.whirl'),
   throwingSpree: s('skill.throw.knife', 'skill.knife.hit'),
 
-  // --- Stormcaller: snaps, thunder and wind ---------------------------------
+  // --- Mage, lightning: snaps and thunder ----------------------------------
   sparkbolt: s('skill.storm.spark', 'skill.storm.sparkHit'),
   shockNova: s('skill.storm.nova'),
   chainLightning: s('skill.storm.chain', 'skill.storm.arc'),
@@ -156,25 +133,20 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   ionize: s('skill.storm.ionize'),
   eyeOfTheStorm: s('skill.storm.eye'),
   heavensGate: s('skill.storm.pillar'),
-  stormveil: s('skill.storm.veil'),
-  skyfall: s('skill.storm.skyfall'),
-  chargeUp: s('skill.storm.charge'),
-  staticField: s('skill.storm.static'),
-  dischargeStrike: s('skill.storm.discharge'),
-  lightningRod: s('skill.storm.rod', null, 'skill.storm.zap'),
-  polarize: s('skill.storm.polarize'),
-  overchargeSkill: s('skill.storm.overcharge'),
-  staticBurst: s('skill.storm.burst'),
-  voltaicShield: s('skill.storm.shield'),
-  teslaCoil: s('skill.storm.coil', null, 'skill.storm.zap'),
-  gust: s('skill.wind.gust'),
-  windStep: s('skill.wind.step'),
-  cyclone: s('skill.wind.cyclone'),
-  updraft: s('skill.wind.updraft'),
-  tempestDance: s('skill.wind.dance'),
-  shear: s('skill.wind.shear'),
-  hurricane: s('skill.wind.hurricane'),
-  maelstrom: s('skill.wind.maelstrom'),
+
+  // --- Mage, cold: cracks, hiss and shattering glass ------------------------
+  frostShard: s('skill.cold.shard', 'skill.cold.shardHit'),
+  frostNova: s('skill.cold.nova'),
+  iceLance: s('skill.cold.lance'),
+  iceArmor: s('skill.cold.armor'),
+  glacialSpike: s('skill.cold.spike', 'skill.cold.spikeHit'),
+  rimeField: s('skill.cold.rime'),
+  blizzard: s('skill.cold.blizzard'),
+  // Owner: "a blink should be a quick air sound".
+  frostStep: s('skill.cold.step'),
+  frozenOrb: s('skill.cold.orb', 'skill.cold.orbHit'),
+  wintersBreath: s('skill.cold.breath'),
+  glacialComet: s('skill.cold.cometCall', 'skill.cold.comet'),
 
   // --- Revenant: bone, earth, rot and the dead ------------------------------
   boneSpear: s('skill.bone.spear', 'skill.bone.spearHit'),
