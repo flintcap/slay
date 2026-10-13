@@ -39,29 +39,27 @@ Design notes
 ## Milestones
 
 - [x] M1 Class def, look (male), field kit, portrait, select screen words; selectable and playable with a starter skill.
-- [ ] M2 Form system: transform skill family, three humanoid forms built in code, change effect, gear hiding, hotbar rule.
-- [ ] M3 Feral tree: 18 skills, rules, statuses, icons.
-- [ ] M4 Teeth tree: 18 skills, rules, statuses, icons.
-- [ ] M5 Claw tree: 18 skills, rules, statuses, icons.
-- [ ] M6 Form motion (idle, move, attack chain per form) and a unique gesture per active skill.
-- [ ] M7 A unique VFX look and a unique sound per active skill (CC0, layered takes).
+- [x] M2 Form system: transform skill family, three humanoid forms built in code, change effect, gear hiding, hotbar rule.
+- [x] M3 Feral tree: 18 skills, rules, statuses, icons.
+- [x] M4 Teeth tree: 18 skills, rules, statuses, icons.
+- [x] M5 Claw tree: 18 skills, rules, statuses, icons.
+- [x] M6 Form motion (idle, move, attack chain per form) and a unique gesture per active skill.
+- [x] M7 A unique VFX look and a unique sound per active skill (CC0, layered takes).
 - [ ] M8 Story and NPC lines, tools class lists, balance (curve passes every depth), in-game skill check green.
 
 ## Next up
 
-M2 to M5 code is in (forms, all 54 skills, handlers, statuses, rules, icons,
-rank power). Left, in this order:
-1. `src/scenes/shifterDebug.ts` (spread into the debug menu) and
-   `tools/shoot-shifter.mjs` (flock, port 4343): one browser look at the three
-   forms and a few skills. Then tick M2 to M5.
-2. M6: `src/art/hero/gestures/shapeshifter.ts`, one gesture per active (26),
-   imported by `gestures/index.ts`.
-3. M7: a cast and hit take per active in `tools/shifter-takes.mjs`, rows in
-   `src/audio/shifterSounds.ts` (callThePack needs a minion sound), then
-   `node tools/build-audio.mjs --only=skill.shift.`, then restore ASSETS.md
-   from HEAD and merge my rows back with `scratchpad/assets_merge.py`.
-4. M8: NPC lines, add shapeshifter to the curve and economy class lists,
-   balance, STARTING_SKILL_HINTS, check-unique green.
+M1 to M7 are in and pushed. M8 so far: camp lines (Hesk, Kale, Vell, Marrow,
+Wenna), STARTING_SKILL_HINTS, shapeshifter in the curve, hero sheet and the
+strict list of check-unique. Curve passes every depth (`node tools/check-curve.mjs
+--classes=shapeshifter`), rank power says all grow, unique and skilldepth green.
+Left, in this order:
+1. Read `scratchpad/shoot.log` (tools/shoot-shifter.mjs, port 4343, flock) and
+   look at the form and skill shots; fix what looks wrong.
+2. Read `scratchpad/skills.log` (`node tools/check-skills.mjs
+   --classes=shapeshifter --port=4343`, flock); every active must report an
+   effect. Fix, then rerun once.
+3. Tick M8, then finish: Status done, Handover, push.
 
 ## Notes for resume
 
