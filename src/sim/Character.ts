@@ -259,22 +259,10 @@ export function repairCharacter(c: Character): boolean {
     }
   }
 
-  // Make sure every ranked active is reachable — from the bar, or from right
-  // click. This ran last and did not check `primaryAttack`, so it put the
-  // right-click skill straight back on the bar on every single load. Stripping
-  // it two blocks above achieved nothing; the bug survived every fix until the
-  // filter moved down here.
-  const ranked = Object.entries(c.skills)
-    .filter(([id, rank]) => rank > 0 && SKILL_BY_ID[id]?.targeting !== 'passive')
-    .filter(([id]) => id !== c.primaryAttack)
-    .map(([id]) => id);
-  for (const id of ranked) {
-    if (c.hotbar.includes(id)) continue;
-    const free = c.hotbar.indexOf(null);
-    if (free < 0) break;
-    c.hotbar[free] = id;
-    changed = true;
-  }
+  // No refill. Loading used to put every ranked skill that was off the bar
+  // back on it, so a skill the player took off came back on every reload.
+  // The bar is the player's: a skill goes on it when first learned
+  // (`allocateSkill`) and is off it only because they took it off.
 
   return changed;
 }
@@ -491,9 +479,10 @@ export function allocateSkill(c: Character, skillId: string): boolean {
   c.skills[skillId] = (c.skills[skillId] ?? 0) + 1;
   c.skillPoints--;
 
-  // Auto-bind the first active skill learned to a free hotbar slot.
+  // A skill just learned goes on a free hotbar slot. Only its first rank:
+  // a rank up on a skill the player took off the bar leaves it off.
   const def = SKILL_BY_ID[skillId];
-  if (def && def.targeting !== 'passive' && !c.hotbar.includes(skillId)) {
+  if (def && def.targeting !== 'passive' && c.skills[skillId] === 1 && c.primaryAttack !== skillId && !c.hotbar.includes(skillId)) {
     const free = c.hotbar.indexOf(null);
     if (free >= 0) c.hotbar[free] = skillId;
   }

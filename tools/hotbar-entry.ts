@@ -7,7 +7,7 @@
  * real repair against characters in every shape it can be handed and asserts the
  * two never overlap.
  */
-import { createCharacter, repairCharacter, setPrimaryAttack, setHotbarSlot } from '../src/sim/Character';
+import { allocateSkill, createCharacter, repairCharacter, setPrimaryAttack, setHotbarSlot } from '../src/sim/Character';
 import { streamFor } from '../src/core/RNG';
 
 const makeCharacter = (classId: string, name: string): ReturnType<typeof createCharacter> =>
@@ -109,6 +109,29 @@ for (const def of CLASSES) {
       primary: c.primaryAttack ?? null,
       hotbar: [...c.hotbar],
       overlap: !refused || (!!c.primaryAttack && c.hotbar.includes(c.primaryAttack)),
+    });
+  }
+
+  // 5. A skill taken off the bar stays off: through reloads, and through a
+  //    rank up. Loading used to put every ranked skill back on the bar.
+  {
+    const c = makeCharacter(def.id, `T${def.id}`);
+    for (const s of actives.slice(0, 3)) c.skills[s.id] = 3;
+    setPrimaryAttack(c, null);
+    const gone = actives[0]?.id ?? null;
+    for (let i = 0; i < c.hotbar.length; i++) c.hotbar[i] = null;
+    for (let i = 0; i < 3; i++) repairCharacter(c);
+    if (gone) {
+      c.skillPoints = 1;
+      allocateSkill(c, gone);
+      repairCharacter(c);
+    }
+    rows.push({
+      cls: def.id,
+      scenario: 'taken off the bar stays off',
+      primary: c.primaryAttack ?? null,
+      hotbar: [...c.hotbar],
+      overlap: !!gone && c.hotbar.includes(gone),
     });
   }
 }
