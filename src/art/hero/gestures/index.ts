@@ -8,5 +8,6 @@ import './rogue';
 import './ranger';
 import './revenant';
 import './shapeshifter';
+import './paladin';
 
 export { skillAction, releasesAt, strikesAt, hasGesture, gestureIds } from '../SkillActions';

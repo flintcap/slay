@@ -18,6 +18,8 @@ import { HERO_LOOKS } from '../src/art/hero/Looks';
 import { loadMeshCache } from '../src/art/hero/MeshCache';
 import { HeroAnimator } from '../src/art/hero/Animator';
 import { ACTION_NAMES, actionFor } from '../src/art/hero/Actions';
+// Every class's skill gestures, so `--actions=skill.<id>` can show them.
+import '../src/art/hero/gestures';
 import { holdItem } from '../src/art/hero/Hold';
 import type { Stance } from '../src/art/hero/Stances';
 import type { HeroModel } from '../src/art/hero/Hero';
