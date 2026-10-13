@@ -115,7 +115,7 @@ export const MOTIF_SHAPES = {
   sigils: { k: 'mark', kind: 'sigil', size: 0.8 },
   // Lightning and blades of light.
   arcs: { k: 'arc', width: 0.16 },
-  slashes: { k: 'slash', size: 1.0 },
+  slashes: { k: 'slash', size: 1.5 },
   // Particle bursts.
   'smoke clouds': { k: 'puff', emitter: 'smoke', scale: 0.8 },
   'dust clouds': { k: 'puff', emitter: 'dust', scale: 0.9 },

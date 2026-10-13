@@ -1799,7 +1799,7 @@ export class EffectSystem {
       this.solids.place(e.solid, p.x, p.y, p.z, _v1.x, _v1.y, _v1.z, e.t * e.style, len, len * (e.path === Path.Rise ? 0.9 : 1));
       if (first && e.path === Path.Rise && e.emitter) this.fx.burst(e.emitter, e.b.x, floorAt(e.b.x, e.b.z) + 0.1, e.b.z, { count: 4, scale: 0.5, school: e.school });
     } else {
-      if (first) e.rib = this.ribbons.start('swing', { school: e.school, color: e.color, life: 0.2, emit: e.school === 'physical' ? 0.85 : 1.1 });
+      if (first) e.rib = this.ribbons.start('swing', { school: e.school, color: e.color, life: 0.28, emit: e.school === 'physical' ? 1.05 : 1.2 });
       const a = e.half + e.speed * (1 - Math.pow(1 - k, 2));
       const c = Math.cos(a);
       const s = Math.sin(a);
