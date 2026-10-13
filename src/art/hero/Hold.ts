@@ -28,6 +28,9 @@ export function holdTurn(grip: string, slot: 'mainHand' | 'offHand'): THREE.Quat
   return q;
 }
 
+/** How far up the shaft the main hand takes a staff, as a share of its length. */
+const STAFF_HOLD = 0.33;
+
 /** Holds `model` in a hand socket with the grip turn; returns the node it hangs on. */
 export function holdItem(rig: HeroRig, slot: 'mainHand' | 'offHand', model: THREE.Object3D, grip: string): THREE.Object3D {
   const socket = rig.sockets[slot];
@@ -36,6 +39,17 @@ export function holdItem(rig: HeroRig, slot: 'mainHand' | 'offHand', model: THRE
   const node = new THREE.Object3D();
   node.name = `hold:${slot}`;
   node.quaternion.copy(holdTurn(grip, slot));
+  // A staff or spear is made with its grip near the butt. Held in both hands
+  // it is taken a third of the way up instead, so the two hands share the
+  // middle of the shaft and some of it shows below them.
+  if (grip === 'staff') {
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    if (!box.isEmpty()) {
+      const at = box.min.y + (box.max.y - box.min.y) * STAFF_HOLD;
+      if (at > 0) model.position.y -= at;
+    }
+  }
   node.add(model);
   socket.add(node);
   return node;
