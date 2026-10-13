@@ -24,6 +24,7 @@ import { getStatus, registerStatus, type StatusDef } from '../data/statuses';
 import { getSkill } from '../data/skills';
 import { effectiveSkillRank } from '../sim/Character';
 import { tickShifterFX } from '../fx/shifter/ShifterFX';
+import { SHIFTER_SELF_POWER } from '../data/shifterPower';
 
 /** A leap or a rush the hero is in the middle of (Pounce, Lunge, Overrun...). */
 interface Trip {
@@ -71,30 +72,6 @@ for (const f of FORMS) {
   };
   registerStatus(def);
 }
-
-/**
- * What each form gives, per stat: the form skill's `<key>` param at rank 1
- * and `<key>R` more per rank. `lifePct` is a share of the life you have as a
- * man; everything else is a stat delta as the sheet counts it.
- */
-const FORM_STATS: Readonly<Record<BeastForm, ReadonlyArray<[param: string, stat: StatKey | 'lifePct']>>> = {
-  cat: [
-    ['moveSpeed', 'moveSpeed'],
-    ['attackSpeed', 'attackSpeed'],
-    ['crit', 'critChance'],
-  ],
-  wolf: [
-    ['damage', 'enhancedDamage'],
-    ['leech', 'lifeSteal'],
-    ['attackRating', 'attackRating'],
-  ],
-  bear: [
-    ['life', 'lifePct'],
-    ['defense', 'enhancedDefense'],
-    ['dr', 'damageReduction'],
-    ['moveSpeed', 'moveSpeed'],
-  ],
-};
 
 /**
  * Passives that only count in their form: skill id, the stat, and how much
@@ -159,8 +136,9 @@ export class Shapeshift {
     const p = def?.params ?? {};
     const num = (k: string) => (typeof p[k] === 'number' ? (p[k] as number) : 0);
     const r = this.rankOf(form);
-    const raw: Partial<Record<StatKey | 'lifePct', number>> = {};
-    for (const [key, stat] of FORM_STATS[form]) raw[stat] = (raw[stat] ?? 0) + num(key) + num(`${key}R`) * (r - 1);
+    const raw: Partial<Record<StatKey | 'lifePct', number>> = { ...(SHIFTER_SELF_POWER[FORM_SKILL[form]]?.(r - 1, (k, d) => (typeof p[k] === 'number' ? (p[k] as number) : d)).mods ?? {}) };
+    // The bear's share of the man's life (no stat is a life percent).
+    if (form === 'bear') raw.lifePct = num('life') + num('lifeR') * (r - 1);
     const c = this.player.character;
     for (const fp of FORM_PASSIVES[form]) {
       const pr = c.skills[fp.skill] ? effectiveSkillRank(c, fp.skill, this.player.stats) : 0;
@@ -175,8 +153,7 @@ export class Shapeshift {
     }
     if (raw.lifePct) {
       // A share of the man's life: the sheet's life less what this form already gives.
-      const st = getStatus(FORM_STATUS[form]);
-      const given = this.player.status.has(FORM_STATUS[form]) ? (st?.mods?.life ?? 0) : 0;
+      const given = this.player.status.get(FORM_STATUS[form])?.mods?.life ?? 0;
       const man = Math.max(1, this.player.stats.life - given);
       out.life = Math.round((out.life ?? 0) + (man * raw.lifePct) / 100);
     }
@@ -210,11 +187,8 @@ export class Shapeshift {
     const key = JSON.stringify(mods);
     if (!fresh && this.given.get(form) === key) return;
     this.given.set(form, key);
-    // The container caches summed mods; take the status off and put it back on
-    // so the new numbers are read.
-    this.player.status.remove(FORM_STATUS[form]);
-    st.mods = mods;
-    this.player.applyStatus(FORM_STATUS[form], FOREVER);
+    // The application carries this rank's numbers in place of the def's.
+    this.player.applyStatus(FORM_STATUS[form], FOREVER, 1, 1, { mods });
   }
 
   /**

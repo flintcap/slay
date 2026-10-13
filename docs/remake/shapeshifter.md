@@ -49,14 +49,19 @@ Design notes
 
 ## Next up
 
-M2, in this order:
-1. `furMaterial()` and a claw material exported from `src/art/hero/HeroMaterials.ts`.
-2. `src/art/hero/forms/FormBody.ts`: put the `meshBeast` meshes, tail and eyes on the
-   hero, hide human body, gear and held models, set root scale and `animator.setForm`.
-3. `src/entities/Shapeshift.ts`: the Player's form, form statuses (`form.cat` /
-   `form.wolf` / `form.bear`), auto-shift in the `shift` case, weaponStyle rule.
-4. Form skills `catForm`, `wolfForm`, `bearForm`, change FX in `src/fx/shifter/`,
-   change sounds, `src/scenes/shifterDebug.ts`, `tools/shoot-shifter.mjs`.
+M2 to M5 code is in (forms, all 54 skills, handlers, statuses, rules, icons,
+rank power). Left, in this order:
+1. `src/scenes/shifterDebug.ts` (spread into the debug menu) and
+   `tools/shoot-shifter.mjs` (flock, port 4343): one browser look at the three
+   forms and a few skills. Then tick M2 to M5.
+2. M6: `src/art/hero/gestures/shapeshifter.ts`, one gesture per active (26),
+   imported by `gestures/index.ts`.
+3. M7: a cast and hit take per active in `tools/shifter-takes.mjs`, rows in
+   `src/audio/shifterSounds.ts` (callThePack needs a minion sound), then
+   `node tools/build-audio.mjs --only=skill.shift.`, then restore ASSETS.md
+   from HEAD and merge my rows back with `scratchpad/assets_merge.py`.
+4. M8: NPC lines, add shapeshifter to the curve and economy class lists,
+   balance, STARTING_SKILL_HINTS, check-unique green.
 
 ## Notes for resume
 
@@ -72,7 +77,11 @@ M2, in this order:
 - Form stances and basic blows are in `src/art/hero/forms/` (FormStances,
   FormActions), hooked by one line each into Stances.ts / Actions.ts;
   `Animator.setForm()` picks them. Beast meshes are `forms/BeastBody.ts`.
-- Checks that fail before my work too: curve (shadowblade, ranger at depth 12),
-  economy (warden at depth 20).
+- Checks that fail before my work too: curve (mage at 1/5/12, shadowblade and
+  ranger at 12), beats and menus (paladin), sweep (reassemble), town (mage gamble).
+- Rank power: buffs and the roar's curse are in `src/data/shifterPower.ts`,
+  spread into `SELF_POWER` / `FOE_POWER`. `RANK_ONLY=<my 26 actives>
+  node tools/check-rankpower.mjs` says all grow.
+- Uniqueness words: `src/fx/shifter/motifs.ts`, spread into `fx/SkillLooks.ts`.
 - Checks that fail until the trees are written: skilldepth (no synergies yet),
   unique (shapeshifter shows as pending).

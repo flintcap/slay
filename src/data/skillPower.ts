@@ -12,6 +12,7 @@
  * params. Pure data, no Three.js.
  */
 import type { Stats } from '../types';
+import { SHIFTER_FOE_POWER, SHIFTER_SELF_POWER } from './shifterPower';
 
 type Num = (key: string, d: number) => number;
 
@@ -148,6 +149,8 @@ export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
     absorbLifePct: n('ward', 15) + n('wardPerRank', 2) * k,
     mods: { damageReduction: r1(n('dr', 5) + n('drPerRank', 0.5) * k) },
   }),
+  // Shapeshifter (`data/shifterPower.ts`)
+  ...SHIFTER_SELF_POWER,
 };
 
 export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower> = {
@@ -220,6 +223,8 @@ export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower> = {
   consecratedGround: (k, n) => ({
     mods: { moveSpeed: -r1(n('slow', 20) + n('slowPerRank', 1.5) * k), attackSpeed: -r1(n('drag', 5) + n('dragPerRank', 0.5) * k) },
   }),
+  // Shapeshifter (`data/shifterPower.ts`)
+  ...SHIFTER_FOE_POWER,
 };
 
 /**

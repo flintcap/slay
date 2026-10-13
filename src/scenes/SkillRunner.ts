@@ -1493,7 +1493,7 @@ export class SkillRunner {
 
         // The Shapeshifter's skills (scenes/ShifterRunner.ts).
         case 'shift': {
-          runShift(this.shiftKit(player, ctx, enemies, boss, type, sound.hit, def, num, color), {
+          runShift(this.shiftKit(player, ctx, enemies, boss, type, sound.hit, def, num, color, rank), {
             def, rank, player, target, dir, origin, ctx, type, color, clip, attackTime, castTime, makePacket, num, hitAt,
           });
           break;
@@ -3160,6 +3160,7 @@ export class SkillRunner {
     def: { id: string; name: string; params?: Record<string, number | number[] | string> },
     num: (k: string, d: number) => number,
     color: number,
+    rank: number,
   ): ShiftKit {
     return {
       effects: this.effects,
@@ -3203,6 +3204,7 @@ export class SkillRunner {
       },
       wallStop: (from, dir, max, radius) => this.wallStop(from, dir, max, ctx, radius),
       statuses: (riderOnly) => this.statusFor(def, num, color, riderOnly),
+      buff: () => this.applyBuff(player, def as { id: string; name: string; params?: Record<string, number | number[]> }, rank, num, color),
       raise: (x, z, o) => {
         this.caster = player;
         this.addTurret(x, z, Infinity, o.rate, o.range, o.packet, type, color, true, def.id, o.life, false);

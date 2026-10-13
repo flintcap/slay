@@ -767,10 +767,12 @@ export const SHIFTER_SYNERGIES: SynergyLink[] = [
   syn('worry', 'lunge', 4),
   syn('goForTheThroat', 'worry', 5),
   syn('callThePack', 'huntingHowl', 6),
+  syn('worry', 'snap', 4),
   // Claw
   syn('maul', 'reapingSwipe', 4),
   syn('hammerfall', 'maul', 5),
   syn('overrun', 'hammerfall', 4),
   syn('reapingSwipe', 'maul', 5),
   syn('bearHug', 'rattlingRoar', 5),
+  syn('bearHug', 'maul', 4),
 ];

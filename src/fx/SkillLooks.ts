@@ -11,6 +11,7 @@
  */
 
 import type { MotifShape, MotifMotion } from './Motifs';
+import { SHIFTER_DRAWING, SHIFTER_MOTIFS } from './shifter/motifs';
 
 /** What each effect family's handler draws, in plain words. Mirrors `SkillRunner.cast`. */
 export const FAMILY_DRAWING: Readonly<Record<string, string>> = {
@@ -26,6 +27,7 @@ export const FAMILY_DRAWING: Readonly<Record<string, string>> = {
   curse: 'curse ring', debuff: 'curse ring', apply: 'curse ring',
   channel: 'tether beam', wave: 'ground wave', leap: 'leap landing', teleport: 'blink',
   detonate: 'explosion', corpse: 'explosion', point: 'explosion', aoe: 'explosion', capstone: 'explosion',
+  ...SHIFTER_DRAWING,
 };
 
 /** Where a motif is drawn. */
@@ -204,6 +206,7 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   suppressing: m('arrows', 'line'),
   explosiveTip: m('flares', 'shatter'),
   darkenTheSky: m('arrows', 'fall'),
+  ...SHIFTER_MOTIFS,
 };
 
 /** Families drawn at the caster, at the point aimed at, or just in front. */

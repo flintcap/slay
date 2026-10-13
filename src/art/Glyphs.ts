@@ -44,6 +44,7 @@ import {
   starP,
 } from './Paint';
 import { PALADIN_GLYPHS } from './PaladinGlyphs';
+import { SHIFTER_GLYPHS } from './ShifterGlyphs';
 
 export interface Tone {
   /** White-hot core. */
@@ -1515,6 +1516,7 @@ export const GLYPHS: Record<string, Glyph> = {
   swirl, tornado, ghost, wing, rune, nova, beam, wave, hourglass, lungs, coin, brand, anchor, wilt, mute, lens,
   feather, link, gear, bubble, rift, pool, firechain, ward, split, hexshield, adapt, lance,
   ...PALADIN_GLYPHS,
+  ...SHIFTER_GLYPHS,
 };
 
 export { obj as paintObject, energy as paintEnergy, ray as paintRay };

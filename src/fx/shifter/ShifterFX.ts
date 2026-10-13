@@ -12,7 +12,6 @@
 import * as THREE from 'three';
 import type { EffectSystem } from '../Effects';
 import type { RibbonHandle } from '../kit/Ribbons';
-import type { SkillMotif } from '../SkillLooks';
 import type { BeastForm } from '../../art/hero/forms/BeastBody';
 import { events } from '../../core/Events';
 import './emitters';
@@ -457,41 +456,4 @@ export const ClawFX = {
     });
     fx.flash(p.x, 3.5, p.z, 0xfff0c0, 7, 9, 0.6);
   },
-};
-
-// ---------------------------------------------------------------------------
-// For the uniqueness check
-// ---------------------------------------------------------------------------
-
-/** What the `shift` family draws on its own, before a skill's motif. */
-export const SHIFTER_DRAWING: Readonly<Record<string, string>> = { shift: 'beast blow' };
-
-/** Each Shapeshifter active's own drawing (see `SkillMotif`). */
-export const SHIFTER_MOTIFS: Readonly<Record<string, SkillMotif>> = {
-  catForm: { shape: 'black hair and shadow', motion: 'pulls in, then bursts off the body' },
-  wolfForm: { shape: 'grey hair and dust', motion: 'bursts out in a low ring' },
-  bearForm: { shape: 'dust, stone and brown hair', motion: 'thumped out of the floor' },
-  rake: { shape: 'three parallel claw scores', motion: 'raked across, three times' },
-  pounce: { shape: 'arcing shadow streak', motion: 'pounced down, landing flat' },
-  slink: { shape: 'pool of shadow at the feet', motion: 'seeps out and trails' },
-  hamstring: { shape: 'low claw score at the knees', motion: 'swept along the floor' },
-  throatTear: { shape: 'closing jaw arcs and a gush', motion: 'clamp shut, blood thrown up' },
-  killingDance: { shape: 'ring of shadow afterimages', motion: 'circles the target' },
-  nightHunt: { shape: 'shroud of rising dark', motion: 'rises off the body and trails' },
-  snap: { shape: 'small snapping jaw and a glint', motion: 'snaps shut' },
-  huntingHowl: { shape: 'gold rings and rising motes', motion: 'pulse out across the floor' },
-  lunge: { shape: 'straight dust streak', motion: 'rushes forward' },
-  worry: { shape: 'blood flicks side to side', motion: 'shaken' },
-  callThePack: { shape: 'eyes in a lying fog', motion: 'gather and open' },
-  bloodHowl: { shape: 'red mist and red ring', motion: 'drawn inward' },
-  goForTheThroat: { shape: 'upward blood fountain', motion: 'springs up' },
-  bloodmoon: { shape: 'red moon disc', motion: 'hangs overhead and rains red' },
-  maul: { shape: 'wide four-claw arc', motion: 'sweeps the front' },
-  rattlingRoar: { shape: 'breath blast and dust shove', motion: 'blasts out' },
-  hammerfall: { shape: 'twin paw craters and cracks', motion: 'pounded down' },
-  bristle: { shape: 'spines out of the pelt', motion: 'stand out, again and again' },
-  overrun: { shape: 'dust wake furrow', motion: 'ploughs through' },
-  reapingSwipe: { shape: 'full circle claw ring', motion: 'spins round' },
-  bearHug: { shape: 'crushing grit and cracking bone', motion: 'squeezes in' },
-  ursaMajor: { shape: 'seven-star constellation', motion: 'lights up overhead' },
 };
