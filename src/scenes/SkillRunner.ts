@@ -25,7 +25,7 @@ import { MONSTERS } from '../data/monsters';
 import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
-import { releasesAt, skillAction } from '../art/hero/SkillActions';
+import { releasesAt, skillAction } from '../art/hero/gestures';
 
 /**
  * What a summon actually looks like.
