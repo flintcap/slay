@@ -2581,6 +2581,73 @@
   "wwoosh",
   "moan"
  ],
+ "sounds/skill.pal.anvil/01.ogg": [
+  "battle",
+  "rsp"
+ ],
+ "sounds/skill.pal.anvilHit/01.ogg": [
+  "mw",
+  "ki"
+ ],
+ "sounds/skill.pal.bar/01.ogg": [
+  "shield",
+  "kr",
+  "r80"
+ ],
+ "sounds/skill.pal.censer/01.ogg": [
+  "r80",
+  "swish",
+  "crackle"
+ ],
+ "sounds/skill.pal.censerHit/01.ogg": [
+  "ignite",
+  "clink",
+  "steam"
+ ],
+ "sounds/skill.pal.crack/01.ogg": [
+  "swish",
+  "kr"
+ ],
+ "sounds/skill.pal.crackHit/01.ogg": [
+  "shield",
+  "clink",
+  "bells"
+ ],
+ "sounds/skill.pal.door/01.ogg": [
+  "rsp",
+  "kr"
+ ],
+ "sounds/skill.pal.doorHit/01.ogg": [
+  "mw",
+  "shield",
+  "ki"
+ ],
+ "sounds/skill.pal.knell/01.ogg": [
+  "swish"
+ ],
+ "sounds/skill.pal.knellHit/01.ogg": [
+  "c100",
+  "ki"
+ ],
+ "sounds/skill.pal.maul/01.ogg": [
+  "battle",
+  "kr"
+ ],
+ "sounds/skill.pal.maulHit/01.ogg": [
+  "ki",
+  "mw",
+  "bfh"
+ ],
+ "sounds/skill.pal.relic/01.ogg": [
+  "kr",
+  "swish",
+  "rsp"
+ ],
+ "sounds/skill.pal.relicHit/01.ogg": [
+  "shield",
+  "bells",
+  "clink"
+ ],
  "sounds/skill.pal.toll/01.ogg": [
   "swish",
   "rsp"
@@ -2588,6 +2655,15 @@
  "sounds/skill.pal.tollHit/01.ogg": [
   "ki",
   "clink"
+ ],
+ "sounds/skill.pal.verdict/01.ogg": [
+  "chant",
+  "battle"
+ ],
+ "sounds/skill.pal.verdictHit/01.ogg": [
+  "ki",
+  "rumble",
+  "bfh"
  ],
  "sounds/skill.poison.burst/01.ogg": [
   "water",
