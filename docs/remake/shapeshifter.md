@@ -53,13 +53,15 @@ M1 to M7 are in and pushed. M8 so far: camp lines (Hesk, Kale, Vell, Marrow,
 Wenna), STARTING_SKILL_HINTS, shapeshifter in the curve, hero sheet and the
 strict list of check-unique. Curve passes every depth (`node tools/check-curve.mjs
 --classes=shapeshifter`), rank power says all grow, unique and skilldepth green.
+In-game skill check: all 26 actives cast and work (`node tools/check-skills.mjs
+--classes=shapeshifter --port=4343`; it exits 1 at the end only because it
+writes `shots/skill-audit.json` and `shots/` may not exist). Form and skill
+shots look right; they showed the bear's life share compounding (fixed in
+Shapeshift.modsFor and Ursa Major).
 Left, in this order:
-1. Read `scratchpad/shoot.log` (tools/shoot-shifter.mjs, port 4343, flock) and
-   look at the form and skill shots; fix what looks wrong.
-2. Read `scratchpad/skills.log` (`node tools/check-skills.mjs
-   --classes=shapeshifter --port=4343`, flock); every active must report an
-   effect. Fix, then rerun once.
-3. Tick M8, then finish: Status done, Handover, push.
+1. Read `scratchpad/shoot2.log` (`--forms=0 --skills=maul,ursaMajor,worry,hammerfall`):
+   bear life should read about 1.4x the man's, not 25x.
+2. Tick M8, then finish: Status done, Handover, push.
 
 ## Notes for resume
 
@@ -81,5 +83,4 @@ Left, in this order:
   spread into `SELF_POWER` / `FOE_POWER`. `RANK_ONLY=<my 26 actives>
   node tools/check-rankpower.mjs` says all grow.
 - Uniqueness words: `src/fx/shifter/motifs.ts`, spread into `fx/SkillLooks.ts`.
-- Checks that fail until the trees are written: skilldepth (no synergies yet),
-  unique (shapeshifter shows as pending).
+- skilldepth and unique pass; shapeshifter is in check-unique's strict list.
