@@ -187,3 +187,27 @@ export function buildItem(visual: ItemVisual, rarity: ItemRarity, ident?: ItemId
   group.userData.anchors = P.anchors;
   return { group, look, family };
 }
+
+/**
+ * Only the features of an item (halos, wings, chains, horns, its emblem),
+ * built on the anchors its base leaves, in the item's own space. Worn armour
+ * grows its base on the body so it bends with it, then wears these as they
+ * are on the icon. Null when the piece has none.
+ */
+export function buildItemFeatures(visual: ItemVisual, rarity: ItemRarity, ident?: ItemIdentity): THREE.Group | null {
+  const look = itemLook({ baseId: ident?.baseId ?? visual.shape, rarity, uniqueId: ident?.uniqueId, setId: ident?.setId }, visual);
+  if (!look.features.length && !look.emblem) return null;
+  const family = familyOf(look);
+  const base = new Parts(look);
+  const F = new Parts(look);
+  try {
+    FAMILY_BUILDERS[family]?.(base);
+    Object.assign(F.anchors, base.anchors);
+    addFeatures(F);
+  } catch {
+    return null;
+  }
+  const group = F.build(`features:${look.cut}`);
+  return group.children.length ? group : null;
+}
+

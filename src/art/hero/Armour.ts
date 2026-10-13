@@ -27,6 +27,7 @@ import { helm } from './ArmourHead';
 import { belt, boots, gloves } from './ArmourLimbs';
 import { dress } from './ArmourFeatures';
 import { glowingTwin } from './HeroMaterials';
+import { iconFeatures, iconHelm, wearsIcon } from './ArmourIcon';
 
 /**
  * Every part's triangle target is scaled by this: a fully dressed hero must
@@ -80,8 +81,10 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
   else if (slot === 'gloves') anchors = gloves(k);
   else if (slot === 'boots') anchors = boots(k);
   else anchors = belt(k);
-  dress(k, anchors);
-  const parts = k.finish();
+  // Sets and uniques wear their icon's features (a helm, its whole icon) in place of the body's own.
+  const icon = wearsIcon(item);
+  if (!icon) dress(k, anchors);
+  const parts = icon && slot === 'helm' ? [] : k.finish();
 
   const group = new THREE.Group();
   group.name = `worn:${slot}`;
@@ -109,6 +112,15 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
     mesh.userData.baseMaterial = mat;
     group.add(mesh);
     mesh.bind(hero.rig.skeleton, new THREE.Matrix4());
+  }
+  if (icon) {
+    for (const mesh of slot === 'helm' ? iconHelm(hero, item, visual) : iconFeatures(hero, slot, item, visual)) {
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      // So a set's glow lights the icon's metal as it lights a trim.
+      mesh.userData.armourMat = (mat.metalness ?? 0) > 0.5 ? 'trim' : 'main';
+      mesh.userData.baseMaterial = mat;
+      group.add(mesh);
+    }
   }
   if (slot === 'chest' && k.cape > 0) {
     const cape = buildCape(hero, k.mat('banner'), group, k.cape);

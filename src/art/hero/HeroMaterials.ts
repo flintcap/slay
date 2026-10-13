@@ -429,15 +429,23 @@ const GEAR_METRES: Record<string, number> = { metal: 0.45, leather: 0.3, cloth: 
  */
 export function gearMaterial(key: string, opts: { tint?: number; metalness?: number; roughness?: number } = {}): THREE.MeshStandardMaterial {
   const [pal, inlineTint] = key.split('|');
-  const tint = opts.tint ?? (inlineTint ? Number(inlineTint) : undefined);
-  return shared(`gear|${pal}|${tint ?? ''}|${opts.metalness ?? ''}|${opts.roughness ?? ''}`, () => {
+  const inline = inlineTint ? Number(inlineTint) : undefined;
+  return shared(`gear|${pal}|${inline ?? ''}|${opts.tint ?? ''}|${opts.metalness ?? ''}|${opts.roughness ?? ''}`, () => {
     const def = resolveSurface(pal!);
     const info: TextureSetInfo = TEXTURE_SETS[def.set];
     const tex = setTextures(def.set);
     const avg = new THREE.Color(info.avg);
     const lum = Math.max(0.05, 0.2126 * avg.r + 0.7152 * avg.g + 0.0722 * avg.b);
     const color = new THREE.Color(def.base ?? 0xffffff);
-    if (tint !== undefined) color.multiply(new THREE.Color(tint));
+    // The same rule as the item icons (`itemSurface`): on a surface with its
+    // own base colour an inline tint IS the colour, on the rest it multiplies.
+    // Multiplying both ways put a pink snakeskin robe on the body as near
+    // black while its icon stayed pink.
+    if (inline !== undefined && Number.isFinite(inline)) {
+      if (def.base !== undefined) color.set(inline);
+      else color.multiply(new THREE.Color(inline));
+    }
+    if (opts.tint !== undefined) color.multiply(new THREE.Color(opts.tint));
     // Worn metal keeps a share of diffuse light: a dungeon has little for a
     // mirror to reflect, and full metal reads as black.
     const metal = opts.metalness ?? (def.metal > 0.5 ? 0.6 : def.metal);
