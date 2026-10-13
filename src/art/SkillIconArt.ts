@@ -166,6 +166,12 @@ const ICON_MAP: Record<string, string> = {
   'answer-steel': 'sword^rise', confession: 'sword^speed', 'whetted-faith': 'sword^aura', crosswise: 'dagger:1^burst',
   'mercy-stroke': 'hourglass^impact', 'fifth-verse': 'scroll^rise', sevenfold: 'dagger:2^speed', 'red-rosary': 'rosary:1',
   'last-rites': 'sword^burst', 'saints-reach': 'lance^rise',
+  // Paladin: Aura.
+  'tallow-light': 'candle^aura', liturgy: 'scroll:2', 'iron-vigil': 'rood:2^wall', 'smouldering-rood': 'rood:1^aura',
+  anoint: 'chalice^rise', censure: 'writ', 'censer-smoke': 'censer^field', 'wide-wick': 'candle^nova',
+  fervour: 'candle:2^speed', 'tolling-bell': 'bell^nova', 'penitent-ground': 'rood^field', 'martyrs-vow': 'heart^wall',
+  'writ-of-ash': 'writ:1', vespers: 'moon^aura', 'consecrated-ground': 'candle^field', 'twin-wick': 'candle:1',
+  'last-hour': 'bell:1^rain', 'ember-saint': 'rood:1^rise',
   'nova-blood': 'drop^nova', undying: 'heart^aura', tether: 'chain', covenant: 'rune', 'second-death': 'skull^rise',
   scythe: 'scythe^spin', 'mastery-grave': 'scythe^mastery',
   // Ranger
@@ -501,7 +507,7 @@ const STATUS_MAP: Record<string, string> = {
   swirl: 'swirl', target: 'target', tower: 'tower', vial: 'vial', vine: 'leaf:1', void: 'rift', ward: 'shield', wilt: 'wilt',
   wing: 'wing:1', wisp: 'ghost',
   // Paladin.
-  bell: 'bell:2', censer: 'censer',
+  bell: 'bell:2', censer: 'censer', candle: 'candle', rood: 'rood', writ: 'writ',
 };
 
 /**

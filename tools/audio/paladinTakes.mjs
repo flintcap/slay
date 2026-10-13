@@ -76,4 +76,32 @@ export const PALADIN_TAKES = {
   // Last Rites: a low voice and a cloak in the dark, then the blade through and a small bell.
   'skill.pal.rites': x('chant', 'chant18.wav', { ss: 1, t: 1.0, rate: 0.7, fadeIn: 0.1, fadeOut: 0.4, gain: -6, mix: [x('kr', 'cloth4.ogg', { rate: 0.8, gain: -4 })] }),
   'skill.pal.ritesHit': x('sword20', SW + 'sword.10.ogg', { rate: 0.7, mix: [x('ki', 'impactPunch_heavy_004.ogg', { rate: 0.7, gain: -2 }), x('c100', 'bell_02.ogg', { rate: 0.55, gain: -8 })] }),
+  // --- Aura ------------------------------------------------------------------
+  // Tallow Light: a match struck, the wick catching, a soft voice under a vault.
+  'skill.pal.tallow': x('tiny', 'match-light-01.wav', { mix: [x('flame', 'flame.ogg', { delay: 180, t: 0.8, fadeOut: 0.4, gain: -9 }), x('chant', 'ethereal_chant_Subclip 03_03.wav', { delay: 150, t: 1.1, rate: 0.8, fadeIn: 0.15, fadeOut: 0.5, gain: -12 })] }),
+  // Iron Vigil: a knee in plate on stone, mail settling, a lighter at a wick.
+  'skill.pal.vigil': x('ki', 'impactPlate_medium_002.ogg', { rate: 0.7, mix: [x('rsp', 'inventory/chainmail1.wav', { rate: 0.7, gain: -6 }), x('tiny', 'lighter-light-01.wav', { delay: 260, gain: -5 }), x('chant', 'chant9.wav', { ss: 0.2, t: 1.0, rate: 0.55, fadeIn: 0.2, fadeOut: 0.4, gain: -11 })] }),
+  // Smouldering Rood: old wood cracking as it takes the fire.
+  'skill.pal.rood': x('mw', 'wood_cracking_02.ogg', { rate: 0.75, mix: [x('r80', 'spell_fire_03.ogg', { rate: 0.7, delay: 120, gain: -4 }), x('crackle', 'fire-1.ogg', { ss: 1.0, t: 1.0, delay: 200, fadeOut: 0.4, gain: -6 })] }),
+  // Anoint: a clay flask uncorked, oil poured, a breath of a hymn.
+  'skill.pal.anoint': x('tiny', 'bottle-clay-uncork-01.wav', { mix: [x('tiny', 'water-pour-01.wav', { delay: 160, rate: 0.7, t: 0.7, fadeOut: 0.3, gain: -4 }), x('chant', 'ethereal_chant_Subclip 11_11.wav', { t: 0.9, rate: 0.9, fadeIn: 0.1, fadeOut: 0.4, gain: -11 })] }),
+  // Censure: a page torn out and a book slammed, a voice naming the sin.
+  'skill.pal.censure': x('tiny', 'cover-paper-tear-01.wav', { rate: 0.8, mix: [x('kr', 'bookClose.ogg', { rate: 0.8, delay: 90, gain: -3 }), x('chant', 'chant14.wav', { ss: 0.3, t: 0.8, rate: 0.65, fadeOut: 0.3, gain: -9 })] }),
+  'skill.pal.censureHit': x('mw', 'wood_hammer_01.ogg', { rate: 0.8, mix: [x('clink', 'thud3.wav', { rate: 0.7, gain: -4 }), x('steam', 'steam hisses - Marker #4.wav', { t: 0.4, fadeOut: 0.2, gain: -12 })] }),
+  // Censer Smoke: the censer shaken on its chain, thick smoke breathed out.
+  'skill.pal.smoke': x('r80', 'chain_02.ogg', { rate: 0.75, mix: [x('gbreath', 'ghostbreath.flac', { t: 1.1, rate: 0.8, fadeIn: 0.1, fadeOut: 0.5, gain: -6 }), x('steam', 'steam hisses - Marker #1.wav', { t: 0.8, lp: 1500, fadeOut: 0.4, gain: -10 })] }),
+  // Fervour: the heart going fast, a match flaring, the chant at a run.
+  'skill.pal.fervour': x('heart', 'heartbeat_fast_0.wav', { t: 1.0, fadeOut: 0.3, gain: -3, mix: [x('tiny', 'match-light-01.wav', { rate: 1.3, gain: -6 }), x('chant', 'chant17.wav', { ss: 0.1, t: 0.9, rate: 1.1, fadeIn: 0.05, fadeOut: 0.3, gain: -9 })] }),
+  // Tolling Bell: a yoke creaking as the bell is hung; each toll a deep tower bell.
+  'skill.pal.bell': x('kr', 'creak3.ogg', { rate: 0.7, mix: [x('r80', 'chain_01.ogg', { rate: 0.6, gain: -6 }), x('c100', 'bell_02.ogg', { rate: 0.7, delay: 200, t: 1.2, fadeOut: 0.6, gain: -8 })] }),
+  'skill.pal.bellHit': x('c100', 'gong_01.ogg', { rate: 0.7, t: 2.0, fadeOut: 1.0, mix: [x('ki', 'impactBell_heavy_003.ogg', { rate: 0.5, gain: -3 })] }),
+  // Martyr's Vow: a fist on a breastplate, a slow heart, a vow sung low.
+  'skill.pal.vow': x('ki', 'impactPlate_heavy_000.ogg', { rate: 0.85, mix: [x('heart', 'heartbeat_slow_0.wav', { delay: 100, t: 1.2, fadeOut: 0.4, gain: -6 }), x('chant', 'ethereal_chant_Subclip 17_17.wav', { t: 1.2, rate: 0.7, fadeIn: 0.2, fadeOut: 0.5, gain: -10 })] }),
+  // Writ of Ash: a writ unrolled, its paper rattling, catching at the corner.
+  'skill.pal.writ': x('kr', 'bookOpen.ogg', { rate: 0.85, mix: [x('c100', 'paper_02.ogg', { rate: 0.8, delay: 80, gain: -4 }), x('ignite', 'ignition.flac', { delay: 250, t: 0.7, rate: 1.2, fadeOut: 0.3, gain: -8 })] }),
+  // Consecrated Ground: a palm on cold flagstone and a choir rising out of it.
+  'skill.pal.ground': x('r80', 'stones_02.ogg', { rate: 0.7, mix: [x('chant', 'ethereal_chant_Subclip 06_06.wav', { t: 1.4, rate: 0.75, fadeIn: 0.2, fadeOut: 0.6, gain: -7 }), x('c100b', 'sfx100v2_air_01.ogg', { t: 0.8, lp: 1500, gain: -10 })] }),
+  // The Last Hour: a chain running out far overhead, air moving, a voice.
+  'skill.pal.hour': x('r80', 'chain_03.ogg', { rate: 0.55, mix: [x('c100b', 'sfx100v2_air_03.ogg', { rate: 0.6, lp: 1200, delay: 200, gain: -4 }), x('chant', 'chant21.wav', { ss: 0.2, t: 1.2, rate: 0.5, fadeIn: 0.1, fadeOut: 0.5, gain: -8 })] }),
+  'skill.pal.hourHit': x('ki', 'impactBell_heavy_000.ogg', { rate: 0.35, t: 2.4, fadeOut: 1.2, mix: [x('mw', 'metal_falling_02.ogg', { rate: 0.6, gain: -2 }), x('bfh', 'bfh1_rock_hit_01.ogg', { rate: 0.5, gain: -4 }), x('c100', 'gong_02.ogg', { rate: 0.6, t: 1.8, fadeOut: 0.9, gain: -6 })] }),
 };

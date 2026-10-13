@@ -29,6 +29,7 @@ import { damageMultiplier } from '../sim/Passives';
 import { releasesAt, skillAction } from '../art/hero/gestures';
 import { runShift, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteHost } from './paladin/Rites';
+import { castVigil, snuffVigil, tickVigils, type VigilHost } from './paladin/Vigils';
 import { SKILL_MOTIFS, motifAt } from '../fx/SkillLooks';
 
 /**
@@ -620,7 +621,16 @@ export class SkillRunner {
       sound: (id, x, z) => { if (id) audio.play(id, { x, z }); },
       clear: (from, dir, max, ctx) => this.wallStop(from, dir, max, ctx, 0.5),
     };
+    this.vigilHost = {
+      ...this.riteHost,
+      area: (centre, radius, packet, ctx, enemies, boss, kind) => this.areaDamage(centre, radius, packet, ctx, enemies, boss, kind),
+    };
   }
+
+  /** What the Paladin's Aura skills borrow from the runner (`paladin/Vigils.ts`). */
+  private readonly vigilHost: VigilHost;
+  /** The hero whose vigils burn between presses, set by the scene. */
+  keeper: Player | null = null;
 
   /** What the Paladin's weapon skills borrow from the runner (`paladin/Rites.ts`). */
   private readonly riteHost: RiteHost;
@@ -770,6 +780,8 @@ export class SkillRunner {
       audio.play('ui.error');
       return false;
     }
+    // A burning vigil pressed again is put out, free (paladin/Vigils.ts).
+    if (snuffVigil(def, player)) return true;
 
     const cost = def.manaCost ? def.manaCost(rank) : 0;
     if (cost > 0 && !player.spendMana(cost)) {
@@ -1490,6 +1502,15 @@ export class SkillRunner {
           castRite(this.riteHost, {
             def, rank, player, aim: target.clone().setY(0), ctx, enemies, boss,
             packet: makePacket, num, school, color, attackTime, hitSound: sound.hit,
+          });
+          break;
+        }
+
+        // The Paladin's auras, vows and censures (paladin/Vigils.ts).
+        case 'vigil': {
+          castVigil(this.vigilHost, {
+            def, rank, player, aim: target.clone().setY(0), ctx, enemies, boss,
+            packet: makePacket, num, school, color, attackTime, castTime, hitSound: sound.hit,
           });
           break;
         }
@@ -2661,6 +2682,8 @@ export class SkillRunner {
       }
     }
     this.spreadTick(dt, live.ctx, live.enemies, live.boss);
+    const keeper = this.caster ?? this.keeper;
+    if (keeper) tickVigils(this.vigilHost, keeper, dt, live);
     const { ctx, enemies, boss } = live;
 
     // How hot the fight is, for the score: monsters awake and near, weighted

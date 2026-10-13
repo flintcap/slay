@@ -429,6 +429,7 @@ export class DungeonScene extends GameScene {
 
     this.run = generateRun(depth, seed, character.classId);
     this.player = new Player(character, seed);
+    this.skills.keeper = this.player;
     this.scene.add(this.player.root);
     this.body.bindHero(this.player, () => this.skills.swingSchool, () => this.skills.releaseSchool);
     this.body.trackList(this.player.root, this.player.status, { height: 1.8, radius: 0.38, lit: true });

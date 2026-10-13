@@ -2581,6 +2581,10 @@
   "wwoosh",
   "moan"
  ],
+ "sounds/skill.pal.anoint/01.ogg": [
+  "tiny",
+  "chant"
+ ],
  "sounds/skill.pal.anvil/01.ogg": [
   "battle",
   "rsp"
@@ -2594,6 +2598,15 @@
   "kr",
   "r80"
  ],
+ "sounds/skill.pal.bell/01.ogg": [
+  "kr",
+  "r80",
+  "c100"
+ ],
+ "sounds/skill.pal.bellHit/01.ogg": [
+  "c100",
+  "ki"
+ ],
  "sounds/skill.pal.censer/01.ogg": [
   "r80",
   "swish",
@@ -2601,6 +2614,16 @@
  ],
  "sounds/skill.pal.censerHit/01.ogg": [
   "ignite",
+  "clink",
+  "steam"
+ ],
+ "sounds/skill.pal.censure/01.ogg": [
+  "tiny",
+  "kr",
+  "chant"
+ ],
+ "sounds/skill.pal.censureHit/01.ogg": [
+  "mw",
   "clink",
   "steam"
  ],
@@ -2646,6 +2669,27 @@
  "sounds/skill.pal.feintHit/01.ogg": [
   "sword20",
   "ki"
+ ],
+ "sounds/skill.pal.fervour/01.ogg": [
+  "heart",
+  "tiny",
+  "chant"
+ ],
+ "sounds/skill.pal.ground/01.ogg": [
+  "r80",
+  "chant",
+  "c100b"
+ ],
+ "sounds/skill.pal.hour/01.ogg": [
+  "r80",
+  "c100b",
+  "chant"
+ ],
+ "sounds/skill.pal.hourHit/01.ogg": [
+  "ki",
+  "mw",
+  "bfh",
+  "c100"
  ],
  "sounds/skill.pal.knell/01.ogg": [
   "swish"
@@ -2708,6 +2752,11 @@
   "ki",
   "c100"
  ],
+ "sounds/skill.pal.rood/01.ogg": [
+  "mw",
+  "r80",
+  "crackle"
+ ],
  "sounds/skill.pal.seven/01.ogg": [
   "melee3",
   "swish"
@@ -2715,6 +2764,16 @@
  "sounds/skill.pal.sevenHit/01.ogg": [
   "r80",
   "ki"
+ ],
+ "sounds/skill.pal.smoke/01.ogg": [
+  "r80",
+  "gbreath",
+  "steam"
+ ],
+ "sounds/skill.pal.tallow/01.ogg": [
+  "tiny",
+  "flame",
+  "chant"
  ],
  "sounds/skill.pal.toll/01.ogg": [
   "swish",
@@ -2748,6 +2807,22 @@
   "ki",
   "rumble",
   "bfh"
+ ],
+ "sounds/skill.pal.vigil/01.ogg": [
+  "ki",
+  "rsp",
+  "tiny",
+  "chant"
+ ],
+ "sounds/skill.pal.vow/01.ogg": [
+  "ki",
+  "heart",
+  "chant"
+ ],
+ "sounds/skill.pal.writ/01.ogg": [
+  "kr",
+  "c100",
+  "ignite"
  ],
  "sounds/skill.poison.burst/01.ogg": [
   "water",

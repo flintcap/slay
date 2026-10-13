@@ -11,6 +11,9 @@
  *   censer  a pierced censer on its chain, smoking. v1 swung.
  *   scroll  a scorched parchment with lines of text. v1 a blade through it, v2 burning.
  *   rosary  a loop of dark beads with an iron cross. v1 dripping.
+ *   candle  a tallow candle on a pricket. v1 two (twin wick), v2 guttering.
+ *   rood    a wooden rood on a cairn. v1 smouldering, v2 iron-bound in a ring of nails.
+ *   writ    a folded writ under a wax seal. v1 burning from the corner.
  */
 import type { Glyph, Tone } from './Glyphs';
 import {
@@ -285,4 +288,183 @@ const rosary: Glyph = (x, t, v) => {
   glint(x, 50, 26, 4, lift(t.core, 0.4), 0.7);
 };
 
-export const PALADIN_GLYPHS: Record<string, Glyph> = { mace, bell, censer, scroll, rosary };
+// ---------------------------------------------------------------------------
+// Candle
+// ---------------------------------------------------------------------------
+
+const WAX = mat([0x2a2216, 0x6a5a3e, 0xa8946a, 0xd8c69c, 0xf6ead0], 0, 'fine', 0.3);
+
+/** A teardrop flame standing on (cx, top), `h` tall. */
+function flameAt(x: Ctx, t: Tone, cx: number, top: number, h: number, lean = 0): void {
+  glow(x, cx, top - h * 0.45, h * 1.6, t.glow, 0.75);
+  const f = smoothP([[cx + lean, top - h], [cx + h * 0.32, top - h * 0.35], [cx + h * 0.22, top], [cx - h * 0.22, top], [cx - h * 0.32, top - h * 0.35]], 0.45);
+  x.save();
+  x.fillStyle = css(t.glow, 0.9);
+  x.shadowColor = css(t.glow, 0.95);
+  x.shadowBlur = 12;
+  x.fill(f);
+  x.restore();
+  const core = smoothP([[cx + lean * 0.5, top - h * 0.6], [cx + h * 0.12, top - h * 0.2], [cx, top], [cx - h * 0.12, top - h * 0.2]], 0.45);
+  x.save();
+  x.fillStyle = css(t.core, 1);
+  x.fill(core);
+  x.restore();
+}
+
+/** One tallow candle on an iron pricket, its foot at (cx, foot). */
+function candleAt(x: Ctx, t: Tone, cx: number, foot: number, h: number, w: number, drips: boolean): void {
+  const top = foot - h;
+  obj(x, rrectP(cx - w * 0.9, foot, w * 1.8, 7, 2), IRON, t, [cx - w, foot], [cx + w, foot + 7], 0.4);
+  const body = smoothP([[cx - w * 0.5, top + 2], [cx + w * 0.5, top], [cx + w * 0.55, foot], [cx - w * 0.55, foot]], 0.12);
+  obj(x, body, WAX, t, [cx - w * 0.5, top], [cx + w * 0.5, foot], 1);
+  if (drips) {
+    for (const [dx, dl] of [[-0.35, 14], [0.2, 22], [0.42, 9]] as const) {
+      const d = rrectP(cx + dx * w - 2, top + 1, 4, dl, 2);
+      obj(x, d, WAX, t, [cx + dx * w - 2, top], [cx + dx * w + 2, top + dl], 0.2);
+    }
+  }
+  // The wick, then its flame.
+  x.save();
+  x.strokeStyle = 'rgba(10,6,4,.95)';
+  x.lineWidth = 2;
+  x.beginPath();
+  x.moveTo(cx, top + 1);
+  x.lineTo(cx, top - 5);
+  x.stroke();
+  x.restore();
+  flameAt(x, t, cx, top - 3, h * 0.42);
+}
+
+/** v0 one candle, v1 two from one stand (twin wick), v2 guttering in its own smoke. */
+const candle: Glyph = (x, t, v) => {
+  const k = v % 3;
+  if (k === 1) {
+    candleAt(x, t, 46, 104, 52, 15, false);
+    candleAt(x, t, 82, 104, 62, 15, true);
+    obj(x, rrectP(30, 108, 68, 8, 3), IRON, t, [30, 108], [98, 116], 0.5);
+    return;
+  }
+  candleAt(x, t, 64, 104, k === 2 ? 46 : 64, 20, true);
+  obj(x, rrectP(40, 108, 48, 8, 3), IRON, t, [40, 108], [88, 116], 0.5);
+  if (k === 2) {
+    for (let i = 0; i < 3; i++) {
+      const p = smoothP([[64 + i * 4, 40], [56 + i * 6, 28], [70 + i * 3, 18], [60 + i * 5, 6]], 0.5, false);
+      x.save();
+      x.globalAlpha = 0.5;
+      x.lineCap = 'round';
+      x.strokeStyle = css(lift(t.dark, 0.4), 0.6);
+      x.lineWidth = 5 - i;
+      x.stroke(p);
+      x.restore();
+    }
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Rood
+// ---------------------------------------------------------------------------
+
+/** A roadside rood: v0 bare wood, v1 smouldering, v2 iron-bound in a ring of nails. */
+const rood: Glyph = (x, t, v) => {
+  const k = v % 3;
+  if (k === 2) {
+    const ring = ellipseP(64, 52, 36, 36);
+    ray(x, ring, t, 2.6);
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const nx = 64 + Math.cos(a) * 36;
+      const ny = 52 + Math.sin(a) * 36;
+      obj(x, circleP(nx, ny, 3), IRON, t, [nx - 3, ny - 3], [nx + 3, ny + 3], 0.2);
+    }
+  }
+  if (k === 1) glow(x, 64, 56, 50, t.glow, 0.55);
+  const beam = new Path2D();
+  beam.addPath(rrectP(57, 12, 14, 108, 3));
+  beam.addPath(rrectP(28, 36, 72, 13, 3));
+  obj(x, beam, WOOD, t, [28, 12], [100, 120], 1.3);
+  if (k === 2) {
+    for (const [bx, by, bw, bh] of [[55, 32, 18, 6], [55, 52, 18, 6], [26, 39, 6, 7], [96, 39, 6, 7]] as const) {
+      obj(x, rrectP(bx, by, bw, bh, 1.5), IRON, t, [bx, by], [bx + bw, by + bh], 0.3);
+    }
+  }
+  // A cairn at the foot.
+  for (const [cx, cy, r] of [[50, 116, 9], [78, 116, 10], [64, 110, 8]] as const) {
+    obj(x, circleP(cx, cy, r), IRON, t, [cx - r, cy - r], [cx + r, cy + r], 0.4);
+  }
+  if (k === 1) {
+    // Embers eating along the grain, and a thread of smoke.
+    for (const [ex, ey, r] of [[40, 42, 3], [88, 44, 3.5], [64, 30, 3], [62, 70, 4], [66, 92, 3]] as const) {
+      x.save();
+      x.fillStyle = css(t.core, 1);
+      x.beginPath();
+      x.arc(ex, ey, r, 0, Math.PI * 2);
+      x.fill();
+      x.restore();
+      glow(x, ex, ey, r * 4, t.glow, 0.8);
+    }
+    const smoke = smoothP([[66, 12], [58, 4], [70, -6]], 0.5, false);
+    x.save();
+    x.globalAlpha = 0.5;
+    x.strokeStyle = css(lift(t.dark, 0.35), 0.6);
+    x.lineWidth = 5;
+    x.stroke(smoke);
+    x.restore();
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Writ
+// ---------------------------------------------------------------------------
+
+const WAXSEAL = mat([0x1a0404, 0x4a0c0a, 0x7a1a14, 0xa8382a, 0xd87a60], 0.2, 'fine', 0.2);
+
+/** A folded writ under a wax seal: v0 sealed, v1 going up in ash from the corner. */
+const writ: Glyph = (x, t, v) => {
+  const burning = v % 2 === 1;
+  const sheet = polyP([[30, 34], [98, 26], [102, 94], [34, 102]]);
+  obj(x, sheet, PARCHMENT, t, [30, 26], [102, 102], 1.2);
+  // The fold, and lines of a hand.
+  x.save();
+  x.clip(sheet);
+  x.strokeStyle = 'rgba(40,20,10,.55)';
+  x.lineWidth = 1.6;
+  x.beginPath();
+  x.moveTo(32, 66);
+  x.lineTo(100, 60);
+  x.stroke();
+  x.strokeStyle = 'rgba(30,14,8,.8)';
+  x.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    const y = 42 + i * 8 - i * 0.6;
+    x.beginPath();
+    x.moveTo(40, y + 1);
+    x.lineTo(88 - (i % 2) * 12, y - 3);
+    x.stroke();
+  }
+  if (burning) glow(x, 98, 96, 40, sink(t.dark, 0.25), 0.9, 'multiply');
+  x.restore();
+  // The seal, with a ribbon tail.
+  obj(x, polyP([[58, 80], [52, 112], [60, 106], [64, 114], [66, 82]]), WAXSEAL, t, [52, 80], [66, 114], 0.4);
+  const seal = smoothP([[66, 66], [80, 70], [82, 84], [70, 92], [56, 88], [52, 74]], 0.4);
+  obj(x, seal, WAXSEAL, t, [52, 66], [82, 92], 0.7);
+  const cross = new Path2D();
+  cross.addPath(rrectP(65, 71, 4, 16, 1));
+  cross.addPath(rrectP(60, 76, 14, 4, 1));
+  x.save();
+  x.fillStyle = 'rgba(20,4,4,.8)';
+  x.fill(cross);
+  x.restore();
+  if (burning) {
+    const edge = smoothP([[74, 104], [84, 92], [96, 88], [104, 74]], 0.4, false);
+    ray(x, edge, t, 3);
+    for (const [fx, fy, r] of [[86, 96, 8], [100, 84, 10]] as const) flameAt(x, t, fx, fy, r * 2);
+    for (const [ax, ay] of [[92, 70], [100, 58], [86, 62]] as const) {
+      x.save();
+      x.fillStyle = css(lift(t.dark, 0.3), 0.7);
+      x.fillRect(ax, ay, 3, 3);
+      x.restore();
+    }
+  }
+};
+
+export const PALADIN_GLYPHS: Record<string, Glyph> = { mace, bell, censer, scroll, rosary, candle, rood, writ };

@@ -30,4 +30,17 @@ export const PALADIN_SOUNDS: Readonly<Record<string, SkillSound>> = {
   mercyStroke: s('skill.pal.mercy', 'skill.pal.mercyHit'),
   sevenfold: s('skill.pal.seven', 'skill.pal.sevenHit'),
   lastRites: s('skill.pal.rites', 'skill.pal.ritesHit'),
+  // --- Aura ------------------------------------------------------------------
+  tallowLight: s('skill.pal.tallow'),
+  ironVigil: s('skill.pal.vigil'),
+  smoulderingRood: s('skill.pal.rood'),
+  anoint: s('skill.pal.anoint'),
+  censure: s('skill.pal.censure', 'skill.pal.censureHit'),
+  censerSmoke: s('skill.pal.smoke'),
+  fervour: s('skill.pal.fervour'),
+  tollingBell: s('skill.pal.bell', 'skill.pal.bellHit'),
+  martyrsVow: s('skill.pal.vow'),
+  writOfAsh: s('skill.pal.writ'),
+  consecratedGround: s('skill.pal.ground'),
+  lastHour: s('skill.pal.hour', 'skill.pal.hourHit'),
 };

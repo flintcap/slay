@@ -28,10 +28,27 @@ export interface PaladinEffects {
   critOpens: number;
   /** Red Rosary: more damage against an Opened target. */
   vsOpenedPct: number;
+  /** Wide Wick: a vigil's ring reaches this much further, as a percentage. */
+  vigilRadiusPct: number;
+  /** Twin Wick: how many vigils may burn at once. 0 reads as one. */
+  vigilSlots: number;
+  /** Twin Wick: every vigil is this much stronger, as a percentage. */
+  vigilPowerPct: number;
+  /** Penitent Ground: physical and fire resistance off what stands in a vigil. */
+  penitentShred: number;
+  /** Vespers: life per second while a vigil burns. */
+  vespersRegen: number;
+  /** Vespers: damage reduction while a vigil burns. */
+  vespersDR: number;
+  /** Ember Saint: life back, as a percentage of maximum, for a death in a vigil. */
+  emberHealPct: number;
 }
 
 export function emptyPaladinEffects(): PaladinEffects {
-  return { vsBrokenPct: 0, tollEvery: 0, tollPct: 0, tollRingSec: 0, blockStaggerSec: 0, critOpens: 0, vsOpenedPct: 0 };
+  return {
+    vsBrokenPct: 0, tollEvery: 0, tollPct: 0, tollRingSec: 0, blockStaggerSec: 0, critOpens: 0, vsOpenedPct: 0,
+    vigilRadiusPct: 0, vigilSlots: 0, vigilPowerPct: 0, penitentShred: 0, vespersRegen: 0, vespersDR: 0, emberHealPct: 0,
+  };
 }
 
 function param(id: string, key: string, dflt: number): number {
@@ -82,5 +99,24 @@ export const PALADIN_RULES: Record<string, Rule> = {
     e.pal.critOpens = Math.max(e.pal.critOpens, Math.round(param(id, 'stacks', 1) + Math.floor((r - 1) / param(id, 'stackEvery', 6))));
     e.pal.vsOpenedPct += param(id, 'pct', 15) + param(id, 'pctPerRank', 2) * (r - 1);
     e.dotTickPct += param(id, 'tickPct', 20);
+  },
+
+  // ------------------------------------------------------------------ Aura
+  wideWick: (e, r, id) => {
+    e.pal.vigilRadiusPct += param(id, 'pctPerRank', 8) * r;
+  },
+  penitentGround: (e, r, id) => {
+    e.pal.penitentShred += param(id, 'shredPerRank', 2) * r;
+  },
+  vespers: (e, r, id) => {
+    e.pal.vespersRegen += param(id, 'regenPerRank', 2) * r;
+    e.pal.vespersDR += param(id, 'drPerRank', 1) * r;
+  },
+  twinWick: (e, r, id) => {
+    e.pal.vigilSlots = Math.max(e.pal.vigilSlots, Math.round(param(id, 'slots', 2)));
+    e.pal.vigilPowerPct += param(id, 'pct', 10) + param(id, 'pctPerRank', 2) * (r - 1);
+  },
+  emberSaint: (e, r, id) => {
+    e.pal.emberHealPct += param(id, 'healPct', 1) + param(id, 'healPerRank', 0.3) * (r - 1);
   },
 };

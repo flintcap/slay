@@ -40,6 +40,8 @@ const HANDLED = new Set([
   'shift',
   // The Paladin's single-target weapon skills (scenes/paladin/Rites.ts).
   'rite',
+  // The Paladin's auras, vows and censures (scenes/paladin/Vigils.ts).
+  'vigil',
 ]);
 
 rmSync(OUT, { recursive: true, force: true });

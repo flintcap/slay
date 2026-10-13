@@ -128,6 +128,26 @@ export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
     duration: r1(n('duration', 5) + n('durationPerRank', 0.15) * k),
     mods: { blockChance: r1(n('block', 20) + n('blockPerRank', 0.5) * k), damageReduction: r1(n('dr', 10) + n('drPerRank', 0.5) * k) },
   }),
+  // Paladin vigils (`scenes/paladin/Vigils.ts`): what the ring gives him, each tick.
+  tallowLight: (k, n) => ({
+    mods: { lifeRegen: r1(n('regen', 4) + n('regenPerRank', 1.5) * k), manaRegen: r1(n('mana', 1.5) + n('manaPerRank', 0.3) * k) },
+  }),
+  ironVigil: (k, n) => ({
+    mods: { enhancedDefense: n('def', 30) + n('defPerRank', 5) * k, damageReduction: r1(n('dr', 4) + n('drPerRank', 0.6) * k) },
+  }),
+  fervour: (k, n) => {
+    const v = r1(n('speed', 8) + n('speedPerRank', 1.2) * k);
+    return { mods: { attackSpeed: v, castSpeed: v, moveSpeed: r1(n('move', 6) + n('movePerRank', 0.8) * k) } };
+  },
+  anoint: (k, n) => ({
+    duration: r1(n('duration', 20) + n('durationPerRank', 1) * k),
+    mods: { enhancedDamage: n('dmg', 20) + n('dmgPerRank', 3) * k, attackRating: n('ar', 30) + n('arPerRank', 6) * k },
+  }),
+  martyrsVow: (k, n) => ({
+    duration: r1(n('duration', 10) + n('durationPerRank', 0.3) * k),
+    absorbLifePct: n('ward', 15) + n('wardPerRank', 2) * k,
+    mods: { damageReduction: r1(n('dr', 5) + n('drPerRank', 0.5) * k) },
+  }),
 };
 
 export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower> = {
@@ -186,6 +206,19 @@ export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower> = {
   }),
   soulTether: (k, n) => ({
     magnitude: (n('sharePct', 35) + n('perRank', 3) * k) / Math.max(1, n('sharePct', 35)),
+  }),
+
+  // Paladin (`scenes/paladin/Vigils.ts`): a censure, and what a vigil's ring does to what stands in it.
+  censure: (k, n) => ({
+    duration: r1(n('duration', 8) + n('durationPerRank', 0.4) * k),
+    mods: { attackRating: -(n('ar', 20) + n('arPerRank', 2) * k), enhancedDefense: -(n('def', 15) + n('defPerRank', 2) * k) },
+  }),
+  censerSmoke: (k, n) => ({
+    mods: { attackRating: -(n('ar', 15) + n('arPerRank', 1.5) * k), attackSpeed: -r1(n('slow', 8) + n('slowPerRank', 0.8) * k) },
+  }),
+  writOfAsh: (k, n) => ({ mods: shred(r1(n('shred', 8) + n('shredPerRank', 1) * k)) }),
+  consecratedGround: (k, n) => ({
+    mods: { moveSpeed: -r1(n('slow', 20) + n('slowPerRank', 1.5) * k), attackSpeed: -r1(n('drag', 5) + n('dragPerRank', 0.5) * k) },
   }),
 };
 
