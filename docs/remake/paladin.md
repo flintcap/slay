@@ -32,7 +32,7 @@ Design notes
 ## Milestones
 
 - [x] M1 Class def, look (male), field kit, portrait, select screen words; selectable and playable with a starter skill. (`feat(paladin): M1 class, look, kit, Tolling Blow starter`)
-- [ ] M2 Mace tree: 18 skills, rules, statuses, icons.
+- [x] M2 Mace tree: 18 skills, rules, statuses, icons. (`feat(paladin): M2 Mace tree`)
 - [ ] M3 Blade tree: 18 skills, rules, statuses, icons.
 - [ ] M4 Aura tree: 18 skills, aura handler + look, rules, icons.
 - [ ] M5 A unique gesture per active skill (sword+shield, mace+shield, two-hander all read).
@@ -42,16 +42,25 @@ Design notes
 
 ## Next up
 
-M2 Mace tree. Author the other 17 Mace skills in
-`src/data/classSkills/paladin.ts` (design list below), their rites in
-`src/scenes/paladin/Rites.ts`, new statuses in `paladinStatuses.ts`, rules in
-a new `src/sim/passives/paladin.ts`, Mace synergies, own glyphs (mace, bell)
-spread into `GLYPHS`, `ICON_MAP` rows, one `PaladinSounds.ts` row and
-`paladinTakes.mjs` take per active skill. Then `--only=skilldepth,skillsound,
-passives,wiring,unique` and typecheck.
+M3 Blade tree. Statuses `opened`, `exposed`, `parrying` are already in
+`paladinStatuses.ts`. Author the 18 Blade skills (design list below) in
+`paladin.ts` as `BLADE`, their rites in `Rites.ts` (grip `blade`), Blade
+rules in `sim/passives/paladin.ts` (redPsalm -> vsBleedingPct,
+answerInSteel -> blockCounterChance, theFifthVerse -> guaranteedCritEvery,
+redRosary -> new `pal.critOpens`), Blade synergies, icons (new sword-ish
+glyphs in `PaladinGlyphs.ts`), sounds (`PaladinSounds.ts` + takes). Gate:
+typecheck, `--only=skilldepth,skillsound,passives,wiring`, and
+`RANK_ONLY=<blade actives> node tools/check-rankpower.mjs` says all grow.
 
 ## Notes for resume
 
+- Owner rule: every skill must get stronger with rank. Damage skills grow
+  through `dmg`; anything without `dmg` needs a `SELF_POWER` / `FOE_POWER`
+  row in `src/data/skillPower.ts` (Bar the Door has one, read by its rite).
+  Gate: `RANK_ONLY=a,b node tools/check-rankpower.mjs` must say "all grow".
+- Rites that fly (Hurl the Censer) land on a timer, not on the projectile's
+  `onHit`: the headless checks run with a dummy effect system.
+- Shield skills use the `lunge` body clip until M5 gives them gestures.
 - Where the class lives: `src/data/classSkills/{kit,paladin,paladinClass,paladinStatuses}.ts`,
   `src/scenes/paladin/Rites.ts` (effect family `rite`, single target, hooked
   by one `case 'rite'` in `SkillRunner.cast`), `src/audio/PaladinSounds.ts`,

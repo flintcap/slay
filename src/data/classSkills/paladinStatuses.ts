@@ -76,6 +76,33 @@ export const PALADIN_STATUSES: StatusDef[] = [
     icon: 'censer',
     tags: ['dot', 'fire'],
   }),
+  // ---------------------------------------------------------------- Blade
+  st('opened', 'Opened', -1, {
+    desc: 'Cut along the grain and left to run. Physical damage over time, up to five cuts deep.',
+    dot: { type: 'physical', perSecond: 6 },
+    maxStacks: 5,
+    stacking: 'stack',
+    baseDuration: 5,
+    color: 0xa82a22,
+    icon: 'gash',
+    tags: ['dot', 'physical'],
+  }),
+  st('exposed', 'Exposed', -1, {
+    desc: 'Guard turned aside, armour gapped. -20% defense and -8% physical resistance.',
+    mods: mods({ enhancedDefense: -20, physicalResist: -8 }),
+    baseDuration: 5,
+    color: 0xd8b070,
+    icon: 'crosshair',
+    tags: ['physical', 'shred'],
+  }),
+  st('parrying', 'Parrying', 1, {
+    desc: 'Blade up and turned. +50% block chance until the answer comes.',
+    mods: mods({ blockChance: 50 }),
+    baseDuration: 1.2,
+    color: 0xc8ccd4,
+    icon: 'ward',
+    tags: ['buff'],
+  }),
   st('barred', 'Barred', 1, {
     desc: 'Shield set against the door. +20% block chance and +10 damage reduction.',
     mods: mods({ blockChance: 20, damageReduction: 10 }),
