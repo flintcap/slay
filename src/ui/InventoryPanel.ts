@@ -475,7 +475,7 @@ export class InventoryPanel {
       title: 'Equipment',
       subtitle: 'What you carry is what you lose',
       icon: 'bag',
-      width: 1030,
+      width: 1080,
       // The figure animates, so it must not keep drawing behind a closed panel.
       onClose: () => this.view.stop(),
     });

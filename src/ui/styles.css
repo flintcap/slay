@@ -4466,7 +4466,7 @@ input.slider::-moz-range-thumb {
 
 .inv-wrap {
   display: grid;
-  grid-template-columns: 412px 1fr;
+  grid-template-columns: 462px 1fr;
   gap: var(--s5);
 }
 .inv-left {
@@ -4483,7 +4483,7 @@ input.slider::-moz-range-thumb {
      what the hands hold runs down the right. The flanks are a grid of the
      same cells the pack uses, so each slot is the shape of what it holds:
      two by four for a weapon, one for a ring. */
-  grid-template-columns: 44px 44px 200px 44px 44px;
+  grid-template-columns: 44px 44px 250px 44px 44px;
   grid-template-rows: repeat(12, 44px);
   gap: 4px;
   padding: var(--s4);
@@ -4528,7 +4528,7 @@ input.slider::-moz-range-thumb {
     radial-gradient(ellipse 70% 55% at 50% 34%, rgba(201, 162, 39, 0.09), transparent 68%);
 }
 .pd-view {
-  width: 188px;
+  width: 238px;
   height: 572px;
   cursor: grab;
   touch-action: none;
@@ -4538,7 +4538,7 @@ input.slider::-moz-range-thumb {
 }
 .pd-view-canvas {
   display: block;
-  width: 188px;
+  width: 238px;
   height: 572px;
   /* The figure is lit brighter than the panel; a soft drop keeps it seated. */
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
