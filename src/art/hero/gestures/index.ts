@@ -4,5 +4,6 @@
  */
 import './mage';
 import './knight';
+import './rogue';
 
 export { skillAction, releasesAt, strikesAt, hasGesture, gestureIds } from '../SkillActions';
