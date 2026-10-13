@@ -34,7 +34,7 @@ Design notes
 - [x] M1 Class def, look (male), field kit, portrait, select screen words; selectable and playable with a starter skill. (`feat(paladin): M1 class, look, kit, Tolling Blow starter`)
 - [x] M2 Mace tree: 18 skills, rules, statuses, icons. (`feat(paladin): M2 Mace tree`)
 - [x] M3 Blade tree: 18 skills, rules, statuses, icons. (`feat(paladin): M3 Blade tree`)
-- [ ] M4 Aura tree: 18 skills, aura handler + look, rules, icons.
+- [x] M4 Aura tree: 18 skills, aura handler + look, rules, icons. (`feat(paladin): M4 Aura tree`)
 - [ ] M5 A unique gesture per active skill (sword+shield, mace+shield, two-hander all read).
 - [ ] M6 A unique VFX look per active skill.
 - [ ] M7 A unique sound per active skill (CC0, layered takes).
@@ -42,21 +42,24 @@ Design notes
 
 ## Next up
 
-M4 Aura tree (design list below). New effect family `vigil`: a runner in
-`src/scenes/paladin/Vigils.ts`, hooked by one `case 'vigil'` in
-`SkillRunner.cast`, plus `vigil` in the tool family lists (skillsound-entry
-FAMILIES/HITS, check-coverage, SkillLooks FAMILY_DRAWING). One aura at a time
-(Twin Wick capstone allows two), a persistent toggle with a ring at the feet.
-Aura statuses in `paladinStatuses.ts`, rules in `sim/passives/paladin.ts`,
-glyphs (candle, rood, writ) in `PaladinGlyphs.ts`, icons in `SkillIconArt.ts`,
-sounds in `PaladinSounds.ts` + takes. Every non-dmg skill needs a
-`SELF_POWER` / `FOE_POWER` row. Gate: typecheck,
-`--only=skilldepth,skillsound,passives,wiring` (skilldepth then fails only
-for other classes), and `RANK_ONLY=<aura actives> node tools/check-rankpower.mjs`
-says all grow.
+M5 gestures, all 32 actives at once (check-unique keeps the class
+"pending" until the first gesture exists, then wants every one). Each needs
+its own clip in the anims stream's gesture system (`src/art/hero/gestures`,
+`skillAction(id)`), and it must read with sword+shield, mace+shield and a
+two-hander. Rites already call `skillAction(id) ?? rite.clip`, and vigils
+`skillAction(id) ?? act.clip / 'cast'`, so a gesture row is all a skill
+needs. Gate: typecheck, `node tools/check-unique.mjs` clips ok for paladin.
 
 ## Notes for resume
 
+- Aura tree: `src/scenes/paladin/Vigils.ts` (family `vigil`, one
+  `case 'vigil'` in `SkillRunner.cast`, a `snuffVigil` line before mana so
+  a second press puts a vigil out free, a `tickVigils` line in
+  `SkillRunner.update`, and `skills.keeper = this.player` in DungeonScene so
+  vigils tick before the first press of a level). Vigils are kept per
+  Character (WeakMap), so they outlive a level. The ring is
+  `src/fx/paladin/VigilRing.ts` (tint and candle count per vigil). Vigil
+  numbers per rank: SELF_POWER / FOE_POWER rows in `skillPower.ts`.
 - Owner rule: every skill must get stronger with rank. Damage skills grow
   through `dmg`; anything without `dmg` needs a `SELF_POWER` / `FOE_POWER`
   row in `src/data/skillPower.ts` (Bar the Door has one, read by its rite).
