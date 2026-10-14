@@ -3335,6 +3335,42 @@ input.slider::-moz-range-thumb {
   background: linear-gradient(90deg, #8c3a10, #ff9a3c 80%, #fff1c4);
   box-shadow: 0 0 8px rgba(255, 150, 60, 0.8);
 }
+/* Room rule: what the room wants of you (ring the bells, break the guard). */
+.bossrule {
+  width: 44%;
+  margin: 4px auto 0;
+  opacity: 0;
+  transition: opacity var(--dur-1) ease;
+}
+.bossrule.is-live {
+  opacity: 1;
+}
+.bossrule-name {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--font-title);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.16em;
+  margin-right: -0.16em;
+  text-transform: uppercase;
+  color: #bfe8ff;
+  text-shadow: 0 1px 2px #000, 0 0 10px rgba(80, 180, 255, 0.5);
+}
+.bossrule-track {
+  position: relative;
+  height: 5px;
+  background: linear-gradient(180deg, #04070a, #0a1620);
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px var(--frame-edge), 0 0 0 2px rgba(96, 170, 214, 0.3);
+  overflow: hidden;
+}
+.bossrule-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #1a5a8c, #5fc8ff 80%, #e0f6ff);
+  box-shadow: 0 0 8px rgba(80, 180, 255, 0.7);
+  transition: width 0.15s linear;
+}
 /* Enraged: the fight ran long. The track burns and the name throbs red. */
 .bossbar.is-enraged .bossbar-plate::before {
   box-shadow: 0 0 0 1px var(--frame-edge), 0 0 22px rgba(255, 60, 30, 0.55), 0 6px 18px rgba(0, 0, 0, 0.7);

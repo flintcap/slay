@@ -831,6 +831,34 @@ mon({
   visual: { body: 'humanoid', palette: RIME, ornate: 0.3, eyes: 2, glow: 0x80c0ff },
 });
 
+// ---------------------------------------------------------------------------
+// Room objects: what a boss room's rule is built around (entities/RoomRules).
+// They stand still, never fight, and pay nothing when broken.
+// ---------------------------------------------------------------------------
+
+const roomObject = (id: string, name: string, lifeMul: number, scale: number, palette: string, glow: number): MonsterDef =>
+  mon({
+    id, name, family: 'construct', role: 'support', object: true,
+    minDepth: 1, weight: 0, lifeMul, damageMul: 0, defenseMul: 0.6, speed: 0, attackRange: 30, scale, xpMul: 0,
+    abilities: [],
+    resists: { poison: 100 },
+    visual: { body: 'floating', palette, ornate: 0.3, eyes: 0, glow },
+  });
+
+roomObject('ward_portal', 'Ward Portal', 1.3, 1.1, STONE, 0x80c8ff);
+roomObject('heartstone', 'Heartstone', 1.0, 0.9, CRIMSON, 0xff4040);
+roomObject('rite_bell', 'Rite Bell', 0.35, 0.9, BRASS, 0xffd27a);
+roomObject('rite_brazier', 'Cold Brazier', 0.3, 0.9, IRON, 0x403830);
+roomObject('chain_anchor', 'Chain Anchor', 1.6, 1.0, IRON, 0xc0a070);
+
+mon({
+  id: 'hero_echo', name: 'Your Echo', family: 'aberration', role: 'melee',
+  minDepth: 1, weight: 0, lifeMul: 0.9, damageMul: 0.6, xpMul: 0, speed: 3.4, attackRange: 2.2,
+  abilities: ['basic_strike', 'double_swipe', 'charge'],
+  resists: { physical: 10, arcane: -20 },
+  visual: { body: 'humanoid', palette: RIME, ornate: 0.2, eyes: 2, glow: 0xb0e8ff, weapon: 'sword' },
+});
+
 mon({
   id: 'unmaker', name: 'The Unmaker', family: 'aberration', role: 'caster',
   minDepth: 29, weight: 2, lifeMul: 1.8, damageMul: 1.8, attackRange: 18, damageType: 'arcane',

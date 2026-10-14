@@ -36,6 +36,7 @@ import { prepareBossPortrait } from '../art/BossPortraits';
 import { FUMBLE_HEAL_MAX, HEAVY_MUL, WARN_MIN } from '../sim/FairFight';
 import { BOSS_MOODS, bossNumbers, withMood } from '../data/bosses';
 import { Enemy, depthCurve } from './Enemy';
+import { isRoomRule, makeRule, type RoomRule } from './RoomRules';
 import {
   after,
   alliesNear,
@@ -192,6 +193,28 @@ export class Boss extends Enemy {
   /** A haunted boss's fallen adds, waiting to rise. */
   private haunts: Array<{ e: Enemy; id: string; rank?: string; wait: number }> = [];
 
+  /** The room rule the current phase runs (entities/RoomRules), if any. */
+  rule: RoomRule | null = null;
+  /** Where it stood when the fight began. */
+  spawnAt = { x: 0, z: 0 };
+  /** The centre its room rule works round. A chase moves it room to room. */
+  home = { x: 0, z: 0 };
+  /** Metres from `spawnAt` to the arena wall. The scene sets it from the room. */
+  arenaRadius = 12;
+  /** Where a chase boss runs to, one per phase after the first. Set by the scene. */
+  chasePoints: Array<{ x: number; z: number }> | null = null;
+  /** Seconds it is busy with its room rule (a long cast, a charge) and starts no move. */
+  channel = 0;
+  private hidden = false;
+  /** Set when its room rule lets it fall. */
+  private letGo = false;
+  /** Running to the next room (a chase), and where to. */
+  private flight: { to: { x: number; z: number }; t: number } | null = null;
+  /** Rooms fled to so far. */
+  private legs = 0;
+  /** Elements it has already said it turns aside. */
+  private immuneSaid = new Set<string>();
+
   constructor(base: BossDef, depth: number, rng: Rng, mood: BossMood | null = null) {
     const def = withMood(base, mood);
     super(defFromBoss(def), BOSS_RANK, [], depth, rng);
@@ -269,6 +292,9 @@ export class Boss extends Enemy {
   engage(ctx: CombatContext): void {
     if (this.engaged) return;
     this.engaged = true;
+    const at = this.root.position;
+    this.spawnAt = { x: at.x, z: at.z };
+    this.home = { x: at.x, z: at.z };
     this.introTimer = 1.2;
     events.emit('boss:engaged', {
       name: this.bossDef.name,
@@ -340,6 +366,9 @@ export class Boss extends Enemy {
     }
 
     this.setArena(phase.arena ?? null, ctx);
+    // The body changes with the phase (a hag melting smaller), and a chase moves on.
+    this.root.scale.setScalar(phase.body ?? 1);
+    if (index > 0 && phase.flee && this.rule?.kind !== 'chase') this.fleeTo(this.nextChasePoint(), ctx);
     events.emit('boss:phase', { name: phase.name, bark: phase.bark, index });
     // The bark shows under the boss bar (HUD) and is spoken as a subtitle by
     // the story layer (ui/StoryBosses.ts); a toast as well said it three times.
@@ -354,6 +383,18 @@ export class Boss extends Enemy {
     this.guards.length = 0;
     this.enrageTimer = 0;
     this.enrageStacks = 0;
+
+    // A room rule runs beside the phase; the same rule carries on into the next.
+    if (this.rule && this.rule.kind !== kind) {
+      this.rule.stop(ctx);
+      this.rule = null;
+    }
+    if (isRoomRule(kind)) {
+      this.arena = null;
+      this.rule ??= makeRule(kind, this);
+      this.rule.start(ctx);
+      return;
+    }
 
     if (!kind) {
       this.arena = null;
@@ -395,6 +436,7 @@ export class Boss extends Enemy {
   }
 
   private tickArena(dt: number, ctx: CombatContext): void {
+    this.rule?.tick(dt, ctx);
     const a = this.arena;
     if (!a) return;
     a.timer -= dt;
@@ -650,6 +692,105 @@ export class Boss extends Enemy {
     }
   }
 
+  // --- room rule hooks -----------------------------------------------------
+
+  /** Hidden by its room rule: the body fades and the cursor cannot pick it. */
+  override get untargetable(): boolean {
+    return this.hidden;
+  }
+
+  setHidden(on: boolean, ctx: CombatContext): void {
+    if (on === this.hidden) return;
+    this.hidden = on;
+    this.bodyRoot.visible = !on;
+    const p = this.root.position;
+    ctx.fx.burst('void', p.x, 1.2 * this.sizeScale, p.z, { count: 16, color: 0x201830 });
+  }
+
+  /** A step its room rule makes it take (a flight, a chain's pull). */
+  ruleStep(dx: number, dz: number, ctx: CombatContext): void {
+    this.moveBy(dx, dz, ctx);
+  }
+
+  /** Its room rule is satisfied: let it fall. */
+  letDie(ctx: CombatContext): void {
+    this.letGo = true;
+    this.life = 0;
+    this.die(ctx);
+  }
+
+  /** Life when the current phase began. */
+  get phaseStart(): number {
+    return this.phaseStartLife;
+  }
+
+  /** True while it runs for the next room. */
+  get fleeing(): boolean {
+    return this.flight !== null;
+  }
+
+  /** The next room of a chase: the scene's, else round the arena. */
+  nextChasePoint(): { x: number; z: number } {
+    const pts = this.chasePoints?.length
+      ? this.chasePoints
+      : [0, 1, 2].map((i) => ({
+          x: this.spawnAt.x + Math.sin(i * 2.1 + 0.5) * this.arenaRadius * 0.75,
+          z: this.spawnAt.z + Math.cos(i * 2.1 + 0.5) * this.arenaRadius * 0.75,
+        }));
+    return pts[this.legs++ % pts.length]!;
+  }
+
+  /** Out of reach, it runs for `to`, and turns at bay there. */
+  fleeTo(to: { x: number; z: number }, ctx: CombatContext): void {
+    this.flight = { to, t: 7 };
+    this.buff('fleeing', 7, { invulnerable: 1 });
+    this.channel = 7;
+    this.rootTimer = 7;
+    events.emit('toast', { text: `${this.bossDef.name} flees!`, kind: 'info' });
+    void ctx;
+  }
+
+  private tickFlight(dt: number, ctx: CombatContext): void {
+    const f = this.flight!;
+    f.t -= dt;
+    const p = this.root.position;
+    const d = dist(p.x, p.z, f.to.x, f.to.z);
+    if (d > 1 && f.t > 0) {
+      const step = Math.min(d, 8 * dt);
+      const a = angleTo(p.x, p.z, f.to.x, f.to.z);
+      this.facing = a;
+      this.moveBy(Math.sin(a) * step, Math.cos(a) * step, ctx);
+      return;
+    }
+    if (d > 1) this.teleportTo(f.to.x, f.to.z, ctx);
+    this.flight = null;
+    this.unbuff('fleeing');
+    this.channel = 0;
+    this.rootTimer = 0;
+    this.home = { x: f.to.x, z: f.to.z };
+    ctx.fx.burst('dust', f.to.x, 0.5, f.to.z, { count: 30, scale: 2 });
+    events.emit('toast', { text: `${this.bossDef.name} turns at bay.`, kind: 'bad' });
+  }
+
+  /**
+   * The hero struck into its parry: a quick answer (hit-capped, like every
+   * boss blow) and a little life back, never past where the phase began. The
+   * clock gets the time back.
+   */
+  private riposte(ctx: CombatContext): void {
+    this.unbuff('parry');
+    const p = this.root.position;
+    ctx.fx.burst('crit', p.x, 1.3 * this.sizeScale, p.z, { count: 24, color: 0xe0f0ff });
+    hitPlayer(this, ctx, 1.1, 'physical', 'riposte', { knockback: 2 });
+    const back = Math.min(this.maxLife * 0.02, Math.max(0, this.phaseStartLife - this.life));
+    if (back > 0) this.heal(back, ctx);
+    this.fightTime = Math.max(0, this.fightTime - 2);
+    if (!this.announced.has('riposte')) {
+      this.announced.add('riposte');
+      events.emit('toast', { text: `${this.bossDef.name} parries! Wait out the guard.`, kind: 'bad' });
+    }
+  }
+
   // --- fumbles -------------------------------------------------------------
 
   /**
@@ -712,6 +853,7 @@ export class Boss extends Enemy {
 
   override update(dt: number, ctx: CombatContext): void {
     this.sinceHit += dt;
+    this.channel = Math.max(0, this.channel - dt);
     this.fumbleHeat = Math.max(0, this.fumbleHeat - dt / 15);
     if (!this.engaged && this.alive && !this.dormant) {
       // Auto-engage once the player is in the room.
@@ -739,6 +881,7 @@ export class Boss extends Enemy {
     }
 
     if (this.engaged) {
+      if (this.flight) this.tickFlight(dt, ctx);
       this.tickArena(dt, ctx);
       this.tickSoftEnrage(dt, ctx);
       if (this.haunts.length) this.tickHaunts(dt, ctx);
@@ -749,7 +892,7 @@ export class Boss extends Enemy {
     if (this.addTimer <= 0 && this.engaged && (this.bossDef.adds?.length ?? 0) > 0) {
       this.addTimer = 16;
       const p = this.root.position;
-      const nearby = alliesNear(ctx, p.x, p.z, 34, this.id).length;
+      const nearby = alliesNear(ctx, p.x, p.z, 34, this.id).filter((e) => !e.def.object).length;
       if (nearby < 5) {
         const ids = this.bossDef.adds!;
         summon(this, ctx, ids[Math.floor(ctx.rng.next() * ids.length)] ?? ids[0]!, 2, 7);
@@ -769,7 +912,8 @@ export class Boss extends Enemy {
    * near it fights through dread. Not a wall: a clock you can see coming.
    */
   private tickSoftEnrage(dt: number, ctx: CombatContext): void {
-    this.fightTime += dt;
+    // While its room rule keeps it out of reach, or it is fleeing, the clock waits.
+    if (!this.rule?.freezesClock() && !this.flight) this.fightTime += dt;
     const limit = softEnrageAfter(this.bossDef.phases.length);
     if (!this.softEnraged && this.fightTime >= limit - 15 && this.fightTime - dt < limit - 15) {
       events.emit('toast', { text: `${this.bossDef.name} is losing patience...`, kind: 'bad' });
@@ -804,6 +948,7 @@ export class Boss extends Enemy {
   override preferredAbility(d: number, ctx: CombatContext): AbilityDef | null | undefined {
     const list = this.abilityIds;
     if (!this.engaged || list.length === 0) return undefined;
+    if (this.channel > 0) return null;
     this.gapWanted = 0;
     const lifeFrac = this.lifeFraction;
     for (let tries = 0; tries < list.length; tries++) {
@@ -884,19 +1029,58 @@ export class Boss extends Enemy {
     // Bosses take reduced damage from single enormous hits so a lucky crit can
     // never skip a phase outright — every fight plays all of its beats.
     const cap = this.maxLife * 0.16;
-    const working = packet.amount > cap ? { ...packet, amount: cap + (packet.amount - cap) * 0.35 } : packet;
+    let working = packet.amount > cap ? { ...packet, amount: cap + (packet.amount - cap) * 0.35 } : packet;
+
+    // A parry: the blow is turned, and answered.
+    if (packet.source !== this.id && this.hasBuff('parry')) {
+      this.riposte(ctx);
+      return;
+    }
+    // Gold plates (or a ward) turn one element aside this phase.
+    const immune = this.phase?.immune;
+    if (immune && packet.type === immune && packet.source !== this.id) {
+      working = { ...working, amount: working.amount * 0.15 };
+      if (!this.immuneSaid.has(immune)) {
+        this.immuneSaid.add(immune);
+        events.emit('toast', { text: `${this.bossDef.name} turns ${immune} aside. Try another element.`, kind: 'bad' });
+      }
+    }
+
+    // The room rule decides how much of a hero's blow lands.
+    const rule = packet.source !== this.id ? this.rule : null;
+    const raw = working.amount;
+    if (rule) {
+      const share = rule.intake(working, ctx);
+      if (share <= 0) {
+        const p = this.root.position;
+        ctx.fx.burst('shock', p.x, 1.1 * this.sizeScale, p.z, { count: 8, color: 0x60c0ff });
+        events.emit('enemy:damaged', { id: this.id, amount: 0, type: packet.type, crit: false, x: p.x, y: 1.1 * this.sizeScale, z: p.z });
+        rule.struck(0, raw, ctx);
+        return;
+      }
+      if (share !== 1) working = { ...working, amount: working.amount * share };
+    }
 
     const before = this.life;
     super.takeDamage(working, ctx);
     this.dealt += Math.max(0, before - this.life);
+    if (rule && this.rule === rule) rule.struck(Math.max(0, before - Math.max(0, this.life)), raw, ctx);
     if (working.amount > 0) this.sinceHit = 0;
     if (this.alive) events.emit('boss:damaged', { life: this.life, maxLife: this.maxLife });
   }
 
   protected override die(ctx: CombatContext): void {
+    // Its room rule may keep it standing (a linked pair waits on its other half).
+    if (this.alive && !this.letGo && this.rule?.holdDeath(ctx)) {
+      this.life = Math.max(1, this.life);
+      return;
+    }
     const wasAlive = this.alive;
     super.die(ctx);
     if (!wasAlive || this.alive) return;
+    this.rule?.stop(ctx);
+    this.rule = null;
+    this.channel = 0;
 
     const p = this.root.position;
     events.emit('boss:killed', { name: this.bossDef.name });
@@ -934,6 +1118,7 @@ export class Boss extends Enemy {
   override dispose(): void {
     this.guards.length = 0;
     this.arena = null;
+    this.rule = null;
     super.dispose();
   }
 

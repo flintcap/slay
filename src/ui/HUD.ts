@@ -545,6 +545,10 @@ export class HUD {
   private bossCastFill: HTMLDivElement;
   private bossCastName: HTMLSpanElement;
   private bossCastTimer = 0;
+  /** The room rule's bar: what to do, and how far along it is. */
+  private bossRule: HTMLDivElement;
+  private bossRuleName: HTMLSpanElement;
+  private bossRuleFill: HTMLDivElement;
   /** A mini-boss's entrance card under the boss bar's spot. */
   private miniCard: HTMLDivElement;
   private miniTimer = 0;
@@ -656,7 +660,13 @@ export class HUD {
     this.bossCastFill = div('bosscast-fill');
     castTrack.appendChild(this.bossCastFill);
     add(this.bossCast, this.bossCastName, castTrack);
-    add(this.bossBar, this.bossName, bossPlate, this.bossPips, this.bossCast, this.bossBark);
+    this.bossRule = div('bossrule');
+    this.bossRuleName = span('bossrule-name');
+    const ruleTrack = div('bossrule-track');
+    this.bossRuleFill = div('bossrule-fill');
+    ruleTrack.appendChild(this.bossRuleFill);
+    add(this.bossRule, this.bossRuleName, ruleTrack);
+    add(this.bossBar, this.bossName, bossPlate, this.bossPips, this.bossCast, this.bossRule, this.bossBark);
     this.miniCard = div('minicard');
 
     // --- bottom: command bar ---------------------------------------------
@@ -981,6 +991,16 @@ export class HUD {
       this.bossBar.classList.add('phase-shift');
     });
     on('boss:cast', (p) => this.bossCasting(p.ability, p.windup));
+    on('boss:castEnd', () => this.endBossCast());
+    on('boss:rule', (p) => {
+      // Sent every frame by the rule: only touch the page when it changes.
+      if (this.bossRuleName.textContent !== p.label) {
+        this.bossRuleName.textContent = p.label;
+        this.bossRule.classList.toggle('is-live', !!p.label);
+      }
+      const w = `${Math.round(p.value * 100)}%`;
+      if (this.bossRuleFill.style.width !== w) this.bossRuleFill.style.width = w;
+    });
     on('boss:enraged', () => {
       this.bossBar.classList.add('is-enraged');
       this.bossBar.classList.remove('enrage-in');
@@ -994,6 +1014,8 @@ export class HUD {
     });
     on('boss:killed', () => {
       this.endBossCast();
+      this.bossRule.classList.remove('is-live');
+      this.bossRuleName.textContent = '';
       this.setBossLife(0);
       this.bossBar.classList.add('is-slain');
       setTimeout(() => this.hideBoss(), 1400);

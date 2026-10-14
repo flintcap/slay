@@ -85,6 +85,10 @@ export interface GameEvents {
   'boss:killed': { name: string };
   /** A boss began winding up an ability. `windup` is the tell in seconds. */
   'boss:cast': { name: string; ability: string; windup: number };
+  /** A long cast ended early (broken, or the room rule stopped it). */
+  'boss:castEnd': Record<string, never>;
+  /** The room rule's bar under the boss bar (entities/RoomRules). An empty label hides it. */
+  'boss:rule': { label: string; value: number };
   /** The fight ran long: the boss is enraged for the rest of it. */
   'boss:enraged': { name: string };
   /** A floor's mini-boss noticed the hero. `title` names its mechanic. */

@@ -801,6 +801,9 @@ export class DungeonScene extends GameScene {
             }
           }
           this.boss.dormant = true;
+          // How far its room rules may reach: the arena's inner half-width.
+          const tile = this.mesh.tileToWorld(1, 0).x - this.mesh.tileToWorld(0, 0).x;
+          this.boss.arenaRadius = Math.max(6, (Math.min(ar.w, ar.h) * Math.abs(tile || 1)) / 2 - 0.5);
           this.arenaGate = { tiles, sealed: false, clearFor: 0, bars: null, colliders: [], rise: 0, warned: false };
         }
       }
@@ -1552,7 +1555,7 @@ export class DungeonScene extends GameScene {
 
     for (let i = 0; i < this.enemies.length; i++) {
       const t = this.enemies[i]!;
-      if (t.life <= 0) continue;
+      if (t.life <= 0 || t.untargetable) continue;
       const dx = t.root.position.x - gx;
       const dz = t.root.position.z - gz;
       const d2 = dx * dx + dz * dz;
@@ -1563,7 +1566,7 @@ export class DungeonScene extends GameScene {
       }
     }
     const b = this.boss;
-    if (b && b.life > 0) {
+    if (b && b.life > 0 && !b.untargetable) {
       const dx = b.root.position.x - gx;
       const dz = b.root.position.z - gz;
       const d2 = dx * dx + dz * dz;
@@ -1626,6 +1629,8 @@ export class DungeonScene extends GameScene {
       // it. The corpse can take its time sinking; the loot should not.
       if (!e.lootGranted && e.readyToLoot) {
         e.lootGranted = true;
+        // A broken bell or portal is part of the room, not a kill.
+        if (e.def.object) continue;
         this.lastOverkill = e.overkill;
         // A warden pays like a rare; its chest is the rest of the reward.
         const isWarden = e === this.warden;

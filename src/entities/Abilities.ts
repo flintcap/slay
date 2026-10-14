@@ -1131,6 +1131,17 @@ export function summon(
   return out;
 }
 
+/**
+ * Calls up one monster at a spot. Room objects use it: a bell stands where the
+ * room puts it, not scattered round the caller. Not told to `onSummoned`.
+ */
+export function spawnAt(self: Combatant, ctx: CombatContext, monsterId: string, x: number, z: number, rank?: string): Enemy | null {
+  if (!summonFactory) return null;
+  const e = summonFactory(monsterId, x, z, self.level, ctx, rank);
+  if (e) ctx.fx.burst('portal', e.root.position.x, 0.6, e.root.position.z, { count: 18, color: 0x9060ff });
+  return e;
+}
+
 // ---------------------------------------------------------------------------
 // World tick — called once per frame by the first entity to update
 // ---------------------------------------------------------------------------
@@ -3250,6 +3261,24 @@ def({
   onExecute: (self, ctx) => {
     self.addShield(self.maxLife * 0.28, 12);
     ctx.fx.burst('heal', P(self).x, 1.0 * reachOf(self), P(self).z, { count: 18, color: 0x60c0ff });
+  },
+});
+
+def({
+  id: 'parry_stance',
+  name: 'Parry',
+  kind: 'buff',
+  cooldown: 8,
+  windup: 0.4,
+  recovery: 1.6,
+  range: 6,
+  damageMul: 0,
+  priority: 0.7,
+  // A raised blade, plainly shown: strike into it and it answers (Boss.riposte).
+  telegraph: { shape: 'ring', size: 1.4, color: 0xe0f0ff, atSelf: true },
+  onExecute: (self, ctx) => {
+    self.buff('parry', 1.6, {});
+    ctx.fx.burst('crit', P(self).x, 1.3 * reachOf(self), P(self).z, { count: 14, color: 0xe0f0ff });
   },
 });
 

@@ -644,6 +644,11 @@ export interface MonsterDef {
   /** Which biomes it may appear in; empty = all. */
   biomes?: BiomeId[];
   visual: MonsterVisual;
+  /**
+   * A room object, not a monster: a boss room's portal, bell, heartstone,
+   * brazier or anchor. It never moves or fights, and breaking it pays nothing.
+   */
+  object?: boolean;
 }
 
 /** Declarative description consumed by the procedural monster model builder. */
@@ -1016,6 +1021,12 @@ export interface BossPhase {
   arena?: string;
   /** Barked line shown on entering the phase. */
   bark?: string;
+  /** Hero blows of this element barely land this phase (gold plates, a ward). */
+  immune?: DamageType;
+  /** Its body's size this phase, against its full size (a hag melting down). */
+  body?: number;
+  /** It flees to the next room as the phase begins (Boss.fleeTo). */
+  flee?: boolean;
 }
 
 /** How big a boss stands (docs/remake/depth.md, Part 3). */
@@ -1072,6 +1083,10 @@ export interface BossDef {
   /** Guaranteed loot table hooks. */
   lootTier: number;
   music: string;
+  /** Linked-pair rule: the monster that fights beside it. */
+  partner?: string;
+  /** Weak-points rule: its limbs, and the attack each one takes with it. */
+  limbs?: Array<{ name: string; ability?: string }>;
 }
 
 // ---------------------------------------------------------------------------

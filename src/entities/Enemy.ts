@@ -559,6 +559,20 @@ export class Enemy implements Combatant {
     this.buffs.push({ id, time: duration, mods });
   }
 
+  /** Ends a buff early. */
+  unbuff(id: string): void {
+    const i = this.buffs.findIndex((b) => b.id === id);
+    if (i >= 0) this.buffs.splice(i, 1);
+  }
+
+  /**
+   * True while the cursor cannot pick it: a boss hidden in the dark. Area
+   * blows and anything aimed at the ground still land.
+   */
+  get untargetable(): boolean {
+    return false;
+  }
+
   hasBuff(id: string): boolean {
     return this.buffs.some((b) => b.id === id);
   }
@@ -901,7 +915,7 @@ export class Enemy implements Combatant {
     return s;
   }
 
-  private moveBy(dx: number, dz: number, ctx: CombatContext): void {
+  protected moveBy(dx: number, dz: number, ctx: CombatContext): void {
     const p = this.root.position;
     const nx = p.x + dx;
     const nz = p.z + dz;

@@ -911,6 +911,38 @@ export function pickWarden(depth, biome, rng, memory?): BossDef | null;
 The world generator gets both through `MonsterCatalog.wardenFor` and
 `moodFor`. `tools/check-bosssys.mjs` covers all of it.
 
+### Boss room rules — `src/entities/RoomRules.ts`
+
+A phase's `arena` may name one of `RULE_KINDS` (wardPortals, heartstones, bells,
+braziers, linked, lure, tiles, stalker, mirror, breakingCast, chase, defend,
+guardBreak, weakPoints, chains). `Boss.setArena` builds the rule with
+`makeRule(kind, boss)` and calls `start(ctx)` each phase that names it; a phase
+that names the same rule keeps the same rule object.
+
+```ts
+abstract class RoomRule {
+  solved: number; fumbled: number;
+  start(ctx): void; tick(dt, ctx): void;
+  intake(packet, ctx): number;      // share of a hero blow that lands (0 = turned aside)
+  struck(taken, raw, ctx): void;    // after a hero blow
+  holdDeath(ctx): boolean;          // true keeps the boss at 1 life (linked pair)
+  freezesClock(): boolean;          // fight clock waits while true
+  stop(ctx): void;                  // tidy objects, unhide, hide the meter
+}
+```
+
+Boss surface the rules use: `rule`, `spawnAt`, `home`, `arenaRadius` (scene sets
+it from the arena rect), `chasePoints` (scene may set), `channel` (no moves while
+> 0), `setHidden(on, ctx)` (body hidden, `untargetable` true), `ruleStep`,
+`letDie(ctx)`, `phaseStart`, plus `fumble`. Getting a rule wrong always goes
+through `fumble`. Room objects (`ward_portal`, `heartstone`, `rite_bell`,
+`rite_brazier`, `chain_anchor`) are `MonsterDef.object: true`: no reward, no
+fight. `spawnAt(self, ctx, id, x, z, rank?)` (Abilities) places one. Events:
+`boss:rule {label, value}` drives the HUD bar under the boss bar;
+`boss:castEnd {}` ends a long cast's bar early. `BossDef.partner` names the
+linked-pair partner; `BossDef.limbs` names weak points and the move each one
+takes away. Checker: `node tools/check-roomrules.mjs`.
+
 ## `src/ui/UIRoot.ts` — owned by UI
 
 ```ts
