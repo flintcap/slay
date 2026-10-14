@@ -3,11 +3,12 @@
  *
  * One row per active skill of every class: the body clip it really plays, the
  * visual signature it really draws and the sound files it really plays.
+ * `plain` marks a skill that plays a plain move (a real weapon swing), not a gesture.
  */
 import { SKILLS } from '../src/data/skills';
 import { CLASSES } from '../src/data/classes';
 import { bodyClip } from '../src/scenes/SkillRunner';
-import { hasGesture } from '../src/art/hero/gestures';
+import { hasGesture, plainMove } from '../src/art/hero/gestures';
 import { SKILL_MOTIFS, visualSignature } from '../src/fx/SkillLooks';
 import { SKILL_SOUNDS } from '../src/audio/SkillSounds';
 import { soundFiles } from '../src/audio/Bank';
@@ -28,6 +29,7 @@ for (const c of CLASSES) {
       id: s.id,
       clip: bodyClip(s.effect, STYLE[c.id] ?? 'melee', s.id),
       gesture: hasGesture(s.id),
+      plain: !!plainMove(s.id),
       look: visualSignature(s.id, s.effect),
       motif: s.id in SKILL_MOTIFS,
       pair: SKILL_MOTIFS[s.id] ? `${SKILL_MOTIFS[s.id]!.shape} ${SKILL_MOTIFS[s.id]!.motion}` : null,

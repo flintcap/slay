@@ -157,9 +157,39 @@ const ALL: Record<string, Spec> = Object.create(null);
 export function defineGestures(table: Record<string, Spec>): void {
   for (const [id, s] of Object.entries(table)) {
     if (id in ALL) throw new Error(`gesture for ${id} defined twice`);
+    if (id in PLAIN_MOVES) throw new Error(`${id} plays a plain move and takes no gesture`);
     ALL[id] = s;
     registerAction(`skill.${id}`, gesture(s));
   }
+}
+
+/**
+ * Skills that play a plain move from `Actions.ts` (a real weapon swing, or
+ * Veil's old vanish) and no gesture.
+ *
+ * The owner's call: hand-made poses on these read as casting and swung worse
+ * than the plain attacks, so a blade skill swings the blade. Each one keeps
+ * its own look and sound; only the body move is shared with other skills.
+ * The Paladin's are the same clips its rites list in `scenes/paladin/Rites.ts`.
+ */
+const PLAIN_MOVES: Readonly<Record<string, string>> = {
+  // Knight
+  shieldBash: 'thrust', shieldCharge: 'lunge', cleave: 'attack2', rend: 'attack1', gash: 'thrust',
+  overhead: 'slam', sunder: 'attack1', maim: 'lunge', whirlwind: 'attack2', massacre: 'attack1', ruin: 'slam',
+  // Rogue
+  viperStrike: 'lunge', deathLotus: 'attack2', umbralAmbush: 'lunge', assassinate: 'thrust',
+  preciseCut: 'attack1', crippleTendon: 'attack1', doubleStrike: 'attack1', whirlingBlades: 'attack2',
+  veil: 'blink',
+  // Paladin
+  tollingBlow: 'slam', shieldCrack: 'lunge', anvilfall: 'slam', doorbreaker: 'lunge', knell: 'slam',
+  pilgrimsMaul: 'slam', relicBash: 'lunge', ironVerdict: 'slam', oathCut: 'thrust', twinVerse: 'attack2',
+  feint: 'thrust', litany: 'attack1', confessionThrust: 'lunge', crosswise: 'attack2', mercyStroke: 'thrust',
+  sevenfold: 'attack1', lastRites: 'lunge',
+};
+
+/** The plain move a skill plays instead of a gesture, or null when it has none. */
+export function plainMove(skillId: string): string | null {
+  return PLAIN_MOVES[skillId] ?? null;
 }
 
 /** Skill ids with a gesture of their own. */
@@ -172,9 +202,9 @@ export function gestureIds(): string[] {
   return Object.keys(ALL);
 }
 
-/** The action a skill plays when it has its own, else null. */
+/** The action a skill plays when it has its own (a gesture or a plain move), else null. */
 export function skillAction(skillId: string): string | null {
-  return skillId in ALL ? `skill.${skillId}` : null;
+  return PLAIN_MOVES[skillId] ?? (skillId in ALL ? `skill.${skillId}` : null);
 }
 
 /** True for a skill action whose hand opens on a release frame. */

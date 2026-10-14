@@ -47,26 +47,6 @@ const BULWARK: Record<string, Spec> = {
     glow: 'left',
     end: 0.9,
   },
-  /** Shoulder in behind the shield, a hop off the back foot, the boss rammed home. */
-  shieldBash: {
-    hit: true,
-    side: 'L',
-    keys: [
-      [0.12, { R: reach([-0.38, 1.05, -0.22], [0.05, 0.4, -0.9]), L: SHIELD_TUCK, turn: 0.55, lean: 0.1, down: 0.15, fwd: -0.1 }, true],
-      [0.22, { R: reach([-0.4, 1.0, -0.28], [0.0, 0.3, -0.95]), L: SHIELD_PUNCH, turn: -0.5, lean: 0.32, fwd: 0.5, down: 0.12 }],
-      [0.38, { R: reach([-0.38, 1.05, -0.2], [0.0, 0.35, -0.94]), L: SHIELD_PUNCH, turn: -0.42, lean: 0.28, fwd: 0.45, down: 0.12 }],
-    ],
-    steps: [step('L', 0.1, 0.95)],
-    alt: {
-      // No shield: the haft held crosswise and driven into them.
-      great: [
-        { R: reach([-0.3, 1.2, 0.05], [0.9, 0.3, 0.3]), turn: 0.45, lean: 0.1, down: 0.15, fwd: -0.1 },
-        { R: reach([-0.22, 1.32, 0.52], [0.98, 0.15, 0.1]), turn: -0.2, lean: 0.32, fwd: 0.5, down: 0.12 },
-        { R: reach([-0.22, 1.3, 0.48], [0.98, 0.12, 0.12]), turn: -0.15, lean: 0.28, fwd: 0.45, down: 0.12 },
-      ],
-    },
-    end: 0.7,
-  },
   /** Weight back on the rear foot, the blade raised high and pointed at their eyes. */
   guardStance: {
     keys: [
@@ -84,24 +64,6 @@ const BULWARK: Record<string, Spec> = {
     },
     glow: 'right',
     end: 0.95,
-  },
-  /** Head down behind the shield, the blade trailed low: a ram at a run. */
-  shieldCharge: {
-    hit: true,
-    side: 'L',
-    keys: [
-      [0.06, { R: reach([-0.4, 0.95, -0.3], [-0.1, -0.15, -0.98]), L: SHIELD_TUCK, lean: 0.5, down: 0.25, turn: 0.35, head: 0.15 }, true],
-      [0.24, { R: reach([-0.42, 0.95, -0.32], [-0.1, -0.2, -0.97]), L: SHIELD_PUNCH, lean: 0.55, down: 0.22, turn: -0.3, fwd: 0.35, head: 0.1 }],
-      [0.36, { R: reach([-0.4, 1.0, -0.25], [-0.05, -0.1, -0.99]), L: SHIELD_FRONT, lean: 0.35, down: 0.15, turn: -0.2, fwd: 0.2 }],
-    ],
-    alt: {
-      great: [
-        { R: reach([-0.35, 0.95, 0.15], [0.3, -0.15, 0.94]), lean: 0.5, down: 0.25, turn: 0.2, head: 0.15 },
-        { R: reach([-0.15, 1.05, 0.55], [0.15, -0.05, 0.99]), lean: 0.55, down: 0.22, turn: -0.1, fwd: 0.35, head: 0.1 },
-        { R: reach([-0.15, 1.05, 0.5], [0.15, -0.1, 0.98]), lean: 0.35, down: 0.15, fwd: 0.2 },
-      ],
-    },
-    end: 0.55,
   },
   /** The shield lifted to the sky to catch the light, the blade pointed at the floor. */
   aegis: {
@@ -158,83 +120,6 @@ const BULWARK: Record<string, Spec> = {
 // ---------------------------------------------------------------------------
 
 const CARNAGE: Record<string, Spec> = {
-  /** Wound far round, then a flat sweep at the waist through everything in front. */
-  cleave: {
-    hit: true,
-    keys: [
-      [0.16, { R: reach([-0.62, 1.25, -0.28], [-0.55, 0.15, -0.82]), turn: -0.95, down: 0.18, lean: 0.05 }, true],
-      [0.26, { R: reach([-0.05, 1.12, 0.62], [0.78, -0.05, 0.62]), turn: 0.3, down: 0.22, lean: 0.2, fwd: 0.12 }],
-      [0.42, { R: reach([0.5, 1.12, 0.12], [0.88, -0.05, -0.46]), turn: 0.95, down: 0.22, lean: 0.18, fwd: 0.1 }],
-    ],
-    steps: [step('R', 0.18, 0.1, 0.3)],
-    end: 0.8,
-  },
-  /** Hooked in high, then ripped down and dragged back out toward the hip. */
-  rend: {
-    hit: true,
-    keys: [
-      [0.12, { R: reach([-0.15, 1.65, 0.5], [0.15, 0.55, 0.82]), turn: -0.2, lean: 0.12, fwd: 0.12 }, true],
-      [0.22, { R: reach([-0.05, 1.2, 0.62], [0.05, -0.55, 0.83]), turn: 0.15, lean: 0.3, fwd: 0.2, down: 0.15 }],
-      [0.4, { R: reach([-0.32, 0.98, 0.1], [0.0, -0.25, 0.97]), turn: -0.45, lean: 0.12, fwd: -0.12, down: 0.12 }],
-    ],
-    end: 0.75,
-  },
-  /** From low behind the hip, a rising cut that opens them up and finishes high. */
-  gash: {
-    hit: true,
-    keys: [
-      [0.14, { R: reach([-0.42, 0.78, -0.12], [-0.3, -0.62, -0.72]), turn: -0.55, down: 0.3, lean: 0.25 }, true],
-      [0.24, { R: reach([0.0, 1.35, 0.55], [0.48, 0.62, 0.62]), turn: 0.25, down: 0.05, lean: 0.05, fwd: 0.12 }],
-      [0.4, { R: reach([0.32, 1.85, 0.18], [0.45, 0.82, -0.35]), turn: 0.55, down: -0.06, lean: -0.12, head: -0.1 }],
-    ],
-    end: 0.75,
-  },
-  /** A back-bend with the blade far behind, a long step, and everything brought down. */
-  overhead: {
-    hit: true,
-    keys: [
-      [0.22, { R: reach([-0.1, 2.08, -0.28], [0.0, 0.35, -0.94]), lean: -0.32, down: -0.05, head: -0.1 }, true],
-      [0.34, { R: reach([-0.05, 1.02, 0.62], [0.0, -0.55, 0.83]), lean: 0.52, down: 0.38, fwd: 0.3 }],
-      [0.52, { R: reach([-0.05, 0.88, 0.62], [0.0, -0.45, 0.89]), lean: 0.6, down: 0.42, fwd: 0.28 }],
-    ],
-    steps: [step('L', 0.2, 0.75)],
-    end: 0.95,
-  },
-  /** The point raised high and driven down through the armour like a spike. */
-  sunder: {
-    hit: true,
-    keys: [
-      [0.16, { R: reach([-0.18, 1.82, 0.22], [0.0, -0.45, 0.89]), turn: -0.25, lean: -0.12, down: -0.04 }, true],
-      [0.26, { R: reach([-0.06, 1.1, 0.72], [0.0, -0.7, 0.71]), turn: 0.1, lean: 0.5, down: 0.32, fwd: 0.25 }],
-      [0.42, { R: reach([-0.06, 1.0, 0.7], [0.0, -0.7, 0.71]), turn: 0.1, lean: 0.55, down: 0.36, fwd: 0.25 }],
-    ],
-    steps: [step('L', 0.14, 0.45)],
-    end: 0.8,
-  },
-  /** Dropped into a crouch, the blade swept flat across at the shins. */
-  maim: {
-    hit: true,
-    keys: [
-      [0.14, { R: reach([-0.55, 0.95, -0.12], [-0.5, -0.38, -0.78]), turn: -0.7, down: 0.25, lean: 0.2 }, true],
-      [0.24, { R: reach([0.0, 0.68, 0.62], [0.74, -0.22, 0.63]), turn: 0.25, down: 0.55, lean: 0.5, fwd: 0.15 }],
-      [0.4, { R: reach([0.5, 0.68, 0.2], [0.93, -0.18, -0.3]), turn: 0.75, down: 0.55, lean: 0.45, fwd: 0.12 }],
-    ],
-    steps: [step('L', 0.12, 0.4, 0.2)],
-    end: 0.8,
-  },
-  /** Arms out at full stretch, the body whipped round one way and back the other. */
-  whirlwind: {
-    hit: true,
-    keys: [
-      [0.12, { R: reach([-0.85, 1.3, -0.2], [-0.95, 0.0, -0.3]), turn: -1.2, down: 0.15, lean: 0.05 }, true],
-      [0.22, { R: reach([-0.1, 1.28, 0.85], [0.3, 0.0, 0.95]), turn: 0.35, down: 0.2 }],
-      [0.32, { R: reach([0.7, 1.3, 0.25], [0.95, 0.0, -0.3]), turn: 1.2, down: 0.2, roll: 0.1 }],
-      [0.46, { R: reach([-0.75, 1.3, 0.3], [-0.9, 0.05, 0.4]), turn: -0.9, down: 0.18, roll: -0.1 }],
-    ],
-    steps: [step('R', 0.12, 0.2, 0.35), step('L', 0.3, 0.1, -0.3)],
-    contact: 0.22,
-    end: 0.75,
-  },
   /** The blade dragged round at the ankles, then raised upright before the face. */
   gorefeast: {
     keys: [
@@ -246,34 +131,6 @@ const CARNAGE: Record<string, Spec> = {
     contact: 0.3,
     glow: 'right',
     end: 1.05,
-  },
-  /** A flurry: down, up, down, up, and a last driving thrust, walking forward. */
-  massacre: {
-    hit: true,
-    keys: [
-      [0.08, { R: reach([-0.4, 1.75, -0.05], [0.2, 0.6, -0.78]), turn: -0.5 }, true],
-      [0.14, { R: reach([0.15, 1.05, 0.5], [0.75, -0.35, 0.56]), turn: 0.45, lean: 0.2, fwd: 0.1 }],
-      [0.22, { R: reach([-0.45, 1.6, 0.3], [-0.6, 0.45, 0.66]), turn: -0.45, lean: 0.15, fwd: 0.18 }],
-      [0.3, { R: reach([0.2, 1.0, 0.5], [0.75, -0.4, 0.52]), turn: 0.5, lean: 0.25, fwd: 0.26, down: 0.1 }],
-      [0.38, { R: reach([-0.4, 1.55, 0.35], [-0.6, 0.4, 0.7]), turn: -0.4, lean: 0.2, fwd: 0.32 }],
-      [0.48, { R: reach([-0.08, 1.3, 0.75], [0.05, 0.0, 1.0]), turn: 0.3, lean: 0.3, fwd: 0.45, down: 0.15 }],
-    ],
-    steps: [step('L', 0.1, 0.35), step('R', 0.24, 0.35), step('L', 0.38, 0.35)],
-    contact: 0.14,
-    end: 0.85,
-  },
-  /** The blade trailed on the floor behind, swung up over the head and brought down on the world. */
-  ruin: {
-    hit: true,
-    keys: [
-      [0.22, { R: reach([-0.5, 0.75, -0.55], [-0.2, -0.35, -0.92]), turn: -0.95, down: 0.4, lean: 0.35 }, true],
-      [0.38, { R: reach([-0.15, 2.05, -0.05], [0.0, 0.6, -0.8]), turn: -0.2, down: -0.06, lean: -0.3, head: -0.15 }],
-      [0.48, { R: reach([-0.05, 0.9, 0.78], [0.0, -0.5, 0.87]), turn: 0.15, down: 0.55, lean: 0.62, fwd: 0.35 }],
-      [0.7, { R: reach([-0.05, 0.86, 0.72], [0.0, -0.45, 0.89]), turn: 0.15, down: 0.55, lean: 0.62, fwd: 0.33 }],
-    ],
-    steps: [step('L', 0.36, 0.8, 0.1)],
-    contact: 0.48,
-    end: 1.15,
   },
 };
 
