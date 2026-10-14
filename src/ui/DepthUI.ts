@@ -17,6 +17,7 @@ import { LegacyPanel } from './LegacyPanel';
 import { ChoicePanel } from './ChoicePanel';
 import { GamblerPanel } from './GamblerPanel';
 import { EnchanterPanel } from './EnchanterPanel';
+import { FusePanel } from './FusePanel';
 import { BountyPanel } from './BountyPanel';
 import { setChoiceHandler, setGateHandler } from './ChoiceSeam';
 import { GatePanel } from './GatePanel';
@@ -60,6 +61,10 @@ export function mountDepthUI(): void {
   const enchanter = new EnchanterPanel();
   enchanter.panel.mount(root);
   registerPanel('enchanter', enchanter);
+  // Sister Vell's second service: three stones into one (data/story/npcs.ts).
+  const fuse = new FusePanel();
+  fuse.panel.mount(root);
+  registerPanel('fuse', fuse);
   const bounties = new BountyPanel();
   bounties.panel.mount(root);
   registerPanel('bounties', bounties);

@@ -621,3 +621,11 @@ export function gemUpgradeRecipe(gemId: string): { from: string; count: number; 
   if (!gem || gem.qualityIndex >= QUALITIES.length - 1) return null;
   return { from: gem.id, count: 3, to: `gem.${gem.family}.${QUALITIES[gem.qualityIndex + 1]}` };
 }
+
+/** Three runes of one kind make one of the next rune up the ladder. */
+export function runeUpgradeRecipe(runeId: string): { from: string; count: number; to: string } | null {
+  const rune = RUNE_BY_ID.get(runeId);
+  if (!rune || rune.order >= RUNES.length) return null;
+  const next = RUNES[rune.order];
+  return next ? { from: rune.id, count: 3, to: next.id } : null;
+}

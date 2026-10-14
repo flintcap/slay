@@ -168,6 +168,17 @@ export class DialoguePanel implements DialogueView {
         },
       });
     }
+    for (const svc of npc.extraServices ?? []) {
+      list.push({
+        label: svc.label,
+        kind: 'service',
+        icon: svc.icon,
+        run: (v) => {
+          v.close();
+          events.emit('ui:open', { panel: svc.panel });
+        },
+      });
+    }
     for (const src of sources) {
       try {
         list.push(...src(npc));

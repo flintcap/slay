@@ -88,6 +88,8 @@ export interface NpcDef {
   serviceLabel?: string;
   /** Icon for the service button. */
   serviceIcon?: string;
+  /** More work this person does, each opening its own panel. */
+  extraServices?: Array<{ label: string; icon?: string; panel: string }>;
   /** One paragraph, for the dialogue header and the journal. */
   portrait: string;
   /** Greetings, in no particular order; `sim/Story.ts` picks. */

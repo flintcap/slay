@@ -170,6 +170,8 @@ export const NPCS: Record<NpcId, NpcDef> = {
     station: 'alchemist',
     serviceLabel: 'I need tinctures',
     serviceIcon: 'potion',
+    // Rendering three stones into one is an apothecary's reduction.
+    extraServices: [{ label: 'Fuse my gems and runes', icon: 'gem', panel: 'fuse' }],
     portrait: `Left an order that has since been dissolved, and kept the habit, the pharmacopoeia and a list of nineteen names. Her hands are steady in a way that takes practice.`,
     lines: [
       { id: 'vell.first', pri: 10, when: { first: true }, text: `Sit. Show me. Do not tell me it is nothing. I am Vell, and I have heard "it is nothing" from nineteen people I could not save.` },

@@ -22,9 +22,10 @@
 
 import type { Bounty, BountyKind, Character, Item, ItemCategory, ItemRarity, MonsterRank, TownState } from '../types';
 import { Random, hashString } from '../core/RNG';
-import { ITEM_BASES, getBase, rerollOneMod, rollItem, vendorPrice } from './Loot';
+import { ITEM_BASES, createItem, getBase, rerollOneMod, rollItem, vendorPrice } from './Loot';
 import { rollPowerAffix } from './ItemPowers';
-import { addItemToInventory, inventoryIsFull } from './Inventory';
+import { addItemToInventory, countInInventory, consumeFromInventory, inventoryIsFull, setStackCount, stackCount } from './Inventory';
+import { gemUpgradeRecipe, getSocketable, runeUpgradeRecipe } from '../data/gems';
 import { legacyPriceMultiplier } from './Legacy';
 import type { CraftCost } from './Crafting';
 
@@ -452,4 +453,100 @@ export function claimBounty(c: Character, id: string): { ok: boolean; reason?: s
   t.claimed++;
   refreshBoard(c);
   return { ok: true, payout: { gold: b.reward.gold, renown: b.reward.renown, item } };
+}
+
+// ---------------------------------------------------------------------------
+// Fusing: three of a stone make one of the next
+// ---------------------------------------------------------------------------
+
+export interface FuseRecipe {
+  /** The base id given up, three at a time. */
+  from: string;
+  /** The base id made. */
+  to: string;
+  count: number;
+  /** Gold per fusion. */
+  gold: number;
+  kind: 'gem' | 'rune';
+}
+
+/**
+ * What three of a gem or rune become: a gem of the next quality in its
+ * family, or the next rune on the ladder. Null for anything else and for the
+ * top of either ladder.
+ */
+export function fuseRecipe(baseId: string): FuseRecipe | null {
+  const gem = gemUpgradeRecipe(baseId);
+  const rune = gem ? null : runeUpgradeRecipe(baseId);
+  const r = gem ?? rune;
+  if (!r) return null;
+  const value = getSocketable(baseId)?.value ?? 50;
+  return { from: r.from, to: r.to, count: r.count, gold: Math.max(1, Math.round(value * (gem ? 0.4 : 0.3))), kind: gem ? 'gem' : 'rune' };
+}
+
+/** Every stone in the pack that has a next step, with how many are carried. */
+export function fusableInPack(c: Character): Array<{ recipe: FuseRecipe; have: number }> {
+  const seen = new Set<string>();
+  const out: Array<{ recipe: FuseRecipe; have: number }> = [];
+  for (const it of c.inventory) {
+    if (!it || seen.has(it.baseId)) continue;
+    seen.add(it.baseId);
+    const recipe = fuseRecipe(it.baseId);
+    if (recipe) out.push({ recipe, have: countInInventory(c, it.baseId) });
+  }
+  return out;
+}
+
+/**
+ * Fuses up to `times` sets of three. Each set costs its gold; the run stops
+ * at the first set that cannot be paid for or has nowhere to go. The pack is
+ * put back exactly as it was if the result will not fit, so a full pack
+ * never eats three stones.
+ */
+export function fuseStones(
+  c: Character,
+  baseId: string,
+  times: number,
+  pay: (cost: CraftCost) => { ok: boolean; reason?: string },
+): { ok: boolean; reason?: string; made: number; to?: string } {
+  const recipe = fuseRecipe(baseId);
+  if (!recipe) return { ok: false, reason: 'That cannot be fused any higher.', made: 0 };
+  let made = 0;
+  let reason: string | undefined;
+  for (let n = 0; n < Math.max(1, times); n++) {
+    if (countInInventory(c, baseId) < recipe.count) {
+      reason = made ? undefined : `You need ${recipe.count} of them.`;
+      break;
+    }
+    const slots = c.inventory;
+    const before = slots.slice();
+    const counts = before.map((s) => (s ? stackCount(s) : 0));
+    consumeFromInventory(c, baseId, recipe.count);
+    const rng = rollRng(c, 'fuse');
+    const out = createItem(recipe.to, 1, rng, 'normal');
+    out.value = getSocketable(recipe.to)?.value ?? out.value;
+    setStackCount(out, 1);
+    if (!addItemToInventory(c, out)) {
+      for (let i = 0; i < before.length; i++) {
+        slots[i] = before[i] ?? null;
+        const it = before[i];
+        if (it) setStackCount(it, counts[i]!);
+      }
+      reason = 'Make room in your pack first.';
+      break;
+    }
+    const paid = pay({ gold: recipe.gold, materials: {} });
+    if (!paid.ok) {
+      // Unpaid: undo the fusion as well.
+      for (let i = 0; i < before.length; i++) {
+        slots[i] = before[i] ?? null;
+        const it = before[i];
+        if (it) setStackCount(it, counts[i]!);
+      }
+      reason = paid.reason ?? 'Not enough gold.';
+      break;
+    }
+    made++;
+  }
+  return { ok: made > 0, reason, made, to: recipe.to };
 }

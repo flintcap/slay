@@ -200,3 +200,29 @@
   flex-direction: column;
   gap: 2px;
 }
+
+/* Stone Work (FusePanel): three stones, an arrow, the stone they make. */
+.fuse-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fuse-ico {
+  width: 28px;
+  height: 28px;
+  image-rendering: auto;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.fuse-times {
+  font-family: var(--font-num);
+  color: var(--ink-dim, #a89a80);
+}
+.fuse-arrow {
+  color: var(--gold, #c9a227);
+  font-size: 15px;
+  padding: 0 2px;
+}
+.fuse-row .btn + .btn {
+  margin-left: 6px;
+}
