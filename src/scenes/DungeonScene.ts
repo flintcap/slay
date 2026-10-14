@@ -81,6 +81,8 @@ const hiddenFar = new WeakSet<THREE.Object3D>();
  * the portal home). Spares make up the rest, so the count never moves.
  */
 const WAY_LIGHT_SLOTS = 3;
+/** Metres from the hero past which a monster in view is posed at half rate. */
+const POSE_FAR = 14;
 
 /** True when a light is in `scene` and every node above it is shown. */
 function shownIn(o: THREE.Object3D, scene: THREE.Object3D): boolean {
@@ -1305,6 +1307,9 @@ export class DungeonScene extends GameScene {
       _viewBall.center.copy(e.root.position);
       _viewBall.radius = 4 + 2 * e.sizeScale;
       e.setInView(_view.intersectsSphere(_viewBall));
+      // Far from the hero, a body is posed every other frame (its motion
+      // reads the same at half rate; the near ones keep every frame).
+      e.poseEvery = dx * dx + dz * dz > POSE_FAR * POSE_FAR ? 2 : 1;
       // A living body well out of view (it is not posed and casts no shadow)
       // also stops having its thirty-odd bones' world matrices rebuilt every
       // frame: with a floor's hundred-plus monsters that was the largest

@@ -508,7 +508,10 @@ export class EffectSystem {
     this.columns = makeColumns(24);
     this.shells = makeShells(24);
     this.ribbons = new RibbonBatch(48, 20);
-    this.lights = new LightPool(scene, q >= 1.3 ? 14 : q >= 0.9 ? 10 : q >= 0.5 ? 6 : 3);
+    // Every lit pixel on screen works through every light in the scene, lit
+    // or parked, so the pool stays small at every quality: the brightest few
+    // flashes take a light, the rest still glow and bloom on their own.
+    this.lights = new LightPool(scene, q >= 0.9 ? 4 : 3);
     this.solids = new SolidPool(scene, 48);
     scene.add(this.cores.mesh, this.beams.mesh, this.columns.mesh, this.shells.mesh, this.ribbons.mesh);
     for (let i = 0; i < 64; i++) this.free.push(new Live());

@@ -13,7 +13,7 @@
  *    the camera, of which only the first two cast shadows. Every other torch
  *    still reads, because the flame is emissive (bloom catches it) and a cheap
  *    additive floor pool fakes its falloff. That is the trick that lets a level
- *    have 200 torches and 8 lights.
+ *    have 200 torches and 4 lights.
  *  - Flicker is noise-driven, never a sine. A sine reads as a machine; layered
  *    fbm at two rates reads as fire.
  */
@@ -65,7 +65,13 @@ export interface Interactable {
 
 
 const CHUNK = 32;
-const MAX_TORCH_LIGHTS = 8;
+/**
+ * Real torch lights near the camera. Kept low: every lit pixel works through
+ * every point light in the scene (torches, spell flashes, the hero's own, the
+ * ways on), and at 8 here plus 14 for spells that was most of a frame's
+ * drawing on Ultra.
+ */
+const MAX_TORCH_LIGHTS = 4;
 const HALF = TILE_SIZE * 0.5;
 /**
  * How much of the lid is cut away around the player, in world units.

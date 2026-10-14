@@ -341,12 +341,14 @@ export interface QualityProfile {
   /** Multiplier on particle budgets and decal counts. */
   fxScale: number;
   /**
-   * Frames per shadow-map redraw. The shadow pass draws nearly every caster a
-   * second time (check-perf: 178 shadow draws beside 199 colour ones), so
-   * the lower steps redraw it every other frame. Map and matrix stay paired,
-   * so a held shadow lags a frame rather than sliding.
+   * Shadow-map redraws a second, at most. The shadow pass draws nearly every
+   * caster a second time (check-perf: 178 shadow draws beside 199 colour
+   * ones), and walls and trees never move, so it is redrawn on a clock rather
+   * than every frame: a fast machine no longer draws the map's shadows two
+   * hundred times a second. Map and matrix stay paired, so a held shadow
+   * lags a moment rather than sliding.
    */
-  shadowEvery: number;
+  shadowHz: number;
 }
 
 // GTAO draws the whole scene a second time for its normal and depth buffer:
@@ -359,15 +361,28 @@ export interface QualityProfile {
 // ratio cap and a render scale). High is the intended look. The auto mode
 // (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowEvery: 2 },
-  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowEvery: 2 },
-  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowEvery: 1 },
-  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowEvery: 1 },
+  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
+  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
+  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
+  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
 };
 
-/** Pixel ratio for a profile on this screen. */
-function pixelRatioFor(q: QualityProfile): number {
-  return Math.min(window.devicePixelRatio || 1, q.pixelRatioCap) * q.renderScale;
+/** Pixel ratio for a profile on this screen, times the auto mode's resolution step. */
+function pixelRatioFor(q: QualityProfile, dyn = 1): number {
+  return Math.min(window.devicePixelRatio || 1, q.pixelRatioCap) * q.renderScale * dyn;
+}
+
+/** The bloom and AO passes draw at this share of the frame's width and height. */
+const POST_SCALE = 0.5;
+
+/**
+ * Makes a pass size itself at `POST_SCALE` of what the composer hands it.
+ * Glow and soft corner shadows are blurry by nature, so a quarter of the
+ * pixels looks the same and costs a quarter.
+ */
+function shrinkPass(pass: { setSize(w: number, h: number): void }): void {
+  const full = pass.setSize.bind(pass);
+  pass.setSize = (w: number, h: number) => full(Math.max(1, Math.round(w * POST_SCALE)), Math.max(1, Math.round(h * POST_SCALE)));
 }
 
 interface ShadowBase {
@@ -411,7 +426,13 @@ export class Renderer {
 
   /** Transient grade state driven by gameplay. */
   private hurt = 0;
-  private shadowFrame = 0;
+  /** When the shadow map was last redrawn (performance.now ms). */
+  private shadowAt = -Infinity;
+  /**
+   * The auto mode's resolution step (1 = full). Lowered before any effect is
+   * turned off, so a heavy moment costs a little sharpness, not the look.
+   */
+  private dynScale = 1;
   private lowLife = 0;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -424,7 +445,7 @@ export class Renderer {
       stencil: false,
       depth: true,
     });
-    this.gl.setPixelRatio(pixelRatioFor(this.quality));
+    this.gl.setPixelRatio(pixelRatioFor(this.quality, this.dynScale));
     this.gl.setSize(window.innerWidth, window.innerHeight);
     // Reading back every program's info logs on first use is three more
     // round trips to the GPU per shader, each one a wait. The dev server keeps
@@ -530,7 +551,7 @@ export class Renderer {
     });
 
     this.composer = new EffectComposer(this.gl, target);
-    this.composer.setPixelRatio(pixelRatioFor(this.quality));
+    this.composer.setPixelRatio(pixelRatioFor(this.quality, this.dynScale));
     this.composer.setSize(w, h);
 
     // Placeholder scene/camera; swapped every frame by render().
@@ -542,6 +563,7 @@ export class Renderer {
 
     if (this.quality.ao) {
       this.gtao = new GTAOPass(dummyScene, dummyCam, w, h);
+      shrinkPass(this.gtao);
       this.gtao.output = GTAOPass.OUTPUT.Default;
       this.gtao.blendIntensity = 0.85;
       this.gtao.updateGtaoMaterial({
@@ -549,7 +571,9 @@ export class Renderer {
         distanceExponent: 1.0,
         thickness: 1.0,
         scale: 1.0,
-        samples: 16,
+        // Half the samples: at a quarter of the pixels the denoise pass
+        // smooths what eight leave.
+        samples: 8,
         distanceFallOff: 1.0,
         screenSpaceRadius: false,
       });
@@ -564,6 +588,7 @@ export class Renderer {
       // Tight threshold: only genuinely bright things (fire, magic, hot metal)
       // bloom. A low threshold is what makes amateur scenes look hazy.
       this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.62, 0.55, 0.92);
+      shrinkPass(this.bloom);
       this.composer.addPass(this.bloom);
     }
 
@@ -586,7 +611,7 @@ export class Renderer {
     if (name === this.qualityName) return;
     this.qualityName = name;
     this.quality = QUALITY[name];
-    this.gl.setPixelRatio(pixelRatioFor(this.quality));
+    this.gl.setPixelRatio(pixelRatioFor(this.quality, this.dynScale));
     this.gl.shadowMap.enabled = this.quality.shadows;
     if (this.shadowScene) this.applyShadows(this.shadowScene);
     // Every asset texture, the world sets included, now and later.
@@ -606,6 +631,22 @@ export class Renderer {
 
   get qualityLevel(): GameSettings['quality'] {
     return this.qualityName;
+  }
+
+  /** The auto mode's resolution step (1 = full sharpness). */
+  get dynamicScale(): number {
+    return this.dynScale;
+  }
+
+  /** Draws at `k` of the profile's own pixel ratio, everything else as it is. */
+  setDynamicScale(k: number): void {
+    k = Math.max(0.5, Math.min(1, k));
+    if (k === this.dynScale) return;
+    this.dynScale = k;
+    const pr = pixelRatioFor(this.quality, k);
+    this.gl.setPixelRatio(pr);
+    this.composer.setPixelRatio(pr);
+    this.onResize();
   }
 
   /** The scene `applyShadows` last fitted, refitted when the quality changes. */
@@ -661,8 +702,8 @@ export class Renderer {
     this.gl.setSize(w, h);
     this.composer.setSize(w, h);
     this.gradePass.uniforms.uResolution.value.set(w, h);
-    this.bloom?.setSize(w, h);
-    this.gtao?.setSize(w, h);
+    // The composer has just sized every pass (bloom and AO at their own
+    // share, `shrinkPass`) to the drawn pixels.
     const cam = this.currentCamera;
     if (cam instanceof THREE.PerspectiveCamera) {
       cam.aspect = w / h;
@@ -751,10 +792,13 @@ export class Renderer {
     const depth = this.composer.readBuffer.depthTexture;
     if (this.gtao && depth && this.gtao.depthTexture !== depth) this.gtao.setGBuffer(depth);
 
-    const every = this.quality.shadowEvery;
     const sm = this.gl.shadowMap;
-    sm.autoUpdate = every <= 1;
-    if (!sm.autoUpdate) sm.needsUpdate = this.shadowFrame++ % every === 0 || sceneChanged;
+    sm.autoUpdate = false;
+    const now = performance.now();
+    if (sceneChanged || now - this.shadowAt >= 1000 / this.quality.shadowHz - 1) {
+      sm.needsUpdate = true;
+      this.shadowAt = now;
+    }
 
     this.composer.render(dt);
   }

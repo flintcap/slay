@@ -6,6 +6,11 @@
  * step back up after a long calm stretch. The quality chosen in Settings is
  * the top it will use, so the mode only ever trades looks for smoothness.
  *
+ * Before it turns any effect off it first draws fewer pixels (`RES_STEPS`):
+ * a heavy fight costs a little sharpness for a few seconds, not the glow,
+ * shadows and shading of the chosen quality. Only once the lowest resolution
+ * step is still too slow does the quality itself step down.
+ *
  * It judges a second or so of frames at a time, never one frame: a single
  * long frame (a load, a menu opening) is not a reason to change anything.
  * A step up that turns out too much for the machine makes the next try wait
@@ -34,9 +39,22 @@ const FIRST_WAIT_S = 20;
 /** After any change, frames are not judged for this long (the change itself is a hitch). */
 const SETTLE_MS = 4000;
 
+/** Resolution steps, sharpest first: a share of the quality's own pixel ratio. */
+const RES_STEPS: readonly number[] = [1, 0.85, 0.72];
+/** A resolution step down already when the middle frame runs past this (ms)... */
+const RES_SLOW_MEDIAN = 19;
+/** ...or one frame in ten past this. */
+const RES_SLOW_P90 = 26;
+/** Calm seconds before a resolution step back up. */
+const RES_WAIT_S = 8;
+/** A resolution change is a small hitch (render targets are resized). */
+const RES_SETTLE_MS = 2500;
+
 export interface QualityTarget {
   readonly qualityLevel: QualityId;
   setQuality(q: QualityId): void;
+  readonly dynamicScale: number;
+  setDynamicScale(k: number): void;
 }
 
 export class AutoQuality {
@@ -46,6 +64,8 @@ export class AutoQuality {
   private calmS = 0;
   private waitS = FIRST_WAIT_S;
   private lastUpAt = -Infinity;
+  /** Index into RES_STEPS. */
+  private res = 0;
   private readonly enabled: boolean;
 
   constructor(
@@ -71,6 +91,7 @@ export class AutoQuality {
     if (!this.enabled || s.autoQuality === false) {
       // Off: run exactly what was chosen.
       if (cur !== top) this.target.setQuality(s.quality);
+      if (this.res !== 0) this.setRes(0);
       return;
     }
     // Never above what was chosen (the player just lowered it).
@@ -92,13 +113,24 @@ export class AutoQuality {
     const median = sorted[Math.floor(sorted.length * 0.5)]!;
     const p90 = sorted[Math.floor(sorted.length * 0.9)]!;
 
-    if (median > SLOW_MEDIAN || p90 > SLOW_P90) {
+    const slow = median > SLOW_MEDIAN || p90 > SLOW_P90;
+    if (slow || median > RES_SLOW_MEDIAN || p90 > RES_SLOW_P90) {
       this.calmS = 0;
-      if (cur > 0) {
+      // Fewer pixels first; the look goes only when that is not enough.
+      if (this.res < RES_STEPS.length - 1) {
+        this.setRes(this.res + 1);
+        return;
+      }
+      if (slow && cur > 0) {
         // Too much soon after a step up: wait longer before the next try.
         if (now - this.lastUpAt < 30000) this.waitS = Math.min(this.waitS * 2, 600);
         this.change(cur - 1);
       }
+      return;
+    }
+    if (this.res > 0 && median < CALM_MEDIAN && p90 < CALM_P90) {
+      this.calmS += Math.min(elapsedS, 2);
+      if (this.calmS >= RES_WAIT_S) this.setRes(this.res - 1);
       return;
     }
     if (cur < top && median < CALM_MEDIAN && p90 < CALM_P90) {
@@ -112,8 +144,19 @@ export class AutoQuality {
     }
   }
 
+  private setRes(i: number): void {
+    this.res = Math.max(0, Math.min(RES_STEPS.length - 1, i));
+    this.target.setDynamicScale(RES_STEPS[this.res]!);
+    this.frames.length = 0;
+    this.calmS = 0;
+    this.settleUntil = performance.now() + RES_SETTLE_MS;
+  }
+
   private change(i: number): void {
     const q = LADDER[Math.max(0, Math.min(LADDER.length - 1, i))]!;
+    // A new quality starts at full sharpness; the steps above apply again.
+    this.res = 0;
+    this.target.setDynamicScale(1);
     this.target.setQuality(q);
     this.frames.length = 0;
     this.calmS = 0;

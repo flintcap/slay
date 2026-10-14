@@ -278,6 +278,13 @@ export class Enemy implements Combatant {
    * moves, and a fall always plays out.
    */
   inView = true;
+  /**
+   * Frames per pose solve while in view (the scene sets it each step): 2 for
+   * bodies far from the hero, whose motion reads the same at half rate.
+   */
+  poseEvery = 1;
+  private poseTick = 0;
+  private poseDt = 0;
   private shadowCasters: THREE.Mesh[] | null = null;
 
   setInView(v: boolean): void {
@@ -843,18 +850,32 @@ export class Enemy implements Combatant {
         this.action = 'idle';
       }
     }
-    if (this.inView) this.rig?.update(dt, {
-      locomotion: this.locomotion,
-      action: this.spawnT > 0 ? 'spawn' : this.action,
-      actionT: this.spawnT > 0 ? 1 - this.spawnT : this.actionT,
-      time: ctx.elapsed,
-      deathT: 0,
-    });
+    if (!this.inView) {
+      this.poseDt = 0;
+      this.poseTick = 0;
+    } else {
+      this.poseDt = Math.min(0.1, this.poseDt + dt);
+      if (++this.poseTick >= this.poseEvery) this.solvePose(ctx.elapsed);
+    }
     if (this.aura) {
       this.aura.rotation.z += dt * 0.9;
       const s = 1 + Math.sin(ctx.elapsed * 2.6) * 0.06;
       this.aura.scale.setScalar(this.hitRadius * 2.6 * s);
     }
+  }
+
+  /** Solves the living pose for the time gathered since the last solve. */
+  private solvePose(elapsed: number): void {
+    const dt = this.poseDt;
+    this.poseTick = 0;
+    this.poseDt = 0;
+    this.rig?.update(dt, {
+      locomotion: this.locomotion,
+      action: this.spawnT > 0 ? 'spawn' : this.action,
+      actionT: this.spawnT > 0 ? 1 - this.spawnT : this.actionT,
+      time: elapsed,
+      deathT: 0,
+    });
   }
 
   private get currentSpeed(): number {
