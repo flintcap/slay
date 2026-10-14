@@ -459,8 +459,11 @@ export function mountUI(engine: Engine): void {
     // `.ui-soft` nodes — the ground-loot labels — take the left button and let
     // everything else through, so they must not block the attack button.
     const soft = over && !!(hit as HTMLElement).closest('.ui-soft');
-    engine.input.pointerOverUI = over && !soft;
-    engine.input.pointerOverClickable = over;
+    // Carrying a skill or an item counts as over the UI wherever the cursor
+    // is: the held button belongs to the drag, so the hero must not walk
+    // after the ghost across the floor.
+    engine.input.pointerOverUI = (over && !soft) || drag.active;
+    engine.input.pointerOverClickable = over || drag.active;
   };
   window.addEventListener('pointermove', (e) => updatePointer(e.clientX, e.clientY), { passive: true });
   window.addEventListener('pointerdown', (e) => updatePointer(e.clientX, e.clientY), { capture: true });

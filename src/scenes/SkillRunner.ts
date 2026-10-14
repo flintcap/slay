@@ -2761,7 +2761,16 @@ export class SkillRunner {
           t.body.position.x = rx;
           t.body.position.z = rz;
           t.route = [];
-          this.effects.teleportIn(rx, 0.1, rz, t.color);
+          // Drawn like a summon's arrival but heard as the skill that raised
+          // it: the generic teleport hum is not what a Shadow Clone sounds like.
+          this.effects.beginQuiet();
+          try {
+            this.effects.teleportIn(rx, 0.1, rz, t.color);
+          } finally {
+            this.effects.endQuiet();
+          }
+          const voice = skillSound(t.skillId).cast;
+          if (voice) events.emit('sfx', { id: voice, x: rx, z: rz });
         }
 
         // Only what is near you is worth a fight: a summon that chases across
@@ -3000,7 +3009,9 @@ export class SkillRunner {
       x = owner.position.x;
       z = owner.position.z;
     }
-    const fx = this.effects.summonCircle(x, z, melee ? 0.7 : 0.55, duration, color);
+    // The circle marks the raising. A creature walks off it and lives on, so
+    // its circle fades after the arrival; only a totem keeps its ring.
+    const fx = this.effects.summonCircle(x, z, melee ? 0.7 : 0.55, Number.isFinite(duration) ? duration : 1.6, color);
     this.effects.teleportIn(x, 0.1, z, color);
 
     // Give it a body if the skill names one.

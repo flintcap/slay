@@ -106,6 +106,12 @@ export class CombatControls {
   private queued: Queued | null = null;
   private lock: Enemy | null = null;
   private pursuit: Pursuit | null = null;
+  /**
+   * The left button went down over the floor. A press that began on a panel
+   * (a skill dragged out of the tree, a slider let go past its end) is the
+   * panel's, however far the cursor travels while it is held.
+   */
+  private leftFromWorld = false;
   private readonly aim = new THREE.Vector3();
   private readonly tmp = new THREE.Vector3();
 
@@ -167,7 +173,9 @@ export class CombatControls {
     // --- left button: move, or attack in place with Shift ------------------
     // A click that went down and came back up inside one frame still counts.
     const leftHeld = input.mouseLeft || input.mouseLeftPressed;
-    if (mouseFree && leftHeld && !input.pointerOverClickable) {
+    if (input.mouseLeftPressed) this.leftFromWorld = mouseFree && !input.pointerOverClickable;
+    else if (!leftHeld) this.leftFromWorld = false;
+    if (mouseFree && leftHeld && this.leftFromWorld && !input.pointerOverClickable) {
       if (stand) {
         this.requestPrimary(input, enemies, boss, input.mouseLeftPressed, true);
       } else if (!keyMoving) {

@@ -208,7 +208,11 @@ async function play({ n, settleMs, settleFrames, fight }) {
       v.set(home.x + Math.cos(a) * 6, p.y, home.z + Math.sin(a) * 6).project(scene.camera);
       input.ndc.set(Math.max(-1, Math.min(1, v.x)), Math.max(-1, Math.min(1, v.y)));
       input.pointerOverUI = false;
+      input.pointerOverClickable = false;
+      // A press on the floor each step: the hero walks only after a press that
+      // began over the world (entities/Controls.ts).
       input.mouseLeft = true;
+      input.mouseLeftPressed = true;
     }
   };
   // Settle: the same play, unmeasured, so the first-use costs of this place
