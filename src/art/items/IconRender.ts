@@ -101,7 +101,14 @@ function poseFor(family: ItemFamily, size: THREE.Vector3, tall = false): Pose {
 
 let renderer: THREE.WebGLRenderer | null = null;
 let failed = false;
-/** The renderer's current drawing size, so a shaped icon only resizes when it must. */
+/**
+ * The renderer's drawing buffer, which only ever grows. Resizing a WebGL
+ * buffer reallocates it (check-frames: 4.3 s in setSize while the town drew a
+ * pack of mixed shapes), so an icon smaller than the buffer draws into its
+ * top-left corner instead, and `drawW` by `drawH` is the part it used.
+ */
+let bufW = DRAW;
+let bufH = DRAW;
 let drawW = DRAW;
 let drawH = DRAW;
 let stage: { scene: THREE.Scene; holder: THREE.Group; cam: THREE.OrthographicCamera } | null = null;
@@ -123,8 +130,7 @@ function studio(): THREE.WebGLRenderer | null {
     }
     renderer.setPixelRatio(1);
     renderer.setSize(DRAW, DRAW, false);
-    drawW = DRAW;
-    drawH = DRAW;
+    bufW = bufH = drawW = drawH = DRAW;
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -173,11 +179,15 @@ function renderModel(spec: IconSpec): Shot | null {
   const aspect = out.w / out.h;
   const dw = out.w * 2;
   const dh = out.h * 2;
-  if (dw !== drawW || dh !== drawH) {
-    r.setSize(dw, dh, false);
-    drawW = dw;
-    drawH = dh;
+  if (dw > bufW || dh > bufH) {
+    bufW = Math.max(bufW, dw);
+    bufH = Math.max(bufH, dh);
+    r.setSize(bufW, bufH, false);
   }
+  // The viewport's origin is the bottom left; this puts the icon top left.
+  r.setViewport(0, bufH - dh, dw, dh);
+  drawW = dw;
+  drawH = dh;
   const visual = spec.visual ?? { shape: spec.baseId, palette: 'metal.steel' };
   const built = buildItem(visual, spec.rarity, { baseId: spec.baseId, uniqueId: spec.uniqueId, setId: spec.setId });
   const obj = built.group;
@@ -362,7 +372,7 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
   layer.x.clearRect(0, 0, W, H);
   layer.x.imageSmoothingEnabled = true;
   layer.x.imageSmoothingQuality = 'high';
-  layer.x.drawImage(renderer.domElement, 0, 0, W, H);
+  layer.x.drawImage(renderer.domElement, 0, 0, drawW, drawH, 0, 0, W, H);
   if (opts.bare) {
     out.drawImage(layer.c, 0, 0);
     return;

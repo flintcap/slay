@@ -21,7 +21,8 @@ import type { Item, ItemRarity, ItemVisual } from '../src/types';
 import { buildItem } from '../src/art/items/Model';
 import { buildDropModel, setItemVisualResolver } from '../src/art/ItemModels';
 import { Random } from '../src/core/RNG';
-import { drawItemIcon, itemScansReady } from '../src/art/items/IconRender';
+import { drawItemIcon, iconCanvasSize, itemScansReady } from '../src/art/items/IconRender';
+import { sizeOfBase } from '../src/sim/Grid';
 
 const BG = '#121318';
 const INK = '#c9d1de';
@@ -336,7 +337,42 @@ function distinctCheck(f: Record<string, string>): string {
   return JSON.stringify({ pass: fails.length === 0, lines });
 }
 
+/**
+ * Pack icons at their own shapes, drawn in an order that mixes big and small
+ * (the icon renderer keeps one buffer and draws a small icon in its corner).
+ */
+function shapedSheet(entries: Entry[]): string {
+  const cells = entries.map((e) => {
+    const sh = sizeOfBase(baseById.get(e.baseId));
+    const dim = iconCanvasSize({ baseId: e.baseId, rarity: e.rarity, shape: sh });
+    const c = document.createElement('canvas');
+    c.width = dim.w;
+    c.height = dim.h;
+    drawItemIcon(c.getContext('2d')!, { baseId: e.baseId, rarity: e.rarity, visual: e.visual, shape: sh });
+    return c;
+  });
+  const out = document.createElement('canvas');
+  out.width = cells.reduce((z, c) => z + c.width + 8, 8);
+  out.height = Math.max(...cells.map((c) => c.height)) + 16;
+  const g = out.getContext('2d')!;
+  g.fillStyle = BG;
+  g.fillRect(0, 0, out.width, out.height);
+  let x = 8;
+  for (const c of cells) {
+    g.fillStyle = '#1d1812';
+    g.fillRect(x, 8, c.width, c.height);
+    g.drawImage(c, x, 8);
+    x += c.width + 8;
+  }
+  return out.toDataURL('image/png');
+}
+
 export const SHEETS: Record<string, (f: Record<string, string>) => Promise<string>> = {
+  async shaped(f) {
+    const ids = (f.ids ?? '').split(',').filter((id) => baseById.has(id));
+    const list = ids.length ? ids : ITEM_BASES.filter((b, i) => i % Math.max(1, Math.floor(ITEM_BASES.length / 10)) === 0).map((b) => b.id);
+    return shapedSheet(list.map((id) => ({ label: id, visual: baseById.get(id)!.visual, rarity: 'rare' as ItemRarity, baseId: id })));
+  },
   async uniques(f) {
     const list = UNIQUES.filter((u) => {
       const b = baseById.get(u.baseId);
