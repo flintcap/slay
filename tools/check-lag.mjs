@@ -32,6 +32,7 @@
  * software drawing stays under the spikes. Compare before and after back to
  * back on the same machine.
  *
+ * --cls=<class id> plays that class (default warden).
  * --warm plays it all a second time in the same browser profile (a returning
  * player: IndexedDB caches filled). --only=a,b runs some segments.
  * --profile adds the heaviest JavaScript functions of each segment.
@@ -56,6 +57,7 @@ const [VW, VH] = (arg('size') ?? '480x270').split('x').map(Number);
 const FIGHT_FRAMES = Number(arg('fight') ?? 300);
 // The glide: metres a frame, and how many monsters it visits.
 const STRIDE = Number(arg('stride') ?? 0.5);
+const CLS = arg('cls') ?? 'warden';
 const MAXSTOPS = Number(arg('stops') ?? 14);
 const SPIKE = 50;
 
@@ -295,15 +297,15 @@ async function visit(label) {
 
   const needTown = ONLY.some((o) => ['menus', 'view', 'areas', 'fight'].includes(o));
   if (needTown) {
-    await seg('town: enter', async () => {
+    await seg('town: enter', async (cls) => {
       if (window.SLAY.engine.currentSceneId !== 'charSelect') {
         localStorage.clear();
         window.SLAY.save.hardReset();
       }
-      window.SLAY.debug.makeCharacter('warden', 1, 4242);
+      window.SLAY.debug.makeCharacter(cls, 1, 4242);
       await window.SLAY.engine.goTo('town');
       await new Promise((r) => setTimeout(r, 2000));
-    });
+    }, CLS);
   }
   const PANELS = ['inventory', 'character', 'skills', 'map', 'journal', 'questLog'];
   const panels = async (where) => {
