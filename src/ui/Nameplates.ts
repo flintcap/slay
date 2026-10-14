@@ -90,6 +90,7 @@ interface Candidate {
   /** Ordinary monsters are the ones thinned in a crowd. */
   ordinary: boolean;
   keep: boolean;
+  plate: Plate | null;
 }
 
 const byDistance = (a: Candidate, b: Candidate): number => a.dist - b.dist;
@@ -294,7 +295,7 @@ export class NameplateLayer {
 
       let c = this.cands[n];
       if (!c) {
-        c = { t, dist: 0, sx: 0, sy: 0, ordinary: false, keep: true };
+        c = { t, dist: 0, sx: 0, sy: 0, ordinary: false, keep: true, plate: null };
         this.cands[n] = c;
       }
       n++;
@@ -315,12 +316,31 @@ export class NameplateLayer {
     }
     ordinary.length = 0;
 
+    // Each monster keeps the plate it wore last frame. Handed out in order
+    // instead, one monster stepping in or out of view moved every plate after
+    // it onto a new face: a rare pack's badges were rebuilt (new images,
+    // decoded again) frame after frame while the crowd shifted.
+    for (let i = 0; i < n; i++) {
+      const c = this.cands[i]!;
+      c.plate = null;
+      if (!c.keep) continue;
+      const d = c.t.nameplate;
+      for (const p of this.pool) {
+        if (!p.inUse && p.src === d) {
+          p.inUse = true;
+          c.plate = p;
+          break;
+        }
+      }
+    }
+
     for (let i = 0; i < n; i++) {
       const c = this.cands[i]!;
       if (!c.keep) continue;
       const t = c.t;
       const d = t.nameplate;
-      const plate = this.acquire();
+      const plate = c.plate ?? this.acquire();
+      c.plate = null;
       this.paint(plate, d);
 
       const pct = d.maxLife > 0 ? Math.max(0, Math.min(1, d.life / d.maxLife)) : 0;
