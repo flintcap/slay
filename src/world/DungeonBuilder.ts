@@ -743,8 +743,12 @@ export class DungeonMesh {
   /** Floor surface height at a world position — for entity grounding. */
   floorY(wx: number, wz: number): number {
     // Outdoors the ground is a smooth heightfield, not tile steps: stand on it.
-    if (this.terrain) return this.terrain.heightAt(wx, wz);
     const t = this.worldToTile(wx, wz);
+    if (this.terrain) {
+      // A bridge deck stands over a sunken riverbed: walk on the planks.
+      if (this.rawTile(t.x, t.y) === T_BRIDGE) return Math.max(this.terrain.heightAt(wx, wz), this.floorHeight(t.x, t.y) + 0.03);
+      return this.terrain.heightAt(wx, wz);
+    }
     return this.floorHeight(t.x, t.y);
   }
 
