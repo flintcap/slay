@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SHADOW_LAYER } from './Layers';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -673,6 +674,8 @@ export class Renderer {
         base = { size: l.shadow.mapSize.x, casts: true, extent: c ? [c.left, c.right, c.top, c.bottom] : null };
         l.userData.shadowBase = base;
       }
+      // Shadow-only bodies (merged creature parts) are drawn into every map.
+      l.shadow.camera.layers.enable(SHADOW_LAYER);
       const point = !(l as THREE.DirectionalLight).isDirectionalLight;
       l.castShadow = base.casts && (!point || q.pointShadows);
       const size = Math.max(256, Math.min(4096, Math.round(base.size * q.shadowScale)));

@@ -19,6 +19,7 @@ import { cloneCreatureMaterial, creatureMaterial, disposeCreatureMaterials, scal
 import type { CreatureInfo } from './Animator';
 import { STYLE_DEFAULT, type MotionStyle } from './Motion';
 import { mergeGeometries } from '../Meshes';
+import { SHADOW_LAYER } from '../../core/Layers';
 
 /** How much detail a creature gets: triangles per material and field resolution. */
 export type CreatureTier = 'small' | 'normal' | 'big' | 'boss';
@@ -94,6 +95,8 @@ function quality(rig: CreatureRig, tier: CreatureTier): SculptQuality {
 interface Prototype {
   root: THREE.Group;
   skeleton: THREE.Skeleton;
+  /** Every part in one geometry (position and skin only), for the shadow pass. */
+  shadowGeo: THREE.BufferGeometry | null;
   info: CreatureInfo;
   meshes: Array<{ mat: CMat; geo: THREE.BufferGeometry }>;
   look: CreatureLook;
@@ -144,11 +147,13 @@ function prototype(look: CreatureLook): Prototype {
     style,
     grip: s.grip,
   };
+  const shadowGeo = meshes.length > 1 ? mergeForShadow(meshes.map((m) => m.geo)) : null;
   for (const m of meshes) {
     const def = look.mats[m.mat] ?? look.mats.skin!;
     const mesh = new THREE.SkinnedMesh(m.geo, creatureMaterial(def));
     mesh.name = `creature:${m.mat}`;
-    mesh.castShadow = true;
+    // With a shadow body the parts cast none of their own (see `SHADOW_LAYER`).
+    mesh.castShadow = !shadowGeo;
     mesh.receiveShadow = false;
     // Poses reach past the bind box (lunges, rears, falls): cull on a generous sphere.
     if (!m.geo.boundingSphere) m.geo.computeBoundingSphere();
@@ -158,9 +163,78 @@ function prototype(look: CreatureLook): Prototype {
     root.add(mesh);
     mesh.bind(skeleton, new THREE.Matrix4());
   }
-  const proto: Prototype = { root, skeleton, info, meshes, look };
+  if (shadowGeo) {
+    const body = new THREE.SkinnedMesh(shadowGeo, shadowBodyMat());
+    body.name = 'creature:shadow';
+    body.userData.shadowOnly = true;
+    body.castShadow = true;
+    body.receiveShadow = false;
+    body.layers.set(SHADOW_LAYER);
+    const bs = (shadowGeo.boundingSphere ?? (shadowGeo.computeBoundingSphere(), shadowGeo.boundingSphere))!;
+    bs.radius = Math.max(bs.radius * 1.5, rig.height * 0.9, rig.length * 0.8);
+    root.add(body);
+    body.bind(skeleton, new THREE.Matrix4());
+  }
+  const proto: Prototype = { root, skeleton, shadowGeo, info, meshes, look };
   prototypes.set(look.key, proto);
   return proto;
+}
+
+/*
+ * A monster is three to five parts (skin, cloth, metal, bone), and each part
+ * cast its own shadow: one draw per part per monster in the shadow pass. The
+ * shadow body is all of them in one geometry on `SHADOW_LAYER`, which only
+ * shadow cameras see, so each monster's shadow is one draw.
+ */
+
+let shadowMat: THREE.MeshBasicMaterial | null = null;
+function shadowBodyMat(): THREE.MeshBasicMaterial {
+  if (!shadowMat) {
+    shadowMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+    shadowMat.name = 'creature:shadow';
+    shadowMat.userData.shared = true;
+  }
+  return shadowMat;
+}
+
+/** The parts' positions and skin weights in one indexed geometry. */
+function mergeForShadow(geos: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
+  const names = ['position', 'skinIndex', 'skinWeight'] as const;
+  for (const g of geos) for (const n of names) if (!g.getAttribute(n)) return null;
+  const out = new THREE.BufferGeometry();
+  for (const n of names) {
+    const first = geos[0]!.getAttribute(n) as THREE.BufferAttribute;
+    const size = first.itemSize;
+    let total = 0;
+    for (const g of geos) total += g.getAttribute(n).count;
+    const Ctor = first.array.constructor as new (n: number) => THREE.TypedArray;
+    const arr = new Ctor(total * size);
+    let at = 0;
+    for (const g of geos) {
+      const a = g.getAttribute(n) as THREE.BufferAttribute;
+      if (a.itemSize !== size || a.array.constructor !== first.array.constructor) return null;
+      for (let i = 0; i < a.count; i++) for (let k = 0; k < size; k++) arr[at++] = a.getComponent(i, k);
+    }
+    out.setAttribute(n, new THREE.BufferAttribute(arr, size, first.normalized));
+  }
+  let indexTotal = 0;
+  let vTotal = 0;
+  for (const g of geos) {
+    indexTotal += g.index ? g.index.count : g.getAttribute('position').count;
+    vTotal += g.getAttribute('position').count;
+  }
+  const index = vTotal > 65535 ? new Uint32Array(indexTotal) : new Uint16Array(indexTotal);
+  let at = 0;
+  let base = 0;
+  for (const g of geos) {
+    const n = g.getAttribute('position').count;
+    if (g.index) for (let i = 0; i < g.index.count; i++) index[at++] = g.index.getX(i) + base;
+    else for (let i = 0; i < n; i++) index[at++] = i + base;
+    base += n;
+  }
+  out.setIndex(new THREE.BufferAttribute(index, 1));
+  out.userData.cached = true;
+  return out;
 }
 
 export interface BuildOpts {
@@ -198,6 +272,7 @@ export function instanceCreature(look: CreatureLook, scale: number, opts: BuildO
     // first frame of a floor (most of a second), and it then kept that one
     // pose's tight sphere for good, so a lunge could be culled half drawn.
     if (sm.geometry.boundingSphere) sm.boundingSphere = sm.geometry.boundingSphere.clone();
+    if (sm.userData.shadowOnly) return;
     const matName = sm.userData.mat as CMat;
     const def = proto.look.mats[matName] ?? proto.look.mats.skin!;
     // Texel density follows the world size; rank adds its rim and a hotter glow.
@@ -379,7 +454,10 @@ export function disposeCreatures(): void {
     f.mat.dispose();
   }
   flairs.clear();
-  for (const p of prototypes.values()) p.skeleton.dispose();
+  for (const p of prototypes.values()) {
+    p.skeleton.dispose();
+    p.shadowGeo?.dispose();
+  }
   prototypes.clear();
   releaseBakes();
   disposeCreatureMaterials();
