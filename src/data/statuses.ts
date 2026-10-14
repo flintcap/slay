@@ -36,6 +36,8 @@ export type StatusTag =
   | 'arcane'
   | 'buff'
   | 'aura'
+  /** Kept up by something that renews it every tick (a burning vigil): the HUD shows no timer. */
+  | 'held'
   | 'elite'
   | 'boss'
   | 'shred'

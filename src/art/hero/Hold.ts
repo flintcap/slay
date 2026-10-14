@@ -20,13 +20,24 @@ export function holdTurn(grip: string, slot: 'mainHand' | 'offHand'): THREE.Quat
       break;
     case 'shield':
       // Face out from the back of the forearm, top along the grip.
-      q.setFromEuler(new THREE.Euler(0, slot === 'offHand' ? -Math.PI / 2 : Math.PI / 2, 0));
+      q.setFromEuler(new THREE.Euler(0, slot === 'offHand' ? Math.PI / 2 : -Math.PI / 2, 0));
+      break;
+    case 'mace':
+      // A club's weight is in its head; carried at the angle of a sword it
+      // swung out wide of the body. Tip the head back in toward the shoulder.
+      q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), slot === 'offHand' ? -MACE_TUCK : MACE_TUCK);
       break;
     default:
       break;
   }
   return q;
 }
+
+/** How far a one-handed mace's head is tipped in toward the body, in radians. */
+const MACE_TUCK = 0.35;
+
+/** How far a shield's board stands off the fist, in metres. */
+const SHIELD_STANDOFF = 0.06;
 
 /** How far up the shaft the main hand takes a staff, as a share of its length. */
 const STAFF_HOLD = 0.33;
@@ -50,6 +61,10 @@ export function holdItem(rig: HeroRig, slot: 'mainHand' | 'offHand', model: THRE
       if (at > 0) model.position.y -= at;
     }
   }
+  // A shield is made with its board at the origin and the handle 4 cm behind
+  // it. Held at the board, the fist came out through the face: push the board
+  // out so the fist sits on the handle with the knuckles behind the board.
+  if (grip === 'shield') model.position.z += SHIELD_STANDOFF;
   node.add(model);
   socket.add(node);
   return node;

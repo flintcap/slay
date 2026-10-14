@@ -57,7 +57,9 @@ const TICK = 0.5;
 /** A tick's status outlasts the next tick, so it never flickers off. */
 const HOLD = 1.4;
 /** Twin Wick's second ring sits this much further out, so the two read apart. */
-const SECOND_RING = 0.45;
+const SECOND_RING = 0.3;
+/** The ring drawn at his feet, in metres: a small circle, whatever the vigil reaches. */
+const DRAWN_RING = 1.1;
 
 interface Ring {
   kind: 'self' | 'foe' | 'burn' | 'toll';
@@ -300,7 +302,8 @@ export function tickVigils(host: VigilHost, player: Player, dt: number, world: W
     }
     const look = RINGS[lit.id]?.look;
     if (!lit.ring && look) lit.ring = new VigilRing(scene, look, slot * 1.7);
-    lit.ring?.update(dt, player.position.x, player.position.y, player.position.z, radius + slot * SECOND_RING);
+    // Drawn small at his feet (owner); what it reaches is still `radius`.
+    lit.ring?.update(dt, player.position.x, player.position.y, player.position.z, DRAWN_RING + slot * SECOND_RING);
   });
   w.acc += dt;
   if (w.acc < TICK) return;

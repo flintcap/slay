@@ -290,10 +290,12 @@ function realLength(end: number, c: number | null, contact: number | undefined, 
 }
 
 /** Shoots the actor framed on its mover, the floor fixed under it. */
+/** Camera pitch for `shootActor`; `--pitch=0.95` on the stances sheet looks down like the game. */
+let actorPitch = 0.18;
 function shootActor(g: CanvasRenderingContext2D, a: Actor, x: number, y: number, w: number, h: number, yaw: number, dist = 4.2): void {
   const H = a.hero.look.shape.height;
   const tgt = a.mover.position.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).add(new THREE.Vector3(0, H * 0.5, 0));
-  shoot(g, a.world, { x, y, w, h, yaw, target: tgt, dist, floor: true, pitch: 0.18 });
+  shoot(g, a.world, { x, y, w, h, yaw, target: tgt, dist, floor: true, pitch: actorPitch });
 }
 
 /**
@@ -775,6 +777,14 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     await loadMeshCache();
     const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
     const list = f.stance ? (f.stance.split(',') as Stance[]) : STANCE_LIST;
+    actorPitch = f.pitch !== undefined ? Number(f.pitch) : 0.18;
+    // --main=mace.club:mace puts another weapon in the main hand of every stance shown.
+    if (f.main) {
+      const [id, grip] = f.main.split(':');
+      for (const st of list) STANCE_ITEMS[st] = [['mainHand', id!, grip ?? 'sword'], ...STANCE_ITEMS[st].filter(([sl]) => sl !== 'mainHand')];
+    }
+    // --off=shield.tower puts another shield in the off hand.
+    if (f.off) for (const st of list) STANCE_ITEMS[st] = [...STANCE_ITEMS[st].filter(([sl]) => sl !== 'offHand'), ['offHand', f.off, 'shield']];
     const TW = 220;
     const TH = 380;
     const { c, g } = sheet(TW * 3 * 3, TH * Math.ceil(list.length / 3));
@@ -783,7 +793,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       const oy = Math.floor(i / 3) * TH;
       const idle = actor(cls, st, `${cls}-${st}-i`);
       simulate(idle, 0, 1.5, still);
-      shootActor(g, idle, ox, oy, TW, TH, f.yaw !== undefined ? Number(f.yaw) : 0.6);
+      shootActor(g, idle, ox, oy, TW, TH, f.yaw !== undefined ? Number(f.yaw) : 0.6, f.dist ? Number(f.dist) : 4.2);
       const walk = actor(cls, st, `${cls}-${st}-w`);
       simulate(walk, 0, 2.3, straight(1.6));
       shootActor(g, walk, ox + TW, oy, TW, TH, 1.1);
@@ -794,6 +804,40 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       g.fillText(st, ox + 8, oy + 18);
     });
     return c.toDataURL('image/png');
+  },
+  /**
+   * How far the off hand's bones stand behind each shield's board, in cm,
+   * standing, walking and running. A
+   * positive number is in front of the board: the fist shows through it.
+   */
+  async shieldgap(f) {
+    await loadMeshCache();
+    const cls = (f.class ?? 'warden') as CharClassId;
+    const ids = ITEM_BASES.filter((b) => b.category === 'shield').map((b) => b.id);
+    const lines: string[] = [];
+    const drives: Array<[string, Drive, number]> = [['idle', still, 1.5], ['walk', straight(1.6), 2.3], ['run', straight(4.6), 2.15]];
+    for (const id of ids) {
+      const row: string[] = [];
+      for (const [label, drive, secs] of drives) {
+        STANCE_ITEMS.shield = [['mainHand', 'sword.broad', 'sword'], ['offHand', id, 'shield']];
+        const a = actor(cls, 'shield', `gap-${id}-${label}`);
+        simulate(a, 0, secs, drive);
+        a.world.updateMatrixWorld(true);
+        const hold = a.hero.rig.sockets.offHand.getObjectByName('hold:offHand')!;
+        const board = hold.children[0]!;
+        const inv = board.matrixWorld.clone().invert();
+        let worst = -Infinity;
+        for (const bn of ['handL', 'fingersL', 'fingerTipsL', 'thumbL']) {
+          const bone = (a.hero.rig.bones as unknown as Record<string, THREE.Object3D>)[bn];
+          if (!bone) continue;
+          const p = bone.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);
+          worst = Math.max(worst, p.z);
+        }
+        row.push(`${label} ${(worst * 100).toFixed(1)}`);
+      }
+      lines.push(`${id.padEnd(22)} ${row.join('  ')}`);
+    }
+    return JSON.stringify({ pass: true, lines });
   },
   /** Every class body, bare, front / side / back, in the bind pose. */
   async bodies(f) {

@@ -252,11 +252,11 @@ export const MOTIF_MOTIONS = {
     }
     return out;
   },
-  /** A row erupts one after another, marching away along the facing. */
+  /** A row erupts one after another from the anchor, marching away along the facing. */
   line: (f) => {
     const out: Piece[] = [];
     for (let i = 0; i < 7; i++) {
-      const d = 1 + f.radius * 1.8 * (i / 6);
+      const d = f.radius * 1.8 * (i / 6);
       const x = f.x + f.fx * d;
       const z = f.z + f.fz * d;
       out.push(piece(x, -0.4, z, x, 0.3, z, i * 0.05, 0.7, Path.Rise));
@@ -453,6 +453,20 @@ export const MOTIF_MOTIONS = {
       const x = f.x + (f.fx * c - f.fz * s) * 1.6;
       const z = f.z + (f.fx * s + f.fz * c) * 1.6;
       out.push(piece(x, 1.0, z, x, 1.0, z, i * 0.035, 0.4, Path.Hold));
+    }
+    return out;
+  },
+  /** A short, quick jab: pieces shoot from the caster's reach into the anchor and stop just past it. */
+  thrust: (f) => {
+    const out: Piece[] = [];
+    const sx = f.ox + f.fx * 0.5;
+    const sz = f.oz + f.fz * 0.5;
+    for (let i = 0; i < 4; i++) {
+      const side = (i - 1.5) * 0.08;
+      const px = -f.fz * side;
+      const pz = f.fx * side;
+      const reach = 0.15 + 0.1 * i;
+      out.push(piece(sx + px, 1.1, sz + pz, f.x + f.fx * reach + px, 1.05, f.z + f.fz * reach + pz, i * 0.03, 0.18, Path.Line));
     }
     return out;
   },

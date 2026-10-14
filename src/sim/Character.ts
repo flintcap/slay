@@ -150,14 +150,15 @@ export function createCharacter(
     // was that every new character opened with its one skill shown twice, which
     // is the first thing anybody sees. Going through the setter means the rule
     // cannot be bypassed here again.
-    setPrimaryAttack(c, starter);
+    if (STARTER_ON_BAR.has(cls.id)) setHotbarSlot(c, 0, starter);
+    else setPrimaryAttack(c, starter);
   }
 
   // Anything else the class recommends is bound only once it has a rank, so the
   // bar never shows a skill the player cannot actually cast. Starting at slot
   // zero, because the opener is not taking that slot any more.
   const hints = (STARTING_SKILL_HINTS[cls.id] ?? []).filter((id) => id !== starter);
-  let slot = 0;
+  let slot = starter && STARTER_ON_BAR.has(cls.id) ? 1 : 0;
   for (const id of hints) {
     if (slot >= c.hotbar.length) break;
     if ((c.skills[id] ?? 0) > 0) c.hotbar[slot++] = id;
@@ -266,7 +267,9 @@ export function repairCharacter(c: Character): boolean {
     const starter = startingSkillFor(c.classId);
     if (starter) {
       c.skills[starter] = Math.max(1, c.skills[starter] ?? 0);
-      if (!c.primaryAttack) c.primaryAttack = starter;
+      if (STARTER_ON_BAR.has(c.classId)) {
+        if (!c.hotbar.includes(starter)) setHotbarSlot(c, 0, starter);
+      } else if (!c.primaryAttack) c.primaryAttack = starter;
       changed = true;
     }
   }
@@ -290,9 +293,15 @@ const STARTING_SKILL: Record<CharClassId, string> = {
   shadowblade: 'preciseCut', // fast single-target crit strike
   revenant: 'boneSpear',   // piercing bone shard
   ranger: 'pierceShot',    // a shot that runs through the whole rank
-  shapeshifter: 'rake',    // three fast swipes as the cat
+  shapeshifter: 'catForm', // the cat itself; right click stays the basic attack
   paladin: 'tollingBlow',  // one heavy blow that staggers one enemy
 };
+
+/**
+ * Classes whose opener is not an attack: it goes on the bar's first slot and
+ * right click stays the basic attack. The Shapeshifter opens with the cat form.
+ */
+const STARTER_ON_BAR: ReadonlySet<CharClassId> = new Set(['shapeshifter']);
 
 /**
  * The free opening attack. Falls back to the cheapest tier-1 active in the

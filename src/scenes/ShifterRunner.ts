@@ -709,6 +709,19 @@ const HANDLERS: Record<string, Handler> = {
 /** Shapeshifter effect names that have a handler, for tools. */
 export const SHIFT_EFFECTS: readonly string[] = Object.keys(HANDLERS).map((n) => `shift.${n}`);
 
+/**
+ * Why a skill cannot be used in the form the hero is in, or null when it can.
+ * In a form only that beast's skills work (its own form skill among them, to
+ * stand back up); the basic attack never comes here. Checked before any mana
+ * is spent. As a man, a tree skill still changes you first (`runShift`).
+ */
+export function formRefusal(def: SkillDef, player: Player): string | null {
+  const form = player.shape?.form ?? null;
+  if (!form || FORM_OF_TREE[def.treeId] === form) return null;
+  const own = getSkill(FORM_SKILL[form])?.name ?? 'your form skill';
+  return `${def.name} cannot be used in ${form} form. Press ${own} to stand up first.`;
+}
+
 /** Runs one Shapeshifter skill. Returns false for an effect with no handler. */
 export function runShift(k: ShiftKit, c: ShiftCast): boolean {
   const sub = (c.def.effect ?? '').split('.')[1] ?? '';

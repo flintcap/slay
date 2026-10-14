@@ -230,12 +230,14 @@ export class Player {
 
   /**
    * Live buff/debuff list in the shape the HUD reads. `duration` is what the
-   * application granted, so the timer sweep has something to divide by.
+   * application granted, so the timer sweep has something to divide by. A
+   * 'held' status is renewed for as long as its vigil burns, so it reads as
+   * endless (no timer winding down and back up twice a second).
    */
   get statuses(): Array<{ id: string; remaining: number; duration: number; stacks: number }> {
     return this.status.list().map((a) => ({
       id: a.id,
-      remaining: a.remaining,
+      remaining: a.def.tags?.includes('held') ? Infinity : a.remaining,
       duration: a.duration,
       stacks: a.stacks,
     }));

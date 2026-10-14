@@ -120,7 +120,7 @@ export const PALADIN_STATUSES: StatusDef[] = [
     baseDuration: 1.4,
     color: 0xe8c878,
     icon: 'candle',
-    tags: ['buff', 'aura'],
+    tags: ['buff', 'aura', 'held'],
   }),
   st('ironVigil', 'Iron Vigil', 1, {
     desc: 'Kept awake on the cold floor. More defense and damage reduction.',
@@ -128,7 +128,7 @@ export const PALADIN_STATUSES: StatusDef[] = [
     baseDuration: 1.4,
     color: 0x9aa4ae,
     icon: 'rood',
-    tags: ['buff', 'aura'],
+    tags: ['buff', 'aura', 'held'],
   }),
   st('fervent', 'Fervour', 1, {
     desc: 'The blood up, the prayer fast. Faster attacks, casts and feet.',
@@ -136,7 +136,7 @@ export const PALADIN_STATUSES: StatusDef[] = [
     baseDuration: 1.4,
     color: 0xe07a3a,
     icon: 'heart',
-    tags: ['buff', 'aura'],
+    tags: ['buff', 'aura', 'held'],
   }),
   st('vespers', 'Vespers', 1, {
     desc: 'The evening office said under a vigil. More life regeneration and damage reduction.',
@@ -144,7 +144,7 @@ export const PALADIN_STATUSES: StatusDef[] = [
     baseDuration: 1.4,
     color: 0x8a7ab0,
     icon: 'candle',
-    tags: ['buff', 'aura'],
+    tags: ['buff', 'aura', 'held'],
   }),
   st('anointed', 'Anointed', 1, {
     desc: 'Oil on the brow and the blade. More damage and attack rating.',

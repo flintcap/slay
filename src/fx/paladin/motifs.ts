@@ -32,7 +32,7 @@ export const PALADIN_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   relicBash: m('crosses', 'burst'),
   ironVerdict: m('light shafts', 'fall'),
   // Blade: cuts, wounds and the rites said over them.
-  oathCut: m('slashes', 'line'),
+  oathCut: m('slashes', 'thrust'),
   turnTheBlade: m('crescents', 'orbit'),
   twinVerse: m('crescents', 'zigzag'),
   feint: m('scuffs', 'sweep'),

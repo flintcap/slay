@@ -27,7 +27,7 @@ import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
 import { releasesAt, skillAction } from '../art/hero/gestures';
-import { runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
+import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { SKILL_MOTIFS, motifAt } from '../fx/SkillLooks';
@@ -777,7 +777,8 @@ export class SkillRunner {
     }
 
     // A Paladin skill wants its own weapon: a mace or a sword, or a shield.
-    const refusal = riteRefusal(def, player);
+    // In a beast form only that beast's skills work (ShifterRunner.ts).
+    const refusal = riteRefusal(def, player) ?? formRefusal(def, player);
     if (refusal) {
       events.emit('toast', { text: refusal, kind: 'bad' });
       audio.play('ui.error');
