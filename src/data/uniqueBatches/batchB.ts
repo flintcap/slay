@@ -185,7 +185,7 @@ export const BATCH_B: UniqueDef[] = [
     'Beaten out of a plough the year the fields went to the brood. The farmer said he had nothing left to plant.',
     [['strength', 1.2], ['life', 1], ['fireResist', 1], ['attackSpeed', -0.5]],
     { hook: 'Heavy, honest, and slow to turn.',
-      look: D('metal.iron|0x6a6058', 'wood.oak', 'metal.dark', ['rivets', 'cracks'], 0.8, { cut: { tip: 'round', guard: 'bar', pommel: 'disc', w: 0.06 }, finish: 'weathered' }) }),
+      look: D('metal.iron|0x6a6058', 'leather.fine|0x2a4a2a', 'metal.dark', ['rivets', 'cracks'], 0.8, { cut: { tip: 'round', guard: 'bar', pommel: 'disc', w: 0.06 }, finish: 'weathered' }) }),
 
   U('uq.harvestblade', 'Harvest Blade', 'sword.great', 19,
     'Ysolde Varr swung it through the wheat the last summer there was wheat.',
@@ -260,7 +260,7 @@ export const BATCH_B: UniqueDef[] = [
     'Named for the stream below the shambles, which has run that colour as long as anyone remembers.',
     [['enhancedDamage', 1.1], ['strength', 0.8], ['attackSpeed', 0.6]],
     { hook: 'It feeds on every cut and not on rest.', power: 'leechHunger', mag: 0.8,
-      look: D('metal.steel|0x8a6a68', 'leather.fine|0x4a1414', 'metal.bloodgold', ['blood', 'teeth'], 0.6, { cut: { bit: 'crescent', back: 'bit', wrap: 'leather', bands: 2 } }),
+      look: D('metal.steel|0x8a6a68', 'leather.fine|0x1e2a3a', 'metal.bloodgold', ['blood', 'teeth'], 0.6, { cut: { bit: 'crescent', back: 'bit', wrap: 'leather', bands: 2 } }),
       from: 'butcher_grell' }),
 
   U('uq.twoopinions', 'Two Opinions', 'axe.ettin', 40,

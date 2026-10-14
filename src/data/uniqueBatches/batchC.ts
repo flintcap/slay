@@ -158,7 +158,7 @@ export const BATCH_C: UniqueDef[] = [
     'A living limb of Vhoss, given willingly, which is the strangest thing about it.',
     [['energy', 1.1], ['life', 1.2], ['skillLevels', 1, 1], ['poisonResist', 1]],
     { hook: 'What you call stands taller and drinks from what it strikes.', power: 'hymnAura', mag: 1.5,
-      look: D('wood.bark|0x5a4a2a', 'cloth.rag|0x3a4a2a', 'metal.gold', ['leaves', 'vines', 'antlers'], 0.3, { cut: { kind: 'worldtree', wrap: 'cord' }, glow: 0x9ae070, stone: 0x9ae070 }),
+      look: D('wood.bark|0x5a4a2a', 'cloth.rag|0x3a4a2a', 'metal.verdigris', ['leaves', 'vines', 'antlers'], 0.3, { cut: { kind: 'worldtree', wrap: 'cord' }, glow: 0x9ae070, stone: 0x9ae070 }),
       from: 'treant_elder_vhoss' }),
 
   // ===========================================================================

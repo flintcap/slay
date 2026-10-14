@@ -5,7 +5,7 @@
 import { SETS } from '../src/data/sets';
 import { UNIQUES } from '../src/data/uniques';
 import { ITEM_BASES } from '../src/data/itemBases';
-import { SET_MOTIFS, UNIQUE_DESIGNS } from '../src/art/items/Designs';
+import { glowTierOf, SET_MOTIFS, UNIQUE_DESIGNS } from '../src/art/items/Designs';
 import { itemLook, keyColor } from '../src/art/ItemLook';
 
 const problems: string[] = [];
@@ -32,7 +32,7 @@ for (let i = 0; i < sets.length; i++) {
   }
 }
 
-// Every unique has a design and an aura, and no two look alike.
+// Every unique has a design, every mythic and ancient an aura, and no two look alike.
 const baseById = new Map(ITEM_BASES.map((b) => [b.id, b]));
 const seen = new Map<string, string>();
 let auras = 0;
@@ -42,8 +42,11 @@ for (const u of UNIQUES) {
     problems.push(`unique ${u.id} has no signature`);
     continue;
   }
-  if (!d.aura || d.aura === 'none') problems.push(`unique ${u.id} has no aura`);
-  else auras++;
+  // Only the tiers with a full glow budget wear their aura (see `glowTierOf`).
+  if (glowTierOf(u.rarity, u.ilvl) === 'full') {
+    if (!d.aura || d.aura === 'none') problems.push(`unique ${u.id} has no aura`);
+    else auras++;
+  }
   const base = baseById.get(u.baseId);
   if (!base) continue;
   const L = itemLook({ baseId: u.baseId, rarity: u.rarity, uniqueId: u.id }, base.visual);

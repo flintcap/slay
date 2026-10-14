@@ -36,7 +36,7 @@ export const BATCH_A: UniqueDef[] = [
     'A drill sword from the old barracks yard. The sergeant taught one stroke with it, and taught it wide.',
     [['enhancedDamage', 1], ['strength', 0.8], ['life', 0.6]],
     { classId: 'warden', bend: { skill: 'cleave', more: 25, grow: { arc: 20, radius: 25 } },
-      look: D('metal.steel', 'leather.studded', 'metal.bronze', ['rivets', 'laurels'], 0.5, { cut: { tip: 'cleaver', guard: 'winged', pommel: 'fishtail', w: 0.06, backed: true } }),
+      look: D('metal.steel', 'cloth.banner|0x6a1a1a', 'metal.bronze', ['rivets', 'laurels'], 0.5, { cut: { tip: 'cleaver', guard: 'winged', pommel: 'fishtail', w: 0.06, backed: true } }),
       from: 'old_gristle' }),
 
   U('uq.stairmark', 'Stairmark', 'sword.gladius', 27,
@@ -116,7 +116,7 @@ export const BATCH_A: UniqueDef[] = [
     'The Archivist Below lends this to whoever reaches it, and writes the debt down in a book nobody has finished reading.',
     [['enhancedDamage', 1.2], ['critDamage', 1], ['manaSteal', 0.8], ['arcaneResist', 1]],
     { hook: 'More skill than you earned, and a bill for it.', power: 'borrowedCraft', mag: 1,
-      look: D('metal.voidgold', 'cloth.silk|0x1a1222', 'metal.gold', ['runes', 'coins', 'eyes'], 0.1, { cut: { tip: 'spear', guard: 'sun', pommel: 'crown', phase: true }, glow: 0xffd070, stone: 0xffd070 }),
+      look: D('metal.voidgold', 'cloth.silk|0x2a4a6a', 'metal.gold', ['runes', 'coins', 'eyes'], 0.1, { cut: { tip: 'spear', guard: 'sun', pommel: 'crown', phase: true }, glow: 0xffd070, stone: 0xffd070 }),
       from: 'archivist_below' }),
 
   // ===========================================================================

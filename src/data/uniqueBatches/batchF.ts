@@ -18,37 +18,37 @@ export const BATCH_F: UniqueDef[] = [
   U('uq.charm.ratstail', "A Rat's Tail", 'charm.small', 4,
     'Tied in a knot for luck. It was not lucky for the rat.',
     [['moveSpeed', 1], ['poisonResist', 1], ['goldFind', 0.8]],
-    { look: D('leather.worn|0x6a5a4a', undefined, undefined, ['tatters'], 0.8, { aura: 'motes', glow: 0xd8c8a0 }) }),
+    { look: D('leather.worn|0x6a5a4a', 'leather.fine|0x8a2a1a', undefined, ['tatters'], 0.8, { aura: 'motes', glow: 0xd8c8a0 }) }),
 
   U('uq.charm.chalkstub', 'Stub of Chalk', 'charm.small', 12,
     'Hesper drew her circles with it. What is left is too short to draw with, and still too long to throw away.',
     [['manaRegen', 1], ['lightningResist', 1], ['attackRating', 0.6]],
-    { look: D('stone.town|0xe8e4d8', undefined, undefined, ['runes'], 0.4, { aura: 'soft', glow: 0xf0f0ff }) }),
+    { look: D('stone.town|0xe8e4d8', 'cloth.linen|0x2a4a8a', undefined, ['runes'], 0.4, { aura: 'soft', glow: 0xf0f0ff }) }),
 
   U('uq.charm.tinbell', 'Tin Bell', 'charm.small', 20,
     'A goat bell with the clapper wrapped in rag so it makes no sound. You can still feel it ring.',
     [['blockChance', 1], ['coldResist', 1], ['magicFind', 0.6]],
-    { look: D('metal.iron|0x9a9a90', 'cloth.rag', undefined, ['bells'], 0.6, { aura: 'soft', glow: 0xe0e0d0 }) }),
+    { look: D('metal.iron|0x9a9a90', 'cloth.rag|0x8a7a4a', undefined, ['bells'], 0.6, { aura: 'soft', glow: 0xe0e0d0 }) }),
 
   U('uq.charm.waxseal', 'Broken Wax Seal', 'charm.small', 36,
     'From a letter nobody read. The crest on it belongs to a house that no longer stands.',
     [['fireResist', 1], ['critChance', 1], ['mana', 0.6]],
-    { look: D('stone.town|0x8a1a14', undefined, undefined, ['cracks', 'crowns'], 0.5, { aura: 'embers', glow: 0xff6040 }) }),
+    { look: D('stone.town|0x8a1a14', 'cloth.silk|0xa01a1a', undefined, ['cracks', 'crowns'], 0.5, { aura: 'embers', glow: 0xff6040 }) }),
 
   U('uq.charm.lockpick', 'Bent Lockpick', 'charm.small', 46,
     'It opened one of Vey\'s doors, once. It has not been straight since.',
     [['dexterity', 1], ['arcaneResist', 1], ['lifeRegen', 0.6]],
-    { look: D('metal.steel', undefined, undefined, ['chains'], 0.5, { aura: 'sparkles', glow: 0xd0c0ff }) }),
+    { look: D('metal.steel', 'leather.dark|0x1a1a1a', undefined, ['chains'], 0.5, { aura: 'sparkles', glow: 0xd0c0ff }) }),
 
   U('uq.charm.ferrycoin', "The Ferry's Coin", 'charm.small', 54,
     'The fare for the black water. Hollis never takes it. He only ever looks at it.',
     [['life', 1], ['manaSteal', 1], ['coldResist', 0.6]],
-    { look: D('metal.verdigris', undefined, undefined, ['coins', 'skulls'], 0.7, { aura: 'drips', glow: 0x60c0b0 }) }),
+    { look: D('metal.verdigris', 'cloth.linen|0x1a5a5a', undefined, ['coins', 'skulls'], 0.7, { aura: 'drips', glow: 0x60c0b0 }) }),
 
   U('uq.charm.lastemberstone', 'The Coal That Kept', 'charm.small', 78,
     'A coal from the hearth of the first house in the town. Someone has carried it down every floor since.',
     [['fireDamage', 1], ['coldResist', 1], ['cooldownReduction', 0.8]],
-    { look: D('stone.obsidian|0x2a1410', undefined, undefined, ['cracks', 'flames'], 0.3, { aura: 'embers', glow: 0xff7020, glowStyle: 'pulse' }) }),
+    { look: D('stone.obsidian|0x5a2010', 'leather.fine|0x3a2a5a', undefined, ['flames', 'cracks'], 0.3, { aura: 'embers', glow: 0xff7020, glowStyle: 'pulse' }) }),
 
   // ===========================================================================
   // Medium charms
@@ -56,27 +56,27 @@ export const BATCH_F: UniqueDef[] = [
   U('uq.charm.spoolofwire', 'Spool of Wire', 'charm.medium', 10,
     'The wire Tamsin learned on, before the long one over the pit. It is tangled in a way that looks deliberate.',
     [['attackSpeed', 1], ['vitality', 1], ['lightningResist', 0.8]],
-    { look: D('metal.copper', 'wood.oak', undefined, ['coils'], 0.5, { aura: 'sparks', glow: 0xffc080 }) }),
+    { look: D('metal.copper', 'cloth.silk|0xb08a3a', undefined, ['coils'], 0.5, { aura: 'sparks', glow: 0xffc080 }) }),
 
   U('uq.charm.moleskinpurse', 'Moleskin Purse', 'charm.medium', 28,
     'Soft, small and empty. Whatever you put in it is gone by morning, and something else is in its place.',
     [['goldFind', 1.2], ['physicalResist', 1], ['energy', 0.8]],
-    { look: D('leather.fine|0x3a3030', undefined, 'metal.brass', ['coins'], 0.6, { aura: 'shine', glow: 0xffd870 }) }),
+    { look: D('leather.fine|0x3a3030', 'leather.fine|0x4a3a5a', 'metal.brass', ['coins'], 0.6, { aura: 'shine', glow: 0xffd870 }) }),
 
   U('uq.charm.saintsknuckle', "A Saint's Knuckle", 'charm.medium', 50,
     'Sold at the church door to every pilgrim for a copper. This one, by some mistake, is real.',
     [['blockChance', 1], ['poisonDamage', 1], ['life', 0.8]],
-    { look: D('bone.bleached', 'cloth.white', 'metal.gold', ['halo'], 0.4, { aura: 'soft', glow: 0xfff0c0 }) }),
+    { look: D('bone.bleached', 'cloth.silk|0xe8e0c8', 'metal.gold', ['halo'], 0.4, { aura: 'soft', glow: 0xfff0c0 }) }),
 
   U('uq.charm.frozenmoth', 'Moth in Ice', 'charm.medium', 74,
     'A moth caught in a chip of ice that will not melt. Its wings still move, very slowly.',
     [['coldDamage', 1], ['moveSpeed', 1], ['manaRegen', 0.8]],
-    { look: D('crystal.ice', undefined, undefined, ['wings', 'frost'], 0.1, { aura: 'frost', glow: 0xa0d8ff }) }),
+    { look: D('crystal.ice', 'cloth.silk|0x2a5a8a', undefined, ['wings', 'frost'], 0.1, { aura: 'frost', glow: 0xa0d8ff }) }),
 
   U('uq.charm.gallowsnail', 'Gallows Nail', 'charm.medium', 84,
     'One of the nails from the old gallows on the hill. It has held up worse things than a rope.',
     [['critDamage', 1], ['defense', 1], ['arcaneResist', 0.8]],
-    { look: D('metal.rusted', undefined, undefined, ['blood', 'cracks'], 0.8, { aura: 'smoke', glow: 0xa04040 }) }),
+    { look: D('metal.rusted', 'cloth.rag|0x3a1a10', undefined, ['blood', 'cracks'], 0.8, { aura: 'smoke', glow: 0xa04040 }) }),
 
   // ===========================================================================
   // Large charms
@@ -84,27 +84,27 @@ export const BATCH_F: UniqueDef[] = [
   U('uq.charm.kennelcollar', 'Kennel Collar', 'charm.large', 20,
     'Too big for any dog you have ever seen. Old Rook says it was for a small one.',
     [['strength', 1], ['magicFind', 1], ['poisonResist', 0.8]],
-    { look: D('leather.studded|0x4a3424', undefined, 'metal.iron', ['spikes', 'rivets'], 0.7, { aura: 'ash', glow: 0xd0a060 }) }),
+    { look: D('leather.studded|0x4a3424', 'leather.fine|0x7a2a10', 'metal.iron', ['spikes', 'rivets'], 0.7, { aura: 'ash', glow: 0xd0a060 }) }),
 
   U('uq.charm.prayerwheel', 'Little Prayer Wheel', 'charm.large', 38,
     'A wheel of prayers, small enough for a pocket. If you turn it, you hear the cloister clock tick.',
     [['castSpeed', 1], ['damageReduction', 1], ['goldFind', 0.8]],
-    { look: D('metal.brass', 'wood.polished', undefined, ['runes', 'coils'], 0.4, { aura: 'motes', glow: 0xffe0a0 }) }),
+    { look: D('metal.brass', 'cloth.silk|0xd08a2a', undefined, ['runes', 'coils'], 0.4, { aura: 'motes', glow: 0xffe0a0 }) }),
 
   U('uq.charm.witchbottle', 'Witch Bottle', 'charm.large', 56,
     'Pins, hair, and something wet, all sealed in a green bottle. Maudry made it to keep something out. You hope it was not you.',
     [['poisonDamage', 1], ['blockChance', 1], ['mana', 0.8], ['fireResist', 0.6]],
-    { look: D('crystal.gem|0x4a7a3a', 'cloth.tattered', undefined, ['thorns', 'eyes'], 0.6, { aura: 'drips', glow: 0x8ad050 }) }),
+    { look: D('crystal.gem|0x4a7a3a', 'cloth.wool|0x2a4a1a', undefined, ['thorns', 'eyes'], 0.6, { aura: 'drips', glow: 0x8ad050 }) }),
 
   U('uq.charm.mapofnowhere', 'Map of Nowhere', 'charm.large', 80,
     'A map of the deep, drawn by someone who went all the way down. Every floor on it is the same floor.',
     [['moveSpeed', 1], ['magicFind', 1], ['lifeSteal', 0.8], ['energy', 0.6]],
-    { look: D('cloth.linen|0xd8c8a0', undefined, 'metal.dark', ['runes', 'stars'], 0.6, { aura: 'wisp', glow: 0xc0b0ff }) }),
+    { look: D('cloth.linen|0xd8c8a0', 'leather.fine|0x6a5a2a', 'metal.dark', ['runes', 'stars'], 0.6, { aura: 'wisp', glow: 0xc0b0ff }) }),
 
   U('uq.charm.ninthfloorkey', 'Key to the Ninth Floor Down', 'charm.large', 90,
     'Nobody remembers which ninth floor. The key remembers.',
     [['skillLevels', 1, 1], ['coldResist', 1], ['attackRating', 1], ['manaRegen', 0.8]],
-    { look: D('metal.blackiron', undefined, 'metal.gold', ['chains', 'runes'], 0.3, { aura: 'souls', glow: 0xd0d8ff, glowStyle: 'spectral' }) }),
+    { look: D('metal.blackiron', 'cloth.velvet|0x2a1a4a', 'metal.gold', ['chains', 'runes'], 0.3, { aura: 'souls', glow: 0xd0d8ff, glowStyle: 'spectral' }) }),
 
   // ===========================================================================
   // Grand charms
@@ -112,39 +112,39 @@ export const BATCH_F: UniqueDef[] = [
   U('uq.charm.rookstally', "Rook's Tally", 'charm.grand', 32,
     'A stick with a notch for every dog Rook ever lost. It is a long stick.',
     [['skillLevels', 1, 1], ['dexterity', 1], ['fireResist', 0.8], ['goldFind', 0.8]],
-    { look: D('wood.oak', 'leather.worn', undefined, ['teeth', 'tatters'], 0.7, { aura: 'ash', glow: 0xffb060 }) }),
+    { look: D('wood.oak', 'cloth.wool|0x1a1a2a', undefined, ['teeth', 'tatters'], 0.7, { aura: 'ash', glow: 0xffb060 }) }),
 
   U('uq.charm.unsentletter', 'The Unsent Letter', 'charm.grand', 46,
     'Sealed, stamped and never sent. You have not opened it. You know whose name is inside.',
     [['skillLevels', 1, 1], ['manaRegen', 1], ['physicalResist', 0.8], ['critChance', 0.6]],
-    { look: D('cloth.white|0xe8dcc0', undefined, 'metal.bloodgold', ['runes'], 0.5, { aura: 'souls', glow: 0xf0d0c0 }) }),
+    { look: D('cloth.white|0xe8dcc0', 'cloth.silk|0xa04a6a', 'metal.bloodgold', ['runes'], 0.5, { aura: 'souls', glow: 0xf0d0c0 }) }),
 
   U('uq.charm.drownedbell', 'The Drowned Bell', 'charm.grand', 54,
     'It rang under the water for a hundred years before anyone thought to pull it up.',
     [['skillLevels', 1, 1], ['lifeRegen', 1], ['lightningResist', 0.8], ['blockChance', 0.8]],
-    { look: D('metal.verdigris', undefined, undefined, ['bells', 'barnacles'], 0.8, { aura: 'drips', glow: 0x60c8c0, glowStyle: 'pulse' }) }),
+    { look: D('metal.verdigris', 'cloth.linen|0x2a6a5a', undefined, ['bells', 'barnacles'], 0.8, { aura: 'drips', glow: 0x60c8c0, glowStyle: 'pulse' }) }),
 
   U('uq.charm.firstcandle', 'The First Candle', 'charm.grand', 60,
     'The Tallow Shepherd lit it the night the flock first walked. It has been burning since and is no shorter.',
     [['skillLevels', 1, 1], ['fireDamage', 1], ['coldResist', 1], ['magicFind', 0.6]],
-    { look: D('bone.pale|0xf0e8d0', undefined, 'metal.brass', ['flames'], 0.3, { aura: 'embers', glow: 0xffa040, glowStyle: 'flame' }),
+    { look: D('bone.pale|0xf0e8d0', 'cloth.silk|0xe8c060', 'metal.brass', ['flames'], 0.3, { aura: 'embers', glow: 0xffa040, glowStyle: 'flame' }),
       from: 'tallow_shepherd' }),
 
   U('uq.charm.clockheart', 'Clockheart', 'charm.grand', 74,
     'The spring from the heart of the cloister clock. Wound once, and running still.',
     [['skillLevels', 1, 1], ['attackSpeed', 1], ['castSpeed', 1], ['poisonResist', 0.8]],
-    { look: D('metal.brass', undefined, 'metal.copper', ['coils', 'runes'], 0.2, { aura: 'sparks', glow: 0xffd070 }),
+    { look: D('metal.brass', 'leather.fine|0x3a5a6a', 'metal.copper', ['coils', 'runes'], 0.2, { aura: 'sparks', glow: 0xffd070 }),
       from: 'warden_cog' }),
 
   U('uq.charm.foundlingsmitten', "A Foundling's Mitten", 'charm.grand', 80,
     'One small wool mitten, found on the lowest stair. Nobody has ever found the other.',
     [['skillLevels', 1, 1], ['life', 1.2], ['moveSpeed', 0.8], ['arcaneResist', 0.8]],
-    { look: D('cloth.wool|0xa03030', undefined, undefined, ['tatters'], 0.6, { aura: 'soft', glow: 0xffd0c0 }) }),
+    { look: D('cloth.wool|0xa03030', 'cloth.wool|0xc05a7a', undefined, ['tatters'], 0.6, { aura: 'soft', glow: 0xffd0c0 }) }),
 
   U('uq.charm.namewithout', 'A Name Without a Face', 'charm.grand', 92,
     'Written on a scrap of bone in a hand that is not quite a hand. You can read it. You must not say it.',
     [['skillLevels', 1, 1], ['strength', 0.8], ['energy', 0.8], ['critDamage', 1], ['lifeSteal', 0.8], ['manaSteal', 0.8]],
-    { look: D('bone.old|0x2a2028', undefined, 'metal.voidgold', ['runes', 'eyes'], 0.3, { aura: 'smoke', glow: 0x9a60ff, glowStyle: 'void' }),
+    { look: D('bone.old|0x2a2028', 'cloth.silk|0x6a6a7a', 'metal.voidgold', ['runes', 'eyes'], 0.3, { aura: 'smoke', glow: 0x9a60ff, glowStyle: 'void' }),
       from: 'deeps_own_name' }),
 
   // ===========================================================================
@@ -189,7 +189,7 @@ export const BATCH_F: UniqueDef[] = [
     'The robe of a king who ruled by needing nothing. It is very thin. It is enough.',
     [['life', 1.2], ['skillLevels', 1, 1], ['damageReduction', 1], ['physicalResist', 1], ['coldResist', 1], ['poisonResist', 1]],
     { hook: 'You heal from every blow you land, and never on your own.', power: 'leechHunger', mag: 1.6, rarity: 'mythic', chase: true, sockets: 2,
-      look: D('cloth.tattered|0x2a2a30', 'leather.dark', 'metal.voidgold', ['bones', 'crowns', 'tatters'], 0.3, { aura: 'souls', glow: 0xc0d0ff, glowStyle: 'spectral' }),
+      look: D('cloth.tattered|0x2a2a30', 'cloth.silk|0x8a8aa0', 'metal.voidgold', ['bones', 'crowns', 'tatters'], 0.3, { aura: 'souls', glow: 0xc0d0ff, glowStyle: 'spectral' }),
       from: 'the_gaunt_king' }),
 
   U('my.thawingpoint', 'The Thawing Point', 'staff.worldtree', 88,

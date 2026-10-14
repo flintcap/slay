@@ -56,7 +56,7 @@ export const BATCH_D: UniqueDef[] = [
     'A helm with a brow like a ploughshare, made for a man who led with his head and his feet.',
     [['strength', 1], ['life', 0.9], ['defense', 0.7]],
     { classId: 'warden', bend: { skill: 'warStomp', more: 25, grow: { radius: 25 }, add: { stun: 0.5 } },
-      look: D('metal.blackiron', 'leather.dark', 'metal.iron', ['horns', 'cracks'], 0.6, { finish: 'blackened' }),
+      look: D('metal.blackiron', 'leather.fine|0x9a6a3a', 'metal.iron', ['horns', 'cracks'], 0.6, { finish: 'blackened' }),
       from: 'colossus_of_the_deep' }),
 
   U('uq.mirrorcrown', 'Mirrorcrown', 'helm.coronet', 39,
@@ -104,7 +104,7 @@ export const BATCH_D: UniqueDef[] = [
     'A black iron circlet with three empty settings. Three kings were meant to wear it. None of them were ever crowned.',
     [['skillLevels', 2, 2], ['life', 1], ['defense', 0.8], ['fireResist', 0.8], ['coldResist', 0.8]],
     { hook: 'Each empty setting is waiting for a king.', sockets: 3,
-      look: D('metal.blackiron', undefined, 'metal.dark', ['crowns', 'spikes'], 0.3, { finish: 'blackened', glow: 0xff7030, stone: 0xff7030 }),
+      look: D('metal.blackiron', 'cloth.velvet|0x8a1a2a', 'metal.dark', ['crowns', 'spikes'], 0.3, { finish: 'blackened', glow: 0xff7030, stone: 0xff7030 }),
       from: 'the_gaunt_king' }),
 
   // ===========================================================================
@@ -114,7 +114,7 @@ export const BATCH_D: UniqueDef[] = [
     'A quilt from the inn\'s best bed, cut and stitched into a coat the winter the firewood ran out.',
     [['life', 1], ['coldResist', 1.2], ['lifeRegen', 0.8]],
     { hook: 'Warm, soft, and better than it looks.',
-      look: D('cloth.wool|0xd8c8a8', 'cloth.linen', undefined, ['tatters', 'feathers'], 0.5, { finish: 'matte' }) }),
+      look: D('cloth.wool|0xd8c8a8', 'cloth.linen', 'metal.brass', ['tatters', 'feathers'], 0.5, { finish: 'matte' }) }),
 
   U('uq.weighingcoat', 'The Weighing Coat', 'chest.leather', 6,
     'A merchant\'s coat over mail, with brass scale pins on the lapels. He weighed everything, including his customers.',
@@ -154,7 +154,7 @@ export const BATCH_D: UniqueDef[] = [
     'Twenty pockets inside, none of them the jerkin owner\'s own.',
     [['dexterity', 1], ['lifeSteal', 0.8], ['poisonResist', 1], ['attackSpeed', 0.6]],
     { hook: 'For the one who is in and out before the shout.',
-      look: D('leather.dark|0x2a2420', 'cloth.silk|0x1a1a1a', 'metal.dark', ['rivets', 'tatters'], 0.45, {}),
+      look: D('leather.dark|0x2a2420', 'cloth.silk|0x5a1a1a', 'metal.dark', ['rivets', 'tatters'], 0.45, {}),
       from: 'gutterking_rusk' }),
 
   U('uq.charnelmail', 'Charnel Mail', 'chest.chainmail', 34,
@@ -295,7 +295,7 @@ export const BATCH_D: UniqueDef[] = [
     'A copyist\'s gloves from the cold archive. The ink froze in the pen, and then in the copyist.',
     [['coldDamage', 1], ['energy', 1], ['castSpeed', 0.6]],
     { hook: 'Your blows turn to frost and starlight.', power: 'convertColdArcane',
-      look: D('cloth.silk|0x1a2a4a', undefined, 'metal.silver', ['frost', 'runes'], 0.2, {}),
+      look: D('cloth.silk|0x1a2a4a', 'leather.dark|0x101014', 'metal.silver', ['frost', 'runes'], 0.2, {}),
       from: 'archivist_below' }),
 
   U('uq.wallbreakers', 'Wallbreakers', 'gloves.ogre', 62,

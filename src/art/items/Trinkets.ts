@@ -672,11 +672,16 @@ export function buildRing(P: Parts): void {
 
 export function buildCharm(P: Parts): void {
   const [kind = 'small'] = idParts(P, 'charm');
+  // A named charm is carved from its own design: its body in the main
+  // surface and its bindings in the second. Plain charms keep stone and bone.
+  const own = !!P.look.design;
+  const bone: Slot = own ? 'main' : 'bone';
+  const tie: Slot = own ? 'second' : 'leather';
   switch (kind) {
     case 'large': {
       // A carved bone plaque with a glowing mark and a bead on a cord.
       const out: V2[] = smoothOutline([[-0.024, -0.045], [0.024, -0.045], [0.028, 0.0], [0.022, 0.045], [-0.022, 0.045], [-0.028, 0]], 32);
-      P.add('bone', slab(out, 0.009));
+      P.add(bone, slab(out, 0.009));
       // A crow's-foot rune: one stroke, two branches, three cut notches.
       P.add('glow', box(0.0025, 0.05, 0.002, 0), { p: [0, -0.004, 0.0048] });
       for (const s of [-1, 1]) P.add('glow', box(0.0024, 0.022, 0.002, 0), { p: [s * 0.007, 0.024, 0.0048], r: [0, 0, s * 0.55] });
@@ -688,14 +693,14 @@ export function buildCharm(P: Parts): void {
     case 'grand': {
       // Two horns bound into a totem with leather, a skull at the binding,
       // feathers trailing and old marks that still burn.
-      P.add('bone', horn(0.13, 0.026, 0.85, 10), { p: [0.016, -0.06, 0], r: [0, 0, 0.3] });
-      P.add('bone', horn(0.1, 0.02, 0.9, 9), { p: [-0.012, -0.058, -0.004], r: [0, PI, 0.38] });
-      for (const y of [-0.04, -0.026, -0.012]) P.add('leather', torus(0.024, 0.0036, 4, 16), { p: [0.004, y, 0], r: [PI / 2, 0, -0.08] });
+      P.add(bone, horn(0.13, 0.026, 0.85, 10), { p: [0.016, -0.06, 0], r: [0, 0, 0.3] });
+      P.add(bone, horn(0.1, 0.02, 0.9, 9), { p: [-0.012, -0.058, -0.004], r: [0, PI, 0.38] });
+      for (const y of [-0.04, -0.026, -0.012]) P.add(tie, torus(0.024, 0.0036, 4, 16), { p: [0.004, y, 0], r: [PI / 2, 0, -0.08] });
       for (let f = 0; f < 3; f++) {
         const feather: V2[] = [[0, 0], [0.007, -0.014], [0.005, -0.05], [0, -0.056], [-0.005, -0.05], [-0.006, -0.014]];
         P.add('cloth', slab(feather, 0.002), { p: [-0.014 + f * 0.012, -0.05, 0.01], r: [0, 0, 0.35 - f * 0.35] });
       }
-      skull(P, 'bone', v3(0.002, -0.03, 0.022), 0.036);
+      skull(P, bone, v3(0.002, -0.03, 0.022), 0.036);
       P.add('glow', sphere(0.0045, 8, 6), { p: [-0.004, -0.028, 0.04] });
       P.add('glow', sphere(0.0045, 8, 6), { p: [0.009, -0.028, 0.04] });
       for (let i = 0; i < 3; i++) P.add('glow', box(0.008, 0.0018, 0.002, 0), { p: [0.022 + i * 0.002, 0.008 + i * 0.013, 0.016], r: [0, 0, 0.6] });
@@ -706,14 +711,14 @@ export function buildCharm(P: Parts): void {
       // hang it by and a mark scratched into the knuckle that still glows.
       for (const s of [-1, 1]) {
         const tilt = s * 0.32;
-        P.add('bone', cyl(0.0045, 0.0055, 0.07, 8), { r: [0, 0, tilt] });
+        P.add(bone, cyl(0.0045, 0.0055, 0.07, 8), { r: [0, 0, tilt] });
         for (const e of [-1, 1]) {
           const dx = -Math.sin(tilt) * 0.035 * e;
           const dy = Math.cos(tilt) * 0.035 * e;
-          P.add('bone', sphere(0.0072, 10, 8), { p: [dx, dy, 0], s: [1, 0.8, 0.85] });
+          P.add(bone, sphere(0.0072, 10, 8), { p: [dx, dy, 0], s: [1, 0.8, 0.85] });
         }
       }
-      for (let i = 0; i < 4; i++) P.add('leather', torus(0.0085, 0.0018, 4, 14), { p: [0, -0.006 + i * 0.004, 0], r: [PI / 2, 0, (i % 2 ? 0.3 : -0.3)] });
+      for (let i = 0; i < 4; i++) P.add(tie, torus(0.0085, 0.0018, 4, 14), { p: [0, -0.006 + i * 0.004, 0], r: [PI / 2, 0, (i % 2 ? 0.3 : -0.3)] });
       P.add('dark', torus(0.008, 0.0016, 4, 16), { p: [0, 0.052, 0] });
       P.add('string', tube(curve([v3(0, 0.044, 0), v3(-0.004, 0.05, 0.002), v3(0, 0.06, 0)], 8), 0.001, 3));
       for (let i = 0; i < 3; i++) P.add('glow', box(0.0018, 0.008 - i * 0.002, 0.0015, 0), { p: [-0.003 + i * 0.003, 0.03 + (i % 2) * 0.002, 0.0062], r: [0, 0, 0.25 - i * 0.25] });
@@ -724,7 +729,7 @@ export function buildCharm(P: Parts): void {
       // A little dark stone with a glowing spiral, tied with cord.
       const g = chip(sphere(0.024, 12, 8), 0.06, 3);
       g.scale(1, 1.15, 0.55);
-      P.add('obsidian', g);
+      P.add(own ? 'main' : 'obsidian', g);
       const sp: V3[] = [];
       for (let i = 0; i <= 24; i++) {
         const t = i / 24;

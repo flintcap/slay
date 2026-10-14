@@ -20,7 +20,7 @@ export const BATCH_E: UniqueDef[] = [
     'A length of rope with six knots in it, one for each rat Pell swore he would catch that night. He caught more.',
     [['dexterity', 1], ['life', 0.7], ['poisonResist', 0.8]],
     { hook: 'Beasts fall faster to you.', power: 'slayer.beast', mag: 0.8,
-      look: D('cloth.homespun|0x6a5a40', undefined, 'metal.iron', ['tatters'], 0.85, { finish: 'matte' }),
+      look: D('cloth.homespun|0x6a5a40', 'leather.worn|0x2a2a1a', 'metal.iron', ['tatters'], 0.85, { finish: 'matte' }),
       from: 'pell_dunmarrow' }),
 
   U('uq.vaultkeepersgirth', "Vaultkeeper's Girth", 'belt.belt', 12,
@@ -110,7 +110,7 @@ export const BATCH_E: UniqueDef[] = [
     'Brannoch took these off a man who owed him. The man walked home barefoot, which was the point.',
     [['goldFind', 1.2], ['moveSpeed', 0.8], ['vitality', 0.7]],
     { hook: 'Coin you pick up puts life back in you.', power: 'goldToLife', mag: 0.8,
-      look: D('leather.worn|0x5a3a24', undefined, 'metal.brass', ['coins', 'rivets'], 0.7, {}),
+      look: D('leather.worn|0x5a3a24', 'cloth.linen|0x8a7a5a', 'metal.brass', ['coins', 'rivets'], 0.7, {}),
       from: 'warden_brannoch' }),
 
   U('uq.kennelboots', 'Kennel Boots', 'boots.greaves', 15,
@@ -144,7 +144,7 @@ export const BATCH_E: UniqueDef[] = [
     'Orrin Vael walked out on the frozen lake to fletch his arrows where the wind was still. These are the boots he walked back in.',
     [['dexterity', 1], ['coldResist', 1.2], ['moveSpeed', 0.7]],
     { hook: 'You cannot be chilled or frozen.', power: 'freezeImmune',
-      look: D('leather.fine|0xd0d8e0', undefined, 'metal.silver', ['frost', 'feathers'], 0.3, {}),
+      look: D('leather.fine|0xd0d8e0', 'leather.fine|0x2a3a5a', 'metal.silver', ['frost', 'feathers'], 0.3, {}),
       from: 'warden_orrin_vael' }),
 
   U('uq.doorstep', 'Doorstep', 'boots.war', 45,
@@ -187,7 +187,7 @@ export const BATCH_E: UniqueDef[] = [
     'Thick padded wool sewn with iron studs. The men who tended Kettle wore them, and a few of them lived.',
     [['defense', 1], ['fireResist', 1], ['coldResist', 0.8]],
     { hook: 'More life. Your spells come slower.', power: 'hardHead', mag: 0.9,
-      look: D('cloth.wool|0x4a3a2a', undefined, 'metal.iron', ['rivets', 'smoke'], 0.7, {}),
+      look: D('cloth.wool|0x4a3a2a', 'leather.fine|0x6a3a1a', 'metal.iron', ['rivets', 'smoke'], 0.7, {}),
       from: 'kettle' }),
 
   U('uq.glassmothsilks', "Glass Moth's Silks", 'pants.mystic', 30,
@@ -265,7 +265,7 @@ export const BATCH_E: UniqueDef[] = [
     'A ring with a spike of ice set in it where a stone should be. It has not melted in all the years since it was made.',
     [['coldDamage', 1], ['energy', 1], ['castSpeed', 0.6]],
     { classId: 'mage', bend: { skill: 'frostNova', more: 25, grow: { radius: 30, duration: 40 } },
-      look: D('metal.silver|0xd0e0f0', undefined, undefined, ['frost', 'crystals'], 0.2, { stone: 0x9ad0ff }) }),
+      look: D('metal.silver|0xd0e0f0', 'cloth.silk|0x6a2a4a', 'metal.copper', ['frost', 'crystals'], 0.2, { stone: 0x9ad0ff }) }),
 
   U('uq.devourersknuckle', "The Devourer's Knuckle", 'ring.band', 44,
     'A ring made from one of Ghaal\'s teeth, ground hollow. The tooth is still sharp on the inside.',
@@ -278,7 +278,7 @@ export const BATCH_E: UniqueDef[] = [
     'Vey wore a ring for every door that held. This was the ring of the first.',
     [['vitality', 1], ['blockChance', 0.8], ['damageReduction', 0.8], ['life', 0.6]],
     { hook: 'Blocking returns the blow and pays you in mana.', power: 'blockReflect', mag: 1,
-      look: D('metal.iron', undefined, 'metal.gold', ['chains', 'runes'], 0.4, { stone: 0xd8a040 }),
+      look: D('metal.iron', 'leather.fine|0x5a2a1a', 'metal.silver', ['chains', 'runes'], 0.4, { stone: 0xd8a040 }),
       from: 'warden_vey' }),
 
   U('uq.bonechoirring', 'Bonechoir Ring', 'ring.circle', 60,
@@ -390,7 +390,7 @@ export const BATCH_E: UniqueDef[] = [
     'Maudry gave it to you. You did not ask where she got it, and you do not want to know.',
     [['poisonDamage', 1], ['energy', 0.8], ['poisonResist', 0.8]],
     { hook: 'Your poisons and burns stack far higher.', power: 'poisonStacks', mag: 0.6,
-      look: D('bone.rotted', 'cloth.tattered', undefined, ['teeth', 'thorns'], 0.75, {}),
+      look: D('bone.rotted', 'cloth.wool|0x4a2a5a', undefined, ['teeth', 'thorns'], 0.75, {}),
       from: 'warden_maudry' }),
 
   U('uq.fletchersicicle', "Fletcher's Icicle", 'amulet.talisman', 32,
