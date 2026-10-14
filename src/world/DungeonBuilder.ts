@@ -585,6 +585,12 @@ interface TorchRecord {
   flameMesh: number;
   flameIndex: number;
   phase: number;
+  /**
+   * No painted pool on the floor under it. Lava lights its own bank: a pool
+   * per heat light stacked flat orange discs over the whole room, an
+   * unshaded wash on top of the real light (w-foundry).
+   */
+  noPool?: boolean;
 }
 
 interface FlameMesh {
@@ -1330,6 +1336,7 @@ export class DungeonMesh {
         flameMesh: -1,
         flameIndex: -1,
         phase: (i++ * 7.31) % 100,
+        noPool: true,
       });
     }
   }
@@ -2271,7 +2278,8 @@ export class DungeonMesh {
    * you, and these carry the rest of the room at zero shading cost.
    */
   private buildLightPools(): void {
-    if (this.torches.length === 0) return;
+    const pooled = this.torches.filter((t) => !t.noPool);
+    if (pooled.length === 0) return;
     const tex = radialTexture(128);
     this.ownedTex.push(tex);
     const mat = new THREE.MeshBasicMaterial({
@@ -2287,7 +2295,7 @@ export class DungeonMesh {
     geo.rotateX(-Math.PI / 2);
     this.ownedGeo.push(geo);
 
-    const inst = new THREE.InstancedMesh(geo, mat, this.torches.length);
+    const inst = new THREE.InstancedMesh(geo, mat, pooled.length);
     inst.name = 'lightPools';
     inst.renderOrder = 2;
     inst.castShadow = false;
@@ -2297,8 +2305,8 @@ export class DungeonMesh {
     const pos = new THREE.Vector3();
     const scl = new THREE.Vector3();
     const colour = new THREE.Color();
-    for (let i = 0; i < this.torches.length; i++) {
-      const t = this.torches[i];
+    for (let i = 0; i < pooled.length; i++) {
+      const t = pooled[i];
       const groundY = this.floorY(t.pos.x, t.pos.z);
       const r = t.distance * 0.72;
       pos.set(t.pos.x, groundY + 0.03, t.pos.z);
