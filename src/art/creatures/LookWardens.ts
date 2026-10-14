@@ -668,7 +668,7 @@ export const WARDEN_LOOKS: Record<string, LookFactory> = {
           // A narrow brass bodice and a bell skirt of overlapping plates.
           s.ball('chest', ch, V(0.1 * H, 0.11 * H, 0.08 * H), { k: 0.01 * H });
           s.ball('spine', s.j('spine'), V(0.075 * H, 0.08 * H, 0.06 * H), { k: 0.01 * H });
-          skirt(s, { len: 0.95, flare: 1.6, mat: 'alt' });
+          skirt(s, { len: 0.95, flare: 0.13, top: 0.04, thick: 0.014, mat: 'alt' });
           for (let i = 0; i < 3; i++) s.hard('hips', ringGeo(s.j('hips').add(V(0, -0.08 * H - i * 0.14 * H, 0)), (0.13 + i * 0.045) * H, 0.007 * H, V(0, 1, 0), 22), 'metal');
           // Arms on visible joints.
           s.pair((side) => {

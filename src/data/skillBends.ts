@@ -113,6 +113,7 @@ const KNOB: Record<string, string> = {
   lifeCostPct: 'life cost',
   leechPct: 'leech',
   sharePct: 'shared damage',
+  block: 'block chance',
 };
 
 export function knobLabel(key: string): string | undefined {

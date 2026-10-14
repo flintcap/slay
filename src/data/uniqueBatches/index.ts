@@ -9,8 +9,10 @@
 import type { UniqueDef } from '../uniques';
 import { FROM, LOOKS } from './kit';
 import { BATCH_A } from './batchA';
+import { BATCH_B } from './batchB';
+import { BATCH_C } from './batchC';
 
-export const DEPTH_UNIQUES: UniqueDef[] = [...BATCH_A];
+export const DEPTH_UNIQUES: UniqueDef[] = [...BATCH_A, ...BATCH_B, ...BATCH_C];
 
 /** Every batch unique's design, by id. */
 export const DEPTH_LOOKS = LOOKS;
