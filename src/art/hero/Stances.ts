@@ -138,7 +138,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       relaxed(p, 'L', b);
       runArm(p, 'L', b, run);
     },
-    swing: [1, 0.45],
+    swing: [1, 0.7],
     feet: (b) => feet(b, 0.42, 0.22),
     crouch: 0.0042,
   },
@@ -157,7 +157,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       relaxed(p, 'L', b);
       runArm(p, 'L', b, run);
     },
-    swing: [1, 0.6],
+    swing: [1, 0.8],
     feet: (b) => feet(b, 0.46, 0.25),
     crouch: 0.007,
   },
@@ -176,7 +176,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       p.fist('L', 0.3);
       runArm(p, 'L', b, run);
     },
-    swing: [1, 0.6],
+    swing: [1, 0.8],
     feet: (b) => feet(b, 0.4, 0.14),
     crouch: 0.0021,
   },
@@ -196,7 +196,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       p.fist('R', 1);
       p.fist('L', 1);
     },
-    swing: [0.6, 0.6],
+    swing: [0.8, 0.8],
     feet: (b) => feet(b, 0.48, 0.22),
     crouch: 0.007,
   },
@@ -213,7 +213,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       longMove(p, b, 'R', run);
       longMove(p, b, 'L', run);
     },
-    swing: [0.45, 0.45],
+    swing: [0.7, 0.7],
     feet: (b) => feet(b, 0.46, 0.22),
     crouch: 0.0049,
   },
@@ -229,7 +229,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       longMove(p, b, 'R', run);
       daggerMove(p, b, 'L', run);
     },
-    swing: [0.6, 0.45],
+    swing: [0.8, 0.7],
     feet: (b) => feet(b, 0.46, 0.24),
     crouch: 0.0056,
   },
@@ -245,7 +245,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       daggerMove(p, b, 'R', run);
       longMove(p, b, 'L', run);
     },
-    swing: [0.45, 0.6],
+    swing: [0.7, 0.8],
     feet: (b) => feet(b, 0.46, 0.24),
     crouch: 0.0056,
   },
@@ -264,7 +264,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       p.arm('R', 0.2, 0.2 + 0.1 * b.build, 0.05, 0.75 + 0.4 * run, -0.6, 0, 0.05);
       p.fist('R', 1);
     },
-    swing: [0.25, 0.45],
+    swing: [0.4, 0.7],
     feet: (b) => feet(b, 0.46, 0.24),
     crouch: 0.0049,
   },
@@ -287,7 +287,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       p.add('chest', 0.03, -0.1, 0);
       p.c[CH.offGrip] = 1;
     },
-    swing: [0.1, 0.12],
+    swing: [0.4, 0.4],
     feet: (b) => feet(b, 0.5, 0.2, 0.2),
     crouch: 0.0063,
   },
@@ -313,7 +313,7 @@ export const STANCES: Record<Stance, StanceDef> = {
       p.c[CH.offGrip] = 1;
       p.c[CH.gripGap] = -1.15 * b.h;
     },
-    swing: [0.1, 0.12],
+    swing: [0.4, 0.4],
     feet: (b) => feet(b, 0.42, 0.14),
     crouch: 0.0028,
   },

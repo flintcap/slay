@@ -974,6 +974,17 @@ export class HeroAnimator {
     p.add('upperArmL', -amp * arm * sl, 0, 0);
     p.add('foreArmR', (0.1 + 0.2 * rw) * mw * Math.max(0, arm) * sr, 0, 0);
     p.add('foreArmL', (0.1 + 0.2 * rw) * mw * Math.max(0, -arm) * sl, 0, 0);
+    // A hand placed by reach (a blade held up, a staff across the body) does
+    // not follow the shoulder, so its target swings instead: forward and back
+    // with the stride, dipping at each end. Held dead still, it read as a
+    // weapon nailed to the air while the body ran under it.
+    for (const [ch, w, s] of [[CH.reachR, sr, 1], [CH.reachL, sl, -1]] as const) {
+      const on = p.c[ch]!;
+      if (on <= 0 || w <= 0) continue;
+      const k = amp * w * on * b.h;
+      p.c[ch + 3] = p.c[ch + 3]! + s * arm * 1.5 * k;
+      p.c[ch + 2] = p.c[ch + 2]! - Math.abs(arm) * 0.25 * k;
+    }
 
     // Standing: breathing, weight drifting from foot to foot, a look around.
     const still = 1 - mw;
