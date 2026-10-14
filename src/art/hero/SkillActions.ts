@@ -192,6 +192,13 @@ export function plainMove(skillId: string): string | null {
   return PLAIN_MOVES[skillId] ?? null;
 }
 
+const WEAPON_ACTIONS = new Set(['attack1', 'attack2', 'thrust', 'lunge', 'slam']);
+
+/** True for a skill that swings the real weapon: it draws no spell around it. */
+export function weaponSwing(skillId: string): boolean {
+  return WEAPON_ACTIONS.has(PLAIN_MOVES[skillId] ?? '');
+}
+
 /** Skill ids with a gesture of their own. */
 export function hasGesture(skillId: string): boolean {
   return skillId in ALL;

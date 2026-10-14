@@ -6,6 +6,7 @@
  *   - a body clip (each plays its own `skill.<id>` gesture). Weapon skills
  *     that play a plain move, like a real weapon swing (`PLAIN_MOVES` in
  *     `src/art/hero/SkillActions.ts`) may share a move, by the owner's call,
+ *     and the weapon swings among them draw no motif and may share a look,
  *   - a visual signature (what is drawn, colour and size aside: see
  *     `src/fx/SkillLooks.ts`), or a motif (its own shape in its own motion), or
  *   - a sound file.
@@ -57,13 +58,13 @@ for (const c of classes) {
 }
 console.log('');
 report('clips', shared((r) => (r.plain ? [] : r.clip), pendingClip));
-report('visuals', shared((r) => r.look, pendingLook));
+report('visuals', shared((r) => (r.blow ? [] : r.look), pendingLook));
 report('motifs', shared((r) => r.pair ?? [], pendingLook));
 report('sounds', shared((r) => r.sounds, new Set()));
 const missing = rows.filter((r) => !pendingClip.has(r.cls) && !r.gesture && !r.plain).map((r) => `${r.cls}:${r.id}`);
 console.log(`no gesture: ${missing.length}${missing.length && list ? ' - ' + missing.join(', ') : ''}`);
 if (missing.length) fails.push('gestures');
-const bare = rows.filter((r) => !pendingLook.has(r.cls) && !r.motif).map((r) => `${r.cls}:${r.id}`);
+const bare = rows.filter((r) => !pendingLook.has(r.cls) && !r.motif && !r.blow).map((r) => `${r.cls}:${r.id}`);
 console.log(`no motif: ${bare.length}${bare.length && list ? ' - ' + bare.join(', ') : ''}`);
 if (bare.length) fails.push('motifs');
 

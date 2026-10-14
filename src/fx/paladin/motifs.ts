@@ -21,27 +21,10 @@ const m = (shape: SkillMotif['shape'], motion: SkillMotif['motion'], at?: SkillM
  */
 export const PALADIN_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   // Mace: iron, rings and dust.
-  tollingBlow: m('shockfronts', 'burst'),
-  shieldCrack: m('sparks', 'burst', undefined, 0.8),
-  anvilfall: m('cracks', 'cross'),
-  doorbreaker: m('dust clouds', 'wall'),
-  knell: m('halos', 'ripple'),
-  pilgrimsMaul: m('stones', 'rise'),
   barTheDoor: m('domes', 'pulse'),
   hurlCenser: m('smoke clouds', 'arch'),
-  relicBash: m('crosses', 'burst'),
-  ironVerdict: m('light shafts', 'fall'),
   // Blade: cuts, wounds and the rites said over them.
-  oathCut: m('slashes', 'thrust'),
   turnTheBlade: m('crescents', 'orbit'),
-  twinVerse: m('crescents', 'zigzag'),
-  feint: m('scuffs', 'sweep'),
-  litany: m('sigils', 'star'),
-  confessionThrust: m('blood spray', 'trail'),
-  crosswise: m('crosses', 'cross'),
-  mercyStroke: m('wisps', 'rise'),
-  sevenfold: m('wedges', 'fan'),
-  lastRites: m('crosses', 'rise'),
   // Aura: candle light, smoke, ash and bells.
   tallowLight: m('motes', 'rise'),
   ironVigil: m('halos', 'crown'),

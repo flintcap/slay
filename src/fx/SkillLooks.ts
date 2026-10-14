@@ -54,27 +54,20 @@ const m = (shape: MotifShape, motion: MotifMotion, at?: MotifAt, size?: number):
  * each fits its school: fire throws embers and pillars, frost shards and
  * rime, lightning arcs and strikes, poison globs and spores, bone spears and
  * skulls, steel knives, cracks and dust.
+ *
+ * Weapon skills that swing the real weapon (`plainMove` in
+ * `art/hero/SkillActions.ts`) have none, by the owner's call: a blade skill
+ * draws only its swing, never a spell shape.
  */
 export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   // Warden: Bulwark.
   shieldWall: m('domes', 'wall'),
-  shieldBash: m('shockfronts', 'pulse'),
   guardStance: m('aura rings', 'pulse'),
-  shieldCharge: m('dust clouds', 'trail'),
   aegis: m('hex sigils', 'orbit'),
   fortressStance: m('cracks', 'ring'),
   shieldThrow: m('shock rings', 'zigzag'),
   // Warden: Carnage.
-  cleave: m('slashes', 'sweep'),
-  rend: m('blood spray', 'fan'),
-  gash: m('blood pools', 'line'),
-  overhead: m('craters', 'pulse'),
-  sunder: m('stones', 'shatter'),
-  maim: m('slashes', 'cross'),
-  whirlwind: m('slashes', 'orbit'),
   gorefeast: m('blood spray', 'converge'),
-  massacre: m('slashes', 'scatter'),
-  ruin: m('cracks', 'line'),
   // Warden: Oath.
   battleCry: m('shock rings', 'ripple'),
   rallyingHorn: m('light pools', 'ring'),
@@ -123,30 +116,22 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   glacialComet: m('frost orbs', 'fall'),
 
   // Shadowblade: Venom.
-  viperStrike: m('fangs', 'converge'),
   coatBlades: m('globs', 'drip', 'self'),
   venomDart: m('globs', 'fan'),
   noxiousCloud: m('spore clouds', 'scatter'),
   plagueVial: m('globs', 'arch'),
   envenomBurst: m('globs', 'shatter'),
-  deathLotus: m('leaves', 'spiral'),
   viperGod: m('fangs', 'helix'),
   // Shadowblade: Shadowcraft.
   shadowStep: m('smoke puffs', 'trail'),
   veil: m('smoke puffs', 'converge'),
   smokeBomb: m('smoke clouds', 'burst'),
   shadowClone: m('void orbs', 'pulse'),
-  umbralAmbush: m('knives', 'converge'),
   vanish: m('smoke puffs', 'burst'),
   nightfall: m('void pools', 'scatter'),
   voidWalk: m('void orbs', 'trail'),
-  assassinate: m('skulls', 'pulse'),
   // Shadowblade: Bladework.
-  preciseCut: m('slashes', 'pulse'),
   fanOfKnives: m('knives', 'burst'),
-  crippleTendon: m('slashes', 'zigzag'),
-  doubleStrike: m('crescents', 'pulse'),
-  whirlingBlades: m('saws', 'trail'),
   throwingSpree: m('knives', 'fan'),
 
   // Revenant: Ossuary.

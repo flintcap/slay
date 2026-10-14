@@ -26,7 +26,7 @@ import { MONSTERS } from '../data/monsters';
 import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
-import { releasesAt, skillAction } from '../art/hero/gestures';
+import { releasesAt, skillAction, weaponSwing } from '../art/hero/gestures';
 import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
@@ -872,9 +872,12 @@ export class SkillRunner {
     // the flash lands when the hand opens, not when the button is pressed.
     const selfCast = def.targeting === 'self';
     const swing = family === 'melee' || family === 'cleave' || family === 'whirlwind' || family === 'dash';
+    // A weapon skill swinging the real weapon gathers nothing in the hands,
+    // whatever its school: it is a blow, not a spell.
+    const blow = weaponSwing(def.id);
     const released = RELEASE_CLIPS.has(clip) || releasesAt(clip);
-    this.releaseSchool = released && !(school === 'physical' && (holding === 'ranged' || swing)) ? school : null;
-    if (!released && family !== 'projectile' && family !== 'bolt' && !(swing && school === 'physical')) {
+    this.releaseSchool = released && !blow && !(school === 'physical' && (holding === 'ranged' || swing)) ? school : null;
+    if (!released && !blow && family !== 'projectile' && family !== 'bolt' && !(swing && school === 'physical')) {
       this.effects.castFlare(school, origin.x, selfCast ? 1.0 : origin.y, origin.z, {
         scale: selfCast ? 1.25 : 0.9,
         dir: selfCast ? undefined : dir,

@@ -10,4 +10,4 @@ import './revenant';
 import './shapeshifter';
 import './paladin';
 
-export { skillAction, releasesAt, strikesAt, hasGesture, gestureIds, plainMove } from '../SkillActions';
+export { skillAction, releasesAt, strikesAt, hasGesture, gestureIds, plainMove, weaponSwing } from '../SkillActions';
