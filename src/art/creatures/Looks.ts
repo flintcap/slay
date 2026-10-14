@@ -24,6 +24,8 @@ import { PLANT } from './LookPlant';
 import { OOZE } from './LookOoze';
 import { BOSS_A } from './LookBoss';
 import { BOSS_B } from './LookBoss2';
+import { BOSS_C, BOSS_C_KIN } from './LookBoss3';
+import { BOSS_D, BOSS_D_KIN } from './LookBoss4';
 import { OBJECTS } from './LookObjects';
 
 export interface LookCtx {
@@ -50,6 +52,10 @@ const FACTORIES: Record<string, LookFactory> = {
   ...OOZE,
   ...BOSS_A,
   ...BOSS_B,
+  ...BOSS_C,
+  ...BOSS_C_KIN,
+  ...BOSS_D,
+  ...BOSS_D_KIN,
   ...OBJECTS,
 };
 
