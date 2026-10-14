@@ -8,7 +8,7 @@ import { flyerRig, quadRig, serpentRig } from './Rig';
 import type { CreatureLook } from './Creature';
 import type { LookCtx, LookFactory } from './Looks';
 import type { CMat, RGB, Sculpt } from './Sculpt';
-import { ballGeo, membraneGeo, ringGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { ballGeo, membraneGeo, ringGeo, spikeGeo, tubeGeo, ovalGeo } from './Sculpt';
 import { V, lerpV, paletteTint, seq } from './Kit';
 import { houndHead, quadBody, quadChest, quadChestR } from './LookUndead';
 import type { MotionStyle } from './Motion';
@@ -94,7 +94,7 @@ function ratHead(s: Sculpt, w: number, glow = 1): void {
   s.ball('head', h, V(w, w * 0.85, w * 1.1), { k: 0.02 });
   s.limb('head', h.clone().add(V(0, 0, 0.03)), sn, w * 0.7, w * 0.18, { k: 0.02 });
   s.pair((_side, x) => {
-    s.hard('head', ballGeo(h.clone().add(V(x * w * 0.75, w * 0.8, -w * 0.2)), w * 0.45, 1).scale(1, 1, 0.3).translate(0, 0, 0), 'skin', [1, 0.8, 0.8]);
+    s.hard('head', ovalGeo(h.clone().add(V(x * w * 0.75, w * 0.8, -w * 0.2)), w * 0.45, 1, 1, 1, 0.3).translate(0, 0, 0), 'skin', [1, 0.8, 0.8]);
     s.eye('head', h.clone().add(V(x * w * 0.55, w * 0.35, w * 0.6)), w * 0.16, glow);
   });
   const t = sn.clone().add(V(0, -w * 0.25, -w * 0.15));

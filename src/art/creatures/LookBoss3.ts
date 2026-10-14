@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import type { LookCtx, LookFactory } from './Looks';
 import type { CMat, RGB, Sculpt } from './Sculpt';
-import { ballGeo, boxGeo, ringGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { ballGeo, boxGeo, ringGeo, spikeGeo, tubeGeo, ovalGeo } from './Sculpt';
 import { V, lerpV, seq } from './Kit';
 import { manLook } from './LookHumanoid';
 import { specterLook } from './LookUndead';
@@ -47,7 +47,7 @@ function sack(s: Sculpt, H: number, size: number, mat: CMat = 'alt'): void {
 /** A small black bird on a perch, beak toward `face`. */
 function crow(s: Sculpt, bone: string, p: THREE.Vector3, size: number, face: THREE.Vector3): void {
   const f = face.clone().setY(0).normalize();
-  s.hard(bone, ballGeo(p, size, 1).scale(1, 0.85, 1.25).translate(0, 0, 0), 'alt', DARK);
+  s.hard(bone, ovalGeo(p, size, 1, 1, 0.85, 1.25).translate(0, 0, 0), 'alt', DARK);
   const h = p.clone().addScaledVector(f, size * 0.95).add(V(0, size * 0.55, 0));
   s.hard(bone, ballGeo(h, size * 0.55, 1), 'alt', DARK);
   s.hard(bone, spikeGeo(h.clone().addScaledVector(f, size * 0.4), h.clone().addScaledVector(f, size * 1.1).add(V(0, -size * 0.1, 0)), size * 0.16, 3, undefined, 1), 'metal', [0.25, 0.22, 0.18]);
@@ -230,7 +230,7 @@ export const BOSS_C: Record<string, LookFactory> = {
           s.pair((_side, x) => {
             const g = ch.clone().add(V(x * 0.065 * H, 0.04 * H, 0.155 * H));
             s.hard('chest', ringGeo(g, 0.03 * H, 0.006 * H, V(0, 0, 1), 14), 'metal');
-            s.hard('chest', ballGeo(g.clone().add(V(0, 0, -0.004 * H)), 0.027 * H, 1).scale(1, 1, 0.2), 'alt', [0.9, 0.88, 0.8]);
+            s.hard('chest', ovalGeo(g.clone().add(V(0, 0, -0.004 * H)), 0.027 * H, 1, 1, 1, 0.2), 'alt', [0.9, 0.88, 0.8]);
             s.hard('chest', spikeGeo(g, g.clone().add(V(x * 0.02 * H, 0.016 * H, 0.002 * H)), 0.003 * H, 3, undefined, 1), 'alt', [0.9, 0.15, 0.1], 0.6);
           });
           // A firebox door low on the belly, glowing through its grille.
@@ -287,7 +287,7 @@ export const BOSS_C: Record<string, LookFactory> = {
           const hb = lerpV(s.j('handR'), s.j('handRTip'), 0.6);
           s.hard('handR', tubeGeo([hb, hb.clone().add(V(0, -0.06 * H, 0.03 * H))], () => 0.007 * H, 5), 'alt', [0.3, 0.2, 0.15]);
           const bell = hb.clone().add(V(0, -0.09 * H, 0.045 * H));
-          s.hard('handR', ballGeo(bell, 0.04 * H, 1).scale(1, 1.15, 1), 'metal', BRASS);
+          s.hard('handR', ovalGeo(bell, 0.04 * H, 1, 1, 1.15, 1), 'metal', BRASS);
           s.hard('handR', ringGeo(bell.clone().add(V(0, -0.035 * H, 0)), 0.042 * H, 0.006 * H, V(0, 1, 0), 14), 'metal', BRASS);
           // A cord of little bells round her waist.
           for (let i = 0; i < 7; i++) {
@@ -400,7 +400,7 @@ export const BOSS_C: Record<string, LookFactory> = {
             const b = cc.clone().add(V(Math.sin(a) * 0.065 * H, 0, Math.cos(a) * 0.065 * H));
             const t = b.clone().add(V(Math.sin(a) * 0.02 * H + (i % 2 ? 0.01 : -0.01) * H, 0.06 * H, Math.cos(a) * 0.02 * H));
             s.hard('head', tubeGeo([b, t], () => 0.004 * H, 4), 'metal', [0.75, 0.75, 0.78]);
-            s.hard('head', ballGeo(t, 0.012 * H, 0).scale(1, 1.4, 0.5), 'metal', [0.8, 0.8, 0.82]);
+            s.hard('head', ovalGeo(t, 0.012 * H, 0, 1, 1.4, 0.5), 'metal', [0.8, 0.8, 0.82]);
           }
           // The shield-sled, dented, a painted crown on it.
           shield(s, H, { h: 0.6, w: 0.25, col: [0.4, 0.38, 0.36], boss: GOLD, tower: true });
@@ -435,7 +435,7 @@ export const BOSS_C: Record<string, LookFactory> = {
           s.pair((_side, x) => {
             const g = h.clone().add(V(x * 0.025 * H, 0.04 * H, 0.055 * H));
             s.hard('head', ringGeo(g, 0.018 * H, 0.004 * H, V(0, 0.3, 1), 12), 'alt', BRASS);
-            s.hard('head', ballGeo(g, 0.016 * H, 1).scale(1, 1, 0.4), 'metal', GLASS, 0.4);
+            s.hard('head', ovalGeo(g, 0.016 * H, 1, 1, 1, 0.4), 'metal', GLASS, 0.4);
           });
           // Leaded panes fanned on his back.
           const bk = s.j('chest').add(V(0, 0.04 * H, -0.1 * H));
@@ -599,7 +599,7 @@ export const BOSS_C: Record<string, LookFactory> = {
           waxDrips(s, 'head', s.j('head').add(V(0, 0.05 * H, 0)), 7, 0.1 * H, 0.06 * H, 17);
           s.pair((side, x) => candle(s, `arm${side}`, s.j(`arm${side}`).add(V(x * 0.02 * H, 0.05 * H, -0.02 * H)), 0.03 * H, 0.008 * H));
           // A bell on a cord at his throat.
-          s.hard('chest', ballGeo(s.j('neck').add(V(0, -0.04 * H, 0.06 * H)), 0.016 * H, 1).scale(1, 1.2, 1), 'metal', BRASS);
+          s.hard('chest', ovalGeo(s.j('neck').add(V(0, -0.04 * H, 0.06 * H)), 0.016 * H, 1, 1, 1.2, 1), 'metal', BRASS);
         },
         style: { heavy: 0.3, attacks: ['swing', 'thrust', 'hurl'], armed: 'staff', castBoth: true, idle: 'sway', gait: 'walk' },
       }),
@@ -640,7 +640,7 @@ export const BOSS_C: Record<string, LookFactory> = {
           const h = s.j('head');
           s.ball('head', h.clone().add(V(0, 0.02 * H, -0.02 * H)), V(0.08 * H, 0.09 * H, 0.07 * H), { mat: 'alt', k: 0.01 * H });
           const f = h.clone().add(V(0, 0.01 * H, 0.05 * H));
-          s.hard('head', ballGeo(f, 0.058 * H, 2).scale(1, 1, 0.25), 'metal', [0.95, 0.92, 0.82], 0.25);
+          s.hard('head', ovalGeo(f, 0.058 * H, 2, 1, 1, 0.25), 'metal', [0.95, 0.92, 0.82], 0.25);
           s.hard('head', ringGeo(f, 0.06 * H, 0.007 * H, V(0, 0, 1), 20), 'skin');
           for (let i = 0; i < 12; i++) {
             const a = (i / 12) * Math.PI * 2;
@@ -785,7 +785,7 @@ export const BOSS_C_KIN: Record<string, LookFactory> = {
         s.limb('head', h, sn, 0.07, 0.045, { k: 0.02 });
         s.pair((_side, x) => {
           s.eye('head', h.clone().add(V(x * 0.06, 0.03, 0.05)), 0.012, 0.8);
-          s.hard('head', ballGeo(h.clone().add(V(x * 0.09, 0.02, -0.02)), 0.035, 1).scale(1, 0.4, 0.8), 'skin');
+          s.hard('head', ovalGeo(h.clone().add(V(x * 0.09, 0.02, -0.02)), 0.035, 1, 1, 0.4, 0.8), 'skin');
         });
       },
       extra: (s) => {

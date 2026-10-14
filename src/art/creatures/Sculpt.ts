@@ -472,6 +472,15 @@ export function ballGeo(c: THREE.Vector3, r: number, detail = 0): THREE.BufferGe
   return g;
 }
 
+/** A squashed ball: radius `r` stretched by `sx, sy, sz` about its own centre `c`. */
+export function ovalGeo(c: THREE.Vector3, r: number, detail: number, sx: number, sy: number, sz: number): THREE.BufferGeometry {
+  const g = new THREE.IcosahedronGeometry(r, detail);
+  g.deleteAttribute('uv');
+  g.scale(sx, sy, sz);
+  g.translate(c.x, c.y, c.z);
+  return g;
+}
+
 /** A ring (bands, halos, collars) in the plane with normal `n`. */
 export function ringGeo(c: THREE.Vector3, r: number, tube: number, n: THREE.Vector3, seg = 16): THREE.BufferGeometry {
   const g = new THREE.TorusGeometry(r, tube, 4, seg);

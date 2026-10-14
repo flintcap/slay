@@ -190,14 +190,14 @@ const OOZE: Record<string, LookFactory> = {
         // The victim: a skeleton curled inside, a sword, a helmet, coins.
         const k = b.clone().add(V(0, H * 0.05, 0));
         skullAt(s, 'body', k.clone().add(V(R * 0.1, H * 0.3, R * 0.25)), R * 0.11, V(0.3, -0.2, 1));
-        s.hard('body', ballGeo(k.clone().add(V(R * 0.1, H * 0.38, R * 0.22)), R * 0.13, 1).scale(1, 1, 1), 'metal', [0.55, 0.55, 0.58]);
+        s.hard('body', ballGeo(k.clone().add(V(R * 0.1, H * 0.38, R * 0.22)), R * 0.13, 1), 'metal', [0.55, 0.55, 0.58]);
         for (let i = 0; i < 4; i++) s.hard('body', tubeGeo([k.clone().add(V(-R * 0.15, H * 0.15 - i * H * 0.05, R * 0.05)), k.clone().add(V(R * 0.05, H * 0.17 - i * H * 0.05, R * 0.25)), k.clone().add(V(R * 0.25, H * 0.15 - i * H * 0.05, R * 0.1))], () => R * 0.015, 4), 'metal', BONE);
         s.hard('body', tubeGeo([k.clone().add(V(-R * 0.1, H * 0.2, 0)), k.clone().add(V(-R * 0.15, -H * 0.15, R * 0.05))], () => R * 0.025, 5), 'metal', BONE);
         for (const [a, bb] of [[V(R * 0.2, -H * 0.1, R * 0.1), V(R * 0.45, -H * 0.3, R * 0.35)], [V(-R * 0.05, -H * 0.1, R * 0.15), V(-R * 0.4, -H * 0.25, R * 0.4)], [V(R * 0.2, H * 0.1, R * 0.2), V(R * 0.5, H * 0.0, R * 0.5)]] as const) s.hard('body', tubeGeo([k.clone().add(a), k.clone().add(bb)], () => R * 0.02, 4), 'metal', BONE);
         s.hard('body', tubeGeo([k.clone().add(V(-R * 0.55, -H * 0.3, -R * 0.3)), k.clone().add(V(R * 0.3, H * 0.35, -R * 0.45))], () => R * 0.018, 4), 'metal', [0.7, 0.72, 0.75]);
         s.hard('body', boxGeo(k.clone().add(V(-R * 0.45, -H * 0.18, -R * 0.33)), V(R * 0.2, R * 0.03, R * 0.05), new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), 0.9)), 'metal', [0.6, 0.5, 0.3]);
         const r = seq(61);
-        for (let i = 0; i < 8; i++) s.hard('body', ballGeo(k.clone().add(V((r() - 0.5) * R * 1.2, -H * 0.3 + r() * H * 0.15, (r() - 0.5) * R * 1.2)), R * 0.035, 0).scale(1, 1, 1), 'metal', [0.95, 0.75, 0.3], 0.3);
+        for (let i = 0; i < 8; i++) s.hard('body', ballGeo(k.clone().add(V((r() - 0.5) * R * 1.2, -H * 0.3 + r() * H * 0.15, (r() - 0.5) * R * 1.2)), R * 0.035, 0), 'metal', [0.95, 0.75, 0.3], 0.3);
       },
       metal: { surface: 'bone', tint: 0xc8bca0 },
       paint: { skin: { grime: 0, ao: 0.4, top: { amount: 0.35, col: [1.3, 1.4, 1.5] } }, alt: { grime: 0, ao: 0.4 } },

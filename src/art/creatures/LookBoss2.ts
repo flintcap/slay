@@ -176,7 +176,7 @@ const BOSS_B: Record<string, LookFactory> = {
           // Trophies: three helms hanging from his belt.
           for (let i = 0; i < 3; i++) {
             const p = s.j('hips').add(V((i - 1) * 0.09 * H + 0.02 * H, -0.06 * H, 0.06 * H - Math.abs(i - 1) * 0.05 * H));
-            s.hard('hips', ballGeo(p, 0.025 * H, 1).scale(1, 1, 1), 'metal', [0.45, 0.42, 0.4]);
+            s.hard('hips', ballGeo(p, 0.025 * H, 1), 'metal', [0.45, 0.42, 0.4]);
           }
           // Light between the plates.
           s.boil('chest', s.j('chest').add(V(0, 0.0, 0.11 * H)), 0.012 * H, 1, [0.5, 0.8, 1.4]);

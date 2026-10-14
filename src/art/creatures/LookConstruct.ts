@@ -141,7 +141,7 @@ function shield(s: Sculpt, H: number, o: { h: number; w: number; mat?: CMat; col
   const b = c.clone().addScaledVector(dir, -o.h * H * 0.45);
   const mat = o.mat ?? 'metal';
   s.hard('foreL', slabGeo(a, b, V(0, 0, 1), o.tower ? o.w * H : o.w * H * 0.35, o.w * H, 0.018 * H, 0.018 * H), mat, o.col);
-  s.hard('foreL', ballGeo(c.clone().add(V(0.02 * H, 0, 0)), 0.035 * H, 1).scale(1, 1, 1), mat, o.boss ?? o.col);
+  s.hard('foreL', ballGeo(c.clone().add(V(0.02 * H, 0, 0)), 0.035 * H, 1), mat, o.boss ?? o.col);
 }
 
 // ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import type { LookFactory } from './Looks';
 import type { RGB, Sculpt } from './Sculpt';
-import { ballGeo, boxGeo, membraneGeo, ringGeo, slabGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { ballGeo, boxGeo, membraneGeo, ringGeo, slabGeo, spikeGeo, tubeGeo, ovalGeo } from './Sculpt';
 import { V, lerpV, seq, skirt } from './Kit';
 import { WEAPON_DIR } from './Arms';
 import { manLook } from './LookHumanoid';
@@ -532,7 +532,7 @@ export const WARDEN_LOOKS: Record<string, LookFactory> = {
           const hd = lerpV(s.j('handR'), s.j('handRTip'), 0.55);
           const bell = hd.clone().add(V(0.02 * H, -0.28 * H, 0.08 * H));
           chain(s, 'handR', hd, bell.clone().add(V(0, 0.08 * H, 0)), 0.014 * H, IRON);
-          s.hard('handR', ballGeo(bell, 0.075 * H, 1).scale(1, 1.1, 1), 'metal', [0.3, 0.28, 0.27]);
+          s.hard('handR', ovalGeo(bell, 0.075 * H, 1, 1, 1.1, 1), 'metal', [0.3, 0.28, 0.27]);
           s.hard('handR', ringGeo(bell.clone().add(V(0, -0.02 * H, 0)), 0.078 * H, 0.008 * H, V(0, 1, 0), 16), 'metal', BRASS);
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2;
@@ -685,7 +685,7 @@ export const WARDEN_LOOKS: Record<string, LookFactory> = {
           s.ball('head', h.clone().add(V(0, 0.01 * H, -0.01 * H)), V(0.075 * H, 0.085 * H, 0.08 * H), { mat: 'alt', k: 0.01 * H });
           s.ball('chest', s.j('neck').add(V(0, -0.03 * H, -0.02 * H)), V(0.12 * H, 0.05 * H, 0.09 * H), { mat: 'alt', k: 0.02 * H });
           s.hard('head', ringGeo(h.clone().add(V(0, 0.01 * H, 0.0)), 0.07 * H, 0.008 * H, V(0, 0.2, 1).normalize(), 20), 'metal', [0.9, 0.88, 0.82]);
-          s.hard('head', ballGeo(h.clone().add(V(0, 0.0, 0.045 * H)), 0.05 * H, 1).scale(1, 1.25, 0.5), 'skin');
+          s.hard('head', ovalGeo(h.clone().add(V(0, 0.0, 0.045 * H)), 0.05 * H, 1, 1, 1.25, 0.5), 'skin');
           s.pair((_side, x) => lens(s, 'head', h.clone().add(V(x * 0.02 * H, 0.012 * H, 0.068 * H)), 0.011 * H, V(0, 0, 1), 1.6));
           // The prayer wheel: a drum on a handle with a gear on its end.
           const g = lerpV(s.j('handR'), s.j('handRTip'), 0.55);
@@ -696,7 +696,7 @@ export const WARDEN_LOOKS: Record<string, LookFactory> = {
           // The wind-up key in her back, and gears turning in an open panel.
           const bk = ch.clone().add(V(0, 0.0, -0.085 * H));
           s.hard('chest', tubeGeo([bk, bk.clone().add(V(0, 0, -0.06 * H))], () => 0.01 * H, 6), 'metal');
-          s.pair((_side, x) => s.hard('chest', ballGeo(bk.clone().add(V(x * 0.04 * H, 0.0, -0.065 * H)), 0.035 * H, 1).scale(1, 0.7, 0.25), 'metal'));
+          s.pair((_side, x) => s.hard('chest', ovalGeo(bk.clone().add(V(x * 0.04 * H, 0.0, -0.065 * H)), 0.035 * H, 1, 1, 0.7, 0.25), 'metal'));
           gear(s, 'chest', ch.clone().add(V(0, -0.02 * H, 0.085 * H)), 0.035 * H, V(0, 0, 1), 12, [0.85, 0.65, 0.3], 'metal', 0.3);
           rivets(s, 'chest', ch.clone().add(V(-0.07 * H, 0.06 * H, 0.07 * H)), ch.clone().add(V(0.07 * H, 0.06 * H, 0.07 * H)), 6, 0.005 * H, BRASS);
         },
@@ -760,8 +760,8 @@ export const WARDEN_LOOKS: Record<string, LookFactory> = {
           const h = s.j('head');
           // An iron plate over the face with a keyhole cut in it.
           const fc = h.clone().add(V(0, 0.02 * H, 0.06 * H));
-          s.hard('head', ballGeo(fc, 0.06 * H, 1).scale(1, 1.3, 0.4), 'metal', [0.35, 0.35, 0.38]);
-          s.hard('head', ballGeo(fc.clone().add(V(0, 0.02 * H, 0.02 * H)), 0.014 * H, 1).scale(1, 1, 0.3), 'alt', DARK);
+          s.hard('head', ovalGeo(fc, 0.06 * H, 1, 1, 1.3, 0.4), 'metal', [0.35, 0.35, 0.38]);
+          s.hard('head', ovalGeo(fc.clone().add(V(0, 0.02 * H, 0.02 * H)), 0.014 * H, 1, 1, 1, 0.3), 'alt', DARK);
           s.hard('head', boxGeo(fc.clone().add(V(0, -0.012 * H, 0.02 * H)), V(0.007 * H, 0.022 * H, 0.004 * H)), 'alt', DARK);
           s.eye('head', fc.clone().add(V(0, 0.02 * H, 0.016 * H)), 0.009 * H, 1.8);
           // The halo: an iron ring behind the head, keys hanging all round it.

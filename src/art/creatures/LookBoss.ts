@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import type { CreatureLook } from './Creature';
 import type { LookCtx, LookFactory } from './Looks';
 import type { CMat, RGB, Sculpt } from './Sculpt';
-import { ballGeo, boxGeo, ringGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { ballGeo, boxGeo, ringGeo, spikeGeo, tubeGeo, ovalGeo } from './Sculpt';
 import { specterRig, floaterRig } from './Rig';
 import { V, belt, cape, claws, foot, lerpV, pauldron, quatAlong, seq, skirt, trunk } from './Kit';
 import { weapon } from './Arms';
@@ -644,7 +644,7 @@ const BOSS_A: Record<string, LookFactory> = {
         // Pauldrons of shell.
         s.pair((side, x) => {
           const sh = s.j(`arm${side}`);
-          for (let i = 0; i < 3; i++) s.hard(`arm${side}`, ballGeo(sh.clone().add(V(x * i * 0.02 * H, 0.03 * H - i * 0.015 * H, -i * 0.01 * H)), (0.04 - i * 0.008) * H, 1).scale(1, 0.6, 1), 'metal', [1.0, 0.85, 0.75]);
+          for (let i = 0; i < 3; i++) s.hard(`arm${side}`, ovalGeo(sh.clone().add(V(x * i * 0.02 * H, 0.03 * H - i * 0.015 * H, -i * 0.01 * H)), (0.04 - i * 0.008) * H, 1, 1, 0.6, 1), 'metal', [1.0, 0.85, 0.75]);
           s.limb(`arm${side}`, s.j(`arm${side}`), s.j(`fore${side}`), 0.026 * H, 0.02 * H, { k: 0.012 * H });
           s.limb(`fore${side}`, s.j(`fore${side}`), s.j(`hand${side}`), 0.02 * H, 0.014 * H, { k: 0.01 * H });
           s.ball(`hand${side}`, lerpV(s.j(`hand${side}`), s.j(`hand${side}Tip`), 0.35), V(0.014 * H, 0.022 * H, 0.01 * H), { k: 0.005 * H });

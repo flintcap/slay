@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import type { LookCtx, LookFactory } from './Looks';
 import type { RGB, Sculpt } from './Sculpt';
-import { ballGeo, boxGeo, ringGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { ballGeo, boxGeo, ringGeo, spikeGeo, tubeGeo, ovalGeo } from './Sculpt';
 import { V, lerpV, seq } from './Kit';
 import { manLook } from './LookHumanoid';
 import { specterLook } from './LookUndead';
@@ -40,7 +40,7 @@ function lantern(s: Sculpt, bone: string, p: THREE.Vector3, r: number, col: RGB)
 /** A crow perched at `p`, looking along `face`. */
 function crow(s: Sculpt, bone: string, p: THREE.Vector3, size: number, face: THREE.Vector3): void {
   const f = face.clone().setY(0).normalize();
-  s.hard(bone, ballGeo(p, size, 1).scale(1, 0.85, 1.25), 'alt', DARK);
+  s.hard(bone, ovalGeo(p, size, 1, 1, 0.85, 1.25), 'alt', DARK);
   const h = p.clone().addScaledVector(f, size * 0.95).add(V(0, size * 0.55, 0));
   s.hard(bone, ballGeo(h, size * 0.55, 1), 'alt', DARK);
   s.hard(bone, spikeGeo(h.clone().addScaledVector(f, size * 0.4), h.clone().addScaledVector(f, size * 1.1), size * 0.16, 3, undefined, 1), 'metal', [0.25, 0.22, 0.18]);
@@ -206,7 +206,7 @@ export const BOSS_D: Record<string, LookFactory> = {
           // Scales and a scoop on his belt.
           const hp = s.j('hips');
           s.hard('hips', ringGeo(hp.clone().add(V(0.09 * H, -0.04 * H, 0.04 * H)), 0.025 * H, 0.004 * H, V(0, 1, 0), 10), 'metal', BRASS);
-          s.hard('hips', ballGeo(hp.clone().add(V(-0.09 * H, -0.05 * H, 0.04 * H)), 0.025 * H, 1).scale(1, 0.5, 1), 'metal', IRON);
+          s.hard('hips', ovalGeo(hp.clone().add(V(-0.09 * H, -0.05 * H, 0.04 * H)), 0.025 * H, 1, 1, 0.5, 1), 'metal', IRON);
           // Ash heaped on his shoulders and hood.
           const r = seq(23);
           for (let i = 0; i < 10; i++) {

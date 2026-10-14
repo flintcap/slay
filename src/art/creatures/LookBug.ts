@@ -90,7 +90,7 @@ function bugHead(s: Sculpt, o: { w: number; eyes?: number; eyeR?: number; glow?:
   // Compound eyes: dark glossy domes with only a faint inner light.
   s.pair((_side, x) => {
     const e = h.clone().add(V(x * w * 0.7, w * 0.22, w * 0.32));
-    s.hard('head', ballGeo(e, w * (o.eyeR ?? 0.36), 1).scale(1, 1, 1), 'skin', [0.1, 0.11, 0.09], 0);
+    s.hard('head', ballGeo(e, w * (o.eyeR ?? 0.36), 1), 'skin', [0.1, 0.11, 0.09], 0);
   });
   if (o.eyes) for (let i = 0; i < o.eyes; i++) s.pair((_side, x) => s.eye('head', h.clone().add(V(x * w * (0.18 + i * 0.12), w * 0.7, w * (0.5 - i * 0.15))), w * 0.1, (o.glow ?? 0.5) * 1.5));
   if (o.antennae) {
