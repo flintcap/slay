@@ -25,6 +25,7 @@ const SAME = 64;
 /** Share of the other model the main colour must cover. */
 const SHARE = 0.12;
 
+declare const process: { argv: string[] };
 const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7);
 const baseById = new Map(ITEM_BASES.map((b) => [b.id, b]));
 const hero = buildHero(HERO_LOOKS.warden, 'iconmatch');
