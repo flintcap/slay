@@ -444,6 +444,12 @@ export class MiniBossController implements MiniBossHook {
 
   // --- broodmother ---------------------------------------------------------
 
+  summons(): string[] {
+    if (this.kind === 'warlord') return [this.self.monsterId];
+    if (this.kind === 'broodmother') return [this.broodId()];
+    return [];
+  }
+
   private broodId(): string {
     const self = this.self;
     const kin = MONSTERS.find(

@@ -385,24 +385,39 @@ export class DungeonScene extends GameScene {
    */
   private warmSummons(): void {
     this.warmupDone();
-    const want = new Map<string, { def: (typeof MONSTERS)[number]; minion: boolean }>();
-    const ask = (id: string | undefined, minion: boolean): void => {
-      if (!id || want.has(`${id}|${minion}`)) return;
+    const want = new Map<string, { def: (typeof MONSTERS)[number]; minion: boolean; rank: MonsterRank }>();
+    const ask = (id: string | undefined, minion: boolean, rank: MonsterRank = 'normal'): void => {
+      const key = `${id}|${minion}|${rank}`;
+      if (!id || want.has(key)) return;
       const def = MONSTERS.find((m) => m.id === id);
-      if (def) want.set(`${id}|${minion}`, { def, minion });
+      if (def) want.set(key, { def, minion, rank });
     };
     const casters: Enemy[] = this.boss ? [...this.enemies, this.boss] : this.enemies;
     for (const e of casters) for (const a of e.abilityIds) ask(SUMMONED_BY[a], false);
+    // A mini boss's horn and brood call up bodies of their own.
+    for (const e of this.enemies) for (const id of e.miniBoss?.summons?.() ?? []) ask(id, false);
     for (const ph of this.boss?.bossDef.phases ?? []) for (const a of ph.abilities) ask(SUMMONED_BY[a], false);
+    // The boss's own rules call up its adds (a barrier's guards are
+    // champions, and can open the fight), sentries and mirror images. Each
+    // was baked on the frame the fight began: the freeze on walking in.
+    if (this.boss) {
+      for (const id of this.boss.bossDef.adds ?? ['skeleton_rattler']) {
+        ask(id, false);
+        ask(id, false, 'champion');
+      }
+      ask('arcane_sentry_totem', false);
+      ask('mirror_image', false);
+    }
     const c = this.player.character;
     for (const sk of [...c.hotbar, ...Object.keys(c.skills)]) ask(sk ? MINION_MONSTER[sk] : undefined, true);
-    for (const { def, minion } of want.values()) {
+    for (const { def, minion, rank } of want.values()) {
       try {
-        // As the summon factory builds them: a normal-rank monster of its
-        // family, or a hero's minion at 0.92 of its size with no family.
+        // As the summon factory builds them: a monster of its family at the
+        // rank it is called at, or a hero's minion at 0.92 of its size with
+        // no family.
         const m = minion
           ? instanceCreature(lookFor(def.visual), (def.scale ?? 1) * 0.92, {})
-          : instanceCreature(lookFor(def.visual, def.family, 'normal'), def.scale, { rank: 'normal' });
+          : instanceCreature(lookFor(def.visual, def.family, rank), def.scale, { rank });
         this.summonWarm.push(m.root);
       } catch {
         /* the summon builds it itself, as before */

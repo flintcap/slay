@@ -132,6 +132,8 @@ export interface MiniBossHook {
   readonly wantsTurn: boolean;
   tick(dt: number, ctx: CombatContext): void;
   onDeath(ctx: CombatContext): void;
+  /** Monsters its mechanic calls up, so the floor can build them behind the curtain. */
+  summons?(): string[];
 }
 
 /** Half-angle of a braced tank's guard, radians, and how much it turns aside. */

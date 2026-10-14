@@ -179,6 +179,8 @@ async function visit(label) {
     // The page clock at the profile's start, to place samples in frames.
     const t0 = await page.evaluate(() => {
       window.__lag.texBy.clear();
+      // Which programs existed before, so the ones linked inside can be named.
+      window.__lag.progsBefore = new Set((window.SLAY?.engine?.renderer?.gl?.info?.programs ?? []).map((p) => p.id));
       return performance.now();
     });
     await page.evaluate(fn, a);
@@ -227,6 +229,10 @@ async function visit(label) {
           drawsPerFrame,
           updOver50: upd.filter((x) => x > 50).length,
           long: inside(L.long, a, b).map((x) => Math.round(x[1])).sort((x, y) => y - x).slice(0, 5),
+          newProgs: (window.SLAY?.engine?.renderer?.gl?.info?.programs ?? [])
+            .filter((p) => !L.progsBefore?.has(p.id))
+            .map((p) => `${p.name}${p.cacheKey ? ` [${String(p.cacheKey).slice(0, 90)}]` : ''}`)
+            .slice(0, 12),
           worst,
         };
       },
@@ -237,6 +243,7 @@ async function visit(label) {
       `[${label}] ${name}: ${r.frames} frames, p50 ${r.p50} p95 ${r.p95} max ${r.max} ms; >50 ms: ${r.over50}, >100 ms: ${r.over100}; ` +
         `programs linked ${r.links}, textures ${r.texKB} KB, contexts ${r.ctx}; draw calls a frame ${r.drawsPerFrame}; update max ${r.updMax} ms (${r.updOver50} over 50); long tasks ${r.long.join(', ')}`,
     );
+    if (r.links && r.links < 12) for (const n of r.newProgs) console.log(`      new program: ${n}`);
     for (const w of r.worst) {
       console.log(`      ${String(w.ms).padStart(5)} ms at +${w.at}: links ${w.links}, tex ${w.texKB} KB, buf ${w.bufKB} KB, ctx ${w.ctx}, update ${w.upd}, render ${w.ren}`);
     }
@@ -623,6 +630,9 @@ async function visit(label) {
       console.log(`      ${fresh.length} new programs; ${unmatched} with no program of that shader before`);
       for (const [tag, c] of [...diffs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)) console.log(`      ${String(c).padStart(3)} x  ${tag.slice(0, 300)}`);
       await seg('areas: first 5 s in the new area', () => new Promise((r) => setTimeout(r, 5000)));
+      // The panels again: the area change tore down the last area, and with
+      // it anything the menus had shared with it.
+      if (ONLY.includes('menus')) await panels('next area');
     }
   }
 
