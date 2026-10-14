@@ -174,7 +174,7 @@ warden({
   adds: [],
   visual: { body: 'winged', palette: 'glass.moth|0x9ad8e8', ornate: 0.6, eyes: 6, wings: true, glow: 0x9ad8ff },
   phases: [
-    { atLife: 1.0, name: 'Flutter', abilities: ['shock_bolt', 'blink_away', 'gaze_beam'], bark: '' },
+    { atLife: 1.0, name: 'Flutter', abilities: ['shock_bolt', 'blink_away', 'gaze_beam'], bark: 'Hold still. Every eye wants a look.' },
   ],
 });
 

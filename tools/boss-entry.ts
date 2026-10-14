@@ -8,11 +8,13 @@
  *  2. Is every boss internally sound — real phases, real abilities, an arena
  *     hook the runtime knows, adds that exist?
  */
-import { BOSSES, BOSS_PROFILES, pickBossForDepth } from '../src/data/bosses';
+import { BOSSES, BOSS_PROFILES, bossSize, pickBossForDepth } from '../src/data/bosses';
 import { MONSTERS } from '../src/data/monsters';
 import { biomeForDepth } from '../src/world/Biomes';
 import { streamFor } from '../src/core/RNG';
 import { ABILITIES } from '../src/entities/Abilities';
+import { WARDENS } from '../src/data/wardens';
+import { hasLook } from '../src/art/creatures/Looks';
 
 const monsterIds = new Set(MONSTERS.map((m) => m.id));
 const abilityIds = new Set(ABILITIES.map((a) => a.id));
@@ -56,6 +58,20 @@ for (const b of BOSSES) {
   if (!['straight', 'phased', 'puzzle'].includes(b.shape)) defects.push({ id: b.id, problem: `unknown shape "${b.shape}"` });
   if (b.shape === 'straight' && b.phases.length > 2) defects.push({ id: b.id, problem: 'a straight fight has at most two phases' });
   if (b.shape === 'phased' && b.phases.length < 3) defects.push({ id: b.id, problem: 'a phased fight has at least three phases' });
+}
+
+// Every boss and floor warden is drawn in its own body (its portrait is that
+// body), has a size, and speaks when its fight turns.
+for (const b of [...BOSSES, ...WARDENS]) {
+  if (!hasLook(b.id)) defects.push({ id: b.id, problem: 'no look of its own, so no portrait of its own' });
+  if (!(b.scale > 0) || !['person', 'tall', 'large', 'giant'].includes(bossSize(b))) defects.push({ id: b.id, problem: 'no size' });
+  if (!b.intro) defects.push({ id: b.id, problem: 'no intro line' });
+  // The first phase may open in silence (the intro speaks for it); every
+  // turn after that is announced.
+  if (!b.phases.some((ph) => ph.bark?.trim())) defects.push({ id: b.id, problem: 'no barks' });
+  b.phases.forEach((ph, i) => {
+    if (i > 0 && !ph.bark?.trim()) defects.push({ id: b.id, problem: `phase ${i} (${ph.name}) has no bark` });
+  });
 }
 
 console.log(

@@ -307,6 +307,7 @@ boss({
       abilities: ['poison_spit', 'plague_death', 'spore_burst', 'vortex_pull'],
       arena: 'floodTide',
       damage: 1.3,
+      bark: 'Everything that falls in here is added to me. Come and be added.',
     },
     {
       atLife: 0.15,
@@ -774,6 +775,7 @@ boss({
       abilities: ['poison_spit', 'corpse_burst', 'thorn_lash', 'spore_burst'],
       arena: 'floodTide',
       damage: 1.3,
+      bark: 'Rot is only a root that has learned to be hungry.',
     },
     {
       atLife: 0.14,
