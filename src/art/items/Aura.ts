@@ -11,6 +11,10 @@
  * smoke, wisps, motes) are the shell alone, as round blobs read as floating
  * circles rather than light.
  *
+ * The game no longer adds the points to gear (the owner kept the outline glow
+ * and dropped the sparks so busy fights draw less); `buildAura` stays for the
+ * icons' look (`auraStyle`) and any later use.
+ *
  * One `THREE.Points` per aura, one draw call. Every particle's path is a
  * closed loop worked out in the vertex shader from the clock, so nothing is
  * updated on the CPU and an aura costs the same standing or running. One
