@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import { buildMonsterModel, monsterArchetype, RigAnimator, type RigAction } from '../src/entities/MonsterModels';
 import { MONSTERS } from '../src/data/monsters';
 import { BOSSES } from '../src/data/bosses';
+import { WARDENS } from '../src/data/wardens';
 import { Random } from '../src/core/RNG';
 import { hasLook, lookFor } from '../src/art/creatures/Looks';
 import type { CreatureInfo } from '../src/art/creatures/Animator';
@@ -32,6 +33,7 @@ const DT = 1 / 60;
 const ENTRIES = [
   ...MONSTERS.map((m) => ({ id: m.id, visual: m.visual, family: m.family, scale: m.scale, boss: false })),
   ...BOSSES.map((b) => ({ id: b.id, visual: b.visual, family: b.family, scale: b.scale, boss: true })),
+  ...WARDENS.map((b) => ({ id: b.id, visual: b.visual, family: b.family, scale: b.scale, boss: true })),
 ];
 const ALL = ((globalThis as { process?: { argv: string[] } }).process?.argv ?? []).includes('--all');
 
