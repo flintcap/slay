@@ -57,6 +57,7 @@ import { RunEvents } from './RunEvents';
 import { questTokens } from './QuestTokens';
 import { RunModifiers } from './RunModifiers';
 import { legacyXpMultiplier } from '../sim/Legacy';
+import { bossHitCap } from '../sim/FairFight';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 import { disposeAbilityWorld } from '../entities/Abilities';
 import { disposeMonsterModels } from '../entities/MonsterModels';
@@ -1197,6 +1198,8 @@ export class DungeonScene extends GameScene {
           packet.amount * 0.6,
         );
         if (this.godMode) return;
+        // Boss blows, its arena and its traps obey the fair-fight cap.
+        if (packet.fair === undefined && this.isBossSource(packet.source)) packet.fair = bossHitCap(this.run.depth);
         if (this.powers) packet = this.powers.incoming(packet);
         const before = this.player.life;
         const taken = this.player.takeDamage(packet, this.rng);
@@ -1222,6 +1225,14 @@ export class DungeonScene extends GameScene {
       minions: this.skills.minionTargets(),
       damageMinion: (id: number, amount: number) => this.skills.damageMinion(id, amount),
     };
+  }
+
+  /** True when a blow came from a boss of this floor (or its arena). */
+  private isBossSource(id: string): boolean {
+    if (!id) return false;
+    if (this.boss && this.boss.id === id) return true;
+    for (const e of this.enemies) if (e.isBoss && e.id === id) return true;
+    return false;
   }
 
   /** Collects the way-on lights in the scene, then balances the count. */

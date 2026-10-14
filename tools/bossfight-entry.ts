@@ -21,7 +21,9 @@ const { cases, check } = caseLog();
 const DT = 1 / 30;
 // A fight lasts about this long. Kept short: the checker shares a small machine.
 const TTK = 45;
-const CAP = 150;
+// Room for fumbles: the stander misses every safe ring, and each miss buys
+// the boss time (sim/FairFight.ts), so its fights may run up to twice as long.
+const CAP = 300;
 // `--only=3,7` fights those bosses (1-based); `--every=3` fights every third.
 const arg = (k: string): string | undefined => process.argv.find((x) => x.startsWith(`--${k}=`))?.split('=')[1];
 const only = arg('only')?.split(',').map(Number);

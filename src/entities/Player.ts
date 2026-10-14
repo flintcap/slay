@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Character, Stats, DamagePacket, EquipSlot, StatusApplication } from '../types';
 import { charmKey, computeStats } from '../sim/Stats';
 import { legacyKey } from '../sim/Legacy';
+import { FairLedger, HOLD_IDS } from '../sim/FairFight';
 import { mitigate } from '../sim/Combat';
 import { StatusContainer, adoptStatuses, releaseAdopted } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
@@ -191,6 +192,9 @@ export class Player {
     this.life = this.stats.life;
     this.mana = this.stats.mana;
   }
+
+  /** Boss hit cap and hold limit bookkeeping (sim/FairFight.ts). */
+  readonly fair = new FairLedger();
 
   private charmCheck = 0;
   private charmSeen: string | null = null;
@@ -500,6 +504,9 @@ export class Player {
     }
     // Harder tiers make every hit land heavier, after mitigation.
     result.amount *= activeDifficulty().damageTaken;
+    // A boss may hurt you, never delete you: one blow, or a burst of them,
+    // takes at most a share of your full life.
+    if (packet.fair !== undefined) result.amount = this.fair.clamp(result.amount, this.stats.life, packet.fair);
     this.life -= result.amount;
     events.emit('player:damaged', {
       amount: result.amount,
@@ -517,7 +524,9 @@ export class Player {
     // a monster can inflict was dead on arrival here.
     if (packet.applies?.length) {
       for (const a of packet.applies) {
-        this.applyStatus(a.id, a.duration, a.magnitude, a.stacks ?? 1);
+        // A boss holds you for 1.5 s at most, then cannot again for a while.
+        const d = packet.fair !== undefined && HOLD_IDS.has(a.id) ? this.fair.hold(a.duration) : a.duration;
+        if (d > 0) this.applyStatus(a.id, d, a.magnitude, a.stacks ?? 1);
       }
     }
     // Knockback is carried the same way and was equally ignored.
@@ -585,6 +594,7 @@ export class Player {
   }
 
   update(dt: number, ctx: PlayerContext, keyboardDir: THREE.Vector3 | null): void {
+    this.fair.tick(dt);
     if (this.invulnTimer > 0) {
       this.invulnTimer -= dt;
       if (this.invulnTimer <= 0) this.invulnerable = false;

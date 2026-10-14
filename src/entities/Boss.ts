@@ -32,6 +32,7 @@ import type {
 import { events } from '../core/Events';
 import { monsterFX } from '../fx/MonsterFX';
 import { prepareBossPortrait } from '../art/BossPortraits';
+import { FUMBLE_HEAL_MAX, HEAVY_MUL, WARN_MIN } from '../sim/FairFight';
 import { Enemy, depthCurve } from './Enemy';
 import {
   after,
@@ -153,6 +154,22 @@ export class Boss extends Enemy {
   /** Seconds spent waiting for the next move in the rotation to be in reach. */
   private rotWait = 0;
   private fightTime = 0;
+  /** Life when the current phase began: a fumble never heals past it. */
+  private phaseStartLife = 0;
+  /** Life the hero has taken off it so far, for the fumble clock. */
+  private dealt = 0;
+  /** Seconds of fight the fumbles have handed back to the clock. */
+  fumbleTime = 0;
+  /** Fumbles so far, for the checker and the log. */
+  fumbles = 0;
+  /** Seconds since the hero last hurt it. */
+  private sinceHit = 99;
+  /**
+   * Recent fumbles, cooling by one every 15 s. Each fumble on the heels of
+   * another gains the boss less, so a hero who gets everything wrong is slow,
+   * never stuck.
+   */
+  private fumbleHeat = 0;
   /** True once the fight has run past its time limit. */
   softEnraged = false;
   private dreadTick = 0;
@@ -199,6 +216,7 @@ export class Boss extends Enemy {
     const phase = this.bossDef.phases[index];
     if (!phase || index === this.phaseIndex) return;
     this.phaseIndex = index;
+    this.phaseStartLife = this.life;
     // The body shows the phase: stands lower, glows hotter, moves harder.
     this.rig?.setPhase(index);
 
@@ -395,7 +413,12 @@ export class Boss extends Enemy {
           const inSafe = safe.some((s) => dist(s.x, s.z, c.playerPos.x, c.playerPos.z) < 2.4);
           c.fx.burst('bossSlam', p.x, 1.0, p.z, { count: 60, scale: 6 });
           events.emit('shake', { amount: 1.2, duration: 0.5 });
-          if (!inSafe) hitPlayer(this, c, 4.0, 'physical', 'arena.pillars', { knockback: 6 });
+          // Missed the ring: a hard blow, but under the hit cap, and the
+          // boss wards itself, so the ring still matters (fair-fight rules).
+          if (!inSafe) {
+            hitPlayer(this, c, 4.0, 'physical', 'arena.pillars', { knockback: 6 });
+            this.fumble('shield', c);
+          }
         });
         break;
       }
@@ -527,20 +550,26 @@ export class Boss extends Enemy {
       }
       case 'enrageTimer': {
         this.enrageTimer += dt;
-        if (this.enrageTimer >= 12) {
+        // It hardens rather than hits harder: a slow fight gets slower, never
+        // deadly (fair-fight rules). Six stacks at most, so it always dies.
+        if (this.enrageTimer >= 12 && this.enrageStacks < 6) {
           this.enrageTimer = 0;
           this.enrageStacks++;
           this.buff('hard_enrage', Number.MAX_SAFE_INTEGER, {
-            damage: 1 + this.enrageStacks * 0.25,
-            // Capped: enrage should make the fight lethal, not make the boss
-            // outrun you and remove kiting from the answer set.
-            speed: Math.min(1.35, 1 + this.enrageStacks * 0.05),
+            taken: 1 - this.enrageStacks * 0.05,
+            speed: Math.min(1.2, 1 + this.enrageStacks * 0.03),
           });
           events.emit('toast', {
-            text: `${this.bossDef.name} grows stronger (${this.enrageStacks})`,
+            text: `${this.bossDef.name} hardens (${this.enrageStacks})`,
             kind: 'bad',
           });
           ctx.fx.burst('crit', p.x, 1.4 * this.sizeScale, p.z, { count: 30, color: 0xff3020 });
+        }
+        // And knits while it is left alone: a little life back each second,
+        // never past where the phase began. A hero still hitting it keeps it
+        // from knitting, so the fight always ends.
+        if (this.enrageStacks > 0 && this.sinceHit > 2 && this.life < this.phaseStartLife) {
+          this.life = Math.min(this.phaseStartLife, this.life + this.maxLife * 0.0015 * this.enrageStacks * dt);
         }
         break;
       }
@@ -549,9 +578,69 @@ export class Boss extends Enemy {
     }
   }
 
+  // --- fumbles -------------------------------------------------------------
+
+  /**
+   * The hero got a room rule wrong. The boss gains time, never damage: it
+   * heals a little, wards itself, hides, or calls a few adds. Whatever it
+   * gains, the fight clock gets back, so a fumble never brings the enrage
+   * closer. Returns the seconds it cost.
+   */
+  fumble(cost: 'heal' | 'shield' | 'hold' | 'adds' | 'reset', ctx: CombatContext, seconds = 0): number {
+    if (!this.alive) return 0;
+    // What the hero has been doing to it, per second, so life and shields
+    // turn into seconds. A floor keeps the very first seconds sane.
+    const dps = Math.max(this.maxLife * 0.004, this.dealt / Math.max(8, this.fightTime));
+    const p = this.root.position;
+    const gain = 1 / (1 + this.fumbleHeat);
+    this.fumbleHeat += 1;
+    let spent = seconds * gain;
+    switch (cost) {
+      case 'heal': {
+        const room = Math.max(0, this.phaseStartLife - this.life);
+        const amount = Math.min(room, this.maxLife * FUMBLE_HEAL_MAX * gain);
+        if (amount > 0) this.heal(amount, ctx);
+        spent = Math.max(spent, amount / dps);
+        break;
+      }
+      case 'shield': {
+        // Layers stack, to a ceiling: a run of misses is slow, not endless.
+        const amount = Math.max(0, Math.min(this.maxLife * 0.06 * gain, this.maxLife * 0.15 - this.shield));
+        this.addShield(this.shield + amount, 20);
+        ctx.fx.burst('shock', p.x, 1.2 * this.sizeScale, p.z, { count: 20, color: 0x80c8ff });
+        spent = Math.max(spent, amount / dps);
+        break;
+      }
+      case 'hold': {
+        const d = Math.max(1, (seconds || 3) * gain);
+        this.buff('fumble_hold', d, { invulnerable: 1 });
+        spent = d;
+        break;
+      }
+      case 'adds': {
+        const ids = this.bossDef.adds ?? [];
+        const id = ids[this.fumbles % Math.max(1, ids.length)];
+        if (id) summon(this, ctx, id, gain > 0.5 ? 2 : 1, 5);
+        spent = Math.max(spent, 8 * gain);
+        break;
+      }
+      case 'reset':
+        spent = Math.max(spent, 6 * gain);
+        break;
+    }
+    spent = clamp(spent, 1, 40);
+    this.fumbles++;
+    this.fumbleTime += spent;
+    this.fightTime = Math.max(0, this.fightTime - spent);
+    events.emit('boss:fumble', { name: this.bossDef.name, cost, seconds: spent });
+    return spent;
+  }
+
   // --- tick ----------------------------------------------------------------
 
   override update(dt: number, ctx: CombatContext): void {
+    this.sinceHit += dt;
+    this.fumbleHeat = Math.max(0, this.fumbleHeat - dt / 15);
     if (!this.engaged && this.alive && !this.dormant) {
       // Auto-engage once the player is in the room.
       const p = this.root.position;
@@ -680,6 +769,15 @@ export class Boss extends Enemy {
     return null;
   }
 
+  /**
+   * A heavy blow is always seen coming: at least 0.8 s from the start of the
+   * move to the hit, however fast the boss swings (fair-fight rules).
+   */
+  protected override windupFor(def: AbilityDef, speed: number): number {
+    const base = def.windup / speed;
+    return def.damageMul >= HEAVY_MUL && def.windup > 0 ? Math.max(WARN_MIN, base) : base;
+  }
+
   override notifyAbility(ability: AbilityDef, phase: string): void {
     if (phase !== 'windup') return;
     this.usedAbilities.add(ability.id);
@@ -715,7 +813,10 @@ export class Boss extends Enemy {
     const cap = this.maxLife * 0.16;
     const working = packet.amount > cap ? { ...packet, amount: cap + (packet.amount - cap) * 0.35 } : packet;
 
+    const before = this.life;
     super.takeDamage(working, ctx);
+    this.dealt += Math.max(0, before - this.life);
+    if (working.amount > 0) this.sinceHit = 0;
     if (this.alive) events.emit('boss:damaged', { life: this.life, maxLife: this.maxLife });
   }
 

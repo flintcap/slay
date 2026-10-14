@@ -1050,6 +1050,12 @@ export interface DamagePacket {
    * number is drawn, so each element shows in its own colour.
    */
   parts?: Partial<Record<DamageType, number>>;
+  /**
+   * Set on blows from a boss, its arena and its traps: the most of the
+   * hero's full life this blow may take (sim/FairFight.ts). Also caps how
+   * long anything it carries can hold the hero.
+   */
+  fair?: number;
 }
 
 export interface StatusApplication {

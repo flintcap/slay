@@ -861,6 +861,29 @@ export const BOSSES: BossDef[];
 export function pickMonstersForDepth(depth: number, biome: BiomeId, rng: Rng, count: number): MonsterDef[];
 ```
 
+### Fair fights — `src/sim/FairFight.ts`, `Boss.fumble`
+
+A boss may hurt the hero, never delete them, and a room rule done wrong costs
+time, never life. `DungeonScene` marks every blow whose `source` is a boss (its
+own swings, its arena, its hazards) with `packet.fair = bossHitCap(depth)`;
+`Player.takeDamage` clamps it through `player.fair` (a `FairLedger`): one blow,
+or a burst inside 0.6 s, takes at most that share of full life, and a hold it
+carries lasts 1.5 s at most, then cannot land again for 3 s. Heavy boss moves
+(`damageMul >= HEAVY_MUL`) wind up at least `WARN_MIN` seconds (`Boss.windupFor`).
+
+```ts
+export function bossHitCap(depth: number): number;        // 0.25 / 0.3 / 0.4 of full life
+export class FairLedger { tick(dt): void; clamp(amount, maxLife, cap): number; hold(duration): number }
+// A room rule went wrong. Heals (to the phase's start), shields, hides,
+// calls adds or resets; never hurts the hero. Hands the seconds it cost back
+// to the fight clock, so a fumble never brings the enrage closer. Raises
+// `boss:fumble`. Back-to-back fumbles gain less.
+Boss.fumble(cost: 'heal' | 'shield' | 'hold' | 'adds' | 'reset', ctx: CombatContext, seconds?: number): number;
+```
+
+`tools/check-fair.mjs` proves it, including a fumbler who gets every rule
+wrong and must still win in at most twice the time.
+
 ## `src/ui/UIRoot.ts` — owned by UI
 
 ```ts

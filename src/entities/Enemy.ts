@@ -660,7 +660,7 @@ export class Enemy implements Combatant {
     this.inst = inst;
 
     const speed = Math.max(0.35, this.stats.attackSpeed * this.buffMul('attackSpeed'));
-    const windup = def.windup / speed;
+    const windup = this.windupFor(def, speed);
 
     // The telegraph goes down the instant the windup starts — this is the whole
     // contract with the player: every dangerous thing is readable and dodgeable.
@@ -682,6 +682,11 @@ export class Enemy implements Combatant {
     return true;
   }
 
+  /** Seconds from the start of a move to its hit. Bosses hold heavy ones longer. */
+  protected windupFor(def: AbilityDef, speed: number): number {
+    return def.windup / speed;
+  }
+
   private tickAbility(dt: number, ctx: CombatContext): void {
     const inst = this.inst;
     if (!inst) return;
@@ -698,7 +703,7 @@ export class Enemy implements Combatant {
           const want = angleTo(this.root.position.x, this.root.position.z, ctx.playerPos.x, ctx.playerPos.z);
           this.facing += angleDelta(this.facing, want) * Math.min(1, dt * 6);
         }
-        if (inst.t >= def.windup / speed) {
+        if (inst.t >= this.windupFor(def, speed)) {
           inst.telegraph?.cancel();
           inst.telegraph = null;
           inst.phase = 'active';
