@@ -936,13 +936,16 @@ export class SkillRunner {
               run: () => {
                 if (!player.alive) return;
                 // A skill's own gesture strikes with both blades itself; the
-                // off hand's blow lands a beat after the main hand's.
-                const contact = own ? Math.min(0.12, leftTime * 0.4) : player.handBlow('L', leftTime);
-                if (own) {
+                // off hand's blow lands a beat after the main hand's. A real
+                // weapon swing (`plainMove`) moves one arm, so the left blade
+                // swings on its own, as it does in a basic attack.
+                const gesture = own?.startsWith('skill.') ? own : null;
+                const contact = gesture ? Math.min(0.12, leftTime * 0.4) : player.handBlow('L', leftTime);
+                if (gesture) {
                   this.pendingSwings.push({
                     t: contact,
                     run: () => {
-                      if (player.alive) player.animator.strike(own, 'L');
+                      if (player.alive) player.animator.strike(gesture, 'L');
                     },
                   });
                 }
