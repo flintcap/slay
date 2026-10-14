@@ -53,6 +53,7 @@ import { AFFIXES as ALL_AFFIXES, affixNameWord } from '../data/affixes';
 import { UNIQUES, uniqueDropWeight, uniquePool, getUnique } from '../data/uniques';
 import type { UniqueDef } from '../data/uniques';
 import { SIGNATURES } from '../data/uniqueBatches/index';
+import { statCurve } from '../data/uniqueBatches/kit';
 import {
   SETS,
   getSet,
@@ -582,21 +583,86 @@ function buildUniqueItem(def: UniqueDef, ilvl: number, rng: Rng): Item {
   return item;
 }
 
-function buildSetItem(piece: SetPieceDef, ilvl: number, rng: Rng): Item {
+/**
+ * What a rare usually rolls for `stat` at item level `L`: the middle of each
+ * ladder for it, weighted the way `rollOneAffix` picks them. Set pieces are
+ * measured against this, so they keep pace with rares however the affix
+ * tables grow.
+ */
+const RARE_ROLL = new Map<string, number>();
+export function rareRoll(stat: StatKey, L: number): number {
+  const key = `${stat}:${L}`;
+  let v = RARE_ROLL.get(key);
+  if (v !== undefined) return v;
+  let pick = 0;
+  let sum = 0;
+  for (const a of ALL_AFFIXES) {
+    if (a.stat !== stat || a.bases) continue;
+    if (a.minRarity && RARITY_RANK[a.minRarity] > RARITY_RANK.rare) continue;
+    const pw = affixPoolWeight(a, L);
+    if (pw <= 0) continue;
+    let w = 0;
+    let mid = 0;
+    for (const t of eligibleTiers(a, L)) {
+      w += t.weight;
+      mid += (t.weight * (Math.abs(t.min) + Math.abs(t.max))) / 2;
+    }
+    pick += pw;
+    sum += (pw * mid) / w;
+  }
+  // Some ladders (defense, added damage) roll far under a unique's line, so
+  // the usual line is never less than half of one.
+  v = Math.max(pick > 0 ? sum / pick : 0, statCurve(stat, L) * 0.5);
+  RARE_ROLL.set(key, v);
+  return v;
+}
+
+/** A set piece, before its bonuses, is worth this many usual rare lines. */
+export const SET_PIECE_LINES = 7;
+
+/** How much a piece's good lines are lifted so it reaches `SET_PIECE_LINES`. */
+const SET_FILL = new Map<string, number>();
+function setFill(piece: SetPieceDef): number {
+  let f = SET_FILL.get(piece.id);
+  if (f !== undefined) return f;
+  let fixed = 0;
+  let grow = 0;
+  for (const m of piece.mods) {
+    const mid = (m.min + m.max) / 2;
+    if (mid <= 0) continue;
+    const lines = mid / rareRoll(m.stat, piece.ilvl);
+    if (m.stat === 'skillLevels') fixed += lines;
+    else grow += lines;
+  }
+  f = grow > 0 ? Math.max(1, (SET_PIECE_LINES - fixed) / grow) : 1;
+  SET_FILL.set(piece.id, f);
+  return f;
+}
+
+/**
+ * A set piece. Its lines are written at the set's own item level; on a deeper
+ * drop each line grows as far as a rare's would, and a piece with few or small
+ * lines has them lifted until it is worth `SET_PIECE_LINES` usual rare lines.
+ * Skill levels stay as written, and a cost grows with depth but is never
+ * lifted.
+ */
+export function buildSetPiece(piece: SetPieceDef, ilvl: number, rng: Rng): Item {
   const base = getBase(piece.baseId);
-  const item = newItem(base, Math.max(ilvl, piece.ilvl), 'set', rng);
+  const L = Math.max(ilvl, piece.ilvl);
+  const item = newItem(base, L, 'set', rng);
   item.name = piece.name;
   item.setId = piece.setId;
   item.uniqueId = piece.id;
   item.mods = rollImplicits(base, rng);
+  const fill = setFill(piece);
   piece.mods.forEach((mod: { stat: StatKey; min: number; max: number }, i: number) => {
-    item.mods.push({
-      affixId: `set.${piece.id}.${i}`,
-      stat: mod.stat,
-      value: mod.min === mod.max ? mod.min : rng.int(mod.min, mod.max),
-      tier: 0,
-      kind: 'prefix',
-    });
+    let value = mod.min === mod.max ? mod.min : rng.int(mod.min, mod.max);
+    if (mod.stat !== 'skillLevels') {
+      const grow = rareRoll(mod.stat, L) / rareRoll(mod.stat, piece.ilvl);
+      value = Math.round(value * Math.max(1, grow) * (value > 0 ? fill : 1));
+      if (value === 0) value = mod.min < 0 ? -1 : 1;
+    }
+    item.mods.push({ affixId: `set.${piece.id}.${i}`, stat: mod.stat, value, tier: 0, kind: 'prefix' });
   });
   if (piece.sockets) item.sockets = new Array(piece.sockets).fill(null).map(() => ({ gemId: null as string | null }));
   item.value = vendorPrice(item, false) * 4;
@@ -754,7 +820,7 @@ export function rollItem(
     });
     if (pool.length > 0) {
       const piece = rng.weighted(pool, (p) => setPieceDropWeight(p, lvl));
-      return buildSetItem(piece, lvl, rng);
+      return buildSetPiece(piece, lvl, rng);
     }
     rarity = 'rare';
   }

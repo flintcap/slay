@@ -3,8 +3,9 @@
  *
  * Seven class sets, one per class, each built round one of that class's
  * trees, and ten open sets from the first floors to the relic band. A single
- * piece is a little weaker than a unique of its level (`setMods`); the set
- * pays in its bonuses, and the full set grants a power that changes how you
+ * piece is written a little under a unique of its level (`setMods`), then
+ * grown on the drop to beat a good rare (`buildSetPiece` in `sim/Loot.ts`);
+ * the set pays again in its bonuses, and the full set grants a power that changes how you
  * fight (`sim/ItemPowers.ts`, the set signatures). Every set has one look all
  * its pieces share (`art/items/Designs.ts`, `SET_MOTIFS`).
  */
@@ -171,8 +172,8 @@ export const DEPTH_SETS: DepthSet[] = [
     'A stolen ring and a stolen pendant, threaded on a bit of string that was also stolen.',
     6,
     [
-      ['set.cutpurse.ring', 'The Lifted Ring', 'ring.ring', [['goldFind', 1], ['dexterity', 0.8]]],
-      ['set.cutpurse.amulet', 'The Lifted Locket', 'amulet.amulet', [['magicFind', 1], ['life', 0.6]]],
+      ['set.cutpurse.ring', 'The Lifted Ring', 'ring.ring', [['goldFind', 1], ['dexterity', 0.8], ['critChance', 0.7]]],
+      ['set.cutpurse.amulet', 'The Lifted Locket', 'amulet.amulet', [['magicFind', 1], ['life', 0.6], ['moveSpeed', 0.6]]],
     ],
     [
       [2, '+40% Gold Found, +15% Magic Find, +10 Dexterity', [['goldFind', 40], ['magicFind', 15], ['dexterity', 10]]],
@@ -183,9 +184,9 @@ export const DEPTH_SETS: DepthSet[] = [
     'Patched leather and copper rivets, none of it matching, all of it mended by a tinker who could fix anything but his own luck.',
     9,
     [
-      ['set.tinker.helm', 'Patchwork Cap', 'helm.helm', [['defense', 1], ['vitality', 0.8]]],
+      ['set.tinker.helm', 'Patchwork Cap', 'helm.helm', [['defense', 1], ['vitality', 0.8], ['lifeRegen', 0.7]]],
       ['set.tinker.gloves', 'Riveted Mitts', 'gloves.leather', [['strength', 0.8], ['attackSpeed', 0.8], ['defense', 0.5]]],
-      ['set.tinker.belt', 'Tool Belt', 'belt.belt', [['life', 1], ['goldFind', 0.6]]],
+      ['set.tinker.belt', 'Tool Belt', 'belt.belt', [['life', 1], ['goldFind', 0.6], ['strength', 0.7]]],
     ],
     [
       [2, '+40 Defense, +25 Life', [['defense', 40], ['life', 25]]],
@@ -197,9 +198,9 @@ export const DEPTH_SETS: DepthSet[] = [
     'Oilcloth gear for the road across the salt flats, rimmed white where the sea dried on it.',
     14,
     [
-      ['set.saltmarsh.boots', 'Wading Boots', 'boots.greaves', [['moveSpeed', 1], ['coldResist', 0.8]]],
-      ['set.saltmarsh.pants', 'Oilcloth Breeches', 'pants.chausses', [['defense', 1], ['poisonResist', 0.8]]],
-      ['set.saltmarsh.belt', 'Salt-Rimmed Belt', 'belt.belt', [['life', 1], ['lifeRegen', 0.6]]],
+      ['set.saltmarsh.boots', 'Wading Boots', 'boots.greaves', [['moveSpeed', 1], ['coldResist', 0.8], ['life', 0.6]]],
+      ['set.saltmarsh.pants', 'Oilcloth Breeches', 'pants.chausses', [['defense', 1], ['poisonResist', 0.8], ['vitality', 0.6]]],
+      ['set.saltmarsh.belt', 'Salt-Rimmed Belt', 'belt.belt', [['life', 1], ['lifeRegen', 0.6], ['lightningResist', 0.7]]],
     ],
     [
       [2, '+12% Movement Speed, +20% Cold Resistance', [['moveSpeed', 12], ['coldResist', 20]]],
@@ -212,8 +213,8 @@ export const DEPTH_SETS: DepthSet[] = [
     34,
     [
       ['set.ninefold.amulet', 'The First Voice', 'amulet.talisman', [['energy', 1], ['mana', 0.8], ['castSpeed', 0.5]]],
-      ['set.ninefold.ring1', 'The Low Bell', 'ring.signet', [['manaRegen', 1], ['life', 0.7]]],
-      ['set.ninefold.ring2', 'The High Bell', 'ring.signet', [['castSpeed', 1], ['mana', 0.7]]],
+      ['set.ninefold.ring1', 'The Low Bell', 'ring.signet', [['manaRegen', 1], ['life', 0.7], ['energy', 0.7]]],
+      ['set.ninefold.ring2', 'The High Bell', 'ring.signet', [['castSpeed', 1], ['mana', 0.7], ['elementalDamagePct', 0.6]]],
       ['set.ninefold.helm', 'Choirmaster\'s Coronet', 'helm.coronet', [['energy', 1], ['defense', 0.7], ['lightningResist', 0.6]]],
     ],
     [

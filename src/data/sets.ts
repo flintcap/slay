@@ -2,9 +2,10 @@
  * SLAY — item sets.
  *
  * Sets are the game's answer to "what do I do with the gear I find at level
- * 30?". A single piece is deliberately *worse* than a comparable unique: the
- * value is back-loaded into the partial bonuses, so a set asks you to commit
- * slots to a plan several levels before it pays off.
+ * 30?". A single piece already beats a good rare of its level (it grows with
+ * the drop's item level, see `buildSetPiece` in `sim/Loot.ts`), and the set
+ * pays again in its partial bonuses, so a set asks you to commit slots to a
+ * plan and rewards you along the way.
  *
  * Every set escalates at 2 / 3 / 4 (/ 5 / full) pieces, and every set pushes a
  * specific playstyle hard enough that the full bonus reads as a build, not a
@@ -287,7 +288,7 @@ set(
   54,
   90,
   [
-    ['set.ironvow.shield', 'Vowbearer', 'shield.pavise', [['blockChance', 12, 18], ['enhancedDefense', 130, 200], ['damageReduction', 5, 9]]],
+    ['set.ironvow.shield', 'Vowbearer', 'shield.pavise', [['blockChance', 12, 18], ['enhancedDefense', 130, 200], ['damageReduction', 5, 9], ['vitality', 10, 16]]],
     ['set.ironvow.chest', 'Vowplate', 'chest.gothic', [['enhancedDefense', 160, 240], ['life', 140, 220], ['physicalResist', 5, 9]]],
     ['set.ironvow.helm', 'Vowhelm', 'helm.great', [['enhancedDefense', 120, 190], ['vitality', 18, 28], ['damageReduction', 4, 7]]],
     ['set.ironvow.mace', 'Vowbreaker', 'mace.truncheon', [['enhancedDamage', 130, 200], ['lifeSteal', 3, 5], ['areaDamagePct', 15, 25]]],

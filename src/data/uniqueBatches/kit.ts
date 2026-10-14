@@ -87,6 +87,14 @@ const CURVE: Partial<Record<StatKey, (L: number) => number>> = {
   skillLevels: (L) => (L >= 70 ? 2 : 1),
 };
 
+/**
+ * The usual top roll of `stat` on a unique of item level `L` (10 for a stat
+ * with no curve). `statCurve.has` says whether the stat has its own curve.
+ */
+export const statCurve = Object.assign((stat: StatKey, L: number): number => CURVE[stat]?.(L) ?? 10, {
+  has: (stat: StatKey): boolean => CURVE[stat] !== undefined,
+});
+
 function sized(stat: StatKey, w: number, L: number, boost: number): [number, number] {
   const top = (CURVE[stat]?.(L) ?? 10) * w * boost;
   const hi = Math.round(top);
