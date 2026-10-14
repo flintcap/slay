@@ -303,6 +303,90 @@ const PROBES: Record<keyof PowerEffects, Probe> = {
     }
     return w.enemies[0]!.hits.some((h) => h.ability === 'Warm Prints') && w.enemies[0]!.statuses.has('burning');
   },
+  // Set signatures.
+  tollPct: (id) => {
+    const w = world(id, 'sword.short');
+    for (let i = 0; i < 3; i++) w.rt.afterPlayerHit({ amount: 10, type: 'physical', crit: false, source: 'x' }, 0, true);
+    const stored = w.rt.toll === 3;
+    hit(w, w.enemies[0]!, { ability: 'Bash' });
+    return stored && w.rt.toll === 0 && w.enemies[1]!.hits.some((h) => h.ability === 'Toll');
+  },
+  tollMax: (id) => PROBES.tollPct(id),
+  orreryPct: (id) => {
+    const w = world(id);
+    for (let i = 0; i < 9; i++) events.emit('skill:cast', { skillId: 'x', type: 'fire' });
+    const ok = w.enemies.some((e) => e.hits.some((h) => h.ability === 'Planet'));
+    w.rt.dispose();
+    return ok;
+  },
+  unseenSec: (id) => {
+    const w = world(id);
+    w.rt.onKill(w.enemies[1]! as never);
+    const halved = w.rt.incoming({ amount: 100, type: 'physical', crit: false, source: 'x', ability: 'melee' }).amount < 100;
+    return halved && hit(w, w.enemies[0]!) > 100;
+  },
+  stillPiercePct: (id) => {
+    const w = world(id, 'bow.short');
+    w.enemies.push(new FakeEnemy('c', 'beast', -1.5, 3));
+    for (let i = 0; i < 12; i++) w.rt.update(0.1);
+    hit(w, w.enemies[0]!);
+    return w.enemies[2]!.hits.some((h) => h.ability === 'Pierce');
+  },
+  gravePct: (id) => { const w = world(id); w.rt.onKill(w.enemies[0]! as never); w.rt.update(1.5); return w.enemies[1]!.hits.some((h) => h.ability === 'Grave'); },
+  ringPct: (id) => { const w = world(id); w.rt.update(0.1); return w.enemies[0]!.hits.some((h) => h.ability === 'Lit Ring') && w.enemies[0]!.statuses.has('slowed'); },
+  ringRadius: (id) => PROBES.ringPct(id),
+  waxPct: (id) => {
+    const w = world(id);
+    const shape = { form: null as string | null };
+    (w.player as unknown as { shape: typeof shape }).shape = shape;
+    w.rt.update(0.1);
+    shape.form = 'bear';
+    w.rt.update(0.1);
+    const held = w.enemies[0]!.statuses.has('rooted');
+    for (let i = 0; i < 32; i++) w.rt.update(0.1);
+    return held && w.enemies[0]!.hits.some((h) => h.ability === 'Wax Double');
+  },
+  sureFooted: (id) => {
+    const w = world(id);
+    const out = w.rt.incoming({ amount: 10, type: 'cold', crit: false, source: 'x', applies: [{ id: 'slowed', duration: 2, magnitude: 1 }, { id: 'rooted', duration: 2, magnitude: 1 }] });
+    return !(out.applies ?? []).length;
+  },
+  ninefoldPct: (id) => {
+    const w = world(id);
+    const l = w.player.life;
+    for (let i = 0; i < 9; i++) events.emit('skill:cast', { skillId: 'x', type: 'fire' });
+    const ok = w.player.life > l;
+    w.rt.dispose();
+    return ok;
+  },
+  kilnPct: (id) => {
+    const w = world(id);
+    w.rt.afterPlayerHit({ amount: 1, type: 'fire', crit: false, source: 'x' }, w.player.stats.life * 0.25, false);
+    return w.enemies[0]!.hits.some((h) => h.ability === 'Kiln');
+  },
+  shardPct: (id) => {
+    const w = world(id);
+    events.emit('player:evaded', { ability: 'melee', source: 'x' });
+    const ok = w.enemies[0]!.hits.some((h) => h.ability === 'Glass Shards') && w.enemies[0]!.statuses.has('bleeding');
+    w.rt.dispose();
+    return ok;
+  },
+  bellEvery: (id) => { const w = world(id); for (let i = 0; i < 10; i++) hit(w, w.enemies[0]!); return w.enemies[1]!.hits.some((h) => h.ability === 'Bell' && (h.knockback ?? 0) > 0); },
+  bellPct: (id) => PROBES.bellEvery(id),
+  crownSec: (id) => {
+    const w = world(id);
+    (w.enemies[1] as unknown as { rank: string }).rank = 'elite';
+    w.rt.onKill(w.enemies[1]! as never);
+    return hit(w, w.enemies[0]!) > 100 && w.rt.incoming({ amount: 100, type: 'physical', crit: false, source: 'x', ability: 'melee' }).amount < 100;
+  },
+  crownPct: (id) => PROBES.crownSec(id),
+  eliteDropChance: (id) => {
+    const w = world(id);
+    (w.enemies[1] as unknown as { rank: string }).rank = 'rare';
+    for (let i = 0; i < 20; i++) w.rt.onKill(w.enemies[1]! as never);
+    const normal = w.bonusDrops;
+    return normal > 0;
+  },
 };
 
 const runtimeRows: Array<{ power: string; field: string; ok: boolean }> = [];

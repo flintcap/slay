@@ -801,6 +801,7 @@ export class SkillRunner {
     if (cd > 0) player.startCooldown(skillId, cd);
 
     player.faceTowards(target.x, target.z);
+    events.emit('skill:cast', { skillId: def.id, type: def.damageType ?? 'physical' });
 
     // Rank with +skills, and the synergies the tree shows (combat's `skillDamageScale`).
     const params = def.params ?? {};

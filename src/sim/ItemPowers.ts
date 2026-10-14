@@ -151,6 +151,40 @@ export interface PowerEffects {
   // --- on the move ------------------------------------------------------
   /** Footsteps leave burning prints that hurt what stands on them. */
   emberPrintPct: number;
+
+  // --- set signatures -----------------------------------------------------
+  /** Blocks store toll; the next melee skill hit spends it as a shockwave, per toll. */
+  tollPct: number;
+  tollMax: number;
+  /** Each skill cast adds a planet; at nine, each fires a bolt for this share. */
+  orreryPct: number;
+  /** A kill hides you for this long, and the next hit crits. */
+  unseenSec: number;
+  /** Standing still a second, ranged hits carry into three more for this share. */
+  stillPiercePct: number;
+  /** Kills raise a grave that bursts a moment later for this share. */
+  gravePct: number;
+  /** A lit ring round you burns what stands in it, each second. */
+  ringPct: number;
+  ringRadius: number;
+  /** Changing form leaves a wax double that holds foes, then bursts. */
+  waxPct: number;
+  /** Mud, water and frost do not slow you. */
+  sureFooted: number;
+  /** Nine casts heal this share of life and mana. */
+  ninefoldPct: number;
+  /** Fire you take charges a nova of this share. */
+  kilnPct: number;
+  /** A dodged hit bursts into shards for this share. */
+  shardPct: number;
+  /** Every few hits a bell rings round you for this share. */
+  bellEvery: number;
+  bellPct: number;
+  /** An elite's death crowns you: more damage, less taken, for this long. */
+  crownSec: number;
+  crownPct: number;
+  /** Chance an elite you kill drops one more item. */
+  eliteDropChance: number;
 }
 
 export function emptyPowerEffects(): PowerEffects {
@@ -203,6 +237,24 @@ export function emptyPowerEffects(): PowerEffects {
     shatterRadius: 0,
     pyreKillPct: 0,
     emberPrintPct: 0,
+    tollPct: 0,
+    tollMax: 0,
+    orreryPct: 0,
+    unseenSec: 0,
+    stillPiercePct: 0,
+    gravePct: 0,
+    ringPct: 0,
+    ringRadius: 0,
+    waxPct: 0,
+    sureFooted: 0,
+    ninefoldPct: 0,
+    kilnPct: 0,
+    shardPct: 0,
+    bellEvery: 0,
+    bellPct: 0,
+    crownSec: 0,
+    crownPct: 0,
+    eliteDropChance: 0,
   };
 }
 
@@ -829,6 +881,133 @@ const DEFS: PowerDef[] = [
       p.pyreKillPct += 50 * m;
     },
     affix: { on: ['weapon', 'armor'], min: 0.4, max: 0.8, ilvl: 18, weight: 45, word: 'of the Pyre' },
+  },
+
+  // Set signatures: each one the reason a full set is worth wearing.
+  {
+    id: 'tollgate',
+    name: 'The Toll',
+    desc: (m) => `Each block stores a toll, up to 5. Your next melee skill hit spends them all in a shockwave: ${pct(45 * m)} weapon damage per toll to everything within 4 metres, and a stagger.`,
+    runtime: (p, m) => {
+      p.tollPct += 45 * m;
+      p.tollMax = 5;
+    },
+  },
+  {
+    id: 'orrery',
+    name: 'The Ninth Hour',
+    desc: (m) => `Each skill you cast sets a planet turning round you. At nine, all nine fly at your foes, each for ${pct(80 * m)} weapon damage as arcane.`,
+    runtime: (p, m) => {
+      p.orreryPct += 80 * m;
+    },
+  },
+  {
+    id: 'lampblack',
+    name: 'Soot',
+    desc: (m) => `A kill hides you in soot for ${r1(2 * m)} seconds: you take half damage, and your next hit is a critical strike.`,
+    runtime: (p, m) => {
+      p.unseenSec = Math.max(p.unseenSec, 2 * m);
+    },
+  },
+  {
+    id: 'heronwatch',
+    name: 'Heron\'s Patience',
+    desc: (m) => `Stand still for a second and your ranged hits carry on into three more enemies within 8 metres, for ${pct(70 * m)} damage each.`,
+    runtime: (p, m) => {
+      p.stillPiercePct += 70 * m;
+    },
+  },
+  {
+    id: 'pallbearer',
+    name: 'Graves Dug',
+    desc: (m) => `Every kill digs a grave. A moment later it bursts for ${pct(70 * m)} weapon damage as arcane within 3 metres, and you heal 2% of your life for each foe it strikes.`,
+    runtime: (p, m) => {
+      p.gravePct += 70 * m;
+    },
+  },
+  {
+    id: 'lanternRing',
+    name: 'The Lit Ring',
+    desc: (m) => `A ring of lamplight 5 metres wide burns round you. Enemies in it take ${pct(35 * m)} weapon damage as fire each second and are slowed.`,
+    runtime: (p, m) => {
+      p.ringPct += 35 * m;
+      p.ringRadius = Math.max(p.ringRadius, 5);
+    },
+  },
+  {
+    id: 'waxDouble',
+    name: 'Wax Double',
+    desc: (m) => `Changing form leaves a wax double where you stood. Enemies near it are held for 2 seconds, and after 3 it melts in a burst of ${pct(120 * m)} weapon damage as fire.`,
+    runtime: (p, m) => {
+      p.waxPct += 120 * m;
+    },
+  },
+  {
+    id: 'sureFooted',
+    name: 'Sure-Footed',
+    desc: () => 'Nothing slows you: not mud, not water, not frost, not a snare.',
+    runtime: (p) => {
+      p.sureFooted = 1;
+    },
+  },
+  {
+    id: 'ninefold',
+    name: 'Ninefold Hymn',
+    desc: (m) => `Each skill you cast rings a note. On the ninth you heal ${pct(20 * m)} of your life and mana.`,
+    runtime: (p, m) => {
+      p.ninefoldPct += 20 * m;
+    },
+  },
+  {
+    id: 'kilnborn',
+    name: 'Fired',
+    desc: (m) => `Fire that hurts you fills the kiln. When it has taken a fifth of your life, it bursts round you for ${pct(150 * m)} weapon damage as fire.`,
+    runtime: (p, m) => {
+      p.kilnPct += 150 * m;
+    },
+  },
+  {
+    id: 'glasswing',
+    name: 'Glass Shards',
+    desc: (m) => `A hit you dodge bursts into glass: ${pct(60 * m)} weapon damage to everything within 3 metres, and they bleed.`,
+    runtime: (p, m) => {
+      p.shardPct += 60 * m;
+    },
+  },
+  {
+    id: 'drownedBell',
+    name: 'The Drowned Bell',
+    desc: (m) => `Every 10th hit rings a bell: ${pct(50 * m)} weapon damage to everything within 4 metres, which are knocked back and stunned for a moment.`,
+    runtime: (p, m) => {
+      p.bellEvery = 10;
+      p.bellPct += 50 * m;
+    },
+  },
+  {
+    id: 'pretender',
+    name: 'The Borrowed Crown',
+    desc: (m) => `Killing a champion, elite or rare foe crowns you for 10 seconds: ${pct(35 * m)} more damage and 20% less damage taken.`,
+    runtime: (p, m) => {
+      p.crownSec = 10;
+      p.crownPct += 35 * m;
+    },
+  },
+  {
+    id: 'cartographer',
+    name: 'Marked on the Map',
+    desc: (m) => `Champions, elites and rares you kill have a ${pct(Math.min(100, 35 * m))} chance to drop one more item.`,
+    runtime: (p, m) => {
+      p.eliteDropChance = Math.min(100, p.eliteDropChance + 35 * m);
+    },
+  },
+  {
+    id: 'hollowmere',
+    name: 'The Last Lamp',
+    desc: (m) => `Your light is a weapon. Enemies within 6 metres take ${pct(40 * m)} weapon damage as fire each second, catch light and are slowed.`,
+    runtime: (p, m) => {
+      p.ringPct += 40 * m;
+      p.ringRadius = Math.max(p.ringRadius, 6);
+    },
   },
 
   // =========================================================================

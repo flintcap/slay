@@ -155,3 +155,8 @@ export function D(
   if (extra.glowStrength !== undefined) d.glowStrength = extra.glowStrength;
   return d;
 }
+
+/** A set piece's mods: sized like a unique's, a fifth weaker, since the set pays in its bonuses. */
+export function setMods(ilvl: number, mods: ModSpec[]): Array<[StatKey, number, number]> {
+  return mods.map((m) => (m.length === 3 ? [m[0], m[1], m[2]] : [m[0], ...sized(m[0], m[1], ilvl, 0.8)]));
+}

@@ -498,6 +498,23 @@ export const SET_TEXT: Record<string, { name?: string; blurb?: string }> = {
   'set.sunderedsky': { blurb: `Gathered from six disasters, each survived by exactly one person.` },
   'set.lastlegion': { blurb: `The last company of the Works held a gate for six days. This is the sixth day.` },
   'set.hollowking': { blurb: `A crown, a hand, a heel and a heart. The king himself is not included.` },
+  'set.tollgate': { blurb: `The wardens of the old bridge took a coin from everyone who crossed. From the things that came up out of the river, they took more.` },
+  'set.orrery': { blurb: `A brass clock of the heavens that a mage wore piece by piece, so that she would always know what hour it was in the sky.` },
+  'set.lampblack': { blurb: `The chimney sweeps of the old town went where nobody else could. Some of them were paid to come down a chimney and not go back up it.` },
+  'set.heronwatch': { blurb: `Marsh hunters who stood in the reeds so still and so long that the herons came and stood beside them.` },
+  'set.pallbearer': { blurb: `The funeral guild of the lower town carried every coffin to the crypt. When the dead stopped staying in them, the guild carried on.` },
+  'set.lanternwright': { blurb: `The lamp makers kept a light in every window of the chapel through the long dark. They were never once asked to. They were never once thanked.` },
+  'set.tallowmoon': { blurb: `The moon cult on the hill made masks of tallow and wore the skins of what they hunted. When the moon was full, it was hard to say which was which.` },
+  'set.cutpurse': { blurb: `A stolen ring and a stolen pendant, threaded on a bit of string that was also stolen.` },
+  'set.tinker': { blurb: `Patched leather and copper rivets, none of it matching, all of it mended by a tinker who could fix anything but his own luck.` },
+  'set.saltmarsh': { blurb: `Oilcloth gear for the road across the salt flats, rimmed white where the sea dried on it.` },
+  'set.ninefold': { blurb: `Nine little silver bells, one for each voice in the choir that sang the town to sleep in the winter of the long night.` },
+  'set.kilnborn': { blurb: `Armour of glazed red clay, fired in the great kiln and lined in gold where it cracked. It was made for someone who meant to walk into the fire.` },
+  'set.glasswing': { blurb: `Light cloth set with panes of crystal like a moth's wings. It shatters, and it is meant to.` },
+  'set.drownedbell': { blurb: `A company of marines who went down with the bell-ship. On still nights you can hear them ringing for a muster that will never come.` },
+  'set.pretender': { blurb: `A whole king's kit, stolen from the treasury on the night the old king died. It does not quite fit. Nothing about the claim quite fits.` },
+  'set.cartographer': { blurb: `A map-maker who mapped only the dead: where they lay, and where they went after. The ink on his fingers never came off.` },
+  'set.hollowmere': { blurb: `Hollowmere drowned in a night, and the lamp lighter went round every street lighting the lamps under the water. This is all of his kit. One lamp is still lit.` },
 };
 
 /** Writes the story's names and lines onto the unique definitions. */

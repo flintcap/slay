@@ -45,7 +45,10 @@ export interface PowerHost {
 }
 
 /** Hits the runtime throws itself. They never trigger further procs. */
-const PROC_ABILITIES = new Set(['Cleave', 'Pierce', 'Return', 'Echo', 'Sentry', 'Rot Cyclone', 'Pyre', 'Shatter', 'Warm Prints']);
+const PROC_ABILITIES = new Set([
+  'Cleave', 'Pierce', 'Return', 'Echo', 'Sentry', 'Rot Cyclone', 'Pyre', 'Shatter', 'Warm Prints',
+  'Toll', 'Planet', 'Grave', 'Lit Ring', 'Wax Double', 'Kiln', 'Glass Shards', 'Bell',
+]);
 
 /** Metres walked between two burning footprints. */
 const PRINT_STRIDE = 0.85;
@@ -59,6 +62,9 @@ interface Scheduled {
   target: Enemy;
   packet: DamagePacket;
 }
+
+/** What Sure-Footed shrugs off. */
+const SLOWS: ReadonlySet<string> = new Set(['slowed', 'rooted', 'chilled', 'crippled']);
 
 const ELEMENTAL: ReadonlySet<DamageType> = new Set<DamageType>(['fire', 'cold', 'lightning', 'arcane']);
 
@@ -85,6 +91,27 @@ export class PowerRuntime {
   private lastPrint: THREE.Vector3 | null = null;
   private printSide = 1;
   private printTimer = 0;
+  // Set signatures (see the set powers in `sim/ItemPowers.ts`).
+  /** Tolls stored by blocking. */
+  toll = 0;
+  /** Planets turning round you, and the notes rung. */
+  planets = 0;
+  notes = 0;
+  /** Seconds left hidden in soot; the next hit crits. */
+  private unseen = 0;
+  private nextCrit = false;
+  /** Seconds the hero has stood still, and where. */
+  private still = 0;
+  private stillAt: THREE.Vector3 | null = null;
+  private graves: Array<{ x: number; z: number; t: number }> = [];
+  private ringTimer = 0;
+  private lastForm: string | null = null;
+  private waxes: Array<{ x: number; z: number; t: number }> = [];
+  /** Fire taken toward the kiln's burst, in life points. */
+  private kiln = 0;
+  private bellHits = 0;
+  /** Seconds left wearing a borrowed crown. */
+  private crown = 0;
 
   constructor(host: PowerHost) {
     this.host = host;
@@ -95,6 +122,8 @@ export class PowerRuntime {
       events.on('item:equipped', () => this.refresh()),
       events.on('item:unequipped', () => this.refresh()),
       events.on('loot:gold', () => this.onGold()),
+      events.on('skill:cast', () => this.onCast()),
+      events.on('player:evaded', () => this.onEvade()),
     );
   }
 
@@ -136,16 +165,26 @@ export class PowerRuntime {
     if (target.family === 'demon') more += p.vsDemonPct;
     if (target.family === 'beast') more += p.vsBeastPct;
     if (p.vsStaggeredPct > 0 && target.hasStatus('stunned')) more += p.vsStaggeredPct;
+    if (this.crown > 0) more += p.crownPct;
 
     let mul = 1 + more / 100;
+    // Out of the soot: the first blow is a critical strike.
+    let crit = packet.crit;
+    if (this.nextCrit && !PROC_ABILITIES.has(packet.ability ?? '')) {
+      this.nextCrit = false;
+      if (!crit) {
+        crit = true;
+        mul *= 1 + Math.max(50, this.host.player().stats.critDamage ?? 0) / 100;
+      }
+    }
     let tap = 0;
     if (p.lifeTapChance > 0 && !PROC_ABILITIES.has(packet.ability ?? '') && ctx.rng.chance(Math.min(1, p.lifeTapChance / 100))) {
       mul *= 1 + p.lifeTapPct / 100;
       tap = p.lifeTapPct / (100 + p.lifeTapPct);
     }
     const knock = p.knockback > 0 ? Math.max(packet.knockback ?? 0, p.knockback) : packet.knockback;
-    if (type === packet.type && mul === 1 && knock === packet.knockback && tap === 0) return packet;
-    const out: DamagePacket = { ...packet, type, amount: Math.max(0, packet.amount * mul) };
+    if (type === packet.type && mul === 1 && knock === packet.knockback && tap === 0 && crit === packet.crit) return packet;
+    const out: DamagePacket = { ...packet, type, crit, amount: Math.max(0, packet.amount * mul) };
     if (knock !== undefined) out.knockback = knock;
     if (tap > 0) this.tapped.set(out, tap);
     return out;
@@ -236,6 +275,37 @@ export class PowerRuntime {
       this.queue.push({ t: 0.35, target, packet: { ...packet, amount: (packet.amount * p.echoHitPct) / 100, ability: 'Echo', crit: false } });
     }
 
+    // --- set signatures --------------------------------------------------------
+    const skillHit = !!packet.ability && packet.ability !== 'Attack';
+    if (p.tollPct > 0 && this.toll > 0 && skillHit && (style === 'melee' || style === 'unarmed')) {
+      const at = target.root.position.clone();
+      this.area(at, 4, (p.tollPct * this.toll) / 100, 'physical', 'Toll', ctx, [{ id: 'stunned', duration: 0.5, magnitude: 1, stacks: 1 }]);
+      this.host.effects.nova(at.x, at.z, 4, { element: 'physical', color: 0xd8b060 });
+      this.toll = 0;
+    }
+    if (p.stillPiercePct > 0 && style === 'ranged' && this.still >= 1) {
+      const at = target.root.position;
+      let n = 0;
+      for (const e of this.allTargets()) {
+        if (n >= 3 || e === target || e.root.position.distanceTo(at) > 8) continue;
+        this.host.effects.projectile(at.clone().setY(1.1), e.root.position.clone().setY(1.1), { element: packet.type, speed: 34 });
+        e.takeDamage({ ...packet, amount: (packet.amount * p.stillPiercePct) / 100, ability: 'Pierce', crit: false }, ctx);
+        n++;
+      }
+    }
+    if (p.bellPct > 0 && p.bellEvery > 0 && ++this.bellHits >= p.bellEvery) {
+      this.bellHits = 0;
+      const at = player.position.clone();
+      for (const e of this.allTargets()) {
+        if (e.root.position.distanceTo(at) > 4 + e.hitRadius) continue;
+        const bell = rollDamage(st, ctx.rng, { scale: p.bellPct / 100, type: 'physical', ability: 'Bell', source: 'player' });
+        bell.knockback = 3;
+        bell.applies = [{ id: 'stunned', duration: 0.4, magnitude: 1, stacks: 1 }];
+        e.takeDamage(bell, ctx);
+      }
+      this.host.effects.nova(at.x, at.z, 4, { element: 'cold', color: 0x70c8c0 });
+    }
+
     // --- resources -----------------------------------------------------------
     if (this.manaProcCd <= 0) {
       if (p.manaOnLightningPct > 0 && packet.type === 'lightning') {
@@ -275,6 +345,11 @@ export class PowerRuntime {
       if (p.poisonFeedsPct > 0) player.restoreMana(cut * (p.poisonFeedsPct / 100) * 0.5);
       if (p.poisonTakenLessPct >= 100 && out.applies) out.applies = out.applies.filter((a) => a.id !== 'poisoned');
     }
+    if (p.sureFooted > 0 && out.applies?.some((a) => SLOWS.has(a.id))) {
+      edit().applies = out.applies!.filter((a) => !SLOWS.has(a.id));
+    }
+    if (this.unseen > 0 && out.amount > 0) edit().amount = out.amount * 0.5;
+    if (this.crown > 0 && out.amount > 0) edit().amount = out.amount * 0.8;
     if (p.rangedTakenLessPct > 0 && out.ability && out.ability !== 'melee' && out.ability !== 'thorns') {
       edit().amount = out.amount * (1 - Math.min(0.75, p.rangedTakenLessPct / 100));
     }
@@ -305,6 +380,19 @@ export class PowerRuntime {
     const p = this.fx;
     const player = this.host.player();
     if (blocked && p.manaOnBlockPct > 0) player.restoreMana((player.stats.mana * p.manaOnBlockPct) / 100);
+    if (blocked && p.tollPct > 0 && this.toll < p.tollMax) {
+      this.toll++;
+      this.host.fx.burst('pickup', player.position.x, 1.2, player.position.z, { count: 6, color: 0xd8b060 });
+    }
+    if (p.kilnPct > 0 && packet.type === 'fire' && taken > 0) {
+      this.kiln += taken;
+      if (this.kiln >= player.stats.life * 0.2) {
+        this.kiln = 0;
+        const ctx = this.host.context();
+        this.area(player.position, 5, p.kilnPct / 100, 'fire', 'Kiln', ctx, [{ id: 'burning', duration: 3, magnitude: 1, stacks: 1 }]);
+        this.host.effects.explosion(player.position.x, 0.6, player.position.z, { radius: 5, element: 'fire' });
+      }
+    }
     if (
       p.panicBlinkPct > 0 &&
       this.panicCd <= 0 &&
@@ -359,6 +447,21 @@ export class PowerRuntime {
         e.applyStatuses([{ id: 'frozen', duration: 1.5, magnitude: 1, stacks: 1 }], ctx);
       }
     }
+    if (p.unseenSec > 0) {
+      this.unseen = p.unseenSec;
+      this.nextCrit = true;
+      this.host.fx.burst('poison', this.host.player().position.x, 1.0, this.host.player().position.z, { count: 14, color: 0x1a1a1a });
+    }
+    if (p.gravePct > 0 && this.graves.length < 12) this.graves.push({ x: at.x, z: at.z, t: 1.2 });
+    const elite = (enemy.rank ?? 'normal') !== 'normal';
+    if (elite && p.crownSec > 0) {
+      if (this.crown <= 0) toast('The Borrowed Crown', 'info');
+      this.crown = p.crownSec;
+    }
+    if (elite && p.eliteDropChance > 0 && ctx.rng.chance(p.eliteDropChance / 100)) {
+      this.host.dropBonus(at, enemy.ilvl);
+      ctx.fx.burst('pickup', at.x, 1.0, at.z, { count: 18, color: 0xe0c080 });
+    }
     if (p.pyreKillPct > 0) {
       this.area(at, 3, p.pyreKillPct / 100, 'fire', 'Pyre', ctx, [{ id: 'burning', duration: 4, magnitude: 1, stacks: 1 }]);
       this.host.decals.add('scorch', at.x, at.z, 2.2);
@@ -373,6 +476,113 @@ export class PowerRuntime {
     if (!player.alive) return;
     player.heal((player.stats.life * p.goldToLifePct) / 100);
     this.host.fx.burst('heal', player.position.x, 1.0, player.position.z, { count: 8, color: 0xffc63a });
+  }
+
+  /** A skill went off: planets and notes. */
+  private onCast(): void {
+    const p = this.fx;
+    const player = this.host.player();
+    if (!player.alive) return;
+    if (p.orreryPct > 0) {
+      this.planets++;
+      this.host.fx.burst('pickup', player.position.x, 1.8, player.position.z, { count: 4, color: 0x7aa8ff });
+      if (this.planets >= 9) {
+        this.planets = 0;
+        const ctx = this.host.context();
+        const foes = this.allTargets()
+          .filter((e) => e.root.position.distanceTo(player.position) < 14)
+          .sort((a, b) => a.root.position.distanceTo(player.position) - b.root.position.distanceTo(player.position));
+        for (let i = 0; i < 9 && foes.length; i++) {
+          const e = foes[i % foes.length]!;
+          const a = (i / 9) * Math.PI * 2;
+          const from = player.position.clone().add(new THREE.Vector3(Math.cos(a) * 1.2, 1.8, Math.sin(a) * 1.2));
+          this.host.effects.projectile(from, e.root.position.clone().setY(1.0), { element: 'arcane', color: 0x8ab0ff, speed: 24 });
+          e.takeDamage(rollDamage(player.stats, ctx.rng, { scale: p.orreryPct / 100, type: 'arcane', ability: 'Planet', source: 'player' }), ctx);
+        }
+      }
+    }
+    if (p.ninefoldPct > 0 && ++this.notes >= 9) {
+      this.notes = 0;
+      player.heal((player.stats.life * p.ninefoldPct) / 100);
+      player.restoreMana((player.stats.mana * p.ninefoldPct) / 100);
+      this.host.fx.burst('heal', player.position.x, 1.2, player.position.z, { count: 18, color: 0xe8e8ff });
+    }
+  }
+
+  /** A hit passed through the dodge: the glass breaks. */
+  private onEvade(): void {
+    const p = this.fx;
+    const player = this.host.player();
+    if (p.shardPct <= 0 || !player.alive) return;
+    const ctx = this.host.context();
+    this.area(player.position, 3, p.shardPct / 100, 'physical', 'Glass Shards', ctx, [{ id: 'bleeding', duration: 3, magnitude: 1, stacks: 1 }]);
+    this.host.fx.burst('frost', player.position.x, 1.0, player.position.z, { count: 16, color: 0xd8f0ff });
+  }
+
+  /** The set signatures that tick: stillness, graves, the lit ring, wax. */
+  private tickSets(dt: number): void {
+    const p = this.fx;
+    const player = this.host.player();
+    if (this.unseen > 0) this.unseen -= dt;
+    if (this.crown > 0) this.crown -= dt;
+
+    if (p.stillPiercePct > 0) {
+      const at = (this.stillAt ??= player.position.clone());
+      if (at.distanceToSquared(player.position) > 0.01) {
+        at.copy(player.position);
+        this.still = 0;
+      } else this.still += dt;
+    }
+
+    if (this.graves.length) {
+      const ctx = this.host.context();
+      for (let i = this.graves.length - 1; i >= 0; i--) {
+        const g = this.graves[i]!;
+        if ((g.t -= dt) > 0) continue;
+        this.graves.splice(i, 1);
+        const at = new THREE.Vector3(g.x, 0, g.z);
+        const n = this.area(at, 3, p.gravePct / 100, 'arcane', 'Grave', ctx);
+        if (n > 0) player.heal(player.stats.life * 0.02 * n);
+        this.host.effects.nova(g.x, g.z, 3, { element: 'arcane', color: 0xb0a0ff });
+      }
+    }
+
+    if (p.ringPct > 0 && p.ringRadius > 0) {
+      this.ringTimer -= dt;
+      if (this.ringTimer <= 0) {
+        this.ringTimer = 1;
+        const ctx = this.host.context();
+        const hit = this.area(player.position, p.ringRadius, p.ringPct / 100, 'fire', 'Lit Ring', ctx, [
+          { id: 'slowed', duration: 1.2, magnitude: 1, stacks: 1 },
+          { id: 'burning', duration: 2, magnitude: 1, stacks: 1 },
+        ]);
+        if (hit > 0) this.host.fx.burst('embers', player.position.x, 0.3, player.position.z, { count: 10, scale: 1.4, color: 0xffd080 });
+      }
+    }
+
+    const form = (player.shape?.form as string | null | undefined) ?? null;
+    if (p.waxPct > 0 && form !== this.lastForm && this.waxes.length < 4) {
+      const ctx = this.host.context();
+      const at = player.position.clone();
+      this.waxes.push({ x: at.x, z: at.z, t: 3 });
+      for (const e of this.allTargets()) {
+        if (e.isBoss || e.root.position.distanceTo(at) > 4) continue;
+        e.applyStatuses([{ id: 'rooted', duration: 2, magnitude: 1, stacks: 1 }], ctx);
+      }
+      this.host.fx.burst('heal', at.x, 1.0, at.z, { count: 12, color: 0xf0e0c0 });
+    }
+    this.lastForm = form;
+    if (this.waxes.length) {
+      const ctx = this.host.context();
+      for (let i = this.waxes.length - 1; i >= 0; i--) {
+        const w = this.waxes[i]!;
+        if ((w.t -= dt) > 0) continue;
+        this.waxes.splice(i, 1);
+        const at = new THREE.Vector3(w.x, 0, w.z);
+        this.area(at, 4, p.waxPct / 100, 'fire', 'Wax Double', ctx, [{ id: 'burning', duration: 3, magnitude: 1, stacks: 1 }]);
+        this.host.effects.explosion(w.x, 0.8, w.z, { radius: 4, element: 'fire' });
+      }
+    }
   }
 
   update(dt: number): void {
@@ -405,6 +615,8 @@ export class PowerRuntime {
       if (player.life >= player.stats.life * 0.999) this.ward = Math.min(cap, this.ward + (cap * dt) / 3);
       else this.ward = Math.min(cap, this.ward);
     }
+
+    this.tickSets(dt);
 
     if (p.emberPrintPct > 0) this.tickPrints(dt);
     else if (this.prints.length) this.prints.length = 0;
@@ -556,5 +768,7 @@ export class PowerRuntime {
     this.lastType.clear();
     this.wished.clear();
     this.prints = [];
+    this.graves = [];
+    this.waxes = [];
   }
 }

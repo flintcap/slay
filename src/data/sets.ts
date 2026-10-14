@@ -14,6 +14,8 @@
 
 import type { StatKey } from '../types';
 import { applySetText } from './story/uniqueText';
+import { DEPTH_SETS } from './setsDepth';
+import { ITEM_BASES } from './itemBases';
 
 export interface SetModRoll {
   stat: StatKey;
@@ -442,6 +444,16 @@ set(
 );
 
 // ===========================================================================
+// THE DEPTH PLAN'S SETS — seventeen more, written in `setsDepth.ts`.
+// ===========================================================================
+
+const BASE_REQ = new Map<string, number>(ITEM_BASES.map((b) => [b.id, b.levelReq ?? 1]));
+for (const d of DEPTH_SETS) {
+  const req = Math.min(d.ilvl, Math.max(Math.round(d.ilvl * 0.92), ...d.pieces.map((p) => BASE_REQ.get(p[2]) ?? 1)));
+  set(d.id, d.name, d.blurb, req, d.ilvl, d.weight, d.pieces.map(([id, name, base, mods]) => [id, name, base, mods] as PieceSpec), d.bonuses);
+}
+
+// ===========================================================================
 // Exports and lookup
 // ===========================================================================
 
@@ -468,6 +480,7 @@ const SET_POWERS: Array<[setId: string, pieces: number, power: string, mag: numb
   ['set.lastlegion', 6, 'unstoppable', 1],
   ['set.hollowking', 5, 'cheatDeath', 1.5],
 ];
+for (const d of DEPTH_SETS) SET_POWERS.push([d.id, d.power[0], d.power[1], d.power[2]]);
 for (const [setId, pieces, power, mag, phrase] of SET_POWERS) {
   const def = ALL.find((x) => x.id === setId);
   const tier = def?.bonuses.find((b) => b.pieces === pieces);

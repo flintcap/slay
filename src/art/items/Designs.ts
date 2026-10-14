@@ -73,7 +73,24 @@ export type Emblem =
   | 'moon'
   | 'star'
   | 'laurel'
-  | 'crown';
+  | 'crown'
+  | 'gate'
+  | 'orbit'
+  | 'drop'
+  | 'arrow'
+  | 'lily'
+  | 'lantern'
+  | 'paw'
+  | 'purse'
+  | 'gear'
+  | 'wave'
+  | 'bell'
+  | 'kiln'
+  | 'pane'
+  | 'anchor'
+  | 'mask'
+  | 'compass'
+  | 'candle';
 
 /**
  * A living effect around a piece: particles and light that move. Drawn by
@@ -224,6 +241,25 @@ export const SET_MOTIFS: Record<string, SetMotif> = {
   'set.sunderedsky': { name: 'white and silver with a white glow', color: 0xffffff, glow: 0xf0f4ff, metal: 'metal.silver|0xf4f6ff', leather: 'leather.fine|0xe8e4dc', cloth: 'cloth.white', second: 'cloth.white', trim: 'metal.silver', finish: 'pearl', sculpt: 'stars', emblem: 'star', features: ['halo'], glowStyle: 'rim', aura: 'sparkles', wear: 0 },
   'set.lastlegion': { name: 'polished brass and legion crimson', color: 0xff4a2a, glow: 0xff7040, metal: 'metal.brass', leather: 'leather.fine|0x6a1a14', cloth: 'cloth.banner|0x8a1c1a', second: 'cloth.banner|0x8a1c1a', trim: 'metal.gold', finish: 'polished', sculpt: 'wings', emblem: 'laurel', features: ['laurels', 'tatters'], aura: 'embers', wear: 0.3 },
   'set.hollowking': { name: 'obsidian and pale gold, spectral cyan', color: 0x6affe8, glow: 0x50f0e0, metal: 'metal.blackiron|0x2a2a30', leather: 'leather.dark|0x18161c', cloth: 'cloth.silk|0x1a1222', second: 'cloth.silk|0x1a1222', trim: 'metal.gold|0xd8c890', finish: 'satin', sculpt: 'antlers', emblem: 'crown', features: ['gilded', 'smoke'], aura: 'souls', wear: 0.1 },
+  // The depth plan's sets. Class sets first.
+  'set.tollgate': { name: 'black iron and toll-road red', color: 0xd03a2a, glow: 0xff6040, metal: 'metal.blackiron|0x2e2e34', leather: 'leather.dark', cloth: 'cloth.banner|0x8a1a14', second: 'cloth.banner|0x8a1a14', trim: 'metal.brass', finish: 'blackened', sculpt: 'spikes', emblem: 'gate', features: ['rivets'], aura: 'soft', wear: 0.45 },
+  'set.orrery': { name: 'blue enamel and turning brass', color: 0x4a7ad8, glow: 0x8ab0ff, metal: 'metal.brass|0xc8a050', leather: 'leather.fine|0x1a2a5a', cloth: 'cloth.silk|0x1e3070', second: 'cloth.silk|0x1e3070', trim: 'metal.gold', finish: 'lacquer', sculpt: 'coils', emblem: 'orbit', features: ['stars'], aura: 'motes', wear: 0.15 },
+  'set.lampblack': { name: 'soot black and brass buttons', color: 0xc8a050, glow: 0xffd080, metal: 'metal.black|0x18181a', leather: 'leather.dark|0x141414', cloth: 'cloth.wool|0x161616', second: 'cloth.wool|0x1c1c1c', trim: 'metal.brass', finish: 'matte', sculpt: 'smoke', emblem: 'drop', features: ['tatters'], aura: 'smoke', wear: 0.6 },
+  'set.heronwatch': { name: 'heron grey-blue and woven reed', color: 0x8aa8c0, glow: 0xc0d8f0, metal: 'metal.steel|0x8a98a8', leather: 'leather.fine|0x5a6a78', cloth: 'cloth.linen|0x8a9aa8', second: 'wood.bark|0x8a7a50', trim: 'metal.silver', finish: 'satin', sculpt: 'arrows', emblem: 'arrow', features: ['feathers'], aura: 'wisp', wear: 0.35 },
+  'set.pallbearer': { name: 'black velvet, silver nails and lilies', color: 0xf0f0e8, glow: 0xe8e8ff, metal: 'metal.dark|0x2a2a30', leather: 'leather.dark|0x18141c', cloth: 'cloth.velvet|0x141018', second: 'cloth.velvet|0x141018', trim: 'metal.silver', finish: 'satin', sculpt: 'bones', emblem: 'lily', features: ['rivets', 'leaves'], aura: 'souls', wear: 0.25 },
+  'set.lanternwright': { name: 'white enamel and brass lamp cages', color: 0xffe0a0, glow: 0xffd070, metal: 'metal.silver|0xf0ece0', leather: 'leather.fine|0xd8d0c0', cloth: 'cloth.white', second: 'cloth.white', trim: 'metal.brass', finish: 'lacquer', sculpt: 'halo', emblem: 'lantern', features: ['gilded'], aura: 'soft', wear: 0.2 },
+  'set.tallowmoon': { name: 'cream fur and tallow wax', color: 0xf0e4c8, glow: 0xfff0d0, metal: 'bone.pale|0xe8dcc0', leather: 'leather.hide|0xe0d4b8', cloth: 'cloth.wool|0xe8dcc4', second: 'leather.hide|0xd8c8a8', trim: 'bone.old', finish: 'satin', sculpt: 'horns', emblem: 'paw', features: ['claws'], aura: 'motes', wear: 0.4 },
+  // Open sets.
+  'set.cutpurse': { name: 'stolen gilt on cheap string', color: 0xe0c060, glow: 0xffe080, metal: 'metal.gold|0xc8a858', leather: 'leather.worn', cloth: 'cloth.homespun', second: 'cloth.homespun|0x6a5a40', trim: 'metal.brass', finish: 'weathered', sculpt: 'tatters', emblem: 'purse', features: ['coins'], aura: 'shine', wear: 0.6 },
+  'set.tinker': { name: 'patched leather and copper rivets', color: 0xd08040, glow: 0xffa060, metal: 'metal.copper', leather: 'leather.worn|0x6a4a2a', cloth: 'cloth.rag|0x6a5a48', second: 'leather.worn|0x5a3a20', trim: 'metal.copper', finish: 'weathered', sculpt: 'rivets', emblem: 'gear', features: ['tatters'], aura: 'sparks', wear: 0.75 },
+  'set.saltmarsh': { name: 'oilcloth with salt-white rims', color: 0xe8f0f0, glow: 0xd0f0f0, metal: 'metal.iron|0x7a8a88', leather: 'leather.fine|0x3a4a40', cloth: 'cloth.linen|0x4a5a50', second: 'cloth.white|0xe8ece8', trim: 'metal.verdigris', finish: 'weathered', sculpt: 'barnacles', emblem: 'wave', features: ['scales'], aura: 'drips', wear: 0.6 },
+  'set.ninefold': { name: 'silver and nine little bells', color: 0xd8e0f0, glow: 0xf0f4ff, metal: 'metal.silver', leather: 'leather.fine|0xb8c0d0', cloth: 'cloth.silk|0xd0d8e8', second: 'cloth.silk|0xd0d8e8', trim: 'metal.silver|0xf0f4ff', finish: 'polished', sculpt: 'bells', emblem: 'bell', features: ['runes'], aura: 'sparkles', wear: 0.15 },
+  'set.kilnborn': { name: 'glazed red clay and gold glaze lines', color: 0xc84a2a, glow: 0xffa040, metal: 'stone.foundry|0xa84a30', leather: 'leather.fine|0x6a2a18', cloth: 'cloth.linen|0x8a3a20', second: 'cloth.linen|0x5a2a1a', trim: 'metal.gold', finish: 'lacquer', sculpt: 'cracks', emblem: 'kiln', features: ['gilded'], aura: 'embers', wear: 0.4 },
+  'set.glasswing': { name: 'pale cloth and crystal panes', color: 0xc0e8ff, glow: 0xd8f4ff, metal: 'crystal.ice|0xd0ecff', leather: 'leather.fine|0xd8e0e8', cloth: 'cloth.silk|0xe0ecf4', second: 'cloth.silk|0xe0ecf4', trim: 'metal.silver', finish: 'pearl', sculpt: 'ghost', emblem: 'pane', features: ['wings'], aura: 'sparkles', wear: 0.1 },
+  'set.drownedbell': { name: 'sea-green coats, rope and brass bells', color: 0x40b0a0, glow: 0x70e0d0, metal: 'metal.verdigris|0x4a8a78', leather: 'leather.fine|0x2a4a40', cloth: 'cloth.banner|0x1e5a50', second: 'cloth.banner|0x1e5a50', trim: 'metal.brass', finish: 'weathered', sculpt: 'serpents', emblem: 'anchor', features: ['chains'], aura: 'drips', wear: 0.55 },
+  'set.pretender': { name: 'stolen royal purple and tarnished gold', color: 0x8a3ac0, glow: 0xc080ff, metal: 'metal.gold|0xb8983a', leather: 'leather.fine|0x3a1a4a', cloth: 'cloth.velvet|0x4a1a5a', second: 'cloth.velvet|0x4a1a5a', trim: 'metal.gold', finish: 'weathered', sculpt: 'crowns', emblem: 'mask', features: ['gilded'], aura: 'shine', wear: 0.35 },
+  'set.cartographer': { name: 'ink-stained leather and compass brass', color: 0x2a3a5a, glow: 0x8aa0d0, metal: 'metal.brass|0xa88a50', leather: 'leather.dark|0x2a2420', cloth: 'cloth.linen|0xc8b890', second: 'leather.dark|0x241e1a', trim: 'metal.brass', finish: 'matte', sculpt: 'runes', emblem: 'compass', features: ['rivets'], aura: 'motes', wear: 0.5 },
+  'set.hollowmere': { name: 'drowned black, lamp glass and one soft light', color: 0xffc860, glow: 0xffd890, metal: 'metal.blackiron|0x24282c', leather: 'leather.dark|0x1a2024', cloth: 'cloth.wool|0x1c2428', second: 'cloth.wool|0x1c2428', trim: 'metal.brass', finish: 'satin', sculpt: 'vines', emblem: 'candle', features: ['cracks'], glowStyle: 'flame', aura: 'embers', wear: 0.3 },
 };
 
 /** A set we have no motif for still gets a stable colour. */
@@ -363,6 +399,7 @@ export const GLOWING_SETS: ReadonlySet<string> = new Set([
   'set.frostwrought',
   'set.stormbound',
   'set.hollowking',
+  'set.hollowmere',
 ]);
 
 /**

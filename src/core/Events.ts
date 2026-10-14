@@ -16,6 +16,8 @@ export interface GameEvents {
   'player:died': { killedBy: string; depth: number };
   /** A hit passed through the hero's dodge. Combat emits; feel may reward it. */
   'player:evaded': { ability: string; source: string };
+  /** The hero cast a skill: its cost is paid and it is going off. */
+  'skill:cast': { skillId: string; type: DamageType };
   /**
    * A skill landed on a target another of your skills hit moments before
    * (`sim/Combos.ts`). `name` is the class's combo ('Break', 'Flashpoint'...).
