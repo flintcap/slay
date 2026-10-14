@@ -823,8 +823,12 @@ class Defend extends RoomRule {
     const s = this.boss.spawnAt;
     const h = ctx.heroPos ?? ctx.playerPos;
     const a = angleTo(s.x, s.z, h.x, h.z);
-    this.at = { x: s.x + Math.sin(a) * 5, z: s.z + Math.cos(a) * 5 };
-    this.say('Keep the lantern lit!', 'info');
+    // Off to one side of the way in, so it has to be walked to.
+    const side = a + (ctx.rng.next() < 0.5 ? 1 : -1) * 1.1;
+    let r = Math.min(7.5, this.boss.arenaRadius - 2);
+    while (r > 3 && !ctx.nav.lineOfSight(s.x, s.z, s.x + Math.sin(side) * r, s.z + Math.cos(side) * r)) r -= 0.5;
+    this.at = { x: s.x + Math.sin(side) * r, z: s.z + Math.cos(side) * r };
+    this.say('Keep the lantern lit! It cannot stand in the light.', 'info');
   }
 
   override tick(dt: number, ctx: CombatContext): void {
@@ -862,19 +866,31 @@ class Defend extends RoomRule {
       return;
     }
     if (near) this.light = Math.min(1, this.light + dt * 0.08);
+    // While it burns, its light keeps the boss out: guard it and you are out
+    // of reach of its hands, but you must leave the light to strike it.
+    const bp = this.boss.root.position;
+    const ward = Defend.R + 1 + this.boss.sizeScale * 2.2;
+    const d = dist(bp.x, bp.z, at.x, at.z);
+    if (d < ward) {
+      const away = d > 0.01 ? angleTo(at.x, at.z, bp.x, bp.z) : 0;
+      this.boss.ruleStep(Math.sin(away) * (ward - d), Math.cos(away) * (ward - d), ctx);
+    }
     this.snuff -= dt;
     if (this.snuff > 0) return;
     this.snuff = 9;
-    // A blow at the flame, shown first. Stand guard and it hits you, not the lantern.
-    const tel = ctx.decals.telegraph('circle', at.x, at.z, Defend.R, 0, 1.2, 0x6040a0);
+    // A grey hand reaches for the flame, shown first. Stand guard and your
+    // own light turns it away; guarding costs you only the ground you hold.
+    // It is not a blow at you, so it is drawn as the place to stand, not one to leave.
+    ctx.fx.burst('void', at.x, 2.4, at.z, { count: 12, color: 0x6040a0 });
+    const tel = ctx.decals.telegraph('ring', at.x, at.z, Defend.R * 0.85, 0, 1.2, SAFE_RING);
     after(1.2, (c) => {
       tel.cancel();
       if (!this.boss.alive || this.out) return;
-      c.fx.burst('void', at.x, 1, at.z, { count: 24, color: 0x201830 });
       if (this.heroNear(c, at.x, at.z, Defend.R)) {
-        hitPlayer(this.boss, c, 1.0, 'arcane', 'arena.snuff');
+        c.fx.burst('block', at.x, 1.2, at.z, { count: 18 });
         return;
       }
+      c.fx.burst('void', at.x, 1, at.z, { count: 24, color: 0x201830 });
       this.light -= 0.5;
       if (this.light <= 0.01) {
         this.light = 0;

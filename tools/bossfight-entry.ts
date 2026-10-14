@@ -125,7 +125,10 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
 
   for (let t = 0; t < CAP && boss.alive; t += DT) {
     a.step(DT);
-    for (let i = lastHits; i < a.hits.length; i++) taken += a.hits[i]!.amount;
+    for (let i = lastHits; i < a.hits.length; i++) {
+      taken += a.hits[i]!.amount;
+      if (trace && dodge) console.error(`hit ${a.hits[i]!.ability} hero=(${hero.x.toFixed(1)},${hero.z.toFixed(1)}) boss=(${boss.root.position.x.toFixed(1)},${boss.root.position.z.toFixed(1)}) zones=${zones.filter((z) => z.until > now()).map((z) => `${z.kind}@${z.x.toFixed(0)},${z.z.toFixed(0)}r${z.size.toFixed(1)}${z.color === SAFE_RING ? 'S' : ''}`).join(' ')}`);
+    }
     lastHits = a.hits.length;
 
     // The hero's damage: steady on the boss, and adds get cleared.
@@ -151,33 +154,37 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
     const safe = live.filter((z) => z.kind === 'ring' && z.color === SAFE_RING);
     const danger = live.filter((z) => !(z.kind === 'ring' && z.color === SAFE_RING));
     step.set(0, 0, 0);
-    if (safe.length) {
+    const inSafe = (x: number, z: number): boolean => safe.some((q) => Math.hypot(q.x - x, q.z - z) < q.size);
+    const bad = danger.find((z) => inside(z, hero.x, hero.z));
+    if (bad) {
+      // Out of the marker first: try sixteen headings and take the nearest
+      // point out of everything, inside a safe ring if one is up.
+      let best: THREE.Vector3 | null = null;
+      let fallback: THREE.Vector3 | null = null;
+      for (let r = 1; r <= 9 && !best; r += 1) {
+        for (let k = 0; k < 16; k++) {
+          const ang = (k / 16) * Math.PI * 2;
+          const x = hero.x + Math.sin(ang) * r;
+          const z = hero.z + Math.cos(ang) * r;
+          if (danger.some((q) => inside(q, x, z))) continue;
+          fallback ??= new THREE.Vector3(x - hero.x, 0, z - hero.z);
+          if (!safe.length || inSafe(x, z)) {
+            best = new THREE.Vector3(x - hero.x, 0, z - hero.z);
+            break;
+          }
+        }
+      }
+      const pick = best ?? fallback;
+      if (pick) step.copy(pick);
+    } else if (safe.length) {
       const s = safe.reduce((b, z) => (Math.hypot(z.x - hero.x, z.z - hero.z) < Math.hypot(b.x - hero.x, b.z - hero.z) ? z : b));
       step.set(s.x - hero.x, 0, s.z - hero.z);
       if (step.length() < 0.8) step.set(0, 0, 0);
     } else {
-      const bad = danger.find((z) => inside(z, hero.x, hero.z));
-      if (bad) {
-        // Try sixteen headings and take the nearest point that is out of everything.
-        let best: THREE.Vector3 | null = null;
-        for (let r = 1; r <= 9 && !best; r += 1) {
-          for (let k = 0; k < 16; k++) {
-            const ang = (k / 16) * Math.PI * 2;
-            const x = hero.x + Math.sin(ang) * r;
-            const z = hero.z + Math.cos(ang) * r;
-            if (!danger.some((q) => inside(q, x, z))) {
-              best = new THREE.Vector3(x - hero.x, 0, z - hero.z);
-              break;
-            }
-          }
-        }
-        if (best) step.copy(best);
-      } else {
-        const bp = boss.root.position;
-        const d = Math.hypot(hero.x - bp.x, hero.z - bp.z);
-        // Toward the boss when far, away when close: a negative length flips it.
-        if (Math.abs(d - 7) > 1 && d > 0.01) step.set(bp.x - hero.x, 0, bp.z - hero.z).setLength(d - 7);
-      }
+      const bp = boss.root.position;
+      const d = Math.hypot(hero.x - bp.x, hero.z - bp.z);
+      // Toward the boss when far, away when close: a negative length flips it.
+      if (Math.abs(d - 7) > 1 && d > 0.01) step.set(bp.x - hero.x, 0, bp.z - hero.z).setLength(d - 7);
     }
     if (step.lengthSq() > 1e-4) {
       const len = step.length();
@@ -187,6 +194,11 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
     }
   }
 
+  if (trace) {
+    const by = new Map<string, number>();
+    for (const h of a.hits) by.set(h.ability || h.by, (by.get(h.ability || h.by) ?? 0) + h.amount);
+    console.error(`${def.name} ${dodge ? 'dodging' : 'standing'}: ${[...by].sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(', ')}`);
+  }
   const kit = new Set<string>();
   def.phases.slice(0, boss.phaseIndex + 1).forEach((p) => p.abilities.forEach((id) => kit.add(id)));
   // A death move is used by dying.
@@ -222,7 +234,8 @@ for (const def of [...BOSSES, ...WARDENS]) {
   a.enemies.push(boss);
   boss.engage(a.ctx);
   // Wind the fight clock to just before the warning rather than simulate four idle minutes.
-  (boss as unknown as { fightTime: number }).fightTime = softEnrageAfter(def.phases.length) - 16;
+  // The worst case: the room has already handed back all the time it will.
+  Object.assign(boss as unknown as { fightTime: number; grace: number }, { fightTime: softEnrageAfter(def.phases.length) - 16, grace: 0 });
   a.step(18);
   const enraged = boss.softEnraged;
 

@@ -877,7 +877,10 @@ export class FairLedger { tick(dt): void; clamp(amount, maxLife, cap): number; h
 // A room rule went wrong. Heals (to the phase's start), shields, hides,
 // calls adds or resets; never hurts the hero. Hands the seconds it cost back
 // to the fight clock, so a fumble never brings the enrage closer. Raises
-// `boss:fumble`. Back-to-back fumbles gain less.
+// `boss:fumble`. Back-to-back fumbles gain less. Clock refunds (fumbles, a
+// parried blow) and frozen stretches (`freezesClock`, a flight) all draw on
+// one grace pool of half the time limit; once it is spent the clock runs, so
+// a stalled fight still enrages.
 Boss.fumble(cost: 'heal' | 'shield' | 'hold' | 'adds' | 'reset', ctx: CombatContext, seconds?: number): number;
 ```
 
@@ -941,7 +944,11 @@ fight. `spawnAt(self, ctx, id, x, z, rank?)` (Abilities) places one. Events:
 `boss:rule {label, value}` drives the HUD bar under the boss bar;
 `boss:castEnd {}` ends a long cast's bar early. `BossDef.partner` names the
 linked-pair partner; `BossDef.limbs` names weak points and the move each one
-takes away. Checker: `node tools/check-roomrules.mjs`.
+takes away. `BossPhase.immune` turns one element aside (x0.15), `body` resizes
+the boss for that phase, `flee` sends it to the next chase point as the phase
+begins. The 28 depth-plan bosses live in `src/data/bosses2.ts` (voices in
+`data/story/bossVoices2.ts`); their partners and flocks are weight-0 monsters.
+Checker: `node tools/check-roomrules.mjs`.
 
 ## `src/ui/UIRoot.ts` — owned by UI
 

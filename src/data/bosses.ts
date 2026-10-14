@@ -27,6 +27,7 @@
  */
 
 import type { BossDef, BiomeId, BossMood, BossPhase, BossProfile, BossSize } from '../types';
+import { NEW_BOSSES } from './bosses2';
 
 const ALL: BossDef[] = [];
 
@@ -1259,6 +1260,9 @@ boss({
 });
 
 // ---------------------------------------------------------------------------
+
+// The depth plan's twenty-eight (bosses2.ts).
+for (const b of NEW_BOSSES) boss(b);
 
 export const BOSSES: BossDef[] = ALL;
 

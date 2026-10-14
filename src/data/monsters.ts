@@ -859,6 +859,48 @@ mon({
   visual: { body: 'humanoid', palette: RIME, ornate: 0.2, eyes: 2, glow: 0xb0e8ff, weapon: 'sword' },
 });
 
+// --- Boss partners and the flocks they call (weight 0: never rolled) -----
+
+mon({
+  id: 'choir_high_voice', name: 'The High Voice', family: 'undead', role: 'support',
+  minDepth: 1, weight: 0, lifeMul: 0.8, damageMul: 0.7, xpMul: 0, speed: 2.2, attackRange: 14, damageType: 'arcane',
+  abilities: ['heal_ally', 'banshee_wail', 'hex_bolt'],
+  resists: { physical: 15, arcane: 25 },
+  visual: { body: 'wraith', palette: PALE, ornate: 0.5, eyes: 2, glow: 0xe0f0a0 },
+});
+
+mon({
+  id: 'sallow_orrin', name: 'Orrin Sallow', family: 'humanoid', role: 'caster',
+  minDepth: 1, weight: 0, lifeMul: 0.8, damageMul: 0.8, xpMul: 0, speed: 2.8, attackRange: 14, damageType: 'poison',
+  abilities: ['poison_spit', 'frost_bolt', 'acid_spit'],
+  resists: { poison: 40, cold: 20 },
+  visual: { body: 'humanoid', palette: MOSS, ornate: 0.4, eyes: 2, glow: 0x80d0a0, weapon: 'staff' },
+});
+
+mon({
+  id: 'slag_cantor', name: 'Slag Cantor', family: 'elemental', role: 'brute',
+  minDepth: 1, weight: 0, lifeMul: 1.0, damageMul: 0.8, xpMul: 0, speed: 2.4, attackRange: 2.6, damageType: 'fire',
+  abilities: ['ground_slam', 'lava_pool', 'fire_bolt'],
+  resists: { fire: 60, cold: -20 },
+  visual: { body: 'golem', palette: EMBER, ornate: 0.5, eyes: 2, glow: 0xff7030 },
+});
+
+mon({
+  id: 'tallow_sheep', name: 'Tallow Sheep', family: 'beast', role: 'swarm',
+  minDepth: 1, weight: 0, lifeMul: 0.35, damageMul: 0.5, xpMul: 0.2, speed: 3.6, attackRange: 1.6,
+  abilities: ['basic_strike'],
+  resists: { fire: -30 },
+  visual: { body: 'quadruped', palette: PALE, ornate: 0.1, eyes: 2, glow: 0xffe0a0 },
+});
+
+mon({
+  id: 'wax_child', name: 'Wax Child', family: 'humanoid', role: 'swarm',
+  minDepth: 1, weight: 0, lifeMul: 0.3, damageMul: 0.5, xpMul: 0.2, speed: 3.8, attackRange: 1.6,
+  abilities: ['basic_strike'],
+  resists: { fire: -30, physical: 10 },
+  visual: { body: 'humanoid', palette: PALE, ornate: 0.1, eyes: 2, glow: 0xffd080 },
+});
+
 mon({
   id: 'unmaker', name: 'The Unmaker', family: 'aberration', role: 'caster',
   minDepth: 29, weight: 2, lifeMul: 1.8, damageMul: 1.8, attackRange: 18, damageType: 'arcane',

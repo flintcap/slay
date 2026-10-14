@@ -161,6 +161,12 @@ export class Boss extends Enemy {
   /** Seconds spent waiting for the next move in the rotation to be in reach. */
   private rotWait = 0;
   private fightTime = 0;
+  /**
+   * Seconds the room may hand back to the fight clock (fumbles, frozen
+   * stretches), half the time limit. Once spent, the clock runs whatever the
+   * room does, so a stalled fight still ends in the enrage.
+   */
+  private grace = 0;
   /** Life when the current phase began: a fumble never heals past it. */
   private phaseStartLife = 0;
   /** Life the hero has taken off it so far, for the fumble clock. */
@@ -292,6 +298,7 @@ export class Boss extends Enemy {
   engage(ctx: CombatContext): void {
     if (this.engaged) return;
     this.engaged = true;
+    this.grace = softEnrageAfter(this.bossDef.phases.length) * 0.5;
     const at = this.root.position;
     this.spawnAt = { x: at.x, z: at.z };
     this.home = { x: at.x, z: at.z };
@@ -781,10 +788,10 @@ export class Boss extends Enemy {
     this.unbuff('parry');
     const p = this.root.position;
     ctx.fx.burst('crit', p.x, 1.3 * this.sizeScale, p.z, { count: 24, color: 0xe0f0ff });
-    hitPlayer(this, ctx, 1.1, 'physical', 'riposte', { knockback: 2 });
+    // Hitting into a guard costs time, never life: the blade turns yours aside.
     const back = Math.min(this.maxLife * 0.02, Math.max(0, this.phaseStartLife - this.life));
     if (back > 0) this.heal(back, ctx);
-    this.fightTime = Math.max(0, this.fightTime - 2);
+    this.giveClock(2);
     if (!this.announced.has('riposte')) {
       this.announced.add('riposte');
       events.emit('toast', { text: `${this.bossDef.name} parries! Wait out the guard.`, kind: 'bad' });
@@ -844,9 +851,16 @@ export class Boss extends Enemy {
     spent = clamp(spent, 1, 40);
     this.fumbles++;
     this.fumbleTime += spent;
-    this.fightTime = Math.max(0, this.fightTime - spent);
+    this.giveClock(spent);
     events.emit('boss:fumble', { name: this.bossDef.name, cost, seconds: spent });
     return spent;
+  }
+
+  /** Hands seconds back to the fight clock, out of what grace is left. */
+  private giveClock(seconds: number): void {
+    const back = Math.min(seconds, this.grace, this.fightTime);
+    this.grace -= back;
+    this.fightTime -= back;
   }
 
   // --- tick ----------------------------------------------------------------
@@ -912,8 +926,11 @@ export class Boss extends Enemy {
    * near it fights through dread. Not a wall: a clock you can see coming.
    */
   private tickSoftEnrage(dt: number, ctx: CombatContext): void {
-    // While its room rule keeps it out of reach, or it is fleeing, the clock waits.
-    if (!this.rule?.freezesClock() && !this.flight) this.fightTime += dt;
+    // While its room rule keeps it out of reach, or it is fleeing, the clock
+    // waits, out of the grace the room has left to give.
+    const frozen = (!!this.rule?.freezesClock() || !!this.flight) && this.grace > 0;
+    if (frozen) this.grace = Math.max(0, this.grace - dt);
+    else this.fightTime += dt;
     const limit = softEnrageAfter(this.bossDef.phases.length);
     if (!this.softEnraged && this.fightTime >= limit - 15 && this.fightTime - dt < limit - 15) {
       events.emit('toast', { text: `${this.bossDef.name} is losing patience...`, kind: 'bad' });
