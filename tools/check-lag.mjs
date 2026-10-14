@@ -597,7 +597,13 @@ async function visit(label) {
           await new Promise((r) => setTimeout(r, 800));
         }
         const at = (best?.root.position ?? pl.position).clone().setY(0);
-        window.__lag.castFired = scene.skills.cast(id, pl, at, scene.context?.(), scene.enemies, null);
+        // Tried until its cooldown lets it go, then watched for a while.
+        let fired = false;
+        for (let t = 0; t < 40 && !fired; t++) {
+          fired = scene.skills.cast(id, pl, at, scene.context?.(), scene.enemies, null);
+          if (!fired) await new Promise((r) => setTimeout(r, 500));
+        }
+        window.__lag.castFired = fired;
         await new Promise((r) => setTimeout(r, 2500));
       }, SKILL);
       console.log(`      cast fired: ${await page.evaluate(() => window.__lag.castFired)}`);

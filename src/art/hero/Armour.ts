@@ -24,6 +24,13 @@ import { chest } from './ArmourChest';
 import { helm } from './ArmourHead';
 import { belt, boots, gloves, pants } from './ArmourLimbs';
 import { meshPiece } from './ArmourMesh';
+
+// A worn mesh's own material and a piece's cape bones are kept here, not in
+// `userData`: copying an object (a Shadow Clone's double) copies its userData
+// through JSON, which wrote each material's textures out as a PNG, a stall
+// of up to a second on every cast.
+const BASE_MATERIAL = new WeakMap<THREE.Object3D, THREE.Material>();
+const CAPE_BONES = new WeakMap<THREE.Object3D, THREE.Bone[]>();
 import { dress } from './ArmourFeatures';
 import { glowingTwin } from './HeroMaterials';
 import { iconFeatures, iconHelm, wearsIcon } from './ArmourIcon';
@@ -78,7 +85,7 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
     mesh.userData.sharedGeometry = true;
     // Which of the piece's materials this is, so a set's glow can light its trims later.
     mesh.userData.armourMat = k.keyOf(e.mat);
-    mesh.userData.baseMaterial = e.mat;
+    BASE_MATERIAL.set(mesh, e.mat);
     group.add(mesh);
     mesh.bind(hero.rig.skeleton, new THREE.Matrix4());
   }
@@ -89,14 +96,14 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
       const mat = mesh.material as THREE.MeshStandardMaterial;
       if (!(mat.emissiveIntensity > 0 && mat.emissive?.getHex())) {
         mesh.userData.armourMat = 'main';
-        mesh.userData.baseMaterial = mat;
+        BASE_MATERIAL.set(mesh, mat);
       }
       group.add(mesh);
     }
   }
   if (slot === 'chest' && k.cape > 0) {
     const cape = buildCape(hero, k.mat('banner'), group, k.cape);
-    group.userData.capeBones = cape.bones;
+    CAPE_BONES.set(group, cape.bones);
   }
   if (look.glow > 0 && look.hasRunes) group.userData.glow = look.glowColor;
   return { object: group, hides: k.hides };
@@ -110,7 +117,7 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
 export function lightArmour(worn: WornArmour, stage: number, color: number): void {
   for (const o of worn.object.children) {
     const mesh = o as THREE.SkinnedMesh;
-    const base = mesh.userData.baseMaterial as THREE.Material | undefined;
+    const base = BASE_MATERIAL.get(mesh);
     if (!base) continue;
     const key = mesh.userData.armourMat as string | undefined;
     let lit = 0;
@@ -122,7 +129,7 @@ export function lightArmour(worn: WornArmour, stage: number, color: number): voi
 
 /** Takes a worn piece off: its meshes, and any bones it hung on the rig. */
 export function removeArmour(worn: WornArmour): void {
-  const bones = worn.object.userData.capeBones as THREE.Bone[] | undefined;
+  const bones = CAPE_BONES.get(worn.object);
   if (bones?.[0]) bones[0].removeFromParent();
   worn.object.removeFromParent();
 }
