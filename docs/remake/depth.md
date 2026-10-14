@@ -38,6 +38,10 @@ What makes runs feel the same today, measured from the data:
    play, or a stat mix no other item gives. No "same as a rare but orange".
 5. **Every boss changes what you do.** A phase must change your plan, not just
    the boss's numbers.
+6. **A puzzle never kills you.** Getting a boss puzzle wrong makes the fight
+   slower, never deadlier. See "Fair fights" in Part 3.
+7. **No one-shots.** This is a roguelike: one death ends the hero. No hit, trap
+   or room rule can kill a hero from full life on its own.
 
 ---
 
@@ -228,6 +232,49 @@ numbers come from the profile times its depth.
 | Swarm lord | 0.8x | 0.9x | Normal | Deal with what it sends, then it |
 | Bruiser | 1.0x | 1.0x | Normal | A straight fight |
 
+### Fair fights
+
+Two hard rules for every boss, old and new.
+
+**1. Messing up a puzzle costs time, not life.** When you get a room rule wrong
+(miss a bell, step on the wrong tile, let the lantern go out), the boss gets one
+of these, and nothing else:
+
+| Fumble cost | What happens |
+|---|---|
+| Heal | The boss heals up to 10% of its life, never above where the phase began |
+| Shield | Its shield comes back, or gets one more layer |
+| Reset | The puzzle starts over (stones grow back, bells go quiet) |
+| Hold | The boss is out of reach for a few seconds (it rises, hides, or walls itself in) |
+| Adds | A small wave of normal adds walks in |
+
+A fumble never deals damage, never stuns you, and never makes the boss hit harder.
+
+**2. No one-shots.** These hold on every boss, every trap and every room rule:
+
+- **Hit cap.** No single hit, trap or blast takes more than 40% of your life from
+  full. Lower at low tiers: 25% on tiers 1 to 5, 30% on tiers 6 to 15.
+- **Warn first.** Every hit above 15% of your life shows its danger zone on the
+  floor at least 0.8 seconds before it lands.
+- **No stun lock.** Nothing roots, freezes or stuns you for more than 1.5 seconds,
+  and after it ends you can't be held again for 3 seconds.
+- **No floor that kills.** Bad tiles, pools and hazards hurt over time, the way
+  lava does now. You always have time to step off.
+
+**The fight clock.** Every boss has a soft time limit today (it enrages after a
+while). On its own, a fumble that costs time could push you into the enrage, and
+that would break rule 1. So each fumble moves the clock back by the time it cost
+you. Fumbling never brings the enrage closer.
+
+**Fixing the old rules.** Three of today's room rules break these rules and get
+changed:
+
+| Rule today | What breaks | Change |
+|---|---|---|
+| Pillars | A miss is a 4x hit with a big shove. That can kill | The blast follows the hit cap. Missing the safe ring also gives the boss a shield, so the safe ring still matters |
+| Damage timer (`enrageTimer`) | "Kill it or die": the boss gets 25% stronger every 12 seconds, with no limit | Each stack gives the boss armour and life regen instead of damage. A slow fight gets slower, not deadly |
+| Ice field | Standing still freezes you | The freeze follows the stun-lock rule |
+
 ### Three fight shapes
 
 | Shape | Share | What it is |
@@ -242,50 +289,50 @@ numbers come from the profile times its depth.
 |---|---|
 | Ward portals | Portals open and feed the boss a shield. Break the portals to drop it |
 | Heartstones | The boss cannot be hurt while stones in the room beat. They grow back |
-| Bells | The boss starts a long cast that wipes the room. Ring three bells to stop it |
+| Bells | The boss starts a long cast. Ring three bells to stop it. If it lands, the boss heals and gains a shield (no damage to you) |
 | Braziers | The room is dark and the boss is unseen. Light braziers to see and hit it |
 | Linked pair | Two bosses. Kill one and the other brings it back unless both die close together |
-| Lure | The boss cannot be hurt, but its own hazard hurts it. Lead it into its pools |
-| Tile sequence | Floor tiles light in a pattern. The wrong tile at the wrong time is lethal |
+| Lure | The boss can't be hurt by you, but its own pools hurt it. Lead it into them |
+| Tile sequence | Floor tiles light in a pattern. Stand on the right tiles to hurt the boss. A wrong tile slows you and gives the boss a shield layer |
 | Stalker | The boss is invisible and leaves tracks. Area hits show it |
 | Mirror | A copy of you, using your skills at lower power |
-| Breaking cast | A big cast with a damage bar. Do enough damage in time or it lands |
+| Breaking cast | A big cast with a damage bar. Do enough damage in time to break it. If it lands, the boss heals and calls adds |
 | Chase | The boss flees through three rooms of the floor; each room is a new phase |
-| Defend | Keep a lantern alive while the boss tries to put it out |
+| Defend | Keep a lantern lit while the boss tries to put it out. If it goes out, the room goes dark and the boss heals until you relight it |
 | Guard break | A guard bar. Break it for a few seconds of big damage |
 | Weak points | A giant with limbs to break; each broken limb takes away an attack |
-| Chains | The boss is chained to anchors. Cut the chains and it charges into walls |
+| Chains | The boss is chained to anchors. Cut a chain and it charges (warned, hit-capped). If it hits a wall, it is stunned and takes extra damage |
 
 ### The 28 new bosses
 
 | # | Name | Size | Profile | Shape | Where | From tier | The fight |
 |---|---|---|---|---|---|---|---|
-| 1 | Pell Dunmarrow, the Ratcatcher | Person | Duelist | Straight, 2 phases | Crypt, Caverns | 1 | Nets, snap traps on the floor. Hit hard and her sack bursts: a rat flood, and she goes for the kill |
+| 1 | Pell Dunmarrow, the Ratcatcher | Person | Duelist | Straight, 2 phases | Crypt, Caverns | 1 | Nets and snap traps on the floor (a trap holds you for a second, hit-capped). Hit hard and her sack bursts: a rat flood, and she turns fast and wild |
 | 2 | The Choir of Rot | Tall (three of them) | Swarm lord | Puzzle | Crypt, Swamp | 2 | Three singing corpses buff each other. The high voice heals. Kill order matters |
 | 3 | Old Gristle | Large | Sponge | Straight, 1 phase | Caverns, Dark Forest | 3 | A huge mole boar that tunnels. Pure dodging of the burrow lines |
 | 4 | Kettle | Large | Bulwark | Phased, guard break | Foundry | 3 | A boiler golem. Turn its valves to vent it; armour drops while it vents |
-| 5 | Sister Abelline of the Bell | Person | Glass caster | Puzzle, bells | Drowned Sanctum, Crypt | 4 | She tolls a death knell. Ring the three bells in the room to break it |
+| 5 | Sister Abelline of the Bell | Person | Glass caster | Puzzle, bells | Drowned Sanctum, Crypt | 4 | She tolls a long knell. Ring the three bells in the room to break it, or she heals and wards herself |
 | 6 | Mother Wick | Tall | Swarm lord | Puzzle, braziers | Dark Forest, Crypt | 5 | A candle witch in the dark. Light braziers to see her; her wax children snuff them |
 | 7 | Ebb and Orrin, the Sallow Twins | Tall (two) | Bruiser | Linked pair | Swamp, Drowned Sanctum | 6 | One fights close, one from range. Bring them both down together |
 | 8 | Gutterking Rusk | Person | Duelist | Straight, 3 phases | Caverns, Desert | 6 | A goblin lord riding his own shield like a sled. Fast, hits hard, low life |
 | 9 | Vaskel the Glazier | Tall | Glass caster | Puzzle, mirror | Voidspire, Desert Tomb | 9 | Glass panes bounce your shots. Break the panes or face his copies |
 | 10 | Holloway, Who Wears the Stair | Giant | Sponge | Phased, weak points | Caverns, Crypt | 10 | A titan made of a fallen stair. Break four limbs; each takes an attack away |
-| 11 | Duchess Imeris of the Ninefold House | Person | Duelist | Straight | Drowned Sanctum, Voidspire | 10 | A rapier duel. She parries; hit during a parry and she punishes hard |
+| 11 | Duchess Imeris of the Ninefold House | Person | Duelist | Straight | Drowned Sanctum, Voidspire | 10 | A rapier duel. She parries; hit into a parry and she ripostes (hit-capped) and wins back a little life |
 | 12 | The Tallow Shepherd | Tall | Swarm lord | Puzzle, ward portals | Tundra, Dark Forest | 11 | Wax sheep walk out of portals and feed his shield. Close the portals |
-| 13 | Brass Abbot Corrimund | Large | Bulwark | Phased, breaking cast | Foundry | 12 | A clockwork priest. Every minute he casts "The Hour". Break it with damage |
+| 13 | Brass Abbot Corrimund | Large | Bulwark | Phased, breaking cast | Foundry | 12 | A clockwork priest. Every minute he casts "The Hour". Break it with damage, or he winds himself back to more life |
 | 14 | Gaellach the Saltwyrm | Giant | Bruiser | Phased | Drowned Sanctum, Swamp | 13 | A sea serpent that surfaces in pools. Hit the head when it rises; the tide comes in |
 | 15 | Mirelle the Unburied | Tall | Bruiser | Puzzle, heartstones | Swamp | 14 | A bog queen with three heart lanterns that grow back |
 | 16 | The Kiln Saint | Large | Bulwark | Puzzle, lure | Foundry, Ashwaste | 15 | A ceramic giant you cannot hurt. Lure it into its own quench pools to crack the glaze |
 | 17 | Teodric the Ashmonger | Person | Duelist | Puzzle, stalker | Ashwaste, Desert | 16 | Invisible in the ash. Footprints give him away |
 | 18 | The Queen of Hinges | Tall | Glass caster | Straight | Desert Tomb, Crypt | 17 | She steps through the doors of the room. A pattern to learn, no gimmick |
-| 19 | Thessaly Vane, the Last Surveyor | Person | Glass caster | Puzzle, tile sequence | Voidspire | 21 | She "measures" the floor; tiles turn deadly in her order |
+| 19 | Thessaly Vane, the Last Surveyor | Person | Glass caster | Puzzle, tile sequence | Voidspire | 21 | She "measures" the floor. Follow her order on the tiles to hurt her; a wrong tile slows you and wards her |
 | 20 | The Gilt Leviathan | Giant | Sponge | Phased | Drowned Sanctum | 22 | Gold plates make it immune to one element at a time. Each plate you break changes which |
 | 21 | Corvus Hale and the Unkindness | Tall plus a crow swarm | Swarm lord | Chase | Dark Forest, Tundra | 24 | He flees through three rooms. The crows are the walls of each room |
 | 22 | Grandmother Thaw | Large | Bulwark | Phased, guard break | Frostvault, Tundra | 25 | A frost hag who melts as you fight her. Smaller, faster, deadlier each phase |
 | 23 | The Furnace Choir | Large (three) | Bruiser | Linked trio | Foundry, Hell | 27 | Fire, slag and smoke. The one you kill first changes the room for the other two |
 | 24 | The One Who Came Up Instead | Person | Duelist | Puzzle, mirror | Voidspire | 30 | A copy of your hero, your build, your skills, at lower power |
-| 25 | Vorrowmaw | Giant | Sponge | Puzzle, chains | Hive, Hell | 32 | Chained to four anchors. Cut a chain and it charges; walls it hits break |
-| 26 | The Archivist Below | Tall | Glass caster | Puzzle, defend | Voidspire | 40 | Keep the lantern lit while it erases the room around you |
+| 25 | Vorrowmaw | Giant | Sponge | Puzzle, chains | Hive, Hell | 32 | Chained to four anchors. Cut a chain and it charges (warned); walls it hits break, and it is stunned and open |
+| 26 | The Archivist Below | Tall | Glass caster | Puzzle, defend | Voidspire | 40 | Keep the lantern lit while it erases the room. The edge of the room pushes in, but only pushes you; when the lantern goes out it heals |
 | 27 | Saint Ossery the Twice-Crowned | Large | Bruiser | Phased, 5 phases | Hell, Crypt | 45 | A fallen holy king. A new weapon and a new style each phase |
 | 28 | The Deep's Own Name | Giant | Every profile | Chase plus puzzle | Last tier | 60 | The end boss. Three arenas; each phase brings back one room rule from the deep |
 
@@ -322,6 +369,9 @@ Each step ends with screenshots or a short clip for you to look at before the
 next step starts.
 
 1. **Systems first.**
+   - The fair-fight rules: hit cap, warning time, hold limit, fumble costs, and the
+     fight clock moving back on a fumble. The three old room rules get fixed here,
+     so today's bosses follow them too.
    - Boss profile, size and shape fields; profile numbers in place of the shared `lifeMul` and `damageMul`.
    - The 15 new room rules, each with a test arena.
    - No-repeat and seen-less picking; boss moods; floor wardens.
@@ -344,6 +394,7 @@ New checkers, run by `tools/run-checks.mjs`:
 | `check-looks` | Two uniques of one slot that share four or more look axes; glow on a tier that has no glow budget |
 | `check-iconmatch` | The icon's main colours do not match the worn or held model's |
 | `check-bosses` | A boss without a portrait, music, barks, size, profile or shape; a fight that a reference hero of its tier cannot finish in a fair time, or finishes too fast |
+| `check-fair` | Any boss hit, trap or room blast over the hit cap for its tier; a big hit with less than 0.8 s of warning; a hold over 1.5 s; a fumble that deals damage. Also a "fumbler" sim: a hero who gets every puzzle wrong must still win, in at most twice the normal time, without ever reaching the enrage |
 | `check-drops` | An item that never drops, or would take an unfair number of kills to see |
 
 Existing checks keep running: `check-rankpower` for any skill a power touches,
