@@ -68,6 +68,8 @@ const T_RUBBLE = 9;
 const MINIMAP_PX = 178;
 const MINIMAP_TILE = 3.6;
 const REVEAL_RADIUS = 10;
+/** How far from the hero, in tiles, a monster shows on the maps: what you can see. */
+const PIP_SIGHT = REVEAL_RADIUS + 6;
 
 // ---------------------------------------------------------------------------
 // Scene sniffing
@@ -1663,25 +1665,46 @@ export class HUD {
 
   // -- minimap -------------------------------------------------------------
 
+  /**
+   * The monsters worth a mark: alive, standing on ground you have explored,
+   * and close enough to be seen. The map used to mark every monster on the
+   * floor, out in the dark you had not walked yet, and read them from an
+   * array found once by shape, which went stale and left marks where nothing
+   * stood. The scene's own list is read fresh each time instead.
+   */
   private collectPips(probe: SceneProbe | null): void {
     const pips: MinimapPip[] = [];
-    if (probe?.enemies && probe.worldToTile) {
-      for (const e of probe.enemies) {
-        const life = Number(e.life ?? 0);
-        if (life <= 0) continue;
-        const root = e.root as { position?: { x: number; z: number } } | undefined;
-        const pos = root?.position;
-        if (!pos) continue;
-        const t = probe.worldToTile(pos.x, pos.z);
-        const rank = String(e.rank ?? 'normal');
-        pips.push({
-          x: t.x,
-          y: t.y,
-          kind: rank === 'boss' ? 'boss' : rank === 'normal' ? 'enemy' : 'elite',
-        });
+    const scene = this.engine.currentScene as unknown as Record<string, unknown> | null;
+    const live = scene && Array.isArray(scene.enemies) ? (scene.enemies as Array<Record<string, unknown>>) : probe?.enemies ?? null;
+    const boss = scene && scene.boss && typeof scene.boss === 'object' ? (scene.boss as Record<string, unknown>) : null;
+    const level = runtime.level;
+    const explored = level ? this.exploredFor(level) : null;
+    const px = runtime.playerTileX;
+    const py = runtime.playerTileY;
+    const add = (e: Record<string, unknown>): void => {
+      if (Number(e.life ?? 0) <= 0 || e.alive === false || e.readyToRemove === true) return;
+      const root = e.root as { position?: { x: number; z: number }; parent?: unknown; visible?: boolean } | undefined;
+      const pos = root?.position;
+      // Off the scene graph is gone: cleared with its floor, or not raised yet.
+      if (!pos || !root?.parent || !probe?.worldToTile) return;
+      const t = probe.worldToTile(pos.x, pos.z);
+      if (level && explored) {
+        if (t.x < 0 || t.y < 0 || t.x >= level.width || t.y >= level.height) return;
+        if (!explored[t.y * level.width + t.x]) return;
+      }
+      const dx = t.x - px;
+      const dy = t.y - py;
+      if (dx * dx + dy * dy > PIP_SIGHT * PIP_SIGHT) return;
+      const rank = String(e.rank ?? 'normal');
+      pips.push({ x: t.x, y: t.y, kind: rank === 'boss' || e === boss ? 'boss' : rank === 'normal' ? 'enemy' : 'elite' });
+    };
+    if (live) {
+      for (const e of live) {
+        add(e);
         if (pips.length > 160) break;
       }
     }
+    if (boss && !live?.includes(boss)) add(boss);
     runtime.pips = pips;
   }
 
