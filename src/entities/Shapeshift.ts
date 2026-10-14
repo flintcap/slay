@@ -4,8 +4,8 @@
  *
  * The rule (see `docs/remake/shapeshifter.md`): every tree skill is fought in
  * its tree's form, and casting one as a man changes you first. In a form only
- * that beast's skills and the basic attack work (`formRefusal`): to fight as
- * another beast, stand up first. The form
+ * that beast's skills, the basic attack and the form skills work
+ * (`formRefusal`): a form skill changes straight to its beast. The form
  * skills (Shadowcat, Grey Wolf, Great Bear) change you on purpose and make the
  * form stronger with their rank; pressing the form you are in stands you back
  * up as a man.
