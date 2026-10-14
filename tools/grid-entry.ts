@@ -16,6 +16,7 @@ import { addToSlots, moveBetween, sortSlots, setStackCount, stackCount } from '.
 import { areasOf, itemSize, overlaps, findFit, INV_COLS, INV_ROWS } from '../src/sim/Grid';
 import { migrateAccount, STASH_TAB_SIZE } from '../src/core/Save';
 import type { Item } from '../src/types';
+import { GEMS, getGem } from '../src/data/gems';
 
 const fails: string[] = [];
 const rng = new Random(0x6e1d);
@@ -97,6 +98,27 @@ sameSet(audit(pack, 'after moves'), added, 'after moves');
 // --- sort keeps everything ---------------------------------------------------
 sortSlots(pack);
 sameSet(audit(pack, 'after sort'), added, 'after sort');
+
+// --- sort puts like with like ------------------------------------------------
+// Gems of one family, in a mixed pack, end up side by side in quality order.
+{
+  const gems = GEMS.filter((g) => g.family === GEMS[0]!.family || g.family === GEMS.at(-1)!.family);
+  const small: Array<Item | null> = new Array(INV_COLS * INV_ROWS).fill(null);
+  const order = [...gems].sort(() => rng.next() - 0.5);
+  for (const g of order) addToSlots(small, make(g.id));
+  addToSlots(small, make(find('ring')));
+  sortSlots(small);
+  // Packing fills a column top to bottom before the next, so read it that way.
+  const at = small.map((x, i) => ({ x, i })).filter((e): e is { x: Item; i: number } => !!e.x && e.x.baseId.startsWith('gem'));
+  at.sort((a, b) => (a.i % INV_COLS) - (b.i % INV_COLS) || a.i - b.i);
+  const seen = at.map((e) => getGem(e.x.baseId)!);
+  let runs = 0;
+  for (let i = 0; i < seen.length; i++) {
+    if (i === 0 || seen[i]!.family !== seen[i - 1]!.family) runs++;
+    else if (seen[i]!.qualityIndex > seen[i - 1]!.qualityIndex) fails.push(`sort: ${seen[i]!.id} after a lower ${seen[i - 1]!.id}`);
+  }
+  if (runs !== 2) fails.push(`sort: gems of two families came out in ${runs} runs`);
+}
 
 // --- swap rules ---------------------------------------------------------------
 {

@@ -171,8 +171,15 @@ const tmpBox = new THREE.Box3();
 const tmpV = new THREE.Vector3();
 const tmpC = new THREE.Vector3();
 
+/** Scans the last icon was drawn without (still loading), for a redraw once they land. */
+const missing: THREE.Texture[] = [];
+export function iconScansMissing(): readonly THREE.Texture[] {
+  return missing;
+}
+
 /** Renders the model onto the shared renderer's canvas. Null when there is no WebGL. */
 function renderModel(spec: IconSpec): Shot | null {
+  missing.length = 0;
   const r = studio();
   if (!r || !stage) return null;
   const out = iconCanvasSize(spec);
@@ -214,6 +221,13 @@ function renderModel(spec: IconSpec): Shot | null {
   cam.position.set(c.x, c.y, c.z + s.z / 2 + 10);
   cam.lookAt(c);
   cam.updateProjectionMatrix();
+  obj.traverse((o) => {
+    const m = (o as THREE.Mesh).material;
+    for (const mat of Array.isArray(m) ? m : m ? [m] : []) {
+      const scans = mat.userData.scans as THREE.Texture[] | undefined;
+      if (scans) for (const t of scans) if (!t.userData.loaded && !missing.includes(t)) missing.push(t);
+    }
+  });
   try {
     r.render(scene, cam);
   } finally {

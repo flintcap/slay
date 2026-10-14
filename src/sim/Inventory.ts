@@ -23,6 +23,7 @@ import { INVENTORY_SIZE, STASH_TAB_SIZE, save } from '../core/Save';
 import { getBase, rarityRank, vendorPrice } from './Loot';
 import { isStackableCategory } from '../data/itemBases';
 import { getMaterial } from '../data/materials';
+import { GEMS, RUNES, getGem } from '../data/gems';
 import {
   areaAt,
   areasOf,
@@ -304,20 +305,43 @@ const CATEGORY_ORDER: ItemCategory[] = [
   'material',
 ];
 
-function sortKey(item: Item): [number, number, number, string] {
+/** Gem families in the order the gem list gives them, so rubies sit by rubies. */
+const GEM_FAMILY_ORDER = [...new Set(GEMS.map((g) => g.family))];
+const RUNE_ORDER = new Map(RUNES.map((r, i) => [r.id, i]));
+/** Set pieces sort as one block after the rest of the gear, set by set. */
+const SET_BLOCK = CATEGORY_ORDER.indexOf('charm') - 0.5;
+
+/**
+ * Where an item goes in a sorted grid: like with like. Gear by kind, then
+ * rarity, then base, so the same base of the same rarity sits together; set
+ * pieces in one block, a set at a time; gems by family and then quality;
+ * runes in rune order; potions and materials by kind.
+ */
+function sortKey(item: Item): Array<number | string> {
   const base = getBase(item.baseId);
-  const cat = CATEGORY_ORDER.indexOf(base.category);
-  return [cat < 0 ? 99 : cat, -rarityRank(item.rarity), -base.levelReq, item.name];
+  const c = CATEGORY_ORDER.indexOf(base.category);
+  const cat = c < 0 ? 99 : c;
+  if (item.rarity === 'set' && item.setId) return [SET_BLOCK, item.setId, cat, item.name];
+  if (base.category === 'gem') {
+    const g = getGem(item.baseId);
+    return g ? [cat, GEM_FAMILY_ORDER.indexOf(g.family), -g.qualityIndex, item.name] : [cat, 99, 0, item.name];
+  }
+  if (base.category === 'rune') return [cat, RUNE_ORDER.get(item.baseId) ?? 999, 0, item.name];
+  if (base.category === 'potion' || base.category === 'material') return [cat, item.baseId, -base.levelReq, item.name];
+  return [cat, -rarityRank(item.rarity), -base.levelReq, item.baseId, item.uniqueId ?? '', -(item.ilvl ?? 0), item.name];
 }
 
 function compareItems(a: Item, b: Item): number {
   const ka = sortKey(a);
   const kb = sortKey(b);
-  for (let i = 0; i < 3; i++) {
-    const d = (ka[i] as number) - (kb[i] as number);
-    if (d !== 0) return d;
+  for (let i = 0; i < Math.max(ka.length, kb.length); i++) {
+    const x = ka[i] ?? '';
+    const y = kb[i] ?? '';
+    if (x === y) continue;
+    if (typeof x === 'number' && typeof y === 'number') return x - y;
+    return String(x).localeCompare(String(y));
   }
-  return (ka[3] as string).localeCompare(kb[3] as string);
+  return 0;
 }
 
 /**

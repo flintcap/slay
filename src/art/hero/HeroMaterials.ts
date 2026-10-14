@@ -121,6 +121,8 @@ const PATTERN_DEPTH: Record<number, [number, number]> = { 1: [0.006, 0.085], 2: 
 function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
   const key = `tri|${o.albedo ? 'a' : ''}|${o.pattern?.kind ?? 0}`;
   triOptsOf.set(m, o);
+  // Read by the icon studio (art/Icons.ts), as on item materials.
+  m.userData.scans = o.albedo ? [o.albedo, o.normal] : [o.normal];
   m.customProgramCacheKey = () => key;
   const pat = o.pattern;
   m.onBeforeCompile = (sh) => {

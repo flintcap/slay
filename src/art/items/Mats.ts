@@ -18,7 +18,7 @@
 import * as THREE from 'three';
 import { loadTexture, textureReady } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
-import { allSetNames, setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
+import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
 
 /** An item texture set: folder under textures/items/ and the tile size on an item, metres. */
 interface ItemSet {
@@ -56,8 +56,12 @@ export function itemScansReady(): Promise<void> {
       const t = itemScan(name);
       waits.push(textureReady(t.albedo), textureReady(t.normal));
     }
-    // Pants are drawn in the hero's own gear materials (see `hero/PantsModel.ts`).
-    for (const name of allSetNames()) {
+    // The few world scans item surfaces borrow (`scanFor`). Not every world
+    // set: pants wear the hero's gear materials, which can be any of them,
+    // and waiting on all of those (23 MB) kept every icon blank for most of
+    // a minute on a first visit. An icon drawn before its scans arrive is
+    // drawn again when they do (Icons.ts).
+    for (const name of ['bark', 'cloth', 'bone', 'flesh', 'ice', 'slab'] as TextureSetName[]) {
       const t = setTextures(name);
       waits.push(textureReady(t.albedo), textureReady(t.normal));
     }
@@ -112,6 +116,9 @@ interface TriOpts {
 
 /** Patches a standard material to sample its maps triplanar in object space. */
 function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
+  // The icon studio reads these to tell a finished picture from one drawn
+  // before its scans arrived (Icons.ts).
+  m.userData.scans = [o.albedo, o.normal];
   m.customProgramCacheKey = () => 'item-tri';
   m.onBeforeCompile = (sh) => {
     sh.uniforms.triAlbedo = { value: o.albedo };

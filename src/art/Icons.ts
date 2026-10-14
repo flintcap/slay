@@ -12,8 +12,10 @@
  *    vocabulary in `Glyphs`
  *  - the brushes underneath all of it: `Paint`
  */
+import type * as THREE from 'three';
 import type { Item, DamageType, ItemVisual } from '../types';
-import { drawItemIcon as renderItemIcon, iconCanvasSize, itemScansReady, type IconSpec } from './items/IconRender';
+import { drawItemIcon as renderItemIcon, iconCanvasSize, iconScansMissing, itemScansReady, type IconSpec } from './items/IconRender';
+import { textureReady } from '../core/Assets';
 import { iconShape } from '../sim/Grid';
 import { paintSkillIcon, paintStatusIcon, paintAffixIcon } from './SkillIconArt';
 import { makeCanvas } from './Paint';
@@ -112,11 +114,29 @@ let pumping = 0;
 /** How long per frame to spend drawing icons. Roughly a third of a frame. */
 const ICON_BUDGET_MS = 5;
 
-function deliver(key: string, uri: string): void {
+function deliver(key: string, uri: string, final = true): void {
   const waiting = listeners.get(key);
   if (!waiting) return;
-  listeners.delete(key);
+  if (final) listeners.delete(key);
   for (const fn of waiting) fn(uri);
+}
+
+/** Scans that failed for good: an icon does not wait on them. */
+const neverLoads = new WeakSet<THREE.Texture>();
+const lateScans = (): THREE.Texture[] => iconScansMissing().filter((t) => !neverLoads.has(t));
+
+/**
+ * An icon drawn before all its scans had loaded is shown as it is and not
+ * kept: once they land it is queued again, and its slots are handed the
+ * finished picture.
+ */
+function redrawWhenLoaded(key: string, item: Item, form: IconForm, late: readonly THREE.Texture[]): void {
+  const gen = generation;
+  void Promise.all(late.map((t) => textureReady(t).then((ok) => ok || neverLoads.add(t)))).then(() => {
+    if (gen !== generation || itemCache.has(key)) return;
+    pending.set(key, { item, form });
+    schedulePump();
+  });
 }
 
 /**
@@ -131,10 +151,13 @@ function drawItemIconAsync(item: Item, key: string, form: IconForm): void {
   const dim = iconCanvasSize(spec);
   const { c, x } = makeCanvas(dim.w, dim.h);
   renderItemIcon(x, spec);
+  const late = lateScans();
+  const done = late.length === 0;
+  if (!done) redrawWhenLoaded(key, item, form, late);
   if (typeof c.toBlob !== 'function' || typeof URL?.createObjectURL !== 'function') {
     const uri = c.toDataURL('image/png');
-    itemCache.set(key, uri);
-    deliver(key, uri);
+    if (done) itemCache.set(key, uri);
+    deliver(key, uri, done);
     return;
   }
   encoding.add(key);
@@ -145,9 +168,9 @@ function drawItemIconAsync(item: Item, key: string, form: IconForm): void {
     let uri = itemCache.get(key);
     if (!uri) {
       uri = blob ? URL.createObjectURL(blob) : c.toDataURL('image/png');
-      itemCache.set(key, uri);
+      if (done) itemCache.set(key, uri);
     }
-    deliver(key, uri);
+    deliver(key, uri, done || itemCache.has(key));
   }, 'image/png');
 }
 
@@ -155,7 +178,7 @@ function drawItemIconAsync(item: Item, key: string, form: IconForm): void {
 let scansReady = false;
 let scansAsked = false;
 
-function pump(): void {
+function pump(deadline?: { didTimeout: boolean; timeRemaining(): number }): void {
   pumping = 0;
   if (!scansReady) {
     if (!scansAsked) {
@@ -168,6 +191,10 @@ function pump(): void {
     return;
   }
   const t0 = performance.now();
+  // Idle time the browser offers is free: use all of it, not just the
+  // budget. A pack of forty icons at one per callback took most of a minute
+  // to fill in while a map was running.
+  const budget = deadline && !deadline.didTimeout ? Math.max(ICON_BUDGET_MS, deadline.timeRemaining() - 1) : ICON_BUDGET_MS;
   for (const [key, job] of pending) {
     pending.delete(key);
     if (itemCache.has(key)) {
@@ -175,7 +202,7 @@ function pump(): void {
       continue;
     }
     drawItemIconAsync(job.item, key, job.form);
-    if (performance.now() - t0 > ICON_BUDGET_MS) break;
+    if (performance.now() - t0 > budget) break;
   }
   if (pending.size > 0) schedulePump();
 }
@@ -184,9 +211,9 @@ function schedulePump(): void {
   if (pumping) return;
   // In the idle time after a frame, not at its start: an icon picked up mid
   // fight no longer adds its drawing to the frame that is about to render.
-  // Capped, so a busy fight still sees its icons within a second.
-  const idle = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
-  pumping = idle ? idle(pump, { timeout: 1000 }) : requestAnimationFrame(pump);
+  // Capped, so a busy game with no idle time still draws a few a second.
+  const idle = (globalThis as { requestIdleCallback?: (cb: (d: { didTimeout: boolean; timeRemaining(): number }) => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  pumping = idle ? idle(pump, { timeout: 120 }) : requestAnimationFrame(() => pump());
 }
 
 /**
@@ -275,17 +302,18 @@ export function itemIconUri(item: Item, form: IconForm = 'square'): string {
 function drawItemIcon(item: Item, key: string, form: IconForm): string {
   const spec = specFor(item, form);
   const dim = iconCanvasSize(spec);
+  // A picture drawn before its scans landed is not kept, so the next ask draws it again.
   if (dim.w !== dim.h) {
     const { c, x } = makeCanvas(dim.w, dim.h);
     renderItemIcon(x, spec);
     const uri = c.toDataURL('image/png');
-    itemCache.set(key, uri);
+    if (lateScans().length === 0) itemCache.set(key, uri);
     return uri;
   }
   const { c, x } = scratchCanvas();
   renderItemIcon(x, spec);
   const uri = c.toDataURL('image/png');
-  itemCache.set(key, uri);
+  if (lateScans().length === 0) itemCache.set(key, uri);
   return uri;
 }
 

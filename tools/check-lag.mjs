@@ -18,6 +18,8 @@
  *   areas     the same glide crossing from one zone of the map into the next
  *   fight     the soak's autopilot: attack the nearest, a hotbar skill every
  *             25 frames
+ *   mini      (--only) walk up to the floor's mini boss and fight it
+ *   boss      (--only) load the arena's area, walk through the gate
  *
  * For each segment: frames, frame time p50 / p95 / max, how many frames went
  * over 50 and 100 ms, and what happened inside the worst of them: shader
@@ -58,6 +60,8 @@ const FIGHT_FRAMES = Number(arg('fight') ?? 300);
 // The glide: metres a frame, and how many monsters it visits.
 const STRIDE = Number(arg('stride') ?? 0.5);
 const CLS = arg('cls') ?? 'warden';
+// --depth: the tier of the map played (default 1).
+const DEPTH = Number(arg('depth') ?? 1);
 const MAXSTOPS = Number(arg('stops') ?? 14);
 const SPIKE = 50;
 
@@ -295,7 +299,7 @@ async function visit(label) {
     }
   }
 
-  const needTown = ONLY.some((o) => ['menus', 'view', 'areas', 'fight'].includes(o));
+  const needTown = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss'].includes(o));
   if (needTown) {
     await seg('town: enter', async (cls) => {
       if (window.SLAY.engine.currentSceneId !== 'charSelect') {
@@ -322,13 +326,13 @@ async function visit(label) {
   };
   if (ONLY.includes('menus')) await panels('town');
 
-  const needMap = ONLY.some((o) => ['menus', 'view', 'areas', 'fight'].includes(o));
+  const needMap = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss'].includes(o));
   if (needMap) {
-    await seg('map: enter', async () => {
-      await window.SLAY.engine.goTo('dungeon', { depth: 1, seed: 4243 });
+    await seg('map: enter', async (depth) => {
+      await window.SLAY.engine.goTo('dungeon', { depth, seed: 4243 });
       window.SLAY.debug.godMode(true);
       await new Promise((r) => setTimeout(r, 2000));
-    });
+    }, DEPTH);
     if (CENSUS) {
       // What the scene graph walks every frame, by top-level branch.
       const rows = await page.evaluate(() => {
@@ -477,6 +481,80 @@ async function visit(label) {
       }
       input.mouseRight = false;
     }, FIGHT_FRAMES);
+  }
+
+  // The floor's mini boss: the hero walks up to it and fights it, so its
+  // plate, its mechanic's first telegraphs and hazards land as in play.
+  if (ONLY.includes('mini')) {
+    await seg('mini: walk up and fight', async (n) => {
+      const e = window.SLAY.engine;
+      const scene = e.currentScene;
+      const mb = (scene.enemies ?? []).find((m) => m.miniBoss && m.alive !== false);
+      if (!mb) return;
+      const p = scene.player;
+      const raf = () => new Promise((r) => requestAnimationFrame(r));
+      // In from 30 m, at running pace, so it comes into view as it would.
+      const to = mb.root.position;
+      const from = { x: to.x + 30, z: to.z + 4 };
+      for (let i = 0; i <= 50; i++) {
+        const k = i / 50;
+        const x = from.x + (to.x + 3 - from.x) * k;
+        const z = from.z + (to.z - from.z) * k;
+        p.position.set(x, scene.mesh.floorY(x, z), z);
+        p.root.position.copy(p.position);
+        await raf();
+      }
+      const input = e.input;
+      const v = new p.position.constructor();
+      for (let i = 0; i < n && mb.alive !== false; i++) {
+        v.copy(mb.root.position).project(scene.camera);
+        input.ndc.set(Math.max(-1, Math.min(1, v.x)), Math.max(-1, Math.min(1, v.y)));
+        input.pointerOverUI = false;
+        input.mouseRight = i % 40 < 34;
+        await raf();
+      }
+      input.mouseRight = false;
+    }, FIGHT_FRAMES);
+  }
+
+  // The boss: the arena's area loaded behind the curtain as the exit does,
+  // then the hero walks through the gate, it shuts, the fight opens.
+  if (ONLY.includes('boss')) {
+    await seg('boss: arena area, curtain down', async () => {
+      const scene = window.SLAY.engine.currentScene;
+      const last = scene.run.levels.length - 1;
+      if (scene.levelIndex !== last) {
+        scene.loadLevel(last);
+        await scene.bossPortraitReady();
+        await window.SLAY.engine.prime(scene);
+      }
+      window.SLAY.debug.godMode(true);
+      await new Promise((r) => setTimeout(r, 2000));
+    });
+    await seg('boss: through the gate, first 8 s', async () => {
+      const scene = window.SLAY.engine.currentScene;
+      const b = scene.boss;
+      if (!b) return;
+      const p = scene.player;
+      const raf = () => new Promise((r) => requestAnimationFrame(r));
+      const gate = scene.arenaGate?.tiles?.[0];
+      const g = gate ? scene.mesh.tileToWorld(gate.x, gate.y) : { x: b.root.position.x, z: b.root.position.z + 14 };
+      const to = b.root.position;
+      // From outside the gate to a few metres from the boss.
+      const from = { x: g.x + (g.x - to.x) * 0.3, z: g.z + (g.z - to.z) * 0.3 };
+      for (let i = 0; i <= 40; i++) {
+        const k = i / 40;
+        const x = from.x + (to.x - from.x) * k * 0.75;
+        const z = from.z + (to.z - from.z) * k * 0.75;
+        p.position.set(x, scene.mesh.floorY(x, z), z);
+        p.root.position.copy(p.position);
+        await raf();
+      }
+      const t0 = performance.now();
+      while (performance.now() - t0 < 8000) await raf();
+      window.__lag.bossEngaged = !!b.engaged;
+    });
+    console.log(`      boss engaged: ${await page.evaluate(() => window.__lag.bossEngaged)}`);
   }
 
   // The way on: into the exit, through the curtain, into the next area.
