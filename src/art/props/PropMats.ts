@@ -134,9 +134,13 @@ const PROP_LIB: Record<string, PropSurfaceDef> = {
   'prop.masonry': PS('masonry', undefined, [0.62, 0.98], 0, 1.15),
   'prop.masonry.dark': PS('masonry', 0x403b33, [0.64, 0.98], 0, 1.2),
   'prop.masonry.pale': PS('masonry', 0x8a8070, [0.6, 0.96], 0, 1.1),
-  'prop.iron': PS('ironplate', 0x34363a, [0.34, 0.74], 0.85, 1.0, { metres: 0.9 }),
-  'prop.iron.rust': PS('ironplate', 0x3a2c25, [0.55, 0.95], 0.6, 1.15, { metres: 0.9 }),
-  'prop.iron.black': PS('ironplate', 0x2e2f33, [0.34, 0.7], 0.75, 1.0, { metres: 0.9 }),
+  // Iron is lit mostly by what it reflects, and a dungeon gives it little to
+  // reflect: at full metal and near-black base, gears and pipes read as flat
+  // black cut-outs lying on the floor (w-foundry). Less metal, a lighter base:
+  // still dark iron, now shaded by the torches.
+  'prop.iron': PS('ironplate', 0x4a4c50, [0.4, 0.78], 0.55, 1.0, { metres: 0.9 }),
+  'prop.iron.rust': PS('ironplate', 0x5a4032, [0.6, 0.95], 0.3, 1.15, { metres: 0.9 }),
+  'prop.iron.black': PS('ironplate', 0x3e3f44, [0.4, 0.74], 0.45, 1.0, { metres: 0.9 }),
   'prop.bronze': PS('ironplate', 0x6e5532, [0.26, 0.6], 1, 0.8, { metres: 0.9 }),
   'prop.gold': PS('ironplate', 0xb88f3e, [0.16, 0.42], 1, 0.6, { metres: 0.9 }),
 };

@@ -839,6 +839,17 @@ export class DungeonMesh {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
+    // The per-corner strength rides in the world-context attribute; additive,
+    // so scaling the colour by it is the fade.
+    veinMat.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', `#include <common>\nattribute float ${WORLD_ENV_ATTRIBUTE};\nvarying float vVein;`)
+        .replace('#include <begin_vertex>', `#include <begin_vertex>\nvVein = ${WORLD_ENV_ATTRIBUTE};`);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vVein;')
+        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb *= vVein;');
+    };
+    veinMat.customProgramCacheKey = () => 'world-vein';
     this.ownedMat.push(veinMat);
     // The rock the level is carved out of. Dark, matte, and lit only by the
     // ambient term: it is the mass around the dungeon, not a surface anyone is
@@ -1166,7 +1177,11 @@ export class DungeonMesh {
               // surface sits a little below the bank and the ground's own
               // slope draws the shore. Standing above the bank, it showed
               // every tile's square edge as a stair step.
-              surfs[LIQ].flat(wx, outdoor ? hy - OUTDOOR_LIQ_DROP : hy + 0.13, wz, HALF, true, x % 4, y % 4, 1, this.shoreContact(x, y, v));
+              // Indoors water stands a hand deep, so a hero wades in it; lava
+              // lies nearly flush with the floor. Raised the same 13 cm, a
+              // channel of it read as a glowing card floating over the stone.
+              const lift = v === T_LAVA ? 0.04 : 0.13;
+              surfs[LIQ].flat(wx, outdoor ? hy - OUTDOOR_LIQ_DROP : hy + lift, wz, HALF, true, x % 4, y % 4, 1, this.shoreContact(x, y, v));
               if (v === T_LAVA || art.liquid === 'voidwater') hotTiles.push({ x, y, h: hy });
             } else if (outdoor) {
               // A bank tile beside a pool carries the pool's surface on under
@@ -1189,10 +1204,14 @@ export class DungeonMesh {
               }
             }
 
-            // Emissive veins in the cracks.
+            // Emissive veins in the cracks. Strength is read at each corner
+            // and fades to nothing where the noise drops below the line, so a
+            // vein field ends in a soft edge. A tile lit or unlit as a whole
+            // drew hard squares of orange haze on the floor (w-foundry).
             if (art.veinDensity > 0 && v !== T_WATER) {
-              const n = this.noise.ridged(x * 0.09 + 11, y * 0.09, 3);
-              if (n > 1 - art.veinDensity * 0.5) {
+              const vein = (px: number, py: number): number => this.veinAt(px, py, art.veinDensity);
+              const cw = FLAT_CORNERS.map(([dx, dz]) => vein(x + dx * 0.5, y + dz * 0.5));
+              if (Math.max(...cw) > 0) {
                 // Whole tile, UVs continuous across tiles (one repeat per 4
                 // tiles) so the cracks run on from one tile into the next.
                 if (this.terrain) {
@@ -1205,9 +1224,10 @@ export class DungeonMesh {
                     const qx = wx + sx * q;
                     const qz = wz + sz * q;
                     const ys = FLAT_CORNERS.map(([dx, dz]) => this.terrain!.heightAt(qx + dx * q, qz + dz * q) + 0.04);
-                    surfs[VEIN].flat(qx, hy, qz, q, true, x * 0.25 + (sx > 0 ? 0.125 : 0), y * 0.25 + (sz > 0 ? 0.125 : 0), 0.125, undefined, 0, ys);
+                    const qw = FLAT_CORNERS.map(([dx, dz]) => vein(x + (sx + dx) * 0.25, y + (sz + dz) * 0.25));
+                    surfs[VEIN].flat(qx, hy, qz, q, true, x * 0.25 + (sx > 0 ? 0.125 : 0), y * 0.25 + (sz > 0 ? 0.125 : 0), 0.125, qw, 0, ys);
                   }
-                } else surfs[VEIN].flat(wx, hy + 0.02, wz, HALF, true, x * 0.25, y * 0.25, 0.25);
+                } else surfs[VEIN].flat(wx, hy + 0.02, wz, HALF, true, x * 0.25, y * 0.25, 0.25, cw);
               }
             }
 
@@ -1350,6 +1370,18 @@ export class DungeonMesh {
       out.push(a > 0 && b > 0 ? 1 : Math.min(1, (a + b + c) * 0.5));
     }
     return out;
+  }
+
+  /**
+   * How strongly a glowing vein shows at a point in tile units, 0 to 1: the
+   * ridged noise the veins have always used, past the biome's line, eased in
+   * over a short band so the field fades at its edge rather than stopping.
+   */
+  private veinAt(px: number, py: number, density: number): number {
+    const n = this.noise.ridged(px * 0.09 + 11, py * 0.09, 3);
+    const line = 1 - density * 0.5;
+    const t = clamp((n - (line - 0.03)) / 0.12, 0, 1);
+    return t * t * (3 - 2 * t);
   }
 
   private makeLiquidMaterial(): THREE.Material {

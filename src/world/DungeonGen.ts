@@ -638,6 +638,8 @@ export interface RunPlan {
   biome?: BiomeId;
   quest?: (biome: BiomeId) => QuestInstance;
   bossId?: string;
+  /** The dressed version of the plan's biome, for renders (`debug.previewBiome`). */
+  variant?: string;
 }
 
 /** Installed by `sim/Chains.ts`. Generation is unchanged without it. */
@@ -675,7 +677,7 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
   // so two areas of one biome read as one place, and re-rolled next map.
   const variants = new Map<BiomeId, string | undefined>();
   const variantOf = (b: BiomeId): string | undefined => {
-    if (!variants.has(b)) variants.set(b, pickVariant(b, depth, runRng.fork(`variant:${b}`)));
+    if (!variants.has(b)) variants.set(b, plan?.variant && b === plan.biome ? plan.variant : pickVariant(b, depth, runRng.fork(`variant:${b}`)));
     return variants.get(b);
   };
   const variant = variantOf(biome);
