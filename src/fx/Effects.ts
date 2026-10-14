@@ -74,6 +74,9 @@ export interface ElementLook {
 const IMPACT_SPRITE = 1.3;
 /** Flash light (summed intensity) that may stack before effects dim. */
 const GLARE_FREE = 90;
+/** Motifs in the air before new ones thin, and seconds for that count to fall by e. */
+const MOTIF_CROWD = 3;
+const MOTIF_DECAY = 0.7;
 /** Seconds for piled-up glare to fall by e. */
 const GLARE_DECAY = 0.35;
 /** Effects never dim below this share of their light. */
@@ -487,6 +490,8 @@ export class EffectSystem {
   private clock = 0;
   /** Recent flash light (decays): how much brightness is piling up right now. */
   private glare = 0;
+  /** Motifs started lately, decaying over `MOTIF_DECAY` seconds. */
+  private motifLoad = 0;
   private liveAuras = 0;
   /** Decorative effects dropped by the budget since boot. */
   culled = 0;
@@ -1638,8 +1643,13 @@ export class EffectSystem {
     const l = lookOf(school, opts.color);
     const lead = Math.max(0, opts.delay ?? 0);
     const size = opts.size ?? 1;
-    let cap = pieceCap(draw);
-    if (this.quality.fxScale < 0.5) cap = Math.max(2, Math.ceil(cap * 0.5));
+    // Fewer pieces on the lower quality steps, and fewer again in a busy
+    // fight: past three motifs in the air at once, each new one thins (down
+    // to two pieces) and skips its flash, so a screen full of spells stays
+    // drawable. Big soft pieces piling up is what drops the frame rate.
+    const crowd = Math.min(1, MOTIF_CROWD / Math.max(1, this.motifLoad));
+    this.motifLoad += 1;
+    const cap = Math.max(2, Math.ceil(pieceCap(draw) * Math.min(1, this.quality.fxScale) * crowd));
     const ps = thin(MOTIF_MOTIONS[motion](frame, this.rng), cap);
     const fy = floorAt(frame.x, frame.z);
     const tint = opts.color !== undefined && saturated(opts.color) ? opts.color : undefined;
@@ -1704,7 +1714,7 @@ export class EffectSystem {
         }
         break;
     }
-    this.delay(lead, () => this.flash(frame.x, fy + 1.3, frame.z, l.light, 5, 6, 0.22));
+    if (crowd >= 1) this.delay(lead, () => this.flash(frame.x, fy + 1.3, frame.z, l.light, 5, 6, 0.22));
   }
 
   /** Starts one moving piece of a motif. */
@@ -1934,6 +1944,7 @@ export class EffectSystem {
     // effect together (fast down, slow back up) so a busy fight stays coloured
     // instead of going white.
     this.glare *= Math.exp(-dt / GLARE_DECAY);
+    this.motifLoad *= Math.exp(-dt / MOTIF_DECAY);
     const want = Math.max(EXPOSURE_FLOOR, Math.min(1, Math.sqrt(GLARE_FREE / Math.max(GLARE_FREE, this.glare))));
     const ex = FX_EXPOSURE.value;
     FX_EXPOSURE.value = ex + (want - ex) * Math.min(1, dt * (want < ex ? 14 : 2.5));
