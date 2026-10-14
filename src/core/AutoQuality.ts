@@ -49,6 +49,15 @@ const RES_SLOW_P90 = 26;
 const RES_WAIT_S = 8;
 /** A resolution change is a small hitch (render targets are resized). */
 const RES_SETTLE_MS = 2500;
+/**
+ * A step down must buy at least this share of frame time back. One that
+ * does not (the frames are slow for some other reason: another tab, a
+ * throttled laptop, the game's own scripts) is put back, and nothing is
+ * stepped down again for NO_GAIN_HOLD_S: drawing worse buys nothing then,
+ * and a softer, shimmering picture was all the player got for it.
+ */
+const MIN_GAIN = 0.08;
+const NO_GAIN_HOLD_S = 120;
 
 export interface QualityTarget {
   readonly qualityLevel: QualityId;
@@ -67,6 +76,10 @@ export class AutoQuality {
   /** Index into RES_STEPS. */
   private res = 0;
   private readonly enabled: boolean;
+  /** The last step down, waiting to show it helped: the median before it, and how to undo it. */
+  private trial: { median: number; undo: () => void } | null = null;
+  /** No step down before this (performance.now ms): the last one bought nothing. */
+  private holdUntil = 0;
 
   constructor(
     private readonly target: QualityTarget,
@@ -113,18 +126,38 @@ export class AutoQuality {
     const median = sorted[Math.floor(sorted.length * 0.5)]!;
     const p90 = sorted[Math.floor(sorted.length * 0.9)]!;
 
+    // The first judgement after a step down: did it pay?
+    const trial = this.trial;
+    this.trial = null;
+    if (trial && median > trial.median * (1 - MIN_GAIN)) {
+      trial.undo();
+      this.holdUntil = now + NO_GAIN_HOLD_S * 1000;
+      return;
+    }
+
     const slow = median > SLOW_MEDIAN || p90 > SLOW_P90;
     if (slow || median > RES_SLOW_MEDIAN || p90 > RES_SLOW_P90) {
       this.calmS = 0;
+      if (now < this.holdUntil) return;
       // Fewer pixels first; the look goes only when that is not enough.
       if (this.res < RES_STEPS.length - 1) {
+        const back = this.res;
         this.setRes(this.res + 1);
+        this.trial = { median, undo: () => this.setRes(back) };
         return;
       }
       if (slow && cur > 0) {
         // Too much soon after a step up: wait longer before the next try.
         if (now - this.lastUpAt < 30000) this.waitS = Math.min(this.waitS * 2, 600);
+        const res = this.res;
         this.change(cur - 1);
+        this.trial = {
+          median,
+          undo: () => {
+            this.change(cur);
+            this.setRes(res);
+          },
+        };
       }
       return;
     }
