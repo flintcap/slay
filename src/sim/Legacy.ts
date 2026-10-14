@@ -383,6 +383,21 @@ export function applyLegacyStats(s: Stats): void {
   }
 }
 
+/**
+ * A short fingerprint of the bought perks. The live hero watches it, so a
+ * perk raised or refunded mid-game reaches the hero now, not on the next
+ * level-up or gear change.
+ */
+export function legacyKey(): string {
+  const a = boundAccount();
+  if (!a) return '';
+  const p = legacyOf(a).perks;
+  return Object.keys(p)
+    .sort()
+    .map((k) => `${k}${p[k]}`)
+    .join(',');
+}
+
 /** Experience multiplier from Scholar of Ruin. */
 export function legacyXpMultiplier(): number {
   const a = boundAccount();

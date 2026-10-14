@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Character, Stats, DamagePacket, EquipSlot, StatusApplication } from '../types';
 import { charmKey, computeStats } from '../sim/Stats';
+import { legacyKey } from '../sim/Legacy';
 import { mitigate } from '../sim/Combat';
 import { StatusContainer, adoptStatuses, releaseAdopted } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
@@ -616,11 +617,13 @@ export class Player {
     }
     if (res.dirty) this.refreshStats();
     // Charms work from the pack, and the pack changes through a dozen doors
-    // (pickup, drag, vendor, vault). Watch what is carried instead.
+    // (pickup, drag, vendor, vault). Watch what is carried instead. Legacy
+    // perks ride along: raising one in town changed the sheet but not the
+    // hero standing there.
     this.charmCheck -= dt;
     if (this.charmCheck <= 0) {
       this.charmCheck = 0.4;
-      const key = charmKey(this.character);
+      const key = `${charmKey(this.character)}|${legacyKey()}`;
       if (key !== this.charmSeen) {
         const first = this.charmSeen === null;
         this.charmSeen = key;
