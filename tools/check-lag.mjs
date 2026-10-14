@@ -20,6 +20,8 @@
  *             25 frames
  *   mini      (--only) walk up to the floor's mini boss and fight it
  *   boss      (--only) load the arena's area, walk through the gate
+ *   cast      (--only, with --skill=<id>) the hero is given the skill before
+ *             the map, then casts it at the nearest monster, three times
  *   --mapfirst  with menus: skip the town panels, so the map opens them first
  *   --shadows   list each kind of shadow look, per scene, and when it was first drawn
  *
@@ -66,6 +68,8 @@ const CLS = arg('cls') ?? 'warden';
 const DEPTH = Number(arg('depth') ?? 1);
 const MAXSTOPS = Number(arg('stops') ?? 14);
 const SPIKE = 50;
+// --skill: the skill the cast segment gives the hero and casts.
+const SKILL = arg('skill');
 
 // --dir: serve another build (a baseline built in a scratch copy).
 const server = await serveSingle(PORT, arg('dir') ?? 'dist-single');
@@ -361,17 +365,20 @@ async function visit(label) {
     }
   }
 
-  const needTown = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss'].includes(o));
+  const needTown = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss', 'cast'].includes(o));
   if (needTown) {
-    await seg('town: enter', async (cls) => {
+    await seg('town: enter', async ({ cls, skill }) => {
       if (window.SLAY.engine.currentSceneId !== 'charSelect') {
         localStorage.clear();
         window.SLAY.save.hardReset();
       }
       window.SLAY.debug.makeCharacter(cls, 1, 4242);
+      // The skill the cast segment fires, learnt before the map is built.
+      const c = window.SLAY.save?.account?.current;
+      if (skill && c?.skills) c.skills[skill] = 3;
       await window.SLAY.engine.goTo('town');
       await new Promise((r) => setTimeout(r, 2000));
-    }, CLS);
+    }, { cls: CLS, skill: SKILL });
   }
   const PANELS = ['inventory', 'character', 'skills', 'map', 'journal', 'questLog'];
   const panels = async (where) => {
@@ -414,7 +421,7 @@ async function visit(label) {
         };
       }
   });
-  const needMap = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss'].includes(o));
+  const needMap = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss', 'cast'].includes(o));
   if (needMap) {
     await seg('map: enter', async (depth) => {
       await window.SLAY.engine.goTo('dungeon', { depth, seed: 4243 });
@@ -569,6 +576,32 @@ async function visit(label) {
       }
       input.mouseRight = false;
     }, FIGHT_FRAMES);
+  }
+
+  // One skill, cast three times at the nearest monster with time between.
+  if (ONLY.includes('cast') && SKILL) {
+    for (let k = 1; k <= 3; k++) {
+      await seg(`cast: ${SKILL} ${k}`, async (id) => {
+        const scene = window.SLAY.engine.currentScene;
+        const pl = scene.player;
+        let best = null;
+        let bestD = Infinity;
+        for (const m of scene.enemies ?? []) {
+          if (m.dead || m.alive === false) continue;
+          const d = m.root.position.distanceToSquared(pl.position);
+          if (d < bestD) (bestD = d), (best = m);
+        }
+        if (best && bestD > 8 * 8) {
+          pl.position.set(best.root.position.x + 5, pl.position.y, best.root.position.z);
+          pl.root.position.copy(pl.position);
+          await new Promise((r) => setTimeout(r, 800));
+        }
+        const at = (best?.root.position ?? pl.position).clone().setY(0);
+        window.__lag.castFired = scene.skills.cast(id, pl, at, scene.context?.(), scene.enemies, null);
+        await new Promise((r) => setTimeout(r, 2500));
+      }, SKILL);
+      console.log(`      cast fired: ${await page.evaluate(() => window.__lag.castFired)}`);
+    }
   }
 
   // The floor's mini boss: the hero walks up to it and fights it, so its
