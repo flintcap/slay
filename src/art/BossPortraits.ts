@@ -15,6 +15,7 @@
  */
 import * as THREE from 'three';
 import { BOSSES } from '../data/bosses';
+import { WARDENS } from '../data/wardens';
 import { assetStats } from '../core/Assets';
 import { Random, hashString } from '../core/RNG';
 import { lookFor } from './creatures/Looks';
@@ -35,7 +36,7 @@ function css(c: number, a = 1): string {
 }
 
 function bossOf(idOrName: string) {
-  return BOSSES.find((x) => x.id === idOrName || x.name === idOrName) ?? null;
+  return [...BOSSES, ...WARDENS].find((x) => x.id === idOrName || x.name === idOrName) ?? null;
 }
 
 /** Resolves once the textures in flight have landed, or after `ms`. */

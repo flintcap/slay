@@ -14,6 +14,10 @@ import { BOSSES, BOSS_MOODS, MOOD_FROM, bossNumbers, bossSize, pickBossForDepth,
 import { Boss } from '../src/entities/Boss';
 import { bossHeight } from '../src/art/creatures/LookBoss';
 import { Random, streamFor } from '../src/core/RNG';
+import { WARDENS, pickWarden } from '../src/data/wardens';
+import { ABILITIES } from '../src/entities/Abilities';
+import { MONSTERS } from '../src/data/monsters';
+import { generateRun, isWalkable, setMonsterCatalog } from '../src/world/DungeonGen';
 import type { BossDef, BossMood, BossSize } from '../src/types';
 
 declare const process: { argv: string[] };
@@ -179,6 +183,65 @@ const { cases, check } = caseLog();
     const twice = h.second - p.second - p.first;
     check('haunted: fallen adds rise once, and only once', h.called > 0 && h.first - p.first === h.called && twice === 0, `${h.called} called, ${h.first - p.first} rose, ${twice} rose twice`);
   }
+}
+
+// --- wardens ----------------------------------------------------------------
+{
+  const abil = new Set(ABILITIES.map((a) => a.id));
+  const mons = new Set(MONSTERS.map((m) => m.id));
+  const bad: string[] = [];
+  for (const w of WARDENS) {
+    if (!w.warden) bad.push(`${w.id}: not marked a warden`);
+    if (bossSize(w) !== 'person' && bossSize(w) !== 'tall') bad.push(`${w.id}: ${bossSize(w)}`);
+    if (w.phases.length > 2) bad.push(`${w.id}: ${w.phases.length} phases`);
+    for (const ph of w.phases) for (const a of ph.abilities) if (!abil.has(a)) bad.push(`${w.id}: no ability ${a}`);
+    for (const a of w.adds ?? []) if (!mons.has(a)) bad.push(`${w.id}: no monster ${a}`);
+  }
+  check('wardens: sixteen, small, short, and sound', WARDENS.length === 16 && bad.length === 0, bad.length ? bad.slice(0, 6).join('; ') : `${WARDENS.length} wardens`);
+  const asBoss = { ...WARDENS[0]!, warden: false };
+  const share = bossNumbers(WARDENS[0]!).life / bossNumbers(asBoss).life;
+  check('wardens: a third of a boss of the same kind', share > 0.25 && share < 0.4, `life share ${share.toFixed(2)}`);
+  const picked = new Set<string>();
+  for (let s = 0; s < 300; s++) {
+    const id = pickBossForDepth(40, 'crypt', new Random(s)).id;
+    if (WARDENS.some((w) => w.id === id)) picked.add(id);
+  }
+  check('wardens: never picked as a run\'s boss', picked.size === 0, picked.size ? [...picked].join(', ') : 'none in 300 picks');
+  let early = 0;
+  for (let s = 0; s < 200; s++) {
+    const w = pickWarden(3, 'crypt', new Random(s));
+    if (w && w.minDepth > 3) early++;
+  }
+  check('wardens: none before its tier', early === 0, `${early} too early`);
+
+  // Placement: about a third of the floors that are not the boss's.
+  setMonsterCatalog({ wardenFor: (depth, biome, rng) => pickWarden(depth, biome, rng)?.id ?? null });
+  let floors = 0;
+  let kept = 0;
+  const wrong: string[] = [];
+  for (let seed = 1; seed <= 24; seed++) {
+    const run = generateRun(4 + (seed % 9), seed * 7919, 'warden');
+    for (const lv of run.levels) {
+      if (lv.isBossLevel) {
+        if (lv.warden) wrong.push(`seed ${seed}: warden on the boss floor`);
+        continue;
+      }
+      floors++;
+      const w = lv.warden;
+      if (!w) continue;
+      kept++;
+      const r = w.rect;
+      const inRoom = (x: number, y: number): boolean => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+      if (!isWalkable(lv, w.x, w.y) || !inRoom(w.x, w.y)) wrong.push(`seed ${seed}: warden off its room`);
+      if (!lv.props.some((p) => p.interact === 'chest.warden' && inRoom(p.x, p.y))) wrong.push(`seed ${seed}: no warden chest`);
+      if (lv.spawns.some((sp) => inRoom(sp.x, sp.y))) wrong.push(`seed ${seed}: a pack in the warden's room`);
+      if (inRoom(lv.entry.x, lv.entry.y) || inRoom(lv.exit.x, lv.exit.y)) wrong.push(`seed ${seed}: warden room on a way through`);
+    }
+  }
+  const rate = kept / Math.max(1, floors);
+  check('wardens: about one floor in three', rate > 0.18 && rate < 0.45, `${kept} of ${floors} floors (${Math.round(rate * 100)}%)`);
+  check('wardens: in a side room, with a chest, alone', wrong.length === 0, wrong.length ? wrong.slice(0, 4).join('; ') : `${kept} rooms`);
+  setMonsterCatalog({});
 }
 
 console.log(JSON.stringify({ cases }));

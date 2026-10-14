@@ -884,6 +884,33 @@ Boss.fumble(cost: 'heal' | 'shield' | 'hold' | 'adds' | 'reset', ctx: CombatCont
 `tools/check-fair.mjs` proves it, including a fumbler who gets every rule
 wrong and must still win in at most twice the time.
 
+### Boss kinds, memory, moods and wardens — `src/data/bosses.ts`, `src/data/wardens.ts`
+
+Every `BossDef` names a `profile` (duelist, bulwark, sponge, glass, swarm,
+bruiser) and a `shape` (straight, phased, puzzle). Its size follows from
+`scale` unless `size` says otherwise, and `reach` keeps a resized boss's moves
+as long as they were tuned (`reachOf` in Abilities). Data without its own
+`lifeMul`/`damageMul` takes them from the profile and tier.
+
+```ts
+export function bossNumbers(b: BossDef): { life; damage; speed; defense; range };
+export function bossSize(b): 'person' | 'tall' | 'large' | 'giant';
+// A life meets every boss of its depth before any twice; the account's
+// least-fought come up more. `sim/BossMemory.ts` builds the memory from the
+// save and records each fight on `boss:engaged` (which now carries `id`).
+export function pickBossForDepth(depth, biome, rng, memory?: BossMemory | null): BossDef;
+// From tier 15: wounded, crowned, hungry, ancient, haunted. Rolled per run
+// (`DungeonRun.bossMood`), passed to `new Boss(def, depth, rng, mood)`.
+export function rollBossMood(def, depth, rng): BossMood | null;
+export function withMood(def, mood): BossDef;
+// About one floor in three keeps a warden: `DungeonLevel.warden` names it and
+// its room; its chest (`chest.warden`) stays shut until it falls.
+export function pickWarden(depth, biome, rng, memory?): BossDef | null;
+```
+
+The world generator gets both through `MonsterCatalog.wardenFor` and
+`moodFor`. `tools/check-bosssys.mjs` covers all of it.
+
 ## `src/ui/UIRoot.ts` — owned by UI
 
 ```ts

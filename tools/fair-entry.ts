@@ -16,6 +16,7 @@ import { arena, caseLog } from './combat-arena';
 import { FairLedger, bossHitCap, HOLD_MAX, HOLD_IMMUNE, HEAVY_MUL, WARN_MIN } from '../src/sim/FairFight';
 import { Boss, softEnrageAfter } from '../src/entities/Boss';
 import { BOSSES } from '../src/data/bosses';
+import { WARDENS } from '../src/data/wardens';
 import { Player } from '../src/entities/Player';
 import { createCharacter } from '../src/sim/Character';
 import { getAbility } from '../src/entities/Abilities';
@@ -87,7 +88,7 @@ const near = (a: number, b: number): boolean => Math.abs(a - b) < 1e-6;
 // --- every boss: heavy moves warn ------------------------------------------
 {
   const late: string[] = [];
-  for (const def of BOSSES) {
+  for (const def of [...BOSSES, ...WARDENS]) {
     const boss = new Boss(def, def.minDepth + 2, new Random(9));
     for (const ph of def.phases) {
       for (const id of ph.abilities) {
@@ -99,7 +100,7 @@ const near = (a: number, b: number): boolean => Math.abs(a - b) < 1e-6;
       }
     }
   }
-  check('bosses: every heavy move warns 0.8 s ahead, even enraged', late.length === 0, late.length ? late.slice(0, 8).join(', ') : 'all heavy moves');
+  check('bosses and wardens: every heavy move warns 0.8 s ahead, even enraged', late.length === 0, late.length ? late.slice(0, 8).join(', ') : 'all heavy moves');
 }
 
 // --- fumbles ----------------------------------------------------------------

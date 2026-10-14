@@ -9,6 +9,7 @@
  */
 import type { MonsterVisual } from '../../types';
 import { MONSTERS, BOSSES } from '../../data/monsters';
+import { WARDENS } from '../../data/wardens';
 import type { CreatureLook } from './Creature';
 import { genericLook } from './LookGeneric';
 import { UNDEAD } from './LookUndead';
@@ -57,6 +58,7 @@ function idOf(v: MonsterVisual): { id: string; family: string; scale: number } |
     ids = new WeakMap();
     for (const m of MONSTERS) ids.set(m.visual, { id: m.id, family: m.family, scale: m.scale });
     for (const b of BOSSES) ids.set(b.visual, { id: b.id, family: b.family, scale: b.scale });
+    for (const w of WARDENS) ids.set(w.visual, { id: w.id, family: w.family, scale: w.scale });
   }
   return ids.get(v) ?? null;
 }

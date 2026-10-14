@@ -190,6 +190,8 @@ export interface MonsterCatalog {
    * Optional so an older catalogue still satisfies the contract.
    */
   nameFor?(monsterId: string, biome: BiomeId, depth: number, rng: Rng): string | null;
+  /** The warden for a floor that rolled one, or null. Optional: without it floors have none. */
+  wardenFor?(depth: number, biome: BiomeId, rng: Rng): string | null;
   /** The boss's mood for this run, or null. Optional: without it bosses have none. */
   moodFor?(bossId: string, depth: number, rng: Rng): BossMood | null;
 }
@@ -274,6 +276,7 @@ export function setMonsterCatalog(c: Partial<MonsterCatalog>): void {
     bossFor: c.bossFor ?? fallbackCatalog.bossFor,
     nameFor: c.nameFor,
     moodFor: c.moodFor,
+    wardenFor: c.wardenFor,
   };
 }
 
@@ -867,7 +870,78 @@ export function generateLevel(
     }
   }
 
+  // --- A floor warden ------------------------------------------------------
+  // Its own stream, so a warden moves no other roll of the floor.
+  if (!isBossLevel && catalog.wardenFor) {
+    try {
+      placeWarden(level, streamFor(seed, `warden:${depth}:${levelIndex}`));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[world] warden placement failed', err);
+    }
+  }
+
   return level;
+}
+
+/** Chance a floor that is not a boss floor keeps a warden (data/wardens.ts). */
+const WARDEN_FLOOR_CHANCE = 1 / 3;
+
+/**
+ * About one floor in three: a warden in a side room, with a chest of its
+ * own. The room is an ordinary or treasure room well away from both ways
+ * through, a dead end when there is one, and big enough to fight in. The
+ * warden fights alone: the room's packs move out.
+ */
+function placeWarden(level: DungeonLevel, rng: Rng): void {
+  if (rng.next() >= WARDEN_FLOOR_CHANCE) return;
+  const far = (r: DungeonRoom): number =>
+    Math.min(Math.hypot(r.center.x - level.entry.x, r.center.y - level.entry.y), Math.hypot(r.center.x - level.exit.x, r.center.y - level.exit.y));
+  const ar = level.arena;
+  const rooms = level.rooms.filter(
+    (r) =>
+      (r.kind === 'normal' || r.kind === 'treasure' || r.kind === 'ambush') &&
+      r.w >= 7 &&
+      r.h >= 7 &&
+      far(r) >= 18 &&
+      !(ar && r.x < ar.x + ar.w && r.x + r.w > ar.x && r.y < ar.y + ar.h && r.y + r.h > ar.y),
+  );
+  if (!rooms.length) return;
+  rooms.sort((a, b) => (a.links.length === 1 ? 0 : 1) - (b.links.length === 1 ? 0 : 1) || far(b) - far(a));
+  const room = rooms[0]!;
+  const id = catalog.wardenFor?.(level.depth, level.biome, rng);
+  if (!id) return;
+  const cx = Math.round(room.center.x);
+  const cy = Math.round(room.center.y);
+  const stand = nearestOpen(level, cx, cy, 3);
+  if (!stand) return;
+  // Its chest at the back of the room, on open ground, off the warden's tile.
+  // The room's own chests stay: a quest may be counting on them.
+  const chest = nearestOpen(level, Math.round(room.x + room.w * 0.5), room.y + room.h - 2, 3, stand);
+  if (!chest) return;
+  const inRoom = (x: number, y: number): boolean => x >= room.x && y >= room.y && x < room.x + room.w && y < room.y + room.h;
+  level.spawns = level.spawns.filter((s) => !inRoom(s.x, s.y));
+  level.props.push({ x: chest.x, y: chest.y, rotation: rng.range(-0.3, 0.3), kind: chestKindFor('chest.rare'), interact: 'chest.warden' });
+  level.warden = { id, room: room.id, x: stand.x, y: stand.y, rect: { x: room.x, y: room.y, w: room.w, h: room.h } };
+}
+
+/** The nearest walkable tile to (x, y) within `r`, not `avoid` and not a stair. */
+function nearestOpen(level: DungeonLevel, x: number, y: number, r: number, avoid?: Vec2): Vec2 | null {
+  for (let d = 0; d <= r; d++) {
+    for (let dy = -d; dy <= d; dy++) {
+      for (let dx = -d; dx <= d; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue;
+        const tx = x + dx;
+        const ty = y + dy;
+        if (avoid && avoid.x === tx && avoid.y === ty) continue;
+        if (!isWalkable(level, tx, ty)) continue;
+        if ((tx === level.entry.x && ty === level.entry.y) || (tx === level.exit.x && ty === level.exit.y)) continue;
+        if (level.props.some((p) => Math.abs(p.x - tx) < 1 && Math.abs(p.y - ty) < 1)) continue;
+        return { x: tx, y: ty };
+      }
+    }
+  }
+  return null;
 }
 
 /** Dungeon events (`scenes/RunEvents.ts`): cursed chests, ambushes, shrines, runners. */

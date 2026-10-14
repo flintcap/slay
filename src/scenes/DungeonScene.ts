@@ -28,6 +28,7 @@ import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy'
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { BOSS_MOODS } from '../data/bosses';
+import { getWarden } from '../data/wardens';
 import { generateRun, isWalkable, BIOMES, zoneAt } from '../world/DungeonGen';
 import { DungeonMesh, applyBiomeLighting, type BiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
@@ -210,6 +211,10 @@ export class DungeonScene extends GameScene {
   private player!: Player;
   private enemies: Enemy[] = [];
   private boss: Boss | null = null;
+  /** This floor's warden (data/wardens.ts), if it keeps one. It lives in `enemies`. */
+  private warden: Boss | null = null;
+  /** Gold a debt-collecting warden has taken, paid back with interest when it falls. */
+  private wardenPurse = 0;
   private loot: GroundLoot[] = [];
   /** Drop arcs, landings, pickups and the gold magnet. */
   private lootFx: LootFX;
@@ -645,6 +650,8 @@ export class DungeonScene extends GameScene {
       this.boss.dispose();
       this.boss = null;
     }
+    this.warden = null;
+    this.wardenPurse = 0;
     if (this.arenaGate?.bars) {
       this.arenaGate.bars.removeFromParent();
       disposeObject(this.arenaGate.bars);
@@ -797,6 +804,18 @@ export class DungeonScene extends GameScene {
           this.arenaGate = { tiles, sealed: false, clearFor: 0, bars: null, colliders: [], rise: 0, warned: false };
         }
       }
+    }
+
+    // A floor warden waits in its side room, asleep until the hero walks in.
+    const wd = this.level.warden ? getWarden(this.level.warden.id) : undefined;
+    if (wd && this.level.warden) {
+      const w = new Boss(wd, this.run.depth, levelRng.fork('warden'));
+      w.root.position.copy(this.mesh.tileToWorld(this.level.warden.x, this.level.warden.y));
+      w.dormant = true;
+      this.scene.add(w.root);
+      this.enemies.push(w);
+      this.watchBody(w);
+      this.warden = w;
     }
 
     this.fx.setAmbient(this.biome.particles ?? null, new THREE.Box3().setFromObject(this.mesh.root));
@@ -1209,6 +1228,7 @@ export class DungeonScene extends GameScene {
         this.passiveDefence(packet, taken, before);
         this.powers?.afterPlayerHit(packet, taken, taken === 0 && before === this.player.life);
         if (taken > 0 && this.boss && packet.source === this.boss.id) this.boss.landed(taken);
+        if (taken > 0 && this.warden && packet.source === this.warden.id && this.warden.bossDef.trick === 'debt') this.collectDebt();
         if (taken > 0) {
           this.engine.renderer.flashHurt(Math.min(1, taken / Math.max(1, this.player.stats.life * 0.25)));
           this.rig.addTrauma(Math.min(0.5, taken / Math.max(1, this.player.stats.life * 0.4)));
@@ -1383,6 +1403,7 @@ export class DungeonScene extends GameScene {
       if (this.boss) this.boss.groundTarget = this.mesh.floorY(this.boss.root.position.x, this.boss.root.position.z);
       this.boss?.update(dt, ctx);
       this.tickArenaGate(dt, ctx);
+      this.tickWarden(ctx);
     } catch (err) {
       reportError('boss', err);
     }
@@ -1606,7 +1627,10 @@ export class DungeonScene extends GameScene {
       if (!e.lootGranted && e.readyToLoot) {
         e.lootGranted = true;
         this.lastOverkill = e.overkill;
-        this.grantKill(e.monsterId, e.rank, e.family, e.root.position, e.ilvl);
+        // A warden pays like a rare; its chest is the rest of the reward.
+        const isWarden = e === this.warden;
+        this.grantKill(e.monsterId, isWarden ? 'rare' : e.rank, e.family, e.root.position, e.ilvl);
+        if (isWarden) this.wardenFell(e.root.position);
         this.powers?.onKill(e);
         this.dungeonEvents?.onKill(e);
         this.runMods?.onKill(e);
@@ -1722,6 +1746,11 @@ export class DungeonScene extends GameScene {
       toast('', 'info');
       return;
     }
+    if (family === 'chest' && tier === 'warden' && this.warden?.alive) {
+      toast(`${this.warden.bossDef.name} keeps this chest. It will not open while they stand.`, 'bad');
+      audio.play('ui.error');
+      return;
+    }
     if (family === 'chest' && tier === 'vault' && !this.vaultOpen) {
       toast('The vault is barred. There is a lever somewhere in this room.', 'bad');
       audio.play('ui.error');
@@ -1786,6 +1815,7 @@ export class DungeonScene extends GameScene {
     if (event) return event;
     const family = it.kind.split('.')[0]!;
     if (family === 'chest' && it.kind.split('.')[1] === 'vault' && !this.vaultOpen) return 'Barred vault';
+    if (family === 'chest' && it.kind.split('.')[1] === 'warden' && this.warden?.alive) return 'Sealed chest';
     return INTERACT_LABEL[family] ?? INTERACT_LABEL[it.propKind] ?? 'Search';
   }
 
@@ -1859,8 +1889,8 @@ export class DungeonScene extends GameScene {
   private openChest(it: { x: number; y: number; z: number }, tier: string): void {
     const at = this.tmpDir.set(it.x, 0, it.z).clone();
     const ilvl = Math.max(1, this.run.depth + this.levelIndex);
-    const rank: MonsterRank = tier === 'vault' ? 'boss' : tier === 'rare' ? 'rare' : 'champion';
-    const goldBonus = tier === 'vault' ? 3.0 : tier === 'rare' ? 1.6 : 1.1;
+    const rank: MonsterRank = tier === 'vault' ? 'boss' : tier === 'rare' || tier === 'warden' ? 'rare' : 'champion';
+    const goldBonus = tier === 'vault' ? 3.0 : tier === 'warden' ? 2.2 : tier === 'rare' ? 1.6 : 1.1;
     const drops = rollDrops(
       ilvl,
       rank,
@@ -1869,6 +1899,11 @@ export class DungeonScene extends GameScene {
       this.player.stats.goldFind * activeDifficulty().goldFind,
     );
     for (const item of drops.items) this.dropItem(item, at);
+    // A warden's chest holds one more, better than most.
+    if (tier === 'warden') {
+      const extra = rollDrops(ilvl + 2, 'rare', this.rng, this.player.stats.magicFind * activeDifficulty().magicFind + 150, 0);
+      for (const item of extra.items.slice(0, 1)) this.dropItem(item, at);
+    }
     if (drops.gold > 0) this.dropGold(Math.round(drops.gold * goldBonus), at);
     this.effects.explosion(it.x, 0.7, it.z, { radius: 1.2, element: 'physical', color: 0xffd66b });
     audio.play('chest', { x: it.x, z: it.z });
@@ -2099,6 +2134,38 @@ export class DungeonScene extends GameScene {
       depth: this.run.depth,
       mapName: this.run.map?.name,
     });
+  }
+
+  /** The warden wakes when the hero walks into its room (or hits it from outside). */
+  private tickWarden(ctx: CombatContext): void {
+    const w = this.warden;
+    const at = this.level.warden;
+    if (!w || !at || !w.alive || !w.dormant) return;
+    const t = this.mesh.worldToTile(this.player.position.x, this.player.position.z);
+    const r = at.rect;
+    // In its room, or it has seen the hero for itself: the fight is on.
+    const inRoom = t.x >= r.x && t.y >= r.y && t.x < r.x + r.w && t.y < r.y + r.h;
+    if (inRoom || (w.ai && !w.ai.isDormant)) {
+      w.dormant = false;
+      w.engage(ctx);
+    }
+  }
+
+  /** A debt-collecting warden's blow takes a little gold into its purse. */
+  private collectDebt(): void {
+    const c = this.player.character;
+    const take = Math.min(c.gold, Math.max(5, Math.round(c.gold * 0.04)));
+    if (take <= 0) return;
+    c.gold -= take;
+    this.wardenPurse += take;
+    events.emit('toast', { text: `-${take} gold. "Noted."`, kind: 'bad' });
+    events.emit('ui:refresh', {});
+  }
+
+  /** The warden is down: anything it took comes back, with interest. */
+  private wardenFell(at: THREE.Vector3): void {
+    if (this.wardenPurse > 0) this.dropGold(Math.round(this.wardenPurse * 1.5), at);
+    this.wardenPurse = 0;
   }
 
   /**

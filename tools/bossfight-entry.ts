@@ -1,7 +1,7 @@
 /**
  * Entry point for `tools/check-bossfights.mjs`.
  *
- * Fights all twenty-four bosses headlessly, twice each: once against a hero
+ * Fights every boss and floor warden headlessly, twice each: once against a hero
  * who stands still and trades, once against a hero who reads the floor and
  * steps out of every marker. The hero's own damage is a steady stream sized so
  * a fight lasts about a minute and a half, and it clears adds the way a player
@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { arena, caseLog, type Arena } from './combat-arena';
 import { Boss, softEnrageAfter } from '../src/entities/Boss';
 import { BOSSES } from '../src/data/bosses';
+import { WARDENS } from '../src/data/wardens';
 import { Random } from '../src/core/RNG';
 import { getAbility } from '../src/entities/Abilities';
 import type { BossDef } from '../src/types';
@@ -207,7 +208,8 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
 
 const rows: Array<Record<string, unknown>> = [];
 let i = 0;
-for (const def of BOSSES) {
+// The floor wardens fight the same test after the bosses.
+for (const def of [...BOSSES, ...WARDENS]) {
   i++;
   if (only ? !only.includes(i) : (i - 1 - offset) % every !== 0) continue;
   const t0 = Date.now();

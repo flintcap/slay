@@ -148,6 +148,7 @@ async function main(): Promise<void> {
     { pickBossForDepth, rollBossMood, getBoss },
     { namedRaresFor },
     { bossMemoryOf, recordBossFought },
+    { pickWarden },
   ] = await Promise.all([
       import('./world/DungeonGen'),
       import('./data/monsters'),
@@ -155,6 +156,7 @@ async function main(): Promise<void> {
       import('./data/bosses'),
       import('./data/namedRares'),
       import('./sim/BossMemory'),
+      import('./data/wardens'),
     ]);
   events.on('boss:engaged', (p) => {
     if (!p.id) return;
@@ -190,6 +192,7 @@ async function main(): Promise<void> {
     },
     // Seen less, picked more, and no repeats within one life (sim/BossMemory.ts).
     bossFor: (depth, biome, rng) => pickBossForDepth(depth, biome, rng, bossMemoryOf(save.account, save.account.current)).id,
+    wardenFor: (depth, biome, rng) => pickWarden(depth, biome, rng, bossMemoryOf(save.account, save.account.current))?.id ?? null,
     moodFor: (bossId, depth, rng) => {
       const def = getBoss(bossId);
       return def ? rollBossMood(def, depth, rng) : null;

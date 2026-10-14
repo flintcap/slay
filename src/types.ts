@@ -840,6 +840,12 @@ export interface DungeonLevel {
   waypoint?: Vec2;
   /** The boss arena, on the last area only: its rectangle and the threshold tile where the fight begins. */
   arena?: { x: number; y: number; w: number; h: number; gate: Vec2 };
+  /**
+   * A floor warden (`data/wardens.ts`): which one, the side room it keeps
+   * (its rectangle, in tiles) and where it stands. Its chest is a prop with
+   * the `chest.warden` payload, shut until it falls.
+   */
+  warden?: { id: string; room: number; x: number; y: number; rect: { x: number; y: number; w: number; h: number } };
 }
 
 /**
@@ -1051,6 +1057,12 @@ export interface BossDef {
   signature?: string[];
   /** A small boss of an ordinary floor, in a side room with its own chest. */
   warden?: boolean;
+  /**
+   * A warden's one rule, beyond its moves. `debt`: each blow that lands takes
+   * a little of the hero's gold, and it all comes back, with interest, when
+   * the warden dies.
+   */
+  trick?: 'debt';
   phases: BossPhase[];
   /** Adds summoned during the fight. */
   adds?: string[];

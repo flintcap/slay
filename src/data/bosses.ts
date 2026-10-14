@@ -1288,6 +1288,10 @@ export const BOSS_PROFILES: Record<BossProfile, { life: number; damage: number; 
   bruiser: { life: 1.0, damage: 1.0, speed: 1.0, defense: 1.35, range: 3.4 },
 };
 
+/** A warden's share of a boss's life and damage at the same profile and tier. */
+export const WARDEN_LIFE = 0.3;
+export const WARDEN_DAMAGE = 0.6;
+
 /** Life climbs about 9% and damage about 3% per tier a boss first appears at (to tier 40). */
 export function bossTierMul(minDepth: number): { life: number; damage: number } {
   const t = Math.max(0, Math.min(40, minDepth) - 1);
@@ -1303,6 +1307,11 @@ export function bossNumbers(b: BossDef): { life: number; damage: number; speed: 
   if (b.lifeMul !== undefined && b.damageMul !== undefined) return { life: b.lifeMul, damage: b.damageMul, speed: 1, defense: 1.35, range: 3.4 };
   const p = BOSS_PROFILES[b.profile];
   const t = bossTierMul(b.minDepth);
+  // A warden is a minute's fight: a third of a boss's life, and gentler blows.
+  if (b.warden) {
+    t.life *= WARDEN_LIFE;
+    t.damage *= WARDEN_DAMAGE;
+  }
   return {
     life: b.lifeMul ?? p.life * t.life,
     damage: b.damageMul ?? p.damage * t.damage,
