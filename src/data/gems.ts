@@ -356,7 +356,7 @@ export const RUNEWORDS: RunewordDef[] = [
     ['attackRating', 100],
     ['critChance', 4],
   ]),
-  rw('rw.stealth', 'Hush', ['rune.tal', 'rune.eth'], BODY, 'The cloth does not rustle. Nothing about you does.', [
+  rw('rw.stealth', 'Soft Tread', ['rune.tal', 'rune.eth'], BODY, 'The cloth does not rustle. Nothing about you does.', [
     ['moveSpeed', 12],
     ['castSpeed', 12],
     ['dexterity', 6],

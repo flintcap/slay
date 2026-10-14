@@ -802,6 +802,9 @@ const CHARM_SIZE_WEIGHT: Record<string, number> = {
  * often magic, sometimes rare, and very rarely one of the named ones. Magic
  * find lifts the odds of the better two.
  */
+/** Chance a charm comes out as one of the named ones, before magic find. */
+export const CHARM_UNIQUE_CHANCE = 0.05;
+
 export function rollCharm(ilvl: number, rng: Rng, magicFind = 0, baseId?: string): Item {
   const lvl = Math.max(1, Math.round(ilvl));
   const sizes = ALL_BASES.filter((b) => b.category === 'charm' && b.levelReq <= lvl && (!baseId || b.id === baseId));
@@ -809,7 +812,7 @@ export function rollCharm(ilvl: number, rng: Rng, magicFind = 0, baseId?: string
     ? rng.weighted(sizes, (b) => CHARM_SIZE_WEIGHT[b.id] ?? 10)
     : getBase(baseId ?? 'charm.small');
   const mf = magicFindFactor(Math.max(0, magicFind), 600);
-  if (rng.chance(0.03 * mf * earlyRamp('unique', lvl))) {
+  if (rng.chance(CHARM_UNIQUE_CHANCE * mf * earlyRamp('unique', lvl))) {
     const pool = uniquePool('unique', lvl).filter((d) => d.baseId === base.id && (!d.classId || d.classId === lootHero.classId) && uniqueDropWeight(d, lvl) > 0);
     if (pool.length) return buildUniqueItem(rng.weighted(pool, (d) => uniqueDropWeight(d, lvl)), lvl, rng);
   }
