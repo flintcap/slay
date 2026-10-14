@@ -202,6 +202,26 @@ export function skillDamageScale(skills: Record<string, number>, skillLevels: nu
 }
 
 /**
+ * The lowest and highest hit a skill lands before crits, area bonuses and
+ * the target's defences: the same arithmetic as `rollDamage` at both ends of
+ * the weapon roll. `scale` is the skill's whole multiplier. The character
+ * sheet reads it so the damage it shows is the attack you actually press.
+ */
+export function damageRange(stats: Stats, scale: number, type: DamageType): { min: number; max: number } {
+  const min = Math.max(0, stats.minDamage);
+  const max = Math.max(min, stats.maxDamage);
+  const ed = 1 + stats.enhancedDamage / 100;
+  const flat = flatElementalTotal(stats);
+  const elem = 1 + stats.elementalDamagePct / 100;
+  const at = (w: number): number => {
+    const weapon = w * ed;
+    const amount = type === 'physical' ? weapon + flat * elem : (weapon + flat) * elem;
+    return Math.max(1, amount * scale);
+  };
+  return { min: at(min), max: at(max) };
+}
+
+/**
  * Rolls a packet for a specific skill, folding in its per-rank damage scaling
  * and every synergy the character has invested in.
  */

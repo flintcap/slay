@@ -589,6 +589,17 @@ select {
 .statline.tone-bad .statline-value {
   color: var(--bad);
 }
+/* The right-click attack heads Offense: what you actually hit for. */
+.statline.statline-attack {
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(147, 133, 108, 0.22);
+}
+.statline.statline-attack .statline-label,
+.statline.statline-attack .statline-value {
+  color: var(--gold, #e8c77a);
+  font-size: var(--fs-md, 14px);
+}
 
 /* --- buttons ------------------------------------------------------------- */
 

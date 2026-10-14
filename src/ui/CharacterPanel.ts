@@ -12,7 +12,10 @@ import { DAMAGE_TYPES, RESIST_OF } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { computeStats, xpForLevel } from '../sim/Stats';
-import { allocateStat } from '../sim/Character';
+import { allocateStat, skillRank } from '../sim/Character';
+import { damageRange, skillDamageScale } from '../sim/Combat';
+import { SKILL_BY_ID } from '../data/skills';
+import { burstGrowth } from '../data/skillPower';
 import {
   scheduleRefresh,
   Panel,
@@ -187,6 +190,7 @@ export class CharacterPanel {
     this.renderIdentity(c, st);
     this.renderAttrs(c, st);
     this.renderGroup(this.colOffense, 'Offense', 'sword', OFFENSE, st);
+    this.renderAttack(c, st);
     this.renderGroup(this.colDefense, 'Defense', 'shield', DEFENSE, st);
     this.renderGroup(this.colUtility, 'Utility', 'sparkle', UTILITY, st);
     this.renderResists(st);
@@ -311,16 +315,52 @@ export class CharacterPanel {
       if (!v && key !== 'defense' && key !== 'life' && key !== 'mana' && key !== 'minDamage' && key !== 'maxDamage') continue;
       const isPct = /Pct$|Speed$|Chance$|Damage$|Reduction$|Find$|Steal$/.test(key) && key !== 'minDamage' && key !== 'maxDamage' && key !== 'fireDamage' && key !== 'coldDamage' && key !== 'lightningDamage' && key !== 'poisonDamage' && key !== 'arcaneDamage';
       const text = isPct ? `${fmt(v)}%` : fmt(v);
-      const line = statLine(STAT_LABEL[key], text, {
+      // Below the right-click attack, the weapon's own roll is named as the weapon's.
+      const label = key === 'minDamage' ? 'Weapon Min Damage' : key === 'maxDamage' ? 'Weapon Max Damage' : STAT_LABEL[key];
+      const line = statLine(label, text, {
         icon: STAT_ICON[key],
         hint: STAT_HOW[key] ? `<p>${STAT_HOW[key]}</p>` : `<p>Current value: <b>${text}</b></p>`,
-        title: STAT_LABEL[key],
+        title: label,
       });
       s.body.appendChild(line);
       shown++;
     }
     if (!shown) s.body.appendChild(div('char-empty', 'Nothing here yet.'));
     host.appendChild(s.root);
+  }
+
+  /**
+   * The right-click attack, first in Offense: what it hits for with this gear.
+   * The weapon's own numbers stay below it, named as the weapon's.
+   */
+  private renderAttack(c: Character, st: Stats): void {
+    const body = this.colOffense.querySelector('.section-body');
+    if (!body) return;
+    const id = c.primaryAttack;
+    const def = id ? SKILL_BY_ID[id] : undefined;
+    const rank = id ? skillRank(c, id) : 0;
+    let label = 'Attack';
+    let value = '—';
+    let hint = '<p>Put a skill on the right mouse button to see what it hits for.</p>';
+    if (def && rank > 0 && def.targeting !== 'passive') {
+      const params = def.params ?? {};
+      const num = (k: string, d: number): number => (typeof params[k] === 'number' ? (params[k] as number) : d);
+      const scale = attempt(
+        () => skillDamageScale(c.skills, st.skillLevels, def.id) * (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num)),
+        1,
+      );
+      const type: DamageType = def.damageType ?? 'physical';
+      const r = damageRange(st, scale, type);
+      label = def.name;
+      value = `${fmtInt(Math.round(r.min))}–${fmtInt(Math.round(r.max))}`;
+      const crit = Math.max(100, st.critDamage);
+      hint =
+        `<p>Your right-click skill, rank ${rank}. Each hit lands for <b>${value}</b> ${RESIST_LABEL[type].toLowerCase()} damage before the target's defences.</p>` +
+        `<p class="tt-explain-how">Weapon damage × ${fmt(Math.round(scale * 100))}% skill power, with Enhanced Damage and your elemental adds. A critical hit lands for ${fmt(crit)}% of it.</p>`;
+    }
+    const line = statLine(label, value, { icon: 'sword', hint, title: label });
+    line.classList.add('statline-attack');
+    body.insertBefore(line, body.firstChild);
   }
 
   private renderResists(st: Stats): void {
