@@ -19,7 +19,7 @@ import { cloneCreatureMaterial, creatureMaterial, disposeCreatureMaterials, scal
 import type { CreatureInfo } from './Animator';
 import { STYLE_DEFAULT, type MotionStyle } from './Motion';
 import { mergeGeometries } from '../Meshes';
-import { SHADOW_LAYER } from '../../core/Layers';
+import { shadowBodyMaterial } from '../../core/ShadowBodies';
 
 /** How much detail a creature gets: triangles per material and field resolution. */
 export type CreatureTier = 'small' | 'normal' | 'big' | 'boss';
@@ -152,7 +152,7 @@ function prototype(look: CreatureLook): Prototype {
     const def = look.mats[m.mat] ?? look.mats.skin!;
     const mesh = new THREE.SkinnedMesh(m.geo, creatureMaterial(def));
     mesh.name = `creature:${m.mat}`;
-    // With a shadow body the parts cast none of their own (see `SHADOW_LAYER`).
+    // With a shadow body the parts cast none of their own (`core/ShadowBodies.ts`).
     mesh.castShadow = !shadowGeo;
     mesh.receiveShadow = false;
     // Poses reach past the bind box (lunges, rears, falls): cull on a generous sphere.
@@ -164,12 +164,11 @@ function prototype(look: CreatureLook): Prototype {
     mesh.bind(skeleton, new THREE.Matrix4());
   }
   if (shadowGeo) {
-    const body = new THREE.SkinnedMesh(shadowGeo, shadowBodyMat());
+    const body = new THREE.SkinnedMesh(shadowGeo, shadowBodyMaterial());
     body.name = 'creature:shadow';
     body.userData.shadowOnly = true;
     body.castShadow = true;
     body.receiveShadow = false;
-    body.layers.set(SHADOW_LAYER);
     const bs = (shadowGeo.boundingSphere ?? (shadowGeo.computeBoundingSphere(), shadowGeo.boundingSphere))!;
     bs.radius = Math.max(bs.radius * 1.5, rig.height * 0.9, rig.length * 0.8);
     root.add(body);
@@ -180,24 +179,8 @@ function prototype(look: CreatureLook): Prototype {
   return proto;
 }
 
-/*
- * A monster is three to five parts (skin, cloth, metal, bone), and each part
- * cast its own shadow: one draw per part per monster in the shadow pass. The
- * shadow body is all of them in one geometry on `SHADOW_LAYER`, which only
- * shadow cameras see, so each monster's shadow is one draw.
- */
 
-let shadowMat: THREE.MeshBasicMaterial | null = null;
-function shadowBodyMat(): THREE.MeshBasicMaterial {
-  if (!shadowMat) {
-    shadowMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
-    shadowMat.name = 'creature:shadow';
-    shadowMat.userData.shared = true;
-  }
-  return shadowMat;
-}
-
-/** The parts' positions and skin weights in one indexed geometry. */
+/** The parts' positions and skin weights in one indexed geometry, for the shadow body. */
 function mergeForShadow(geos: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
   const names = ['position', 'skinIndex', 'skinWeight'] as const;
   for (const g of geos) for (const n of names) if (!g.getAttribute(n)) return null;
