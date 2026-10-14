@@ -137,7 +137,7 @@ export const BATCH_B: UniqueDef[] = [
       from: 'stormcrown_azhek' }),
 
   U('uq.kilnbolt', 'Kiln Bolt', 'xbow.ballista', 63,
-    'The Kiln Saint fires her bolts in the oven before she looses them. They do not cool on the way.',
+    'The Kiln Saint fires her bolts in the oven before she looses them. They are still hot when they land.',
     [['fireDamage', 1.2], ['enhancedDamage', 1], ['strength', 0.7]],
     { hook: 'Fire burns hotter for it, and cold cuts deeper.', power: 'emberBargain', mag: 1,
       look: D('stone.foundry|0x8a5a3a', 'leather.dark', 'metal.copper', ['cracks', 'smoke'], 0.5, {}),
