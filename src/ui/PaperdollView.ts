@@ -158,7 +158,29 @@ export class PaperdollView {
    */
   warm(c: Character): void {
     this.setCharacter(c);
-    if (this.hero) this.renderer?.render(this.scene, this.camera);
+    const r = this.renderer;
+    if (!this.hero || !r) return;
+    // Every look the figure wears is built, not just what the first pose
+    // shows: before it was posed the held weapon stood out of frame, so its
+    // gems' shader was left for the first opening (seconds on a cold driver).
+    // `compileAsync` builds them off the main thread where the browser can.
+    const draw = (): void => {
+      if (this.running || !this.renderer) return;
+      this.hero?.animator.update(0);
+      const culled: THREE.Object3D[] = [];
+      this.scene.traverse((o) => {
+        if (o.frustumCulled) {
+          o.frustumCulled = false;
+          culled.push(o);
+        }
+      });
+      try {
+        this.renderer.render(this.scene, this.camera);
+      } finally {
+        for (const o of culled) o.frustumCulled = true;
+      }
+    };
+    r.compileAsync(this.scene, this.camera).then(draw, draw);
   }
 
   /** Points the camera at the model's own bounds, so proportions never matter. */
