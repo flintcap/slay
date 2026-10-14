@@ -8,9 +8,11 @@ import { buildClassHero, type HeroModel } from './HeroModel';
 import { buildMonsterModel } from '../entities/MonsterModels';
 import { ITEM_BASES } from '../sim/Loot';
 import { MONSTERS } from '../data/monsters';
+import { BOSSES } from '../data/bosses';
+import { WARDENS } from '../data/wardens';
 import { CLASSES } from '../data/classes';
 
-export type ShowcaseKind = 'items' | 'monsters' | 'classes' | 'rarity';
+export type ShowcaseKind = 'items' | 'monsters' | 'classes' | 'rarity' | 'bosses';
 
 export interface ShowcasePayload {
   kind?: ShowcaseKind;
@@ -34,6 +36,8 @@ export class ShowcaseScene extends GameScene {
   private subjects: THREE.Object3D[] = [];
   private heroes: HeroModel[] = [];
   private spin = 0;
+  /** The boss line-up stands still, facing the camera. */
+  private lineup = false;
 
   constructor(engine: Engine) {
     super();
@@ -46,6 +50,7 @@ export class ShowcaseScene extends GameScene {
     const kind = p.kind ?? 'items';
     const page = p.page ?? 0;
     const rng = new Random(0x5140 + page);
+    this.lineup = false;
 
     this.engine.renderer.applyEnvironment(this.scene, 0.75);
     this.scene.background = new THREE.Color(0x14161c);
@@ -139,6 +144,53 @@ export class ShowcaseScene extends GameScene {
           /* skip */
         }
       }
+    } else if (kind === 'bosses') {
+      // A line-up for judging size: a hero, then eight bosses or wardens of
+      // the page in a row, smallest to largest, each in its own lane.
+      const all = [...BOSSES, ...WARDENS];
+      const defs = all.slice(page * 8, page * 8 + 8).sort((a, b) => a.scale - b.scale);
+      let x = 0;
+      const lane = (obj: THREE.Object3D, w: number): void => {
+        const holder = new THREE.Group();
+        holder.add(obj);
+        holder.position.set(x + w / 2, 0, 0);
+        x += w;
+        holder.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.isMesh) {
+            m.castShadow = true;
+            m.receiveShadow = true;
+          }
+        });
+        this.scene.add(holder);
+        this.subjects.push(holder);
+      };
+      try {
+        const hero = buildClassHero(CLASSES[0]!.id);
+        this.heroes.push(hero);
+        lane(hero.root, 1.8);
+      } catch {
+        /* skip */
+      }
+      let tallest = 2;
+      for (const def of defs) {
+        try {
+          const built = buildMonsterModel(def.visual, rng.fork(def.id), def.scale, { family: def.family, rank: 'boss' });
+          const box = new THREE.Box3().setFromObject(built.root);
+          const h = box.max.y - box.min.y;
+          tallest = Math.max(tallest, h);
+          lane(built.root, Math.max(1.8, (box.max.x - box.min.x) * 0.9 + 0.6));
+        } catch {
+          /* skip */
+        }
+      }
+      for (const sub of this.subjects) sub.position.x -= x / 2;
+      // Spinning hides how tall they stand next to each other: face front.
+      this.lineup = true;
+      const dist = Math.max(x * 0.95, tallest * 2.2) + 2;
+      this.camera.position.set(0, tallest * 0.45, dist);
+      this.camera.lookAt(0, tallest * 0.42, 0);
+      return;
     } else {
       CLASSES.forEach((cls, i) => {
         try {
@@ -161,7 +213,7 @@ export class ShowcaseScene extends GameScene {
 
   override update(dt: number): void {
     this.spin += dt * 0.5;
-    for (let i = 0; i < this.subjects.length; i++) {
+    for (let i = 0; i < this.subjects.length && !this.lineup; i++) {
       this.subjects[i]!.rotation.y = this.spin;
     }
     for (const h of this.heroes) h.animator.update(dt);

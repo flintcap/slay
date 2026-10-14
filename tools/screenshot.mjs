@@ -277,6 +277,10 @@ const drivers = {
     await page.evaluate(() => window.SLAY.debug.showcase('monsters', 4));
     await settle(90);
   },
+  artBosses: async () => {
+    await page.evaluate((p) => window.SLAY.debug.showcase('bosses', p), Number(args.page ?? 0));
+    await settle(120);
+  },
   artClasses: async () => {
     await page.evaluate(() => window.SLAY.debug.showcase('classes', 0));
     await settle(90);
