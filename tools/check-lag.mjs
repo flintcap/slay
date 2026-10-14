@@ -20,6 +20,7 @@
  *             25 frames
  *   mini      (--only) walk up to the floor's mini boss and fight it
  *   boss      (--only) load the arena's area, walk through the gate
+ *   --mapfirst  with menus: skip the town panels, so the map opens them first
  *
  * For each segment: frames, frame time p50 / p95 / max, how many frames went
  * over 50 and 100 ms, and what happened inside the worst of them: shader
@@ -331,7 +332,8 @@ async function visit(label) {
       }, id);
     }
   };
-  if (ONLY.includes('menus')) await panels('town');
+  // --mapfirst: leave the town's panels shut, so the map's openings are the first ever.
+  if (ONLY.includes('menus') && !process.argv.includes('--mapfirst')) await panels('town');
 
   const needMap = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss'].includes(o));
   if (needMap) {
