@@ -617,6 +617,10 @@ export class Renderer {
     if (this.shadowScene) this.applyShadows(this.shadowScene);
     // Every asset texture, the world sets included, now and later.
     setAssetAnisotropy(this.quality.anisotropy);
+    // The composer frees only its own two targets; every pass holds more
+    // (bloom a chain of mip targets, AO and SMAA theirs). Left behind, each
+    // step of the auto quality leaked a set into GPU memory.
+    for (const pass of this.composer.passes) (pass as { dispose?: () => void }).dispose?.();
     this.composer.dispose();
     this.buildComposer();
 
