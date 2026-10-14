@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { bendFor, bentKnob } from '../data/skillBends';
 import { FOE_POWER, SELF_POWER, burstGrowth, grownMods, minionLifeGrowth, scaleMods, scaleShred } from '../data/skillPower';
 import { reportError } from '../core/Engine';
 import type { DamagePacket, DamageType, StatusApplication } from '../types';
@@ -803,15 +804,18 @@ export class SkillRunner {
 
     // Rank with +skills, and the synergies the tree shows (combat's `skillDamageScale`).
     const params = def.params ?? {};
+    // A skill-bending unique grows this skill's knobs and damage (data/skillBends.ts).
+    const bend = bendFor(player.character, def.id);
     const num = (k: string, d: number): number => {
       const v = params[k];
-      return typeof v === 'number' ? v : d;
+      return bentKnob(bend, k, typeof v === 'number' ? v : d);
     };
     // A skill with no damage ladder (a detonation, a drain, a summon's blows)
     // still hits harder a rank: `data/skillPower.ts` says how much.
     const scale =
       skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) *
-      (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num));
+      (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num)) *
+      (1 + (bend?.more ?? 0) / 100);
     const type: DamageType = def.damageType ?? 'physical';
     // Every skill of a damage type used the one element colour, so a whole
     // tree of fire skills was the same orange on screen. Shift it by a hash of
@@ -842,7 +846,9 @@ export class SkillRunner {
     // `num` has to exist first.
     let riderCache: StatusApplication[] | null = null;
     const rider = (): StatusApplication[] =>
-      (riderCache ??= this.statusFor(def, num, color, true));
+      (riderCache ??= bend?.applies
+        ? [...this.statusFor(def, num, color, true), { id: bend.applies.status, duration: bend.applies.duration, magnitude: 1 }]
+        : this.statusFor(def, num, color, true));
 
     const origin = player.position.clone().setY(1.05);
     const dir = this.tmp.copy(target).sub(player.position).setY(0).normalize().clone();

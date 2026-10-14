@@ -24,6 +24,7 @@
  */
 
 import type {
+  AccountSave,
   CharClassId,
   EquipSlot,
   Item,
@@ -51,6 +52,7 @@ import {
 import { AFFIXES as ALL_AFFIXES, affixNameWord } from '../data/affixes';
 import { UNIQUES, uniqueDropWeight, uniquePool, getUnique } from '../data/uniques';
 import type { UniqueDef } from '../data/uniques';
+import { SIGNATURES } from '../data/uniqueBatches/index';
 import {
   SETS,
   getSet,
@@ -645,6 +647,55 @@ function rollRarity(ilvl: number, magicFind: number, rng: Rng): ItemRarity {
   return 'normal';
 }
 
+/**
+ * Who the loot is for, set by the scene that drops it: the hero's class (for
+ * the class-only uniques) and the chase items the account already holds.
+ */
+const NONE_OWNED: ReadonlySet<string> = new Set();
+const lootHero: { classId?: CharClassId; owned: () => ReadonlySet<string> } = { owned: () => NONE_OWNED };
+
+export function setLootHero(classId: CharClassId | undefined, owned: () => ReadonlySet<string> = () => NONE_OWNED): void {
+  lootHero.classId = classId;
+  lootHero.owned = owned;
+}
+
+/** The chase uniques held anywhere on an account: stash, every hero's bag and gear. */
+export function chaseHeld(account: Pick<AccountSave, 'stash' | 'current' | 'roster'>): Set<string> {
+  const out = new Set<string>();
+  const see = (it: Item | null | undefined): void => {
+    if (it?.uniqueId && getUnique(it.uniqueId)?.chase) out.add(it.uniqueId);
+  };
+  for (const it of account.stash ?? []) see(it);
+  const heroes = [...(account.roster ?? [])];
+  if (account.current && !heroes.includes(account.current)) heroes.push(account.current);
+  for (const c of heroes) {
+    for (const it of c.inventory ?? []) see(it);
+    for (const it of Object.values(c.equipment ?? {})) see(it as Item | undefined);
+  }
+  return out;
+}
+
+/** Chance a boss drops one of its own uniques, on top of its ordinary loot. */
+export const SIGNATURE_CHANCE = { boss: 0.3, warden: 0.12 };
+
+/**
+ * One of a boss's signature uniques, or nothing. Only the ones its depth has
+ * reached can drop (a little early is allowed), and the class and chase rules
+ * of the ordinary table still hold.
+ */
+export function rollSignature(bossId: string, ilvl: number, rng: Rng, chance: number, extra: readonly string[] = []): Item | null {
+  if (!rng.chance(chance)) return null;
+  const lvl = Math.max(1, Math.round(ilvl));
+  const pool = [...(SIGNATURES[bossId] ?? []), ...extra]
+    .map((id) => getUnique(id))
+    .filter((d): d is UniqueDef => !!d)
+    .filter((d) => d.ilvl <= lvl + 6)
+    .filter((d) => (!d.classId || d.classId === lootHero.classId) && !(d.chase && lootHero.owned().has(d.id)));
+  if (pool.length === 0) return null;
+  const def = rng.weighted(pool, (d) => Math.max(1, uniqueDropWeight(d, lvl + 6)));
+  return buildUniqueItem(def, lvl, rng);
+}
+
 function pickBase(ilvl: number, rng: Rng, category?: ItemCategory, classId?: CharClassId): ItemBase {
   const pool = ALL_BASES.filter(
     (b) =>
@@ -669,6 +720,7 @@ export function rollItem(
   rng: Rng,
   opts: { magicFind?: number; forceRarity?: ItemRarity; category?: ItemCategory; classId?: CharClassId } = {},
 ): Item {
+  const hero = opts.classId ?? lootHero.classId;
   const lvl = Math.max(1, Math.round(ilvl));
   const magicFind = opts.magicFind ?? 0;
   let rarity = opts.forceRarity ?? rollRarity(lvl, magicFind, rng);
@@ -682,6 +734,10 @@ export function rollItem(
       // Charms drop through `rollCharm` only, at their own rate.
       if (cat === 'charm' && opts.category !== 'charm') return false;
       if (opts.category && cat !== opts.category) return false;
+      // A skill bender rolls only for its own class; a chase item only while
+      // nobody on the account holds one.
+      if (d.classId && d.classId !== hero) return false;
+      if (d.chase && lootHero.owned().has(d.id)) return false;
       return uniqueDropWeight(d, lvl) > 0;
     });
     if (pool.length > 0) {
@@ -754,7 +810,7 @@ export function rollCharm(ilvl: number, rng: Rng, magicFind = 0, baseId?: string
     : getBase(baseId ?? 'charm.small');
   const mf = magicFindFactor(Math.max(0, magicFind), 600);
   if (rng.chance(0.03 * mf * earlyRamp('unique', lvl))) {
-    const pool = uniquePool('unique', lvl).filter((d) => d.baseId === base.id && uniqueDropWeight(d, lvl) > 0);
+    const pool = uniquePool('unique', lvl).filter((d) => d.baseId === base.id && (!d.classId || d.classId === lootHero.classId) && uniqueDropWeight(d, lvl) > 0);
     if (pool.length) return buildUniqueItem(rng.weighted(pool, (d) => uniqueDropWeight(d, lvl)), lvl, rng);
   }
   const rarity: ItemRarity = rng.chance(Math.min(0.5, 0.16 * mf)) ? 'rare' : 'magic';

@@ -34,7 +34,8 @@ import { gearLook, type GearLook } from './GearLook';
 import { resolveSurface } from './SurfaceLibrary';
 import { TEXTURE_SETS } from './TextureSets';
 import { ITEM_BASES } from '../data/itemBases';
-import { fallbackMotif, FINISHES, GLOWING_SETS, GLOWING_UNIQUES, glowStyleOf, SET_MOTIFS, UNIQUE_DESIGNS, type Aura, type GlowStyle, type Emblem, type Feature, type Finish, type SetMotif, type UniqueDesign } from './items/Designs';
+import { getUnique } from '../data/uniques';
+import { fallbackMotif, FINISHES, GLOWING_SETS, glowStyleOf, glowTierOf, tierGlowStrength, SET_MOTIFS, UNIQUE_DESIGNS, type Aura, type GlowStyle, type Emblem, type Feature, type Finish, type SetMotif, type UniqueDesign } from './items/Designs';
 
 export type { Aura, Emblem, Feature, Finish } from './items/Designs';
 
@@ -267,12 +268,12 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
   const wood = motif && material !== 'wood' ? motifPalette(wood0, motif.color) : wood0;
   const cloth = motif ? (motif.second.startsWith('cloth') ? motif.second : motif.cloth) : design?.second?.startsWith('cloth') ? design.second : material === 'cloth' ? palette : rank >= 2 ? 'cloth.banner' : 'cloth.undyed';
 
-  const glow =
-    design?.glowStrength !== undefined
-      ? design.glowStrength
-      : design
-        ? Math.max(gear.glow, 1.2)
-        : gear.glow;
+  // A unique glows by its tier: not at all, in one small detail, or in full.
+  const udef = item.uniqueId ? getUnique(item.uniqueId) : undefined;
+  const glowTier = design ? glowTierOf(udef?.rarity ?? rarity, udef?.ilvl ?? 0) : 'none';
+  const glow = design
+    ? tierGlowStrength(glowTier, design.glowStrength !== undefined ? design.glowStrength : Math.max(gear.glow, 1.2))
+    : gear.glow;
 
   const gemCount = Math.min(
     6,
@@ -330,9 +331,9 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
     motif,
     design,
     cutOverride: design?.cut,
-    // Only the chosen few glow (`GLOWING_SETS`, `GLOWING_UNIQUES`).
+    // Only mythics and ancients wear their aura; of the sets, only `GLOWING_SETS`.
     aura: design
-      ? (GLOWING_UNIQUES.has(item.uniqueId ?? '') ? design.aura : 'none')
+      ? (glowTier === 'full' ? design.aura : 'none')
       : motif && GLOWING_SETS.has(item.setId ?? '') ? motif.aura : 'none',
     glowStyle: design ? glowStyleOf(design.aura, design.glowStyle) : motif ? glowStyleOf(motif.aura, motif.glowStyle) : 'rim',
     finish,

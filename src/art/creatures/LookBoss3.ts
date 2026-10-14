@@ -65,12 +65,14 @@ function waxDrips(s: Sculpt, bone: string, top: THREE.Vector3, n: number, len: n
   }
 }
 
-/** A long coat of salt crust: white lumps over the given bones. */
-function crust(s: Sculpt, bones: string[], n: number, r: number, seed: number, col: RGB): void {
+/** A coat of salt crust: white lumps on the top half of the given bones, `out` from each bone's centre. */
+function crust(s: Sculpt, bones: string[], n: number, r: number, seed: number, col: RGB, out = r * 2): void {
   const q = seq(seed);
   for (let i = 0; i < n; i++) {
     const b = bones[i % bones.length]!;
-    const p = s.j(b).add(V((q() - 0.5) * r * 6, r * (1.5 + q() * 2), (q() - 0.5) * r * 6));
+    if (!s.has(b)) continue;
+    const a = (q() - 0.5) * Math.PI * 1.4;
+    const p = s.j(b).add(V(Math.sin(a) * out, Math.cos(a) * out * 0.9, (q() - 0.5) * out * 1.2));
     s.hard(b, ballGeo(p, r * (0.6 + q()), 0), 'metal', col);
   }
 }
@@ -685,7 +687,7 @@ export const BOSS_C: Record<string, LookFactory> = {
         sculpt: (s) => {
           serpentBody(s, { girth: 0.38 });
           serpentHead(s, { w: 0.34, teeth: 5, crest: 0.6, glow: 0.5 });
-          crust(s, ['body', 'f1', 'f2', 'f3', 't1', 't2', 't3', 't4'], 30, 0.05, 29, [0.92, 0.9, 0.85]);
+          crust(s, ['body', 'f1', 'f2', 'f3', 'f4', 't1', 't2', 't3', 't4', 't5'], 60, 0.07, 29, [0.95, 0.93, 0.88], 0.33);
           // Ragged fins down the back.
           for (const b of ['f2', 'f3', 'body', 't1', 't2', 't3']) {
             if (!s.has(b)) continue;

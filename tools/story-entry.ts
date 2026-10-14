@@ -33,6 +33,7 @@ import { NOTES, noteById } from '../src/data/story/notes';
 import { PLACES } from '../src/data/story/places';
 import { RARE_FLAVOR, itemFlavor } from '../src/data/story/itemFlavor';
 import { UNIQUE_TEXT, SET_TEXT } from '../src/data/story/uniqueText';
+import { DEPTH_UNIQUES } from '../src/data/uniqueBatches/index';
 import { UNIQUES } from '../src/data/uniques';
 import { SETS } from '../src/data/sets';
 import { setRunDirector } from '../src/world/DungeonGen';
@@ -582,8 +583,10 @@ section('Item flavour');
     itemNames.set(name.toLowerCase(), who);
   };
   const meta = /\b(in the game|the game|farming|farm for|end ?game|level \d+ to|dps|build)\b/i;
+  // The depth plan's batches are written in the story's voice where they stand.
+  const written = new Set(DEPTH_UNIQUES.map((u) => u.id));
   for (const u of UNIQUES) {
-    const t = UNIQUE_TEXT[u.id];
+    const t = UNIQUE_TEXT[u.id] ?? (written.has(u.id) ? { name: u.name, flavor: u.flavor } : undefined);
     if (!t?.name || !t.flavor) fail(`unique ${u.id}: no name and flavour in data/story/uniqueText.ts`);
     else if (u.name !== t.name || u.flavor !== t.flavor) fail(`unique ${u.id}: story text was not applied`);
     claim(u.name, `unique ${u.id}`);

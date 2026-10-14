@@ -928,6 +928,292 @@ const DEFS: PowerDef[] = [
       s.arcaneResist += 20;
     },
   },
+
+  // =========================================================================
+  // Trades: a big gift with a real cost, for the depth plan's uniques. Each
+  // reads as one plain line: what you get, then what it costs.
+  // =========================================================================
+  {
+    id: 'glassJaw',
+    name: 'Glass Jaw',
+    desc: (m) => `+${pct(60 * m)} damage. Your defense is halved and your damage reduction falls by 15.`,
+    stats: (s, _c, m) => {
+      s.enhancedDamage += 60 * m;
+      s.defense *= 0.5;
+      s.damageReduction -= 15;
+    },
+  },
+  {
+    id: 'heavyTread',
+    name: 'Heavy Tread',
+    desc: (m) => `${pct(25 * m)} more life and ${pct(40 * m)} more defense, but you move 15% slower.`,
+    stats: (s, _c, m) => {
+      s.life *= 1 + 0.25 * m;
+      s.defense *= 1 + 0.4 * m;
+      s.moveSpeed -= 15;
+    },
+  },
+  {
+    id: 'featherweight',
+    name: 'Featherweight',
+    desc: (m) => `+${pct(18 * m)} movement speed and +${pct(12 * m)} attack speed. Your defense is 40% lower and your life 10% lower.`,
+    stats: (s, _c, m) => {
+      s.moveSpeed += 18 * m;
+      s.attackSpeed += 12 * m;
+      s.defense *= 0.6;
+      s.life *= 0.9;
+    },
+  },
+  {
+    id: 'emberBargain',
+    name: 'Ember Bargain',
+    desc: (m) => `Your fire damage is ${pct(40 * m)} greater. Your cold resistance falls by 30.`,
+    runtime: (p, m) => {
+      p.fireMorePct += 40 * m;
+    },
+    stats: (s) => {
+      s.coldResist -= 30;
+    },
+  },
+  {
+    id: 'frostBargain',
+    name: 'Frost Bargain',
+    desc: (m) => `Your cold damage is ${pct(40 * m)} greater. Your fire resistance falls by 30.`,
+    runtime: (p, m) => {
+      p.coldMorePct += 40 * m;
+    },
+    stats: (s) => {
+      s.fireResist -= 30;
+    },
+  },
+  {
+    id: 'stormBargain',
+    name: 'Storm Bargain',
+    desc: (m) => `Your lightning damage is ${pct(40 * m)} greater. Your poison resistance falls by 30.`,
+    runtime: (p, m) => {
+      p.lightningMorePct += 40 * m;
+    },
+    stats: (s) => {
+      s.poisonResist -= 30;
+    },
+  },
+  {
+    id: 'rotBargain',
+    name: 'Rot Bargain',
+    desc: (m) => `Your poison damage is ${pct(40 * m)} greater. You do not regenerate life.`,
+    runtime: (p, m) => {
+      p.poisonMorePct += 40 * m;
+    },
+    stats: (s) => {
+      s.lifeRegen = Math.min(s.lifeRegen, 0);
+    },
+  },
+  {
+    id: 'miserPact',
+    name: "Miser's Pact",
+    desc: (m) => `+${pct(100 * m)} gold found and +${pct(40 * m)} magic find. Your damage is 25% lower.`,
+    stats: (s, _c, m) => {
+      s.goldFind += 100 * m;
+      s.magicFind += 40 * m;
+      s.enhancedDamage -= 25;
+    },
+  },
+  {
+    id: 'slowBlood',
+    name: 'Slow Blood',
+    desc: (m) => `Regenerate ${r1(1.2 * m)}% of your maximum life each second. You attack and cast 12% slower.`,
+    stats: (s, _c, m) => {
+      s.lifeRegen += s.life * 0.012 * m;
+      s.attackSpeed -= 12;
+      s.castSpeed -= 12;
+    },
+  },
+  {
+    id: 'leechHunger',
+    name: 'Leech Hunger',
+    desc: (m) => `+${r1(5 * m)}% life stolen from every hit. You do not regenerate life.`,
+    stats: (s, _c, m) => {
+      s.lifeSteal += 5 * m;
+      s.lifeRegen = Math.min(s.lifeRegen, 0);
+    },
+  },
+  {
+    id: 'quietMind',
+    name: 'Quiet Mind',
+    desc: (m) => `Your mana regenerates ${pct(100 * m)} faster. Your maximum mana is 25% lower.`,
+    stats: (s, _c, m) => {
+      s.manaRegen *= 1 + m;
+      s.mana *= 0.75;
+    },
+  },
+  {
+    id: 'stoneSkin',
+    name: 'Stone Skin',
+    desc: (m) => `+${r1(12 * m)}% damage reduction. You attack and cast 15% slower and move 8% slower.`,
+    stats: (s, _c, m) => {
+      s.damageReduction += 12 * m;
+      s.attackSpeed -= 15;
+      s.castSpeed -= 15;
+      s.moveSpeed -= 8;
+    },
+  },
+  {
+    id: 'wildSwing',
+    name: 'Wild Swing',
+    desc: (m) => `+${r1(10 * m)}% critical strike chance and +${pct(40 * m)} critical damage. Your attack rating is 35% lower.`,
+    stats: (s, _c, m) => {
+      s.critChance += 10 * m;
+      s.critDamage += 40 * m;
+      s.attackRating *= 0.65;
+    },
+  },
+  {
+    id: 'narrowEdge',
+    name: 'Narrow Edge',
+    desc: (m) => `+${pct(50 * m)} damage. Your area damage is 40% lower.`,
+    stats: (s, _c, m) => {
+      s.enhancedDamage += 50 * m;
+      s.areaDamagePct -= 40;
+    },
+  },
+  {
+    id: 'broadStroke',
+    name: 'Broad Stroke',
+    desc: (m) => `+${pct(45 * m)} area damage. Your other damage is 20% lower.`,
+    stats: (s, _c, m) => {
+      s.areaDamagePct += 45 * m;
+      s.enhancedDamage -= 20;
+    },
+  },
+  {
+    id: 'spellward',
+    name: 'Spellward',
+    desc: (m) => `+${pct(25 * m)} to every elemental resistance. Your physical resistance falls by 15 and your defense by 30%.`,
+    stats: (s, _c, m) => {
+      s.fireResist += 25 * m;
+      s.coldResist += 25 * m;
+      s.lightningResist += 25 * m;
+      s.poisonResist += 25 * m;
+      s.arcaneResist += 25 * m;
+      s.physicalResist -= 15;
+      s.defense *= 0.7;
+    },
+  },
+  {
+    id: 'ironHide',
+    name: 'Iron Hide',
+    desc: (m) => `+${pct(15 * m)} physical resistance and ${pct(50 * m)} more defense. Every elemental resistance falls by 15.`,
+    stats: (s, _c, m) => {
+      s.physicalResist += 15 * m;
+      s.defense *= 1 + 0.5 * m;
+      s.fireResist -= 15;
+      s.coldResist -= 15;
+      s.lightningResist -= 15;
+      s.poisonResist -= 15;
+      s.arcaneResist -= 15;
+    },
+  },
+  {
+    id: 'deepWell',
+    name: 'Deep Well',
+    desc: (m) => `${pct(50 * m)} more maximum mana. Your maximum life is 15% lower.`,
+    stats: (s, _c, m) => {
+      s.mana *= 1 + 0.5 * m;
+      s.life *= 0.85;
+    },
+  },
+  {
+    id: 'borrowedCraft',
+    name: 'Borrowed Craft',
+    desc: (m) => `+${Math.max(1, Math.round(m))} to all skills. Your maximum life is 20% lower.`,
+    stats: (s, _c, m) => {
+      s.skillLevels += Math.max(1, Math.round(m));
+      s.life *= 0.8;
+    },
+  },
+  {
+    id: 'shortFuse',
+    name: 'Short Fuse',
+    desc: (m) => `Your cooldowns are ${pct(18 * m)} shorter. Your mana regenerates half as fast.`,
+    stats: (s, _c, m) => {
+      s.cooldownReduction += 18 * m;
+      s.manaRegen *= 0.5;
+    },
+  },
+  {
+    id: 'warmBlood',
+    name: 'Warm Blood',
+    desc: (m) => `You cannot be chilled or frozen, and gain +${pct(30 * m)} cold resistance. Your fire resistance falls by 25.`,
+    runtime: (p) => {
+      p.freezeImmune = 1;
+    },
+    stats: (s, _c, m) => {
+      s.coldResist += 30 * m;
+      s.fireResist -= 25;
+    },
+  },
+  {
+    id: 'anchor',
+    name: 'Anchor',
+    desc: (m) => `You cannot be stunned, knocked down or knocked back, and gain +${r1(6 * m)}% damage reduction. You move 20% slower.`,
+    runtime: (p) => {
+      p.unstoppable = 1;
+    },
+    stats: (s, _c, m) => {
+      s.damageReduction += 6 * m;
+      s.moveSpeed -= 20;
+    },
+  },
+  {
+    id: 'thinAir',
+    name: 'Thin Air',
+    desc: (m) => `You take ${pct(30 * m)} less damage from projectiles and spells. Your maximum life is 15% lower.`,
+    runtime: (p, m) => {
+      p.rangedTakenLessPct += 30 * m;
+    },
+    stats: (s) => {
+      s.life *= 0.85;
+    },
+  },
+  {
+    id: 'inkskin',
+    name: 'Inkskin',
+    desc: (m) => `${pct(Math.min(100, 30 * m))} of damage taken is paid from your mana instead. Your mana regenerates 40% slower.`,
+    runtime: (p, m) => {
+      p.manaShieldPct = Math.min(100, p.manaShieldPct + 30 * m);
+    },
+    stats: (s) => {
+      s.manaRegen *= 0.6;
+    },
+  },
+  {
+    id: 'coldHands',
+    name: 'Cold Hands',
+    desc: (m) => `+${pct(20 * m)} cast speed. You attack 20% slower.`,
+    stats: (s, _c, m) => {
+      s.castSpeed += 20 * m;
+      s.attackSpeed -= 20;
+    },
+  },
+  {
+    id: 'brightBurn',
+    name: 'Bright Burn',
+    desc: (m) => `+${pct(25 * m)} elemental damage and +${pct(15 * m)} cast speed. Your mana regenerates half as fast.`,
+    stats: (s, _c, m) => {
+      s.elementalDamagePct += 25 * m;
+      s.castSpeed += 15 * m;
+      s.manaRegen *= 0.5;
+    },
+  },
+  {
+    id: 'hardHead',
+    name: 'Hard Head',
+    desc: (m) => `${pct(20 * m)} more life. You cast 25% slower.`,
+    stats: (s, _c, m) => {
+      s.life *= 1 + 0.2 * m;
+      s.castSpeed -= 25;
+    },
+  },
 ];
 
 export const POWERS: readonly PowerDef[] = DEFS;
@@ -953,7 +1239,7 @@ export function itemPowers(item: Item): ItemPowerRoll[] {
   const out: ItemPowerRoll[] = [];
   if (item.uniqueId) {
     const def = getUnique(item.uniqueId);
-    if (def?.special && BY_ID.has(def.special)) out.push({ id: def.special, mag: 1 });
+    if (def?.special && BY_ID.has(def.special)) out.push({ id: def.special, mag: def.specialMag ?? 1 });
   }
   if (Array.isArray(item.powers)) {
     for (const p of item.powers) {
@@ -1102,7 +1388,7 @@ export function powerLines(item: Item): Array<{ name: string; text: string; sour
   if (item.uniqueId) {
     const def = getUnique(item.uniqueId);
     const p = def?.special ? BY_ID.get(def.special) : undefined;
-    if (p) out.push({ name: p.name, text: p.desc(1), source: 'unique' });
+    if (p) out.push({ name: p.name, text: p.desc(def?.specialMag ?? 1), source: 'unique' });
   }
   for (const roll of item.powers ?? []) {
     const p = BY_ID.get(roll.id);

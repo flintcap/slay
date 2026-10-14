@@ -19,8 +19,10 @@
  * string is still shown in the tooltip either way.
  */
 
-import type { ItemMod, ItemRarity, StatKey } from '../types';
+import type { CharClassId, ItemMod, ItemRarity, StatKey } from '../types';
 import { applyUniqueText } from './story/uniqueText';
+import { bendText, setBendLookup, type SkillBend } from './skillBends';
+import { DEPTH_UNIQUES } from './uniqueBatches/index';
 
 export interface UniqueMod {
   stat: StatKey;
@@ -48,6 +50,14 @@ export interface UniqueDef {
   weight: number;
   /** Behaviour hook id for the combat layer. Optional and safely ignorable. */
   special?: string;
+  /** How strong `special` is (1 = the power's own strength). */
+  specialMag?: number;
+  /** Rolls only for this class: the skill benders. */
+  classId?: CharClassId;
+  /** The one skill this unique bends (`data/skillBends.ts`). Its hook is written from it. */
+  bend?: SkillBend;
+  /** A chase item: one per account at a time. */
+  chase?: boolean;
 }
 
 function u(
@@ -58,7 +68,7 @@ function u(
   levelReq: number,
   flavor: string,
   mods: Array<[StatKey, number, number]>,
-  o: { hook?: string; sockets?: number; weight?: number; special?: string; rarity?: UniqueDef['rarity'] } = {},
+  o: { hook?: string; sockets?: number; weight?: number; special?: string; specialMag?: number; rarity?: UniqueDef['rarity']; classId?: CharClassId; bend?: SkillBend; chase?: boolean } = {},
 ): UniqueDef {
   const def: UniqueDef = {
     id,
@@ -74,6 +84,10 @@ function u(
   if (o.hook) def.hook = o.hook;
   if (o.sockets) def.sockets = o.sockets;
   if (o.special) def.special = o.special;
+  if (o.specialMag !== undefined) def.specialMag = o.specialMag;
+  if (o.classId) def.classId = o.classId;
+  if (o.bend) def.bend = o.bend;
+  if (o.chase) def.chase = true;
   return def;
 }
 
@@ -721,10 +735,17 @@ export const UNIQUES: UniqueDef[] = [
 // Lookup
 // ---------------------------------------------------------------------------
 
+// The depth plan's uniques (data/uniqueBatches/*.ts), slot by slot.
+UNIQUES.push(...DEPTH_UNIQUES);
+
 // Names, flavour and hook wording come from the story (data/story/uniqueText.ts).
 applyUniqueText(UNIQUES);
 
+// A skill bender's hook is written from its numbers, so it cannot drift.
+for (const d of UNIQUES) if (d.bend) d.hook = bendText(d.bend);
+
 const BY_ID = new Map<string, UniqueDef>(UNIQUES.map((x) => [x.id, x]));
+setBendLookup((id) => BY_ID.get(id)?.bend);
 
 export function getUnique(id: string): UniqueDef | undefined {
   return BY_ID.get(id);

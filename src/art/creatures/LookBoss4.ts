@@ -139,8 +139,8 @@ export const BOSS_D: Record<string, LookFactory> = {
         height: 2.0,
         kind: 'giant',
         rig: { shoulders: 0.18, hips: 0.08, arms: 1.15, hunch: 0.1, head: 0.85 },
-        skin: { surface: 'stone', tint: 0x3a5aa0 },
-        alt: { surface: 'stone', tint: 0xe8e0d0 },
+        skin: { surface: 'glaze', tint: 0x3a5aa0 },
+        alt: { surface: 'glaze', tint: 0xe8e0d0 },
         metal: { surface: 'gold', tint: 0xe0b860 },
         sculpt: (s, H) => {
           const ch = s.j('chest');

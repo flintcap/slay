@@ -27,14 +27,14 @@ import { planMiniBoss, attachMiniBoss } from '../entities/MiniBoss';
 import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
-import { BOSS_MOODS } from '../data/bosses';
+import { BOSS_MOODS, getBoss } from '../data/bosses';
 import { getWarden } from '../data/wardens';
 import { generateRun, isWalkable, BIOMES, zoneAt } from '../world/DungeonGen';
 import { DungeonMesh, applyBiomeLighting, type BiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
 import { variantLabel, biomeArt } from '../world/Biomes';
 import { namedRare } from '../data/namedRares';
-import { rollDrops, rollItem, rollPotion } from '../sim/Loot';
+import { chaseHeld, rollDrops, rollItem, rollPotion, rollSignature, setLootHero, SIGNATURE_CHANCE } from '../sim/Loot';
 import { skillRank } from '../sim/Character';
 import { buildDropModel } from '../art/ItemModels';
 import { emissiveMaterial } from '../art/Materials';
@@ -426,6 +426,9 @@ export class DungeonScene extends GameScene {
       await this.engine.goTo('charSelect');
       return;
     }
+
+    // Loot knows whose it is: class-only uniques, and one chase item per account.
+    setLootHero(character.classId, () => chaseHeld(save.account));
 
     const depth = Math.max(1, p.depth ?? 1);
     const seed = p.seed ?? randomSeed();
@@ -1635,7 +1638,11 @@ export class DungeonScene extends GameScene {
         // A warden pays like a rare; its chest is the rest of the reward.
         const isWarden = e === this.warden;
         this.grantKill(e.monsterId, isWarden ? 'rare' : e.rank, e.family, e.root.position, e.ilvl);
-        if (isWarden) this.wardenFell(e.root.position);
+        if (isWarden) {
+          this.wardenFell(e.root.position);
+          const sig = rollSignature(this.warden!.defId, e.ilvl, this.rng, SIGNATURE_CHANCE.warden);
+          if (sig) this.dropItem(sig, e.root.position);
+        }
         this.powers?.onKill(e);
         this.dungeonEvents?.onKill(e);
         this.runMods?.onKill(e);
@@ -1655,6 +1662,9 @@ export class DungeonScene extends GameScene {
       // Boss death is the run's payoff: a real burst of loot.
       const drops = rollDrops(this.run.depth + 8, 'boss', this.rng, this.player.stats.magicFind, this.player.stats.goldFind);
       for (const item of drops.items) this.dropItem(item, b.root.position);
+      // Each boss carries a few uniques of its own, and drops them more than anything else does.
+      const sig = rollSignature(b.defId, this.run.depth + 8, this.rng, SIGNATURE_CHANCE.boss, getBoss(b.defId)?.signature);
+      if (sig) this.dropItem(sig, b.root.position);
       this.awardQuestIfComplete();
       this.openReturnPortal(b.root.position);
       b.root.removeFromParent();

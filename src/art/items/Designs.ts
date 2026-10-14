@@ -11,6 +11,8 @@
  * any context (heroes reads it to dress the body).
  */
 
+import { DEPTH_LOOKS } from '../../data/uniqueBatches/index';
+
 /** Decorations a piece can carry on top of its cut. See `Features.ts`. */
 export type Feature =
   | 'arrows' // arrows stuck in it
@@ -346,10 +348,12 @@ export const UNIQUE_DESIGNS: Record<string, UniqueDesign> = {
   'uq.charm.ninateeth': { main: 'bone.old', trim: 'metal.gold', glow: 0xff4a3a, features: ['teeth', 'crowns', 'skulls'], wear: 0.5, aura: 'souls', glowStyle: 'spectral' },
 };
 
+// The depth plan's batch uniques carry their designs beside their numbers.
+for (const [id, d] of Object.entries(DEPTH_LOOKS)) UNIQUE_DESIGNS[id] ??= d;
+
 /**
- * The few sets and uniques that glow. A glow is a reward, so most gear goes
- * without: the gold and the white sets, the elemental ones, and a handful of
- * famous weapons and crowns. Every ancient glows. The rest keep their
+ * The few sets that glow. A glow is a reward, so most gear goes without: the
+ * gold and the white sets and the elemental ones. The rest keep their
  * colours, sculpts and emblems, and their aura kind is ignored.
  */
 export const GLOWING_SETS: ReadonlySet<string> = new Set([
@@ -361,36 +365,23 @@ export const GLOWING_SETS: ReadonlySet<string> = new Set([
   'set.hollowking',
 ]);
 
-export const GLOWING_UNIQUES: ReadonlySet<string> = new Set([
-  // Uniques.
-  'uq.hexfire',
-  'uq.frostwind',
-  'uq.skystrike',
-  'uq.ravenfrost',
-  'uq.hellslayer',
-  'uq.azurewrath',
-  'uq.windforce',
-  'uq.crownofages',
-  'uq.thunderstroke',
-  'uq.deathsweb',
-  'uq.eschutas',
-  'uq.wyrmhaunch',
-  'uq.nightstride',
-  // Mythics.
-  'my.tyraelsmight',
-  'my.the-oculus',
-  'my.iceblink',
-  'my.spirit-of-the-forge',
-  'my.stoneofthevoid',
-  'my.seraphshymn',
-  'my.rootbound',
-  // Ancients: all of them.
-  'an.worldbreaker',
-  'an.the-long-noon',
-  'an.eternity',
-  'an.the-first-word',
-  'an.mourning-star',
-  'an.the-hollow-crown',
-  'an.godsblood-shroud',
-  'an.spirefoot',
-]);
+/**
+ * How much a unique may glow, by its tier (the depth plan's look budget):
+ * early, middle and late uniques not at all (gems and metal catch the light,
+ * nothing more), relics (level 70 and up) in one small detail, a gem or a
+ * rune line, and mythics and ancients in full, with their aura.
+ */
+export type GlowTier = 'none' | 'detail' | 'full';
+
+/** The item level where a unique counts as a relic. */
+export const RELIC_ILVL = 70;
+
+export function glowTierOf(rarity: string, ilvl: number): GlowTier {
+  if (rarity === 'mythic' || rarity === 'ancient') return 'full';
+  return ilvl >= RELIC_ILVL ? 'detail' : 'none';
+}
+
+/** Emissive strength a unique's own design may burn at, for its tier. */
+export function tierGlowStrength(tier: GlowTier, own: number): number {
+  return tier === 'full' ? own : tier === 'detail' ? Math.min(own, 0.6) : Math.min(own, 0.12);
+}

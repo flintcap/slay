@@ -33,7 +33,7 @@ export function buildItemModel(visual: ItemVisual, _rng: Rng, rarity: ItemRarity
   const built = buildItem(visual, rarity, ident ? { baseId: ident.baseId, uniqueId: ident.uniqueId, setId: ident.setId } : undefined);
   const k = HELD_SCALE[built.family];
   if (k) built.group.scale.setScalar(k);
-  // The few glowing uniques and set pieces (`GLOWING_UNIQUES`, `GLOWING_SETS`)
+  // Mythic and ancient uniques and the few glowing set pieces (`glowTierOf`, `GLOWING_SETS`)
   // glow round their outline. No floating sparks (the owner's call: fights
   // full of spells ran slow).
   const L = built.look;

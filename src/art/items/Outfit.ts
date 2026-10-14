@@ -1,8 +1,8 @@
 /**
  * SLAY — what a hero's gear does together.
  *
- * Only the few glowing sets and uniques (`Designs.ts`: GLOWING_SETS,
- * GLOWING_UNIQUES) light up. A glowing set lights as it is completed: two
+ * Only the few glowing sets (`Designs.ts`: GLOWING_SETS) and the mythic and
+ * ancient uniques (`glowTierOf`) light up. A glowing set lights as it is completed: two
  * pieces and the trims of every worn piece glow in the set's colour; three
  * or more and every piece glows round its outline, stronger with each piece;
  * the full set and the whole outfit shines. A glowing worn unique glows round
