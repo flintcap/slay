@@ -423,6 +423,8 @@ export interface Character {
    * and enchanter's rolls. Optional; repaired by `sim/TownServices.ts`.
    */
   town?: TownState;
+  /** Bosses this character has fought, so a life does not meet one twice too soon. */
+  bossesMet?: string[];
 }
 
 /** A character's standing with the camp's services. See `sim/TownServices.ts`. */
@@ -535,6 +537,8 @@ export interface LegacyState {
   };
   /** Depth milestones whose first-clear reward has been claimed. */
   milestones: number[];
+  /** Boss id -> fights the account has had with it. Seen less, picked more. */
+  bossesSeen?: Record<string, number>;
 }
 
 /** Loot filter rules. See `sim/LootFilter.ts`. */
@@ -933,6 +937,8 @@ export interface DungeonRun {
   /** Global run modifiers from endless scaling. */
   modifiers: string[];
   bossId: string;
+  /** The boss's mood, rolled from tier 15 down and shown on its gate. */
+  bossMood?: BossMood;
   /** The map this run is (maps remake). Optional for old callers and tools. */
   map?: MapInfo;
 }
@@ -1006,6 +1012,18 @@ export interface BossPhase {
   bark?: string;
 }
 
+/** How big a boss stands (docs/remake/depth.md, Part 3). */
+export type BossSize = 'person' | 'tall' | 'large' | 'giant';
+/**
+ * How a boss fights, and so where its numbers come from: a duelist hits hard
+ * and dies fast, a sponge barely hurts and takes forever. See `BOSS_PROFILES`.
+ */
+export type BossProfile = 'duelist' | 'bulwark' | 'sponge' | 'glass' | 'swarm' | 'bruiser';
+/** Straight (one or two phases, no gimmick), phased (three or more), or puzzle (a room rule to solve). */
+export type BossShape = 'straight' | 'phased' | 'puzzle';
+/** A twist rolled on a boss from tier 15 down, shown on its gate. See `data/bosses.ts`. */
+export type BossMood = 'wounded' | 'crowned' | 'hungry' | 'ancient' | 'haunted';
+
 export interface BossDef {
   id: string;
   name: string;
@@ -1013,9 +1031,26 @@ export interface BossDef {
   family: MonsterFamily;
   minDepth: number;
   biomes: BiomeId[];
-  lifeMul: number;
-  damageMul: number;
+  /**
+   * Life and damage multipliers. Left out, they come from the profile and the
+   * tier (`bossNumbers`); the first 24 bosses keep the numbers they were tuned with.
+   */
+  lifeMul?: number;
+  damageMul?: number;
   scale: number;
+  /** Left out, it follows from `scale` (`bossSize`). */
+  size?: BossSize;
+  profile: BossProfile;
+  shape: BossShape;
+  /**
+   * How far its moves reach, as a body scale. Left out, it is `scale`. A boss
+   * made smaller than it was tuned keeps its old reach, so its fight is the same.
+   */
+  reach?: number;
+  /** Uniques it drops more often than anything else does. */
+  signature?: string[];
+  /** A small boss of an ordinary floor, in a side room with its own chest. */
+  warden?: boolean;
   phases: BossPhase[];
   /** Adds summoned during the fight. */
   adds?: string[];

@@ -22,6 +22,7 @@
 import * as THREE from 'three';
 import type {
   BossDef,
+  BossMood,
   BossPhase,
   DamagePacket,
   DamageType,
@@ -33,6 +34,7 @@ import { events } from '../core/Events';
 import { monsterFX } from '../fx/MonsterFX';
 import { prepareBossPortrait } from '../art/BossPortraits';
 import { FUMBLE_HEAL_MAX, HEAVY_MUL, WARN_MIN } from '../sim/FairFight';
+import { BOSS_MOODS, bossNumbers, withMood } from '../data/bosses';
 import { Enemy, depthCurve } from './Enemy';
 import {
   after,
@@ -49,6 +51,7 @@ import {
   summon,
   type AbilityDef,
   type CombatContext,
+  type Combatant,
 } from './Abilities';
 
 /** Seconds of fight before the soft enrage, for a boss with `phases` phases. */
@@ -72,6 +75,7 @@ const BOSS_RANK: MonsterRank = 'boss';
  */
 function defFromBoss(def: BossDef): MonsterDef {
   const first = def.phases[0];
+  const n = bossNumbers(def);
   return {
     id: def.id,
     name: def.name,
@@ -79,16 +83,16 @@ function defFromBoss(def: BossDef): MonsterDef {
     role: 'brute',
     minDepth: def.minDepth,
     weight: 0,
-    lifeMul: def.lifeMul,
-    damageMul: def.damageMul,
-    defenseMul: 1.35,
+    lifeMul: n.life,
+    damageMul: n.damage,
+    defenseMul: n.defense,
     // Deliberately below the player's 4.6 m/s. Phase multipliers run 1.15 to
     // 1.5, so a boss tops out near 3.1 and a hard enrage pushes it a little
     // past that — always slow enough that you can open ground while a telegraph
     // resolves. A boss that keeps pace turns every fight into stand-and-trade.
-    speed: 2.05,
+    speed: 2.05 * n.speed,
     scale: def.scale,
-    attackRange: 3.4,
+    attackRange: n.range,
     attackSpeed: 0.85,
     damageType: 'physical',
     xpMul: 12,
@@ -117,6 +121,8 @@ export class Boss extends Enemy {
   readonly defId: string;
   readonly bossDef: BossDef;
   override readonly isBoss = true;
+  /** Its moves keep the reach they were tuned at, even on a smaller body. */
+  override readonly reach: number;
 
   /** Index into `bossDef.phases`. */
   phaseIndex = -1;
@@ -177,10 +183,22 @@ export class Boss extends Enemy {
   /** Abilities started per phase, for the checker. */
   readonly usedAbilities = new Set<string>();
 
-  constructor(def: BossDef, depth: number, rng: Rng) {
+  /** Its mood this run (tier 15 and down), or null. */
+  readonly mood: BossMood | null;
+  /** Multiplier the mood puts on every phase's damage. */
+  private moodDamage = 1;
+  /** A hungry boss feeds at most once a second. */
+  private fedAt = -99;
+  /** A haunted boss's fallen adds, waiting to rise. */
+  private haunts: Array<{ e: Enemy; id: string; rank?: string; wait: number }> = [];
+
+  constructor(base: BossDef, depth: number, rng: Rng, mood: BossMood | null = null) {
+    const def = withMood(base, mood);
     super(defFromBoss(def), BOSS_RANK, [], depth, rng);
     this.defId = def.id;
     this.bossDef = def;
+    this.mood = mood;
+    this.reach = this.sizeScale * ((def.reach ?? def.scale) / def.scale);
 
     // Bosses ignore the pack systems entirely — they are their own encounter.
     this.packId = -1;
@@ -191,6 +209,58 @@ export class Boss extends Enemy {
     this.buff('boss_stability', Number.MAX_SAFE_INTEGER, {});
     // Its intro-card portrait, rendered from this body before the fight.
     this.portrait = prepareBossPortrait(def.id, 96);
+
+    if (mood === 'wounded') {
+      // Already hurt: less to chew through, and angrier for it.
+      this.maxLife = Math.round(this.maxLife * 0.7);
+      this.life = this.maxLife;
+      this.moodDamage = 1.25;
+    } else if (mood === 'ancient') {
+      this.maxLife = Math.round(this.maxLife * 1.4);
+      this.life = this.maxLife;
+      this.buff('mood_ancient', Number.MAX_SAFE_INTEGER, { speed: 0.85, attackSpeed: 0.9 });
+    }
+  }
+
+  /** The title its name card shows: its own, and its mood if it has one. */
+  get cardTitle(): string {
+    return this.mood ? `${this.bossDef.title} \u00b7 ${BOSS_MOODS[this.mood].name}` : this.bossDef.title;
+  }
+
+  /** A blow of its landed on the hero for `amount`. A hungry boss feeds on it. */
+  landed(amount: number): void {
+    if (this.mood !== 'hungry' || amount <= 0 || !this.alive) return;
+    if (this.fightTime - this.fedAt < 1) return;
+    this.fedAt = this.fightTime;
+    const room = Math.max(0, this.maxLife - this.life);
+    const gain = Math.min(room, this.maxLife * 0.008);
+    if (gain <= 0) return;
+    this.life += gain;
+    events.emit('boss:damaged', { life: this.life, maxLife: this.maxLife });
+  }
+
+  /** Abilities tell it what it called up; a haunted boss remembers, to raise them. */
+  onSummoned(spawned: readonly Enemy[], monsterId: string, rank?: string): void {
+    if (this.mood !== 'haunted') return;
+    for (const e of spawned) this.haunts.push({ e, id: monsterId, rank, wait: 3 });
+  }
+
+  /** Haunted: a fallen add rises once, three seconds after it dies. */
+  private tickHaunts(dt: number, ctx: CombatContext): void {
+    for (let i = this.haunts.length - 1; i >= 0; i--) {
+      const h = this.haunts[i]!;
+      if (h.e.alive) continue;
+      h.wait -= dt;
+      if (h.wait > 0) continue;
+      this.haunts.splice(i, 1);
+      const p = h.e.root.position;
+      ctx.fx.burst('void', p.x, 0.8, p.z, { count: 20, color: 0x9fd8ff });
+      // Raised where it fell, by a stand-in caller with no `onSummoned`:
+      // the risen stay down.
+      const at = p.clone();
+      const caller = { position: () => at, level: this.level } as unknown as Combatant;
+      summon(caller, ctx, h.id, 1, 0.4, h.rank);
+    }
   }
 
   // --- engagement ----------------------------------------------------------
@@ -202,8 +272,10 @@ export class Boss extends Enemy {
     this.introTimer = 1.2;
     events.emit('boss:engaged', {
       name: this.bossDef.name,
-      title: this.bossDef.title,
+      title: this.cardTitle,
       maxLife: this.maxLife,
+      id: this.bossDef.id,
+      mood: this.mood ?? undefined,
     });
     events.emit('music', { track: this.bossDef.music, fade: 1.5 });
     // The intro is narrated as a subtitle by the story layer (ui/StoryBosses.ts);
@@ -231,7 +303,7 @@ export class Boss extends Enemy {
     if (this.abilityIds.length === 0) this.abilityIds.push('cleave');
 
     // Phase multipliers stack on the base statline.
-    this.outgoingMul = phase.damage ?? 1;
+    this.outgoingMul = (phase.damage ?? 1) * this.moodDamage;
     this.buff('phase_speed', Number.MAX_SAFE_INTEGER, { speed: phase.speed ?? 1 });
 
     // Stagger window: brief invulnerable pause so the transition reads.
@@ -464,11 +536,11 @@ export class Boss extends Enemy {
           this.facing = angleTo(t.x, t.y, h.x, h.z);
           this.rootTimer = 0.65;
           const facing = this.facing;
-          c.decals.telegraph('cone', t.x, t.y, 4 * Math.min(1.5, this.sizeScale * 0.6), facing, 0.65, 0x6040a0);
+          c.decals.telegraph('cone', t.x, t.y, 4 * Math.min(1.5, this.reach * 0.6), facing, 0.65, 0x6040a0);
           c.fx.burst('void', t.x, 1.5, t.y, { count: 30, color: 0x201830 });
           after(0.65, (cc) => {
             if (!this.alive) return;
-            const reach = 4 * Math.min(1.5, this.sizeScale * 0.6);
+            const reach = 4 * Math.min(1.5, this.reach * 0.6);
             if (inCone(t.x, t.y, facing, 60, reach, cc.playerPos.x, cc.playerPos.z)) {
               hitPlayer(this, cc, 2.2, 'arcane', 'arena.darkness', { knockback: 3 });
             }
@@ -669,6 +741,7 @@ export class Boss extends Enemy {
     if (this.engaged) {
       this.tickArena(dt, ctx);
       this.tickSoftEnrage(dt, ctx);
+      if (this.haunts.length) this.tickHaunts(dt, ctx);
     }
 
     // Trickle adds independent of arena hooks, so a boss room never feels empty.

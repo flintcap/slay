@@ -26,7 +26,7 @@
  * (Boss.ts, softEnrageAfter) enrages the boss and fills the room with dread.
  */
 
-import type { BossDef, BiomeId } from '../types';
+import type { BossDef, BiomeId, BossMood, BossPhase, BossProfile, BossSize } from '../types';
 
 const ALL: BossDef[] = [];
 
@@ -49,6 +49,8 @@ boss({
   lifeMul: 1.0,
   damageMul: 1.0,
   scale: 2.4,
+  profile: 'bruiser',
+  shape: 'phased',
   intro: 'A crown of vertebrae turns toward you. The throne room exhales dust.',
   lootTier: 1,
   music: 'boss.crypt',
@@ -91,6 +93,8 @@ boss({
   lifeMul: 1.05,
   damageMul: 0.95,
   scale: 2.6,
+  profile: 'swarm',
+  shape: 'phased',
   intro: 'The webs are not decoration. They are a nervous system, and it just felt you.',
   lootTier: 1,
   music: 'boss.hive',
@@ -131,7 +135,11 @@ boss({
   biomes: ['crypt', 'caverns', 'ashwaste', 'darkForest', 'hell'],
   lifeMul: 1.15,
   damageMul: 1.2,
-  scale: 2.3,
+  scale: 1.8,
+  // Was 2.3: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 2.3,
+  profile: 'bruiser',
+  shape: 'phased',
   intro: 'The floor is tacky underfoot. Something enormous drags a hook across stone.',
   lootTier: 2,
   music: 'boss.demon',
@@ -174,6 +182,8 @@ boss({
   lifeMul: 1.3,
   damageMul: 1.0,
   scale: 2.5,
+  profile: 'bulwark',
+  shape: 'puzzle',
   intro: 'Six centuries of standing perfectly still end in a single grinding step.',
   lootTier: 2,
   music: 'boss.foundry',
@@ -222,7 +232,11 @@ boss({
   biomes: ['caverns', 'ashwaste', 'crypt', 'darkForest', 'desert', 'tundra'],
   lifeMul: 0.9,
   damageMul: 1.1,
-  scale: 1.9,
+  scale: 1.1,
+  // Was 1.9: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 1.9,
+  profile: 'swarm',
+  shape: 'phased',
   intro: 'She does not fight you. She lets the pack do that, and watches.',
   lootTier: 2,
   music: 'boss.beast',
@@ -265,6 +279,8 @@ boss({
   lifeMul: 1.4,
   damageMul: 0.9,
   scale: 2.7,
+  profile: 'sponge',
+  shape: 'phased',
   intro: 'It has eaten everything else in this chamber. The armour is still visible inside it.',
   lootTier: 2,
   music: 'boss.ooze',
@@ -315,7 +331,11 @@ boss({
   biomes: ['crypt', 'sunkenTemple', 'voidspire', 'desertTomb'],
   lifeMul: 1.0,
   damageMul: 1.25,
-  scale: 2.2,
+  scale: 1.6,
+  // Was 2.2: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 2.2,
+  profile: 'glass',
+  shape: 'phased',
   intro: 'Every book in this hall is a name. He has been waiting to add yours.',
   lootTier: 3,
   music: 'boss.arcane',
@@ -364,6 +384,8 @@ boss({
   lifeMul: 1.5,
   damageMul: 1.2,
   scale: 2.9,
+  profile: 'bulwark',
+  shape: 'phased',
   intro: 'The great hammer has not stopped falling in four hundred years. It stops now.',
   lootTier: 3,
   music: 'boss.foundry',
@@ -413,6 +435,8 @@ boss({
   lifeMul: 1.25,
   damageMul: 1.15,
   scale: 2.5,
+  profile: 'bruiser',
+  shape: 'phased',
   intro: 'The water in this temple has been waiting a long time to be told what to do.',
   lootTier: 3,
   music: 'boss.temple',
@@ -462,6 +486,8 @@ boss({
   lifeMul: 1.55,
   damageMul: 1.0,
   scale: 2.8,
+  profile: 'sponge',
+  shape: 'phased',
   intro: 'He is mostly other people. They are all still moving.',
   lootTier: 3,
   music: 'boss.crypt',
@@ -502,7 +528,11 @@ boss({
   biomes: ['voidspire', 'sunkenTemple'],
   lifeMul: 1.1,
   damageMul: 1.35,
-  scale: 2.6,
+  scale: 1.5,
+  // Was 2.6: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 2.6,
+  profile: 'glass',
+  shape: 'puzzle',
   intro: 'It does not have a front. Wherever you stand, you are being looked at.',
   lootTier: 4,
   music: 'boss.void',
@@ -551,7 +581,11 @@ boss({
   biomes: ['frostvault', 'tundra'],
   lifeMul: 1.6,
   damageMul: 1.2,
-  scale: 3.0,
+  scale: 2.8,
+  // Was 3.0: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 3.0,
+  profile: 'bulwark',
+  shape: 'phased',
   intro: 'A mountain of ice with something furious frozen at its centre.',
   lootTier: 4,
   music: 'boss.frost',
@@ -600,7 +634,11 @@ boss({
   biomes: ['ashwaste', 'foundry', 'desert', 'hell'],
   lifeMul: 1.2,
   damageMul: 1.4,
-  scale: 2.3,
+  scale: 1.15,
+  // Was 2.3: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 2.3,
+  profile: 'glass',
+  shape: 'phased',
   intro: 'He has been preaching to an empty waste for years. You are the first congregation.',
   lootTier: 4,
   music: 'boss.demon',
@@ -649,7 +687,11 @@ boss({
   biomes: ['foundry', 'crypt', 'ashwaste', 'desert', 'tundra'],
   lifeMul: 1.7,
   damageMul: 1.3,
-  scale: 2.5,
+  scale: 1.2,
+  // Was 2.5: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 2.5,
+  profile: 'bulwark',
+  shape: 'puzzle',
   intro: 'Full plate, no visor slit. Whatever is inside does not need to see.',
   lootTier: 4,
   music: 'boss.foundry',
@@ -704,6 +746,8 @@ boss({
   lifeMul: 1.9,
   damageMul: 1.15,
   scale: 3.2,
+  profile: 'sponge',
+  shape: 'phased',
   intro: 'Roots have found every corpse in this temple and put them all to work.',
   lootTier: 4,
   music: 'boss.temple',
@@ -751,7 +795,11 @@ boss({
   biomes: ['voidspire', 'caverns'],
   lifeMul: 1.2,
   damageMul: 1.6,
-  scale: 2.2,
+  scale: 1.7,
+  // Was 2.2: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 2.2,
+  profile: 'duelist',
+  shape: 'phased',
   intro: 'It was here before you opened the door. It has been here the whole time.',
   lootTier: 5,
   music: 'boss.void',
@@ -802,6 +850,8 @@ boss({
   lifeMul: 1.4,
   damageMul: 1.45,
   scale: 2.7,
+  profile: 'glass',
+  shape: 'phased',
   intro: 'The air tastes of copper. Your hair is standing up and it is not fear.',
   lootTier: 5,
   music: 'boss.storm',
@@ -852,6 +902,8 @@ boss({
   lifeMul: 2.0,
   damageMul: 1.3,
   scale: 3.1,
+  profile: 'swarm',
+  shape: 'phased',
   intro: 'The hive is not her home. The hive is her body, and you are inside it.',
   lootTier: 5,
   music: 'boss.hive',
@@ -901,7 +953,11 @@ boss({
   biomes: ['crypt', 'voidspire', 'sunkenTemple', 'desertTomb'],
   lifeMul: 1.6,
   damageMul: 1.55,
-  scale: 2.6,
+  scale: 1.8,
+  // Was 2.6: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 2.6,
+  profile: 'glass',
+  shape: 'puzzle',
   intro: 'Six seals are already broken. He is very close to whatever he wanted.',
   lootTier: 5,
   music: 'boss.arcane',
@@ -951,6 +1007,8 @@ boss({
   lifeMul: 2.1,
   damageMul: 1.5,
   scale: 3.3,
+  profile: 'bruiser',
+  shape: 'phased',
   intro: 'The lava is not a hazard in this room. The lava is him, and he is standing up.',
   lootTier: 6,
   music: 'boss.demon',
@@ -1000,7 +1058,11 @@ boss({
   biomes: ['voidspire'],
   lifeMul: 1.8,
   damageMul: 1.65,
-  scale: 3.0,
+  scale: 2.7,
+  // Was 3.0: made smaller for the size spread, with its old reach so the fight is unchanged.
+  reach: 3.0,
+  profile: 'glass',
+  shape: 'phased',
   intro: 'It is announcing something. The announcement is happening inside your skull.',
   lootTier: 6,
   music: 'boss.void',
@@ -1051,6 +1113,8 @@ boss({
   lifeMul: 2.6,
   damageMul: 1.5,
   scale: 3.6,
+  profile: 'sponge',
+  shape: 'phased',
   intro: 'You mistook it for architecture for a full minute. It let you.',
   lootTier: 6,
   music: 'boss.foundry',
@@ -1101,6 +1165,8 @@ boss({
   lifeMul: 2.8,
   damageMul: 1.6,
   scale: 3.5,
+  profile: 'sponge',
+  shape: 'phased',
   intro: 'Everything that ever went missing down here is in there, and still awake.',
   lootTier: 7,
   music: 'boss.ooze',
@@ -1150,6 +1216,8 @@ boss({
   lifeMul: 3.2,
   damageMul: 1.8,
   scale: 3.8,
+  profile: 'bruiser',
+  shape: 'phased',
   intro: 'There is nothing below this floor. He is what the bottom looks like.',
   lootTier: 8,
   music: 'boss.final',
@@ -1201,23 +1269,154 @@ export function getBoss(id: string): BossDef | undefined {
   return BY_ID.get(id);
 }
 
+// ---------------------------------------------------------------------------
+// Profiles and sizes
+// ---------------------------------------------------------------------------
+
 /**
- * Picks the floor boss. Prefers a boss matching the biome whose `minDepth` is
- * as close under the current depth as possible, so the encounter always feels
- * tier-appropriate rather than randomly ancient.
+ * Where a boss's numbers come from when the data leaves them out: the
+ * profile's shares, times its tier. Life and damage stop climbing together,
+ * so a late duelist still dies fast and a late sponge still barely hurts.
+ * `defense` multiplies armour and resists; `range` is how close it fights.
+ */
+export const BOSS_PROFILES: Record<BossProfile, { life: number; damage: number; speed: number; defense: number; range: number }> = {
+  duelist: { life: 0.6, damage: 1.6, speed: 1.25, defense: 1.2, range: 2.6 },
+  bulwark: { life: 1.2, damage: 0.8, speed: 0.85, defense: 2.1, range: 3.4 },
+  sponge: { life: 3.0, damage: 0.7, speed: 0.85, defense: 1.35, range: 3.6 },
+  glass: { life: 0.7, damage: 1.4, speed: 1.05, defense: 1.0, range: 3.4 },
+  swarm: { life: 0.8, damage: 0.9, speed: 1.0, defense: 1.2, range: 3.2 },
+  bruiser: { life: 1.0, damage: 1.0, speed: 1.0, defense: 1.35, range: 3.4 },
+};
+
+/** Life climbs about 9% and damage about 3% per tier a boss first appears at (to tier 40). */
+export function bossTierMul(minDepth: number): { life: number; damage: number } {
+  const t = Math.max(0, Math.min(40, minDepth) - 1);
+  return { life: 1 + 0.09 * t, damage: 1 + 0.033 * t };
+}
+
+/**
+ * A boss's statline multipliers. Data that gives its own life and damage (the
+ * first 24, tuned before profiles) keeps them, and its old speed, armour and
+ * reach; everything else comes from the profile.
+ */
+export function bossNumbers(b: BossDef): { life: number; damage: number; speed: number; defense: number; range: number } {
+  if (b.lifeMul !== undefined && b.damageMul !== undefined) return { life: b.lifeMul, damage: b.damageMul, speed: 1, defense: 1.35, range: 3.4 };
+  const p = BOSS_PROFILES[b.profile];
+  const t = bossTierMul(b.minDepth);
+  return {
+    life: b.lifeMul ?? p.life * t.life,
+    damage: b.damageMul ?? p.damage * t.damage,
+    speed: p.speed,
+    defense: p.defense,
+    range: p.range * Math.min(1, Math.max(0.7, (b.reach ?? b.scale) / 2.4)),
+  };
+}
+
+/** How big a boss stands: the data's word, else its scale. */
+export function bossSize(b: Pick<BossDef, 'size' | 'scale'>): BossSize {
+  if (b.size) return b.size;
+  if (b.scale <= 1.25) return 'person';
+  if (b.scale < 1.9) return 'tall';
+  if (b.scale < 3) return 'large';
+  return 'giant';
+}
+
+/**
+ * What the picker remembers: the bosses this character has fought (a life
+ * does not meet one twice until its depth's pool is used up), and how often
+ * the account has fought each (seen less, picked more).
+ */
+export interface BossMemory {
+  met: readonly string[];
+  seen: Readonly<Record<string, number>>;
+}
+
+/**
+ * The boss for a run at `depth` in `biome`. Bosses of the biome first, and
+ * near their introduction depth, so the fight is tier-appropriate rather than
+ * randomly ancient. With a memory, a boss this life has met is skipped while
+ * any other fits, and a boss the account has fought less is likelier.
+ * Wardens are never picked here.
  */
 export function pickBossForDepth(
   depth: number,
   biome: BiomeId,
   rng: { weighted<T>(a: readonly T[], w: (t: T) => number): T; pick<T>(a: readonly T[]): T },
+  memory?: BossMemory | null,
 ): BossDef {
-  const eligible = ALL.filter((b) => b.minDepth <= depth);
-  const pool = eligible.length ? eligible : [ALL[0]!];
+  const real = ALL.filter((b) => !b.warden);
+  const eligible = real.filter((b) => b.minDepth <= depth);
+  const pool = eligible.length ? eligible : [real[0]!];
   const inBiome = pool.filter((b) => b.biomes.includes(biome));
-  const from = inBiome.length ? inBiome : pool;
+  let from = inBiome.length ? inBiome : pool;
+  if (memory && memory.met.length) {
+    const met = new Set(memory.met);
+    const fresh = from.filter((b) => !met.has(b.id));
+    // The biome's bosses are all met: any fresh one of the depth will do.
+    const anyFresh = fresh.length ? fresh : pool.filter((b) => !met.has(b.id));
+    if (anyFresh.length) from = anyFresh;
+  }
+  const seen = memory?.seen ?? {};
+  const least = Math.min(...from.map((b) => seen[b.id] ?? 0));
   return rng.weighted(from, (b) => {
     const gap = depth - b.minDepth;
     // Sweet spot is 0-6 floors above the boss's introduction.
-    return 1 / (1 + Math.pow(Math.max(0, gap - 3) / 8, 2));
+    const near = 1 / (1 + Math.pow(Math.max(0, gap - 3) / 8, 2));
+    // Each fight more than the least-fought boss here halves its chance, to a floor.
+    const extra = (seen[b.id] ?? 0) - least;
+    return near * Math.max(0.15, Math.pow(0.5, extra));
   });
+}
+
+// ---------------------------------------------------------------------------
+// Moods
+// ---------------------------------------------------------------------------
+
+/** What each mood is called and what it does, for the gate and the name card. */
+export const BOSS_MOODS: Record<BossMood, { name: string; text: string }> = {
+  wounded: { name: 'Wounded', text: 'less life, but it hits a quarter harder' },
+  crowned: { name: 'Crowned', text: 'one more phase before it falls' },
+  hungry: { name: 'Hungry', text: 'it heals a little each time it hurts you' },
+  ancient: { name: 'Ancient', text: 'bigger, slower, and far more life' },
+  haunted: { name: 'Haunted', text: 'what it calls rises once more after dying' },
+};
+
+/** Moods start at this tier. */
+export const MOOD_FROM = 15;
+
+/**
+ * A boss's mood for one run. None before tier 15; from there 70% of bosses
+ * have one, climbing to all of them by tier 30. Haunted needs a boss that
+ * calls adds.
+ */
+export function rollBossMood(def: BossDef, depth: number, rng: { next(): number }): BossMood | null {
+  if (depth < MOOD_FROM || def.warden) return null;
+  const chance = Math.min(1, 0.7 + ((depth - MOOD_FROM) / 15) * 0.3);
+  if (rng.next() >= chance) return null;
+  const all = Object.keys(BOSS_MOODS) as BossMood[];
+  const legal = (def.adds?.length ?? 0) > 0 ? all : all.filter((m) => m !== 'haunted');
+  return legal[Math.min(legal.length - 1, Math.floor(rng.next() * legal.length))]!;
+}
+
+/**
+ * The boss as its mood makes it. Crowned adds a last phase (the last kit,
+ * harder, no room rule); ancient is a fifth bigger, and its reach with it.
+ * The rest change the fight, not the data (see `Boss`).
+ */
+export function withMood(def: BossDef, mood: BossMood | null): BossDef {
+  if (mood === 'crowned') {
+    const last = def.phases[def.phases.length - 1]!;
+    const at = Math.min(0.15, last.atLife * 0.5);
+    const crown: BossPhase = {
+      atLife: at,
+      name: 'Crowned',
+      abilities: last.abilities.slice(),
+      speed: (last.speed ?? 1) * 1.1,
+      damage: (last.damage ?? 1) * 1.15,
+      bark: 'Not yet. Not by you.',
+    };
+    return { ...def, phases: [...def.phases, crown] };
+  }
+  if (mood === 'ancient') return { ...def, scale: def.scale * 1.2, reach: (def.reach ?? def.scale) * 1.2 };
+  return def;
 }

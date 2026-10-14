@@ -8,7 +8,7 @@
  *  2. Is every boss internally sound — real phases, real abilities, an arena
  *     hook the runtime knows, adds that exist?
  */
-import { BOSSES, pickBossForDepth } from '../src/data/bosses';
+import { BOSSES, BOSS_PROFILES, pickBossForDepth } from '../src/data/bosses';
 import { MONSTERS } from '../src/data/monsters';
 import { biomeForDepth } from '../src/world/Biomes';
 import { streamFor } from '../src/core/RNG';
@@ -50,8 +50,12 @@ for (const b of BOSSES) {
   }
   if (!b.intro) defects.push({ id: b.id, problem: 'no intro line' });
   if (!b.music) defects.push({ id: b.id, problem: 'no music track' });
-  if (b.lifeMul <= 0 || b.damageMul <= 0) defects.push({ id: b.id, problem: 'zero life or damage multiplier' });
+  if ((b.lifeMul ?? 1) <= 0 || (b.damageMul ?? 1) <= 0) defects.push({ id: b.id, problem: 'zero life or damage multiplier' });
   if (!b.biomes || b.biomes.length === 0) defects.push({ id: b.id, problem: 'belongs to no biome' });
+  if (!(b.profile in BOSS_PROFILES)) defects.push({ id: b.id, problem: `unknown profile "${b.profile}"` });
+  if (!['straight', 'phased', 'puzzle'].includes(b.shape)) defects.push({ id: b.id, problem: `unknown shape "${b.shape}"` });
+  if (b.shape === 'straight' && b.phases.length > 2) defects.push({ id: b.id, problem: 'a straight fight has at most two phases' });
+  if (b.shape === 'phased' && b.phases.length < 3) defects.push({ id: b.id, problem: 'a phased fight has at least three phases' });
 }
 
 console.log(

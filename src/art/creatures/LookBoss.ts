@@ -38,8 +38,14 @@ const BLOOD: RGB = [0.45, 0.06, 0.05];
 // Sizing
 // ---------------------------------------------------------------------------
 
-/** In-game height for a boss of data scale `k`: 4 m for the smallest, 6 m for the largest. */
+/**
+ * In-game height for a boss of data scale `k`. Large and giant bosses (1.9
+ * and up) stand 4 to 6 m. Tall ones (1.3 to 1.8) stand 2.7 to 3.6 m, and
+ * person sized ones (up to 1.25) 2.0 to 2.3 m: a head over the hero, no more.
+ */
 export function bossHeight(k: number): number {
+  if (k <= 1.25) return 2.0 + Math.max(0, Math.min(0.35, k - 0.9));
+  if (k < 1.9) return 2.7 + 1.8 * Math.max(0, Math.min(0.5, k - 1.3));
   return 4 + 2 * Math.min(1, Math.max(0, (k - 1.9) / 1.9));
 }
 

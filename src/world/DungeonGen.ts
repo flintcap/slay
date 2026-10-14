@@ -17,6 +17,7 @@
  */
 
 import type {
+  BossMood,
   BiomeDef,
   BiomeId,
   CharClassId,
@@ -189,6 +190,8 @@ export interface MonsterCatalog {
    * Optional so an older catalogue still satisfies the contract.
    */
   nameFor?(monsterId: string, biome: BiomeId, depth: number, rng: Rng): string | null;
+  /** The boss's mood for this run, or null. Optional: without it bosses have none. */
+  moodFor?(bossId: string, depth: number, rng: Rng): BossMood | null;
 }
 
 /**
@@ -270,6 +273,7 @@ export function setMonsterCatalog(c: Partial<MonsterCatalog>): void {
     affixes: c.affixes ?? fallbackCatalog.affixes,
     bossFor: c.bossFor ?? fallbackCatalog.bossFor,
     nameFor: c.nameFor,
+    moodFor: c.moodFor,
   };
 }
 
@@ -672,6 +676,8 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
 
   const rolledBoss = catalog.bossFor(depth, biome, runRng.fork('boss'));
   const bossId = plan?.bossId ?? rolledBoss;
+  // Its own stream, so rolling a mood moves no other roll of the run.
+  const bossMood = catalog.moodFor?.(bossId, depth, streamFor(seed, `mood:${depth}`)) ?? undefined;
 
   // Which dressed version of each biome this map wears. Rolled once per biome
   // so two areas of one biome read as one place, and re-rolled next map.
@@ -697,7 +703,7 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
     levels.push(level);
   }
 
-  return { seed, depth, biome, variant, levels, quest, modifiers, bossId, map: map.info };
+  return { seed, depth, biome, variant, levels, quest, modifiers, bossId, bossMood, map: map.info };
 }
 
 // ---------------------------------------------------------------------------

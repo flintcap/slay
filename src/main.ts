@@ -145,15 +145,22 @@ async function main(): Promise<void> {
     { setMonsterCatalog },
     { MONSTERS, pickMonstersForDepth },
     { MONSTER_AFFIXES },
-    { pickBossForDepth },
+    { pickBossForDepth, rollBossMood, getBoss },
     { namedRaresFor },
+    { bossMemoryOf, recordBossFought },
   ] = await Promise.all([
       import('./world/DungeonGen'),
       import('./data/monsters'),
       import('./data/monsterAffixes'),
       import('./data/bosses'),
       import('./data/namedRares'),
+      import('./sim/BossMemory'),
     ]);
+  events.on('boss:engaged', (p) => {
+    if (!p.id) return;
+    recordBossFought(save.account, save.account.current, p.id);
+    save.touch();
+  });
   setMonsterCatalog({
     pick: (depth, biome, rng, count) => {
       const picked = pickMonstersForDepth(depth, biome, rng, count).map((m) => m.id);
@@ -181,7 +188,12 @@ async function main(): Promise<void> {
       }
       return out;
     },
-    bossFor: (depth, biome, rng) => pickBossForDepth(depth, biome, rng).id,
+    // Seen less, picked more, and no repeats within one life (sim/BossMemory.ts).
+    bossFor: (depth, biome, rng) => pickBossForDepth(depth, biome, rng, bossMemoryOf(save.account, save.account.current)).id,
+    moodFor: (bossId, depth, rng) => {
+      const def = getBoss(bossId);
+      return def ? rollBossMood(def, depth, rng) : null;
+    },
     // Which named rare, if any, could stand in for this monster here. World
     // generation must not import the bestiary, so the lookup comes in the same
     // way the monster pool does.

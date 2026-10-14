@@ -77,7 +77,7 @@ export interface GameEvents {
   };
   /** A run was finished and banked. Fires once, on the way back to town. */
   'run:cleared': { depth: number };
-  'boss:engaged': { name: string; title: string; maxLife: number };
+  'boss:engaged': { name: string; title: string; maxLife: number; id?: string; mood?: string };
   /** A room rule went wrong: the boss gained time (sim/FairFight.ts). */
   'boss:fumble': { name: string; cost: string; seconds: number };
   'boss:phase': { name: string; bark?: string; index: number };

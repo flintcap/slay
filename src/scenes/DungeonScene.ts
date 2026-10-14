@@ -27,6 +27,7 @@ import { planMiniBoss, attachMiniBoss } from '../entities/MiniBoss';
 import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
+import { BOSS_MOODS } from '../data/bosses';
 import { generateRun, isWalkable, BIOMES, zoneAt } from '../world/DungeonGen';
 import { DungeonMesh, applyBiomeLighting, type BiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
@@ -262,6 +263,8 @@ export class DungeonScene extends GameScene {
     bars: THREE.Group | null;
     colliders: Array<{ x: number; z: number; w: number; d: number }>;
     rise: number;
+    /** The boss's mood has been read out at the gate. */
+    warned: boolean;
   } | null = null;
   /** Summonable bodies built for the area's warm-up (see `warmSummons`). */
   private summonWarm: THREE.Object3D[] = [];
@@ -771,7 +774,7 @@ export class DungeonScene extends GameScene {
     if (this.level.isBossLevel) {
       const def = BOSSES.find((b) => b.id === this.run.bossId) ?? BOSSES[0];
       if (def) {
-        this.boss = new Boss(def, this.run.depth, levelRng.fork('boss'));
+        this.boss = new Boss(def, this.run.depth, levelRng.fork('boss'), this.run.bossMood ?? null);
         const arena = this.level.rooms.find((r) => r.kind === 'boss');
         const centre = arena
           ? this.mesh.tileToWorld(Math.round(arena.center.x), Math.round(arena.center.y))
@@ -791,7 +794,7 @@ export class DungeonScene extends GameScene {
             }
           }
           this.boss.dormant = true;
-          this.arenaGate = { tiles, sealed: false, clearFor: 0, bars: null, colliders: [], rise: 0 };
+          this.arenaGate = { tiles, sealed: false, clearFor: 0, bars: null, colliders: [], rise: 0, warned: false };
         }
       }
     }
@@ -1205,6 +1208,7 @@ export class DungeonScene extends GameScene {
         const taken = this.player.takeDamage(packet, this.rng);
         this.passiveDefence(packet, taken, before);
         this.powers?.afterPlayerHit(packet, taken, taken === 0 && before === this.player.life);
+        if (taken > 0 && this.boss && packet.source === this.boss.id) this.boss.landed(taken);
         if (taken > 0) {
           this.engine.renderer.flashHurt(Math.min(1, taken / Math.max(1, this.player.stats.life * 0.25)));
           this.rig.addTrauma(Math.min(0.5, taken / Math.max(1, this.player.stats.life * 0.4)));
@@ -1673,6 +1677,11 @@ export class DungeonScene extends GameScene {
         for (const item of extra.items.slice(0, 1)) this.dropItem(item, pos);
       }
     }
+    // A boss with a mood is a harder bargain, and pays for it: two more rolls.
+    if (rank === 'boss' && this.run.bossMood && monsterId === this.boss?.defId) {
+      const extra = rollDrops(ilvl, rank, this.rng, this.player.stats.magicFind * dif.magicFind + 100, 0);
+      for (const item of extra.items.slice(0, 2)) this.dropItem(item, pos);
+    }
     if (drops.gold > 0) {
       this.dropGold(Math.round(drops.gold * dif.goldFind), pos);
     }
@@ -2108,6 +2117,20 @@ export class DungeonScene extends GameScene {
     };
     const boss = this.boss;
     const bossUp = !!boss && boss.life > 0;
+    // A boss with a mood says so at its gate, so the hero can choose to fight.
+    if (!g.warned && bossUp && boss!.mood && g.tiles.length) {
+      const px = this.player.position.x;
+      const pz = this.player.position.z;
+      const near = g.tiles.some((t) => {
+        const w = this.mesh.tileToWorld(t.x, t.y);
+        return Math.hypot(w.x - px, w.z - pz) < 14;
+      });
+      if (near) {
+        g.warned = true;
+        const m = BOSS_MOODS[boss!.mood];
+        events.emit('toast', { text: `${boss!.bossDef.name} waits within. ${m.name}: ${m.text}.`, kind: 'bad' });
+      }
+    }
     if (!g.sealed && bossUp && this.player.alive) {
       // Shut only once the hero is well past the gate (GATE_CLEAR from every
       // gate tile) and has stayed there a moment: shutting the instant the

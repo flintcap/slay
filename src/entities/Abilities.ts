@@ -129,8 +129,12 @@ export interface Combatant {
   alive: boolean;
   /** World-space facing in radians (0 = +Z). */
   facing: number;
-  /** Model scale multiplier, used to size telegraphs and reach. */
+  /** Model scale multiplier. */
   sizeScale: number;
+  /** Scale its moves reach and telegraph at, when not its body's (`reachOf`). */
+  readonly reach?: number;
+  /** Told of every monster it calls up (a haunted boss raises them again). */
+  onSummoned?(spawned: readonly Enemy[], monsterId: string, rank?: string): void;
   level: number;
   stats: Stats;
   /** Multiplier folded into every ability packet this entity produces. */
@@ -150,6 +154,11 @@ export interface Combatant {
   /** Fired when an ability wants a visual burst on the caster. */
   flashCast(color: number): void;
   notifyAbility(ability: AbilityDef, phase: AbilityPhase): void;
+}
+
+/** How far an entity's moves reach and telegraph, as a scale: its reach, else its body. */
+export function reachOf(self: Pick<Combatant, 'sizeScale' | 'reach'>): number {
+  return self.reach ?? self.sizeScale;
 }
 
 export interface BuffMods {
@@ -1118,6 +1127,7 @@ export function summon(
       ctx.fx.burst('portal', tile.x, 0.6, tile.y, { count: 18, color: 0x9060ff });
     }
   }
+  if (out.length) self.onSummoned?.(out, monsterId, rank);
   return out;
 }
 
@@ -1244,7 +1254,7 @@ def({
   rooted: false,
   sfx: 'swing.light',
   onExecute: (self, ctx) => {
-    coneHit(self, ctx, 60, 2.4 * self.sizeScale, 1, 'physical', 'basic_strike');
+    coneHit(self, ctx, 60, 2.4 * reachOf(self), 1, 'physical', 'basic_strike');
   },
 });
 
@@ -1264,7 +1274,7 @@ def({
   telegraph: { shape: 'cone', size: 3.2, color: 0xff6a4a, atSelf: true },
   sfx: 'swing.heavy',
   onExecute: (self, ctx) => {
-    coneHit(self, ctx, 65, 3.4 * self.sizeScale, 1.7, 'physical', 'cleave', { knockback: 1.2 });
+    coneHit(self, ctx, 65, 3.4 * reachOf(self), 1.7, 'physical', 'cleave', { knockback: 1.2 });
     const p = P(self);
     ctx.fx.burst('hit.physical', p.x + Math.sin(self.facing) * 2, 0.9, p.z + Math.cos(self.facing) * 2, { count: 20 });
   },
@@ -1282,13 +1292,13 @@ def({
   damageMul: 0.85,
   priority: 0.4,
   onExecute: (self, ctx) => {
-    coneHit(self, ctx, 70, 2.8 * self.sizeScale, 0.85, 'physical', 'double_swipe');
+    coneHit(self, ctx, 70, 2.8 * reachOf(self), 0.85, 'physical', 'double_swipe');
   },
   onTick: (self, ctx, inst, dt) => {
     inst.tickAccum += dt;
     if (inst.tickAccum > 0.22 && inst.data.second !== 1) {
       inst.data.second = 1;
-      coneHit(self, ctx, 70, 2.8 * self.sizeScale, 0.95, 'physical', 'double_swipe');
+      coneHit(self, ctx, 70, 2.8 * reachOf(self), 0.95, 'physical', 'double_swipe');
     }
   },
   onEnd: (_s, _c, inst) => {
@@ -1313,9 +1323,9 @@ def({
   sfx: 'slam',
   onExecute: (self, ctx) => {
     const p = P(self);
-    circleHit(self, ctx, p.x, p.z, 3.4 * self.sizeScale, 2.4, 'physical', 'heavy_slam', { knockback: 3 });
+    circleHit(self, ctx, p.x, p.z, 3.4 * reachOf(self), 2.4, 'physical', 'heavy_slam', { knockback: 3 });
     ctx.fx.burst('bossSlam', p.x, 0.2, p.z, { count: 34 });
-    ctx.decals.add('crack', p.x, p.z, 3.2 * self.sizeScale);
+    ctx.decals.add('crack', p.x, p.z, 3.2 * reachOf(self));
   },
 });
 
@@ -1336,14 +1346,14 @@ def({
   onExecute: (self, ctx) => {
     const p = P(self);
     ctx.fx.burst('bossSlam', p.x, 0.15, p.z, { count: 44 });
-    ctx.decals.add('crack', p.x, p.z, 4.6 * self.sizeScale);
+    ctx.decals.add('crack', p.x, p.z, 4.6 * reachOf(self));
     // An expanding shockwave: three rings you can outrun.
     for (let ring = 0; ring < 3; ring++) {
       after(0.12 * ring, (c) => {
-        const r = (2.0 + ring * 1.6) * self.sizeScale;
+        const r = (2.0 + ring * 1.6) * reachOf(self);
         if (
           playerInCircle(c, p.x, p.z, r) &&
-          !playerInCircle(c, p.x, p.z, r - 1.5 * self.sizeScale)
+          !playerInCircle(c, p.x, p.z, r - 1.5 * reachOf(self))
         ) {
           hitPlayer(self, c, 2.1, 'physical', 'ground_slam', { knockback: 4 });
         }
@@ -1369,7 +1379,7 @@ def({
   telegraph: { shape: 'circle', size: 6.5, color: 0xd0a060, atSelf: true },
   onExecute: (self, ctx) => {
     const p = P(self);
-    circleHit(self, ctx, p.x, p.z, 6.2 * self.sizeScale, 2.6, 'physical', 'quake_stomp', { knockback: 5 });
+    circleHit(self, ctx, p.x, p.z, 6.2 * reachOf(self), 2.6, 'physical', 'quake_stomp', { knockback: 5 });
     // Leaves rubble hazards that block clean kiting lanes.
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * TAU + ctx.rng.next();
@@ -1402,7 +1412,7 @@ def({
     if (inst.tickAccum >= 0.35) {
       inst.tickAccum -= 0.35;
       const p = P(self);
-      circleHit(self, ctx, p.x, p.z, 3.0 * self.sizeScale, 0.8, 'physical', 'whirlwind');
+      circleHit(self, ctx, p.x, p.z, 3.0 * reachOf(self), 0.8, 'physical', 'whirlwind');
     }
   },
 });
@@ -1420,7 +1430,7 @@ def({
   rooted: true,
   telegraph: { shape: 'cone', size: 2.8, color: 0xc0c8d8, atSelf: true },
   onExecute: (self, ctx) => {
-    coneHit(self, ctx, 45, 3 * self.sizeScale, 1.4, 'physical', 'shield_bash', {
+    coneHit(self, ctx, 45, 3 * reachOf(self), 1.4, 'physical', 'shield_bash', {
       knockback: 4.5,
       applies: [{ id: 'stun', duration: 0.9, magnitude: 1 }],
     });
@@ -1441,8 +1451,8 @@ def({
   telegraph: { shape: 'line', size: 5, color: 0xff5555, atSelf: true },
   onExecute: (self, ctx) => {
     const p = P(self);
-    const tx = p.x + Math.sin(self.facing) * 5 * self.sizeScale;
-    const tz = p.z + Math.cos(self.facing) * 5 * self.sizeScale;
+    const tx = p.x + Math.sin(self.facing) * 5 * reachOf(self);
+    const tz = p.z + Math.cos(self.facing) * 5 * reachOf(self);
     lineHit(self, ctx, tx, tz, 0.8, 2.2, 'physical', 'impale', {
       applies: [{ id: 'bleed', duration: 5, magnitude: 1 }],
     });
@@ -1461,7 +1471,7 @@ def({
   damageMul: 1.2,
   priority: 0.5,
   onExecute: (self, ctx) => {
-    coneHit(self, ctx, 70, 2.6 * self.sizeScale, 1.2, 'physical', 'rend', {
+    coneHit(self, ctx, 70, 2.6 * reachOf(self), 1.2, 'physical', 'rend', {
       applies: [{ id: 'bleed', duration: 8, magnitude: 1.6, stacks: 1 }],
     });
   },
@@ -1481,7 +1491,7 @@ def({
   telegraph: { shape: 'ring', size: 4.2, color: 0xc09050, atSelf: true },
   onExecute: (self, ctx) => {
     const p = P(self);
-    if (playerInCircle(ctx, p.x, p.z, 4.2 * self.sizeScale) && !playerInCircle(ctx, p.x, p.z, 1.2)) {
+    if (playerInCircle(ctx, p.x, p.z, 4.2 * reachOf(self)) && !playerInCircle(ctx, p.x, p.z, 1.2)) {
       hitPlayer(self, ctx, 1.6, 'physical', 'tail_sweep', { knockback: 5 });
     }
     ctx.fx.burst('dust', p.x, 0.2, p.z, { count: 18, scale: 4 });
@@ -1519,7 +1529,7 @@ def({
       p.x + Math.sin(inst.facing) * d,
       p.z + Math.cos(inst.facing) * d,
       18,
-      { trample: { mul: 2.3, radius: 1.5 * self.sizeScale, type: 'physical' } },
+      { trample: { mul: 2.3, radius: 1.5 * reachOf(self), type: 'physical' } },
     );
   },
 });
@@ -1545,7 +1555,7 @@ def({
   onExecute: (self, ctx, inst) => {
     const p = P(self);
     dashToward(self, ctx, p.x + Math.sin(inst.facing) * 12, p.z + Math.cos(inst.facing) * 12, 16, {
-      trample: { mul: 1.8, radius: 1.3 * self.sizeScale, type: 'physical' },
+      trample: { mul: 1.8, radius: 1.3 * reachOf(self), type: 'physical' },
     });
   },
 });
@@ -1624,7 +1634,7 @@ def({
   priority: 0.45,
   telegraph: { shape: 'cone', size: 3, color: 0xd0d0f0, atSelf: true },
   onExecute: (self, ctx) => {
-    coneHit(self, ctx, 55, 3 * self.sizeScale, 1.1, 'physical', 'knockback_punt', { knockback: 8 });
+    coneHit(self, ctx, 55, 3 * reachOf(self), 1.1, 'physical', 'knockback_punt', { knockback: 8 });
   },
 });
 
@@ -1667,7 +1677,7 @@ def({
   telegraph: { shape: 'circle', size: 2.8, color: 0xff2020, atSelf: true },
   onExecute: (self, ctx) => {
     const p = P(self);
-    circleHit(self, ctx, p.x, p.z, 2.8 * self.sizeScale, 4.0, 'physical', 'execute_low');
+    circleHit(self, ctx, p.x, p.z, 2.8 * reachOf(self), 4.0, 'physical', 'execute_low');
   },
 });
 
@@ -2355,7 +2365,7 @@ def({
   priority: 0.05,
   onExecute: (self, ctx) => {
     const p = P(self);
-    spawnHazard(self, ctx, p.x, p.z, 1.4 * self.sizeScale, 0.35, 'fire', 'molten_trail', {
+    spawnHazard(self, ctx, p.x, p.z, 1.4 * reachOf(self), 0.35, 'fire', 'molten_trail', {
       duration: 4,
       tickRate: 2.5,
     });
@@ -2380,7 +2390,7 @@ def({
   onExecute: (self, ctx) => {
     self.flashCast(0x88d8ff);
     const p = P(self);
-    circleHit(self, ctx, p.x, p.z, 5.6 * self.sizeScale, 1.7, 'cold', 'ice_nova', {
+    circleHit(self, ctx, p.x, p.z, 5.6 * reachOf(self), 1.7, 'cold', 'ice_nova', {
       applies: [{ id: 'chill', duration: 4, magnitude: 0.45 }],
     });
     ctx.fx.burst('frost', p.x, 0.5, p.z, { count: 40, scale: 5 });
@@ -2460,7 +2470,7 @@ def({
     inst.tickAccum += dt;
     if (inst.tickAccum < 0.2) return;
     inst.tickAccum -= 0.2;
-    coneHit(self, ctx, 30, 10 * self.sizeScale, 0.85, 'fire', 'cone_breath_fire', {
+    coneHit(self, ctx, 30, 10 * reachOf(self), 0.85, 'fire', 'cone_breath_fire', {
       applies: [{ id: 'burn', duration: 3, magnitude: 1.2 }],
     });
     const p = P(self);
@@ -2489,7 +2499,7 @@ def({
     inst.tickAccum += dt;
     if (inst.tickAccum < 0.22) return;
     inst.tickAccum -= 0.22;
-    coneHit(self, ctx, 32, 9 * self.sizeScale, 0.8, 'cold', 'cone_breath_frost', {
+    coneHit(self, ctx, 32, 9 * reachOf(self), 0.8, 'cold', 'cone_breath_frost', {
       applies: [{ id: 'chill', duration: 3, magnitude: 0.5 }],
     });
   },
@@ -2513,7 +2523,7 @@ def({
     inst.tickAccum += dt;
     if (inst.tickAccum < 0.25) return;
     inst.tickAccum -= 0.25;
-    coneHit(self, ctx, 34, 9 * self.sizeScale, 0.7, 'poison', 'cone_breath_poison', {
+    coneHit(self, ctx, 34, 9 * reachOf(self), 0.7, 'poison', 'cone_breath_poison', {
       applies: [{ id: 'poison', duration: 6, magnitude: 1.5 }],
     });
   },
@@ -2537,7 +2547,7 @@ def({
     inst.tickAccum += dt;
     if (inst.tickAccum < 0.2) return;
     inst.tickAccum -= 0.2;
-    coneHit(self, ctx, 28, 11 * self.sizeScale, 1.0, 'arcane', 'cone_breath_void');
+    coneHit(self, ctx, 28, 11 * reachOf(self), 1.0, 'arcane', 'cone_breath_void');
   },
 });
 
@@ -2593,7 +2603,7 @@ def({
     if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) > 12) return;
     const packet = hitPlayer(self, ctx, 0.7, 'arcane', 'life_drain');
     self.heal(packet.amount * 0.6, ctx);
-    ctx.fx.burst('heal', p.x, 1.2 * self.sizeScale, p.z, { count: 6, color: 0x9040c0 });
+    ctx.fx.burst('heal', p.x, 1.2 * reachOf(self), p.z, { count: 6, color: 0x9040c0 });
   },
 });
 
@@ -2671,7 +2681,7 @@ def({
   telegraph: { shape: 'ring', size: 6.2, color: 0xc060ff, atSelf: true },
   onExecute: (self, ctx) => {
     const p = P(self);
-    circleHit(self, ctx, p.x, p.z, 6.2 * self.sizeScale, 2.0, 'arcane', 'arcane_nova', { knockback: 4 });
+    circleHit(self, ctx, p.x, p.z, 6.2 * reachOf(self), 2.0, 'arcane', 'arcane_nova', { knockback: 4 });
   },
 });
 
@@ -2848,7 +2858,7 @@ def({
     const tel = ctx.decals.telegraph('circle', p.x, p.z, 4, 0, 0.8, 0xff6020);
     after(0.8, (c) => {
       tel.cancel();
-      circleHit(self, c, p.x, p.z, 4 * self.sizeScale, 2.6, 'fire', 'death_explode', { knockback: 4 });
+      circleHit(self, c, p.x, p.z, 4 * reachOf(self), 2.6, 'fire', 'death_explode', { knockback: 4 });
       c.fx.burst('hit.fire', p.x, 0.6, p.z, { count: 46, scale: 3 });
     });
   },
@@ -2869,7 +2879,7 @@ def({
   tags: ['ondeath'],
   onExecute: (self, ctx) => {
     const p = P(self);
-    circleHit(self, ctx, p.x, p.z, 3.4 * self.sizeScale, 1.4, 'poison', 'plague_death', {
+    circleHit(self, ctx, p.x, p.z, 3.4 * reachOf(self), 1.4, 'poison', 'plague_death', {
       applies: [{ id: 'poison', duration: 8, magnitude: 2 }],
     });
     spawnHazard(self, ctx, p.x, p.z, 2.6, 0.4, 'poison', 'plague_death', { duration: 8, tickRate: 2 });
@@ -2937,7 +2947,7 @@ def({
     self.teleportTo(inst.targetX, inst.targetZ, ctx);
     self.facing = angleTo(inst.targetX, inst.targetZ, ctx.playerPos.x, ctx.playerPos.z);
     ctx.fx.burst('portal', inst.targetX, 1, inst.targetZ, { count: 22, color: 0xa060ff });
-    coneHit(self, ctx, 90, 3 * self.sizeScale, 2.0, 'arcane', 'teleport_strike');
+    coneHit(self, ctx, 90, 3 * reachOf(self), 2.0, 'arcane', 'teleport_strike');
   },
 });
 
@@ -3003,7 +3013,7 @@ def({
     const tel = ctx.decals.telegraph('circle', t.x, t.y, 3, 0, 0.55, 0xc0a070);
     after(0.55, (c) => {
       tel.cancel();
-      circleHit(self, c, t.x, t.y, 3.2 * self.sizeScale, 2.2, 'physical', 'burrow_emerge', { knockback: 4 });
+      circleHit(self, c, t.x, t.y, 3.2 * reachOf(self), 2.2, 'physical', 'burrow_emerge', { knockback: 4 });
       c.fx.burst('dust', t.x, 0.3, t.y, { count: 34, scale: 3 });
     });
     void inst;
@@ -3220,7 +3230,7 @@ def({
   sfx: 'roar',
   onExecute: (self, ctx) => {
     self.buff('enraged', 14, { damage: 1.6, speed: 1.35, attackSpeed: 1.4, defense: 0.75 });
-    ctx.fx.burst('crit', P(self).x, 1.2 * self.sizeScale, P(self).z, { count: 24, color: 0xff3020 });
+    ctx.fx.burst('crit', P(self).x, 1.2 * reachOf(self), P(self).z, { count: 24, color: 0xff3020 });
   },
 });
 
@@ -3239,7 +3249,7 @@ def({
   telegraph: { shape: 'ring', size: 2.2, color: 0x60c0ff, atSelf: true },
   onExecute: (self, ctx) => {
     self.addShield(self.maxLife * 0.28, 12);
-    ctx.fx.burst('heal', P(self).x, 1.0 * self.sizeScale, P(self).z, { count: 18, color: 0x60c0ff });
+    ctx.fx.burst('heal', P(self).x, 1.0 * reachOf(self), P(self).z, { count: 18, color: 0x60c0ff });
   },
 });
 
@@ -3310,7 +3320,7 @@ def({
   telegraph: { shape: 'ring', size: 2.4, color: 0x60ff90, atSelf: true },
   onExecute: (self, ctx) => {
     self.heal(self.maxLife * 0.25, ctx);
-    ctx.fx.burst('heal', P(self).x, 1.2 * self.sizeScale, P(self).z, { count: 26, color: 0x60ff90 });
+    ctx.fx.burst('heal', P(self).x, 1.2 * reachOf(self), P(self).z, { count: 26, color: 0x60ff90 });
   },
 });
 
@@ -3564,7 +3574,7 @@ def({
   telegraph: { shape: 'ring', size: 7, color: 0xffe066, atSelf: true },
   onExecute: (self, ctx) => {
     const p = P(self);
-    circleHit(self, ctx, p.x, p.z, 7 * self.sizeScale, 1.0, 'lightning', 'static_field', {
+    circleHit(self, ctx, p.x, p.z, 7 * reachOf(self), 1.0, 'lightning', 'static_field', {
       applies: [{ id: 'shocked', duration: 4, magnitude: 1 }],
     });
   },
@@ -3758,7 +3768,7 @@ def({
   rooted: true,
   telegraph: { shape: 'cone', size: 3, color: 0xd0a060, atSelf: true },
   onExecute: (self, ctx) => {
-    coneHit(self, ctx, 55, 3 * self.sizeScale, 1.5, 'physical', 'sunder_armor', {
+    coneHit(self, ctx, 55, 3 * reachOf(self), 1.5, 'physical', 'sunder_armor', {
       applies: [{ id: 'sundered', duration: 10, magnitude: 0.25 }],
     });
   },

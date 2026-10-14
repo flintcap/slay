@@ -246,6 +246,8 @@ export class Enemy implements Combatant {
   readonly isBoss: boolean = false;
   readonly hitRadius: number;
   readonly sizeScale: number;
+  /** Reach of its moves as a scale, when not its body's. Bosses set it. */
+  readonly reach?: number;
   readonly stats: Stats;
   readonly abilityIds: string[];
   readonly xpValue: number;
@@ -666,7 +668,7 @@ export class Enemy implements Combatant {
     // contract with the player: every dangerous thing is readable and dodgeable.
     if (def.telegraph && windup > 0.12) {
       const t = def.telegraph;
-      const size = t.size * (t.atSelf ? this.sizeScale : 1);
+      const size = t.size * (t.atSelf ? (this.reach ?? this.sizeScale) : 1);
       const ox = t.atSelf ? this.root.position.x : inst.targetX;
       const oz = t.atSelf ? this.root.position.z : inst.targetZ;
       try {
