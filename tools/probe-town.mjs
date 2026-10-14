@@ -8,7 +8,10 @@
  *
  * Software rendering makes every frame slow, so frame times here say little;
  * what matters is whether the counts (draw calls, programs, textures,
- * geometries, scene objects, lights, update time) creep up.
+ * geometries, scene objects, lights) creep up. Its update and render times
+ * average the engine's last 600 frames, which at software speed still hold
+ * the map's frames after a trip: tools/probe-townleak.mjs measures the town's
+ * own frames.
  */
 import { bootGame } from './lib/game.mjs';
 
