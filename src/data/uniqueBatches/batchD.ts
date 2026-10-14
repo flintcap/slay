@@ -267,7 +267,7 @@ export const BATCH_D: UniqueDef[] = [
     'Fingertips of hollow bone, each one open at the end. They are always a little warmer than you are.',
     [['energy', 1], ['lifeSteal', 0.6], ['life', 0.6]],
     { classId: 'revenant', bend: { skill: 'siphonLife', more: 25, grow: { healPct: 30, range: 20 } },
-      look: D('bone.pale', 'leather.fine|0x4a1418', 'metal.bloodgold', ['claws', 'blood'], 0.4, {}),
+      look: D('bone.pale', 'leather.fine|0xa08074', 'metal.bloodgold', ['claws', 'blood'], 0.4, {}),
       from: 'plaguelord_ossik' }),
 
   U('uq.dartmaker', "The Dartmaker's Grips", 'gloves.war', 37,

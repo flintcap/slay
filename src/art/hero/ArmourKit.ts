@@ -210,7 +210,10 @@ export class Kit {
         m = gearMaterial('bone.old');
         break;
       case 'chain':
-        m = gearMaterial(L.palette.startsWith('metal') ? `metal.chain` : 'metal.chain', { tint: L.palette.startsWith('metal.gold') ? 0xffd890 : undefined });
+        // A set's or a unique's mail is links of its own colour, as its icon shows it.
+        m = L.design || L.motif
+          ? gearMaterial(`metal.chain|0x${L.colors.main.toString(16).padStart(6, '0')}`)
+          : gearMaterial('metal.chain', { tint: L.palette.startsWith('metal.gold') ? 0xffd890 : undefined });
         break;
       case 'iron':
         m = gearMaterial('metal.iron');

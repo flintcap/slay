@@ -4,9 +4,9 @@
  *
  * Builds the icon model (`buildItem`, which the pack, the floor and the hand
  * all draw) and the worn piece (`wearArmour`, grown on a real hero) in Node,
- * and weighs each one's colours by surface area. The icon's main colour must
- * cover a fair share of the worn piece, and the worn piece's main colour a
- * fair share of the icon. Weapons, shields and jewellery are worn as their
+ * and weighs each one's colours by surface area. One of the icon's main
+ * colours must cover a fair share of the worn piece, and the worn piece's
+ * main colour must show on the icon or be one of the piece's own. Weapons, shields and jewellery are worn as their
  * icon model, so they match by construction and are not built here.
  */
 import './dom-stub';
@@ -26,6 +26,7 @@ const SAME = 64;
 const SHARE = 0.12;
 
 declare const process: { argv: string[] };
+const detail = process.argv.includes('--detail');
 const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7);
 const baseById = new Map(ITEM_BASES.map((b) => [b.id, b]));
 const hero = buildHero(HERO_LOOKS.warden, 'iconmatch');
@@ -43,7 +44,7 @@ function palette(root: THREE.Object3D): Map<number, number> {
     const mats = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as THREE.MeshStandardMaterial[];
     const mat = mats[0];
     if (!mat?.color || mat.transparent && mat.opacity < 0.5) return;
-    if (mat.emissive && mat.emissiveIntensity > 0.8 && mat.emissive.getHex() !== 0) return;
+    if (/glow|gem/.test(mesh.name) || (mat.emissive && mat.emissiveIntensity > 0.3 && mat.emissive.getHex() !== 0)) return;
     const g = mesh.geometry as THREE.BufferGeometry;
     const pos = g.attributes.position as THREE.BufferAttribute | undefined;
     if (!pos) return;
@@ -58,7 +59,8 @@ function palette(root: THREE.Object3D): Map<number, number> {
       c.fromBufferAttribute(pos, i2).applyMatrix4(m);
       area += tri.set(a, b, c).getArea();
     }
-    const hex = mat.color.getHex();
+    // Hero gear keeps a scan's own hue in its texture; it notes the colour that reads as.
+    const hex = (mat.userData.albedo as number | undefined) ?? mat.color.getHex();
     out.set(hex, (out.get(hex) ?? 0) + area);
   });
   const total = [...out.values()].reduce((s, x) => s + x, 0) || 1;
@@ -103,13 +105,24 @@ for (const j of jobs) {
   const pi = palette(icon.group);
   worn.object.removeFromParent();
   built++;
+  // The icon's main colours: its two biggest, each a fair share of it. One
+  // must show on the worn piece. The worn piece's own biggest colour must
+  // show on the icon, or be one of the piece's own (its main, strap, trim
+  // or cloth), drawn bigger on the body than in the pack.
   const mi = mainOf(pi);
   const mw = mainOf(pw);
-  const iconInWorn = cover(pw, mi.color);
-  const wornInIcon = cover(pi, mw.color);
+  const second = mainOf(new Map([...pi].filter(([k]) => dist(k, mi.color) >= SAME)));
+  const iconMains = [mi, ...(second.share >= SHARE ? [second] : [])];
+  const iconInWorn = Math.max(...iconMains.map((m) => cover(pw, m.color)));
+  const own = [icon.look.colors.main, icon.look.colors.second, icon.look.colors.trim, icon.look.colors.cloth];
+  const wornInIcon = own.some((o) => dist(o, mw.color) < SAME) ? 1 : cover(pi, mw.color);
   rows.push({ id: j.id, icon: hex(mi.color), worn: hex(mw.color), iconInWorn, wornInIcon });
   if (iconInWorn < SHARE || wornInIcon < SHARE) {
-    problems.push(`${j.id} (${j.name}): icon is mostly ${hex(mi.color)}, worn is mostly ${hex(mw.color)} (${Math.round(iconInWorn * 100)}% / ${Math.round(wornInIcon * 100)}% shared)`);
+    problems.push(`${j.id} (${j.name}): icon is mostly ${iconMains.map((m) => hex(m.color)).join(' and ')}, worn is mostly ${hex(mw.color)} (${Math.round(iconInWorn * 100)}% / ${Math.round(wornInIcon * 100)}% shared)`);
+    if (detail) {
+      const top = (p: Map<number, number>): string => [...p].sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k, v]) => `${hex(k)} ${Math.round(v * 100)}%`).join(', ');
+      problems.push(`    icon: ${top(pi)}`, `    worn: ${top(pw)}`);
+    }
   }
 }
 

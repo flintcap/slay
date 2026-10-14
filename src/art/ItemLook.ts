@@ -266,7 +266,17 @@ function computeLook(item: Ident, visual: ItemVisual): ItemLook {
   const wood0 = material === 'wood' ? palette : design?.second?.startsWith('wood') ? design.second : tier >= 2 ? 'wood.polished' : tier >= 1 ? 'wood.oak|0x7a5a3a' : 'wood.oak';
   // A set's hafts and staves take its colour as well.
   const wood = motif && material !== 'wood' ? motifPalette(wood0, motif.color) : wood0;
-  const cloth = motif ? (motif.second.startsWith('cloth') ? motif.second : motif.cloth) : design?.second?.startsWith('cloth') ? design.second : material === 'cloth' ? palette : rank >= 2 ? 'cloth.banner' : 'cloth.undyed';
+  // A unique's cloth is its own: its second surface when that is cloth, else
+  // wool dyed to match it, never the plain red banner every other piece flies.
+  const cloth = motif
+    ? (motif.second.startsWith('cloth') ? motif.second : motif.cloth)
+    : design?.second?.startsWith('cloth')
+      ? design.second
+      : material === 'cloth'
+        ? palette
+        : design?.second
+          ? `cloth.wool|0x${keyColor(design.second).toString(16).padStart(6, '0')}`
+          : rank >= 2 ? 'cloth.banner' : 'cloth.undyed';
 
   // A unique glows by its tier: not at all, in one small detail, or in full.
   const udef = item.uniqueId ? getUnique(item.uniqueId) : undefined;

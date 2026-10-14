@@ -491,6 +491,8 @@ export function gearMaterial(key: string, opts: { tint?: number; metalness?: num
       albedoGain: def.base !== undefined ? 1 / lum : 1,
     });
     m.name = `hero-gear:${def.key}`;
+    // The colour it reads as, scan and all: what the icon's surface of the same key shows.
+    m.userData.albedo = def.base !== undefined ? color.getHex() : color.clone().multiply(avg).getHex();
     return m;
   });
 }
