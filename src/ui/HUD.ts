@@ -1685,6 +1685,24 @@ export class HUD {
     runtime.pips = pips;
   }
 
+  /** The explored-ground canvas of the level shown, one pixel per tile. */
+  private sheet: { level: DungeonLevel; ctx: CanvasRenderingContext2D; canvas: HTMLCanvasElement } | null = null;
+
+  /** The level's ground canvas, painted with every tile already explored. */
+  private groundSheet(level: DungeonLevel, explored: Uint8Array): { ctx: CanvasRenderingContext2D; canvas: HTMLCanvasElement; inks: string[] } {
+    if (this.sheet?.level !== level) {
+      const canvas = document.createElement('canvas');
+      canvas.width = level.width;
+      canvas.height = level.height;
+      const ctx = canvas.getContext('2d')!;
+      this.sheet = { level, ctx, canvas };
+      const sheet = { ctx, canvas, inks: zoneInks(level, [146, 128, 98], 0.62) };
+      for (let i = 0; i < explored.length; i++) if (explored[i]) paintGround(sheet, level, i);
+    }
+    // Ground takes its zone's tint, so the seam between two zones shows.
+    return { ctx: this.sheet.ctx, canvas: this.sheet.canvas, inks: zoneInks(level, [146, 128, 98], 0.62) };
+  }
+
   private exploredFor(level: DungeonLevel): Uint8Array {
     let e = runtime.explored.get(level.seed);
     if (!e || e.length !== level.width * level.height) {
@@ -1715,6 +1733,11 @@ export class HUD {
     const px = runtime.playerTileX;
     const py = runtime.playerTileY;
 
+    // The explored ground lives on a canvas of one pixel per tile, painted
+    // as tiles are revealed. The minimap used to paint some three thousand
+    // tiles one by one eight times a second, a small stall every few frames.
+    const sheet = this.groundSheet(level, explored);
+
     // Reveal a disc around the player.
     for (let dy = -REVEAL_RADIUS; dy <= REVEAL_RADIUS; dy++) {
       for (let dx = -REVEAL_RADIUS; dx <= REVEAL_RADIUS; dx++) {
@@ -1722,7 +1745,10 @@ export class HUD {
         const x = px + dx;
         const y = py + dy;
         if (x < 0 || y < 0 || x >= level.width || y >= level.height) continue;
-        explored[y * level.width + x] = 1;
+        const idx = y * level.width + x;
+        if (explored[idx]) continue;
+        explored[idx] = 1;
+        paintGround(sheet, level, idx);
       }
     }
 
@@ -1733,23 +1759,10 @@ export class HUD {
     ctx.fillStyle = 'rgba(8,7,6,0.62)';
     ctx.fillRect(0, 0, S, S);
 
-    // Ground takes its zone's tint, so the seam between two zones shows.
-    const floorInks = zoneInks(level, [146, 128, 98], 0.62);
-    for (let dy = -span0; dy <= span0; dy++) {
-      for (let dx = -span0; dx <= span0; dx++) {
-        const x = px + dx;
-        const y = py + dy;
-        if (x < 0 || y < 0 || x >= level.width || y >= level.height) continue;
-        const idx = y * level.width + x;
-        if (!explored[idx]) continue;
-        const t = level.tiles[idx]!;
-        if (t === T_VOID) continue;
-        const sx = half + dx * scale - scale / 2;
-        const sy = half + dy * scale - scale / 2;
-        ctx.fillStyle = t === T_FLOOR ? zoneInkAt(level, floorInks, idx) : newKindInk(t) ?? tileColor(t);
-        ctx.fillRect(sx, sy, scale + 0.5, scale + 0.5);
-      }
-    }
+    // The window of tiles round the player, each drawn as a sharp block.
+    const n = span0 * 2 + 1;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sheet.canvas, px - span0, py - span0, n, n, half - span0 * scale - scale / 2, half - span0 * scale - scale / 2, n * scale, n * scale);
 
     // The ways on are the thing you are actually looking for.
     const marks = wayMarks(level);
@@ -1895,6 +1908,14 @@ export class HUD {
     // Never let a loot storm push the stack off screen.
     while (this.toastStack.childElementCount > 6) this.toastStack.firstElementChild?.remove();
   }
+}
+
+/** Paints one explored tile onto a level's ground canvas. */
+function paintGround(sheet: { ctx: CanvasRenderingContext2D; inks: string[] }, level: DungeonLevel, idx: number): void {
+  const t = level.tiles[idx]!;
+  if (t === T_VOID) return;
+  sheet.ctx.fillStyle = t === T_FLOOR ? zoneInkAt(level, sheet.inks, idx) : newKindInk(t) ?? tileColor(t);
+  sheet.ctx.fillRect(idx % level.width, Math.floor(idx / level.width), 1, 1);
 }
 
 function tileColor(t: number): string {
