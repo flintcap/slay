@@ -625,6 +625,11 @@ export class InventoryPanel {
     // opens (PaperdollView.warm). On the way into a run that happens behind
     // the curtain; town is safe ground, so there it waits for idle time after
     // the curtain lifts instead of making the loading screen longer.
+    //
+    // A map warms on `scene:change`, not `scene:loading`: the old scene is
+    // torn down between the two, and that teardown freed shaders the figure
+    // had just built, so the first opening in a map rebuilt them all (a
+    // freeze of a second or two).
     const warm = () => {
       const c = save.account.current;
       if (!c || this.panel.isOpen) return;
@@ -634,11 +639,9 @@ export class InventoryPanel {
         /* the panel builds it on opening, as before */
       }
     };
-    events.on('scene:loading', (p) => {
-      if (p.to === 'dungeon') warm();
-    });
     events.on('scene:change', (p) => {
-      if (p.to === 'town') afterCurtain(warm, 2500);
+      if (p.to === 'dungeon') warm();
+      else if (p.to === 'town') afterCurtain(warm, 2500);
     });
   }
 
