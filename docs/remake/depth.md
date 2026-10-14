@@ -1,7 +1,13 @@
 # Depth plan: uniques, sets and bosses
 
-A plan only. Nothing here is built yet. It says what to add, how each thing
-should look and play, in what order, and how we prove it works.
+Built. Every part below is in the game: 403 uniques, 32 sets of 147 pieces,
+the new bosses and floor wardens, the room rules, and the checkers that
+prove it (`check-names`, `check-looks`, `check-iconmatch`, `check-bosses`,
+`check-fair`, `check-drops`, plus `check-uniques`). The three open choices at
+the end were settled on their recommended answers: class-only skill
+benders, one mythic per account at a time, and moods shown before the fight.
+
+The rest of this page is the plan as written, kept for the reasons behind it.
 
 ## Where we are today
 
