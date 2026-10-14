@@ -95,7 +95,16 @@ for (const cls of CLASSES) {
       return !b.classes || b.classes.includes(cls);
     }).length;
     // Magic and rare only: authored items swing the mean on a single drop.
-    const rolled = gear.filter((i) => i.rarity === 'magic' || i.rarity === 'rare');
+    // Valued on a steady sample of this depth's own drops (its own seed), not
+    // the one career run, so a change anywhere else in the tables cannot tip
+    // one depth below the last by the luck of a single floor.
+    const valueRng = new Random(9000 + depth);
+    const vIlvl = Math.max(1, Math.round(depth * 1.15));
+    const rolled: Item[] = [];
+    for (let k = 0; k < 4000; k++) {
+      const it = rollItem(vIlvl, valueRng, { classId: cls });
+      if (it.rarity === 'magic' || it.rarity === 'rare') rolled.push(it);
+    }
     const avgValue = rolled.length ? rolled.reduce((s, i) => s + vendorPrice(i, false), 0) / rolled.length : 0;
     const sample = rollItem(depth + 3, new Random(depth), { forceRarity: 'rare', classId: cls });
     rows[cls]!.push({
