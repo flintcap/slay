@@ -21,6 +21,7 @@
  *   mini      (--only) walk up to the floor's mini boss and fight it
  *   boss      (--only) load the arena's area, walk through the gate
  *   --mapfirst  with menus: skip the town panels, so the map opens them first
+ *   --shadows   list each kind of shadow look, per scene, and when it was first drawn
  *
  * For each segment: frames, frame time p50 / p95 / max, how many frames went
  * over 50 and 100 ms, and what happened inside the worst of them: shader
@@ -113,7 +114,17 @@ await context.addInitScript((texlog) => {
         return orig.apply(this, args);
       };
     };
-    wrap('linkProgram', () => L.links.push(now()));
+    L.linkStacks = [];
+    wrap('linkProgram', () => {
+      L.links.push(now());
+      // Where it was asked for: which pass, which object list.
+      const e = {};
+      const lim = Error.stackTraceLimit;
+      Error.stackTraceLimit = 30;
+      Error.captureStackTrace?.(e);
+      Error.stackTraceLimit = lim;
+      L.linkStacks.push([now(), String(e.stack ?? '')]);
+    });
     // Draw calls, the main thread's own cost per frame on any GPU.
     for (const n of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced']) {
       wrap(n, () => L.draws++);
@@ -182,6 +193,21 @@ async function visit(label) {
       window.__lag.texBy.clear();
       // Which programs existed before, so the ones linked inside can be named.
       window.__lag.progsBefore = new Set((window.SLAY?.engine?.renderer?.gl?.info?.programs ?? []).map((p) => p.id));
+      // The kinds of shadow casters standing in the scene, to name the new ones after.
+      window.__lag.casterKinds = () => {
+        const out = new Map();
+        window.SLAY?.engine?.currentScene?.scene?.traverse((o) => {
+          if (!o.isMesh || !o.castShadow || !o.visible) return;
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+            if (!m || m.visible === false) continue;
+            const k = `side ${m.shadowSide ?? m.side}${m.alphaTest > 0 ? ' alphaTest' : ''}${m.map ? ' map' : ''}${m.alphaMap ? ' alphaMap' : ''}${o.isSkinnedMesh ? ' skinned' : ''}${o.isInstancedMesh ? ' instanced' : ''}`;
+            if (!out.has(k)) out.set(k, `${o.name || o.type}/${m.name || m.type}`);
+          }
+        });
+        return out;
+      };
+      window.__lag.castersBefore = window.__lag.casterKinds();
+
       return performance.now();
     });
     await page.evaluate(fn, a);
@@ -230,10 +256,33 @@ async function visit(label) {
           drawsPerFrame,
           updOver50: upd.filter((x) => x > 50).length,
           long: inside(L.long, a, b).map((x) => Math.round(x[1])).sort((x, y) => y - x).slice(0, 5),
-          newProgs: (window.SLAY?.engine?.renderer?.gl?.info?.programs ?? [])
-            .filter((p) => !L.progsBefore?.has(p.id))
-            .map((p) => `${p.name}${p.cacheKey ? ` [${String(p.cacheKey).slice(0, 90)}]` : ''}`)
-            .slice(0, 12),
+          linkStacks: (L.linkStacks ?? []).filter(([t]) => t >= a && t <= b).slice(0, 3).map(([, st]) => st.split('\n').slice(2, 22).map((x) => x.trim().replace(/https?:\/\/[^/]+\//, '')).join(' < ')),
+          newShadowKinds: [...(L.shadowKinds ?? [])].filter(([, v]) => v[0] >= a && v[0] <= b).map(([k, v]) => `+${Math.round(v[0] - a)} ms ${k}: ${v[1]}`).slice(0, 12),
+          newCasters: [...L.casterKinds()].filter(([k]) => !L.castersBefore?.has(k)).map(([k, v]) => `${k}: ${v}`).slice(0, 8),
+          // A new program, and where its key first differs from the nearest
+          // one already built: the flag that made it new.
+          newProgs: (() => {
+            const all = window.SLAY?.engine?.renderer?.gl?.info?.programs ?? [];
+            const old = all.filter((p) => L.progsBefore?.has(p.id)).map((p) => String(p.cacheKey ?? '').split(','));
+            return all
+              .filter((p) => !L.progsBefore?.has(p.id))
+              .slice(0, 12)
+              .map((p) => {
+                const k = String(p.cacheKey ?? '').split(',');
+                let best = null;
+                let bestN = -1;
+                for (const o of old) {
+                  if (o[0] !== k[0] || o.length !== k.length) continue;
+                  const n = o.filter((v, i) => v === k[i]).length;
+                  if (n > bestN) {
+                    bestN = n;
+                    best = o;
+                  }
+                }
+                const diff = best ? k.map((v, i) => (v === best[i] ? null : `#${i} ${best[i]} -> ${v}`)).filter(Boolean).slice(0, 6).join('; ') : 'no program of its kind before';
+                return `${p.name || k[0]}: ${diff}`;
+              });
+          })(),
           worst,
         };
       },
@@ -244,7 +293,12 @@ async function visit(label) {
       `[${label}] ${name}: ${r.frames} frames, p50 ${r.p50} p95 ${r.p95} max ${r.max} ms; >50 ms: ${r.over50}, >100 ms: ${r.over100}; ` +
         `programs linked ${r.links}, textures ${r.texKB} KB, contexts ${r.ctx}; draw calls a frame ${r.drawsPerFrame}; update max ${r.updMax} ms (${r.updOver50} over 50); long tasks ${r.long.join(', ')}`,
     );
-    if (r.links && r.links < 12) for (const n of r.newProgs) console.log(`      new program: ${n}`);
+    if (r.links && r.links < 12) {
+      for (const n of r.newProgs) console.log(`      new program: ${n}`);
+      for (const n of r.newCasters) console.log(`      new kind of shadow caster: ${n}`);
+      for (const n of r.newShadowKinds) console.log(`      first drawn into a shadow: ${n}`);
+      for (const n of r.linkStacks) console.log(`      linked from: ${n}`);
+    }
     for (const w of r.worst) {
       console.log(`      ${String(w.ms).padStart(5)} ms at +${w.at}: links ${w.links}, tex ${w.texKB} KB, buf ${w.bufKB} KB, ctx ${w.ctx}, update ${w.upd}, render ${w.ren}`);
     }
@@ -335,6 +389,31 @@ async function visit(label) {
   // --mapfirst: leave the town's panels shut, so the map's openings are the first ever.
   if (ONLY.includes('menus') && !process.argv.includes('--mapfirst')) await panels('town');
 
+  // Once, before the map: every kind of shadow look drawn, and when it first was.
+  await page.evaluate(() => {
+      // Every object drawn into a shadow map passes through onBeforeShadow
+      // (on Object3D's prototype unless overridden): note each kind of depth
+      // look the first time it is drawn, and by what.
+      const sc = window.SLAY?.engine?.currentScene?.scene;
+      window.__lag.shadowProto = !!sc;
+      const proto = sc && Object.getPrototypeOf(Object.getPrototypeOf(sc));
+      if (proto && !proto.__lagShadow) {
+        proto.__lagShadow = true;
+        const seen = (window.__lag.shadowKinds = new Map());
+        const orig = proto.onBeforeShadow;
+        proto.onBeforeShadow = function (r, obj, cam, scam, geo, dm, grp) {
+          const k = `${window.SLAY?.engine?.currentScene?.id}: ${dm?.type} side ${dm?.side}${dm?.map ? ' map' : ''}${obj.isSkinnedMesh ? ' skinned' : ''}${obj.isInstancedMesh ? ' instanced' : ''}`;
+          if (!seen.has(k)) {
+            const m = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+            let n = obj;
+            const path = [];
+            for (let i = 0; i < 4 && n; i++, n = n.parent) path.push(n.name || n.type);
+            seen.set(k, [performance.now(), `${path.join(' < ')} / ${m?.name || m?.type}`]);
+          }
+          return orig?.call(this, r, obj, cam, scam, geo, dm, grp);
+        };
+      }
+  });
   const needMap = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss'].includes(o));
   if (needMap) {
     await seg('map: enter', async (depth) => {
@@ -639,6 +718,11 @@ async function visit(label) {
   }
 
   // One line per segment, for before / after tables.
+  const kinds = await page.evaluate(() => [...(window.__lag.shadowKinds ?? [])].map(([k, v]) => `${Math.round(v[0])} ms  ${k}: ${v[1]}`));
+  if (process.argv.includes('--shadows')) {
+    console.log(`\nshadow looks, when each was first drawn (${kinds.length}):`);
+    for (const k of kinds) console.log(`  ${k}`);
+  }
   console.log(`\n${label} summary (frames over ${SPIKE} ms, worst ms, programs linked, contexts, draw calls a frame):`);
   for (const [name, r] of summary) {
     console.log(`  ${name.padEnd(36)} ${String(r.over50).padStart(4)}  ${String(r.max).padStart(6)}  ${String(r.links).padStart(4)}  ${String(r.ctx).padStart(3)}  ${String(r.drawsPerFrame).padStart(5)}`);
