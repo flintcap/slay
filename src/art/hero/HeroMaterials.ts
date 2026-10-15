@@ -14,9 +14,9 @@
 import * as THREE from 'three/webgpu';
 import {
   abs, atan, clamp, dot, float, floor, fract, fwidth, length, max, min, mix, mod, negateOnBackSide, normalGeometry,
-  normalize, positionGeometry, sin, smoothstep, sqrt, uniform, vec2, vec3,
+  normalize, positionGeometry, sin, smoothstep, sqrt, vec2, vec3,
 } from 'three/tsl';
-import { asStandard, bindToView, isStandardLike, matColor, matFloat, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
+import { asStandard, bindToView, isStandardLike, matColor, matFloat, matTexture, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
 import { loadTexture } from '../../core/Assets';
 import type { HeroLook } from './Looks';
 import { resolveSurface } from '../SurfaceLibrary';
@@ -68,10 +68,10 @@ export const ARMOUR_PATTERNS = { quilt: 1, rings: 2, scales: 3, hide: 4, splints
 export type ArmourPattern = keyof typeof ARMOUR_PATTERNS;
 
 /** Relief height 0..1 at bind position `p`, for pattern `kind`; `h` is the body's head unit. */
-function patHeight(p: V3, kind: number, h: number): F {
+function patHeight(p: V3, kind: number, h: F): F {
   // Distance round the body: the relief wraps the torso and limbs instead of
   // being projected flat onto them.
-  const U = atan(p.x, p.z.add(0.04 * h)).mul(0.62 * h);
+  const U = atan(p.x, p.z.add(h.mul(0.04))).mul(h.mul(0.62));
   if (kind === 1) {
     // Diamond quilting: puffed cells between stitched seams.
     const u = U.div(0.085);
@@ -117,43 +117,56 @@ function patHeight(p: V3, kind: number, h: number): F {
 /** Depth of each relief in metres, and the period it repeats at (for the fade). */
 const PATTERN_DEPTH: Record<number, [number, number]> = { 1: [0.006, 0.085], 2: [0.0022, 0.024], 3: [0.006, 0.038], 4: [0.0045, 0.027], 5: [0.005, 0.046], 6: [0.007, 0.065] };
 
-/** Gives a standard node material maps sampled triplanar in bind space. */
-function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriOpts): void {
-  triOptsOf.set(m, o);
-  // Read by the icon studio (art/Icons.ts), as on item materials.
-  setScans(m, o.albedo ? [o.albedo, o.normal] : [o.normal]);
-  setNodeTextures(m, [o.albedo, o.normal]);
-  const pat = o.pattern;
+/** The shader parts a triplanar material draws with. */
+interface TriGraph {
+  color: V3;
+  roughness: F;
+  normal: V3;
+}
+
+/**
+ * One graph per shape of triplanar material (with or without an albedo
+ * scan, which relief), shared by every material of that shape. Each reads
+ * its maps and numbers from the material drawn (`slTri*` properties), so
+ * forty pieces of gear are one shader build instead of forty: three.js
+ * builds a material's shader once per distinct graph, and a graph made per
+ * material was distinct even when it wrote the same shader.
+ */
+const triGraphs = new Map<string, TriGraph>();
+
+function triGraph(o: TriOpts): TriGraph {
+  const kind = o.pattern?.kind ?? 0;
+  const key = `${o.albedo ? 1 : 0}|${kind}`;
+  const hit = triGraphs.get(key);
+  if (hit) return hit;
   // The bind pose: the skinned mesh's own `position` and `normal` attributes.
   const Pb = positionGeometry;
   const Nb = normalGeometry.normalize().toVar();
-  const P = Pb.mul(uniform(o.scale)).toVar();
-  const t = triSample(P, Nb, o.normal, o.albedo);
-  const W = t.W;
+  const P = Pb.mul(matFloat('slTriScale')).toVar();
+  const albedo = o.albedo ? matTexture('slTriAlbedo', o.albedo) : null;
+  const t = triSample(P, Nb, matTexture('slTriNormal', o.normal), albedo);
+  const h = matFloat('slPatH');
   let color: V3 = matColor('color');
   let patFade: F = float(0.0);
-  if (pat) {
+  if (kind) {
     // Fade the relief out where it repeats in fewer than a few pixels.
-    const period = PATTERN_DEPTH[pat.kind]![1];
+    const period = PATTERN_DEPTH[kind]![1];
     const px = length(fwidth(Pb));
     patFade = smoothstep(period * 0.12, period * 0.3, px).oneMinus().toVar();
-    const h0 = patHeight(Pb, pat.kind, pat.h);
+    const h0 = patHeight(Pb, kind, h);
     color = color.mul(mix(float(0.8), mix(0.62, 1.08, h0), patFade));
   }
-  if (o.albedo) {
-    color = color.mul(min(vec3(2.0), t.albedo!.rgb.mul(uniform(o.albedoGain ?? 1.6))));
+  if (albedo) {
+    color = color.mul(min(vec3(2.0), t.albedo!.rgb.mul(matFloat('slTriGain'))));
   }
-  m.colorNode = color;
+  const roughness = clamp(matFloat('roughness').mul(mix(float(1.0), t.rough.mul(1.4), matFloat('slTriRoughVar'))), 0.04, 1.0);
 
-  const triR = t.rough;
-  m.roughnessNode = clamp(matFloat('roughness').mul(mix(float(1.0), triR.mul(1.4), uniform(o.roughVar))), 0.04, 1.0);
-
-  let bn: V3 = whiteout(t, Nb, uniform(o.normalScale));
-  if (pat) {
+  let bn: V3 = whiteout(t, Nb, matFloat('slTriNormalScale'));
+  if (kind) {
     // Bend the bind normal round the relief: its gradient along the surface.
     const e = 0.0012;
-    const depth = PATTERN_DEPTH[pat.kind]![0];
-    const ph = (d: V3): F => patHeight(Pb.add(d), pat.kind, pat.h);
+    const depth = PATTERN_DEPTH[kind]![0];
+    const ph = (d: V3): F => patHeight(Pb.add(d), kind, h);
     const g0 = vec3(
       ph(vec3(e, 0, 0)).sub(ph(vec3(-e, 0, 0))),
       ph(vec3(0, e, 0)).sub(ph(vec3(0, -e, 0))),
@@ -163,7 +176,31 @@ function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriOpts): void {
     bn = normalize(bn.sub(g.mul(1.4).mul(patFade)));
   }
   // Flipped on back faces by the side the material has when drawn.
-  m.normalNode = negateOnBackSide(bindToView(bn, Pb, Nb));
+  const graph = { color, roughness, normal: negateOnBackSide(bindToView(bn, Pb, Nb)) };
+  triGraphs.set(key, graph);
+  return graph;
+}
+
+/** Gives a standard node material maps sampled triplanar in bind space. */
+function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriOpts): void {
+  triOptsOf.set(m, o);
+  // Read by the icon studio (art/Icons.ts), as on item materials.
+  setScans(m, o.albedo ? [o.albedo, o.normal] : [o.normal]);
+  setNodeTextures(m, [o.albedo, o.normal]);
+  // What the shared graph reads from this material.
+  Object.assign(m, {
+    slTriScale: o.scale,
+    slTriNormalScale: o.normalScale,
+    slTriRoughVar: o.roughVar,
+    slTriGain: o.albedoGain ?? 1.6,
+    slPatH: o.pattern?.h ?? 0,
+    slTriNormal: o.normal,
+    slTriAlbedo: o.albedo ?? null,
+  });
+  const g = triGraph(o);
+  m.colorNode = g.color;
+  m.roughnessNode = g.roughness;
+  m.normalNode = g.normal;
 }
 
 /** A standard node material for the hero kit. */

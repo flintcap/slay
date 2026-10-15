@@ -116,6 +116,73 @@ export function matVec2(name: string): V2 {
   return matRef(name, 'vec2') as unknown as V2;
 }
 
+/**
+ * Inputs a shared graph reads from each material (`matFloat`, `matTexture`)
+ * are kept on it as `sl*` properties. Copies carry them, as they carry the
+ * material's own colour and maps, so a clone (a hit flash, a see-through
+ * twin) draws like its original.
+ */
+const SL_INPUT = /^sl[A-Z]/;
+const baseCopy = THREE.Material.prototype.copy;
+THREE.Material.prototype.copy = function (this: THREE.Material, source: THREE.Material) {
+  baseCopy.call(this, source);
+  const from = source as unknown as Record<string, unknown>;
+  const to = this as unknown as Record<string, unknown>;
+  for (const k of Object.keys(from)) if (SL_INPUT.test(k)) to[k] = from[k];
+  return this;
+};
+
+/** The drawn material's own value of `prop`, or the mesh's when a pass swapped the material out. */
+function sourceValue(state: THREE.NodeFrame, prop: string): unknown {
+  const own = (state.material as unknown as Record<string, unknown> | null)?.[prop];
+  if (own !== undefined) return own;
+  const om = (state.object as THREE.Mesh | null)?.material;
+  for (const m of Array.isArray(om) ? om : [om]) {
+    const v = (m as unknown as Record<string, unknown> | undefined)?.[prop];
+    if (v !== undefined) return v;
+  }
+  return undefined;
+}
+
+/**
+ * A texture node that samples the texture in the drawn material's `prop`,
+ * looked up per draw like `matFloat`. Every sample of it (`texture(node, uv)`
+ * copies it) reads the same lookup.
+ */
+class MaterialTextureNode extends THREE.TextureNode {
+  slProp = '';
+
+  override setup(builder: THREE.NodeBuilder): THREE.Node | null | undefined {
+    const out = super.setup(builder);
+    this.updateType = THREE.NodeUpdateType.OBJECT;
+    return out;
+  }
+
+  override update(frame: THREE.NodeFrame): boolean | undefined {
+    const t = sourceValue(frame, this.slProp) as THREE.Texture | undefined;
+    if (t?.isTexture) this.value = t;
+    return super.update(frame);
+  }
+
+  override clone(): this {
+    const n = super.clone() as this;
+    n.slProp = this.slProp;
+    return n;
+  }
+}
+
+/**
+ * The texture in material property `prop`, as a node to sample. One graph
+ * built with it serves every material that sets the property, so materials
+ * that differ only in their maps share one shader build. `placeholder` is
+ * read until a material is drawn.
+ */
+export function matTexture(prop: string, placeholder: THREE.Texture): THREE.TextureNode {
+  const n = new MaterialTextureNode(placeholder);
+  n.slProp = prop;
+  return n;
+}
+
 /** Three planar taps of a normal map (and maybe an albedo), weighted by a normal. */
 export interface TriSample {
   W: V3;
@@ -128,7 +195,7 @@ export interface TriSample {
 }
 
 /** Samples `normal` (and `albedo`) on the three planes through `P`, weighted by `N`. */
-export function triSample(P: V3, N: V3, normal: THREE.Texture, albedo?: THREE.Texture | null): TriSample {
+export function triSample(P: V3, N: V3, normal: THREE.Texture | THREE.TextureNode, albedo?: THREE.Texture | THREE.TextureNode | null): TriSample {
   const w0 = pow(abs(N), vec3(4.0));
   const W = w0.div(w0.x.add(w0.y).add(w0.z)).toVar();
   const nx = texture(normal, P.zy).toVar();

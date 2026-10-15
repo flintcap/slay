@@ -352,9 +352,9 @@ export class Engine {
    * Builds every shader the scene needs while the curtain is still down, so
    * the first visible frame is not a hitch.
    *
-   * `compileAsync` hands every program to the driver at once and waits without
-   * blocking; where the browser has KHR_parallel_shader_compile they link side
-   * by side off the main thread. Then one frame drawn behind the curtain
+   * `compileAsync` hands every pipeline to the GPU at once and waits without
+   * blocking, so they build side by side off the main thread. Then one frame
+   * drawn behind the curtain
    * builds what `compile` cannot see (shadow depth programs, the post chain)
    * and waits out any link still pending. Before, that wait landed on the
    * first frame of the fade-in: seconds of a frozen half-faded screen on a
@@ -382,8 +382,8 @@ export class Engine {
     // first used, and three.js compiles and draws only what is visible, so
     // each linked its shader on the frame it first showed (one mid-fight
     // link a fight). Shown for the compile and the warm frame, then hidden
-    // again. Anything holding a light stays as it is: a light switched on
-    // here would change the light count every lit shader is built for.
+    // again. Anything holding a light stays as it is: a shadow-casting light
+    // switched on here would change every lit shader (`core/Lighting.ts`).
     const unhidden: THREE.Object3D[] = [];
     try {
       next.scene.traverse((o) => {

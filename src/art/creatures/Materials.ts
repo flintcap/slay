@@ -22,9 +22,9 @@
 import * as THREE from 'three/webgpu';
 import {
   clamp, dot, float, min, mix, normalGeometry, normalView, positionGeometry, positionViewDirection, pow,
-  uniform, vec3, vertexColor,
+  vec3, vertexColor,
 } from 'three/tsl';
-import { asStandard, bindToView, matColor, matFloat, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
+import { asStandard, bindToView, matColor, matFloat, matTexture, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
 import { setTextures, type TextureSetName } from '../TextureSets';
 
 export type Surface =
@@ -255,37 +255,83 @@ interface CreatureShade {
   triHue: number;
 }
 
-function patch(m: THREE.MeshStandardNodeMaterial, u: CreatureShade): void {
+/** The shader parts a creature material draws with. */
+interface CreatureGraph {
+  color: V3;
+  roughness: F;
+  normal: V3;
+  emissive: V3;
+}
+
+/**
+ * One graph per shape of creature material (with or without an albedo
+ * scan, with or without a rim light), shared by all of them. Each reads its
+ * maps and numbers from the material drawn (`sl*` properties). Numbers
+ * written into the graph made every tint and size of monster a different
+ * shader: a compile each on the GPU, on the map load or the moment it
+ * walked in.
+ */
+const graphs = new Map<string, CreatureGraph>();
+
+function creatureGraph(u: CreatureShade): CreatureGraph {
+  const rim = u.rimStrength > 0;
+  const key = `${u.triAlbedo ? 1 : 0}|${rim ? 1 : 0}`;
+  const hit = graphs.get(key);
+  if (hit) return hit;
   // The bind pose: the skinned mesh's own `position` and `normal` attributes.
   const Pb = positionGeometry;
   const Nb = normalGeometry.normalize().toVar();
-  const t = triSample(Pb.mul(u.triScale), Nb, u.triNormal, u.triAlbedo);
+  const albedo = u.triAlbedo ? matTexture('slTriAlbedo', u.triAlbedo) : null;
+  const t = triSample(Pb.mul(matFloat('slTriScale')), Nb, matTexture('slTriNormal', u.triNormal), albedo);
   // Painted glow rides in the vertex colour's alpha.
   const glow = vertexColor().a as F;
-  const glowColor = uniform(u.glowColor);
-  const glowC = glowColor as unknown as V3;
+  const glowC = matColor('slGlowColor');
 
   let color: V3 = matColor('color');
   if (t.albedo) {
     const l = dot(t.albedo.rgb, vec3(0.299, 0.587, 0.114));
-    const c = mix(vec3(l), t.albedo.rgb, u.triHue);
-    color = color.mul(min(vec3(2.2), c.mul(u.triGain)));
+    const c = mix(vec3(l), t.albedo.rgb, matFloat('slTriHue'));
+    color = color.mul(min(vec3(2.2), c.mul(matFloat('slTriGain'))));
   }
   // Paint at half value, doubled so it can brighten as well as darken.
   color = color.mul(vertexColor().rgb.mul(2.0));
-  // Painted glow also brightens what it sits in, so an eye reads as lit, not as a dot.
-  m.colorNode = mix(color, glowC.mul(0.35), clamp(glow.sub(0.3).mul(1.8), 0.0, 1.0));
-  m.vertexColors = false;
 
-  m.roughnessNode = clamp(matFloat('roughness').mul(mix(float(1.0), t.rough.mul(1.4), 0.75)), 0.04, 1.0);
-  m.normalNode = bindToView(whiteout(t, Nb, u.triNormalScale), Pb, Nb);
-
-  let emis: V3 = matColor('emissive').mul(matFloat('emissiveIntensity')).add(glowC.mul(glow.mul(u.glowIntensity)));
-  if (u.rimStrength > 0) {
+  let emis: V3 = matColor('emissive').mul(matFloat('emissiveIntensity')).add(glowC.mul(glow.mul(matFloat('slGlowIntensity'))));
+  if (rim) {
     const rimF = clamp(dot(normalView, positionViewDirection), 0.0, 1.0).oneMinus();
-    emis = emis.add((uniform(u.rimColor) as unknown as V3).mul(pow(rimF, 2.6).mul(u.rimStrength)));
+    emis = emis.add(matColor('slRimColor').mul(pow(rimF, 2.6).mul(matFloat('slRimStrength'))));
   }
-  m.emissiveNode = emis;
+  const graph: CreatureGraph = {
+    // Painted glow also brightens what it sits in, so an eye reads as lit, not as a dot.
+    color: mix(color, glowC.mul(0.35), clamp(glow.sub(0.3).mul(1.8), 0.0, 1.0)),
+    roughness: clamp(matFloat('roughness').mul(mix(float(1.0), t.rough.mul(1.4), 0.75)), 0.04, 1.0),
+    normal: bindToView(whiteout(t, Nb, matFloat('slTriNormalScale')), Pb, Nb),
+    emissive: emis,
+  };
+  graphs.set(key, graph);
+  return graph;
+}
+
+function patch(m: THREE.MeshStandardNodeMaterial, u: CreatureShade): void {
+  // What the shared graph reads from this material.
+  Object.assign(m, {
+    slGlowColor: u.glowColor,
+    slGlowIntensity: u.glowIntensity,
+    slRimColor: u.rimColor,
+    slRimStrength: u.rimStrength,
+    slTriScale: u.triScale,
+    slTriAlbedo: u.triAlbedo,
+    slTriNormal: u.triNormal,
+    slTriNormalScale: u.triNormalScale,
+    slTriGain: u.triGain,
+    slTriHue: u.triHue,
+  });
+  const g = creatureGraph(u);
+  m.colorNode = g.color;
+  m.vertexColors = false;
+  m.roughnessNode = g.roughness;
+  m.normalNode = g.normal;
+  m.emissiveNode = g.emissive;
 }
 
 function texturesFor(def: SurfaceDef): { albedo: THREE.Texture | null; normal: THREE.Texture } {

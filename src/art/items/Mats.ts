@@ -16,8 +16,8 @@
  * Materials are shared and cached; never mutate or dispose one.
  */
 import * as THREE from 'three/webgpu';
-import { clamp, float, min, mix, negateOnBackSide, normalGeometry, positionGeometry, uniform, vec3 } from 'three/tsl';
-import { asStandard, bindToView, matColor, matFloat, setNodeTextures, triSample, whiteout } from '../../core/Tsl';
+import { clamp, float, min, mix, negateOnBackSide, normalGeometry, positionGeometry, vec3 } from 'three/tsl';
+import { asStandard, bindToView, matColor, matFloat, matTexture, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
 import { loadTexture, textureReady } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
@@ -117,20 +117,44 @@ interface TriOpts {
   gain: number;
 }
 
+/**
+ * The one graph every item surface draws with. Each material's maps and
+ * numbers are read from it when drawn (`sl*` properties), so every item
+ * writes the same shader and three.js builds it once, not once per material.
+ */
+let graph: { color: V3; roughness: F; normal: V3 } | null = null;
+
+function itemGraph(o: TriOpts): { color: V3; roughness: F; normal: V3 } {
+  if (graph) return graph;
+  const Pb = positionGeometry;
+  const Nb = normalGeometry.normalize().toVar();
+  const t = triSample(Pb.mul(matFloat('slTriScale')), Nb, matTexture('slTriNormal', o.normal), matTexture('slTriAlbedo', o.albedo));
+  graph = {
+    color: matColor('color').mul(min(vec3(2.0), t.albedo!.rgb.mul(matFloat('slTriGain')))),
+    roughness: clamp(matFloat('roughness').mul(mix(float(1.0), t.rough.mul(1.4), matFloat('slTriRoughVar'))), 0.04, 1.0),
+    normal: negateOnBackSide(bindToView(whiteout(t, Nb, matFloat('slTriNormalScale')), Pb, Nb)),
+  };
+  return graph;
+}
+
 /** Gives a standard node material its maps triplanar in object space. */
 function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriOpts): void {
   // The icon studio reads these to tell a finished picture from one drawn
   // before its scans arrived (Icons.ts).
   setScans(m, [o.albedo, o.normal]);
   setNodeTextures(m, [o.albedo, o.normal]);
-  const Pb = positionGeometry;
-  const Nb = normalGeometry.normalize().toVar();
-  // Numbers go in as uniforms, so every item writes the same shader code
-  // and the renderer compiles it once.
-  const t = triSample(Pb.mul(uniform(o.scale)), Nb, o.normal, o.albedo);
-  m.colorNode = matColor('color').mul(min(vec3(2.0), t.albedo!.rgb.mul(uniform(o.gain))));
-  m.roughnessNode = clamp(matFloat('roughness').mul(mix(float(1.0), t.rough.mul(1.4), uniform(o.roughVar))), 0.04, 1.0);
-  m.normalNode = negateOnBackSide(bindToView(whiteout(t, Nb, uniform(o.normalScale)), Pb, Nb));
+  Object.assign(m, {
+    slTriScale: o.scale,
+    slTriGain: o.gain,
+    slTriRoughVar: o.roughVar,
+    slTriNormalScale: o.normalScale,
+    slTriAlbedo: o.albedo,
+    slTriNormal: o.normal,
+  });
+  const g = itemGraph(o);
+  m.colorNode = g.color;
+  m.roughnessNode = g.roughness;
+  m.normalNode = g.normal;
 }
 
 const cache = new Map<string, THREE.Material>();

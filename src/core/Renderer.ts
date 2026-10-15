@@ -559,12 +559,9 @@ export class Renderer {
       const point = !(l as THREE.DirectionalLight).isDirectionalLight;
       l.castShadow = base.casts && (!point || q.pointShadows);
       const size = Math.max(256, Math.min(4096, Math.round(base.size * q.shadowScale)));
-      if (l.shadow.mapSize.x !== size) {
-        l.shadow.mapSize.set(size, size);
-        // three.js makes the map again at the new size on the next frame.
-        l.shadow.map?.dispose();
-        l.shadow.map = null;
-      }
+      // The shadow node resizes its own map to this on its next draw. Freeing
+      // the map here would leave the node drawing into a freed target.
+      if (l.shadow.mapSize.x !== size) l.shadow.mapSize.set(size, size);
       if (base.extent) {
         const c = l.shadow.camera as THREE.OrthographicCamera;
         const k = q.viewScale;

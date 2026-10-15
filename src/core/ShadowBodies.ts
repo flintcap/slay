@@ -35,14 +35,20 @@ export function hideShadowBodies(): void {
   if (mat) mat.visible = false;
 }
 
-/** Shows the shadow bodies to `light`'s shadow pass, which runs after the draw list is built. */
+/**
+ * Shows the shadow bodies to `light`'s shadow pass, which runs after the draw
+ * list is built. Every shadow pass points the shadow camera before it draws
+ * (a point light once per cube face, without the shadow's own
+ * `updateMatrices`), so the camera's update is the hook.
+ */
 export function watchShadowLight(light: THREE.Light): void {
   const shadow = (light as THREE.DirectionalLight).shadow as THREE.LightShadow | undefined;
   if (!shadow || watched.has(shadow)) return;
   watched.add(shadow);
-  const update = shadow.updateMatrices.bind(shadow) as (...a: unknown[]) => void;
-  (shadow as unknown as { updateMatrices: (...a: unknown[]) => void }).updateMatrices = (...a: unknown[]) => {
+  const cam = shadow.camera;
+  const update = cam.updateMatrixWorld.bind(cam);
+  cam.updateMatrixWorld = (force?: boolean) => {
     if (mat) mat.visible = true;
-    update(...a);
+    update(force);
   };
 }

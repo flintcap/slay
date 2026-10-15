@@ -30,9 +30,9 @@
 import * as THREE from 'three/webgpu';
 import {
   clamp, dot, float, fract, Fn, instanceIndex, mix, modelPosition, negateOnBackSide, normalGeometry, positionGeometry, sin,
-  smoothstep, uniform, varying, vec2, vec3,
+  smoothstep, varying, vec2, vec3,
 } from 'three/tsl';
-import { asStandard, bindToView, hash2, matColor, matFloat, setNodeTextures, triSample, whiteout, type V3 } from '../../core/Tsl';
+import { asStandard, bindToView, hash2, matColor, matFloat, matTexture, matVec2, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
 import { loadTexture } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
@@ -248,34 +248,72 @@ const copySeed = Fn((_: unknown, { object }: { object: THREE.Object3D }) => {
   return modelPosition;
 });
 
-function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriUniforms): void {
-  setNodeTextures(m, [o.albedo, o.normal]);
-  // Numbers go in as uniforms, so every prop writes the same shader code.
-  const uScale = uniform(o.scale);
-  const uNormalScale = uniform(o.normalScale);
-  const uRough = uniform(new THREE.Vector2(o.rough[0], o.rough[1]));
-  const uGrime = uniform(new THREE.Vector2(o.grime, Math.max(0.05, o.grimeHeight)));
+/** The shader parts a prop material draws with. */
+interface PropGraph {
+  color: V3;
+  roughness: F;
+  normal: V3;
+  emissive: V3 | null;
+}
+
+/**
+ * One graph for every prop material (two: with and without glowing
+ * cracks). Each reads its maps and numbers from the material drawn (`sl*`
+ * properties), so the forty-odd prop materials of a town are two shader
+ * builds instead of forty.
+ */
+const graphs = new Map<number, PropGraph>();
+
+function propGraph(o: TriUniforms): PropGraph {
+  const hit = graphs.get(o.crack);
+  if (hit) return hit;
+  const grime = matVec2('slPropGrime');
   // Per copy: the projection shifts and the brightness varies a little.
   const off = varying(copySeed() as unknown as V3);
   const Pb = positionGeometry;
   const Nb = normalGeometry.normalize().toVar();
-  const P = Pb.mul(uScale).add(off.mul(0.37)).toVar();
-  const t = triSample(P, Nb, o.normal, o.albedo);
+  const P = Pb.mul(matFloat('slTriScale')).add(off.mul(0.37)).toVar();
+  const t = triSample(P, Nb, matTexture('slTriNormal', o.normal), matTexture('slTriAlbedo', o.albedo));
   const a = t.albedo!;
   const h = a.a;
   const vari = fract(sin(dot(off.xz, vec2(12.9898, 78.233))).mul(43758.5453));
-  const g = smoothstep(0.0, uGrime.y, Pb.y);
-  m.colorNode = matColor('color')
-    .mul(a.rgb)
-    .mul(mix(0.74, 1.0, h))
-    .mul(vari.mul(0.2).add(0.9))
-    .mul(mix(uGrime.x.mul(-0.45).add(1.0), 1.0, g));
-  m.roughnessNode = clamp(matFloat('roughness').mul(mix(uRough.x, uRough.y, t.rough)), 0.04, 1.0);
-  m.normalNode = negateOnBackSide(bindToView(whiteout(t, Nb, uNormalScale), Pb, Nb));
+  const g = smoothstep(0.0, grime.y, Pb.y);
+  const rough = matVec2('slPropRough');
+  let emissive: V3 | null = null;
   if (o.crack > 0) {
     const c = h.oneMinus();
-    m.emissiveNode = matColor('emissive').mul(matFloat('emissiveIntensity')).mul(c.mul(c).mul(c).mul(2.4));
+    emissive = matColor('emissive').mul(matFloat('emissiveIntensity')).mul(c.mul(c).mul(c).mul(2.4));
   }
+  const graph: PropGraph = {
+    color: matColor('color')
+      .mul(a.rgb)
+      .mul(mix(0.74, 1.0, h))
+      .mul(vari.mul(0.2).add(0.9))
+      .mul(mix(grime.x.mul(-0.45).add(1.0), 1.0, g)),
+    roughness: clamp(matFloat('roughness').mul(mix(rough.x, rough.y, t.rough)), 0.04, 1.0),
+    normal: negateOnBackSide(bindToView(whiteout(t, Nb, matFloat('slTriNormalScale')), Pb, Nb)),
+    emissive,
+  };
+  graphs.set(o.crack, graph);
+  return graph;
+}
+
+function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriUniforms): void {
+  setNodeTextures(m, [o.albedo, o.normal]);
+  // What the shared graph reads from this material.
+  Object.assign(m, {
+    slTriScale: o.scale,
+    slTriNormalScale: o.normalScale,
+    slPropRough: new THREE.Vector2(o.rough[0], o.rough[1]),
+    slPropGrime: new THREE.Vector2(o.grime, Math.max(0.05, o.grimeHeight)),
+    slTriAlbedo: o.albedo,
+    slTriNormal: o.normal,
+  });
+  const g = propGraph(o);
+  m.colorNode = g.color;
+  m.roughnessNode = g.roughness;
+  m.normalNode = g.normal;
+  if (g.emissive) m.emissiveNode = g.emissive;
 }
 
 // ---------------------------------------------------------------------------

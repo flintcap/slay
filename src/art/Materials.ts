@@ -20,8 +20,8 @@
  */
 
 import * as THREE from 'three/webgpu';
-import { mix, normalMap, texture, uniform, uv } from 'three/tsl';
-import { asStandard, matColor, matFloat, matVec2 } from '../core/Tsl';
+import { mix, normalMap, texture, uv } from 'three/tsl';
+import { asStandard, matColor, matFloat, matTexture, matVec2, type F, type V3 } from '../core/Tsl';
 import {
   radialGlowTexture,
   runeRingTexture,
@@ -67,6 +67,56 @@ export interface SurfaceOpts {
  * material can share one texture object per file instead of cloning
  * textures to change `repeat`.
  */
+interface SurfaceGraph {
+  color: V3;
+  roughness: F;
+  normal: V3;
+  emissive: V3 | null;
+}
+
+/**
+ * One graph per way a surface glows (from its own map, from its hollows, or
+ * not at all), shared by every surface. Maps come from the material's own
+ * `map`, `normalMap` and `emissiveMap`, and the rest from `sl*` properties,
+ * so all surfaces of a kind are one shader build.
+ */
+const surfaceGraphs = new Map<string, SurfaceGraph>();
+
+function surfaceGraph(tex: { albedo: THREE.Texture; normal: THREE.Texture; emissive: THREE.Texture | null }, cav: number): SurfaceGraph {
+  const key = tex.emissive ? 'map' : cav > 0 ? 'cav' : 'none';
+  const hit = surfaceGraphs.get(key);
+  if (hit) return hit;
+  const rough = matVec2('slSurfRough');
+  const xf = matColor('slSurfUv');
+  const st = uv().mul(xf.x).add(xf.yz);
+  const alb = texture(matTexture('map', tex.albedo), st);
+  const nrm = texture(matTexture('normalMap', tex.normal), st);
+  const glow = matColor('emissive').mul(matFloat('emissiveIntensity'));
+  let emissive: V3 | null = null;
+  if (tex.emissive) {
+    emissive = glow.mul(texture(matTexture('emissiveMap', tex.emissive), st).rgb);
+  } else if (cav > 0) {
+    // No emission map: the glow sits in the cracks and hollows of the relief.
+    const c = alb.a.oneMinus();
+    emissive = glow.mul(c.mul(c).mul(c).mul(2.0));
+  }
+  const graph: SurfaceGraph = {
+    color: matColor('color').mul(alb.rgb),
+    roughness: matFloat('roughness').mul(mix(rough.x, rough.y, nrm.a)),
+    normal: normalMap(nrm, matVec2('normalScale')) as unknown as V3,
+    emissive,
+  };
+  surfaceGraphs.set(key, graph);
+  return graph;
+}
+
+/**
+ * Albedo alpha is height and normal alpha is roughness, so three's stock
+ * material would read height as opacity and ignore the roughness. These
+ * nodes read the packed layout, and apply the repeat in the shader, so every
+ * material can share one texture object per file instead of cloning
+ * textures to change `repeat`.
+ */
 function patchPacked(
   mat: THREE.MeshStandardNodeMaterial,
   tex: { albedo: THREE.Texture; normal: THREE.Texture; emissive: THREE.Texture | null },
@@ -74,22 +124,13 @@ function patchPacked(
   uvXf: THREE.Vector3,
   cav: number,
 ): void {
-  const uRough = uniform(rough);
-  const uUv = uniform(uvXf);
-  const st = uv().mul(uUv.x).add(uUv.yz);
-  const alb = texture(tex.albedo, st);
-  const nrm = texture(tex.normal, st);
-  mat.colorNode = matColor('color').mul(alb.rgb);
-  mat.roughnessNode = matFloat('roughness').mul(mix(uRough.x, uRough.y, nrm.a));
-  mat.normalNode = normalMap(nrm, matVec2('normalScale'));
-  const glow = matColor('emissive').mul(matFloat('emissiveIntensity'));
-  if (tex.emissive) {
-    mat.emissiveNode = glow.mul(texture(tex.emissive, st).rgb);
-  } else if (cav > 0) {
-    // No emission map: the glow sits in the cracks and hollows of the relief.
-    const c = alb.a.oneMinus();
-    mat.emissiveNode = glow.mul(c.mul(c).mul(c).mul(2.0));
-  }
+  // The repeat and offset ride as a colour (three numbers) for the shared graph.
+  Object.assign(mat, { slSurfRough: rough, slSurfUv: new THREE.Color(uvXf.x, uvXf.y, uvXf.z) });
+  const g = surfaceGraph(tex, cav);
+  mat.colorNode = g.color;
+  mat.roughnessNode = g.roughness;
+  mat.normalNode = g.normal;
+  if (g.emissive) mat.emissiveNode = g.emissive;
 }
 
 /** Linear-light tint that moves the scan's average colour onto the surface's target. */

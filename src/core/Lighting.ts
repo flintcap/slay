@@ -23,7 +23,7 @@
  * twelve per shader.
  */
 import * as THREE from 'three/webgpu';
-import { Loop, getDistanceAttenuation, positionView, renderGroup, smoothstep, uniform, uniformArray, vec3 } from 'three/tsl';
+import { If, Loop, getDistanceAttenuation, positionView, renderGroup, smoothstep, uniform, uniformArray, vec3 } from 'three/tsl';
 
 /** Most packed lights drawn at once: the lit ones whose reach touches the view. */
 const MAX = 64;
@@ -112,19 +112,25 @@ class PackedLightsNode extends THREE.Node {
       const posDecay = this.array.element(base.add(1));
       const spot = this.array.element(base.add(2));
       const toLight = posDecay.xyz.sub(surface).toVar();
-      const lightDirection = toLight.normalize().toVar();
-      const fall = getDistanceAttenuation({ lightDistance: toLight.length(), cutoffDistance: colorReach.w, decayExponent: posDecay.w });
-      const cone = this.array.element(base.add(3));
-      const lightColor = colorReach.xyz.mul(fall).mul(smoothstep(cone.x, cone.y, lightDirection.dot(spot.xyz))).toVar();
-      ctx.lightingModel.direct(
-        {
-          lightDirection,
-          lightColor,
-          lightNode: { light: {}, shadowNode: null },
-          reflectedLight: { directDiffuse: diffuse, directSpecular: specular },
-        } as never,
-        builder,
-      );
+      const reach = colorReach.w;
+      // A pixel past a light's reach gets nothing from it: skip the shading
+      // rather than work it out and scale it by zero. Most of the screen is
+      // in reach of only a torch or two.
+      If(reach.equal(0).or(toLight.dot(toLight).lessThan(reach.mul(reach))), () => {
+        const lightDirection = toLight.normalize().toVar();
+        const fall = getDistanceAttenuation({ lightDistance: toLight.length(), cutoffDistance: reach, decayExponent: posDecay.w });
+        const cone = this.array.element(base.add(3));
+        const lightColor = colorReach.xyz.mul(fall).mul(smoothstep(cone.x, cone.y, lightDirection.dot(spot.xyz))).toVar();
+        ctx.lightingModel.direct(
+          {
+            lightDirection,
+            lightColor,
+            lightNode: { light: {}, shadowNode: null },
+            reflectedLight: { directDiffuse: diffuse, directSpecular: specular },
+          } as never,
+          builder,
+        );
+      });
     });
     ctx.reflectedLight.directDiffuse.addAssign(diffuse);
     ctx.reflectedLight.directSpecular.addAssign(specular);
