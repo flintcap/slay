@@ -8,6 +8,7 @@
  * touch the main view.
  */
 import * as THREE from 'three/webgpu';
+import { installGpuShims } from './GpuShims';
 
 /** Set by the game once its own renderer is open: false on the WebGL2 fallback. */
 let webgpu = true;
@@ -18,6 +19,7 @@ export function setStudioBackend(isWebGPU: boolean): void {
 /** Makes and opens an offscreen renderer; null when the browser gives no GPU for it. */
 export async function makeStudioRenderer(o: { alpha?: boolean; antialias?: boolean } = {}): Promise<THREE.WebGPURenderer | null> {
   if (typeof document === 'undefined') return null;
+  installGpuShims();
   let r: THREE.WebGPURenderer | null = null;
   try {
     r = new THREE.WebGPURenderer({

@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { installGpuShims } from './GpuShims';
 import {
   Fn, clamp, dot, float, fog, fract, max, mix, normalize, pass, positionLocal, positionView, positionWorld,
   pow, reference, renderGroup, renderOutput, screenCoordinate, sin, smoothstep, uniform, uv, vec2, vec3, vec4,
@@ -355,6 +356,7 @@ export class Renderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    installGpuShims();
     this.gl = new THREE.WebGPURenderer({
       canvas,
       antialias: false, // SMAA handles it.

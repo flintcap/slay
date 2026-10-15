@@ -91,6 +91,8 @@ const browser = await chromium.launch({
     '--use-angle=swiftshader',
     '--enable-unsafe-swiftshader',
     '--enable-webgl',
+    // WebGPU on SwiftShader; --webgl2 leaves it off to test the fallback.
+    ...(args.webgl2 ? [] : ['--enable-unsafe-webgpu']),
     '--ignore-gpu-blocklist',
     '--disable-gpu-sandbox',
     '--no-sandbox',
@@ -123,6 +125,7 @@ try {
   const status = await page.textContent('#boot-status').catch(() => null);
   if (status) console.error('boot status:', status);
 }
+console.log('backend', await page.evaluate(() => (window.SLAY?.engine?.renderer?.isWebGPU ? 'WebGPU' : 'WebGL2')).catch(() => '?'));
 
 /** Software rendering is slow — give each scene real time to settle. */
 async function settle(frames = 90) {
