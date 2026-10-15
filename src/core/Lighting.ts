@@ -151,7 +151,11 @@ class PackedLights extends THREE.LightsNode {
   }
 
   override setupLightsNode(builder: THREE.NodeBuilder): THREE.LightingNode[] {
-    const out: THREE.LightingNode[] = [];
+    // The material's own light comes first, as in three's: the sky
+    // reflection, its occlusion and any light map. Leaving these out drew
+    // every surface without its sky fill.
+    const own = (builder.context as unknown as { materialLightings?: THREE.LightingNode[] }).materialLightings ?? [];
+    const out: THREE.LightingNode[] = [...own];
     for (const l of [...this.getLights()].sort((a, b) => a.id - b.id)) {
       if (packable(l)) continue;
       if ((l as unknown as { isNode?: boolean }).isNode) {
