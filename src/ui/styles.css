@@ -6917,3 +6917,10 @@ input.slider::-moz-range-thumb {
   font-size: var(--fs-sm);
   color: var(--ink-3);
 }
+
+/* Blacksmith: the worn gear row under the pack. */
+.smith-worn {
+  display: grid;
+  grid-template-columns: repeat(6, 36px);
+  gap: 4px;
+}

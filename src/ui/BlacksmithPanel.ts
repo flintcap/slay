@@ -7,7 +7,7 @@
  * diffed — so "+1" is never a mystery.
  */
 
-import type { Item, StatKey, Stats } from '../types';
+import type { EquipSlot, Item, StatKey, Stats } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
 import {
@@ -49,6 +49,9 @@ import {
   emptyState,
   modal,
   STAT_LABEL,
+  SLOT_LABEL,
+  SLOT_ICON,
+  ItemSlot,
   STAT_ICON,
   PERCENT_STATS,
   type DragPayload,
@@ -59,6 +62,8 @@ type ServiceId = 'upgrade' | 'reroll' | 'socket' | 'salvage';
 export class BlacksmithPanel {
   readonly panel: Panel;
   private packGrid: ItemGrid;
+  /** What the hero is wearing, so worn gear can go on the anvil without taking it off. */
+  private worn = new Map<EquipSlot, ItemSlot>();
   private preview: HTMLDivElement;
   private actions: HTMLDivElement;
   private selected: Item | null = null;
@@ -99,6 +104,25 @@ export class BlacksmithPanel {
     });
     left.appendChild(this.packGrid.root);
     left.appendChild(div('inv-hint', 'Click an item to bring it to the anvil.'));
+
+    const whd = div('trade-colhd');
+    whd.appendChild(span('trade-coltitle', 'Worn'));
+    left.appendChild(whd);
+    const wornRow = div('smith-worn');
+    for (const slot of Object.keys(SLOT_LABEL) as EquipSlot[]) {
+      const cell = new ItemSlot({
+        size: 36,
+        slot,
+        draggable: false,
+        placeholder: SLOT_ICON[slot],
+        placeholderLabel: SLOT_LABEL[slot],
+        onClick: (item) => this.select(item),
+        onRightClick: (item) => this.select(item),
+      });
+      this.worn.set(slot, cell);
+      wornRow.appendChild(cell.root);
+    }
+    left.appendChild(wornRow);
 
     // --- preview ----------------------------------------------------------
     this.preview = div('smith-preview');
@@ -152,6 +176,7 @@ export class BlacksmithPanel {
     if (!c) return;
     normalizeInventory(c);
     this.packGrid.setItems(c.inventory);
+    for (const [slot, cell] of this.worn) cell.setItem(c.equipment[slot] ?? null);
     this.goldEl.textContent = fmtInt(c.gold);
     // Keep the selection alive across refreshes, drop it if it left the pack.
     if (this.selected && !c.inventory.some((i) => i?.uid === this.selected?.uid)) {
@@ -171,9 +196,10 @@ export class BlacksmithPanel {
     this.packGrid.root.querySelectorAll<HTMLElement>('.islot').forEach((el) => {
       el.classList.toggle('is-picked', !!uid && el.dataset.uid === uid);
     });
+    for (const cell of this.worn.values()) cell.root.classList.toggle('is-picked', !!uid && cell.item?.uid === uid);
     const item = this.selected;
     if (!item) {
-      this.preview.appendChild(emptyState('Click an item in your pack to put it on the anvil.', 'anvil'));
+      this.preview.appendChild(emptyState('Click an item in your pack, or one you are wearing, to put it on the anvil.', 'anvil'));
       return;
     }
     const rc = rarityHex(item.rarity);
@@ -444,7 +470,9 @@ export class BlacksmithPanel {
       )
     );
 
-    this.actions.appendChild(
+    // Worn gear is smithed where it sits; breaking it down means taking it off first.
+    const worn = Object.values(c.equipment).some((i) => i?.uid === item.uid);
+    if (!worn) this.actions.appendChild(
       this.card(
         'salvage',
         'Salvage',
@@ -542,6 +570,9 @@ export class BlacksmithPanel {
           card.classList.add('is-success');
           events.emit('sfx', { id: 'craft.success' });
           events.emit('toast', { text: `${title} complete.`, kind: 'good' });
+          // Worn gear changes the hero's numbers the moment it is improved.
+          const worn = Object.values(c?.equipment ?? {}).find((i) => i?.uid === this.selected?.uid);
+          if (worn) events.emit('item:equipped', { item: worn });
           events.emit('ui:refresh', {});
         };
 
