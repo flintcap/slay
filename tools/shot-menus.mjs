@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import path from 'node:path';
+import { gpuArgs } from './browser-args.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -73,9 +74,9 @@ if (!up) {
 }
 
 const CHROME = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium';
-// The `3d:` screens run real WebGL scenes, which need SwiftShader switched on.
+// The `3d:` screens run real WebGPU scenes, which need SwiftShader switched on.
 const GL = SCREENS.some((s) => s.startsWith('3d:'))
-  ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--disable-gpu-sandbox']
+  ? gpuArgs()
   : [];
 const browser = await chromium.launch({
   executablePath: existsSync(CHROME) ? CHROME : undefined,
@@ -101,7 +102,7 @@ for (const name of SCREENS) {
   }
   // Let the entrance choreography finish (the slowest is the death screen).
   if (is3d) {
-    // Software WebGL under load can take seconds a frame, and the engine clamps
+    // Software rendering under load can take seconds a frame, and the engine clamps
     // each step to 1/20 s, so wall time says nothing. Wait for scene time:
     // entrance flashes and particle bursts are over by 6 s.
     const t0 = Date.now();

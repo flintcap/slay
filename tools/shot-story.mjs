@@ -21,6 +21,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, existsSync, statSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import path from 'node:path';
+import { gpuArgs } from './browser-args.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -101,7 +102,7 @@ const browser = await chromium.launch({
   executablePath: existsSync(CHROME) ? CHROME : undefined,
   args: LAB
     ? ['--no-sandbox']
-    : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--disable-gpu-sandbox', '--no-sandbox'],
+    : gpuArgs(),
 });
 const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
 const errors = [];

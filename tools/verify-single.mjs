@@ -8,6 +8,7 @@
 import { chromium } from '@playwright/test';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
+import { gpuArgs } from './browser-args.mjs';
 
 const body = readFileSync('dist-single/slay.html', 'utf8');
 // Wrap exactly as the artifact host does.
@@ -21,7 +22,7 @@ await new Promise((r) => server.listen(4195, '127.0.0.1', r));
 
 const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
+  args: gpuArgs(),
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 

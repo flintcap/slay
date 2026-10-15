@@ -13,6 +13,7 @@ import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
 import { mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { gpuArgs } from './browser-args.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -42,7 +43,7 @@ const CHROME = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium';
 const browser = await chromium.launch({
   executablePath: existsSync(CHROME) ? CHROME : undefined,
   // Software WebGL, so item icons render from their models instead of blanks.
-  args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  args: gpuArgs(),
 });
 const errors = [];
 for (const name of WANT) {

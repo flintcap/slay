@@ -17,6 +17,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import path from 'node:path';
+import { gpuArgs } from './browser-args.mjs';
 
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(
@@ -59,8 +60,8 @@ if (!up) {
 
 const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-  // SwiftShader WebGL, for the 3D model sheets.
-  args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  // SwiftShader WebGPU, for the 3D model sheets.
+  args: gpuArgs(),
 });
 const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
 page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 400)));

@@ -10,6 +10,7 @@ import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { gpuArgs } from './browser-args.mjs';
 
 const PORT = Number(process.env.SLAY_PORT ?? 4213);
 const server = spawn(
@@ -35,7 +36,7 @@ for (let i = 0; i < 60; i++) {
 
 const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
+  args: gpuArgs(),
 });
 const page = await browser.newPage({ viewport: { width: 640, height: 400 } });
 page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 240)));

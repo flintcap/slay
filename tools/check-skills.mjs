@@ -13,6 +13,7 @@ import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { gpuArgs } from './browser-args.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -78,17 +79,7 @@ for (let i = 0; i < 120; i++) {
 
 const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-  args: [
-    '--use-gl=angle',
-    '--use-angle=swiftshader',
-    '--enable-unsafe-swiftshader',
-    '--no-sandbox',
-    // Containers give /dev/shm 64MB by default. Chromium puts its renderer
-    // shared memory there and is killed when it runs out, which reads as
-    // "Target page, context or browser has been closed" halfway through a run.
-    '--disable-dev-shm-usage',
-    '--js-flags=--max-old-space-size=2048',
-  ],
+  args: gpuArgs(),
 });
 let page = await browser.newPage({ viewport: { width: 700, height: 440 } });
 const pageErrors = [];

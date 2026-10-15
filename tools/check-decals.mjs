@@ -13,6 +13,7 @@ import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { gpuArgs } from './browser-args.mjs';
 
 const arg = (k, d) => {
   const a = process.argv.find((s) => s.startsWith(`--${k}=`));
@@ -56,7 +57,7 @@ if (!up) {
 
 const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
+  args: gpuArgs(),
 });
 const fails = [];
 const page = await browser.newPage({ viewport: { width: 960, height: 600 } });
@@ -83,7 +84,7 @@ for (const name of scenes) {
   }
   const buf = await page.locator('#c').screenshot();
   writeFileSync(`${OUT}/${name}.png`, buf);
-  // Judge the written PNG, not the live canvas (its WebGL buffer is already
+  // Judge the written PNG, not the live canvas (its GPU buffer is already
   // cleared): mean luma and the share of near-white pixels.
   const stats = await page.evaluate(async (b64) => {
     const img = new Image();

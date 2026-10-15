@@ -3,7 +3,7 @@
  *
  *   SLAY_PORT=4324 node tools/hero-sheet.mjs bodies,faces --out=shots/heroes [--k=v ...]
  *
- * Starts a Vite dev server, opens an empty page with WebGL (SwiftShader),
+ * Starts a Vite dev server, opens an empty page with WebGPU (SwiftShader),
  * imports the hero code from source and asks `tools/hero-page.ts` to render
  * each named sheet: bodies, faces, extremities; `check` prints a report and
  * sets the exit code instead (see tools/check-hero.mjs). Extra `--k=v` flags are
@@ -14,6 +14,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import path from 'node:path';
+import { gpuArgs } from './browser-args.mjs';
 
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(
@@ -58,7 +59,7 @@ if (!up) {
 
 const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
+  args: gpuArgs(),
 });
 const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
 page.setDefaultTimeout(1_800_000);
