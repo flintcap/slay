@@ -339,7 +339,7 @@ export class VendorPanel {
       // carries a normal spread of white, blue and yellow.
       const item = attempt(() => {
         for (let tries = 0; tries < 8; tries++) {
-          const roll = rollItem(ilvl, rng, { magicFind: 40 + this.restocks * 5, classId: c?.classId });
+          const roll = rollItem(ilvl, rng, { magicFind: 40 + this.restocks * 5, classId: c?.classId, source: 'vendor' });
           if (roll && rarityRank(roll.rarity) <= rarityRank('rare')) return roll;
         }
         return rollItem(ilvl, rng, { classId: c?.classId, forceRarity: 'rare' });

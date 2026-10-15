@@ -14,40 +14,42 @@ import { BOSSES } from '../src/data/bosses';
 import { WARDENS } from '../src/data/wardens';
 import { CLASS_IDS } from '../src/data/classes';
 import { ITEM_BASES } from '../src/data/itemBases';
-import { CHARM_UNIQUE_CHANCE, magicFindFactor, SIGNATURE_CHANCE } from '../src/sim/Loot';
-import type { CharClassId } from '../src/types';
+import { CHARM_UNIQUE_CHANCE, rarityOdds, SIGNATURE_CHANCE, type DropSource } from '../src/sim/Loot';
+import type { CharClassId, ItemRarity } from '../src/types';
 
 // Mirrors of the private tables in Loot.ts. Kept in step by hand.
-const RARITY_CHANCE = { ancient: [0.00012, 140, 78], mythic: [0.0011, 190, 58], unique: [0.0105, 250, 1], set: [0.0145, 420, 1] } as const;
 const earlyRamp = (r: string, ilvl: number): number => (r === 'unique' || r === 'set' ? Math.min(1, 0.25 + 0.75 * Math.max(0, ilvl - 1) / 29) : 1);
 const CHARM_SIZE_WEIGHT: Record<string, number> = { 'charm.small': 44, 'charm.medium': 28, 'charm.large': 18, 'charm.grand': 10 };
 
 /**
  * An average floor kill: mostly plain monsters, some champions and elites.
- * Item rolls and magic find per kill follow `RANK_PROFILE` in Loot.ts.
+ * Item rolls per kill follow `RANK_PROFILE` in Loot.ts; the rank lifts quality.
  */
-const KILL_MIX = [
-  { share: 0.88, rolls: 0.17, mf: 0, charm: 0.006 },
-  { share: 0.08, rolls: 0.62, mf: 15, charm: 0.03 },
-  { share: 0.035, rolls: 1.5, mf: 35, charm: 0.06 },
-  { share: 0.005, rolls: 2.55, mf: 60, charm: 0.1 },
+const KILL_MIX: Array<{ share: number; rolls: number; source: DropSource; charm: number }> = [
+  { share: 0.88, rolls: 0.17, source: 'normal', charm: 0.006 },
+  { share: 0.08, rolls: 0.62, source: 'champion', charm: 0.03 },
+  { share: 0.035, rolls: 1.5, source: 'elite', charm: 0.06 },
+  { share: 0.005, rolls: 2.55, source: 'rare', charm: 0.1 },
 ];
 
 const baseCat = new Map(ITEM_BASES.map((b) => [b.id, b.category]));
 const baseReq = new Map(ITEM_BASES.map((b) => [b.id, b.levelReq]));
 
-function rarityChance(r: keyof typeof RARITY_CHANCE, ilvl: number, mf: number): number {
-  const [c, cap, min] = RARITY_CHANCE[r];
-  return ilvl < min ? 0 : c * earlyRamp(r, ilvl) * magicFindFactor(mf, cap);
+const oddsCache = new Map<string, Record<ItemRarity, number>>();
+function rarityChance(r: ItemRarity, ilvl: number, source: DropSource): number {
+  const key = `${ilvl}|${source}`;
+  let o = oddsCache.get(key);
+  if (!o) oddsCache.set(key, (o = rarityOdds(ilvl, 0, source)));
+  return o[r];
 }
 
 /** Chance one ordinary item roll is this unique, for a hero of `hero`. */
-function uniqueRollChance(d: UniqueDef, ilvl: number, mf: number, hero: CharClassId | undefined): number {
+function uniqueRollChance(d: UniqueDef, ilvl: number, source: DropSource, hero: CharClassId | undefined): number {
   const w = uniqueDropWeight(d, ilvl);
   if (w <= 0) return 0;
   const pool = uniquePool(d.rarity, ilvl).filter((x) => baseCat.get(x.baseId) !== 'charm' && (!x.classId || x.classId === hero) && uniqueDropWeight(x, ilvl) > 0);
   const sum = pool.reduce((s, x) => s + uniqueDropWeight(x, ilvl), 0);
-  return sum > 0 ? (rarityChance(d.rarity, ilvl, mf) * w) / sum : 0;
+  return sum > 0 ? (rarityChance(d.rarity, ilvl, source) * w) / sum : 0;
 }
 
 /** Chance one kill drops this charm unique. */
@@ -61,8 +63,7 @@ function charmKillChance(d: UniqueDef, ilvl: number, hero: CharClassId | undefin
   if (sum <= 0) return 0;
   let p = 0;
   for (const k of KILL_MIX) {
-    const mf = magicFindFactor(k.mf, 600);
-    p += k.share * k.charm * sizeShare * CHARM_UNIQUE_CHANCE * mf * earlyRamp('unique', ilvl) * (uniqueDropWeight(d, ilvl) / sum);
+    p += k.share * k.charm * sizeShare * CHARM_UNIQUE_CHANCE * earlyRamp('unique', ilvl) * (uniqueDropWeight(d, ilvl) / sum);
   }
   return p;
 }
@@ -70,7 +71,7 @@ function charmKillChance(d: UniqueDef, ilvl: number, hero: CharClassId | undefin
 function killChance(d: UniqueDef, ilvl: number, hero: CharClassId | undefined): number {
   if (baseCat.get(d.baseId) === 'charm') return charmKillChance(d, ilvl, hero);
   let p = 0;
-  for (const k of KILL_MIX) p += k.share * k.rolls * uniqueRollChance(d, ilvl, k.mf, hero);
+  for (const k of KILL_MIX) p += k.share * k.rolls * uniqueRollChance(d, ilvl, k.source, hero);
   return p;
 }
 
@@ -80,7 +81,7 @@ function setKillChance(id: string, ilvl: number): number {
   if (w <= 0) return 0;
   const sum = setPool(ilvl).reduce((s, p) => s + setPieceDropWeight(p, ilvl), 0);
   let p = 0;
-  for (const k of KILL_MIX) p += k.share * k.rolls * (rarityChance('set', ilvl, k.mf) * w) / sum;
+  for (const k of KILL_MIX) p += k.share * k.rolls * (rarityChance('set', ilvl, k.source) * w) / sum;
   return p;
 }
 

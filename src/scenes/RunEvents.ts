@@ -183,7 +183,7 @@ export class RunEvents {
     const rng = this.host.rng();
     const ilvl = this.host.depth + 2;
     this.host.dropGold(Math.round((30 + ilvl * 14) * rng.range(0.8, 1.4)), at);
-    this.host.dropItem(rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 60 }), at);
+    this.host.dropItem(rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 60, source: 'champion' }), at);
     this.host.fx.burst('dust', at.x, 0.6, at.z, { count: 18 });
     const trial: Trial = {
       kind: 'ambush',
@@ -282,7 +282,7 @@ export class RunEvents {
       const ilvl = this.host.depth + 3;
       const better = rng.chance(0.25);
       const item = better
-        ? rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 400 })
+        ? rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 400, source: 'rare' })
         : rollItem(ilvl, rng, { forceRarity: 'rare' });
       this.host.dropItem(item, at);
     }
@@ -487,7 +487,7 @@ export class RunEvents {
       this.runner = null;
       const ilvl = this.host.depth + 3;
       const n = rng.int(3, 5);
-      for (let i = 0; i < n; i++) this.host.dropItem(rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 150 }), at);
+      for (let i = 0; i < n; i++) this.host.dropItem(rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 150, source: 'elite' }), at);
       for (let i = 0; i < 6; i++) this.host.dropGold(Math.round((25 + ilvl * 9) * rng.range(0.7, 1.4)), at);
       const mats = rollDrops(ilvl, 'rare', rng, 0, 0).materials;
       this.host.addMaterials(mats);

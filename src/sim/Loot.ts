@@ -116,15 +116,70 @@ const RARITY_VALUE_MUL: Record<ItemRarity, number> = {
   ancient: 85,
 };
 
-/** Base drop chance per rolled item, before magic find. */
-const RARITY_CHANCE: Array<{ rarity: ItemRarity; chance: number; mfCap: number; minIlvl: number }> = [
-  { rarity: 'ancient', chance: 0.00012, mfCap: 140, minIlvl: 78 },
-  { rarity: 'mythic', chance: 0.0011, mfCap: 190, minIlvl: 58 },
-  { rarity: 'unique', chance: 0.0105, mfCap: 250, minIlvl: 1 },
-  { rarity: 'set', chance: 0.0145, mfCap: 420, minIlvl: 1 },
-  { rarity: 'rare', chance: 0.056, mfCap: 500, minIlvl: 1 },
-  { rarity: 'magic', chance: 0.27, mfCap: 600, minIlvl: 1 },
+/**
+ * Item quality, close to how Diablo II does it but with our own numbers.
+ *
+ * The base is picked first. Then each tier is tried in turn, best first, and
+ * the first one that hits wins; if none hit, the item is plain. A tier's odds
+ * are one in `n`, where
+ *
+ *   n = base - (item level - base level) / div     the deeper the find, the better
+ *   n = n * 100 / (100 + effective magic find)     capped per tier, see below
+ *   n = max(n, floor)                              magic find alone cannot pass this
+ *   n = n * (1 - source factor / 1024)             tougher monsters roll far better
+ *
+ * So a plain monster mostly drops plain and blue things, a champion never
+ * drops anything plain, and a boss is where the uniques live.
+ */
+const QUALITY: Array<{ rarity: ItemRarity; base: number; div: number; floor: number; mfCap: number; minIlvl: number }> = [
+  { rarity: 'ancient', base: 12000, div: 1, floor: 1500, mfCap: 140, minIlvl: 78 },
+  { rarity: 'mythic', base: 2400, div: 1, floor: 300, mfCap: 190, minIlvl: 58 },
+  { rarity: 'unique', base: 360, div: 1, floor: 48, mfCap: 250, minIlvl: 1 },
+  { rarity: 'set', base: 180, div: 2, floor: 40, mfCap: 500, minIlvl: 1 },
+  { rarity: 'rare', base: 84, div: 2, floor: 20, mfCap: 600, minIlvl: 1 },
+  { rarity: 'magic', base: 24, div: 3, floor: 1.5, mfCap: Infinity, minIlvl: 1 },
 ];
+
+/** Where a roll comes from. Monster ranks, plus the few places that are not monsters. */
+export type DropSource = MonsterRank | 'vendor';
+
+/**
+ * How much each source lifts quality, out of 1024: [unique tiers, set, rare, magic].
+ * Anything ranked always drops at least magic.
+ */
+const SOURCE_FACTOR: Record<DropSource, readonly [number, number, number, number]> = {
+  normal: [0, 0, 0, 0],
+  champion: [720, 720, 720, 1024],
+  elite: [800, 800, 800, 1024],
+  rare: [860, 860, 860, 1024],
+  boss: [960, 960, 960, 1024],
+  vendor: [0, 0, 700, 900],
+};
+
+function sourceFactor(source: DropSource, rarity: ItemRarity): number {
+  const f = SOURCE_FACTOR[source] ?? SOURCE_FACTOR.normal;
+  return rarity === 'magic' ? f[3] : rarity === 'rare' ? f[2] : rarity === 'set' ? f[1] : f[0];
+}
+
+/** Chance this one tier hits, given that every better tier missed. */
+function tierChance(tier: (typeof QUALITY)[number], ilvl: number, qlvl: number, magicFind: number, source: DropSource): number {
+  if (ilvl < tier.minIlvl) return 0;
+  let n = tier.base - Math.max(0, ilvl - qlvl) / tier.div;
+  const mf = Math.max(0, magicFind);
+  const effective = tier.mfCap === Infinity ? mf : mf > 0 ? (mf * tier.mfCap) / (mf + tier.mfCap) : 0;
+  n = (n * 100) / (100 + effective);
+  n /= earlyRamp(tier.rarity, ilvl);
+  n = Math.max(n, tier.floor);
+  n *= 1 - sourceFactor(source, tier.rarity) / 1024;
+  return n <= 1 ? 1 : 1 / n;
+}
+
+function rollRarity(ilvl: number, qlvl: number, magicFind: number, source: DropSource, rng: Rng): ItemRarity {
+  for (const tier of QUALITY) {
+    if (rng.next() < tierChance(tier, ilvl, qlvl, magicFind, source)) return tier.rarity;
+  }
+  return 'normal';
+}
 
 /**
  * Diminishing magic find, the D2 curve: `effective = mf * cap / (mf + cap)`.
@@ -702,15 +757,27 @@ function earlyRamp(rarity: ItemRarity, ilvl: number): number {
   return Math.min(1, 0.25 + 0.75 * Math.max(0, ilvl - 1) / 29);
 }
 
-function rollRarity(ilvl: number, magicFind: number, rng: Rng): ItemRarity {
-  const roll = rng.next();
-  let acc = 0;
-  for (const tier of RARITY_CHANCE) {
-    if (ilvl < tier.minIlvl) continue;
-    acc += tier.chance * earlyRamp(tier.rarity, ilvl) * magicFindFactor(magicFind, tier.mfCap);
-    if (roll < acc) return tier.rarity;
+/**
+ * The chance one ordinary roll comes out at each rarity, averaged over the
+ * bases that can drop at this level. Worked out, not sampled; the drop
+ * checker reads it.
+ */
+export function rarityOdds(ilvl: number, magicFind: number, source: DropSource): Record<ItemRarity, number> {
+  const lvl = Math.max(1, Math.round(ilvl));
+  const out = { normal: 0, magic: 0, rare: 0, set: 0, unique: 0, mythic: 0, ancient: 0 } as Record<ItemRarity, number>;
+  const bases = ALL_BASES.filter((b) => isEquippable(b) && b.category !== 'charm' && baseDropWeight(b, lvl) > 0);
+  const total = bases.reduce((s, b) => s + baseDropWeight(b, lvl), 0);
+  for (const b of bases) {
+    const share = baseDropWeight(b, lvl) / total;
+    let left = 1;
+    for (const tier of QUALITY) {
+      const p = tierChance(tier, lvl, b.levelReq, magicFind, source);
+      out[tier.rarity] += share * left * p;
+      left *= 1 - p;
+    }
+    out.normal += share * left;
   }
-  return 'normal';
+  return out;
 }
 
 /**
@@ -777,19 +844,20 @@ function pickBase(ilvl: number, rng: Rng, category?: ItemCategory, classId?: Cha
 /**
  * The core drop roll.
  *
- * `magicFind` is a percentage and is applied through `magicFindFactor`, so it
- * has strong early returns and heavily diminished late ones — 100% roughly
- * doubles your rare rate, 500% does not roughly sextuple it.
+ * The base comes first, then its quality (see `QUALITY`). `magicFind` is a
+ * percentage with diminishing returns per tier: it lifts blues a lot, rares
+ * well, and the unique tiers only a little. `source` is who dropped it.
  */
 export function rollItem(
   ilvl: number,
   rng: Rng,
-  opts: { magicFind?: number; forceRarity?: ItemRarity; category?: ItemCategory; classId?: CharClassId } = {},
+  opts: { magicFind?: number; forceRarity?: ItemRarity; category?: ItemCategory; classId?: CharClassId; source?: DropSource } = {},
 ): Item {
   const hero = opts.classId ?? lootHero.classId;
   const lvl = Math.max(1, Math.round(ilvl));
   const magicFind = opts.magicFind ?? 0;
-  let rarity = opts.forceRarity ?? rollRarity(lvl, magicFind, rng);
+  const base = pickBase(lvl, rng, opts.category, opts.classId);
+  let rarity = opts.forceRarity ?? rollRarity(lvl, base.levelReq, magicFind, opts.source ?? 'normal', rng);
 
   // Unique / set tiers resolve against their own definition pools. If nothing
   // is available at this level the roll degrades gracefully rather than
@@ -825,7 +893,6 @@ export function rollItem(
     rarity = 'rare';
   }
 
-  const base = pickBase(lvl, rng, opts.category, opts.classId);
   const item = newItem(base, lvl, rarity, rng);
   item.mods = rollImplicits(base, rng);
 
@@ -960,16 +1027,14 @@ interface RankProfile {
   socketableChance: number;
   /** Number of material rolls. */
   materialRolls: number;
-  /** Flat magic-find bonus the rank itself contributes. */
-  mfBonus: number;
 }
 
 const RANK_PROFILE: Record<MonsterRank, RankProfile> = {
-  normal: { items: 0, bonusChance: 0.17, goldMul: 1, socketableChance: 0.035, materialRolls: 0, mfBonus: 0 },
-  champion: { items: 0, bonusChance: 0.62, goldMul: 2.4, socketableChance: 0.1, materialRolls: 1, mfBonus: 15 },
-  elite: { items: 1, bonusChance: 0.5, goldMul: 4.2, socketableChance: 0.17, materialRolls: 1, mfBonus: 35 },
-  rare: { items: 2, bonusChance: 0.55, goldMul: 7, socketableChance: 0.26, materialRolls: 2, mfBonus: 60 },
-  boss: { items: 4, bonusChance: 0.9, goldMul: 22, socketableChance: 0.85, materialRolls: 4, mfBonus: 120 },
+  normal: { items: 0, bonusChance: 0.17, goldMul: 1, socketableChance: 0.035, materialRolls: 0 },
+  champion: { items: 0, bonusChance: 0.62, goldMul: 2.4, socketableChance: 0.1, materialRolls: 1 },
+  elite: { items: 1, bonusChance: 0.5, goldMul: 4.2, socketableChance: 0.17, materialRolls: 1 },
+  rare: { items: 2, bonusChance: 0.55, goldMul: 7, socketableChance: 0.26, materialRolls: 2 },
+  boss: { items: 4, bonusChance: 0.9, goldMul: 22, socketableChance: 0.85, materialRolls: 4 },
 };
 
 /** Everything a killed monster drops. */
@@ -982,18 +1047,18 @@ export function rollDrops(
 ): { items: Item[]; gold: number; materials: Record<string, number> } {
   const lvl = Math.max(1, Math.round(ilvl));
   const profile = RANK_PROFILE[rank] ?? RANK_PROFILE.normal;
-  const mf = Math.max(0, magicFind) + profile.mfBonus;
+  const mf = Math.max(0, magicFind);
 
   const items: Item[] = [];
   let count = profile.items;
   if (rng.chance(profile.bonusChance)) count++;
   for (let i = 0; i < count; i++) {
-    items.push(rollItem(lvl, rng, { magicFind: mf }));
+    items.push(rollItem(lvl, rng, { magicFind: mf, source: rank }));
   }
 
   // A boss is guaranteed one roll that cannot come out worse than rare.
   if (rank === 'boss') {
-    const forced = rollItem(lvl, rng, { magicFind: mf + 200 });
+    const forced = rollItem(lvl, rng, { magicFind: mf + 200, source: rank });
     items.push(RARITY_RANK[forced.rarity] >= RARITY_RANK.rare ? forced : rollItem(lvl, rng, { forceRarity: 'rare' }));
   }
 

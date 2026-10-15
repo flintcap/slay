@@ -509,7 +509,7 @@ export class DungeonScene extends GameScene {
         const t = this.mesh.worldToTile(x, z);
         return isWalkable(this.level, t.x, t.y);
       },
-      dropBonus: (at, ilvl) => this.dropItem(rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind }), at),
+      dropBonus: (at, ilvl, rank) => this.dropItem(rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind, source: rank }), at),
     });
     this.director?.dispose();
     // Pacts join the run's modifiers; each one makes the descent's Renown richer.

@@ -27,6 +27,7 @@ import type { DecalSystem } from '../fx/Decals';
 import { rollDamage, expectedMitigated } from '../sim/Combat';
 import { powerEffects, powerHooks, emptyPowerEffects, weaponKind, type PowerEffects } from '../sim/ItemPowers';
 import { getBase } from '../sim/Loot';
+import type { MonsterRank } from '../types';
 
 /** Everything the runtime needs from the scene that owns it. */
 export interface PowerHost {
@@ -41,7 +42,7 @@ export interface PowerHost {
   /** True when a world point can be stood on. */
   walkable: (x: number, z: number) => boolean;
   /** Drops one extra item roll at a point. Covetous curses use it. */
-  dropBonus: (at: THREE.Vector3, ilvl: number) => void;
+  dropBonus: (at: THREE.Vector3, ilvl: number, rank: MonsterRank) => void;
 }
 
 /** Hits the runtime throws itself. They never trigger further procs. */
@@ -435,7 +436,7 @@ export class PowerRuntime {
     const ctx = this.host.context();
     const at = enemy.root.position.clone();
     if (this.wished.delete(enemy.id)) {
-      this.host.dropBonus(at, enemy.ilvl);
+      this.host.dropBonus(at, enemy.ilvl, enemy.rank ?? 'normal');
       ctx.fx.burst('pickup', at.x, 1.0, at.z, { count: 26, color: 0xffd66b });
     }
     const last = this.lastType.get(enemy.id);
@@ -459,7 +460,7 @@ export class PowerRuntime {
       this.crown = p.crownSec;
     }
     if (elite && p.eliteDropChance > 0 && ctx.rng.chance(p.eliteDropChance / 100)) {
-      this.host.dropBonus(at, enemy.ilvl);
+      this.host.dropBonus(at, enemy.ilvl, enemy.rank ?? 'normal');
       ctx.fx.burst('pickup', at.x, 1.0, at.z, { count: 18, color: 0xe0c080 });
     }
     if (p.pyreKillPct > 0) {

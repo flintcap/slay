@@ -833,6 +833,7 @@ export function questRewards(quest: QuestInstance, depth: number, rng: Rng): Que
       items.push(
         rollItem(ilvl, rng, {
           magicFind: 25 + danger * 25 + depth * 2,
+          source: 'champion',
           forceRarity: i === 0 ? forced : undefined,
         }),
       );
