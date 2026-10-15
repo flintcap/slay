@@ -36,6 +36,15 @@ interface Frame {
   seed: number;
 }
 
+/**
+ * A boot's axis starts at the sole. Anything hung from the start of the axis
+ * pokes out under the foot like spikes, on the icon and on the hero alike, so
+ * on boots it hangs from the cuff or is left off.
+ */
+function isBoot(P: Parts): boolean {
+  return P.look.category === 'boots' || P.look.silhouette.toLowerCase().startsWith('boots');
+}
+
 function frameOf(P: Parts): Frame {
   const A = P.anchors;
   const a = A.axis?.a ?? v3(0, 0, 0);
@@ -266,7 +275,9 @@ const FEATURES: Record<Feature, (P: Parts, F: Frame) => void> = {
     }
   },
   bells(P, F) {
-    const top = alongAxis(F, 0.02);
+    // Bells hang about a tenth of a metre: only a tall boot has room under its cuff.
+    if (isBoot(P) && F.len < 0.15) return;
+    const top = alongAxis(F, isBoot(P) ? 0.97 : 0.02);
     for (let i = 0; i < 2; i++) {
       const anchor = top.clone().addScaledVector(F.side, (i ? -1 : 1) * F.r * 1.4);
       const hang = anchor.clone().add(v3(0, -0.06, 0.01));
@@ -366,6 +377,16 @@ const FEATURES: Record<Feature, (P: Parts, F: Frame) => void> = {
     }
   },
   feathers(P, F) {
+    if (isBoot(P)) {
+      // Winged heels: three feathers rising off the outer side of the cuff.
+      const top = alongAxis(F, 0.9);
+      for (let i = 0; i < 3; i++) {
+        const f = slab(smoothOutline([[0, 0], [0.012, -0.03], [0.01, -0.07], [0, -0.09], [-0.01, -0.06], [-0.009, -0.025]], 24), 0.0016, { bevel: 0 });
+        const p = top.clone().addScaledVector(F.side, F.r * 1.05).add(v3(0, 0, -F.r * (0.2 + i * 0.35)));
+        P.add('cloth', f, { p: [p.x, p.y, p.z], r: [0, -0.5, Math.PI * 0.82 - i * 0.18] });
+      }
+      return;
+    }
     const root = alongAxis(F, 0);
     for (let i = 0; i < 3; i++) {
       const a = root.clone().addScaledVector(F.side, (i - 1) * F.r * 0.9).add(v3(0, 0, F.r * 0.6));
@@ -485,9 +506,7 @@ const FEATURES: Record<Feature, (P: Parts, F: Frame) => void> = {
     }
   },
   tatters(P, F) {
-    // A boot's axis starts at the sole: strips hung there poked out under
-    // the foot like spikes, on the icon and on the hero alike.
-    if (P.look.category === 'boots' || P.look.silhouette.toLowerCase().startsWith('boots')) return;
+    if (isBoot(P)) return;
     const root = alongAxis(F, 0.02);
     for (let i = 0; i < 3; i++) {
       const w = 0.018 + 0.01 * Math.abs(jitter(i, F.seed));

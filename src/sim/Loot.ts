@@ -152,7 +152,7 @@ const SOURCE_FACTOR: Record<DropSource, readonly [number, number, number, number
   champion: [720, 720, 720, 1024],
   elite: [800, 800, 800, 1024],
   rare: [860, 860, 860, 1024],
-  boss: [960, 960, 960, 1024],
+  boss: [978, 978, 978, 1024],
   vendor: [0, 0, 700, 900],
 };
 
