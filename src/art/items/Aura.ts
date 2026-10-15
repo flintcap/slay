@@ -250,7 +250,7 @@ function shellMaterial(color: number, strength: number, thick: number, style: Gl
   const mv = mv0.add(n.mul(uThick).mul(lift.add(1.0)));
   const vN = vary(n);
   const ortho = cameraProjectionMatrix.mul(vec4(0.0, 0.0, 0.0, 1.0)).w.greaterThan(0.5);
-  const vV = vary(ortho.select(vec3(0.0, 0.0, 1.0), normalize(mv.negate())));
+  const vV = vary(ortho.select(vec3(0.0, 0.0, 1.0), normalize(mv.negate())).uniformFlow().toVar());
   const vObj = vary(obj);
   const vLift = vary(lift);
 

@@ -837,7 +837,7 @@ export function skyEnvironment(r: THREE.WebGPURenderer): THREE.Texture | null {
     const zenith = vec3(0.10, 0.13, 0.20);
     const horizon = vec3(0.26, 0.23, 0.21);
     const ground = vec3(0.09, 0.07, 0.06);
-    const base = up.greaterThan(0.5).select(mix(horizon, zenith, up.sub(0.5).mul(2.0)), mix(ground, horizon, up.mul(2.0)));
+    const base = up.greaterThan(0.5).select(mix(horizon, zenith, up.sub(0.5).mul(2.0)), mix(ground, horizon, up.mul(2.0))).uniformFlow().toVar();
     // Two warm patches so turning metal catches a travelling highlight.
     const a = max(0.0, dot(dir, normalize(vec3(0.6, 0.5, 0.4))));
     const b = max(0.0, dot(dir, normalize(vec3(-0.5, 0.3, -0.6))));

@@ -243,11 +243,16 @@ function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L
       W = w2.div(max(w2.x.add(w2.y).add(w2.z), 1e-4)).toVar();
     }
     const K = noise2(P.xz.mul(0.11).add(P.y.mul(0.07))).toVar();
-    const proj: Record<Axis, Proj> = {
-      x: projection('x', P, Dx, Dy, Sg, W),
-      y: projection('y', P, Dx, Dy, Sg, W),
-      z: projection('z', P, Dx, Dy, Sg, W),
-    };
+    // Each projection's uv and gradients are worked out here, once, before
+    // any branch. A value shared by several branches is otherwise written
+    // only inside the first branch that reads it, and every other branch
+    // reads zero: the ground drew without its texture wherever that first
+    // branch was skipped.
+    const proj = {} as Record<Axis, Proj>;
+    for (const ax of axes) {
+      const p = projection(ax, P, Dx, Dy, Sg, W);
+      proj[ax] = { ...p, uv: p.uv.toVar(), dx: p.dx.toVar(), dy: p.dy.toVar() };
+    }
 
     // Two offset taps blended along the texture's own detail. K is a slow
     // world-space noise, so the offset pair changes every few metres.
@@ -260,7 +265,7 @@ function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L
     // Layer weights, blended by height so mud fills the gaps between cobbles first.
     const B: F[] = [];
     if (n > 1 && splat) {
-      const wt: F[] = [splat.x.add(splat.y).add(splat.z).oneMinus().max(0.0), splat.x, splat.y, splat.z];
+      const wt: F[] = [splat.x.add(splat.y).add(splat.z).oneMinus().max(0.0).toVar(), splat.x, splat.y, splat.z];
       const S: F[] = [];
       for (let i = 0; i < n; i++) {
         const h = float(0.0).toVar();
@@ -277,7 +282,7 @@ function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L
               .Else(() => tapH('z'));
           }
         });
-        S.push(wt[i]!.greaterThan(0.001).select(wt[i]!.add(h.mul(0.55)), float(-10.0)).toVar());
+        S.push(wt[i]!.greaterThan(0.001).select(wt[i]!.add(h.mul(0.55)), float(-10.0)).uniformFlow().toVar());
       }
       const mx = S.reduce((a, b) => max(a, b)).sub(0.2).toVar();
       const raw = S.map((x) => max(x.sub(mx), 0.0).toVar());
@@ -353,7 +358,7 @@ function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L
     }
 
     // World context: drift, damp, grime, contact, caps.
-    const wsP = abs(Ng.y).greaterThan(0.5).select(P.xz, vec2(P.x.add(P.z), P.y.mul(1.3))).toVar();
+    const wsP = abs(Ng.y).greaterThan(0.5).select(P.xz, vec2(P.x.add(P.z), P.y.mul(1.3))).uniformFlow().toVar();
     const wsA = noise2(wsP.mul(1.0 / 23.0)).mul(0.65).add(noise2(wsP.mul(1.0 / 9.0).add(3.1)).mul(0.35)).toVar();
     const wsB = noise2(wsP.mul(1.0 / 6.1).add(vec2(0.37, 0.71))).toVar();
     const wsC = noise2(wsP.mul(1.0 / 3.3).add(vec2(7.1, 2.3))).toVar();

@@ -158,7 +158,7 @@ export class ParticleField {
     // Closed-form exponential drag: the whole path is a function of age.
     const k = iPhys.y.toVar();
     const dragged = k.greaterThan(1e-3);
-    const disp0 = dragged.select(iVel.mul(exp(k.negate().mul(ta)).oneMinus()).div(max(k, 1e-3)), iVel.mul(ta));
+    const disp0 = dragged.select(iVel.mul(exp(k.negate().mul(ta)).oneMinus()).div(max(k, 1e-3)), iVel.mul(ta)).uniformFlow().toVar();
     const sd = iPhys.w.toVar();
     const wobble = vec3(
       sin(ta.mul(2.3).add(sd.mul(17.0))).add(sin(ta.mul(5.3).add(sd.mul(7.1))).mul(0.5)),
@@ -171,7 +171,7 @@ export class ParticleField {
     const g = t.oneMinus().mul(t.oneMinus()).oneMinus();
     const size = mix(iSize.x, iSize.y, g).mul(this.uScale).mul(alive).toVar();
     const floorY = iLook.w;
-    const wpos = vec3(wpos0.x, floorY.greaterThan(-900.0).select(max(wpos0.y, floorY.add(size.mul(0.3))), wpos0.y), wpos0.z);
+    const wpos = vec3(wpos0.x, floorY.greaterThan(-900.0).select(max(wpos0.y, floorY.add(size.mul(0.3))), wpos0.y).uniformFlow().toVar(), wpos0.z);
 
     const camRight = cameraWorldMatrix.mul(vec4(1.0, 0.0, 0.0, 0.0)).xyz;
     const camUp = cameraWorldMatrix.mul(vec4(0.0, 1.0, 0.0, 0.0)).xyz;
@@ -185,14 +185,14 @@ export class ParticleField {
     // Lies flat on the ground: shock rings, sigils, splashes.
     const flat = vec3(rc.x, 0.0, rc.y).mul(size);
     // Stretched along velocity: sparks read as speed, not as dots.
-    const vel = dragged.select(iVel.mul(exp(k.negate().mul(ta))), iVel).add(vec3(0.0, iPhys.x.mul(ta), 0.0)).toVar();
+    const vel = dragged.select(iVel.mul(exp(k.negate().mul(ta))), iVel).uniformFlow().toVar().add(vec3(0.0, iPhys.x.mul(ta), 0.0)).toVar();
     const sp = length(vel).toVar();
-    const vdir = sp.greaterThan(1e-4).select(vel.div(max(sp, 1e-4)), camUp);
+    const vdir = sp.greaterThan(1e-4).select(vel.div(max(sp, 1e-4)), camUp).uniformFlow().toVar();
     const side = normalize(cross(vdir, camFwd).add(vec3(1e-5)));
     const len = size.mul(iSize.z.mul(sp).mul(0.08).add(1.0));
     const streak = side.mul(corner.x).mul(size).add(vdir.mul(corner.y).mul(len));
     const facing = camRight.mul(rc.x).mul(size).add(camUp.mul(rc.y).mul(size));
-    const offset = iSize.z.lessThan(-0.001).select(flat, iSize.z.greaterThan(0.001).select(streak, facing));
+    const offset = iSize.z.lessThan(-0.001).select(flat, iSize.z.greaterThan(0.001).select(streak, facing)).uniformFlow().toVar();
 
     // Frame selection: flipbooks play across the life, cross-faded.
     const sprite = iSize.w;
@@ -202,9 +202,9 @@ export class ParticleField {
     const f1 = min(f0.add(1.0), 7.0);
     const base = sprite.sub(100.0);
     const luv = uv();
-    const vUvA = vary(book.select(cellUv(base.add(f0), luv), cellUv(sprite, luv)));
-    const vUvB = vary(book.select(cellUv(base.add(f1), luv), cellUv(sprite, luv)));
-    const vFrameMix = vary(book.select(fr.sub(f0), float(0.0)));
+    const vUvA = vary(book.select(cellUv(base.add(f0), luv), cellUv(sprite, luv)).uniformFlow().toVar());
+    const vUvB = vary(book.select(cellUv(base.add(f1), luv), cellUv(sprite, luv)).uniformFlow().toVar());
+    const vFrameMix = vary(book.select(fr.sub(f0), float(0.0)).uniformFlow().toVar());
     const vCore = vary(unpackRGB(iCol.x));
     const vBody = vary(unpackRGB(iCol.y));
     const vTail = vary(unpackRGB(iCol.z));
@@ -228,7 +228,7 @@ export class ParticleField {
     const viewZ = positionView.z.negate();
     const fLin = smoothstep(this.uFogNear, this.uFogFar, viewZ);
     const fExp = exp(this.uFogDensity.mul(this.uFogDensity).mul(viewZ).mul(viewZ).negate()).oneMinus();
-    const f = clamp(this.uFogMode.lessThan(1.5).select(fLin, fExp), 0.0, 1.0).mul(step(0.5, this.uFogMode)).toVar();
+    const f = clamp(this.uFogMode.lessThan(1.5).select(fLin, fExp).uniformFlow().toVar(), 0.0, 1.0).mul(step(0.5, this.uFogMode)).toVar();
     const fogged = rgb.mul(f.oneMinus()).add((this.uFogColor as unknown as V3).mul(occl).mul(f));
 
     const m = new THREE.MeshBasicNodeMaterial({ name: 'fx-particles', side: THREE.DoubleSide, depthTest: true });

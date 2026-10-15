@@ -96,7 +96,7 @@ function patHeight(p: V3, kind: number, h: F): F {
     const fy = fract(p.y.negate().div(sy));
     const fu = fract(U.div(sx).add(mod(r, 2.0).mul(0.5))).mul(2.0).sub(1.0);
     const edge = fu.mul(fu).mul(0.45).oneMinus();
-    return fy.lessThan(edge).select(fy.div(edge), float(0.12));
+    return fy.lessThan(edge).select(fy.div(edge), float(0.12)).uniformFlow().toVar();
   }
   if (kind === 5) {
     // Splints: upright strips in bands.
@@ -110,7 +110,7 @@ function patHeight(p: V3, kind: number, h: F): F {
   const fy = fract(p.y.negate().div(0.065));
   const fu = fract(U.div(0.15).add(mod(r, 2.0).mul(0.5))).mul(2.0).sub(1.0);
   const edge = fu.mul(fu).mul(0.3).oneMinus();
-  const k = fy.lessThan(edge).select(fy.div(edge), float(0.08));
+  const k = fy.lessThan(edge).select(fy.div(edge), float(0.08)).uniformFlow().toVar();
   return k.mul(k).mul(0.85).add(sin(k.mul(18.85)).mul(0.5).add(0.5).mul(0.15));
 }
 

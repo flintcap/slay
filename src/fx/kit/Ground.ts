@@ -98,7 +98,7 @@ function groundMaterial(name: string, uTime: F): THREE.MeshBasicNodeMaterial {
   const age = uTime.sub(iT.x).toVar();
   const kindV = iT.z;
   // Telegraphs stay one beat past their duration for the landing flash.
-  const extra = kindV.greaterThan(31.5).select(0.16, 0.0);
+  const extra = kindV.greaterThan(31.5).select(0.16, 0.0).uniformFlow().toVar();
   const alive = step(0.0, age).mul(step(age, iT.y.add(extra))).mul(step(0.0001, iT.y));
   const c = cos(iX.w);
   const s = sin(iX.w);
@@ -109,7 +109,7 @@ function groundMaterial(name: string, uTime: F): THREE.MeshBasicNodeMaterial {
   // (sin r, cos r), the way a body facing r looks.
   const rot = vec2(scaled.x.mul(c).add(scaled.y.mul(s)), scaled.x.negate().mul(s).add(scaled.y.mul(c)));
   // Lift scales with kind so stacked layers never fight: marks lowest.
-  const lift = kindV.lessThan(15.5).select(0.012, kindV.lessThan(31.5).select(0.02, 0.028));
+  const lift = kindV.lessThan(15.5).select(0.012, kindV.lessThan(31.5).select(0.02, 0.028)).uniformFlow().toVar();
   const wpos = vec3(iX.x.add(rot.x), iE.x.add(lift), iX.y.add(rot.y));
   const vP = vary(local);
   const vT = vary(iT);
@@ -120,7 +120,7 @@ function groundMaterial(name: string, uTime: F): THREE.MeshBasicNodeMaterial {
 
   const frag = (): V4 => {
     const kind = vT.z;
-    const life = max(vT.y, 1e-3);
+    const life = max(vT.y, 1e-3).toVar();
     const t = clamp(vAge.div(life), 0.0, 1.0).toVar();
     const seed = vE.z.mul(61.0).toVar();
     const p = vP;
@@ -261,7 +261,7 @@ function groundMaterial(name: string, uTime: F): THREE.MeshBasicNodeMaterial {
             // frost / fork / acid glow over their marks
             const area = under(0.35, 0.9, r.add(n.sub(0.5).mul(0.45)));
             const forked = under(0.0, 0.1, abs(sin(a.mul(3.0).add(gf(vec2(r.mul(3.0), seed)).mul(4.0)))).mul(r));
-            const lines = kind.greaterThan(17.5).and(kind.lessThan(18.5)).select(forked, float(1.0));
+            const lines = kind.greaterThan(17.5).and(kind.lessThan(18.5)).select(forked, float(1.0)).uniformFlow().toVar();
             heat.assign(area.mul(lines).mul(t.oneMinus()).mul(0.8));
             cov.assign(heat);
             fadeOut.assign(1.0);

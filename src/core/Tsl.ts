@@ -5,6 +5,15 @@
  * TSL builds a shader graph in JavaScript, and three.js writes it out as
  * WGSL for WebGPU or GLSL for the WebGL2 fallback. Helpers here are plain
  * functions that return nodes: each call inlines its graph where it is used.
+ *
+ * Every `select` here is written `.select(a, b).uniformFlow().toVar()`. A bare
+ * `select` becomes an if/else in the shader, and a value both branches share
+ * is then worked out only inside the first branch that reads it: the other
+ * branch reads zero. Particles stood still and outdoor ground lost its
+ * texture that way. With `uniformFlow` both sides are worked out up front
+ * and the pick is a plain WGSL `select`. `toVar` keeps the pick in one
+ * variable: a `uniformFlow` pick read a second time came back as a name that
+ * was never written (half of every stretched spark faced the wrong way).
  */
 import * as THREE from 'three/webgpu';
 import {
@@ -238,7 +247,7 @@ export function bindToView(v: V3, Pb: V3, Nb: V3): V3 {
   const det = dot(a, bc);
   const w = vec3(dot(bc, v), dot(ca, v), dot(ab, v)).mul(sign(det));
   const r = pa.mul(w.x).add(pb.mul(w.y)).add(pc.mul(w.z)).toVar();
-  return dot(r, r).greaterThan(1e-30).select(normalize(r), pc);
+  return dot(r, r).greaterThan(1e-30).select(normalize(r), pc).uniformFlow().toVar();
 }
 
 /**

@@ -54,12 +54,12 @@ export function makeCores(capacity: number): InstancedPool {
   const dir = B.xyz;
   const sd = vec2(dot(dir, camRight), dot(dir, camUp));
   const sl = length(sd);
-  const ax = sl.greaterThan(1e-3).select(sd.div(max(sl, 1e-3)), vec2(0.0, 1.0));
+  const ax = sl.greaterThan(1e-3).select(sd.div(max(sl, 1e-3)), vec2(0.0, 1.0)).uniformFlow().toVar();
   const ay = vec2(ax.y.negate(), ax.x);
   const stretch = B.w.mul(min(sl, 1.0)).add(1.0);
   const c = positionGeometry.xy;
   // Stretch only the tail half (behind the travel direction).
-  const along = c.x.lessThan(0.0).select(c.x.mul(stretch), c.x);
+  const along = c.x.lessThan(0.0).select(c.x.mul(stretch), c.x).uniformFlow().toVar();
   const q0 = ax.mul(along).add(ay.mul(c.y));
   const wp = A.xyz.add(camRight.mul(q0.x).add(camUp.mul(q0.y)).mul(A.w));
   const vP = vary(vec2(along, c.y).mul(2.0));
@@ -67,7 +67,7 @@ export function makeCores(capacity: number): InstancedPool {
 
   const frag = (): V4 => {
     const style = v.D.x;
-    const seed = v.D.z.mul(37.0);
+    const seed = v.D.z.mul(37.0).toVar();
     // x along travel (+ ahead), y across; tail at x < -1
     const p = vP;
     const r = length(p).toVar();
@@ -321,7 +321,7 @@ export function makeBeams(capacity: number): InstancedPool {
 
   const frag = (): V4 => {
     const style = v.D.x;
-    const seed = v.D.z.mul(19.0);
+    const seed = v.D.z.mul(19.0).toVar();
     // -1 .. 1 across
     const x = vQ.x.toVar();
     // 0 .. 1 along
@@ -329,7 +329,7 @@ export function makeBeams(capacity: number): InstancedPool {
     // metres along
     const s = vv.mul(vLen).toVar();
     const t = uTime;
-    const ends = smoothstep(0.0, 0.04, vv).mul(smoothstep(1.0, 0.96, vv));
+    const ends = smoothstep(0.0, 0.04, vv).mul(smoothstep(1.0, 0.96, vv)).toVar();
     const heat = slot();
     const cov = slot();
     const occl = slot(0.1);
@@ -407,14 +407,14 @@ export function makeColumns(capacity: number): InstancedPool {
 
   const frag = (): V4 => {
     const style = v.D.x;
-    const seed = v.D.z.mul(23.0);
+    const seed = v.D.z.mul(23.0).toVar();
     const u = vUv.x.toVar();
     const yy = vUv.y.toVar();
     const t = uTime;
     // Facing the camera is the thick part of a volume of light.
     const body = pow(vFacing, 1.6).toVar();
-    const top = smoothstep(0.35, 1.0, yy).oneMinus();
-    const bottom = smoothstep(0.0, 0.04, yy);
+    const top = smoothstep(0.35, 1.0, yy).oneMinus().toVar();
+    const bottom = smoothstep(0.0, 0.04, yy).toVar();
     const heat = slot();
     const cov = slot();
     const occl = slot(0.0);
@@ -460,7 +460,7 @@ export function makeShells(capacity: number): InstancedPool {
   const A = iA();
   const B = iB();
   const pg = positionGeometry;
-  const lp = pg.mul(vec3(1.0, B.x.greaterThan(0.0).select(B.x, 1.0), 1.0));
+  const lp = pg.mul(vec3(1.0, B.x.greaterThan(0.0).select(B.x, 1.0).uniformFlow().toVar(), 1.0));
   const wp = A.xyz.add(lp.mul(A.w)).toVar();
   const n = normalize(pg);
   const viewDir = normalize(cameraPosition.sub(wp));
@@ -470,7 +470,7 @@ export function makeShells(capacity: number): InstancedPool {
 
   const frag = (): V4 => {
     const style = v.D.x;
-    const seed = v.D.z.mul(29.0);
+    const seed = v.D.z.mul(29.0).toVar();
     const t = uTime;
     const sp = vec2(atan(vLocal.z, vLocal.x).mul(1.59), vLocal.y).toVar();
     const heat = slot();
