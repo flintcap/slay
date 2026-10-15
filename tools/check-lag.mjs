@@ -370,7 +370,7 @@ async function visit(label) {
 
   const needTown = ONLY.some((o) => ['menus', 'view', 'areas', 'fight', 'mini', 'boss', 'cast'].includes(o));
   if (needTown) {
-    await seg('town: enter', async ({ cls, skill }) => {
+    await seg('town: enter', async ({ cls, skill, quality }) => {
       if (window.SLAY.engine.currentSceneId !== 'charSelect') {
         localStorage.clear();
         window.SLAY.save.hardReset();
@@ -607,6 +607,32 @@ async function visit(label) {
           await new Promise((r) => setTimeout(r, 800));
         }
         const at = (best?.root.position ?? pl.position).clone().setY(0);
+        // What the scene draws each frame, before the cast and while what it
+        // raised stands: draw calls, skinned meshes and their skeletons, and
+        // the engine's own update and render time.
+        const census = async () => {
+          const gl = window.SLAY.engine.renderer.gl;
+          const raf = () => new Promise((r) => requestAnimationFrame(r));
+          let calls = 0;
+          let tris = 0;
+          let tex = 0;
+          const N = 20;
+          const t0 = performance.now();
+          for (let i = 0; i < N; i++) {
+            await raf();
+            calls += gl.info.render.calls;
+            tris += gl.info.render.triangles;
+          }
+          const frameMs = (performance.now() - t0) / N;
+          let skinned = 0;
+          const skels = new Set();
+          scene.scene.traverseVisible((o) => {
+            if (o.isSkinnedMesh) (skinned++, skels.add(o.skeleton));
+          });
+          tex = gl.info.memory.textures;
+          return { calls: Math.round(calls / N), tris: Math.round(tris / N), skinned, skeletons: skels.size, textures: tex, frameMs: +frameMs.toFixed(1) };
+        };
+        window.__lag.before = await census();
         // Tried until its cooldown lets it go, then watched for a while.
         let fired = false;
         for (let t = 0; t < 40 && !fired; t++) {
@@ -614,9 +640,13 @@ async function visit(label) {
           if (!fired) await new Promise((r) => setTimeout(r, 500));
         }
         window.__lag.castFired = fired;
-        await new Promise((r) => setTimeout(r, 2500));
+        await new Promise((r) => setTimeout(r, 1000));
+        window.__lag.after = await census();
+        await new Promise((r) => setTimeout(r, 1500));
       }, SKILL);
       console.log(`      cast fired: ${await page.evaluate(() => window.__lag.castFired)}`);
+      console.log(`      before: ${await page.evaluate(() => JSON.stringify(window.__lag.before))}`);
+      console.log(`      after:  ${await page.evaluate(() => JSON.stringify(window.__lag.after))}`);
     }
   }
 

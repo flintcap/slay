@@ -10,7 +10,6 @@ import { events } from '../core/Events';
 import { HeroAnimator, type BodyCondition } from '../art/hero/Animator';
 import { strikesAt } from '../art/hero/gestures';
 import { DressedHero } from '../scenes/HeroModel';
-import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { copyScans } from '../art/Scans';
 import { collidersNear } from '../world/BodyWalk';
 import { Random } from '../core/RNG';
@@ -45,10 +44,43 @@ const SHADOW_MAT = new THREE.MeshStandardMaterial({
 /** Frees a shadow double's skeletons. Geometry is the hero's; the material is shared. */
 export function releaseShadowDouble(root: THREE.Object3D): void {
   root.removeFromParent();
+  const seen = new Set<THREE.Skeleton>();
   root.traverse((o) => {
     const sk = (o as THREE.SkinnedMesh).isSkinnedMesh ? (o as THREE.SkinnedMesh).skeleton : null;
-    sk?.dispose();
+    if (sk && !seen.has(sk)) (seen.add(sk), sk.dispose());
   });
+}
+
+/**
+ * A copy of a skinned body whose parts share skeletons as the original's do.
+ * `SkeletonUtils.clone` gives every skinned part a skeleton of its own: the
+ * hero's sixty-odd parts became sixty-odd skeletons, each posed and sent to
+ * the GPU as a bone texture every frame while a Shadow Clone stood.
+ */
+function cloneShared(source: THREE.Object3D): THREE.Object3D {
+  const copy = source.clone(true);
+  const twin = new Map<THREE.Object3D, THREE.Object3D>();
+  const walk = (a: THREE.Object3D, b: THREE.Object3D): void => {
+    twin.set(a, b);
+    for (let i = 0; i < a.children.length; i++) walk(a.children[i]!, b.children[i]!);
+  };
+  walk(source, copy);
+  const skeletons = new Map<THREE.Skeleton, THREE.Skeleton>();
+  copy.traverse((o) => {
+    const sm = o as THREE.SkinnedMesh;
+    if (!sm.isSkinnedMesh) return;
+    const from = sm.skeleton;
+    let sk = skeletons.get(from);
+    if (!sk) {
+      sk = new THREE.Skeleton(
+        from.bones.map((b) => (twin.get(b) as THREE.Bone | undefined) ?? b),
+        from.boneInverses,
+      );
+      skeletons.set(from, sk);
+    }
+    sm.bind(sk, sm.bindMatrix);
+  });
+  return copy;
 }
 
 /**
@@ -750,7 +782,7 @@ export class Player {
    * `releaseShadowDouble`.
    */
   shadowDouble(): { root: THREE.Object3D; animator: HeroAnimator } {
-    const copy = cloneSkinned(this.hero.root);
+    const copy = cloneShared(this.hero.root);
     const drop: THREE.Object3D[] = [];
     copy.traverse((o) => {
       // Lights, glows and auras would read as the hero's own; a shadow has none.
