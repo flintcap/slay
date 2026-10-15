@@ -14,7 +14,7 @@ import type * as THREE from 'three';
 const MAX_RANGES = 8;
 
 /** Marks `count` elements from `start` for upload on the next draw. */
-export function markRange(a: THREE.BufferAttribute, start: number, count: number): void {
+export function markRange(a: THREE.BufferAttribute | THREE.InterleavedBuffer, start: number, count: number): void {
   const r = a.updateRanges;
   if (r.length >= MAX_RANGES) {
     let lo = start;
@@ -31,7 +31,7 @@ export function markRange(a: THREE.BufferAttribute, start: number, count: number
 }
 
 /** Marks a whole attribute for upload. */
-export function markAll(a: THREE.BufferAttribute): void {
+export function markAll(a: THREE.BufferAttribute | THREE.InterleavedBuffer): void {
   a.clearUpdateRanges();
   a.addUpdateRange(0, a.array.length);
   a.needsUpdate = true;

@@ -35,6 +35,19 @@ import { setNodeTextures, vary, type V3 } from '../../core/Tsl';
 const LAYOUT = { iPos: 3, iVel: 3, iTime: 4, iSize: 4, iCol: 4, iPhys: 4, iLook: 4 } as const;
 type AttrName = keyof typeof LAYOUT;
 const ATTRS = Object.keys(LAYOUT) as AttrName[];
+/**
+ * All seven ride in one interleaved buffer: WebGPU allows eight vertex
+ * buffers per draw, and seven of their own plus the quad's two is nine.
+ */
+const STRIDE = 26;
+const OFFSET = {} as Record<AttrName, number>;
+{
+  let o = 0;
+  for (const k of ATTRS) {
+    OFFSET[k] = o;
+    o += LAYOUT[k];
+  }
+}
 
 /**
  * One particle to write. The caller fills the shared `P` record and calls
@@ -87,8 +100,8 @@ export class ParticleField {
   private uFogNear = uniform(1);
   private uFogFar = uniform(100);
   private uFogMode = uniform(0);
-  private arrays: Record<AttrName, Float32Array>;
-  private attrs: Record<AttrName, THREE.InstancedBufferAttribute>;
+  private data: Float32Array;
+  private buffer: THREE.InstancedInterleavedBuffer;
   private head = 0;
   private high = 0;
   private lo = Infinity;
@@ -103,20 +116,12 @@ export class ParticleField {
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]), 3));
     geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
     geo.setIndex([0, 1, 2, 0, 2, 3]);
-    const arrays = {} as Record<AttrName, Float32Array>;
-    const attrs = {} as Record<AttrName, THREE.InstancedBufferAttribute>;
-    for (const k of ATTRS) {
-      const arr = new Float32Array(this.capacity * LAYOUT[k]);
-      const a = new THREE.InstancedBufferAttribute(arr, LAYOUT[k]);
-      a.setUsage(THREE.DynamicDrawUsage);
-      geo.setAttribute(k, a);
-      arrays[k] = arr;
-      attrs[k] = a;
-    }
+    this.data = new Float32Array(this.capacity * STRIDE);
+    this.buffer = new THREE.InstancedInterleavedBuffer(this.data, STRIDE);
+    this.buffer.setUsage(THREE.DynamicDrawUsage);
+    for (const k of ATTRS) geo.setAttribute(k, new THREE.InterleavedBufferAttribute(this.buffer, LAYOUT[k], OFFSET[k]));
     geo.instanceCount = 0;
     this.geo = geo;
-    this.arrays = arrays;
-    this.attrs = attrs;
 
     this.mat = this.build();
     premultiplied(this.mat);
@@ -246,17 +251,17 @@ export class ParticleField {
     const i = this.head;
     this.head = i + 1 === this.capacity ? 0 : i + 1;
     if (i + 1 > this.high) this.high = i + 1;
-    const A = this.arrays;
-    let o = i * 3;
-    A.iPos[o] = r.x; A.iPos[o + 1] = r.y; A.iPos[o + 2] = r.z;
-    A.iVel[o] = r.vx; A.iVel[o + 1] = r.vy; A.iVel[o + 2] = r.vz;
-    o = i * 4;
-    A.iTime[o] = this.time + r.delay; A.iTime[o + 1] = r.life; A.iTime[o + 2] = r.fade; A.iTime[o + 3] = r.spin;
-    A.iSize[o] = r.size0; A.iSize[o + 1] = r.size1; A.iSize[o + 2] = r.stretch;
-    A.iSize[o + 3] = FLIPBOOKS.has(r.sprite) ? r.sprite + 100 : r.sprite;
-    A.iCol[o] = r.core; A.iCol[o + 1] = r.body; A.iCol[o + 2] = r.tail; A.iCol[o + 3] = r.emit;
-    A.iPhys[o] = r.gravity; A.iPhys[o + 1] = r.drag; A.iPhys[o + 2] = r.turb; A.iPhys[o + 3] = r.seed;
-    A.iLook[o] = r.heat0; A.iLook[o + 1] = r.heat1; A.iLook[o + 2] = r.occl; A.iLook[o + 3] = r.floor;
+    const D = this.data;
+    const o = i * STRIDE;
+    // iPos, iVel, iTime, iSize, iCol, iPhys, iLook, in that order.
+    D[o] = r.x; D[o + 1] = r.y; D[o + 2] = r.z;
+    D[o + 3] = r.vx; D[o + 4] = r.vy; D[o + 5] = r.vz;
+    D[o + 6] = this.time + r.delay; D[o + 7] = r.life; D[o + 8] = r.fade; D[o + 9] = r.spin;
+    D[o + 10] = r.size0; D[o + 11] = r.size1; D[o + 12] = r.stretch;
+    D[o + 13] = FLIPBOOKS.has(r.sprite) ? r.sprite + 100 : r.sprite;
+    D[o + 14] = r.core; D[o + 15] = r.body; D[o + 16] = r.tail; D[o + 17] = r.emit;
+    D[o + 18] = r.gravity; D[o + 19] = r.drag; D[o + 20] = r.turb; D[o + 21] = r.seed;
+    D[o + 22] = r.heat0; D[o + 23] = r.heat1; D[o + 24] = r.occl; D[o + 25] = r.floor;
     if (i < this.lo) this.lo = i;
     if (i > this.hi) this.hi = i;
     this.spawnedThisFrame++;
@@ -271,13 +276,10 @@ export class ParticleField {
     this.spawnedThisFrame = 0;
     if (this.hi < this.lo) return;
     // A wrap in the ring makes lo..hi the whole buffer; that is still one
-    // upload per attribute, and it happens at most once per wrap.
+    // upload, and it happens at most once per wrap.
     const lo = this.lo;
     const n = this.hi - lo + 1;
-    for (const k of ATTRS) {
-      const a = this.attrs[k];
-      markRange(a, lo * LAYOUT[k], n * LAYOUT[k]);
-    }
+    markRange(this.buffer, lo * STRIDE, n * STRIDE);
     this.lo = Infinity;
     this.hi = -Infinity;
   }
@@ -301,8 +303,9 @@ export class ParticleField {
   }
 
   clear(): void {
-    this.arrays.iTime.fill(0);
-    markAll(this.attrs.iTime);
+    // A birth time of zero and a life of zero: every slot reads as dead.
+    for (let o = OFFSET.iTime; o < this.data.length; o += STRIDE) this.data.fill(0, o, o + 4);
+    markAll(this.buffer);
     this.head = 0;
     this.high = 0;
     this.geo.instanceCount = 0;
