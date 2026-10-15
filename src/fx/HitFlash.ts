@@ -153,7 +153,11 @@ export class HitFlash {
         const inst = (m as THREE.InstancedMesh).isInstancedMesh === true;
         const morph = Object.keys(g.morphAttributes).sort().join(',');
         const tinted = inst && (m as THREE.InstancedMesh).instanceColor !== null;
-        const key = `${skinned}|${inst}|${tinted}|${morph}`;
+        // Everything about the body that is part of the flash's program: how
+        // many morph targets (not just which kinds), and whether it has
+        // normals. Two bodies that differ in any of these link two programs.
+        const ma = g.morphAttributes.position ?? g.morphAttributes.normal ?? g.morphAttributes.color;
+        const key = `${skinned}|${inst}|${tinted}|${morph}|${ma?.length ?? 0}|${g.attributes.normal ? 1 : 0}|${g.attributes.position ? 1 : 0}`;
         if (kinds.has(key)) continue;
         let s: THREE.Mesh;
         if (skinned) {

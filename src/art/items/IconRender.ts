@@ -24,6 +24,7 @@ import { composite, css, glow, scratch, type Ctx } from '../Paint';
 import { buildItem, type ItemFamily } from './Model';
 import { auraStyle } from './Aura';
 import type { Aura } from './Designs';
+import { scansOf } from '../Scans';
 
 export { itemScansReady } from './Mats';
 
@@ -224,7 +225,7 @@ function renderModel(spec: IconSpec): Shot | null {
   obj.traverse((o) => {
     const m = (o as THREE.Mesh).material;
     for (const mat of Array.isArray(m) ? m : m ? [m] : []) {
-      const scans = mat.userData.scans as THREE.Texture[] | undefined;
+      const scans = scansOf(mat);
       if (scans) for (const t of scans) if (!t.userData.loaded && !missing.includes(t)) missing.push(t);
     }
   });

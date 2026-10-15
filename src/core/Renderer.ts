@@ -608,15 +608,33 @@ export class Renderer {
     }
   }
 
-  setQuality(name: GameSettings['quality']): void {
+  /**
+   * Moves to a quality preset. `step` is the auto mode moving along the
+   * ladder mid-play rather than the player choosing in Settings: it keeps
+   * the chosen preset's texture filtering and switches post passes off and
+   * on instead of rebuilding the chain. Each of those was a freeze in the
+   * middle of a fight: a new filtering level re-uploads every texture in
+   * the game, and a rebuilt chain links its shaders again (AO, bloom, SMAA).
+   */
+  setQuality(name: GameSettings['quality'], step = false): void {
     if (name === this.qualityName) return;
     this.qualityName = name;
     this.quality = QUALITY[name];
     this.gl.setPixelRatio(pixelRatioFor(this.quality, this.dynScale));
     this.gl.shadowMap.enabled = this.quality.shadows;
     if (this.shadowScene) this.applyShadows(this.shadowScene);
+    const q = this.quality;
+    if (step && (!q.ao || this.gtao) && (!q.bloom || this.bloom) && (!q.smaa || this.smaa)) {
+      // Everything this step wants is built already (a step down from the
+      // chosen preset, or back up to it): the composer skips a disabled pass.
+      if (this.gtao) this.gtao.enabled = q.ao;
+      if (this.bloom) this.bloom.enabled = q.bloom;
+      if (this.smaa) this.smaa.enabled = q.smaa;
+      this.onResize();
+      return;
+    }
     // Every asset texture, the world sets included, now and later.
-    setAssetAnisotropy(this.quality.anisotropy);
+    if (!step) setAssetAnisotropy(this.quality.anisotropy);
     // The composer frees only its own two targets; every pass holds more
     // (bloom a chain of mip targets, AO and SMAA theirs). Left behind, each
     // step of the auto quality leaked a set into GPU memory.

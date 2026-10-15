@@ -61,7 +61,8 @@ const NO_GAIN_HOLD_S = 120;
 
 export interface QualityTarget {
   readonly qualityLevel: QualityId;
-  setQuality(q: QualityId): void;
+  /** `step`: an auto step along the ladder, not the player's own choice. */
+  setQuality(q: QualityId, step?: boolean): void;
   readonly dynamicScale: number;
   setDynamicScale(k: number): void;
 }
@@ -103,7 +104,7 @@ export class AutoQuality {
     const cur = LADDER.indexOf(this.target.qualityLevel);
     if (!this.enabled || s.autoQuality === false) {
       // Off: run exactly what was chosen.
-      if (cur !== top) this.target.setQuality(s.quality);
+      if (cur !== top) this.target.setQuality(s.quality, true);
       if (this.res !== 0) this.setRes(0);
       return;
     }
@@ -190,7 +191,7 @@ export class AutoQuality {
     // A new quality starts at full sharpness; the steps above apply again.
     this.res = 0;
     this.target.setDynamicScale(1);
-    this.target.setQuality(q);
+    this.target.setQuality(q, true);
     this.frames.length = 0;
     this.calmS = 0;
     this.settleUntil = performance.now() + SETTLE_MS;

@@ -19,6 +19,7 @@ import * as THREE from 'three';
 import { loadTexture, textureReady } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
+import { setScans } from '../Scans';
 
 /** An item texture set: folder under textures/items/ and the tile size on an item, metres. */
 interface ItemSet {
@@ -118,7 +119,7 @@ interface TriOpts {
 function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
   // The icon studio reads these to tell a finished picture from one drawn
   // before its scans arrived (Icons.ts).
-  m.userData.scans = [o.albedo, o.normal];
+  setScans(m, [o.albedo, o.normal]);
   m.customProgramCacheKey = () => 'item-tri';
   m.onBeforeCompile = (sh) => {
     sh.uniforms.triAlbedo = { value: o.albedo };

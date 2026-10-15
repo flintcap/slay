@@ -11,6 +11,7 @@ import { HeroAnimator, type BodyCondition } from '../art/hero/Animator';
 import { strikesAt } from '../art/hero/gestures';
 import { DressedHero } from '../scenes/HeroModel';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { copyScans } from '../art/Scans';
 import { collidersNear } from '../world/BodyWalk';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
@@ -828,6 +829,7 @@ export class Player {
       veil.userData = { ...own.userData, playerOwned: true, veilOf: own.uuid };
       veil.onBeforeCompile = own.onBeforeCompile;
       veil.customProgramCacheKey = own.customProgramCacheKey;
+      copyScans(own, veil);
       veil.transparent = true;
       veil.depthWrite = false;
       veil.opacity = 0.42;
@@ -863,6 +865,7 @@ export class Player {
       // A clone drops shader patches (the hero's triplanar maps): keep them.
       copy.onBeforeCompile = std.onBeforeCompile;
       copy.customProgramCacheKey = std.customProgramCacheKey;
+      copyScans(std, copy);
       mesh.material = copy;
       this.ownMats.set(mesh, copy);
       return copy;

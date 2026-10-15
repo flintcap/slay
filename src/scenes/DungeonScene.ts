@@ -36,7 +36,7 @@ import { variantLabel, biomeArt } from '../world/Biomes';
 import { namedRare } from '../data/namedRares';
 import { chaseHeld, rollDrops, rollItem, rollPotion, rollSignature, setLootHero, SIGNATURE_CHANCE } from '../sim/Loot';
 import { skillRank } from '../sim/Character';
-import { buildDropModel } from '../art/ItemModels';
+import { buildDropModel, clearDropModels } from '../art/ItemModels';
 import { emissiveMaterial } from '../art/Materials';
 import { grantXp } from '../sim/Character';
 import { addItemToInventory } from '../sim/Inventory';
@@ -61,7 +61,8 @@ import { RunModifiers } from './RunModifiers';
 import { legacyXpMultiplier } from '../sim/Legacy';
 import { bossHitCap } from '../sim/FairFight';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
-import { disposeAbilityWorld } from '../entities/Abilities';
+import { disposeAbilityWorld, projectileStandIns } from '../entities/Abilities';
+import { vigilStandIn } from '../fx/paladin/VigilRing';
 import { disposeMonsterModels } from '../entities/MonsterModels';
 import { SUMMONED_BY } from '../entities/Abilities';
 import { lookFor } from '../art/creatures/Looks';
@@ -76,6 +77,20 @@ const _viewMat = new THREE.Matrix4();
 const _viewBall = new THREE.Sphere();
 /** A monster root's world-matrix walk, live and frozen (see the enemy loop in update). */
 const MATRIX_WALK = THREE.Object3D.prototype.updateMatrixWorld;
+/**
+ * One coin shape for every gold drop. Each drop used to build up to seven of
+ * its own, sent them to the GPU and freed them again on pickup. Marked cached
+ * so `disposeObject` leaves it alone.
+ */
+let coinGeo: THREE.BufferGeometry | null = null;
+function coinGeometry(): THREE.BufferGeometry {
+  if (!coinGeo) {
+    coinGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.022, 10);
+    coinGeo.userData.cached = true;
+  }
+  return coinGeo;
+}
+
 const MATRIX_FROZEN = function (this: THREE.Object3D): void {};
 /** Monster roots hidden because they were frozen, to show again on thaw. */
 const hiddenFar = new WeakSet<THREE.Object3D>();
@@ -338,6 +353,8 @@ export class DungeonScene extends GameScene {
   override warmup(): THREE.Object3D | null {
     const roots: THREE.Object3D[] = this.enemies.map((e) => e.root);
     if (this.boss) roots.push(this.boss.root);
+    // Summoned bodies get hit too: their first flash linked mid-fight.
+    roots.push(...this.summonWarm);
     // Every kind of item material, for what monsters drop mid-fight.
     let looks: ReturnType<typeof itemLookStandIns> | null = null;
     try {
@@ -360,7 +377,9 @@ export class DungeonScene extends GameScene {
     } catch {
       shade = [];
     }
-    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade];
+    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns()];
+    // A paladin's Vigil ring, for the first one lit.
+    if (this.player.character.classId === 'paladin') list.push(vigilStandIn());
     if (!list.length) return null;
     const g = new THREE.Group();
     g.name = 'warmup';
@@ -2000,10 +2019,7 @@ export class DungeonScene extends GameScene {
     const group = new THREE.Group();
     const coins = Math.min(7, 2 + Math.floor(Math.log10(Math.max(10, amount))));
     for (let i = 0; i < coins; i++) {
-      const c = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.075, 0.075, 0.022, 10),
-        emissiveMaterial(0xffc63a, 0.5)
-      );
+      const c = new THREE.Mesh(coinGeometry(), emissiveMaterial(0xffc63a, 0.5));
       c.position.set(rng.range(-0.16, 0.16), 0.012 + i * 0.016, rng.range(-0.16, 0.16));
       c.rotation.set(rng.range(-0.2, 0.2), rng.range(0, 3), rng.range(-0.2, 0.2));
       group.add(c);
@@ -2488,6 +2504,7 @@ export class DungeonScene extends GameScene {
     // Each one rebuilds lazily on the next floor, behind the load fade.
     resetEnemyRuntime();
     disposeAbilityWorld();
+    clearDropModels();
     disposeMonsterModels();
     disposePropLibrary();
     this.engine.renderer.setLowLife(0);

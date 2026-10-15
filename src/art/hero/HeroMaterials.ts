@@ -16,6 +16,7 @@ import { loadTexture } from '../../core/Assets';
 import type { HeroLook } from './Looks';
 import { resolveSurface } from '../SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetInfo } from '../TextureSets';
+import { setScans } from '../Scans';
 
 export type HeroFabric = 'linen' | 'wool' | 'leather' | 'suede' | 'hessian';
 
@@ -122,7 +123,7 @@ function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
   const key = `tri|${o.albedo ? 'a' : ''}|${o.pattern?.kind ?? 0}`;
   triOptsOf.set(m, o);
   // Read by the icon studio (art/Icons.ts), as on item materials.
-  m.userData.scans = o.albedo ? [o.albedo, o.normal] : [o.normal];
+  setScans(m, o.albedo ? [o.albedo, o.normal] : [o.normal]);
   m.customProgramCacheKey = () => key;
   const pat = o.pattern;
   m.onBeforeCompile = (sh) => {

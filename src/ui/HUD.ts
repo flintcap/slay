@@ -501,6 +501,32 @@ function setVar(el: HTMLElement, name: string, v: number): void {
   el.style.setProperty(name, String(v));
 }
 
+/**
+ * Plays a class's CSS animation again from the start. The usual trick (drop
+ * the class, read `offsetWidth`, add it back) makes the browser lay out the
+ * whole page on the spot, and the HUD did that on every hit taken and every
+ * cast: a full layout each time, several in a busy frame. Here the class goes
+ * now and comes back on the next frame, after the page has drawn without it.
+ */
+const replaying = new Map<HTMLElement, Set<string>>();
+let replayFrame = 0;
+function replayClass(el: HTMLElement, cls: string): void {
+  el.classList.remove(cls);
+  let set = replaying.get(el);
+  if (!set) replaying.set(el, (set = new Set()));
+  set.add(cls);
+  if (replayFrame) return;
+  // Two frames: a call from outside the frame loop (a key press) would
+  // otherwise add the class back before the page ever drew without it.
+  replayFrame = requestAnimationFrame(() => {
+    replayFrame = requestAnimationFrame(() => {
+      replayFrame = 0;
+      for (const [node, list] of replaying) for (const c of list) node.classList.add(c);
+      replaying.clear();
+    });
+  });
+}
+
 export class HUD {
   readonly root: HTMLDivElement;
 
@@ -899,9 +925,7 @@ export class HUD {
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
       const node = pressKeys[e.code]?.();
       if (!node) return;
-      node.classList.remove('is-pressed');
-      void node.offsetWidth;
-      node.classList.add('is-pressed');
+      replayClass(node, 'is-pressed');
     };
     window.addEventListener('keydown', onKey);
     this.offs.push(() => window.removeEventListener('keydown', onKey));
@@ -1302,15 +1326,11 @@ export class HUD {
   }
 
   private flashCast(node: HTMLElement): void {
-    node.classList.remove('is-cast');
-    void node.offsetWidth;
-    node.classList.add('is-cast');
+    replayClass(node, 'is-cast');
   }
 
   private flashReady(node: HTMLElement): void {
-    node.classList.remove('is-ready');
-    void node.offsetWidth;
-    node.classList.add('is-ready');
+    replayClass(node, 'is-ready');
   }
 
   private refreshPotions(): void {
@@ -1549,9 +1569,7 @@ export class HUD {
     this.miniCard.appendChild(row);
     const sub = title || prettyKind(kind);
     if (sub) this.miniCard.appendChild(span('minicard-title', sub));
-    this.miniCard.classList.remove('is-open');
-    void this.miniCard.offsetWidth;
-    this.miniCard.classList.add('is-open');
+    replayClass(this.miniCard, 'is-open');
     window.clearTimeout(this.miniTimer);
     this.miniTimer = window.setTimeout(() => this.hideMiniBoss(), 4200);
   }
@@ -1879,14 +1897,8 @@ export class HUD {
   // -- feedback ------------------------------------------------------------
 
   private pulseHurt(fraction: number): void {
-    this.root.classList.remove('hurt');
-    void this.root.offsetWidth;
-    this.root.classList.add('hurt');
-    if (fraction > 0.18) {
-      this.root.classList.remove('hurt-big');
-      void this.root.offsetWidth;
-      this.root.classList.add('hurt-big');
-    }
+    replayClass(this.root, 'hurt');
+    if (fraction > 0.18) replayClass(this.root, 'hurt-big');
   }
 
   private floatText(text: string, kind: 'good' | 'bad' | 'gold', anchor: HTMLElement): void {

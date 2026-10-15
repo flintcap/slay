@@ -103,6 +103,42 @@ export function setItemVisualResolver(fn: ((item: Item) => ItemVisual | undefine
   visualResolver = fn;
 }
 
+/**
+ * Each look built once per floor, then copied for every drop of it (the
+ * copies share its geometry and materials). Every drop used to sculpt its
+ * model on the frame its monster died: a pack's worth of drops at once was a
+ * stutter. Shared parts are marked so a picked-up drop's `disposeObject`
+ * leaves them; `clearDropModels` frees them between floors.
+ */
+const dropTemplates = new Map<string, THREE.Object3D>();
+const templateGeos = new Set<THREE.BufferGeometry>();
+
+function dropTemplate(visual: ItemVisual, rng: Rng, rarity: ItemRarity, item: Item): THREE.Object3D {
+  const key = JSON.stringify([visual, rarity, item.baseId, item.uniqueId ?? '', item.setId ?? '']);
+  let t = dropTemplates.get(key);
+  if (t) return t;
+  t = buildItemModel(visual, rng, rarity, item);
+  t.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    const g = mesh.geometry;
+    if (g && !g.userData.cached) {
+      g.userData.cached = true;
+      templateGeos.add(g);
+    }
+    const mat = mesh.material;
+    for (const m of Array.isArray(mat) ? mat : mat ? [mat] : []) m.userData.shared = true;
+  });
+  dropTemplates.set(key, t);
+  return t;
+}
+
+/** Frees the drop templates' own geometry. Call between floors. */
+export function clearDropModels(): void {
+  for (const g of templateGeos) g.dispose();
+  templateGeos.clear();
+  dropTemplates.clear();
+}
+
 /** Height the loot code rests a landed drop's root at (`LootFX` and the dungeon scene). */
 const REST_Y = 0.28;
 /** Small things are shown a little larger on the floor so they can be seen and clicked. */
@@ -125,7 +161,7 @@ export function buildDropModel(item: Item, rng: Rng): THREE.Object3D {
   root.name = `drop:${item.baseId}`;
 
   // The item, laid down, centred on its own middle so a tumble turns about it.
-  const model = buildItemModel(visual, rng, rarity, item);
+  const model = dropTemplate(visual, rng, rarity, item).clone(true);
   poseForDrop(model);
   const yaw = new THREE.Group();
   yaw.add(model);

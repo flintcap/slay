@@ -55,6 +55,18 @@ const _q = new THREE.Quaternion();
 const _p = new THREE.Vector3();
 const _s = new THREE.Vector3();
 
+/**
+ * One ring, never shown, for the scene's warmup: its shaders (lit instanced
+ * candles, additive two-sided glows) linked behind the loading curtain, not
+ * on the first Vigil cast. Never disposed: a program lives only while some
+ * material still holds it, and every real ring frees its own when it goes out.
+ */
+export function vigilStandIn(): THREE.Object3D {
+  const holder = new THREE.Group();
+  new VigilRing(holder, { tint: 0xffffff, candles: 3, flame: 1, band: 1, spin: 0 });
+  return holder;
+}
+
 export class VigilRing {
   readonly group = new THREE.Group();
   /** The scene it was put in; a ring outlives its scene only as garbage. */

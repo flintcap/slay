@@ -669,6 +669,19 @@ function projMaterial(shape: string, color: number): THREE.Material {
   return m;
 }
 
+/**
+ * A thrown rock and a magic ring, for the scene's warmup: drawn once behind
+ * the loading curtain so the first shot a monster throws does not link a
+ * shader mid-fight. Every ring colour shares one program.
+ */
+export function projectileStandIns(): THREE.Object3D[] {
+  return (['rock', 'ring'] as const).map((shape) => {
+    const mesh = new THREE.Mesh(projGeometry(shape), projMaterial(shape, 0xffffff));
+    mesh.frustumCulled = false;
+    return mesh;
+  });
+}
+
 export interface ProjectileOpts {
   shape?: string;
   color?: number;
