@@ -31,6 +31,7 @@ import {
   T_WATER,
   T_RUIN,
   T_BRIDGE,
+  T_DEEP_WATER,
   drawAsKind,
   isWalkableValue,
 } from './Layouts';
@@ -73,6 +74,10 @@ const CHUNK = 32;
  */
 const MAX_TORCH_LIGHTS = 4;
 const HALF = TILE_SIZE * 0.5;
+/** How far an indoor pool's bed lies below the floor, and its curb's height and width. */
+const POOL_DEPTH = 1.2;
+const POOL_CURB = 0.4;
+const POOL_CURB_W = 0.3;
 /**
  * How much of the lid is cut away around the player, in world units.
  *
@@ -1143,7 +1148,14 @@ export class DungeonMesh {
             // Mirror whole-repeat tiles at random. Seamless (see `Surf.flat`),
             // free, and it quarters how often the eye meets the same stone.
             const mirror = wholeRepeat(us, us) ? (hashTile(x, y, level.seed) & 3) : 0;
-            if (!outdoor) s.flat(wx, hy, wz, HALF, true, (x * us) % 8, (y * us) % 8, us, this.floorContact(x, y, hy), mirror);
+            // Deep water indoors is a sunken pool you cannot wade: its bed lies
+            // well down and a stone curb rings it. Drawn as plain water it was
+            // an invisible wall in the middle of a flooded hall.
+            const pool = !outdoor && this.rawTile(x, y) === T_DEEP_WATER;
+            if (pool) {
+              s.flat(wx, hy - POOL_DEPTH, wz, HALF, true, (x * us) % 8, (y * us) % 8, us, [0.6, 0.6, 0.6, 0.6], mirror);
+              this.emitPoolCurb(surfs[WALL0]!, surfs[CAPS]!, x, y, wx, wz, hy);
+            } else if (!outdoor) s.flat(wx, hy, wz, HALF, true, (x * us) % 8, (y * us) % 8, us, this.floorContact(x, y, hy), mirror);
 
             // A bridge: a plank deck at walking height, water under it.
             if (outdoor && this.rawTile(x, y) === T_BRIDGE) {
@@ -1685,6 +1697,25 @@ export class DungeonMesh {
   }
 
   /** Walls of a pit, dropped below the surrounding floor. */
+  /** The curb round an indoor pool: a low stone lip on every side that meets ground you can walk on. */
+  private emitPoolCurb(walls: Surf, caps: Surf, x: number, y: number, wx: number, wz: number, hy: number): void {
+    const top = hy + POOL_CURB;
+    const bed = hy - POOL_DEPTH;
+    for (let d = 0; d < 4; d++) {
+      if (this.rawTile(x + DX4[d], y + DY4[d]) === T_DEEP_WATER) continue;
+      const ex = wx + DX4[d] * HALF;
+      const ez = wz + DY4[d] * HALF;
+      // Outside face, standing out of the shallows.
+      walls.wall(ex, hy, ez, DX4[d], DY4[d], TILE_SIZE, POOL_CURB, 1, POOL_CURB / TILE_SIZE, 0, hy / TILE_SIZE, false, 0, POOL_CURB);
+      // Inside face, from the bed up.
+      walls.wall(
+        ex - DX4[d] * POOL_CURB_W, bed, ez - DY4[d] * POOL_CURB_W, -DX4[d], -DY4[d], TILE_SIZE, top - bed, 1,
+        (top - bed) / TILE_SIZE, 0, bed / TILE_SIZE, false, -POOL_DEPTH, POOL_CURB,
+      );
+      caps.ledge(ex, top, ez, -DX4[d], -DY4[d], TILE_SIZE, POOL_CURB_W, true);
+    }
+  }
+
   private emitPitWalls(surfs: Surf[], x: number, y: number, wx: number, wz: number, hy: number, WALL0: number): void {
     const depth = 6;
     const s = surfs[WALL0];
