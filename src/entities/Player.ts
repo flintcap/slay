@@ -54,7 +54,7 @@ export function releaseShadowDouble(root: THREE.Object3D): void {
 /**
  * A copy of a skinned body whose parts share skeletons as the original's do.
  * `SkeletonUtils.clone` gives every skinned part a skeleton of its own: the
- * hero's sixty-odd parts became sixty-odd skeletons, each posed and sent to
+ * hero's eleven parts became eleven skeletons, each posed and sent to
  * the GPU as a bone texture every frame while a Shadow Clone stood.
  */
 function cloneShared(source: THREE.Object3D): THREE.Object3D {

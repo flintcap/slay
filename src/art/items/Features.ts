@@ -485,6 +485,9 @@ const FEATURES: Record<Feature, (P: Parts, F: Frame) => void> = {
     }
   },
   tatters(P, F) {
+    // A boot's axis starts at the sole: strips hung there poked out under
+    // the foot like spikes, on the icon and on the hero alike.
+    if (P.look.category === 'boots' || P.look.silhouette.toLowerCase().startsWith('boots')) return;
     const root = alongAxis(F, 0.02);
     for (let i = 0; i < 3; i++) {
       const w = 0.018 + 0.01 * Math.abs(jitter(i, F.seed));
