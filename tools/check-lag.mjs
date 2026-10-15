@@ -39,6 +39,8 @@
  * back on the same machine.
  *
  * --cls=<class id> plays that class (default warden).
+ * --quality=<low|medium|high|ultra> plays at that preset, auto quality off
+ * (default: the game's own default settings).
  * --warm plays it all a second time in the same browser profile (a returning
  * player: IndexedDB caches filled). --only=a,b runs some segments.
  * --profile adds the heaviest JavaScript functions of each segment.
@@ -70,6 +72,7 @@ const MAXSTOPS = Number(arg('stops') ?? 14);
 const SPIKE = 50;
 // --skill: the skill the cast segment gives the hero and casts.
 const SKILL = arg('skill');
+const QUALITY = arg('quality');
 
 // --dir: serve another build (a baseline built in a scratch copy).
 const server = await serveSingle(PORT, arg('dir') ?? 'dist-single');
@@ -376,9 +379,16 @@ async function visit(label) {
       // The skill the cast segment fires, learnt before the map is built.
       const c = window.SLAY.save?.account?.current;
       if (skill && c?.skills) c.skills[skill] = 3;
+      if (quality) {
+        const st = window.SLAY.save.settings;
+        st.quality = quality;
+        if ('autoQuality' in st) st.autoQuality = false;
+        window.SLAY.engine.autoQuality = null;
+        window.SLAY.engine.renderer.setQuality(quality);
+      }
       await window.SLAY.engine.goTo('town');
       await new Promise((r) => setTimeout(r, 2000));
-    }, { cls: CLS, skill: SKILL });
+    }, { cls: CLS, skill: SKILL, quality: QUALITY });
   }
   const PANELS = ['inventory', 'character', 'skills', 'map', 'journal', 'questLog'];
   const panels = async (where) => {
