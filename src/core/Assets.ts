@@ -242,9 +242,11 @@ export function loadTexture(rel: string, opts: AssetTextureOpts = {}): THREE.Tex
 
   const ready = loadImage(rel).then((img) => {
     if (!img) return false;
-    // The filter and mipmap change below alters three's texture cache key, so
-    // the real image gets fresh GPU storage at its own size and the 2 px
-    // fallback's storage is released.
+    // The renderer writes a new image into the texture's existing GPU
+    // storage, which is still the 2 px fallback's size. Releasing it first
+    // makes the next draw allocate storage at the real size, mips and all,
+    // and rebind every material that samples it.
+    tex.dispose();
     tex.image = img;
     // An HTMLImageElement was not pre-flipped; ask the upload to do it.
     tex.flipY = !(typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap);

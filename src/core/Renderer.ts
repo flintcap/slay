@@ -350,6 +350,8 @@ const POST_SCALE = 0.5;
 interface ShadowBase {
   size: number;
   casts: boolean;
+  /** The shadow's own strength, restored when it is drawn again. */
+  intensity: number;
   extent: [number, number, number, number] | null;
 }
 
@@ -593,7 +595,7 @@ export class Renderer {
       if (!base) {
         if (!l.castShadow) return;
         const c = (l as THREE.DirectionalLight).isDirectionalLight ? (l.shadow.camera as THREE.OrthographicCamera) : null;
-        base = { size: l.shadow.mapSize.x, casts: true, extent: c ? [c.left, c.right, c.top, c.bottom] : null };
+        base = { size: l.shadow.mapSize.x, casts: true, intensity: l.shadow.intensity, extent: c ? [c.left, c.right, c.top, c.bottom] : null };
         l.userData.shadowBase = base;
       }
       // Shadow-only bodies (merged creature parts) are drawn into its map.
@@ -602,9 +604,17 @@ export class Renderer {
         l.shadow.autoUpdate = false;
         l.userData.shadowTicked = true;
       }
-      if (l.userData.shadowTicked) this.ticked.add(l);
       const point = !(l as THREE.DirectionalLight).isDirectionalLight;
-      l.castShadow = base.casts && (!point || q.pointShadows);
+      // A lamp's shadow left out at this quality is faded to nothing and no
+      // longer drawn, rather than switched off. Switching `castShadow` changes
+      // every lit shader, and switching it back on reused shaders built
+      // around the shadow three had freed when it went off: every frame then
+      // failed and the screen went black.
+      const on = !point || q.pointShadows;
+      l.castShadow = base.casts;
+      l.shadow.intensity = on ? base.intensity : 0;
+      if (l.userData.shadowTicked && on) this.ticked.add(l);
+      else this.ticked.delete(l);
       const size = Math.max(256, Math.min(4096, Math.round(base.size * q.shadowScale)));
       // The shadow node resizes its own map to this on its next draw. Freeing
       // the map here would leave the node drawing into a freed target.
@@ -619,7 +629,7 @@ export class Renderer {
         c.updateProjectionMatrix();
       }
       // A held shadow (the title's) is drawn again at its new size.
-      l.shadow.needsUpdate = true;
+      l.shadow.needsUpdate = on;
     });
   }
 
