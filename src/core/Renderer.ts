@@ -373,7 +373,7 @@ export class Renderer {
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
 
     this.gl.shadowMap.enabled = true;
-    this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.gl.shadowMap.type = THREE.PCFShadowMap;
 
     this.pipeline = new THREE.RenderPipeline(this.gl);
     window.addEventListener('resize', this.onResize);

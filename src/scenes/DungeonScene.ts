@@ -2096,7 +2096,7 @@ export class DungeonScene extends GameScene {
         // The new area's shaders link behind the curtain, not during the fade-in.
         await this.bossPortraitReady();
         await this.engine.prime(this);
-        this.engine.clock.getDelta();
+        this.engine.clock.update();
         await fadeTo(0, 420);
         this.transitioning = false;
       })();

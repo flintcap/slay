@@ -21,7 +21,7 @@
  */
 import * as THREE from 'three/webgpu';
 import {
-  attribute, clamp, dot, float, min, mix, normalGeometry, normalView, positionGeometry, positionViewDirection, pow,
+  clamp, dot, float, min, mix, normalGeometry, normalView, positionGeometry, positionViewDirection, pow,
   uniform, vec3, vertexColor,
 } from 'three/tsl';
 import { asStandard, bindToView, matColor, matFloat, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
@@ -260,7 +260,8 @@ function patch(m: THREE.MeshStandardNodeMaterial, u: CreatureShade): void {
   const Pb = positionGeometry;
   const Nb = normalGeometry.normalize().toVar();
   const t = triSample(Pb.mul(u.triScale), Nb, u.triNormal, u.triAlbedo);
-  const glow = attribute('glow', 'float') as F;
+  // Painted glow rides in the vertex colour's alpha.
+  const glow = vertexColor().a as F;
   const glowColor = uniform(u.glowColor);
   const glowC = glowColor as unknown as V3;
 

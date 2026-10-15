@@ -236,12 +236,14 @@ function finish(pos: Float32Array, nor: Float32Array, idx: Uint32Array, col: Flo
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-  const c8 = new Uint8Array(col.length);
-  for (let i = 0; i < col.length; i++) c8[i] = Math.round(clamp01(col[i]! * 0.5) * 255);
-  g.setAttribute('color', new THREE.BufferAttribute(c8, 3, true));
-  const g8 = new Uint8Array(glow.length);
-  for (let i = 0; i < glow.length; i++) g8[i] = Math.round(glow[i]! * 255);
-  g.setAttribute('glow', new THREE.BufferAttribute(g8, 1, true));
+  // Paint at half value in rgb, glow in alpha: four bytes a vertex, the
+  // smallest vertex format the GPU reads without padding.
+  const c8 = new Uint8Array(glow.length * 4);
+  for (let v = 0; v < glow.length; v++) {
+    for (let k = 0; k < 3; k++) c8[v * 4 + k] = Math.round(clamp01(col[v * 3 + k]! * 0.5) * 255);
+    c8[v * 4 + 3] = Math.round(clamp01(glow[v]!) * 255);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(c8, 4, true));
   g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
   g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
@@ -260,8 +262,7 @@ function concat(list: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const names: Array<[string, number, boolean, 'f' | 'u8' | 'u16']> = [
     ['position', 3, false, 'f'],
     ['normal', 3, false, 'f'],
-    ['color', 3, true, 'u8'],
-    ['glow', 1, true, 'u8'],
+    ['color', 4, true, 'u8'],
     ['skinIndex', 4, false, 'u16'],
     ['skinWeight', 4, false, 'f'],
   ];

@@ -9,6 +9,7 @@
  *   node tools/screenshot.mjs --out shots --shots title,town,dungeon
  */
 import { chromium } from '@playwright/test';
+import { gpuArgs } from './browser-args.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -86,17 +87,7 @@ const CHROME = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium';
 
 const browser = await chromium.launch({
   executablePath: existsSync(CHROME) ? CHROME : undefined,
-  args: [
-    '--use-gl=angle',
-    '--use-angle=swiftshader',
-    '--enable-unsafe-swiftshader',
-    '--enable-webgl',
-    // WebGPU on SwiftShader; --webgl2 leaves it off to test the fallback.
-    ...(args.webgl2 ? [] : ['--enable-unsafe-webgpu']),
-    '--ignore-gpu-blocklist',
-    '--disable-gpu-sandbox',
-    '--no-sandbox',
-  ],
+  args: gpuArgs({ webgl2: !!args.webgl2 }),
 });
 
 const page = await browser.newPage({

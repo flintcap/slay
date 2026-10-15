@@ -117,7 +117,7 @@ export function disposeObject(root: THREE.Object3D): void {
 export class Engine {
   readonly renderer: Renderer;
   readonly input: Input;
-  readonly clock = new THREE.Clock();
+  readonly clock = new THREE.Timer();
 
   private scenes = new Map<SceneId, () => GameScene>();
   private active: GameScene | null = null;
@@ -345,7 +345,7 @@ export class Engine {
       throw err;
     }
     await this.prime(next);
-    this.clock.getDelta();
+    this.clock.update();
   }
 
   /**
@@ -509,7 +509,7 @@ export class Engine {
     this.paused = v;
     if (v) this.active?.onPause?.();
     else {
-      this.clock.getDelta();
+      this.clock.update();
       this.active?.onResume?.();
     }
   }
@@ -517,7 +517,7 @@ export class Engine {
   start(): void {
     if (this.running) return;
     this.running = true;
-    this.clock.start();
+    this.clock.reset();
     this.loop();
   }
 
@@ -534,7 +534,7 @@ export class Engine {
 
     // Clamp dt so a tab-switch or a long generation pause cannot teleport
     // entities through walls when the loop resumes.
-    const raw = this.clock.getDelta();
+    const raw = this.clock.update().getDelta();
     const dt = Math.min(raw, 1 / 20);
 
     if (!this.paused) this.elapsed += dt;

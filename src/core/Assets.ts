@@ -230,8 +230,10 @@ export function loadTexture(rel: string, opts: AssetTextureOpts = {}): THREE.Tex
   tex.colorSpace = opts.srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
   tex.anisotropy = opts.anisotropy ?? defaultAnisotropy;
   tex.generateMipmaps = false;
-  tex.minFilter = THREE.NearestFilter;
-  tex.magFilter = THREE.NearestFilter;
+  // Linear, not nearest: WebGPU binds no sampler to a nearest-only texture,
+  // and shaders that sample with explicit gradients need one.
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
   tex.flipY = false;
   tex.userData.asset = rel;
   tex.userData.shared = true;
