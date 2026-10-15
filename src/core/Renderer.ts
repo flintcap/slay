@@ -7,6 +7,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import './NodeNames';
+import { makeLighting } from './Lighting';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { nodeTexturesOf } from './Tsl';
 import type { GameSettings } from '../types';
@@ -375,6 +376,7 @@ export class Renderer {
 
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = THREE.PCFShadowMap;
+    this.gl.lighting = makeLighting();
 
     this.pipeline = new THREE.RenderPipeline(this.gl);
     window.addEventListener('resize', this.onResize);

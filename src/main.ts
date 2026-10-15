@@ -80,10 +80,10 @@ async function main(): Promise<void> {
   const engine = new Engine(canvas);
   await engine.renderer.init();
   {
-    // Icons, portraits and the paperdoll draw in small renderers of their
-    // own: they follow the backend the game got rather than ask again.
-    const { setStudioBackend } = await import('./core/Studio');
-    setStudioBackend(engine.renderer.isWebGPU);
+    // Icons, portraits and the paperdoll draw with the game's renderer on
+    // WebGPU, and in small renderers of their own on the WebGL2 fallback.
+    const { setStudioHost } = await import('./core/Studio');
+    setStudioHost(engine.renderer.gl, engine.renderer.isWebGPU);
   }
   engine.renderer.setQuality(save.settings.quality);
   {

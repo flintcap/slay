@@ -139,7 +139,7 @@ async function renderNow(classId: CharClassId, size: number): Promise<string> {
     const uri = await withStudio((renderer) => {
       renderer.toneMappingExposure = 1.1;
       renderer.setClearColor(0x000000, 0);
-      renderer.setSize(size, size, false);
+      renderer.setSize(size, size);
       renderer.render(scene, camera);
       const cv = document.createElement('canvas');
       cv.width = cv.height = size;

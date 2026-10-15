@@ -151,7 +151,7 @@ async function render(id: string, size: number): Promise<string> {
   scene.background = bgTex;
   try {
     const uri = await withStudio((renderer) => {
-      renderer.setSize(size, size, false);
+      renderer.setSize(size, size);
       renderer.toneMappingExposure = 1.15;
       renderer.render(scene, camera);
       const cv = document.createElement('canvas');

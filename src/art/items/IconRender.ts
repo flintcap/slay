@@ -12,14 +12,14 @@
  * glance. The slot draws its own dark backdrop; the icon itself is
  * transparent.
  *
- * One small offscreen renderer is shared by every icon. It opens its GPU
- * device asynchronously, so `itemScansReady` waits for it as well as the
- * scans; an icon asked for before then (or without a GPU) falls back to a
- * plain rarity-coloured mark.
+ * One studio (see `Studio`) is shared by every icon. It opens
+ * asynchronously, so `itemScansReady` waits for it as well as the scans; an
+ * icon asked for before then (or without a GPU) falls back to a plain
+ * rarity-coloured mark.
  */
 import * as THREE from 'three/webgpu';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { makeStudioRenderer } from '../../core/Studio';
+import { makeStudio, type Studio } from '../../core/Studio';
 import type { ItemRarity, ItemVisual } from '../../types';
 import { RARITY_COLOR } from '../../types';
 import { Random, hashString } from '../../core/RNG';
@@ -108,7 +108,7 @@ function poseFor(family: ItemFamily, size: THREE.Vector3, tall = false): Pose {
   return { yaw: flat ? 0.3 : 0.5, pitch: 0.16, roll: 0, fill: 0.86 };
 }
 
-let renderer: THREE.WebGPURenderer | null = null;
+let renderer: Studio | null = null;
 let opening: Promise<void> | null = null;
 /**
  * The renderer's drawing buffer, which only ever grows. Resizing it
@@ -125,12 +125,13 @@ let stage: { scene: THREE.Scene; holder: THREE.Group; cam: THREE.OrthographicCam
 /** Opens the studio once; a lost device opens a new one on the next ask. */
 function openStudio(): Promise<void> {
   if (opening) return opening;
-  opening = makeStudioRenderer().then((r) => {
+  opening = makeStudio().then((r) => {
     if (!r) return;
-    r.setSize(DRAW, DRAW, false);
+    r.setSize(DRAW, DRAW);
     bufW = bufH = drawW = drawH = DRAW;
     r.toneMappingExposure = 1.3;
-    r.onDeviceLost = () => {
+    r.setClearColor(0x000000, 0);
+    r.onLost = () => {
       if (renderer === r) {
         renderer = null;
         stage = null;
@@ -142,14 +143,14 @@ function openStudio(): Promise<void> {
   return opening;
 }
 
-function studio(): THREE.WebGPURenderer | null {
+function studio(): Studio | null {
   if (!renderer) {
     void openStudio();
     return null;
   }
   if (!stage) {
     const scene = new THREE.Scene();
-    const pm = new THREE.PMREMGenerator(renderer);
+    const pm = new THREE.PMREMGenerator(renderer.renderer);
     scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
     pm.dispose();
     scene.environmentIntensity = 1.1;
@@ -200,7 +201,7 @@ function renderModel(spec: IconSpec): Shot | null {
   if (dw > bufW || dh > bufH) {
     bufW = Math.max(bufW, dw);
     bufH = Math.max(bufH, dh);
-    r.setSize(bufW, bufH, false);
+    r.setSize(bufW, bufH);
   }
   // The viewport's origin is the bottom left; this puts the icon top left.
   r.setViewport(0, bufH - dh, dw, dh);

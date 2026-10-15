@@ -6,28 +6,26 @@
  * is the whole point: the slot grid tells you what is equipped, this tells you
  * what you look like.
  *
- * It owns its own renderer rather than borrowing the game's. The game renderer
- * is wired to a full post-processing chain sized to the window, and re-targeting
- * it per frame to a 170px panel would thrash that setup for no gain. A second
- * renderer at this size costs very little, and it only draws while the panel
- * is actually open. Its GPU device opens asynchronously; until it has, the
- * view stays empty and nothing waits on it.
+ * It draws in a studio (see `Studio`): a canvas of its own, drawn straight
+ * from the scene with no post chain, and only while the panel is open. The
+ * studio opens asynchronously; until it has, the view stays empty and
+ * nothing waits on it.
  */
 
 import * as THREE from 'three/webgpu';
-import { makeStudioRenderer } from '../core/Studio';
+import { makeStudio, type Studio } from '../core/Studio';
 import type { Character } from '../types';
 import { DressedHero, VISUAL_SLOTS } from '../scenes/HeroModel';
 
-/** Panel-sized viewport. Small enough that a second renderer is cheap. */
+/** Panel-sized viewport. */
 const WIDTH = 188;
 const HEIGHT = 572;
 
 export class PaperdollView {
   readonly root: HTMLDivElement;
 
-  private renderer: THREE.WebGPURenderer | null = null;
-  private opening: Promise<THREE.WebGPURenderer | null> | null = null;
+  private renderer: Studio | null = null;
+  private opening: Promise<Studio | null> | null = null;
   /** What to do once the renderer opens: draw unseen (warm) or start the loop. */
   private onOpen: Array<() => void> = [];
   private scene = new THREE.Scene();
@@ -108,7 +106,7 @@ export class PaperdollView {
    */
   private ensureRenderer(): void {
     if (this.renderer || this.opening || this.failed) return;
-    this.opening = makeStudioRenderer({ alpha: true, antialias: true });
+    this.opening = makeStudio({ antialias: true });
     void this.opening.then((r) => {
       this.opening = null;
       if (!r) {
@@ -121,8 +119,9 @@ export class PaperdollView {
         return;
       }
       r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      r.setSize(WIDTH, HEIGHT, false);
+      r.setSize(WIDTH, HEIGHT);
       r.toneMappingExposure = 1.15;
+      r.setClearColor(0x000000, 0);
       r.domElement.className = 'pd-view-canvas';
       this.root.appendChild(r.domElement);
       this.renderer = r;
