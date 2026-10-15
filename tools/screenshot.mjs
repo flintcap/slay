@@ -104,6 +104,19 @@ const page = await browser.newPage({
   deviceScaleFactor: 1,
 });
 
+// This machine's test Chromium (141) predates the WebGPU swizzle that
+// three.js sends on every texture view. Players run a current Chrome; only
+// the test browser is patched, never the game.
+await page.addInitScript(() => {
+  const T = globalThis.GPUTexture;
+  if (!T?.prototype?.createView) return;
+  const createView = T.prototype.createView;
+  T.prototype.createView = function (d) {
+    if (d && d.swizzle === 'rgba') d.swizzle = undefined;
+    return createView.call(this, d);
+  };
+});
+
 const errors = [];
 page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text());
