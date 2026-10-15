@@ -15,6 +15,7 @@ import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { gpuArgs } from '../browser-args.mjs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
@@ -72,7 +73,7 @@ export async function bootGame({
 
   const browser = await chromium.launch({
     executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
-    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', ...extraArgs],
+    args: [...gpuArgs(), ...extraArgs],
   });
   const page = await browser.newPage({ viewport });
   const pageErrors = [];

@@ -62,7 +62,7 @@ const rules = [
   // wall tile with no open neighbour has no side faces to fall back on.
   ['wall tops are in the solid bucket', /this\.emitWall\([^)]*surfs\[CAPS\]\)/],
   ['wall tops are not in the lid bucket', /^(?!.*emitWall.*surfs\[BEDROCK\]).*$/s],
-  ['the roof opens around the player', /float roofA = smoothstep\(uOpen \* 0\.62, uOpen, roofD\);/],
+  ['the roof opens around the player', /const roofA = smoothstep\(open \* 0\.62, open, roofD\);/],
 ];
 console.log('\nand the builder still works that way:');
 const unwired = [];

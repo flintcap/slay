@@ -67,8 +67,8 @@ const ground = readFileSync(path.join(ROOT, 'src/fx/kit/Ground.ts'), 'utf8');
 const scene = readFileSync(path.join(ROOT, 'src/scenes/DungeonScene.ts'), 'utf8');
 const asks = (decals.match(/this\.groundAt\(/g) ?? []).length;
 const rules = [
-  ['floor marks carry a ground height', /attribute vec4 iE;\s+\/\/ floor y/, ground],
-  ['they are drawn on it', /vec3 wp = vec3\(iX\.x \+ rot\.x, iE\.x \+ lift, iX\.y \+ rot\.y\);/, ground],
+  ['floor marks carry a ground height', /const iE = attribute<'vec4'>\('iE', 'vec4'\);/, ground],
+  ['they are drawn on it', /vec3\(iX\.x\.add\(rot\.x\), iE\.x\.add\(lift\), iX\.y\.add\(rot\.y\)\)/, ground],
   ['the height is uploaded', /A\.iE\[o\] = g\.y;/, ground],
   ['telegraphs use the same layer', /this\.tells = new GroundLayer\(/, decals],
   ['the system takes a floor probe', /setGround\(fn: \(x: number, z: number\) => number\)/, decals],

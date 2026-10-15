@@ -13,6 +13,7 @@
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { gpuArgs } from '../browser-args.mjs';
 
 const TYPES = {
   '.wasm': 'application/wasm',
@@ -51,5 +52,5 @@ export async function serveSingle(port, dir = 'dist-single') {
 }
 
 /** Software-rendered Chromium flags every checker uses. */
-export const CHROME_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'];
+export const CHROME_ARGS = gpuArgs();
 export const CHROME_PATH = existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined;
