@@ -541,23 +541,40 @@ export interface LegacyState {
   bossesSeen?: Record<string, number>;
 }
 
+/** Gear groups the loot filter sets a rarity bar for. */
+export type LootFilterGroup = 'weapons' | 'armour' | 'jewellery' | 'charms';
+
 /** Loot filter rules. See `sim/LootFilter.ts`. */
 export interface LootFilterSettings {
   /** Off means every drop shows. */
   enabled: boolean;
-  /** Gear below this rarity is hidden unless something below keeps it. */
-  minRarity: ItemRarity;
+  /** Per group: gear below this rarity is hidden unless a keep rule holds it. */
+  rarityBy: Record<LootFilterGroup, ItemRarity>;
   /** Always show gear carrying a power affix. */
   keepPowers: boolean;
   /** Always show gear with at least one T1 affix roll. */
   keepTopTier: boolean;
   /** Always show bases with at least this many sockets. 0 = off. */
   keepSockets: number;
+  /** Always show gear rolling any of these stat groups (`STAT_CHIPS` ids). */
+  keepStats: string[];
+  /** How many of those groups an item needs before it is kept (1 to 3). */
+  keepStatsMin: number;
+  /** Plain and magic gear on a base this many levels behind the drop is hidden. 0 = off. */
+  hideOldBases: number;
   /** Hide gear your class cannot use. */
   hideOtherClasses: boolean;
   showGems: boolean;
+  /** Gems below this quality (0 chipped to 5 divine) are hidden. */
+  minGemQuality: number;
   showRunes: boolean;
+  /** Runes below this place on the ladder (1 to 33) are hidden. */
+  minRuneOrder: number;
   showPotions: boolean;
+  /** Healing and mana potions below this size (0 minor to 3 super) are hidden. Rejuvenations always show. */
+  minPotionTier: number;
+  /** The old single bar, read once by `lootFilterOf` and then dropped. */
+  minRarity?: ItemRarity;
 }
 
 export interface GameSettings {

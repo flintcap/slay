@@ -104,7 +104,7 @@ const result = await page.evaluate(async () => {
   out.chilled = a.hasStatus('chilled');
   out.leeched = scene.player.life > lifeBefore;
   // Loot filter: a strict filter hides a plain drop.
-  S.save.account.lootFilter = { enabled: true, minRarity: 'set', keepPowers: true, keepTopTier: false, keepSockets: 0, hideOtherClasses: false, showGems: true, showRunes: true, showPotions: true };
+  S.save.account.lootFilter = { enabled: true, rarityBy: { weapons: 'set', armour: 'set', jewellery: 'set', charms: 'set' }, keepPowers: true, keepTopTier: false, keepSockets: 0, keepStats: [], keepStatsMin: 1, hideOldBases: 0, hideOtherClasses: false, showGems: true, minGemQuality: 0, showRunes: true, minRuneOrder: 1, showPotions: true, minPotionTier: 0 };
   const plain = JSON.parse(JSON.stringify(sword));
   plain.uid = 'smoke-plain';
   plain.rarity = 'normal';

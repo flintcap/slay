@@ -7,9 +7,12 @@
 
 import type { ItemRarity } from '../types';
 import { save } from '../core/Save';
+import { RUNES } from '../data/gems';
 import {
   DEFAULT_LOOT_FILTER,
+  FILTER_GROUPS,
   LOOT_FILTER_PRESETS,
+  STAT_CHIPS,
   describeFilter,
   lootFilterOf,
   type LootFilterSettings,
@@ -17,10 +20,33 @@ import {
 import { Panel, Segmented, Toggle, Button, div, clear, section, keycap, span, add } from './Widgets';
 
 const RARITY_OPTS: Array<{ id: ItemRarity; label: string; hint: string }> = [
-  { id: 'normal', label: 'Normal', hint: 'Show all gear' },
-  { id: 'magic', label: 'Magic', hint: 'Hide plain gear' },
-  { id: 'rare', label: 'Rare', hint: 'Hide magic and plain gear' },
+  { id: 'normal', label: 'All', hint: 'Show all of it' },
+  { id: 'magic', label: 'Magic', hint: 'Hide plain' },
+  { id: 'rare', label: 'Rare', hint: 'Hide magic and plain' },
   { id: 'set', label: 'Set', hint: 'Only sets and uniques' },
+  { id: 'unique', label: 'Unique', hint: 'Only uniques and better' },
+];
+
+const GEM_OPTS = [
+  { id: '0', label: 'All' },
+  { id: '1', label: 'Flawed+' },
+  { id: '2', label: 'Normal+' },
+  { id: '3', label: 'Flawless+' },
+  { id: '4', label: 'Perfect+' },
+];
+
+/** Rune bars, labelled with the rune that starts each one. */
+const RUNE_OPTS = [1, 8, 14, 20, 26].map((n) => {
+  const r = RUNES.find((x) => x.order === n);
+  return { id: String(n), label: n === 1 ? 'All' : `${r?.name ?? `#${n}`}+`, hint: `From rune ${n} of 33` };
+});
+
+const POTION_OPTS = [
+  { id: 'off', label: 'Off' },
+  { id: '0', label: 'All' },
+  { id: '1', label: 'Light+' },
+  { id: '2', label: 'Greater+' },
+  { id: '3', label: 'Super+' },
 ];
 
 export class LootFilterPanel {
@@ -76,7 +102,7 @@ export class LootFilterPanel {
         small: true,
         variant: 'ghost',
         onClick: () => {
-          Object.assign(this.settings(), p.settings);
+          Object.assign(this.settings(), structuredClone(p.settings));
           save.touch();
           this.render();
         },
@@ -87,20 +113,41 @@ export class LootFilterPanel {
     presets.body.appendChild(row);
     this.body.appendChild(presets.root);
 
-    const rules = section('Rules', 'target');
-    rules.body.appendChild(new Toggle('Filter on', f.enabled, (v) => this.change({ enabled: v })).root);
-    rules.body.appendChild(
-      new Segmented<ItemRarity>('Hide gear below', RARITY_OPTS, f.minRarity, (v) => this.change({ minRarity: v })).root,
-    );
-    rules.body.appendChild(
-      new Toggle('Always show powers', f.keepPowers, (v) => this.change({ keepPowers: v }), 'gear with an orange power line').root,
-    );
-    rules.body.appendChild(
-      new Toggle('Always show T1 rolls', f.keepTopTier, (v) => this.change({ keepTopTier: v }), 'the best tier of any affix').root,
-    );
-    rules.body.appendChild(
+    const gear = section('Gear', 'target');
+    gear.body.appendChild(new Toggle('Filter on', f.enabled, (v) => this.change({ enabled: v })).root);
+    for (const g of FILTER_GROUPS) {
+      gear.body.appendChild(
+        new Segmented<ItemRarity>(g.label, RARITY_OPTS, f.rarityBy[g.id], (v) => this.change({ rarityBy: { ...f.rarityBy, [g.id]: v } })).root,
+      );
+    }
+    gear.body.appendChild(
       new Segmented<string>(
-        'Always show sockets',
+        'Hide outgrown bases',
+        [
+          { id: '0', label: 'Off' },
+          { id: '10', label: '10+ lvls', hint: 'Plain and magic gear on a base 10 levels behind the drop' },
+          { id: '20', label: '20+ lvls' },
+          { id: '30', label: '30+ lvls' },
+        ],
+        String(f.hideOldBases),
+        (v) => this.change({ hideOldBases: Number(v) }),
+      ).root,
+    );
+    gear.body.appendChild(
+      new Toggle("Hide other classes' gear", f.hideOtherClasses, (v) => this.change({ hideOtherClasses: v })).root,
+    );
+    this.body.appendChild(gear.root);
+
+    const keep = section('Always show', 'sparkle');
+    keep.body.appendChild(
+      new Toggle('Powers', f.keepPowers, (v) => this.change({ keepPowers: v }), 'gear with an orange power line').root,
+    );
+    keep.body.appendChild(
+      new Toggle('T1 rolls', f.keepTopTier, (v) => this.change({ keepTopTier: v }), 'the best tier of any affix').root,
+    );
+    keep.body.appendChild(
+      new Segmented<string>(
+        'Sockets',
         [
           { id: '0', label: 'Off' },
           { id: '2', label: '2+' },
@@ -111,13 +158,54 @@ export class LootFilterPanel {
         (v) => this.change({ keepSockets: Number(v) }),
       ).root,
     );
-    rules.body.appendChild(
-      new Toggle("Hide other classes' gear", f.hideOtherClasses, (v) => this.change({ hideOtherClasses: v })).root,
+    const wanted = div('field field-segmented');
+    wanted.appendChild(div('field-label', 'Stats I want'));
+    const chips = div('segbar lf-chips');
+    for (const c of STAT_CHIPS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'seg';
+      b.textContent = c.label;
+      b.classList.toggle('on', f.keepStats.includes(c.id));
+      b.addEventListener('click', () => {
+        const on = f.keepStats.includes(c.id);
+        this.change({ keepStats: on ? f.keepStats.filter((x) => x !== c.id) : [...f.keepStats, c.id] });
+      });
+      chips.appendChild(b);
+    }
+    wanted.appendChild(chips);
+    keep.body.appendChild(wanted);
+    keep.body.appendChild(
+      new Segmented<string>(
+        'Needs how many',
+        [
+          { id: '1', label: 'Any 1' },
+          { id: '2', label: '2 of them' },
+          { id: '3', label: '3 of them' },
+        ],
+        String(f.keepStatsMin),
+        (v) => this.change({ keepStatsMin: Number(v) }),
+      ).root,
     );
-    rules.body.appendChild(new Toggle('Show gems', f.showGems, (v) => this.change({ showGems: v })).root);
-    rules.body.appendChild(new Toggle('Show runes', f.showRunes, (v) => this.change({ showRunes: v })).root);
-    rules.body.appendChild(new Toggle('Show potions', f.showPotions, (v) => this.change({ showPotions: v })).root);
-    this.body.appendChild(rules.root);
+    this.body.appendChild(keep.root);
+
+    const other = section('Gems, runes, potions', 'gem');
+    other.body.appendChild(
+      new Segmented<string>('Gems', [{ id: 'off', label: 'Off' }, ...GEM_OPTS], f.showGems ? String(f.minGemQuality) : 'off', (v) =>
+        this.change(v === 'off' ? { showGems: false } : { showGems: true, minGemQuality: Number(v) }),
+      ).root,
+    );
+    other.body.appendChild(
+      new Segmented<string>('Runes', [{ id: 'off', label: 'Off' }, ...RUNE_OPTS], f.showRunes ? String(f.minRuneOrder) : 'off', (v) =>
+        this.change(v === 'off' ? { showRunes: false } : { showRunes: true, minRuneOrder: Number(v) }),
+      ).root,
+    );
+    other.body.appendChild(
+      new Segmented<string>('Potions', POTION_OPTS, f.showPotions ? String(f.minPotionTier) : 'off', (v) =>
+        this.change(v === 'off' ? { showPotions: false } : { showPotions: true, minPotionTier: Number(v) }),
+      ).root,
+    );
+    this.body.appendChild(other.root);
 
     const foot = div('depth-row depth-foot');
     const hint = span('depth-dim');
@@ -129,7 +217,7 @@ export class LootFilterPanel {
         small: true,
         variant: 'ghost',
         onClick: () => {
-          save.account.lootFilter = { ...DEFAULT_LOOT_FILTER };
+          save.account.lootFilter = structuredClone(DEFAULT_LOOT_FILTER);
           save.touch();
           this.render();
         },

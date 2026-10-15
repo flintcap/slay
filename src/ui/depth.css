@@ -226,3 +226,8 @@
 .fuse-row .btn + .btn {
   margin-left: 6px;
 }
+
+/* Loot filter: the wanted-stat chips wrap instead of running off the panel. */
+.segbar.lf-chips {
+  flex-wrap: wrap;
+}

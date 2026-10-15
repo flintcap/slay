@@ -23,7 +23,7 @@ import { createCharacter } from '../src/sim/Character';
 import { computeStats, setBonusStats } from '../src/sim/Stats';
 import { passiveEffects } from '../src/sim/Passives';
 import { createItem, rollItem, rollDrops, affixTierRank } from '../src/sim/Loot';
-import { passesFilter, LOOT_FILTER_PRESETS, DEFAULT_LOOT_FILTER } from '../src/sim/LootFilter';
+import { passesFilter, lootFilterOf, LOOT_FILTER_PRESETS, DEFAULT_LOOT_FILTER } from '../src/sim/LootFilter';
 import { uniqueDropWeight } from '../src/data/uniques';
 import { setPieceDropWeight, SET_PIECES } from '../src/data/sets';
 import { RARITY_ORDER } from '../src/types';
@@ -506,7 +506,32 @@ const preset = (id: string) => LOOT_FILTER_PRESETS.find((p) => p.id === id)!.set
   if (passesFilter(junk, preset('nojunk'))) problems.push('filter "No junk" shows a plain sword');
   if (!passesFilter(uq, preset('strict'))) problems.push('filter "Strict" hides a unique');
   if (!passesFilter(powered, preset('strict'))) problems.push('filter "Strict" hides a powered rare');
-  if (!passesFilter(junk, { ...DEFAULT_LOOT_FILTER, enabled: false, minRarity: 'set' })) problems.push('a disabled filter still hides');
+  if (!passesFilter(junk, { ...DEFAULT_LOOT_FILTER, enabled: false, rarityBy: { weapons: 'set', armour: 'set', jewellery: 'set', charms: 'set' } })) problems.push('a disabled filter still hides');
+
+  // Deeper rules: per-group bars, wanted stats, outgrown bases, gem/rune/potion bars.
+  const rareOnly = { ...DEFAULT_LOOT_FILTER, rarityBy: { weapons: 'rare', armour: 'rare', jewellery: 'magic', charms: 'magic' } } as const;
+  const blueSword = createItem('sword.short', 10, new Random(2), 'magic');
+  blueSword.mods = [{ affixId: 'x', stat: 'moveSpeed', value: 10, tier: 1, kind: 'suffix' }];
+  blueSword.sockets = [];
+  if (passesFilter(blueSword, { ...rareOnly, keepTopTier: false })) problems.push('filter: a magic sword passes a rare bar');
+  if (!passesFilter(blueSword, { ...rareOnly, keepTopTier: false, keepStats: ['move'] })) problems.push('filter: a wanted stat does not keep a magic sword');
+  if (passesFilter(blueSword, { ...rareOnly, keepTopTier: false, keepStats: ['move', 'mf'], keepStatsMin: 2 })) problems.push('filter: one wanted stat passes a two-stat rule');
+  const blueRing = createItem(ITEM_BASES.find((b) => b.category === 'ring')!.id, 10, new Random(3), 'magic');
+  blueRing.mods = [];
+  blueRing.sockets = [];
+  if (!passesFilter(blueRing, rareOnly)) problems.push('filter: the jewellery bar does not show a magic ring');
+  const oldBlue = createItem('sword.short', 60, new Random(4), 'magic');
+  oldBlue.mods = [];
+  oldBlue.sockets = [];
+  if (passesFilter(oldBlue, { ...DEFAULT_LOOT_FILTER, hideOldBases: 20 })) problems.push('filter: an outgrown base still shows');
+  const chipped = createItem(ITEM_BASES.find((b) => b.id.startsWith('gem.') && b.id.endsWith('.chipped'))!.id, 1, new Random(5));
+  if (passesFilter(chipped, { ...DEFAULT_LOOT_FILTER, minGemQuality: 2 })) problems.push('filter: a chipped gem passes a normal+ bar');
+  const minor = createItem('potion.heal.minor', 1, new Random(6));
+  if (passesFilter(minor, { ...DEFAULT_LOOT_FILTER, minPotionTier: 1 })) problems.push('filter: a minor potion passes a light+ bar');
+  const rejuv = createItem('potion.rejuv.lesser', 1, new Random(7));
+  if (!passesFilter(rejuv, { ...DEFAULT_LOOT_FILTER, minPotionTier: 3 })) problems.push('filter: a rejuvenation is hidden by the potion size bar');
+  const acct = { lootFilter: { ...DEFAULT_LOOT_FILTER, minRarity: 'rare', rarityBy: undefined } } as unknown as Parameters<typeof lootFilterOf>[0];
+  if (lootFilterOf(acct).rarityBy.weapons !== 'rare') problems.push('filter: an old single-bar filter is not carried over');
 }
 const filterRows: Record<string, number> = {};
 {
@@ -521,6 +546,8 @@ const filterRows: Record<string, number> = {};
   if (filterRows.all !== 1) problems.push('"Everything" does not show every drop');
   if (!(filterRows.nojunk! < 0.8)) problems.push('"No junk" hides almost nothing');
   if (!(filterRows.rares! < filterRows.nojunk!)) problems.push('"Rares up" is not stricter than "No junk"');
+  if (!(filterRows.strict! < filterRows.rares!)) problems.push('"Strict" is not stricter than "Rares up"');
+  if (!(filterRows.chase! <= filterRows.strict!)) problems.push('"Chase" is not stricter than "Strict"');
 }
 function createItemCat(it: Item): string {
   try {
