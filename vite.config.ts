@@ -8,6 +8,9 @@ const frozen = !!process.env.SLAY_NO_HMR;
 
 export default defineConfig({
   base: './',
+  // One three.js: its WebGPU build. Plain 'three' imports (ours and the
+  // addons') get the same classes, and no WebGL renderer is bundled.
+  resolve: { alias: [{ find: /^three$/, replacement: 'three/webgpu' }] },
   server: {
     port: 5173,
     strictPort: true,

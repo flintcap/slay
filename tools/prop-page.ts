@@ -17,22 +17,19 @@ import { propDef } from '../src/art/props/Defs';
 import { WALL_FACE } from '../src/art/props/Kit';
 import { biomeArt } from '../src/world/Biomes';
 import type { BiomeId } from '../src/types';
+import { openStudio } from './studio';
 
 const BG = '#14161c';
 const INK = '#c9d1de';
 const DIM = '#7d8796';
 
-let renderer: THREE.WebGLRenderer | null = null;
+/** Opened before any sheet draws: its GPU device opens asynchronously. */
+const renderer = await openStudio({ exposure: 1.0 });
+renderer.shadowMap.enabled = true;
+
 let envTex: THREE.Texture | null = null;
 
-function studio(w: number, h: number): THREE.WebGLRenderer {
-  if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    renderer.shadowMap.enabled = true;
-  }
+function studio(w: number, h: number): THREE.WebGPURenderer {
   renderer.setSize(w, h, false);
   if (!envTex) {
     const pm = new THREE.PMREMGenerator(renderer);

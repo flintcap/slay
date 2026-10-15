@@ -1,7 +1,7 @@
 /**
  * SLAY — the live character view inside the inventory paperdoll.
  *
- * A small, self-contained WebGL viewport that shows your actual character with
+ * A small, self-contained viewport that shows your actual character with
  * your actual equipment on it. Equipping a helm changes what you see here, which
  * is the whole point: the slot grid tells you what is equipped, this tells you
  * what you look like.
@@ -9,22 +9,27 @@
  * It owns its own renderer rather than borrowing the game's. The game renderer
  * is wired to a full post-processing chain sized to the window, and re-targeting
  * it per frame to a 170px panel would thrash that setup for no gain. A second
- * context at this size costs very little, and it only draws while the panel is
- * actually open.
+ * renderer at this size costs very little, and it only draws while the panel
+ * is actually open. Its GPU device opens asynchronously; until it has, the
+ * view stays empty and nothing waits on it.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import { makeStudioRenderer } from '../core/Studio';
 import type { Character } from '../types';
 import { DressedHero, VISUAL_SLOTS } from '../scenes/HeroModel';
 
-/** Panel-sized viewport. Small enough that a second GL context is cheap. */
+/** Panel-sized viewport. Small enough that a second renderer is cheap. */
 const WIDTH = 188;
 const HEIGHT = 572;
 
 export class PaperdollView {
   readonly root: HTMLDivElement;
 
-  private renderer: THREE.WebGLRenderer | null = null;
+  private renderer: THREE.WebGPURenderer | null = null;
+  private opening: Promise<THREE.WebGPURenderer | null> | null = null;
+  /** What to do once the renderer opens: draw unseen (warm) or start the loop. */
+  private onOpen: Array<() => void> = [];
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(30, WIDTH / HEIGHT, 0.1, 40);
   private rig = new THREE.Group();
@@ -44,6 +49,9 @@ export class PaperdollView {
   private lastT = 0;
   private running = false;
   private failed = false;
+  private disposed = false;
+  /** `start` was called before the renderer opened. */
+  private wantRun = false;
 
   constructor() {
     this.root = document.createElement('div');
@@ -94,28 +102,41 @@ export class PaperdollView {
   }
 
   /**
-   * Creates the GL context on first use. If the browser refuses one — too many
-   * live contexts, blocklisted driver — the view quietly stays empty and the
-   * rest of the inventory keeps working.
+   * Opens the renderer on first use, in the background. If the browser
+   * gives none, the view quietly stays empty and the rest of the inventory
+   * keeps working.
    */
-  private ensureRenderer(): boolean {
-    if (this.renderer) return true;
-    if (this.failed) return false;
-    try {
-      const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
+  private ensureRenderer(): void {
+    if (this.renderer || this.opening || this.failed) return;
+    this.opening = makeStudioRenderer({ alpha: true, antialias: true });
+    void this.opening.then((r) => {
+      this.opening = null;
+      if (!r) {
+        this.failed = true;
+        this.onOpen.length = 0;
+        return;
+      }
+      if (this.disposed) {
+        r.dispose();
+        return;
+      }
       r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       r.setSize(WIDTH, HEIGHT, false);
-      r.setClearAlpha(0);
-      r.outputColorSpace = THREE.SRGBColorSpace;
-      r.toneMapping = THREE.ACESFilmicToneMapping;
       r.toneMappingExposure = 1.15;
       r.domElement.className = 'pd-view-canvas';
       this.root.appendChild(r.domElement);
       this.renderer = r;
-      return true;
-    } catch {
-      this.failed = true;
-      return false;
+      const todo = this.onOpen.splice(0);
+      for (const fn of todo) fn();
+    });
+  }
+
+  /** Runs `fn` now if the renderer is open, else once it opens. */
+  private whenOpen(fn: () => void): void {
+    if (this.renderer) fn();
+    else if (!this.failed) {
+      this.onOpen.push(fn);
+      this.ensureRenderer();
     }
   }
 
@@ -125,7 +146,8 @@ export class PaperdollView {
    * would rebuild the whole character on every gold pickup.
    */
   setCharacter(c: Character): void {
-    if (!this.ensureRenderer()) return;
+    this.ensureRenderer();
+    if (this.failed) return;
 
     if (this.classId !== c.classId) {
       this.classId = c.classId;
@@ -158,6 +180,11 @@ export class PaperdollView {
    */
   warm(c: Character): void {
     this.setCharacter(c);
+    if (!this.hero) return;
+    this.whenOpen(() => this.warmNow());
+  }
+
+  private warmNow(): void {
     const r = this.renderer;
     if (!this.hero || !r) return;
     // Every look the figure wears is built, not just what the first pose
@@ -198,7 +225,14 @@ export class PaperdollView {
   }
 
   start(): void {
-    if (this.running || !this.renderer) return;
+    if (this.running) return;
+    if (!this.renderer) {
+      this.wantRun = true;
+      this.whenOpen(() => {
+        if (this.wantRun) this.start();
+      });
+      return;
+    }
     this.running = true;
     this.lastT = performance.now();
     const tick = (now: number): void => {
@@ -224,12 +258,15 @@ export class PaperdollView {
   }
 
   stop(): void {
+    this.wantRun = false;
     this.running = false;
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
   }
 
   dispose(): void {
+    this.disposed = true;
+    this.onOpen.length = 0;
     this.stop();
     this.hero?.dispose();
     this.hero = null;

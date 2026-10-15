@@ -14,7 +14,7 @@
  *   iD: style, fade (0..1), seed, param
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { premultiplied } from './Particles';
 
 export interface SlotHandle {
@@ -32,10 +32,13 @@ export class InstancedPool {
   private geo: THREE.InstancedBufferGeometry;
   private attrs: THREE.InstancedBufferAttribute[];
   private arrays: Float32Array[];
-  readonly material: THREE.ShaderMaterial;
+  readonly material: THREE.NodeMaterial;
+  /** The family's clock, read by its shader. */
+  private readonly clock: { value: number };
   private drawn = 0;
 
-  constructor(name: string, base: THREE.BufferGeometry, material: THREE.ShaderMaterial, capacity: number, renderOrder: number) {
+  constructor(name: string, base: THREE.BufferGeometry, material: THREE.NodeMaterial, clock: { value: number }, capacity: number, renderOrder: number) {
+    this.clock = clock;
     this.capacity = capacity;
     this.data = new Float32Array(capacity * 16);
     this.live = new Uint8Array(capacity);
@@ -125,8 +128,7 @@ export class InstancedPool {
     }
     this.geo.instanceCount = k;
     this.mesh.visible = k > 0;
-    const u = this.material.uniforms.uTime;
-    if (u) u.value = time;
+    this.clock.value = time;
     if (k > 0 || this.drawn > 0) {
       for (const a of this.attrs) {
         a.clearUpdateRanges();

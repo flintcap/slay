@@ -27,6 +27,7 @@ import { buildItemModel } from '../src/art/ItemModels';
 import { Random } from '../src/core/RNG';
 import { allSetNames, setTextures } from '../src/art/TextureSets';
 import { textureReady } from '../src/core/Assets';
+import { openStudio } from './studio';
 
 /** Every world texture set decoded, so a sheet shows the scans and not their flat fallbacks. */
 async function scansReady(): Promise<void> {
@@ -41,15 +42,11 @@ const BG = '#16181e';
 const INK = '#c9d1de';
 const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'paladin', 'shapeshifter'];
 
-let renderer: THREE.WebGLRenderer | null = null;
+/** Opened before any sheet draws: its GPU device opens asynchronously. */
+const renderer = await openStudio({ exposure: 1.1 });
+
 let envTex: THREE.Texture | null = null;
-function studio(w: number, h: number): THREE.WebGLRenderer {
-  if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
-  }
+function studio(w: number, h: number): THREE.WebGPURenderer {
   renderer.setSize(w, h, false);
   return renderer;
 }

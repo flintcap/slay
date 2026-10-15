@@ -13,85 +13,73 @@
  * and nothing is allocated after construction.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import { Discard, If, abs, attribute, clamp, float, floor, fract, mix, pow, sin, smoothstep, uniform } from 'three/tsl';
 import { premultiplied } from './Particles';
-import { GLSL_UNPACK, packLinear, ramp, mixHex, darken, type School } from './Palette';
-import { FX_EXPOSURE, GLSL_EXPOSURE } from './Exposure';
+import { unpackRGB, packLinear, ramp, mixHex, darken, type School } from './Palette';
+import { kitMaterial, kitOut, slot } from './Nodes';
+import { vary, type F, type V4 } from '../../core/Tsl';
 
 export type RibbonKind = 'swing' | 'trail' | 'bolt';
 const KIND_ID: Record<RibbonKind, number> = { swing: 0, trail: 1, bolt: 2 };
 
-const VERT = /* glsl */ `
-  attribute vec2 aUv;      // along (0 tail .. 1 head), across (0 .. 1)
-  attribute vec4 aLook;    // fade (0..1), emit, kind, seed
-  attribute vec3 aCol;     // core, body, tail (packed)
-  varying vec2 vUv;
-  varying vec4 vLook;
-  varying vec3 vCore;
-  varying vec3 vBody;
-  varying vec3 vTail;
-  ${GLSL_UNPACK}
-  void main() {
-    vUv = aUv;
-    vLook = aLook;
-    vCore = unpackRGB(aCol.x);
-    vBody = unpackRGB(aCol.y);
-    vTail = unpackRGB(aCol.z);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
+function h1(n: F): F {
+  return fract(sin(n).mul(43758.5453));
+}
 
-const FRAG = /* glsl */ `
-  ${GLSL_EXPOSURE}
-  uniform float uTime;
-  varying vec2 vUv;
-  varying vec4 vLook;
-  varying vec3 vCore;
-  varying vec3 vBody;
-  varying vec3 vTail;
+function n1(x: F): F {
+  const i = floor(x);
+  const f = fract(x);
+  return mix(h1(i), h1(i.add(1.0)), f.mul(f).mul(f.mul(-2.0).add(3.0)));
+}
 
-  float h1(float n) { return fract(sin(n) * 43758.5453); }
-  float n1(float x) { float i = floor(x); float f = fract(x); return mix(h1(i), h1(i + 1.0), f * f * (3.0 - 2.0 * f)); }
-
-  void main() {
-    float fade = vLook.x;
-    if (fade <= 0.001) discard;
-    float kind = vLook.z;
-    float seed = vLook.w;
-    float u = vUv.x;
-    float v = vUv.y;
-    float heat;
-    float cov;
-    if (kind < 0.5) {
+/** The ribbon shader: heat and cover by kind, through the ramp. */
+function ribbonMaterial(uTime: F): THREE.MeshBasicNodeMaterial {
+  // along (0 tail .. 1 head), across (0 .. 1)
+  const vUv = vary(attribute<'vec2'>('aUv', 'vec2'));
+  // fade (0..1), emit, kind, seed
+  const vLook = vary(attribute<'vec4'>('aLook', 'vec4'));
+  // core, body, tail (packed)
+  const aCol = attribute<'vec3'>('aCol', 'vec3');
+  const vCore = vary(unpackRGB(aCol.x));
+  const vBody = vary(unpackRGB(aCol.y));
+  const vTail = vary(unpackRGB(aCol.z));
+  const frag = (): V4 => {
+    const fade = vLook.x.toVar();
+    Discard(fade.lessThanEqual(0.001));
+    const kind = vLook.z;
+    const seed = vLook.w;
+    const u = vUv.x.toVar();
+    const v = vUv.y.toVar();
+    const heat = slot();
+    const cov = slot();
+    If(kind.lessThan(0.5), () => {
       // Swing: the swept surface. Hottest at the tip edge and at the head.
-      float tip = smoothstep(0.15, 1.0, v);
-      float streak = 0.78 + 0.22 * n1(v * 7.0 + seed * 31.0);
-      float head = smoothstep(0.55, 1.0, u);
-      heat = clamp(fade * (0.35 + 0.65 * tip) * (0.6 + 0.6 * head) * streak, 0.0, 1.0);
-      cov = smoothstep(0.0, 0.25, v) * fade * (0.35 + 0.65 * tip) * streak;
-      cov *= smoothstep(0.0, 0.15, u);
-    } else if (kind < 1.5) {
-      // Trail: a soft tube, hot down the middle.
-      float c = 1.0 - abs(v * 2.0 - 1.0);
-      float breakup = 0.65 + 0.35 * n1(u * 14.0 - uTime * 9.0 + seed * 17.0);
-      heat = clamp(fade * pow(c, 1.5) * breakup * 1.1, 0.0, 1.0);
-      cov = smoothstep(0.0, 0.6, c) * fade * breakup;
-    } else {
-      // Bolt: a white-hot hairline in a narrow glow, flickering.
-      float c = 1.0 - abs(v * 2.0 - 1.0);
-      float flick = 0.6 + 0.4 * h1(floor(uTime * 30.0) + seed * 13.0);
-      heat = clamp(pow(c, 3.0) * 1.4 * flick, 0.0, 1.0) * fade;
-      cov = (pow(c, 6.0) + 0.45 * pow(c, 1.5)) * fade * flick;
-    }
-    vec3 col = mix(vTail, vBody, smoothstep(0.05, 0.5, heat));
-    col = mix(col, vCore, smoothstep(0.62, 0.98, heat));
-    vec3 light = col * vLook.y * (0.2 + 1.1 * heat);
-    cov = clamp(cov, 0.0, 1.0);
-    if (cov < 0.003) discard;
+      const tip = smoothstep(0.15, 1.0, v).mul(0.65).add(0.35).toVar();
+      const streak = n1(v.mul(7.0).add(seed.mul(31.0))).mul(0.22).add(0.78).toVar();
+      const head = smoothstep(0.55, 1.0, u);
+      heat.assign(clamp(fade.mul(tip).mul(head.mul(0.6).add(0.6)).mul(streak), 0.0, 1.0));
+      cov.assign(smoothstep(0.0, 0.25, v).mul(fade).mul(tip).mul(streak).mul(smoothstep(0.0, 0.15, u)));
+    })
+      .ElseIf(kind.lessThan(1.5), () => {
+        // Trail: a soft tube, hot down the middle.
+        const c = abs(v.mul(2.0).sub(1.0)).oneMinus().toVar();
+        const breakup = n1(u.mul(14.0).sub(uTime.mul(9.0)).add(seed.mul(17.0))).mul(0.35).add(0.65).toVar();
+        heat.assign(clamp(fade.mul(pow(c, 1.5)).mul(breakup).mul(1.1), 0.0, 1.0));
+        cov.assign(smoothstep(0.0, 0.6, c).mul(fade).mul(breakup));
+      })
+      .Else(() => {
+        // Bolt: a white-hot hairline in a narrow glow, flickering.
+        const c = abs(v.mul(2.0).sub(1.0)).oneMinus().toVar();
+        const flick = h1(floor(uTime.mul(30.0)).add(seed.mul(13.0))).mul(0.4).add(0.6).toVar();
+        heat.assign(clamp(pow(c, 3.0).mul(1.4).mul(flick), 0.0, 1.0).mul(fade));
+        cov.assign(pow(c, 6.0).add(pow(c, 1.5).mul(0.45)).mul(fade).mul(flick));
+      });
     // Ribbons are light: they hide only a touch of what is behind them.
-    gl_FragColor = vec4(light * cov * uExposure, cov * 0.12);
-  }
-`;
+    return kitOut({ core: vCore, body: vBody, tail: vTail, emit: vLook.y, D: vLook }, heat, clamp(cov, 0.0, 1.0), float(0.12));
+  };
+  return kitMaterial('fx-ribbons', frag);
+}
 
 /** A handle to a live ribbon. Stale handles are ignored. */
 export interface RibbonHandle {
@@ -121,7 +109,8 @@ export class RibbonBatch {
   private readonly R: number;
   private readonly N: number;
   private geo: THREE.BufferGeometry;
-  private mat: THREE.ShaderMaterial;
+  private mat: THREE.MeshBasicNodeMaterial;
+  private uTime = uniform(0);
   private pos: Float32Array;
   private uv: Float32Array;
   private look: Float32Array;
@@ -179,14 +168,7 @@ export class RibbonBatch {
     geo.setDrawRange(0, 0);
     this.geo = geo;
 
-    this.mat = new THREE.ShaderMaterial({
-      name: 'fx-ribbons',
-      uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
-      vertexShader: VERT,
-      fragmentShader: FRAG,
-      side: THREE.DoubleSide,
-      depthTest: true,
-    });
+    this.mat = ribbonMaterial(this.uTime);
     premultiplied(this.mat);
     this.mesh = new THREE.Mesh(geo, this.mat);
     this.mesh.name = 'fx:ribbons';
@@ -284,7 +266,7 @@ export class RibbonBatch {
 
   update(dt: number, camera: THREE.Camera | null): void {
     this.time += dt;
-    this.mat.uniforms.uTime!.value = this.time;
+    this.uTime.value = this.time;
     if (camera) camera.getWorldPosition(_camPos);
     let maxSlot = -1;
     const N = this.N;

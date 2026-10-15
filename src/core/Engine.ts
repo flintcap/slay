@@ -176,7 +176,7 @@ export class Engine {
   /** Frames in a row the active scene's update or render has thrown. */
   private failStreak = 0;
   private recovering = false;
-  /** Set while the WebGL context is lost; nothing is drawn until it returns. */
+  /** Set while the GPU device or context is lost; nothing is drawn until it returns. */
   contextLost = false;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -207,6 +207,18 @@ export class Engine {
       }
       events.emit('toast', { text: 'The graphics device was reset. Waiting for it to come back...', kind: 'bad' });
     });
+    // A lost WebGPU device does not come back: three.js would need every
+    // buffer and pipeline made again. Hold the game and ask for a reload,
+    // which picks the save up where it was.
+    this.renderer.gl.onDeviceLost = (info: { message?: string; reason?: string | null }) => {
+      this.contextLost = true;
+      this.report('render', new Error(`GPU device lost: ${info.message ?? info.reason ?? 'unknown'}`));
+      if (!this.paused) {
+        this.autoPaused = true;
+        this.setPaused(true);
+      }
+      events.emit('toast', { text: 'The graphics device was lost. Reload the page to keep playing; your progress is saved.', kind: 'bad' });
+    };
     canvas.addEventListener('webglcontextrestored', () => {
       this.contextLost = false;
       if (this.autoPaused) {
@@ -415,20 +427,6 @@ export class Engine {
     } finally {
       for (const o of culled) o.frustumCulled = true;
       for (const o of unhidden) o.visible = false;
-    }
-    // A program is only finished on its first draw: three.js then reads its
-    // uniforms and attributes back from the driver, which waits for the link
-    // to complete. Programs compiled here for things the warm frame did not
-    // draw (hidden things that hold a light, looks shown later) paid that on
-    // their first frame in play: the two slow frames of a boss fight (1.3 s
-    // in getProgramParameter under software GL). Finish every one now.
-    try {
-      for (const prog of this.renderer.gl.info.programs ?? []) {
-        prog.getUniforms();
-        prog.getAttributes();
-      }
-    } catch (err) {
-      this.report('render', err);
     }
     // The warm frame's shadow maps held the hidden casters: a shadow drawn
     // only on demand (the title's) is drawn again on the first real frame.

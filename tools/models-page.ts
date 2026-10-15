@@ -21,6 +21,8 @@ import { ITEM_BASES } from '../src/data/itemBases';
 import { MONSTERS } from '../src/data/monsters';
 import { BOSSES } from '../src/data/bosses';
 import * as MM from '../src/entities/MonsterModels';
+import { openStudio } from './studio';
+import { skyEnvironment } from '../src/core/Renderer';
 
 const BG = '#14161c';
 const INK = '#c9d1de';
@@ -32,51 +34,19 @@ const baseById = new Map(ITEM_BASES.map((b) => [b.id, b]));
 // Studio
 // ---------------------------------------------------------------------------
 
-let renderer: THREE.WebGLRenderer | null = null;
+/** Opened before any sheet draws: its GPU device opens asynchronously. */
+const renderer = await openStudio({ exposure: 1.05 });
+renderer.shadowMap.enabled = false;
+
 let envMap: THREE.Texture | null = null;
 
-function studio(w: number, h: number): THREE.WebGLRenderer {
-  if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
-    renderer.shadowMap.enabled = false;
-    envMap = buildEnv(renderer);
-  }
+function studio(w: number, h: number): THREE.WebGPURenderer {
   renderer.setSize(w, h, false);
+  // The same reflection sky the game builds, so metal reads the way it will in play.
+  if (!envMap) envMap = skyEnvironment(renderer);
   return renderer;
 }
 
-/** The same reflection sky the game builds, so metal reads the way it will in play. */
-function buildEnv(r: THREE.WebGLRenderer): THREE.Texture | null {
-  const scene = new THREE.Scene();
-  const sky = new THREE.Mesh(
-    new THREE.SphereGeometry(50, 24, 16),
-    new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-      fragmentShader: `varying vec3 vDir; void main(){
-        float up = vDir.y*0.5+0.5;
-        vec3 zenith=vec3(0.10,0.13,0.20), horizon=vec3(0.26,0.23,0.21), ground=vec3(0.09,0.07,0.06);
-        vec3 col = up>0.5 ? mix(horizon,zenith,(up-0.5)*2.0) : mix(ground,horizon,up*2.0);
-        float a=max(0.0,dot(normalize(vDir),normalize(vec3(0.6,0.5,0.4))));
-        float b=max(0.0,dot(normalize(vDir),normalize(vec3(-0.5,0.3,-0.6))));
-        col += vec3(0.55,0.40,0.26)*pow(a,26.0); col += vec3(0.22,0.30,0.45)*pow(b,18.0);
-        gl_FragColor=vec4(col,1.0); }`,
-    }),
-  );
-  scene.add(sky);
-  const pmrem = new THREE.PMREMGenerator(r);
-  try {
-    return pmrem.fromScene(scene, 0.04).texture;
-  } catch {
-    return null;
-  } finally {
-    pmrem.dispose();
-  }
-}
 
 function lights(scene: THREE.Scene, mood: 'studio' | 'dungeon'): void {
   if (envMap) {
@@ -253,7 +223,7 @@ async function settle(): Promise<void> {
 
 function drawCell(
   g: CanvasRenderingContext2D,
-  r: THREE.WebGLRenderer,
+  r: THREE.WebGPURenderer,
   scene: THREE.Scene,
   cam: THREE.PerspectiveCamera,
   obj: THREE.Object3D,

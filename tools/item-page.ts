@@ -23,6 +23,7 @@ import { buildDropModel, setItemVisualResolver } from '../src/art/ItemModels';
 import { Random } from '../src/core/RNG';
 import { drawItemIcon, iconCanvasSize, itemScansReady } from '../src/art/items/IconRender';
 import { sizeOfBase } from '../src/sim/Grid';
+import { openStudio } from './studio';
 
 const BG = '#121318';
 const INK = '#c9d1de';
@@ -37,15 +38,11 @@ const RARITY_INK: Record<string, string> = {
   ancient: '#ff7a5a',
 };
 
-let renderer: THREE.WebGLRenderer | null = null;
+/** Opened before any sheet draws: its GPU device opens asynchronously. */
+const renderer = await openStudio({ exposure: 1.15 });
+
 let envTex: THREE.Texture | null = null;
-function studio(w: number, h: number): THREE.WebGLRenderer {
-  if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
-  }
+function studio(w: number, h: number): THREE.WebGPURenderer {
   renderer.setSize(w, h, false);
   return renderer;
 }

@@ -15,7 +15,8 @@
     "resolveJsonModule": true,
     "verbatimModuleSyntax": false,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": { "three": ["./node_modules/@types/three/build/three.webgpu.d.ts"] }
   },
   "include": ["src", "tools"]
 }

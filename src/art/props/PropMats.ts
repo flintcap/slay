@@ -27,7 +27,12 @@
  * Materials are shared and cached; never mutate or dispose one. Missing
  * texture files fall back to flat colour, so a prop always renders.
  */
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  clamp, dot, float, fract, Fn, instanceIndex, mix, modelPosition, negateOnBackSide, normalGeometry, positionGeometry, sin,
+  smoothstep, uniform, varying, vec2, vec3,
+} from 'three/tsl';
+import { asStandard, bindToView, hash2, matColor, matFloat, setNodeTextures, triSample, whiteout, type V3 } from '../../core/Tsl';
 import { loadTexture } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
@@ -231,118 +236,46 @@ interface TriUniforms {
   crack: number;
 }
 
-function triplanar(m: THREE.MeshStandardMaterial, o: TriUniforms): void {
-  const uniforms = {
-    ptAlbedo: { value: o.albedo },
-    ptNormal: { value: o.normal },
-    ptScale: { value: o.scale },
-    ptNormalScale: { value: o.normalScale },
-    ptRough: { value: new THREE.Vector2(o.rough[0], o.rough[1]) },
-    ptGrime: { value: new THREE.Vector2(o.grime, Math.max(0.05, o.grimeHeight)) },
-    ptCrack: { value: o.crack },
-  };
-  m.userData.propTri = uniforms;
-  m.customProgramCacheKey = () => 'prop-tri';
-  m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, uniforms);
-    sh.vertexShader = sh.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-uniform float ptScale;
-varying vec3 vPtPos;
-varying vec3 vPtN;
-varying float vPtY;
-varying float vPtVar;
-varying vec3 vPtM0;
-varying vec3 vPtM1;
-varying vec3 vPtM2;`,
-      )
-      .replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>
-#ifdef USE_INSTANCING
-  vec3 ptOff = instanceMatrix[ 3 ].xyz;
-  mat3 ptIM = mat3( instanceMatrix );
-#else
-  vec3 ptOff = modelMatrix[ 3 ].xyz;
-  mat3 ptIM = mat3( 1.0 );
-#endif
-vPtPos = position * ptScale + ptOff * 0.37;
-vPtN = normal;
-vPtY = position.y;
-vPtVar = fract( sin( dot( ptOff.xz, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-mat3 ptNM = normalMatrix * ptIM;
-vPtM0 = ptNM[ 0 ];
-vPtM1 = ptNM[ 1 ];
-vPtM2 = ptNM[ 2 ];`,
-      );
-    sh.fragmentShader = sh.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-uniform sampler2D ptAlbedo;
-uniform sampler2D ptNormal;
-uniform float ptNormalScale;
-uniform vec2 ptRough;
-uniform vec2 ptGrime;
-uniform float ptCrack;
-varying vec3 vPtPos;
-varying vec3 vPtN;
-varying float vPtY;
-varying float vPtVar;
-varying vec3 vPtM0;
-varying vec3 vPtM1;
-varying vec3 vPtM2;`,
-      )
-      .replace(
-        '#include <map_fragment>',
-        `vec3 ptNb = normalize( vPtN );
-vec3 ptW = pow( abs( ptNb ), vec3( 4.0 ) );
-ptW /= ( ptW.x + ptW.y + ptW.z );
-vec4 ptNx = texture2D( ptNormal, vPtPos.zy );
-vec4 ptNy = texture2D( ptNormal, vPtPos.xz );
-vec4 ptNz = texture2D( ptNormal, vPtPos.xy );
-vec4 ptA = texture2D( ptAlbedo, vPtPos.zy ) * ptW.x + texture2D( ptAlbedo, vPtPos.xz ) * ptW.y + texture2D( ptAlbedo, vPtPos.xy ) * ptW.z;
-float ptH = ptA.a;
-diffuseColor.rgb *= ptA.rgb;
-diffuseColor.rgb *= mix( 0.74, 1.0, ptH );
-diffuseColor.rgb *= 0.9 + 0.2 * vPtVar;
-float ptG = smoothstep( 0.0, ptGrime.y, vPtY );
-diffuseColor.rgb *= mix( 1.0 - 0.45 * ptGrime.x, 1.0, ptG );`,
-      )
-      .replace(
-        '#include <roughnessmap_fragment>',
-        `float roughnessFactor = roughness;
-float ptR = ptNx.a * ptW.x + ptNy.a * ptW.y + ptNz.a * ptW.z;
-roughnessFactor = clamp( roughnessFactor * mix( ptRough.x, ptRough.y, ptR ), 0.04, 1.0 );`,
-      )
-      .replace(
-        '#include <normal_fragment_maps>',
-        `#include <normal_fragment_maps>
-{
-  vec3 tx = ( ptNx.xyz * 2.0 - 1.0 ) * vec3( ptNormalScale, ptNormalScale, 1.0 );
-  vec3 ty = ( ptNy.xyz * 2.0 - 1.0 ) * vec3( ptNormalScale, ptNormalScale, 1.0 );
-  vec3 tz = ( ptNz.xyz * 2.0 - 1.0 ) * vec3( ptNormalScale, ptNormalScale, 1.0 );
-  tx = vec3( tx.xy + ptNb.zy, abs( tx.z ) * ptNb.x );
-  ty = vec3( ty.xy + ptNb.xz, abs( ty.z ) * ptNb.y );
-  tz = vec3( tz.xy + ptNb.xy, abs( tz.z ) * ptNb.z );
-  vec3 bn = normalize( tx.zyx * ptW.x + ty.xzy * ptW.y + tz.xyz * ptW.z );
-  normal = normalize( mat3( vPtM0, vPtM1, vPtM2 ) * bn );
-  #ifdef DOUBLE_SIDED
-    normal *= faceDirection;
-  #endif
-}`,
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-{
-  float ptC = 1.0 - ptH;
-  totalEmissiveRadiance *= mix( 1.0, ptC * ptC * ptC * 2.4, ptCrack );
-}`,
-      );
-  };
+/**
+ * Where this copy sits: an instanced copy's own slot, or the mesh's world
+ * position. Picked when the shader is built, from the object being drawn.
+ */
+const copySeed = Fn((_: unknown, { object }: { object: THREE.Object3D }) => {
+  if ((object as THREE.InstancedMesh).isInstancedMesh) {
+    const i = float(instanceIndex);
+    return vec3(hash2(vec2(i.mul(0.618), 3.1)), hash2(vec2(7.7, i.mul(0.414))), hash2(vec2(i.mul(0.271), i.mul(0.173).add(1.9)))).mul(40.0);
+  }
+  return modelPosition;
+});
+
+function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriUniforms): void {
+  setNodeTextures(m, [o.albedo, o.normal]);
+  // Numbers go in as uniforms, so every prop writes the same shader code.
+  const uScale = uniform(o.scale);
+  const uNormalScale = uniform(o.normalScale);
+  const uRough = uniform(new THREE.Vector2(o.rough[0], o.rough[1]));
+  const uGrime = uniform(new THREE.Vector2(o.grime, Math.max(0.05, o.grimeHeight)));
+  // Per copy: the projection shifts and the brightness varies a little.
+  const off = varying(copySeed() as unknown as V3);
+  const Pb = positionGeometry;
+  const Nb = normalGeometry.normalize().toVar();
+  const P = Pb.mul(uScale).add(off.mul(0.37)).toVar();
+  const t = triSample(P, Nb, o.normal, o.albedo);
+  const a = t.albedo!;
+  const h = a.a;
+  const vari = fract(sin(dot(off.xz, vec2(12.9898, 78.233))).mul(43758.5453));
+  const g = smoothstep(0.0, uGrime.y, Pb.y);
+  m.colorNode = matColor('color')
+    .mul(a.rgb)
+    .mul(mix(0.74, 1.0, h))
+    .mul(vari.mul(0.2).add(0.9))
+    .mul(mix(uGrime.x.mul(-0.45).add(1.0), 1.0, g));
+  m.roughnessNode = clamp(matFloat('roughness').mul(mix(uRough.x, uRough.y, t.rough)), 0.04, 1.0);
+  m.normalNode = negateOnBackSide(bindToView(whiteout(t, Nb, uNormalScale), Pb, Nb));
+  if (o.crack > 0) {
+    const c = h.oneMinus();
+    m.emissiveNode = matColor('emissive').mul(matFloat('emissiveIntensity')).mul(c.mul(c).mul(c).mul(2.4));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -371,7 +304,7 @@ export function propMat(key: string, o: PropMatOpts = {}): THREE.MeshStandardMat
   const ck = `pm|${key}|${o.tint ?? -1}|${o.base ?? -1}|${o.rough ?? 1}|${o.metal ?? -1}|${o.scale ?? 1}|${o.bump ?? 1}|${o.emissive ?? -1}|${o.emissiveIntensity ?? -1}|${o.crackGlow ? 1 : 0}|${o.grime ?? 1}|${o.grimeHeight ?? 0.55}|${o.side ?? 0}|${o.transparent ? 1 : 0}|${o.opacity ?? 1}`;
   return cached(ck, () => {
     const r = resolve(key);
-    const m = new THREE.MeshStandardMaterial({ name: `prop:${key}`, vertexColors: true });
+    const m = new THREE.MeshStandardNodeMaterial({ name: `prop:${key}`, vertexColors: true });
     m.color = tintFor(o.base !== undefined ? { ...r, base: o.base } : r, o.tint);
     m.roughness = o.rough ?? 1;
     m.metalness = o.metal ?? r.metal;
@@ -399,7 +332,7 @@ export function propMat(key: string, o: PropMatOpts = {}): THREE.MeshStandardMat
       // ground draws it; an asked-for glow covers the surface unless told.
       crack: emissive !== undefined && (o.crackGlow || o.emissive === undefined) ? 1 : 0,
     });
-    return m;
+    return asStandard(m);
   });
 }
 

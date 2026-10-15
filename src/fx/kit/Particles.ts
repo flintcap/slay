@@ -20,171 +20,16 @@
  *   never sinks through it, so bone chips, blood and stones come to rest.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  attribute, cameraWorldMatrix, clamp, cos, cross, exp, float, floor, length, max, min, mix, normalize, positionGeometry, positionView,
+  pow, sin, smoothstep, step, texture, uniform, uv, vec2, vec3, vec4,
+} from 'three/tsl';
 import { markRange, markAll } from './Upload';
-import { spriteAtlas, GLSL_CELL, FLIPBOOKS } from './Atlas';
-import { GLSL_UNPACK } from './Palette';
-import { FX_EXPOSURE, GLSL_EXPOSURE } from './Exposure';
-
-const VERT = /* glsl */ `
-  uniform float uTime;
-  uniform float uScale;
-
-  attribute vec3 iPos;
-  attribute vec3 iVel;
-  attribute vec4 iTime;   // spawn, life, fadePow, spin
-  attribute vec4 iSize;   // size0, size1, stretch (<0 lies flat), sprite (+100 flipbook)
-  attribute vec4 iCol;    // core, body, tail (packed linear rgb), emission
-  attribute vec4 iPhys;   // gravity, drag, turbulence, seed
-  attribute vec4 iLook;   // heat0, heat1, occlusion, floor (-999 none)
-
-  varying vec2 vUvA;
-  varying vec2 vUvB;
-  varying float vFrameMix;
-  varying vec3 vCore;
-  varying vec3 vBody;
-  varying vec3 vTail;
-  varying float vHeat;
-  varying float vEmit;
-  varying float vOccl;
-  varying float vAlpha;
-  varying float vViewZ;
-
-  ${GLSL_UNPACK}
-  ${GLSL_CELL}
-
-  void main() {
-    float life = max(iTime.y, 1e-4);
-    float age = uTime - iTime.x;
-    float alive = step(0.0, age) * step(age, life);
-    float ta = clamp(age, 0.0, life);
-    float t = ta / life;
-
-    // Closed-form exponential drag: the whole path is a function of age.
-    float k = iPhys.y;
-    vec3 disp = k > 1e-3 ? iVel * (1.0 - exp(-k * ta)) / k : iVel * ta;
-    disp.y += 0.5 * iPhys.x * ta * ta;
-    float sd = iPhys.w;
-    disp += vec3(
-      sin(ta * 2.3 + sd * 17.0) + 0.5 * sin(ta * 5.3 + sd * 7.1),
-      0.6 * sin(ta * 1.9 + sd * 11.0),
-      cos(ta * 2.1 + sd * 13.0) + 0.5 * cos(ta * 4.9 + sd * 5.3)
-    ) * iPhys.z * ta;
-
-    vec3 wpos = iPos + disp;
-
-    // Ease-out size: puffs bloom fast then settle.
-    float g = 1.0 - (1.0 - t) * (1.0 - t);
-    float size = mix(iSize.x, iSize.y, g) * uScale * alive;
-    float floorY = iLook.w;
-    if (floorY > -900.0) wpos.y = max(wpos.y, floorY + size * 0.3);
-
-    vec3 camRight = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
-    vec3 camUp    = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
-    vec3 camFwd   = vec3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]);
-    vec2 corner = position.xy;
-    vec3 offset;
-    float ang = iTime.w * ta + sd * 6.2831853;
-    float ca = cos(ang);
-    float sa = sin(ang);
-    vec2 rc = vec2(corner.x * ca - corner.y * sa, corner.x * sa + corner.y * ca);
-
-    if (iSize.z < -0.001) {
-      // Lies flat on the ground: shock rings, sigils, splashes.
-      offset = vec3(rc.x, 0.0, rc.y) * size;
-    } else if (iSize.z > 0.001) {
-      // Stretched along velocity: sparks read as speed, not as dots.
-      vec3 vel = (k > 1e-3 ? iVel * exp(-k * ta) : iVel) + vec3(0.0, iPhys.x * ta, 0.0);
-      float sp = length(vel);
-      vec3 vdir = sp > 1e-4 ? vel / sp : camUp;
-      vec3 side = normalize(cross(vdir, camFwd) + vec3(1e-5));
-      float len = size * (1.0 + iSize.z * sp * 0.08);
-      offset = side * corner.x * size + vdir * corner.y * len;
-    } else {
-      offset = camRight * rc.x * size + camUp * rc.y * size;
-    }
-
-    vec4 mv = modelViewMatrix * vec4(wpos + offset, 1.0);
-    vViewZ = -mv.z;
-    gl_Position = projectionMatrix * mv;
-
-    // Frame selection: flipbooks play across the life, cross-faded.
-    float sprite = iSize.w;
-    vec2 luv = uv;
-    if (sprite >= 99.5) {
-      float base = sprite - 100.0;
-      float fr = clamp(t, 0.0, 0.999) * 8.0;
-      float f0 = floor(fr);
-      float f1 = min(f0 + 1.0, 7.0);
-      vFrameMix = fr - f0;
-      vUvA = cellUv(base + f0, luv);
-      vUvB = cellUv(base + f1, luv);
-    } else {
-      vFrameMix = 0.0;
-      vUvA = cellUv(sprite, luv);
-      vUvB = vUvA;
-    }
-
-    vCore = unpackRGB(iCol.x);
-    vBody = unpackRGB(iCol.y);
-    vTail = unpackRGB(iCol.z);
-    vEmit = iCol.w;
-    vHeat = mix(iLook.x, iLook.y, t);
-    vOccl = iLook.z;
-    float fadeIn = smoothstep(0.0, 0.06, t);
-    float fadeOut = pow(max(1.0 - t, 0.0), iTime.z);
-    vAlpha = fadeIn * fadeOut * alive;
-  }
-`;
-
-const FRAG = /* glsl */ `
-  ${GLSL_EXPOSURE}
-  uniform sampler2D uAtlas;
-  uniform vec3 uFogColor;
-  uniform float uFogDensity;
-  uniform float uFogNear;
-  uniform float uFogFar;
-  uniform float uFogMode;
-
-  varying vec2 vUvA;
-  varying vec2 vUvB;
-  varying float vFrameMix;
-  varying vec3 vCore;
-  varying vec3 vBody;
-  varying vec3 vTail;
-  varying float vHeat;
-  varying float vEmit;
-  varying float vOccl;
-  varying float vAlpha;
-  varying float vViewZ;
-
-  void main() {
-    vec4 a = texture2D(uAtlas, vUvA);
-    vec4 b = texture2D(uAtlas, vUvB);
-    vec4 tex = mix(a, b, vFrameMix);
-    float cov = tex.a * vAlpha;
-    if (cov < 0.003) discard;
-
-    // Heat through the ramp: tail -> body -> core.
-    float h = clamp(tex.r * vHeat, 0.0, 1.0);
-    vec3 col = mix(vTail, vBody, smoothstep(0.05, 0.5, h));
-    col = mix(col, vCore, smoothstep(0.6, 0.98, h));
-    // Hotter parts shine more; the cool edge stays dim so the shape reads.
-    vec3 light = col * vEmit * (0.18 + 1.1 * h);
-
-    float occl = cov * vOccl;
-    vec3 rgb = light * cov;
-
-    if (uFogMode > 0.5) {
-      float f = uFogMode < 1.5
-        ? smoothstep(uFogNear, uFogFar, vViewZ)
-        : 1.0 - exp(-uFogDensity * uFogDensity * vViewZ * vViewZ);
-      f = clamp(f, 0.0, 1.0);
-      rgb = rgb * (1.0 - f) + uFogColor * occl * f;
-    }
-    gl_FragColor = vec4(rgb * uExposure, occl);
-  }
-`;
+import { spriteAtlas, cellUv, FLIPBOOKS } from './Atlas';
+import { unpackRGB } from './Palette';
+import { FX_EXPOSURE } from './Exposure';
+import { setNodeTextures, vary, type V3 } from '../../core/Tsl';
 
 /** Floats per attribute. 26 per particle. */
 const LAYOUT = { iPos: 3, iVel: 3, iTime: 4, iSize: 4, iCol: 4, iPhys: 4, iLook: 4 } as const;
@@ -223,7 +68,9 @@ export function premultiplied(mat: THREE.Material): void {
   mat.blendDst = THREE.OneMinusSrcAlphaFactor;
   mat.blendSrcAlpha = THREE.OneFactor;
   mat.blendDstAlpha = THREE.OneMinusSrcAlphaFactor;
-  mat.premultipliedAlpha = true;
+  // The shaders write premultiplied colour themselves; a node material
+  // with this flag would multiply by alpha a second time.
+  mat.premultipliedAlpha = false;
   mat.transparent = true;
   mat.depthWrite = false;
 }
@@ -232,7 +79,14 @@ export class ParticleField {
   readonly mesh: THREE.Mesh;
   readonly capacity: number;
   private geo: THREE.InstancedBufferGeometry;
-  private mat: THREE.ShaderMaterial;
+  private mat: THREE.MeshBasicNodeMaterial;
+  private uTime = uniform(0);
+  private uScale = uniform(1);
+  private uFogColor = uniform(new THREE.Color(0));
+  private uFogDensity = uniform(0);
+  private uFogNear = uniform(1);
+  private uFogFar = uniform(100);
+  private uFogMode = uniform(0);
   private arrays: Record<AttrName, Float32Array>;
   private attrs: Record<AttrName, THREE.InstancedBufferAttribute>;
   private head = 0;
@@ -264,29 +118,122 @@ export class ParticleField {
     this.arrays = arrays;
     this.attrs = attrs;
 
-    this.mat = new THREE.ShaderMaterial({
-      name: 'fx-particles',
-      uniforms: {
-        uTime: { value: 0 },
-        uExposure: FX_EXPOSURE,
-        uScale: { value: 1 },
-        uAtlas: { value: spriteAtlas() },
-        uFogColor: { value: new THREE.Color(0) },
-        uFogDensity: { value: 0 },
-        uFogNear: { value: 1 },
-        uFogFar: { value: 100 },
-        uFogMode: { value: 0 },
-      },
-      vertexShader: VERT,
-      fragmentShader: FRAG,
-      depthTest: true,
-      side: THREE.DoubleSide,
-    });
+    this.mat = this.build();
     premultiplied(this.mat);
     this.mesh = new THREE.Mesh(geo, this.mat);
     this.mesh.name = 'fx:particles';
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 20;
+  }
+
+  /**
+   * The vertex stage works each particle's place, size, colour and frame
+   * out from its age; the pixel stage runs heat through the ramp.
+   */
+  private build(): THREE.MeshBasicNodeMaterial {
+    const iPos = attribute<'vec3'>('iPos', 'vec3');
+    const iVel = attribute<'vec3'>('iVel', 'vec3');
+    // spawn, life, fadePow, spin
+    const iTime = attribute<'vec4'>('iTime', 'vec4');
+    // size0, size1, stretch (<0 lies flat), sprite (+100 flipbook)
+    const iSize = attribute<'vec4'>('iSize', 'vec4');
+    // core, body, tail (packed linear rgb), emission
+    const iCol = attribute<'vec4'>('iCol', 'vec4');
+    // gravity, drag, turbulence, seed
+    const iPhys = attribute<'vec4'>('iPhys', 'vec4');
+    // heat0, heat1, occlusion, floor (-999 none)
+    const iLook = attribute<'vec4'>('iLook', 'vec4');
+
+    const life = max(iTime.y, 1e-4).toVar();
+    const age = this.uTime.sub(iTime.x).toVar();
+    const alive = step(0.0, age).mul(step(age, life)).toVar();
+    const ta = clamp(age, 0.0, life).toVar();
+    const t = ta.div(life).toVar();
+
+    // Closed-form exponential drag: the whole path is a function of age.
+    const k = iPhys.y.toVar();
+    const dragged = k.greaterThan(1e-3);
+    const disp0 = dragged.select(iVel.mul(exp(k.negate().mul(ta)).oneMinus()).div(max(k, 1e-3)), iVel.mul(ta));
+    const sd = iPhys.w.toVar();
+    const wobble = vec3(
+      sin(ta.mul(2.3).add(sd.mul(17.0))).add(sin(ta.mul(5.3).add(sd.mul(7.1))).mul(0.5)),
+      sin(ta.mul(1.9).add(sd.mul(11.0))).mul(0.6),
+      cos(ta.mul(2.1).add(sd.mul(13.0))).add(cos(ta.mul(4.9).add(sd.mul(5.3))).mul(0.5)),
+    ).mul(iPhys.z).mul(ta);
+    const wpos0 = iPos.add(disp0).add(vec3(0.0, iPhys.x.mul(0.5).mul(ta).mul(ta), 0.0)).add(wobble).toVar();
+
+    // Ease-out size: puffs bloom fast then settle.
+    const g = t.oneMinus().mul(t.oneMinus()).oneMinus();
+    const size = mix(iSize.x, iSize.y, g).mul(this.uScale).mul(alive).toVar();
+    const floorY = iLook.w;
+    const wpos = vec3(wpos0.x, floorY.greaterThan(-900.0).select(max(wpos0.y, floorY.add(size.mul(0.3))), wpos0.y), wpos0.z);
+
+    const camRight = cameraWorldMatrix.mul(vec4(1.0, 0.0, 0.0, 0.0)).xyz;
+    const camUp = cameraWorldMatrix.mul(vec4(0.0, 1.0, 0.0, 0.0)).xyz;
+    const camFwd = cameraWorldMatrix.mul(vec4(0.0, 0.0, 1.0, 0.0)).xyz;
+    const corner = positionGeometry.xy;
+    const ang = iTime.w.mul(ta).add(sd.mul(6.2831853));
+    const ca = cos(ang);
+    const sa = sin(ang);
+    const rc = vec2(corner.x.mul(ca).sub(corner.y.mul(sa)), corner.x.mul(sa).add(corner.y.mul(ca)));
+
+    // Lies flat on the ground: shock rings, sigils, splashes.
+    const flat = vec3(rc.x, 0.0, rc.y).mul(size);
+    // Stretched along velocity: sparks read as speed, not as dots.
+    const vel = dragged.select(iVel.mul(exp(k.negate().mul(ta))), iVel).add(vec3(0.0, iPhys.x.mul(ta), 0.0)).toVar();
+    const sp = length(vel).toVar();
+    const vdir = sp.greaterThan(1e-4).select(vel.div(max(sp, 1e-4)), camUp);
+    const side = normalize(cross(vdir, camFwd).add(vec3(1e-5)));
+    const len = size.mul(iSize.z.mul(sp).mul(0.08).add(1.0));
+    const streak = side.mul(corner.x).mul(size).add(vdir.mul(corner.y).mul(len));
+    const facing = camRight.mul(rc.x).mul(size).add(camUp.mul(rc.y).mul(size));
+    const offset = iSize.z.lessThan(-0.001).select(flat, iSize.z.greaterThan(0.001).select(streak, facing));
+
+    // Frame selection: flipbooks play across the life, cross-faded.
+    const sprite = iSize.w;
+    const book = sprite.greaterThanEqual(99.5);
+    const fr = clamp(t, 0.0, 0.999).mul(8.0);
+    const f0 = floor(fr);
+    const f1 = min(f0.add(1.0), 7.0);
+    const base = sprite.sub(100.0);
+    const luv = uv();
+    const vUvA = vary(book.select(cellUv(base.add(f0), luv), cellUv(sprite, luv)));
+    const vUvB = vary(book.select(cellUv(base.add(f1), luv), cellUv(sprite, luv)));
+    const vFrameMix = vary(book.select(fr.sub(f0), float(0.0)));
+    const vCore = vary(unpackRGB(iCol.x));
+    const vBody = vary(unpackRGB(iCol.y));
+    const vTail = vary(unpackRGB(iCol.z));
+    const vEmit = vary(iCol.w);
+    const vHeat = vary(mix(iLook.x, iLook.y, t));
+    const vOccl = vary(iLook.z);
+    const fadeIn = smoothstep(0.0, 0.06, t);
+    const fadeOut = pow(max(t.oneMinus(), 0.0), iTime.z);
+    const vAlpha = vary(fadeIn.mul(fadeOut).mul(alive));
+
+    const atlas = spriteAtlas();
+    const tex = mix(texture(atlas, vUvA), texture(atlas, vUvB), vFrameMix).toVar();
+    const cov = tex.a.mul(vAlpha).toVar();
+    // Heat through the ramp: tail -> body -> core.
+    const h = clamp(tex.r.mul(vHeat), 0.0, 1.0).toVar();
+    const col = mix(mix(vTail, vBody, smoothstep(0.05, 0.5, h)), vCore, smoothstep(0.6, 0.98, h));
+    // Hotter parts shine more; the cool edge stays dim so the shape reads.
+    const light = col.mul(vEmit).mul(h.mul(1.1).add(0.18));
+    const occl = cov.mul(vOccl).toVar();
+    const rgb = light.mul(cov).toVar();
+    const viewZ = positionView.z.negate();
+    const fLin = smoothstep(this.uFogNear, this.uFogFar, viewZ);
+    const fExp = exp(this.uFogDensity.mul(this.uFogDensity).mul(viewZ).mul(viewZ).negate()).oneMinus();
+    const f = clamp(this.uFogMode.lessThan(1.5).select(fLin, fExp), 0.0, 1.0).mul(step(0.5, this.uFogMode)).toVar();
+    const fogged = rgb.mul(f.oneMinus()).add((this.uFogColor as unknown as V3).mul(occl).mul(f));
+
+    const m = new THREE.MeshBasicNodeMaterial({ name: 'fx-particles', side: THREE.DoubleSide, depthTest: true });
+    m.fog = false;
+    m.positionNode = wpos.add(offset);
+    m.colorNode = fogged.mul(FX_EXPOSURE);
+    m.opacityNode = occl;
+    m.maskNode = cov.greaterThanEqual(0.003);
+    setNodeTextures(m, [atlas]);
+    return m;
   }
 
   /** Current clock (seconds), the time base new spawns are stamped with. */
@@ -318,9 +265,8 @@ export class ParticleField {
   /** Advances the clock and uploads only the slots written this frame. */
   update(dt: number, scale = 1): void {
     this.time += dt;
-    const u = this.mat.uniforms;
-    u.uTime!.value = this.time;
-    u.uScale!.value = scale;
+    this.uTime.value = this.time;
+    this.uScale.value = scale;
     this.geo.instanceCount = this.high;
     this.spawnedThisFrame = 0;
     if (this.hi < this.lo) return;
@@ -337,17 +283,16 @@ export class ParticleField {
   }
 
   setFog(fog: THREE.Fog | THREE.FogExp2 | null): void {
-    const u = this.mat.uniforms;
     if (fog instanceof THREE.FogExp2) {
-      u.uFogMode!.value = 2;
-      u.uFogDensity!.value = fog.density;
-      (u.uFogColor!.value as THREE.Color).copy(fog.color);
+      this.uFogMode.value = 2;
+      this.uFogDensity.value = fog.density;
+      this.uFogColor.value.copy(fog.color);
     } else if (fog instanceof THREE.Fog) {
-      u.uFogMode!.value = 1;
-      u.uFogNear!.value = fog.near;
-      u.uFogFar!.value = fog.far;
-      (u.uFogColor!.value as THREE.Color).copy(fog.color);
-    } else u.uFogMode!.value = 0;
+      this.uFogMode.value = 1;
+      this.uFogNear.value = fog.near;
+      this.uFogFar.value = fog.far;
+      this.uFogColor.value.copy(fog.color);
+    } else this.uFogMode.value = 0;
   }
 
   /** Live slots ever written (the draw range). */

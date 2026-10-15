@@ -11,7 +11,12 @@
  * picks the dye. Skin pores are painted here in code. Missing files fall back
  * to flat maps, so a hero always renders.
  */
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  abs, atan, clamp, dot, float, floor, fract, fwidth, length, max, min, mix, mod, negateOnBackSide, normalGeometry,
+  normalize, positionGeometry, sin, smoothstep, sqrt, uniform, vec2, vec3,
+} from 'three/tsl';
+import { asStandard, bindToView, isStandardLike, matColor, matFloat, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
 import { loadTexture } from '../../core/Assets';
 import type { HeroLook } from './Looks';
 import { resolveSurface } from '../SurfaceLibrary';
@@ -62,189 +67,108 @@ const triOptsOf = new WeakMap<THREE.Material, TriOpts>();
 export const ARMOUR_PATTERNS = { quilt: 1, rings: 2, scales: 3, hide: 4, splints: 5, shell: 6 } as const;
 export type ArmourPattern = keyof typeof ARMOUR_PATTERNS;
 
-const PATTERN_GLSL = `
-uniform float patH;
-varying vec3 vPatPos;
-float patArc( vec3 p ) {
-  return atan( p.x, p.z + 0.04 * patH ) * 0.62 * patH;
-}
-float patHeight( vec3 p ) {
-  float U = patArc( p );
-#if PAT_KIND == 1
-  // Diamond quilting: puffed cells between stitched seams.
-  float u = U / 0.085;
-  float v = p.y / 0.085;
-  float pa = sin( PI * fract( u + v ) );
-  float pb = sin( PI * fract( u - v ) );
-  return sqrt( max( 0.0, pa * pb ) );
-#elif PAT_KIND == 2
-  // Mail: rows of interlocking rings.
-  float s = 0.024;
-  float r = floor( p.y / s );
-  vec2 f = vec2( fract( U / s + mod( r, 2.0 ) * 0.5 ), fract( p.y / s ) ) - 0.5;
-  float d = length( f );
-  return max( 0.0, 1.0 - abs( d - 0.3 ) / 0.14 );
-#elif PAT_KIND == 3 || PAT_KIND == 4
-  // Overlapping scales, each row over the one below.
-  #if PAT_KIND == 3
-    vec2 sz = vec2( 0.05, 0.038 );
-  #else
-    vec2 sz = vec2( 0.034, 0.027 );
-  #endif
-  float r = floor( -p.y / sz.y );
-  float fy = fract( -p.y / sz.y );
-  float fu = fract( U / sz.x + mod( r, 2.0 ) * 0.5 ) * 2.0 - 1.0;
-  float edge = 1.0 - 0.45 * fu * fu;
-  return fy < edge ? fy / edge : 0.12;
-#elif PAT_KIND == 5
-  // Splints: upright strips in bands.
-  float fu = fract( U / 0.046 );
-  float strip = smoothstep( 0.06, 0.14, fu ) * ( 1.0 - smoothstep( 0.86, 0.94, fu ) );
-  float fy = fract( p.y / 0.17 );
-  float gap = smoothstep( 0.03, 0.08, fy );
-  return strip * gap;
-#else
+/** Relief height 0..1 at bind position `p`, for pattern `kind`; `h` is the body's head unit. */
+function patHeight(p: V3, kind: number, h: number): F {
+  // Distance round the body: the relief wraps the torso and limbs instead of
+  // being projected flat onto them.
+  const U = atan(p.x, p.z.add(0.04 * h)).mul(0.62 * h);
+  if (kind === 1) {
+    // Diamond quilting: puffed cells between stitched seams.
+    const u = U.div(0.085);
+    const v = p.y.div(0.085);
+    const pa = sin(fract(u.add(v)).mul(Math.PI));
+    const pb = sin(fract(u.sub(v)).mul(Math.PI));
+    return sqrt(max(0.0, pa.mul(pb)));
+  }
+  if (kind === 2) {
+    // Mail: rows of interlocking rings.
+    const sz = 0.024;
+    const r = floor(p.y.div(sz));
+    const f = vec2(fract(U.div(sz).add(mod(r, 2.0).mul(0.5))), fract(p.y.div(sz))).sub(0.5);
+    const d = length(f);
+    return max(0.0, abs(d.sub(0.3)).div(0.14).oneMinus());
+  }
+  if (kind === 3 || kind === 4) {
+    // Overlapping scales, each row over the one below.
+    const sx = kind === 3 ? 0.05 : 0.034;
+    const sy = kind === 3 ? 0.038 : 0.027;
+    const r = floor(p.y.negate().div(sy));
+    const fy = fract(p.y.negate().div(sy));
+    const fu = fract(U.div(sx).add(mod(r, 2.0).mul(0.5))).mul(2.0).sub(1.0);
+    const edge = fu.mul(fu).mul(0.45).oneMinus();
+    return fy.lessThan(edge).select(fy.div(edge), float(0.12));
+  }
+  if (kind === 5) {
+    // Splints: upright strips in bands.
+    const fu = fract(U.div(0.046));
+    const strip = smoothstep(0.06, 0.14, fu).mul(smoothstep(0.86, 0.94, fu).oneMinus());
+    const fy = fract(p.y.div(0.17));
+    return strip.mul(smoothstep(0.03, 0.08, fy));
+  }
   // A shell of broad curved plates, each lapping the one below, with growth lines.
-  float r = floor( -p.y / 0.065 );
-  float fy = fract( -p.y / 0.065 );
-  float fu = fract( U / 0.15 + mod( r, 2.0 ) * 0.5 ) * 2.0 - 1.0;
-  float edge = 1.0 - 0.3 * fu * fu;
-  float k = fy < edge ? fy / edge : 0.08;
-  return k * k * 0.85 + 0.15 * ( 0.5 + 0.5 * sin( k * 18.85 ) );
-#endif
+  const r = floor(p.y.negate().div(0.065));
+  const fy = fract(p.y.negate().div(0.065));
+  const fu = fract(U.div(0.15).add(mod(r, 2.0).mul(0.5))).mul(2.0).sub(1.0);
+  const edge = fu.mul(fu).mul(0.3).oneMinus();
+  const k = fy.lessThan(edge).select(fy.div(edge), float(0.08));
+  return k.mul(k).mul(0.85).add(sin(k.mul(18.85)).mul(0.5).add(0.5).mul(0.15));
 }
-`;
 
 /** Depth of each relief in metres, and the period it repeats at (for the fade). */
 const PATTERN_DEPTH: Record<number, [number, number]> = { 1: [0.006, 0.085], 2: [0.0022, 0.024], 3: [0.006, 0.038], 4: [0.0045, 0.027], 5: [0.005, 0.046], 6: [0.007, 0.065] };
 
-/** Patches a standard material to sample its maps triplanar in bind space. */
-function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
-  const key = `tri|${o.albedo ? 'a' : ''}|${o.pattern?.kind ?? 0}`;
+/** Gives a standard node material maps sampled triplanar in bind space. */
+function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriOpts): void {
   triOptsOf.set(m, o);
   // Read by the icon studio (art/Icons.ts), as on item materials.
   setScans(m, o.albedo ? [o.albedo, o.normal] : [o.normal]);
-  m.customProgramCacheKey = () => key;
+  setNodeTextures(m, [o.albedo, o.normal]);
   const pat = o.pattern;
-  m.onBeforeCompile = (sh) => {
-    if (pat) {
-      sh.uniforms.patH = { value: pat.h };
-      sh.defines = { ...(sh.defines ?? {}), TRI_PATTERN: '', PAT_KIND: String(pat.kind), PAT_DEPTH: PATTERN_DEPTH[pat.kind]![0].toFixed(5), PAT_PERIOD: PATTERN_DEPTH[pat.kind]![1].toFixed(4) };
-    }
-    sh.uniforms.triAlbedo = { value: o.albedo ?? null };
-    sh.uniforms.triNormal = { value: o.normal };
-    sh.uniforms.triScale = { value: o.scale };
-    sh.uniforms.triNormalScale = { value: o.normalScale };
-    sh.uniforms.triRoughVar = { value: o.roughVar };
-    sh.uniforms.triGain = { value: o.albedoGain ?? 1.6 };
-    if (o.albedo) sh.defines = { ...(sh.defines ?? {}), TRI_ALBEDO: '' };
-    sh.vertexShader = sh.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-uniform float triScale;
-varying vec3 vTriPos;
-varying vec3 vTriN;
-varying vec3 vB2V0;
-varying vec3 vB2V1;
-varying vec3 vB2V2;
-#ifdef TRI_PATTERN
-varying vec3 vPatPos;
-#endif`,
-      )
-      .replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>
-#ifdef TRI_PATTERN
-vPatPos = position;
-#endif
-vTriPos = position * triScale;
-vTriN = normal;
-#ifdef USE_SKINNING
-  mat3 triB2V = normalMatrix * mat3( skinMatrix );
-#else
-  mat3 triB2V = normalMatrix;
-#endif
-vB2V0 = triB2V[ 0 ];
-vB2V1 = triB2V[ 1 ];
-vB2V2 = triB2V[ 2 ];`,
-      );
-    sh.fragmentShader = sh.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-uniform sampler2D triAlbedo;
-uniform sampler2D triNormal;
-uniform float triNormalScale;
-uniform float triRoughVar;
-uniform float triGain;
-varying vec3 vTriPos;
-varying vec3 vTriN;
-varying vec3 vB2V0;
-varying vec3 vB2V1;
-varying vec3 vB2V2;
-#ifdef TRI_PATTERN
-${PATTERN_GLSL}
-#endif`,
-      )
-      .replace(
-        '#include <map_fragment>',
-        `vec3 triNb = normalize( vTriN );
-#ifdef TRI_PATTERN
-  // Fade the relief out where it repeats in fewer than a few pixels.
-  float patPx = length( fwidth( vPatPos ) );
-  float patFade = 1.0 - smoothstep( PAT_PERIOD * 0.12, PAT_PERIOD * 0.3, patPx );
-  float patH0 = patHeight( vPatPos );
-  diffuseColor.rgb *= mix( 0.8, mix( 0.62, 1.08, patH0 ), patFade );
-#endif
-vec3 triW = pow( abs( triNb ), vec3( 4.0 ) );
-triW /= ( triW.x + triW.y + triW.z );
-vec4 triNx = texture2D( triNormal, vTriPos.zy );
-vec4 triNy = texture2D( triNormal, vTriPos.xz );
-vec4 triNz = texture2D( triNormal, vTriPos.xy );
-#ifdef TRI_ALBEDO
-  vec4 triA = texture2D( triAlbedo, vTriPos.zy ) * triW.x + texture2D( triAlbedo, vTriPos.xz ) * triW.y + texture2D( triAlbedo, vTriPos.xy ) * triW.z;
-  diffuseColor.rgb *= min( vec3( 2.0 ), triA.rgb * triGain );
-#endif`,
-      )
-      .replace(
-        '#include <roughnessmap_fragment>',
-        `#include <roughnessmap_fragment>
-float triR = triNx.a * triW.x + triNy.a * triW.y + triNz.a * triW.z;
-roughnessFactor = clamp( roughnessFactor * mix( 1.0, triR * 1.4, triRoughVar ), 0.04, 1.0 );`,
-      )
-      .replace(
-        '#include <normal_fragment_maps>',
-        `#include <normal_fragment_maps>
-{
-  // Whiteout blend of three tangent-space normals onto the bind normal.
-  vec3 tx = ( triNx.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  vec3 ty = ( triNy.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  vec3 tz = ( triNz.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  tx = vec3( tx.xy + triNb.zy, abs( tx.z ) * triNb.x );
-  ty = vec3( ty.xy + triNb.xz, abs( ty.z ) * triNb.y );
-  tz = vec3( tz.xy + triNb.xy, abs( tz.z ) * triNb.z );
-  vec3 bn = normalize( tx.zyx * triW.x + ty.xzy * triW.y + tz.xyz * triW.z );
-#ifdef TRI_PATTERN
-  {
-    // Bend the bind normal round the relief: its gradient along the surface.
-    const float e = 0.0012;
-    vec3 g = vec3(
-      patHeight( vPatPos + vec3( e, 0.0, 0.0 ) ) - patHeight( vPatPos - vec3( e, 0.0, 0.0 ) ),
-      patHeight( vPatPos + vec3( 0.0, e, 0.0 ) ) - patHeight( vPatPos - vec3( 0.0, e, 0.0 ) ),
-      patHeight( vPatPos + vec3( 0.0, 0.0, e ) ) - patHeight( vPatPos - vec3( 0.0, 0.0, e ) )
-    ) * ( PAT_DEPTH / ( 2.0 * e ) );
-    g -= dot( g, triNb ) * triNb;
-    bn = normalize( bn - g * 1.4 * patFade );
+  // The bind pose: the skinned mesh's own `position` and `normal` attributes.
+  const Pb = positionGeometry;
+  const Nb = normalGeometry.normalize().toVar();
+  const P = Pb.mul(uniform(o.scale)).toVar();
+  const t = triSample(P, Nb, o.normal, o.albedo);
+  const W = t.W;
+  let color: V3 = matColor('color');
+  let patFade: F = float(0.0);
+  if (pat) {
+    // Fade the relief out where it repeats in fewer than a few pixels.
+    const period = PATTERN_DEPTH[pat.kind]![1];
+    const px = length(fwidth(Pb));
+    patFade = smoothstep(period * 0.12, period * 0.3, px).oneMinus().toVar();
+    const h0 = patHeight(Pb, pat.kind, pat.h);
+    color = color.mul(mix(float(0.8), mix(0.62, 1.08, h0), patFade));
   }
-#endif
-  normal = normalize( mat3( vB2V0, vB2V1, vB2V2 ) * bn );
-  #ifdef DOUBLE_SIDED
-    normal *= faceDirection;
-  #endif
-}`,
-      );
-  };
+  if (o.albedo) {
+    color = color.mul(min(vec3(2.0), t.albedo!.rgb.mul(uniform(o.albedoGain ?? 1.6))));
+  }
+  m.colorNode = color;
+
+  const triR = t.rough;
+  m.roughnessNode = clamp(matFloat('roughness').mul(mix(float(1.0), triR.mul(1.4), uniform(o.roughVar))), 0.04, 1.0);
+
+  let bn: V3 = whiteout(t, Nb, uniform(o.normalScale));
+  if (pat) {
+    // Bend the bind normal round the relief: its gradient along the surface.
+    const e = 0.0012;
+    const depth = PATTERN_DEPTH[pat.kind]![0];
+    const ph = (d: V3): F => patHeight(Pb.add(d), pat.kind, pat.h);
+    const g0 = vec3(
+      ph(vec3(e, 0, 0)).sub(ph(vec3(-e, 0, 0))),
+      ph(vec3(0, e, 0)).sub(ph(vec3(0, -e, 0))),
+      ph(vec3(0, 0, e)).sub(ph(vec3(0, 0, -e))),
+    ).mul(depth / (2 * e));
+    const g = g0.sub(Nb.mul(dot(g0, Nb)));
+    bn = normalize(bn.sub(g.mul(1.4).mul(patFade)));
+  }
+  // Flipped on back faces by the side the material has when drawn.
+  m.normalNode = negateOnBackSide(bindToView(bn, Pb, Nb));
+}
+
+/** A standard node material for the hero kit. */
+function std(p: THREE.MeshStandardNodeMaterialParameters): THREE.MeshStandardNodeMaterial {
+  return new THREE.MeshStandardNodeMaterial(p);
 }
 
 /** Integer hash, deterministic. */
@@ -338,11 +262,11 @@ function skinPores(): THREE.DataTexture {
 /** Skin: tinted by the look, with painted flush and shadow in vertex colours. */
 export function skinMaterial(look: HeroLook): THREE.MeshStandardMaterial {
   return shared(`skin|${look.skin}|${look.dead ? 1 : 0}`, () => {
-    const m = new THREE.MeshStandardMaterial({ color: look.skin, roughness: look.dead ? 0.85 : 0.62, metalness: 0, vertexColors: true });
+    const m = std({ color: look.skin, roughness: look.dead ? 0.85 : 0.62, metalness: 0, vertexColors: true });
     // One tile every 6 cm.
     triplanar(m, { normal: skinPores(), scale: 1 / 0.06, normalScale: look.dead ? 0.9 : 0.5, roughVar: 0.8 });
     m.name = 'hero-skin';
-    return m;
+    return asStandard(m);
   });
 }
 
@@ -352,10 +276,10 @@ export function fabricMaterial(fabric: HeroFabric, tint: number, roughness = 0.9
     const dir = `textures/hero/${fabric}`;
     const albedo = loadTexture(`${dir}/albedo.webp`, { srgb: true, fallback: 0x9e9e9e, fallbackAlpha: 128 });
     const normal = loadTexture(`${dir}/normal.webp`, { srgb: false, fallback: 0x8080ff, fallbackAlpha: 200 });
-    const m = new THREE.MeshStandardMaterial({ color: tint, roughness, metalness: 0, side: twoSided ? THREE.DoubleSide : THREE.FrontSide });
+    const m = std({ color: tint, roughness, metalness: 0, side: twoSided ? THREE.DoubleSide : THREE.FrontSide });
     triplanar(m, { albedo, normal, scale: 1 / FABRIC_METRES[fabric], normalScale: 1, roughVar: 0.7, albedoGain: 2.6 });
     m.name = `hero-${fabric}`;
-    return m;
+    return asStandard(m);
   });
 }
 
@@ -412,12 +336,12 @@ function strands(): { albedo: THREE.DataTexture; normal: THREE.DataTexture } {
 /** Hair, brows and beards: streaked strands with a soft sheen. */
 export function hairMaterial(color: number): THREE.MeshStandardMaterial {
   return shared(`hair|${color}`, () => {
-    const m = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0 });
+    const m = std({ color, roughness: 0.55, metalness: 0 });
     const t = strands();
     // One tile every 4 cm.
     triplanar(m, { albedo: t.albedo, normal: t.normal, scale: 1 / 0.04, normalScale: 1.2, roughVar: 0.8 });
     m.name = 'hero-hair';
-    return m;
+    return asStandard(m);
   });
 }
 
@@ -428,12 +352,12 @@ export function hairMaterial(color: number): THREE.MeshStandardMaterial {
  */
 export function furMaterial(sheen = 0.68): THREE.MeshStandardMaterial {
   return shared(`fur|${sheen}`, () => {
-    const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: sheen, metalness: 0, vertexColors: true });
+    const m = std({ color: 0xffffff, roughness: sheen, metalness: 0, vertexColors: true });
     const t = strands();
     // One tile every 5 cm: thicker strands than a man's hair.
     triplanar(m, { albedo: t.albedo, normal: t.normal, scale: 1 / 0.05, normalScale: 1.6, roughVar: 0.9, albedoGain: 1.25 });
     m.name = 'hero-fur';
-    return m;
+    return asStandard(m);
   });
 }
 
@@ -477,7 +401,7 @@ export function gearMaterial(key: string, opts: { tint?: number; metalness?: num
     // Worn metal keeps a share of diffuse light: a dungeon has little for a
     // mirror to reflect, and full metal reads as black.
     const metal = opts.metalness ?? (def.metal > 0.5 ? 0.6 : def.metal);
-    const m = new THREE.MeshStandardMaterial({
+    const m = std({
       color,
       // Metal keeps some grain: a smoother floor blows out to white under the town's sky.
       roughness: opts.roughness ?? Math.max(metal > 0.5 ? 0.42 : 0.35, (def.rough[0] + def.rough[1]) * 0.6),
@@ -496,7 +420,7 @@ export function gearMaterial(key: string, opts: { tint?: number; metalness?: num
     m.name = `hero-gear:${def.key}`;
     // The colour it reads as, scan and all: what the icon's surface of the same key shows.
     m.userData.albedo = def.base !== undefined ? color.getHex() : color.clone().multiply(avg).getHex();
-    return m;
+    return asStandard(m);
   });
 }
 
@@ -507,9 +431,9 @@ export function gearMaterial(key: string, opts: { tint?: number; metalness?: num
  */
 export function patternedMaterial(m: THREE.Material, pattern: ArmourPattern, h: number): THREE.Material {
   const o = triOptsOf.get(m);
-  if (!o || !(m instanceof THREE.MeshStandardMaterial)) return m;
+  if (!o || !isStandardLike(m)) return m;
   return shared(`pat|${m.uuid}|${pattern}|${h.toFixed(4)}`, () => {
-    const c = m.clone();
+    const c = (m as unknown as THREE.MeshStandardNodeMaterial).clone();
     triplanar(c, { ...o, pattern: { kind: ARMOUR_PATTERNS[pattern], h } });
     c.name = `${m.name}+${pattern}`;
     return c;
@@ -522,10 +446,10 @@ export function patternedMaterial(m: THREE.Material, pattern: ArmourPattern, h: 
  * like the material it twins.
  */
 export function glowingTwin(m: THREE.Material, color: number, intensity: number): THREE.Material {
-  if (!(m instanceof THREE.MeshStandardMaterial) || intensity <= 0) return m;
+  if (!isStandardLike(m) || intensity <= 0) return m;
   const o = triOptsOf.get(m);
   return shared(`lit|${m.uuid}|${color}|${intensity.toFixed(3)}`, () => {
-    const c = m.clone();
+    const c = (m as unknown as THREE.MeshStandardNodeMaterial).clone();
     if (o) triplanar(c, o);
     c.emissive.set(color);
     c.emissiveIntensity = intensity;

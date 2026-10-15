@@ -14,19 +14,16 @@ import { loadMeshCache } from '../src/art/hero/MeshCache';
 import { HeroAnimator } from '../src/art/hero/Animator';
 import { actionFor } from '../src/art/hero/Actions';
 import { buildFolk, NPC_LOOK_IDS, type FolkModel } from '../src/art/npc/Folk';
+import { openStudio } from './studio';
 
 const BG = '#16181e';
 const INK = '#c9d1de';
 
-let renderer: THREE.WebGLRenderer | null = null;
+/** Opened before any sheet draws: its GPU device opens asynchronously. */
+const renderer = await openStudio({ exposure: 1.1 });
+
 let envTex: THREE.Texture | null = null;
-function studio(w: number, h: number): THREE.WebGLRenderer {
-  if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
-  }
+function studio(w: number, h: number): THREE.WebGPURenderer {
   renderer.setSize(w, h, false);
   return renderer;
 }

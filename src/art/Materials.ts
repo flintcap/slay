@@ -11,15 +11,17 @@
  * private copy that is safe to change. Both share the same textures.
  *
  * The packed layout (albedo + height in alpha, normal + roughness in alpha)
- * needs a small shader patch, attached here to materials this module creates
- * and owns. Code elsewhere must still never attach `onBeforeCompile` to a
- * `surface()` result: clone it first.
+ * needs its own shader nodes, attached here to materials this module creates
+ * and owns. Code elsewhere must never change the nodes of a `surface()`
+ * result: take a `surfaceVariant()` instead.
  *
  * World geometry (floors, walls, terrain) does not use these: it uses
  * `WorldMaterial.ts`, which maps the same sets in world space.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import { mix, normalMap, texture, uniform, uv } from 'three/tsl';
+import { asStandard, matColor, matFloat, matVec2 } from '../core/Tsl';
 import {
   radialGlowTexture,
   runeRingTexture,
@@ -60,60 +62,34 @@ export interface SurfaceOpts {
 
 /**
  * Albedo alpha is height and normal alpha is roughness, so three's stock
- * chunks would read height as opacity and ignore the roughness. The patch
- * also applies the repeat in the shader, so every material can share one
- * texture object per file instead of cloning textures to change `repeat`.
+ * material would read height as opacity and ignore the roughness. These
+ * nodes read the packed layout, and apply the repeat in the shader, so every
+ * material can share one texture object per file instead of cloning
+ * textures to change `repeat`.
  */
-function patchPacked(mat: THREE.MeshStandardMaterial, uniforms: Record<string, THREE.IUniform>): void {
-  mat.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec2 slRough;\nuniform vec3 slUv;\nuniform float slCav;')
-      .replace(
-        '#include <map_fragment>',
-        [
-          '#ifdef USE_MAP',
-          '  vec4 slAlb = texture2D( map, vMapUv * slUv.x + slUv.yz );',
-          '  diffuseColor.rgb *= slAlb.rgb;',
-          '#endif',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <roughnessmap_fragment>',
-        [
-          'float roughnessFactor = roughness;',
-          '#ifdef USE_NORMALMAP_TANGENTSPACE',
-          '  vec4 slNrm = texture2D( normalMap, vNormalMapUv * slUv.x + slUv.yz );',
-          '  roughnessFactor *= mix( slRough.x, slRough.y, slNrm.a );',
-          '#else',
-          '  roughnessFactor *= slRough.y;',
-          '#endif',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <normal_fragment_maps>',
-        [
-          '#ifdef USE_NORMALMAP_TANGENTSPACE',
-          '  vec3 mapN = slNrm.xyz * 2.0 - 1.0;',
-          '  mapN.xy *= normalScale;',
-          '  normal = normalize( tbn * mapN );',
-          '#endif',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        [
-          '#ifdef USE_EMISSIVEMAP',
-          '  totalEmissiveRadiance *= texture2D( emissiveMap, vEmissiveMapUv * slUv.x + slUv.yz ).rgb;',
-          '#elif defined( USE_MAP )',
-          // No emission map: the glow sits in the cracks and hollows of the relief.
-          '  float slC = 1.0 - slAlb.a;',
-          '  totalEmissiveRadiance *= mix( 1.0, slC * slC * slC * 2.0, slCav );',
-          '#endif',
-        ].join('\n'),
-      );
-  };
-  mat.customProgramCacheKey = () => 'slayPacked';
+function patchPacked(
+  mat: THREE.MeshStandardNodeMaterial,
+  tex: { albedo: THREE.Texture; normal: THREE.Texture; emissive: THREE.Texture | null },
+  rough: THREE.Vector2,
+  uvXf: THREE.Vector3,
+  cav: number,
+): void {
+  const uRough = uniform(rough);
+  const uUv = uniform(uvXf);
+  const st = uv().mul(uUv.x).add(uUv.yz);
+  const alb = texture(tex.albedo, st);
+  const nrm = texture(tex.normal, st);
+  mat.colorNode = matColor('color').mul(alb.rgb);
+  mat.roughnessNode = matFloat('roughness').mul(mix(uRough.x, uRough.y, nrm.a));
+  mat.normalNode = normalMap(nrm, matVec2('normalScale'));
+  const glow = matColor('emissive').mul(matFloat('emissiveIntensity'));
+  if (tex.emissive) {
+    mat.emissiveNode = glow.mul(texture(tex.emissive, st).rgb);
+  } else if (cav > 0) {
+    // No emission map: the glow sits in the cracks and hollows of the relief.
+    const c = alb.a.oneMinus();
+    mat.emissiveNode = glow.mul(c.mul(c).mul(c).mul(2.0));
+  }
 }
 
 /** Linear-light tint that moves the scan's average colour onto the surface's target. */
@@ -136,7 +112,7 @@ function surfaceTint(def: SurfaceDef, extra?: number): THREE.Color {
 
 function buildSurface(def: SurfaceDef, o: SurfaceOpts, name: string): THREE.MeshStandardMaterial {
   const tex = setTextures(def.set);
-  const mat = new THREE.MeshStandardMaterial({ name });
+  const mat = new THREE.MeshStandardNodeMaterial({ name });
   mat.map = tex.albedo;
   mat.normalMap = tex.normal;
   const bump = (o.bump ?? 1) * def.bump * 0.85;
@@ -160,15 +136,15 @@ function buildSurface(def: SurfaceDef, o: SurfaceOpts, name: string): THREE.Mesh
     mat.depthWrite = (o.opacity ?? 1) > 0.95;
   }
   const seed = o.seed ?? 0;
-  const uniforms = {
-    slRough: { value: new THREE.Vector2(def.rough[0], def.rough[1]) },
-    slCav: { value: o.emissive === undefined && !tex.emissive ? 1 : 0 },
-    slUv: { value: new THREE.Vector3(o.repeat ?? 1, ((seed * 0.6180339) % 1 + 1) % 1, ((seed * 0.7548776) % 1 + 1) % 1) },
-  };
-  mat.userData.slay = uniforms;
   mat.userData.paletteKey = def.key;
-  patchPacked(mat, uniforms);
-  return mat;
+  patchPacked(
+    mat,
+    tex,
+    new THREE.Vector2(def.rough[0], def.rough[1]),
+    new THREE.Vector3(o.repeat ?? 1, ((seed * 0.6180339) % 1 + 1) % 1, ((seed * 0.7548776) % 1 + 1) % 1),
+    o.emissive === undefined && !tex.emissive ? 1 : 0,
+  );
+  return asStandard(mat);
 }
 
 // ---------------------------------------------------------------------------

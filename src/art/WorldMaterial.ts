@@ -24,10 +24,17 @@
  *    dithered tube) and roof dissolve (a lid opens around the hero).
  *
  * Each call makes a private material; the caller owns disposal. Materials of
- * the same shape (kind, layer count, flags) share one shader program.
+ * the same shape (kind, layer count, flags) build the same shader, which
+ * three.js compiles once.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  Fn, If, abs, attribute, cameraPosition, cameraViewMatrix, clamp, dFdx, dFdy, distance, dot, float, floor, fract,
+  length, max, mix, normalWorldGeometry, positionWorld, pow, property, sin, smoothstep, step,
+  texture, uniform, vec2, vec3, vec4,
+} from 'three/tsl';
+import { andMask, asStandard, matColor, matFloat, noise2, setNodeTextures, pixelDither, type F, type V2, type V3, type V4 } from '../core/Tsl';
 import { resolveSurface } from './SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetInfo } from './TextureSets';
 
@@ -103,352 +110,299 @@ export function setWorldRoof(x: number, z: number, radius: number): void {
   worldRoof.value.set(x, z, radius);
 }
 
-const CUTAWAY_GLSL = /* glsl */ `
-  if (uCut.w > 0.0) {
-    vec3 cutD = uCut.xyz - cameraPosition;
-    float cutL = length(cutD);
-    vec3 cutN = cutD / max(cutL, 1e-3);
-    vec3 cutR = vSlPos - cameraPosition;
-    float cutT = dot(cutR, cutN);
-    float cutP = length(cutR - cutN * cutT);
-    float cutA = max(smoothstep(uCut.w * 0.6, uCut.w, cutP), smoothstep(cutL - 1.4, cutL - 0.7, cutT));
-    float cutH = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-    if (cutA < cutH) discard;
-  }
-`;
+const uCut = uniform(worldCutaway.value);
+const uRoof = uniform(worldRoof.value);
 
-const ROOF_GLSL = /* glsl */ `
-  {
-    float roofD = distance(vSlPos.xz, uRoof.xy);
-    float roofA = smoothstep(uRoof.z * 0.62, uRoof.z, roofD);
-    float roofN = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-    if (roofA < roofN) discard;
-  }
-`;
+/** Kept where the sightline cut does not open the wall. */
+function cutKeep(): THREE.Node<'bool'> {
+  const d = uCut.xyz.sub(cameraPosition);
+  const len = length(d);
+  const n = d.div(max(len, 1e-3));
+  const r = positionWorld.sub(cameraPosition);
+  const t = dot(r, n);
+  const off = length(r.sub(n.mul(t)));
+  const a = max(smoothstep(uCut.w.mul(0.6), uCut.w, off), smoothstep(len.sub(1.4), len.sub(0.7), t));
+  return uCut.w.lessThanEqual(0.0).or(a.greaterThanEqual(pixelDither()));
+}
+
+/** Kept outside the roof's opening around the hero. */
+function roofKeep(): THREE.Node<'bool'> {
+  const d = distance(positionWorld.xz, uRoof.xy);
+  const a = smoothstep(uRoof.z.mul(0.62), uRoof.z, d);
+  return uRoof.z.lessThanEqual(0.0).or(a.greaterThanEqual(pixelDither()));
+}
 
 /**
- * The same cutaway on any private material (trim, plinths, wall dressing
- * that would otherwise float in the hole). Never call it on a cached
- * `surface()`; it replaces `onBeforeCompile`.
+ * The same cutaway on any private node material (trim, plinths, wall
+ * dressing that would otherwise float in the hole). Never call it on a
+ * cached `surface()`.
  */
 export function addWorldCutaway<M extends THREE.Material>(mat: M): M {
-  const prev = mat.onBeforeCompile;
-  const prevKey = mat.customProgramCacheKey();
-  mat.onBeforeCompile = (shader, renderer) => {
-    prev.call(mat, shader, renderer);
-    shader.uniforms.uCut = worldCutaway;
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vSlPos;')
-      .replace(
-        '#include <project_vertex>',
-        [
-          '#include <project_vertex>',
-          'vec4 slCutP = vec4( transformed, 1.0 );',
-          '#ifdef USE_INSTANCING',
-          '  slCutP = instanceMatrix * slCutP;',
-          '#endif',
-          'vSlPos = ( modelMatrix * slCutP ).xyz;',
-        ].join('\n'),
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vSlPos;\nuniform vec4 uCut;')
-      .replace('#include <clipping_planes_fragment>', `${CUTAWAY_GLSL}\n#include <clipping_planes_fragment>`);
-  };
-  mat.customProgramCacheKey = () => `${prevKey}|cutaway`;
+  andMask(mat as unknown as THREE.NodeMaterial, cutKeep());
   return mat;
 }
 
 // ---------------------------------------------------------------------------
-// Shader generation
+// Shader nodes
 // ---------------------------------------------------------------------------
 
-const COMMON_GLSL = /* glsl */ `
-  float slHash(vec2 p) {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
-  }
-  float slNoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(slHash(i), slHash(i + vec2(1.0, 0.0)), f.x), mix(slHash(i + vec2(0.0, 1.0)), slHash(i + vec2(1.0, 1.0)), f.x), f.y);
-  }
-  // Two offset taps blended along the texture's own detail. k is a slow
-  // world-space noise, so the offset pair changes every few metres.
-  void slTap(sampler2D A, sampler2D N, vec2 uv, vec2 dx, vec2 dy, float k, out vec4 a, out vec4 n, out float t, out vec2 oa, out vec2 ob) {
-  #ifdef SL_DETILE
-    float l = k * 7.0;
-    float ia = floor(l);
-    float f = fract(l);
-    oa = sin(vec2(3.0, 7.0) * ia);
-    ob = sin(vec2(3.0, 7.0) * (ia + 1.0));
-    vec4 a0 = textureGrad(A, uv + oa, dx, dy);
-    vec4 a1 = textureGrad(A, uv + ob, dx, dy);
-    t = smoothstep(0.2, 0.8, f - 0.1 * dot(a0.rgb - a1.rgb, vec3(1.0)));
-    a = mix(a0, a1, t);
-    n = mix(textureGrad(N, uv + oa, dx, dy), textureGrad(N, uv + ob, dx, dy), t);
-  #else
-    oa = vec2(0.0);
-    ob = vec2(0.0);
-    t = 0.0;
-    a = textureGrad(A, uv, dx, dy);
-    n = textureGrad(N, uv, dx, dy);
-  #endif
-  }
-`;
-
-interface Proj {
-  /** Weight component of slW. */
-  w: string;
-  uv: string;
-  dx: string;
-  dy: string;
-  /** Tangent normal t -> world, minus the axis normal. */
-  delta: string;
-}
-
-const PROJ: Record<'x' | 'y' | 'z', Proj> = {
-  y: {
-    w: 'slW.y',
-    uv: 'vec2(slP.x, -slSg.y * slP.z)',
-    dx: 'vec2(slDx.x, -slSg.y * slDx.z)',
-    dy: 'vec2(slDy.x, -slSg.y * slDy.z)',
-    delta: 'vec3(tt.x, slSg.y * tt.z, -slSg.y * tt.y) - vec3(0.0, slSg.y, 0.0)',
-  },
-  x: {
-    w: 'slW.x',
-    uv: 'vec2(-slSg.x * slP.z, slP.y)',
-    dx: 'vec2(-slSg.x * slDx.z, slDx.y)',
-    dy: 'vec2(-slSg.x * slDy.z, slDy.y)',
-    delta: 'vec3(slSg.x * tt.z, tt.y, -slSg.x * tt.x) - vec3(slSg.x, 0.0, 0.0)',
-  },
-  z: {
-    w: 'slW.z',
-    uv: 'vec2(slSg.z * slP.x, slP.y)',
-    dx: 'vec2(slSg.z * slDx.x, slDx.y)',
-    dy: 'vec2(slSg.z * slDy.x, slDy.y)',
-    delta: 'vec3(slSg.z * tt.x, tt.y, slSg.z * tt.z) - vec3(0.0, 0.0, slSg.z)',
-  },
-};
+type Axis = 'x' | 'y' | 'z';
 
 /** How a layer glows: not at all, from its emission map, or from the low points of its relief. */
 type Glow = 0 | 1 | 2;
 
-function layerGlsl(i: number, axes: Array<'x' | 'y' | 'z'>, emissive: Glow): string {
-  const lines: string[] = [];
-  lines.push(`if (slB${i} > 0.0) {`);
-  lines.push(`  float s = slP${i}.x;`);
-  lines.push('  vec4 la = vec4(0.0); float lr = 0.0; vec3 ld = vec3(0.0); vec3 le = vec3(0.0);');
-  for (const ax of axes) {
-    const p = PROJ[ax];
-    lines.push(`  if (${p.w} > 0.0) {`);
-    lines.push('    vec4 a; vec4 n; float tb; vec2 oa; vec2 ob;');
-    lines.push(`    vec2 puv = ${p.uv} * s;`);
-    lines.push(`    vec2 pdx = ${p.dx} * s;`);
-    lines.push(`    vec2 pdy = ${p.dy} * s;`);
-    lines.push(`    slTap(slA${i}, slN${i}, puv, pdx, pdy, slK, a, n, tb, oa, ob);`);
-    lines.push(`    la += a * ${p.w};`);
-    lines.push(`    lr += n.a * ${p.w};`);
-    lines.push('    vec3 tt = n.xyz * 2.0 - 1.0;');
-    lines.push(`    tt.xy *= slP${i}.y;`);
-    lines.push(`    ld += (${p.delta}) * ${p.w};`);
-    if (emissive === 1) {
-      lines.push(`    le += mix(textureGrad(slE${i}, puv + oa, pdx, pdy).rgb, textureGrad(slE${i}, puv + ob, pdx, pdy).rgb, tb) * ${p.w};`);
-    } else if (emissive === 2) {
-      // No emission map: light pools in the cracks and hollows of the relief.
-      lines.push(`    float cav = 1.0 - a.a; le += vec3(cav * cav * cav * 2.0) * ${p.w};`);
-    }
-    lines.push('  }');
+interface LayerNodes {
+  albedo: THREE.Texture;
+  normal: THREE.Texture;
+  emissive: THREE.Texture | null;
+  /** x: 1 / metres per tile, y: relief strength. */
+  p: THREE.UniformNode<'vec2', THREE.Vector2>;
+  tint: THREE.UniformNode<'color', THREE.Color>;
+  /** x, y: roughness range, z: metalness. */
+  r: THREE.UniformNode<'vec3', THREE.Vector3>;
+  glowColor: THREE.UniformNode<'color', THREE.Color> | null;
+  glow: Glow;
+}
+
+/** One planar projection of world position: its weight, uv, uv gradients and normal rebuild. */
+interface Proj {
+  w: F;
+  uv: V2;
+  dx: V2;
+  dy: V2;
+  /** Tangent normal t -> world, minus the axis normal. */
+  delta: (tt: V3) => V3;
+}
+
+function projection(ax: Axis, P: V3, Dx: V3, Dy: V3, Sg: V3, W: V3): Proj {
+  if (ax === 'y') {
+    const sy = Sg.y;
+    return {
+      w: W.y,
+      uv: vec2(P.x, sy.negate().mul(P.z)),
+      dx: vec2(Dx.x, sy.negate().mul(Dx.z)),
+      dy: vec2(Dy.x, sy.negate().mul(Dy.z)),
+      delta: (tt) => vec3(tt.x, sy.mul(tt.z), sy.negate().mul(tt.y)).sub(vec3(0.0, sy, 0.0)),
+    };
   }
-  lines.push(`  slAlb += la.rgb * slT${i} * slB${i};`);
-  lines.push(`  slRoughV += mix(slR${i}.x, slR${i}.y, lr) * slB${i};`);
-  lines.push(`  slMetalV += slR${i}.z * slB${i};`);
-  lines.push(`  slDN += ld * slB${i};`);
-  if (emissive) lines.push(`  slEmis += le * slEC${i} * slB${i};`);
-  lines.push('}');
-  return lines.join('\n');
+  if (ax === 'x') {
+    const sx = Sg.x;
+    return {
+      w: W.x,
+      uv: vec2(sx.negate().mul(P.z), P.y),
+      dx: vec2(sx.negate().mul(Dx.z), Dx.y),
+      dy: vec2(sx.negate().mul(Dy.z), Dy.y),
+      delta: (tt) => vec3(sx.mul(tt.z), tt.y, sx.negate().mul(tt.x)).sub(vec3(sx, 0.0, 0.0)),
+    };
+  }
+  const sz = Sg.z;
+  return {
+    w: W.z,
+    uv: vec2(sz.mul(P.x), P.y),
+    dx: vec2(sz.mul(Dx.x), Dx.y),
+    dy: vec2(sz.mul(Dy.x), Dy.y),
+    delta: (tt) => vec3(sz.mul(tt.x), tt.y, sz.mul(tt.z)).sub(vec3(0.0, 0.0, sz)),
+  };
 }
 
-/** Heights must be known before the blend weights, so each layer's height is tapped once up front. */
-function heightGlsl(i: number, axis: 'x' | 'y' | 'z'): string {
-  const p = PROJ[axis];
-  return `float slH${i} = slWt${i} > 0.001 ? textureGrad(slA${i}, ${p.uv} * slP${i}.x, ${p.dx} * slP${i}.x, ${p.dy} * slP${i}.x).a : 0.0;`;
-}
-
-interface Built {
-  vertex: (src: string) => string;
-  fragment: (src: string) => string;
-  key: string;
-}
-
-function buildShader(o: WorldMaterialOpts, emissiveMask: Glow[]): Built {
-  const n = Math.max(1, Math.min(4, o.layers.length));
+/**
+ * Builds the node graph. The main pass runs once, in the colour slot, and
+ * leaves its results in named shader variables that the roughness, metal,
+ * normal, glow and occlusion slots read.
+ */
+function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L: LayerNodes[], grime: THREE.UniformNode<'color', THREE.Color>, world: THREE.UniformNode<'vec4', THREE.Vector4>): void {
+  const n = L.length;
   const floorOnly = o.kind === 'floor';
-  const axes: Array<'x' | 'y' | 'z'> = floorOnly ? ['y'] : ['y', 'x', 'z'];
+  const axes: Axis[] = floorOnly ? ['y'] : ['y', 'x', 'z'];
   const detile = o.detile !== false;
   const wall = o.kind === 'wall';
 
-  const vertex = (src: string): string =>
-    src
-      .replace(
-        '#include <common>',
-        [
-          '#include <common>',
-          `attribute float ${WORLD_ENV_ATTRIBUTE};`,
-          n > 1 ? `attribute vec3 ${WORLD_SPLAT_ATTRIBUTE};` : '',
-          n > 1 ? 'varying vec3 vSlSplat;' : '',
-          'varying float vSlEnv;',
-          'varying vec3 vSlPos;',
-          'varying vec3 vSlNor;',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <project_vertex>',
-        [
-          '#include <project_vertex>',
-          'vec4 slWp = vec4( transformed, 1.0 );',
-          'vec3 slWn = objectNormal;',
-          '#ifdef USE_INSTANCING',
-          '  slWp = instanceMatrix * slWp;',
-          '  slWn = mat3( instanceMatrix ) * slWn;',
-          '#endif',
-          'vSlPos = ( modelMatrix * slWp ).xyz;',
-          'vSlNor = normalize( mat3( modelMatrix ) * slWn );',
-          `vSlEnv = ${WORLD_ENV_ATTRIBUTE};`,
-          n > 1 ? `vSlSplat = ${WORLD_SPLAT_ATTRIBUTE};` : '',
-        ].join('\n'),
-      );
+  const outAlb = property('vec3', 'slAlbOut');
+  const outRough = property('float', 'slRoughOut');
+  const outMetal = property('float', 'slMetalOut');
+  const outNormal = property('vec3', 'slNormalOut');
+  const outEmis = property('vec3', 'slEmisOut');
+  const outOcc = property('float', 'slOccOut');
 
-  const pars: string[] = [
-    '#include <common>',
-    detile ? '#define SL_DETILE' : '',
-    'varying float vSlEnv;',
-    'varying vec3 vSlPos;',
-    'varying vec3 vSlNor;',
-    n > 1 ? 'varying vec3 vSlSplat;' : '',
-    'uniform vec3 uGrime;',
-    'uniform vec4 uWorld;',
-    o.cutaway ? 'uniform vec4 uCut;' : '',
-    o.roof ? 'uniform vec3 uRoof;' : '',
-  ];
-  for (let i = 0; i < n; i++) {
-    pars.push(`uniform sampler2D slA${i};`, `uniform sampler2D slN${i};`, `uniform vec2 slP${i};`, `uniform vec3 slT${i};`, `uniform vec3 slR${i};`);
-    if (emissiveMask[i] === 1) pars.push(`uniform sampler2D slE${i};`);
-    if (emissiveMask[i]) pars.push(`uniform vec3 slEC${i};`);
-  }
-  pars.push(COMMON_GLSL);
+  const env = attribute(WORLD_ENV_ATTRIBUTE, 'float') as F;
+  const splat = n > 1 ? (attribute(WORLD_SPLAT_ATTRIBUTE, 'vec3') as V3) : null;
 
-  const body: string[] = [];
-  body.push('vec3 slP = vSlPos;');
-  body.push('vec3 slDx = dFdx(vSlPos);');
-  body.push('vec3 slDy = dFdy(vSlPos);');
-  body.push('vec3 slNg = normalize(vSlNor);');
-  body.push('vec3 slSg = vec3(slNg.x >= 0.0 ? 1.0 : -1.0, slNg.y >= 0.0 ? 1.0 : -1.0, slNg.z >= 0.0 ? 1.0 : -1.0);');
-  if (floorOnly) {
-    body.push('vec3 slW = vec3(0.0, 1.0, 0.0);');
-  } else {
-    body.push('vec3 slW = pow(abs(slNg), vec3(4.0));');
-    body.push('slW /= max(slW.x + slW.y + slW.z, 1e-4);');
-    body.push('slW = max(slW - 0.04, 0.0);');
-    body.push('slW /= max(slW.x + slW.y + slW.z, 1e-4);');
-  }
-  body.push('float slK = slNoise(slP.xz * 0.11 + slP.y * 0.07);');
-  // Layer weights.
-  if (n > 1) {
-    body.push('float slWt1 = vSlSplat.x;');
-    body.push('float slWt2 = vSlSplat.y;');
-    body.push('float slWt3 = vSlSplat.z;');
-    body.push('float slWt0 = max(0.0, 1.0 - (slWt1 + slWt2 + slWt3));');
-    // Dominant projection for the height taps.
-    const dom = floorOnly ? 'y' : null;
-    for (let i = 0; i < n; i++) {
-      if (dom) body.push(heightGlsl(i, dom));
-      else {
-        body.push(`float slH${i} = 0.0;`);
-        body.push(`if (slWt${i} > 0.001) {`);
-        body.push(`  if (slW.y >= max(slW.x, slW.z)) { ${heightGlsl(i, 'y').replace(`float slH${i} =`, `slH${i} =`)} }`);
-        body.push(`  else if (slW.x >= slW.z) { ${heightGlsl(i, 'x').replace(`float slH${i} =`, `slH${i} =`)} }`);
-        body.push(`  else { ${heightGlsl(i, 'z').replace(`float slH${i} =`, `slH${i} =`)} }`);
-        body.push('}');
-      }
+  const main = Fn(() => {
+    const P = positionWorld.toVar();
+    const Dx = dFdx(positionWorld).toVar();
+    const Dy = dFdy(positionWorld).toVar();
+    const Ng = normalWorldGeometry.normalize().toVar();
+    const Sg = step(0.0, Ng).mul(2.0).sub(1.0).toVar();
+    let W: V3;
+    if (floorOnly) {
+      W = vec3(0.0, 1.0, 0.0);
+    } else {
+      const w0 = pow(abs(Ng), vec3(4.0));
+      const w1 = w0.div(max(w0.x.add(w0.y).add(w0.z), 1e-4));
+      const w2 = max(w1.sub(0.04), vec3(0.0));
+      W = w2.div(max(w2.x.add(w2.y).add(w2.z), 1e-4)).toVar();
     }
-    for (let i = 0; i < n; i++) body.push(`float slS${i} = slWt${i} > 0.001 ? slWt${i} + slH${i} * 0.55 : -10.0;`);
-    const maxExpr = Array.from({ length: n }, (_, i) => `slS${i}`).reduce((a, b) => `max(${a}, ${b})`);
-    body.push(`float slMx = ${maxExpr} - 0.2;`);
-    for (let i = 0; i < n; i++) body.push(`float slB${i} = max(slS${i} - slMx, 0.0);`);
-    const sum = Array.from({ length: n }, (_, i) => `slB${i}`).join(' + ');
-    body.push(`float slBs = max(${sum}, 1e-4);`);
-    for (let i = 0; i < n; i++) body.push(`slB${i} /= slBs;`);
-  } else {
-    body.push('float slB0 = 1.0;');
-  }
-  body.push('vec3 slAlb = vec3(0.0); float slRoughV = 0.0; float slMetalV = 0.0; vec3 slDN = vec3(0.0); vec3 slEmis = vec3(0.0);');
-  for (let i = 0; i < n; i++) body.push(layerGlsl(i, axes, emissiveMask[i]!));
+    const K = noise2(P.xz.mul(0.11).add(P.y.mul(0.07))).toVar();
+    const proj: Record<Axis, Proj> = {
+      x: projection('x', P, Dx, Dy, Sg, W),
+      y: projection('y', P, Dx, Dy, Sg, W),
+      z: projection('z', P, Dx, Dy, Sg, W),
+    };
 
-  // World context: drift, damp, grime, contact, caps.
-  body.push('vec2 wsP = abs(slNg.y) > 0.5 ? slP.xz : vec2(slP.x + slP.z, slP.y * 1.3);');
-  body.push('float wsA = slNoise(wsP * (1.0 / 23.0)) * 0.65 + slNoise(wsP * (1.0 / 9.0) + 3.1) * 0.35;');
-  body.push('float wsB = slNoise(wsP * (1.0 / 6.1) + vec2(0.37, 0.71));');
-  body.push('float wsC = slNoise(wsP * (1.0 / 3.3) + vec2(7.1, 2.3));');
-  body.push(wall ? 'float wsContact = 1.0 - smoothstep(0.0, 1.5, vSlEnv);' : 'float wsContact = smoothstep(0.15, 1.0, vSlEnv);');
-  body.push('float wsBroad = (wsA - 0.5) * 2.0;');
-  body.push('slAlb *= 1.0 + wsBroad * 0.24 * uWorld.z;');
-  body.push('vec3 wsHue = uGrime / max(max(uGrime.r, uGrime.g), max(uGrime.b, 0.001));');
-  body.push('float wsBlot = smoothstep(0.45, 0.85, wsB * 0.7 + wsA * 0.3);');
-  body.push('slAlb *= mix(vec3(1.0), wsHue * 0.74, wsBlot * 0.45 * uWorld.z);');
-  body.push(
-    wall
-      ? 'float wsWet = uWorld.y * smoothstep(0.45, 0.8, wsA + wsContact * 0.35) * (1.0 - smoothstep(0.4, 2.2, vSlEnv));'
-      : 'float wsWet = uWorld.y * smoothstep(1.0 - uWorld.y * 0.75, 1.0 - uWorld.y * 0.75 + 0.22, wsA * 0.8 + wsC * 0.2 + wsContact * 0.15);',
-  );
-  body.push('slAlb *= 1.0 - wsWet * 0.42;');
-  body.push('float wsG = clamp(wsContact * (0.55 + wsB * 0.6), 0.0, 1.0) * uWorld.x;');
-  body.push('slAlb = mix(slAlb, uGrime, wsG * 0.5);');
-  body.push(wall ? 'float wsCap = step(150.0, vSlEnv);' : 'const float wsCap = 0.0;');
-  body.push('slAlb *= 1.0 - wsCap * 0.55;');
-  body.push('diffuseColor.rgb *= slAlb;');
+    // Two offset taps blended along the texture's own detail. K is a slow
+    // world-space noise, so the offset pair changes every few metres.
+    const lk = K.mul(7.0);
+    const ia = floor(lk);
+    const fk = fract(lk).toVar();
+    const oa = detile ? sin(vec2(3.0, 7.0).mul(ia)).toVar() : vec2(0.0);
+    const ob = detile ? sin(vec2(3.0, 7.0).mul(ia.add(1.0))).toVar() : vec2(0.0);
 
-  const fragment = (src: string): string => {
-    let s = src
-      .replace('#include <common>', pars.filter(Boolean).join('\n'))
-      .replace('#include <map_fragment>', body.join('\n'))
-      .replace(
-        '#include <roughnessmap_fragment>',
-        [
-          'float roughnessFactor = roughness * slRoughV;',
-          'roughnessFactor *= mix(0.88, 1.06, wsC);',
-          'roughnessFactor = mix(roughnessFactor, 0.2, wsWet * 0.85);',
-          'roughnessFactor = mix(roughnessFactor, 1.0, wsCap);',
-        ].join('\n'),
-      )
-      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = metalness * slMetalV;')
-      .replace(
-        '#include <normal_fragment_maps>',
-        [
-          // Standing water fills the crevices: relief flattens where it is wet.
-          'vec3 slWN = normalize(slNg + slDN * (1.0 - max(wsWet * 0.7, wsCap * 0.6)));',
-          'normal = normalize(mat3(viewMatrix) * slWN);',
-        ].join('\n'),
-      )
-      .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance += slEmis;')
-      .replace(
-        '#include <aomap_fragment>',
-        [
-          '#include <aomap_fragment>',
-          'float wsOcc = 1.0 - wsContact * uWorld.w * 0.65;',
-          'reflectedLight.indirectDiffuse *= wsOcc;',
-          'reflectedLight.indirectSpecular *= wsOcc;',
-          'reflectedLight.directDiffuse *= 1.0 - wsContact * uWorld.w * 0.22;',
-        ].join('\n'),
-      );
-    const discards = `${o.cutaway ? CUTAWAY_GLSL : ''}${o.roof ? ROOF_GLSL : ''}`;
-    if (discards) s = s.replace('#include <clipping_planes_fragment>', `${discards}\n#include <clipping_planes_fragment>`);
-    return s;
-  };
+    // Layer weights, blended by height so mud fills the gaps between cobbles first.
+    const B: F[] = [];
+    if (n > 1 && splat) {
+      const wt: F[] = [splat.x.add(splat.y).add(splat.z).oneMinus().max(0.0), splat.x, splat.y, splat.z];
+      const S: F[] = [];
+      for (let i = 0; i < n; i++) {
+        const h = float(0.0).toVar();
+        const tapH = (ax: Axis): void => {
+          const p = proj[ax];
+          const s = L[i]!.p.x;
+          h.assign(texture(L[i]!.albedo, p.uv.mul(s)).grad(p.dx.mul(s), p.dy.mul(s)).a);
+        };
+        If(wt[i]!.greaterThan(0.001), () => {
+          if (floorOnly) tapH('y');
+          else {
+            If(W.y.greaterThanEqual(max(W.x, W.z)), () => tapH('y'))
+              .ElseIf(W.x.greaterThanEqual(W.z), () => tapH('x'))
+              .Else(() => tapH('z'));
+          }
+        });
+        S.push(wt[i]!.greaterThan(0.001).select(wt[i]!.add(h.mul(0.55)), float(-10.0)).toVar());
+      }
+      const mx = S.reduce((a, b) => max(a, b)).sub(0.2).toVar();
+      const raw = S.map((x) => max(x.sub(mx), 0.0).toVar());
+      const sum = max(raw.reduce<F>((a, b) => a.add(b), float(0.0)), 1e-4).toVar();
+      for (const r of raw) B.push(r.div(sum).toVar() as F);
+    } else {
+      B.push(float(1.0));
+    }
 
-  const key = `world|${o.kind}|${n}|${emissiveMask.join('')}|${detile ? 1 : 0}|${o.cutaway ? 1 : 0}|${o.roof ? 1 : 0}`;
-  return { vertex, fragment, key };
+    const alb = vec3(0.0).toVar();
+    const roughV = float(0.0).toVar();
+    const metalV = float(0.0).toVar();
+    const DN = vec3(0.0).toVar();
+    const emis = vec3(0.0).toVar();
+
+    for (let i = 0; i < n; i++) {
+      const Li = L[i]!;
+      const body = (): void => {
+        const s = Li.p.x;
+        const la = vec4(0.0).toVar();
+        const lr = float(0.0).toVar();
+        const ld = vec3(0.0).toVar();
+        const le = vec3(0.0).toVar();
+        for (const ax of axes) {
+          const p = proj[ax];
+          const tap = (): void => {
+            const puv = p.uv.mul(s);
+            const pdx = p.dx.mul(s);
+            const pdy = p.dy.mul(s);
+            let a: V4;
+            let nn: V4;
+            let tb: F = float(0.0);
+            if (detile) {
+              const a0 = texture(Li.albedo, puv.add(oa)).grad(pdx, pdy);
+              const a1 = texture(Li.albedo, puv.add(ob)).grad(pdx, pdy);
+              tb = smoothstep(0.2, 0.8, fk.sub(dot(a0.rgb.sub(a1.rgb), vec3(1.0)).mul(0.1))).toVar();
+              a = mix(a0, a1, tb);
+              nn = mix(texture(Li.normal, puv.add(oa)).grad(pdx, pdy), texture(Li.normal, puv.add(ob)).grad(pdx, pdy), tb);
+            } else {
+              a = texture(Li.albedo, puv).grad(pdx, pdy);
+              nn = texture(Li.normal, puv).grad(pdx, pdy);
+            }
+            const av = a.toVar();
+            const nv = nn.toVar();
+            la.addAssign(av.mul(p.w));
+            lr.addAssign(nv.a.mul(p.w));
+            const t0 = nv.xyz.mul(2.0).sub(1.0);
+            const tt = vec3(t0.xy.mul(Li.p.y), t0.z);
+            ld.addAssign(p.delta(tt).mul(p.w));
+            if (Li.glow === 1 && Li.emissive) {
+              const e = detile
+                ? mix(texture(Li.emissive, puv.add(oa)).grad(pdx, pdy).rgb, texture(Li.emissive, puv.add(ob)).grad(pdx, pdy).rgb, tb)
+                : texture(Li.emissive, puv).grad(pdx, pdy).rgb;
+              le.addAssign(e.mul(p.w));
+            } else if (Li.glow === 2) {
+              // No emission map: light pools in the cracks and hollows of the relief.
+              const cav = av.a.oneMinus();
+              le.addAssign(vec3(cav.mul(cav).mul(cav).mul(2.0)).mul(p.w));
+            }
+          };
+          if (axes.length > 1) If(p.w.greaterThan(0.0), tap);
+          else tap();
+        }
+        const b = B[i]!;
+        alb.addAssign(la.rgb.mul(Li.tint).mul(b));
+        roughV.addAssign(mix(Li.r.x, Li.r.y, lr).mul(b));
+        metalV.addAssign(Li.r.z.mul(b));
+        DN.addAssign(ld.mul(b));
+        if (Li.glowColor) emis.addAssign(le.mul(Li.glowColor).mul(b));
+      };
+      if (n > 1) If(B[i]!.greaterThan(0.0), body);
+      else body();
+    }
+
+    // World context: drift, damp, grime, contact, caps.
+    const wsP = abs(Ng.y).greaterThan(0.5).select(P.xz, vec2(P.x.add(P.z), P.y.mul(1.3))).toVar();
+    const wsA = noise2(wsP.mul(1.0 / 23.0)).mul(0.65).add(noise2(wsP.mul(1.0 / 9.0).add(3.1)).mul(0.35)).toVar();
+    const wsB = noise2(wsP.mul(1.0 / 6.1).add(vec2(0.37, 0.71))).toVar();
+    const wsC = noise2(wsP.mul(1.0 / 3.3).add(vec2(7.1, 2.3))).toVar();
+    const wsContact = (wall ? smoothstep(0.0, 1.5, env).oneMinus() : smoothstep(0.15, 1.0, env)).toVar();
+    const wsBroad = wsA.sub(0.5).mul(2.0);
+    alb.mulAssign(wsBroad.mul(0.24).mul(world.z).add(1.0));
+    const gmax = max(max(grime.r, grime.g), max(grime.b, 0.001));
+    const grimeV = grime as unknown as V3;
+    const wsHue = grimeV.div(gmax);
+    const wsBlot = smoothstep(0.45, 0.85, wsB.mul(0.7).add(wsA.mul(0.3)));
+    alb.mulAssign(mix(vec3(1.0), wsHue.mul(0.74), wsBlot.mul(0.45).mul(world.z)));
+    const wsWet = (wall
+      ? world.y.mul(smoothstep(0.45, 0.8, wsA.add(wsContact.mul(0.35)))).mul(smoothstep(0.4, 2.2, env).oneMinus())
+      : world.y.mul(smoothstep(world.y.mul(0.75).oneMinus(), world.y.mul(0.75).oneMinus().add(0.22), wsA.mul(0.8).add(wsC.mul(0.2)).add(wsContact.mul(0.15))))
+    ).toVar();
+    alb.mulAssign(wsWet.mul(0.42).oneMinus());
+    const wsG = clamp(wsContact.mul(wsB.mul(0.6).add(0.55)), 0.0, 1.0).mul(world.x);
+    alb.assign(mix(alb, grimeV, wsG.mul(0.5)));
+    const wsCap: F = wall ? step(150.0, env).toVar() : float(0.0);
+    alb.mulAssign(wsCap.mul(0.55).oneMinus());
+
+    // Contact shadow: indirect light is occluded fully, direct light a little.
+    const dd = wsContact.mul(world.w).mul(0.22).oneMinus();
+    const occ = wsContact.mul(world.w).mul(0.65).oneMinus();
+    outAlb.assign(alb.mul(dd));
+    outOcc.assign(occ.div(max(dd, 1e-3)));
+
+    let rough: F = matFloat('roughness').mul(roughV);
+    rough = rough.mul(mix(0.88, 1.06, wsC));
+    rough = mix(rough, 0.2, wsWet.mul(0.85));
+    rough = mix(rough, 1.0, wsCap);
+    outRough.assign(rough);
+    outMetal.assign(matFloat('metalness').mul(metalV));
+    // Standing water fills the crevices: relief flattens where it is wet.
+    const WN = Ng.add(DN.mul(max(wsWet.mul(0.7), wsCap.mul(0.6)).oneMinus())).normalize();
+    outNormal.assign(cameraViewMatrix.mul(vec4(WN, 0.0)).xyz.normalize());
+    outEmis.assign(emis);
+
+    return matColor('color').mul(outAlb);
+  });
+
+  mat.colorNode = main();
+  mat.roughnessNode = outRough;
+  mat.metalnessNode = outMetal;
+  mat.normalNode = outNormal;
+  mat.emissiveNode = matColor('emissive').mul(matFloat('emissiveIntensity')).add(outEmis);
+  mat.aoNode = outOcc;
+  if (o.cutaway) andMask(mat, cutKeep());
+  if (o.roof) andMask(mat, roofKeep());
 }
 
 // ---------------------------------------------------------------------------
@@ -481,51 +435,41 @@ function tintOf(key: string, extra: number | undefined, global: number | undefin
 export function worldMaterial(o: WorldMaterialOpts): THREE.MeshStandardMaterial {
   const layers = o.layers.slice(0, 4);
   if (!layers.length) layers.push({ key: 'stone.crypt' });
-  const uniforms: Record<string, THREE.IUniform> = {
-    uGrime: { value: new THREE.Color(o.grime ?? 0x2a2622) },
-    uWorld: { value: new THREE.Vector4(o.grimeAmount ?? 0.6, o.wet ?? 0, o.variation ?? 0.8, o.contact ?? 0.85) },
-  };
-  if (o.cutaway) uniforms.uCut = worldCutaway;
-  if (o.roof) uniforms.uRoof = worldRoof;
-  const emissiveMask: Glow[] = [];
-  layers.forEach((l, i) => {
+  const grime = uniform(new THREE.Color(o.grime ?? 0x2a2622));
+  const world = uniform(new THREE.Vector4(o.grimeAmount ?? 0.6, o.wet ?? 0, o.variation ?? 0.8, o.contact ?? 0.85));
+  const nodes: LayerNodes[] = layers.map((l) => {
     const def = resolveSurface(l.key);
     const tex = setTextures(def.set);
     const metres = l.metres ?? def.metres ?? TEXTURE_SETS[def.set].metres;
-    uniforms[`slA${i}`] = { value: tex.albedo };
-    uniforms[`slN${i}`] = { value: tex.normal };
-    uniforms[`slP${i}`] = { value: new THREE.Vector2(1 / Math.max(0.05, metres), def.bump * (l.bump ?? 1)) };
-    uniforms[`slT${i}`] = { value: tintOf(l.key, l.tint, o.tint) };
     // Floors and walls never go mirror-smooth: seen from twenty metres, a
     // glossy normal map turns into a field of glitter (the hive's chitin
     // floor sparkled purple all over). Wet patches still darken and gloss.
     const r0 = Math.max(0.32, def.rough[0] * (l.rough ?? 1));
     const r1 = Math.max(r0 + 0.12, Math.min(1, def.rough[1] * (l.rough ?? 1)));
-    uniforms[`slR${i}`] = { value: new THREE.Vector3(r0, Math.min(1, r1), def.metal) };
     const glowColor = l.emissive ?? def.emissive;
     const glow: Glow = tex.emissive ? 1 : glowColor !== undefined ? 2 : 0;
-    emissiveMask.push(glow);
-    if (glow) {
-      const c = new THREE.Color(glowColor ?? 0xff6020).multiplyScalar(l.emissiveIntensity ?? def.emissiveIntensity ?? (glow === 1 ? 1.5 : 0.4));
-      if (tex.emissive) uniforms[`slE${i}`] = { value: tex.emissive };
-      uniforms[`slEC${i}`] = { value: c };
-    }
+    return {
+      albedo: tex.albedo,
+      normal: tex.normal,
+      emissive: tex.emissive,
+      p: uniform(new THREE.Vector2(1 / Math.max(0.05, metres), def.bump * (l.bump ?? 1))),
+      tint: uniform(tintOf(l.key, l.tint, o.tint)),
+      r: uniform(new THREE.Vector3(r0, Math.min(1, r1), def.metal)),
+      glowColor: glow
+        ? uniform(new THREE.Color(glowColor ?? 0xff6020).multiplyScalar(l.emissiveIntensity ?? def.emissiveIntensity ?? (glow === 1 ? 1.5 : 0.4)))
+        : null,
+      glow,
+    };
   });
 
-  const built = buildShader({ ...o, layers }, emissiveMask);
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshStandardNodeMaterial({
     name: `world:${o.kind}:${layers.map((l) => resolveSurface(l.key).key).join('+')}`,
     roughness: 1,
     metalness: 1,
     side: o.side ?? THREE.FrontSide,
   });
-  mat.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = built.vertex(shader.vertexShader);
-    shader.fragmentShader = built.fragment(shader.fragmentShader);
-  };
-  mat.customProgramCacheKey = () => built.key;
-  mat.userData.world = uniforms;
+  buildNodes(mat, { ...o, layers }, nodes, grime, world);
+  setNodeTextures(mat, nodes.flatMap((l) => [l.albedo, l.normal, l.emissive]));
   mat.userData.shared = false;
-  return mat;
+  return asStandard(mat);
 }

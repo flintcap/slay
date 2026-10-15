@@ -18,7 +18,9 @@
  *    fbm at two rates reads as fire.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import { attribute, distance, materialOpacity, positionWorld, smoothstep, texture, uniform, uv, vec4 } from 'three/tsl';
+import { andMask, asBasic, matColor, pixelDither, setNodeTextures } from '../core/Tsl';
 import type { BiomeDef, DungeonLevel, PropPlacement, Rng } from '../types';
 import { Noise, clamp, lerp } from '../art/Noise';
 import { biomeArt, wallKitOf, type BiomeArt, type FloorVariant, type WallKit } from './Biomes';
@@ -824,7 +826,7 @@ export class DungeonMesh {
     const baseMat = addWorldCutaway(surfaceVariant(art.baseTrim, { repeat: 1.2 }));
     this.ownedMat.push(trimMat, baseMat);
     // A private clone, not the shared cached surface: the dissolve below is
-    // attached with `onBeforeCompile`, and hanging that on a cached material
+    // attached as a mask node, and hanging that on a cached material
     // gives every other user of the same palette a hole in it.
     const deckMat = worldMaterial({ kind: 'wall', layers: [{ key: 'wood.planks', tint: 0x8a7a68 }], grimeAmount: 0.3, contact: 0.4, variation: 0.6 });
     this.ownedMat.push(deckMat);
@@ -846,9 +848,9 @@ export class DungeonMesh {
     // square on the floor (w10 hive and foundry).
     // At full colour the cracks read as bright cartoon squiggles lying on
     // the stone (caverns, w-ground renders): a dimmer glow sits in it.
-    const veinMat = new THREE.MeshBasicMaterial({
+    const veinTex = crackTexture();
+    const veinNode = new THREE.MeshBasicNodeMaterial({
       color: new THREE.Color(art.veinColor).multiplyScalar(0.6),
-      map: crackTexture(),
       transparent: true,
       opacity: 1,
       blending: THREE.AdditiveBlending,
@@ -856,15 +858,10 @@ export class DungeonMesh {
     });
     // The per-corner strength rides in the world-context attribute; additive,
     // so scaling the colour by it is the fade.
-    veinMat.onBeforeCompile = (shader) => {
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', `#include <common>\nattribute float ${WORLD_ENV_ATTRIBUTE};\nvarying float vVein;`)
-        .replace('#include <begin_vertex>', `#include <begin_vertex>\nvVein = ${WORLD_ENV_ATTRIBUTE};`);
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vVein;')
-        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb *= vVein;');
-    };
-    veinMat.customProgramCacheKey = () => 'world-vein';
+    const crack = texture(veinTex, uv());
+    veinNode.colorNode = vec4(matColor('color').mul(crack.rgb).mul(attribute<'float'>(WORLD_ENV_ATTRIBUTE, 'float')), crack.a);
+    setNodeTextures(veinNode, [veinTex]);
+    const veinMat = asBasic(veinNode);
     this.ownedMat.push(veinMat);
     // The rock the level is carved out of. Dark, matte, and lit only by the
     // ambient term: it is the mass around the dungeon, not a surface anyone is
@@ -893,7 +890,7 @@ export class DungeonMesh {
     // and reads as unlit rock, which is what it is. The playable floor is then
     // the only lit thing on screen, which is the whole point.
     const rockTone = new THREE.Color(this.biome.fogColor).lerp(new THREE.Color(0x2a2f3a), 0.5);
-    const bedrockMat = new THREE.MeshStandardMaterial({
+    const bedrockMat = new THREE.MeshStandardNodeMaterial({
       color: rockTone,
       emissive: rockTone.clone().multiplyScalar(0.5),
       roughness: 1,
@@ -938,33 +935,11 @@ export class DungeonMesh {
     // roof was. Dithered rather than blended: the lid is opaque geometry that
     // walls draw against, and making it transparent would put it in the sorting
     // pass for no gain.
-    const openAroundHero = (mat: THREE.Material, open: number): void => {
-      mat.onBeforeCompile = (shader) => {
-        shader.uniforms.uHero = { value: this.heroXZ };
-        shader.uniforms.uOpen = { value: open };
-        shader.vertexShader = shader.vertexShader
-          .replace('#include <common>', '#include <common>\nvarying vec3 vRoofPos;')
-          .replace(
-            '#include <begin_vertex>',
-            '#include <begin_vertex>\nvRoofPos = (modelMatrix * vec4(transformed, 1.0)).xyz;',
-          );
-        shader.fragmentShader = shader.fragmentShader
-          .replace(
-            '#include <common>',
-            '#include <common>\nvarying vec3 vRoofPos;\nuniform vec2 uHero;\nuniform float uOpen;',
-          )
-          .replace(
-            '#include <clipping_planes_fragment>',
-            [
-              'float roofD = distance(vRoofPos.xz, uHero);',
-              'float roofA = smoothstep(uOpen * 0.62, uOpen, roofD);',
-              // Screen-space hash: the band dissolves instead of banding.
-              'float roofN = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);',
-              'if (roofA < roofN) discard;',
-              '#include <clipping_planes_fragment>',
-            ].join('\n'),
-          );
-      };
+    const openAroundHero = (mat: THREE.NodeMaterial, open: number): void => {
+      const roofD = distance(positionWorld.xz, uniform(this.heroXZ));
+      const roofA = smoothstep(open * 0.62, open, roofD);
+      // Screen-space hash: the band dissolves instead of banding.
+      andMask(mat, roofA.greaterThanEqual(pixelDither()));
     };
     openAroundHero(bedrockMat, ROOF_OPEN);
 
@@ -2448,7 +2423,7 @@ export class DungeonMesh {
     // near one, and where the two overlap the shape reads as a solid object
     // sitting in the room rather than as light falling through it — which is
     // exactly how it looked in a render: a faceted tent with a bright lid.
-    const mat = new THREE.MeshBasicMaterial({
+    const node = new THREE.MeshBasicNodeMaterial({
       vertexColors: true,
       transparent: true,
       opacity: 0.4,
@@ -2458,19 +2433,8 @@ export class DungeonMesh {
       toneMapped: false,
     });
     // Shafts thin out around the hero so a beam never sits over the fight.
-    // A private material, so the patch leaks nowhere.
-    mat.onBeforeCompile = (shader) => {
-      shader.uniforms.uHero = { value: this.heroXZ };
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vShaftPos;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvShaftPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vShaftPos;\nuniform vec2 uHero;')
-        .replace(
-          '#include <opaque_fragment>',
-          'diffuseColor.a *= 0.2 + 0.8 * smoothstep(2.5, 6.5, distance(vShaftPos.xz, uHero));\n#include <opaque_fragment>',
-        );
-    };
+    node.opacityNode = materialOpacity.mul(smoothstep(2.5, 6.5, distance(positionWorld.xz, uniform(this.heroXZ))).mul(0.8).add(0.2));
+    const mat = asBasic(node);
     this.ownedMat.push(mat);
     this.shaftMat = mat;
     const mesh = new THREE.Mesh(merged, mat);

@@ -10,7 +10,9 @@
  * glowing materials, so they can pulse without touching the shared prop
  * materials. Call `update` every frame and `dispose` when done.
  */
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import { atan, length, pow, sin, smoothstep, uniform, uv, vec3 } from 'three/tsl';
+import type { F, V2, V3 } from '../../core/Tsl';
 import type { BiomeArt } from '../../world/Biomes';
 import { hashString, streamFor } from '../../core/RNG';
 import { M, makeCtx } from './Ctx';
@@ -115,43 +117,28 @@ export function buildWaypoint(art: BiomeArt): WayLook {
   };
 }
 
-const SWIRL_VERT = /* glsl */ `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}`;
+type WayShade = (p: V2, r: F, t: F, c: V3) => V3;
 
-const SWIRL_FRAG = /* glsl */ `
-uniform float uTime;
-uniform vec3 uColor;
-varying vec2 vUv;
-void main() {
-  vec2 p = vUv * 2.0 - 1.0;
-  float r = length(p);
-  if (r > 1.0) discard;
-  float a = atan(p.y, p.x);
-  float s1 = sin(a * 3.0 + r * 11.0 - uTime * 2.6) * 0.5 + 0.5;
-  float s2 = sin(a * 5.0 - r * 15.0 + uTime * 1.7) * 0.5 + 0.5;
-  float core = 1.0 - r;
-  float rim = smoothstep(0.8, 0.97, r) * (1.0 - smoothstep(0.97, 1.0, r));
-  vec3 col = uColor * (0.25 + 0.75 * s1 * s2) * core * 1.4;
-  col += uColor * rim * 1.8;
-  col += vec3(0.85, 0.95, 1.0) * pow(core, 5.0) * 0.7;
-  gl_FragColor = vec4(col, 1.0);
-}`;
+/** The veil: two spirals turning against each other over a bright core. */
+const swirl: WayShade = (p, r, t, c) => {
+  const a = atan(p.y, p.x);
+  const s1 = sin(a.mul(3.0).add(r.mul(11.0)).sub(t.mul(2.6))).mul(0.5).add(0.5);
+  const s2 = sin(a.mul(5.0).sub(r.mul(15.0)).add(t.mul(1.7))).mul(0.5).add(0.5);
+  const core = r.oneMinus();
+  const rim = smoothstep(0.8, 0.97, r).mul(smoothstep(0.97, 1.0, r).oneMinus());
+  return c
+    .mul(s1.mul(s2).mul(0.75).add(0.25))
+    .mul(core)
+    .mul(1.4)
+    .add(c.mul(rim).mul(1.8))
+    .add(vec3(0.85, 0.95, 1.0).mul(pow(core, 5.0)).mul(0.7));
+};
 
-const POOL_FRAG = /* glsl */ `
-uniform float uTime;
-uniform vec3 uColor;
-varying vec2 vUv;
-void main() {
-  vec2 p = vUv * 2.0 - 1.0;
-  float r = length(p);
-  if (r > 1.0) discard;
-  float wave = 0.8 + 0.2 * sin(r * 12.0 - uTime * 3.0);
-  gl_FragColor = vec4(uColor * pow(1.0 - r, 2.0) * 0.9 * wave, 1.0);
-}`;
+/** The pool at its foot: soft rings running outward. */
+const poolGlow: WayShade = (_p, r, t, c) => {
+  const wave = sin(r.mul(12.0).sub(t.mul(3.0))).mul(0.2).add(0.8);
+  return c.mul(pow(r.oneMinus(), 2.0)).mul(0.9).mul(wave);
+};
 
 export interface PortalOpts {
   width?: number;
@@ -166,17 +153,20 @@ export interface PortalOpts {
 export function buildPortal(color = 0x7ec8ff, o: PortalOpts = {}): WayLook {
   const owned: THREE.BufferGeometry[] = [];
   const mats: THREE.Material[] = [];
-  const uniforms = { uTime: { value: 0 }, uColor: { value: new THREE.Color(color) } };
-  const additive = (frag: string): THREE.ShaderMaterial => {
-    const m = new THREE.ShaderMaterial({
-      uniforms,
-      vertexShader: SWIRL_VERT,
-      fragmentShader: frag,
+  const uTime = uniform(0);
+  const uColor = uniform(new THREE.Color(color)) as unknown as V3;
+  const additive = (shade: WayShade): THREE.MeshBasicNodeMaterial => {
+    const m = new THREE.MeshBasicNodeMaterial({
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
     });
+    m.fog = false;
+    const p = uv().mul(2.0).sub(1.0);
+    const r = length(p).toVar();
+    m.maskNode = r.lessThanEqual(1.0);
+    m.colorNode = shade(p, r, uTime, uColor);
     mats.push(m);
     return m;
   };
@@ -187,7 +177,7 @@ export function buildPortal(color = 0x7ec8ff, o: PortalOpts = {}): WayLook {
   const lift = 0.2;
   const veil = new THREE.PlaneGeometry(W, H);
   owned.push(veil);
-  const veilMesh = new THREE.Mesh(veil, additive(SWIRL_FRAG));
+  const veilMesh = new THREE.Mesh(veil, additive(swirl));
   veilMesh.position.y = lift + H / 2;
   face.add(veilMesh);
 
@@ -206,7 +196,7 @@ export function buildPortal(color = 0x7ec8ff, o: PortalOpts = {}): WayLook {
   poolGeo.rotateX(-Math.PI / 2);
   poolGeo.translate(0, 0.03, 0);
   owned.push(poolGeo);
-  const pool = new THREE.Mesh(poolGeo, additive(POOL_FRAG));
+  const pool = new THREE.Mesh(poolGeo, additive(poolGlow));
   pool.renderOrder = 1;
 
   const light = new THREE.PointLight(color, lightI, lightD, 2);
@@ -228,7 +218,7 @@ export function buildPortal(color = 0x7ec8ff, o: PortalOpts = {}): WayLook {
     root,
     update(dt: number, camera?: THREE.Camera): void {
       t += dt;
-      uniforms.uTime.value = t;
+      uTime.value = t;
       face.position.y = Math.sin(t * 1.7) * 0.05;
       light.intensity = lightI * (0.86 + Math.sin(t * 5.3) * 0.1 + Math.sin(t * 2.1) * 0.1);
       if (camera && o.billboard !== false) {

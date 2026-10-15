@@ -15,7 +15,9 @@
  *
  * Materials are shared and cached; never mutate or dispose one.
  */
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import { clamp, float, min, mix, negateOnBackSide, normalGeometry, positionGeometry, uniform, vec3 } from 'three/tsl';
+import { asStandard, bindToView, matColor, matFloat, setNodeTextures, triSample, whiteout } from '../../core/Tsl';
 import { loadTexture, textureReady } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
@@ -115,89 +117,20 @@ interface TriOpts {
   gain: number;
 }
 
-/** Patches a standard material to sample its maps triplanar in object space. */
-function triplanar(m: THREE.MeshStandardMaterial, o: TriOpts): void {
+/** Gives a standard node material its maps triplanar in object space. */
+function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriOpts): void {
   // The icon studio reads these to tell a finished picture from one drawn
   // before its scans arrived (Icons.ts).
   setScans(m, [o.albedo, o.normal]);
-  m.customProgramCacheKey = () => 'item-tri';
-  m.onBeforeCompile = (sh) => {
-    sh.uniforms.triAlbedo = { value: o.albedo };
-    sh.uniforms.triNormal = { value: o.normal };
-    sh.uniforms.triScale = { value: o.scale };
-    sh.uniforms.triNormalScale = { value: o.normalScale };
-    sh.uniforms.triRoughVar = { value: o.roughVar };
-    sh.uniforms.triGain = { value: o.gain };
-    sh.vertexShader = sh.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-uniform float triScale;
-varying vec3 vTriPos;
-varying vec3 vTriN;
-varying vec3 vO2V0;
-varying vec3 vO2V1;
-varying vec3 vO2V2;`,
-      )
-      .replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>
-vTriPos = position * triScale;
-vTriN = normal;
-vO2V0 = normalMatrix[ 0 ];
-vO2V1 = normalMatrix[ 1 ];
-vO2V2 = normalMatrix[ 2 ];`,
-      );
-    sh.fragmentShader = sh.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-uniform sampler2D triAlbedo;
-uniform sampler2D triNormal;
-uniform float triNormalScale;
-uniform float triRoughVar;
-uniform float triGain;
-varying vec3 vTriPos;
-varying vec3 vTriN;
-varying vec3 vO2V0;
-varying vec3 vO2V1;
-varying vec3 vO2V2;`,
-      )
-      .replace(
-        '#include <map_fragment>',
-        `vec3 triNb = normalize( vTriN );
-vec3 triW = pow( abs( triNb ), vec3( 4.0 ) );
-triW /= ( triW.x + triW.y + triW.z );
-vec4 triNx = texture2D( triNormal, vTriPos.zy );
-vec4 triNy = texture2D( triNormal, vTriPos.xz );
-vec4 triNz = texture2D( triNormal, vTriPos.xy );
-vec4 triA = texture2D( triAlbedo, vTriPos.zy ) * triW.x + texture2D( triAlbedo, vTriPos.xz ) * triW.y + texture2D( triAlbedo, vTriPos.xy ) * triW.z;
-diffuseColor.rgb *= min( vec3( 2.0 ), triA.rgb * triGain );`,
-      )
-      .replace(
-        '#include <roughnessmap_fragment>',
-        `#include <roughnessmap_fragment>
-float triR = triNx.a * triW.x + triNy.a * triW.y + triNz.a * triW.z;
-roughnessFactor = clamp( roughnessFactor * mix( 1.0, triR * 1.4, triRoughVar ), 0.04, 1.0 );`,
-      )
-      .replace(
-        '#include <normal_fragment_maps>',
-        `#include <normal_fragment_maps>
-{
-  vec3 tx = ( triNx.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  vec3 ty = ( triNy.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  vec3 tz = ( triNz.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  tx = vec3( tx.xy + triNb.zy, abs( tx.z ) * triNb.x );
-  ty = vec3( ty.xy + triNb.xz, abs( ty.z ) * triNb.y );
-  tz = vec3( tz.xy + triNb.xy, abs( tz.z ) * triNb.z );
-  vec3 bn = normalize( tx.zyx * triW.x + ty.xzy * triW.y + tz.xyz * triW.z );
-  normal = normalize( mat3( vO2V0, vO2V1, vO2V2 ) * bn );
-  #ifdef DOUBLE_SIDED
-    normal *= faceDirection;
-  #endif
-}`,
-      );
-  };
+  setNodeTextures(m, [o.albedo, o.normal]);
+  const Pb = positionGeometry;
+  const Nb = normalGeometry.normalize().toVar();
+  // Numbers go in as uniforms, so every item writes the same shader code
+  // and the renderer compiles it once.
+  const t = triSample(Pb.mul(uniform(o.scale)), Nb, o.normal, o.albedo);
+  m.colorNode = matColor('color').mul(min(vec3(2.0), t.albedo!.rgb.mul(uniform(o.gain))));
+  m.roughnessNode = clamp(matFloat('roughness').mul(mix(float(1.0), t.rough.mul(1.4), uniform(o.roughVar))), 0.04, 1.0);
+  m.normalNode = negateOnBackSide(bindToView(whiteout(t, Nb, uniform(o.normalScale)), Pb, Nb));
 }
 
 const cache = new Map<string, THREE.Material>();
@@ -258,7 +191,7 @@ export function itemSurface(key: string, o: ItemSurfaceOpts = {}): THREE.MeshSta
     // plastic. A floor keeps it grey steel with a soft sheen at any angle.
     const rough = o.roughness ?? Math.min(0.95, Math.max(metalLike ? 0.3 : 0, (def.rough[0] * 0.6 + def.rough[1] * 0.4) * (metalLike ? 0.9 : 1) + wear * 0.18));
     if (wear > 0.5) color.multiplyScalar(1 - (wear - 0.5) * 0.25);
-    const m = new THREE.MeshStandardMaterial({
+    const m = new THREE.MeshStandardNodeMaterial({
       color,
       roughness: rough,
       metalness: metal,
@@ -281,7 +214,7 @@ export function itemSurface(key: string, o: ItemSurfaceOpts = {}): THREE.MeshSta
       gain: scan.gray ? 1.6 : 1 / lum,
     });
     m.name = `item:${def.key}`;
-    return m;
+    return asStandard(m);
   });
 }
 

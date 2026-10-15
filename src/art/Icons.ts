@@ -257,8 +257,8 @@ export function warmItemIcons(items: Iterable<Item | null | undefined>, form: Ic
  * Draws the icons for `items` now, one per task, until all are drawn or
  * `budgetMs` has passed; for a scene to call behind its loading curtain.
  *
- * The icons are rendered in a WebGL context of their own. Its first use (the
- * context, its lighting and a shader per kind of material) and each icon
+ * The icons are rendered in a renderer of their own. Its first use (the
+ * device, its lighting and a shader per kind of material) and each icon
  * after it used to land on frames in play: the pack's icons were drawn in
  * the background right after a scene opened, a long frame or several in the
  * first seconds of every visit. Whatever the budget leaves is drawn in the

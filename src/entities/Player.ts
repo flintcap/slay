@@ -11,6 +11,7 @@ import { HeroAnimator, type BodyCondition } from '../art/hero/Animator';
 import { strikesAt } from '../art/hero/gestures';
 import { DressedHero } from '../scenes/HeroModel';
 import { copyScans } from '../art/Scans';
+import { copyNodeTextures } from '../core/Tsl';
 import { collidersNear } from '../world/BodyWalk';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
@@ -859,9 +860,8 @@ export class Player {
     if (!veil) {
       veil = own.clone() as THREE.MeshStandardMaterial;
       veil.userData = { ...own.userData, playerOwned: true, veilOf: own.uuid };
-      veil.onBeforeCompile = own.onBeforeCompile;
-      veil.customProgramCacheKey = own.customProgramCacheKey;
       copyScans(own, veil);
+      copyNodeTextures(own, veil);
       veil.transparent = true;
       veil.depthWrite = false;
       veil.opacity = 0.42;
@@ -894,10 +894,10 @@ export class Player {
       copy.userData = { ...std.userData, playerOwned: true, shared: false };
       copy.userData.baseColor = copy.color.clone();
       copy.userData.baseEmissive = copy.emissive?.getHex() ?? 0;
-      // A clone drops shader patches (the hero's triplanar maps): keep them.
-      copy.onBeforeCompile = std.onBeforeCompile;
-      copy.customProgramCacheKey = std.customProgramCacheKey;
+      // A clone shares the original's shader nodes (the hero's triplanar
+      // maps); the textures they sample are listed beside it, so copy those.
       copyScans(std, copy);
+      copyNodeTextures(std, copy);
       mesh.material = copy;
       this.ownMats.set(mesh, copy);
       return copy;

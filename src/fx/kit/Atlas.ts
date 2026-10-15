@@ -18,6 +18,8 @@
  */
 
 import * as THREE from 'three';
+import { float, floor, mod, vec2 } from 'three/tsl';
+import type { F, V2 } from '../../core/Tsl';
 
 export const CELL = 64;
 export const GRID = 8;
@@ -560,11 +562,9 @@ export function spriteAtlas(): THREE.DataTexture {
   return tex;
 }
 
-/** GLSL: UV of a cell given a 0..1 local uv. */
-export const GLSL_CELL = /* glsl */ `
-  vec2 cellUv(float cell, vec2 uv) {
-    float col = mod(cell, 8.0);
-    float row = 7.0 - floor(cell / 8.0);
-    return (vec2(col, row) + uv) / 8.0;
-  }
-`;
+/** In a shader: the UV of a cell given a 0..1 local uv. */
+export function cellUv(cell: F, uv: V2): V2 {
+  const col = mod(cell, 8.0);
+  const row = float(7.0).sub(floor(cell.div(8.0)));
+  return vec2(col, row).add(uv).div(8.0);
+}

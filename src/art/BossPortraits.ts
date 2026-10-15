@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { BOSSES } from '../data/bosses';
 import { WARDENS } from '../data/wardens';
 import { assetStats } from '../core/Assets';
+import { withStudio } from '../core/Studio';
 import { Random, hashString } from '../core/RNG';
 import { lookFor } from './creatures/Looks';
 import { creatureSocket, instanceCreature, releaseCreature } from './creatures/Creature';
@@ -148,25 +149,22 @@ async function render(id: string, size: number): Promise<string> {
   const bgTex = new THREE.CanvasTexture(bg);
   bgTex.colorSpace = THREE.SRGBColorSpace;
   scene.background = bgTex;
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
   try {
-    renderer.setPixelRatio(1);
-    renderer.setSize(size, size, false);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
-    renderer.render(scene, camera);
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = size;
-    const g = cv.getContext('2d', { willReadFrequently: true })!;
-    g.drawImage(renderer.domElement, 0, 0, size, size);
-    medallion(g, size, light);
-    return cv.toDataURL('image/png');
+    const uri = await withStudio((renderer) => {
+      renderer.setSize(size, size, false);
+      renderer.toneMappingExposure = 1.15;
+      renderer.render(scene, camera);
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      const g = cv.getContext('2d', { willReadFrequently: true })!;
+      g.drawImage(renderer.domElement, 0, 0, size, size);
+      medallion(g, size, light);
+      return cv.toDataURL('image/png');
+    });
+    return uri ?? '';
   } finally {
     releaseCreature(m.root);
     bgTex.dispose();
-    renderer.dispose();
-    renderer.forceContextLoss();
   }
 }
 

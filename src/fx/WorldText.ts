@@ -4,8 +4,13 @@
  * Built on first use: most runs never draw any.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  Discard, Fn, attribute, cameraWorldMatrix, clamp, cos, exp, max, positionGeometry, sin, smoothstep, step, texture, uniform, uv, vec2,
+  vec3, vec4,
+} from 'three/tsl';
 import { markRange } from './kit/Upload';
+import { setNodeTextures, vary, type F, type V4 } from '../core/Tsl';
 
 const GLYPHS = '0123456789.,+-!?%*ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const GLYPH_COLS = 8;
@@ -73,77 +78,65 @@ function buildGlyphAtlas(): GlyphAtlas {
   return glyphAtlas;
 }
 
-const TEXT_VERT = /* glsl */ `
-  uniform float uTime;
-  uniform vec2 uCell;      // 1/cols, 1/rows
+/** The glyph shader: each letter pops, arcs up, wobbles and fades by its age. */
+function textMaterial(uTime: F, atlas: THREE.Texture, cols: number, rows: number): THREE.MeshBasicNodeMaterial {
+  const iOrigin = attribute<'vec3'>('iOrigin', 'vec3');
+  // col, row, glyphOffsetX, glyphWidth
+  const iCell = attribute<'vec4'>('iCell', 'vec4');
+  // spawn, life, scale, crit
+  const iAnim = attribute<'vec4'>('iAnim', 'vec4');
+  // driftX, driftZ, rise, spinAmp
+  const iMotion = attribute<'vec4'>('iMotion', 'vec4');
+  const iColor = attribute<'vec3'>('iColor', 'vec3');
 
-  attribute vec3 iOrigin;
-  attribute vec4 iCell;    // col, row, glyphOffsetX, glyphWidth
-  attribute vec4 iAnim;    // spawn, life, scale, crit
-  attribute vec4 iMotion;  // driftX, driftZ, rise, spinAmp
-  attribute vec3 iColor;
+  const age = uTime.sub(iAnim.x).toVar();
+  const life = max(iAnim.y, 1e-3);
+  const alive = step(0.0, age).mul(step(age, life)).toVar();
+  const t = clamp(age.div(life), 0.0, 1.0).toVar();
 
-  varying vec2 vUv;
-  varying vec4 vColor;
+  // Overshoot pop: crits snap harder and settle slower.
+  const pop = iAnim.w
+    .mul(0.75)
+    .add(0.55)
+    .mul(exp(age.negate().mul(iAnim.w.mul(-5.0).add(16.0))))
+    .mul(sin(age.mul(34.0)))
+    .add(1.0);
+  // Shrinks a quarter over its life.
+  const scale = iAnim.z.mul(pop).mul(t.mul(-0.25).add(1.0)).toVar();
 
-  void main() {
-    float age = uTime - iAnim.x;
-    float life = max(iAnim.y, 1e-3);
-    float alive = step(0.0, age) * step(age, life);
-    float t = clamp(age / life, 0.0, 1.0);
+  // Ballistic arc: up fast, then settle. Reads as "popped out of the body".
+  const rise = iMotion.z.mul(age).sub(age.mul(age).mul(2.6));
+  const wpos = iOrigin.add(vec3(iMotion.x.mul(age), rise, iMotion.y.mul(age)));
 
-    // Overshoot pop: crits snap harder and settle slower.
-    float pop = 1.0 + (0.55 + iAnim.w * 0.75) * exp(-age * (16.0 - iAnim.w * 5.0)) * sin(age * 34.0);
-    float scale = iAnim.z * pop * mix(1.0, 1.0 - 0.25 * t, 1.0);
+  const camRight = cameraWorldMatrix.mul(vec4(1.0, 0.0, 0.0, 0.0)).xyz;
+  const camUp = cameraWorldMatrix.mul(vec4(0.0, 1.0, 0.0, 0.0)).xyz;
+  const wob = sin(age.mul(9.0).add(iAnim.x.mul(3.0))).mul(iMotion.w).mul(t.oneMinus()).toVar();
+  const corner = positionGeometry.xy;
+  const rc = vec2(corner.x.mul(cos(wob)).sub(corner.y.mul(sin(wob))), corner.x.mul(sin(wob)).add(corner.y.mul(cos(wob))));
+  const local = camRight.mul(rc.x.add(iCell.z)).mul(scale).mul(alive).add(camUp.mul(rc.y).mul(scale).mul(alive));
 
-    // Ballistic arc — up fast, then settle. Reads as "popped out of the body".
-    float rise = iMotion.z * age - 2.6 * age * age;
-    vec3 wpos = iOrigin;
-    wpos.y += rise;
-    wpos.x += iMotion.x * age;
-    wpos.z += iMotion.y * age;
+  const fade = smoothstep(0.62, 1.0, t).oneMinus();
+  const flashIn = smoothstep(0.0, 0.05, t);
+  const vColor = vary(vec4(iColor, fade.mul(flashIn).mul(alive)));
+  // Sample the whole cell. Narrowing the window to the glyph's advance width
+  // sliced the right-hand side off every character, because glyphs are drawn
+  // centred in their cell rather than flush left. Advance only decides where
+  // the next glyph starts, never how much of this one is visible.
+  const vUv = vary(uv().add(vec2(iCell.x, iCell.y)).mul(vec2(1 / cols, 1 / rows)));
 
-    vec3 camRight = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
-    vec3 camUp    = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
-
-    float wob = sin(age * 9.0 + iAnim.x * 3.0) * iMotion.w * (1.0 - t);
-    vec2 corner = position.xy;
-    vec2 rc = vec2(
-      corner.x * cos(wob) - corner.y * sin(wob),
-      corner.x * sin(wob) + corner.y * cos(wob)
-    );
-    vec3 local = camRight * (rc.x * 1.0 + iCell.z) * scale * alive
-               + camUp    * rc.y * scale * alive;
-
-    vec4 mv = modelViewMatrix * vec4(wpos, 1.0);
-    mv.xyz += mat3(viewMatrix) * local;
-    gl_Position = projectionMatrix * mv;
-
-    float fade = 1.0 - smoothstep(0.62, 1.0, t);
-    float flashIn = smoothstep(0.0, 0.05, t);
-    vColor = vec4(iColor, fade * flashIn * alive);
-
-    // Sample the whole cell. Narrowing the window to the glyph's advance width
-    // sliced the right-hand side off every character, because glyphs are drawn
-    // centred in their cell rather than flush left. Advance only decides where
-    // the next glyph starts, never how much of this one is visible.
-    vUv = (uv + vec2(iCell.x, iCell.y)) * uCell;
-  }
-`;
-
-const TEXT_FRAG = /* glsl */ `
-  uniform sampler2D uAtlas;
-  varying vec2 vUv;
-  varying vec4 vColor;
-
-  void main() {
-    vec4 tex = texture2D(uAtlas, vUv);
-    float a = tex.a * vColor.a;
-    if (a < 0.01) discard;
+  const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+  m.fog = false;
+  m.positionNode = wpos.add(local);
+  m.fragmentNode = Fn(() => {
+    const tex = texture(atlas, vUv).toVar();
+    const a = tex.a.mul(vColor.a).toVar();
+    Discard(a.lessThan(0.01));
     // tex.rgb is 0 on the outline and 1 in the core: tint only the core.
-    gl_FragColor = vec4(vColor.rgb * tex.r, a);
-  }
-`;
+    return vec4(vColor.rgb.mul(tex.r), a);
+  })() as unknown as V4;
+  setNodeTextures(m, [atlas]);
+  return m;
+}
 
 const TEXT_ATTRS: ReadonlyArray<readonly [string, number]> = [
   ['iOrigin', 3], ['iCell', 4], ['iAnim', 4], ['iMotion', 4], ['iColor', 3],
@@ -153,7 +146,8 @@ const TEXT_ATTRS: ReadonlyArray<readonly [string, number]> = [
 export class WorldText {
   readonly mesh: THREE.Mesh;
   private geo: THREE.InstancedBufferGeometry;
-  private mat: THREE.ShaderMaterial;
+  private mat: THREE.MeshBasicNodeMaterial;
+  private uTime = uniform(0);
   private atlas: GlyphAtlas;
   private cap: number;
   private head = 0;
@@ -190,19 +184,7 @@ export class WorldText {
     geo.instanceCount = 0;
     this.geo = geo;
 
-    this.mat = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uAtlas: { value: this.atlas.texture },
-        uCell: { value: new THREE.Vector2(1 / GLYPH_COLS, 1 / rows) },
-      },
-      vertexShader: TEXT_VERT,
-      fragmentShader: TEXT_FRAG,
-      transparent: true,
-      depthWrite: false,
-      depthTest: false,
-      side: THREE.DoubleSide,
-    });
+    this.mat = textMaterial(this.uTime, this.atlas.texture, GLYPH_COLS, rows);
 
     this.mesh = new THREE.Mesh(geo, this.mat);
     this.mesh.frustumCulled = false;
@@ -270,7 +252,7 @@ export class WorldText {
   }
 
   flush(time: number): void {
-    this.mat.uniforms.uTime!.value = time;
+    this.uTime.value = time;
     this.geo.instanceCount = this.high;
     if (this.hi < this.lo) return;
     const count = this.hi - this.lo + 1;

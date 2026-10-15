@@ -17,9 +17,14 @@
  *
  * Materials are shared by every creature with the same look. A boss or an
  * affixed elite that needs its own glow or rim takes a clone
- * (`cloneCreatureMaterial`), which shares the shader program and textures.
+ * (`cloneCreatureMaterial`), which builds the same shader and shares the textures.
  */
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  attribute, clamp, dot, float, min, mix, normalGeometry, normalView, positionGeometry, positionViewDirection, pow,
+  uniform, vec3, vertexColor,
+} from 'three/tsl';
+import { asStandard, bindToView, matColor, matFloat, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
 import { setTextures, type TextureSetName } from '../TextureSets';
 
 export type Surface =
@@ -108,19 +113,6 @@ export interface CreatureMatDef {
   /** Rim light. */
   rim?: number;
   rimStrength?: number;
-}
-
-export interface CreatureUniforms {
-  glowColor: { value: THREE.Color };
-  glowIntensity: { value: number };
-  rimColor: { value: THREE.Color };
-  rimStrength: { value: number };
-  triScale: { value: number };
-  triAlbedo: { value: THREE.Texture | null };
-  triNormal: { value: THREE.Texture };
-  triNormalScale: { value: number };
-  triGain: { value: number };
-  triHue: { value: number };
 }
 
 const cache = new Map<string, THREE.MeshStandardMaterial>();
@@ -250,109 +242,49 @@ function smoothTex(): THREE.DataTexture {
   return t;
 }
 
-function patch(m: THREE.MeshStandardMaterial, u: CreatureUniforms, hasAlbedo: boolean): void {
-  m.customProgramCacheKey = () => `creature|${hasAlbedo ? 'a' : ''}`;
-  m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, u);
-    if (hasAlbedo) sh.defines = { ...(sh.defines ?? {}), TRI_ALBEDO: '' };
-    sh.vertexShader = sh.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-uniform float triScale;
-attribute float glow;
-varying float vGlow;
-varying vec3 vTriPos;
-varying vec3 vTriN;
-varying vec3 vB2V0;
-varying vec3 vB2V1;
-varying vec3 vB2V2;`,
-      )
-      .replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>
-vGlow = glow;
-vTriPos = position * triScale;
-vTriN = normal;
-#ifdef USE_SKINNING
-  mat3 triB2V = normalMatrix * mat3( skinMatrix );
-#else
-  mat3 triB2V = normalMatrix;
-#endif
-vB2V0 = triB2V[ 0 ];
-vB2V1 = triB2V[ 1 ];
-vB2V2 = triB2V[ 2 ];`,
-      );
-    sh.fragmentShader = sh.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-uniform sampler2D triAlbedo;
-uniform sampler2D triNormal;
-uniform float triNormalScale;
-uniform float triGain;
-uniform float triHue;
-uniform vec3 glowColor;
-uniform float glowIntensity;
-uniform vec3 rimColor;
-uniform float rimStrength;
-varying float vGlow;
-varying vec3 vTriPos;
-varying vec3 vTriN;
-varying vec3 vB2V0;
-varying vec3 vB2V1;
-varying vec3 vB2V2;`,
-      )
-      .replace(
-        '#include <map_fragment>',
-        `vec3 triNb = normalize( vTriN );
-vec3 triW = pow( abs( triNb ), vec3( 4.0 ) );
-triW /= ( triW.x + triW.y + triW.z );
-vec4 triNx = texture2D( triNormal, vTriPos.zy );
-vec4 triNy = texture2D( triNormal, vTriPos.xz );
-vec4 triNz = texture2D( triNormal, vTriPos.xy );
-#ifdef TRI_ALBEDO
-  vec4 triA = texture2D( triAlbedo, vTriPos.zy ) * triW.x + texture2D( triAlbedo, vTriPos.xz ) * triW.y + texture2D( triAlbedo, vTriPos.xy ) * triW.z;
-  float triL = dot( triA.rgb, vec3( 0.299, 0.587, 0.114 ) );
-  vec3 triC = mix( vec3( triL ), triA.rgb, triHue );
-  diffuseColor.rgb *= min( vec3( 2.2 ), triC * triGain );
-#endif`,
-      )
-      .replace('#include <color_fragment>', `#if defined( USE_COLOR )
-  diffuseColor.rgb *= vColor.rgb * 2.0;
-#endif`)
-      .replace(
-        '#include <roughnessmap_fragment>',
-        `#include <roughnessmap_fragment>
-float triR = triNx.a * triW.x + triNy.a * triW.y + triNz.a * triW.z;
-roughnessFactor = clamp( roughnessFactor * mix( 1.0, triR * 1.4, 0.75 ), 0.04, 1.0 );`,
-      )
-      .replace(
-        '#include <normal_fragment_maps>',
-        `#include <normal_fragment_maps>
-{
-  vec3 tx = ( triNx.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  vec3 ty = ( triNy.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  vec3 tz = ( triNz.xyz * 2.0 - 1.0 ) * vec3( triNormalScale, triNormalScale, 1.0 );
-  tx = vec3( tx.xy + triNb.zy, abs( tx.z ) * triNb.x );
-  ty = vec3( ty.xy + triNb.xz, abs( ty.z ) * triNb.y );
-  tz = vec3( tz.xy + triNb.xy, abs( tz.z ) * triNb.z );
-  vec3 bn = normalize( tx.zyx * triW.x + ty.xzy * triW.y + tz.xyz * triW.z );
-  normal = normalize( mat3( vB2V0, vB2V1, vB2V2 ) * bn );
-}`,
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-totalEmissiveRadiance += glowColor * ( vGlow * glowIntensity );
-// Painted glow also brightens what it sits in, so an eye reads as lit, not as a dot.
-diffuseColor.rgb = mix( diffuseColor.rgb, glowColor * 0.35, clamp( ( vGlow - 0.3 ) * 1.8, 0.0, 1.0 ) );
-if ( rimStrength > 0.0 ) {
-  float rimF = 1.0 - clamp( dot( normal, normalize( vViewPosition ) ), 0.0, 1.0 );
-  totalEmissiveRadiance += rimColor * ( pow( rimF, 2.6 ) * rimStrength );
-}`,
-      );
-  };
+interface CreatureShade {
+  glowColor: THREE.Color;
+  glowIntensity: number;
+  rimColor: THREE.Color;
+  rimStrength: number;
+  triScale: number;
+  triAlbedo: THREE.Texture | null;
+  triNormal: THREE.Texture;
+  triNormalScale: number;
+  triGain: number;
+  triHue: number;
+}
+
+function patch(m: THREE.MeshStandardNodeMaterial, u: CreatureShade): void {
+  // The bind pose: the skinned mesh's own `position` and `normal` attributes.
+  const Pb = positionGeometry;
+  const Nb = normalGeometry.normalize().toVar();
+  const t = triSample(Pb.mul(u.triScale), Nb, u.triNormal, u.triAlbedo);
+  const glow = attribute('glow', 'float') as F;
+  const glowColor = uniform(u.glowColor);
+  const glowC = glowColor as unknown as V3;
+
+  let color: V3 = matColor('color');
+  if (t.albedo) {
+    const l = dot(t.albedo.rgb, vec3(0.299, 0.587, 0.114));
+    const c = mix(vec3(l), t.albedo.rgb, u.triHue);
+    color = color.mul(min(vec3(2.2), c.mul(u.triGain)));
+  }
+  // Paint at half value, doubled so it can brighten as well as darken.
+  color = color.mul(vertexColor().rgb.mul(2.0));
+  // Painted glow also brightens what it sits in, so an eye reads as lit, not as a dot.
+  m.colorNode = mix(color, glowC.mul(0.35), clamp(glow.sub(0.3).mul(1.8), 0.0, 1.0));
+  m.vertexColors = false;
+
+  m.roughnessNode = clamp(matFloat('roughness').mul(mix(float(1.0), t.rough.mul(1.4), 0.75)), 0.04, 1.0);
+  m.normalNode = bindToView(whiteout(t, Nb, u.triNormalScale), Pb, Nb);
+
+  let emis: V3 = matColor('emissive').mul(matFloat('emissiveIntensity')).add(glowC.mul(glow.mul(u.glowIntensity)));
+  if (u.rimStrength > 0) {
+    const rimF = clamp(dot(normalView, positionViewDirection), 0.0, 1.0).oneMinus();
+    emis = emis.add((uniform(u.rimColor) as unknown as V3).mul(pow(rimF, 2.6).mul(u.rimStrength)));
+  }
+  m.emissiveNode = emis;
 }
 
 function texturesFor(def: SurfaceDef): { albedo: THREE.Texture | null; normal: THREE.Texture } {
@@ -366,7 +298,7 @@ function texturesFor(def: SurfaceDef): { albedo: THREE.Texture | null; normal: T
 function build(d: CreatureMatDef): THREE.MeshStandardMaterial {
   const sd = SURFACES[d.surface];
   const tex = texturesFor(sd);
-  const m = new THREE.MeshStandardMaterial({
+  const m = new THREE.MeshStandardNodeMaterial({
     color: d.tint,
     roughness: d.rough ?? sd.rough,
     metalness: d.metal ?? sd.metal,
@@ -375,22 +307,22 @@ function build(d: CreatureMatDef): THREE.MeshStandardMaterial {
     opacity: sd.opacity ?? 1,
     envMapIntensity: (d.metal ?? sd.metal) > 0.5 ? 1.3 : 1,
   });
-  const u: CreatureUniforms = {
-    glowColor: { value: new THREE.Color(d.glow) },
-    glowIntensity: { value: d.glowIntensity ?? 2.4 },
-    rimColor: { value: new THREE.Color(d.rim ?? 0x000000) },
-    rimStrength: { value: d.rim !== undefined ? (d.rimStrength ?? 1.2) : 0 },
-    triScale: { value: (d.scale ?? 1) / sd.metres },
-    triAlbedo: { value: tex.albedo },
-    triNormal: { value: tex.normal },
-    triNormalScale: { value: sd.normal },
-    triGain: { value: sd.gain },
-    triHue: { value: sd.hue ?? 0.25 },
-  };
-  patch(m, u, !!tex.albedo);
-  m.userData.creature = { def: { ...d }, u };
+  patch(m, {
+    glowColor: new THREE.Color(d.glow),
+    glowIntensity: d.glowIntensity ?? 2.4,
+    rimColor: new THREE.Color(d.rim ?? 0x000000),
+    rimStrength: d.rim !== undefined ? (d.rimStrength ?? 1.2) : 0,
+    triScale: (d.scale ?? 1) / sd.metres,
+    triAlbedo: tex.albedo,
+    triNormal: tex.normal,
+    triNormalScale: sd.normal,
+    triGain: sd.gain,
+    triHue: sd.hue ?? 0.25,
+  });
+  m.userData.creature = { def: { ...d } };
+  setNodeTextures(m, [tex.albedo, tex.normal]);
   m.name = `creature:${d.surface}`;
-  return m;
+  return asStandard(m);
 }
 
 /** Scale bucket: thirds of an octave. */

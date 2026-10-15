@@ -38,7 +38,7 @@ export class DeathScene extends GameScene {
   private fx: FXSystem;
   private engine: Engine;
   private candle!: THREE.PointLight;
-  private wisp: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
+  private wisp: THREE.Sprite | null = null;
   private atmosphere!: AtmosphereHandle;
   private textures: THREE.Texture[] = [];
   private t = 0;
@@ -155,24 +155,19 @@ export class DeathScene extends GameScene {
 
     // What is left of them: a wisp in the class colour, rising and fading.
     const color = CLASSES.find((c) => c.id === data.classId)?.color ?? 0x9fb4e0;
-    // A single point, not a Sprite: the AO pass redraws sprites with its normal
-    // material as flat unbillboarded squares, which printed a dark box on the
-    // stone. It skips points.
-    const wispGeo = new THREE.BufferGeometry();
-    wispGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
-    this.wisp = new THREE.Points(
-      wispGeo,
-      new THREE.PointsMaterial({
+    // A sprite: the ambient occlusion pass reads depth only, and the glow
+    // writes none, so it leaves no shadow on the stone.
+    this.wisp = new THREE.Sprite(
+      new THREE.SpriteMaterial({
         map: radialGlowTexture(),
         color,
-        size: 0,
-        sizeAttenuation: true,
         transparent: true,
         opacity: 0.75,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       }),
     );
+    this.wisp.scale.setScalar(0.001);
     this.wisp.position.set(0, 0.4, 1.2);
     scene.add(this.wisp);
     const wispLight = new THREE.PointLight(color, 2.5, 5, 2);
@@ -312,9 +307,7 @@ export class DeathScene extends GameScene {
       const p = (this.t % 6) / 6;
       this.wisp.position.set(Math.sin(this.t * 1.3) * 0.12, 0.35 + p * 2.1, 1.2 - p * 0.4);
       const sc = 0.55 * Math.sin(Math.PI * Math.min(1, p * 1.15));
-      // Point size is in the same units as a sprite's scale once divided by
-      // tan(fov / 2), so the glow keeps the size it had as a sprite.
-      this.wisp.material.size = Math.max(0.001, sc) / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+      this.wisp.scale.setScalar(Math.max(0.001, sc));
     }
 
     this.atmosphere.update(dt);

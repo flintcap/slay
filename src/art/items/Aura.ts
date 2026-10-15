@@ -15,14 +15,19 @@
  * and dropped the sparks so busy fights draw less); `buildAura` stays for the
  * icons' look (`auraStyle`) and any later use.
  *
- * One `THREE.Points` per aura, one draw call. Every particle's path is a
+ * One instanced sprite per aura, one draw call. Every particle's path is a
  * closed loop worked out in the vertex shader from the clock, so nothing is
  * updated on the CPU and an aura costs the same standing or running. One
  * shader program serves every kind; the kind only changes uniforms.
  *
  * Seeded (`core/RNG.ts`): the same item always throws the same particles.
  */
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  abs, attribute, cameraProjectionMatrix, clamp, cos, dot, exp, float, floor, fract, length, max, mix, modelViewMatrix, normalize,
+  normalLocal, positionLocal, pow, sin, smoothstep, step, transformNormalToView, uniform, uv, vec3, vec4,
+} from 'three/tsl';
+import { vary, type F, type V3 } from '../../core/Tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Random } from '../../core/RNG';
 import type { Aura, GlowStyle } from './Designs';
@@ -64,89 +69,63 @@ const KINDS: Record<Exclude<Aura, 'none'>, AuraKind> = {
   souls: { rise: 0.35, swirl: 0.3, jump: 0, size: 26, twinkle: 0, spread: 1.3, gain: 0.45, core: 0.2, count: 12 },
 };
 
-const VERT = /* glsl */ `
-uniform float uTime;
-uniform float uRise;
-uniform float uSwirl;
-uniform float uJump;
-uniform float uSize;
-uniform float uSpread;
-uniform float uHeight;
-attribute vec4 aSeed; // phase, speed, angle, radius
-varying float vFade;
-varying float vSeed;
-float h(float n) { return fract(sin(n) * 43758.5453); }
-void main() {
-  float t = uTime * aSeed.y + aSeed.x;
-  float life = fract(t * 0.25);
-  float a = aSeed.z + uSwirl * 6.2832 * uTime * (0.6 + aSeed.y * 0.4);
-  float r = aSeed.w * mix(1.0, uSpread, life);
-  // Rising things start low and climb; falling things start high.
-  float y = position.y;
-  if (abs(uRise) > 0.001) y = (uRise > 0.0 ? life : 1.0 - life) * uHeight + position.y * 0.25;
-  vec3 p = vec3(cos(a) * r, y, sin(a) * r);
-  if (uJump > 0.0) {
-    float tick = floor(uTime * 14.0 + aSeed.x * 7.0);
-    p += (vec3(h(tick + aSeed.z), h(tick * 1.3 + aSeed.w), h(tick * 1.7 + aSeed.x)) - 0.5) * uJump * 4.0;
-  }
-  vFade = abs(uRise) > 0.001 ? smoothstep(0.0, 0.15, life) * (1.0 - smoothstep(0.65, 1.0, life)) : 1.0;
-  vSeed = aSeed.x + uTime * (0.5 + aSeed.y);
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  gl_Position = projectionMatrix * mv;
-  // uSize is the sprite's world size in units of 6 mm, drawn for a 600 px tall view.
-  gl_PointSize = uSize * projectionMatrix[1][1] * 1.8 / max(0.2, -mv.z);
+type AuraMat = THREE.PointsNodeMaterial;
+
+/** One clock for every aura and shell, set by whichever draws first in a frame. */
+const auraTime = uniform(0);
+
+function tick(): void {
+  auraTime.value = (performance.now() / 1000) % 3600;
 }
-`;
 
-const FRAG = /* glsl */ `
-uniform vec3 uColor;
-uniform float uGain;
-uniform float uTwinkle;
-uniform float uCore;
-varying float vFade;
-varying float vSeed;
-void main() {
-  vec2 d = gl_PointCoord - 0.5;
-  float r = length(d) * 2.0;
-  if (r > 1.0) discard;
-  float soft = pow(1.0 - r, 2.0);
-  float hard = smoothstep(0.45, 0.0, r);
-  float a = mix(soft, max(soft * 0.4, hard), uCore);
-  float tw = mix(1.0, 0.5 + 0.5 * sin(vSeed * 6.2832), uTwinkle);
-  // A white-hot centre on bright points.
-  vec3 c = mix(uColor, vec3(1.0), hard * uCore * 0.5);
-  gl_FragColor = vec4(c * a * vFade * tw * uGain, 1.0);
-}
-`;
+const mats = new Map<string, AuraMat>();
 
-const mats = new Map<string, THREE.ShaderMaterial>();
-
-function material(kind: Exclude<Aura, 'none'>, color: number, height: number, strength: number): THREE.ShaderMaterial {
+/**
+ * Each particle is a camera-facing square drawn once per instance; its path
+ * is worked out from the clock and its seed (phase, speed, angle, radius).
+ */
+function material(kind: Exclude<Aura, 'none'>, color: number, height: number, strength: number): AuraMat {
   const key = `${kind}|${color}|${height.toFixed(2)}|${strength.toFixed(2)}`;
   let m = mats.get(key);
   if (m) return m;
   const k = KINDS[kind];
-  m = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime: { value: 0 },
-      uRise: { value: k.rise },
-      uSwirl: { value: k.swirl },
-      uJump: { value: k.jump },
-      // Small: a spark, not a disc.
-      uSize: { value: k.size * 0.6 },
-      uSpread: { value: k.spread },
-      uHeight: { value: height },
-      uColor: { value: new THREE.Color(color) },
-      uGain: { value: k.gain * Math.min(1.4, 0.5 + strength * 0.5) },
-      uTwinkle: { value: k.twinkle },
-      uCore: { value: k.core },
-    },
-    vertexShader: VERT,
-    fragmentShader: FRAG,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
+  const uColor = uniform(new THREE.Color(color));
+  const uGain = uniform(k.gain * Math.min(1.4, 0.5 + strength * 0.5));
+  const seed = attribute<'vec4'>('aSeed', 'vec4');
+  const base = attribute<'float'>('aY', 'float');
+  const T = auraTime;
+  const t = T.mul(seed.y).add(seed.x);
+  const life = fract(t.mul(0.25));
+  const ang = seed.z.add(T.mul(k.swirl * 6.2832).mul(seed.y.mul(0.4).add(0.6)));
+  const r = seed.w.mul(mix(1.0, k.spread, life));
+  // Rising things start low and climb; falling things start high.
+  const y: F = Math.abs(k.rise) > 0.001 ? (k.rise > 0 ? life : life.oneMinus()).mul(height).add(base.mul(0.25)) : base;
+  let p: V3 = vec3(cos(ang).mul(r), y, sin(ang).mul(r));
+  if (k.jump > 0) {
+    const h = (n: F): F => fract(sin(n).mul(43758.5453));
+    const tk = floor(T.mul(14.0).add(seed.x.mul(7.0)));
+    p = p.add(vec3(h(tk.add(seed.z)), h(tk.mul(1.3).add(seed.w)), h(tk.mul(1.7).add(seed.x))).sub(0.5).mul(k.jump * 4.0));
+  }
+  const fade: F = Math.abs(k.rise) > 0.001 ? smoothstep(0.0, 0.15, life).mul(smoothstep(0.65, 1.0, life).oneMinus()) : float(1.0);
+  const vFade = vary(fade);
+  const vSeed = vary(seed.x.add(T.mul(seed.y.add(0.5))));
+  m = new THREE.PointsNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false });
+  m.fog = false;
+  m.positionNode = p;
+  // The sprite's world size in units of 6 mm (small: a spark, not a disc),
+  // drawn for a 600 px tall view.
+  const mv = modelViewMatrix.mul(vec4(p, 1.0));
+  m.sizeNode = cameraProjectionMatrix.mul(vec4(0.0, 1.0, 0.0, 0.0)).y.mul(k.size * 0.6 * 1.8).div(max(0.2, mv.z.negate()));
+  const d = uv().sub(0.5);
+  const rr = length(d).mul(2.0);
+  const soft = pow(rr.oneMinus().max(0.0), 2.0);
+  const hard = smoothstep(0.45, 0.0, rr);
+  const al = mix(soft, max(soft.mul(0.4), hard), k.core);
+  const tw = mix(1.0, sin(vSeed.mul(6.2832)).mul(0.5).add(0.5), k.twinkle);
+  // A white-hot centre on bright points.
+  const c = mix(uColor as unknown as V3, vec3(1.0), hard.mul(k.core * 0.5));
+  m.colorNode = c.mul(al).mul(vFade).mul(tw).mul(uGain);
+  m.maskNode = rr.lessThanEqual(1.0);
   m.name = `aura:${kind}`;
   m.userData.shared = true;
   mats.set(key, m);
@@ -176,27 +155,33 @@ export function auraHasSparks(kind: Aura): boolean {
  * The aura's particles as one Points object, or null for 'none' and for the
  * soft kinds, which are the glow shell alone. Add it under whatever it should follow.
  */
-export function buildAura(kind: Aura, color: number, o: AuraOpts): THREE.Points | null {
+export function buildAura(kind: Aura, color: number, o: AuraOpts): THREE.Sprite | null {
   const share = SPARKY[kind];
   if (kind === 'none' || !KINDS[kind] || share === undefined) return null;
   const k = KINDS[kind];
   const n = Math.max(3, Math.round(share * k.count * Math.max(0.2, o.strength) * Math.max(0.6, Math.min(1.6, o.radius * 2.5 + o.height * 0.4))));
   const rng = new Random(o.seed >>> 0 || 1);
-  const pos = new Float32Array(n * 3);
+  const ys = new Float32Array(n);
   const seed = new Float32Array(n * 4);
   for (let i = 0; i < n; i++) {
-    pos[i * 3 + 1] = rng.range(0, o.height);
+    ys[i] = rng.range(0, o.height);
     seed[i * 4] = rng.range(0, 4);
     seed[i * 4 + 1] = rng.range(0.6, 1.4);
     seed[i * 4 + 2] = rng.range(0, Math.PI * 2);
     seed[i * 4 + 3] = o.radius * Math.sqrt(rng.range(0.15, 1));
   }
+  // A unit square, drawn once per particle.
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('aSeed', new THREE.BufferAttribute(seed, 4));
+  g.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0], 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+  g.setIndex([0, 1, 2, 0, 2, 3]);
+  g.setAttribute('aY', new THREE.InstancedBufferAttribute(ys, 1));
+  g.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seed, 4));
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, o.height / 2, 0), o.radius * 2 + o.height);
   const m = material(kind, color, o.height, o.strength);
-  const pts = new THREE.Points(g, m);
+  const pts = new THREE.Sprite(m);
+  pts.geometry = g;
+  pts.count = n;
   pts.name = `aura:${kind}`;
   pts.frustumCulled = false;
   pts.renderOrder = 3;
@@ -205,9 +190,7 @@ export function buildAura(kind: Aura, color: number, o: AuraOpts): THREE.Points 
   pts.userData.aura = kind;
   pts.userData.auraColor = color;
   // The clock is read once a frame by whichever aura draws first.
-  pts.onBeforeRender = () => {
-    m.uniforms.uTime!.value = (performance.now() / 1000) % 3600;
-  };
+  pts.onBeforeRender = tick;
   return pts;
 }
 
@@ -221,153 +204,123 @@ export function auraStyle(kind: Aura): { size: number; rise: number; twinkle: nu
 // ---------------------------------------------------------------------------
 // The glow shell.
 
+function shHash(p0: V3): F {
+  const p = fract(p0.mul(0.3183099).add(0.1)).mul(17.0);
+  return fract(p.x.mul(p.y).mul(p.z).mul(p.x.add(p.y).add(p.z)));
+}
+
 /** Value noise, shared by both halves of the shell. */
-const NOISE = /* glsl */ `
-float shHash(vec3 p) {
-  p = fract(p * 0.3183099 + 0.1);
-  p *= 17.0;
-  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
-float shNoise(vec3 x) {
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
+function shNoise(x: V3): F {
+  const i = floor(x).toVar();
+  const f0 = fract(x);
+  const f = f0.mul(f0).mul(f0.mul(-2.0).add(3.0)).toVar();
+  const c = (dx: number, dy: number, dz: number): F => shHash(i.add(vec3(dx, dy, dz)));
   return mix(
-    mix(mix(shHash(i), shHash(i + vec3(1, 0, 0)), f.x), mix(shHash(i + vec3(0, 1, 0)), shHash(i + vec3(1, 1, 0)), f.x), f.y),
-    mix(mix(shHash(i + vec3(0, 0, 1)), shHash(i + vec3(1, 0, 1)), f.x), mix(shHash(i + vec3(0, 1, 1)), shHash(i + vec3(1, 1, 1)), f.x), f.y),
-    f.z);
+    mix(mix(c(0, 0, 0), c(1, 0, 0), f.x), mix(c(0, 1, 0), c(1, 1, 0), f.x), f.y),
+    mix(mix(c(0, 0, 1), c(1, 0, 1), f.x), mix(c(0, 1, 1), c(1, 1, 1), f.x), f.y),
+    f.z,
+  );
 }
-`;
 
-/** Style numbers, as the shader reads them. */
-const STYLE_ID: Record<GlowStyle, number> = { rim: 0, pulse: 1, flame: 2, shimmer: 3, frost: 4, storm: 5, void: 6, spectral: 7 };
+const shellMats = new Map<string, THREE.MeshBasicNodeMaterial>();
 
-const SHELL_VERT = /* glsl */ `
-#include <common>
-#include <skinning_pars_vertex>
-uniform float uThick;
-uniform float uStyle;
-uniform float uTime;
-varying vec3 vN;
-varying vec3 vV;
-varying vec3 vObj;
-varying float vLift;
-${NOISE}
-void main() {
-  #include <beginnormal_vertex>
-  #include <skinbase_vertex>
-  #include <skinnormal_vertex>
-  #include <begin_vertex>
-  #include <skinning_vertex>
-  vObj = transformed;
-  // Flames and ghost-light stand off the surface in moving tongues.
-  float lift = 0.0;
-  if (uStyle > 1.5 && uStyle < 2.5) {
-    float f = shNoise(transformed * 9.0 - vec3(0.0, uTime * 2.6, 0.0));
-    lift = f * f * 2.6;
-  } else if (uStyle > 6.5) {
-    lift = shNoise(transformed * 5.0 + vec3(0.0, -uTime * 0.9, uTime * 0.3)) * 2.2;
-  }
-  vLift = lift;
-  vec4 mv = modelViewMatrix * vec4(transformed, 1.0);
-  vec3 n = normalize(normalMatrix * objectNormal);
-  // Pushed out in view space, so the shell is the same few millimetres
-  // whatever scale the item is drawn at.
-  mv.xyz += n * uThick * (1.0 + lift);
-  vN = n;
-  vV = isOrthographic ? vec3(0.0, 0.0, 1.0) : normalize(-mv.xyz);
-  gl_Position = projectionMatrix * mv;
-}
-`;
-
-const SHELL_FRAG = /* glsl */ `
-uniform vec3 uColor;
-uniform float uGain;
-uniform float uTime;
-uniform float uStyle;
-varying vec3 vN;
-varying vec3 vV;
-varying vec3 vObj;
-varying float vLift;
-${NOISE}
-void main() {
-  float facing = abs(dot(normalize(vN), normalize(vV)));
-  float rim = pow(1.0 - facing, 2.4);
-  float t = uTime;
-  vec3 col = uColor;
-  float a;
-  if (uStyle < 0.5) {
-    // Rim: a steady halo, breathing.
-    a = (0.05 + rim) * (0.82 + 0.18 * sin(t * 1.9));
-  } else if (uStyle < 1.5) {
-    // Pulse: lub-dub, then rest.
-    float b = fract(t * 0.9);
-    float beat = exp(-b * 9.0) + 0.65 * exp(-max(0.0, b - 0.2) * 9.0) * step(0.2, b);
-    a = (0.04 + rim) * (0.35 + 1.1 * beat);
-  } else if (uStyle < 2.5) {
-    // Flame: flickering tongues, hot white-yellow where they are thickest.
-    float f = shNoise(vObj * 12.0 - vec3(0.0, t * 3.4, 0.0));
-    col = mix(uColor, vec3(1.0, 0.86, 0.55), clamp(vLift * 0.2 + f * 0.2, 0.0, 0.5));
-    a = (0.03 + rim * 1.0 + vLift * 0.06) * (0.5 + 0.6 * f);
-  } else if (uStyle < 3.5) {
-    // Shimmer: a band of light sweeping along, and glints winking.
-    float band = fract((vObj.y * 1.6 + vObj.x * 0.6) * 0.7 - t * 0.45);
-    band = exp(-pow((band - 0.5) * 9.0, 2.0));
-    float glint = pow(shNoise(vObj * 55.0 + vec3(floor(t * 5.0))), 14.0) * 5.0;
-    col = mix(uColor, vec3(1.0), band * 0.5 + glint * 0.3);
-    a = 0.04 + rim * 0.85 + band * 0.75 + glint;
-  } else if (uStyle < 4.5) {
-    // Frost: cold and steady, ice crystals catching the light.
-    float c = pow(shNoise(vObj * 42.0 + vec3(0.0, floor(t * 3.0), 0.0)), 10.0) * 4.0;
-    col = mix(uColor, vec3(0.92, 0.97, 1.0), 0.25 + c * 0.4);
-    a = 0.06 + rim * 1.05 + c;
-  } else if (uStyle < 5.5) {
-    // Storm: arcs crawling over it, the odd flash.
-    float tick = floor(t * 11.0);
-    float r = 1.0 - abs(shNoise(vObj * 13.0 + vec3(0.0, 0.0, tick * 1.7)) * 2.0 - 1.0);
-    float arc = pow(r, 14.0) * 2.4;
-    float flash = step(0.9, shHash(vec3(floor(t * 7.0), 1.3, 2.1)));
-    col = mix(uColor, vec3(1.0), clamp(arc * 0.5 + flash * 0.4, 0.0, 0.8));
-    a = 0.03 + rim * (0.85 + 0.9 * flash) + arc;
-  } else if (uStyle < 6.5) {
-    // Void: dark smoke turning through the light.
-    float n = shNoise(vObj * 6.0 + vec3(t * 0.35, t * 0.2, -t * 0.3));
-    n = smoothstep(0.25, 0.85, n);
-    col = mix(uColor * 0.55, mix(uColor, vec3(1.0), 0.35), n);
-    a = (0.03 + rim * 1.5) * (0.4 + 1.2 * n);
-  } else {
-    // Spectral: ghost-light rising off it.
-    float n = shNoise(vObj * 7.0 - vec3(0.0, t * 1.2, 0.0));
-    col = mix(uColor, vec3(0.9, 1.0, 1.0), 0.2);
-    a = (0.04 + rim * 0.9) * (0.35 + n) + vLift * 0.12;
-  }
-  gl_FragColor = vec4(col * a * uGain, 1.0);
-}
-`;
-
-/** One clock for every shell, set by whichever draws first in a frame. */
-const shellTime = { value: 0 };
-const shellMats = new Map<string, THREE.ShaderMaterial>();
-
-function shellMaterial(color: number, strength: number, thick: number, style: GlowStyle): THREE.ShaderMaterial {
+function shellMaterial(color: number, strength: number, thick: number, style: GlowStyle): THREE.MeshBasicNodeMaterial {
   const key = `${style}|${color}|${strength.toFixed(2)}|${thick.toFixed(3)}`;
   let m = shellMats.get(key);
   if (m) return m;
-  m = new THREE.ShaderMaterial({
-    uniforms: {
-      uColor: { value: new THREE.Color(color) },
-      // Past the bloom threshold at the edges, so the halo spreads.
-      uGain: { value: 0.9 + 1.5 * strength },
-      uThick: { value: thick },
-      uStyle: { value: STYLE_ID[style] },
-      uTime: shellTime,
-    },
-    vertexShader: SHELL_VERT,
-    fragmentShader: SHELL_FRAG,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
+  const uColor = uniform(new THREE.Color(color)) as unknown as V3;
+  // Past the bloom threshold at the edges, so the halo spreads.
+  const uGain = uniform(0.9 + 1.5 * strength);
+  const uThick = uniform(thick);
+  const t = auraTime;
+  // The skinned surface, in the model's space.
+  const obj = positionLocal;
+  // Flames and ghost-light stand off the surface in moving tongues.
+  let lift: F = float(0.0);
+  if (style === 'flame') {
+    const f = shNoise(obj.mul(9.0).sub(vec3(0.0, t.mul(2.6), 0.0)));
+    lift = f.mul(f).mul(2.6);
+  } else if (style === 'spectral') {
+    lift = shNoise(obj.mul(5.0).add(vec3(0.0, t.mul(-0.9), t.mul(0.3)))).mul(2.2);
+  }
+  const mv0 = modelViewMatrix.mul(vec4(obj, 1.0)).xyz;
+  const n = transformNormalToView(normalLocal).normalize();
+  // Pushed out in view space, so the shell is the same few millimetres
+  // whatever scale the item is drawn at.
+  const mv = mv0.add(n.mul(uThick).mul(lift.add(1.0)));
+  const vN = vary(n);
+  const ortho = cameraProjectionMatrix.mul(vec4(0.0, 0.0, 0.0, 1.0)).w.greaterThan(0.5);
+  const vV = vary(ortho.select(vec3(0.0, 0.0, 1.0), normalize(mv.negate())));
+  const vObj = vary(obj);
+  const vLift = vary(lift);
+
+  const facing = abs(dot(normalize(vN), normalize(vV)));
+  const rim = pow(facing.oneMinus(), 2.4);
+  let col: V3 = uColor;
+  let al: F;
+  switch (style) {
+    case 'rim':
+      // A steady halo, breathing.
+      al = rim.add(0.05).mul(sin(t.mul(1.9)).mul(0.18).add(0.82));
+      break;
+    case 'pulse': {
+      // Lub-dub, then rest.
+      const b = fract(t.mul(0.9));
+      const beat = exp(b.mul(-9.0)).add(exp(max(0.0, b.sub(0.2)).mul(-9.0)).mul(0.65).mul(step(0.2, b)));
+      al = rim.add(0.04).mul(beat.mul(1.1).add(0.35));
+      break;
+    }
+    case 'flame': {
+      // Flickering tongues, hot white-yellow where they are thickest.
+      const f = shNoise(vObj.mul(12.0).sub(vec3(0.0, t.mul(3.4), 0.0))).toVar();
+      col = mix(uColor, vec3(1.0, 0.86, 0.55), clamp(vLift.mul(0.2).add(f.mul(0.2)), 0.0, 0.5));
+      al = rim.add(0.03).add(vLift.mul(0.06)).mul(f.mul(0.6).add(0.5));
+      break;
+    }
+    case 'shimmer': {
+      // A band of light sweeping along, and glints winking.
+      const b0 = fract(vObj.y.mul(1.6).add(vObj.x.mul(0.6)).mul(0.7).sub(t.mul(0.45)));
+      const band = exp(pow(b0.sub(0.5).mul(9.0), 2.0).negate()).toVar();
+      const glint = pow(shNoise(vObj.mul(55.0).add(vec3(floor(t.mul(5.0))))), 14.0).mul(5.0).toVar();
+      col = mix(uColor, vec3(1.0), band.mul(0.5).add(glint.mul(0.3)));
+      al = rim.mul(0.85).add(0.04).add(band.mul(0.75)).add(glint);
+      break;
+    }
+    case 'frost': {
+      // Cold and steady, ice crystals catching the light.
+      const c = pow(shNoise(vObj.mul(42.0).add(vec3(0.0, floor(t.mul(3.0)), 0.0))), 10.0).mul(4.0).toVar();
+      col = mix(uColor, vec3(0.92, 0.97, 1.0), c.mul(0.4).add(0.25));
+      al = rim.mul(1.05).add(0.06).add(c);
+      break;
+    }
+    case 'storm': {
+      // Arcs crawling over it, the odd flash.
+      const tk = floor(t.mul(11.0));
+      const r = abs(shNoise(vObj.mul(13.0).add(vec3(0.0, 0.0, tk.mul(1.7)))).mul(2.0).sub(1.0)).oneMinus();
+      const arc = pow(r, 14.0).mul(2.4).toVar();
+      const flash = step(0.9, shHash(vec3(floor(t.mul(7.0)), 1.3, 2.1))).toVar();
+      col = mix(uColor, vec3(1.0), clamp(arc.mul(0.5).add(flash.mul(0.4)), 0.0, 0.8));
+      al = rim.mul(flash.mul(0.9).add(0.85)).add(0.03).add(arc);
+      break;
+    }
+    case 'void': {
+      // Dark smoke turning through the light.
+      const nn = smoothstep(0.25, 0.85, shNoise(vObj.mul(6.0).add(vec3(t.mul(0.35), t.mul(0.2), t.mul(-0.3))))).toVar();
+      col = mix(uColor.mul(0.55), mix(uColor, vec3(1.0), 0.35), nn);
+      al = rim.mul(1.5).add(0.03).mul(nn.mul(1.2).add(0.4));
+      break;
+    }
+    default: {
+      // Spectral: ghost-light rising off it.
+      const nn = shNoise(vObj.mul(7.0).sub(vec3(0.0, t.mul(1.2), 0.0)));
+      col = mix(uColor, vec3(0.9, 1.0, 1.0), 0.2);
+      al = rim.mul(0.9).add(0.04).mul(nn.add(0.35)).add(vLift.mul(0.12));
+    }
+  }
+  m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  m.fog = false;
+  m.vertexNode = cameraProjectionMatrix.mul(vec4(mv, 1.0));
+  m.colorNode = col.mul(al).mul(uGain);
   m.name = 'aura:shell';
   m.userData.shared = true;
   shellMats.set(key, m);
@@ -381,9 +334,7 @@ function markShell(o: THREE.Mesh, color: number): void {
   o.receiveShadow = false;
   o.userData.aura = 'shell';
   o.userData.auraColor = color;
-  o.onBeforeRender = () => {
-    shellTime.value = (performance.now() / 1000) % 3600;
-  };
+  o.onBeforeRender = tick;
 }
 
 /** Meshes worth outlining: solid ones, not glows, decals or particles of their own. */

@@ -7,13 +7,14 @@
  * the face in shadow. What the select screen shows is exactly the body that
  * walks into town.
  *
- * Rendered once per class and size in a small offscreen context shared by
- * every class (see `portraitRenderer`), cached in memory and in localStorage
+ * Rendered once per class and size in a small offscreen studio shared by
+ * every portrait (see `withStudio`), cached in memory and in localStorage
  * (keyed by the mesh version, so a changed body redraws). Until a portrait is
  * ready the slot shows a dark frame.
  */
 import * as THREE from 'three';
 import { assetStats } from '../core/Assets';
+import { withStudio } from '../core/Studio';
 import { MESH_VERSION } from './hero/MeshCache';
 import type { CharClassId } from '../types';
 
@@ -75,42 +76,6 @@ async function texturesSettled(ms: number): Promise<void> {
 }
 
 /**
- * One offscreen context for every class portrait, kept a while between them.
- *
- * Each portrait used to make its own context and throw it away: a new
- * context, every hero shader compiled again in it and every texture sent
- * again, on the frame a class card was first picked. The six heroes share
- * most of their materials, so one context compiles them once.
- */
-let shared: THREE.WebGLRenderer | null = null;
-let idle = 0;
-const IDLE_MS = 20000;
-
-function portraitRenderer(): THREE.WebGLRenderer {
-  window.clearTimeout(idle);
-  if (!shared) {
-    shared = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    shared.setPixelRatio(1);
-    shared.setClearAlpha(0);
-    shared.outputColorSpace = THREE.SRGBColorSpace;
-    shared.toneMapping = THREE.ACESFilmicToneMapping;
-    shared.toneMappingExposure = 1.1;
-  }
-  return shared;
-}
-
-/** Frees the shared context once no portrait has been asked for in a while. */
-function releaseLater(): void {
-  window.clearTimeout(idle);
-  idle = window.setTimeout(() => {
-    if (pending.size) return releaseLater();
-    shared?.dispose();
-    shared?.forceContextLoss();
-    shared = null;
-  }, IDLE_MS);
-}
-
-/**
  * Portraits draw one at a time, each in an idle moment. The select screen
  * asks for all six at once; drawn together, each one's posing, drawing and
  * PNG encoding landed in the same few frames of the screen's first second.
@@ -168,20 +133,25 @@ async function renderNow(classId: CharClassId, size: number): Promise<string> {
   camera.position.copy(aim).add(new THREE.Vector3(0.25, 0.08, 1.75));
   camera.lookAt(aim);
 
-  const renderer = portraitRenderer();
   try {
-    renderer.setSize(size, size, false);
-    renderer.render(scene, camera);
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = size;
-    const g = cv.getContext('2d', { willReadFrequently: true })!;
-    backdrop(g, size, classId);
-    g.drawImage(renderer.domElement, 0, 0, size, size);
-    frame(g, size);
-    return cv.toDataURL('image/png');
+    // The studio is shared by every portrait, and cached between them: the
+    // six heroes share most of their materials, so they compile once.
+    const uri = await withStudio((renderer) => {
+      renderer.toneMappingExposure = 1.1;
+      renderer.setClearColor(0x000000, 0);
+      renderer.setSize(size, size, false);
+      renderer.render(scene, camera);
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      const g = cv.getContext('2d', { willReadFrequently: true })!;
+      backdrop(g, size, classId);
+      g.drawImage(renderer.domElement, 0, 0, size, size);
+      frame(g, size);
+      return cv.toDataURL('image/png');
+    });
+    return uri ?? '';
   } finally {
     hero.dispose();
-    releaseLater();
   }
 }
 

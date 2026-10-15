@@ -20,6 +20,7 @@
  * so it rides the rig like every other worn mesh and is freed with it.
  */
 import * as THREE from 'three';
+import { isStandardLike } from '../../core/Tsl';
 import type { EquipSlot, Item, ItemVisual } from '../../types';
 import { buildItem, buildItemFeatures } from '../items/Model';
 import type { HeroModel } from './Hero';
@@ -140,8 +141,9 @@ const WORN_GLOW = 0.4;
 const dimmed = new Map<string, THREE.Material>();
 
 function wornMaterial(m: THREE.Material): THREE.Material {
-  const lit = m instanceof THREE.MeshStandardMaterial && m.emissiveIntensity > 0 && m.emissive.getHex() !== 0;
-  const ghost = m instanceof THREE.MeshBasicMaterial && m.blending === THREE.AdditiveBlending;
+  // Flags, not instanceof: node materials carry the classic flags.
+  const lit = isStandardLike(m) && m.emissiveIntensity > 0 && m.emissive.getHex() !== 0;
+  const ghost = (m as THREE.MeshBasicMaterial).isMeshBasicMaterial === true && m.blending === THREE.AdditiveBlending;
   if (!lit && !ghost) return m;
   let d = dimmed.get(m.uuid);
   if (!d) {

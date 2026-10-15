@@ -14,39 +14,22 @@
  * as particles, so they sit in the same visual language.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  If, abs, atan, attribute, cameraPosition, cameraProjectionMatrix, cameraViewMatrix, cameraWorldMatrix, clamp, cos, cross, dot, exp, floor,
+  fract, length, max, min, mix, mod, normalize, positionGeometry, pow, sin, smoothstep, step, uniform, uv, vec2, vec3, vec4,
+} from 'three/tsl';
 import { InstancedPool } from './Instanced';
-import { GLSL_UNPACK } from './Palette';
-import { FX_EXPOSURE, GLSL_EXPOSURE } from './Exposure';
+import { band, fxf, fxh, fxn, kitInstance, kitMaterial, kitOut, slot } from './Nodes';
+import { vary, type F, type V3, type V4 } from '../../core/Tsl';
 
-const GLSL_NOISE = /* glsl */ `
-  float fxh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  float fxn(vec2 p) {
-    vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(fxh(i), fxh(i + vec2(1.0, 0.0)), u.x), mix(fxh(i + vec2(0.0, 1.0)), fxh(i + vec2(1.0, 1.0)), u.x), u.y);
-  }
-  float fxf(vec2 p) { return 0.5 * fxn(p) + 0.25 * fxn(p * 2.03) + 0.125 * fxn(p * 4.07) + 0.0625 * fxn(p * 8.1); }
-  vec3 fxRamp(vec3 tail, vec3 body, vec3 core, float h) {
-    vec3 c = mix(tail, body, smoothstep(0.05, 0.5, h));
-    return mix(c, core, smoothstep(0.62, 0.98, h));
-  }
-`;
+const iA = (): V4 => attribute<'vec4'>('iA', 'vec4');
+const iB = (): V4 => attribute<'vec4'>('iB', 'vec4');
 
-const COMMON_VARYINGS = /* glsl */ `
-  varying vec3 vCore;
-  varying vec3 vBody;
-  varying vec3 vTail;
-  varying float vEmit;
-  varying vec4 vD;
-`;
-
-const COMMON_VERT_SETUP = /* glsl */ `
-  vCore = unpackRGB(iC.x);
-  vBody = unpackRGB(iC.y);
-  vTail = unpackRGB(iC.z);
-  vEmit = iC.w;
-  vD = iD;
-`;
+/** World position to clip space; the pools draw in world space. */
+function clip(wp: V3): V4 {
+  return cameraProjectionMatrix.mul(cameraViewMatrix).mul(vec4(wp, 1.0));
+}
 
 // ---------------------------------------------------------------------------
 // Cores
@@ -59,241 +42,241 @@ export const CORE_STYLE = {
 } as const;
 export type CoreStyle = keyof typeof CORE_STYLE;
 
-const CORE_VERT = /* glsl */ `
-  attribute vec4 iA; attribute vec4 iB; attribute vec4 iC; attribute vec4 iD;
-  varying vec2 vP;
-  ${COMMON_VARYINGS}
-  ${GLSL_UNPACK}
-  void main() {
-    ${COMMON_VERT_SETUP}
-    vec3 camRight = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
-    vec3 camUp = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
-    // Orient the quad's -y along the travel direction as seen on screen, so the
-    // tail trails behind.
-    vec3 dir = iB.xyz;
-    vec2 sd = vec2(dot(dir, camRight), dot(dir, camUp));
-    float sl = length(sd);
-    vec2 ax = sl > 1e-3 ? sd / sl : vec2(0.0, 1.0);
-    vec2 ay = vec2(-ax.y, ax.x);
-    float stretch = 1.0 + iB.w * min(sl, 1.0);
-    vec2 c = position.xy;
-    // Stretch only the tail half (behind the travel direction).
-    float along = c.x < 0.0 ? c.x * stretch : c.x;
-    vec2 q = ax * along + ay * c.y;
-    vec3 wp = iA.xyz + (camRight * q.x + camUp * q.y) * iA.w;
-    vP = vec2(along, c.y) * 2.0;
-    gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
-  }
-`;
-
-const CORE_FRAG = /* glsl */ `
-  ${GLSL_EXPOSURE}
-  uniform float uTime;
-  varying vec2 vP;
-  ${COMMON_VARYINGS}
-  ${GLSL_NOISE}
-  void main() {
-    float style = vD.x;
-    float fade = vD.y;
-    float seed = vD.z * 37.0;
-    vec2 p = vP;          // x along travel (+ ahead), y across; tail at x < -1
-    float r = length(p);
-    float t = uTime;
-    float heat = 0.0;
-    float cov = 0.0;
-    float occl = 0.15;
-    if (style < 0.5) {
-      // Orb: hot heart, turbulent corona.
-      float n = fxf(p * 2.6 + vec2(t * 1.7 + seed, t * 1.1));
-      heat = pow(max(0.0, 1.0 - r * 0.95), 2.2) * 1.4 + n * 0.35 * smoothstep(1.0, 0.3, r);
-      cov = smoothstep(1.0, 0.25, r + (n - 0.5) * 0.35);
-    } else if (style < 1.5) {
-      // Fireball: dense heart, flame streaming back.
-      vec2 q = vec2(p.x + 0.15, p.y * (1.0 + max(0.0, -p.x) * 0.25));
-      float n = fxf(vec2(q.x * 2.2 + t * 6.0 + seed, q.y * 2.6));
-      float tail = smoothstep(-3.0, -0.2, p.x);
-      float d = length(vec2(min(q.x + 0.1, 0.0) * 0.45 + max(q.x, 0.0), q.y)) + (n - 0.5) * 0.7;
-      cov = smoothstep(0.95, 0.35, d) * tail;
-      heat = pow(max(0.0, 1.0 - length(p + vec2(-0.1, 0.0)) * 1.05), 1.6) * 1.5 + n * 0.45 * cov;
-      occl = 0.3;
-    } else if (style < 2.5) {
-      // Ball lightning: white heart, crawling arcs that flicker.
-      float fl = floor(t * 24.0);
-      float n = fxn(vec2(atan(p.y, p.x) * 3.0 + fl * 1.3, r * 4.0 + seed));
-      float arcs = smoothstep(0.92, 1.0, 1.0 - abs(n - 0.5) * 2.0) * smoothstep(1.0, 0.2, r);
-      heat = pow(max(0.0, 1.0 - r * 1.3), 2.5) * 1.6 + arcs;
-      cov = pow(max(0.0, 1.0 - r), 1.5) * 0.7 + arcs;
-      occl = 0.0;
-    } else if (style < 3.5) {
-      // Flare: a star of light.
-      float rays = exp(-p.x * p.x * 60.0) * max(0.0, 1.0 - abs(p.y)) + exp(-p.y * p.y * 60.0) * max(0.0, 1.0 - abs(p.x));
-      heat = pow(max(0.0, 1.0 - r * 1.4), 2.0) * 1.3 + rays * 0.9;
-      cov = clamp(heat, 0.0, 1.0);
-      occl = 0.0;
-    } else if (style < 4.5) {
-      // Poison glob: wobbling, thick, with bright bubbles.
-      float w = fxf(p * 2.0 + vec2(t * 2.0, seed));
-      float d = r + (w - 0.5) * 0.45;
-      cov = smoothstep(0.85, 0.6, d);
-      float bub = smoothstep(0.75, 0.95, fxn(p * 6.0 + vec2(seed, t * 3.0)));
-      heat = (0.35 + 0.5 * (1.0 - d) + bub * 0.6) * cov;
-      occl = 0.55;
-    } else if (style < 5.5) {
-      // Frost orb: hard faceted ice with a bright heart.
-      float a = atan(p.y, p.x);
-      float facet = abs(fract(a * 0.954 + seed) - 0.5) * 2.0;
-      float hexR = r * (1.0 + facet * 0.12);
-      cov = smoothstep(0.85, 0.7, hexR) + 0.4 * smoothstep(1.0, 0.0, r);
-      heat = pow(max(0.0, 1.0 - r * 1.1), 1.8) * 1.3 + (1.0 - facet) * 0.25 * cov;
-      occl = 0.35;
-    } else if (style < 6.5) {
-      // Void: a dark heart ringed with light.
-      float n = fxf(vec2(atan(p.y, p.x) * 2.0 + t * 2.0, r * 3.0 - t + seed));
-      float rim = exp(-pow((r - 0.62 - (n - 0.5) * 0.2) / 0.16, 2.0));
-      heat = rim * 1.2;
-      cov = smoothstep(0.9, 0.5, r);
-      occl = 0.85 * smoothstep(0.75, 0.3, r) + 0.2;
-    } else if (style < 7.5) {
-      // Soft glow.
-      heat = pow(max(0.0, 1.0 - r), 2.4);
-      cov = heat;
-      occl = 0.0;
-    } else if (style < 8.5) {
-      // Bone spirit: a pale skull-white heart, sickly halo.
-      float n = fxf(p * 3.0 + vec2(t * 3.0, seed));
-      heat = pow(max(0.0, 1.0 - r * 1.1), 2.0) * 1.2 + n * 0.3 * smoothstep(1.0, 0.4, r);
-      cov = smoothstep(1.0, 0.35, r + (n - 0.5) * 0.3);
-      occl = 0.25;
-    } else {
-      // Glyphs. Upright on screen when still: q.y is up, q.x across.
-      vec2 q = vec2(p.y, p.x);
-      float a = atan(q.y, q.x);
-      float spin = t * 1.5 + seed;
-      float n = fxn(q * 5.0 + vec2(seed, t * 2.0));
-      if (style < 9.5) {
-        // Skull: a pale cranium and jaw with burning eye sockets.
-        float head = length((q - vec2(0.0, 0.16)) * vec2(1.0, 1.08)) - 0.6;
-        vec2 jq = abs(q - vec2(0.0, -0.42)) - vec2(0.3, 0.2);
-        float jaw = length(max(jq, 0.0)) + min(max(jq.x, jq.y), 0.0) - 0.06;
-        float sk = min(head, jaw);
-        float eyes = length(vec2(abs(q.x) - 0.24, q.y - 0.06)) - 0.15;
-        float nose = max(abs(q.x) * 1.6 + (q.y + 0.12) * 0.9, -(q.y + 0.24));
-        float teeth = step(0.5, fract(q.x * 7.0)) * step(abs(q.y + 0.42), 0.05);
-        float hole = min(eyes, nose - 0.06);
-        cov = smoothstep(0.04, -0.02, sk) * (1.0 - smoothstep(0.03, -0.03, hole) * 0.85) * (1.0 - teeth * 0.6);
-        heat = 0.32 + 0.25 * n + smoothstep(0.12, -0.06, eyes) * 1.2 + smoothstep(0.05, -0.02, sk) * 0.1;
-        cov = max(cov, smoothstep(0.1, -0.05, eyes) * 0.9);
-        occl = 0.45;
-      } else if (style < 10.5) {
-        // Rune wheel: a ring, ticks around it and a turning triangle inside.
-        float ring = exp(-pow((r - 0.8) / 0.05, 2.0));
-        float ticks = step(0.82, abs(cos((a + spin * 0.3) * 6.0))) * step(abs(r - 0.66), 0.07);
-        float ta = a - spin;
-        float tri = cos(3.14159 / 3.0) / cos(mod(ta, 2.0944) - 1.0472) * 0.48;
-        float tri2 = exp(-pow((r - tri) / 0.035, 2.0));
-        cov = clamp(ring + ticks + tri2, 0.0, 1.0);
-        heat = 0.55 + 0.45 * cov;
-        occl = 0.0;
-      } else if (style < 11.5) {
-        // Crescent: a curved blade of light, horns up.
-        float outer = length(q) - 0.82;
-        float inner = length(q - vec2(0.0, 0.34)) - 0.7;
-        float d = max(outer, -inner);
-        cov = smoothstep(0.03, -0.03, d);
-        heat = 0.5 + 0.6 * smoothstep(0.0, -0.12, d) * smoothstep(-0.25, -0.05, d) + 0.2 * n;
-        occl = 0.0;
-      } else if (style < 12.5) {
-        // Star: five sharp points round a white heart.
-        float k = abs(cos((a + 1.5708) * 2.5));
-        float edge = 0.3 + 0.6 * pow(k, 6.0);
-        cov = smoothstep(edge + 0.04, edge - 0.04, r);
-        heat = pow(max(0.0, 1.0 - r * 1.2), 1.4) * 1.4 + 0.25;
-        occl = 0.0;
-      } else if (style < 13.5) {
-        // Ring: a hollow hoop with a bright rim.
-        float w = exp(-pow((r - 0.72) / 0.09, 2.0));
-        cov = w + 0.12 * smoothstep(0.75, 0.0, r);
-        heat = 0.4 + w * 0.7 + 0.2 * n;
-        occl = 0.0;
-      } else if (style < 14.5) {
-        // Eye: an almond lid, a burning iris and a black slit.
-        float lid = length(vec2(q.x * 0.62, abs(q.y) + 0.55)) - 0.82;
-        float iris = r - 0.34;
-        float slit = abs(q.x) - 0.06 * (1.0 - abs(q.y) * 2.0);
-        cov = smoothstep(0.03, -0.03, lid) * (1.0 - smoothstep(0.02, -0.02, max(slit, iris)) * 0.9);
-        heat = 0.25 + smoothstep(0.05, -0.08, iris) * 1.0 + 0.2 * n;
-        occl = 0.5;
-      } else if (style < 15.5) {
-        // Petal or leaf: a pointed blade with a bright vein.
-        float d = length(vec2(abs(q.x) + 0.5, q.y)) - 0.78;
-        float vein = exp(-q.x * q.x * 220.0) * step(abs(q.y), 0.7);
-        cov = smoothstep(0.03, -0.03, d);
-        heat = 0.35 + 0.5 * smoothstep(0.0, -0.3, d) + vein * 0.6;
-        occl = 0.35;
-      } else if (style < 16.5) {
-        // Smoke: a dark, rolling puff that hides what is behind it.
-        float w = fxf(q * 2.2 + vec2(seed, -t * 0.8));
-        float d = r + (w - 0.5) * 0.6;
-        cov = smoothstep(0.95, 0.4, d) * 0.85;
-        heat = 0.08 + 0.18 * w;
-        occl = 0.95;
-      } else if (style < 17.5) {
-        // Cross: a long upright bar and a short one, white-hot where they meet.
-        float v = max(abs(q.x) - 0.11, abs(q.y + 0.05) - 0.85);
-        float h = max(abs(q.y - 0.3) - 0.11, abs(q.x) - 0.5);
-        float d = min(v, h);
-        cov = smoothstep(0.04, -0.04, d) + 0.25 * smoothstep(0.9, 0.0, r);
-        heat = 0.55 + 0.6 * smoothstep(0.5, 0.0, length(q - vec2(0.0, 0.3)));
-        occl = 0.0;
-      } else if (style < 18.5) {
-        // Hex sigil: a six-sided frame with a hot point in the middle.
-        float ha = mod(a + spin * 0.4, 1.0472) - 0.5236;
-        float hr = r * cos(ha) / 0.866;
-        float frame = exp(-pow((hr - 0.72) / 0.05, 2.0));
-        float dot0 = exp(-r * r * 30.0);
-        cov = clamp(frame + dot0 + 0.1 * smoothstep(0.7, 0.0, hr), 0.0, 1.0);
-        heat = 0.5 + 0.5 * cov;
-        occl = 0.0;
-      } else if (style < 19.5) {
-        // Claw: three raking slashes.
-        float s = q.x - q.y * 0.35;
-        float bands = abs(fract(s * 2.2 + 0.5) - 0.5);
-        float m = step(abs(s), 0.75) * smoothstep(0.85, 0.3, abs(q.y));
-        cov = smoothstep(0.12, 0.04, bands) * m;
-        heat = 0.5 + 0.7 * smoothstep(0.08, 0.0, bands) * m;
-        occl = 0.2;
-      } else {
-        // Heart: a dark beating heart, glowing at its core.
-        vec2 h = vec2(abs(q.x), q.y * 1.15 + 0.2);
-        float d = length(h - vec2(0.3, 0.3)) - 0.36;
-        float tip = (h.x + (0.65 - h.y)) * 0.7071 - 0.36;
-        d = min(d, max(tip, -h.y + 0.05));
-        float beat = 0.8 + 0.2 * sin(t * 9.0 + seed);
-        cov = smoothstep(0.03, -0.03, d / beat);
-        heat = 0.3 + 0.8 * smoothstep(0.0, -0.35, d) * beat;
-        occl = 0.6;
-      }
-    }
-    heat = clamp(heat, 0.0, 1.0);
-    cov = clamp(cov, 0.0, 1.0) * fade;
-    if (cov < 0.003) discard;
-    vec3 col = fxRamp(vTail, vBody, vCore, heat);
-    vec3 light = col * vEmit * (0.2 + 1.1 * heat);
-    gl_FragColor = vec4(light * cov * uExposure, cov * occl);
-  }
-`;
-
 export function makeCores(capacity: number): InstancedPool {
   const base = new THREE.PlaneGeometry(1, 1);
-  const mat = new THREE.ShaderMaterial({
-    name: 'fx-cores',
-    uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
-    vertexShader: CORE_VERT,
-    fragmentShader: CORE_FRAG,
-    side: THREE.DoubleSide,
-    depthTest: true,
-  });
-  return new InstancedPool('cores', base, mat, capacity, 22);
+  const uTime = uniform(0);
+  const A = iA();
+  const B = iB();
+  const camRight = cameraWorldMatrix.mul(vec4(1.0, 0.0, 0.0, 0.0)).xyz;
+  const camUp = cameraWorldMatrix.mul(vec4(0.0, 1.0, 0.0, 0.0)).xyz;
+  // Orient the quad's -y along the travel direction as seen on screen, so the
+  // tail trails behind.
+  const dir = B.xyz;
+  const sd = vec2(dot(dir, camRight), dot(dir, camUp));
+  const sl = length(sd);
+  const ax = sl.greaterThan(1e-3).select(sd.div(max(sl, 1e-3)), vec2(0.0, 1.0));
+  const ay = vec2(ax.y.negate(), ax.x);
+  const stretch = B.w.mul(min(sl, 1.0)).add(1.0);
+  const c = positionGeometry.xy;
+  // Stretch only the tail half (behind the travel direction).
+  const along = c.x.lessThan(0.0).select(c.x.mul(stretch), c.x);
+  const q0 = ax.mul(along).add(ay.mul(c.y));
+  const wp = A.xyz.add(camRight.mul(q0.x).add(camUp.mul(q0.y)).mul(A.w));
+  const vP = vary(vec2(along, c.y).mul(2.0));
+  const v = kitInstance();
+
+  const frag = (): V4 => {
+    const style = v.D.x;
+    const seed = v.D.z.mul(37.0);
+    // x along travel (+ ahead), y across; tail at x < -1
+    const p = vP;
+    const r = length(p).toVar();
+    const t = uTime;
+    const heat = slot();
+    const cov = slot();
+    const occl = slot(0.15);
+    If(style.lessThan(0.5), () => {
+      // Orb: hot heart, turbulent corona.
+      const n = fxf(p.mul(2.6).add(vec2(t.mul(1.7).add(seed), t.mul(1.1)))).toVar();
+      heat.assign(pow(max(0.0, r.mul(0.95).oneMinus()), 2.2).mul(1.4).add(n.mul(0.35).mul(smoothstep(1.0, 0.3, r))));
+      cov.assign(smoothstep(1.0, 0.25, r.add(n.sub(0.5).mul(0.35))));
+    })
+      .ElseIf(style.lessThan(1.5), () => {
+        // Fireball: dense heart, flame streaming back.
+        const q = vec2(p.x.add(0.15), p.y.mul(max(0.0, p.x.negate()).mul(0.25).add(1.0))).toVar();
+        const n = fxf(vec2(q.x.mul(2.2).add(t.mul(6.0)).add(seed), q.y.mul(2.6))).toVar();
+        const tail = smoothstep(-3.0, -0.2, p.x);
+        const d = length(vec2(min(q.x.add(0.1), 0.0).mul(0.45).add(max(q.x, 0.0)), q.y)).add(n.sub(0.5).mul(0.7));
+        cov.assign(smoothstep(0.95, 0.35, d).mul(tail));
+        heat.assign(pow(max(0.0, length(p.add(vec2(-0.1, 0.0))).mul(1.05).oneMinus()), 1.6).mul(1.5).add(n.mul(0.45).mul(cov)));
+        occl.assign(0.3);
+      })
+      .ElseIf(style.lessThan(2.5), () => {
+        // Ball lightning: white heart, crawling arcs that flicker.
+        const fl = floor(t.mul(24.0));
+        const n = fxn(vec2(atan(p.y, p.x).mul(3.0).add(fl.mul(1.3)), r.mul(4.0).add(seed)));
+        const arcs = smoothstep(0.92, 1.0, abs(n.sub(0.5)).mul(2.0).oneMinus()).mul(smoothstep(1.0, 0.2, r)).toVar();
+        heat.assign(pow(max(0.0, r.mul(1.3).oneMinus()), 2.5).mul(1.6).add(arcs));
+        cov.assign(pow(max(0.0, r.oneMinus()), 1.5).mul(0.7).add(arcs));
+        occl.assign(0.0);
+      })
+      .ElseIf(style.lessThan(3.5), () => {
+        // Flare: a star of light.
+        const rays = exp(p.x.mul(p.x).mul(-60.0))
+          .mul(max(0.0, abs(p.y).oneMinus()))
+          .add(exp(p.y.mul(p.y).mul(-60.0)).mul(max(0.0, abs(p.x).oneMinus())));
+        heat.assign(pow(max(0.0, r.mul(1.4).oneMinus()), 2.0).mul(1.3).add(rays.mul(0.9)));
+        cov.assign(clamp(heat, 0.0, 1.0));
+        occl.assign(0.0);
+      })
+      .ElseIf(style.lessThan(4.5), () => {
+        // Poison glob: wobbling, thick, with bright bubbles.
+        const w = fxf(p.mul(2.0).add(vec2(t.mul(2.0), seed)));
+        const d = r.add(w.sub(0.5).mul(0.45)).toVar();
+        cov.assign(smoothstep(0.85, 0.6, d));
+        const bub = smoothstep(0.75, 0.95, fxn(p.mul(6.0).add(vec2(seed, t.mul(3.0)))));
+        heat.assign(d.oneMinus().mul(0.5).add(0.35).add(bub.mul(0.6)).mul(cov));
+        occl.assign(0.55);
+      })
+      .ElseIf(style.lessThan(5.5), () => {
+        // Frost orb: hard faceted ice with a bright heart.
+        const a = atan(p.y, p.x);
+        const facet = abs(fract(a.mul(0.954).add(seed)).sub(0.5)).mul(2.0).toVar();
+        const hexR = r.mul(facet.mul(0.12).add(1.0));
+        cov.assign(smoothstep(0.85, 0.7, hexR).add(smoothstep(1.0, 0.0, r).mul(0.4)));
+        heat.assign(pow(max(0.0, r.mul(1.1).oneMinus()), 1.8).mul(1.3).add(facet.oneMinus().mul(0.25).mul(cov)));
+        occl.assign(0.35);
+      })
+      .ElseIf(style.lessThan(6.5), () => {
+        // Void: a dark heart ringed with light.
+        const n = fxf(vec2(atan(p.y, p.x).mul(2.0).add(t.mul(2.0)), r.mul(3.0).sub(t).add(seed)));
+        const rim = band(r.sub(0.62).sub(n.sub(0.5).mul(0.2)), 0.16);
+        heat.assign(rim.mul(1.2));
+        cov.assign(smoothstep(0.9, 0.5, r));
+        occl.assign(smoothstep(0.75, 0.3, r).mul(0.85).add(0.2));
+      })
+      .ElseIf(style.lessThan(7.5), () => {
+        // Soft glow.
+        heat.assign(pow(max(0.0, r.oneMinus()), 2.4));
+        cov.assign(heat);
+        occl.assign(0.0);
+      })
+      .ElseIf(style.lessThan(8.5), () => {
+        // Bone spirit: a pale skull-white heart, sickly halo.
+        const n = fxf(p.mul(3.0).add(vec2(t.mul(3.0), seed))).toVar();
+        heat.assign(pow(max(0.0, r.mul(1.1).oneMinus()), 2.0).mul(1.2).add(n.mul(0.3).mul(smoothstep(1.0, 0.4, r))));
+        cov.assign(smoothstep(1.0, 0.35, r.add(n.sub(0.5).mul(0.3))));
+        occl.assign(0.25);
+      })
+      .Else(() => {
+        // Glyphs. Upright on screen when still: q.y is up, q.x across.
+        const q = vec2(p.y, p.x).toVar();
+        const a = atan(q.y, q.x).toVar();
+        const spin = t.mul(1.5).add(seed).toVar();
+        const n = fxn(q.mul(5.0).add(vec2(seed, t.mul(2.0)))).toVar();
+        If(style.lessThan(9.5), () => {
+          // Skull: a pale cranium and jaw with burning eye sockets.
+          const head = length(q.sub(vec2(0.0, 0.16)).mul(vec2(1.0, 1.08))).sub(0.6);
+          const jq = abs(q.sub(vec2(0.0, -0.42))).sub(vec2(0.3, 0.2)).toVar();
+          const jaw = length(max(jq, 0.0)).add(min(max(jq.x, jq.y), 0.0)).sub(0.06);
+          const sk = min(head, jaw).toVar();
+          const eyes = length(vec2(abs(q.x).sub(0.24), q.y.sub(0.06))).sub(0.15).toVar();
+          const nose = max(abs(q.x).mul(1.6).add(q.y.add(0.12).mul(0.9)), q.y.add(0.24).negate());
+          const teeth = step(0.5, fract(q.x.mul(7.0))).mul(step(abs(q.y.add(0.42)), 0.05));
+          const hole = min(eyes, nose.sub(0.06));
+          cov.assign(
+            smoothstep(0.04, -0.02, sk)
+              .mul(smoothstep(0.03, -0.03, hole).mul(0.85).oneMinus())
+              .mul(teeth.mul(0.6).oneMinus()),
+          );
+          heat.assign(n.mul(0.25).add(0.32).add(smoothstep(0.12, -0.06, eyes).mul(1.2)).add(smoothstep(0.05, -0.02, sk).mul(0.1)));
+          cov.assign(max(cov, smoothstep(0.1, -0.05, eyes).mul(0.9)));
+          occl.assign(0.45);
+        })
+          .ElseIf(style.lessThan(10.5), () => {
+            // Rune wheel: a ring, ticks around it and a turning triangle inside.
+            const ring = band(r.sub(0.8), 0.05);
+            const ticks = step(0.82, abs(cos(a.add(spin.mul(0.3)).mul(6.0)))).mul(step(abs(r.sub(0.66)), 0.07));
+            const ta = a.sub(spin);
+            const tri = cos(mod(ta, 2.0944).sub(1.0472)).reciprocal().mul(Math.cos(Math.PI / 3) * 0.48);
+            const tri2 = band(r.sub(tri), 0.035);
+            cov.assign(clamp(ring.add(ticks).add(tri2), 0.0, 1.0));
+            heat.assign(cov.mul(0.45).add(0.55));
+            occl.assign(0.0);
+          })
+          .ElseIf(style.lessThan(11.5), () => {
+            // Crescent: a curved blade of light, horns up.
+            const outer = length(q).sub(0.82);
+            const inner = length(q.sub(vec2(0.0, 0.34))).sub(0.7);
+            const d = max(outer, inner.negate()).toVar();
+            cov.assign(smoothstep(0.03, -0.03, d));
+            heat.assign(smoothstep(0.0, -0.12, d).mul(smoothstep(-0.25, -0.05, d)).mul(0.6).add(0.5).add(n.mul(0.2)));
+            occl.assign(0.0);
+          })
+          .ElseIf(style.lessThan(12.5), () => {
+            // Star: five sharp points round a white heart.
+            const k = abs(cos(a.add(1.5708).mul(2.5)));
+            const edge = pow(k, 6.0).mul(0.6).add(0.3).toVar();
+            cov.assign(smoothstep(edge.add(0.04), edge.sub(0.04), r));
+            heat.assign(pow(max(0.0, r.mul(1.2).oneMinus()), 1.4).mul(1.4).add(0.25));
+            occl.assign(0.0);
+          })
+          .ElseIf(style.lessThan(13.5), () => {
+            // Ring: a hollow hoop with a bright rim.
+            const w = band(r.sub(0.72), 0.09).toVar();
+            cov.assign(w.add(smoothstep(0.75, 0.0, r).mul(0.12)));
+            heat.assign(w.mul(0.7).add(0.4).add(n.mul(0.2)));
+            occl.assign(0.0);
+          })
+          .ElseIf(style.lessThan(14.5), () => {
+            // Eye: an almond lid, a burning iris and a black slit.
+            const lid = length(vec2(q.x.mul(0.62), abs(q.y).add(0.55))).sub(0.82);
+            const iris = r.sub(0.34).toVar();
+            const slit = abs(q.x).sub(abs(q.y).mul(2.0).oneMinus().mul(0.06));
+            cov.assign(smoothstep(0.03, -0.03, lid).mul(smoothstep(0.02, -0.02, max(slit, iris)).mul(0.9).oneMinus()));
+            heat.assign(smoothstep(0.05, -0.08, iris).add(0.25).add(n.mul(0.2)));
+            occl.assign(0.5);
+          })
+          .ElseIf(style.lessThan(15.5), () => {
+            // Petal or leaf: a pointed blade with a bright vein.
+            const d = length(vec2(abs(q.x).add(0.5), q.y)).sub(0.78).toVar();
+            const vein = exp(q.x.mul(q.x).mul(-220.0)).mul(step(abs(q.y), 0.7));
+            cov.assign(smoothstep(0.03, -0.03, d));
+            heat.assign(smoothstep(0.0, -0.3, d).mul(0.5).add(0.35).add(vein.mul(0.6)));
+            occl.assign(0.35);
+          })
+          .ElseIf(style.lessThan(16.5), () => {
+            // Smoke: a dark, rolling puff that hides what is behind it.
+            const w = fxf(q.mul(2.2).add(vec2(seed, t.mul(-0.8)))).toVar();
+            const d = r.add(w.sub(0.5).mul(0.6));
+            cov.assign(smoothstep(0.95, 0.4, d).mul(0.85));
+            heat.assign(w.mul(0.18).add(0.08));
+            occl.assign(0.95);
+          })
+          .ElseIf(style.lessThan(17.5), () => {
+            // Cross: a long upright bar and a short one, white-hot where they meet.
+            const vb = max(abs(q.x).sub(0.11), abs(q.y.add(0.05)).sub(0.85));
+            const hb = max(abs(q.y.sub(0.3)).sub(0.11), abs(q.x).sub(0.5));
+            const d = min(vb, hb);
+            cov.assign(smoothstep(0.04, -0.04, d).add(smoothstep(0.9, 0.0, r).mul(0.25)));
+            heat.assign(smoothstep(0.5, 0.0, length(q.sub(vec2(0.0, 0.3)))).mul(0.6).add(0.55));
+            occl.assign(0.0);
+          })
+          .ElseIf(style.lessThan(18.5), () => {
+            // Hex sigil: a six-sided frame with a hot point in the middle.
+            const ha = mod(a.add(spin.mul(0.4)), 1.0472).sub(0.5236);
+            const hr = r.mul(cos(ha)).div(0.866).toVar();
+            const frame = band(hr.sub(0.72), 0.05);
+            const dot0 = exp(r.mul(r).mul(-30.0));
+            cov.assign(clamp(frame.add(dot0).add(smoothstep(0.7, 0.0, hr).mul(0.1)), 0.0, 1.0));
+            heat.assign(cov.mul(0.5).add(0.5));
+            occl.assign(0.0);
+          })
+          .ElseIf(style.lessThan(19.5), () => {
+            // Claw: three raking slashes.
+            const s = q.x.sub(q.y.mul(0.35)).toVar();
+            const bands = abs(fract(s.mul(2.2).add(0.5)).sub(0.5)).toVar();
+            const m = step(abs(s), 0.75).mul(smoothstep(0.85, 0.3, abs(q.y))).toVar();
+            cov.assign(smoothstep(0.12, 0.04, bands).mul(m));
+            heat.assign(smoothstep(0.08, 0.0, bands).mul(m).mul(0.7).add(0.5));
+            occl.assign(0.2);
+          })
+          .Else(() => {
+            // Heart: a dark beating heart, glowing at its core.
+            const h = vec2(abs(q.x), q.y.mul(1.15).add(0.2)).toVar();
+            const d0 = length(h.sub(vec2(0.3, 0.3))).sub(0.36);
+            const tip = h.x.add(h.y.negate().add(0.65)).mul(0.7071).sub(0.36);
+            const d = min(d0, max(tip, h.y.negate().add(0.05))).toVar();
+            const beat = sin(t.mul(9.0).add(seed)).mul(0.2).add(0.8).toVar();
+            cov.assign(smoothstep(0.03, -0.03, d.div(beat)));
+            heat.assign(smoothstep(0.0, -0.35, d).mul(beat).mul(0.8).add(0.3));
+            occl.assign(0.6);
+          });
+      });
+    return kitOut(v, heat, clamp(cov, 0.0, 1.0).mul(v.D.y), occl);
+  };
+  const mat = kitMaterial('fx-cores', frag, { vertex: clip(wp) });
+  return new InstancedPool('cores', base, mat, uTime, capacity, 22);
 }
 
 // ---------------------------------------------------------------------------
@@ -302,93 +285,6 @@ export function makeCores(capacity: number): InstancedPool {
 
 export const BEAM_STYLE = { ray: 0, flame: 1, drain: 2, shaft: 3, frost: 4 } as const;
 export type BeamStyle = keyof typeof BEAM_STYLE;
-
-const BEAM_VERT = /* glsl */ `
-  attribute vec4 iA; attribute vec4 iB; attribute vec4 iC; attribute vec4 iD;
-  varying vec2 vQ;
-  varying float vLen;
-  ${COMMON_VARYINGS}
-  ${GLSL_UNPACK}
-  void main() {
-    ${COMMON_VERT_SETUP}
-    vec3 a = iA.xyz;
-    vec3 b = iB.xyz;
-    vec3 ab = b - a;
-    float len = max(length(ab), 1e-3);
-    vec3 p = a + ab * position.y;
-    vec3 camPos = cameraPosition;
-    vec3 side = normalize(cross(ab, camPos - p) + vec3(1e-5));
-    // Width swells a touch in the middle and pinches at the emitter.
-    float w = iA.w * mix(0.55, 1.0, smoothstep(0.0, 0.08, position.y));
-    p += side * position.x * w;
-    vQ = vec2(position.x * 2.0, position.y);
-    vLen = len;
-    gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
-  }
-`;
-
-const BEAM_FRAG = /* glsl */ `
-  ${GLSL_EXPOSURE}
-  uniform float uTime;
-  varying vec2 vQ;
-  varying float vLen;
-  ${COMMON_VARYINGS}
-  ${GLSL_NOISE}
-  void main() {
-    float style = vD.x;
-    float fade = vD.y;
-    float seed = vD.z * 19.0;
-    float x = vQ.x;           // -1 .. 1 across
-    float v = vQ.y;           // 0 .. 1 along
-    float s = v * vLen;       // metres along
-    float t = uTime;
-    float ends = smoothstep(0.0, 0.04, v) * smoothstep(1.0, 0.96, v);
-    float heat;
-    float cov;
-    float occl = 0.1;
-    if (style < 0.5) {
-      // Ray: a straight core in a rippling sheath.
-      float n = fxf(vec2(s * 1.6 - t * 9.0 + seed, x * 1.5));
-      float core = exp(-x * x * 26.0);
-      float sheath = exp(-x * x * 3.0) * (0.45 + 0.6 * n);
-      heat = core * 1.2 + sheath * 0.45;
-      cov = core + sheath * 0.8;
-    } else if (style < 1.5) {
-      // Flame breath: widening, billowing, rolling forward.
-      float n = fxf(vec2(s * 1.2 - t * 7.0 + seed, x * 2.0 + t));
-      float edge = 1.0 - smoothstep(0.35 + 0.5 * n, 1.0, abs(x));
-      heat = edge * (0.4 + 0.8 * n) * (1.0 - v * 0.6);
-      cov = edge * (0.5 + 0.6 * n);
-      occl = 0.3;
-    } else if (style < 2.5) {
-      // Drain: a thin wavering cord with beads flowing toward A.
-      float wave = sin(s * 3.0 + t * 6.0 + seed) * 0.35;
-      float d = abs(x - wave * smoothstep(0.0, 0.2, v) * smoothstep(1.0, 0.8, v));
-      float beads = smoothstep(0.65, 1.0, sin(s * 5.0 + t * 14.0) * 0.5 + 0.5);
-      heat = exp(-d * d * 30.0) * (0.7 + 0.5 * beads);
-      cov = exp(-d * d * 18.0) * (0.6 + 0.4 * beads);
-    } else if (style < 3.5) {
-      // Shaft: soft vertical light.
-      heat = exp(-x * x * 4.0) * (0.6 + 0.3 * fxn(vec2(s * 2.0 - t * 2.0, x * 3.0 + seed)));
-      cov = heat * 0.8;
-      occl = 0.0;
-    } else {
-      // Frost: a pale ray shedding crystals.
-      float n = fxf(vec2(s * 3.0 - t * 4.0 + seed, x * 3.0));
-      float core = exp(-x * x * 20.0);
-      float glit = smoothstep(0.8, 0.95, n) * exp(-x * x * 2.0);
-      heat = core + glit * 0.8 + exp(-x * x * 4.0) * 0.25;
-      cov = core * 0.9 + glit + exp(-x * x * 4.0) * 0.4;
-      occl = 0.2;
-    }
-    heat = clamp(heat, 0.0, 1.0);
-    cov = clamp(cov, 0.0, 1.0) * ends * fade;
-    if (cov < 0.003) discard;
-    vec3 col = fxRamp(vTail, vBody, vCore, heat);
-    vec3 light = col * vEmit * (0.2 + 1.1 * heat);
-    gl_FragColor = vec4(light * cov * uExposure, cov * occl);
-  }
-`;
 
 export function makeBeams(capacity: number): InstancedPool {
   // A strip across x (-0.5..0.5), along y (0..1), 24 segments for the swell.
@@ -406,15 +302,82 @@ export function makeBeams(capacity: number): InstancedPool {
   const base = new THREE.BufferGeometry();
   base.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   base.setIndex(idx);
-  const mat = new THREE.ShaderMaterial({
-    name: 'fx-beams',
-    uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
-    vertexShader: BEAM_VERT,
-    fragmentShader: BEAM_FRAG,
-    side: THREE.DoubleSide,
-    depthTest: true,
-  });
-  return new InstancedPool('beams', base, mat, capacity, 22);
+
+  const uTime = uniform(0);
+  const A = iA();
+  const B = iB();
+  const pg = positionGeometry;
+  const a = A.xyz;
+  const ab = B.xyz.sub(a).toVar();
+  const len = max(length(ab), 1e-3);
+  const p0 = a.add(ab.mul(pg.y)).toVar();
+  const side = normalize(cross(ab, cameraPosition.sub(p0)).add(vec3(1e-5)));
+  // Width swells a touch in the middle and pinches at the emitter.
+  const w = A.w.mul(mix(0.55, 1.0, smoothstep(0.0, 0.08, pg.y)));
+  const wp = p0.add(side.mul(pg.x).mul(w));
+  const vQ = vary(vec2(pg.x.mul(2.0), pg.y));
+  const vLen = vary(len);
+  const v = kitInstance();
+
+  const frag = (): V4 => {
+    const style = v.D.x;
+    const seed = v.D.z.mul(19.0);
+    // -1 .. 1 across
+    const x = vQ.x.toVar();
+    // 0 .. 1 along
+    const vv = vQ.y.toVar();
+    // metres along
+    const s = vv.mul(vLen).toVar();
+    const t = uTime;
+    const ends = smoothstep(0.0, 0.04, vv).mul(smoothstep(1.0, 0.96, vv));
+    const heat = slot();
+    const cov = slot();
+    const occl = slot(0.1);
+    const xx = x.mul(x).toVar();
+    If(style.lessThan(0.5), () => {
+      // Ray: a straight core in a rippling sheath.
+      const n = fxf(vec2(s.mul(1.6).sub(t.mul(9.0)).add(seed), x.mul(1.5)));
+      const core = exp(xx.mul(-26.0)).toVar();
+      const sheath = exp(xx.mul(-3.0)).mul(n.mul(0.6).add(0.45)).toVar();
+      heat.assign(core.mul(1.2).add(sheath.mul(0.45)));
+      cov.assign(core.add(sheath.mul(0.8)));
+    })
+      .ElseIf(style.lessThan(1.5), () => {
+        // Flame breath: widening, billowing, rolling forward.
+        const n = fxf(vec2(s.mul(1.2).sub(t.mul(7.0)).add(seed), x.mul(2.0).add(t))).toVar();
+        const edge = smoothstep(n.mul(0.5).add(0.35), 1.0, abs(x)).oneMinus().toVar();
+        heat.assign(edge.mul(n.mul(0.8).add(0.4)).mul(vv.mul(0.6).oneMinus()));
+        cov.assign(edge.mul(n.mul(0.6).add(0.5)));
+        occl.assign(0.3);
+      })
+      .ElseIf(style.lessThan(2.5), () => {
+        // Drain: a thin wavering cord with beads flowing toward A.
+        const wave = sin(s.mul(3.0).add(t.mul(6.0)).add(seed)).mul(0.35);
+        const d = abs(x.sub(wave.mul(smoothstep(0.0, 0.2, vv)).mul(smoothstep(1.0, 0.8, vv)))).toVar();
+        const beads = smoothstep(0.65, 1.0, sin(s.mul(5.0).add(t.mul(14.0))).mul(0.5).add(0.5)).toVar();
+        heat.assign(exp(d.mul(d).mul(-30.0)).mul(beads.mul(0.5).add(0.7)));
+        cov.assign(exp(d.mul(d).mul(-18.0)).mul(beads.mul(0.4).add(0.6)));
+      })
+      .ElseIf(style.lessThan(3.5), () => {
+        // Shaft: soft vertical light.
+        heat.assign(exp(xx.mul(-4.0)).mul(fxn(vec2(s.mul(2.0).sub(t.mul(2.0)), x.mul(3.0).add(seed))).mul(0.3).add(0.6)));
+        cov.assign(heat.mul(0.8));
+        occl.assign(0.0);
+      })
+      .Else(() => {
+        // Frost: a pale ray shedding crystals.
+        const n = fxf(vec2(s.mul(3.0).sub(t.mul(4.0)).add(seed), x.mul(3.0)));
+        const core = exp(xx.mul(-20.0)).toVar();
+        const glit = smoothstep(0.8, 0.95, n).mul(exp(xx.mul(-2.0))).toVar();
+        const halo = exp(xx.mul(-4.0)).toVar();
+        heat.assign(core.add(glit.mul(0.8)).add(halo.mul(0.25)));
+        cov.assign(core.mul(0.9).add(glit).add(halo.mul(0.4)));
+        occl.assign(0.2);
+      });
+    return kitOut(v, heat, clamp(cov, 0.0, 1.0).mul(ends).mul(v.D.y), occl);
+  };
+  const mat = kitMaterial('fx-beams', frag, { vertex: clip(wp) });
+  return new InstancedPool('beams', base, mat, uTime, capacity, 22);
 }
 
 // ---------------------------------------------------------------------------
@@ -424,87 +387,63 @@ export function makeBeams(capacity: number): InstancedPool {
 export const COLUMN_STYLE = { light: 0, swirl: 1, fire: 2, strike: 3 } as const;
 export type ColumnStyle = keyof typeof COLUMN_STYLE;
 
-const COLUMN_VERT = /* glsl */ `
-  attribute vec4 iA; attribute vec4 iB; attribute vec4 iC; attribute vec4 iD;
-  varying vec2 vUv;
-  varying float vFacing;
-  ${COMMON_VARYINGS}
-  ${GLSL_UNPACK}
-  void main() {
-    ${COMMON_VERT_SETUP}
-    // Base geometry: open cylinder radius 1, y 0..1.
-    float y = position.y;
-    float r = iA.w * mix(1.0, iB.y, y);
-    vec3 wp = iA.xyz + vec3(position.x * r, y * iB.x, position.z * r);
-    vec3 n = normalize(vec3(position.x, 0.0, position.z));
-    vec3 viewDir = normalize(cameraPosition - wp);
-    vFacing = abs(dot(n, viewDir));
-    vUv = vec2(uv.x + iB.z, y);
-    gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
-  }
-`;
-
-const COLUMN_FRAG = /* glsl */ `
-  ${GLSL_EXPOSURE}
-  uniform float uTime;
-  varying vec2 vUv;
-  varying float vFacing;
-  ${COMMON_VARYINGS}
-  ${GLSL_NOISE}
-  void main() {
-    float style = vD.x;
-    float fade = vD.y;
-    float seed = vD.z * 23.0;
-    float u = vUv.x;
-    float y = vUv.y;
-    float t = uTime;
-    // Facing the camera is the thick part of a volume of light.
-    float body = pow(vFacing, 1.6);
-    float top = 1.0 - smoothstep(0.35, 1.0, y);
-    float bottom = smoothstep(0.0, 0.04, y);
-    float heat;
-    float cov;
-    float occl = 0.0;
-    if (style < 0.5) {
-      float streak = 0.55 + 0.45 * fxn(vec2(u * 18.0 + seed, y * 3.0 - t * 1.5));
-      heat = body * (0.55 + 0.6 * (1.0 - y)) * streak;
-      cov = body * streak * 0.85;
-    } else if (style < 1.5) {
-      float sp = fxf(vec2(u * 6.0 + y * 3.0 - t * 1.2 + seed, y * 2.0 - t * 2.5));
-      heat = body * (0.35 + 0.8 * sp);
-      cov = body * (0.3 + 0.8 * sp);
-      occl = 0.15;
-    } else if (style < 2.5) {
-      float n = fxf(vec2(u * 7.0 + seed, y * 3.0 - t * 4.0));
-      heat = body * (0.3 + 0.9 * n) * (1.1 - y);
-      cov = body * smoothstep(0.25, 0.6, n + (1.0 - y) * 0.3);
-      occl = 0.3;
-    } else {
-      float fl = 0.7 + 0.3 * fxh(vec2(floor(t * 30.0), seed));
-      heat = pow(vFacing, 4.0) * 1.3 * fl;
-      cov = pow(vFacing, 2.0) * fl;
-    }
-    heat = clamp(heat, 0.0, 1.0);
-    cov = clamp(cov * top * bottom, 0.0, 1.0) * fade;
-    if (cov < 0.003) discard;
-    vec3 col = fxRamp(vTail, vBody, vCore, heat);
-    vec3 light = col * vEmit * (0.2 + 1.1 * heat);
-    gl_FragColor = vec4(light * cov * uExposure, cov * occl);
-  }
-`;
-
 export function makeColumns(capacity: number): InstancedPool {
   const base = new THREE.CylinderGeometry(1, 1, 1, 18, 1, true);
   base.translate(0, 0.5, 0);
-  const mat = new THREE.ShaderMaterial({
-    name: 'fx-columns',
-    uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
-    vertexShader: COLUMN_VERT,
-    fragmentShader: COLUMN_FRAG,
-    side: THREE.DoubleSide,
-    depthTest: true,
-  });
-  return new InstancedPool('columns', base, mat, capacity, 19);
+
+  const uTime = uniform(0);
+  const A = iA();
+  const B = iB();
+  const pg = positionGeometry;
+  // Base geometry: open cylinder radius 1, y 0..1.
+  const y = pg.y;
+  const r = A.w.mul(mix(1.0, B.y, y));
+  const wp = A.xyz.add(vec3(pg.x.mul(r), y.mul(B.x), pg.z.mul(r))).toVar();
+  const n = normalize(vec3(pg.x, 0.0, pg.z));
+  const viewDir = normalize(cameraPosition.sub(wp));
+  const vFacing = vary(abs(dot(n, viewDir)));
+  const vUv = vary(vec2(uv().x.add(B.z), y));
+  const v = kitInstance();
+
+  const frag = (): V4 => {
+    const style = v.D.x;
+    const seed = v.D.z.mul(23.0);
+    const u = vUv.x.toVar();
+    const yy = vUv.y.toVar();
+    const t = uTime;
+    // Facing the camera is the thick part of a volume of light.
+    const body = pow(vFacing, 1.6).toVar();
+    const top = smoothstep(0.35, 1.0, yy).oneMinus();
+    const bottom = smoothstep(0.0, 0.04, yy);
+    const heat = slot();
+    const cov = slot();
+    const occl = slot(0.0);
+    If(style.lessThan(0.5), () => {
+      const streak = fxn(vec2(u.mul(18.0).add(seed), yy.mul(3.0).sub(t.mul(1.5)))).mul(0.45).add(0.55).toVar();
+      heat.assign(body.mul(yy.oneMinus().mul(0.6).add(0.55)).mul(streak));
+      cov.assign(body.mul(streak).mul(0.85));
+    })
+      .ElseIf(style.lessThan(1.5), () => {
+        const sp = fxf(vec2(u.mul(6.0).add(yy.mul(3.0)).sub(t.mul(1.2)).add(seed), yy.mul(2.0).sub(t.mul(2.5)))).toVar();
+        heat.assign(body.mul(sp.mul(0.8).add(0.35)));
+        cov.assign(body.mul(sp.mul(0.8).add(0.3)));
+        occl.assign(0.15);
+      })
+      .ElseIf(style.lessThan(2.5), () => {
+        const nn = fxf(vec2(u.mul(7.0).add(seed), yy.mul(3.0).sub(t.mul(4.0)))).toVar();
+        heat.assign(body.mul(nn.mul(0.9).add(0.3)).mul(yy.negate().add(1.1)));
+        cov.assign(body.mul(smoothstep(0.25, 0.6, nn.add(yy.oneMinus().mul(0.3)))));
+        occl.assign(0.3);
+      })
+      .Else(() => {
+        const fl = fxh(vec2(floor(t.mul(30.0)), seed)).mul(0.3).add(0.7).toVar();
+        heat.assign(pow(vFacing, 4.0).mul(1.3).mul(fl));
+        cov.assign(pow(vFacing, 2.0).mul(fl));
+      });
+    return kitOut(v, heat, clamp(cov.mul(top).mul(bottom), 0.0, 1.0).mul(v.D.y), occl);
+  };
+  const mat = kitMaterial('fx-columns', frag, { vertex: clip(wp) });
+  return new InstancedPool('columns', base, mat, uTime, capacity, 19);
 }
 
 // ---------------------------------------------------------------------------
@@ -514,88 +453,65 @@ export function makeColumns(capacity: number): InstancedPool {
 export const SHELL_STYLE = { ward: 0, aura: 1, front: 2, ice: 3 } as const;
 export type ShellStyle = keyof typeof SHELL_STYLE;
 
-const SHELL_VERT = /* glsl */ `
-  attribute vec4 iA; attribute vec4 iB; attribute vec4 iC; attribute vec4 iD;
-  varying vec3 vLocal;
-  varying float vRim;
-  ${COMMON_VARYINGS}
-  ${GLSL_UNPACK}
-  void main() {
-    ${COMMON_VERT_SETUP}
-    vec3 lp = position * vec3(1.0, iB.x > 0.0 ? iB.x : 1.0, 1.0);
-    vec3 wp = iA.xyz + lp * iA.w;
-    vec3 n = normalize(position);
-    vec3 viewDir = normalize(cameraPosition - wp);
-    vRim = 1.0 - abs(dot(n, viewDir));
-    vLocal = position;
-    gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
-  }
-`;
-
-const SHELL_FRAG = /* glsl */ `
-  ${GLSL_EXPOSURE}
-  uniform float uTime;
-  varying vec3 vLocal;
-  varying float vRim;
-  ${COMMON_VARYINGS}
-  ${GLSL_NOISE}
-  void main() {
-    float style = vD.x;
-    float fade = vD.y;
-    float seed = vD.z * 29.0;
-    float t = uTime;
-    vec2 sp = vec2(atan(vLocal.z, vLocal.x) * 1.59, vLocal.y);
-    float heat;
-    float cov;
-    float occl = 0.0;
-    if (style < 0.5) {
-      // Ward: hex lattice that brightens at the rim.
-      vec2 g = sp * vec2(6.0, 6.0);
-      vec2 h = abs(fract(g + vec2(0.5 * floor(mod(g.y, 2.0)), 0.0)) - 0.5);
-      float lat = smoothstep(0.42, 0.5, max(h.x * 1.15 + h.y * 0.5, h.y));
-      float rim = pow(vRim, 2.5);
-      float pulse = 0.75 + 0.25 * sin(t * 3.0 + seed);
-      heat = (rim * 0.9 + lat * 0.35) * pulse;
-      cov = rim * 0.8 + lat * 0.22;
-    } else if (style < 1.5) {
-      // Aura: rising rippled light, faint in the middle.
-      float n = fxf(vec2(sp.x * 3.0 + seed, sp.y * 2.5 - t * 1.4));
-      float rim = pow(vRim, 1.8);
-      float base = smoothstep(1.0, 0.0, vLocal.y);
-      heat = rim * (0.35 + 0.7 * n) * base;
-      cov = rim * (0.25 + 0.6 * n) * base;
-    } else if (style < 2.5) {
-      // Front: an expanding wave, mostly rim.
-      float n = fxn(vec2(sp.x * 5.0 + seed, sp.y * 5.0 - t * 3.0));
-      heat = pow(vRim, 3.0) * (0.6 + 0.5 * n);
-      cov = pow(vRim, 2.0) * (0.5 + 0.5 * n);
-    } else {
-      // Ice: faceted, pale, solid enough to hide what is inside.
-      vec2 g = sp * vec2(4.0, 3.0);
-      float f = fxh(floor(g) + seed);
-      float edges = smoothstep(0.42, 0.5, max(abs(fract(g.x) - 0.5), abs(fract(g.y) - 0.5)));
-      heat = 0.25 + 0.4 * f + edges * 0.5 + pow(vRim, 2.0) * 0.5;
-      cov = 0.45 + edges * 0.3 + pow(vRim, 2.0) * 0.3;
-      occl = 0.55;
-    }
-    heat = clamp(heat, 0.0, 1.0);
-    cov = clamp(cov, 0.0, 1.0) * fade;
-    if (cov < 0.003) discard;
-    vec3 col = fxRamp(vTail, vBody, vCore, heat);
-    vec3 light = col * vEmit * (0.2 + 1.1 * heat);
-    gl_FragColor = vec4(light * cov * uExposure, cov * occl);
-  }
-`;
-
 export function makeShells(capacity: number): InstancedPool {
   const base = new THREE.SphereGeometry(1, 24, 16);
-  const mat = new THREE.ShaderMaterial({
-    name: 'fx-shells',
-    uniforms: { uTime: { value: 0 }, uExposure: FX_EXPOSURE },
-    vertexShader: SHELL_VERT,
-    fragmentShader: SHELL_FRAG,
-    side: THREE.DoubleSide,
-    depthTest: true,
-  });
-  return new InstancedPool('shells', base, mat, capacity, 18);
+
+  const uTime = uniform(0);
+  const A = iA();
+  const B = iB();
+  const pg = positionGeometry;
+  const lp = pg.mul(vec3(1.0, B.x.greaterThan(0.0).select(B.x, 1.0), 1.0));
+  const wp = A.xyz.add(lp.mul(A.w)).toVar();
+  const n = normalize(pg);
+  const viewDir = normalize(cameraPosition.sub(wp));
+  const vRim = vary(abs(dot(n, viewDir)).oneMinus());
+  const vLocal = vary(pg);
+  const v = kitInstance();
+
+  const frag = (): V4 => {
+    const style = v.D.x;
+    const seed = v.D.z.mul(29.0);
+    const t = uTime;
+    const sp = vec2(atan(vLocal.z, vLocal.x).mul(1.59), vLocal.y).toVar();
+    const heat = slot();
+    const cov = slot();
+    const occl = slot(0.0);
+    If(style.lessThan(0.5), () => {
+      // Ward: hex lattice that brightens at the rim.
+      const g = sp.mul(6.0).toVar();
+      const h = abs(fract(g.add(vec2(floor(mod(g.y, 2.0)).mul(0.5), 0.0))).sub(0.5)).toVar();
+      const lat = smoothstep(0.42, 0.5, max(h.x.mul(1.15).add(h.y.mul(0.5)), h.y)).toVar();
+      const rim = pow(vRim, 2.5).toVar();
+      const pulse = sin(t.mul(3.0).add(seed)).mul(0.25).add(0.75);
+      heat.assign(rim.mul(0.9).add(lat.mul(0.35)).mul(pulse));
+      cov.assign(rim.mul(0.8).add(lat.mul(0.22)));
+    })
+      .ElseIf(style.lessThan(1.5), () => {
+        // Aura: rising rippled light, faint in the middle.
+        const nn = fxf(vec2(sp.x.mul(3.0).add(seed), sp.y.mul(2.5).sub(t.mul(1.4)))).toVar();
+        const rim = pow(vRim, 1.8).toVar();
+        const foot = smoothstep(1.0, 0.0, vLocal.y).toVar();
+        heat.assign(rim.mul(nn.mul(0.7).add(0.35)).mul(foot));
+        cov.assign(rim.mul(nn.mul(0.6).add(0.25)).mul(foot));
+      })
+      .ElseIf(style.lessThan(2.5), () => {
+        // Front: an expanding wave, mostly rim.
+        const nn = fxn(vec2(sp.x.mul(5.0).add(seed), sp.y.mul(5.0).sub(t.mul(3.0)))).toVar();
+        heat.assign(pow(vRim, 3.0).mul(nn.mul(0.5).add(0.6)));
+        cov.assign(pow(vRim, 2.0).mul(nn.mul(0.5).add(0.5)));
+      })
+      .Else(() => {
+        // Ice: faceted, pale, solid enough to hide what is inside.
+        const g = sp.mul(vec2(4.0, 3.0)).toVar();
+        const f = fxh(floor(g).add(seed));
+        const edges = smoothstep(0.42, 0.5, max(abs(fract(g.x).sub(0.5)), abs(fract(g.y).sub(0.5)))).toVar();
+        const rim2 = pow(vRim, 2.0).toVar();
+        heat.assign(f.mul(0.4).add(0.25).add(edges.mul(0.5)).add(rim2.mul(0.5)));
+        cov.assign(edges.mul(0.3).add(0.45).add(rim2.mul(0.3)));
+        occl.assign(0.55);
+      });
+    return kitOut(v, heat, clamp(cov, 0.0, 1.0).mul(v.D.y), occl);
+  };
+  const mat = kitMaterial('fx-shells', frag, { vertex: clip(wp) });
+  return new InstancedPool('shells', base, mat, uTime, capacity, 18);
 }

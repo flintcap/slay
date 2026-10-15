@@ -1,4 +1,8 @@
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  Discard, Fn, abs, atan, clamp, cos, exp, float, floor, fract, length, mix, pow, sin, smoothstep, uniform, uv, vec2, vec4,
+} from 'three/tsl';
+import { hash2, type F, type V2, type V3, type V4 } from '../core/Tsl';
 import type { Rng } from '../types';
 import { Random } from '../core/RNG';
 import { lathe, dome, blade, transformed, mergeGeometries, beveledBox, displace } from '../art/Meshes';
@@ -17,75 +21,32 @@ import { lathe, dome, blade, transformed, mergeGeometries, beveledBox, displace 
 // The rift: an animated portal filling an arch opening
 // ---------------------------------------------------------------------------
 
-const RIFT_VERT = /* glsl */ `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+function riftNoise(p: V2): F {
+  const i = floor(p);
+  const f = fract(p);
+  const u = f.mul(f).mul(f.mul(-2.0).add(3.0));
+  return mix(mix(hash2(i), hash2(i.add(vec2(1.0, 0.0))), u.x), mix(hash2(i.add(vec2(0.0, 1.0))), hash2(i.add(vec2(1.0, 1.0))), u.x), u.y);
+}
+
+function riftFbm(p0: V2): F {
+  let v: F = float(0.0);
+  let p = p0;
+  let a = 0.5;
+  for (let i = 0; i < 5; i++) {
+    v = v.add(riftNoise(p).mul(a));
+    p = p.mul(2.03);
+    a *= 0.5;
   }
-`;
-
-// A vortex of fbm noise twisted around a point low in the opening, masked to
-// the arch's own outline (a rectangle under a semicircle) with a burning rim.
-// The centre is kept dark on purpose: a bright portal reads as "magic door",
-// a dark one with a burning edge reads as "down".
-const RIFT_FRAG = /* glsl */ `
-  uniform float uTime;
-  uniform vec3 uDeep;
-  uniform vec3 uHot;
-  uniform vec2 uSize;
-  uniform float uSpring;
-  uniform float uPulse;
-  varying vec2 vUv;
-
-  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
-  }
-  float fbm(vec2 p) {
-    float v = 0.0;
-    float a = 0.5;
-    for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; }
-    return v;
-  }
-
-  void main() {
-    vec2 p = vec2((vUv.x - 0.5) * uSize.x, vUv.y * uSize.y);
-    float halfW = uSize.x * 0.5;
-    float d = p.y < uSpring ? abs(p.x) - halfW : length(vec2(p.x, p.y - uSpring)) - halfW;
-    float mask = smoothstep(0.02, -0.3, d);
-    if (mask <= 0.001) discard;
-
-    vec2 c = vec2(0.0, uSpring * 0.72);
-    vec2 q = p - c;
-    float r = length(q);
-    float a = atan(q.y, q.x);
-    float sw = a + 2.2 / (r + 0.6) - uTime * 0.42;
-    vec2 sp = vec2(cos(sw), sin(sw)) * r;
-    float n = fbm(sp * 0.85 + vec2(0.0, -uTime * 0.3));
-    float n2 = fbm(sp * 2.3 - vec2(uTime * 0.2, 0.0));
-
-    float ring = smoothstep(0.25, 2.2, r);
-    float bright = (n * 1.15 + n2 * 0.45) * (0.18 + ring * 0.95);
-    // Filaments: thin hot streaks where two noise fields cross.
-    float fil = pow(1.0 - abs(n - n2), 14.0) * ring;
-    float rim = smoothstep(-0.8, 0.0, d) * mask;
-
-    vec3 col = mix(uDeep, uHot, clamp(n * 1.3 - 0.15, 0.0, 1.0)) * bright;
-    col += uHot * (fil * 1.6 + rim * (1.6 + uPulse * 0.8));
-    // A faint ember at the very centre, so the void has depth instead of a hole.
-    col += uDeep * exp(-r * 1.4) * 0.6;
-    gl_FragColor = vec4(col * mask, mask);
-  }
-`;
+  return v;
+}
 
 export interface RiftHandle {
   mesh: THREE.Mesh;
-  material: THREE.ShaderMaterial;
+  material: THREE.MeshBasicNodeMaterial;
+  /** The rim and filament colour; set it each frame to recolour the rift. */
+  hot: THREE.Color;
+  /** The colour of the swirl's depths. */
+  deep: THREE.Color;
   update(elapsed: number, pulse?: number): void;
 }
 
@@ -95,31 +56,61 @@ export interface RiftHandle {
  * stone it sits in.
  */
 export function buildRift(width: number, height: number, spring: number, deep: number, hot: number): RiftHandle {
-  const material = new THREE.ShaderMaterial({
-    vertexShader: RIFT_VERT,
-    fragmentShader: RIFT_FRAG,
-    uniforms: {
-      uTime: { value: 0 },
-      uDeep: { value: new THREE.Color(deep) },
-      uHot: { value: new THREE.Color(hot) },
-      uSize: { value: new THREE.Vector2(width, height) },
-      uSpring: { value: spring },
-      uPulse: { value: 0 },
-    },
+  const uTime = uniform(0);
+  const uPulse = uniform(0);
+  const uDeep = uniform(new THREE.Color(deep));
+  const uHot = uniform(new THREE.Color(hot));
+  const D = uDeep as unknown as V3;
+  const H = uHot as unknown as V3;
+  // A vortex of fbm noise twisted around a point low in the opening, masked to
+  // the arch's own outline (a rectangle under a semicircle) with a burning rim.
+  // The centre is kept dark on purpose: a bright portal reads as "magic door",
+  // a dark one with a burning edge reads as "down".
+  const frag = Fn(() => {
+    const st = uv();
+    const p = vec2(st.x.sub(0.5).mul(width), st.y.mul(height)).toVar();
+    const halfW = width * 0.5;
+    const d = p.y.lessThan(spring).select(abs(p.x).sub(halfW), length(vec2(p.x, p.y.sub(spring))).sub(halfW)).toVar();
+    const mask = smoothstep(0.02, -0.3, d).toVar();
+    Discard(mask.lessThanEqual(0.001));
+    const q = p.sub(vec2(0.0, spring * 0.72));
+    const r = length(q).toVar();
+    const a = atan(q.y, q.x);
+    const sw = a.add(r.add(0.6).reciprocal().mul(2.2)).sub(uTime.mul(0.42)).toVar();
+    const sp = vec2(cos(sw), sin(sw)).mul(r).toVar();
+    const n = riftFbm(sp.mul(0.85).add(vec2(0.0, uTime.mul(-0.3)))).toVar();
+    const n2 = riftFbm(sp.mul(2.3).sub(vec2(uTime.mul(0.2), 0.0))).toVar();
+    const ring = smoothstep(0.25, 2.2, r).toVar();
+    const bright = n.mul(1.15).add(n2.mul(0.45)).mul(ring.mul(0.95).add(0.18));
+    // Filaments: thin hot streaks where two noise fields cross.
+    const fil = pow(abs(n.sub(n2)).oneMinus(), 14.0).mul(ring);
+    const rim = smoothstep(-0.8, 0.0, d).mul(mask);
+    const col = mix(D, H, clamp(n.mul(1.3).sub(0.15), 0.0, 1.0))
+      .mul(bright)
+      .add(H.mul(fil.mul(1.6).add(rim.mul(uPulse.mul(0.8).add(1.6)))))
+      // A faint ember at the very centre, so the void has depth instead of a hole.
+      .add(D.mul(exp(r.mul(-1.4))).mul(0.6));
+    return vec4(col.mul(mask), mask);
+  });
+  const material = new THREE.MeshBasicNodeMaterial({
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
   });
+  material.fog = false;
+  material.fragmentNode = frag() as unknown as V4;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
   mesh.position.y = height * 0.5;
   mesh.renderOrder = 3;
   return {
     mesh,
     material,
+    hot: uHot.value,
+    deep: uDeep.value,
     update(elapsed: number, pulse = 0): void {
-      material.uniforms.uTime!.value = elapsed;
-      material.uniforms.uPulse!.value = pulse;
+      uTime.value = elapsed;
+      uPulse.value = pulse;
     },
   };
 }

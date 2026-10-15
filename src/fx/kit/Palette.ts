@@ -17,6 +17,8 @@
  */
 
 import * as THREE from 'three';
+import { floor, vec3 } from 'three/tsl';
+import type { F, V3 } from '../../core/Tsl';
 import type { DamageType } from '../../types';
 
 /**
@@ -82,15 +84,13 @@ export function packLinear(hex: number): number {
   return r * 65536 + g * 256 + b;
 }
 
-/** GLSL to unpack `packLinear`. */
-export const GLSL_UNPACK = /* glsl */ `
-  vec3 unpackRGB(float v) {
-    float r = floor(v / 65536.0);
-    float g = floor((v - r * 65536.0) / 256.0);
-    float b = v - r * 65536.0 - g * 256.0;
-    return vec3(r, g, b) / 255.0;
-  }
-`;
+/** Unpacks `packLinear` in a shader. */
+export function unpackRGB(v: F): V3 {
+  const r = floor(v.div(65536.0));
+  const g = floor(v.sub(r.mul(65536.0)).div(256.0));
+  const b = v.sub(r.mul(65536.0)).sub(g.mul(256.0));
+  return vec3(r, g, b).div(255.0);
+}
 
 /** Linear THREE.Color of an sRGB hex, written into `out`. */
 export function linear(hex: number, out: THREE.Color): THREE.Color {

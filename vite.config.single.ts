@@ -9,6 +9,9 @@ import { defineConfig } from 'vite';
  */
 export default defineConfig({
   base: './',
+  // One three.js: its WebGPU build. Plain 'three' imports (ours and the
+  // addons') get the same classes, and no WebGL renderer is bundled.
+  resolve: { alias: [{ find: /^three$/, replacement: 'three/webgpu' }] },
   build: {
     outDir: 'dist-single',
     target: 'es2022',

@@ -13,7 +13,11 @@
  * open liquid. See `DungeonBuilder`.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import {
+  attribute, cameraViewMatrix, mix, normalize, normalViewGeometry, positionWorld, sin, smoothstep, texture, uniform, vec2, vec3, vec4,
+} from 'three/tsl';
+import { asStandard, matColor, matFloat, setNodeTextures } from '../core/Tsl';
 import { macroNoiseTexture } from '../fx/UtilityTextures';
 import { WORLD_ENV_ATTRIBUTE } from './WorldMaterial';
 
@@ -125,6 +129,19 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
   },
 };
 
+/** The standard lighting with the environment's reflection scaled. */
+class DimReflection extends THREE.PhysicalLightingModel {
+  constructor(private readonly k: number) {
+    super();
+  }
+
+  override indirectSpecular(builder: THREE.NodeBuilder): void {
+    const ctx = builder.context as unknown as { radiance: THREE.Node<'vec3'> };
+    ctx.radiance.mulAssign(this.k);
+    super.indirectSpecular(builder);
+  }
+}
+
 /**
  * Builds the liquid material for a level. `color` is the body colour and
  * `glow` the emissive colour (black for plain water). The caller owns it.
@@ -132,7 +149,7 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
 export function liquidSurface(style: LiquidStyle, color: number, glow: number): LiquidSurface {
   const t = TUNING[style];
   const transparent = t.opacity < 0.999;
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshStandardNodeMaterial({
     name: `liquid:${style}`,
     // A molten body is lit by its own heat lights as well as glowing, so a
     // full-bright orange albedo doubled the glare. Keep the body dark and let
@@ -146,114 +163,57 @@ export function liquidSurface(style: LiquidStyle, color: number, glow: number): 
     opacity: t.opacity,
     depthWrite: !transparent,
   });
-  const uniforms = {
-    uLqTime: { value: 0 },
-    uLqMacro: { value: macroNoiseTexture() },
-    uLqRim: { value: new THREE.Color(t.rimColor) },
-    uLqTune: { value: new THREE.Vector4(t.ripple, t.speed, t.rim, t.molten) },
-    uLqScale: { value: new THREE.Vector2(1 / t.scaleA, 1 / t.scaleB) },
-  };
-  mat.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>\nattribute float ${WORLD_ENV_ATTRIBUTE};\nvarying float vLqShore;\nvarying vec3 vLqPos;`,
-      )
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>\nvLqShore = ${WORLD_ENV_ATTRIBUTE};\nvLqPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        [
-          '#include <common>',
-          'varying float vLqShore;',
-          'varying vec3 vLqPos;',
-          'uniform float uLqTime;',
-          'uniform sampler2D uLqMacro;',
-          'uniform vec3 uLqRim;',
-          'uniform vec4 uLqTune;',
-          'uniform vec2 uLqScale;',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <map_fragment>',
-        [
-          '#include <map_fragment>',
-          // Two noise layers drifting against each other: the interference is
-          // what reads as moving liquid rather than a sliding picture.
-          'float lqT = uLqTime * uLqTune.y;',
-          'vec2 lqP = vLqPos.xz;',
-          'vec4 lqA = texture2D(uLqMacro, lqP * uLqScale.x + vec2(lqT, lqT * 0.6));',
-          'vec4 lqB = texture2D(uLqMacro, lqP * uLqScale.y + vec2(-lqT * 0.7, lqT * 1.3) + 0.5);',
-          'vec2 lqSlope = (lqA.rg - 0.5) + (lqB.ga - 0.5) * 0.8;',
-          'float lqShore = smoothstep(0.05, 1.0, vLqShore);',
-          // Rim: froth on water, cooled crust on lava, broken up by the noise
-          // so the bank line is ragged rather than ruled.
-          'float lqRim = smoothstep(0.45, 0.95, lqShore + (lqB.b - 0.5) * 0.6) * uLqTune.z;',
-          // Molten: a crust field drifting over the glow. Crust where the
-          // combined noise is high; hot seams where it is low.
-          'float lqHeat = 1.0;',
-          'if (uLqTune.w > 0.5) {',
-          '  float n = lqA.b * 0.6 + lqB.r * 0.4;',
-          '  float crust = smoothstep(0.42, 0.6, n + lqShore * 0.25);',
-          '  lqHeat = (1.0 - crust) * (0.75 + 0.25 * sin(uLqTime * 1.7 + lqA.a * 9.0));',
-          '  diffuseColor.rgb = mix(diffuseColor.rgb, uLqRim, crust * 0.92);',
-          '} else {',
-          // Depth: liquid darkens away from the bank.
-          '  diffuseColor.rgb *= mix(0.55, 1.0, lqShore);',
-          // Foam gathers in clots along the bank, not as a ruled line.
-          '  lqRim *= smoothstep(0.42, 0.68, lqA.g * 0.6 + lqB.r * 0.4);',
-          '  diffuseColor.rgb = mix(diffuseColor.rgb, uLqRim, lqRim * 0.55);',
-          '  diffuseColor.a = mix(diffuseColor.a, 1.0, lqRim * 0.6);',
-          '}',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <roughnessmap_fragment>',
-        [
-          '#include <roughnessmap_fragment>',
-          'roughnessFactor = mix(roughnessFactor, 0.85, uLqTune.w > 0.5 ? (1.0 - lqHeat) * 0.4 : lqRim * 0.6);',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <normal_fragment_maps>',
-        [
-          '#include <normal_fragment_maps>',
-          'vec3 lqN = vec3(-lqSlope.x, 0.0, -lqSlope.y) * uLqTune.x;',
-          'normal = normalize(normal + (viewMatrix * vec4(lqN, 0.0)).xyz);',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <lights_fragment_maps>',
-        [
-          '#include <lights_fragment_maps>',
-          // Water at night took the shared pale sky's reflection and read as
-          // ice or a tiled floor; it should hold the dark. (Scene-wide
-          // environment intensity overrides the material's own setting.)
-          '#if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )',
-          `radiance *= ${style === 'water' ? '0.3' : '1.0'};`,
-          '#endif',
-        ].join('\n'),
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        [
-          '#include <emissivemap_fragment>',
-          // Water: a faint caustic shimmer where the two layers peak together.
-          // Molten: the glow lives in the seams only.
-          'float lqCaustic = smoothstep(0.62, 0.8, lqA.r * 0.5 + lqB.g * 0.5);',
-          'totalEmissiveRadiance *= uLqTune.w > 0.5 ? lqHeat * (1.0 + lqHeat) : (0.6 + lqCaustic * 0.5);',
-        ].join('\n'),
-      );
-  };
-  mat.customProgramCacheKey = () => `liquidSurface|${style === 'water' ? 'w' : 'o'}`;
+  const uTime = uniform(0);
+  const tex = macroNoiseTexture();
+  setNodeTextures(mat, [tex]);
+  const rimColor = uniform(new THREE.Color(t.rimColor));
+  const ripple = uniform(t.ripple);
+  const rimAmt = uniform(t.rim);
+  const uScale = uniform(new THREE.Vector2(1 / t.scaleA, 1 / t.scaleB));
+  // Two noise layers drifting against each other: the interference is
+  // what reads as moving liquid rather than a sliding picture.
+  const lqT = uTime.mul(t.speed);
+  const P = positionWorld.xz;
+  const A = texture(tex, P.mul(uScale.x).add(vec2(lqT, lqT.mul(0.6)))).toVar();
+  const B = texture(tex, P.mul(uScale.y).add(vec2(lqT.mul(-0.7), lqT.mul(1.3))).add(0.5)).toVar();
+  const slope = A.rg.sub(0.5).add(B.ga.sub(0.5).mul(0.8));
+  const shore = smoothstep(0.05, 1.0, attribute<'float'>(WORLD_ENV_ATTRIBUTE, 'float')).toVar();
+  // Rim: froth on water, cooled crust on lava, broken up by the noise so the
+  // bank line is ragged rather than ruled.
+  const rim0 = smoothstep(0.45, 0.95, shore.add(B.b.sub(0.5).mul(0.6))).mul(rimAmt);
+  const body = matColor('color');
+  const heatGlow = matColor('emissive').mul(matFloat('emissiveIntensity'));
+  if (t.molten > 0.5) {
+    // Molten: a crust field drifting over the glow. Crust where the combined
+    // noise is high; hot seams where it is low.
+    const n = A.b.mul(0.6).add(B.r.mul(0.4));
+    const crust = smoothstep(0.42, 0.6, n.add(shore.mul(0.25))).toVar();
+    const heat = crust.oneMinus().mul(sin(uTime.mul(1.7).add(A.a.mul(9.0))).mul(0.25).add(0.75)).toVar();
+    mat.colorNode = mix(body, rimColor, crust.mul(0.92));
+    mat.roughnessNode = mix(matFloat('roughness'), 0.85, heat.oneMinus().mul(0.4));
+    mat.emissiveNode = heatGlow.mul(heat.mul(heat.add(1.0)));
+  } else {
+    // Foam gathers in clots along the bank, not as a ruled line.
+    const rim = rim0.mul(smoothstep(0.42, 0.68, A.g.mul(0.6).add(B.r.mul(0.4)))).toVar();
+    // Depth: liquid darkens away from the bank.
+    mat.colorNode = mix(body.mul(mix(0.55, 1.0, shore)), rimColor, rim.mul(0.55));
+    mat.opacityNode = mix(matFloat('opacity'), 1.0, rim.mul(0.6));
+    mat.roughnessNode = mix(matFloat('roughness'), 0.85, rim.mul(0.6));
+    // A faint caustic shimmer where the two layers peak together.
+    const caustic = smoothstep(0.62, 0.8, A.r.mul(0.5).add(B.g.mul(0.5)));
+    mat.emissiveNode = heatGlow.mul(caustic.mul(0.5).add(0.6));
+  }
+  const lqN = vec3(slope.x.negate(), 0.0, slope.y.negate()).mul(ripple);
+  mat.normalNode = normalize(normalViewGeometry.add(cameraViewMatrix.mul(vec4(lqN, 0.0)).xyz));
+  if (style === 'water') {
+    // Water at night took the shared pale sky's reflection and read as ice
+    // or a tiled floor; it should hold the dark. Only the reflection dims.
+    mat.setupLightingModel = () => new DimReflection(0.3);
+  }
   return {
-    material: mat,
+    material: asStandard(mat),
     update(elapsed: number): void {
-      uniforms.uLqTime.value = elapsed;
+      uTime.value = elapsed;
     },
     dispose(): void {
       mat.dispose();

@@ -328,7 +328,8 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     const H = 240;
     const views = [0, Math.PI / 2, Math.PI];
     const { c, g } = sheet(ids.length * (2 * views.length * W + 16) + 10, H + 40);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    const { openStudio } = await import('./studio');
+    const renderer = await openStudio({ alpha: true, toneMapping: THREE.NoToneMapping });
     renderer.setSize(W, H, false);
     const scene = new THREE.Scene();
     scene.add(new THREE.HemisphereLight(0xb0b8c8, 0x302820, 1.2));
@@ -529,10 +530,9 @@ async function modelSheet(ids: string[], rarities: ItemRarity[], identMode: numb
   const perCol = Math.ceil(ids.length / GROUPS);
   const W = GROUPS * (COLS * CELL + 20);
   const H = perCol * (CELL + 14);
-  const gl = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  const { openStudio } = await import('./studio');
+  const gl = await openStudio();
   gl.setSize(CELL, CELL, false);
-  gl.toneMapping = THREE.ACESFilmicToneMapping;
-  gl.outputColorSpace = THREE.SRGBColorSpace;
   const pm = new THREE.PMREMGenerator(gl);
   const env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
   const { c, g } = sheet(W, H);
@@ -622,10 +622,9 @@ async function dropSheet(): Promise<HTMLCanvasElement> {
   ];
   const CELL = 220;
   const { c, g } = sheet(4 * CELL, 2 * (CELL + 14));
-  const gl = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  const { openStudio } = await import('./studio');
+  const gl = await openStudio();
   gl.setSize(CELL, CELL, false);
-  gl.toneMapping = THREE.ACESFilmicToneMapping;
-  gl.outputColorSpace = THREE.SRGBColorSpace;
   const env = new THREE.PMREMGenerator(gl).fromScene(new RoomEnvironment(), 0.04).texture;
   for (let i = 0; i < picks.length; i++) {
     const [id, r] = picks[i]!;

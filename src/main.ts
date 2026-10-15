@@ -78,6 +78,13 @@ async function main(): Promise<void> {
   boot(0.18, 'Kindling the forge…');
   await tick();
   const engine = new Engine(canvas);
+  await engine.renderer.init();
+  {
+    // Icons, portraits and the paperdoll draw in small renderers of their
+    // own: they follow the backend the game got rather than ask again.
+    const { setStudioBackend } = await import('./core/Studio');
+    setStudioBackend(engine.renderer.isWebGPU);
+  }
   engine.renderer.setQuality(save.settings.quality);
   {
     // Steps below the chosen quality when frames run long, back up when

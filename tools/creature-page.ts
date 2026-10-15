@@ -16,20 +16,17 @@ import { lookFor } from '../src/art/creatures/Looks';
 import { clearCorpses, instanceCreature, miniBossFlair, rankTier } from '../src/art/creatures/Creature';
 import { CreatureAnimator, type RigAction, type CreatureInfo } from '../src/art/creatures/Animator';
 import { Random } from '../src/core/RNG';
+import { openStudio } from './studio';
 
 const BG = '#14161c';
 const INK = '#c9d1de';
 const DIM = '#7d8796';
 
-let renderer: THREE.WebGLRenderer | null = null;
+/** Opened before any sheet draws: its GPU device opens asynchronously. */
+const renderer = await openStudio({ exposure: 1.05 });
 
-function studio(w: number, h: number): THREE.WebGLRenderer {
-  if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
-  }
+
+function studio(w: number, h: number): THREE.WebGPURenderer {
   renderer.setSize(w, h, false);
   return renderer;
 }

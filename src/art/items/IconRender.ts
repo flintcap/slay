@@ -12,11 +12,14 @@
  * glance. The slot draws its own dark backdrop; the icon itself is
  * transparent.
  *
- * One small WebGL renderer is shared by every icon and made on first use.
- * Without WebGL the icon falls back to a plain rarity-coloured mark.
+ * One small offscreen renderer is shared by every icon. It opens its GPU
+ * device asynchronously, so `itemScansReady` waits for it as well as the
+ * scans; an icon asked for before then (or without a GPU) falls back to a
+ * plain rarity-coloured mark.
  */
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { makeStudioRenderer } from '../../core/Studio';
 import type { ItemRarity, ItemVisual } from '../../types';
 import { RARITY_COLOR } from '../../types';
 import { Random, hashString } from '../../core/RNG';
@@ -26,7 +29,12 @@ import { auraStyle } from './Aura';
 import type { Aura } from './Designs';
 import { scansOf } from '../Scans';
 
-export { itemScansReady } from './Mats';
+import { itemScansReady as scansReady } from './Mats';
+
+/** The item scans have decoded and the icon studio is open. */
+export async function itemScansReady(): Promise<void> {
+  await Promise.all([scansReady(), openStudio()]);
+}
 
 /** What an icon is drawn from. */
 export interface IconSpec {
@@ -100,12 +108,12 @@ function poseFor(family: ItemFamily, size: THREE.Vector3, tall = false): Pose {
   return { yaw: flat ? 0.3 : 0.5, pitch: 0.16, roll: 0, fill: 0.86 };
 }
 
-let renderer: THREE.WebGLRenderer | null = null;
-let failed = false;
+let renderer: THREE.WebGPURenderer | null = null;
+let opening: Promise<void> | null = null;
 /**
- * The renderer's drawing buffer, which only ever grows. Resizing a WebGL
- * buffer reallocates it (check-frames: 4.3 s in setSize while the town drew a
- * pack of mixed shapes), so an icon smaller than the buffer draws into its
+ * The renderer's drawing buffer, which only ever grows. Resizing it
+ * reallocates its targets (check-frames: 4.3 s in setSize while the town drew
+ * a pack of mixed shapes), so an icon smaller than the buffer draws into its
  * top-left corner instead, and `drawW` by `drawH` is the part it used.
  */
 let bufW = DRAW;
@@ -114,28 +122,30 @@ let drawW = DRAW;
 let drawH = DRAW;
 let stage: { scene: THREE.Scene; holder: THREE.Group; cam: THREE.OrthographicCamera } | null = null;
 
-function studio(): THREE.WebGLRenderer | null {
-  if (failed) return null;
-  if (renderer && renderer.getContext().isContextLost()) {
-    renderer.dispose();
-    renderer = null;
-    stage = null;
-  }
-  if (!renderer) {
-    try {
-      const canvas = document.createElement('canvas');
-      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
-    } catch {
-      failed = true;
-      return null;
-    }
-    renderer.setPixelRatio(1);
-    renderer.setSize(DRAW, DRAW, false);
+/** Opens the studio once; a lost device opens a new one on the next ask. */
+function openStudio(): Promise<void> {
+  if (opening) return opening;
+  opening = makeStudioRenderer().then((r) => {
+    if (!r) return;
+    r.setSize(DRAW, DRAW, false);
     bufW = bufH = drawW = drawH = DRAW;
-    renderer.setClearColor(0x000000, 0);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.3;
+    r.toneMappingExposure = 1.3;
+    r.onDeviceLost = () => {
+      if (renderer === r) {
+        renderer = null;
+        stage = null;
+        opening = null;
+      }
+    };
+    renderer = r;
+  });
+  return opening;
+}
+
+function studio(): THREE.WebGPURenderer | null {
+  if (!renderer) {
+    void openStudio();
+    return null;
   }
   if (!stage) {
     const scene = new THREE.Scene();
@@ -178,7 +188,7 @@ export function iconScansMissing(): readonly THREE.Texture[] {
   return missing;
 }
 
-/** Renders the model onto the shared renderer's canvas. Null when there is no WebGL. */
+/** Renders the model onto the shared renderer's canvas. Null when the studio is not open. */
 function renderModel(spec: IconSpec): Shot | null {
   missing.length = 0;
   const r = studio();
@@ -305,7 +315,7 @@ function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'ba
   out.restore();
 }
 
-/** The mark drawn when there is no WebGL: a faceted stone in the rarity colour. */
+/** The mark drawn when there is no studio: a faceted stone in the rarity colour. */
 function fallback(out: Ctx, rc: number): void {
   const cx = out.canvas.width / 2;
   const cy = out.canvas.height / 2;
