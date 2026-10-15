@@ -22,6 +22,8 @@ import { Random } from '../src/core/RNG';
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const label = document.getElementById('label')!;
 const renderer = new Renderer(canvas);
+// WebGPU opens its device asynchronously; nothing draws before it is ready.
+await renderer.init();
 renderer.setQuality('high');
 
 const scene = new THREE.Scene();

@@ -66,7 +66,7 @@ export class FXSystem {
     this.quality = quality;
     this.rng = new Random(0x1f0c5a);
     const fx = Math.max(0.25, quality.fxScale);
-    this.field = new ParticleField(Math.round(6000 * fx));
+    this.field = new ParticleField(Math.round(24000 * fx));
     scene.add(this.field.mesh);
   }
 
