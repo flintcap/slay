@@ -233,6 +233,8 @@ export class ParticleField {
 
     const m = new THREE.MeshBasicNodeMaterial({ name: 'fx-particles', side: THREE.DoubleSide, depthTest: true });
     m.fog = false;
+    // Flat sprites: one pass draws both faces (see `kitMaterial`).
+    m.forceSinglePass = true;
     m.positionNode = wpos.add(offset);
     m.colorNode = fogged.mul(FX_EXPOSURE);
     m.opacityNode = occl;

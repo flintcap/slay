@@ -89,6 +89,9 @@ export function kitOut(v: KitInstance, heat0: F, cov0: F, occl: F, exposed = tru
 export function kitMaterial(name: string, frag: () => V4, o: { vertex?: V4; position?: V3 } = {}): THREE.MeshBasicNodeMaterial {
   const m = new THREE.MeshBasicNodeMaterial({ name, side: THREE.DoubleSide, depthTest: true });
   m.fog = false;
+  // One pass for both faces: three would draw a see-through two-sided
+  // material twice (back faces, then front), for nothing on a glow.
+  m.forceSinglePass = true;
   if (o.vertex) m.vertexNode = o.vertex;
   if (o.position) m.positionNode = o.position;
   m.fragmentNode = Fn(frag)() as unknown as V4;

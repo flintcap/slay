@@ -95,6 +95,7 @@ export class VigilRing {
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
+        forceSinglePass: true,
       });
     this.lineMat = glow(0, look.tint);
     this.bandMat = glow(0, look.tint);

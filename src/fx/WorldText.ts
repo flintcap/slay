@@ -124,7 +124,7 @@ function textMaterial(uTime: F, atlas: THREE.Texture, cols: number, rows: number
   // the next glyph starts, never how much of this one is visible.
   const vUv = vary(uv().add(vec2(iCell.x, iCell.y)).mul(vec2(1 / cols, 1 / rows)));
 
-  const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+  const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide, forceSinglePass: true });
   m.fog = false;
   m.positionNode = wpos.add(local);
   m.fragmentNode = Fn(() => {

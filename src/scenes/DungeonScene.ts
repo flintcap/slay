@@ -878,7 +878,8 @@ export class DungeonScene extends GameScene {
         }
       }
       this.warmSummons();
-      this.engine.renderer.compile(this.scene, this.camera);
+      // Shaders are built by the engine's warm-up (`Engine.prime`) right
+      // after this; asking here too built each of them twice at once.
 
       // Compiling programs is not enough: every generated PBR texture is
       // uploaded to the GPU lazily, on the first frame the material is actually

@@ -299,6 +299,8 @@ export function additiveMaterial(
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: opts.side ?? THREE.DoubleSide,
+    // Added light sums the same in any order: one pass, not back then front.
+    forceSinglePass: true,
     toneMapped: true,
   });
   mat.userData.shared = true;

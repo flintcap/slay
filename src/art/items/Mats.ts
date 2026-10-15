@@ -283,7 +283,7 @@ export function crystalMat(color: number, glow: number, intensity = 0.55): THREE
 /** Ghostly additive light: the missing half of a blade, smoke, a halo. */
 export function ghostMat(color: number, opacity = 0.45): THREE.MeshBasicMaterial {
   return shared(`gh|${color}|${opacity}`, () => {
-    const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true });
     m.name = 'item:ghost';
     return m;
   });

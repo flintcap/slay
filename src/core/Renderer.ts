@@ -234,6 +234,53 @@ function fogNodeFor(f: THREE.Fog | THREE.FogExp2): V4 {
   return fog(color, factor);
 }
 
+/** Material settings that do not change a shader (three's own list). */
+const NOT_IN_SHADER = /^(is[A-Z]|_)|^(visible|version|uuid|name|opacity|userData|id)$/;
+
+/**
+ * What decides the shader an object draws with, close to three's own key:
+ * the material's node graph and settings (numbers only as on or off, as
+ * three reads them), and the object's kind, skeleton size and vertex data.
+ */
+function shaderSignature(o: THREE.Object3D, mats: readonly THREE.Material[]): string {
+  let k = o.type;
+  for (const m of mats) {
+    k += `|${m.type}:${m.customProgramCacheKey()}:`;
+    const r = m as unknown as Record<string, unknown>;
+    for (const p in r) {
+      if (NOT_IN_SHADER.test(p)) continue;
+      const v = r[p];
+      if (typeof v === 'number') k += p === 'side' ? v : v !== 0 ? 1 : 0;
+      else if (v && typeof v === 'object') k += (v as THREE.Texture).isTexture ? 'T' : 'o';
+      else k += String(v);
+      k += ',';
+    }
+  }
+  const sk = o as THREE.SkinnedMesh;
+  if (sk.isSkinnedMesh) k += `|bones${sk.skeleton.bones.length}`;
+  if (o.receiveShadow) k += '|r';
+  const g = (o as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+  if (g) k += `|${Object.keys(g.attributes).join(',')}|${g.index ? 'x' : ''}|${Object.keys(g.morphAttributes).join(',')}`;
+  return k;
+}
+
+/** One visible object per distinct shader under `root`. */
+function shaderRepresentatives(root: THREE.Object3D, camera: THREE.Camera): THREE.Object3D[] {
+  const seen = new Set<string>();
+  const out: THREE.Object3D[] = [];
+  root.traverseVisible((o) => {
+    const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+    if (!m || !o.layers.test(camera.layers)) return;
+    const mats = Array.isArray(m) ? m : [m];
+    if (!mats.some((x) => x.visible)) return;
+    const k = shaderSignature(o, mats);
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(o);
+  });
+  return out;
+}
+
 /** Which fog object each scene's fog node was built for. */
 const fogBuiltFor = new WeakMap<THREE.Scene, THREE.Fog | THREE.FogExp2 | null>();
 
@@ -693,11 +740,30 @@ export class Renderer {
       syncFog(s);
       if (!this.scenePass || this.chainDirty) this.bind(s, camera);
     }
+    // three's `compileAsync` takes a scene's objects one at a time and waits
+    // for each one's pipeline before it starts the next: a town of a
+    // thousand meshes and two hundred shaders took longer to build than the
+    // load allowed. Here each distinct shader is asked for once, by one
+    // object that wears it, and all of them at the same time, so the GPU
+    // builds them side by side. The warm frame then draws the rest, each a
+    // shader already built.
+    const reps = shaderRepresentatives(root, camera);
+    const target = s.isScene ? s : null;
     const prev = this.gl.getRenderTarget();
     if (this.scenePass) this.gl.setRenderTarget(this.scenePass.renderTarget);
+    const culled: THREE.Object3D[] = [];
     try {
-      return this.gl.compileAsync(root, camera, scene ?? null);
+      // Each call picks its objects before its first wait, so culling is
+      // only off for that moment: the representative may be out of view.
+      for (const o of reps) {
+        if (o.frustumCulled) {
+          o.frustumCulled = false;
+          culled.push(o);
+        }
+      }
+      return Promise.all(reps.map((o) => this.gl.compileAsync(o, camera, target)));
     } finally {
+      for (const o of culled) o.frustumCulled = true;
       this.gl.setRenderTarget(prev);
     }
   }
