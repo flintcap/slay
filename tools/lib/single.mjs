@@ -25,7 +25,11 @@ const TYPES = {
 
 export async function serveSingle(port, dir = 'dist-single') {
   const body = readFileSync(path.join(dir, 'slay.html'), 'utf8');
-  const pageHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${body}</body></html>`;
+  // The host gives every page its own tab icon in the head it wraps around the
+  // file. Without one the browser asks for /favicon.ico, a 404 the host never
+  // shows a player.
+  const icon = `<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>⚔️</text></svg>">`;
+  const pageHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${icon}</head><body>${body}</body></html>`;
   const files = JSON.parse(readFileSync(path.join(dir, 'files.json'), 'utf8'));
   const server = createServer((req, res) => {
     const url = decodeURIComponent((req.url ?? '/').split('?')[0]).replace(/^\/+/, '');

@@ -48,11 +48,14 @@ const rows = CLASSES.map((cls) => {
   const skillId = startingSkillFor(cls.id);
   const def = skillId ? SKILL_BY_ID[skillId] : null;
 
+  // A self-cast opener that deals no damage is a form or a stance: it is cast
+  // once, and the fight that follows is basic attacks, which cost nothing.
+  const stance = !!def && def.targeting === 'self' && !def.damageScale;
   // Both are rank functions, not numbers; rank 1 is what a fresh character has.
-  const manaCost = def?.manaCost ? Math.round(def.manaCost(1)) : 0;
-  const dmgMul = def?.damageScale ? def.damageScale(1) : 1;
+  const manaCost = !stance && def?.manaCost ? Math.round(def.manaCost(1)) : 0;
+  const dmgMul = !stance && def?.damageScale ? def.damageScale(1) : 1;
   // Elemental skills ride the elemental pool, which is where energy now lands.
-  const elemental = def?.damageType && def.damageType !== 'physical' ? 1 + s.elementalDamagePct / 100 : 1;
+  const elemental = !stance && def?.damageType && def.damageType !== 'physical' ? 1 + s.elementalDamagePct / 100 : 1;
   const hit = ((s.minDamage + s.maxDamage) / 2) * dmgMul * (1 + s.enhancedDamage / 100) * elemental;
 
   const castsPerPool = manaCost > 0 ? Math.floor(s.mana / manaCost) : Infinity;
@@ -65,7 +68,7 @@ const rows = CLASSES.map((cls) => {
     life: Math.round(s.life),
     mana: Math.round(s.mana),
     manaRegen: +s.manaRegen.toFixed(2),
-    skill: skillId ?? '(none)',
+    skill: skillId ? (stance ? `${skillId}+hit` : skillId) : '(none)',
     manaCost,
     hit: Math.round(hit),
     castsPerPool: Number.isFinite(castsPerPool) ? castsPerPool : 99,
@@ -73,7 +76,7 @@ const rows = CLASSES.map((cls) => {
     castsToKill,
     hitsToDie,
     /** Monsters the pool can kill before it runs dry. */
-    killsPerPool: castsToKill > 0 ? +(castsPerPool / castsToKill).toFixed(1) : 0,
+    killsPerPool: !Number.isFinite(castsPerPool) ? 99 : castsToKill > 0 ? +(castsPerPool / castsToKill).toFixed(1) : 0,
   };
 });
 
