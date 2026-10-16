@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import {
   Fn, clamp, dot, emissive, float, fog, fract, max, mix, mrt, normalize, output, pass, positionLocal, positionView, positionWorld,
-  pow, reference, renderGroup, renderOutput, screenCoordinate, sin, smoothstep, uniform, uv, vec2, vec3, vec4, velocity,
+  pow, reference, renderGroup, renderOutput, screenCoordinate, screenSize, sin, smoothstep, uniform, uv, vec2, vec3, vec4, velocity,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
@@ -57,7 +57,29 @@ const G = {
  * screen position; the lens moves where it reads. Positions are y-down
  * (0 is the top of the frame).
  */
-function gradeNode(src: (p: V2) => V3): V4 {
+/**
+ * The outline: light just outside the silhouette in `mask`, none inside it.
+ * Two rings of taps, a tight bright edge and a softer one around it; the
+ * mask is filtered, so the edge comes out smooth rather than in steps.
+ */
+function outlineOf(mask: THREE.TextureNode, ch: 'x' | 'z'): (p: V2) => V3 {
+  const at = (p: V2): F => (ch === 'z' ? mask.sample(p).z : mask.sample(p).x);
+  return (p: V2): V3 => {
+    const px = vec2(1.0).div(screenSize).mul(max(screenSize.y.div(1080.0), 1.0));
+    let near: F = float(0.0);
+    let far: F = float(0.0);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const d = vec2(Math.cos(a), Math.sin(a));
+      near = max(near, at(p.add(px.mul(d).mul(1.6))));
+      far = max(far, at(p.add(px.mul(d).mul(3.4))));
+    }
+    const edge = max(near, far.mul(0.45)).mul(at(p).oneMinus());
+    return uOutline.mul(edge);
+  };
+}
+
+function gradeNode(src: (p: V2) => V3, over?: (p: V2) => V3): V4 {
   return Fn(() => {
     const st = uv();
     const center = st.sub(0.5);
@@ -110,6 +132,9 @@ function gradeNode(src: (p: V2) => V3): V4 {
     // Vignette, smooth and slightly cool at the corners.
     const vig = smoothstep(0.9, 0.2, r2.mul(G.vignette).mul(2.6));
     col = col.mul(mix(G.vignetteTint, vec3(1.0), vig));
+
+    // Drawn over the grade, so its colour is the one asked for (the outline).
+    if (over) col = col.add(over(p));
 
     // Grain, proportional to the light. A flat amount added in linear light
     // is invisible in a torch pool and a snowstorm in the dark (the sRGB
@@ -377,6 +402,17 @@ type AONode = ReturnType<typeof ao>;
 type TRAANode = ReturnType<typeof traa>;
 
 /**
+ * 1 on the meshes of the outlined body (`Renderer.setOutline`), read per
+ * draw off the mesh, 0 everywhere else. Written beside the frame's colour, so
+ * the outline costs no second drawing of the scene: the grade finds the
+ * silhouette's edge in it.
+ */
+const outlined = uniform(0).onObjectUpdate(({ object }) => (object?.userData.slOutline as number | undefined) ?? 0);
+const uOutline = uniform(new THREE.Color(0, 0, 0));
+/** The outline is light added over the grade: above 1 so it reads on a bright floor. */
+const OUTLINE_GAIN = 1.6;
+
+/**
  * 1 for a surface that writes depth, 0 for one that does not, fixed when the
  * shader is built. Glows, smoke and sparks write no depth, and with this as
  * the alpha of their motion they leave the motion of the surface behind them
@@ -394,7 +430,10 @@ class WritesDepth extends THREE.Node {
 }
 
 /** The motion of each pixel, kept only where a solid surface wrote it (see `WritesDepth`). */
-const sceneVelocity = vec4((velocity as unknown as V2).xy, 0, new WritesDepth() as unknown as THREE.Node<'float'>);
+const sceneVelocity = vec4((velocity as unknown as V2).xy, outlined, new WritesDepth() as unknown as THREE.Node<'float'>);
+
+/** The outline mask alone, where there is no motion to carry it (Medium). */
+const sceneMask = vec4(outlined, 0, 0, new WritesDepth() as unknown as THREE.Node<'float'>);
 
 /** Motion is blended by its own alpha: solid surfaces replace it, glows leave it. */
 const keepUnderGlows = new THREE.BlendMode(THREE.NormalBlending);
@@ -549,15 +588,19 @@ export class Renderer {
     const sp = pass(scene, camera);
     this.scenePass = sp;
     let color: THREE.TextureNode = sp.getTextureNode('output');
+    let mask: THREE.TextureNode | null = null;
     if (q.taa || q.bloom) {
       const outs: Record<string, THREE.Node> = { output };
       if (q.taa) outs.velocity = sceneVelocity;
+      else outs.mask = sceneMask;
       if (q.bloom) outs.emission = sceneEmission;
       const m = mrt(outs);
-      if (q.taa) m.setBlendMode('velocity', keepUnderGlows);
+      m.setBlendMode(q.taa ? 'velocity' : 'mask', keepUnderGlows);
       if (q.bloom) m.setBlendMode('emission', blendAsMaterial);
       sp.setMRT(m);
+      mask = sp.getTextureNode(q.taa ? 'velocity' : 'mask');
     }
+    this.outlines = mask !== null;
     if (q.taa) {
       // The resolve runs on the lit frame, before AO, bloom and the grade:
       // bloom then glows from a steady picture, and grain stays fresh.
@@ -600,7 +643,7 @@ export class Renderer {
       if (bloomTex) c = c.add(bloomTex.sample(p).rgb);
       return c;
     };
-    const graded = gradeNode(src);
+    const graded = gradeNode(src, mask ? outlineOf(mask, q.taa ? 'z' : 'x') : undefined);
     this.applyGrade();
 
     if (q.smaa) {
@@ -848,9 +891,36 @@ export class Renderer {
       this.scenePass.scene = scene;
       // A cut: no history from the last picture ghosting into this one.
       this.restartHistory();
+      if (scene !== this.currentScene) this.setOutline(null);
     }
     this.currentScene = scene;
     this.currentCamera = camera;
+  }
+
+  /** True when the chain draws outlines (every preset but Low). */
+  private outlines = false;
+  /** The meshes `setOutline` marked. */
+  private outlinedMeshes: THREE.Object3D[] = [];
+  private outlinedRoot: THREE.Object3D | null = null;
+
+  /**
+   * Outlines `root` (the monster under the cursor) in `color`, or clears the
+   * outline. The edge is found in the frame itself, so it follows the body's
+   * real silhouette, is hidden where a wall stands in front, and costs no
+   * second drawing of anything.
+   */
+  setOutline(root: THREE.Object3D | null, color: THREE.ColorRepresentation = 0xff5a2a): void {
+    if (!this.outlines) root = null;
+    if (root) uOutline.value.set(color).multiplyScalar(OUTLINE_GAIN);
+    if (root === this.outlinedRoot) return;
+    for (const m of this.outlinedMeshes) delete m.userData.slOutline;
+    this.outlinedMeshes.length = 0;
+    this.outlinedRoot = root;
+    root?.traverse((o) => {
+      if (!(o as THREE.Mesh).isMesh) return;
+      o.userData.slOutline = 1;
+      this.outlinedMeshes.push(o);
+    });
   }
 
   /** The chain's own camera (see `bind`). */

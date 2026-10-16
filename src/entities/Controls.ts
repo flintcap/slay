@@ -71,7 +71,7 @@ export const MELEE_REACH = 1.9;
 /** How long attack-move keeps chasing a target after the click. */
 const PURSUIT_TIME = 4;
 /** Extra pick radius on a fresh click, on top of the monster's own body. */
-const PICK_SLACK = 1.1;
+export const PICK_SLACK = 1.1;
 /** A wider net, used only when nothing is directly under the cursor. */
 const ASSIST_SLACK = 2.2;
 

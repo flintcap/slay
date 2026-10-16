@@ -22,7 +22,7 @@ import { EffectSystem, ELEMENTS, type School } from '../fx/Effects';
 import { bindMonsterFX, monsterFX } from '../fx/MonsterFX';
 import { BodyFX } from '../fx/BodyFX';
 import { Player } from '../entities/Player';
-import { CombatControls } from '../entities/Controls';
+import { CombatControls, PICK_SLACK, pickNear } from '../entities/Controls';
 import { planMiniBoss, attachMiniBoss } from '../entities/MiniBoss';
 import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
@@ -1558,6 +1558,12 @@ export class DungeonScene extends GameScene {
     // force-stand, the evade) lives in `entities/Controls`, owned by combat.
     this.controls.update(dt, input, this.rig.yaw, this.enemies, this.boss);
     this.keyDir.copy(this.controls.keyDir);
+    // The monster a click would take, outlined: the one under the cursor, or
+    // the one the held button is locked on.
+    const lock = input.mouseLeft ? this.controls.lockedTarget : null;
+    const hover = input.pointerOverUI ? null : pickNear(input.worldPoint, this.enemies, this.boss, PICK_SLACK);
+    const marked = hover ?? (lock?.alive ? lock : null);
+    this.engine.renderer.setOutline(marked ? marked.root : null);
     this.tickInteractables(input, ctx);
     this.tickWaypoint(input);
   }

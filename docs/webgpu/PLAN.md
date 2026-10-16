@@ -48,7 +48,9 @@ on the quality presets, so Low and Medium stay cheap.
    all sixty-four. Lets busy maps carry more lights.
 8. **Sparks that hit the world.** Particles collide with the depth buffer, so
    sparks skip off walls and stairs, not only a flat floor height.
-9. **Hover outline** on the monster or item under the cursor, drawn by the
-   GPU around its silhouette.
+9. **Hover outline** *(done for monsters)* on the monster or item under the
+   cursor, drawn by the GPU around its silhouette. The body marks itself in
+   a spare channel of the motion buffer and the grade draws the edge, so
+   nothing is drawn twice. Medium and up.
 
 Each step lands with typecheck, the fast checkers and fresh pictures.
