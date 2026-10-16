@@ -199,6 +199,11 @@ export class Residents {
     return this.list.map((r) => r.folk.root);
   }
 
+  /** A resident's root, or null if there is no such resident. */
+  rootOf(id: string): THREE.Object3D | null {
+    return this.list.find((x) => x.place.id === id)?.folk.root ?? null;
+  }
+
   /** Where a resident stands now, or null if there is no such resident. */
   where(id: string): THREE.Vector3 | null {
     const r = this.list.find((x) => x.place.id === id);
