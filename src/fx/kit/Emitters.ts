@@ -123,6 +123,8 @@ function flash(size: number, life = 0.12, emit = 0.9): Layer {
 const HIT: Record<School, Layer[]> = {
   physical: [
     L({ sprite: SPRITE.spark, count: 16, speed: [4, 10], spread: 0.6, size: [0.05, 0.1], grow: 0.4, life: [0.14, 0.32], heat: [1, 0.45], emit: 1.1, occl: 0, gravity: -14, drag: 4, stretch: 1.5, fade: 1.2 }),
+    // A few heavier sparks fall to the floor, skip once or twice and go out.
+    L({ sprite: SPRITE.spark, count: 5, speed: [2.5, 5], spread: 0.8, up: 0.5, size: [0.04, 0.06], grow: 0.6, life: [0.45, 0.8], heat: [1, 0.15], emit: 1.1, occl: 0, gravity: -15, drag: 1.2, stretch: 0.9, fade: 1.4, ground: true, bounce: 0.45 }),
     flash(0.65, 0.08, 0.7),
     L({ sprite: SPRITE.slash, count: 1, speed: [0, 0], radius: 0, size: [0.9, 1.0], grow: 1.25, life: [0.09, 0.12], heat: [1, 0.3], emit: 0.8, occl: 0, spin: 0.5, fade: 2 }),
     L({ sprite: SPRITE.smoke, count: 3, ramp: R_DUST, speed: [0.5, 1.6], spread: 0.9, size: [0.2, 0.32], grow: 2.0, life: [0.4, 0.8], heat: [0.2, 0], emit: 0.25, occl: 0.45, gravity: 0.2, drag: 3, turb: 0.2, tint: false }),
@@ -132,6 +134,8 @@ const HIT: Record<School, Layer[]> = {
     L({ sprite: SPRITE.fireball, count: 3, speed: [0.4, 1.4], spread: 1, up: 0.6, radius: 0.15, size: [0.55, 0.85], grow: 1.8, life: [0.45, 0.7], heat: [1, 0.1], emit: 0.9, occl: 0.35, gravity: 1.5, drag: 2.5, turb: 0.3, spin: 1 }),
     L({ sprite: SPRITE.flame, count: 6, speed: [1.5, 3.5], spread: 0.8, up: 0.6, size: [0.28, 0.48], grow: 1.2, life: [0.3, 0.5], heat: [1, 0.2], emit: 0.9, occl: 0.25, gravity: 3, drag: 3, turb: 0.4 }),
     L({ sprite: SPRITE.ember, count: 14, speed: [3, 7], spread: 0.9, up: 0.5, size: [0.035, 0.07], grow: 0.4, life: [0.6, 1.3], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: 1.2, drag: 1.4, turb: 0.6, stretch: 0.4, fade: 1.1 }),
+    // Cinders that drop instead of rising: they land, roll a little and cool from white to red.
+    L({ sprite: SPRITE.ember, count: 6, speed: [1.5, 4], spread: 0.9, up: 0.4, size: [0.04, 0.065], grow: 0.8, life: [1.1, 1.9], heat: [1, 0.12], emit: 1.1, occl: 0, gravity: -11, drag: 0.8, fade: 1.6, ground: true, bounce: 0.25 }),
     L({ sprite: SPRITE.smoke, count: 3, ramp: 'smoke', speed: [0.4, 1.0], up: 1, radius: 0.2, size: [0.5, 0.8], grow: 2.2, life: [0.9, 1.5], heat: [0.35, 0], emit: 0.5, occl: 0.55, gravity: 0.9, drag: 1.5, turb: 0.25, stagger: 0.08, tint: false }),
   ],
   cold: [
@@ -140,11 +144,15 @@ const HIT: Record<School, Layer[]> = {
     L({ sprite: SPRITE.crystal, count: 4, speed: [0.5, 2], size: [0.22, 0.36], grow: 1.3, life: [0.3, 0.55], heat: [1, 0.35], emit: 0.9, occl: 0.05, spin: 3 }),
     L({ sprite: SPRITE.smoke, count: 4, ramp: 'school', speed: [0.6, 1.6], radius: 0.2, size: [0.45, 0.75], grow: 2.0, life: [0.8, 1.3], heat: [0.35, 0.05], emit: 0.45, occl: 0.32, gravity: -0.4, drag: 2, turb: 0.2 }),
     L({ sprite: SPRITE.ember, count: 10, ramp: R_SNOW, speed: [0.5, 2.2], size: [0.03, 0.05], grow: 0.6, life: [0.8, 1.4], heat: [1, 0.6], emit: 1.0, occl: 0, gravity: -1.2, drag: 1.5, turb: 0.5, tint: false }),
+    // Frost glitter that settles on the floor and winks out.
+    L({ sprite: SPRITE.ember, count: 6, ramp: R_SNOW, speed: [1, 3], spread: 0.9, up: 0.3, size: [0.03, 0.045], grow: 0.7, life: [1.0, 1.6], heat: [1, 0.45], emit: 0.9, occl: 0, gravity: -7, drag: 2, fade: 1.8, ground: true, bounce: 0.15, tint: false }),
   ],
   lightning: [
     flash(1.2, 0.08, 1.0),
     L({ sprite: SPRITE.arc, variants: 8, count: 4, speed: [0, 0], radius: 0.2, size: [0.7, 1.1], grow: 1.1, life: [0.06, 0.14], heat: [1, 0.8], emit: 1.0, occl: 0, spin: 0, fade: 1 }),
     L({ sprite: SPRITE.spark, count: 14, speed: [5, 11], size: [0.035, 0.06], grow: 0.4, life: [0.12, 0.3], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -10, drag: 4, stretch: 1.4, fade: 1.2 }),
+    // Sparks that hit the floor and jump along it.
+    L({ sprite: SPRITE.spark, count: 6, speed: [3, 6], spread: 0.9, up: 0.2, size: [0.03, 0.05], grow: 0.5, life: [0.35, 0.6], heat: [1, 0.35], emit: 1.2, occl: 0, gravity: -18, drag: 1.5, stretch: 1.1, fade: 1.3, ground: true, bounce: 0.6 }),
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, size: [0.45, 0.6], grow: 1.2, life: [0.3, 0.45], heat: [0.5, 0.1], emit: 0.6, occl: 0 }),
     L({ sprite: SPRITE.smoke, count: 1, ramp: 'smoke', speed: [0.2, 0.6], up: 1, size: [0.4, 0.6], grow: 2, life: [0.7, 1.0], heat: [0.2, 0], emit: 0.3, occl: 0.35, gravity: 0.6, tint: false }),
   ],

@@ -23,7 +23,7 @@
  * twelve per shader.
  */
 import * as THREE from 'three/webgpu';
-import { If, Loop, getDistanceAttenuation, positionView, renderGroup, smoothstep, uniform, uniformArray, vec3 } from 'three/tsl';
+import { If, Loop, getDistanceAttenuation, positionView, renderGroup, smoothstep, storage, uniform, vec3 } from 'three/tsl';
 
 /** Most packed lights drawn at once: the lit ones whose reach touches the view. */
 const MAX = 64;
@@ -40,6 +40,13 @@ function packable(l: THREE.Light): l is Lit {
   return s.isSpotLight === true && s.map === null && (s as unknown as { colorNode?: unknown }).colorNode === undefined;
 }
 
+function put(d: Float32Array, o: number, x: number, y: number, z: number, w: number): void {
+  d[o] = x;
+  d[o + 1] = y;
+  d[o + 2] = z;
+  d[o + 3] = w;
+}
+
 const frustum = new THREE.Frustum();
 const viewProj = new THREE.Matrix4();
 const sphere = new THREE.Sphere();
@@ -49,14 +56,18 @@ const t = new THREE.Vector3();
 /** Every packed light in one array and one loop. */
 class PackedLightsNode extends THREE.Node {
   lights: Lit[] = [];
-  private readonly data: THREE.Vector4[] = [];
-  private readonly array: THREE.UniformArrayNode<'vec4'>;
+  /**
+   * A storage buffer, not a uniform array: a uniform array is copied into
+   * every shader that reads it (the town's lit shaders made some 26 copies,
+   * each sent to the GPU every frame), where this is one buffer they share,
+   * sent once a frame and only as far as the lights in view fill it.
+   */
+  private readonly buf = new THREE.StorageBufferAttribute(new Float32Array(MAX * STRIDE * 4), 4);
+  private readonly array = storage(this.buf, 'vec4', MAX * STRIDE).toReadOnly();
   private readonly count = uniform(0, 'int').setGroup(renderGroup);
 
   constructor() {
     super();
-    for (let i = 0; i < MAX * STRIDE; i++) this.data.push(new THREE.Vector4());
-    this.array = uniformArray<'vec4'>(this.data, 'vec4').setGroup(renderGroup);
     this.updateType = THREE.NodeUpdateType.RENDER;
   }
 
@@ -74,26 +85,32 @@ class PackedLightsNode extends THREE.Node {
         sphere.radius = l.distance;
         if (!frustum.intersectsSphere(sphere)) continue;
       }
-      const d = this.data;
-      const o = n * STRIDE;
-      d[o]!.set(l.color.r * l.intensity, l.color.g * l.intensity, l.color.b * l.intensity, l.distance);
+      const d = this.buf.array as Float32Array;
+      const o = n * STRIDE * 4;
+      put(d, o, l.color.r * l.intensity, l.color.g * l.intensity, l.color.b * l.intensity, l.distance);
       v.applyMatrix4(cam.matrixWorldInverse);
-      d[o + 1]!.set(v.x, v.y, v.z, l.decay);
+      put(d, o + 4, v.x, v.y, v.z, l.decay);
       const s = l as THREE.SpotLight;
       if (s.isSpotLight) {
         v.setFromMatrixPosition(s.matrixWorld);
         t.setFromMatrixPosition(s.target.matrixWorld);
         v.sub(t).transformDirection(cam.matrixWorldInverse);
-        d[o + 2]!.set(v.x, v.y, v.z, 0);
-        d[o + 3]!.set(Math.cos(s.angle), Math.cos(s.angle * (1 - s.penumbra)), 0, 0);
+        put(d, o + 8, v.x, v.y, v.z, 0);
+        put(d, o + 12, Math.cos(s.angle), Math.cos(s.angle * (1 - s.penumbra)), 0, 0);
       } else {
         // A point light: a cone wider than any angle.
-        d[o + 2]!.set(0, 0, 1, 0);
-        d[o + 3]!.set(-3, -2, 0, 0);
+        put(d, o + 8, 0, 0, 1, 0);
+        put(d, o + 12, -3, -2, 0, 0);
       }
       n++;
     }
     this.count.value = n;
+    // Only the slots the loop reads this time go up.
+    if (n > 0) {
+      this.buf.clearUpdateRanges();
+      this.buf.addUpdateRange(0, n * STRIDE * 4);
+      this.buf.needsUpdate = true;
+    }
     return undefined;
   }
 

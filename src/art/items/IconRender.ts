@@ -29,7 +29,7 @@ import { auraStyle } from './Aura';
 import type { Aura } from './Designs';
 import { scansOf } from '../Scans';
 
-import { itemScansReady as scansReady } from './Mats';
+import { itemLookStandIns, itemScansReady as scansReady } from './Mats';
 
 /** The item scans have decoded and the icon studio is open. */
 export async function itemScansReady(): Promise<void> {
@@ -170,6 +170,50 @@ function studio(): Studio | null {
     stage = { scene, holder, cam };
   }
   return renderer;
+}
+
+let warm: Promise<void> | null = null;
+
+/**
+ * Draws one tiny unseen shot of every kind of item material, so the
+ * studio's shaders are built before the first real icon needs them: an
+ * icon for a drop of a new kind (a first rune, flask or glowing unique)
+ * built its shader mid-fight. For a scene to call behind its curtain.
+ */
+export function warmIconStudio(): Promise<void> {
+  if (warm) return warm;
+  warm = (async () => {
+    await openStudio();
+    const r = studio();
+    if (!r || !stage) {
+      warm = null;
+      return;
+    }
+    const { meshes, geometries } = itemLookStandIns();
+    const g = new THREE.Group();
+    for (const m of meshes) g.add(m);
+    const { holder, cam, scene } = stage;
+    cam.left = cam.bottom = -1;
+    cam.right = cam.top = 1;
+    cam.near = 0.01;
+    cam.far = 20;
+    cam.position.set(0, 0, 10);
+    cam.lookAt(0, 0, 0);
+    cam.updateProjectionMatrix();
+    holder.rotation.set(0, 0, 0);
+    holder.add(g);
+    try {
+      // The same path a real icon takes, so the same pipelines are built.
+      if (r.renderPixels) await r.renderPixels(scene, cam, 4, 4);
+      else r.render(scene, cam);
+    } catch {
+      warm = null;
+    } finally {
+      holder.remove(g);
+      for (const x of geometries) x.dispose();
+    }
+  })();
+  return warm;
 }
 
 /** What `renderModel` reports back for compositing. */

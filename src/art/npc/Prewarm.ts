@@ -8,6 +8,7 @@
 import { adoptMeshes, type RawGeo } from '../hero/MeshCache';
 import { NPC_LOOK_IDS } from './Folk';
 import { CLASSES } from '../../data/classes';
+import { pageAssetBase } from '../../core/Assets';
 
 type Reply = { entries: Array<[string, RawGeo]>; id: string } | { done: true };
 
@@ -61,7 +62,7 @@ export function prewarmTownsfolk(): void {
   // freeze of seconds per class on a first visit.
   const heroes = CLASSES.map((c) => c.id as string);
   for (const id of [...heroes.map((h) => `hero:${h}`), ...NPC_LOOK_IDS]) pending.set(id, []);
-  w.postMessage({ ids: [...NPC_LOOK_IDS], heroes });
+  w.postMessage({ ids: [...NPC_LOOK_IDS], heroes, base: pageAssetBase() });
 }
 
 /**

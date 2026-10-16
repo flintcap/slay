@@ -26,6 +26,7 @@ import { mergeGeometries, rock } from '../art/Meshes';
 import { buildTownProps } from '../art/props/town/Layout';
 import { Residents, townPlaces } from '../art/npc/Residents';
 import { disposeObject } from '../core/Engine';
+import { freezeStill } from '../core/Freeze';
 
 export interface TownBuild {
   root: THREE.Group;
@@ -416,6 +417,16 @@ export function buildTown(rng: Rng): TownBuild {
   bounce.position.set(20, 14, 22);
   root.add(bounce);
   ctx.lights.push(bounce);
+
+  // Everything that never moves stops having its matrices rebuilt each frame.
+  freezeStill(root, [
+    ...ctx.flames.map((f) => f.mesh),
+    ...ctx.spin.map((sp) => sp.obj),
+    ...ctx.sway.map((sw) => sw.obj),
+    ...residents.roots(),
+    life.root,
+    town.portal.root,
+  ]);
 
   return {
     root,

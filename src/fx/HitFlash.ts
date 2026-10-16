@@ -8,23 +8,30 @@
  *
  * Monster materials are shared prototypes (one material for every skeleton in
  * the level), so tinting them would flash the whole room. Instead the struck
- * meshes have their material *swapped* for a pooled flat material for the
- * length of the flash, then handed back. Swapping is a pointer write; the
- * flash materials are all one type with one program, so no shader ever
- * compiles mid-fight.
+ * meshes have their material *swapped* for one flat material for the length
+ * of the flash, then handed back. Swapping is a pointer write, and no shader
+ * ever compiles mid-fight.
+ *
+ * There is one flash material, not one per flash: each body's colour rides on
+ * the mesh (`userData.slFlash`) and the material reads it per draw. The
+ * renderer keeps a draw record (buffers and bind groups on the GPU) for every
+ * pairing of mesh and material it has drawn, so a pool of materials handed out
+ * in turn made new pairings, and new GPU objects, hit after hit.
  *
  * Restoration is defensive: a mesh whose material was changed by someone else
  * while it was flashing keeps the new material. Nothing here can leave a
  * monster permanently white.
  */
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
+import { uniform } from 'three/tsl';
 
 interface FlashSlot {
   root: THREE.Object3D;
   meshes: THREE.Mesh[];
   originals: Array<THREE.Material | THREE.Material[]>;
-  mat: THREE.MeshBasicMaterial;
+  /** The colour drawn this frame, read off every mesh of the body. */
+  color: THREE.Color;
   left: number;
   total: number;
   /** Peak colour, linear, may exceed 1 so bloom catches it. */
@@ -37,6 +44,15 @@ interface FlashSlot {
 const MAX_ACTIVE = 24;
 
 const _c = new THREE.Color();
+const WHITE = new THREE.Color(1, 1, 1);
+
+/** The flat flash material: each mesh's own `userData.slFlash` colour. */
+function flashMaterial(): THREE.MeshBasicNodeMaterial {
+  const m = new THREE.MeshBasicNodeMaterial({ fog: true });
+  m.name = 'hitFlash';
+  m.colorNode = uniform(new THREE.Color(1, 1, 1)).onObjectUpdate(({ object }) => (object?.userData.slFlash as THREE.Color | undefined) ?? WHITE);
+  return m;
+}
 
 /** True for a material the flash should leave alone: glows, auras, decals. */
 function skipMaterial(m: THREE.Material): boolean {
@@ -49,7 +65,7 @@ function skipMaterial(m: THREE.Material): boolean {
 export class HitFlash {
   private active = new Map<THREE.Object3D, FlashSlot>();
   private meshCache = new WeakMap<THREE.Object3D, THREE.Mesh[]>();
-  private pool: THREE.MeshBasicMaterial[] = [];
+  private readonly mat = flashMaterial();
 
   /** Bodies flashing right now, for budget checks and debug readouts. */
   get count(): number {
@@ -77,12 +93,12 @@ export class HitFlash {
     const meshes = this.meshesOf(root);
     if (meshes.length === 0) return;
 
-    const mat = this.pool.pop() ?? new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true });
+    const mat = this.mat;
     const slot: FlashSlot = {
       root,
       meshes,
       originals: new Array(meshes.length),
-      mat,
+      color: new THREE.Color(),
       left: duration,
       total: duration,
       peak: new THREE.Color(),
@@ -96,8 +112,9 @@ export class HitFlash {
       const orig = m.material;
       slot.originals[i] = orig;
       m.material = Array.isArray(orig) ? orig.map(() => mat) : mat;
+      m.userData.slFlash = slot.color;
     }
-    mat.color.copy(slot.peak);
+    slot.color.copy(slot.peak);
     this.active.set(root, slot);
   }
 
@@ -140,11 +157,7 @@ export class HitFlash {
    * nothing; dropping them is enough.
    */
   standIns(roots: Iterable<THREE.Object3D>): THREE.Object3D[] {
-    let mat = this.pool[0];
-    if (!mat) {
-      mat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true });
-      this.pool.push(mat);
-    }
+    const mat = this.mat;
     const kinds = new Map<string, THREE.Object3D>();
     for (const root of roots) {
       for (const m of this.meshesOf(root)) {
@@ -202,11 +215,11 @@ export class HitFlash {
       // Hold the peak for the first third, then cool toward the element's own
       // colour at half brightness: a snap and a short afterglow.
       const t = 1 - slot.left / Math.max(1e-4, slot.total);
-      if (t < 0.34) slot.mat.color.copy(slot.peak);
+      if (t < 0.34) slot.color.copy(slot.peak);
       else {
         const k = (t - 0.34) / 0.66;
         _c.copy(slot.tint).multiplyScalar(0.55);
-        slot.mat.color.copy(slot.peak).lerp(_c, k);
+        slot.color.copy(slot.peak).lerp(_c, k);
       }
     }
   }
@@ -221,13 +234,11 @@ export class HitFlash {
     for (let i = 0; i < slot.meshes.length; i++) {
       const m = slot.meshes[i]!;
       const cur = m.material;
-      const ours = Array.isArray(cur) ? cur.every((x) => x === slot.mat) : cur === slot.mat;
+      const ours = Array.isArray(cur) ? cur.every((x) => x === this.mat) : cur === this.mat;
       // Something else replaced the material mid-flash: theirs wins.
       if (ours) m.material = slot.originals[i]!;
     }
     this.active.delete(slot.root);
-    if (this.pool.length < MAX_ACTIVE) this.pool.push(slot.mat);
-    else slot.mat.dispose();
   }
 
   /** Restores every flashing body. Call before a scene tears its meshes down. */
@@ -237,7 +248,6 @@ export class HitFlash {
 
   dispose(): void {
     this.clear();
-    for (const m of this.pool) m.dispose();
-    this.pool.length = 0;
+    this.mat.dispose();
   }
 }

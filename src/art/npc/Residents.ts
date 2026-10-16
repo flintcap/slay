@@ -194,6 +194,11 @@ export class Residents {
     this.engaged = engaged;
   }
 
+  /** Every resident's root: they walk and turn, so their matrices stay live. */
+  roots(): THREE.Object3D[] {
+    return this.list.map((r) => r.folk.root);
+  }
+
   /** Where a resident stands now, or null if there is no such resident. */
   where(id: string): THREE.Vector3 | null {
     const r = this.list.find((x) => x.place.id === id);

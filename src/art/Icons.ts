@@ -14,7 +14,7 @@
  */
 import type * as THREE from 'three';
 import type { Item, DamageType, ItemVisual } from '../types';
-import { drawItemIcon as renderItemIcon, drawItemIconLater, iconCanvasSize, iconScansMissing, itemScansReady, type IconSpec } from './items/IconRender';
+import { drawItemIcon as renderItemIcon, drawItemIconLater, iconCanvasSize, iconScansMissing, itemScansReady, warmIconStudio, type IconSpec } from './items/IconRender';
 import { textureReady } from '../core/Assets';
 import { iconShape } from '../sim/Grid';
 import { paintSkillIcon, paintStatusIcon, paintAffixIcon } from './SkillIconArt';
@@ -281,6 +281,8 @@ export async function drawItemIconsNow(items: Iterable<Item | null | undefined>,
   ]);
   if (!ok) return;
   scansReady = true;
+  // The studio's shaders, built here rather than on the first icon in play.
+  await warmIconStudio();
   const gen = generation;
   for (const item of items) {
     if (!item) continue;

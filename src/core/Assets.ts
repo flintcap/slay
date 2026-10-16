@@ -28,10 +28,26 @@ import { events } from './Events';
 
 const cache = new Map<string, Promise<ArrayBuffer | null>>();
 
+/**
+ * Where the page's files live. A relative base resolves against whoever
+ * fetches, and a worker fetches from its own script folder (`assets/`), so
+ * the worker is told the page's base (`setAssetBase`) before it loads art.
+ */
+let assetBase: string = import.meta.env.BASE_URL ?? './';
+
+/** The page's base as a full URL, to hand to a worker. */
+export function pageAssetBase(): string {
+  return new URL(assetBase, document.baseURI).href;
+}
+
+/** Inside a worker: fetch from the page's base, not the worker's folder. */
+export function setAssetBase(base: string): void {
+  assetBase = base;
+}
+
 /** URL of a file under `public/assets/`, e.g. `assetUrl('sounds/hit_01.ogg')`. */
 export function assetUrl(rel: string): string {
-  const base = import.meta.env.BASE_URL ?? './';
-  return `${base}assets/${rel.replace(/^\/+/, '')}`;
+  return `${assetBase}assets/${rel.replace(/^\/+/, '')}`;
 }
 
 /**

@@ -1783,6 +1783,7 @@ export class HUD {
     ctx.clearRect(0, 0, S, S);
 
     if (!level) {
+      if (this.drawCampChart(ctx, S)) return;
       ctx.fillStyle = 'rgba(10,9,8,0.55)';
       ctx.fillRect(0, 0, S, S);
       ctx.fillStyle = 'rgba(160,140,105,0.35)';
@@ -1892,6 +1893,89 @@ export class HUD {
     ctx.fill();
     ctx.stroke();
     ctx.restore();
+  }
+
+  /** The camp's extent in world x, z, worked out once per camp. */
+  private campBox = new WeakMap<object, { x0: number; z0: number; x1: number; z1: number }>();
+
+  /**
+   * The town has no tile grid, so its map is drawn from the camp itself: the
+   * buildings' footprints, a mark at every station and the portal, and you.
+   * Returns false where there is no camp to draw.
+   */
+  private drawCampChart(ctx: CanvasRenderingContext2D, S: number): boolean {
+    const scene = this.engine.currentScene as unknown as Record<string, unknown> | null;
+    const town = scene?.town as { colliders?: Array<{ x: number; z: number; w: number; d: number; r?: number }> } | undefined;
+    const spots = scene?.interactables as Array<{ id: string; pos: { x: number; z: number } }> | undefined;
+    const pl = scene?.player as { position?: { x: number; z: number } } | undefined;
+    if (!town?.colliders || !Array.isArray(spots) || !pl?.position) return false;
+    let box = this.campBox.get(town);
+    if (!box) {
+      box = { x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity };
+      for (const s of spots) {
+        box.x0 = Math.min(box.x0, s.pos.x); box.x1 = Math.max(box.x1, s.pos.x);
+        box.z0 = Math.min(box.z0, s.pos.z); box.z1 = Math.max(box.z1, s.pos.z);
+      }
+      if (!Number.isFinite(box.x0)) return false;
+      const pad = 6;
+      box.x0 -= pad; box.z0 -= pad; box.x1 += pad; box.z1 += pad;
+      this.campBox.set(town, box);
+    }
+    const cx = (box.x0 + box.x1) / 2;
+    const cz = (box.z0 + box.z1) / 2;
+    const k = (S - 12) / Math.max(box.x1 - box.x0, box.z1 - box.z0);
+    const sx = (x: number): number => S / 2 + (x - cx) * k;
+    const sy = (z: number): number => S / 2 + (z - cz) * k;
+
+    ctx.fillStyle = 'rgba(8,7,6,0.62)';
+    ctx.fillRect(0, 0, S, S);
+    // Buildings and walls, as the dungeon map draws explored ground.
+    ctx.fillStyle = 'rgba(146,128,98,0.42)';
+    for (const c of town.colliders) {
+      const hw = c.r ?? c.w * 0.5;
+      const hd = c.r ?? c.d * 0.5;
+      const x = sx(c.x - hw);
+      const y = sy(c.z - hd);
+      if (x > S || y > S || x + hw * 2 * k < 0 || y + hd * 2 * k < 0) continue;
+      ctx.fillRect(x, y, Math.max(1, hw * 2 * k), Math.max(1, hd * 2 * k));
+    }
+    // Stations and the portal.
+    for (const s of spots) {
+      const x = sx(s.pos.x);
+      const y = sy(s.pos.z);
+      ctx.beginPath();
+      if (s.id === 'portal') {
+        ctx.strokeStyle = '#9cc4ff';
+        ctx.lineWidth = 1.8;
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.stroke();
+        continue;
+      }
+      ctx.moveTo(x, y - 3.4);
+      ctx.lineTo(x + 3.4, y);
+      ctx.lineTo(x, y + 3.4);
+      ctx.lineTo(x - 3.4, y);
+      ctx.closePath();
+      ctx.fillStyle = '#f0d79a';
+      ctx.fill();
+    }
+    // You.
+    ctx.save();
+    ctx.translate(sx(pl.position.x), sy(pl.position.z));
+    ctx.rotate(runtime.facing);
+    ctx.beginPath();
+    ctx.moveTo(0, -5.5);
+    ctx.lineTo(4.2, 4.4);
+    ctx.lineTo(0, 2.2);
+    ctx.lineTo(-4.2, 4.4);
+    ctx.closePath();
+    ctx.fillStyle = '#f6ecd2';
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 1.2;
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    return true;
   }
 
   // -- feedback ------------------------------------------------------------

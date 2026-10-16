@@ -21,9 +21,10 @@ import { loadMeshCache, onMeshed, type RawGeo } from '../hero/MeshCache';
 import { buildFolk } from './Folk';
 import { buildClassHero } from '../../scenes/HeroModel';
 import type { CharClassId } from '../../types';
+import { setAssetBase } from '../../core/Assets';
 
 interface Scope {
-  onmessage: ((e: MessageEvent<{ ids?: string[]; heroes?: string[]; first?: string }>) => void) | null;
+  onmessage: ((e: MessageEvent<{ ids?: string[]; heroes?: string[]; first?: string; base?: string }>) => void) | null;
   postMessage(msg: unknown, transfer: Transferable[]): void;
 }
 const scope = self as unknown as Scope;
@@ -39,6 +40,7 @@ scope.onmessage = (e) => {
     if (i > 0) jobs.unshift(...jobs.splice(i, 1));
     return;
   }
+  if (e.data.base) setAssetBase(e.data.base);
   jobs = [
     ...(e.data.heroes ?? []).map((id): [string, () => void] => [`hero:${id}`, () => buildClassHero(id as CharClassId).dispose()]),
     ...(e.data.ids ?? []).map((id): [string, () => void] => [id, () => buildFolk(id)]),

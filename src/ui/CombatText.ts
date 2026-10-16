@@ -63,7 +63,17 @@ interface Entry {
 interface Sprite {
   c: HTMLCanvasElement;
   x: CanvasRenderingContext2D;
-  key: string;
+  /** What it was painted from. Compared field by field: a key string built per number per frame was garbage every frame. */
+  text: string;
+  size: number;
+  stacks: number;
+  fill: string;
+  ts: number;
+  dpr: number;
+  scale: number;
+  /** The painted part of the canvas, in canvas pixels. The canvas itself only grows. */
+  pw: number;
+  ph: number;
   ox: number;
   oy: number;
   w: number;
@@ -133,6 +143,8 @@ export function numberKey(target: string, type: DamageType, crit: boolean): stri
 }
 
 const MAX_ENTRIES = 90;
+/** Painted canvases kept from numbers that are gone, for the next ones. */
+const MAX_SPARE = 64;
 /** Hits on one target closer together than this become one growing number. */
 const STACK_WINDOW = 0.32;
 
@@ -143,13 +155,19 @@ export function compactNumber(n: number): string {
   const v = Math.max(1, Math.round(n));
   if (v >= 1e6) return `${(v / 1e6).toFixed(v >= 1e7 ? 1 : 2)}M`;
   if (v >= 1e4) return `${(v / 1e3).toFixed(v >= 1e5 ? 0 : 1)}K`;
-  return v.toLocaleString('en-US');
+  // By hand: toLocaleString looks up the locale's rules on every call, and
+  // this runs for every hit.
+  if (v < 1000) return String(v);
+  const t = v % 1000;
+  return `${Math.floor(v / 1000)},${t < 10 ? '00' : t < 100 ? '0' : ''}${t}`;
 }
 
 export class CombatTextLayer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D | null;
   private entries: Entry[] = [];
+  /** Sprites of numbers that are gone. Making a canvas and its context for every number was a cost of every hit. */
+  private spare: Sprite[] = [];
   private offs: Array<() => void> = [];
   private dpr = 1;
   private w = 0;
@@ -337,7 +355,7 @@ export class CombatTextLayer {
   }
 
   private spawn(p: Omit<Entry, 'age' | 'pop' | 'stacks' | 'born' | 'base' | 'ox'> & { ox?: number }): void {
-    if (this.entries.length >= MAX_ENTRIES) this.entries.shift();
+    if (this.entries.length >= MAX_ENTRIES) this.retire(this.entries.shift()!);
     this.entries.push({ ...p, age: 0, pop: 1, stacks: 1, born: 0, base: p.size, ox: p.ox ?? 0 });
     this.dirty = true;
   }
@@ -372,7 +390,10 @@ export class CombatTextLayer {
       e.age += dt;
       e.born += dt;
       e.pop = Math.max(0, e.pop - dt * 6);
-      if (e.age >= e.life) continue;
+      if (e.age >= e.life) {
+        this.retire(e);
+        continue;
+      }
       this.entries[write++] = e;
 
       _v.set(e.x, e.y, e.z).project(camera);
@@ -415,24 +436,32 @@ export class CombatTextLayer {
     if (!s) return;
     const f = scale / top;
     ctx.globalAlpha = alpha;
-    ctx.drawImage(s.c, x - s.ox * f, y - s.oy * f, s.w * f, s.h * f);
+    ctx.drawImage(s.c, 0, 0, s.pw, s.ph, x - s.ox * f, y - s.oy * f, s.w * f, s.h * f);
     ctx.globalAlpha = 1;
+  }
+
+  /** Hands a gone number's sprites back for reuse. */
+  private retire(e: Entry): void {
+    for (const s of [e.rest, e.peak]) if (s && this.spare.length < MAX_SPARE) this.spare.push(s);
+    e.rest = e.peak = undefined;
   }
 
   /** The entry painted at `scale`, from its cache when nothing has changed. */
   private sprite(e: Entry, scale: number, slot: 'rest' | 'peak'): Sprite | null {
-    const key = `${e.text}|${e.size}|${e.stacks > 2 ? e.stacks : 0}|${e.fill}|${this.textScale}|${this.dpr}|${scale}`;
+    const stacks = e.stacks > 2 ? e.stacks : 0;
     const have = e[slot];
-    if (have && have.key === key) return have;
-    let s = have;
+    if (have && have.text === e.text && have.size === e.size && have.stacks === stacks && have.fill === e.fill
+      && have.ts === this.textScale && have.dpr === this.dpr && have.scale === scale) return have;
+    let s = have ?? this.spare.pop();
     if (!s) {
       const c = document.createElement('canvas');
       const x = c.getContext('2d');
       if (!x) return null;
-      s = { c, x, key: '', ox: 0, oy: 0, w: 0, h: 0 };
-      e[slot] = s;
+      s = { c, x, text: '', size: 0, stacks: 0, fill: '', ts: 0, dpr: 0, scale: 0, pw: 0, ph: 0, ox: 0, oy: 0, w: 0, h: 0 };
     }
-    s.key = key;
+    e[slot] = s;
+    s.text = e.text; s.size = e.size; s.stacks = stacks; s.fill = e.fill;
+    s.ts = this.textScale; s.dpr = this.dpr; s.scale = scale;
     const x = s.x;
     const size = e.size * scale * this.textScale;
     const glow = e.kind === 'crit' || e.kind === 'level';
@@ -459,11 +488,19 @@ export class CombatTextLayer {
     s.oy = above;
     s.w = left + right;
     s.h = above + below;
-    // Resizing clears it and resets the context's state.
-    s.c.width = Math.max(1, Math.ceil(s.w * this.dpr));
-    s.c.height = Math.max(1, Math.ceil(s.h * this.dpr));
-    s.w = s.c.width / this.dpr;
-    s.h = s.c.height / this.dpr;
+    s.pw = Math.max(1, Math.ceil(s.w * this.dpr));
+    s.ph = Math.max(1, Math.ceil(s.h * this.dpr));
+    s.w = s.pw / this.dpr;
+    s.h = s.ph / this.dpr;
+    // A canvas is reused for the next text in the corner it needs. Resizing
+    // one reallocates it, which every repaint (every merged hit) used to do.
+    if (s.c.width < s.pw || s.c.height < s.ph) {
+      s.c.width = Math.max(s.c.width, Math.ceil(s.pw * 1.25));
+      s.c.height = Math.max(s.c.height, Math.ceil(s.ph * 1.25));
+    } else {
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      x.clearRect(0, 0, s.c.width, s.c.height);
+    }
     x.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     x.textAlign = 'center';
     x.textBaseline = 'middle';
@@ -537,6 +574,7 @@ export class CombatTextLayer {
 
   /** Drop everything on screen (floor change). */
   clear(): void {
+    for (const e of this.entries) this.retire(e);
     this.entries.length = 0;
     this.dirty = true;
   }
