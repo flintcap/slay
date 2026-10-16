@@ -204,8 +204,7 @@ export function warmIconStudio(): Promise<void> {
     holder.add(g);
     try {
       // The same path a real icon takes, so the same pipelines are built.
-      if (r.renderPixels) await r.renderPixels(scene, cam, 4, 4);
-      else r.render(scene, cam);
+      await r.renderPixels(scene, cam, 4, 4);
     } catch {
       warm = null;
     } finally {
@@ -234,9 +233,8 @@ export function iconScansMissing(): readonly THREE.Texture[] {
 }
 
 /**
- * Renders the model onto the shared renderer's canvas, or with `read`
- * (where the studio can) into a target read back later, in `pixels`. Null
- * when the studio is not open.
+ * Renders the model onto the shared renderer's canvas, or with `read` into
+ * a target read back later, in `pixels`. Null when the studio is not open.
  */
 function renderModel(spec: IconSpec, read = false): (Shot & { pixels: Promise<ImageData> | null }) | null {
   missing.length = 0;
@@ -251,10 +249,9 @@ function renderModel(spec: IconSpec, read = false): (Shot & { pixels: Promise<Im
     bufH = Math.max(bufH, dh);
     r.setSize(bufW, bufH);
   }
-  // The viewport's origin is the top left on both of three's back ends (the
-  // WebGL one flips it). Measured from the bottom, as WebGL itself does, an
-  // icon smaller than the buffer landed below the corner that is copied
-  // out: blank or cut off once a tall item had grown the buffer.
+  // The viewport's origin is the top left. Measured from the bottom, an icon
+  // smaller than the buffer landed below the corner that is copied out:
+  // blank or cut off once a tall item had grown the buffer.
   r.setViewport(0, 0, dw, dh);
   drawW = dw;
   drawH = dh;
@@ -293,7 +290,7 @@ function renderModel(spec: IconSpec, read = false): (Shot & { pixels: Promise<Im
   });
   let pixels: Promise<ImageData> | null = null;
   try {
-    if (read && r.renderPixels) pixels = r.renderPixels(scene, cam, dw, dh);
+    if (read) pixels = r.renderPixels(scene, cam, dw, dh);
     else r.render(scene, cam);
   } finally {
     holder.remove(inner);

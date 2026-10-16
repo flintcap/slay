@@ -6,6 +6,7 @@
  * - frames slow for some other reason (lower steps change nothing): every
  *   step it tries is put back, and the chosen look stays on screen
  * - calm frames after a cure: it climbs back to the chosen quality
+ * - slow frames with the GPU reported idle: nothing changes, not even a try
  */
 import { AutoQuality, type QualityTarget } from '../src/core/AutoQuality';
 import type { GameSettings } from '../src/types';
@@ -18,11 +19,12 @@ let clock = 0;
 type Q = GameSettings['quality'];
 const ORDER: Q[] = ['low', 'medium', 'high', 'ultra'];
 
-function rig(costAt: (q: Q, dyn: number) => number) {
+function rig(costAt: (q: Q, dyn: number) => number, gpuMs = 0) {
   const t = {
     q: 'high' as Q,
     dyn: 1,
     changes: 0,
+    gpuMs,
     get qualityLevel() {
       return this.q;
     },
@@ -81,6 +83,23 @@ const out: Record<string, unknown> = {};
   run(400);
   out.recovers = { q: t.q, dyn: t.dyn };
   if (t.q !== 'high' || t.dyn !== 1) fails.push(`after the heavy stretch it stayed at ${t.q} x${t.dyn}`);
+}
+
+// 4. Slow frames, and the GPU reports it is busy for a fraction of each:
+// the game's scripts are the limit, so it does not even try a step.
+{
+  const { t, run } = rig(() => 24, 6);
+  run(300);
+  out.gpuIdle = { q: t.q, dyn: t.dyn, changes: t.changes };
+  if (t.changes > 0) fails.push(`slow frames with an idle GPU still changed the look ${t.changes} times`);
+}
+
+// 5. The same slow frames with the GPU busy for most of each: it steps.
+{
+  const { t, run } = rig((q, dyn) => 26 * (0.55 + 0.45 * dyn * dyn) * [0.5, 0.7, 1, 1.4][ORDER.indexOf(q)]!, 22);
+  run(60);
+  out.gpuBusy = { q: t.q, dyn: t.dyn };
+  if (t.q === 'high' && t.dyn === 1) fails.push('a GPU-bound scene with GPU time reported stayed at full quality');
 }
 
 void process;

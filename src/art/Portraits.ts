@@ -139,9 +139,7 @@ async function renderNow(classId: CharClassId, size: number): Promise<string> {
     const uri = await withStudio(async (renderer) => {
       renderer.toneMappingExposure = 1.1;
       renderer.setClearColor(0x000000, 0);
-      const shot = studioShot(renderer, scene, camera, size);
-      // No wait on the canvas path: its picture lasts only this task.
-      const pic = shot instanceof Promise ? await shot : shot;
+      const pic = await studioShot(renderer, scene, camera, size);
       const cv = document.createElement('canvas');
       cv.width = cv.height = size;
       const g = cv.getContext('2d', { willReadFrequently: true })!;

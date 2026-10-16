@@ -194,22 +194,9 @@ export class Engine {
       this.report('promise', e.reason);
     });
 
-    // A lost GPU context (driver reset, too many tabs, laptop sleep). Three.js
-    // restores its own state when the context comes back; until then there is
-    // nothing to draw into, so stop trying and hold the game still.
-    canvas.addEventListener('webglcontextlost', (e) => {
-      e.preventDefault();
-      this.contextLost = true;
-      this.report('render', new Error('WebGL context lost'));
-      if (!this.paused) {
-        this.autoPaused = true;
-        this.setPaused(true);
-      }
-      events.emit('toast', { text: 'The graphics device was reset. Waiting for it to come back...', kind: 'bad' });
-    });
-    // A lost WebGPU device does not come back: three.js would need every
-    // buffer and pipeline made again. Hold the game and ask for a reload,
-    // which picks the save up where it was.
+    // A lost GPU device (driver reset, too many tabs, laptop sleep) does not
+    // come back: three.js would need every buffer and pipeline made again.
+    // Hold the game and ask for a reload, which picks the save up where it was.
     this.renderer.gl.onDeviceLost = (info: { message?: string; reason?: string | null }) => {
       this.contextLost = true;
       this.report('render', new Error(`GPU device lost: ${info.message ?? info.reason ?? 'unknown'}`));
@@ -219,14 +206,6 @@ export class Engine {
       }
       events.emit('toast', { text: 'The graphics device was lost. Reload the page to keep playing; your progress is saved.', kind: 'bad' });
     };
-    canvas.addEventListener('webglcontextrestored', () => {
-      this.contextLost = false;
-      if (this.autoPaused) {
-        this.autoPaused = false;
-        this.setPaused(false);
-      }
-      events.emit('toast', { text: 'Graphics restored.', kind: 'good' });
-    });
 
     // Pause when the tab is hidden, and — critically — resume when it comes
     // back. Only ever undo a pause we applied ourselves, so a player who opened

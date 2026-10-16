@@ -11,6 +11,11 @@
  * shadows and shading of the chosen quality. Only once the lowest resolution
  * step is still too slow does the quality itself step down.
  *
+ * Where the device reports GPU time (`gpuMs`), slow frames with an idle GPU
+ * change nothing: the game's own work is what is slow then, and fewer pixels
+ * or plainer shading would only cost the look. Without GPU time it learns the
+ * same thing the slow way, by trying a step and putting it back (`MIN_GAIN`).
+ *
  * It judges a second or so of frames at a time, never one frame: a single
  * long frame (a load, a menu opening) is not a reason to change anything.
  * A step up that turns out too much for the machine makes the next try wait
@@ -58,6 +63,12 @@ const RES_SETTLE_MS = 2500;
  */
 const MIN_GAIN = 0.08;
 const NO_GAIN_HOLD_S = 120;
+/**
+ * The GPU is the reason frames are slow only when it is busy for at least
+ * this share of the middle frame. Below it, the frame waits on the game's
+ * own scripts, and drawing less would not make it shorter.
+ */
+const GPU_BOUND_SHARE = 0.6;
 
 export interface QualityTarget {
   readonly qualityLevel: QualityId;
@@ -65,6 +76,8 @@ export interface QualityTarget {
   setQuality(q: QualityId, step?: boolean): void;
   readonly dynamicScale: number;
   setDynamicScale(k: number): void;
+  /** GPU time per frame (ms), 0 where the device does not report it. */
+  readonly gpuMs?: number;
 }
 
 export class AutoQuality {
@@ -140,6 +153,8 @@ export class AutoQuality {
     if (slow || median > RES_SLOW_MEDIAN || p90 > RES_SLOW_P90) {
       this.calmS = 0;
       if (now < this.holdUntil) return;
+      const gpu = this.target.gpuMs ?? 0;
+      if (gpu > 0 && gpu < median * GPU_BOUND_SHARE) return;
       // Fewer pixels first; the look goes only when that is not enough.
       if (this.res < RES_STEPS.length - 1) {
         const back = this.res;

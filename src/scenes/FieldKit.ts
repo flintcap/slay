@@ -4,7 +4,7 @@ import type { CharClassId, EquipSlot } from '../types';
  * The look each class is shown in on the select screen. Weapons are the real
  * starting weapons; the armour is representative of the class's fantasy.
  *
- * Pure data, kept apart from HeroModel so tools can check it without a WebGL
+ * Pure data, kept apart from HeroModel so tools can check it without a GPU
  * context. `tools/check-menus.mjs` proves every id here is a real item base
  * that fits the slot it is listed under.
  */

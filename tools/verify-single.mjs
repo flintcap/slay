@@ -47,13 +47,7 @@ const diag = await page.evaluate(() => ({
   sceneId: window.SLAY?.engine?.currentSceneId ?? null,
   bootStatus: document.getElementById('boot-status')?.textContent ?? '(boot removed)',
   canvasPresent: !!document.getElementById('view'),
-  webgl2: (() => {
-    try {
-      return !!document.createElement('canvas').getContext('webgl2');
-    } catch {
-      return false;
-    }
-  })(),
+  webgpu: 'gpu' in navigator,
 }));
 console.log('diagnostics:', JSON.stringify(diag, null, 1));
 

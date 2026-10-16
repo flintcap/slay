@@ -87,7 +87,7 @@ const CHROME = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium';
 
 const browser = await chromium.launch({
   executablePath: existsSync(CHROME) ? CHROME : undefined,
-  args: gpuArgs({ webgl2: !!args.webgl2 }),
+  args: gpuArgs(),
 });
 
 const page = await browser.newPage({
@@ -116,7 +116,7 @@ try {
   const status = await page.textContent('#boot-status').catch(() => null);
   if (status) console.error('boot status:', status);
 }
-console.log('backend', await page.evaluate(() => (window.SLAY?.engine?.renderer?.isWebGPU ? 'WebGPU' : 'WebGL2')).catch(() => '?'));
+console.log('backend', await page.evaluate(() => (window.SLAY?.engine?.renderer?.gl?.backend?.isWebGPUBackend ? 'WebGPU' : 'none')).catch(() => '?'));
 
 /** Software rendering is slow — give each scene real time to settle. */
 async function settle(frames = 90) {

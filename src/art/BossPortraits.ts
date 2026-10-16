@@ -152,9 +152,7 @@ async function render(id: string, size: number): Promise<string> {
   try {
     const uri = await withStudio(async (renderer) => {
       renderer.toneMappingExposure = 1.15;
-      const shot = studioShot(renderer, scene, camera, size);
-      // No wait on the canvas path: its picture lasts only this task.
-      const pic = shot instanceof Promise ? await shot : shot;
+      const pic = await studioShot(renderer, scene, camera, size);
       const cv = document.createElement('canvas');
       cv.width = cv.height = size;
       const g = cv.getContext('2d', { willReadFrequently: true })!;

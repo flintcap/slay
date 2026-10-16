@@ -357,12 +357,19 @@ interface ShadowBase {
   extent: [number, number, number, number] | null;
 }
 
+/** The browser has no WebGPU (or no GPU it will hand out). */
+export class NoWebGPUError extends Error {
+  constructor() {
+    super('This game needs WebGPU. Update your browser (Chrome, Edge, Safari or Firefox), or turn on hardware acceleration in its settings.');
+    this.name = 'NoWebGPUError';
+  }
+}
+
 type BloomNode = ReturnType<typeof bloom>;
 type AONode = ReturnType<typeof ao>;
 
 /**
- * Owns the GPU device (WebGPU, or WebGL2 where the browser has no WebGPU)
- * and the full post chain. Scenes hand it a scene+camera each frame; it does
+ * Owns the GPU device (WebGPU only) and the full post chain. Scenes hand it a scene+camera each frame; it does
  * not know what a dungeon is.
  */
 export class Renderer {
@@ -411,6 +418,12 @@ export class Renderer {
   private dynScale = 1;
   private lowLife = 0;
 
+  /** GPU time per frame (ms), smoothed; 0 until the first reading. */
+  private gpuAvg = 0;
+  /** Frames drawn since the timestamps were last read back. */
+  private gpuFrames = 0;
+  private gpuReading = false;
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.gl = new THREE.WebGPURenderer({
@@ -419,6 +432,8 @@ export class Renderer {
       powerPreference: 'high-performance',
       stencil: false,
       depth: true,
+      // GPU time per frame (`gpuMs`), where the device offers timestamps.
+      trackTimestamp: true,
     });
     this.gl.setPixelRatio(pixelRatioFor(this.quality, this.dynScale));
     this.gl.setSize(window.innerWidth, window.innerHeight);
@@ -438,17 +453,17 @@ export class Renderer {
     window.addEventListener('resize', this.onResize);
   }
 
-  /** Opens the GPU device. Nothing draws before this resolves. */
+  /**
+   * Opens the GPU device. Nothing draws before this resolves. A browser
+   * without WebGPU cannot run the game: three.js would quietly fall back to
+   * WebGL2, which the game no longer supports, so this refuses instead.
+   */
   async init(): Promise<void> {
     await this.gl.init();
+    if (!(this.gl.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend) throw new NoWebGPUError();
     // Canvas textures upload without waiting on the GPU (`CanvasUpload`).
-    if (this.isWebGPU) uploadCanvasesWithoutWaiting(this.gl);
+    uploadCanvasesWithoutWaiting(this.gl);
     this.buildEnvironment();
-  }
-
-  /** True when drawing through WebGPU, false on the WebGL2 fallback. */
-  get isWebGPU(): boolean {
-    return (this.gl.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend === true;
   }
 
   /**
@@ -653,6 +668,41 @@ export class Renderer {
     }
   };
 
+  /**
+   * True when the device reports GPU time. Chrome and Edge do; a device
+   * without the `timestamp-query` feature does not, and `gpuMs` stays 0.
+   */
+  get hasGpuTime(): boolean {
+    return (this.gl.backend as { trackTimestamp?: boolean }).trackTimestamp === true;
+  }
+
+  /** How long the GPU spends on a frame (ms): draws and compute, smoothed over a few readings. */
+  get gpuMs(): number {
+    return this.gpuAvg;
+  }
+
+  /**
+   * Reads the GPU's own timings back, one readback at a time. The queries
+   * of every frame drawn while one is in flight land in the next, so its
+   * total is shared out over those frames.
+   */
+  private readGpuTime(): void {
+    this.gpuFrames++;
+    if (this.gpuReading || !this.hasGpuTime) return;
+    this.gpuReading = true;
+    const frames = this.gpuFrames;
+    this.gpuFrames = 0;
+    Promise.all([this.gl.resolveTimestampsAsync('render'), this.gl.resolveTimestampsAsync('compute')])
+      .then(([draw, compute]) => {
+        const ms = ((draw ?? 0) + (compute ?? 0)) / Math.max(1, frames);
+        if (ms > 0) this.gpuAvg = this.gpuAvg > 0 ? this.gpuAvg + (ms - this.gpuAvg) * 0.2 : ms;
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        this.gpuReading = false;
+      });
+  }
+
   /** Flash the screen red: call on player damage. */
   flashHurt(strength = 1): void {
     this.hurt = Math.min(1, this.hurt + strength);
@@ -746,6 +796,7 @@ export class Renderer {
     U.saveSceneState(scene, this.safeState.scene);
     try {
       this.pipeline.render();
+      this.readGpuTime();
     } catch (err) {
       // A throw part way through a pass (a shadow map, the bloom) leaves the
       // renderer drawing into that pass's target with its material swapped

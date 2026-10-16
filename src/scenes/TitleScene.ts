@@ -43,7 +43,6 @@ export class TitleScene extends GameScene {
   private still: Array<THREE.DirectionalLight | THREE.PointLight> = [];
   private shadowsOn = false;
   /** A lost and restored GPU context comes back with empty shadow maps. */
-  private onRestored = (): void => this.holdShadows(true);
   private mouse = new THREE.Vector2();
   private mouseSmooth = new THREE.Vector2();
   private onMove = (e: PointerEvent): void => {
@@ -234,7 +233,6 @@ export class TitleScene extends GameScene {
     this.still = [moon, ...this.torches.filter((t) => t.light.castShadow).map((t) => t.light)];
     for (const l of this.still) l.shadow.autoUpdate = false;
     this.holdShadows(true);
-    this.engine.renderer.canvas.addEventListener('webglcontextrestored', this.onRestored);
 
     window.addEventListener('pointermove', this.onMove, { passive: true });
 
@@ -301,7 +299,6 @@ export class TitleScene extends GameScene {
 
   override dispose(): void {
     window.removeEventListener('pointermove', this.onMove);
-    this.engine.renderer.canvas.removeEventListener('webglcontextrestored', this.onRestored);
     this.atmosphere.dispose();
     this.fx.dispose();
     events.emit('ui:close', { panel: 'title' });

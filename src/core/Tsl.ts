@@ -3,8 +3,8 @@
  * shading language), so the hand-built materials speak the same dialect.
  *
  * TSL builds a shader graph in JavaScript, and three.js writes it out as
- * WGSL for WebGPU or GLSL for the WebGL2 fallback. Helpers here are plain
- * functions that return nodes: each call inlines its graph where it is used.
+ * WGSL. Helpers here are plain functions that return nodes: each call
+ * inlines its graph where it is used.
  *
  * Every `select` here is written `.select(a, b).uniformFlow().toVar()`. A bare
  * `select` becomes an if/else in the shader, and a value both branches share

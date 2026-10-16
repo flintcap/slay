@@ -80,10 +80,9 @@ async function main(): Promise<void> {
   const engine = new Engine(canvas);
   await engine.renderer.init();
   {
-    // Icons, portraits and the paperdoll draw with the game's renderer on
-    // WebGPU, and in small renderers of their own on the WebGL2 fallback.
+    // Icons, portraits and the paperdoll draw with the game's renderer.
     const { setStudioHost } = await import('./core/Studio');
-    setStudioHost(engine.renderer.gl, engine.renderer.isWebGPU);
+    setStudioHost(engine.renderer.gl);
   }
   engine.renderer.setQuality(save.settings.quality);
   {
@@ -285,7 +284,9 @@ async function main(): Promise<void> {
 main().catch((err) => {
   console.error(err);
   if (bootStatus) {
-    bootStatus.textContent = `Failed to start: ${err instanceof Error ? err.message : String(err)}`;
+    const msg = err instanceof Error ? err.message : String(err);
+    // No WebGPU is not a crash: say what the player can do about it.
+    bootStatus.textContent = err instanceof Error && err.name === 'NoWebGPUError' ? msg : `Failed to start: ${msg}`;
     bootStatus.style.color = '#ff6b5a';
   }
 });

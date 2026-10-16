@@ -34,8 +34,9 @@
 
 import * as THREE from 'three/webgpu';
 import {
-  Fn, If, Loop, abs, atomicAdd, cameraWorldMatrix, clamp, cos, cross, exp, float, floor, instanceIndex, length, max, min, mix, normalize,
-  positionGeometry, positionView, pow, sin, smoothstep, step, storage, texture, uint, uniform, uv, vec2, vec3, vec4,
+  Fn, If, Loop, abs, atomicAdd, cameraFar, cameraNear, cameraWorldMatrix, clamp, cos, cross, exp, float, floor, instanceIndex, length, max,
+  min, mix, normalize, perspectiveDepthToViewZ, positionGeometry, positionView, pow, sin, smoothstep, step, storage, texture, uint, uniform,
+  uv, vec2, vec3, vec4, viewportDepthTexture,
 } from 'three/tsl';
 import { markRange, markAll } from './Upload';
 import { spriteAtlas, cellUv, FLIPBOOKS } from './Atlas';
@@ -503,10 +504,20 @@ export class ParticleField {
     const fadeIn = smoothstep(0.0, 0.06, t);
     const fadeOut = pow(max(t.oneMinus(), 0.0), r2.x);
     const vAlpha = vary(fadeIn.mul(fadeOut).mul(alive));
+    // How far in front of the world a sprite must be to show in full: about
+    // two fifths of its size, so a puff of smoke thins out as it meets a wall
+    // instead of being cut by it. Ground sprites (shock rings, sigils) lie on
+    // the floor on purpose and keep their edge.
+    const vSoft = vary(stretch.lessThan(-0.001).select(float(0.0), clamp(size.mul(0.4), 0.05, 0.6)).uniformFlow().toVar());
 
     const atlas = spriteAtlas();
     const tex = mix(texture(atlas, vUvA), texture(atlas, vUvB), vFrameMix).toVar();
-    const cov = tex.a.mul(vAlpha).toVar();
+    // Soft edge against the world: the gap between this pixel and the
+    // surface behind it, both in view space (negative z ahead).
+    const sceneZ = perspectiveDepthToViewZ(viewportDepthTexture().x, cameraNear, cameraFar);
+    const gap = positionView.z.sub(sceneZ);
+    const soft = vSoft.greaterThan(0.0).select(clamp(gap.div(max(vSoft, 1e-3)), 0.0, 1.0), float(1.0)).uniformFlow().toVar();
+    const cov = tex.a.mul(vAlpha).mul(soft.mul(soft).mul(soft.mul(-2.0).add(3.0))).toVar();
     // Heat through the ramp: tail -> body -> core.
     const h = clamp(tex.r.mul(vHeat), 0.0, 1.0).toVar();
     const col = mix(mix(vTail, vBody, smoothstep(0.05, 0.5, h)), vCore, smoothstep(0.6, 0.98, h));

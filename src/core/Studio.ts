@@ -1,15 +1,12 @@
 /**
  * SLAY — the offscreen views behind item icons, portraits and the paperdoll.
  *
- * On WebGPU every studio draws with the game's own renderer into a canvas of
- * its own (a `CanvasTarget`), so it uses the GPU device the game already
+ * Every studio draws with the game's own renderer into a canvas of its own
+ * (a `CanvasTarget`), so it uses the GPU device the game already
  * opened and the textures and shaders already on it. Each studio used to open
  * a device of its own: four in all, each with its own copy of every texture
  * the hero wore and its own compile of every shader, which is memory a
  * browser can run out of on a map load.
- *
- * The WebGL2 fallback cannot share one context between canvases, so there
- * each studio still opens a small renderer of its own.
  *
  * A studio draws synchronously: a render followed, in the same task, by a
  * `drawImage` of its canvas, which holds the picture only until the task ends.
@@ -31,12 +28,8 @@ export interface Studio {
   setViewport(x: number, y: number, width: number, height: number): void;
   setClearColor(color: THREE.ColorRepresentation, alpha: number): void;
   render(scene: THREE.Object3D, camera: THREE.Camera): void;
-  /**
-   * Draws `width` by `height` and reads the picture back without blocking
-   * the page; null where the studio cannot (the WebGL2 fallback, which reads
-   * its canvas in the same task instead).
-   */
-  readonly renderPixels?: (scene: THREE.Object3D, camera: THREE.Camera, width: number, height: number) => Promise<ImageData>;
+  /** Draws `width` by `height` and reads the picture back without blocking the page. */
+  readonly renderPixels: (scene: THREE.Object3D, camera: THREE.Camera, width: number, height: number) => Promise<ImageData>;
   compileAsync(scene: THREE.Object3D, camera: THREE.Camera): Promise<void>;
   /** Called if the studio's GPU device is lost; the next ask opens a new one. */
   onLost: (() => void) | null;
@@ -44,14 +37,12 @@ export interface Studio {
 }
 
 let host: THREE.WebGPURenderer | null = null;
-let hostIsWebGPU = true;
 let hostSet: () => void = () => {};
 const hostReady = new Promise<void>((done) => (hostSet = done));
 
 /** Set by the game once its own renderer is open. */
-export function setStudioHost(renderer: THREE.WebGPURenderer, isWebGPU: boolean): void {
+export function setStudioHost(renderer: THREE.WebGPURenderer): void {
   host = renderer;
-  hostIsWebGPU = isWebGPU;
   hostSet();
 }
 
@@ -187,93 +178,21 @@ function straightAlpha(src: Uint8Array, w: number, h: number): ImageData {
   return img;
 }
 
-/**
- * Draws `scene` at `size` square and hands back the picture to `drawImage`
- * from: read back without blocking where the studio can (a promise), else
- * the studio's canvas, which must be read before the task ends.
- */
-export function studioShot(s: Studio, scene: THREE.Object3D, camera: THREE.Camera, size: number): CanvasImageSource | Promise<HTMLCanvasElement> {
-  if (s.renderPixels) {
-    return s.renderPixels(scene, camera, size, size).then((img) => {
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = size;
-      cv.getContext('2d', { willReadFrequently: true })!.putImageData(img, 0, 0);
-      return cv;
-    });
-  }
-  s.setSize(size, size);
-  s.render(scene, camera);
-  return s.domElement;
+/** Draws `scene` at `size` square and hands back a canvas holding the picture. */
+export function studioShot(s: Studio, scene: THREE.Object3D, camera: THREE.Camera, size: number): Promise<HTMLCanvasElement> {
+  return s.renderPixels(scene, camera, size, size).then((img) => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    cv.getContext('2d', { willReadFrequently: true })!.putImageData(img, 0, 0);
+    return cv;
+  });
 }
 
-/** The WebGL2 fallback: a small renderer of its own. */
-class OwnStudio implements Studio {
-  onLost: (() => void) | null = null;
-
-  constructor(readonly renderer: THREE.WebGPURenderer) {
-    renderer.onDeviceLost = () => this.onLost?.();
-  }
-
-  get domElement(): HTMLCanvasElement {
-    return this.renderer.domElement;
-  }
-
-  get toneMappingExposure(): number {
-    return this.renderer.toneMappingExposure;
-  }
-
-  set toneMappingExposure(v: number) {
-    this.renderer.toneMappingExposure = v;
-  }
-
-  setPixelRatio(value: number): void {
-    this.renderer.setPixelRatio(value);
-  }
-
-  setSize(width: number, height: number): void {
-    this.renderer.setSize(width, height, false);
-  }
-
-  setViewport(x: number, y: number, width: number, height: number): void {
-    this.renderer.setViewport(x, y, width, height);
-  }
-
-  setClearColor(color: THREE.ColorRepresentation, alpha: number): void {
-    this.renderer.setClearColor(color, alpha);
-  }
-
-  render(scene: THREE.Object3D, camera: THREE.Camera): void {
-    this.renderer.render(scene, camera);
-  }
-
-  compileAsync(scene: THREE.Object3D, camera: THREE.Camera): Promise<void> {
-    return this.renderer.compileAsync(scene, camera);
-  }
-
-  dispose(): void {
-    this.renderer.dispose();
-  }
-}
-
-/** Makes a studio; null when the browser gives no GPU for it. */
+/** Makes a studio on the game's renderer; null outside a page. */
 export async function makeStudio(o: { antialias?: boolean } = {}): Promise<Studio | null> {
   if (typeof document === 'undefined') return null;
   await hostReady;
-  if (host && hostIsWebGPU) return new SharedStudio(host, o.antialias === false ? 0 : 4);
-  let r: THREE.WebGPURenderer | null = null;
-  try {
-    r = new THREE.WebGPURenderer({ antialias: o.antialias ?? true, alpha: true, forceWebGL: true, powerPreference: 'low-power' });
-    await r.init();
-    r.setPixelRatio(1);
-    r.setClearColor(0x000000, 0);
-    r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = THREE.ACESFilmicToneMapping;
-    return new OwnStudio(r);
-  } catch (e) {
-    if (typeof console !== 'undefined') console.warn('[studio] no offscreen renderer', e);
-    r?.dispose();
-    return null;
-  }
+  return host ? new SharedStudio(host, o.antialias === false ? 0 : 4) : null;
 }
 
 /**

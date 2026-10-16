@@ -85,7 +85,7 @@ ${css}
 </div>
 
 <noscript>
-  <div style="color:#e8ddc8;font:16px system-ui;padding:40px">SLAY requires JavaScript and WebGL 2.</div>
+  <div style="color:#e8ddc8;font:16px system-ui;padding:40px">SLAY requires JavaScript and WebGPU.</div>
 </noscript>
 
 <script type="module">

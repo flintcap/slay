@@ -196,7 +196,8 @@ export class SettingsPanel {
       this.fpsTimer = window.setInterval(() => {
         if (!this.fps) return;
         const ms = this.engine.frameMs;
-        this.fps.textContent = `${Math.round(this.engine.fps)} fps  ·  ${ms.toFixed(1)} ms`;
+        const gpu = this.engine.renderer.gpuMs;
+        this.fps.textContent = `${Math.round(this.engine.fps)} fps  ·  ${ms.toFixed(1)} ms${gpu > 0 ? `  ·  GPU ${gpu.toFixed(1)} ms` : ''}`;
       }, 500);
     } else if (!s.showFps && this.fps) {
       this.fps.remove();
