@@ -7,6 +7,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import './NodeNames';
+import './ShadowNodes';
 import { makeLighting } from './Lighting';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { nodeTexturesOf } from './Tsl';

@@ -6,6 +6,15 @@ import type { CreatureAnimator } from './Animator';
 import { clamp01, kf, ramp, settle } from './Motion';
 
 export const TAU = Math.PI * 2;
+/** Tail bone names by link, so a pose loop builds no strings per frame. */
+export const TAIL = ['', 'tail1', 'tail2', 'tail3', 'tail4', 'tail5', 'tail6', 'tail7', 'tail8'] as const;
+export const SIDES = ['L', 'R'] as const;
+const sided: Record<string, Record<string, { L: string; R: string }>> = {};
+/** `base` + side + `after`, built once per name rather than per pose. */
+export function side(base: string, s: 'L' | 'R', after = ''): string {
+  const by = (sided[after] ??= {});
+  return (by[base] ??= { L: `${base}L${after}`, R: `${base}R${after}` })[s];
+}
 
 /** A stable 0..1 hash of a bone name and a salt (scatter directions, per-bone lag). */
 export function nameHash(name: string, salt = 0): number {

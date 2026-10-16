@@ -151,13 +151,19 @@ export class HitFlash {
         const g = m.geometry;
         const skinned = (m as THREE.SkinnedMesh).isSkinnedMesh === true;
         const inst = (m as THREE.InstancedMesh).isInstancedMesh === true;
-        const morph = Object.keys(g.morphAttributes).sort().join(',');
         const tinted = inst && (m as THREE.InstancedMesh).instanceColor !== null;
-        // Everything about the body that is part of the flash's program: how
-        // many morph targets (not just which kinds), and whether it has
-        // normals. Two bodies that differ in any of these link two programs.
-        const ma = g.morphAttributes.position ?? g.morphAttributes.normal ?? g.morphAttributes.color;
-        const key = `${skinned}|${inst}|${tinted}|${morph}|${ma?.length ?? 0}|${g.attributes.normal ? 1 : 0}|${g.attributes.position ? 1 : 0}`;
+        // Everything about the body three.js keys the flash's shader on
+        // (RenderObject.getMaterialCacheKey): every attribute and its size,
+        // the morph targets themselves, an index, the bone count and whether
+        // it takes shadows. A stand-in that differs in any of these warmed a
+        // shader the real body never used, and the first blow built its own.
+        const attrs = Object.keys(g.attributes).sort().map((n) => `${n}${g.attributes[n]!.itemSize}`).join(',');
+        const morph = Object.entries(g.morphAttributes as Record<string, THREE.BufferAttribute[]>)
+          .sort(([a], [b]) => (a < b ? -1 : 1))
+          .map(([n, list]) => `${n}:${list.map((a) => a.id).join('.')}`)
+          .join(',');
+        const bones = (m as THREE.SkinnedMesh).skeleton?.bones.length ?? 0;
+        const key = `${skinned}|${inst}|${tinted}|${attrs}|${morph}|${g.index ? 1 : 0}|${bones}|${m.receiveShadow}`;
         if (kinds.has(key)) continue;
         let s: THREE.Mesh;
         if (skinned) {
@@ -178,7 +184,7 @@ export class HitFlash {
         }
         s.frustumCulled = false;
         s.castShadow = false;
-        s.receiveShadow = false;
+        s.receiveShadow = m.receiveShadow;
         kinds.set(key, s);
       }
     }

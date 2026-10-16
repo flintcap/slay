@@ -10,7 +10,7 @@
 import type { CreatureAnimator } from './Animator';
 import { key, strike, type Key } from './Keys';
 import { clamp01, kf, pulse, ramp, settle, type AttackKind } from './Motion';
-import { TAU, dropFall, fidget, flinchTrunk, idleWeight, nameHash, riseDepth, staggerUpright, thud } from './PoseCommon';
+import { SIDES, TAIL, TAU, side, dropFall, fidget, flinchTrunk, idleWeight, nameHash, riseDepth, staggerUpright, thud } from './PoseCommon';
 
 // ---------------------------------------------------------------------------
 // Key poses. Right hand leads; mirror for the left.
@@ -96,13 +96,13 @@ export function poseBiped(a: CreatureAnimator): void {
 function arms2(a: CreatureAnimator): void {
   if (!a.has('arm2L')) return;
   const live = a.phase === 'death' ? 1 - ramp(a.deathT, 0, 0.45) : 1;
-  for (const s of ['L', 'R'] as const) {
-    a.echo(`arm${s}`, `arm2${s}`, 0.6);
-    a.echo(`fore${s}`, `fore2${s}`, 0.6);
-    a.echo(`hand${s}`, `hand2${s}`, 0.5);
+  for (const s of SIDES) {
+    a.echo(side('arm', s), side('arm2', s), 0.6);
+    a.echo(side('fore', s), side('fore2', s), 0.6);
+    a.echo(side('hand', s), side('hand2', s), 0.5);
     const ph = a.time * 1.4 + a.offset + (s === 'L' ? 0 : 1.7);
-    a.rotS(`arm2${s}`, s, (-0.45 + Math.sin(ph) * 0.08) * live, 0, 0.1 * live);
-    a.rot(`fore2${s}`, (-0.8 + Math.sin(ph + 0.6) * 0.1) * live);
+    a.rotS(side('arm2', s), s, (-0.45 + Math.sin(ph) * 0.08) * live, 0, 0.1 * live);
+    a.rot(side('fore2', s), (-0.8 + Math.sin(ph + 0.6) * 0.1) * live);
   }
 }
 
@@ -214,11 +214,14 @@ function stance(a: CreatureAnimator): void {
   a.rotS('wingL2', 'L', 0, 0.4, -0.3);
   a.rotS('wingR2', 'R', 0, 0.4, -0.3);
   for (let i = 1; i <= 6; i++) {
-    const n = `tail${i}`;
+    const n = TAIL[i]!;
     if (!a.has(n)) break;
     a.rot(n, -0.05, Math.sin(a.time * 1.6 + a.offset - i * 0.6) * 0.12 * (1 + a.gait), 0);
   }
 }
+
+const TOE_STANCE: ReadonlyArray<readonly [number, number]> = [[0, -0.28], [0.15, 0], [0.75, 0.05], [1, 0.45]];
+const TOE_SWING: ReadonlyArray<readonly [number, number]> = [[0, 0.45], [0.4, 0.15], [1, -0.28]];
 
 function locomotion(a: CreatureAnimator): void {
   const g = a.gait;
@@ -265,14 +268,14 @@ function locomotion(a: CreatureAnimator): void {
     const def = a.legDef(i)!;
     const p = a.legPhase(i);
     const d = a.duty;
-    const toe = p < d ? kf(p / d, [[0, -0.28], [0.15, 0], [0.75, 0.05], [1, 0.45]]) : kf((p - d) / (1 - d), [[0, 0.45], [0.4, 0.15], [1, -0.28]]);
+    const toe = p < d ? kf(p / d, TOE_STANCE) : kf((p - d) / (1 - d), TOE_SWING);
     a.rot(def.foot ?? def.end, toe * g);
   }
   // Wings half open to balance at a run; the tail streams.
   a.rotS('wingL', 'L', 0, -0.2 * run * g, 0.2 * run * g);
   a.rotS('wingR', 'R', 0, -0.2 * run * g, 0.2 * run * g);
   for (let i = 1; i <= 6; i++) {
-    const n = `tail${i}`;
+    const n = TAIL[i]!;
     if (!a.has(n)) break;
     a.rot(n, -0.08 * g * (1 + run), Math.sin(c - i * 0.7) * 0.1 * g, 0);
   }
@@ -597,12 +600,12 @@ function fallForward(a: CreatureAnimator, buckleEnd: number, fallStart: number, 
   a.ikW = 1 - ramp(u, 0.02, buckleEnd * 0.7);
   // Kneel, then the legs trail out behind as it goes down.
   const kneel = buckle * (1 - fall);
-  for (const s of ['L', 'R'] as const) {
+  for (const s of SIDES) {
     const lag = s === 'L' ? 1 : 0.8;
-    a.rot(`leg${s}`, -1.05 * kneel * lag + 0.12 * fall);
-    a.rot(`shin${s}`, 1.7 * kneel * lag + 0.35 * fall * lag);
-    a.rot(`foot${s}`, -0.4 * kneel + 0.7 * fall);
-    a.rot(`hock${s}`, -0.5 * kneel);
+    a.rot(side('leg', s), -1.05 * kneel * lag + 0.12 * fall);
+    a.rot(side('shin', s), 1.7 * kneel * lag + 0.35 * fall * lag);
+    a.rot(side('foot', s), -0.4 * kneel + 0.7 * fall);
+    a.rot(side('hock', s), -0.5 * kneel);
   }
   a.move('hips', 0, -0.3 * a.legLen * kneel, 0);
   a.rot('spine', 0.45 * buckle * (1 - fall * 0.8), 0, 0);
@@ -620,7 +623,7 @@ function fallForward(a: CreatureAnimator, buckleEnd: number, fallStart: number, 
   const ft = u > fallEnd ? 0.4 * (1 - Math.exp(-(u - fallEnd) / 0.06)) : 0;
   a.rotS('wingL', 'L', 0.2 * fall + ft, 0.4 * fall, 0.5 * fall);
   a.rotS('wingR', 'R', 0.2 * fall + ft, 0.4 * fall, 0.5 * fall);
-  for (let i = 1; i <= 6; i++) a.rot(`tail${i}`, -0.55 * fall, 0.2 * fall * a.fallDir, 0);
+  for (let i = 1; i <= 6; i++) a.rot(TAIL[i]!, -0.55 * fall, 0.2 * fall * a.fallDir, 0);
   const bounce = thud(u, fallEnd, weight);
   a.body(0, 0.02 * H * fall + bounce * H, 0, 1.42 * fall + bounce, a.fallYaw, sideRoll * fall);
 }

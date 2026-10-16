@@ -321,10 +321,19 @@ export function glassMat(): THREE.MeshStandardMaterial {
  * One small mesh in each kind of item material, for the curtain's warm-up
  * (DungeonScene.warmup). A drop's first glowing rune, gem or flask linked
  * its shader on the frame it fell, mid-fight. Materials are the shared
- * ones; only the returned geometry is the caller's to free.
+ * ones; only the returned geometries are the caller's to free.
+ *
+ * Each stand-in is shaped like a real drop, since that is part of which
+ * shader three.js reuses: position and normal only (as `Geo.clean` leaves
+ * every part), indexed and not (faceted parts are not), and receiving
+ * shadows (`Parts.build`). A box with texture coordinates and no shadows
+ * warmed a shader no drop used, and each drop's first look still built mid-fight.
  */
-export function itemLookStandIns(): { meshes: THREE.Mesh[]; geometry: THREE.BufferGeometry } {
-  const geometry = new THREE.BoxGeometry(0.01, 0.01, 0.01);
+export function itemLookStandIns(): { meshes: THREE.Mesh[]; geometries: THREE.BufferGeometry[] } {
+  const box = new THREE.BoxGeometry(0.01, 0.01, 0.01);
+  box.deleteAttribute('uv');
+  const flatBox = box.toNonIndexed();
+  const geometries = [box, flatBox];
   const mats: THREE.Material[] = [
     itemSurface('metal.steel'),
     glowMat(0xffffff),
@@ -335,5 +344,14 @@ export function itemLookStandIns(): { meshes: THREE.Mesh[]; geometry: THREE.Buff
     liquidMat(0xffffff),
     glassMat(),
   ];
-  return { meshes: mats.map((m) => new THREE.Mesh(geometry, m)), geometry };
+  const meshes: THREE.Mesh[] = [];
+  for (const g of geometries) {
+    for (const m of mats) {
+      const mesh = new THREE.Mesh(g, m);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      meshes.push(mesh);
+    }
+  }
+  return { meshes, geometries };
 }

@@ -134,6 +134,8 @@ export class ParticleField {
   private uFogNear = uniform(1);
   private uFogFar = uniform(100);
   private uFogMode = uniform(0);
+  /** The oldest slot that may still be alive: the draw and the motion pass start there. */
+  private uBase = uniform(0, 'uint');
   private data: Float32Array;
   private records: THREE.StorageBufferAttribute;
   /** Per particle: place (xyz) and the birth time it was started from (w). */
@@ -145,6 +147,11 @@ export class ParticleField {
   private pending = 0;
   private head = 0;
   private high = 0;
+  /** When each slot's particle is gone (its birth plus its life). */
+  private ends: Float64Array;
+  /** The live window: `count` slots from `tail`, wrapping, ending at `head`. */
+  private tail = 0;
+  private count = 0;
   private lo = Infinity;
   private hi = -Infinity;
   private time = 0;
@@ -160,6 +167,7 @@ export class ParticleField {
     geo.instanceCount = 0;
     this.geo = geo;
     this.data = new Float32Array(this.capacity * STRIDE);
+    this.ends = new Float64Array(this.capacity);
     this.records = new THREE.StorageBufferAttribute(this.data, 4);
     // A birth time no record carries, so every slot starts unclaimed.
     const place = new Float32Array(this.capacity * 4);
@@ -196,7 +204,7 @@ export class ParticleField {
     const place = storage(this.place, 'vec4', this.capacity);
     const speed = storage(this.speed, 'vec4', this.capacity);
     const fn = Fn(() => {
-      const i = instanceIndex;
+      const i = this.slot();
       const b = i.mul(VEC4S);
       const r0 = rec.element(b).toVar();
       const r1 = rec.element(b.add(1)).toVar();
@@ -245,6 +253,11 @@ export class ParticleField {
     return fn().compute(this.capacity);
   }
 
+  /** The ring slot of this draw instance or motion thread: `uBase` onwards, wrapping. */
+  private slot(): THREE.Node<'uint'> {
+    return instanceIndex.add(this.uBase).mod(this.capacity).toVar() as unknown as THREE.Node<'uint'>;
+  }
+
   /**
    * Runs the motion pass for the time since the last one, in even steps no
    * longer than `MAX_STEP` (at most `MAX_STEPS` of them). Each step sees the
@@ -252,14 +265,14 @@ export class ParticleField {
    * starts in the right step.
    */
   private step(renderer: THREE.WebGPURenderer): void {
-    if (this.pending <= 0 || this.high === 0) {
+    if (this.pending <= 0 || this.count === 0) {
       this.pending = 0;
       return;
     }
     const n = Math.min(MAX_STEPS, Math.ceil(this.pending / MAX_STEP - 1e-6));
     const h = this.pending / n;
     this.pending = 0;
-    this.sim.count = this.high;
+    this.sim.count = this.count;
     this.uDt.value = h;
     for (let k = n - 1; k >= 0; k--) {
       this.uTime.value = this.time - k * h;
@@ -277,7 +290,8 @@ export class ParticleField {
     const rec = storage(this.records, 'vec4', this.capacity * VEC4S).toReadOnly();
     const place = storage(this.place, 'vec4', this.capacity).toReadOnly();
     const speed = storage(this.speed, 'vec4', this.capacity).toReadOnly();
-    const b = instanceIndex.mul(VEC4S);
+    const slot = this.slot();
+    const b = slot.mul(VEC4S);
     const r0 = rec.element(b).toVar();
     const r1 = rec.element(b.add(1)).toVar();
     // fade, spin, stretch, sprite (+100 flipbook)
@@ -290,8 +304,8 @@ export class ParticleField {
     const r5 = rec.element(b.add(5)).toVar();
     // heat0, heat1, bounce
     const r6 = rec.element(b.add(6)).toVar();
-    const st = place.element(instanceIndex).toVar();
-    const sv = speed.element(instanceIndex).toVar();
+    const st = place.element(slot).toVar();
+    const sv = speed.element(slot).toVar();
 
     const life = max(r1.w, 1e-4).toVar();
     const age = this.uTime.sub(r0.w).toVar();
@@ -385,6 +399,10 @@ export class ParticleField {
     const i = this.head;
     this.head = i + 1 === this.capacity ? 0 : i + 1;
     if (i + 1 > this.high) this.high = i + 1;
+    // A full ring writes over its oldest slot, so the window moves on with it.
+    if (this.count < this.capacity) this.count++;
+    else this.tail = this.head;
+    this.ends[i] = this.time + r.delay + r.life;
     const D = this.data;
     const o = i * STRIDE;
     // The seven vec4s, in the order the header lists them.
@@ -407,7 +425,15 @@ export class ParticleField {
     this.pending += dt;
     this.uTime.value = this.time;
     this.uScale.value = scale;
-    this.geo.instanceCount = this.high;
+    // The window starts at the oldest particle still alive. One long-lived
+    // particle holds it back; it is still far less than the whole ring.
+    const cap = this.capacity;
+    while (this.count > 0 && this.ends[this.tail]! < this.time) {
+      this.tail = this.tail + 1 === cap ? 0 : this.tail + 1;
+      this.count--;
+    }
+    this.uBase.value = this.tail;
+    this.geo.instanceCount = this.count;
     this.spawnedThisFrame = 0;
     if (this.hi < this.lo) return;
     // A wrap in the ring makes lo..hi the whole buffer; that is still one
@@ -446,6 +472,9 @@ export class ParticleField {
     markAll(this.records);
     this.head = 0;
     this.high = 0;
+    this.tail = 0;
+    this.count = 0;
+    this.ends.fill(0);
     this.pending = 0;
     this.geo.instanceCount = 0;
   }

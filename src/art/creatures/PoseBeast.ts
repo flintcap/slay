@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { CreatureAnimator } from './Animator';
 import { key, type Key } from './Keys';
 import { clamp01, pulse, ramp, settle } from './Motion';
-import { TAU, dropFall, fidget, idleWeight, riseDepth, thud } from './PoseCommon';
+import { SIDES, TAIL, TAU, side, dropFall, fidget, idleWeight, riseDepth, thud } from './PoseCommon';
 
 const _p = new THREE.Vector3();
 const _e = new THREE.Euler();
@@ -70,7 +70,7 @@ export function poseQuadruped(a: CreatureAnimator): void {
   a.rot('head', -0.05);
   const wag = a.spin(1, 1.5 + 2 * g);
   for (let i = 1; i <= 8; i++) {
-    const n = `tail${i}`;
+    const n = TAIL[i]!;
     if (!a.has(n)) break;
     a.rot(n, 0.1 - 0.12 * run * g, Math.sin(wag - i * 0.55) * (0.1 + 0.1 * g), 0);
   }
@@ -264,18 +264,18 @@ function deathQuad(a: CreatureAnimator): void {
     const fold = ramp(u, 0, a.style.death === 'crash' ? 0.7 : 0.62);
     a.ikW = 1 - ramp(u, 0, 0.5);
     a.body(0, -(W * 0.62) * fold + thud(u, 0.45) * W, 0, 0, a.fallYaw * 0.5, 0.12 * a.fallDir * fold);
-    for (const s of ['L', 'R'] as const) {
-      a.rot(`fLeg${s}`, -1.0 * fold);
-      a.rot(`fShin${s}`, 1.8 * fold);
-      a.rot(`hLeg${s}`, -1.0 * fold);
-      a.rot(`hShin${s}`, 1.6 * fold);
-      a.rot(`hHock${s}`, -1.2 * fold);
+    for (const s of SIDES) {
+      a.rot(side('fLeg', s), -1.0 * fold);
+      a.rot(side('fShin', s), 1.8 * fold);
+      a.rot(side('hLeg', s), -1.0 * fold);
+      a.rot(side('hShin', s), 1.6 * fold);
+      a.rot(side('hHock', s), -1.2 * fold);
     }
     const head = ramp(u, 0.3, 0.8);
     a.rot('neck', 0.75 * head, 0.3 * head * a.fallDir, 0);
     a.rot('head', 0.3 * head, 0, 0.4 * head * a.fallDir);
     a.rot('jaw', 0.4 * head);
-    for (let i = 1; i <= 8; i++) a.rot(`tail${i}`, 0.15 * head, 0.2 * head * a.fallDir, 0);
+    for (let i = 1; i <= 8; i++) a.rot(TAIL[i]!, 0.15 * head, 0.2 * head * a.fallDir, 0);
     return;
   }
   // Over onto its side ('flop'), or onto its back ('flip'), legs kicking out stiff.
@@ -291,18 +291,18 @@ function deathQuad(a: CreatureAnimator): void {
   const cr = Math.cos(roll);
   const want = thick + (W - thick) * Math.max(0, cr);
   a.body(Math.sin(roll) * W * 0.7, want - W * cr + thud(u, 0.55, 1.2) * W, 0, 0, a.fallYaw, roll);
-  for (const s of ['L', 'R'] as const) {
+  for (const s of SIDES) {
     const sk = (s === 'L' ? 1 : -1) * Math.sin(a.t * 26) * 0.35 * kick * (1 - fall);
-    a.rotS(`fLeg${s}`, s, -0.35 * fall + sk, 0, 0.25 * fall);
-    a.rotS(`hLeg${s}`, s, 0.35 * fall - sk, 0, 0.25 * fall);
-    a.rot(`fShin${s}`, flip ? 1.2 * fall : 0.3 * fall);
-    a.rot(`hShin${s}`, flip ? 1.2 * fall : 0.2 * fall);
+    a.rotS(side('fLeg', s), s, -0.35 * fall + sk, 0, 0.25 * fall);
+    a.rotS(side('hLeg', s), s, 0.35 * fall - sk, 0, 0.25 * fall);
+    a.rot(side('fShin', s), flip ? 1.2 * fall : 0.3 * fall);
+    a.rot(side('hShin', s), flip ? 1.2 * fall : 0.2 * fall);
   }
   const lol = ramp(u, 0.4, 0.9);
   a.rot('neck', 0.2 * lol, 0, -0.4 * lol * a.fallDir);
   a.rot('head', 0, 0, -0.3 * lol * a.fallDir);
   a.rot('jaw', 0.5 * lol);
-  for (let i = 1; i <= 8; i++) a.rot(`tail${i}`, 0, 0.2 * lol, 0);
+  for (let i = 1; i <= 8; i++) a.rot(TAIL[i]!, 0, 0.2 * lol, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -334,17 +334,17 @@ export function poseFlyer(a: CreatureAnimator): void {
   a.rot('neck', -0.15 * g + Math.cos(ph - 0.5) * 0.05);
   a.rot('head', a.wobble(0.6) * 0.1, a.wobble(0.4, 1) * 0.3 * (1 - g), 0);
   // Legs hang and trail.
-  for (const s of ['L', 'R'] as const) {
-    a.rot(`leg${s}`, 0.35 * g + Math.sin(ph + 1) * 0.06, 0, 0);
-    a.rot(`shin${s}`, 0.4, 0, 0);
-    a.rot(`foot${s}`, 0.5, 0, 0);
+  for (const s of SIDES) {
+    a.rot(side('leg', s), 0.35 * g + Math.sin(ph + 1) * 0.06, 0, 0);
+    a.rot(side('shin', s), 0.4, 0, 0);
+    a.rot(side('foot', s), 0.5, 0, 0);
   }
   a.rotS('armL', 'L', -0.3 + Math.sin(ph) * 0.05, 0, 0.2);
   a.rotS('armR', 'R', -0.3 + Math.sin(ph + 0.4) * 0.05, 0, 0.2);
   a.rot('foreL', -0.6);
   a.rot('foreR', -0.6);
   for (let i = 1; i <= 8; i++) {
-    const n = `tail${i}`;
+    const n = TAIL[i]!;
     if (!a.has(n)) break;
     a.rot(n, Math.sin(ph - i * 0.6) * 0.06, Math.sin(a.time * 1.4 + a.offset - i * 0.7) * 0.15, 0);
   }
@@ -369,15 +369,15 @@ export function poseFlyer(a: CreatureAnimator): void {
     } else if (a.attack === 'claw' || a.attack === 'stomp') {
       // Rear back and rake with the talons.
       a.body(0, 0.15 * Y * w, -0.1 * B * w + 0.35 * B * hit, -0.7 * w - 0.4 * hit);
-      for (const s of ['L', 'R'] as const) {
-        a.rot(`leg${s}`, -1.4 * w - 1.0 * hit);
-        a.rot(`shin${s}`, -0.4 * w + 0.6 * hit);
-        a.rot(`foot${s}`, -0.6 * w + 0.6 * hit);
+      for (const s of SIDES) {
+        a.rot(side('leg', s), -1.4 * w - 1.0 * hit);
+        a.rot(side('shin', s), -0.4 * w + 0.6 * hit);
+        a.rot(side('foot', s), -0.6 * w + 0.6 * hit);
       }
       a.rot('jaw', 0.6 * (w + hit));
     } else if (a.attack === 'sting' || a.attack === 'lash') {
       // The tail comes over and strikes past the head.
-      for (let i = 1; i <= 8; i++) a.rot(`tail${i}`, -0.4 * w + 0.25 * hit);
+      for (let i = 1; i <= 8; i++) a.rot(TAIL[i]!, -0.4 * w + 0.25 * hit);
       a.body(0, 0.05 * Y * w, 0.3 * B * hit, -0.2 * w + 0.3 * hit);
       a.rotS('armR', 'R', -1.8 * w - 0.8 * hit, 0, 0.4 * w);
       a.rot('foreR', -0.8 * w);
@@ -423,11 +423,11 @@ function wings(a: CreatureAnimator, ph: number, amp: number, flare: number): voi
   const down = Math.sin(ph);
   // Upstroke folds the outer wing back; the downstroke spreads it.
   const fold = Math.max(0, Math.cos(ph)) * 0.5;
-  for (const s of ['L', 'R'] as const) {
+  for (const s of SIDES) {
     const lag = s === 'L' ? 0 : 0.05;
-    a.rotS(`wing${s}`, s, 0, 0.1 - 0.4 * flare, amp * Math.sin(ph + lag) * 0.9 + 0.1 + 0.25 * flare);
-    a.rotS(`wing${s}2`, s, 0, 0.5 * fold * (1 - flare), amp * Math.sin(ph - 0.6) * 0.4 - fold * 0.3);
-    a.rotS(`wing${s}3`, s, 0, 0.35 * fold * (1 - flare), amp * Math.sin(ph - 1.2) * 0.35);
+    a.rotS(side('wing', s), s, 0, 0.1 - 0.4 * flare, amp * Math.sin(ph + lag) * 0.9 + 0.1 + 0.25 * flare);
+    a.rotS(side('wing', s, '2'), s, 0, 0.5 * fold * (1 - flare), amp * Math.sin(ph - 0.6) * 0.4 - fold * 0.3);
+    a.rotS(side('wing', s, '3'), s, 0, 0.35 * fold * (1 - flare), amp * Math.sin(ph - 1.2) * 0.35);
   }
   void down;
 }
@@ -442,13 +442,13 @@ function deathFlyer(a: CreatureAnimator): void {
   const fall = f * f;
   const ground = ramp(u, 0.55, 0.8);
   wings(a, a.time * 14 + a.offset, 0.6 * beat, 0);
-  for (const s of ['L', 'R'] as const) {
+  for (const s of SIDES) {
     // Folded as it falls, splayed when it lands.
     const sx = s === 'L' ? 1 : -1;
-    a.rotS(`wing${s}`, s, 0.3 * fall * (1 - ground), 0.5 * fall * (1 - ground), -0.8 * fall * (1 - ground) - 0.25 * ground);
-    a.rotS(`wing${s}2`, s, 0, 0.3 * ground * sx * a.fallDir, -0.3 * ground);
-    a.rot(`leg${s}`, -0.6 * ground);
-    a.rot(`shin${s}`, 1.0 * ground);
+    a.rotS(side('wing', s), s, 0.3 * fall * (1 - ground), 0.5 * fall * (1 - ground), -0.8 * fall * (1 - ground) - 0.25 * ground);
+    a.rotS(side('wing', s, '2'), s, 0, 0.3 * ground * sx * a.fallDir, -0.3 * ground);
+    a.rot(side('leg', s), -0.6 * ground);
+    a.rot(side('shin', s), 1.0 * ground);
   }
   const thick = 0.18 * B;
   a.body(0, (-Y + thick) * fall + thud(u, 0.6, 1.2) * Y, 0.2 * B * fall, 0.4 * fall, a.fallYaw, 0.35 * a.fallDir * ground);
@@ -457,7 +457,7 @@ function deathFlyer(a: CreatureAnimator): void {
   a.rot('jaw', 0.5 * ramp(u, 0.2, 0.6));
   a.rotS('armL', 'L', -0.4 * ground, 0, 0.8 * ground);
   a.rotS('armR', 'R', -0.9 * ground, 0, 0.5 * ground);
-  for (let i = 1; i <= 8; i++) a.rot(`tail${i}`, 0, 0.25 * ground * a.fallDir, 0);
+  for (let i = 1; i <= 8; i++) a.rot(TAIL[i]!, 0, 0.25 * ground * a.fallDir, 0);
 }
 
 // ---------------------------------------------------------------------------

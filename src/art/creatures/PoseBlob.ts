@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import type { CreatureAnimator } from './Animator';
 import { clamp01, pulse, ramp, settle } from './Motion';
-import { TAU, dropFall, fidget, idleWeight, nameHash, thud } from './PoseCommon';
+import { SIDES, TAU, dropFall, fidget, idleWeight, nameHash, side, thud } from './PoseCommon';
 
 const _v = new THREE.Vector3();
 
@@ -40,10 +40,10 @@ export function poseOoze(a: CreatureAnimator): void {
     a.move(n, 0, Math.sin(ph) * 0.03 * H, 0);
     a.rot(n, Math.sin(ph) * 0.15, 0, Math.cos(ph) * 0.15);
   }
-  for (const s of ['L', 'R'] as const) {
+  for (const s of SIDES) {
     const ph = a.time * 1.8 + (s === 'L' ? 0 : 2) + a.offset;
-    a.rotS(`pod${s}`, s, 0.25 * g + Math.sin(ph) * 0.2, Math.cos(ph) * 0.2, Math.sin(ph * 0.7) * 0.2);
-    a.rotS(`pod${s}2`, s, Math.sin(ph - 0.8) * 0.3, 0, 0);
+    a.rotS(side('pod', s), s, 0.25 * g + Math.sin(ph) * 0.2, Math.cos(ph) * 0.2, Math.sin(ph * 0.7) * 0.2);
+    a.rotS(side('pod', s, '2'), s, Math.sin(ph - 0.8) * 0.3, 0, 0);
   }
   const f = fidget(a);
   if (f.name === 'roar' || f.name === 'shake') sq *= 1 + 0.12 * Math.sin(f.t * 25) * f.w;
@@ -116,7 +116,7 @@ function deathOoze(a: CreatureAnimator): void {
   a.pose.squash *= sq;
   a.pose.spread *= (1 + 0.1 * swell) * (1 + 0.7 * splat);
   a.rot('top', 0.3 * splat * a.fallDir, 0, 0.2 * splat);
-  for (const s of ['L', 'R'] as const) a.rotS(`pod${s}`, s, 0.6 * splat, 0, 0.6 * splat);
+  for (const s of SIDES) a.rotS(side('pod', s), s, 0.6 * splat, 0, 0.6 * splat);
   for (let i = 0; i < 12; i++) a.move(`lobe${i}`, 0, -0.05 * a.info.height * splat, 0);
 }
 

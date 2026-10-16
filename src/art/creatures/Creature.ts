@@ -367,6 +367,42 @@ function dropCorpse(c: THREE.Object3D): void {
  * its own skeleton (no new shaders) and casts no shadow. At most
  * `CORPSE_CAP` stay; the oldest goes first.
  */
+/** What a body wears once it falls: its own look without rim light, its glow banked low. */
+function corpseMaterial(live: THREE.SkinnedMesh): THREE.Material | null {
+  const base = baseMats.get(live) ?? (live.material as THREE.Material);
+  const def = (base.userData.creature as { def: CreatureMatDef } | undefined)?.def;
+  return def ? creatureMaterial({ ...def, rimStrength: 0, glowIntensity: (def.glowIntensity ?? 2.4) * 0.25 }) : null;
+}
+
+/**
+ * One stand-in for each body part's fallen look, for the curtain's warm-up
+ * (DungeonScene.warmup). A corpse wears other material values than the
+ * living body (no rim, low glow), which three.js builds as a shader of its
+ * own: the first kill of each kind of monster built it mid-fight.
+ */
+export function corpseStandIns(roots: Iterable<THREE.Object3D>): THREE.Object3D[] {
+  const kinds = new Map<string, THREE.Object3D>();
+  for (const root of roots) {
+    root.traverse((o) => {
+      const sm = o as THREE.SkinnedMesh;
+      if (!sm.isSkinnedMesh || sm.userData.shadowOnly) return;
+      const mat = corpseMaterial(sm);
+      if (!mat) return;
+      const g = sm.geometry;
+      const attrs = Object.keys(g.attributes).sort().join(',');
+      const key = `${mat.uuid}|${attrs}|${g.index ? 1 : 0}|${sm.skeleton.bones.length}|${sm.receiveShadow}`;
+      if (kinds.has(key)) return;
+      const k = new THREE.SkinnedMesh(g, mat);
+      k.bind(sm.skeleton, sm.bindMatrix);
+      k.castShadow = false;
+      k.receiveShadow = sm.receiveShadow;
+      k.frustumCulled = false;
+      kinds.set(key, k);
+    });
+  }
+  return [...kinds.values()];
+}
+
 export function leaveCorpse(root: THREE.Object3D): void {
   let world: THREE.Object3D = root;
   while (world.parent) world = world.parent;
@@ -395,9 +431,8 @@ export function leaveCorpse(root: THREE.Object3D): void {
     const live = liveMeshes[i++];
     sm.bind(own, sm.bindMatrix);
     sm.castShadow = false;
-    const base = (live && baseMats.get(live)) ?? (sm.material as THREE.Material);
-    const def = (base.userData.creature as { def: CreatureMatDef } | undefined)?.def;
-    if (def) sm.material = creatureMaterial({ ...def, rimStrength: 0, glowIntensity: (def.glowIntensity ?? 2.4) * 0.25 });
+    const mat = corpseMaterial(live ?? sm);
+    if (mat) sm.material = mat;
   });
   root.matrixWorld.decompose(corpse.position, corpse.quaternion, corpse.scale);
   corpse.userData = { monsterSkeleton: own, corpse: true };

@@ -66,7 +66,7 @@ import { vigilStandIn } from '../fx/paladin/VigilRing';
 import { disposeMonsterModels } from '../entities/MonsterModels';
 import { SUMMONED_BY } from '../entities/Abilities';
 import { lookFor } from '../art/creatures/Looks';
-import { instanceCreature, releaseCreature } from '../art/creatures/Creature';
+import { corpseStandIns, instanceCreature, releaseCreature } from '../art/creatures/Creature';
 import { disposePropLibrary } from '../world/Props';
 import { PropRemains } from '../art/props/Remains';
 import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
@@ -289,7 +289,7 @@ export class DungeonScene extends GameScene {
   /** Summonable bodies built for the area's warm-up (see `warmSummons`). */
   private summonWarm: THREE.Object3D[] = [];
   /** The warm-up's item material stand-ins share this box (see `warmup`). */
-  private lootWarmGeo: THREE.BufferGeometry | null = null;
+  private lootWarmGeo: THREE.BufferGeometry[] = [];
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   private heroAura: THREE.Mesh | null = null;
@@ -362,7 +362,7 @@ export class DungeonScene extends GameScene {
     } catch {
       looks = null;
     }
-    this.lootWarmGeo = looks?.geometry ?? null;
+    this.lootWarmGeo = looks?.geometries ?? [];
     // The hero's see-through Veil look, linked now rather than on first cast.
     let veil: THREE.Object3D[] = [];
     try {
@@ -377,7 +377,12 @@ export class DungeonScene extends GameScene {
     } catch {
       shade = [];
     }
-    const list = [...this.skills.feel.flash.standIns(roots), ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns()];
+    // And each body's fallen look, for the first kill of its kind, and a
+    // gold coin, for the first pile dropped.
+    const fallen = corpseStandIns(roots);
+    const coin = new THREE.Mesh(coinGeometry(), emissiveMaterial(0xffc63a, 0.5));
+    coin.frustumCulled = false;
+    const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns()];
     // A paladin's Vigil ring, for the first one lit.
     if (this.player.character.classId === 'paladin') list.push(vigilStandIn());
     if (!list.length) return null;
@@ -390,8 +395,8 @@ export class DungeonScene extends GameScene {
   override warmupDone(): void {
     for (const root of this.summonWarm) releaseCreature(root);
     this.summonWarm = [];
-    this.lootWarmGeo?.dispose();
-    this.lootWarmGeo = null;
+    for (const g of this.lootWarmGeo) g.dispose();
+    this.lootWarmGeo = [];
   }
 
   /**

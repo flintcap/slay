@@ -106,13 +106,17 @@ class SourceMaterialReference extends THREE.MaterialReferenceNode {
   }
 
   override updateReference(state: THREE.NodeFrame): unknown {
+    // Runs for every input of every draw, so it allocates nothing.
     const p = this.property;
-    const has = (m: unknown): boolean => !!m && (m as Record<string, unknown>)[p] !== undefined;
     let ref: unknown = (this as unknown as { material: THREE.Material | null }).material ?? state.material;
-    if (!has(ref)) {
+    if (!hasInput(ref, p)) {
       const om = (state.object as THREE.Mesh | null)?.material;
-      const src = Array.isArray(om) ? om.find(has) : om;
-      if (!has(src)) {
+      let src: unknown = om;
+      if (Array.isArray(om)) {
+        src = undefined;
+        for (const m of om) if (hasInput(m, p)) { src = m; break; }
+      }
+      if (!hasInput(src, p)) {
         // Its own material drawn without the input its graph reads is a bug
         // (a copy that lost its inputs drew black); a pass's stand-in is not.
         if (state.material && state.material === om) warnMissing(state.material, p);
@@ -122,6 +126,10 @@ class SourceMaterialReference extends THREE.MaterialReferenceNode {
     this.reference = ref as THREE.Material;
     return ref;
   }
+}
+
+function hasInput(m: unknown, p: string): boolean {
+  return !!m && (m as Record<string, unknown>)[p] !== undefined;
 }
 
 const warned = new Set<string>();
