@@ -14,7 +14,7 @@
  */
 import type * as THREE from 'three';
 import type { Item, DamageType, ItemVisual } from '../types';
-import { drawItemIcon as renderItemIcon, iconCanvasSize, iconScansMissing, itemScansReady, type IconSpec } from './items/IconRender';
+import { drawItemIcon as renderItemIcon, drawItemIconLater, iconCanvasSize, iconScansMissing, itemScansReady, type IconSpec } from './items/IconRender';
 import { textureReady } from '../core/Assets';
 import { iconShape } from '../sim/Grid';
 import { paintSkillIcon, paintStatusIcon, paintAffixIcon } from './SkillIconArt';
@@ -150,17 +150,26 @@ function drawItemIconAsync(item: Item, key: string, form: IconForm): void {
   const spec = specFor(item, form);
   const dim = iconCanvasSize(spec);
   const { c, x } = makeCanvas(dim.w, dim.h);
-  renderItemIcon(x, spec);
-  const late = lateScans();
+  // The model is read back from the GPU without blocking (see `Studio`), so
+  // the encode waits on that, not the page.
+  const job = drawItemIconLater(x, spec);
+  const late = job.missing.filter((t) => !neverLoads.has(t));
   const done = late.length === 0;
   if (!done) redrawWhenLoaded(key, item, form, late);
+  encoding.add(key);
+  void job.painted.then(() => encode(c, key, gen, done));
+}
+
+/** Hands a painted icon to its slots, encoded off the main thread where the browser can. */
+function encode(c: HTMLCanvasElement, key: string, gen: number, done: boolean): void {
   if (typeof c.toBlob !== 'function' || typeof URL?.createObjectURL !== 'function') {
+    encoding.delete(key);
+    if (gen !== generation) return;
     const uri = c.toDataURL('image/png');
     if (done) itemCache.set(key, uri);
     deliver(key, uri, done);
     return;
   }
-  encoding.add(key);
   c.toBlob((blob) => {
     encoding.delete(key);
     if (gen !== generation) return;

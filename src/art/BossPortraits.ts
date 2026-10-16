@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { BOSSES } from '../data/bosses';
 import { WARDENS } from '../data/wardens';
 import { assetStats } from '../core/Assets';
-import { withStudio } from '../core/Studio';
+import { studioShot, withStudio } from '../core/Studio';
 import { Random, hashString } from '../core/RNG';
 import { lookFor } from './creatures/Looks';
 import { creatureSocket, instanceCreature, releaseCreature } from './creatures/Creature';
@@ -145,19 +145,20 @@ async function render(id: string, size: number): Promise<string> {
   // opaque backdrop inside the render, never composited onto one after.
   const bg = document.createElement('canvas');
   bg.width = bg.height = size;
-  backdrop(bg.getContext('2d')!, size, light);
+  backdrop(bg.getContext('2d', { willReadFrequently: true })!, size, light);
   const bgTex = new THREE.CanvasTexture(bg);
   bgTex.colorSpace = THREE.SRGBColorSpace;
   scene.background = bgTex;
   try {
-    const uri = await withStudio((renderer) => {
-      renderer.setSize(size, size);
+    const uri = await withStudio(async (renderer) => {
       renderer.toneMappingExposure = 1.15;
-      renderer.render(scene, camera);
+      const shot = studioShot(renderer, scene, camera, size);
+      // No wait on the canvas path: its picture lasts only this task.
+      const pic = shot instanceof Promise ? await shot : shot;
       const cv = document.createElement('canvas');
       cv.width = cv.height = size;
       const g = cv.getContext('2d', { willReadFrequently: true })!;
-      g.drawImage(renderer.domElement, 0, 0, size, size);
+      g.drawImage(pic, 0, 0, size, size);
       medallion(g, size, light);
       return cv.toDataURL('image/png');
     });

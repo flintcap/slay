@@ -189,8 +189,12 @@ export function iconScansMissing(): readonly THREE.Texture[] {
   return missing;
 }
 
-/** Renders the model onto the shared renderer's canvas. Null when the studio is not open. */
-function renderModel(spec: IconSpec): Shot | null {
+/**
+ * Renders the model onto the shared renderer's canvas, or with `read`
+ * (where the studio can) into a target read back later, in `pixels`. Null
+ * when the studio is not open.
+ */
+function renderModel(spec: IconSpec, read = false): (Shot & { pixels: Promise<ImageData> | null }) | null {
   missing.length = 0;
   const r = studio();
   if (!r || !stage) return null;
@@ -243,8 +247,10 @@ function renderModel(spec: IconSpec): Shot | null {
       if (scans) for (const t of scans) if (!t.userData.loaded && !missing.includes(t)) missing.push(t);
     }
   });
+  let pixels: Promise<ImageData> | null = null;
   try {
-    r.render(scene, cam);
+    if (read && r.renderPixels) pixels = r.renderPixels(scene, cam, dw, dh);
+    else r.render(scene, cam);
   } finally {
     holder.remove(inner);
     obj.traverse((o) => {
@@ -253,7 +259,7 @@ function renderModel(spec: IconSpec): Shot | null {
       if (m.isMesh) m.geometry.dispose();
     });
   }
-  return { glowColor: built.look.glowColor, stone: built.look.stone, aura: built.look.aura };
+  return { glowColor: built.look.glowColor, stone: built.look.stone, aura: built.look.aura, pixels };
 }
 
 /**
@@ -342,14 +348,6 @@ function fallback(out: Ctx, rc: number): void {
  * Synchronous: builds the model, renders it, composites the rarity look.
  */
 export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } = {}): void {
-  const W = out.canvas.width;
-  const H = out.canvas.height;
-  const cx = W / 2;
-  const cy = H / 2;
-  const R = Math.max(W, H) / 2;
-  // `bare` draws the model alone, with no rarity light: for comparing pictures.
-  const rank = opts.bare ? 0 : RANK[spec.rarity] ?? 0;
-  const rc = RARITY_COLOR[spec.rarity] ?? 0xc8c8c8;
   let shot: Shot | null = null;
   try {
     shot = renderModel(spec);
@@ -358,6 +356,50 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
     if (typeof console !== 'undefined') console.warn('[icons] render failed', spec.baseId, e);
     shot = null;
   }
+  paintIcon(out, spec, opts, shot, shot && renderer ? renderer.domElement : null, drawW, drawH);
+}
+
+/**
+ * As `drawItemIcon`, but the model is read back without blocking the page
+ * where the studio can (WebGPU): `painted` resolves once `out` holds the
+ * icon. `missing` is the scans it was drawn without, as `iconScansMissing`
+ * would report straight after a `drawItemIcon`.
+ */
+export function drawItemIconLater(out: Ctx, spec: IconSpec): { missing: THREE.Texture[]; painted: Promise<void> } {
+  let shot: (Shot & { pixels: Promise<ImageData> | null }) | null = null;
+  try {
+    shot = renderModel(spec, true);
+  } catch (e) {
+    if (typeof console !== 'undefined') console.warn('[icons] render failed', spec.baseId, e);
+    shot = null;
+  }
+  const late = missing.slice();
+  if (!shot?.pixels) {
+    paintIcon(out, spec, {}, shot, shot && renderer ? renderer.domElement : null, drawW, drawH);
+    return { missing: late, painted: Promise.resolve() };
+  }
+  const s = shot;
+  const painted = shot.pixels.then(
+    (img) => {
+      const read = scratch('iconReadback', img.width, img.height);
+      read.x.putImageData(img, 0, 0);
+      paintIcon(out, spec, {}, s, read.c, img.width, img.height);
+    },
+    () => paintIcon(out, spec, {}, null, null, 0, 0),
+  );
+  return { missing: late, painted };
+}
+
+/** The rarity backdrop, the model (`src`, `sw` by `sh` from its top left) and its light. */
+function paintIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean }, shot: Shot | null, src: CanvasImageSource | null, sw: number, sh: number): void {
+  const W = out.canvas.width;
+  const H = out.canvas.height;
+  const cx = W / 2;
+  const cy = H / 2;
+  const R = Math.max(W, H) / 2;
+  // `bare` draws the model alone, with no rarity light: for comparing pictures.
+  const rank = opts.bare ? 0 : RANK[spec.rarity] ?? 0;
+  const rc = RARITY_COLOR[spec.rarity] ?? 0xc8c8c8;
   const glowC = shot?.glowColor ?? rc;
 
   // Rarity backdrop: a soft pool of the rarity's light behind the object.
@@ -393,7 +435,7 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
     out.restore();
   }
 
-  if (!shot || !renderer) {
+  if (!shot || !src) {
     fallback(out, rc);
     return;
   }
@@ -401,7 +443,7 @@ export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } 
   layer.x.clearRect(0, 0, W, H);
   layer.x.imageSmoothingEnabled = true;
   layer.x.imageSmoothingQuality = 'high';
-  layer.x.drawImage(renderer.domElement, 0, 0, drawW, drawH, 0, 0, W, H);
+  layer.x.drawImage(src, 0, 0, sw, sh, 0, 0, W, H);
   if (opts.bare) {
     out.drawImage(layer.c, 0, 0);
     return;

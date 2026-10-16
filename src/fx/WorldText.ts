@@ -31,7 +31,7 @@ function buildGlyphAtlas(): GlyphAtlas {
   const cv = document.createElement('canvas');
   cv.width = GLYPH_COLS * GLYPH_CELL;
   cv.height = rows * GLYPH_CELL;
-  const ctx = cv.getContext('2d')!;
+  const ctx = cv.getContext('2d', { willReadFrequently: true })!;
   ctx.clearRect(0, 0, cv.width, cv.height);
 
   const font = `900 ${Math.round(GLYPH_CELL * 0.74)}px "Trebuchet MS", "Segoe UI", system-ui, sans-serif`;

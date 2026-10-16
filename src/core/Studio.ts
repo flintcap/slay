@@ -13,6 +13,10 @@
  *
  * A studio draws synchronously: a render followed, in the same task, by a
  * `drawImage` of its canvas, which holds the picture only until the task ends.
+ * That read blocks the page until the GPU process gets to it, which on a scene
+ * load is after every shader it is building (check-loadtime: 40 to 52 s of a
+ * 90 s first town inside `toBlob`). `renderPixels` reads back instead without
+ * blocking (a copy into a buffer the CPU maps when the GPU is done).
  */
 import * as THREE from 'three/webgpu';
 
@@ -27,6 +31,12 @@ export interface Studio {
   setViewport(x: number, y: number, width: number, height: number): void;
   setClearColor(color: THREE.ColorRepresentation, alpha: number): void;
   render(scene: THREE.Object3D, camera: THREE.Camera): void;
+  /**
+   * Draws `width` by `height` and reads the picture back without blocking
+   * the page; null where the studio cannot (the WebGL2 fallback, which reads
+   * its canvas in the same task instead).
+   */
+  readonly renderPixels?: (scene: THREE.Object3D, camera: THREE.Camera, width: number, height: number) => Promise<ImageData>;
   compileAsync(scene: THREE.Object3D, camera: THREE.Camera): Promise<void>;
   /** Called if the studio's GPU device is lost; the next ask opens a new one. */
   onLost: (() => void) | null;
@@ -111,6 +121,36 @@ class SharedStudio implements Studio {
     this.use(() => this.renderer.render(scene, camera));
   }
 
+  /** One target per size read, kept: icons come in a handful of shapes. */
+  private readonly reads = new Map<string, THREE.RenderTarget>();
+
+  readonly renderPixels = (scene: THREE.Object3D, camera: THREE.Camera, width: number, height: number): Promise<ImageData> => {
+    const key = `${width}x${height}`;
+    let rt = this.reads.get(key);
+    if (!rt) {
+      // Plain RGBA bytes. Drawn as the output target, so it gets the same
+      // tone mapping and sRGB encoding a canvas does; the anti-aliasing is
+      // done in the renderer's own frame target before that.
+      rt = new THREE.RenderTarget(width, height, { type: THREE.UnsignedByteType, depthBuffer: false });
+      this.reads.set(key, rt);
+    }
+    const r = this.renderer;
+    const target = rt;
+    // The copy is queued in this call, so the target can be drawn into again
+    // straight after; only the CPU's view of it waits.
+    const read = this.use(() => {
+      const out = r.getOutputRenderTarget();
+      r.setOutputRenderTarget(target);
+      try {
+        r.render(scene, camera);
+        return r.readRenderTargetPixelsAsync(target, 0, 0, width, height);
+      } finally {
+        r.setOutputRenderTarget(out);
+      }
+    });
+    return read.then((data) => straightAlpha(data as Uint8Array, width, height));
+  };
+
   compileAsync(scene: THREE.Object3D, camera: THREE.Camera): Promise<void> {
     return this.use(() => this.renderer.compileAsync(scene, camera));
   }
@@ -118,7 +158,52 @@ class SharedStudio implements Studio {
   dispose(): void {
     // Frees this canvas's own buffers; the renderer is the game's.
     this.target.dispose();
+    for (const rt of this.reads.values()) rt.dispose();
+    this.reads.clear();
   }
+}
+
+/**
+ * GPU rows padded to 256 bytes, alpha premultiplied (as the canvas holds
+ * it), to an `ImageData`, whose rows are packed and alpha straight.
+ */
+function straightAlpha(src: Uint8Array, w: number, h: number): ImageData {
+  const stride = Math.ceil((w * 4) / 256) * 256;
+  const img = new ImageData(w, h);
+  const d = img.data;
+  for (let y = 0; y < h; y++) {
+    const so = y * stride;
+    const dO = y * w * 4;
+    for (let x = 0; x < w * 4; x += 4) {
+      const a = src[so + x + 3]!;
+      if (a === 0) continue;
+      const k = a === 255 ? 1 : 255 / a;
+      d[dO + x] = Math.min(255, Math.round(src[so + x]! * k));
+      d[dO + x + 1] = Math.min(255, Math.round(src[so + x + 1]! * k));
+      d[dO + x + 2] = Math.min(255, Math.round(src[so + x + 2]! * k));
+      d[dO + x + 3] = a;
+    }
+  }
+  return img;
+}
+
+/**
+ * Draws `scene` at `size` square and hands back the picture to `drawImage`
+ * from: read back without blocking where the studio can (a promise), else
+ * the studio's canvas, which must be read before the task ends.
+ */
+export function studioShot(s: Studio, scene: THREE.Object3D, camera: THREE.Camera, size: number): CanvasImageSource | Promise<HTMLCanvasElement> {
+  if (s.renderPixels) {
+    return s.renderPixels(scene, camera, size, size).then((img) => {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      cv.getContext('2d', { willReadFrequently: true })!.putImageData(img, 0, 0);
+      return cv;
+    });
+  }
+  s.setSize(size, size);
+  s.render(scene, camera);
+  return s.domElement;
 }
 
 /** The WebGL2 fallback: a small renderer of its own. */
@@ -205,7 +290,7 @@ const IDLE_MS = 20000;
  * the canvas in one go, with no await in between: the canvas holds the
  * picture only until the task ends.
  */
-export async function withStudio<T>(draw: (s: Studio) => T): Promise<T | null> {
+export async function withStudio<T>(draw: (s: Studio) => T | Promise<T>): Promise<T | null> {
   window.clearTimeout(idle);
   users++;
   try {
@@ -224,7 +309,8 @@ export async function withStudio<T>(draw: (s: Studio) => T): Promise<T | null> {
       shared = null;
       return null;
     }
-    return draw(s);
+    // Awaited here, so a draw that reads back later still counts as a user.
+    return await draw(s);
   } finally {
     users--;
     if (users === 0) releaseLater();

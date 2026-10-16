@@ -8,6 +8,7 @@ import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import './NodeNames';
 import './ShadowNodes';
+import { uploadCanvasesWithoutWaiting } from './CanvasUpload';
 import { makeLighting } from './Lighting';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { nodeTexturesOf } from './Tsl';
@@ -440,6 +441,8 @@ export class Renderer {
   /** Opens the GPU device. Nothing draws before this resolves. */
   async init(): Promise<void> {
     await this.gl.init();
+    // Canvas textures upload without waiting on the GPU (`CanvasUpload`).
+    if (this.isWebGPU) uploadCanvasesWithoutWaiting(this.gl);
     this.buildEnvironment();
   }
 

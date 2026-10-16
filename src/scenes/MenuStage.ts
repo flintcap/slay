@@ -125,7 +125,7 @@ function mistTexture(seed: number): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   const rng = new Random(seed);
   ctx.clearRect(0, 0, size, size);
   for (let i = 0; i < 70; i++) {
@@ -156,7 +156,7 @@ function shaftTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 64;
   canvas.height = 256;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   const v = ctx.createLinearGradient(0, 0, 0, 256);
   v.addColorStop(0, 'rgba(255,255,255,0.9)');
   v.addColorStop(0.55, 'rgba(255,255,255,0.35)');

@@ -399,7 +399,7 @@ function radialTexture(size = 128): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = size;
   c.height = size;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   if (ctx) {
     const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
     grad.addColorStop(0, 'rgba(255,255,255,1)');

@@ -33,7 +33,7 @@ function glyphTexture(kind: Kind): THREE.CanvasTexture | null {
   const cv = document.createElement('canvas');
   cv.width = S;
   cv.height = S;
-  const g = cv.getContext('2d');
+  const g = cv.getContext('2d', { willReadFrequently: true });
   if (!g) return null;
   const { glyph, fill, glow } = LOOK[kind];
   g.textAlign = 'center';

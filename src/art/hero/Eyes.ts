@@ -24,7 +24,7 @@ function irisTexture(iris: number): THREE.Texture {
   const c = document.createElement('canvas');
   c.width = W;
   c.height = W / 2;
-  const g = c.getContext('2d')!;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
   // Sclera: off-white, warmer and redder toward the edges.
   const sc = g.createRadialGradient(W * 0.5, W * 0.25, 2, W * 0.5, W * 0.25, W * 0.5);
   sc.addColorStop(0, '#e8e2da');

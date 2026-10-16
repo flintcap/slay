@@ -145,7 +145,8 @@ async function visit(label) {
     // Programs first built during this phase, and the materials that use them.
     const progs = await page.evaluate(() => {
       const gl = window.SLAY?.engine?.renderer?.gl;
-      if (!gl) return null;
+      // WebGPU keeps no program list (its pipelines are counted elsewhere).
+      if (!gl || !Array.isArray(gl.info?.programs)) return null;
       const seen = (window.__lt.progSeen ??= new Set());
       const fresh = gl.info.programs.filter((q) => !seen.has(q));
       for (const q of fresh) seen.add(q);
@@ -338,7 +339,7 @@ async function visit(label) {
     const top = ls.map(([, d]) => d).sort((x, y) => y - x).slice(0, 6);
     console.log(`  ${name.padEnd(16)} ${String(ls.length).padStart(4)}  ${String(sum).padStart(7)}  ${top.join(', ')}`);
   }
-  if (errors.length) console.log(`errors:\n  ${[...new Set(errors)].slice(0, 6).join('\n  ')}`);
+  if (errors.length) console.log(`errors:\n  ${[...new Set(errors)].slice(0, 60).join('\n  ')}`);
   const out = { label, mbps: MBPS, titleMs: titleAt, phases: phases.map((p) => [p.name, p.ms]), totalKB, errors: errors.length };
   console.log(JSON.stringify(out));
   return out;

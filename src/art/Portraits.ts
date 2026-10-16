@@ -14,7 +14,7 @@
  */
 import * as THREE from 'three';
 import { assetStats } from '../core/Assets';
-import { withStudio } from '../core/Studio';
+import { studioShot, withStudio } from '../core/Studio';
 import { MESH_VERSION } from './hero/MeshCache';
 import type { CharClassId } from '../types';
 
@@ -136,16 +136,17 @@ async function renderNow(classId: CharClassId, size: number): Promise<string> {
   try {
     // The studio is shared by every portrait, and cached between them: the
     // six heroes share most of their materials, so they compile once.
-    const uri = await withStudio((renderer) => {
+    const uri = await withStudio(async (renderer) => {
       renderer.toneMappingExposure = 1.1;
       renderer.setClearColor(0x000000, 0);
-      renderer.setSize(size, size);
-      renderer.render(scene, camera);
+      const shot = studioShot(renderer, scene, camera, size);
+      // No wait on the canvas path: its picture lasts only this task.
+      const pic = shot instanceof Promise ? await shot : shot;
       const cv = document.createElement('canvas');
       cv.width = cv.height = size;
       const g = cv.getContext('2d', { willReadFrequently: true })!;
       backdrop(g, size, classId);
-      g.drawImage(renderer.domElement, 0, 0, size, size);
+      g.drawImage(pic, 0, 0, size, size);
       frame(g, size);
       return cv.toDataURL('image/png');
     });

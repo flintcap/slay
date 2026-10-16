@@ -2510,7 +2510,7 @@ function makeAuraTexture(): THREE.Texture {
   const c = document.createElement('canvas');
   c.width = size;
   c.height = size;
-  const x = c.getContext('2d')!;
+  const x = c.getContext('2d', { willReadFrequently: true })!;
   const g = x.createRadialGradient(size / 2, size / 2, 2, size / 2, size / 2, size / 2);
   g.addColorStop(0, 'rgba(255,214,166,0.85)');
   g.addColorStop(0.35, 'rgba(255,196,140,0.35)');

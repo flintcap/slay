@@ -218,7 +218,7 @@ export class DeathScene extends GameScene {
     const canvas = document.createElement('canvas');
     canvas.width = W;
     canvas.height = H;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     const serif = "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif";
     const carve = (text: string, y: number, size: number, weight = '700'): void => {
       ctx.font = `${weight} ${size}px ${serif}`;

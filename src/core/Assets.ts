@@ -204,7 +204,7 @@ function fallbackImage(color: number, alpha: number): HTMLCanvasElement | null {
   // decoded image later is a simple `.image` assignment.
   const c = document.createElement('canvas');
   c.width = c.height = 2;
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   if (g) {
     g.fillStyle = `rgba(${(color >> 16) & 255},${(color >> 8) & 255},${color & 255},${alpha / 255})`;
     g.fillRect(0, 0, 2, 2);
