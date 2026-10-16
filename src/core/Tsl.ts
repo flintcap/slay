@@ -92,9 +92,19 @@ export function andMask(mat: THREE.NodeMaterial, keep: THREE.Node<'bool'>): void
  * material reads its own. In a pass that swaps the material out (the shadow
  * pass draws every caster with one shared material, and still evaluates the
  * caster's colour node for its alpha), the stand-in has no such property:
- * then it reads the mesh's own material instead.
+ * then it reads the mesh's own material instead. When neither has it (a
+ * struck monster wears the hit flash's plain material for a few frames, and
+ * the shadow pass still draws it with the monster's graph), it reads a
+ * neutral default: a missing value is an error inside the renderer, part
+ * way through the shadow pass, and the screen stayed black after one.
  */
 class SourceMaterialReference extends THREE.MaterialReferenceNode {
+  private stand: Record<string, unknown> | null = null;
+
+  constructor(property: string, private readonly slType: string) {
+    super(property, slType);
+  }
+
   override updateReference(state: THREE.NodeFrame): unknown {
     const p = this.property;
     const has = (m: unknown): boolean => !!m && (m as Record<string, unknown>)[p] !== undefined;
@@ -102,11 +112,20 @@ class SourceMaterialReference extends THREE.MaterialReferenceNode {
     if (!has(ref)) {
       const om = (state.object as THREE.Mesh | null)?.material;
       const src = Array.isArray(om) ? om.find(has) : om;
-      if (has(src)) ref = src;
+      ref = has(src) ? src : (this.stand ??= { [p]: neutral(this.slType) });
     }
     this.reference = ref as THREE.Material;
     return ref;
   }
+}
+
+/** The value a material property reads when no material has it. */
+function neutral(type: string): unknown {
+  if (type === 'color') return new THREE.Color(0);
+  if (type === 'vec2') return new THREE.Vector2();
+  if (type === 'vec3') return new THREE.Vector3();
+  if (type === 'vec4') return new THREE.Vector4();
+  return 0;
 }
 
 function matRef(name: string, type: string): THREE.Node {

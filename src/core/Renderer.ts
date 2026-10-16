@@ -375,6 +375,11 @@ export class Renderer {
   private chainDirty = true;
 
   private currentScene: THREE.Scene | null = null;
+  /** Renderer and scene state kept from the start of each frame (see `render`). */
+  private safeState = {
+    renderer: {} as THREE.RendererUtils.RendererState,
+    scene: {} as THREE.RendererUtils.SceneState,
+  };
   private currentCamera: THREE.Camera | null = null;
 
   quality: QualityProfile = QUALITY.high;
@@ -732,7 +737,20 @@ export class Renderer {
 
     // Shadow bodies stay out of the frame's own draw list (`ShadowBodies`).
     hideShadowBodies();
-    this.pipeline.render();
+    const U = THREE.RendererUtils;
+    U.saveRendererState(this.gl, this.safeState.renderer);
+    U.saveSceneState(scene, this.safeState.scene);
+    try {
+      this.pipeline.render();
+    } catch (err) {
+      // A throw part way through a pass (a shadow map, the bloom) leaves the
+      // renderer drawing into that pass's target with its material swapped
+      // in: every later frame, in every scene, came out black. Put it all
+      // back, then let the caller report it.
+      U.restoreRendererState(this.gl, this.safeState.renderer);
+      U.restoreSceneState(scene, this.safeState.scene);
+      throw err;
+    }
   }
 
   /**
