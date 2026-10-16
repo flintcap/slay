@@ -12,8 +12,9 @@
  *    `trauma²` sampled from simplex noise. Squaring makes small hits barely
  *    register and heavy hits slam, and the decay is naturally non-linear. A
  *    sine wave would read as a mechanical wobble; noise reads as impact;
- *  - hit-stop and slow motion, exposed as a `timeScale` the scene multiplies
- *    its own dt by, so gameplay, animation and FX all dilate together;
+ *  - slow motion, exposed as a `timeScale` the scene multiplies its own dt
+ *    by, so gameplay, animation and FX all dilate together. There is no
+ *    hit-stop: hits never freeze the world;
  *  - a boss punch-in (dolly + FOV) and a slow menu orbit.
  *
  * The rig subscribes to the `shake` event on the bus, so any system can ask for
@@ -63,13 +64,6 @@ const DEFAULTS: Required<CameraRigOptions> = {
   lookAheadMax: 4.2,
   stiffness: 9.5,
 };
-
-/** Seconds of hit-stop the rig can bank. */
-const HITSTOP_BUDGET = 0.16;
-/** Seconds of hit-stop regained per real second. */
-const HITSTOP_REFILL = 0.14;
-/** Budget charged per second of stop: the stop itself plus its ease-back. */
-const HITSTOP_COST = 1.6;
 
 const _target = new THREE.Vector3();
 const _desired = new THREE.Vector3();
@@ -149,24 +143,9 @@ export class CameraRig {
   private rumble = 0;
 
   // --- time -------------------------------------------------------------
-  private hitStopLeft = 0;
-  private hitStopScale = 0;
   private slowLeft = 0;
   private slowTotal = 0;
   private slowScale = 1;
-  private easeBack = 0;
-  private easeTotal = 0.07;
-  /**
-   * How much freeze the rig may still spend, in seconds.
-   *
-   * Hit-stop is the strongest single tool for weight, and the easiest to
-   * overuse: a fast weapon in a crowd asks for a freeze on every frame, and the
-   * fight turns to treacle. The budget refills at a fixed rate and every stop
-   * draws from it, so a flurry gets a few crisp stops and then plays at full
-   * speed. Kills and crits may overdraw, because those are the beats that
-   * should always land.
-   */
-  private stopBudget = HITSTOP_BUDGET;
   /** The dt multiplier for this frame. */
   timeScale = 1;
 
@@ -317,32 +296,6 @@ export class CameraRig {
   }
 
   /**
-   * Freezes time briefly. This is the single cheapest way to make a heavy hit
-   * feel heavy: 40-90ms at scale 0.05 reads as the world flinching.
-   */
-  hitStop(duration = 0.06, scale = 0.04, priority = false): void {
-    if (duration <= 0) return;
-    // Spend from the budget. A normal hit is shortened to whatever is left; a
-    // priority beat (a kill, a crit) always gets at least most of its length.
-    // A normal stop is all or nothing: a half-length freeze reads as a
-    // stutter, not as weight. Each stop is charged for its ease-back too.
-    const d = duration;
-    const extra = d - Math.max(0, this.hitStopLeft);
-    const cost = extra * HITSTOP_COST;
-    if (!priority && cost > this.stopBudget) return;
-    if (d > this.hitStopLeft) {
-      this.stopBudget = Math.max(0, this.stopBudget - cost);
-      this.hitStopLeft = d;
-      this.hitStopScale = scale;
-      this.easeTotal = Math.min(0.07, 0.025 + d * 0.6);
-    } else if (scale < this.hitStopScale && this.hitStopLeft > 0) {
-      // A harder stop arriving inside a softer one deepens it without
-      // lengthening it.
-      this.hitStopScale = scale;
-    }
-  }
-
-  /**
    * A directional jolt: the view is shoved a little way along `dx,dz` (world
    * space) and springs back. Trauma says "something big happened"; a kick says
    * "it happened *that* way", which is what makes a heavy swing feel like it
@@ -369,11 +322,8 @@ export class CameraRig {
   }
 
   clearTimeEffects(): void {
-    this.stopBudget = HITSTOP_BUDGET;
-    this.hitStopLeft = 0;
     this.slowLeft = 0;
     this.slowScale = 1;
-    this.easeBack = 0;
     this.timeScale = 1;
   }
 
@@ -407,41 +357,29 @@ export class CameraRig {
 
   /**
    * Advances the rig. Returns the **scaled** delta the caller should use for
-   * gameplay, animation and FX, so hit-stop dilates the whole world at once.
+   * gameplay, animation and FX, so slow motion dilates the whole world at once.
    */
   update(rawDt: number, elapsed: number): number {
     // --- time dilation -----------------------------------------------------
     let scale = 1;
-    if (this.hitStopLeft > 0) {
-      this.hitStopLeft -= rawDt;
-      scale = this.hitStopScale;
-      if (this.hitStopLeft <= 0) this.easeBack = this.easeTotal;
-    } else if (this.easeBack > 0) {
-      this.easeBack -= rawDt;
-      // Ease out of the freeze rather than snapping, quadratically so most of
-      // the speed returns at once and only the tail is soft.
-      const k = clamp01(1 - this.easeBack / Math.max(1e-3, this.easeTotal));
-      scale = lerp(this.hitStopScale, 1, 1 - (1 - k) * (1 - k));
-    }
     if (this.slowLeft > 0) {
       this.slowLeft -= rawDt;
       const t = 1 - clamp01(this.slowLeft / Math.max(this.slowTotal, 1e-3));
       // Ease in over the first 12%, hold, then ease back over the last 35%.
       const env = t < 0.12 ? t / 0.12 : t > 0.65 ? clamp01((1 - t) / 0.35) : 1;
-      scale = Math.min(scale, lerp(1, this.slowScale, env));
+      scale = lerp(1, this.slowScale, env);
       if (this.slowLeft <= 0) {
         this.slowScale = 1;
         this.slowTotal = 0;
       }
     }
     this.timeScale = scale;
-    this.stopBudget = Math.min(HITSTOP_BUDGET, this.stopBudget + rawDt * HITSTOP_REFILL);
     const dt = rawDt * scale;
 
     // --- kick spring -------------------------------------------------------
     // Stiff and slightly under-damped: one quick shove and a small settle,
     // over in about a fifth of a second. Runs on real time so a kick that
-    // lands with a hit-stop still reads during the freeze.
+    // lands in slow motion still reads as a snap.
     {
       const k = 260;
       const c = 2 * Math.sqrt(k) * 0.72;
@@ -454,8 +392,8 @@ export class CameraRig {
       if (this.kickX > cap) this.kickX = cap; else if (this.kickX < -cap) this.kickX = -cap;
       if (this.kickZ > cap) this.kickZ = cap; else if (this.kickZ < -cap) this.kickZ = -cap;
     }
-    // The camera itself runs on a partially dilated clock: fully frozen camera
-    // motion during hit-stop looks broken, fully live motion breaks the freeze.
+    // The camera itself runs on a partially dilated clock: fully slowed camera
+    // motion in slow motion feels stuck, fully live motion breaks the spell.
     const camDt = rawDt * lerp(1, scale, 0.55);
 
     // --- orbit -------------------------------------------------------------

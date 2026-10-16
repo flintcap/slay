@@ -1,8 +1,8 @@
 /**
  * Entry point for `tools/check-feel.mjs`.
  *
- * Exercises the hit-feedback layer headless: the camera's hit-stop budget, the
- * material-swap flash, knockback against walls, pooled shake, and proves every
+ * Exercises the hit-feedback layer headless: hits that never slow the world,
+ * slow motion that ends, the material-swap flash, knockback against walls, pooled shake, and proves every
  * sound and emitter the feel layer asks for actually exists.
  */
 import * as THREE from 'three';
@@ -24,33 +24,13 @@ const check = (ok: boolean, msg: string): void => {
   if (!ok) fails.push(msg);
 };
 
-// --- 1. hit-stop budget ----------------------------------------------------
+// --- 1. the world clock ---------------------------------------------------
 {
   const rig = new CameraRig();
   const dt = 1 / 60;
-  let frozen = 0;
   let t = 0;
-  // A fast melee build in a crowd: a hit-stop request every other frame for
-  // three seconds.
-  for (let i = 0; i < 180; i++) {
-    if (i % 2 === 0) rig.hitStop(0.045, 0.06);
-    rig.update(dt, t);
-    t += dt;
-    if (rig.worldScale < 0.5) frozen += dt;
-  }
-  const share = frozen / 3;
-  notes.flurryFrozenShare = +share.toFixed(3);
-  check(share < 0.22, `a melee flurry spends ${(share * 100).toFixed(0)}% of real time frozen (cap 22%)`);
-  check(share > 0.04, `a melee flurry never freezes at all (${(share * 100).toFixed(1)}%)`);
-
-  // A kill after the budget is spent still lands.
-  rig.hitStop(0.08, 0.04, true);
-  rig.update(dt, t);
-  check(rig.worldScale < 0.2, 'a priority hit-stop is refused once the budget is empty');
-
-  // And the clock always comes back.
-  for (let i = 0; i < 120; i++) rig.update(dt, (t += dt));
-  check(rig.worldScale === 1, `world clock stuck at ${rig.worldScale} after hit-stops end`);
+  // There is no hit-stop: nothing on the rig can freeze the world.
+  check(!('hitStop' in rig), 'the camera rig still has a hit-stop');
 
   // Slow motion eases back to full speed.
   rig.slowMo(0.4, 0.5);
@@ -164,6 +144,19 @@ const check = (ok: boolean, msg: string): void => {
   notes.novaTrauma = +r2.trauma.toFixed(3);
   check(r2.trauma <= 0.56, `a twelve-target nova added ${r2.trauma.toFixed(2)} trauma (cap 0.55)`);
   check(r2.trauma > 0.05, 'a twelve-target nova did not shake at all');
+
+  // A crit flurry with kills never slows or freezes the world.
+  let slowest = 1;
+  for (let i = 0; i < 40; i++) {
+    const t = mk(20 + i, 20);
+    t.life = i % 3 === 0 ? 0 : 40;
+    feel.hit(t, packet(60, i % 2 === 0), { kind: i % 4 === 0 ? 'heavy' : 'melee', fromX: 20 + i, fromZ: 19, lifeBefore: 100 }, world);
+    feel.update(1 / 60, world);
+    rig.update(1 / 60, i / 60);
+    slowest = Math.min(slowest, rig.worldScale);
+  }
+  notes.flurrySlowestScale = slowest;
+  check(slowest === 1, `a crit flurry slowed the world to ${slowest}`);
   feel.dispose();
   rig.dispose();
 }
@@ -186,7 +179,7 @@ const check = (ok: boolean, msg: string): void => {
   events.emit('combat:combo', { id: 'e', name: 'Break', setup: 'a', payoff: 'b', bonusPct: 40, x: 1, y: 1, z: 1 });
   rig.update(1 / 60, 0);
   check(lights > 0 && bursts > 0, 'a combo landed with no light or sparks');
-  check(rig.worldScale < 0.5, 'a combo did not freeze the frame');
+  check(rig.worldScale === 1, 'a combo slowed the world');
 
   const b0 = bursts;
   events.emit('player:evaded', { ability: 'Slam', source: 'm' });

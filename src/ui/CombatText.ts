@@ -362,7 +362,7 @@ export class CombatTextLayer {
 
   /**
    * Advance and draw. `dt` should be real time, not world time, so numbers
-   * keep moving through a hit-stop instead of freezing mid-air.
+   * keep moving through slow motion instead of hanging mid-air.
    */
   update(dt: number, camera: THREE.Camera, hero?: { x: number; z: number }): void {
     if (hero) this.hero.set(hero.x, 0, hero.z);

@@ -9,14 +9,14 @@
  * report into one coherent beat:
  *
  *   - a white-hot flash on the struck body (HitFlash);
- *   - hit-stop sized to the blow, drawn from the camera's freeze budget so a
- *     fast weapon in a crowd never turns the fight to treacle;
+ *   - no hit-stop: a hit never freezes or slows the world, so a flurry
+ *     plays at full speed;
  *   - a directional camera kick along the line of the blow, plus trauma;
  *   - knockback as a short eased slide, not a teleport, that respects walls;
  *   - layered sound: the weapon, the body it met, the crit, the monster's
  *     voice, and on a kill the crunch that says it is over;
- *   - a heavier, element-specific punch on kills, slow motion on elites, and a
- *     multi-kill beat when a pack goes down together.
+ *   - a heavier, element-specific punch on kills, a bigger one on elites, and
+ *     a multi-kill beat when a pack goes down together.
  *
  * Per-frame trauma and kick are pooled, so a nova that hits twelve monsters
  * shakes the screen once, hard, rather than twelve times.
@@ -95,16 +95,6 @@ interface Slide {
 }
 
 /** Tuning, in one place so it can be read as a table. */
-const STOP: Record<HitKind, number> = {
-  melee: 0.042,
-  heavy: 0.068,
-  projectile: 0,
-  area: 0,
-  beam: 0,
-  chain: 0,
-  minion: 0,
-  proc: 0,
-};
 const KICK: Record<HitKind, number> = {
   melee: 0.06,
   heavy: 0.13,
@@ -222,8 +212,7 @@ export class CombatFeel {
 
   /**
    * A combo paid off (`sim/Combos.ts`). The monster already says its name and
-   * throws sparks; this is the weight under it: a hard little freeze, a lean
-   * in and a two-note strike that rises, so the player learns the sound of
+   * throws sparks; this is the weight under it: a lean in and a two-note strike that rises, so the player learns the sound of
    * doing it right.
    */
   private onCombo(x: number, y: number, z: number, bonusPct: number): void {
@@ -234,10 +223,7 @@ export class CombatFeel {
     this.effects.fx.burst('sparks', x, y, z, { count: 10 + Math.round(big * 8), scale: 0.8 });
     audio.play('combo', { x, z, volume: 0.9 + big * 0.25 });
     const rig = this.rig;
-    if (rig) {
-      rig.hitStop(0.055 + big * 0.03, 0.05, true);
-      rig.punchIn(0.03 + big * 0.02, 0.4);
-    }
+    if (rig) rig.punchIn(0.03 + big * 0.02, 0.4);
     this.addTrauma(0.1 + big * 0.08);
   }
 
@@ -322,26 +308,6 @@ export class CombatFeel {
       this.flash.flash(target.root, el.core, Math.min(1, strength), dur);
     }
 
-    // --- time --------------------------------------------------------------
-    const rig = this.rig;
-    if (rig) {
-      let stop = STOP[r.kind];
-      let scale = r.kind === 'heavy' ? 0.04 : 0.07;
-      // A blow that took a real bite out of something is heavier than one
-      // that scratched it, whatever delivered it.
-      if (frac > 0.3 && stop > 0) stop += 0.018;
-      if (crit) {
-        stop = Math.max(stop + 0.026, r.kind === 'melee' || r.kind === 'heavy' ? 0 : 0.03);
-        scale = 0.03;
-      }
-      if (killed) {
-        const close = r.kind === 'melee' || r.kind === 'heavy';
-        stop = Math.max(stop, close ? 0.07 : 0.04);
-        scale = Math.min(scale, 0.04);
-      }
-      if (stop > 0) rig.hitStop(stop, scale, crit || killed);
-    }
-
     // --- camera ---------------------------------------------------------------
     let trauma = TRAUMA[r.kind] * (0.7 + frac * 1.2);
     if (crit) trauma += 0.1;
@@ -407,8 +373,6 @@ export class CombatFeel {
     const rig = this.rig;
     if (weight >= 1 && rig) {
       // An elite falling is a moment. Rares more so.
-      rig.hitStop(0.09 + weight * 0.02, 0.03, true);
-      rig.slowMo(weight >= 2 ? 0.35 : 0.5, 0.35 + weight * 0.15);
       rig.punchIn(0.035 + weight * 0.02, 0.5 + weight * 0.15);
       this.addTrauma(0.18 + weight * 0.08);
       audio.play('kill.elite', { x, z });
@@ -420,7 +384,6 @@ export class CombatFeel {
     if (this.kills.length >= 3 && this.clock - this.multiFiredAt > 0.6) {
       this.multiFiredAt = this.clock;
       const n = this.kills.length;
-      rig?.slowMo(n >= 5 ? 0.4 : 0.55, n >= 5 ? 0.45 : 0.3);
       this.addTrauma(0.12 + Math.min(0.2, n * 0.02));
       audio.play('kill.multi', { volume: Math.min(1.2, 0.7 + n * 0.08) });
     }
@@ -487,9 +450,8 @@ export class CombatFeel {
       audio.play('player.hurt', { volume: Math.min(1.3, 0.55 + frac * 3) });
     }
     if (frac > 0.14) {
-      // A hit that takes a real chunk freezes the frame for an instant so the
+      // A hit that takes a real chunk gets its own heavier sound, so the
       // player registers *that* one in a flurry of small ones.
-      this.rig?.hitStop(0.05 + Math.min(0.05, frac * 0.12), 0.08, true);
       audio.play('player.hurtHeavy', { volume: Math.min(1.2, 0.6 + frac * 2) });
     }
   }
@@ -503,8 +465,7 @@ export class CombatFeel {
 
   /**
    * Advances flashes, slides and the pooled camera response. `dt` is the
-   * world's dilated step: a flash that lands with a hit-stop holds its white
-   * frame for the length of the freeze, which is exactly the look.
+   * world's dilated step, so a flash in slow motion lasts as long as it looks.
    */
   update(
     dt: number,
@@ -623,4 +584,4 @@ export function feelEmitterIds(): string[] {
 }
 
 /** The per-kind tuning tables, for the static check. */
-export const FEEL_TABLES = { STOP, KICK, TRAUMA, SHOVE } as const;
+export const FEEL_TABLES = { KICK, TRAUMA, SHOVE } as const;

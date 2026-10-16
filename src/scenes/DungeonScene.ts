@@ -1315,7 +1315,7 @@ export class DungeonScene extends GameScene {
   override update(rawDt: number, elapsed: number): void {
     if (!this.player || this.transitioning) return;
     this.balanceLights();
-    // Hit-stop and slow motion: the world runs on the rig's dilated clock,
+    // Slow motion: the world runs on the rig's dilated clock,
     // while the rig itself counts down in real time (see `rig.update` below).
     const dt = rawDt * this.rig.worldScale;
     this.runTime += dt;
@@ -1524,7 +1524,7 @@ export class DungeonScene extends GameScene {
     this.rig.follow(this.player.root);
     this.rig.setCursor(input.worldPoint);
     this.rig.update(rawDt, elapsed);
-    // Real time, so numbers keep moving through a hit-stop.
+    // Real time, so numbers keep moving through slow motion.
     if (this.player) this.combatText?.update(rawDt, this.camera, this.player.position);
     this.skills.feel.update(
       dt,

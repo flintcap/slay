@@ -20,7 +20,7 @@ export function promisingEffects(): { fx: unknown; tick(dt: number): void } {
     {},
     {
       // Each member is callable (and keeps its promises) and also answers any
-      // property read politely, so `fx.rig.hitStop()` works as well as `fx.meteor()`.
+      // property read politely, so `fx.rig.kick()` works as well as `fx.meteor()`.
       get: (_o, key) =>
         new Proxy(function () {}, { get: () => shrug, apply: (_f, _t, args: unknown[]) => call(key, args) }),
     },

@@ -607,7 +607,7 @@ export class SkillRunner {
   private tmp2 = new THREE.Vector3();
   private tmp3 = new THREE.Vector3();
 
-  /** Hit-stop, flash, knockback and layered sound for every blow that lands. */
+  /** Flash, knockback and layered sound for every blow that lands. */
   readonly feel: CombatFeel;
   /** What the caster's main hand sounds like when it connects. */
   private weaponSound: WeaponSound = 'fist';
@@ -651,7 +651,7 @@ export class SkillRunner {
       this.strike(t, tuned, world.ctx, kind, fromX, fromZ);
       this.afterHit(tuned, t, world.ctx, world.enemies, world.boss);
       this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, {
-        element: this.swingSchool, sfx: null, shake: 0, crit: tuned.crit, hitStop: 0,
+        element: this.swingSchool, sfx: null, shake: 0, crit: tuned.crit,
       });
     } finally {
       this.atContact = false;
@@ -2042,7 +2042,6 @@ export class SkillRunner {
       // the body it met; the impact here is the picture only.
       this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, {
         dir: facing, element: this.swingSchool, sfx: null, shake: 0, crit: mp.crit,
-        hitStop: 0,
       });
       if (hits === 0) {
         firstX = t.root.position.x;

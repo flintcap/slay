@@ -166,7 +166,7 @@ export class HeroAnimator {
   private body: StanceBody;
   private legLen: number;
 
-  /** Global playback multiplier: hit-stop, slow motion, haste. */
+  /** Global playback multiplier: slow motion, haste. */
   timeScale = 1;
 
   // Poses, reused every frame.

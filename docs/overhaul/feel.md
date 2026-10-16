@@ -88,6 +88,11 @@ All milestones done. Polish a successor could pick up, in order of value:
   `HITSTOP_COST`). Non-priority stops are all-or-nothing; kills/crits/boss slams
   pass `priority = true`. `kick(dx, dz, amount)` is a directional spring jolt.
   `worldScale` is the clamped multiplier scenes should use.
+- **Later: hit-stop removed.** At the owner's request there is no hit-stop at
+  all: `CameraRig.hitStop`, its budget and the `STOP` table are gone, and
+  hits, crits, kills and combos never freeze or slow the world. Slow motion
+  (`slowMo`) is kept only for a boss kill; elite kills and multi-kills no
+  longer slow time. `ImpactOpts.hitStop` is gone too.
 - **CombatFeel** (`src/fx/CombatFeel.ts`) owns per-blow feedback. It is created
   by `SkillRunner` (`skills.feel`) and every player hit in `SkillRunner` goes
   through `SkillRunner.strike()`, which calls `feel.hit()` after `takeDamage`.

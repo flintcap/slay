@@ -9,7 +9,7 @@
  * ice hide what is behind them, and ten fireballs on one spot stay orange.
  *
  * An impact is never one thing: a particle stack, a light that touches the
- * walls, a mark that cools on the floor, trauma, hit-stop and a sound.
+ * walls, a mark that cools on the floor, trauma and a sound.
  * `impact()` fires the whole recipe from one call.
  *
  * Live effects are pooled records updated by a switch: a frame allocates
@@ -158,8 +158,6 @@ export interface ImpactOpts {
   dir?: THREE.Vector3;
   /** Screen trauma, 0..1. Defaults by element and scale. */
   shake?: number;
-  /** Hit-stop seconds. 0 disables. */
-  hitStop?: number;
   /** Light intensity multiplier. 0 disables the flash. */
   light?: number;
   /** false skips the floor mark. */
@@ -697,7 +695,7 @@ export class EffectSystem {
 
   // -- impacts --------------------------------------------------------------------
 
-  /** The full impact recipe: particles, light, floor mark, trauma, hit-stop, sound. */
+  /** The full impact recipe: particles, light, floor mark, trauma, sound. */
   impact(school: School, x: number, y: number, z: number, opts: ImpactOpts = {}): void {
     this.impactAt(school, x, y, z, opts, opts.decal !== false);
   }
@@ -731,9 +729,6 @@ export class EffectSystem {
     }
 
     this.trauma(opts.shake ?? (opts.crit ? 0.24 : 0.12) * scale);
-    if (opts.hitStop !== undefined) {
-      if (opts.hitStop > 0 && this.rig) this.rig.hitStop(opts.hitStop, 0.05);
-    } else if (opts.crit && this.rig) this.rig.hitStop(0.045, 0.08, true);
     if (opts.sfx !== null) this.sfx(opts.sfx ?? el.sfxHit, x, z);
   }
 
@@ -749,7 +744,7 @@ export class EffectSystem {
     if (s && s !== 'physical') this.fx.burst(element(s).emitter, x, y, z, { scale: scale * 0.8, dir: opts.dir, count: 7 });
   }
 
-  /** A kill: gore, a pool, a light pop, a slow-motion beat for big ones. */
+  /** A kill: gore, a pool, a light pop, and a harder shake for big ones. */
   kill(x: number, y: number, z: number, opts: { scale?: number; element?: School; heavy?: boolean; color?: number } = {}): void {
     const scale = opts.scale ?? 1;
     const l = lookOf(opts.element ?? 'physical', opts.color);
@@ -758,10 +753,6 @@ export class EffectSystem {
     this.decals.splatter('gore', x, z, 0.7 * scale, 3);
     this.flash(x, y + 0.5, z, l.light, 6 * scale, 6, 0.2);
     this.trauma(opts.heavy ? 0.4 : 0.12 * scale);
-    if (opts.heavy && this.rig) {
-      this.rig.hitStop(0.09, 0.03, true);
-      this.rig.slowMo(0.5, 0.5);
-    }
     this.sfx(opts.heavy ? 'death.heavy' : 'death.normal', x, z);
   }
 
@@ -1033,7 +1024,6 @@ export class EffectSystem {
     if (school === 'fire') this.decals.glow('firePool', x, z, r * 0.6, 2.6, 'fire', 1.6);
     this.nova(x, z, r, { element: school, color: opts.color, duration: 0.45, particles: false });
     this.trauma(opts.shake ?? Math.min(0.75, 0.32 * scale));
-    if (this.rig) this.rig.hitStop(0.055, 0.06);
     this.sfx('spell.explosion', x, z);
   }
 
@@ -1136,10 +1126,7 @@ export class EffectSystem {
         this.decals.add('crack', x + Math.cos(a) * d, z + Math.sin(a) * d, radius * 0.32, a);
       }
       this.trauma(0.85);
-      if (this.rig) {
-        this.rig.hitStop(0.1, 0.02, true);
-        this.rig.setRumble(0);
-      }
+      if (this.rig) this.rig.setRumble(0);
       this.sfx('boss.slam', x, z);
       opts.onFire?.();
     });
@@ -1601,7 +1588,7 @@ export class EffectSystem {
     }
   }
 
-  /** Runs `fn` after `seconds` on the effect clock (so it respects hit-stop). Never culled. */
+  /** Runs `fn` after `seconds` on the effect clock (so it respects slow motion). Never culled. */
   delay(seconds: number, fn: () => void): EffectHandle {
     const e = this.spawn(K.Delay, true);
     e.dur = seconds;

@@ -522,7 +522,7 @@ function impactFx(ctx: CombatContext, type: DamageType, x: number, y: number, z:
     // The school's full hit: burst, light and (for big ones) a mark. Its sound
     // and shake belong to the ability.
     const scale = Math.min(2.2, count / 14);
-    fx.impact(type, x, y, z, { scale, sfx: null, shake: 0, hitStop: 0, light: 0.7, decal: scale > 1.2 });
+    fx.impact(type, x, y, z, { scale, sfx: null, shake: 0, light: 0.7, decal: scale > 1.2 });
     return;
   }
   ctx.fx.burst(FX_FOR_TYPE[type], x, y, z, { count, color: COLOR_FOR_TYPE[type] });

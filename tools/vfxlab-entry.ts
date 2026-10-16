@@ -213,7 +213,7 @@ const SCENES: Record<string, LabScene> = {
         out.push({
           at: 0.1,
           fn: () => {
-            effects.meleeHit(x, 1.0, 0.9, { element: school, crit: i === 0, sfx: null, shake: 0, hitStop: 0 });
+            effects.meleeHit(x, 1.0, 0.9, { element: school, crit: i === 0, sfx: null, shake: 0 });
             fx.burst(MATERIAL_BURST[m], x, 1.0, 0.9, { count: 12 });
             const mark = MATERIAL_MARK[m];
             if (mark) decals.splatter(mark, x, 0.9, 0.4, 2);
