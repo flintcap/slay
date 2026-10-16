@@ -127,7 +127,8 @@ function textMaterial(uTime: F, atlas: THREE.Texture, cols: number, rows: number
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide, forceSinglePass: true });
   m.fog = false;
   m.positionNode = wpos.add(local);
-  m.fragmentNode = Fn(() => {
+  // The output node, so the frame's extra outputs are written (see kitMaterial).
+  m.outputNode = Fn(() => {
     const tex = texture(atlas, vUv).toVar();
     const a = tex.a.mul(vColor.a).toVar();
     Discard(a.lessThan(0.01));

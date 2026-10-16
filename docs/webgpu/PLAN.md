@@ -12,9 +12,11 @@ on the quality presets, so Low and Medium stay cheap.
 ## What we have
 
 - One `WebGPURenderer`, shared by the game, icons, portraits and paperdoll.
-- Post chain: scene pass into a half-float target, optional GTAO (Ultra),
-  bloom on a brightness threshold, one grade pass (exposure, contrast, split
-  tone, vignette, aberration, grain, haze, hurt and low-life), ACES, SMAA.
+- Post chain: scene pass into a half-float target with motion and emission
+  beside it, temporal AA (High, Ultra), optional GTAO (Ultra), bloom from
+  emission, one grade pass (exposure, contrast, split
+  tone, vignette, aberration, grain, haze, hurt and low-life), ACES, SMAA (Medium). The chain draws
+  through a camera of its own, so a new map never rebuilds it.
 - Lights: shadowless torches packed in one storage buffer and one loop,
   culled to the view each frame. Shadow casters on three's own path, redrawn
   on a clock (`shadowHz`). Shadow pass skips surface shading.
@@ -24,17 +26,17 @@ on the quality presets, so Low and Medium stay cheap.
 
 ## Steps
 
-1. **Soft particles.** Smoke, fire and glows fade where they meet a wall or
+1. **Soft particles.** *(done)* Smoke, fire and glows fade where they meet a wall or
    the floor instead of cutting a hard line. Flat ground sprites are left
    sharp. Check: pictures of smoke against a wall.
-2. **GPU timings.** Read real GPU time per frame with timestamp queries, show
+2. **GPU timings.** *(done)* Read real GPU time per frame with timestamp queries, show
    it in the perf readout, and let the auto quality step on GPU time rather
    than frame time alone.
-3. **Temporal anti-aliasing** on High and Ultra, in place of SMAA. Uses a
+3. **Temporal anti-aliasing** *(done)* on High and Ultra, in place of SMAA. Uses a
    velocity buffer from the scene pass. Removes the crawl on thin edges and
    the sparkle on metal. Later the same buffers drive temporal upscaling, so
    the auto mode drops resolution with far less blur.
-4. **Glow from what glows.** The scene pass writes emission to its own
+4. **Glow from what glows.** *(done)* The scene pass writes emission to its own
    buffer and bloom reads that, so magic, fire and hot metal bloom and a
    torch-lit wall does not.
 5. **Contact shadows** from the sun or moon, a short screen-space trace that

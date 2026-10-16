@@ -99,7 +99,8 @@ export function buildRift(width: number, height: number, spring: number, deep: n
     side: THREE.DoubleSide,
   });
   material.fog = false;
-  material.fragmentNode = frag() as unknown as V4;
+  // The output node, so the frame's extra outputs are written (see kitMaterial).
+  material.outputNode = frag() as unknown as V4;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
   mesh.position.y = height * 0.5;
   mesh.renderOrder = 3;

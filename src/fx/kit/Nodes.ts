@@ -85,7 +85,7 @@ export function kitOut(v: KitInstance, heat0: F, cov0: F, occl: F, exposed = tru
   return vec4(exposed ? rgb.mul(FX_EXPOSURE) : rgb, cov.mul(occl));
 }
 
-/** A kit material: unlit, no fog, its whole pixel output given by `frag`. */
+/** A kit material: unlit, no fog, its pixel colour given by `frag`. */
 export function kitMaterial(name: string, frag: () => V4, o: { vertex?: V4; position?: V3 } = {}): THREE.MeshBasicNodeMaterial {
   const m = new THREE.MeshBasicNodeMaterial({ name, side: THREE.DoubleSide, depthTest: true });
   m.fog = false;
@@ -94,7 +94,10 @@ export function kitMaterial(name: string, frag: () => V4, o: { vertex?: V4; posi
   m.forceSinglePass = true;
   if (o.vertex) m.vertexNode = o.vertex;
   if (o.position) m.positionNode = o.position;
-  m.fragmentNode = Fn(frag)() as unknown as V4;
+  // The output node, not the fragment node: a fragment node is the whole
+  // shader output and skips the frame's extra outputs (the motion the
+  // temporal blend reads), and a pipeline missing one is refused.
+  m.outputNode = Fn(frag)() as unknown as V4;
   return m;
 }
 

@@ -1,11 +1,12 @@
 import * as THREE from 'three/webgpu';
 import {
-  Fn, clamp, dot, float, fog, fract, max, mix, normalize, pass, positionLocal, positionView, positionWorld,
-  pow, reference, renderGroup, renderOutput, screenCoordinate, sin, smoothstep, uniform, uv, vec2, vec3, vec4,
+  Fn, clamp, dot, emissive, float, fog, fract, max, mix, mrt, normalize, output, pass, positionLocal, positionView, positionWorld,
+  pow, reference, renderGroup, renderOutput, screenCoordinate, sin, smoothstep, uniform, uv, vec2, vec3, vec4, velocity,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
+import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import './NodeNames';
 import './ShadowNodes';
 import { uploadCanvasesWithoutWaiting } from './CanvasUpload';
@@ -310,6 +311,12 @@ export interface QualityProfile {
   ao: boolean;
   bloom: boolean;
   smaa: boolean;
+  /**
+   * Temporal anti-aliasing: the camera shifts by under a pixel each frame and
+   * the frames are blended along the scene's motion, so thin edges, railings
+   * and the glint on metal hold still instead of crawling. Replaces SMAA.
+   */
+  taa: boolean;
   pixelRatioCap: number;
   anisotropy: number;
   /** Multiplier on particle budgets and decal counts. */
@@ -335,10 +342,10 @@ export interface QualityProfile {
 // ratio cap and a render scale). High is the intended look. The auto mode
 // (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
-  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
-  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
-  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
+  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
+  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
+  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
+  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
 };
 
 /** Pixel ratio for a profile on this screen, times the auto mode's resolution step. */
@@ -367,6 +374,54 @@ export class NoWebGPUError extends Error {
 
 type BloomNode = ReturnType<typeof bloom>;
 type AONode = ReturnType<typeof ao>;
+type TRAANode = ReturnType<typeof traa>;
+
+/**
+ * 1 for a surface that writes depth, 0 for one that does not, fixed when the
+ * shader is built. Glows, smoke and sparks write no depth, and with this as
+ * the alpha of their motion they leave the motion of the surface behind them
+ * in place: a spark's quad has no motion of its own that means anything, and
+ * written over a wall it made the temporal blend smear the wall.
+ */
+class WritesDepth extends THREE.Node {
+  constructor() {
+    super('float');
+  }
+
+  override setup(builder: THREE.NodeBuilder): THREE.Node {
+    return float((builder.material as THREE.Material).depthWrite ? 1 : 0);
+  }
+}
+
+/** The motion of each pixel, kept only where a solid surface wrote it (see `WritesDepth`). */
+const sceneVelocity = vec4((velocity as unknown as V2).xy, 0, new WritesDepth() as unknown as THREE.Node<'float'>);
+
+/** Motion is blended by its own alpha: solid surfaces replace it, glows leave it. */
+const keepUnderGlows = new THREE.BlendMode(THREE.NormalBlending);
+
+/**
+ * The light a surface gives off itself, the frame's second picture and what
+ * bloom glows from. An unlit material (fire, magic, sparks, beams, marks) is
+ * all glow, so its whole colour; a lit one only its emission (lava, runes,
+ * eyes, hot metal), never the torch or sun light falling on it. Bloom read
+ * the lit frame before, so a bright wall or a pale shirt in a torch's pool
+ * glowed like the fire beside it.
+ */
+class Emission extends THREE.Node {
+  constructor() {
+    super('vec4');
+  }
+
+  override setup(builder: THREE.NodeBuilder): THREE.Node {
+    const lit = (builder.material as THREE.Material & { lights?: boolean }).lights === true;
+    return lit ? vec4(emissive, (output as unknown as V4).a) : (output as unknown as THREE.Node);
+  }
+}
+
+const sceneEmission = new Emission() as unknown as THREE.Node<'vec4'>;
+
+/** Emission blends the way the material's own colour does: a glow adds, a solid surface replaces. */
+const blendAsMaterial = new THREE.BlendMode(THREE.MaterialBlending);
 
 /**
  * Owns the GPU device (WebGPU only) and the full post chain. Scenes hand it a scene+camera each frame; it does
@@ -380,6 +435,7 @@ export class Renderer {
   private scenePass: THREE.PassNode | null = null;
   private aoNode: AONode | null = null;
   private bloomNode: BloomNode | null = null;
+  private traaNode: TRAANode | null = null;
   /** Rebuild the post chain before the next frame (quality changed). */
   private chainDirty = true;
 
@@ -492,7 +548,23 @@ export class Renderer {
     const q = this.quality;
     const sp = pass(scene, camera);
     this.scenePass = sp;
-    const color = sp.getTextureNode('output');
+    let color: THREE.TextureNode = sp.getTextureNode('output');
+    if (q.taa || q.bloom) {
+      const outs: Record<string, THREE.Node> = { output };
+      if (q.taa) outs.velocity = sceneVelocity;
+      if (q.bloom) outs.emission = sceneEmission;
+      const m = mrt(outs);
+      if (q.taa) m.setBlendMode('velocity', keepUnderGlows);
+      if (q.bloom) m.setBlendMode('emission', blendAsMaterial);
+      sp.setMRT(m);
+    }
+    if (q.taa) {
+      // The resolve runs on the lit frame, before AO, bloom and the grade:
+      // bloom then glows from a steady picture, and grain stays fresh.
+      const t = traa(color, sp.getTextureNode('depth'), sp.getTextureNode('velocity'), camera);
+      this.traaNode = t;
+      color = (t as unknown as { getTextureNode(): THREE.TextureNode }).getTextureNode();
+    }
 
     let aoTex: THREE.TextureNode | null = null;
     if (q.ao) {
@@ -513,9 +585,9 @@ export class Renderer {
 
     let bloomTex: THREE.TextureNode | null = null;
     if (q.bloom) {
-      // Tight threshold: only genuinely bright things (fire, magic, hot metal)
-      // bloom. A low threshold is what makes amateur scenes look hazy.
-      const b = bloom(color, 0.62, 0.55, 0.92);
+      // Glow from what glows (`Emission`), and only where it is bright: a
+      // low threshold is what makes amateur scenes look hazy.
+      const b = bloom(sp.getTextureNode('emission'), 0.62, 0.55, 0.92);
       // Glow is blurry by nature, so a quarter of the pixels looks the same.
       b.setResolutionScale(POST_SCALE);
       this.bloomNode = b;
@@ -547,9 +619,11 @@ export class Renderer {
     this.scenePass?.dispose();
     this.aoNode?.dispose();
     this.bloomNode?.dispose();
+    this.traaNode?.dispose();
     this.scenePass = null;
     this.aoNode = null;
     this.bloomNode = null;
+    this.traaNode = null;
   }
 
   /**
@@ -570,7 +644,7 @@ export class Renderer {
     if (this.shadowScene) this.applyShadows(this.shadowScene);
     // Every asset texture, the world sets included, now and later.
     if (!step) setAssetAnisotropy(q.anisotropy);
-    if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa) this.chainDirty = true;
+    if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa || before.taa !== q.taa) this.chainDirty = true;
     this.onResize();
   }
 
@@ -756,18 +830,77 @@ export class Renderer {
     }
   }
 
-  /** Points the post chain at `scene` and `camera`, building it if needed. */
+  /**
+   * Points the post chain at `scene` and `camera`, building it if needed.
+   *
+   * The chain draws through `view`, a camera of its own that copies the
+   * scene's camera each frame. AO and the temporal blend hold the camera
+   * they were built with; a chain rebuilt for each new map's camera freed
+   * the frame target while the map's shaders were still being built for it,
+   * and those were thrown away and built again on the first frame.
+   */
   private bind(scene: THREE.Scene, camera: THREE.Camera): void {
     syncFog(scene);
-    if (this.chainDirty || !this.scenePass || (this.aoNode && camera !== this.currentCamera)) {
-      // AO holds its camera's matrices, so a new camera means a new AO pass.
-      this.buildChain(scene, camera);
+    const view = this.syncView(camera);
+    if (this.chainDirty || !this.scenePass) {
+      this.buildChain(scene, view);
     } else if (scene !== this.currentScene || camera !== this.currentCamera) {
       this.scenePass.scene = scene;
-      this.scenePass.camera = camera;
+      // A cut: no history from the last picture ghosting into this one.
+      this.restartHistory();
     }
     this.currentScene = scene;
     this.currentCamera = camera;
+  }
+
+  /** The chain's own camera (see `bind`). */
+  private view: THREE.PerspectiveCamera | THREE.OrthographicCamera | null = null;
+
+  /** Copies `camera` into `view`, making a new one (and a new chain) when the kind of camera changes. */
+  private syncView(camera: THREE.Camera): THREE.Camera {
+    const persp = camera as THREE.PerspectiveCamera;
+    const ortho = camera as THREE.OrthographicCamera;
+    if (!persp.isPerspectiveCamera && !ortho.isOrthographicCamera) return camera;
+    let v = this.view;
+    if (!v || v.type !== camera.type) {
+      v = persp.isPerspectiveCamera ? new THREE.PerspectiveCamera() : new THREE.OrthographicCamera();
+      // Its world matrix is copied, not worked out from a position.
+      v.matrixAutoUpdate = false;
+      v.matrixWorldAutoUpdate = false;
+      this.view = v;
+      this.chainDirty = true;
+    }
+    camera.updateWorldMatrix(true, false);
+    v.matrix.copy(camera.matrixWorld);
+    v.matrixWorld.copy(camera.matrixWorld);
+    v.matrixWorldInverse.copy(camera.matrixWorldInverse);
+    v.layers.mask = camera.layers.mask;
+    v.near = persp.near;
+    v.far = persp.far;
+    v.zoom = persp.zoom;
+    if ((v as THREE.PerspectiveCamera).isPerspectiveCamera) {
+      const p = v as THREE.PerspectiveCamera;
+      p.fov = persp.fov;
+      p.aspect = persp.aspect;
+      p.filmGauge = persp.filmGauge;
+      p.filmOffset = persp.filmOffset;
+    } else {
+      const o = v as THREE.OrthographicCamera;
+      o.left = ortho.left;
+      o.right = ortho.right;
+      o.top = ortho.top;
+      o.bottom = ortho.bottom;
+    }
+    // The projection is worked out here, not copied: three sets it up for
+    // WebGPU's depth range on the camera it draws with, which is this one.
+    v.updateProjectionMatrix();
+    return v;
+  }
+
+  /** Makes the temporal blend start over from the next frame (it starts over when its size changes). */
+  private restartHistory(): void {
+    const t = this.traaNode as unknown as { _historyRenderTarget?: THREE.RenderTarget } | null;
+    t?._historyRenderTarget?.setSize(1, 1);
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera, dt: number, elapsed: number): void {
@@ -833,7 +966,13 @@ export class Renderer {
     const reps = shaderRepresentatives(root, camera);
     const target = s.isScene ? s : null;
     const prev = this.gl.getRenderTarget();
-    if (this.scenePass) this.gl.setRenderTarget(this.scenePass.renderTarget);
+    const prevMrt = this.gl.getMRT();
+    if (this.scenePass) {
+      this.gl.setRenderTarget(this.scenePass.renderTarget);
+      // With the temporal blend on, the frame also writes motion: a shader
+      // built without that output would be built again on its first frame.
+      this.gl.setMRT(this.scenePass.getMRT());
+    }
     const culled: THREE.Object3D[] = [];
     try {
       // Each call picks its objects before its first wait, so culling is
@@ -848,6 +987,7 @@ export class Renderer {
     } finally {
       for (const o of culled) o.frustumCulled = true;
       this.gl.setRenderTarget(prev);
+      this.gl.setMRT(prevMrt);
     }
   }
 
