@@ -112,11 +112,24 @@ class SourceMaterialReference extends THREE.MaterialReferenceNode {
     if (!has(ref)) {
       const om = (state.object as THREE.Mesh | null)?.material;
       const src = Array.isArray(om) ? om.find(has) : om;
-      ref = has(src) ? src : (this.stand ??= { [p]: neutral(this.slType) });
+      if (!has(src)) {
+        // Its own material drawn without the input its graph reads is a bug
+        // (a copy that lost its inputs drew black); a pass's stand-in is not.
+        if (state.material && state.material === om) warnMissing(state.material, p);
+        ref = this.stand ??= { [p]: neutral(this.slType) };
+      } else ref = src;
     }
     this.reference = ref as THREE.Material;
     return ref;
   }
+}
+
+const warned = new Set<string>();
+function warnMissing(m: THREE.Material, prop: string): void {
+  const key = `${m.name}|${prop}`;
+  if (warned.has(key)) return;
+  warned.add(key);
+  console.warn(`[materials] "${m.name || m.type}" is drawn with a shared graph but has no ${prop}`);
 }
 
 /** The value a material property reads when no material has it. */
@@ -149,16 +162,25 @@ export function matVec2(name: string): V2 {
  * are kept on it as `sl*` properties. Copies carry them, as they carry the
  * material's own colour and maps, so a clone (a hit flash, a see-through
  * twin) draws like its original.
+ *
+ * A node material's `copy` does not call the base material's: it copies
+ * only the properties a new material already has, which leaves out every
+ * `sl*` input. So both are wrapped. Without it the hero's own copies of its
+ * gear (Player.ownMaterial) had no inputs and drew black.
  */
 const SL_INPUT = /^sl[A-Z]/;
-const baseCopy = THREE.Material.prototype.copy;
-THREE.Material.prototype.copy = function (this: THREE.Material, source: THREE.Material) {
-  baseCopy.call(this, source);
-  const from = source as unknown as Record<string, unknown>;
-  const to = this as unknown as Record<string, unknown>;
-  for (const k of Object.keys(from)) if (SL_INPUT.test(k)) to[k] = from[k];
-  return this;
-};
+function carryInputs(proto: { copy(source: THREE.Material): unknown }): void {
+  const base = proto.copy;
+  proto.copy = function (this: THREE.Material, source: THREE.Material) {
+    base.call(this, source);
+    const from = source as unknown as Record<string, unknown>;
+    const to = this as unknown as Record<string, unknown>;
+    for (const k of Object.keys(from)) if (SL_INPUT.test(k)) to[k] = from[k];
+    return this;
+  };
+}
+carryInputs(THREE.Material.prototype);
+carryInputs(THREE.NodeMaterial.prototype);
 
 /** The drawn material's own value of `prop`, or the mesh's when a pass swapped the material out. */
 function sourceValue(state: THREE.NodeFrame, prop: string): unknown {

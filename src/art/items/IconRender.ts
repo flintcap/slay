@@ -203,8 +203,11 @@ function renderModel(spec: IconSpec): Shot | null {
     bufH = Math.max(bufH, dh);
     r.setSize(bufW, bufH);
   }
-  // The viewport's origin is the bottom left; this puts the icon top left.
-  r.setViewport(0, bufH - dh, dw, dh);
+  // The viewport's origin is the top left on both of three's back ends (the
+  // WebGL one flips it). Measured from the bottom, as WebGL itself does, an
+  // icon smaller than the buffer landed below the corner that is copied
+  // out: blank or cut off once a tall item had grown the buffer.
+  r.setViewport(0, 0, dw, dh);
   drawW = dw;
   drawH = dh;
   const visual = spec.visual ?? { shape: spec.baseId, palette: 'metal.steel' };
