@@ -481,6 +481,10 @@ export class DungeonScene extends GameScene {
     clearBuyBack();
 
     this.run = generateRun(depth, seed, character.classId);
+    // Generating, building the hero and building the floor are seconds of
+    // work between them: the page gets a moment between each, so the loading
+    // screen keeps moving instead of freezing for the lot.
+    await breather();
     this.player = new Player(character, seed);
     this.skills.keeper = this.player;
     this.scene.add(this.player.root);
@@ -642,6 +646,7 @@ export class DungeonScene extends GameScene {
     this.heroAura.renderOrder = 2;
     this.scene.add(this.heroAura);
 
+    await breather();
     this.loadLevel(0);
 
     events.emit('ui:open', { panel: 'hud' });
@@ -2527,4 +2532,9 @@ function makeAuraTexture(): THREE.Texture {
   auraTexture = new THREE.CanvasTexture(c);
   auraTexture.colorSpace = THREE.SRGBColorSpace;
   return auraTexture;
+}
+
+/** Gives the page one task's worth of time back (input, the loading screen). */
+function breather(): Promise<void> {
+  return new Promise((r) => setTimeout(r, 0));
 }

@@ -11,11 +11,9 @@
  * visit are read rather than meshed again, and new ones are stored for the
  * next visit. Anything that fails here only means the town meshes it itself.
  *
- * Before the townsfolk it meshes the heroes the select screen shows
- * (`heroes`: class ids, each in its field kit, in the order the screen
- * offers them), since that screen comes before the town. A cold first visit
- * used to mesh each hero on the main thread as its class was picked. A
- * screen that needs one sooner sends `first` and it is meshed next.
+ * Several of these run side by side (see Prewarm.ts). The page hands each
+ * one job at a time, a hero or a resident, so whatever a screen is waiting
+ * on can be handed out next.
  */
 import { loadMeshCache, onMeshed, type RawGeo } from '../hero/MeshCache';
 import { buildFolk } from './Folk';
@@ -24,43 +22,31 @@ import type { CharClassId } from '../../types';
 import { setAssetBase } from '../../core/Assets';
 
 interface Scope {
-  onmessage: ((e: MessageEvent<{ ids?: string[]; heroes?: string[]; first?: string; base?: string }>) => void) | null;
+  onmessage: ((e: MessageEvent<{ job: string; base?: string }>) => void) | null;
   postMessage(msg: unknown, transfer: Transferable[]): void;
 }
 const scope = self as unknown as Scope;
 
-/** Work not yet done, in order. A screen waiting on one moves it to the front. */
-let jobs: Array<[string, () => void]> = [];
-let running = false;
+/** `hero:<class>` is a hero in its field kit; anything else a resident's look. */
+function build(id: string): void {
+  if (id.startsWith('hero:')) buildClassHero(id.slice(5) as CharClassId).dispose();
+  else buildFolk(id);
+}
 
+let batch: Array<[string, RawGeo]> = [];
+onMeshed((key, raw) => batch.push([key, raw]));
+const ready = loadMeshCache();
+
+// Jobs arrive one at a time, the next only once this one is sent back.
 scope.onmessage = (e) => {
-  const first = e.data.first;
-  if (first !== undefined) {
-    const i = jobs.findIndex(([id]) => id === first);
-    if (i > 0) jobs.unshift(...jobs.splice(i, 1));
-    return;
-  }
   if (e.data.base) setAssetBase(e.data.base);
-  jobs = [
-    ...(e.data.heroes ?? []).map((id): [string, () => void] => [`hero:${id}`, () => buildClassHero(id as CharClassId).dispose()]),
-    ...(e.data.ids ?? []).map((id): [string, () => void] => [id, () => buildFolk(id)]),
-  ];
-  if (!running) void run();
-};
-
-async function run(): Promise<void> {
-  running = true;
-  await loadMeshCache();
-  let batch: Array<[string, RawGeo]> = [];
-  onMeshed((key, raw) => batch.push([key, raw]));
-  for (let next = jobs.shift(); next; next = jobs.shift()) {
-    const [id, job] = next;
+  const id = e.data.job;
+  void ready.then(() => {
     try {
-      job();
+      build(id);
     } catch {
       // The screen that needs it builds it itself.
     }
-    // One at a time, so a screen entered half way through still gains.
     const transfer: Transferable[] = [];
     for (const [, raw] of batch) {
       transfer.push(raw.index.buffer);
@@ -73,8 +59,5 @@ async function run(): Promise<void> {
       scope.postMessage({ entries: batch, id }, []);
     }
     batch = [];
-    // Let a "this one first" message in before picking the next job.
-    await new Promise((r) => setTimeout(r, 0));
-  }
-  scope.postMessage({ done: true }, []);
-}
+  });
+};

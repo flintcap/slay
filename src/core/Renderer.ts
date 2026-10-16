@@ -10,6 +10,7 @@ import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import './NodeNames';
 import './ShadowNodes';
 import { uploadCanvasesWithoutWaiting } from './CanvasUpload';
+import { ShaderGate } from './ShaderGate';
 import { makeLighting } from './Lighting';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { nodeTexturesOf } from './Tsl';
@@ -62,8 +63,8 @@ const G = {
  * Two rings of taps, a tight bright edge and a softer one around it; the
  * mask is filtered, so the edge comes out smooth rather than in steps.
  */
-function outlineOf(mask: THREE.TextureNode, ch: 'x' | 'z'): (p: V2) => V3 {
-  const at = (p: V2): F => (ch === 'z' ? mask.sample(p).z : mask.sample(p).x);
+function outlineOf(mask: THREE.TextureNode): (p: V2) => V3 {
+  const at = (p: V2): F => mask.sample(p).z;
   return (p: V2): V3 => {
     const px = vec2(1.0).div(screenSize).mul(max(screenSize.y.div(1080.0), 1.0));
     let near: F = float(0.0);
@@ -262,53 +263,6 @@ function fogNodeFor(f: THREE.Fog | THREE.FogExp2): V4 {
   return fog(color, factor);
 }
 
-/** Material settings that do not change a shader (three's own list). */
-const NOT_IN_SHADER = /^(is[A-Z]|_)|^(visible|version|uuid|name|opacity|userData|id)$/;
-
-/**
- * What decides the shader an object draws with, close to three's own key:
- * the material's node graph and settings (numbers only as on or off, as
- * three reads them), and the object's kind, skeleton size and vertex data.
- */
-function shaderSignature(o: THREE.Object3D, mats: readonly THREE.Material[]): string {
-  let k = o.type;
-  for (const m of mats) {
-    k += `|${m.type}:${m.customProgramCacheKey()}:`;
-    const r = m as unknown as Record<string, unknown>;
-    for (const p in r) {
-      if (NOT_IN_SHADER.test(p)) continue;
-      const v = r[p];
-      if (typeof v === 'number') k += p === 'side' ? v : v !== 0 ? 1 : 0;
-      else if (v && typeof v === 'object') k += (v as THREE.Texture).isTexture ? 'T' : 'o';
-      else k += String(v);
-      k += ',';
-    }
-  }
-  const sk = o as THREE.SkinnedMesh;
-  if (sk.isSkinnedMesh) k += `|bones${sk.skeleton.bones.length}`;
-  if (o.receiveShadow) k += '|r';
-  const g = (o as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
-  if (g) k += `|${Object.keys(g.attributes).join(',')}|${g.index ? 'x' : ''}|${Object.keys(g.morphAttributes).join(',')}`;
-  return k;
-}
-
-/** One visible object per distinct shader under `root`. */
-function shaderRepresentatives(root: THREE.Object3D, camera: THREE.Camera): THREE.Object3D[] {
-  const seen = new Set<string>();
-  const out: THREE.Object3D[] = [];
-  root.traverseVisible((o) => {
-    const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
-    if (!m || !o.layers.test(camera.layers)) return;
-    const mats = Array.isArray(m) ? m : [m];
-    if (!mats.some((x) => x.visible)) return;
-    const k = shaderSignature(o, mats);
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(o);
-  });
-  return out;
-}
-
 /** Which fog object each scene's fog node was built for. */
 const fogBuiltFor = new WeakMap<THREE.Scene, THREE.Fog | THREE.FogExp2 | null>();
 
@@ -432,9 +386,6 @@ class WritesDepth extends THREE.Node {
 /** The motion of each pixel, kept only where a solid surface wrote it (see `WritesDepth`). */
 const sceneVelocity = vec4((velocity as unknown as V2).xy, outlined, new WritesDepth() as unknown as THREE.Node<'float'>);
 
-/** The outline mask alone, where there is no motion to carry it (Medium). */
-const sceneMask = vec4(outlined, 0, 0, new WritesDepth() as unknown as THREE.Node<'float'>);
-
 /** Motion is blended by its own alpha: solid surfaces replace it, glows leave it. */
 const keepUnderGlows = new THREE.BlendMode(THREE.NormalBlending);
 
@@ -513,6 +464,9 @@ export class Renderer {
   private dynScale = 1;
   private lowLife = 0;
 
+  /** Leaves a mesh out of a frame until its shader is built, rather than waiting on it (`ShaderGate`). */
+  private gate: ShaderGate | null = null;
+
   /** GPU time per frame (ms), smoothed; 0 until the first reading. */
   private gpuAvg = 0;
   /** Frames drawn since the timestamps were last read back. */
@@ -558,6 +512,7 @@ export class Renderer {
     if (!(this.gl.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend) throw new NoWebGPUError();
     // Canvas textures upload without waiting on the GPU (`CanvasUpload`).
     uploadCanvasesWithoutWaiting(this.gl);
+    this.gate = new ShaderGate(this.gl);
     this.buildEnvironment();
   }
 
@@ -589,16 +544,16 @@ export class Renderer {
     this.scenePass = sp;
     let color: THREE.TextureNode = sp.getTextureNode('output');
     let mask: THREE.TextureNode | null = null;
-    if (q.taa || q.bloom) {
-      const outs: Record<string, THREE.Node> = { output };
-      if (q.taa) outs.velocity = sceneVelocity;
-      else outs.mask = sceneMask;
-      if (q.bloom) outs.emission = sceneEmission;
-      const m = mrt(outs);
-      m.setBlendMode(q.taa ? 'velocity' : 'mask', keepUnderGlows);
-      if (q.bloom) m.setBlendMode('emission', blendAsMaterial);
+    if (q.taa || q.bloom || q.smaa) {
+      // The same outputs on Medium, High and Ultra, whichever of them the
+      // effects read: every shader is built for its outputs, so a step along
+      // the ladder (the auto mode's, mid-fight) that changed them rebuilt
+      // every shader in the scene. Medium's outline reads the motion target.
+      const m = mrt({ output, velocity: sceneVelocity, emission: sceneEmission });
+      m.setBlendMode('velocity', keepUnderGlows);
+      m.setBlendMode('emission', blendAsMaterial);
       sp.setMRT(m);
-      mask = sp.getTextureNode(q.taa ? 'velocity' : 'mask');
+      mask = sp.getTextureNode('velocity');
     }
     this.outlines = mask !== null;
     if (q.taa) {
@@ -643,7 +598,7 @@ export class Renderer {
       if (bloomTex) c = c.add(bloomTex.sample(p).rgb);
       return c;
     };
-    const graded = gradeNode(src, mask ? outlineOf(mask, q.taa ? 'z' : 'x') : undefined);
+    const graded = gradeNode(src, mask ? outlineOf(mask) : undefined);
     this.applyGrade();
 
     if (q.smaa) {
@@ -997,6 +952,7 @@ export class Renderer {
     const U = THREE.RendererUtils;
     U.saveRendererState(this.gl, this.safeState.renderer);
     U.saveSceneState(scene, this.safeState.scene);
+    if (this.gate) this.gate.on = true;
     try {
       this.pipeline.render();
       this.readGpuTime();
@@ -1008,62 +964,38 @@ export class Renderer {
       U.restoreRendererState(this.gl, this.safeState.renderer);
       U.restoreSceneState(scene, this.safeState.scene);
       throw err;
+    } finally {
+      if (this.gate) this.gate.on = false;
     }
   }
 
   /**
-   * Builds the GPU pipelines `root` will need, for the target the frame is
-   * drawn into: drawn straight to the screen three.js bakes tone mapping and
-   * sRGB output into every shader, drawn into the post chain's half-float
-   * target it leaves them to the chain. Binding that target first builds the
-   * ones the frames use.
-   *
-   * `scene` lends lights, fog and environment when `root` is not a scene.
+   * Draws `scene` until every mesh in it has its shader, behind the load
+   * curtain. Each frame leaves out what is not built yet and starts building
+   * it in the background (`ShaderGate`); between frames the page stays free,
+   * so the browser and the loading screen keep moving. A shader takes three
+   * frames: one to ask for it, one to make its pipeline, one to draw. Gives
+   * up at `capMs`, and what is left comes in during play, a moment late.
    */
-  compileAsync(root: THREE.Object3D, camera: THREE.Camera, scene?: THREE.Scene): Promise<unknown> {
-    const s = scene ?? (root as THREE.Scene);
-    if (s.isScene) {
-      syncFog(s);
-      if (!this.scenePass || this.chainDirty) this.bind(s, camera);
-    }
-    // three's `compileAsync` takes a scene's objects one at a time and waits
-    // for each one's pipeline before it starts the next: a town of a
-    // thousand meshes and two hundred shaders took longer to build than the
-    // load allowed. Here each distinct shader is asked for once, by one
-    // object that wears it, and all of them at the same time, so the GPU
-    // builds them side by side. The warm frame then draws the rest, each a
-    // shader already built.
-    const reps = shaderRepresentatives(root, camera);
-    const target = s.isScene ? s : null;
-    const prev = this.gl.getRenderTarget();
-    const prevMrt = this.gl.getMRT();
-    if (this.scenePass) {
-      this.gl.setRenderTarget(this.scenePass.renderTarget);
-      // With the temporal blend on, the frame also writes motion: a shader
-      // built without that output would be built again on its first frame.
-      this.gl.setMRT(this.scenePass.getMRT());
-    }
-    const culled: THREE.Object3D[] = [];
+  async warm(scene: THREE.Scene, camera: THREE.Camera, elapsed: number, capMs: number): Promise<void> {
+    const until = performance.now() + capMs;
+    const gate = this.gate;
+    // Nothing on screen to keep moving but the loading bar: build in long turns.
+    if (gate) gate.sliceMs = 40;
     try {
-      // Each call picks its objects before its first wait, so culling is
-      // only off for that moment: the representative may be out of view.
-      for (const o of reps) {
-        if (o.frustumCulled) {
-          o.frustumCulled = false;
-          culled.push(o);
-        }
+      for (;;) {
+        if (gate) gate.skipped = 0;
+        // Every caster in this frame's shadow maps, built too.
+        this.shadowAt = -Infinity;
+        this.render(scene, camera, 0, elapsed);
+        if (!gate || gate.skipped === 0 || performance.now() >= until) return;
+        // Left out with nothing being made: a shader that failed. It never comes.
+        if (!gate.busy) return;
+        await gate.idle(until);
       }
-      return Promise.all(reps.map((o) => this.gl.compileAsync(o, camera, target)));
     } finally {
-      for (const o of culled) o.frustumCulled = true;
-      this.gl.setRenderTarget(prev);
-      this.gl.setMRT(prevMrt);
+      if (gate) gate.sliceMs = 6;
     }
-  }
-
-  /** `compileAsync`, not waited for. */
-  compile(root: THREE.Object3D, camera: THREE.Camera, scene?: THREE.Scene): void {
-    this.compileAsync(root, camera, scene).catch(() => undefined);
   }
 
   /**

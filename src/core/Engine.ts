@@ -331,14 +331,13 @@ export class Engine {
    * Builds every shader the scene needs while the curtain is still down, so
    * the first visible frame is not a hitch.
    *
-   * `compileAsync` hands every pipeline to the GPU at once and waits without
-   * blocking, so they build side by side off the main thread. Then one frame
-   * drawn behind the curtain
-   * builds what `compile` cannot see (shadow depth programs, the post chain)
-   * and waits out any link still pending. Before, that wait landed on the
-   * first frame of the fade-in: seconds of a frozen half-faded screen on a
-   * cold shader cache. The frame also waits (briefly) for textures still
-   * decoding, so their uploads happen here too rather than in play.
+   * The scene is drawn whole behind the curtain, culling off, until every
+   * mesh in it draws (`Renderer.warm`): each frame leaves out what is not
+   * built yet and builds it in the background, the page free in between.
+   * That covers the shadow maps and the post chain too, and every mesh's
+   * buffers and textures reach the GPU on the way. Before, one such frame
+   * built them all on the spot: a task of seconds that froze the page, and
+   * blocking pipelines that held up the whole browser.
    */
   async prime(next: GameScene): Promise<void> {
     // Looks the scene will only wear later (a hit flash, an effect first
@@ -378,16 +377,9 @@ export class Engine {
     } catch (err) {
       this.report('render', err);
     }
-    try {
-      await Promise.all([
-        Promise.race([this.renderer.compileAsync(next.scene, next.camera), new Promise<void>((r) => setTimeout(r, 15000))]),
-        // Textures still decoding would otherwise upload on a frame in play.
-        texturesSettled(2000),
-      ]);
-    } catch (err) {
-      this.report('render', err);
-    }
-    // The warm frame draws the whole scene, not just what the camera sees, so
+    // Textures still decoding would otherwise upload on a frame in play.
+    const textures = texturesSettled(2000);
+    // The warm frames draw the whole scene, not just what the camera sees, so
     // every mesh's buffers and every texture reach the GPU now. Before, each
     // part of a map uploaded on the frame it first came into view: a hitch
     // per room, per monster, while walking. Culling is put back right after.
@@ -400,6 +392,10 @@ export class Engine {
           culled.push(o);
         }
       });
+      await this.renderer.warm(next.scene, next.camera, this.elapsed, 20000);
+      await textures;
+      // What finished decoding meanwhile.
+      this.renderer.upload(next.scene);
       this.renderer.render(next.scene, next.camera, 0, this.elapsed);
     } catch (err) {
       this.report('render', err);

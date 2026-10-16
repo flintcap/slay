@@ -118,6 +118,9 @@ export class TownScene extends GameScene {
     this.scene.fog = new THREE.FogExp2(0x131a26, 0.017);
     this.scene.background = new THREE.Color(0x080b12);
 
+    // Building the camp and dressing the hero are each a second or more: the
+    // page gets a moment between them, so the loading screen keeps moving.
+    await new Promise((r) => setTimeout(r, 0));
     this.player = new Player(character, 12345);
     // Arrive on the south path, facing the fire and the gate beyond it.
     this.player.position.set(0, this.town.groundY(0, 8), 8);
