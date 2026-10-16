@@ -536,11 +536,9 @@ export class Engine {
       // so anything that does change (a setting being tried) still shows,
       // and at once when the canvas is resized, which clears it.
       const cv = this.renderer.canvas;
-      // Behind a fully down curtain nothing drawn is seen. Drawing there was
-      // worse than wasted: a scene still loading was drawn every frame, and
-      // each draw of a shader not yet linked waited for its link right there,
-      // so the side-by-side linking `prime` starts (compileAsync) ran one
-      // program at a time instead. The warm frame `prime` draws itself.
+      // Behind a fully down curtain nothing drawn is seen, and a scene still
+      // loading was drawn every frame for nothing. `prime` draws the frames
+      // that build its shaders itself (`Renderer.warm`).
       const held =
         curtainDown ||
         (this.paused &&
