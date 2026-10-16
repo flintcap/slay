@@ -23,12 +23,19 @@
  *   blood and stones come to rest.
  * - **Smoke swirls together.** Turbulence is one flow field shared by every
  *   particle, so neighbours drift as a sheet and curl like real smoke.
+ * - **The GPU picks what to draw.** After the motion pass, three small
+ *   compute passes keep only the particles that are alive and on screen and
+ *   write their slots, in ring order, into a draw list. The draw is indirect:
+ *   the GPU writes its own instance count, so the main thread never learns
+ *   (or waits for) how many are drawn. Ring order is kept on purpose: the
+ *   blend is order dependent, and a shuffled list would make smoke and flame
+ *   swap places from frame to frame.
  */
 
 import * as THREE from 'three/webgpu';
 import {
-  Fn, If, cameraWorldMatrix, clamp, cos, cross, exp, float, floor, instanceIndex, length, max, min, mix, normalize, positionGeometry,
-  positionView, pow, sin, smoothstep, step, storage, texture, uniform, uv, vec2, vec3, vec4,
+  Fn, If, Loop, abs, atomicAdd, cameraWorldMatrix, clamp, cos, cross, exp, float, floor, instanceIndex, length, max, min, mix, normalize,
+  positionGeometry, positionView, pow, sin, smoothstep, step, storage, texture, uint, uniform, uv, vec2, vec3, vec4,
 } from 'three/tsl';
 import { markRange, markAll } from './Upload';
 import { spriteAtlas, cellUv, FLIPBOOKS } from './Atlas';
@@ -59,6 +66,12 @@ const TURB_GAIN = 1.8;
 const REST_SPEED = 0.45;
 /** How quickly debris on the floor stops sliding (1/s). */
 const FRICTION = 6;
+/**
+ * Threads per group in the draw-list passes. Each group's survivors are
+ * counted together, and a thread finds its place among them by summing the
+ * flags before it, so the list keeps ring order without any sorting.
+ */
+const GROUP = 64;
 
 /**
  * One particle to write. The caller fills the shared `P` record and calls
@@ -136,6 +149,11 @@ export class ParticleField {
   private uFogMode = uniform(0);
   /** The oldest slot that may still be alive: the draw and the motion pass start there. */
   private uBase = uniform(0, 'uint');
+  /** The camera the list is picked for, and its x/y focal scales (to pad by a particle's size). */
+  private uViewProj = uniform(new THREE.Matrix4());
+  private uFocal = uniform(new THREE.Vector2(1, 1));
+  /** Groups the draw-list passes run this frame. */
+  private uGroups = uniform(0, 'uint');
   private data: Float32Array;
   private records: THREE.StorageBufferAttribute;
   /** Per particle: place (xyz) and the birth time it was started from (w). */
@@ -143,6 +161,20 @@ export class ParticleField {
   /** Per particle: speed under drag (xyz) and falling speed from gravity (w). */
   private speed: THREE.StorageBufferAttribute;
   private sim: THREE.ComputeNode;
+  /** Draw-list passes: flag and count, place each group, write the list. */
+  private pick: THREE.ComputeNode;
+  private placeGroups: THREE.ComputeNode;
+  private write: THREE.ComputeNode;
+  /** Per thread of the pick pass: 1 if its particle is drawn. */
+  private flags: THREE.StorageBufferAttribute;
+  /** Per group: how many it draws (counted up, then cleared by the place pass). */
+  private groupSum: THREE.StorageBufferAttribute;
+  /** Per group: where its first survivor goes in the list. */
+  private groupBase: THREE.StorageBufferAttribute;
+  /** Ring slots to draw, in ring order. */
+  private list: THREE.StorageBufferAttribute;
+  /** The indirect draw: index count, instance count (written on the GPU), first index, base vertex, first instance. */
+  private args: THREE.IndirectStorageBufferAttribute;
   /** Seconds of motion not yet run on the GPU. */
   private pending = 0;
   private head = 0;
@@ -179,8 +211,20 @@ export class ParticleField {
     geo.setAttribute('slRecords', this.records);
     geo.setAttribute('slPlace', this.place);
     geo.setAttribute('slSpeed', this.speed);
+    const groups = Math.ceil(this.capacity / GROUP);
+    this.flags = new THREE.StorageBufferAttribute(new Uint32Array(this.capacity), 1);
+    this.groupSum = new THREE.StorageBufferAttribute(new Uint32Array(groups), 1);
+    this.groupBase = new THREE.StorageBufferAttribute(new Uint32Array(groups), 1);
+    this.list = new THREE.StorageBufferAttribute(new Uint32Array(this.capacity), 1);
+    this.args = new THREE.IndirectStorageBufferAttribute(new Uint32Array([6, 0, 0, 0, 0]), 1);
+    geo.setAttribute('slFlags', this.flags);
+    geo.setAttribute('slGroupSum', this.groupSum);
+    geo.setAttribute('slGroupBase', this.groupBase);
+    geo.setAttribute('slList', this.list);
+    geo.setIndirect(this.args);
 
     this.sim = this.buildSim();
+    [this.pick, this.placeGroups, this.write] = this.buildPick();
     this.mat = this.build();
     premultiplied(this.mat);
     this.mesh = new THREE.Mesh(geo, this.mat);
@@ -190,7 +234,11 @@ export class ParticleField {
     // The motion pass runs just before the particles are drawn, once for all
     // the time that passed since the last one. A field nobody draws costs
     // nothing; several updates before one draw still move every particle.
-    this.mesh.onBeforeRender = (renderer) => this.step(renderer as unknown as THREE.WebGPURenderer);
+    this.mesh.onBeforeRender = (renderer, _scene, camera) => {
+      const r = renderer as unknown as THREE.WebGPURenderer;
+      this.step(r);
+      this.pickDraws(r, camera);
+    };
   }
 
   /**
@@ -253,7 +301,101 @@ export class ParticleField {
     return fn().compute(this.capacity);
   }
 
-  /** The ring slot of this draw instance or motion thread: `uBase` onwards, wrapping. */
+  /**
+   * The draw-list passes.
+   *
+   * 1. Pick: each thread looks at one particle of the live window, flags it
+   *    if it is alive and inside the view (padded by its size and streak),
+   *    and adds it to its group's count.
+   * 2. Place: one thread walks the groups in order, giving each its start in
+   *    the list, clearing the counts for next frame and writing the total as
+   *    the draw's instance count.
+   * 3. Write: each flagged thread sums the flags before it in its group and
+   *    puts its slot at that place.
+   */
+  private buildPick(): [THREE.ComputeNode, THREE.ComputeNode, THREE.ComputeNode] {
+    const cap = this.capacity;
+    const groups = Math.ceil(cap / GROUP);
+    const rec = storage(this.records, 'vec4', cap * VEC4S).toReadOnly();
+    const place = storage(this.place, 'vec4', cap).toReadOnly();
+    const speed = storage(this.speed, 'vec4', cap).toReadOnly();
+    const flags = storage(this.flags, 'uint', cap);
+    const sumAtomic = storage(this.groupSum, 'uint', groups).toAtomic();
+    const sum = storage(this.groupSum, 'uint', groups);
+    const base = storage(this.groupBase, 'uint', groups);
+    const list = storage(this.list, 'uint', cap);
+    const args = storage(this.args, 'uint', 5);
+
+    const pick = Fn(() => {
+      const i = instanceIndex;
+      const s = this.slot();
+      const b = s.mul(VEC4S);
+      const r0 = rec.element(b).toVar();
+      const r1 = rec.element(b.add(1)).toVar();
+      const r2 = rec.element(b.add(2)).toVar();
+      const r3 = rec.element(b.add(3)).toVar();
+      const st = place.element(s).toVar();
+      const sv = speed.element(s).toVar();
+      const age = this.uTime.sub(r0.w).toVar();
+      const live = age.greaterThanEqual(0.0).and(age.lessThanEqual(max(r1.w, 1e-4))).toVar();
+      const moved = st.w.equal(r0.w).toVar();
+      const p = moved.select(st.xyz, r0.xyz).uniformFlow().toVar();
+      const vel = moved.select(sv.xyz.add(vec3(0.0, sv.w, 0.0)), r1.xyz).uniformFlow().toVar();
+      // Half the widest the quad gets, streak included, with room to spare.
+      const size = max(r3.x, r3.y).mul(this.uScale);
+      const reach = size.mul(abs(r2.z).mul(length(vel)).mul(0.08).add(1.0)).mul(0.9).add(0.05).toVar();
+      const clip = this.uViewProj.mul(vec4(p, 1.0)).toVar();
+      const inX = abs(clip.x).lessThanEqual(clip.w.add(reach.mul(this.uFocal.x)));
+      const inY = abs(clip.y).lessThanEqual(clip.w.add(reach.mul(this.uFocal.y)));
+      const front = clip.w.greaterThan(reach.negate());
+      const seen = live.and(inX).and(inY).and(front).toVar();
+      flags.element(i).assign(seen.select(uint(1), uint(0)));
+      If(seen, () => {
+        atomicAdd(sumAtomic.element(i.div(GROUP)), uint(1));
+      });
+    })().compute(cap, [GROUP]);
+
+    const placeGroups = Fn(() => {
+      const run = uint(0).toVar();
+      Loop({ start: uint(0), end: this.uGroups, type: 'uint', condition: '<' }, ({ i }) => {
+        const n = sum.element(i).toVar();
+        base.element(i).assign(run);
+        run.addAssign(n);
+        sum.element(i).assign(uint(0));
+      });
+      args.element(1).assign(run);
+    })().compute(1);
+
+    const write = Fn(() => {
+      const i = instanceIndex;
+      If(flags.element(i).equal(uint(1)), () => {
+        const g = i.div(GROUP).toVar();
+        const before = uint(0).toVar();
+        Loop({ start: g.mul(GROUP), end: i, type: 'uint', condition: '<' }, ({ i: j }) => {
+          before.addAssign(flags.element(j));
+        });
+        list.element(base.element(g).add(before)).assign(this.slot());
+      });
+    })().compute(cap, [GROUP]);
+
+    return [pick, placeGroups, write];
+  }
+
+  /** Runs the draw-list passes for this camera (see `buildPick`). */
+  private pickDraws(renderer: THREE.WebGPURenderer, camera: THREE.Camera): void {
+    if (this.count === 0) return;
+    this.uViewProj.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    const e = camera.projectionMatrix.elements;
+    this.uFocal.value.set(Math.abs(e[0]!), Math.abs(e[5]!));
+    this.uGroups.value = Math.ceil(this.count / GROUP);
+    this.pick.count = this.count;
+    this.write.count = this.count;
+    renderer.compute(this.pick);
+    renderer.compute(this.placeGroups);
+    renderer.compute(this.write);
+  }
+
+  /** The ring slot of this motion or pick thread: `uBase` onwards, wrapping. */
   private slot(): THREE.Node<'uint'> {
     return instanceIndex.add(this.uBase).mod(this.capacity).toVar() as unknown as THREE.Node<'uint'>;
   }
@@ -290,7 +432,8 @@ export class ParticleField {
     const rec = storage(this.records, 'vec4', this.capacity * VEC4S).toReadOnly();
     const place = storage(this.place, 'vec4', this.capacity).toReadOnly();
     const speed = storage(this.speed, 'vec4', this.capacity).toReadOnly();
-    const slot = this.slot();
+    // The pick passes chose which particles are drawn and in what order.
+    const slot = storage(this.list, 'uint', this.capacity).toReadOnly().element(instanceIndex).toVar() as unknown as THREE.Node<'uint'>;
     const b = slot.mul(VEC4S);
     const r0 = rec.element(b).toVar();
     const r1 = rec.element(b.add(1)).toVar();
@@ -483,5 +626,8 @@ export class ParticleField {
     this.geo.dispose();
     this.mat.dispose();
     this.sim.dispose();
+    this.pick.dispose();
+    this.placeGroups.dispose();
+    this.write.dispose();
   }
 }
