@@ -489,7 +489,7 @@ export class VendorPanel {
     const title = div('');
     title.style.color = rarityHex(item.rarity);
     title.style.fontWeight = '700';
-    title.style.fontSize = '15px';
+    title.style.fontSize = 'var(--fs-lg)';
     title.textContent = name;
     body.appendChild(title);
     body.appendChild(

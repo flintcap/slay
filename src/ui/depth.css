@@ -16,7 +16,7 @@
   padding: var(--s3) var(--s4);
   background: var(--sunken);
   border: 1px solid var(--panel-3);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
 }
 
 .depth-row {
@@ -61,12 +61,12 @@
   padding: var(--s3) var(--s4);
   background: var(--panel-1);
   border: 1px solid var(--panel-3);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
 }
 
 .depth-card.is-done {
   border-color: var(--gold-lo);
-  background: linear-gradient(90deg, rgba(201, 162, 39, 0.12), var(--panel-1));
+  background: linear-gradient(90deg, rgb(var(--gold-rgb) / 0.12), var(--panel-1));
 }
 
 .depth-card.is-locked {
@@ -96,7 +96,7 @@
 .depth-track {
   height: 5px;
   background: var(--sunken);
-  border-radius: 3px;
+  border-radius: var(--radius);
   overflow: hidden;
   margin-top: 3px;
 }
@@ -150,7 +150,7 @@
   background: rgba(20, 16, 11, 0.78);
   border: 1px solid var(--panel-3);
   border-left: 2px solid var(--bad);
-  border-radius: 3px;
+  border-radius: var(--radius);
   cursor: help;
 }
 
@@ -163,7 +163,7 @@
   padding: var(--s3) var(--s4);
   background: var(--sunken);
   border: 1px solid var(--panel-3);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
 }
 .gate-step {
   width: 34px;
@@ -205,14 +205,14 @@
 .fuse-line {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s2);
   flex-wrap: wrap;
 }
 .fuse-ico {
   width: 28px;
   height: 28px;
   image-rendering: auto;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 1px 2px rgb(var(--shade-rgb) / 0.6));
 }
 .fuse-times {
   font-family: var(--font-num);
@@ -224,7 +224,7 @@
   padding: 0 2px;
 }
 .fuse-row .btn + .btn {
-  margin-left: 6px;
+  margin-left: var(--s2);
 }
 
 /* Loot filter: the wanted-stat chips wrap instead of running off the panel. */

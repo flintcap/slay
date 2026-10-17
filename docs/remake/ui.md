@@ -1,6 +1,6 @@
 # Stream: ui (Wave 4: every screen and the HUD)
 
-Status: not started
+Status: in progress
 
 Goal: one polished, consistent look across every panel and the HUD, clear
 and easy to use, with no DOM cost in per-frame code. Our own style: do not
