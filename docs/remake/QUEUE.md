@@ -13,8 +13,13 @@ Done: qa-looks, qa-bugs, qa-legend, qa-speed, fix-uisound, fix-gait, fix-skillso
 Paused: no
 
 Wave 3 (unique skills, new classes):
-Running: anims, paladin, shapeshifter
+Running: none
 Waiting: none
-Claude (not an agent): charms, difficulty change on the roster
+Done: anims, paladin, shapeshifter
+Paused: no
+
+Wave 4 (AAA polish, WebGPU):
+Running: speed, balance, ui
+Waiting: looks, effects, mapvariety (wave 2, needs the owner's go-ahead)
 Done: none
 Paused: no

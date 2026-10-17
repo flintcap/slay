@@ -154,6 +154,28 @@ Testing costs the owner's usage. Spend it only where it buys certainty.
 - **Good enough wins.** When a check passes the quality bar, stop and move
   on. Do not keep polishing to shave the last bit.
 
+## Wave 4 rules (owner, these override anything looser above)
+
+- **Save points.** Usage can run out at any moment. Commit locally at
+  least every 15 minutes (`wip(<stream>): ...`), push a checkpoint at least
+  every 45 minutes and after every milestone, and keep "Next up" in your
+  progress file exact every time you push, so a fresh agent can continue
+  right where you stopped.
+- **Verify the code, never guess.** Read the code you change and the code
+  that calls it. Check every claim against the source before writing it
+  down or acting on it. Never assume a function, field or file does what
+  its name says.
+- **Minimal testing.** Typecheck always. Beyond that, test only what
+  absolutely needs a test, with the one cheapest check that can answer it.
+- **One retry, then move on.** A check that fails is run once more. If it
+  fails again, write it under "Notes for resume" with the reason and move
+  on. Never loop on a failing check.
+- **Leave testing to the owner when you cannot test.** If something cannot
+  be tested here (real GPU frame rate, how it feels, real load time on a
+  real machine), do not burn usage trying. Make sure the code is correct by
+  reading it, then add a line to "For the owner to test" in your progress
+  file: what to try and what should happen.
+
 ## Pause
 
 The owner pauses by saying so. Claude sends every running agent a message

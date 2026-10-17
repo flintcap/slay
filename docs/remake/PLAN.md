@@ -218,3 +218,50 @@ different. Uniques and sets are the most striking pieces you can wear.
 - Every new system has a checker or a render script under `tools/`.
 - Speed: the town and a busy map stay under 900 draw calls, and the game must
   still boot under software rendering for the render tools.
+
+
+## Wave 4: AAA polish (WebGPU)
+
+The owner approved six streams in two waves of three. Same protocol, plus
+"Wave 4 rules" in `PROTOCOL.md`, which override anything looser.
+
+| Stream | Progress file | Area | Port |
+| --- | --- | --- | --- |
+| speed | `speed.md` | FPS, load times, no browser freeze, GPU culling, shadow caching | 4341 |
+| balance | `balance.md` | Items, drops, prices, class power (never weaker monsters) | 4342 |
+| ui | `ui.md` | Every screen and the HUD: one style, polish, UX, loading screen | 4343 |
+| looks | `looks.md` (later) | Light, shadows, fog, reflections, materials, colour moods | 4344 |
+| effects | `effects.md` (later) | Skill, hit and death effects | 4345 |
+| mapvariety | `mapvariety.md` (later) | Map polish, new map shapes, weather, landmarks, run themes | 4346 |
+
+Wave 1: speed, balance, ui. Wave 2: looks, effects, mapvariety.
+
+### Wave 4 file ownership
+
+- **speed**: `src/core/Engine.ts`, `ShaderGate.ts`, `Freeze.ts`, `Idle.ts`,
+  `AutoQuality.ts`, the quality ladder, culling, shadow and draw parts of
+  `src/core/Renderer.ts` (not the post chain or grade), `src/world/DungeonBuilder.ts`
+  and `PropBake.ts` (how things are built and drawn, not how they look),
+  `src/world/MapGen.ts` build pipeline, any new worker files, the loading
+  parts of `src/scenes/DungeonScene.ts` and `TownScene.ts`, update budgets in
+  `src/entities/*` and `src/scenes/SkillRunner.ts` (how often, not what),
+  `tools/check-perf.mjs`, `check-lag.mjs`, `check-frames.mjs`.
+- **balance**: `src/data/*` (numbers only), `src/sim/*` (numbers and
+  formulas), `src/data/skillPower.ts`, `tools/check-curve.mjs`,
+  `tools/curve-entry.ts`, new balance report tools.
+- **ui**: `src/ui/*` (all panels, HUD, CSS), `public/assets/textures/ui/`,
+  the UI sound calls in `src/audio/*` (additive).
+- **shared** (small additive edits only): `src/core/Events.ts` (new events),
+  `src/types.ts`, `src/main.ts`, `CONTRACTS.md`, `ASSETS.md`.
+
+### Wave 4 contracts
+
+- **speed → ui (loading progress)**: speed adds the event
+  `'load:progress': { stage: string; done: number; total: number }` to
+  `src/core/Events.ts` and emits it while a town or map is built. ui draws
+  the loading bar from it, and falls back to `'scene:loading'` and
+  `'assets:progress'` until it exists. Write the final shape into
+  `CONTRACTS.md`.
+- **ui → speed (UI cost)**: ui owns the cost of its own DOM work (no layout
+  reads inside per-frame code, batched HUD updates). speed writes UI costs
+  it finds as a request in `ui.md` "Notes for resume".
