@@ -1,10 +1,10 @@
 /**
  * Entry point for `tools/check-rankpower.mjs`.
  *
- * Every active skill, cast at rank 1 and at rank 10 by the real runner on a
- * real monster: something it does has to be bigger at 10 (damage, a ward, a
- * buff's or curse's numbers, its time, a heal, a summon). Mana and cooldown
- * do not count.
+ * Every active skill, cast at rank 1, rank 2 and its top rank by the real
+ * runner on a real monster: something it does (damage, a ward, a buff's or
+ * curse's numbers, its time, a heal, a summon) has to be a tenth bigger at
+ * rank 2 and far bigger at the top. Mana and cooldown do not count.
  */
 import * as THREE from 'three';
 import { arena, caseLog } from './combat-arena';
@@ -46,13 +46,12 @@ const fx: any = new Proxy(function () {}, {
   },
 });
 
-const sumMods = (m: Record<string, number> | undefined): number =>
-  m ? Object.values(m).reduce((a, v) => a + Math.abs(v), 0) : 0;
-
 /** Trees whose skills need a weapon the class does not start with. */
 const TREE_WEAPON: Record<string, string> = { palBlade: 'sword.short' };
 
-function measure(classId: CharClassId, id: string, rank: number): number[] {
+type Measure = Record<string, number>;
+
+function measure(classId: CharClassId, id: string, rank: number): Measure {
   const a = arena({ seed: 5 });
   const def = MONSTERS.find((m) => m.role === 'brute' && m.weight > 0) ?? MONSTERS[0]!;
   const e = a.spawn(def, 0, 1.8);
@@ -106,37 +105,69 @@ function measure(classId: CharClassId, id: string, rank: number): number[] {
       foe = foeOf().map((st) => ({ ...st }));
     }
   }
-  return [
-    dealt,
-    mine.reduce((s, st) => s + st.absorb, 0),
-    mine.reduce((s, st) => s + st.remaining, 0),
-    mine.reduce((s, st) => s + sumMods((st.mods ?? st.def.mods) as Record<string, number>), 0),
-    foe.reduce((s, st) => s + st.time, 0),
-    foe.reduce((s, st) => s + st.magnitude + sumMods(st.mods), 0),
-    turrets.length,
-    turrets.reduce((s, t) => s + t.maxLife, 0),
-    turrets.reduce((s, t) => s + t.life, 0),
-    player.life - life0,
-  ];
+  // Each status and each of its numbers on its own line, so a form held all
+  // the while (or a big fixed bonus) does not drown what the rank changed.
+  const out: Measure = { dealt, summons: turrets.length, heal: player.life - life0 };
+  out.sumLife = turrets.reduce((t, m) => t + m.maxLife, 0);
+  out.sumLifeNow = turrets.reduce((t, m) => t + m.life, 0);
+  for (const st of mine) {
+    const key = `self:${st.def.id}`;
+    out[`${key}:absorb`] = st.absorb;
+    if (Number.isFinite(st.remaining) && st.remaining < 1e5) out[`${key}:time`] = st.remaining;
+    for (const [m, v] of Object.entries((st.mods ?? st.def.mods ?? {}) as Record<string, number>)) out[`${key}:${m}`] = Math.abs(v);
+  }
+  for (const st of foe) {
+    const key = `foe:${st.id}`;
+    out[`${key}:time`] = st.time;
+    out[`${key}:mag`] = st.magnitude;
+    for (const [m, v] of Object.entries(st.mods ?? {})) out[`${key}:${m}`] = Math.abs(v);
+  }
+  return out;
 }
 
+/** How much bigger the measure that grows most is at `hi` than at `lo`. */
+function growth(lo: Measure, hi: Measure): number {
+  let best = 1;
+  for (const [k, v] of Object.entries(hi)) {
+    const a = lo[k] ?? 0;
+    if (a > 1e-6) best = Math.max(best, v / a);
+    else if (v > 1e-6) best = Math.max(best, 10);
+  }
+  // A heal that already fills its target at the top rank has grown all it can.
+  if (hi.sumLife! > 0 && hi.sumLifeNow! >= hi.sumLife! - 1e-6 && lo.sumLifeNow! < lo.sumLife! - 1e-6) best = Math.max(best, 10);
+  return best;
+}
+
+/**
+ * The owner's rule: rank 1 is a low base and every point is a clear step.
+ * Rank 2 must beat rank 1 by a tenth; the top rank must be well past it.
+ */
+const STEP = 1.1;
+const topNeed = (max: number): number => (max >= 20 ? 2.5 : max >= 10 ? 1.8 : 1.4);
+
 const flat: string[] = [];
+const weak: string[] = [];
 for (const s of SKILLS) {
   if (s.targeting === 'passive') continue;
   if (only && !only.has(s.id)) continue;
   const cls = TREE_BY_ID[s.treeId]?.classId as CharClassId | undefined;
   if (!cls) continue;
-  let lo: number[], hi: number[];
+  const top = Math.min(20, s.maxRank);
+  let lo: Measure, two: Measure, hi: Measure;
   try {
     lo = measure(cls, s.id, 1);
-    hi = measure(cls, s.id, 10);
+    two = measure(cls, s.id, 2);
+    hi = measure(cls, s.id, top);
   } catch (err) {
     check(`${s.id} casts`, false, String(err).slice(0, 120));
     continue;
   }
-  const grows = hi.some((v, i) => v > lo[i]! * 1.02 + 1e-6);
-  if (!grows) flat.push(`${cls}:${s.id}`);
-  if (only) console.error(s.id, lo.map((v) => +v.toFixed(1)).join(' '), '->', hi.map((v) => +v.toFixed(1)).join(' '));
+  const g2 = growth(lo, two);
+  const gTop = growth(lo, hi);
+  if (g2 < STEP) flat.push(`${cls}:${s.id} x${g2.toFixed(2)}`);
+  if (gTop < topNeed(top)) weak.push(`${cls}:${s.id} x${gTop.toFixed(2)} at ${top}`);
+  if (only || env.RANK_REPORT) console.error(`${cls}\t${s.id}\tx2=${g2.toFixed(2)}\tx${top}=${gTop.toFixed(2)}`);
 }
-check('every active skill is stronger at rank 10 than at rank 1', flat.length === 0, flat.length ? `flat: ${flat.join(', ')}` : 'all grow');
+check('rank 2 is a clear step up from rank 1 (+10%)', flat.length === 0, flat.length ? `small: ${flat.join(', ')}` : 'all step up');
+check('the top rank is far past rank 1', weak.length === 0, weak.length ? `weak: ${weak.join(', ')}` : 'all grow');
 console.log(JSON.stringify({ cases }));

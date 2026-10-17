@@ -745,7 +745,7 @@ export function runShift(k: ShiftKit, c: ShiftCast): boolean {
       const sr = Math.max(1, rankOf(c, 'slink'));
       const p = slinkDef?.params ?? {};
       const base = typeof p.ambush === 'number' ? p.ambush : 60;
-      const step = typeof p.ambushR === 'number' ? p.ambushR : 8;
+      const step = typeof p.ambushR === 'number' ? p.ambushR : 16;
       const amb = 1 + (base + step * (sr - 1)) / 100;
       const make = c.makePacket;
       cast = { ...c, makePacket: (m = 1) => make(m * amb) };

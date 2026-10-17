@@ -36,7 +36,7 @@ export const SHIFTER_SELF_POWER: Record<string, (k: number, n: Num) => SelfPower
   slink: (k, n) => ({
     status: 'ss.slink',
     duration: g(n, 'duration', 4, k),
-    mods: { moveSpeed: g(n, 'moveSpeed', 30, k), critChance: n('crit', 20) },
+    mods: { moveSpeed: g(n, 'moveSpeed', 30, k), critChance: g(n, 'crit', 20, k) },
   }),
   nightHunt: (k, n) => ({
     status: 'ss.nightHunt',

@@ -45,6 +45,7 @@ import {
 } from './Widgets';
 import { skillIconUri } from '../art/Icons';
 import { SKILL_BY_ID } from '../data/skills';
+import { BURST_POWER, FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } from '../data/skillPower';
 
 const CELL_W = 132;
 const CELL_H = 104;
@@ -819,6 +820,7 @@ function rankRows(s: SkillDef, rank: number): RankRow[] {
     const b = attempt(() => s.damageScale?.(next) ?? 0, 0);
     rows.push({ label: 'Damage', cur: rank > 0 ? `${Math.round(a * 100)}%` : '—', nxt: `${Math.round(b * 100)}%`, icon: 'sword' });
   }
+  rows.push(...powerRows(s, rank, next));
   if (s.manaCost) {
     const a = attempt(() => s.manaCost?.(Math.max(1, rank)) ?? 0, 0);
     const b = attempt(() => s.manaCost?.(next) ?? 0, 0);
@@ -845,6 +847,62 @@ function rankRows(s: SkillDef, rank: number): RankRow[] {
     }
   }
   return rows;
+}
+
+const RESISTS: StatKey[] = ['physicalResist', 'fireResist', 'coldResist', 'lightningResist', 'poisonResist', 'arcaneResist'];
+
+/**
+ * What a rank buys beyond the damage ladder (`data/skillPower.ts`): a
+ * summon's blows and body, a buff's stats, ward and time, a curse's bite.
+ * Without these a Shadow Clone's rank table read only mana and cooldown.
+ */
+function powerRows(s: SkillDef, rank: number, next: number): RankRow[] {
+  const p = s.params ?? {};
+  const n = (key: string, d: number): number => (typeof p[key] === 'number' ? (p[key] as number) : d);
+  const out: RankRow[] = [];
+  const row = (label: string, at: (k: number) => number | undefined, show: (v: number) => string, icon?: string): void => {
+    // Only what a rank changes: a stance's fixed slower feet is not a step.
+    if (attempt(() => at(0), undefined) === attempt(() => at(s.maxRank - 1), undefined)) return;
+    const a = attempt(() => at(Math.max(0, rank - 1)), undefined);
+    const b = attempt(() => at(next - 1), undefined);
+    if (b === undefined) return;
+    out.push({ label, cur: rank > 0 && a !== undefined ? show(a) : '—', nxt: show(b), icon });
+  };
+  const pct = (v: number): string => `${fmt(v)}%`;
+  const secs = (v: number): string => `${v.toFixed(1)}s`;
+  const statRows = (mods: (k: number) => Partial<Record<StatKey, number>> | undefined, foe: boolean): void => {
+    const first = attempt(() => mods(0), undefined) ?? {};
+    let keys = Object.keys(first) as StatKey[];
+    const allResist = RESISTS.every((r) => first[r] !== undefined && first[r] === first.physicalResist);
+    if (allResist) keys = ['physicalResist', ...keys.filter((key) => !RESISTS.includes(key))];
+    for (const key of keys) {
+      const label = allResist && key === 'physicalResist' ? 'All Resistances' : STAT_LABEL[key];
+      const suffix = PERCENT_STATS.has(key) || RESISTS.includes(key) ? '%' : '';
+      row(foe ? `Enemy ${label}` : label, (k) => mods(k)?.[key], (v) => `${signed(v)}${suffix}`, STAT_ICON[key]);
+    }
+  };
+
+  const summon = /^summon\./.test(s.effect ?? '');
+  if (summon && !s.damageScale) {
+    row('Minion Damage', (k) => n('damagePct', 50) * burstGrowth(s.id, k, n), pct, 'sword');
+    row('Minion Life', (k) => n('lifePct', 40) * minionLifeGrowth(s.id, k, n), (v) => `${fmt(v)}% of yours`, 'life');
+  } else if (!s.damageScale && BURST_POWER[s.id]) {
+    row('Power', (k) => 100 * burstGrowth(s.id, k, n), pct, 'sword');
+  }
+  const self = SELF_POWER[s.id];
+  if (self) {
+    statRows((k) => self(k, n).mods, false);
+    row('Ward', (k) => self(k, n).absorb, fmt, 'shield');
+    row('Ward', (k) => self(k, n).absorbLifePct, (v) => `${fmt(v)}% of life`, 'shield');
+    row('Heal', (k) => self(k, n).healPct, (v) => `${fmt(v)}% of life`, 'life');
+    row('Duration', (k) => self(k, n).duration, secs, 'cooldown');
+  }
+  const foe = FOE_POWER[s.id];
+  if (foe) {
+    statRows((k) => foe(k, n).mods, true);
+    row('Effect Time', (k) => foe(k, n).duration, secs, 'cooldown');
+  }
+  return out;
 }
 
 function toRoman(n: number): string {

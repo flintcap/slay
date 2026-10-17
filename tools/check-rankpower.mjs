@@ -1,11 +1,12 @@
 /**
  * Does every skill get stronger with rank?
  *
- *   node tools/check-rankpower.mjs        (RANK_ONLY=iceArmor,weaken for some)
+ *   node tools/check-rankpower.mjs        (RANK_ONLY=iceArmor,weaken for some,
+ *                                          RANK_REPORT=1 for every skill's growth)
  *
- * Casts every active skill at rank 1 and rank 10 with the real runner on a
- * real monster; something it does must be bigger at 10. Mana and cooldown do
- * not count. See tools/rankpower-entry.ts.
+ * Casts every active skill at rank 1, rank 2 and its top rank with the real
+ * runner on a real monster; rank 2 must be a clear step and the top rank far
+ * past rank 1. Mana and cooldown do not count. See tools/rankpower-entry.ts.
  */
 import { build } from 'vite';
 import { rmSync, mkdirSync } from 'node:fs';
@@ -27,7 +28,7 @@ await build({
     minify: false,
   },
 });
-const raw = execFileSync('node', [path.join(OUT, 'e.mjs')], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+const raw = execFileSync('node', [path.join(OUT, 'e.mjs')], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'inherit'] });
 rmSync(OUT, { recursive: true, force: true });
 const lines = raw.trim().split('\n');
 const { cases } = JSON.parse(lines[lines.length - 1]);
