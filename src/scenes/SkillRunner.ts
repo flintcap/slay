@@ -9,6 +9,9 @@ import { skillSound } from '../audio/SkillSounds';
 import { SKILLS } from '../data/skills';
 import { rollDamage, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
+
+/** A summon's hits and life at a skill rank, in any unit: only the ratio between ranks is used. */
+export type SummonGrowth = (rank: number) => { damage: number; life: number };
 import { releaseShadowDouble, type Player } from '../entities/Player';
 import type { HeroAnimator } from '../art/hero/Animator';
 import { canStandAt, lineClear, stepBody, type WalkWorld } from '../world/BodyWalk';
@@ -1330,6 +1333,10 @@ export class SkillRunner {
               num('taunts', num('taunt', 0)) > 0,
               // How many it can hold. A Shadow Clone pulls one, not the room.
               num('tauntHold', Infinity),
+              (r) => ({
+                damage: def.damageScale ? def.damageScale(r) : burstGrowth(def.id, Math.max(0, r - 1), num),
+                life: minionLifeGrowth(def.id, Math.max(0, r - 1), num),
+              }),
             );
           }
           break;
@@ -2522,7 +2529,15 @@ export class SkillRunner {
     /** Waypoints round whatever stands between it and where it is going. */
     route: Array<{ x: number; y: number }>;
     replanIn: number;
+    /** The skill's rank when this one was raised, or last grown. */
+    rank: number;
+    /** How hard it hits and how much life it has at a rank, against rank 1. */
+    grow: SummonGrowth | null;
+    /** Its hits, times what ranks bought since it was raised. */
+    power: number;
   }> = [];
+  /** Seconds to the next look for ranks spent on standing summons. */
+  private growIn = 0;
 
   /** The level's walls and props, so summons walk round them (set by the scene). */
   private walk: WalkWorld | null = null;
@@ -2739,6 +2754,12 @@ export class SkillRunner {
         z.fx?.stop();
         this.zones.splice(i, 1);
       }
+    }
+
+    this.growIn -= dt;
+    if (this.growIn <= 0) {
+      this.growIn = 0.5;
+      this.growSummons();
     }
 
     for (let i = this.turrets.length - 1; i >= 0; i--) {
@@ -2982,6 +3003,29 @@ export class SkillRunner {
   }
 
   /** Leaves something standing that fights for you until its time runs out. */
+  /**
+   * A summon stays until it falls, so it used to keep the rank it was raised
+   * at: a point in Shadow Clone did nothing to the clone already at your side.
+   * Now the ones standing take every rank spent since, hits and life alike
+   * (the wound keeps its share of the body).
+   */
+  private growSummons(): void {
+    const owner = this.caster;
+    if (!owner) return;
+    for (const t of this.turrets) {
+      if (!t.grow || !t.skillId || t.life <= 0) continue;
+      const r = skillRank(owner.character, t.skillId);
+      if (r <= 0 || r === t.rank) continue;
+      const was = t.grow(t.rank);
+      const now = t.grow(r);
+      t.power *= now.damage / Math.max(1e-6, was.damage);
+      const f = now.life / Math.max(1e-6, was.life);
+      t.maxLife *= f;
+      t.life *= f;
+      t.rank = r;
+    }
+  }
+
   private addTurret(
     x: number,
     z: number,
@@ -2999,6 +3043,8 @@ export class SkillRunner {
     taunt = false,
     /** How many monsters the taunt can hold at once. */
     tauntHold = Infinity,
+    /** What a rank buys it, so a point spent later grows it where it stands. */
+    grow: SummonGrowth | null = null,
   ): void {
     // A backstop only. Per-skill caps do the real work; this stops a runaway
     // from ever building an unbounded list.
@@ -3057,12 +3103,17 @@ export class SkillRunner {
       }
     }
 
-    this.turrets.push({
+    const t = {
       x, z, left: duration, cd, accum: cd * 0.5, range, packet, type, color, melee, fx,
-      body, anim, facing: 0, gait: 0, action: 'spawn', actionT: 1,
+      body, anim, facing: 0, gait: 0, action: 'spawn' as RigAction, actionT: 1,
       index: this.summonSerial++, skillId: skillId ?? '', life: minionLife, maxLife: minionLife,
       taunt, tauntHold, hero, route: [], replanIn: 0,
-    });
+      rank: owner && skillId ? skillRank(owner.character, skillId) : 1,
+      grow,
+      power: 1,
+    };
+    t.packet = (m = 1) => packet(m * t.power);
+    this.turrets.push(t);
   }
 
   /**
@@ -3173,6 +3224,8 @@ export class SkillRunner {
       x, z, Infinity, 1.1 * swingRate, 2.6, packet, 'physical', color, true, def.id,
       Math.max(20, player.stats.life * (num('lifePct', 140) / 100)),
       false,
+      Infinity,
+      (r) => ({ damage: num('damagePct', 60) + num('perRank', 4) * (r - 1), life: 1 }),
     );
   }
 
@@ -3235,7 +3288,7 @@ export class SkillRunner {
       buff: () => this.applyBuff(player, def as { id: string; name: string; params?: Record<string, number | number[]> }, rank, num, color),
       raise: (x, z, o) => {
         this.caster = player;
-        this.addTurret(x, z, Infinity, o.rate, o.range, o.packet, type, color, true, def.id, o.life, false);
+        this.addTurret(x, z, Infinity, o.rate, o.range, o.packet, type, color, true, def.id, o.life, false, Infinity, o.grow ?? null);
       },
       pack: () => this.countSummons(def.id),
       trim: (keep) => this.trimSummons(def.id, keep),

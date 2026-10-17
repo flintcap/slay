@@ -14,6 +14,7 @@
  */
 import * as THREE from 'three';
 import type { DamagePacket, DamageType, SkillDef, StatusApplication } from '../types';
+import type { SummonGrowth } from './SkillRunner';
 import type { Player } from '../entities/Player';
 import type { CombatContext, Enemy } from '../entities/Enemy';
 import type { Boss } from '../entities/Boss';
@@ -66,7 +67,8 @@ export interface ShiftKit {
   /** Puts this skill's buff on at its rank (`SELF_POWER`), with its heal if it has one. */
   buff(): void;
   /** Raises one of this skill's creatures at (x, z): it bites with `packet` and has `life`. */
-  raise(x: number, z: number, o: { packet: (m?: number) => DamagePacket; life: number; rate: number; range: number }): void;
+  /** `grow` lets a point spent later strengthen the ones already standing. */
+  raise(x: number, z: number, o: { packet: (m?: number) => DamagePacket; life: number; rate: number; range: number; grow?: SummonGrowth }): void;
   /** How many of this skill's creatures stand now. */
   pack(): number;
   /** Lets the oldest of this skill's creatures go until `keep` are left. */
@@ -468,6 +470,10 @@ const callThePack: Handler = (k, c) => {
       life,
       rate: c.num('attackRate', 1.0),
       range: c.num('range', 2.4),
+      grow: (r) => ({
+        damage: c.num('minionScale', 0.45) + c.num('minionScaleR', 0) * Math.max(0, r - 1),
+        life: c.num('lifePct', 30) + c.num('lifePctR', 0) * Math.max(0, r - 1),
+      }),
     });
   }
 };
@@ -745,7 +751,7 @@ export function runShift(k: ShiftKit, c: ShiftCast): boolean {
       const sr = Math.max(1, rankOf(c, 'slink'));
       const p = slinkDef?.params ?? {};
       const base = typeof p.ambush === 'number' ? p.ambush : 60;
-      const step = typeof p.ambushR === 'number' ? p.ambushR : 16;
+      const step = typeof p.ambushR === 'number' ? p.ambushR : 8;
       const amb = 1 + (base + step * (sr - 1)) / 100;
       const make = c.makePacket;
       cast = { ...c, makePacket: (m = 1) => make(m * amb) };

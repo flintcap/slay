@@ -41,7 +41,7 @@ export const SHIFTER_SELF_POWER: Record<string, (k: number, n: Num) => SelfPower
   nightHunt: (k, n) => ({
     status: 'ss.nightHunt',
     duration: g(n, 'duration', 8, k),
-    mods: { moveSpeed: n('moveSpeed', 25), critChance: g(n, 'crit', 25, k), critDamage: g(n, 'critDamage', 50, k) },
+    mods: { moveSpeed: g(n, 'moveSpeed', 25, k), critChance: g(n, 'crit', 25, k), critDamage: g(n, 'critDamage', 50, k) },
   }),
 
   // Teeth

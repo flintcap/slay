@@ -5,8 +5,8 @@
  *                                          RANK_REPORT=1 for every skill's growth)
  *
  * Casts every active skill at rank 1, rank 2 and its top rank with the real
- * runner on a real monster; rank 2 must be a clear step and the top rank far
- * past rank 1. Mana and cooldown do not count. See tools/rankpower-entry.ts.
+ * runner on a real monster; rank 2 must add to what it does, the top rank
+ * must be far past rank 1, and every rank must buy something. Mana and cooldown do not count. See tools/rankpower-entry.ts.
  */
 import { build } from 'vite';
 import { rmSync, mkdirSync } from 'node:fs';

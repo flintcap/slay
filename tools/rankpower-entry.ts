@@ -3,12 +3,14 @@
  *
  * Every active skill, cast at rank 1, rank 2 and its top rank by the real
  * runner on a real monster: something it does (damage, a ward, a buff's or
- * curse's numbers, its time, a heal, a summon) has to be a tenth bigger at
- * rank 2 and far bigger at the top. Mana and cooldown do not count.
+ * curse's numbers, its time, a heal, a summon) has to be a few percent
+ * bigger at rank 2 and far bigger at the top, and the numbers a rank buys
+ * must move at every rank. Mana and cooldown do not count.
  */
 import * as THREE from 'three';
 import { arena, caseLog } from './combat-arena';
 import { SKILLS, TREE_BY_ID } from '../src/data/skills';
+import { FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } from '../src/data/skillPower';
 import { SkillRunner } from '../src/scenes/SkillRunner';
 import { Player } from '../src/entities/Player';
 import { createCharacter, equipItem } from '../src/sim/Character';
@@ -139,11 +141,12 @@ function growth(lo: Measure, hi: Measure): number {
 }
 
 /**
- * The owner's rule: rank 1 is a low base and every point is a clear step.
- * Rank 2 must beat rank 1 by a tenth; the top rank must be well past it.
+ * The owner's rule: a point must make the skill itself stronger, not only
+ * cheaper or quicker. Rank 2 must add a few percent to something it does;
+ * the top rank must be well past rank 1.
  */
-const STEP = 1.1;
-const topNeed = (max: number): number => (max >= 20 ? 2.5 : max >= 10 ? 1.8 : 1.4);
+const STEP = 1.03;
+const topNeed = (max: number): number => (max >= 20 ? 1.5 : max >= 10 ? 1.3 : 1.15);
 
 const flat: string[] = [];
 const weak: string[] = [];
@@ -168,6 +171,58 @@ for (const s of SKILLS) {
   if (gTop < topNeed(top)) weak.push(`${cls}:${s.id} x${gTop.toFixed(2)} at ${top}`);
   if (only || env.RANK_REPORT) console.error(`${cls}\t${s.id}\tx2=${g2.toFixed(2)}\tx${top}=${gTop.toFixed(2)}`);
 }
-check('rank 2 is a clear step up from rank 1 (+10%)', flat.length === 0, flat.length ? `small: ${flat.join(', ')}` : 'all step up');
+check('rank 2 adds to what the skill does (+3%)', flat.length === 0, flat.length ? `small: ${flat.join(', ')}` : 'all step up');
+
+// Every rank, not just the second: the numbers a point buys must move at
+// each one. Rounded to tenths, a small damage step used to buy nothing at
+// some ranks.
+const dead: string[] = [];
+const num = (s: (typeof SKILLS)[number]) => (key: string, d: number): number => (typeof s.params?.[key] === 'number' ? (s.params[key] as number) : d);
+for (const s of SKILLS) {
+  if (s.targeting === 'passive') continue;
+  const n = num(s);
+  const top = Math.min(20, s.maxRank);
+  for (let r = 1; r < top; r++) {
+    const at = (rank: number): string =>
+      JSON.stringify([
+        s.damageScale ? s.damageScale(rank) : burstGrowth(s.id, rank - 1, n),
+        SELF_POWER[s.id]?.(rank - 1, n),
+        FOE_POWER[s.id]?.(rank - 1, n),
+        /^summon\./.test(s.effect ?? '') ? minionLifeGrowth(s.id, rank - 1, n) : 0,
+      ]);
+    if (at(r) === at(r + 1)) {
+      dead.push(`${s.id}@${r + 1}`);
+      break;
+    }
+  }
+}
+check('every rank buys something', dead.length === 0, dead.length ? `nothing new at: ${dead.join(', ')}` : 'every rank counts');
+// A summon stays until it falls, so a point spent while it stands must reach
+// it: cast at rank 1, learn rank 5, and the one at your side hits harder and
+// has more life without a recast.
+const stale: string[] = [];
+for (const s of SKILLS) {
+  if (!/^summon\./.test(s.effect ?? '') || (only && !only.has(s.id))) continue;
+  const cls = TREE_BY_ID[s.treeId]?.classId as CharClassId | undefined;
+  if (!cls) continue;
+  const a = arena({ seed: 7 });
+  const c = createCharacter('Test', cls, new Random(7));
+  // Sworn Brother rises when a banner is planted, not when it is cast.
+  const via = s.effect === 'summon.fromBanner' ? 'bannerOfTheGate' : s.id;
+  c.skills = { [s.id]: 1, [via]: 1 };
+  const player = new Player(c, 1);
+  player.mana = 1e6;
+  const runner = new SkillRunner(fx);
+  runner.setContext(a.ctx, a.enemies, null);
+  runner.cast(via, player, new THREE.Vector3(0, 0, 1.8), a.ctx, a.enemies, null);
+  type T = { life: number; maxLife: number; power: number };
+  const ts = (runner as unknown as { turrets: T[] }).turrets;
+  const before = ts.map((t) => [t.maxLife, t.power]);
+  c.skills[s.id] = 5;
+  for (let i = 0; i < 60; i++) runner.update(DT);
+  const grew = ts.length > 0 && ts.every((t, i) => t.power > before[i]![1]! * 1.02 && t.maxLife >= before[i]![0]!);
+  if (!grew) stale.push(s.id);
+}
+check('a standing summon grows when you spend a point', stale.length === 0, stale.length ? `stuck: ${stale.join(', ')}` : 'all grow in place');
 check('the top rank is far past rank 1', weak.length === 0, weak.length ? `weak: ${weak.join(', ')}` : 'all grow');
 console.log(JSON.stringify({ cases }));

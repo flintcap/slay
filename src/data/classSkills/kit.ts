@@ -14,6 +14,7 @@ import type { DamageType, SkillDef, SkillTargeting, StatKey } from '../../types'
 export const MAX_SKILL_RANK = 20;
 
 const r1 = (n: number): number => Math.round(n * 10) / 10;
+const r2 = (n: number): number => Math.round(n * 100) / 100;
 
 /** Linear: value at rank 1 is `a`, each further rank adds `b`. */
 export const lin = (a: number, b: number) => (r: number): number => r1(a + b * (r - 1));
@@ -70,7 +71,12 @@ export function build(treeId: string, specs: Spec[]): SkillDef[] {
     if (s.req) out.requires = s.req;
     if (s.mana) out.manaCost = mana(s.mana[0], s.mana[1]);
     if (s.cd) out.cooldown = cool(s.cd[0], s.cd[1], s.cd[2]);
-    if (s.dmg) out.damageScale = lin(s.dmg[0], s.dmg[1]);
+    // To the hundredth: rounded to tenths, a small step (0.08 a rank) bought
+    // nothing at some ranks, so a point in the skill only made it cheaper.
+    if (s.dmg) {
+      const [a, b] = s.dmg;
+      out.damageScale = (r: number): number => r2(a + b * (r - 1));
+    }
     if (s.type) out.damageType = s.type;
     if (s.fx) out.effect = s.fx;
     if (s.p) out.params = s.p;
