@@ -1,6 +1,6 @@
 # Stream: balance (Wave 4: items and classes)
 
-Status: not started
+Status: in progress
 
 Goal: items feel worth finding and every class feels strong. Rules that
 never bend: never make monsters weaker or fewer; make classes stronger, not
