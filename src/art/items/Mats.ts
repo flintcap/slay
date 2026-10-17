@@ -302,16 +302,19 @@ export function stringMat(color = 0xcfc4a8): THREE.MeshStandardMaterial {
 export function liquidMat(color: number): THREE.MeshStandardMaterial {
   return shared(`liq|${color}`, () => {
     const c = new THREE.Color(color);
-    const m = new THREE.MeshStandardMaterial({ color: c.clone().multiplyScalar(0.5), emissive: c, emissiveIntensity: 0.9, roughness: 0.15, metalness: 0 });
+    const m = new THREE.MeshStandardMaterial({ color: c.clone().multiplyScalar(0.25), emissive: c, emissiveIntensity: 0.6, roughness: 0.25, metalness: 0 });
     m.name = 'item:liquid';
     return m;
   });
 }
 
-/** Clear glass for flasks and lenses. */
+/**
+ * Clear glass for flasks and lenses. Dark, so it shows as shine alone: a
+ * pale glass laid a white haze over the liquid, and a red potion read pink.
+ */
 export function glassMat(): THREE.MeshStandardMaterial {
   return shared('glass', () => {
-    const m = new THREE.MeshStandardMaterial({ color: 0xd8e4ea, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.32, envMapIntensity: 2.2, depthWrite: false });
+    const m = new THREE.MeshStandardMaterial({ color: 0x1c2226, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.25, envMapIntensity: 2, depthWrite: false });
     m.name = 'item:glass';
     return m;
   });

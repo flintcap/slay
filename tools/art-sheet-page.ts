@@ -66,7 +66,10 @@ const RCOL: Record<ItemRarity, string> = {
   normal: '#3a3c44', magic: '#3d5fa8', rare: '#b8a038', set: '#3aa04a', unique: '#b0702a', mythic: '#a040c0', ancient: '#d04030',
 };
 
+let studioHost = false;
+
 export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
+
   /** Every base at 64px, normal rarity, with its id. */
   async items() {
     const match = (window as unknown as { __match?: string[] }).__match;
@@ -77,6 +80,17 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     const COLS = 16;
     const rows = Math.ceil(bases.length / COLS);
     const { c, g } = sheet(COLS * CW, rows * CH);
+    // The real pictures, drawn as the game draws them: the icon studio
+    // borrows the game's renderer, so this page opens one of its own.
+    if (!studioHost) {
+      const { Renderer } = await import('../src/core/Renderer');
+      const { setStudioHost } = await import('../src/core/Studio');
+      const r = new Renderer(document.createElement('canvas'));
+      await r.gl.init();
+      setStudioHost(r.gl);
+      studioHost = true;
+    }
+    await Promise.all(bases.map((b) => new Promise<void>((r) => IC.requestItemIcon(fakeItem(b.id, 'normal'), () => r()))));
     const t0 = performance.now();
     const uris = bases.map((b) => IC.itemIconUri(fakeItem(b.id, 'normal')));
     const per = (performance.now() - t0) / bases.length;
