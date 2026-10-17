@@ -230,7 +230,10 @@ class Orb {
     this.canvas.height = Math.round(size * dpr);
     this.canvas.style.width = `${size}px`;
     this.canvas.style.height = `${size}px`;
-    this.ctx = this.canvas.getContext('2d');
+    // Small and redrawn every frame: painted on the CPU. A GPU canvas drawn
+    // every frame can have the browser hold the page each frame until the
+    // GPU, busy with the world, has caught up with it.
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     this.ctx?.scale(dpr, dpr);
 
     const glass = div('orb-glass');
@@ -627,7 +630,8 @@ export class HUD {
     this.minimapCanvas.height = MINIMAP_PX * dpr;
     this.minimapCanvas.style.width = `${MINIMAP_PX}px`;
     this.minimapCanvas.style.height = `${MINIMAP_PX}px`;
-    this.minimapCtx = this.minimapCanvas.getContext('2d');
+    // On the CPU, like the orbs: small and redrawn every frame.
+    this.minimapCtx = this.minimapCanvas.getContext('2d', { willReadFrequently: true });
     this.minimapCtx?.scale(dpr, dpr);
     this.minimapLabel = div('minimap-label', 'Tier 0');
     const mapFrame = div('minimap-frame');
@@ -1757,7 +1761,10 @@ export class HUD {
       const canvas = document.createElement('canvas');
       canvas.width = level.width;
       canvas.height = level.height;
-      const ctx = canvas.getContext('2d')!;
+      // Painted on the CPU. It is never on the page, only copied into the
+      // minimap, and a GPU canvas drawn every frame without being shown has
+      // the browser hold the whole page until the GPU catches up with it.
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
       this.sheet = { level, ctx, canvas };
       const sheet = { ctx, canvas, inks: zoneInks(level, [146, 128, 98], 0.62) };
       for (let i = 0; i < explored.length; i++) if (explored[i]) paintGround(sheet, level, i);

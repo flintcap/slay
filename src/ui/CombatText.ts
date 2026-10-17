@@ -455,7 +455,10 @@ export class CombatTextLayer {
     let s = have ?? this.spare.pop();
     if (!s) {
       const c = document.createElement('canvas');
-      const x = c.getContext('2d');
+      // Painted on the CPU: never on the page, only copied into the overlay,
+      // and a GPU canvas drawn off the page has the browser hold the whole
+      // page until the GPU catches up with it.
+      const x = c.getContext('2d', { willReadFrequently: true });
       if (!x) return null;
       s = { c, x, text: '', size: 0, stacks: 0, fill: '', ts: 0, dpr: 0, scale: 0, pw: 0, ph: 0, ox: 0, oy: 0, w: 0, h: 0 };
     }

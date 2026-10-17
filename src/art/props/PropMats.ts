@@ -29,7 +29,7 @@
  */
 import * as THREE from 'three/webgpu';
 import {
-  clamp, dot, float, fract, Fn, instanceIndex, mix, modelPosition, negateOnBackSide, normalGeometry, positionGeometry, sin,
+  attribute, clamp, dot, float, fract, Fn, instanceIndex, mix, modelPosition, negateOnBackSide, normalGeometry, positionGeometry, sin,
   smoothstep, varying, vec2, vec3,
 } from 'three/tsl';
 import { asStandard, bindToView, hash2, matColor, matFloat, matTexture, matVec2, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
@@ -237,16 +237,34 @@ interface TriUniforms {
 }
 
 /**
- * Where this copy sits: an instanced copy's own slot, or the mesh's world
+ * Where this copy sits: an instanced copy's own slot, a baked copy's slot
+ * from before it was baked (`slCopy`, see PropBake.ts), or the mesh's world
  * position. Picked when the shader is built, from the object being drawn.
  */
-const copySeed = Fn((_: unknown, { object }: { object: THREE.Object3D }) => {
-  if ((object as THREE.InstancedMesh).isInstancedMesh) {
-    const i = float(instanceIndex);
+const copySeed = Fn((_: unknown, { object, geometry }: { object: THREE.Object3D; geometry: THREE.BufferGeometry }) => {
+  const baked = geometry.hasAttribute('slCopy');
+  if (baked || (object as THREE.InstancedMesh).isInstancedMesh) {
+    const i = baked ? attribute('slCopy', 'float') : float(instanceIndex);
     return vec3(hash2(vec2(i.mul(0.618), 3.1)), hash2(vec2(7.7, i.mul(0.414))), hash2(vec2(i.mul(0.271), i.mul(0.173).add(1.9)))).mul(40.0);
   }
   return modelPosition;
 });
+
+/**
+ * The copy's own model-space position and normal, which the projection and
+ * the grime read. A baked copy's vertices are in the world, so it carries
+ * the ones it had before baking (`slLocal`, `slLocalNormal`).
+ */
+const localPosition = Fn((_: unknown, { geometry }: { geometry: THREE.BufferGeometry }) =>
+  geometry.hasAttribute('slLocal') ? attribute('slLocal', 'vec3') : positionGeometry);
+const localNormal = Fn((_: unknown, { geometry }: { geometry: THREE.BufferGeometry }) =>
+  geometry.hasAttribute('slLocalNormal') ? attribute('slLocalNormal', 'vec3') : normalGeometry);
+
+/** Materials whose copies can be baked into one mesh (see PropBake.ts). */
+const bakeable = new WeakSet<THREE.Material>();
+export function canBake(m: THREE.Material): boolean {
+  return bakeable.has(m);
+}
 
 /** The shader parts a prop material draws with. */
 interface PropGraph {
@@ -270,8 +288,8 @@ function propGraph(o: TriUniforms): PropGraph {
   const grime = matVec2('slPropGrime');
   // Per copy: the projection shifts and the brightness varies a little.
   const off = varying(copySeed() as unknown as V3);
-  const Pb = positionGeometry;
-  const Nb = normalGeometry.normalize().toVar();
+  const Pb = localPosition() as unknown as V3;
+  const Nb = (localNormal() as unknown as V3).normalize().toVar();
   const P = Pb.mul(matFloat('slTriScale')).add(off.mul(0.37)).toVar();
   const t = triSample(P, Nb, matTexture('slTriNormal', o.normal), matTexture('slTriAlbedo', o.albedo));
   const a = t.albedo!;
@@ -314,6 +332,7 @@ function triplanar(m: THREE.MeshStandardNodeMaterial, o: TriUniforms): void {
   m.roughnessNode = g.roughness;
   m.normalNode = g.normal;
   if (g.emissive) m.emissiveNode = g.emissive;
+  bakeable.add(m);
 }
 
 // ---------------------------------------------------------------------------
@@ -382,7 +401,7 @@ export function propMat(key: string, o: PropMatOpts = {}): THREE.MeshStandardMat
 export function glowMat(color: number, intensity = 2.4): THREE.MeshStandardMaterial {
   return cached(`glow|${color}|${intensity}`, () => {
     const c = new THREE.Color(color);
-    return new THREE.MeshStandardMaterial({
+    const m = new THREE.MeshStandardMaterial({
       name: `prop:glow:${color.toString(16)}`,
       color: c.clone().multiplyScalar(0.12),
       emissive: c,
@@ -391,6 +410,9 @@ export function glowMat(color: number, intensity = 2.4): THREE.MeshStandardMater
       metalness: 0,
       vertexColors: true,
     });
+    // Nothing in it reads the instance, so a baked copy looks the same.
+    bakeable.add(m);
+    return m;
   });
 }
 

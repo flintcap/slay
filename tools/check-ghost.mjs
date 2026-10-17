@@ -95,7 +95,11 @@ for (const place of places) {
       const g = o.geometry;
       g.computeBoundingBox();
       if (!g.boundingBox) return;
-      if (o.isInstancedMesh) {
+      // Baked props (PropBake.ts) are many copies in one mesh: each copy's box.
+      const baked = o.userData.copyBoxes;
+      if (baked) {
+        for (let i = 0; i < baked.length; i += 6) boxes.push(Array.from(baked.subarray(i, i + 6)));
+      } else if (o.isInstancedMesh) {
         for (let i = 0; i < o.count; i++) {
           o.getMatrixAt(i, m4);
           m4.premultiply(o.matrixWorld);

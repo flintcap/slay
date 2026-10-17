@@ -24,6 +24,7 @@ import { andMask, asBasic, matColor, pixelDither, setNodeTextures } from '../cor
 import type { BiomeDef, DungeonLevel, PropPlacement, Rng } from '../types';
 import { Noise, clamp, lerp } from '../art/Noise';
 import { biomeArt, wallKitOf, type BiomeArt, type FloorVariant, type WallKit } from './Biomes';
+import { bakeProps } from './PropBake';
 import {
   T_CHASM,
   T_DOOR,
@@ -588,7 +589,7 @@ interface TorchRecord {
   intensity: number;
   distance: number;
   flicker: number;
-  /** Index into the flame instanced mesh, or -1. */
+  /** Index into the flame records, or -1. */
   flameMesh: number;
   flameIndex: number;
   phase: number;
@@ -601,7 +602,14 @@ interface TorchRecord {
 }
 
 interface FlameMesh {
-  mesh: THREE.InstancedMesh;
+  /** Every flame of one material shares one batch: one draw for them all. */
+  mesh: THREE.BatchedMesh | null;
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+  /** Each copy's slot in `mesh`. */
+  ids: Int32Array;
+  /** Each copy's rest pose, until the batch is built. */
+  matrices: Float32Array;
   base: Float32Array;
   positions: Float32Array;
 }
@@ -2112,6 +2120,8 @@ export class DungeonMesh {
     const pos = new THREE.Vector3();
     const scl = new THREE.Vector3();
     const up = new THREE.Vector3(0, 1, 0);
+    // Still batches that may be baked together once all are placed.
+    const still: THREE.InstancedMesh[] = [];
 
     for (const g of groups.values()) {
       const def = propDef(g.kind);
@@ -2180,6 +2190,7 @@ export class DungeonMesh {
         // opened or one barrel smashed without disturbing the rest of the
         // batch. Props are instanced for speed; this is the price of that.
         if (groupInteracts) meshesForGroup.push(inst);
+        else if (!layer.ghost) still.push(inst);
       }
 
       // Index the interactables. A prop with an `interact` payload is something
@@ -2208,11 +2219,7 @@ export class DungeonMesh {
 
       // Emissive flame + light record.
       if (tmpl.flame) {
-        const flameMesh = new THREE.InstancedMesh(tmpl.flame.geometry, tmpl.flame.material, n);
-        flameMesh.name = `flame:${g.kind}`;
-        flameMesh.castShadow = false;
-        flameMesh.receiveShadow = false;
-        flameMesh.renderOrder = 4;
+        const matrices = new Float32Array(n * 16);
         const base = new Float32Array(n);
         const positions = new Float32Array(n * 3);
         for (let i = 0; i < n; i++) {
@@ -2229,13 +2236,10 @@ export class DungeonMesh {
           pos.set(px, py, pz);
           scl.set(sc[i], sc[i], sc[i]);
           m4.compose(pos, q, scl);
-          flameMesh.setMatrixAt(i, m4);
+          m4.toArray(matrices, i * 16);
         }
-        flameMesh.instanceMatrix.needsUpdate = true;
-        flameMesh.computeBoundingSphere();
-        this.root.add(flameMesh);
         const meshIndex = this.flames.length;
-        this.flames.push({ mesh: flameMesh, base, positions });
+        this.flames.push({ mesh: null, geometry: tmpl.flame.geometry, material: tmpl.flame.material, ids: new Int32Array(n), matrices, base, positions });
 
         if (tmpl.light) {
           for (let i = 0; i < n; i++) {
@@ -2279,6 +2283,8 @@ export class DungeonMesh {
       }
     }
 
+    bakeProps(this.root, still);
+    this.batchFlames();
     this.buildLightPools();
   }
 
@@ -2661,7 +2667,6 @@ export class DungeonMesh {
     const scl = new THREE.Vector3();
     const RANGE = 34 * 34;
 
-    const touched = new Set<number>();
     for (const t of this.torches) {
       if (t.flameMesh < 0) continue;
       const dx = t.pos.x - focus.x;
@@ -2677,10 +2682,56 @@ export class DungeonMesh {
       q.setFromAxisAngle(UP_AXIS, t.phase + elapsed * 0.7);
       scl.set(sx, sy, sx);
       m4.compose(pos, q, scl);
-      fm.mesh.setMatrixAt(i, m4);
-      touched.add(t.flameMesh);
+      fm.mesh?.setMatrixAt(fm.ids[i]!, m4);
     }
-    for (const idx of touched) this.flames[idx].mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  /**
+   * Every prop kind's flames were their own instanced draw, three or four
+   * brazier shapes, campfires and lantern posts each paying a draw for a
+   * few flickering cones. One batch per flame material draws them all, each
+   * copy still posed on its own as it flickers.
+   */
+  private batchFlames(): void {
+    const byMat = new Map<THREE.Material, FlameMesh[]>();
+    for (const f of this.flames) {
+      let list = byMat.get(f.material);
+      if (!list) byMat.set(f.material, (list = []));
+      list.push(f);
+    }
+    const m4 = new THREE.Matrix4();
+    for (const [material, list] of byMat) {
+      const shapes = new Map<THREE.BufferGeometry, number>();
+      let copies = 0;
+      let verts = 0;
+      let indices = 0;
+      for (const f of list) {
+        copies += f.ids.length;
+        if (shapes.has(f.geometry)) continue;
+        shapes.set(f.geometry, -1);
+        verts += f.geometry.attributes.position!.count;
+        indices += f.geometry.index ? f.geometry.index.count : f.geometry.attributes.position!.count;
+      }
+      const mesh = new THREE.BatchedMesh(copies, verts, indices, material);
+      mesh.name = `flames:${material.name}`;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.renderOrder = 4;
+      // Additive light: the order they are drawn in changes nothing.
+      mesh.sortObjects = false;
+      for (const f of list) {
+        let shape = shapes.get(f.geometry)!;
+        if (shape < 0) shapes.set(f.geometry, (shape = mesh.addGeometry(f.geometry)));
+        for (let i = 0; i < f.ids.length; i++) {
+          const id = mesh.addInstance(shape);
+          f.ids[i] = id;
+          mesh.setMatrixAt(id, m4.fromArray(f.matrices, i * 16));
+        }
+        f.mesh = mesh;
+      }
+      mesh.computeBoundingSphere();
+      this.root.add(mesh);
+    }
   }
 
   // --- teardown -----------------------------------------------------------
@@ -2688,7 +2739,7 @@ export class DungeonMesh {
   dispose(): void {
     this.root.traverse((o) => {
       const im = o as THREE.InstancedMesh;
-      if (im.isInstancedMesh) {
+      if (im.isInstancedMesh || (o as THREE.BatchedMesh).isBatchedMesh) {
         im.dispose();
       }
     });

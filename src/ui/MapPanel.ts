@@ -71,7 +71,8 @@ export class MapPanel {
 
     this.stage = div('map-stage');
     this.canvas = document.createElement('canvas');
-    this.ctx = this.canvas.getContext('2d');
+    // On the CPU, like the minimap: redrawn every frame while open.
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     this.stage.appendChild(this.canvas);
 
     this.headerLabel = div('minimap-label');
@@ -198,7 +199,7 @@ export class MapPanel {
       this.canvas.height = want.h;
       this.canvas.style.width = `${w}px`;
       this.canvas.style.height = `${h}px`;
-      this.ctx = this.canvas.getContext('2d');
+      this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
       this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
       this.dirty = true;
     }
