@@ -16,8 +16,12 @@
  * a few frames later, rather than stalling them.
  *
  * A node graph reads the draw it is built for from the renderer (which target,
- * which extra outputs), so each is built with the target and outputs it was
- * asked for under put back for the moment. three's own background builder
+ * which extra outputs) and the scene (which lights), so each is built with
+ * the target, outputs and lights it was asked for under put back for the
+ * moment. three hands a scene its lights only while it draws it: built
+ * between frames, every map shader came out lit by the torches alone, with
+ * no moon, sun or sky fill, and stayed that way, the ground black wherever
+ * no torch reached. three's own background builder
  * reads whatever the renderer holds when it gets round to it, which built
  * shaders for the wrong target: pipelines that failed, or were built twice.
  *
@@ -31,8 +35,13 @@
 import * as THREE from 'three/webgpu';
 
 /** The parts of three's render objects and managers the gate reads. */
+interface LightsLike {
+  getLights(): THREE.Light[];
+  setLights(lights: THREE.Light[]): unknown;
+}
 interface RenderObjectLike {
   object: THREE.Object3D & { isQuadMesh?: boolean };
+  lightsNode: LightsLike;
   /** Set the first time the object's shader is asked for; null until then. */
   _nodeBuilderState: unknown;
 }
@@ -105,8 +114,8 @@ export class ShaderGate {
   sliceMs = 6;
   /** Pipelines the GPU is still making. */
   private making = 0;
-  /** Shaders to build, each with the draw state it was asked for under. */
-  private queue: Array<[RenderObjectLike, THREE.RenderTarget | null, unknown]> = [];
+  /** Shaders to build, each with the draw state and lights it was asked for under. */
+  private queue: Array<[RenderObjectLike, THREE.RenderTarget | null, unknown, THREE.Light[]]> = [];
   private queued = new WeakSet<RenderObjectLike>();
   private pumping = false;
   private readonly nodes: NodesLike;
@@ -184,7 +193,7 @@ export class ShaderGate {
   private ask(ro: RenderObjectLike): void {
     if (this.queued.has(ro)) return;
     this.queued.add(ro);
-    this.queue.push([ro, this.state._renderTarget, this.state._mrt]);
+    this.queue.push([ro, this.state._renderTarget, this.state._mrt, ro.lightsNode.getLights().slice()]);
     if (!this.pumping) {
       this.pumping = true;
       setTimeout(this.pump, 0);
@@ -196,13 +205,15 @@ export class ShaderGate {
     const st = this.state;
     const t0 = performance.now();
     while (this.queue.length > 0 && performance.now() - t0 < this.sliceMs) {
-      const [ro, target, mrt] = this.queue.shift()!;
+      const [ro, target, mrt, lights] = this.queue.shift()!;
       this.queued.delete(ro);
       if (this.built(ro)) continue;
       const keepTarget = st._renderTarget;
       const keepMrt = st._mrt;
+      const keepLights = ro.lightsNode.getLights();
       st._renderTarget = target;
       st._mrt = mrt;
+      ro.lightsNode.setLights(lights);
       try {
         this.nodes.getForRender(ro);
       } catch {
@@ -210,6 +221,7 @@ export class ShaderGate {
       } finally {
         st._renderTarget = keepTarget;
         st._mrt = keepMrt;
+        ro.lightsNode.setLights(keepLights);
       }
     }
     if (this.queue.length > 0) setTimeout(this.pump, 0);
