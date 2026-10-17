@@ -116,6 +116,13 @@ export interface GameEvents {
   'settings:changed': Record<string, never>;
   /** Asset preloading (`core/Assets.ts`): files landed so far of those requested. */
   'assets:progress': { loaded: number; total: number; label: string };
+  /**
+   * A town or map being built behind the loading curtain (speed stream):
+   * `stage` names the step now running ('meshing', 'world', 'hero',
+   * 'monsters', 'shaders', ...), `done` of `total` steps are finished. Fires
+   * at least at the start of each step; `done === total` means ready.
+   */
+  'load:progress': { stage: string; done: number; total: number };
 }
 
 type Handler<K extends keyof GameEvents> = (payload: GameEvents[K]) => void;

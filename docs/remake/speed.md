@@ -1,6 +1,6 @@
 # Stream: speed (Wave 4: smooth and fast on WebGPU)
 
-Status: not started
+Status: in progress
 
 Goal: high, steady frame rate and short loads with no frozen browser. The
 owner reports town loads of 20 to 25 s and map loads of 50 to 60 s with the
@@ -47,6 +47,23 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 ## Notes for resume
 
 - Known: map build froze the main thread about 12 s in this VM.
+- Baseline (milestone 1, commit aced25a, this VM, software WebGPU, other
+  agents sharing the 4 cores; `check-loadtime --no-select --depths=1,12,25
+  --profile --size=640x360`, cold profile). Time is from `goTo` to ten
+  frames after arrival; "block" is the longest main-thread task.
+  | load | time | longest block | long tasks (sum) | main thread idle |
+  | --- | --- | --- | --- | --- |
+  | town (new warden) | 46.9 s | 2589 ms | 32 (7.6 s) | 36.8 s |
+  | map depth 1 | 25.0 s | 3650 ms | 41 (6.5 s) | 16.1 s |
+  | map depth 12 | 26.8 s | 5258 ms | 34 (7.9 s) | ~17 s |
+  | map depth 25 | 39.8 s | 8327 ms | 58 (13.1 s) | 23.5 s |
+  Where it goes: the longest block is `DungeonScene.loadLevel` run in one
+  task (depth 25: 7.6 s, about 6.3 s of it baking creature meshes, `prim`
+  and `evalList` are the SDF field). Shader node graphs are another 3 to 5 s
+  of JS but already sliced (`ShaderGate.pump`). Most of the wall time is the
+  page idle, waiting on GPU pipelines (software here) and workers. Town:
+  the hero's gear meshed on the main thread (`refreshEquipmentVisuals`,
+  2.2 s) and the town build are the two big blocks.
 
 ## For the owner to test
 

@@ -12,7 +12,8 @@
  *
  * Reports, from navigation:
  *  - each boot-bar step and when the title scene is live
- *  - first town (a new warden, town entered) and first map (depth 1)
+ *  - first town (a new warden, town entered) and first map (depth 1, or
+ *    each of --depths=1,12,25 in turn)
  *  - every request with its start, end and size, so pack downloads show
  *  - main-thread long tasks over 50 ms in each phase, the biggest first
  *
@@ -33,6 +34,8 @@ const PORT = Number(process.env.SLAY_PORT ?? 4333);
 const MBPS = Number(arg('mbps') ?? 0);
 const WARM = process.argv.includes('--warm');
 const MAP = !process.argv.includes('--no-map');
+// --depths=1,12,25: load a map at each of these depths in turn (default 1).
+const DEPTHS = (arg('depths') ?? '1').split(',').map(Number);
 // --profile: a CPU profile of each phase, the heaviest functions listed.
 const PROFILE = process.argv.includes('--profile');
 // Seconds spent on the select screen before starting, as a player would.
@@ -189,12 +192,14 @@ async function visit(label) {
     }),
   );
   if (MAP) {
-    phases.push(
-      await phase('first map', async () => {
-        await window.SLAY.engine.goTo('dungeon', { depth: 1, seed: 4243 });
-        for (let i = 0; i < 10; i++) await new Promise((r) => requestAnimationFrame(r));
-      }),
-    );
+    for (const depth of DEPTHS) {
+      phases.push(
+        await phase(DEPTHS.length > 1 ? `map, depth ${depth}` : 'first map', async (d) => {
+          await window.SLAY.engine.goTo('dungeon', { depth: d, seed: 4243 });
+          for (let i = 0; i < 10; i++) await new Promise((r) => requestAnimationFrame(r));
+        }, depth),
+      );
+    }
     if (WALK) {
       phases.push(
         await phase('walk the map', async ({ stopsMax, frames }) => {
