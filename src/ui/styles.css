@@ -4144,12 +4144,19 @@ input.slider::-moz-range-thumb {
   border-radius: 20px 20px 4px 4px;
 }
 .potslot-art {
-  color: var(--life-hi);
-  filter: drop-shadow(0 0 8px rgba(255, 90, 66, 0.45));
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 6px rgba(255, 90, 66, 0.35));
 }
 .pot-mana .potslot-art {
-  color: var(--mana-hi);
-  filter: drop-shadow(0 0 8px rgba(116, 180, 255, 0.45));
+  filter: drop-shadow(0 0 6px rgba(116, 180, 255, 0.35));
+}
+/* The flask as the pack draws it, and the dash's painted icon. */
+.potslot-img {
+  width: 50px;
+  height: 50px;
+  margin-top: -6px;
+  pointer-events: none;
 }
 /* Distinct from the flasks beside it: this one is an ability, not a stock. */
 .pot-dash {
@@ -4159,12 +4166,15 @@ input.slider::-moz-range-thumb {
   border-radius: 4px;
 }
 .pot-dash .potslot-art {
-  color: #8fc4ff;
-  filter: drop-shadow(0 0 6px rgba(120, 180, 255, 0.5));
+  filter: none;
+}
+.pot-dash .potslot-img {
+  width: 34px;
+  height: 34px;
+  margin-top: 0;
 }
 .pot-dash.on-cd .potslot-art {
-  color: #55637a;
-  filter: none;
+  filter: grayscale(0.8) brightness(0.55);
 }
 .potslot-count {
   position: absolute;

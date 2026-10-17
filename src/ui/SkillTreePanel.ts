@@ -24,7 +24,6 @@ import {
   span,
   icon,
   iconSvg,
-  sigilSvg,
   classById,
   classAccent,
   skillById,
@@ -775,7 +774,9 @@ export class SkillTreePanel {
       if (id) {
         const d = skillById(id);
         const art = div('skill-hotart');
-        art.innerHTML = sigilSvg(id, classAccent(c.classId), 34);
+        // The skill's own painted icon, as on its node and the HUD hotbar.
+        const def = skillDefFor(id);
+        art.innerHTML = `<img class="skill-img" src="${skillIconUri(id, def?.effect, def?.damageType, def?.targeting === 'passive', def?.icon)}" alt="" style="width:36px;height:36px" draggable="false">`;
         cell.appendChild(art);
         cell.title = d?.name ?? id;
         cell.addEventListener('contextmenu', (e) => {

@@ -11,7 +11,7 @@
  * minimap redraw at 8Hz.
  */
 
-import type { DungeonLevel, ItemRarity, QuestInstance, SkillDef, StatKey } from '../types';
+import type { Character, DungeonLevel, ItemRarity, QuestInstance, SkillDef, StatKey } from '../types';
 import { events, type GameEvents } from '../core/Events';
 import { save } from '../core/Save';
 import { stackCount } from '../sim/Inventory';
@@ -25,7 +25,6 @@ import {
   span,
   icon,
   iconSvg,
-  sigilSvg,
   classAccent,
   skillById,
   safeBase,
@@ -43,7 +42,8 @@ import {
   ORNAMENT,
   type MinimapPip,
 } from './Widgets';
-import { skillIconUri, statusIconUri, warmItemIcons } from '../art/Icons';
+import { requestItemIcon, skillIconUri, statusIconUri, warmItemIcons } from '../art/Icons';
+import { pickPotion } from '../sim/Potions';
 import { setPrimaryAttack, setHotbarSlot } from '../sim/Character';
 import { SKILL_BY_ID } from '../data/skills';
 import { BOSSES } from '../data/bosses';
@@ -804,12 +804,13 @@ export class HUD {
     const potions = div('potions');
     this.potionLife = div('potslot pot-life ui-interactive');
     this.potionMana = div('potslot pot-mana ui-interactive');
-    for (const [node, ic, key] of [
-      [this.potionLife, 'potion', 'Q'],
-      [this.potionMana, 'potion', 'F'],
-    ] as Array<[HTMLDivElement, string, string]>) {
+    for (const [node, key] of [
+      [this.potionLife, 'Q'],
+      [this.potionMana, 'F'],
+    ] as Array<[HTMLDivElement, string]>) {
+      // The flask itself, as the pack draws it: the one a quick drink reaches for (`refreshPotions`).
       const art = div('potslot-art');
-      art.innerHTML = iconSvg(ic, { size: 24 });
+      art.innerHTML = '<img class="potslot-img" alt="" draggable="false">';
       const count = div('potslot-count', '0');
       const k = div('potslot-key', key);
       add(node, art, count, k);
@@ -827,7 +828,7 @@ export class HUD {
     // just the button randomly not working.
     this.dashSlot = div('potslot pot-dash ui-interactive');
     const dashArt = div('potslot-art');
-    dashArt.innerHTML = iconSvg('dash', { size: 24 });
+    dashArt.innerHTML = `<img class="potslot-img" src="${skillIconUri('dash', undefined, undefined, false, 'dash')}" alt="" draggable="false">`;
     const dashCd = div('hotslot-cd');
     const dashKey = div('potslot-key', 'SPC');
     add(this.dashSlot, dashArt, dashCd, div('hotslot-edge'), dashKey);
@@ -1359,6 +1360,21 @@ export class HUD {
     if (mc) mc.textContent = String(mana);
     this.potionLife.classList.toggle('is-empty', life === 0);
     this.potionMana.classList.toggle('is-empty', mana === 0);
+    this.potionArt(this.potionLife, c, 'life');
+    this.potionArt(this.potionMana, c, 'mana');
+  }
+
+  /** Shows the flask a quick drink of `kind` takes next, or the plainest one when there are none. */
+  private potionArt(slot: HTMLDivElement, c: Character, kind: 'life' | 'mana'): void {
+    const img = slot.querySelector<HTMLImageElement>('.potslot-img');
+    if (!img) return;
+    const baseId = attempt(() => pickPotion(c, kind, 0), null) ?? (kind === 'life' ? 'potion.heal.minor' : 'potion.mana.minor');
+    if (img.dataset.base === baseId) return;
+    img.dataset.base = baseId;
+    const item = c.inventory.find((it) => it?.baseId === baseId) ?? { uid: `hud:${baseId}`, baseId, name: baseId, rarity: 'normal', ilvl: 1, mods: [], upgrade: 0, sockets: [], value: 0 };
+    img.src = requestItemIcon(item, (uri) => {
+      if (img.dataset.base === baseId) img.src = uri;
+    });
   }
 
   // -- statuses ------------------------------------------------------------

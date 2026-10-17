@@ -328,7 +328,7 @@ export function icon(name: string, opts: IconOpts = {}): HTMLSpanElement {
 }
 
 // ---------------------------------------------------------------------------
-// Procedural sigils — deterministic per-skill emblems, no art assets.
+// Procedural crests — deterministic emblems, no art assets.
 // ---------------------------------------------------------------------------
 
 function hashStr(s: string): number {
@@ -338,61 +338,6 @@ function hashStr(s: string): number {
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h >>> 0;
-}
-
-/**
- * A unique, repeatable emblem for any string id. Used for skills so every node
- * in the tree reads as its own thing without a single image file.
- */
-export function sigilSvg(seed: string, accent: string, size = 40): string {
-  let h = hashStr(seed);
-  const rnd = (): number => {
-    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
-    return h / 4294967296;
-  };
-  const cx = 24;
-  const cy = 24;
-  const points = 3 + Math.floor(rnd() * 5); // 3..7
-  const rot = rnd() * Math.PI * 2;
-  const r1 = 9 + rnd() * 4;
-  const r2 = 15 + rnd() * 4;
-
-  let poly = '';
-  for (let i = 0; i < points; i++) {
-    const a = rot + (i / points) * Math.PI * 2;
-    const rr = i % 2 === 0 ? r2 : r1;
-    poly += `${i === 0 ? 'M' : 'L'}${(cx + Math.cos(a) * rr).toFixed(1)} ${(cy + Math.sin(a) * rr).toFixed(1)}`;
-  }
-  poly += 'Z';
-
-  // Two or three angular strokes across the middle read as a carved rune.
-  let runes = '';
-  const strokes = 2 + Math.floor(rnd() * 2);
-  for (let i = 0; i < strokes; i++) {
-    const a1 = rnd() * Math.PI * 2;
-    const a2 = a1 + 1.4 + rnd() * 2.4;
-    const rr = 5 + rnd() * 5;
-    runes +=
-      `<path d="M${(cx + Math.cos(a1) * rr).toFixed(1)} ${(cy + Math.sin(a1) * rr).toFixed(1)} ` +
-      `L${cx} ${cy} L${(cx + Math.cos(a2) * rr).toFixed(1)} ${(cy + Math.sin(a2) * rr).toFixed(1)}" ` +
-      `fill="none" stroke="${accent}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`;
-  }
-
-  const ring = rnd() > 0.45
-    ? `<circle cx="${cx}" cy="${cy}" r="${(r2 + 2.5).toFixed(1)}" fill="none" stroke="${accent}" stroke-width="1" opacity=".38"/>`
-    : '';
-
-  return (
-    `<svg class="sigil" width="${size}" height="${size}" viewBox="0 0 48 48" aria-hidden="true">` +
-    `<defs><radialGradient id="sg${h & 0xffff}" cx="50%" cy="42%" r="62%">` +
-    `<stop offset="0%" stop-color="${accent}" stop-opacity=".55"/>` +
-    `<stop offset="100%" stop-color="${accent}" stop-opacity="0"/></radialGradient></defs>` +
-    `<circle cx="${cx}" cy="${cy}" r="21" fill="url(#sg${h & 0xffff})"/>` +
-    ring +
-    `<path d="${poly}" fill="${accent}" fill-opacity=".16" stroke="${accent}" stroke-width="1.5" stroke-linejoin="round"/>` +
-    runes +
-    `</svg>`
-  );
 }
 
 /** Class emblem — larger, more ornate variant used on the selection cards. */
