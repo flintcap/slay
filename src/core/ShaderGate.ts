@@ -174,11 +174,21 @@ export class ShaderGate {
   /**
    * Resolves once nothing is being made, or at `until` (performance.now ms).
    * Always after a task at least, so a caller looping on it lets the page run.
+   *
+   * With `pipesMs`, resolves sooner: once every queued shader is built and
+   * the pipelines still being made have had that long. The next frame then
+   * asks for the pipelines of the shaders just built, and for whatever it
+   * could not reach before, while the GPU is still making the last ones;
+   * waiting for every pipeline first made each such round wait on the
+   * slowest pipeline of the one before.
    */
-  idle(until: number): Promise<void> {
+  idle(until: number, pipesMs = Infinity): Promise<void> {
     return new Promise((resolve) => {
+      let drained = -1;
       const check = (): void => {
-        if (!this.busy || performance.now() >= until) resolve();
+        const now = performance.now();
+        if (this.queue.length === 0 && drained < 0) drained = now;
+        if (!this.busy || now >= until || (drained >= 0 && now - drained >= pipesMs)) resolve();
         else setTimeout(check, 16);
       };
       setTimeout(check, 0);

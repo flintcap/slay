@@ -335,6 +335,12 @@ function pixelRatioFor(q: QualityProfile, dyn = 1): number {
 /** The bloom and AO passes draw at this share of the frame's width and height. */
 const POST_SCALE = 0.5;
 
+/**
+ * Behind the load curtain, how long the pipelines still being made may hold
+ * up the next warm frame once every shader is built (ms; `ShaderGate.idle`).
+ */
+const WARM_PIPES_MS = 250;
+
 interface ShadowBase {
   size: number;
   casts: boolean;
@@ -991,7 +997,7 @@ export class Renderer {
         if (!gate || gate.skipped === 0 || performance.now() >= until) return;
         // Left out with nothing being made: a shader that failed. It never comes.
         if (!gate.busy) return;
-        await gate.idle(until);
+        await gate.idle(until, WARM_PIPES_MS);
       }
     } finally {
       if (gate) gate.sliceMs = 6;
