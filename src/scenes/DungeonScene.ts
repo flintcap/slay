@@ -1589,6 +1589,8 @@ export class DungeonScene extends GameScene {
       this.player.alive,
       this.player,
     );
+    // Biome motes fall round the hero, not round the map's centre.
+    this.fx.setFocus(this.player.position.x, this.player.position.y, this.player.position.z);
     this.fx.update(dt, elapsed);
     this.decals.update(dt);
 

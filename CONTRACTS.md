@@ -1245,6 +1245,15 @@ export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | nul
   outdoor, variant, rng)`, seeded per level): snow, rain, ash, cinders,
   sand, fog, drips; sky kinds only under open sky. It emits through
   `FXSystem.emit`, so `fxScale` and the pressure throttle apply.
+- Run themes (mapvariety): `src/world/Themes.ts`. About one map in three
+  from tier 3 rolls `run.runTheme` (also on every level): flooded,
+  overgrown, burnt or haunted. In zones whose biome suits it
+  (`themeFits`), it adds prop kinds to the dressing pools, adds weather,
+  and weights its favoured monster families (a few from its guest biome may
+  join the pool). It never changes the monster budget, ranks, affixes,
+  spawn places or monster numbers (`node tools/check-themes.mjs`).
+  `runTheme(id).light = { tint, strength }` is optional for looks.
+  `forceRunTheme(id | null | undefined)` is for checkers.
 
 ```ts
 // src/world/MapGen.ts

@@ -35,25 +35,23 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
   quality level, built on the particle kit in `src/fx/kit` (use it, do not
   change it; ask effects in `effects.md` notes if you need more).
   (mapvariety: weather per zone, snow, rain, ash and fog)
-- [ ] 6. Run themes: each run may roll a theme (flooded, overgrown, burnt,
+- [x] 6. Run themes: each run may roll a theme (flooded, overgrown, burnt,
   haunted) that changes props, light tint and monster mix weights, never
   monster counts or strength down.
+  (mapvariety: run themes, flooded, overgrown, burnt and haunted)
 - [ ] 7. Map polish: floating or mismatched props, seams, empty dead ends.
 - [ ] 8. Handover.
 
 ## Next up
 
 1. Do Setup in PROTOCOL.md.
-2. Milestone 6: run themes. Each run may roll a theme (flooded, overgrown,
-   burnt, haunted) that changes props, light tint and monster mix weights,
-   never monster counts or strength down. Read first: `Biomes.ts` VARIANTS
-   (per-biome art and dressing patches, `level.variant`), how
-   `dressingFor(biome, variant)` and `placeProps` use it, how the run rolls
-   its variant (grep `variant` in `MapGen.ts`/`DungeonGen.ts`), and how
-   monster pools are picked (`placeSpawns`, `families`). A theme is new
-   data in `Biomes.ts` (ours: new entries and themes) plus a field on the
-   run/level (types.ts, additive). Light tint: an optional field looks may
-   read (PLAN.md "Wave 4 file ownership, wave two"); never require it.
+2. Milestone 7: map polish. Floating or mismatched props, seams, empty dead
+   ends. Cheapest first: run `node tools/run-checks.mjs --only=props,grid,
+   maps,density,dressing,roof` and the `variety` report; look for dead-end
+   rooms with nothing in them (`check-maps --dump=...`), props of one biome
+   standing in another zone across a seam, and props on the new shapes'
+   bridges, crossings and ramps (`world/zones/Shapes.ts`). Fix in
+   `Props.ts` / `zones/*`. One small contact sheet at most.
 
 ## Notes for resume
 
@@ -101,6 +99,31 @@ Checkers for maps (headless): `maps` (every generator x biome, hard rules:
 connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
 `grid`, `openness`, `roomrules`, `density`, `dressing`, `props`,
 `variants`. Browser: `map`, `mapflow`, `stairs`, `walk`.
+
+### Milestone 6 notes
+
+- `src/world/Themes.ts` (new file rather than `Biomes.ts`, to stay out of
+  looks' way there): `RUN_THEMES` with name, blurb, biomes it skips,
+  dressing additions, favoured families with a weight, a guest biome,
+  weather under sky and under a roof, and a light tint.
+  `RUN_THEME_CHANCE` 0.35 from tier 3; picked only if it suits at least
+  half the map's zones.
+- Rolled in `generateRun` on `streamFor(seed, 'runTheme:<depth>')`, carried
+  as `run.runTheme` and `level.runTheme` (types.ts), via `AreaContext`.
+- Monster mix (`placeSpawns`): weighted pick by family in fitting zones,
+  up to 3 guests of favoured families from the guest biome (own stream).
+  Also changed: a pack member's kind is now rolled even for a named leader,
+  so a different leader never shifts the rolls of the packs after it. That
+  moved which monsters appear on existing seeds, not how many or how strong.
+- Props: `themedDressing` adds pools in fitting zones. Weather:
+  `withTheme` lays the theme's weather over the zone's (heavier wins).
+- Light tint: asked looks in `looks.md` "Notes for resume"; nothing reads
+  it yet. No screen shows the theme name yet (ui is done): left for later.
+- Also fixed the request I left for effects (they handed over first): the
+  biome motes now follow the hero (`fx.setFocus` before `fx.update`).
+- New checker `node tools/check-themes.mjs`: same count, ranks, affixes and
+  places as without the theme, favoured families up, props show, no sky
+  weather under a roof; themes roll on about 1 map in 3.
 
 ### Milestone 5 notes
 
@@ -191,6 +214,13 @@ connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
   the ash wastes or hell (ash and cinders), a crypt (low fog). It should
   feel heavy and grim, never cute; it should fade when you walk into a zone
   with other weather, and stay smooth on Low quality.
+- Run themes: play several maps from tier 3. About one in three should feel
+  changed all through: drowned (reeds, shells, drips, rain), root-choked
+  (moss, ferns, roots on the walls), burnt out (ash, scorch marks, falling
+  cinders) or restless (bones, chains, fog, more undead). Monster numbers
+  should feel the same as an ordinary map.
+- Biome motes (dust, spores, snow) now drift round the hero everywhere on
+  the map, not only near its middle.
 
 ## Handover
 

@@ -46,6 +46,15 @@ before the first browser check. Real-GPU frame rate goes to the owner.
 
 ## Notes for resume
 
+### From mapvariety: run theme light tint (optional to use)
+
+- A map may carry a run theme: `level.runTheme` (`'flooded' | 'overgrown' |
+  'burnt' | 'haunted'`, or undefined). `runTheme(level.runTheme)?.light` in
+  `src/world/Themes.ts` is `{ tint, strength }` (cold blue-green, moss
+  green, ember orange, pale violet; strength 0.3 to 0.4). It applies only
+  to zones whose biome suits the theme: `themeFits(theme, zone.biome)`.
+  Read it if you like (a grade or key light tint per zone); nothing needs it.
+
 ## For the owner to test
 
 (Add one line per item: what to try and what should happen.)

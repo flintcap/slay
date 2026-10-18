@@ -164,6 +164,8 @@ Weakest, worst first:
   (`this.fx.update(dt, elapsed, this.camera)`), or call
   `fx.setFocus(hero x, y, z)` each frame. Weather (`src/world/Weather.ts`)
   does its own emission round the hero and does not need this.
+- Done by mapvariety after effects handed over: `DungeonScene` now calls
+  `fx.setFocus(hero)` just before `fx.update` (one line).
 
 ## For the owner to test
 
