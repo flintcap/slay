@@ -38,12 +38,21 @@ interface FlashSlot {
   peak: THREE.Color;
   tint: THREE.Color;
   strength: number;
+  /** A death look: cool to `end` and hold it instead of handing back. */
+  hold: boolean;
+  end: THREE.Color;
+  /** Seconds into a death look when the body is hidden (Infinity: never). */
+  vanishAt: number;
+  hidden: boolean;
 }
 
 /** Flashing more bodies than this at once costs more than it shows. */
 const MAX_ACTIVE = 24;
+/** Death looks held at once: they last a second, so they leave room for hits. */
+const MAX_HOLDS = 12;
 
 const _c = new THREE.Color();
+const NO_MESHES: THREE.Mesh[] = [];
 const WHITE = new THREE.Color(1, 1, 1);
 
 /** The flat flash material: each mesh's own `userData.slFlash` colour. */
@@ -62,10 +71,22 @@ function skipMaterial(m: THREE.Material): boolean {
   return false;
 }
 
+/** What a vanished body wears: three.js draws nothing with an invisible material, shadows included. */
+function goneMaterial(): THREE.MeshBasicNodeMaterial {
+  const m = new THREE.MeshBasicNodeMaterial();
+  m.name = 'hitFlashGone';
+  m.visible = false;
+  return m;
+}
+
 export class HitFlash {
   private active = new Map<THREE.Object3D, FlashSlot>();
   private meshCache = new WeakMap<THREE.Object3D, THREE.Mesh[]>();
   private readonly mat = flashMaterial();
+  private readonly gone = goneMaterial();
+  /** Finished slots, reused so a hit allocates nothing. */
+  private spare: FlashSlot[] = [];
+  private holds = 0;
 
   /** Bodies flashing right now, for budget checks and debug readouts. */
   get count(): number {
@@ -82,6 +103,8 @@ export class HitFlash {
   flash(root: THREE.Object3D, color: number, strength = 0.6, duration = 0.08): void {
     const existing = this.active.get(root);
     if (existing) {
+      // A body already wearing its death look keeps it.
+      if (existing.hold) return;
       // Re-hit while flashing: restart and keep the brighter of the two.
       existing.left = Math.max(existing.left, duration);
       existing.total = Math.max(existing.total, duration);
@@ -94,17 +117,29 @@ export class HitFlash {
     if (meshes.length === 0) return;
 
     const mat = this.mat;
-    const slot: FlashSlot = {
+    const slot: FlashSlot = this.spare.pop() ?? {
       root,
       meshes,
-      originals: new Array(meshes.length),
+      originals: [],
       color: new THREE.Color(),
-      left: duration,
-      total: duration,
+      left: 0,
+      total: 0,
       peak: new THREE.Color(),
       tint: new THREE.Color(),
-      strength,
+      strength: 0,
+      hold: false,
+      end: new THREE.Color(),
+      vanishAt: Infinity,
+      hidden: false,
     };
+    slot.root = root;
+    slot.meshes = meshes;
+    slot.originals.length = meshes.length;
+    slot.left = duration;
+    slot.total = duration;
+    slot.hold = false;
+    slot.vanishAt = Infinity;
+    slot.hidden = false;
     this.setPeak(slot, color, strength);
 
     for (let i = 0; i < meshes.length; i++) {
@@ -126,6 +161,32 @@ export class HitFlash {
     slot.strength = strength;
     const push = 1.2 + strength * 1.6;
     slot.peak.setRGB(1, 1, 1).lerp(_c, 0.28).multiplyScalar(push);
+  }
+
+  /**
+   * A body's death look: a flash of `peak` that cools to `end` and holds it
+   * for `duration` seconds (charred black, frosted, rotted green, shadow), and
+   * from `vanishAt` seconds on the body is not drawn at all (shattered,
+   * unmade). The body is handed back untouched at the end, or by `release`
+   * and `clear`. Returns false when the budget is full and nothing changed.
+   */
+  deathLook(root: THREE.Object3D, peak: number, end: number, duration: number, vanishAt = Infinity): boolean {
+    let slot = this.active.get(root);
+    if (slot?.hold) return true;
+    if (this.holds >= MAX_HOLDS) return false;
+    if (!slot) {
+      this.flash(root, peak, 1, duration);
+      slot = this.active.get(root);
+      if (!slot) return false;
+    }
+    this.setPeak(slot, peak, 1);
+    slot.hold = true;
+    slot.end.setHex(end);
+    slot.left = duration;
+    slot.total = duration;
+    slot.vanishAt = vanishAt;
+    this.holds++;
+    return true;
   }
 
   /** Solid meshes under a root, cached per root for the life of the body. */
@@ -212,6 +273,16 @@ export class HitFlash {
         this.restore(slot);
         continue;
       }
+      if (slot.hold) {
+        // A death look: the flash for a beat, a quick cool to the end colour,
+        // then held while the body falls.
+        const age = slot.total - slot.left;
+        if (age < 0.08) slot.color.copy(slot.peak);
+        else if (age < 0.38) slot.color.copy(slot.peak).lerp(slot.end, (age - 0.08) / 0.3);
+        else slot.color.copy(slot.end);
+        if (!slot.hidden && age >= slot.vanishAt) this.hide(slot);
+        continue;
+      }
       // Hold the peak for the first third, then cool toward the element's own
       // colour at half brightness: a snap and a short afterglow.
       const t = 1 - slot.left / Math.max(1e-4, slot.total);
@@ -230,15 +301,36 @@ export class HitFlash {
     if (slot) this.restore(slot);
   }
 
+  /** Stops drawing a body: its meshes still wearing the flash now wear nothing. */
+  private hide(slot: FlashSlot): void {
+    slot.hidden = true;
+    const gone = this.gone;
+    for (const m of slot.meshes) {
+      const cur = m.material;
+      if (Array.isArray(cur)) {
+        if (cur.every((x) => x === this.mat)) m.material = cur.map(() => gone);
+      } else if (cur === this.mat) m.material = gone;
+    }
+  }
+
+  private isOurs(m: THREE.Material): boolean {
+    return m === this.mat || m === this.gone;
+  }
+
   private restore(slot: FlashSlot): void {
     for (let i = 0; i < slot.meshes.length; i++) {
       const m = slot.meshes[i]!;
       const cur = m.material;
-      const ours = Array.isArray(cur) ? cur.every((x) => x === this.mat) : cur === this.mat;
+      const ours = Array.isArray(cur) ? cur.every((x) => this.isOurs(x)) : this.isOurs(cur);
       // Something else replaced the material mid-flash: theirs wins.
       if (ours) m.material = slot.originals[i]!;
     }
     this.active.delete(slot.root);
+    if (slot.hold) this.holds = Math.max(0, this.holds - 1);
+    slot.hold = false;
+    slot.originals.fill(null as unknown as THREE.Material);
+    slot.meshes = NO_MESHES;
+    if (this.spare.length < MAX_ACTIVE) this.spare.push(slot);
   }
 
   /** Restores every flashing body. Call before a scene tears its meshes down. */
@@ -249,5 +341,6 @@ export class HitFlash {
   dispose(): void {
     this.clear();
     this.mat.dispose();
+    this.gone.dispose();
   }
 }

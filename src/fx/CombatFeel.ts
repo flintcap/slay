@@ -27,6 +27,7 @@ import type { DamagePacket, DamageType, MonsterRank } from '../types';
 import { audio } from '../audio/Audio';
 import { events } from '../core/Events';
 import { ELEMENTS, type EffectSystem } from './Effects';
+import './Grit';
 import type { CameraRig } from './CameraRig';
 import { HitFlash } from './HitFlash';
 
@@ -58,6 +59,8 @@ export interface FeelTarget {
   readonly sizeScale?: number;
   readonly motionOverride?: unknown;
   readonly affixes?: ReadonlyArray<{ behavior?: string }>;
+  /** Running statuses, for the death looks (a frozen body shatters). */
+  hasStatus?(id: string): boolean;
 }
 
 /** The weapon a melee blow came from, for its sound. */
@@ -150,14 +153,39 @@ const WEAPON_SOUND: Record<WeaponSound, string> = {
 };
 
 /** The burst a kill throws, by the element that delivered it. */
-const DEATH_BURST: Record<DamageType, string> = {
-  physical: 'gib',
-  fire: 'explosion',
-  cold: 'frost',
-  lightning: 'shock',
-  poison: 'poison',
-  arcane: 'void',
+/**
+ * How a body comes apart, by the element that killed it: the burst, the
+ * floor mark, and the colour the body cools to as it falls (null: its own).
+ * `vanish` hides the body that many seconds in, `after` is a second burst
+ * then (what is left falls in).
+ */
+interface DeathLook {
+  burst: string;
+  mark: string | null;
+  peak: number;
+  end: number | null;
+  vanish?: number;
+  after?: string;
+}
+const DEATH_LOOK: Record<DamageType, DeathLook> = {
+  // Opened by steel: meat and blood (the body's own burst comes from Enemy.die).
+  physical: { burst: 'gib', mark: null, peak: 0xffffff, end: null },
+  // Burned to a husk that crumbles to ash.
+  fire: { burst: 'death.ash', mark: 'scorch', peak: 0xffb060, end: 0x1a100a, after: 'death.crumble' },
+  // Frosted over as it drops.
+  cold: { burst: 'frost', mark: 'ice', peak: 0xd8f6ff, end: 0x86b4d8 },
+  // Cooked black, arcs crawling as it falls.
+  lightning: { burst: 'death.cook', mark: 'fork', peak: 0xeaf0ff, end: 0x1c1a24 },
+  // Rots green and sloughs.
+  poison: { burst: 'death.melt', mark: 'acid', peak: 0xdcff6a, end: 0x24340e },
+  // Darkens to a shadow and comes apart.
+  arcane: { burst: 'death.shadow', mark: 'sigil', peak: 0xe0a0ff, end: 0x0c0614, vanish: 0.55, after: 'death.unmake' },
 };
+/** A frozen (or stone) body struck dead shatters, whatever killed it. */
+const SHATTER: DeathLook = { burst: 'death.shatter', mark: 'ice', peak: 0xeaf8ff, end: 0xa8d0ec, vanish: 0.05 };
+/** Seconds a death look holds: the corpse is gone by then (Enemy.tickDeath). */
+const DEATH_HOLD = 1.25;
+
 
 const RANK_WEIGHT: Record<MonsterRank, number> = {
   normal: 0,
@@ -187,6 +215,8 @@ export class CombatFeel {
   private kills: number[] = [];
   private multiFiredAt = -99;
   private nextPlayerHurt = 0;
+  /** When the next short element mark may go down under a struck body. */
+  private nextMark = 0;
   private nextHeartbeat = 0;
 
   /** Event subscriptions, dropped in `dispose`. */
@@ -345,6 +375,15 @@ export class CombatFeel {
     }
     if (crit) audio.play('crit', { x, z });
 
+    // --- mark ---------------------------------------------------------------
+    // A crit or a heavy elemental blow leaves a short mark under the body
+    // (steel is marked by the body's own blood, in Enemy.takeDamage).
+    if (!physical && (crit || r.kind === 'heavy') && r.kind !== 'proc' && r.kind !== 'beam' && this.clock >= this.nextMark) {
+      this.nextMark = this.clock + 0.06;
+      const size = Math.max(0.8, Math.min(1.8, target.sizeScale ?? 1));
+      this.effects.decals.add(el.decal, x, z, (crit ? 0.55 : 0.45) * size, undefined, 5);
+    }
+
     if (killed) this.onKill(target, type, x, z, dx, dz, r);
     else this.voice(target, 'hurt', x, z, 0.32);
   }
@@ -357,15 +396,32 @@ export class CombatFeel {
     const y = 0.7 * scale;
 
     this.effects.flash(x, y + 0.3, z, el.light, 7 + weight * 5, 6 + weight * 2, 0.22);
-    // The element decides how a body comes apart: fire bursts, frost shatters,
-    // lightning cooks off, poison blooms. Physical throws meat.
-    const burst = DEATH_BURST[type] ?? 'gib';
-    this.effects.fx.burst(burst, x, y, z, {
-      scale: scale * (type === 'fire' ? 0.45 : 0.9),
-      count: Math.round(14 + weight * 6),
+    // The element decides how a body comes apart: burned to ash, frosted,
+    // cooked, rotted, unmade into shadow; steel throws meat. A frozen body
+    // shatters whatever struck it. Bosses die their own way (Boss.die).
+    const frozen = !target.isBoss && (target.hasStatus?.('frozen') === true || target.hasStatus?.('petrified') === true);
+    const look = frozen ? SHATTER : DEATH_LOOK[type] ?? DEATH_LOOK.physical;
+    const big = scale >= 1.4 || weight >= 2;
+    this.effects.fx.burst(look.burst, x, y, z, {
+      scale: scale * (frozen ? 1 : 0.9),
+      count: Math.round(14 + weight * 6 + (big ? 6 : 0)),
       dir: dx !== 0 || dz !== 0 ? _dir.set(dx, 0.4, dz) : undefined,
     });
-    if (type !== 'physical') this.effects.fx.burst('gib', x, y, z, { scale: scale * 0.7, count: 8 });
+    if (type === 'physical' && big && !frozen) this.effects.fx.burst('death.blood', x, y, z, { scale, dir: dx !== 0 || dz !== 0 ? _dir.set(dx, 0.4, dz) : undefined });
+    if (look.mark) this.effects.decals.add(look.mark, x, z, 0.7 * scale);
+    if (look.end !== null && !target.isBoss) this.flash.deathLook(target.root, look.peak, look.end, DEATH_HOLD, look.vanish);
+    const after = look.after;
+    if (after) {
+      const at = look.vanish ?? 0.75;
+      this.effects.delay(at, () => this.effects.fx.burst(after, x, 0.5 * scale, z, { scale }));
+    }
+    // A big body lands: grit thrown out where it hits the floor.
+    if (big && !look.vanish) {
+      this.effects.delay(0.7, () => {
+        this.effects.fx.burst('death.thud', x, 0.15, z, { scale });
+        this.addTrauma(0.06 + weight * 0.02);
+      });
+    }
 
     audio.play('kill.confirm', { x, z, volume: 0.9 + weight * 0.1 });
     this.voice(target, 'death', x, z, 1, true);
@@ -580,7 +636,9 @@ export function feelSoundIds(families: readonly string[]): string[] {
 
 /** Every particle emitter this module can ask for. */
 export function feelEmitterIds(): string[] {
-  return [...new Set([...Object.values(DEATH_BURST), 'gib', 'sparks', 'dodge', 'shock'])];
+  const looks = [...Object.values(DEATH_LOOK), SHATTER];
+  const ids = looks.flatMap((l) => (l.after ? [l.burst, l.after] : [l.burst]));
+  return [...new Set([...ids, 'death.blood', 'death.thud', 'gib', 'sparks', 'dodge', 'shock'])];
 }
 
 /** The per-kind tuning tables, for the static check. */

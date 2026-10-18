@@ -171,6 +171,9 @@ const HIT: Record<School, Layer[]> = {
     L({ sprite: SPRITE.rune, variants: 4, count: 2, speed: [0.2, 0.6], up: 0.6, size: [0.32, 0.46], grow: 1.3, life: [0.4, 0.6], heat: [1, 0.3], emit: 0.9, occl: 0, spin: 2 }),
     L({ sprite: SPRITE.ring, count: 1, speed: [0, 0], radius: 0, size: [0.4, 0.4], grow: 4, life: [0.28, 0.32], heat: [1, 0.2], emit: 0.8, occl: 0, flat: true, fade: 1.2 }),
     L({ sprite: SPRITE.gas, count: 2, speed: [0.2, 0.7], radius: 0.2, size: [0.55, 0.8], grow: 1.6, life: [0.7, 1.1], heat: [0.4, 0], emit: 0.5, occl: 0.4, drag: 2, turb: 0.3 }),
+    // The shadow in it: black wisps pulled into the wound, so arcane reads as
+    // dark magic and not as a bright festive sparkle.
+    L({ sprite: SPRITE.gas, count: 3, ramp: [0x4a2a6a, 0x160c24, 0x040208], speed: [1.2, 2], radius: 0.8, converge: true, size: [0.35, 0.55], grow: 0.5, life: [0.28, 0.4], heat: [0.4, 0], emit: 0.2, occl: 0.7, spin: 2, tint: false }),
   ],
   bone: [
     flash(0.6, 0.1, 0.6),
@@ -377,10 +380,17 @@ Object.assign(E, {
       L({ sprite: SPRITE.shock, count: 1, ramp: R_GOLD, speed: [0, 0], radius: 0, size: [0.8, 0.8], grow: 5, life: [0.6, 0.65], heat: [1, 0.2], emit: 0.8, occl: 0, flat: true, fade: 1.2 }),
     ],
   },
+  // A crit must read at a glance from the game camera: a white star with
+  // long rays, two crossed cuts and a flat ring, all of it gone in a tenth of
+  // a second. The single-sprite layers always play, however busy the fight.
   crit: {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.flare, count: 1, ramp: R_WHITE, speed: [0, 0], radius: 0, size: [1.2, 1.4], grow: 1.3, life: [0.13, 0.16], heat: [1, 0.5], emit: 1.0, occl: 0, spin: 1 }),
+      L({ sprite: SPRITE.flare, count: 1, ramp: R_WHITE, speed: [0, 0], radius: 0, size: [1.5, 1.7], grow: 1.25, life: [0.1, 0.13], heat: [1, 0.5], emit: 1.0, occl: 0, spin: 1 }),
+      L({ sprite: SPRITE.slash, count: 2, ramp: R_WHITE, speed: [0, 0], radius: 0, size: [1.4, 1.6], grow: 1.2, life: [0.07, 0.1], heat: [1, 0.4], emit: 1.0, occl: 0, spin: 0.6, fade: 2.2 }),
+      L({ sprite: SPRITE.shock, count: 1, ramp: R_GOLD, speed: [0, 0], radius: 0, size: [0.5, 0.5], grow: 4, life: [0.2, 0.24], heat: [1, 0.3], emit: 0.8, occl: 0, flat: true, fade: 1.3 }),
+      // Rays: few, fast and very long, so the star has points.
+      L({ sprite: SPRITE.spark, count: 12, ramp: R_GOLD, speed: [14, 22], size: [0.05, 0.08], grow: 0.3, life: [0.07, 0.13], heat: [1, 0.7], emit: 1.4, occl: 0, drag: 6, stretch: 3.2, fade: 1.4 }),
       L({ sprite: SPRITE.spark, count: 10, ramp: R_GOLD, speed: [6, 12], size: [0.04, 0.07], life: [0.15, 0.3], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: -10, drag: 4, stretch: 1.8 }),
     ],
   },
