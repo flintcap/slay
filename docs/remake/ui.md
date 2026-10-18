@@ -64,7 +64,7 @@ Nothing: every milestone is ticked. See Handover.
 - Request for the TownScene owner: `src/scenes/TownScene.ts` plays
   `audio.play('ui.open')` right before it opens a station panel, so the
   open sound plays twice (it did before too, via the old ui:open hook).
-  Deleting that one line fixes it.
+  Deleting that one line fixes it. (Done by Claude after handover.)
 - Painted skin: `src/ui/Skin.ts` loads `textures/ui/leather.webp` and
   `scratched-metal.webp` as blob URLs into `--tex-leather/--tex-metal`;
   `--skin-leather/--skin-metal` are background layers blended soft-light
@@ -180,8 +180,6 @@ What exists now, and where:
 
 Left for `finish`:
 
-- TownScene plays `audio.play('ui.open')` before opening a station panel,
-  so that open sound plays twice (one line to delete, not a ui file).
 - A gamepad drives menus only; there is no gamepad control of the hero.
 - Everything under "For the owner to test" was checked in the UI lab or by
   reading code, not in a full game run.

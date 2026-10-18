@@ -295,7 +295,6 @@ export class TownScene extends GameScene {
     const npc = best ? (best.id.startsWith('talk:') ? best.id.slice(5) : (npcForStation(best.id)?.id ?? null)) : null;
     this.engine.renderer.setOutline(npc ? this.town.residents.rootOf(npc) : null, 0xffc45a);
     if (best && input.wasPressed('interact')) {
-      audio.play('ui.open');
       // The keeper of a station talks first; their trade is the first option.
       if (!openDialogueFor(best.id)) events.emit('ui:open', { panel: best.panel });
       this.engagedNpc = best.id.startsWith('talk:') ? best.id.slice(5) : (npcForStation(best.id)?.id ?? null);
