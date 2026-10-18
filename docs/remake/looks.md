@@ -1,6 +1,6 @@
 # Stream: looks (Wave 4: light, shadow, air and colour)
 
-Status: not started
+Status: in progress
 
 Goal: every place looks rich, dark and gritty, like a grim action RPG: deep
 shadows, warm torch pools, cold air, wet and icy surfaces that catch light.

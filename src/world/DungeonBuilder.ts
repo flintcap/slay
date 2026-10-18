@@ -39,7 +39,7 @@ import {
   isWalkableValue,
 } from './Layouts';
 import { buildTerrain, isOutdoorLevel, type TerrainBuild } from './Terrain';
-import { lightDirection, lightMood } from './Lighting';
+import { flameColour, lightDirection, lightMood } from './Lighting';
 import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './DungeonGen';
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
 
@@ -2656,7 +2656,10 @@ export class DungeonMesh {
         continue;
       }
       const t = this.torches[ti];
-      l.intensity = t.intensity * this.flickerAt(t, elapsed);
+      const f = this.flickerAt(t, elapsed);
+      l.intensity = t.intensity * f;
+      // A dipping flame burns redder (`flameColour`, warm lights only).
+      flameColour(t.color, f, l.color);
     }
   }
 

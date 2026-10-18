@@ -23,10 +23,18 @@
  * twelve per shader.
  */
 import * as THREE from 'three/webgpu';
-import { If, Loop, getDistanceAttenuation, positionView, renderGroup, smoothstep, storage, uniform, vec3 } from 'three/tsl';
+import { If, Loop, float, positionView, renderGroup, smoothstep, storage, uniform, vec3 } from 'three/tsl';
 
 /** Most packed lights drawn at once: the lit ones whose reach touches the view. */
 const MAX = 64;
+/**
+ * The size of a flame, metres. Light falls off from a ball this wide rather
+ * than from a point: a point light's inverse square ran to eleven times its
+ * one-metre brightness a hand's width from the torch, which burned the wall
+ * behind every sconce to flat white. Past a metre it barely changes.
+ */
+const FLAME_RADIUS = 0.4;
+
 /** vec4 slots per light: colour and reach, view position and decay, spot direction, cone. */
 const STRIDE = 4;
 
@@ -135,7 +143,12 @@ class PackedLightsNode extends THREE.Node {
       // in reach of only a torch or two.
       If(reach.equal(0).or(toLight.dot(toLight).lessThan(reach.mul(reach))), () => {
         const lightDirection = toLight.normalize().toVar();
-        const fall = getDistanceAttenuation({ lightDistance: toLight.length(), cutoffDistance: reach, decayExponent: posDecay.w });
+        // 1 / (d² + r²) raised to decay / 2, faded out smoothly to nothing at
+        // the light's reach (the same window as three's own falloff).
+        const d2 = toLight.dot(toLight);
+        const core = d2.add(FLAME_RADIUS * FLAME_RADIUS).pow(posDecay.w.mul(-0.5));
+        const edge = d2.div(reach.mul(reach).max(1e-4)).pow2().oneMinus().clamp().pow2();
+        const fall = reach.greaterThan(0).select(core.mul(edge), core.mul(float(1)));
         const cone = this.array.element(base.add(3));
         const lightColor = colorReach.xyz.mul(fall).mul(smoothstep(cone.x, cone.y, lightDirection.dot(spot.xyz))).toVar();
         ctx.lightingModel.direct(

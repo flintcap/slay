@@ -6,6 +6,7 @@ import {
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
+import { sss } from 'three/addons/tsl/display/SSSNode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import './NodeNames';
 import './ShadowNodes';
@@ -296,6 +297,13 @@ export interface QualityProfile {
    * and the glint on metal hold still instead of crawling. Replaces SMAA.
    */
   taa: boolean;
+  /**
+   * Contact shadows from the sun or moon: a short screen-space march toward
+   * the light from every pixel, so a boot, a crate or a root sits on the
+   * ground instead of floating over the shadow map's soft blur. Outdoors and
+   * in the town only (indoor levels have no shadow-casting sun).
+   */
+  contactShadows: boolean;
   pixelRatioCap: number;
   anisotropy: number;
   /** Multiplier on particle budgets and decal counts. */
@@ -321,10 +329,10 @@ export interface QualityProfile {
 // ratio cap and a render scale). High is the intended look. The auto mode
 // (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
-  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
-  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
-  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
+  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
+  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
+  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
+  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
 };
 
 /** Pixel ratio for a profile on this screen, times the auto mode's resolution step. */
@@ -360,6 +368,12 @@ export class NoWebGPUError extends Error {
 type BloomNode = ReturnType<typeof bloom>;
 type AONode = ReturnType<typeof ao>;
 type TRAANode = ReturnType<typeof traa>;
+type SSSNode = ReturnType<typeof sss>;
+
+/** How dark a contact shadow makes the pixel it falls on (0..1), while a sun is up. */
+const CONTACT_STRENGTH = 0.42;
+/** 0 while the scene has no sun or moon casting shadows: the pass is skipped. */
+const uContact = uniform(0);
 
 /**
  * 1 on the meshes of the outlined body (`Renderer.setOutline`), read per
@@ -432,6 +446,15 @@ export class Renderer {
   private aoNode: AONode | null = null;
   private bloomNode: BloomNode | null = null;
   private traaNode: TRAANode | null = null;
+  private sssNode: SSSNode | null = null;
+  /**
+   * Stands in for the scene's sun or moon in the contact-shadow pass, so the
+   * chain is not rebuilt for every new level's light: its matrices are
+   * copied from the real one each frame (`trackSun`).
+   */
+  private readonly sunProxy = new THREE.DirectionalLight();
+  /** The scene's shadow-casting sun or moon, found by `applyShadows`. */
+  private sun: THREE.DirectionalLight | null = null;
   /** Rebuild the post chain before the next frame (quality changed). */
   private chainDirty = true;
 
@@ -587,6 +610,24 @@ export class Renderer {
       aoTex = a.getTextureNode();
     }
 
+    let contactTex: THREE.TextureNode | null = null;
+    if (q.contactShadows) {
+      // Half resolution: the march is short (a third of a metre), so a few
+      // steps cover it, and the four-tap read below hides the half pixels.
+      const s = sss(sp.getTextureNode('depth'), camera, this.sunProxy);
+      s.resolutionScale = POST_SCALE;
+      s.maxDistance.value = 0.35;
+      s.thickness.value = 0.12;
+      s.quality.value = 1;
+      s.shadowIntensity.value = 1;
+      // Skipped outright while there is no sun (indoors): no pass, and the
+      // read below multiplies by one.
+      const draw = s.updateBefore.bind(s);
+      s.updateBefore = (frame: THREE.NodeFrame) => (uContact.value > 0 ? draw(frame) : undefined);
+      this.sssNode = s;
+      contactTex = s.getTextureNode();
+    }
+
     let bloomTex: THREE.TextureNode | null = null;
     if (q.bloom) {
       // Glow from what glows (`Emission`), and only where it is bright: a
@@ -601,6 +642,14 @@ export class Renderer {
     const src = (p: V2): V3 => {
       let c: V3 = color.sample(p).rgb;
       if (aoTex) c = c.mul(mix(float(1.0), aoTex.sample(p).r, 0.85));
+      if (contactTex) {
+        // Four taps a half texel apart: soft edges instead of the march's dither.
+        const h = vec2(0.5).div(screenSize).div(POST_SCALE);
+        const t = contactTex;
+        const lit = t.sample(p.add(h)).r.add(t.sample(p.sub(h)).r)
+          .add(t.sample(p.add(vec2(h.x, h.y.negate()))).r).add(t.sample(p.sub(vec2(h.x, h.y.negate()))).r).mul(0.25);
+        c = c.mul(mix(float(1.0), lit, uContact));
+      }
       if (bloomTex) c = c.add(bloomTex.sample(p).rgb);
       return c;
     };
@@ -624,6 +673,8 @@ export class Renderer {
     this.aoNode?.dispose();
     this.bloomNode?.dispose();
     this.traaNode?.dispose();
+    this.sssNode?.dispose();
+    this.sssNode = null;
     this.scenePass = null;
     this.aoNode = null;
     this.bloomNode = null;
@@ -648,7 +699,7 @@ export class Renderer {
     if (this.shadowScene) this.applyShadows(this.shadowScene);
     // Every asset texture, the world sets included, now and later.
     if (!step) setAssetAnisotropy(q.anisotropy);
-    if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa || before.taa !== q.taa) this.chainDirty = true;
+    if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa || before.taa !== q.taa || before.contactShadows !== q.contactShadows) this.chainDirty = true;
     this.onResize();
   }
 
@@ -690,9 +741,11 @@ export class Renderer {
     if (scene !== this.shadowScene) this.ticked.clear();
     this.shadowScene = scene;
     const q = this.quality;
+    this.sun = null;
     scene.traverse((o) => {
       const l = o as THREE.DirectionalLight | THREE.PointLight | THREE.SpotLight;
       if (!l.isLight || !l.shadow) return;
+      if (!this.sun && (l as THREE.DirectionalLight).isDirectionalLight && l.castShadow) this.sun = l as THREE.DirectionalLight;
       let base = l.userData.shadowBase as ShadowBase | undefined;
       if (!base) {
         if (!l.castShadow) return;
@@ -928,6 +981,27 @@ export class Renderer {
     return v;
   }
 
+  /**
+   * Points the contact shadows at the scene's sun or moon, or turns them off
+   * when it has none (indoors), it is not lit, or it belongs to another scene.
+   */
+  private trackSun(scene: THREE.Scene): void {
+    const s = this.sun;
+    let on = !!this.sssNode && !!s && s.castShadow && s.visible && s.intensity > 0;
+    if (on && s) {
+      let o: THREE.Object3D | null = s;
+      while (o && o !== scene) o = o.parent;
+      on = o === scene;
+    }
+    uContact.value = on ? CONTACT_STRENGTH : 0;
+    if (!on || !s) return;
+    const p = this.sunProxy;
+    p.matrixAutoUpdate = false;
+    p.matrixWorldAutoUpdate = false;
+    p.matrixWorld.copy(s.matrixWorld);
+    p.target.matrixWorld.copy(s.target.matrixWorld);
+  }
+
   /** Makes the temporal blend start over from the next frame (it starts over when its size changes). */
   private restartHistory(): void {
     const t = this.traaNode as unknown as { _historyRenderTarget?: THREE.RenderTarget } | null;
@@ -944,6 +1018,7 @@ export class Renderer {
     G.lowLife.value = this.lowLife;
     G.time.value = elapsed;
     uFog.value.set(fogShape.x, fogShape.y, fogShape.z, fogShape.w);
+    this.trackSun(scene);
 
     // A new scene always gets its shadows on its first frame. Map and matrix
     // stay paired, so a held shadow lags a moment rather than sliding.

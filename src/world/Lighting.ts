@@ -37,6 +37,41 @@ export interface LightMood {
 /** The indoor hero light: a warm pool about eight metres across. */
 const HERO_INDOOR = { color: 0xffd2a0, intensity: 34, distance: 17 };
 
+/**
+ * How far the hero's light leans toward the biome's own torch colour
+ * indoors. A little: the hero still carries warm light into a cold vault,
+ * but it reads as the same air the torches burn in, not a lamp from town.
+ */
+const HERO_LEAN = 0.22;
+
+/** `a` moved `k` of the way to `b`, per channel (0xRRGGBB). */
+function mixHex(a: number, b: number, k: number): number {
+  const ch = (s: number): number => {
+    const x = (a >> s) & 255;
+    const y = (b >> s) & 255;
+    return Math.round(x + (y - x) * k) << s;
+  };
+  return ch(16) | ch(8) | ch(0);
+}
+
+/**
+ * A flame's colour as it flickers: when it dips it burns redder (less green,
+ * much less blue), when it flares a touch whiter. Only for warm lights (more
+ * red than blue); a cold crystal or a ghost light keeps its colour. `f` is
+ * the flicker multiplier on its intensity (1 = steady). Writes `out`.
+ */
+export function flameColour<C extends { r: number; g: number; b: number }>(base: C, f: number, out: C): C {
+  out.r = base.r;
+  out.g = base.g;
+  out.b = base.b;
+  if (base.r <= base.b) return out;
+  const d = Math.max(-0.45, Math.min(0.45, f - 1));
+  // Dip: green to 85%, blue to 65% at the lowest. Flare: both up a little.
+  out.g = base.g * (d < 0 ? 1 + d * 0.34 : 1 + d * 0.08);
+  out.b = base.b * (d < 0 ? 1 + d * 0.78 : 1 + d * 0.16);
+  return out;
+}
+
 /** Outdoor moods, by biome. */
 const OUTDOOR: Partial<Record<BiomeId, Omit<LightMood, 'background'>>> = {
   // Moonlight through the canopy: blue key, green-black bounce.
@@ -125,7 +160,7 @@ export function lightMood(biome: BiomeDef, art: BiomeArt): LightMood {
     fog: biome.fogColor,
     fogDensity: biome.fogDensity,
     background: biome.fogColor,
-    hero: HERO_INDOOR,
+    hero: { ...HERO_INDOOR, color: mixHex(HERO_INDOOR.color, art.lightColor, HERO_LEAN) },
   };
 }
 
