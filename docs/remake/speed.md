@@ -1,6 +1,6 @@
 # Stream: speed (Wave 4: smooth and fast on WebGPU)
 
-Status: in progress (part 2)
+Status: done
 
 Goal: high, steady frame rate and short loads with no frozen browser. The
 owner reports town loads of 20 to 25 s and map loads of 50 to 60 s with the
@@ -58,21 +58,16 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 - [x] 6. (after wave two) Many torches: tiled or clustered lighting, only if it measures
   faster here. If it does not, note why and tick. (Not done: cannot be
   measured here and the light loop is already small; see "Milestone 6".)
-- [ ] 7. (after wave two) CPU frame: lower animation and update rate for far monsters and
+- [x] 7. (after wave two) CPU frame: lower animation and update rate for far monsters and
   summons, pool hot objects, no per-frame allocation in the loops you touch.
-- [ ] 8. Handover with before and after numbers.
+  (Mostly there from earlier waves; the flames' per-frame scratch is now
+  made once. See "Milestone 7".)
+- [x] 8. Handover with before and after numbers.
 
 ## Next up
 
-Part 2, milestones 3b, 3c done; baseline re-taken (see "Part 2 baseline").
-A fresh agent:
-
-1. Read this file, PROTOCOL.md, PLAN.md and the "Loading progress" and
-   "Bake workers" sections of CONTRACTS.md.
-2. Milestone 4: draw counts per kind are under "Part 2 baseline"
-   (`check-frames --draws`). Cut the biggest group, count again.
-3. Then 5, 6, 7, 8. Re-save `tools/perf-frames.json` at the end
-   (`check-frames --save`, all three places).
+Nothing: every milestone is ticked (see "Handover"). `tools/perf-frames.json`
+was re-saved at the end (all three places, boss saved from its second run).
 
 ## Notes for resume
 
@@ -269,6 +264,22 @@ win on a real GPU at high resolution in town, and this VM cannot measure
 GPU time (software rendering). For the owner: if town FPS on a real GPU is
 low at 4K, profile the lit fragment cost first.
 
+### Milestone 7 (CPU frame)
+
+Already in place before this part (checked in code, not changed): a monster
+past `POSE_FAR` is posed every other frame; one well out of view stops
+having its bones' matrices rebuilt and is skipped by the culling walk; out
+of view it casts no shadow; past the leash it is not simulated at all.
+Bosses' adds and other summoned monsters are monsters and get the same.
+The player's own minions stay by the hero, so a far rate would not apply.
+The per-frame loops read for allocations (`Enemy.update`, `Player.update`,
+`DungeonScene.update`, `DungeonMesh.update`) allocate nothing per frame
+now: `updateFlames` made a matrix, a quaternion and two vectors every
+frame, now made once. The new shadow code allocates nothing per frame.
+A CPU profile of the map (`check-frames --profile`) has no single hot spot
+left in game code: the top self times are three's own (buffer writes,
+matrix walks, draw submission), each about 1 ms a frame here.
+
 ## For the owner to test
 
 (Add one line per item: what to try and what should happen.)
@@ -282,7 +293,61 @@ low at 4K, profile the lit fragment cost first.
   hits, first monsters and the first boss attacks should not stutter. A
   short hitch on the warden waking, a gem drop or boss adds is known and is
   listed for the owning streams.
+- In a sunny map and in town, look at shadows while standing, walking and
+  fighting: they should look exactly as before (same edges, no gaps, no
+  lag behind moving monsters or the hero). Shadows of crates, columns and
+  buildings should not flicker when the hero steps.
+- Change gear, take a beast form (Shapeshifter) and cast Veil: the hero's
+  shadow should follow each change at once and match the body.
+- Watch a townsperson's shadow while they work: it should match the body.
+- Open the inventory for the first time in a map: the figure should show
+  at once, with no stall.
+- vfx lab (`tools/check-decals.mjs`): every scene but `crits` draws.
 
 ## Handover
 
-(Written when every milestone is ticked.)
+Part 2 (milestones 3b to 8). This VM renders in software, so GPU work is
+counted in draws and triangles and CPU work in ms; real-GPU FPS is for the
+owner. All frame numbers: `check-frames`, 480x270, high, 120 frames, same
+seeds.
+
+| place | draws before -> after | triangles before -> after | made in play before -> after | update p50/p95/p99 before -> after |
+| --- | --- | --- | --- | --- |
+| map (depth 6, 123 monsters) | 170 -> 137 | 1.36 M -> 1.03 M | 3 -> 0 | 2.9/9.7/12.2 -> 3.2/9.3/13.7 |
+| boss (depth 8) | 112 -> 112 | 0.55 M -> 0.55 M | 7 -> 8 (see below) | 2.4/8.7/32 -> 2.5/11.3/25.4 |
+| town | not in the part 2 baseline; 342 (kept shadow only) -> 242 | 0.64 M -> 0.66 M | 3 (see below) | 1.0/2.6/3.6 |
+
+Update times move by a millisecond or two between runs on this shared
+machine; read them as unchanged. Shadow draws per sun update: map 47 ->
+16 standing, town 166 -> 56. The boss room has no sun, so the shadow work
+does not show there.
+
+What changed:
+- 3b: the paperdoll warms on the map load's first step with culling off;
+  warm-up stand-ins live until the area changes. Map: 3 pipelines made in
+  play -> 0.
+- 3c: the vfx lab warms before each shot; 18 of 19 scenes draw.
+- 4: the hero's shadow from shadow bodies (about 12 draws -> 3).
+- 5: the sun's and moon's shadow of still casters is kept and copied, only
+  moving casters are drawn each update (exact: 0 texels differ); townsfolk
+  get shadow bodies; point-light shadows need no budget (none in play).
+- 6: clustered lighting not done (cannot be measured here; loop small).
+- 7: far-monster rates were already in; one per-frame allocation removed.
+
+Left, with reasons:
+- Boss, 120 frames: 8 pipelines still made in play, all late looks of
+  other streams, seen once the fight runs past 40 frames: boss adds'
+  `creature:bone` and `creature:shade`, `fx:columns`, potion drops
+  (`item:liquid`, `item:glass`), and the room's `chestRare`, `brazier` and
+  `altar` props. 3b's 40-frame run ended before them. Owners: creatures,
+  vfx, items, props (stand-ins in `DungeonScene.warmup`).
+- Town: 3 made in play are the inventory figure's, warmed on purpose 2.5 s
+  after the curtain in town (ui's choice: town is safe ground).
+- `crits` in the vfx lab still draws black in a full run.
+- Monster parts stay one draw per material (about 25 in the map).
+
+Files outside render/scene/world code touched (small): `src/ui/
+InventoryPanel.ts`, `src/ui/PaperdollView.ts` (ui), `src/art/npc/
+Residents.ts` (shadow bodies for townsfolk), `tools/vfxlab-entry.ts`,
+`tools/check-frames.mjs` (`--why`, `--draws`). New: `src/core/
+ShadowCache.ts`; additions to `src/core/ShadowBodies.ts`.

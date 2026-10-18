@@ -6,71 +6,1058 @@
     "quality": "high",
     "measured": 120,
     "frame": {
-      "p50": 81.2,
-      "p95": 2853.5,
-      "p99": 2995.2,
-      "worst": 4195.2,
-      "over33": 101,
-      "over50": 77
+      "p50": 873.6,
+      "p95": 1039,
+      "p99": 1083.2,
+      "worst": 1909.5,
+      "over33": 120,
+      "over50": 120
     },
     "update": {
-      "p50": 1.4,
-      "p95": 3.8,
-      "p99": 8.5,
-      "worst": 8.5,
+      "p50": 1,
+      "p95": 2.6,
+      "p99": 3.6,
+      "worst": 6,
       "over33": 0,
       "over50": 0
     },
     "cpu": {
-      "p50": 11.7,
-      "p95": 21.4,
-      "p99": 25.7,
-      "worst": 26.1,
+      "p50": 14.3,
+      "p95": 23.7,
+      "p99": 27.4,
+      "worst": 29,
       "over33": 0,
       "over50": 0
     },
-    "drawCalls": 405,
-    "triangles": 880878,
-    "links": 0,
-    "texKB": 2730,
-    "programs": 47,
-    "newPrograms": []
+    "drawCalls": 242,
+    "triangles": 658565,
+    "links": 3,
+    "texKB": 0,
+    "topUploads": [],
+    "programs": 0,
+    "why": [
+      "28 pipelines made while settling (20+ frames before measuring)",
+      "settling made: Mesh/PMREM.Background, RoomEnvironment/MeshStandardMaterial x2, RoomEnvironment/MeshLambertMaterial, Mesh/PMREM_blur x2, Mesh/PMREM_ggx x2, item-wood/item:wood.oak, item-liquid/item:liquid, item-glass/item:glass, Output Color Transform/outputColorTransform x2, item-main/item:metal.iron x2, Mesh/item:glow, Mesh/item:crystal x2, Mesh/item:ghost x2, Mesh/item:glass, questMarker:corvane/SpriteMaterial, item-dark/item:metal.dark, item-gem/item:gem, warden:skin/hero-skin",
+      "first settled: Mesh/PMREM.Background dyn 7426095473103187 lights []",
+      "settled Mesh/PMREM.Background: never before",
+      "settled RoomEnvironment/MeshStandardMaterial: never before",
+      "settled RoomEnvironment/MeshStandardMaterial: never before",
+      "settled RoomEnvironment/MeshLambertMaterial: never before",
+      "last at load: hero:shadow/ShadowMaterial dyn 2954286572809418 lights [PointLight139 PointLight151 PointLight209 PointLight211 PointLight213 PointLight215 PointLight217 PointLight219 PointLight221 PointLight223 PointLight225 PointLight227 PointLight229 PointLight231 PointLight233 PointLight235 PointLight237 PointLight239 SpotLight241 HemisphereLight907 DirectionalLight]",
+      "warden:eyes/MeshStandardMaterial (PerspectiveCamera) vs load npc-hesk:eyes/MeshStandardMaterial: who: npc-hesk:eyes/MeshStandardMaterial -> warden:eyes/MeshStandardMaterial; phase: load -> play; v: 49 -> 133; f: 50 -> 134; vlen: 5301 -> 3944; flen: 39984 -> 26820; back: false,1,false,204,205,100,,,,true,true,true,3,false,519,7680,7680,7680,255,255,f -> false,1,false,204,205,100,,,,true,true,true,3,false,519,7680,7680,7680,255,255,f; dyn: 5142867446741231 -> 3998297547845371; lights: PointLight139 PointLight151 PointLight209 PointLight211 PointLight213 PointLight -> HemisphereLight37 DirectionalLight38 DirectionalLight41 DirectionalLight44; mat: #0 5132101247321729->5221233863711519",
+      "warden:mouth/MeshStandardMaterial (PerspectiveCamera) vs load npc-hesk:eyes/MeshStandardMaterial: who: npc-hesk:eyes/MeshStandardMaterial -> warden:mouth/MeshStandardMaterial; phase: load -> play; v: 49 -> 135; f: 50 -> 136; vlen: 5301 -> 3809; flen: 39984 -> 26428; back: false,1,false,204,205,100,,,,true,true,true,3,false,519,7680,7680,7680,255,255,f -> false,1,false,204,205,100,,,,true,true,true,3,false,519,7680,7680,7680,255,255,f; dyn: 5142867446741231 -> 3998297547845371; lights: PointLight139 PointLight151 PointLight209 PointLight211 PointLight213 PointLight -> HemisphereLight37 DirectionalLight38 DirectionalLight41 DirectionalLight44; mat: #0 5132101247321729->5743764492912577",
+      "warden:shorts/hero-linen (PerspectiveCamera): nothing like it made at load (0 same draw, 0 same material)"
+    ],
+    "drawKinds": [
+      [
+        "town:merged",
+        55
+      ],
+      [
+        "Mesh",
+        12.8
+      ],
+      [
+        "belt:belt",
+        5.7
+      ],
+      [
+        "boots:boots",
+        4.2
+      ],
+      [
+        "shadow town:props",
+        4
+      ],
+      [
+        "npc-cap",
+        4
+      ],
+      [
+        "chest:gambeson",
+        3.5
+      ],
+      [
+        "shadow hero:shadow",
+        3
+      ],
+      [
+        "belt:fit-trim",
+        2.8
+      ],
+      [
+        "gloves:gloves",
+        2.4
+      ],
+      [
+        "boots:fit-iron",
+        2.3
+      ],
+      [
+        "town:props",
+        2.2
+      ],
+      [
+        "item-main",
+        2
+      ],
+      [
+        "item-second",
+        2
+      ],
+      [
+        "item-trim",
+        2
+      ],
+      [
+        "npc-brimhat",
+        2
+      ],
+      [
+        "chest:fit-strap",
+        2
+      ],
+      [
+        "camp",
+        2
+      ],
+      [
+        "npc-apron",
+        2
+      ],
+      [
+        "belt:fit-strap",
+        1.8
+      ],
+      [
+        "npc-hesk:prop-cloth.linen|0x",
+        1.6
+      ],
+      [
+        "boots:fit-strap",
+        1.2
+      ],
+      [
+        "chest:robe",
+        1.1
+      ],
+      [
+        "portal",
+        1.1
+      ],
+      [
+        "shadow npc-corvane:shadow",
+        1
+      ],
+      [
+        "shadow npc-vell:shadow",
+        1
+      ],
+      [
+        "shadow npc-listener:shadow",
+        1
+      ],
+      [
+        "shadow npc-kale:shadow",
+        1
+      ],
+      [
+        "shadow npc-renn:shadow",
+        1
+      ],
+      [
+        "shadow chest:tabard",
+        1
+      ],
+      [
+        "shadow cape",
+        1
+      ],
+      [
+        "shadow npc-gilder:shadow",
+        1
+      ],
+      [
+        "shadow npc-marrow:shadow",
+        1
+      ],
+      [
+        "shadow npc-wenna:shadow",
+        1
+      ],
+      [
+        "shadow npc-hesk:shadow",
+        1
+      ],
+      [
+        "warden:brows",
+        1
+      ],
+      [
+        "warden:eyes",
+        1
+      ],
+      [
+        "warden:hair-crop",
+        1
+      ],
+      [
+        "warden:mouth",
+        1
+      ],
+      [
+        "warden:beard-",
+        1
+      ],
+      [
+        "item-gem",
+        1
+      ],
+      [
+        "warden:wrap",
+        1
+      ],
+      [
+        "item-dark",
+        1
+      ],
+      [
+        "gloves:gloves-trim",
+        1
+      ],
+      [
+        "gloves:fit-gem",
+        1
+      ],
+      [
+        "gloves:fit-bone",
+        1
+      ],
+      [
+        "warden:skin",
+        1
+      ],
+      [
+        "warden:shorts",
+        1
+      ],
+      [
+        "npc-wenna:eyes",
+        1
+      ],
+      [
+        "npc-wenna:mouth",
+        1
+      ],
+      [
+        "npc-wenna:hair-braids",
+        1
+      ],
+      [
+        "npc-kerchief",
+        1
+      ],
+      [
+        "npc-wenna:prop-cloth.linen|0x",
+        1
+      ],
+      [
+        "npc-wenna:skin",
+        1
+      ],
+      [
+        "npc-wenna:prop-metal.bronze",
+        1
+      ],
+      [
+        "npc-wenna:trousers",
+        1
+      ],
+      [
+        "npc-wenna:prop-wood.oak|0x",
+        1
+      ],
+      [
+        "npc-wenna:prop-cloth.banner|0x",
+        1
+      ],
+      [
+        "npc-marrow:prop-wood.oak|0x",
+        1
+      ],
+      [
+        "npc-gilder:eyes",
+        1
+      ],
+      [
+        "npc-gilder:mouth",
+        1
+      ],
+      [
+        "npc-gilder:hair-crop",
+        1
+      ],
+      [
+        "chest:gambeson-trim",
+        1
+      ],
+      [
+        "cape",
+        1
+      ],
+      [
+        "npc-gilder:skin",
+        1
+      ],
+      [
+        "npc-gilder:prop-cloth.linen|0x",
+        1
+      ],
+      [
+        "npc-gilder:prop-metal.silver|0x",
+        1
+      ],
+      [
+        "npc-gilder:trousers",
+        1
+      ],
+      [
+        "lanternBulbs (inst)",
+        1
+      ],
+      [
+        "town:ground",
+        1
+      ],
+      [
+        "npc-kale:eyes",
+        1
+      ],
+      [
+        "npc-kale:mouth",
+        1
+      ],
+      [
+        "npc-kale:hair-shaved",
+        1
+      ],
+      [
+        "npc-kale:prop-glow|16738842|2.",
+        1
+      ],
+      [
+        "npc-scars",
+        1
+      ],
+      [
+        "npc-kale:prop-metal.dark",
+        1
+      ],
+      [
+        "npc-kale:skin",
+        1
+      ],
+      [
+        "npc-kale:prop-wood.oak|0x",
+        1
+      ],
+      [
+        "npc-kale:trousers",
+        1
+      ],
+      [
+        "npc-renn:brows",
+        1
+      ],
+      [
+        "npc-renn:eyes",
+        1
+      ],
+      [
+        "npc-renn:mouth",
+        1
+      ],
+      [
+        "chest:coif",
+        1
+      ],
+      [
+        "chest:fit-gem",
+        1
+      ],
+      [
+        "npc-renn:prop-metal.steel",
+        1
+      ],
+      [
+        "helm:casque-trim",
+        1
+      ],
+      [
+        "chest:hauberk",
+        1
+      ],
+      [
+        "chest:hauberk-trim",
+        1
+      ],
+      [
+        "npc-renn:skin",
+        1
+      ],
+      [
+        "helm:casque",
+        1
+      ],
+      [
+        "chest:tabard",
+        1
+      ],
+      [
+        "npc-renn:trousers",
+        1
+      ],
+      [
+        "npc-renn:prop-wood.oak|0x",
+        1
+      ],
+      [
+        "campLife (inst)",
+        1
+      ],
+      [
+        "campGlows (inst)",
+        1
+      ],
+      [
+        "air:motes",
+        1
+      ],
+      [
+        "fx:ground-marks",
+        1
+      ],
+      [
+        "fx:ground-glows",
+        1
+      ],
+      [
+        "fx:ground-tells",
+        1
+      ],
+      [
+        "fx:particles",
+        1
+      ],
+      [
+        "questMarker:corvane",
+        1
+      ],
+      [
+        "questMarker:vell",
+        1
+      ],
+      [
+        "questMarker:renn",
+        1
+      ],
+      [
+        "questMarker:kale",
+        1
+      ],
+      [
+        "questMarker:wenna",
+        1
+      ],
+      [
+        "questMarker:hesk",
+        1
+      ],
+      [
+        "TRAA",
+        1
+      ],
+      [
+        "SSS",
+        1
+      ],
+      [
+        "Bloom [ High Pass ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 0 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 0 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 1 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 1 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 2 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 2 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 3 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 3 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 4 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 4 ]",
+        1
+      ],
+      [
+        "Bloom [ Composite ]",
+        1
+      ],
+      [
+        "Render Pipeline",
+        1
+      ],
+      [
+        "npc-wimple",
+        0.9
+      ],
+      [
+        "npc-hesk:hair-knot",
+        0.8
+      ],
+      [
+        "npc-hesk:eyes",
+        0.8
+      ],
+      [
+        "npc-hesk:mouth",
+        0.8
+      ],
+      [
+        "npc-shawl",
+        0.8
+      ],
+      [
+        "npc-hesk:prop-leather.fine|0x",
+        0.8
+      ],
+      [
+        "npc-hesk:skin",
+        0.8
+      ],
+      [
+        "npc-hesk:trousers",
+        0.8
+      ],
+      [
+        "npc-hesk:prop-bone.pale",
+        0.8
+      ],
+      [
+        "npc-hood",
+        0.7
+      ],
+      [
+        "npc-listener:prop-cloth.silk|0x",
+        0.6
+      ],
+      [
+        "npc-listener:brows",
+        0.6
+      ],
+      [
+        "npc-listener:eyes",
+        0.6
+      ],
+      [
+        "npc-listener:mouth",
+        0.6
+      ],
+      [
+        "npc-blindfold",
+        0.6
+      ],
+      [
+        "npc-listener:hair-long",
+        0.6
+      ],
+      [
+        "npc-listener:prop-wood.oak|0x",
+        0.6
+      ],
+      [
+        "npc-listener:belt",
+        0.6
+      ],
+      [
+        "npc-listener:skin",
+        0.6
+      ],
+      [
+        "npc-vell:eyes",
+        0.5
+      ],
+      [
+        "npc-vell:mouth",
+        0.5
+      ],
+      [
+        "npc-vell:prop-stone.temple|0x",
+        0.5
+      ],
+      [
+        "npc-vell:skin",
+        0.5
+      ],
+      [
+        "npc-corvane:eyes",
+        0.4
+      ],
+      [
+        "npc-corvane:hair-crop",
+        0.4
+      ],
+      [
+        "npc-corvane:mouth",
+        0.4
+      ],
+      [
+        "chest:fit-trim",
+        0.4
+      ],
+      [
+        "belt:fit-iron",
+        0.4
+      ],
+      [
+        "npc-corvane:skin",
+        0.4
+      ],
+      [
+        "npc-corvane:prop-metal.bronze",
+        0.4
+      ],
+      [
+        "belt:fit-main",
+        0.4
+      ],
+      [
+        "npc-corvane:prop-metal.gold",
+        0.4
+      ],
+      [
+        "npc-corvane:prop-glow|16756816|2.",
+        0.4
+      ],
+      [
+        "npc-corvane:trousers",
+        0.4
+      ],
+      [
+        "npc-marrow:eyes",
+        0.3
+      ],
+      [
+        "npc-marrow:beard-",
+        0.3
+      ],
+      [
+        "npc-marrow:mouth",
+        0.3
+      ],
+      [
+        "npc-marrow:belt",
+        0.3
+      ],
+      [
+        "npc-marrow:skin",
+        0.3
+      ],
+      [
+        "npc-marrow:trousers",
+        0.3
+      ],
+      [
+        "boots:boots-trim",
+        0.3
+      ],
+      [
+        "Output Color Transform",
+        0
+      ]
+    ],
+    "newPrograms": [
+      "warden:eyes/MeshStandardMaterial",
+      "warden:mouth/MeshStandardMaterial",
+      "warden:shorts/hero-linen"
+    ]
   },
   "map": {
     "scene": "dungeon",
-    "monsters": 125,
+    "monsters": 123,
     "boss": false,
     "quality": "high",
     "measured": 120,
     "frame": {
-      "p50": 172.4,
-      "p95": 2127.4,
-      "p99": 2267.5,
-      "worst": 2285.4,
-      "over33": 113,
-      "over50": 100
+      "p50": 710.1,
+      "p95": 940.9,
+      "p99": 1100.3,
+      "worst": 1278.1,
+      "over33": 120,
+      "over50": 120
     },
     "update": {
-      "p50": 3.4,
-      "p95": 12.1,
-      "p99": 19.6,
-      "worst": 24,
+      "p50": 3.2,
+      "p95": 9.3,
+      "p99": 13.7,
+      "worst": 21.5,
       "over33": 0,
       "over50": 0
     },
     "cpu": {
-      "p50": 12.8,
-      "p95": 27.4,
-      "p99": 30.2,
-      "worst": 40.7,
+      "p50": 14.5,
+      "p95": 26.8,
+      "p99": 30.5,
+      "worst": 46,
       "over33": 1,
       "over50": 0
     },
-    "drawCalls": 344,
-    "triangles": 1211786,
+    "drawCalls": 137,
+    "triangles": 1030115,
     "links": 0,
-    "texKB": 3486,
-    "programs": 76,
+    "texKB": 990,
+    "topUploads": [
+      "4 KB writeTexture() at +825 ms ",
+      "4 KB writeTexture() at +825 ms ",
+      "4 KB writeTexture() at +1471 ms ",
+      "4 KB writeTexture() at +1471 ms ",
+      "4 KB writeTexture() at +2536 ms ",
+      "4 KB writeTexture() at +2536 ms "
+    ],
+    "programs": 0,
+    "why": [
+      "0 pipelines made while settling (20+ frames before measuring)",
+      "settling made: ",
+      "last at load: warmup/ShadowMaterial dyn 8602035183444939 lights [PointLight1271 PointLight1273 PointLight1275 PointLight1277 PointLight1384 PointLight1386 PointLight1605 PointLight1607 PointLight1609 PointLight1611 PointLight1639 HemisphereLight1653 DirectionalLight1654s PointLight1659]"
+    ],
+    "drawKinds": [
+      [
+        "prop:baked",
+        17
+      ],
+      [
+        "shadow creature:shadow",
+        16.3
+      ],
+      [
+        "creature:skin",
+        11.1
+      ],
+      [
+        "creature:alt",
+        10
+      ],
+      [
+        "creature:metal",
+        6.1
+      ],
+      [
+        "terrain",
+        4.7
+      ],
+      [
+        "shadow hero:shadow",
+        3
+      ],
+      [
+        "item-second",
+        2.6
+      ],
+      [
+        "prop:brokenColumn (inst)",
+        2
+      ],
+      [
+        "prop:barrel (inst)",
+        2
+      ],
+      [
+        "item-trim",
+        2
+      ],
+      [
+        "item-main",
+        2
+      ],
+      [
+        "Mesh",
+        1.9
+      ],
+      [
+        "shadow item-wood",
+        1.9
+      ],
+      [
+        "shadow prop:baked",
+        1.7
+      ],
+      [
+        "item-dark",
+        1.6
+      ],
+      [
+        "item-wood",
+        1.3
+      ],
+      [
+        "shadow terrain",
+        1.1
+      ],
+      [
+        "prop:urn (inst)",
+        1
+      ],
+      [
+        "warden:hair-crop",
+        1
+      ],
+      [
+        "warden:brows",
+        1
+      ],
+      [
+        "warden:eyes",
+        1
+      ],
+      [
+        "warden:beard-",
+        1
+      ],
+      [
+        "warden:mouth",
+        1
+      ],
+      [
+        "warden:wrap",
+        1
+      ],
+      [
+        "gloves:gloves-trim",
+        1
+      ],
+      [
+        "gloves:fit-gem",
+        1
+      ],
+      [
+        "gloves:gloves",
+        1
+      ],
+      [
+        "belt:belt",
+        1
+      ],
+      [
+        "warden:skin",
+        1
+      ],
+      [
+        "gloves:fit-bone",
+        1
+      ],
+      [
+        "warden:shorts",
+        1
+      ],
+      [
+        "lightPools (inst)",
+        1
+      ],
+      [
+        "flames:prop (batch)",
+        1
+      ],
+      [
+        "air:motes",
+        1
+      ],
+      [
+        "fx:ground-marks",
+        1
+      ],
+      [
+        "fx:ground-glows",
+        1
+      ],
+      [
+        "fx:ground-tells",
+        1
+      ],
+      [
+        "fx:particles",
+        1
+      ],
+      [
+        "TRAA",
+        1
+      ],
+      [
+        "SSS",
+        1
+      ],
+      [
+        "Bloom [ High Pass ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 0 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 0 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 1 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 1 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 2 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 2 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 3 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 3 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 4 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 4 ]",
+        1
+      ],
+      [
+        "Bloom [ Composite ]",
+        1
+      ],
+      [
+        "Render Pipeline",
+        1
+      ],
+      [
+        "item-gem",
+        1
+      ],
+      [
+        "shadow item-second",
+        1
+      ],
+      [
+        "shadow item-cloth",
+        1
+      ],
+      [
+        "shadow item-string",
+        1
+      ],
+      [
+        "shadow item-dark",
+        1
+      ],
+      [
+        "shadow item-liquid",
+        1
+      ],
+      [
+        "shadow Mesh",
+        1
+      ],
+      [
+        "shadow prop:crate (inst)",
+        0.7
+      ],
+      [
+        "item-glass",
+        0.7
+      ],
+      [
+        "item-cloth",
+        0.6
+      ],
+      [
+        "item-string",
+        0.6
+      ],
+      [
+        "item-liquid",
+        0.6
+      ],
+      [
+        "shadow creature:skin",
+        0.5
+      ],
+      [
+        "fx:ribbons",
+        0.5
+      ],
+      [
+        "fx:cores",
+        0.4
+      ],
+      [
+        "fx:solid-shard (inst)",
+        0.3
+      ],
+      [
+        "shadow prop:brokenColumn (inst)",
+        0.3
+      ],
+      [
+        "shadow prop:barrel (inst)",
+        0.3
+      ],
+      [
+        "shadow prop:urn (inst)",
+        0.3
+      ],
+      [
+        "shadow prop:idolHead (inst)",
+        0.2
+      ],
+      [
+        "shadow waypoint",
+        0.1
+      ]
+    ],
     "newPrograms": []
   },
   "boss": {
@@ -80,34 +1067,375 @@
     "quality": "high",
     "measured": 120,
     "frame": {
-      "p50": 243.9,
-      "p95": 1524.9,
-      "p99": 1617.5,
-      "worst": 1819.9,
-      "over33": 115,
-      "over50": 113
+      "p50": 520.6,
+      "p95": 880.1,
+      "p99": 1327,
+      "worst": 1742.5,
+      "over33": 119,
+      "over50": 119
     },
     "update": {
-      "p50": 2.2,
-      "p95": 8,
-      "p99": 17.3,
-      "worst": 18.2,
-      "over33": 0,
-      "over50": 0
+      "p50": 2.5,
+      "p95": 11.3,
+      "p99": 25.4,
+      "worst": 885.9,
+      "over33": 1,
+      "over50": 1
     },
     "cpu": {
-      "p50": 8.2,
-      "p95": 23.9,
-      "p99": 960.1,
-      "worst": 1579,
-      "over33": 2,
-      "over50": 2
+      "p50": 14.6,
+      "p95": 46.8,
+      "p99": 69,
+      "worst": 895.6,
+      "over33": 14,
+      "over50": 4
     },
-    "drawCalls": 156,
-    "triangles": 596450,
-    "links": 0,
-    "texKB": 5857,
-    "programs": 105,
-    "newPrograms": []
+    "drawCalls": 112,
+    "triangles": 554759,
+    "links": 8,
+    "texKB": 4928,
+    "topUploads": [
+      "16 KB writeTexture() at +427 ms ",
+      "16 KB writeTexture() at +427 ms ",
+      "16 KB writeTexture() at +817 ms ",
+      "16 KB writeTexture() at +817 ms ",
+      "16 KB writeTexture() at +1245 ms ",
+      "16 KB writeTexture() at +1245 ms "
+    ],
+    "programs": 0,
+    "why": [
+      "35 pipelines made while settling (20+ frames before measuring)",
+      "settling made: Background.mesh/Background.material, creature:metal/creature:leather, prop:wallRelief:2/prop:glow:ffc860, prop:baked:prop:prop.bronze/prop:prop.bronze, prop:baked:prop:cloth.linen/prop:cloth.linen, roof/MeshStandardNodeMaterial, ceiling/world:floor:stone.temple, surface1/world:floor:stone.temple, wallTops/world:wall:stone.temple, surface4/variant:stone.temple, item-main/item:metal.iron, warden:brows/hero-hair, item-second/item:leather.fine, warden:eyes/MeshStandardMaterial, item-gem/item:gem, warden:mouth/MeshStandardMaterial, warden:skin/hero-skin, Mesh/MeshBasicMaterial, lightPools/MeshBasicMaterial, flames:prop:flame:ffa050/prop:flame:ffa050, air:motes/air:motes, lightShafts/MeshBasicNodeMaterial, fx:ground-marks/fx-ground-marks, fx:particles/fx-particles, enemy:burrow_tick/MeshBasicMaterial, fx:ribbons/fx-ribbons, fx:shells/fx-shells",
+      "first settled: Background.mesh/Background.material dyn 981824512799665 lights [HemisphereLight14500 DirectionalLight14501 DirectionalLight14504 DirectionalLight14507]",
+      "settled Background.mesh/Background.material: before, 24760 ms earlier, dyn 2741417103899617 lights [HemisphereLight10488 DirectionalLight10489 DirectionalLight10492 DirectionalLight10495] shadow -> back same",
+      "settled creature:metal/creature:leather: never before",
+      "settled prop:wallRelief:2/prop:glow:ffc860: never before",
+      "settled prop:baked:prop:prop.bronze/prop:prop.bronze: never before",
+      "last at load: warmup/ShadowMaterial dyn 8602035183444939 lights [PointLight136 PointLight138 PointLight140 PointLight142 PointLight298 PointLight300 PointLight601 PointLight603 PointLight605 PointLight607 PointLight623 HemisphereLight637 DirectionalLight638s PointLight643]",
+      "fx:columns/fx-columns (PerspectiveCamera) vs load fx:columns/fx-columns: phase: load -> play; v: 187 -> 259; f: 188 -> 260; dyn: 13573528185049 -> 4359968951950861; lights: PointLight136 PointLight138 PointLight140 PointLight142 PointLight298 PointLight -> PointLight136 PointLight138 PointLight140 PointLight142 PointLight298 PointLight",
+      "item-liquid/item:liquid (PerspectiveCamera): nothing like it made at load (0 same draw, 0 same material)",
+      "item-glass/item:glass (PerspectiveCamera) vs load warmup/item:glass: who: warmup/item:glass -> item-glass/item:glass; phase: load -> play; v: 157 -> 261; f: 158 -> 262; vlen: 2857 -> 2711; flen: 35244 -> 31884; dyn: 6979338743532158 -> 4552073143065865; lights: PointLight136 PointLight138 PointLight140 PointLight142 PointLight298 PointLight -> PointLight136 PointLight138 PointLight140 PointLight142 PointLight298 PointLight; shadow: cr -> r",
+      "prop:chestRare:0/prop:prop.timber.dark (PerspectiveCamera): nothing like it made at load (0 same draw, 0 same material)",
+      "prop:brazier:0/prop:prop.timber.charred (PerspectiveCamera): nothing like it made at load (0 same draw, 0 same material)",
+      "prop:altar:0/prop:cloth.linen (PerspectiveCamera) vs load prop:baked:prop:cloth.linen/prop:cloth.linen: who: prop:baked:prop:cloth.linen/prop:cloth.linen -> prop:altar:0/prop:cloth.linen; v: 214 -> 263; f: 216 -> 267; vlen: 4479 -> 5936; flen: 38185 -> 38190; back: false,1,false,204,205,100,,,,true,true,true,3,false,519,7680,7680,7680,255,255,f -> false,1,false,204,205,100,,,,true,true,true,3,false,519,7680,7680,7680,255,255,f; shadow: r -> cr; mat: #0 8137350349387439->4759564969744985",
+      "creature:skin/creature:bone (PerspectiveCamera): nothing like it made at load (0 same draw, 0 same material)",
+      "creature:alt/creature:shade (PerspectiveCamera): nothing like it made at load (0 same draw, 0 same material)"
+    ],
+    "drawKinds": [
+      [
+        "creature:skin",
+        19.3
+      ],
+      [
+        "creature:alt",
+        16.7
+      ],
+      [
+        "Mesh",
+        16.6
+      ],
+      [
+        "surface",
+        16.2
+      ],
+      [
+        "prop:baked",
+        13.4
+      ],
+      [
+        "creature:metal",
+        9.6
+      ],
+      [
+        "roof",
+        3.5
+      ],
+      [
+        "enemy:burrow_tick",
+        3.4
+      ],
+      [
+        "wallTops",
+        3.3
+      ],
+      [
+        "ceiling",
+        3.1
+      ],
+      [
+        "item-trim",
+        2.5
+      ],
+      [
+        "item-main",
+        2
+      ],
+      [
+        "item-second",
+        2
+      ],
+      [
+        "flames:prop (batch)",
+        2
+      ],
+      [
+        "enemy:cultist_acolyte",
+        1.7
+      ],
+      [
+        "enemy:bone_conjurer",
+        1.7
+      ],
+      [
+        "item-dark",
+        1.5
+      ],
+      [
+        "item-gem",
+        1.5
+      ],
+      [
+        "prop:wallRelief (inst)",
+        1
+      ],
+      [
+        "prop:arenaSeal (inst)",
+        1
+      ],
+      [
+        "warden:brows",
+        1
+      ],
+      [
+        "warden:eyes",
+        1
+      ],
+      [
+        "warden:hair-crop",
+        1
+      ],
+      [
+        "warden:mouth",
+        1
+      ],
+      [
+        "warden:beard-",
+        1
+      ],
+      [
+        "warden:wrap",
+        1
+      ],
+      [
+        "gloves:gloves-trim",
+        1
+      ],
+      [
+        "gloves:fit-gem",
+        1
+      ],
+      [
+        "gloves:gloves",
+        1
+      ],
+      [
+        "gloves:fit-bone",
+        1
+      ],
+      [
+        "belt:belt",
+        1
+      ],
+      [
+        "warden:skin",
+        1
+      ],
+      [
+        "warden:shorts",
+        1
+      ],
+      [
+        "lightPools (inst)",
+        1
+      ],
+      [
+        "air:motes",
+        1
+      ],
+      [
+        "lightShafts",
+        1
+      ],
+      [
+        "fx:ground-marks",
+        1
+      ],
+      [
+        "fx:ground-glows",
+        1
+      ],
+      [
+        "fx:ground-tells",
+        1
+      ],
+      [
+        "fx:particles",
+        1
+      ],
+      [
+        "TRAA",
+        1
+      ],
+      [
+        "Bloom [ High Pass ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 0 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 0 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 1 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 1 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 2 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 2 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 3 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 3 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Horizontal - 4 ]",
+        1
+      ],
+      [
+        "Bloom [ Blur Vertical - 4 ]",
+        1
+      ],
+      [
+        "Bloom [ Composite ]",
+        1
+      ],
+      [
+        "Render Pipeline",
+        1
+      ],
+      [
+        "enemy:wraith",
+        0.9
+      ],
+      [
+        "fx:ribbons",
+        0.8
+      ],
+      [
+        "fx:cores",
+        0.8
+      ],
+      [
+        "legs:pants-trim",
+        0.8
+      ],
+      [
+        "legs:pants",
+        0.8
+      ],
+      [
+        "prop:urn (inst)",
+        0.8
+      ],
+      [
+        "fx:solid-shard (inst)",
+        0.7
+      ],
+      [
+        "fx:columns",
+        0.6
+      ],
+      [
+        "prop:chestRare (inst)",
+        0.6
+      ],
+      [
+        "item-cloth",
+        0.5
+      ],
+      [
+        "item-iron",
+        0.5
+      ],
+      [
+        "item-liquid",
+        0.5
+      ],
+      [
+        "item-glass",
+        0.5
+      ],
+      [
+        "prop:brazier (inst)",
+        0.4
+      ],
+      [
+        "prop:shrine (inst)",
+        0.4
+      ],
+      [
+        "enemy:skeleton_archer",
+        0.4
+      ],
+      [
+        "enemy:scarab_drone",
+        0.4
+      ],
+      [
+        "enemy:dire_rat",
+        0.4
+      ],
+      [
+        "prop:altar (inst)",
+        0.4
+      ],
+      [
+        "prop:wallSkull (inst)",
+        0.4
+      ],
+      [
+        "prop:coffin (inst)",
+        0.2
+      ],
+      [
+        "fx:shells",
+        0.1
+      ]
+    ],
+    "newPrograms": [
+      "fx:columns/fx-columns",
+      "item-liquid/item:liquid",
+      "item-glass/item:glass",
+      "prop:chestRare:0/prop:prop.timber.dark",
+      "prop:brazier:0/prop:prop.timber.charred",
+      "prop:altar:0/prop:cloth.linen",
+      "creature:skin/creature:bone",
+      "creature:alt/creature:shade"
+    ]
   }
 }
