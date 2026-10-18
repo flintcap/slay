@@ -9,6 +9,7 @@ import type {
   DamagePacket,
   MonsterRank,
   MonsterFamily,
+  StatusApplication,
 } from '../types';
 import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
@@ -61,7 +62,7 @@ import { RunModifiers } from './RunModifiers';
 import { killXp } from '../sim/Progression';
 import { bossHitCap } from '../sim/FairFight';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
-import { disposeAbilityWorld, projectileStandIns } from '../entities/Abilities';
+import { disposeAbilityWorld, getAbility, projectileStandIns } from '../entities/Abilities';
 import { vigilStandIn } from '../fx/paladin/VigilRing';
 import { disposeMonsterModels } from '../entities/MonsterModels';
 import { SUMMONED_BY } from '../entities/Abilities';
@@ -1050,7 +1051,8 @@ export class DungeonScene extends GameScene {
     const reach = 2.6;
 
     if (attacker) {
-      const melee = !packet.ability || packet.ability === 'melee';
+      // A blow from arm's reach: the monster's own melee moves, a plain swing included.
+      const melee = !packet.ability || packet.ability === 'melee' || getAbility(packet.ability)?.kind === 'melee';
       let back = 0;
       if (blocked && e.thornsBlockPct > 0) back += lifeBefore * 0 + packet.amount * (e.thornsBlockPct / 100);
       if (!blocked && melee && e.thornsMeleePct > 0) back += taken * (e.thornsMeleePct / 100);
@@ -1068,6 +1070,13 @@ export class DungeonScene extends GameScene {
         const gap = this.tmpDir.subVectors(attacker.root.position, this.player.position).setY(0).length();
         if (gap <= reach + attacker.hitRadius) {
           this.skills.counterAttack(this.player, attacker, ctx, e.blockCounterPct / 100);
+        }
+      }
+      // Riposte Blade: any melee blow can be answered, with a critical.
+      if (melee && e.meleeCounterChance > 0 && this.rng.chance(Math.min(0.9, e.meleeCounterChance / 100))) {
+        const gap = this.tmpDir.subVectors(attacker.root.position, this.player.position).setY(0).length();
+        if (gap <= reach + attacker.hitRadius) {
+          this.skills.counterAttack(this.player, attacker, ctx, e.meleeCounterPct / 100, e.meleeCounterCrit);
         }
       }
     }
@@ -1144,11 +1153,8 @@ export class DungeonScene extends GameScene {
       this.trailTimer -= dt;
       if (this.trailTimer <= 0) {
         this.trailTimer = 0.25;
-        this.skills.passiveNova(
-          this.player, p.clone(), e.trailRadius, e.trailDamagePct / 100 * 0.25,
-          'lightning', ctx, this.enemies, this.boss,
-        );
-        this.decals.add('scorch', p.x, p.z, e.trailRadius * 0.8);
+        this.skills.dropTrail(this.player, p.x, p.z);
+        this.decals.add('poison', p.x, p.z, e.trailRadius, undefined, e.trailSec || 5);
       }
     }
   }
@@ -1311,21 +1317,24 @@ export class DungeonScene extends GameScene {
       st.souls = Math.min(e.soulMaxStacks, st.souls + 1);
       st.soulTimer = e.soulDurationSec;
     }
-    // Contagion: a cursed corpse throws its curses at the pack.
-    if (e.curseSpreadRadius > 0) {
+    // Contagion: a cursed corpse throws its curses, at full time, at the nearest of the pack.
+    if (e.curseSpreadRadius > 0 && this.lastCurses.length) {
       const ctx = this.ctxCache ?? this.context();
-      for (const en of this.enemies) {
-        if (en.life <= 0) continue;
-        if (en.root.position.distanceTo(pos) > e.curseSpreadRadius) continue;
-        en.applyStatuses([{ id: 'weakened', duration: 8, magnitude: 1, stacks: 1 }], ctx);
-      }
+      const near = this.enemies
+        .filter((en) => en.life > 0 && en.root.position.distanceTo(pos) <= e.curseSpreadRadius)
+        .sort((a, b) => a.root.position.distanceTo(pos) - b.root.position.distanceTo(pos))
+        .slice(0, e.curseSpreadMax || Infinity);
+      for (const en of near) en.applyStatuses(this.lastCurses, ctx);
     }
+    this.lastCurses = [];
   }
 
   /** Reused inside the damage callback so it never rebuilds the context. */
   private ctxCache: CombatContext | null = null;
   /** Overkill from the corpse currently being reaped. */
   private lastOverkill = 0;
+  /** The curses that corpse wore, for Contagion. */
+  private lastCurses: StatusApplication[] = [];
   /**
    * The monster whose `update` is running right now.
    *
@@ -1792,6 +1801,7 @@ export class DungeonScene extends GameScene {
         // A broken bell or portal is part of the room, not a kill.
         if (e.def.object) continue;
         this.lastOverkill = e.overkill;
+        this.lastCurses = e.cursesCarried();
         // A warden pays like a rare; its chest is the rest of the reward.
         const isWarden = e === this.warden;
         this.grantKill(e.monsterId, isWarden ? 'rare' : e.rank, e.family, e.root.position, e.ilvl);

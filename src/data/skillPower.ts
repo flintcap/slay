@@ -173,7 +173,7 @@ export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower> = {
   // Rogue
   smokeBomb: (k, n) => ({ duration: r1(n('duration', 6) + 0.2 * k) }),
   nightfall: (k, n) => ({
-    mods: { attackRating: -(60 + 2 * k), critChance: -15, moveSpeed: -(25 + k) },
+    mods: { attackRating: -(60 + n('perRank', 2) * k), critChance: -15, moveSpeed: -(25 + k) },
     duration: n('duration', 8),
   }),
 

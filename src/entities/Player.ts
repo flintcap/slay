@@ -252,6 +252,8 @@ export class Player {
     // Passives resolve on the same trigger as stats: both only change when gear
     // or the skill tree changes.
     this.passives = passiveEffects(this.character);
+    // Antivenom: the hero's blood no longer takes poison.
+    this.status.setImmunities(this.passives.poisonHealPct > 0 ? ['poisoned', 'envenomed', 'plagued'] : []);
     // Death's Embrace: a slice of the mana pool becomes life outright.
     if (this.passives.manaToLifePct > 0) {
       const moved = this.stats.mana * (this.passives.manaToLifePct / 100);
@@ -572,6 +574,11 @@ export class Player {
       if (packet.amount > 0) events.emit('player:evaded', { ability: packet.ability ?? '', source: packet.source });
       return 0;
     }
+    // Silhouette: a share of blows simply miss you.
+    if (this.passives.avoidPct > 0 && packet.amount > 0 && rng.chance(Math.min(1, this.passives.avoidPct / 100))) {
+      events.emit('player:evaded', { ability: packet.ability ?? '', source: packet.source });
+      return 0;
+    }
     // Antivenom: poison feeds you instead.
     if (packet.type === 'poison' && this.passives.poisonHealPct > 0) {
       this.heal(packet.amount * this.passives.poisonHealPct / 100);
@@ -665,6 +672,11 @@ export class Player {
 
   cooldownRemaining(skillId: string): number {
     return Math.max(0, this.cooldowns.get(skillId) ?? 0);
+  }
+
+  /** Vanish and Assassinate hand a skill straight back. */
+  resetCooldown(skillId: string): void {
+    this.cooldowns.delete(skillId);
   }
 
   startCooldown(skillId: string, seconds: number): void {

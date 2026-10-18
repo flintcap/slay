@@ -7,7 +7,7 @@ import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { skillSound } from '../audio/SkillSounds';
 import { SKILLS, SKILL_BY_ID } from '../data/skills';
-import { rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
+import { resistAgainst, rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 
 /** A summon's hits and life at a skill rank, in any unit: only the ratio between ranks is used. */
@@ -199,18 +199,23 @@ const SELF_BUFF_STATUS: Record<string, string> = {
   revenantForm: 'frenzy',
 };
 
+/** How far from the aim point Corpse Explosion looks for a body, and how long a body lies there. */
+const CORPSE_REACH = 4;
+const CORPSE_LIFE = 30;
+
 /** What a cleanse takes off the hero first: holds, then slows. */
 const CLEANSE = ['stunned', 'frozen', 'knockedDown', 'rooted', 'feared', 'grasped', 'entangled', 'crippled', 'chilled', 'slowed'];
 
 /** Coat Blades, for its poison chance (read on every coated blow). */
 const COAT = SKILLS.find((s) => s.id === 'coatBlades');
+/** Venom Coat, which poisons with every arrow while it is on. */
+const VENOM_COAT = SKILLS.find((s) => s.id === 'venomCoat');
 /**
  * Every active skill's name, which its damage packets carry as `ability`.
  * Passives are left out: Riposte and Superconductor are passives whose procs
  * hit under the same name and keep their weapon sound.
  */
 const SKILL_NAMES = new Set(SKILLS.filter((s) => s.targeting !== 'passive').map((s) => s.name));
-const UMBRAL_AMBUSH = SKILLS.find((s) => s.id === 'umbralAmbush')?.name ?? 'Umbral Ambush';
 /** Active skills by the name their packets carry, for what a skill does to one target (`skillEdge`). */
 const ACTIVE_BY_NAME = new Map(SKILLS.filter((s) => s.targeting !== 'passive').map((s) => [s.name, s]));
 
@@ -619,10 +624,16 @@ export class SkillRunner {
   private strike(t: Target, packet: DamagePacket, ctx: CombatContext, kind: HitKind, fromX: number, fromZ: number): boolean {
     if (!this.lands(t, packet, kind, ctx)) return false;
     packet = this.coated(packet, kind, ctx);
-    if (packet.source === 'player' && packet.applies?.length) packet = { ...packet, applies: this.heroBleeds(packet.applies) };
+    if (packet.source === 'player' && packet.applies?.length) packet = { ...packet, applies: this.heroDots(packet.applies) };
     const before = t.life;
+    if (packet.source === 'player' && this.caster?.passives.crowdDamagePct) this.hitAt.set(t.id, this.runTime);
     t.takeDamage(packet, ctx);
     this.veilAfterHit(packet, kind, before > 0 && t.life <= 0);
+    // Assassinate: a kill hands the skill straight back.
+    if (before > 0 && t.life <= 0 && packet.source === 'player' && this.caster) {
+      const def = packet.ability ? ACTIVE_BY_NAME.get(packet.ability) : undefined;
+      if (typeof def?.params?.refundOnKill === 'number' && def.params.refundOnKill > 0) this.caster.resetCooldown(def.id);
+    }
     try {
       this.feel.hit(t, packet, {
         kind, fromX, fromZ, lifeBefore: before, weapon: this.weaponSound,
@@ -636,15 +647,16 @@ export class SkillRunner {
   }
 
   /**
-   * The hero's bleeds, as the bleed passives shape them: Butchery and
-   * Unrelenting (while you are low) make them hurt more, Arterial Strike
-   * makes them last longer, and Unrelenting stops them running out on a
-   * target below its threshold.
+   * The hero's bleeds and poisons, as the passives shape them: Butchery and
+   * Unrelenting (while you are low) make bleeds hurt more, Arterial Strike
+   * makes them last longer, Unrelenting stops them running out on a target
+   * below its threshold, and Apex Predator does the same for poison.
    */
-  private heroBleeds(list: StatusApplication[]): StatusApplication[] {
+  private heroDots(list: StatusApplication[]): StatusApplication[] {
     const p = this.caster;
     if (!p) return list;
     const e = p.passives;
+    if (e.poisonHoldBelow > 0) list = list.map((a) => (a.id === 'poisoned' ? { ...a, holdBelow: e.poisonHoldBelow } : a));
     const low = p.life / Math.max(1, p.stats.life) < 0.5;
     const more = e.bleedDamagePct + (low ? e.lowLifeBleedPct : 0);
     if (more <= 0 && e.bleedDurationPct <= 0 && e.bleedHoldBelow <= 0) return list;
@@ -690,7 +702,8 @@ export class SkillRunner {
     const veil = p.status.get('veiled');
     if (!veil) return;
     const e = p.passives;
-    if (killed && (packet.ability === UMBRAL_AMBUSH || e.veilKillExtendSec > 0)) {
+    const keeps = ACTIVE_BY_NAME.get(packet.ability ?? '')?.params?.killKeepsStealth;
+    if (killed && ((typeof keeps === 'number' && keeps > 0) || e.veilKillExtendSec > 0)) {
       if (e.veilKillExtendSec > 0) veil.remaining = Math.min(Math.max(veil.remaining, e.veilKillCapSec), veil.remaining + e.veilKillExtendSec);
       return;
     }
@@ -698,23 +711,27 @@ export class SkillRunner {
   }
 
   /**
-   * Coat Blades: while the coat is on, a weapon blow may leave Poisoned.
+   * Coats: while one is on, a weapon blow may leave Poisoned.
    *
-   * The coat's flat poison has always ridden on every hit (it is the skill's
-   * stat table), but the poison itself never did: the hit stayed physical, so
-   * a coated blade never poisoned anything and the 25% in the tooltip was
-   * read by nothing.
+   * Coat Blades rides on melee blows and gives each a chance to poison. Venom
+   * Coat rides on arrows and poisons with every one. The coats' flat poison is
+   * their stat table; this is the poison itself.
    */
   private coated(packet: DamagePacket, kind: HitKind, ctx: CombatContext): DamagePacket {
     const p = this.caster;
-    if (!p || packet.source !== 'player' || (kind !== 'melee' && kind !== 'heavy')) return packet;
-    if (!p.status.has('skill.coatBlades')) return packet;
-    const rank = skillRank(p.character, 'coatBlades');
-    if (rank <= 0) return packet;
-    const params = COAT?.params ?? {};
-    const n = (k: string, d: number): number => (typeof params[k] === 'number' ? (params[k] as number) : d);
-    const chance = n('poisonChance', 25) + n('chancePerRank', 3) * (rank - 1);
-    if (!ctx.rng.chance(Math.min(1, chance / 100))) return packet;
+    if (!p || packet.source !== 'player') return packet;
+    const blade = (kind === 'melee' || kind === 'heavy') && p.status.has('skill.coatBlades');
+    const arrow = kind === 'projectile' && weaponStyle(p) === 'ranged' && p.status.has('skill.venomCoat');
+    if (!blade && !arrow) return packet;
+    const def = blade ? COAT : VENOM_COAT;
+    const rank = def ? skillRank(p.character, def.id) : 0;
+    if (!def || rank <= 0) return packet;
+    if (blade) {
+      const params = def.params ?? {};
+      const n = (k: string, d: number): number => (typeof params[k] === 'number' ? (params[k] as number) : d);
+      const chance = n('poisonChance', 25) + n('chancePerRank', 3) * (rank - 1);
+      if (!ctx.rng.chance(Math.min(1, chance / 100))) return packet;
+    }
     const e = p.passives;
     const poison: StatusApplication = {
       id: 'poisoned',
@@ -744,7 +761,21 @@ export class SkillRunner {
 
     const rank = skillRank(player.character, skillId);
     if (rank <= 0) return false;
-    if (player.isOnCooldown(skillId)) return false;
+    // Void Walk: a chain blink pressed again inside its window is free.
+    const hop = this.hops !== null && this.hops.id === skillId && this.hops.left > 0 && ctx.elapsed <= this.hops.until;
+    if (!hop && player.isOnCooldown(skillId)) return false;
+    // Corpse Explosion needs a body to burst.
+    if (def.effect === 'corpse.explode' && !this.corpseNear(target, CORPSE_REACH)) {
+      events.emit('toast', { text: 'No corpse there.', kind: 'bad' });
+      audio.play('ui.error');
+      return false;
+    }
+    // Umbral Ambush is struck from the veil or not at all.
+    if (typeof def.params?.requiresStealth === 'number' && def.params.requiresStealth > 0 && !player.status.has('veiled')) {
+      events.emit('toast', { text: `${def.name} needs the veil.`, kind: 'bad' });
+      audio.play('ui.error');
+      return false;
+    }
 
     // A bow cannot swing. Blocking this here is what makes weapon choice a
     // real decision rather than a stat stick.
@@ -771,9 +802,16 @@ export class SkillRunner {
     // A burning vigil pressed again is put out, free (paladin/Vigils.ts).
     if (snuffVigil(def, player)) return true;
 
-    // Veteran's Resolve makes a shout cheaper.
-    const shout = (def.effect ?? '').startsWith('shout') ? 1 - Math.min(90, player.passives.shoutCostPct) / 100 : 1;
-    const cost = def.manaCost ? def.manaCost(rank) * shout : 0;
+    // Veteran's Resolve makes a shout cheaper, Dark Pact the Veil.
+    const effect = def.effect ?? '';
+    const cut = effect.startsWith('shout')
+      ? player.passives.shoutCostPct
+      : def.id === 'veil'
+        ? player.passives.veilCostPct
+        : effect.startsWith('curse')
+          ? player.passives.curseCostPct
+          : 0;
+    const cost = def.manaCost && !hop ? def.manaCost(rank) * (1 - Math.min(90, cut) / 100) : 0;
     if (cost > 0 && !player.spendMana(cost)) {
       // Say so. A skill that silently refuses reads as a broken button, which
       // is exactly how being out of mana was being reported as a bug.
@@ -783,7 +821,7 @@ export class SkillRunner {
     }
 
     const cd = def.cooldown ? def.cooldown(rank) : 0;
-    if (cd > 0) player.startCooldown(skillId, cd);
+    if (cd > 0 && !hop) player.startCooldown(skillId, cd);
 
     player.faceTowards(target.x, target.z);
     events.emit('skill:cast', { skillId: def.id, type: def.damageType ?? 'physical' });
@@ -809,6 +847,12 @@ export class SkillRunner {
     // from the fire skill next to it.
     const school = schoolOf(def);
     const color = shiftHue(ELEMENTS[school]?.body ?? 0xc9a070, hashId(def.id));
+    // Void Walk: "up to 4 blinks (+1 per 5 ranks), each within 3s of the last".
+    if (def.effect === 'teleport.chain') {
+      const every = num('hopsPerRanks', 0);
+      const total = Math.floor(num('hops', 1)) + (every > 0 ? Math.floor(rank / every) : 0);
+      this.hops = { id: def.id, left: hop && this.hops ? this.hops.left - 1 : total - 1, until: ctx.elapsed + num('window', 3) };
+    }
 
     // A skill's own critical chance ("+25% critical chance"), growing a rank
     // when it says so; "always a critical strike"; and the veil's promise that
@@ -945,7 +989,25 @@ export class SkillRunner {
           // the two blades (same total, a hit from each); a multi-hit skill's
           // blows keep their damage and the left blade swings among them.
           const split = dual && hits === 1;
-          const mainPacket = split ? (m = 1): DamagePacket => blowPacket(m * DUAL_SKILL_MAIN) : blowPacket;
+          // Double Strike: the later blows crit exactly when the first one did.
+          const inherit = hits > 1 && num('inheritCrit', 0) > 0;
+          let firstCrit: boolean | null = null;
+          const critX = Math.max(100, player.stats.critDamage) / 100;
+          const firstPacket = split ? (m = 1): DamagePacket => blowPacket(m * DUAL_SKILL_MAIN) : blowPacket;
+          const mainPacket = inherit
+            ? (m = 1): DamagePacket => {
+              const pk = firstPacket(m);
+              firstCrit = (firstCrit ?? false) || pk.crit;
+              return pk;
+            }
+            : firstPacket;
+          const laterPacket = inherit
+            ? (m = 1): DamagePacket => {
+              const pk = blowPacket(m);
+              if (firstCrit === null || pk.crit === firstCrit) return pk;
+              return { ...pk, crit: firstCrit, amount: firstCrit ? pk.amount * critX : pk.amount / critX };
+            }
+            : blowPacket;
           this.meleeSwing(player, dir, arc, reach, mainPacket, ctx, enemies, boss, type, true, kind, sound.hit, most, focus);
           if (dual) {
             const facing = dir.clone();
@@ -1001,7 +1063,7 @@ export class SkillRunner {
                   this.atContact = true;
                   this.caster = player;
                   try {
-                    this.meleeSwing(player, facing, arc, reach, blowPacket, ctx, enemies, boss, type, true, kind, sound.hit, most, focus);
+                    this.meleeSwing(player, facing, arc, reach, laterPacket, ctx, enemies, boss, type, true, kind, sound.hit, most, focus);
                   } finally {
                     this.atContact = false;
                   }
@@ -1097,7 +1159,17 @@ export class SkillRunner {
             density: sig.density,
             mark: true,
           });
-          this.areaDamage(player.position, radius, makePacket, ctx, enemies, boss);
+          // Bone Nova: Bone Armor shatters outward, its remaining ward added to every blow.
+          let shard = 0;
+          if ((def.effect ?? '').includes('consumeShield')) {
+            shard = (player.status.get('shielded')?.absorb ?? 0) * num('shieldScale', 100) / 100;
+            if (player.status.remove('shielded')) player.refreshStats();
+          }
+          this.areaDamage(player.position, radius, shard > 0 ? (m = 1) => {
+            const pk = makePacket(m);
+            pk.amount += shard;
+            return pk;
+          } : makePacket, ctx, enemies, boss);
           break;
         }
 
@@ -1253,6 +1325,8 @@ export class SkillRunner {
           // oath, aura or banner does. `applyBuff` reads the same numbers.
           this.applyBuff(player, def, rank, num, color);
           if ((def.effect ?? '').includes('autoStrike')) startStorm(false);
+          // Vanish hands Shadow Step straight back.
+          if (num('resetSkills', 0) > 0) player.resetCooldown('shadowStep');
           // Rallying Horn shakes off one hold or slow.
           if (num('cleanse', 0) > 0) {
             const off = CLEANSE.find((id) => player.status.has(id));
@@ -1355,6 +1429,8 @@ export class SkillRunner {
             this.statusFor(def, num, color),
             def.id, school, rank,
           );
+          // Smoke Bomb hides the hero for as long as they stand in it.
+          if (num('stealthInside', 0) > 0) this.zones[this.zones.length - 1]!.veils = true;
           this.effects.nova(at.x, at.z, radius, { element: school, color, emitter: sig.emitter, density: sig.density });
           break;
         }
@@ -1369,6 +1445,13 @@ export class SkillRunner {
           // Reassemble mends the host rather than adding to it.
           if (def.effect === 'minion.heal') {
             this.healAll(player, num('healPct', 40) + num('perRank', 3) * Math.max(0, rank - 1), true);
+            // And what fell a moment ago stands up again where it fell.
+            const window = num('reviveWindow', 0);
+            if (window > 0) {
+              const back = this.fallen.filter((f) => this.runTime - f.at <= window);
+              this.fallen = this.fallen.filter((f) => this.runTime - f.at > window);
+              for (const f of back) f.again(f.x, f.z);
+            }
             this.effects.nova(player.position.x, player.position.z, num('radius', 10), {
               element: school, color, emitter: sig.emitter, density: sig.density * 0.5,
             });
@@ -1394,11 +1477,12 @@ export class SkillRunner {
             SUMMON_HARD_CAP[def.id] ?? 6,
             Math.max(1, num('baseCap', 1))
               + Math.floor(rank / Math.max(1, num('maxPerRanks', 99)))
-              + Math.floor(isClone ? mp.cloneCount : mp.minionCapBonus),
+              + Math.floor(isClone ? mp.cloneCount : mp.minionCapBonus)
+              + (mp.capBySkill[def.id] ?? 0),
           );
           const minionPower = 1 + (isClone ? mp.clonePowerPct : mp.minionDamagePct) / 100;
-          // Skeletal Knight and Death Knight upgrade the first few summons.
-          const elites = Math.floor(mp.minionEliteCount);
+          // Skeletal Knight and Death Knight upgrade a few skeletons into knights.
+          const elites = def.id === 'raiseSkeleton' ? Math.floor(mp.minionEliteCount) : 0;
           const elitePower = 1 + mp.minionElitePowerPct / 100;
           const swingRate = 1 / (1 + mp.minionAttackSpeedPct / 100);
           // A Shadow Clone is you in shadow, so it fights with your blades.
@@ -1412,20 +1496,23 @@ export class SkillRunner {
             events.emit('toast', { text: `${def.name} is at its limit.`, kind: 'info' });
             break;
           }
+          let knights = this.turrets.filter((q) => q.skillId === def.id && q.elite && q.life > 0 && q.left > 0).length;
           for (let i = 0; i < Math.min(count, room); i++) {
             const a = (i / count) * Math.PI * 2;
             const spread = 1.2 + count * 0.25;
+            const elite = knights < elites;
+            if (elite) knights++;
             this.addTurret(
               player.position.x + Math.cos(a) * spread,
               player.position.z + Math.sin(a) * spread,
               life,
               num('attackRate', melee ? 1.1 : 1.6) * swingRate,
               num('range', melee ? 2.6 : 11),
-              (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower * (i < elites ? elitePower : 1)),
+              (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower * (elite ? elitePower : 1)),
               type, color, melee, def.id,
               // A share of your own pool, which is how the skill descriptions
               // read it — "40% of your life" and so on.
-              Math.max(20, player.stats.life * (num('lifePct', 40) / 100) * minionLifeGrowth(def.id, Math.max(0, rank - 1), num) * (1 + mp.minionLifePct / 100)),
+              Math.max(20, player.stats.life * (num('lifePct', 40) / 100) * minionLifeGrowth(def.id, Math.max(0, rank - 1), num) * (1 + mp.minionLifePct / 100) * (elite ? 1 + mp.minionEliteLifePct / 100 : 1)),
               // Sentinels and clones are written to pull aggro; the rest hold a
               // line only by standing in the way.
               num('taunts', num('taunt', 0)) > 0,
@@ -1435,6 +1522,7 @@ export class SkillRunner {
                 damage: def.damageScale ? def.damageScale(r) : burstGrowth(def.id, Math.max(0, r - 1), num),
                 life: minionLifeGrowth(def.id, Math.max(0, r - 1), num),
               }),
+              { elite, cleave: elite && mp.minionEliteCleave },
             );
           }
           break;
@@ -1474,8 +1562,18 @@ export class SkillRunner {
             this.pendingSwings.push({
               t: num('delay', 6),
               run: () => {
-                for (const t of marked) {
-                  if (t.life <= 0) continue;
+                const jump = num('spreadOnKill', 0) > 0;
+                for (const m of marked) {
+                  let t: Target | undefined = m;
+                  // Killed early: the brand jumps to the nearest enemy and goes off there.
+                  if (t.life <= 0) {
+                    if (!jump) continue;
+                    const from = m.root.position;
+                    t = this.allTargets(enemies, boss)
+                      .filter((o) => o.life > 0 && !marked.includes(o) && this.groundDistance(o.root.position, from) <= 8)
+                      .sort((a, b) => this.groundDistance(a.root.position, from) - this.groundDistance(b.root.position, from))[0];
+                    if (!t) continue;
+                  }
                   const p = t.root.position;
                   this.effects.explosion(p.x, 0.9, p.z, { radius: 1.6, element: school, color });
                   this.pointDamage(p.clone().setY(0), 0.6, makePacket, ctx, enemies, boss, 'area');
@@ -1558,7 +1656,24 @@ export class SkillRunner {
           const stop = this.wallStop(player.position, dir, Math.min(range, dir.length() > 0 ? range : range), ctx, 0.5);
           const want = target.clone().setY(0);
           const reach = Math.min(stop, this.groundDistance(want, player.position));
-          const land = player.position.clone().addScaledVector(dir, reach);
+          let land = player.position.clone().addScaledVector(dir, reach);
+          // Shadow Step comes out of the dark behind the enemy nearest the mark.
+          let swingDir = dir;
+          if (num('backstab', 0) > 0) {
+            const mark = this.allTargets(enemies, boss)
+              .filter((t) => t.life > 0 && this.groundDistance(t.root.position, want) < 3 && this.groundDistance(t.root.position, player.position) <= range + 1)
+              .sort((a, b) => this.groundDistance(a.root.position, want) - this.groundDistance(b.root.position, want))[0];
+            if (mark) {
+              const at = mark.root.position.clone().setY(0);
+              const behind = at.clone().addScaledVector(dir, mark.hitRadius + 0.9);
+              const lane = this.wallStop(player.position, behind.clone().sub(player.position).setY(0).normalize(), this.groundDistance(behind, player.position), ctx, 0.5);
+              if (lane >= this.groundDistance(behind, player.position) - 0.05) {
+                land = behind;
+                swingDir = at.sub(behind).setY(0).normalize();
+                player.faceTowards(mark.root.position.x, mark.root.position.z);
+              }
+            }
+          }
           // Blink's parting gift: a burst where you were standing.
           if (num('exitBurst', 0) > 0) {
             const from = player.position.clone().setY(0);
@@ -1573,7 +1688,7 @@ export class SkillRunner {
           if ((def.effect ?? '').includes('strike') || (def.effect ?? '').includes('chain')) {
             const single = num('single', 0) > 0;
             this.meleeSwing(
-              player, dir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false, 'melee', sound.hit,
+              player, swingDir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false, 'melee', sound.hit,
               single ? 1 : Infinity, single ? { x: land.x, z: land.z } : null,
             );
           }
@@ -1594,6 +1709,24 @@ export class SkillRunner {
             this.applyBuff(player, def, rank, num, color);
             break;
           }
+          // Corpse Explosion: the body bursts for a share of the life it had,
+          // and every curse it carried lands on what the blast reaches.
+          if (def.effect === 'corpse.explode') {
+            const body = this.corpseNear(target, CORPSE_REACH);
+            if (!body) break;
+            this.corpses.splice(this.corpses.indexOf(body), 1);
+            const r = num('radius', 5);
+            const spot = new THREE.Vector3(body.x, 0, body.z);
+            this.effects.explosion(spot.x, 0.8, spot.z, { radius: r, element: school, color });
+            this.effects.nova(spot.x, spot.z, r, { element: school, color, emitter: sig.emitter, density: sig.density });
+            const share = (num('lifePct', 45) + num('perRank', 4) * Math.max(0, rank - 1)) / 100;
+            const spread = num('spreadCurses', 0) > 0 ? body.curses : [];
+            this.areaDamage(spot, r, () => ({
+              amount: body.maxLife * share, type, crit: false, source: 'player', ability: def.name,
+              ...(spread.length ? { applies: spread } : {}),
+            }), ctx, enemies, boss);
+            break;
+          }
           const radius = num('radius', family === 'point' ? 1.2 : 4);
           const at = family === 'aoe' || family === 'capstone' ? player.position.clone().setY(0) : target.clone().setY(0);
           this.effects.explosion(at.x, 0.8, at.z, { radius, element: school, color });
@@ -1608,6 +1741,18 @@ export class SkillRunner {
               const left = (t.drainStatus('bleeding') + t.drainStatus('hemorrhage')) * (num('damagePct', 100) / 100);
               if (left <= 0) continue;
               const pk: DamagePacket = { amount: left, type: 'physical', crit: false, source: 'player', ability: def.name };
+              if (this.strike(t, pk, ctx, 'proc', at.x, at.z)) dealt += left;
+            }
+          }
+          // Envenom Burst: every poison stack in reach goes off at once, for a
+          // share of all it had left to deal.
+          if (def.effect === 'detonate.dot') {
+            const pct = num('pctPerStack', 45) + num('perRank', 6) * Math.max(0, rank - 1);
+            for (const t of this.allTargets(enemies, boss)) {
+              if (t.life <= 0 || this.groundDistance(t.root.position, at) > radius + t.hitRadius) continue;
+              const left = t.drainStatus('poisoned') * pct / 100;
+              if (left <= 0) continue;
+              const pk: DamagePacket = { amount: left, type: 'poison', crit: false, source: 'player', ability: def.name };
               if (this.strike(t, pk, ctx, 'proc', at.x, at.z)) dealt += left;
             }
           }
@@ -1909,13 +2054,6 @@ export class SkillRunner {
       const burst = num('burstPct', 0);
       return [{ id: mapped, duration: held, magnitude, stacks: 1, maxStacks: extraStacks, tickScale, ...(burst > 0 ? { burstPct: burst } : {}) }];
     }
-    // Poison skills say how many stacks of Poisoned they leave: Viper Strike
-    // three, Venom Dart four, Death Lotus one a hit. Nothing read the number,
-    // so they poisoned only on the element's own chance, a stack at a time.
-    const poisonStacks = Math.floor(num('poisonStacks', num('poisonPerHit', 0)));
-    if (poisonStacks > 0 && getStatus('poisoned')) {
-      return [{ id: 'poisoned', duration: held, magnitude, stacks: poisonStacks, maxStacks: extraStacks, tickScale }];
-    }
     return [];
   }
 
@@ -1998,6 +2136,12 @@ export class SkillRunner {
     // "3 stacks of Bleeding (+1 per 4 ranks)"; Massacre's stack a cut.
     const bleed = Math.floor(num('bleedStacks', num('bleedPerHit', 0)) + num('bleedPerRank', 0) * k);
     if (bleed > 0) dot('bleeding', bleed, num('bleedDuration', 6));
+    // Poison skills say how many stacks of Poisoned they leave: Viper Strike
+    // three, Venom Dart four, Death Lotus one a hit, a cloud that keeps
+    // putting it back. Nothing read the number, so they poisoned only on the
+    // element's own chance, a stack at a time.
+    const poison = Math.floor(num('poisonStacks', num('poisonPerHit', 0)));
+    if (poison > 0) dot('poisoned', poison, num('duration', 8) + num('durationPerRank', 0) * k);
     return out;
   }
 
@@ -2137,13 +2281,14 @@ export class SkillRunner {
    * to go through the same packet pipeline as every other one, conditional
    * passives included.
    */
-  counterAttack(player: Player, target: Target, ctx: CombatContext, scale: number): void {
+  counterAttack(player: Player, target: Target, ctx: CombatContext, scale: number, crit = false): void {
     this.caster = player;
     const packet = rollDamage(player.stats, ctx.rng, {
       scale,
       type: 'physical',
       ability: 'Riposte',
       source: 'player',
+      forceCrit: crit || undefined,
     });
     if (!this.strike(target, this.tune(packet, target), ctx, 'melee', player.position.x, player.position.z)) return;
     this.effects.meleeHit(target.root.position.x, 1.0, target.root.position.z, {
@@ -2342,15 +2487,40 @@ export class SkillRunner {
         amount *= 1 + e.guaranteedCritBonusPct / 100;
       }
     }
-    // Blood Toxin: poison that ignores part of the resistance meant to stop it.
+    // Blood Toxin: poison ignores a share of the target's poison resistance.
     // Applied as raw damage rather than a resistance edit, which is the same
     // arithmetic and keeps mitigation a pure function.
     if (e.resistPiercePct > 0 && packet.type === 'poison') {
-      amount *= 1 + e.resistPiercePct / 200;
+      const r = Math.min(84, resistAgainst(t.combatStats, 'poison'));
+      if (r > 0) amount *= (1 - (r * (1 - Math.min(100, e.resistPiercePct) / 100)) / 100) / (1 - r / 100);
     }
     // Fire and Lightning Mastery: points of the target's resistance ignored.
     const pierce = e.pierceByType[packet.type] ?? 0;
     if (pierce > 0) amount *= 1 + pierce / 100;
+    // A Thousand Cuts: a crit banks a Cut; a blow that misses its crit buys one
+    // with banked Cuts; every Cut makes crits hurt more. Ten quiet seconds end the fight.
+    if (e.cutMax > 0 && packet.source === 'player') {
+      if (this.runTime - this.cutAt > 10) st.cuts = 0;
+      this.cutAt = this.runTime;
+      const critX = Math.max(100, p.stats.critDamage) / 100;
+      if (crit) st.cuts = Math.min(e.cutMax, st.cuts + 1);
+      else if (st.cuts >= e.cutSpend) {
+        st.cuts -= e.cutSpend;
+        crit = true;
+        amount *= critX;
+      }
+      if (crit && st.cuts > 0) amount *= (critX + (st.cuts * e.cutPct) / 100) / critX;
+    }
+    // Lethality: a critical strike ignores part of the target's physical resistance.
+    if (crit && e.critPhysPiercePct > 0 && packet.type === 'physical') {
+      const r = Math.min(84, resistAgainst(t.combatStats, 'physical'));
+      if (r > 0) amount *= (1 - (r * (1 - e.critPhysPiercePct / 100)) / 100) / (1 - r / 100);
+    }
+    // Night Eyes and The Unseen Blade: blows from the veil crit harder.
+    if (crit && e.veilCritPct > 0 && p.status.has('veiled')) {
+      const critX = Math.max(100, p.stats.critDamage) / 100;
+      amount *= (critX + e.veilCritPct / 100) / critX;
+    }
     // Kindling (burning targets) and Deadly Aim (targets above 80% life):
     // extra critical chance, and extra critical damage on a critical.
     for (const c of e.condCrit) {
@@ -2397,6 +2567,11 @@ export class SkillRunner {
     if (n('executeBelow') > 0 && lifePct < n('executeBelow') && !crit) {
       crit = true;
       amount *= Math.max(100, p.stats.critDamage) / 100;
+    }
+    // Assassinate: a non-boss below its line simply dies.
+    if (n('threshold') > 0 && def.effect === 'melee.execute' && !t.isBoss && lifePct < n('threshold') + n('perRank') * k) {
+      amount = Math.max(amount, t.life * 8 + 1);
+      crit = true;
     }
     // Ignoring resistance is the same arithmetic as Blood Toxin's: raw damage, not a resistance edit.
     if (n('pierceResist') > 0 && packet.type === def.damageType) amount *= 1 + n('pierceResist') / 200;
@@ -2448,10 +2623,12 @@ export class SkillRunner {
           });
         }
         if (e.critHemorrhage > 0) riders.push({ id: 'hemorrhage', duration: getStatus('hemorrhage')?.baseDuration ?? 5, magnitude: 1, stacks: 1 });
-        if (riders.length) t.applyStatuses(this.heroBleeds(riders), ctx);
+        if (riders.length) t.applyStatuses(this.heroDots(riders), ctx);
 
         // Phantom Blades: a spectral copy flies at somebody else.
-        if (e.critBladeChance > 0 && ctx.rng.chance(Math.min(1, e.critBladeChance / 100))) {
+        while (this.bladeTimes.length && this.runTime - this.bladeTimes[0]! > 1) this.bladeTimes.shift();
+        const room = e.critBladeMax <= 0 || this.bladeTimes.length < e.critBladeMax;
+        if (room && e.critBladeChance > 0 && ctx.rng.chance(Math.min(1, e.critBladeChance / 100))) {
           let mark: Target | null = null;
           let markD = Infinity;
           for (const other of this.allTargets(enemies, boss)) {
@@ -2463,6 +2640,7 @@ export class SkillRunner {
             }
           }
           if (mark) {
+            this.bladeTimes.push(this.runTime);
             this.strike(
               mark,
               { ...packet, amount: packet.amount * (e.critBladePct / 100), ability: 'Phantom Blade' },
@@ -2509,7 +2687,7 @@ export class SkillRunner {
       if (e.curseLeechPct > 0 && t.isDebuffed) {
         const back = packet.amount * (e.curseLeechPct / 100);
         p.life = Math.min(p.stats.life, p.life + back);
-        p.mana = Math.min(p.stats.mana, p.mana + back * 0.5);
+        if (e.curseManaLeechPct > 0) p.mana = Math.min(p.stats.mana, p.mana + packet.amount * (e.curseManaLeechPct / 100));
       }
 
       // --- Undying's leech while low --------------------------------------
@@ -2603,13 +2781,10 @@ export class SkillRunner {
       this.nearbyCount = 0;
       return;
     }
-    let n = 0;
-    for (const e of enemies) {
-      if (e.life <= 0) continue;
-      if (this.groundDistance(e.root.position, player.position) <= 8) n++;
-    }
-    if (boss && boss.life > 0 && this.groundDistance(boss.root.position, player.position) <= 8) n++;
-    this.nearbyCount = n;
+    // Momentum: every enemy you hit inside its window still counts.
+    const window = player.passives.crowdWindow || 3;
+    for (const [id, at] of this.hitAt) if (this.runTime - at > window) this.hitAt.delete(id);
+    this.nearbyCount = this.hitAt.size;
   }
 
   private pointDamage(
@@ -2784,7 +2959,14 @@ export class SkillRunner {
     follow?: THREE.Object3D;
     /** The skill that laid it, so a recast replaces it. */
     skillId?: string;
+    /** Smoke Bomb: the hero inside is Veiled. */
+    veils?: boolean;
+    /** The Bone Choir: share (%) of what it deals that heals the hero and the pack. */
+    healShare?: number;
   }> = [];
+
+  /** Void Walk's free blinks left, and until when they can be pressed. */
+  private hops: { id: string; left: number; until: number } | null = null;
 
   private turrets: Array<{
     x: number;
@@ -2826,6 +3008,11 @@ export class SkillRunner {
     rank: number;
     /** How hard it hits and how much life it has at a rank, against rank 1. */
     grow: SummonGrowth | null;
+    /** A Skeletal Knight, whose blows may cleave. */
+    elite: boolean;
+    cleave: boolean;
+    /** Raises the same minion again at a spot (Reassemble). */
+    again: (x: number, z: number) => void;
     /** Its hits, times what ranks bought since it was raised. */
     power: number;
   }> = [];
@@ -2843,6 +3030,12 @@ export class SkillRunner {
 
   /** Wall clock for the tick, so rigs breathe and bob. */
   private runTime = 0;
+  /** When each enemy was last hit by the hero, for Momentum. */
+  private hitAt = new Map<string, number>();
+  /** When A Thousand Cuts last counted a blow. */
+  private cutAt = 0;
+  /** When the last Phantom Blades flew, for their limit a second. */
+  private bladeTimes: number[] = [];
 
   /** Context for the tick. Set every frame by the scene. */
   private tickCtx: {
@@ -2929,6 +3122,7 @@ export class SkillRunner {
         // Falls apart rather than vanishing: the last second plays the collapse.
         t.left = Math.min(t.left, 0.55);
         t.life = 0;
+        this.fell(t);
       }
     }
   }
@@ -2960,9 +3154,33 @@ export class SkillRunner {
     if (t.life <= 0) {
       t.life = 0;
       t.left = Math.min(t.left, 0.55);
+      this.fell(t);
     }
     return true;
   }
+
+  /**
+   * A minion has just fallen. Reassemble remembers it for a few seconds, and
+   * The Bone Choir turns the body into a pool of grave-light.
+   */
+  private fell(t: SkillRunner['turrets'][number]): void {
+    this.fallen.push({ again: t.again, at: this.runTime, x: t.x, z: t.z });
+    if (this.fallen.length > 16) this.fallen.shift();
+    const p = this.caster;
+    const e = p?.passives;
+    if (!p || !e || e.choirLifePct <= 0 || !this.tickCtx) return;
+    const tick = 0.5;
+    const bite = (t.maxLife * e.choirLifePct) / 100 * tick;
+    this.addZone(
+      t.x, t.z, e.choirRadius, e.choirSec, tick,
+      () => ({ amount: bite, type: 'arcane', crit: false, source: 'player', ability: 'The Bone Choir' }),
+      'arcane', 0xb8c8ff, 'spirit', undefined, 'theBoneChoir', 'arcane',
+    );
+    this.zones[this.zones.length - 1]!.healShare = e.choirHealShare;
+  }
+
+  /** Minions that fell lately, for Reassemble. */
+  private fallen: Array<{ again: (x: number, z: number) => void; at: number; x: number; z: number }> = [];
 
   /** Handed the live combat state so persistent effects can act on it. */
   setContext(ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
@@ -2991,6 +3209,8 @@ export class SkillRunner {
     }
 
     this.stormTick(dt, live.ctx, live.enemies, live.boss);
+    this.markCorpses(live.enemies);
+    this.trailTick(dt, live.ctx, live.enemies, live.boss);
     this.spreadTick(dt, live.ctx, live.enemies, live.boss);
     const keeper = this.caster ?? this.keeper;
     if (keeper) tickVigils(this.vigilHost, keeper, dt, live);
@@ -3017,7 +3237,16 @@ export class SkillRunner {
         const centre = this.tmp3.set(z.x, 0, z.z);
         // A field ticking is not a blow: no flash or stop, or a burning floor
         // would strobe everything standing in it.
-        this.areaDamage(centre, z.radius, z.packet, ctx, enemies, boss, 'proc');
+        const dealt = this.areaDamage(centre, z.radius, z.packet, ctx, enemies, boss, 'proc');
+        const hero = this.caster;
+        if (z.healShare && dealt > 0 && hero) {
+          const mend = (dealt * z.healShare) / 100;
+          hero.heal(mend);
+          for (const q of this.turrets) if (q.life > 0 && q.maxLife > 0) q.life = Math.min(q.maxLife, q.life + mend);
+        }
+        if (z.veils && hero && hero.alive && !hero.status.has('veiled') && this.groundDistance(hero.position, centre) <= z.radius) {
+          hero.applyStatus('veiled', Math.max(0.6, z.tick + 0.1));
+        }
         if (z.applies?.length) {
           for (const t of this.allTargets(enemies, boss)) {
             if (this.groundDistance(t.root.position, centre) > z.radius + t.hitRadius) continue;
@@ -3231,6 +3460,13 @@ export class SkillRunner {
           try {
             if (t.melee) {
               this.strike(best, t.packet(), ctx, 'minion', t.x, t.z);
+              // A knight's blow carries on into whatever stands beside its mark.
+              if (t.cleave) {
+                for (const o of this.allTargets(enemies, boss)) {
+                  if (o === best || o.life <= 0 || this.groundDistance(o.root.position, best.root.position) > 1.8 + o.hitRadius) continue;
+                  this.strike(o, t.packet(), ctx, 'minion', t.x, t.z);
+                }
+              }
               this.effects.impact(t.type, to.x, to.y, to.z, { color: t.color, scale: 0.7, shake: 0, sfx: null });
             } else {
               this.effects.projectile(from.clone(), to, {
@@ -3254,7 +3490,76 @@ export class SkillRunner {
     }
   }
 
-  /** Leaves a patch of ground that keeps hurting whatever stands in it. */
+  /**
+   * Miasma Trail: a patch of poison where the hero just walked. The scene
+   * drops one every few steps; each lasts the skill's time.
+   */
+  dropTrail(player: Player, x: number, z: number): void {
+    this.caster = player;
+    const e = player.passives;
+    if (e.trailDamagePct <= 0) return;
+    if (this.trail.length >= 48) this.trail.shift();
+    this.trail.push({ x, z, left: e.trailSec || 5 });
+  }
+
+  /** Every trail tick, each enemy touching any patch takes one bite of poison. */
+  private trailTick(dt: number, ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
+    const p = this.caster;
+    for (let i = this.trail.length - 1; i >= 0; i--) {
+      this.trail[i]!.left -= dt;
+      if (this.trail[i]!.left <= 0) this.trail.splice(i, 1);
+    }
+    if (!p || !p.alive || !this.trail.length) return;
+    const e = p.passives;
+    const every = e.trailTick || 0.5;
+    this.trailAccum += dt;
+    if (this.trailAccum < every) return;
+    this.trailAccum = 0;
+    const r = e.trailRadius;
+    for (const t of this.allTargets(enemies, boss)) {
+      if (t.life <= 0) continue;
+      const tx = t.root.position.x;
+      const tz = t.root.position.z;
+      const reach = (r + t.hitRadius) ** 2;
+      if (!this.trail.some((q) => (q.x - tx) ** 2 + (q.z - tz) ** 2 <= reach)) continue;
+      const hp = this.tune(rollDamage(p.stats, ctx.rng, { scale: (e.trailDamagePct / 100) * every, type: 'poison', ability: 'Miasma Trail', source: 'player' }), t);
+      if (ctx.rng.chance(Math.min(1, e.trailPoisonPct / 100))) {
+        hp.applies = [{ id: 'poisoned', duration: 8 + e.dotDurationSec, magnitude: 1 + e.dotDamagePct / 100, stacks: 1, maxStacks: Math.floor(e.dotMaxStacks), tickScale: 1 + e.dotTickPct / 100 }];
+      }
+      this.strike(t, hp, ctx, 'proc', tx, tz);
+    }
+  }
+
+  private trail: Array<{ x: number; z: number; left: number }> = [];
+
+  /** Bodies on the floor, for Corpse Explosion: where, how big, and what curses they wore. */
+  private corpses: Array<{ x: number; z: number; maxLife: number; curses: StatusApplication[]; at: number }> = [];
+  private seenDead = new WeakSet<Enemy>();
+
+  private markCorpses(enemies: Enemy[]): void {
+    for (const e of enemies) {
+      if (e.life > 0 || this.seenDead.has(e) || e.def.object) continue;
+      this.seenDead.add(e);
+      this.corpses.push({ x: e.root.position.x, z: e.root.position.z, maxLife: e.maxLife, curses: e.cursesCarried(), at: this.runTime });
+    }
+    while (this.corpses.length && (this.corpses.length > 24 || this.runTime - this.corpses[0]!.at > CORPSE_LIFE)) this.corpses.shift();
+  }
+
+  /** The body nearest a point, within reach. */
+  private corpseNear(at: THREE.Vector3, reach: number): SkillRunner['corpses'][number] | undefined {
+    let best: SkillRunner['corpses'][number] | undefined;
+    let bestD = reach;
+    for (const c of this.corpses) {
+      const d = Math.hypot(c.x - at.x, c.z - at.z);
+      if (d <= bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    return best;
+  }
+  private trailAccum = 0;
+
   private stormTick(dt: number, ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
     const p = this.caster;
     for (let i = this.storms.length - 1; i >= 0; i--) {
@@ -3351,7 +3656,12 @@ export class SkillRunner {
     tauntHold = Infinity,
     /** What a rank buys it, so a point spent later grows it where it stands. */
     grow: SummonGrowth | null = null,
+    /** A Skeletal Knight, and whether its blows cleave. */
+    extra: { elite?: boolean; cleave?: boolean } = {},
   ): void {
+    // How to raise this one again, for Reassemble.
+    const again = (ax: number, az: number): void =>
+      this.addTurret(ax, az, duration, cd, range, packet, type, color, melee, skillId, minionLife, taunt, tauntHold, grow, extra);
     // A backstop only. Per-skill caps do the real work; this stops a runaway
     // from ever building an unbounded list.
     if (this.turrets.length >= SUMMON_ABSOLUTE_CAP + 8) {
@@ -3417,6 +3727,9 @@ export class SkillRunner {
       rank: owner && skillId ? skillRank(owner.character, skillId) : 1,
       grow,
       power: 1,
+      elite: extra.elite ?? false,
+      cleave: extra.cleave ?? false,
+      again,
     };
     t.packet = (m = 1) => packet(m * t.power);
     this.turrets.push(t);
@@ -3645,6 +3958,8 @@ export class SkillRunner {
 
   dispose(): void {
     for (const z of this.zones) z.fx?.stop();
+    this.trail.length = 0;
+    this.corpses.length = 0;
     for (const t of this.turrets) {
       t.fx?.stop();
       this.removeBody(t.body);

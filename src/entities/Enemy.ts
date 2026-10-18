@@ -1053,6 +1053,26 @@ export class Enemy implements Combatant {
 
   /** Ends a status outright and says how many stacks it had (the Paladin spends his dents). */
   /** Removes an effect and returns the damage it had left to deal. Gorefeast. */
+  /**
+   * The curses on this monster, as fresh applications at their full time:
+   * what Contagion and Corpse Explosion hand on to the pack.
+   */
+  cursesCarried(): StatusApplication[] {
+    const out: StatusApplication[] = [];
+    for (const s of this.statuses) {
+      const def = getStatus(s.id);
+      if (!def || !def.tags.includes('curse')) continue;
+      out.push({
+        id: s.id,
+        duration: s.full ?? def.baseDuration ?? Math.max(1, s.time),
+        magnitude: s.magnitude,
+        stacks: s.stacks,
+        ...(s.mods ? { mods: s.mods } : {}),
+      });
+    }
+    return out;
+  }
+
   drainStatus(id: string): number {
     for (let i = 0; i < this.statuses.length; i++) {
       const s = this.statuses[i]!;

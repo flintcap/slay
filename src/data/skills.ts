@@ -1174,7 +1174,7 @@ const VENOM = build('venom', [
   {
     id: 'coatBlades',
     name: 'Coat Blades',
-    desc: 'Your weapons drip for 60s: +8 poison damage per rank on every hit, and a 25% chance to apply Poisoned.',
+    desc: 'Your weapons drip for 60s: +8 poison damage per rank on every hit, and each melee hit has a 25% chance (+3% per rank) to apply Poisoned.',
     tier: 1,
     col: 1,
     icon: 'vial',
@@ -1248,7 +1248,7 @@ const VENOM = build('venom', [
     icon: 'nerve',
     req: ['venomDart'],
     fx: 'passive.dotRules',
-    p: { slow: 1, stunAtStacks: 5, stunDuration: 1.5, stunPerRank: 0.05, internalCd: 8 },
+    p: { stunAtStacks: 5, stunDuration: 1.5, stunPerRank: 0.05, internalCd: 8 },
   },
   {
     id: 'cultivate',
@@ -1275,23 +1275,23 @@ const VENOM = build('venom', [
     dmg: [1.8, 0.29],
     type: 'poison',
     fx: 'projectile.explode',
-    p: { radius: 4, splash: 4, plagued: 12, speed: 14 },
+    p: { radius: 4, splash: 4, speed: 14, duration: 12 },
   },
   {
     id: 'bloodToxin',
     name: 'Blood Toxin',
-    desc: 'Your poison ignores 4% of poison resistance per rank (to 80%) and can affect enemies normally immune to it at 25% value.',
+    desc: 'Your poison ignores 4% of the target\'s poison resistance per rank (up to 80%).',
     tier: 4,
     col: 0,
     icon: 'syringe',
     req: ['paralyticToxin'],
     fx: 'passive.pierceResist',
-    p: { type: 4, piercePerRank: 4, pierceFloor: 80, breakImmunity: 25 },
+    p: { piercePerRank: 4, pierceFloor: 80 },
   },
   {
     id: 'envenomBurst',
     name: 'Envenom Burst',
-    desc: 'Detonate every poison stack on a target: 45% of remaining poison damage per stack (+6% per rank) instantly, in 3m.',
+    desc: 'A 3m burst of poison at the target for 100% weapon damage (+13% per rank), and every Poisoned stack in reach goes off at once for 45% (+6% per rank) of the damage it had left.',
     tier: 4,
     col: 1,
     icon: 'burst-green',
@@ -1301,12 +1301,12 @@ const VENOM = build('venom', [
     cd: [8, 0.25, 3],
     type: 'poison',
     fx: 'detonate.dot',
-    p: { pctPerStack: 45, perRank: 6, radius: 3, consumesStacks: 1 },
+    p: { pctPerStack: 45, perRank: 6, radius: 3 },
   },
   {
     id: 'miasmaTrail',
     name: 'Miasma Trail',
-    desc: 'You leave poison in your wake: 25% weapon damage (+5% per rank) per second in a 1.6m trail lasting 5s.',
+    desc: 'You leave poison in your wake: a 1.6m trail that lasts 5s and bites every 0.5s for 25% weapon damage (+5% per rank) per second, with a 40% chance to apply Poisoned.',
     tier: 4,
     col: 2,
     icon: 'trail',
@@ -1325,7 +1325,7 @@ const VENOM = build('venom', [
     icon: 'heart-green',
     req: ['bloodToxin'],
     fx: 'passive.missingLifeScale',
-    p: { pctPer10PerRank: 1.5, target: 1 },
+    p: { pctPer10PerRank: 1.5 },
   },
   {
     id: 'deathLotus',
@@ -1346,14 +1346,14 @@ const VENOM = build('venom', [
   {
     id: 'antivenom',
     name: 'Antivenom',
-    desc: 'You are immune to poison and disease, and poison damage that would hit you instead heals 30% of its value (+3% per rank).',
+    desc: 'You cannot be Poisoned, Envenomed or Plagued, and poison damage that would hit you instead heals 30% of its value (+3% per rank).',
     tier: 5,
     col: 2,
     icon: 'antidote',
     req: ['toxicology'],
     stat: { poisonResist: () => 100 },
     fx: 'passive.absorbType',
-    p: { type: 4, healPct: 30, perRank: 3 },
+    p: { healPct: 30, perRank: 3 },
   },
   {
     id: 'apexPredator',
@@ -1386,7 +1386,7 @@ const VENOM = build('venom', [
     dmg: [1.4, 0.22],
     type: 'poison',
     fx: 'summon.pet',
-    p: { baseCap: 1, maxPerRanks: 12, biteRate: 1.4, poisonStacks: 5, lifePct: 90 },
+    p: { baseCap: 1, maxPerRanks: 12, poisonStacks: 5, lifePct: 90, attackRate: 1.4 },
   },
   {
     id: 'toxicMastery',
@@ -1410,7 +1410,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'shadowStep',
     name: 'Shadow Step',
-    desc: 'Blink 7m and strike from behind for 110% weapon damage (+18% per rank), with +50% critical chance.',
+    desc: 'Blink 7m (+0.12m per rank) to the enemy nearest your mark, come out behind it and strike for 110% weapon damage (+18% per rank), with +50% critical chance.',
     tier: 1,
     col: 0,
     icon: 'step',
@@ -1433,12 +1433,12 @@ const SHADOWCRAFT = build('shadowcraft', [
     mana: [10, 0.5],
     cd: [20, 0.6, 8],
     fx: 'buff.stealth',
-    p: { duration: 6, perRank: 0.3, guaranteedCrit: 1, moveSpeed: 15 },
+    p: { duration: 6, perRank: 0.3, moveSpeed: 15 },
   },
   {
     id: 'nightEyes',
     name: 'Night Eyes',
-    desc: '+2% critical strike chance and +14 attack rating per rank. +25% critical damage while unseen.',
+    desc: '+2% critical strike chance and +14 attack rating per rank. Blows from the veil deal +25% critical damage (+3% per rank).',
     tier: 1,
     col: 2,
     icon: 'eye',
@@ -1449,7 +1449,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'smokeBomb',
     name: 'Smoke Bomb',
-    desc: 'A 5m cloud for 6s: enemies inside are Blinded, you are effectively Veiled while standing in it.',
+    desc: 'A 5m cloud for 6s (+0.2s per rank): enemies inside are Blinded, and you are Veiled while you stand in it.',
     tier: 2,
     col: 0,
     icon: 'smoke-bomb',
@@ -1458,7 +1458,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     mana: [12, 0.6],
     cd: [18, 0.5, 8],
     fx: 'ground.cloud',
-    p: { radius: 5, duration: 6, blind: 1, stealthInside: 1 },
+    p: { radius: 5, duration: 6, stealthInside: 1 },
   },
   {
     id: 'shadowClone',
@@ -1502,7 +1502,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'darkPact',
     name: 'Dark Pact',
-    desc: '-3% skill cooldowns per rank (to 45%) and Veil costs 5% less mana per rank.',
+    desc: '-3% skill cooldowns per rank (to 45%) and Veil costs 5% less mana per rank (up to 90%).',
     tier: 3,
     col: 1,
     icon: 'pact',
@@ -1514,7 +1514,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'vanish',
     name: 'Vanish',
-    desc: 'Drop all aggro, clear one crowd-control effect, and reset the cooldown of Shadow Step. 8s of Phasing (+0.25s per rank) at +40% movement speed (+1.5% per rank).',
+    desc: 'Vanish into the veil, clear one crowd-control effect, and reset the cooldown of Shadow Step. Enemies lose you for 8s (+0.25s per rank), and you move 40% faster (+1.5% per rank).',
     tier: 3,
     col: 2,
     icon: 'vanish',
@@ -1523,7 +1523,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     mana: [18, 0.8],
     cd: [40, 1.2, 16],
     fx: 'self.reset',
-    p: { dropAggro: 1, cleanse: 1, resetSkills: 1, phasing: 8 },
+    p: { cleanse: 1, resetSkills: 1, phasing: 8 },
   },
   {
     id: 'shadowLegion',
@@ -1551,7 +1551,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'nightfall',
     name: 'Nightfall',
-    desc: 'Darkness floods 9m for 8s: enemies inside are Blinded (-60 attack rating, -2 per rank) and Slowed (-25% movement speed, -1% per rank).',
+    desc: 'Darkness floods 9m for 8s: enemies inside are Blinded (-60 attack rating, -2 per rank, and -15% critical chance) and Slowed (-25% movement speed, -1% per rank).',
     tier: 4,
     col: 2,
     icon: 'nightfall',
@@ -1560,23 +1560,23 @@ const SHADOWCRAFT = build('shadowcraft', [
     mana: [24, 1.2],
     cd: [26, 0.7, 12],
     fx: 'ground.debuffField',
-    p: { radius: 9, duration: 8, blind: 1, slow: 1, critBonus: 20, perRank: 2 },
+    p: { radius: 9, duration: 8, perRank: 2 },
   },
   {
     id: 'mirrorGambit',
     name: 'Mirror Gambit',
-    desc: 'Your clones copy every skill you use at 40% power (+4% per rank), and inherit your poisons.',
+    desc: 'Your clones deal 40% more damage (+4% per rank).',
     tier: 5,
     col: 0,
     icon: 'mirror-dark',
     req: ['shadowLegion'],
     fx: 'passive.cloneRules',
-    p: { mimicPct: 40, perRank: 4, inheritDots: 1 },
+    p: { mimicPct: 40, perRank: 4 },
   },
   {
     id: 'voidWalk',
     name: 'Void Walk',
-    desc: 'Blink up to 9m through the void and arrive swinging: 320% weapon damage (+50% per rank) to everything in front of you.',
+    desc: 'Blink up to 9m through the void and arrive swinging: 320% weapon damage (+50% per rank) to everything in front of you. Press it again within 3s to blink again, up to 4 blinks (+1 per 5 ranks).',
     tier: 5,
     col: 1,
     icon: 'void-walk',
@@ -1618,7 +1618,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'assassinate',
     name: 'Assassinate',
-    desc: 'Instantly kills any non-boss enemy below 15% life (+1% per rank). Against everything else, 500% weapon damage (+70% per rank).',
+    desc: 'Instantly kills any non-boss enemy below 15% life (+1% per rank), and a kill resets its cooldown. Against everything else, 500% weapon damage (+70% per rank).',
     tier: 6,
     col: 1,
     max: 15,
@@ -1630,7 +1630,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     dmg: [5, 0.7],
     type: 'physical',
     fx: 'melee.execute',
-    p: { threshold: 15, perRank: 1, bossMultiplier: 100, refundOnKill: 1, single: 1 },
+    p: { threshold: 15, perRank: 1, refundOnKill: 1, single: 1 },
   },
   {
     id: 'shadowMastery',
@@ -1714,7 +1714,7 @@ const BLADEWORK = build('bladework', [
     req: ['bladeMastery'],
     stat: { critDamage: per(12) },
     fx: 'passive.conditionalCrit',
-    p: { condition: 2, critPerRank: 1 },
+    p: { critPerRank: 1 },
   },
   {
     id: 'doubleStrike',
@@ -1772,7 +1772,7 @@ const BLADEWORK = build('bladework', [
     dmg: [0.9, 0.16],
     type: 'physical',
     fx: 'projectile.stream',
-    p: { duration: 3, rate: 6, homing: 0.6, range: 14, count: 6, spread: 0.08 },
+    p: { duration: 3, range: 14, count: 6, spread: 0.08 },
   },
   {
     id: 'bleedingEdge',
@@ -1799,7 +1799,7 @@ const BLADEWORK = build('bladework', [
   {
     id: 'momentum',
     name: 'Momentum',
-    desc: '+2% damage per rank for each enemy hit in the last 3 seconds, up to 8 enemies. Crowds are fuel.',
+    desc: '+2% damage per rank for each enemy you hit in the last 3 seconds, up to 8 enemies. Crowds are fuel.',
     tier: 4,
     col: 2,
     icon: 'momentum',
@@ -1810,7 +1810,7 @@ const BLADEWORK = build('bladework', [
   {
     id: 'lethality',
     name: 'Lethality',
-    desc: '+18% critical damage per rank. Critical strikes also ignore 2% of the target\'s physical resistance per rank.',
+    desc: '+18% critical damage per rank. Critical strikes also ignore 2% of the target\'s physical resistance per rank (up to 40%).',
     tier: 5,
     col: 0,
     icon: 'lethal',
@@ -1822,7 +1822,7 @@ const BLADEWORK = build('bladework', [
   {
     id: 'phantomBlades',
     name: 'Phantom Blades',
-    desc: 'Each critical strike launches a spectral blade at another enemy within 9m for 90% weapon damage (+15% per rank).',
+    desc: 'Each critical strike launches a spectral blade at another enemy within 9m for 90% weapon damage (+15% per rank), up to 4 blades a second.',
     tier: 5,
     col: 1,
     icon: 'phantom',
@@ -1846,8 +1846,7 @@ const BLADEWORK = build('bladework', [
   {
     id: 'thousandCuts',
     name: 'A Thousand Cuts',
-    desc:
-      'CAPSTONE. Nothing is wasted. Every critical strike banks a Cut, granting +2% critical damage (+0.3% per rank) ' +
+    desc: 'CAPSTONE. Nothing is wasted. Every critical strike banks a Cut, granting +2% critical damage (+0.3% per rank) per Cut, stacking to 50. Every strike that fails to crit spends five banked Cuts to become a critical strike instead. Cuts last until 10 seconds pass without a blow. The longer a boss lives, the less it matters how lucky you are.' +
       'for the rest of the fight, stacking to 50. Every strike that fails to crit spends five banked Cuts to become ' +
       'a critical strike instead. The longer a boss lives, the less it matters how lucky you are.',
     tier: 6,
@@ -2436,7 +2435,7 @@ const OSSUARY = build('ossuary', [
     dmg: [1.1, 0.18],
     type: 'physical',
     fx: 'projectile',
-    p: { speed: 24, range: 16, pierce: 99, width: 1 },
+    p: { speed: 24, range: 16, pierce: 99 },
   },
   {
     id: 'raiseSkeleton',
@@ -2449,7 +2448,7 @@ const OSSUARY = build('ossuary', [
     mana: [12, 0.6],
     cd: [1.5, 0, 1.5],
     fx: 'summon.minion',
-    p: { minionType: 0, maxPerRanks: 2, baseCap: 5, lifePct: 75, damagePct: 55, perRank: 6 },
+    p: { maxPerRanks: 2, baseCap: 5, lifePct: 75, damagePct: 55, perRank: 6 },
   },
   {
     id: 'boneArmor',
@@ -2478,7 +2477,7 @@ const OSSUARY = build('ossuary', [
     cd: [2, 0, 2],
     type: 'arcane',
     fx: 'summon.minion',
-    p: { minionType: 1, maxPerRanks: 3, baseCap: 4, lifePct: 45, damagePct: 60, perRank: 7, range: 12 },
+    p: { maxPerRanks: 3, baseCap: 4, lifePct: 45, damagePct: 60, perRank: 7, range: 12 },
   },
   {
     id: 'boneMastery',
@@ -2505,7 +2504,7 @@ const OSSUARY = build('ossuary', [
     dmg: [1.9, 0.3],
     type: 'arcane',
     fx: 'projectile.homing',
-    p: { speed: 12, turnRate: 4, vsCursed: 50, range: 20 },
+    p: { speed: 12, vsCursed: 50, range: 20 },
   },
   {
     id: 'claySentinel',
@@ -2519,7 +2518,7 @@ const OSSUARY = build('ossuary', [
     mana: [30, 1.5],
     cd: [30, 0.8, 12],
     fx: 'summon.minion',
-    p: { minionType: 2, baseCap: 1, maxPerRanks: 8, lifePct: 260, perRank: 15, damagePct: 70, taunts: 1 },
+    p: { baseCap: 1, maxPerRanks: 8, lifePct: 260, perRank: 15, damagePct: 70, taunts: 1 },
   },
   {
     id: 'marrowFeast',
@@ -2546,7 +2545,7 @@ const OSSUARY = build('ossuary', [
     dmg: [1.2, 0.19],
     type: 'physical',
     fx: 'ground.cage',
-    p: { radius: 4, root: 3, perRank: 0.15, blocksProjectiles: 1 },
+    p: { radius: 4, root: 3, rootPerRank: 0.15 },
   },
   {
     id: 'boneStorm',
@@ -2562,12 +2561,12 @@ const OSSUARY = build('ossuary', [
     dmg: [0.9, 0.15],
     type: 'physical',
     fx: 'aura.damage',
-    p: { duration: 15, radius: 5, tickRate: 0.5, shards: 8 },
+    p: { duration: 15, radius: 5, tickRate: 0.5 },
   },
   {
     id: 'ossuaryLord',
     name: 'Ossuary Lord',
-    desc: '+1 maximum skeleton per 2 ranks and +1 maximum skeletal mage per 4 ranks, beyond their normal caps.',
+    desc: '+1 maximum skeleton per 2 ranks, +1 maximum skeletal mage per 4 ranks and +1 maximum clay sentinel per 12 ranks, beyond their normal caps.',
     tier: 4,
     col: 1,
     icon: 'lord',
@@ -2578,7 +2577,7 @@ const OSSUARY = build('ossuary', [
   {
     id: 'skeletalKnight',
     name: 'Skeletal Knight',
-    desc: 'Upgrade two of your skeletons into knights: +120% life, +80% damage (+6% per rank) and a cleaving attack.',
+    desc: 'Two of your skeletons (+1 per 8 ranks) become knights: +120% life, +80% damage (+6% per rank), and their blows cleave into enemies beside the target.',
     tier: 4,
     col: 2,
     icon: 'knight',
@@ -2589,7 +2588,7 @@ const OSSUARY = build('ossuary', [
   {
     id: 'reassemble',
     name: 'Reassemble',
-    desc: 'Every minion is healed for 40% of maximum life (+3% per rank), cleansed, and instantly re-raised if it died in the last 5s.',
+    desc: 'Every minion is healed for 40% of maximum life (+3% per rank), and any that died in the last 5s rise again where they fell.',
     tier: 5,
     col: 0,
     icon: 'reassemble',
@@ -2598,12 +2597,12 @@ const OSSUARY = build('ossuary', [
     mana: [26, 1.3],
     cd: [30, 0.8, 14],
     fx: 'minion.heal',
-    p: { healPct: 40, perRank: 3, cleanse: 1, reviveWindow: 5 },
+    p: { healPct: 40, perRank: 3, reviveWindow: 5 },
   },
   {
     id: 'boneNova',
     name: 'Bone Nova',
-    desc: 'Shatter your Bone Armor outward: 220% spell damage (+34% per rank) in 7m plus 100% of the armour remaining.',
+    desc: 'Shatter your Bone Armor outward: 220% spell damage (+34% per rank) in 7m plus 100% of the armour remaining, leaving 3 stacks of Bleeding.',
     tier: 5,
     col: 1,
     icon: 'nova-bone',
@@ -2619,19 +2618,18 @@ const OSSUARY = build('ossuary', [
   {
     id: 'deathKnight',
     name: 'Death Knight',
-    desc: 'Your knights become Death Knights: they gain your auras, +40% damage (+4% per rank) and hit with your damage type.',
+    desc: 'Your knights become Death Knights: +40% more damage (+4% per rank). If you have no knights, one skeleton becomes one.',
     tier: 5,
     col: 2,
     icon: 'death-knight',
     req: ['skeletalKnight'],
     fx: 'passive.minionUpgrade',
-    p: { inheritAuras: 1, damagePct: 40, perRank: 4, inheritType: 1 },
+    p: { damagePct: 40, perRank: 4 },
   },
   {
     id: 'theBoneChoir',
     name: 'The Bone Choir',
-    desc:
-      'CAPSTONE. Your dead were never the point — their deaths were. When one of your minions dies it bursts into a ' +
+    desc: 'CAPSTONE. Your dead were never the point — their deaths were. When one of your minions dies it bursts into a 4m pool of grave-light for 8s (+0.4s per rank) that deals 60% of that minion\'s maximum life (+4% per rank) as arcane damage per second to enemies, and heals you and every minion for half of what it deals. An army that is losing is an army that is winning.' +
       '4m pool of grave-light for 8s (+0.4s per rank) that deals 60% of that minion\'s maximum life (+4% per rank) ' +
       'as arcane damage per second to enemies, and heals you and every other minion for half of what it deals. ' +
       'An army that is losing is an army that is winning.',
@@ -2657,7 +2655,7 @@ const OSSUARY = build('ossuary', [
     mana: [45, 2],
     cd: [60, 1.5, 25],
     fx: 'summon.massMinion',
-    p: { radius: 14, count: 6, baseCap: 6, maxPerRanks: 3, lifePct: 75, damagePct: 70, minionScale: 0.7 },
+    p: { radius: 14, count: 6, baseCap: 6, maxPerRanks: 3, lifePct: 75, minionScale: 0.7 },
   },
   {
     id: 'ossuaryMastery',
@@ -2749,13 +2747,13 @@ const BLIGHT = build('blight', [
   {
     id: 'wither',
     name: 'Wither',
-    desc: 'Cursed enemies lose 2% of maximum life per second per 4 ranks, and your curses cannot be dispelled.',
+    desc: 'Afflicted enemies (any curse, poison or other harmful effect) lose 2% of maximum life per second per 4 ranks. Bosses are spared.',
     tier: 2,
     col: 2,
     icon: 'wither',
     req: ['decay'],
     fx: 'passive.curseRules',
-    p: { pctPerSecondPerRanks: 4, pct: 2, undispellable: 1 },
+    p: { pctPerSecondPerRanks: 4, pct: 2 },
   },
   {
     id: 'terror',
@@ -2774,7 +2772,7 @@ const BLIGHT = build('blight', [
   {
     id: 'bloodCurse',
     name: 'Blood Curse',
-    desc: 'Damage dealt to cursed enemies heals you for 6% of it (+0.8% per rank), and 3% of it as mana.',
+    desc: 'Damage dealt to afflicted enemies (any curse, poison or other harmful effect) heals you for 6% of it (+0.8% per rank), and 3% of it as mana.',
     tier: 3,
     col: 1,
     icon: 'curse-blood',
@@ -2785,7 +2783,7 @@ const BLIGHT = build('blight', [
   {
     id: 'corpseExplosion',
     name: 'Corpse Explosion',
-    desc: 'Detonate a corpse for 45% of its maximum life (+4% per rank) as poison damage in 5m, spreading every curse it carried.',
+    desc: 'Detonate a corpse near the target for 45% of its maximum life (+4% per rank) as poison damage in 5m, spreading every curse it carried.',
     tier: 3,
     col: 2,
     icon: 'corpse-boom',
@@ -2800,7 +2798,7 @@ const BLIGHT = build('blight', [
   {
     id: 'contagion',
     name: 'Contagion',
-    desc: 'When a cursed enemy dies, its curses jump to every enemy within 7m (+0.2m per rank) at full duration.',
+    desc: 'When a cursed enemy dies, its curses jump at full duration to the 6 nearest enemies within 7m (+0.2m per rank).',
     tier: 4,
     col: 0,
     icon: 'contagion',
@@ -2811,7 +2809,7 @@ const BLIGHT = build('blight', [
   {
     id: 'doomBrand',
     name: 'Doom',
-    desc: 'Curse: after 6s the target takes 350% spell damage (+55% per rank) as arcane. Killing it early spreads the brand.',
+    desc: 'Curse: after 6s the target takes 350% spell damage (+55% per rank) as arcane. If it dies first, the brand jumps to the nearest enemy within 8m and goes off there.',
     tier: 4,
     col: 1,
     icon: 'doom',
@@ -2822,7 +2820,7 @@ const BLIGHT = build('blight', [
     dmg: [3.5, 0.55],
     type: 'arcane',
     fx: 'curse.delayedBurst',
-    p: { delay: 6, radius: 4, spreadOnKill: 1, statusId: 3 },
+    p: { delay: 6, radius: 4, spreadOnKill: 1 },
   },
   {
     id: 'attrition',
@@ -2833,7 +2831,7 @@ const BLIGHT = build('blight', [
     icon: 'attrition',
     req: ['wither'],
     fx: 'aura.debuff',
-    p: { radius: 8, resistPerRank: 1, attackSpeedPerRank: 2, auraId: 5 },
+    p: { radius: 8, resistPerRank: 1, attackSpeedPerRank: 2 },
   },
   {
     id: 'massConfusion',
@@ -2852,7 +2850,7 @@ const BLIGHT = build('blight', [
   {
     id: 'pestilence',
     name: 'Pestilence',
-    desc: 'A 7m aura: 40% spell damage (+8% per rank) per second as poison, and enemies inside spread Plagued to each other.',
+    desc: 'A 7m aura: 40% spell damage (+8% per rank) per second as poison, and each hit has a 30% chance to apply Plagued, which spreads on its own.',
     tier: 5,
     col: 1,
     icon: 'pestilence',
@@ -2862,24 +2860,23 @@ const BLIGHT = build('blight', [
     dmg: [0.4, 0.08],
     type: 'poison',
     fx: 'aura.damage',
-    p: { radius: 7, upkeep: 8, tickRate: 1, plagueChance: 30 },
+    p: { radius: 7, tickRate: 1, plagueChance: 30 },
   },
   {
     id: 'curseMastery',
     name: 'Curse Mastery',
-    desc: 'You may hold 2 curses on a target (+1 per 8 ranks, to 4) and curses cost 4% less mana per rank.',
+    desc: 'Your curses cost 4% less mana per rank (up to 90%), and last 4% longer and hit 4% harder per rank.',
     tier: 5,
     col: 2,
     icon: 'mastery-curse',
     req: ['attrition'],
     fx: 'passive.curseRules',
-    p: { maxCurses: 2, perRanks: 8, cap: 4, costPerRank: 4 },
+    p: { costPerRank: 4 },
   },
   {
     id: 'theLongDecline',
     name: 'The Long Decline',
-    desc:
-      'CAPSTONE. A curse stops being a modifier and becomes a wound. Every curse on a target also applies a stacking ' +
+    desc: 'CAPSTONE. A curse stops being a modifier and becomes a wound. Afflicted enemies (any curse, poison or other harmful effect) lose 5% (+0.5% per rank) of their maximum life every second. Bosses are spared. Four curses on one elite is a countdown, not a debuff bar.' +
       'arcane decay dealing 5% (+0.5% per rank) of that curse\'s remaining duration in seconds as damage per second — ' +
       'so four long curses on one elite is a countdown, not a debuff bar.',
     tier: 6,
@@ -2889,12 +2886,12 @@ const BLIGHT = build('blight', [
     req: ['curseMastery', 'pestilence'],
     type: 'arcane',
     fx: 'capstone.longDecline',
-    p: { pctPerSecond: 5, perRank: 0.5, stacksWithCurses: 1 },
+    p: { pctPerSecond: 5, perRank: 0.5 },
   },
   {
     id: 'lowerResist',
     name: 'Lower Resist',
-    desc: 'Curse: -40% to all resistances (+2% per rank) for 15s within 9m. Immunities are reduced to 90%.',
+    desc: 'Curse: -40% to all resistances (+2% per rank) for 15s within 9m.',
     tier: 6,
     col: 1,
     max: 20,
@@ -2904,12 +2901,12 @@ const BLIGHT = build('blight', [
     mana: [26, 1.3],
     cd: [3, 0, 3],
     fx: 'curse',
-    p: { radius: 9, duration: 15, resist: 40, perRank: 2, breakImmunity: 10, statusId: 5 },
+    p: { radius: 9, duration: 15, resist: 40, perRank: 2 },
   },
   {
     id: 'blightMastery',
     name: 'Blight Mastery',
-    desc: '+7% poison and arcane damage per rank, and your damage-over-time effects tick 3% faster per rank.',
+    desc: '+7% elemental damage per rank, and your damage-over-time effects tick 3% faster per rank.',
     tier: 6,
     col: 2,
     max: 15,
@@ -3306,7 +3303,7 @@ const WILDCRAFT = build('wildcraft', [
   },
   {
     id: 'venomCoat', name: 'Venom Coat',
-    desc: 'Arrows carry poison for 20s: +5 poison damage (+3 per rank) on every hit, and every hit applies a stacking poison dot.',
+    desc: 'Arrows carry poison for 20s: +5 poison damage (+3 per rank) on every hit, and every arrow hit applies a stack of Poisoned.',
     tier: 3, col: 1, icon: 'vial', req: ['thornBarrier'], t: 'self',
     mana: [14, 0.8], cd: [24, 0.6, 12], type: 'poison',
     fx: 'buff', p: { duration: 20 },

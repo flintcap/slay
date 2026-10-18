@@ -28,8 +28,11 @@ const RANK = 4;
 
 // 1. Record every read of every skill's settings.
 const reads = new Map<string, Set<string>>();
+/** The settings as written, for the tool's own looks (reads through these are not counted). */
+const raw = new Map<string, Record<string, unknown>>();
 for (const s of SKILLS) {
   if (!s.params) continue;
+  raw.set(s.id, s.params);
   const got = new Set<string>();
   reads.set(s.id, got);
   s.params = new Proxy(s.params, {
@@ -51,6 +54,12 @@ const KITS: Array<Array<[string, 'mainHand' | 'offHand']>> = [
   [['wand.wand', 'mainHand']],
   [['dagger.dagger', 'mainHand'], ['dagger.dagger', 'offHand']],
 ];
+/** The kit each class reaches for first, so its coats and on-hit riders meet the weapon they ride on. */
+const FIRST_KIT: Partial<Record<CharClassId, number>> = { ranger: 2, mage: 3, shadowblade: 4 };
+const kitsFor = (cls: CharClassId): typeof KITS => {
+  const first = FIRST_KIT[cls];
+  return first === undefined ? KITS : [KITS[first]!, ...KITS.filter((_, i) => i !== first)];
+};
 
 // 2. Each class, every skill learned: passives, sheet.
 const classes = [...new Set(SKILLS.map(classOf).filter((c): c is CharClassId => !!c))];
@@ -79,9 +88,10 @@ for (const s of SKILLS) {
   const cls = classOf(s);
   if (!cls) continue;
   try {
-    for (const kit of KITS) {
+    const kits = kitsFor(cls);
+    for (const kit of kits) {
       const a = arena({ seed: 9 });
-      const spots: Array<[number, number, number]> = [[0, 2, 1e9], [1.4, 3.5, 40], [-1.4, 3.5, 1e9], [0.8, 6, 30], [-0.8, 8, 1e9], [0, 11, 1e9]];
+      const spots: Array<[number, number, number]> = [[0, 2, 60], [1.4, 3.5, 40], [-1.4, 3.5, 1e9], [0.8, 6, 30], [-0.8, 8, 1e9], [0, 11, 1e9]];
       for (const [x, z, life] of spots) {
         const e = a.spawn(brute, x, z);
         e.maxLife = 1e9;
@@ -95,6 +105,8 @@ for (const s of SKILLS) {
       const runner = new SkillRunner(fx.fx as never);
       runner.setContext(a.ctx, a.enemies, null);
       const pctx = { colliders: [], walkableAt: () => true };
+      // A skill struck only from the veil is given one.
+      const veil = Number(raw.get(s.id)?.requiresStealth ?? 0) > 0;
       const aim = new THREE.Vector3(0, 0, 3);
       let cast = 0;
       for (let t = 0; t < 4; t += DT) {
@@ -106,12 +118,16 @@ for (const s of SKILLS) {
         for (const e of a.enemies) (e as unknown as { tickStatuses(dt: number, ctx: unknown): void }).tickStatuses(DT, a.ctx);
         if (cast < 2 && !player.isBusy) {
           (player as unknown as { cooldowns?: Map<string, number> }).cooldowns?.clear();
+          if (veil) player.applyStatus('veiled', 30);
           if (runner.cast(s.id, player, aim, a.ctx, a.enemies, null)) cast++;
           else if (cast === 0) break;
+        } else if (cast >= 2 && !player.isBusy) {
+          // Plain weapon blows after the casts, for buffs that ride on them.
+          runner.basicAttack(player, aim, a.ctx, a.enemies, null);
         }
       }
       if (cast > 0) break;
-      if (kit === KITS[KITS.length - 1]) refused.push(s.id);
+      if (kit === kits[kits.length - 1]) refused.push(s.id);
     }
   } catch (err) {
     errors.push(`${s.id}: ${String(err).slice(0, 120)}`);

@@ -251,6 +251,22 @@ export interface PassiveEffects {
   /** Some minions are upgraded: this many, at this much more power. */
   minionEliteCount: number;
   minionElitePowerPct: number;
+  /** Skeletal Knight: extra life (%) for knights, and whether they cleave. */
+  minionEliteLifePct: number;
+  minionEliteCleave: boolean;
+  /** Ossuary Lord: extra room per summon skill. */
+  capBySkill: Record<string, number>;
+  /** The Bone Choir: a fallen minion's pool (radius m, seconds, % of its life a second, % healed back). */
+  choirRadius: number;
+  choirSec: number;
+  choirLifePct: number;
+  choirHealShare: number;
+  /** Blood Curse: share (%) of damage to the cursed returned as mana. */
+  curseManaLeechPct: number;
+  /** Curse Mastery: curses cost this much less mana (%). */
+  curseCostPct: number;
+  /** Contagion: most enemies one death hands its curses to. */
+  curseSpreadMax: number;
 
   // --- curses, deeper -----------------------------------------------------
   /** Cursed enemies lose this much of maximum life per second. */
@@ -271,6 +287,32 @@ export interface PassiveEffects {
   /** Leaves a damaging trail while moving. Damage is a weapon percentage. */
   trailDamagePct: number;
   trailRadius: number;
+  /** Miasma Trail: how long a patch lasts, how often it bites, its poison chance. */
+  trailSec: number;
+  trailTick: number;
+  trailPoisonPct: number;
+  /** Apex Predator: poison on a target below this life % stops running out. */
+  poisonHoldBelow: number;
+  /** Silhouette: chance (%) that a blow misses the hero outright. */
+  avoidPct: number;
+  /** Night Eyes and The Unseen Blade: extra critical damage (points) on blows from the veil. */
+  veilCritPct: number;
+  /** Dark Pact: Veil costs this much less mana (%). */
+  veilCostPct: number;
+  /** Riposte Blade: chance (%) to answer a melee blow, its power (%), and whether it always crits. */
+  meleeCounterChance: number;
+  meleeCounterPct: number;
+  meleeCounterCrit: boolean;
+  /** Lethality: share (%) of physical resistance a critical strike ignores. */
+  critPhysPiercePct: number;
+  /** Phantom Blades: most spectral blades a second (0 = no limit). */
+  critBladeMax: number;
+  /** Momentum: seconds an enemy you hit keeps counting. */
+  crowdWindow: number;
+  /** A Thousand Cuts: critical damage (points) per Cut, the most Cuts, and what a crit costs. */
+  cutPct: number;
+  cutMax: number;
+  cutSpend: number;
 
   // --- capstones ----------------------------------------------------------
   /** Overkill damage carries to nearby enemies at this fraction, N chains. */
@@ -422,6 +464,32 @@ function emptyEffects(): PassiveEffects {
     momentumDamageShare: 0,
     trailDamagePct: 0,
     trailRadius: 0,
+    trailSec: 0,
+    trailTick: 0,
+    trailPoisonPct: 0,
+    poisonHoldBelow: 0,
+    minionEliteLifePct: 0,
+    minionEliteCleave: false,
+    capBySkill: {},
+    choirRadius: 0,
+    choirSec: 0,
+    choirLifePct: 0,
+    choirHealShare: 0,
+    curseManaLeechPct: 0,
+    curseCostPct: 0,
+    curseSpreadMax: 0,
+    avoidPct: 0,
+    veilCritPct: 0,
+    veilCostPct: 0,
+    meleeCounterChance: 0,
+    meleeCounterPct: 0,
+    meleeCounterCrit: false,
+    critPhysPiercePct: 0,
+    critBladeMax: 0,
+    crowdWindow: 0,
+    cutPct: 0,
+    cutMax: 0,
+    cutSpend: 0,
     overkillCarryPct: 0,
     overkillChains: 0,
     overkillRadius: 0,
@@ -648,8 +716,10 @@ const RULES: Record<string, Contribution> = {
     e.dotTickPct += param(id, 'tickRatePerRank', 4) * r;
   },
   cultivate: (e, r, id) => {
-    e.dotMaxStacks += Math.floor(r / Math.max(1, param(id, 'stacksPerRanks', 3)));
-    e.dotDamagePct += param(id, 'bonusPerExtra', 5) * Math.floor(r / 3);
+    // Poisoned holds 6 stacks; Cultivate grows that to its own ceiling.
+    const extra = Math.min(Math.max(0, param(id, 'maxStacks', 12) - 6), Math.floor(r / Math.max(1, param(id, 'stacksPerRanks', 3))));
+    e.dotMaxStacks += extra;
+    e.dotDamagePct += param(id, 'bonusPerExtra', 5) * extra;
   },
   paralyticToxin: (e, r, id) => {
     e.poisonStunStacks = Math.max(e.poisonStunStacks, param(id, 'stunAtStacks', 5));
@@ -681,7 +751,10 @@ const RULES: Record<string, Contribution> = {
   },
   miasmaTrail: (e, r, id) => {
     e.trailDamagePct += 25 + 5 * (r - 1);
-    e.trailRadius = Math.max(e.trailRadius, param(id, 'width', 1.6));
+    e.trailRadius = Math.max(e.trailRadius, param(id, 'width', 1.6) / 2);
+    e.trailSec = Math.max(e.trailSec, param(id, 'duration', 5));
+    e.trailTick = param(id, 'tickRate', 0.5);
+    e.trailPoisonPct = Math.max(e.trailPoisonPct, param(id, 'poisonChance', 40));
   },
   exploitWeakness: (e, r, id) => {
     e.critVulnerableSec = Math.max(e.critVulnerableSec, param(id, 'vulnerable', 8));
@@ -698,6 +771,10 @@ const RULES: Record<string, Contribution> = {
     e.critBladeChance = Math.max(e.critBladeChance, param(id, 'chance', 100));
     e.critBladeRange = Math.max(e.critBladeRange, param(id, 'range', 9));
     e.critBladePct = Math.max(e.critBladePct, 90 + 15 * (r - 1));
+    e.critBladeMax = Math.max(e.critBladeMax, param(id, 'maxPerSecond', 4));
+  },
+  lethality: (e, r, id) => {
+    e.critPhysPiercePct = Math.max(e.critPhysPiercePct, Math.min(param(id, 'pierceCap', 40), param(id, 'piercePerRank', 2) * r));
   },
   perfectForm: (e, r, id) => {
     e.guaranteedCritEvery = Math.max(
@@ -707,11 +784,9 @@ const RULES: Record<string, Contribution> = {
     e.guaranteedCritBonusPct = Math.max(e.guaranteedCritBonusPct, param(id, 'bonusDamage', 50));
   },
   riposteBlade: (e, r, id) => {
-    e.blockCounterChance += Math.min(
-      param(id, 'chanceCap', 60),
-      param(id, 'chancePerRank', 15) * r,
-    );
-    e.blockCounterPct = Math.max(e.blockCounterPct, 160);
+    e.meleeCounterChance = Math.max(e.meleeCounterChance, Math.min(param(id, 'chanceCap', 60), param(id, 'chancePerRank', 15) * r));
+    e.meleeCounterPct = Math.max(e.meleeCounterPct, 160);
+    e.meleeCounterCrit = e.meleeCounterCrit || param(id, 'alwaysCrit', 0) > 0;
   },
   flurry: (e, r, id) => {
     e.hitStackAttackSpeed += param(id, 'attackSpeedPerStack', 10) + param(id, 'perRank', 1) * (r - 1);
@@ -721,6 +796,7 @@ const RULES: Record<string, Contribution> = {
   momentum: (e, r, id) => {
     e.crowdDamagePct += param(id, 'pctPerRank', 2) * r;
     e.crowdDamageCap = Math.max(e.crowdDamageCap, param(id, 'pctPerRank', 2) * r * param(id, 'maxTargets', 8));
+    e.crowdWindow = Math.max(e.crowdWindow, param(id, 'window', 3));
   },
   finisher: (e, r, id) => {
     e.executeThreshold = Math.max(e.executeThreshold, param(id, 'threshold', 30));
@@ -738,11 +814,21 @@ const RULES: Record<string, Contribution> = {
     );
     e.clonePowerPct += param(id, 'damagePerRank', 4) * r;
   },
+  nightEyes: (e, r, id) => {
+    e.veilCritPct += param(id, 'critDamage', 25) + param(id, 'perRank', 3) * (r - 1);
+  },
+  darkPact: (e, r, id) => {
+    e.veilCostPct += param(id, 'treeCostPerRank', 5) * r;
+  },
+  silhouette: (e, r, id) => {
+    e.avoidPct = Math.max(e.avoidPct, Math.min(param(id, 'dodgeCap', 25), param(id, 'dodgePerRank', 1) * r));
+  },
   mirrorGambit: (e, r, id) => {
     e.clonePowerPct += param(id, 'mimicPct', 40) + param(id, 'perRank', 4) * (r - 1);
     if (e.cloneCount === 0) e.cloneCount = 1;
   },
   apexPredator: (e, r, id) => {
+    e.poisonHoldBelow = Math.max(e.poisonHoldBelow, param(id, 'threshold', 50));
     // Poison on a dying enemy leaps to the pack, amplified.
     e.dotSpreadInterval = e.dotSpreadInterval || 2;
     e.dotSpreadRadius = Math.max(e.dotSpreadRadius, param(id, 'radius', 10));
@@ -755,19 +841,16 @@ const RULES: Record<string, Contribution> = {
     e.bloodTideRadius = Math.max(e.bloodTideRadius, param(id, 'radius', 10));
   },
   theUnseenBlade: (e, r, id) => {
-    e.guaranteedCritBonusPct += param(id, 'critDamage', 40) + param(id, 'critPerRank', 5) * (r - 1);
+    e.veilCritPct += param(id, 'critDamage', 40) + param(id, 'critPerRank', 5) * (r - 1);
     e.stealthReductionPct += 10;
     e.veilKillExtendSec = Math.max(e.veilKillExtendSec, param(id, 'extendPerKill', 1.5) + param(id, 'perRank', 0.15) * (r - 1));
     e.veilKillCapSec = Math.max(e.veilKillCapSec, param(id, 'cap', 20));
   },
   thousandCuts: (e, r, id) => {
-    // Crits stack critical damage; the ceiling is what the skill promises.
-    e.critBladeChance = Math.max(e.critBladeChance, 40);
-    e.critBladeRange = Math.max(e.critBladeRange, 9);
-    e.critBladePct = Math.max(
-      e.critBladePct,
-      (param(id, 'critDamagePerCut', 2) + param(id, 'perRank', 0.3) * (r - 1)) * param(id, 'maxCuts', 50),
-    );
+    // Crits bank Cuts; a miss of a crit spends them (SkillRunner.tune).
+    e.cutPct = Math.max(e.cutPct, param(id, 'critDamagePerCut', 2) + param(id, 'perRank', 0.3) * (r - 1));
+    e.cutMax = Math.max(e.cutMax, param(id, 'maxCuts', 50));
+    e.cutSpend = Math.max(1, param(id, 'spendCost', 5));
   },
 
   // -------------------------------------------------------------- revenant
@@ -776,6 +859,7 @@ const RULES: Record<string, Contribution> = {
     e.curseDurationPct += param(id, 'durationPerRank', 0.5) * r * 10;
   },
   curseMastery: (e, r, id) => {
+    e.curseCostPct += param(id, 'costPerRank', 4) * r;
     e.curseDurationPct += param(id, 'costPerRank', 4) * r;
     e.curseEffectPct += param(id, 'costPerRank', 4) * r;
   },
@@ -784,12 +868,14 @@ const RULES: Record<string, Contribution> = {
   },
   bloodCurse: (e, r, id) => {
     e.curseLeechPct += param(id, 'lifePct', 6) + param(id, 'perRank', 0.8) * (r - 1);
+    e.curseManaLeechPct = Math.max(e.curseManaLeechPct, param(id, 'manaPct', 3));
   },
   contagion: (e, r, id) => {
     e.curseSpreadRadius = Math.max(
       e.curseSpreadRadius,
       param(id, 'radius', 7) + param(id, 'perRank', 0.2) * (r - 1),
     );
+    e.curseSpreadMax = Math.max(e.curseSpreadMax, param(id, 'maxTargets', 6));
   },
   attrition: (e, r, id) => {
     e.auraDebuffRadius = Math.max(e.auraDebuffRadius, param(id, 'radius', 8));
@@ -798,7 +884,6 @@ const RULES: Record<string, Contribution> = {
   },
   theLongDecline: (e, r, id) => {
     e.curseDecayPctPerSec += param(id, 'pctPerSecond', 5) + param(id, 'perRank', 0.5) * (r - 1);
-    e.curseSpreadRadius = Math.max(e.curseSpreadRadius, 10);
   },
   boneMastery: (e, r, id) => {
     e.minionLifePct += param(id, 'lifePerRank', 9) * r;
@@ -810,8 +895,12 @@ const RULES: Record<string, Contribution> = {
     e.killLifePct = Math.max(e.killLifePct, param(id, 'healOnKillPct', 15) * 0.1);
   },
   ossuaryLord: (e, r, id) => {
-    e.minionCapBonus += Math.floor(r / Math.max(1, param(id, 'warriorPerRanks', 2)));
-    e.minionDurationPct += 20;
+    const add = (skill: string, per: number): void => {
+      e.capBySkill[skill] = (e.capBySkill[skill] ?? 0) + Math.floor(r / Math.max(1, per));
+    };
+    add('raiseSkeleton', param(id, 'warriorPerRanks', 2));
+    add('skeletalMage', param(id, 'magePerRanks', 4));
+    add('claySentinel', param(id, 'sentinelPerRanks', 12));
   },
   skeletalKnight: (e, r, id) => {
     e.minionEliteCount = Math.max(
@@ -819,16 +908,24 @@ const RULES: Record<string, Contribution> = {
       param(id, 'count', 2) + Math.floor(r / Math.max(1, param(id, 'countPerRanks', 8))),
     );
     e.minionElitePowerPct += param(id, 'damagePct', 80) + param(id, 'perRank', 6) * (r - 1);
-    e.minionLifePct += param(id, 'lifePct', 120) * 0.25;
+    e.minionEliteLifePct += param(id, 'lifePct', 120);
+    e.minionEliteCleave = e.minionEliteCleave || param(id, 'cleave', 0) > 0;
   },
   deathKnight: (e, r, id) => {
     e.minionElitePowerPct += param(id, 'damagePct', 40) + param(id, 'perRank', 4) * (r - 1);
     if (e.minionEliteCount === 0) e.minionEliteCount = 1;
   },
   theBoneChoir: (e, r, id) => {
-    e.minionCapBonus += 2;
-    e.minionDamagePct += param(id, 'lifePct', 60) + param(id, 'lifePerRank', 4) * (r - 1);
-    e.auraRadiusM = Math.max(e.auraRadiusM, param(id, 'radius', 4) + param(id, 'perRank', 0.4) * (r - 1));
+    e.choirRadius = Math.max(e.choirRadius, param(id, 'radius', 4));
+    e.choirSec = Math.max(e.choirSec, param(id, 'duration', 8) + param(id, 'perRank', 0.4) * (r - 1));
+    e.choirLifePct = Math.max(e.choirLifePct, param(id, 'lifePct', 60) + param(id, 'lifePerRank', 4) * (r - 1));
+    e.choirHealShare = Math.max(e.choirHealShare, param(id, 'healShare', 50));
+  },
+  blightMastery: (e, r, id) => {
+    e.dotTickPct += param(id, 'tickRatePerRank', 3) * r;
+  },
+  ossuaryMastery: (e, r, id) => {
+    e.minionDamagePct += param(id, 'damagePerRank', 6) * r;
   },
   reapSoul: (e, r, id) => {
     e.soulMaxStacks = Math.max(e.soulMaxStacks, param(id, 'maxStacks', 15));
@@ -917,10 +1014,12 @@ export interface PassiveState {
   soulTimer: number;
   /** Attacks since the last guaranteed critical. */
   swings: number;
+  /** A Thousand Cuts: Cuts banked this fight. */
+  cuts: number;
 }
 
 export function newPassiveState(): PassiveState {
-  return { cheatDeathCd: 0, retribution: 0, moving: 0, hitStacks: 0, castStacks: 0, castStackLeft: 0, spreadTimer: 0, souls: 0, soulTimer: 0, swings: 0 };
+  return { cheatDeathCd: 0, retribution: 0, moving: 0, hitStacks: 0, castStacks: 0, castStackLeft: 0, spreadTimer: 0, souls: 0, soulTimer: 0, swings: 0, cuts: 0 };
 }
 
 /**
@@ -969,7 +1068,7 @@ export function damageMultiplier(
     pct += Math.min(e.maxManaCap, e.maxManaPct * (self.maxMana / 200));
   }
   if (e.crowdDamagePct > 0) {
-    pct += Math.min(e.crowdDamageCap, e.crowdDamagePct * Math.max(0, self.nearby - 1));
+    pct += Math.min(e.crowdDamageCap, e.crowdDamagePct * Math.max(0, self.nearby));
   }
   // Momentum: metres banked in the last few seconds turn into damage.
   if (e.momentumDamageShare > 0 && (self.moving ?? 0) > 0) {
