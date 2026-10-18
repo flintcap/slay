@@ -874,6 +874,11 @@ export interface DungeonLevel {
    * the `chest.warden` payload, shut until it falls.
    */
   warden?: { id: string; room: number; x: number; y: number; rect: { x: number; y: number; w: number; h: number } };
+  /**
+   * A landmark set piece (`world/Landmarks.ts`), when the area keeps one:
+   * which, what it is called, its heart (tile coordinates) and its room.
+   */
+  landmark?: { id: string; name: string; x: number; y: number; room: number };
 }
 
 /**

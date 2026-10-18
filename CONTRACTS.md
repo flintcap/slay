@@ -1229,6 +1229,15 @@ export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | nul
   opens when the boss falls.
 - Charts: `src/ui/ZoneInk.ts` (`zoneInks`, `zoneInkAt`, `newKindInk`,
   `wayMarks`) is shared by the minimap and the full map.
+- Map shapes `maw`, `cleft` and `terraces` (`src/world/zones/Shapes.ts`) join
+  the zone generators. `layoutForBiome` still picks the biome's first layout
+  most often.
+- Landmarks (mapvariety): about 3 areas in 10 keep a set piece from
+  `src/world/Landmarks.ts` (`SET_PIECES`), stood by `world/Props.ts` in a
+  room off the way through, on its own seeded stream. `level.landmark`
+  (`{id, name, x, y, room}`) names it and gives its heart tile; most leave a
+  rare chest (`interact: 'chest.rare'`) or a shrine within 4 tiles. A screen
+  may label it by `name`; nothing reads it yet.
 
 ```ts
 // src/world/MapGen.ts

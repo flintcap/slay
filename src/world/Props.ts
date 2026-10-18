@@ -22,6 +22,8 @@ import type { BiomeDef, DungeonLevel, DungeonRoom, PropPlacement, Rng } from '..
 import { Noise, clamp } from '../art/Noise';
 import { biomeArt, isOutdoorBiome, wallKitOf, type BiomeArt } from './Biomes';
 import { dressingFor, type Dressing, type Pool } from '../art/props/Dressing';
+import { streamFor } from '../core/RNG';
+import { LANDMARK_CHANCE, setPiecesFor } from './Landmarks';
 import {
   T_DOOR,
   T_FLOOR,
@@ -73,6 +75,14 @@ interface PlaceCtx {
   /** Where the last `placeNearAt` landed. */
   lastX: number;
   lastY: number;
+  /** The room a landmark set piece took (-1 for none): features and pillars leave it alone. */
+  landmarkRoom: number;
+  /**
+   * Tiles round a landmark set piece: no later blocking prop may stand there
+   * (they would wall tiles in against the pieces, and the connectivity guard
+   * would then pull the set piece apart). 2 marks a set piece's own solid.
+   */
+  landmarkArea: Uint8Array;
 }
 
 /** Builds the full prop list for a level. */
@@ -105,6 +115,8 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
     out: [],
     lastX: 0,
     lastY: 0,
+    landmarkRoom: -1,
+    landmarkArea: new Uint8Array(w * h),
   };
 
   // Reserve stairs and their landings, plus every spawn tile.
@@ -121,6 +133,7 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
 
   placeWallLights(ctx);
   placeOpenLights(ctx);
+  placeLandmark(ctx);
   placeRoomFeatures(ctx);
   placePillars(ctx);
   placeInteractables(ctx);
@@ -260,6 +273,7 @@ function emit(
   const def = propDef(kind);
   if (isOccupied(ctx, x, y)) return false;
   if (def.blocks && !canBlock(ctx, x, y)) return false;
+  if (def.blocks && ctx.landmarkArea[y * ctx.w + x]) return false;
   // Gameplay pieces (chests, altars, shrines) are never dropped for this.
   if (!interact && crowdsKeepClear(ctx, x, y, def)) return false;
   markOccupied(ctx, x, y);
@@ -422,6 +436,7 @@ function openness(ctx: PlaceCtx, x: number, y: number): number {
 
 function placeRoomFeatures(ctx: PlaceCtx): void {
   for (const room of ctx.level.rooms) {
+    if (room.id === ctx.landmarkRoom) continue;
     const cx = room.center.x;
     const cy = room.center.y;
     const d = dressAt(ctx, cx, cy);
@@ -490,6 +505,149 @@ function placeRoomFeatures(ctx: PlaceCtx): void {
   }
 }
 
+// --- landmark ----------------------------------------------------------------
+
+/**
+ * Now and then a set piece (`world/Landmarks.ts`) in a room off the way
+ * through: the heart at its centre, pieces stood round it, litter, a light,
+ * and most often a reward. Rolled and placed on its own stream (swapped in
+ * for the placement helpers), so the props placed after it roll as they
+ * would have; only the room it takes loses its usual feature. Records what
+ * it placed in `level.landmark`.
+ */
+function placeLandmark(ctx: PlaceCtx): void {
+  const L = ctx.level;
+  const rng = streamFor(L.seed, `landmark:${L.depth}:${L.entry.x},${L.entry.y}:${L.width}x${L.height}`);
+  if (!rng.chance(LANDMARK_CHANCE)) return;
+  const keep = ctx.rng;
+  ctx.rng = rng;
+  try {
+    standSetPiece(ctx, rng);
+  } finally {
+    ctx.rng = keep;
+  }
+}
+
+function standSetPiece(ctx: PlaceCtx, rng: Rng): void {
+  const L = ctx.level;
+  const ar = L.arena;
+  const e = L.entry;
+  const x = L.exit;
+  const wp = L.waypoint;
+  // How far a room lies off the straight way from the arrival to the exit.
+  const off = (p: { x: number; y: number }): number => {
+    const dx = x.x - e.x;
+    const dy = x.y - e.y;
+    const t = Math.max(0, Math.min(1, ((p.x - e.x) * dx + (p.y - e.y) * dy) / Math.max(1, dx * dx + dy * dy)));
+    return Math.hypot(p.x - (e.x + dx * t), p.y - (e.y + dy * t));
+  };
+  const roomy = (cx: number, cy: number): boolean => {
+    let open = 0;
+    for (let yy = cy - 3; yy <= cy + 3; yy++) for (let xx = cx - 3; xx <= cx + 3; xx++) if (walkable(ctx, xx, yy)) open++;
+    return open >= 40;
+  };
+  const rooms = L.rooms
+    .filter((r) => {
+      if (r.kind !== 'normal' || r.w < 7 || r.h < 7) return false;
+      const cx = Math.round(r.center.x);
+      const cy = Math.round(r.center.y);
+      if (Math.hypot(cx - e.x, cy - e.y) < 16 || Math.hypot(cx - x.x, cy - x.y) < 10) return false;
+      if (wp && Math.hypot(cx - wp.x, cy - wp.y) < 8) return false;
+      if (ar && cx >= ar.x - 4 && cy >= ar.y - 4 && cx < ar.x + ar.w + 4 && cy < ar.y + ar.h + 4) return false;
+      return roomy(cx, cy);
+    })
+    .map((r) => ({ r, score: off(r.center) + (r.links.length <= 1 ? 8 : 0) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+  rng.shuffle(rooms);
+  for (const { r: room } of rooms) {
+    const cx = Math.round(room.center.x);
+    const cy = Math.round(room.center.y);
+    const z = zoneAt(ctx, cx, cy);
+    const biome = L.zones?.[z]?.biome ?? L.biome;
+    const pool = setPiecesFor(biome);
+    if (pool.length === 0) continue;
+    const sp = rng.pick(pool);
+    const shrineType = rng.pick(SHRINE_TYPES);
+    const heartAsk = sp.heart === 'shrine' ? `shrine.${shrineType}` : undefined;
+    const placedFrom = ctx.out.length;
+    if (!placeNearAt(ctx, cx, cy, 2, sp.heart, heartAsk)) continue;
+    const hx = ctx.lastX;
+    const hy = ctx.lastY;
+    ctx.landmarkRoom = room.id;
+    const phase = rng.range(0, Math.PI * 2);
+    // The reward first, so the ring makes room for it: between the heart and
+    // the ring, two tiles out, never touching another solid piece.
+    const ra = phase + Math.PI / sp.ring.n;
+    const rx = Math.round(hx + Math.cos(ra) * 2.4);
+    const ry = Math.round(hy + Math.sin(ra) * 2.4);
+    if (sp.reward === 'chest') {
+      const kind = chestKindFor('chest.rare');
+      if (!placeSpaced(ctx, rx, ry, 1, hx, hy, kind, 'chest.rare')) placeSpaced(ctx, hx, hy, 3, hx, hy, kind, 'chest.rare');
+    } else if (sp.reward === 'shrine' && sp.heart !== 'shrine') {
+      if (!placeSpaced(ctx, rx, ry, 1, hx, hy, 'shrine', `shrine.${shrineType}`)) placeSpaced(ctx, hx, hy, 3, hx, hy, 'shrine', `shrine.${shrineType}`);
+    }
+    for (let k = 0; k < sp.ring.n; k++) {
+      const a = phase + (k / sp.ring.n) * Math.PI * 2 + rng.range(-0.2, 0.2);
+      const kind = sp.ring.kinds[k % sp.ring.kinds.length]!;
+      placeSpaced(ctx, Math.round(hx + Math.cos(a) * sp.ring.r), Math.round(hy + Math.sin(a) * sp.ring.r), 1, hx, hy, kind);
+    }
+    for (let k = 0; k < sp.litter.n; k++) {
+      const a = rng.range(0, Math.PI * 2);
+      const d = rng.range(1.5, sp.litter.r);
+      placeSpaced(ctx, Math.round(hx + Math.cos(a) * d), Math.round(hy + Math.sin(a) * d), 0, hx, hy, sp.litter.kinds[k % sp.litter.kinds.length]!);
+    }
+    const d = dressAt(ctx, hx, hy);
+    const light = sp.light ?? (d.standLight.length > 0 ? d.standLight[0]!.kind : 'brazier');
+    const la = ra + Math.PI;
+    placeSpaced(ctx, Math.round(hx + Math.cos(la) * (sp.ring.r + 1.2)), Math.round(hy + Math.sin(la) * (sp.ring.r + 1.2)), 2, hx, hy, light);
+    L.landmark = { id: sp.id, name: sp.name, x: hx, y: hy, room: room.id };
+    // Fence the set piece off from later solids, and mark its own.
+    const fence = sp.ring.r + 2;
+    for (let yy = hy - fence; yy <= hy + fence; yy++) {
+      for (let xx = hx - fence; xx <= hx + fence; xx++) {
+        if (xx >= 0 && yy >= 0 && xx < ctx.w && yy < ctx.h && Math.hypot(xx - hx, yy - hy) <= fence + 0.5) ctx.landmarkArea[yy * ctx.w + xx] = 1;
+      }
+    }
+    for (let k = placedFrom; k < ctx.out.length; k++) {
+      const p = ctx.out[k]!;
+      if (ctx.blocked[p.y * ctx.w + p.x]) ctx.landmarkArea[p.y * ctx.w + p.x] = 2;
+    }
+    return;
+  }
+}
+
+/**
+ * `placeNear` for a set piece: a solid piece never lands next to another
+ * solid one (so the pieces can never wall a tile in, and the connectivity
+ * guard never has to pull the set piece apart), and nothing lands within a
+ * tile of the heart at (hx, hy).
+ */
+function placeSpaced(ctx: PlaceCtx, cx: number, cy: number, r: number, hx: number, hy: number, kind: string, interact?: string): boolean {
+  const solid = propDef(kind).blocks;
+  for (let dd = 0; dd <= r; dd++) {
+    for (let dy = -dd; dy <= dd; dy++) {
+      for (let dx = -dd; dx <= dd; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== dd) continue;
+        const x = cx + dx;
+        const y = cy + dy;
+        if (!walkable(ctx, x, y) || Math.max(Math.abs(x - hx), Math.abs(y - hy)) <= 1) continue;
+        if (solid) {
+          let near = false;
+          for (let k = 0; k < 9 && !near; k++) {
+            const nx = x + (k % 3) - 1;
+            const ny = y + ((k / 3) | 0) - 1;
+            if ((nx !== x || ny !== y) && nx >= 0 && ny >= 0 && nx < ctx.w && ny < ctx.h && ctx.blocked[ny * ctx.w + nx]) near = true;
+          }
+          if (near) continue;
+        }
+        if (emit(ctx, x, y, kind, ctx.rng.range(0, Math.PI * 2), interact)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 /** `placeNear`, remembering where it landed in `ctx.lastX/lastY`. */
 function placeNearAt(ctx: PlaceCtx, cx: number, cy: number, r: number, kind: string, interact?: string): boolean {
   const before = ctx.out.length;
@@ -552,6 +710,7 @@ function placePillars(ctx: PlaceCtx): void {
   for (const room of ctx.level.rooms) {
     if (room.w < 9 || room.h < 9) continue;
     if (room.kind === 'entry' || room.kind === 'boss') continue;
+    if (room.id === ctx.landmarkRoom) continue;
     // Open sky has no roof to hold up.
     if (outdoorAt(ctx, room.center.x, room.center.y)) continue;
     const kind = dressAt(ctx, room.center.x, room.center.y).pillar;
@@ -971,21 +1130,27 @@ function enforceConnectivity(ctx: PlaceCtx): void {
     if (stranded.length === 0) return;
 
     // Remove blocking props that touch the stranded region.
+    // A landmark set piece's own solids go only when nothing else that
+    // touches the stranded tiles is left to take.
     const strandedSet = new Set(stranded);
     let removed = 0;
-    for (let i = ctx.out.length - 1; i >= 0; i--) {
-      const p = ctx.out[i];
-      const idx = p.y * ctx.w + p.x;
-      if (!ctx.blocked[idx]) continue;
-      const touches =
-        strandedSet.has(idx - 1) ||
-        strandedSet.has(idx + 1) ||
-        strandedSet.has(idx - ctx.w) ||
-        strandedSet.has(idx + ctx.w);
-      if (!touches) continue;
-      ctx.blocked[idx] = 0;
-      ctx.out.splice(i, 1);
-      removed++;
+    for (const spare of [true, false]) {
+      for (let i = ctx.out.length - 1; i >= 0; i--) {
+        const p = ctx.out[i];
+        const idx = p.y * ctx.w + p.x;
+        if (!ctx.blocked[idx]) continue;
+        if (spare && ctx.landmarkArea[idx] === 2) continue;
+        const touches =
+          strandedSet.has(idx - 1) ||
+          strandedSet.has(idx + 1) ||
+          strandedSet.has(idx - ctx.w) ||
+          strandedSet.has(idx + ctx.w);
+        if (!touches) continue;
+        ctx.blocked[idx] = 0;
+        ctx.out.splice(i, 1);
+        removed++;
+      }
+      if (removed > 0) break;
     }
     if (removed === 0) {
       // Nothing left to retract: the stranded region was already unreachable in

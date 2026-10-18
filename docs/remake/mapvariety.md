@@ -27,9 +27,10 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
   ring around a pit, a river or chasm that splits the map with crossings,
   cliff terraces, an island chain), picked by seed, in fitting biomes.
   (mapvariety: three new map shapes, maw, cleft and terraces)
-- [ ] 4. Landmarks: rare set pieces per biome (a collapsed bridge, a frozen
+- [x] 4. Landmarks: rare set pieces per biome (a collapsed bridge, a frozen
   giant, a ruined shrine, a gallows hill) that pull the player to explore,
   some with a small reward.
+  (mapvariety: landmark set pieces with a reward)
 - [ ] 5. Weather per biome: snow, rain, ash fall, drifting fog, scaled by
   quality level, built on the particle kit in `src/fx/kit` (use it, do not
   change it; ask effects in `effects.md` notes if you need more).
@@ -42,13 +43,14 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
 ## Next up
 
 1. Do Setup in PROTOCOL.md.
-2. Milestone 4: landmarks. Rare set pieces per biome that pull the player
-   to explore, some with a small reward. Plan: a `landmark` field on
-   `DungeonLevel` (types.ts, additive) chosen in `DungeonGen.generateLevel`
-   on its own stream (`streamFor(seed, 'landmark:...')`) so no other roll
-   moves; placed in a far room (or the maw dais); drawn from existing prop
-   kinds in `art/props/Defs.ts`; reward = a chest prop with a new interact
-   id the scene already handles (check `DungeonScene` interact dispatch).
+2. Milestone 5: weather per biome (snow in tundra and frostvault, rain in
+   swamp and darkForest, ash in ashwaste and hell, drifting fog in crypt,
+   sunkenTemple and swamp). Read `src/fx/kit` first (use it as it is) and
+   how `DungeonScene` calls `fx.setAmbient` from `BiomeDef.particles`. New
+   weather file(s) only, outside `src/fx` (effects owns it), for example
+   `src/world/Weather.ts`, scaled by quality level. The
+   hook into the scene is not ours: if one is needed, ask in `effects.md`
+   "Notes for resume" or use the existing ambient path.
 
 ## Notes for resume
 
@@ -97,6 +99,27 @@ connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
 `grid`, `openness`, `roomrules`, `density`, `dressing`, `props`,
 `variants`. Browser: `map`, `mapflow`, `stairs`, `walk`.
 
+### Milestone 4 notes
+
+- `src/world/Landmarks.ts`: 9 set pieces (`SET_PIECES`: id, name, biomes,
+  heart prop, a ring of pieces, litter, a light, reward chest, shrine or
+  none). `LANDMARK_CHANCE` 0.3 per area.
+- `world/Props.ts` `placeLandmark` runs after the lights and before room
+  features, on `streamFor(seed, 'landmark:...')` swapped into `ctx.rng`, so
+  every other prop roll is unchanged. Room: a normal room at least 7x7,
+  16+ tiles from the arrival, 10 from the exit, clear of the arena, scored
+  by how far it lies off the straight way (dead ends score more).
+- Solids of a set piece never touch each other (`placeSpaced`), and a fence
+  of ring radius + 2 round the heart (`ctx.landmarkArea`) keeps every later
+  blocking prop out. The connectivity guard pulls the set piece's own
+  solids only when nothing else is left to take. Without the fence, later
+  scatter walled tiles in and the guard took the whole set piece away.
+- `level.landmark` = `{id, name, x, y, room}` (types.ts). Nothing shows the
+  name yet: a label on the map or a toast on entering the room would need
+  `src/ui` or the scene (not ours). The ui stream is done; left for later.
+- New checker `node tools/check-landmarks.mjs` (headless, in run-checks):
+  31% of areas, 81 of 82 rewards placed, every piece turns up.
+
 ### Milestone 3 notes
 
 - New file `src/world/zones/Shapes.ts`: `maw` (ring round a pit, warren of
@@ -137,6 +160,10 @@ connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
 
 - Go back to town from a map (and start a new character): the loading bar
   keeps moving through the "world" step and the page never stops answering.
+- Explore a few maps fully: about one area in three has a lit set piece in a
+  side room (gibbets, a frozen watch, a broken chapel, a bone mound...).
+  Most have a rare chest or a shrine beside the centre piece that you can
+  walk up to and use. Nothing in it floats or blocks the way.
 
 ## Handover
 
