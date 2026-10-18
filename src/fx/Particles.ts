@@ -116,6 +116,8 @@ export class FXSystem {
   emit(layer: Layer, school: School, x: number, y: number, z: number, opts: BurstOpts | undefined, countMul = 1, keyed = false): void {
     // A hard per-frame ceiling: crowd layers stop at 80% of it, and the last
     // fifth is kept for the single flashes and rings at the heart of effects.
+    // Detail kept for High and Ultra.
+    if (layer.rich && this.quality.fxScale < 0.9) return;
     const core = layer.count <= 2;
     const budget = this.frameBudget;
     const room = (core ? budget : budget * 0.8) - this.frameSpawned;

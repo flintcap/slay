@@ -145,6 +145,24 @@ export class InstancedPool {
     this.mesh.visible = false;
   }
 
+  /**
+   * A one-instance copy drawn by the scene's warm-up, so the family's shader
+   * is built behind the curtain instead of on its first cast. Shares the
+   * buffers and material; never dispose its geometry (that would free the
+   * pool's buffers).
+   */
+  standIn(): THREE.Mesh {
+    const geo = new THREE.InstancedBufferGeometry();
+    geo.index = this.geo.index;
+    for (const [k, a] of Object.entries(this.geo.attributes)) geo.setAttribute(k, a);
+    geo.instanceCount = 1;
+    const m = new THREE.Mesh(geo, this.material);
+    m.name = `${this.mesh.name}:warm`;
+    m.frustumCulled = false;
+    m.renderOrder = this.mesh.renderOrder;
+    return m;
+  }
+
   dispose(): void {
     this.geo.dispose();
     this.material.dispose();

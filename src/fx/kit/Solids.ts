@@ -336,6 +336,26 @@ export class SolidPool {
     }
   }
 
+  /**
+   * One tiny instance of every shape, for the scene's warm-up, so no solid
+   * builds its shader on the frame it is first thrown. Shares geometry and
+   * material; only the stand-ins' own instance buffers are new.
+   */
+  standIns(): THREE.Object3D[] {
+    const out: THREE.Object3D[] = [];
+    const m = new THREE.Matrix4().makeScale(1e-3, 1e-3, 1e-3);
+    for (const s of this.shapes) {
+      const w = new THREE.InstancedMesh(s.mesh.geometry, s.mesh.material, 1);
+      w.setMatrixAt(0, m);
+      w.frustumCulled = false;
+      w.castShadow = false;
+      w.receiveShadow = false;
+      w.name = `${s.mesh.name}:warm`;
+      out.push(w);
+    }
+    return out;
+  }
+
   clear(): void {
     for (const s of this.shapes) {
       s.live.fill(0);

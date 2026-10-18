@@ -166,6 +166,8 @@ interface DeathLook {
   end: number | null;
   vanish?: number;
   after?: string;
+  /** Low and Medium: the burst's share, so a death there costs no more than before. */
+  lean?: number;
 }
 const DEATH_LOOK: Record<DamageType, DeathLook> = {
   // Opened by steel: meat and blood (the body's own burst comes from Enemy.die).
@@ -175,14 +177,14 @@ const DEATH_LOOK: Record<DamageType, DeathLook> = {
   // Frosted over as it drops.
   cold: { burst: 'frost', mark: 'ice', peak: 0xd8f6ff, end: 0x86b4d8 },
   // Cooked black, arcs crawling as it falls.
-  lightning: { burst: 'death.cook', mark: 'fork', peak: 0xeaf0ff, end: 0x1c1a24 },
+  lightning: { burst: 'death.cook', mark: 'fork', peak: 0xeaf0ff, end: 0x1c1a24, lean: 0.9 },
   // Rots green and sloughs.
-  poison: { burst: 'death.melt', mark: 'acid', peak: 0xdcff6a, end: 0x24340e },
+  poison: { burst: 'death.melt', mark: 'acid', peak: 0xdcff6a, end: 0x24340e, lean: 0.6 },
   // Darkens to a shadow and comes apart.
-  arcane: { burst: 'death.shadow', mark: 'sigil', peak: 0xe0a0ff, end: 0x0c0614, vanish: 0.55, after: 'death.unmake' },
+  arcane: { burst: 'death.shadow', mark: 'sigil', peak: 0xe0a0ff, end: 0x0c0614, vanish: 0.55, after: 'death.unmake', lean: 0.65 },
 };
 /** A frozen (or stone) body struck dead shatters, whatever killed it. */
-const SHATTER: DeathLook = { burst: 'death.shatter', mark: 'ice', peak: 0xeaf8ff, end: 0xa8d0ec, vanish: 0.05 };
+const SHATTER: DeathLook = { burst: 'death.shatter', mark: 'ice', peak: 0xeaf8ff, end: 0xa8d0ec, vanish: 0.05, lean: 0.3 };
 /** Seconds a death look holds: the corpse is gone by then (Enemy.tickDeath). */
 const DEATH_HOLD = 1.25;
 
@@ -402,15 +404,17 @@ export class CombatFeel {
     const frozen = !target.isBoss && (target.hasStatus?.('frozen') === true || target.hasStatus?.('petrified') === true);
     const look = frozen ? SHATTER : DEATH_LOOK[type] ?? DEATH_LOOK.physical;
     const big = scale >= 1.4 || weight >= 2;
+    // Low and Medium keep the main burst only, trimmed to the old cost.
+    const rich = this.effects.fxScale >= 0.9;
     this.effects.fx.burst(look.burst, x, y, z, {
       scale: scale * (frozen ? 1 : 0.9),
-      count: Math.round(14 + weight * 6 + (big ? 6 : 0)),
+      count: Math.max(4, Math.round((14 + weight * 6 + (big ? 6 : 0)) * (rich ? 1 : look.lean ?? 1))),
       dir: dx !== 0 || dz !== 0 ? _dir.set(dx, 0.4, dz) : undefined,
     });
-    if (type === 'physical' && big && !frozen) this.effects.fx.burst('death.blood', x, y, z, { scale, dir: dx !== 0 || dz !== 0 ? _dir.set(dx, 0.4, dz) : undefined });
+    if (rich && type === 'physical' && big && !frozen) this.effects.fx.burst('death.blood', x, y, z, { scale, dir: dx !== 0 || dz !== 0 ? _dir.set(dx, 0.4, dz) : undefined });
     if (look.mark) this.effects.decals.add(look.mark, x, z, 0.7 * scale);
     if (look.end !== null && !target.isBoss) this.flash.deathLook(target.root, look.peak, look.end, DEATH_HOLD, look.vanish);
-    const after = look.after;
+    const after = rich ? look.after : undefined;
     if (after) {
       const at = look.vanish ?? 0.75;
       this.effects.delay(at, () => this.effects.fx.burst(after, x, 0.5 * scale, z, { scale }));
@@ -418,7 +422,7 @@ export class CombatFeel {
     // A big body lands: grit thrown out where it hits the floor.
     if (big && !look.vanish) {
       this.effects.delay(0.7, () => {
-        this.effects.fx.burst('death.thud', x, 0.15, z, { scale });
+        if (rich) this.effects.fx.burst('death.thud', x, 0.15, z, { scale });
         this.addTrauma(0.06 + weight * 0.02);
       });
     }

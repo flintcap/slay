@@ -1,6 +1,6 @@
 # Stream: effects (Wave 4: skills, hits and deaths)
 
-Status: in progress
+Status: done
 
 Goal: every skill, hit and death looks and feels strong and readable, in a
 dark and gritty style: embers, blood, frost, smoke, sparks. Never
@@ -26,26 +26,44 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
   with the worst ten from the audit.
 - [x] 4. Deaths: per damage type (burn to ash, shatter when frozen, blood
   burst, dissolve to shadow), per monster size.
-- [ ] 5. Warm-up: stand-ins in `warmup()` for late effect pipelines
+- [x] 5. Warm-up: stand-ins in `warmup()` for late effect pipelines
   (`fx:solid-shard`, `fx:cores`, `fx:columns` from speed's notes) and for
   every new effect, so nothing compiles mid-fight.
-- [ ] 6. Cost: a particle budget per quality level; no per-frame
+- [x] 6. Cost: a particle budget per quality level; no per-frame
   allocation in the code you touch.
-- [ ] 7. Handover.
+- [x] 7. Handover.
 
 ## Next up
 
-1. Milestone 5: in `warmup()` (DungeonScene, small additive edit) add
-   stand-ins for `fx:solid-shard`, `fx:cores`, `fx:columns`, the new
-   `fx:solid-blade` and `fx:solid-buckler`, one field (`effects.field`) and
-   one `selfCast`, and the HitFlash hidden material, so nothing compiles
-   mid-fight.
-2. Milestone 6: write the particle budget per quality level (fields,
-   deaths, crits) under Notes; check the touched code makes no per-frame
-   objects.
-3. Milestone 7: Handover.
+Nothing. Every milestone is ticked; see Handover.
 
 ## Notes for resume
+
+### Cost and warm-up (milestones 5 and 6)
+
+- Warm-up: `EffectSystem.standIns()` (one instance of cores, beams,
+  columns, shells and every solid, buckler and blade included) joins the
+  list in `DungeonScene.warmup()`. Fields, self casts and death looks use
+  the particle field and ground layers, already warm. The hidden-body
+  material is never drawn, so it needs no stand-in. Not checked with
+  `check-frames` (browser runs skipped, see below).
+- Budget per quality (particles per burst; Low 0.35, Medium 0.6, High 1,
+  Ultra 1.4 times the authored count, under the field's existing
+  per-frame cap `frameBudget`):
+  - Fields: bursts a second = stream rate x area x quality (1 / 0.75 /
+    0.55) x rank density (High and up only, at most 1.6). Area grows with
+    the radius up to 3x on High and up, and is held at 1x on Low and
+    Medium. Worst field on Low is about 28 particles a second (blizzard),
+    on Medium about 57; the old summoning circle was about 53 and 64, plus
+    a light column.
+  - Layers marked `rich` (crit rays, crossed cuts and ring; the dark wisps
+    in arcane hits) play on High and Ultra only, so a crit on Low costs
+    what it did.
+  - Deaths on Low and Medium: the main burst only, times the look's `lean`
+    (old cost or less); no after-burst, blood spray or thud dust.
+  - Self casts on Low and Medium skip the gathering flare.
+  - No per-frame objects in the new code: fields reuse one burst options
+    object and pooled records; the hit flash reuses slots.
 
 ### Done in milestones 2 to 4 (wave two)
 
@@ -171,4 +189,26 @@ Weakest, worst first:
 
 ## Handover
 
-(Written when every milestone is ticked.)
+What exists now:
+
+- Hits: shaped crits and darker arcane hits (`src/fx/kit/Emitters.ts`),
+  short element marks under heavy or crit hits (`src/fx/CombatFeel.ts`).
+- Deaths per element and size (`CombatFeel.onKill`, `DEATH_LOOK`,
+  `SHATTER`), body colour held and hidden on vanish
+  (`HitFlash.deathLook`), death and field emitters in `src/fx/Grit.ts`.
+- Skills: fields (`src/fx/Fields.ts`, `effects.field`), self casts
+  (`effects.selfCast`), thrown knives and shield (`Solids.ts` buckler,
+  `shape` on projectiles), particles by school and rank growth
+  (`src/fx/SkillLooks.ts`: `skillParticles`, `FIELD_LOOKS`,
+  `THROWN_SHAPES`, `rankSize`, `rankDensity`), Suppressing Fire arrows.
+- Warm-up stand-ins (`EffectSystem.standIns`), Low and Medium trims
+  (`rich` layers, `lean`, field area cap).
+
+Left for `finish`:
+
+- Look at the new looks on screen; the vfx lab rendered black frames for
+  every scene (old fault, not from this stream), so none were seen.
+- Run `check-frames --only=boss` once to confirm `fx:solid-*`, `fx:cores`
+  and `fx:columns` no longer build mid-fight.
+- `summonCircle` is still used by monster and boss effects; only the
+  player's fields moved off it.

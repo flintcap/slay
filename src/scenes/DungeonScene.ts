@@ -387,7 +387,7 @@ export class DungeonScene extends GameScene {
     const fallen = corpseStandIns(roots);
     const coin = new THREE.Mesh(coinGeometry(), emissiveMaterial(0xffc63a, 0.5));
     coin.frustumCulled = false;
-    const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns()];
+    const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns(), ...this.effects.standIns()];
     // A paladin's Vigil ring, for the first one lit.
     if (this.player.character.classId === 'paladin') list.push(vigilStandIn());
     if (!list.length) return null;

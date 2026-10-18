@@ -525,6 +525,11 @@ export class EffectSystem {
     for (let i = 0; i < 64; i++) this.free.push(new Live());
   }
 
+  /** The quality's particle scale (0.35 Low .. 1.4 Ultra), for callers that trim detail. */
+  get fxScale(): number {
+    return this.quality.fxScale;
+  }
+
   setRig(rig: CameraRig | null): void {
     this.rig = rig;
   }
@@ -1459,7 +1464,10 @@ export class EffectSystem {
     const y = floorAt(x, z);
     const el = element(school);
     const l = lookOf(school, opts.color);
-    this.fx.burst(el.castEmitter, x, y + 1.1, z, { scale: size });
+    // Low and Medium skip the gathering flare: a self cast there spawns no
+    // more than the impact it replaced.
+    const rich = this.quality.fxScale >= 0.9;
+    if (rich) this.fx.burst(el.castEmitter, x, y + 1.1, z, { scale: size });
     // The skill's own particles, unless they are a hit's: a self cast strikes nothing.
     const own = opts.emitter;
     if (own && !own.startsWith('hit.') && own !== 'impact') this.fx.burst(own, x, y + 1.0, z, { count: Math.round(8 * dens), scale: 0.8 * size, color: opts.color, school });
@@ -2063,6 +2071,17 @@ export class EffectSystem {
   }
 
   /** Stops and frees every live effect without tearing the system down. */
+  /**
+   * Stand-ins for the scene's warm-up: one instance of each core, beam,
+   * column and shell family and of every thrown or summoned solid, so none
+   * links its shader mid-fight (speed's notes: `fx:solid-shard`, `fx:cores`,
+   * `fx:columns`). Fields, self casts and death looks draw through the
+   * particle field and ground layers, which are already warm.
+   */
+  standIns(): THREE.Object3D[] {
+    return [this.cores.standIn(), this.beams.standIn(), this.columns.standIn(), this.shells.standIn(), ...this.solids.standIns()];
+  }
+
   clear(): void {
     while (this.live.length) this.release(this.live.pop()!);
     this.fields.clear();

@@ -16,7 +16,7 @@
 import * as THREE from 'three';
 import type { QualityProfile } from '../core/Renderer';
 import type { Rng } from '../types';
-import type { FXSystem } from './Particles';
+import type { BurstOpts, FXSystem } from './Particles';
 import type { DecalSystem } from './Decals';
 import type { School } from './kit/Palette';
 import type { GroundHandle, GroundKind } from './kit/Ground';
@@ -168,6 +168,8 @@ class Handle {
 }
 
 const _down = new THREE.Vector3(0.18, -1, 0.1);
+/** One options object for every field burst (read, never kept, by `burst`). */
+const _opts: BurstOpts = {};
 
 export class FieldPool {
   private fields: Field[] = [];
@@ -197,7 +199,9 @@ export class FieldPool {
     f.spec = spec;
     f.acc[0] = f.acc[1] = f.acc[2] = 0;
     const q = this.quality.fxScale;
-    const area = Math.max(0.5, Math.min(3, (radius * radius) / 9));
+    // On Low and Medium a big field is no busier than a 3 m one, so no field
+    // spawns more than the summoning circle it replaced.
+    const area = Math.max(0.5, Math.min(q >= 0.9 ? 3 : 1, (radius * radius) / 9));
     // Fewer, not just thinner, bursts on the lower qualities.
     const quality = q >= 0.9 ? 1 : q >= 0.5 ? 0.75 : 0.55;
     const rank = q >= 0.9 ? rankDensity(opts.rank ?? 1) : 1;
@@ -233,7 +237,10 @@ export class FieldPool {
           // Falling streams start up-wind, so they land inside the field.
           const ox = s.down ? -_down.x * s.y : 0;
           const oz = s.down ? -_down.z * s.y : 0;
-          this.fx.burst(s.id, px + ox, this.decals.floorY(px, pz) + s.y, pz + oz, { count: s.count, dir: s.down ? _down : undefined, school: f.school });
+          _opts.count = s.count;
+          _opts.dir = s.down ? _down : undefined;
+          _opts.school = f.school;
+          this.fx.burst(s.id, px + ox, this.decals.floorY(px, pz) + s.y, pz + oz, _opts);
         }
         if (n >= 4) f.acc[i] = 0;
       }
