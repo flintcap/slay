@@ -38,6 +38,7 @@ import type {
   Stats,
 } from '../types';
 import { RARITY_COLOR } from '../types';
+import { Random, hashString } from '../core/RNG';
 import {
   ITEM_BASES as ALL_BASES,
   baseDropWeight,
@@ -754,6 +755,83 @@ export function buildSetPiece(piece: SetPieceDef, rng: Rng): Item {
   if (piece.sockets) item.sockets = new Array(piece.sockets).fill(null).map(() => ({ gemId: null as string | null }));
   item.value = vendorPrice(item, false) * 4;
   return item;
+}
+
+/** One line an item of a name should carry: its id, stat, kind and range. */
+interface FixedSpec {
+  affixId: string;
+  stat: StatKey;
+  kind: ItemMod['kind'];
+  lo: number;
+  hi: number;
+}
+
+/** Every written and extra line a unique or set piece carries today, with the range each rolls in. */
+function fixedSpecs(item: Item): { specs: FixedSpec[]; ilvl: number; rarity: ItemRarity; sockets: number } | null {
+  if (!item.uniqueId) return null;
+  if (item.setId) {
+    const piece = getSetPiece(item.uniqueId);
+    if (!piece) return null;
+    const fill = lineFill(`set:${piece.id}`, piece.mods, piece.ilvl, SET_PIECE_LINES);
+    const lift = (stat: StatKey, v: number): number => (stat !== 'skillLevels' && v > 0 ? Math.max(1, Math.round(v * fill)) : v);
+    const specs: FixedSpec[] = piece.mods.map((m: { stat: StatKey; min: number; max: number }, i: number) => ({
+      affixId: `set.${piece.id}.${i}`,
+      stat: m.stat,
+      kind: 'prefix' as const,
+      lo: lift(m.stat, m.min),
+      hi: lift(m.stat, m.max),
+    }));
+    (EXTRA_LINES[piece.id] ?? []).forEach(([stat, lo, hi], i) => specs.push({ affixId: `set.${piece.id}.x${i}`, stat, kind: 'prefix', lo, hi }));
+    return { specs, ilvl: piece.ilvl, rarity: 'set', sockets: piece.sockets ?? 0 };
+  }
+  const def = getUnique(item.uniqueId);
+  if (!def) return null;
+  const specs: FixedSpec[] = def.mods.map((m, i) => ({ affixId: `unique.${def.id}.${i}`, stat: m.stat, kind: m.kind ?? 'prefix', lo: m.min, hi: m.max }));
+  (EXTRA_LINES[def.id] ?? []).forEach(([stat, lo, hi], i) => specs.push({ affixId: `unique.${def.id}.x${i}`, stat, kind: 'prefix', lo, hi }));
+  return { specs, ilvl: def.ilvl, rarity: def.rarity, sockets: def.sockets ?? 0 };
+}
+
+/**
+ * Brings a unique or set piece found in an older build up to its name's
+ * lines today: its written lines and fixed extra lines (`data/extraLines.ts`),
+ * nothing else, at its own item level. A line it already had keeps its roll,
+ * held inside the line's range (an anvil bonus may sit up to 12% over); a line
+ * it lacked rolls fresh, seeded by the item so a reload rolls the same; random
+ * lines from before the fixed lists go. Base lines, sockets and their gems,
+ * upgrades and powers stay. Returns true when anything changed.
+ */
+export function refreshFixedLines(item: Item): boolean {
+  const want = fixedSpecs(item);
+  if (!want) return false;
+  const rng = new Random(hashString(`refresh:${item.uid}`));
+  const had = new Map<string, ItemMod>();
+  for (const m of item.mods) if (m.kind !== 'implicit') had.set(m.affixId, m);
+  const mods: ItemMod[] = item.mods.filter((m) => m.kind === 'implicit');
+  for (const sp of want.specs) {
+    const old = had.get(sp.affixId);
+    let value: number;
+    if (old && old.stat === sp.stat) {
+      const top = item.upgrade > 0 && sp.hi > 0 ? Math.round(sp.hi * 1.12) : sp.hi;
+      value = Math.min(top, Math.max(sp.lo, old.value));
+    } else {
+      value = sp.lo === sp.hi ? sp.lo : rng.int(sp.lo, sp.hi);
+    }
+    mods.push({ affixId: sp.affixId, stat: sp.stat, value, tier: 0, kind: sp.kind });
+  }
+  const same =
+    mods.length === item.mods.length &&
+    mods.every((m, i) => {
+      const o = item.mods[i]!;
+      return o.affixId === m.affixId && o.stat === m.stat && o.value === m.value && o.kind === m.kind;
+    });
+  const changed = !same || item.ilvl !== want.ilvl || item.rarity !== want.rarity || item.sockets.length < want.sockets;
+  if (!changed) return false;
+  item.mods = mods;
+  item.ilvl = want.ilvl;
+  item.rarity = want.rarity;
+  while (item.sockets.length < want.sockets) item.sockets.push({ gemId: null });
+  item.value = vendorPrice(item, false) * 4;
+  return true;
 }
 
 /** Builds a plain instance of a base — used for starting gear and vendors. */

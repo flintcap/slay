@@ -12,7 +12,11 @@ import { SaveManager, migrateAccount, DEFAULT_SETTINGS, SAVE_KEY, BACKUP_KEY, CO
 import type { SaveStore } from '../src/core/Save';
 import { events } from '../src/core/Events';
 import { Random } from '../src/core/RNG';
-import type { AccountSave, Character, Item } from '../src/types';
+import type { AccountSave, Character, Item, StatKey } from '../src/types';
+import { getUnique } from '../src/data/uniques';
+import { SET_PIECES } from '../src/data/sets';
+import { EXTRA_LINES } from '../src/data/extraLines';
+import { buildSetPiece, refreshFixedLines } from '../src/sim/Loot';
 
 class MemStore implements SaveStore {
   map = new Map<string, string>();
@@ -380,6 +384,52 @@ check('uniques that dropped before the story pass take their new names, silently
   if (c.inventory[1]?.name !== 'Set Piece') return 'a set piece was renamed';
   if (c.inventory[3]?.name !== 'Kept As Is') return 'an unknown unique was renamed';
   if (report.repairs.length) return `rename reported as damage: ${report.repairs.join('; ')}`;
+  return true;
+});
+
+check('uniques and set pieces from older builds take their fixed lines today', () => {
+  const def = getUnique('uq.rixots')!;
+  const piece = SET_PIECES.find((p) => (EXTRA_LINES[p.id]?.length ?? 0) > 0)!;
+  const fresh = buildSetPiece(piece, new Random(9));
+  const mod = (affixId: string, stat: string, value: number, kind: Item['mods'][number]['kind'] = 'prefix') => ({ affixId, stat: stat as StatKey, value, tier: 0, kind });
+  const h = hero('o', 30);
+  // Dropped deep before #97: written lines grown with depth, random open-pool lines, item level 80.
+  h.equipment.mainHand = item('o-uq', {
+    rarity: 'unique',
+    uniqueId: def.id,
+    name: def.name,
+    baseId: def.baseId,
+    ilvl: 80,
+    sockets: [{ gemId: 'gem.ruby.1' }],
+    mods: [
+      ...def.mods.map((m, i) => mod(`unique.${def.id}.${i}`, m.stat, m.max * 3)),
+      mod('sharp', 'lifeSteal', 4),
+      mod('of_the_fox', 'dexterity', 9, 'suffix'),
+    ],
+  });
+  // A set piece with its written lines but none of its fixed extra lines.
+  h.inventory[2] = { ...fresh, uid: 'o-set', mods: fresh.mods.filter((m) => !/\.x\d+$/.test(m.affixId)) };
+  const { data, report } = migrateAccount(account(h, [h]));
+  const c = data.current!;
+  const u = c.equipment.mainHand!;
+  const want = [...def.mods.map((_, i) => `unique.${def.id}.${i}`), ...(EXTRA_LINES[def.id] ?? []).map((_, i) => `unique.${def.id}.x${i}`)];
+  const got = u.mods.filter((m) => m.kind !== 'implicit');
+  if (got.map((m) => m.affixId).join() !== want.join()) return `unique lines ${got.map((m) => m.affixId).join()}`;
+  const ranges = [...def.mods.map((m) => [m.min, m.max]), ...(EXTRA_LINES[def.id] ?? []).map(([, lo, hi]) => [lo, hi])];
+  const off = got.findIndex((m, i) => m.value < ranges[i]![0]! || m.value > ranges[i]![1]!);
+  if (off >= 0) return `${got[off]!.stat} ${got[off]!.value} outside ${ranges[off]!.join('-')}`;
+  if (u.ilvl !== def.ilvl) return `unique item level ${u.ilvl}, not ${def.ilvl}`;
+  if (u.sockets[0]?.gemId !== 'gem.ruby.1') return 'socketed gem lost';
+  const sp = c.inventory[2]!;
+  const setWant = fresh.mods.filter((m) => m.kind !== 'implicit').map((m) => m.affixId);
+  if (sp.mods.filter((m) => m.kind !== 'implicit').map((m) => m.affixId).join() !== setWant.join()) return 'set piece did not gain its extra lines';
+  const kept = fresh.mods.filter((m) => !/\.x\d+$/.test(m.affixId));
+  if (kept.some((m) => sp.mods.find((n) => n.affixId === m.affixId)?.value !== m.value)) return 'set piece lost a roll it already had';
+  if (report.repairs.length) return `upgrade reported as damage: ${report.repairs.join('; ')}`;
+  // Loading again changes nothing, and a piece built today is left alone.
+  const again = migrateAccount(JSON.parse(JSON.stringify(data))).data.current!;
+  if (JSON.stringify(again.equipment.mainHand) !== JSON.stringify(u) || JSON.stringify(again.inventory[2]) !== JSON.stringify(sp)) return 'a second load changed the items';
+  if (refreshFixedLines(buildSetPiece(piece, new Random(4)))) return 'a piece built today was changed';
   return true;
 });
 

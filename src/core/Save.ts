@@ -5,6 +5,7 @@ import { UNIQUE_TEXT } from '../data/story/uniqueText';
 import { LEGACY_RUNE_IDS, RUNES } from '../data/gems';
 import { migrateClassId } from '../data/classes';
 import { INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS, findFit, repairLayout } from '../sim/Grid';
+import { refreshFixedLines } from '../sim/Loot';
 
 /**
  * The primary save. The key still says v1 because it predates versioning; the
@@ -256,6 +257,9 @@ class Repairer {
       const name = UNIQUE_TEXT[it.uniqueId]?.name;
       if (name && it.name !== name) it.name = name;
     }
+    // A unique or set piece found before each name had its own fixed lines
+    // takes them now, at its own item level. Silent: nothing was damaged.
+    if (isStr(it.uniqueId)) refreshFixedLines(it);
     // Runes took SLAY's own names; one picked up before then takes its new one.
     if (it.baseId.startsWith('rune.')) {
       const name = RUNES.find((r) => r.id === it.baseId)?.name;
