@@ -28,6 +28,7 @@
 
 import type { BossDef, BiomeId, BossMood, BossPhase, BossProfile, BossSize } from '../types';
 import { NEW_BOSSES } from './bosses2';
+import { DEEP_BOSSES } from './bosses3';
 
 const ALL: BossDef[] = [];
 
@@ -1265,6 +1266,7 @@ boss({
 
 // The depth plan's twenty-eight (bosses2.ts).
 for (const b of NEW_BOSSES) boss(b);
+for (const b of DEEP_BOSSES) boss(b);
 
 export const BOSSES: BossDef[] = ALL;
 
@@ -1298,10 +1300,15 @@ export const BOSS_PROFILES: Record<BossProfile, { life: number; damage: number; 
 export const WARDEN_LIFE = 0.3;
 export const WARDEN_DAMAGE = 0.6;
 
-/** Life climbs about 9% and damage about 3% per tier a boss first appears at (to tier 40). */
+/**
+ * Life climbs about 9% and damage about 3% per tier a boss first appears at
+ * (to tier 40). Past tier 60, where the deep six live, both climb again, so
+ * each of them stands above the one before it.
+ */
 export function bossTierMul(minDepth: number): { life: number; damage: number } {
   const t = Math.max(0, Math.min(40, minDepth) - 1);
-  return { life: 1 + 0.09 * t, damage: 1 + 0.033 * t };
+  const deep = Math.max(0, minDepth - 60);
+  return { life: 1 + 0.09 * t + 0.03 * deep, damage: 1 + 0.033 * t + 0.01 * deep };
 }
 
 /**

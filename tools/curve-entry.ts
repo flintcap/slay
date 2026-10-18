@@ -23,6 +23,7 @@
  *   --classes=warden,ranger   only these
  *   --depths=1,12             only these
  *   --wide                    depths 1 5 8 12 18 25 32 40 50 60 (slow; default is 1 5 12 25 40)
+ *   --deep                    depths 30 45 60 75 90 100: the deep families, powers and bosses
  *   --seeds=3                 tries per cell (default 3)
  *   --trace                   the hero's sheet, build and what hurt it
  *   --hp=1.13:1.12            try other hero power rates (sim/HeroPower.ts)
@@ -102,7 +103,12 @@ if (arg('hp')) tuneHeroPower(Number(arg('hp')!.split(':')[0]), Number(arg('hp')!
 // The default five depths keep the check to a couple of minutes; `--wide` walks
 // the whole run, every class at ten depths out to 60 (balance milestone 4).
 const WIDE_DEPTHS = [1, 5, 8, 12, 18, 25, 32, 40, 50, 60];
-const DEPTHS = arg('depths')?.split(',').map(Number) ?? (process.argv.includes('--wide') ? WIDE_DEPTHS : [1, 5, 12, 25, 40]);
+// `--deep` walks the floors past the old ends, where the deep families, their
+// powers and the six deep bosses live: nothing there may wall a class.
+const DEEP_DEPTHS = [30, 45, 60, 75, 90, 100];
+const DEPTHS =
+  arg('depths')?.split(',').map(Number) ??
+  (process.argv.includes('--deep') ? DEEP_DEPTHS : process.argv.includes('--wide') ? WIDE_DEPTHS : [1, 5, 12, 25, 40]);
 
 // --- the hero a player would have at a depth ------------------------------------
 

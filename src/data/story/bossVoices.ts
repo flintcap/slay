@@ -20,6 +20,7 @@
 
 import type { BossVoice } from './types';
 import { NEW_BOSS_VOICES } from './bossVoices2';
+import { DEEP_BOSS_VOICES } from './bossVoices3';
 
 export const BOSS_VOICES: Record<string, BossVoice> = {
   // -------------------------------------------------------------------------
@@ -540,6 +541,7 @@ export const BOSS_VOICES: Record<string, BossVoice> = {
 
   // The depth plan's twenty-eight (bossVoices2.ts).
   ...NEW_BOSS_VOICES,
+  ...DEEP_BOSS_VOICES,
 };
 
 /** The voice for a boss id, if it has one. */

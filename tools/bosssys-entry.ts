@@ -53,6 +53,13 @@ const { cases, check } = caseLog();
   check('profiles: deeper bosses climb, life faster than damage', deep.life / shallow.life > deep.damage / shallow.damage && deep.damage > shallow.damage, `tier 2 -> 30: life x${(deep.life / shallow.life).toFixed(2)}, damage x${(deep.damage / shallow.damage).toFixed(2)}`);
   const kept = BOSSES.filter((b) => b.lifeMul !== undefined).every((b) => bossNumbers(b).life === b.lifeMul && bossNumbers(b).damage === b.damageMul);
   check('profiles: bosses with their own numbers keep them', kept, 'the first 24');
+  // Past tier 60 every boss stands above the one before it (its life times
+  // its damage), the first of them above the deepest boss at tier 60 or less.
+  const power = (b: BossDef): number => bossNumbers(b).life * bossNumbers(b).damage;
+  const shallow60 = BOSSES.filter((b) => b.minDepth <= 60).sort((x, y) => y.minDepth - x.minDepth)[0]!;
+  const ladder = [shallow60, ...BOSSES.filter((b) => b.minDepth > 60).sort((x, y) => x.minDepth - y.minDepth)];
+  const climbs = ladder.length >= 7 && ladder.every((b, i) => i === 0 || (b.minDepth > ladder[i - 1]!.minDepth && power(b) > power(ladder[i - 1]!)));
+  check('profiles: past tier 60 each boss is stronger than the last', climbs, ladder.map((b) => `${b.id}@${b.minDepth} ${power(b).toFixed(1)}`).join(' < '));
 }
 
 // --- picking ----------------------------------------------------------------

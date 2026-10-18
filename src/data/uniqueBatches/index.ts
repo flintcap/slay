@@ -14,8 +14,9 @@ import { BATCH_C } from './batchC';
 import { BATCH_D } from './batchD';
 import { BATCH_E } from './batchE';
 import { BATCH_F } from './batchF';
+import { BATCH_G } from './batchG';
 
-export const DEPTH_UNIQUES: UniqueDef[] = [...BATCH_A, ...BATCH_B, ...BATCH_C, ...BATCH_D, ...BATCH_E, ...BATCH_F];
+export const DEPTH_UNIQUES: UniqueDef[] = [...BATCH_A, ...BATCH_B, ...BATCH_C, ...BATCH_D, ...BATCH_E, ...BATCH_F, ...BATCH_G];
 
 /** Every batch unique's design, by id. */
 export const DEPTH_LOOKS = LOOKS;

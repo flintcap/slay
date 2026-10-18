@@ -154,10 +154,41 @@ Update this file and push it after every finished step.
   Belt: blast 30% bigger, roots 2s (was traps and duration). Every damage
   bonus kept. Checked by wearing each in a 30-fight arena: the bonus lands.
   check-uniques, check-skillparams, check-rankpower, check-unique pass.
+- #109 Content past the old ends (owner approved all six parts).
+  - #110 Deep A: three families, 18 monsters. The Kept (d30-40, the
+    Tenant's wax household), the Nailborn (d50-64, glass grown wrong, they
+    shatter on death), the Stayed (d70-84, delvers who never came up, every
+    biome). Own looks, CC0 sounds (ASSETS.md), names; deep maps use them.
+  - #111 Deep B: 12 monster powers, one every five tiers d20-75 (Echoing,
+    Lampblack, Restless, Knelling, Splintering, Stitching, Grappling,
+    Refracting, Funereal, Hemming, Emberfall, Eclipsing), each with a marked
+    tell, a cooldown and an answer. Landed blows now reach the monster that
+    dealt them, so life leech and bloodlust work for the first time.
+    check-elites passes. check-curve 32/35: mage d40 untouched as before;
+    shadowblade and revenant d25 now read untouched in the full run because
+    the same d25 pack no longer rolls its reflect power (dice moved by the
+    larger power pool; nothing got weaker). check-beats, check-tactics,
+    check-uitokens, check-unfinished and check-events fail the same on the
+    commit before.
+  - #112 Deep C: six bosses past the Deep's Own Name, data/bosses3.ts.
+    Mother Wickwane d66 (braziers, swarmCall, defend), the Glasswright d72
+    (mirror, tiles, weakPoints), Marshal Harrow d78 (linked, swarmCall,
+    guardBreak, collapse), the Holdfast d84 (chains, heartstones, bells),
+    the Usher d90 (stalker, lure, breakingCast, collapse), the Sleeper's
+    Hand d96 (weakPoints, wardPortals, heartstones, collapse). 3 or 4
+    phases each, own intro, barks and voice (story/bossVoices3.ts), own
+    look (LookBoss5.ts). Boss tiers climb again past 60 (life +3%, damage
+    +1% a tier), so life times damage rises 10.3 (d60) 11.0, 11.5, 12.0,
+    12.7, 14.0, 14.8; check-bosssys now checks that climb. Two uniques each
+    (uniqueBatches/batchG.ts, two of them mythic), fixed extra lines in
+    extraLines.ts. check-bossfights passes all six; check-bosses (depths to
+    96), bosssys, roomrules, story, uniques, looks, names, legend, save,
+    drops, loot, economy, iconmatch, items pass.
 
 ## In progress
 
-- Nothing.
+- #113 Deep D: extend the checks (names, readable, bosses, bossfights,
+  uniques, looks, monster-anim, curve to d100).
 
 ## Phase 0d log
 

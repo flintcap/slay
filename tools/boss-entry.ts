@@ -20,7 +20,7 @@ const monsterIds = new Set(MONSTERS.map((m) => m.id));
 const abilityIds = new Set(ABILITIES.map((a) => a.id));
 
 // --- how often each boss is actually met -----------------------------------
-const DEPTHS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 22, 26, 30, 40, 60];
+const DEPTHS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 22, 26, 30, 40, 60, 66, 72, 78, 84, 90, 96];
 const seenAt: Record<number, Record<string, number>> = {};
 const everSeen = new Set<string>();
 for (const depth of DEPTHS) {

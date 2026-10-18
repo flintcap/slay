@@ -26,6 +26,7 @@ import { BOSS_A } from './LookBoss';
 import { BOSS_B } from './LookBoss2';
 import { BOSS_C, BOSS_C_KIN } from './LookBoss3';
 import { BOSS_D, BOSS_D_KIN } from './LookBoss4';
+import { BOSS_E } from './LookBoss5';
 import { WARDEN_LOOKS } from './LookWardens';
 import { OBJECTS } from './LookObjects';
 import { DEEP } from './LookDeep';
@@ -59,6 +60,7 @@ const FACTORIES: Record<string, LookFactory> = {
   ...BOSS_C_KIN,
   ...BOSS_D,
   ...BOSS_D_KIN,
+  ...BOSS_E,
   ...WARDEN_LOOKS,
   ...OBJECTS,
 };

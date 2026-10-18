@@ -4,6 +4,7 @@
  *   node tools/check-curve.mjs                      every class, depths 1 5 12 25 40 (~2 min)
  *   node tools/check-curve.mjs --classes=ranger --depths=25 --trace
  *   node tools/check-curve.mjs --wide               every class at ten depths out to 60 (slow)
+ *   node tools/check-curve.mjs --deep               every class at depths 30 45 60 75 90 100 (slow)
  *
  * Builds the hero a player would have at each depth and fights a real pack and
  * a real boss under the run's modifiers, over three seeds per cell. See
