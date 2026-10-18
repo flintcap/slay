@@ -59,7 +59,7 @@ const CONTROLS: Array<{ group: string; rows: Array<[string, string[]]> }> = [
       ['Life potion', ['KeyQ']],
       ['Mana potion', ['KeyF']],
       ['Interact, open, talk', ['KeyE']],
-      ['Show items on the floor', ['Alt']],
+      ['Show hidden items on the floor', ['Shift']],
     ],
   },
   {
@@ -225,10 +225,13 @@ export class SettingsPanel {
     modal({
       title: 'Restore default settings?',
       icon: 'gear',
-      body: '<p>Picture, sound and gameplay options go back to how they started. Your characters and vault are not touched.</p>',
+      body: '<p>Picture, sound and gameplay options go back to how they started. Your key bindings, characters and vault are not touched.</p>',
       confirmLabel: 'Restore',
       onConfirm: () => {
-        Object.assign(save.settings, DEFAULT_SETTINGS);
+        // Key bindings have their own reset on the Controls page; losing a
+        // full rebind to a picture-settings reset is not what anyone wants.
+        const keybinds = save.settings.keybinds;
+        Object.assign(save.settings, DEFAULT_SETTINGS, { keybinds });
         attempt(() => this.engine.renderer.setQuality(save.settings.quality), undefined);
         this.commit();
         events.emit('toast', { text: 'Settings restored to defaults.', kind: 'info' });

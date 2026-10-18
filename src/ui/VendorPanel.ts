@@ -394,7 +394,10 @@ export class VendorPanel {
         slot.root.classList.remove('cannot-afford');
         continue;
       }
-      const price = attempt(() => vendorPrice(item, true), item.value ?? 0);
+      const price =
+        this.tab === 'buyback'
+          ? (buyBackPrice(item.uid) ?? 0)
+          : attempt(() => vendorPrice(item, true), item.value ?? 0);
       if (!tag) {
         tag = div('vendor-price');
         slot.root.appendChild(tag);

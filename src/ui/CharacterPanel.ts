@@ -13,7 +13,15 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { computeStats, xpForLevel } from '../sim/Stats';
 import { allocateStat, skillRank } from '../sim/Character';
-import { damageRange, hitChance, skillDamageScale, usualAttackRating } from '../sim/Combat';
+import {
+  damageRange,
+  effectiveResist,
+  hitChance,
+  RESIST_HARD_CAP,
+  RESIST_SOFT_CAP,
+  skillDamageScale,
+  usualAttackRating,
+} from '../sim/Combat';
 import { SKILL_BY_ID } from '../data/skills';
 import { burstGrowth } from '../data/skillPower';
 import {
@@ -381,25 +389,28 @@ export class CharacterPanel {
     for (const dt of DAMAGE_TYPES) {
       const key = RESIST_OF[dt];
       const v = st[key] ?? 0;
+      const eff = effectiveResist(v);
       const cell = div('resist-cell');
       cell.classList.toggle('is-negative', v < 0);
-      cell.classList.toggle('is-capped', v >= 75);
+      cell.classList.toggle('is-capped', v >= RESIST_SOFT_CAP);
       const head = div('resist-head');
       head.appendChild(icon(dt, { size: 14, cls: `dmg-${dt}` }));
       head.appendChild(span('resist-name', RESIST_LABEL[dt]));
       head.appendChild(span('resist-value', `${Math.round(v)}%`));
       const track = div('resist-track');
       const fill = div('resist-fill');
-      fill.style.width = `${Math.max(0, Math.min(100, ((v + 100) / 175) * 100))}%`;
+      const span100 = RESIST_HARD_CAP + 100;
+      fill.style.width = `${Math.max(0, Math.min(100, ((eff + 100) / span100) * 100))}%`;
       fill.classList.add(`dmgbg-${dt}`);
       const capMark = div('resist-cap');
+      capMark.style.left = `${((RESIST_SOFT_CAP + 100) / span100) * 100}%`;
       add(track, fill, capMark);
       add(cell, head, track);
       tip(
         cell,
         `${RESIST_LABEL[dt]} Resistance`,
-        `<p>Reduces incoming ${RESIST_LABEL[dt].toLowerCase()} damage by ${Math.round(v)}%.</p>` +
-          `<p class="tt-explain-how">Soft cap is 75%. Higher tiers apply a resistance penalty, so overcapping is not wasted.</p>`
+        `<p>Reduces incoming ${RESIST_LABEL[dt].toLowerCase()} damage by <b>${Math.round(eff)}%</b>.</p>` +
+          `<p class="tt-explain-how">Each point counts in full up to ${RESIST_SOFT_CAP}%. Past that, each point counts for less, and the cut never reaches ${RESIST_HARD_CAP}%. Curses and carried quest relics lower it, so going past ${RESIST_SOFT_CAP}% is not wasted.</p>`
       );
       grid.appendChild(cell);
     }

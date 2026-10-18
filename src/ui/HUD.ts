@@ -982,7 +982,11 @@ export class HUD {
       this.refreshGold();
     });
     on('loot:pickedUp', (p) => {
-      this.toast(attempt(() => p.item.name, 'Item'), 'epic', p.item.rarity);
+      // Only set items and better earn the big sparkle; a rare is good news,
+      // anything less is just a note that it went in the pack.
+      const r = p.item.rarity;
+      const kind = r === 'normal' || r === 'magic' ? 'info' : r === 'rare' ? 'good' : 'epic';
+      this.toast(attempt(() => p.item.name, 'Item'), kind, r);
       this.refreshPotions();
       // Draw its inventory icon now, in the quiet frames after the pickup,
       // rather than all of them at once the next time the pack is opened.
