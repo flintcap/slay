@@ -1,6 +1,6 @@
 # Stream: balance (Wave 4: items and classes)
 
-Status: in progress
+Status: waiting on owner
 
 Goal: items feel worth finding and every class feels strong. Rules that
 never bend: never make monsters weaker or fewer; make classes stronger, not
@@ -29,23 +29,22 @@ Checkers: `node tools/run-checks.mjs --only=<name>` for what you touch,
 - [x] 3. Dead-pick skills: find skills that are clearly weaker than their
   neighbours and make them stronger only. Follow the skillPower and
   check-rankpower rules. (balance: dead-pick skills hit as hard as their text says)
-- [ ] 4. Extend check-curve to more depths and every class, behind an
-  optional flag so the default run stays fast.
+- [x] 4. Extend check-curve to more depths and every class, behind an
+  optional flag so the default run stays fast. (balance: check-curve --wide
+  walks every class out to depth 60)
 - [ ] 5. Apply the approved item list. Blocked until the owner approves
   `balance-proposal.md`; skip to 6 if still blocked and leave it unticked.
-- [ ] 6. Handover.
+- [x] 6. Handover.
 
 ## Next up
 
-1. Milestone 4: in `tools/curve-entry.ts` add an optional `--wide` flag
-   that runs every class at depths 1 5 12 18 25 32 40 50 60 (hero levels
-   extrapolated from the existing points). The default run stays at
-   depths 1 5 12 25 40. Document the flag in the header of
-   `tools/check-curve.mjs`. Run the default once (all OK expected) and
-   `--wide` once; write anything walled or unchallenged into Notes for
-   resume (do not chase it in this wave).
-2. Then milestone 6 (handover): milestone 5 stays blocked until the owner
-   approves `balance-proposal.md`.
+1. Waiting on the owner: milestone 5 starts only when the owner says which
+   numbered lines of `docs/remake/balance-proposal.md` are approved. Then
+   apply exactly those lines (item data in `src/data/*` and `src/sim/Loot.ts`),
+   typecheck, rerun `node tools/balance-report.mjs` to confirm the numbers
+   moved as the proposal says, and tick milestone 5.
+2. Optional, not a milestone: the depth-60 walls found by `--wide` (see
+   Notes for resume).
 
 ## Notes for resume
 
@@ -108,6 +107,18 @@ Checkers: `node tools/run-checks.mjs --only=<name>` for what you touch,
   back down. Unique bends that grow dead knobs do nothing today: Tempest
   Orb (`targetsPerTick`, `duration`, batchC), Void Walk (`hops`,
   `window`, batchE), Arrow Rain (`ticks`, batchB).
+- Milestone 4: `node tools/check-curve.mjs --wide` runs every class at
+  depths 1 5 8 12 18 25 32 40 50 60 (about 6 minutes headless). The
+  default run is unchanged (every class, depths 1 5 12 25 40, a few
+  minutes). First `--wide` run: 67 of 70 OK. Every class passes every
+  depth to 50 (so the default depths all pass too). Walled at depth 60
+  (hero L46): shadowblade (packs 1/3, bosses 0/3), ranger (0/3, 0/3),
+  shapeshifter (1/3, 0/3). Warden, paladin and revenant scrape through at
+  60 with 1 to 3 wins. The hero model gains only 3 levels from depth 50 to
+  60 (L43 to L46), so depth 60 may be the level curve, not the classes.
+  Not chased this wave. Next step for whoever takes it: `--classes=ranger
+  --depths=60 --trace` to see what kills it, then make the class (or the
+  level pace) stronger, never the monsters weaker.
 - The `socket` checker is a browser check; it failed once when run by
   mistake outside the browser lock (not investigated, not this stream's).
 
@@ -127,4 +138,28 @@ Checkers: `node tools/run-checks.mjs --only=<name>` for what you touch,
 
 ## Handover
 
-(Written when every milestone is ticked.)
+What exists now:
+
+- `docs/remake/balance-proposal.md`: the item audit and ten numbered
+  item changes (runes, socket drop odds, rune values, weak rune lines,
+  gem ladders, uniques growing with drop level, late uniques, optional
+  rarity rungs and wear-level filter, display item level). Nothing applied.
+- `tools/balance-report.mjs` (+ `tools/balance-entry.ts`): the read-only
+  item audit the proposal quotes.
+- `tools/skill-dps.mjs` (+ `tools/skilldps-entry.ts`): damage per second
+  of every damage skill through the real runner, flags dead picks.
+- `tools/check-curve.mjs --wide`: every class out to depth 60. The
+  harness now holds casters at their spell reach (no basic attack).
+- The Mage passes the curve at every depth (fire tree, life, energy).
+- Twelve dead-pick skills hit as hard as their text says (list in Notes
+  for resume).
+
+Left for `finish` (SkillRunner is not ours):
+
+- Inferno's data is a cone; the runner does a line.
+- Orbs, streams, meteors and chain blinks ignore their tick and hop
+  knobs; the numbers were raised to fit the single hit. If the runner
+  learns them, lower the numbers again. Some unique bends grow those dead
+  knobs (Tempest Orb, Void Walk, Arrow Rain).
+- Milestone 5 (apply approved items) is blocked on the owner.
+- Depth 60 walls three classes in `--wide` (Notes for resume).
