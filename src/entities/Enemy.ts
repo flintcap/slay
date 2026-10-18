@@ -113,6 +113,7 @@ export { depthCurve, type DepthCurve } from '../sim/Difficulty';
  */
 const COMBO_FOLLOWUPS: ReadonlySet<string> = new Set([
   'mortar', 'desecrator', 'lancer', 'electrified', 'lightning_enchanted', 'frozen_pulse', 'arcane_enchanted',
+  'emberfall',
 ]);
 /** Seconds before the same affix can be set off by a combo again. */
 const COMBO_COOLDOWN = 6;
@@ -336,6 +337,10 @@ export class Enemy implements Combatant {
   /** Adaptive: recent hits by element, and the element it has hardened to. */
   private adaptHits: Array<{ type: DamageType; t: number }> = [];
   private adapted: { type: DamageType; until: number } | null = null;
+  /** When Echoing, Splintering and Funereal may next fire (their own cooldowns). */
+  private echoAt = -99;
+  private splinterAt = -99;
+  private funeralAt = -99;
   /** Mini-boss mechanic, when this monster is one. See `MiniBoss.ts`. */
   miniBoss: MiniBossHook | null = null;
   private affixStacks = 0;
@@ -1505,6 +1510,26 @@ export class Enemy implements Combatant {
         const back = rollPacket(this, ctx, 0.1, working.type, 'reflect');
         back.amount = absorbed * (a.params?.ratio ?? 0.2);
         ctx.damagePlayer(back);
+      } else if (a.behavior === 'splintering' && working.source === 'player' && taken >= this.maxLife * (a.params?.share ?? 0.06) &&
+        ctx.elapsed >= this.splinterAt) {
+        // A heavy blow knocks a shard loose; it comes down near the hero.
+        this.splinterAt = ctx.elapsed + (a.params?.cooldown ?? 0.7);
+        const hero = ctx.heroPos ?? ctx.playerPos;
+        const ang = ctx.rng.next() * Math.PI * 2;
+        const off = ctx.rng.next() * 1.4;
+        const tx = hero.x + Math.sin(ang) * off;
+        const tz = hero.z + Math.cos(ang) * off;
+        const r = a.params?.radius ?? 1.3;
+        const delay = a.params?.delay ?? 0.8;
+        ctx.fx.burst('chips.stone', this.root.position.x, this.centerY, this.root.position.z, { count: 10, color: a.color });
+        const tel = ctx.decals.telegraph('circle', tx, tz, r, 0, delay, a.color);
+        const self = this;
+        after(delay, (c) => {
+          tel.cancel();
+          circleHit(self, c, tx, tz, r, a.params?.mul ?? 0.9, 'physical', 'splintering', {
+            applies: [{ id: 'bleed', duration: 3, magnitude: 1, stacks: 1 }],
+          });
+        });
       } else if (a.behavior === 'illusionist' && ctx.rng.chance(0.06)) {
         summon(this, ctx, 'mirror_image', a.params?.count ?? 2, 2.2);
       }
@@ -1605,6 +1630,30 @@ export class Enemy implements Combatant {
       const av = ally.affixes.find((a) => a.behavior === 'avenger');
       if (av) ally.stackAvenger(av.params?.perDeath ?? 0.15, av.params?.cap ?? 1.8);
     }
+
+    // Funereal: a packmate that watches this one fall lights the body.
+    for (const ally of alliesNear(ctx, p.x, p.z, 14, this.id)) {
+      const fu = ally.affixes.find((a) => a.behavior === 'funereal');
+      if (fu) ally.lightTheDead(p.x, p.z, fu, ctx);
+    }
+  }
+
+  /** Funereal: marks a fallen packmate's body, which bursts a beat later. */
+  lightTheDead(x: number, z: number, a: MonsterAffixDef, ctx: CombatContext): void {
+    const params = a.params ?? {};
+    if (!this.alive || ctx.elapsed < this.funeralAt) return;
+    if (dist(x, z, this.root.position.x, this.root.position.z) > (params.range ?? 14)) return;
+    this.funeralAt = ctx.elapsed + (params.cooldown ?? 1.2);
+    const r = params.radius ?? 3;
+    const delay = params.delay ?? 1.0;
+    const tel = ctx.decals.telegraph('circle', x, z, r, 0, delay, a.color);
+    const self = this;
+    after(delay, (c) => {
+      tel.cancel();
+      if (!self.alive) return;
+      c.fx.burst('frost', x, 0.6, z, { count: 34, scale: 2.2, color: a.color });
+      circleHit(self, c, x, z, r, params.mul ?? 1.6, 'cold', 'funereal');
+    });
   }
 
   stackAvenger(perDeath: number, cap: number): void {
@@ -1668,6 +1717,24 @@ export class Enemy implements Combatant {
         case 'arcane_sentry':
           summon(this, ctx, 'arcane_sentry_totem', 1, 1.5);
           break;
+        case 'restless': {
+          // Its ghost climbs out of the body a beat later: a harmless notice
+          // first, then a fast, frail shade that hits cold.
+          const delay = a.params?.delay ?? 1.2;
+          const x = p.x;
+          const z = p.z;
+          ctx.decals.cue('ring', x, z, 1.2 * this.sizeScale, 0, delay, a.color);
+          const self = this;
+          const life = a.params?.life ?? 0.6;
+          after(delay, (c) => {
+            c.fx.burst('void', x, 1.0, z, { count: 26, color: a.color });
+            for (const k of summon(self, c, 'restless_shade', 1, 0.2)) {
+              k.packId = self.packId;
+              k.life = k.maxLife * life;
+            }
+          });
+          break;
+        }
         case 'splitter': {
           // Plain copies, so a split never splits again.
           const kids = summon(this, ctx, this.monsterId, a.params?.count ?? 2, 1.4);
@@ -2096,6 +2163,218 @@ export class Enemy implements Combatant {
           });
           break;
         }
+        case 'lampblack': {
+          if (!ready || !brainAwake) break;
+          const every = params.interval ?? 0.5;
+          this.affixTimers[i] = every;
+          const r = params.radius ?? 6;
+          // The soot's reach, drawn as a harmless ring: it hurts nothing, it snuffs.
+          ctx.decals.cue('ring', p.x, p.z, r, 0, every + 0.1, a.color);
+          if (ctx.rng.chance(0.6)) {
+            const ang = ctx.rng.next() * Math.PI * 2;
+            const d = r * Math.sqrt(ctx.rng.next());
+            ctx.fx.burst('smoke', p.x + Math.sin(ang) * d, 0.8, p.z + Math.cos(ang) * d, { count: 4, color: a.color });
+          }
+          const hero = ctx.heroPos ?? ctx.playerPos;
+          if (dist(p.x, p.z, hero.x, hero.z) < r) ctx.applyHeroStatus?.('snuffed', every + 0.5);
+          break;
+        }
+        case 'knelling': {
+          if (!ready || !brainAwake || this.busy || this.motionOverride) break;
+          const outer = params.outer ?? 7.5;
+          if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) > outer + 3) break;
+          this.affixTimers[i] = params.interval ?? 7;
+          const inner = params.inner ?? 2.4;
+          const windup = params.windup ?? 1.0;
+          const x = p.x;
+          const z = p.z;
+          // It plants its feet and rings: the wave covers the band from the
+          // inner edge out, so the safe places are against it or well clear.
+          this.rootTimer = Math.max(this.rootTimer, windup);
+          const tel = ctx.decals.telegraphEx('ring', x, z, outer, 0, windup, a.color, (1 - inner / outer) / 2);
+          const self = this;
+          after(windup, (c) => {
+            tel.cancel();
+            if (!self.alive) return;
+            c.fx.burst('shock', x, 0.6, z, { count: 30, scale: 2.5, color: a.color });
+            const d = dist(x, z, c.playerPos.x, c.playerPos.z);
+            if (d >= inner && d <= outer) {
+              hitPlayer(self, c, params.mul ?? 1.5, 'physical', 'knelling', {
+                applies: [{ id: 'slowed', duration: 2, magnitude: params.slow ?? 0.35, stacks: 1 }],
+              });
+            }
+          });
+          break;
+        }
+        case 'stitching': {
+          if (!ready || !brainAwake) break;
+          this.affixTimers[i] = 0.25;
+          // The most hurt packmate in reach.
+          let worst: Enemy | null = null;
+          for (const ally of alliesNear(ctx, p.x, p.z, params.range ?? 12, this.id)) {
+            if (this.packId < 0 || ally.packId !== this.packId || ally.isBoss) continue;
+            if (ally.lifeFraction < 0.98 && (!worst || ally.lifeFraction < worst.lifeFraction)) worst = ally;
+          }
+          if (!worst) break;
+          const q = worst.root.position;
+          const hero = ctx.heroPos ?? ctx.playerPos;
+          if (distToSegment(hero.x, hero.z, p.x, p.z, q.x, q.z) < (params.width ?? 0.8)) {
+            // Cut: the thread snaps and stays down for a while.
+            this.affixTimers[i] = params.snap ?? 6;
+            ctx.fx.burst('shock', hero.x, 1, hero.z, { count: 14, color: a.color });
+            break;
+          }
+          worst.heal(worst.maxLife * (params.heal ?? 0.08) * 0.25, ctx);
+          for (let k = 0; k < 3; k++) {
+            const t = ctx.rng.next();
+            ctx.fx.burst('heal', p.x + (q.x - p.x) * t, 1.0, p.z + (q.z - p.z) * t, { count: 2, color: a.color });
+          }
+          break;
+        }
+        case 'grappling': {
+          // A held monster can still throw: only a swing or a dash stops it.
+          if (!ready || !brainAwake || this.busy || this.motionOverride) break;
+          const d = dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+          if (d < (params.minRange ?? 4) || d > (params.range ?? 13)) break;
+          this.affixTimers[i] = params.interval ?? 8;
+          const windup = params.windup ?? 0.8;
+          const ang = angleTo(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+          const len = d + 2;
+          const x = p.x;
+          const z = p.z;
+          const tx = x + Math.sin(ang) * len;
+          const tz = z + Math.cos(ang) * len;
+          this.facing = ang;
+          this.rootTimer = Math.max(this.rootTimer, windup);
+          const tel = ctx.decals.telegraph('line', x, z, len, ang, windup, a.color);
+          const self = this;
+          after(windup, (c) => {
+            tel.cancel();
+            if (!self.alive) return;
+            const hd = distToSegment(c.playerPos.x, c.playerPos.z, x, z, tx, tz);
+            if (hd > (params.width ?? 0.9)) return;
+            const pull = dist(x, z, c.playerPos.x, c.playerPos.z) - 1.6;
+            hitPlayer(self, c, params.mul ?? 0.6, 'physical', 'grappling', {
+              knockback: -Math.max(0, pull),
+              from: { x, z },
+              applies: [{ id: 'slowed', duration: 1.5, magnitude: 0.4, stacks: 1 }],
+            });
+          });
+          break;
+        }
+        case 'refracting': {
+          if (!ready || !brainAwake || this.busy || this.motionOverride) break;
+          const range = params.range ?? 15;
+          if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) > range) break;
+          this.affixTimers[i] = params.interval ?? 8;
+          const windup = params.windup ?? 0.9;
+          const spread = params.spread ?? 0.42;
+          const mid = angleTo(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
+          const x = p.x;
+          const z = p.z;
+          this.facing = mid;
+          this.rootTimer = Math.max(this.rootTimer, windup);
+          const beams = [mid - spread, mid, mid + spread];
+          const tels = beams.map((ang) => ctx.decals.telegraph('line', x, z, range, ang, windup, a.color));
+          const self = this;
+          after(windup, (c) => {
+            for (const t of tels) t.cancel();
+            if (!self.alive) return;
+            let struck = false;
+            for (const ang of beams) {
+              const ex = x + Math.sin(ang) * range;
+              const ez = z + Math.cos(ang) * range;
+              for (let k = 1; k <= 4; k++) c.fx.burst('shock', x + (ex - x) * k / 4, 1.0, z + (ez - z) * k / 4, { count: 3, color: a.color });
+              if (!struck && distToSegment(c.playerPos.x, c.playerPos.z, x, z, ex, ez) < (params.width ?? 0.65)) {
+                struck = true;
+                hitPlayer(self, c, params.mul ?? 1.3, 'lightning', 'refracting');
+              }
+            }
+          });
+          break;
+        }
+        case 'hemming': {
+          if (!ready || !brainAwake) break;
+          if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) > 15) break;
+          this.affixTimers[i] = params.interval ?? 12;
+          const r = params.radius ?? 4.5;
+          const windup = params.windup ?? 1.0;
+          const tx = ctx.playerPos.x;
+          const tz = ctx.playerPos.z;
+          // The ring itself is the warning: where the nails come up.
+          const tel = ctx.decals.telegraph('ring', tx, tz, r, 0, windup, a.color);
+          const self = this;
+          after(windup, (c) => {
+            tel.cancel();
+            if (!self.alive) return;
+            const n = params.nails ?? 14;
+            for (let k = 0; k < n; k++) {
+              const ang = (k / n) * Math.PI * 2;
+              spawnHazard(self, c, tx + Math.sin(ang) * r, tz + Math.cos(ang) * r, 0.75, params.dps ?? 0.55, 'physical', 'hemming', {
+                duration: params.life ?? 4.5,
+                tickRate: 2,
+                color: a.color,
+              });
+            }
+          });
+          break;
+        }
+        case 'emberfall': {
+          if (!ready || !brainAwake) break;
+          if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) > 16) break;
+          this.affixTimers[i] = params.interval ?? 6;
+          const r = params.radius ?? 1.4;
+          const delay = params.delay ?? 1.0;
+          const ring = params.ring ?? 4;
+          const spread = params.spread ?? 2.9;
+          const tx = ctx.playerPos.x;
+          const tz = ctx.playerPos.z;
+          // One on you and a ring around it, far enough apart to step between.
+          const spots = [{ x: tx, z: tz }];
+          const turn = ctx.rng.next() * Math.PI * 2;
+          for (let k = 0; k < ring; k++) {
+            const ang = turn + (k / ring) * Math.PI * 2;
+            spots.push({ x: tx + Math.sin(ang) * spread, z: tz + Math.cos(ang) * spread });
+          }
+          const tels = spots.map((q) => ctx.decals.telegraph('circle', q.x, q.z, r, 0, delay, a.color));
+          const self = this;
+          after(delay, (c) => {
+            for (const t of tels) t.cancel();
+            if (!self.alive) return;
+            let struck = false;
+            for (const q of spots) {
+              if (struck) {
+                c.fx.burst('hit.fire', q.x, 0.4, q.z, { count: 18, scale: 1.4 });
+                continue;
+              }
+              struck = circleHit(self, c, q.x, q.z, r, params.mul ?? 1.1, 'fire', 'emberfall');
+            }
+          });
+          break;
+        }
+        case 'eclipsing': {
+          if (!ready || !brainAwake || this.busy || this.motionOverride) break;
+          const r = params.radius ?? 7;
+          if (dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z) > r + 2) break;
+          this.affixTimers[i] = params.interval ?? 11;
+          const windup = params.windup ?? 1.3;
+          const x = p.x;
+          const z = p.z;
+          this.rootTimer = Math.max(this.rootTimer, windup);
+          const tel = ctx.decals.telegraph('circle', x, z, r, 0, windup, a.color);
+          const self = this;
+          after(windup, (c) => {
+            tel.cancel();
+            if (!self.alive) return;
+            c.fx.burst('void', x, 1.0, z, { count: 40, scale: 3, color: a.color });
+            if (dist(x, z, c.playerPos.x, c.playerPos.z) <= r) {
+              hitPlayer(self, c, params.mul ?? 1.1, 'arcane', 'eclipsing', {
+                applies: [{ id: 'blinded', duration: params.blind ?? 3, magnitude: 1, stacks: 1 }],
+              });
+            }
+          });
+          break;
+        }
         default:
           break;
       }
@@ -2103,10 +2382,28 @@ export class Enemy implements Combatant {
   }
 
   /** Called by the ability layer when this monster lands a hit on the player. */
-  onDealtDamage(amount: number, ctx: CombatContext): void {
+  onDealtDamage(amount: number, packet: DamagePacket, ctx: CombatContext): void {
     for (const a of this.affixes) {
       const params = a.params ?? {};
       switch (a.behavior) {
+        case 'echoing': {
+          // Only its own blows echo: not its powers, its pools, or an echo.
+          if (!this.alive || ctx.elapsed < this.echoAt || !packet.ability || !this.abilityIds.includes(packet.ability)) break;
+          this.echoAt = ctx.elapsed + (params.cooldown ?? 2.2);
+          const hero = ctx.heroPos ?? ctx.playerPos;
+          const tx = hero.x;
+          const tz = hero.z;
+          const r = params.radius ?? 1.7;
+          const delay = params.delay ?? 0.8;
+          const tel = ctx.decals.telegraph('circle', tx, tz, r, 0, delay, a.color);
+          const self = this;
+          after(delay, (c) => {
+            tel.cancel();
+            if (!self.alive) return;
+            circleHit(self, c, tx, tz, r, params.mul ?? 0.8, packet.type, 'echoing');
+          });
+          break;
+        }
         case 'life_leech':
           this.heal(amount * (params.ratio ?? 0.33), ctx);
           break;

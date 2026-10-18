@@ -817,10 +817,13 @@ export class Player {
         // Each banked Soul is mana regeneration on top of the sheet.
         const souls = this.passives.soulManaRegen * this.passiveState.souls;
         this.life = Math.min(this.stats.life, this.life + this.stats.lifeRegen * step * regen);
-        this.mana = Math.min(
-          this.stats.mana,
-          this.mana + (this.stats.manaRegen + souls) * step * regen,
-        );
+        // A Lampblack monster's soot (`snuffed`) stops mana refilling.
+        if (!this.status.has('snuffed')) {
+          this.mana = Math.min(
+            this.stats.mana,
+            this.mana + (this.stats.manaRegen + souls) * step * regen,
+          );
+        }
       }
     }
 

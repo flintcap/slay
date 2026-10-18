@@ -301,6 +301,8 @@ export class DungeonScene extends GameScene {
   private lootWarmGeo: THREE.BufferGeometry[] = [];
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
+  /** How far the hero's light is guttered by soot (`snuffed`), 0 to 1. */
+  private snuff = 0;
   private heroAura: THREE.Mesh | null = null;
   /** Over-time portions of potions currently working. */
   private potionTicks: Array<{ life: number; mana: number; left: number }> = [];
@@ -1364,7 +1366,7 @@ export class DungeonScene extends GameScene {
   private readonly aimPos = new THREE.Vector3();
 
   private context(): CombatContext {
-    return {
+    const ctx: CombatContext = {
       playerPos: this.aimPos.copy(this.player.position),
       heroPos: this.player.position,
       heroFacing: this.player.root.rotation.y,
@@ -1401,6 +1403,9 @@ export class DungeonScene extends GameScene {
           this.engine.renderer.flashHurt(Math.min(1, taken / Math.max(1, this.player.stats.life * 0.25)));
           this.rig.addTrauma(Math.min(0.5, taken / Math.max(1, this.player.stats.life * 0.4)));
           this.skills.feel.playerHit(taken, this.player.stats.life);
+          // The monster that landed it hears about it: leech, bloodlust, echoes.
+          const by = this.acting?.id === packet.source ? this.acting : this.enemies.find((e) => e.id === packet.source);
+          by?.onDealtDamage(taken, packet, ctx);
         }
       },
       nav: this.nav,
@@ -1417,6 +1422,7 @@ export class DungeonScene extends GameScene {
       minions: this.skills.minionTargets(),
       damageMinion: (id: number, amount: number) => this.skills.damageMinion(id, amount),
     };
+    return ctx;
   }
 
   /** True when a blow came from a boss of this floor (or its arena). */
@@ -1600,7 +1606,10 @@ export class DungeonScene extends GameScene {
       // light coming out of them.
       this.heroLight.position.set(this.player.position.x, this.player.position.y + 4.0, this.player.position.z);
       // Breathe very slightly so it reads as carried flame, not a fixed lamp.
-      this.heroLight.intensity = this.heroLightBase * (1 + Math.sin(elapsed * 3.1) * 0.07);
+      // Inside a Lampblack monster's soot the flame gutters down.
+      const snuffed = this.player.status.has('snuffed') ? 1 : 0;
+      this.snuff += (snuffed - this.snuff) * Math.min(1, rawDt * 4);
+      this.heroLight.intensity = this.heroLightBase * (1 + Math.sin(elapsed * 3.1) * 0.07) * (1 - 0.7 * this.snuff);
     }
     if (this.heroAura) {
       this.heroAura.position.set(this.player.position.x, this.player.position.y + 0.06, this.player.position.z);

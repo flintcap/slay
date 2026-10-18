@@ -574,6 +574,9 @@ const AFFIX_MAP: Record<string, string> = {
   life_leech: 'heart', regenerating: 'heart', health_link: 'chain', orbiter: 'orb', mortar: 'boulder',
   desecrator: 'pool', fire_chains: 'firechain', bulwark: 'ward', splitter: 'split', hexing: 'hexshield',
   adaptive: 'adapt', lancer: 'lance',
+  echoing: 'footprints', lampblack: 'lungs', restless: 'ghost:1', knelling: 'wave', splintering: 'crack',
+  stitching: 'link', grappling: 'anchor', refracting: 'lens', funereal: 'skull:1', hemming: 'cage:1',
+  emberfall: 'flame:2', eclipsing: 'moon',
 };
 
 /** A nameplate badge: a bold pictogram in a ring of the affix's colour. */

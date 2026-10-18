@@ -152,6 +152,213 @@ const pin = (e: Enemy): void => {
   check('lancers charge through you', stood >= 1 && stepped < stood, `${stood} trample hits standing, ${stepped} stepping aside`);
 }
 
+// --- the deep powers (depth 20 on) -------------------------------------------------
+// Each hurts only where a marker went down at least half a second before, and
+// each can be beaten by doing the thing its plate says.
+
+/** Hits by an ability, and how many of them landed without a marker ending then. */
+const told = (a: Arena, ability: string): { hits: number; unmarked: number } => {
+  const hs = a.hits.filter((h) => h.ability === ability);
+  return { hits: hs.length, unmarked: hs.filter((h) => !a.landings.some((l) => Math.abs(l.t - h.t) < 0.06)).length };
+};
+const deep = (seed: number, affix: string, x = 0, z = 9, o: { pinned?: boolean; rank?: 'elite' | 'champion' } = {}) => {
+  const a = arena({ seed, depth: 40 });
+  const e = a.spawn(melee, x, z, { rank: o.rank ?? 'elite', affixes: [affix], pack: 5 });
+  if (o.pinned !== false) pin(e);
+  e.ai!.wake(a.ctx, false);
+  return { a, e };
+};
+
+{
+  // Echoing: the blow comes again where you stood. Step away and it misses.
+  const run = (step: boolean) => {
+    const { a, e } = deep(61, 'echoing', 0, 1.6, { pinned: false });
+    let seen = 0;
+    a.step(12, () => {
+      const own = a.hits.filter((h) => h.ability !== 'echoing').length;
+      if (step && own > seen) {
+        seen = own;
+        a.hero.x += a.hero.x > 0 ? -3.5 : 3.5;
+      }
+    });
+    void e;
+    return told(a, 'echoing');
+  };
+  const still = run(false);
+  const moving = run(true);
+  check('echoing blows come again, marked', still.hits >= 2 && still.unmarked === 0 && moving.hits < still.hits,
+    `${still.hits} echoes standing (${still.unmarked} unmarked), ${moving.hits} stepping away`);
+}
+{
+  // Lampblack: inside the soot your mana stops; outside it does not.
+  const run = (heroZ: number): number => {
+    const { a } = deep(62, 'lampblack', 0, 0);
+    let snuffed = 0;
+    a.ctx.applyHeroStatus = (id) => {
+      if (id === 'snuffed') snuffed++;
+    };
+    a.hero.set(0, 0, heroZ);
+    a.step(4);
+    return snuffed;
+  };
+  const inside = run(4);
+  const outside = run(9);
+  check('lampblack snuffs inside its soot only', inside >= 4 && outside === 0, `${inside} snuffs at 4 m, ${outside} at 9 m`);
+}
+{
+  // Restless: its ghost climbs out a beat after it falls.
+  const { a, e } = deep(63, 'restless', 0, 6);
+  e.takeDamage({ amount: e.maxLife * 20, type: 'arcane', crit: false, source: 'player' }, a.ctx);
+  a.step(0.6);
+  const early = a.enemies.filter((x) => x.monsterId === 'restless_shade').length;
+  a.step(1.2);
+  const shades = a.enemies.filter((x) => x.monsterId === 'restless_shade');
+  const frac = shades[0] ? shades[0].life / shades[0].maxLife : 0;
+  check('restless rises once as a shade, a beat later', early === 0 && shades.length === 1 && frac > 0.5 && frac < 0.7 && shades[0]!.affixes.length === 0,
+    `${early} at 0.6 s, ${shades.length} at 1.8 s at ${Math.round(frac * 100)}% life`);
+}
+{
+  // Knelling: the wave covers the marked band. Hug it and it misses.
+  const run = (heroZ: number) => {
+    const { a } = deep(64, 'knelling', 0, 0);
+    a.hero.set(0, 0, heroZ);
+    a.step(3);
+    return told(a, 'knelling');
+  };
+  const band = run(5);
+  const hug = run(1.4);
+  check('knelling hits the marked band, not beside it', band.hits === 1 && band.unmarked === 0 && hug.hits === 0,
+    `${band.hits} hit in the band (${band.unmarked} unmarked), ${hug.hits} hugging it`);
+}
+{
+  // Splintering: heavy blows knock shards down near you.
+  const { a, e } = deep(65, 'splintering', 0, 6);
+  a.step(0.2);
+  for (let k = 0; k < 4; k++) {
+    e.takeDamage({ amount: e.maxLife * 0.12, type: 'arcane', crit: false, source: 'player' }, a.ctx);
+    a.step(1.2);
+  }
+  const light = deep(66, 'splintering', 0, 6);
+  for (let k = 0; k < 4; k++) {
+    light.e.takeDamage({ amount: light.e.maxLife * 0.01, type: 'arcane', crit: false, source: 'player' }, light.a.ctx);
+    light.a.step(1.2);
+  }
+  const heavy = told(a, 'splintering');
+  const small = told(light.a, 'splintering');
+  check('splintering sheds marked shards on heavy blows', heavy.hits >= 2 && heavy.unmarked === 0 && small.hits === 0,
+    `${heavy.hits} shards from heavy blows (${heavy.unmarked} unmarked), ${small.hits} from light ones`);
+}
+{
+  // Stitching: heals the hurt packmate, unless you stand on the thread.
+  const run = (onThread: boolean): number => {
+    const { a, e } = deep(67, 'stitching', -4, 8);
+    const hurt = a.spawn(melee, 4, 8, { rank: 'champion', pack: 5 });
+    pin(hurt);
+    hurt.life = hurt.maxLife * 0.5;
+    a.hero.set(0, 0, onThread ? 8 : 0);
+    void e;
+    a.step(4);
+    return hurt.life / hurt.maxLife;
+  };
+  const healed = run(false);
+  const cut = run(true);
+  check('stitching sews packmates; the thread can be cut', healed > 0.65 && cut < 0.52, `${Math.round(healed * 100)}% healed off the thread, ${Math.round(cut * 100)}% standing on it`);
+}
+{
+  // Grappling: a hook along the marked line drags you in. Step off it.
+  const run = (dodge: boolean) => {
+    const { a, e } = deep(68, 'grappling', 0, 9);
+    let seen = 0;
+    a.step(18, () => {
+      const lines = a.landings.filter((l) => l.by === e.id && l.kind === 'line').length;
+      if (dodge && lines > seen) {
+        seen = lines;
+        a.hero.x += a.hero.x > 0 ? -2.5 : 2.5;
+      }
+    });
+    const hs = a.hits.filter((h) => h.ability === 'grappling');
+    return { ...told(a, 'grappling'), pulled: hs.filter((h) => (h.packet.knockback ?? 0) < 0).length };
+  };
+  const still = run(false);
+  const dodge = run(true);
+  check('grappling hooks drag in along a marked line', still.hits >= 2 && still.pulled === still.hits && still.unmarked === 0 && dodge.hits < still.hits,
+    `${still.hits} hooks standing (${still.pulled} pulled, ${still.unmarked} unmarked), ${dodge.hits} stepping off`);
+}
+{
+  // Refracting: three marked beams. Stand between them.
+  const run = (dodge: boolean) => {
+    const { a, e } = deep(69, 'refracting', 0, 10);
+    let seen = 0;
+    a.step(18, () => {
+      const lines = a.landings.filter((l) => l.by === e.id && l.kind === 'line').length;
+      if (dodge && lines > seen) {
+        seen = lines;
+        // Between the middle beam and the next one, wherever it aimed.
+        a.hero.x += 1.8;
+      }
+    });
+    return told(a, 'refracting');
+  };
+  const still = run(false);
+  const dodge = run(true);
+  check('refracting beams land on their lines only', still.hits >= 2 && still.unmarked === 0 && dodge.hits === 0,
+    `${still.hits} beams standing (${still.unmarked} unmarked), ${dodge.hits} between them`);
+}
+{
+  // Funereal: a fallen packmate's body is marked, then bursts.
+  const run = (heroOnBody: boolean) => {
+    const { a } = deep(70, 'funereal', 0, 10);
+    const mate = a.spawn(melee, 0, 3, { rank: 'champion', pack: 5 });
+    pin(mate);
+    a.hero.set(0, 0, heroOnBody ? 3 : -3);
+    a.step(0.2);
+    mate.takeDamage({ amount: mate.maxLife * 20, type: 'arcane', crit: false, source: 'player' }, a.ctx);
+    a.step(1.5);
+    return told(a, 'funereal');
+  };
+  const on = run(true);
+  const off = run(false);
+  check('funereal bursts the marked dead', on.hits === 1 && on.unmarked === 0 && off.hits === 0, `${on.hits} burst on the body (${on.unmarked} unmarked), ${off.hits} standing clear`);
+}
+{
+  // Hemming: nails ring you in. Stay put and nothing hurts; walk through and it does.
+  const run = (walk: boolean): number => {
+    const { a } = deep(71, 'hemming', 0, 10);
+    let t = 0;
+    a.step(4.5, () => {
+      t += 1 / 30;
+      if (walk && t > 1.3 && a.hero.z > -7) a.hero.z -= 0.08;
+    });
+    return a.hits.filter((h) => h.ability === 'hemming').length;
+  };
+  const stay = run(false);
+  const walk = run(true);
+  check('hemming nails hurt only when crossed', stay === 0 && walk >= 1, `${stay} hits staying inside, ${walk} walking through`);
+}
+{
+  // Emberfall: one ember on you, a ring of them round you. Each marked.
+  const { a } = deep(72, 'emberfall', 0, 8);
+  a.step(14);
+  const r = told(a, 'emberfall');
+  const vol = a.landings.filter((l) => l.kind === 'circle').length;
+  check('emberfall lands where marked, one hit a volley', r.hits >= 2 && r.unmarked === 0 && r.hits * 5 <= vol + 5,
+    `${r.hits} hits from ${vol} marked embers (${r.unmarked} unmarked)`);
+}
+{
+  // Eclipsing: anyone still inside the mark is struck blind.
+  const run = (heroZ: number) => {
+    const { a } = deep(73, 'eclipsing', 0, 0);
+    a.hero.set(0, 0, heroZ);
+    a.step(2);
+    const hs = a.hits.filter((h) => h.ability === 'eclipsing');
+    return { ...told(a, 'eclipsing'), blind: hs.filter((h) => h.packet.applies?.some((x) => x.id === 'blinded')).length };
+  };
+  const inside = run(5);
+  const outside = run(8.5);
+  check('eclipsing blinds inside the mark only', inside.hits === 1 && inside.blind === 1 && inside.unmarked === 0 && outside.hits === 0,
+    `${inside.hits} hit inside (${inside.blind} blinded, ${inside.unmarked} unmarked), ${outside.hits} outside`);
+}
+
 // --- a control affix sets off the follow-up ----------------------------------------
 {
   const a = arena({ seed: 9 });

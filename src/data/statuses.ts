@@ -510,6 +510,13 @@ export const STATUSES: StatusDef[] = [
     icon: 'hand',
     tags: ['control', 'elite'],
   }),
+  def('snuffed', 'Snuffed', -1, {
+    desc: 'Soot on the lamp and in the lungs: your light gutters and your mana does not refill.',
+    baseDuration: 1,
+    color: 0x4a3e32,
+    icon: 'lungs',
+    tags: ['elite', 'drain', 'held'],
+  }),
   def('hexbrand', 'Hexbrand', -1, {
     desc: "An elite's sigil burns on your chest: -40% life regeneration and -20% healing received.",
     mods: mods({ lifeRegen: -40 }),

@@ -682,6 +682,153 @@ affix({
   excludes: ['teleporter', 'wormhole', 'juggernaut'],
 });
 
+// --- The deep powers (depth 20 on, one every five depths) -------------------
+// Each one hurts only after a marker on the floor, or is a harmless thing you
+// can see coming: a soot cloud, a thread, a ghost climbing out.
+
+affix({
+  id: 'echoing',
+  name: 'Echoing',
+  desc: 'Every blow it lands comes again a beat later, where you stood.',
+  minDepth: 20,
+  weight: 9,
+  mods: { damage: 1.1 },
+  behavior: 'echoing',
+  params: { delay: 0.8, radius: 1.7, mul: 0.8, cooldown: 2.2 },
+  color: 0xb89cff,
+});
+
+affix({
+  id: 'lampblack',
+  name: 'Lampblack',
+  desc: 'Wrapped in soot. Inside its cloud your light gutters and your mana stops refilling.',
+  minDepth: 25,
+  weight: 8,
+  mods: { life: 1.2 },
+  behavior: 'lampblack',
+  params: { radius: 6, interval: 0.5 },
+  color: 0x6a5a48,
+  excludes: ['mana_burn'],
+});
+
+affix({
+  id: 'restless',
+  name: 'Restless',
+  desc: 'When it falls, its ghost climbs out a beat later and hunts you, fast and cold.',
+  minDepth: 30,
+  weight: 8,
+  behavior: 'restless',
+  params: { delay: 1.2, life: 0.6 },
+  color: 0x9cd8e8,
+  excludes: ['splitter', 'soul_bound'],
+});
+
+affix({
+  id: 'knelling',
+  name: 'Knelling',
+  desc: 'Rings a bell. The wave rolls out over the marked ring: hug it, or stand clear.',
+  minDepth: 35,
+  weight: 8,
+  behavior: 'knelling',
+  params: { interval: 7, inner: 2.4, outer: 7.5, windup: 1.0, mul: 1.5, slow: 0.35 },
+  color: 0xffb040,
+});
+
+affix({
+  id: 'splintering',
+  name: 'Splintering',
+  desc: 'Glass under the skin. Heavy blows knock shards loose that rain down around you.',
+  minDepth: 40,
+  weight: 8,
+  mods: { defense: 1.3 },
+  behavior: 'splintering',
+  params: { share: 0.06, cooldown: 0.7, radius: 1.3, delay: 0.8, mul: 0.9 },
+  color: 0x9ab8d0,
+  excludes: ['thorns', 'reflect_damage'],
+});
+
+affix({
+  id: 'stitching',
+  name: 'Stitching',
+  desc: 'Sews its wounded packmates shut with a glowing thread. Stand on the thread to cut it.',
+  minDepth: 45,
+  weight: 7,
+  behavior: 'stitching',
+  params: { range: 12, heal: 0.08, width: 0.8, snap: 6 },
+  color: 0xff9ac0,
+});
+
+affix({
+  id: 'grappling',
+  name: 'Grappling',
+  desc: 'Throws a hook along the marked line and drags you in. Step off the line.',
+  minDepth: 50,
+  weight: 8,
+  behavior: 'grappling',
+  params: { interval: 8, minRange: 4, range: 13, windup: 0.8, mul: 0.6, width: 0.9 },
+  color: 0xc89060,
+  excludes: ['vortex', 'gravity', 'teleporter', 'wormhole'],
+});
+
+affix({
+  id: 'refracting',
+  name: 'Refracting',
+  desc: 'Splits its light into three beams along the marked lines. Stand between them.',
+  minDepth: 55,
+  weight: 8,
+  behavior: 'refracting',
+  params: { interval: 8, range: 15, windup: 0.9, mul: 1.3, spread: 0.42, width: 0.65 },
+  color: 0xd8f0ff,
+  excludes: ['arcane_enchanted'],
+});
+
+affix({
+  id: 'funereal',
+  name: 'Funereal',
+  desc: 'Lights its dead. When a packmate falls nearby, the body is marked and bursts a beat later.',
+  minDepth: 60,
+  weight: 8,
+  behavior: 'funereal',
+  params: { range: 14, radius: 3, delay: 1.0, mul: 1.6, cooldown: 1.2 },
+  color: 0x9ad0ff,
+});
+
+affix({
+  id: 'hemming',
+  name: 'Hemming',
+  desc: 'Drives a ring of nails up around you. Get out before it closes, or pay to cross it.',
+  minDepth: 65,
+  weight: 7,
+  behavior: 'hemming',
+  params: { interval: 12, radius: 4.5, windup: 1.0, life: 4.5, nails: 14, dps: 0.55 },
+  color: 0x8090a8,
+  excludes: ['jailer', 'waller'],
+});
+
+affix({
+  id: 'emberfall',
+  name: 'Emberfall',
+  desc: 'Calls down a scatter of embers on and around you. Each lands where it is marked.',
+  minDepth: 70,
+  weight: 8,
+  behavior: 'emberfall',
+  params: { interval: 6, ring: 4, radius: 1.4, spread: 2.9, delay: 1.0, mul: 1.1 },
+  color: 0xff7030,
+  excludes: ['mortar'],
+});
+
+affix({
+  id: 'eclipsing',
+  name: 'Eclipsing',
+  desc: 'Swallows the light around it. Anyone still inside the mark when it closes is struck blind.',
+  minDepth: 75,
+  weight: 7,
+  mods: { life: 1.25 },
+  behavior: 'eclipsing',
+  params: { interval: 11, radius: 7, windup: 1.3, mul: 1.1, blind: 3 },
+  color: 0x7040c0,
+});
+
 // ---------------------------------------------------------------------------
 
 export const MONSTER_AFFIXES: MonsterAffixDef[] = ALL;

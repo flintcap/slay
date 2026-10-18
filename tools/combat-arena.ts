@@ -63,6 +63,10 @@ export function arena(opts: ArenaOpts = {}): Arena {
         if (duration >= 0.5) landings.push({ t: ctx.elapsed + duration, by: acting, kind });
         return { cancel() {} };
       },
+      telegraphEx: (kind: string, _x: number, _z: number, _s: number, _r: number, duration: number) => {
+        if (duration >= 0.5) landings.push({ t: ctx.elapsed + duration, by: acting, kind });
+        return { cancel() {} };
+      },
       // A place to stand warns of the blow that lands around it.
       safeZone: (_x: number, _z: number, _r: number, duration: number) => {
         if (duration >= 0.5) landings.push({ t: ctx.elapsed + duration, by: acting, kind: 'safe' });
@@ -87,7 +91,11 @@ export function arena(opts: ArenaOpts = {}): Arena {
     heroLifeFrac: 1,
     playerStats: shrug,
     playerLevel: 10,
-    damagePlayer: (p) => hits.push({ t: ctx.elapsed, by: acting, amount: p.amount, ability: p.ability ?? '', packet: p }),
+    damagePlayer: (p) => {
+      hits.push({ t: ctx.elapsed, by: acting, amount: p.amount, ability: p.ability ?? '', packet: p });
+      // As in the game: the monster that landed it hears about it.
+      if (p.amount > 0) enemies.find((e) => e.id === p.source)?.onDealtDamage(p.amount, p, ctx);
+    },
     nav: {
       lineOfSight,
       clampToWalkable: (x: number, z: number) => ({ x, y: z }),

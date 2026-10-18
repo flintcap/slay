@@ -23,7 +23,7 @@ import { WEAPON_DIR } from './Arms';
 import { V, claws, fleshArms, fleshLegs, lerpV, quatAlong, seq, trunk } from './Kit';
 import { manLook } from './LookHumanoid';
 import { crystals, facet, fire, prism, walkLook, wispLook } from './LookElemental';
-import { skeletonLook } from './LookUndead';
+import { skeletonLook, specterLook } from './LookUndead';
 import { shield } from './LookConstruct';
 
 const FLAME: RGB = [1.45, 0.85, 0.35];
@@ -379,6 +379,11 @@ function stayed(c: LookCtx, o: Parameters<typeof skeletonLook>[1], extra?: (s: S
 // ===========================================================================
 
 const DEEP: Record<string, LookFactory> = {
+  // A Restless monster's ghost: a thin, pale specter that glides.
+  restless_shade: (c) => ({
+    ...specterLook(c, { claws: 0.1, height: 1.8 }),
+    style: { heavy: 0.05, attacks: ['claw'], spawn: 'form', death: 'fade', idle: 'hover', gait: 'glide', armed: 'none' },
+  }),
   // --- The Kept --------------------------------------------------------------
   kept_hallsweeper: (c) =>
     manLook(c, {
@@ -609,4 +614,4 @@ const DEEP: Record<string, LookFactory> = {
     stayed(c, { weapon: 'greataxe', brute: true, armor: 1, helm: true, horns: 0.8, steel: [0.45, 0.43, 0.42], style: { heavy: 0.6, attacks: ['chop', 'swing'], armed: 'two', gait: 'march', idle: 'breathe', death: 'crash' } }, champion),
 };
 
-export { DEEP };
+export { DEEP, apron, candleCrown, champion, delverKit, grip, housemother, keys, nails, roundShield, stayed };

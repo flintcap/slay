@@ -1523,6 +1523,17 @@ mon({
   visual: { body: 'armored', palette: STAYED_DUST, ornate: 0.9, eyes: 2, glow: 0x9ad0ff, weapon: 'greataxe' },
 });
 
+// What climbs out of a Restless monster (data/monsterAffixes.ts): never rolled,
+// only called up. Fast, frail, and it hits cold.
+mon({
+  id: 'restless_shade', name: 'Restless Shade', family: 'undead', role: 'melee',
+  minDepth: 1, weight: 0, lifeMul: 0.45, damageMul: 0.9, speed: 4.3, xpMul: 0,
+  damageType: 'cold',
+  abilities: ['basic_strike'],
+  resists: { physical: 40, poison: 100, cold: 50 },
+  visual: { body: 'wraith', palette: RIME, ornate: 0.3, eyes: 2, glow: 0x9cd8e8 },
+});
+
 // ---------------------------------------------------------------------------
 // Exports & selection
 // ---------------------------------------------------------------------------
