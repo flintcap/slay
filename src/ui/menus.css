@@ -1422,71 +1422,17 @@
   background: var(--ld-divider, none) center top / 320px 24px no-repeat;
 }
 
-/* The biome's colour, eased when the place becomes known mid-build. */
-@property --ld-tint {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #d9a441;
-}
-
 /* The key art: only on slow swaps, after the card's own delay. */
 #fade .ld-art {
   opacity: 0;
   transition: opacity var(--dur-4) ease;
 }
 #fade .ld-art.is-on {
-  opacity: 0.3;
+  opacity: 0.35;
   transition: opacity var(--dur-5) ease 380ms;
 }
 
-/* The place you are going: a generated skyline lit from behind. */
-.ld-scape {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--dur-3) ease, --ld-tint var(--dur-5) ease;
-}
-.ld-scape.is-on {
-  opacity: 1;
-  transition: opacity var(--dur-5) ease 380ms, --ld-tint var(--dur-5) ease;
-}
-.ld-scape::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 70% 38% at 50% 100%, color-mix(in oklab, var(--ld-tint) 34%, transparent), transparent 72%),
-    radial-gradient(ellipse 50% 22% at 50% 0%, color-mix(in oklab, var(--ld-tint) 12%, transparent), transparent 70%);
-}
-.ld-scape svg {
-  position: absolute;
-  left: 0;
-  width: 100%;
-}
-.ld-scape .ld-bottom {
-  bottom: 0;
-  height: min(30vh, 300px);
-}
-.ld-scape .ld-top {
-  top: 0;
-  height: min(13vh, 120px);
-}
-.ld-far {
-  fill: color-mix(in oklab, var(--ld-tint) 16%, var(--shade));
-  opacity: 0.85;
-}
-.ld-near,
-.ld-roof {
-  fill: var(--shade);
-  stroke: color-mix(in oklab, var(--ld-tint) 55%, transparent);
-  stroke-width: 1.2;
-  stroke-linejoin: round;
-  paint-order: stroke;
-}
-
-/* The bar: a gilt rail, an ember run and a spark at its head. */
+/* The bar: a gilt rail and an ember run. */
 .ld-load {
   width: min(360px, 70vw);
   margin: 0 auto var(--s6);
@@ -1519,27 +1465,6 @@
     linear-gradient(180deg, rgb(var(--light-rgb) / 0.28), transparent 55%),
     linear-gradient(90deg, #6b2f0c, #b8561a 55%, var(--warn) 92%, var(--gold-hi));
 }
-.ld-spark {
-  position: absolute;
-  top: 50%;
-  right: -7px;
-  width: 14px;
-  height: 14px;
-  margin-top: -7px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--gold-hi) 0 22%, color-mix(in oklab, var(--ld-tint) 60%, transparent) 46%, transparent 72%);
-  animation: ldSpark 1.1s ease-in-out infinite alternate;
-}
-@keyframes ldSpark {
-  from {
-    opacity: 0.6;
-    scale: 0.85;
-  }
-  to {
-    opacity: 1;
-    scale: 1.15;
-  }
-}
 .ld-meta {
   display: flex;
   justify-content: space-between;
@@ -1558,7 +1483,6 @@
   color: var(--gold);
 }
 @media (prefers-reduced-motion: reduce) {
-  .ld-spark,
   .ld-spin-a,
   .ld-spin-b {
     animation: none;
