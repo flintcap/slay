@@ -1,6 +1,6 @@
 # Stream: speed (Wave 4: smooth and fast on WebGPU)
 
-Status: paused (part 1 done, part 2 waits for wave two)
+Status: in progress (part 2)
 
 Goal: high, steady frame rate and short loads with no frozen browser. The
 owner reports town loads of 20 to 25 s and map loads of 50 to 60 s with the
@@ -34,6 +34,18 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   what `compileAsync` does; check-frames now names each pipeline still made
   in play, and the few left belong to other streams' late looks: see
   "Notes for resume")
+- [ ] 3b. Leftover first-time stutters (handed over by looks, two tries
+  there): pipelines still made in play for `warden:mouth`,
+  `warden:shorts`, `item-gem/item:gem` on the map; `fx:solid-shard`,
+  `fx:cores`, `fx:columns`, `item-glow/item:glow`, `prop:altar` cloth and
+  bone, and boss adds' `creature:bone` and `creature:shade` in the boss
+  room. Read looks.md "Notes for resume" first (its guesses). Fix with
+  stand-ins in `warmup()` or hidden builds at load; count pipelines made in
+  play before and after with check-frames.
+- [ ] 3c. The vfx lab (`tools/check-decals.mjs`) renders black frames for
+  every scene, even the old `impacts` scene (see effects.md). Find why and
+  fix the lab (a tool, not the game, unless the game is at fault). One
+  retry, then note it and move on.
 - [ ] 4. (after wave two) Fewer draw calls: instancing or `BatchedMesh` for repeated props,
   monsters and loot, with culling (GPU or indirect draws where three.js
   supports it). Count draw calls before and after.

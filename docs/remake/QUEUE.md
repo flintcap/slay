@@ -19,7 +19,7 @@ Done: anims, paladin, shapeshifter
 Paused: no
 
 Wave 4 (AAA polish, WebGPU):
-Running: none
-Waiting: speed part 2 (milestones 4 to 7: FPS tuning, runs last)
+Running: speed part 2
+Waiting: none
 Done: speed part 1, balance (item list declined), ui, effects, mapvariety, looks
 Paused: no
