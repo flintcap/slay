@@ -1007,11 +1007,11 @@ export function spawnHazard(
   h.pull = opts.pull ?? 0;
   // Ground laid down under you ticks as before; only walking into it bites at once.
   h.inside = playerInCircle(ctx, x, z, radius);
-  // A spell on the ground is the same living field the hero's are (burning
-  // ground, poison fumes, frost, crawling arcs, a void), with its own glow and
-  // mark, fading out when the hazard's time is up. Traps (physical: rubble,
-  // caltrops, webs, roots) and headless runs keep the plain floor glow.
-  const fx = type !== 'physical' ? monsterFX() : null;
+  // A spell or trap on the ground is the same living field the hero's are
+  // (burning ground, poison fumes, frost, crawling arcs, a void, rubble, web,
+  // heaved roots), with its own glow and mark, fading out when the hazard's
+  // time is up. Headless runs keep the plain floor glow.
+  const fx = monsterFX();
   h.field = fx ? fx.hazardField(x, z, radius, h.life, { school: type, color: opts.color, look: HAZARD_LOOK[ability] }) : null;
   if (h.field) {
     if (opts.decal) ctx.decals.add(opts.decal, x, z, radius);

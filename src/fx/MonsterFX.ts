@@ -23,11 +23,19 @@ export function monsterFX(): EffectSystem | null {
 
 /**
  * Hazards with a field look of their own; any other draws as its damage type
- * (fire burns, poison fumes, cold frosts, lightning crawls, arcane is a void).
+ * (fire burns, poison fumes, cold frosts, lightning crawls, arcane is a void,
+ * physical kicks up dust).
  */
 export const HAZARD_LOOK: Readonly<Record<string, FieldLook>> = {
   blizzard: 'blizzard',
   ink_cloud: 'smoke',
+  // traps
+  quake_stomp: 'rubble',
+  caltrops: 'rubble',
+  waller: 'rubble',
+  web_snare: 'web',
+  root_snare: 'roots',
+  wall_of_bone: 'bone',
 };
 
 /** Floor glow kind for a hazard of each damage type. */

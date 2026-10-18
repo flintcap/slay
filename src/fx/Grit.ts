@@ -36,6 +36,8 @@ const SMOKE = [0x4a4440, 0x221f1c, 0x0c0b0a] as const;
 const DUST = [0x9a8a74, 0x5e5446, 0x2a251e] as const;
 const BONE = [0xe8e0c8, 0xa89c80, 0x4a4434] as const;
 const STEEL = [0xfff6e0, 0xffc070, 0x7a3a10] as const;
+const EARTH = [0x6a5a40, 0x3a3020, 0x16120c] as const;
+const SILK = [0xf0ece0, 0xb8b4a8, 0x5a5850] as const;
 
 const EM: Record<string, Emitter> = {
   // --- deaths ---------------------------------------------------------------
@@ -232,6 +234,23 @@ const EM: Record<string, Emitter> = {
     school: 'physical',
     keyed: true,
     layers: [L({ sprite: SPRITE.smoke, count: 3, ramp: DUST, speed: [0.3, 0.8], up: 0.1, radius: 0.5, disc: true, size: [0.5, 0.8], grow: 2, life: [1.0, 1.6], heat: [0.2, 0], emit: 0.2, occl: 0.5, gravity: 0.1, drag: 2, turb: 0.4, spin: 0.5, tint: false })],
+  },
+  // Monster traps: grit hopping on broken stone, threads of web lifting in
+  // the draught, clods of earth heaved up by roots.
+  'field.grit': {
+    school: 'physical',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.rock, count: 3, ramp: DUST, speed: [0.8, 1.8], up: 1.2, radius: 0.4, disc: true, size: [0.04, 0.08], grow: 1, life: [0.5, 0.8], heat: [0.4, 0.3], emit: 0.2, occl: 1, gravity: -12, spin: 6, ground: true, fade: 4, tint: false })],
+  },
+  'field.silk': {
+    school: 'physical',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.flake, count: 3, ramp: SILK, speed: [0.05, 0.25], up: 0.4, radius: 0.5, disc: true, size: [0.05, 0.1], grow: 1, life: [1.2, 2.0], heat: [0.5, 0.3], emit: 0.3, occl: 0.4, gravity: 0.15, drag: 1.5, turb: 0.6, spin: 1.5, tint: false })],
+  },
+  'field.clods': {
+    school: 'physical',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.rock, count: 3, ramp: EARTH, speed: [1, 2.2], up: 1.6, radius: 0.45, disc: true, size: [0.05, 0.1], grow: 1, life: [0.5, 0.9], heat: [0.3, 0.2], emit: 0.1, occl: 1, gravity: -12, spin: 5, ground: true, fade: 4, tint: false })],
   },
   'field.rattle': {
     school: 'bone',

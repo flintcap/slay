@@ -308,7 +308,9 @@ export function rankDensity(rank: number): number {
 
 /** How a lingering spell field looks while it lasts (`fx/Fields.ts`). */
 export type FieldLook =
-  | 'fire' | 'firestorm' | 'frost' | 'blizzard' | 'storm' | 'pillar' | 'venom' | 'smoke' | 'void' | 'bone' | 'dust';
+  | 'fire' | 'firestorm' | 'frost' | 'blizzard' | 'storm' | 'pillar' | 'venom' | 'smoke' | 'void' | 'bone' | 'dust'
+  // monster traps (`fx/MonsterFX.ts` HAZARD_LOOK)
+  | 'rubble' | 'web' | 'roots';
 
 /** Fields with a look of their own; any other field draws as its school. */
 export const FIELD_LOOKS: Readonly<Record<string, FieldLook>> = {

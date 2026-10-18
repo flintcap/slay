@@ -135,6 +135,27 @@ const SPECS: Record<FieldLook, Spec> = {
       { id: 'field.dust', rate: 3, y: 0.1, count: 12 },
     ],
   },
+  // Monster traps. A trap keeps a faint ring so the floor it holds still reads.
+  rubble: {
+    glow: 'auraRing', glowEmit: 0.7, mark: 'crack',
+    streams: [
+      { id: 'field.dust', rate: 2, y: 0.1, count: 12 },
+      { id: 'field.grit', rate: 2.5, y: 0.05, count: 12 },
+    ],
+  },
+  web: {
+    glow: 'auraRing', glowEmit: 0.6, mark: 'stain',
+    streams: [
+      { id: 'field.silk', rate: 3, y: 0.15, count: 12 },
+    ],
+  },
+  roots: {
+    glow: 'auraRing', glowEmit: 0.7, mark: 'dust',
+    streams: [
+      { id: 'field.dust', rate: 1.5, y: 0.1, count: 12 },
+      { id: 'field.clods', rate: 2.5, y: 0.05, count: 12 },
+    ],
+  },
 };
 
 /** Every particle id a field may fire, for checks and warm-ups. */
