@@ -5,7 +5,9 @@ Update this file and push it after every finished step.
 
 ## Owner rules for this stretch
 
-- Steam work goes in the last phase.
+- Steam work is its own last phase (Phase 4: desktop app, Steam features, Deck,
+  store), with nothing else in it. Phase 3 (Ready to ship) holds controller play,
+  settings, frame rate, engine safety and bug reports.
 - Drops stay random, never class leaning.
 - Runes and runewords are our own, not a D2 copy.
 - Few monster windups and channels. Every monster ability has a cooldown.

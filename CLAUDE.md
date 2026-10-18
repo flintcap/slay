@@ -43,7 +43,7 @@ Long is fine for drafts, scripts, posts, and documents. This whole style guide i
 - When I ask for something "like" or "in the style of" another game, do not copy it 1:1. Use the same idea and theme, but make it our own: our own names, our own art, our own numbers.
 - Every skill must get stronger with each rank (damage, strength, time, size), not only cheaper or faster. New skills go through `src/data/skillPower.ts` and `node tools/check-rankpower.mjs`.
 - Caster weapons (wands, staffs, orbs) have no basic attack. A caster's attacks come only from spells.
-- All Steam work (desktop app, Steam features, controller and Steam Deck support, store setup) goes in the last phase of the plan, after every other phase.
+- All Steam work (desktop app, Steam features, Steam Deck support, store setup) is its own phase, Phase 4, last in the plan, with nothing else in it. Work that helps every player (controller play, settings, frame rate) stays in earlier phases.
 - Always use the newest versions of everything: packages, Node, three.js and the test browser. Never write code to work around old browsers or old versions. Before browser checks, run `node tools/get-chrome.mjs` so the tools test with the newest Chrome.
 
 ## Project
