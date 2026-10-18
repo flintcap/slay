@@ -710,7 +710,8 @@ export class AIBrain {
     if (pressing && closer) standoff *= 0.8;
 
     if (this.mode === 'flee') {
-      this.setRetreatTarget(ctx, 16);
+      // A short break for its friends, not a run across the map.
+      this.setRetreatTarget(ctx, 9);
       this.regroupTimer = 4;
       return;
     }

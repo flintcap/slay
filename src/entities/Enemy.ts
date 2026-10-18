@@ -71,8 +71,12 @@ import { getStatus, type StatusDef } from '../data/statuses';
 import { powerHooks } from '../sim/ItemPowers';
 import { resolveCombo, type ComboHit } from './Combos';
 
+/** Fastest a monster may move while backing away from the hero (base hero speed is 5.4). */
+const RETREAT_SPEED_CAP = 3.4;
+
 // Re-exported so the scene layer can pull the whole monster surface from here,
 // exactly as CONTRACTS.md specifies.
+
 export type { CombatContext } from './Abilities';
 export { MONSTERS, pickMonstersForDepth } from '../data/monsters';
 export { MONSTER_AFFIXES } from '../data/monsterAffixes';
@@ -914,6 +918,10 @@ export class Enemy implements Combatant {
       if (typeof slow === 'number' && slow < 0) s *= Math.max(0.15, 1 + (slow / 100) * st.magnitude);
     }
     if (this.inst && this.inst.phase === 'recovery') s *= 0.4;
+    // Backing off, fleeing or falling back is never quicker than this, so a
+    // hasted archer or a wounded runner can always be caught on foot.
+    const m = this.ai?.mode;
+    if (!this.isBoss && (m === 'kite' || m === 'flee' || m === 'regroup')) s = Math.min(s, RETREAT_SPEED_CAP);
     return s;
   }
 

@@ -109,7 +109,8 @@ mon({
 
 mon({
   id: 'skeleton_archer', name: 'Bone Archer', family: 'undead', role: 'ranged',
-  minDepth: 1, weight: 9, attackRange: 13, speed: 3.2,
+  // Slower than the swordsmen it stands behind: testers could not run one down.
+  minDepth: 1, weight: 9, attackRange: 13, speed: 2.6,
   abilities: ['arrow_shot', 'caltrops'],
   resists: { poison: 50, cold: 20 },
   biomes: ['crypt', 'caverns', 'sunkenTemple', 'darkForest', 'desert', 'desertTomb', 'tundra', 'swamp'],
