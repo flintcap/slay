@@ -13,7 +13,7 @@ import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { Player } from '../entities/Player';
 import { folkMeshed, heroMeshed } from '../art/npc/Prewarm';
-import { buildTown, type TownBuild } from '../world/Town';
+import { townSteps, type TownBuild } from '../world/Town';
 import { setFogShape } from '../core/Renderer';
 import { setActiveDifficulty } from '../data/difficulties';
 import { dialogue, openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
@@ -22,7 +22,7 @@ import { STATIONS, mountTownStations } from './TownStations';
 import { QuestMarkerLayer } from '../fx/QuestMarkers';
 import { BOARD, townMarkers, type MarkerSpot, type QuestMarker } from '../sim/QuestMarkers';
 import { planDescent } from './DescentPlanner';
-import { breather, loadStep } from '../core/LoadProgress';
+import { breather, loadStep, yieldIfLong } from '../core/LoadProgress';
 import { meshHero } from '../world/BakePool';
 
 /** The town hero's seed: the worker dresses the same hero the town builds. */
@@ -99,7 +99,15 @@ export class TownScene extends GameScene {
     loadStep('world');
     await breather();
     const rng = new Random(0x70b6);
-    this.town = buildTown(rng);
+    // The camp is built in pieces (`world/Town.ts`), handing the page back
+    // between them, so the loading screen keeps moving through the build.
+    const build = townSteps(rng);
+    let piece = build.next();
+    while (!piece.done) {
+      await yieldIfLong();
+      piece = build.next();
+    }
+    this.town = piece.value;
     this.scene.add(this.town.root);
     const town = this.town;
     this.decals.setGround((x, z) => town.groundY(x, z));

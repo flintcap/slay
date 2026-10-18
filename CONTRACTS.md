@@ -1277,6 +1277,14 @@ Steps are counted by `beginLoad(total)` / `loadStep(name)` / `endLoad()`
 does nothing. `yieldIfLong(ms)` hands the page back when the work since the
 last hand-back ran past `ms`; build code calls it between pieces.
 
+Builds that yield (generators; the caller hands the page back between
+pieces with `yieldIfLong`, and a plain loop runs them in one go):
+`DungeonMesh.steps(rng)` (`world/DungeonBuilder.ts`, per chunk) and
+`townSteps(rng)` (`world/Town.ts`, mapvariety: after the ground, each
+building and run of trees via `townPropsSteps` in
+`art/props/town/Layout.ts`, each resident via `Residents.add`, each merge).
+`buildTown(rng)` runs `townSteps` in one go, for tools and checkers.
+
 ## Bake workers — `src/world/BakePool.ts`, `BakeWorker.ts` — owned by speed
 
 - `bakeLooks(list: LookAsk[], urgent?, capMs?)`: bakes monster looks in

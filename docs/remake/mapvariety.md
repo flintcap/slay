@@ -1,6 +1,6 @@
 # Stream: mapvariety (Wave 4: maps that feel new every run)
 
-Status: not started
+Status: in progress
 
 Goal: each run feels different: new map shapes, landmarks worth finding,
 weather, and run themes, all from seeded randomness (`src/core/RNG.ts`).

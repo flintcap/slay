@@ -23,7 +23,7 @@ import { surface } from '../art/Materials';
 import { worldMaterial, WORLD_ENV_ATTRIBUTE, WORLD_SPLAT_ATTRIBUTE } from '../art/WorldMaterial';
 import { CampLife } from './TownLife';
 import { mergeGeometries, rock } from '../art/Meshes';
-import { buildTownProps } from '../art/props/town/Layout';
+import { townPropsSteps } from '../art/props/town/Layout';
 import { Residents, townPlaces } from '../art/npc/Residents';
 import { disposeObject } from '../core/Engine';
 import { freezeStill } from '../core/Freeze';
@@ -150,7 +150,7 @@ function flushBatches(ctx: Ctx, mats: Mats): void {
  * draw calls against a budget of 900. Anything that moves (spin, sway,
  * flicker) or carries attributes beyond position, normal and uv is left alone.
  */
-function mergeStatic(ctx: Ctx): void {
+function* mergeStatic(ctx: Ctx): Generator<void, void, void> {
   const moving = new Set<THREE.Object3D>();
   const mark = (o: THREE.Object3D | undefined): void => o?.traverse((q) => moving.add(q));
   for (const f of ctx.flames) mark(f.mesh);
@@ -185,6 +185,7 @@ function mergeStatic(ctx: Ctx): void {
     mesh.frustumCulled = false;
     for (const m of g.list) ctx.root.remove(m);
     ctx.root.add(mesh);
+    yield;
   }
 }
 
@@ -258,7 +259,26 @@ function addLantern(
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Builds the whole camp in one go. For tools and checkers; the town scene
+ * runs `townSteps` paced instead, so the page never freezes for the build.
+ */
 export function buildTown(rng: Rng): TownBuild {
+  const steps = townSteps(rng);
+  for (;;) {
+    const r = steps.next();
+    if (r.done) return r.value;
+  }
+}
+
+/**
+ * The camp, built in pieces. It yields after the ground, after each building
+ * and run of trees (`townPropsSteps`), after each resident and each merge, and
+ * the caller decides whether to hand the page back there
+ * (`TownScene.enter`, `yieldIfLong`). The same rolls happen in the same order
+ * either way, so the camp is identical however it is driven.
+ */
+export function* townSteps(rng: Rng): Generator<void, TownBuild, void> {
   const root = new THREE.Group();
   root.name = 'camp';
 
@@ -289,7 +309,9 @@ export function buildTown(rng: Rng): TownBuild {
   };
 
   const groundY = buildGround(ctx, mats);
+  yield;
   buildFire(ctx);
+  yield;
 
   const npcSpots: Record<string, THREE.Vector3> = {};
 
@@ -326,7 +348,7 @@ export function buildTown(rng: Rng): TownBuild {
 
   // The buildings, stations, palisade, trees and dressing (props stream).
   const PALISADE_R = 22;
-  const town = buildTownProps(rng.fork('town'), {
+  const town = yield* townPropsSteps(rng.fork('town'), {
     forge: forgeAt,
     vendor: wagonAt,
     stash: stashAt,
@@ -375,16 +397,23 @@ export function buildTown(rng: Rng): TownBuild {
     34,
   );
   root.add(life.root);
+  yield;
 
   flushBatches(ctx, mats);
   buildGlows(ctx);
+  yield;
 
   // --- residents ---------------------------------------------------------
   // The townsfolk and their routines live in `art/npc/Residents.ts`.
-  const residents = new Residents(ctx.root, ctx.colliders, townPlaces({
+  // One at a time, so each resident's build is its own piece of work.
+  const residents = new Residents(ctx.root, ctx.colliders, [], groundY);
+  for (const place of townPlaces({
     forge: forgeAt, wagon: wagonAt, stash: stashAt, alchemy: alchemyAt, cairn: cairnAt, alchemist: npcSpots.alchemist,
-  }), groundY);
-  mergeStatic(ctx);
+  })) {
+    residents.add(ctx.root, ctx.colliders, place);
+    yield;
+  }
+  yield* mergeStatic(ctx);
   buildBulbs(ctx);
 
   // --- ambience ----------------------------------------------------------

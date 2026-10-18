@@ -131,12 +131,18 @@ export class Residents {
 
   constructor(parent: THREE.Object3D, colliders: Collider[], places: ResidentPlace[], ground: (x: number, z: number) => number = () => 0) {
     this.ground = ground;
-    for (const place of places) {
-      try {
-        this.list.push(this.make(parent, colliders, place));
-      } catch {
-        // A town with one fewer resident beats a town that fails to load.
-      }
+    for (const place of places) this.add(parent, colliders, place);
+  }
+
+  /**
+   * Builds and places one resident. The town build adds them one at a time
+   * (`world/Town.ts`), handing the page back between them.
+   */
+  add(parent: THREE.Object3D, colliders: Collider[], place: ResidentPlace): void {
+    try {
+      this.list.push(this.make(parent, colliders, place));
+    } catch {
+      // A town with one fewer resident beats a town that fails to load.
     }
   }
 
