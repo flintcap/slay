@@ -30,6 +30,10 @@ export interface FieldOpts {
   /** The skill casting it, for its own look. */
   skill?: string;
   rank?: number;
+  /** A look chosen by the caller (monster hazards), over the skill's and school's. */
+  look?: FieldLook;
+  /** Multiplier on how many bursts the field fires (1 = as tuned). */
+  density?: number;
 }
 
 /** One stream of particles over a field. */
@@ -174,8 +178,8 @@ const _opts: BurstOpts = {};
 export class FieldPool {
   private fields: Field[] = [];
 
-  constructor(private fx: FXSystem, private decals: DecalSystem, private quality: QualityProfile, private rng: Rng) {
-    for (let i = 0; i < CAP; i++) this.fields.push(new Field());
+  constructor(private fx: FXSystem, private decals: DecalSystem, private quality: QualityProfile, private rng: Rng, cap = CAP) {
+    for (let i = 0; i < cap; i++) this.fields.push(new Field());
   }
 
   /** Lays a field down; `stop()` on the handle fades it out early. */
@@ -186,7 +190,7 @@ export class FieldPool {
       f = this.fields.reduce((a, b) => (b.t > a.t ? b : a));
       this.end(f);
     }
-    const spec = SPECS[fieldLook(opts.skill, opts.school)];
+    const spec = SPECS[opts.look ?? fieldLook(opts.skill, opts.school)];
     f.active = true;
     f.gen = (f.gen + 1) | 0;
     f.stopped = false;
@@ -205,7 +209,7 @@ export class FieldPool {
     // Fewer, not just thinner, bursts on the lower qualities.
     const quality = q >= 0.9 ? 1 : q >= 0.5 ? 0.75 : 0.55;
     const rank = q >= 0.9 ? rankDensity(opts.rank ?? 1) : 1;
-    f.rate = area * quality * rank;
+    f.rate = area * quality * rank * (opts.density ?? 1);
     f.ground = spec.glow ? this.decals.glow(spec.glow, x, z, radius, duration, opts.color ?? opts.school, spec.glowEmit) : null;
     if (spec.mark) this.decals.add(spec.mark, x, z, radius * 0.8);
     return new Handle(f, f.gen);

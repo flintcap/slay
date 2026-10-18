@@ -27,7 +27,7 @@ import type { NavGrid } from '../world/Nav';
 import type { FXSystem } from '../fx/Particles';
 import type { DecalSystem } from '../fx/Decals';
 import type { EffectHandle } from '../fx/Effects';
-import { HAZARD_GLOW, monsterFX } from '../fx/MonsterFX';
+import { HAZARD_GLOW, HAZARD_LOOK, monsterFX } from '../fx/MonsterFX';
 import type { Enemy } from './Enemy';
 
 // ---------------------------------------------------------------------------
@@ -942,6 +942,8 @@ interface Hazard {
   pull: number;
   /** Whether the player stood in it last frame (entering bites at once). */
   inside: boolean;
+  /** Its living field look, when the scene's effect system is bound. */
+  field: { stop(): void } | null;
 }
 
 const hazards: Hazard[] = [];
@@ -985,6 +987,7 @@ export function spawnHazard(
       applies: null,
       pull: 0,
       inside: false,
+      field: null,
     };
     hazards.push(h);
   }
@@ -1004,8 +1007,16 @@ export function spawnHazard(
   h.pull = opts.pull ?? 0;
   // Ground laid down under you ticks as before; only walking into it bites at once.
   h.inside = playerInCircle(ctx, x, z, radius);
-  // The zone is a living floor glow (burning ground, bubbling poison, frost,
-  // crawling arcs, a void) that fades itself out when the hazard's time is up.
+  // A spell on the ground is the same living field the hero's are (burning
+  // ground, poison fumes, frost, crawling arcs, a void), with its own glow and
+  // mark, fading out when the hazard's time is up. Traps (physical: rubble,
+  // caltrops, webs, roots) and headless runs keep the plain floor glow.
+  const fx = type !== 'physical' ? monsterFX() : null;
+  h.field = fx ? fx.hazardField(x, z, radius, h.life, { school: type, color: opts.color, look: HAZARD_LOOK[ability] }) : null;
+  if (h.field) {
+    if (opts.decal) ctx.decals.add(opts.decal, x, z, radius);
+    return;
+  }
   ctx.decals.glow(HAZARD_GLOW[type], x, z, radius, h.life, opts.color ?? type, 1.3);
   ctx.decals.add(opts.decal ?? (type === 'fire' ? 'scorch' : 'stain'), x, z, radius);
 }
@@ -1017,6 +1028,7 @@ function tickHazards(dt: number, ctx: CombatContext): void {
     if (h.life <= 0) {
       h.active = false;
       h.owner = null;
+      h.field = null;
       continue;
     }
     h.accum += dt;
@@ -1034,7 +1046,8 @@ function tickHazards(dt: number, ctx: CombatContext): void {
       if (inside) {
         hitPlayer(h.owner!, ctx, h.scale, h.type, h.ability, { applies: h.applies ?? undefined });
       }
-      if (ctx.rng.chance(0.5)) {
+      // A field draws its own particles; the plain glow gets a few sparks.
+      if (!h.field && ctx.rng.chance(0.5)) {
         const a = ctx.rng.next() * TAU;
         const r = Math.sqrt(ctx.rng.next()) * h.radius;
         ctx.fx.burst(FX_FOR_TYPE[h.type], h.x + Math.sin(a) * r, 0.2, h.z + Math.cos(a) * r, {
@@ -1187,6 +1200,8 @@ export function resetAbilityWorld(): void {
   for (const h of hazards) {
     h.active = false;
     h.owner = null;
+    h.field?.stop();
+    h.field = null;
   }
   hazards.length = 0;
   delayed.length = 0;

@@ -487,6 +487,8 @@ export class EffectSystem {
   readonly lights: LightPool;
   readonly solids: SolidPool;
   private readonly fields: FieldPool;
+  /** Monster and boss ground spells, apart so a pack's pools never cut the hero's fields short. */
+  private readonly hazardFields: FieldPool;
   private quality: QualityProfile;
   private rng: Rng;
   private rig: CameraRig | null = null;
@@ -521,6 +523,7 @@ export class EffectSystem {
     this.lights = new LightPool(scene, q >= 0.9 ? 4 : 3);
     this.solids = new SolidPool(scene, 48);
     this.fields = new FieldPool(fx, decals, quality, this.rng);
+    this.hazardFields = new FieldPool(fx, decals, quality, this.rng, 24);
     scene.add(this.cores.mesh, this.beams.mesh, this.columns.mesh, this.shells.mesh, this.ribbons.mesh);
     for (let i = 0; i < 64; i++) this.free.push(new Live());
   }
@@ -1451,6 +1454,17 @@ export class EffectSystem {
   }
 
   /**
+   * A monster's or boss's lingering ground spell (`entities/Abilities.ts`
+   * `spawnHazard`), drawn as the same living field as the hero's.
+   */
+  hazardField(x: number, z: number, radius: number, duration: number, opts: FieldOpts): EffectHandle {
+    // A pack can lay many pools at once (a molten trail, a plague's death
+    // clouds): on Low and Medium they fire half the bursts of a hero's field.
+    opts.density = (opts.density ?? 1) * (this.quality.fxScale >= 0.9 ? 1 : 0.5);
+    return this.hazardFields.start(x, z, radius, duration, opts);
+  }
+
+  /**
    * Power let out from the caster's own body: a buff, a stance, a war cry, a
    * banner. Never drawn as a blow (no slash, no gore): the school's flare at
    * the chest, a ring of its light rising round the body, and for a shout a
@@ -2057,6 +2071,7 @@ export class EffectSystem {
       this.culled++;
     }
     this.fields.update(dt);
+    this.hazardFields.update(dt);
     this.ribbons.update(dt, camera ?? this.camera);
     this.cores.flush(this.clock);
     this.beams.flush(this.clock);
@@ -2085,6 +2100,7 @@ export class EffectSystem {
   clear(): void {
     while (this.live.length) this.release(this.live.pop()!);
     this.fields.clear();
+    this.hazardFields.clear();
     this.cores.clear();
     this.beams.clear();
     this.columns.clear();

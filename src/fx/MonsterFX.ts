@@ -7,6 +7,7 @@
  * Unbound (headless checks, tools), callers fall back to their plain looks.
  */
 import type { EffectSystem } from './Effects';
+import type { FieldLook } from './SkillLooks';
 
 let bound: EffectSystem | null = null;
 
@@ -19,6 +20,15 @@ export function bindMonsterFX(effects: EffectSystem | null): void {
 export function monsterFX(): EffectSystem | null {
   return bound;
 }
+
+/**
+ * Hazards with a field look of their own; any other draws as its damage type
+ * (fire burns, poison fumes, cold frosts, lightning crawls, arcane is a void).
+ */
+export const HAZARD_LOOK: Readonly<Record<string, FieldLook>> = {
+  blizzard: 'blizzard',
+  ink_cloud: 'smoke',
+};
 
 /** Floor glow kind for a hazard of each damage type. */
 export const HAZARD_GLOW = {
