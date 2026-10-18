@@ -480,16 +480,9 @@ const FEATURES: Record<Feature, (P: Parts, F: Frame) => void> = {
   skulls(P, F) {
     skull(P, 'bone', F.face.p.clone().addScaledVector(F.face.n, F.face.s * 0.3), Math.max(0.03, F.face.s * 1.3), F.face.n);
   },
-  smoke(P, F) {
-    for (let i = 0; i < 3; i++) {
-      const pts: V3[] = [];
-      for (let k = 0; k <= 10; k++) {
-        const t = k / 10;
-        const a = t * Math.PI * 2.5 + i * 2.1;
-        pts.push(F.head.p.clone().addScaledVector(F.dir, t * F.head.r * 3).addScaledVector(F.side, Math.cos(a) * F.head.r * (0.8 + t)).add(v3(0, 0, Math.sin(a) * F.head.r * (0.8 + t))));
-      }
-      P.add('ghost', tube(pts, (t) => F.head.r * 0.12 * (1 - t * 0.7), 5));
-    }
+  smoke() {
+    // Nothing built: the three glowing coils it threw read as a white spiral
+    // rising off the item (and off the worn piece), and the owner cut them.
   },
   spikes(P, F) {
     for (const h of pick(F.points, 8, F.seed + 2)) {
