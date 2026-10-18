@@ -12,6 +12,15 @@
  * multiplies weapon and spell damage (and flat elemental adds) by `DAMAGE_PER`
  * and maximum life by `LIFE_PER`.
  *
+ * Life regeneration is a flat amount per second, so it grows with level too,
+ * or it would shrink to nothing beside the bar it fills: by the square root of
+ * the life multiplier. Growing it as fast as life kept its level-7 share of
+ * the bar, a few percent a second, and the curve check found every class
+ * untouched from depth 18 on. Flat potion healing grows as fast as life
+ * (`potionLife` in `sim/Potions.ts`): a flask is spent, regeneration is not.
+ * Damage reduction is a percent (`drFraction` in `sim/Combat.ts`) and needs
+ * nothing.
+ *
  * Tuned with `node tools/check-curve.mjs`, which fights every class at several
  * depths. Applied at the end of `computeStats`, so every sheet shows it.
  *
@@ -50,5 +59,8 @@ export function applyHeroPower(level: number, s: Stats): void {
     s.poisonDamage *= p.damage;
     s.arcaneDamage *= p.damage;
   }
-  if (p.life !== 1) s.life *= p.life;
+  if (p.life !== 1) {
+    s.life *= p.life;
+    s.lifeRegen *= Math.sqrt(p.life);
+  }
 }

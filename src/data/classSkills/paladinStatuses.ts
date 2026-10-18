@@ -104,7 +104,7 @@ export const PALADIN_STATUSES: StatusDef[] = [
     tags: ['buff'],
   }),
   st('barred', 'Barred', 1, {
-    desc: 'Shield set against the door. +20% block chance and +10 damage reduction.',
+    desc: 'Shield set against the door. +20% block chance and +10% damage reduction.',
     mods: mods({ blockChance: 20, damageReduction: 10 }),
     baseDuration: 5,
     color: 0xb89a6a,

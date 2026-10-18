@@ -39,7 +39,8 @@ import { chaseHeld, rollDrops, rollItem, rollPotion, rollSignature, setLootHero,
 import { skillRank } from '../sim/Character';
 import { buildDropModel, clearDropModels } from '../art/ItemModels';
 import { emissiveMaterial } from '../art/Materials';
-import { grantXp } from '../sim/Character';
+import { grantXp, settleLevels } from '../sim/Character';
+import { PAYOUT, bossIlvl, findRates, payoutGold, payoutIlvl, sourceFind, type Find, type PayoutDef } from '../sim/Payout';
 import { addItemToInventory } from '../sim/Inventory';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
 import { SkillRunner, weaponStyle, casterOffHand, MINION_MONSTER } from './SkillRunner';
@@ -498,6 +499,7 @@ export class DungeonScene extends GameScene {
     // Must be set before anything generates: world gen and monster stats both
     // read the active tier.
     setActiveDifficulty(character.difficulty as never);
+    settleLevels(character);
 
     // What you sold in camp stops being buyable back the moment you leave it.
     clearBuyBack();
@@ -547,7 +549,7 @@ export class DungeonScene extends GameScene {
         const t = this.mesh.worldToTile(x, z);
         return isWalkable(this.level, t.x, t.y);
       },
-      dropBonus: (at, ilvl, rank) => this.dropItem(rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind, source: rank }), at),
+      dropBonus: (at, ilvl, rank) => this.dropItem(rollItem(ilvl, this.rng, { magicFind: this.findRates().magicFind, source: rank }), at),
     });
     this.director?.dispose();
     // Pacts join the run's modifiers; each one makes the descent's Renown richer.
@@ -585,7 +587,7 @@ export class DungeonScene extends GameScene {
       addMaterials: (m) => {
         for (const [id, n] of Object.entries(m)) save.addMaterial(id, n);
       },
-      magicFind: () => this.player.stats.magicFind,
+      find: () => this.findRates(),
       renown: (amount, event) => this.director?.award(amount, event),
     });
     this.runMods?.dispose();
@@ -1877,7 +1879,7 @@ export class DungeonScene extends GameScene {
     // kills — the HUD believed the second, wrong event.
 
     const find = this.findRates();
-    const drops = rollDrops(ilvl, rank, this.rng, find.magicFind, find.goldFind);
+    const drops = rollDrops(ilvl, rank, this.rng, find);
     for (const item of drops.items) this.dropItem(item, pos);
     // Harder tiers guarantee extra items from anything above a normal monster:
     // real gear rolls, not a whole drop table cut down to whatever came first.
@@ -1891,35 +1893,18 @@ export class DungeonScene extends GameScene {
     if (mapBoss && this.run.bossMood) {
       for (let i = 0; i < 2; i++) this.dropItem(rollItem(ilvl, this.rng, { magicFind: find.magicFind + 100, source: rank }), pos);
     }
-    if (drops.gold > 0) {
-      this.dropGold(Math.round(drops.gold * find.goldMul), pos);
-    }
+    if (drops.gold > 0) this.dropGold(drops.gold, pos);
     for (const [id, n] of Object.entries(drops.materials)) save.addMaterial(id, n);
   }
 
-  /**
-   * The hero's find on this difficulty tier, the same for every roll. Magic
-   * find is scaled by the tier and then shifted by it, so an easy tier finds
-   * worse than Reaver even with no magic find (the shift can go below zero;
-   * `Loot.tierChance` reads that as rarer). Gold find goes in as the hero has
-   * it, and the tier scales the pile once, after.
-   */
-  private findRates(): { magicFind: number; goldFind: number; goldMul: number } {
-    const dif = activeDifficulty();
-    return {
-      magicFind: this.player.stats.magicFind * dif.magicFind + (dif.magicFind - 1) * 100,
-      goldFind: this.player.stats.goldFind,
-      goldMul: dif.goldFind,
-    };
+  /** The hero's find on this difficulty tier, the same for every roll (`sim/Payout.ts`). */
+  private findRates(): Find {
+    return findRates(this.player.stats);
   }
 
-  /**
-   * The map boss's item level. Ranked monsters roll `depth * 1.15 + 2`
-   * (Enemy.ts), which passes a flat `depth + 8` past depth 40; the boss stays
-   * two levels clear of them.
-   */
+  /** The map boss's item level (`sim/Payout.ts`). */
   private bossIlvl(): number {
-    return Math.max(this.run.depth + 8, Math.round(this.run.depth * 1.15) + 4);
+    return bossIlvl(this.run.depth);
   }
 
   /**
@@ -2058,10 +2043,12 @@ export class DungeonScene extends GameScene {
   /** Shelves pay small and quiet: coins, and occasionally something written. */
   private search(it: Interactable): void {
     const at = this.tmpDir.set(it.x, 0, it.z).clone();
-    const ilvl = Math.max(1, this.run.depth + this.levelIndex);
-    this.dropGold(Math.round(this.rng.range(6, 20) * (1 + ilvl * 0.35)), at);
+    const def = PAYOUT.shelf;
+    const ilvl = payoutIlvl(this.run.depth, def.bonus);
+    const find = this.findRates();
+    this.dropGold(payoutGold(ilvl, def.gold, this.rng, find), at);
     if (this.rng.chance(0.12)) {
-      const item = rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind });
+      const item = rollItem(ilvl, this.rng, { magicFind: find.magicFind });
       if (item) this.dropItem(item, at);
     }
     this.fx.burst('dust', it.x, 1.0, it.z, { count: 14, scale: 0.7 });
@@ -2098,15 +2085,14 @@ export class DungeonScene extends GameScene {
    */
   private openChest(it: { x: number; y: number; z: number }, tier: string): void {
     const at = this.tmpDir.set(it.x, 0, it.z).clone();
-    const ilvl = Math.max(1, this.run.depth + this.levelIndex);
-    const rank: MonsterRank = tier === 'vault' ? 'boss' : tier === 'rare' || tier === 'warden' ? 'rare' : 'champion';
-    const goldBonus = tier === 'vault' ? 3.0 : tier === 'warden' ? 2.2 : tier === 'rare' ? 1.6 : 1.1;
-    const find = this.findRates();
-    const drops = rollDrops(ilvl, rank, this.rng, find.magicFind, find.goldFind);
+    const def: PayoutDef = tier === 'vault' ? PAYOUT.chestVault : tier === 'warden' ? PAYOUT.chestWarden : tier === 'rare' ? PAYOUT.chestRare : PAYOUT.chest;
+    const ilvl = payoutIlvl(this.run.depth, def.bonus);
+    const find = sourceFind(this.findRates(), def);
+    const drops = rollDrops(ilvl, def.rank ?? 'champion', this.rng, find, def.gold);
     for (const item of drops.items) this.dropItem(item, at);
     // A warden's chest holds one more, better than most.
-    if (tier === 'warden') this.dropItem(rollItem(ilvl + 2, this.rng, { magicFind: find.magicFind + 150, source: 'rare' }), at);
-    if (drops.gold > 0) this.dropGold(Math.round(drops.gold * goldBonus * find.goldMul), at);
+    if (tier === 'warden') this.dropItem(rollItem(ilvl + 2, this.rng, { magicFind: find.magicFind, source: 'rare' }), at);
+    if (drops.gold > 0) this.dropGold(drops.gold, at);
     for (const [id, n] of Object.entries(drops.materials)) save.addMaterial(id, n);
     this.effects.explosion(it.x, 0.7, it.z, { radius: 1.2, element: 'physical', color: 0xffd66b });
     audio.play('chest', { x: it.x, z: it.z });
@@ -2122,15 +2108,17 @@ export class DungeonScene extends GameScene {
    */
   private smash(it: { x: number; y: number; z: number; propKind: string }): void {
     const at = this.tmpDir.set(it.x, 0, it.z).clone();
-    const ilvl = Math.max(1, this.run.depth + this.levelIndex);
+    const def = PAYOUT.smash;
+    const ilvl = payoutIlvl(this.run.depth, def.bonus);
+    const find = this.findRates();
 
-    this.dropGold(Math.round(this.rng.range(4, 14) * (1 + ilvl * 0.35)), at);
+    this.dropGold(payoutGold(ilvl, def.gold, this.rng, find), at);
     if (this.rng.chance(0.22)) {
       const potion = rollPotion(ilvl, 'normal', this.rng);
       if (potion) this.dropItem(potion, at);
     }
     if (this.rng.chance(0.06)) {
-      const item = rollItem(ilvl, this.rng, { magicFind: this.player.stats.magicFind });
+      const item = rollItem(ilvl, this.rng, { magicFind: find.magicFind });
       if (item) this.dropItem(item, at);
     }
 

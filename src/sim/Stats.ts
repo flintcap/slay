@@ -207,14 +207,23 @@ export function diffStats(a: Stats, b: Stats): Partial<Stats> {
 /**
  * XP to advance FROM `level` to `level + 1`.
  *
- * `50 * L^2 * 1.06^L` — quadratic early so the first ten levels fall in a
- * couple of dungeon floors, exponential late so 90-99 is a real commitment
- * (roughly two thirds of the total curve lives above level 80, D2-style).
+ * The smaller of two curves. `50 * L^2 * 1.06^L` runs the early game, so the
+ * first ten levels fall in a couple of dungeon floors. From about level 29
+ * `800 * (L + 5)^1.6` takes over: it grows at the pace kill XP grows with
+ * depth, so the hero keeps step with the monsters instead of stalling.
+ *
+ * The target, held by `tools/check-levels.mjs`: a hero who clears every depth
+ * once stands within a few levels of the depth number at every depth (a few
+ * under the monsters, who are `depth * 1.05`), and reaches level 99 near
+ * depth 100. Under the old curve alone that hero was level 46 against
+ * level-63 monsters at depth 60, and the gap kept growing.
  */
 export function xpForLevel(level: number): number {
   if (level < 1) return 0;
   if (level >= MAX_LEVEL) return Infinity;
-  return Math.floor(50 * level * level * Math.pow(1.06, level));
+  const early = Math.floor(50 * level * level * Math.pow(1.06, level));
+  const late = Math.round(800 * Math.pow(level + 5, 1.6));
+  return Math.min(early, late);
 }
 
 const CUMULATIVE: number[] = (() => {
@@ -398,7 +407,7 @@ export function skillPassiveStats(
   const out = emptyStats();
   const e = passiveEffects({ skills } as never);
   // The Last Order: every oath's numbers get bigger, and each one you hold adds
-  // flat damage reduction. It is the Warden's capstone and it is the only thing
+  // damage reduction. It is the Warden's capstone and it is the only thing
   // in the game that scales another skill's stat grant, so it is resolved here
   // rather than in the passive engine — this is where those grants are summed.
   const oathScale = 1 + e.allOathsPct / 100;

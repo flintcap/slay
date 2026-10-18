@@ -16,6 +16,7 @@ import { save } from '../core/Save';
 import { RENOWN, claimMilestones, grantRenown, legacyOf, recordCodex, renownRank, type RenownGain } from '../sim/Legacy';
 import { Random, hashString } from '../core/RNG';
 import { rollItem } from '../sim/Loot';
+import { PAYOUT, payoutIlvl } from '../sim/Payout';
 import { addItemToInventory } from '../sim/Inventory';
 import { bountyKindsForKill, bountyProgress, bountyText } from '../sim/TownServices';
 import type { BountyKind } from '../types';
@@ -84,7 +85,7 @@ export class RunDirector {
       if (c) c.gold += m.gold;
       const names: string[] = [];
       for (const rarity of m.items) {
-        const item = rollItem(m.depth + 6, rng, { forceRarity: rarity, classId: c?.classId });
+        const item = rollItem(payoutIlvl(m.depth, PAYOUT.cache.bonus), rng, { forceRarity: rarity, classId: c?.classId });
         const kept = (c && addItemToInventory(c, item)) || save.stashItem(item);
         if (kept) names.push(item.name);
       }

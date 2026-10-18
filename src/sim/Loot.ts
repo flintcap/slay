@@ -76,6 +76,7 @@ import type { GemBonus } from '../data/gems';
 import { rollPowerAffix, powerWord, powerLines, powerValue } from './ItemPowers';
 import { legacyPriceMultiplier } from './Legacy';
 import { MATERIALS, materialDropPool, materialName } from '../data/materials';
+import { NO_FIND, payoutGold, type Find } from './Payout';
 
 // ---------------------------------------------------------------------------
 // Contract exports
@@ -1195,17 +1196,22 @@ const RANK_PROFILE: Record<MonsterRank, RankProfile> = {
   boss: { items: 4, bonusChance: 0.9, goldMul: 22, socketableChance: 0.85, materialRolls: 4 },
 };
 
-/** Everything a killed monster drops. */
+/**
+ * Everything a killed monster drops, and what a source that pays like one
+ * (a chest, a cursed chest) holds. `find` is the hero's (`Payout.findRates`);
+ * `goldWeight` sizes the gold over the rank's own. The gold is final: gold
+ * find and the tier are already in it.
+ */
 export function rollDrops(
   ilvl: number,
   rank: MonsterRank,
   rng: Rng,
-  magicFind: number,
-  goldFind: number,
+  find: Find = NO_FIND,
+  goldWeight = 1,
 ): { items: Item[]; gold: number; materials: Record<string, number> } {
   const lvl = Math.max(1, Math.round(ilvl));
   const profile = RANK_PROFILE[rank] ?? RANK_PROFILE.normal;
-  const mf = Math.max(MIN_MAGIC_FIND, magicFind);
+  const mf = Math.max(MIN_MAGIC_FIND, find.magicFind);
 
   const items: Item[] = [];
   let count = profile.items;
@@ -1230,10 +1236,8 @@ export function rollDrops(
 
   if (rng.chance(CHARM_DROP_CHANCE[rank] ?? 0)) items.push(rollCharm(lvl, rng, mf));
 
-  // Gold. Scales with depth and rank, then gold find, then a wide variance so
-  // the numbers on screen never look metronomic.
-  const goldBase = (10 + lvl * 3.4 + lvl * lvl * 0.045) * profile.goldMul;
-  const gold = Math.max(1, Math.round(goldBase * rng.range(0.65, 1.45) * (1 + Math.max(0, goldFind) / 100)));
+  // Gold: the one curve every source pays on, sized by rank.
+  const gold = payoutGold(lvl, profile.goldMul * goldWeight, rng, find);
 
   const materials: Record<string, number> = {};
   const pool = materialDropPool(lvl, rank);

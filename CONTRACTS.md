@@ -648,6 +648,7 @@ export const MAX_LEVEL: number;
 ```ts
 export function createCharacter(name: string, classId: CharClassId, rng: Rng): Character;
 export function grantXp(c: Character, amount: number): boolean; // true if levelled
+export function settleLevels(c: Character, announce?: boolean): boolean; // banked XP into levels; scenes call it on entry
 export function allocateStat(c: Character, stat: 'strength'|'dexterity'|'vitality'|'energy'): boolean;
 export function allocateSkill(c: Character, skillId: string): boolean;
 export function canAllocateSkill(c: Character, skillId: string): { ok: boolean; reason?: string };
@@ -665,8 +666,9 @@ export function skillRank(c: Character, skillId: string): number;
  * `enemy:damaged` passes them on).
  */
 export function rollDamage(stats: Stats, rng: Rng, opts?: { scale?: number; type?: DamageType; ability?: string; source?: string }): DamagePacket;
-/** Applies resistances, armour and block. Returns damage actually taken. */
+/** Applies block, resistances, armour and damage reduction (a percent, to DR_CAP). Returns damage actually taken. */
 export function mitigate(packet: DamagePacket, defender: Stats, rng: Rng): { amount: number; blocked: boolean; type: DamageType };
+export function drFraction(defender: Stats): number; // 0 to DR_CAP / 100
 export function hitChance(attackRating: number, defenderDefense: number, attackerLevel: number, defenderLevel: number): number;
 ```
 
@@ -694,8 +696,8 @@ and on monsters. A ward with stat changes keeps its stats after the ward breaks.
 ```ts
 /** The core drop roll. `magicFind` is a percentage. */
 export function rollItem(ilvl: number, rng: Rng, opts?: { magicFind?: number; forceRarity?: ItemRarity; category?: ItemCategory; classId?: CharClassId }): Item;
-/** Everything a killed monster drops. */
-export function rollDrops(ilvl: number, rank: MonsterRank, rng: Rng, magicFind: number, goldFind: number): { items: Item[]; gold: number; materials: Record<string, number> };
+/** Everything a killed monster drops (and a chest of that rank). Gold is final: find and tier are in it. */
+export function rollDrops(ilvl: number, rank: MonsterRank, rng: Rng, find?: Find, goldWeight?: number): { items: Item[]; gold: number; materials: Record<string, number> };
 export function itemDisplayName(item: Item): string;
 /** Sorted, coloured lines for the tooltip. */
 export function itemTooltipLines(item: Item, compareTo?: Item): Array<{ text: string; color: string; bold?: boolean }>;
@@ -704,6 +706,23 @@ export function vendorPrice(item: Item, buying: boolean): number;
 export function getBase(baseId: string): ItemBase;
 export const ITEM_BASES: ItemBase[];
 export const AFFIXES: AffixDef[];
+```
+
+## `src/sim/Payout.ts` — owned by ITEMS
+
+Every source that pays in a run (kills, chests, shelves, breakables, run
+events, milestone caches) takes its item level, find and gold from here.
+
+```ts
+export interface Find { magicFind: number; goldFind: number; goldMul: number }
+export const NO_FIND: Find;
+export function findRates(hero: { magicFind: number; goldFind: number }): Find; // tier shift and gold, once
+export function sourceFind(find: Find, def: PayoutDef): Find;                    // plus a source's own find
+export function payoutIlvl(depth: number, bonus?: number): number;               // itemLevelForDepth + bonus
+export function bossIlvl(depth: number): number;
+export function goldCurve(ilvl: number): number;                                 // a normal kill's average
+export function payoutGold(ilvl: number, weight: number, rng: Rng, find?: Find): number;
+export const PAYOUT: Record<PayoutSource, PayoutDef>;                            // bonus, gold weight, rank?, magicFind?, goldFind?
 ```
 
 ## `src/sim/Crafting.ts` — owned by ITEMS

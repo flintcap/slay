@@ -43,6 +43,7 @@ import { onBossKilled, onInteract, onKill, onSurviveTick, questState } from '../
 import { Player } from '../src/entities/Player';
 import type { Enemy } from '../src/entities/Enemy';
 import { RunEvents, type EventHost } from '../src/scenes/RunEvents';
+import { NO_FIND } from '../src/sim/Payout';
 import { setChoiceHandler } from '../src/ui/ChoiceSeam';
 import { TOKENS_FROM_ALTAR, TOKENS_FROM_CHEST, questTokens, tokensFromKill } from '../src/scenes/QuestTokens';
 import type { Interactable } from '../src/world/DungeonBuilder';
@@ -366,7 +367,7 @@ const host: EventHost = {
   addMaterials: (m) => {
     for (const v of Object.values(m)) ledger.materials += v;
   },
-  magicFind: () => 0,
+  find: () => NO_FIND,
   renown: (n) => (ledger.renown += n),
 };
 const live = new RunEvents(host);

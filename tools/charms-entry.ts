@@ -64,7 +64,7 @@ let kills = 0;
 for (let i = 0; i < 4000; i++) {
   for (const rank of ['normal', 'normal', 'normal', 'champion', 'elite'] as const) {
     kills++;
-    const d = rollDrops(20 + (i % 60), rank, rng, 0, 0);
+    const d = rollDrops(20 + (i % 60), rank, rng);
     dropped += d.items.filter((x) => getBase(x.baseId).category === 'charm').length;
   }
 }

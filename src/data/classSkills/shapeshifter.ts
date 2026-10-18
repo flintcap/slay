@@ -522,7 +522,7 @@ const CLAW = build('claw', [
   {
     id: 'bearForm',
     name: 'Great Bear',
-    desc: 'Become the bear: +30% life (+2% per rank), +40% defense (+6% per rank) and +6 damage reduction (+0.4 per rank), but 8% slower. Claw skills are fought in this form. Use it again to stand up as a man.',
+    desc: 'Become the bear: +30% life (+2% per rank), +40% defense (+6% per rank) and +6% damage reduction (+0.4% per rank), but 8% slower. Claw skills are fought in this form. Use it again to stand up as a man.',
     tier: 1,
     col: 0,
     icon: 'ss-bearform',
@@ -609,7 +609,7 @@ const CLAW = build('claw', [
   {
     id: 'bristle',
     name: 'Bristle',
-    desc: 'Your fur stands up in spines for 8s: +10 damage reduction (+0.5 per rank), and 30% of every melee hit you take (+2% per rank) goes back into the attacker.',
+    desc: 'Your fur stands up in spines for 8s: +10% damage reduction (+0.5% per rank), and 30% of every melee hit you take (+2% per rank) goes back into the attacker.',
     tier: 3,
     col: 1,
     icon: 'ss-bristle',
@@ -623,7 +623,7 @@ const CLAW = build('claw', [
   {
     id: 'immovableBulk',
     name: 'Immovable Bulk',
-    desc: '+1 life regeneration per rank. In bear form, also +1 damage reduction per rank (up to +20).',
+    desc: '+1 life regeneration per rank. In bear form, also +1% damage reduction per rank (up to +20%).',
     tier: 3,
     col: 2,
     icon: 'ss-bulk',

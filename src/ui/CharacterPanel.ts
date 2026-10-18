@@ -76,7 +76,7 @@ const STAT_HOW: Partial<Record<StatKey, string>> = {
   manaSteal: 'Fraction of physical damage dealt returned as mana.',
   defense: 'Reduces the chance an attack lands at all. Compared against attacker level and attack rating.',
   blockChance: 'Chance a shield stops an incoming attack outright. Requires a shield equipped.',
-  damageReduction: 'Flat percentage taken off every incoming hit, after resistances.',
+  damageReduction: 'Percent taken off every incoming hit, after resistances and defense. Most it can reach: 50%.',
   enhancedDamage: 'Multiplies weapon damage. Additive within the pool, so two +40% rolls give +80%.',
   enhancedDefense: 'Multiplies armour values from gear.',
   elementalDamagePct: 'Multiplies all non-physical damage you deal.',

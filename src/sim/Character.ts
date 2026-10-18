@@ -363,6 +363,35 @@ export function inventoryFreeSlots(c: Character): number {
 // Experience and levelling
 // ---------------------------------------------------------------------------
 
+/**
+ * Turns banked XP into every level it pays for, with their points. True if
+ * any level was gained. `grantXp` calls it with `announce`; the scenes call it
+ * quietly on entry, so a hero saved under a steeper level curve gets the
+ * levels it has already earned. Run it after `setActiveDifficulty`: harder
+ * tiers pay more attribute points per level.
+ */
+export function settleLevels(c: Character, announce = false): boolean {
+  let levelled = false;
+  while (c.level < MAX_LEVEL) {
+    const need = xpForLevel(c.level);
+    if (!isFinite(need) || c.xp < need) break;
+    c.xp -= need;
+    c.level++;
+    levelled = true;
+    c.statPoints += statPointsForLevel(c.level);
+    c.skillPoints += skillPointsForLevel(c.level);
+    if (announce) {
+      events.emit('player:levelUp', {
+        level: c.level,
+        statPoints: c.statPoints,
+        skillPoints: c.skillPoints,
+      });
+    }
+  }
+  if (c.level >= MAX_LEVEL) c.xp = 0;
+  return levelled;
+}
+
 /** Grants XP, resolving as many level-ups as it earns. True if any happened. */
 export function grantXp(c: Character, amount: number): boolean {
   if (!isFinite(amount) || amount <= 0) return false;
@@ -372,28 +401,7 @@ export function grantXp(c: Character, amount: number): boolean {
   }
 
   c.xp += Math.floor(amount);
-  let levelled = false;
-
-  while (c.level < MAX_LEVEL) {
-    const need = xpForLevel(c.level);
-    if (!isFinite(need) || c.xp < need) break;
-    c.xp -= need;
-    c.level++;
-    levelled = true;
-
-    const statGain = statPointsForLevel(c.level);
-    const skillGain = skillPointsForLevel(c.level);
-    c.statPoints += statGain;
-    c.skillPoints += skillGain;
-
-    events.emit('player:levelUp', {
-      level: c.level,
-      statPoints: c.statPoints,
-      skillPoints: c.skillPoints,
-    });
-  }
-
-  if (c.level >= MAX_LEVEL) c.xp = 0;
+  const levelled = settleLevels(c, true);
 
   events.emit('player:xp', {
     gained: Math.floor(amount),

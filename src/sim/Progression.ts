@@ -1,15 +1,13 @@
 /**
  * SLAY — progression rules.
  *
- * Level-up rewards, respec policy, and the relationship between dungeon depth
- * and experience. The important rule in this file is the penalty band: XP from
- * a kill is scaled by how far the monster's level sits from yours, so farming
- * depth 1 at level 90 pays essentially nothing and diving twenty depths below
- * your level pays a modest premium for the risk.
+ * Level-up rewards, respec policy, and the one rule for kill XP: `killXp`,
+ * which grows with depth and rank and nothing else. The level curve it feeds
+ * is `xpForLevel` in `sim/Stats.ts`.
  */
 
-import { MAX_LEVEL, totalXpForLevel, xpForLevel } from './Stats';
-import { monsterLevelForDepth, xpMultiplier } from './Difficulty';
+import { totalXpForLevel } from './Stats';
+import { monsterLevelForDepth } from './Difficulty';
 import type { MonsterRank } from '../types';
 import { legacyXpMultiplier } from './Legacy';
 
@@ -93,89 +91,6 @@ export function levelUpRewards(level: number): LevelUpReward {
 // ---------------------------------------------------------------------------
 // Experience from kills
 // ---------------------------------------------------------------------------
-
-/** XP a single normal monster of `monsterLevel` is worth before modifiers. */
-export function baseXpForMonsterLevel(monsterLevel: number): number {
-  const m = Math.max(1, monsterLevel);
-  // Derived directly from the level curve: roughly 40 same-level normal kills
-  // per level, at every level.
-  return 1.25 * m * m * Math.pow(1.06, m);
-}
-
-export const RANK_XP_MULTIPLIER: Record<MonsterRank, number> = {
-  normal: 1,
-  champion: 3,
-  elite: 5,
-  rare: 8,
-  boss: 30,
-};
-
-/**
- * The penalty band.
- *
- * Within five levels either way, full value. Above that, XP decays
- * exponentially — at twenty levels over the monster you keep 12%, at forty you
- * keep under 1%. Below the monster's level you gain a premium capped at +35%,
- * enough to reward a dangerous dive without making under-levelling optimal.
- */
-export function xpPenalty(playerLevel: number, monsterLevel: number): number {
-  const diff = playerLevel - monsterLevel;
-  if (diff > 5) return Math.max(0.004, Math.exp(-(diff - 5) / 7));
-  if (diff < -5) return 1 + Math.min(0.35, (-diff - 5) * 0.03);
-  return 1;
-}
-
-export interface XpGrantOpts {
-  rank?: MonsterRank;
-  /** Per-monster `xpMul` from its definition. */
-  xpMul?: number;
-  /** Party or run-modifier bonus, as a multiplier. */
-  bonus?: number;
-}
-
-/**
- * XP awarded for killing a monster found at `depth`.
- * `monsterLevel` defaults to the depth curve, but elites and bosses may be
- * higher than the floor's baseline.
- */
-export function xpForKill(
-  depth: number,
-  playerLevel: number,
-  opts: XpGrantOpts & { monsterLevel?: number } = {},
-): number {
-  const mlvl = opts.monsterLevel ?? monsterLevelForDepth(depth);
-  const base = baseXpForMonsterLevel(mlvl);
-  const rank = RANK_XP_MULTIPLIER[opts.rank ?? 'normal'] ?? 1;
-  const penalty = xpPenalty(playerLevel, mlvl);
-  const depthBonus = xpMultiplier(depth);
-  const total = base * rank * (opts.xpMul ?? 1) * penalty * depthBonus * (opts.bonus ?? 1);
-  return Math.max(1, Math.floor(total));
-}
-
-/** XP for completing a quest at a depth, as a fraction of a level. */
-export function xpForQuest(depth: number, playerLevel: number, rewardXp = 1): number {
-  const level = Math.max(1, Math.min(MAX_LEVEL - 1, playerLevel));
-  const perLevel = xpForLevel(level);
-  if (!isFinite(perLevel)) return 0;
-  const mlvl = monsterLevelForDepth(depth);
-  return Math.floor(perLevel * 0.18 * rewardXp * xpPenalty(playerLevel, mlvl));
-}
-
-// ---------------------------------------------------------------------------
-// Depth guidance
-// ---------------------------------------------------------------------------
-
-/** The depth whose monsters sit at the player's level — the "fair fight" line. */
-export function recommendedDepthForLevel(level: number): number {
-  let d = 1;
-  while (d < 400 && monsterLevelForDepth(d + 1) <= level) d++;
-  return d;
-}
-
-/** The level a player should be to fight at a depth without an XP penalty. */
-export function recommendedLevelForDepth(depth: number): number {
-  return monsterLevelForDepth(depth);
-}
 
 /** How much more XP each rank pays than a normal monster. */
 const KILL_XP_RANK: Record<MonsterRank, number> = { normal: 1, champion: 1.9, elite: 3.2, rare: 5, boss: 22 };

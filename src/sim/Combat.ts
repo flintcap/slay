@@ -6,7 +6,7 @@
  *   rollDamage   turns a stat sheet into a `DamagePacket` (range roll, enhanced
  *                damage, flat elemental adds, critical strike).
  *   mitigate     turns a packet plus a defender's sheet into damage actually
- *                taken (block, resistance, armour, flat reduction).
+ *                taken (block, resistance, armour, damage reduction).
  *   hitChance    whether a weapon blow lands: attack rating against guard.
  *
  * Two deliberate design decisions live here:
@@ -51,6 +51,19 @@ const ARMOR_K1 = 9;
  */
 export const BLOCK_LEAK = 0;
 export const BLOCK_CAP = 75;
+
+/**
+ * Damage reduction is a percent off every hit after resistances and armour,
+ * as every item line and the character sheet say. It used to come off as a
+ * flat number, so "12% Damage Reduction" meant 12 points: most of a hit at
+ * depth 3 and nothing at depth 40. A percent keeps its worth at every depth.
+ */
+export const DR_CAP = 50;
+
+/** The share of a hit damage reduction takes off, 0 to `DR_CAP` percent. */
+export function drFraction(defender: Stats): number {
+  return Math.max(0, Math.min(DR_CAP, defender.damageReduction)) / 100;
+}
 
 /**
  * Weapon blows land at least this often, however poor the aim. There is no
@@ -269,7 +282,7 @@ export interface MitigateResult {
 }
 
 /**
- * Applies block, resistance, armour and flat reduction, in that order.
+ * Applies block, resistance, armour and damage reduction, in that order.
  * Block is rolled first because it is an avoidance mechanic, not a reduction:
  * a blocked hit leaks only `BLOCK_LEAK` before anything else touches it.
  */
@@ -288,7 +301,7 @@ export function mitigate(packet: DamagePacket, defender: Stats, rng: Rng, cap = 
     amount *= 1 - armorReduction(defender.defense, amount);
   }
 
-  amount -= Math.max(0, defender.damageReduction);
+  amount *= 1 - drFraction(defender);
 
   return { amount: Math.max(blocked ? 0 : 1, Math.round(amount)), blocked, type };
 }
@@ -302,7 +315,7 @@ export function expectedMitigated(amount: number, type: DamageType, defender: St
   const afterBlock = amount * (blockChance * BLOCK_LEAK + (1 - blockChance));
   let out = afterBlock * (1 - resistAgainst(defender, type) / 100);
   if (type === 'physical') out *= 1 - armorReduction(defender.defense, out);
-  return Math.max(0, out - defender.damageReduction);
+  return Math.max(0, out * (1 - drFraction(defender)));
 }
 
 /** Effective health pool against a given hit size and type. */

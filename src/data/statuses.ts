@@ -564,7 +564,7 @@ export const STATUSES: StatusDef[] = [
     tags: ['buff', 'aura'],
   }),
   def('fortitude', 'Fortitude', 1, {
-    desc: '+40% defense and +15 flat damage reduction.',
+    desc: '+40% defense and +15% damage reduction.',
     mods: mods({ enhancedDefense: 40, damageReduction: 15 }),
     baseDuration: 20,
     color: 0x9ac6ff,
@@ -664,7 +664,7 @@ export const STATUSES: StatusDef[] = [
     tags: ['buff', 'drain'],
   }),
   def('stoneform', 'Stoneform', 1, {
-    desc: 'Immovable: +25 damage reduction, +20% physical resistance, -20% movement speed.',
+    desc: 'Immovable: +25% damage reduction, +20% physical resistance, -20% movement speed.',
     mods: mods({ damageReduction: 25, physicalResist: 20, moveSpeed: -20 }),
     baseDuration: 10,
     color: 0xa39786,

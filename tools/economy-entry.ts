@@ -7,7 +7,8 @@
  *
  * One character per class plays an honest career on generated runs with the
  * real bestiary: every descent is the next depth, every monster on every
- * floor dies and drops through the real `rollDrops`, every chest opens. From
+ * floor dies and drops through the real `rollDrops` at the item levels
+ * `sim/Payout.ts` gives the scene, every chest opens. From
  * that it reports, by depth:
  *
  *   - character level reached, against the monster level of that depth
@@ -31,6 +32,7 @@ import { canEquip, getBase, rollDrops, rollItem, vendorPrice } from '../src/sim/
 import { upgradeCost } from '../src/sim/Crafting';
 import { gamblePrice, imbueCost, reforgeCost } from '../src/sim/TownServices';
 import { depthCurve } from '../src/entities/Enemy';
+import { NO_FIND, PAYOUT, bossIlvl, payoutIlvl, type PayoutDef } from '../src/sim/Payout';
 
 bindLegacyAccount(() => save.account);
 const problems: string[] = [];
@@ -65,18 +67,18 @@ for (const cls of CLASSES) {
     const items: Item[] = [];
     const kill = (rank: MonsterRank) => {
       grantXp(c, Math.round((8 + depth * 6) * RANK_XP[rank]));
-      const ilvl = Math.max(1, Math.round(depth * 1.15 + (rank === 'normal' ? 0 : 2)));
-      const d = rollDrops(ilvl, rank, rng, 0, 0);
+      const ilvl = rank === 'boss' ? bossIlvl(depth) : payoutIlvl(depth, rank === 'normal' ? 0 : 2);
+      const d = rollDrops(ilvl, rank, rng);
       gold += d.gold;
       items.push(...d.items);
     };
-    run.levels.forEach((level, li) => {
+    run.levels.forEach((level) => {
       for (const s of level.spawns) kill(s.rank);
-      const ilvl = Math.max(1, depth + li);
       for (const p of level.props) {
         if (!isPlainChest(p)) continue;
-        const d = rollDrops(ilvl, p.interact === 'chest.rare' ? 'rare' : 'champion', rng, 0, 0);
-        gold += Math.round(d.gold * (p.interact === 'chest.rare' ? 1.6 : 1.1));
+        const def: PayoutDef = p.interact === 'chest.rare' ? PAYOUT.chestRare : PAYOUT.chest;
+        const d = rollDrops(payoutIlvl(depth, def.bonus), def.rank ?? 'champion', rng, NO_FIND, def.gold);
+        gold += d.gold;
         items.push(...d.items);
       }
     });

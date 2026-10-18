@@ -149,7 +149,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'shieldWall',
     name: 'Shield Wall',
-    desc: 'Set your guard. +12% block chance and +8 damage reduction for 8s (+1.5% block, +2 reduction per rank).',
+    desc: 'Set your guard. +12% block chance and +8% damage reduction for 8s (+1.5% block, +2% reduction per rank).',
     tier: 1,
     col: 0,
     icon: 'shield-raise',
@@ -208,7 +208,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'guardStance',
     name: 'Guard Stance',
-    desc: 'Plant and hold. +45% defense and +12 damage reduction (+4% / +1.5 per rank) while active, but -25% movement speed.',
+    desc: 'Plant and hold. +45% defense and +12% damage reduction (+4% / +1.5% per rank) while active, but -25% movement speed.',
     tier: 2,
     col: 2,
     icon: 'guard',
@@ -272,7 +272,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'immovable',
     name: 'Immovable',
-    desc: 'Cannot be knocked back. +2 flat damage reduction per rank and -4% crowd-control duration per rank (to a 70% floor).',
+    desc: 'Cannot be knocked back. +2% damage reduction per rank and -4% crowd-control duration per rank (to a 70% floor).',
     tier: 4,
     col: 1,
     icon: 'boulder',
@@ -295,7 +295,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'fortressStance',
     name: 'Fortress Stance',
-    desc: 'Root yourself for 6s: +120% defense (+8% per rank), +20% block chance (+0.5% per rank), +25 damage reduction (+0.5 per rank), and nothing can stun, hold or knock you back. You cannot move.',
+    desc: 'Root yourself for 6s: +120% defense (+8% per rank), +20% block chance (+0.5% per rank), +25% damage reduction (+0.5% per rank), and nothing can stun, hold or knock you back. You cannot move.',
     tier: 5,
     col: 0,
     icon: 'fortress',
@@ -2219,7 +2219,7 @@ const FROST = build('frost', [
   {
     id: 'iceArmor',
     name: 'Ice Armor',
-    desc: 'Rime armours you for 2 minutes (+3s per rank, up to 3 minutes): +30% defense (+6% per rank), +10% cold resistance (+1.5% per rank) and +3 damage reduction (+0.6 per rank), under a shell that soaks 12% of your life (+2% per rank) before it cracks.',
+    desc: 'Rime armours you for 2 minutes (+3s per rank, up to 3 minutes): +30% defense (+6% per rank), +10% cold resistance (+1.5% per rank) and +3% damage reduction (+0.6% per rank), under a shell that soaks 12% of your life (+2% per rank) before it cracks.',
     tier: 2,
     col: 2,
     icon: 'armor-ice',
@@ -3037,7 +3037,7 @@ const GRAVEPACT = build('gravepact', [
   {
     id: 'revenantForm',
     name: 'Revenant Form',
-    desc: 'For 12s you are already dead: +50% damage (+4% per rank), +30 damage reduction (+1 per rank), and no fear or bleeding can take hold of you.',
+    desc: 'For 12s you are already dead: +50% damage (+4% per rank), +30% damage reduction (+1% per rank), and no fear or bleeding can take hold of you.',
     tier: 4,
     col: 0,
     icon: 'revenant',

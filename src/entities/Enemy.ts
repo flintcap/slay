@@ -27,9 +27,9 @@ import type {
 } from '../types';
 import type { NamedRare } from '../data/namedRares';
 import { events } from '../core/Events';
-import { activeDifficulty } from '../data/difficulties';
 import { emptyStats } from '../sim/Stats';
-import { itemLevelForDepth, monsterLevelForDepth } from '../sim/Difficulty';
+import { depthCurve } from '../sim/Difficulty';
+import { payoutIlvl } from '../sim/Payout';
 import { rollDamage, mitigate, usualAttackRating } from '../sim/Combat';
 import { buildMonsterModel, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from './MonsterModels';
 import { AIBrain, resetPacks } from './AI';
@@ -104,38 +104,8 @@ export { BOSSES } from '../data/bosses';
 // Depth scaling
 // ---------------------------------------------------------------------------
 
-export interface DepthCurve {
-  life: number;
-  damage: number;
-  defense: number;
-  attackRating: number;
-  xp: number;
-  level: number;
-}
-
-/**
- * The monster power curve. Exponential with a linear floor so early depths stay
- * gentle and depth 40+ still climbs without integer overflow silliness.
- */
-export function depthCurve(depth: number): DepthCurve {
-  const d = Math.max(1, depth);
-  const dif = activeDifficulty();
-
-  // The early floors were tuned far too hot: a fresh level 1 character met
-  // depth-1 damage it could not survive once two monsters connected. The base
-  // damage term is lower and ramps in over the first few floors, which leaves
-  // the late curve untouched — by depth 10 the eased term is ~1.
-  const ease = 0.55 + 0.45 * Math.min(1, (d - 1) / 8);
-
-  return {
-    life: (24 * Math.pow(1.155, d - 1) + d * 11) * dif.monsterLife,
-    damage: (3.1 * Math.pow(1.118, d - 1) + d * 1.15) * ease * dif.monsterDamage,
-    defense: (8 * Math.pow(1.095, d - 1) + d * 3) * dif.monsterDefense,
-    attackRating: 30 * Math.pow(1.1, d - 1) + d * 12,
-    xp: 9 * Math.pow(1.105, d - 1) + d * 4,
-    level: monsterLevelForDepth(d),
-  };
-}
+// The curve itself lives with the rest of the depth rules in sim/Difficulty.ts.
+export { depthCurve, type DepthCurve } from '../sim/Difficulty';
 
 /**
  * Affixes that fire early when the hero has just been pinned by something.
@@ -164,12 +134,12 @@ export const TANK_GUARD_CUT = 0.3;
 /** Seconds a pack falters when its leader dies. */
 const LEADER_FALL_SHAKE = 1.2;
 
-const RANK_MODS: Record<MonsterRank, { life: number; damage: number; defense: number; xp: number; scale: number }> = {
-  normal: { life: 1, damage: 1, defense: 1, xp: 1, scale: 1 },
-  champion: { life: 2.6, damage: 1.25, defense: 1.3, xp: 3, scale: 1.1 },
-  elite: { life: 4.5, damage: 1.5, defense: 1.6, xp: 6, scale: 1.18 },
-  rare: { life: 7.0, damage: 1.75, defense: 1.9, xp: 10, scale: 1.24 },
-  boss: { life: 26, damage: 2.4, defense: 2.4, xp: 40, scale: 1 },
+const RANK_MODS: Record<MonsterRank, { life: number; damage: number; defense: number; scale: number }> = {
+  normal: { life: 1, damage: 1, defense: 1, scale: 1 },
+  champion: { life: 2.6, damage: 1.25, defense: 1.3, scale: 1.1 },
+  elite: { life: 4.5, damage: 1.5, defense: 1.6, scale: 1.18 },
+  rare: { life: 7.0, damage: 1.75, defense: 1.9, scale: 1.24 },
+  boss: { life: 26, damage: 2.4, defense: 2.4, scale: 1 },
 };
 
 export const RANK_COLOR: Record<MonsterRank, number> = {
@@ -279,7 +249,6 @@ export class Enemy implements Combatant {
   readonly reach?: number;
   readonly stats: Stats;
   readonly abilityIds: string[];
-  readonly xpValue: number;
 
   life: number;
   maxLife: number;
@@ -402,7 +371,7 @@ export class Enemy implements Combatant {
     const curve = depthCurve(depth);
     const rm = RANK_MODS[rank];
     this.level = curve.level;
-    this.ilvl = itemLevelForDepth(depth) + (rank === 'normal' ? 0 : 2);
+    this.ilvl = payoutIlvl(depth, rank === 'normal' ? 0 : 2);
 
     // --- affix multipliers -------------------------------------------------
     let lifeAffix = 1;
@@ -461,7 +430,6 @@ export class Enemy implements Combatant {
     this.baseSpeed = def.speed * spdAffix;
     this.sizeScale = def.scale * rm.scale;
     this.hitRadius = Math.max(0.35, 0.42 * this.sizeScale);
-    this.xpValue = Math.round(curve.xp * def.xpMul * rm.xp);
     this.abilityIds = def.abilities.slice();
     if (!this.abilityIds.includes('basic_strike') && def.attackRange <= 4.5) {
       this.abilityIds.push('basic_strike');
@@ -488,7 +456,6 @@ export class Enemy implements Combatant {
       this.stats.life = this.maxLife;
       this.stats.minDamage = Math.round(this.stats.minDamage * named.damageMul);
       this.stats.maxDamage = Math.round(this.stats.maxDamage * named.damageMul);
-      this.xpValue = Math.round(this.xpValue * 2.2);
     }
 
     // --- model -------------------------------------------------------------

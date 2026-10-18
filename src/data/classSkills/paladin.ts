@@ -100,7 +100,7 @@ const MACE = build('palMace', [
   {
     id: 'forgedFaith',
     name: 'Forged Faith',
-    desc: 'Prayers hammered into the plate. +14 defense and +1.5 damage reduction per rank.',
+    desc: 'Prayers hammered into the plate. +14 defense and +1.5% damage reduction per rank.',
     tier: 2,
     col: 1,
     icon: 'forged-faith',
@@ -193,7 +193,7 @@ const MACE = build('palMace', [
   {
     id: 'barTheDoor',
     name: 'Bar the Door',
-    desc: 'Set the shield and lean in. For 5s (+0.15s per rank): +20% block chance and +10 damage reduction (+0.5 each per rank). Needs a shield.',
+    desc: 'Set the shield and lean in. For 5s (+0.15s per rank): +20% block chance and +10% damage reduction (+0.5% each per rank). Needs a shield.',
     tier: 4,
     col: 2,
     icon: 'bar-door',
@@ -607,7 +607,7 @@ const AURA = build('palAura', [
   {
     id: 'ironVigil',
     name: 'Iron Vigil',
-    desc: 'A vigil kept kneeling on iron. While it burns: +30% defense (+5% per rank) and +4 damage reduction (+0.6 per rank). Press again to put it out. One vigil at a time.',
+    desc: 'A vigil kept kneeling on iron. While it burns: +30% defense (+5% per rank) and +4% damage reduction (+0.6% per rank). Press again to put it out. One vigil at a time.',
     tier: 1,
     col: 2,
     icon: 'iron-vigil',
@@ -762,7 +762,7 @@ const AURA = build('palAura', [
   {
     id: 'vespers',
     name: 'Vespers',
-    desc: 'The evening office, said under every vigil. While one burns: +2 life per second and +1 damage reduction per rank.',
+    desc: 'The evening office, said under every vigil. While one burns: +2 life per second and +1% damage reduction per rank.',
     tier: 5,
     col: 1,
     icon: 'vespers',

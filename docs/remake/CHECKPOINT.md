@@ -109,10 +109,39 @@ Update this file and push it after every finished step.
   the mage in one depth-30 descent; random, noted). Not seen in a browser:
   the screenshot browser closed while loading town (as in #101).
 
-## In progress
+- #103 (Phase 1) balance groundwork, heroes catch up (owner's pick:
+  monsters stay exactly as they are). One curve: `sim/Difficulty.ts` now
+  holds only the live depth rules (`depthCurve` moved there from Enemy.ts,
+  re-exported); the unused gentler curve, its run modifier list and the two
+  dead XP systems (Progression's penalty band, monster `xpValue`/`bossXp`)
+  are gone. Level curve: `xpForLevel` is the smaller of the old curve and
+  `800 * (L + 5)^1.6`, same to level 28; a hero clearing each depth once is
+  within 3 levels of the depth number from depth 25 on and reaches 99 at
+  depth 102 (was L46 at depth 60, L58 at depth 100). New check-levels holds
+  it. Saved heroes get the levels their XP already pays for on entering
+  town or a map (`settleLevels`). Potions: flat healing grows with hero
+  power like life. Life regen grows by the square root of the life
+  multiplier (full growth made every class untouched from depth 18). Damage
+  reduction is now the percent every item and the sheet promised (cap 50%);
+  it was a flat number off each hit; skill texts that said "+N damage
+  reduction" now say "%". One payout path: `sim/Payout.ts` gives every
+  source (kills, chests, shelves, breakables, run events, milestone caches)
+  the same item level rule, the same find (tier magic find shift, gold find
+  and tier gold everywhere) and one gold curve sized per source; chests and
+  events no longer roll worse gear than the monsters beside them. Item
+  level no longer adds the floor number, so shelves and breakables on the
+  last floors of depths 1 to 11 pay up to a third less gold; every other
+  source pays the same or more at every depth. check-curve default 34/35 (was
+  34/35; mage d40 untouched now, shadowblade d5 passes). `--wide` 60/70:
+  nothing walled at depth 60 (was 3 classes); the misses are all
+  "untouched" (too easy) at d8, d18, d40, d50; warden, shadowblade and
+  paladin d8/d18 were already untouched before. The Deep's Own Name runs
+  out the 300s clock for 3 classes at d60 without hurting them (won 1/3).
+  check-economy passes now. check-events fails the same before and after
+  (quest.purge: no insect kills count on a full clear).
+
 ## In progress
 
-- Phase 1 (combat): #103 balance groundwork (waiting on owner).
 - check-uniques fails: 7 uniques bend skill settings removed in #99
   (Millwheel, Long Drizzle, Overcast, Splinterwand, Bottled Squall,
   Trapper's Last Belt). Needs repointing.

@@ -35,6 +35,7 @@ import { MONSTERS, rollAffixes } from '../data/monsters';
 import type { NamedRare } from '../data/namedRares';
 import { BARGAINS, getBargain, type BargainDef } from '../data/boons';
 import { rollDrops, rollItem } from '../sim/Loot';
+import { PAYOUT, payoutGold, payoutIlvl, sourceFind, type Find } from '../sim/Payout';
 import { offerChoice } from '../ui/ChoiceSeam';
 
 export interface EventHost {
@@ -55,7 +56,8 @@ export interface EventHost {
   dropItem: (item: Item, at: THREE.Vector3) => void;
   dropGold: (amount: number, at: THREE.Vector3) => void;
   addMaterials: (m: Record<string, number>) => void;
-  magicFind: () => number;
+  /** The hero's find on this tier (`sim/Payout.ts`). */
+  find: () => Find;
   /** Renown for finishing an event. `event` names it, which bounties count. */
   renown: (amount: number, event?: string) => void;
 }
@@ -181,9 +183,11 @@ export class RunEvents {
     this.host.consume(it);
     const at = new THREE.Vector3(it.x, 0, it.z);
     const rng = this.host.rng();
-    const ilvl = this.host.depth + 2;
-    this.host.dropGold(Math.round((30 + ilvl * 14) * rng.range(0.8, 1.4)), at);
-    this.host.dropItem(rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 60, source: 'champion' }), at);
+    const def = PAYOUT.fallen;
+    const ilvl = payoutIlvl(this.host.depth, def.bonus);
+    const find = sourceFind(this.host.find(), def);
+    this.host.dropGold(payoutGold(ilvl, def.gold, rng, find), at);
+    this.host.dropItem(rollItem(ilvl, rng, { magicFind: find.magicFind, source: 'champion' }), at);
     this.host.fx.burst('dust', at.x, 0.6, at.z, { count: 18 });
     const trial: Trial = {
       kind: 'ambush',
@@ -288,10 +292,11 @@ export class RunEvents {
       player.mana = player.stats.mana;
     }
     if (b.reward === 'item') {
-      const ilvl = this.host.depth + 3;
+      const def = PAYOUT.blessing;
+      const ilvl = payoutIlvl(this.host.depth, def.bonus);
       const better = rng.chance(0.25);
       const item = better
-        ? rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 400, source: 'rare' })
+        ? rollItem(ilvl, rng, { magicFind: sourceFind(this.host.find(), def).magicFind, source: 'rare' })
         : rollItem(ilvl, rng, { forceRarity: 'rare' });
       this.host.dropItem(item, at);
     }
@@ -385,7 +390,7 @@ export class RunEvents {
     }
     if (r.coinCd <= 0) {
       r.coinCd = 1.1;
-      this.host.dropGold(Math.round(4 + this.host.depth * 2), e.root.position.clone());
+      this.host.dropGold(payoutGold(payoutIlvl(this.host.depth, PAYOUT.runnerCoin.bonus), PAYOUT.runnerCoin.gold, this.host.rng(), this.host.find()), e.root.position.clone());
     }
   }
 
@@ -461,10 +466,11 @@ export class RunEvents {
     const rng = this.host.rng();
     if (t.kind === 'cursedChest' && t.it) {
       this.host.consume(t.it);
-      const ilvl = this.host.depth + 4;
-      const drops = rollDrops(ilvl, 'boss', rng, this.host.magicFind() + 100, 50);
+      const def = PAYOUT.cursedChest;
+      const ilvl = payoutIlvl(this.host.depth, def.bonus);
+      const drops = rollDrops(ilvl, def.rank, rng, sourceFind(this.host.find(), def), def.gold);
       for (const item of drops.items) this.host.dropItem(item, t.at);
-      this.host.dropGold(Math.round(drops.gold * 1.5), t.at);
+      this.host.dropGold(drops.gold, t.at);
       this.host.addMaterials(drops.materials);
       this.host.effects.explosion(t.at.x, 0.7, t.at.z, { radius: 2, element: 'arcane', color: 0xffd66b });
       audio.play('quest.complete');
@@ -494,18 +500,20 @@ export class RunEvents {
     const at = e.root.position.clone();
     if (this.runner?.enemy === e || (e.named?.id === 'event.runner')) {
       this.runner = null;
-      const ilvl = this.host.depth + 3;
+      const def = PAYOUT.runnerSack;
+      const ilvl = payoutIlvl(this.host.depth, def.bonus);
+      const find = sourceFind(this.host.find(), def);
       const n = rng.int(3, 5);
-      for (let i = 0; i < n; i++) this.host.dropItem(rollItem(ilvl, rng, { magicFind: this.host.magicFind() + 150, source: 'elite' }), at);
-      for (let i = 0; i < 6; i++) this.host.dropGold(Math.round((25 + ilvl * 9) * rng.range(0.7, 1.4)), at);
-      const mats = rollDrops(ilvl, 'rare', rng, 0, 0).materials;
+      for (let i = 0; i < n; i++) this.host.dropItem(rollItem(ilvl, rng, { magicFind: find.magicFind, source: 'elite' }), at);
+      for (let i = 0; i < 6; i++) this.host.dropGold(payoutGold(ilvl, def.gold, rng, find), at);
+      const mats = rollDrops(ilvl, 'rare', rng).materials;
       this.host.addMaterials(mats);
       this.host.fx.burst('pickup', at.x, 1.2, at.z, { count: 60, color: 0xffc63a, scale: 1.5 });
       toast(`${e.name} falls. The sack splits open.`, 'epic');
       this.host.renown(20 + this.host.depth * 3, 'treasureRunner');
     }
     if (this.carriers.delete(e.id)) {
-      this.host.dropItem(rollItem(this.host.depth + 3, rng, { forceRarity: 'rare' }), at);
+      this.host.dropItem(rollItem(payoutIlvl(this.host.depth, PAYOUT.carrier.bonus), rng, { forceRarity: 'rare' }), at);
     }
     this.eventSpawned.delete(e.id);
   }

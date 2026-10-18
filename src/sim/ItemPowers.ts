@@ -1115,7 +1115,7 @@ const DEFS: PowerDef[] = [
   {
     id: 'glassJaw',
     name: 'Glass Jaw',
-    desc: (m) => `+${pct(60 * m)} damage. Your defense is halved and your damage reduction falls by 15.`,
+    desc: (m) => `+${pct(60 * m)} damage. Your defense is halved and you lose 15% damage reduction.`,
     stats: (s, _c, m) => {
       s.enhancedDamage += 60 * m;
       s.defense *= 0.5;

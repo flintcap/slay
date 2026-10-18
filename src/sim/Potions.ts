@@ -9,7 +9,8 @@
 
 import type { Character } from '../types';
 import { getBase } from './Loot';
-import { POTION_EFFECTS } from '../data/itemBases';
+import { POTION_EFFECTS, type PotionEffect } from '../data/itemBases';
+import { heroPower } from './HeroPower';
 import { countInInventory, consumeFromInventory } from './Inventory';
 import { events } from '../core/Events';
 
@@ -25,6 +26,15 @@ export function potionKind(baseId: string): PotionKind {
 
 export function isPotion(baseId: string): boolean {
   return getBase(baseId)?.category === 'potion';
+}
+
+/**
+ * Life a potion gives a hero of `level`. Flat amounts grow with hero power, as
+ * maximum life does (`sim/HeroPower.ts`), so a flask is worth the same share
+ * of the bar at level 60 as at level 7 instead of a sip.
+ */
+export function potionLife(effect: PotionEffect, level: number, maxLife: number): number {
+  return (effect.life ?? 0) * heroPower(level).life + (effect.lifePct ?? 0) * maxLife;
 }
 
 /** Every potion of a kind the character is carrying, weakest first. */
@@ -57,7 +67,7 @@ export function pickPotion(
   const rejuv = pool.filter((id) => potionKind(id) === 'rejuv');
   for (const id of plain) {
     const e = POTION_EFFECTS[id];
-    const amount = kind === 'life' ? (e?.life ?? 0) : (e?.mana ?? 0);
+    const amount = kind === 'life' ? (e?.life ?? 0) * heroPower(character.level).life : (e?.mana ?? 0);
     if (amount >= missing) return id;
   }
   // Nothing covers it: take the strongest plain one, then rejuvenation.
@@ -96,7 +106,7 @@ export function drinkPotion(
     return { ...EMPTY, reason: 'You have none left.' };
   }
 
-  const life = (effect.life ?? 0) + (effect.lifePct ?? 0) * maxLife;
+  const life = potionLife(effect, character.level, maxLife);
   const mana = (effect.mana ?? 0) + (effect.manaPct ?? 0) * maxMana;
   events.emit('ui:refresh', {});
   return {

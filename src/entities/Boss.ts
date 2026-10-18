@@ -37,7 +37,7 @@ import { prepareBossPortrait } from '../art/BossPortraits';
 import { FUMBLE_HEAL_MAX, HEAVY_MUL, WARN_MIN } from '../sim/FairFight';
 import { BREAK_TAKEN, BREAK_TIME, POISE_REGEN, POISE_REST, controlPoise, hitPoise, poiseMax } from '../sim/Poise';
 import { BOSS_MOODS, bossNumbers, withMood } from '../data/bosses';
-import { Enemy, depthCurve } from './Enemy';
+import { Enemy } from './Enemy';
 import { isRoomRule, makeRule, type RoomRule } from './RoomRules';
 import {
   after,
@@ -1210,11 +1210,6 @@ export class Boss extends Enemy {
     this.arena = null;
     this.rule = null;
     super.dispose();
-  }
-
-  /** XP reward, scaled by phase count so longer fights pay more. */
-  get bossXp(): number {
-    return Math.round(depthCurve(this.depth).xp * 40 * this.bossDef.phases.length * 0.35);
   }
 
   /** Loot tier hook for the drop generator. */

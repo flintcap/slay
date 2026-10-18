@@ -537,7 +537,7 @@ const filterRows: Record<string, number> = {};
 {
   const drops: Item[] = [];
   const r = new Random(0xf11);
-  for (let i = 0; i < 4000; i++) drops.push(...rollDrops(12, i % 10 === 0 ? 'champion' : 'normal', r, 0, 0).items);
+  for (let i = 0; i < 4000; i++) drops.push(...rollDrops(12, i % 10 === 0 ? 'champion' : 'normal', r).items);
   const gear = drops.filter((d) => !['potion', 'gem', 'rune', 'material'].includes(createItemCat(d)));
   for (const p of LOOT_FILTER_PRESETS) {
     const shown = gear.filter((d) => passesFilter(d, p.settings, 'warden')).length;

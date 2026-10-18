@@ -16,6 +16,7 @@ import { folkMeshed, heroMeshed } from '../art/npc/Prewarm';
 import { townSteps, type TownBuild } from '../world/Town';
 import { setFogShape } from '../core/Renderer';
 import { setActiveDifficulty } from '../data/difficulties';
+import { settleLevels } from '../sim/Character';
 import { dialogue, openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
 import { npcForStation } from '../data/story/npcs';
 import { STATIONS, mountTownStations } from './TownStations';
@@ -91,6 +92,8 @@ export class TownScene extends GameScene {
     }
 
     setActiveDifficulty(character.difficulty as never);
+    // Levels already paid for under an older, steeper level curve.
+    settleLevels(character);
     // The boot worker may still be meshing the townsfolk and this hero: wait
     // for it behind the curtain rather than meshing them all again here.
     loadStep('meshing');
