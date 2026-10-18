@@ -27,8 +27,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | music/forest/01.ogg | https://opengameart.org/content/creepy-forest-f | HaelDB | CC0 |
 | music/forest/02.ogg | https://opengameart.org/content/dark-forest-theme | cynicmusic | CC0 |
 | music/foundry/01.ogg | https://opengameart.org/content/the-9th-circle | Joth | CC0 |
-| music/frozen/01.ogg | https://opengameart.org/content/icy-realm-seven-and-eight | cynicmusic | CC0 |
-| music/frozen/02.ogg | https://opengameart.org/content/wintery-loop | Emma_MA | CC0 |
+| music/frozen/01.ogg | https://opengameart.org/content/frost-in-the-northern-winter | Kaiser (the-oracle) | CC0 |
+| music/frozen/02.ogg | https://opengameart.org/content/cold-silence | eponasoft | CC0 |
 | music/hell/01.ogg | https://opengameart.org/content/night-prowler | section31 | CC0 |
 | music/hive/01.ogg | https://opengameart.org/content/creepy | TokyoGeisha | CC0 |
 | music/menu/01.ogg | https://opengameart.org/content/tragic-ambient-main-menu | HaelDB | CC0 |
