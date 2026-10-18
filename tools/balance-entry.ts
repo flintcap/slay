@@ -115,7 +115,10 @@ const out: Record<string, unknown> = {};
       const ratio = set.map((x) => (x.at0 as { u: number }).u / Math.max(0.01, (x.at0 as { rare: number }).rare));
       return { rarity: r, n: set.length, meanRatioAt0: r2(ratio.reduce((a, b) => a + b, 0) / Math.max(1, ratio.length)) };
     }),
-    fullWeightLevels: 20,
+    belowAt0ByBand: [[1, 29], [30, 54], [55, 200]].map(([lo, hi]) => {
+      const band = rows.filter((r) => (r.ilvl as number) >= lo! && (r.ilvl as number) <= hi!);
+      return { band: `${lo}-${hi}`, n: band.length, belowAt0: band.filter((r) => below('at0').includes(r)).length, belowAt20: band.filter((r) => below('at20').includes(r)).length };
+    }),
   };
 }
 

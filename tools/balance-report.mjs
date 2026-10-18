@@ -51,6 +51,7 @@ console.log(`\n== Uniques: ${u.count} (non-charm), ${u.withPower} with a power o
 console.log(`below a usual rare at own level: ${u.belowRareAt0} (${u.belowRareAt0NoPower} with no power)`);
 console.log(`below a usual rare 20 levels deeper: ${u.belowRareAt20} (${u.belowRareAt20NoPower} with no power)`);
 table('Unique/rare ratio by tier', u.byRarity);
+table('Uniques below a usual rare, by item level band', u.belowAt0ByBand);
 table('Weakest uniques at their own level (u/rare/p75)', u.worstAt0.map((x) => ({ id: x.id, ilvl: x.ilvl, power: x.power, at0: x.at0, at20: x.at20 })));
 console.log(`\n== Sets: ${r.sets.sets} sets, ${r.sets.pieces} pieces (see check-setpower)`);
 table('Gems: mean share of a unique line at the gem level', r.gems);
