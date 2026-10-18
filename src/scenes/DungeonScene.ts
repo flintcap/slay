@@ -72,7 +72,7 @@ import { PropRemains } from '../art/props/Remains';
 import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
 import { paladinBlocked } from './paladin/Rites';
 import { beginLoad, breather, endLoad, loadStep, yieldIfLong } from '../core/LoadProgress';
-import { bakeLooks, type LookAsk } from '../world/BakePool';
+import { bakeLooks, dropQueuedLooks, type LookAsk } from '../world/BakePool';
 
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
@@ -486,6 +486,7 @@ export class DungeonScene extends GameScene {
     this.run = generateRun(depth, seed, character.classId);
     // Every floor's monster looks go to the bake workers now, the first
     // floor's first: they bake while the hero and the floor are built here.
+    dropQueuedLooks();
     for (const lv of this.run.levels) void bakeLooks(levelLooks(lv, this.run.bossId));
     // Generating, building the hero and building the floor are seconds of
     // work between them: the page gets a moment between each, so the loading
@@ -699,7 +700,7 @@ export class DungeonScene extends GameScene {
   private async loadLevelPaced(index: number): Promise<void> {
     const level = this.run.levels[index];
     // Asked for at the run's start; waited on only when the monsters are next.
-    const baked = level ? bakeLooks(levelLooks(level, this.run.bossId)) : Promise.resolve();
+    const baked = level ? bakeLooks(levelLooks(level, this.run.bossId), true) : Promise.resolve();
     const steps = this.levelSteps(index);
     for (let r = steps.next(); !r.done; r = steps.next()) {
       if (r.value === 'bakes') await baked;
@@ -2587,13 +2588,13 @@ function levelLooks(level: DungeonLevel, bossId: string | undefined): LookAsk[] 
   const out: LookAsk[] = [];
   for (const sp of level.spawns) {
     const def = MONSTERS.find((m) => m.id === sp.monsterId);
-    if (def) out.push({ visual: def.visual, family: def.family, rank: sp.rank });
+    if (def) out.push({ from: 'monster', id: def.id, family: def.family, rank: sp.rank });
   }
   if (level.isBossLevel) {
     const b = BOSSES.find((x) => x.id === bossId) ?? BOSSES[0];
-    if (b) out.push({ visual: b.visual, family: b.family, rank: 'boss' });
+    if (b) out.push({ from: 'boss', id: b.id, family: b.family, rank: 'boss' });
   }
   const wd = level.warden ? getWarden(level.warden.id) : undefined;
-  if (wd) out.push({ visual: wd.visual, family: wd.family, rank: 'boss' });
+  if (wd) out.push({ from: 'warden', id: wd.id, family: wd.family, rank: 'boss' });
   return out;
 }

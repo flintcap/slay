@@ -14,14 +14,14 @@
  * first floor's looks go before later floors'. Where workers are not allowed,
  * or one fails, every waiter is let go at once and the page bakes as before.
  */
-import type { CharClassId, EquipSlot, Item, MonsterVisual } from '../types';
+import type { CharClassId, EquipSlot, Item } from '../types';
 import { bakedCached, fromRaw, type RawGeo } from '../art/creatures/Store';
 import { adoptMeshes, type RawGeo as PartRaw } from '../art/hero/MeshCache';
 import { pageAssetBase } from '../core/Assets';
 
 /** One piece of work for a worker. */
 export type BakeJob =
-  | { kind: 'creature'; visual: MonsterVisual; family?: string; rank?: string }
+  | ({ kind: 'creature' } & LookAsk)
   | { kind: 'hero'; classId: CharClassId; seed: number; equipment: Partial<Record<EquipSlot, Item | null>> };
 /** What a worker sends back for one job. */
 export interface BakeReply {
@@ -29,6 +29,9 @@ export interface BakeReply {
   bakes: Array<[string, RawGeo[]]>;
   parts: Array<[string, PartRaw]>;
 }
+
+/** What the workers have done this session (read by the load checker). */
+export const bakeStats = { workers: 0, jobs: 0, replies: 0, bakes: 0, parts: 0, failed: 0 };
 
 /** The page keeps a core of its own; a few workers are plenty. */
 const MAX_WORKERS = 3;
@@ -39,7 +42,7 @@ const workers = new Map<Worker, number | null>();
 const queue: Array<{ id: number; job: BakeJob }> = [];
 /** Jobs not yet answered, with who waits on each. */
 const waiting = new Map<number, Array<() => void>>();
-/** Looks already asked for (by visual and family), so each is baked once. */
+/** Looks already asked for (by monster and family), so each is baked once. */
 const asked = new Map<string, number>();
 let nextId = 1;
 let base = '';
@@ -54,6 +57,7 @@ function settle(id: number): void {
 function drop(w: Worker): void {
   const job = workers.get(w);
   workers.delete(w);
+  bakeStats.failed++;
   try {
     w.terminate();
   } catch {
@@ -95,6 +99,9 @@ function start(): boolean {
     workers.set(w, null);
     w.onmessage = (e: MessageEvent<BakeReply>) => {
       const { id, bakes, parts } = e.data;
+      bakeStats.replies++;
+      bakeStats.bakes += bakes.length;
+      bakeStats.parts += parts.length;
       try {
         for (const [key, raws] of bakes) bakedCached(key, () => raws.map(fromRaw));
         if (parts.length) adoptMeshes(parts);
@@ -107,11 +114,13 @@ function start(): boolean {
     };
     w.onerror = () => drop(w);
   }
+  bakeStats.workers = workers.size;
   return workers.size > 0;
 }
 
 function submit(job: BakeJob): number {
   const id = nextId++;
+  bakeStats.jobs++;
   waiting.set(id, []);
   queue.push({ id, job });
   handOut();
@@ -135,30 +144,56 @@ function whenDone(ids: number[], capMs: number): Promise<void> {
   });
 }
 
-/** A look to bake: the monster's visual, family and the rank it is first met at. */
+/**
+ * A look to bake: which monster, boss or warden (by id: looks are found by
+ * the data's own visual object, which a copy sent to a worker is not), its
+ * family and the rank it is first met at.
+ */
 export interface LookAsk {
-  visual: MonsterVisual;
+  from: 'monster' | 'boss' | 'warden';
+  id: string;
   family?: string;
   rank?: string;
 }
 
 /**
- * Asks the workers to bake these looks (in this order, after anything asked
- * before). The promise resolves when they are all in the bake store, or at
- * `capMs`, or at once without workers. Looks asked for earlier are not baked
- * again; their first request is waited on instead.
+ * Lets go of every look not yet handed to a worker (a new run starts: the
+ * last run's later floors are not coming). Their waiters resolve at once.
  */
-export function bakeLooks(list: readonly LookAsk[], capMs = 60000): Promise<void> {
+export function dropQueuedLooks(): void {
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const q = queue[i]!;
+    if (q.job.kind !== 'creature') continue;
+    queue.splice(i, 1);
+    for (const [k, id] of asked) if (id === q.id) asked.delete(k);
+    settle(q.id);
+  }
+}
+
+/**
+ * Asks the workers to bake these looks, in this order: after anything asked
+ * before, or with `urgent` (a build is waiting on them) before anything not
+ * yet handed out. The promise resolves when they are all in the bake store,
+ * or at `capMs`, or at once without workers. Looks asked for earlier are not
+ * baked again; their first request is waited on instead.
+ */
+export function bakeLooks(list: readonly LookAsk[], urgent = false, capMs = 45000): Promise<void> {
   if (!start()) return Promise.resolve();
   const ids: number[] = [];
   for (const a of list) {
-    const k = `${JSON.stringify(a.visual)}|${a.family ?? ''}`;
+    const k = `${a.from}:${a.id}|${a.family ?? ''}`;
     let id = asked.get(k);
     if (id === undefined) {
-      id = submit({ kind: 'creature', visual: a.visual, family: a.family, rank: a.rank });
+      id = submit({ kind: 'creature', ...a });
       asked.set(k, id);
     }
     ids.push(id);
+  }
+  if (urgent) {
+    const want = new Set(ids);
+    const front = queue.filter((q) => want.has(q.id));
+    const rest = queue.filter((q) => !want.has(q.id));
+    queue.splice(0, queue.length, ...front, ...rest);
   }
   return whenDone(ids, capMs);
 }

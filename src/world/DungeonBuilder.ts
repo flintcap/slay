@@ -736,8 +736,7 @@ export class DungeonMesh {
   *steps(rng: Rng): Generator<void, void, void> {
     this.buildStatic(rng);
     yield;
-    this.buildProps(rng);
-    yield;
+    yield* this.buildProps(rng);
     this.buildLightPool();
     this.buildShafts(rng);
     this.buildStairs(rng);
@@ -2110,7 +2109,8 @@ export class DungeonMesh {
     }
   }
 
-  private buildProps(rng: Rng): void {
+  /** Yields after each prop batch, so a paced build can hand the page back. */
+  private *buildProps(rng: Rng): Generator<void, void, void> {
     const level = this.level;
 
     // Group placements by kind, variant and zone biome so each becomes one
@@ -2294,6 +2294,7 @@ export class DungeonMesh {
           });
         }
       }
+      yield;
     }
 
     bakeProps(this.root, still);

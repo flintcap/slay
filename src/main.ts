@@ -10,6 +10,7 @@ import { DeathScene } from './scenes/DeathScene';
 import { mountUI } from './ui/UIRoot';
 import { audio } from './audio/Audio';
 import { mountKeyArt } from './art/KeyArt';
+import { bakeStats } from './world/BakePool';
 
 const bootFill = document.getElementById('boot-fill');
 const bootStatus = document.getElementById('boot-status');
@@ -271,6 +272,8 @@ async function main(): Promise<void> {
     save,
     events,
     debug: installDebug(engine),
+    // Bake workers' tally (`world/BakePool.ts`), for the load checker.
+    bakes: bakeStats,
     // The checkers that measure scenes (ghost colliders, probes) build boxes
     // and matrices in the page. Only the classes they use are named here.
     // Exposing the whole namespace (`await import('three')`) defeated tree

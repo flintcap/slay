@@ -18,6 +18,8 @@
  * itself, as before.
  */
 import { lookFor } from '../art/creatures/Looks';
+import { BOSSES, MONSTERS } from '../data/monsters';
+import { getWarden } from '../data/wardens';
 import { lookBake } from '../art/creatures/Creature';
 import { bakedCached, loadCreatureBakes, toRaw, type RawGeo } from '../art/creatures/Store';
 import { loadMeshCache, onMeshed, type RawGeo as PartRaw } from '../art/hero/MeshCache';
@@ -44,7 +46,10 @@ function run(job: BakeJob): Array<[string, RawGeo[]]> {
     hero.dispose();
     return [];
   }
-  const look = lookFor(job.visual, job.family, job.rank);
+  // The data's own visual object: looks are found by it.
+  const def = job.from === 'boss' ? BOSSES.find((b) => b.id === job.id) : job.from === 'warden' ? getWarden(job.id) : MONSTERS.find((m) => m.id === job.id);
+  if (!def) return [];
+  const look = lookFor(def.visual, job.family, job.rank);
   if (sent.has(look.key)) return [];
   sent.add(look.key);
   const { key, bake } = lookBake(look);

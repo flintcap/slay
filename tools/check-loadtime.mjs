@@ -161,6 +161,8 @@ async function visit(label) {
       });
       console.log(`    steps (ms): ${parts.join(', ')}`);
     }
+    const bakes = await page.evaluate(() => window.SLAY.bakes ?? null);
+    if (bakes) console.log(`    bake workers so far: ${JSON.stringify(bakes)}`);
     // Programs first built during this phase, and the materials that use them.
     const progs = await page.evaluate(() => {
       const gl = window.SLAY?.engine?.renderer?.gl;
