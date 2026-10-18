@@ -267,6 +267,8 @@ export class Enemy implements Combatant {
   facing = 0;
   shield = 0;
   rootTimer = 0;
+  /** Control seconds recently suffered (see `controlFor`). */
+  private controlFatigue = 0;
   outgoingMul = 1;
   motionOverride: MotionOverride | null = null;
   /** Pack id from the spawn table; scenes set this after construction. */
@@ -407,7 +409,9 @@ export class Enemy implements Combatant {
     s.defense = curve.defense * def.defenseMul * rm.defense * defAffix;
     s.attackSpeed = def.attackSpeed * asAffix;
     s.critChance = 5 + (rank === 'normal' ? 0 : 5);
-    s.critDamage = 60;
+    // Total multiplier, as for the hero (Stats.baseCritDamage is 150): the
+    // roller floors it at 100, so the 60 written here made crits do nothing.
+    s.critDamage = 160;
     s.moveSpeed = 0;
     for (const [type, value] of Object.entries(def.resists ?? {})) {
       switch (type as DamageType) {
@@ -588,6 +592,28 @@ export class Enemy implements Combatant {
     return this.buffMul('damage');
   }
 
+  /**
+   * The stats its blows are rolled from, statuses included, so Weakened and
+   * the like really cut what it deals. Read by `rollPacket`.
+   */
+  get combatStats(): Stats {
+    return this.statusAdjustedStats();
+  }
+
+  /**
+   * How fast its moves play: its own speed, buffs, and statuses such as
+   * Chilled (-15% attack speed), never below a third.
+   */
+  private actionSpeed(): number {
+    let pct = 0;
+    for (const st of this.statuses) {
+      const own = st.mods;
+      const v = (own ?? statusDef(st.id)?.mods)?.attackSpeed;
+      if (typeof v === 'number') pct += v * (own ? st.stacks : st.magnitude * st.stacks);
+    }
+    return Math.max(0.35, this.stats.attackSpeed * this.buffMul('attackSpeed') * Math.max(0.3, 1 + pct / 100));
+  }
+
   private buffMul(key: keyof BuffMods): number {
     let m = 1;
     for (const b of this.buffs) {
@@ -681,7 +707,7 @@ export class Enemy implements Combatant {
     this.facing = inst.facing;
     this.inst = inst;
 
-    const speed = Math.max(0.35, this.stats.attackSpeed * this.buffMul('attackSpeed'));
+    const speed = this.actionSpeed();
     const windup = this.windupFor(def, speed);
 
     // The telegraph goes down the instant the windup starts — this is the whole
@@ -713,7 +739,7 @@ export class Enemy implements Combatant {
     const inst = this.inst;
     if (!inst) return;
     const def = inst.def;
-    const speed = Math.max(0.35, this.stats.attackSpeed * this.buffMul('attackSpeed'));
+    const speed = this.actionSpeed();
     inst.t += dt;
 
     switch (inst.phase) {
@@ -821,6 +847,7 @@ export class Enemy implements Combatant {
     // Timers ---------------------------------------------------------------
     this.hitFlash = Math.max(0, this.hitFlash - dt * 4);
     this.rootTimer = Math.max(0, this.rootTimer - dt);
+    this.controlFatigue = Math.max(0, this.controlFatigue - dt * 0.5);
     if (this.spawnT > 0) this.spawnT = Math.max(0, this.spawnT - dt * 1.6);
     if (this.shieldTimer > 0) {
       this.shieldTimer -= dt;
@@ -1029,9 +1056,24 @@ export class Enemy implements Combatant {
 
   // --- statuses ------------------------------------------------------------
 
+  /**
+   * How long a stun, freeze or root really holds this monster. Control fades
+   * with use: every second of it recently suffered shortens the next one, and
+   * the tally drains at half a second per second. A boss takes half of any
+   * control to begin with and fades faster (its `boss_stability`), so it can
+   * be interrupted but never held down.
+   */
+  private controlFor(duration: number): number {
+    const boss = this.isBoss;
+    const held = (duration * (boss ? 0.5 : 1)) / (1 + this.controlFatigue * (boss ? 0.6 : 0.25));
+    this.controlFatigue += held;
+    return held;
+  }
+
   applyStatuses(list: StatusApplication[], ctx: CombatContext): void {
-    for (const app of list) {
-      if (this.isImmuneToControl && isControl(app.id)) continue;
+    for (const raw of list) {
+      if (this.isImmuneToControl && isControl(raw.id)) continue;
+      const app = isControl(raw.id) ? { ...raw, duration: this.controlFor(raw.duration) } : raw;
       // Passives may raise the ceiling on a stacking affliction.
       const cap = Math.min(24, Math.max(1, (statusDef(app.id)?.maxStacks ?? 5) + (app.maxStacks ?? 0)));
       const existing = this.statuses.find((s) => s.id === app.id);
@@ -1039,9 +1081,10 @@ export class Enemy implements Combatant {
         existing.time = Math.max(existing.time, app.duration);
         existing.magnitude = Math.max(existing.magnitude, app.magnitude);
         existing.stacks = Math.min(cap, existing.stacks + (app.stacks ?? 0));
-        if (app.tickScale && app.tickScale !== 1) existing.dotPerSecond *= app.tickScale;
-        // A harder blow's venom takes over from a weaker one.
-        if (app.power) existing.dotPerSecond = Math.max(existing.dotPerSecond, this.dotRate(app));
+        // A harder blow's venom takes over from a weaker one. `dotRate` folds
+        // the tick scale in once; multiplying the running rate by it on every
+        // re-apply grew a poison or burn without limit.
+        if (existing.dotType) existing.dotPerSecond = Math.max(existing.dotPerSecond, this.dotRate(app));
         if (app.mods) existing.mods = app.mods;
         continue;
       }

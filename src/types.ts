@@ -1140,8 +1140,10 @@ export interface DamagePacket {
   source: string;
   /** Skill or ability that produced it. */
   ability?: string;
-  /** Knockback impulse in world units. */
+  /** Knockback impulse in world units. Below zero pulls toward `from`. */
   knockback?: number;
+  /** Where the blow came from, so a knockback pushes away from it. */
+  from?: { x: number; z: number };
   /** Status effects to apply on hit. */
   applies?: StatusApplication[];
   /**

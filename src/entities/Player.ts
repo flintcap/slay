@@ -426,17 +426,30 @@ export class Player {
    * across a room and then walking straight back to where you were standing is
    * not a knockback.
    */
-  shove(force: number): void {
-    const f = Math.max(0, Math.min(6, force));
-    if (f <= 0) return;
-    // Away from wherever the blow came from, which is whatever the player is
-    // facing: monsters hit you from the front in almost every case.
-    const push = f * 0.16;
-    this.root.position.x -= Math.sin(this.root.rotation.y) * push;
-    this.root.position.z -= Math.cos(this.root.rotation.y) * push;
+  shove(force: number, from?: { x: number; z: number }): void {
+    const f = Math.max(-6, Math.min(6, force));
+    if (f === 0) return;
+    // Away from where the blow came from (toward it for a pull). Without a
+    // source, straight back from where the hero faces.
+    let dx = -Math.sin(this.root.rotation.y);
+    let dz = -Math.cos(this.root.rotation.y);
+    if (from) {
+      const ax = this.root.position.x - from.x;
+      const az = this.root.position.z - from.z;
+      const len = Math.hypot(ax, az);
+      if (len > 1e-3) {
+        dx = ax / len;
+        dz = az / len;
+      }
+    }
+    // A pull never drags the hero past what pulled them.
+    let push = f * 0.16;
+    if (from && push < 0) push = Math.max(push, -Math.max(0, Math.hypot(this.root.position.x - from.x, this.root.position.z - from.z) - 1));
+    this.root.position.x += dx * push;
+    this.root.position.z += dz * push;
     this.moveTarget = null;
     // A real shove throws the body back a step; a nudge is just the flinch.
-    if (f >= 1.5 && this.alive) this.animator.play('stagger', { fade: 0.05 });
+    if (Math.abs(f) >= 1.5 && this.alive) this.animator.play('stagger', { fade: 0.05 });
   }
 
   /**
@@ -540,8 +553,10 @@ export class Player {
     }
     if (cut > 0) result.amount *= Math.max(0.1, 1 - cut / 100);
     if (result.blocked) {
+      // A block takes the whole hit (Combat.BLOCK_LEAK). The body braces
+      // against it: a short jolt, not the hurt flinch of a blow that landed.
       events.emit('sfx', { id: 'block' });
-      this.animator.play('hurt', { fade: 0.05, once: true });
+      this.animator.flinch(0.3);
       return 0;
     }
     // Harder tiers make every hit land heavier, after mitigation.
@@ -572,9 +587,7 @@ export class Player {
       }
     }
     // Knockback is carried the same way and was equally ignored.
-    if (packet.knockback && packet.knockback > 0) {
-      this.shove(packet.knockback);
-    }
+    if (packet.knockback) this.shove(packet.knockback, packet.from);
 
     this.checkDeath(packet.source || 'the dark');
     return result.amount;

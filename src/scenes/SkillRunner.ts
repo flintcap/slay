@@ -691,17 +691,6 @@ export class SkillRunner {
     if (player.isBusy || !player.alive) return false;
     this.setCaster(player, enemies, boss);
 
-    // Resonance: a lightning skill sometimes goes off a second time, weaker and
-    // free. Queued rather than recursed so it cannot stack on itself, and it
-    // bypasses the busy and cost checks because it is not a second press.
-    const echo = player.passives;
-    if (!this.echoing && echo.echoChance > 0 && ctx.rng.chance(Math.min(1, echo.echoChance / 100))) {
-      const def = SKILLS.find((s) => s.id === skillId);
-      if (def?.damageType === 'lightning') {
-        this.pendingEcho = { skillId, target: target.clone(), scale: echo.echoDamagePct / 100 };
-      }
-    }
-
     const def = SKILLS.find((s) => s.id === skillId);
     if (!def || def.targeting === 'passive') return false;
 
@@ -1962,19 +1951,15 @@ export class SkillRunner {
     if (wait > 0.01) {
       const id = player.actionId;
       const dir = facing.clone();
-      const echo = this.echoScale;
       this.pendingSwings.push({
         t: wait,
         run: () => {
           if (player.actionId !== id || !player.alive) return;
-          const prev = this.echoScale;
           this.atContact = true;
-          this.echoScale = echo;
           try {
             this.meleeSwing(player, dir, arc, reach, packet, ctx, enemies, boss, type, playVisual, kind, hitSfx, maxTargets, focus);
           } finally {
             this.atContact = false;
-            this.echoScale = prev;
           }
         },
       });
@@ -2075,7 +2060,7 @@ export class SkillRunner {
       },
     );
     const st = p.passiveState;
-    let amount = packet.amount * mul * this.echoScale;
+    let amount = packet.amount * mul;
 
     // Perfect Form: every Nth blow is a guaranteed critical, and hits harder
     // for being one. Counted per landed blow, not per press, so a whirlwind
@@ -2095,17 +2080,15 @@ export class SkillRunner {
     if (e.resistPiercePct > 0 && packet.type === 'poison') {
       amount *= 1 + e.resistPiercePct / 200;
     }
-    if (crit !== packet.crit || amount !== packet.amount) {
-      return { ...packet, amount, crit };
-    }
-
-    // Retribution: blocks build a charge and the next blow spends it.
+    // Retribution: blocks build a charge and the next blow spends it. (It
+    // sat behind an early return, so any other passive touching the hit
+    // skipped it.)
     if (st.retribution > 0 && e.retributionRadius > 0) {
       amount *= 1 + st.retribution / 100;
       st.retribution = 0;
     }
-    if (amount === packet.amount) return packet;
-    return { ...packet, amount };
+    if (crit === packet.crit && amount === packet.amount) return packet;
+    return { ...packet, amount, crit };
   }
 
   /**
@@ -2259,8 +2242,6 @@ export class SkillRunner {
   private veilBreak = false;
   /** Increments per summon so a pack fans out rather than stacking. */
   private summonSerial = 0;
-  /** A Resonance repeat waiting for the next frame. */
-  private pendingEcho: { skillId: string; target: THREE.Vector3; scale: number } | null = null;
   /**
    * Weapon swings waiting for their contact frame (`Player.contactIn`, combat):
    * a blow lands when the blade arrives, not on the click.
@@ -2269,9 +2250,6 @@ export class SkillRunner {
   /** True while `cast` runs, so a skill's swing plays its own sound, not the weapon's. */
   private casting = false;
   private atContact = false;
-  private echoing = false;
-  /** What the echo pays, applied to every packet it throws. */
-  private echoScale = 1;
 
   /** Enemies close to the caster, refreshed per cast for the crowd passives. */
   private nearbyCount = 0;
@@ -2657,25 +2635,6 @@ export class SkillRunner {
       }
     }
 
-    // Fire a queued Resonance echo one frame after the original, so the two
-    // read as a stutter rather than one doubled hit.
-    const pe = this.pendingEcho;
-    if (pe && this.caster) {
-      this.pendingEcho = null;
-      this.echoing = true;
-      this.echoScale = pe.scale;
-      try {
-        const p = this.caster;
-        const lock = p.isBusy;
-        void lock;
-        this.cast(pe.skillId, p, pe.target, live.ctx, live.enemies, live.boss);
-      } catch {
-        /* an echo must never break the frame */
-      } finally {
-        this.echoing = false;
-        this.echoScale = 1;
-      }
-    }
     this.spreadTick(dt, live.ctx, live.enemies, live.boss);
     const keeper = this.caster ?? this.keeper;
     if (keeper) tickVigils(this.vigilHost, keeper, dt, live);

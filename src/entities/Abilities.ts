@@ -398,7 +398,10 @@ export function rollPacket(
   // Damage buffs (Empowered, war cries, enrage) multiply on top of the
   // standing multiplier. They were written everywhere and read nowhere.
   const buffed = (self as { buffDamageMul?: number }).buffDamageMul ?? 1;
-  const packet = roll(self.stats, ctx.rng, {
+  // Statuses on the attacker (Weakened) count too; a combatant without them
+  // rolls from its plain stats.
+  const stats = (self as { combatStats?: Stats }).combatStats ?? self.stats;
+  const packet = roll(stats, ctx.rng, {
     scale: scale * self.outgoingMul * buffed,
     type,
     ability,
@@ -410,6 +413,8 @@ export function rollPacket(
 export interface HitOpts {
   knockback?: number;
   applies?: StatusApplication[];
+  /** Where a knockback pushes away from. The attacker when not given. */
+  from?: { x: number; z: number };
 }
 
 /** Rolls and applies a hit to the player. Returns the packet that landed. */
@@ -422,7 +427,10 @@ export function hitPlayer(
   opts?: HitOpts,
 ): DamagePacket {
   const packet = rollPacket(self, ctx, scale, type, ability);
-  if (opts?.knockback) packet.knockback = opts.knockback;
+  if (opts?.knockback) {
+    packet.knockback = opts.knockback;
+    packet.from = opts.from ?? { x: self.root.position.x, z: self.root.position.z };
+  }
   if (opts?.applies) packet.applies = opts.applies;
   affixRiders(self, ctx, packet);
   noteControl(ctx, packet);
@@ -550,7 +558,8 @@ export function circleHit(
 ): boolean {
   impactFx(ctx, type, x, 0.4, z, Math.min(48, 10 + radius * 8));
   if (!playerInCircle(ctx, x, z, radius)) return false;
-  hitPlayer(self, ctx, scale, type, ability, opts);
+  // A slam throws you out from where it landed, not from whoever swung.
+  hitPlayer(self, ctx, scale, type, ability, opts?.knockback ? { ...opts, from: opts.from ?? { x, z } } : opts);
   return true;
 }
 
@@ -902,6 +911,8 @@ function tickProjectiles(dt: number, ctx: CombatContext): void {
       hitPlayer(p.owner, ctx, p.scale, p.type, p.ability, {
         knockback: p.knockback || undefined,
         applies: p.applies ?? undefined,
+        // Along the shot's flight.
+        from: { x: p.x - p.vx, z: p.z - p.vz },
       });
       impactFx(ctx, p.type, p.x, p.y, p.z, 12);
       if (p.onImpact) p.onImpact(p.x, p.z, ctx, p.owner);

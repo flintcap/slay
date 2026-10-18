@@ -45,8 +45,11 @@ export const ARMOR_CAP = 0.8;
 const ARMOR_K0 = 220;
 const ARMOR_K1 = 9;
 
-/** A blocked hit still lets this fraction through. */
-export const BLOCK_LEAK = 0.15;
+/**
+ * The fraction of a blocked hit that gets through. None: a block turns the
+ * whole blow (Player.takeDamage stops there), and the readouts say the same.
+ */
+export const BLOCK_LEAK = 0;
 export const BLOCK_CAP = 75;
 
 /** Attack rating clamps — nobody whiffs forever, nobody hits forever. */

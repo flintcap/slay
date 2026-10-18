@@ -215,20 +215,20 @@ const FALLBACK_MONSTERS: Partial<Record<BiomeId, string[]>> = {
 };
 
 const FALLBACK_AFFIXES = [
-  'fireEnchanted',
-  'coldEnchanted',
-  'lightningEnchanted',
-  'poisonous',
+  'fire_enchanted',
+  'cold_enchanted',
+  'lightning_enchanted',
+  'poison_aura',
   'vampiric',
-  'fast',
+  'extra_fast',
   'juggernaut',
   'teleporter',
-  'reflective',
+  'reflect_damage',
   'shielded',
-  'frenzied',
-  'arcaneWard',
+  'berserker',
+  'missile_dampening',
   'summoner',
-  'explosive',
+  'unstable',
   'entangling',
 ];
 

@@ -148,9 +148,6 @@ export interface PassiveEffects {
   arcRadius: number;
   /** Fraction of the original blow the arc carries. */
   arcDamagePct: number;
-  /** Chance for a spell to cast a second time for free. */
-  echoChance: number;
-  echoDamagePct: number;
   /** Extra projectiles a bolt splits into, and what each one carries. */
   forkCount: number;
   forkDamagePct: number;
@@ -320,8 +317,6 @@ function emptyEffects(): PassiveEffects {
     arcChance: 0,
     arcRadius: 0,
     arcDamagePct: 0,
-    echoChance: 0,
-    echoDamagePct: 0,
     forkCount: 0,
     forkDamagePct: 0,
     forkSpread: 0,
