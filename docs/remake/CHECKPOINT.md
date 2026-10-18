@@ -50,10 +50,16 @@ Update this file and push it after every finished step.
   Quiver, Volley Mastery, Roll Away and more); dead ones removed; 31
   passive texts rewritten. Blood Pact and Sanguine Nova now really cost life.
 
+- #100 (Phase 1) boss poise bar (abb0a4b). Stuns, freezes and roots fill a
+  gold Poise bar under the boss bar instead of holding the boss; hard blows
+  fill it too (crits and knockback more). Full: broken for 3 s (held, wind-up
+  cut, takes 25% more), next bar 35% longer, idle poise drains. Numbers in
+  src/sim/Poise.ts. Other monsters keep the old control fade. check-fair
+  covers it. Not seen in a browser yet. check-hits fixed to count misses.
+
 ## In progress
 
-- Phase 1 (combat): #100 boss poise bar and stun fade, #101 show synergies
-  and combos, #102 one danger language, #103 balance groundwork (owner).
+- Phase 1 (combat): #101 show synergies and combos, #102 one danger language, #103 balance groundwork (owner).
 
 ## Phase 0d log
 
