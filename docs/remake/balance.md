@@ -26,9 +26,9 @@ Checkers: `node tools/run-checks.mjs --only=<name>` for what you touch,
 - [x] 2. Mage: check-curve fails at depths 5 and 12 (known before this
   wave). Make the Mage stronger so it passes. Pre-approved.
   (balance: the Mage passes the curve at every depth)
-- [ ] 3. Dead-pick skills: find skills that are clearly weaker than their
+- [x] 3. Dead-pick skills: find skills that are clearly weaker than their
   neighbours and make them stronger only. Follow the skillPower and
-  check-rankpower rules.
+  check-rankpower rules. (balance: dead-pick skills hit as hard as their text says)
 - [ ] 4. Extend check-curve to more depths and every class, behind an
   optional flag so the default run stays fast.
 - [ ] 5. Apply the approved item list. Blocked until the owner approves
@@ -37,17 +37,15 @@ Checkers: `node tools/run-checks.mjs --only=<name>` for what you touch,
 
 ## Next up
 
-1. Milestone 3: run `node tools/skill-dps.mjs` (all classes, a few
-   minutes) and read the flagged skills. The flag is a hint, not proof:
-   orbs (`projectile.orb`) and some projectiles resolve through effect
-   callbacks the headless stand-in only half runs, so check each flagged
-   skill's code path in `src/scenes/SkillRunner.ts` before calling it weak.
-   Mage already flags thunderclap, tempestOrb, ballLightning, heavensGate,
-   frostStep (check orbs first; they may be measuring artefacts).
-2. Raise only damage ladders (`dmg` in `src/data/skills.ts`), base mana or
-   base cooldown, or `src/data/skillPower.ts` numbers. Then
-   `node tools/check-rankpower.mjs` and `node tools/check-curve.mjs` for
-   the classes touched (watch for "unchallenged").
+1. Milestone 4: in `tools/curve-entry.ts` add an optional `--wide` flag
+   that runs every class at depths 1 5 12 18 25 32 40 50 60 (hero levels
+   extrapolated from the existing points). The default run stays at
+   depths 1 5 12 25 40. Document the flag in the header of
+   `tools/check-curve.mjs`. Run the default once (all OK expected) and
+   `--wide` once; write anything walled or unchallenged into Notes for
+   resume (do not chase it in this wave).
+2. Then milestone 6 (handover): milestone 5 stays blocked until the owner
+   approves `balance-proposal.md`.
 
 ## Notes for resume
 
@@ -73,6 +71,43 @@ Checkers: `node tools/run-checks.mjs --only=<name>` for what you touch,
   (`arc: 40`) but the runner's `channel` case is a line that stops at the
   first enemy. A real cone would make Inferno the crowd skill its tier
   promises.
+- Milestone 3 (skills, all stronger only; `node tools/skill-dps.mjs`
+  found them, each code path in `SkillRunner.ts` read before changing):
+  - Tempest Orb: `projectile.orb` without pierce is one hit (its duration,
+    tick rate and targets a tick are never read). Now it bursts 5m on the
+    first enemy (`splash: 5`), dmg 0.7+0.12 to 2.0+0.32, cd 11 to 7s.
+  - Ball Lightning: same single hit. Now rolls 14m through everything
+    (`pierce: 99`, like Frozen Orb), dmg 0.55+0.09 to 2.2+0.35, cd 6 to 5s.
+  - Fireball and Plague Vial: a projectile's `radius` is its hit width,
+    not a blast, so both hit one target. Added `splash` equal to the
+    blast in their text. Plague Vial dmg 1.3+0.21 to 1.8+0.29, cd 10 to 8s.
+  - Noxious Cloud and Heaven's Gate: ground zones tick at 28% unless the
+    skill says `tickScale`; both now tick at the full rate their text
+    promises (`tickScale: 1`).
+  - Throwing Spree: `projectile.stream` throws one knife a cast. Now six
+    knives in a tight fan (`count: 6, spread: 0.08`), cd 12 to 7s.
+  - Void Walk: the runner does one blink and one strike, not a chain.
+    dmg 1.3+0.2 to 3.2+0.5, cd 16 to 6s; text says what it does.
+  - Arrow Rain and Darken The Sky: `meteor` is one volley at 140% (the
+    `duration` and `ticks` are never read). Arrow Rain dmg 0.5+0.07 to
+    1.8+0.28, cd 10 to 6s; Darken dmg 1.1+0.16 to 3.6+0.6, cd 45 to 24s.
+  - Fan Fire: arrows 0.6 rad apart meant only one could reach a target.
+    Spread 0.2, dmg 0.7+0.09 to 1.3+0.2, cd 7 to 5s.
+  - Maim: 70% for a 9s cooldown was below a basic hit. dmg 0.7+0.12 to
+    1.5+0.24.
+  - Left alone on purpose: flags on cooldown utility skills (Aimed Shot,
+    Crippling Shot, Cripple Tendon, Thunderclap, Frost Step, Bone Cage,
+    Reaping) are the report measuring a cooldown against spam; per cast
+    they are fine. Paladin rites and shapeshifter shift skills show 0 in
+    the report because they resolve elsewhere (a harness gap, not weak).
+    Bone Nova and other physical skills read low on the armoured test
+    brute.
+  - check-curve for mage, ranger, shadowblade and warden: all OK after.
+- For `finish` (SkillRunner is not ours): if orbs, streams, meteors or
+  chain blinks ever get real ticking or hopping, these numbers must come
+  back down. Unique bends that grow dead knobs do nothing today: Tempest
+  Orb (`targetsPerTick`, `duration`, batchC), Void Walk (`hops`,
+  `window`, batchE), Arrow Rain (`ticks`, batchB).
 - The `socket` checker is a browser check; it failed once when run by
   mistake outside the browser lock (not investigated, not this stream's).
 
@@ -81,6 +116,14 @@ Checkers: `node tools/run-checks.mjs --only=<name>` for what you touch,
 - Play a Mage down the fire tree to depth 12: Inferno should melt a boss
   without running dry of mana in ten seconds, and Blast Wave should clear
   what walks up to you.
+- Throw Tempest Orb and Ball Lightning into a pack: the orb should burst
+  on the first monster and hurt the pack; the ball should hurt every
+  monster along its path.
+- Throw Fireball and Plague Vial into a pack: everything in the blast
+  should take damage, not only one monster.
+- Cast Throwing Spree point blank: six knives, most of them on the target.
+- Cast Arrow Rain and Fan Fire on a pack: both should feel like real
+  damage now, not a tickle.
 
 ## Handover
 
