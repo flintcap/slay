@@ -70,6 +70,9 @@ export const REBINDABLE: ReadonlyArray<{ code: string; label: string }> = [
   { code: 'KeyB', label: 'Vault' },
   { code: 'KeyM', label: 'Map' },
   { code: 'KeyL', label: 'Quest log' },
+  { code: 'KeyJ', label: 'Journal' },
+  { code: 'KeyO', label: 'Loot filter' },
+  { code: 'KeyG', label: 'Legacy' },
 ];
 
 /** Keys that can never be taken: they are how you get out of things. */

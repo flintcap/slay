@@ -59,8 +59,12 @@ Update this file and push it after every finished step.
      the buy-back price; Settings says Shift shows hidden floor items;
      Restore defaults keeps key bindings; pickup toast sparkle only for set
      and better.
-   - Interface, open: compare, key labels and rebinds, panel raising,
-     est. DPS.
+   - Interface, done too: compare weighs every stat (40), a two-hander
+     against weapon + off-hand, a shield against a worn two-hander, and
+     both rings when both are worn (equipPlan in sim/Character is shared
+     with equipItem). HUD key caps, potion titles, level-up and [E] prompts
+     follow rebinds; Journal, Loot filter and Legacy can be rebound.
+   - Interface, open: panel raising, est. DPS.
    - Art and sound, Engine: not started.
 
 ## Next

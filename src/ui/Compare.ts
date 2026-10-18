@@ -10,12 +10,12 @@
  */
 import type { Character, EquipSlot, Item, StatKey, Stats } from '../types';
 import { save } from '../core/Save';
-import { itemStats, getBase } from '../sim/Loot';
-import { meetsRequirements, slotsFor } from '../sim/Character';
-import { computeStats } from '../sim/Stats';
+import { itemStats } from '../sim/Loot';
+import { equipPlan, meetsRequirements } from '../sim/Character';
+import { computeStats, STAT_KEYS } from '../sim/Stats';
 
-/** Stats compared, in the order the tooltip lists them. */
-export const COMPARE_KEYS: StatKey[] = [
+/** The stats players weigh first, in the order the tooltip lists them. */
+const LEAD_KEYS: StatKey[] = [
   'minDamage',
   'maxDamage',
   'enhancedDamage',
@@ -43,6 +43,9 @@ export const COMPARE_KEYS: StatKey[] = [
   'skillLevels',
 ];
 
+/** Every stat, the lead ones first: a line an item can roll is a line it is compared on. */
+export const COMPARE_KEYS: StatKey[] = [...LEAD_KEYS, ...STAT_KEYS.filter((k) => !LEAD_KEYS.includes(k))];
+
 export type Verdict = 'upgrade' | 'downgrade' | 'tradeoff' | 'same';
 
 export interface StatDelta {
@@ -50,13 +53,21 @@ export interface StatDelta {
   delta: number;
 }
 
-/** Every stat that differs between `item` and `worn`, and the one-word verdict. */
-export function compareItems(item: Item, worn: Item): { deltas: StatDelta[]; verdict: Verdict } {
+/**
+ * Every stat that differs between `item` and what it would replace, and the
+ * one-word verdict. `worn` is a list when one item takes off two (a
+ * two-hander against a weapon and a shield).
+ */
+export function compareItems(item: Item, worn: Item | readonly Item[]): { deltas: StatDelta[]; verdict: Verdict } {
   let a: Partial<Stats> = {};
-  let b: Partial<Stats> = {};
+  const b: Partial<Stats> = {};
   try {
     a = itemStats(item);
-    b = itemStats(worn);
+    const list: readonly Item[] = Array.isArray(worn) ? worn : [worn as Item];
+    for (const w of list) {
+      const ws = itemStats(w);
+      for (const k of Object.keys(ws) as StatKey[]) b[k] = (b[k] ?? 0) + (ws[k] ?? 0);
+    }
   } catch {
     return { deltas: [], verdict: 'same' };
   }
@@ -72,15 +83,6 @@ export function compareItems(item: Item, worn: Item): { deltas: StatDelta[]; ver
   }
   const verdict: Verdict = !deltas.length ? 'same' : downs === 0 ? 'upgrade' : ups === 0 ? 'downgrade' : 'tradeoff';
   return { deltas, verdict };
-}
-
-function twoHanded(it: Item | undefined): boolean {
-  if (!it) return false;
-  try {
-    return getBase(it.baseId).slot === 'twoHand';
-  } catch {
-    return false;
-  }
 }
 
 // One cache per state of the hero's gear and attributes: answers stay valid
@@ -122,28 +124,31 @@ export function isUpgrade(item: Item): boolean {
 }
 
 function judge(c: Character, item: Item): boolean {
-  const slots = slotsFor(item, c.classId);
-  if (!slots.length) return false;
   // Something worn already: never call it an upgrade over itself.
-  for (const s of slots) if (c.equipment[s]?.uid === item.uid) return false;
+  for (const k of Object.keys(c.equipment) as EquipSlot[]) if (c.equipment[k]?.uid === item.uid) return false;
+  const choices = compareChoices(c, item);
+  if (!choices) return false;
   cacheStats ??= computeStats(c);
   if (!meetsRequirements(c, item, cacheStats).ok) return false;
+  // An empty slot it can fill outright is an upgrade.
+  if (!choices.length) return true;
+  return choices.some((worn) => compareItems(item, worn).verdict === 'upgrade');
+}
 
-  const main = c.equipment.mainHand;
-  const off = c.equipment.offHand;
-  if (twoHanded(item)) {
-    // It would take the off hand too; one arrow cannot weigh that trade.
-    if (off) return false;
-    return !main || compareItems(item, main).verdict === 'upgrade';
-  }
-  for (const s of slots) {
-    const worn = c.equipment[s];
-    if (!worn) {
-      // An off hand held by a two-handed weapon is not free.
-      if (s === 'offHand' && twoHanded(main)) continue;
-      return true;
-    }
-    if (compareItems(item, worn).verdict === 'upgrade') return true;
-  }
-  return false;
+/**
+ * What wearing `item` would be weighed against: one list per choice the
+ * player has. Usually a single list, the pieces equipping it takes off (both
+ * hands for a two-hander over a weapon and shield; the two-hander for a shield
+ * held under one). With both rings worn there are two choices, one per ring.
+ * An empty list means it goes into a free slot and replaces nothing. Null when
+ * it cannot be worn at all.
+ */
+export function compareChoices(c: Character, item: Item): Item[][] | null {
+  const plan = equipPlan(c, item);
+  if (!plan) return null;
+  const ring1 = c.equipment.ring1;
+  const ring2 = c.equipment.ring2;
+  if ((plan.target === 'ring1' || plan.target === 'ring2') && ring1 && ring2) return [[ring1], [ring2]];
+  const worn = plan.displaced.filter((w) => w.uid !== item.uid);
+  return worn.length ? [worn] : [];
 }

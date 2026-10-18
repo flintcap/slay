@@ -648,6 +648,45 @@ export function meetsRequirements(c: Character, item: Item, stats?: Stats): { ok
 }
 
 /**
+ * What equipping `item` would do, by exactly the rules `equipItem` follows:
+ * the slot it lands in and every worn piece it pushes out. The tooltip's
+ * comparison reads this too, so "versus equipped" weighs what really comes
+ * off. Null when the item has no legal slot (or not the one named).
+ */
+export function equipPlan(c: Character, item: Item, slot?: EquipSlot): { target: EquipSlot; displaced: Item[] } | null {
+  const legal = slotsFor(item, c.classId);
+  if (legal.length === 0) return null;
+  let target: EquipSlot;
+  if (slot) {
+    if (!legal.includes(slot)) return null;
+    target = slot;
+  } else if (legal.length > 1) {
+    target = legal.find((s) => !c.equipment[s]) ?? legal[0]!;
+  } else {
+    target = legal[0]!;
+  }
+
+  const displaced: Item[] = [];
+  const existing = c.equipment[target];
+  if (existing) displaced.push(existing);
+
+  if (target === 'mainHand' && isTwoHanded(item)) {
+    const off = c.equipment.offHand;
+    // A quiver is worn, not held. It is the one off-hand a two-hander does not
+    // knock out — you cannot shoot a bow without one, so making them exclusive
+    // meant equipping a quiver silently unequipped the bow it feeds.
+    if (off && !isWornOffHand(off)) displaced.push(off);
+  }
+  if (target === 'offHand') {
+    const main = c.equipment.mainHand;
+    if (main && isTwoHanded(main) && !isWornOffHand(item) && !displaced.includes(main)) {
+      displaced.push(main);
+    }
+  }
+  return { target, displaced };
+}
+
+/**
  * Equips an item, resolving conflicts:
  *  - a two-handed weapon displaces whatever is in the off-hand;
  *  - an off-hand item displaces a two-handed weapon;
@@ -664,39 +703,15 @@ export function equipItem(
 ): { ok: boolean; reason?: string; displaced?: Item[] } {
   const legal = slotsFor(item, c.classId);
   if (legal.length === 0) return { ok: false, reason: 'This item cannot be equipped.' };
-
-  let target: EquipSlot;
-  if (slot) {
-    if (!legal.includes(slot)) return { ok: false, reason: 'Wrong slot for this item.' };
-    target = slot;
-  } else if (legal.length > 1) {
-    target = legal.find((s) => !c.equipment[s]) ?? legal[0]!;
-  } else {
-    target = legal[0]!;
-  }
+  if (slot && !legal.includes(slot)) return { ok: false, reason: 'Wrong slot for this item.' };
 
   const stats = computeStats(c);
   const req = meetsRequirements(c, item, stats);
   if (!req.ok) return { ok: false, reason: req.reason };
 
   // Work out everything this equip pushes out.
-  const displaced: Item[] = [];
-  const existing = c.equipment[target];
-  if (existing) displaced.push(existing);
-
-  const twoHand = isTwoHanded(item);
-  if (target === 'mainHand' && twoHand) {
-    const off = c.equipment.offHand;
-    // A quiver is worn, not held. It is the one off-hand a two-hander does not
-    // knock out — you cannot shoot a bow without one, so making them exclusive
-    // meant equipping a quiver silently unequipped the bow it feeds.
-    if (off && !isWornOffHand(off)) displaced.push(off);
-  }
+  const { target, displaced } = equipPlan(c, item, slot)!;
   if (target === 'offHand') {
-    const main = c.equipment.mainHand;
-    if (main && isTwoHanded(main) && !isWornOffHand(item) && !displaced.includes(main)) {
-      displaced.push(main);
-    }
     // An off-hand weapon needs a main-hand weapon to pair with. "Whatever is in
     // the main hand *after* this equip" — moving your only weapon across from
     // the main hand leaves that hand empty, so it has to be refused, not

@@ -19,7 +19,7 @@ import { itemFlavor } from '../data/story/itemFlavor';
 import { requestItemIcon } from '../art/Icons';
 import { computeStats } from '../sim/Stats';
 import { save } from '../core/Save';
-import { compareItems } from './Compare';
+import { compareChoices, compareItems } from './Compare';
 import { getGem, socketBonuses } from '../data/gems';
 import {
   add,
@@ -63,7 +63,8 @@ const RARITY_WORD: Record<string, string> = {
 class TooltipManager {
   private root: HTMLDivElement;
   private main: HTMLDivElement;
-  private compareCol: HTMLDivElement;
+  /** Worn pieces shown beside the item: up to two (both rings, or a weapon and its shield). */
+  private compareCols: HTMLDivElement[];
   private anchor: HTMLElement | null = null;
   private compareHeld = false;
   private currentItem: Item | null = null;
@@ -76,8 +77,8 @@ class TooltipManager {
   constructor() {
     this.root = div('tt-wrap');
     this.main = div('tt');
-    this.compareCol = div('tt tt-compare');
-    add(this.root, this.compareCol, this.main);
+    this.compareCols = [div('tt tt-compare'), div('tt tt-compare')];
+    add(this.root, this.compareCols[1]!, this.compareCols[0]!, this.main);
 
     window.addEventListener('keydown', this.onKey);
     window.addEventListener('keyup', this.onKey);
@@ -116,7 +117,7 @@ class TooltipManager {
   showText(html: string, anchor: HTMLElement | null, title?: string): void {
     this.currentItem = null;
     clear(this.main);
-    this.compareCol.style.display = 'none';
+    for (const col of this.compareCols) col.style.display = 'none';
     this.main.removeAttribute('data-rarity');
     this.main.style.setProperty('--rc', 'var(--gold)');
     this.main.classList.add('tt-plain');
@@ -135,19 +136,26 @@ class TooltipManager {
     clear(this.main);
 
     const char = save.account.current;
-    const equipped = this.equippedFor(item, ctx);
-    const wantCompare = !!equipped && !ctx?.noCompare && (this.compareHeld || this.compareByDefault);
+    const choices = this.compareFor(item, ctx);
+    const wantCompare = choices.length > 0 && !ctx?.noCompare && (this.compareHeld || this.compareByDefault);
 
-    this.buildItemCard(this.main, item, char ? computeStats(char) : null, char?.level ?? 1, ctx, false);
+    const stats = char ? computeStats(char) : null;
+    this.buildItemCard(this.main, item, stats, char?.level ?? 1, ctx, false);
 
-    if (wantCompare && equipped) {
-      clear(this.compareCol);
-      this.compareCol.style.display = '';
-      this.buildItemCard(this.compareCol, equipped, char ? computeStats(char) : null, char?.level ?? 1, undefined, true);
-      this.appendDeltas(this.main, item, equipped);
+    for (const col of this.compareCols) col.style.display = 'none';
+    if (wantCompare) {
+      // Every worn piece in play gets its card: both rings, or the weapon and
+      // shield a two-hander would take off.
+      const shown = [...new Set(choices.flat())].slice(0, this.compareCols.length);
+      shown.forEach((worn, i) => {
+        const col = this.compareCols[i]!;
+        clear(col);
+        col.style.display = '';
+        this.buildItemCard(col, worn, stats, char?.level ?? 1, undefined, true);
+      });
+      for (const worn of choices) this.appendDeltas(this.main, item, worn, choices.length > 1);
     } else {
-      this.compareCol.style.display = 'none';
-      if (equipped && !ctx?.noCompare) {
+      if (choices.length && !ctx?.noCompare) {
         const hint = div('tt-hint');
         hint.appendChild(span('', 'Hold '));
         hint.appendChild(span('keycap', 'Shift'));
@@ -161,18 +169,20 @@ class TooltipManager {
 
   // -- internals ------------------------------------------------------------
 
-  private equippedFor(item: Item, ctx?: ItemHoverContext): Item | null {
+  /** What the item is weighed against: one list of worn pieces per choice (see `compareChoices`). */
+  private compareFor(item: Item, ctx?: ItemHoverContext): Item[][] {
     const char = save.account.current;
-    if (!char || ctx?.source === 'equipment') return null;
-    const slots = slotsFor(item);
-    if (!slots.length) return null;
-    for (const s of slots) {
+    if (!char || ctx?.source === 'equipment') return [];
+    const choices = compareChoices(char, item);
+    if (!choices) return [];
+    if (choices.length) return choices;
+    // It would fill an empty ring or hand. Still worth a look against the
+    // piece already worn beside it.
+    for (const s of slotsFor(item)) {
       const cur = char.equipment[s];
-      if (cur && cur.uid !== item.uid) return cur;
+      if (cur && cur.uid !== item.uid) return [[cur]];
     }
-    // An empty ring/hand still deserves a comparison against the other one.
-    const first = char.equipment[slots[0] as EquipSlot];
-    return first && first.uid !== item.uid ? first : null;
+    return [];
   }
 
   private buildItemCard(
@@ -493,8 +503,8 @@ class TooltipManager {
   }
 
   /** The green/red delta strip — the reason players hold the compare key. */
-  private appendDeltas(host: HTMLDivElement, item: Item, equipped: Item): void {
-    const { deltas, verdict: v } = compareItems(item, equipped);
+  private appendDeltas(host: HTMLDivElement, item: Item, worn: Item[], named: boolean): void {
+    const { deltas, verdict: v } = compareItems(item, worn);
     const rows: HTMLElement[] = [];
     for (const { key, delta: d } of deltas) {
       const line = div(`tt-delta ${d > 0 ? 'up' : 'down'}`);
@@ -510,13 +520,14 @@ class TooltipManager {
       line.appendChild(val);
       rows.push(line);
     }
+    const against = worn.length > 1 ? 'Versus both hands' : named ? `Versus ${worn[0]!.name}` : 'Versus equipped';
     if (!rows.length) {
-      host.appendChild(div('tt-delta-none', 'No net stat change'));
+      host.appendChild(div('tt-delta-none', named ? `${against}: no net stat change` : 'No net stat change'));
       return;
     }
     const wrap = div('tt-deltas');
     const head = div('tt-deltas-hd');
-    head.appendChild(span('tt-sublabel', 'Versus equipped'));
+    head.appendChild(span('tt-sublabel', against));
     // A one-word verdict for the common case where every line agrees. The
     // same verdict puts the green arrow on item slots (Compare.ts).
     const verdict = v === 'upgrade' ? 'Upgrade' : v === 'downgrade' ? 'Downgrade' : 'Trade-off';

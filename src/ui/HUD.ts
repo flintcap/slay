@@ -15,6 +15,8 @@ import type { Character, DungeonLevel, ItemRarity, QuestInstance, SkillDef, Stat
 import { castsOnly } from '../data/itemBases';
 import { events, type GameEvents } from '../core/Events';
 import { save } from '../core/Save';
+import { keyFor, remapKey } from '../core/Access';
+import { keyLabel } from './AccessibilitySettings';
 import { stackCount } from '../sim/Inventory';
 import type { Engine } from '../core/Engine';
 import { computeStats, xpForLevel } from '../sim/Stats';
@@ -561,6 +563,8 @@ export class HUD {
   private xpText: HTMLSpanElement;
   private levelBadge: HTMLDivElement;
   private hotSlots: HTMLDivElement[] = [];
+  /** Key caps on the bar, by default key code, redrawn when keys are rebound. */
+  private keyCaps: Array<[HTMLDivElement, string]> = [];
   private hotIcons: HTMLDivElement[] = [];
   private potionLife: HTMLDivElement;
   private potionMana: HTMLDivElement;
@@ -790,7 +794,8 @@ export class HUD {
       const cdText = div('hotslot-cdtext');
       // Out-of-mana and out-of-range wash the icon in one overlay.
       const tint = div('hotslot-tint');
-      const key = div('hotslot-key', String(i + 1));
+      const key = div('hotslot-key');
+      this.keyCaps.push([key, `Digit${i + 1}`]);
       const cost = div('hotslot-cost');
       const rank = div('hotslot-rank');
       const charges = div('hotslot-charges');
@@ -825,23 +830,22 @@ export class HUD {
     const potions = div('potions');
     this.potionLife = div('potslot pot-life ui-interactive');
     this.potionMana = div('potslot pot-mana ui-interactive');
-    for (const [node, key] of [
-      [this.potionLife, 'Q'],
-      [this.potionMana, 'F'],
+    for (const [node, code] of [
+      [this.potionLife, 'KeyQ'],
+      [this.potionMana, 'KeyF'],
     ] as Array<[HTMLDivElement, string]>) {
       // The flask itself, as the pack draws it: the one a quick drink reaches for (`refreshPotions`).
       const art = div('potslot-art');
       art.innerHTML = '<img class="potslot-img" alt="" draggable="false">';
       const count = div('potslot-count', '0');
-      const k = div('potslot-key', key);
+      const k = div('potslot-key');
+      this.keyCaps.push([k, code]);
       add(node, art, count, k);
     }
     // Clicking a flask drinks it. The slots have always shown a count; nothing
     // ever let you use one, from here or from the pack.
     this.potionLife.addEventListener('click', () => events.emit('potion:use', { kind: 'life' }));
     this.potionMana.addEventListener('click', () => events.emit('potion:use', { kind: 'mana' }));
-    this.potionLife.title = 'Drink a healing potion (Q)';
-    this.potionMana.title = 'Drink a mana potion (F)';
 
     add(potions, this.potionLife, this.potionMana);
 
@@ -851,7 +855,8 @@ export class HUD {
     const dashArt = div('potslot-art');
     dashArt.innerHTML = `<img class="potslot-img" src="${skillIconUri('dash', undefined, undefined, false, 'dash')}" alt="" draggable="false">`;
     const dashCd = div('hotslot-cd');
-    const dashKey = div('potslot-key', 'SPC');
+    const dashKey = div('potslot-key');
+    this.keyCaps.push([dashKey, 'Space']);
     add(this.dashSlot, dashArt, dashCd, div('hotslot-edge'), dashKey);
     potions.appendChild(this.dashSlot);
 
@@ -931,6 +936,8 @@ export class HUD {
     });
 
     on('ui:refresh', () => this.refreshAll());
+    this.refreshKeys();
+    on('settings:changed', () => this.refreshKeys());
 
     // Press feedback. The bar does not handle input (the scene does); this only
     // dips the slot that was pressed so a keypress is visibly acknowledged.
@@ -949,7 +956,7 @@ export class HUD {
       if (!this.shown || e.repeat) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-      const node = pressKeys[e.code]?.();
+      const node = pressKeys[remapKey(e.code)]?.();
       if (!node) return;
       replayClass(node, 'is-pressed');
     };
@@ -2062,7 +2069,7 @@ export class HUD {
       `<div class="levelup-kicker">You grow stronger</div>` +
       `<div class="levelup-word">LEVEL ${level}</div>` +
       `<div class="levelup-orn">${ORNAMENT.crest}</div>` +
-      `<div class="levelup-sub">Spend your points <span class="keycap">C</span> attributes <span class="keycap">T</span> skills</div>`;
+      `<div class="levelup-sub">Spend your points <span class="keycap">${capLabel('KeyC')}</span> attributes <span class="keycap">${capLabel('KeyT')}</span> skills</div>`;
     this.centerLayer.appendChild(wrap);
     setTimeout(() => wrap.remove(), 3000);
   }
@@ -2075,12 +2082,21 @@ export class HUD {
     const m = /^\[(.+?)\]\s*(.*)$/.exec(text);
     clear(this.promptBox);
     if (m) {
-      this.promptBox.appendChild(span('keycap', m[1]));
+      // Prompts name a key by its default letter ("[E] Open"); show the key
+      // the player actually has on that action.
+      this.promptBox.appendChild(span('keycap', /^[A-Z]$/.test(m[1]!) ? capLabel(`Key${m[1]}`) : m[1]!));
       this.promptBox.appendChild(span('hud-prompt-text', m[2]));
     } else {
       this.promptBox.appendChild(span('hud-prompt-text', text));
     }
     this.promptBox.classList.add('is-open');
+  }
+
+  /** Writes the player's current keys onto the bar's key caps and tooltips. */
+  private refreshKeys(): void {
+    for (const [cap, code] of this.keyCaps) cap.textContent = code === 'Space' && !save.settings.keybinds?.Space ? 'SPC' : capLabel(code);
+    this.potionLife.title = `Drink a healing potion (${capLabel('KeyQ')})`;
+    this.potionMana.title = `Drink a mana potion (${capLabel('KeyF')})`;
   }
 
   toast(text: string, kind: 'info' | 'good' | 'bad' | 'epic' = 'info', rarity?: ItemRarity): void {
@@ -2220,4 +2236,9 @@ function castRange(def: SkillDef | null | undefined): number {
 /** Look up a skill definition by id for icon generation. */
 function skillDefFor(id: string) {
   return SKILL_BY_ID?.[id];
+}
+
+/** The key the player has on the action whose default key is `code`. */
+function capLabel(code: string): string {
+  return keyLabel(keyFor(code, save.settings.keybinds));
 }
