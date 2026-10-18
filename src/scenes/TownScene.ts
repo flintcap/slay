@@ -184,6 +184,9 @@ export class TownScene extends GameScene {
     this.interactables.push(...storyTalkSpots(spots));
     // The gambler, the enchanter and the bounty board (Legacy unlocks).
     this.offs.push(mountTownStations(this.scene, this.town.colliders, this.interactables));
+    // The stations stand still too (their turning runes cast no shadow).
+    const stations = this.scene.getObjectByName('townStations');
+    if (stations) markStaticShadows(this.scene, stations);
     this.questMarkers = new QuestMarkerLayer(this.scene);
 
     // Equipping has to change the model now, not whenever the stat sheet next

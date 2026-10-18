@@ -51,10 +51,13 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   monsters and loot, with culling (GPU or indirect draws where three.js
   supports it). Count draw calls before and after. (The hero's shadow from
   shadow bodies: map 170 -> 161 draws; see "Milestone 4".)
-- [ ] 5. (after wave two) Shadow cost: cache static shadows so only moving casters redraw;
-  a budget for point-light shadows.
-- [ ] 6. (after wave two) Many torches: tiled or clustered lighting, only if it measures
-  faster here. If it does not, note why and tick.
+- [x] 5. (after wave two) Shadow cost: cache static shadows so only moving casters redraw;
+  a budget for point-light shadows. (`core/ShadowCache.ts`: map shadow
+  draws per update 47 -> 16, town 166 -> 56 with residents' shadow bodies;
+  depth maps identical; see "Milestone 5".)
+- [x] 6. (after wave two) Many torches: tiled or clustered lighting, only if it measures
+  faster here. If it does not, note why and tick. (Not done: cannot be
+  measured here and the light loop is already small; see "Milestone 6".)
 - [ ] 7. (after wave two) CPU frame: lower animation and update rate for far monsters and
   summons, pool hot objects, no per-frame allocation in the loops you touch.
 - [ ] 8. Handover with before and after numbers.
@@ -227,6 +230,44 @@ indirect in r186), so batching more of the same buys JS time, not draws.
 - Not done: monster parts (skin, cloth, metal: about 25 draws) are one draw
   per material by design; merging them needs one material, a new look.
   Loot on the ground is a few draws (a potion is three).
+
+### Milestone 5 (shadow cost)
+
+- The sun's (and the camp moon's) shadow of still things is kept
+  (`core/ShadowCache.ts`). The floor, baked props and prop piles are drawn
+  into a map of their own; each shadow update copies it and draws only what
+  moves on top. The kept map is drawn again when the sun's camera steps
+  (it follows the hero in whole metres), a chunk is shown or hidden, or a
+  still caster changes; a caster marked still that moves is put back with
+  the moving ones for good. Walls cut away near the hero, dithered roofs and
+  swaying shapes are never marked. Scenes mark their casters with
+  `markStaticShadows` (DungeonScene after the floor build, TownScene after
+  the camp build). The sun's depth is now 32-bit float (three's default
+  depth format cannot be copied).
+- Checked exact: a probe read the sun's depth map back after a kept frame
+  and after a full frame, on the map and in town, standing and after a
+  step: 0 texels differ of 4.2 M (`shots/probe/shadow-probe.mjs`, not kept).
+- Shadow draws per update (render objects): map 47 -> 16 standing still;
+  town 166 -> 96 from residents' shadow bodies (`art/npc/Residents.ts`,
+  one body per resident, like the monsters') -> 56 kept. While walking, the
+  kept map is redrawn about once per metre (6 times a second at a run,
+  against 40 shadow updates a second on high).
+- Point-light shadows: none in play. Torches come from a pool of four
+  lights that never cast; the only point shadow is the death screen's
+  candle (one 512 map). The quality's `pointShadows` already turns that off
+  on low. Nothing to budget; noted, not changed.
+
+### Milestone 6 (many torches)
+
+Not done, on purpose. Point and spot lights are already packed into one
+loop (`core/Lighting.ts`) that is handed only the lit lights whose reach
+touches the view, so a parked or off-screen torch costs a pixel nothing. A
+map lights four torch lights at a time plus the hero's; the camp has about
+twenty. Tiled or clustered lighting adds a compute pass and a light list
+per tile every frame to save part of a loop of at most twenty: it can only
+win on a real GPU at high resolution in town, and this VM cannot measure
+GPU time (software rendering). For the owner: if town FPS on a real GPU is
+low at 4K, profile the lit fragment cost first.
 
 ## For the owner to test
 
