@@ -79,6 +79,12 @@ function setup(kind: string, o: { phases?: number; seed?: number; def?: Partial<
           return realTel(kind2, x, z, size, rot, duration, color);
         };
       }
+      if (k === 'safeZone') {
+        return (x: number, z: number, size: number, duration: number) => {
+          tels.push({ kind: 'ring', x, z, size, color: SAFE_RING, from: a.ctx.elapsed, until: a.ctx.elapsed + duration });
+          return (t.safeZone as (...args: unknown[]) => { cancel(): void })(x, z, size, duration);
+        };
+      }
       return t[k as string];
     },
   });

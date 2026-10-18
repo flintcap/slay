@@ -47,6 +47,10 @@ function arena(seed = 1): Arena {
         if (duration >= 0.5) landings.push({ t: ctx.elapsed + duration, by: acting });
         return { cancel() {} };
       },
+      safeZone: (_x: number, _z: number, _r: number, duration: number) => {
+        if (duration >= 0.5) landings.push({ t: ctx.elapsed + duration, by: acting });
+        return { cancel() {} };
+      },
     } as Record<string, unknown>,
     { get: (o, k) => (k in o ? o[k as string] : shrug) },
   );

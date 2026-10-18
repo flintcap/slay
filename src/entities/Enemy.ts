@@ -48,6 +48,7 @@ import {
   noteControl,
   getAbility,
   hitPlayer,
+  isHarmless,
   makeInstance,
   resetAbilityWorld,
   rollPacket,
@@ -746,7 +747,9 @@ export class Enemy implements Combatant {
       const ox = t.atSelf ? this.root.position.x : inst.targetX;
       const oz = t.atSelf ? this.root.position.z : inst.targetZ;
       try {
-        inst.telegraph = ctx.decals.telegraph(t.shape, ox, oz, size, inst.facing, windup, t.color);
+        inst.telegraph = isHarmless(def)
+          ? ctx.decals.cue(t.shape, ox, oz, size, inst.facing, windup, t.color)
+          : ctx.decals.telegraph(t.shape, ox, oz, size, inst.facing, windup, t.color);
       } catch {
         inst.telegraph = null;
       }

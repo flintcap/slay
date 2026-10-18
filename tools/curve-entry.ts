@@ -320,6 +320,12 @@ function fight(
           return realTel(kind, x, z, size, rot, duration, color);
         };
       }
+      if (k === 'safeZone') {
+        return (x: number, z: number, size: number, duration: number) => {
+          zones.push({ kind: 'ring', x, z, size, rot: 0, until: a.ctx.elapsed + duration, color: SAFE_RING });
+          return (o.safeZone as (...args: unknown[]) => { cancel(): void })(x, z, size, duration);
+        };
+      }
       return o[k as string];
     },
   });

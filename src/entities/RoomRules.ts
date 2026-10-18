@@ -23,6 +23,7 @@ import type { DamagePacket } from '../types';
 import type { Boss } from './Boss';
 import type { Enemy } from './Enemy';
 import { events } from '../core/Events';
+import { SAFE_TONE } from '../fx/Decals';
 import { after, angleDelta, angleTo, dashToward, dist, getAbility, hitPlayer, spawnAt, spawnHazard, type CombatContext } from './Abilities';
 
 export const RULE_KINDS = [
@@ -49,7 +50,7 @@ export function isRoomRule(kind: string | null | undefined): kind is RuleKind {
 }
 
 /** The colour the floor uses for "stand here" (the fight checker reads it too). */
-export const SAFE_RING = 0x60ffa0;
+export const SAFE_RING = SAFE_TONE;
 const TAU = Math.PI * 2;
 
 export abstract class RoomRule {
@@ -624,7 +625,7 @@ class Tiles extends RoomRule {
     const span = Tiles.GAP * 3 + Tiles.HOLD;
     this.tiles.forEach((p, k) => {
       after(k * Tiles.GAP, (c) => {
-        if (this.t >= 0) c.decals.telegraph('ring', p.x, p.z, Tiles.R, 0, Tiles.HOLD, SAFE_RING);
+        if (this.t >= 0) c.decals.safeZone(p.x, p.z, Tiles.R, Tiles.HOLD);
       });
     });
     for (const d of this.decoys) ctx.decals.telegraph('circle', d.x, d.z, Tiles.R, 0, span, 0xff4040);
@@ -839,7 +840,7 @@ class Defend extends RoomRule {
     this.mark -= dt;
     if (this.mark <= 0) {
       this.mark = 2;
-      ctx.decals.telegraph('ring', at.x, at.z, Defend.R, 0, 2.05, SAFE_RING);
+      ctx.decals.safeZone(at.x, at.z, Defend.R, 2.05);
       if (!this.out) {
         ctx.decals.add('glow', at.x, at.z, 4 * this.light + 1);
         ctx.fx.burst('fire', at.x, 1.2, at.z, { count: 5 });
@@ -882,7 +883,7 @@ class Defend extends RoomRule {
     // own light turns it away; guarding costs you only the ground you hold.
     // It is not a blow at you, so it is drawn as the place to stand, not one to leave.
     ctx.fx.burst('void', at.x, 2.4, at.z, { count: 12, color: 0x6040a0 });
-    const tel = ctx.decals.telegraph('ring', at.x, at.z, Defend.R * 0.85, 0, 1.2, SAFE_RING);
+    const tel = ctx.decals.safeZone(at.x, at.z, Defend.R * 0.85, 1.2);
     after(1.2, (c) => {
       tel.cancel();
       if (!this.boss.alive || this.out) return;

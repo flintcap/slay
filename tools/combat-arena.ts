@@ -63,6 +63,11 @@ export function arena(opts: ArenaOpts = {}): Arena {
         if (duration >= 0.5) landings.push({ t: ctx.elapsed + duration, by: acting, kind });
         return { cancel() {} };
       },
+      // A place to stand warns of the blow that lands around it.
+      safeZone: (_x: number, _z: number, _r: number, duration: number) => {
+        if (duration >= 0.5) landings.push({ t: ctx.elapsed + duration, by: acting, kind: 'safe' });
+        return { cancel() {} };
+      },
     } as Record<string, unknown>,
     { get: (o, k) => (k in o ? o[k as string] : shrug) },
   );

@@ -101,6 +101,12 @@ function fight(def: BossDef, dodge: boolean, seed: number): Result {
           return realTel(kind, x, z, size, rot, duration, color);
         };
       }
+      if (k === 'safeZone') {
+        return (x: number, z: number, size: number, duration: number) => {
+          zones.push({ kind: 'ring', x, z, size, rot: 0, until: now() + duration, color: SAFE_RING });
+          return (o.safeZone as (...args: unknown[]) => { cancel(): void })(x, z, size, duration);
+        };
+      }
       if (k === 'add') {
         return (kind: string, x: number, z: number, r: number) => {
           if (kind === 'scorch' || kind === 'stain') zones.push({ kind: 'hazard', x, z, size: r, rot: 0, until: now() + 6, color: 0 });

@@ -304,7 +304,7 @@ export class MiniBossController implements MiniBossHook {
   private warCry(ctx: CombatContext, d: number): boolean {
     if (d > 14) return false;
     const p = this.self.root.position;
-    ctx.decals.telegraph('ring', p.x, p.z, 10, 0, 0.5, 0xff9040);
+    ctx.decals.cue('ring', p.x, p.z, 10, 0, 0.5, 0xff9040);
     for (const ally of alliesNear(ctx, p.x, p.z, 10, this.self.id)) {
       ally.buff('war_cry', 5, { attackSpeed: 1.25, speed: 1.1 });
     }
@@ -317,7 +317,7 @@ export class MiniBossController implements MiniBossHook {
     const self = this.self;
     const p = self.root.position;
     self.rootTimer = 0.9;
-    ctx.decals.telegraph('ring', p.x, p.z, 12, 0, 0.9, 0xffc040);
+    ctx.decals.cue('ring', p.x, p.z, 12, 0, 0.9, 0xffc040);
     events.emit('toast', { text: `${self.name} sounds the horn!`, kind: 'bad' });
     this.run([
       [
@@ -463,7 +463,7 @@ export class MiniBossController implements MiniBossHook {
     if (this.brood.length >= 8) return false;
     const self = this.self;
     const p = self.root.position;
-    ctx.decals.telegraph('ring', p.x, p.z, 3, 0, 0.6, 0x80ff60);
+    ctx.decals.cue('ring', p.x, p.z, 3, 0, 0.6, 0x80ff60);
     const kids = summon(self, ctx, this.broodId(), 2, 2.8);
     for (const k of kids) {
       k.packId = self.packId;

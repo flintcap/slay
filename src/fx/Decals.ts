@@ -108,6 +108,47 @@ function packSchool(s: School): Packed {
   return p;
 }
 
+/** The house danger hue (red-orange), for colours outside the warm family. */
+const DANGER_HUE = 14;
+/** Warm hues up to this (amber) keep their own hue. */
+const DANGER_HUE_MAX = 44;
+/** The one colour of a place to stand: never warm, never mistaken for danger. */
+export const SAFE_TONE = 0x60ffa0;
+
+/**
+ * One danger language. Every enemy warning is drawn in the warm family, red
+ * through amber, so "warm on the floor" always means "leave". A warm colour
+ * keeps its hue and is pushed to full strength, a yellow settles on amber,
+ * and any other colour (a cold blast's blue, a poison's green, an arcane
+ * purple) becomes the house red-orange. The effect itself still shows its school when it lands.
+ */
+export function dangerTone(hex: number): number {
+  const r = ((hex >> 16) & 255) / 255;
+  const g = ((hex >> 8) & 255) / 255;
+  const b = (hex & 255) / 255;
+  const hi = Math.max(r, g, b);
+  const lo = Math.min(r, g, b);
+  const l = (hi + lo) / 2;
+  let h = 0;
+  if (hi > lo) {
+    const d = hi - lo;
+    h = hi === r ? ((g - b) / d + 6) % 6 : hi === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  // Reds and oranges keep their hue, yellows settle on amber, the rest go red-orange.
+  const hue = hi === lo ? DANGER_HUE : h >= 345 || h <= DANGER_HUE_MAX ? h : h <= 70 ? DANGER_HUE_MAX : DANGER_HUE;
+  return hslHex(hue, 0.9, Math.min(0.6, Math.max(0.5, l)));
+}
+
+function hslHex(h: number, s: number, l: number): number {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  const ch = (v: number): number => Math.round((v + m) * 255) & 255;
+  return (ch(r) << 16) | (ch(g) << 8) | ch(b);
+}
+
 type TelegraphShape = 'circle' | 'cone' | 'line' | 'ring';
 const SHAPE: Record<TelegraphShape, number> = { circle: GROUND.tgCircle, cone: GROUND.tgCone, line: GROUND.tgLine, ring: GROUND.tgRing };
 
@@ -229,10 +270,31 @@ export class DecalSystem {
    * Ground telegraph for an enemy attack. `size` is the radius for circle,
    * ring and cone and the length for line (which starts at x, z and runs along
    * `rotation`). Fills over `duration`, pulses near the end, flashes on landing.
+   * Only for things that hurt: a place to stand is `safeZone`, a harmless
+   * notice is `cue`.
    */
   telegraph(kind: TelegraphShape, x: number, z: number, size: number, rotation: number, duration: number, color?: number): TelegraphHandle {
     const param = kind === 'cone' ? Math.PI * 0.25 : kind === 'line' ? 0.12 : kind === 'ring' ? 0.14 : 0;
     return this.telegraphEx(kind, x, z, size, rotation, duration, color ?? 0xff3020, param);
+  }
+
+  /**
+   * A place to stand: a safe ring the hero should step into before something
+   * lands. Always `SAFE_TONE`, on the warning layer so a busy fight cannot
+   * recycle it, and never in the warm danger family.
+   */
+  safeZone(x: number, z: number, radius: number, duration: number): TelegraphHandle {
+    return this.spawnTell(this.tells, 'ring', x, z, radius, 0, duration, SAFE_TONE, 0.14, 0.7);
+  }
+
+  /**
+   * A harmless notice: a monster rallies, heals, shields or calls for help.
+   * A thin shape in the move's own colour on the glow layer, like the hero's
+   * `aim`, so nothing that cannot hurt reads as something to dodge.
+   */
+  cue(kind: TelegraphShape, x: number, z: number, size: number, rotation: number, duration: number, color: number): TelegraphHandle {
+    const param = kind === 'cone' ? Math.PI * 0.25 : kind === 'line' ? 0.05 : kind === 'ring' ? 0.08 : 0;
+    return this.spawnTell(this.glows, kind, x, z, size, rotation, duration, color, param, 0.45);
   }
 
   /**
@@ -245,9 +307,13 @@ export class DecalSystem {
     return this.spawnTell(this.glows, 'ring', x, z, radius, 0, duration, color, 0.08, 0.45);
   }
 
-  /** Telegraph with an explicit shape parameter: cone half-angle (radians), line half-width (fraction of length), ring thickness. */
+  /**
+   * Telegraph with an explicit shape parameter: cone half-angle (radians),
+   * line half-width (fraction of length), ring thickness. The colour is
+   * brought into the danger family (`dangerTone`).
+   */
   telegraphEx(kind: TelegraphShape, x: number, z: number, size: number, rotation: number, duration: number, color: number, param: number): TelegraphHandle {
-    return this.spawnTell(this.tells, kind, x, z, size, rotation, duration, color, param, 0.7);
+    return this.spawnTell(this.tells, kind, x, z, size, rotation, duration, dangerTone(color), param, 0.7);
   }
 
   private spawnTell(layer: GroundLayer, kind: TelegraphShape, x: number, z: number, size: number, rotation: number, duration: number, color: number, param: number, emit: number): TelegraphHandle {

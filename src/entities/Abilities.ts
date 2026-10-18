@@ -223,6 +223,14 @@ export interface TelegraphSpec {
 
 export type AbilityFn = (self: Combatant, ctx: CombatContext, inst: AbilityInstance) => void;
 
+/**
+ * A move that cannot hurt the hero: a rally, heal, shield or summon with no
+ * damage. Its marker is a `cue` in its own colour, never a danger warning.
+ */
+export function isHarmless(a: Pick<AbilityDef, 'kind' | 'damageMul'>): boolean {
+  return a.damageMul <= 0 && (a.kind === 'buff' || a.kind === 'heal' || a.kind === 'summon');
+}
+
 export interface AbilityDef {
   id: string;
   name: string;
@@ -1888,6 +1896,7 @@ def({
   kind: 'ranged',
   cooldown: 4.5,
   windup: 0.7,
+  telegraph: { shape: 'line', size: 13, color: 0xa89880, atSelf: true },
   recovery: 0.4,
   range: 13,
   minRange: 3,
@@ -2114,6 +2123,7 @@ def({
   kind: 'ranged',
   cooldown: 10,
   windup: 0.55,
+  telegraph: { shape: 'line', size: 13, color: 0xdcdce8, atSelf: true },
   recovery: 0.4,
   range: 13,
   minRange: 2.5,
@@ -2278,6 +2288,7 @@ def({
   kind: 'ranged',
   cooldown: 7,
   windup: 0.9,
+  telegraph: { shape: 'ring', size: 2, color: 0xc060ff, atSelf: true },
   recovery: 0.5,
   range: 20,
   minRange: 3,
@@ -2485,6 +2496,7 @@ def({
   kind: 'aoe',
   cooldown: 6,
   windup: 0.5,
+  telegraph: { shape: 'ring', size: 4, color: 0x9ce0ff, atSelf: true },
   recovery: 0.4,
   range: 12,
   damageMul: 0.9,
@@ -2773,6 +2785,7 @@ def({
   kind: 'debuff',
   cooldown: 12,
   windup: 1.0,
+  telegraph: { shape: 'line', size: 14, color: 0x9060c0, atSelf: true },
   recovery: 0.6,
   range: 14,
   damageMul: 0.5,
@@ -2951,7 +2964,9 @@ def({
   name: 'Plague Burst',
   kind: 'aoe',
   cooldown: 0,
-  windup: 0,
+  // The body swells for 0.6s before it bursts, inside the circle shown.
+  windup: 0.6,
+  telegraph: { shape: 'circle', size: 3.4, color: 0x8ee04a, atSelf: true },
   recovery: 0,
   range: 0,
   radius: 3.4,
@@ -2961,10 +2976,17 @@ def({
   tags: ['ondeath'],
   onExecute: (self, ctx) => {
     const p = P(self);
-    circleHit(self, ctx, p.x, p.z, 3.4 * reachOf(self), 1.4, 'poison', 'plague_death', {
-      applies: [{ id: 'poison', duration: 8, magnitude: 2 }],
+    const x = p.x;
+    const z = p.z;
+    const r = 3.4 * reachOf(self);
+    const tel = ctx.decals.telegraph('circle', x, z, r, 0, 0.6, 0x8ee04a);
+    after(0.6, (c) => {
+      tel.cancel();
+      circleHit(self, c, x, z, r, 1.4, 'poison', 'plague_death', {
+        applies: [{ id: 'poison', duration: 8, magnitude: 2 }],
+      });
+      spawnHazard(self, c, x, z, 2.6, 0.4, 'poison', 'plague_death', { duration: 8, tickRate: 2 });
     });
-    spawnHazard(self, ctx, p.x, p.z, 2.6, 0.4, 'poison', 'plague_death', { duration: 8, tickRate: 2 });
   },
 });
 
@@ -3640,6 +3662,7 @@ def({
   kind: 'debuff',
   cooldown: 11,
   windup: 0.9,
+  telegraph: { shape: 'line', size: 12, color: 0x4060ff, atSelf: true },
   recovery: 0.5,
   range: 12,
   damageMul: 0.9,
@@ -3806,6 +3829,7 @@ def({
   kind: 'aoe',
   cooldown: 15,
   windup: 0.6,
+  telegraph: { shape: 'circle', size: 5, color: 0x203040, atSelf: true },
   recovery: 0.5,
   range: 8,
   radius: 5,
@@ -3904,6 +3928,7 @@ def({
   kind: 'debuff',
   cooldown: 18,
   windup: 1.1,
+  telegraph: { shape: 'ring', size: 1.6, color: 0xc0c0c0 },
   recovery: 0.6,
   range: 14,
   damageMul: 0.2,

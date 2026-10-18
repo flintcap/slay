@@ -543,7 +543,7 @@ export class Boss extends Enemy {
           safe.push({ x: p.x + Math.sin(ang) * 7, z: p.z + Math.cos(ang) * 7 });
         }
         a.step++;
-        const tels = safe.map((s) => ctx.decals.telegraph('ring', s.x, s.z, 2.4, 0, 3.0, 0x60ffa0));
+        const tels = safe.map((s) => ctx.decals.safeZone(s.x, s.z, 2.4, 3.0));
         events.emit('toast', { text: 'Get behind a pillar!', kind: 'bad' });
         after(3.0, (c) => {
           for (const t of tels) t.cancel();
