@@ -215,7 +215,7 @@ const BULWARK = build('bulwark', [
     t: 'self',
     mana: [2, 0.2],
     fx: 'stance.toggle',
-    p: { defPct: 45, defPerRank: 4, dr: 12, drPerRank: 1.5, moveSpeed: -25, upkeep: 2 },
+    p: { defPct: 45, defPerRank: 4, dr: 12, drPerRank: 1.5, moveSpeed: -25 },
   },
   {
     id: 'shieldCharge',
@@ -231,7 +231,7 @@ const BULWARK = build('bulwark', [
     dmg: [1.2, 0.22],
     type: 'physical',
     fx: 'dash.attack',
-    p: { range: 9, radius: 1.6, knockdown: 1.2, applies: 1 },
+    p: { range: 9, radius: 1.6, knockdown: 1.2 },
   },
   {
     id: 'bulwarkMastery',
@@ -254,7 +254,7 @@ const BULWARK = build('bulwark', [
     dmg: [1.1, 0.1],
     type: 'physical',
     fx: 'passive.onBlock',
-    p: { procChance: 20, procPerRank: 4, counter: 1 },
+    p: { procChance: 20, procPerRank: 4 },
   },
   {
     id: 'aegis',
@@ -267,7 +267,7 @@ const BULWARK = build('bulwark', [
     mana: [16, 1.2],
     cd: [22, 0.6, 10],
     fx: 'buff.absorb',
-    p: { absorb: 60, absorbPerRank: 35, duration: 12, feedsSkill: 1, status: 0 },
+    p: { absorb: 60, absorbPerRank: 35, duration: 12 },
   },
   {
     id: 'immovable',
@@ -295,7 +295,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'fortressStance',
     name: 'Fortress Stance',
-    desc: 'Root yourself for 6s: +120% defense, +20% block chance (+0.5% per rank), +25 damage reduction (+0.5 per rank) and immunity to knockback and stun (+8% defense per rank). You cannot move.',
+    desc: 'Root yourself for 6s: +120% defense (+8% per rank), +20% block chance (+0.5% per rank), +25 damage reduction (+0.5 per rank), and nothing can stun, hold or knock you back. You cannot move.',
     tier: 5,
     col: 0,
     icon: 'fortress',
@@ -304,7 +304,7 @@ const BULWARK = build('bulwark', [
     mana: [24, 1],
     cd: [40, 1, 20],
     fx: 'stance.rooted',
-    p: { duration: 6, defPct: 120, defPerRank: 8, blockPct: 20, ccImmune: 1 },
+    p: { duration: 6, defPct: 120, defPerRank: 8, blockPct: 20 },
   },
   {
     id: 'unyielding',
@@ -336,13 +336,12 @@ const BULWARK = build('bulwark', [
     dmg: [1.4, 0.25],
     type: 'physical',
     fx: 'projectile.bounce',
-    p: { bounces: 3, bouncesPerRanks: 4, range: 14, blockScale: 1.5, speed: 22 },
+    p: { bounces: 3, bouncesPerRanks: 4, range: 14, blockScale: 1.5 },
   },
   {
     id: 'retribution',
     name: 'Retribution',
-    desc:
-      'CAPSTONE. Your guard becomes an argument. Every point of block chance above 25% is converted into ' +
+    desc: 'CAPSTONE. Your guard becomes an argument. Every block stores 3% bonus damage (+1.5% per rank), up to 300%, and your next blow spends all of it. Blocking no longer just prevents the hit: it loads the answer.' +
       '3% retaliation damage (+1.5% per rank): whenever you block, the attacker and everything within 4m takes ' +
       'that share of your maximum life as physical damage. Blocking no longer just prevents the hit — it answers it.',
     tier: 6,
@@ -352,7 +351,7 @@ const BULWARK = build('bulwark', [
     req: ['fortressStance', 'spikedGuard'],
     fx: 'capstone.retribution',
     type: 'physical',
-    p: { blockFloor: 25, pctPerBlock: 3, perRank: 1.5, radius: 4, lifeScale: 0.02 },
+    p: { pctPerBlock: 3, perRank: 1.5 },
   },
   {
     id: 'lastOath',
@@ -369,7 +368,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'phalanx',
     name: 'Phalanx',
-    desc: 'You may block attacks from any direction, including spells. Raises your block cap from 60% to 75% and adds +1% block per rank.',
+    desc: 'Raises your block cap from 75% to 85% and adds +1% block per rank.',
     tier: 6,
     col: 2,
     max: 15,
@@ -377,7 +376,7 @@ const BULWARK = build('bulwark', [
     req: ['fortressStance'],
     stat: { blockChance: per(1) },
     fx: 'passive.blockRules',
-    p: { omnidirectional: 1, blockSpells: 1, capBonus: 15 },
+    p: { capBonus: 10 },
   },
 ]);
 
@@ -403,7 +402,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'rend',
     name: 'Rend',
-    desc: 'Tear the wound open. 60% weapon damage (+10% per rank) and 3 stacks of Bleeding for 6s.',
+    desc: 'Tear the wound open. 60% weapon damage (+10% per rank) and 3 stacks of Bleeding for 6s (+1 stack per 4 ranks).',
     tier: 1,
     col: 1,
     icon: 'rend',
@@ -418,7 +417,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'butchery',
     name: 'Butchery',
-    desc: '+9% bleed damage per rank and +2% attack speed every second rank. Practice makes precise.',
+    desc: '+9% bleed damage per rank, and more attack speed every rank. Practice makes precise.',
     tier: 1,
     col: 2,
     icon: 'cleaver',
@@ -429,7 +428,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'gash',
     name: 'Gash',
-    desc: 'A single deep cut: 130% weapon damage (+20% per rank) and Hemorrhage, which bursts for 40% of its remaining damage when it ends.',
+    desc: 'A single deep cut: 130% weapon damage (+20% per rank) and Hemorrhage for 5s, which bursts for 40% of the damage it dealt when it ends.',
     tier: 2,
     col: 0,
     icon: 'gash',
@@ -440,23 +439,23 @@ const CARNAGE = build('carnage', [
     dmg: [1.3, 0.2],
     type: 'physical',
     fx: 'melee.strike',
-    p: { hemorrhage: 1, duration: 5, burstPct: 40 },
+    p: { duration: 5, burstPct: 40 },
   },
   {
     id: 'bloodScent',
     name: 'Blood Scent',
-    desc: '+7% damage per rank against bleeding enemies, and you can see their outlines through walls.',
+    desc: '+7% damage per rank against bleeding enemies.',
     tier: 2,
     col: 1,
     icon: 'nose',
     req: ['rend'],
     fx: 'passive.conditionalDamage',
-    p: { pctPerRank: 7, condition: 0, wallhack: 1 },
+    p: { pctPerRank: 7 },
   },
   {
     id: 'overhead',
     name: 'Overhead Strike',
-    desc: 'A committed two-hand swing. 175% weapon damage (+28% per rank) with +25% critical chance, but a 0.6s wind-up.',
+    desc: 'A committed two-hand swing. 175% weapon damage (+28% per rank) with +25% critical chance and a 20% chance to Sunder.',
     tier: 2,
     col: 2,
     icon: 'overhead',
@@ -467,12 +466,12 @@ const CARNAGE = build('carnage', [
     dmg: [1.75, 0.28],
     type: 'physical',
     fx: 'melee.heavy',
-    p: { windup: 0.6, critBonus: 25, sunderChance: 20 },
+    p: { critBonus: 25, sunderChance: 20 },
   },
   {
     id: 'sunder',
     name: 'Sunder',
-    desc: 'Split the plate. 95% weapon damage (+15% per rank) and Sundered: -45% defense for 8s, stacking three times.',
+    desc: 'Split the plate. 95% weapon damage (+15% per rank) and Sundered: -45% defense for 8s (+0.3s per rank), stacking three times.',
     tier: 3,
     col: 0,
     icon: 'shard',
@@ -488,7 +487,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'reaver',
     name: 'Reaver',
-    desc: '+3% attack speed and +12 attack rating per rank. Every kill grants a stack of Frenzy.',
+    desc: '+3% attack speed and +12 attack rating per rank. Every kill grants a stack of Frenzy for 6s (+6% attack speed and +5% damage each, up to 8).',
     tier: 3,
     col: 1,
     icon: 'whet',
@@ -526,31 +525,31 @@ const CARNAGE = build('carnage', [
     dmg: [0.65, 0.11],
     type: 'physical',
     fx: 'melee.channel',
-    p: { radius: 3, tickRate: 0.35, moveSpeed: 60, upkeep: 6 },
+    p: { radius: 3, tickRate: 0.35 },
   },
   {
     id: 'arterialStrike',
     name: 'Arterial Strike',
-    desc: 'Critical strikes apply Hemorrhage. +8% bleed duration per rank, and bleeds you apply can themselves critically strike.',
+    desc: 'Critical strikes apply Hemorrhage. More critical chance and +8% bleed duration per rank.',
     tier: 4,
     col: 1,
     icon: 'artery',
     req: ['gash'],
     stat: { critChance: dim(12, 0.08) },
     fx: 'passive.critOnHit',
-    p: { durationPerRank: 8, bleedsCanCrit: 1 },
+    p: { durationPerRank: 8 },
   },
   {
     id: 'bloodDrinker',
     name: 'Blood Drinker',
-    desc: '+0.6% life steal per rank, doubled against bleeding targets. Bleeds you inflict heal you for 12% of their damage.',
+    desc: '+0.6% life steal per rank, and life steal works twice against bleeding targets.',
     tier: 4,
     col: 2,
     icon: 'chalice',
     req: ['bloodScent'],
     stat: { lifeSteal: dim(12, 0.07) },
     fx: 'passive.leech',
-    p: { bleedLeechPct: 12, bleedPerRank: 1.5, doubleVsBleeding: 1 },
+    p: { doubleVsBleeding: 1 },
   },
   {
     id: 'executioner',
@@ -613,7 +612,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'ruin',
     name: 'Ruin',
-    desc: 'One swing meant for a god. 400% weapon damage (+60% per rank) in a 5m cone, doubled against anything already bleeding, and it cannot be blocked.',
+    desc: 'One swing meant for a god. 400% weapon damage (+60% per rank) in a 5m cone, doubled against anything already bleeding.',
     tier: 6,
     col: 1,
     max: 20,
@@ -625,12 +624,12 @@ const CARNAGE = build('carnage', [
     dmg: [4, 0.6],
     type: 'physical',
     fx: 'melee.heavy',
-    p: { arc: 90, radius: 5, unblockable: 1, vsBleeding: 100, windup: 0.9 },
+    p: { arc: 90, radius: 5, vsBleeding: 100 },
   },
   {
     id: 'unrelenting',
     name: 'Unrelenting',
-    desc: 'Bleeds on enemies below 40% life no longer expire. +5% bleed damage per rank while you are below half life.',
+    desc: 'Bleeds on enemies below 40% life no longer run out. +5% bleed damage per rank while you are below half life, and your damage over time lasts 2s longer.',
     tier: 6,
     col: 2,
     max: 15,
@@ -662,13 +661,13 @@ const OATH = build('oath', [
   {
     id: 'oathOfMight',
     name: 'Oath of Might',
-    desc: 'A sworn aura. +6% damage and +8 attack rating per rank to you and anything you have raised.',
+    desc: 'A sworn oath. +6% damage and +8 attack rating per rank.',
     tier: 1,
     col: 1,
     icon: 'fist',
     stat: { enhancedDamage: per(6), attackRating: per(8) },
     fx: 'aura',
-    p: { radius: 10, auraId: 0 },
+    p: {},
   },
   {
     id: 'warTrained',
@@ -696,14 +695,14 @@ const OATH = build('oath', [
   {
     id: 'oathOfIron',
     name: 'Oath of Iron',
-    desc: 'Aura: +10 defense and +0.8% physical resistance per rank, shared with allies and minions.',
+    desc: 'A sworn oath. +10 defense per rank and more physical resistance every rank.',
     tier: 2,
     col: 1,
     icon: 'iron',
     req: ['oathOfMight'],
     stat: { defense: per(10), physicalResist: dim(16, 0.07) },
     fx: 'aura',
-    p: { radius: 10, auraId: 1 },
+    p: {},
   },
   {
     id: 'intimidate',
@@ -722,7 +721,7 @@ const OATH = build('oath', [
   {
     id: 'bannerOfTheGate',
     name: 'Banner of the Gate',
-    desc: 'Plant a standard for 20s. Allies within 8m gain +25% defense and +15% damage (+2% each per rank); enemies within it cannot flee.',
+    desc: 'Plant a standard for 20s: you gain +25% defense and +15% damage (+2% each per rank).',
     tier: 3,
     col: 0,
     icon: 'banner',
@@ -731,7 +730,7 @@ const OATH = build('oath', [
     mana: [20, 1],
     cd: [45, 1, 20],
     fx: 'banner',
-    p: { duration: 20, radius: 8, defPct: 25, dmgPct: 15, perRank: 2, noFlee: 1 },
+    p: { duration: 20, radius: 8, defPct: 25, dmgPct: 15, perRank: 2 },
   },
   {
     id: 'commandingPresence',
@@ -761,14 +760,14 @@ const OATH = build('oath', [
   {
     id: 'oathOfBlood',
     name: 'Oath of Blood',
-    desc: 'Aura: +0.5% life steal and +3 life regeneration per rank for you and your minions.',
+    desc: 'A sworn oath. More life steal and +3 life regeneration per rank.',
     tier: 4,
     col: 0,
     icon: 'blood-oath',
     req: ['commandingPresence'],
     stat: { lifeSteal: dim(10, 0.07), lifeRegen: per(3) },
     fx: 'aura',
-    p: { radius: 10, auraId: 2 },
+    p: {},
   },
   {
     id: 'warStomp',
@@ -784,12 +783,12 @@ const OATH = build('oath', [
     dmg: [1.5, 0.24],
     type: 'physical',
     fx: 'aoe.slam',
-    p: { radius: 6, stun: 2, knockdown: 1.2, shake: 1.4 },
+    p: { radius: 6, stun: 2, knockdown: 1.2 },
   },
   {
     id: 'veteransResolve',
     name: "Veteran's Resolve",
-    desc: '-4% crowd-control duration per rank, +1.5% to all resistances per rank, and shouts cost 3% less mana per rank.',
+    desc: '-4% crowd-control duration per rank (to a 60% floor), +1.5% to all resistances per rank, and shouts cost 3% less mana per rank.',
     tier: 4,
     col: 2,
     icon: 'scar',
@@ -807,13 +806,13 @@ const OATH = build('oath', [
   {
     id: 'standardBearer',
     name: 'Standard Bearer',
-    desc: 'You may keep two banners planted at once, and banners last 50% longer (+5% per rank) and grant +2% damage per rank.',
+    desc: 'Banners last 50% longer (+5% per rank) and grant +2% damage per rank.',
     tier: 5,
     col: 0,
     icon: 'two-banners',
     req: ['bannerOfTheGate'],
     fx: 'passive.bannerRules',
-    p: { maxBanners: 2, durationPct: 50, perRank: 5, dmgPerRank: 2 },
+    p: { durationPct: 50, perRank: 5, dmgPerRank: 2 },
   },
   {
     id: 'earthshatter',
@@ -834,13 +833,13 @@ const OATH = build('oath', [
   {
     id: 'hymnOfThorns',
     name: 'Hymn of Thorns',
-    desc: 'Aura: you and your allies reflect 12% of melee damage taken (+4% per rank) and gain the Thorns status.',
+    desc: 'A sworn hymn. You reflect 12% of melee damage taken (+4% per rank).',
     tier: 5,
     col: 2,
     icon: 'thorn-crest',
     req: ['oathOfBlood'],
     fx: 'aura',
-    p: { radius: 10, auraId: 3, reflect: 12, perRank: 4 },
+    p: { reflect: 12, perRank: 4 },
   },
   {
     id: 'theLastOrder',
@@ -916,7 +915,7 @@ const CONFLAGRATION = build('conflagration', [
     icon: 'mastery-fire',
     stat: { elementalDamagePct: per(9) },
     fx: 'passive.pierceResist',
-    p: { type: 1, piercePerRank: 1, pierceFloor: 20 },
+    p: { piercePerRank: 1, pierceFloor: 20 },
   },
   {
     id: 'emberNova',
@@ -936,7 +935,7 @@ const CONFLAGRATION = build('conflagration', [
   {
     id: 'flameLance',
     name: 'Flame Lance',
-    desc: 'A lance of white fire pierces every enemy in a 14m line for 130% spell damage (+22% per rank).',
+    desc: 'A lance of white fire pierces every enemy in a 14m line for 130% spell damage (+22% per rank) and 2 stacks of Burning.',
     tier: 2,
     col: 0,
     icon: 'lance',
@@ -947,7 +946,7 @@ const CONFLAGRATION = build('conflagration', [
     dmg: [1.3, 0.22],
     type: 'fire',
     fx: 'beam.line',
-    p: { range: 14, width: 1.4, pierce: 99, burnStacks: 2 },
+    p: { range: 14, width: 1.4, burnStacks: 2 },
   },
   {
     id: 'scorch',
@@ -958,7 +957,7 @@ const CONFLAGRATION = build('conflagration', [
     icon: 'scorch',
     req: ['fireMastery'],
     fx: 'passive.onHitStatus',
-    p: { statusId: 1, chance: 35, chancePerRank: 4, duration: 8, burnPerRank: 6 },
+    p: { chance: 35, chancePerRank: 4, duration: 8, burnPerRank: 6 },
   },
   {
     id: 'fireball',
@@ -979,7 +978,7 @@ const CONFLAGRATION = build('conflagration', [
   {
     id: 'infernoStream',
     name: 'Inferno',
-    desc: 'A sustained gout of flame: 200% spell damage (+34% per rank) to the first enemy in a 7m line with every pulse, stacking Burning fast.',
+    desc: 'A gout of flame: 200% spell damage (+34% per rank) to the first enemy in a 7m line, with a 60% chance to Burn.',
     tier: 3,
     col: 0,
     icon: 'stream',
@@ -989,24 +988,24 @@ const CONFLAGRATION = build('conflagration', [
     dmg: [2, 0.34],
     type: 'fire',
     fx: 'channel.cone',
-    p: { range: 7, arc: 40, tickRate: 0.15, upkeep: 9, burnChance: 60 },
+    p: { range: 7, burnChance: 60 },
   },
   {
     id: 'kindling',
     name: 'Kindling',
-    desc: '+3% critical strike chance and +8% critical damage per rank against burning enemies.',
+    desc: '+3% critical strike chance per rank, and +8% critical damage per rank against burning enemies.',
     tier: 3,
     col: 1,
     icon: 'kindle',
     req: ['scorch'],
     stat: { critChance: dim(15, 0.09) },
     fx: 'passive.conditionalCrit',
-    p: { condition: 0, critPerRank: 3, critDmgPerRank: 8 },
+    p: { critDmgPerRank: 8 },
   },
   {
     id: 'blastWave',
     name: 'Blast Wave',
-    desc: 'A concussive detonation: 260% spell damage (+40% per rank) in 6m, knocking enemies back 5m and interrupting casts.',
+    desc: 'A concussive detonation: 260% spell damage (+40% per rank) in 6m, knocking enemies back and interrupting casts.',
     tier: 3,
     col: 2,
     icon: 'blast',
@@ -1022,7 +1021,7 @@ const CONFLAGRATION = build('conflagration', [
   {
     id: 'pyroclasm',
     name: 'Pyroclasm',
-    desc: 'Six delayed eruptions walk outward from the target point, each 170% spell damage (+28% per rank) in 2.5m.',
+    desc: 'Six eruptions walk outward from the target point, one after another, each 170% spell damage (+28% per rank) in 2.5m with 2 stacks of Burning.',
     tier: 4,
     col: 0,
     icon: 'eruption',
@@ -1038,7 +1037,7 @@ const CONFLAGRATION = build('conflagration', [
   {
     id: 'combustion',
     name: 'Combustion',
-    desc: 'Burning enemies that die explode for 80% of their remaining burn damage (+10% per rank) in 3.5m, igniting the survivors.',
+    desc: 'Enemies you kill explode as fire for 80% of your damage (+10% per rank) in 3.5m, setting the survivors burning.',
     tier: 4,
     col: 1,
     icon: 'burst',
@@ -1059,7 +1058,7 @@ const CONFLAGRATION = build('conflagration', [
   {
     id: 'firestorm',
     name: 'Firestorm',
-    desc: 'Twelve seconds of falling fire over 8m. Each impact deals 85% spell damage (+14% per rank); 3 impacts per second.',
+    desc: 'Twelve seconds of falling fire over 8m: 3 impacts per second, each with a stack of Burning.',
     tier: 5,
     col: 0,
     icon: 'rain-fire',
@@ -1129,7 +1128,7 @@ const CONFLAGRATION = build('conflagration', [
     dmg: [6, 0.9],
     type: 'fire',
     fx: 'point.detonate',
-    p: { radius: 5, vsBurning: 100, shake: 2, castTime: 0.8 },
+    p: { radius: 5, vsBurning: 100 },
   },
   {
     id: 'emberSoul',
@@ -1915,12 +1914,12 @@ const TEMPEST = build('tempest', [
     icon: 'mastery-lightning',
     stat: { elementalDamagePct: per(10) },
     fx: 'passive.pierceResist',
-    p: { type: 3, piercePerRank: 1, pierceFloor: 25 },
+    p: { piercePerRank: 1, pierceFloor: 25 },
   },
   {
     id: 'shockNova',
     name: 'Shock Nova',
-    desc: 'Rings of charge expand 6m for 80% spell damage (+14% per rank) and apply Shocked (-20% lightning resistance).',
+    desc: 'A ring of charge expands 6m for 80% spell damage (+14% per rank) and applies Shocked (-20% lightning resistance).',
     tier: 1,
     col: 2,
     icon: 'nova-shock',
@@ -1930,7 +1929,7 @@ const TEMPEST = build('tempest', [
     dmg: [0.8, 0.14],
     type: 'lightning',
     fx: 'nova',
-    p: { radius: 6, shockStacks: 1, rings: 2 },
+    p: { radius: 6, shockStacks: 1 },
   },
   {
     id: 'chainLightning',
@@ -1951,7 +1950,7 @@ const TEMPEST = build('tempest', [
   {
     id: 'thunderclap',
     name: 'Thunderclap',
-    desc: 'A pressure wave: 130% spell damage (+21% per rank) in 5m, Stunned for 1.5s and casts interrupted.',
+    desc: 'A pressure wave: 130% spell damage (+21% per rank) in 5m, Stunned for 1.5s (+0.05s per rank), which stops any cast.',
     tier: 2,
     col: 1,
     icon: 'clap',
@@ -1962,7 +1961,7 @@ const TEMPEST = build('tempest', [
     dmg: [1.3, 0.21],
     type: 'lightning',
     fx: 'nova.stun',
-    p: { radius: 5, stun: 1.5, stunPerRank: 0.05, interrupt: 1, deafen: 1 },
+    p: { radius: 5, stun: 1.5, stunPerRank: 0.05 },
   },
   {
     id: 'conductance',
@@ -2016,12 +2015,12 @@ const TEMPEST = build('tempest', [
     dmg: [2.0, 0.32],
     type: 'lightning',
     fx: 'projectile.orb',
-    p: { duration: 6, speed: 3, radius: 5, splash: 5, targetsPerTick: 4, tickRate: 0.25 },
+    p: { duration: 6, speed: 3, radius: 5, splash: 5 },
   },
   {
     id: 'thunderstorm',
     name: 'Thunderstorm',
-    desc: 'For 30s, a bolt strikes a random enemy within 14m every 1.4s for 180% spell damage (+28% per rank).',
+    desc: 'For 30s, a bolt strikes a random enemy within 14m every 1.4s for 180% spell damage (+28% per rank), leaving 2 stacks of Shocked.',
     tier: 4,
     col: 0,
     icon: 'storm',
@@ -2060,12 +2059,12 @@ const TEMPEST = build('tempest', [
     dmg: [2.2, 0.35],
     type: 'lightning',
     fx: 'projectile.orb',
-    p: { duration: 4, speed: 6, radius: 3, tickRate: 0.125, pierce: 99, range: 14 },
+    p: { duration: 4, speed: 6, radius: 3, pierce: 99, range: 14 },
   },
   {
     id: 'skyLance',
     name: 'Sky Lance',
-    desc: 'A 22m beam of white lightning: 300% spell damage (+45% per rank), pierces everything, ignores 20% lightning resistance.',
+    desc: 'A 22m beam of white lightning: 300% spell damage (+45% per rank), pierces everything, ignores 20% lightning resistance and leaves 3 stacks of Shocked.',
     tier: 5,
     col: 0,
     icon: 'sky-lance',
@@ -2076,19 +2075,19 @@ const TEMPEST = build('tempest', [
     dmg: [3, 0.45],
     type: 'lightning',
     fx: 'beam.line',
-    p: { range: 22, width: 1.6, pierce: 99, pierceResist: 20, shockStacks: 3 },
+    p: { range: 22, width: 1.6, pierceResist: 20, shockStacks: 3 },
   },
   {
     id: 'overload',
     name: 'Overload',
-    desc: 'Widens your lightning roll: -15% minimum damage, +35% maximum damage (+4% per rank). Lightning is a gamble; take a bigger one.',
+    desc: 'Widens your roll: more maximum damage, a little less minimum damage, and more critical damage every rank. Lightning is a gamble; take a bigger one.',
     tier: 5,
     col: 1,
     icon: 'overload',
     req: ['stormFury'],
     stat: { maxDamage: per(6), minDamage: per(-1), critDamage: per(5) },
     fx: 'passive.damageSpread',
-    p: { maxPct: 35, perRank: 4, minPct: -15 },
+    p: {},
   },
   {
     id: 'ionize',
@@ -2102,13 +2101,12 @@ const TEMPEST = build('tempest', [
     mana: [24, 1.2],
     cd: [22, 0.6, 10],
     fx: 'ground.debuffField',
-    p: { radius: 7, duration: 10, amplifyPct: 25, perRank: 3, shockRefresh: 1 },
+    p: { radius: 7, duration: 10, amplifyPct: 25, perRank: 3 },
   },
   {
     id: 'eyeOfTheStorm',
     name: 'The Eye of the Storm',
-    desc:
-      'CAPSTONE. The weather stops being a spell and becomes an address. A permanent storm centred on you strikes ' +
+    desc: 'CAPSTONE. The weather stops being a spell and becomes an address. A storm centred on you strikes every Shocked enemy within 16m once every 0.8s for 90% spell damage (+8% per rank), and each strike refreshes the shock. Shock everything and the room dies whether you keep casting or not.' +
       'every Shocked enemy within 16m once every 0.8s for 90% spell damage (+8% per rank), and each strike refreshes ' +
       'the shock. Shock everything and the room dies whether you keep casting or not.',
     tier: 6,
@@ -2122,7 +2120,7 @@ const TEMPEST = build('tempest', [
     dmg: [0.9, 0.08],
     type: 'lightning',
     fx: 'capstone.eyeOfStorm',
-    p: { radius: 16, interval: 0.8, refreshShock: 1, duration: 9999, upkeep: 6 },
+    p: { radius: 16, interval: 0.8, refreshShock: 1, duration: 9999 },
   },
   {
     id: 'heavensGate',
@@ -3218,7 +3216,7 @@ const MARKSMAN = build('marksman', [
     desc: 'A barbed head that will not come out. Applies a bleed for 6s.',
     tier: 2, col: 1, icon: 'blood', req: ['steadyHand'], t: 'enemy',
     mana: [6, 0.45], cd: [6, 0.2, 2], dmg: [1.1, 0.12], type: 'physical',
-    fx: 'projectile', p: { duration: 6, dotScale: 0.5 },
+    fx: 'projectile', p: { duration: 6 },
   },
   {
     id: 'longEye', name: 'Long Eye',
@@ -3234,10 +3232,10 @@ const MARKSMAN = build('marksman', [
   },
   {
     id: 'crippling', name: 'Crippling Shot',
-    desc: 'Take the leg. 35% slow for 4s, and the target cannot dash (+3% slow per rank).',
+    desc: 'Take the leg. Crippled for 4s: 35% slower (+3% per rank) and easier to hit.',
     tier: 3, col: 1, icon: 'snare', req: ['bleedingArrow'], t: 'enemy',
     mana: [8, 0.5], cd: [9, 0.25, 3.5], dmg: [1.5, 0.2], type: 'physical',
-    fx: 'projectile', p: { slow: 35, slowPerRank: 3, duration: 4, speed: 32 },
+    fx: 'projectile', p: { slow: 35, slowPerRank: 3, speed: 32, cripple: 4 },
   },
   {
     id: 'coldFocus', name: 'Cold Focus',
@@ -3263,7 +3261,7 @@ const MARKSMAN = build('marksman', [
 const WILDCRAFT = build('wildcraft', [
   {
     id: 'rollAway', name: 'Roll Away',
-    desc: 'A short evade that leaves the ground where you were. Brief invulnerability.',
+    desc: 'Roll 6m in any direction, untouchable for 0.3s.',
     tier: 1, col: 0, icon: 'dash', t: 'direction', mana: [4, 0.3], cd: [7, 0.25, 3],
     fx: 'dash', p: { distance: 6, iframes: 0.3 },
   },
@@ -3288,10 +3286,10 @@ const WILDCRAFT = build('wildcraft', [
   },
   {
     id: 'thornBarrier', name: 'Thorn Barrier',
-    desc: 'A line of brambles. Blocks pursuit and bleeds anything that forces it.',
+    desc: 'A wall of brambles lashes out 7m ahead. Everything caught takes poison damage, is Slowed for 8s and gets 2 stacks of Bleeding.',
     tier: 2, col: 1, icon: 'thorns', req: ['snareTrap'], t: 'point',
     mana: [11, 0.7], cd: [16, 0.5, 8], dmg: [0.6, 0.08], type: 'poison',
-    fx: 'cone', p: { duration: 8, length: 7 },
+    fx: 'cone', p: { duration: 8, length: 7, bleedStacks: 2 },
   },
   {
     id: 'survivalist', name: 'Survivalist',
@@ -3301,7 +3299,7 @@ const WILDCRAFT = build('wildcraft', [
   },
   {
     id: 'disengage', name: 'Disengage',
-    desc: 'Leap backwards and fire on the way. Damage on landing.',
+    desc: 'Leap 8m backwards and loose an arrow at what you left behind.',
     tier: 3, col: 0, icon: 'leap', req: ['rollAway'], t: 'direction',
     mana: [10, 0.6], cd: [12, 0.4, 5], dmg: [1.6, 0.2], type: 'physical',
     fx: 'dash', p: { distance: 8, backwards: 1 },
@@ -3311,7 +3309,7 @@ const WILDCRAFT = build('wildcraft', [
     desc: 'Arrows carry poison for 20s: +5 poison damage (+3 per rank) on every hit, and every hit applies a stacking poison dot.',
     tier: 3, col: 1, icon: 'vial', req: ['thornBarrier'], t: 'self',
     mana: [14, 0.8], cd: [24, 0.6, 12], type: 'poison',
-    fx: 'buff', p: { duration: 20, dotScale: 0.35 },
+    fx: 'buff', p: { duration: 20 },
   },
   {
     id: 'camouflage', name: 'Camouflage',
@@ -3328,10 +3326,10 @@ const WILDCRAFT = build('wildcraft', [
   },
   {
     id: 'theWholeFloor', name: 'The Whole Floor Is A Trap',
-    desc: 'Capstone. Seed the ground around you with every trap you know, armed at once.',
+    desc: 'Capstone. Every trap you know goes off at once: one blast across 8m around you.',
     tier: 5, col: 1, icon: 'apex', req: ['trapMastery'], max: 5, t: 'self',
     mana: [26, 1.2], cd: [40, 1.5, 22], dmg: [2.4, 0.35], type: 'physical',
-    fx: 'nova', p: { count: 6, radius: 8, duration: 20 },
+    fx: 'nova', p: { radius: 8 },
   },
 ]);
 
@@ -3350,23 +3348,23 @@ const VOLLEY = build('volley', [
   },
   {
     id: 'scattershot', name: 'Scattershot',
-    desc: 'A cone of arrows at close range. Falls off badly with distance.',
+    desc: 'A cone of arrows at close range: everything within 8m in front of you is hit.',
     tier: 1, col: 2, icon: 'cone', t: 'direction', mana: [7, 0.5], cd: [5, 0.15, 2],
-    dmg: [0.65, 0.08], type: 'physical', fx: 'cone.burst', p: { count: 7, arc: 0.8, range: 8 },
+    dmg: [0.65, 0.08], type: 'physical', fx: 'cone.burst', p: { arc: 0.8, range: 8 },
   },
   {
     id: 'arrowRain', name: 'Arrow Rain',
     desc: 'Loose high. One heavy volley lands across a 4.5m circle.',
     tier: 2, col: 0, icon: 'rain', req: ['twinShot'], t: 'point',
     mana: [12, 0.8], cd: [6, 0.18, 2.5], dmg: [1.8, 0.28], type: 'physical',
-    fx: 'meteor', p: { radius: 4.5, duration: 3, ticks: 8 },
+    fx: 'meteor', p: { radius: 4.5 },
   },
   {
     id: 'ricochet', name: 'Ricochet',
-    desc: 'Arrows bounce to a nearby target after hitting. +1 bounce per 4 ranks.',
+    desc: 'Arrows bounce on to 2 more nearby targets after hitting (+1 per 4 ranks).',
     tier: 2, col: 1, icon: 'bounce', req: ['quickDraw'], t: 'direction',
     mana: [8, 0.5], dmg: [0.95, 0.11], type: 'physical',
-    fx: 'chain', p: { bounces: 2, range: 8, speed: 30 },
+    fx: 'chain', p: { bounces: 2, range: 8, bouncesPerRanks: 4 },
   },
   {
     id: 'fanFire', name: 'Fan Fire',
@@ -3377,10 +3375,10 @@ const VOLLEY = build('volley', [
   },
   {
     id: 'suppressing', name: 'Suppressing Fire',
-    desc: 'A stream of arrows down one line while you hold. Slows everything it touches.',
+    desc: 'A stream of arrows down an 18m line. Everything it touches is Slowed 20% for 4s and Exhausted (-25% attack and cast speed) for 8s.',
     tier: 3, col: 0, icon: 'stream', req: ['arrowRain'], t: 'direction',
     mana: [4, 0.3], dmg: [0.42, 0.06], type: 'physical',
-    fx: 'beam', p: { rate: 9, slow: 20, range: 18 },
+    fx: 'beam', p: { slow: 20, range: 18 },
   },
   {
     id: 'explosiveTip', name: 'Explosive Tip',
@@ -3406,7 +3404,7 @@ const VOLLEY = build('volley', [
     desc: 'Capstone. The sky goes dark and one vast volley falls across the whole room at once.',
     tier: 5, col: 1, icon: 'apex', req: ['volleyMastery'], max: 5, t: 'point',
     mana: [30, 1.4], cd: [24, 1.5, 15], dmg: [3.6, 0.6], type: 'physical',
-    fx: 'meteor', p: { radius: 12, duration: 6, ticks: 20 },
+    fx: 'meteor', p: { radius: 12 },
   },
 ]);
 

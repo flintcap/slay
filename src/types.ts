@@ -1184,6 +1184,10 @@ export interface StatusApplication {
   mods?: Partial<Stats>;
   /** Damage this application soaks, in place of `def.absorb * magnitude`. */
   absorb?: number;
+  /** Gash: when it runs out, it bursts for this percent of the damage it dealt over its time. */
+  burstPct?: number;
+  /** Unrelenting: on a target below this percent of life, the effect stops running out. */
+  holdBelow?: number;
 }
 
 export interface StatusEffectDef {

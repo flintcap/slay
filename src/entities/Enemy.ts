@@ -192,6 +192,11 @@ interface ActiveStatus {
   dotPerSecond: number;
   /** Stat changes set by the application (a curse at its rank), over the def's. */
   mods?: Partial<Stats>;
+  /** Gash's burst when it runs out, as a percent of its full run, and that run's length. */
+  burst?: number;
+  full?: number;
+  /** Unrelenting: below this percent of life the effect does not run down. */
+  holdBelow?: number;
 }
 
 interface ActiveBuff {
@@ -1047,6 +1052,17 @@ export class Enemy implements Combatant {
   }
 
   /** Ends a status outright and says how many stacks it had (the Paladin spends his dents). */
+  /** Removes an effect and returns the damage it had left to deal. Gorefeast. */
+  drainStatus(id: string): number {
+    for (let i = 0; i < this.statuses.length; i++) {
+      const s = this.statuses[i]!;
+      if (s.id !== id) continue;
+      this.statuses.splice(i, 1);
+      return Math.max(0, s.dotPerSecond * s.stacks * s.time);
+    }
+    return 0;
+  }
+
   consumeStatus(id: string): number {
     for (let i = 0; i < this.statuses.length; i++) {
       const s = this.statuses[i]!;
@@ -1108,6 +1124,11 @@ export class Enemy implements Combatant {
         // re-apply grew a poison or burn without limit.
         if (existing.dotType) existing.dotPerSecond = Math.max(existing.dotPerSecond, this.dotRate(app));
         if (app.mods) existing.mods = app.mods;
+        if (app.burstPct) {
+          existing.burst = Math.max(existing.burst ?? 0, app.burstPct);
+          existing.full = Math.max(existing.full ?? 0, app.duration);
+        }
+        if (app.holdBelow) existing.holdBelow = Math.max(existing.holdBelow ?? 0, app.holdBelow);
         continue;
       }
       const def = statusDef(app.id);
@@ -1120,6 +1141,8 @@ export class Enemy implements Combatant {
         dotType,
         dotPerSecond: dotType ? this.dotRate(app) : 0,
         ...(app.mods ? { mods: app.mods } : {}),
+        ...(app.burstPct ? { burst: app.burstPct, full: app.duration } : {}),
+        ...(app.holdBelow ? { holdBelow: app.holdBelow } : {}),
       });
       if (isControl(app.id)) {
         this.rootTimer = Math.max(this.rootTimer, app.duration);
@@ -1178,7 +1201,8 @@ export class Enemy implements Combatant {
   private tickStatuses(dt: number, ctx: CombatContext): void {
     for (let i = this.statuses.length - 1; i >= 0; i--) {
       const s = this.statuses[i]!;
-      s.time -= dt;
+      // Unrelenting: a bleed on a target low enough does not run out.
+      if (!(s.holdBelow && (this.life / Math.max(1, this.maxLife)) * 100 < s.holdBelow)) s.time -= dt;
       if (s.dotType && s.dotPerSecond > 0) {
         const amount = s.dotPerSecond * s.stacks * dt;
         this.life -= amount;
@@ -1206,7 +1230,18 @@ export class Enemy implements Combatant {
             this.root.position.x, this.centerY, this.root.position.z, { count: 2, color: typeColor(s.dotType) });
         }
       }
-      if (s.time <= 0) this.statuses.splice(i, 1);
+      if (s.time <= 0) {
+        // Gash: the wound bursts as it closes.
+        if (s.burst && s.full && s.dotPerSecond > 0) {
+          const amount = s.dotPerSecond * s.stacks * s.full * (s.burst / 100);
+          this.life -= amount;
+          events.emit('enemy:damaged', {
+            id: this.id, amount, type: s.dotType ?? 'physical', crit: false,
+            x: this.root.position.x, y: this.centerY + 0.25, z: this.root.position.z,
+          });
+        }
+        this.statuses.splice(i, 1);
+      }
     }
     if (this.life <= 0 && this.alive) this.die(ctx);
   }

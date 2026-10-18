@@ -1042,7 +1042,11 @@ export class DungeonScene extends GameScene {
       this.enemies.find((x) => x.id === packet.source && x.life > 0) ??
       (this.boss && this.boss.id === packet.source && this.boss.life > 0 ? this.boss : null);
 
-    const blocked = taken === 0 && lifeBefore === this.player.life;
+    // A real block: a dodge, a ward or a moment of immunity also takes nothing.
+    const blocked = this.player.lastBlocked;
+    // Deflect: a block gives mana back and turns the same damage type for a moment.
+    if (blocked && e.blockMana > 0) this.player.restoreMana(e.blockMana);
+    if (blocked && e.blockGraceSec > 0) this.player.grantGrace(packet.type, e.blockGraceSec);
     const reach = 2.6;
 
     if (attacker) {
@@ -1101,7 +1105,7 @@ export class DungeonScene extends GameScene {
       for (const en of this.enemies) {
         if (en.life <= 0) continue;
         if (en.root.position.distanceTo(p) > e.cheatDeathRadius) continue;
-        en.applyStatuses([{ id: 'stunned', duration: 3, magnitude: 1 }], ctx);
+        en.applyStatuses([{ id: 'stunned', duration: e.cheatDeathStunSec || 3, magnitude: 1 }], ctx);
       }
     }
     toast('You should have died there.', 'epic');
@@ -1185,7 +1189,7 @@ export class DungeonScene extends GameScene {
         this.flurryIdle = 0;
       }
       this.flurryIdle += dt;
-      if (this.flurryIdle > 2) {
+      if (this.flurryIdle > (e.hitStackDecay || 2)) {
         st.hitStacks = 0;
         this.flurryIdle = 0;
       }
@@ -1272,7 +1276,16 @@ export class DungeonScene extends GameScene {
       this.skills.passiveNova(
         this.player, pos, e.killExplodeRadius, e.killExplodePct / 100, 'fire', ctx, this.enemies, this.boss,
       );
+      // Combustion sets what survives the blast burning.
+      if (e.killExplodeIgnite > 0) {
+        for (const en of this.enemies) {
+          if (en.life <= 0 || en.root.position.distanceTo(pos) > e.killExplodeRadius) continue;
+          en.applyStatuses([{ id: 'burning', duration: 4 + e.dotDurationSec, magnitude: 1 + e.dotDamagePct / 100, stacks: 1 }], ctx);
+        }
+      }
     }
+    // Reaver: a kill feeds the next.
+    if (e.killFrenzy > 0) this.player.applyStatus('frenzy', 6, 1, Math.floor(e.killFrenzy));
     if (e.executeManaRefund > 0) {
       this.player.mana = Math.min(
         this.player.stats.mana,

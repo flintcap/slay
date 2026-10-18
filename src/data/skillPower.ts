@@ -55,14 +55,13 @@ const shred = (v: number): Partial<Stats> => ({
 
 const r1 = (v: number): number => Math.round(v * 10) / 10;
 
-/** Ice Armor's time at a rank: two minutes, up to three. */
-export const ICE_ARMOR_SECONDS = (k: number): number => Math.min(180, 120 + 3 * k);
 
 export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
   // Mage
-  iceArmor: (k) => ({
+  // Two minutes, up to three.
+  iceArmor: (k, n) => ({
     status: 'frostArmor',
-    duration: ICE_ARMOR_SECONDS(k),
+    duration: Math.min(180, n('duration', 120) + n('durationPerRank', 3) * k),
     mods: { enhancedDefense: 30 + 6 * k, coldResist: r1(10 + 1.5 * k), damageReduction: r1(3 + 0.6 * k) },
     absorbLifePct: 12 + 2 * k,
   }),

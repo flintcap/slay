@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { Character, Stats, DamagePacket, EquipSlot, StatusApplication } from '../types';
+import type { Character, Stats, DamagePacket, DamageType, EquipSlot, StatusApplication } from '../types';
 import { charmKey, computeStats } from '../sim/Stats';
 import { legacyKey } from '../sim/Legacy';
 import { FairLedger, HOLD_IDS } from '../sim/FairFight';
-import { mitigate } from '../sim/Combat';
+import { BLOCK_CAP, mitigate } from '../sim/Combat';
 import { StatusContainer, adoptStatuses, releaseAdopted } from '../sim/Status';
 import { activeDifficulty } from '../data/difficulties';
 import { events } from '../core/Events';
@@ -170,6 +170,9 @@ export class Player {
   private contactAt = 0;
   private dodgeTime = 0;
   private dodgeDir = new THREE.Vector3();
+  /** How long this dash lasts, and how far a dash skill carries (0: the dodge's own pace). */
+  private dodgeSpan = 0.32;
+  private dodgeReach = 0;
   /** Seconds until the dash is available again, and the full period. */
   private dodgeCd = 0;
   readonly dodgeCdMax = 3.5;
@@ -484,7 +487,13 @@ export class Player {
    * Rolls along (dirX, dirZ). `quiet` leaves the sound to the caller: a dash
    * skill plays its own (audio/SkillSounds.ts), not the plain dodge.
    */
-  dodge(dirX: number, dirZ: number, quiet = false, clip = 'dodge'): boolean {
+  /**
+   * `opts.distance` is how far a dash skill says it goes (Roll Away 6m,
+   * Shield Charge 9m); a long one takes a little longer. `opts.skill` is a
+   * dash skill: it keeps its own cooldown, so the dodge's neither blocks it
+   * nor is spent by it.
+   */
+  dodge(dirX: number, dirZ: number, quiet = false, clip = 'dodge', opts: { distance?: number; skill?: boolean } = {}): boolean {
     // A real cooldown. Without one the dash was limited only by its own 0.32s
     // animation, so holding the key was simply a faster way to move and there
     // was never a moment where committing to it cost anything.
@@ -492,7 +501,7 @@ export class Player {
     // It does not wait for an attack to finish, though. The evade is the answer
     // to a telegraph, and an answer that is refused because you were swinging
     // is not one: it cancels whatever the hero was doing.
-    if (this.frozen || this.dodgeTime > 0 || this.dodgeCd > 0) return false;
+    if (this.frozen || this.dodgeTime > 0 || (this.dodgeCd > 0 && !opts.skill)) return false;
     // A root holds the feet and a stun the whole body: no dash out of either.
     if (this.immobilised) return false;
     this.actionLock = 0;
@@ -501,10 +510,13 @@ export class Player {
     this.contactAt = 0;
     const len = Math.hypot(dirX, dirZ) || 1;
     this.dodgeDir.set(dirX / len, 0, dirZ / len);
-    this.dodgeTime = 0.32;
-    this.actionLock = 0.32;
-    this.actionTotal = 0.32;
-    this.dodgeCd = this.dodgeCdMax;
+    const span = opts.distance ? Math.min(0.5, Math.max(0.32, (0.32 * opts.distance) / 4)) : 0.32;
+    this.dodgeSpan = span;
+    this.dodgeReach = opts.distance ?? 0;
+    this.dodgeTime = span;
+    this.actionLock = span;
+    this.actionTotal = span;
+    if (!opts.skill) this.dodgeCd = this.dodgeCdMax;
     // A dash skill moves the same way but plays its own gesture.
     this.animator.play(clip, { fade: 0.05 });
     this.targetFacing = Math.atan2(this.dodgeDir.x, this.dodgeDir.z);
@@ -529,9 +541,32 @@ export class Player {
     this.mana = Math.min(this.stats.mana, this.mana + amount);
   }
 
+  /** Whether the last hit `takeDamage` took was blocked (not dodged, not soaked). */
+  lastBlocked = false;
+  /** Deflect: a block makes you immune to the same damage type for a moment. */
+  private graceType: DamageType | null = null;
+  private graceLeft = 0;
+  /** Aegis: what its ward has soaked, spent by the next Shield Bash. */
+  private wardBank = 0;
+
+  /** Deflect's window after a block. */
+  grantGrace(type: DamageType, seconds: number): void {
+    this.graceType = type;
+    this.graceLeft = Math.max(this.graceLeft, seconds);
+  }
+
+  /** Spends what Aegis has soaked. */
+  takeWardBank(): number {
+    const v = this.wardBank;
+    this.wardBank = 0;
+    return v;
+  }
+
   /** Apply an incoming attack. Returns damage actually taken. */
   takeDamage(packet: DamagePacket, rng: Rng): number {
+    this.lastBlocked = false;
     if (!this.alive || this.invulnerable) return 0;
+    if (this.graceLeft > 0 && packet.type === this.graceType) return 0;
     if (this.dodgeTime > 0) {
       // Slipped it. Said out loud so the feel layer can reward a timed evade.
       if (packet.amount > 0) events.emit('player:evaded', { ability: packet.ability ?? '', source: packet.source });
@@ -542,7 +577,7 @@ export class Player {
       this.heal(packet.amount * this.passives.poisonHealPct / 100);
       return 0;
     }
-    const result = mitigate(packet, this.stats, rng);
+    const result = mitigate(packet, this.stats, rng, BLOCK_CAP + this.passives.blockCapBonus);
     // Gloom Shroud and Undying both cut what actually lands, after mitigation
     // rather than as armour, because both are written as "you take less".
     const e = this.passives;
@@ -553,6 +588,7 @@ export class Player {
     }
     if (cut > 0) result.amount *= Math.max(0.1, 1 - cut / 100);
     if (result.blocked) {
+      this.lastBlocked = true;
       // A block takes the whole hit (Combat.BLOCK_LEAK). The body braces
       // against it: a short jolt, not the hurt flinch of a blow that landed.
       events.emit('sfx', { id: 'block' });
@@ -564,6 +600,15 @@ export class Player {
     // A boss may hurt you, never delete you: one blow, or a burst of them,
     // takes at most a share of your full life.
     if (packet.fair !== undefined) result.amount = this.fair.clamp(result.amount, this.stats.life, packet.fair);
+    // Wards soak what is left: Aegis, Bone Armor, Ice Armor's shell, Martyr's
+    // Vow. Each was given an absorb pool and nothing ever drew on it, so a
+    // ward put an icon on the bar and stopped nothing.
+    const ward = this.status.get('shielded')?.absorb ?? 0;
+    const raw = result.amount;
+    result.amount = this.status.absorbDamage(raw);
+    const soaked = ward - (this.status.get('shielded')?.absorb ?? 0);
+    if (soaked > 0 && (this.character.skills.aegis ?? 0) > 0) this.wardBank += soaked;
+    if (raw > 0 && result.amount <= 0) return 0;
     this.life -= result.amount;
     events.emit('player:damaged', {
       amount: result.amount,
@@ -579,15 +624,22 @@ export class Player {
     // it in — nothing ever read it on this side, so a hit that was supposed to
     // slow, terrify or poison you did its damage and nothing else. Every debuff
     // a monster can inflict was dead on arrival here.
+    // Stoneform (Fortress Stance, Shield Wall) shrugs off holds and shoves;
+    // Immovable and Veteran's Resolve shorten holds, to a floor.
+    const steady = this.status.has('stoneform');
+    const holdScale = Math.max(e.ccFloorPct > 0 ? e.ccFloorPct / 100 : 0, 1 - e.ccReductionPct / 100);
     if (packet.applies?.length) {
       for (const a of packet.applies) {
+        const hold = HOLD_IDS.has(a.id);
+        if (hold && steady) continue;
         // A boss holds you for 1.5 s at most, then cannot again for a while.
-        const d = packet.fair !== undefined && HOLD_IDS.has(a.id) ? this.fair.hold(a.duration) : a.duration;
+        let d = packet.fair !== undefined && hold ? this.fair.hold(a.duration) : a.duration;
+        if (hold) d *= holdScale;
         if (d > 0) this.applyStatus(a.id, d, a.magnitude, a.stacks ?? 1);
       }
     }
     // Knockback is carried the same way and was equally ignored.
-    if (packet.knockback) this.shove(packet.knockback, packet.from);
+    if (packet.knockback && !steady && !e.knockbackImmune) this.shove(packet.knockback, packet.from);
 
     this.checkDeath(packet.source || 'the dark');
     return result.amount;
@@ -630,6 +682,11 @@ export class Player {
     return this.stats.attackSpeed + e.hitStackAttackSpeed * this.passiveState.hitStacks;
   }
 
+  /** Cast speed including Storm Fury's stacks, which build on lightning hits. */
+  get castSpeedPct(): number {
+    return this.stats.castSpeed + this.passives.castStackPct * this.passiveState.castStacks;
+  }
+
   /**
    * Pays a skill's cost, spending life when mana runs short.
    *
@@ -659,6 +716,12 @@ export class Player {
 
   update(dt: number, ctx: PlayerContext, keyboardDir: THREE.Vector3 | null): void {
     this.fair.tick(dt);
+    if (this.graceLeft > 0) this.graceLeft = Math.max(0, this.graceLeft - dt);
+    const ps = this.passiveState;
+    if (ps.castStackLeft > 0) {
+      ps.castStackLeft -= dt;
+      if (ps.castStackLeft <= 0) ps.castStacks = 0;
+    }
     if (this.invulnTimer > 0) {
       this.invulnTimer -= dt;
       if (this.invulnTimer <= 0) this.invulnerable = false;
@@ -955,9 +1018,11 @@ export class Player {
     if (this.dodgeCd > 0) this.dodgeCd = Math.max(0, this.dodgeCd - dt);
     if (this.dodgeTime > 0) {
       this.dodgeTime -= dt;
-      const t = Math.max(0, this.dodgeTime / 0.32);
-      // Ease out so the dash front-loads its distance and lands cleanly.
-      const dashSpeed = baseSpeed * 2.9 * (0.25 + t * 0.75);
+      const t = Math.max(0, this.dodgeTime / this.dodgeSpan);
+      // Ease out so the dash front-loads its distance and lands cleanly. The
+      // ease averages 0.625 of its peak, so a dash skill covers its distance.
+      const peak = this.dodgeReach > 0 ? this.dodgeReach / (this.dodgeSpan * 0.625) : baseSpeed * 2.9;
+      const dashSpeed = peak * (0.25 + t * 0.75);
       this.tryMove(this.dodgeDir.x * dashSpeed * dt, this.dodgeDir.z * dashSpeed * dt, ctx);
       return;
     }

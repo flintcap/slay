@@ -39,6 +39,9 @@ function rankOf(c: Character, id: string): number {
 }
 
 /** Reads a numeric parameter off a skill definition, with a default. */
+/** Two "to a N% floor" limits together reach the lower one. */
+const floorOf = (have: number, f: number): number => (have > 0 ? Math.min(have, f) : f);
+
 function param(id: string, key: string, dflt: number): number {
   const p = SKILL_BY_ID[id]?.params;
   const v = p?.[key];
@@ -189,6 +192,29 @@ export interface PassiveEffects {
    * Corroded), Scorch (fire leaves Scorched). Chance in percent.
    */
   onHitStatuses: Array<{ type: DamageType; id: string; chance: number; duration: number }>;
+  /** Fire and Lightning Mastery: percent of a damage type's resistance your hits ignore. */
+  pierceByType: Partial<Record<DamageType, number>>;
+  /** Kindling, Deadly Aim: extra critical chance and damage against a kind of target. */
+  condCrit: Array<{ when: 'burning' | 'healthy'; chance: number; damage: number }>;
+  /** Storm Fury: cast speed per lightning hit, how many, and how long they last. */
+  castStackPct: number;
+  castStackMax: number;
+  castStackSec: number;
+  /** Flurry: seconds without landing a hit before its stacks fall away. */
+  hitStackDecay: number;
+  /** Combustion: the blast sets survivors burning. */
+  killExplodeIgnite: number;
+  /** Butchery, Unrelenting, Arterial Strike: the hero's bleeds hit harder, last longer, and stop running out on low targets. */
+  bleedDamagePct: number;
+  lowLifeBleedPct: number;
+  bleedDurationPct: number;
+  bleedHoldBelow: number;
+  /** Arterial Strike: a critical strike leaves Hemorrhage. */
+  critHemorrhage: number;
+  /** Reaver: Frenzy stacks a kill grants. */
+  killFrenzy: number;
+  /** Blood Drinker: life steal works twice against a bleeding target. */
+  bleedLeechDouble: number;
 
   // --- shadow and clones --------------------------------------------------
   cloneCount: number;
@@ -257,7 +283,20 @@ export interface PassiveEffects {
   drPerOath: number;
   /** Blocks build a retaliation charge; this is the percent per block. */
   retributionPctPerBlock: number;
-  retributionRadius: number;
+  /** Deflect: mana a block gives back, and seconds a block makes you immune to that damage type. */
+  blockMana: number;
+  blockGraceSec: number;
+  /** Phalanx: points added to the block cap. */
+  blockCapBonus: number;
+  /** Immovable, Veteran's Resolve: percent off every hold on you, and the share it never goes under. */
+  ccReductionPct: number;
+  ccFloorPct: number;
+  /** Immovable: 1 when nothing knocks you back. */
+  knockbackImmune: number;
+  /** Veteran's Resolve: percent off a shout's mana cost. */
+  shoutCostPct: number;
+  /** Last Oath: seconds the cheat death stuns what stands around you. */
+  cheatDeathStunSec: number;
   /** Bleeds chain to nearby enemies, amplifying. */
   bloodTideAmplifyPct: number;
   bloodTideChains: number;
@@ -340,6 +379,20 @@ function emptyEffects(): PassiveEffects {
     poisonStunCd: 0,
     poisonSlows: false,
     onHitStatuses: [],
+    pierceByType: {},
+    condCrit: [],
+    castStackPct: 0,
+    castStackMax: 0,
+    castStackSec: 0,
+    hitStackDecay: 0,
+    killExplodeIgnite: 0,
+    bleedDamagePct: 0,
+    lowLifeBleedPct: 0,
+    bleedDurationPct: 0,
+    bleedHoldBelow: 0,
+    critHemorrhage: 0,
+    killFrenzy: 0,
+    bleedLeechDouble: 0,
     cloneCount: 0,
     clonePowerPct: 0,
     stealthReductionPct: 0,
@@ -375,7 +428,14 @@ function emptyEffects(): PassiveEffects {
     allOathsPct: 0,
     drPerOath: 0,
     retributionPctPerBlock: 0,
-    retributionRadius: 0,
+    blockMana: 0,
+    blockGraceSec: 0,
+    blockCapBonus: 0,
+    ccReductionPct: 0,
+    ccFloorPct: 0,
+    knockbackImmune: 0,
+    shoutCostPct: 0,
+    cheatDeathStunSec: 0,
     bloodTideAmplifyPct: 0,
     bloodTideChains: 0,
     bloodTideRadius: 0,
@@ -411,6 +471,24 @@ const RULES: Record<string, Contribution> = {
       param(id, 'healPct', 25) + param(id, 'healPerRank', 2) * (r - 1),
     );
     e.cheatDeathRadius = Math.max(e.cheatDeathRadius, param(id, 'radius', 6));
+    e.cheatDeathStunSec = Math.max(e.cheatDeathStunSec, param(id, 'stun', 3));
+  },
+  deflect: (e, r, id) => {
+    e.blockMana += param(id, 'manaOnBlock', 4) + param(id, 'manaPerRank', 1) * (r - 1);
+    e.blockGraceSec = Math.max(e.blockGraceSec, param(id, 'graceWindow', 0.4));
+  },
+  immovable: (e, r, id) => {
+    e.ccReductionPct += param(id, 'ccReductionPerRank', 4) * r;
+    e.ccFloorPct = floorOf(e.ccFloorPct, param(id, 'ccFloor', 70));
+    e.knockbackImmune = Math.max(e.knockbackImmune, param(id, 'knockbackImmune', 1));
+  },
+  veteransResolve: (e, r, id) => {
+    e.ccReductionPct += param(id, 'ccReductionPerRank', 4) * r;
+    e.ccFloorPct = floorOf(e.ccFloorPct, param(id, 'ccFloor', 70));
+    e.shoutCostPct += param(id, 'shoutCostPerRank', 3) * r;
+  },
+  phalanx: (e, r, id) => {
+    e.blockCapBonus = Math.max(e.blockCapBonus, param(id, 'capBonus', 10));
   },
   bloodScent: (e, r, id) => {
     e.vsBleedingPct += param(id, 'pctPerRank', 7) * r;
@@ -422,7 +500,21 @@ const RULES: Record<string, Contribution> = {
   },
   unrelenting: (e, r, id) => {
     e.dotDurationSec += 2;
-    e.dotDamagePct += param(id, 'lowLifePct', 5) * r;
+    e.lowLifeBleedPct += param(id, 'lowLifePct', 5) * r;
+    e.bleedHoldBelow = Math.max(e.bleedHoldBelow, param(id, 'noExpire', 1) > 0 ? param(id, 'threshold', 40) : 0);
+  },
+  butchery: (e, r, id) => {
+    e.bleedDamagePct += param(id, 'pctPerRank', 9) * r;
+  },
+  arterialStrike: (e, r, id) => {
+    e.critHemorrhage = 1;
+    e.bleedDurationPct += param(id, 'durationPerRank', 8) * r;
+  },
+  bloodDrinker: (e, r, id) => {
+    e.bleedLeechDouble = Math.max(e.bleedLeechDouble, param(id, 'doubleVsBleeding', 1));
+  },
+  reaver: (e, r, id) => {
+    e.killFrenzy = Math.max(e.killFrenzy, param(id, 'frenzyStacks', 1));
   },
   commandingPresence: (e, r, id) => {
     e.auraStrengthPct += param(id, 'strengthPerRank', 8) * r;
@@ -434,7 +526,6 @@ const RULES: Record<string, Contribution> = {
   },
   hymnOfThorns: (e, r, id) => {
     e.thornsMeleePct += param(id, 'reflect', 12) + param(id, 'perRank', 4) * (r - 1);
-    e.auraRadiusM = Math.max(e.auraRadiusM, param(id, 'radius', 10) - 10);
   },
   swornBrother: (e, r, id) => {
     e.minionDamagePct += param(id, 'damagePct', 60) + param(id, 'perRank', 4) * (r - 1);
@@ -442,7 +533,6 @@ const RULES: Record<string, Contribution> = {
   },
   retribution: (e, r, id) => {
     e.retributionPctPerBlock += param(id, 'pctPerBlock', 3) + param(id, 'perRank', 1.5) * (r - 1);
-    e.retributionRadius = Math.max(e.retributionRadius, param(id, 'radius', 4));
   },
   bloodTide: (e, r, id) => {
     e.bloodTideAmplifyPct += param(id, 'amplifyPct', 4) * r;
@@ -468,6 +558,24 @@ const RULES: Record<string, Contribution> = {
   combustion: (e, r, id) => {
     e.killExplodePct += param(id, 'pct', 80) + param(id, 'perRank', 10) * (r - 1);
     e.killExplodeRadius = Math.max(e.killExplodeRadius, param(id, 'radius', 3.5));
+    e.killExplodeIgnite = Math.max(e.killExplodeIgnite, param(id, 'spreadBurn', 1));
+  },
+  fireMastery: (e, r, id) => {
+    e.pierceByType.fire = Math.min(param(id, 'pierceFloor', 20), (e.pierceByType.fire ?? 0) + param(id, 'piercePerRank', 1) * r);
+  },
+  lightningMastery: (e, r, id) => {
+    e.pierceByType.lightning = Math.min(param(id, 'pierceFloor', 25), (e.pierceByType.lightning ?? 0) + param(id, 'piercePerRank', 1) * r);
+  },
+  kindling: (e, r, id) => {
+    e.condCrit.push({ when: 'burning', chance: 0, damage: param(id, 'critDmgPerRank', 8) * r });
+  },
+  deadlyAim: (e, r, id) => {
+    e.condCrit.push({ when: 'healthy', chance: param(id, 'critPerRank', 1) * r, damage: 0 });
+  },
+  stormFury: (e, r, id) => {
+    e.castStackPct += param(id, 'castSpeedPerStack', 1);
+    e.castStackMax = Math.max(e.castStackMax, param(id, 'maxStacks', 10));
+    e.castStackSec = Math.max(e.castStackSec, param(id, 'decay', 3));
   },
   emberSoul: (e, r, id) => {
     e.missingManaPct += param(id, 'pctPer10', 1) * r;
@@ -477,7 +585,8 @@ const RULES: Record<string, Contribution> = {
     e.overkillCarryPct += param(id, 'carryPct', 60) + param(id, 'perRank', 3) * (r - 1);
     e.overkillChains = Math.max(
       e.overkillChains,
-      param(id, 'chains', 4) + Math.floor(param(id, 'chainsPerRank', 0) * (r - 1)),
+      // "+1 per 5 ranks".
+      param(id, 'chains', 4) + (param(id, 'chainsPerRanks', 0) > 0 ? Math.floor(r / param(id, 'chainsPerRanks', 0)) : 0),
     );
     e.overkillRadius = Math.max(e.overkillRadius, param(id, 'radius', 8));
   },
@@ -607,6 +716,7 @@ const RULES: Record<string, Contribution> = {
   flurry: (e, r, id) => {
     e.hitStackAttackSpeed += param(id, 'attackSpeedPerStack', 10) + param(id, 'perRank', 1) * (r - 1);
     e.hitStackMax = Math.max(e.hitStackMax, param(id, 'maxStacks', 6));
+    e.hitStackDecay = Math.max(e.hitStackDecay, param(id, 'decay', 2));
   },
   momentum: (e, r, id) => {
     e.crowdDamagePct += param(id, 'pctPerRank', 2) * r;
@@ -797,6 +907,9 @@ export interface PassiveState {
   moving: number;
   /** Stacks of the on-hit attack speed buff. */
   hitStacks: number;
+  /** Storm Fury's cast speed stacks, and seconds before they fall away. */
+  castStacks: number;
+  castStackLeft: number;
   /** Countdown to the next damage-over-time spread tick. */
   spreadTimer: number;
   /** Souls banked from recent kills, and how long the oldest has left. */
@@ -807,7 +920,7 @@ export interface PassiveState {
 }
 
 export function newPassiveState(): PassiveState {
-  return { cheatDeathCd: 0, retribution: 0, moving: 0, hitStacks: 0, spreadTimer: 0, souls: 0, soulTimer: 0, swings: 0 };
+  return { cheatDeathCd: 0, retribution: 0, moving: 0, hitStacks: 0, castStacks: 0, castStackLeft: 0, spreadTimer: 0, souls: 0, soulTimer: 0, swings: 0 };
 }
 
 /**

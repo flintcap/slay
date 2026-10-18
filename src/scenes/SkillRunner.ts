@@ -199,6 +199,9 @@ const SELF_BUFF_STATUS: Record<string, string> = {
   revenantForm: 'frenzy',
 };
 
+/** What a cleanse takes off the hero first: holds, then slows. */
+const CLEANSE = ['stunned', 'frozen', 'knockedDown', 'rooted', 'feared', 'grasped', 'entangled', 'crippled', 'chilled', 'slowed'];
+
 /** Coat Blades, for its poison chance (read on every coated blow). */
 const COAT = SKILLS.find((s) => s.id === 'coatBlades');
 /**
@@ -208,6 +211,14 @@ const COAT = SKILLS.find((s) => s.id === 'coatBlades');
  */
 const SKILL_NAMES = new Set(SKILLS.filter((s) => s.targeting !== 'passive').map((s) => s.name));
 const UMBRAL_AMBUSH = SKILLS.find((s) => s.id === 'umbralAmbush')?.name ?? 'Umbral Ambush';
+/** Active skills by the name their packets carry, for what a skill does to one target (`skillEdge`). */
+const ACTIVE_BY_NAME = new Map(SKILLS.filter((s) => s.targeting !== 'passive').map((s) => [s.name, s]));
+
+/** An arc in radians. Skills written in degrees (anything past a full turn) are converted. */
+const arcRad = (v: number): number => (v > Math.PI * 2 ? (v * Math.PI) / 180 : v);
+
+/** A count that grows by one every `per` ranks ("+1 per 3 ranks"). */
+const perRanks = (base: number, per: number, rank: number): number => base + (per > 0 ? Math.floor(rank / per) : 0);
 
 const SKILL_STATUS: Record<string, string> = {
   // Curses and marks
@@ -221,15 +232,9 @@ const SKILL_STATUS: Record<string, string> = {
   huntersMark: 'marked',
   soulCage: 'grasped',
   soulTether: 'lifelink',
-  boneCage: 'grasped',
   tauntingRoar: 'weakened',
 
   // Maiming and shredding
-  crippling: 'crippled',
-  crippleTendon: 'crippled',
-  maim: 'crippled',
-  sunder: 'brittle',
-  rend: 'rent',
   gash: 'hemorrhage',
   bleedingArrow: 'hemorrhage',
   suppressing: 'exhausted',
@@ -260,9 +265,6 @@ const SKILL_STATUS: Record<string, string> = {
   snareTrap: 'rooted',
   thornBarrier: 'slowed',
   spikeTrap: 'bleeding',
-  shieldBash: 'stunned',
-  warStomp: 'knockedDown',
-  earthshatter: 'knockedDown',
 };
 
 /**
@@ -617,6 +619,7 @@ export class SkillRunner {
   private strike(t: Target, packet: DamagePacket, ctx: CombatContext, kind: HitKind, fromX: number, fromZ: number): boolean {
     if (!this.lands(t, packet, kind, ctx)) return false;
     packet = this.coated(packet, kind, ctx);
+    if (packet.source === 'player' && packet.applies?.length) packet = { ...packet, applies: this.heroBleeds(packet.applies) };
     const before = t.life;
     t.takeDamage(packet, ctx);
     this.veilAfterHit(packet, kind, before > 0 && t.life <= 0);
@@ -630,6 +633,31 @@ export class SkillRunner {
       console.warn('[feel] hit report failed', err);
     }
     return true;
+  }
+
+  /**
+   * The hero's bleeds, as the bleed passives shape them: Butchery and
+   * Unrelenting (while you are low) make them hurt more, Arterial Strike
+   * makes them last longer, and Unrelenting stops them running out on a
+   * target below its threshold.
+   */
+  private heroBleeds(list: StatusApplication[]): StatusApplication[] {
+    const p = this.caster;
+    if (!p) return list;
+    const e = p.passives;
+    const low = p.life / Math.max(1, p.stats.life) < 0.5;
+    const more = e.bleedDamagePct + (low ? e.lowLifeBleedPct : 0);
+    if (more <= 0 && e.bleedDurationPct <= 0 && e.bleedHoldBelow <= 0) return list;
+    return list.map((a) =>
+      a.id === 'bleeding' || a.id === 'hemorrhage'
+        ? {
+          ...a,
+          magnitude: a.magnitude * (1 + more / 100),
+          duration: a.duration * (1 + e.bleedDurationPct / 100),
+          ...(e.bleedHoldBelow > 0 ? { holdBelow: e.bleedHoldBelow } : {}),
+        }
+        : a,
+    );
   }
 
   /**
@@ -743,7 +771,9 @@ export class SkillRunner {
     // A burning vigil pressed again is put out, free (paladin/Vigils.ts).
     if (snuffVigil(def, player)) return true;
 
-    const cost = def.manaCost ? def.manaCost(rank) : 0;
+    // Veteran's Resolve makes a shout cheaper.
+    const shout = (def.effect ?? '').startsWith('shout') ? 1 - Math.min(90, player.passives.shoutCostPct) / 100 : 1;
+    const cost = def.manaCost ? def.manaCost(rank) * shout : 0;
     if (cost > 0 && !player.spendMana(cost)) {
       // Say so. A skill that silently refuses reads as a broken button, which
       // is exactly how being out of mana was being reported as a bug.
@@ -780,20 +810,33 @@ export class SkillRunner {
     const school = schoolOf(def);
     const color = shiftHue(ELEMENTS[school]?.body ?? 0xc9a070, hashId(def.id));
 
+    // A skill's own critical chance ("+25% critical chance"), growing a rank
+    // when it says so; "always a critical strike"; and the veil's promise that
+    // the blow struck from it is one.
+    const critBonus = num('critBonus', 0) > 0 ? num('critBonus', 0) + num('critPerRank', 0) * Math.max(0, rank - 1) : 0;
+    const forceCrit = num('alwaysCrit', 0) > 0 || player.status.has('veiled') ? true : undefined;
+    // Shield Bash and Shield Throw hit harder the better you block.
+    const guard = 1 + (player.stats.blockChance * num('blockScale', 0)) / 100;
+    // Aegis: what its ward soaked is added to the next Shield Bash.
+    const banked = def.id === 'shieldBash' ? player.takeWardBank() : 0;
     const makePacket = (mult = 1): DamagePacket => {
       const p = rollDamage(player.stats, ctx.rng, {
-        scale: scale * mult,
+        scale: scale * mult * guard,
         type,
         ability: def.name,
         source: 'player',
+        bonusCrit: critBonus,
+        forceCrit,
+        knockback: num('knockback', 0) || undefined,
       });
+      if (banked > 0) p.amount += banked;
       const r = rider();
       if (r.length) p.applies = r;
       return p;
     };
 
     const attackTime = 0.42 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
-    const castTime = 0.5 / Math.max(0.4, 1 + player.stats.castSpeed / 100);
+    const castTime = 0.5 / Math.max(0.4, 1 + player.castSpeedPct / 100);
 
     // Whatever this skill inflicts rides on every packet it produces, so a
     // maiming strike maims whether the runner delivered it as a swing, a
@@ -854,6 +897,15 @@ export class SkillRunner {
     const hitAt = (p: { x: number; z: number }): void => {
       if (sound.hit) audio.play(sound.hit, { x: p.x, z: p.z });
     };
+    // Thunderstorm, Eye of the Storm: a storm over you that strikes on its own
+    // every `interval` seconds (`stormTick`). Recasting replaces it.
+    const startStorm = (shockedOnly: boolean): void => {
+      this.storms = this.storms.filter((x) => x.skillId !== def.id);
+      this.storms.push({
+        skillId: def.id, left: num('duration', 30), every: Math.max(0.2, num('interval', 1.4)), accum: 0,
+        radius: num('radius', 14), shockedOnly, shocks: num('refreshShock', 0) > 0 ? 1 : 0, packet: () => makePacket(), color,
+      });
+    };
 
     this.casting = true;
     this.effects.beginQuiet();
@@ -863,7 +915,13 @@ export class SkillRunner {
         case 'cleave': {
           const dual = isDualWielding(player);
           const k = dual ? DUAL_SKILL_TIME : 1;
-          const skillTime = attackTime * k;
+          // A spin held down (Whirlwind) goes round once every `tickRate`
+          // seconds at the weapon's pace; a fast strike ("no wind-up") swings
+          // quicker than the weapon's own.
+          const spin = (def.effect ?? '').includes('channel');
+          const skillTime = spin
+            ? (num('tickRate', 0.42) / 0.42) * attackTime * k
+            : (attackTime * k) / (1 + num('speedBonus', 0) / 100);
           const blowPacket = dual ? (m = 1): DamagePacket => makePacket(m * k) : makePacket;
           player.beginAction(clip, skillTime);
           const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
@@ -873,7 +931,7 @@ export class SkillRunner {
           // `radius` is how far the skill says it reaches (Cleave 2.8m, Death
           // Lotus 4m); it was never read, so every swing reached 2.3m.
           const reach = num('reach', num('radius', 2.3));
-          const arc = num('arc', wide ? 2.2 : 1.3);
+          const arc = spin ? Math.PI * 2 : arcRad(num('arc', wide ? 2.2 : 1.3));
           const kind: HitKind = heavy ? 'heavy' : 'melee';
           // Multi-hit skills: Double Strike's two, Massacre's five, Death Lotus's
           // eight. `hits` was never read, so each landed once.
@@ -964,10 +1022,17 @@ export class SkillRunner {
         case 'bolt': {
           player.beginAction(clip, castTime);
           const range = num('range', 18);
-          const count = Math.max(1, Math.floor(num('count', 1)));
-          const spread = num('spread', 0.16);
+          // "Five blades (+1 per 7 ranks)", fanned across the skill's arc.
+          const count = Math.max(1, Math.floor(perRanks(num('count', 1), num('countPerRanks', 0), rank)));
+          const spread = num('arc', 0) > 0 && count > 1 ? arcRad(num('arc', 0)) / (count - 1) : num('spread', 0.16);
           const pierce = Math.floor(num('pierce', 0));
-          const splash = num('splash', 0);
+          const splash = num('splash', 0) > 0 ? num('splash', 0) + num('radiusPerRank', 0) * (rank - 1) : 0;
+          // Shield Throw: the shield ricochets on to further targets.
+          if ((def.effect ?? '').includes('bounce')) {
+            const bounces = perRanks(num('bounces', 1), num('bouncesPerRanks', 0), rank);
+            this.chainLightning(player, target, 1 + bounces, num('range', 8), makePacket, ctx, enemies, boss, type, color, sound.hit, THROWN_SHAPES[def.id] ?? 'arrow');
+            break;
+          }
 
           // Forked Bolt adds shots either side of the original at reduced power.
           const fp = player.passives;
@@ -1024,7 +1089,7 @@ export class SkillRunner {
 
         case 'nova': {
           player.beginAction(clip, castTime);
-          const radius = num('radius', 5.2);
+          const radius = num('radius', 5.2) + num('radiusPerRank', 0) * (rank - 1);
           this.effects.nova(player.position.x, player.position.z, radius, {
             element: school,
             color,
@@ -1077,7 +1142,8 @@ export class SkillRunner {
 
         case 'beam': {
           player.beginAction(clip, castTime);
-          const length = num('length', 12);
+          // "A 22m beam": skills say how long as `range` or `length`.
+          const length = num('length', num('range', 12));
           const to = origin.clone().addScaledVector(dir, length);
           if (school === 'physical') {
             // A stream of arrows (Suppressing Fire) is drawn as arrows, a
@@ -1104,8 +1170,10 @@ export class SkillRunner {
 
         case 'cone': {
           player.beginAction(clip, castTime);
-          const reach = num('reach', 6.5);
-          const half = num('arc', 1.1) * 0.5;
+          // "A 10m cone" is written as `reach`, `range` or `length`; a 60-degree
+          // arc in degrees.
+          const reach = num('reach', num('range', num('length', 6.5)));
+          const half = arcRad(num('arc', 1.1)) * 0.5;
           this.effects.cone(player.position.clone().setY(1.0), dir, half, reach, {
             element: school,
             color,
@@ -1118,14 +1186,46 @@ export class SkillRunner {
 
         case 'chain': {
           player.beginAction(clip, castTime);
-          this.chainLightning(player, target, Math.floor(num('jumps', 4)), num('range', 7), makePacket, ctx, enemies, boss, type, color, sound.hit);
+          // "Arcs between 4 targets (+1 per 3 ranks)"; Ricochet's arrow bounces
+          // on to 2 more (+1 per 4 ranks).
+          const jumps = num('bounces', 0) > 0
+            ? 1 + perRanks(num('bounces', 0), num('bouncesPerRanks', 0), rank)
+            : perRanks(num('chains', num('jumps', 4)), num('chainsPerRanks', 0), rank);
+          this.chainLightning(
+            player, target, jumps, num('range', 7), makePacket, ctx, enemies, boss, type, color, sound.hit,
+            type === 'physical' ? 'arrow' : undefined, num('falloff', 18),
+          );
           break;
         }
 
         case 'dash': {
-          // The dodge's own move, under the skill's own gesture when it has one.
-          player.dodge(dir.x, dir.z, true, own ?? 'dodge');
-          this.meleeSwing(player, dir, Math.PI, num('reach', 2.4), makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
+          // The dodge's own move, under the skill's own gesture when it has
+          // one, as far as the skill says (Roll Away 6m, Shield Charge 9m)
+          // and no further than the first wall. Disengage leaps backwards.
+          const back = num('backwards', 0) > 0;
+          const way = back ? dir.clone().negate() : dir;
+          const want = num('distance', num('range', 0));
+          const lane = want > 0 ? this.wallStop(origin, way, want, ctx, 0.4) : 0;
+          player.dodge(way.x, way.z, true, own ?? 'dodge', { distance: lane > 0 ? lane : undefined, skill: true });
+          if (num('iframes', 0) > 0) player.grantInvulnerability(num('iframes', 0));
+          if (!def.damageScale) break;
+          if (back) {
+            // An arrow at whatever you leapt away from.
+            const stop = this.firstHitAlong(origin, dir, 18, enemies, boss, 0.42, ctx);
+            const from = origin.clone();
+            this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
+              element: school, color, shape: 'arrow', speed: 34, size: 0.3 * sig.size,
+              onHit: (p) => {
+                this.pointDamage(p, 0.42, makePacket, ctx, enemies, boss, 'projectile', from);
+                hitAt(p);
+              },
+            });
+          } else if (lane > 0) {
+            // A charge hits everything in its lane.
+            this.lineDamage(player.position.clone(), dir, lane, num('width', num('radius', 1.6) * 2), makePacket, ctx, enemies, boss, 'melee');
+          } else {
+            this.meleeSwing(player, dir, Math.PI, num('reach', 2.4), makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
+          }
           break;
         }
 
@@ -1152,6 +1252,15 @@ export class SkillRunner {
           // Commanding Presence and Standard Bearer widen and strengthen what an
           // oath, aura or banner does. `applyBuff` reads the same numbers.
           this.applyBuff(player, def, rank, num, color);
+          if ((def.effect ?? '').includes('autoStrike')) startStorm(false);
+          // Rallying Horn shakes off one hold or slow.
+          if (num('cleanse', 0) > 0) {
+            const off = CLEANSE.find((id) => player.status.has(id));
+            if (off) {
+              player.status.remove(off);
+              player.refreshStats();
+            }
+          }
           // A war cry reaches the monsters around you too: fear, weakness, taunt.
           if (family === 'shout' && FOE_POWER[def.id]) {
             const applies = this.statusFor(def, num, color);
@@ -1213,11 +1322,32 @@ export class SkillRunner {
           const groundLife = 1 + player.passives.groundDurationPct / 100;
           const groundHit = 1 + player.passives.groundDamagePct / 100;
           const radius = num('radius', 3.2) + (ctx.auraRadiusBonus ?? 0);
-          const duration = num('duration', 6) * groundLife;
           const at = target.clone().setY(0);
+          // Pyroclasm: eruptions walk outward from the point, one after another.
+          if ((def.effect ?? '').includes('sequence')) {
+            const bursts = Math.max(1, Math.floor(num('bursts', 6)));
+            const step = num('spacing', 1.8);
+            const gap = num('interval', 0.18);
+            const way = dir.clone();
+            for (let i = 0; i < bursts; i++) {
+              const spot = at.clone().addScaledVector(way, step * i);
+              this.pendingSwings.push({
+                t: gap * i,
+                run: () => {
+                  this.effects.explosion(spot.x, 0.8, spot.z, { radius, element: school, color });
+                  this.areaDamage(spot, radius, (m = 1) => makePacket(m * groundHit), ctx, enemies, boss);
+                  hitAt(spot);
+                },
+              });
+            }
+            break;
+          }
+          const duration = num('duration', 6) * groundLife;
+          // Firestorm says how many impacts a second.
+          const tick = num('rate', 0) > 0 ? 1 / num('rate', 1) : num('tickRate', 0.5);
           this.addZone(
             at.x, at.z, radius, duration,
-            num('tickRate', 0.5),
+            tick,
             // Ticking damage is a fraction of the hit it would be as a burst, or
             // standing in a field would out-damage every direct skill in the game.
             (m = 1) => makePacket(m * num('tickScale', 0.28) * groundHit),
@@ -1377,7 +1507,7 @@ export class SkillRunner {
           const at = target.clone().setY(0);
           const radius = num('radius', 2.6);
           this.effects.meteor(at.x, at.z, {
-            radius, color, element: school, emitter: sig.emitter, density: sig.density,
+            radius, color, element: school, emitter: sig.emitter, density: sig.density, delay: num('delay', 1.1),
             onHit: (p) => {
               this.areaDamage(p, radius, makePacket, ctx, enemies, boss);
               hitAt(p);
@@ -1424,7 +1554,7 @@ export class SkillRunner {
 
         case 'teleport': {
           player.beginAction(own ?? 'blink', 0.26);
-          const range = num('range', 9);
+          const range = num('range', 9) + num('rangePerRank', 0) * (rank - 1);
           const stop = this.wallStop(player.position, dir, Math.min(range, dir.length() > 0 ? range : range), ctx, 0.5);
           const want = target.clone().setY(0);
           const reach = Math.min(stop, this.groundDistance(want, player.position));
@@ -1459,13 +1589,28 @@ export class SkillRunner {
         case 'aoe':
         case 'capstone': {
           player.beginAction(clip, castTime);
+          if ((def.effect ?? '').includes('eyeOfStorm')) {
+            startStorm(true);
+            this.applyBuff(player, def, rank, num, color);
+            break;
+          }
           const radius = num('radius', family === 'point' ? 1.2 : 4);
           const at = family === 'aoe' || family === 'capstone' ? player.position.clone().setY(0) : target.clone().setY(0);
           this.effects.explosion(at.x, 0.8, at.z, { radius, element: school, color });
           this.effects.nova(at.x, at.z, radius, {
             element: school, color, emitter: sig.emitter, density: sig.density,
           });
-          const dealt = this.areaDamage(at, radius, (m = 1) => makePacket(m * num('burstScale', 1)), ctx, enemies, boss);
+          let dealt = this.areaDamage(at, radius, (m = 1) => makePacket(m * num('burstScale', 1)), ctx, enemies, boss);
+          // Gorefeast: every bleed in reach is drunk at once, all it had left to deal.
+          if ((def.effect ?? '').includes('consumeBleeds')) {
+            for (const t of this.allTargets(enemies, boss)) {
+              if (t.life <= 0 || this.groundDistance(t.root.position, at) > radius + t.hitRadius) continue;
+              const left = (t.drainStatus('bleeding') + t.drainStatus('hemorrhage')) * (num('damagePct', 100) / 100);
+              if (left <= 0) continue;
+              const pk: DamagePacket = { amount: left, type: 'physical', crit: false, source: 'player', ability: def.name };
+              if (this.strike(t, pk, ctx, 'proc', at.x, at.z)) dealt += left;
+            }
+          }
           // Gorefeast drinks what it tears open: a share of the burst, more a rank.
           const drink = num('healPct', 0) + num('healPerRank', 0) * Math.max(0, rank - 1);
           if (drink > 0 && dealt > 0) player.heal(dealt * drink / 100);
@@ -1692,6 +1837,26 @@ export class SkillRunner {
      */
     riderOnly = false,
   ): StatusApplication[] {
+    const main = this.mainStatus(def, num);
+    const extra = this.paramRiders(def, num);
+    if (!main.length && !extra.length) {
+      if (riderOnly) return [];
+      const e = this.caster?.passives;
+      const duration = (num('duration', 8) + (e?.dotDurationSec ?? 0)) * (1 + (e?.curseDurationPct ?? 0) / 100);
+      const id = `skill.${def.id}`;
+      if (!getStatus(id)) synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);
+      return [{ id, duration, magnitude: 1, stacks: 1 }];
+    }
+    // The skill's named status wins over a setting that names the same one.
+    const have = new Set(main.map((a) => a.id));
+    return [...main, ...extra.filter((a) => !have.has(a.id))];
+  }
+
+  /** The one status a skill is built around: its power table's, its named one, its mapped one, its poison. */
+  private mainStatus(
+    def: { id: string; name: string; params?: Record<string, number | number[] | string> },
+    num: (k: string, d: number) => number,
+  ): StatusApplication[] {
     const e = this.caster?.passives;
     // Passives that scale what the player puts on a monster land here, because
     // this is the one function that builds those applications. Dot passives
@@ -1701,15 +1866,16 @@ export class SkillRunner {
     const curseBonus = 1 + (e?.curseEffectPct ?? 0) / 100;
     const duration =
       (num('duration', 8) + (e?.dotDurationSec ?? 0)) * (1 + (e?.curseDurationPct ?? 0) / 100);
-    const magnitude =
-      num('amp', num('magnitude', num('slow', 1))) * Math.max(dotBonus, curseBonus);
+    // A slow is a percentage (`paramRiders`), never a multiplier: read here it
+    // made Crippling's 35% slow thirty-five times a full cripple.
+    const magnitude = num('amp', num('magnitude', 1)) * Math.max(dotBonus, curseBonus);
     const extraStacks = Math.floor(e?.dotMaxStacks ?? 0);
     const tickScale = 1 + (e?.dotTickPct ?? 0) / 100;
     const named = typeof def.params?.statusId === 'string' ? (def.params.statusId as string) : null;
+    const rank = this.caster ? skillRank(this.caster.character, def.id) : 1;
     // What this rank leaves on a monster (`data/skillPower.ts`).
     const foe = FOE_POWER[def.id];
     if (foe) {
-      const rank = this.caster ? skillRank(this.caster.character, def.id) : 1;
       const power = foe(Math.max(0, rank - 1), num);
       const id = power.status ?? named ?? SKILL_STATUS[def.id] ?? null;
       if (id && getStatus(id)) {
@@ -1730,28 +1896,109 @@ export class SkillRunner {
         return out;
       }
     }
+    // "for 8s (+0.3s per rank)".
+    const held = duration + num('durationPerRank', 0) * Math.max(0, rank - 1);
     if (named && getStatus(named)) {
-      return [{ id: named, duration, magnitude, stacks: 1, maxStacks: extraStacks, tickScale }];
+      return [{ id: named, duration: held, magnitude, stacks: 1, maxStacks: extraStacks, tickScale }];
     }
     // The authored effect this skill is describing, if the two tables can be
     // joined. This is what makes a curse actually curse.
     const mapped = SKILL_STATUS[def.id];
     if (mapped && getStatus(mapped)) {
-      return [{ id: mapped, duration, magnitude, stacks: 1, maxStacks: extraStacks, tickScale }];
+      // Gash's Hemorrhage bursts as it closes.
+      const burst = num('burstPct', 0);
+      return [{ id: mapped, duration: held, magnitude, stacks: 1, maxStacks: extraStacks, tickScale, ...(burst > 0 ? { burstPct: burst } : {}) }];
     }
     // Poison skills say how many stacks of Poisoned they leave: Viper Strike
     // three, Venom Dart four, Death Lotus one a hit. Nothing read the number,
     // so they poisoned only on the element's own chance, a stack at a time.
     const poisonStacks = Math.floor(num('poisonStacks', num('poisonPerHit', 0)));
     if (poisonStacks > 0 && getStatus('poisoned')) {
-      const rank = this.caster ? skillRank(this.caster.character, def.id) : 1;
-      const longer = num('durationPerRank', 0) * Math.max(0, rank - 1);
-      return [{ id: 'poisoned', duration: duration + longer, magnitude, stacks: poisonStacks, maxStacks: extraStacks, tickScale }];
+      return [{ id: 'poisoned', duration: held, magnitude, stacks: poisonStacks, maxStacks: extraStacks, tickScale }];
     }
-    if (riderOnly) return [];
-    const id = `skill.${def.id}`;
-    if (!getStatus(id)) synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);
-    return [{ id, duration, magnitude, stacks: 1 }];
+    return [];
+  }
+
+  /**
+   * What a skill's own settings say it leaves behind: "Stunned for 1.5s",
+   * "3 stacks of Burning", "Knocked Down", "Crippled for 6s", "Rooted". Each
+   * is the status the game already has, so the word in the tooltip and the
+   * icon over the monster are the same thing. These sat in the skill data and
+   * nothing read them, so most of what a tooltip promised a blow would leave
+   * never happened.
+   */
+  private paramRiders(
+    def: { id: string; params?: Record<string, number | number[] | string> },
+    num: (k: string, d: number) => number,
+  ): StatusApplication[] {
+    const p = def.params;
+    if (!p) return [];
+    const e = this.caster?.passives;
+    const rank = this.caster ? skillRank(this.caster.character, def.id) : 1;
+    const k = Math.max(0, rank - 1);
+    const has = (key: string): boolean => typeof p[key] === 'number' && (p[key] as number) > 0;
+    const out: StatusApplication[] = [];
+    const control = (id: string, seconds: number): void => {
+      if (seconds > 0 && getStatus(id)) out.push({ id, duration: seconds, magnitude: 1, stacks: 1 });
+    };
+    // Burning and Bleeding are the hero's afflictions: dot passives grow them.
+    const dot = (id: string, stacks: number, seconds: number): void => {
+      if (stacks <= 0 || !getStatus(id)) return;
+      out.push({
+        id,
+        duration: seconds + (e?.dotDurationSec ?? 0),
+        magnitude: 1 + (e?.dotDamagePct ?? 0) / 100,
+        stacks,
+        maxStacks: Math.floor(e?.dotMaxStacks ?? 0),
+        tickScale: 1 + (e?.dotTickPct ?? 0) / 100,
+      });
+    };
+    const base = (id: string): number => getStatus(id)?.baseDuration ?? 4;
+
+    if (has('stun')) control('stunned', num('stun', 0) + num('stunPerRank', 0) * k);
+    else if (has('interrupt')) control('stunned', 0.3);
+    if (has('knockdown')) control('knockedDown', num('knockdown', 0));
+    if (has('fear')) control('feared', num('fear', 0) + num('fearPerRank', 0) * k);
+    if (has('root')) control('rooted', num('root', 0) + num('rootPerRank', 0) * k);
+    if (has('vulnerable')) control('vulnerable', num('vulnerable', 0));
+    if (has('sunder')) control('sundered', num('sunder', 0));
+    if (has('chill')) control('chilled', 2);
+    if (has('sunderStacks') && getStatus('sundered')) {
+      out.push({
+        id: 'sundered',
+        duration: num('duration', base('sundered')) + num('durationPerRank', 0) * k,
+        magnitude: 1,
+        stacks: Math.floor(num('sunderStacks', 1)),
+      });
+    }
+    // A cripple's slow is the skill's own when it names one (Crippling's
+    // 35%, +3% a rank), and Cripple Tendon's drags the target's swing too.
+    if (has('cripple') && getStatus('crippled')) {
+      const slow = has('slow') ? num('slow', 45) + num('slowPerRank', 0) * k : 45;
+      out.push({
+        id: 'crippled',
+        duration: num('cripple', 6),
+        magnitude: 1,
+        stacks: 1,
+        mods: { moveSpeed: -slow, defense: -80, ...(has('attackSpeedDown') ? { attackSpeed: -num('attackSpeedDown', 0) } : {}) },
+      });
+    } else if (num('slow', 0) > 1 && getStatus('slowed')) {
+      out.push({
+        id: 'slowed',
+        duration: num('duration', base('slowed')),
+        magnitude: 1,
+        stacks: 1,
+        mods: { moveSpeed: -(num('slow', 35) + num('slowPerRank', 0) * k) },
+      });
+    }
+    if (has('burnStacks')) dot('burning', Math.floor(num('burnStacks', 1)), base('burning'));
+    if (has('shockStacks') && getStatus('shocked')) {
+      out.push({ id: 'shocked', duration: base('shocked'), magnitude: 1, stacks: Math.floor(num('shockStacks', 1)) });
+    }
+    // "3 stacks of Bleeding (+1 per 4 ranks)"; Massacre's stack a cut.
+    const bleed = Math.floor(num('bleedStacks', num('bleedPerHit', 0)) + num('bleedPerRank', 0) * k);
+    if (bleed > 0) dot('bleeding', bleed, num('bleedDuration', 6));
+    return out;
   }
 
   private applyBuff(
@@ -2053,6 +2300,7 @@ export class SkillRunner {
   private tune(packet: DamagePacket, t: Target): DamagePacket {
     const p = this.caster;
     if (!p) return packet;
+    packet = this.skillEdge(packet, t, p);
     const e = p.passives;
     // Transformer converts part of every other school into lightning, which is
     // the school the Mage's lightning tree scales.
@@ -2100,15 +2348,71 @@ export class SkillRunner {
     if (e.resistPiercePct > 0 && packet.type === 'poison') {
       amount *= 1 + e.resistPiercePct / 200;
     }
+    // Fire and Lightning Mastery: points of the target's resistance ignored.
+    const pierce = e.pierceByType[packet.type] ?? 0;
+    if (pierce > 0) amount *= 1 + pierce / 100;
+    // Kindling (burning targets) and Deadly Aim (targets above 80% life):
+    // extra critical chance, and extra critical damage on a critical.
+    for (const c of e.condCrit) {
+      const fits = c.when === 'burning' ? t.hasStatus('burning') || t.hasStatus('immolated') : t.life / Math.max(1, t.maxLife) > 0.8;
+      if (!fits) continue;
+      const critX = Math.max(100, p.stats.critDamage) / 100;
+      if (!crit && c.chance > 0 && this.tickCtx && this.tickCtx.ctx.rng.chance(Math.min(1, c.chance / 100))) {
+        crit = true;
+        amount *= critX;
+      }
+      if (crit && c.damage > 0) amount *= (critX + c.damage / 100) / critX;
+    }
     // Retribution: blocks build a charge and the next blow spends it. (It
     // sat behind an early return, so any other passive touching the hit
     // skipped it.)
-    if (st.retribution > 0 && e.retributionRadius > 0) {
+    if (st.retribution > 0 && e.retributionPctPerBlock > 0) {
       amount *= 1 + st.retribution / 100;
       st.retribution = 0;
     }
     if (crit === packet.crit && amount === packet.amount) return packet;
     return { ...packet, amount, crit };
+  }
+
+  /**
+   * What a skill's own settings do to the one target a blow reaches: "doubled
+   * against anything bleeding", "+100% against enemies below 35% life",
+   * "always crits below half health", "ignores 20% lightning resistance", "a
+   * 20% chance to Burn". Read per target because each depends on that target.
+   */
+  private skillEdge(packet: DamagePacket, t: Target, p: Player): DamagePacket {
+    if (packet.source !== 'player') return packet;
+    const def = packet.ability ? ACTIVE_BY_NAME.get(packet.ability) : undefined;
+    const params = def?.params;
+    if (!def || !params) return packet;
+    const n = (key: string): number => (typeof params[key] === 'number' ? (params[key] as number) : 0);
+    const k = Math.max(0, skillRank(p.character, def.id) - 1);
+    let amount = packet.amount;
+    let crit = packet.crit;
+    if (n('vsBleeding') > 0 && t.isBleeding) amount *= 1 + n('vsBleeding') / 100;
+    if (n('vsBurning') > 0 && (t.hasStatus('burning') || t.hasStatus('immolated'))) amount *= 1 + n('vsBurning') / 100;
+    if (n('vsCursed') > 0 && t.hasStatusTag('curse')) amount *= 1 + n('vsCursed') / 100;
+    const lifePct = (t.life / Math.max(1, t.maxLife)) * 100;
+    if (n('executeThreshold') > 0 && lifePct < n('executeThreshold')) amount *= 1 + n('executeBonus') / 100;
+    if (n('executeBelow') > 0 && lifePct < n('executeBelow') && !crit) {
+      crit = true;
+      amount *= Math.max(100, p.stats.critDamage) / 100;
+    }
+    // Ignoring resistance is the same arithmetic as Blood Toxin's: raw damage, not a resistance edit.
+    if (n('pierceResist') > 0 && packet.type === def.damageType) amount *= 1 + n('pierceResist') / 200;
+    const riders: StatusApplication[] = [];
+    const rng = this.tickCtx?.ctx.rng;
+    const roll = (chance: number, id: string): void => {
+      if (chance > 0 && rng && getStatus(id) && rng.chance(Math.min(1, chance / 100))) {
+        riders.push({ id, duration: getStatus(id)?.baseDuration ?? 4, magnitude: 1, stacks: 1 });
+      }
+    };
+    roll(n('burnChance') + n('burnPerRank') * k, 'burning');
+    roll(n('shockChance'), 'shocked');
+    roll(n('sunderChance'), 'sundered');
+    roll(n('plagueChance'), 'plagued');
+    if (amount === packet.amount && crit === packet.crit && !riders.length) return packet;
+    return { ...packet, amount, crit, ...(riders.length ? { applies: [...(packet.applies ?? []), ...riders] } : {}) };
   }
 
   /**
@@ -2143,7 +2447,8 @@ export class SkillRunner {
             stacks: Math.floor(e.critBleedStacks),
           });
         }
-        if (riders.length) t.applyStatuses(riders, ctx);
+        if (e.critHemorrhage > 0) riders.push({ id: 'hemorrhage', duration: getStatus('hemorrhage')?.baseDuration ?? 5, magnitude: 1, stacks: 1 });
+        if (riders.length) t.applyStatuses(this.heroBleeds(riders), ctx);
 
         // Phantom Blades: a spectral copy flies at somebody else.
         if (e.critBladeChance > 0 && ctx.rng.chance(Math.min(1, e.critBladeChance / 100))) {
@@ -2195,6 +2500,11 @@ export class SkillRunner {
         }
       }
 
+      // --- Blood Drinker: life steal twice over on a bleeding target -----
+      if (e.bleedLeechDouble > 0 && p.stats.lifeSteal > 0 && t.isBleeding) {
+        p.heal(Math.min(p.stats.life / 6, (packet.amount * p.stats.lifeSteal) / 100));
+      }
+
       // --- Blood Curse ----------------------------------------------------
       if (e.curseLeechPct > 0 && t.isDebuffed) {
         const back = packet.amount * (e.curseLeechPct / 100);
@@ -2210,6 +2520,11 @@ export class SkillRunner {
       // --- Flurry ----------------------------------------------------------
       if (e.hitStackAttackSpeed > 0) {
         p.passiveState.hitStacks = Math.min(e.hitStackMax, p.passiveState.hitStacks + 1);
+      }
+      // --- Storm Fury: a lightning hit quickens your casting for a while ----
+      if (e.castStackPct > 0 && packet.type === 'lightning') {
+        p.passiveState.castStacks = Math.min(e.castStackMax, p.passiveState.castStacks + 1);
+        p.passiveState.castStackLeft = e.castStackSec;
       }
       if (e.arcChance > 0 && e.arcRadius > 0 && ctx.rng.chance(Math.min(1, e.arcChance / 100))) {
         let best: Target | null = null;
@@ -2385,6 +2700,10 @@ export class SkillRunner {
     type: DamageType,
     color: number,
     hitSfx: string | null = null,
+    /** A thrown thing (an arrow, a shield) flies between targets instead of an arc. */
+    thrown?: 'arrow' | 'bolt' | 'knife' | 'shield',
+    /** What each jump loses, in percent. */
+    falloff = 18,
   ): void {
     const pool = this.allTargets(enemies, boss);
     if (pool.length === 0) return;
@@ -2408,10 +2727,11 @@ export class SkillRunner {
       if (!best) break;
       struck.add(best);
       const to = best.root.position.clone().setY(1.0);
-      this.effects.beam(from, to, { element: type, color, width: 0.35, duration: 0.16, endBurst: true });
+      if (thrown) this.effects.projectile(from, to, { element: 'physical', color, shape: thrown, speed: 34, size: 0.36 });
+      else this.effects.beam(from, to, { element: type, color, width: 0.35, duration: 0.16, endBurst: true });
       // Each jump loses punch, or chain skills trivialise every pack.
       const p = packet();
-      p.amount *= Math.pow(0.82, j);
+      p.amount *= Math.pow(Math.max(0, 1 - falloff / 100), j);
       this.strike(best, this.tune(p, best), ctx, 'chain', from.x, from.z);
       if (hitSfx) audio.play(hitSfx, { x: to.x, z: to.z });
       from = to;
@@ -2429,6 +2749,23 @@ export class SkillRunner {
    * these two lists are: a patch of ground that hurts what stands in it, and a
    * thing that shoots on its own.
    */
+  /**
+   * Thunderstorm and Eye of the Storm: a storm over you that strikes on its
+   * own. Each strike is a bolt at one enemy in reach (Eye of the Storm: only
+   * Shocked ones), leaving Shocked behind.
+   */
+  private storms: Array<{
+    skillId: string;
+    left: number;
+    every: number;
+    accum: number;
+    radius: number;
+    shockedOnly: boolean;
+    shocks: number;
+    packet: () => DamagePacket;
+    color: number;
+  }> = [];
+
   private zones: Array<{
     x: number;
     z: number;
@@ -2653,6 +2990,7 @@ export class SkillRunner {
       }
     }
 
+    this.stormTick(dt, live.ctx, live.enemies, live.boss);
     this.spreadTick(dt, live.ctx, live.enemies, live.boss);
     const keeper = this.caster ?? this.keeper;
     if (keeper) tickVigils(this.vigilHost, keeper, dt, live);
@@ -2917,6 +3255,33 @@ export class SkillRunner {
   }
 
   /** Leaves a patch of ground that keeps hurting whatever stands in it. */
+  private stormTick(dt: number, ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
+    const p = this.caster;
+    for (let i = this.storms.length - 1; i >= 0; i--) {
+      const st = this.storms[i]!;
+      st.left -= dt;
+      if (st.left <= 0 || !p || !p.alive) {
+        this.storms.splice(i, 1);
+        continue;
+      }
+      st.accum += dt;
+      if (st.accum < st.every) continue;
+      st.accum = 0;
+      // Eye of the Storm strikes every Shocked enemy in reach; Thunderstorm
+      // one enemy in reach, picked at random.
+      const near = this.allTargets(enemies, boss).filter(
+        (t) => t.life > 0 && this.groundDistance(t.root.position, p.position) <= st.radius + t.hitRadius && (!st.shockedOnly || t.hasStatus('shocked')),
+      );
+      const struck = st.shockedOnly ? near : near.length ? [near[Math.floor(ctx.rng.next() * near.length)]!] : [];
+      for (const t of struck) {
+        this.effects.skyBolt(t.root.position.x, t.root.position.z, { radius: 1.2, color: st.color });
+        const hp = this.tune(st.packet(), t);
+        if (st.shocks > 0) hp.applies = [...(hp.applies ?? []), { id: 'shocked', duration: getStatus('shocked')?.baseDuration ?? 4, magnitude: 1, stacks: st.shocks }];
+        if (this.strike(t, hp, ctx, 'proc', t.root.position.x, t.root.position.z)) this.afterHit(hp, t, ctx, enemies, boss);
+      }
+    }
+  }
+
   private addZone(
     x: number,
     z: number,
@@ -3286,6 +3651,7 @@ export class SkillRunner {
     }
     this.zones.length = 0;
     this.turrets.length = 0;
+    this.storms.length = 0;
     this.pendingSwings.length = 0;
     this.tickCtx = null;
     this.feel.clear();

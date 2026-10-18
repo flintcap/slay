@@ -271,11 +271,11 @@ export interface MitigateResult {
  * Block is rolled first because it is an avoidance mechanic, not a reduction:
  * a blocked hit leaks only `BLOCK_LEAK` before anything else touches it.
  */
-export function mitigate(packet: DamagePacket, defender: Stats, rng: Rng): MitigateResult {
+export function mitigate(packet: DamagePacket, defender: Stats, rng: Rng, cap = BLOCK_CAP): MitigateResult {
   let amount = Math.max(0, packet.amount);
   const type = packet.type;
 
-  const blockChance = Math.max(0, Math.min(BLOCK_CAP, defender.blockChance));
+  const blockChance = Math.max(0, Math.min(cap, defender.blockChance));
   const blocked = blockChance > 0 && rng.chance(blockChance / 100);
   if (blocked) amount *= BLOCK_LEAK;
 
