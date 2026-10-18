@@ -21,7 +21,7 @@ import type { AccountSave, CharClassId, Item, ItemCategory, ItemRarity, LootFilt
 export type { LootFilterGroup, LootFilterSettings };
 import { RARITY_ORDER } from '../types';
 import { getBase, affixTierRank } from './Loot';
-import { getGem, getRune } from '../data/gems';
+import { RUNE_CUTS, getGem, getRune } from '../data/gems';
 
 export const FILTER_GROUPS: Array<{ id: LootFilterGroup; label: string }> = [
   { id: 'weapons', label: 'Weapons' },
@@ -128,7 +128,7 @@ export const LOOT_FILTER_PRESETS: Array<{ id: string; label: string; hint: strin
       hideOldBases: 15,
       hideOtherClasses: true,
       minGemQuality: 3,
-      minRuneOrder: 10,
+      minRuneOrder: 2,
       showPotions: false,
     },
   },
@@ -146,7 +146,7 @@ export const LOOT_FILTER_PRESETS: Array<{ id: string; label: string; hint: strin
       hideOldBases: 10,
       hideOtherClasses: true,
       minGemQuality: 4,
-      minRuneOrder: 18,
+      minRuneOrder: 4,
       showPotions: false,
     },
   },
@@ -170,7 +170,9 @@ export function lootFilterOf(account: AccountSave): LootFilterSettings {
   merged.keepStatsMin = clampInt(merged.keepStatsMin, 1, 3, 1);
   merged.hideOldBases = clampInt(merged.hideOldBases, 0, 99, 0);
   merged.minGemQuality = clampInt(merged.minGemQuality, 0, 5, 0);
-  merged.minRuneOrder = clampInt(merged.minRuneOrder, 1, 33, 1);
+  // It counted the old 33-rune ladder before runes had cuts; such a value takes the matching cut.
+  if (typeof merged.minRuneOrder === 'number' && merged.minRuneOrder > RUNE_CUTS) merged.minRuneOrder = Math.ceil((merged.minRuneOrder * RUNE_CUTS) / 33);
+  merged.minRuneOrder = clampInt(merged.minRuneOrder, 1, RUNE_CUTS, 1);
   merged.minPotionTier = clampInt(merged.minPotionTier, 0, 3, 0);
   account.lootFilter = merged;
   return merged;
@@ -209,7 +211,7 @@ export function passesFilter(item: Item, f: LootFilterSettings, classId?: CharCl
     case 'gem':
       return f.showGems && (getGem(item.baseId)?.qualityIndex ?? 5) >= f.minGemQuality;
     case 'rune':
-      return f.showRunes && (getRune(item.baseId)?.order ?? 33) >= f.minRuneOrder;
+      return f.showRunes && (getRune(item.baseId)?.cut ?? RUNE_CUTS) >= f.minRuneOrder;
     case 'potion':
     {
       const t = potionTier(item.baseId);
@@ -258,7 +260,7 @@ export function describeFilter(f: LootFilterSettings): string {
   if (!f.showGems) hidden.push('gems');
   else if (f.minGemQuality > 0) hidden.push('small gems');
   if (!f.showRunes) hidden.push('runes');
-  else if (f.minRuneOrder > 1) hidden.push(`runes below #${f.minRuneOrder}`);
+  else if (f.minRuneOrder > 1) hidden.push(`runes below cut ${f.minRuneOrder}`);
   if (!f.showPotions) hidden.push('potions');
   else if (f.minPotionTier > 0) hidden.push('small potions');
   if (hidden.length) parts.push(`Hidden: ${hidden.join(', ')}`);

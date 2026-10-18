@@ -30,7 +30,11 @@ Update this file and push it after every finished step.
 
 ## In progress
 
-1. #94 Own runes (see Next for the design).
+1. #94 Own runes. Done so far (committed): new rune data and runewords in
+   src/data/gems.ts, matching by vein, power by cut, old ids remapped in
+   src/core/Save.ts, loot filter by cut, rune icons for 24 runes, tools fixed.
+   Left: recipe list in the Legacy codex (src/ui/LegacyPanel.ts), run
+   check-names once, then mark #94 done.
 
 ## Next
 

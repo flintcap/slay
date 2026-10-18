@@ -1,15 +1,14 @@
 /**
  * SLAY — sockets, gems, runes and runewords.
  *
- * D2's socket system, kept because it is the best "free build slot" ever
- * designed: the same gem does a *different* job depending on what you put it
- * in. A ruby is damage in a sword, life in a breastplate, and fire resist in a
- * ring — so the interesting decision is never "which gem is best", it is
- * "which of my three sockets needs this most".
+ * The same gem does a *different* job depending on what you put it in. A
+ * ruby is damage in a sword, life in a breastplate, and fire resist in a ring,
+ * so the interesting decision is never "which gem is best", it is "which of my
+ * sockets needs this most".
  *
  * Gems come in eleven families x six qualities (66 total). Runes are a separate,
- * rarer track: individually weak, but combinations spell out runewords whose
- * bonuses are wildly out of line with their level requirement.
+ * rarer track: four veins, six cuts each. Runes in the right vein order spell
+ * runewords, and deeper cuts make the same word stronger.
  */
 
 import type { ItemCategory, StatKey } from '../types';
@@ -187,10 +186,33 @@ export const GEMS: GemDef[] = buildGems();
 // Runes
 // ---------------------------------------------------------------------------
 
+/**
+ * SLAY's runes come from four veins, each cut six ways. A vein is a theme you
+ * can read at a glance; a cut is how deep in the dark it was found. Runewords
+ * are spelled by vein, not by one exact stone, so a low cut works early and a
+ * deeper cut of the same vein makes the same word stronger.
+ */
+export type RuneVein = 'ember' | 'rime' | 'marrow' | 'umbra';
+
+export const RUNE_VEINS: readonly RuneVein[] = ['ember', 'rime', 'marrow', 'umbra'];
+
+export const VEIN_INFO: Record<RuneVein, { name: string; color: number; theme: string }> = {
+  ember: { name: 'Ember', color: 0xd8642a, theme: 'Fire and fury' },
+  rime: { name: 'Rime', color: 0x86c4e8, theme: 'Frost, storm and the mind' },
+  marrow: { name: 'Marrow', color: 0xd8ccaa, theme: 'Bone, blood and endurance' },
+  umbra: { name: 'Umbra', color: 0x9a68d8, theme: 'Venom, void and fortune' },
+};
+
+/** How many cuts each vein has. */
+export const RUNE_CUTS = 6;
+
 export interface RuneDef {
   id: string;
   name: string;
-  /** 1..33 — position in the rune ladder, drives drop rarity hard. */
+  vein: RuneVein;
+  /** 1..6 — how deep the cut. Drives drop rarity and runeword strength. */
+  cut: number;
+  /** 1..24 — position on the whole ladder, cut first, then vein. */
   order: number;
   levelReq: number;
   color: number;
@@ -201,303 +223,302 @@ export interface RuneDef {
   jewelry: GemBonus[];
 }
 
-/** [name, level, weaponStat, wVal, armorStat, aVal, jewelStat, jVal] */
-type RuneRow = [string, number, StatKey, number, StatKey, number, StatKey, number];
+/** [name, vein, cut, weaponStat, wVal, armorStat, aVal, jewelStat, jVal] */
+type RuneRow = [string, RuneVein, number, StatKey, number, StatKey, number, StatKey, number];
 
 const RUNE_ROWS: RuneRow[] = [
-  ['El', 1, 'attackRating', 50, 'defense', 15, 'magicFind', 3],
-  ['Eld', 3, 'minDamage', 3, 'manaRegen', 5, 'physicalResist', 2],
-  ['Tir', 5, 'manaSteal', 1, 'mana', 20, 'manaRegen', 6],
-  ['Nef', 7, 'maxDamage', 6, 'defense', 30, 'blockChance', 2],
-  ['Eth', 9, 'attackRating', 90, 'manaRegen', 10, 'arcaneResist', 6],
-  ['Ith', 11, 'maxDamage', 9, 'damageReduction', 2, 'lifeRegen', 5],
-  ['Tal', 13, 'poisonDamage', 12, 'poisonResist', 22, 'poisonResist', 16],
-  ['Ral', 15, 'fireDamage', 14, 'fireResist', 22, 'fireResist', 16],
-  ['Ort', 17, 'lightningDamage', 18, 'lightningResist', 22, 'lightningResist', 16],
-  ['Thul', 19, 'coldDamage', 13, 'coldResist', 22, 'coldResist', 16],
-  ['Amn', 21, 'lifeSteal', 3, 'physicalResist', 5, 'lifeSteal', 2],
-  ['Sol', 23, 'minDamage', 10, 'damageReduction', 4, 'life', 40],
-  ['Shael', 25, 'attackSpeed', 14, 'blockChance', 6, 'moveSpeed', 5],
-  ['Dol', 27, 'lifeRegen', 12, 'life', 60, 'lifeRegen', 10],
-  ['Hel', 29, 'cooldownReduction', 8, 'cooldownReduction', 8, 'cooldownReduction', 6],
-  ['Io', 31, 'vitality', 10, 'vitality', 10, 'vitality', 10],
-  ['Lum', 33, 'energy', 10, 'energy', 10, 'energy', 10],
-  ['Ko', 35, 'dexterity', 10, 'dexterity', 10, 'dexterity', 10],
-  ['Fal', 37, 'strength', 10, 'strength', 10, 'strength', 10],
-  ['Lem', 39, 'goldFind', 75, 'goldFind', 50, 'goldFind', 90],
-  ['Pul', 41, 'enhancedDamage', 22, 'enhancedDefense', 30, 'strength', 12],
-  ['Um', 43, 'critChance', 6, 'physicalResist', 8, 'fireResist', 22],
-  ['Mal', 45, 'damageReduction', 5, 'damageReduction', 7, 'physicalResist', 6],
-  ['Ist', 47, 'magicFind', 30, 'magicFind', 25, 'magicFind', 35],
-  ['Gul', 49, 'attackRating', 250, 'poisonResist', 30, 'maxDamage', 20],
-  ['Vex', 51, 'manaSteal', 7, 'manaRegen', 30, 'mana', 100],
-  ['Ohm', 53, 'enhancedDamage', 45, 'damageReduction', 9, 'critDamage', 30],
-  ['Lo', 55, 'critChance', 12, 'physicalResist', 10, 'critDamage', 40],
-  ['Sur', 57, 'mana', 130, 'life', 140, 'manaSteal', 6],
-  ['Ber', 59, 'critDamage', 60, 'damageReduction', 12, 'physicalResist', 9],
-  ['Jah', 61, 'life', 160, 'life', 180, 'lifeSteal', 6],
-  ['Cham', 63, 'attackSpeed', 24, 'coldResist', 38, 'moveSpeed', 12],
-  ['Zod', 66, 'skillLevels', 1, 'skillLevels', 1, 'skillLevels', 1],
+  // Ember: fire and fury.
+  ['Krae', 'ember', 1, 'fireDamage', 5, 'strength', 3, 'attackSpeed', 3],
+  ['Torvek', 'ember', 2, 'enhancedDamage', 15, 'fireResist', 15, 'fireDamage', 8],
+  ['Ashmar', 'ember', 3, 'fireDamage', 18, 'strength', 8, 'critChance', 3],
+  ['Brannoc', 'ember', 4, 'attackSpeed', 10, 'enhancedDefense', 25, 'strength', 12],
+  ['Skarth', 'ember', 5, 'fireDamage', 40, 'fireResist', 30, 'enhancedDamage', 25],
+  ['Ignavar', 'ember', 6, 'enhancedDamage', 45, 'strength', 18, 'attackSpeed', 12],
+  // Rime: frost, storm and the mind.
+  ['Sile', 'rime', 1, 'coldDamage', 4, 'mana', 15, 'manaRegen', 5],
+  ['Vessa', 'rime', 2, 'manaSteal', 2, 'coldResist', 15, 'castSpeed', 5],
+  ['Hollin', 'rime', 3, 'lightningDamage', 16, 'energy', 8, 'mana', 40],
+  ['Neveth', 'rime', 4, 'castSpeed', 10, 'lightningResist', 25, 'cooldownReduction', 4],
+  ['Caelith', 'rime', 5, 'coldDamage', 34, 'coldResist', 30, 'manaRegen', 30],
+  ['Ilvren', 'rime', 6, 'cooldownReduction', 8, 'energy', 18, 'castSpeed', 14],
+  // Marrow: bone, blood and endurance.
+  ['Grod', 'marrow', 1, 'minDamage', 2, 'defense', 12, 'life', 10],
+  ['Osk', 'marrow', 2, 'lifeSteal', 1, 'vitality', 4, 'lifeRegen', 4],
+  ['Durgan', 'marrow', 3, 'maxDamage', 8, 'life', 35, 'physicalResist', 3],
+  ['Ossuan', 'marrow', 4, 'lifeSteal', 3, 'damageReduction', 4, 'vitality', 10],
+  ['Gorrath', 'marrow', 5, 'maxDamage', 22, 'life', 90, 'lifeRegen', 14],
+  ['Morvagh', 'marrow', 6, 'lifeSteal', 5, 'physicalResist', 8, 'life', 120],
+  // Umbra: venom, void and fortune.
+  ['Thes', 'umbra', 1, 'poisonDamage', 6, 'poisonResist', 15, 'goldFind', 20],
+  ['Vyx', 'umbra', 2, 'critChance', 2, 'arcaneResist', 15, 'magicFind', 6],
+  ['Nhal', 'umbra', 3, 'arcaneDamage', 16, 'dexterity', 8, 'critDamage', 10],
+  ['Xoreth', 'umbra', 4, 'critDamage', 20, 'moveSpeed', 5, 'dexterity', 12],
+  ['Sablon', 'umbra', 5, 'critChance', 6, 'magicFind', 18, 'critDamage', 25],
+  ['Umbrael', 'umbra', 6, 'critDamage', 50, 'moveSpeed', 8, 'skillLevels', 1],
 ];
 
-/**
- * What the player sees. The row keys stay as the item ids (rune.el and so
- * on) so saved stashes still load; the names are SLAY's own.
- */
-const RUNE_NAMES: Record<string, string> = {
-  El: 'Ashk',
-  Eld: 'Brem',
-  Tir: 'Corv',
-  Nef: 'Dagh',
-  Eth: 'Esk',
-  Ith: 'Fenn',
-  Tal: 'Gest',
-  Ral: 'Hask',
-  Ort: 'Irn',
-  Thul: 'Juv',
-  Amn: 'Kell',
-  Sol: 'Lorn',
-  Shael: 'Murr',
-  Dol: 'Nadd',
-  Hel: 'Orsk',
-  Io: 'Pell',
-  Lum: 'Quor',
-  Ko: 'Rusk',
-  Fal: 'Skarn',
-  Lem: 'Thren',
-  Pul: 'Uld',
-  Um: 'Vosk',
-  Mal: 'Wend',
-  Ist: 'Xev',
-  Gul: 'Yrr',
-  Vex: 'Zorn',
-  Ohm: 'Kharvos',
-  Lo: 'Seradyn',
-  Sur: 'Ulmarr',
-  Ber: 'Thessik',
-  Jah: 'Vorhal',
-  Cham: 'Ixamund',
-  Zod: 'Slay',
-};
+/** Level and depth where each cut starts. Veins of one cut stagger by a level. */
+const CUT_LEVEL = [1, 10, 20, 30, 42, 54];
+const CUT_DEPTH = [1, 9, 20, 32, 46, 62];
 
-const RUNE_COLORS = [0xd8a860, 0xd89a50, 0xd88c44, 0xd87e38, 0xd8702c, 0xd86220];
-
-export const RUNES: RuneDef[] = RUNE_ROWS.map((row, i) => {
-  const [name, levelReq, ws, wv, as, av, js, jv] = row;
-  const order = i + 1;
+export const RUNES: RuneDef[] = RUNE_ROWS.map((row) => {
+  const [name, vein, cut, ws, wv, as, av, js, jv] = row;
+  const v = RUNE_VEINS.indexOf(vein);
+  const lift = 1 + (cut - 1) * 0.06;
+  const c = VEIN_INFO[vein].color;
+  const ch = (shift: number) => Math.min(255, Math.round(((c >> shift) & 255) * lift));
   return {
     id: `rune.${name.toLowerCase()}`,
-    name: `${RUNE_NAMES[name] ?? name} Rune`,
-    order,
-    levelReq,
-    color: RUNE_COLORS[Math.min(RUNE_COLORS.length - 1, Math.floor(i / 6))],
-    value: Math.round(40 * Math.pow(1.42, order)),
-    minDepth: Math.max(1, Math.round(order * 2.6 - 2)),
+    name: `${name} Rune`,
+    vein,
+    cut,
+    order: (cut - 1) * RUNE_VEINS.length + v + 1,
+    levelReq: CUT_LEVEL[cut - 1]! + v,
+    color: (ch(16) << 16) | (ch(8) << 8) | ch(0),
+    value: Math.round(60 * Math.pow(4.5, cut - 1)),
+    minDepth: CUT_DEPTH[cut - 1]!,
     weapon: [{ stat: ws, value: wv }],
     armor: [{ stat: as, value: av }],
     jewelry: [{ stat: js, value: jv }],
   };
-});
+}).sort((a, b) => a.order - b.order);
+
+/**
+ * Runes from before SLAY cut its own, by their old ids. Each takes the new
+ * rune at the same height on the ladder, so a saved stash keeps its worth.
+ */
+const OLD_RUNE_IDS = [
+  'el', 'eld', 'tir', 'nef', 'eth', 'ith', 'tal', 'ral', 'ort', 'thul', 'amn',
+  'sol', 'shael', 'dol', 'hel', 'io', 'lum', 'ko', 'fal', 'lem', 'pul', 'um',
+  'mal', 'ist', 'gul', 'vex', 'ohm', 'lo', 'sur', 'ber', 'jah', 'cham', 'zod',
+];
+export const LEGACY_RUNE_IDS: Record<string, string> = Object.fromEntries(
+  OLD_RUNE_IDS.map((old, i) => {
+    const at = Math.min(RUNES.length, Math.max(1, Math.round(((i + 1) * RUNES.length) / OLD_RUNE_IDS.length)));
+    return [`rune.${old}`, RUNES[at - 1]!.id];
+  }),
+);
 
 // ---------------------------------------------------------------------------
 // Runewords
 // ---------------------------------------------------------------------------
 
+/** One runeword line: its value with first-cut runes, and what each deeper cut adds. */
+export interface RunewordMod {
+  stat: StatKey;
+  base: number;
+  perCut: number;
+}
+
 export interface RunewordDef {
   id: string;
   name: string;
-  /** Rune ids, in the exact socket order required. */
-  runes: string[];
+  /** The veins, in socket order. Any cut of a vein counts. */
+  veins: RuneVein[];
   /** Categories the host base must belong to. */
   categories: ItemCategory[];
-  levelReq: number;
   flavor: string;
-  /** Granted on top of the individual rune bonuses. */
-  mods: GemBonus[];
+  mods: RunewordMod[];
 }
 
+/** `perCut` 0 keeps a line as written at every cut (skill levels). */
 function rw(
   id: string,
   name: string,
-  runes: string[],
+  veins: RuneVein[],
   categories: ItemCategory[],
   flavor: string,
-  mods: Array<[StatKey, number]>,
+  mods: Array<[StatKey, number, number]>,
 ): RunewordDef {
-  const levelReq = runes.reduce((m, r) => {
-    const def = RUNES.find((x) => x.id === r);
-    return Math.max(m, def ? def.levelReq : 1);
-  }, 1);
-  return { id, name, runes, categories, levelReq, flavor, mods: mods.map(([stat, value]) => ({ stat, value })) };
+  return { id, name, veins, categories, flavor, mods: mods.map(([stat, base, perCut]) => ({ stat, base, perCut })) };
 }
 
+const E: RuneVein = 'ember';
+const R: RuneVein = 'rime';
+const M: RuneVein = 'marrow';
+const U: RuneVein = 'umbra';
+
 const MELEE: ItemCategory[] = ['sword', 'axe', 'mace', 'dagger', 'spear'];
-const ALL_WEAPON: ItemCategory[] = ['sword', 'axe', 'mace', 'dagger', 'spear', 'bow', 'crossbow', 'wand', 'staff', 'scepter'];
+const RANGED: ItemCategory[] = ['bow', 'crossbow'];
+const CASTER: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
 const BODY: ItemCategory[] = ['chest'];
 const HEAD: ItemCategory[] = ['helm'];
 const SHIELDS: ItemCategory[] = ['shield'];
-const CASTER: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
+const LEGS: ItemCategory[] = ['pants'];
+const HANDS_FEET: ItemCategory[] = ['gloves', 'boots', 'belt'];
 
 export const RUNEWORDS: RunewordDef[] = [
-  rw('rw.steel', 'Tempered', ['rune.tir', 'rune.el'], ['sword', 'axe', 'mace'], 'The first thing a smith learns to write.', [
-    ['enhancedDamage', 25],
-    ['attackSpeed', 20],
-    ['maxDamage', 3],
+  // --- melee ----------------------------------------------------------------
+  rw('rw.kindling', 'Kindling', [E, E], MELEE, 'Two sparks, struck close, and the blade remembers being in the forge.', [
+    ['fireDamage', 8, 8],
+    ['attackSpeed', 8, 2],
   ]),
-  rw('rw.nadir', 'Low Ebb', ['rune.nef', 'rune.tir'], HEAD, 'Worn low, so nothing sees your face.', [
-    ['enhancedDefense', 50],
-    ['defense', 10],
-    ['goldFind', -33],
-    ['magicFind', 12],
+  rw('rw.red-tithe', 'Red Tithe', [E, M], MELEE, 'Every cut pays something back. Nobody asks to whom.', [
+    ['enhancedDamage', 20, 12],
+    ['lifeSteal', 2, 1],
   ]),
-  rw('rw.malice', 'Spite', ['rune.ith', 'rune.el', 'rune.eth'], MELEE, 'It wants the fight more than you do.', [
-    ['enhancedDamage', 33],
-    ['lifeRegen', -5],
-    ['attackRating', 100],
-    ['critChance', 4],
+  rw('rw.hoarfang', 'Hoarfang', [R, M], MELEE, 'The wound frosts over before it can bleed.', [
+    ['coldDamage', 7, 7],
+    ['damageReduction', 2, 1],
   ]),
-  rw('rw.stealth', 'Soft Tread', ['rune.tal', 'rune.eth'], BODY, 'The cloth does not rustle. Nothing about you does.', [
-    ['moveSpeed', 12],
-    ['castSpeed', 12],
-    ['dexterity', 6],
-    ['manaRegen', 15],
+  rw('rw.splinter', 'Splinter', [U, E], ['dagger', 'sword', 'spear'], 'It breaks off inside, and keeps working.', [
+    ['critChance', 3, 1],
+    ['critDamage', 10, 8],
   ]),
-  rw('rw.lore', 'Old Words', ['rune.ort', 'rune.sol'], HEAD, 'Whispers the answer half a beat before you need it.', [
-    ['skillLevels', 1],
-    ['energy', 10],
-    ['lightningResist', 30],
-    ['damageReduction', 7],
+  rw('rw.gravedigger', 'Gravedigger', [M, M, M], ['mace', 'axe'], 'Heavy enough to dig with. It has.', [
+    ['maxDamage', 10, 8],
+    ['enhancedDamage', 30, 15],
+    ['strength', 5, 3],
   ]),
-  rw('rw.ancients-pledge', 'Elder Oath', ['rune.ral', 'rune.ort', 'rune.tal'], SHIELDS, 'Sworn to the wall, not the sword.', [
-    ['enhancedDefense', 50],
-    ['fireResist', 43],
-    ['coldResist', 48],
-    ['lightningResist', 48],
-    ['poisonResist', 48],
-    ['physicalResist', 10],
+  rw('rw.widows-wake', "Widow's Wake", [U, U, E], MELEE, 'Black veils, and somebody always dressed for it in advance.', [
+    ['critDamage', 25, 12],
+    ['critChance', 3, 1],
+    ['poisonDamage', 10, 8],
   ]),
-  rw('rw.spirit', 'Kindled Will', ['rune.tal', 'rune.thul', 'rune.ort', 'rune.amn'], ['sword', 'staff', 'scepter', 'shield'], 'Four notes, and the air holds them.', [
-    ['skillLevels', 2],
-    ['castSpeed', 30],
-    ['mana', 100],
-    ['life', 55],
-    ['manaRegen', 20],
+  rw('rw.last-rites', 'Last Rites', [M, U, M, U], MELEE, 'Said quickly, and only ever over the other man.', [
+    ['skillLevels', 1, 0],
+    ['lifeSteal', 3, 1],
+    ['enhancedDamage', 40, 20],
+    ['vitality', 6, 3],
   ]),
-  rw('rw.insight', 'Inner Eye', ['rune.ral', 'rune.tir', 'rune.tal', 'rune.sol'], ['spear', 'staff', 'scepter'], 'A quiet certainty that outlasts your mana bar.', [
-    ['manaRegen', 60],
-    ['skillLevels', 1],
-    ['attackRating', 200],
-    ['enhancedDamage', 200],
-    ['critChance', 5],
+  rw('rw.pyre-saint', 'Pyre Saint', [E, R, E, M], ['sword', 'axe', 'mace', 'spear'], 'Burned once for heresy. Came back to argue the point.', [
+    ['fireDamage', 20, 14],
+    ['coldDamage', 12, 9],
+    ['enhancedDamage', 30, 18],
+    ['life', 30, 20],
   ]),
-  rw('rw.smoke', 'Ashveil', ['rune.nef', 'rune.lum'], BODY, 'You were standing right there a moment ago.', [
-    ['enhancedDefense', 75],
-    ['fireResist', 50],
-    ['coldResist', 50],
-    ['lightningResist', 50],
-    ['poisonResist', 50],
-    ['energy', 10],
+  // --- ranged ---------------------------------------------------------------
+  rw('rw.gutter-wind', 'Gutter Wind', [U, E], RANGED, 'It smells of the street, and it never misses the gutter.', [
+    ['attackSpeed', 10, 3],
+    ['critChance', 2, 1],
   ]),
-  rw('rw.rhyme', 'Cadence', ['rune.shael', 'rune.eth'], SHIELDS, 'Every blow answered in kind.', [
-    ['blockChance', 20],
-    ['magicFind', 25],
-    ['goldFind', 50],
-    ['poisonResist', 25],
+  rw('rw.grey-fletch', 'Grey Fletch', [R, U, R], RANGED, 'Feathers from a bird nobody has seen alive.', [
+    ['coldDamage', 10, 8],
+    ['dexterity', 6, 3],
+    ['moveSpeed', 4, 1],
   ]),
-  rw('rw.honor', 'Fealty', ['rune.amn', 'rune.el', 'rune.ith', 'rune.tir', 'rune.sol'], MELEE, 'You will be told, afterwards, that it was clean.', [
-    ['enhancedDamage', 160],
-    ['lifeSteal', 7],
-    ['strength', 10],
-    ['dexterity', 10],
-    ['attackRating', 250],
-    ['skillLevels', 1],
+  rw('rw.thousand-nails', 'Thousand Nails', [E, U, E, U], RANGED, 'Count them as they land. You will run out of numbers.', [
+    ['skillLevels', 1, 0],
+    ['enhancedDamage', 40, 20],
+    ['critDamage', 20, 10],
+    ['attackSpeed', 10, 3],
   ]),
-  rw('rw.crescent-moon', 'Waning Blade', ['rune.shael', 'rune.um', 'rune.tir'], ['sword', 'axe', 'spear'], 'A thin white line where the armour used to be.', [
-    ['enhancedDamage', 220],
-    ['lightningDamage', 45],
-    ['physicalResist', 12],
-    ['manaSteal', 9],
-    ['critChance', 8],
+  // --- casters --------------------------------------------------------------
+  rw('rw.banked-coals', 'Banked Coals', [R, E], CASTER, 'Cold on top. Lift the ash and see.', [
+    ['fireDamage', 6, 6],
+    ['castSpeed', 6, 2],
+    ['manaRegen', 8, 4],
   ]),
-  rw('rw.duress', 'Strain', ['rune.shael', 'rune.um', 'rune.thul'], BODY, 'Pressure applied evenly, from every direction at once.', [
-    ['enhancedDefense', 160],
-    ['enhancedDamage', 30],
-    ['coldDamage', 60],
-    ['physicalResist', 15],
-    ['critDamage', 40],
+  rw('rw.hollow-choir', 'Hollow Choir', [R, U, R], CASTER, 'Voices in the wood, singing a half beat ahead of you.', [
+    ['skillLevels', 1, 0],
+    ['mana', 30, 20],
+    ['castSpeed', 8, 3],
   ]),
-  rw('rw.chaos', 'Riot', ['rune.fal', 'rune.ohm', 'rune.um'], ['axe', 'mace', 'sword'], 'It does not swing so much as arrive.', [
-    ['enhancedDamage', 290],
-    ['attackSpeed', 35],
-    ['arcaneDamage', 90],
-    ['areaDamagePct', 40],
-    ['skillLevels', 1],
+  rw('rw.ash-psalm', 'Ash Psalm', [E, U, E], CASTER, 'Read aloud, it leaves soot on the tongue.', [
+    ['fireDamage', 12, 10],
+    ['critChance', 2, 1],
+    ['cooldownReduction', 3, 1],
   ]),
-  rw('rw.call-to-arms', 'Rally Horn', ['rune.amn', 'rune.ral', 'rune.mal', 'rune.ist', 'rune.ohm'], ALL_WEAPON, 'A horn note that reaches the parts of you that had given up.', [
-    ['skillLevels', 2],
-    ['enhancedDamage', 300],
-    ['lifeSteal', 8],
-    ['life', 120],
-    ['magicFind', 40],
-    ['attackSpeed', 40],
+  rw('rw.drowned-psalm', 'Drowned Psalm', [R, R, M, R], ['staff', 'orb'], 'Sung under the lake, where the bells still ring.', [
+    ['skillLevels', 2, 0],
+    ['coldDamage', 14, 10],
+    ['manaRegen', 20, 8],
+    ['life', 25, 15],
   ]),
-  rw('rw.enigma', 'Unmapped', ['rune.jah', 'rune.ith', 'rune.ber'], BODY, 'Nobody agrees on where it takes you. Everybody agrees it does.', [
-    ['skillLevels', 2],
-    ['moveSpeed', 45],
-    ['strength', 25],
-    ['life', 180],
-    ['damageReduction', 14],
-    ['magicFind', 80],
+  // --- chest ----------------------------------------------------------------
+  rw('rw.bone-cage', 'Bone Cage', [M, M], BODY, 'Ribs over your ribs. Something still breathes inside.', [
+    ['life', 25, 20],
+    ['damageReduction', 3, 1],
   ]),
-  rw('rw.infinity', 'Endless Coil', ['rune.ber', 'rune.mal', 'rune.ber', 'rune.ist'], ['spear', 'staff'], 'The far end of it has not been located.', [
-    ['enhancedDamage', 320],
-    ['lightningDamage', 260],
-    ['elementalDamagePct', 55],
-    ['skillLevels', 2],
-    ['cooldownReduction', 12],
+  rw('rw.ember-mantle', 'Ember Mantle', [E, M, E], BODY, 'Warm in the coldest crypt. Too warm, some nights.', [
+    ['fireResist', 15, 5],
+    ['strength', 6, 3],
+    ['enhancedDefense', 40, 20],
   ]),
-  rw('rw.breath-of-the-dying', 'Last Gasp', ['rune.vex', 'rune.hel', 'rune.el', 'rune.eld', 'rune.zod', 'rune.eth'], ALL_WEAPON, 'The last thing a great many things ever heard.', [
-    ['enhancedDamage', 400],
-    ['lifeSteal', 14],
-    ['attackRating', 500],
-    ['strength', 30],
-    ['dexterity', 30],
-    ['critDamage', 90],
-    ['skillLevels', 1],
+  rw('rw.pale-vigil', 'Pale Vigil', [R, U, M], BODY, 'Kept by someone who stopped sleeping a long time ago.', [
+    ['fireResist', 12, 4],
+    ['coldResist', 12, 4],
+    ['lightningResist', 12, 4],
+    ['poisonResist', 12, 4],
+    ['arcaneResist', 12, 4],
   ]),
-  rw('rw.hand-of-justice', 'Verdict', ['rune.sur', 'rune.cham', 'rune.amn', 'rune.lo'], ALL_WEAPON, 'It does not care whose hand it is in.', [
-    ['enhancedDamage', 360],
-    ['attackSpeed', 45],
-    ['fireDamage', 220],
-    ['critChance', 14],
-    ['lifeSteal', 9],
+  rw('rw.grave-wedding', 'Grave Wedding', [U, M, U, M], BODY, 'Till death, the vows said. Nobody said whose.', [
+    ['skillLevels', 1, 0],
+    ['life', 40, 25],
+    ['moveSpeed', 6, 1],
+    ['critChance', 2, 1],
   ]),
-  rw('rw.dream', 'Waking Sleep', ['rune.io', 'rune.jah', 'rune.pul'], HEAD, 'You wake up already holding the sword.', [
-    ['skillLevels', 1],
-    ['lightningDamage', 180],
-    ['life', 130],
-    ['mana', 130],
-    ['magicFind', 35],
-    ['castSpeed', 30],
+  // --- helm -----------------------------------------------------------------
+  rw('rw.crow-hood', 'Crow Hood', [U, R], HEAD, 'It sees what glitters first, and tells you second.', [
+    ['magicFind', 8, 4],
+    ['energy', 4, 2],
+    ['lightningResist', 12, 4],
   ]),
-  rw('rw.grief', 'Mourning Edge', ['rune.eth', 'rune.tir', 'rune.lo', 'rune.mal', 'rune.ral'], ['sword', 'axe'], 'Cuts what it is pointed at and a little of what it is not.', [
-    ['minDamage', 200],
-    ['maxDamage', 240],
-    ['attackSpeed', 40],
-    ['critDamage', 110],
-    ['physicalResist', 10],
+  rw('rw.iron-halo', 'Iron Halo', [M, E, M], HEAD, 'A saint wore it. The saint did not get it back.', [
+    ['life', 20, 15],
+    ['strength', 5, 3],
+    ['physicalResist', 3, 1],
   ]),
-  rw('rw.heart-of-the-oak', 'Rootheart', ['rune.ko', 'rune.vex', 'rune.pul', 'rune.thul'], CASTER, 'Old wood remembers every winter it survived.', [
-    ['skillLevels', 3],
-    ['castSpeed', 40],
-    ['mana', 160],
-    ['manaRegen', 45],
-    ['fireResist', 40],
-    ['coldResist', 40],
-    ['lightningResist', 40],
-    ['poisonResist', 40],
+  // --- shield ---------------------------------------------------------------
+  rw('rw.shut-door', 'Shut Door', [M, R], SHIELDS, 'Whatever is knocking can wait outside.', [
+    ['blockChance', 6, 2],
+    ['defense', 20, 15],
+    ['coldResist', 12, 5],
+  ]),
+  rw('rw.wall-of-teeth', 'Wall of Teeth', [M, E, M], SHIELDS, 'It bites the hand that strikes it.', [
+    ['blockChance', 8, 2],
+    ['enhancedDefense', 40, 20],
+    ['maxDamage', 5, 4],
+  ]),
+  // --- legs, hands, feet ----------------------------------------------------
+  rw('rw.long-road', 'Long Road', [U, M], LEGS, 'Walked once by a pilgrim who never stopped.', [
+    ['moveSpeed', 5, 1],
+    ['vitality', 4, 2],
+    ['poisonResist', 12, 4],
+  ]),
+  rw('rw.coal-walker', 'Coal Walker', [E, R, E], LEGS, 'Barefoot over the fire pits, on a dare, every night.', [
+    ['fireResist', 15, 5],
+    ['coldResist', 15, 5],
+    ['life', 20, 15],
+  ]),
+  rw('rw.knucklebones', 'Knucklebones', [M], HANDS_FEET, 'Rolled for luck. Worn for the same reason.', [
+    ['minDamage', 2, 2],
+    ['goldFind', 15, 8],
+  ]),
+  rw('rw.quickfrost', 'Quickfrost', [R, E], HANDS_FEET, 'Cold feet, hot hands, and no time to think.', [
+    ['attackSpeed', 5, 2],
+    ['castSpeed', 5, 2],
+    ['moveSpeed', 3, 1],
   ]),
 ];
+
+/** The cut each socketed rune has, or null when a socket is empty or holds a gem. */
+function cutsOf(socketIds: ReadonlyArray<string | null>): number[] | null {
+  const cuts: number[] = [];
+  for (const id of socketIds) {
+    const rune = id ? RUNE_BY_ID.get(id) : undefined;
+    if (!rune) return null;
+    cuts.push(rune.cut);
+  }
+  return cuts;
+}
+
+/**
+ * A runeword's lines for the runes actually socketed: each line grows with
+ * the average cut, so the same word spelled in deeper runes hits harder.
+ */
+export function runewordBonuses(word: RunewordDef, socketIds: ReadonlyArray<string | null>): GemBonus[] {
+  const cuts = cutsOf(socketIds) ?? [1];
+  const avg = cuts.reduce((a, b) => a + b, 0) / cuts.length;
+  return word.mods.map((m) => ({ stat: m.stat, value: Math.round(m.base + m.perCut * (avg - 1)) }));
+}
+
+/** Level needed to wear a runeword: its highest rune's. */
+export function runewordLevel(socketIds: ReadonlyArray<string | null>): number {
+  let lvl = 1;
+  for (const id of socketIds) lvl = Math.max(lvl, (id && RUNE_BY_ID.get(id)?.levelReq) || 1);
+  return lvl;
+}
 
 // ---------------------------------------------------------------------------
 // Lookup
@@ -574,23 +595,22 @@ export function socketBonuses(socketableId: string, category: ItemCategory): Gem
 }
 
 /**
- * Detects a runeword from a socket layout. Order matters, the socket count must
- * match exactly, and the host category must be legal.
+ * Detects a runeword from a socket layout: every socket holds a rune, the
+ * veins run in the word's order, the socket count matches exactly, and the
+ * host category is legal. Any cut of a vein counts.
  */
 export function matchRuneword(socketIds: Array<string | null>, category: ItemCategory): RunewordDef | null {
-  if (socketIds.length === 0 || socketIds.some((s) => s === null)) return null;
-  const ids = socketIds as string[];
+  if (socketIds.length === 0) return null;
+  const veins: RuneVein[] = [];
+  for (const id of socketIds) {
+    const rune = id ? RUNE_BY_ID.get(id) : undefined;
+    if (!rune) return null;
+    veins.push(rune.vein);
+  }
   for (const word of RUNEWORDS) {
-    if (word.runes.length !== ids.length) continue;
+    if (word.veins.length !== veins.length) continue;
     if (!word.categories.includes(category)) continue;
-    let ok = true;
-    for (let i = 0; i < ids.length; i++) {
-      if (ids[i] !== word.runes[i]) {
-        ok = false;
-        break;
-      }
-    }
-    if (ok) return word;
+    if (word.veins.every((v, i) => v === veins[i])) return word;
   }
   return null;
 }
@@ -604,9 +624,10 @@ export function socketableDropPool(depth: number): SocketableDef[] {
 export function socketableWeight(def: SocketableDef, depth: number): number {
   if (depth < def.minDepth) return 0;
   if (def.isRune) {
+    // Four veins share a cut, so each rune takes a quarter of the cut's share.
     const rune = RUNE_BY_ID.get(def.id);
-    const order = rune ? rune.order : 1;
-    return 40 / Math.pow(1.34, order - 1);
+    const cut = rune ? rune.cut : 1;
+    return 10 / Math.pow(4.4, cut - 1);
   }
   const gem = GEM_BY_ID.get(def.id);
   const q = gem ? gem.qualityIndex : 0;
@@ -622,10 +643,10 @@ export function gemUpgradeRecipe(gemId: string): { from: string; count: number; 
   return { from: gem.id, count: 3, to: `gem.${gem.family}.${QUALITIES[gem.qualityIndex + 1]}` };
 }
 
-/** Three runes of one kind make one of the next rune up the ladder. */
+/** Three runes of one kind make the next cut of the same vein. */
 export function runeUpgradeRecipe(runeId: string): { from: string; count: number; to: string } | null {
   const rune = RUNE_BY_ID.get(runeId);
-  if (!rune || rune.order >= RUNES.length) return null;
-  const next = RUNES[rune.order];
+  if (!rune || rune.cut >= RUNE_CUTS) return null;
+  const next = RUNES.find((r) => r.vein === rune.vein && r.cut === rune.cut + 1);
   return next ? { from: rune.id, count: 3, to: next.id } : null;
 }

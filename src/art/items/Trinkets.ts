@@ -215,8 +215,10 @@ const GLYPHS: number[] = (() => {
   const masks: number[] = [];
   for (let m = 0; m < 1 << STROKES.length; m++) if (bits(m) === 3) masks.push(m);
   const out: number[] = [];
-  for (let i = 0; i < 33; i++) {
-    const tier = out.slice(Math.floor(i / 6) * 6, i);
+  // One glyph per rune, cut by cut: the four veins of a cut share a stone shape.
+  const perCut = RUNES.length / 6;
+  for (let i = 0; i < RUNES.length; i++) {
+    const tier = out.slice(Math.floor(i / perCut) * perCut, i);
     let best = masks[0]!;
     let score = -1;
     for (const m of masks) {
@@ -260,8 +262,8 @@ function runeOutline(tier: number, W: number, H: number, idx: number): V2[] {
 export function buildRune(P: Parts): void {
   const L = P.look;
   let idx = RUNES.findIndex((r) => r.id === L.cut);
-  if (idx < 0) idx = hashString(L.cut) % 33;
-  const tier = Math.min(5, Math.floor(idx / 6));
+  if (idx < 0) idx = hashString(L.cut) % RUNES.length;
+  const tier = Math.min(5, (RUNES[idx]?.cut ?? 1) - 1);
   // Alternate runes of a tier stand tall or sit wide, so two that share a
   // stroke still differ at a glance.
   const wide = idx % 2 === 1;

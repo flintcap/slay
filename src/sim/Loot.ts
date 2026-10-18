@@ -65,6 +65,7 @@ import type { SetPieceDef } from '../data/sets';
 import {
   getSocketable,
   matchRuneword,
+  runewordBonuses,
   socketBonuses,
   socketableDropPool,
   socketableWeight,
@@ -1198,7 +1199,7 @@ export function socketStats(item: Item): Partial<Stats> {
     item.sockets.map((s) => s.gemId),
     base.category,
   );
-  if (word) for (const bonus of word.mods) addStat(out, bonus.stat, bonus.value);
+  if (word) for (const bonus of runewordBonuses(word, item.sockets.map((s) => s.gemId))) addStat(out, bonus.stat, bonus.value);
   return out;
 }
 
@@ -1793,7 +1794,7 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
     const word = itemRuneword(item);
     if (word) {
       push(`Runeword: ${word.name}`, COLOR.gold, true);
-      for (const bonus of word.mods) {
+      for (const bonus of runewordBonuses(word, item.sockets.map((s) => s.gemId))) {
         push(
           `  ${bonus.value >= 0 ? '+' : ''}${bonus.value} ${STAT_LABEL[bonus.stat] ?? bonus.stat}`,
           bonus.value >= 0 ? COLOR.mod : COLOR.bad,

@@ -7,7 +7,7 @@
 
 import type { ItemRarity } from '../types';
 import { save } from '../core/Save';
-import { RUNES } from '../data/gems';
+import { RUNES, RUNE_CUTS } from '../data/gems';
 import {
   DEFAULT_LOOT_FILTER,
   FILTER_GROUPS,
@@ -35,10 +35,10 @@ const GEM_OPTS = [
   { id: '4', label: 'Perfect+' },
 ];
 
-/** Rune bars, labelled with the rune that starts each one. */
-const RUNE_OPTS = [1, 8, 14, 20, 26].map((n) => {
-  const r = RUNES.find((x) => x.order === n);
-  return { id: String(n), label: n === 1 ? 'All' : `${r?.name ?? `#${n}`}+`, hint: `From rune ${n} of 33` };
+/** Rune bars by cut: every vein's rune of that cut and deeper. */
+const RUNE_OPTS = [1, 2, 3, 4, 5].map((n) => {
+  const names = RUNES.filter((x) => x.cut === n).map((x) => x.name.replace(/ Rune$/, '')).join(', ');
+  return { id: String(n), label: n === 1 ? 'All' : `Cut ${n}+`, hint: `From cut ${n} of ${RUNE_CUTS}: ${names}` };
 });
 
 const POTION_OPTS = [

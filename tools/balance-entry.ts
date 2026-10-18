@@ -156,19 +156,17 @@ out.sets = { sets: SETS.length, pieces: SETS.reduce((s, x) => s + x.pieces.lengt
     const target = RUNES.find((r) => r.id === runeId)!;
     let best = Infinity;
     for (const src of RUNES) {
-      if (src.order > target.order) break;
+      // Three of a cut make the next cut of the same vein.
+      if (src.vein !== target.vein || src.cut > target.cut) continue;
       const def = pool.find((p) => p.id === src.id);
       if (!def) continue;
       const p = (socketableWeight(def, depth) / total) * SOCK;
-      best = Math.min(best, Math.pow(3, target.order - src.order) / p);
+      best = Math.min(best, Math.pow(3, target.cut - src.cut) / p);
     }
     return best;
   };
   out.runeKills = RUNES.map((r) => ({ name: r.name, order: r.order, at60: Math.round(killsFor(r.id, 60)), at100: Math.round(killsFor(r.id, 100)) }));
-  out.runewords = RUNEWORDS.map((w) => {
-    const top = w.runes.map((id) => RUNES.find((r) => r.id === id)!).sort((a, b) => b.order - a.order)[0]!;
-    return { id: w.id, name: w.name, runes: w.runes.length, top: top.name, topOrder: top.order, level: w.levelReq };
-  });
+  out.runewords = RUNEWORDS.map((w) => ({ id: w.id, name: w.name, runes: w.veins.length, veins: w.veins.join(' ') }));
 }
 
 // --- 5. Charms against a rare ring of the same level --------------------------------

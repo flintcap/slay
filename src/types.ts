@@ -568,7 +568,7 @@ export interface LootFilterSettings {
   /** Gems below this quality (0 chipped to 5 divine) are hidden. */
   minGemQuality: number;
   showRunes: boolean;
-  /** Runes below this place on the ladder (1 to 33) are hidden. */
+  /** Runes below this cut (1 to 6) are hidden. The name is older than cuts. */
   minRuneOrder: number;
   showPotions: boolean;
   /** Healing and mana potions below this size (0 minor to 3 super) are hidden. Rejuvenations always show. */

@@ -1,7 +1,7 @@
 /**
  * Entry point for `tools/check-socket-stack.mjs`.
  *
- * Reported: four El runes in one stack, one set into a helm, all four gone.
+ * Reported: four Krae runes in one stack, one set into a helm, all four gone.
  * `insertGem` never touched the inventory — the caller did, with a function
  * that nulls the whole slot. This proves a stack loses exactly one unit.
  */
@@ -15,7 +15,7 @@ const helm = createItem('helm.cap', 20, rng, 'normal');
 // Give it a socket to work with, however the game normally would.
 if (helm.sockets.length === 0) helm.sockets.push({ gemId: null });
 
-const rune = createItem('rune.el', 10, rng, 'normal');
+const rune = createItem('rune.krae', 10, rng, 'normal');
 setStackCount(rune, 4);
 
 const before = stackCount(rune);

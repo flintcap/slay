@@ -2,7 +2,7 @@ import type { AccountSave, Character, GameSettings, Item } from '../types';
 import { events } from './Events';
 import { bindsAreValid, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from './Access';
 import { UNIQUE_TEXT } from '../data/story/uniqueText';
-import { RUNES } from '../data/gems';
+import { LEGACY_RUNE_IDS, RUNES } from '../data/gems';
 import { migrateClassId } from '../data/classes';
 import { INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS, findFit, repairLayout } from '../sim/Grid';
 
@@ -208,8 +208,13 @@ class Repairer {
       it.sockets = [];
       if ((v as Record<string, unknown>).sockets !== undefined) this.note(`${where}: sockets were not a list`);
     } else {
-      it.sockets = it.sockets.map((s) => ({ gemId: isObj(s) && isStr(s.gemId) ? s.gemId : null }));
+      // Runes cut before SLAY's own ladder take their new rune, in sockets too.
+      it.sockets = it.sockets.map((s) => {
+        const id = isObj(s) && isStr(s.gemId) ? s.gemId : null;
+        return { gemId: id ? (LEGACY_RUNE_IDS[id] ?? id) : null };
+      });
     }
+    if (LEGACY_RUNE_IDS[it.baseId]) it.baseId = LEGACY_RUNE_IDS[it.baseId]!;
     // Uniques were renamed by the story pass; one that dropped before then
     // takes its current name. Silent, because nothing was damaged.
     if (isStr(it.uniqueId) && !isStr(it.setId)) {
