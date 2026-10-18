@@ -275,6 +275,20 @@ const scenarios2: Record<string, () => void> = {
     }
     events.emit('ui:open', { panel: 'map' });
   },
+  /** The same explored floor on the corner minimap, no panel open. */
+  minimap() {
+    const level = previewLevel('crypt', 'crypt', 4242, 7);
+    runtime.level = level;
+    runtime.depth = 7;
+    const seen = new Uint8Array(level.width * level.height);
+    for (let i = 0; i < seen.length; i++) seen[i] = (i % level.width) < level.width * 0.7 ? 1 : 0;
+    runtime.explored.set(level.seed, seen);
+    const room = level.rooms?.[1] ?? level.rooms?.[0];
+    if (room) {
+      runtime.playerTileX = Math.round(room.x + room.w / 2);
+      runtime.playerTileY = Math.round(room.y + room.h / 2);
+    }
+  },
   /** A pack's nameplates: trash, champion, elite, a named rare, a wounded one. */
   plates() {
     const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);

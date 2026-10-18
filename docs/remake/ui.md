@@ -19,8 +19,10 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 - [x] 2. Frames and feel: painted frames and buttons, open and close
   animations, one hover and click sound set used everywhere. (`ui: painted
   leather and metal skin, one interface sound set`)
-- [ ] 3. HUD: liquid life and mana orbs, buff timers, minimap polish,
-  cleaner damage numbers.
+- [x] 3. HUD: liquid life and mana orbs, buff timers, minimap polish,
+  cleaner damage numbers. (`ui: damage numbers stop printing over each
+  other; buff timers warn`) Orbs, buff sweep and minimap were already in
+  place and checked in the lab; added number placement, ending colour.
 - [ ] 4. Items: side-by-side compare, upgrade arrows, stash tabs, clearer
   loot filter.
 - [ ] 5. Loading screen: progress bar from `'load:progress'` (falls back to
@@ -34,11 +36,13 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Next up
 
-1. Milestone 3 (HUD): orbs are already liquid canvases (HUD.ts `Orb`),
-   buff timers exist (`.buffs` row). Polish: buff timer ring readability and
-   expiring blink, minimap frame and pips, damage numbers in CombatText.ts
-   (cleaner font, less clutter: merge rapid hits on one target). Check with
-   `uilab --shots=hud,combat`.
+1. Milestone 4 (items): side-by-side compare already exists (Tooltip.ts,
+   "CURRENTLY EQUIPPED" card next to the hovered item, "VERSUS EQUIPPED"
+   rows) and stash tabs exist (StashPanel). Still to do: upgrade arrows on
+   item slots in inventory, stash and vendor grids (green up arrow when the
+   item beats what is worn in its slot, using the same compare numbers the
+   tooltip uses), and a clearer loot filter panel (LootFilterPanel.ts).
+   Check with `uilab --shots=inventory,vendor,stash`.
 
 ## Notes for resume
 
@@ -64,6 +68,10 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   `--skin-leather/--skin-metal` are background layers blended soft-light
   over panel, modal, tooltip and button plates. Low-contrast grey maps on
   purpose (40-60% / 36-64% grey).
+- uilab has a `minimap` scenario now (explored crypt floor on the corner
+  map, no panel), and `--probe=<file.js>` to print a page expression.
+- CombatText.ts `place()`: the newest number keeps its spot; older numbers
+  it would cover ease up just clear of it (estimated boxes, no measuring).
 - Cheap UI renders: `SLAY_PORT=4343 flock /tmp/slay-browser.lock timeout 600
   node tools/uilab.mjs --out=shots/ui/x --shots=hud,character --width=1280
   --height=720` (seconds per shot, no WebGL scene).
@@ -80,6 +88,11 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 - Look at panels and buttons on a real screen: a faint pebbled leather grain
   on panel plates, faint scratches on buttons. Should feel tactile, never
   noisy.
+- In a big fight with many hits (a pack around you), damage numbers should
+  stack into neat rising columns instead of printing on top of each other,
+  without jitter.
+- Buffs in their last 3 seconds: the timer under the chip turns amber (green
+  for a debuff that is about to end) while the chip blinks.
 
 ## Handover
 

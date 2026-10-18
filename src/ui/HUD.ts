@@ -1463,7 +1463,9 @@ export class HUD {
       if (i < list.length) {
         const s = list[i]!;
         const k = s.duration > 0 ? Math.max(0, Math.min(1, s.remaining / s.duration)) : 0;
-        setVar(el, '--k', 1 - k);
+        // Hundredths: a finer sweep is invisible on a chip this size, and each
+        // change is a style write.
+        setVar(el, '--k', Math.round((1 - k) * 100) / 100);
         // Seconds left under the chip; only rewritten when the number changes.
         const tEl = el.querySelector<HTMLElement>('.buff-time');
         if (tEl) {
@@ -1478,9 +1480,10 @@ export class HUD {
       if (!p) continue;
       // A permanent summon has no arc to sweep; it is full until it dies.
       const k = Number.isFinite(p.left) ? Math.max(0, Math.min(1, p.left / 30)) : 1;
-      setVar(el, '--k', 1 - k);
+      setVar(el, '--k', Math.round((1 - k) * 100) / 100);
       const n = el.querySelector<HTMLElement>('.buff-stacks');
-      if (n) n.textContent = String(p.count);
+      const count = String(p.count);
+      if (n && n.textContent !== count) n.textContent = count;
     }
   }
 

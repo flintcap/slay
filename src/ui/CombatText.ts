@@ -50,6 +50,14 @@ interface Entry {
   base: number;
   /** Fixed screen offset in px, so hero numbers sit either side of the head. */
   ox: number;
+  /** Px this number has been pushed up to clear newer ones (see `place`). */
+  lift: number;
+  /** This frame's screen point, scale and alpha; `vis` false when off screen. */
+  sx: number;
+  sy: number;
+  sc: number;
+  al: number;
+  vis: boolean;
   /** The number painted once at rest size, and once at its biggest pop. */
   rest?: Sprite;
   peak?: Sprite;
@@ -177,6 +185,8 @@ export class CombatTextLayer {
   private spawnCount = 0;
   private hero = new THREE.Vector3();
   private textScale = 1;
+  /** Boxes placed this frame by `place`: x, y, half width, half height. */
+  private rects = new Float32Array(MAX_ENTRIES * 4);
 
   constructor(parent: HTMLElement | null = document.getElementById('ui')) {
     this.canvas = document.createElement('canvas');
@@ -354,9 +364,14 @@ export class CombatTextLayer {
     return false;
   }
 
-  private spawn(p: Omit<Entry, 'age' | 'pop' | 'stacks' | 'born' | 'base' | 'ox'> & { ox?: number }): void {
+  private spawn(
+    p: Omit<Entry, 'age' | 'pop' | 'stacks' | 'born' | 'base' | 'ox' | 'lift' | 'sx' | 'sy' | 'sc' | 'al' | 'vis'> & { ox?: number },
+  ): void {
     if (this.entries.length >= MAX_ENTRIES) this.retire(this.entries.shift()!);
-    this.entries.push({ ...p, age: 0, pop: 1, stacks: 1, born: 0, base: p.size, ox: p.ox ?? 0 });
+    this.entries.push({
+      ...p, age: 0, pop: 1, stacks: 1, born: 0, base: p.size, ox: p.ox ?? 0,
+      lift: 0, sx: 0, sy: 0, sc: 1, al: 1, vis: false,
+    });
     this.dirty = true;
   }
 
@@ -395,6 +410,7 @@ export class CombatTextLayer {
         continue;
       }
       this.entries[write++] = e;
+      e.vis = false;
 
       _v.set(e.x, e.y, e.z).project(camera);
       if (_v.z > 1 || _v.z < -1) continue;
@@ -418,9 +434,62 @@ export class CombatTextLayer {
       }
       if (e.kind === 'level') scale = 0.7 + Math.min(1, e.age / 0.25) * 0.3 + e.pop * 0.2;
       const alpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
-      this.drawEntry(ctx, e, sx, sy, scale, alpha);
+      e.sx = sx;
+      e.sy = sy;
+      e.sc = scale;
+      e.al = alpha;
+      e.vis = true;
     }
     this.entries.length = write;
+    this.place(dt);
+    // Oldest first, so the newest number is drawn on top.
+    for (let i = 0; i < this.entries.length; i++) {
+      const e = this.entries[i]!;
+      if (e.vis) this.drawEntry(ctx, e, e.sx, e.sy - e.lift, e.sc, e.al);
+    }
+  }
+
+  /**
+   * Keeps numbers from printing over each other. The newest number keeps its
+   * spot over the hit; an older one it would cover is pushed up just clear of
+   * it, easing there instead of jumping, so a crowd of hits reads as a neat
+   * rising column rather than a smear. Pure arithmetic on estimated boxes: no
+   * text is measured.
+   */
+  private place(dt: number): void {
+    const r = this.rects;
+    let n = 0;
+    const up = Math.min(1, dt * 24);
+    for (let i = this.entries.length - 1; i >= 0; i--) {
+      const e = this.entries[i]!;
+      if (!e.vis || e.kind === 'level') continue;
+      const k = e.size * e.sc * this.textScale;
+      const hw = (e.text.length * k * 0.3 + 4) | 0;
+      const hh = k * 0.46;
+      let cy = e.sy;
+      // A few passes: clearing one box can land on the next one up.
+      for (let pass = 0; pass < 4; pass++) {
+        let moved = false;
+        for (let j = 0; j < n; j++) {
+          const o = j * 4;
+          if (Math.abs(e.sx - r[o]!) < hw + r[o + 2]! && Math.abs(cy - r[o + 1]!) < hh + r[o + 3]!) {
+            cy = r[o + 1]! - r[o + 3]! - hh - 1;
+            moved = true;
+          }
+        }
+        if (!moved) break;
+      }
+      const target = e.sy - cy;
+      e.lift = target > e.lift ? e.lift + (target - e.lift) * up : Math.max(target, e.lift - dt * 50);
+      if (n < MAX_ENTRIES) {
+        const o = n * 4;
+        r[o] = e.sx;
+        r[o + 1] = e.sy - e.lift;
+        r[o + 2] = hw;
+        r[o + 3] = hh;
+        n++;
+      }
+    }
   }
 
   /**

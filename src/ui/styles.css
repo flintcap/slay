@@ -4305,6 +4305,13 @@ input.slider::-moz-range-thumb {
 .buff.is-ending {
   animation: buffEnding 0.5s ease-in-out infinite alternate;
 }
+/* The last seconds read in warning colour, so a fading buff is noticed. */
+.buff.is-ending .buff-time {
+  color: var(--warn);
+}
+.buff.debuff.is-ending .buff-time {
+  color: var(--good);
+}
 @keyframes buffEnding {
   to {
     opacity: 0.45;
