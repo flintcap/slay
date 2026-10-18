@@ -1797,9 +1797,9 @@ export class DungeonScene extends GameScene {
       // Boss death is the run's payoff: a real burst of loot, rolled once, in
       // grantKill (it was also rolled a second time here, so every boss
       // dropped twice its loot).
-      this.grantKill(b.defId, 'boss', 'demon', b.root.position, this.run.depth + 8);
+      this.grantKill(b.defId, 'boss', 'demon', b.root.position, this.bossIlvl(), true);
       // Each boss carries a few uniques of its own, and drops them more than anything else does.
-      const sig = rollSignature(b.defId, this.run.depth + 8, this.rng, SIGNATURE_CHANCE.boss, getBoss(b.defId)?.signature);
+      const sig = rollSignature(b.defId, this.bossIlvl(), this.rng, SIGNATURE_CHANCE.boss, getBoss(b.defId)?.signature);
       if (sig) this.dropItem(sig, b.root.position);
       this.awardQuestIfComplete();
       this.openReturnPortal(b.root.position);
@@ -1813,7 +1813,9 @@ export class DungeonScene extends GameScene {
     rank: MonsterRank,
     family: MonsterFamily,
     pos: THREE.Vector3,
-    ilvl: number
+    ilvl: number,
+    /** The map's own boss, not a warden or a ranked monster. */
+    mapBoss = false,
   ): void {
     onKill(this.run.quest, monsterId, family, rank);
     questTokens.kill(this.run.quest, rank);
@@ -1837,30 +1839,49 @@ export class DungeonScene extends GameScene {
     // `toNext` of zero is what pinned the XP bar to full after the first few
     // kills — the HUD believed the second, wrong event.
 
-    const drops = rollDrops(
-      ilvl,
-      rank,
-      this.rng,
-      this.player.stats.magicFind * dif.magicFind + (dif.magicFind - 1) * 100,
-      this.player.stats.goldFind * dif.goldFind
-    );
+    const find = this.findRates();
+    const drops = rollDrops(ilvl, rank, this.rng, find.magicFind, find.goldFind);
     for (const item of drops.items) this.dropItem(item, pos);
-    // Harder tiers guarantee extra drops from anything above a normal monster.
+    // Harder tiers guarantee extra items from anything above a normal monster:
+    // real gear rolls, not a whole drop table cut down to whatever came first.
     if (dif.bonusDrops > 0 && rank !== 'normal') {
-      for (let i = 0; i < dif.bonusDrops; i++) {
-        const extra = rollDrops(ilvl, rank, this.rng, this.player.stats.magicFind * dif.magicFind, 0);
-        for (const item of extra.items.slice(0, 1)) this.dropItem(item, pos);
-      }
+      for (let i = 0; i < dif.bonusDrops; i++) this.dropItem(rollItem(ilvl, this.rng, { magicFind: find.magicFind, source: rank }), pos);
     }
     // A boss with a mood is a harder bargain, and pays for it: two more rolls.
-    if (rank === 'boss' && this.run.bossMood && monsterId === this.boss?.defId) {
-      const extra = rollDrops(ilvl, rank, this.rng, this.player.stats.magicFind * dif.magicFind + 100, 0);
-      for (const item of extra.items.slice(0, 2)) this.dropItem(item, pos);
+    // (Asked of `mapBoss`, not `this.boss`: the scene lets go of the boss
+    // before its loot is rolled.)
+    if (mapBoss && this.run.bossMood) {
+      for (let i = 0; i < 2; i++) this.dropItem(rollItem(ilvl, this.rng, { magicFind: find.magicFind + 100, source: rank }), pos);
     }
     if (drops.gold > 0) {
-      this.dropGold(Math.round(drops.gold * dif.goldFind), pos);
+      this.dropGold(Math.round(drops.gold * find.goldMul), pos);
     }
     for (const [id, n] of Object.entries(drops.materials)) save.addMaterial(id, n);
+  }
+
+  /**
+   * The hero's find on this difficulty tier, the same for every roll. Magic
+   * find is scaled by the tier and then shifted by it, so an easy tier finds
+   * worse than Reaver even with no magic find (the shift can go below zero;
+   * `Loot.tierChance` reads that as rarer). Gold find goes in as the hero has
+   * it, and the tier scales the pile once, after.
+   */
+  private findRates(): { magicFind: number; goldFind: number; goldMul: number } {
+    const dif = activeDifficulty();
+    return {
+      magicFind: this.player.stats.magicFind * dif.magicFind + (dif.magicFind - 1) * 100,
+      goldFind: this.player.stats.goldFind,
+      goldMul: dif.goldFind,
+    };
+  }
+
+  /**
+   * The map boss's item level. Ranked monsters roll `depth * 1.15 + 2`
+   * (Enemy.ts), which passes a flat `depth + 8` past depth 40; the boss stays
+   * two levels clear of them.
+   */
+  private bossIlvl(): number {
+    return Math.max(this.run.depth + 8, Math.round(this.run.depth * 1.15) + 4);
   }
 
   /**
@@ -2042,20 +2063,13 @@ export class DungeonScene extends GameScene {
     const ilvl = Math.max(1, this.run.depth + this.levelIndex);
     const rank: MonsterRank = tier === 'vault' ? 'boss' : tier === 'rare' || tier === 'warden' ? 'rare' : 'champion';
     const goldBonus = tier === 'vault' ? 3.0 : tier === 'warden' ? 2.2 : tier === 'rare' ? 1.6 : 1.1;
-    const drops = rollDrops(
-      ilvl,
-      rank,
-      this.rng,
-      this.player.stats.magicFind * activeDifficulty().magicFind,
-      this.player.stats.goldFind * activeDifficulty().goldFind,
-    );
+    const find = this.findRates();
+    const drops = rollDrops(ilvl, rank, this.rng, find.magicFind, find.goldFind);
     for (const item of drops.items) this.dropItem(item, at);
     // A warden's chest holds one more, better than most.
-    if (tier === 'warden') {
-      const extra = rollDrops(ilvl + 2, 'rare', this.rng, this.player.stats.magicFind * activeDifficulty().magicFind + 150, 0);
-      for (const item of extra.items.slice(0, 1)) this.dropItem(item, at);
-    }
-    if (drops.gold > 0) this.dropGold(Math.round(drops.gold * goldBonus), at);
+    if (tier === 'warden') this.dropItem(rollItem(ilvl + 2, this.rng, { magicFind: find.magicFind + 150, source: 'rare' }), at);
+    if (drops.gold > 0) this.dropGold(Math.round(drops.gold * goldBonus * find.goldMul), at);
+    for (const [id, n] of Object.entries(drops.materials)) save.addMaterial(id, n);
     this.effects.explosion(it.x, 0.7, it.z, { radius: 1.2, element: 'physical', color: 0xffd66b });
     audio.play('chest', { x: it.x, z: it.z });
     onInteract(this.run.quest, 'chest');

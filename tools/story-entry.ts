@@ -397,7 +397,7 @@ setMonsterCatalog({
     if (stepState(offer.chain, 0) !== 'ready') fail('loop: the step is not ready after its quest completed');
     const gold = c.gold;
     const paid = turnInStep(offer.chain);
-    if (!paid || c.gold !== gold + paid.gold || paid.gold <= 0) fail('loop: hand-in did not pay');
+    if (!paid || paid === 'full' || c.gold !== gold + paid.gold || paid.gold <= 0) fail('loop: hand-in did not pay');
     if (stepState(offer.chain, 0) !== 'done') fail('loop: hand-in did not move the chain on');
     const next = offerFor(renn);
     if (!next || next.index !== 1) fail('loop: the next step was not offered');

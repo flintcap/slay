@@ -118,7 +118,7 @@ export class BountyPanel {
             }
             const gain = grantRenown(save.account, r.payout.renown);
             for (const u of gain.unlocked) toast(`Unlocked: ${u.name}. ${u.desc}`, 'epic');
-            if (gain.unlocked.some((u) => u.id === 'stashTab')) save.addStashTab();
+            if (gain.unlocked.some((u) => u.id === 'stashTab')) save.grantStashTab();
             audio.play('quest.complete');
             const item = r.payout.item;
             toast(`Bounty paid: ${fmtInt(r.payout.gold)} gold${item ? `, ${item.name}` : ''}.`, 'epic', item?.rarity);

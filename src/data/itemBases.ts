@@ -1424,9 +1424,10 @@ export function maxSockets(base: ItemBase): number {
 }
 
 /**
- * Class weighting for drop rolls. Not a hard restriction (a knight can pick up
- * a staff and sell it) — it just biases the table so most of what you find is
- * something you could plausibly use.
+ * Class weighting for rolls made for one hero: quest and bounty rewards,
+ * vendor stock, the gambler, milestone caches. Not a hard restriction (a
+ * knight can pick up a staff and sell it). Monster and chest drops pass no
+ * class and stay fully random, on purpose.
  */
 const CLASS_PREFERENCE: Record<CharClassId, Partial<Record<ItemCategory, number>>> = {
   warden: { sword: 2.2, axe: 2.2, mace: 2.2, spear: 1.8, shield: 2.4, chest: 1.5, helm: 1.3, dagger: 0.5, wand: 0.15, staff: 0.25, orb: 0.15, bow: 0.6, crossbow: 0.6, scepter: 0.9 },

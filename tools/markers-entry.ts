@@ -93,8 +93,8 @@ if (!offer) {
   const after = npcMarker('renn');
   check(
     'handed in: the "!" goes, and Renn shows "?" only if she has the next step',
-    !!paid && after === (next ? 'offer' : null),
-    `paid ${paid?.gold ?? 0} gold; now ${after}; next step ${next ? next.index : 'none'}`,
+    !!paid && paid !== 'full' && after === (next ? 'offer' : null),
+    `paid ${paid && paid !== 'full' ? paid.gold : 0} gold; now ${after}; next step ${next ? next.index : 'none'}`,
   );
 }
 

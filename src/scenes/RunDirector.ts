@@ -149,7 +149,7 @@ export class RunDirector {
     }
     for (const u of gain.unlocked) {
       toast(`Unlocked: ${u.name}. ${u.desc}`, 'epic');
-      if (u.id === 'stashTab') save.addStashTab();
+      if (u.id === 'stashTab') save.grantStashTab();
     }
     if (gain.ranks.length) events.emit('ui:refresh', {});
     save.touch();

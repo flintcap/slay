@@ -68,6 +68,11 @@ function contractOptions(npc: NpcDef): DialogueOption[] {
           const lines = work.step.turnIn.map(fillStory);
           const paid = turnInStep(work.chain);
           if (!paid) return;
+          if (paid === 'full') {
+            toast('Your pack and the vault are both full. Make room, then hand it in.', 'bad');
+            audio.play('ui.error');
+            return;
+          }
           audio.play('quest.complete');
           const box = div('dlg-reward');
           const b = document.createElement('b');

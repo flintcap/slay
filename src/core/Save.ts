@@ -36,8 +36,15 @@ export const SAVE_VERSION = 2;
 
 export const STASH_TAB_SIZE = STASH_COLS * STASH_ROWS; // 12 x 10 grid per tab
 export const DEFAULT_STASH_TABS = 4;
-/** Tabs a player can buy. */
+/** Tabs a vault can grow to with gold. The Legacy tab comes on top. */
 export const MAX_STASH_TABS = 10;
+/**
+ * What each bought tab costs, in order, past the four every vault starts
+ * with. Paid from the bank first, then the live hero's purse.
+ */
+export const STASH_TAB_PRICES = [2_500, 6_000, 15_000, 40_000, 100_000, 250_000] as const;
+/** Marks the free Legacy "Vault Extension" tab as granted, in `unlocks`. */
+const LEGACY_TAB = 'vault:legacyTab';
 /**
  * Tabs a vault may hold at all. Above the buying cap only because a vault
  * from before items took more than one cell may need extra room to unpack.
@@ -889,12 +896,37 @@ export class SaveManager {
     return true;
   }
 
-  addStashTab(): boolean {
-    if (this.data.stashTabs >= MAX_STASH_TABS) return false;
+  private addStashTab(): void {
     this.data.stashTabs++;
     this.data.stash.push(...new Array<Item | null>(STASH_TAB_SIZE).fill(null));
     this.touch();
-    return true;
+  }
+
+  /** Gold for the next vault tab, or null when no more can be bought. */
+  stashTabPrice(): number | null {
+    const legacy = this.data.unlocks.includes(LEGACY_TAB) ? 1 : 0;
+    const bought = Math.max(0, this.data.stashTabs - DEFAULT_STASH_TABS - legacy);
+    return bought < STASH_TAB_PRICES.length ? STASH_TAB_PRICES[bought]! : null;
+  }
+
+  /** Buys a vault tab with banked gold, then the live hero's gold. */
+  buyStashTab(): 'ok' | 'max' | 'gold' {
+    const price = this.stashTabPrice();
+    if (price === null) return 'max';
+    const c = this.data.current;
+    if (this.data.bankGold + (c?.gold ?? 0) < price) return 'gold';
+    const fromBank = Math.min(this.data.bankGold, price);
+    this.data.bankGold -= fromBank;
+    if (c) c.gold -= price - fromBank;
+    this.addStashTab();
+    return 'ok';
+  }
+
+  /** The Legacy "Vault Extension" tab: free, once, and on top of the bought ones. */
+  grantStashTab(): void {
+    if (this.data.unlocks.includes(LEGACY_TAB)) return;
+    this.data.unlocks.push(LEGACY_TAB);
+    this.addStashTab();
   }
 
   unlock(id: string): void {

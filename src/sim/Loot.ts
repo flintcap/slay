@@ -132,8 +132,10 @@ const RARITY_VALUE_MUL: Record<ItemRarity, number> = {
  * drops anything plain, and a boss is where the uniques live.
  */
 const QUALITY: Array<{ rarity: ItemRarity; base: number; div: number; floor: number; mfCap: number; minIlvl: number }> = [
-  { rarity: 'ancient', base: 12000, div: 1, floor: 1500, mfCap: 140, minIlvl: 78 },
-  { rarity: 'mythic', base: 2400, div: 1, floor: 300, mfCap: 190, minIlvl: 58 },
+  // The first mythic is item level 74 and the first ancient 90, and a pool
+  // reaches 4 levels up (`uniquePool`): below these a hit had nothing to give.
+  { rarity: 'ancient', base: 12000, div: 1, floor: 1500, mfCap: 140, minIlvl: 86 },
+  { rarity: 'mythic', base: 2400, div: 1, floor: 300, mfCap: 190, minIlvl: 70 },
   // Sets and uniques are half as common as they were: a full map at tier 20
   // threw ten set pieces and four uniques before its boss.
   { rarity: 'unique', base: 720, div: 1, floor: 96, mfCap: 250, minIlvl: 1 },
@@ -165,12 +167,17 @@ function sourceFactor(source: DropSource, rarity: ItemRarity): number {
   return rarity === 'magic' ? f[3] : rarity === 'rare' ? f[2] : rarity === 'set' ? f[1] : f[0];
 }
 
+/** The lowest magic find a roll honours. Only an easy tier goes below zero. */
+const MIN_MAGIC_FIND = -60;
+
 /** Chance this one tier hits, given that every better tier missed. */
 function tierChance(tier: (typeof QUALITY)[number], ilvl: number, qlvl: number, magicFind: number, source: DropSource): number {
   if (ilvl < tier.minIlvl) return 0;
   let n = tier.base - Math.max(0, ilvl - qlvl) / tier.div;
-  const mf = Math.max(0, magicFind);
-  const effective = tier.mfCap === Infinity ? mf : mf > 0 ? (mf * tier.mfCap) / (mf + tier.mfCap) : 0;
+  // Below zero is the easy tiers' penalty (DungeonScene.findRates): -40 makes
+  // every tier 1.67 times rarer. It is never allowed near -100.
+  const mf = Math.max(MIN_MAGIC_FIND, magicFind);
+  const effective = mf <= 0 || tier.mfCap === Infinity ? mf : (mf * tier.mfCap) / (mf + tier.mfCap);
   n = (n * 100) / (100 + effective);
   n /= earlyRamp(tier.rarity, ilvl);
   n = Math.max(n, tier.floor);
@@ -874,9 +881,10 @@ export function rollItem(
   let rarity = opts.forceRarity ?? rollRarity(lvl, base.levelReq, magicFind, opts.source ?? 'normal', rng);
 
   // Unique / set tiers resolve against their own definition pools. If nothing
-  // is available at this level the roll degrades gracefully rather than
-  // producing an empty item.
-  if (rarity === 'ancient' || rarity === 'mythic' || rarity === 'unique') {
+  // is available at this level the roll steps down one tier at a time (an
+  // ancient with an empty pool is still a mythic, then a unique) and only
+  // then becomes a rare, rather than producing an empty item.
+  while (rarity === 'ancient' || rarity === 'mythic' || rarity === 'unique') {
     const pool = uniquePool(rarity, lvl).filter((d) => {
       const cat = getBase(d.baseId).category;
       // Charms drop through `rollCharm` only, at their own rate.
@@ -892,7 +900,7 @@ export function rollItem(
       const def = rng.weighted(pool, (d) => uniqueDropWeight(d, lvl));
       return buildUniqueItem(def, lvl, rng);
     }
-    rarity = 'rare';
+    rarity = rarity === 'ancient' ? 'mythic' : rarity === 'mythic' ? 'unique' : 'rare';
   }
 
   if (rarity === 'set') {
@@ -1061,7 +1069,7 @@ export function rollDrops(
 ): { items: Item[]; gold: number; materials: Record<string, number> } {
   const lvl = Math.max(1, Math.round(ilvl));
   const profile = RANK_PROFILE[rank] ?? RANK_PROFILE.normal;
-  const mf = Math.max(0, magicFind);
+  const mf = Math.max(MIN_MAGIC_FIND, magicFind);
 
   const items: Item[] = [];
   let count = profile.items;

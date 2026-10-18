@@ -155,8 +155,11 @@ export function chainReward(step: ChainStep): { gold: number; xp: number; item?:
  * Hands a ready step in: pays the current character, moves the chain on, and
  * returns what was paid. A step can be handed in by a different character
  * from the one who did the work; the town pays whoever comes back.
+ *
+ * `'full'` when the reward item fits neither the pack nor the vault: nothing
+ * is paid and the step stays ready, so the reward is never thrown away.
  */
-export function turnInStep(chain: ChainDef): ChainReward | null {
+export function turnInStep(chain: ChainDef): ChainReward | 'full' | null {
   const e = entry(chain.id);
   if (e.state !== 'ready' || e.step >= chain.steps.length) return null;
   const step = chain.steps[e.step]!;
@@ -165,8 +168,6 @@ export function turnInStep(chain: ChainDef): ChainReward | null {
   let item: Item | null = null;
   let itemTo: ChainReward['itemTo'] = 'none';
   if (c) {
-    c.gold += pay.gold;
-    grantXp(c, pay.xp);
     if (pay.item) {
       const rng = streamFor((Date.now() ^ (e.step * 7717)) >>> 0, `chain:${chain.id}:${e.step}`);
       item = rollItem(questItemLevel(Math.max(step.minDepth, c.depthRecord)), rng, {
@@ -176,7 +177,10 @@ export function turnInStep(chain: ChainDef): ChainReward | null {
       });
       if (addItemToInventory(c, item)) itemTo = 'pack';
       else if (save.stashItem(item)) itemTo = 'vault';
+      else return 'full';
     }
+    c.gold += pay.gold;
+    grantXp(c, pay.xp);
     save.setCharacter(c);
   }
   e.step += 1;

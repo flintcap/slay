@@ -49,6 +49,7 @@ export class StashPanel {
   private vaultGoldEl: HTMLSpanElement;
   private purseGoldEl: HTMLSpanElement;
   private tabBar: HTMLDivElement;
+  private addTab: Button;
 
   constructor() {
     this.panel = new Panel({
@@ -89,20 +90,15 @@ export class StashPanel {
     });
     const tabRow = div('row');
     tabRow.appendChild(this.tabs.root);
-    const addTab = new Button({
+    // Tabs past the first four are bought (Save.STASH_TAB_PRICES), so the
+    // Legacy reward tab is worth something.
+    this.addTab = new Button({
       label: '+ Tab',
       variant: 'ghost',
       small: true,
-      onClick: () => {
-        if (save.addStashTab()) {
-          events.emit('toast', { text: 'Vault expanded.', kind: 'good' });
-          this.refresh();
-        } else {
-          events.emit('toast', { text: 'The vault cannot hold more tabs.', kind: 'bad' });
-        }
-      },
+      onClick: () => this.buyTab(),
     });
-    tabRow.appendChild(addTab.root);
+    tabRow.appendChild(this.addTab.root);
 
     // Sorts the tab you are looking at, not the whole vault: a ten-tab vault
     // sorted as one blob would shuffle everything you had deliberately filed.
@@ -230,6 +226,28 @@ export class StashPanel {
   private quietNext = false;
   private shownOffset = -1;
 
+  private buyTab(): void {
+    const price = save.stashTabPrice();
+    if (price === null) return;
+    modal({
+      title: 'Buy a vault tab?',
+      icon: 'stash',
+      body: `<p>One more tab of ${STASH_TAB_SIZE} cells for <b>${fmtInt(price)} gold</b>. Paid from the bank first, then your purse.</p>`,
+      confirmLabel: 'Buy tab',
+      onConfirm: () => {
+        const r = save.buyStashTab();
+        if (r === 'ok') {
+          uiSfx('ui.buy');
+          events.emit('toast', { text: 'Vault expanded.', kind: 'good' });
+        } else {
+          events.emit('toast', { text: r === 'gold' ? 'Not enough gold.' : 'The vault cannot hold more tabs.', kind: 'bad' });
+        }
+        events.emit('ui:refresh', {});
+        this.refresh();
+      },
+    });
+  }
+
   refresh(): void {
     const acct = save.account;
     const defs = [];
@@ -241,6 +259,9 @@ export class StashPanel {
     }
     if (this.tabIndex >= acct.stashTabs) this.tabIndex = 0;
     this.tabs.setTabs(defs, `tab${this.tabIndex}`);
+    const price = save.stashTabPrice();
+    this.addTab.setLabel(price === null ? 'Vault full' : `+ Tab · ${fmtInt(price)} gold`);
+    this.addTab.setDisabled(price === null);
 
     // A tab switch or a sort replaces every cell; only a real arrival flashes.
     const offset = this.tabOffset();
