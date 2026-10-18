@@ -1,6 +1,6 @@
 # Stream: mapvariety (Wave 4: maps that feel new every run)
 
-Status: in progress
+Status: done
 
 Goal: each run feels different: new map shapes, landmarks worth finding,
 weather, and run themes, all from seeded randomness (`src/core/RNG.ts`).
@@ -39,19 +39,13 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
   haunted) that changes props, light tint and monster mix weights, never
   monster counts or strength down.
   (mapvariety: run themes, flooded, overgrown, burnt and haunted)
-- [ ] 7. Map polish: floating or mismatched props, seams, empty dead ends.
-- [ ] 8. Handover.
+- [x] 7. Map polish: floating or mismatched props, seams, empty dead ends.
+  (mapvariety: map polish, dead ends, bridges and seams)
+- [x] 8. Handover. (mapvariety: handover)
 
 ## Next up
 
-1. Do Setup in PROTOCOL.md.
-2. Milestone 7: map polish. Floating or mismatched props, seams, empty dead
-   ends. Cheapest first: run `node tools/run-checks.mjs --only=props,grid,
-   maps,density,dressing,roof` and the `variety` report; look for dead-end
-   rooms with nothing in them (`check-maps --dump=...`), props of one biome
-   standing in another zone across a seam, and props on the new shapes'
-   bridges, crossings and ramps (`world/zones/Shapes.ts`). Fix in
-   `Props.ts` / `zones/*`. One small contact sheet at most.
+Nothing: every milestone is ticked. See Handover.
 
 ## Notes for resume
 
@@ -99,6 +93,25 @@ Checkers for maps (headless): `maps` (every generator x biome, hard rules:
 connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
 `grid`, `openness`, `roomrules`, `density`, `dressing`, `props`,
 `variants`. Browser: `map`, `mapflow`, `stairs`, `walk`.
+
+### Milestone 7 notes
+
+- New checker `node tools/check-polish.mjs` (headless): bare dead ends
+  (side rooms with no monsters, nothing to open, no feature, no light, no
+  landmark or event; fails over 15%), props on bridges, and dressing props
+  standing in the other zone's biome across a seam (ambush and treasure
+  room pieces are the room's, not the biome's).
+- Before: 3.5% bare dead ends (swamp 9 of 31), 21 props on bridges, 10
+  set-piece gibbets across seams. After: 0.9% bare, 0 on bridges, 0 across.
+- `Props.ts`: `emit` refuses non-liquid props on bridge tiles;
+  `placeDeadEnds` (own stream) gives a bare side room the biome's feature,
+  2-3 breakables, a plain chest 30% of the time, and pots where the ground
+  takes no solid piece; landmark pieces and their heart stay in one zone.
+- One render (`screenshot.mjs --shots=dungeon`, port 4346): a dark wood
+  map at tier 1 draws as before, props sit on the ground, nothing broken.
+  That map rolled no rain or fog, so weather itself is in the owner list.
+- Already clean before (checked): props grounded (`props`), blockers you
+  can see (`blockers`), decals on their floor, grid, roof, maps.
 
 ### Milestone 6 notes
 
@@ -224,4 +237,26 @@ connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
 
 ## Handover
 
-(Written when every milestone is ticked.)
+What exists now, and where:
+- Town loads in pieces: `townSteps` (`world/Town.ts`), `townPropsSteps`
+  (`art/props/town/Layout.ts`), `Residents.add`; `TownScene` runs it with
+  `yieldIfLong`. `buildTown` runs it in one go for tools.
+- Three new map shapes in `world/zones/Shapes.ts`: `maw` (ring round a
+  pit), `cleft` (river or chasm with crossings), `terraces` (tiers with
+  ramps). Listed per biome in `Biomes.ts` `layouts`.
+- Landmarks: `world/Landmarks.ts` (9 set pieces), stood by
+  `Props.ts` `placeLandmark`; `level.landmark` names it.
+- Weather: `world/Weather.ts`, hooked in `DungeonScene` (build at level
+  load, update each frame). Biome motes now follow the hero too.
+- Run themes: `world/Themes.ts` (flooded, overgrown, burnt, haunted),
+  rolled in `generateRun`, used by `placeSpawns`, `placeProps` and weather.
+- Polish: `placeDeadEnds`, no props on bridges, set pieces in one zone.
+- New headless checkers: `landmarks`, `weather`, `themes`, `polish`.
+
+Left for `finish`:
+- Nothing shows a landmark's name or the run theme's name yet
+  (`level.landmark.name`, `runTheme(id).name/blurb`): a map label or a
+  toast in `src/ui` would make them read as places.
+- The theme light tint (`runTheme(id).light`) waits for looks to read it.
+- Weather and themes were checked headless only; how they look and feel
+  is in "For the owner to test".
