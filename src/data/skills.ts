@@ -985,7 +985,7 @@ const CONFLAGRATION = build('conflagration', [
     icon: 'stream',
     t: 'direction',
     req: ['flameLance'],
-    mana: [14, 0.9],
+    mana: [8, 0.4],
     dmg: [2, 0.34],
     type: 'fire',
     fx: 'channel.cone',

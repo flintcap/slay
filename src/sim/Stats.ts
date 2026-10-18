@@ -111,10 +111,11 @@ export const DERIVE = {
    * against a warden's sword doing three to six and a ranger's bow doing more;
    * the whole point of the attribute is that it, not the stick in their hand,
    * is where a spellcaster's damage comes from. At this rate a starting
-   * mage's thirty-five energy is worth about forty-five percent, which
+   * mage's thirty-three energy is worth about fifty percent, which
    * puts their opening attack alongside the classes that swing metal.
+   * (1.3 until Wave 4; raised with the Mage's curve fix, check-curve.)
    */
-  enrElementalPct: 1.3,
+  enrElementalPct: 1.6,
   /** Base attack rating everyone has. */
   baseAttackRating: 20,
   /** Base unarmed damage. */
