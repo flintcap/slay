@@ -33,7 +33,7 @@
  * mid-play links and uploads. Those are what it fails on.
  *
  * It fails when, against the baseline in tools/perf-frames.json:
- *  - any program links while playing (the baseline is none)
+ *  - any GPU pipeline is made while playing (the baseline is none)
  *  - draw calls or triangles a frame grow by more than 15%
  *  - update p95 grows by more than 60% and 2 ms (the CPU is shared and
  *    noisy here; a real regression is far bigger than the noise)
@@ -82,33 +82,35 @@ await context.addInitScript((PROFILE_UP) => {
   const w = window;
   const F = (w.__frames = { links: [], tex: [], draws: 0, tris: 0 });
   const now = () => performance.now();
-  const size = (args) => {
-    for (const a of args) {
-      if (a && typeof a === 'object' && 'width' in a && 'height' in a && !ArrayBuffer.isView(a)) return a.width * a.height * 4;
-      if (ArrayBuffer.isView(a)) return a.byteLength;
-    }
-    const nums = args.filter((a) => typeof a === 'number');
-    return nums.length >= 5 ? nums[3] * nums[4] * 4 : 0;
-  };
-  for (const C of [w.WebGL2RenderingContext, w.WebGLRenderingContext]) {
-    if (!C) continue;
-    const p = C.prototype;
-    const wrap = (name, fn) => {
-      const orig = p[name];
-      if (!orig) return;
-      p[name] = function (...args) {
-        fn(args);
-        return orig.apply(this, args);
-      };
+  // WebGPU: a draw is a render pass draw; a pipeline made while playing is
+  // what a linked program was (a stall the load could have taken: the
+  // blocking one stops the frame, the async one still costs the GPU process
+  // and leaves the mesh out until it is ready); uploads are texture writes.
+  const wrap = (proto, name, fn) => {
+    const orig = proto?.[name];
+    if (!orig) return;
+    proto[name] = function (...args) {
+      fn(args);
+      return orig.apply(this, args);
     };
-    wrap('linkProgram', () => F.links.push(now()));
-    for (const n of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced']) wrap(n, () => F.draws++);
-    for (const n of ['texImage2D', 'texSubImage2D', 'texImage3D', 'texSubImage3D', 'compressedTexImage2D']) {
-      wrap(n, (args) => {
-        F.tex.push([now(), size(args), n, args.filter((a) => typeof a === 'number').slice(0, 8).join(' '), PROFILE_UP ? new Error().stack.split('\n').slice(2, 7).map((l) => l.trim().replace(/\(?https?:\/\/[^/]+\//, '(')).join(' < ') : '']);
-      });
-    }
+  };
+  for (const C of [w.GPURenderPassEncoder, w.GPURenderBundleEncoder]) {
+    for (const n of ['draw', 'drawIndexed', 'drawIndirect', 'drawIndexedIndirect']) wrap(C?.prototype, n, () => F.draws++);
   }
+  wrap(w.GPUDevice?.prototype, 'createRenderPipeline', () => F.links.push(now()));
+  wrap(w.GPUDevice?.prototype, 'createRenderPipelineAsync', () => F.links.push(now()));
+  const upload = (n) => (args) => {
+    let bytes = 0;
+    if (n === 'writeTexture') bytes = args[1]?.byteLength ?? 0;
+    else {
+      const sz = args[2];
+      const wd = Array.isArray(sz) ? sz[0] : sz?.width;
+      const ht = Array.isArray(sz) ? sz[1] : sz?.height;
+      bytes = (wd ?? 0) * (ht ?? 1) * 4;
+    }
+    F.tex.push([now(), bytes, n, '', PROFILE_UP ? new Error().stack.split('\n').slice(2, 7).map((l) => l.trim().replace(/\(?https?:\/\/[^/]+\//, '(')).join(' < ') : '']);
+  };
+  for (const n of ['writeTexture', 'copyExternalImageToTexture']) wrap(w.GPUQueue?.prototype, n, upload(n));
 }, PROFILE);
 
 /** In the page: put the hero where the test plays. */
@@ -344,7 +346,7 @@ try {
     console.log(`  frame   ${f(r.frame)}`);
     console.log(`  update  ${f(r.update)}`);
     console.log(`  cpu     ${f(r.cpu)}`);
-    console.log(`  draw calls ${r.drawCalls}, triangles ${r.triangles}, programs ${r.programs}, linked while playing ${r.links}, uploaded while playing ${r.texKB} KB`);
+    console.log(`  draw calls ${r.drawCalls}, triangles ${r.triangles}, programs ${r.programs}, pipelines made while playing ${r.links}, uploaded while playing ${r.texKB} KB`);
     for (const n of r.newPrograms) console.log(`  new while playing: ${n}`);
     for (const [k, ms] of r.topSelf ?? []) console.log(`  self ${String(ms).padStart(6)} ms  ${k}`);
     for (const c of r.callers ?? []) console.log(`  via ${c}`);
@@ -361,7 +363,7 @@ const fails = [];
 if (errors.length) fails.push(`${errors.length} page errors: ${[...new Set(errors)].slice(0, 3).join(' | ')}`);
 const base = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf8')) : null;
 for (const [where, r] of Object.entries(results)) {
-  if (r.links > 0) fails.push(`${where}: ${r.links} programs linked while playing`);
+  if (r.links > 0) fails.push(`${where}: ${r.links} pipelines made while playing`);
   const b = base?.[where];
   if (!b) continue;
   const grew = (k, now, was, rel, abs = 0) => {

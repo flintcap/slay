@@ -226,18 +226,18 @@ for (const depth of DEPTHS) {
     info.autoReset = false;
     info.reset();
     engine.renderer.render(scene.scene, scene.camera, 1 / 60, engine.elapsed);
-    const calls = info.render.calls;
+    const calls = info.render.drawCalls;
     const triangles = info.render.triangles;
     // The scene alone (colour pass plus shadow maps), to tell scene weight
     // from post-processing passes when the total moves.
     info.reset();
     engine.renderer.gl.render(scene.scene, scene.camera);
-    const sceneCalls = info.render.calls;
+    const sceneCalls = info.render.drawCalls;
     info.reset();
     const shadowWas = engine.renderer.gl.shadowMap.enabled;
     engine.renderer.gl.shadowMap.enabled = false;
     engine.renderer.gl.render(scene.scene, scene.camera);
-    const colourCalls = info.render.calls;
+    const colourCalls = info.render.drawCalls;
     engine.renderer.gl.shadowMap.enabled = shadowWas;
     info.autoReset = auto;
     const cam = scene.camera.position;

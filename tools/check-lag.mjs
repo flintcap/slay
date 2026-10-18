@@ -620,7 +620,7 @@ async function visit(label) {
           const t0 = performance.now();
           for (let i = 0; i < N; i++) {
             await raf();
-            calls += gl.info.render.calls;
+            calls += gl.info.render.drawCalls;
             tris += gl.info.render.triangles;
           }
           const frameMs = (performance.now() - t0) / N;
