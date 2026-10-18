@@ -1294,6 +1294,7 @@ const P = (self: Combatant): THREE.Vector3 => self.position();
 def({
   id: 'basic_strike',
   name: 'Strike',
+  tags: ['basic'],
   kind: 'melee',
   cooldown: 0,
   windup: 0.28,
@@ -1736,6 +1737,7 @@ def({
 def({
   id: 'arrow_shot',
   name: 'Arrow',
+  tags: ['basic'],
   kind: 'ranged',
   cooldown: 1.8,
   windup: 0.5,
@@ -1751,6 +1753,31 @@ def({
       shape: 'bolt',
       color: 0xd8c898,
       speed: 24,
+    });
+  },
+});
+
+// The plain shot every shooter falls back on between its special moves: no
+// marker, a short draw, and a bolt in the colour of what the monster deals.
+def({
+  id: 'basic_shot',
+  name: 'Shot',
+  tags: ['basic'],
+  kind: 'ranged',
+  cooldown: 1.4,
+  windup: 0.45,
+  recovery: 0.3,
+  range: 15,
+  minRange: 2,
+  damageMul: 1.0,
+  requiresLos: true,
+  priority: 0.4,
+  rooted: true,
+  onExecute: (self, ctx) => {
+    const type = (self as { def?: { damageType?: DamageType } }).def?.damageType ?? 'physical';
+    fireProjectile(self, ctx, ctx.playerPos.x, ctx.playerPos.z, 1.0, type, 'basic_shot', {
+      shape: type === 'physical' ? 'bolt' : type === 'cold' || type === 'lightning' ? 'shard' : 'orb',
+      speed: type === 'physical' || type === 'lightning' ? 24 : 17,
     });
   },
 });
@@ -1807,6 +1834,7 @@ def({
 def({
   id: 'crossbow_bolt',
   name: 'Bolt',
+  tags: ['basic'],
   kind: 'ranged',
   cooldown: 3.0,
   windup: 0.65,
@@ -2020,6 +2048,7 @@ def({
 def({
   id: 'acid_spit',
   name: 'Acid Spit',
+  tags: ['basic'],
   kind: 'ranged',
   cooldown: 4,
   windup: 0.6,
@@ -2140,6 +2169,7 @@ def({
 def({
   id: 'fire_bolt',
   name: 'Fire Bolt',
+  tags: ['basic'],
   kind: 'ranged',
   cooldown: 2.6,
   windup: 0.75,
@@ -2165,6 +2195,7 @@ def({
 def({
   id: 'frost_bolt',
   name: 'Frost Bolt',
+  tags: ['basic'],
   kind: 'ranged',
   cooldown: 3.0,
   windup: 0.8,
@@ -2190,6 +2221,7 @@ def({
 def({
   id: 'shock_bolt',
   name: 'Shock',
+  tags: ['basic'],
   kind: 'ranged',
   cooldown: 2.2,
   windup: 0.6,
@@ -3207,6 +3239,7 @@ def({
 def({
   id: 'arcane_sentry',
   name: 'Arcane Sentry',
+  tags: ['basic'],
   kind: 'ranged',
   cooldown: 3.5,
   windup: 0.55,

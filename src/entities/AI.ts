@@ -322,6 +322,14 @@ const landings: Array<{ at: number; by: string }> = [];
 export const TELEGRAPH_GAP = 0.3;
 /** Windups at least this long count as "big" for the schedule. */
 const BIG_WINDUP = 0.5;
+/** Seconds a monster rests from special moves after one, plus a random spread. */
+const SPECIAL_REST = 2.5;
+const SPECIAL_REST_SPREAD = 2;
+
+/** A plain attack: the swing or shot a monster throws between its special moves. */
+function isBasic(a: AbilityDef): boolean {
+  return a.tags?.includes('basic') ?? false;
+}
 
 function telegraphClash(at: number, by: string, now: number): boolean {
   for (let i = landings.length - 1; i >= 0; i--) {
@@ -394,6 +402,8 @@ export class AIBrain {
   /** True while executing a telegraphed ability that roots us. */
   private lastDistance = 999;
   private hesitate = 0;
+  /** Seconds before this monster may use another special move. Plain attacks are free. */
+  private specialRest = 0;
   private regroupTimer = 0;
 
   /**
@@ -559,6 +569,7 @@ export class AIBrain {
     this.pathAge += dt;
     this.strafeTimer -= dt;
     this.hesitate = Math.max(0, this.hesitate - dt);
+    this.specialRest = Math.max(0, this.specialRest - dt);
     this.regroupTimer = Math.max(0, this.regroupTimer - dt);
     this.commit = Math.max(0, this.commit - dt);
     this.shaken = Math.max(0, this.shaken - dt);
@@ -690,6 +701,11 @@ export class AIBrain {
       const lands = ctx.elapsed + chosen.windup / speed;
       if (self.beginAbility(chosen, ctx)) {
         if (chosen.telegraph && chosen.windup >= BIG_WINDUP) landings.push({ at: lands, by: self.id });
+        // A special move earns a few plain blows before the next one.
+        // Bosses and floor wardens keep their own rhythm.
+        if (!isBasic(chosen) && !self.isBoss && !self.miniBoss) {
+          this.specialRest = SPECIAL_REST + ctx.rng.next() * SPECIAL_REST_SPREAD;
+        }
         this.mode = chosen.kind === 'movement' ? 'approach' : 'engage';
         this.desired.copy(p);
         return;
@@ -1152,6 +1168,7 @@ export class AIBrain {
       const a = getAbility(id);
       if (!a) continue;
       if (a.tags?.includes('ondeath')) continue;
+      if (this.specialRest > 0 && !isBasic(a)) continue;
       if (!self.abilityReady(id, ctx)) continue;
       if (a.belowLife !== undefined && lifeFrac > a.belowLife) continue;
       if (a.aboveLife !== undefined && lifeFrac < a.aboveLife) continue;

@@ -18,21 +18,16 @@ Update this file and push it after every finished step.
 
 - Phase 0a (9e197d4), 0b (b4b0437), 0c (bd9bd6f) pushed.
 - Phase 0c full check run was stopped (too long). Typecheck clean. Not fully re-run.
+- #95 monsters: plain attacks tagged `basic`, new `basic_shot`, rest of 2.5-4.5 s
+  between special moves (not bosses or wardens), 125 lists trimmed, 5 channels left,
+  plain fighters swing 15% faster. check-readable passes.
 
 ## In progress
 
-1. #95 Fewer monster windups and channels.
-   - Tag basic attacks `basic` in src/entities/Abilities.ts.
-   - New `basic_shot` ability; Enemy auto-adds it for ranged monsters with no basic shot.
-   - AI rest between specials for non-boss monsters (src/entities/AI.ts chooseAbility).
-   - Trim lists in src/data/monsters.ts. Channels kept only on watcher_eye,
-     chaos_maw, storm_djinn, glacier_titan, unmaker.
-   - Boss-only entries untouched (mirror_image, hero_echo, choir_high_voice,
-     sallow_orrin, slag_cantor, tallow_sheep, wax_child, arcane_sentry_totem).
+1. #96 Stronger uniques and sets (more affixes, natural rolls, no low caps).
 
 ## Next
 
-2. #96 Stronger uniques and sets (more affixes, natural rolls, no low caps).
 3. #94 Own runes: 4 veins (Ember, Rime, Marrow, Umbra) x 6 cuts = 24 runes.
    Runewords match the vein order, not exact runes; power grows with rune cut.
    Old ids rune.el..rune.zod map to new ids on load (src/core/Save.ts item()).

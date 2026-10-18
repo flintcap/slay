@@ -78,6 +78,22 @@ const RETREAT_SPEED_CAP = 3.4;
 // exactly as CONTRACTS.md specifies.
 
 export type { CombatContext } from './Abilities';
+
+/** A monster with no special moves swings this much faster, so it loses no threat. */
+const PLAIN_SWING = 1.15;
+
+function isPlainShot(id: string): boolean {
+  const a = getAbility(id);
+  return !!a && a.kind === 'ranged' && (a.tags?.includes('basic') ?? false);
+}
+
+/** True when every move a monster has is a plain attack, a death burst or an aura. */
+function plainFighter(def: MonsterDef): boolean {
+  return def.abilities.every((id) => {
+    const a = getAbility(id);
+    return !a || a.kind === 'aura' || (a.tags?.includes('basic') ?? false) || (a.tags?.includes('ondeath') ?? false);
+  });
+}
 export { MONSTERS, pickMonstersForDepth } from '../data/monsters';
 export { MONSTER_AFFIXES } from '../data/monsterAffixes';
 export { BOSSES } from '../data/bosses';
@@ -407,7 +423,7 @@ export class Enemy implements Combatant {
     s.maxDamage = dmg * 1.32;
     s.attackRating = curve.attackRating;
     s.defense = curve.defense * def.defenseMul * rm.defense * defAffix;
-    s.attackSpeed = def.attackSpeed * asAffix;
+    s.attackSpeed = def.attackSpeed * asAffix * (plainFighter(def) ? PLAIN_SWING : 1);
     s.critChance = 5 + (rank === 'normal' ? 0 : 5);
     // Total multiplier, as for the hero (Stats.baseCritDamage is 150): the
     // roller floors it at 100, so the 60 written here made crits do nothing.
@@ -442,6 +458,11 @@ export class Enemy implements Combatant {
     this.abilityIds = def.abilities.slice();
     if (!this.abilityIds.includes('basic_strike') && def.attackRange <= 4.5) {
       this.abilityIds.push('basic_strike');
+    }
+    // A shooter always has a plain shot to throw between its special moves.
+    const shooter = def.role === 'ranged' || def.role === 'caster' || def.role === 'support';
+    if (shooter && def.attackRange > 4.5 && !this.abilityIds.some((id) => isPlainShot(id))) {
+      this.abilityIds.push('basic_shot');
     }
 
     // --- name --------------------------------------------------------------
