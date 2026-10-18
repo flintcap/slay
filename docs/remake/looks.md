@@ -1,6 +1,6 @@
 # Stream: looks (Wave 4: light, shadow, air and colour)
 
-Status: in progress
+Status: done
 
 Goal: every place looks rich, dark and gritty, like a grim action RPG: deep
 shadows, warm torch pools, cold air, wet and icy surfaces that catch light.
@@ -73,20 +73,24 @@ before the first browser check. Real-GPU frame rate goes to the owner.
     no longer lists it. Draw calls on the map 185 (motes add one).
   - Not fixed, after one retry (see "Notes for resume"): `warden:mouth`,
     `warden:shorts`, `item-gem/item:gem` on the map; boss props and adds.
-- [ ] 7. Quality ladder check: every new effect has its level; Low and
+- [x] 7. Quality ladder check: every new effect has its level; Low and
   Medium cost no more than before (count draw calls and passes).
-- [ ] 8. Handover.
+  (looks: handover)
+  - check-quality: baseline, low, medium, ultra, high, low all drew a full
+    frame (315 to 320 KB, none black), no page errors.
+  - Low and Medium (by reading `QUALITY` in `Renderer.ts`): contact
+    shadows off (no SSS pass), air 0 (the scatter loop runs zero times),
+    motes off (no mesh in the scene). So no new pass and no new draw.
+    Ground mist, standing water, the sized torch falloff, flame colour and
+    the grades are a few shader ops at every level.
+  - High and Ultra: one half-res contact shadow pass when a shadowed sun
+    is up, a 4 or 6 light loop in the fog of opaque materials, one draw
+    for the motes.
+- [x] 8. Handover.
 
 ## Next up
 
-1. Milestone 6: `node tools/bundle-artifact.mjs`, then one
-   `flock /tmp/slay-browser.lock timeout 2700 env SLAY_PORT=4344 node tools/check-frames.mjs --only=map,boss`
-   to see which pipelines are still made in play (the list in `speed.md`
-   is old: `item:gem` and `item:glow` are already in `itemLookStandIns`).
-   Add stand-ins to `DungeonScene.warmup()` for what is left.
-2. Milestone 7: one `check-quality` run (preset switches, no black screen);
-   Low and Medium add no pass and no draw (checked by reading: contact
-   shadows, air and motes are off there; mist is a few ALU ops).
+Nothing. Stream done. Open items for `finish` are in "Handover".
 
 ## Notes for resume
 
@@ -155,4 +159,28 @@ before the first browser check. Real-GPU frame rate goes to the owner.
 
 ## Handover
 
-(Written when every milestone is ticked.)
+What exists now:
+- Contact shadows from the sun or moon on High and Ultra: `SSSNode` in the
+  post chain, `src/core/Renderer.ts` (`contactShadows`, `trackSun`).
+- Light in the air: the nearest torches glow in the fog (analytic, no
+  ray march), `airLight` in `src/core/Lighting.ts`, added in
+  `fogNodeFor` in `Renderer.ts`; count per level is `QualityProfile.air`.
+- Dust motes round those torches, one draw: `src/core/Motes.ts`.
+- Low ground mist at the far end of halls: `uMist` in `Renderer.ts`,
+  floor height from `src/core/Air.ts` (set by `setWorldCutaway`).
+- Sized torch falloff (no white hot spot on walls) in `core/Lighting.ts`;
+  flame colour that reddens on a dip, `flameColour` in
+  `src/world/Lighting.ts`, used by `DungeonBuilder.updateLights`.
+- Standing water on the wettest floors: `src/art/WorldMaterial.ts`.
+- Colour moods: grades in `src/world/Biomes.ts` and `TownScene.ts`; a run
+  theme leans the zone light (`themedMood`, `applyBiomeLighting`).
+- The first item icon no longer builds a pass in play
+  (`warmIconStudio` in `src/art/items/IconRender.ts`).
+
+Left for `finish`:
+- Late pipelines still made in play (list and guesses in "Notes for
+  resume"): warden mouth and shorts, item gem drop, boss props (rare
+  chest, brazier, altar) and boss adds (bone, shade).
+- Boss arena floors in caverns and darkForest have hard black stripes
+  (shadow of the arena ring); not a looks file.
+- Real-GPU frame rate on High with contact shadows, air and motes: owner.
