@@ -632,7 +632,7 @@ const AURA = build('palAura', [
     dmg: [0.28, 0.045],
     type: 'fire',
     fx: 'vigil.rood',
-    p: { radius: 5, tick: 0.5 },
+    p: { radius: 5 },
   },
   {
     id: 'anoint',

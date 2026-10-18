@@ -89,6 +89,8 @@ interface Censure {
   t: Target;
   left: number;
   app: StatusApplication;
+  /** How far it looks for the next enemy when its target dies. */
+  leap: number;
 }
 
 interface Watch {
@@ -201,7 +203,7 @@ const ACTS: Record<string, Act> = {
         const w = watchOf(p.character);
         // One censure at a time per enemy; a fresh one replaces the old.
         w.censures = w.censures.filter((c) => c.t !== t);
-        w.censures.push({ t, left: app.duration, app });
+        w.censures.push({ t, left: app.duration, app, leap: r.num('leap', 8) });
         host.sound(r.hitSound, t.root.position.x, t.root.position.z);
       });
     },
@@ -407,9 +409,8 @@ function tickCensures(host: VigilHost, w: Watch, dt: number, world: World): void
     }
     if (c.t.life > 0) continue;
     const from = c.t.root.position;
-    const leap = SKILL_BY_ID.censure ? reader(SKILL_BY_ID.censure)('leap', 8) : 8;
     let best: Target | null = null;
-    let bestD = leap;
+    let bestD = c.leap;
     const consider = (t: Target): void => {
       if (t.life <= 0 || t === c.t || t.hasStatus('censured')) return;
       const d = Math.hypot(t.root.position.x - from.x, t.root.position.z - from.z);

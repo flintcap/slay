@@ -107,6 +107,11 @@ export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
   }),
 
   // Ranger
+  // The run after the roll.
+  rollAway: (k, n) => ({
+    duration: r1(n('duration', 1.5) + n('durationPerRank', 0.1) * k),
+    mods: { moveSpeed: n('speed', 20) },
+  }),
   venomCoat: (k) => ({ mods: { poisonDamage: 5 + 3 * k } }),
   camouflage: (k, n) => ({
     duration: r1(n('duration', 8) + 0.3 * k),

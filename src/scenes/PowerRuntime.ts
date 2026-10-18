@@ -202,7 +202,13 @@ export class PowerRuntime {
     // Capped per hit at a sixth of the pool, so one enormous crit cannot turn
     // a sliver of leech into a full heal.
     if (taken > 0 && !(packet.crit && p.noCritLeech > 0)) {
-      if (st.lifeSteal > 0) player.heal(Math.min(st.life / 6, (taken * st.lifeSteal) / 100));
+      if (st.lifeSteal > 0) {
+        const gain = Math.min(st.life / 6, (taken * st.lifeSteal) / 100);
+        const over = gain - (st.life - player.life);
+        player.heal(gain);
+        // Grave Pact: what overflows becomes a ward.
+        if (over > 0) player.overheal(over);
+      }
       if (st.manaSteal > 0) player.restoreMana(Math.min(st.mana / 6, (taken * st.manaSteal) / 100));
     }
     const tap = this.tapped.get(packet);

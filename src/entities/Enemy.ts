@@ -573,7 +573,8 @@ export class Enemy implements Combatant {
   }
 
   heal(amount: number, ctx: CombatContext): void {
-    if (!this.alive || amount <= 0) return;
+    // A soul in Soul Cage's grip cannot mend.
+    if (!this.alive || amount <= 0 || this.hasStatus('grasped')) return;
     this.life = Math.min(this.maxLife, this.life + amount);
     ctx.fx.burst('heal', this.root.position.x, this.centerY, this.root.position.z, {
       count: 6,
@@ -1771,7 +1772,7 @@ export class Enemy implements Combatant {
           this.outgoingMul = 1 + (1 - this.lifeFraction) * ((params.maxBonus ?? 1.8) - 1);
           break;
         case 'regenerating':
-          if (ctx.elapsed - this.lastDamagedAt > (params.delay ?? 3)) {
+          if (ctx.elapsed - this.lastDamagedAt > (params.delay ?? 3) && !this.hasStatus('grasped')) {
             this.life = Math.min(this.maxLife, this.life + this.maxLife * (params.pctPerSecond ?? 0.03) * dt);
           }
           break;

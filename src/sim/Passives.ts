@@ -229,6 +229,22 @@ export interface PassiveEffects {
   soulDamagePct: number;
   soulManaRegen: number;
   soulDurationSec: number;
+  /** How near a kill must fall to bank Souls, and how many it banks. */
+  soulRadius: number;
+  soulPerKill: number;
+  /** Soul Cage: Souls a caged enemy gives up when it dies. */
+  soulCageBonus: number;
+  /** The Second Death: maximum life each Soul restores when it catches you, in percent. */
+  cheatDeathSoulHealPct: number;
+  /** Grave Pact: share of overflowing stolen life kept as a ward, and the ward's ceiling (% of life). */
+  overhealShieldPct: number;
+  overhealCapPct: number;
+  /** Vampiric Touch: share of your life steal your minions steal for you, in percent. */
+  minionStealShare: number;
+  /** Endless Quiver: every this many skill shots from a bow, one is free. */
+  freeShotEvery: number;
+  /** Volley Mastery: extra arrows for a skill that looses several. */
+  extraArrows: number;
 
   // --- resource conversion ------------------------------------------------
   /** Maximum mana converted into maximum life, as a percentage. */
@@ -239,6 +255,8 @@ export interface PassiveEffects {
   lifePerMana: number;
   /** Damage while below half mana. */
   lowManaDamagePct: number;
+  /** The mana level (percent) below which that damage applies. */
+  lowManaThreshold: number;
 
   // --- low life -----------------------------------------------------------
   lowLifeThreshold: number;
@@ -443,10 +461,20 @@ function emptyEffects(): PassiveEffects {
     soulDamagePct: 0,
     soulManaRegen: 0,
     soulDurationSec: 0,
+    soulRadius: 0,
+    soulPerKill: 0,
+    soulCageBonus: 0,
+    cheatDeathSoulHealPct: 0,
+    overhealShieldPct: 0,
+    overhealCapPct: 0,
+    minionStealShare: 0,
+    freeShotEvery: 0,
+    extraArrows: 0,
     manaToLifePct: 0,
     damagePer400Life: 0,
     lifePerMana: 0,
     lowManaDamagePct: 0,
+    lowManaThreshold: 0,
     lowLifeThreshold: 0,
     lowLifeReductionPct: 0,
     lowLifeLeechPct: 0,
@@ -928,6 +956,8 @@ const RULES: Record<string, Contribution> = {
     e.minionDamagePct += param(id, 'damagePerRank', 6) * r;
   },
   reapSoul: (e, r, id) => {
+    e.soulRadius = Math.max(e.soulRadius, param(id, 'radius', 12));
+    e.soulPerKill = Math.max(e.soulPerKill, param(id, 'stacks', 1));
     e.soulMaxStacks = Math.max(e.soulMaxStacks, param(id, 'maxStacks', 15));
     e.soulDamagePct = Math.max(e.soulDamagePct, 3);
     e.soulManaRegen = Math.max(e.soulManaRegen, 2);
@@ -950,7 +980,24 @@ const RULES: Record<string, Contribution> = {
     e.lowLifeReductionPct += param(id, 'drPerRank', 4) * r;
     e.lowLifeLeechPct += param(id, 'leechPerRank', 2) * r;
   },
+  endlessQuiver: (e, _r, id) => {
+    e.freeShotEvery = Math.max(e.freeShotEvery, param(id, 'every', 3));
+  },
+  volleyMastery: (e, r, id) => {
+    e.extraArrows += Math.floor(r / Math.max(1, param(id, 'perRanks', 5)));
+  },
+  soulCage: (e, _r, id) => {
+    e.soulCageBonus = Math.max(e.soulCageBonus, param(id, 'bonusSouls', 2));
+  },
+  vampiricTouch: (e, _r, id) => {
+    e.minionStealShare = Math.max(e.minionStealShare, param(id, 'minionShare', 50));
+  },
+  gravepactMastery: (e, _r, id) => {
+    e.overhealShieldPct = Math.max(e.overhealShieldPct, param(id, 'overhealPct', 100));
+    e.overhealCapPct = Math.max(e.overhealCapPct, param(id, 'shieldCapPct', 30));
+  },
   crimsonCovenant: (e, r, id) => {
+    e.lowManaThreshold = Math.max(e.lowManaThreshold, param(id, 'threshold', 50));
     e.lifePerMana = Math.max(e.lifePerMana, param(id, 'lifePerMana', 2));
     e.lowManaDamagePct += param(id, 'lowManaDamage', 25) + param(id, 'perRank', 2) * (r - 1);
   },
@@ -964,6 +1011,10 @@ const RULES: Record<string, Contribution> = {
       param(id, 'duration', 8) + param(id, 'perRank', 0.3) * (r - 1),
     );
     e.cheatDeathNovaPct = Math.max(e.cheatDeathNovaPct, param(id, 'damagePct', 100));
+    e.cheatDeathSoulHealPct = Math.max(
+      e.cheatDeathSoulHealPct,
+      param(id, 'lifePerSoul', 6) + param(id, 'soulPerRank', 0.4) * (r - 1),
+    );
     e.cheatDeathRadius = Math.max(e.cheatDeathRadius, 8);
   },
   // The Paladin's rules live in their own file.
@@ -1057,7 +1108,7 @@ export function damageMultiplier(
     pct += Math.max(0, (1 - target.lifeFrac) * 10) * e.vsMissingLifePct;
   }
   // Crimson Covenant pays out while you are running on empty.
-  if (e.lowManaDamagePct > 0 && self.manaFrac < 0.5) pct += e.lowManaDamagePct;
+  if (e.lowManaDamagePct > 0 && self.manaFrac * 100 < (e.lowManaThreshold || 50)) pct += e.lowManaDamagePct;
   // Souls banked from recent kills.
   if (e.soulDamagePct > 0 && (self.souls ?? 0) > 0) {
     pct += Math.min(e.soulMaxStacks, self.souls ?? 0) * e.soulDamagePct;

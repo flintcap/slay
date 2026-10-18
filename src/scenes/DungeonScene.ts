@@ -1102,14 +1102,20 @@ export class DungeonScene extends GameScene {
     const ctx = this.ctxCache ?? this.context();
     st.cheatDeathCd = e.cheatDeathCooldown;
     this.player.life = Math.max(1, this.player.stats.life * (e.cheatDeathHealPct / 100));
+    // The Second Death: every Soul held is spent to mend you further.
+    if (e.cheatDeathSoulHealPct > 0 && st.souls > 0) {
+      this.player.heal(this.player.stats.life * (st.souls * e.cheatDeathSoulHealPct) / 100);
+      st.souls = 0;
+      st.soulTimer = 0;
+    }
     if (e.cheatDeathInvuln > 0) this.player.grantInvulnerability(e.cheatDeathInvuln);
     const p = this.player.position;
     this.effects.nova(p.x, p.z, Math.max(4, e.cheatDeathRadius), {
-      element: e.cheatDeathNovaPct > 0 ? 'fire' : 'physical',
-      color: e.cheatDeathNovaPct > 0 ? 0xff7a2a : 0xffe9b0,
+      element: e.cheatDeathNovaPct > 0 ? 'arcane' : 'physical',
+      color: e.cheatDeathNovaPct > 0 ? 0xb89cff : 0xffe9b0,
     });
     if (e.cheatDeathNovaPct > 0) {
-      this.skills.passiveNova(this.player, p, e.cheatDeathRadius, e.cheatDeathNovaPct / 100, 'fire', ctx, this.enemies, this.boss);
+      this.skills.passiveNova(this.player, p, e.cheatDeathRadius, e.cheatDeathNovaPct / 100, 'arcane', ctx, this.enemies, this.boss);
     } else {
       for (const en of this.enemies) {
         if (en.life <= 0) continue;
@@ -1310,13 +1316,12 @@ export class DungeonScene extends GameScene {
         this.player.mana + this.player.stats.mana * (e.killManaPct / 100),
       );
     }
-    // Reap Soul banks a soul per kill nearby; Harvest Mastery raises the
-    // ceiling and how long they keep.
-    const st = this.player.passiveState;
-    if (e.soulMaxStacks > 0 && this.player.position.distanceTo(pos) <= 12) {
-      st.souls = Math.min(e.soulMaxStacks, st.souls + 1);
-      st.soulTimer = e.soulDurationSec;
-    }
+    // Reap Soul banks Souls for kills nearby, Soul Cage more for the caged;
+    // Harvest Mastery raises the ceiling and how long they keep.
+    let souls = this.lastCaged ? e.soulCageBonus : 0;
+    if (this.player.position.distanceTo(pos) <= e.soulRadius) souls += e.soulPerKill;
+    this.player.gainSouls(souls);
+    this.lastCaged = false;
     // Contagion: a cursed corpse throws its curses, at full time, at the nearest of the pack.
     if (e.curseSpreadRadius > 0 && this.lastCurses.length) {
       const ctx = this.ctxCache ?? this.context();
@@ -1335,6 +1340,8 @@ export class DungeonScene extends GameScene {
   private lastOverkill = 0;
   /** The curses that corpse wore, for Contagion. */
   private lastCurses: StatusApplication[] = [];
+  /** Whether the last enemy to fall was held in Soul Cage. */
+  private lastCaged = false;
   /**
    * The monster whose `update` is running right now.
    *
@@ -1802,6 +1809,7 @@ export class DungeonScene extends GameScene {
         if (e.def.object) continue;
         this.lastOverkill = e.overkill;
         this.lastCurses = e.cursesCarried();
+        this.lastCaged = e.hasStatus('grasped');
         // A warden pays like a rare; its chest is the rest of the reward.
         const isWarden = e === this.warden;
         this.grantKill(e.monsterId, isWarden ? 'rare' : e.rank, e.family, e.root.position, e.ilvl);

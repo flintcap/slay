@@ -97,6 +97,8 @@ for (const s of SKILLS) {
         e.maxLife = 1e9;
         e.life = life;
       }
+      // A skill that bursts a body is given one where it aims.
+      if (s.effect === 'corpse.explode') a.enemies[0]!.life = 0;
       const c = createCharacter('Params', cls, new Random(5));
       c.skills = { ...Object.fromEntries(SKILLS.filter((o) => classOf(o) === cls).map((o) => [o.id, 1])), [s.id]: RANK };
       for (const [baseId, slot] of kit) equipItem(c, item(baseId), slot);
@@ -108,6 +110,10 @@ for (const s of SKILLS) {
       // A skill struck only from the veil is given one.
       const veil = Number(raw.get(s.id)?.requiresStealth ?? 0) > 0;
       const aim = new THREE.Vector3(0, 0, 3);
+      // After its own casts, the rest of its tree once each: a skill that shapes the
+      // next one (an ambush, a form) is read when that next one goes off.
+      const partners = SKILLS.filter((o) => o.treeId === s.treeId && o.id !== s.id && o.targeting !== 'passive');
+      let next = 0;
       let cast = 0;
       for (let t = 0; t < 4; t += DT) {
         a.ctx.elapsed += DT;
@@ -122,8 +128,10 @@ for (const s of SKILLS) {
           if (runner.cast(s.id, player, aim, a.ctx, a.enemies, null)) cast++;
           else if (cast === 0) break;
         } else if (cast >= 2 && !player.isBusy) {
-          // Plain weapon blows after the casts, for buffs that ride on them.
-          runner.basicAttack(player, aim, a.ctx, a.enemies, null);
+          // Then plain weapon blows, for buffs that ride on them.
+          (player as unknown as { cooldowns?: Map<string, number> }).cooldowns?.clear();
+          if (next < partners.length) runner.cast(partners[next++]!.id, player, aim, a.ctx, a.enemies, null);
+          else runner.basicAttack(player, aim, a.ctx, a.enemies, null);
         }
       }
       if (cast > 0) break;

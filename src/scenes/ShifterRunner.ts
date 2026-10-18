@@ -141,11 +141,13 @@ function toward(c: ShiftCast, p: { x: number; z: number }): THREE.Vector3 {
   return d.lengthSq() > 1e-4 ? d.normalize() : c.dir.clone();
 }
 
+/** Ursa Major's reach as it was cast, per hero. */
+const ursaReaches = new WeakMap<Player, number>();
+
 /** How much further a bear's swipes reach under Ursa Major (1 without it). */
 function ursaReach(c: ShiftCast): number {
   if (!c.player.status.has('ss.ursaMajor')) return 1;
-  const v = getSkill('ursaMajor')?.params?.reach;
-  return 1 + (typeof v === 'number' ? v : 40) / 100;
+  return ursaReaches.get(c.player) ?? 1.4;
 }
 
 /** A rank of another skill the hero holds, with +skills (0 if unlearned). */
@@ -677,6 +679,7 @@ const ursaMajor: Handler = (k, c) => {
   const given = c.player.status.get('ss.ursaMajor')?.mods?.life ?? 0;
   const life = Math.round(((c.player.stats.life - given * mul) * ursaLifePct(kk, c.num)) / 100 / mul);
   c.player.applyStatus('ss.ursaMajor', power.duration ?? 12, 1, 1, { mods: { ...(power.mods ?? {}), life } });
+  ursaReaches.set(c.player, 1 + c.num('reach', 40) / 100);
   c.player.heal(Math.max(0, (life - given) * mul));
   ClawFX.ursa(k.effects, c.player.position, c.dir);
 };

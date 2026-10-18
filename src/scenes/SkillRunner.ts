@@ -196,7 +196,6 @@ const SELF_BUFF_STATUS: Record<string, string> = {
   boneArmor: 'shielded',
   thunderstorm: 'overcharged',
   bloodPact: 'siphoning',
-  revenantForm: 'frenzy',
 };
 
 /** How far from the aim point Corpse Explosion looks for a body, and how long a body lies there. */
@@ -629,10 +628,22 @@ export class SkillRunner {
     if (packet.source === 'player' && this.caster?.passives.crowdDamagePct) this.hitAt.set(t.id, this.runTime);
     t.takeDamage(packet, ctx);
     this.veilAfterHit(packet, kind, before > 0 && t.life <= 0);
-    // Assassinate: a kill hands the skill straight back.
+    // Assassinate: a kill hands the skill straight back. Reaping: a kill banks Souls.
     if (before > 0 && t.life <= 0 && packet.source === 'player' && this.caster) {
       const def = packet.ability ? ACTIVE_BY_NAME.get(packet.ability) : undefined;
       if (typeof def?.params?.refundOnKill === 'number' && def.params.refundOnKill > 0) this.caster.resetCooldown(def.id);
+      if (typeof def?.params?.soulsOnKill === 'number') this.caster.gainSouls(def.params.soulsOnKill);
+    }
+    // Soul Tether: a share of the blow lands on every other bound enemy.
+    const link = this.link;
+    if (link && packet.source === 'player' && packet.ability !== link.name && this.runTime < link.until && link.members.includes(t)) {
+      const dealt = before - Math.max(0, t.life);
+      if (dealt > 0) {
+        for (const o of link.members) {
+          if (o === t || o.life <= 0) continue;
+          o.takeDamage({ amount: dealt * link.share, type: packet.type, crit: false, source: 'player', ability: link.name }, ctx);
+        }
+      }
     }
     try {
       this.feel.hit(t, packet, {
@@ -811,7 +822,11 @@ export class SkillRunner {
         : effect.startsWith('curse')
           ? player.passives.curseCostPct
           : 0;
-    const cost = def.manaCost && !hop ? def.manaCost(rank) * (1 - Math.min(90, cut) / 100) : 0;
+    // Endless Quiver: every third skill shot from a bow is free.
+    const every = player.passives.freeShotEvery;
+    const shot = every > 0 && (effect.startsWith('projectile') || effect.startsWith('bolt')) && weaponStyle(player) === 'ranged';
+    const free = shot && (this.shots + 1) % every === 0;
+    const cost = def.manaCost && !hop && !free ? def.manaCost(rank) * (1 - Math.min(90, cut) / 100) : 0;
     if (cost > 0 && !player.spendMana(cost)) {
       // Say so. A skill that silently refuses reads as a broken button, which
       // is exactly how being out of mana was being reported as a bug.
@@ -819,6 +834,7 @@ export class SkillRunner {
       audio.play('ui.error');
       return false;
     }
+    if (shot) this.shots++;
 
     const cd = def.cooldown ? def.cooldown(rank) : 0;
     if (cd > 0 && !hop) player.startCooldown(skillId, cd);
@@ -1085,7 +1101,9 @@ export class SkillRunner {
           player.beginAction(clip, castTime);
           const range = num('range', 18);
           // "Five blades (+1 per 7 ranks)", fanned across the skill's arc.
-          const count = Math.max(1, Math.floor(perRanks(num('count', 1), num('countPerRanks', 0), rank)));
+          const many = Math.max(1, Math.floor(perRanks(num('count', 1), num('countPerRanks', 0), rank)));
+          // Volley Mastery: a skill that looses several arrows looses more.
+          const count = many > 1 ? many + player.passives.extraArrows : many;
           const spread = num('arc', 0) > 0 && count > 1 ? arcRad(num('arc', 0)) / (count - 1) : num('spread', 0.16);
           const pierce = Math.floor(num('pierce', 0));
           const splash = num('splash', 0) > 0 ? num('splash', 0) + num('radiusPerRank', 0) * (rank - 1) : 0;
@@ -1161,6 +1179,16 @@ export class SkillRunner {
           });
           // Bone Nova: Bone Armor shatters outward, its remaining ward added to every blow.
           let shard = 0;
+          // Sanguine Nova: a share of your life, spent, bursts out several times over.
+          if (def.effect === 'nova.sacrifice') {
+            const spent = player.life * num('lifeCostPct', 20) / 100;
+            player.life -= spent;
+            const dealt = this.areaDamage(player.position, radius, () => ({
+              amount: spent * (num('scale', 400) / 100) * scale, type, crit: false, source: 'player', ability: def.name,
+            }), ctx, enemies, boss);
+            player.heal(dealt * num('leechPct', 0) / 100);
+            break;
+          }
           if ((def.effect ?? '').includes('consumeShield')) {
             shard = (player.status.get('shielded')?.absorb ?? 0) * num('shieldScale', 100) / 100;
             if (player.status.remove('shielded')) player.refreshStats();
@@ -1280,6 +1308,8 @@ export class SkillRunner {
           const lane = want > 0 ? this.wallStop(origin, way, want, ctx, 0.4) : 0;
           player.dodge(way.x, way.z, true, own ?? 'dodge', { distance: lane > 0 ? lane : undefined, skill: true });
           if (num('iframes', 0) > 0) player.grantInvulnerability(num('iframes', 0));
+          // Roll Away: a burst of speed once you are up.
+          if (SELF_POWER[def.id]) this.applyBuff(player, def, rank, num, color);
           if (!def.damageScale) break;
           if (back) {
             // An arrow at whatever you leapt away from.
@@ -1321,6 +1351,9 @@ export class SkillRunner {
         case 'self':
         case 'absorb': {
           player.beginAction(clip, castTime * 0.7);
+          // Blood Pact is bought with a share of the life you have.
+          const blood = num('lifeCostPct', 0);
+          if (blood > 0) player.life = Math.max(1, player.life * (1 - blood / 100));
           // Commanding Presence and Standard Bearer widen and strengthen what an
           // oath, aura or banner does. `applyBuff` reads the same numbers.
           this.applyBuff(player, def, rank, num, color);
@@ -1539,8 +1572,19 @@ export class SkillRunner {
           const at = target.clone().setY(0);
           const applies = this.statusFor(def, num, color);
           let touched = 0;
-          for (const t of this.allTargets(enemies, boss)) {
-            if (this.groundDistance(t.root.position, at) > radius + t.hitRadius) continue;
+          let reach = this.allTargets(enemies, boss).filter((t) => this.groundDistance(t.root.position, at) <= radius + t.hitRadius);
+          // Soul Tether binds the nearest few, and a share of each blow on one lands on the rest.
+          if (def.effect === 'debuff.link') {
+            const every = num('perRanks', 0);
+            const most = Math.floor(num('targets', 4)) + (every > 0 ? Math.floor(rank / every) : 0);
+            reach = reach
+              .filter((t) => t.life > 0)
+              .sort((a, b) => this.groundDistance(a.root.position, at) - this.groundDistance(b.root.position, at))
+              .slice(0, most);
+            const share = (num('sharePct', 35) + num('perRank', 3) * Math.max(0, rank - 1)) / 100;
+            this.link = { members: reach, share, until: this.runTime + num('duration', 10), name: def.name };
+          }
+          for (const t of reach) {
             t.applyStatuses(applies, ctx);
             this.effects.impact(school, t.root.position.x, 1.0, t.root.position.z, {
               color, emitter: sig.emitter, density: sig.density * 0.6, decal: false, shake: 0, sfx: null,
@@ -1559,10 +1603,10 @@ export class SkillRunner {
             const marked = this.allTargets(enemies, boss).filter(
               (t) => this.groundDistance(t.root.position, at) <= radius + t.hitRadius,
             );
+            const jump = num('spreadOnKill', 0) > 0;
             this.pendingSwings.push({
               t: num('delay', 6),
               run: () => {
-                const jump = num('spreadOnKill', 0) > 0;
                 for (const m of marked) {
                   let t: Target | undefined = m;
                   // Killed early: the brand jumps to the nearest enemy and goes off there.
@@ -1590,6 +1634,29 @@ export class SkillRunner {
           const range = num('range', 12);
           const stop = this.firstHitAlong(origin, dir, range, enemies, boss, 0.5, ctx);
           const end = origin.clone().addScaledVector(dir, stop);
+          // Siphon Life and Exsanguinate hold the beam on the first enemy it meets.
+          if (def.effect === 'channel.tether') {
+            const t = this.allTargets(enemies, boss)
+              .filter((o) => o.life > 0 && this.groundDistance(o.root.position, end) <= o.hitRadius + 1)
+              .sort((a, b) => this.groundDistance(a.root.position, end) - this.groundDistance(b.root.position, end))[0];
+            if (!t) break;
+            const k = Math.max(0, rank - 1);
+            const every = num('tickRate', 0.25);
+            const drain = num('pctPerSecond', 0);
+            const bossShare = num('bossPct', 100) / 100;
+            // A share of the target's own life a second, or the skill's damage a second.
+            const hit = drain > 0
+              ? (): DamagePacket => ({
+                  amount: t.maxLife * (drain / 100) * every * scale * (t.isBoss ? bossShare : 1),
+                  type, crit: false, source: 'player', ability: def.name,
+                })
+              : (): DamagePacket => makePacket(every);
+            const heal = (num('healShare', 0) || num('healPct', 0) + num('healPerRank', 0) * k) / 100;
+            // One beam per skill: casting again moves it.
+            this.tethers = this.tethers.filter((q) => q.id !== def.id);
+            this.tethers.push({ id: def.id, t, left: num('duration', 3), every, acc: 0, range: range + 2, hit, heal, school, color });
+            break;
+          }
           this.effects.beam(origin, end, {
             element: school, color, width: num('width', 0.5),
             duration: num('duration', 0.5), endBurst: true,
@@ -3211,6 +3278,7 @@ export class SkillRunner {
     this.stormTick(dt, live.ctx, live.enemies, live.boss);
     this.markCorpses(live.enemies);
     this.trailTick(dt, live.ctx, live.enemies, live.boss);
+    this.tetherTick(dt, live.ctx, live.enemies, live.boss);
     this.spreadTick(dt, live.ctx, live.enemies, live.boss);
     const keeper = this.caster ?? this.keeper;
     if (keeper) tickVigils(this.vigilHost, keeper, dt, live);
@@ -3444,12 +3512,14 @@ export class SkillRunner {
               t.hero.play('attack1', { fade: 0.06, restart: true, speed: 1.3, contact: 0.12 });
             }
           }
-          // Marrow Feast: what the army bites, you swallow.
+          // Marrow Feast: what the army bites, you swallow. Vampiric Touch: so
+          // does a share of your own life steal.
           const owner = this.caster;
-          if (owner && owner.passives.minionLeechPct > 0) {
+          const leech = owner ? owner.passives.minionLeechPct + owner.stats.lifeSteal * owner.passives.minionStealShare / 100 : 0;
+          if (owner && leech > 0) {
             owner.life = Math.min(
               owner.stats.life,
-              owner.life + t.packet().amount * (owner.passives.minionLeechPct / 100),
+              owner.life + t.packet().amount * (leech / 100),
             );
           }
           const to = best.root.position.clone().setY(1.0);
@@ -3531,6 +3601,55 @@ export class SkillRunner {
   }
 
   private trail: Array<{ x: number; z: number; left: number }> = [];
+  /** Skill shots from a bow, counted for Endless Quiver. */
+  private shots = 0;
+
+  /** Siphon Life and Exsanguinate: beams held on one enemy, draining it a tick at a time. */
+  private tethers: Array<{
+    id: string;
+    t: Target;
+    left: number;
+    every: number;
+    acc: number;
+    range: number;
+    hit: () => DamagePacket;
+    heal: number;
+    school: School;
+    color: number;
+  }> = [];
+
+  /** Soul Tether: who is bound, the share of a blow they pass on, and until when. */
+  private link: { members: Target[]; share: number; until: number; name: string } | null = null;
+
+  private tetherTick(dt: number, ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
+    const p = this.caster;
+    if (!p || !p.alive) {
+      this.tethers.length = 0;
+      return;
+    }
+    for (let i = this.tethers.length - 1; i >= 0; i--) {
+      const q = this.tethers[i]!;
+      q.left -= dt;
+      const at = q.t.root.position;
+      if (q.left <= 0 || q.t.life <= 0 || this.groundDistance(p.position, at) > q.range) {
+        this.tethers.splice(i, 1);
+        continue;
+      }
+      q.acc += dt;
+      while (q.acc >= q.every && q.t.life > 0) {
+        q.acc -= q.every;
+        const from = p.position.clone().setY(1.05);
+        this.effects.beam(from, at.clone().setY(q.t.centerY), {
+          element: q.school, color: q.color, width: 0.35, duration: q.every + 0.05, endBurst: false,
+        });
+        const hp = this.tune(q.hit(), q.t);
+        const before = q.t.life;
+        if (!this.strike(q.t, hp, ctx, 'proc', p.position.x, p.position.z)) continue;
+        this.afterHit(hp, q.t, ctx, enemies, boss);
+        p.heal((before - Math.max(0, q.t.life)) * q.heal);
+      }
+    }
+  }
 
   /** Bodies on the floor, for Corpse Explosion: where, how big, and what curses they wore. */
   private corpses: Array<{ x: number; z: number; maxLife: number; curses: StatusApplication[]; at: number }> = [];
@@ -3960,6 +4079,8 @@ export class SkillRunner {
     for (const z of this.zones) z.fx?.stop();
     this.trail.length = 0;
     this.corpses.length = 0;
+    this.tethers.length = 0;
+    this.link = null;
     for (const t of this.turrets) {
       t.fx?.stop();
       this.removeBody(t.body);

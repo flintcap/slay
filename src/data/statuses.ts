@@ -502,7 +502,7 @@ export const STATUSES: StatusDef[] = [
   // Elite / boss inflicted
   // -------------------------------------------------------------------------
   def('grasped', 'Grasped', -1, {
-    desc: 'Held by grave-hands. Rooted and taking physical damage each second.',
+    desc: 'Held by grave-hands. Rooted, taking physical damage each second, and unable to heal.',
     dot: dot('physical', 10),
     immobilises: true,
     baseDuration: 3,

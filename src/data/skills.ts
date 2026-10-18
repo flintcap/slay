@@ -162,7 +162,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'ironSkin',
     name: 'Iron Skin',
-    desc: 'Callus over old wounds. +18 defense and +1% physical resistance per rank.',
+    desc: 'Callus over old wounds. +18 defense per rank, and +1.8% physical resistance per rank with diminishing returns toward 20%.',
     tier: 1,
     col: 1,
     icon: 'plate',
@@ -196,7 +196,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'deflect',
     name: 'Deflect',
-    desc: 'Turn the blow rather than eat it. Blocking restores 4 mana (+1 per rank) and grants 0.4s of immunity to the same damage type.',
+    desc: 'Turn the blow rather than eat it. +1.4% block chance per rank (toward 14%) and +0.6 mana regeneration per rank. Blocking restores 4 mana (+1 per rank) and grants 0.4s of immunity to the same damage type.',
     tier: 2,
     col: 1,
     icon: 'deflect',
@@ -236,7 +236,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'bulwarkMastery',
     name: 'Bulwark Mastery',
-    desc: '+14% enhanced defense per rank and +2% block chance every third rank. The plate is the point.',
+    desc: '+14% enhanced defense per rank, and +0.6% block chance per rank with diminishing returns toward 10%. The plate is the point.',
     tier: 3,
     col: 1,
     icon: 'anvil',
@@ -309,7 +309,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'unyielding',
     name: 'Unyielding',
-    desc: '+14 life and +1.5% to all resistances per rank. The Knight outlasts by being harder to finish, not harder to hit.',
+    desc: '+14 life per rank, and +2.4% to all resistances per rank with diminishing returns toward 30%. The Knight outlasts by being harder to finish, not harder to hit.',
     tier: 5,
     col: 1,
     icon: 'oath-stone',
@@ -320,6 +320,7 @@ const BULWARK = build('bulwark', [
       coldResist: dim(30, 0.08),
       lightningResist: dim(30, 0.08),
       poisonResist: dim(30, 0.08),
+      arcaneResist: dim(30, 0.08),
     },
   },
   {
@@ -341,9 +342,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'retribution',
     name: 'Retribution',
-    desc: 'CAPSTONE. Your guard becomes an argument. Every block stores 3% bonus damage (+1.5% per rank), up to 300%, and your next blow spends all of it. Blocking no longer just prevents the hit: it loads the answer.' +
-      '3% retaliation damage (+1.5% per rank): whenever you block, the attacker and everything within 4m takes ' +
-      'that share of your maximum life as physical damage. Blocking no longer just prevents the hit — it answers it.',
+    desc: 'CAPSTONE. Your guard becomes an argument. Every block stores 3% bonus damage (+1.5% per rank), up to 300%, and your next blow spends all of it. Blocking no longer just prevents the hit: it loads the answer.',
     tier: 6,
     col: 0,
     max: 20,
@@ -417,7 +416,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'butchery',
     name: 'Butchery',
-    desc: '+9% bleed damage per rank, and more attack speed every rank. Practice makes precise.',
+    desc: '+9% bleed damage per rank, and +1.4% attack speed per rank with diminishing returns toward 20%. Practice makes precise.',
     tier: 1,
     col: 2,
     icon: 'cleaver',
@@ -487,7 +486,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'reaver',
     name: 'Reaver',
-    desc: '+3% attack speed and +12 attack rating per rank. Every kill grants a stack of Frenzy for 6s (+6% attack speed and +5% damage each, up to 8).',
+    desc: '+12 attack rating per rank, and +2.7% attack speed per rank with diminishing returns toward 30%. Every kill grants a stack of Frenzy for 6s (+6% attack speed and +5% damage each, up to 8).',
     tier: 3,
     col: 1,
     icon: 'whet',
@@ -530,7 +529,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'arterialStrike',
     name: 'Arterial Strike',
-    desc: 'Critical strikes apply Hemorrhage. More critical chance and +8% bleed duration per rank.',
+    desc: 'Critical strikes apply Hemorrhage. +8% bleed duration per rank, and +1% critical chance per rank with diminishing returns toward 12%.',
     tier: 4,
     col: 1,
     icon: 'artery',
@@ -542,7 +541,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'bloodDrinker',
     name: 'Blood Drinker',
-    desc: '+0.6% life steal per rank, and life steal works twice against bleeding targets.',
+    desc: '+0.8% life steal per rank with diminishing returns toward 12%, and life steal works twice against bleeding targets.',
     tier: 4,
     col: 2,
     icon: 'chalice',
@@ -695,7 +694,7 @@ const OATH = build('oath', [
   {
     id: 'oathOfIron',
     name: 'Oath of Iron',
-    desc: 'A sworn oath. +10 defense per rank and more physical resistance every rank.',
+    desc: 'A sworn oath. +10 defense per rank, and +1.1% physical resistance per rank with diminishing returns toward 16%.',
     tier: 2,
     col: 1,
     icon: 'iron',
@@ -760,7 +759,7 @@ const OATH = build('oath', [
   {
     id: 'oathOfBlood',
     name: 'Oath of Blood',
-    desc: 'A sworn oath. More life steal and +3 life regeneration per rank.',
+    desc: 'A sworn oath. +3 life regeneration per rank, and +0.7% life steal per rank with diminishing returns toward 10%.',
     tier: 4,
     col: 0,
     icon: 'blood-oath',
@@ -788,7 +787,7 @@ const OATH = build('oath', [
   {
     id: 'veteransResolve',
     name: "Veteran's Resolve",
-    desc: '-4% crowd-control duration per rank (to a 60% floor), +1.5% to all resistances per rank, and shouts cost 3% less mana per rank.',
+    desc: '-4% crowd-control duration per rank (to a 60% floor), +2% to all resistances per rank with diminishing returns toward 25%, and shouts cost 3% less mana per rank.',
     tier: 4,
     col: 2,
     icon: 'scar',
@@ -993,7 +992,7 @@ const CONFLAGRATION = build('conflagration', [
   {
     id: 'kindling',
     name: 'Kindling',
-    desc: '+3% critical strike chance per rank, and +8% critical damage per rank against burning enemies.',
+    desc: '+1.3% critical strike chance per rank with diminishing returns toward 15%, and +8% critical damage per rank against burning enemies.',
     tier: 3,
     col: 1,
     icon: 'kindle',
@@ -1048,7 +1047,7 @@ const CONFLAGRATION = build('conflagration', [
   {
     id: 'heatShimmer',
     name: 'Heat Shimmer',
-    desc: '+4% cast speed per rank and +1% fire resistance per rank. The air around you refuses to hold still.',
+    desc: '+4% cast speed per rank (toward 40%) and +2% fire resistance per rank (toward 25%). The air around you refuses to hold still.',
     tier: 4,
     col: 2,
     icon: 'shimmer',
@@ -1074,7 +1073,7 @@ const CONFLAGRATION = build('conflagration', [
   {
     id: 'searingCore',
     name: 'Searing Core',
-    desc: '+4 flat fire damage per rank and +5% maximum spell damage per rank — your ceiling rises faster than your floor.',
+    desc: '+4 fire damage, +3 maximum damage and +2% elemental damage per rank. Your ceiling rises faster than your floor.',
     tier: 5,
     col: 1,
     icon: 'core',
@@ -1214,7 +1213,7 @@ const VENOM = build('venom', [
   {
     id: 'corrosiveEdge',
     name: 'Corrosive Edge',
-    desc: 'Poison hits apply Corroded: -35% defense for 8s. +2% attack speed per rank.',
+    desc: 'Poison hits have a 30% chance (+3.5% per rank) to apply Corroded: -35% defense for 8s. +1.9% attack speed per rank, with diminishing returns toward 24%.',
     tier: 2,
     col: 1,
     icon: 'acid',
@@ -1346,7 +1345,7 @@ const VENOM = build('venom', [
   {
     id: 'antivenom',
     name: 'Antivenom',
-    desc: 'You cannot be Poisoned, Envenomed or Plagued, and poison damage that would hit you instead heals 30% of its value (+3% per rank).',
+    desc: 'You cannot be Poisoned, Envenomed or Plagued, you gain +100% poison resistance, and poison damage that would hit you instead heals 30% of its value (+3% per rank).',
     tier: 5,
     col: 2,
     icon: 'antidote',
@@ -1438,7 +1437,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'nightEyes',
     name: 'Night Eyes',
-    desc: '+2% critical strike chance and +14 attack rating per rank. Blows from the veil deal +25% critical damage (+3% per rank).',
+    desc: '+14 attack rating and +1.4% critical strike chance per rank (toward 18%). Blows from the veil deal +25% critical damage (+3% per rank).',
     tier: 1,
     col: 2,
     icon: 'eye',
@@ -1477,7 +1476,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'fleetfoot',
     name: 'Fleetfoot',
-    desc: '+3% movement speed and +12 defense per rank. You are never where the swing was aimed.',
+    desc: '+12 defense per rank, and +3.1% movement speed per rank with diminishing returns toward 35%. You are never where the swing was aimed.',
     tier: 2,
     col: 2,
     icon: 'boot',
@@ -1667,7 +1666,7 @@ const BLADEWORK = build('bladework', [
   {
     id: 'bladeMastery',
     name: 'Blade Mastery',
-    desc: '+20 attack rating and +2% critical strike chance per rank with daggers, swords and claws.',
+    desc: '+20 attack rating, +4% damage and +1.8% critical strike chance per rank (toward 22%).',
     tier: 1,
     col: 1,
     icon: 'mastery-blade',
@@ -1846,9 +1845,7 @@ const BLADEWORK = build('bladework', [
   {
     id: 'thousandCuts',
     name: 'A Thousand Cuts',
-    desc: 'CAPSTONE. Nothing is wasted. Every critical strike banks a Cut, granting +2% critical damage (+0.3% per rank) per Cut, stacking to 50. Every strike that fails to crit spends five banked Cuts to become a critical strike instead. Cuts last until 10 seconds pass without a blow. The longer a boss lives, the less it matters how lucky you are.' +
-      'for the rest of the fight, stacking to 50. Every strike that fails to crit spends five banked Cuts to become ' +
-      'a critical strike instead. The longer a boss lives, the less it matters how lucky you are.',
+    desc: 'CAPSTONE. Nothing is wasted. Every critical strike banks a Cut, granting +2% critical damage (+0.3% per rank) per Cut, stacking to 50. Every strike that fails to crit spends five banked Cuts to become a critical strike instead. Cuts last until 10 seconds pass without a blow. The longer a boss lives, the less it matters how lucky you are.',
     tier: 6,
     col: 0,
     max: 20,
@@ -2035,7 +2032,7 @@ const TEMPEST = build('tempest', [
   {
     id: 'stormFury',
     name: 'Storm Fury',
-    desc: '+3% cast speed per rank, and each lightning hit adds +1% cast speed for 3s, stacking 10 times.',
+    desc: '+3.1% cast speed per rank with diminishing returns toward 35%, and each lightning hit adds +1% cast speed for 3s, stacking 10 times.',
     tier: 4,
     col: 1,
     icon: 'fury',
@@ -2079,7 +2076,7 @@ const TEMPEST = build('tempest', [
   {
     id: 'overload',
     name: 'Overload',
-    desc: 'Widens your roll: more maximum damage, a little less minimum damage, and more critical damage every rank. Lightning is a gamble; take a bigger one.',
+    desc: 'Widens your roll: +6 maximum damage, -1 minimum damage and +5% critical damage per rank. Lightning is a gamble; take a bigger one.',
     tier: 5,
     col: 1,
     icon: 'overload',
@@ -2105,9 +2102,7 @@ const TEMPEST = build('tempest', [
   {
     id: 'eyeOfTheStorm',
     name: 'The Eye of the Storm',
-    desc: 'CAPSTONE. The weather stops being a spell and becomes an address. A storm centred on you strikes every Shocked enemy within 16m once every 0.8s for 90% spell damage (+8% per rank), and each strike refreshes the shock. Shock everything and the room dies whether you keep casting or not.' +
-      'every Shocked enemy within 16m once every 0.8s for 90% spell damage (+8% per rank), and each strike refreshes ' +
-      'the shock. Shock everything and the room dies whether you keep casting or not.',
+    desc: 'CAPSTONE. The weather stops being a spell and becomes an address. A storm centred on you strikes every Shocked enemy within 16m once every 0.8s for 90% spell damage (+8% per rank), and each strike refreshes the shock. Shock everything and the room dies whether you keep casting or not.',
     tier: 6,
     col: 0,
     max: 20,
@@ -2342,7 +2337,7 @@ const FROST = build('frost', [
   {
     id: 'heartOfWinter',
     name: 'Heart of Winter',
-    desc: '+4 flat cold damage per rank and +3 maximum damage per rank. Your ceiling rises faster than your floor.',
+    desc: '+4 cold damage, +3 maximum damage and +2% elemental damage per rank. Your ceiling rises faster than your floor.',
     tier: 5,
     col: 1,
     icon: 'heart-winter',
@@ -2629,10 +2624,7 @@ const OSSUARY = build('ossuary', [
   {
     id: 'theBoneChoir',
     name: 'The Bone Choir',
-    desc: 'CAPSTONE. Your dead were never the point — their deaths were. When one of your minions dies it bursts into a 4m pool of grave-light for 8s (+0.4s per rank) that deals 60% of that minion\'s maximum life (+4% per rank) as arcane damage per second to enemies, and heals you and every minion for half of what it deals. An army that is losing is an army that is winning.' +
-      '4m pool of grave-light for 8s (+0.4s per rank) that deals 60% of that minion\'s maximum life (+4% per rank) ' +
-      'as arcane damage per second to enemies, and heals you and every other minion for half of what it deals. ' +
-      'An army that is losing is an army that is winning.',
+    desc: 'CAPSTONE. Your dead were never the point — their deaths were. When one of your minions dies it bursts into a 4m pool of grave-light for 8s (+0.4s per rank) that deals 60% of that minion\'s maximum life (+4% per rank) as arcane damage per second to enemies, and heals you and every minion for half of what it deals. An army that is losing is an army that is winning.',
     tier: 6,
     col: 0,
     max: 20,
@@ -2876,9 +2868,7 @@ const BLIGHT = build('blight', [
   {
     id: 'theLongDecline',
     name: 'The Long Decline',
-    desc: 'CAPSTONE. A curse stops being a modifier and becomes a wound. Afflicted enemies (any curse, poison or other harmful effect) lose 5% (+0.5% per rank) of their maximum life every second. Bosses are spared. Four curses on one elite is a countdown, not a debuff bar.' +
-      'arcane decay dealing 5% (+0.5% per rank) of that curse\'s remaining duration in seconds as damage per second — ' +
-      'so four long curses on one elite is a countdown, not a debuff bar.',
+    desc: 'CAPSTONE. A curse stops being a modifier and becomes a wound. Afflicted enemies (any curse, poison or other harmful effect) lose 5% (+0.5% per rank) of their maximum life every second. Bosses are spared. Four curses on one elite is a countdown, not a debuff bar.',
     tier: 6,
     col: 0,
     max: 20,
@@ -2926,7 +2916,7 @@ const GRAVEPACT = build('gravepact', [
   {
     id: 'siphonLife',
     name: 'Siphon Life',
-    desc: 'A tether drains 70% spell damage (+12% per rank) per second as arcane and heals you for 40% of it.',
+    desc: 'Tether an enemy for 3s: it takes 70% spell damage (+12% per rank) per second as arcane, and you heal for 40% of the damage dealt (+1.5% per rank). Casting again moves the tether.',
     tier: 1,
     col: 0,
     icon: 'siphon',
@@ -2935,12 +2925,12 @@ const GRAVEPACT = build('gravepact', [
     dmg: [0.7, 0.12],
     type: 'arcane',
     fx: 'channel.tether',
-    p: { range: 10, tickRate: 0.25, healPct: 40, healPerRank: 1.5, upkeep: 7 },
+    p: { range: 10, tickRate: 0.25, healPct: 40, healPerRank: 1.5, duration: 3 },
   },
   {
     id: 'spiritWard',
     name: 'Spirit Ward',
-    desc: '+2% to all resistances per rank and +1.5 life regeneration per rank. The dead are hard to hurt twice.',
+    desc: '+2.8% to all resistances per rank with diminishing returns toward 35%, and +1.5 life regeneration per rank. The dead are hard to hurt twice.',
     tier: 1,
     col: 1,
     icon: 'ward-spirit',
@@ -2956,12 +2946,12 @@ const GRAVEPACT = build('gravepact', [
   {
     id: 'reapSoul',
     name: 'Reap Soul',
-    desc: 'Kills within 12m grant a Soul: +3% damage and +2 mana regeneration each, stacking to 15 for 30s.',
+    desc: 'Kills within 12m grant a Soul: +3% damage and +2 mana regeneration each, stacking to 15. Souls last 30s (+1s per rank) after your last kill.',
     tier: 1,
     col: 2,
     icon: 'wisp-soul',
     fx: 'passive.onKill',
-    p: { radius: 12, stacks: 1, maxStacks: 15, maxPerRanks: 0, duration: 30, durationPerRank: 1 },
+    p: { radius: 12, stacks: 1, maxStacks: 15, duration: 30, durationPerRank: 1 },
   },
   {
     id: 'bloodPact',
@@ -2990,12 +2980,12 @@ const GRAVEPACT = build('gravepact', [
     dmg: [0.3, 0.06],
     type: 'cold',
     fx: 'aura.damage',
-    p: { radius: 6, upkeep: 5, tickRate: 1, chill: 1 },
+    p: { radius: 6, tickRate: 1, chill: 1 },
   },
   {
     id: 'vampiricTouch',
     name: 'Vampiric Touch',
-    desc: '+0.7% life steal per rank, and your minions steal life for you at half that rate.',
+    desc: '+1% life steal per rank with diminishing returns toward 14%, and your minions steal life for you at half your life steal rate.',
     tier: 2,
     col: 2,
     icon: 'fang-dark',
@@ -3007,7 +2997,7 @@ const GRAVEPACT = build('gravepact', [
   {
     id: 'soulCage',
     name: 'Soul Cage',
-    desc: 'Trap a soul for 12s: the target cannot heal, takes 25% more damage (+2% per rank), and drops 2 Souls on death.',
+    desc: 'Trap a soul for 12s: the target is rooted and torn by grave-hands, cannot heal, has 25% lower resistances (+2% per rank), and gives up 2 extra Souls when it dies.',
     tier: 3,
     col: 0,
     icon: 'cage-soul',
@@ -3016,12 +3006,12 @@ const GRAVEPACT = build('gravepact', [
     mana: [16, 0.8],
     cd: [14, 0.4, 6],
     fx: 'debuff.mark',
-    p: { duration: 12, amplify: 25, perRank: 2, noHeal: 1, bonusSouls: 2 },
+    p: { duration: 12, amplify: 25, perRank: 2, bonusSouls: 2 },
   },
   {
     id: 'exsanguinate',
     name: 'Exsanguinate',
-    desc: 'A beam that drains 5% of the target\'s maximum life per second (+0.4% per rank) and gives you half as life.',
+    desc: 'Tether an enemy for 4s: it loses 5% of its maximum life per second (+0.4% per rank) as arcane damage, and you heal for half the damage dealt. Bosses lose a quarter as much.',
     tier: 3,
     col: 1,
     icon: 'drain-beam',
@@ -3047,7 +3037,7 @@ const GRAVEPACT = build('gravepact', [
   {
     id: 'revenantForm',
     name: 'Revenant Form',
-    desc: 'For 12s you are already dead: +50% damage (+4% per rank), +30 damage reduction, immune to fear and bleed, but no healing.',
+    desc: 'For 12s you are already dead: +50% damage (+4% per rank), +30 damage reduction (+1 per rank), and no fear or bleeding can take hold of you.',
     tier: 4,
     col: 0,
     icon: 'revenant',
@@ -3056,7 +3046,7 @@ const GRAVEPACT = build('gravepact', [
     mana: [30, 1.5],
     cd: [45, 1.2, 20],
     fx: 'buff.transform',
-    p: { duration: 12, damagePct: 50, perRank: 4, dr: 30, noHeal: 1 },
+    p: { duration: 12, damagePct: 50, perRank: 4, dr: 30 },
   },
   {
     id: 'harvestMastery',
@@ -3098,7 +3088,7 @@ const GRAVEPACT = build('gravepact', [
   {
     id: 'soulTether',
     name: 'Soul Tether',
-    desc: 'Link up to 4 enemies (+1 per 5 ranks) for 10s: 35% of damage dealt to one (+3% per rank) is dealt to all others.',
+    desc: 'Bind the 4 nearest enemies within 10m (+1 per 5 ranks) for 10s: 35% of each blow you land on one (+3% per rank) also lands on all the others.',
     tier: 5,
     col: 1,
     icon: 'tether',
@@ -3125,10 +3115,10 @@ const GRAVEPACT = build('gravepact', [
     id: 'theSecondDeath',
     name: 'The Second Death',
     desc:
-      'CAPSTONE. You have done this before. Lethal damage no longer kills you: instead you collapse into a wraith ' +
-      'for 8s (+0.3s per rank) at 1 life, unkillable, with +100% damage and full life steal — every Soul you hold ' +
-      'is spent to restore 6% (+0.4% per rank) of maximum life when the wraith form ends. If the wraith kills ' +
-      'nothing, you stay dead. Recharges every 180s (-6s per rank).',
+      'CAPSTONE. You have done this before. Lethal damage no longer kills you: you rise at 60% life, cannot be ' +
+      'harmed for 8s (+0.3s per rank), and loose a burst of 100% spell damage as arcane in 8m. Every Soul you hold ' +
+      'is spent to restore 6% (+0.4% per rank) more of your maximum life. Recharges every 180s (-6s per rank, ' +
+      'never below 60s).',
     tier: 6,
     col: 0,
     max: 20,
@@ -3148,7 +3138,7 @@ const GRAVEPACT = build('gravepact', [
   {
     id: 'reaping',
     name: 'Reaping',
-    desc: 'A 360-degree scythe of soulfire: 380% spell damage (+58% per rank) in 7m, +100% against enemies below 35% life.',
+    desc: 'A 360-degree scythe of soulfire: 380% spell damage (+58% per rank) in 7m, +100% against enemies below 35% life. Each kill grants 2 Souls.',
     tier: 6,
     col: 1,
     max: 20,
@@ -3165,7 +3155,7 @@ const GRAVEPACT = build('gravepact', [
   {
     id: 'gravepactMastery',
     name: 'Grave Pact',
-    desc: '+5% life steal effectiveness per rank, +8 life per rank, and life you steal above maximum becomes an absorb shield.',
+    desc: '+8 life per rank, +0.6% life steal per rank with diminishing returns toward 10%, and life you steal above maximum becomes an absorb shield, up to 30% of maximum life.',
     tier: 6,
     col: 2,
     max: 15,
@@ -3191,7 +3181,7 @@ const MARKSMAN = build('marksman', [
   },
   {
     id: 'steadyHand', name: 'Steady Hand',
-    desc: 'Breath control. +14 attack rating and +1% critical chance per rank.',
+    desc: 'Breath control. +14 attack rating per rank, and +2.6% critical chance per rank with diminishing returns toward 26%.',
     tier: 1, col: 1, icon: 'eye',
     stat: { attackRating: per(14), critChance: dim(26, 0.1) },
   },
@@ -3223,7 +3213,7 @@ const MARKSMAN = build('marksman', [
   },
   {
     id: 'punchThrough', name: 'Punch Through',
-    desc: 'Arrows lose nothing on the way through. +8% damage per rank against pierced targets.',
+    desc: 'Arrows lose nothing on the way through. +3.6% damage per rank, with diminishing returns toward 40%.',
     tier: 3, col: 0, icon: 'pierce', req: ['aimedShot'],
     stat: { enhancedDamage: dim(40, 0.09) },
   },
@@ -3236,13 +3226,13 @@ const MARKSMAN = build('marksman', [
   },
   {
     id: 'coldFocus', name: 'Cold Focus',
-    desc: 'Nothing hurries you. +2% critical damage and +1% attack speed per rank.',
+    desc: 'Nothing hurries you. +6% critical damage per rank, and +1.9% attack speed per rank with diminishing returns toward 24%.',
     tier: 3, col: 2, icon: 'crit', req: ['longEye'],
     stat: { critDamage: per(6), attackSpeed: dim(24, 0.08) },
   },
   {
     id: 'headshot', name: 'Headshot',
-    desc: 'A critical hit from full draw refunds its cooldown and cannot be blocked.',
+    desc: 'Aim for the eye. +1% critical chance and +8% critical damage per rank.',
     tier: 4, col: 1, icon: 'skull', req: ['aimedShot', 'coldFocus'], max: 10,
     stat: { critChance: per(1), critDamage: per(8) },
   },
@@ -3258,9 +3248,9 @@ const MARKSMAN = build('marksman', [
 const WILDCRAFT = build('wildcraft', [
   {
     id: 'rollAway', name: 'Roll Away',
-    desc: 'Roll 6m in any direction, untouchable for 0.3s.',
+    desc: 'Roll 6m in any direction, untouchable for 0.3s, then run 20% faster for 1.5s (+0.1s per rank).',
     tier: 1, col: 0, icon: 'dash', t: 'direction', mana: [4, 0.3], cd: [7, 0.25, 3],
-    fx: 'dash', p: { distance: 6, iframes: 0.3 },
+    fx: 'dash', p: { distance: 6, iframes: 0.3, speed: 20, duration: 1.5, durationPerRank: 0.1 },
   },
   {
     id: 'snareTrap', name: 'Snare Trap',
@@ -3270,7 +3260,7 @@ const WILDCRAFT = build('wildcraft', [
   },
   {
     id: 'lightFoot', name: 'Light Foot',
-    desc: 'You move like the floor owes you nothing. +2% movement speed per rank.',
+    desc: 'You move like the floor owes you nothing. +1 dexterity per rank, and +2.7% movement speed per rank with diminishing returns toward 30%.',
     tier: 1, col: 2, icon: 'boots',
     stat: { moveSpeed: dim(30, 0.09), dexterity: per(1) },
   },
@@ -3317,7 +3307,7 @@ const WILDCRAFT = build('wildcraft', [
   },
   {
     id: 'trapMastery', name: 'Trap Mastery',
-    desc: 'Two traps may be armed at once, and they arm 5% faster per rank.',
+    desc: 'Practised hands. -3% skill cooldowns per rank, with diminishing returns toward 30%.',
     tier: 4, col: 1, icon: 'gear', req: ['spikeTrap', 'venomCoat'], max: 10,
     stat: { cooldownReduction: dim(30, 0.1) },
   },
@@ -3339,7 +3329,7 @@ const VOLLEY = build('volley', [
   },
   {
     id: 'quickDraw', name: 'Quick Draw',
-    desc: 'Nock without looking. +2% attack speed per rank.',
+    desc: 'Nock without looking. +3.2% attack speed per rank, with diminishing returns toward 32%.',
     tier: 1, col: 1, icon: 'speed',
     stat: { attackSpeed: dim(32, 0.1) },
   },
@@ -3386,15 +3376,15 @@ const VOLLEY = build('volley', [
   },
   {
     id: 'endlessQuiver', name: 'Endless Quiver',
-    desc: 'Every third shot costs no mana. +1 mana regeneration per rank.',
+    desc: 'Every third skill shot from a bow costs no mana. +1 mana regeneration and +6 mana per rank.',
     tier: 3, col: 2, icon: 'quiver', req: ['fanFire'],
-    stat: { manaRegen: per(1), mana: per(6) },
+    stat: { manaRegen: per(1), mana: per(6) }, p: { every: 3 },
   },
   {
     id: 'volleyMastery', name: 'Volley Mastery',
-    desc: 'Multi-shot skills fire one extra arrow every 5 ranks.',
+    desc: 'Skills that loose several arrows loose one more every 5 ranks. +2.8% damage per rank (toward 35%) and +0.9% attack speed per rank (toward 15%).',
     tier: 4, col: 1, icon: 'multi', req: ['explosiveTip', 'endlessQuiver'], max: 10,
-    stat: { enhancedDamage: dim(35, 0.08), attackSpeed: dim(15, 0.06) },
+    stat: { enhancedDamage: dim(35, 0.08), attackSpeed: dim(15, 0.06) }, p: { perRanks: 5 },
   },
   {
     id: 'darkenTheSky', name: 'Darken The Sky',

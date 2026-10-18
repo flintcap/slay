@@ -84,7 +84,7 @@ const FERAL = build('feral', [
     dmg: [0.5, 0.07],
     type: 'physical',
     fx: 'shift.rake',
-    p: { hits: 3, single: 1, reach: 2.4, duration: 4 },
+    p: { hits: 3, reach: 2.4, duration: 4 },
   },
   {
     id: 'lithe',

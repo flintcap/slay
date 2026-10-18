@@ -90,6 +90,17 @@ function measure(classId: CharClassId, id: string, rank: number): Measure {
       player.update(DT, pctx, null);
     }
   }
+  // What some skills need on the field: the veil (Umbral Ambush), a body
+  // (Corpse Explosion), a Shocked enemy (The Eye of the Storm).
+  const skill = SKILLS.find((s) => s.id === id);
+  if (Number(skill?.params?.requiresStealth ?? 0) > 0) player.applyStatus('veiled', 30);
+  if (skill?.effect === 'corpse.explode') {
+    const body = a.spawn(def, 0, 2.2);
+    body.maxLife = 1000;
+    body.life = 0;
+    runner.update(DT);
+  }
+  if ((skill?.effect ?? '').includes('eyeOfStorm')) e.applyStatuses([{ id: 'shocked', duration: 60, magnitude: 1, stacks: 1 }], a.ctx);
   runner.cast(id, player, new THREE.Vector3(0, 0, 1.8), a.ctx, a.enemies, null);
   // Long enough for a delayed burst (Doom Brand) to go off.
   type Foe = Array<{ id: string; time: number; magnitude: number; mods?: Record<string, number> }>;

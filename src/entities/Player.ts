@@ -104,6 +104,9 @@ export const CLIP_CONTACT: Readonly<Record<string, number>> = {
 };
 /** Contact share of a skill's own weapon-blow gesture (`SkillActions` `hit`). */
 const SKILL_BLOW_CONTACT = 0.35;
+
+/** Buffs that keep some harm off you while they run: Revenant Form's dead neither fear nor bleed. */
+const WARDS: Record<string, readonly string[]> = { 'skill.revenantForm': ['feared', 'bleeding'] };
 /** No swing waits longer than this to connect, however slow the weapon. */
 export const CONTACT_CAP = 0.16;
 
@@ -295,6 +298,23 @@ export class Player {
     }));
   }
 
+  /** Reap Soul: bank Souls, up to the cap, and start their clock again. */
+  gainSouls(n: number): void {
+    const e = this.passives;
+    if (e.soulMaxStacks <= 0 || n <= 0) return;
+    this.passiveState.souls = Math.min(e.soulMaxStacks, this.passiveState.souls + n);
+    this.passiveState.soulTimer = e.soulDurationSec;
+  }
+
+  /** Grave Pact: stolen life past full becomes a ward, up to a share of maximum life. */
+  overheal(amount: number): void {
+    const e = this.passives;
+    if (e.overhealShieldPct <= 0 || amount <= 0) return;
+    const now = this.status.get('shielded')?.absorb ?? 0;
+    const next = Math.min(this.stats.life * e.overhealCapPct / 100, now + amount * e.overhealShieldPct / 100);
+    if (next > now) this.status.apply({ id: 'shielded', duration: 8, magnitude: 1, stacks: 1, absorb: next }, 'player');
+  }
+
   /** Applies a buff or debuff and refreshes the stat sheet. */
   applyStatus(
     id: string,
@@ -303,10 +323,13 @@ export class Player {
     stacks = 1,
     extra: { mods?: Partial<Stats>; absorb?: number } = {},
   ): boolean {
+    // Revenant Form: the dead do not fear and do not bleed.
+    for (const [buff, list] of Object.entries(WARDS)) if (list.includes(id) && this.status.has(buff)) return false;
     const app: StatusApplication = { id, duration, magnitude, stacks };
     if (extra.mods) app.mods = extra.mods;
     if (extra.absorb !== undefined) app.absorb = extra.absorb;
     const ok = this.status.apply(app, 'player');
+    if (ok) for (const w of WARDS[id] ?? []) this.status.remove(w);
     if (ok) this.refreshStats();
     return ok;
   }

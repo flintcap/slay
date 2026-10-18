@@ -284,11 +284,9 @@ const RITES: Record<string, Rite> = {
     land(r, host, t) {
       if (!t) return;
       const dents = spendDents(t);
+      const each = ranked(r, 'healPct', 3, 0.15);
       blow(r, host, t, 1);
-      if (dents > 0) {
-        const pct = ranked(r, 'healPct', 3, 0.15) * dents;
-        r.player.heal(r.player.stats.life * (pct / 100));
-      }
+      if (dents > 0) r.player.heal(r.player.stats.life * ((each * dents) / 100));
     },
   },
   ironVerdict: {
@@ -405,8 +403,9 @@ const RITES: Record<string, Rite> = {
       if (!t) return;
       // Below the line, a lesser thing is simply finished. Bosses are never small enough.
       const line = ranked(r, 'threshold', 15, 0.5) / 100;
+      const mult = r.num('mercyMult', 8);
       const mercy = t !== r.boss && t.life / Math.max(1, t.maxLife) <= line;
-      blow(r, host, t, mercy ? r.num('mercyMult', 8) : 1, [], 'heavy');
+      blow(r, host, t, mercy ? mult : 1, [], 'heavy');
     },
   },
   sevenfold: {
@@ -582,12 +581,15 @@ export function castRite(host: RiteHost, r: RiteCast): void {
   const rite = RITES[r.def.id];
   if (!rite) return;
   const p = r.player;
-  const target = rite.self ? null : pickOne(p, r.aim, r.enemies, r.boss, rite.rush ?? rite.reach);
+  // The tree's own numbers: how far the blow reaches, and how far a rush (or a throw) carries.
+  const rush = rite.rush === undefined ? undefined : r.num('range', rite.rush);
+  const reach = rite.self ? 0 : r.num('reach', rush === undefined ? r.num('range', rite.reach) : rite.reach);
+  const target = rite.self ? null : pickOne(p, r.aim, r.enemies, r.boss, rush ?? reach);
   if (target) p.faceTowards(target.root.position.x, target.root.position.z);
-  if (!rite.self) r.landAt = target ? target.root.position.clone().setY(0) : inReach(p, r.aim, rite.reach);
+  if (!rite.self) r.landAt = target ? target.root.position.clone().setY(0) : inReach(p, r.aim, reach);
   p.beginAction(skillAction(r.def.id) ?? rite.clip, r.attackTime * rite.time);
   const id = p.actionId;
-  if (target && rite.rush) rushTo(host, r, target, p.contactIn * 0.9);
+  if (target && rush) rushTo(host, r, target, p.contactIn * 0.9);
   if (target && rite.step) stepTo(host, r, target, rite.step, p.contactIn * 0.8);
   host.later(p.contactIn, () => {
     if (p.actionId !== id || !p.alive) return;
@@ -596,7 +598,7 @@ export function castRite(host: RiteHost, r: RiteCast): void {
       return;
     }
     // Still there, still in reach at the moment the blow arrives.
-    const t = target && target.life > 0 && Math.hypot(target.root.position.x - p.position.x, target.root.position.z - p.position.z) - target.hitRadius <= rite.reach + 0.6 ? target : null;
+    const t = target && target.life > 0 && Math.hypot(target.root.position.x - p.position.x, target.root.position.z - p.position.z) - target.hitRadius <= reach + 0.6 ? target : null;
     rite.land(r, host, t);
   });
 }
