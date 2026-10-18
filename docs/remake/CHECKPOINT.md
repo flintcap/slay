@@ -65,9 +65,27 @@ Update this file and push it after every finished step.
   grow with rank. check-skilldepth fails on a synergy that reaches nothing.
   Skills screenshot crashed twice (browser closed in town); not seen yet.
 
+- #102 (Phase 1) one danger language (92540dd). Every enemy floor warning is
+  warm (reds and oranges keep their hue, yellows go amber, other colours go
+  red-orange; dangerTone in src/fx/Decals.ts). Places to stand use one green
+  through decals.safeZone. Harmless moves (rallies, heals, shields, summons)
+  draw a soft cue in their own colour. Marks added to 8 wind-ups that had
+  none; Plague Burst now swells 0.6 s in a marked circle first. No damage
+  changed. check-readable covers it. check-tactics "big telegraphs are
+  staggered" fails the same way before this change (not fixed, noted).
+
+- #104 (owner ask) old uniques and set pieces take their fixed lines on load
+  (41b9c12, refreshFixedLines in src/sim/Loot.ts, called from Save item
+  repair). Rolls already there are kept inside the range; missing lines roll
+  seeded by the item; random old lines go; item level back to its own.
+  check-save covers it.
+
 ## In progress
 
-- Phase 1 (combat): #102 one danger language, #103 balance groundwork (owner).
+- Phase 1 (combat): #103 balance groundwork (waiting on owner).
+- check-uniques fails: 7 uniques bend skill settings removed in #99
+  (Millwheel, Long Drizzle, Overcast, Splinterwand, Bottled Squall,
+  Trapper's Last Belt). Needs repointing.
 
 ## Phase 0d log
 
