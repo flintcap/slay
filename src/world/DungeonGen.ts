@@ -60,6 +60,8 @@ import {
 import { type ZonePlan, buildArea } from './zones/Area';
 import { planMap, zoneHeat } from './MapGen';
 import { chestKindFor, placeProps } from './Props';
+import { rollRunTheme, runTheme, themeFits } from './Themes';
+import { getMonster } from '../data/monsters';
 
 // ---------------------------------------------------------------------------
 // Contract exports
@@ -690,6 +692,8 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
     return variants.get(b);
   };
   const variant = variantOf(biome);
+  // A run theme over the whole map, on its own stream: no other roll moves.
+  const theme = rollRunTheme(depth, map.info.zones.map((z) => z.biome), streamFor(seed, `runTheme:${depth}`)) ?? undefined;
 
   const zonesTotal = map.info.zones.length;
   // A map whose loads cannot hold the old floor count makes up the crowd.
@@ -702,11 +706,12 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
       budgetScale,
       next: map.areas[i + 1]?.[0],
       variant: variantOf(map.areas[i]![0]!.biome),
+      runTheme: theme,
     });
     levels.push(level);
   }
 
-  return { seed, depth, biome, variant, levels, quest, modifiers, bossId, bossMood, map: map.info };
+  return { seed, depth, biome, variant, runTheme: theme, levels, quest, modifiers, bossId, bossMood, map: map.info };
 }
 
 // ---------------------------------------------------------------------------
@@ -723,6 +728,8 @@ export interface AreaContext {
   next?: ZonePlan;
   /** The dressed version of the area's first biome, set before props are placed. */
   variant?: string;
+  /** The map's run theme (`world/Themes.ts`), set before monsters and props. */
+  runTheme?: string;
 }
 
 /**
@@ -817,6 +824,7 @@ export function generateLevel(
   };
   // Props dress in the map's variant, so it must be known before placement.
   if (actx?.variant !== undefined) level.variant = actx.variant;
+  if (actx?.runTheme !== undefined) level.runTheme = actx.runTheme;
 
   // --- Ways on, and the way home ----------------------------------------
   const exitZone = area.zoneOf[exit.y * g.w + exit.x] ?? 0;
@@ -1513,10 +1521,38 @@ function placeSpawns(
     const b = zones[z]?.biome ?? level.biome;
     return Array.from(new Set(catalog.pick(depth, b, rng.fork(z === 0 ? 'ids' : `ids${z}`), 24)));
   });
+  // A run theme only moves which monster fills a slot: its favoured families
+  // weigh more, and a few of them from its guest biome may join the pool.
+  // Counts and numbers are untouched. Rolled on its own stream.
+  const theme = runTheme(level.runTheme);
+  const weightsByZone: Array<number[] | null> = idsByZone.map((ids, z) => {
+    const b = zones[z]?.biome ?? level.biome;
+    if (!themeFits(theme, b)) return null;
+    const trng = streamFor(level.seed, `runTheme:ids:${depth}:${level.entry.x},${level.entry.y}:${z}`);
+    const favoured = (id: string): number => {
+      const f = getMonster(id)?.family;
+      return f ? theme.favour[f] ?? 1 : 1;
+    };
+    if (theme.guests !== b) {
+      const guests = catalog.pick(depth, theme.guests, trng, 12).filter((id) => !ids.includes(id) && favoured(id) > 1);
+      for (const id of Array.from(new Set(guests)).slice(0, 3)) ids.push(id);
+    }
+    return ids.map(favoured);
+  });
   let zoneNow = 0;
   const pickId = (): string => {
     const ids = idsByZone[zoneNow]!;
-    return ids.length > 0 ? rng.pick(ids) : 'skeleton';
+    if (ids.length === 0) return 'skeleton';
+    const w = weightsByZone[zoneNow];
+    if (!w) return rng.pick(ids);
+    let total = 0;
+    for (const x of w) total += x;
+    let r = rng.next() * total;
+    for (let i = 0; i < ids.length; i++) {
+      r -= w[i]!;
+      if (r < 0) return ids[i]!;
+    }
+    return ids[ids.length - 1]!;
   };
 
   const usedTile = new Set<number>();
@@ -1596,12 +1632,15 @@ function placeSpawns(
       // the number of *packs* worth noticing while cutting the headcount.
       const leaders = Math.max(1, Math.round(spots.length * 0.34));
       const memberRank: MonsterRank = k < leaders ? rank : STEP_DOWN[rank];
+      // Rolled whatever the leader is, so which monster leads (a run theme
+      // moves that) never shifts the rolls of the packs after it.
+      const kind = rng.chance(0.72) ? leaderId : pickId();
       spawns.push({
         x: t % g.w,
         y: (t / g.w) | 0,
         // The named one is always the leader, and always the pack's own
         // monster — a retinue of something else reads as two packs overlapping.
-        monsterId: named && k === 0 ? leaderId : rng.chance(0.72) ? leaderId : pickId(),
+        monsterId: named && k === 0 ? leaderId : kind,
         rank: memberRank,
         affixes: memberRank === 'normal' ? [] : packAffixes,
         packId: id,

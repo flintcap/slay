@@ -20,6 +20,7 @@ import { floorAt } from '../fx/kit/Floor';
 import type { Layer } from '../fx/kit/Emitters';
 import type { FXSystem } from '../fx/Particles';
 import type { BiomeId, DungeonLevel, MapZone, Rng } from '../types';
+import { runTheme, themeFits, type RunTheme } from './Themes';
 
 export type WeatherKind = 'snow' | 'rain' | 'ash' | 'cinders' | 'fog' | 'grit' | 'drip';
 
@@ -109,6 +110,17 @@ export function weatherFor(biome: BiomeId, outdoor: boolean, variant: string | u
       break;
   }
   return { falls: outdoor ? falls : falls.filter((f) => !SKY.has(f.kind) || (biome === 'frostvault' && f.kind === 'snow')), wind };
+}
+
+/** A run theme's weather laid over a zone's own: the heavier of each kind wins. */
+export function withTheme(r: WeatherRecipe, theme: RunTheme, outdoor: boolean): WeatherRecipe {
+  const falls = r.falls.map((f) => ({ ...f }));
+  for (const t of outdoor ? theme.sky : theme.roof) {
+    const have = falls.find((f) => f.kind === t.kind);
+    if (have) have.rate = Math.max(have.rate, t.rate);
+    else falls.push({ ...t });
+  }
+  return { falls, wind: r.wind };
 }
 
 // ---------------------------------------------------------------------------
@@ -215,7 +227,11 @@ export class Weather {
     const rng = streamFor(level.seed, `weather:${level.depth}:${level.entry.x},${level.entry.y}:${level.width}x${level.height}`);
     this.windAngle = rng.range(0, Math.PI * 2);
     const zones: Array<Pick<MapZone, 'biome' | 'outdoor'>> = level.zones && level.zones.length > 0 ? level.zones : [{ biome: level.biome, outdoor: false }];
-    this.recipes = zones.map((z) => weatherFor(z.biome, z.outdoor, level.variant, rng));
+    const theme = runTheme(level.runTheme);
+    this.recipes = zones.map((z) => {
+      const r = weatherFor(z.biome, z.outdoor, level.variant, rng);
+      return themeFits(theme, z.biome) ? withTheme(r, theme, z.outdoor) : r;
+    });
     for (const k of Object.keys(LOOKS) as WeatherKind[]) this.mix.set(k, { rate: 0, now: 0, acc: 0, splash: 0 });
     this.fogLayer = LOOKS.fog.layer;
     if (fogColor !== undefined) {

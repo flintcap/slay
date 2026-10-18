@@ -879,6 +879,12 @@ export interface DungeonLevel {
    * which, what it is called, its heart (tile coordinates) and its room.
    */
   landmark?: { id: string; name: string; x: number; y: number; room: number };
+  /**
+   * The map's run theme (`world/Themes.ts`), or none. It touches only zones
+   * whose biome suits it (`themeFits`); `runTheme(id).light` is a tint the
+   * looks stream may lay over those zones.
+   */
+  runTheme?: string;
 }
 
 /**
@@ -971,6 +977,11 @@ export interface DungeonRun {
   biome: BiomeId;
   /** The biome variant every level of this run wears. */
   variant?: string;
+  /**
+   * The run theme the map rolled (`world/Themes.ts`: flooded, overgrown,
+   * burnt, haunted), or none. Each level carries it too.
+   */
+  runTheme?: string;
   levels: DungeonLevel[];
   quest: QuestInstance;
   /** Global run modifiers from endless scaling. */

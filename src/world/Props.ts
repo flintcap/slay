@@ -18,12 +18,13 @@
  *    layer lists so the builder can turn each one into an `InstancedMesh`.
  */
 
-import type { BiomeDef, DungeonLevel, DungeonRoom, PropPlacement, Rng } from '../types';
+import type { BiomeDef, BiomeId, DungeonLevel, DungeonRoom, PropPlacement, Rng } from '../types';
 import { Noise, clamp } from '../art/Noise';
 import { biomeArt, isOutdoorBiome, wallKitOf, type BiomeArt } from './Biomes';
 import { dressingFor, type Dressing, type Pool } from '../art/props/Dressing';
 import { streamFor } from '../core/RNG';
 import { LANDMARK_CHANCE, setPiecesFor } from './Landmarks';
+import { runTheme, themeFits, themedDressing } from './Themes';
 import {
   T_DOOR,
   T_FLOOR,
@@ -91,7 +92,13 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
   // biome has it, so a flooded crypt gets the flooded crypt's clutter and a
   // forest zone beside it keeps its stumps.
   const zones = level.zones && level.zones.length > 0 ? level.zones : null;
-  const dress = zones ? zones.map((z) => dressingFor(z.biome, level.variant)) : [dressingFor(biome.id, level.variant)];
+  // A run theme (world/Themes.ts) adds its own kinds where the biome suits it.
+  const theme = runTheme(level.runTheme);
+  const dressOf = (b: BiomeId): Dressing => {
+    const d = dressingFor(b, level.variant);
+    return themeFits(theme, b) ? themedDressing(d, `${b}|${level.variant ?? ''}`, theme) : d;
+  };
+  const dress = zones ? zones.map((z) => dressOf(z.biome)) : [dressOf(biome.id)];
   const outdoor = zones ? zones.map((z) => z.outdoor) : [isOutdoorBiome(biome.id)];
   const masonry = (zones ? zones.map((z) => z.biome) : [biome.id]).map((b) => wallKitOf(biomeArt(b, level.variant)) === 'masonry');
   const w = level.width;
