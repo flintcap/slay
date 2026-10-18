@@ -1336,6 +1336,193 @@ mon({
   visual: { body: 'ooze', palette: CRIMSON, ornate: 0.85, limbs: 6, eyes: 9, glow: 0xff3366 },
 });
 
+// ===========================================================================
+// THE KEPT — the Tenant's household (depth 30 on). Servants kept at their work
+// so long they went to wax and soot: they trim the lamps, sweep the halls and
+// tidy away whatever comes down the stair. Indoor layers only.
+// ===========================================================================
+
+const KEPT_HALLS: BiomeId[] = ['crypt', 'caverns', 'foundry', 'sunkenTemple', 'desertTomb', 'frostvault', 'voidspire'];
+const KEPT_WAX = 'flesh.rotted|0xd8c8a4';
+const KEPT_SOOT = 'cloth.linen|0x2a2622';
+const KEPT_RESISTS = { poison: 40, cold: 20, fire: -15 };
+
+mon({
+  id: 'kept_hallsweeper', name: 'Hallsweeper', family: 'kept', role: 'melee',
+  minDepth: 30, weight: 12, lifeMul: 1.1, damageMul: 1.05, attackRange: 2.2,
+  abilities: ['basic_strike'],
+  resists: KEPT_RESISTS,
+  biomes: KEPT_HALLS,
+  visual: { body: 'humanoid', palette: KEPT_WAX, ornate: 0.2, eyes: 2, glow: 0xffc870, weapon: 'staff' },
+});
+
+mon({
+  id: 'kept_wicktrimmer', name: 'Wick-Trimmer', family: 'kept', role: 'ranged',
+  minDepth: 31, weight: 8, attackRange: 13, speed: 2.7, damageType: 'fire',
+  abilities: ['fire_bolt'],
+  resists: { ...KEPT_RESISTS, fire: 30 },
+  biomes: KEPT_HALLS,
+  visual: { body: 'humanoid', palette: KEPT_WAX, ornate: 0.3, eyes: 2, glow: 0xffb050, weapon: 'staff' },
+});
+
+mon({
+  id: 'kept_dustling', name: 'Dustling', family: 'kept', role: 'swarm',
+  minDepth: 32, weight: 14, speed: 4.4,
+  abilities: ['basic_strike'],
+  resists: { poison: 60, physical: 10, fire: -15 },
+  biomes: KEPT_HALLS,
+  visual: { body: 'floating', palette: KEPT_SOOT, ornate: 0.2, eyes: 2, glow: 0xffd890 },
+});
+
+mon({
+  id: 'kept_shelver', name: 'Shelver', family: 'kept', role: 'brute',
+  minDepth: 34, weight: 5, lifeMul: 2.8, damageMul: 1.6, scale: 1.6,
+  abilities: ['heavy_slam'],
+  resists: { ...KEPT_RESISTS, physical: 20 },
+  biomes: KEPT_HALLS,
+  visual: { body: 'brute', palette: KEPT_WAX, ornate: 0.5, eyes: 2, glow: 0xffc070, weapon: 'hammer' },
+});
+
+mon({
+  id: 'kept_turnkey', name: 'Turnkey', family: 'kept', role: 'support',
+  minDepth: 36, weight: 4,
+  abilities: ['shield_ally'],
+  resists: KEPT_RESISTS,
+  biomes: KEPT_HALLS,
+  visual: { body: 'humanoid', palette: KEPT_SOOT, ornate: 0.45, eyes: 2, glow: 0xe0c080, weapon: 'staff' },
+});
+
+mon({
+  id: 'kept_housemother', name: 'Housemother', family: 'kept', role: 'ambusher',
+  minDepth: 40, weight: 5, lifeMul: 1.0, damageMul: 1.5, speed: 3.6,
+  abilities: ['teleport_strike'],
+  resists: { ...KEPT_RESISTS, arcane: 25 },
+  biomes: KEPT_HALLS,
+  visual: { body: 'humanoid', palette: KEPT_SOOT, ornate: 0.6, eyes: 2, glow: 0xffe0a0, weapon: 'dagger' },
+});
+
+// ===========================================================================
+// THE NAILBORN — glass that grew wrong in the Hollow Spire (depth 50 on). Cut
+// edges, light trapped inside, too many angles. Hard to cut, they carry
+// lightning and spellfire, and they shatter.
+// ===========================================================================
+
+const NAIL_REACH: BiomeId[] = ['voidspire', 'frostvault', 'hell', 'ashwaste', 'hive', 'caverns', 'tundra', 'desert'];
+const NAIL_GLASS = 'crystal.void|0x9ab8d0';
+const NAIL_DARK = 'crystal.void|0x2a2e3a';
+const NAIL_RESISTS = { physical: 25, lightning: 50, arcane: 40, poison: 60, fire: -10 };
+
+mon({
+  id: 'nail_splinter', name: 'Splinterling', family: 'nailborn', role: 'swarm',
+  minDepth: 50, weight: 14, speed: 4.6,
+  abilities: ['basic_strike'],
+  resists: NAIL_RESISTS,
+  biomes: NAIL_REACH,
+  visual: { body: 'floating', palette: NAIL_GLASS, ornate: 0.5, eyes: 1, glow: 0xa8e8ff },
+});
+
+mon({
+  id: 'nail_facet', name: 'Facet', family: 'nailborn', role: 'ranged',
+  minDepth: 52, weight: 8, attackRange: 14, damageType: 'lightning',
+  abilities: ['shock_bolt'],
+  resists: { ...NAIL_RESISTS, lightning: 75 },
+  biomes: NAIL_REACH,
+  visual: { body: 'floating', palette: NAIL_GLASS, ornate: 0.6, eyes: 1, glow: 0xd0f4ff },
+});
+
+mon({
+  id: 'nail_walker', name: 'Nailwalker', family: 'nailborn', role: 'melee',
+  minDepth: 54, weight: 11, lifeMul: 1.05, damageMul: 1.1, speed: 3.2,
+  abilities: ['basic_strike'],
+  resists: NAIL_RESISTS,
+  biomes: NAIL_REACH,
+  visual: { body: 'humanoid', palette: NAIL_DARK, ornate: 0.7, eyes: 1, glow: 0x80d8ff, weapon: 'spear' },
+});
+
+mon({
+  id: 'nail_prism', name: 'Split Prism', family: 'nailborn', role: 'caster',
+  minDepth: 56, weight: 5, lifeMul: 0.8, damageMul: 1.25, attackRange: 15, damageType: 'arcane',
+  abilities: ['arcane_orb'],
+  resists: { ...NAIL_RESISTS, arcane: 70 },
+  biomes: NAIL_REACH,
+  visual: { body: 'floating', palette: NAIL_GLASS, ornate: 0.8, eyes: 3, glow: 0xe0a0ff },
+});
+
+mon({
+  id: 'nail_nailhead', name: 'Nailhead', family: 'nailborn', role: 'brute',
+  minDepth: 60, weight: 5, lifeMul: 2.8, damageMul: 1.6, scale: 1.6, speed: 2.3,
+  abilities: ['impale'],
+  resists: { ...NAIL_RESISTS, physical: 40 },
+  biomes: NAIL_REACH,
+  visual: { body: 'brute', palette: NAIL_DARK, ornate: 0.9, eyes: 1, glow: 0x90e0ff },
+});
+
+mon({
+  id: 'nail_wrongangle', name: 'Wrong Angle', family: 'nailborn', role: 'ambusher',
+  minDepth: 64, weight: 5, damageMul: 1.55, speed: 3.9, damageType: 'arcane',
+  abilities: ['phase_shift'],
+  resists: { ...NAIL_RESISTS, arcane: 60 },
+  biomes: NAIL_REACH,
+  visual: { body: 'humanoid', palette: NAIL_DARK, ornate: 0.9, eyes: 2, glow: 0xc080ff, weapon: 'dagger' },
+});
+
+// ===========================================================================
+// THE STAYED — delvers who went down and never came back up (depth 70 on).
+// Dead, still in the gear they died in, still fighting the way they were
+// taught: a leap, a whirl, a prayer. Found in every layer.
+// ===========================================================================
+
+const STAYED_DUST = 'stone.crypt|0xb8b0a0';
+const STAYED_RESISTS = { poison: 50, cold: 25, physical: 10 };
+
+mon({
+  id: 'stayed_sellsword', name: 'Stayed Sellsword', family: 'stayed', role: 'melee',
+  minDepth: 70, weight: 11, lifeMul: 1.15, damageMul: 1.1,
+  abilities: ['basic_strike'],
+  resists: STAYED_RESISTS,
+  visual: { body: 'armored', palette: STAYED_DUST, ornate: 0.5, eyes: 2, glow: 0x9ad0ff, weapon: 'sword' },
+});
+
+mon({
+  id: 'stayed_archer', name: 'Stayed Archer', family: 'stayed', role: 'ranged',
+  minDepth: 72, weight: 8, attackRange: 15, speed: 2.8,
+  abilities: ['arrow_shot'],
+  resists: STAYED_RESISTS,
+  visual: { body: 'skeleton', palette: STAYED_DUST, ornate: 0.4, eyes: 2, glow: 0x9ad0ff, weapon: 'bow' },
+});
+
+mon({
+  id: 'stayed_spellwright', name: 'Stayed Spellwright', family: 'stayed', role: 'caster',
+  minDepth: 74, weight: 5, attackRange: 14, damageType: 'cold',
+  abilities: ['frost_bolt'],
+  resists: { ...STAYED_RESISTS, cold: 60, fire: 30 },
+  visual: { body: 'skeleton', palette: STAYED_DUST, ornate: 0.6, eyes: 2, glow: 0x80c8ff, weapon: 'staff' },
+});
+
+mon({
+  id: 'stayed_cutthroat', name: 'Stayed Cutthroat', family: 'stayed', role: 'ambusher',
+  minDepth: 77, weight: 5, damageMul: 1.5, speed: 3.8,
+  abilities: ['ambush_leap'],
+  resists: { ...STAYED_RESISTS, poison: 75 },
+  visual: { body: 'skeleton', palette: STAYED_DUST, ornate: 0.5, eyes: 2, glow: 0x9ad0ff, weapon: 'dagger' },
+});
+
+mon({
+  id: 'stayed_chaplain', name: 'Stayed Chaplain', family: 'stayed', role: 'support',
+  minDepth: 80, weight: 4,
+  abilities: ['heal_ally'],
+  resists: { ...STAYED_RESISTS, arcane: 30 },
+  visual: { body: 'armored', palette: STAYED_DUST, ornate: 0.7, eyes: 2, glow: 0xffe8a0, weapon: 'staff' },
+});
+
+mon({
+  id: 'stayed_champion', name: 'Stayed Champion', family: 'stayed', role: 'brute',
+  minDepth: 84, weight: 4, lifeMul: 2.9, damageMul: 1.6, scale: 1.5,
+  abilities: ['whirlwind'],
+  resists: { ...STAYED_RESISTS, physical: 25 },
+  visual: { body: 'armored', palette: STAYED_DUST, ornate: 0.9, eyes: 2, glow: 0x9ad0ff, weapon: 'greataxe' },
+});
+
 // ---------------------------------------------------------------------------
 // Exports & selection
 // ---------------------------------------------------------------------------

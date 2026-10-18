@@ -33,10 +33,10 @@
   "mCircle"
  ],
  "music/frozen/01.ogg": [
-  "mIcy"
+  "mFrostNorth"
  ],
  "music/frozen/02.ogg": [
-  "mWinter"
+  "mColdSilence"
  ],
  "music/hell/01.ogg": [
   "mProwler"
@@ -955,6 +955,18 @@
   "mud",
   "ki"
  ],
+ "sounds/hit.glass/01.ogg": [
+  "ki"
+ ],
+ "sounds/hit.glass/02.ogg": [
+  "ki"
+ ],
+ "sounds/hit.glass/03.ogg": [
+  "ki"
+ ],
+ "sounds/hit.glass/04.ogg": [
+  "ki"
+ ],
  "sounds/hit.heavy/01.ogg": [
   "ki",
   "bfh"
@@ -1559,6 +1571,102 @@
  "sounds/monster.insect.hurt/04.ogg": [
   "creat2"
  ],
+ "sounds/monster.kept.aggro/01.ogg": [
+  "gbreath",
+  "mw"
+ ],
+ "sounds/monster.kept.aggro/02.ogg": [
+  "creat2",
+  "kr"
+ ],
+ "sounds/monster.kept.aggro/03.ogg": [
+  "creat2",
+  "mw"
+ ],
+ "sounds/monster.kept.attack/01.ogg": [
+  "creat2",
+  "kr"
+ ],
+ "sounds/monster.kept.attack/02.ogg": [
+  "creat2",
+  "kr"
+ ],
+ "sounds/monster.kept.attack/03.ogg": [
+  "creat",
+  "kr"
+ ],
+ "sounds/monster.kept.death/01.ogg": [
+  "creat2",
+  "mw",
+  "kr"
+ ],
+ "sounds/monster.kept.death/02.ogg": [
+  "creat",
+  "gbreath"
+ ],
+ "sounds/monster.kept.death/03.ogg": [
+  "creat2",
+  "kr"
+ ],
+ "sounds/monster.kept.hurt/01.ogg": [
+  "creat"
+ ],
+ "sounds/monster.kept.hurt/02.ogg": [
+  "creat"
+ ],
+ "sounds/monster.kept.hurt/03.ogg": [
+  "creat"
+ ],
+ "sounds/monster.kept.hurt/04.ogg": [
+  "creat2",
+  "kr"
+ ],
+ "sounds/monster.nailborn.aggro/01.ogg": [
+  "shatter",
+  "creat2"
+ ],
+ "sounds/monster.nailborn.aggro/02.ogg": [
+  "scifi",
+  "ki"
+ ],
+ "sounds/monster.nailborn.aggro/03.ogg": [
+  "creat",
+  "ki"
+ ],
+ "sounds/monster.nailborn.attack/01.ogg": [
+  "ki",
+  "creat2"
+ ],
+ "sounds/monster.nailborn.attack/02.ogg": [
+  "ki",
+  "creat2"
+ ],
+ "sounds/monster.nailborn.attack/03.ogg": [
+  "ki",
+  "creat2"
+ ],
+ "sounds/monster.nailborn.death/01.ogg": [
+  "shatter"
+ ],
+ "sounds/monster.nailborn.death/02.ogg": [
+  "shatter",
+  "ki"
+ ],
+ "sounds/monster.nailborn.death/03.ogg": [
+  "shatter"
+ ],
+ "sounds/monster.nailborn.hurt/01.ogg": [
+  "ki"
+ ],
+ "sounds/monster.nailborn.hurt/02.ogg": [
+  "ki"
+ ],
+ "sounds/monster.nailborn.hurt/03.ogg": [
+  "ki"
+ ],
+ "sounds/monster.nailborn.hurt/04.ogg": [
+  "ki"
+ ],
  "sounds/monster.ooze.aggro/01.ogg": [
   "rsp"
  ],
@@ -1644,6 +1752,51 @@
  ],
  "sounds/monster.plant.hurt/04.ogg": [
   "tiny"
+ ],
+ "sounds/monster.stayed.aggro/01.ogg": [
+  "yell",
+  "moan"
+ ],
+ "sounds/monster.stayed.aggro/02.ogg": [
+  "yell",
+  "ki"
+ ],
+ "sounds/monster.stayed.aggro/03.ogg": [
+  "yell",
+  "moan"
+ ],
+ "sounds/monster.stayed.attack/01.ogg": [
+  "yell",
+  "ki"
+ ],
+ "sounds/monster.stayed.attack/02.ogg": [
+  "yell"
+ ],
+ "sounds/monster.stayed.attack/03.ogg": [
+  "yell"
+ ],
+ "sounds/monster.stayed.death/01.ogg": [
+  "moan",
+  "mw"
+ ],
+ "sounds/monster.stayed.death/02.ogg": [
+  "yell",
+  "bfh"
+ ],
+ "sounds/monster.stayed.death/03.ogg": [
+  "zomb",
+  "mw"
+ ],
+ "sounds/monster.stayed.hurt/01.ogg": [
+  "yell",
+  "ki"
+ ],
+ "sounds/monster.stayed.hurt/02.ogg": [
+  "yell",
+  "ki"
+ ],
+ "sounds/monster.stayed.hurt/03.ogg": [
+  "yell"
  ],
  "sounds/monster.swing/01.ogg": [
   "swish"

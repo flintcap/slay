@@ -237,7 +237,7 @@ const DEFS: Record<string, Partial<SoundDef>> = {
 /** Elements the family rules understand. */
 const ELEMENTS = new Set(['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane', 'bone']);
 const RARITIES = new Set(['normal', 'magic', 'rare', 'set', 'unique', 'mythic', 'ancient']);
-const FAMILIES = new Set(['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze']);
+const FAMILIES = new Set(['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze', 'kept', 'nailborn', 'stayed']);
 
 /** Direct renames: callers' names for a sound that lives under another id. */
 const ALIASES: Record<string, string> = {

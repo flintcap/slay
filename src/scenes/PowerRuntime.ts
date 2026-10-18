@@ -161,7 +161,8 @@ export class PowerRuntime {
     if (type === 'poison') more += p.poisonMorePct;
     if (ELEMENTAL.has(type)) more += p.elementalMorePct;
     if (packet.crit) more += p.critMorePct;
-    if (target.family === 'undead') more += p.vsUndeadPct;
+    // The Stayed are dead delvers: undead to every blessing that hunts the dead.
+    if (target.family === 'undead' || target.family === 'stayed') more += p.vsUndeadPct;
     else more -= p.vsLivingPenaltyPct;
     if (target.family === 'demon') more += p.vsDemonPct;
     if (target.family === 'beast') more += p.vsBeastPct;

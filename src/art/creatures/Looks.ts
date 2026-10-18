@@ -28,6 +28,7 @@ import { BOSS_C, BOSS_C_KIN } from './LookBoss3';
 import { BOSS_D, BOSS_D_KIN } from './LookBoss4';
 import { WARDEN_LOOKS } from './LookWardens';
 import { OBJECTS } from './LookObjects';
+import { DEEP } from './LookDeep';
 
 export interface LookCtx {
   id: string;
@@ -51,6 +52,7 @@ const FACTORIES: Record<string, LookFactory> = {
   ...ABERRATION,
   ...PLANT,
   ...OOZE,
+  ...DEEP,
   ...BOSS_A,
   ...BOSS_B,
   ...BOSS_C,

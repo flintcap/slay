@@ -14,6 +14,9 @@ export type HitMaterial = 'flesh' | 'bone' | 'stone' | 'ichor' | 'ether';
 export function hitMaterial(family: string | undefined): HitMaterial {
   switch (family) {
     case 'undead':
+    case 'stayed':
+    // The Kept are wax over cloth: struck, they flake.
+    case 'kept':
       return 'bone';
     case 'construct':
       return 'stone';
@@ -22,6 +25,7 @@ export function hitMaterial(family: string | undefined): HitMaterial {
     case 'insect':
       return 'ichor';
     case 'elemental':
+    case 'nailborn':
       return 'ether';
     default:
       return 'flesh';

@@ -16,6 +16,126 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 
 | Path | Source page | Author | Licence |
 | --- | --- | --- | --- |
+| `textures/world/slab/albedo.webp` | https://polyhaven.com/a/rock_tile_floor | Charlotte Baglioni | CC0 1.0 |
+| `textures/world/slab/normal.webp` | https://polyhaven.com/a/rock_tile_floor | Charlotte Baglioni | CC0 1.0 |
+| `textures/world/lava_crust/albedo.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava_crust/normal.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava_crust/emissive.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/tiles_worn/albedo.webp` | https://polyhaven.com/a/worn_tile_floor | Dimitrios Savva | CC0 1.0 |
+| `textures/world/tiles_worn/normal.webp` | https://polyhaven.com/a/worn_tile_floor | Dimitrios Savva | CC0 1.0 |
+| `textures/world/flagstone/albedo.webp` | https://polyhaven.com/a/grey_stone_path | Amal Kumar | CC0 1.0 |
+| `textures/world/flagstone/normal.webp` | https://polyhaven.com/a/grey_stone_path | Amal Kumar | CC0 1.0 |
+| `textures/world/flagstone_dark/albedo.webp` | https://polyhaven.com/a/monastery_stone_floor | Amal Kumar | CC0 1.0 |
+| `textures/world/flagstone_dark/normal.webp` | https://polyhaven.com/a/monastery_stone_floor | Amal Kumar | CC0 1.0 |
+| `textures/world/cobble/albedo.webp` | https://polyhaven.com/a/cobblestone_floor_04 | Rob Tuytel | CC0 1.0 |
+| `textures/world/cobble/normal.webp` | https://polyhaven.com/a/cobblestone_floor_04 | Rob Tuytel | CC0 1.0 |
+| `textures/world/ashlar/albedo.webp` | https://polyhaven.com/a/stone_brick_wall_001 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
+| `textures/world/ashlar/normal.webp` | https://polyhaven.com/a/stone_brick_wall_001 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
+| `textures/world/rubble_wall/albedo.webp` | https://polyhaven.com/a/castle_wall_varriation | Rob Tuytel | CC0 1.0 |
+| `textures/world/rubble_wall/normal.webp` | https://polyhaven.com/a/castle_wall_varriation | Rob Tuytel | CC0 1.0 |
+| `textures/world/brick_red/albedo.webp` | https://polyhaven.com/a/castle_brick_07 | Rob Tuytel | CC0 1.0 |
+| `textures/world/brick_red/normal.webp` | https://polyhaven.com/a/castle_brick_07 | Rob Tuytel | CC0 1.0 |
+| `textures/world/mossy_wall/albedo.webp` | https://polyhaven.com/a/mossy_stone_wall | Amal Kumar | CC0 1.0 |
+| `textures/world/mossy_wall/normal.webp` | https://polyhaven.com/a/mossy_stone_wall | Amal Kumar | CC0 1.0 |
+| `textures/world/sandstone/albedo.webp` | https://polyhaven.com/a/sandstone_blocks_08 | Rob Tuytel | CC0 1.0 |
+| `textures/world/sandstone/normal.webp` | https://polyhaven.com/a/sandstone_blocks_08 | Rob Tuytel | CC0 1.0 |
+| `textures/world/plaster/albedo.webp` | https://polyhaven.com/a/damaged_plaster | Amal Kumar | CC0 1.0 |
+| `textures/world/plaster/normal.webp` | https://polyhaven.com/a/damaged_plaster | Amal Kumar | CC0 1.0 |
+| `textures/world/cliff/albedo.webp` | https://polyhaven.com/a/cliff_side | James Ray Cock, Jenelle van Heerden, Dario Barresi | CC0 1.0 |
+| `textures/world/cliff/normal.webp` | https://polyhaven.com/a/cliff_side | James Ray Cock, Jenelle van Heerden, Dario Barresi | CC0 1.0 |
+| `textures/world/cave/albedo.webp` | https://polyhaven.com/a/rock_face | Greg Zaal, Dario Barresi | CC0 1.0 |
+| `textures/world/cave/normal.webp` | https://polyhaven.com/a/rock_face | Greg Zaal, Dario Barresi | CC0 1.0 |
+| `textures/world/basalt/albedo.webp` | https://polyhaven.com/a/dark_rock | Amal Kumar | CC0 1.0 |
+| `textures/world/basalt/normal.webp` | https://polyhaven.com/a/dark_rock | Amal Kumar | CC0 1.0 |
+| `textures/world/obsidian/albedo.webp` | https://ambientcg.com/view?id=Rock035 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/obsidian/normal.webp` | https://ambientcg.com/view?id=Rock035 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava/albedo.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava/normal.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/lava/emissive.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/ice/albedo.webp` | https://ambientcg.com/view?id=Ice002 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/ice/normal.webp` | https://ambientcg.com/view?id=Ice002 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/snow/albedo.webp` | https://polyhaven.com/a/snow_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/snow/normal.webp` | https://polyhaven.com/a/snow_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/dirt/albedo.webp` | https://polyhaven.com/a/forest_ground_04 | Rob Tuytel, Rico Cilliers | CC0 1.0 |
+| `textures/world/dirt/normal.webp` | https://polyhaven.com/a/forest_ground_04 | Rob Tuytel, Rico Cilliers | CC0 1.0 |
+| `textures/world/path/albedo.webp` | https://polyhaven.com/a/rocky_trail | Amal Kumar | CC0 1.0 |
+| `textures/world/path/normal.webp` | https://polyhaven.com/a/rocky_trail | Amal Kumar | CC0 1.0 |
+| `textures/world/mud/albedo.webp` | https://polyhaven.com/a/brown_mud_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/mud/normal.webp` | https://polyhaven.com/a/brown_mud_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/grass/albedo.webp` | https://polyhaven.com/a/forrest_ground_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/grass/normal.webp` | https://polyhaven.com/a/forrest_ground_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/leaves/albedo.webp` | https://polyhaven.com/a/forest_leaves_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/leaves/normal.webp` | https://polyhaven.com/a/forest_leaves_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/roots/albedo.webp` | https://polyhaven.com/a/roots | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/world/roots/normal.webp` | https://polyhaven.com/a/roots | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/world/sand/albedo.webp` | https://polyhaven.com/a/sand_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/sand/normal.webp` | https://polyhaven.com/a/sand_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/cracked/albedo.webp` | https://polyhaven.com/a/mud_cracked_dry_03 | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/world/cracked/normal.webp` | https://polyhaven.com/a/mud_cracked_dry_03 | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/world/ash/albedo.webp` | https://polyhaven.com/a/burned_ground_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/ash/normal.webp` | https://polyhaven.com/a/burned_ground_01 | Rob Tuytel | CC0 1.0 |
+| `textures/world/planks/albedo.webp` | https://polyhaven.com/a/old_planks_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/planks/normal.webp` | https://polyhaven.com/a/old_planks_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/rust/albedo.webp` | https://polyhaven.com/a/rust_coarse_01 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
+| `textures/world/rust/normal.webp` | https://polyhaven.com/a/rust_coarse_01 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
+| `textures/world/bark/albedo.webp` | https://polyhaven.com/a/bark_brown_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/bark/normal.webp` | https://polyhaven.com/a/bark_brown_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/iron/albedo.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/iron/normal.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
+| `textures/world/steel/albedo.webp` | https://ambientcg.com/view?id=Metal032 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/steel/normal.webp` | https://ambientcg.com/view?id=Metal032 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/chainmail/albedo.webp` | https://ambientcg.com/view?id=Chainmail004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/chainmail/normal.webp` | https://ambientcg.com/view?id=Chainmail004 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/cloth/albedo.webp` | https://ambientcg.com/view?id=Fabric030 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/cloth/normal.webp` | https://ambientcg.com/view?id=Fabric030 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/leather/albedo.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
+| `textures/world/leather/normal.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
+| `textures/world/wood/albedo.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
+| `textures/world/wood/normal.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
+| `textures/world/fur/albedo.webp` | https://ambientcg.com/view?id=Fabric084 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/fur/normal.webp` | https://ambientcg.com/view?id=Fabric084 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/bone/albedo.webp` | https://ambientcg.com/view?id=Rock023 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/bone/normal.webp` | https://ambientcg.com/view?id=Rock023 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/flesh/albedo.webp` | https://ambientcg.com/view?id=Lava005 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/flesh/normal.webp` | https://ambientcg.com/view?id=Lava005 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/moss/albedo.webp` | https://ambientcg.com/view?id=Moss002 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/moss/normal.webp` | https://ambientcg.com/view?id=Moss002 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/world/tracks/albedo.webp` | https://polyhaven.com/a/muddy_tracks | Amal Kumar | CC0 1.0 |
+| `textures/world/tracks/normal.webp` | https://polyhaven.com/a/muddy_tracks | Amal Kumar | CC0 1.0 |
+| `textures/world/stony_dirt/albedo.webp` | https://polyhaven.com/a/stony_dirt_path | eye-candy.xyz | CC0 1.0 |
+| `textures/world/stony_dirt/normal.webp` | https://polyhaven.com/a/stony_dirt_path | eye-candy.xyz | CC0 1.0 |
+| `textures/hero/linen/albedo.webp` | https://polyhaven.com/a/rough_linen | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/linen/normal.webp` | https://polyhaven.com/a/rough_linen | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/wool/albedo.webp` | https://polyhaven.com/a/caban | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/wool/normal.webp` | https://polyhaven.com/a/caban | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/leather/albedo.webp` | https://polyhaven.com/a/brown_leather | Rob Tuytel | CC0 1.0 |
+| `textures/hero/leather/normal.webp` | https://polyhaven.com/a/brown_leather | Rob Tuytel | CC0 1.0 |
+| `textures/hero/suede/albedo.webp` | https://polyhaven.com/a/scuba_suede | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/suede/normal.webp` | https://polyhaven.com/a/scuba_suede | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/hessian/albedo.webp` | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/hero/hessian/normal.webp` | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 1.0 |
+| `textures/items/metal/albedo.webp` | https://ambientcg.com/view?id=Metal038 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/items/metal/normal.webp` | https://ambientcg.com/view?id=Metal038 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/items/hammered/albedo.webp` | https://polyhaven.com/a/rusty_metal_02 | Rob Tuytel | CC0 1.0 |
+| `textures/items/hammered/normal.webp` | https://polyhaven.com/a/rusty_metal_02 | Rob Tuytel | CC0 1.0 |
+| `textures/items/wood/albedo.webp` | https://polyhaven.com/a/fine_grained_wood | Rob Tuytel | CC0 1.0 |
+| `textures/items/wood/normal.webp` | https://polyhaven.com/a/fine_grained_wood | Rob Tuytel | CC0 1.0 |
+| `textures/items/leather/albedo.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
+| `textures/items/leather/normal.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
+| `textures/props/planks/albedo.webp` | https://polyhaven.com/a/weathered_planks | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/props/planks/normal.webp` | https://polyhaven.com/a/weathered_planks | Dario Barresi, Dimitrios Savva | CC0 1.0 |
+| `textures/props/timber/albedo.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
+| `textures/props/timber/normal.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
+| `textures/props/thatch/albedo.webp` | https://polyhaven.com/a/thatch_roof_angled | Rob Tuytel, Dimitrios Savva | CC0 1.0 |
+| `textures/props/thatch/normal.webp` | https://polyhaven.com/a/thatch_roof_angled | Rob Tuytel, Dimitrios Savva | CC0 1.0 |
+| `textures/props/slate/albedo.webp` | https://polyhaven.com/a/roof_slates_02 | Rob Tuytel | CC0 1.0 |
+| `textures/props/slate/normal.webp` | https://polyhaven.com/a/roof_slates_02 | Rob Tuytel | CC0 1.0 |
+| `textures/props/masonry/albedo.webp` | https://polyhaven.com/a/castle_wall_slates | Rob Tuytel | CC0 1.0 |
+| `textures/props/masonry/normal.webp` | https://polyhaven.com/a/castle_wall_slates | Rob Tuytel | CC0 1.0 |
+| `textures/props/ironplate/albedo.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
+| `textures/props/ironplate/normal.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
+| `textures/ui/leather.webp` | https://ambientcg.com/view?id=Leather037 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/ui/scratched-metal.webp` | https://ambientcg.com/view?id=Metal049A | Lennart Demes (ambientCG) | CC0 1.0 |
 | music/boss.dread/01.ogg | https://opengameart.org/content/great-boss | Spring Spring | CC0 |
 | music/boss.epic/01.ogg | https://opengameart.org/content/boss-battle-music | SubspaceAudio | CC0 |
 | music/boss.metal/01.ogg | https://opengameart.org/content/boss-battle-2-symphonic-metal | nene | CC0 |
@@ -316,6 +436,10 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/hit.flesh/02.ogg | https://opengameart.org/content/25-cc0-mud-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/hit.flesh/03.ogg | https://opengameart.org/content/25-cc0-mud-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/hit.flesh/04.ogg | https://opengameart.org/content/25-cc0-mud-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/hit.glass/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/hit.glass/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/hit.glass/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/hit.glass/04.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/hit.heavy/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/hit.heavy/02.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/hit.heavy/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
@@ -505,6 +629,32 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/monster.insect.hurt/02.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
 | sounds/monster.insect.hurt/03.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
 | sounds/monster.insect.hurt/04.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
+| sounds/monster.kept.aggro/01.ogg | https://opengameart.org/content/ghost-breath | qubodup + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
+| sounds/monster.kept.aggro/02.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/monster.kept.aggro/03.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
+| sounds/monster.kept.attack/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/monster.kept.attack/02.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/monster.kept.attack/03.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/monster.kept.death/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/monster.kept.death/02.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + qubodup (opengameart.org/content/ghost-breath) | CC0 |
+| sounds/monster.kept.death/03.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/monster.kept.hurt/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
+| sounds/monster.kept.hurt/02.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
+| sounds/monster.kept.hurt/03.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
+| sounds/monster.kept.hurt/04.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/monster.nailborn.aggro/01.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD + rubberduck (opengameart.org/content/80-cc0-creture-sfx-2) | CC0 |
+| sounds/monster.nailborn.aggro/02.ogg | https://opengameart.org/content/50-cc0-sci-fi-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/monster.nailborn.aggro/03.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/monster.nailborn.attack/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-creture-sfx-2) | CC0 |
+| sounds/monster.nailborn.attack/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-creture-sfx-2) | CC0 |
+| sounds/monster.nailborn.attack/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-creture-sfx-2) | CC0 |
+| sounds/monster.nailborn.death/01.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD | CC0 |
+| sounds/monster.nailborn.death/02.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/monster.nailborn.death/03.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD | CC0 |
+| sounds/monster.nailborn.hurt/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/monster.nailborn.hurt/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/monster.nailborn.hurt/03.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/monster.nailborn.hurt/04.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/monster.ooze.aggro/01.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
 | sounds/monster.ooze.aggro/02.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude | CC0 |
 | sounds/monster.ooze.aggro/03.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
@@ -533,6 +683,18 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/monster.plant.hurt/02.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck | CC0 |
 | sounds/monster.plant.hurt/03.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck | CC0 |
 | sounds/monster.plant.hurt/04.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle | CC0 |
+| sounds/monster.stayed.aggro/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
+| sounds/monster.stayed.aggro/02.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/monster.stayed.aggro/03.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
+| sounds/monster.stayed.attack/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/monster.stayed.attack/02.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
+| sounds/monster.stayed.attack/03.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
+| sounds/monster.stayed.death/01.ogg | https://opengameart.org/content/ghost-monster-voice-moaning-growling | qubodup + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
+| sounds/monster.stayed.death/02.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/monster.stayed.death/03.ogg | https://opengameart.org/content/zombies-sound-pack | artisticdude + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
+| sounds/monster.stayed.hurt/01.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/monster.stayed.hurt/02.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/monster.stayed.hurt/03.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/monster.swing/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/monster.swing/02.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/monster.swing/03.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
@@ -641,11 +803,16 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.arcane.bolt/01.ogg | https://opengameart.org/content/sand-spell | qubodup | CC0 |
 | sounds/skill.arcane.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
 | sounds/skill.arrow.barb/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
+| sounds/skill.arrow.cripple/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
+| sounds/skill.arrow.fan/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/skill.arrow.grave/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
 | sounds/skill.arrow.heavy/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.arrow.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.arrow.mark/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/skill.arrow.rain/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/skill.arrow.ricochet/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/skill.arrow.storm/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
+| sounds/skill.arrow.twin/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/skill.banner/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Kenney (kenney.nl/assets/rpg-audio) + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
 | sounds/skill.blight.aura/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-creature-sfx) | CC0 |
 | sounds/skill.blight.bolt/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
@@ -657,6 +824,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.bone.armor/01.ogg | https://opengameart.org/content/bones-rattle | congusbongus + Zane Little Music (opengameart.org/content/deep-bone-crackbreak-sfx) | CC0 |
 | sounds/skill.bone.bolt/01.ogg | https://opengameart.org/content/sand-spell | qubodup | CC0 |
 | sounds/skill.bone.cage/01.ogg | https://opengameart.org/content/deep-bone-crackbreak-sfx | Zane Little Music + congusbongus (opengameart.org/content/bones-rattle) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.bone.hack/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/skill.bone.horde/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.bone.host/01.ogg | https://opengameart.org/content/deep-bone-crackbreak-sfx | Zane Little Music + congusbongus (opengameart.org/content/bones-rattle) + cinameng (opengameart.org/content/rumble-fx) | CC0 |
 | sounds/skill.bone.mage/01.ogg | https://opengameart.org/content/bones-rattle | congusbongus + qubodup (opengameart.org/content/earth-element-magic-spell) + qubodup (opengameart.org/content/ghost-breath) | CC0 |
 | sounds/skill.bone.nova/01.ogg | https://opengameart.org/content/deep-bone-crackbreak-sfx | Zane Little Music + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) + congusbongus (opengameart.org/content/bones-rattle) | CC0 |
@@ -668,27 +837,35 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.bone.spirit/01.ogg | https://opengameart.org/content/ghost-breath | qubodup + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
 | sounds/skill.bone.spiritHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Zane Little Music (opengameart.org/content/deep-bone-crackbreak-sfx) | CC0 |
 | sounds/skill.bone.storm/01.ogg | https://opengameart.org/content/bones-rattle | congusbongus + SketchMan3 (opengameart.org/content/wind-whoosh-loop) | CC0 |
+| sounds/skill.bow.cripple/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
+| sounds/skill.bow.darken/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + IgnasD (opengameart.org/content/wind) | CC0 |
 | sounds/skill.bow.fan/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
+| sounds/skill.bow.fanFire/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
+| sounds/skill.bow.fire/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + qubodup (opengameart.org/content/flare-ignition) | CC0 |
+| sounds/skill.bow.grave/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Ogrebane (opengameart.org/content/battle-sound-effects) + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
 | sounds/skill.bow.heavy/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Ogrebane (opengameart.org/content/battle-sound-effects) + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
 | sounds/skill.bow.mark/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Ogrebane (opengameart.org/content/battle-sound-effects) | CC0 |
 | sounds/skill.bow.pierce/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + artisticdude (opengameart.org/content/swishes-sound-pack) + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
+| sounds/skill.bow.ricochet/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.bow.sky/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
 | sounds/skill.bow.stream/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
 | sounds/skill.bow.twin/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
 | sounds/skill.bow/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
 | sounds/skill.camo/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
+| sounds/skill.charge.hit/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/skill.charge/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + artisticdude (opengameart.org/content/rpg-sound-pack) + rubberduck (opengameart.org/content/100-cc0-sfx-2) + HaelDB (opengameart.org/content/male-gruntyelling-sounds) | CC0 |
 | sounds/skill.clay.raise/01.ogg | https://opengameart.org/content/earth-element-magic-spell | qubodup + cinameng (opengameart.org/content/rumble-fx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/skill.clay.slam/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
 | sounds/skill.clone.strike/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.clone/01.ogg | https://opengameart.org/content/ghost-breath | qubodup + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
+| sounds/skill.coat.arrows/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Vehicle (opengameart.org/content/fantasy-accessory-sfx-library) + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/skill.coat.venom/01.ogg | https://opengameart.org/content/fantasy-accessory-sfx-library | Vehicle + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
-| sounds/skill.cold.grave/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
 | sounds/skill.cold.armor/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude + IgnasD (opengameart.org/content/ice-breakingshattering) | CC0 |
 | sounds/skill.cold.blizzard/01.ogg | https://opengameart.org/content/wind | IgnasD + bart (opengameart.org/content/ice-spells) | CC0 |
 | sounds/skill.cold.breath/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
 | sounds/skill.cold.comet/01.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck + IgnasD (opengameart.org/content/ice-breakingshattering) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/skill.cold.cometCall/01.ogg | https://opengameart.org/content/air-whoosh | pyranostudios + bart (opengameart.org/content/ice-spells) | CC0 |
+| sounds/skill.cold.grave/01.ogg | https://opengameart.org/content/freeze-spell-0 | artisticdude + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
 | sounds/skill.cold.lance/01.ogg | https://opengameart.org/content/ice-spells | bart + pyranostudios (opengameart.org/content/air-whoosh) | CC0 |
 | sounds/skill.cold.nova/01.ogg | https://opengameart.org/content/ice-spells | bart + IgnasD (opengameart.org/content/ice-breakingshattering) | CC0 |
 | sounds/skill.cold.orb/01.ogg | https://opengameart.org/content/wind | IgnasD + bart (opengameart.org/content/ice-spells) | CC0 |
@@ -744,10 +921,13 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.gorefeast/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + rubberduck (opengameart.org/content/25-cc0-mud-sfx) + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/skill.hit.ambush/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
 | sounds/skill.hit.backstab/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.hit.blades/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.hit.cleave/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
 | sounds/skill.hit.crush/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/skill.hit.double/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle | CC0 |
 | sounds/skill.hit.execute/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Zane Little Music (opengameart.org/content/deep-bone-crackbreak-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.hit.gash/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.hit.lotus/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/skill.hit.maim/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
 | sounds/skill.hit.massacre/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
 | sounds/skill.hit.precise/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney | CC0 |
@@ -756,12 +936,68 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.hit.sunder/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
 | sounds/skill.hit.tendon/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
 | sounds/skill.hit.viper/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
+| sounds/skill.hit.void/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + qubodup (opengameart.org/content/ghost-breath) | CC0 |
 | sounds/skill.hit.whirl/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.knife.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.knife.spree/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
 | sounds/skill.leap.back/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Kenney (kenney.nl/assets/rpg-audio) + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
 | sounds/skill.light.form/01.ogg | https://opengameart.org/content/air-whoosh | pyranostudios + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | sounds/skill.light.radiance/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + SketchMan3 (opengameart.org/content/wind-whoosh-loop) | CC0 |
 | sounds/skill.nightfall/01.ogg | https://opengameart.org/content/wind-whoosh-loop | SketchMan3 + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
+| sounds/skill.pal.anoint/01.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.pal.anvil/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/skill.pal.anvilHit/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.pal.bar/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/skill.pal.bell/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/skill.pal.bellHit/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.pal.censer/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + artisticdude (opengameart.org/content/swishes-sound-pack) + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
+| sounds/skill.pal.censerHit/01.ogg | https://opengameart.org/content/flare-ignition | qubodup + BMacZero (opengameart.org/content/metal-impact-sounds) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
+| sounds/skill.pal.censure/01.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + Kenney (kenney.nl/assets/rpg-audio) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.pal.censureHit/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + BMacZero (opengameart.org/content/metal-impact-sounds) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
+| sounds/skill.pal.confess/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/skill.pal.confessHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.pal.crack/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.crackHit/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + BMacZero (opengameart.org/content/metal-impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
+| sounds/skill.pal.cross/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.pal.crossHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.door/01.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.doorHit/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + StarNinjas (opengameart.org/content/10-impactshield-blocks) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.pal.feint/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
+| sounds/skill.pal.feintHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.pal.fervour/01.ogg | https://opengameart.org/content/heartbeat-sounds | bart + Vehicle (opengameart.org/content/fantasy-sound-effects-tinysized-sfx) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.pal.ground/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
+| sounds/skill.pal.hour/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + rubberduck (opengameart.org/content/100-cc0-sfx-2) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.pal.hourHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/skill.pal.knell/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.pal.knellHit/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.pal.litany/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
+| sounds/skill.pal.litanyHit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/skill.pal.maul/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.maulHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.pal.mercy/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + bart (opengameart.org/content/heartbeat-sounds) | CC0 |
+| sounds/skill.pal.mercyHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
+| sounds/skill.pal.oath/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.oathHit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
+| sounds/skill.pal.relic/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + artisticdude (opengameart.org/content/swishes-sound-pack) + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/skill.pal.relicHit/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + PWL (opengameart.org/content/bell-dingschimes) + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/skill.pal.rites/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.ritesHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
+| sounds/skill.pal.rood/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
+| sounds/skill.pal.seven/01.ogg | https://opengameart.org/content/3-melee-sounds | remaxim + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
+| sounds/skill.pal.sevenHit/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.pal.smoke/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + qubodup (opengameart.org/content/ghost-breath) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
+| sounds/skill.pal.tallow/01.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + themightyglider (opengameart.org/content/catching-fire) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.pal.toll/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/skill.pal.tollHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
+| sounds/skill.pal.turn/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.turnHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
+| sounds/skill.pal.twin/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.pal.twinHit/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
+| sounds/skill.pal.verdict/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + Ogrebane (opengameart.org/content/battle-sound-effects) | CC0 |
+| sounds/skill.pal.verdictHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + cinameng (opengameart.org/content/rumble-fx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.pal.vigil/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + artisticdude (opengameart.org/content/rpg-sound-pack) + Vehicle (opengameart.org/content/fantasy-sound-effects-tinysized-sfx) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.pal.vow/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + bart (opengameart.org/content/heartbeat-sounds) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.pal.writ/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/100-cc0-sfx) + qubodup (opengameart.org/content/flare-ignition) | CC0 |
 | sounds/skill.poison.burst/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-creature-sfx) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
 | sounds/skill.poison.cloud/01.ogg | https://opengameart.org/content/steam-release-sounds | bart + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/skill.poison.dart/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + bart (opengameart.org/content/steam-release-sounds) | CC0 |
@@ -829,6 +1065,7 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.stomp/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/skill.storm.arc/01.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) | CC0 |
 | sounds/skill.storm.ball/01.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + faxcorp (opengameart.org/content/electricity-game-sound-pack) | CC0 |
+| sounds/skill.storm.ballHit/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) | CC0 |
 | sounds/skill.storm.burst/01.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck + BMacZero (opengameart.org/content/electricity-sound-effects-0) + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
 | sounds/skill.storm.call/01.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + faxcorp (opengameart.org/content/electricity-game-sound-pack) | CC0 |
 | sounds/skill.storm.chain/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp | CC0 |
@@ -856,15 +1093,21 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.storm.veil/01.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
 | sounds/skill.storm.zap/01.ogg | https://opengameart.org/content/electricity-sound-effects-0 | BMacZero | CC0 |
 | sounds/skill.supernova/01.ogg | https://opengameart.org/content/fireball-1 | diligentcircle + TinyWorlds (opengameart.org/content/explosion-0) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.swing.assassin/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
 | sounds/skill.swing.blade/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
 | sounds/skill.swing.double/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/skill.swing.flurry/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.swing.gash/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas | CC0 |
 | sounds/skill.swing.heavy/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + HaelDB (opengameart.org/content/male-gruntyelling-sounds) | CC0 |
 | sounds/skill.swing.lotus/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + bart (opengameart.org/content/steam-release-sounds) | CC0 |
+| sounds/skill.swing.maim/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
 | sounds/skill.swing.quick/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/skill.swing.ruin/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + HaelDB (opengameart.org/content/male-gruntyelling-sounds) | CC0 |
 | sounds/skill.swing.shadow/01.ogg | https://opengameart.org/content/ghost-breath | qubodup + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
 | sounds/skill.swing.shield/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
+| sounds/skill.swing.sunder/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + HaelDB (opengameart.org/content/male-gruntyelling-sounds) | CC0 |
+| sounds/skill.swing.tendon/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
+| sounds/skill.swing.viper/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/skill.swing.wide/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
 | sounds/skill.thorns/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/skill.throw.dart/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
@@ -889,87 +1132,6 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.wind.shear/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
 | sounds/skill.wind.step/01.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.wind.updraft/01.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.arrow.cripple/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
-| sounds/skill.arrow.fan/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
-| sounds/skill.arrow.grave/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
-| sounds/skill.arrow.storm/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
-| sounds/skill.arrow.twin/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney | CC0 |
-| sounds/skill.bone.hack/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
-| sounds/skill.bone.horde/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.bow.cripple/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
-| sounds/skill.bow.darken/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + IgnasD (opengameart.org/content/wind) | CC0 |
-| sounds/skill.bow.fanFire/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane | CC0 |
-| sounds/skill.bow.fire/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + qubodup (opengameart.org/content/flare-ignition) | CC0 |
-| sounds/skill.bow.grave/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Ogrebane (opengameart.org/content/battle-sound-effects) + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) | CC0 |
-| sounds/skill.bow.ricochet/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.charge.hit/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
-| sounds/skill.coat.arrows/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Vehicle (opengameart.org/content/fantasy-accessory-sfx-library) + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
-| sounds/skill.hit.blades/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.hit.double/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle | CC0 |
-| sounds/skill.hit.lotus/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
-| sounds/skill.hit.void/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + qubodup (opengameart.org/content/ghost-breath) | CC0 |
-| sounds/skill.knife.spree/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
-| sounds/skill.storm.ballHit/01.ogg | https://opengameart.org/content/electricity-game-sound-pack | faxcorp + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) | CC0 |
-| sounds/skill.swing.assassin/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
-| sounds/skill.swing.gash/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas | CC0 |
-| sounds/skill.swing.maim/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
-| sounds/skill.swing.sunder/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + HaelDB (opengameart.org/content/male-gruntyelling-sounds) | CC0 |
-| sounds/skill.swing.tendon/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
-| sounds/skill.swing.viper/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
-| sounds/skill.pal.anoint/01.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/skill.pal.anvil/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
-| sounds/skill.pal.anvilHit/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.pal.bar/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
-| sounds/skill.pal.bell/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
-| sounds/skill.pal.bellHit/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.pal.censer/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + artisticdude (opengameart.org/content/swishes-sound-pack) + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
-| sounds/skill.pal.censerHit/01.ogg | https://opengameart.org/content/flare-ignition | qubodup + BMacZero (opengameart.org/content/metal-impact-sounds) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
-| sounds/skill.pal.censure/01.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + Kenney (kenney.nl/assets/rpg-audio) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/skill.pal.censureHit/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + BMacZero (opengameart.org/content/metal-impact-sounds) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
-| sounds/skill.pal.confess/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
-| sounds/skill.pal.confessHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/skill.pal.crack/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.pal.crackHit/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + BMacZero (opengameart.org/content/metal-impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
-| sounds/skill.pal.cross/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
-| sounds/skill.pal.crossHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.pal.door/01.ogg | https://opengameart.org/content/rpg-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.pal.doorHit/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + StarNinjas (opengameart.org/content/10-impactshield-blocks) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.pal.feint/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
-| sounds/skill.pal.feintHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.pal.fervour/01.ogg | https://opengameart.org/content/heartbeat-sounds | bart + Vehicle (opengameart.org/content/fantasy-sound-effects-tinysized-sfx) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/skill.pal.ground/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
-| sounds/skill.pal.hour/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + rubberduck (opengameart.org/content/100-cc0-sfx-2) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/skill.pal.hourHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
-| sounds/skill.pal.knell/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
-| sounds/skill.pal.knellHit/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.pal.litany/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
-| sounds/skill.pal.litanyHit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
-| sounds/skill.pal.maul/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.pal.maulHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
-| sounds/skill.pal.mercy/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + bart (opengameart.org/content/heartbeat-sounds) | CC0 |
-| sounds/skill.pal.mercyHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
-| sounds/skill.pal.oath/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.pal.oathHit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
-| sounds/skill.pal.relic/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + artisticdude (opengameart.org/content/swishes-sound-pack) + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
-| sounds/skill.pal.relicHit/01.ogg | https://opengameart.org/content/10-impactshield-blocks | StarNinjas + PWL (opengameart.org/content/bell-dingschimes) + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
-| sounds/skill.pal.rites/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.pal.ritesHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + rubberduck (opengameart.org/content/100-cc0-sfx) | CC0 |
-| sounds/skill.pal.rood/01.ogg | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
-| sounds/skill.pal.seven/01.ogg | https://opengameart.org/content/3-melee-sounds | remaxim + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
-| sounds/skill.pal.sevenHit/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.pal.smoke/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + qubodup (opengameart.org/content/ghost-breath) + bart (opengameart.org/content/steam-release-sounds) | CC0 |
-| sounds/skill.pal.tallow/01.ogg | https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx | Vehicle + themightyglider (opengameart.org/content/catching-fire) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/skill.pal.toll/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + artisticdude (opengameart.org/content/rpg-sound-pack) | CC0 |
-| sounds/skill.pal.tollHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
-| sounds/skill.pal.turn/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.pal.turnHit/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + Kenney (kenney.nl/assets/impact-sounds) + PWL (opengameart.org/content/bell-dingschimes) | CC0 |
-| sounds/skill.pal.twin/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
-| sounds/skill.pal.twinHit/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
-| sounds/skill.pal.verdict/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia + Ogrebane (opengameart.org/content/battle-sound-effects) | CC0 |
-| sounds/skill.pal.verdictHit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + cinameng (opengameart.org/content/rumble-fx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
-| sounds/skill.pal.vigil/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + artisticdude (opengameart.org/content/rpg-sound-pack) + Vehicle (opengameart.org/content/fantasy-sound-effects-tinysized-sfx) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/skill.pal.vow/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + bart (opengameart.org/content/heartbeat-sounds) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| sounds/skill.pal.writ/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/100-cc0-sfx) + qubodup (opengameart.org/content/flare-ignition) | CC0 |
 | sounds/skillpoint/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + BMacZero (opengameart.org/content/metal-impact-sounds) | CC0 |
 | sounds/skillpoint/02.ogg | https://kenney.nl/assets/rpg-audio | Kenney + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/slam/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
@@ -1085,123 +1247,3 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/warcry/03.ogg | https://opengameart.org/content/male-gruntyelling-sounds | HaelDB | CC0 |
 | sounds/waypoint/01.ogg | https://opengameart.org/content/100-cc0-sfx | rubberduck + bonebrah (opengameart.org/content/stone-door) + SketchMan3 (opengameart.org/content/wind-whoosh-loop) | CC0 |
 | sounds/waypoint/02.ogg | https://kenney.nl/assets/impact-sounds | Kenney + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
-| `textures/world/slab/albedo.webp` | https://polyhaven.com/a/rock_tile_floor | Charlotte Baglioni | CC0 1.0 |
-| `textures/world/slab/normal.webp` | https://polyhaven.com/a/rock_tile_floor | Charlotte Baglioni | CC0 1.0 |
-| `textures/world/lava_crust/albedo.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/lava_crust/normal.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/lava_crust/emissive.webp` | https://ambientcg.com/view?id=Lava001 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/tiles_worn/albedo.webp` | https://polyhaven.com/a/worn_tile_floor | Dimitrios Savva | CC0 1.0 |
-| `textures/world/tiles_worn/normal.webp` | https://polyhaven.com/a/worn_tile_floor | Dimitrios Savva | CC0 1.0 |
-| `textures/world/flagstone/albedo.webp` | https://polyhaven.com/a/grey_stone_path | Amal Kumar | CC0 1.0 |
-| `textures/world/flagstone/normal.webp` | https://polyhaven.com/a/grey_stone_path | Amal Kumar | CC0 1.0 |
-| `textures/world/flagstone_dark/albedo.webp` | https://polyhaven.com/a/monastery_stone_floor | Amal Kumar | CC0 1.0 |
-| `textures/world/flagstone_dark/normal.webp` | https://polyhaven.com/a/monastery_stone_floor | Amal Kumar | CC0 1.0 |
-| `textures/world/cobble/albedo.webp` | https://polyhaven.com/a/cobblestone_floor_04 | Rob Tuytel | CC0 1.0 |
-| `textures/world/cobble/normal.webp` | https://polyhaven.com/a/cobblestone_floor_04 | Rob Tuytel | CC0 1.0 |
-| `textures/world/ashlar/albedo.webp` | https://polyhaven.com/a/stone_brick_wall_001 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
-| `textures/world/ashlar/normal.webp` | https://polyhaven.com/a/stone_brick_wall_001 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
-| `textures/world/rubble_wall/albedo.webp` | https://polyhaven.com/a/castle_wall_varriation | Rob Tuytel | CC0 1.0 |
-| `textures/world/rubble_wall/normal.webp` | https://polyhaven.com/a/castle_wall_varriation | Rob Tuytel | CC0 1.0 |
-| `textures/world/brick_red/albedo.webp` | https://polyhaven.com/a/castle_brick_07 | Rob Tuytel | CC0 1.0 |
-| `textures/world/brick_red/normal.webp` | https://polyhaven.com/a/castle_brick_07 | Rob Tuytel | CC0 1.0 |
-| `textures/world/mossy_wall/albedo.webp` | https://polyhaven.com/a/mossy_stone_wall | Amal Kumar | CC0 1.0 |
-| `textures/world/mossy_wall/normal.webp` | https://polyhaven.com/a/mossy_stone_wall | Amal Kumar | CC0 1.0 |
-| `textures/world/sandstone/albedo.webp` | https://polyhaven.com/a/sandstone_blocks_08 | Rob Tuytel | CC0 1.0 |
-| `textures/world/sandstone/normal.webp` | https://polyhaven.com/a/sandstone_blocks_08 | Rob Tuytel | CC0 1.0 |
-| `textures/world/plaster/albedo.webp` | https://polyhaven.com/a/damaged_plaster | Amal Kumar | CC0 1.0 |
-| `textures/world/plaster/normal.webp` | https://polyhaven.com/a/damaged_plaster | Amal Kumar | CC0 1.0 |
-| `textures/world/cliff/albedo.webp` | https://polyhaven.com/a/cliff_side | James Ray Cock, Jenelle van Heerden, Dario Barresi | CC0 1.0 |
-| `textures/world/cliff/normal.webp` | https://polyhaven.com/a/cliff_side | James Ray Cock, Jenelle van Heerden, Dario Barresi | CC0 1.0 |
-| `textures/world/cave/albedo.webp` | https://polyhaven.com/a/rock_face | Greg Zaal, Dario Barresi | CC0 1.0 |
-| `textures/world/cave/normal.webp` | https://polyhaven.com/a/rock_face | Greg Zaal, Dario Barresi | CC0 1.0 |
-| `textures/world/basalt/albedo.webp` | https://polyhaven.com/a/dark_rock | Amal Kumar | CC0 1.0 |
-| `textures/world/basalt/normal.webp` | https://polyhaven.com/a/dark_rock | Amal Kumar | CC0 1.0 |
-| `textures/world/obsidian/albedo.webp` | https://ambientcg.com/view?id=Rock035 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/obsidian/normal.webp` | https://ambientcg.com/view?id=Rock035 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/lava/albedo.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/lava/normal.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/lava/emissive.webp` | https://ambientcg.com/view?id=Lava004 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/ice/albedo.webp` | https://ambientcg.com/view?id=Ice002 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/ice/normal.webp` | https://ambientcg.com/view?id=Ice002 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/snow/albedo.webp` | https://polyhaven.com/a/snow_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/snow/normal.webp` | https://polyhaven.com/a/snow_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/dirt/albedo.webp` | https://polyhaven.com/a/forest_ground_04 | Rob Tuytel, Rico Cilliers | CC0 1.0 |
-| `textures/world/dirt/normal.webp` | https://polyhaven.com/a/forest_ground_04 | Rob Tuytel, Rico Cilliers | CC0 1.0 |
-| `textures/world/path/albedo.webp` | https://polyhaven.com/a/rocky_trail | Amal Kumar | CC0 1.0 |
-| `textures/world/path/normal.webp` | https://polyhaven.com/a/rocky_trail | Amal Kumar | CC0 1.0 |
-| `textures/world/mud/albedo.webp` | https://polyhaven.com/a/brown_mud_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/mud/normal.webp` | https://polyhaven.com/a/brown_mud_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/grass/albedo.webp` | https://polyhaven.com/a/forrest_ground_01 | Rob Tuytel | CC0 1.0 |
-| `textures/world/grass/normal.webp` | https://polyhaven.com/a/forrest_ground_01 | Rob Tuytel | CC0 1.0 |
-| `textures/world/leaves/albedo.webp` | https://polyhaven.com/a/forest_leaves_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/leaves/normal.webp` | https://polyhaven.com/a/forest_leaves_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/roots/albedo.webp` | https://polyhaven.com/a/roots | Dario Barresi, Dimitrios Savva | CC0 1.0 |
-| `textures/world/roots/normal.webp` | https://polyhaven.com/a/roots | Dario Barresi, Dimitrios Savva | CC0 1.0 |
-| `textures/world/sand/albedo.webp` | https://polyhaven.com/a/sand_01 | Rob Tuytel | CC0 1.0 |
-| `textures/world/sand/normal.webp` | https://polyhaven.com/a/sand_01 | Rob Tuytel | CC0 1.0 |
-| `textures/world/cracked/albedo.webp` | https://polyhaven.com/a/mud_cracked_dry_03 | Dario Barresi, Dimitrios Savva | CC0 1.0 |
-| `textures/world/cracked/normal.webp` | https://polyhaven.com/a/mud_cracked_dry_03 | Dario Barresi, Dimitrios Savva | CC0 1.0 |
-| `textures/world/ash/albedo.webp` | https://polyhaven.com/a/burned_ground_01 | Rob Tuytel | CC0 1.0 |
-| `textures/world/ash/normal.webp` | https://polyhaven.com/a/burned_ground_01 | Rob Tuytel | CC0 1.0 |
-| `textures/world/planks/albedo.webp` | https://polyhaven.com/a/old_planks_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/planks/normal.webp` | https://polyhaven.com/a/old_planks_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/rust/albedo.webp` | https://polyhaven.com/a/rust_coarse_01 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
-| `textures/world/rust/normal.webp` | https://polyhaven.com/a/rust_coarse_01 | Dimitrios Savva, Rico Cilliers | CC0 1.0 |
-| `textures/world/bark/albedo.webp` | https://polyhaven.com/a/bark_brown_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/bark/normal.webp` | https://polyhaven.com/a/bark_brown_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/iron/albedo.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/iron/normal.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
-| `textures/world/steel/albedo.webp` | https://ambientcg.com/view?id=Metal032 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/steel/normal.webp` | https://ambientcg.com/view?id=Metal032 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/chainmail/albedo.webp` | https://ambientcg.com/view?id=Chainmail004 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/chainmail/normal.webp` | https://ambientcg.com/view?id=Chainmail004 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/cloth/albedo.webp` | https://ambientcg.com/view?id=Fabric030 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/cloth/normal.webp` | https://ambientcg.com/view?id=Fabric030 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/leather/albedo.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
-| `textures/world/leather/normal.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
-| `textures/world/wood/albedo.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
-| `textures/world/wood/normal.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
-| `textures/world/fur/albedo.webp` | https://ambientcg.com/view?id=Fabric084 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/fur/normal.webp` | https://ambientcg.com/view?id=Fabric084 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/bone/albedo.webp` | https://ambientcg.com/view?id=Rock023 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/bone/normal.webp` | https://ambientcg.com/view?id=Rock023 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/flesh/albedo.webp` | https://ambientcg.com/view?id=Lava005 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/flesh/normal.webp` | https://ambientcg.com/view?id=Lava005 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/moss/albedo.webp` | https://ambientcg.com/view?id=Moss002 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/moss/normal.webp` | https://ambientcg.com/view?id=Moss002 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/world/tracks/albedo.webp` | https://polyhaven.com/a/muddy_tracks | Amal Kumar | CC0 1.0 |
-| `textures/world/tracks/normal.webp` | https://polyhaven.com/a/muddy_tracks | Amal Kumar | CC0 1.0 |
-| `textures/world/stony_dirt/albedo.webp` | https://polyhaven.com/a/stony_dirt_path | eye-candy.xyz | CC0 1.0 |
-| `textures/world/stony_dirt/normal.webp` | https://polyhaven.com/a/stony_dirt_path | eye-candy.xyz | CC0 1.0 |
-| `textures/hero/linen/albedo.webp` | https://polyhaven.com/a/rough_linen | colormass, Rico Cilliers | CC0 1.0 |
-| `textures/hero/linen/normal.webp` | https://polyhaven.com/a/rough_linen | colormass, Rico Cilliers | CC0 1.0 |
-| `textures/hero/wool/albedo.webp` | https://polyhaven.com/a/caban | colormass, Rico Cilliers | CC0 1.0 |
-| `textures/hero/wool/normal.webp` | https://polyhaven.com/a/caban | colormass, Rico Cilliers | CC0 1.0 |
-| `textures/hero/leather/albedo.webp` | https://polyhaven.com/a/brown_leather | Rob Tuytel | CC0 1.0 |
-| `textures/hero/leather/normal.webp` | https://polyhaven.com/a/brown_leather | Rob Tuytel | CC0 1.0 |
-| `textures/hero/suede/albedo.webp` | https://polyhaven.com/a/scuba_suede | colormass, Rico Cilliers | CC0 1.0 |
-| `textures/hero/suede/normal.webp` | https://polyhaven.com/a/scuba_suede | colormass, Rico Cilliers | CC0 1.0 |
-| `textures/hero/hessian/albedo.webp` | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 1.0 |
-| `textures/hero/hessian/normal.webp` | https://polyhaven.com/a/hessian_230 | colormass, Rico Cilliers | CC0 1.0 |
-| `textures/items/metal/albedo.webp` | https://ambientcg.com/view?id=Metal038 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/items/metal/normal.webp` | https://ambientcg.com/view?id=Metal038 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/items/hammered/albedo.webp` | https://polyhaven.com/a/rusty_metal_02 | Rob Tuytel | CC0 1.0 |
-| `textures/items/hammered/normal.webp` | https://polyhaven.com/a/rusty_metal_02 | Rob Tuytel | CC0 1.0 |
-| `textures/items/wood/albedo.webp` | https://polyhaven.com/a/fine_grained_wood | Rob Tuytel | CC0 1.0 |
-| `textures/items/wood/normal.webp` | https://polyhaven.com/a/fine_grained_wood | Rob Tuytel | CC0 1.0 |
-| `textures/items/leather/albedo.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
-| `textures/items/leather/normal.webp` | https://polyhaven.com/a/leather_white | Rob Tuytel | CC0 1.0 |
-| `textures/props/planks/albedo.webp` | https://polyhaven.com/a/weathered_planks | Dario Barresi, Dimitrios Savva | CC0 1.0 |
-| `textures/props/planks/normal.webp` | https://polyhaven.com/a/weathered_planks | Dario Barresi, Dimitrios Savva | CC0 1.0 |
-| `textures/props/timber/albedo.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
-| `textures/props/timber/normal.webp` | https://polyhaven.com/a/rough_wood | Rob Tuytel | CC0 1.0 |
-| `textures/props/thatch/albedo.webp` | https://polyhaven.com/a/thatch_roof_angled | Rob Tuytel, Dimitrios Savva | CC0 1.0 |
-| `textures/props/thatch/normal.webp` | https://polyhaven.com/a/thatch_roof_angled | Rob Tuytel, Dimitrios Savva | CC0 1.0 |
-| `textures/props/slate/albedo.webp` | https://polyhaven.com/a/roof_slates_02 | Rob Tuytel | CC0 1.0 |
-| `textures/props/slate/normal.webp` | https://polyhaven.com/a/roof_slates_02 | Rob Tuytel | CC0 1.0 |
-| `textures/props/masonry/albedo.webp` | https://polyhaven.com/a/castle_wall_slates | Rob Tuytel | CC0 1.0 |
-| `textures/props/masonry/normal.webp` | https://polyhaven.com/a/castle_wall_slates | Rob Tuytel | CC0 1.0 |
-| `textures/props/ironplate/albedo.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
-| `textures/props/ironplate/normal.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
-| `textures/ui/leather.webp` | https://ambientcg.com/view?id=Leather037 | Lennart Demes (ambientCG) | CC0 1.0 |
-| `textures/ui/scratched-metal.webp` | https://ambientcg.com/view?id=Metal049A | Lennart Demes (ambientCG) | CC0 1.0 |

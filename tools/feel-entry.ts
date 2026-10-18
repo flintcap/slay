@@ -252,7 +252,7 @@ const check = (ok: boolean, msg: string): void => {
   for (const [name, table] of Object.entries(FEEL_TABLES)) {
     for (const k of kinds) check(typeof (table as Record<string, number>)[k] === 'number', `${name} has no entry for ${k}`);
   }
-  const families = ['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze'];
+  const families = ['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze', 'kept', 'nailborn', 'stayed'];
   const ids = feelSoundIds(families);
   const silent = ids.filter((id) => !resolvesSound(id));
   notes.feelSounds = ids.length;

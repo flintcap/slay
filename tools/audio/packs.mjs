@@ -124,6 +124,9 @@ export const PACKS = {
   mCreep: oga('creepy', 'TokyoGeisha', ['CrEEP.ogg'], 'm-creepy'),
   mIcy: oga('icy-realm-seven-and-eight', 'cynicmusic', ['019_seven_and_eight_7-8_combined.mp3'], 'm-icy-realm'),
   mWinter: oga('wintery-loop', 'Emma_MA', ['wintery%20loop.mp3'], 'm-wintery'),
+  // The ice maps' tracks, cut by hand (see recipe.mjs `frozen`): credits only.
+  mFrostNorth: oga('frost-in-the-northern-winter', 'Kaiser (the-oracle)', [], 'm-frost-north'),
+  mColdSilence: oga('cold-silence', 'eponasoft', [], 'm-cold-silence'),
   mCaravan: oga('desert-theme', 'yd', ['caravan.ogg.ogg'], 'm-desert'),
   mDungeon: oga('dungeon-ambience', 'yd', ['dungeon002.ogg'], 'm-dungeon'),
   mSirens: oga('sirens-in-darkness', 'cynicmusic', ['012_Sirens_in_Darkness.mp3'], 'm-sirens'),

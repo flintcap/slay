@@ -142,6 +142,9 @@ const BODY_SOUND: Record<string, string> = {
   aberration: 'hit.flesh',
   plant: 'hit.wood',
   ooze: 'hit.ooze',
+  kept: 'hit.flesh',
+  nailborn: 'hit.glass',
+  stayed: 'hit.metal',
 };
 
 const WEAPON_SOUND: Record<WeaponSound, string> = {
@@ -415,8 +418,9 @@ export class CombatFeel {
     this.effects.flash(x, y + 0.3, z, el.light, 7 + weight * 5, 6 + weight * 2, 0.22);
     // The element decides how a body comes apart: burned to ash, frosted,
     // cooked, rotted, unmade into shadow; steel throws meat. A frozen body
-    // shatters whatever struck it. Bosses die their own way (Boss.die).
-    const frozen = !target.isBoss && (target.hasStatus?.('frozen') === true || target.hasStatus?.('petrified') === true);
+    // shatters whatever struck it, and so does the Nailborn's glass. Bosses
+    // die their own way (Boss.die).
+    const frozen = !target.isBoss && (target.family === 'nailborn' || target.hasStatus?.('frozen') === true || target.hasStatus?.('petrified') === true);
     const look = frozen ? SHATTER : DEATH_LOOK[type] ?? DEATH_LOOK.physical;
     const big = scale >= 1.4 || weight >= 2;
     // Low and Medium keep the main burst only, trimmed to the old cost.

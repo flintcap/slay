@@ -634,7 +634,12 @@ export type MonsterFamily =
   | 'elemental'
   | 'humanoid'
   | 'plant'
-  | 'ooze';
+  | 'ooze'
+  // The deep families (depth 30 on): the Tenant's household, the glass that
+  // grows wrong in the Hollow Spire, and the delvers who never came back.
+  | 'kept'
+  | 'nailborn'
+  | 'stayed';
 
 export type MonsterRole = 'melee' | 'ranged' | 'caster' | 'brute' | 'swarm' | 'support' | 'ambusher';
 

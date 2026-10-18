@@ -104,7 +104,7 @@ const allFiles = [
 for (const id of ['boss.intro', 'loot.legendary', 'drop.unique', 'levelup', 'quest.complete', 'portal', 'waypoint', 'player.death', 'player.hurt', 'block', 'crit']) {
   check(resolvesSound(id), `${id} is silent`);
 }
-for (const fam of ['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze']) {
+for (const fam of ['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze', 'kept', 'nailborn', 'stayed']) {
   for (const k of ['aggro', 'attack', 'hurt', 'death']) check(bankIds().includes(`monster.${fam}.${k}`), `monster.${fam}.${k} has no recordings of its own`);
 }
 for (const el of ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane']) {

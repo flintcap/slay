@@ -563,6 +563,7 @@ export const SFX = {
     x('ki', 'impactMetal_medium_001.ogg'),
   ],
   'hit.stone': xs('ki', 'impactMining_00#.ogg', [0, 1, 2, 3], { rate: 0.85 }),
+  'hit.glass': [0, 1, 2, 3].map((n) => x('ki', `impactGlass_heavy_00${n}.ogg`, { mix: [x('ki', `impactGlass_light_00${n}.ogg`, { delay: 30, gain: -6 })] })),
   'hit.chitin': [
     ...[1, 2, 3].map((n) => x('tiny', `apple-cut-0${n}.wav`, { t: 0.4, mix: [x('ki', `impactGeneric_light_00${n}.ogg`, { gain: -3 })] })),
     x('creat', 'bug_03.ogg'),
@@ -879,6 +880,63 @@ export const SFX = {
   'monster.plant.hurt': [...xs('mw', 'wood_cracking_0#.ogg', [1, 3]), x('bfh', 'bfh1_wood_hit_01.ogg'), x('tiny', 'wood-twigs-break-02.wav', { t: 0.5 })],
   'monster.plant.death': [x('mw', 'wood_breaking_01.ogg', { rate: 0.7, mix: [x('mw', 'wood_falling_01.ogg', { gain: -3 })] }), x('bfh', 'bfh1_wood_breaking_03.ogg', { rate: 0.7, mix: [x('bfh', 'bfh1_wood_falling_01.ogg', { gain: -3 })] })],
 
+  // The Kept: hushes, dust coughs, cloth and a ring of keys, all muffled.
+  'monster.kept.aggro': [
+    x('gbreath', 'ghostbreath.flac', { t: 0.9, rate: 1.15, lp: 3000, fadeOut: 0.3, mix: [x('mw', 'keys_02.ogg', { gain: -6 })] }),
+    x('creat2', 'human_04.ogg', { rate: 0.72, lp: 2200, mix: [x('kr', 'cloth1.ogg', { gain: -6 })] }),
+    x('creat2', 'human_08.ogg', { rate: 0.7, lp: 2200, mix: [x('mw', 'keys_05.ogg', { delay: 120, gain: -8 })] }),
+  ],
+  'monster.kept.attack': [
+    x('creat2', 'grunt_06.ogg', { rate: 0.75, lp: 2400, mix: [x('kr', 'cloth3.ogg', { gain: -4 })] }),
+    x('creat2', 'grunt_08.ogg', { rate: 0.72, lp: 2400, mix: [x('kr', 'clothBelt.ogg', { gain: -4 })] }),
+    x('creat', 'grunt_02.ogg', { rate: 0.78, lp: 2400, mix: [x('kr', 'cloth2.ogg', { gain: -4 })] }),
+  ],
+  'monster.kept.hurt': [
+    ...xs('creat', 'cough_0#.ogg', [1, 2, 3], { rate: 0.8, lp: 2600 }),
+    x('creat2', 'human_05.ogg', { rate: 0.72, lp: 2200, mix: [x('kr', 'cloth4.ogg', { gain: -6 })] }),
+  ],
+  'monster.kept.death': [
+    x('creat2', 'human_06.ogg', { rate: 0.65, lp: 1800, mix: [x('mw', 'keys_07.ogg', { delay: 250, gain: -5 }), x('kr', 'dropLeather.ogg', { delay: 400, gain: -4 })] }),
+    x('creat', 'cough_03.ogg', { rate: 0.6, lp: 2000, mix: [x('gbreath', 'ghostbreath.flac', { t: 1.0, rate: 0.9, delay: 200, gain: -6 })] }),
+    x('creat2', 'human_07.ogg', { rate: 0.66, lp: 1800, mix: [x('kr', 'dropLeather.ogg', { delay: 300, gain: -4 })] }),
+  ],
+
+  // The Nailborn: glass ringing, a high wrong voice inside it, and shatter.
+  'monster.nailborn.aggro': [
+    x('shatter', 'LedasLuzta.ogg', { rate: 1.25, hp: 900, t: 0.8, fadeOut: 0.3, mix: [x('creat2', 'weird_07.ogg', { rate: 1.35, gain: -6 })] }),
+    x('scifi', 'weird_02.ogg', { rate: 1.2, mix: [x('ki', 'impactGlass_light_000.ogg', { gain: -4 })] }),
+    x('creat', 'alien_02.ogg', { rate: 1.4, hp: 600, mix: [x('ki', 'impactGlass_light_002.ogg', { delay: 80, gain: -5 })] }),
+  ],
+  'monster.nailborn.attack': [0, 1, 2].map((n) => x('ki', `impactGlass_medium_00${n}.ogg`, { rate: 1.1, mix: [x('creat2', 'alien_09.ogg', { rate: 1.5, gain: -8 })] })),
+  'monster.nailborn.hurt': [...xs('ki', 'impactGlass_light_00#.ogg', [1, 3, 4], { rate: 1.05 }), x('ki', 'impactGlass_medium_003.ogg', { rate: 1.2 })],
+  'monster.nailborn.death': [
+    x('shatter', 'LedasLuzta2.ogg'),
+    x('shatter', 'LedasLuzta4.ogg', { rate: 0.95, mix: [x('ki', 'impactGlass_heavy_001.ogg', { gain: -4 })] }),
+    x('shatter', 'LedasLuzta5.ogg', { rate: 1.05 }),
+  ],
+
+  // The Stayed: an old fighter's grunts, slowed and dulled, armour, a moan under it.
+  'monster.stayed.aggro': [
+    x('yell', '3grunt1.wav', { rate: 0.72, lp: 1600, mix: [x('moan', moan(2), { gain: -10 })] }),
+    x('yell', '2yell3.wav', { rate: 0.7, lp: 1500, mix: [x('ki', 'impactPlate_light_001.ogg', { gain: -8 })] }),
+    x('yell', '1yell5.wav', { rate: 0.72, lp: 1500, mix: [x('moan', moan(4), { gain: -10 })] }),
+  ],
+  'monster.stayed.attack': [
+    x('yell', '3grunt3.wav', { rate: 0.75, lp: 1800, mix: [x('ki', 'impactPlate_light_002.ogg', { gain: -8 })] }),
+    x('yell', '3grunt5.wav', { rate: 0.75, lp: 1800 }),
+    x('yell', '1yell9.wav', { rate: 0.75, lp: 1700, t: 0.7, fadeOut: 0.2 }),
+  ],
+  'monster.stayed.hurt': [
+    x('yell', '3grunt2.wav', { rate: 0.8, lp: 1800, mix: [x('ki', 'impactPlate_light_003.ogg', { gain: -6 })] }),
+    x('yell', '3grunt4.wav', { rate: 0.8, lp: 1800, mix: [x('ki', 'impactPlate_light_000.ogg', { gain: -6 })] }),
+    x('yell', '3grunt6.wav', { rate: 0.8, lp: 1800 }),
+  ],
+  'monster.stayed.death': [
+    x('moan', moan(3), { rate: 0.85, t: 1.6, fadeOut: 0.5, mix: [x('mw', 'metal_falling_01.ogg', { delay: 300, gain: -5 })] }),
+    x('yell', '2yell9.wav', { rate: 0.68, lp: 1500, mix: [x('bfh', 'bfh1_metal_falling_01.ogg', { delay: 350, gain: -5 })] }),
+    x('zomb', 'zombie-20.wav', { rate: 0.85, mix: [x('mw', 'metal_falling_02.ogg', { delay: 300, gain: -6 })] }),
+  ],
+
   'monster.ooze.aggro': [...xs('rsp', 'NPC/slime/slime#.wav', [8, 9], { rate: 0.8 }), x('creat', 'burble_01.ogg', { rate: 0.8 })],
   'monster.ooze.attack': [...xs('creat2', 'slime_0#.ogg', [1, 2, 3]), x('rsp', 'NPC/slime/slime6.wav')],
   'monster.ooze.hurt': [...xs('creat2', 'slime_0#.ogg', [4, 6, 7]), ...xs('rsp', 'NPC/slime/slime#.wav', [1, 3])],
@@ -1018,7 +1076,8 @@ export const MUSIC = {
   foundry: [x('mCircle', 'The 9th Circle V2.mp3', cut())],
   temple: [x('mShrine', 'shrine_0.ogg'), x('mBreves', 'breves_dies_hominis.ogg', cut(120))],
   hive: [x('mCreep', 'CrEEP.ogg')],
-  frozen: [x('mIcy', '019_seven_and_eight_7-8_combined.mp3'), x('mWinter', 'wintery loop.mp3')],
+  // frozen: cut by hand from mFrostNorth and mColdSilence (dark ambient, 150 s,
+  // -17/-18 LUFS). Not rebuilt here, so a build never brings back the old loops.
   desert: [x('mCaravan', 'caravan.ogg.ogg')],
   tomb: [x('mDungeon', 'dungeon002.ogg', cut())],
   void: [x('mSirens', '012_Sirens_in_Darkness.mp3', cut())],
