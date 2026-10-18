@@ -205,6 +205,12 @@ export function warmIconStudio(): Promise<void> {
     try {
       // The same path a real icon takes, so the same pipelines are built.
       await r.renderPixels(scene, cam, 4, 4);
+      // And the canvas path (`drawItemIcon`): its output pass (tone mapping
+      // and sRGB) writes the canvas's own colour format, a pipeline apart
+      // from the read-back target's, and check-frames caught it built on
+      // the first icon drawn mid-fight.
+      r.setViewport(0, 0, 4, 4);
+      r.render(scene, cam);
     } catch {
       warm = null;
     } finally {
