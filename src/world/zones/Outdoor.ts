@@ -39,7 +39,7 @@ const right = (ctx: ZoneCtx): number => Math.min(ctx.limitX, ctx.g.w - 3) - 1;
  * that swells and narrows, with a ragged edge. `cover` is the share of the
  * zone's height the band fills on average.
  */
-function bandMask(ctx: ZoneCtx, noise: Noise2, cover: number): Uint8Array {
+export function bandMask(ctx: ZoneCtx, noise: Noise2, cover: number): Uint8Array {
   const { g, rng, entry, exit } = ctx;
   const m = new Uint8Array(g.w * g.h);
   const x0 = 3;
@@ -60,7 +60,7 @@ function bandMask(ctx: ZoneCtx, noise: Noise2, cover: number): Uint8Array {
   return m;
 }
 
-function fillMask(ctx: ZoneCtx, m: Uint8Array, v: number): void {
+export function fillMask(ctx: ZoneCtx, m: Uint8Array, v: number): void {
   for (let i = 0; i < m.length; i++) {
     if (!m[i]) continue;
     const x = i % ctx.g.w;
@@ -70,7 +70,7 @@ function fillMask(ctx: ZoneCtx, m: Uint8Array, v: number): void {
 }
 
 /** Gentle rolling ground. `amp` is the largest step away from zero. */
-function rollHeights(ctx: ZoneCtx, noise: Noise2, amp: number, scale = 0.035): void {
+export function rollHeights(ctx: ZoneCtx, noise: Noise2, amp: number, scale = 0.035): void {
   const { g } = ctx;
   for (let y = 0; y < g.h; y++) {
     for (let x = 0; x < g.w; x++) {
@@ -96,7 +96,7 @@ function bandRooms(ctx: ZoneCtx, m: Uint8Array, minDist: number, r: number): Vec
 }
 
 /** Wear the void edge back a little where noise says so, for a ragged rim. */
-function erodeEdge(ctx: ZoneCtx, noise: Noise2, passes: number, threshold: number): void {
+export function erodeEdge(ctx: ZoneCtx, noise: Noise2, passes: number, threshold: number): void {
   const { g } = ctx;
   for (let p = 0; p < passes; p++) {
     const src = g.t.slice();

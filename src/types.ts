@@ -776,7 +776,13 @@ export type LayoutKind =
   | 'cave'
   | 'tomb'
   | 'keep'
-  | 'rift';
+  | 'rift'
+  // Map shapes of the variety pass (world/zones/Shapes.ts), indoor or out:
+  // a ring round a great pit, a river or chasm splitting the zone, tiers
+  // with cliffs and ramps.
+  | 'maw'
+  | 'cleft'
+  | 'terraces';
 
 export type TileKind =
   | 'void'

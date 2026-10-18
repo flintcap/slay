@@ -27,6 +27,9 @@ const CASES: Array<{ layout: LayoutKind; biomes: BiomeId[] }> = [
   { layout: 'tomb', biomes: ['desertTomb'] },
   { layout: 'keep', biomes: ['crypt', 'foundry', 'sunkenTemple'] },
   { layout: 'rift', biomes: ['voidspire'] },
+  { layout: 'maw', biomes: ['crypt', 'caverns', 'sunkenTemple', 'hive', 'ashwaste', 'voidspire', 'darkForest', 'tundra', 'hell'] },
+  { layout: 'cleft', biomes: ['caverns', 'foundry', 'sunkenTemple', 'frostvault', 'darkForest', 'swamp', 'desert', 'tundra'] },
+  { layout: 'terraces', biomes: ['crypt', 'foundry', 'ashwaste', 'desert', 'desertTomb', 'hell'] },
 ];
 const DEPTHS = [1, 6, 15, 40, 90];
 

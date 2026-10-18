@@ -30,6 +30,7 @@ import { carveArena } from './Arena';
 import { cave, crypt, keep, rift, tomb } from './Indoor';
 import { type ZoneCtx, type ZoneGenerator, landing, polyline, wander } from './Kit';
 import { dunes, forest, swamp, tundra, wastes } from './Outdoor';
+import { cleft, maw, terraces } from './Shapes';
 
 /** The zone generators, one per new layout kind. */
 export const ZONE_GENERATORS: Record<LayoutKind, ZoneGenerator> = {
@@ -43,6 +44,9 @@ export const ZONE_GENERATORS: Record<LayoutKind, ZoneGenerator> = {
   tomb,
   keep,
   rift,
+  maw,
+  cleft,
+  terraces,
 };
 
 /** What one zone of an area should be. */
@@ -89,6 +93,12 @@ export function zoneSize(layout: LayoutKind, depth: number, outdoor: boolean, bo
   if (layout === 'tomb') w += 10;
   if (layout === 'swamp' || layout === 'rift') w += 6;
   if (layout === 'keep') h += 4;
+  // A ring needs depth for the pit and the chambers round it.
+  if (layout === 'maw') {
+    w += 8;
+    h += 8;
+  }
+  if (layout === 'terraces') w += 8;
   if (layout === 'cave') {
     w += 10;
     h += 10;
