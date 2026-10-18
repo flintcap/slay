@@ -493,6 +493,26 @@ const shownVars = new WeakMap<HTMLElement, Record<string, number>>();
  * even when the value is the same as before: eight of them a frame for
  * cooldowns that were mostly sitting at zero.
  */
+const kids = new WeakMap<HTMLElement, Map<string, HTMLElement>>();
+
+/**
+ * `el.querySelector(sel)`, remembered: for per-frame code reaching into
+ * parts that are built once with their parent. A miss is not remembered,
+ * so a part added later is still found.
+ */
+function part(el: HTMLElement, sel: string): HTMLElement | null {
+  let m = kids.get(el);
+  if (!m) {
+    m = new Map();
+    kids.set(el, m);
+  }
+  const hit = m.get(sel);
+  if (hit && hit.parentNode) return hit;
+  const found = el.querySelector<HTMLElement>(sel);
+  if (found) m.set(sel, found);
+  return found;
+}
+
 function setVar(el: HTMLElement, name: string, v: number): void {
   let shown = shownVars.get(el);
   if (!shown) {
@@ -1311,7 +1331,7 @@ export class HUD {
       else if (prev > 0.05 && remain <= 0.05) this.flashReady(slotEl);
       this.cdPrev[i] = remain;
 
-      const t = slotEl.querySelector<HTMLElement>('.hotslot-cdtext');
+      const t = part(slotEl, '.hotslot-cdtext');
       if (t) {
         const txt = remain > 0.05 ? (remain >= 10 ? String(Math.ceil(remain)) : remain.toFixed(1)) : '';
         if (t.textContent !== txt) t.textContent = txt;
@@ -1321,7 +1341,7 @@ export class HUD {
       const range = Number(slotEl.dataset.range ?? 0);
       slotEl.classList.toggle('out-of-range', range > 0 && Number.isFinite(aim) && aim > range);
       const ch = runtime.charges.get(id);
-      const chEl = slotEl.querySelector<HTMLElement>('.hotslot-charges');
+      const chEl = part(slotEl, '.hotslot-charges');
       if (chEl) {
         const txt = ch !== undefined ? String(ch) : '';
         if (chEl.textContent !== txt) chEl.textContent = txt;
@@ -1467,7 +1487,7 @@ export class HUD {
         // change is a style write.
         setVar(el, '--k', Math.round((1 - k) * 100) / 100);
         // Seconds left under the chip; only rewritten when the number changes.
-        const tEl = el.querySelector<HTMLElement>('.buff-time');
+        const tEl = part(el, '.buff-time');
         if (tEl) {
           const txt = !Number.isFinite(s.remaining) || s.remaining > 3600 ? '' : buffTime(s.remaining);
           if (tEl.textContent !== txt) tEl.textContent = txt;
@@ -1481,7 +1501,7 @@ export class HUD {
       // A permanent summon has no arc to sweep; it is full until it dies.
       const k = Number.isFinite(p.left) ? Math.max(0, Math.min(1, p.left / 30)) : 1;
       setVar(el, '--k', Math.round((1 - k) * 100) / 100);
-      const n = el.querySelector<HTMLElement>('.buff-stacks');
+      const n = part(el, '.buff-stacks');
       const count = String(p.count);
       if (n && n.textContent !== count) n.textContent = count;
     }

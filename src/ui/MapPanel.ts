@@ -53,6 +53,10 @@ export class MapPanel {
   private panX = 0;
   private panY = 0;
   private dirty = true;
+  /** The stage's size, read only when it changes (ResizeObserver), never per frame. */
+  private stageW = 0;
+  private stageH = 0;
+  private sizeDirty = true;
   private headerLabel: HTMLDivElement;
   private lastTileX = -1;
   private lastTileY = -1;
@@ -74,6 +78,7 @@ export class MapPanel {
     // On the CPU, like the minimap: redrawn every frame while open.
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     this.stage.appendChild(this.canvas);
+    new ResizeObserver(() => (this.sizeDirty = true)).observe(this.stage);
 
     this.headerLabel = div('minimap-label');
     this.headerLabel.style.position = 'absolute';
@@ -173,7 +178,7 @@ export class MapPanel {
   /** Driven by the UI tick in UIRoot — only redraws when something changed. */
   tick(): void {
     if (!this.panel.isOpen) return;
-    this.resize();
+    if (this.sizeDirty) this.resize();
     // The game keeps running behind the map, so moving is a change worth
     // redrawing for: without this the ground you walk while it is open only
     // appears the next time something else happens to dirty the canvas.
@@ -192,6 +197,10 @@ export class MapPanel {
     const w = this.stage.clientWidth;
     const h = this.stage.clientHeight;
     if (w <= 0 || h <= 0) return;
+    this.sizeDirty = false;
+    if (w !== this.stageW || h !== this.stageH) this.dirty = true;
+    this.stageW = w;
+    this.stageH = h;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const want = { w: Math.round(w * dpr), h: Math.round(h * dpr) };
     if (this.canvas.width !== want.w || this.canvas.height !== want.h) {
@@ -225,8 +234,8 @@ export class MapPanel {
   private draw(): void {
     const ctx = this.ctx;
     if (!ctx) return;
-    const W = this.stage.clientWidth;
-    const H = this.stage.clientHeight;
+    const W = this.stageW;
+    const H = this.stageH;
     ctx.clearRect(0, 0, W, H);
 
     const level = runtime.level;
@@ -470,8 +479,9 @@ const ROOM_INK: Partial<Record<DungeonRoom['kind'], string>> = {
   exit: '#ffe08a',
 };
 
+/** The Text size setting. Access.ts writes it inline on the root: a cheap read, no style recalc. */
 function textScale(): number {
-  const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--text-scale'));
+  const v = parseFloat(document.documentElement.style.getPropertyValue('--text-scale'));
   return Number.isFinite(v) && v > 0 ? v : 1;
 }
 

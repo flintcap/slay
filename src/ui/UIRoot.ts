@@ -457,10 +457,14 @@ export function mountUI(engine: Engine): void {
   });
 
   // --- pointerOverUI ------------------------------------------------------
-  // elementFromPoint only returns UI nodes that opted back into pointer events,
-  // so this is exactly "is the cursor over something clickable".
-  const updatePointer = (x: number, y: number): void => {
-    const hit = document.elementFromPoint(x, y);
+  // Only UI nodes that opted back into pointer events can be hit, so the
+  // node under the cursor is exactly "something clickable". A pointer
+  // event's own target is that node, hit-tested by the browser already, so
+  // there is no second hit test (and no forced layout) per move. Under
+  // pointer capture (dragging a panel or the map) the target is the
+  // capturing UI node, which is over the UI too.
+  const updatePointer = (e: PointerEvent): void => {
+    const hit = e.target instanceof Element ? e.target : document.elementFromPoint(e.clientX, e.clientY);
     const over = !!hit && hit !== engine.renderer.canvas && root.contains(hit);
     // `.ui-soft` nodes — the ground-loot labels — take the left button and let
     // everything else through, so they must not block the attack button.
@@ -471,8 +475,8 @@ export function mountUI(engine: Engine): void {
     engine.input.pointerOverUI = (over && !soft) || drag.active;
     engine.input.pointerOverClickable = over || drag.active;
   };
-  window.addEventListener('pointermove', (e) => updatePointer(e.clientX, e.clientY), { passive: true });
-  window.addEventListener('pointerdown', (e) => updatePointer(e.clientX, e.clientY), { capture: true });
+  window.addEventListener('pointermove', updatePointer, { passive: true });
+  window.addEventListener('pointerdown', updatePointer, { capture: true });
   window.addEventListener('pointerleave', () => {
     engine.input.pointerOverUI = false;
     engine.input.pointerOverClickable = false;

@@ -35,26 +35,17 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   Text size and first-run hints were already in place; added the plain
   words under every setting, the last raw font sizes onto Text size, arrow
   keys through settings, and gamepad menus.
-- [ ] 7. UI cost: no layout reads in per-frame code, batched HUD writes.
+- [x] 7. UI cost: no layout reads in per-frame code, batched HUD writes.
   Handle any requests speed leaves under "Notes for resume".
+  (`ui: no second hit test per mouse move, map and HUD stop reading layout`)
+  Speed left no requests. HUD, nameplates, ground labels and combat text
+  already wrote only on change; fixed the three hot spots left.
 - [ ] 8. Handover.
 
 ## Next up
 
-1. Milestone 7 (UI cost). Speed left no requests in "Notes for resume" (check
-   again after fetch). Known spots to fix, each a layout read or a style
-   write on a hot path:
-   - `src/ui/UIRoot.ts` updatePointer: `elementFromPoint` on every
-     pointermove. Throttle to once per frame (rAF flag) or cache until the
-     pointer moves to another element.
-   - `src/ui/HUD.ts` buff chips: `querySelector` per chip per frame; keep
-     the element refs on the chip record instead.
-   - `src/ui/MapPanel.ts` `textScale()` calls `getComputedStyle` per draw;
-     read `save.settings.textScale` (clamped like core/Access.ts) instead.
-   - Then grep src/ui for `getBoundingClientRect|offsetWidth|offsetHeight|
-     getComputedStyle|innerText` inside update()/per-frame paths and move
-     each out or behind a change check.
-   Check: typecheck, check-uitokens, one uilab `hud` shot.
+1. Milestone 8 (handover): set `Status: done`, write the Handover section,
+   push, reply in one line, then the final report.
 
 ## Notes for resume
 
@@ -106,6 +97,16 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 - check-uitokens also fails on `font-size: Npx` under 48px (ignores Text
   size). Use `--fs-*` or `calc(Npx * var(--text-scale, 1))`.
 - uilab `settingsnav` scenario (`--q=down:5`).
+- UI cost: `UIRoot` pointerOverUI reads the pointer event's own target (no
+  `elementFromPoint` per move). `MapPanel` reads its stage size only when a
+  ResizeObserver says it changed, and Text size from the root's inline
+  style. `HUD` per-frame lookups go through `part(el, sel)` (remembered
+  `querySelector`).
+- The uilab `bosscast` shot showed black bands top and bottom at dpr 1
+  (the HUD itself was right). Looks like the capture, not the UI; not
+  chased.
+- `node tools/run-checks.mjs` with no `--only` ran past 400 s here (killed
+  by timeout); `--only=uitokens,assets,hits` passes in 20 s.
 - uilab now mounts `mountDepthUI()` too, so `lootFilter`, `legacy`, `gate`,
   `gambler`, `enchanter`, `fuse`, `bounties` open by id.
 - Cheap UI renders: `SLAY_PORT=4343 flock /tmp/slay-browser.lock timeout 600
