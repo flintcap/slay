@@ -23,7 +23,7 @@
  * twelve per shader.
  */
 import * as THREE from 'three/webgpu';
-import { If, Loop, float, positionView, renderGroup, smoothstep, storage, uniform, vec3 } from 'three/tsl';
+import { If, Loop, atan, float, positionView, renderGroup, smoothstep, storage, uniform, vec3 } from 'three/tsl';
 
 /** Most packed lights drawn at once: the lit ones whose reach touches the view. */
 const MAX = 64;
@@ -39,6 +39,37 @@ const FLAME_RADIUS = 0.4;
 const STRIDE = 4;
 
 type Lit = THREE.PointLight | THREE.SpotLight;
+
+/**
+ * Light in the air: the glow a torch makes in the fog around it. Most lights
+ * scattered at once (the nearest to the camera); the quality sets how many
+ * of these are used (`setScatterLimit`, 0 turns it off).
+ */
+const SCATTER = 6;
+/** vec4 slots per scattering light: view position and reach, colour times intensity. */
+const SCATTER_STRIDE = 2;
+const scatterBuf = new THREE.StorageBufferAttribute(new Float32Array(SCATTER * SCATTER_STRIDE * 4), 4);
+const scatterArray = storage(scatterBuf, 'vec4', SCATTER * SCATTER_STRIDE).toReadOnly();
+const scatterCount = uniform(0, 'int').setGroup(renderGroup);
+/** How many lights may scatter this frame (the quality's). */
+let scatterLimit = 0;
+
+/** Sets how many lights glow in the fog (0 to `SCATTER`). */
+export function setScatterLimit(n: number): void {
+  scatterLimit = Math.max(0, Math.min(SCATTER, Math.round(n)));
+}
+
+/**
+ * True for a light that glows in the fog: the dungeon's torch pool (it marks
+ * each with `userData.torch`) and anything marked `userData.scatter`. Never
+ * the hero's own light: a glow over the fight would wash it out.
+ */
+function scatters(l: Lit): boolean {
+  return typeof l.userData.torch === 'number' || l.userData.scatter === true;
+}
+
+const scatterPick: Array<{ d: number; l: Lit }> = [];
+const camPos = new THREE.Vector3();
 
 /** Plain point and spot lights: no shadow, no projected picture, not a node. */
 function packable(l: THREE.Light): l is Lit {
@@ -84,6 +115,8 @@ class PackedLightsNode extends THREE.Node {
     if (!cam) return;
     frustum.setFromProjectionMatrix(viewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse), cam.coordinateSystem);
     let n = 0;
+    scatterPick.length = 0;
+    camPos.setFromMatrixPosition(cam.matrixWorld);
     for (const l of this.lights) {
       if (n >= MAX) break;
       if (l.intensity <= 0) continue;
@@ -93,6 +126,7 @@ class PackedLightsNode extends THREE.Node {
         sphere.radius = l.distance;
         if (!frustum.intersectsSphere(sphere)) continue;
       }
+      if (scatterLimit > 0 && scatters(l)) scatterPick.push({ d: v.distanceToSquared(camPos), l });
       const d = this.buf.array as Float32Array;
       const o = n * STRIDE * 4;
       put(d, o, l.color.r * l.intensity, l.color.g * l.intensity, l.color.b * l.intensity, l.distance);
@@ -113,6 +147,7 @@ class PackedLightsNode extends THREE.Node {
       n++;
     }
     this.count.value = n;
+    this.updateScatter(cam);
     // Only the slots the loop reads this time go up.
     if (n > 0) {
       this.buf.clearUpdateRanges();
@@ -120,6 +155,29 @@ class PackedLightsNode extends THREE.Node {
       this.buf.needsUpdate = true;
     }
     return undefined;
+  }
+
+  /** The nearest scattering lights in view, into the shared scatter buffer. */
+  private updateScatter(cam: THREE.Camera): void {
+    let k = 0;
+    if (scatterPick.length > 0) {
+      scatterPick.sort((a, b) => a.d - b.d);
+      const d = scatterBuf.array as Float32Array;
+      for (const { l } of scatterPick) {
+        if (k >= scatterLimit) break;
+        v.setFromMatrixPosition(l.matrixWorld).applyMatrix4(cam.matrixWorldInverse);
+        const o = k * SCATTER_STRIDE * 4;
+        put(d, o, v.x, v.y, v.z, l.distance);
+        put(d, o + 4, l.color.r * l.intensity, l.color.g * l.intensity, l.color.b * l.intensity, 0);
+        k++;
+      }
+      if (k > 0) {
+        scatterBuf.clearUpdateRanges();
+        scatterBuf.addUpdateRange(0, k * SCATTER_STRIDE * 4);
+        scatterBuf.needsUpdate = true;
+      }
+    }
+    scatterCount.value = k;
   }
 
   override setup(builder: THREE.NodeBuilder): null {
@@ -240,3 +298,41 @@ class PackedLighting extends THREE.Lighting {
 export function makeLighting(): THREE.Lighting {
   return new PackedLighting();
 }
+
+/**
+ * The light the fog between the camera and this pixel catches from the
+ * scattering lights, times `density` (the fog's own). Worked out exactly for
+ * a point light in even fog: along a ray at distance h from the light, the
+ * inverse square sums to (atan(t1 / h) - atan(t0 / h)) / h. A few lights,
+ * a handful of sums each: a soft glow round every torch with no extra pass.
+ * Fades out over each light's reach, as the light itself does.
+ */
+export function airLight(density: THREE.Node<'float'>): THREE.Node<'vec3'> {
+  const sum = vec3(0).toVar('airLight');
+  const P = positionView;
+  const len = P.length().max(1e-3).toVar();
+  const dir = P.div(len).toVar();
+  Loop(scatterCount, ({ i }: { i: THREE.Node<'int'> }) => {
+    const base = i.mul(SCATTER_STRIDE);
+    const posReach = scatterArray.element(base);
+    const col = scatterArray.element(base.add(1));
+    const L = posReach.xyz;
+    const t = L.dot(dir).toVar();
+    const h2 = L.dot(L).sub(t.mul(t)).max(0.04).toVar();
+    const h = h2.sqrt();
+    // From the camera (t0 = -t) to the pixel (t1 = len - t), in the light's frame.
+    const glow = atan(len.sub(t).div(h)).sub(atan(t.negate().div(h))).div(h);
+    // Only the air within the light's reach glows, fading at the edge.
+    const fade = smoothstep(posReach.w.mul(posReach.w), float(0), h2);
+    sum.addAssign(col.xyz.mul(glow.mul(fade)));
+  });
+  return sum.mul(density);
+}
+
+/** The scattering lights, for anything else drawn in them (`Motes`). */
+export const scatterLights = {
+  array: scatterArray,
+  count: scatterCount,
+  stride: SCATTER_STRIDE,
+  max: SCATTER,
+};

@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import {
-  Fn, clamp, dot, emissive, float, fog, fract, max, mix, mrt, normalize, output, pass, positionLocal, positionView, positionWorld,
+  Fn, clamp, dot, emissive, float, fract, max, mix, mrt, normalize, output, pass, positionLocal, positionView, positionWorld,
   pow, reference, renderGroup, renderOutput, screenCoordinate, screenSize, sin, smoothstep, uniform, uv, vec2, vec3, vec4, velocity,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
@@ -12,7 +12,8 @@ import './NodeNames';
 import './ShadowNodes';
 import { uploadCanvasesWithoutWaiting } from './CanvasUpload';
 import { ShaderGate } from './ShaderGate';
-import { makeLighting } from './Lighting';
+import { airLight, makeLighting, setScatterLimit } from './Lighting';
+import { Motes } from './Motes';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { nodeTexturesOf } from './Tsl';
 import type { GameSettings } from '../types';
@@ -247,13 +248,40 @@ function perFrame<T extends string>(r: THREE.ReferenceNode<T, unknown>): THREE.N
   return (r as unknown as { setGroup(g: unknown): THREE.Node<T> }).setGroup(renderGroup);
 }
 
+/**
+ * How strongly the fog catches torchlight (`airLight`), per unit of fog
+ * density. The fog's density sets how thick the air is; this sets how much
+ * of a torch's light it throws back.
+ */
+const AIR_GAIN = 0.55;
+/** The density `airLight` uses for a linear `Fog`, which has none of its own. */
+const LINEAR_FOG_AIR = 0.02;
+
+/**
+ * Light in the air in front of a solid surface (`airLight`), and nothing in
+ * front of a glow, smoke or spark: those draw over a surface that already
+ * has it, and adding it again stacked a glow per sprite.
+ */
+class AirLight extends THREE.Node {
+  constructor(private readonly density: F) {
+    super('vec3');
+  }
+
+  override setup(builder: THREE.NodeBuilder): THREE.Node {
+    const m = builder.material as THREE.Material | null;
+    return m && m.depthWrite && !m.transparent ? airLight(this.density) : vec3(0);
+  }
+}
+
 function fogNodeFor(f: THREE.Fog | THREE.FogExp2): V4 {
   const color = perFrame(reference('color', 'color', f));
   const d = max(positionView.z.negate().sub(uFog.x), 0.0);
   let factor: F;
+  let air: F = float(LINEAR_FOG_AIR * AIR_GAIN);
   if ((f as THREE.FogExp2).isFogExp2) {
     const density = perFrame(reference('density', 'float', f));
     factor = density.mul(density).mul(d).mul(d).negate().exp().oneMinus();
+    air = density.mul(AIR_GAIN);
   } else {
     const near = perFrame(reference('near', 'float', f));
     const far = perFrame(reference('far', 'float', f));
@@ -261,7 +289,10 @@ function fogNodeFor(f: THREE.Fog | THREE.FogExp2): V4 {
   }
   const low = clamp(uFog.y.sub(positionWorld.y).mul(uFog.z), 0.0, 1.0);
   factor = max(factor, low.mul(low).mul(uFog.w));
-  return fog(color, factor);
+  // The glow sits in the air in front of the surface, so the fog beyond it
+  // does not dim it the way it dims the surface.
+  const glow = new AirLight(air) as unknown as V3;
+  return vec4(mix((output as unknown as V4).rgb, color as unknown as V3, factor).add(glow), (output as unknown as V4).a);
 }
 
 /** Which fog object each scene's fog node was built for. */
@@ -304,6 +335,14 @@ export interface QualityProfile {
    * in the town only (indoor levels have no shadow-casting sun).
    */
   contactShadows: boolean;
+  /**
+   * How many torches glow in the fog around them (`airLight`), the nearest
+   * first. 0 turns the glow off: the loop is still in every shader, but runs
+   * no times.
+   */
+  air: number;
+  /** Dust drifting in the light around the nearest torches (`Motes`). */
+  motes: boolean;
   pixelRatioCap: number;
   anisotropy: number;
   /** Multiplier on particle budgets and decal counts. */
@@ -329,10 +368,10 @@ export interface QualityProfile {
 // ratio cap and a render scale). High is the intended look. The auto mode
 // (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
-  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
-  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
-  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
+  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, air: 0, motes: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
+  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, air: 0, motes: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
+  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, air: 4, motes: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
+  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, air: 6, motes: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
 };
 
 /** Pixel ratio for a profile on this screen, times the auto mode's resolution step. */
@@ -453,6 +492,8 @@ export class Renderer {
    * copied from the real one each frame (`trackSun`).
    */
   private readonly sunProxy = new THREE.DirectionalLight();
+  /** Dust in the torchlight, made on first use (`Motes`). */
+  private motes: Motes | null = null;
   /** The scene's shadow-casting sun or moon, found by `applyShadows`. */
   private sun: THREE.DirectionalLight | null = null;
   /** Rebuild the post chain before the next frame (quality changed). */
@@ -526,6 +567,7 @@ export class Renderer {
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = THREE.PCFShadowMap;
     this.gl.lighting = makeLighting();
+    setScatterLimit(this.quality.air);
 
     this.pipeline = new THREE.RenderPipeline(this.gl);
     window.addEventListener('resize', this.onResize);
@@ -696,6 +738,7 @@ export class Renderer {
     const q = this.quality;
     this.gl.setPixelRatio(pixelRatioFor(q, this.dynScale));
     this.gl.shadowMap.enabled = q.shadows;
+    setScatterLimit(q.air);
     if (this.shadowScene) this.applyShadows(this.shadowScene);
     // Every asset texture, the world sets included, now and later.
     if (!step) setAssetAnisotropy(q.anisotropy);
@@ -1019,6 +1062,8 @@ export class Renderer {
     G.time.value = elapsed;
     uFog.value.set(fogShape.x, fogShape.y, fogShape.z, fogShape.w);
     this.trackSun(scene);
+    if (this.quality.motes) (this.motes ??= new Motes()).update(scene, elapsed);
+    else this.motes?.update(null, elapsed);
 
     // A new scene always gets its shadows on its first frame. Map and matrix
     // stay paired, so a held shadow lags a moment rather than sliding.
