@@ -148,11 +148,19 @@ const RATE_SEEDS = Array.from({ length: 16 }, (_, i) => 101 + i * 7);
 for (const depth of [1, 5, 20, 60]) {
   let floors = 0;
   let total = 0;
+  // What the rates promise on these floors: placeEvents scales each chance by
+  // the area's heat (later zones of a map are busier), so the expectation is
+  // summed per floor rather than taken from the bare rates.
+  let expected = 0;
   const byKind: Record<string, number> = {};
   for (const seed of RATE_SEEDS) {
-    for (const level of generateRun(depth, seed, 'warden').levels) {
+    const run = generateRun(depth, seed, 'warden');
+    const zonesTotal = run.map?.zones.length ?? run.levels.length;
+    for (const level of run.levels) {
       if (level.isBossLevel) continue;
       floors++;
+      const heat = Math.max(0, ...(level.zones ?? []).map((z) => (zonesTotal <= 1 ? 1 : z.order / (zonesTotal - 1))));
+      for (const [, r] of Object.entries(EVENT_RATES)) if (depth >= r.minDepth) expected += Math.min(1, r.chance(depth) * (1 + 0.5 * heat));
       for (const ev of level.events ?? []) {
         total++;
         byKind[ev.kind] = (byKind[ev.kind] ?? 0) + 1;
@@ -162,8 +170,7 @@ for (const depth of [1, 5, 20, 60]) {
   for (const k of Object.keys(byKind)) byKind[k] = Math.round((byKind[k]! / floors) * 100) / 100;
   const perFloor = Math.round((total / floors) * 100) / 100;
   rateRows.push({ depth, floors, perFloor, byKind });
-  let expected = 0;
-  for (const [, r] of Object.entries(EVENT_RATES)) if (depth >= r.minDepth) expected += r.chance(depth);
+  expected /= Math.max(1, floors);
   if (perFloor < expected * 0.6 || perFloor > expected * 1.4) {
     problems.push(`depth ${depth}: ${perFloor} events per floor, configured rates add to ${expected.toFixed(2)}`);
   }

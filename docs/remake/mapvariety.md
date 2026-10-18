@@ -23,9 +23,10 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
   like the floor build) and run it paced in `TownScene`, so the town load
   never freezes the browser (speed's request in `speed.md`).
   (mapvariety: town builds in pieces; audit)
-- [ ] 3. New map shapes: at least three new layout kinds (for example a
+- [x] 3. New map shapes: at least three new layout kinds (for example a
   ring around a pit, a river or chasm that splits the map with crossings,
   cliff terraces, an island chain), picked by seed, in fitting biomes.
+  (mapvariety: three new map shapes, maw, cleft and terraces)
 - [ ] 4. Landmarks: rare set pieces per biome (a collapsed bridge, a frozen
   giant, a ruined shrine, a gallows hill) that pull the player to explore,
   some with a small reward.
@@ -41,10 +42,13 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
 ## Next up
 
 1. Do Setup in PROTOCOL.md.
-2. Milestone 3: new layout kinds in `src/world/zones/` (add to `LayoutKind`
-   in types.ts, `ZONE_GENERATORS` in zones/Area.ts, biome `layouts` lists
-   in Biomes.ts after the signature entry). Check with
-   `node tools/run-checks.mjs --only=maps,mapgen`.
+2. Milestone 4: landmarks. Rare set pieces per biome that pull the player
+   to explore, some with a small reward. Plan: a `landmark` field on
+   `DungeonLevel` (types.ts, additive) chosen in `DungeonGen.generateLevel`
+   on its own stream (`streamFor(seed, 'landmark:...')`) so no other roll
+   moves; placed in a far room (or the maw dais); drawn from existing prop
+   kinds in `art/props/Defs.ts`; reward = a chest prop with a new interact
+   id the scene already handles (check `DungeonScene` interact dispatch).
 
 ## Notes for resume
 
@@ -92,6 +96,28 @@ Checkers for maps (headless): `maps` (every generator x biome, hard rules:
 connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
 `grid`, `openness`, `roomrules`, `density`, `dressing`, `props`,
 `variants`. Browser: `map`, `mapflow`, `stairs`, `walk`.
+
+### Milestone 3 notes
+
+- New file `src/world/zones/Shapes.ts`: `maw` (ring round a pit, warren of
+  chambers, dais with one causeway 65%), `cleft` (river or chasm along the
+  zone, entry and exit on opposite banks, 2-3 crossings: bridge, a ford of
+  shallows outdoors, ice floes in tundra), `terraces` (3-5 tiers, climb,
+  fall or ridge, cliffs of void with ramps; the boss zone's last tier sits
+  at 0 to meet the arena). `gulfTile` picks lava (hell, foundry), deep
+  water (swamp, sunkenTemple, caverns, darkForest, tundra, hive) or chasm.
+- Registered in `LayoutKind` (types.ts), `ZONE_GENERATORS` and `zoneSize`
+  (zones/Area.ts), and biome `layouts` lists (Biomes.ts, signature first,
+  so the signature stays about half of all zones).
+- Indoor walk share kept at 29-32% (cave 27-30, crypt 35), so the monster
+  budget (`zoneBudget`, one per 11 walkable tiles) is not cut.
+- Checkers changed: `maps-entry.ts` CASES list the new shapes;
+  `openness-entry.ts`/`check-openness.mjs` judge the outdoor runs of the
+  shared shapes as open country (`maw.open` etc.); `events-entry.ts` now
+  sums the heat-scaled chance per floor (placeEvents scales by area heat)
+  instead of the bare rates, which failed on noise at depth 1.
+- Top-down look: `node tools/check-maps.mjs --dump=maw:crypt:boss --seed=3`
+  prints the ASCII map.
 
 ### Milestone 2 notes
 

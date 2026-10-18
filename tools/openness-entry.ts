@@ -28,12 +28,16 @@ interface Report {
 }
 
 const byLayout = new Map<string, Report>();
+const SHARED = new Set<string>(['maw', 'cleft', 'terraces']);
 
 for (const depth of [1, 2, 4, 6, 9, 13, 18, 25, 30]) {
   for (let s = 0; s < 4; s++) {
     const run = generateRun(depth, (depth * 7919 + s * 104729) >>> 0, 'warden');
     for (const level of run.levels) {
-      const kind = level.layout ?? 'unknown';
+      // The variety shapes (world/zones/Shapes.ts) run indoors and out; the
+      // outdoor ones are judged as open country, like the other outdoor zones.
+      const open = level.zones?.[0]?.outdoor && level.layout && SHARED.has(level.layout);
+      const kind = (level.layout ?? 'unknown') + (open ? '.open' : '');
       let rep = byLayout.get(kind);
       if (!rep) {
         rep = { layout: kind, levels: 0, area: 0, floor: 0, wideOpen: 0, widestSquare: 0 };

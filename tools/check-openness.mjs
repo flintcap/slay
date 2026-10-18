@@ -53,7 +53,11 @@ let bad = 0;
 // purpose: a wood, a fen, a desert, a frozen plain, a burning waste. They are
 // held to "not one bare field" instead: three quarters at most.
 const OUTDOOR = 0.75;
-const LIMIT = { forest: OUTDOOR, swamp: OUTDOOR, dunes: OUTDOOR, tundra: OUTDOOR, wastes: OUTDOOR };
+const LIMIT = {
+  forest: OUTDOOR, swamp: OUTDOOR, dunes: OUTDOOR, tundra: OUTDOOR, wastes: OUTDOOR,
+  // The variety shapes in an outdoor biome (openness-entry keys them `.open`).
+  'maw.open': OUTDOOR, 'cleft.open': OUTDOOR, 'terraces.open': OUTDOOR,
+};
 for (const r of rows) {
   const wide = r.wideOpen / Math.max(1, r.floor);
   // A quarter of the floor being two tiles from any wall means the level reads
