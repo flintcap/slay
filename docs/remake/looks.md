@@ -62,11 +62,17 @@ before the first browser check. Real-GPU frame rate goes to the owner.
   - Crypt bone and candle, frostvault blue-grey (grade and its ambient
     fill, which was a bright cobalt), tundra greyer, swamp sick green, hell
     ember red, town grey-blue instead of violet (grade in `TownScene`).
-- [ ] 6. Late pipelines (from speed's check-frames, see `speed.md` "Notes
+- [x] 6. Late pipelines (from speed's check-frames, see `speed.md` "Notes
   for resume"): put stand-ins in the scene's `warmup()` or build hidden at
   load for `warden:mouth`, `warden:shorts`, `item:gem`, `item:glow`, the
   `Output Color Transform` pass, `prop:altar` cloth and bone, and boss adds'
   `creature:bone` and `creature:shade`.
+  (wip(looks): the icon studio warms its canvas output pass too)
+  - Fixed and checked: `Output Color Transform` (the first item icon drawn
+    to the screen canvas) is warmed by `warmIconStudio`; check-frames map
+    no longer lists it. Draw calls on the map 185 (motes add one).
+  - Not fixed, after one retry (see "Notes for resume"): `warden:mouth`,
+    `warden:shorts`, `item-gem/item:gem` on the map; boss props and adds.
 - [ ] 7. Quality ladder check: every new effect has its level; Low and
   Medium cost no more than before (count draw calls and passes).
 - [ ] 8. Handover.
@@ -94,6 +100,23 @@ before the first browser check. Real-GPU frame rate goes to the owner.
   a looks file, left alone; (4) no air: torches made pools on the floor but
   nothing in the fog, so rooms read clean rather than smoky.
 - A biome shot takes about 5 minutes under software rendering; town 7.
+- Late pipelines still made in play (check-frames, High, after the icon
+  fix; two runs, so left per the testing rule):
+  - map: `warden:mouth/MeshStandardMaterial`, `warden:shorts/hero-linen`,
+    `item-gem/item:gem`. The gem stand-in in `itemLookStandIns` already
+    uses a position+normal box like `Geo.clean`, so the key differs some
+    other way (guess: the drop model's pose or scale in `buildDropModel`
+    flips winding, or `receiveShadow` differs). The warden's mouth and
+    shorts are likely hidden under armour at warm time or swapped in later
+    (`Hero.ts` names them); `Engine.prime` skips hidden subtrees that hold
+    a light.
+  - boss: `prop:chestRare:0/prop:prop.timber.dark`,
+    `prop:brazier:0/prop:prop.timber.charred`, `prop:altar:0/cloth.linen`,
+    `creature:skin/creature:bone`, `creature:alt/creature:shade`. Guess:
+    the brazier and altar hold lights, so prime does not unhide them;
+    boss adds come from `warmSummons` with another rank or geometry.
+  - Fix idea: in check-frames print each late pipeline's cache key next to
+    the warm one with the same material, then match the odd field.
 
 ### From mapvariety: run theme light tint (optional to use)
 
@@ -124,6 +147,11 @@ before the first browser check. Real-GPU frame rate goes to the owner.
 - Colour: crypt grey-brown with candle-yellow light, frostvault cold
   blue-grey (not bright blue), hell ember red, swamp sick green, town
   ground warm grey rather than purple.
+- Start a run with a theme (flooded, overgrown, burnt, haunted): in zones
+  that suit it, the light leans that way (cold blue-green, moss, ember,
+  pale violet); in other zones nothing changes.
+- Open the inventory for the first time in a run: no hitch when the first
+  item icon draws.
 
 ## Handover
 
