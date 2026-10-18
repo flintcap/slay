@@ -273,9 +273,15 @@ function rollOneAffix(
   kind: 'prefix' | 'suffix',
   usedGroups: Set<string>,
   rng: Rng,
+  skipStats?: ReadonlySet<StatKey>,
 ): ItemMod | null {
   const pool = ALL_AFFIXES.filter(
-    (a) => a.kind === kind && !usedGroups.has(a.group) && affixAllowed(a, base, rarity) && affixPoolWeight(a, ilvl) > 0,
+    (a) =>
+      a.kind === kind &&
+      !usedGroups.has(a.group) &&
+      !skipStats?.has(a.stat) &&
+      affixAllowed(a, base, rarity) &&
+      affixPoolWeight(a, ilvl) > 0,
   );
   if (pool.length === 0) return null;
   const affix = rng.weighted(pool, (a) => affixPoolWeight(a, ilvl));
@@ -319,6 +325,45 @@ const CHARM_RARE_LINES: Record<string, number> = {
   'charm.grand': 4,
 };
 
+/** How many lines a rare rolls, and how often each count comes up. */
+const RARE_LINES = [4, 5, 6, 7, 8];
+const RARE_LINE_WEIGHT: Record<number, number> = { 4: 22, 5: 30, 6: 25, 7: 15, 8: 8 };
+/** Most prefixes, and most suffixes, one rare can hold. */
+const RARE_SIDE = 4;
+
+/**
+ * Extra lines a unique or set piece rolls from the open affix pool on top of
+ * its written ones, as [fewest, most]. Two items of one name are never quite
+ * the same, and the rarer the tier the more it carries.
+ */
+const NATURAL_LINES: Partial<Record<ItemRarity, [number, number]>> = {
+  set: [2, 3],
+  unique: [3, 5],
+  mythic: [4, 5],
+  ancient: [5, 6],
+};
+
+/**
+ * Rolls the extra open-pool lines for a unique or set piece. They never
+ * repeat a stat its written lines already give, nor each other's group.
+ */
+function rollNaturalLines(base: ItemBase, item: Item, rng: Rng): ItemMod[] {
+  const range = NATURAL_LINES[item.rarity];
+  if (!range || base.category === 'charm') return [];
+  const want = rng.int(range[0], range[1]);
+  const skip = new Set<StatKey>(item.mods.map((m) => m.stat));
+  const used = new Set<string>();
+  const out: ItemMod[] = [];
+  for (let tries = 0; out.length < want && tries < want * 3; tries++) {
+    const kind = (out.length + tries) % 2 === 0 ? 'prefix' : 'suffix';
+    const mod = rollOneAffix(base, item.ilvl, item.rarity, kind, used, rng, skip);
+    if (!mod) continue;
+    skip.add(mod.stat);
+    out.push(mod);
+  }
+  return out;
+}
+
 /** How many prefixes and suffixes a rarity gets. */
 function affixBudget(base: ItemBase, rarity: ItemRarity, rng: Rng): { prefixes: number; suffixes: number } {
   // A rare charm holds more lines the more room it takes.
@@ -334,9 +379,9 @@ function affixBudget(base: ItemBase, rarity: ItemRarity, rng: Rng): { prefixes: 
       return { prefixes: 1, suffixes: 1 };
     }
     case 'rare': {
-      const total = rng.weighted([3, 4, 5, 6], (n) => (n === 3 ? 30 : n === 4 ? 38 : n === 5 ? 22 : 10));
-      const prefixes = Math.min(3, Math.max(1, Math.round(total / 2 + (rng.chance(0.5) ? 0.5 : -0.5))));
-      return { prefixes, suffixes: Math.min(3, total - prefixes) };
+      const total = rng.weighted(RARE_LINES, (n) => RARE_LINE_WEIGHT[n] ?? 0);
+      const prefixes = Math.min(RARE_SIDE, Math.max(1, Math.round(total / 2 + (rng.chance(0.5) ? 0.5 : -0.5))));
+      return { prefixes, suffixes: Math.min(RARE_SIDE, total - prefixes) };
     }
     default: {
       // A normal weapon still has damage and a normal chestplate still has
@@ -641,23 +686,37 @@ function rollSockets(base: ItemBase, ilvl: number, rarity: ItemRarity, rng: Rng)
 
 function buildUniqueItem(def: UniqueDef, ilvl: number, rng: Rng): Item {
   const base = getBase(def.baseId);
-  const item = newItem(base, Math.max(ilvl, def.ilvl), def.rarity, rng);
+  const L = Math.max(ilvl, def.ilvl);
+  const item = newItem(base, L, def.rarity, rng);
   item.name = def.name;
   item.uniqueId = def.id;
   item.mods = rollImplicits(base, rng);
+  const fill = lineFill(`unique:${def.id}`, def.mods, def.ilvl, UNIQUE_LINES[def.rarity] ?? UNIQUE_LINES.unique!);
   def.mods.forEach((mod, i) => {
+    let value = mod.min === mod.max ? mod.min : rng.int(mod.min, mod.max);
+    // Written lines keep pace with a deeper drop, as a set piece's do, and a
+    // thin unique is lifted to its tier's floor. Skill levels stay as written.
+    if (mod.stat !== 'skillLevels') {
+      const grow = rareRoll(mod.stat, L) / rareRoll(mod.stat, def.ilvl);
+      value = Math.round(value * Math.max(1, grow) * (value > 0 ? fill : 1));
+      if (value === 0) value = mod.min < 0 ? -1 : 1;
+    }
     item.mods.push({
       affixId: `unique.${def.id}.${i}`,
       stat: mod.stat,
-      value: mod.min === mod.max ? mod.min : rng.int(mod.min, mod.max),
+      value,
       tier: 0,
       kind: mod.kind ?? 'prefix',
     });
   });
+  item.mods.push(...rollNaturalLines(base, item, rng));
   if (def.sockets) item.sockets = new Array(def.sockets).fill(null).map(() => ({ gemId: null as string | null }));
   item.value = vendorPrice(item, false) * 4;
   return item;
 }
+
+/** A unique's written lines, before its open-pool ones, are worth at least this many usual rare lines. */
+const UNIQUE_LINES: Partial<Record<ItemRarity, number>> = { unique: 7, mythic: 10, ancient: 14 };
 
 /**
  * What a rare usually rolls for `stat` at item level `L`: the middle of each
@@ -696,22 +755,26 @@ export function rareRoll(stat: StatKey, L: number): number {
 /** A set piece, before its bonuses, is worth this many usual rare lines. */
 export const SET_PIECE_LINES = 7;
 
-/** How much a piece's good lines are lifted so it reaches `SET_PIECE_LINES`. */
-const SET_FILL = new Map<string, number>();
-function setFill(piece: SetPieceDef): number {
-  let f = SET_FILL.get(piece.id);
+/**
+ * How much an item's good written lines are lifted so they are worth `target`
+ * usual rare lines at their own item level. Never below 1: a strong item keeps
+ * its numbers.
+ */
+const LINE_FILL = new Map<string, number>();
+function lineFill(id: string, mods: ReadonlyArray<{ stat: StatKey; min: number; max: number }>, ilvl: number, target: number): number {
+  let f = LINE_FILL.get(id);
   if (f !== undefined) return f;
   let fixed = 0;
   let grow = 0;
-  for (const m of piece.mods) {
+  for (const m of mods) {
     const mid = (m.min + m.max) / 2;
     if (mid <= 0) continue;
-    const lines = mid / rareRoll(m.stat, piece.ilvl);
+    const lines = mid / rareRoll(m.stat, ilvl);
     if (m.stat === 'skillLevels') fixed += lines;
     else grow += lines;
   }
-  f = grow > 0 ? Math.max(1, (SET_PIECE_LINES - fixed) / grow) : 1;
-  SET_FILL.set(piece.id, f);
+  f = grow > 0 ? Math.max(1, (target - fixed) / grow) : 1;
+  LINE_FILL.set(id, f);
   return f;
 }
 
@@ -730,7 +793,7 @@ export function buildSetPiece(piece: SetPieceDef, ilvl: number, rng: Rng): Item 
   item.setId = piece.setId;
   item.uniqueId = piece.id;
   item.mods = rollImplicits(base, rng);
-  const fill = setFill(piece);
+  const fill = lineFill(`set:${piece.id}`, piece.mods, piece.ilvl, SET_PIECE_LINES);
   piece.mods.forEach((mod: { stat: StatKey; min: number; max: number }, i: number) => {
     let value = mod.min === mod.max ? mod.min : rng.int(mod.min, mod.max);
     if (mod.stat !== 'skillLevels') {
@@ -740,6 +803,7 @@ export function buildSetPiece(piece: SetPieceDef, ilvl: number, rng: Rng): Item 
     }
     item.mods.push({ affixId: `set.${piece.id}.${i}`, stat: mod.stat, value, tier: 0, kind: 'prefix' });
   });
+  item.mods.push(...rollNaturalLines(base, item, rng));
   if (piece.sockets) item.sockets = new Array(piece.sockets).fill(null).map(() => ({ gemId: null as string | null }));
   item.value = vendorPrice(item, false) * 4;
   return item;

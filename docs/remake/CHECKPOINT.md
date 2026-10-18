@@ -22,13 +22,19 @@ Update this file and push it after every finished step.
   between special moves (not bosses or wardens), 125 lists trimmed, 5 channels left,
   plain fighters swing 15% faster. check-readable passes.
 
+- #96 items (src/sim/Loot.ts): rares roll 4 to 8 lines (4 a side). Uniques and
+  sets grow with depth, are lifted to a floor (unique 7, mythic 10, ancient 14,
+  set 7 rare lines) and roll extra open-pool lines (set 2-3, unique 3-5,
+  mythic 4-5, ancient 5-6). Unique avg 7.4 lines, 2.4x a rare. setpower and
+  economy checks pass.
+
 ## In progress
 
-1. #96 Stronger uniques and sets (more affixes, natural rolls, no low caps).
+1. #94 Own runes (see Next for the design).
 
 ## Next
 
-3. #94 Own runes: 4 veins (Ember, Rime, Marrow, Umbra) x 6 cuts = 24 runes.
+2. #94 Own runes design: 4 veins (Ember, Rime, Marrow, Umbra) x 6 cuts = 24 runes.
    Runewords match the vein order, not exact runes; power grows with rune cut.
    Old ids rune.el..rune.zod map to new ids on load (src/core/Save.ts item()).
    Recipe list in the Legacy codex.
