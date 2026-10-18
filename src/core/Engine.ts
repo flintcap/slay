@@ -197,15 +197,21 @@ export class Engine {
 
     // A lost GPU device (driver reset, too many tabs, laptop sleep) does not
     // come back: three.js would need every buffer and pipeline made again.
-    // Hold the game and ask for a reload, which picks the save up where it was.
+    // Hold the game for good (nothing may unpause it: a fight going on
+    // unseen kills a hardcore hero), write the save now, and offer a reload,
+    // which picks the save up where it was.
     this.renderer.gl.onDeviceLost = (info: { message?: string; reason?: string | null }) => {
+      const message = info.message ?? info.reason ?? 'unknown';
+      this.report('render', new Error(`GPU device lost: ${message}`));
+      if (!this.paused) this.setPaused(true);
+      this.autoPaused = false;
       this.contextLost = true;
-      this.report('render', new Error(`GPU device lost: ${info.message ?? info.reason ?? 'unknown'}`));
-      if (!this.paused) {
-        this.autoPaused = true;
-        this.setPaused(true);
+      try {
+        save.flush();
+      } catch (err) {
+        this.report('save', err);
       }
-      events.emit('toast', { text: 'The graphics device was lost. Reload the page to keep playing; your progress is saved.', kind: 'bad' });
+      events.emit('gpu:lost', { message });
     };
 
     // Pause when the tab is hidden, and — critically — resume when it comes
@@ -489,6 +495,8 @@ export class Engine {
 
   setPaused(v: boolean): void {
     if (this.paused === v) return;
+    // A lost GPU holds the game until the page reloads.
+    if (!v && this.contextLost) return;
     this.paused = v;
     if (v) this.active?.onPause?.();
     else {

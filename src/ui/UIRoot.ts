@@ -50,6 +50,7 @@ import {
   drag,
   timeAgo,
   emptyState,
+  modal,
 } from './Widgets';
 
 interface PanelHandle {
@@ -375,6 +376,20 @@ export function mountUI(engine: Engine): void {
   events.on('ui:close', (p) => {
     if (!p.panel || SCENE_OWNED.has(p.panel)) return;
     closePanel(p.panel);
+  });
+
+  // The GPU is gone: the game is held and saved. Ask once; "Not now" leaves
+  // it held, and a reload from the browser does the same job.
+  events.on('gpu:lost', () => {
+    modal({
+      title: 'Graphics device lost',
+      icon: 'warn',
+      tone: 'danger',
+      body: '<p>Your graphics card stopped answering (a driver reset, sleep, or too many tabs). The game is frozen and your hero is saved.</p><p>Reload to keep playing. You start again in town with your gear, gold and levels. Leaving a fight this way does not count as fleeing.</p>',
+      confirmLabel: 'Reload',
+      cancelLabel: 'Not now',
+      onConfirm: () => location.reload(),
+    });
   });
 
   events.on('scene:change', (p) => {

@@ -87,7 +87,11 @@ Update this file and push it after every finished step.
      (aZone); paths/banks it has no slot for fade out 1-4 tiles before the
      seam. About 8 extra draws per mixed map.
    - Art group finished.
-   - Engine: next.
+   - Engine, done: a lost GPU holds the game for good (nothing can unpause
+     it), writes the save, and shows a Reload card (new gpu:lost event); the
+     reload does not count as fleeing a fight. Back in town with all gear.
+   - Engine, open: textures / hero mesh cache / shadow map never freed,
+     portrait images never deleted, hard reset misses one save copy.
 
 ## Next
 

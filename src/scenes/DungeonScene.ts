@@ -620,17 +620,22 @@ export class DungeonScene extends GameScene {
     // Death is permanent, so leaving is not a way out of a fight
     // (core/Peril.ts). A blow either way keeps the hero "in a fight", and
     // closing the game in one is a death: the browser asks first, and if the
-    // page really goes, the hero goes with it.
+    // page really goes, the hero goes with it. Not after the GPU is lost: the
+    // game is frozen and saved, and the reload it asks for is no escape.
     peril.reset();
+    let gpuLost = false;
     const onBeforeUnload = (e: BeforeUnloadEvent): void => {
-      if (peril.active && this.player?.alive && !this.transitioning) e.preventDefault();
+      if (peril.active && this.player?.alive && !this.transitioning && !gpuLost) e.preventDefault();
     };
-    const onPageHide = (): void => this.fledByClosing();
+    const onPageHide = (): void => {
+      if (!gpuLost) this.fledByClosing();
+    };
     window.addEventListener('beforeunload', onBeforeUnload);
     window.addEventListener('pagehide', onPageHide);
     this.offs.push(
       events.on('player:damaged', () => peril.blow()),
       events.on('enemy:damaged', () => peril.blow()),
+      events.on('gpu:lost', () => (gpuLost = true)),
       () => window.removeEventListener('beforeunload', onBeforeUnload),
       () => window.removeEventListener('pagehide', onPageHide),
       () => peril.reset(),
