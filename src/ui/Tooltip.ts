@@ -19,6 +19,7 @@ import { itemFlavor } from '../data/story/itemFlavor';
 import { requestItemIcon } from '../art/Icons';
 import { computeStats } from '../sim/Stats';
 import { save } from '../core/Save';
+import { compareItems } from './Compare';
 import { getGem, socketBonuses } from '../data/gems';
 import {
   add,
@@ -58,34 +59,6 @@ const RARITY_WORD: Record<string, string> = {
   ancient: 'Ancient',
 };
 
-/** Stats worth surfacing in the compare delta strip, in reading order. */
-const COMPARE_KEYS: StatKey[] = [
-  'minDamage',
-  'maxDamage',
-  'enhancedDamage',
-  'attackSpeed',
-  'critChance',
-  'critDamage',
-  'defense',
-  'enhancedDefense',
-  'blockChance',
-  'life',
-  'mana',
-  'strength',
-  'dexterity',
-  'vitality',
-  'energy',
-  'fireResist',
-  'coldResist',
-  'lightningResist',
-  'poisonResist',
-  'arcaneResist',
-  'lifeSteal',
-  'moveSpeed',
-  'magicFind',
-  'goldFind',
-  'skillLevels',
-];
 
 class TooltipManager {
   private root: HTMLDivElement;
@@ -521,18 +494,9 @@ class TooltipManager {
 
   /** The green/red delta strip — the reason players hold the compare key. */
   private appendDeltas(host: HTMLDivElement, item: Item, equipped: Item): void {
-    const a = attempt(() => itemStats(item), {} as Partial<Stats>);
-    const b = attempt(() => itemStats(equipped), {} as Partial<Stats>);
+    const { deltas, verdict: v } = compareItems(item, equipped);
     const rows: HTMLElement[] = [];
-    let ups = 0;
-    let downs = 0;
-    for (const key of COMPARE_KEYS) {
-      const av = a[key] ?? 0;
-      const bv = b[key] ?? 0;
-      const d = av - bv;
-      if (Math.abs(d) < 0.005) continue;
-      if (d > 0) ups++;
-      else downs++;
+    for (const { key, delta: d } of deltas) {
       const line = div(`tt-delta ${d > 0 ? 'up' : 'down'}`);
       const l = span('tt-delta-label');
       const ic = STAT_ICON[key];
@@ -540,10 +504,10 @@ class TooltipManager {
       l.appendChild(span('', STAT_LABEL[key]));
       line.appendChild(l);
       const suffix = PERCENT_STATS.has(key) ? '%' : '';
-      const v = span('tt-delta-v');
-      v.appendChild(span('tt-delta-arrow', d > 0 ? '▲' : '▼'));
-      v.appendChild(span('', `${signed(d, Number.isInteger(d) ? 0 : 1)}${suffix}`));
-      line.appendChild(v);
+      const val = span('tt-delta-v');
+      val.appendChild(span('tt-delta-arrow', d > 0 ? '▲' : '▼'));
+      val.appendChild(span('', `${signed(d, Number.isInteger(d) ? 0 : 1)}${suffix}`));
+      line.appendChild(val);
       rows.push(line);
     }
     if (!rows.length) {
@@ -553,8 +517,9 @@ class TooltipManager {
     const wrap = div('tt-deltas');
     const head = div('tt-deltas-hd');
     head.appendChild(span('tt-sublabel', 'Versus equipped'));
-    // A one-word verdict for the common case where every line agrees.
-    const verdict = downs === 0 ? 'Upgrade' : ups === 0 ? 'Downgrade' : 'Trade-off';
+    // A one-word verdict for the common case where every line agrees. The
+    // same verdict puts the green arrow on item slots (Compare.ts).
+    const verdict = v === 'upgrade' ? 'Upgrade' : v === 'downgrade' ? 'Downgrade' : 'Trade-off';
     head.appendChild(span(`tt-verdict is-${verdict.toLowerCase()}`, verdict));
     wrap.appendChild(head);
     for (const r of rows.slice(0, 12)) wrap.appendChild(r);

@@ -10,6 +10,7 @@
  * Randomness goes through a fixed-seed stream so every run shows the same loot.
  */
 import { mountUI, hudInstance } from '../src/ui/UIRoot';
+import { mountDepthUI } from '../src/ui/DepthUI';
 import { events } from '../src/core/Events';
 import { save } from '../src/core/Save';
 import { Random } from '../src/core/RNG';
@@ -92,6 +93,8 @@ const engine = {
 makeCharacter((new URLSearchParams(location.search).get('class') as CharClassId) || 'mage', 28);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 mountUI(engine as any);
+// The panels main.ts mounts after the UI: loot filter, legacy, town services.
+mountDepthUI();
 
 const c = save.account.current!;
 const stats = computeStats(c);

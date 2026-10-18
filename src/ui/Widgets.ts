@@ -32,6 +32,7 @@ import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import * as SkillData from '../data/skills';
 import { uiSfx } from './Sfx';
+import { isUpgrade } from './Compare';
 
 // ---------------------------------------------------------------------------
 // DOM helpers
@@ -1676,7 +1677,10 @@ export class ItemSlot {
     // object with a different count, so comparing references meant the number
     // on the slot only changed when the item was physically moved. Upgrades
     // and sockets change in place for the same reason.
-    const sig = item ? `${item.uid}|${(item as { count?: number }).count ?? 1}|${item.upgrade}|${item.sockets.map((s) => s.gemId ?? '').join(',')}` : '';
+    // The upgrade arrow depends on what the hero wears, so it is part of what
+    // was drawn too (isUpgrade is cached per state of the hero's gear).
+    const up = !!item && this.opts.source !== 'equipment' && isUpgrade(item);
+    const sig = item ? `${item.uid}|${(item as { count?: number }).count ?? 1}|${item.upgrade}|${item.sockets.map((s) => s.gemId ?? '').join(',')}|${up ? 1 : 0}` : '';
     if (item === this.item && sig === this.sig) return;
     this.item = item;
     this.sig = sig;
@@ -1756,6 +1760,7 @@ export class ItemSlot {
     if (n > 1) this.inner.appendChild(span('islot-stack', String(n)));
 
     if (item.upgrade > 0) this.inner.appendChild(span('islot-upg', `+${item.upgrade}`));
+    if (this.opts.source !== 'equipment' && isUpgrade(item)) this.inner.appendChild(span('islot-up'));
     if (item.sockets && item.sockets.length > 0) {
       const s = div('islot-sockets');
       for (const sock of item.sockets) {

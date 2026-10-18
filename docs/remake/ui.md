@@ -23,8 +23,10 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   cleaner damage numbers. (`ui: damage numbers stop printing over each
   other; buff timers warn`) Orbs, buff sweep and minimap were already in
   place and checked in the lab; added number placement, ending colour.
-- [ ] 4. Items: side-by-side compare, upgrade arrows, stash tabs, clearer
-  loot filter.
+- [x] 4. Items: side-by-side compare, upgrade arrows, stash tabs, clearer
+  loot filter. (`ui: upgrade arrows on items, loot filter at a glance`)
+  Compare and stash tabs were already in place; added the arrows (one
+  verdict shared with the tooltip) and the loot filter glance grid.
 - [ ] 5. Loading screen: progress bar from `'load:progress'` (falls back to
   `'scene:loading'` and `'assets:progress'` until speed adds it), tips and
   biome art.
@@ -36,13 +38,15 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Next up
 
-1. Milestone 4 (items): side-by-side compare already exists (Tooltip.ts,
-   "CURRENTLY EQUIPPED" card next to the hovered item, "VERSUS EQUIPPED"
-   rows) and stash tabs exist (StashPanel). Still to do: upgrade arrows on
-   item slots in inventory, stash and vendor grids (green up arrow when the
-   item beats what is worn in its slot, using the same compare numbers the
-   tooltip uses), and a clearer loot filter panel (LootFilterPanel.ts).
-   Check with `uilab --shots=inventory,vendor,stash`.
+1. Milestone 5 (loading screen): `'load:progress'` now exists in
+   src/core/Events.ts (speed landed it; shape in CONTRACTS.md "Load
+   progress"). Rework the loading card in `src/ui/Transitions.ts` (today a
+   plain 2px bar built with inline cssText, fed by 'assets:progress'): a
+   painted progress bar driven by load:progress (done/total, stage name in
+   plain words), keep 'scene:loading'/'assets:progress' as fallback, tips
+   from `src/ui/tips.ts`, and biome art behind (per-biome tint and a
+   generated silhouette, no new files needed). Check: uilab scenario that
+   emits scene:loading + load:progress.
 
 ## Notes for resume
 
@@ -72,6 +76,11 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   map, no panel), and `--probe=<file.js>` to print a page expression.
 - CombatText.ts `place()`: the newest number keeps its spot; older numbers
   it would cover ease up just clear of it (estimated boxes, no measuring).
+- `src/ui/Compare.ts`: `compareItems` (the tooltip's delta strip and
+  verdict) and `isUpgrade(item)` (the green arrow, `.islot-up`, drawn by
+  ItemSlot for every grid except the paperdoll). Cached per hero gear state.
+- uilab now mounts `mountDepthUI()` too, so `lootFilter`, `legacy`, `gate`,
+  `gambler`, `enchanter`, `fuse`, `bounties` open by id.
 - Cheap UI renders: `SLAY_PORT=4343 flock /tmp/slay-browser.lock timeout 600
   node tools/uilab.mjs --out=shots/ui/x --shots=hud,character --width=1280
   --height=720` (seconds per shot, no WebGL scene).
@@ -91,6 +100,11 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 - In a big fight with many hits (a pack around you), damage numbers should
   stack into neat rising columns instead of printing on top of each other,
   without jitter.
+- Pick up gear that beats what you wear: a small green arrow sits in the
+  bottom-left corner of its slot (inventory, stash, vendor), and its tooltip
+  says "Upgrade". Gear you cannot wear yet never gets an arrow.
+- Open the loot filter (O): the grid at the top shows which rarities show
+  for each kind of gear; the active preset is lit and explained.
 - Buffs in their last 3 seconds: the timer under the chip turns amber (green
   for a debuff that is about to end) while the chip blinks.
 

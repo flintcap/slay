@@ -231,3 +231,63 @@
 .segbar.lf-chips {
   flex-wrap: wrap;
 }
+
+/* --- Loot filter: the glance grid, preset note and rarity tints ---------- */
+
+.lf-glance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.lf-grid {
+  display: grid;
+  grid-template-columns: auto repeat(5, 1fr);
+  align-items: center;
+  gap: var(--s1) var(--s2);
+}
+.lf-grid-hd {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: center;
+}
+.lf-grid-row {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  padding-right: var(--s3);
+}
+.lf-pip {
+  justify-self: center;
+  width: 30px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--pip);
+  box-shadow: inset 0 1px 0 rgb(var(--light-rgb) / 0.35), 0 0 8px color-mix(in srgb, var(--pip) 45%, transparent);
+  transition: opacity var(--dur-2) ease, filter var(--dur-2) ease;
+}
+.lf-pip.is-off {
+  opacity: 0.22;
+  filter: saturate(0.2);
+  box-shadow: none;
+  background: linear-gradient(160deg, transparent 44%, var(--bad) 46%, var(--bad) 54%, transparent 56%), var(--pip);
+}
+.lf-glance-text {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+.lf-preset-note {
+  margin-top: var(--s2);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  font-style: italic;
+}
+.lf-caption {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  margin: calc(-1 * var(--s1)) 0 var(--s1);
+}
+.lf-rarity .seg:not(.on) {
+  color: var(--seg-tint, var(--ink-3));
+}

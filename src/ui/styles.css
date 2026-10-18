@@ -1653,6 +1653,20 @@ input.slider::-moz-range-thumb {
   color: var(--gold-hi);
   text-shadow: 0 1px 2px var(--shade);
 }
+/* Upgrade arrow: wearing this beats what is worn in its slot (Compare.ts,
+   the same verdict as the tooltip's "Versus equipped"). Bottom left, the one
+   corner nothing else uses. */
+.islot-up {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  width: 11px;
+  height: 11px;
+  background: var(--good);
+  clip-path: polygon(50% 0, 100% 62%, 70% 62%, 70% 100%, 30% 100%, 30% 62%, 0 62%);
+  filter: drop-shadow(0 0 1px var(--shade)) drop-shadow(0 0 3px rgb(var(--good-rgb) / 0.7));
+  pointer-events: none;
+}
 .islot-sockets {
   position: absolute;
   bottom: 3px;

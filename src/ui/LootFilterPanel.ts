@@ -49,6 +49,27 @@ const POTION_OPTS = [
   { id: '3', label: 'Super+' },
 ];
 
+/** The rarity ladder the glance grid shows, low to high. */
+const LADDER: Array<{ id: ItemRarity; label: string }> = [
+  { id: 'normal', label: 'Plain' },
+  { id: 'magic', label: 'Magic' },
+  { id: 'rare', label: 'Rare' },
+  { id: 'set', label: 'Set' },
+  { id: 'unique', label: 'Unique' },
+];
+const RARITY_RANK: ItemRarity[] = LADDER.map((r) => r.id);
+
+/** Same settings, field by field (key order does not matter). */
+function sameSettings(a: LootFilterSettings, b: LootFilterSettings): boolean {
+  const norm = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? [...v].map(norm).sort()
+      : v && typeof v === 'object'
+        ? Object.fromEntries(Object.keys(v as object).sort().map((k) => [k, norm((v as Record<string, unknown>)[k])]))
+        : v;
+  return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
+}
+
 export class LootFilterPanel {
   readonly panel: Panel;
   private body: HTMLDivElement;
@@ -80,6 +101,35 @@ export class LootFilterPanel {
     return lootFilterOf(save.account);
   }
 
+  /**
+   * The filter at a glance: one row per kind of gear, one pip per rarity in
+   * that rarity's colour, lit when it shows and struck through when hidden.
+   * The words underneath say the rest (what is always kept, what else hides).
+   */
+  private glance(f: LootFilterSettings): HTMLElement {
+    const box = div('depth-note lf-glance');
+    const grid = div('lf-grid');
+    grid.appendChild(span('lf-grid-corner'));
+    for (const r of LADDER) grid.appendChild(span('lf-grid-hd', r.label));
+    for (const g of FILTER_GROUPS) {
+      grid.appendChild(span('lf-grid-row', g.label));
+      const floor = RARITY_RANK.indexOf(f.rarityBy[g.id]);
+      for (const r of LADDER) {
+        const shown = !f.enabled || RARITY_RANK.indexOf(r.id) >= floor;
+        const pip = span(`lf-pip ${shown ? 'is-on' : 'is-off'}`);
+        pip.style.setProperty('--pip', `var(--r-${r.id})`);
+        pip.title = `${g.label}, ${r.label.toLowerCase()}: ${shown ? 'shown' : 'hidden'}`;
+        grid.appendChild(pip);
+      }
+    }
+    box.appendChild(grid);
+    // describeFilter opens with the rarity bars the grid already shows.
+    const parts = describeFilter(f).split('. ');
+    const rest = parts[0]?.startsWith('Showing ') ? parts.slice(1).join('. ') : parts.join('. ');
+    if (rest) box.appendChild(div('lf-glance-text', rest));
+    return box;
+  }
+
   private change(patch: Partial<LootFilterSettings>): void {
     Object.assign(this.settings(), patch);
     save.touch();
@@ -90,17 +140,16 @@ export class LootFilterPanel {
     clear(this.body);
     const f = this.settings();
 
-    const summary = div('depth-note');
-    summary.textContent = describeFilter(f);
-    this.body.appendChild(summary);
+    this.body.appendChild(this.glance(f));
 
     const presets = section('Presets', 'sparkle');
     const row = div('depth-row');
+    const active = LOOT_FILTER_PRESETS.find((p) => sameSettings(p.settings, f));
     for (const p of LOOT_FILTER_PRESETS) {
       const b = new Button({
         label: p.label,
         small: true,
-        variant: 'ghost',
+        variant: p === active ? 'gold' : 'ghost',
         onClick: () => {
           Object.assign(this.settings(), structuredClone(p.settings));
           save.touch();
@@ -108,17 +157,30 @@ export class LootFilterPanel {
         },
       });
       b.root.title = p.hint;
+      if (p === active) b.root.classList.add('is-on');
       row.appendChild(b.root);
     }
     presets.body.appendChild(row);
+    // Say what the current setup is: a preset's own words, or that it is yours.
+    presets.body.appendChild(
+      div('lf-preset-note', active ? `${active.label}: ${active.hint}` : 'Custom: your own mix of the settings below.'),
+    );
     this.body.appendChild(presets.root);
 
     const gear = section('Gear', 'target');
     gear.body.appendChild(new Toggle('Filter on', f.enabled, (v) => this.change({ enabled: v })).root);
+    gear.body.appendChild(div('lf-caption', 'Each row shows the rarity picked and everything rarer.'));
     for (const g of FILTER_GROUPS) {
-      gear.body.appendChild(
-        new Segmented<ItemRarity>(g.label, RARITY_OPTS, f.rarityBy[g.id], (v) => this.change({ rarityBy: { ...f.rarityBy, [g.id]: v } })).root,
-      );
+      const seg = new Segmented<ItemRarity>(g.label, RARITY_OPTS, f.rarityBy[g.id], (v) =>
+        this.change({ rarityBy: { ...f.rarityBy, [g.id]: v } }),
+      ).root;
+      // Each choice in its rarity's colour, so "Rare" reads as the yellow ones.
+      seg.classList.add('lf-rarity');
+      seg.querySelectorAll<HTMLElement>('.seg').forEach((b, i) => {
+        const r = RARITY_OPTS[i]?.id;
+        if (r && r !== 'normal') b.style.setProperty('--seg-tint', `var(--r-${r})`);
+      });
+      gear.body.appendChild(seg);
     }
     gear.body.appendChild(
       new Segmented<string>(
