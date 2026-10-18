@@ -16,6 +16,7 @@ import type { BeastForm } from '../art/hero/forms/BeastBody';
 import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import { FIELD_KIT } from './FieldKit';
+import { castsPlainShadow, mergeShadowParts, shadowBodyMaterial } from '../core/ShadowBodies';
 
 /**
  * The one place the game builds a hero: body, worn armour, held weapons and
@@ -77,6 +78,10 @@ export class DressedHero {
   private ownHidden = new Set<string>();
   /** A Shapeshifter's beast bodies (`art/hero/forms/`), made on first need. */
   private formBody: FormBody | null = null;
+  /** Shadow bodies are on (`useShadowBodies`), and what the current ones were made from. */
+  private shadowOn = false;
+  private shadowKey = '';
+  private shadowBodies: THREE.Mesh[] = [];
 
   constructor(
     readonly classId: CharClassId,
@@ -126,7 +131,118 @@ export class DressedHero {
     const off = pieces.offHand ? getBase(pieces.offHand.baseId) : undefined;
     this.animator.setOffHand(offHandKind(off?.category));
     this.animator.setWeapon(weaponGrip(main?.category, main?.slot === 'twoHand'), main?.category);
+    this.syncShadow();
     return true;
+  }
+
+  /**
+   * Casts the hero's shadow from shadow bodies (`core/ShadowBodies.ts`): the
+   * body, its linens and its armour in one skinned geometry, and each held
+   * item in one more, so the hero's shadow is a few draws, not one per part
+   * (about twenty in a sun-lit map). Parts whose shadow a plain depth draw
+   * would get wrong (two-sided cloth, see-through glows, the cape on its own
+   * bones) keep casting their own. Only the player turns this on: it is
+   * drawn in every shadow map every frame.
+   */
+  useShadowBodies(): void {
+    this.shadowOn = true;
+    this.syncShadow();
+  }
+
+  /** Remakes the shadow bodies when what is shown or worn changed. */
+  private syncShadow(): void {
+    if (!this.shadowOn) return;
+    const rig = this.body.rig;
+    const root = rig.root;
+    // Shown below `top` (whose own flag is left out: the whole hero hidden
+    // for a moment must not undo the bodies).
+    const shown = (o: THREE.Object3D, top: THREE.Object3D): boolean => {
+      for (let p: THREE.Object3D | null = o; p; p = p.parent) {
+        if (p === top) return true;
+        if (!p.visible) return false;
+      }
+      return false;
+    };
+    // A part joins once it casts; joined parts cast nothing themselves, so
+    // they are found again by their mark.
+    const joins = (o: THREE.Object3D): o is THREE.Mesh =>
+      !!(o as THREE.Mesh).isMesh && !o.userData.shadowOnly && (o.castShadow || !!o.userData.shadowJoined);
+    const skin: THREE.SkinnedMesh[] = [];
+    root.traverse((o) => {
+      const sm = o as THREE.SkinnedMesh;
+      if (!sm.isSkinnedMesh || !joins(sm)) return;
+      if (sm.skeleton !== rig.skeleton || sm.bindMode !== 'attached' || !sm.bindMatrix.equals(IDENTITY)) return;
+      if (!castsPlainShadow(sm) || !shown(sm, root)) return;
+      skin.push(sm);
+    });
+    const items: Array<{ model: THREE.Object3D; parts: THREE.Mesh[] }> = [];
+    for (const h of this.held.values()) {
+      if (!h.model || !shown(h.model, root)) continue;
+      const parts: THREE.Mesh[] = [];
+      h.model.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!joins(m) || (m as unknown as THREE.SkinnedMesh).isSkinnedMesh || (m as unknown as THREE.InstancedMesh).isInstancedMesh) return;
+        if (!castsPlainShadow(m) || !shown(m, h.model!) || movesOnItsOwn(m, h.model!)) return;
+        parts.push(m);
+      });
+      if (parts.length > 1) items.push({ model: h.model, parts });
+    }
+    const key = [skin.map((m) => m.id).join(','), ...items.map((i) => i.parts.map((m) => m.id).join(','))].join('|');
+    if (key === this.shadowKey) return;
+    this.shadowKey = key;
+    this.dropShadow();
+    const cast = (parts: THREE.Mesh[], body: THREE.Mesh | null): void => {
+      if (!body) return;
+      body.name = 'hero:shadow';
+      body.userData.shadowOnly = true;
+      body.castShadow = true;
+      body.receiveShadow = false;
+      this.shadowBodies.push(body);
+      for (const m of parts) {
+        m.castShadow = false;
+        m.userData.shadowJoined = true;
+      }
+    };
+    if (skin.length > 1) {
+      const geo = mergeShadowParts(skin.map((m) => ({ geo: m.geometry })), true);
+      let body: THREE.SkinnedMesh | null = null;
+      if (geo) {
+        body = new THREE.SkinnedMesh(geo, shadowBodyMaterial());
+        // Limbs leave the bind pose's bounds, as the parts' own do.
+        body.frustumCulled = false;
+        root.add(body);
+        body.bind(rig.skeleton, new THREE.Matrix4());
+      }
+      cast(skin, body);
+    }
+    for (const it of items) {
+      it.model.updateMatrixWorld(true);
+      const inv = new THREE.Matrix4().copy(it.model.matrixWorld).invert();
+      const geo = mergeShadowParts(
+        it.parts.map((m) => ({ geo: m.geometry, matrix: new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld) })),
+        false,
+      );
+      let body: THREE.Mesh | null = null;
+      if (geo) {
+        body = new THREE.Mesh(geo, shadowBodyMaterial());
+        it.model.add(body);
+      }
+      cast(it.parts, body);
+    }
+  }
+
+  /** Takes the shadow bodies off; their parts cast their own again. */
+  private dropShadow(): void {
+    for (const b of this.shadowBodies) {
+      b.removeFromParent();
+      b.geometry.dispose();
+    }
+    this.shadowBodies = [];
+    this.body.root.traverse((o) => {
+      if (!o.userData.shadowJoined) return;
+      o.castShadow = true;
+      delete o.userData.shadowJoined;
+    });
   }
 
   /** Lights set pieces for how complete their set is and puts on set and unique auras. */
@@ -201,6 +317,7 @@ export class DressedHero {
     if (!form && !this.formBody) return;
     this.formBody ??= new FormBody(this.body, this.animator);
     this.formBody.set(form, this.ownHidden);
+    this.syncShadow();
   }
 
   /** Meshes the beast forms in idle time, so the first change costs no frame. */
@@ -226,11 +343,22 @@ export class DressedHero {
   }
 
   dispose(): void {
+    this.dropShadow();
     this.formBody?.dispose();
     for (const slot of [...this.held.keys()]) this.clear(slot);
     this.root.removeFromParent();
     disposeTree(this.root);
   }
+}
+
+const IDENTITY = new THREE.Matrix4();
+
+/** A part that turns or orbits on its own (`ModelBudget.ts` leaves these whole). */
+function movesOnItsOwn(o: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let p: THREE.Object3D | null = o; p && p !== root; p = p.parent) {
+    if (p.userData && (p.userData.orbit || p.userData.spin)) return true;
+  }
+  return false;
 }
 
 /**

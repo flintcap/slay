@@ -475,7 +475,7 @@ try {
     console.log(`  draw calls ${r.drawCalls}, triangles ${r.triangles}, programs ${r.programs}, pipelines made while playing ${r.links}, uploaded while playing ${r.texKB} KB`);
     for (const n of r.newPrograms) console.log(`  new while playing: ${n}`);
     for (const n of r.why ?? []) console.log(`  why: ${n}`);
-    if (r.drawKinds?.length) console.log(`  draws by kind: ${r.drawKinds.slice(0, 30).map(([k, c]) => `${k} ${c}`).join(', ')}`);
+    if (r.drawKinds?.length) console.log(`  draws by kind: ${r.drawKinds.map(([k, c]) => `${k} ${c}`).join(', ')}`);
     for (const [k, ms] of r.topSelf ?? []) console.log(`  self ${String(ms).padStart(6)} ms  ${k}`);
     for (const c of r.callers ?? []) console.log(`  via ${c}`);
     if (PROFILE) for (const u of r.topUploads.slice(0, 2)) console.log(`  upload ${u}`);

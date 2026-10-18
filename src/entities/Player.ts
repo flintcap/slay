@@ -207,6 +207,8 @@ export class Player {
     adoptStatuses(character.id, this.status);
 
     this.hero = new DressedHero(character.classId, seed);
+    // The hero's shadow in a few draws, not one per part.
+    this.hero.useShadowBodies();
     this.root.add(this.hero.root);
     this.bones = this.hero.bones;
     this.animator = this.hero.animator;
@@ -787,7 +789,8 @@ export class Player {
     const drop: THREE.Object3D[] = [];
     copy.traverse((o) => {
       // Lights, glows and auras would read as the hero's own; a shadow has none.
-      if ((o as THREE.Light).isLight || (o as THREE.Points).isPoints || (o as THREE.Sprite).isSprite || (o as THREE.Line).isLine) {
+      // Nor do the shadow bodies: the double casts no shadow.
+      if (o.userData.shadowOnly || (o as THREE.Light).isLight || (o as THREE.Points).isPoints || (o as THREE.Sprite).isSprite || (o as THREE.Line).isLine) {
         drop.push(o);
         return;
       }
@@ -820,7 +823,7 @@ export class Player {
     const seen = new Set<string>();
     this.hero.root.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh) return;
+      if (!mesh.isMesh || mesh.userData.shadowOnly) return;
       const key = `${(mesh as THREE.SkinnedMesh).isSkinnedMesh ? 1 : 0}|${Object.keys(mesh.geometry.morphAttributes).join(',')}`;
       if (seen.has(key)) return;
       seen.add(key);
@@ -880,7 +883,8 @@ export class Player {
    */
   private ownMaterial(mesh: THREE.Mesh): THREE.MeshStandardMaterial | null {
     const m = mesh.material;
-    if (Array.isArray(m)) return null;
+    // A shadow body (`HeroModel.useShadowBodies`) is never seen: nothing to tint.
+    if (Array.isArray(m) || mesh.userData.shadowOnly) return null;
     const std = m as THREE.MeshStandardMaterial;
     // Glows and eyes may be unlit (basic) materials: no emissive, but a colour.
     if (!std || !std.isMaterial || !std.color) return null;

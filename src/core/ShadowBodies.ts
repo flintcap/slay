@@ -52,3 +52,93 @@ export function watchShadowLight(light: THREE.Light): void {
     update(force);
   };
 }
+
+/**
+ * Whether a part's shadow can come from a shadow body: drawn, opaque,
+ * one-sided and not moved or cut by its own shader, so the body's plain
+ * depth draw casts the same shadow it did. A part wearing its see-through
+ * Veil twin counts as its opaque original.
+ */
+export function castsPlainShadow(m: THREE.Mesh): boolean {
+  const mat = m.material as THREE.Material & {
+    alphaMap?: unknown;
+    displacementMap?: unknown;
+    positionNode?: unknown;
+    castShadowNode?: unknown;
+    maskShadowNode?: unknown;
+  };
+  if (!mat || Array.isArray(mat) || !mat.visible) return false;
+  if (mat.side !== THREE.FrontSide || mat.shadowSide !== null) return false;
+  if (mat.alphaTest > 0 || mat.alphaMap || mat.displacementMap || mat.positionNode) return false;
+  if (mat.castShadowNode || mat.maskShadowNode) return false;
+  if (mat.transparent && !mat.userData.veilOf) return false;
+  const g = m.geometry;
+  if (!g.getAttribute('position') || Object.keys(g.morphAttributes).length > 0) return false;
+  return true;
+}
+
+/**
+ * Parts in one indexed geometry for a shadow body: positions (moved by each
+ * part's `matrix` when given) and, with `skinned`, skin indices and weights.
+ * Null when a skinned part has no skin.
+ */
+export function mergeShadowParts(parts: Array<{ geo: THREE.BufferGeometry; matrix?: THREE.Matrix4 }>, skinned: boolean): THREE.BufferGeometry | null {
+  const spans: Array<{ geo: THREE.BufferGeometry; first: number; count: number; matrix?: THREE.Matrix4 }> = [];
+  let vTotal = 0;
+  let iTotal = 0;
+  for (const p of parts) {
+    const g = p.geo;
+    if (skinned) {
+      const si = g.getAttribute('skinIndex');
+      const sw = g.getAttribute('skinWeight');
+      if (!si || !sw || si.itemSize !== 4 || sw.itemSize !== 4) return null;
+    }
+    const n = g.getAttribute('position').count;
+    const all = g.index ? g.index.count : n;
+    const first = Math.min(all, Math.max(0, g.drawRange.start));
+    const count = Math.min(all - first, g.drawRange.count);
+    spans.push({ geo: g, first, count, ...(p.matrix ? { matrix: p.matrix } : {}) });
+    vTotal += n;
+    iTotal += count;
+  }
+  const pos = new Float32Array(vTotal * 3);
+  const si = skinned ? new Uint16Array(vTotal * 4) : null;
+  const sw = skinned ? new Float32Array(vTotal * 4) : null;
+  const index = vTotal > 65535 ? new Uint32Array(iTotal) : new Uint16Array(iTotal);
+  const v = new THREE.Vector3();
+  let base = 0;
+  let at = 0;
+  for (const s of spans) {
+    const P = s.geo.getAttribute('position');
+    const n = P.count;
+    for (let i = 0; i < n; i++) {
+      v.fromBufferAttribute(P, i);
+      if (s.matrix) v.applyMatrix4(s.matrix);
+      pos[(base + i) * 3] = v.x;
+      pos[(base + i) * 3 + 1] = v.y;
+      pos[(base + i) * 3 + 2] = v.z;
+    }
+    if (si && sw) {
+      const I = s.geo.getAttribute('skinIndex');
+      const W = s.geo.getAttribute('skinWeight');
+      for (let i = 0; i < n; i++) {
+        for (let k = 0; k < 4; k++) {
+          si[(base + i) * 4 + k] = I.getComponent(i, k);
+          sw[(base + i) * 4 + k] = W.getComponent(i, k);
+        }
+      }
+    }
+    const idx = s.geo.index;
+    for (let i = s.first; i < s.first + s.count; i++) index[at++] = (idx ? idx.getX(i) : i) + base;
+    base += n;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  if (si && sw) {
+    out.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+    out.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  }
+  out.setIndex(new THREE.BufferAttribute(index, 1));
+  out.computeBoundingSphere();
+  return out;
+}
