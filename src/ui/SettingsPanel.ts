@@ -20,6 +20,7 @@ import { accessibilitySection, keybindSection, keyLabel } from './AccessibilityS
 import { keyFor, remapKey } from '../core/Access';
 import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, modal, attempt } from './Widgets';
 import { uiSfx } from './Sfx';
+import { FieldNav } from './FieldNav';
 
 type QualityId = GameSettings['quality'];
 type TabId = 'video' | 'audio' | 'gameplay' | 'controls' | 'data';
@@ -79,9 +80,20 @@ const CONTROLS: Array<{ group: string; rows: Array<[string, string[]]> }> = [
     group: 'Menus',
     rows: [
       ['Choose', ['↑', '↓']],
+      ['Change a setting', ['←', '→']],
       ['Confirm', ['Enter']],
       ['Back', ['Esc']],
       ['Settings tabs', ['KeyQ', 'KeyE']],
+    ],
+  },
+  {
+    group: 'Gamepad (menus only)',
+    rows: [
+      ['Choose, change a setting', ['D-pad', 'Left stick']],
+      ['Confirm', ['A']],
+      ['Back', ['B']],
+      ['Settings tabs', ['LB', 'RB']],
+      ['Pause', ['Start']],
     ],
   },
 ];
@@ -137,6 +149,8 @@ export class SettingsPanel {
     this.panel.body.appendChild(wrap);
 
     window.addEventListener('keydown', this.onKey, true);
+    // Arrow keys (and a gamepad, through GamepadNav) walk the controls.
+    new FieldNav(this.panel.body, () => this.panel.isOpen);
 
     // Menu-only preferences take effect at boot, not only once the panel opens.
     this.applyLocal();
@@ -290,7 +304,7 @@ export class SettingsPanel {
       new Slider('Camera distance', s.cameraDistance, 0.6, 1.8, 0.05, (v) => {
         s.cameraDistance = v;
         this.commit();
-      }, (v) => `${v.toFixed(2)}x`).root,
+      }, (v) => `${v.toFixed(2)}x`, 'How far the camera sits from your hero. Further shows more of the fight').root,
     );
     this.content.appendChild(
       new Toggle('Show frame rate', !!s.showFps, (v) => {
@@ -304,17 +318,17 @@ export class SettingsPanel {
     const s = save.settings;
     this.heading('Audio', 'Effects play a sample when you let go of the slider.');
     const sample = (): void => uiSfx('ui.select');
-    const slider = (label: string, value: number, set: (v: number) => void, test = false): HTMLElement => {
+    const slider = (label: string, value: number, set: (v: number) => void, hint: string, test = false): HTMLElement => {
       const sl = new Slider(label, value, 0, 1, 0.01, (v) => {
         set(v);
         this.commit();
-      }, (v) => (v <= 0 ? 'Muted' : `${Math.round(v * 100)}%`));
+      }, (v) => (v <= 0 ? 'Muted' : `${Math.round(v * 100)}%`), hint);
       if (test) sl.root.querySelector('input')?.addEventListener('change', sample);
       return sl.root;
     };
-    this.content.appendChild(slider('Master volume', s.masterVolume, (v) => (s.masterVolume = v), true));
-    this.content.appendChild(slider('Music', s.musicVolume, (v) => (s.musicVolume = v)));
-    this.content.appendChild(slider('Effects', s.sfxVolume, (v) => (s.sfxVolume = v), true));
+    this.content.appendChild(slider('Master volume', s.masterVolume, (v) => (s.masterVolume = v), 'Everything at once', true));
+    this.content.appendChild(slider('Music', s.musicVolume, (v) => (s.musicVolume = v), 'The score in town and below'));
+    this.content.appendChild(slider('Effects', s.sfxVolume, (v) => (s.sfxVolume = v), 'Hits, spells, footsteps and menu clicks', true));
   }
 
   private gameplay(): void {
@@ -324,7 +338,7 @@ export class SettingsPanel {
       new Slider('Screen shake', s.screenShake, 0, 2, 0.05, (v) => {
         s.screenShake = v;
         this.commit();
-      }, (v) => (v === 0 ? 'Off' : `${Math.round(v * 100)}%`)).root,
+      }, (v) => (v === 0 ? 'Off' : `${Math.round(v * 100)}%`), 'How hard the screen jolts on big hits. 0 turns it off').root,
     );
     this.content.appendChild(
       new Toggle('Damage numbers', s.showDamageNumbers, (v) => {
@@ -342,10 +356,10 @@ export class SettingsPanel {
       new Toggle('Control hints', s.hints !== false, (v) => {
         s.hints = v;
         this.commit();
-      }, 'First-time tips on how to play').root,
+      }, 'Short tips the first time you meet something new').root,
     );
     const replay = new Button({
-      label: 'Show all hints again',
+      label: 'Show all first-time tips again',
       variant: 'ghost',
       small: true,
       onClick: () => {

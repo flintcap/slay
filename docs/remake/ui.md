@@ -30,24 +30,31 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 - [x] 5. Loading screen: progress bar from `'load:progress'` (falls back to
   `'scene:loading'` and `'assets:progress'` until speed adds it), tips and
   biome art. (`ui: loading card with a real progress bar and the place behind it`)
-- [ ] 6. Settings clarity, first-run help, text size option, keyboard and
-  gamepad navigation of menus.
+- [x] 6. Settings clarity, first-run help, text size option, keyboard and
+  gamepad navigation of menus. (`ui: settings walk with arrows and a gamepad, every setting explained`)
+  Text size and first-run hints were already in place; added the plain
+  words under every setting, the last raw font sizes onto Text size, arrow
+  keys through settings, and gamepad menus.
 - [ ] 7. UI cost: no layout reads in per-frame code, batched HUD writes.
   Handle any requests speed leaves under "Notes for resume".
 - [ ] 8. Handover.
 
 ## Next up
 
-1. Milestone 6 (settings clarity, first-run help, text size, menu
-   navigation). Start by reading `src/ui/SettingsPanel.ts` (490 lines),
-   `src/ui/Onboarding.ts` and `src/ui/MenuNav.ts`, and `src/core/Access.ts`
-   (textScale, remapKey). Text size already exists (Access textScale feeds
-   `--text-scale`); check it reaches every panel and the canvas layers.
-   Then: a one-line plain-words description under each setting that lacks
-   one; make sure first-run help (Onboarding) can be shown again from
-   settings; keyboard (and gamepad, if `navigator.getGamepads` is already
-   read somewhere) moves a highlight through settings rows and tabs the way
-   MenuNav does for title/pause/death. Check: uilab `settings` shot.
+1. Milestone 7 (UI cost). Speed left no requests in "Notes for resume" (check
+   again after fetch). Known spots to fix, each a layout read or a style
+   write on a hot path:
+   - `src/ui/UIRoot.ts` updatePointer: `elementFromPoint` on every
+     pointermove. Throttle to once per frame (rAF flag) or cache until the
+     pointer moves to another element.
+   - `src/ui/HUD.ts` buff chips: `querySelector` per chip per frame; keep
+     the element refs on the chip record instead.
+   - `src/ui/MapPanel.ts` `textScale()` calls `getComputedStyle` per draw;
+     read `save.settings.textScale` (clamped like core/Access.ts) instead.
+   - Then grep src/ui for `getBoundingClientRect|offsetWidth|offsetHeight|
+     getComputedStyle|innerText` inside update()/per-frame paths and move
+     each out or behind a change check.
+   Check: typecheck, check-uitokens, one uilab `hud` shot.
 
 ## Notes for resume
 
@@ -88,6 +95,17 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   `streamFor`) tinted with the biome's accent through `--ld-tint` (an
   `@property` colour, so it eases when the biome arrives mid-build). uilab
   `loading` scenario; `--q=biome:caverns;stairs:1;step:4` passes options.
+- Menu keys: `src/ui/FieldNav.ts` (arrows walk Settings controls; focus is
+  the highlight; Left/Right change segmented rows and switches; sliders
+  step natively). `src/ui/GamepadNav.ts` turns pad presses into the same
+  keys (A clicks the focused button or sends Enter, B Escape, LB/RB tabs,
+  Start Escape), only while a panel or dialog is open; polls only while a
+  pad is connected. `html.pad-nav` shows focus rings for pad use.
+  `html[data-key-capture]` is set while a key is being rebound, and both
+  stand aside.
+- check-uitokens also fails on `font-size: Npx` under 48px (ignores Text
+  size). Use `--fs-*` or `calc(Npx * var(--text-scale, 1))`.
+- uilab `settingsnav` scenario (`--q=down:5`).
 - uilab now mounts `mountDepthUI()` too, so `lootFilter`, `legacy`, `gate`,
   `gambler`, `enchanter`, `fuse`, `bounties` open by id.
 - Cheap UI renders: `SLAY_PORT=4343 flock /tmp/slay-browser.lock timeout 600
@@ -123,6 +141,18 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   being built ("Raising the walls"), a percent, a tip, and a dark skyline
   lit in the place's colour along the bottom. Quick loads stay a plain dip
   to black.
+
+- Open Settings and use only the arrow keys: Up and Down move a gold ring
+  through tabs and settings, Left and Right change the one in the ring
+  (sliders, switches, Low/Medium/High). Rebinding a key still takes any
+  key, arrows included.
+- Plug in a gamepad (Xbox or PlayStation style) on the title or pause
+  menu: D-pad or stick moves, A picks, B goes back, LB/RB change settings
+  tabs, Start opens and closes pause. In the game itself the pad does
+  nothing else (no hero control yet).
+- Settings: every slider and switch has a short line saying what it does.
+- Set Text size to 150%: the quest tracker on the right of the HUD grows
+  with everything else.
 
 ## Handover
 

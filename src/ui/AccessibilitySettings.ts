@@ -55,6 +55,7 @@ export function accessibilitySection(commit: () => void): HTMLDivElement {
         commit();
       },
       (v) => `${Math.round(v * 100)}%`,
+      'Bigger or smaller words in every menu, the HUD and the damage numbers',
     ).root,
   );
   sec.body.appendChild(
@@ -85,6 +86,8 @@ export function keybindSection(commit: () => void): HTMLDivElement {
   const stopListening = () => {
     window.removeEventListener('keydown', onKey, true);
     listening = null;
+    // Menu keys (FieldNav, GamepadNav) stand aside while a key is chosen.
+    delete document.documentElement.dataset.keyCapture;
   };
   const onKey = (e: KeyboardEvent) => {
     if (!listening) return;
@@ -124,6 +127,7 @@ export function keybindSection(commit: () => void): HTMLDivElement {
           if (listening) stopListening();
           listening = { code: a.code, btn };
           v.textContent = 'Press a key...';
+          document.documentElement.dataset.keyCapture = '1';
           window.addEventListener('keydown', onKey, true);
         },
       });

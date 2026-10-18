@@ -416,6 +416,24 @@ const scenarios2: Record<string, () => void> = {
       }, 60 * i);
     });
   },
+  /**
+   * Settings walked with the arrow keys: Gameplay tab, a few rows down
+   * (`?down=3`), one step right. Shows the focus ring and lit row name.
+   */
+  settingsnav() {
+    events.emit('ui:open', { panel: 'settings' });
+    setTimeout(() => {
+      document.querySelectorAll<HTMLElement>('.stg-tab')[2]?.click();
+      document.documentElement.classList.add('pad-nav');
+      const press = (code: string): void => {
+        (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { code, key: code, bubbles: true, cancelable: true }));
+      };
+      const down = Number(new URLSearchParams(location.search).get('down') ?? 3);
+      setTimeout(() => {
+        for (let i = 0; i < down; i++) press('ArrowDown');
+      }, 300);
+    }, 300);
+  },
   /** An equip and a pickup, a moment after the panel opens, to see the flashes. */
   arrive() {
     events.emit('ui:open', { panel: 'inventory' });

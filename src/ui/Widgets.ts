@@ -1344,12 +1344,15 @@ export class Slider {
     max: number,
     step: number,
     onChange: (v: number) => void,
-    format?: (v: number) => string
+    format?: (v: number) => string,
+    hint?: string,
   ) {
     this.format = format ?? ((v) => `${Math.round(v * 100)}%`);
     this.root = div('field field-slider');
     const head = div('field-head');
-    head.appendChild(div('field-label', label));
+    const l = div('field-label', label);
+    if (hint) l.appendChild(span('field-hint', hint));
+    head.appendChild(l);
     this.readout = span('field-value', this.format(value));
     head.appendChild(this.readout);
 
@@ -1360,6 +1363,7 @@ export class Slider {
     this.input.max = String(max);
     this.input.step = String(step);
     this.input.value = String(value);
+    this.input.setAttribute('aria-label', label);
     const fill = div('slider-fill');
     const setFill = (v: number): void => {
       fill.style.width = `${((v - min) / (max - min)) * 100}%`;
@@ -1415,7 +1419,10 @@ export class Segmented<T extends string> {
   }
 
   private sync(): void {
-    for (const [id, b] of this.buttons) b.classList.toggle('on', id === this.value);
+    for (const [id, b] of this.buttons) {
+      b.classList.toggle('on', id === this.value);
+      b.setAttribute('aria-pressed', String(id === this.value));
+    }
   }
 
   set(v: T): void {

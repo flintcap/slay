@@ -5,7 +5,9 @@
  *
  * Fails when a stylesheet in src/ui/ brings back a raw value the tokens cover
  * (an rgba() of a palette colour, #000, a spacing step, a radius step or a
- * transition time), or uses a custom property that nothing defines.
+ * transition time), uses a custom property that nothing defines, or sets a
+ * small font size in raw pixels (it would ignore the Text size setting:
+ * use a --fs-* token or calc(Npx * var(--text-scale, 1))).
  * Lines inside inline SVG data URIs are skipped: CSS variables do not reach
  * into those.
  */
@@ -51,6 +53,8 @@ for (const f of css) {
       if (CHANNELS.has(`${m[1]},${m[2]},${m[3]}`)) problems.push(`${at} raw rgba of a palette colour: use rgb(var(--…-rgb) / a)`);
     }
     if (/#000(?![0-9a-fA-F])/.test(line)) problems.push(`${at} raw #000: use var(--shade)`);
+    const fs = /font-size:\s*([0-9.]+)px\s*[;}]/.exec(line);
+    if (fs && Number(fs[1]) < 48) problems.push(`${at} font-size ${fs[1]}px ignores Text size: use var(--fs-*) or calc(${fs[1]}px * var(--text-scale, 1))`);
     let m;
     if ((m = line.match(/^\s*(?:gap|row-gap|column-gap|padding|margin)(?:-[a-z]+)?:\s*([^;]+);/)) && !m[1].includes('(')) {
       for (const v of m[1].trim().split(/\s+/)) if (SPACE.has(v)) problems.push(`${at} raw spacing ${v}: use var(--s1…s7)`);

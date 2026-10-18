@@ -220,7 +220,7 @@
 }
 .fuse-arrow {
   color: var(--gold, #c9a227);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   padding: 0 2px;
 }
 .fuse-row .btn + .btn {
