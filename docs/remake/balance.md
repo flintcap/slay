@@ -1,6 +1,6 @@
 # Stream: balance (Wave 4: items and classes)
 
-Status: waiting on owner
+Status: done
 
 Goal: items feel worth finding and every class feels strong. Rules that
 never bend: never make monsters weaker or fewer; make classes stronger, not
@@ -32,7 +32,8 @@ Checkers: `node tools/run-checks.mjs --only=<name>` for what you touch,
 - [x] 4. Extend check-curve to more depths and every class, behind an
   optional flag so the default run stays fast. (balance: check-curve --wide
   walks every class out to depth 60)
-- [ ] 5. Apply the approved item list. Blocked until the owner approves
+- [x] 5. (Declined by the owner: none of lines 1 to 10 applied; items stay as
+  they are.) Apply the approved item list. Blocked until the owner approves
   `balance-proposal.md`; skip to 6 if still blocked and leave it unticked.
 - [x] 6. Handover.
 

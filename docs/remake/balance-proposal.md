@@ -1,4 +1,7 @@
-# Item balance proposal (needs the owner's OK)
+# Item balance proposal (declined)
+
+**Owner's decision: none of lines 1 to 10. Items stay as they are. Do not
+apply anything from this list.**
 
 Nothing on this list is applied yet. Say which numbers you approve (for
 example "yes to 1 to 6, no to 9"), and milestone 5 of `balance.md` applies
