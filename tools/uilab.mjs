@@ -11,7 +11,7 @@
  */
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
-import { mkdirSync, existsSync } from 'node:fs';
+import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { gpuArgs } from './browser-args.mjs';
 
@@ -63,6 +63,8 @@ for (const name of WANT) {
   const clip = args.clip ? String(args.clip).split(',').map(Number) : null;
   await page.screenshot({ path: file, clip: clip ? { x: clip[0], y: clip[1], width: clip[2], height: clip[3] } : undefined });
   console.log(`ok ${file}`);
+  // --probe=<file.js> prints what the expression in that file gives on this page.
+  if (args.probe) console.log(`probe ${name}: ${JSON.stringify(await page.evaluate(readFileSync(String(args.probe), 'utf8')))}`);
   await page.close();
 }
 await browser.close();

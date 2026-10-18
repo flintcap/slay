@@ -165,6 +165,11 @@
     inset 0 1px 0 rgb(var(--hi-rgb) / 0.14);
 
   --plate: linear-gradient(180deg, #221b13 0%, #17120d 35%, #100c09 100%);
+  /* Painted skin: grey detail maps (Skin.ts sets --tex-*) laid over a plate
+     with background-blend-mode soft-light, listed just above the plate.
+     Missing file: the layer is none and the plate shows as before. */
+  --skin-leather: var(--tex-leather, none) 0 0 / 192px 192px repeat;
+  --skin-metal: var(--tex-metal, none) 0 0 / 160px 160px repeat;
   --plate-hi: linear-gradient(180deg, #2c2318 0%, #1c160f 45%, #130f0b 100%);
 
   /* Embossed relief: turbulence lit from the upper left. Laid over a plate
@@ -640,7 +645,8 @@ select {
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--ink-2);
-  background: var(--btn-plate) padding-box, var(--btn-rim) border-box;
+  background: var(--skin-metal) padding-box, var(--btn-plate) padding-box, var(--btn-rim) border-box;
+  background-blend-mode: soft-light, normal, normal;
   border: 1px solid transparent;
   border-radius: var(--radius);
   box-shadow:
@@ -660,10 +666,8 @@ select {
   content: '';
   position: absolute;
   inset: 0;
-  /* Worn, scratched metal (textures/ui, loaded by Skin.ts). */
-  background-image: var(--tex-metal, none), var(--noise);
-  background-size: 160px 160px, 140px 140px;
-  opacity: 0.2;
+  background-image: var(--noise);
+  opacity: 0.16;
   mix-blend-mode: overlay;
   pointer-events: none;
   z-index: -1;
@@ -787,6 +791,8 @@ select {
 .btn-ghost {
   --btn-plate: linear-gradient(180deg, rgb(var(--light-rgb) / 0.025), rgb(var(--shade-rgb) / 0.12));
   --btn-rim: linear-gradient(180deg, rgb(var(--line-rgb) / 0.32), rgb(var(--line-rgb) / 0.1));
+  /* See-through plate: no metal skin, it would show raw over the scene. */
+  background: var(--btn-plate) padding-box, var(--btn-rim) border-box;
   box-shadow: none;
 }
 .btn-ghost:hover:not(:disabled) {
@@ -1195,8 +1201,10 @@ input.slider::-moz-range-thumb {
   background:
     radial-gradient(ellipse 70% 38% at 50% 0%, rgba(150, 110, 50, 0.16), transparent 72%) padding-box,
     radial-gradient(ellipse 120% 70% at 50% 115%, rgb(var(--shade-rgb) / 0.55), transparent 62%) padding-box,
+    var(--skin-leather) padding-box,
     var(--plate) padding-box,
     var(--gild) border-box;
+  background-blend-mode: normal, normal, soft-light, normal, normal;
   border: 2px solid transparent;
   border-radius: var(--radius-lg);
   box-shadow:
@@ -1225,9 +1233,8 @@ input.slider::-moz-range-thumb {
   position: absolute;
   inset: 0;
   border-radius: var(--radius);
-  /* Pebbled leather (textures/ui, loaded by Skin.ts) over the relief. */
-  background-image: var(--tex-leather, none), var(--relief), var(--noise);
-  background-size: 192px 192px, 256px 256px, 140px 140px;
+  background-image: var(--relief), var(--noise);
+  background-size: 256px 256px, 140px 140px;
   opacity: 0.17;
   mix-blend-mode: overlay;
   pointer-events: none;
@@ -1942,7 +1949,8 @@ input.slider::-moz-range-thumb {
   width: min(460px, 88vw);
   background:
     radial-gradient(ellipse 70% 40% at 50% 0%, rgba(150, 110, 50, 0.18), transparent 72%) padding-box,
-    var(--plate) padding-box, var(--gild) border-box;
+    var(--skin-leather) padding-box, var(--plate) padding-box, var(--gild) border-box;
+  background-blend-mode: normal, soft-light, normal, normal;
   border: 2px solid transparent;
   border-radius: var(--radius-lg);
   box-shadow: 0 0 0 1px var(--frame-edge), 0 0 0 4px rgba(18, 14, 10, 0.92), 0 0 0 5px rgba(150, 112, 48, 0.35),
@@ -2056,6 +2064,7 @@ input.slider::-moz-range-thumb {
   font-size: var(--fs-sm);
   background:
     radial-gradient(ellipse 90% 70px at 50% 0%, color-mix(in srgb, var(--rc) 22%, transparent), transparent 100%) padding-box,
+    var(--skin-leather) padding-box,
     linear-gradient(180deg, rgba(22, 17, 12, 0.985), rgba(9, 7, 5, 0.99)) padding-box,
     linear-gradient(180deg, color-mix(in srgb, var(--rc) 85%, #fff 15%), color-mix(in srgb, var(--rc) 45%, #1a120a) 40%, color-mix(in srgb, var(--rc) 70%, var(--shade))) border-box;
   border: 1.5px solid transparent;
@@ -2066,13 +2075,14 @@ input.slider::-moz-range-thumb {
     0 0 0 4px color-mix(in srgb, var(--rc) 30%, transparent),
     0 0 34px -8px color-mix(in srgb, var(--rc) 70%, transparent),
     var(--shadow-3);
+  background-blend-mode: normal, soft-light, normal, normal;
 }
 .tt::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: var(--tex-leather, none), var(--relief), var(--noise);
-  background-size: 192px 192px, 256px 256px, 140px 140px;
+  background-image: var(--relief), var(--noise);
+  background-size: 256px 256px, 140px 140px;
   opacity: 0.12;
   mix-blend-mode: overlay;
   border-radius: var(--radius);
@@ -3696,8 +3706,8 @@ input.slider::-moz-range-thumb {
   position: absolute;
   inset: 0;
   border-radius: 12px 12px 0 0;
-  background-image: var(--tex-metal, none), var(--relief), var(--noise);
-  background-size: 220px 220px, 256px 256px, 140px 140px;
+  background-image: var(--relief), var(--noise);
+  background-size: 256px 256px, 140px 140px;
   opacity: 0.16;
   mix-blend-mode: overlay;
 }
