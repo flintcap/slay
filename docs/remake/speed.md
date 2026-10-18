@@ -34,7 +34,7 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   what `compileAsync` does; check-frames now names each pipeline still made
   in play, and the few left belong to other streams' late looks: see
   "Notes for resume")
-- [ ] 3b. Leftover first-time stutters (handed over by looks, two tries
+- [x] 3b. Leftover first-time stutters (handed over by looks, two tries
   there): pipelines still made in play for `warden:mouth`,
   `warden:shorts`, `item-gem/item:gem` on the map; `fx:solid-shard`,
   `fx:cores`, `fx:columns`, `item-glow/item:glow`, `prop:altar` cloth and
@@ -42,10 +42,11 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   room. Read looks.md "Notes for resume" first (its guesses). Fix with
   stand-ins in `warmup()` or hidden builds at load; count pipelines made in
   play before and after with check-frames.
-- [ ] 3c. The vfx lab (`tools/check-decals.mjs`) renders black frames for
+- [x] 3c. The vfx lab (`tools/check-decals.mjs`) renders black frames for
   every scene, even the old `impacts` scene (see effects.md). Find why and
   fix the lab (a tool, not the game, unless the game is at fault). One
-  retry, then note it and move on.
+  retry, then note it and move on. (Fixed in the lab: 18 of 19 scenes draw;
+  `crits` is still black in a full run, see "Notes for resume".)
 - [ ] 4. (after wave two) Fewer draw calls: instancing or `BatchedMesh` for repeated props,
   monsters and loot, with culling (GPU or indirect draws where three.js
   supports it). Count draw calls before and after.
@@ -161,6 +162,54 @@ Title live at 11.9 s.
 Steps (ms): town meshing 15408, world 2286, hero 162, shaders 4972; depth 25
 map 502, hero 138, world 2538, monsters 2956, summons 620, shaders 8447.
 Town's `buildTown` is paced now (longest block 466, was 2589).
+
+Frames (`check-frames --only=map,boss --why --draws`, 480x270, high, 120
+frames, depth 6 map with 123 monsters, depth 8 boss with 77):
+
+| place | draws (GPU) | render objects | triangles | update p50/p95/p99/worst | cpu p50/p95 | made in play |
+| --- | --- | --- | --- | --- | --- | --- |
+| map | 170 | ~177 | 1.36 M | 2.9 / 9.7 / 12.2 / 636 | 13.9 / 25.2 | 3 |
+| boss | 112 | ~150 | 0.55 M | 2.4 / 8.7 / 32 / 1106 | 11.8 / 33 | 7 |
+
+The one worst frame of each is a single spike (a GC or a new area's
+build); the p99 is the real tail. Map draws by kind (render objects a
+frame, main view + shadow maps): props baked 17 + 10 shadow, creatures 26.7
++ 16.8 shadow (one shadow body each), the hero's parts 22 + 20 shadow,
+terrain 5 + 7 shadow, instanced props 5 + 11 shadow, the rest one or two
+each (flames, light pools, motes, post passes).
+
+### Milestone 3b (late pipelines)
+
+`check-frames --why` now logs every pipeline from the load on and, for
+each made in play, the nearest one made before with what differs in its
+key; `--draws` counts draws by kind. What it found:
+- Map (`warden:mouth`, `warden:shorts`, `item-gem`): not the map at all.
+  The inventory paperdoll (a studio drawing the hero under its own lights)
+  warmed on `scene:change`, as the curtain lifts, and its compile culled
+  to its camera, so the face, cloth and the weapon's gem were built by the
+  draw after it, in play. It now warms on the map load's first step and
+  compiles with culling off (`ui/InventoryPanel.ts`, `ui/PaperdollView.ts`,
+  ui's files, small edits). Map: 3 in play -> 0. Two are still made in the
+  first second (the paperdoll's compile builds for the game's own target,
+  4x samples and colour space differ from its canvas; the draw makes them).
+- `warmupDone` freed the item stand-ins' geometry and the summoned
+  bodies' materials right after the warm: three lets go of a pipeline once
+  nothing that drew with it is left, so every late look nothing else on
+  the floor wears (a gem or potion drop, a boss's adds) was thrown away
+  again and made anew mid-fight. They now live until the area changes
+  (`DungeonScene.releaseWarm`).
+- Boss (40 frames): 0 made in play. The 26 made while settling were a new
+  area's own warm-up (the autopilot walked through a way on).
+
+### Milestone 3c (vfx lab)
+
+- The lab drew one frame cold. The game's renderer leaves out every draw
+  whose shader is not built yet (`ShaderGate`), so every scene was black.
+  It now runs `Renderer.warm` before each shot, draws twice, and throws a
+  first shot away at boot. 18 of 19 scenes draw (`shots/vfx/`).
+- `crits` (shot at 0.06 s) still comes out black in a full run, though it
+  drew in a two-scene run. Tried twice; left. Guess: the crit flash's
+  first frames (exposure or the temporal pass) on a cold scene.
 
 ## For the owner to test
 

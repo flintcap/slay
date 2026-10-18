@@ -640,10 +640,11 @@ export class InventoryPanel {
         /* the panel builds it on opening, as before */
       }
     };
-    // Into a map it warms on the load's 'shaders' step: the old scene is
-    // gone by then and the curtain is still down. On `scene:change` the
-    // curtain was already lifting, so every pipeline the figure needed was
-    // made in play (check-frames: the hero's face, cloth and gem).
+    // Into a map it warms on the load's first step: the old scene is gone by
+    // then, and the build ahead leaves the compile time to finish behind the
+    // curtain. On `scene:change` the curtain was already lifting, so every
+    // pipeline the figure needed was made in play (check-frames: the hero's
+    // face, cloth and gem).
     let loadingTo: string | null = null;
     let warmed = false;
     events.on('scene:loading', (p) => {
@@ -651,7 +652,7 @@ export class InventoryPanel {
       warmed = false;
     });
     events.on('load:progress', (p) => {
-      if (p.stage !== 'shaders' || loadingTo !== 'dungeon' || warmed) return;
+      if (loadingTo !== 'dungeon' || warmed) return;
       warmed = true;
       warm();
     });

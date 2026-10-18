@@ -305,7 +305,8 @@ async function play({ n, settleMs, settleFrames, fight, byKind }) {
     backend.draw = function (ro, ...rest) {
       const o = ro.object;
       let nm = o?.name || o?.parent?.name || o?.type || '?';
-      nm = nm.replace(/[:#].*$/, '').replace(/\d+$/, '') || '?';
+      // Two name parts ('prop:chest', 'creature:skin'), numbers and colours dropped.
+      nm = nm.split(/[:#]/).slice(0, 2).join(':').replace(/[:_]?[0-9a-f]{6}$|[:_]?\d+$/, '') || '?';
       const shadow = !!ro.material?.isShadowPassMaterial;
       const k = `${shadow ? 'shadow ' : ''}${nm}${o?.isInstancedMesh ? ' (inst)' : o?.isBatchedMesh ? ' (batch)' : ''}`;
       kinds.set(k, (kinds.get(k) ?? 0) + 1);
@@ -353,6 +354,10 @@ async function play({ n, settleMs, settleFrames, fight, byKind }) {
     const one = settled[0];
     const prior = plog.filter((r) => r.t < t0 && r.phase === 'load').at(-1);
     if (one) why.push(`first settled: ${one.who} dyn ${one.dyn} lights [${one.lights}]`);
+    for (const r of settled.slice(0, 4)) {
+      const was = plog.filter((x) => x.t < t0 && x.who === r.who).at(-1);
+      why.push(`settled ${r.who}: ${was ? `before, ${Math.round(t0 - was.t)} ms earlier, dyn ${was.dyn} lights [${was.lights}] shadow ${was.shadow}->${r.shadow} back ${was.back === r.back ? 'same' : was.back + ' -> ' + r.back}` : 'never before'}`);
+    }
     if (prior) why.push(`last at load: ${prior.who} dyn ${prior.dyn} lights [${prior.lights}]`);
     const late = plog.filter((r) => r.t >= start && r.t <= end);
     const early = plog.filter((r) => r.t < start);

@@ -190,17 +190,22 @@ export class PaperdollView {
     // shows: before it was posed the held weapon stood out of frame, so its
     // gems' shader was left for the first opening (seconds on a cold driver).
     // `compileAsync` builds them off the main thread where the browser can.
+    // Posed and with culling off for the compile too: `compileAsync` culls
+    // to the camera, so the parts out of frame (the face, the cloth under
+    // the armour, the held weapon's gem) were left to the draw after it,
+    // which built their pipelines on the spot, with the curtain already up.
+    this.hero.animator.update(0);
+    const culled: THREE.Object3D[] = [];
+    this.scene.traverse((o) => {
+      if (o.frustumCulled) {
+        o.frustumCulled = false;
+        culled.push(o);
+      }
+    });
     const draw = (): void => {
-      if (this.running || !this.renderer) return;
-      this.hero?.animator.update(0);
-      const culled: THREE.Object3D[] = [];
-      this.scene.traverse((o) => {
-        if (o.frustumCulled) {
-          o.frustumCulled = false;
-          culled.push(o);
-        }
-      });
       try {
+        if (this.running || !this.renderer) return;
+        this.hero?.animator.update(0);
         this.renderer.render(this.scene, this.camera);
       } finally {
         for (const o of culled) o.frustumCulled = true;

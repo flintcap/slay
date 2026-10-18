@@ -374,10 +374,18 @@ async function run(name: string): Promise<boolean> {
   // (`ShaderGate`), the post chain included, so one cold frame came out
   // black. Build what this frame needs first, the way the load curtain does.
   await renderer.warm(scene, camera, clock, 120000);
+  // Twice: the first frame after a cold start came out black (the temporal
+  // pass has no history yet), so the first scene of a run was always lost.
+  renderer.render(scene, camera, dt, clock);
   renderer.render(scene, camera, dt, clock);
   await new Promise((r) => requestAnimationFrame(() => r(null)));
   return true;
 }
+
+// A first shot, thrown away: the first scene of every run
+// still came out black after its warm-up, the ones after it did not.
+await run('crits');
+await new Promise((r) => requestAnimationFrame(() => r(null)));
 
 (window as unknown as { VFXLAB: unknown }).VFXLAB = {
   scenes: Object.keys(SCENES),
