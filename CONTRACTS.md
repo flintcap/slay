@@ -1263,6 +1263,13 @@ a step), never shrink.
 - Next area of a map (stairs): `world`, `monsters`, `boss`, `summons`,
   `shaders`, `ready`.
 - Town (`TownScene.enter`): `meshing`, `world`, `hero`, `shaders`, `ready`.
+
+Drawn by `src/ui/Transitions.ts` (ui): each stage id has a plain-words
+label there (`STAGE_WORDS`); a new stage id shows "Making ready" until one
+is added. A load whose first step (`done === 0`) arrives with no
+`scene:loading` before it (the stairs) brings the loading card up by
+itself. `'assets:progress'` drives the bar only for a load that sends no
+steps.
 - Every other scene: `shaders`, `ready`.
 
 Steps are counted by `beginLoad(total)` / `loadStep(name)` / `endLoad()`

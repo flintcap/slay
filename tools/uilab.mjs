@@ -8,6 +8,7 @@
  *   SLAY_PORT=4301 node tools/uilab.mjs --out=shots/hud --shots=hud,inventory,tooltip,skills
  *   node tools/uilab.mjs --shots=hud --width=1280 --height=720
  *   node tools/uilab.mjs --shots=inventory --clip=440,140,620,200 --dpr=2
+ *   node tools/uilab.mjs --shots=loading --q=biome:caverns;stairs:1
  */
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
@@ -29,6 +30,8 @@ const HEIGHT = Number(args.height ?? 1080);
 const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4301);
 const CLS = args.class ? `&class=${args.class}` : '';
 const NODE_Q = args.node ? `&node=${args.node}` : '';
+// Extra scenario options: --q=biome:caverns;stairs:1 becomes &biome=caverns&stairs=1.
+const EXTRA_Q = args.q ? '&' + String(args.q).replaceAll(':', '=').replaceAll(';', '&') : '';
 mkdirSync(OUT, { recursive: true });
 
 const server = await createServer({
@@ -52,7 +55,7 @@ for (const name of WANT) {
   page.on('console', (m) => {
     if (m.type() === 'error' && !m.text().includes('404')) errors.push(`${name}: ${m.text()}`);
   });
-  await page.goto(`http://127.0.0.1:${PORT}/tools/uilab.html?s=${encodeURIComponent(name)}${CLS}${NODE_Q}`, {
+  await page.goto(`http://127.0.0.1:${PORT}/tools/uilab.html?s=${encodeURIComponent(name)}${CLS}${NODE_Q}${EXTRA_Q}`, {
     waitUntil: 'load',
     timeout: 120000,
   });

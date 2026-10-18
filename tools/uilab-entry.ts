@@ -389,6 +389,33 @@ const scenarios2: Record<string, () => void> = {
       window.dispatchEvent(new PointerEvent('pointermove', { clientX: tx, clientY: ty, bubbles: true }));
     }, 400);
   },
+  /**
+   * The loading card mid-build: the curtain down, a few steps in, the floor's
+   * biome known (`?biome=caverns`, `?stairs=1` for the between-areas card).
+   */
+  loading() {
+    const q = new URLSearchParams(location.search);
+    const fade = document.getElementById('fade')!;
+    fade.style.transition = 'none';
+    fade.style.opacity = '1';
+    const biome = q.get('biome') ?? 'crypt';
+    const stairs = q.get('stairs') === '1';
+    if (stairs) {
+      events.emit('depth:changed', { depth: 4, level: 1, of: 3, place: 'Ossuary Steps', biome, mapName: 'Gallows Fen' });
+    } else {
+      events.emit('scene:loading', { from: 'town', to: 'dungeon', payload: { depth: 4 } });
+    }
+    const steps = stairs ? ['map', 'hero', 'icons', 'world', 'monsters'] : ['map', 'hero', 'icons', 'world', 'monsters', 'summons', 'shaders'];
+    const upto = Number(q.get('step') ?? 3);
+    steps.slice(0, upto + 1).forEach((stage, i) => {
+      setTimeout(() => {
+        events.emit('load:progress', { stage, done: i, total: steps.length });
+        if (!stairs && stage === 'world') {
+          events.emit('depth:changed', { depth: 4, level: 1, of: 3, place: 'Ossuary Steps', biome, mapName: 'Gallows Fen' });
+        }
+      }, 60 * i);
+    });
+  },
   /** An equip and a pickup, a moment after the panel opens, to see the flashes. */
   arrive() {
     events.emit('ui:open', { panel: 'inventory' });

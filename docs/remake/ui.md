@@ -27,9 +27,9 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   loot filter. (`ui: upgrade arrows on items, loot filter at a glance`)
   Compare and stash tabs were already in place; added the arrows (one
   verdict shared with the tooltip) and the loot filter glance grid.
-- [ ] 5. Loading screen: progress bar from `'load:progress'` (falls back to
+- [x] 5. Loading screen: progress bar from `'load:progress'` (falls back to
   `'scene:loading'` and `'assets:progress'` until speed adds it), tips and
-  biome art.
+  biome art. (`ui: loading card with a real progress bar and the place behind it`)
 - [ ] 6. Settings clarity, first-run help, text size option, keyboard and
   gamepad navigation of menus.
 - [ ] 7. UI cost: no layout reads in per-frame code, batched HUD writes.
@@ -38,15 +38,16 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Next up
 
-1. Milestone 5 (loading screen): `'load:progress'` now exists in
-   src/core/Events.ts (speed landed it; shape in CONTRACTS.md "Load
-   progress"). Rework the loading card in `src/ui/Transitions.ts` (today a
-   plain 2px bar built with inline cssText, fed by 'assets:progress'): a
-   painted progress bar driven by load:progress (done/total, stage name in
-   plain words), keep 'scene:loading'/'assets:progress' as fallback, tips
-   from `src/ui/tips.ts`, and biome art behind (per-biome tint and a
-   generated silhouette, no new files needed). Check: uilab scenario that
-   emits scene:loading + load:progress.
+1. Milestone 6 (settings clarity, first-run help, text size, menu
+   navigation). Start by reading `src/ui/SettingsPanel.ts` (490 lines),
+   `src/ui/Onboarding.ts` and `src/ui/MenuNav.ts`, and `src/core/Access.ts`
+   (textScale, remapKey). Text size already exists (Access textScale feeds
+   `--text-scale`); check it reaches every panel and the canvas layers.
+   Then: a one-line plain-words description under each setting that lacks
+   one; make sure first-run help (Onboarding) can be shown again from
+   settings; keyboard (and gamepad, if `navigator.getGamepads` is already
+   read somewhere) moves a highlight through settings rows and tabs the way
+   MenuNav does for title/pause/death. Check: uilab `settings` shot.
 
 ## Notes for resume
 
@@ -79,6 +80,14 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 - `src/ui/Compare.ts`: `compareItems` (the tooltip's delta strip and
   verdict) and `isUpgrade(item)` (the green arrow, `.islot-up`, drawn by
   ItemSlot for every grid except the paperdoll). Cached per hero gear state.
+- Loading card (`src/ui/Transitions.ts`): bar from `'load:progress'` with
+  a slow creep inside each step (rAF only while the card is up, writes only
+  on change); stage ids map to words in `STAGE_WORDS`. Stairs loads (no
+  `scene:loading`) bring the card up on their first step, titled "Area N of
+  M". Behind it a skyline generated per biome id (`skyline()`, seeded via
+  `streamFor`) tinted with the biome's accent through `--ld-tint` (an
+  `@property` colour, so it eases when the biome arrives mid-build). uilab
+  `loading` scenario; `--q=biome:caverns;stairs:1;step:4` passes options.
 - uilab now mounts `mountDepthUI()` too, so `lootFilter`, `legacy`, `gate`,
   `gambler`, `enchanter`, `fuse`, `bounties` open by id.
 - Cheap UI renders: `SLAY_PORT=4343 flock /tmp/slay-browser.lock timeout 600
@@ -107,6 +116,13 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   for each kind of gear; the active preset is lit and explained.
 - Buffs in their last 3 seconds: the timer under the chip turns amber (green
   for a debuff that is about to end) while the chip blinks.
+
+- Take the stairs to the next area of a map, and walk into a new tier from
+  town: if the build takes more than about half a second, the card shows
+  with a gold bar that fills step by step, a short line saying what is
+  being built ("Raising the walls"), a percent, a tip, and a dark skyline
+  lit in the place's colour along the bottom. Quick loads stay a plain dip
+  to black.
 
 ## Handover
 
