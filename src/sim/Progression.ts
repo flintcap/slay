@@ -11,6 +11,7 @@
 import { MAX_LEVEL, totalXpForLevel, xpForLevel } from './Stats';
 import { monsterLevelForDepth, xpMultiplier } from './Difficulty';
 import type { MonsterRank } from '../types';
+import { legacyXpMultiplier } from './Legacy';
 
 // ---------------------------------------------------------------------------
 // Points per level
@@ -174,6 +175,14 @@ export function recommendedDepthForLevel(level: number): number {
 /** The level a player should be to fight at a depth without an XP penalty. */
 export function recommendedLevelForDepth(depth: number): number {
   return monsterLevelForDepth(depth);
+}
+
+/** How much more XP each rank pays than a normal monster. */
+const KILL_XP_RANK: Record<MonsterRank, number> = { normal: 1, champion: 1.9, elite: 3.2, rare: 5, boss: 22 };
+
+/** XP the hero gets for a kill at a depth: what DungeonScene grants and the gate shows. */
+export function killXp(depth: number, rank: MonsterRank): number {
+  return Math.round((8 + depth * 6) * KILL_XP_RANK[rank] * activeDifficulty().xp * legacyXpMultiplier());
 }
 
 /**

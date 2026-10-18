@@ -24,6 +24,7 @@ import { CombatFeel, type HitKind, type WeaponSound } from '../fx/CombatFeel';
 import type { EffectHandle } from '../fx/Effects';
 import { getStatus, synthesizeSkillBuff } from '../data/statuses';
 import { getBase } from '../sim/Loot';
+import { CASTER_CATEGORIES } from '../data/itemBases';
 import type { ItemCategory } from '../types';
 import { buildMonsterModel, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from '../entities/MonsterModels';
 import { MONSTERS } from '../data/monsters';
@@ -113,7 +114,6 @@ export type WeaponStyle = 'melee' | 'ranged' | 'caster' | 'unarmed';
 
 const MELEE_CATEGORIES: ItemCategory[] = ['sword', 'axe', 'mace', 'dagger', 'spear'];
 const RANGED_CATEGORIES: ItemCategory[] = ['bow', 'crossbow'];
-const CASTER_CATEGORIES: ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
 
 /** Resolves the style of whatever is in the character's main hand. */
 /**

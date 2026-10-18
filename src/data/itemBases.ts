@@ -1375,6 +1375,21 @@ export const WEAPON_CATEGORIES: ItemCategory[] = [
 export const ARMOR_CATEGORIES: ItemCategory[] = ['helm', 'chest', 'gloves', 'pants', 'boots', 'belt', 'shield'];
 export const JEWELRY_CATEGORIES: ItemCategory[] = ['amulet', 'ring', 'charm'];
 
+/** Weapons that cast instead of striking: no basic attack, only spells. */
+export const CASTER_CATEGORIES: readonly ItemCategory[] = ['wand', 'staff', 'scepter', 'orb'];
+
+/**
+ * True when what this character holds gives no basic attack: a caster weapon
+ * in the main hand (a Paladin's scepter is a mace), or bare hands with a focus
+ * in the off hand. `SkillRunner.basicAttack` refuses the swing on the same terms.
+ */
+export function castsOnly(classId: CharClassId, mainHand: string | null | undefined, offHand: string | null | undefined): boolean {
+  const main = mainHand ? findBase(mainHand)?.category : undefined;
+  if (main) return CASTER_CATEGORIES.includes(main) && !(main === 'scepter' && classId === 'paladin');
+  const off = offHand ? findBase(offHand)?.category : undefined;
+  return !!off && CASTER_CATEGORIES.includes(off);
+}
+
 export function isWeapon(base: ItemBase): boolean {
   return base.baseMinDamage !== undefined;
 }

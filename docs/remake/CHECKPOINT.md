@@ -52,7 +52,13 @@ Update this file and push it after every finished step.
      Hoard text.
    - World, open: 86 catalogue quests never picked (needs world hooks for
      many filters; only wire the ones whose hooks exist).
-   - Interface, Art and sound, Engine: not started.
+   - Interface, done: gate panel shows real monster level, item level, zone
+     count and XP per kill (Difficulty curves now match the game); caster
+     empty right-click slot says there is no basic attack.
+   - Interface, open: resist tooltip, Buy Back price, Alt/Shift text,
+     restore-defaults warning, epic pickup toast, compare, key labels and
+     rebinds, panel raising, est. DPS.
+   - Art and sound, Engine: not started.
 
 ## Next
 

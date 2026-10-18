@@ -10,8 +10,9 @@
 
 import { Panel, Button, IconButton, Slider, div, span, add, clear, hex, statLine } from './Widgets';
 import type { GateOffer } from './ChoiceSeam';
-import { monsterLevelForDepth, itemLevelForDepth, levelsForDepth, xpMultiplier } from '../sim/Difficulty';
-import { depthDangerBand } from '../sim/Progression';
+import { monsterLevelForDepth, itemLevelForDepth } from '../sim/Difficulty';
+import { levelsForDepth } from '../world/DungeonGen';
+import { depthDangerBand, killXp } from '../sim/Progression';
 
 export class GatePanel {
   readonly panel: Panel;
@@ -145,8 +146,8 @@ export class GatePanel {
       statLine('Monster level', String(monsterLevelForDepth(depth)), { icon: 'attack' }),
       danger,
       statLine('Item level', String(itemLevelForDepth(depth)), { icon: 'gem' }),
-      statLine('Areas before the boss', String(levelsForDepth(depth)), { icon: 'map' }),
-      statLine('Experience bonus', `+${Math.round((xpMultiplier(depth) - 1) * 100)}%`, { icon: 'star' }),
+      statLine('Zones, boss in the last', `${levelsForDepth(depth)} or more`, { icon: 'map' }),
+      statLine('XP per kill', String(killXp(depth, 'normal')), { icon: 'star' }),
     );
 
     const note = this.body.querySelector('.gate-note')!;

@@ -58,7 +58,7 @@ import { RunDirector } from './RunDirector';
 import { RunEvents } from './RunEvents';
 import { questTokens } from './QuestTokens';
 import { RunModifiers } from './RunModifiers';
-import { legacyXpMultiplier } from '../sim/Legacy';
+import { killXp } from '../sim/Progression';
 import { bossHitCap } from '../sim/FairFight';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 import { disposeAbilityWorld, projectileStandIns } from '../entities/Abilities';
@@ -1826,9 +1826,7 @@ export class DungeonScene extends GameScene {
     this.lastOverkill = 0;
 
     const c = this.player.character;
-    const dif = activeDifficulty();
-    const xpMul = rank === 'boss' ? 22 : rank === 'rare' ? 5 : rank === 'elite' ? 3.2 : rank === 'champion' ? 1.9 : 1;
-    const xp = Math.round((8 + this.run.depth * 6) * xpMul * dif.xp * legacyXpMultiplier());
+    const xp = killXp(this.run.depth, rank);
     this.director?.onKill(rank);
     if (grantXp(c, xp)) {
       this.player.refreshStats();
@@ -1847,6 +1845,7 @@ export class DungeonScene extends GameScene {
     for (const item of drops.items) this.dropItem(item, pos);
     // Harder tiers guarantee extra items from anything above a normal monster:
     // real gear rolls, not a whole drop table cut down to whatever came first.
+    const dif = activeDifficulty();
     if (dif.bonusDrops > 0 && rank !== 'normal') {
       for (let i = 0; i < dif.bonusDrops; i++) this.dropItem(rollItem(ilvl, this.rng, { magicFind: find.magicFind, source: rank }), pos);
     }

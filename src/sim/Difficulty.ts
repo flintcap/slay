@@ -37,14 +37,11 @@ const LEVEL_SOFT_DEPTH = 60;
 export const MAX_MONSTER_LEVEL = 120;
 
 /**
- * Monster level for a depth. Depth 60 lines up with the level cap so a maxed
- * character fights "fair" fights there; past that levels creep and multipliers
- * take over.
+ * Monster level at a depth: the level every monster there spawns at
+ * (`depthCurve` in entities/Enemy.ts reads this), so the gate shows the truth.
  */
 export function monsterLevelForDepth(depth: number): number {
-  const d = Math.max(1, Math.floor(depth));
-  if (d <= LEVEL_SOFT_DEPTH) return Math.max(1, Math.round(d * 1.5));
-  return Math.min(MAX_MONSTER_LEVEL, Math.round(90 + (d - LEVEL_SOFT_DEPTH) * 0.5));
+  return Math.max(1, Math.round(Math.max(1, depth) * 1.05));
 }
 
 /**
@@ -186,11 +183,12 @@ export function levelsForDepth(depth: number): number {
 // Reward curve
 // ---------------------------------------------------------------------------
 
-/** Item level of drops at a depth — feeds affix tier gating. */
+/**
+ * Item level of a normal monster's drops at a depth (`Enemy.ilvl`; champions
+ * and better drop two higher). Feeds affix tier gating.
+ */
 export function itemLevelForDepth(depth: number): number {
-  const d = Math.max(1, Math.floor(depth));
-  if (d <= LEVEL_SOFT_DEPTH) return Math.max(1, Math.round(d * 1.6));
-  return Math.min(150, Math.round(96 + (d - LEVEL_SOFT_DEPTH) * 0.65));
+  return Math.max(1, Math.round(depth * 1.15));
 }
 
 /** Global XP premium for depth, on top of the monster-level curve. */

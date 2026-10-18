@@ -12,6 +12,7 @@
  */
 
 import type { Character, DungeonLevel, ItemRarity, QuestInstance, SkillDef, StatKey } from '../types';
+import { castsOnly } from '../data/itemBases';
 import { events, type GameEvents } from '../core/Events';
 import { save } from '../core/Save';
 import { stackCount } from '../sim/Inventory';
@@ -1275,7 +1276,11 @@ export class HUD {
       delete this.rmbSlot.dataset.skill;
       this.rmbSlot.dataset.cost = '0';
       this.rmbSlot.dataset.range = '0';
-      this.rmbSlot.title = 'Basic attack — drag a skill here to replace it.';
+      // A caster's hands have no basic attack: right click does nothing until a spell sits here.
+      const e = c.equipment;
+      this.rmbSlot.title = castsOnly(c.classId, e.mainHand?.baseId, e.offHand?.baseId)
+        ? 'No basic attack with a caster weapon — drag a spell here.'
+        : 'Basic attack — drag a skill here to replace it.';
     }
 
     for (let i = 0; i < 6; i++) {

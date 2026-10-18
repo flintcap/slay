@@ -29,6 +29,7 @@ import type { NamedRare } from '../data/namedRares';
 import { events } from '../core/Events';
 import { activeDifficulty } from '../data/difficulties';
 import { emptyStats } from '../sim/Stats';
+import { itemLevelForDepth, monsterLevelForDepth } from '../sim/Difficulty';
 import { rollDamage, mitigate, usualAttackRating } from '../sim/Combat';
 import { buildMonsterModel, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from './MonsterModels';
 import { AIBrain, resetPacks } from './AI';
@@ -131,7 +132,7 @@ export function depthCurve(depth: number): DepthCurve {
     defense: (8 * Math.pow(1.095, d - 1) + d * 3) * dif.monsterDefense,
     attackRating: 30 * Math.pow(1.1, d - 1) + d * 12,
     xp: 9 * Math.pow(1.105, d - 1) + d * 4,
-    level: Math.max(1, Math.round(d * 1.05)),
+    level: monsterLevelForDepth(d),
   };
 }
 
@@ -395,7 +396,7 @@ export class Enemy implements Combatant {
     const curve = depthCurve(depth);
     const rm = RANK_MODS[rank];
     this.level = curve.level;
-    this.ilvl = Math.max(1, Math.round(depth * 1.15 + (rank === 'normal' ? 0 : 2)));
+    this.ilvl = itemLevelForDepth(depth) + (rank === 'normal' ? 0 : 2);
 
     // --- affix multipliers -------------------------------------------------
     let lifeAffix = 1;
