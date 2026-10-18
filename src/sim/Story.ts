@@ -153,7 +153,8 @@ export function holds(w: When | undefined, npcId?: string): boolean {
 export function fillStory(text: string): string {
   const acct = save.account;
   const c = current();
-  const lastF = acct.fallen.length ? acct.fallen[acct.fallen.length - 1]! : null;
+  // Newest first: `killCharacter` puts each death at the front.
+  const lastF = acct.fallen[0] ?? null;
   const lastFallen = lastF?.name ?? 'the last one';
   const vars: Record<string, string> = {
     name: c?.name ?? 'delver',

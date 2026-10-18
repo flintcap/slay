@@ -42,7 +42,17 @@ Update this file and push it after every finished step.
 
 ## In progress
 
-1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba).
+1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
+   Phase 0 tables World / Interface / Art / Engine). Permadeath dodge and
+   debug-in-release were done in 0a.
+   - World, done: newest fallen hero, quest complete once, boss family,
+     Purge counts insects (offered only when a zone has them, count scaled),
+     map quest rewards (MAP_QUESTS moved to data/quests.ts), shrine offers
+     fixed per shrine, pact wins over a clashing rolled modifier, Ambush and
+     Hoard text.
+   - World, open: 86 catalogue quests never picked (needs world hooks for
+     many filters; only wire the ones whose hooks exist).
+   - Interface, Art and sound, Engine: not started.
 
 ## Next
 

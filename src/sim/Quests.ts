@@ -506,8 +506,9 @@ function recheckComplete(quest: QuestInstance): void {
   if (!quest.objectives.every((o) => o.done)) return;
   quest.complete = true;
   events.emit('quest:complete', { name: quest.name });
+  // The HUD announces the completion; a quest with its own closing line adds it.
   const lore = questLore(quest.defId);
-  toast(lore.onComplete ?? `${quest.name} — complete`, 'epic');
+  if (lore.onComplete) toast(lore.onComplete, 'info');
 }
 
 // ---------------------------------------------------------------------------

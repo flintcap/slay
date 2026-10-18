@@ -21,11 +21,11 @@ import './depth-catalog';
 import * as THREE from 'three';
 import type { DungeonLevel, DungeonRun, Item, MonsterRank, QuestInstance, QuestObjective } from '../src/types';
 import { Random } from '../src/core/RNG';
+import { MAP_QUESTS as QUESTS } from '../src/data/quests';
 import {
   EVENT_PROPS,
   EVENT_RATES,
   PLANT_STAIR_CLEARANCE,
-  QUESTS,
   forceEvents,
   generateRun,
   isPlainChest,

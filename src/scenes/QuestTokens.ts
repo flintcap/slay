@@ -1,7 +1,7 @@
 /**
  * SLAY — where the generated quests' pickups and places come from.
  *
- * The run generator (`world/DungeonGen.ts` QUESTS) asks for relics, corpse-keys,
+ * The run generator (`MAP_QUESTS` in data/quests.ts) asks for relics, corpse-keys,
  * "reach the lowest floor" and "open the reliquary". Nothing in the game made a
  * relic or marked a place, so those quests could never be finished. This is
  * the rule book that says what each moment of a descent is worth to them:

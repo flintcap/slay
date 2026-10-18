@@ -62,6 +62,7 @@ import { planMap, zoneHeat } from './MapGen';
 import { chestKindFor, placeProps } from './Props';
 import { rollRunTheme, runTheme, themeFits } from './Themes';
 import { getMonster } from '../data/monsters';
+import { MAP_QUESTS } from '../data/quests';
 
 // ---------------------------------------------------------------------------
 // Contract exports
@@ -308,8 +309,8 @@ export const RUN_MODIFIERS: RunModifierDef[] = [
   { id: 'mod.frostbite', name: 'Frostbite', desc: 'Standing still chills you.', minDepth: 10, weight: 6, maxTier: 3 },
   { id: 'mod.resistant', name: 'Warded', desc: 'Enemies gain {v}% all resistances.', minDepth: 16, weight: 7, maxTier: 4 },
   { id: 'mod.reflect', name: 'Thorned', desc: 'Enemies reflect {v}% of melee damage.', minDepth: 20, weight: 5, maxTier: 3 },
-  { id: 'mod.ambush', name: 'Ambush', desc: 'Packs lie in wait and open from cover.', minDepth: 6, weight: 6, maxTier: 2 },
-  { id: 'mod.greed', name: 'Hoard', desc: 'Treasure is {v}% richer, guarded by rares.', minDepth: 1, weight: 8, maxTier: 4 },
+  { id: 'mod.ambush', name: 'Ambush', desc: 'While you fight, more monsters burst out of the dark around you.', minDepth: 6, weight: 6, maxTier: 2 },
+  { id: 'mod.greed', name: 'Hoard', desc: 'You gain {v}% magic find, and more gold find besides.', minDepth: 1, weight: 8, maxTier: 4 },
   { id: 'mod.fragile', name: 'Brittle Bones', desc: 'You deal {v}% more damage, but lose {v}% of every resistance.', minDepth: 25, weight: 5, maxTier: 3 },
   { id: 'mod.hunted', name: 'Hunted', desc: 'A stalker follows you through every area.', minDepth: 30, weight: 4, maxTier: 2 },
   { id: 'mod.unstable', name: 'Unstable', desc: 'Elites detonate on death.', minDepth: 22, weight: 5, maxTier: 3 },
@@ -327,6 +328,16 @@ export function modifierTier(mod: string): number {
 export function modifierId(mod: string): string {
   const at = mod.lastIndexOf('@');
   return at === -1 ? mod : mod.slice(0, at);
+}
+
+/** True when two modifiers cannot run together: the same one, or one excludes the other. */
+export function modifiersClash(a: string, b: string): boolean {
+  const ia = modifierId(a);
+  const ib = modifierId(b);
+  if (ia === ib) return true;
+  const da = RUN_MODIFIERS.find((m) => m.id === ia);
+  const db = RUN_MODIFIERS.find((m) => m.id === ib);
+  return !!(da?.excludes?.includes(ib) || db?.excludes?.includes(ia));
 }
 
 function rollModifiers(depth: number, rng: Rng): string[] {
@@ -366,155 +377,29 @@ function rollModifiers(depth: number, rng: Rng): string[] {
 // Quests
 // ---------------------------------------------------------------------------
 
-export const QUESTS: QuestDef[] = [
-  {
-    id: 'quest.cull',
-    name: 'Thin the Ranks',
-    flavor: 'They breed faster than we can burn them. Reduce the number.',
-    minDepth: 1,
-    weight: 10,
-    objectives: [{ kind: 'slay', base: 24, perDepth: 1.6, desc: 'Slay {n} denizens' }],
-    rewardGold: 1,
-    rewardXp: 1,
-    rewardItems: 1,
-  },
-  {
-    id: 'quest.headsman',
-    name: 'The Headsman’s List',
-    flavor: 'Four names. Four heads. The order does not matter.',
-    minDepth: 4,
-    weight: 9,
-    objectives: [{ kind: 'slayElite', base: 3, perDepth: 0.09, desc: 'Destroy {n} elite champions' }],
-    rewardGold: 1.3,
-    rewardXp: 1.25,
-    rewardItems: 2,
-  },
-  {
-    id: 'quest.relics',
-    name: 'Relics of the Fallen',
-    flavor: 'Whatever they were carrying, it belongs above ground now.',
-    minDepth: 2,
-    weight: 9,
-    // Relics come out of chests, the quest altar, and elites (`scenes/QuestTokens.ts`).
-    objectives: [{ kind: 'collect', filter: 'item:relic', base: 5, perDepth: 0.12, desc: 'Recover {n} relics' }],
-    rewardGold: 1.5,
-    rewardXp: 1,
-    rewardItems: 2,
-  },
-  {
-    id: 'quest.cleanse',
-    name: 'Break the Seals',
-    flavor: 'Someone bound this place shut. Unbind it, and see what was kept in.',
-    minDepth: 6,
-    weight: 8,
-    objectives: [
-      { kind: 'cleanse', filter: 'prop:shrine', base: 3, perDepth: 0.05, desc: 'Cleanse {n} shrines' },
-      { kind: 'boss', base: 1, perDepth: 0, desc: 'Kill what was sealed' },
-    ],
-    rewardGold: 1.2,
-    rewardXp: 1.4,
-    rewardItems: 2,
-    modifier: 'mod.elites',
-  },
-  {
-    id: 'quest.descent',
-    name: 'The Long Descent',
-    flavor: 'Down. Keep going down. You will know when to stop.',
-    minDepth: 1,
-    weight: 8,
-    objectives: [
-      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Reach the last area' },
-      { kind: 'boss', base: 1, perDepth: 0, desc: 'Slay the map’s master' },
-    ],
-    rewardGold: 1,
-    rewardXp: 1.3,
-    rewardItems: 1,
-  },
-  {
-    id: 'quest.vigil',
-    name: 'The Vigil',
-    flavor: 'Hold the chamber. They will come. All of them.',
-    minDepth: 10,
-    weight: 7,
-    objectives: [
-      { kind: 'survive', base: 90, perDepth: 1.2, desc: 'Survive the vigil for {n} seconds' },
-      { kind: 'boss', base: 1, perDepth: 0, desc: 'Slay what answers the call' },
-    ],
-    rewardGold: 1.6,
-    rewardXp: 1.5,
-    rewardItems: 2,
-    modifier: 'mod.swarm',
-  },
-  {
-    id: 'quest.purge',
-    name: 'Purge the Brood',
-    flavor: 'Kill the young, then kill the thing that made them.',
-    minDepth: 14,
-    weight: 7,
-    objectives: [
-      { kind: 'slay', filter: 'insect', base: 30, perDepth: 1.4, desc: 'Exterminate {n} of the brood' },
-      { kind: 'boss', base: 1, perDepth: 0, desc: 'Kill the brood-mother' },
-    ],
-    rewardGold: 1.3,
-    rewardXp: 1.4,
-    rewardItems: 2,
-  },
-  {
-    id: 'quest.reliquary',
-    name: 'The Sealed Reliquary',
-    flavor: 'The vault opens for a corpse-key. Make several, in case.',
-    minDepth: 18,
-    weight: 6,
-    objectives: [
-      // Keys come off champions and better; the reliquary is the quest altar.
-      { kind: 'collect', filter: 'item:key', base: 3, perDepth: 0.06, desc: 'Take {n} corpse-keys' },
-      { kind: 'reach', filter: 'marker:altar', base: 1, perDepth: 0, desc: 'Open the reliquary' },
-    ],
-    rewardGold: 2,
-    rewardXp: 1.2,
-    rewardItems: 3,
-    modifier: 'mod.greed',
-  },
-  {
-    id: 'quest.escort',
-    name: 'The Last Cartographer',
-    flavor: 'He mapped this place once. He will do it again, if he lives.',
-    minDepth: 24,
-    weight: 5,
-    // Escort finishes itself once everything else is done, so it needs a
-    // second objective that can actually be done: the lowest floor.
-    objectives: [
-      { kind: 'escort', base: 1, perDepth: 0, desc: 'Keep the cartographer alive' },
-      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Bring him to the last area' },
-    ],
-    rewardGold: 1.8,
-    rewardXp: 1.6,
-    rewardItems: 2,
-    modifier: 'mod.hunted',
-  },
-  {
-    id: 'quest.unmaking',
-    name: 'The Unmaking',
-    flavor: 'It is not a place any more. It is a wound. Close it.',
-    minDepth: 45,
-    weight: 6,
-    objectives: [
-      { kind: 'cleanse', filter: 'prop:shrine', base: 4, perDepth: 0.04, desc: 'Collapse {n} rifts' },
-      { kind: 'slayElite', base: 4, perDepth: 0.06, desc: 'Silence {n} rift-heralds' },
-      { kind: 'boss', base: 1, perDepth: 0, desc: 'End the thing on the other side' },
-    ],
-    rewardGold: 2.4,
-    rewardXp: 2,
-    rewardItems: 4,
-    modifier: 'mod.void',
-  },
-];
 
-function buildQuest(depth: number, rng: Rng, classId: CharClassId): QuestInstance {
-  const pool = QUESTS.filter((q) => q.minDepth <= depth);
-  const def = rng.weighted(pool.length > 0 ? pool : QUESTS, (q) => q.weight);
+/** The monster family a `slay` filter asks for (`family:insect`), if any. */
+function slayFamily(filter: string | undefined): string | null {
+  return filter?.startsWith('family:') ? filter.slice(7) : null;
+}
+
+/**
+ * A quest for this map. `zoneFamilies` holds each zone's monster families: a
+ * quest that wants one family is only offered when some zone carries it, and
+ * its count shrinks to the share of zones that do, so it can always be done.
+ */
+function buildQuest(depth: number, rng: Rng, classId: CharClassId, zoneFamilies: ReadonlyArray<readonly string[]>): QuestInstance {
+  const zonesWith = (family: string): number => zoneFamilies.filter((f) => f.includes(family)).length;
+  const fits = (q: QuestDef): boolean => q.objectives.every((o) => {
+    const fam = slayFamily(o.filter);
+    return !fam || zonesWith(fam) > 0;
+  });
+  const pool = MAP_QUESTS.filter((q) => q.minDepth <= depth && fits(q));
+  const def = rng.weighted(pool.length > 0 ? pool : MAP_QUESTS.filter(fits), (q) => q.weight);
   const objectives: QuestObjective[] = def.objectives.map((o) => {
-    const target = Math.max(1, Math.round(o.base + o.perDepth * depth));
+    let target = Math.max(1, Math.round(o.base + o.perDepth * depth));
+    const fam = slayFamily(o.filter);
+    if (fam) target = Math.max(8, Math.round((target * zonesWith(fam)) / Math.max(1, zoneFamilies.length)));
     return {
       kind: o.kind,
       desc: o.desc.replace('{n}', String(target)),
@@ -668,13 +553,13 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
   const minZones = levelsForDepth(depth);
   const map = planMap(depth, runRng.fork('map'), plan?.biome, minZones);
   const biome = map.bossBiome;
-  const rolledQuest = buildQuest(depth, runRng, classId);
+  const rolledQuest = buildQuest(depth, runRng, classId, map.info.zones.map((z) => getBiome(z.biome).families));
   const quest = plan?.quest ? plan.quest(biome) : rolledQuest;
   const modifiers = rollModifiers(depth, runRng);
 
   // A quest may impose its own modifier on top of the depth roll.
-  const questDef = QUESTS.find((q) => q.id === quest.defId);
-  if (questDef?.modifier && !modifiers.some((m) => modifierId(m) === questDef.modifier)) {
+  const questDef = MAP_QUESTS.find((q) => q.id === quest.defId);
+  if (questDef?.modifier && !modifiers.some((m) => modifiersClash(m, questDef.modifier!))) {
     const md = RUN_MODIFIERS.find((m) => m.id === questDef.modifier);
     if (md) modifiers.push(`${md.id}@${clamp(1 + Math.floor(depth / 35), 1, md.maxTier)}`);
   }

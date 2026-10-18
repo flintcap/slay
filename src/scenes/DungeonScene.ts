@@ -29,7 +29,7 @@ import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { BOSS_MOODS, getBoss } from '../data/bosses';
 import { getWarden } from '../data/wardens';
-import { generateRun, isWalkable, BIOMES, zoneAt } from '../world/DungeonGen';
+import { generateRun, isWalkable, BIOMES, modifiersClash, zoneAt } from '../world/DungeonGen';
 import { DungeonMesh, applyBiomeLighting, type BiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
 import { variantLabel, biomeArt } from '../world/Biomes';
@@ -550,7 +550,10 @@ export class DungeonScene extends GameScene {
     });
     this.director?.dispose();
     // Pacts join the run's modifiers; each one makes the descent's Renown richer.
-    const pacts = (p.pacts ?? []).filter((m) => !this.run.modifiers.some((x) => x.split('@')[0] === m.split('@')[0]));
+    // A pact was chosen, so it wins: a rolled modifier it clashes with (the
+    // same one, or one it excludes, like Gloom and Conflagration) makes way.
+    const pacts = p.pacts ?? [];
+    this.run.modifiers = this.run.modifiers.filter((m) => !pacts.some((x) => modifiersClash(m, x)));
     this.run.modifiers.push(...pacts);
     this.director = new RunDirector(depth, pacts.length);
     this.dungeonEvents?.dispose();
@@ -1797,7 +1800,7 @@ export class DungeonScene extends GameScene {
       // Boss death is the run's payoff: a real burst of loot, rolled once, in
       // grantKill (it was also rolled a second time here, so every boss
       // dropped twice its loot).
-      this.grantKill(b.defId, 'boss', 'demon', b.root.position, this.bossIlvl(), true);
+      this.grantKill(b.defId, 'boss', b.family, b.root.position, this.bossIlvl(), true);
       // Each boss carries a few uniques of its own, and drops them more than anything else does.
       const sig = rollSignature(b.defId, this.bossIlvl(), this.rng, SIGNATURE_CHANCE.boss, getBoss(b.defId)?.signature);
       if (sig) this.dropItem(sig, b.root.position);
@@ -2489,7 +2492,8 @@ export class DungeonScene extends GameScene {
     c.gold += rewards.gold;
     grantXp(c, rewards.xp);
     for (const item of rewards.items) this.dropItem(item, this.player.position);
-    events.emit('quest:complete', { name: q.name });
+    // `quest:complete` already went out when the last objective was done
+    // (sim/Quests.ts); a second one paid Renown twice and toasted twice.
     audio.play('quest.complete');
   }
 

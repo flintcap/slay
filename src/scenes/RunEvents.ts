@@ -206,13 +206,22 @@ export class RunEvents {
   // Shrine of choices
   // -------------------------------------------------------------------------
 
+  /** Each shrine's three bargains, rolled the first time you kneel. */
+  private readonly shrineOffers = new WeakMap<Interactable, BargainDef[]>();
+
   private offerShrine(it: Interactable): void {
-    const rng = this.host.rng();
-    const pool = BARGAINS.filter((b) => b.minDepth <= this.host.depth);
-    const picks: BargainDef[] = [];
-    while (picks.length < 3 && picks.length < pool.length) {
-      const b = rng.weighted(pool.filter((p) => !picks.includes(p)), (p) => p.weight);
-      picks.push(b);
+    // Rolled once: walking away and kneeling again shows the same three, so a
+    // one-time choice cannot be rerolled.
+    let picks = this.shrineOffers.get(it);
+    if (!picks) {
+      const rng = this.host.rng();
+      const pool = BARGAINS.filter((b) => b.minDepth <= this.host.depth);
+      picks = [];
+      while (picks.length < 3 && picks.length < pool.length) {
+        const taken = picks;
+        picks.push(rng.weighted(pool.filter((p) => !taken.includes(p)), (p) => p.weight));
+      }
+      this.shrineOffers.set(it, picks);
     }
     const player = this.host.player();
     const gold = player.character.gold;

@@ -1725,7 +1725,7 @@ const BY_ID = new Map<string, QuestDefEx>();
 for (const q of QUESTS) BY_ID.set(q.id, q);
 
 export function questById(id: string): QuestDefEx | undefined {
-  return BY_ID.get(id) ?? chainQuestDef(id);
+  return BY_ID.get(id) ?? MAP_BY_ID.get(id) ?? chainQuestDef(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -1781,3 +1781,158 @@ export function catalogueCoverage(): Record<string, number> {
 
 /** Total catalogue size, exported so the quest log can show a completion tally. */
 export const QUEST_COUNT = QUESTS.length;
+
+// ---------------------------------------------------------------------------
+// Map quests
+// ---------------------------------------------------------------------------
+
+/**
+ * The quests a map rolls for itself (`buildQuest` in world/DungeonGen.ts).
+ * They live here so `questById`, and through it the rewards, read their own
+ * gold, XP and item numbers.
+ */
+export const MAP_QUESTS: QuestDef[] = [
+  {
+    id: 'quest.cull',
+    name: 'Thin the Ranks',
+    flavor: 'They breed faster than we can burn them. Reduce the number.',
+    minDepth: 1,
+    weight: 10,
+    objectives: [{ kind: 'slay', base: 24, perDepth: 1.6, desc: 'Slay {n} denizens' }],
+    rewardGold: 1,
+    rewardXp: 1,
+    rewardItems: 1,
+  },
+  {
+    id: 'quest.headsman',
+    name: 'The Headsman’s List',
+    flavor: 'Four names. Four heads. The order does not matter.',
+    minDepth: 4,
+    weight: 9,
+    objectives: [{ kind: 'slayElite', base: 3, perDepth: 0.09, desc: 'Destroy {n} elite champions' }],
+    rewardGold: 1.3,
+    rewardXp: 1.25,
+    rewardItems: 2,
+  },
+  {
+    id: 'quest.relics',
+    name: 'Relics of the Fallen',
+    flavor: 'Whatever they were carrying, it belongs above ground now.',
+    minDepth: 2,
+    weight: 9,
+    // Relics come out of chests, the quest altar, and elites (`scenes/QuestTokens.ts`).
+    objectives: [{ kind: 'collect', filter: 'item:relic', base: 5, perDepth: 0.12, desc: 'Recover {n} relics' }],
+    rewardGold: 1.5,
+    rewardXp: 1,
+    rewardItems: 2,
+  },
+  {
+    id: 'quest.cleanse',
+    name: 'Break the Seals',
+    flavor: 'Someone bound this place shut. Unbind it, and see what was kept in.',
+    minDepth: 6,
+    weight: 8,
+    objectives: [
+      { kind: 'cleanse', filter: 'prop:shrine', base: 3, perDepth: 0.05, desc: 'Cleanse {n} shrines' },
+      { kind: 'boss', base: 1, perDepth: 0, desc: 'Kill what was sealed' },
+    ],
+    rewardGold: 1.2,
+    rewardXp: 1.4,
+    rewardItems: 2,
+    modifier: 'mod.elites',
+  },
+  {
+    id: 'quest.descent',
+    name: 'The Long Descent',
+    flavor: 'Down. Keep going down. You will know when to stop.',
+    minDepth: 1,
+    weight: 8,
+    objectives: [
+      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Reach the last area' },
+      { kind: 'boss', base: 1, perDepth: 0, desc: 'Slay the map’s master' },
+    ],
+    rewardGold: 1,
+    rewardXp: 1.3,
+    rewardItems: 1,
+  },
+  {
+    id: 'quest.vigil',
+    name: 'The Vigil',
+    flavor: 'Hold the chamber. They will come. All of them.',
+    minDepth: 10,
+    weight: 7,
+    objectives: [
+      { kind: 'survive', base: 90, perDepth: 1.2, desc: 'Survive the vigil for {n} seconds' },
+      { kind: 'boss', base: 1, perDepth: 0, desc: 'Slay what answers the call' },
+    ],
+    rewardGold: 1.6,
+    rewardXp: 1.5,
+    rewardItems: 2,
+    modifier: 'mod.swarm',
+  },
+  {
+    id: 'quest.purge',
+    name: 'Purge the Brood',
+    flavor: 'Kill the young, then kill the thing that made them.',
+    minDepth: 14,
+    weight: 7,
+    objectives: [
+      { kind: 'slay', filter: 'family:insect', base: 30, perDepth: 1.4, desc: 'Exterminate {n} of the brood' },
+      { kind: 'boss', base: 1, perDepth: 0, desc: 'Kill the brood-mother' },
+    ],
+    rewardGold: 1.3,
+    rewardXp: 1.4,
+    rewardItems: 2,
+  },
+  {
+    id: 'quest.reliquary',
+    name: 'The Sealed Reliquary',
+    flavor: 'The vault opens for a corpse-key. Make several, in case.',
+    minDepth: 18,
+    weight: 6,
+    objectives: [
+      // Keys come off champions and better; the reliquary is the quest altar.
+      { kind: 'collect', filter: 'item:key', base: 3, perDepth: 0.06, desc: 'Take {n} corpse-keys' },
+      { kind: 'reach', filter: 'marker:altar', base: 1, perDepth: 0, desc: 'Open the reliquary' },
+    ],
+    rewardGold: 2,
+    rewardXp: 1.2,
+    rewardItems: 3,
+    modifier: 'mod.greed',
+  },
+  {
+    id: 'quest.escort',
+    name: 'The Last Cartographer',
+    flavor: 'He mapped this place once. He will do it again, if he lives.',
+    minDepth: 24,
+    weight: 5,
+    // Escort finishes itself once everything else is done, so it needs a
+    // second objective that can actually be done: the lowest floor.
+    objectives: [
+      { kind: 'escort', base: 1, perDepth: 0, desc: 'Keep the cartographer alive' },
+      { kind: 'reach', filter: 'marker:bottom', base: 1, perDepth: 0, desc: 'Bring him to the last area' },
+    ],
+    rewardGold: 1.8,
+    rewardXp: 1.6,
+    rewardItems: 2,
+    modifier: 'mod.hunted',
+  },
+  {
+    id: 'quest.unmaking',
+    name: 'The Unmaking',
+    flavor: 'It is not a place any more. It is a wound. Close it.',
+    minDepth: 45,
+    weight: 6,
+    objectives: [
+      { kind: 'cleanse', filter: 'prop:shrine', base: 4, perDepth: 0.04, desc: 'Collapse {n} rifts' },
+      { kind: 'slayElite', base: 4, perDepth: 0.06, desc: 'Silence {n} rift-heralds' },
+      { kind: 'boss', base: 1, perDepth: 0, desc: 'End the thing on the other side' },
+    ],
+    rewardGold: 2.4,
+    rewardXp: 2,
+    rewardItems: 4,
+    modifier: 'mod.void',
+  },
+];
+
+const MAP_BY_ID = new Map<string, QuestDefEx>(MAP_QUESTS.map((q) => [q.id, { tags: [], danger: 0, ...q }]));

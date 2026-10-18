@@ -104,7 +104,7 @@ for (let t = 1; t <= 5; t++) {
     mods: { magicFind: MOD_TUNING.greedFind * t, goldFind: MOD_TUNING.greedFind * t * 1.6 },
     color: 0xffc63a,
     icon: 'coin',
-    desc: `Treasure runs rich: +${MOD_TUNING.greedFind * t}% magic find.`,
+    desc: `Treasure runs rich: +${MOD_TUNING.greedFind * t}% magic find and +${Math.round(MOD_TUNING.greedFind * t * 1.6)}% gold find.`,
     tags: ['buff'],
     stacking: 'refresh',
     baseDuration: 99999,
