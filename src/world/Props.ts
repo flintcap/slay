@@ -34,6 +34,7 @@ import {
   T_EXIT,
   T_ARRIVAL,
   T_WATER,
+  T_BRIDGE,
   isWalkableValue,
 } from './Layouts';
 
@@ -144,6 +145,7 @@ export function placeProps(level: DungeonLevel, biome: BiomeDef, rng: Rng): Prop
   placeRoomFeatures(ctx);
   placePillars(ctx);
   placeInteractables(ctx);
+  placeDeadEnds(ctx);
   placeDoorLeaves(ctx);
   placeWallDressing(ctx);
   placeEdgeDressing(ctx);
@@ -279,6 +281,8 @@ function emit(
 ): boolean {
   const def = propDef(kind);
   if (isOccupied(ctx, x, y)) return false;
+  // A bridge deck is the only way over: nothing stands on it.
+  if (tile(ctx, x, y) === T_BRIDGE && def.placement !== 'liquid') return false;
   if (def.blocks && !canBlock(ctx, x, y)) return false;
   if (def.blocks && ctx.landmarkArea[y * ctx.w + x]) return false;
   // Gameplay pieces (chests, altars, shrines) are never dropped for this.
@@ -581,6 +585,13 @@ function standSetPiece(ctx: PlaceCtx, rng: Rng): void {
     if (!placeNearAt(ctx, cx, cy, 2, sp.heart, heartAsk)) continue;
     const hx = ctx.lastX;
     const hy = ctx.lastY;
+    if (zoneAt(ctx, hx, hy) !== z) {
+      // Across a seam from the room's middle: take it back, try the next room.
+      ctx.out.length = placedFrom;
+      ctx.occupied[hy * ctx.w + hx] = 0;
+      ctx.blocked[hy * ctx.w + hx] = 0;
+      continue;
+    }
     ctx.landmarkRoom = room.id;
     const phase = rng.range(0, Math.PI * 2);
     // The reward first, so the ring makes room for it: between the heart and
@@ -624,6 +635,41 @@ function standSetPiece(ctx: PlaceCtx, rng: Rng): void {
   }
 }
 
+// --- dead ends ---------------------------------------------------------------
+
+/**
+ * A side room you walk into and back out of should hold something. One with
+ * no monsters and nothing worth a look gets a find: the biome's feature
+ * piece, a few breakables, sometimes a plain chest. Rolled on its own stream
+ * (swapped in, as for landmarks), so no other prop roll moves.
+ */
+function placeDeadEnds(ctx: PlaceCtx): void {
+  const L = ctx.level;
+  const rng = streamFor(L.seed, `deadEnds:${L.depth}:${L.entry.x},${L.entry.y}:${L.width}x${L.height}`);
+  const keep = ctx.rng;
+  ctx.rng = rng;
+  try {
+    for (const room of L.rooms) {
+      if (room.kind !== 'normal' || room.links.length !== 1 || room.w * room.h < 20 || room.id === ctx.landmarkRoom) continue;
+      const inRoom = (p: { x: number; y: number }): boolean => p.x >= room.x && p.y >= room.y && p.x < room.x + room.w && p.y < room.y + room.h;
+      if (inRoom(L.entry) || inRoom(L.exit) || L.spawns.some(inRoom)) continue;
+      if (ctx.out.some((p) => inRoom(p) && (p.interact || propDef(p.kind).placement === 'feature' || propDef(p.kind).light))) continue;
+      const cx = Math.round(room.center.x);
+      const cy = Math.round(room.center.y);
+      const d = dressAt(ctx, cx, cy);
+      if (d.feature.length > 0) placeNear(ctx, cx, cy, 2, pickWeighted(ctx, d.feature));
+      scatterAround(ctx, room, d.breakables, rng.int(2, 3));
+      if (rng.chance(0.3)) placeChest(ctx, cx, cy, 'chest.normal');
+      // Wet or cramped ground takes no solid piece: a pot or two still does.
+      if (!ctx.out.some((p) => inRoom(p) && p.interact)) {
+        for (let k = 0; k < 2; k++) placeNear(ctx, cx + rng.int(-2, 2), cy + rng.int(-2, 2), 3, 'urn', 'urn');
+      }
+    }
+  } finally {
+    ctx.rng = keep;
+  }
+}
+
 /**
  * `placeNear` for a set piece: a solid piece never lands next to another
  * solid one (so the pieces can never wall a tile in, and the connectivity
@@ -639,6 +685,8 @@ function placeSpaced(ctx: PlaceCtx, cx: number, cy: number, r: number, hx: numbe
         const x = cx + dx;
         const y = cy + dy;
         if (!walkable(ctx, x, y) || Math.max(Math.abs(x - hx), Math.abs(y - hy)) <= 1) continue;
+        // Every piece stands in the heart's zone, never across a seam.
+        if (zoneAt(ctx, x, y) !== zoneAt(ctx, hx, hy)) continue;
         if (solid) {
           let near = false;
           for (let k = 0; k < 9 && !near; k++) {
