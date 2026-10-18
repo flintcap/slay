@@ -15,9 +15,9 @@ before the first browser check. Real-GPU frame rate goes to the owner.
 
 ## Milestones
 
-- [ ] 1. Baseline, once: one contact sheet of the town and three biomes
+- [x] 1. Baseline, once: one contact sheet of the town and three biomes
   (one cave, one outdoor, one ice) on High. Note the weakest looks under
-  "Notes for resume".
+  "Notes for resume". (baseline taken, no commit of its own)
 - [ ] 2. Light and shadow: contact shadows from the sun and moon on High
   and Ultra; better torch falloff and flicker; light colour per biome.
 - [ ] 3. Air: height fog, cheap light shafts where a light meets fog, dust
@@ -45,6 +45,17 @@ before the first browser check. Real-GPU frame rate goes to the owner.
    in `src/world/Biomes.ts`, then take the baseline contact sheet.
 
 ## Notes for resume
+
+- Baseline (High, 1280x720: town, caverns, darkForest, frostvault boss
+  arenas), weakest looks: (1) frostvault was a bright, flat, saturated
+  cobalt from wall to wall (ambient 0x7ea8d8 at 1.05 plus a sky-blue
+  grade): cheerful, not cold; (2) the town's trodden ground read navy-purple
+  (grade saturation 1.04 with a violet shadow tint over the strong blue
+  hemisphere fill in `Town.ts`); (3) boss arenas in caverns and darkForest
+  have hard black stripes across the floor (shadows of the arena ring), not
+  a looks file, left alone; (4) no air: torches made pools on the floor but
+  nothing in the fog, so rooms read clean rather than smoky.
+- A biome shot takes about 5 minutes under software rendering; town 7.
 
 ### From mapvariety: run theme light tint (optional to use)
 

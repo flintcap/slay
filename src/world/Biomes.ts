@@ -294,8 +294,10 @@ const FROSTVAULT = def(
   {
     fog: 0x0f1e2e,
     fogDensity: 0.029,
-    ambient: 0x7ea8d8,
-    ambientI: 1.05,
+    // Blue-grey, not sky blue: at 0x7ea8d8 and 1.05 the vault lit up a
+    // bright cobalt from wall to wall.
+    ambient: 0x6a8098,
+    ambientI: 0.9,
     key: 0xd8ecff,
     keyI: 0.6,
     accent: 0x8fd8ff,
@@ -516,7 +518,8 @@ export function biomeForDepth(depth: number, rng: Rng): BiomeId {
 const ART: Partial<Record<BiomeId, BiomeArt>> = {
   crypt: {
     id: 'crypt',
-    grade: { contrast: 1.1, saturation: 0.96, shadowTint: 0x5a78a8, highlightTint: 0xffc890, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x6a7a9a },
+    // Bone and candle: old-bone grey in the dark, tallow yellow in the light.
+    grade: { contrast: 1.1, saturation: 0.86, shadowTint: 0x66665a, highlightTint: 0xffc070, splitTone: 0.44, vignette: 0.52, vignetteTint: 0x4a4034 },
     grime: 0x2b2620,
     wetness: 0.22,
     surfaceVariation: 0.8,
@@ -719,7 +722,8 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   frostvault: {
     id: 'frostvault',
-    grade: { exposure: 0.96, contrast: 1.08, saturation: 0.9, shadowTint: 0x5f8fd0, highlightTint: 0xf0f8ff, splitTone: 0.5, vignette: 0.4, vignetteTint: 0x6a8ab0, bloomStrength: 0.55, bloomThreshold: 1.0 },
+    // Cold and blue-grey, never sky blue: the ice is old, the air is dead.
+    grade: { exposure: 0.88, contrast: 1.1, saturation: 0.7, shadowTint: 0x5c6c84, highlightTint: 0xdce6f0, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x3a4656, bloomStrength: 0.55, bloomThreshold: 1.0 },
     grime: 0x34465a,
     wetness: 0.3,
     surfaceVariation: 0.6,
@@ -1272,7 +1276,8 @@ ART.swamp = {
   veinDensity: 0,
   damage: 0.2,
   puddles: 0.45,
-  grade: { contrast: 1.08, saturation: 0.78, shadowTint: 0x2a3a22, highlightTint: 0xd8e0a0, splitTone: 0.5, vignette: 0.6, vignetteTint: 0x10180c },
+  // Sick green: bile in the shadows, a jaundiced light.
+  grade: { contrast: 1.08, saturation: 0.8, shadowTint: 0x3e4a2c, highlightTint: 0xd0d890, splitTone: 0.55, vignette: 0.6, vignetteTint: 0x10180c },
 };
 
 ART.desert = {
@@ -1328,7 +1333,7 @@ ART.tundra = {
   veinDensity: 0,
   damage: 0.15,
   puddles: 0,
-  grade: { contrast: 1.08, saturation: 0.78, shadowTint: 0x3a5a7a, highlightTint: 0xe0f0ff, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x1a2a3a },
+  grade: { contrast: 1.08, saturation: 0.72, shadowTint: 0x4e5e72, highlightTint: 0xdce6f0, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x1a2a3a },
 };
 
 ART.hell = {
@@ -1359,7 +1364,8 @@ ART.hell = {
   veinColor: 0xff4a10,
   damage: 0.35,
   puddles: 0,
-  grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x3a3038, highlightTint: 0xffc090, splitTone: 0.42, vignette: 0.52, vignetteTint: 0x2a1410, haze: 0.45 },
+  // Ember red: the dark glows like a banked fire, the light is hot.
+  grade: { contrast: 1.12, saturation: 0.86, shadowTint: 0x5a2a22, highlightTint: 0xff9a58, splitTone: 0.5, vignette: 0.54, vignetteTint: 0x2a0c08, haze: 0.45 },
 };
 
 ART.desertTomb = {

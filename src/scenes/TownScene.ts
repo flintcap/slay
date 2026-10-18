@@ -120,12 +120,14 @@ export class TownScene extends GameScene {
     // Moonlit night: cool blue in the shadows, firelight gold in the
     // highlights, and a heavier vignette so the lit clearing is the subject.
     this.engine.renderer.setGrade({
-      shadowTint: 0x4a5a8a,
+      // Grey-blue, not violet: the old tint and saturation turned the
+      // trodden ground a bright navy-purple.
+      shadowTint: 0x56607a,
       highlightTint: 0xffc080,
-      splitTone: 0.5,
-      vignette: 0.5,
-      vignetteTint: 0x5a6890,
-      saturation: 1.04,
+      splitTone: 0.42,
+      vignette: 0.52,
+      vignetteTint: 0x4a5266,
+      saturation: 0.9,
       bloomStrength: 0.7,
     });
     // Fog starts past the camp's near edge, so the stations stay crisp and
