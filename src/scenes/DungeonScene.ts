@@ -73,6 +73,7 @@ import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
 import { paladinBlocked } from './paladin/Rites';
 import { beginLoad, breather, endLoad, loadStep, yieldIfLong } from '../core/LoadProgress';
 import { bakeLooks, dropQueuedLooks, type LookAsk } from '../world/BakePool';
+import { Weather } from '../world/Weather';
 
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
@@ -208,6 +209,8 @@ export class DungeonScene extends GameScene {
 
   private engine: Engine;
   private fx: FXSystem;
+  /** What falls and drifts round the hero on this level (mapvariety). */
+  private weather: Weather | null = null;
   private decals: DecalSystem;
   private rig: CameraRig;
   private effects: EffectSystem;
@@ -914,6 +917,7 @@ export class DungeonScene extends GameScene {
     }
 
     this.fx.setAmbient(this.biome.particles ?? null, new THREE.Box3().setFromObject(this.mesh.root));
+    this.weather = new Weather(this.fx, this.level, this.biome.fogColor);
     loadStep('summons');
     yield;
 
@@ -1593,6 +1597,8 @@ export class DungeonScene extends GameScene {
     const soundTile = this.mesh.worldToTile(this.player.position.x, this.player.position.z);
     const soundBiome = zoneAt(this.level, soundTile.x, soundTile.y)?.biome ?? this.level.biome;
     this.tickZone(soundTile.x, soundTile.y);
+    const hp = this.player.position;
+    this.weather?.update(dt, elapsed, hp.x, hp.y, hp.z, soundTile.x, soundTile.y);
     if (soundBiome !== this.soundBiome) {
       this.soundBiome = soundBiome;
       audio.music(BIOMES.find((b) => b.id === soundBiome)?.music ?? soundBiome, 2.5);
