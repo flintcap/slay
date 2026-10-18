@@ -22,6 +22,9 @@ Update this file and push it after every finished step.
   between special moves (not bosses or wardens), 125 lists trimmed, 5 channels left,
   plain fighters swing 15% faster. check-readable passes.
 
+- #94 runes: 24 runes in 4 veins x 6 cuts, 27 runewords by vein order, power by
+  cut, old ids remapped on load, loot filter by cut, recipe list in the Legacy
+  codex. check-names passes.
 - #96 items (src/sim/Loot.ts): rares roll 4 to 8 lines (4 a side). Uniques and
   sets grow with depth, are lifted to a floor (unique 7, mythic 10, ancient 14,
   set 7 rare lines) and roll extra open-pool lines (set 2-3, unique 3-5,
@@ -30,17 +33,8 @@ Update this file and push it after every finished step.
 
 ## In progress
 
-1. #94 Own runes. Done so far (committed): new rune data and runewords in
-   src/data/gems.ts, matching by vein, power by cut, old ids remapped in
-   src/core/Save.ts, loot filter by cut, rune icons for 24 runes, tools fixed.
-   Left: recipe list in the Legacy codex (src/ui/LegacyPanel.ts), run
-   check-names once, then mark #94 done.
+1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba).
 
 ## Next
 
-2. #94 Own runes design: 4 veins (Ember, Rime, Marrow, Umbra) x 6 cuts = 24 runes.
-   Runewords match the vein order, not exact runes; power grows with rune cut.
-   Old ids rune.el..rune.zod map to new ids on load (src/core/Save.ts item()).
-   Recipe list in the Legacy codex.
-4. #93 Phase 0d bugs (list in the plan doc).
 5. Attack rating question for the owner (wire hit chance or remove the stat).

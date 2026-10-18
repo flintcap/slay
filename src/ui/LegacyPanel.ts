@@ -3,7 +3,8 @@
  *
  * What the account has earned across every life: Renown rank and progress,
  * Legacy points and the perks they buy, the unlocks ranks have opened, the
- * Codex of uniques and set pieces found, and the lifetime tally. Opens with G.
+ * Codex of uniques and set pieces found, the lifetime tally, and the runeword
+ * recipes. Opens with G.
  */
 
 import { save } from '../core/Save';
@@ -23,7 +24,8 @@ import {
   renownProgress,
   resetPerks,
 } from '../sim/Legacy';
-import { Panel, Button, div, span, clear, section, add, statLine, fmtInt, icon } from './Widgets';
+import { RUNEWORDS, VEIN_INFO } from '../data/gems';
+import { Panel, Button, div, span, clear, section, add, statLine, fmtInt, icon, STAT_LABEL } from './Widgets';
 
 export class LegacyPanel {
   readonly panel: Panel;
@@ -186,5 +188,36 @@ export class LegacyPanel {
     tally.body.appendChild(statLine('Contracts fulfilled', fmtInt(l.stats.contracts)));
     tally.body.appendChild(statLine('Lives lost', fmtInt(l.stats.deaths)));
     this.body.appendChild(tally.root);
+
+    // --- runeword recipes -------------------------------------------------
+    const words = section('Runewords', 'gem');
+    words.body.appendChild(
+      div(
+        'depth-note',
+        'Fill every socket of an item with runes whose veins run in this order. Any cut of a vein counts; deeper cuts make the word stronger. The numbers below are for first cuts.',
+      ),
+    );
+    const wl = div('depth-list');
+    for (const w of RUNEWORDS) {
+      const card = div('depth-card');
+      const b = div('depth-card-body');
+      const title = div('depth-row');
+      add(title, span('depth-card-title', w.name), span('depth-dim', w.categories.join(', ')));
+      b.appendChild(title);
+      const veins = div('depth-card-sub');
+      w.veins.forEach((v, i) => {
+        if (i > 0) veins.appendChild(span('depth-dim', ' · '));
+        const tag = span('', VEIN_INFO[v].name);
+        tag.style.color = `#${VEIN_INFO[v].color.toString(16).padStart(6, '0')}`;
+        veins.appendChild(tag);
+      });
+      b.appendChild(veins);
+      const lines = w.mods.map((m) => `+${m.base} ${STAT_LABEL[m.stat] ?? m.stat}`).join(', ');
+      b.appendChild(div('depth-card-sub', lines));
+      card.appendChild(b);
+      wl.appendChild(card);
+    }
+    words.body.appendChild(wl);
+    this.body.appendChild(words.root);
   }
 }

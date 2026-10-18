@@ -349,7 +349,7 @@ const HANDS_FEET: ItemCategory[] = ['gloves', 'boots', 'belt'];
 
 export const RUNEWORDS: RunewordDef[] = [
   // --- melee ----------------------------------------------------------------
-  rw('rw.kindling', 'Kindling', [E, E], MELEE, 'Two sparks, struck close, and the blade remembers being in the forge.', [
+  rw('rw.kindling', 'Spark and Tinder', [E, E], MELEE, 'Two sparks, struck close, and the blade remembers being in the forge.', [
     ['fireDamage', 8, 8],
     ['attackSpeed', 8, 2],
   ]),
