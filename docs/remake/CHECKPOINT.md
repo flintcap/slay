@@ -13,6 +13,8 @@ Update this file and push it after every finished step.
 - Death is permanent. No standard mode.
 - Tests: only what is critical. One retry, then skip and note it. A few minutes at most.
 - Uniques and sets must be far stronger than rares, with many more stats.
+- Each unique and set item has its own fixed lines. They never change.
+- Uniques and sets stay at their own item level. No scaling with depth.
 
 ## Done
 
@@ -25,11 +27,14 @@ Update this file and push it after every finished step.
 - #94 runes: 24 runes in 4 veins x 6 cuts, 27 runewords by vein order, power by
   cut, old ids remapped on load, loot filter by cut, recipe list in the Legacy
   codex. check-names passes.
-- #96 items (src/sim/Loot.ts): rares roll 4 to 8 lines (4 a side). Uniques and
-  sets grow with depth, are lifted to a floor (unique 7, mythic 10, ancient 14,
-  set 7 rare lines) and roll extra open-pool lines (set 2-3, unique 3-5,
-  mythic 4-5, ancient 5-6). Unique avg 7.4 lines, 2.4x a rare. setpower and
-  economy checks pass.
+- #96 items (src/sim/Loot.ts): rares roll 4 to 8 lines (4 a side).
+- #97 uniques and sets: fixed extra lines per item in src/data/extraLines.ts
+  (550 items, 1992 lines; set 2-3, unique 3-5, mythic 4-5, ancient 5-6).
+  Items keep their own item level. Set pieces still lifted to 7 rare lines at
+  their own level. Unique avg 7.6 lines, 2.6x a rare (mythic 2.9x, ancient
+  4.6x; 12 uniques under 1.5x). setpower and uniques checks pass.
+  Some extra lines are attackRating (dead stat): strip them if the owner
+  removes attack rating.
 
 ## In progress
 

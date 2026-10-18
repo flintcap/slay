@@ -1,7 +1,7 @@
 /**
  * Entry point for `tools/check-setpower.mjs`: is one set piece worth more than
- * a rare of the same base and level, before its set bonuses count? (At its
- * own level and 10 and 25 levels deeper.)
+ * a rare of the same base and level, before its set bonuses count? Set pieces
+ * keep the item level they were written at, so only that level is checked.
  *
  * A line is scored as a share of a unique's usual top roll at that level
  * (`statCurve`), so +20 life and +5% fire resist are measured on one scale.
@@ -22,11 +22,11 @@ const noCurve = new Set<string>();
 const rng = new Random(0x5e7);
 for (const set of SETS) {
   for (const p of set.pieces) {
-    for (const over of [0, 10, 25]) {
-      const L = p.ilvl + over;
+    {
+      const L = p.ilvl;
       let setSum = 0;
       for (let i = 0; i < 40; i++) {
-        const it = buildSetPiece(p, L, rng);
+        const it = buildSetPiece(p, rng);
         for (const m of it.mods) if (m.kind !== 'implicit' && !statCurve.has(m.stat)) noCurve.add(m.stat);
         setSum += score(it, L);
       }

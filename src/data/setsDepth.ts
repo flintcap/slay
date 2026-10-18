@@ -4,7 +4,7 @@
  * Seven class sets, one per class, each built round one of that class's
  * trees, and ten open sets from the first floors to the relic band. A single
  * piece is written a little under a unique of its level (`setMods`), then
- * grown on the drop to beat a good rare (`buildSetPiece` in `sim/Loot.ts`);
+ * lifted to beat a good rare of that level (`buildSetPiece` in `sim/Loot.ts`);
  * the set pays again in its bonuses, and the full set grants a power that changes how you
  * fight (`sim/ItemPowers.ts`, the set signatures). Every set has one look all
  * its pieces share (`art/items/Designs.ts`, `SET_MOTIFS`).

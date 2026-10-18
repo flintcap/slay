@@ -2,8 +2,8 @@
  * SLAY — item sets.
  *
  * Sets are the game's answer to "what do I do with the gear I find at level
- * 30?". A single piece already beats a good rare of its level (it grows with
- * the drop's item level, see `buildSetPiece` in `sim/Loot.ts`), and the set
+ * 30?". A single piece already beats a good rare of its level (it stays at
+ * the set's own item level, see `buildSetPiece` in `sim/Loot.ts`), and the set
  * pays again in its partial bonuses, so a set asks you to commit slots to a
  * plan and rewards you along the way.
  *
