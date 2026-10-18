@@ -8,9 +8,12 @@
  * trodden layer down the middle of the open ground, rock on the steep parts,
  * and a special layer at water banks, ice and lava.
  *
- * Two outdoor zones in one area share one ground: their layers go in the same
- * material and the weights cross-fade over a few tiles at the seam, so there
- * is no line where one biome stops.
+ * Two outdoor zones in one area share one ground. Each zone draws with its own
+ * material (all four of its layers, its own grime and damp). Over the few
+ * tiles where they cross-fade a seam material blends both bases and both
+ * rocks, and mixes grime and damp per vertex (`aZone`); a layer it has no
+ * room for (paths, banks) fades out just before the seam, so there is no line
+ * where one biome stops.
  *
  * Walkable tiles keep exactly their floor height (props and entities ground on
  * `DungeonMesh.floorHeight`), with only millimetres of relief on top.
@@ -19,7 +22,7 @@
 import * as THREE from 'three';
 import type { BiomeId, DungeonLevel, Rng } from '../types';
 import { Noise, clamp } from '../art/Noise';
-import { worldMaterial, addWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_SPLAT_ATTRIBUTE, type WorldLayer } from '../art/WorldMaterial';
+import { worldMaterial, addWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_SPLAT_ATTRIBUTE, WORLD_ZONE_ATTRIBUTE, type WorldLayer } from '../art/WorldMaterial';
 import { surfaceVariant } from '../art/Materials';
 import { STEP_HEIGHT, TILE_SIZE } from './DungeonGen';
 import {
@@ -137,8 +140,26 @@ const CHUNK = 24;
 
 type Role = 'base' | 'trodden' | 'rock' | 'special';
 
-interface Slot {
-  layer: WorldLayer;
+/** Up to four layers for one material, each kept once. */
+interface LayerSet {
+  layers: WorldLayer[];
+  /** The layer's slot, -1 when the set is full. */
+  take(layer: WorldLayer): number;
+}
+
+function layerSet(): LayerSet {
+  const layers: WorldLayer[] = [];
+  const keyOf = (l: WorldLayer): string => `${l.key}|${l.tint ?? ''}`;
+  return {
+    layers,
+    take(layer) {
+      const i = layers.findIndex((l) => keyOf(l) === keyOf(layer));
+      if (i >= 0) return i;
+      if (layers.length >= 4) return -1;
+      layers.push(layer);
+      return layers.length - 1;
+    },
+  };
 }
 
 export interface TerrainChunk {
@@ -181,23 +202,21 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
     return level.zoneOf[cy * W + cx] ?? 0;
   };
 
-  // Material slots: both zones' base layers first, then rock, trodden, special.
-  const slots: Slot[] = [];
-  const slotOf: Array<Record<Role, number>> = [];
-  const take = (layer: WorldLayer): number => {
-    const k = `${layer.key}|${layer.tint ?? ''}`;
-    const i = slots.findIndex((s) => `${s.layer.key}|${s.layer.tint ?? ''}` === k);
-    if (i >= 0) return i;
-    if (slots.length >= 4) return -1;
-    slots.push({ layer });
-    return slots.length - 1;
-  };
-  for (let z = 0; z < looks.length; z++) slotOf.push({ base: take(looks[z]!.base), trodden: -1, rock: -1, special: -1 });
-  for (const role of ['rock', 'trodden', 'special'] as const) {
-    for (let z = 0; z < looks.length; z++) slotOf[z]![role] = take(looks[z]![role]);
-  }
-  for (const so of slotOf) {
-    for (const role of ['rock', 'trodden', 'special'] as const) if (so[role] < 0) so[role] = so.base;
+  // Material slots. Each zone's own material holds all four of its layers.
+  // The seam material takes both bases, then both rocks, then specials and
+  // paths while there is room; a role left out (-1) fades before the seam.
+  const two = looks.length > 1;
+  const zoneSlots = looks.map((lk) => {
+    const set = layerSet();
+    const slot = { base: set.take(lk.base), trodden: set.take(lk.trodden), rock: set.take(lk.rock), special: set.take(lk.special) };
+    return { set, slot };
+  });
+  const seamSet = layerSet();
+  const seamSlot: Array<Record<Role, number>> = looks.map(() => ({ base: -1, trodden: -1, rock: -1, special: -1 }));
+  if (two) {
+    for (const role of ['base', 'rock', 'special', 'trodden'] as const) {
+      for (let z = 0; z < 2; z++) seamSlot[z]![role] = seamSet.take(looks[z]![role]);
+    }
   }
 
   // --- tiles on the padded grid -------------------------------------------
@@ -218,7 +237,8 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
   };
 
   // Distance (in tiles) from every blocked tile to the nearest open one, and
-  // the floor height of that open tile, by a two-pass chamfer sweep.
+  // the floor height of that open tile, by a two-pass chamfer sweep (also
+  // run on the vertex grid, for the distance to the zone seam).
   const N = GW * GH;
   const dist = new Float32Array(N).fill(1e6);
   const near = new Float32Array(N);
@@ -233,7 +253,7 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
       } else openDist[i] = 0;
     }
   }
-  const chamfer = (d: Float32Array, carry: Float32Array | null): void => {
+  const chamfer = (d: Float32Array, carry: Float32Array | null, w = GW, h = GH): void => {
     const D1 = 1;
     const D2 = Math.SQRT2;
     const relax = (i: number, j: number, c: number): void => {
@@ -243,25 +263,25 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
         if (carry) carry[i] = carry[j]!;
       }
     };
-    for (let y = 0; y < GH; y++) {
-      for (let x = 0; x < GW; x++) {
-        const i = y * GW + x;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
         if (x > 0) relax(i, i - 1, D1);
         if (y > 0) {
-          relax(i, i - GW, D1);
-          if (x > 0) relax(i, i - GW - 1, D2);
-          if (x < GW - 1) relax(i, i - GW + 1, D2);
+          relax(i, i - w, D1);
+          if (x > 0) relax(i, i - w - 1, D2);
+          if (x < w - 1) relax(i, i - w + 1, D2);
         }
       }
     }
-    for (let y = GH - 1; y >= 0; y--) {
-      for (let x = GW - 1; x >= 0; x--) {
-        const i = y * GW + x;
-        if (x < GW - 1) relax(i, i + 1, D1);
-        if (y < GH - 1) {
-          relax(i, i + GW, D1);
-          if (x < GW - 1) relax(i, i + GW + 1, D2);
-          if (x > 0) relax(i, i + GW - 1, D2);
+    for (let y = h - 1; y >= 0; y--) {
+      for (let x = w - 1; x >= 0; x--) {
+        const i = y * w + x;
+        if (x < w - 1) relax(i, i + 1, D1);
+        if (y < h - 1) {
+          relax(i, i + w, D1);
+          if (x < w - 1) relax(i, i + w + 1, D2);
+          if (x > 0) relax(i, i + w - 1, D2);
         }
       }
     }
@@ -387,23 +407,40 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
     return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
   };
 
-  // --- material -----------------------------------------------------------
-  const look0 = looks[0]!;
-  const mat = worldMaterial({
-    kind: 'terrain',
-    layers: slots.map((s) => s.layer),
-    grime: look0.grime,
-    grimeAmount: 0.5,
-    wet: look0.wet,
-    variation: 0.9,
-    contact: 0.75,
-  });
-  const materials: THREE.Material[] = [mat];
+  // --- materials ----------------------------------------------------------
+  const terrainMat = (layers: WorldLayer[], look: TerrainLook, second?: TerrainLook): THREE.MeshStandardMaterial =>
+    worldMaterial({
+      kind: 'terrain',
+      layers,
+      grime: look.grime,
+      grimeAmount: 0.5,
+      wet: look.wet,
+      grime2: second?.grime,
+      wet2: second?.wet,
+      variation: 0.9,
+      contact: 0.75,
+    });
+  // One per zone, then the seam's (index 2).
+  const mats = zoneSlots.map((z, i) => terrainMat(z.set.layers, looks[i]!));
+  if (two) mats.push(terrainMat(seamSet.layers, looks[0]!, looks[1]!));
+  const materials: THREE.Material[] = [...mats];
   const geometries: THREE.BufferGeometry[] = [];
+
+  // Distance (in vertex steps) to the cross-fade. Every vertex of a seam
+  // quad is within one diagonal step of it, so a role the seam material has
+  // no slot for is gone there and back to full a few tiles out.
+  const vseam = new Float32Array(VW * VH).fill(1e6);
+  if (two) {
+    for (let vi = 0; vi < VW * VH; vi++) if (vzone[vi]! > 0.001 && vzone[vi]! < 0.999) vseam[vi] = 0;
+    chamfer(vseam, null, VW, VH);
+  }
+  /** 0, 1: wholly in that zone; 2: on the seam. */
+  const vclass = (vi: number): number => (!two ? 0 : vzone[vi]! <= 0.001 ? 0 : vzone[vi]! >= 0.999 ? 1 : 2);
 
   // --- chunks -------------------------------------------------------------
   const chunks: TerrainChunk[] = [];
   const step = TILE_SIZE / SUB;
+  const ws = [new Float64Array(4), new Float64Array(4), new Float64Array(4)];
   for (let cy = 0; cy < GH; cy += CHUNK) {
     for (let cx = 0; cx < GW; cx += CHUNK) {
       const i0 = cx * SUB;
@@ -415,7 +452,8 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
       const pos = new Float32Array(cols * rows * 3);
       const nor = new Float32Array(cols * rows * 3);
       const env = new Float32Array(cols * rows);
-      const splat = new Float32Array(cols * rows * 3);
+      const splats = mats.map(() => new Float32Array(cols * rows * 3));
+      const zoneMix = two ? new Float32Array(cols * rows) : null;
       let k = 0;
       for (let j = j0; j <= j1; j++) {
         for (let i = i0; i <= i1; i++) {
@@ -438,15 +476,17 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
           nor[k * 3 + 1] = inv;
           nor[k * 3 + 2] = nz * inv;
 
-          // Layer weights.
+          // Layer weights: each zone's own, and the seam's cross-fade.
           const slope = 1 - inv;
           const d = vdist[vi]!;
           const zw = vzone[vi]!;
-          const wsum = [0, 0, 0, 0];
+          const fade = two ? smooth(1.5, 7.5, vseam[vi]!) : 1;
+          for (const w of ws) w.fill(0);
           for (let z = 0; z < looks.length; z++) {
-            const zf = looks.length > 1 ? (z === 1 ? zw : 1 - zw) : 1;
+            const zf = two ? (z === 1 ? zw : 1 - zw) : 1;
             if (zf <= 0.001) continue;
-            const so = slotOf[z]!;
+            const so = zoneSlots[z]!.slot;
+            const ss = seamSlot[z]!;
             const lk = looks[z]!;
             const rock = smooth(0.28, 0.55, slope) * (lk.edge === 'trees' || lk.edge === 'deadTrees' ? 0.6 : 1);
             const pn = noise.fbm(wx * 0.045 + 3.1, wz * 0.045, 3) * 0.5 + 0.5;
@@ -464,55 +504,95 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
             const bare = lk.edge === 'rock' || lk.edge === 'cliff' ? smooth(0.62, 0.8, pn) * 0.3 : 0;
             const rockW = rock + (1 - rock) * bare;
             const rest = Math.max(0, 1 - rockW);
-            wsum[so.rock] += rockW * zf;
-            wsum[so.special] += rest * spec * zf;
-            wsum[so.trodden] += rest * (1 - spec) * trod * zf;
-            wsum[so.base] += rest * (1 - spec) * (1 - trod) * zf;
+            const specW = rest * spec * (ss.special < 0 && two ? fade : 1);
+            const trodW = rest * (1 - spec) * trod * (ss.trodden < 0 && two ? fade : 1);
+            const baseW = Math.max(0, 1 - rockW - specW - trodW);
+            const own = ws[z]!;
+            own[so.rock] += rockW;
+            own[so.special] += specW;
+            own[so.trodden] += trodW;
+            own[so.base] += baseW;
+            if (two) {
+              const sm = ws[2]!;
+              sm[ss.rock] += rockW * zf;
+              sm[ss.special < 0 ? ss.base : ss.special] += specW * zf;
+              sm[ss.trodden < 0 ? ss.base : ss.trodden] += trodW * zf;
+              sm[ss.base] += baseW * zf;
+            }
           }
-          const tot = wsum[0]! + wsum[1]! + wsum[2]! + wsum[3]! || 1;
-          splat[k * 3] = wsum[1]! / tot;
-          splat[k * 3 + 1] = wsum[2]! / tot;
-          splat[k * 3 + 2] = wsum[3]! / tot;
+          for (let m = 0; m < splats.length; m++) {
+            const w = ws[m]!;
+            const tot = w[0]! + w[1]! + w[2]! + w[3]! || 1;
+            const sp = splats[m]!;
+            sp[k * 3] = w[1]! / tot;
+            sp[k * 3 + 1] = w[2]! / tot;
+            sp[k * 3 + 2] = w[3]! / tot;
+          }
+          if (zoneMix) zoneMix[k] = zw;
           // Shade gathers under the edge: the first metres of a tree line or
           // the foot of a cliff are darker than open ground.
           env[k] = d > 0 ? clamp(0.35 + d * 0.25, 0, 1) : clamp(1.2 - vopen[vi]! * 0.6, 0, 0.6);
           k++;
         }
       }
-      const idx: number[] = [];
+      // Each quad goes to its zone's material, or to the seam's when its
+      // corners are not all in one zone.
+      const idx: number[][] = mats.map(() => []);
       for (let j = 0; j < rows - 1; j++) {
         for (let i = 0; i < cols - 1; i++) {
           const a = j * cols + i;
           const b = a + 1;
           const c = a + cols;
           const d = c + 1;
+          let m = 0;
+          if (two) {
+            const va = (j0 + j) * VW + i0 + i;
+            const ca = vclass(va);
+            m = ca === vclass(va + 1) && ca === vclass(va + VW) && ca === vclass(va + VW + 1) ? ca : 2;
+          }
+          const out = idx[m]!;
           // Split each quad along the flatter diagonal so ridges stay ridges.
           const ha = pos[a * 3 + 1]!;
           const hb = pos[b * 3 + 1]!;
           const hc = pos[c * 3 + 1]!;
           const hd = pos[d * 3 + 1]!;
-          if (Math.abs(ha - hd) < Math.abs(hb - hc)) idx.push(a, c, d, a, d, b);
-          else idx.push(a, c, b, b, c, d);
+          if (Math.abs(ha - hd) < Math.abs(hb - hc)) out.push(a, c, d, a, d, b);
+          else out.push(a, c, b, b, c, d);
         }
       }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-      geo.setAttribute(WORLD_ENV_ATTRIBUTE, new THREE.BufferAttribute(env, 1));
-      geo.setAttribute(WORLD_SPLAT_ATTRIBUTE, new THREE.BufferAttribute(splat, 3));
-      geo.setIndex(cols * rows > 65535 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1));
-      geo.computeBoundingSphere();
-      geo.computeBoundingBox();
-      geometries.push(geo);
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.name = 'terrain';
-      mesh.receiveShadow = true;
-      mesh.castShadow = looks.some((l) => l.edge === 'cliff' || l.edge === 'rock' || l.edge === 'dunes');
-      mesh.matrixAutoUpdate = false;
-      mesh.updateMatrix();
-      const bb = geo.boundingBox!;
+      const parts: THREE.Mesh[] = [];
+      for (let m = 0; m < mats.length; m++) {
+        const list = idx[m]!;
+        if (!list.length) continue;
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        geo.setAttribute(WORLD_ENV_ATTRIBUTE, new THREE.BufferAttribute(env, 1));
+        geo.setAttribute(WORLD_SPLAT_ATTRIBUTE, new THREE.BufferAttribute(splats[m]!, 3));
+        if (m === 2 && zoneMix) geo.setAttribute(WORLD_ZONE_ATTRIBUTE, new THREE.BufferAttribute(zoneMix, 1));
+        geo.setIndex(cols * rows > 65535 ? new THREE.Uint32BufferAttribute(list, 1) : new THREE.Uint16BufferAttribute(list, 1));
+        geo.computeBoundingSphere();
+        geo.computeBoundingBox();
+        geometries.push(geo);
+        const mesh = new THREE.Mesh(geo, mats[m]!);
+        mesh.name = 'terrain';
+        mesh.receiveShadow = true;
+        mesh.castShadow = looks.some((l) => l.edge === 'cliff' || l.edge === 'rock' || l.edge === 'dunes');
+        mesh.matrixAutoUpdate = false;
+        mesh.updateMatrix();
+        parts.push(mesh);
+      }
+      let root: THREE.Object3D = parts[0]!;
+      if (parts.length > 1) {
+        root = new THREE.Group();
+        root.name = 'terrain';
+        root.add(...parts);
+        root.matrixAutoUpdate = false;
+      }
+      // Every part holds the whole chunk's vertices, so any one's box is the chunk's.
+      const bb = parts[0]!.geometry.boundingBox!;
       const center = bb.getCenter(new THREE.Vector3());
-      chunks.push({ mesh, center, radius: bb.getSize(new THREE.Vector3()).length() * 0.5 });
+      chunks.push({ mesh: root, center, radius: bb.getSize(new THREE.Vector3()).length() * 0.5 });
     }
   }
 

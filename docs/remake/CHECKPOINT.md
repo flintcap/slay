@@ -81,7 +81,12 @@ Update this file and push it after every finished step.
      layer in the skill's colour, not the red enemy warning layer;
      particles, decals and fields follow a quality change live (new
      quality:changed event; pool sizes stay until the next scene).
-   - Art, open: ground layers past 4, second biome wetness/grime.
+   - Art, done too: mixed outdoor areas draw each zone with its own
+     material (all four layers, own grime and damp); a seam material on the
+     cross-fade blends both bases and rocks and mixes grime/damp per vertex
+     (aZone); paths/banks it has no slot for fade out 1-4 tiles before the
+     seam. About 8 extra draws per mixed map.
+   - Art group finished.
    - Engine: next.
 
 ## Next

@@ -43,6 +43,11 @@ import { setTextures, TEXTURE_SETS, type TextureSetInfo } from './TextureSets';
 export const WORLD_ENV_ATTRIBUTE = 'aEnv';
 /** The vertex attribute carrying layer weights 1..3 (vec3). */
 export const WORLD_SPLAT_ATTRIBUTE = 'aSplat';
+/**
+ * The vertex attribute (float, 0..1) mixing the first zone's grime and damp
+ * into the second's. Read only by materials given `grime2` or `wet2`.
+ */
+export const WORLD_ZONE_ATTRIBUTE = 'aZone';
 /** `aEnv` written on wall tops. Anything above 150 on a wall is a cap. */
 export const WORLD_CAP_ENV = 199;
 
@@ -71,6 +76,12 @@ export interface WorldMaterialOpts {
   grimeAmount?: number;
   /** 0..1 how much of the surface is damp: darker, glossier, flatter. */
   wet?: number;
+  /**
+   * A second zone's grime and damp, mixed in per vertex by `aZone` (terrain
+   * where two outdoor zones meet). Either one alone turns the mix on.
+   */
+  grime2?: number;
+  wet2?: number;
   /** 0..1 strength of broad light/dark drift. */
   variation?: number;
   /** 0..1 strength of the contact shadow from `aEnv`. */
@@ -214,7 +225,14 @@ function projection(ax: Axis, P: V3, Dx: V3, Dy: V3, Sg: V3, W: V3): Proj {
  * leaves its results in named shader variables that the roughness, metal,
  * normal, glow and occlusion slots read.
  */
-function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L: LayerNodes[], grime: THREE.UniformNode<'color', THREE.Color>, world: THREE.UniformNode<'vec4', THREE.Vector4>): void {
+function buildNodes(
+  mat: THREE.MeshStandardNodeMaterial,
+  o: WorldMaterialOpts,
+  L: LayerNodes[],
+  grime: THREE.UniformNode<'color', THREE.Color>,
+  world: THREE.UniformNode<'vec4', THREE.Vector4>,
+  zone2: { grime: THREE.UniformNode<'color', THREE.Color>; wet: THREE.UniformNode<'float', number> } | null,
+): void {
   const n = L.length;
   const floorOnly = o.kind === 'floor';
   const axes: Axis[] = floorOnly ? ['y'] : ['y', 'x', 'z'];
@@ -230,6 +248,7 @@ function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L
 
   const env = attribute(WORLD_ENV_ATTRIBUTE, 'float') as F;
   const splat = n > 1 ? (attribute(WORLD_SPLAT_ATTRIBUTE, 'vec3') as V3) : null;
+  const zoneT = zone2 ? (attribute(WORLD_ZONE_ATTRIBUTE, 'float') as F) : null;
 
   const main = Fn(() => {
     const P = positionWorld.toVar();
@@ -369,14 +388,15 @@ function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L
     const wsContact = (wall ? smoothstep(0.0, 1.5, env).oneMinus() : smoothstep(0.15, 1.0, env)).toVar();
     const wsBroad = wsA.sub(0.5).mul(2.0);
     alb.mulAssign(wsBroad.mul(0.24).mul(world.z).add(1.0));
-    const gmax = max(max(grime.r, grime.g), max(grime.b, 0.001));
-    const grimeV = grime as unknown as V3;
+    const grimeV = (zone2 && zoneT ? mix(grime, zone2.grime, zoneT).toVar() : grime) as unknown as V3;
+    const wetW: F = zone2 && zoneT ? mix(world.y, zone2.wet, zoneT).toVar() : world.y;
+    const gmax = max(max(grimeV.x, grimeV.y), max(grimeV.z, 0.001));
     const wsHue = grimeV.div(gmax);
     const wsBlot = smoothstep(0.45, 0.85, wsB.mul(0.7).add(wsA.mul(0.3)));
     alb.mulAssign(mix(vec3(1.0), wsHue.mul(0.74), wsBlot.mul(0.45).mul(world.z)));
     const wsWet = (wall
-      ? world.y.mul(smoothstep(0.45, 0.8, wsA.add(wsContact.mul(0.35)))).mul(smoothstep(0.4, 2.2, env).oneMinus())
-      : world.y.mul(smoothstep(world.y.mul(0.75).oneMinus(), world.y.mul(0.75).oneMinus().add(0.22), wsA.mul(0.8).add(wsC.mul(0.2)).add(wsContact.mul(0.15))))
+      ? wetW.mul(smoothstep(0.45, 0.8, wsA.add(wsContact.mul(0.35)))).mul(smoothstep(0.4, 2.2, env).oneMinus())
+      : wetW.mul(smoothstep(wetW.mul(0.75).oneMinus(), wetW.mul(0.75).oneMinus().add(0.22), wsA.mul(0.8).add(wsC.mul(0.2)).add(wsContact.mul(0.15))))
     ).toVar();
     alb.mulAssign(wsWet.mul(0.42).oneMinus());
     const wsG = clamp(wsContact.mul(wsB.mul(0.6).add(0.55)), 0.0, 1.0).mul(world.x);
@@ -395,7 +415,7 @@ function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L
     // Flat and near mirror-smooth, so each torch makes a sharp bright streak
     // in it; the damp ring round it stays merely glossy.
     const wsPool = (floorOnly || o.kind === 'terrain'
-      ? smoothstep(0.72, 0.97, wsWet.div(max(world.y, 0.01))).mul(smoothstep(0.18, 0.45, world.y))
+      ? smoothstep(0.72, 0.97, wsWet.div(max(wetW, 0.01))).mul(smoothstep(0.18, 0.45, wetW))
       : float(0.0)
     ).toVar();
     let rough: F = matFloat('roughness').mul(roughV);
@@ -455,6 +475,10 @@ export function worldMaterial(o: WorldMaterialOpts): THREE.MeshStandardMaterial 
   if (!layers.length) layers.push({ key: 'stone.crypt' });
   const grime = uniform(new THREE.Color(o.grime ?? 0x2a2622));
   const world = uniform(new THREE.Vector4(o.grimeAmount ?? 0.6, o.wet ?? 0, o.variation ?? 0.8, o.contact ?? 0.85));
+  const zone2 =
+    o.grime2 !== undefined || o.wet2 !== undefined
+      ? { grime: uniform(new THREE.Color(o.grime2 ?? o.grime ?? 0x2a2622)), wet: uniform(o.wet2 ?? o.wet ?? 0) }
+      : null;
   const nodes: LayerNodes[] = layers.map((l) => {
     const def = resolveSurface(l.key);
     const tex = setTextures(def.set);
@@ -486,7 +510,7 @@ export function worldMaterial(o: WorldMaterialOpts): THREE.MeshStandardMaterial 
     metalness: 1,
     side: o.side ?? THREE.FrontSide,
   });
-  buildNodes(mat, { ...o, layers }, nodes, grime, world);
+  buildNodes(mat, { ...o, layers }, nodes, grime, world, zone2);
   setNodeTextures(mat, nodes.flatMap((l) => [l.albedo, l.normal, l.emissive]));
   mat.userData.shared = false;
   return asStandard(mat);
