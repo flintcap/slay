@@ -18,6 +18,12 @@ export const BACKUP_KEY = 'slay.account.backup';
 export const CORRUPT_KEY = 'slay.account.corrupt';
 /** Items and characters too damaged to load, kept for a later fix to restore. */
 export const QUARANTINE_KEY = 'slay.account.quarantine';
+/**
+ * Ids of every hero who has died. Kept apart from the account on purpose: an
+ * old export, the backup or a pasted save cannot bring a buried hero back, and
+ * deleting the save does not clear it.
+ */
+export const GRAVE_KEY = 'slay.account.graves';
 
 /**
  * Current save format.
@@ -635,11 +641,43 @@ export class SaveManager {
     const { data, report, quarantine } = migrateAccount(parsed);
     this.data = data;
     this.loadReport = { ...report, source, primaryDamaged };
+    this.keepTheDeadDead();
     if (quarantine.length) this.addToQuarantine(quarantine);
     if (report.repairs.length) {
       console.warn(`[save] repaired ${report.repairs.length} problems on load`, report.repairs.slice(0, 20));
       this.dirty = true;
     }
+  }
+
+  private graves(): string[] {
+    try {
+      const v = JSON.parse(this.store.getItem(GRAVE_KEY) ?? '[]') as unknown;
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private bury(id: string): void {
+    const list = this.graves();
+    if (list.includes(id)) return;
+    list.push(id);
+    try {
+      this.store.setItem(GRAVE_KEY, JSON.stringify(list.slice(-5000)));
+    } catch (err) {
+      console.warn('[save] could not record a death', err);
+    }
+  }
+
+  /** Death is permanent: a loaded account loses any hero who already died. */
+  private keepTheDeadDead(): void {
+    const dead = new Set(this.graves());
+    if (dead.size === 0) return;
+    const list = this.roster;
+    const kept = list.filter((c) => !dead.has(c.id));
+    this.data.roster = kept;
+    if (this.data.current && dead.has(this.data.current.id)) this.data.current = null;
+    if (kept.length !== list.length) this.dirty = true;
   }
 
   private addToQuarantine(items: unknown[]): void {
@@ -800,6 +838,7 @@ export class SaveManager {
   killCharacter(killedBy: string, depth: number): void {
     const c = this.data.current;
     if (c) {
+      this.bury(c.id);
       this.data.fallen.unshift({
         name: c.name,
         classId: c.classId,

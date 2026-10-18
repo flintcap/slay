@@ -343,6 +343,16 @@ function affixBudget(base: ItemBase, rarity: ItemRarity, rng: Rng): { prefixes: 
   }
 }
 
+/**
+ * Fresh prefixes and suffixes for an existing item, by the same rules a drop
+ * uses: its size of charm, its rarity's line budget, its base's allowed
+ * ladders. The blacksmith's reforge calls this, so a small charm can never
+ * come out of the forge with grand-charm lines.
+ */
+export function rollFreshAffixes(item: Item, rng: Rng): ItemMod[] {
+  return rollAffixes(getBase(item.baseId), item.ilvl, item.rarity, rng);
+}
+
 function rollAffixes(base: ItemBase, ilvl: number, rarity: ItemRarity, rng: Rng): ItemMod[] {
   const budget = affixBudget(base, rarity, rng);
   const used = new Set<string>();

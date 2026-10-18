@@ -124,9 +124,23 @@ function closeOthers(keep: string): void {
   for (const [id, p] of registry) if (id !== keep && p.isOpen) p.close();
 }
 
+/**
+ * The vault and the forge stand in town. Death is permanent and the vault
+ * survives it, so a hero in the depths cannot bank gear a moment before dying.
+ */
+const TOWN_ONLY: Record<string, string> = {
+  stash: 'The vault is in town.',
+  blacksmith: 'The forge is in town.',
+};
+
 export function openPanel(id: string): void {
   const p = registry.get(id);
   if (!p) return;
+  const away = TOWN_ONLY[id];
+  if (away && engineRef?.currentSceneId === 'dungeon') {
+    events.emit('toast', { text: away, kind: 'info' });
+    return;
+  }
   // Fullscreen story panels take over completely.
   if (id === 'charSelect' || id === 'death' || id === 'title') closeOthers(id);
   p.open();

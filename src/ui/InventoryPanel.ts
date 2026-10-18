@@ -469,8 +469,13 @@ export class InventoryPanel {
   private wornPrimed = false;
   /** Set before a refresh that rearranges everything (sort). */
   private quietNext = false;
+  /** The scene the hero is in; the vault and forge answer only in town. */
+  private scene = '';
 
   constructor() {
+    events.on('scene:change', (p) => {
+      this.scene = p.to;
+    });
     this.panel = new Panel({
       id: 'inventory',
       title: 'Equipment',
@@ -773,16 +778,8 @@ export class InventoryPanel {
     });
   }
 
-  /** Everything you can do with an item that is not "wear it" or "drink it". */
-  private itemMenu(item: Item, ev: MouseEvent): void {
-    const c = save.account.current;
-    if (!c) return;
-    const at = invIndexOf(c, item);
-    const split = stackCount(item) > 1 && at >= 0
-      ? [{ label: 'Split stack', icon: 'bag', hint: 'Shift+click', onPick: () => this.askSplit(item, at) }]
-      : [];
-    contextMenu(ev.clientX, ev.clientY, [
-      ...split,
+  private townActions(c: Character, item: Item): Array<{ label: string; icon: string; onPick: () => void }> {
+    return [
       {
         label: 'Send to Vault',
         icon: 'stash',
@@ -802,6 +799,22 @@ export class InventoryPanel {
         icon: 'anvil',
         onPick: () => events.emit('ui:open', { panel: 'blacksmith' }),
       },
+    ];
+  }
+
+  /** Everything you can do with an item that is not "wear it" or "drink it". */
+  private itemMenu(item: Item, ev: MouseEvent): void {
+    const c = save.account.current;
+    if (!c) return;
+    const at = invIndexOf(c, item);
+    const split = stackCount(item) > 1 && at >= 0
+      ? [{ label: 'Split stack', icon: 'bag', hint: 'Shift+click', onPick: () => this.askSplit(item, at) }]
+      : [];
+    // The vault and the forge are town services (see UIRoot's TOWN_ONLY).
+    const inTown = this.scene === 'town';
+    contextMenu(ev.clientX, ev.clientY, [
+      ...split,
+      ...(inTown ? this.townActions(c, item) : []),
       {
         label: 'Drop on the ground',
         icon: 'trash',

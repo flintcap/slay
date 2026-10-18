@@ -22,10 +22,10 @@
  * - **Salvage** — break an item down for materials scaled by rarity and level.
  */
 
-import type { Item, ItemMod, ItemRarity, Rng, StatKey } from '../types';
+import type { Item, ItemRarity, Rng, StatKey } from '../types';
 import { save } from '../core/Save';
 import { getBase } from './Loot';
-import { AFFIXES, eligibleTiers } from './Loot';
+import { rollFreshAffixes } from './Loot';
 import { maxSockets } from '../data/itemBases';
 import { getSocketable, gemUpgradeRecipe, GEMS } from '../data/gems';
 import { formatMaterials, materialName, salvagePool } from '../data/materials';
@@ -173,7 +173,19 @@ export function upgradeItem(item: Item, rng: Rng): CraftResult {
   if (!check.ok) return check;
   const paid = spendCost(upgradeCost(item));
   if (!paid.ok) return paid;
+  applyUpgrade(item, rng);
+  save.touch();
+  return { ok: true };
+}
 
+/**
+ * One upgrade level with no payment, for the anvil's preview of a throwaway
+ * clone. The preview used to call `upgradeItem` itself, which charged the
+ * real hero's gold and materials every time an item was put on the anvil.
+ * Pass `rng: null` to leave out the chance bonus, so the preview shows the
+ * sure result.
+ */
+export function applyUpgrade(item: Item, rng: Rng | null): void {
   item.upgrade++;
 
   // Crossing into a new tier occasionally awards a small bonus roll on one
@@ -181,8 +193,10 @@ export function upgradeItem(item: Item, rng: Rng): CraftResult {
   // moment that makes people upgrade the item they like instead of the best one.
   const tier = tierFor(item.upgrade);
   const crossedTier = item.upgrade === tier.max - 2;
-  if (crossedTier && item.mods.length > 0 && rng.chance(0.35)) {
-    const rolled = item.mods.filter((m) => m.kind !== 'implicit');
+  if (rng && crossedTier && item.mods.length > 0 && rng.chance(0.35)) {
+    // Only a line that helps you: scaling a negative line (a curse, a cost)
+    // made it worse, which is the opposite of what the bonus promises.
+    const rolled = item.mods.filter((m) => m.kind !== 'implicit' && m.value > 0);
     if (rolled.length > 0) {
       const mod = rng.pick(rolled);
       mod.value = Math.round(mod.value * rng.range(1.04, 1.12)) || mod.value + 1;
@@ -190,8 +204,6 @@ export function upgradeItem(item: Item, rng: Rng): CraftResult {
   }
 
   item.value = Math.round(item.value * 1.18);
-  save.touch();
-  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -209,17 +221,6 @@ export function rerollCost(item: Item): CraftCost {
   return { gold, materials };
 }
 
-function affixAllowedOn(affix: (typeof AFFIXES)[number], item: Item): boolean {
-  const base = getBase(item.baseId);
-  if (affix.categories && affix.categories.length > 0 && !affix.categories.includes(base.category)) return false;
-  if (affix.slots && affix.slots.length > 0) {
-    if (base.slot === 'twoHand' || base.slot === 'consumable' || base.slot === 'none') return false;
-    if (!affix.slots.includes(base.slot)) return false;
-  }
-  if (affix.minRarity === 'rare' && item.rarity === 'magic') return false;
-  return true;
-}
-
 /**
  * Rerolls every non-implicit modifier on a magic or rare item. The affix count
  * is rerolled too, so this is a real gamble rather than a guaranteed sidegrade.
@@ -232,40 +233,9 @@ export function rerollAffixes(item: Item, rng: Rng): CraftResult {
   if (!paid.ok) return paid;
 
   const implicits = item.mods.filter((m) => m.kind === 'implicit');
-  const wantPrefixes = item.rarity === 'magic' ? (rng.chance(0.62) ? 1 : rng.chance(0.5) ? 1 : 0) : rng.int(1, 3);
-  const wantSuffixes =
-    item.rarity === 'magic' ? (wantPrefixes === 1 && rng.chance(0.62) ? 1 : wantPrefixes === 0 ? 1 : 0) : rng.int(1, 3);
-
-  const used = new Set<string>();
-  const rolled: ItemMod[] = [];
-
-  const roll = (kind: 'prefix' | 'suffix') => {
-    const pool = AFFIXES.filter(
-      (a) => a.kind === kind && !used.has(a.group) && affixAllowedOn(a, item) && eligibleTiers(a, item.ilvl).length > 0,
-    );
-    if (pool.length === 0) return;
-    const affix = rng.weighted(pool, (a) => {
-      const tiers = eligibleTiers(a, item.ilvl);
-      let w = 0;
-      for (const t of tiers) w += t.weight;
-      return w / Math.sqrt(Math.max(1, tiers.length));
-    });
-    const tiers = eligibleTiers(affix, item.ilvl);
-    if (tiers.length === 0) return;
-    const tier = rng.weighted(tiers, (t) => t.weight);
-    used.add(affix.group);
-    rolled.push({
-      affixId: affix.id,
-      stat: affix.stat,
-      value: tier.min === tier.max ? tier.min : rng.int(tier.min, tier.max),
-      tier: tier.tier,
-      kind,
-    });
-  };
-
-  for (let i = 0; i < wantPrefixes; i++) roll('prefix');
-  for (let i = 0; i < wantSuffixes; i++) roll('suffix');
-  if (rolled.length === 0) roll('prefix');
+  // The same roller a drop uses, so the line count and every allowed ladder
+  // (a charm's size above all) match what the floor could have thrown.
+  const rolled = rollFreshAffixes(item, rng);
 
   item.mods = [...implicits, ...rolled];
   save.touch();

@@ -13,8 +13,12 @@ import { save } from '../core/Save';
 import {
   upgradeCost,
   upgradeItem,
+  applyUpgrade,
+  canUpgrade,
   rerollAffixes,
+  rerollCost,
   addSocket,
+  socketCost,
   salvage,
   insertGem,
   removeGem,
@@ -238,10 +242,13 @@ export class BlacksmithPanel {
     add(head, crest, titles);
     this.preview.appendChild(head);
 
-    // Dry-run the upgrade on a throwaway clone.
+    // Dry-run the upgrade on a throwaway clone. No payment, no chance bonus:
+    // the preview shows the sure result and never touches the hero's purse.
     const before = attempt(() => itemStats(item), {} as Partial<Stats>);
     const clone = cloneItem(item);
-    const ok = clone ? attempt(() => upgradeItem(clone, new Random(randomSeed())).ok, false) : false;
+    const ok = clone && attempt(() => canUpgrade(item).ok, false)
+      ? attempt(() => { applyUpgrade(clone, null); return true; }, false)
+      : false;
     const after = ok && clone ? attempt(() => itemStats(clone), {} as Partial<Stats>) : null;
 
     const sec = div('');
@@ -448,7 +455,7 @@ export class BlacksmithPanel {
         'Reroll Affixes',
         'sparkle',
         'Wipes every prefix and suffix and rolls new ones at this item level. There is no undo.',
-        { gold: Math.max(250, Math.round((item.value ?? 100) * 0.6)), materials: {} },
+        attempt(() => rerollCost(item), { gold: 0, materials: {} as Record<string, number> }),
         () => {
           const r = attempt(() => rerollAffixes(item, new Random(randomSeed())), { ok: false, reason: 'Failed' });
           return r.ok ? null : r.reason ?? 'Nothing to reroll.';
@@ -463,7 +470,7 @@ export class BlacksmithPanel {
         'Add Socket',
         'gem',
         'Punches another socket, if the item can take one.',
-        { gold: Math.max(400, Math.round((item.value ?? 100) * 0.9)), materials: {} },
+        attempt(() => socketCost(item), { gold: 0, materials: {} as Record<string, number> }),
         () => {
           const r = attempt(() => addSocket(item, new Random(randomSeed())), { ok: false, reason: 'Failed' });
           return r.ok ? null : r.reason ?? 'No room for another socket.';
@@ -561,9 +568,8 @@ export class BlacksmithPanel {
             btn.flash('bad');
             return;
           }
-          // Charge only after the service actually succeeded.
-          if (c) c.gold -= cost.gold;
-          for (const [mid, need] of Object.entries(cost.materials ?? {})) save.spendMaterial(mid, need);
+          // The service took its own payment (`Crafting.spendCost`); charging
+          // here as well billed every upgrade, reforge and socket twice.
           save.touch();
           btn.flash('good');
           card.classList.remove('is-success');

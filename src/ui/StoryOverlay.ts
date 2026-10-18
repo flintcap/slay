@@ -32,6 +32,7 @@ import { openDialogueFor } from './DialoguePanel';
 import { journal } from './JournalPanel';
 import { installStoryBosses } from './StoryBosses';
 import { installStoryPlaces } from './StoryPlaces';
+import { DEV_TOOLS } from '../core/DevTools';
 
 // ---------------------------------------------------------------------------
 // DOM
@@ -220,7 +221,7 @@ export function installStory(): void {
   events.on('scene:change', () => hush());
 
   // A handle for the screenshot and behaviour tools, next to window.SLAY.
-  (window as unknown as Record<string, unknown>).SLAY_STORY = {
+  if (DEV_TOOLS) (window as unknown as Record<string, unknown>).SLAY_STORY = {
     say,
     showCard,
     talk: (id: string) => openDialogueFor(id.includes(':') || !(id in NPCS) ? id : `talk:${id}`),

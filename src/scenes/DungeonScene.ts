@@ -75,6 +75,7 @@ import { beginLoad, breather, endLoad, loadStep, yieldIfLong } from '../core/Loa
 import { bakeLooks, dropQueuedLooks, type LookAsk } from '../world/BakePool';
 import { Weather } from '../world/Weather';
 import { markStaticShadows } from '../core/ShadowCache';
+import { peril } from '../core/Peril';
 
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
@@ -512,6 +513,7 @@ export class DungeonScene extends GameScene {
     loadStep('hero');
     await breather();
     this.player = new Player(character, seed);
+    this.player.lethalGuard = () => this.tryCheatDeath();
     this.skills.keeper = this.player;
     this.scene.add(this.player.root);
     this.body.bindHero(this.player, () => this.skills.swingSchool, () => this.skills.releaseSchool);
@@ -610,6 +612,25 @@ export class DungeonScene extends GameScene {
 
     this.offs.push(
       events.on('potion:use', (p) => this.drink(p.kind, p.baseId)),
+    );
+
+    // Death is permanent, so leaving is not a way out of a fight
+    // (core/Peril.ts). A blow either way keeps the hero "in a fight", and
+    // closing the game in one is a death: the browser asks first, and if the
+    // page really goes, the hero goes with it.
+    peril.reset();
+    const onBeforeUnload = (e: BeforeUnloadEvent): void => {
+      if (peril.active && this.player?.alive && !this.transitioning) e.preventDefault();
+    };
+    const onPageHide = (): void => this.fledByClosing();
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', onPageHide);
+    this.offs.push(
+      events.on('player:damaged', () => peril.blow()),
+      events.on('enemy:damaged', () => peril.blow()),
+      () => window.removeEventListener('beforeunload', onBeforeUnload),
+      () => window.removeEventListener('pagehide', onPageHide),
+      () => peril.reset(),
     );
 
     // Equipping has to change the model now, not whenever the stat sheet next
@@ -1046,30 +1067,40 @@ export class DungeonScene extends GameScene {
     if (blocked && e.retributionPctPerBlock > 0) {
       st.retribution = Math.min(300, st.retribution + e.retributionPctPerBlock);
     }
-
-    // Cheat death, once the cooldown is spent.
-    if (this.player.life <= 0 && e.cheatDeathCooldown > 0 && st.cheatDeathCd <= 0) {
-      st.cheatDeathCd = e.cheatDeathCooldown;
-      this.player.life = Math.max(1, this.player.stats.life * (e.cheatDeathHealPct / 100));
-      if (e.cheatDeathInvuln > 0) this.player.grantInvulnerability(e.cheatDeathInvuln);
-      const p = this.player.position;
-      this.effects.nova(p.x, p.z, Math.max(4, e.cheatDeathRadius), {
-        element: e.cheatDeathNovaPct > 0 ? 'fire' : 'physical',
-        color: e.cheatDeathNovaPct > 0 ? 0xff7a2a : 0xffe9b0,
-      });
-      if (e.cheatDeathNovaPct > 0) {
-        this.skills.passiveNova(this.player, p, e.cheatDeathRadius, e.cheatDeathNovaPct / 100, 'fire', ctx, this.enemies, this.boss);
-      } else {
-        for (const en of this.enemies) {
-          if (en.life <= 0) continue;
-          if (en.root.position.distanceTo(p) > e.cheatDeathRadius) continue;
-          en.applyStatuses([{ id: 'stunned', duration: 3, magnitude: 1 }], ctx);
-        }
-      }
-      toast('You should have died there.', 'epic');
-      audio.play('levelup');
-    }
   }
+
+  /**
+   * Cheat death (Last Oath, The Second Death, Ninth Life, cheat-death items),
+   * once its cooldown is spent. The player asks this before it dies, so a
+   * save keeps the hero on its feet. Returns true when it caught the blow.
+   */
+  private tryCheatDeath(): boolean {
+    const e = this.player.passives;
+    const st = this.player.passiveState;
+    if (e.cheatDeathCooldown <= 0 || st.cheatDeathCd > 0) return false;
+    const ctx = this.ctxCache ?? this.context();
+    st.cheatDeathCd = e.cheatDeathCooldown;
+    this.player.life = Math.max(1, this.player.stats.life * (e.cheatDeathHealPct / 100));
+    if (e.cheatDeathInvuln > 0) this.player.grantInvulnerability(e.cheatDeathInvuln);
+    const p = this.player.position;
+    this.effects.nova(p.x, p.z, Math.max(4, e.cheatDeathRadius), {
+      element: e.cheatDeathNovaPct > 0 ? 'fire' : 'physical',
+      color: e.cheatDeathNovaPct > 0 ? 0xff7a2a : 0xffe9b0,
+    });
+    if (e.cheatDeathNovaPct > 0) {
+      this.skills.passiveNova(this.player, p, e.cheatDeathRadius, e.cheatDeathNovaPct / 100, 'fire', ctx, this.enemies, this.boss);
+    } else {
+      for (const en of this.enemies) {
+        if (en.life <= 0) continue;
+        if (en.root.position.distanceTo(p) > e.cheatDeathRadius) continue;
+        en.applyStatuses([{ id: 'stunned', duration: 3, magnitude: 1 }], ctx);
+      }
+    }
+    toast('You should have died there.', 'epic');
+    audio.play('levelup');
+    return true;
+  }
+
 
   /**
    * Everything a passive does when something dies.
@@ -1392,6 +1423,9 @@ export class DungeonScene extends GameScene {
     // while the rig itself counts down in real time (see `rig.update` below).
     const dt = rawDt * this.rig.worldScale;
     this.runTime += dt;
+    peril.tick(this.runTime);
+    const boss = this.boss;
+    peril.setBoss(!!boss && boss.isEngaged && boss.root.position.distanceTo(this.player.position) < 40);
 
     const input = this.engine.input;
     input.updateWorldPoint(this.camera, 0);
@@ -2443,6 +2477,14 @@ export class DungeonScene extends GameScene {
     for (const item of rewards.items) this.dropItem(item, this.player.position);
     events.emit('quest:complete', { name: q.name });
     audio.play('quest.complete');
+  }
+
+  /** The page is going away mid-fight: that is a death, not an escape. */
+  private fledByClosing(): void {
+    if (!peril.active || !this.player?.alive || this.transitioning) return;
+    this.transitioning = true;
+    this.director?.onDeath();
+    save.killCharacter('fled a fight', this.run.depth);
   }
 
   private handleDeath(): void {

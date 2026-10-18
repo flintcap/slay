@@ -142,6 +142,10 @@ export class Boss extends Enemy {
   barrierUp = false;
 
   private engaged = false;
+  /** Awake and fighting: the hero may not walk out of this. */
+  get isEngaged(): boolean {
+    return this.engaged && this.alive;
+  }
   /**
    * Waits in its arena and does not wake by distance: the scene engages it
    * when the hero walks through the gate (DungeonScene's arena gate). A hit

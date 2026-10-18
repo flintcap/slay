@@ -21,6 +21,7 @@ import { keyFor, remapKey } from '../core/Access';
 import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, modal, attempt } from './Widgets';
 import { uiSfx } from './Sfx';
 import { FieldNav } from './FieldNav';
+import { peril } from '../core/Peril';
 
 type QualityId = GameSettings['quality'];
 type TabId = 'video' | 'audio' | 'gameplay' | 'controls' | 'data';
@@ -438,6 +439,11 @@ export class SettingsPanel {
           const blob = box.value.trim();
           if (!blob) {
             events.emit('toast', { text: 'Paste a save first.', kind: 'bad' });
+            return;
+          }
+          // Swapping saves is not a way out of a fight (core/Peril.ts).
+          if (this.engine.currentSceneId === 'dungeon' && peril.active) {
+            events.emit('toast', { text: 'Not during a fight.', kind: 'bad' });
             return;
           }
           modal({

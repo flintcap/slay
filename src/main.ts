@@ -11,6 +11,7 @@ import { mountUI } from './ui/UIRoot';
 import { audio } from './audio/Audio';
 import { mountKeyArt } from './art/KeyArt';
 import { bakeStats } from './world/BakePool';
+import { DEV_TOOLS } from './core/DevTools';
 
 const bootFill = document.getElementById('boot-fill');
 const bootStatus = document.getElementById('boot-status');
@@ -237,8 +238,10 @@ async function main(): Promise<void> {
   engine.register('death', () => new DeathScene(engine));
 
   // Art review only: a neutral studio for judging models and materials.
-  const { ShowcaseScene } = await import('./scenes/ShowcaseScene');
-  engine.register('boot', () => new ShowcaseScene(engine));
+  if (DEV_TOOLS) {
+    const { ShowcaseScene } = await import('./scenes/ShowcaseScene');
+    engine.register('boot', () => new ShowcaseScene(engine));
+  }
 
   boot(0.95, 'Opening the gate…');
   await tick();
@@ -265,7 +268,9 @@ async function main(): Promise<void> {
     setTimeout(() => bootEl.remove(), 900);
   }
 
-  // Expose for debugging and for the Playwright screenshot harness.
+  // Expose for debugging and for the Playwright screenshot harness. Never in
+  // a player's game: the cheats in it would make permadeath optional.
+  if (!DEV_TOOLS) return;
   const { installDebug } = await import('./scenes/debug');
   (window as unknown as Record<string, unknown>).SLAY = {
     engine,

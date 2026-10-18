@@ -18,6 +18,7 @@ import { MenuNav, type MenuItemOpts } from './MenuNav';
 import { runStats } from './RunStats';
 import { keyLabel } from './AccessibilitySettings';
 import { keyFor } from '../core/Access';
+import { peril } from '../core/Peril';
 
 export class PausePanel {
   readonly panel: Panel;
@@ -106,10 +107,16 @@ export class PausePanel {
       { label: 'Journal', hint: key('KeyJ'), onSelect: open('journal') },
       { label: 'Settings', hint: 'Picture, sound, controls', onSelect: () => events.emit('ui:open', { panel: 'settings' }) },
     ];
+    // Death is permanent, so the menu is not a way out of a fight
+    // (core/Peril.ts). The run clock is stopped while paused, so the wait
+    // only runs down back in the world.
+    const fighting = inDungeon && peril.active;
+    const stuck = peril.bossFight ? 'Not while a boss is awake' : `In a fight. Get clear for ${peril.secondsLeft}s more.`;
     if (inDungeon) {
       items.push({
         label: 'Return to Town',
-        hint: 'Keep what you carry. This map is lost.',
+        hint: fighting ? stuck : 'Keep what you carry. This map is lost.',
+        disabled: fighting,
         onSelect: () =>
           modal({
             title: 'Leave the dungeon?',
@@ -130,7 +137,8 @@ export class PausePanel {
     items.push({
       label: 'Quit to Title',
       tone: 'danger',
-      hint: 'Your character is saved',
+      hint: fighting ? stuck : 'Your character is saved',
+      disabled: fighting,
       onSelect: () =>
         modal({
           title: 'Quit to the title screen?',

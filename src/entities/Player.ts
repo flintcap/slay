@@ -189,6 +189,12 @@ export class Player {
   /** Set by DungeonScene when the player has no business moving (dead, cutscene). */
   frozen = false;
   invulnerable = false;
+  /**
+   * Asked once when a blow or a tick would kill. Returns true when something
+   * (a cheat-death passive or item) caught the hero and put life back, so the
+   * death never starts: no frozen body, no death pose, no `player:died`.
+   */
+  lethalGuard: (() => boolean) | null = null;
   /** Seconds of timed invulnerability left, from Phoenix Heart and friends. */
   private invulnTimer = 0;
   /** How solid the body currently reads, 1 normal and lower while Veiled. */
@@ -570,13 +576,22 @@ export class Player {
       this.shove(packet.knockback);
     }
 
-    if (this.life <= 0) {
-      this.life = 0;
-      this.frozen = true;
-      this.animator.play('death', { fade: 0.1, once: true, hold: true });
-      events.emit('player:died', { killedBy: packet.source || 'the dark', depth: this.character.depthRecord });
-    }
+    this.checkDeath(packet.source || 'the dark');
     return result.amount;
+  }
+
+  /**
+   * The one place a hero dies. A cheat death gets its chance first: it used
+   * to run after this had already frozen the body and announced the death,
+   * so a "saved" hero stood up unable to move. Damage over time ends here too.
+   */
+  private checkDeath(killedBy: string): void {
+    if (this.life > 0 || this.frozen) return;
+    if (this.lethalGuard?.() && this.life > 0) return;
+    this.life = 0;
+    this.frozen = true;
+    this.animator.play('death', { fade: 0.1, once: true, hold: true });
+    events.emit('player:died', { killedBy, depth: this.character.depthRecord });
   }
 
   isOnCooldown(skillId: string): boolean {
@@ -653,6 +668,7 @@ export class Player {
     if (res.heal > 0) this.heal(res.heal);
     if (res.mana > 0) this.restoreMana(res.mana);
     for (const d of res.damage) {
+      if (!this.alive) break;
       this.life -= d.amount;
       events.emit('player:damaged', {
         amount: d.amount,
@@ -660,6 +676,7 @@ export class Player {
         life: Math.max(0, this.life),
         maxLife: this.stats.life,
       });
+      this.checkDeath(d.sourceId || d.statusId);
     }
     if (res.dirty) this.refreshStats();
     // Charms work from the pack, and the pack changes through a dozen doors
