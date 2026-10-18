@@ -14,6 +14,7 @@ import { uploadCanvasesWithoutWaiting } from './CanvasUpload';
 import { ShaderGate } from './ShaderGate';
 import { airLight, makeLighting, setScatterLimit } from './Lighting';
 import { Motes } from './Motes';
+import { air } from './Air';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { nodeTexturesOf } from './Tsl';
 import type { GameSettings } from '../types';
@@ -229,6 +230,19 @@ function tintVector(hex: number, amount: number, out: THREE.Vector3): THREE.Vect
 export const fogShape = { x: 0, y: -1000, z: 0, w: 0 };
 const uFog = uniform(new THREE.Vector4(0, -1000, 0, 0));
 
+/**
+ * Ground mist: a thin layer of the fog lying on the floor, thickening with
+ * distance, so the far end of a hall or a field sinks into murk while the
+ * fight stays clear. x: strength (from the fog's density, 0 when the scene
+ * has no height fog), y: the hero's floor height (`Air.ts`).
+ */
+const uMist = uniform(new THREE.Vector2(0, 0));
+/** How high the mist lies above the floor before it thins to nothing, metres. */
+const MIST_HEIGHT = 0.9;
+/** Mist strength per unit of fog density, and its ceiling. */
+const MIST_PER_DENSITY = 12;
+const MIST_MAX = 0.5;
+
 /** Sets the fog shape; with no argument restores plain camera fog. */
 export function setFogShape(start = 0, floorY = -1000, fadeDepth = 1, strength = 0): void {
   fogShape.x = start;
@@ -289,6 +303,11 @@ function fogNodeFor(f: THREE.Fog | THREE.FogExp2): V4 {
   }
   const low = clamp(uFog.y.sub(positionWorld.y).mul(uFog.z), 0.0, 1.0);
   factor = max(factor, low.mul(low).mul(uFog.w));
+  // Ground mist, from just past the hero (the camera stands some twenty
+  // metres back) out, densest on the floor and thicker in any hollow.
+  const lying = clamp(uMist.y.sub(positionWorld.y).div(MIST_HEIGHT).exp(), 0.0, 1.0);
+  const mist = lying.mul(smoothstep(6.0, 28.0, d)).mul(uMist.x);
+  factor = factor.oneMinus().mul(mist.oneMinus()).oneMinus();
   // The glow sits in the air in front of the surface, so the fog beyond it
   // does not dim it the way it dims the surface.
   const glow = new AirLight(air) as unknown as V3;
@@ -1061,6 +1080,9 @@ export class Renderer {
     G.lowLife.value = this.lowLife;
     G.time.value = elapsed;
     uFog.value.set(fogShape.x, fogShape.y, fogShape.z, fogShape.w);
+    // Mist only where the scene asked for height fog (the levels, not the town).
+    const fd = (scene.fog as THREE.FogExp2 | null)?.density ?? 0;
+    uMist.value.set(fogShape.w > 0 ? Math.min(MIST_MAX, fd * MIST_PER_DENSITY) : 0, air.floor);
     this.trackSun(scene);
     if (this.quality.motes) (this.motes ??= new Motes()).update(scene, elapsed);
     else this.motes?.update(null, elapsed);

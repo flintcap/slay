@@ -36,6 +36,7 @@ import {
 } from 'three/tsl';
 import { andMask, asStandard, matColor, matFloat, noise2, setNodeTextures, pixelDither, type F, type V2, type V3, type V4 } from '../core/Tsl';
 import { resolveSurface } from './SurfaceLibrary';
+import { setMistFloor } from '../core/Air';
 import { setTextures, TEXTURE_SETS, type TextureSetInfo } from './TextureSets';
 
 /** The vertex attribute carrying world context. See the header. */
@@ -98,6 +99,9 @@ export const worldCutaway = { value: new THREE.Vector4(0, 0, 0, 0) };
 
 export function setWorldCutaway(x: number, y: number, z: number, radius: number): void {
   worldCutaway.value.set(x, y, z, radius);
+  // The level sets this every frame from the hero's chest: the ground mist
+  // lies on the floor under it.
+  setMistFloor(y - 1.1);
 }
 
 /**
@@ -386,14 +390,23 @@ function buildNodes(mat: THREE.MeshStandardNodeMaterial, o: WorldMaterialOpts, L
     outAlb.assign(alb.mul(dd));
     outOcc.assign(occ.div(max(dd, 1e-3)));
 
+    // Standing water: the wettest heart of a damp patch, only where the
+    // place is properly wet (a swamp, a flooded temple, a dripping cave).
+    // Flat and near mirror-smooth, so each torch makes a sharp bright streak
+    // in it; the damp ring round it stays merely glossy.
+    const wsPool = (floorOnly || o.kind === 'terrain'
+      ? smoothstep(0.72, 0.97, wsWet.div(max(world.y, 0.01))).mul(smoothstep(0.18, 0.45, world.y))
+      : float(0.0)
+    ).toVar();
     let rough: F = matFloat('roughness').mul(roughV);
     rough = rough.mul(mix(0.88, 1.06, wsC));
     rough = mix(rough, 0.2, wsWet.mul(0.85));
+    rough = mix(rough, 0.07, wsPool);
     rough = mix(rough, 1.0, wsCap);
     outRough.assign(rough);
     outMetal.assign(matFloat('metalness').mul(metalV));
     // Standing water fills the crevices: relief flattens where it is wet.
-    const WN = Ng.add(DN.mul(max(wsWet.mul(0.7), wsCap.mul(0.6)).oneMinus())).normalize();
+    const WN = Ng.add(DN.mul(max(max(wsWet.mul(0.7), wsPool), wsCap.mul(0.6)).oneMinus())).normalize();
     outNormal.assign(cameraViewMatrix.mul(vec4(WN, 0.0)).xyz.normalize());
     outEmis.assign(emis);
 
