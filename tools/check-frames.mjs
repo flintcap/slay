@@ -144,6 +144,8 @@ async function setUp({ where, seed, why }) {
         }
         log.push({
           t: performance.now(),
+          phase: engine.transitioning ? 'load' : 'play',
+          lights: (ro.lightsNode?.getLights?.() ?? []).map((l) => `${l.type}${l.id}${l.castShadow ? 's' : ''}`).join(' ').slice(0, 300),
           who: `${o?.name || o?.parent?.name || o?.type}/${m?.name || m?.type}`,
           cam: ro.camera?.type ?? '?',
           target: ro.renderTarget ? ro.renderTarget.texture?.name || 'target' : '',
@@ -264,6 +266,7 @@ async function play({ n, settleMs, settleFrames, fight, byKind }) {
   // Settle: the same play, unmeasured, so the first-use costs of this place
   // (the load's tail, the first swing) are behind it.
   const t0 = performance.now();
+  const links0 = F.links.length;
   let i = 0;
   while (performance.now() - t0 < settleMs || i < settleFrames) {
     step(i++);
@@ -340,12 +343,20 @@ async function play({ n, settleMs, settleFrames, fight, byKind }) {
   const end = performance.now();
   // --why: each pipeline made while measuring next to the closest one made
   // before it for the same draw (or material), with what differs.
-  const why = [];
+  const why = [`${F.links.length - links0} pipelines made while settling (${settleFrames}+ frames before measuring)`];
   const plog = window.__pipeLog;
   if (plog) {
+    const settled = plog.filter((r) => r.t >= t0 && r.t < start);
+    const tally = new Map();
+    for (const r of settled) tally.set(r.who, (tally.get(r.who) ?? 0) + 1);
+    why.push(`settling made: ${[...tally.entries()].slice(0, 40).map(([k, c]) => `${k}${c > 1 ? ' x' + c : ''}`).join(', ')}`);
+    const one = settled[0];
+    const prior = plog.filter((r) => r.t < t0 && r.phase === 'load').at(-1);
+    if (one) why.push(`first settled: ${one.who} dyn ${one.dyn} lights [${one.lights}]`);
+    if (prior) why.push(`last at load: ${prior.who} dyn ${prior.dyn} lights [${prior.lights}]`);
     const late = plog.filter((r) => r.t >= start && r.t <= end);
     const early = plog.filter((r) => r.t < start);
-    const fields = ['who', 'cam', 'target', 'v', 'f', 'vlen', 'flen', 'back', 'dyn', 'scale', 'shadow', 'pass'];
+    const fields = ['who', 'phase', 'cam', 'target', 'v', 'f', 'vlen', 'flen', 'back', 'dyn', 'lights', 'scale', 'shadow', 'pass'];
     for (const r of late) {
       const mname = r.who.split('/').slice(1).join('/');
       const pool = early.filter((x) => x.who === r.who);

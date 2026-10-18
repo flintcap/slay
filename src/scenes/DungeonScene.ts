@@ -362,6 +362,9 @@ export class DungeonScene extends GameScene {
     roots.push(...this.summonWarm);
     // Every kind of item material, for what monsters drop mid-fight.
     let looks: ReturnType<typeof itemLookStandIns> | null = null;
+    // The last area's stand-ins were kept until now (see `warmupDone`).
+    for (const g of this.lootWarmGeo) g.dispose();
+    this.lootWarmGeo = [];
     try {
       looks = itemLookStandIns();
     } catch {
@@ -397,7 +400,18 @@ export class DungeonScene extends GameScene {
     return g;
   }
 
-  override warmupDone(): void {
+  /**
+   * The stand-ins are only taken out of the scene, not freed. three.js lets
+   * go of a pipeline once nothing that drew with it is left: freeing a
+   * stand-in whose look nothing else on the floor wears (a gem drop, a boss's
+   * add) threw its pipeline away again the moment the curtain lifted, and the
+   * first real one made it anew mid-fight. They are freed with the area
+   * (`releaseWarm`), when every look is built again for the next one's lights.
+   */
+  override warmupDone(): void {}
+
+  /** Frees the warm-up's summoned bodies and item stand-in geometry. */
+  private releaseWarm(): void {
     for (const root of this.summonWarm) releaseCreature(root);
     this.summonWarm = [];
     for (const g of this.lootWarmGeo) g.dispose();
@@ -413,7 +427,7 @@ export class DungeonScene extends GameScene {
    * them in the creature cache. No random draws: looks are fixed per monster.
    */
   private warmSummons(): void {
-    this.warmupDone();
+    this.releaseWarm();
     const want = new Map<string, { def: (typeof MONSTERS)[number]; minion: boolean; rank: MonsterRank }>();
     const ask = (id: string | undefined, minion: boolean, rank: MonsterRank = 'normal'): void => {
       const key = `${id}|${minion}|${rank}`;
@@ -2489,6 +2503,7 @@ export class DungeonScene extends GameScene {
   }
 
   override dispose(): void {
+    this.releaseWarm();
     this.body.clear();
     for (const off of this.offs) off();
     this.offs = [];
