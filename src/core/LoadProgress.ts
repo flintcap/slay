@@ -14,6 +14,8 @@
  */
 import { events } from './Events';
 
+/** A load is being counted (between `beginLoad` and `endLoad`). */
+let active = false;
 let total = 1;
 let done = 0;
 let stage = '';
@@ -25,6 +27,7 @@ let lastYield = 0;
 
 /** Starts counting a load of `steps` steps. */
 export function beginLoad(steps: number): void {
+  active = true;
   total = Math.max(1, steps);
   done = 0;
   stage = '';
@@ -35,6 +38,8 @@ export function beginLoad(steps: number): void {
 
 /** The next step has started. Raises the total if a scene adds steps on the way. */
 export function loadStep(name: string): void {
+  // A level built outside a load (a debug warp) announces nothing.
+  if (!active) return;
   if (stage) done++;
   if (done >= total) total = done + 1;
   stage = name;
@@ -44,7 +49,8 @@ export function loadStep(name: string): void {
 
 /** The load is finished: the bar shows full. */
 export function endLoad(): void {
-  if (!stage && done === 0 && timeline.length === 0) return;
+  if (!active) return;
+  active = false;
   done = total;
   timeline.push(['ready', Math.round(performance.now() - began)]);
   events.emit('load:progress', { stage: 'ready', done, total });

@@ -703,7 +703,12 @@ export class DungeonMesh {
     return a;
   }
 
-  constructor(level: DungeonLevel, biome: BiomeDef, rng: Rng) {
+  /**
+   * Builds the level whole, or with `paced` only sets it up: the caller then
+   * runs `steps(rng)` with the same `rng`, a piece at a time, so a loading
+   * screen can hand the page back between pieces.
+   */
+  constructor(level: DungeonLevel, biome: BiomeDef, rng: Rng, paced = false) {
     this.level = level;
     this.biome = biome;
     this.art = biomeArt(biome.id, level.variant);
@@ -724,11 +729,19 @@ export class DungeonMesh {
     }
     this.lowestFloor = low;
 
+    if (!paced) for (const _ of this.steps(rng));
+  }
+
+  /** The build, a piece at a time (see the constructor). Run it once. */
+  *steps(rng: Rng): Generator<void, void, void> {
     this.buildStatic(rng);
+    yield;
     this.buildProps(rng);
+    yield;
     this.buildLightPool();
     this.buildShafts(rng);
     this.buildStairs(rng);
+    yield;
     this.buildColliders();
   }
 

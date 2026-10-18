@@ -104,6 +104,27 @@ interface Prototype {
 
 const prototypes = new Map<string, Prototype>();
 
+/**
+ * A look's bake without the prototype: the store key `prototype` reads it
+ * under and the baker that makes it (speed stream, for the bake worker:
+ * `world/BakePool.ts`). Pure data, no materials or textures, so it runs in a
+ * worker; what it bakes is what `prototype` would bake on the main thread.
+ */
+export function lookBake(look: CreatureLook): { key: string; bake: () => THREE.BufferGeometry[] } {
+  const rig = look.rig();
+  const s = new Sculpt(rig);
+  look.sculpt(s);
+  const q = quality(rig, look.tier ?? 'normal');
+  return {
+    key: sculptKey(s, q),
+    bake: () => {
+      const out = bakeSculpt(s, q).map((b) => b.geo);
+      for (const p of s.parts) p.geo.dispose();
+      return out;
+    },
+  };
+}
+
 /** Builds (or reads back) a look's prototype. */
 function prototype(look: CreatureLook): Prototype {
   const hit = prototypes.get(look.key);

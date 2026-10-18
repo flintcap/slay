@@ -5,6 +5,7 @@ import type { SceneId } from '../types';
 import { events } from './Events';
 import { save } from './Save';
 import { texturesSettled } from './Assets';
+import { beginLoad, endLoad, loadStep } from './LoadProgress';
 
 /** One distinct error the engine caught, with how often it has happened. */
 export interface CaughtError {
@@ -311,6 +312,10 @@ export class Engine {
   private async enterScene(id: SceneId, factory: () => GameScene, payload: unknown): Promise<void> {
     const next = factory();
     this.active = next;
+    // Steps each scene announces on the way (`'load:progress'`): the map's
+    // generation, hero, floor, monsters, summons and icons, the town's
+    // residents, camp and hero, and every scene's shaders.
+    beginLoad(id === 'dungeon' ? 7 : id === 'town' ? 4 : 1);
     try {
       await next.enter(payload);
     } catch (err) {
@@ -321,9 +326,11 @@ export class Engine {
         /* half-built; nothing more to do */
       }
       this.active = null;
+      endLoad();
       throw err;
     }
     await this.prime(next);
+    endLoad();
     this.clock.update();
   }
 
@@ -340,6 +347,7 @@ export class Engine {
    * blocking pipelines that held up the whole browser.
    */
   async prime(next: GameScene): Promise<void> {
+    loadStep('shaders');
     // Looks the scene will only wear later (a hit flash, an effect first
     // cast), on stand-ins that are compiled with it and drawn once, unseen.
     let extra: THREE.Object3D | null = null;

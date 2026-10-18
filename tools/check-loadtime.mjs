@@ -129,6 +129,11 @@ async function visit(label) {
   await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load', timeout: 120000 });
   await page.waitForFunction(() => window.SLAY?.engine?.currentSceneId === 'title', null, { timeout: 900000, polling: 100 });
   const titleAt = await page.evaluate(() => Math.round(performance.now()));
+  // The game's own load steps ('load:progress'), stamped, for where each load went.
+  await page.evaluate(() => {
+    window.__lt.prog = [];
+    window.SLAY.events?.on?.('load:progress', (p) => window.__lt.prog.push([Math.round(performance.now()), p.stage]));
+  });
   await cut('boot');
   console.log(`[${label}] title scene live at ${titleAt} ms`);
   if (PROFILE) printProfile('boot', profiles[profiles.length - 1][1]);
@@ -145,6 +150,17 @@ async function visit(label) {
     const ls = await page.evaluate(([a, b]) => window.__lt.long.filter(([t]) => t >= a && t < b).map(([, d]) => d), [t0, t1]);
     const top = ls.slice().sort((x, y) => y - x).slice(0, 6);
     console.log(`[${label}] ${name}: ${Math.round(t1 - t0)} ms; ${ls.length} long tasks, ${ls.reduce((x, y) => x + y, 0)} ms, biggest ${top.join(', ')}`);
+    // Each load step: how long it ran and the longest task inside it.
+    const steps = await page.evaluate(([a, b]) => (window.__lt.prog ?? []).filter(([t]) => t >= a && t <= b), [t0, t1]);
+    if (steps.length) {
+      const all = await page.evaluate(() => window.__lt.long);
+      const parts = steps.map(([t, st], i) => {
+        const end = steps[i + 1]?.[0] ?? t;
+        const worst = Math.max(0, ...all.filter(([s]) => s >= t && s < end).map(([, d]) => d));
+        return st === 'ready' ? `ready@${Math.round(t - t0)}` : `${st} ${end - t}${worst ? ` (task ${worst})` : ''}`;
+      });
+      console.log(`    steps (ms): ${parts.join(', ')}`);
+    }
     // Programs first built during this phase, and the materials that use them.
     const progs = await page.evaluate(() => {
       const gl = window.SLAY?.engine?.renderer?.gl;

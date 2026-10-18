@@ -22,6 +22,11 @@ import { STATIONS, mountTownStations } from './TownStations';
 import { QuestMarkerLayer } from '../fx/QuestMarkers';
 import { BOARD, townMarkers, type MarkerSpot, type QuestMarker } from '../sim/QuestMarkers';
 import { planDescent } from './DescentPlanner';
+import { breather, loadStep } from '../core/LoadProgress';
+import { meshHero } from '../world/BakePool';
+
+/** The town hero's seed: the worker dresses the same hero the town builds. */
+const TOWN_HERO_SEED = 12345;
 
 /** Interaction points the player can walk up to and press E on. */
 interface Interactable {
@@ -87,7 +92,12 @@ export class TownScene extends GameScene {
     setActiveDifficulty(character.difficulty as never);
     // The boot worker may still be meshing the townsfolk and this hero: wait
     // for it behind the curtain rather than meshing them all again here.
-    await Promise.all([folkMeshed(), heroMeshed(character.classId)]);
+    loadStep('meshing');
+    // The hero's own gear is meshed in a worker too (`world/BakePool.ts`):
+    // dressing a new character on the main thread froze the page for seconds.
+    await Promise.all([folkMeshed(), heroMeshed(character.classId), meshHero(character.classId, TOWN_HERO_SEED, character.equipment)]);
+    loadStep('world');
+    await breather();
     const rng = new Random(0x70b6);
     this.town = buildTown(rng);
     this.scene.add(this.town.root);
@@ -120,8 +130,9 @@ export class TownScene extends GameScene {
 
     // Building the camp and dressing the hero are each a second or more: the
     // page gets a moment between them, so the loading screen keeps moving.
-    await new Promise((r) => setTimeout(r, 0));
-    this.player = new Player(character, 12345);
+    loadStep('hero');
+    await breather();
+    this.player = new Player(character, TOWN_HERO_SEED);
     // Arrive on the south path, facing the fire and the gate beyond it.
     this.player.position.set(0, this.town.groundY(0, 8), 8);
     this.scene.add(this.player.root);

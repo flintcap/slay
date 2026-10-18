@@ -71,6 +71,8 @@ import { disposePropLibrary } from '../world/Props';
 import { PropRemains } from '../art/props/Remains';
 import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
 import { paladinBlocked } from './paladin/Rites';
+import { beginLoad, breather, endLoad, loadStep, yieldIfLong } from '../core/LoadProgress';
+import { bakeLooks, type LookAsk } from '../world/BakePool';
 
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
@@ -480,10 +482,15 @@ export class DungeonScene extends GameScene {
     // What you sold in camp stops being buyable back the moment you leave it.
     clearBuyBack();
 
+    loadStep('map');
     this.run = generateRun(depth, seed, character.classId);
+    // Every floor's monster looks go to the bake workers now, the first
+    // floor's first: they bake while the hero and the floor are built here.
+    for (const lv of this.run.levels) void bakeLooks(levelLooks(lv, this.run.bossId));
     // Generating, building the hero and building the floor are seconds of
     // work between them: the page gets a moment between each, so the loading
     // screen keeps moving instead of freezing for the lot.
+    loadStep('hero');
     await breather();
     this.player = new Player(character, seed);
     this.skills.keeper = this.player;
@@ -647,7 +654,7 @@ export class DungeonScene extends GameScene {
     this.scene.add(this.heroAura);
 
     await breather();
-    this.loadLevel(0);
+    await this.loadLevelPaced(0);
 
     events.emit('ui:open', { panel: 'hud' });
 
@@ -660,6 +667,7 @@ export class DungeonScene extends GameScene {
     }
     audio.music(this.biome.music, 2.0);
     // The pack's icons, drawn behind the curtain rather than in play.
+    loadStep('icons');
     const held = save.account.current;
     await Promise.all([
       this.bossPortraitReady(),
@@ -678,8 +686,34 @@ export class DungeonScene extends GameScene {
     await Promise.race([this.boss.portrait.catch(() => ''), new Promise((r) => setTimeout(r, 4000))]);
   }
 
-  /** Tears down the current level and builds the next. */
+  /** Tears down the current level and builds the next, in one go (debug warps). */
   private loadLevel(index: number): void {
+    const steps = this.levelSteps(index);
+    while (!steps.next().done);
+  }
+
+  /**
+   * Tears down the current level and builds the next behind the curtain,
+   * handing the page back between pieces so no one task freezes it.
+   */
+  private async loadLevelPaced(index: number): Promise<void> {
+    const level = this.run.levels[index];
+    // Asked for at the run's start; waited on only when the monsters are next.
+    const baked = level ? bakeLooks(levelLooks(level, this.run.bossId)) : Promise.resolve();
+    const steps = this.levelSteps(index);
+    for (let r = steps.next(); !r.done; r = steps.next()) {
+      if (r.value === 'bakes') await baked;
+      else await yieldIfLong();
+    }
+  }
+
+  /**
+   * Building a level, in pieces: it yields after each piece (the floor, each
+   * monster, the boss), and the caller decides whether to hand the page back
+   * there. Nothing in the scene updates or draws in between: the scene's own
+   * `transitioning` or the engine's holds both while the curtain is down.
+   */
+  private *levelSteps(index: number): Generator<'bakes' | void, void, void> {
     // Clear the previous level.
     this.skills.feel.clear();
     this.lootFx.clear();
@@ -723,7 +757,10 @@ export class DungeonScene extends GameScene {
     this.biome = BIOMES.find((b) => b.id === this.level.biome) ?? BIOMES[0]!;
 
     const levelRng = this.rng.fork(`level:${index}`) as Random;
-    this.mesh = new DungeonMesh(this.level, this.biome, levelRng);
+    loadStep('world');
+    yield;
+    this.mesh = new DungeonMesh(this.level, this.biome, levelRng, true);
+    yield* this.mesh.steps(levelRng);
     this.scene.add(this.mesh.root);
     this.remains?.dispose();
     const mesh = this.mesh;
@@ -766,6 +803,9 @@ export class DungeonScene extends GameScene {
     this.nearWaypoint = false;
     if (this.level.waypoint) this.buildWaypoint(this.mesh.tileToWorld(this.level.waypoint.x, this.level.waypoint.y));
     this.findWayLights();
+    loadStep('monsters');
+    // The paced build waits here for the workers' bakes (`BakePool`).
+    yield 'bakes';
 
     // Spawn the level's monsters.
     // Most floors promote one pack leader to a mini-boss with a mechanic of
@@ -818,6 +858,7 @@ export class DungeonScene extends GameScene {
       this.scene.add(enemy.root);
       this.enemies.push(enemy);
       this.watchBody(enemy);
+      yield;
     }
 
     // Boss floor: the fight owns the arena, and the exit stays sealed until
@@ -826,6 +867,8 @@ export class DungeonScene extends GameScene {
     this.exitOpen = !this.level.isBossLevel;
     this.returnPortal = null;
     if (this.level.isBossLevel) {
+      loadStep('boss');
+      yield;
       const def = BOSSES.find((b) => b.id === this.run.bossId) ?? BOSSES[0];
       if (def) {
         this.boss = new Boss(def, this.run.depth, levelRng.fork('boss'), this.run.bossMood ?? null);
@@ -866,9 +909,12 @@ export class DungeonScene extends GameScene {
       this.enemies.push(w);
       this.watchBody(w);
       this.warden = w;
+      yield;
     }
 
     this.fx.setAmbient(this.biome.particles ?? null, new THREE.Box3().setFromObject(this.mesh.root));
+    loadStep('summons');
+    yield;
 
     // Everything below is one-time work that would otherwise land on the frame
     // a pack first comes into view. Profiling a fight showed a single 3.4s
@@ -2109,10 +2155,12 @@ export class DungeonScene extends GameScene {
       void (async () => {
         const { fadeTo } = await import('../core/Engine');
         await fadeTo(1, 320);
-        this.loadLevel(this.levelIndex + 1);
+        beginLoad(5);
+        await this.loadLevelPaced(this.levelIndex + 1);
         // The new area's shaders link behind the curtain, not during the fade-in.
         await this.bossPortraitReady();
         await this.engine.prime(this);
+        endLoad();
         this.engine.clock.update();
         await fadeTo(0, 420);
         this.transitioning = false;
@@ -2534,7 +2582,18 @@ function makeAuraTexture(): THREE.Texture {
   return auraTexture;
 }
 
-/** Gives the page one task's worth of time back (input, the loading screen). */
-function breather(): Promise<void> {
-  return new Promise((r) => setTimeout(r, 0));
+/** Every monster look a level's build meets, in the order it meets them (`BakePool`). */
+function levelLooks(level: DungeonLevel, bossId: string | undefined): LookAsk[] {
+  const out: LookAsk[] = [];
+  for (const sp of level.spawns) {
+    const def = MONSTERS.find((m) => m.id === sp.monsterId);
+    if (def) out.push({ visual: def.visual, family: def.family, rank: sp.rank });
+  }
+  if (level.isBossLevel) {
+    const b = BOSSES.find((x) => x.id === bossId) ?? BOSSES[0];
+    if (b) out.push({ visual: b.visual, family: b.family, rank: 'boss' });
+  }
+  const wd = level.warden ? getWarden(level.warden.id) : undefined;
+  if (wd) out.push({ visual: wd.visual, family: wd.family, rank: 'boss' });
+  return out;
 }
