@@ -13,8 +13,9 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Milestones
 
-- [ ] 1. Design tokens: colours, spacing, fonts, radii and shadows as CSS
-  variables, and every panel moved onto them.
+- [x] 1. Design tokens: colours, spacing, fonts, radii and shadows as CSS
+  variables, and every panel moved onto them. (`ui: design tokens for tints,
+  radius, spacing and motion; check-uitokens`)
 - [ ] 2. Frames and feel: painted frames and buttons, open and close
   animations, one hover and click sound set used everywhere.
 - [ ] 3. HUD: liquid life and mana orbs, buff timers, minimap polish,
@@ -32,11 +33,22 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Next up
 
-1. Do Setup in PROTOCOL.md. Set `Status: in progress`.
-2. Milestone 1: list every panel in `src/ui/*` and the colours and sizes
-   they use today, then define the tokens.
+1. Milestone 2: painted frames and buttons, open and close animations for
+   every `Panel` (Widgets.ts `Panel.open/close`), one hover and click sound
+   set wired once in UIRoot so every button and menu row uses it.
 
 ## Notes for resume
+
+- Tokens live in `src/ui/styles.css` `:root`. Tints are written
+  `rgb(var(--gold-rgb) / 0.3)`; channel tokens: shade, light, gold, gold-hi,
+  line, glow, hi, good, bad, ink-3, ink-4. Radius: `--radius-sm/-/-lg/-pill`.
+  Motion: `--dur-1..5` (110/170/260/420/700 ms).
+- `node tools/check-uitokens.mjs` (static, in run-checks) fails on raw
+  palette rgba, `#000`, spacing steps, radius steps, transition times in
+  80-950 ms, and any `var(--x)` with no definition and no fallback.
+- Cheap UI renders: `SLAY_PORT=4343 flock /tmp/slay-browser.lock timeout 600
+  node tools/uilab.mjs --out=shots/ui/x --shots=hud,character --width=1280
+  --height=720` (seconds per shot, no WebGL scene).
 
 ## For the owner to test
 

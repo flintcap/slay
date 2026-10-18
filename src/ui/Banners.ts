@@ -123,7 +123,7 @@ export function showDepthCard(
   mapName?: string,
 ): void {
   const def = BIOMES.find((b) => b.id === biome);
-  const tint = def ? hex(def.accentColor) : '#c9a227';
+  const tint = def ? hex(def.accentColor) : 'var(--gold)';
   const name = place || def?.name || `Tier ${depth}`;
   const kicker = mapName ? `${mapName}  ·  Tier ${depth}` : of > 1 ? `Tier ${depth}  ·  Area ${level} of ${of}` : `Tier ${depth}`;
   enqueue({ build: () => depthCard(kicker, name, blurb, tint), hold: 3600, life: 4800 });
@@ -132,7 +132,7 @@ export function showDepthCard(
 /** A shorter card for walking into the next zone of the same area. */
 export function showZoneCard(name: string, biome: string, order: number, of: number, depth: number): void {
   const def = BIOMES.find((b) => b.id === biome);
-  const tint = def ? hex(def.accentColor) : '#c9a227';
+  const tint = def ? hex(def.accentColor) : 'var(--gold)';
   const kicker = `Tier ${depth}  ·  Zone ${order + 1} of ${of}`;
   enqueue({ build: () => depthCard(kicker, name, undefined, tint), hold: 2400, life: 3600 });
 }
@@ -175,7 +175,7 @@ function bossIntro(name: string, title: string): HTMLElement {
 
 function bossSlain(name: string): HTMLElement {
   const wrap = el('bn bn-slain');
-  wrap.style.setProperty('--tint', '#f2d989');
+  wrap.style.setProperty('--tint', 'var(--gold-hi)');
   wrap.appendChild(el('bn-slain-kicker', name));
   wrap.appendChild(el('bn-slain-word', 'Vanquished'));
   const r = el('bn-rule');
