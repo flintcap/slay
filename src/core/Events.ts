@@ -116,6 +116,8 @@ export interface GameEvents {
   'ui:open': { panel: string };
   'ui:close': { panel: string };
   'settings:changed': Record<string, never>;
+  /** The game clock stopped or started again (pause menu, a pausing panel, a hidden tab). */
+  'game:paused': { paused: boolean };
   /** Asset preloading (`core/Assets.ts`): files landed so far of those requested. */
   'assets:progress': { loaded: number; total: number; label: string };
   /**

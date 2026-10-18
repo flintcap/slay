@@ -1018,6 +1018,9 @@ export class Boss extends Enemy {
   }
 
   override notifyAbility(ability: AbilityDef, phase: string): void {
+    // The base hook is where the audio layer voices a move (MonsterAudio
+    // wraps Enemy's). Skipping it left every boss move silent.
+    super.notifyAbility(ability, phase);
     if (phase !== 'windup') return;
     this.usedAbilities.add(ability.id);
     events.emit('boss:cast', { name: this.bossDef.name, ability: ability.name, windup: ability.windup });

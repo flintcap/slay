@@ -54,6 +54,8 @@ const MAX_AUDIBLE = 40;
 const POOL: Record<Bus, number> = { sfx: 40, ui: 8, amb: 8 };
 /** A late sample may still start this long after it was asked for. */
 const LATE_OK = 0.12;
+/** Music level while the game is paused, as a share of its normal level. */
+const PAUSED_MUSIC = 0.35;
 
 /** Item categories onto the pickup sound for that kind of thing. */
 const PICKUP_KIND: Record<string, string> = {
@@ -92,6 +94,8 @@ export class SampleEngine {
   private sfxVol = 0.85;
   private musicVol = 0.55;
   private muted = false;
+  /** The game is paused: the world goes quiet, the music drops back, menus still click. */
+  private gamePaused = false;
   private started = false;
   private combat = 0;
   private timer: number | null = null;
@@ -140,6 +144,7 @@ export class SampleEngine {
       events.on('sfx', (e) => this.play(e.id, { volume: e.volume, pitch: e.pitch, x: e.x, z: e.z })),
       events.on('music', (e) => this.music(e.track, e.fade)),
       events.on('settings:changed', () => this.applySettings(save.settings)),
+      events.on('game:paused', (e) => this.setGamePaused(e.paused)),
     );
     this.timer = window.setInterval(() => this.tick(), 200);
   }
@@ -508,10 +513,24 @@ export class SampleEngine {
     const t = ctx.currentTime;
     // Squared: sliders feel even across their travel.
     this.master?.gain.setTargetAtTime(document.hidden || this.muted ? 0 : this.masterGain(), t, 0.05);
-    this.buses.sfx?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 1.1, t, 0.05);
+    const world = this.gamePaused ? 0 : 1;
+    const score = this.gamePaused ? PAUSED_MUSIC : 1;
+    this.buses.sfx?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 1.1 * world, t, 0.05);
     this.buses.ui?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 1.1, t, 0.05);
-    this.buses.amb?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 0.9, t, 0.1);
-    this.buses.music?.gain.setTargetAtTime(this.musicVol * this.musicVol * 0.9, t, 0.1);
+    this.buses.amb?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 0.9 * world, t, 0.1);
+    this.buses.music?.gain.setTargetAtTime(this.musicVol * this.musicVol * 0.9 * score, t, 0.1);
+  }
+
+  /**
+   * Paused: fights, footsteps and the room's ambience fall silent and the
+   * music sinks under the menu. Interface sounds stay, so the menu still
+   * answers. Sounds already ringing are held under the silent bus and come
+   * back if they outlast the pause.
+   */
+  setGamePaused(v: boolean): void {
+    if (this.gamePaused === v) return;
+    this.gamePaused = v;
+    this.applySettings(save.settings);
   }
 
   private tick(): void {

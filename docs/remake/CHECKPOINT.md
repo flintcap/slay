@@ -70,7 +70,15 @@ Update this file and push it after every finished step.
      ui/AttackEstimate.ts (skill power, crits at average, swing/cast/
      cooldown pace, plain weapon attack when no skill, none for casters).
    - Interface group finished.
-   - Art and sound, Engine: next.
+   - Sound, done: boss moves call the base sound hook (were silent);
+     bosses wind up with boss.windup and land big blows with boss.slam
+     (both were only ever played inside a muted player-skill block);
+     death toll plays once; pause silences world sound and ambience and
+     drops music to 35% (new game:paused event), menus still click.
+   - Art, open: corpse hit-flash, particle/decal quality at load, player
+     ground blasts vs enemy warning layer, ground layers past 4, second
+     biome wetness/grime, single glowing set piece.
+   - Engine: next.
 
 ## Next
 

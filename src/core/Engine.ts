@@ -495,6 +495,7 @@ export class Engine {
       this.clock.update();
       this.active?.onResume?.();
     }
+    events.emit('game:paused', { paused: v });
   }
 
   start(): void {

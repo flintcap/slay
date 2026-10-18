@@ -204,8 +204,9 @@ export class DeathScene extends GameScene {
     this.camera.lookAt(0, 1.0, 0);
     this.frameRight();
 
+    // The death toll already rang where the hero fell (CombatFeel.playerDied);
+    // this screen brings only its music.
     audio.music('death', 1.2);
-    audio.play('player.death');
     // Hand the run summary to the UI layer.
     (window as unknown as Record<string, unknown>).SLAY_DEATH = data;
     events.emit('ui:open', { panel: 'death' });

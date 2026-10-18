@@ -53,13 +53,22 @@ let nextAny = 0;
 let nextTelegraph = 0;
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000);
 
-/** What to play for one ability phase. Pure, so the check can walk it. */
-export function monsterSoundFor(a: VoicedAbility, phase: string, family: string): string[] {
+/** Boss moves that land with the boss slam when they come down. */
+const BOSS_SLAM_KINDS = new Set(['melee', 'aoe']);
+
+/**
+ * What to play for one ability phase. Pure, so the check can walk it. A boss
+ * winds up with its own deep tell and brings its big blows down with the
+ * slam: those two sounds were only ever started inside a player skill's
+ * muted block, so no boss was ever heard making them.
+ */
+export function monsterSoundFor(a: VoicedAbility, phase: string, family: string, boss = false): string[] {
   const el = a.damageType ?? 'physical';
   const out: string[] = [];
+  const tells = a.windup >= TELEGRAPH_MIN && a.kind !== 'buff' && a.kind !== 'heal' && a.kind !== 'aura';
   if (phase === 'windup') {
     if (a.sfx) return out; // the ability already names its own
-    if (a.windup >= TELEGRAPH_MIN && a.kind !== 'buff' && a.kind !== 'heal' && a.kind !== 'aura') out.push('telegraph');
+    if (tells) out.push(boss ? 'boss.windup' : 'telegraph');
     switch (a.kind) {
       case 'melee':
         out.push(`monster.${family}.attack`);
@@ -77,6 +86,7 @@ export function monsterSoundFor(a: VoicedAbility, phase: string, family: string)
         break;
     }
   } else if (phase === 'active') {
+    if (boss && tells && BOSS_SLAM_KINDS.has(a.kind)) out.push('boss.slam');
     switch (a.kind) {
       case 'melee':
         out.push('monster.swing');
@@ -107,10 +117,10 @@ export function monsterSoundFor(a: VoicedAbility, phase: string, family: string)
 }
 
 function voice(body: VoicedBody, a: VoicedAbility, phase: string): void {
-  const ids = monsterSoundFor(a, phase, body.family);
+  const ids = monsterSoundFor(a, phase, body.family, !!body.isBoss);
   if (ids.length === 0) return;
   const t = now();
-  const telegraph = ids[0] === 'telegraph';
+  const telegraph = ids[0] === 'telegraph' || ids[0] === 'boss.windup' || ids[0] === 'boss.slam';
   // Telegraphs are information and always play; the rest is texture and waits
   // its turn in a crowd.
   if (!telegraph) {
