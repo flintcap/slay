@@ -44,7 +44,7 @@
  * jittered.
  */
 
-import type { BiomeId, QuestDef } from '../types';
+import type { BiomeId, QuestDef, QuestObjectiveKind, Rng } from '../types';
 import { parseChainQuestId } from './story/chains';
 
 // ---------------------------------------------------------------------------
@@ -1726,6 +1726,63 @@ for (const q of QUESTS) BY_ID.set(q.id, q);
 
 export function questById(id: string): QuestDefEx | undefined {
   return BY_ID.get(id) ?? MAP_BY_ID.get(id) ?? chainQuestDef(id);
+}
+
+// ---------------------------------------------------------------------------
+// Selection and scaling
+// ---------------------------------------------------------------------------
+
+/** Ease-in / retire curve so the pool turns over smoothly with depth. */
+export function questDepthWeight(def: QuestDefEx, depth: number): number {
+  if (depth < def.minDepth) return 0;
+  if (def.maxDepth !== undefined && depth > def.maxDepth) return 0;
+  let w = def.weight;
+  // Ramp in over three tiers past the gate — new quests are rare at first.
+  const since = depth - def.minDepth;
+  if (since < 3) w *= 0.45 + 0.185 * since;
+  // Retire over the last three tiers before the cap.
+  if (def.maxDepth !== undefined) {
+    const left = def.maxDepth - depth;
+    if (left < 3) w *= 0.3 + 0.235 * left;
+  }
+  // Deeper runs prefer the nastier contracts.
+  const dangerBias = 1 + def.danger * Math.min(1, depth / 24) * 0.55;
+  return Math.max(0, w * dangerBias);
+}
+
+function biomeWeight(def: QuestDefEx, biome: BiomeId): number {
+  if (!def.biomes || def.biomes.length === 0) return 1;
+  return def.biomes.includes(biome) ? 2.4 : 0;
+}
+
+/** Full selection weight for a quest at a given depth and biome. */
+export function questWeight(def: QuestDefEx, depth: number, biome: BiomeId): number {
+  return questDepthWeight(def, depth) * biomeWeight(def, biome);
+}
+
+/** Objective kinds whose target is a duration, not a count. */
+const TIME_KINDS: ReadonlySet<QuestObjectiveKind> = new Set<QuestObjectiveKind>(['survive']);
+/** Objective kinds that are always a single binary step. */
+const SINGLETON_KINDS: ReadonlySet<QuestObjectiveKind> = new Set<QuestObjectiveKind>(['escort', 'boss']);
+
+/** An objective's target at this depth: counts jitter a little, durations round to five seconds. */
+export function scaleObjective(
+  kind: QuestObjectiveKind,
+  base: number,
+  perDepth: number,
+  depth: number,
+  rng: Rng,
+): number {
+  if (SINGLETON_KINDS.has(kind)) return Math.max(1, Math.round(base));
+  const raw = base + perDepth * Math.max(0, depth - 1);
+  if (TIME_KINDS.has(kind)) {
+    // Durations round to a readable five seconds and take no jitter — a
+    // survival timer that varies run to run reads as a bug.
+    return Math.max(10, Math.round(raw / 5) * 5);
+  }
+  // +/- 8% deterministic jitter so two runs of the same quest differ a little.
+  const jitter = 1 + rng.range(-0.08, 0.08);
+  return Math.max(1, Math.round(raw * jitter));
 }
 
 // ---------------------------------------------------------------------------

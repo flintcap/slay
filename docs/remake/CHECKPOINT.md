@@ -50,8 +50,22 @@ Update this file and push it after every finished step.
      map quest rewards (MAP_QUESTS moved to data/quests.ts), shrine offers
      fixed per shrine, pact wins over a clashing rolled modifier, Ambush and
      Hoard text.
-   - World, open: 86 catalogue quests never picked (needs world hooks for
-     many filters; only wire the ones whose hooks exist).
+   - World, done too: catalogue quests join the map quest roll when every
+     objective has a real hook (kills by any/family/rank, map boss, shrines,
+     time, stairs on maps with 2+ areas), every rule maps to a run modifier
+     (darkness/fog -> Gloom, double spawns -> Teeming, reinforcements ->
+     Ambush, haste -> Swift, elite frenzy -> Warband, fragile -> Savage), and
+     no fail state the game never checks. 8 qualify today (Culling Order,
+     Long Dark, Butcher's Bill, No Quarter, Brood Cull, Hollow King, Carrion
+     Tide, Thin Ice); about 45% of maps roll one. A quest's rule now beats a
+     rolled modifier it cannot run beside. Every rolled quest is held to the
+     map: kills to 45% of matching monsters (60% for elites, boss counts),
+     stairs to the ones there are, survive to 150 s + 3 s per depth. Checked
+     on 154 maps, depths 1-90: none impossible. Quest weight and scaling
+     helpers moved to data/quests.ts (sim/Quests imports them).
+   - World group finished. The other 78 still need hooks (tagged guardians,
+     named marks, quest items, braziers/seals/forges, vault/survey markers,
+     escorts, fail states).
    - Interface, done: gate panel shows real monster level, item level, zone
      count and XP per kill (Difficulty curves now match the game); caster
      empty right-click slot says there is no basic attack; resist tooltip
@@ -100,6 +114,7 @@ Update this file and push it after every finished step.
      d1 -> d5 -> d9: no errors, textures level off near 166. Geometry still
      climbs slowly (cached monster and prop shapes); watch it.
    - Engine group finished.
+   - #93 Phase 0d finished.
 
 ## Next
 

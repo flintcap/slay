@@ -62,7 +62,7 @@ import { planMap, zoneHeat } from './MapGen';
 import { chestKindFor, placeProps } from './Props';
 import { rollRunTheme, runTheme, themeFits } from './Themes';
 import { getMonster } from '../data/monsters';
-import { MAP_QUESTS } from '../data/quests';
+import { MAP_QUESTS, QUESTS, questById, questWeight, scaleObjective, type QuestDefEx } from '../data/quests';
 
 // ---------------------------------------------------------------------------
 // Contract exports
@@ -384,25 +384,133 @@ function slayFamily(filter: string | undefined): string | null {
 }
 
 /**
+ * The run modifier each catalogue rule (`QUEST_MODIFIERS` in data/quests.ts)
+ * becomes on a map. A rule missing here has nothing in the game to enforce
+ * it, so a quest carrying one is never offered.
+ */
+const QUEST_RULE_MODS: Readonly<Record<string, string>> = {
+  darkness: 'mod.gloom',
+  lowVisibility: 'mod.gloom',
+  doubleSpawns: 'mod.swarm',
+  reinforcements: 'mod.ambush',
+  monsterHaste: 'mod.swift',
+  eliteFrenzy: 'mod.elites',
+  fragile: 'mod.savage',
+};
+
+/** The run modifiers a quest imposes, or null when one of its rules has none. */
+function questRunMods(def: QuestDef | undefined): string[] | null {
+  if (!def) return [];
+  const out: string[] = [];
+  for (const m of [def.modifier, ...((def as QuestDefEx).extraModifiers ?? [])]) {
+    if (!m) continue;
+    const id = RUN_MODIFIERS.some((r) => r.id === m) ? m : QUEST_RULE_MODS[m];
+    if (!id) return null;
+    if (!out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+/** Catalogue weights are on a larger scale than the map quests'. */
+const CATALOGUE_WEIGHT = 0.1;
+
+/** Longest `survive` objective at a depth, in seconds: a share of a map's walk, not a wait. */
+function surviveCap(depth: number): number {
+  return Math.round((150 + 3 * depth) / 5) * 5;
+}
+
+const RANK_STEP: Record<MonsterRank, number> = { normal: 0, champion: 1, elite: 2, rare: 3, boss: 4 };
+
+/** True when a kill of this spawn steps the objective (sim/Quests `onKill`). */
+function spawnCounts(o: QuestObjective, s: SpawnPoint): boolean {
+  if (o.kind === 'slayElite' && RANK_STEP[s.rank] < RANK_STEP.champion) return false;
+  const f = o.filter ?? '';
+  if (f === '' || f === 'any') return true;
+  if (f.startsWith('family:')) return getMonster(s.monsterId)?.family === f.slice(7);
+  if (f.startsWith('rank:')) return RANK_STEP[s.rank] >= (RANK_STEP[f.slice(5) as MonsterRank] ?? 0);
+  if (f.startsWith('id:')) return s.monsterId === f.slice(3);
+  return false;
+}
+
+/**
+ * Objectives the game really counts on a map: kills by any, family or rank,
+ * the map boss, shrines, time spent, and stairs taken (only when the map has
+ * more than one area). Tagged guardians, named marks, roles, escorts, quest
+ * items, other props and other markers have no hook yet.
+ */
+function objectiveWired(o: QuestDef['objectives'][number], depth: number, areas: number): boolean {
+  const f = o.filter ?? 'any';
+  const byKind = f === 'any' || f.startsWith('family:') || f.startsWith('rank:');
+  switch (o.kind) {
+    case 'slay':
+      return byKind;
+    case 'slayElite':
+      // Champions and elites only roll from their own depth on.
+      return byKind && (f.startsWith('rank:') && f !== 'rank:champion' ? eliteDensity(depth) > 0 : championDensity(depth) > 0);
+    case 'boss':
+      return f === 'boss:any';
+    case 'cleanse':
+      return f === 'prop:shrine';
+    case 'survive':
+      return f === 'zone:any';
+    case 'reach':
+      return f === 'marker:exit' && areas > 1;
+    default:
+      return false;
+  }
+}
+
+/** A catalogue quest this map can carry: wired objectives, enforced rules, no fail state the game never checks. */
+function catalogueFits(q: QuestDefEx, depth: number, areas: number): boolean {
+  if (q.failOn?.some((k) => k !== 'playerDeath')) return false;
+  const mods = questRunMods(q);
+  if (!mods) return false;
+  // A rule arrives no earlier than the run modifier that carries it.
+  if (mods.some((id) => (RUN_MODIFIERS.find((r) => r.id === id)?.minDepth ?? 0) > depth)) return false;
+  return q.objectives.every((o) => objectiveWired(o, depth, areas));
+}
+
+function renderObjective(template: string, target: number, depth: number): string {
+  return template.replace(/\{n\}/g, String(target)).replace(/\{depth\}/g, String(depth));
+}
+
+/**
  * A quest for this map. `zoneFamilies` holds each zone's monster families: a
  * quest that wants one family is only offered when some zone carries it, and
  * its count shrinks to the share of zones that do, so it can always be done.
+ * The pool is the map quests plus every catalogue quest the map can carry
+ * (`catalogueFits`), weighted by depth and by the map's biomes.
  */
-function buildQuest(depth: number, rng: Rng, classId: CharClassId, zoneFamilies: ReadonlyArray<readonly string[]>): QuestInstance {
+function buildQuest(
+  depth: number,
+  rng: Rng,
+  classId: CharClassId,
+  zoneFamilies: ReadonlyArray<readonly string[]>,
+  zoneBiomes: readonly BiomeId[],
+  areas: number,
+): QuestInstance {
   const zonesWith = (family: string): number => zoneFamilies.filter((f) => f.includes(family)).length;
   const fits = (q: QuestDef): boolean => q.objectives.every((o) => {
     const fam = slayFamily(o.filter);
     return !fam || zonesWith(fam) > 0;
   });
-  const pool = MAP_QUESTS.filter((q) => q.minDepth <= depth && fits(q));
-  const def = rng.weighted(pool.length > 0 ? pool : MAP_QUESTS.filter(fits), (q) => q.weight);
+  const catalogueWeight = (q: QuestDefEx): number => Math.max(0, ...zoneBiomes.map((b) => questWeight(q, depth, b))) * CATALOGUE_WEIGHT;
+  const pool: QuestDef[] = [
+    ...MAP_QUESTS.filter((q) => q.minDepth <= depth && fits(q)),
+    ...QUESTS.filter((q) => catalogueWeight(q) > 0 && catalogueFits(q, depth, areas) && fits(q)),
+  ];
+  const weightOf = (q: QuestDef): number => (MAP_QUESTS.includes(q) ? q.weight : catalogueWeight(q as QuestDefEx));
+  const def = rng.weighted(pool.length > 0 ? pool : MAP_QUESTS.filter(fits), weightOf);
+  const catalogue = !MAP_QUESTS.includes(def);
   const objectives: QuestObjective[] = def.objectives.map((o) => {
-    let target = Math.max(1, Math.round(o.base + o.perDepth * depth));
+    // Catalogue quests keep their own curve (sim/Quests instantiateQuest).
+    let target = catalogue ? scaleObjective(o.kind, o.base, o.perDepth, depth, rng) : Math.max(1, Math.round(o.base + o.perDepth * depth));
     const fam = slayFamily(o.filter);
     if (fam) target = Math.max(8, Math.round((target * zonesWith(fam)) / Math.max(1, zoneFamilies.length)));
+    if (o.kind === 'survive') target = Math.min(target, surviveCap(depth));
     return {
       kind: o.kind,
-      desc: o.desc.replace('{n}', String(target)),
+      desc: renderObjective(o.desc, target, depth),
       target,
       progress: 0,
       filter: o.filter,
@@ -418,6 +526,30 @@ function buildQuest(depth: number, rng: Rng, classId: CharClassId, zoneFamilies:
     complete: false,
     turnedIn: false,
   };
+}
+
+/**
+ * Holds a rolled quest's counts to what the generated map really carries, so
+ * it can always be finished: kills to a share of the matching monsters, stairs
+ * to the ones there are. The map boss counts as an elite, so an elite count
+ * never needs more than one when the floors hold none.
+ */
+function fitQuestToMap(quest: QuestInstance, levels: readonly DungeonLevel[], depth: number): void {
+  const def = questById(quest.defId);
+  quest.objectives.forEach((o, i) => {
+    let cap = Infinity;
+    if (o.kind === 'slay' || o.kind === 'slayElite') {
+      let n = 0;
+      for (const l of levels) for (const s of l.spawns) if (spawnCounts(o, s)) n++;
+      cap = Math.max(1, Math.floor(n * (o.kind === 'slayElite' ? 0.6 : 0.45)));
+    } else if (o.kind === 'reach' && o.filter === 'marker:exit') {
+      cap = Math.max(1, levels.length - 1);
+    }
+    if (o.target <= cap) return;
+    o.target = cap;
+    const template = def?.objectives[i]?.desc;
+    if (template) o.desc = renderObjective(template, cap, depth);
+  });
 }
 
 /** Which room kind, if any, a quest wants planted on each floor. */
@@ -553,15 +685,25 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
   const minZones = levelsForDepth(depth);
   const map = planMap(depth, runRng.fork('map'), plan?.biome, minZones);
   const biome = map.bossBiome;
-  const rolledQuest = buildQuest(depth, runRng, classId, map.info.zones.map((z) => getBiome(z.biome).families));
+  const rolledQuest = buildQuest(
+    depth,
+    runRng,
+    classId,
+    map.info.zones.map((z) => getBiome(z.biome).families),
+    map.info.zones.map((z) => z.biome),
+    map.areas.length,
+  );
   const quest = plan?.quest ? plan.quest(biome) : rolledQuest;
   const modifiers = rollModifiers(depth, runRng);
 
-  // A quest may impose its own modifier on top of the depth roll.
-  const questDef = MAP_QUESTS.find((q) => q.id === quest.defId);
-  if (questDef?.modifier && !modifiers.some((m) => modifiersClash(m, questDef.modifier!))) {
-    const md = RUN_MODIFIERS.find((m) => m.id === questDef.modifier);
-    if (md) modifiers.push(`${md.id}@${clamp(1 + Math.floor(depth / 35), 1, md.maxTier)}`);
+  // A quest may impose its own rules on top of the depth roll. Its text
+  // promises them, so a rule wins over a rolled modifier it cannot run beside;
+  // one already rolled stays at its rolled tier.
+  for (const id of questRunMods(questById(quest.defId)) ?? []) {
+    const md = RUN_MODIFIERS.find((m) => m.id === id);
+    if (!md || modifiers.some((m) => modifierId(m) === id)) continue;
+    for (let i = modifiers.length - 1; i >= 0; i--) if (modifiersClash(modifiers[i]!, id)) modifiers.splice(i, 1);
+    modifiers.push(`${md.id}@${clamp(1 + Math.floor(depth / 35), 1, md.maxTier)}`);
   }
 
   const rolledBoss = catalog.bossFor(depth, biome, runRng.fork('boss'));
@@ -595,6 +737,8 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
     });
     levels.push(level);
   }
+
+  if (quest === rolledQuest) fitQuestToMap(quest, levels, depth);
 
   return { seed, depth, biome, variant, runTheme: theme, levels, quest, modifiers, bossId, bossMood, map: map.info };
 }
