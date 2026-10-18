@@ -107,7 +107,7 @@ export const BATCH_B: UniqueDef[] = [
   U('uq.longdrizzle', 'The Long Drizzle', 'xbow.repeating', 20,
     'Made by a fletcher who said the worst weather is not the storm but the rain that will not stop.',
     [['dexterity', 1], ['attackSpeed', 0.8], ['coldResist', 0.6]],
-    { classId: 'ranger', bend: { skill: 'arrowRain', more: 20, grow: { radius: 25 }, add: { ticks: 3 }, names: { ticks: 'volleys' } },
+    { classId: 'ranger', bend: { skill: 'arrowRain', more: 20, grow: { radius: 25 }, applies: { status: 'chilled', duration: 3, label: 'chill enemies' } },
       look: D('wood.polished|0x5a4a3a', 'cloth.linen|0x4a5a6a', 'metal.steel', ['rivets', 'feathers'], 0.4, {}) }),
 
   U('uq.hairtrigger', 'Hairtrigger', 'xbow.arbalest', 28,
@@ -168,7 +168,7 @@ export const BATCH_B: UniqueDef[] = [
   U('uq.overcast', 'The Overcast', 'quiver.runic', 50,
     'Stitched from the grey cloth that hung over the town the summer the sun did not come out.',
     [['dexterity', 1], ['enhancedDamage', 0.8], ['lightningResist', 0.8]],
-    { classId: 'ranger', bend: { skill: 'darkenTheSky', more: 20, grow: { radius: 20, duration: 30 } },
+    { classId: 'ranger', bend: { skill: 'darkenTheSky', more: 20, grow: { radius: 20 }, applies: { status: 'blinded', duration: 3, label: 'blind enemies' } },
       look: D('cloth.wool|0x5a6070', 'leather.dark', 'metal.steel', ['smoke', 'runes'], 0.4, {}),
       from: 'thessaly_vane' }),
 

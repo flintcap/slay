@@ -67,7 +67,7 @@ export const BATCH_E: UniqueDef[] = [
   U('uq.trapperslastbelt', "The Trapper's Last Belt", 'belt.war', 40,
     'Every pouch on it holds a different trap, and every trap has a name. The trapper is buried with the one that got him.',
     [['dexterity', 1], ['attackRating', 0.8], ['life', 0.7]],
-    { classId: 'ranger', bend: { skill: 'theWholeFloor', more: 20, add: { count: 3 }, grow: { duration: 25 }, names: { count: 'traps' } },
+    { classId: 'ranger', bend: { skill: 'theWholeFloor', more: 20, grow: { radius: 30 }, applies: { status: 'rooted', duration: 2, label: 'root enemies in place' } },
       look: D('leather.studded|0x5a4030', undefined, 'metal.iron', ['spikes', 'chains'], 0.6, {}) }),
 
   U('uq.mooringline', 'Mooring Line', 'belt.vampirefang', 48,

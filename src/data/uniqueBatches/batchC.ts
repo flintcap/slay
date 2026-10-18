@@ -28,7 +28,7 @@ export const BATCH_C: UniqueDef[] = [
   U('uq.splinterwand', 'Splinterwand', 'wand.bone', 11,
     'Whittled from a rib that broke into a hundred points when it was dropped. It kept all of them.',
     [['energy', 1], ['mana', 0.8], ['castSpeed', 0.6]],
-    { classId: 'revenant', bend: { skill: 'boneSpear', more: 25, grow: { width: 40, range: 20 } },
+    { classId: 'revenant', bend: { skill: 'boneSpear', more: 25, grow: { range: 20 }, add: { count: 2, arc: 70 }, names: { count: 'spears', arc: 'degrees wider fan' } },
       look: D('bone.bleached', 'leather.worn|0x3a2a2a', 'bone.old', ['spikes', 'bones'], 0.4, { cut: { kind: 'bone', wrap: 'cord' } }),
       from: 'boneking_gharruth' }),
 
@@ -193,7 +193,7 @@ export const BATCH_C: UniqueDef[] = [
   U('uq.bottledsquall', 'Bottled Squall', 'orb.crystalline', 33,
     'A sailor caught a storm in a jar off the end of the pier, and the pier went with it.',
     [['lightningDamage', 1], ['energy', 0.9], ['castSpeed', 0.6]],
-    { classId: 'mage', bend: { skill: 'tempestOrb', more: 20, add: { targetsPerTick: 2 }, grow: { duration: 30 } },
+    { classId: 'mage', bend: { skill: 'tempestOrb', more: 20, grow: { splash: 30 }, names: { splash: 'burst' }, applies: { status: 'shocked', duration: 4, label: 'shock enemies' } },
       look: D('crystal.ice|0xa8c8e8', undefined, 'metal.copper', ['bolts', 'coils'], 0.15, {}) }),
 
   U('uq.coalinajar', 'Coal in a Jar', 'orb.glowing', 42,

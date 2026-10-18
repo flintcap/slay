@@ -20,6 +20,9 @@ Update this file and push it after every finished step.
 - Uniques and sets must be far stronger than rares, with many more stats.
 - Each unique and set item has its own fixed lines. They never change.
 - Uniques and sets stay at their own item level. No scaling with depth.
+- Before starting any phase plan item, send the owner a numbered list of its
+  changes and wait for approval of each one.
+- Descent sigils (craft a token that sets the next depth) are cut. Do not add.
 
 ## Done
 
@@ -139,12 +142,21 @@ Update this file and push it after every finished step.
   out the 300s clock for 3 classes at d60 without hurting them (won 1/3).
   check-economy passes now. check-events fails the same before and after
   (quest.purge: no insect kills count on a full clear).
+- #108 (owner ask) the 6 uniques whose skill bends pointed at settings removed
+  in #99 now bend real ones. Millwheel: Whirlwind spins 20% faster (was
+  walk speed). Long Drizzle: Arrow Rain hits chill 3s (was extra volleys).
+  The Overcast: Darken The Sky hits blind 3s (was duration). Splinterwand:
+  Bone Spear +2 spears in a 70 degree fan, each on its own line (was width;
+  Bone Spear gained `count: 1, arc: 0`, plain skill unchanged). Bottled
+  Squall: Tempest Orb burst 30% bigger and hits shock 4s (was targets per
+  pulse, and its duration knob only fed an empty status). Trapper's Last
+  Belt: blast 30% bigger, roots 2s (was traps and duration). Every damage
+  bonus kept. Checked by wearing each in a 30-fight arena: the bonus lands.
+  check-uniques, check-skillparams, check-rankpower, check-unique pass.
 
 ## In progress
 
-- check-uniques fails: 7 uniques bend skill settings removed in #99
-  (Millwheel, Long Drizzle, Overcast, Splinterwand, Bottled Squall,
-  Trapper's Last Belt). Needs repointing.
+- Nothing.
 
 ## Phase 0d log
 

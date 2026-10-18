@@ -2430,7 +2430,7 @@ const OSSUARY = build('ossuary', [
     dmg: [1.1, 0.18],
     type: 'physical',
     fx: 'projectile',
-    p: { speed: 24, range: 16, pierce: 99 },
+    p: { speed: 24, range: 16, pierce: 99, count: 1, arc: 0 },
   },
   {
     id: 'raiseSkeleton',
