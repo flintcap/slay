@@ -1,6 +1,6 @@
 # Stream: speed (Wave 4: smooth and fast on WebGPU)
 
-Status: in progress
+Status: paused (part 1 done, part 2 waits for wave two)
 
 Goal: high, steady frame rate and short loads with no frozen browser. The
 owner reports town loads of 20 to 25 s and map loads of 50 to 60 s with the
@@ -27,27 +27,41 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   contracts; add it to `Events.ts` and `CONTRACTS.md`). (wip(speed): paced
   floor build, bake workers ...; bake jobs name the monster by id ...;
   static floor build yields per chunk)
-- [ ] 3. Shaders compiled at load, not in play: `compileAsync` for the level
+- [x] 3. Shaders compiled at load, not in play: `compileAsync` for the level
   and its monster list behind the loading screen, so first hits and first
-  monsters do not stutter.
-- [ ] 4. Fewer draw calls: instancing or `BatchedMesh` for repeated props,
+  monsters do not stutter. (speed: part 1 done, milestones 1 to 3; the
+  curtain build already existed as `Engine.prime` + `ShaderGate`, which is
+  what `compileAsync` does; check-frames now names each pipeline still made
+  in play, and the few left belong to other streams' late looks: see
+  "Notes for resume")
+- [ ] 4. (after wave two) Fewer draw calls: instancing or `BatchedMesh` for repeated props,
   monsters and loot, with culling (GPU or indirect draws where three.js
   supports it). Count draw calls before and after.
-- [ ] 5. Shadow cost: cache static shadows so only moving casters redraw;
+- [ ] 5. (after wave two) Shadow cost: cache static shadows so only moving casters redraw;
   a budget for point-light shadows.
-- [ ] 6. Many torches: tiled or clustered lighting, only if it measures
+- [ ] 6. (after wave two) Many torches: tiled or clustered lighting, only if it measures
   faster here. If it does not, note why and tick.
-- [ ] 7. CPU frame: lower animation and update rate for far monsters and
+- [ ] 7. (after wave two) CPU frame: lower animation and update rate for far monsters and
   summons, pool hot objects, no per-frame allocation in the loops you touch.
 - [ ] 8. Handover with before and after numbers.
 
 ## Next up
 
-1. Milestone 3: `npx vite build` is not enough for the checkers; run
-   `node tools/bundle-artifact.mjs`, then
-   `SLAY_PORT=4341 flock /tmp/slay-browser.lock timeout 2400 node tools/check-frames.mjs --only=map,boss`
-   and read "pipelines made while playing" (now counted on WebGPU). Zero
-   means first monsters and hits build nothing in play.
+Part 2 (milestones 4 to 7) starts after wave two (looks, effects,
+mapvariety), which changes the scene. A fresh agent:
+
+1. Read this file, PROTOCOL.md, PLAN.md and the "Loading progress" and
+   "Bake workers" sections of CONTRACTS.md.
+2. Re-take the baseline first, because wave two changed the scene:
+   `node tools/get-chrome.mjs`, `node tools/bundle-artifact.mjs`, then
+   `SLAY_PORT=<port> flock /tmp/slay-browser.lock timeout 2400 node tools/check-loadtime.mjs --no-select --depths=1,12,25 --profile --size=640x360`
+   and
+   `SLAY_PORT=<port> flock /tmp/slay-browser.lock timeout 2400 node tools/check-frames.mjs --only=map,boss`.
+   Write the numbers (draw calls, update p95/p99/worst, pipelines made in
+   play) under "Notes for resume", then re-save `tools/perf-frames.json`
+   (the saved one predates the WebGPU counter fix).
+3. Start milestone 4: count draw calls per kind (props, monsters, loot) in
+   a map, then instance or batch the biggest group and count again.
 
 ## Notes for resume
 
@@ -98,6 +112,27 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   `render.calls`, which on WebGPU counts render passes since start). The
   saved baseline in `tools/perf-frames.json` predates this: re-save it.
 
+- Milestone 3 (check-frames `--only=map,boss`, depth 6, after milestones 1
+  and 2). Pipelines still made in play, each named `object/material` by
+  check-frames, with the stream that owns the look:
+  - map (4): `warden:mouth/MeshStandardMaterial` and
+    `warden:shorts/hero-linen` (the warden is in the scene at prime, so its
+    material changes when it wakes or is hit: heroes/bosses),
+    `item-gem/item:gem` (a gem drop: items),
+    `Output Color Transform (OrthographicCamera)` (a screen-space pass drawn
+    only in play: render/post owner).
+  - boss (8): `fx:solid-shard`, `fx:cores`, `fx:columns` (boss effects first
+    cast: vfx), `item-glow/item:glow` (items), `prop:altar:1` cloth.linen and
+    bone.pale (an altar added during the fight: props), `creature:skin/
+    creature:bone` and `creature:alt/creature:shade` (boss adds summoned
+    mid-fight: creatures/bosses).
+  Request for each owner: put a stand-in of the late look into the scene's
+  `warmup()` (DungeonScene already has stand-ins for flash, corpses, coin,
+  loot, veil, shade and shots), or build the object at load hidden; `prime`
+  shows hidden objects for the warm frames. Map draw calls 651 per frame in
+  that run (the old 156 came from the broken counter). Upload in play 987 KB.
+- Nothing from milestone 4 or later was started; nothing is half-wired.
+
 ## For the owner to test
 
 (Add one line per item: what to try and what should happen.)
@@ -107,6 +142,10 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   responding", other tabs stay smooth); compare the load time with before.
 - Enter a few maps in a row: the second and later loads should be faster
   (monster bodies come from the bake workers and the stored cache).
+- On a real GPU, fight in a map and a boss room right after loading: first
+  hits, first monsters and the first boss attacks should not stutter. A
+  short hitch on the warden waking, a gem drop or boss adds is known and is
+  listed for the owning streams.
 
 ## Handover
 
