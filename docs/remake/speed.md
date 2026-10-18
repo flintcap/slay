@@ -60,21 +60,15 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Next up
 
-Part 2 (milestones 4 to 7) starts after wave two (looks, effects,
-mapvariety), which changes the scene. A fresh agent:
+Part 2, milestones 3b, 3c done; baseline re-taken (see "Part 2 baseline").
+A fresh agent:
 
 1. Read this file, PROTOCOL.md, PLAN.md and the "Loading progress" and
    "Bake workers" sections of CONTRACTS.md.
-2. Re-take the baseline first, because wave two changed the scene:
-   `node tools/get-chrome.mjs`, `node tools/bundle-artifact.mjs`, then
-   `SLAY_PORT=<port> flock /tmp/slay-browser.lock timeout 2400 node tools/check-loadtime.mjs --no-select --depths=1,12,25 --profile --size=640x360`
-   and
-   `SLAY_PORT=<port> flock /tmp/slay-browser.lock timeout 2400 node tools/check-frames.mjs --only=map,boss`.
-   Write the numbers (draw calls, update p95/p99/worst, pipelines made in
-   play) under "Notes for resume", then re-save `tools/perf-frames.json`
-   (the saved one predates the WebGPU counter fix).
-3. Start milestone 4: count draw calls per kind (props, monsters, loot) in
-   a map, then instance or batch the biggest group and count again.
+2. Milestone 4: draw counts per kind are under "Part 2 baseline"
+   (`check-frames --draws`). Cut the biggest group, count again.
+3. Then 5, 6, 7, 8. Re-save `tools/perf-frames.json` at the end
+   (`check-frames --save`, all three places).
 
 ## Notes for resume
 
