@@ -414,6 +414,7 @@ class TooltipManager {
         mark.title = `Tier ${mod.tier} of ${max} (${mod.kind})`;
         row.appendChild(mark);
       }
+      if (mod.honed) row.appendChild(span('tt-modtag', 'honed'));
     } else if (mod.kind === 'crafted') {
       row.appendChild(span('tt-modtag', 'crafted'));
     } else if (mod.kind === 'corrupted') {

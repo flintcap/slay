@@ -1,16 +1,30 @@
 /**
  * SLAY — the Enchanter. Pick a magic or rare item you carry or wear, then
- * reforge one of its properties or, on a rare with none, imbue a power.
- * Once a property has been reforged it is the only one that may change again.
+ * reforge one of its properties, add one into an open slot or, on a rare with
+ * none, imbue a power. A reforge or a new line lays three choices on the
+ * table; take one or keep what you had. Once a property has been reforged it
+ * is the only one that may change again.
  */
 
 import { save } from '../core/Save';
 import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
 import type { Item } from '../types';
-import { modLine } from '../sim/Loot';
+import { modLine, openAffixSlots } from '../sim/Loot';
 import { canAfford, spendCost } from '../sim/Crafting';
-import { canEnchantItem, canImbue, imbueCost, imbuePower, reforgeCost, reforgeMod, reforgeableMods } from '../sim/TownServices';
+import {
+  canEnchantItem,
+  canFillSlot,
+  canImbue,
+  fillCost,
+  fillSlot,
+  imbueCost,
+  imbuePower,
+  reforgeCost,
+  reforgeMod,
+  reforgeableMods,
+  takeOffer,
+} from '../sim/TownServices';
 import { powerLines } from '../sim/ItemPowers';
 import { Panel, Button, div, span, clear, add } from './Widgets';
 import { costText, itemName } from './DepthWidgets';
@@ -65,7 +79,7 @@ export class EnchanterPanel {
     this.body.appendChild(
       div(
         'depth-note',
-        'Choose a magic or rare item. Reforging rolls one property anew; after that, only that property can be reforged again. A rare with no power can be imbued with one.',
+        'Choose a magic or rare item. Reforging lays out three new versions of one property: take one, or keep what you had. After that, only that property can be reforged again. An item with room can take a new property the same way, if none has been reforged yet. A rare with no power can be imbued with one.',
       ),
     );
     if (items.length === 0) {
@@ -80,7 +94,7 @@ export class EnchanterPanel {
       card.style.cursor = 'var(--cursor-hot)';
       const b = div('depth-card-body');
       const worn = Object.values(c.equipment).includes(it);
-      add(b, itemName(it), span('depth-dim', `${worn ? 'Worn' : 'In pack'} · item level ${it.ilvl}${it.enchantedMod ? ' · reforged' : ''}`));
+      add(b, itemName(it), span('depth-dim', `${worn ? 'Worn' : 'In pack'} · item level ${it.ilvl}${it.offers ? ' · choice waiting' : it.enchantedMod ? ' · reforged' : ''}`));
       card.appendChild(b);
       card.addEventListener('click', () => {
         this.selected = it.uid;
@@ -107,6 +121,46 @@ export class EnchanterPanel {
       events.emit('ui:refresh', {});
     };
 
+    // Lines already paid for wait on the table until one is taken.
+    const offers = item.offers;
+    if (offers) {
+      const table = div('depth-list');
+      table.appendChild(div('depth-note', offers.line ? 'Take one of these in its place, or keep the line you had.' : `Take one of these as a new ${offers.kind}, or leave the slot open.`));
+      offers.mods.forEach((m, k) => {
+        const card = div('depth-card');
+        const b = div('depth-card-body');
+        add(b, div('depth-card-title', modLine(m)), span('depth-dim', `${m.kind} · tier ${m.tier}`));
+        card.appendChild(b);
+        const btn = new Button({
+          label: 'Take',
+          small: true,
+          variant: 'gold',
+          onClick: () => {
+            const r = takeOffer(item, k);
+            done(r.ok, r.reason, r.ok ? `Enchanted: ${modLine(m)}` : undefined);
+          },
+        });
+        card.appendChild(btn.root);
+        table.appendChild(card);
+      });
+      const old = offers.line ? item.mods.find((m) => m.affixId === offers.line && m.kind === offers.kind) : undefined;
+      const keep = div('depth-card');
+      const kb = div('depth-card-body');
+      add(kb, div('depth-card-title', old ? modLine(old) : 'Nothing'), span('depth-dim', old ? 'keep what you had' : 'leave the slot open'));
+      keep.appendChild(kb);
+      const kbtn = new Button({
+        label: old ? 'Keep' : 'Leave',
+        small: true,
+        onClick: () => {
+          const r = takeOffer(item, null);
+          done(r.ok, r.reason, old ? 'You keep what you had.' : 'The slot stays open.');
+        },
+      });
+      keep.appendChild(kbtn.root);
+      table.appendChild(keep);
+      this.body.appendChild(table);
+    }
+
     const can = new Set(reforgeableMods(item));
     const rcost = reforgeCost(item);
     const rok = canAfford(rcost);
@@ -125,7 +179,7 @@ export class EnchanterPanel {
           variant: 'gold',
           onClick: () => {
             const r = reforgeMod(c, item, i, pay);
-            done(r.ok, r.reason, r.ok ? `Reforged: ${modLine(item.mods[i]!)}` : undefined);
+            done(r.ok, r.reason, 'Three lines are laid out. Choose one.');
           },
         });
         btn.setDisabled(!rok);
@@ -133,6 +187,34 @@ export class EnchanterPanel {
       }
       mods.appendChild(card);
     });
+
+    // An open slot can take a new line, while no line has been reforged.
+    const room = openAffixSlots(item);
+    const fcost = fillCost(item);
+    const fok = canAfford(fcost);
+    for (const kind of ['prefix', 'suffix'] as const) {
+      if (room[kind] <= 0) continue;
+      const fill = canFillSlot(item, kind);
+      const card = div(`depth-card${fill.ok ? '' : ' is-locked'}`);
+      const b = div('depth-card-body');
+      add(b, div('depth-card-title', `Add a ${kind}`), span('depth-dim', fill.ok ? `${room[kind]} open` : fill.reason ?? ''));
+      card.appendChild(b);
+      if (fill.ok) {
+        add(card, costText(fcost, fok));
+        const btn = new Button({
+          label: 'Add',
+          small: true,
+          variant: 'gold',
+          onClick: () => {
+            const r = fillSlot(c, item, kind, pay);
+            done(r.ok, r.reason, 'Three lines are laid out. Choose one.');
+          },
+        });
+        btn.setDisabled(!fok);
+        card.appendChild(btn.root);
+      }
+      mods.appendChild(card);
+    }
     this.body.appendChild(mods);
 
     const imb = canImbue(item);

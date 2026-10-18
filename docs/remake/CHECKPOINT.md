@@ -92,6 +92,23 @@ Update this file and push it after every finished step.
   +21%. Owned items switch on load (refreshFixedLines). setpower, save and
   items checks pass.
 
+- #106 (Phase 1) targeted crafting. Enchanter: a reforge lays out three new
+  lines of the same kind (no shared group, none clashing); take one or keep
+  the old. An item with room (rare 4 a side, 8 in all; magic 1 a side; rare
+  charms by size) can take a new line the same way while no line is
+  reforged; the one-line rule now covers old and new lines. Offers wait on
+  the item (`Item.offers`) through closing the panel and saves. Blacksmith:
+  a reroll can bind 1 line (magic) or 2 (rare) with Cured Hide, Gloomsilk or
+  Starcloth by item level; hone moves one line a rung up its ladder (up to
+  10 item levels past the item), once per item, paid with Beast Heart, Demon
+  Ichor or Titan Marrow plus metal (`ItemMod.honed`, tag in the tooltip).
+  New lines tie in with Corded Sinew, Void Ash or Mythic Essence. A reroll
+  now clears the Enchanter mark when its line is gone (it used to block all
+  reforging). New check-craft; check-town covers offers, fill and saves.
+  check-economy fails the same way before this change (no set or unique for
+  the mage in one depth-30 descent; random, noted).
+
+## In progress
 ## In progress
 
 - Phase 1 (combat): #103 balance groundwork (waiting on owner).

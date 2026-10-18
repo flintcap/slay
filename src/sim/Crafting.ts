@@ -6,7 +6,7 @@
  * bench has to be the thing that turns "I found a good base" into "I have a
  * weapon", repeatedly, for every character you roll.
  *
- * Five operations, each with its own currency:
+ * Six operations, each with its own currency:
  *
  * - **Upgrade** (gold + tier-appropriate materials) — the main progression
  *   sink. Twelve levels in four named tiers, each adding +10% of the item's
@@ -14,7 +14,10 @@
  *   item is roughly a tier-and-a-half of base above where it started, which is
  *   enough to keep a beloved level-40 unique relevant at level 60.
  * - **Reroll** (Sigil of Chaos) — reroll every affix on a magic or rare item.
- *   Keeps the base, the sockets and the item level.
+ *   Keeps the base, the sockets and the item level. Up to two lines can be
+ *   bound with cloth (hide, Gloomsilk, Starcloth) and come through unchanged.
+ * - **Hone** (a beast, demon or titan heart) — one line a rung up its ladder.
+ *   Once per item.
  * - **Socket** (shards) — add one socket, up to the base's cap. Escalating
  *   cost per socket, so six-socketing a two-hander is a project.
  * - **Gem insert / remove** — free to insert, destructive to remove unless you
@@ -22,10 +25,9 @@
  * - **Salvage** — break an item down for materials scaled by rarity and level.
  */
 
-import type { Item, ItemRarity, Rng, StatKey } from '../types';
+import type { AffixTier, Item, ItemMod, ItemRarity, Rng, StatKey } from '../types';
 import { save } from '../core/Save';
-import { getBase } from './Loot';
-import { rollFreshAffixes } from './Loot';
+import { AFFIXES, getBase, rollAffixesKeeping, rollFreshAffixes } from './Loot';
 import { maxSockets } from '../data/itemBases';
 import { getSocketable, gemUpgradeRecipe, GEMS } from '../data/gems';
 import { formatMaterials, materialName, salvagePool } from '../data/materials';
@@ -210,34 +212,123 @@ export function applyUpgrade(item: Item, rng: Rng | null): void {
 // Affix reroll
 // ---------------------------------------------------------------------------
 
-export function rerollCost(item: Item): CraftCost {
+/** How many lines a reroll may bind and keep, by rarity. */
+export function maxLocks(item: Item): number {
+  return item.rarity === 'rare' ? 2 : item.rarity === 'magic' ? 1 : 0;
+}
+
+/** What binds a line through a reroll, by how deep the item was found. */
+function bindMaterial(ilvl: number): string {
+  if (ilvl >= 60) return 'reagent.starcloth';
+  if (ilvl >= 16) return 'reagent.silk';
+  return 'reagent.hide';
+}
+
+/** A reroll's cost. Each bound line adds gold and binding cloth, the second more than the first. */
+export function rerollCost(item: Item, locks = 0): CraftCost {
   const base = getBase(item.baseId);
-  const gold = Math.round((400 + base.levelReq * 90) * (RARITY_COST_MUL[item.rarity] ?? 1));
+  const gold = Math.round((400 + base.levelReq * 90) * (RARITY_COST_MUL[item.rarity] ?? 1) * (1 + 0.5 * locks));
   const materials: Record<string, number> = {};
   if (item.ilvl >= 58) materials['catalyst.chaos'] = 1;
   else materials['catalyst.order'] = 1;
   materials['essence.lesser'] = item.rarity === 'rare' ? 4 : 2;
   if (item.ilvl >= 40) materials['essence.greater'] = item.rarity === 'rare' ? 2 : 1;
+  if (locks > 0) materials[bindMaterial(item.ilvl)] = locks === 1 ? 2 : 5;
   return { gold, materials };
 }
 
 /**
- * Rerolls every non-implicit modifier on a magic or rare item. The affix count
- * is rerolled too, so this is a real gamble rather than a guaranteed sidegrade.
+ * Rerolls every non-implicit modifier on a magic or rare item, except the
+ * prefixes and suffixes at the indexes in `locked`, which stay exactly as they
+ * are. The affix count is rerolled too, so this is a real gamble rather than
+ * a guaranteed sidegrade.
  */
-export function rerollAffixes(item: Item, rng: Rng): CraftResult {
+export function rerollAffixes(item: Item, rng: Rng, locked: number[] = []): CraftResult {
   if (item.rarity !== 'magic' && item.rarity !== 'rare') {
     return { ok: false, reason: 'Only magic and rare items can be reforged.' };
   }
-  const paid = spendCost(rerollCost(item));
+  const keepAt = [...new Set(locked)];
+  if (keepAt.length > maxLocks(item)) return { ok: false, reason: `At most ${maxLocks(item)} line(s) can be bound.` };
+  const keep: ItemMod[] = [];
+  for (const i of keepAt) {
+    const m = item.mods[i];
+    if (!m || (m.kind !== 'prefix' && m.kind !== 'suffix')) return { ok: false, reason: 'Only a prefix or suffix can be bound.' };
+    keep.push(m);
+  }
+  const paid = spendCost(rerollCost(item, keep.length));
   if (!paid.ok) return paid;
 
   const implicits = item.mods.filter((m) => m.kind === 'implicit');
   // The same roller a drop uses, so the line count and every allowed ladder
   // (a charm's size above all) match what the floor could have thrown.
-  const rolled = rollFreshAffixes(item, rng);
+  const rolled = keep.length ? rollAffixesKeeping(item, keep, rng) : rollFreshAffixes(item, rng);
 
   item.mods = [...implicits, ...rolled];
+  // The Enchanter's mark goes with its line; offers on the table go stale.
+  if (item.enchantedMod && !keep.some((m) => m.affixId === item.enchantedMod)) item.enchantedMod = undefined;
+  item.offers = undefined;
+  save.touch();
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Hone
+// ---------------------------------------------------------------------------
+
+/** How far past its own item level a honed rung may reach. */
+export const HONE_REACH = 10;
+
+/** The rung a line would hone up to, or null when it cannot. */
+export function honeTarget(item: Item, index: number): AffixTier | null {
+  const mod = item.mods[index];
+  if (!mod || (mod.kind !== 'prefix' && mod.kind !== 'suffix') || mod.value <= 0) return null;
+  const affix = AFFIXES.find((a) => a.id === mod.affixId);
+  const next = affix?.tiers.find((t) => t.tier === mod.tier + 1);
+  if (!next || next.ilvl > item.ilvl + HONE_REACH || next.max <= mod.value) return null;
+  return next;
+}
+
+/** Whether this line can be honed. One line per item, magic and rare only. */
+export function canHone(item: Item, index: number): CraftResult {
+  if (item.rarity !== 'magic' && item.rarity !== 'rare') return { ok: false, reason: 'Only magic and rare items can be honed.' };
+  if (item.mods.some((m) => m.honed)) return { ok: false, reason: 'One line on this item is already honed.' };
+  const mod = item.mods[index];
+  if (!mod || (mod.kind !== 'prefix' && mod.kind !== 'suffix')) return { ok: false, reason: 'Only a prefix or suffix can be honed.' };
+  if (!honeTarget(item, index)) return { ok: false, reason: 'That line is as fine as this item can hold.' };
+  return { ok: true };
+}
+
+export function honeCost(item: Item): CraftCost {
+  const gold = Math.round((300 + Math.pow(item.ilvl, 1.4) * 30) * (item.rarity === 'rare' ? 1.5 : 1));
+  // A heart for the line and metal for the edge, by how deep it was found.
+  const materials: Record<string, number> =
+    item.ilvl >= 62
+      ? { 'core.titan': 1, 'shard.adamant': 2 }
+      : item.ilvl >= 32
+        ? { 'core.demon': 1, 'shard.mithral': 3 }
+        : item.ilvl >= 15
+          ? { 'core.beast': 1, 'shard.steel': 3 }
+          : { 'shard.iron': 6, 'dust.grave': 4 };
+  return { gold, materials };
+}
+
+/**
+ * Moves one line a rung up its ladder: the next tier's value, and never less
+ * than one more than it had. Marks the line honed; no other line on the item
+ * may be honed after it.
+ */
+export function honeLine(item: Item, index: number, rng: Rng): CraftResult {
+  const check = canHone(item, index);
+  if (!check.ok) return check;
+  const next = honeTarget(item, index)!;
+  const paid = spendCost(honeCost(item));
+  if (!paid.ok) return paid;
+  const mod = item.mods[index]!;
+  const rolled = next.min === next.max ? next.min : rng.int(next.min, next.max);
+  mod.value = Math.max(rolled, mod.value + 1);
+  mod.tier = next.tier;
+  mod.honed = true;
+  item.value = Math.round(item.value * 1.15);
   save.touch();
   return { ok: true };
 }

@@ -195,6 +195,8 @@ export interface ItemMod {
   tier: number;
   /** True for prefixes, false for suffixes. Implicits use `implicit`. */
   kind: 'prefix' | 'suffix' | 'implicit' | 'crafted' | 'corrupted';
+  /** Honed one rung up its ladder at the blacksmith. One line per item. */
+  honed?: boolean;
 }
 
 export interface ItemBase {
@@ -272,6 +274,12 @@ export interface Item {
   enchantedMod?: string;
   /** How many times this item has been reforged or imbued; prices the next. */
   enchants?: number;
+  /**
+   * Lines the Enchanter has laid out and the player has not chosen from yet.
+   * `line` is the affix id of the line they would replace, or null for a new
+   * line in an open slot. Paid for already, so it survives closing the panel.
+   */
+  offers?: { line: string | null; kind: 'prefix' | 'suffix'; mods: ItemMod[] };
 }
 
 /** One rolled power on an item. `mag` scales it; 1 is a unique's strength. */

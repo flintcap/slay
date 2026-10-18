@@ -9,8 +9,10 @@
  *      through a full save migration.
  *   2. The Gambler. Prices, odds against the table, the category asked for,
  *      class-usable weapons, payment, a full pack, and the house edge.
- *   3. The Enchanter. Reforge keeps kind and never duplicates a group; the
- *      one-mod rule; costs rise; uniques refused; imbue gives a real power.
+ *   3. The Enchanter. Reforge lays out three lines of the same kind, none
+ *      sharing a group; take one or keep the old; the one-mod rule; costs
+ *      rise; uniques refused; a new line only into an open slot and only
+ *      while no line is reforged; imbue gives a real power.
  *   4. The Bounty Board. Three offers, two held, progress through the real
  *      RunDirector (kills, events, clears) with the depth gate, and a claim
  *      that pays gold, Renown and an item. Targets are reachable in a couple
@@ -26,7 +28,7 @@ import { Random } from '../src/core/RNG';
 import { save, migrateAccount } from '../src/core/Save';
 import { createCharacter, repairCharacter } from '../src/sim/Character';
 import { bindLegacyAccount, grantRenown, hasUnlock, legacyOf, renownForRank, LEGACY_UNLOCKS } from '../src/sim/Legacy';
-import { getBase, rollItem, vendorPrice, AFFIXES } from '../src/sim/Loot';
+import { getBase, rollItem, vendorPrice, AFFIXES, openAffixSlots, createItem } from '../src/sim/Loot';
 import { getPower } from '../src/sim/ItemPowers';
 import { generateRun } from '../src/world/DungeonGen';
 import { RunDirector } from '../src/scenes/RunDirector';
@@ -35,6 +37,11 @@ import { STATIONS } from '../src/scenes/TownStations';
 import {
   BOARD_SIZE,
   BOUNTY_KINDS,
+  OFFER_COUNT,
+  canFillSlot,
+  fillCost,
+  fillSlot,
+  takeOffer,
   GAMBLE_ODDS,
   GAMBLE_OFFERS,
   MAX_ACTIVE_BOUNTIES,
@@ -86,6 +93,17 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
   const back = data.current?.inventory.find((i) => i?.uid === item.uid);
   if (!back || back.enchantedMod !== item.enchantedMod || back.enchants !== 2) problems.push('an enchanted item lost its mark through a save migration');
   if (!data.current?.town || data.current.town.bounties.length !== 1) problems.push('the bounty board did not survive a save migration');
+  // Offers waiting on the table survive a save; broken ones are dropped.
+  const waiting = rollItem(20, new Random(8), { forceRarity: 'rare' });
+  const line = waiting.mods.find((m) => m.kind === 'prefix');
+  waiting.offers = { line: line?.affixId ?? null, kind: 'prefix', mods: line ? [{ ...line, value: line.value + 1 }] : [] };
+  const junk = rollItem(20, new Random(9), { forceRarity: 'rare' });
+  (junk as unknown as Record<string, unknown>).offers = { line: 4, kind: 'side', mods: 'x' };
+  const acct2 = JSON.parse(JSON.stringify({ ...save.account, current: { ...broken, inventory: [waiting, junk, ...broken.inventory.slice(2)] } }));
+  const back2 = migrateAccount(acct2).data.current?.inventory;
+  const w2 = back2?.find((i) => i?.uid === waiting.uid);
+  if (line && JSON.stringify(w2?.offers) !== JSON.stringify(waiting.offers)) problems.push('offers waiting on the table were lost in a save migration');
+  if (back2?.find((i) => i?.uid === junk.uid)?.offers) problems.push('broken enchanter offers survived a save migration');
 }
 
 // ---------------------------------------------------------------------------
@@ -164,6 +182,7 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
   let tried = 0;
   let changedValue = 0;
   const costs: number[] = [];
+  let kept = 0;
   for (let s = 0; s < 40; s++) {
     const item = rollItem(30, new Random(500 + s), { forceRarity: 'rare' });
     const idx = reforgeableMods(item);
@@ -171,6 +190,7 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
     tried++;
     const i = idx[0]!;
     const kind = item.mods[i]!.kind;
+    const oldId = item.mods[i]!.affixId;
     const before = JSON.stringify(item.mods[i]);
     let pays = 0;
     costs.push(reforgeCost(item).gold);
@@ -180,6 +200,30 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
       continue;
     }
     if (pays !== 1) problems.push(`reforge charged ${pays} times`);
+    const offers = item.offers;
+    if (!offers || offers.mods.length !== OFFER_COUNT) {
+      problems.push(`reforge laid out ${offers?.mods.length ?? 0} lines, not ${OFFER_COUNT}`);
+      continue;
+    }
+    if (offers.mods.some((m) => m.kind !== kind)) problems.push('a reforge offer changed a prefix into a suffix or back');
+    const otherGroups = item.mods.filter((m, k) => k !== i && (m.kind === 'prefix' || m.kind === 'suffix')).map((m) => groupOf(m.affixId));
+    const offerGroups = offers.mods.map((m) => groupOf(m.affixId));
+    if (new Set(offerGroups).size !== offerGroups.length) problems.push('two reforge offers share a group');
+    if (offerGroups.some((g) => otherGroups.includes(g))) problems.push('a reforge offer clashes with another line on the item');
+    if (JSON.stringify(item.mods[i]) !== before) problems.push('laying out offers changed the item before a choice');
+    if (item.enchantedMod !== oldId) problems.push('a paid reforge did not mark its line');
+    let waitPaid = 0;
+    if (reforgeMod(c, item, i, () => (waitPaid++, { ok: true })).ok || waitPaid) problems.push('a second reforge went through while offers were waiting');
+    if (reforgeableMods(item).length) problems.push('lines were offered for reforge while a choice was waiting');
+    // Every fifth item keeps its old line; the rest take an offer in turn.
+    const keep = s % 5 === 0;
+    const pick = keep ? null : s % OFFER_COUNT;
+    if (!takeOffer(item, pick).ok) problems.push('taking an offer failed');
+    if (item.offers) problems.push('offers stayed on the table after a choice');
+    if (keep) {
+      kept++;
+      if (JSON.stringify(item.mods[i]) !== before) problems.push('keeping the old line changed it');
+    } else if (JSON.stringify(item.mods[i]) !== JSON.stringify(offers.mods[pick!])) problems.push('the line taken is not the one offered');
     if (item.mods[i]!.kind !== kind) problems.push('reforge changed a prefix into a suffix or back');
     if (JSON.stringify(item.mods[i]) !== before) changedValue++;
     const groups = item.mods.filter((m) => m.kind === 'prefix' || m.kind === 'suffix').map((m) => groupOf(m.affixId));
@@ -191,11 +235,12 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
     if (JSON.stringify(reforgeableMods(item)) !== JSON.stringify([i])) problems.push('after a reforge, more than the marked mod is offered');
     const c2 = reforgeCost(item).gold;
     if (!reforgeMod(c, item, i, free).ok) problems.push('the marked mod could not be reforged again');
+    takeOffer(item, null);
     if (!(c2 > costs[costs.length - 1]!)) problems.push('reforging again did not cost more');
   }
-  report.reforge = `${tried} rares reforged, ${changedValue} came out different, first reforge ~${Math.round(costs.reduce((a, b) => a + b, 0) / Math.max(1, costs.length))}g at ilvl 30`;
+  report.reforge = `${tried} rares reforged (${kept} kept their line), ${changedValue} came out different, first reforge ~${Math.round(costs.reduce((a, b) => a + b, 0) / Math.max(1, costs.length))}g at ilvl 30`;
   if (tried < 20) problems.push(`only ${tried} rares had two reforgeable mods`);
-  if (changedValue < tried * 0.8) problems.push(`reforges mostly changed nothing (${changedValue}/${tried})`);
+  if (changedValue < (tried - kept) * 0.8) problems.push(`reforges mostly changed nothing (${changedValue}/${tried - kept})`);
   const unique = rollItem(40, new Random(77), { forceRarity: 'unique' });
   if (unique.rarity === 'unique' && (reforgeableMods(unique).length || reforgeMod(c, unique, 0, free).ok)) problems.push('a unique could be reforged');
 
@@ -215,6 +260,66 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
   }
   report.imbue = `${imbued} of ${imbueTried} rares took a real power; imbue at ilvl 25 costs ${imbueCost(rollItem(25, new Random(1), { forceRarity: 'rare' })).gold}g`;
   if (imbued < imbueTried * 0.8) problems.push(`imbue worked on only ${imbued} of ${imbueTried} rares`);
+
+  // A new line in an open slot: three offers, one taken, then the item's one
+  // touched line is that new line. Never past the richest drop of its kind.
+  let filled = 0;
+  let fillTried = 0;
+  for (let s = 0; s < 60 && fillTried < 25; s++) {
+    const item = rollItem(30, new Random(1300 + s), { forceRarity: s % 3 === 0 ? 'magic' : 'rare' });
+    const room = openAffixSlots(item);
+    const kind = room.prefix > 0 ? 'prefix' : room.suffix > 0 ? 'suffix' : null;
+    if (!kind || !canFillSlot(item, kind).ok) continue;
+    fillTried++;
+    const lines = item.mods.filter((m) => m.kind === 'prefix' || m.kind === 'suffix').length;
+    let pays = 0;
+    const r = fillSlot(c, item, kind, () => (pays++, { ok: true }));
+    if (!r.ok || pays !== 1 || !item.offers || item.offers.line !== null || item.offers.mods.length === 0) {
+      problems.push(`filling an open ${kind} failed: ${r.reason ?? 'no offers'}`);
+      continue;
+    }
+    if (item.offers.mods.some((m) => m.kind !== kind)) problems.push(`a ${kind} slot was offered the wrong kind`);
+    const pick = s % item.offers.mods.length;
+    const want = JSON.stringify(item.offers.mods[pick]);
+    takeOffer(item, pick);
+    const after = item.mods.filter((m) => m.kind === 'prefix' || m.kind === 'suffix');
+    if (after.length !== lines + 1) problems.push('a filled slot did not add exactly one line');
+    if (!item.mods.some((m) => JSON.stringify(m) === want)) problems.push('the new line is not the one offered');
+    const groups = after.map((m) => groupOf(m.affixId));
+    if (new Set(groups).size !== groups.length) problems.push(`a filled slot doubled a group on ${item.name}`);
+    const p = after.filter((m) => m.kind === 'prefix').length;
+    const sx = after.filter((m) => m.kind === 'suffix').length;
+    const side = item.rarity === 'rare' ? 4 : 1;
+    if (p > side || sx > side || after.length > (item.rarity === 'rare' ? 8 : 2)) problems.push(`a filled ${item.rarity} holds ${p} prefixes and ${sx} suffixes`);
+    // Prefixes stay ahead of suffixes, after the implicits.
+    const order = item.mods.map((m) => ({ implicit: 0, prefix: 1, suffix: 2 })[m.kind as 'implicit'] ?? 3);
+    if (order.some((o, k) => k > 0 && o < order[k - 1]!)) problems.push(`a new ${kind} went in out of order`);
+    if (item.enchantedMod !== JSON.parse(want).affixId) problems.push('the new line did not become the enchanted line');
+    let again = 0;
+    for (const k of ['prefix', 'suffix'] as const) if (fillSlot(c, item, k, () => (again++, { ok: true })).ok) problems.push('a second line was added after the first');
+    if (again) problems.push('a refused fill still charged');
+    filled++;
+  }
+  report.fill = `${filled} of ${fillTried} items took a new line; at ilvl 30 a rare's costs ${JSON.stringify(fillCost(rollItem(30, new Random(2), { forceRarity: 'rare' })))}`;
+  if (fillTried < 15) problems.push(`only ${fillTried} items had room for a new line`);
+  // A full rare and a small rare charm are refused, and nothing is charged.
+  {
+    const full = rollItem(40, new Random(1500), { forceRarity: 'rare' });
+    while (openAffixSlots(full).prefix + openAffixSlots(full).suffix > 0) {
+      const k = openAffixSlots(full).prefix > 0 ? 'prefix' : 'suffix';
+      if (!fillSlot(c, full, k, free).ok) break;
+      takeOffer(full, 0);
+      full.enchantedMod = undefined;
+    }
+    let paid = 0;
+    if (fillSlot(c, full, 'prefix', () => (paid++, { ok: true })).ok || fillSlot(c, full, 'suffix', () => (paid++, { ok: true })).ok || paid) problems.push('a full rare took another line');
+    const lines = full.mods.filter((m) => m.kind === 'prefix' || m.kind === 'suffix').length;
+    if (lines > 8) problems.push(`a rare was filled to ${lines} lines`);
+    const charm = createItem('charm.small', 30, new Random(1501), 'rare');
+    const cr = openAffixSlots(charm);
+    const cl = charm.mods.filter((m) => m.kind === 'prefix' || m.kind === 'suffix').length;
+    if (cl + Math.max(cr.prefix, cr.suffix) > 2) problems.push(`a small rare charm has room for ${cl + Math.max(cr.prefix, cr.suffix)} lines`);
+  }
 }
 
 // ---------------------------------------------------------------------------

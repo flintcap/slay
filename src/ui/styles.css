@@ -6201,6 +6201,45 @@ input.slider::-moz-range-thumb {
   box-shadow: 0 0 6px currentColor;
 }
 
+/* Lines on the anvil: click to bind one through a reroll, or pick one to hone. */
+.smith-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: var(--s3);
+}
+.smith-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: 3px 8px;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  background: rgb(var(--shade-rgb) / 0.3);
+  border-radius: var(--radius);
+  box-shadow: var(--hairline);
+  cursor: var(--cursor-hot);
+}
+.smith-line.is-on {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.7);
+}
+.smith-line.is-off {
+  opacity: 0.45;
+  cursor: default;
+}
+.smith-line-tag {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.smith-line.is-on .smith-line-tag {
+  color: var(--gold);
+}
+
 .smith-forge {
   position: relative;
   overflow: hidden;

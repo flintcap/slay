@@ -17,6 +17,11 @@ import {
   canUpgrade,
   rerollAffixes,
   rerollCost,
+  maxLocks,
+  canHone,
+  honeCost,
+  honeLine,
+  honeTarget,
   addSocket,
   socketCost,
   salvage,
@@ -25,7 +30,7 @@ import {
   removeGemCost,
   canAfford,
 } from '../sim/Crafting';
-import { itemStats, itemDisplayName, newItem, getBase } from '../sim/Loot';
+import { itemStats, itemDisplayName, newItem, getBase, modLine } from '../sim/Loot';
 import { getSocketable, socketBonuses } from '../data/gems';
 import { addItemToInventory } from '../sim/Inventory';
 import { INV_COLS, INV_ROWS } from '../sim/Grid';
@@ -62,7 +67,7 @@ import {
 } from './Widgets';
 import { uiSfx } from './Sfx';
 
-type ServiceId = 'upgrade' | 'reroll' | 'socket' | 'salvage';
+type ServiceId = 'upgrade' | 'reroll' | 'hone' | 'socket' | 'salvage';
 
 export class BlacksmithPanel {
   readonly panel: Panel;
@@ -72,6 +77,10 @@ export class BlacksmithPanel {
   private preview: HTMLDivElement;
   private actions: HTMLDivElement;
   private selected: Item | null = null;
+  /** Indexes of the lines bound through the next reroll, for the item on the anvil. */
+  private locks = new Set<number>();
+  /** The line picked to hone, for the item on the anvil. */
+  private honePick: number | null = null;
   private goldEl: HTMLSpanElement;
 
   constructor() {
@@ -168,6 +177,10 @@ export class BlacksmithPanel {
     if (base && (base.category === 'potion' || base.category === 'material')) {
       events.emit('toast', { text: 'The smith has no use for that.', kind: 'info' });
       return;
+    }
+    if (this.selected?.uid !== item.uid) {
+      this.locks.clear();
+      this.honePick = null;
     }
     this.selected = item;
     this.renderPreview();
@@ -449,20 +462,88 @@ export class BlacksmithPanel {
       })
     );
 
-    this.actions.appendChild(
-      this.card(
-        'reroll',
-        'Reroll Affixes',
-        'sparkle',
-        'Wipes every prefix and suffix and rolls new ones at this item level. There is no undo.',
-        attempt(() => rerollCost(item), { gold: 0, materials: {} as Record<string, number> }),
-        () => {
-          const r = attempt(() => rerollAffixes(item, new Random(randomSeed())), { ok: false, reason: 'Failed' });
-          return r.ok ? null : r.reason ?? 'Nothing to reroll.';
-        },
-        true
-      )
+    const lines = item.mods.map((m, i) => ({ m, i })).filter(({ m }) => m.kind === 'prefix' || m.kind === 'suffix');
+    const rolled = item.rarity === 'magic' || item.rarity === 'rare';
+    // Bound lines must still be on the item; a reroll elsewhere may have moved them.
+    for (const i of [...this.locks]) if (!lines.some((l) => l.i === i)) this.locks.delete(i);
+    const cap = attempt(() => maxLocks(item), 0);
+    const reroll = this.card(
+      'reroll',
+      'Reroll Affixes',
+      'sparkle',
+      this.locks.size
+        ? `Rolls new prefixes and suffixes at this item level. The ${this.locks.size === 1 ? 'bound line stays' : `${this.locks.size} bound lines stay`}; every other line is lost. There is no undo.`
+        : 'Wipes every prefix and suffix and rolls new ones at this item level. There is no undo.',
+      attempt(() => rerollCost(item, this.locks.size), { gold: 0, materials: {} as Record<string, number> }),
+      () => {
+        const r = attempt(() => rerollAffixes(item, new Random(randomSeed()), [...this.locks]), { ok: false, reason: 'Failed' });
+        if (r.ok) {
+          this.locks.clear();
+          this.honePick = null;
+        }
+        return r.ok ? null : r.reason ?? 'Nothing to reroll.';
+      },
+      true
     );
+    if (rolled && cap > 0 && lines.length > 1) {
+      const list = div('smith-lines');
+      list.appendChild(div('craftcard-desc', `Click up to ${cap} line${cap === 1 ? '' : 's'} to bind with cloth and keep through the reroll.`));
+      for (const { m, i } of lines) {
+        const on = this.locks.has(i);
+        const full = !on && this.locks.size >= cap;
+        const row = div(`smith-line${on ? ' is-on' : full ? ' is-off' : ''}`);
+        add(row, span('', modLine(m)), span('smith-line-tag', on ? 'Bound' : m.kind));
+        row.addEventListener('click', () => {
+          if (on) this.locks.delete(i);
+          else if (!full) this.locks.add(i);
+          else return;
+          uiSfx('ui.click');
+          this.renderActions();
+        });
+        list.appendChild(row);
+      }
+      reroll.insertBefore(list, reroll.querySelector('.craftcost'));
+    }
+    this.actions.appendChild(reroll);
+
+    if (rolled && lines.length) {
+      if (this.honePick !== null && !attempt(() => canHone(item, this.honePick!).ok, false)) this.honePick = null;
+      const honed = item.mods.find((m) => m.honed);
+      const hone = this.card(
+        'hone',
+        'Hone a Line',
+        'hammer',
+        honed
+          ? `${modLine(honed)} is honed. Only one line on an item can be.`
+          : 'Moves one prefix or suffix a rung up its ladder, a little past what the item could roll. Once per item.',
+        attempt(() => honeCost(item), { gold: 0, materials: {} as Record<string, number> }),
+        () => {
+          if (this.honePick === null) return 'Pick a line to hone first.';
+          const r = attempt(() => honeLine(item, this.honePick!, new Random(randomSeed())), { ok: false, reason: 'Failed' });
+          if (r.ok) this.honePick = null;
+          return r.ok ? null : r.reason ?? 'The smith cannot hone that.';
+        }
+      );
+      if (!honed) {
+        const list = div('smith-lines');
+        for (const { m, i } of lines) {
+          const next = attempt(() => (canHone(item, i).ok ? honeTarget(item, i) : null), null);
+          const on = this.honePick === i;
+          const row = div(`smith-line${on ? ' is-on' : next ? '' : ' is-off'}`);
+          add(row, span('', modLine(m)), span('smith-line-tag', next ? `tier ${m.tier} → ${next.tier}` : 'at its best'));
+          if (next) {
+            row.addEventListener('click', () => {
+              this.honePick = on ? null : i;
+              uiSfx('ui.click');
+              this.renderActions();
+            });
+          }
+          list.appendChild(row);
+        }
+        hone.insertBefore(list, hone.querySelector('.craftcost'));
+      }
+      this.actions.appendChild(hone);
+    }
 
     this.actions.appendChild(
       this.card(

@@ -291,27 +291,74 @@ function rollOneAffix(
 }
 
 /**
- * Rerolls one prefix or suffix of an item in place, for the Enchanter. The new
- * roll is the same kind (prefix stays prefix), never from a group another mod
- * on the item already uses, and may be the same affix at a new value. Returns
- * the new mod, or null when the slot cannot be rerolled.
+ * Up to `count` candidate lines of one kind, for the Enchanter to lay out side
+ * by side. `replace` is the index of the line they would take the place of
+ * (its group is free to come back at a new value), or null for a new line in
+ * an open slot. No two offers share a group, and none clashes with another
+ * line on the item.
  */
-export function rerollOneMod(item: Item, index: number, rng: Rng): ItemMod | null {
-  const old = item.mods[index];
-  if (!old || (old.kind !== 'prefix' && old.kind !== 'suffix')) return null;
+export function rollLineOffers(item: Item, kind: 'prefix' | 'suffix', replace: number | null, count: number, rng: Rng): ItemMod[] {
   const base = getBase(item.baseId);
-  const groupOf = (id: string) => ALL_AFFIXES.find((a) => a.id === id)?.group;
   const used = new Set<string>();
   item.mods.forEach((m, i) => {
-    if (i === index) return;
-    const g = groupOf(m.affixId);
+    if (i === replace) return;
+    const g = ALL_AFFIXES.find((a) => a.id === m.affixId)?.group;
     if (g) used.add(g);
   });
-  const mod = rollOneAffix(base, item.ilvl, item.rarity, old.kind, used, rng);
-  if (!mod) return null;
-  item.mods[index] = mod;
-  item.value = vendorPrice(item, false) * 4;
-  return mod;
+  const out: ItemMod[] = [];
+  for (let i = 0; i < count; i++) {
+    const mod = rollOneAffix(base, item.ilvl, item.rarity, kind, used, rng);
+    if (!mod) break;
+    out.push(mod);
+  }
+  return out;
+}
+
+/**
+ * Fresh prefixes and suffixes around the lines in `keep`, for the blacksmith's
+ * reroll with bound lines. The line count is rolled as a drop rolls it; kept
+ * lines fill their side first and never leave, even past the rolled count.
+ */
+export function rollAffixesKeeping(item: Item, keep: ItemMod[], rng: Rng): ItemMod[] {
+  const base = getBase(item.baseId);
+  const budget = affixBudget(base, item.rarity, rng);
+  const used = new Set<string>();
+  for (const m of keep) {
+    const g = ALL_AFFIXES.find((a) => a.id === m.affixId)?.group;
+    if (g) used.add(g);
+  }
+  const out = keep.map((m) => ({ ...m }));
+  const side = (kind: 'prefix' | 'suffix', want: number) => {
+    const have = keep.filter((m) => m.kind === kind).length;
+    for (let i = have; i < want; i++) {
+      const mod = rollOneAffix(base, item.ilvl, item.rarity, kind, used, rng);
+      if (mod) out.push(mod);
+    }
+  };
+  side('prefix', budget.prefixes);
+  side('suffix', budget.suffixes);
+  const rank = (m: ItemMod) => (m.kind === 'prefix' ? 0 : 1);
+  return out.sort((a, b) => rank(a) - rank(b));
+}
+
+/**
+ * How many more prefixes and suffixes this item could hold: what the richest
+ * drop of its rarity and base could carry, less what it has. Only magic and
+ * rare items have room; every other rarity is full by definition.
+ */
+export function openAffixSlots(item: Item): { prefix: number; suffix: number } {
+  if (item.rarity !== 'magic' && item.rarity !== 'rare') return { prefix: 0, suffix: 0 };
+  const base = getBase(item.baseId);
+  let side = item.rarity === 'rare' ? RARE_SIDE : 1;
+  let total = item.rarity === 'rare' ? RARE_LINES[RARE_LINES.length - 1]! : 2;
+  if (base.category === 'charm' && item.rarity === 'rare') {
+    total = CHARM_RARE_LINES[base.id] ?? 3;
+    side = total;
+  }
+  const p = item.mods.filter((m) => m.kind === 'prefix').length;
+  const s = item.mods.filter((m) => m.kind === 'suffix').length;
+  const free = Math.max(0, total - p - s);
+  return { prefix: Math.max(0, Math.min(side - p, free)), suffix: Math.max(0, Math.min(side - s, free)) };
 }
 
 /** Lines on a rare charm, by size. */

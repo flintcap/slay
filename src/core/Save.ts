@@ -240,6 +240,15 @@ class Repairer {
       it.mods = it.mods.filter((m) => isObj(m) && isStr(m.affixId) && isStr(m.stat) && finite(m.value));
       if (it.mods.length !== before) this.note(`${where}: dropped ${before - it.mods.length} broken mods`);
     }
+    // Lines the Enchanter laid out and the player has not picked from yet.
+    if (it.offers !== undefined) {
+      const o = it.offers as unknown;
+      const mods = isObj(o) && Array.isArray(o.mods) ? o.mods.filter((m) => isObj(m) && isStr(m.affixId) && isStr(m.stat) && finite(m.value)) : [];
+      if (!isObj(o) || (o.line !== null && !isStr(o.line)) || (o.kind !== 'prefix' && o.kind !== 'suffix') || mods.length === 0) {
+        delete it.offers;
+        this.note(`${where}: unreadable enchanter offers dropped`);
+      } else it.offers.mods = mods as Item['mods'];
+    }
     if (!Array.isArray(it.sockets)) {
       it.sockets = [];
       if ((v as Record<string, unknown>).sockets !== undefined) this.note(`${where}: sockets were not a list`);

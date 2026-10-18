@@ -22,7 +22,7 @@
 
 import type { Bounty, BountyKind, Character, Item, ItemCategory, ItemRarity, MonsterRank, TownState } from '../types';
 import { Random, hashString } from '../core/RNG';
-import { ITEM_BASES, createItem, getBase, rerollOneMod, rollItem, vendorPrice } from './Loot';
+import { ITEM_BASES, createItem, getBase, openAffixSlots, rollItem, rollLineOffers, vendorPrice } from './Loot';
 import { rollPowerAffix } from './ItemPowers';
 import { addItemToInventory, countInInventory, consumeFromInventory, inventoryIsFull, setStackCount, stackCount } from './Inventory';
 import { gemUpgradeRecipe, getSocketable, runeUpgradeRecipe } from '../data/gems';
@@ -218,9 +218,12 @@ export function canEnchantItem(item: Item): { ok: boolean; reason?: string } {
   return { ok: true };
 }
 
+/** How many lines the Enchanter lays out to choose from. */
+export const OFFER_COUNT = 3;
+
 /** Indexes of the mods the Enchanter will reforge on this item right now. */
 export function reforgeableMods(item: Item): number[] {
-  if (!canEnchantItem(item).ok) return [];
+  if (!canEnchantItem(item).ok || item.offers) return [];
   const out: number[] = [];
   item.mods.forEach((m, i) => {
     if (m.kind !== 'prefix' && m.kind !== 'suffix') return;
@@ -237,23 +240,97 @@ export function reforgeCost(item: Item): CraftCost {
 }
 
 /**
- * Reforges one mod. `pay` takes the cost (the panel passes the crafting
- * bench's `spendCost`); it is called only once every rule has passed.
+ * Reforges one mod: pays, then lays out `OFFER_COUNT` new lines of the same
+ * kind on `item.offers` for the player to choose from (`takeOffer`). `pay`
+ * takes the cost (the panel passes the crafting bench's `spendCost`); it is
+ * called only once every rule has passed and the offers exist.
  */
 export function reforgeMod(c: Character, item: Item, index: number, pay: (cost: CraftCost) => { ok: boolean; reason?: string }): ServiceResult {
   const can = canEnchantItem(item);
   if (!can.ok) return can;
+  if (item.offers) return { ok: false, reason: 'Choose from the lines on the table first.' };
   const mod = item.mods[index];
   if (!mod || (mod.kind !== 'prefix' && mod.kind !== 'suffix')) return { ok: false, reason: 'Only a prefix or suffix can be reforged.' };
   if (item.enchantedMod && item.enchantedMod !== mod.affixId) {
     return { ok: false, reason: 'Another property has already been reforged. Only that one may change.' };
   }
+  const offers = rollLineOffers(item, mod.kind, index, OFFER_COUNT, rollRng(c, 'reforge'));
+  if (offers.length === 0) return { ok: false, reason: 'The enchantment would not take.' };
   const paid = pay(reforgeCost(item));
   if (!paid.ok) return paid;
-  const rng = rollRng(c, 'reforge');
-  const next = rerollOneMod(item, index, rng);
-  if (!next) return { ok: false, reason: 'The enchantment would not take.' };
-  item.enchantedMod = next.affixId;
+  item.offers = { line: mod.affixId, kind: mod.kind, mods: offers };
+  // The line is the Enchanter's from the moment it is paid for, kept or not.
+  item.enchantedMod = mod.affixId;
+  item.enchants = (item.enchants ?? 0) + 1;
+  return { ok: true, item };
+}
+
+/**
+ * Takes one of the lines on the table (`pick` is its index in
+ * `item.offers.mods`), or walks away with what the item had (`pick` null).
+ * Free: the choice was paid for when the lines were laid out.
+ */
+export function takeOffer(item: Item, pick: number | null): ServiceResult {
+  const o = item.offers;
+  if (!o) return { ok: false, reason: 'Nothing is on the table.' };
+  const chosen = pick === null ? null : o.mods[pick];
+  if (pick !== null && !chosen) return { ok: false, reason: 'No such line.' };
+  if (chosen && o.line !== null) {
+    const index = item.mods.findIndex((m) => m.affixId === o.line && m.kind === o.kind);
+    if (index < 0) {
+      item.offers = undefined;
+      return { ok: false, reason: 'That line is no longer on the item.' };
+    }
+    item.mods[index] = { ...chosen };
+    item.enchantedMod = chosen.affixId;
+  } else if (chosen) {
+    // A new line goes after the last of its kind, so prefixes stay together.
+    let at = -1;
+    item.mods.forEach((m, i) => {
+      if (m.kind === 'implicit' || m.kind === 'prefix' || (o.kind === 'suffix' && m.kind === 'suffix')) at = i;
+    });
+    item.mods.splice(at + 1, 0, { ...chosen });
+    item.enchantedMod = chosen.affixId;
+  }
+  item.offers = undefined;
+  item.value = vendorPrice(item, false) * 4;
+  return { ok: true, item };
+}
+
+/**
+ * Whether the Enchanter will add a line of this kind. Only into an open slot
+ * (`openAffixSlots`), and only while the item has no reforged line: the
+ * Enchanter touches one line per item, old or new.
+ */
+export function canFillSlot(item: Item, kind: 'prefix' | 'suffix'): { ok: boolean; reason?: string } {
+  const can = canEnchantItem(item);
+  if (!can.ok) return can;
+  if (item.offers) return { ok: false, reason: 'Choose from the lines on the table first.' };
+  if (item.enchantedMod) return { ok: false, reason: 'A property has already been reforged. Only that one may change.' };
+  if (openAffixSlots(item)[kind] <= 0) return { ok: false, reason: `There is no room for another ${kind}.` };
+  return { ok: true };
+}
+
+export function fillCost(item: Item): CraftCost {
+  const n = item.enchants ?? 0;
+  const gold = Math.round((250 + Math.pow(item.ilvl, 1.4) * 40) * (item.rarity === 'rare' ? 1.5 : 1) * Math.pow(1.35, n));
+  const materials: Record<string, number> = { [essenceFor(item.ilvl)]: 2 };
+  // What ties a new line into the item, by how deep it was found.
+  const tie: [string, number] =
+    item.ilvl >= 80 ? ['essence.mythic', 1] : item.ilvl >= 34 ? ['dust.void', 2] : item.ilvl >= 12 ? ['reagent.sinew', 2] : ['dust.grave', 6];
+  materials[tie[0]] = (materials[tie[0]] ?? 0) + tie[1];
+  return { gold, materials };
+}
+
+/** Pays, then lays out new lines for an open slot of this kind (`takeOffer`). */
+export function fillSlot(c: Character, item: Item, kind: 'prefix' | 'suffix', pay: (cost: CraftCost) => { ok: boolean; reason?: string }): ServiceResult {
+  const can = canFillSlot(item, kind);
+  if (!can.ok) return can;
+  const offers = rollLineOffers(item, kind, null, OFFER_COUNT, rollRng(c, 'fill'));
+  if (offers.length === 0) return { ok: false, reason: `No ${kind} will take hold in this item.` };
+  const paid = pay(fillCost(item));
+  if (!paid.ok) return paid;
+  item.offers = { line: null, kind, mods: offers };
   item.enchants = (item.enchants ?? 0) + 1;
   return { ok: true, item };
 }
