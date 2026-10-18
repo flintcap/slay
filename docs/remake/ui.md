@@ -1,6 +1,6 @@
 # Stream: ui (Wave 4: every screen and the HUD)
 
-Status: in progress
+Status: done
 
 Goal: one polished, consistent look across every panel and the HUD, clear
 and easy to use, with no DOM cost in per-frame code. Our own style: do not
@@ -40,12 +40,11 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   (`ui: no second hit test per mouse move, map and HUD stop reading layout`)
   Speed left no requests. HUD, nameplates, ground labels and combat text
   already wrote only on change; fixed the three hot spots left.
-- [ ] 8. Handover.
+- [x] 8. Handover. (`ui: handover`)
 
 ## Next up
 
-1. Milestone 8 (handover): set `Status: done`, write the Handover section,
-   push, reply in one line, then the final report.
+Nothing: every milestone is ticked. See Handover.
 
 ## Notes for resume
 
@@ -157,4 +156,32 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Handover
 
-(Written when every milestone is ticked.)
+What exists now, and where:
+
+- Tokens: every colour tint, spacing step, radius and transition time in
+  `src/ui/*.css` comes from `:root` in `src/ui/styles.css`.
+  `tools/check-uitokens.mjs` (in run-checks) keeps it that way, and also
+  fails on small raw font sizes that would ignore Text size.
+- Painted skin: `src/ui/Skin.ts` plus `public/assets/textures/ui/`
+  (leather, scratched metal; CC0, in ASSETS.md). Missing files leave the
+  plain plates.
+- Sounds: `src/ui/Sfx.ts` (`uiSfx`, `installUiSfx`) is the one path for
+  interface sounds; `Panel` plays open and close unless `quiet`.
+- HUD: combat number placement (`src/ui/CombatText.ts` `place()`), buff
+  ending colours, per-frame writes only on change, remembered lookups.
+- Items: `src/ui/Compare.ts` (one verdict for tooltip and green upgrade
+  arrows), loot filter glance grid in `src/ui/LootFilterPanel.ts`.
+- Loading card: `src/ui/Transitions.ts` (progress from `'load:progress'`,
+  stairs loads, biome skyline and tint).
+- Menus: `src/ui/FieldNav.ts` (arrows in Settings), `src/ui/GamepadNav.ts`
+  (pad drives menus), plain-words hints on every setting.
+- Lab: `tools/uilab.mjs` scenarios `minimap`, `loading`, `settingsnav`,
+  plus `--q=` options and `--probe=`.
+
+Left for `finish`:
+
+- TownScene plays `audio.play('ui.open')` before opening a station panel,
+  so that open sound plays twice (one line to delete, not a ui file).
+- A gamepad drives menus only; there is no gamepad control of the hero.
+- Everything under "For the owner to test" was checked in the UI lab or by
+  reading code, not in a full game run.
