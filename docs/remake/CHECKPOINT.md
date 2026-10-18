@@ -37,4 +37,4 @@ Update this file and push it after every finished step.
 
 ## Next
 
-5. Attack rating question for the owner (wire hit chance or remove the stat).
+2. Attack rating question for the owner (wire hit chance or remove the stat).
