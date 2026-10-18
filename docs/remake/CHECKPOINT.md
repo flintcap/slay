@@ -42,7 +42,20 @@ Update this file and push it after every finished step.
   2x 97%, 5x 100%, floor 60%. Spells, beams, chains, minions, procs, vigils
   and veiled blows always land. MISS word shown. Tooltip shows hit chances.
 
+- #99 (Phase 1) every skill tooltip true (6e5f7eb). New check-skillparams
+  fails on any skill setting the game never reads (records reads while the
+  real runner casts every skill). New check-stattext fails when a passive's
+  text leaves out its real numbers. Settings that did nothing are wired
+  (Siphon Life, Soul Tether, Soul Cage, Reap Soul, Vampiric Touch, Endless
+  Quiver, Volley Mastery, Roll Away and more); dead ones removed; 31
+  passive texts rewritten. Blood Pact and Sanguine Nova now really cost life.
+
 ## In progress
+
+- Phase 1 (combat): #100 boss poise bar and stun fade, #101 show synergies
+  and combos, #102 one danger language, #103 balance groundwork (owner).
+
+## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
    Phase 0 tables World / Interface / Art / Engine). Permadeath dodge and
