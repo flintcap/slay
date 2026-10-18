@@ -15,6 +15,7 @@
 import { arena, caseLog } from './combat-arena';
 import { FairLedger, bossHitCap, HOLD_MAX, HOLD_IMMUNE, HEAVY_MUL, WARN_MIN } from '../src/sim/FairFight';
 import { Boss, softEnrageAfter } from '../src/entities/Boss';
+import { BREAK_TIME, POISE_REST } from '../src/sim/Poise';
 import { BOSSES } from '../src/data/bosses';
 import { WARDENS } from '../src/data/wardens';
 import { Player } from '../src/entities/Player';
@@ -198,6 +199,28 @@ type Inner = { fightTime: number; shield: number; setArena(k: string | null, c: 
   }
   const limit = softEnrageAfter(3);
   check('fumbler: wrong all fight, still wins in at most twice the time, never enraged by it', ok, `${results.join(', ')} (clock ${limit}s at 3 phases)`);
+}
+
+// --- poise -------------------------------------------------------------------
+{
+  const { a, boss } = arenaBoss(BOSSES[0]!, 30);
+  a.step(1.5);
+  const stun = (s: number): void => boss.applyStatuses([{ id: 'stunned', duration: s, magnitude: 1 }], a.ctx);
+  stun(2);
+  check('poise: a stun never holds a boss, it builds poise', !boss.hasStatus('stunned') && boss.poise > 0, `stunned ${boss.hasStatus('stunned')}, poise ${boss.poise.toFixed(0)}`);
+  stun(2);
+  const broke = boss.hasStatus('stunned') && boss.breaks === 1 && boss.hasBuff('poise_broken');
+  check('poise: a full bar breaks the boss: held fast and open to blows', broke, `stunned ${boss.hasStatus('stunned')}, breaks ${boss.breaks}`);
+  a.step(BREAK_TIME - 0.2);
+  const held = boss.hasStatus('stunned');
+  a.step(0.4);
+  check(`poise: the break holds ${BREAK_TIME} s, then lets go`, held && !boss.hasStatus('stunned'), `held ${held}, after ${boss.hasStatus('stunned')}`);
+  stun(2);
+  stun(2);
+  check('poise: each break makes the next bar longer', boss.breaks === 1 && boss.poise > 100, `breaks ${boss.breaks}, poise ${boss.poise.toFixed(0)}`);
+  const before = boss.poise;
+  a.step(POISE_REST + 2);
+  check('poise: left alone, it drains', boss.poise < before, `${before.toFixed(0)} -> ${boss.poise.toFixed(0)}`);
 }
 
 console.log(JSON.stringify({ cases }));

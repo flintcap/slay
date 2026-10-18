@@ -143,6 +143,8 @@ interface Flurry {
   attacks: number;
   /** Blows that landed. */
   blows: number;
+  /** Swings the foe's guard turned (attack rating, SkillRunner.lands). */
+  misses: number;
   total: number;
   left: number;
   right: number;
@@ -157,6 +159,10 @@ function flurry(main: string, off: string | null, seconds = 7): Flurry {
   const s = scene('shadowblade', {}, gear, 11);
   const dual = isDualWielding(s.player);
   let attacks = 0;
+  let misses = 0;
+  const offMiss = events.on('enemy:missed', (e) => {
+    if (e.id === s.foe.id) misses++;
+  });
   for (let t = 0; t < seconds; t += DT) {
     if (!s.player.isBusy && s.runner.basicAttack(s.player, s.at.clone(), s.ctx, [s.foe], null)) attacks++;
     s.tick(DT);
@@ -168,7 +174,8 @@ function flurry(main: string, off: string | null, seconds = 7): Flurry {
   const left = s.swings.filter((w) => w.side === 'L').length;
   const right = s.swings.filter((w) => w.side === 'R').length;
   s.done();
-  return { dual, attacks, blows: mine.length, total, left, right, onLeftSwing };
+  offMiss();
+  return { dual, attacks, blows: mine.length, misses, total, left, right, onLeftSwing };
 }
 
 const pair = flurry('dagger.dagger', 'dagger.dagger');
@@ -176,9 +183,9 @@ const one = flurry('dagger.dagger', null);
 const strong = flurry('dagger.dagger', 'dagger.boneknife');
 check('two daggers in a shadowblade\'s hands are dual wielding', pair.dual && !one.dual, `pair ${pair.dual}, one ${one.dual}`);
 check(
-  'each swing lands one blow; two blades swing faster than one',
-  pair.blows === pair.attacks && one.blows === one.attacks && pair.attacks >= one.attacks * 1.2 && pair.attacks <= one.attacks * 1.5,
-  `two blades: ${pair.blows} blows in ${pair.attacks} swings; one blade: ${one.blows} in ${one.attacks}`,
+  'each swing lands one blow or misses; two blades swing faster than one',
+  pair.blows + pair.misses === pair.attacks && one.blows + one.misses === one.attacks && pair.attacks >= one.attacks * 1.2 && pair.attacks <= one.attacks * 1.5,
+  `two blades: ${pair.blows} blows and ${pair.misses} misses in ${pair.attacks} swings; one blade: ${one.blows} and ${one.misses} in ${one.attacks}`,
 );
 check(
   'the hands take turns: right, left, right, left',

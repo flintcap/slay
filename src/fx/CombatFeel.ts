@@ -235,6 +235,7 @@ export class CombatFeel {
     this.effects = effects;
     this.unsubs.push(
       events.on('combat:combo', (e) => this.onCombo(e.x, e.y, e.z, e.bonusPct)),
+      events.on('boss:broken', (e) => this.onBreak(e.x, e.y, e.z)),
       events.on('player:evaded', () => this.onEvade()),
       events.on('sfx', (e) => {
         if (e.id === 'block') this.onBlock();
@@ -257,6 +258,20 @@ export class CombatFeel {
     const rig = this.rig;
     if (rig) rig.punchIn(0.03 + big * 0.02, 0.4);
     this.addTrauma(0.1 + big * 0.08);
+  }
+
+  /**
+   * A boss's poise broke (`sim/Poise.ts`): the biggest beat a hero lands, so
+   * a bright flash, a burst of sparks, a heavy crack and a shake.
+   */
+  private onBreak(x: number, y: number, z: number): void {
+    this.effects.flash(x, y, z, 0xffd36a, 14, 9, 0.3);
+    this.effects.fx.burst('sparks', x, y, z, { count: 28, scale: 1.3 });
+    audio.play('crit', { x, z, volume: 1.2 });
+    audio.play('combo', { x, z, volume: 1.1 });
+    const rig = this.rig;
+    if (rig) rig.punchIn(0.06, 0.5);
+    this.addTrauma(0.35);
   }
 
   /**

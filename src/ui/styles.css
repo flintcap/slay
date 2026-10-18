@@ -3400,6 +3400,54 @@ input.slider::-moz-range-thumb {
   background: linear-gradient(90deg, #8c3a10, #ff9a3c 80%, #fff1c4);
   box-shadow: 0 0 8px rgba(255, 150, 60, 0.8);
 }
+/* Poise: a thin gold bar under the life bar. Full, it breaks the boss open. */
+.bosspoise {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  width: 52%;
+  margin: 3px auto 0;
+}
+.bosspoise-name {
+  min-width: 4.6em;
+  text-align: right;
+  font-family: var(--font-title);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e9cf93;
+  text-shadow: 0 1px 2px var(--shade);
+}
+.bosspoise-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: linear-gradient(180deg, #080603, #1a1408);
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px var(--frame-edge), 0 0 0 2px rgba(214, 178, 96, 0.25);
+  overflow: hidden;
+}
+.bosspoise-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #7a5a18, #e8b84a 80%, #fff0c0);
+  box-shadow: 0 0 6px rgba(240, 190, 80, 0.6);
+  transition: width 0.12s linear;
+}
+.bosspoise.is-broken .bosspoise-name {
+  color: #fff3c8;
+  text-shadow: 0 1px 2px var(--shade), 0 0 10px rgba(255, 210, 90, 0.9);
+}
+.bosspoise.is-broken .bosspoise-fill {
+  background: linear-gradient(90deg, #ffd36a, #fff6d8);
+  box-shadow: 0 0 12px rgba(255, 220, 110, 0.95);
+  animation: bosspoise-throb 0.5s ease-in-out infinite alternate;
+}
+@keyframes bosspoise-throb {
+  to {
+    filter: brightness(1.35);
+  }
+}
 /* Room rule: what the room wants of you (ring the bells, break the guard). */
 .bossrule {
   width: 44%;

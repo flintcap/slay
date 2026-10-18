@@ -96,6 +96,10 @@ export interface GameEvents {
   'boss:rule': { label: string; value: number };
   /** The fight ran long: the boss is enraged for the rest of it. */
   'boss:enraged': { name: string };
+  /** Its poise bar (sim/Poise.ts): how full, or while broken, how much break is left. */
+  'boss:poise': { value: number; broken: boolean };
+  /** Its poise broke: held fast and open to blows. */
+  'boss:broken': { name: string; x: number; y: number; z: number };
   /** A floor's mini-boss noticed the hero. `title` names its mechanic. */
   'miniboss:engaged': { id: string; name: string; title: string; kind: string };
   'miniboss:killed': { id: string; name: string; kind: string };

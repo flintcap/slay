@@ -29,11 +29,13 @@ import type {
   MonsterDef,
   MonsterRank,
   Rng,
+  StatusApplication,
 } from '../types';
 import { events } from '../core/Events';
 import { monsterFX } from '../fx/MonsterFX';
 import { prepareBossPortrait } from '../art/BossPortraits';
 import { FUMBLE_HEAL_MAX, HEAVY_MUL, WARN_MIN } from '../sim/FairFight';
+import { BREAK_TAKEN, BREAK_TIME, POISE_REGEN, POISE_REST, controlPoise, hitPoise, poiseMax } from '../sim/Poise';
 import { BOSS_MOODS, bossNumbers, withMood } from '../data/bosses';
 import { Enemy, depthCurve } from './Enemy';
 import { isRoomRule, makeRule, type RoomRule } from './RoomRules';
@@ -153,6 +155,16 @@ export class Boss extends Enemy {
    */
   dormant = false;
   private staggerTimer = 0;
+  /** Poise built toward the next break (sim/Poise.ts). */
+  poise = 0;
+  /** Times its poise has broken: each makes the next bar longer. */
+  breaks = 0;
+  /** Seconds since its poise last grew. */
+  private poiseRest = 0;
+  /** Seconds left broken. */
+  private brokenFor = 0;
+  /** Last poise bar sent to the HUD, in whole percent (negative while broken). */
+  private lastPoiseBar = -1;
   private arena: ArenaState | null = null;
   private addTimer = 0;
   private guards: Enemy[] = [];
@@ -883,6 +895,7 @@ export class Boss extends Enemy {
       this.introTimer = Math.max(0, this.introTimer - dt);
     }
     if (this.staggerTimer > 0) this.staggerTimer = Math.max(0, this.staggerTimer - dt);
+    this.tickPoise(dt);
 
     super.update(dt, ctx);
 
@@ -1088,9 +1101,62 @@ export class Boss extends Enemy {
     const before = this.life;
     super.takeDamage(working, ctx);
     this.dealt += Math.max(0, before - this.life);
+    if (packet.source !== this.id) this.addPoise(hitPoise(before - Math.max(0, this.life), this.maxLife, working.crit, packet.knockback), ctx);
     if (rule && this.rule === rule) rule.struck(Math.max(0, before - Math.max(0, this.life)), raw, ctx);
     if (working.amount > 0) this.sinceHit = 0;
     if (this.alive) events.emit('boss:damaged', { life: this.life, maxLife: this.maxLife });
+  }
+
+  // --- poise ---------------------------------------------------------------
+
+  /** A stun, freeze or root does not hold it: it builds poise. */
+  protected override absorbControl(app: StatusApplication, ctx: CombatContext): boolean {
+    this.interrupt(ctx);
+    this.addPoise(controlPoise(app.duration), ctx);
+    return true;
+  }
+
+  /** True while poise cannot build: out of the fight or out of reach. */
+  private get poiseShut(): boolean {
+    return !this.alive || !this.engaged || this.dormant || this.brokenFor > 0 || this.staggerTimer > 0 || this.barrierUp || !!this.flight;
+  }
+
+  private addPoise(amount: number, ctx: CombatContext): void {
+    if (amount <= 0 || this.poiseShut) return;
+    this.poiseRest = 0;
+    this.poise += amount;
+    if (this.poise >= poiseMax(this.breaks)) this.breakPoise(ctx);
+  }
+
+  /** The bar is full: held fast, its wind-up cut short, and open to blows. */
+  private breakPoise(ctx: CombatContext): void {
+    this.poise = 0;
+    this.breaks++;
+    this.brokenFor = BREAK_TIME;
+    this.holdFast(BREAK_TIME, ctx);
+    this.buff('poise_broken', BREAK_TIME, { taken: BREAK_TAKEN });
+    const p = this.root.position;
+    const y = 1.4 * this.sizeScale;
+    ctx.fx.damageNumber('BROKEN!', p.x, y + 0.9, p.z, 0xffd36a, true);
+    ctx.fx.burst('crit', p.x, y, p.z, { count: 36, color: 0xffd36a });
+    events.emit('boss:broken', { name: this.bossDef.name, x: p.x, y, z: p.z });
+  }
+
+  /** Runs the break down, lets idle poise drain, and feeds the HUD bar. */
+  private tickPoise(dt: number): void {
+    if (this.brokenFor > 0) {
+      this.brokenFor = Math.max(0, this.brokenFor - dt);
+    } else if (this.poise > 0) {
+      this.poiseRest += dt;
+      if (this.poiseRest >= POISE_REST) this.poise = Math.max(0, this.poise - POISE_REGEN * dt);
+    }
+    const broken = this.brokenFor > 0;
+    const value = broken ? this.brokenFor / BREAK_TIME : Math.min(1, this.poise / poiseMax(this.breaks));
+    const bar = broken ? -1 - Math.round(value * 100) : Math.round(value * 100);
+    if (bar !== this.lastPoiseBar) {
+      this.lastPoiseBar = bar;
+      events.emit('boss:poise', { value, broken });
+    }
   }
 
   protected override die(ctx: CombatContext): void {

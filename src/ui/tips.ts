@@ -17,6 +17,7 @@ export const TIPS: readonly string[] = [
   'Gold left in your pocket dies with you. Gold in the bank does not.',
   'Elites wear their affixes over their heads. Read them before you engage.',
   'Bosses mark the ground before their biggest attacks. Step out of the marked area.',
+  'Stuns never hold a boss. They fill the gold bar under its life, and so do hard hits. Fill it and the boss is broken: held still and taking more damage.',
   'Each zone of a map is harder than the last, and the boss waits in the final one.',
   'Clearing a map banks its tier as your record. The next portal opens deeper.',
   'Set items grow stronger with every piece of the set you wear.',

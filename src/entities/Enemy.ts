@@ -814,10 +814,10 @@ export class Enemy implements Combatant {
     }
   }
 
-  private interrupt(ctx: CombatContext): void {
+  protected interrupt(ctx: CombatContext, force = false): void {
     const inst = this.inst;
     if (!inst) return;
-    if (inst.phase !== 'windup' || !inst.def.interruptible) return;
+    if (inst.phase !== 'windup' || (!inst.def.interruptible && !force)) return;
     inst.telegraph?.cancel();
     this.cooldowns.set(inst.def.id, ctx.elapsed + inst.def.cooldown * 0.4);
     this.inst = null;
@@ -1118,20 +1118,39 @@ export class Enemy implements Combatant {
   /**
    * How long a stun, freeze or root really holds this monster. Control fades
    * with use: every second of it recently suffered shortens the next one, and
-   * the tally drains at half a second per second. A boss takes half of any
-   * control to begin with and fades faster (its `boss_stability`), so it can
-   * be interrupted but never held down.
+   * the tally drains at half a second per second. A boss is never held this
+   * way: it turns control into poise (`absorbControl`, sim/Poise.ts).
    */
   private controlFor(duration: number): number {
-    const boss = this.isBoss;
-    const held = (duration * (boss ? 0.5 : 1)) / (1 + this.controlFatigue * (boss ? 0.6 : 0.25));
+    const held = duration / (1 + this.controlFatigue * 0.25);
     this.controlFatigue += held;
     return held;
+  }
+
+  /**
+   * Takes a stun, freeze or root some other way than being held by it. True
+   * when it did, and the control must not land. A boss builds poise.
+   */
+  protected absorbControl(_app: StatusApplication, _ctx: CombatContext): boolean {
+    return false;
+  }
+
+  /**
+   * Holds it fast for `seconds`, past any fade, and cuts short any wind-up:
+   * a boss whose poise broke. Counts as stunned for everything that asks.
+   */
+  protected holdFast(seconds: number, ctx: CombatContext): void {
+    const s = this.statuses.find((x) => x.id === 'stunned');
+    if (s) s.time = Math.max(s.time, seconds);
+    else this.statuses.push({ id: 'stunned', time: seconds, magnitude: 1, stacks: 1, dotType: null, dotPerSecond: 0 });
+    this.rootTimer = Math.max(this.rootTimer, seconds);
+    this.interrupt(ctx, true);
   }
 
   applyStatuses(list: StatusApplication[], ctx: CombatContext): void {
     for (const raw of list) {
       if (this.isImmuneToControl && isControl(raw.id)) continue;
+      if (isControl(raw.id) && this.absorbControl(raw, ctx)) continue;
       const app = isControl(raw.id) ? { ...raw, duration: this.controlFor(raw.duration) } : raw;
       // Passives may raise the ceiling on a stacking affliction.
       const cap = Math.min(24, Math.max(1, (statusDef(app.id)?.maxStacks ?? 5) + (app.maxStacks ?? 0)));
@@ -1289,7 +1308,8 @@ export class Enemy implements Combatant {
       y: this.centerY,
       z: p.z,
     });
-    if (c.stagger && !this.isBoss) this.applyStatuses([{ id: 'stunned', duration: c.stagger, magnitude: 1 }], ctx);
+    // On a boss the stagger builds poise instead (applyStatuses).
+    if (c.stagger) this.applyStatuses([{ id: 'stunned', duration: c.stagger, magnitude: 1 }], ctx);
     if (c.arc) {
       let best: Enemy | null = null;
       let bestD = 6;

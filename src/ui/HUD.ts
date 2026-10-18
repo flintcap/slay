@@ -603,6 +603,10 @@ export class HUD {
   private bossRule: HTMLDivElement;
   private bossRuleName: HTMLSpanElement;
   private bossRuleFill: HTMLDivElement;
+  /** Poise: fill it to break the boss open (sim/Poise.ts). */
+  private bossPoise: HTMLDivElement;
+  private bossPoiseName: HTMLSpanElement;
+  private bossPoiseFill: HTMLDivElement;
   /** A mini-boss's entrance card under the boss bar's spot. */
   private miniCard: HTMLDivElement;
   private miniTimer = 0;
@@ -721,7 +725,13 @@ export class HUD {
     this.bossRuleFill = div('bossrule-fill');
     ruleTrack.appendChild(this.bossRuleFill);
     add(this.bossRule, this.bossRuleName, ruleTrack);
-    add(this.bossBar, this.bossName, bossPlate, this.bossPips, this.bossCast, this.bossRule, this.bossBark);
+    this.bossPoise = div('bosspoise');
+    this.bossPoiseName = span('bosspoise-name', 'Poise');
+    const poiseTrack = div('bosspoise-track');
+    this.bossPoiseFill = div('bosspoise-fill');
+    poiseTrack.appendChild(this.bossPoiseFill);
+    add(this.bossPoise, this.bossPoiseName, poiseTrack);
+    add(this.bossBar, this.bossName, bossPlate, this.bossPoise, this.bossPips, this.bossCast, this.bossRule, this.bossBark);
     this.miniCard = div('minicard');
 
     // --- bottom: command bar ---------------------------------------------
@@ -1061,6 +1071,13 @@ export class HUD {
       }
       const w = `${Math.round(p.value * 100)}%`;
       if (this.bossRuleFill.style.width !== w) this.bossRuleFill.style.width = w;
+    });
+    on('boss:poise', (p) => {
+      if (this.bossPoise.classList.contains('is-broken') !== p.broken) {
+        this.bossPoise.classList.toggle('is-broken', p.broken);
+        this.bossPoiseName.textContent = p.broken ? 'Broken' : 'Poise';
+      }
+      this.bossPoiseFill.style.width = `${Math.round(p.value * 100)}%`;
     });
     on('boss:enraged', () => {
       this.bossBar.classList.add('is-enraged');
@@ -1556,6 +1573,9 @@ export class HUD {
     clear(this.bossPips);
     for (let i = 0; i < phases.length; i++) this.bossPips.appendChild(div(`bosspip ${i === 0 ? 'is-current' : ''}`.trim()));
     this.bossBark.textContent = '';
+    this.bossPoise.classList.remove('is-broken');
+    this.bossPoiseName.textContent = 'Poise';
+    this.bossPoiseFill.style.width = '0%';
     this.endBossCast();
     this.bossBar.classList.remove('is-slain', 'is-enraged', 'enrage-in');
     this.hideMiniBoss();

@@ -887,6 +887,31 @@ Boss.fumble(cost: 'heal' | 'shield' | 'hold' | 'adds' | 'reset', ctx: CombatCont
 `tools/check-fair.mjs` proves it, including a fumbler who gets every rule
 wrong and must still win in at most twice the time.
 
+### Boss poise — `src/sim/Poise.ts`, `Boss.poise`
+
+A stun, freeze or root never holds a boss. `Enemy.applyStatuses` offers each
+control to `absorbControl`; a boss takes it as poise (30 per second it would
+have held) and still drops an interruptible wind-up. Every hero blow adds
+poise by the share of life it took (x220, crits x1.5, knockback x4). A full
+bar breaks the boss: `holdFast` stuns it for 3 s past any fade, cuts even an
+uninterruptible wind-up, and `poise_broken` makes it take 25% more. The bar
+then empties and the next one is 35% longer. Idle 3 s, poise drains at 12/s.
+No poise builds while it is dormant, fleeing, behind a barrier or in a phase
+change, or while already broken. Damage over time builds none. Other monsters
+keep the plain control fade (`Enemy.controlFor`).
+
+```ts
+export function poiseMax(breaks: number): number;            // 100 * (1 + 0.35 * breaks)
+export function controlPoise(seconds: number): number;
+export function hitPoise(dealt: number, maxLife: number, crit: boolean, knockback?: number): number;
+// Events: boss:poise {value, broken} feeds the gold bar under the boss bar
+// (while broken, value is the share of the break left); boss:broken
+// {name, x, y, z} plays the break beat (CombatFeel).
+```
+
+`tools/check-fair.mjs` checks that a stun builds poise, a full bar breaks and
+holds 3 s, the next bar is longer, and idle poise drains.
+
 ### Boss kinds, memory, moods and wardens — `src/data/bosses.ts`, `src/data/wardens.ts`
 
 Every `BossDef` names a `profile` (duelist, bulwark, sponge, glass, swarm,
