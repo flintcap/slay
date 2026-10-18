@@ -34,7 +34,7 @@ import { releasesAt, skillAction, weaponSwing } from '../art/hero/gestures';
 import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
-import { SKILL_MOTIFS, motifAt } from '../fx/SkillLooks';
+import { SKILL_MOTIFS, motifAt, rankSize, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
 
 /**
  * What a summon actually looks like.
@@ -162,64 +162,7 @@ export function isDualWielding(player: Player): boolean {
  * skills stopped looking alike: the delivery families already differed, but
  * every one of them played the same two clips.
  */
-/**
- * A skill's own particle signature.
- *
- * Emitters were picked from the damage type alone, so every fire skill threw
- * identical sparks and a whole tree looked like one spell cast at different
- * ranges. Each skill now draws an emitter and a trail from its element's own
- * pool, plus its own density and size, all keyed off its id — so two fire
- * skills are still both obviously fire while never looking the same.
- *
- * Pools stay inside the element's family on purpose. Variety that crosses into
- * the wrong element stops teaching the player what is about to hurt them.
- */
-const PARTICLE_POOLS: Record<string, { burst: string[]; trail: string[] }> = {
-  physical: {
-    burst: ['hit.physical', 'sparks', 'dust', 'gib', 'impact'],
-    trail: ['sparks', 'dust', 'smoke'],
-  },
-  fire: {
-    burst: ['hit.fire', 'fire', 'embers', 'explosion', 'ash'],
-    trail: ['fire', 'embers', 'smoke'],
-  },
-  cold: {
-    burst: ['hit.cold', 'frost', 'steam', 'shieldHit'],
-    trail: ['frost', 'steam'],
-  },
-  lightning: {
-    burst: ['hit.lightning', 'shock', 'sparks', 'explosion'],
-    trail: ['shock', 'sparks'],
-  },
-  poison: {
-    burst: ['hit.poison', 'poison', 'dissolve', 'steam'],
-    trail: ['poison', 'dissolve'],
-  },
-  arcane: {
-    burst: ['hit.arcane', 'arcane', 'teleport', 'portal', 'void'],
-    trail: ['arcane', 'summon', 'void'],
-  },
-};
-
-export interface ParticleSig {
-  emitter: string;
-  trail: string;
-  density: number;
-  size: number;
-}
-
-export function particleFor(skillId: string, type: DamageType): ParticleSig {
-  const pool = PARTICLE_POOLS[type] ?? PARTICLE_POOLS.physical!;
-  const h = hashId(skillId);
-  return {
-    emitter: pool.burst[h % pool.burst.length]!,
-    trail: pool.trail[(h >>> 4) % pool.trail.length]!,
-    // Small, deliberate spread: enough to feel different, not enough to make
-    // one skill read as twice the spell another is.
-    density: 0.75 + ((h >>> 8) % 9) * 0.09,
-    size: 0.82 + ((h >>> 12) % 8) * 0.055,
-  };
-}
+// A skill's own particle signature lives in `fx/SkillLooks.ts` (`skillParticles`).
 
 /**
  * The authored status a skill inflicts.
@@ -871,7 +814,7 @@ export class SkillRunner {
     const clip = clipFor(def.effect, holding, def.id);
     // Branches below that pick their own clip still defer to a skill's own gesture.
     const own = skillAction(def.id);
-    const sig = particleFor(def.id, type);
+    const sig = skillParticles(def.id, school);
 
     // The cast beat. Projectiles flare themselves as they leave the hand, and a
     // plain weapon swing's beat is the swing itself; everything else gathers
@@ -1048,6 +991,7 @@ export class SkillRunner {
             this.effects.projectile(from, to, {
               element: school,
               color,
+              shape: THROWN_SHAPES[def.id],
               shed: sig.trail,
               flare: i === 0 && !released,
               speed: num('speed', 17),
@@ -1222,14 +1166,16 @@ export class SkillRunner {
           }
           // Sworn Brother: a spectral Knight rises where the standard goes in.
           if (family === 'banner') this.raiseSwornBrother(player, target, ctx);
-          this.effects.impact(school, player.position.x, 1.0, player.position.z, {
-            color,
-            emitter: sig.emitter,
-            density: sig.density,
-            decal: false,
-            shake: 0,
-            sfx: null,
-          });
+          // Power rising from the caster (a stance plants, a shout roars out),
+          // not an impact drawn on their own chest.
+          this.effects.selfCast(
+            family === 'shout' ? 'shout' : family === 'banner' ? 'banner' : family === 'stance' ? 'stance' : 'rise',
+            school, player.position.x, player.position.z,
+            {
+              color, emitter: sig.emitter, density: sig.density, rank,
+              radius: family === 'shout' ? num('radius', 8) + (ctx.auraRadiusBonus ?? 0) : undefined,
+            },
+          );
           break;
         }
 
@@ -1256,6 +1202,7 @@ export class SkillRunner {
             (m = 1) => makePacket(m * num('tickScale', 0.28) * groundHit),
             type, color, sig.emitter,
             this.statusFor(def, num, color),
+            def.id, school, rank,
           );
           this.effects.nova(at.x, at.z, radius, { element: school, color, emitter: sig.emitter, density: sig.density });
           break;
@@ -1506,6 +1453,7 @@ export class SkillRunner {
             this.addZone(
               at.x, at.z, radius, num('duration', 5), 0.5,
               (m = 1) => makePacket(m * 0.3), type, color, sig.emitter,
+              undefined, def.id, school, rank,
             );
           }
           this.applyBuff(player, def, rank, num, color);
@@ -1571,7 +1519,7 @@ export class SkillRunner {
         }
       }
       // The skill's own drawing on top of its family's (`fx/SkillLooks.ts`).
-      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, player.contactIn, num('radius', 2.5));
+      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, player.contactIn, num('radius', 2.5), rank);
     } finally {
       this.effects.endQuiet();
       this.casting = false;
@@ -1584,7 +1532,7 @@ export class SkillRunner {
    * Draws a skill's motif: its own shape in its own motion, at the caster,
    * the point aimed at or just in front, landing with the blow or the release.
    */
-  private drawMotif(id: string, family: string, targeting: string | undefined, origin: THREE.Vector3, target: THREE.Vector3, dir: THREE.Vector3, school: School, color: number, contactIn: number, radius: number): void {
+  private drawMotif(id: string, family: string, targeting: string | undefined, origin: THREE.Vector3, target: THREE.Vector3, dir: THREE.Vector3, school: School, color: number, contactIn: number, radius: number, rank = 1): void {
     const motif = SKILL_MOTIFS[id];
     if (!motif) return;
     const at = motifAt(family, targeting, motif);
@@ -1597,7 +1545,7 @@ export class SkillRunner {
     this.effects.motif(motif.shape, motif.motion, {
       x, z, fx, fz, ox: origin.x, oz: origin.z, tx: target.x, tz: target.z,
       radius: Math.max(1.2, Math.min(4, radius)),
-    }, { element: school, color, delay: lead, size: motif.size });
+    }, { element: school, color, delay: lead, size: (motif.size ?? 1) * rankSize(rank) });
   }
 
   /**
@@ -2991,6 +2939,9 @@ export class SkillRunner {
     color: number,
     emitter: string,
     applies?: StatusApplication[],
+    skill?: string,
+    school?: School,
+    rank = 1,
   ): void {
     // A cap, because a build that stacks ten fields should cost frames, not
     // the whole run.
@@ -2998,7 +2949,8 @@ export class SkillRunner {
       this.zones[0]!.fx?.stop();
       this.zones.shift();
     }
-    const fx = this.effects.summonCircle(x, z, radius, duration, color);
+    // The field draws as what it is: burning ground, a blizzard, a cloud.
+    const fx = this.effects.field(x, z, radius, duration, { school: school ?? (type as School), color, skill, rank });
     this.zones.push({ x, z, radius, left: duration, tick, accum: tick, packet, type, color, emitter, applies, fx });
   }
 

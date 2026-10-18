@@ -13,6 +13,8 @@ import { FXSystem } from '../src/fx/Particles';
 import { DecalSystem, decalKinds } from '../src/fx/Decals';
 import { EffectSystem, SCHOOLS, ELEMENTS, MATERIAL_BURST, MATERIAL_MARK, type School } from '../src/fx/Effects';
 import { BodyFX } from '../src/fx/BodyFX';
+import { CombatFeel, type FeelTarget } from '../src/fx/CombatFeel';
+import type { DamagePacket, DamageType } from '../src/types';
 import { LootFX } from '../src/fx/LootFX';
 import { HAZARD_GLOW } from '../src/fx/MonsterFX';
 import { buildMonsterModel, RigAnimator, monsterArchetype } from '../src/entities/MonsterModels';
@@ -66,6 +68,7 @@ const decals = new DecalSystem(scene, quality);
 const effects = new EffectSystem(scene, fx, decals, quality);
 effects.setCamera(camera);
 const body = new BodyFX(effects);
+const feel = new CombatFeel(effects);
 const loot = new LootFX(effects);
 
 const bodyMat = new THREE.MeshStandardMaterial({ color: 0x6a6058, roughness: 0.7 });
@@ -118,7 +121,30 @@ interface LabScene {
 const v = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
 const row = (i: number, n: number, span: number): number => (i - (n - 1) / 2) * (span / Math.max(1, n - 1));
 
+/** A dummy struck dead by `type` through the real feel layer (`frozen`: it shatters). */
+function killDummy(x: number, z: number, type: DamageType, frozen = false, size = 1): void {
+  const root = dummy(x, z);
+  root.scale.setScalar(size);
+  const t: FeelTarget = {
+    id: `lab${x}`, root, life: 0, maxLife: 100, hitRadius: 0.5, rank: size > 1.3 ? 'rare' : 'normal', family: 'beast', sizeScale: size,
+    hasStatus: (id: string) => frozen && id === 'frozen',
+  };
+  const packet = { amount: 120, type, crit: false, source: 'player' } as DamagePacket;
+  feel.hit(t, packet, { kind: 'melee', fromX: x - 1, fromZ: z + 1, lifeBefore: 100, skill: true });
+}
+
 const SCENES: Record<string, LabScene> = {
+  crits: {
+    shot: 0.06,
+    plan: () => SCHOOLS.map((s, i) => ({ at: 0, fn: () => effects.impact(s, row(i, 7, 11), 1, 0, { scale: 1, crit: true }) })),
+  },
+  deaths: {
+    shot: 0.35,
+    plan: () => {
+      const kinds: Array<[DamageType, boolean]> = [['physical', false], ['fire', false], ['cold', true], ['lightning', false], ['poison', false], ['arcane', false]];
+      return kinds.map(([type, frozen], i) => ({ at: 0, fn: () => killDummy(row(i, 6, 11), 0, type, frozen, i === 0 ? 1.6 : 1) }));
+    },
+  },
   bolts: {
     shot: 0.32,
     plan: () => SCHOOLS.map((s, i) => ({
@@ -298,6 +324,7 @@ function reset(): void {
   effects.clear();
   fx.clear();
   decals.clear();
+  feel.flash.clear();
   body.clear();
   loot.clear();
   for (const d of dummies) scene.remove(d);
@@ -317,6 +344,7 @@ function step(dt: number): void {
   // steps many frames per picture, so it refreshes them itself.
   scene.updateMatrixWorld();
   effects.update(dt, clock, camera);
+  feel.update(dt, null);
   body.update(dt, camera);
   loot.update(dt);
   fx.update(dt, clock, camera);

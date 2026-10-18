@@ -18,7 +18,8 @@ import { RAMPS } from '../src/fx/kit/Palette';
 import { FLIPBOOKS } from '../src/fx/kit/Atlas';
 import { resolvesSound } from '../src/audio/Audio';
 import { SKILLS } from '../src/data/skills';
-import { particleFor, schoolOf } from '../src/scenes/SkillRunner';
+import { schoolOf } from '../src/scenes/SkillRunner';
+import { skillParticles } from '../src/fx/SkillLooks';
 import type { QualityProfile } from '../src/core/Renderer';
 import { MOTIF_SHAPES, type MotifDraw } from '../src/fx/Motifs';
 
@@ -92,7 +93,7 @@ for (const s of SKILLS) {
   const school = schoolOf(s);
   check(SCHOOLS.includes(school), `${s.id}: school "${school}" is not a known school`);
   bySchool[school] = (bySchool[school] ?? 0) + 1;
-  const sig = particleFor(s.id, s.damageType ?? 'physical');
+  const sig = skillParticles(s.id, school);
   check(emitters.has(sig.emitter), `${s.id}: signature emitter "${sig.emitter}" does not exist`);
   check(emitters.has(sig.trail), `${s.id}: signature wake "${sig.trail}" does not exist`);
 }

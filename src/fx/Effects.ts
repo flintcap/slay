@@ -35,6 +35,8 @@ import { SolidPool, type SolidHandle } from './kit/Solids';
 import type { GroundHandle } from './kit/Ground';
 import { floorAt } from './kit/Floor';
 import { FX_EXPOSURE } from './kit/Exposure';
+import { FieldPool, type FieldOpts } from './Fields';
+import { rankDensity, rankSize } from './SkillLooks';
 import { MOTIF_SHAPES, MOTIF_MOTIONS, Path, pieceCap, thin, type MotifDraw, type MotifShape, type MotifMotion, type MotifFrame, type Piece } from './Motifs';
 
 // ---------------------------------------------------------------------------
@@ -128,6 +130,8 @@ export interface RibbonPreset {
 export const RIBBON_PRESETS: Record<string, RibbonPreset> = {
   sword: { kind: 'swing', width: 1, life: 0.16, school: 'physical', emit: 0.9 },
   arrow: { kind: 'trail', width: 0.35, life: 0.12, school: 'physical', emit: 0.5 },
+  /** A steel glint behind a thrown knife or shield. */
+  thrown: { kind: 'trail', width: 0.5, life: 0.1, school: 'physical', emit: 0.7 },
   fire: { kind: 'trail', width: 1.1, life: 0.22, school: 'fire', emit: 1 },
   frost: { kind: 'trail', width: 0.8, life: 0.26, school: 'cold', emit: 0.9 },
   lightning: { kind: 'bolt', width: 0.35, life: 0.1, school: 'lightning', emit: 1.2 },
@@ -191,8 +195,8 @@ export interface ProjectileOpts {
   /** false skips the impact recipe on arrival. */
   impact?: boolean;
   scale?: number;
-  /** Arrow (a solid shaft) or bolt (the school's own body). */
-  shape?: 'arrow' | 'bolt';
+  /** Arrow (a solid shaft), bolt (the school's own body), or a thrown knife or shield. */
+  shape?: 'arrow' | 'bolt' | 'knife' | 'shield';
   /** A skill's own particle wake, laid over the school's. */
   shed?: string;
   /** false skips the flare at the caster's hand. */
@@ -331,6 +335,10 @@ const enum Body {
   Spear,
   Core,
   Rock,
+  /** A thrown knife: steel, point first. */
+  Knife,
+  /** A thrown shield, flat and spinning. */
+  Disc,
 }
 
 class Live {
@@ -478,6 +486,7 @@ export class EffectSystem {
   readonly ribbons: RibbonBatch;
   readonly lights: LightPool;
   readonly solids: SolidPool;
+  private readonly fields: FieldPool;
   private quality: QualityProfile;
   private rng: Rng;
   private rig: CameraRig | null = null;
@@ -511,6 +520,7 @@ export class EffectSystem {
     // flashes take a light, the rest still glow and bloom on their own.
     this.lights = new LightPool(scene, q >= 0.9 ? 4 : 3);
     this.solids = new SolidPool(scene, 48);
+    this.fields = new FieldPool(fx, decals, quality, this.rng);
     scene.add(this.cores.mesh, this.beams.mesh, this.columns.mesh, this.shells.mesh, this.ribbons.mesh);
     for (let i = 0; i < 64; i++) this.free.push(new Live());
   }
@@ -768,8 +778,10 @@ export class EffectSystem {
     const el = element(school);
     const scale = opts.scale ?? 1;
     const size = (opts.size ?? 0.22) * scale;
-    const isArrow = opts.shape === 'arrow' || (opts.shape !== 'bolt' && school === 'physical');
-    const body = isArrow ? Body.Arrow : school === 'cold' ? Body.Shard : school === 'bone' ? Body.Spear : Body.Core;
+    const thrown = opts.shape === 'knife' ? Body.Knife : opts.shape === 'shield' ? Body.Disc : null;
+    // Solid things that fly: arrows, knives and shields carry no glowing heart.
+    const isArrow = thrown !== null || opts.shape === 'arrow' || (opts.shape !== 'bolt' && school === 'physical');
+    const body = thrown ?? (isArrow ? Body.Arrow : school === 'cold' ? Body.Shard : school === 'bone' ? Body.Spear : Body.Core);
 
     const e = this.spawn(K.Proj, !!opts.onHit);
     e.school = school;
@@ -798,9 +810,11 @@ export class EffectSystem {
 
     // Body.
     if (body === Body.Arrow) e.solid = this.solids.alloc('arrow');
+    else if (body === Body.Knife) e.solid = this.solids.alloc('blade');
+    else if (body === Body.Disc) e.solid = this.solids.alloc('buckler');
     else if (body === Body.Shard) e.solid = this.solids.alloc('shard');
     else if (body === Body.Spear) e.solid = this.solids.alloc('spear');
-    if (body !== Body.Arrow) this.take(e, this.cores);
+    if (!isArrow) this.take(e, this.cores);
     e.style =
       school === 'fire' ? CORE_STYLE.fireball :
       school === 'lightning' ? CORE_STYLE.plasma :
@@ -810,12 +824,12 @@ export class EffectSystem {
       school === 'physical' ? CORE_STYLE.soft : CORE_STYLE.orb;
 
     // Wake.
-    const want = opts.trail === null ? null : opts.trail && RIBBON_PRESETS[opts.trail] ? opts.trail : isArrow ? 'arrow' : el.trail;
+    const want = opts.trail === null ? null : opts.trail && RIBBON_PRESETS[opts.trail] ? opts.trail : thrown !== null ? 'thrown' : isArrow ? 'arrow' : el.trail;
     const preset = want ? RIBBON_PRESETS[want] : undefined;
     if (preset && preset.kind !== 'swing') {
       e.rib = this.ribbons.start(preset.kind, {
         life: preset.life,
-        width: isArrow ? 0.05 : Math.max(0.06, size * preset.width * 2),
+        width: thrown !== null ? Math.max(0.08, size * preset.width) : isArrow ? 0.05 : Math.max(0.06, size * preset.width * 2),
         school,
         color: opts.color !== undefined && saturated(opts.color) ? opts.color : undefined,
         emit: preset.emit,
@@ -842,10 +856,20 @@ export class EffectSystem {
     if (e.arc > 0) _v2.y += (Math.cos(t * Math.PI) * e.arc * Math.PI) / Math.max(1, e.total);
     _v2.normalize();
     if (e.solid) {
-      const roll = e.body === Body.Shard ? e.t * 4.2 : e.body === Body.Spear ? e.t * 14 : 0;
-      const len = e.body === Body.Arrow ? Math.max(0.7, e.size / 0.24) : e.body === Body.Shard ? e.size * 3.2 : e.size * 4.2;
-      const girth = e.body === Body.Arrow ? len : e.body === Body.Shard ? e.size * 3.2 : e.size * 3;
-      this.solids.place(e.solid, p.x, p.y, p.z, _v2.x, _v2.y, _v2.z, roll, len, girth);
+      if (e.body === Body.Disc) {
+        // A shield flies flat and spins: its face turns about the up axis.
+        const a = e.t * 22;
+        const r = Math.max(0.55, e.size * 1.6);
+        this.solids.place(e.solid, p.x, p.y, p.z, Math.cos(a), 0, Math.sin(a), 0, r, r);
+      } else {
+        const roll = e.body === Body.Shard ? e.t * 4.2 : e.body === Body.Spear ? e.t * 14 : e.body === Body.Knife ? 0.35 : 0;
+        const len =
+          e.body === Body.Arrow ? Math.max(0.7, e.size / 0.24) :
+          e.body === Body.Knife ? Math.max(0.55, e.size * 1.6) :
+          e.body === Body.Shard ? e.size * 3.2 : e.size * 4.2;
+        const girth = e.body === Body.Arrow || e.body === Body.Knife ? len : e.body === Body.Shard ? e.size * 3.2 : e.size * 3;
+        this.solids.place(e.solid, p.x, p.y, p.z, _v2.x, _v2.y, _v2.z, roll, len, girth);
+      }
     }
     if (e.slot) {
       let sz = e.size * 3.4;
@@ -903,6 +927,8 @@ export class EffectSystem {
       if (e.flag) {
         if (e.body === Body.Arrow) {
           this.impact(e.school, p.x, p.y, p.z, { scale: e.scale * 0.6, color: e.color, shake: 0.02, light: 0, decal: false, sfx: 'arrow.thunk' });
+        } else if (e.body === Body.Knife || e.body === Body.Disc) {
+          this.impact(e.school, p.x, p.y, p.z, { scale: e.scale * (e.body === Body.Disc ? 0.9 : 0.6), color: e.color, shake: e.body === Body.Disc ? 0.06 : 0.02, light: 0.4, decal: false });
         } else {
           this.impact(e.school, p.x, p.y, p.z, { scale: e.scale, color: e.color });
         }
@@ -1408,6 +1434,46 @@ export class EffectSystem {
       if (e.school !== 'physical') this.fx.burst(element(e.school).shedEmitter, _v1.x + Math.cos(a) * e.radius, _v1.y + 1, _v1.z + Math.sin(a) * e.radius, { scale: 0.7 });
     }
     return !(e.stopped || e.t >= e.dur);
+  }
+
+  /**
+   * A lingering spell field (burning ground, a blizzard, a poison cloud...):
+   * its floor glow and its own particles for `duration` seconds
+   * (`fx/Fields.ts`). `stop()` ends it early.
+   */
+  field(x: number, z: number, radius: number, duration: number, opts: FieldOpts): EffectHandle {
+    return this.fields.start(x, z, radius, duration, opts);
+  }
+
+  /**
+   * Power let out from the caster's own body: a buff, a stance, a war cry, a
+   * banner. Never drawn as a blow (no slash, no gore): the school's flare at
+   * the chest, a ring of its light rising round the body, and for a shout a
+   * shock thrown out along the floor to `radius`. Grows a little with rank.
+   */
+  selfCast(kind: 'rise' | 'stance' | 'shout' | 'banner', school: School, x: number, z: number, opts: { color?: number; emitter?: string; density?: number; rank?: number; radius?: number } = {}): void {
+    const rank = opts.rank ?? 1;
+    const size = rankSize(rank);
+    const dens = (opts.density ?? 1) * (this.quality.fxScale >= 0.9 ? rankDensity(rank) : 1);
+    const count = Math.round(12 * dens);
+    const y = floorAt(x, z);
+    const el = element(school);
+    const l = lookOf(school, opts.color);
+    this.fx.burst(el.castEmitter, x, y + 1.1, z, { scale: size });
+    // The skill's own particles, unless they are a hit's: a self cast strikes nothing.
+    const own = opts.emitter;
+    if (own && !own.startsWith('hit.') && own !== 'impact') this.fx.burst(own, x, y + 1.0, z, { count: Math.round(8 * dens), scale: 0.8 * size, color: opts.color, school });
+    if (kind === 'shout') {
+      this.fx.burst('self.roar', x, y + 0.1, z, { scale: size, count, color: opts.color, school });
+      this.decals.glow('shockRing', x, z, Math.max(2, Math.min(12, opts.radius ?? 6)), 0.5, opts.color ?? school, 1.5);
+      this.trauma(0.1);
+    } else {
+      this.fx.burst('self.rise', x, y + 0.1, z, { scale: size, count, color: opts.color, school });
+      this.decals.glow('auraRing', x, z, 1.3 * size, 0.7, opts.color ?? school, 1.2);
+      if (kind === 'stance' || kind === 'banner' || school === 'physical' || school === 'bone') this.fx.burst('self.stance', x, y + 0.05, z, { scale: size, count });
+      if (kind === 'banner') this.fx.burst('self.banner', x, y + 0.1, z, { scale: size, count, color: opts.color, school });
+    }
+    this.flash(x, y + 1.2, z, l.light, 6 * size, 6, 0.22);
   }
 
   /** A summoning circle that inscribes itself, with a shaft of the school's light. */
@@ -1982,6 +2048,7 @@ export class EffectSystem {
       if (last !== e) this.live[oldest] = last;
       this.culled++;
     }
+    this.fields.update(dt);
     this.ribbons.update(dt, camera ?? this.camera);
     this.cores.flush(this.clock);
     this.beams.flush(this.clock);
@@ -1998,6 +2065,7 @@ export class EffectSystem {
   /** Stops and frees every live effect without tearing the system down. */
   clear(): void {
     while (this.live.length) this.release(this.live.pop()!);
+    this.fields.clear();
     this.cores.clear();
     this.beams.clear();
     this.columns.clear();

@@ -35,6 +35,7 @@ await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 420000, po
 
 const out = await page.evaluate(async () => {
   const SR = await import('/src/scenes/SkillRunner.ts');
+  const SL = await import('/src/fx/SkillLooks.ts');
   const SK = await import('/src/data/skills.ts');
   const P = await import('/src/fx/Particles.ts');
   const valid = new Set(P.emitterIds ? P.emitterIds() : []);
@@ -45,7 +46,7 @@ const out = await page.evaluate(async () => {
   for (const s of SK.SKILLS) {
     if (s.targeting === 'passive') continue;
     n++;
-    const sig = SR.particleFor(s.id, s.damageType ?? 'physical');
+    const sig = SL.skillParticles(s.id, SR.schoolOf(s));
     combos.add(`${sig.emitter}|${sig.trail}|${sig.density.toFixed(2)}|${sig.size.toFixed(2)}`);
     if (valid.size) {
       if (!valid.has(sig.emitter)) missing.add(sig.emitter);

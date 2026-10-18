@@ -11,6 +11,7 @@
  */
 
 import type { MotifShape, MotifMotion } from './Motifs';
+import type { School } from './kit/Palette';
 import { SHIFTER_DRAWING, SHIFTER_MOTIFS } from './shifter/motifs';
 import { PALADIN_DRAWING, PALADIN_MOTIFS } from './paladin/motifs';
 
@@ -226,3 +227,116 @@ export function visualSignature(skillId: string, effect: string | undefined): st
   const m = SKILL_MOTIFS[skillId];
   return m ? `${base} + ${m.shape} ${m.motion}` : base;
 }
+
+// ---------------------------------------------------------------------------
+// Particle signatures
+// ---------------------------------------------------------------------------
+
+/**
+ * Each skill's own burst and wake, drawn from its school's pool and keyed off
+ * its id, plus a small spread of density and size: two fire skills are still
+ * both plainly fire, never the same spell.
+ *
+ * Keyed on the school, not the damage type: an untyped curse of the Tempest
+ * tree draws as lightning, bone magic as bone. Pools stay inside their
+ * element, and none throws meat: a skill gores nothing by itself (bodies
+ * bleed by their own material, `fx/Materials.ts`).
+ */
+const PARTICLE_POOLS: Readonly<Record<School, { burst: readonly string[]; trail: readonly string[] }>> = {
+  physical: { burst: ['hit.physical', 'sparks', 'dust', 'impact'], trail: ['sparks', 'dust', 'smoke'] },
+  fire: { burst: ['hit.fire', 'fire', 'embers', 'explosion', 'ash'], trail: ['fire', 'embers', 'smoke'] },
+  cold: { burst: ['hit.cold', 'frost', 'steam', 'shieldHit'], trail: ['frost', 'steam'] },
+  lightning: { burst: ['hit.lightning', 'shock', 'sparks', 'explosion'], trail: ['shock', 'sparks'] },
+  poison: { burst: ['hit.poison', 'poison', 'dissolve', 'steam'], trail: ['poison', 'dissolve'] },
+  arcane: { burst: ['hit.arcane', 'arcane', 'teleport', 'portal', 'void'], trail: ['arcane', 'summon', 'void'] },
+  bone: { burst: ['hit.bone', 'chips.bone', 'dust'], trail: ['dust', 'smoke'] },
+};
+
+export interface ParticleSig {
+  emitter: string;
+  trail: string;
+  density: number;
+  size: number;
+}
+
+/** Stable small integer from a skill id. */
+function hashId(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** A skill's own burst, wake, density and size in its school. */
+export function skillParticles(skillId: string, school: School): ParticleSig {
+  const pool = PARTICLE_POOLS[school] ?? PARTICLE_POOLS.physical;
+  const h = hashId(skillId);
+  return {
+    emitter: pool.burst[h % pool.burst.length]!,
+    trail: pool.trail[(h >>> 4) % pool.trail.length]!,
+    // Small, deliberate spread: enough to feel different, not enough to make
+    // one skill read as twice the spell another is.
+    density: 0.75 + ((h >>> 8) % 9) * 0.09,
+    size: 0.82 + ((h >>> 12) % 8) * 0.055,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Rank
+// ---------------------------------------------------------------------------
+
+/**
+ * How much bigger a skill's drawing is at `rank` than at rank 1: a little per
+ * rank, capped, so a maxed skill reads as the same spell grown heavier. The
+ * skill's real numbers (radius, length) already size the families; this is
+ * on top, for the parts no number sizes (motifs, self casts).
+ */
+export function rankSize(rank: number): number {
+  return Math.min(1.45, 1 + Math.max(0, rank - 1) * 0.025);
+}
+
+/** How much denser a skill's particles are at `rank` (callers apply it only where the quality has room). */
+export function rankDensity(rank: number): number {
+  return Math.min(1.6, 1 + Math.max(0, rank - 1) * 0.035);
+}
+
+// ---------------------------------------------------------------------------
+// Fields and thrown things
+// ---------------------------------------------------------------------------
+
+/** How a lingering spell field looks while it lasts (`fx/Fields.ts`). */
+export type FieldLook =
+  | 'fire' | 'firestorm' | 'frost' | 'blizzard' | 'storm' | 'pillar' | 'venom' | 'smoke' | 'void' | 'bone' | 'dust';
+
+/** Fields with a look of their own; any other field draws as its school. */
+export const FIELD_LOOKS: Readonly<Record<string, FieldLook>> = {
+  pyroclasm: 'fire',
+  firestorm: 'firestorm',
+  rimeField: 'frost',
+  blizzard: 'blizzard',
+  ionize: 'storm',
+  heavensGate: 'pillar',
+  eyeOfTheStorm: 'storm',
+  noxiousCloud: 'venom',
+  smokeBomb: 'smoke',
+  nightfall: 'void',
+  boneCage: 'bone',
+};
+
+const FIELD_OF_SCHOOL: Readonly<Record<School, FieldLook>> = {
+  physical: 'dust', fire: 'fire', cold: 'frost', lightning: 'storm', poison: 'venom', arcane: 'void', bone: 'bone',
+};
+
+/** The look of a field cast by `skillId` in `school`. */
+export function fieldLook(skillId: string | undefined, school: School): FieldLook {
+  return (skillId ? FIELD_LOOKS[skillId] : undefined) ?? FIELD_OF_SCHOOL[school] ?? 'dust';
+}
+
+/** What a thrown skill throws, where it is not an arrow or a spell's own body. */
+export const THROWN_SHAPES: Readonly<Record<string, 'knife' | 'shield'>> = {
+  fanOfKnives: 'knife',
+  throwingSpree: 'knife',
+  shieldThrow: 'shield',
+};

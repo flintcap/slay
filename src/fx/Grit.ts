@@ -137,10 +137,146 @@ const EM: Record<string, Emitter> = {
       L({ sprite: SPRITE.rock, count: 8, ramp: DUST, speed: [2, 4], up: 0.8, radius: 0.4, size: [0.05, 0.1], grow: 1, life: [0.6, 1.0], heat: [0.4, 0.3], emit: 0.2, occl: 1, gravity: -14, spin: 8, ground: true, fade: 4, tint: false }),
     ],
   },
-};
 
-void BONE;
-void STEEL;
+  // --- fields (fx/Fields.ts) -------------------------------------------------
+  // Each is one small puff of the field's matter, fired many times a second
+  // at random points over the field. No single-sprite layers: everything here
+  // thins with the quality.
+  'field.flames': {
+    school: 'fire',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.flame, count: 4, speed: [0.2, 0.6], up: 2, radius: 0.25, disc: true, size: [0.3, 0.5], grow: 1.2, life: [0.45, 0.8], heat: [1, 0.2], emit: 0.9, occl: 0.22, gravity: 3.5, drag: 2.5, turb: 0.5 }),
+      L({ sprite: SPRITE.ember, count: 6, speed: [0.4, 1.4], up: 1.5, radius: 0.3, disc: true, size: [0.025, 0.05], grow: 0.4, life: [1.0, 2.0], heat: [1, 0.4], emit: 1.2, occl: 0, gravity: 1.2, drag: 1, turb: 0.8 }),
+    ],
+  },
+  'field.soot': {
+    school: 'fire',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.smoke, count: 3, ramp: SMOKE, speed: [0.2, 0.6], up: 1, radius: 0.3, disc: true, size: [0.5, 0.8], grow: 2.4, life: [1.4, 2.2], heat: [0.2, 0], emit: 0.2, occl: 0.5, gravity: 1, drag: 1.5, turb: 0.3, tint: false })],
+  },
+  'field.cinderfall': {
+    school: 'fire',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.ember, count: 6, speed: [5, 8], spread: 0.08, radius: 0.6, disc: true, size: [0.05, 0.09], grow: 0.8, life: [0.9, 1.4], heat: [1, 0.3], emit: 1.3, occl: 0, gravity: -6, drag: 0.3, stretch: 1.4, fade: 1.2, ground: true, bounce: 0.2 }),
+      L({ sprite: SPRITE.fireball, count: 3, speed: [4, 6], spread: 0.08, radius: 0.5, disc: true, size: [0.22, 0.34], grow: 0.8, life: [0.7, 1.0], heat: [1, 0.3], emit: 0.9, occl: 0.25, gravity: -6, drag: 0.3, spin: 2 }),
+    ],
+  },
+  'field.rime': {
+    school: 'cold',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.smoke, count: 3, speed: [0.15, 0.45], up: 0, radius: 0.4, disc: true, size: [0.7, 1.1], grow: 1.8, life: [1.6, 2.4], heat: [0.3, 0.05], emit: 0.35, occl: 0.3, gravity: -0.05, drag: 1, turb: 0.15 })],
+  },
+  'field.glitter': {
+    school: 'cold',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.ember, count: 5, ramp: SNOW, speed: [0.05, 0.25], up: 0.6, radius: 0.5, disc: true, size: [0.025, 0.045], grow: 0.7, life: [0.8, 1.4], heat: [1, 0.5], emit: 1.0, occl: 0, gravity: 0.1, drag: 1, turb: 0.4, tint: false }),
+      L({ sprite: SPRITE.crystal, count: 3, speed: [0.1, 0.3], up: 1, radius: 0.5, disc: true, size: [0.1, 0.18], grow: 1.2, life: [0.5, 0.9], heat: [1, 0.3], emit: 0.8, occl: 0.05, spin: 3 }),
+    ],
+  },
+  'field.snowfall': {
+    school: 'cold',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.ember, count: 10, ramp: SNOW, speed: [4, 6], spread: 0.15, radius: 1, disc: true, size: [0.035, 0.06], grow: 0.9, life: [0.8, 1.2], heat: [1, 0.6], emit: 0.8, occl: 0.2, gravity: -2, drag: 0.4, turb: 0.3, stretch: 1.5, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.shard, count: 3, ramp: ICE, speed: [6, 9], spread: 0.08, radius: 0.8, disc: true, size: [0.08, 0.14], grow: 1, life: [0.6, 0.9], heat: [0.9, 0.5], emit: 0.7, occl: 0.45, gravity: -8, drag: 0.2, stretch: 0.8, ground: true, bounce: 0.2, tint: false }),
+    ],
+  },
+  'field.crawl': {
+    school: 'lightning',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.arc, variants: 8, count: 3, speed: [0, 0], radius: 0.6, disc: true, size: [0.5, 0.8], grow: 1.1, life: [0.06, 0.14], heat: [1, 0.8], emit: 1.0, occl: 0, fade: 1 }),
+      L({ sprite: SPRITE.spark, count: 5, speed: [1.5, 3.5], up: 0.6, radius: 0.5, disc: true, size: [0.03, 0.05], grow: 0.5, life: [0.3, 0.6], heat: [1, 0.4], emit: 1.2, occl: 0, gravity: -14, drag: 1.5, stretch: 1, fade: 1.3, ground: true, bounce: 0.6 }),
+    ],
+  },
+  'field.strike': {
+    school: 'lightning',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.spark, count: 4, speed: [16, 24], spread: 0.04, up: 8, radius: 0.3, disc: true, size: [0.08, 0.12], grow: 0.4, life: [0.12, 0.2], heat: [1, 0.8], emit: 1.4, occl: 0, drag: 0.5, stretch: 4, fade: 1.2 }),
+      L({ sprite: SPRITE.arc, variants: 8, count: 3, speed: [2, 4], spread: 0.1, up: 6, radius: 0.2, size: [0.7, 1.0], grow: 1, life: [0.08, 0.14], heat: [1, 0.8], emit: 1.0, occl: 0, fade: 1 }),
+    ],
+  },
+  'field.miasma': {
+    school: 'poison',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.gas, count: 3, speed: [0.1, 0.4], up: 0.3, radius: 0.5, disc: true, size: [0.8, 1.2], grow: 1.6, life: [1.6, 2.6], heat: [0.6, 0.1], emit: 0.5, occl: 0.45, gravity: 0.1, drag: 1.5, turb: 0.3, spin: 0.5 })],
+  },
+  'field.bubbles': {
+    school: 'poison',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.bubble, count: 4, speed: [0.2, 0.6], up: 2, radius: 0.5, disc: true, size: [0.06, 0.12], grow: 1.3, life: [0.6, 1.1], heat: [0.8, 0.5], emit: 0.8, occl: 0.1, gravity: 0.4, drag: 1.5, turb: 0.3 }),
+      L({ sprite: SPRITE.drop, count: 3, ramp: ICHOR, speed: [0.8, 1.8], up: 1.4, radius: 0.4, disc: true, size: [0.04, 0.08], grow: 0.9, life: [0.5, 0.8], heat: [0.6, 0.4], emit: 0.4, occl: 0.9, gravity: -10, ground: true, bounce: 0, fade: 3, tint: false }),
+    ],
+  },
+  'field.smoke': {
+    school: 'arcane',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.smoke, count: 4, ramp: [0x5a5550, 0x2c2926, 0x0e0d0c], speed: [0.2, 0.6], up: 0.6, radius: 0.6, disc: true, size: [1.0, 1.5], grow: 1.8, life: [2.0, 3.0], heat: [0.15, 0], emit: 0.15, occl: 0.85, gravity: 0.25, drag: 1.5, turb: 0.25, spin: 0.3, tint: false })],
+  },
+  'field.dark': {
+    school: 'arcane',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.gas, count: 3, ramp: SHADOW, speed: [0.1, 0.4], up: 0.4, radius: 0.5, disc: true, size: [0.7, 1.0], grow: 1.5, life: [1.4, 2.2], heat: [0.3, 0], emit: 0.3, occl: 0.7, gravity: 0.2, drag: 1.5, turb: 0.4, spin: 0.6, tint: false })],
+  },
+  'field.motes': {
+    school: 'arcane',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.mote, count: 5, ramp: VOID, speed: [0.2, 0.6], up: 1, radius: 0.5, disc: true, size: [0.04, 0.08], grow: 0.6, life: [1.0, 1.8], heat: [1, 0.3], emit: 1.0, occl: 0, gravity: 0.3, drag: 1, turb: 0.5, tint: false })],
+  },
+  'field.dust': {
+    school: 'physical',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.smoke, count: 3, ramp: DUST, speed: [0.3, 0.8], up: 0.1, radius: 0.5, disc: true, size: [0.5, 0.8], grow: 2, life: [1.0, 1.6], heat: [0.2, 0], emit: 0.2, occl: 0.5, gravity: 0.1, drag: 2, turb: 0.4, spin: 0.5, tint: false })],
+  },
+  'field.rattle': {
+    school: 'bone',
+    keyed: true,
+    layers: [L({ sprite: SPRITE.bone, count: 3, ramp: BONE, speed: [1, 2.5], up: 1.5, radius: 0.4, disc: true, size: [0.06, 0.12], grow: 1, life: [0.6, 1.0], heat: [0.6, 0.5], emit: 0.4, occl: 0.9, gravity: -12, drag: 1, spin: 8, ground: true, fade: 3, tint: false })],
+  },
+
+  // --- self casts (EffectSystem.selfCast) -----------------------------------
+  // Power let out from the body: a ring of the school's light rising round it.
+  'self.rise': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.mote, count: 16, speed: [1.2, 2.4], spread: 0.15, up: 2, radius: 0.7, disc: true, size: [0.05, 0.1], grow: 0.4, life: [0.5, 0.9], heat: [1, 0.3], emit: 1.1, occl: 0, gravity: 1.5, drag: 1.2, turb: 0.3, stretch: 0.8 }),
+      L({ sprite: SPRITE.spark, count: 8, speed: [4, 7], spread: 0.06, up: 4, radius: 0.55, disc: true, size: [0.05, 0.08], grow: 0.4, life: [0.18, 0.3], heat: [1, 0.6], emit: 1.2, occl: 0, drag: 2, stretch: 2.4, fade: 1.3 }),
+      L({ sprite: SPRITE.ring, count: 1, speed: [0, 0], radius: 0, size: [0.5, 0.5], grow: 3.2, life: [0.32, 0.36], heat: [1, 0.2], emit: 0.8, occl: 0, flat: true, fade: 1.2 }),
+    ],
+  },
+  // Grit kicked off the floor round the feet (warrior stances, banners).
+  'self.stance': {
+    school: 'physical',
+    keyed: true,
+    layers: [
+      L({ sprite: SPRITE.smoke, count: 6, ramp: DUST, speed: [1.6, 3], up: 0.05, disc: true, radius: 0.5, size: [0.4, 0.65], grow: 2.1, life: [0.6, 1.0], heat: [0.2, 0], emit: 0.2, occl: 0.5, gravity: 0.2, drag: 2.8, turb: 0.3, tint: false }),
+      L({ sprite: SPRITE.rock, count: 6, ramp: DUST, speed: [1.5, 3], up: 1, radius: 0.4, disc: true, size: [0.04, 0.08], grow: 1, life: [0.5, 0.8], heat: [0.4, 0.3], emit: 0.2, occl: 1, gravity: -14, spin: 8, ground: true, fade: 4, tint: false }),
+    ],
+  },
+  // A roar: a flat shock thrown out along the floor, dust and grit driven before it.
+  'self.roar': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.shock, count: 1, speed: [0, 0], radius: 0, size: [1.0, 1.0], grow: 5.5, life: [0.32, 0.36], heat: [1, 0.15], emit: 0.6, occl: 0, flat: true, fade: 1.1 }),
+      L({ sprite: SPRITE.smoke, count: 10, ramp: DUST, speed: [3.5, 6], up: 0.04, disc: true, radius: 0.6, size: [0.45, 0.75], grow: 2.2, life: [0.6, 1.0], heat: [0.2, 0], emit: 0.2, occl: 0.5, gravity: 0.2, drag: 3, turb: 0.3, tint: false }),
+      L({ sprite: SPRITE.rock, count: 8, ramp: DUST, speed: [3, 6], up: 0.5, radius: 0.5, disc: true, size: [0.04, 0.08], grow: 1, life: [0.5, 0.8], heat: [0.4, 0.3], emit: 0.2, occl: 1, gravity: -14, spin: 8, ground: true, fade: 4, tint: false }),
+      L({ sprite: SPRITE.spark, count: 8, ramp: STEEL, speed: [5, 9], spread: 1, up: 0.1, size: [0.035, 0.06], grow: 0.4, life: [0.15, 0.3], heat: [1, 0.5], emit: 1.1, occl: 0, gravity: -8, drag: 3, stretch: 1.6, tint: false }),
+    ],
+  },
+  // A banner planted: a shaft of light climbing from the ground.
+  'self.banner': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.spark, count: 10, speed: [8, 14], spread: 0.03, up: 6, radius: 0.35, disc: true, size: [0.07, 0.11], grow: 0.4, life: [0.25, 0.4], heat: [1, 0.6], emit: 1.3, occl: 0, drag: 1, stretch: 3, fade: 1.2 }),
+      L({ sprite: SPRITE.mote, count: 12, speed: [0.8, 1.8], up: 3, radius: 0.6, disc: true, size: [0.06, 0.11], grow: 0.5, life: [0.8, 1.3], heat: [1, 0.3], emit: 1.0, occl: 0, gravity: 1.2, turb: 0.4 }),
+    ],
+  },
+};
 
 registerEmitters(EM);
 

@@ -4,7 +4,8 @@
  */
 import { SKILLS } from '../src/data/skills';
 import { CLASSES } from '../src/data/classes';
-import { bodyClip, particleFor } from '../src/scenes/SkillRunner';
+import { bodyClip, schoolOf } from '../src/scenes/SkillRunner';
+import { skillParticles } from '../src/fx/SkillLooks';
 
 /** What each class actually fights with, which decides some clip choices. */
 const CLASS_WEAPON: Record<string, 'melee' | 'ranged' | 'caster'> = {
@@ -26,7 +27,7 @@ for (const def of CLASSES) {
       rows.push({ cls: def.id, id: s.id, passive: true });
       continue;
     }
-    const sig = particleFor(s.id, s.damageType ?? 'physical');
+    const sig = skillParticles(s.id, schoolOf(s));
     rows.push({
       cls: def.id,
       id: s.id,

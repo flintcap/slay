@@ -15,6 +15,8 @@ export const SOLID = {
   arrow: 0, shard: 1, spear: 2, rock: 3, spike: 4,
   // Skill motif pieces (`fx/Motifs.ts`).
   blade: 5, thorn: 6, crystal: 7, cinder: 8, fang: 9, saw: 10, feather: 11,
+  // Thrown weapons.
+  buckler: 12,
 } as const;
 export type SolidShape = keyof typeof SOLID;
 
@@ -179,6 +181,19 @@ function sawGeo(): THREE.BufferGeometry {
   return g;
 }
 
+/** A thrown round shield, lying flat: a wooden face, an iron rim and boss. */
+function bucklerGeo(): THREE.BufferGeometry {
+  const face = new THREE.CylinderGeometry(0.46, 0.46, 0.05, 18, 1);
+  const rim = new THREE.TorusGeometry(0.47, 0.035, 4, 18);
+  rim.rotateX(Math.PI / 2);
+  const boss = new THREE.SphereGeometry(0.11, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+  boss.translate(0, 0.02, 0);
+  const parts = [tint(face, 0x4a301a), tint(rim, 0x7a7c84), tint(boss, 0xa8a8b0)];
+  const g = mergeGeometries(parts, false)!;
+  for (const q of parts) q.dispose();
+  return g;
+}
+
 function featherGeo(): THREE.BufferGeometry {
   const g = new THREE.ConeGeometry(0.12, 1, 4, 3);
   g.rotateX(-Math.PI / 2);
@@ -231,7 +246,10 @@ export class SolidPool {
       new THREE.MeshStandardMaterial({ color: 0x8e9098, roughness: 0.35, metalness: 0.85 }),
       new THREE.MeshStandardMaterial({ color: 0x8a7a66, roughness: 0.8, side: THREE.DoubleSide }),
     ];
-    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo()];
+    // The buckler shares the arrow's material (vertex-coloured, same layout),
+    // so it draws with a shader already built.
+    mats.push(mats[0]!);
+    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo()];
     for (let k = 0; k < geos.length; k++) {
       const mesh = new THREE.InstancedMesh(geos[k]!, mats[k]!, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -327,10 +345,13 @@ export class SolidPool {
   }
 
   dispose(): void {
+    const done = new Set<THREE.Material>();
     for (const s of this.shapes) {
       this.scene.remove(s.mesh);
       s.mesh.geometry.dispose();
-      (s.mesh.material as THREE.Material).dispose();
+      const m = s.mesh.material as THREE.Material;
+      if (!done.has(m)) m.dispose();
+      done.add(m);
       s.mesh.dispose();
     }
     this.shapes.length = 0;
