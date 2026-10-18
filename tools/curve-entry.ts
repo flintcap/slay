@@ -281,6 +281,10 @@ const reachOf = (s: SkillDef): number => {
   if (fam === 'melee' || fam === 'cleave' || fam === 'whirlwind') return 2.1;
   if (fam === 'nova' || fam === 'aura' || fam === 'aoe' || fam === 'shout' || fam === 'detonate') return 3.5;
   if (fam === 'dash' || fam === 'teleport' || fam === 'leap') return 7;
+  // A stream or a short beam reaches only as far as its own range says
+  // (Inferno is 7m); casting it from 9m hits nothing.
+  const own = s.params?.range;
+  if ((fam === 'channel' || fam === 'cone') && typeof own === 'number') return Math.min(9, own - 0.5);
   return 9;
 };
 
@@ -529,7 +533,10 @@ function fight(
       // Close to where something can be thrown: the basic attack if nothing
       // else is ready, otherwise the shortest reach in the rotation.
       // Casters and archers hold their range rather than walk in for a nova.
-      const want = basicReach > 3 ? basicReach : Math.min(basicReach, ...rotation.map(reachOf));
+      // A caster has no basic attack (owner's rule), so it holds at the reach
+      // of its own spells, not at a bolt's 9m it cannot throw.
+      const noBasic = weaponStyle(player) === 'caster';
+      const want = noBasic && rotation.length ? Math.min(...rotation.map(reachOf)) : basicReach > 3 ? basicReach : Math.min(basicReach, ...rotation.map(reachOf));
       if (nd > want) player.moveTo(target.x, target.z);
       acts.move++;
     }
