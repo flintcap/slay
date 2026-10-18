@@ -145,6 +145,23 @@ mapvariety), which changes the scene. A fresh agent:
   that run (the old 156 came from the broken counter). Upload in play 987 KB.
 - Nothing from milestone 4 or later was started; nothing is half-wired.
 
+### Part 2 baseline (after wave two, commit e2f6422)
+
+Same command as milestone 1 (`check-loadtime --no-select --depths=1,12,25
+--profile --size=640x360`, cold profile, this VM, other agents sharing it).
+Title live at 11.9 s.
+
+| load | time | longest block | long tasks (sum) | ready at | main thread idle |
+| --- | --- | --- | --- | --- | --- |
+| town | 44.3 s | 466 ms | 45 (5.6 s) | 23.4 s | 35.6 s |
+| map depth 1 | 23.4 s | 517 ms | 57 (5.1 s) | 10.2 s | 15.0 s |
+| map depth 12 | 27.1 s | 464 ms | 50 (4.5 s) | 11.4 s | 18.8 s |
+| map depth 25 | 39.1 s | 774 ms | 81 (8.1 s) | 15.6 s | 25.7 s |
+
+Steps (ms): town meshing 15408, world 2286, hero 162, shaders 4972; depth 25
+map 502, hero 138, world 2538, monsters 2956, summons 620, shaders 8447.
+Town's `buildTown` is paced now (longest block 466, was 2589).
+
 ## For the owner to test
 
 (Add one line per item: what to try and what should happen.)

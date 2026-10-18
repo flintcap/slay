@@ -370,6 +370,10 @@ async function run(name: string): Promise<boolean> {
     step(dt);
     t += dt;
   }
+  // The game's renderer leaves out every draw whose shader is not built yet
+  // (`ShaderGate`), the post chain included, so one cold frame came out
+  // black. Build what this frame needs first, the way the load curtain does.
+  await renderer.warm(scene, camera, clock, 120000);
   renderer.render(scene, camera, dt, clock);
   await new Promise((r) => requestAnimationFrame(() => r(null)));
   return true;

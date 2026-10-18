@@ -67,6 +67,12 @@ const SEED = Number(arg('seed') ?? 424242);
 const SAVE = process.argv.includes('--save');
 const HEADED = process.argv.includes('--headed');
 const BASELINE = path.resolve('tools/perf-frames.json');
+// --why: log every pipeline from the load on, and for each one made in play
+// print how its cache key differs from the nearest one made at load.
+const WHY = process.argv.includes('--why');
+// --draws: draw calls a frame by kind (the object name up to its first
+// colon or digit run), main view and shadow maps apart.
+const DRAWS = process.argv.includes('--draws');
 
 const server = await serveSingle(PORT, arg('dir') ?? 'dist-single');
 const profileDir = mkdtempSync(path.join(tmpdir(), 'slay-frames-'));
@@ -114,10 +120,48 @@ await context.addInitScript((PROFILE_UP) => {
 }, PROFILE);
 
 /** In the page: put the hero where the test plays. */
-async function setUp({ where, seed }) {
+async function setUp({ where, seed, why }) {
   const S = window.SLAY;
   const engine = S.engine;
   const raf = () => new Promise((r) => requestAnimationFrame(r));
+  const pipes = engine.renderer.gl._pipelines;
+  if (why && pipes && !window.__pipeLog) {
+    // Every pipeline made from here on: who drew it and each part of its key.
+    const log = (window.__pipeLog = []);
+    const orig = pipes._getRenderPipeline;
+    pipes._getRenderPipeline = function (ro, sv, sf, cacheKey, ...rest) {
+      const key = cacheKey || this._getRenderCacheKey(ro, sv, sf);
+      if (!this.caches.has(key)) {
+        const o = ro.object;
+        const m = ro.material;
+        let mat = '';
+        let dyn = '';
+        try {
+          mat = String(ro.getMaterialCacheKey());
+          dyn = String(ro.getDynamicCacheKey());
+        } catch {
+          /* half-built */
+        }
+        log.push({
+          t: performance.now(),
+          who: `${o?.name || o?.parent?.name || o?.type}/${m?.name || m?.type}`,
+          cam: ro.camera?.type ?? '?',
+          target: ro.renderTarget ? ro.renderTarget.texture?.name || 'target' : '',
+          v: sv.id,
+          f: sf.id,
+          vlen: sv.code?.length ?? 0,
+          flen: sf.code?.length ?? 0,
+          back: key.split(',').slice(2).join(','),
+          mat,
+          dyn,
+          scale: o?.matrixWorld ? Math.sign(o.matrixWorld.determinant()) : 0,
+          shadow: `${o?.castShadow ? 'c' : ''}${o?.receiveShadow ? 'r' : ''}`,
+          pass: ro.passId ?? '',
+        });
+      }
+      return orig.call(this, ro, sv, sf, cacheKey, ...rest);
+    };
+  }
   localStorage.clear();
   S.save.hardReset();
   S.debug.makeCharacter('warden', 30, seed);
@@ -166,7 +210,7 @@ async function setUp({ where, seed }) {
 }
 
 /** In the page: play `n` frames (fight, or walk a loop in town) and measure them. */
-async function play({ n, settleMs, settleFrames, fight }) {
+async function play({ n, settleMs, settleFrames, fight, byKind }) {
   const S = window.SLAY;
   const e = S.engine;
   const F = window.__frames;
@@ -251,6 +295,20 @@ async function play({ n, settleMs, settleFrames, fight }) {
       return out;
     };
   }
+  const kinds = new Map();
+  const backend = e.renderer.gl.backend;
+  const draw0 = backend.draw;
+  if (byKind) {
+    backend.draw = function (ro, ...rest) {
+      const o = ro.object;
+      let nm = o?.name || o?.parent?.name || o?.type || '?';
+      nm = nm.replace(/[:#].*$/, '').replace(/\d+$/, '') || '?';
+      const shadow = !!ro.material?.isShadowPassMaterial;
+      const k = `${shadow ? 'shadow ' : ''}${nm}${o?.isInstancedMesh ? ' (inst)' : o?.isBatchedMesh ? ' (batch)' : ''}`;
+      kinds.set(k, (kinds.get(k) ?? 0) + 1);
+      return draw0.call(this, ro, ...rest);
+    };
+  }
   if (window.__profileMeasured) console.profile('measured');
   const start = performance.now();
   let last = start;
@@ -273,10 +331,42 @@ async function play({ n, settleMs, settleFrames, fight }) {
   }
   if (window.__profileMeasured) console.profileEnd('measured');
   if (getPipe) pipes._getRenderPipeline = getPipe;
+  if (byKind) backend.draw = draw0;
+  const nf = Math.max(1, frames.length);
+  const drawKinds = [...kinds.entries()].map(([k, c]) => [k, Math.round((c / nf) * 10) / 10]).sort((a, b) => b[1] - a[1]);
   info.autoReset = auto;
   input.mouseRight = false;
   input.mouseLeft = false;
   const end = performance.now();
+  // --why: each pipeline made while measuring next to the closest one made
+  // before it for the same draw (or material), with what differs.
+  const why = [];
+  const plog = window.__pipeLog;
+  if (plog) {
+    const late = plog.filter((r) => r.t >= start && r.t <= end);
+    const early = plog.filter((r) => r.t < start);
+    const fields = ['who', 'cam', 'target', 'v', 'f', 'vlen', 'flen', 'back', 'dyn', 'scale', 'shadow', 'pass'];
+    for (const r of late) {
+      const mname = r.who.split('/').slice(1).join('/');
+      const pool = early.filter((x) => x.who === r.who);
+      const cands = pool.length ? pool : early.filter((x) => x.who.split('/').slice(1).join('/') === mname);
+      const score = (x) => fields.filter((k) => x[k] === r[k]).length + (x.mat === r.mat ? 1 : 0);
+      const best = cands.sort((a, b) => score(b) - score(a))[0];
+      if (!best) {
+        why.push(`${r.who} (${r.cam}${r.target ? ' @' + r.target : ''}): nothing like it made at load (${pool.length} same draw, ${cands.length} same material)`);
+        continue;
+      }
+      const diff = fields.filter((k) => best[k] !== r[k]).map((k) => `${k}: ${String(best[k]).slice(0, 80)} -> ${String(r[k]).slice(0, 80)}`);
+      if (best.mat !== r.mat) {
+        const a = best.mat.split(',');
+        const b = r.mat.split(',');
+        const at = [];
+        for (let k = 0; k < Math.max(a.length, b.length); k++) if (a[k] !== b[k]) at.push(`#${k} ${a[k]}->${b[k]}`);
+        diff.push(`mat: ${at.slice(0, 8).join(' ')}`);
+      }
+      why.push(`${r.who} (${r.cam}${r.target ? ' @' + r.target : ''}) vs load ${best.who}: ${diff.join('; ') || 'same key (released and made again)'}`);
+    }
+  }
   const stats = (list) => {
     const s = [...list].sort((a, b) => a - b);
     const q = (f) => (s.length ? s[Math.min(s.length - 1, Math.floor(f * s.length))] : 0);
@@ -303,6 +393,8 @@ async function play({ n, settleMs, settleFrames, fight }) {
     programs: info.programs?.length ?? 0,
     // What each program made while playing was for: three names a program
     // after its material type or shader name.
+    why,
+    drawKinds,
     newPrograms: [...(info.programs ?? []).filter((q) => !had.has(q)).map((q) => String(q.name ?? '?') + ' ' + String(q.cacheKey ?? '').slice(0, 60)), ...made],
   };
 }
@@ -316,7 +408,7 @@ try {
   await page.waitForFunction(() => window.SLAY?.engine?.currentSceneId === 'title', null, { timeout: 900000, polling: 200 });
   console.log(`=== ${VW}x${VH}, ${FRAMES} frames each, ${HEADED ? 'GPU' : 'software rendering'} ===`);
   for (const where of ONLY) {
-    const setup = await page.evaluate(setUp, { where, seed: SEED });
+    const setup = await page.evaluate(setUp, { where, seed: SEED, why: WHY });
     const cdp = PROFILE ? await page.context().newCDPSession(page) : null;
     let measured = null;
     if (cdp) {
@@ -325,7 +417,7 @@ try {
       measured = new Promise((res) => cdp.once('Profiler.consoleProfileFinished', (ev) => res(ev.profile)));
       await page.evaluate(() => (window.__profileMeasured = true));
     }
-    const r = await page.evaluate(play, { n: FRAMES, settleMs: SETTLE_MS, settleFrames: SETTLE_FRAMES, fight: where !== 'town' });
+    const r = await page.evaluate(play, { n: FRAMES, settleMs: SETTLE_MS, settleFrames: SETTLE_FRAMES, fight: where !== 'town', byKind: DRAWS });
     if (cdp) {
       const profile = await measured;
       const byId = new Map(profile.nodes.map((nd) => [nd.id, nd]));
@@ -366,6 +458,8 @@ try {
     console.log(`  cpu     ${f(r.cpu)}`);
     console.log(`  draw calls ${r.drawCalls}, triangles ${r.triangles}, programs ${r.programs}, pipelines made while playing ${r.links}, uploaded while playing ${r.texKB} KB`);
     for (const n of r.newPrograms) console.log(`  new while playing: ${n}`);
+    for (const n of r.why ?? []) console.log(`  why: ${n}`);
+    if (r.drawKinds?.length) console.log(`  draws by kind: ${r.drawKinds.slice(0, 30).map(([k, c]) => `${k} ${c}`).join(', ')}`);
     for (const [k, ms] of r.topSelf ?? []) console.log(`  self ${String(ms).padStart(6)} ms  ${k}`);
     for (const c of r.callers ?? []) console.log(`  via ${c}`);
     if (PROFILE) for (const u of r.topUploads.slice(0, 2)) console.log(`  upload ${u}`);
