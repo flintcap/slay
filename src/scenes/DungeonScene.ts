@@ -1743,10 +1743,10 @@ export class DungeonScene extends GameScene {
       this.boss = null;
       onBossKilled(this.run.quest, b.defId);
       // 'boss:killed' and 'enemy:killed' are raised once, by the body (Boss.die / Enemy.die).
-      this.grantKill(b.defId, 'boss', 'demon', b.root.position, this.run.depth + 6);
-      // Boss death is the run's payoff: a real burst of loot.
-      const drops = rollDrops(this.run.depth + 8, 'boss', this.rng, this.player.stats.magicFind, this.player.stats.goldFind);
-      for (const item of drops.items) this.dropItem(item, b.root.position);
+      // Boss death is the run's payoff: a real burst of loot, rolled once, in
+      // grantKill (it was also rolled a second time here, so every boss
+      // dropped twice its loot).
+      this.grantKill(b.defId, 'boss', 'demon', b.root.position, this.run.depth + 8);
       // Each boss carries a few uniques of its own, and drops them more than anything else does.
       const sig = rollSignature(b.defId, this.run.depth + 8, this.rng, SIGNATURE_CHANCE.boss, getBoss(b.defId)?.signature);
       if (sig) this.dropItem(sig, b.root.position);
