@@ -64,8 +64,8 @@ export const CLASSES: CharClassDef[] = [
       'A mage chooses which of the three to be: burn a room and let it cook, chain one bolt through the whole ' +
       'pack, or lock them in ice and break them where they stand. Robes optional. Eyebrows are a luxury.',
     base: { strength: 15, dexterity: 20, vitality: 20, energy: 33 },
-    perLevel: { life: 1.8, mana: 2.1, attackRating: 3 },
-    lifePerVit: 2.8,
+    perLevel: { life: 2.4, mana: 2.1, attackRating: 3 },
+    lifePerVit: 3.4,
     manaPerEnr: 1.9,
     trees: ['conflagration', 'tempest', 'frost'],
     color: 0x9a8aff,

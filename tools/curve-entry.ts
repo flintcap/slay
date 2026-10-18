@@ -534,9 +534,10 @@ function fight(
       // else is ready, otherwise the shortest reach in the rotation.
       // Casters and archers hold their range rather than walk in for a nova.
       // A caster has no basic attack (owner's rule), so it holds at the reach
-      // of its own spells, not at a bolt's 9m it cannot throw.
+      // of its longest spell, not at a bolt's 9m it cannot throw; a nova
+      // goes off when something walks into it.
       const noBasic = weaponStyle(player) === 'caster';
-      const want = noBasic && rotation.length ? Math.min(...rotation.map(reachOf)) : basicReach > 3 ? basicReach : Math.min(basicReach, ...rotation.map(reachOf));
+      const want = noBasic && rotation.length ? Math.max(...rotation.map(reachOf)) : basicReach > 3 ? basicReach : Math.min(basicReach, ...rotation.map(reachOf));
       if (nd > want) player.moveTo(target.x, target.z);
       acts.move++;
     }
