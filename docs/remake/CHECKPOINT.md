@@ -64,8 +64,13 @@ Update this file and push it after every finished step.
      both rings when both are worn (equipPlan in sim/Character is shared
      with equipItem). HUD key caps, potion titles, level-up and [E] prompts
      follow rebinds; Journal, Loot filter and Legacy can be rebound.
-   - Interface, open: panel raising, est. DPS.
-   - Art and sound, Engine: not started.
+   - Interface, done too: clicking a panel raises it over the others
+     (order set on the wraps, renumbered from a stack, stays under fade and
+     modals); Est. DPS and the Character attack line share
+     ui/AttackEstimate.ts (skill power, crits at average, swing/cast/
+     cooldown pace, plain weapon attack when no skill, none for casters).
+   - Interface group finished.
+   - Art and sound, Engine: next.
 
 ## Next
 

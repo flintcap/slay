@@ -55,6 +55,7 @@ import { potionKind } from '../sim/Potions';
 import { moveBetween, sortInventory, splitStack, stackCount, setStackCount } from '../sim/Inventory';
 import { findFit, firstFreeCell, fitsAt, freeCells, itemSize, INV_COLS, INV_ROWS } from '../sim/Grid';
 import { uiSfx } from './Sfx';
+import { estimateAttack } from './AttackEstimate';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -967,9 +968,19 @@ export class InventoryPanel {
     clear(this.statRail);
     if (!st) return;
     const s = section('At a Glance', 'target');
-    const dps = ((st.minDamage + st.maxDamage) / 2) * Math.max(0.1, st.attackSpeed / 100 + 1);
-    s.body.appendChild(statLine('Damage', `${fmt(st.minDamage)} – ${fmt(st.maxDamage)}`, { icon: 'sword' }));
-    s.body.appendChild(statLine('Est. DPS', fmt(dps), { icon: 'crit' }));
+    // The right-click attack as it really lands: skill power, crits and its
+    // own pace (swing, cast or cooldown), not the bare weapon roll.
+    const est = attempt(() => estimateAttack(c, st), null);
+    const what = est?.def ? est.def.name : 'your weapon attack';
+    s.body.appendChild(statLine('Damage', est ? `${fmt(Math.round(est.min))} – ${fmt(Math.round(est.max))}` : '—', { icon: 'sword', hint: `<p>One hit of ${what}, before the target's defences.</p>` }));
+    s.body.appendChild(
+      statLine('Est. DPS', est ? fmt(Math.round(est.dps)) : '—', {
+        icon: 'crit',
+        hint: est
+          ? `<p>Damage a second from ${what} on one target, with crits at their average. Its armour and resistances come off after.</p>`
+          : '<p>Put a spell on the right mouse button to see its damage.</p>',
+      }),
+    );
     s.body.appendChild(statLine('Defense', fmt(st.defense), { icon: 'defense' }));
     s.body.appendChild(statLine('Life', fmt(st.life), { icon: 'life' }));
     s.body.appendChild(statLine('Mana', fmt(st.mana), { icon: 'mana' }));

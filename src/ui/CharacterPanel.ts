@@ -12,18 +12,8 @@ import { DAMAGE_TYPES, RESIST_OF } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { computeStats, xpForLevel } from '../sim/Stats';
-import { allocateStat, skillRank } from '../sim/Character';
-import {
-  damageRange,
-  effectiveResist,
-  hitChance,
-  RESIST_HARD_CAP,
-  RESIST_SOFT_CAP,
-  skillDamageScale,
-  usualAttackRating,
-} from '../sim/Combat';
-import { SKILL_BY_ID } from '../data/skills';
-import { burstGrowth } from '../data/skillPower';
+import { allocateStat } from '../sim/Character';
+import { effectiveResist, hitChance, RESIST_HARD_CAP, RESIST_SOFT_CAP, usualAttackRating } from '../sim/Combat';
 import {
   scheduleRefresh,
   Panel,
@@ -47,6 +37,7 @@ import {
   countTo,
 } from './Widgets';
 import { uiSfx } from './Sfx';
+import { estimateAttack } from './AttackEstimate';
 
 type AttrKey = 'strength' | 'dexterity' | 'vitality' | 'energy';
 
@@ -355,27 +346,23 @@ export class CharacterPanel {
   private renderAttack(c: Character, st: Stats): void {
     const body = this.colOffense.querySelector('.section-body');
     if (!body) return;
-    const id = c.primaryAttack;
-    const def = id ? SKILL_BY_ID[id] : undefined;
-    const rank = id ? skillRank(c, id) : 0;
     let label = 'Attack';
     let value = '—';
     let hint = '<p>Put a skill on the right mouse button to see what it hits for.</p>';
-    if (def && rank > 0 && def.targeting !== 'passive') {
-      const params = def.params ?? {};
-      const num = (k: string, d: number): number => (typeof params[k] === 'number' ? (params[k] as number) : d);
-      const scale = attempt(
-        () => skillDamageScale(c.skills, st.skillLevels, def.id) * (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num)),
-        1,
-      );
-      const type: DamageType = def.damageType ?? 'physical';
-      const r = damageRange(st, scale, type);
+    const est = attempt(() => estimateAttack(c, st), null);
+    if (est?.def) {
+      const { def, rank, scale, type } = est;
       label = def.name;
-      value = `${fmtInt(Math.round(r.min))}–${fmtInt(Math.round(r.max))}`;
+      value = `${fmtInt(Math.round(est.min))}–${fmtInt(Math.round(est.max))}`;
       const crit = Math.max(100, st.critDamage);
       hint =
         `<p>Your right-click skill, rank ${rank}. Each hit lands for <b>${value}</b> ${RESIST_LABEL[type].toLowerCase()} damage before the target's defences.</p>` +
-        `<p class="tt-explain-how">Weapon damage × ${fmt(Math.round(scale * 100))}% skill power, with Enhanced Damage and your elemental adds. A critical hit lands for ${fmt(crit)}% of it.</p>`;
+        `<p class="tt-explain-how">Weapon damage × ${fmt(Math.round(scale * 100))}% skill power, with Enhanced Damage and your elemental adds. A critical hit lands for ${fmt(crit)}% of it. About <b>${fmtInt(Math.round(est.dps))}</b> damage a second to one target, crits counted.</p>`;
+    } else if (est) {
+      value = `${fmtInt(Math.round(est.min))}–${fmtInt(Math.round(est.max))}`;
+      hint =
+        `<p>Your weapon attack. Each hit lands for <b>${value}</b> physical damage before the target's defences.</p>` +
+        `<p class="tt-explain-how">About <b>${fmtInt(Math.round(est.dps))}</b> damage a second to one target, crits counted. Drag a skill onto the right mouse button to use it instead.</p>`;
     }
     const line = statLine(label, value, { icon: 'sword', hint, title: label });
     line.classList.add('statline-attack');

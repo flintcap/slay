@@ -998,7 +998,16 @@ export interface PanelOpts {
   quiet?: boolean;
 }
 
-let panelZ = 40;
+/** The `--z-panel` layer: open panels stack upward from here. */
+const PANEL_Z = 40;
+/**
+ * Open panels, bottom to top. Each panel's wrap is its own layer, so the
+ * order has to be set on the wraps: a z-index on the frame inside only sorted
+ * it within its own wrap, and clicking a panel never lifted it over another.
+ * Renumbering from the list keeps every panel well under the fade and modal
+ * layers however many times they are clicked.
+ */
+const panelStack: Panel[] = [];
 
 /**
  * The filigree layer for any framed surface: four corners and two crests.
@@ -1136,8 +1145,11 @@ export class Panel {
   }
 
   private raise(): void {
-    panelZ += 1;
-    this.frame.style.zIndex = String(panelZ);
+    const at = panelStack.indexOf(this);
+    if (at === panelStack.length - 1 && at >= 0) return;
+    if (at >= 0) panelStack.splice(at, 1);
+    panelStack.push(this);
+    panelStack.forEach((p, i) => (p.root.style.zIndex = String(PANEL_Z + i)));
   }
 
   private enableDrag(): void {
@@ -1207,6 +1219,8 @@ export class Panel {
     if (!this.openState) return;
     this.openState = false;
     this.root.classList.remove('is-open');
+    const at = panelStack.indexOf(this);
+    if (at >= 0) panelStack.splice(at, 1);
     if (!this.opts.quiet) uiSfx('ui.close', 0.8);
     this.opts.onClose?.();
     hoverHooks.hide?.();
