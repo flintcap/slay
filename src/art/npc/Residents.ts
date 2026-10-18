@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import { HeroAnimator } from '../hero/Animator';
 import { Random } from '../../core/RNG';
 import { buildFolk, type FolkModel, type NpcLookId } from './Folk';
+import { addSkinnedShadowBody } from '../../core/ShadowBodies';
 
 /** Where a resident stands, and the round they walk if they walk one. */
 export interface ResidentPlace {
@@ -100,7 +101,7 @@ function crownOver(root: THREE.Object3D, head: THREE.Vector3): number {
   let top = head.y + 0.12;
   root.traverse((o) => {
     const m = o as THREE.Mesh;
-    if (!m.isMesh || !m.geometry?.getAttribute('position')) return;
+    if (!m.isMesh || m.userData.shadowOnly || !m.geometry?.getAttribute('position')) return;
     const n = m.geometry.getAttribute('position').count;
     if ((m as THREE.SkinnedMesh).isSkinnedMesh) {
       for (let i = 0; i < n; i++) {
@@ -159,6 +160,12 @@ export class Residents {
       m.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 2.4);
       m.frustumCulled = true;
     });
+    // The resident's shadow in one draw, not one per part (`core/ShadowBodies.ts`).
+    const shade = addSkinnedShadowBody(folk.root, folk.hero.rig.skeleton, `npc-${folk.id}:shadow`);
+    if (shade) {
+      shade.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 2.4);
+      shade.frustumCulled = true;
+    }
     parent.add(folk.root);
     const anim = new HeroAnimator(folk.bones);
     anim.setGrip(folk.grip);

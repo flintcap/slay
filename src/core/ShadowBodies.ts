@@ -142,3 +142,34 @@ export function mergeShadowParts(parts: Array<{ geo: THREE.BufferGeometry; matri
   out.computeBoundingSphere();
   return out;
 }
+
+/**
+ * Gives a skinned body that never changes its parts one shadow body: every
+ * shown part on `skeleton` (bound in the rig's own space) whose shadow
+ * `castsPlainShadow` can stand in for joins it and casts no shadow itself.
+ * The body is added under `root`. Null when fewer than two parts join.
+ */
+export function addSkinnedShadowBody(root: THREE.Object3D, skeleton: THREE.Skeleton, name: string): THREE.SkinnedMesh | null {
+  const parts: THREE.SkinnedMesh[] = [];
+  const identity = new THREE.Matrix4();
+  root.traverse((o) => {
+    const sm = o as THREE.SkinnedMesh;
+    if (!sm.isSkinnedMesh || !sm.castShadow || sm.userData.shadowOnly) return;
+    if (sm.skeleton !== skeleton || sm.bindMode !== 'attached' || !sm.bindMatrix.equals(identity)) return;
+    for (let p: THREE.Object3D | null = sm; p && p !== root; p = p.parent) if (!p.visible) return;
+    if (castsPlainShadow(sm)) parts.push(sm);
+  });
+  if (parts.length < 2) return null;
+  const geo = mergeShadowParts(parts.map((m) => ({ geo: m.geometry })), true);
+  if (!geo) return null;
+  const body = new THREE.SkinnedMesh(geo, shadowBodyMaterial());
+  body.name = name;
+  body.userData.shadowOnly = true;
+  body.castShadow = true;
+  body.receiveShadow = false;
+  body.frustumCulled = false;
+  root.add(body);
+  body.bind(skeleton, new THREE.Matrix4());
+  for (const m of parts) m.castShadow = false;
+  return body;
+}

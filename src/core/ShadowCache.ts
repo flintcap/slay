@@ -27,7 +27,8 @@ import * as THREE from 'three/webgpu';
 interface Still {
   obj: THREE.Object3D;
   matrix: THREE.Matrix4;
-  /** Instance matrices' version and count, for instanced casters. */
+  /** Instance matrices (their attribute, version and count), for instanced casters. */
+  attr: THREE.BufferAttribute | null;
   version: number;
   count: number;
   /** Shown when the kept map was drawn. */
@@ -93,6 +94,7 @@ export function markStaticShadows(scene: THREE.Scene, root: THREE.Object3D): num
     list.push({
       obj: o,
       matrix: o.matrixWorld.clone(),
+      attr: im.isInstancedMesh ? im.instanceMatrix : null,
       version: im.isInstancedMesh ? im.instanceMatrix.version : 0,
       count: im.isInstancedMesh ? im.count : 0,
       shown: false,
@@ -114,6 +116,13 @@ function unchanged(list: Still[], scene: THREE.Object3D): boolean {
     const s = list[i]!;
     const where = placeOf(s.obj, scene);
     const im = s.obj as THREE.InstancedMesh;
+    // The shader gate swaps an instanced mesh's matrices into a storage
+    // attribute on its first draw (`ShaderGate.ts`): same matrices, new version.
+    if (im.isInstancedMesh && im.instanceMatrix !== s.attr) {
+      s.attr = im.instanceMatrix;
+      s.version = im.instanceMatrix.version;
+      same = false;
+    }
     const moved =
       where === 'gone' ||
       !s.obj.castShadow ||
