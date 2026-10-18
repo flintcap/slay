@@ -257,6 +257,30 @@ effects.
 - **shared** (small additive edits only): `src/core/Events.ts` (new events),
   `src/types.ts`, `src/main.ts`, `CONTRACTS.md`, `ASSETS.md`.
 
+### Wave 4 file ownership, wave two
+
+- **looks**: the post chain and grade parts of `src/core/Renderer.ts`,
+  `src/core/Lighting.ts`, `src/core/ShadowNodes.ts` (how shadows look; speed
+  part 2 later owns how often they redraw), `src/world/Lighting.ts`,
+  `src/art/Materials.ts`, `WorldMaterial.ts`, `SurfaceLibrary.ts`,
+  `TextureSets.ts`, the look fields (colours, fog, light) of existing biomes
+  in `src/world/Biomes.ts`, `public/assets/textures/world/`, and the
+  `warmup()` stand-ins for the late looks listed in `looks.md`.
+- **effects**: `src/fx/*` (including `fx/kit`, `fx/paladin`, `fx/shifter`,
+  `SkillLooks.ts`), `public/assets/textures/fx/`, and `warmup()` stand-ins
+  for effects.
+- **mapvariety**: `src/world/MapGen.ts`, `DungeonGen.ts`, `Layouts.ts`,
+  `src/world/zones/*`, `Props.ts`, `Terrain.ts`, `Town.ts`, `TownLife.ts`,
+  `src/world/DungeonBuilder.ts` (new shapes; keep the paced steps), new
+  biome entries and run theme data in `Biomes.ts`, the town build pacing in
+  `src/scenes/TownScene.ts`, new weather files.
+- `warmup()` in `src/scenes/DungeonScene.ts` is shared: additive stand-ins
+  only. `Biomes.ts` is shared between looks (existing look fields) and
+  mapvariety (new entries and themes): small edits, rebase often.
+- Weather uses the effects particle kit as it is; requests go in
+  `effects.md` "Notes for resume". Run themes may set a light tint; looks
+  reads it if present and never requires it.
+
 ### Wave 4 contracts
 
 - **speed → ui (loading progress)**: speed adds the event
