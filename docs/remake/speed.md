@@ -16,14 +16,17 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Milestones
 
-- [ ] 1. Baseline, measured once: town load and map load at depths 1, 12
+- [x] 1. Baseline, measured once: town load and map load at depths 1, 12
   and 25 (time to playable and longest main-thread block), plus fight frame
   stats (p95, p99, worst) from one check-lag or check-perf run. Write the
-  numbers under "Notes for resume".
-- [ ] 2. No frozen browser while loading: move map build work off the main
+  numbers under "Notes for resume". (wip(speed): baseline load numbers,
+  load:progress event, check-loadtime --depths)
+- [x] 2. No frozen browser while loading: move map build work off the main
   thread (worker) where it is pure data, spread GPU uploads and mesh
   building across frames, and emit `'load:progress'` (see PLAN.md Wave 4
-  contracts; add it to `Events.ts` and `CONTRACTS.md`).
+  contracts; add it to `Events.ts` and `CONTRACTS.md`). (wip(speed): paced
+  floor build, bake workers ...; bake jobs name the monster by id ...;
+  static floor build yields per chunk)
 - [ ] 3. Shaders compiled at load, not in play: `compileAsync` for the level
   and its monster list behind the loading screen, so first hits and first
   monsters do not stutter.
@@ -40,9 +43,11 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Next up
 
-1. Do Setup in PROTOCOL.md. Set `Status: in progress`.
-2. Milestone 1: read `tools/check-lag.mjs` and `tools/check-perf.mjs` to
-   see what they measure, then take the baseline with the smallest runs.
+1. Milestone 3: `npx vite build` is not enough for the checkers; run
+   `node tools/bundle-artifact.mjs`, then
+   `SLAY_PORT=4341 flock /tmp/slay-browser.lock timeout 2400 node tools/check-frames.mjs --only=map,boss`
+   and read "pipelines made while playing" (now counted on WebGPU). Zero
+   means first monsters and hits build nothing in play.
 
 ## Notes for resume
 
@@ -65,9 +70,37 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   the hero's gear meshed on the main thread (`refreshEquipmentVisuals`,
   2.2 s) and the town build are the two big blocks.
 
+- Milestone 2 result (run 3, same command as the baseline). Longest
+  main-thread block: depth 1 3650 -> 985 ms, depth 12 5258 -> 543 ms,
+  depth 25 8327 -> 845 ms (before the per-chunk yield, which should cut the
+  floor's 845 further; not re-measured). Monster step at depth 25: 2.5 s in
+  tasks of at most 283 ms (was one 7.6 s task). Steps at depth 25: map 0.6 s,
+  hero 0.1, world 3.1, monsters 2.5, shaders 10.5 s, ready at 17.3 s. Wall
+  times here are not comparable to the baseline's: the phase time includes
+  ten frames after arrival, each 1 to 3 s in software, and the machine is
+  shared. 59 of 60 looks came from the bake workers.
+- Town: the hero's gear now meshes in a worker (hero step 2.2 s -> 0.2 s).
+  Left: `buildTown` is one 3.1 s task (`world/Town.ts`, props and ground
+  own it, both done). Request for finish: make `buildTown` yield between
+  buildings and residents (a generator like `DungeonMesh.steps`), then
+  TownScene can run it paced. The 'meshing' step (19 s here) is the page
+  idle waiting for the townsfolk workers; with the title and select screens
+  first (a real player) they have usually finished.
+- Checkers fixed for WebGPU: check-frames counts draws, pipelines made in
+  play and texture uploads from the GPU API (it read WebGL calls and showed
+  0); check-perf and check-lag read `info.render.drawCalls` (they read
+  `render.calls`, which on WebGPU counts render passes since start). The
+  saved baseline in `tools/perf-frames.json` predates this: re-save it.
+
 ## For the owner to test
 
 (Add one line per item: what to try and what should happen.)
+
+- Clear site data, start a new character, go to town, then into a map at a
+  deep tier: the loading bar and the page should keep moving (no "page not
+  responding", other tabs stay smooth); compare the load time with before.
+- Enter a few maps in a row: the second and later loads should be faster
+  (monster bodies come from the bake workers and the stored cache).
 
 ## Handover
 
