@@ -775,7 +775,7 @@ export class DungeonScene extends GameScene {
     // else they were buried under the floor or floating over the one below.
     this.decals.setGround((x, z) => this.mesh.floorY(x, z));
     this.nav = new NavGrid(this.level);
-    this.lighting = applyBiomeLighting(this.scene, this.biome, this.level?.variant);
+    this.lighting = applyBiomeLighting(this.scene, this.biome, this.level?.variant, this.level?.runTheme);
     this.heroLightBase = this.lighting.hero.intensity;
     if (this.heroLight) {
       this.heroLight.color.setHex(this.lighting.hero.color);

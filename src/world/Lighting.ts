@@ -164,6 +164,25 @@ export function lightMood(biome: BiomeDef, art: BiomeArt): LightMood {
   };
 }
 
+/**
+ * A mood under a run theme's light (`Themes.ts`: cold blue-green when
+ * flooded, moss green when overgrown, ember when burnt, pale violet when
+ * haunted). The fill and the fog lean most, the key light half as much, so
+ * the theme reads as the air of the place rather than a coloured lamp.
+ * `light` null leaves the mood as it is.
+ */
+export function themedMood(mood: LightMood, light: { tint: number; strength: number } | null): LightMood {
+  if (!light) return mood;
+  const k = Math.max(0, Math.min(1, light.strength));
+  return {
+    ...mood,
+    sky: mixHex(mood.sky, light.tint, k),
+    ground: mixHex(mood.ground, light.tint, k * 0.5),
+    key: mixHex(mood.key, light.tint, k * 0.5),
+    fog: mixHex(mood.fog, light.tint, k * 0.6),
+  };
+}
+
 /** Unit offset toward a light at `elevation` degrees, bearing `azimuth`. */
 export function lightDirection(elevation: number, azimuth: number): [number, number, number] {
   const e = (elevation * Math.PI) / 180;

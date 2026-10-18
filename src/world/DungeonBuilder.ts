@@ -39,7 +39,8 @@ import {
   isWalkableValue,
 } from './Layouts';
 import { buildTerrain, isOutdoorLevel, type TerrainBuild } from './Terrain';
-import { flameColour, lightDirection, lightMood } from './Lighting';
+import { flameColour, lightDirection, lightMood, themedMood } from './Lighting';
+import { runTheme, themeFits } from './Themes';
 import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './DungeonGen';
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
 
@@ -445,9 +446,12 @@ export function applyBiomeLighting(
   biome: BiomeDef,
   /** The run's biome variant, which is mostly a lighting change. */
   variant?: string,
+  /** The map's run theme (`Themes.ts`): its light tint, where it suits the biome. */
+  theme?: string,
 ): BiomeLighting {
   const art = biomeArt(biome.id, variant);
-  const mood = lightMood(biome, art);
+  const t = runTheme(theme);
+  const mood = themedMood(lightMood(biome, art), themeFits(t, biome.id) ? t.light : null);
   const open = art.ceiling === 'open';
 
   const fog = new THREE.FogExp2(mood.fog, mood.fogDensity);
