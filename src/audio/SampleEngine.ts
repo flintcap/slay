@@ -118,7 +118,8 @@ export class SampleEngine {
     }
     this.buildGraph(this.ctx);
     this.applySettings(settings);
-    this.installUiSounds();
+    // Interface sounds (hover, click, panel open and close) come from
+    // src/ui/Sfx.ts as plain 'sfx' events.
     this.installGameHooks();
 
     // Browsers hold the context suspended until the user interacts. Latch on
@@ -441,41 +442,6 @@ export class SampleEngine {
   // -------------------------------------------------------------------------
   // Hooks
   // -------------------------------------------------------------------------
-
-  /** Buttons click and tabs tick without every panel having to remember to. */
-  private installUiSounds(): void {
-    const isButton = (el: Element | null): Element | null =>
-      el?.closest?.('button, [role="button"], .btn, .tab, [data-sfx]') ?? null;
-    let lastHover: Element | null = null;
-    const down = (e: Event): void => {
-      const b = isButton(e.target as Element | null);
-      if (!b) return;
-      if ((b as HTMLButtonElement).disabled || b.getAttribute('aria-disabled') === 'true') {
-        this.play('ui.error', { volume: 0.6 });
-        return;
-      }
-      const tag = b.getAttribute('data-sfx');
-      this.play(tag ?? (b.classList.contains('tab') || b.getAttribute('role') === 'tab' ? 'ui.tab' : 'ui.click'), { volume: 0.8 });
-    };
-    const over = (e: Event): void => {
-      const b = isButton(e.target as Element | null);
-      if (!b || b === lastHover) return;
-      lastHover = b;
-      this.play('ui.hover', { volume: 0.5 });
-    };
-    document.addEventListener('pointerdown', down, { capture: true, passive: true });
-    document.addEventListener('pointerover', over, { capture: true, passive: true });
-    this.unsubs.push(
-      () => document.removeEventListener('pointerdown', down, { capture: true }),
-      () => document.removeEventListener('pointerover', over, { capture: true }),
-      events.on('ui:open', (e) => {
-        if (e.panel !== 'hud') this.play('ui.open', { volume: 0.8 });
-      }),
-      events.on('ui:close', (e) => {
-        if (e.panel !== 'hud') this.play('ui.close', { volume: 0.8 });
-      }),
-    );
-  }
 
   /** Sounds that follow game events rather than a caller asking. */
   private installGameHooks(): void {

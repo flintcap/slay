@@ -77,6 +77,7 @@ export class TitlePanel {
       id: 'title',
       title: '',
       fullscreen: true,
+      quiet: true,
       closable: false,
       draggable: false,
       className: 'panel-titlescreen ttl',

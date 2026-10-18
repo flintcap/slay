@@ -38,6 +38,7 @@ import {
   STAT_ICON,
   countTo,
 } from './Widgets';
+import { uiSfx } from './Sfx';
 
 type AttrKey = 'strength' | 'dexterity' | 'vitality' | 'energy';
 
@@ -284,7 +285,7 @@ export class CharacterPanel {
         const ok = attempt(() => allocateStat(c, key), false);
         if (ok) {
           save.touch();
-          events.emit('sfx', { id: 'ui.click' });
+          uiSfx('ui.click');
           events.emit('ui:refresh', {});
           btn.classList.remove('pop');
           void btn.offsetWidth;

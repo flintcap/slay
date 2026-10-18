@@ -46,6 +46,7 @@ import {
 import { skillIconUri } from '../art/Icons';
 import { SKILL_BY_ID } from '../data/skills';
 import { BURST_POWER, FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } from '../data/skillPower';
+import { uiSfx } from './Sfx';
 
 const CELL_W = 132;
 const CELL_H = 104;
@@ -238,7 +239,7 @@ export class SkillTreePanel {
         for (let i = 0; i < c.hotbar.length; i++) c.hotbar[i] = null;
         c.primaryAttack = null;
         save.touch();
-        events.emit('sfx', { id: 'ui.levelup' });
+        uiSfx('ui.levelup');
         events.emit('toast', { text: `${spent} skill points returned.`, kind: 'good' });
         events.emit('ui:refresh', {});
         this.refresh();
@@ -604,7 +605,7 @@ export class SkillTreePanel {
     // here put the same skill in two slots at once.
     while (c.hotbar.length < 6) c.hotbar.push(null);
     save.touch();
-    events.emit('sfx', { id: 'ui.levelup' });
+    uiSfx('ui.levelup');
     events.emit('ui:refresh', {});
 
     const view = this.nodes.get(s.id);

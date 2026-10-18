@@ -6,7 +6,7 @@ table against the folder.
 
 Layout: `textures/world/<material>/` (ground: floors, walls, terrain),
 `textures/hero/`, `textures/creatures/`, `textures/items/`, `textures/props/`,
-`textures/fx/` (each stream's own), `sounds/`, `music/`. Paths in the table
+`textures/fx/` (each stream's own), `textures/ui/` (grey detail maps the UI lays over its plates; the displacement or roughness map of the source, made grey), `sounds/`, `music/`. Paths in the table
 are relative to `public/assets/`. Textures are WebP (at most 1024 px), sounds
 and music OGG Vorbis.
 
@@ -1203,3 +1203,5 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | `textures/props/masonry/normal.webp` | https://polyhaven.com/a/castle_wall_slates | Rob Tuytel | CC0 1.0 |
 | `textures/props/ironplate/albedo.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
 | `textures/props/ironplate/normal.webp` | https://polyhaven.com/a/metal_plate_02 | Rob Tuytel | CC0 1.0 |
+| `textures/ui/leather.webp` | https://ambientcg.com/view?id=Leather037 | Lennart Demes (ambientCG) | CC0 1.0 |
+| `textures/ui/scratched-metal.webp` | https://ambientcg.com/view?id=Metal049A | Lennart Demes (ambientCG) | CC0 1.0 |

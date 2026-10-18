@@ -54,6 +54,7 @@ import { PaperdollView } from './PaperdollView';
 import { potionKind } from '../sim/Potions';
 import { moveBetween, sortInventory, splitStack, stackCount, setStackCount } from '../sim/Inventory';
 import { findFit, firstFreeCell, fitsAt, freeCells, itemSize, INV_COLS, INV_ROWS } from '../sim/Grid';
+import { uiSfx } from './Sfx';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -576,7 +577,7 @@ export class InventoryPanel {
         this.quietNext = true;
         this.refresh();
         this.grid.playSort();
-        events.emit('sfx', { id: 'ui.click' });
+        uiSfx('ui.click');
       },
     });
     add(packHd, cap, sortBtn.root, gold);
@@ -729,7 +730,7 @@ export class InventoryPanel {
       const target = slots.find((s) => !c.equipment[s]) ?? slots[0];
       const r = doEquip(c, item, target);
       if (!r.ok) events.emit('toast', { text: r.reason ?? 'Cannot equip that', kind: 'bad' });
-      else events.emit('sfx', { id: 'ui.equip' });
+      else uiSfx('ui.equip');
       return;
     }
     this.itemMenu(item, ev);
@@ -749,7 +750,7 @@ export class InventoryPanel {
         return;
       }
       save.touch();
-      events.emit('sfx', { id: 'ui.click' });
+      uiSfx('ui.click');
       events.emit('ui:refresh', {});
       this.refresh();
     });
@@ -823,7 +824,7 @@ export class InventoryPanel {
     }
     invConsumeOne(c, gem);
     save.touch();
-    events.emit('sfx', { id: 'ui.equip' });
+    uiSfx('ui.equip');
     events.emit('toast', {
       text: `${attempt(() => itemDisplayName(gem), 'Gem')} set into ${attempt(() => itemDisplayName(host), 'it')}.`,
       kind: 'good',

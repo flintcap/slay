@@ -34,6 +34,8 @@ import { mountTransitions } from './Transitions';
 import { mountBanners } from './Banners';
 import { runStats } from './RunStats';
 import { mountOnboarding } from './Onboarding';
+import { loadUiSkin } from './Skin';
+import { installUiSfx } from './Sfx';
 import {
   Panel,
   add,
@@ -268,6 +270,8 @@ export function mountUI(engine: Engine): void {
   const root = document.getElementById('ui');
   if (!root) throw new Error('mountUI: #ui element is missing from index.html');
   uiRoot = root;
+  installUiSfx();
+  loadUiSkin();
 
   // --- HUD + tooltip ------------------------------------------------------
   const hud = new HUD(engine);

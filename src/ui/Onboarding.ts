@@ -21,6 +21,7 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { remapKey, keyFor } from '../core/Access';
 import { keyLabel } from './AccessibilitySettings';
+import { uiSfx } from './Sfx';
 
 /** `{Q}` -> the key the player has bound to the Q action now; names pass through. */
 function boundCap(name: string): string {
@@ -216,7 +217,7 @@ function show(h: Hint): void {
   card.classList.remove('is-done', 'is-out');
   void card.offsetWidth;
   card.classList.add('is-on');
-  events.emit('sfx', { id: 'ui.open', volume: 0.6 });
+  uiSfx('ui.open', 0.6);
 
   clearTimeout(timer);
   if (h.patience) {
@@ -250,7 +251,7 @@ function finish(dismissed = false): void {
     return;
   }
   card.classList.add('is-done');
-  events.emit('sfx', { id: 'ui.select', volume: 0.6 });
+  uiSfx('ui.select', 0.6);
   window.setTimeout(() => {
     if (showing === h) hide();
   }, 900);

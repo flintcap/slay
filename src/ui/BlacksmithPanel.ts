@@ -56,6 +56,7 @@ import {
   PERCENT_STATS,
   type DragPayload,
 } from './Widgets';
+import { uiSfx } from './Sfx';
 
 type ServiceId = 'upgrade' | 'reroll' | 'socket' | 'salvage';
 
@@ -568,7 +569,7 @@ export class BlacksmithPanel {
           card.classList.remove('is-success');
           void card.offsetWidth;
           card.classList.add('is-success');
-          events.emit('sfx', { id: 'craft.success' });
+          uiSfx('craft.success');
           events.emit('toast', { text: `${title} complete.`, kind: 'good' });
           // Worn gear changes the hero's numbers the moment it is improved.
           const worn = Object.values(c?.equipment ?? {}).find((i) => i?.uid === this.selected?.uid);

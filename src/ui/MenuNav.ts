@@ -11,7 +11,6 @@
  * open and close, so several can exist at once without stealing keys.
  */
 
-import { events } from '../core/Events';
 import { remapKey } from '../core/Access';
 
 const FIXED_MENU_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'NumpadEnter', 'Tab', 'Escape']);
@@ -25,6 +24,7 @@ export function menuKey(e: KeyboardEvent): string {
   return FIXED_MENU_KEYS.has(e.code) ? e.code : remapKey(e.code);
 }
 import { div, span, icon } from './Widgets';
+import { uiSfx } from './Sfx';
 
 /** Panels that open over a menu and take its keys while they are up. */
 const NESTED_ON_TOP = new Set(['settings', 'memorial']);
@@ -140,7 +140,7 @@ export class MenuNav {
     if (this.items[i]?.opts.disabled) return;
     this.index = i;
     this.paint();
-    events.emit('sfx', { id: 'ui.hover' });
+    uiSfx('ui.hover');
   }
 
   private paint(): void {
@@ -155,7 +155,7 @@ export class MenuNav {
     const now = performance.now();
     if (now - this.lastFire < 250) return;
     this.lastFire = now;
-    events.emit('sfx', { id: 'ui.select' });
+    uiSfx('ui.select');
     it.el.classList.remove('is-fired');
     void it.el.offsetWidth;
     it.el.classList.add('is-fired');

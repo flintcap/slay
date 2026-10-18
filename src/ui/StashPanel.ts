@@ -32,6 +32,7 @@ import {
   splitStackDialog,
   type DragPayload,
 } from './Widgets';
+import { uiSfx } from './Sfx';
 
 const TAB_COLS = STASH_COLS;
 const TAB_ROWS = STASH_ROWS;
@@ -115,7 +116,7 @@ export class StashPanel {
         this.quietNext = true;
         this.refresh();
         this.stashGrid.playSort();
-        events.emit('sfx', { id: 'ui.click' });
+        uiSfx('ui.click');
       },
     });
     tabRow.appendChild(sortTab.root);
@@ -365,7 +366,7 @@ export class StashPanel {
         return;
       }
       save.touch();
-      events.emit('sfx', { id: 'ui.click' });
+      uiSfx('ui.click');
       events.emit('ui:refresh', {});
       this.refresh();
     });
@@ -386,7 +387,7 @@ export class StashPanel {
     save.account.stash[free] = item;
     c.inventory[at] = null;
     save.touch();
-    events.emit('sfx', { id: 'ui.click' });
+    uiSfx('ui.click');
     events.emit('ui:refresh', {});
   }
 
@@ -402,7 +403,7 @@ export class StashPanel {
     c.inventory[free] = item;
     save.account.stash[this.tabOffset() + index] = null;
     save.touch();
-    events.emit('sfx', { id: 'ui.click' });
+    uiSfx('ui.click');
     events.emit('ui:refresh', {});
   }
 

@@ -43,6 +43,7 @@ import {
   keycap,
   tip,
 } from './Widgets';
+import { uiSfx } from './Sfx';
 
 const NAME_PARTS_A = [
   'Vor', 'Kael', 'Mor', 'Sil', 'Bran', 'Tyr', 'Dral', 'Ash', 'Eir', 'Gor',
@@ -133,6 +134,7 @@ export class CharSelectPanel {
       id: 'charSelect',
       title: '',
       fullscreen: true,
+      quiet: true,
       closable: false,
       draggable: false,
       className: 'panel-charselect csx',
@@ -149,7 +151,7 @@ export class CharSelectPanel {
     back.className = 'csx-back';
     back.append(icon('chevronLeft', { size: 14 }), span('', 'Title'), keycap('Esc'));
     back.addEventListener('click', () => {
-      events.emit('sfx', { id: 'ui.click' });
+      uiSfx('ui.click');
       void this.engine.goTo('title');
     });
 
@@ -216,7 +218,7 @@ export class CharSelectPanel {
       dice.classList.remove('is-rolling');
       void dice.offsetWidth;
       dice.classList.add('is-rolling');
-      events.emit('sfx', { id: 'ui.click' });
+      uiSfx('ui.click');
       this.validate();
     });
     nameRow.append(this.nameInput, dice);
@@ -265,7 +267,7 @@ export class CharSelectPanel {
     b.className = 'csx-tab';
     b.appendChild(span('csx-tab-label', label));
     b.addEventListener('click', () => {
-      events.emit('sfx', { id: 'ui.tab' });
+      uiSfx('ui.tab');
       onClick();
     });
     return b;
@@ -367,7 +369,7 @@ export class CharSelectPanel {
   private setCharacterDifficulty(id: DifficultyId): void {
     const c = save.roster.find((x) => x.id === this.selectedChar);
     if (!c || c.difficulty === id) return;
-    events.emit('sfx', { id: 'ui.click' });
+    uiSfx('ui.click');
     c.difficulty = id;
     save.touch();
     save.flush();
@@ -376,7 +378,7 @@ export class CharSelectPanel {
   }
 
   private setDifficulty(id: DifficultyId): void {
-    if (this.difficulty !== id) events.emit('sfx', { id: 'ui.click' });
+    if (this.difficulty !== id) uiSfx('ui.click');
     this.difficulty = id;
     for (const [key, el] of this.difCards) el.classList.toggle('is-on', key === id);
   }
@@ -429,7 +431,7 @@ export class CharSelectPanel {
     text.append(div('csx-row-name', def.name), div('csx-row-meta', ROLE[def.id] ?? def.title));
     row.append(crest, text, complexityPips(COMPLEXITY[def.id] ?? 2));
     row.addEventListener('click', () => this.selectClass(def.id));
-    row.addEventListener('pointerenter', () => events.emit('sfx', { id: 'ui.hover' }));
+    row.addEventListener('pointerenter', () => uiSfx('ui.hover'));
     return row;
   }
 
@@ -450,7 +452,7 @@ export class CharSelectPanel {
     row.append(crest, text, lvl);
     row.addEventListener('click', () => this.selectChar(c.id));
     row.addEventListener('dblclick', () => this.play());
-    row.addEventListener('pointerenter', () => events.emit('sfx', { id: 'ui.hover' }));
+    row.addEventListener('pointerenter', () => uiSfx('ui.hover'));
     return row;
   }
 
@@ -653,7 +655,7 @@ export class CharSelectPanel {
     if (this.mode !== 'new') return;
     const check = this.validate();
     if (!check.ok) {
-      events.emit('sfx', { id: 'ui.error' });
+      uiSfx('ui.error');
       this.nameInput.parentElement?.classList.remove('shake');
       void this.nameInput.offsetWidth;
       this.nameInput.parentElement?.classList.add('shake');
@@ -669,7 +671,7 @@ export class CharSelectPanel {
       return;
     }
     save.setCharacter(created);
-    events.emit('sfx', { id: 'ui.select' });
+    uiSfx('ui.select');
     events.emit('toast', { text: `${created.name} takes up the torch.`, kind: 'epic' });
     this.nameInput.value = '';
     this.panel.close();
@@ -679,7 +681,7 @@ export class CharSelectPanel {
   private play(): void {
     if (this.mode !== 'roster' || !this.selectedChar) return;
     if (!save.selectCharacter(this.selectedChar)) return;
-    events.emit('sfx', { id: 'ui.select' });
+    uiSfx('ui.select');
     this.panel.close();
     void this.engine.goTo('town');
   }
@@ -690,7 +692,7 @@ export class CharSelectPanel {
     if (!id) return;
     if (!this.retireArmed) {
       this.retireArmed = true;
-      events.emit('sfx', { id: 'ui.error' });
+      uiSfx('ui.error');
       this.syncRoster();
       return;
     }
@@ -727,7 +729,7 @@ export class CharSelectPanel {
           const i = Math.max(0, ids.indexOf(this.selectedChar ?? ''));
           this.selectChar(ids[(i + dir + ids.length) % ids.length]!);
         }
-        events.emit('sfx', { id: 'ui.hover' });
+        uiSfx('ui.hover');
         break;
       }
       case 'ArrowLeft':
@@ -746,7 +748,7 @@ export class CharSelectPanel {
           break;
         }
         this.setMode(this.mode === 'new' ? 'roster' : 'new');
-        events.emit('sfx', { id: 'ui.tab' });
+        uiSfx('ui.tab');
         break;
       case 'Enter':
       case 'NumpadEnter':

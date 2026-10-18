@@ -660,8 +660,10 @@ select {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: var(--noise);
-  opacity: 0.16;
+  /* Worn, scratched metal (textures/ui, loaded by Skin.ts). */
+  background-image: var(--tex-metal, none), var(--noise);
+  background-size: 160px 160px, 140px 140px;
+  opacity: 0.2;
   mix-blend-mode: overlay;
   pointer-events: none;
   z-index: -1;
@@ -1223,8 +1225,9 @@ input.slider::-moz-range-thumb {
   position: absolute;
   inset: 0;
   border-radius: var(--radius);
-  background-image: var(--relief), var(--noise);
-  background-size: 256px 256px, 140px 140px;
+  /* Pebbled leather (textures/ui, loaded by Skin.ts) over the relief. */
+  background-image: var(--tex-leather, none), var(--relief), var(--noise);
+  background-size: 192px 192px, 256px 256px, 140px 140px;
   opacity: 0.17;
   mix-blend-mode: overlay;
   pointer-events: none;
@@ -2068,8 +2071,8 @@ input.slider::-moz-range-thumb {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: var(--relief), var(--noise);
-  background-size: 256px 256px, 140px 140px;
+  background-image: var(--tex-leather, none), var(--relief), var(--noise);
+  background-size: 192px 192px, 256px 256px, 140px 140px;
   opacity: 0.12;
   mix-blend-mode: overlay;
   border-radius: var(--radius);
@@ -3693,8 +3696,8 @@ input.slider::-moz-range-thumb {
   position: absolute;
   inset: 0;
   border-radius: 12px 12px 0 0;
-  background-image: var(--relief), var(--noise);
-  background-size: 256px 256px, 140px 140px;
+  background-image: var(--tex-metal, none), var(--relief), var(--noise);
+  background-size: 220px 220px, 256px 256px, 140px 140px;
   opacity: 0.16;
   mix-blend-mode: overlay;
 }

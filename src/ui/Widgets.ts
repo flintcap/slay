@@ -31,6 +31,7 @@ import { RARITY_COLOR } from '../types';
 import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import * as SkillData from '../data/skills';
+import { uiSfx } from './Sfx';
 
 // ---------------------------------------------------------------------------
 // DOM helpers
@@ -992,6 +993,8 @@ export interface PanelOpts {
   className?: string;
   onClose?: () => void;
   onOpen?: () => void;
+  /** No open and close sound (screens that are the whole game: title, death). */
+  quiet?: boolean;
 }
 
 let panelZ = 40;
@@ -1195,6 +1198,7 @@ export class Panel {
     this.openState = true;
     this.root.classList.add('is-open');
     this.raise();
+    if (!this.opts.quiet) uiSfx('ui.open', 0.8);
     this.opts.onOpen?.();
   }
 
@@ -1202,6 +1206,7 @@ export class Panel {
     if (!this.openState) return;
     this.openState = false;
     this.root.classList.remove('is-open');
+    if (!this.opts.quiet) uiSfx('ui.close', 0.8);
     this.opts.onClose?.();
     hoverHooks.hide?.();
   }

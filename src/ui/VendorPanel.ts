@@ -34,6 +34,7 @@ import {
   attempt,
   type DragPayload,
 } from './Widgets';
+import { uiSfx } from './Sfx';
 
 /** Rarities that demand a confirmation before being sold. */
 const PRECIOUS: ItemRarity[] = ['set', 'unique', 'mythic', 'ancient'];
@@ -422,7 +423,7 @@ export class VendorPanel {
   /** Flips the shelf a page forward or back. */
   private turn(dir: number): void {
     this.page += dir;
-    events.emit('sfx', { id: 'ui.click' });
+    uiSfx('ui.click');
     this.refresh();
   }
 
@@ -445,7 +446,7 @@ export class VendorPanel {
     const index = this.stock.findIndex((it) => it?.uid === item.uid);
     if (index >= 0) this.stock[index] = null;
     save.touch();
-    events.emit('sfx', { id: 'ui.buy' });
+    uiSfx('ui.buy');
     events.emit('toast', {
       text: `Bought ${attempt(() => itemDisplayName(item), item.name)}`,
       kind: 'good',
@@ -535,7 +536,7 @@ export class VendorPanel {
     c.gold -= price;
     addItemToInventory(c, back);
     save.setCharacter(c);
-    events.emit('sfx', { id: 'ui.buy' });
+    uiSfx('ui.buy');
     events.emit('toast', {
       text: `${attempt(() => itemDisplayName(back), 'Item')} bought back.`,
       kind: 'good',
@@ -551,7 +552,7 @@ export class VendorPanel {
     recordSale(item, price);
     c.gold += price;
     save.touch();
-    events.emit('sfx', { id: 'ui.sell' });
+    uiSfx('ui.sell');
     events.emit('toast', { text: `Sold for ${fmtInt(price)} gold.`, kind: 'good' });
     events.emit('ui:refresh', {});
   }

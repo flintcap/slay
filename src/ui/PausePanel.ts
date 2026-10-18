@@ -72,14 +72,12 @@ export class PausePanel {
     this.render();
     this.panel.open();
     this.nav.setActive(true);
-    events.emit('sfx', { id: 'ui.open' });
   }
 
   close(): void {
     if (!this.panel.isOpen) return;
     this.nav.setActive(false);
     this.panel.close();
-    events.emit('sfx', { id: 'ui.close' });
   }
 
   get isOpen(): boolean {

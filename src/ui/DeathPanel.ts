@@ -74,6 +74,7 @@ export class DeathPanel {
       id: 'death',
       title: '',
       fullscreen: true,
+      quiet: true,
       closable: false,
       draggable: false,
       className: 'panel-death dth',

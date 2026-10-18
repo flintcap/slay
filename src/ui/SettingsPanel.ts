@@ -19,6 +19,7 @@ import { resetHints } from './Onboarding';
 import { accessibilitySection, keybindSection, keyLabel } from './AccessibilitySettings';
 import { keyFor, remapKey } from '../core/Access';
 import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, modal, attempt } from './Widgets';
+import { uiSfx } from './Sfx';
 
 type QualityId = GameSettings['quality'];
 type TabId = 'video' | 'audio' | 'gameplay' | 'controls' | 'data';
@@ -144,7 +145,6 @@ export class SettingsPanel {
   open(): void {
     this.render();
     this.panel.open();
-    events.emit('sfx', { id: 'ui.open' });
   }
 
   close(): void {
@@ -159,7 +159,7 @@ export class SettingsPanel {
   private setTab(id: TabId): void {
     if (this.tab === id) return;
     this.tab = id;
-    events.emit('sfx', { id: 'ui.tab' });
+    uiSfx('ui.tab');
     this.render();
   }
 
@@ -303,7 +303,7 @@ export class SettingsPanel {
   private audio(): void {
     const s = save.settings;
     this.heading('Audio', 'Effects play a sample when you let go of the slider.');
-    const sample = (): void => events.emit('sfx', { id: 'ui.select' });
+    const sample = (): void => uiSfx('ui.select');
     const slider = (label: string, value: number, set: (v: number) => void, test = false): HTMLElement => {
       const sl = new Slider(label, value, 0, 1, 0.01, (v) => {
         set(v);
