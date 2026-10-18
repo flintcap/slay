@@ -23,6 +23,7 @@ Update this file and push it after every finished step.
 - Before starting any phase plan item, send the owner a numbered list of its
   changes and wait for approval of each one.
 - Descent sigils (craft a token that sets the next depth) are cut. Do not add.
+- Pinnacle boss (summoned with fragments) is cut. Do not add.
 
 ## Done
 
