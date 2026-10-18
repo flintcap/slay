@@ -83,6 +83,15 @@ Update this file and push it after every finished step.
   seeded by the item; random old lines go; item level back to its own.
   check-save covers it.
 
+- #105 (owner ask) every unique and set piece's extra lines picked by hand to
+  fit the item: only lines its slot can roll, matched to its name, story,
+  element and job, never a stat it already has, no attack rating or attack
+  speed on caster weapons, and no two of the 550 items share a set. Same
+  line counts; values are the top rung at the item's own level. Average
+  strength vs the old lines: uniques -3%, sets -1%, mythic +8%, ancient
+  +21%. Owned items switch on load (refreshFixedLines). setpower, save and
+  items checks pass.
+
 ## In progress
 
 - Phase 1 (combat): #103 balance groundwork (waiting on owner).
