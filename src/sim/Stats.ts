@@ -21,7 +21,7 @@
  * `enhancedDamage` is left as a combined percentage rather than being folded
  * into min/max damage, because `Combat.rollDamage` owns the damage roll and
  * would otherwise double-apply it. `enhancedDefense` IS folded into `defense`,
- * because `mitigate` and `hitChance` read `defense` directly.
+ * because `mitigate` reads `defense` directly.
  */
 
 import type { Character, EquipSlot, Item, StatKey, Stats } from '../types';

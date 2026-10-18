@@ -33,8 +33,12 @@ Update this file and push it after every finished step.
   Items keep their own item level. Set pieces still lifted to 7 rare lines at
   their own level. Unique avg 7.6 lines, 2.6x a rare (mythic 2.9x, ancient
   4.6x; 12 uniques under 1.5x). setpower and uniques checks pass.
-  Some extra lines are attackRating (dead stat): strip them if the owner
-  removes attack rating.
+- #98 attack rating is live (owner said turn it on). Weapon blows (melee,
+  heavy, bow/crossbow arrows; physical only) roll `hitChance(AR, guard)` in
+  SkillRunner.lands. Guard = `Enemy.guard()`: usual hero AR at the monster's
+  level x sqrt(live defense / depth-curve defense). Even odds 92%, half 82%,
+  2x 97%, 5x 100%, floor 60%. Spells, beams, chains, minions, procs, vigils
+  and veiled blows always land. MISS word shown. Tooltip shows hit chances.
 
 ## In progress
 
@@ -42,4 +46,4 @@ Update this file and push it after every finished step.
 
 ## Next
 
-2. Attack rating question for the owner (wire hit chance or remove the stat).
+- Owner may want a weapon damage bump to make up for misses (asked, not done).

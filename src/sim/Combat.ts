@@ -7,7 +7,7 @@
  *                damage, flat elemental adds, critical strike).
  *   mitigate     turns a packet plus a defender's sheet into damage actually
  *                taken (block, resistance, armour, flat reduction).
- *   hitChance    D2's attack-rating-versus-defense curve.
+ *   hitChance    whether a weapon blow lands: attack rating against guard.
  *
  * Two deliberate design decisions live here:
  *
@@ -52,9 +52,17 @@ const ARMOR_K1 = 9;
 export const BLOCK_LEAK = 0;
 export const BLOCK_CAP = 75;
 
-/** Attack rating clamps — nobody whiffs forever, nobody hits forever. */
-export const HIT_FLOOR = 0.05;
-export const HIT_CEILING = 0.95;
+/**
+ * Weapon blows land at least this often, however poor the aim. There is no
+ * forced miss at the top: enough attack rating makes every blow land.
+ */
+export const HIT_FLOOR = 0.6;
+/** Miss chance at even odds is `HIT_MISS_EVEN - HIT_MISS_EASE` (8%). */
+const HIT_MISS_EVEN = 0.1;
+const HIT_MISS_EASE = 0.02;
+/** Attack rating a hero of level 1 usually has before any gear, and per level after. */
+const USUAL_AR_BASE = 145;
+const USUAL_AR_PER_LEVEL = 10;
 
 // ---------------------------------------------------------------------------
 // Resistance
@@ -307,32 +315,29 @@ export function effectiveLife(stats: Stats, referenceHit = 100, type: DamageType
 // ---------------------------------------------------------------------------
 
 /**
- * D2's attack rating formula, clamped so combat never becomes a coin that only
- * lands one way. Level difference matters, but attack rating dominates.
+ * The attack rating a hero of `level` usually has from level and dexterity,
+ * before gear and skills. A monster's guard starts here (`Enemy.guard`), so
+ * the to-hit roll keeps its shape at any depth however far defense climbs.
  */
-export function hitChance(
-  attackRating: number,
-  defenderDefense: number,
-  attackerLevel: number,
-  defenderLevel: number,
-): number {
-  const ar = Math.max(1, attackRating);
-  const def = Math.max(0, defenderDefense);
-  const alvl = Math.max(1, attackerLevel);
-  const dlvl = Math.max(1, defenderLevel);
-  const raw = ((2 * ar) / (ar + def)) * (alvl / (alvl + dlvl)) * 2;
-  return Math.max(HIT_FLOOR, Math.min(HIT_CEILING, raw));
+export function usualAttackRating(level: number): number {
+  return USUAL_AR_BASE + USUAL_AR_PER_LEVEL * (Math.max(1, level) - 1);
+}
+
+/**
+ * Chance that a weapon blow lands: attack rating against the target's guard.
+ * Even odds land 92%; half the guard lands 82%; twice it 97%; five times it
+ * always lands. Never below `HIT_FLOOR`.
+ */
+export function hitChance(attackRating: number, guard: number): number {
+  const r = Math.max(1, attackRating) / Math.max(1, guard);
+  const miss = HIT_MISS_EVEN / r - HIT_MISS_EASE;
+  return Math.max(HIT_FLOOR, Math.min(1, 1 - miss));
 }
 
 /** Convenience roll wrapping `hitChance`. */
-export function rollHit(
-  rng: Rng,
-  attackRating: number,
-  defenderDefense: number,
-  attackerLevel: number,
-  defenderLevel: number,
-): boolean {
-  return rng.chance(hitChance(attackRating, defenderDefense, attackerLevel, defenderLevel));
+export function rollHit(rng: Rng, attackRating: number, guard: number): boolean {
+  const chance = hitChance(attackRating, guard);
+  return chance >= 1 || rng.chance(chance);
 }
 
 // ---------------------------------------------------------------------------

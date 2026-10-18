@@ -6,8 +6,8 @@ import type { DamagePacket, DamageType, StatusApplication } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { skillSound } from '../audio/SkillSounds';
-import { SKILLS } from '../data/skills';
-import { rollDamage, skillDamageScale } from '../sim/Combat';
+import { SKILLS, SKILL_BY_ID } from '../data/skills';
+import { rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 
 /** A summon's hits and life at a skill rank, in any unit: only the ratio between ranks is used. */
@@ -594,7 +594,7 @@ export class SkillRunner {
     const tuned = this.tune(packet, t);
     this.atContact = true;
     try {
-      this.strike(t, tuned, world.ctx, kind, fromX, fromZ);
+      if (!this.strike(t, tuned, world.ctx, kind, fromX, fromZ)) return { ...tuned, amount: 0, crit: false };
       this.afterHit(tuned, t, world.ctx, world.enemies, world.boss);
       this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, {
         element: this.swingSchool, sfx: null, shake: 0, crit: tuned.crit,
@@ -611,9 +611,11 @@ export class SkillRunner {
    * Every player hit in this file goes through here, so a blow cannot connect
    * without flashing, stopping, shoving and sounding like it did. `fromX/Z` is
    * where the blow came from, which decides which way the body is knocked and
-   * the camera kicks.
+   * the camera kicks. Returns false when the blow missed (`lands`): nothing
+   * after it, leech or on-hit, should happen then.
    */
-  private strike(t: Target, packet: DamagePacket, ctx: CombatContext, kind: HitKind, fromX: number, fromZ: number): void {
+  private strike(t: Target, packet: DamagePacket, ctx: CombatContext, kind: HitKind, fromX: number, fromZ: number): boolean {
+    if (!this.lands(t, packet, kind, ctx)) return false;
     packet = this.coated(packet, kind, ctx);
     const before = t.life;
     t.takeDamage(packet, ctx);
@@ -627,6 +629,24 @@ export class SkillRunner {
       // Presentation must never take the hit itself down with it.
       console.warn('[feel] hit report failed', err);
     }
+    return true;
+  }
+
+  /**
+   * Whether a blow connects. Blows from the hero's own weapon (swings, slams
+   * and arrows) roll attack rating against the target's guard and can miss.
+   * Spells, elemental blows, beams, chains, minions, procs, the Paladin's
+   * falling vigils and blows struck from the veil always land.
+   */
+  private lands(t: Target, packet: DamagePacket, kind: HitKind, ctx: CombatContext): boolean {
+    const p = this.caster;
+    if (!p || packet.source !== 'player' || packet.type !== 'physical') return true;
+    const weapon = kind === 'melee' || kind === 'heavy' || (kind === 'projectile' && weaponStyle(p) === 'ranged');
+    if (!weapon || p.status.has('veiled')) return true;
+    if (SKILL_BY_ID[packet.ability ?? '']?.effect?.startsWith('vigil.')) return true;
+    if (rollHit(ctx.rng, p.stats.attackRating, t.guard())) return true;
+    events.emit('enemy:missed', { id: t.id, x: t.root.position.x, y: t.centerY, z: t.root.position.z });
+    return false;
   }
 
   /**
@@ -1878,7 +1898,7 @@ export class SkillRunner {
       ability: 'Riposte',
       source: 'player',
     });
-    this.strike(target, this.tune(packet, target), ctx, 'melee', player.position.x, player.position.z);
+    if (!this.strike(target, this.tune(packet, target), ctx, 'melee', player.position.x, player.position.z)) return;
     this.effects.meleeHit(target.root.position.x, 1.0, target.root.position.z, {
       sfx: null,
       shake: 0,
@@ -1988,7 +2008,7 @@ export class SkillRunner {
     }
     for (const t of caught) {
       const mp = this.tune(packet(), t);
-      this.strike(t, mp, ctx, kind, origin.x, origin.z);
+      if (!this.strike(t, mp, ctx, kind, origin.x, origin.z)) continue;
       this.afterHit(mp, t, ctx, enemies, boss);
       // Sound and camera come from the feel layer, which knows the weapon and
       // the body it met; the impact here is the picture only.
@@ -2299,8 +2319,7 @@ export class SkillRunner {
     if (closest) {
       const hp = this.tune(packet(), closest);
       const src = from ?? this.caster?.position ?? at;
-      this.strike(closest, hp, ctx, kind, src.x, src.z);
-      this.afterHit(hp, closest, ctx, enemies, boss);
+      if (this.strike(closest, hp, ctx, kind, src.x, src.z)) this.afterHit(hp, closest, ctx, enemies, boss);
     }
   }
 
@@ -2324,7 +2343,7 @@ export class SkillRunner {
       p.amount *= 1 - Math.min(1, d / (radius + t.hitRadius)) * 0.35;
       const ap = this.tune(p, t);
       // Knocked away from the middle of the blast.
-      this.strike(t, ap, ctx, kind, center.x, center.z);
+      if (!this.strike(t, ap, ctx, kind, center.x, center.z)) continue;
       this.afterHit(ap, t, ctx, enemies, boss);
       dealt += ap.amount;
     }
@@ -2350,8 +2369,7 @@ export class SkillRunner {
       if (perp > width * 0.5 + t.hitRadius) continue;
       const lp = this.tune(packet(), t);
       // Pushed along the line, as if the beam carried them.
-      this.strike(t, lp, ctx, kind, t.root.position.x - dir.x, t.root.position.z - dir.z);
-      this.afterHit(lp, t, ctx, enemies, boss);
+      if (this.strike(t, lp, ctx, kind, t.root.position.x - dir.x, t.root.position.z - dir.z)) this.afterHit(lp, t, ctx, enemies, boss);
     }
   }
 

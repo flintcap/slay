@@ -36,6 +36,8 @@ export interface GameEvents {
     y: number;
     z: number;
   };
+  /** A weapon blow from the hero missed (attack rating against guard). */
+  'enemy:missed': { id: string; x: number; y: number; z: number };
   'enemy:killed': { id: string; monsterId: string; rank: MonsterRank; x: number; z: number };
   'loot:dropped': { item: Item; x: number; z: number };
   'loot:pickedUp': { item: Item };

@@ -29,7 +29,7 @@ import type { NamedRare } from '../data/namedRares';
 import { events } from '../core/Events';
 import { activeDifficulty } from '../data/difficulties';
 import { emptyStats } from '../sim/Stats';
-import { rollDamage, mitigate } from '../sim/Combat';
+import { rollDamage, mitigate, usualAttackRating } from '../sim/Combat';
 import { buildMonsterModel, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from './MonsterModels';
 import { AIBrain, resetPacks } from './AI';
 import {
@@ -703,7 +703,7 @@ export class Enemy implements Combatant {
     events.emit('sfx', { id: 'ambush', x: this.root.position.x, z: this.root.position.z });
   }
 
-  private get centerY(): number {
+  get centerY(): number {
     return this.groundY + 0.7 * this.sizeScale;
   }
 
@@ -1252,6 +1252,19 @@ export class Enemy implements Combatant {
         );
       }
     }
+  }
+
+  /**
+   * How hard a weapon blow is to land on this body (`hitChance` in
+   * sim/Combat.ts): the attack rating a hero of its level usually has, grown
+   * by how armoured it stands for its depth right now. Rank, armoured kinds,
+   * affixes, defense buffs and breaks all count. The square root keeps a
+   * walking fortress hard to hit, never untouchable.
+   */
+  guard(): number {
+    const usual = depthCurve(this.depth).defense;
+    const now = this.statusAdjustedStats().defense * this.buffMul('defense');
+    return usualAttackRating(this.level) * Math.sqrt(Math.max(0.1, now / Math.max(1, usual)));
   }
 
   takeDamage(packet: DamagePacket, ctx: CombatContext): void {

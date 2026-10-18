@@ -218,6 +218,9 @@ export class CombatTextLayer {
           this.damage(part.amount, e.x, e.y + 0.35, e.z, part.type, e.crit, e.id);
         }
       }),
+      events.on('enemy:missed', (e) => {
+        if (show()) this.word('MISS', e.x, e.y + 0.35, e.z, '#b8b2a6');
+      }),
       events.on('player:damaged', (e) => {
         if (!show() || e.amount <= 0) return;
         this.spawnHero('hurt', `-${compactNumber(e.amount)}`, e.amount, '#ff5a46', 'player-hurt', e.type);
@@ -284,7 +287,7 @@ export class CombatTextLayer {
     });
   }
 
-  /** A short word at a world point: IMMUNE, BLOCK, DODGE, RESIST. */
+  /** A short word at a world point: IMMUNE, BLOCK, DODGE, RESIST, MISS. */
   word(text: string, x: number, y: number, z: number, color = '#e6e0d0'): void {
     // The same word again while it is still up (three dodges in a row) just
     // re-pops it; stacking copies on one spot made an unreadable smear.

@@ -13,7 +13,7 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { computeStats, xpForLevel } from '../sim/Stats';
 import { allocateStat, skillRank } from '../sim/Character';
-import { damageRange, skillDamageScale } from '../sim/Combat';
+import { damageRange, hitChance, skillDamageScale, usualAttackRating } from '../sim/Combat';
 import { SKILL_BY_ID } from '../data/skills';
 import { burstGrowth } from '../data/skillPower';
 import {
@@ -51,12 +51,22 @@ const ATTR_BLURB: Record<AttrKey, string> = {
   energy: 'Grows the mana pool and mana regeneration — the fuel for every skill you press.',
 };
 
+/** A usual boss stands this much harder to hit than a usual monster of its level (its rank's armour, square-rooted). */
+const BOSS_GUARD = Math.sqrt(2.4);
+
+/** Hit chances for the attack rating tooltip, against monsters of the hero's level. */
+function hitHint(ar: number): string {
+  const guard = usualAttackRating(save.account.current?.level ?? 1);
+  const pct = (g: number): string => `${Math.round(hitChance(ar, g) * 100)}%`;
+  return `<p class="tt-explain-how">Hit chance against a usual monster of your level: <b>${pct(guard)}</b>. Against a usual boss: <b>${pct(guard * BOSS_GUARD)}</b>.</p>`;
+}
+
 const STAT_HOW: Partial<Record<StatKey, string>> = {
   life: 'Class base + per-level gain + (Vitality x life-per-point) + flat life from gear and passives.',
   mana: 'Class base + per-level gain + (Energy x mana-per-point) + flat mana from gear and passives.',
   lifeRegen: 'Life restored every second, out of and in combat.',
   manaRegen: 'Mana restored every second. Sustain builds live and die on this number.',
-  attackRating: 'Compared against the target defense to produce a hit chance. Scales with Dexterity and level.',
+  attackRating: 'Blows from your weapon (swings, slams, arrows) can miss. The more attack rating you have against a monster\'s guard, the fewer misses; five times its guard never misses. Armoured monsters, elites and bosses guard more. Spells, minions and area blasts always hit. Grows with Dexterity and level.',
   minDamage: 'Weapon base damage, scaled by upgrade level, then multiplied by Enhanced Damage.',
   maxDamage: 'Weapon base damage, scaled by upgrade level, then multiplied by Enhanced Damage.',
   attackSpeed: 'Percentage change to swing time. Additive across gear, then applied to the weapon base speed.',
@@ -320,7 +330,7 @@ export class CharacterPanel {
       const label = key === 'minDamage' ? 'Weapon Min Damage' : key === 'maxDamage' ? 'Weapon Max Damage' : STAT_LABEL[key];
       const line = statLine(label, text, {
         icon: STAT_ICON[key],
-        hint: STAT_HOW[key] ? `<p>${STAT_HOW[key]}</p>` : `<p>Current value: <b>${text}</b></p>`,
+        hint: (STAT_HOW[key] ? `<p>${STAT_HOW[key]}</p>` : `<p>Current value: <b>${text}</b></p>`) + (key === 'attackRating' ? hitHint(v) : ''),
         title: label,
       });
       s.body.appendChild(line);
