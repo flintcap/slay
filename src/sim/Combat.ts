@@ -22,7 +22,7 @@
 
 import type { DamagePacket, DamageType, Rng, Stats, StatusApplication } from '../types';
 import { RESIST_OF } from '../types';
-import { effectiveDamageScale, SKILL_BY_ID } from '../data/skills';
+import { effectiveDamageScale, SKILL_BY_ID, synergyPct } from '../data/skills';
 import { effectiveRank } from './Stats';
 import { statusesOf } from './Status';
 
@@ -208,7 +208,9 @@ export function rollDamage(stats: Stats, rng: Rng, opts: RollOpts = {}): DamageP
 export function skillDamageScale(skills: Record<string, number>, skillLevels: number, skillId: string): number {
   const def = SKILL_BY_ID[skillId];
   const hard = skills[skillId] ?? 0;
-  if (!def?.damageScale || hard <= 0) return 1;
+  if (!def || hard <= 0) return 1;
+  // No damage ladder (a detonation, a drain, a shout): its synergies still count.
+  if (!def.damageScale) return 1 + synergyPct(skillId, skills) / 100;
   return effectiveDamageScale(skillId, effectiveRank(hard, skillLevels), skills) || 1;
 }
 

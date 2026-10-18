@@ -28,7 +28,7 @@
  */
 
 import type { Character, DamageType } from '../types';
-import { SKILL_BY_ID } from '../data/skills';
+import { SKILL_BY_ID, synergyPct } from '../data/skills';
 import { applyPowerPassives } from './ItemPowers';
 import { emptyPaladinEffects, PALADIN_RULES, type PaladinEffects } from './passives/paladin';
 import { SHIFTER_RULES } from './shifterPassives';
@@ -551,7 +551,7 @@ const RULES: Record<string, Contribution> = {
   // ---------------------------------------------------------------- knight
   riposte: (e, r, id) => {
     e.blockCounterChance += param(id, 'procChance', 20) + param(id, 'procPerRank', 4) * (r - 1);
-    e.blockCounterPct = Math.max(e.blockCounterPct, 110);
+    e.blockCounterPct = Math.max(e.blockCounterPct, 110 + 10 * (r - 1));
   },
   spikedGuard: (e, r, id) => {
     e.thornsBlockPct += param(id, 'blockReturn', 18) + param(id, 'blockPerRank', 6) * (r - 1);
@@ -813,7 +813,7 @@ const RULES: Record<string, Contribution> = {
   },
   riposteBlade: (e, r, id) => {
     e.meleeCounterChance = Math.max(e.meleeCounterChance, Math.min(param(id, 'chanceCap', 60), param(id, 'chancePerRank', 15) * r));
-    e.meleeCounterPct = Math.max(e.meleeCounterPct, 160);
+    e.meleeCounterPct = Math.max(e.meleeCounterPct, 160 + 20 * (r - 1));
     e.meleeCounterCrit = e.meleeCounterCrit || param(id, 'alwaysCrit', 0) > 0;
   },
   flurry: (e, r, id) => {
@@ -1027,6 +1027,26 @@ const RULES: Record<string, Contribution> = {
 export const IMPLEMENTED_PASSIVES: readonly string[] = Object.keys(RULES);
 
 /**
+ * The number each synergy-fed passive grows (`SYNERGIES` in data/skills.ts):
+ * a passive has no damage ladder for its synergies to raise, so they raise
+ * the thing it does.
+ */
+const SYNERGY_FIELDS: Partial<Record<string, Array<keyof PassiveEffects>>> = {
+  retribution: ['retributionPctPerBlock'],
+  bloodTide: ['bloodTideAmplifyPct'],
+  apexPredator: ['bloodTideAmplifyPct'],
+  cataclysm: ['overkillCarryPct'],
+  thousandCuts: ['cutPct'],
+  riposte: ['blockCounterPct'],
+  riposteBlade: ['meleeCounterPct'],
+  phantomBlades: ['critBladePct'],
+  theBoneChoir: ['choirLifePct'],
+  theLongDecline: ['curseDecayPctPerSec'],
+  theSecondDeath: ['cheatDeathNovaPct'],
+  swornBrother: ['minionDamagePct'],
+};
+
+/**
  * Resolve a character's allocated passives into one flat record.
  *
  * Cheap enough to call per frame, but callers generally cache it alongside
@@ -1037,7 +1057,16 @@ export function passiveEffects(c: Character): PassiveEffects {
   for (const id of Object.keys(c.skills)) {
     const r = rankOf(c, id);
     if (r <= 0) continue;
+    const fields = SYNERGY_FIELDS[id];
+    const before = fields?.map((k) => e[k] as number);
     RULES[id]?.(e, r, id);
+    // Its synergies add their share to what this passive itself just gave.
+    const more = fields ? synergyPct(id, c.skills) / 100 : 0;
+    if (fields && before && more > 0) {
+      fields.forEach((k, i) => {
+        (e[k] as number) += ((e[k] as number) - before[i]!) * more;
+      });
+    }
   }
   // Item powers that are really passives on an item: cheat death, overkill,
   // arcs. `Stats` calls this with only `skills`, so equipment may be absent.

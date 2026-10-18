@@ -44,7 +44,8 @@ import {
   type DragPayload,
 } from './Widgets';
 import { skillIconUri } from '../art/Icons';
-import { SKILL_BY_ID } from '../data/skills';
+import { SKILL_BY_ID, synergiesFor, synergiesFrom, synergyPct } from '../data/skills';
+import { COMBO_WINDOW, canCombo, comboBonusPct, comboForSkill } from '../entities/Combos';
 import { BURST_POWER, FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } from '../data/skillPower';
 import { uiSfx } from './Sfx';
 
@@ -568,6 +569,8 @@ export class SkillTreePanel {
     const def = skillById(id);
     if (!def) return;
     const related = new Set<string>(def.requires ?? []);
+    for (const l of synergiesFor(id)) related.add(l.source);
+    for (const l of synergiesFrom(id)) related.add(l.target);
     for (const [otherId, view] of this.nodes) {
       if ((view.def.requires ?? []).includes(id)) related.add(otherId);
     }
@@ -690,7 +693,50 @@ export class SkillTreePanel {
       this.detail.appendChild(sec.root);
     }
 
-    // --- prerequisites & synergies ----------------------------------------
+    // --- synergies ----------------------------------------------------------
+    // Hard ranks in other skills that make this one stronger, and the skills
+    // a rank here makes stronger (`SYNERGIES`; +skills gear does not count).
+    const gains = synergiesFor(s.id);
+    const gives = synergiesFrom(s.id);
+    if (gains.length || gives.length) {
+      const sec = section('Synergies', 'plus');
+      if (gains.length) {
+        const total = synergyPct(s.id, c.skills);
+        const what = s.damageScale || s.targeting !== 'passive' ? 'damage' : 'power';
+        sec.body.appendChild(
+          div('skdetail-note', total > 0 ? `Ranks in these skills add ${what} to this one: +${fmt(total)}% now.` : `Ranks in these skills add ${what} to this one.`),
+        );
+        const r = div('skdetail-links');
+        for (const l of gains) {
+          const have = c.skills[l.source] ?? 0;
+          const name = skillById(l.source)?.name ?? l.source;
+          r.appendChild(span(`skdetail-link ${have > 0 ? 'ok' : ''}`.trim(), `${name} +${fmt(l.pctPerRank)}% a rank${have > 0 ? ` (+${fmt(l.pctPerRank * have)}%)` : ''}`));
+        }
+        sec.body.appendChild(r);
+      }
+      if (gives.length) {
+        const r = div('skdetail-links');
+        r.appendChild(span('skdetail-linklabel', 'Each rank adds'));
+        for (const l of gives) r.appendChild(span('skdetail-link', `+${fmt(l.pctPerRank)}% to ${skillById(l.target)?.name ?? l.target}`));
+        sec.body.appendChild(r);
+      }
+      this.detail.appendChild(sec.root);
+    }
+
+    // --- combo ---------------------------------------------------------------
+    const combo = comboForSkill(s);
+    if (combo && canCombo(s)) {
+      const sec = section(`Combo: ${combo.name}`, 'sparkle');
+      sec.body.appendChild(
+        div(
+          'skdetail-note',
+          `Land this on a target another of your skills hit in the last ${COMBO_WINDOW}s: +${comboBonusPct(s)}% damage. ${combo.desc} The same skill twice in a row does not combo.`,
+        ),
+      );
+      this.detail.appendChild(sec.root);
+    }
+
+    // --- prerequisites -------------------------------------------------------
     const reqs = s.requires ?? [];
     const dependents = skillsInTree(s.treeId).filter((o) => (o.requires ?? []).includes(s.id));
     if (reqs.length || dependents.length) {

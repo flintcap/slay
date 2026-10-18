@@ -6,7 +6,7 @@ import type { DamagePacket, DamageType, StatusApplication } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { skillSound } from '../audio/SkillSounds';
-import { SKILLS, SKILL_BY_ID } from '../data/skills';
+import { SKILLS, SKILL_BY_ID, synergyPct } from '../data/skills';
 import { resistAgainst, rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 
@@ -1581,7 +1581,7 @@ export class SkillRunner {
               .filter((t) => t.life > 0)
               .sort((a, b) => this.groundDistance(a.root.position, at) - this.groundDistance(b.root.position, at))
               .slice(0, most);
-            const share = (num('sharePct', 35) + num('perRank', 3) * Math.max(0, rank - 1)) / 100;
+            const share = ((num('sharePct', 35) + num('perRank', 3) * Math.max(0, rank - 1)) / 100) * (1 + synergyPct(def.id, player.character.skills) / 100);
             this.link = { members: reach, share, until: this.runTime + num('duration', 10), name: def.name };
           }
           for (const t of reach) {
@@ -1786,7 +1786,8 @@ export class SkillRunner {
             const spot = new THREE.Vector3(body.x, 0, body.z);
             this.effects.explosion(spot.x, 0.8, spot.z, { radius: r, element: school, color });
             this.effects.nova(spot.x, spot.z, r, { element: school, color, emitter: sig.emitter, density: sig.density });
-            const share = (num('lifePct', 45) + num('perRank', 4) * Math.max(0, rank - 1)) / 100;
+            // Its synergies grow the share (its rank growth is already here).
+            const share = ((num('lifePct', 45) + num('perRank', 4) * Math.max(0, rank - 1)) / 100) * (1 + synergyPct(def.id, player.character.skills) / 100);
             const spread = num('spreadCurses', 0) > 0 ? body.curses : [];
             this.areaDamage(spot, r, () => ({
               amount: body.maxLife * share, type, crit: false, source: 'player', ability: def.name,
@@ -2237,7 +2238,10 @@ export class SkillRunner {
       synthesizeSkillBuff(def.id, def.name, color, 'sparkle', duration);
     }
     // Commanding Presence and Standard Bearer strengthen every number here too.
-    const raw = power.mods ?? grownMods(getStatus(id)?.mods, k);
+    let raw = power.mods ?? grownMods(getStatus(id)?.mods, k);
+    // A buff with no damage ladder grows the damage it grants by its synergies (Battle Cry).
+    const more = SKILL_BY_ID[def.id]?.damageScale ? 0 : synergyPct(def.id, player.character.skills) / 100;
+    if (more > 0 && raw?.enhancedDamage) raw = { ...raw, enhancedDamage: raw.enhancedDamage * (1 + more) };
     const mods = raw && auraScale !== 1 ? scaleMods(raw, auraScale) : raw;
     const absorb =
       power.absorb !== undefined || power.absorbLifePct !== undefined

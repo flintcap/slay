@@ -33,7 +33,7 @@ export interface ComboDef {
   applies?: StatusApplication[];
   /** The combo hit is always a critical strike. */
   crit?: boolean;
-  /** Stuns a non-boss target for this long. */
+  /** Stuns the target for this long (a boss turns it into poise). */
   stagger?: number;
   /** Share of the combo hit that arcs to the nearest other enemy. */
   arc?: number;
@@ -42,7 +42,7 @@ export interface ComboDef {
 export const COMBOS: Record<CharClassId, ComboDef> = {
   warden: {
     name: 'Break',
-    desc: 'Staggers the target for 0.8s (not bosses).',
+    desc: 'Staggers the target for 0.8s. A boss is not staggered: it gains poise instead.',
     color: 0xffc070,
     stagger: 0.8,
   },
@@ -102,6 +102,11 @@ for (const s of SKILLS) {
 export function comboSkillOf(packet: DamagePacket): SkillDef | null {
   if (packet.source !== 'player' || !packet.ability) return null;
   return BY_ABILITY.get(packet.ability) ?? null;
+}
+
+/** True when the skill's own hits can set up and finish combos. */
+export function canCombo(skill: SkillDef): boolean {
+  return BY_ABILITY.get(skill.id) === skill;
 }
 
 export function comboOfClass(classId: CharClassId): ComboDef {

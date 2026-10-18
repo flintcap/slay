@@ -14,6 +14,7 @@ import { COMBOS, comboSkillOf, COMBO_WINDOW, resolveCombo } from '../src/entitie
 import { SkillRunner } from '../src/scenes/SkillRunner';
 import { Player } from '../src/entities/Player';
 import { createCharacter } from '../src/sim/Character';
+import { passiveEffects } from '../src/sim/Passives';
 import { MONSTERS } from '../src/data/monsters';
 import { events } from '../src/core/Events';
 import { Random } from '../src/core/RNG';
@@ -46,6 +47,47 @@ for (const t of SKILL_TREES) {
     Math.abs(syn / base - 2) < 1e-6 && Math.abs(plus - want) < 1e-6,
     `gash x${(syn / base).toFixed(2)} with 10 in Rend (+10%/rank), +3 skills ${plus.toFixed(2)} (rank 8: ${want.toFixed(2)})`,
   );
+}
+
+// 2b. Every synergy reaches its skill: a damage ladder, the scale a skill with
+// none still uses, or the number a passive gives.
+{
+  const dead: string[] = [];
+  const targets = [...new Set(SYNERGIES.map((l) => l.target))];
+  for (const id of targets) {
+    const def = SKILL_BY_ID[id];
+    if (!def) continue;
+    const fed = Object.fromEntries(SYNERGIES.filter((l) => l.target === id).map((l) => [l.source, 10]));
+    let grew = false;
+    if (def.targeting === 'passive') {
+      const cls = TREE_BY_ID[def.treeId]?.classId as CharClassId;
+      const plain = (() => {
+        const c = createCharacter('Syn', cls, new Random(1));
+        c.skills = { [id]: 5 };
+        const base = passiveEffects(c);
+        const lone = Object.keys(fed).map((k) => {
+          const c2 = createCharacter('Syn', cls, new Random(1));
+          c2.skills = { [k]: 10 };
+          return passiveEffects(c2);
+        });
+        return { base, lone };
+      })();
+      const c = createCharacter('Syn', cls, new Random(1));
+      c.skills = { ...fed, [id]: 5 };
+      const both = passiveEffects(c);
+      // Grew past the passive and its sources taken one at a time (summed).
+      grew = Object.keys(both).some((k) => {
+        const v = (both as unknown as Record<string, unknown>)[k];
+        if (typeof v !== 'number') return false;
+        const parts = [plain.base, ...plain.lone].reduce((t, e) => t + ((e as unknown as Record<string, number>)[k] ?? 0), 0);
+        return v > parts + 1e-6;
+      });
+    } else {
+      grew = skillDamageScale({ ...fed, [id]: 5 }, 0, id) > skillDamageScale({ [id]: 5 }, 0, id) + 1e-6;
+    }
+    if (!grew) dead.push(id);
+  }
+  check('every synergy reaches the skill it feeds', dead.length === 0, dead.length ? `no effect: ${dead.join(', ')}` : `${targets.length} skills fed`);
 }
 
 // A real hero, the real runner, a real monster.

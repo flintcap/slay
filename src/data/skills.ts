@@ -246,7 +246,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'riposte',
     name: 'Riposte',
-    desc: 'A blocked attack is an opening. 20% chance on block (+4% per rank) to counterattack for 110% weapon damage.',
+    desc: 'A blocked attack is an opening. 20% chance on block (+4% per rank) to counterattack for 110% weapon damage (+10% per rank).',
     tier: 3,
     col: 2,
     icon: 'counter',
@@ -1869,7 +1869,7 @@ const BLADEWORK = build('bladework', [
   {
     id: 'riposteBlade',
     name: 'Riposte',
-    desc: 'A 15% chance per rank (to 60%) to counter a melee attack for 160% weapon damage as a critical strike.',
+    desc: 'A 15% chance per rank (to 60%) to counter a melee attack for 160% weapon damage (+20% per rank) as a critical strike.',
     tier: 6,
     col: 2,
     max: 15,
@@ -3683,6 +3683,16 @@ for (const link of SYNERGIES) {
 
 export function synergiesFor(skillId: string): SynergyLink[] {
   return SYNERGIES_BY_TARGET[skillId] ?? [];
+}
+
+const SYNERGIES_BY_SOURCE: Record<string, SynergyLink[]> = Object.create(null);
+for (const link of SYNERGIES) {
+  (SYNERGIES_BY_SOURCE[link.source] ??= []).push(link);
+}
+
+/** The synergies a skill gives: each rank in it adds to these. */
+export function synergiesFrom(skillId: string): SynergyLink[] {
+  return SYNERGIES_BY_SOURCE[skillId] ?? [];
 }
 
 /**

@@ -48,7 +48,8 @@ import {
 import { requestItemIcon, skillIconUri, statusIconUri, warmItemIcons } from '../art/Icons';
 import { pickPotion } from '../sim/Potions';
 import { setPrimaryAttack, setHotbarSlot } from '../sim/Character';
-import { SKILL_BY_ID } from '../data/skills';
+import { SKILL_BY_ID, synergyPct } from '../data/skills';
+import { canCombo, comboBonusPct, comboForSkill } from '../entities/Combos';
 import { BOSSES } from '../data/bosses';
 import { CHAINS } from '../data/story/chains';
 import { NPCS } from '../data/story/npcs';
@@ -1334,7 +1335,7 @@ export class HUD {
       slotEl.dataset.skill = id;
       slotEl.dataset.cost = String(cost);
       slotEl.dataset.range = String(castRange(def));
-      slotEl.title = def ? `${def.name} — Rank ${rank}` : id;
+      slotEl.title = def ? skillSlotTitle(def, rank, c.skills) : id;
     }
   }
 
@@ -2173,6 +2174,19 @@ function tileColor(t: number): string {
     default:
       return 'rgba(0,0,0,0)';
   }
+}
+
+/**
+ * A hotbar slot's hover line: name and rank, the synergy bonus the hero has
+ * built for it, and the combo it finishes with (`entities/Combos.ts`).
+ */
+function skillSlotTitle(def: SkillDef, rank: number, skills: Record<string, number>): string {
+  const parts = [`${def.name} — Rank ${rank}`];
+  const syn = synergyPct(def.id, skills);
+  if (syn > 0) parts.push(`Synergies +${Math.round(syn)}%`);
+  const combo = comboForSkill(def);
+  if (combo && canCombo(def)) parts.push(`Combo: ${combo.name} +${comboBonusPct(def)}% after a different skill`);
+  return parts.join('\n');
 }
 
 /**
