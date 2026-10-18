@@ -106,7 +106,8 @@ Update this file and push it after every finished step.
   now clears the Enchanter mark when its line is gone (it used to block all
   reforging). New check-craft; check-town covers offers, fill and saves.
   check-economy fails the same way before this change (no set or unique for
-  the mage in one depth-30 descent; random, noted).
+  the mage in one depth-30 descent; random, noted). Not seen in a browser:
+  the screenshot browser closed while loading town (as in #101).
 
 ## In progress
 ## In progress
