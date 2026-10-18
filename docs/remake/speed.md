@@ -69,6 +69,12 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   page idle, waiting on GPU pipelines (software here) and workers. Town:
   the hero's gear meshed on the main thread (`refreshEquipmentVisuals`,
   2.2 s) and the town build are the two big blocks.
+- Fight frame baseline (`check-frames --only=map`, depth 6, 125 monsters,
+  480x270, high, before the WebGPU counter fix): frame p95 1591 / p99 2020 /
+  worst 2233 ms (software drawing, not meaningful); update p50 3.9 / p95
+  19.6 / p99 38 / worst 59 ms; update+render submit p95 34 / p99 49 / worst
+  71 ms. The update p95 was 12.1 in the saved baseline: this machine was
+  shared with two other agents' runs.
 
 - Milestone 2 result (run 3, same command as the baseline). Longest
   main-thread block: depth 1 3650 -> 985 ms, depth 12 5258 -> 543 ms,

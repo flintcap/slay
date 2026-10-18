@@ -234,6 +234,23 @@ async function play({ n, settleMs, settleFrames, fight }) {
   const auto = info.autoReset;
   // Programs alive before, to name any made while playing.
   const had = new Set(info.programs ?? []);
+  // WebGPU: name the draw behind each pipeline made while measuring.
+  const pipes = e.renderer.gl._pipelines;
+  const made = [];
+  const getPipe = pipes?._getRenderPipeline;
+  if (getPipe) {
+    pipes._getRenderPipeline = function (ro, ...rest) {
+      const before = this.caches.size;
+      const out = getPipe.call(this, ro, ...rest);
+      if (this.caches.size > before) {
+        const o = ro.object;
+        const m = ro.material;
+        const who = `${o?.name || o?.parent?.name || o?.type}/${m?.name || m?.type}${ro.camera?.isPerspectiveCamera ? '' : ' (' + (ro.camera?.type ?? '?') + ')'}${ro.renderTarget ? ' @' + (ro.renderTarget.texture?.name || 'target') : ''}`;
+        made.push(who);
+      }
+      return out;
+    };
+  }
   if (window.__profileMeasured) console.profile('measured');
   const start = performance.now();
   let last = start;
@@ -255,6 +272,7 @@ async function play({ n, settleMs, settleFrames, fight }) {
     tris.push(info.render.triangles);
   }
   if (window.__profileMeasured) console.profileEnd('measured');
+  if (getPipe) pipes._getRenderPipeline = getPipe;
   info.autoReset = auto;
   input.mouseRight = false;
   input.mouseLeft = false;
@@ -285,7 +303,7 @@ async function play({ n, settleMs, settleFrames, fight }) {
     programs: info.programs?.length ?? 0,
     // What each program made while playing was for: three names a program
     // after its material type or shader name.
-    newPrograms: (info.programs ?? []).filter((q) => !had.has(q)).map((q) => String(q.name ?? '?') + ' ' + String(q.cacheKey ?? '').slice(0, 60)),
+    newPrograms: [...(info.programs ?? []).filter((q) => !had.has(q)).map((q) => String(q.name ?? '?') + ' ' + String(q.cacheKey ?? '').slice(0, 60)), ...made],
   };
 }
 
