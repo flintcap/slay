@@ -134,8 +134,10 @@ const RARITY_VALUE_MUL: Record<ItemRarity, number> = {
 const QUALITY: Array<{ rarity: ItemRarity; base: number; div: number; floor: number; mfCap: number; minIlvl: number }> = [
   { rarity: 'ancient', base: 12000, div: 1, floor: 1500, mfCap: 140, minIlvl: 78 },
   { rarity: 'mythic', base: 2400, div: 1, floor: 300, mfCap: 190, minIlvl: 58 },
-  { rarity: 'unique', base: 360, div: 1, floor: 48, mfCap: 250, minIlvl: 1 },
-  { rarity: 'set', base: 180, div: 2, floor: 40, mfCap: 500, minIlvl: 1 },
+  // Sets and uniques are half as common as they were: a full map at tier 20
+  // threw ten set pieces and four uniques before its boss.
+  { rarity: 'unique', base: 720, div: 1, floor: 96, mfCap: 250, minIlvl: 1 },
+  { rarity: 'set', base: 360, div: 2, floor: 80, mfCap: 500, minIlvl: 1 },
   { rarity: 'rare', base: 84, div: 2, floor: 20, mfCap: 600, minIlvl: 1 },
   { rarity: 'magic', base: 24, div: 3, floor: 1.5, mfCap: Infinity, minIlvl: 1 },
 ];
@@ -149,9 +151,11 @@ export type DropSource = MonsterRank | 'vendor';
  */
 const SOURCE_FACTOR: Record<DropSource, readonly [number, number, number, number]> = {
   normal: [0, 0, 0, 0],
-  champion: [720, 720, 720, 1024],
-  elite: [800, 800, 800, 1024],
-  rare: [860, 860, 860, 1024],
+  // Champions come by the hundred on a deep map, so they lift sets and
+  // uniques far less than they lift rares.
+  champion: [400, 400, 720, 1024],
+  elite: [520, 520, 800, 1024],
+  rare: [640, 640, 860, 1024],
   boss: [978, 978, 978, 1024],
   vendor: [0, 0, 700, 900],
 };
