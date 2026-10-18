@@ -19,12 +19,12 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
 - [x] 1. Audit (read the code first, render only if needed): list every
   skill look, hit effect and death effect per class; rank the weakest under
   "Notes for resume".
-- [ ] 2. Hits: impact flash, sparks or splashes per damage type (physical,
+- [x] 2. Hits: impact flash, sparks or splashes per damage type (physical,
   fire, cold, lightning, poison, holy, shadow), short hit decals, crits that
   read at a glance.
-- [ ] 3. Skills: upgrade the weakest skill looks class by class, starting
+- [x] 3. Skills: upgrade the weakest skill looks class by class, starting
   with the worst ten from the audit.
-- [ ] 4. Deaths: per damage type (burn to ash, shatter when frozen, blood
+- [x] 4. Deaths: per damage type (burn to ash, shatter when frozen, blood
   burst, dissolve to shadow), per monster size.
 - [ ] 5. Warm-up: stand-ins in `warmup()` for late effect pipelines
   (`fx:solid-shard`, `fx:cores`, `fx:columns` from speed's notes) and for
@@ -35,12 +35,45 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
 
 ## Next up
 
-1. Do Setup in PROTOCOL.md. Set `Status: in progress`.
-2. Milestone 1: read `src/fx/SkillLooks.ts`, `src/fx/Effects.ts`,
-   `src/fx/CombatFeel.ts`, `src/fx/HitFlash.ts`, `src/fx/kit/*` and list
-   what each skill and hit shows today.
+1. Milestone 5: in `warmup()` (DungeonScene, small additive edit) add
+   stand-ins for `fx:solid-shard`, `fx:cores`, `fx:columns`, the new
+   `fx:solid-blade` and `fx:solid-buckler`, one field (`effects.field`) and
+   one `selfCast`, and the HitFlash hidden material, so nothing compiles
+   mid-fight.
+2. Milestone 6: write the particle budget per quality level (fields,
+   deaths, crits) under Notes; check the touched code makes no per-frame
+   objects.
+3. Milestone 7: Handover.
 
 ## Notes for resume
+
+### Done in milestones 2 to 4 (wave two)
+
+- Hits: `crit` emitter is a white flare, a crossed slash, a gold ring and
+  long rays. Arcane hits draw a dark inward smoke so they read as shadow.
+  Short element marks under crit or heavy non-physical hits
+  (`CombatFeel.hit`, rate limited). There is no holy or shadow damage type
+  in the game: shadow is the arcane look, holy lives in the paladin files.
+- Deaths (`CombatFeel.onKill`, `DEATH_LOOK`): fire burns to ash and
+  crumbles, cold frosts over, frozen or petrified non-boss bodies shatter
+  and vanish, lightning cooks and smokes, poison melts, arcane sinks into
+  shadow and vanishes, big physical kills spray blood, big bodies land
+  with a thud. `HitFlash.deathLook` holds the body's burned or frozen
+  colour until the corpse goes. New emitters live in `src/fx/Grit.ts`.
+- Skills (worst ten from the audit): fields draw as what they are
+  (`src/fx/Fields.ts`, `FIELD_LOOKS` in SkillLooks), self buffs rise from
+  the caster (`effects.selfCast`), thrown knives and the shield fly as a
+  blade and a buckler, particle pools are keyed on the school
+  (`skillParticles`, no gib for untyped skills, bone for ossuary), motifs
+  grow with rank (`rankSize`), field density grows with rank on High and
+  up (`rankDensity`), Suppressing Fire draws a fan of arrows.
+- SkillRunner.ts got visual call-site edits only (signature, projectile
+  shape, selfCast, addZone draws a field, motif size, the arrow fan).
+- The vfx lab (`tools/check-decals.mjs`, `crits` and `deaths` scenes added
+  to `tools/vfxlab-entry.ts`) renders black frames for every scene, even
+  the old `impacts` scene. It failed twice, so it was skipped; the looks
+  are untested on screen (see For the owner to test).
+
 
 ### Audit (milestone 1, read from the code)
 
@@ -106,6 +139,24 @@ Weakest, worst first:
 ## For the owner to test
 
 (Add one line per item: what to try and what should happen.)
+
+- Land a crit: a white flash, a crossed slash and gold rays read at once.
+- Kill with fire: the body goes dark, puffs ash, then crumbles.
+- Kill a frozen monster: it shatters into ice and is gone at once.
+- Kill with lightning, poison, arcane: smoke and scorch, a green melt, a
+  dark sink that vanishes.
+- Kill a big monster with a sword: a blood spray and a heavy thud.
+- Cast Firestorm, Blizzard, Noxious Cloud, Smoke Bomb, Nightfall, Ionize:
+  each shows its own field (falling cinders, snow, green fog, grey smoke,
+  dark pool, crawling sparks), no rune circle.
+- Cast a buff, a stance and a war cry: power rises from you; a war cry
+  pushes a ring out to its reach.
+- Fan of Knives and Throwing Spree throw knives; Shield Throw throws a
+  spinning shield.
+- Hold Suppressing Fire: a stream of arrows, not a laser.
+- On High or Ultra, a rank 20 field looks denser than rank 1, and motifs a
+  bit bigger.
+- On Low with three fields up, the frame rate holds.
 
 ## Handover
 

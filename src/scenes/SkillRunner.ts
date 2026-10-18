@@ -1070,13 +1070,25 @@ export class SkillRunner {
           player.beginAction(clip, castTime);
           const length = num('length', 12);
           const to = origin.clone().addScaledVector(dir, length);
-          this.effects.beam(origin, to, {
-            element: school,
-            color,
-            width: num('width', 1.1) * sig.size,
-            endBurst: true,
-            emitter: sig.emitter,
-          });
+          if (school === 'physical') {
+            // A stream of arrows (Suppressing Fire) is drawn as arrows, a
+            // tight fan down the line, not a pale laser. Visual only: the
+            // damage is the line below.
+            const side = this.tmp.set(dir.z, 0, -dir.x);
+            for (const off of [-0.22, 0, 0.22]) {
+              const from = origin.clone().addScaledVector(side, off);
+              const end = to.clone().addScaledVector(side, off * 2.2).addScaledVector(dir, -Math.abs(off) * 4);
+              this.effects.projectile(from, end, { element: school, color, shape: 'arrow', speed: 34, size: 0.3 * sig.size, impact: off === 0 });
+            }
+          } else {
+            this.effects.beam(origin, to, {
+              element: school,
+              color,
+              width: num('width', 1.1) * sig.size,
+              endBurst: true,
+              emitter: sig.emitter,
+            });
+          }
           this.lineDamage(player.position, dir, length, num('width', 1.1), makePacket, ctx, enemies, boss);
           break;
         }
