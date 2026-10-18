@@ -1244,3 +1244,41 @@ export function generateLevel(depth: number, levelIndex: number, levelsTotal: nu
   zonesOrBiome: BiomeId | ZonePlan[], seed: number, quest?: QuestInstance, modifiers?: string[], actx?: AreaContext): DungeonLevel;
 export function zoneBudget(depth: number, floorTiles: number, heat: number): number;
 ```
+
+## Loading progress — `src/core/LoadProgress.ts` — owned by speed
+
+```ts
+// src/core/Events.ts
+'load:progress': { stage: string; done: number; total: number };
+```
+
+Emitted while a town or map is built behind the loading curtain. `stage`
+names the step that just started; `done` steps of `total` are finished;
+`stage: 'ready'` with `done === total` means the scene is built and the
+curtain is about to lift. `total` may grow during a load (a boss floor adds
+a step), never shrink.
+
+- Map (`DungeonScene.enter`): `map`, `hero`, `world`, `monsters`, `boss`
+  (boss floors), `summons`, `icons`, `shaders`, `ready`.
+- Next area of a map (stairs): `world`, `monsters`, `boss`, `summons`,
+  `shaders`, `ready`.
+- Town (`TownScene.enter`): `meshing`, `world`, `hero`, `shaders`, `ready`.
+- Every other scene: `shaders`, `ready`.
+
+Steps are counted by `beginLoad(total)` / `loadStep(name)` / `endLoad()`
+(Engine wraps every scene's `enter` and `prime`). `loadStep` outside a load
+does nothing. `yieldIfLong(ms)` hands the page back when the work since the
+last hand-back ran past `ms`; build code calls it between pieces.
+
+## Bake workers — `src/world/BakePool.ts`, `BakeWorker.ts` — owned by speed
+
+- `bakeLooks(list: LookAsk[], urgent?, capMs?)`: bakes monster looks in
+  workers into the creature bake store. `LookAsk` names the monster, boss or
+  warden by id (looks are keyed by the data's own visual object, which a
+  worker's copy is not). Resolves when baked, at the cap, or at once without
+  workers; the page then bakes whatever is missing itself, as before.
+- `meshHero(classId, seed, equipment)`: dresses that hero in a worker so its
+  gear parts land in the hero mesh cache.
+- `dropQueuedLooks()`: a new run lets go of the last run's queued floors.
+- `lookBake(look)` in `art/creatures/Creature.ts` is the pure-data half of
+  `prototype` the worker uses: the store key and the baker.

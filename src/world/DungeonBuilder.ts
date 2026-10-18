@@ -734,8 +734,7 @@ export class DungeonMesh {
 
   /** The build, a piece at a time (see the constructor). Run it once. */
   *steps(rng: Rng): Generator<void, void, void> {
-    this.buildStatic(rng);
-    yield;
+    yield* this.buildStatic(rng);
     yield* this.buildProps(rng);
     this.buildLightPool();
     this.buildShafts(rng);
@@ -807,7 +806,8 @@ export class DungeonMesh {
 
   // --- static geometry ----------------------------------------------------
 
-  private buildStatic(rng: Rng): void {
+  /** Yields after each chunk, so a paced build can hand the page back. */
+  private *buildStatic(rng: Rng): Generator<void, void, void> {
     const level = this.level;
     const art = this.art;
     const W = level.width;
@@ -1294,6 +1294,7 @@ export class DungeonMesh {
         );
         this.chunks.push({ group, center: centre, radius: CHUNK * TILE_SIZE * 0.75 });
         this.root.add(group);
+        yield;
       }
     }
 
