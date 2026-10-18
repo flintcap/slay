@@ -234,7 +234,10 @@ The owner approved six streams in two waves of three. Same protocol, plus
 | effects | `effects.md` (later) | Skill, hit and death effects | 4345 |
 | mapvariety | `mapvariety.md` (later) | Map polish, new map shapes, weather, landmarks, run themes | 4346 |
 
-Wave 1: speed, balance, ui. Wave 2: looks, effects, mapvariety.
+Wave 1: speed (part 1, loads and freeze), balance, ui. Wave 2: looks,
+effects, mapvariety. Last: speed part 2 (FPS tuning: instancing, shadow
+cache, lighting, CPU frame), after wave two adds its lights, props and
+effects.
 
 ### Wave 4 file ownership
 
