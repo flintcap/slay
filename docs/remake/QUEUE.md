@@ -19,7 +19,7 @@ Done: anims, paladin, shapeshifter
 Paused: no
 
 Wave 4 (AAA polish, WebGPU):
-Running: speed part 2
+Running: none
 Waiting: none
-Done: speed part 1, balance (item list declined), ui, effects, mapvariety, looks
+Done: speed (parts 1 and 2), balance (item list declined), ui, effects, mapvariety, looks
 Paused: no
