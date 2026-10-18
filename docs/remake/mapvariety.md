@@ -31,9 +31,10 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
   giant, a ruined shrine, a gallows hill) that pull the player to explore,
   some with a small reward.
   (mapvariety: landmark set pieces with a reward)
-- [ ] 5. Weather per biome: snow, rain, ash fall, drifting fog, scaled by
+- [x] 5. Weather per biome: snow, rain, ash fall, drifting fog, scaled by
   quality level, built on the particle kit in `src/fx/kit` (use it, do not
   change it; ask effects in `effects.md` notes if you need more).
+  (mapvariety: weather per zone, snow, rain, ash and fog)
 - [ ] 6. Run themes: each run may roll a theme (flooded, overgrown, burnt,
   haunted) that changes props, light tint and monster mix weights, never
   monster counts or strength down.
@@ -43,14 +44,16 @@ timeout`. Run `node tools/get-chrome.mjs` once before the first browser check.
 ## Next up
 
 1. Do Setup in PROTOCOL.md.
-2. Milestone 5: weather per biome (snow in tundra and frostvault, rain in
-   swamp and darkForest, ash in ashwaste and hell, drifting fog in crypt,
-   sunkenTemple and swamp). Read `src/fx/kit` first (use it as it is) and
-   how `DungeonScene` calls `fx.setAmbient` from `BiomeDef.particles`. New
-   weather file(s) only, outside `src/fx` (effects owns it), for example
-   `src/world/Weather.ts`, scaled by quality level. The
-   hook into the scene is not ours: if one is needed, ask in `effects.md`
-   "Notes for resume" or use the existing ambient path.
+2. Milestone 6: run themes. Each run may roll a theme (flooded, overgrown,
+   burnt, haunted) that changes props, light tint and monster mix weights,
+   never monster counts or strength down. Read first: `Biomes.ts` VARIANTS
+   (per-biome art and dressing patches, `level.variant`), how
+   `dressingFor(biome, variant)` and `placeProps` use it, how the run rolls
+   its variant (grep `variant` in `MapGen.ts`/`DungeonGen.ts`), and how
+   monster pools are picked (`placeSpawns`, `families`). A theme is new
+   data in `Biomes.ts` (ours: new entries and themes) plus a field on the
+   run/level (types.ts, additive). Light tint: an optional field looks may
+   read (PLAN.md "Wave 4 file ownership, wave two"); never require it.
 
 ## Notes for resume
 
@@ -98,6 +101,25 @@ Checkers for maps (headless): `maps` (every generator x biome, hard rules:
 connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
 `grid`, `openness`, `roomrules`, `density`, `dressing`, `props`,
 `variants`. Browser: `map`, `mapflow`, `stairs`, `walk`.
+
+### Milestone 5 notes
+
+- `src/world/Weather.ts`: `weatherFor` rolls a zone's weather; `Weather`
+  runs it round the hero, easing between zones. Tundra snow (calm, normal
+  or a storm), swamp rain (60%) and fog, dark wood rain (45%) and fog (55%),
+  ash over the wastes (heavier in "grey", cinders in "emberfall"), ash and
+  cinders in hell, sand wind on half the deserts, fog in most crypts and the
+  drowned temple, drips in caverns, flooded crypts and the temple. Frozen
+  vaults drift a little rime indoors (a real blizzard in "blizzard").
+- Hooked in `DungeonScene` at one place (field, build next to
+  `fx.setAmbient`, update after `tickZone`): not our file, three lines.
+- Layers are our own `Layer` objects, emitted with `FXSystem.emit` (the
+  kit is unchanged). Every layer has count 3+ so `fxScale` thins it.
+- New checker `node tools/check-weather.mjs` (headless): sky weather never
+  under a roof, every layer scales, at most 600 particles a second (peak
+  about 430, a rainy dark wood).
+- Found: the biome ambient motes stay round the map centre (`setFocus` is
+  never called). Written as a request in `effects.md` "Notes for resume".
 
 ### Milestone 4 notes
 
@@ -164,6 +186,11 @@ connected, ports walkable, arena sealed), `mapgen`, `variety` (report),
   side room (gibbets, a frozen watch, a broken chapel, a bone mound...).
   Most have a rare chest or a shrine beside the centre piece that you can
   walk up to and use. Nothing in it floats or blocks the way.
+- Weather: play a tundra map (snow, sometimes a storm that leans with the
+  wind), a swamp or dark wood (rain with rings on the ground, low fog),
+  the ash wastes or hell (ash and cinders), a crypt (low fog). It should
+  feel heavy and grim, never cute; it should fade when you walk into a zone
+  with other weather, and stay smooth on Low quality.
 
 ## Handover
 

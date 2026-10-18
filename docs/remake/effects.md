@@ -136,6 +136,17 @@ Weakest, worst first:
    a fixed size.
 10. suppressing (beam, physical) is a pale laser for a volley of arrows.
 
+### Request from mapvariety (biome ambient follows the map centre)
+
+- `FXSystem.setAmbient` puts the ambient focus at the centre of the level's
+  bounds, and nothing moves it: `setFocus` is never called, and
+  `DungeonScene` calls `this.fx.update(dt, elapsed)` with no camera. So the
+  biome motes (dust, spores, snow...) only fall in a 14 m disc round the map
+  centre, not round the hero. One fix: pass the camera
+  (`this.fx.update(dt, elapsed, this.camera)`), or call
+  `fx.setFocus(hero x, y, z)` each frame. Weather (`src/world/Weather.ts`)
+  does its own emission round the hero and does not need this.
+
 ## For the owner to test
 
 (Add one line per item: what to try and what should happen.)

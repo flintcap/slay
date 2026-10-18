@@ -1238,6 +1238,13 @@ export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | nul
   (`{id, name, x, y, room}`) names it and gives its heart tile; most leave a
   rare chest (`interact: 'chest.rare'`) or a shrine within 4 tiles. A screen
   may label it by `name`; nothing reads it yet.
+- Weather (mapvariety): `src/world/Weather.ts`. `DungeonScene` builds
+  `new Weather(fx, level, biome.fogColor)` when a level loads and calls
+  `weather.update(dt, elapsed, x, y, z, tileX, tileY)` each frame with the
+  hero's place. Each zone rolls its own weather (`weatherFor(biome,
+  outdoor, variant, rng)`, seeded per level): snow, rain, ash, cinders,
+  sand, fog, drips; sky kinds only under open sky. It emits through
+  `FXSystem.emit`, so `fxScale` and the pressure throttle apply.
 
 ```ts
 // src/world/MapGen.ts

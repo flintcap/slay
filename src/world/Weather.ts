@@ -165,7 +165,7 @@ const LOOKS: Record<WeatherKind, Look> = {
     batch: 3, y: [5, 7], low: false, lean: 0.7, reach: 13, down: true,
   },
   fog: {
-    layer: lay({ sprite: SPRITE.gas, ramp: [0x6a7078, 0x484e54, 0x24282c], count: 3, radius: 3, speed: [0.15, 0.35], spread: 0.2, size: [2.6, 4.2], grow: 1.4, life: [10, 15], emit: 0.04, occl: 0.22, heat: [0.25, 0], drag: 0.05, turb: 0.12, fade: 1 }),
+    layer: lay({ sprite: SPRITE.gas, ramp: [0x6a7078, 0x484e54, 0x24282c], count: 3, radius: 3, speed: [0.15, 0.35], spread: 0.2, size: [2.6, 4.2], grow: 1.4, life: [10, 15], emit: 0.4, occl: 0.2, heat: [0.25, 0], drag: 0.05, turb: 0.12, fade: 1 }),
     batch: 1, y: [0.4, 1.1], low: true, lean: 1, reach: 14, down: false,
   },
   grit: {
