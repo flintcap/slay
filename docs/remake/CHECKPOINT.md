@@ -6,8 +6,11 @@ Update this file and push it after every finished step.
 ## Owner rules for this stretch
 
 - Steam work is its own last phase (Phase 4: desktop app, Steam features, Deck,
-  store), with nothing else in it. Phase 3 (Ready to ship) holds controller play,
-  settings, frame rate, engine safety and bug reports.
+  store), with nothing else in it. Phase 3 (Ready to ship) holds settings,
+  frame rate, engine safety and bug reports.
+- Mouse and keyboard only. No controller play in any phase (the Deck gets a
+  Steam Input layout that maps to mouse and keys, aiming for Playable).
+- Every class keeps mana. No new class resources.
 - Drops stay random, never class leaning.
 - Runes and runewords are our own, not a D2 copy.
 - Few monster windups and channels. Every monster ability has a cooldown.
