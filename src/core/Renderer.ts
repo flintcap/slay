@@ -20,6 +20,7 @@ import { installShadowCache } from './ShadowCache';
 import { nodeTexturesOf } from './Tsl';
 import type { GameSettings } from '../types';
 import { setAssetAnisotropy } from './Assets';
+import { events } from './Events';
 
 type F = THREE.Node<'float'>;
 type V2 = THREE.Node<'vec2'>;
@@ -766,6 +767,7 @@ export class Renderer {
     if (!step) setAssetAnisotropy(q.anisotropy);
     if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa || before.taa !== q.taa || before.contactShadows !== q.contactShadows) this.chainDirty = true;
     this.onResize();
+    events.emit('quality:changed', { profile: q });
   }
 
   get qualityLevel(): GameSettings['quality'] {

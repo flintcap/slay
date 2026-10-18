@@ -199,6 +199,11 @@ const _opts: BurstOpts = {};
 export class FieldPool {
   private fields: Field[] = [];
 
+  /** Follows a quality change live (stream rates). */
+  setQuality(q: QualityProfile): void {
+    this.quality = q;
+  }
+
   constructor(private fx: FXSystem, private decals: DecalSystem, private quality: QualityProfile, private rng: Rng, cap = CAP) {
     for (let i = 0; i < cap; i++) this.fields.push(new Field());
   }

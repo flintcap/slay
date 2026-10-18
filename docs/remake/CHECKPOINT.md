@@ -75,9 +75,13 @@ Update this file and push it after every finished step.
      (both were only ever played inside a muted player-skill block);
      death toll plays once; pause silences world sound and ambience and
      drops music to 35% (new game:paused event), menus still click.
-   - Art, open: corpse hit-flash, particle/decal quality at load, player
-     ground blasts vs enemy warning layer, ground layers past 4, second
-     biome wetness/grime, single glowing set piece.
+   - Art, done: corpses keep their own look when cloned mid hit-flash;
+     shatter/arcane deaths leave no corpse; a single set piece glows (more
+     pieces, brighter); player meteor and slam aim rings draw on the glow
+     layer in the skill's colour, not the red enemy warning layer;
+     particles, decals and fields follow a quality change live (new
+     quality:changed event; pool sizes stay until the next scene).
+   - Art, open: ground layers past 4, second biome wetness/grime.
    - Engine: next.
 
 ## Next

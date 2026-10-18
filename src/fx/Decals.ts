@@ -18,6 +18,7 @@
 
 import * as THREE from 'three';
 import type { QualityProfile } from '../core/Renderer';
+import { events } from '../core/Events';
 import { Random } from '../core/RNG';
 import { GroundLayer, G, GROUND, type GroundKind, type GroundHandle } from './kit/Ground';
 import { RAMPS, packLinear, mixHex, darken, type School } from './kit/Palette';
@@ -139,6 +140,14 @@ export class DecalSystem {
     this.tells = new GroundLayer('tells', Math.max(24, Math.round(72 * fx)), 8);
     scene.add(this.marks.mesh, this.glows.mesh, this.tells.mesh);
     setFloorFn(null);
+    this.unQuality = events.on('quality:changed', ({ profile }) => this.setQuality(profile));
+  }
+
+  private unQuality: () => void;
+
+  /** Follows a quality change live. Layer sizes stay as built until the next scene. */
+  setQuality(q: QualityProfile): void {
+    this.quality = q;
   }
 
   /** Tells the floor layers (and every effect that lands debris) where the floor is. */
@@ -226,8 +235,22 @@ export class DecalSystem {
     return this.telegraphEx(kind, x, z, size, rotation, duration, color ?? 0xff3020, param);
   }
 
+  /**
+   * The hero's own target mark: where a slam or a falling spell will land.
+   * A thin ring in the skill's colour on the glow layer, never the filled
+   * red of an enemy warning and never out of the warning layer's budget, so
+   * nothing the player casts reads as something to dodge.
+   */
+  aim(x: number, z: number, radius: number, duration: number, color: number): TelegraphHandle {
+    return this.spawnTell(this.glows, 'ring', x, z, radius, 0, duration, color, 0.08, 0.45);
+  }
+
   /** Telegraph with an explicit shape parameter: cone half-angle (radians), line half-width (fraction of length), ring thickness. */
   telegraphEx(kind: TelegraphShape, x: number, z: number, size: number, rotation: number, duration: number, color: number, param: number): TelegraphHandle {
+    return this.spawnTell(this.tells, kind, x, z, size, rotation, duration, color, param, 0.7);
+  }
+
+  private spawnTell(layer: GroundLayer, kind: TelegraphShape, x: number, z: number, size: number, rotation: number, duration: number, color: number, param: number, emit: number): TelegraphHandle {
     let cx = x;
     let cz = z;
     let s = Math.max(0.1, size);
@@ -244,8 +267,8 @@ export class DecalSystem {
     G.size = s; G.rot = rotation; G.life = Math.max(0.05, duration);
     G.kind = SHAPE[kind] ?? GROUND.tgCircle; G.param = p; G.param2 = 0;
     G.core = pk.core; G.body = pk.body; G.tail = pk.tail;
-    G.emit = 0.7; G.fadeIn = 0.05; G.seed = this.rng.next(); G.delay = 0;
-    return new Tell(this.tells, this.tells.spawn(G));
+    G.emit = emit; G.fadeIn = 0.05; G.seed = this.rng.next(); G.delay = 0;
+    return new Tell(layer, layer.spawn(G));
   }
 
   update(dt: number): void {
@@ -261,6 +284,7 @@ export class DecalSystem {
   }
 
   dispose(): void {
+    this.unQuality();
     this.scene.remove(this.marks.mesh, this.glows.mesh, this.tells.mesh);
     this.marks.dispose();
     this.glows.dispose();

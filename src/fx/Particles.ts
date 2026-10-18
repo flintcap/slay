@@ -15,6 +15,7 @@
 
 import * as THREE from 'three';
 import type { QualityProfile } from '../core/Renderer';
+import { events } from '../core/Events';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { ParticleField } from './kit/Particles';
@@ -61,6 +62,8 @@ export class FXSystem {
   /** Times a burst was cut short by the per-frame ceiling. */
   clipped = 0;
 
+  private unQuality: () => void;
+
   constructor(scene: THREE.Scene, quality: QualityProfile) {
     this.scene = scene;
     this.quality = quality;
@@ -68,6 +71,15 @@ export class FXSystem {
     const fx = Math.max(0.25, quality.fxScale);
     this.field = new ParticleField(Math.round(32000 * fx));
     scene.add(this.field.mesh);
+    this.unQuality = events.on('quality:changed', ({ profile }) => this.setQuality(profile));
+  }
+
+  /**
+   * Follows a quality change live: how much each burst and ambient stream
+   * spawns. The pool keeps the size it was built with until the next scene.
+   */
+  setQuality(q: QualityProfile): void {
+    this.quality = q;
   }
 
   get capacity(): number {
@@ -234,6 +246,7 @@ export class FXSystem {
   }
 
   dispose(): void {
+    this.unQuality();
     this.scene.remove(this.field.mesh);
     this.field.dispose();
     if (this.text) {

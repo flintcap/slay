@@ -526,6 +526,16 @@ export class EffectSystem {
     this.hazardFields = new FieldPool(fx, decals, quality, this.rng, 24);
     scene.add(this.cores.mesh, this.beams.mesh, this.columns.mesh, this.shells.mesh, this.ribbons.mesh);
     for (let i = 0; i < 64; i++) this.free.push(new Live());
+    this.unQuality = events.on('quality:changed', ({ profile }) => this.setQuality(profile));
+  }
+
+  private unQuality: () => void;
+
+  /** Follows a quality change live. Pools keep the size they were built with until the next scene. */
+  setQuality(q: QualityProfile): void {
+    this.quality = q;
+    this.fields.setQuality(q);
+    this.hazardFields.setQuality(q);
   }
 
   /** The quality's particle scale (0.35 Low .. 1.4 Ultra), for callers that trim detail. */
@@ -956,7 +966,7 @@ export class EffectSystem {
     const height = opts.height ?? 22;
     const radius = opts.radius ?? 3;
     const delay = opts.delay ?? 1.1;
-    const tg = this.decals.telegraph('circle', x, z, radius, 0, delay, opts.color ?? el.body);
+    const tg = this.decals.aim(x, z, radius, delay, opts.color ?? el.body);
     const to = new THREE.Vector3(x, floorAt(x, z) + 0.3, z);
     if (school === 'lightning') {
       return this.delay(delay, () => {
@@ -1138,7 +1148,7 @@ export class EffectSystem {
   slam(x: number, z: number, radius: number, opts: { windup?: number; element?: School; color?: number; emitter?: string; density?: number; onFire?: () => void } = {}): EffectHandle {
     const school = opts.element ?? 'physical';
     const windup = opts.windup ?? 0.9;
-    const tg = this.decals.telegraph('circle', x, z, radius, 0, windup, opts.color ?? 0xff5020);
+    const tg = this.decals.aim(x, z, radius, windup, opts.color ?? lookOf(school).bodyHex);
     this.sfx('boss.windup', x, z);
     return this.delay(windup, () => {
       tg.cancel();
@@ -2114,6 +2124,7 @@ export class EffectSystem {
   }
 
   dispose(): void {
+    this.unQuality();
     this.clear();
     this.scene.remove(this.cores.mesh, this.beams.mesh, this.columns.mesh, this.shells.mesh, this.ribbons.mesh);
     this.cores.dispose();

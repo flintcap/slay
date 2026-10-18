@@ -1,4 +1,5 @@
 import type { Item, DamageType, SceneId, MonsterRank, ItemRarity } from '../types';
+import type { QualityProfile } from './Renderer';
 
 /**
  * Global typed event bus. Systems publish; UI and FX subscribe. Keeps the
@@ -118,6 +119,8 @@ export interface GameEvents {
   'settings:changed': Record<string, never>;
   /** The game clock stopped or started again (pause menu, a pausing panel, a hidden tab). */
   'game:paused': { paused: boolean };
+  /** The renderer switched quality (Settings or the auto ladder). Effects follow it live. */
+  'quality:changed': { profile: QualityProfile };
   /** Asset preloading (`core/Assets.ts`): files landed so far of those requested. */
   'assets:progress': { loaded: number; total: number; label: string };
   /**

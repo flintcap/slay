@@ -20,6 +20,7 @@ import type { CreatureInfo } from './Animator';
 import { STYLE_DEFAULT, type MotionStyle } from './Motion';
 import { mergeGeometries } from '../Meshes';
 import { shadowBodyMaterial } from '../../core/ShadowBodies';
+import { bodyVanishes, ownMaterial } from '../../fx/HitFlash';
 
 /** How much detail a creature gets: triangles per material and field resolution. */
 export type CreatureTier = 'small' | 'normal' | 'big' | 'boss';
@@ -390,7 +391,7 @@ function dropCorpse(c: THREE.Object3D): void {
  */
 /** What a body wears once it falls: its own look without rim light, its glow banked low. */
 function corpseMaterial(live: THREE.SkinnedMesh): THREE.Material | null {
-  const base = baseMats.get(live) ?? (live.material as THREE.Material);
+  const base = baseMats.get(live) ?? (ownMaterial(live) as THREE.Material);
   const def = (base.userData.creature as { def: CreatureMatDef } | undefined)?.def;
   return def ? creatureMaterial({ ...def, rimStrength: 0, glowIntensity: (def.glowIntensity ?? 2.4) * 0.25 }) : null;
 }
@@ -429,6 +430,8 @@ export function leaveCorpse(root: THREE.Object3D): void {
   while (world.parent) world = world.parent;
   const src = root.userData.monsterSkeleton as THREE.Skeleton | undefined;
   if (world === root || !src) return;
+  // Shattered or unmade: nothing is left to lie there.
+  if (bodyVanishes(root)) return;
   root.updateWorldMatrix(true, true);
   // The live spawn's userData holds its skeleton; clone() would deep-copy it.
   const ud = root.userData;
@@ -442,8 +445,18 @@ export function leaveCorpse(root: THREE.Object3D): void {
   });
   const own = new THREE.Skeleton(src.bones.map((b) => bones[b.name]!), src.boneInverses);
   const liveMeshes: THREE.SkinnedMesh[] = [];
+  const liveAll: THREE.Mesh[] = [];
   root.traverse((o) => {
     if ((o as THREE.SkinnedMesh).isSkinnedMesh) liveMeshes.push(o as THREE.SkinnedMesh);
+    if ((o as THREE.Mesh).isMesh) liveAll.push(o as THREE.Mesh);
+  });
+  // A body killed mid-flash (every elemental kill wears a death look) was
+  // copied wearing the flash material: hand each copy its own back first.
+  let j = 0;
+  corpse.traverse((o) => {
+    if (!(o as THREE.Mesh).isMesh) return;
+    const live = liveAll[j++];
+    if (live) (o as THREE.Mesh).material = ownMaterial(live);
   });
   let i = 0;
   corpse.traverse((o) => {

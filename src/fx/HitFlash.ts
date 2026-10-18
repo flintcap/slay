@@ -52,6 +52,26 @@ const MAX_ACTIVE = 24;
 const MAX_HOLDS = 12;
 
 const _c = new THREE.Color();
+
+/** What each mesh wore before the flash took it, while the flash has it. */
+const underFlash = new WeakMap<THREE.Mesh, THREE.Material | THREE.Material[]>();
+
+/**
+ * A mesh's own material, even mid-flash. Anything that copies a body (the
+ * corpse left on the floor) reads this: copying the flash material instead
+ * left elemental kills glowing white, or invisible, for good.
+ */
+export function ownMaterial(mesh: THREE.Mesh): THREE.Material | THREE.Material[] {
+  return underFlash.get(mesh) ?? mesh.material;
+}
+
+/** Bodies whose death look ends with them gone (shattered, unmade). */
+const vanishing = new WeakSet<THREE.Object3D>();
+
+/** True when this body's death look takes it away: it leaves no corpse. */
+export function bodyVanishes(root: THREE.Object3D): boolean {
+  return vanishing.has(root);
+}
 const NO_MESHES: THREE.Mesh[] = [];
 const WHITE = new THREE.Color(1, 1, 1);
 
@@ -146,6 +166,7 @@ export class HitFlash {
       const m = meshes[i]!;
       const orig = m.material;
       slot.originals[i] = orig;
+      underFlash.set(m, orig);
       m.material = Array.isArray(orig) ? orig.map(() => mat) : mat;
       m.userData.slFlash = slot.color;
     }
@@ -185,6 +206,7 @@ export class HitFlash {
     slot.left = duration;
     slot.total = duration;
     slot.vanishAt = vanishAt;
+    if (Number.isFinite(vanishAt)) vanishing.add(root);
     this.holds++;
     return true;
   }
@@ -324,8 +346,10 @@ export class HitFlash {
       const ours = Array.isArray(cur) ? cur.every((x) => this.isOurs(x)) : this.isOurs(cur);
       // Something else replaced the material mid-flash: theirs wins.
       if (ours) m.material = slot.originals[i]!;
+      underFlash.delete(m);
     }
     this.active.delete(slot.root);
+    vanishing.delete(slot.root);
     if (slot.hold) this.holds = Math.max(0, this.holds - 1);
     slot.hold = false;
     slot.originals.fill(null as unknown as THREE.Material);

@@ -2,10 +2,10 @@
  * SLAY — what a hero's gear does together.
  *
  * Only the few glowing sets (`Designs.ts`: GLOWING_SETS) and the mythic and
- * ancient uniques (`glowTierOf`) light up. A glowing set lights as it is completed: two
- * pieces and the trims of every worn piece glow in the set's colour; three
- * or more and every piece glows round its outline, stronger with each piece;
- * the full set and the whole outfit shines. A glowing worn unique glows round
+ * ancient uniques (`glowTierOf`) light up. A glowing set piece glows round its
+ * outline from the first piece worn, as its icon does, and brighter with each
+ * piece added; two pieces and the trims of every worn piece glow in the set's
+ * colour too; the full set and the whole outfit shines. A glowing worn unique glows round
  * its own outline. No floating sparks: the owner kept the outline glow and
  * dropped them, as fights full of spells ran slow.
  *
@@ -59,22 +59,17 @@ export function dressOutfit(
     const total = getSet(p.setId)?.pieces.length ?? 99;
     lightArmour(w, setStage(counts.get(p.setId) ?? 0, total), motif.glow);
   }
-  // The set's aura: three pieces and up, the fullest set wins.
-  let best: { id: string; n: number; total: number } | null = null;
+  // Every worn glowing set piece glows round its outline, as its icon does,
+  // brighter as its set fills. One piece used to stay dark until three were
+  // worn, though the same piece glowed in the pack.
   for (const [id, n] of counts) {
     if (!GLOWING_SETS.has(id)) continue;
+    const motif = SET_MOTIFS[id];
+    if (!motif) continue;
     const total = getSet(id)?.pieces.length ?? 99;
-    if (n >= 3 && (!best || n / total > best.n / best.total)) best = { id, n, total };
-  }
-  if (best) {
-    const motif = SET_MOTIFS[best.id];
-    if (motif) {
-      const full = best.n >= best.total;
-      // Every worn piece of the set glows round its outline, brighter as it fills.
-      const glow = full ? 0.85 : 0.3 + 0.4 * (best.n / best.total);
-      for (const [slot, w] of worn) {
-        if (pieces[slot]?.setId === best.id && !pieces[slot]?.uniqueId) out.push(...glowTwins(w.object, motif.glow, glow, 0.012, glowStyleOf(motif.aura, motif.glowStyle)));
-      }
+    const glow = n >= total ? 0.85 : 0.3 + 0.4 * (n / total);
+    for (const [slot, w] of worn) {
+      if (pieces[slot]?.setId === id && !pieces[slot]?.uniqueId) out.push(...glowTwins(w.object, motif.glow, glow, 0.012, glowStyleOf(motif.aura, motif.glowStyle)));
     }
   }
   // Worn uniques: their own glow round their outline.
