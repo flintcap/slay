@@ -47,9 +47,10 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
   fix the lab (a tool, not the game, unless the game is at fault). One
   retry, then note it and move on. (Fixed in the lab: 18 of 19 scenes draw;
   `crits` is still black in a full run, see "Notes for resume".)
-- [ ] 4. (after wave two) Fewer draw calls: instancing or `BatchedMesh` for repeated props,
+- [x] 4. (after wave two) Fewer draw calls: instancing or `BatchedMesh` for repeated props,
   monsters and loot, with culling (GPU or indirect draws where three.js
-  supports it). Count draw calls before and after.
+  supports it). Count draw calls before and after. (The hero's shadow from
+  shadow bodies: map 170 -> 161 draws; see "Milestone 4".)
 - [ ] 5. (after wave two) Shadow cost: cache static shadows so only moving casters redraw;
   a budget for point-light shadows.
 - [ ] 6. (after wave two) Many torches: tiled or clustered lighting, only if it measures
@@ -204,6 +205,28 @@ key; `--draws` counts draws by kind. What it found:
 - `crits` (shot at 0.06 s) still comes out black in a full run, though it
   drew in a two-scene run. Tried twice; left. Guess: the crit flash's
   first frames (exposure or the temporal pass) on a cold scene.
+
+### Milestone 4 (draw calls)
+
+What is already batched (earlier waves): props are baked per chunk and
+material, repeated props are instanced (one storage-buffer shader for all),
+flames are one `BatchedMesh`, light pools one instanced mesh, each monster's
+shadow is one shadow body, held items are merged per material. three's
+WebGPU `BatchedMesh` still issues one GPU draw per piece (no multi-draw
+indirect in r186), so batching more of the same buys JS time, not draws.
+- The biggest group left that could be cut without a new look: the hero's
+  shadow, one draw per part and per item part in every sun shadow map.
+  It now comes from shadow bodies like the monsters' (`HeroModel.
+  useShadowBodies`, on for the player only): the body, linens and armour
+  in one skinned geometry, and each held item in one more. Parts a plain
+  depth draw would get wrong (two-sided cloth, see-through glows, the cape
+  on its own bones, a spinning part) keep casting their own. Rebuilt when
+  the gear or the beast form changes.
+- Map (same seed, 40 frames): draws 170 -> 161, hero shadow draws about
+  12 -> 3. Pipelines made in play still 0.
+- Not done: monster parts (skin, cloth, metal: about 25 draws) are one draw
+  per material by design; merging them needs one material, a new look.
+  Loot on the ground is a few draws (a potion is three).
 
 ## For the owner to test
 
