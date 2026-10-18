@@ -74,6 +74,7 @@ import { paladinBlocked } from './paladin/Rites';
 import { beginLoad, breather, endLoad, loadStep, yieldIfLong } from '../core/LoadProgress';
 import { bakeLooks, dropQueuedLooks, type LookAsk } from '../world/BakePool';
 import { Weather } from '../world/Weather';
+import { markStaticShadows } from '../core/ShadowCache';
 
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
@@ -780,6 +781,8 @@ export class DungeonScene extends GameScene {
     this.mesh = new DungeonMesh(this.level, this.biome, levelRng, true);
     yield* this.mesh.steps(levelRng);
     this.scene.add(this.mesh.root);
+    // The floor and its props never move: the sun keeps their shadow (`ShadowCache.ts`).
+    markStaticShadows(this.scene, this.mesh.root);
     this.remains?.dispose();
     const mesh = this.mesh;
     this.remains = new PropRemains((x, y) => mesh.artAt(x, y), levelRng.fork('remains'));

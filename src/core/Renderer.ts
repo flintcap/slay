@@ -16,6 +16,7 @@ import { airLight, makeLighting, setScatterLimit } from './Lighting';
 import { Motes } from './Motes';
 import { air } from './Air';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
+import { installShadowCache } from './ShadowCache';
 import { nodeTexturesOf } from './Tsl';
 import type { GameSettings } from '../types';
 import { setAssetAnisotropy } from './Assets';
@@ -603,6 +604,8 @@ export class Renderer {
     // Canvas textures upload without waiting on the GPU (`CanvasUpload`).
     uploadCanvasesWithoutWaiting(this.gl);
     this.gate = new ShaderGate(this.gl);
+    // The sun's shadow of still things is kept between updates (`ShadowCache`).
+    installShadowCache(this.gate);
     this.buildEnvironment();
   }
 
@@ -822,6 +825,9 @@ export class Renderer {
         l.userData.shadowTicked = true;
       }
       const point = !(l as THREE.DirectionalLight).isDirectionalLight;
+      // The sun and moon keep the shadow of still casters (`ShadowCache.ts`);
+      // set before the shadow is first built, which picks its depth format.
+      if (!point) l.userData.shadowCache = true;
       // A lamp's shadow left out at this quality is faded to nothing and no
       // longer drawn, rather than switched off. Switching `castShadow` changes
       // every lit shader, and switching it back on reused shaders built

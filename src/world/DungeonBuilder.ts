@@ -422,6 +422,11 @@ function radialTexture(size = 128): THREE.CanvasTexture {
 
 /** Half-width of the sun's shadow square, metres. */
 const SUN_REACH = 30;
+/** Scratch for `updateFlames`, which runs every frame. */
+const FLAME_M4 = new THREE.Matrix4();
+const FLAME_Q = new THREE.Quaternion();
+const FLAME_POS = new THREE.Vector3();
+const FLAME_SCL = new THREE.Vector3();
 /** The open-sky key light, while one is live; its shadow tracks the hero. */
 let sun: THREE.DirectionalLight | null = null;
 /** Where the sun sits relative to the hero, metres. */
@@ -2683,10 +2688,10 @@ export class DungeonMesh {
     if (this.flames.length === 0) return;
     // Only animate flames near the camera; the rest keep their rest pose and
     // still bloom correctly.
-    const m4 = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const pos = new THREE.Vector3();
-    const scl = new THREE.Vector3();
+    const m4 = FLAME_M4;
+    const q = FLAME_Q;
+    const pos = FLAME_POS;
+    const scl = FLAME_SCL;
     const RANGE = 34 * 34;
 
     for (const t of this.torches) {

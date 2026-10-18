@@ -24,6 +24,7 @@ import { BOARD, townMarkers, type MarkerSpot, type QuestMarker } from '../sim/Qu
 import { planDescent } from './DescentPlanner';
 import { breather, loadStep, yieldIfLong } from '../core/LoadProgress';
 import { meshHero } from '../world/BakePool';
+import { markStaticShadows } from '../core/ShadowCache';
 
 /** The town hero's seed: the worker dresses the same hero the town builds. */
 const TOWN_HERO_SEED = 12345;
@@ -109,6 +110,8 @@ export class TownScene extends GameScene {
     }
     this.town = piece.value;
     this.scene.add(this.town.root);
+    // The camp's buildings never move: the moon keeps their shadow (`ShadowCache.ts`).
+    markStaticShadows(this.scene, this.town.root);
     const town = this.town;
     this.decals.setGround((x, z) => town.groundY(x, z));
 
