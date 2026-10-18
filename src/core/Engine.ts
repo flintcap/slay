@@ -4,7 +4,7 @@ import { Input } from './Input';
 import type { SceneId } from '../types';
 import { events } from './Events';
 import { save } from './Save';
-import { texturesSettled } from './Assets';
+import { sweepAssetTextures, texturesSettled } from './Assets';
 import { beginLoad, endLoad, loadStep } from './LoadProgress';
 
 /** One distinct error the engine caught, with how often it has happened. */
@@ -98,6 +98,9 @@ export function disposeObject(root: THREE.Object3D): void {
     // A skinned mesh's skeleton owns a bone texture on the GPU; a torn-down
     // scene left one behind per resident, hero and monster.
     (obj as THREE.SkinnedMesh).skeleton?.dispose();
+    // A shadow-casting light owns its shadow map (and the kept copy in
+    // `ShadowCache.ts`); a torn-down scene left those behind too.
+    if ((obj as THREE.Light).isLight) (obj as THREE.Light).dispose();
     const mat = (mesh as unknown as { material?: THREE.Material | THREE.Material[] }).material;
     if (!mat) return;
     const list = Array.isArray(mat) ? mat : [mat];
@@ -308,6 +311,13 @@ export class Engine {
 
       this.failStreak = 0;
       events.emit('scene:change', { from, to: arrived });
+      // Textures neither this scene nor the last one used give back their GPU memory.
+      try {
+        const live = this.currentScene;
+        if (live) sweepAssetTextures(this.renderer.texturesUnder(live.scene, this.renderer.takeUploaded()));
+      } catch (err) {
+        this.report('render', err);
+      }
     } finally {
       // Whatever happened, never leave the screen black and input dead.
       await fadeTo(0, 420);

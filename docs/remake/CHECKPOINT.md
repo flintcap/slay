@@ -90,8 +90,16 @@ Update this file and push it after every finished step.
    - Engine, done: a lost GPU holds the game for good (nothing can unpause
      it), writes the save, and shows a Reload card (new gpu:lost event); the
      reload does not count as fleeing a fight. Back in town with all gear.
-   - Engine, open: textures / hero mesh cache / shadow map never freed,
-     portrait images never deleted, hard reset misses one save copy.
+   - Engine, done too: between maps, asset textures unused for 2 scenes
+     give back their GPU copy (image kept, re-uploads on use); hero mesh
+     parts unused for 2 scenes are freed and kept as raw arrays (capped);
+     lights free their shadow maps and the kept shadow cache follows; old
+     portrait versions are purged from storage, and a full storage first
+     drops portrait images before touching save copies; hard reset clears
+     the newer-save copy too (graves kept on purpose). Browser run town ->
+     d1 -> d5 -> d9: no errors, textures level off near 166. Geometry still
+     climbs slowly (cached monster and prop shapes); watch it.
+   - Engine group finished.
 
 ## Next
 

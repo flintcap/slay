@@ -24,6 +24,41 @@ export const QUARANTINE_KEY = 'slay.account.quarantine';
  * deleting the save does not clear it.
  */
 export const GRAVE_KEY = 'slay.account.graves';
+/** A save written by a newer build, kept untouched so going back a version never loses it. */
+export const NEWER_KEY = `${CORRUPT_KEY}.newer`;
+/** Rebuildable caches (rendered portraits) in the same storage. They always give way to the save. */
+const CACHE_PREFIXES = ['slay.portrait.', 'slay.bossportrait.'];
+
+/** Every cache key in `store`, when it can list its keys (`localStorage` can). */
+function cacheKeys(store: SaveStore): string[] {
+  const s = store as Partial<Storage>;
+  if (typeof s.length !== 'number' || typeof s.key !== 'function') return [];
+  const out: string[] = [];
+  for (let i = 0; i < s.length; i++) {
+    const k = s.key(i);
+    if (k && CACHE_PREFIXES.some((p) => k.startsWith(p))) out.push(k);
+  }
+  return out;
+}
+
+/**
+ * Removes a cache's entries from older builds: every `localStorage` key that
+ * starts with `prefix` but not with `current`. Their art changed, so they are
+ * never read again, and they used to stay for good.
+ */
+export function purgeStaleCache(prefix: string, current: string): void {
+  try {
+    const ls = globalThis.localStorage;
+    const old: string[] = [];
+    for (let i = 0; i < ls.length; i++) {
+      const k = ls.key(i);
+      if (k && k.startsWith(prefix) && !k.startsWith(current)) old.push(k);
+    }
+    for (const k of old) ls.removeItem(k);
+  } catch {
+    /* no storage */
+  }
+}
 
 /**
  * Current save format.
@@ -602,7 +637,7 @@ export class SaveManager {
     const primary = this.parse(raw);
     if (primary !== undefined) {
       this.adopt(primary, 'primary', false);
-      if (this.loadReport.newerVersion) this.keepCopy(`${CORRUPT_KEY}.newer`, raw);
+      if (this.loadReport.newerVersion) this.keepCopy(NEWER_KEY, raw);
       // A clean load is the best possible backup.
       else if (this.loadReport.repairs.length === 0) this.writeBackup(raw);
       return this.data;
@@ -712,12 +747,31 @@ export class SaveManager {
   }
 
   private writeBackup(raw: string): void {
-    try {
-      this.store.setItem(BACKUP_KEY, raw);
-      this.lastBackupAt = Date.now();
-    } catch (err) {
-      console.warn('[save] backup write failed', err);
+    for (let tries = 0; tries < 2; tries++) {
+      try {
+        this.store.setItem(BACKUP_KEY, raw);
+        this.lastBackupAt = Date.now();
+        return;
+      } catch (err) {
+        // Full: rendered portraits go before the backup does.
+        if (tries === 0 && this.dropCaches() > 0) continue;
+        console.warn('[save] backup write failed', err);
+        return;
+      }
     }
+  }
+
+  /** Deletes the rebuildable caches (portraits) to make room. Returns how many went. */
+  private dropCaches(): number {
+    const keys = cacheKeys(this.store);
+    for (const k of keys) {
+      try {
+        this.store.removeItem(k);
+      } catch {
+        /* ignore */
+      }
+    }
+    return keys.length;
   }
 
   get account(): AccountSave {
@@ -758,8 +812,19 @@ export class SaveManager {
       if (Date.now() - this.lastBackupAt > BACKUP_INTERVAL_MS) this.writeBackup(text);
     } catch (err) {
       // Quota exceeded is the realistic failure: a huge stash of rolled items.
-      // Drop the backup to make room and try once more.
+      // Rendered portraits go first; they are drawn again when next shown.
       console.error('[save] write failed', err);
+      if (this.dropCaches() > 0) {
+        try {
+          this.store.setItem(SAVE_KEY, text);
+          this.dirty = false;
+          this.writeFailures = 0;
+          return;
+        } catch {
+          /* still full */
+        }
+      }
+      // Then the backup, and try once more.
       try {
         this.store.removeItem(BACKUP_KEY);
         this.store.removeItem(CORRUPT_KEY);
@@ -969,7 +1034,8 @@ export class SaveManager {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
-    for (const k of [SAVE_KEY, BACKUP_KEY, CORRUPT_KEY, QUARANTINE_KEY]) {
+    // Every copy of the account; the graves stay on purpose (see GRAVE_KEY).
+    for (const k of [SAVE_KEY, BACKUP_KEY, CORRUPT_KEY, NEWER_KEY, QUARANTINE_KEY]) {
       try {
         this.store.removeItem(k);
       } catch {

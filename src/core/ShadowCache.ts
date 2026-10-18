@@ -229,6 +229,14 @@ export function installShadowCache(gate: { skipped: number } | null): void {
           target.depthTexture = depth;
           k = { target, view: new THREE.Matrix4(), proj: new THREE.Matrix4(), valid: false, primed: false, size };
           kept.set(this, k);
+          // The kept map lives as long as the light's own: freed with the
+          // light, or when three swaps the map for another shadow type.
+          const owner = this;
+          const mine = k;
+          shadowMap.addEventListener('dispose', () => {
+            mine.target.dispose();
+            if (kept.get(owner) === mine) kept.delete(owner);
+          });
         }
         k.primed = true;
       }

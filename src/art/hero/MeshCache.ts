@@ -7,6 +7,7 @@
  * (no IndexedDB, private window, quota) just means meshing again.
  */
 import * as THREE from 'three';
+import { events } from '../../core/Events';
 
 /** Bump when the mesher, decimator, weights or painting change. */
 export const MESH_VERSION = 6;
@@ -27,6 +28,9 @@ export interface RawGeo {
 
 const memory = new Map<string, THREE.BufferGeometry>();
 const stored = new Map<string, RawGeo>();
+/** Scene count at each in-memory part's last use (`sweepMeshCache`). */
+const lastUse = new Map<string, number>();
+let scenes = 0;
 let db: IDBDatabase | null = null;
 /** Told about every part meshed here (the town prewarm worker collects them). */
 let meshed: ((key: string, raw: RawGeo) => void) | null = null;
@@ -72,6 +76,7 @@ function put(key: string, raw: RawGeo): void {
 /** The part for `key`, from memory, the stored cache, or `build()`. */
 export function meshCached(key: string, build: () => THREE.BufferGeometry): THREE.BufferGeometry {
   const k = `${MESH_VERSION}|${key}`;
+  lastUse.set(k, scenes);
   const hit = memory.get(k);
   if (hit) return hit;
   const raw = stored.get(k);
@@ -91,6 +96,29 @@ export function meshCached(key: string, build: () => THREE.BufferGeometry): THRE
   meshed?.(k, fresh);
   return g;
 }
+
+/**
+ * After each scene change: a part no hero built in the last two scenes gives
+ * back its GPU buffers and goes back to the stored list as plain arrays, so
+ * the next hero that needs it reads it again in milliseconds. Every piece of
+ * gear ever worn used to stay on the GPU for the whole session. The stored
+ * list keeps the newest MAX_ENTRIES; the rest are still in IndexedDB.
+ */
+export function sweepMeshCache(): void {
+  scenes++;
+  for (const [k, g] of memory) {
+    if ((lastUse.get(k) ?? 0) >= scenes - 2) continue;
+    memory.delete(k);
+    lastUse.delete(k);
+    stored.set(k, toRaw(g));
+    g.dispose();
+  }
+  for (const k of stored.keys()) {
+    if (stored.size <= MAX_ENTRIES) break;
+    stored.delete(k);
+  }
+}
+events.on('scene:change', sweepMeshCache);
 
 /**
  * Reads every stored part into memory. Call once at boot before heroes are

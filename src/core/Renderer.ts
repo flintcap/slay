@@ -1165,10 +1165,28 @@ export class Renderer {
    * nothing to send and are skipped; they upload when they arrive, as before.
    */
   upload(root: THREE.Object3D): void {
-    const seen = new Set<THREE.Texture>();
+    for (const t of this.texturesUnder(root)) {
+      if (!t.image) continue;
+      this.gl.initTexture(t);
+      this.uploaded.add(t);
+    }
+  }
+
+  /** Every texture `upload` sent since the last `takeUploaded`. */
+  private uploaded = new Set<THREE.Texture>();
+
+  /** The textures uploaded since the last call (`Assets.sweepAssetTextures` counts them as used). */
+  takeUploaded(): Set<THREE.Texture> {
+    const out = this.uploaded;
+    this.uploaded = new Set();
+    return out;
+  }
+
+  /** Every texture the materials under `root` sample (hidden objects too), added to `into`. */
+  texturesUnder(root: THREE.Object3D, into = new Set<THREE.Texture>()): Set<THREE.Texture> {
     const take = (v: unknown): void => {
       const t = v as THREE.Texture | null | undefined;
-      if (t && t.isTexture && !t.isRenderTargetTexture && t.image) seen.add(t);
+      if (t && t.isTexture && !t.isRenderTargetTexture) into.add(t);
     };
     root.traverse((o) => {
       const m = (o as THREE.Mesh).material;
@@ -1183,7 +1201,7 @@ export class Renderer {
       take(s.background);
       take(s.environment);
     }
-    for (const t of seen) this.gl.initTexture(t);
+    return into;
   }
 
   dispose(): void {

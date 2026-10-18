@@ -14,6 +14,7 @@
  */
 import * as THREE from 'three';
 import { assetStats } from '../core/Assets';
+import { purgeStaleCache } from '../core/Save';
 import { studioShot, withStudio } from '../core/Studio';
 import { MESH_VERSION } from './hero/MeshCache';
 import type { CharClassId } from '../types';
@@ -33,7 +34,14 @@ const PORTRAIT_VERSION = `p1.${MESH_VERSION}`;
 const memory = new Map<string, string>();
 const pending = new Map<string, Promise<string>>();
 
+let purged = false;
+
 function storeKey(classId: string, size: number): string {
+  // Portraits from older builds are never read again: clear them once.
+  if (!purged) {
+    purged = true;
+    purgeStaleCache('slay.portrait.', `slay.portrait.${PORTRAIT_VERSION}.`);
+  }
   return `slay.portrait.${PORTRAIT_VERSION}.${classId}.${size}`;
 }
 

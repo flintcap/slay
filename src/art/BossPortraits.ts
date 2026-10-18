@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { BOSSES } from '../data/bosses';
 import { WARDENS } from '../data/wardens';
 import { assetStats } from '../core/Assets';
+import { purgeStaleCache } from '../core/Save';
 import { studioShot, withStudio } from '../core/Studio';
 import { Random, hashString } from '../core/RNG';
 import { lookFor } from './creatures/Looks';
@@ -28,7 +29,14 @@ const PORTRAIT_VERSION = `b1.${BAKE_VERSION}`;
 const memory = new Map<string, string>();
 const pending = new Map<string, Promise<string>>();
 
+let purged = false;
+
 function storeKey(id: string, size: number): string {
+  // Portraits from older builds are never read again: clear them once.
+  if (!purged) {
+    purged = true;
+    purgeStaleCache('slay.bossportrait.', `slay.bossportrait.${PORTRAIT_VERSION}.`);
+  }
   return `slay.bossportrait.${PORTRAIT_VERSION}.${id}.${size}`;
 }
 

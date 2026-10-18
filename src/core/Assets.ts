@@ -198,7 +198,13 @@ export interface AssetTextureOpts {
 interface TexEntry {
   tex: THREE.Texture;
   ready: Promise<boolean>;
+  /** The sweep count when a scene last used it (`sweepAssetTextures`). */
+  used: number;
+  /** False once a sweep freed its GPU copy, until a scene uses it again. */
+  gpu: boolean;
 }
+
+let sweeps = 0;
 
 const textures = new Map<string, TexEntry>();
 let defaultAnisotropy = 4;
@@ -274,8 +280,32 @@ export function loadTexture(rel: string, opts: AssetTextureOpts = {}): THREE.Tex
     tex.dispatchEvent({ type: 'loaded' } as never);
     return true;
   });
-  textures.set(key, { tex, ready });
+  textures.set(key, { tex, ready, used: sweeps, gpu: true });
   return tex;
+}
+
+/**
+ * Between scenes: frees the GPU copy of every asset texture that neither the
+ * new scene nor the one before it used. The texture and its decoded image
+ * stay cached, so whatever still holds it draws it again after one upload.
+ * A long session no longer keeps every biome's textures on the GPU (all of
+ * them come to about 450 MB). Returns how many were freed.
+ */
+export function sweepAssetTextures(inUse: ReadonlySet<THREE.Texture>): number {
+  sweeps++;
+  let freed = 0;
+  for (const e of textures.values()) {
+    if (inUse.has(e.tex)) {
+      e.used = sweeps;
+      e.gpu = true;
+    } else if (e.gpu && e.used < sweeps - 1 && e.tex.userData.loaded) {
+      e.tex.dispose();
+      e.tex.needsUpdate = true;
+      e.gpu = false;
+      freed++;
+    }
+  }
+  return freed;
 }
 
 /** Resolves true once the texture holds its real image, false if it never will. */
