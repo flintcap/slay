@@ -57,9 +57,17 @@ Update this file and push it after every finished step.
   src/sim/Poise.ts. Other monsters keep the old control fade. check-fair
   covers it. Not seen in a browser yet. check-hits fixed to count misses.
 
+- #101 (Phase 1) synergies and combos shown (82d7372). Skill detail has a
+  Synergies section (what feeds this skill, what it feeds, bonus now) and a
+  Combo section; hovering a node lights its synergy partners; hotbar hover
+  shows both. 39 synergy links did nothing (skills with no damage ladder,
+  passives, and 3 procs); all now work. Riposte and Riposte Blade counters
+  grow with rank. check-skilldepth fails on a synergy that reaches nothing.
+  Skills screenshot crashed twice (browser closed in town); not seen yet.
+
 ## In progress
 
-- Phase 1 (combat): #101 show synergies and combos, #102 one danger language, #103 balance groundwork (owner).
+- Phase 1 (combat): #102 one danger language, #103 balance groundwork (owner).
 
 ## Phase 0d log
 
