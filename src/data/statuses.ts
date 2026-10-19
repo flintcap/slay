@@ -586,6 +586,15 @@ export const STATUSES: StatusDef[] = [
     icon: 'bubble',
     tags: ['buff'],
   }),
+  // Overflowing Ward, the item power (`scenes/PowerRuntime.ts`): built at full
+  // life, worth a share of it, gone once spent.
+  def('overflowWard', 'Overflowing Ward', 1, {
+    desc: 'Built while you were at full life. Soaks damage until it is spent.',
+    baseDuration: 1e5,
+    color: 0xe8d48a,
+    icon: 'bubble',
+    tags: ['buff'],
+  }),
   // Ice Armor. The shell soaks hits until it cracks; the rime under it keeps
   // you hard for the rest of the spell. Its numbers come from the rank
   // (`data/skillPower.ts`).

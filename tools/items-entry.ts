@@ -40,6 +40,7 @@ import {
 import { UNIQUES } from '../src/data/uniques';
 import { SETS } from '../src/data/sets';
 import { PowerRuntime } from '../src/scenes/PowerRuntime';
+import { StatusContainer } from '../src/sim/Status';
 
 const problems: string[] = [];
 import { ITEM_BASES } from '../src/sim/Loot';
@@ -154,6 +155,8 @@ interface World {
     mana: number;
     readonly alive: boolean;
     position: THREE.Vector3;
+    root: THREE.Object3D;
+    status: StatusContainer;
     heal(n: number): void;
     restoreMana(n: number): void;
     stop(): void;
@@ -180,6 +183,8 @@ function world(powerId: string | null, mainHand?: string, extra?: (c: Character)
       return this.life > 0;
     },
     position: new THREE.Vector3(),
+    root: new THREE.Object3D(),
+    status: new StatusContainer('player'),
     heal(n: number) {
       this.life = Math.min(this.stats.life, this.life + n);
     },
@@ -285,7 +290,9 @@ const PROBES: Record<keyof PowerEffects, Probe> = {
   wardPct: (id) => {
     const w = world(id); w.player.life = w.player.stats.life;
     for (let i = 0; i < 40; i++) w.rt.update(0.1);
-    return w.rt.ward > 0 && w.rt.incoming({ amount: 50, type: 'physical', crit: false, source: 'x', ability: 'melee' }).amount < 50;
+    // The ward is a status on the hero now: it shows on the buff bar and
+    // `Player.takeDamage` soaks hits from it after armour.
+    return w.rt.ward > 0 && w.player.status.has('overflowWard') && w.player.status.absorbDamage(50) < 50;
   },
   goldToLifePct: (id) => { const w = world(id); const l = w.player.life; events.emit('loot:gold', { amount: 10 }); const ok = w.player.life > l; w.rt.dispose(); return ok; },
   rotAuraRadius: (id) => { const w = world(id); w.rt.update(1.1); return w.enemies[0]!.hits.some((h) => h.ability === 'Rot Cyclone') && w.enemies[0]!.statuses.has('poisoned'); },

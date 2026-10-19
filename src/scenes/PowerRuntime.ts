@@ -69,6 +69,12 @@ const SLOWS: ReadonlySet<string> = new Set(['slowed', 'rooted', 'chilled', 'crip
 
 const ELEMENTAL: ReadonlySet<DamageType> = new Set<DamageType>(['fire', 'cold', 'lightning', 'arcane']);
 
+/** Overflowing Ward's status (`data/statuses.ts`), and its colour. */
+const WARD = 'overflowWard';
+const WARD_COLOR = 0xe8d48a;
+/** Long enough that the buff bar shows no clock: the ward lasts until spent. */
+const WARD_HOLD = 1e5;
+
 export class PowerRuntime {
   private host: PowerHost;
   private fx: PowerEffects = emptyPowerEffects();
@@ -85,8 +91,8 @@ export class PowerRuntime {
   private rotTimer = 0;
   private sentryTimer = 0;
   private manaProcCd = 0;
-  /** Overflowing Ward's pool, in life points. */
-  ward = 0;
+  /** True while Overflowing Ward stands, to mark the moment it breaks. */
+  private warded = false;
   /** Warm Prints: the footprints still burning, and where the last one fell. */
   private prints: Array<{ x: number; z: number; left: number }> = [];
   private lastPrint: THREE.Vector3 | null = null;
@@ -135,7 +141,12 @@ export class PowerRuntime {
     } catch {
       this.fx = emptyPowerEffects();
     }
-    if (this.fx.wardPct <= 0) this.ward = 0;
+    if (this.fx.wardPct <= 0) this.host.player()?.status.remove(WARD);
+  }
+
+  /** Overflowing Ward's pool, in life points. */
+  get ward(): number {
+    return this.host.player()?.status.get(WARD)?.absorb ?? 0;
   }
 
   /** The live record, for tools and the HUD. */
@@ -362,23 +373,17 @@ export class PowerRuntime {
       edit().amount = out.amount * (1 - Math.min(0.75, p.rangedTakenLessPct / 100));
     }
 
-    // Ward first, then mana: both pay for what would actually land, so they are
-    // costed against the mitigated amount rather than the raw swing.
-    if ((this.ward > 0 || p.manaShieldPct > 0) && out.amount > 0) {
+    // Mana pays for what would actually land, so it is costed against the
+    // mitigated amount rather than the raw swing, and not for what the wards
+    // (Overflowing Ward among them) will soak after mitigation anyway.
+    if (p.manaShieldPct > 0 && out.amount > 0) {
       const est = Math.max(0.01, expectedMitigated(out.amount, out.type, player.stats));
-      let absorbed = 0;
-      if (this.ward > 0) {
-        const use = Math.min(this.ward, est);
-        this.ward -= use;
-        absorbed += use;
-      }
-      if (p.manaShieldPct > 0 && est - absorbed > 0) {
-        const want = (est - absorbed) * Math.min(1, p.manaShieldPct / 100);
-        const pay = Math.min(player.mana, want);
+      const left = est - player.status.totalAbsorb();
+      if (left > 0) {
+        const pay = Math.min(player.mana, left * Math.min(1, p.manaShieldPct / 100));
         player.mana -= pay;
-        absorbed += pay;
+        if (pay > 0) edit().amount = out.amount * Math.max(0, 1 - pay / est);
       }
-      if (absorbed > 0) edit().amount = out.amount * Math.max(0, 1 - absorbed / est);
     }
     return out;
   }
@@ -528,6 +533,30 @@ export class PowerRuntime {
   }
 
   /** The set signatures that tick: stillness, graves, the lit ring, wax. */
+  /**
+   * Overflowing Ward fills over three seconds at full life and lasts until it
+   * is spent. It was a pool only this file could see, so it never showed and
+   * players took it for a dead line. Now it is a status: a chip on the buff
+   * bar, soaked after armour in `Player.takeDamage` like the skill wards, a
+   * dome when it closes and a flash when it breaks.
+   */
+  private tickWard(player: Player, pct: number, dt: number): void {
+    const cap = (player.stats.life * pct) / 100;
+    const s = player.status.get(WARD);
+    if (this.warded && !s) {
+      this.host.fx.burst('pickup', player.position.x, 1.2, player.position.z, { count: 12, color: WARD_COLOR });
+    }
+    this.warded = !!s;
+    const now = s?.absorb ?? 0;
+    if (s && now > cap) s.absorb = cap;
+    if (now >= cap || player.life < player.stats.life * 0.999) return;
+    const next = Math.min(cap, now + (cap * dt) / 3);
+    if (s) s.absorb = next;
+    else player.status.apply({ id: WARD, duration: WARD_HOLD, magnitude: 1, stacks: 1, absorb: next }, 'player');
+    this.warded = true;
+    if (next >= cap) this.host.effects.shield(player.root, 0.95, WARD_COLOR, 1.2);
+  }
+
   private tickSets(dt: number): void {
     const p = this.fx;
     const player = this.host.player();
@@ -617,12 +646,7 @@ export class PowerRuntime {
     }
     if (!player.alive) return;
 
-    // Overflowing Ward fills over three seconds at full life.
-    if (p.wardPct > 0) {
-      const cap = (player.stats.life * p.wardPct) / 100;
-      if (player.life >= player.stats.life * 0.999) this.ward = Math.min(cap, this.ward + (cap * dt) / 3);
-      else this.ward = Math.min(cap, this.ward);
-    }
+    if (p.wardPct > 0) this.tickWard(player, p.wardPct, dt);
 
     this.tickSets(dt);
 
