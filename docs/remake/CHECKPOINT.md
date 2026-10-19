@@ -216,9 +216,25 @@ Update this file and push it after every finished step.
   temper levels, sockets and about 30 charms in the pack (30 charms add
   about 10% life and 45% max damage). Waiting on the owner's call.
 
+- #118 (owner ask) monsters stronger at every tier (3b7b85c): `depthRamp` in
+  sim/Difficulty.ts, the owner's middle of a gentle and a hard curve. Past
+  depth 5 life climbs about 3.8% more a depth and damage faster the deeper
+  you go; past 60 both about 2% more again. x1.9 life and x1.8 damage at 22,
+  x3.7/x3.9 at 40, x8/x11 at 60. Tuned with check-curve against two heroes:
+  rares (must win) and `--kit=best` (uniques, sets, upgrades, gems, charms;
+  must lose real life). The curve check also got: the test hero breaks room
+  objects first (the Deep's Own Name no longer runs out the clock), and
+  exact XP per level (deep test heroes were 3 to 11 levels too high).
+  Result: the best hero loses real life at 12 to 30 and at 50 to 60; at 40,
+  75 and 90 the strongest classes in best gear are still barely touched (best
+  gear there is 5 to 8 times a rare kit). In rares, ranger is walled at 12,
+  40 and 90, shapeshifter and knight at 40: a class boost list goes to the
+  owner first.
+
 ## In progress
 
-- Nothing. Next: the next Phase 1 item, with its numbered list first.
+- #118 class boosts for ranger, shapeshifter and knight, list to the owner
+  first.
 
 ## Phase 0d log
 
