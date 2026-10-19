@@ -53,6 +53,7 @@ import { affixIconUri, drawItemIconsNow } from '../art/Icons';
 import { runtime as hudRuntime } from '../ui/Widgets';
 import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
+import { statusDef } from '../sim/StatusRules';
 import { runStats } from '../ui/RunStats';
 import { clearBuyBack } from '../sim/BuyBack';
 import { PowerRuntime } from './PowerRuntime';
@@ -518,6 +519,8 @@ export class DungeonScene extends GameScene {
     loadStep('hero');
     await breather();
     this.player = new Player(character, seed);
+    // A poison or burn on the hero ticks on this depth's curve, as on a monster.
+    this.player.status.depth = depth;
     this.player.lethalGuard = () => this.tryCheatDeath();
     this.skills.keeper = this.player;
     this.scene.add(this.player.root);
@@ -1390,6 +1393,11 @@ export class DungeonScene extends GameScene {
           packet.amount * 0.6,
         );
         if (this.godMode) return;
+        // A monster may name a status the short way (`poison`); the hero's
+        // powers and wards ask by the catalogue's name (`poisoned`).
+        if (packet.applies?.some((a) => statusDef(a.id)?.id !== a.id)) {
+          packet.applies = packet.applies.map((a) => ({ ...a, id: statusDef(a.id)?.id ?? a.id }));
+        }
         // Boss blows, its arena and its traps obey the fair-fight cap.
         if (packet.fair === undefined && this.isBossSource(packet.source)) packet.fair = bossHitCap(this.run.depth);
         if (this.powers) packet = this.powers.incoming(packet);

@@ -2,8 +2,10 @@
  * SLAY — runtime status effect system.
  *
  * One `StatusContainer` per combatant (the player and every live monster).
- * The container owns application, stacking, refresh, expiry, damage-over-time
- * ticking, immunity and crowd-control diminishing returns.
+ * The container owns application, expiry, damage-over-time ticking and
+ * immunity. How a status stacks, how long it runs, how hard it ticks and how
+ * holds wear off come from the rule book every monster reads too
+ * (`StatusRules.ts`).
  *
  * The simulation never mutates stats directly: a container exposes `statMods()`
  * and raises a dirty flag, and `Stats.computeStats` folds those mods in on the
@@ -11,13 +13,8 @@
  */
 
 import type { DamageType, StatKey, Stats, StatusApplication } from '../types';
-import {
-  CC_DIMINISHING,
-  CC_DR_WINDOW,
-  STATUS_BY_ID,
-  type StatusDef,
-  type StatusTag,
-} from '../data/statuses';
+import type { StatusDef, StatusTag } from '../data/statuses';
+import { HoldFade, dotRate, durationOf, isHold, modScale, reapply, stackCap, statusDef } from './StatusRules';
 
 export interface ActiveStatus {
   id: string;
@@ -37,6 +34,8 @@ export interface ActiveStatus {
   tick: number;
   /** Stat changes set by the application, used in place of `def.mods`. */
   mods?: Partial<Stats>;
+  /** Damage per second per stack, fixed when it lands (`StatusRules.dotRate`). */
+  dotPerSecond: number;
 }
 
 /** What a tick produced. The caller applies it — the container never damages. */
@@ -62,15 +61,16 @@ function emptyResult(): StatusTickResult {
 export class StatusContainer {
   readonly ownerId: string;
   private readonly active = new Map<string, ActiveStatus>();
-  /** statusId -> { count, expires } for crowd-control diminishing returns. */
-  private readonly drTable = new Map<string, { count: number; expires: number }>();
+  /** Every hold shortens the next, of any kind (`StatusRules.HoldFade`). */
+  private readonly holds = new HoldFade();
   private modCache: Partial<Stats> | null = null;
   private dirty = true;
-  private clock = 0;
   /** Tags this host cannot be affected by at all. */
   private immunities = new Set<string>();
   /** DoT damage multiplier applied by the owner's own resistances upstream. */
   dotScale = 1;
+  /** The depth the owner stands at: a damage over time ticks on its curve. */
+  depth = 1;
 
   constructor(ownerId: string) {
     this.ownerId = ownerId;
@@ -109,26 +109,22 @@ export class StatusContainer {
 
   /**
    * Apply (or stack/refresh) an effect. Returns false when the application was
-   * fully resisted — by immunity, or by crowd-control diminishing returns.
+   * fully resisted — by immunity, or by a hold worn down to nothing.
    */
   apply(app: StatusApplication, sourceId = 'world'): boolean {
-    const def = STATUS_BY_ID[app.id];
+    const def = statusDef(app.id);
     if (!def) return false;
     if (this.isImmuneTo(def)) return false;
 
-    let duration = app.duration > 0 ? app.duration : def.baseDuration;
+    let duration = durationOf(def, app);
     const magnitude = app.magnitude > 0 ? app.magnitude : 1;
     const addStacks = Math.max(1, Math.floor(app.stacks ?? 1));
 
-    // Hard crowd control gets weaker each time it lands inside the DR window.
-    if (def.diminishing) {
-      const entry = this.drTable.get(def.id);
-      const count = entry && entry.expires > this.clock ? entry.count : 0;
-      const scale = CC_DIMINISHING[Math.min(count, CC_DIMINISHING.length - 1)] ?? 0;
-      duration *= scale;
-      this.drTable.set(def.id, { count: count + 1, expires: this.clock + CC_DR_WINDOW });
+    if (isHold(def)) {
+      duration = this.holds.take(duration);
       if (duration <= 0.05) return false;
     }
+    const rate = dotRate(def, this.depth, { ...app, magnitude });
 
     const existing = this.active.get(def.id);
     if (!existing) {
@@ -138,43 +134,20 @@ export class StatusContainer {
         remaining: duration,
         duration,
         magnitude,
-        stacks: Math.min(addStacks, def.maxStacks),
+        stacks: Math.min(addStacks, stackCap(def, app)),
         sourceId,
         absorb: app.absorb ?? (def.absorb ?? 0) * magnitude,
         tick: 0,
         ...(app.mods ? { mods: app.mods } : {}),
+        dotPerSecond: rate,
       });
       this.invalidate();
       return true;
     }
 
-    switch (def.stacking) {
-      case 'stack':
-        existing.stacks = Math.min(def.maxStacks, existing.stacks + addStacks);
-        existing.remaining = Math.max(existing.remaining, duration);
-        existing.duration = Math.max(existing.duration, duration);
-        existing.magnitude = Math.max(existing.magnitude, magnitude);
-        break;
-      case 'extend':
-        existing.remaining = Math.min(existing.remaining + duration, duration * 3);
-        existing.duration = Math.max(existing.duration, existing.remaining);
-        break;
-      case 'strongest':
-        if (magnitude > existing.magnitude) {
-          existing.magnitude = magnitude;
-          existing.remaining = duration;
-          existing.duration = duration;
-        } else {
-          existing.remaining = Math.max(existing.remaining, duration);
-        }
-        break;
-      case 'refresh':
-      default:
-        existing.remaining = Math.max(existing.remaining, duration);
-        existing.duration = Math.max(existing.duration, duration);
-        existing.magnitude = Math.max(existing.magnitude, magnitude);
-        break;
-    }
+    reapply(def, existing, duration, magnitude, addStacks, stackCap(def, app));
+    // A harder blow's venom takes over from a weaker one.
+    existing.dotPerSecond = Math.max(existing.dotPerSecond, rate);
     if (app.absorb !== undefined) existing.absorb = Math.max(existing.absorb, app.absorb);
     else if (def.absorb) existing.absorb = Math.max(existing.absorb, def.absorb * existing.magnitude);
     // A recast carries the caster's current rank.
@@ -340,10 +313,10 @@ export class StatusContainer {
   update(dt: number, maxLife = 0): StatusTickResult {
     const out = emptyResult();
     if (this.active.size === 0) {
-      this.clock += dt;
+      this.holds.tick(dt);
       return out;
     }
-    this.clock += dt;
+    this.holds.tick(dt);
 
     for (const st of Array.from(this.active.values())) {
       st.remaining -= dt;
@@ -352,8 +325,7 @@ export class StatusContainer {
       while (st.tick >= TICK_RATE) {
         st.tick -= TICK_RATE;
         if (st.def.dot) {
-          const amount =
-            st.def.dot.perSecond * st.magnitude * st.stacks * TICK_RATE * this.dotScale;
+          const amount = st.dotPerSecond * st.stacks * TICK_RATE * this.dotScale;
           if (amount > 0) {
             out.damage.push({
               type: st.def.dot.type,
@@ -371,13 +343,6 @@ export class StatusContainer {
         this.active.delete(st.id);
         out.expired.push(st.id);
         out.dirty = true;
-      }
-    }
-
-    // Expire stale diminishing-returns entries so CC becomes usable again.
-    if (this.drTable.size > 0) {
-      for (const [id, e] of Array.from(this.drTable)) {
-        if (e.expires <= this.clock) this.drTable.delete(id);
       }
     }
 
@@ -413,7 +378,7 @@ export class StatusContainer {
     for (const st of this.active.values()) {
       const m = st.mods ?? st.def.mods;
       if (!m) continue;
-      const scale = st.def.maxStacks > 1 ? st.stacks : 1;
+      const scale = modScale(!!st.mods, st.magnitude, st.stacks);
       for (const key of Object.keys(m) as StatKey[]) {
         const v = m[key];
         if (v === undefined) continue;

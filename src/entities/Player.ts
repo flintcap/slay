@@ -321,14 +321,14 @@ export class Player {
     duration: number,
     magnitude = 1,
     stacks = 1,
-    extra: { mods?: Partial<Stats>; absorb?: number } = {},
+    extra: { mods?: Partial<Stats>; absorb?: number; source?: string } = {},
   ): boolean {
     // Revenant Form: the dead do not fear and do not bleed.
     for (const [buff, list] of Object.entries(WARDS)) if (list.includes(id) && this.status.has(buff)) return false;
     const app: StatusApplication = { id, duration, magnitude, stacks };
     if (extra.mods) app.mods = extra.mods;
     if (extra.absorb !== undefined) app.absorb = extra.absorb;
-    const ok = this.status.apply(app, 'player');
+    const ok = this.status.apply(app, extra.source || 'player');
     if (ok) for (const w of WARDS[id] ?? []) this.status.remove(w);
     if (ok) this.refreshStats();
     return ok;
@@ -645,6 +645,7 @@ export class Player {
       type: result.type,
       life: Math.max(0, this.life),
       maxLife: this.stats.life,
+      source: packet.source,
     });
     this.animator.play('hurt', { fade: 0.04, once: true });
 
@@ -665,7 +666,8 @@ export class Player {
         // A boss holds you for 1.5 s at most, then cannot again for a while.
         let d = packet.fair !== undefined && hold ? this.fair.hold(a.duration) : a.duration;
         if (hold) d *= holdScale;
-        if (d > 0) this.applyStatus(a.id, d, a.magnitude, a.stacks ?? 1);
+        // Its giver rides along, so a poison that finishes you names who spat it.
+        if (d > 0) this.applyStatus(a.id, d, a.magnitude, a.stacks ?? 1, { source: packet.source });
       }
     }
     // Knockback is carried the same way and was equally ignored.
@@ -786,6 +788,7 @@ export class Player {
         type: d.type,
         life: Math.max(0, this.life),
         maxLife: this.stats.life,
+        source: d.sourceId,
       });
       this.checkDeath(d.sourceId || d.statusId);
     }

@@ -68,6 +68,11 @@ class RunStats {
   private last: RunSummary | null = null;
   private engine: Engine | null = null;
   private active = false;
+  /**
+   * Names of what has hurt the hero this run, by id, kept while each was
+   * alive: a poison can finish you after the monster that spat it is dead.
+   */
+  private hurtBy = new Map<string, { name: string; rank: MonsterRank | null }>();
 
   attach(engine: Engine): void {
     if (this.engine) return;
@@ -78,6 +83,7 @@ class RunStats {
     events.on('scene:loading', (p) => {
       if (p.to === 'dungeon' && p.from !== 'dungeon') {
         this.s = blank();
+        this.hurtBy.clear();
         this.active = true;
       } else if (p.to !== 'dungeon' && this.active) {
         this.last = this.s;
@@ -111,10 +117,15 @@ class RunStats {
       }
     });
     events.on('player:damaged', (p) => {
-      if (this.active) this.s.damageTaken += p.amount;
+      if (!this.active) return;
+      this.s.damageTaken += p.amount;
+      if (p.source && !this.hurtBy.has(p.source)) {
+        const who = this.resolve(p.source);
+        if (who) this.hurtBy.set(p.source, who);
+      }
     });
     events.on('player:died', (p) => {
-      const found = this.resolve(p.killedBy);
+      const found = this.resolve(p.killedBy) ?? this.hurtBy.get(p.killedBy) ?? null;
       this.s.killer = found?.name ?? null;
       this.s.killerRank = found?.rank ?? null;
     });

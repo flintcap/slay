@@ -69,7 +69,8 @@ import { getMonster, MONSTERS, pickMonstersForDepth } from '../data/monsters';
 import { getAffix, MONSTER_AFFIXES } from '../data/monsterAffixes';
 import { BOSSES } from '../data/bosses';
 import { hitMaterial, MATERIAL_BURST, MATERIAL_MARK } from '../fx/Materials';
-import { getStatus, type StatusDef } from '../data/statuses';
+import { getStatus } from '../data/statuses';
+import { HoldFade, dotRate, durationOf, isHold, modScale, reapply, stackCap, statusDef } from '../sim/StatusRules';
 import { powerHooks } from '../sim/ItemPowers';
 import { resolveCombo, type ComboHit } from './Combos';
 
@@ -260,8 +261,8 @@ export class Enemy implements Combatant {
   facing = 0;
   shield = 0;
   rootTimer = 0;
-  /** Control seconds recently suffered (see `controlFor`). */
-  private controlFatigue = 0;
+  /** How holds wear off on it: the same rule as on the hero (`StatusRules.ts`). */
+  private readonly holds = new HoldFade();
   outgoingMul = 1;
   motionOverride: MotionOverride | null = null;
   /** Pack id from the spawn table; scenes set this after construction. */
@@ -610,7 +611,7 @@ export class Enemy implements Combatant {
     for (const st of this.statuses) {
       const own = st.mods;
       const v = (own ?? statusDef(st.id)?.mods)?.attackSpeed;
-      if (typeof v === 'number') pct += v * (own ? st.stacks : st.magnitude * st.stacks);
+      if (typeof v === 'number') pct += v * modScale(!!own, st.magnitude, st.stacks);
     }
     return Math.max(0.35, this.stats.attackSpeed * this.buffMul('attackSpeed') * Math.max(0.3, 1 + pct / 100));
   }
@@ -850,7 +851,7 @@ export class Enemy implements Combatant {
     // Timers ---------------------------------------------------------------
     this.hitFlash = Math.max(0, this.hitFlash - dt * 4);
     this.rootTimer = Math.max(0, this.rootTimer - dt);
-    this.controlFatigue = Math.max(0, this.controlFatigue - dt * 0.5);
+    this.holds.tick(dt);
     if (this.spawnT > 0) this.spawnT = Math.max(0, this.spawnT - dt * 1.6);
     if (this.shieldTimer > 0) {
       this.shieldTimer -= dt;
@@ -944,8 +945,8 @@ export class Enemy implements Combatant {
       // Anything the catalogue says cuts move speed does, rather than the two
       // ids this used to name. `immobilises` stops it dead.
       if (d.immobilises || d.incapacitates) return 0;
-      const slow = d.mods?.moveSpeed;
-      if (typeof slow === 'number' && slow < 0) s *= Math.max(0.15, 1 + (slow / 100) * st.magnitude);
+      const slow = (st.mods ?? d.mods)?.moveSpeed;
+      if (typeof slow === 'number' && slow < 0) s *= Math.max(0.15, 1 + (slow / 100) * modScale(!!st.mods, st.magnitude, st.stacks));
     }
     if (this.inst && this.inst.phase === 'recovery') s *= 0.4;
     // Backing off, fleeing or falling back is never quicker than this, so a
@@ -1091,15 +1092,13 @@ export class Enemy implements Combatant {
   // --- statuses ------------------------------------------------------------
 
   /**
-   * How long a stun, freeze or root really holds this monster. Control fades
-   * with use: every second of it recently suffered shortens the next one, and
-   * the tally drains at half a second per second. A boss is never held this
-   * way: it turns control into poise (`absorbControl`, sim/Poise.ts).
+   * How long a stun, freeze or root really holds this monster: every hold
+   * shortens the next, by the rule the hero is held by too
+   * (`StatusRules.HoldFade`). A boss is never held this way: it turns control
+   * into poise (`absorbControl`, sim/Poise.ts).
    */
   private controlFor(duration: number): number {
-    const held = duration / (1 + this.controlFatigue * 0.25);
-    this.controlFatigue += held;
-    return held;
+    return this.holds.take(duration);
   }
 
   /**
@@ -1122,64 +1121,61 @@ export class Enemy implements Combatant {
     this.interrupt(ctx, true);
   }
 
+  /**
+   * Puts statuses on it by the one rule book (`StatusRules.ts`): a short name
+   * finds its entry, a second application resolves by the entry's stacking,
+   * holds wear off, and a damage over time ticks on the depth curve.
+   */
   applyStatuses(list: StatusApplication[], ctx: CombatContext): void {
     for (const raw of list) {
-      if (this.isImmuneToControl && isControl(raw.id)) continue;
-      if (isControl(raw.id) && this.absorbControl(raw, ctx)) continue;
-      const app = isControl(raw.id) ? { ...raw, duration: this.controlFor(raw.duration) } : raw;
+      const def = statusDef(raw.id);
+      if (!def) continue;
+      const hold = isHold(def);
+      if (this.isImmuneToControl && hold) continue;
+      if (hold && this.absorbControl(raw, ctx)) continue;
+      const duration = hold ? this.controlFor(durationOf(def, raw)) : durationOf(def, raw);
+      if (duration <= 0.05) continue;
+      const app = { ...raw, id: def.id, duration };
       // Passives may raise the ceiling on a stacking affliction.
-      const cap = Math.min(24, Math.max(1, (statusDef(app.id)?.maxStacks ?? 5) + (app.maxStacks ?? 0)));
+      const cap = stackCap(def, app);
       const existing = this.statuses.find((s) => s.id === app.id);
       if (existing) {
-        existing.time = Math.max(existing.time, app.duration);
-        existing.magnitude = Math.max(existing.magnitude, app.magnitude);
-        existing.stacks = Math.min(cap, existing.stacks + (app.stacks ?? 0));
+        const run = { remaining: existing.time, duration: existing.full ?? existing.time, magnitude: existing.magnitude, stacks: existing.stacks };
+        reapply(def, run, app.duration, app.magnitude, app.stacks ?? 0, cap);
+        existing.time = run.remaining;
+        existing.magnitude = run.magnitude;
+        existing.stacks = run.stacks;
         // A harder blow's venom takes over from a weaker one. `dotRate` folds
         // the tick scale in once; multiplying the running rate by it on every
         // re-apply grew a poison or burn without limit.
-        if (existing.dotType) existing.dotPerSecond = Math.max(existing.dotPerSecond, this.dotRate(app));
+        if (existing.dotType) existing.dotPerSecond = Math.max(existing.dotPerSecond, dotRate(def, this.depth, app));
         if (app.mods) existing.mods = app.mods;
         if (app.burstPct) {
           existing.burst = Math.max(existing.burst ?? 0, app.burstPct);
           existing.full = Math.max(existing.full ?? 0, app.duration);
         }
         if (app.holdBelow) existing.holdBelow = Math.max(existing.holdBelow ?? 0, app.holdBelow);
+        // A second hold keeps it held as long as the hero would be.
+        if (hold) this.rootTimer = Math.max(this.rootTimer, existing.time);
         continue;
       }
-      const def = statusDef(app.id);
-      const dotType = def?.dot?.type ?? null;
+      const dotType = def.dot?.type ?? null;
       this.statuses.push({
         id: app.id,
         time: app.duration,
         magnitude: app.magnitude,
-        stacks: app.stacks ?? 1,
+        stacks: Math.min(cap, app.stacks ?? 1),
         dotType,
-        dotPerSecond: dotType ? this.dotRate(app) : 0,
+        dotPerSecond: dotType ? dotRate(def, this.depth, app) : 0,
         ...(app.mods ? { mods: app.mods } : {}),
         ...(app.burstPct ? { burst: app.burstPct, full: app.duration } : {}),
         ...(app.holdBelow ? { holdBelow: app.holdBelow } : {}),
       });
-      if (isControl(app.id)) {
+      if (hold) {
         this.rootTimer = Math.max(this.rootTimer, app.duration);
         this.interrupt(ctx);
       }
     }
-  }
-
-  /**
-   * Damage per second per stack for a damage-over-time application.
-   *
-   * The catalogue's `perSecond` is the shape of the effect; the depth curve is
-   * what makes it hurt as much at depth 40 as at depth 1. The hero's poison
-   * also scales with the blow that delivered it (`power`), whichever is more:
-   * on the depth curve alone a Viper Strike's three stacks ticked for a
-   * fraction of one swing, so poisoning something did nothing you could see.
-   */
-  private dotRate(app: StatusApplication): number {
-    const def = statusDef(app.id);
-    if (!def?.dot) return 0;
-    const curve = depthCurve(this.depth).damage * 0.035 * def.dot.perSecond;
-    return Math.max(curve, app.power ?? 0) * app.magnitude * (app.tickScale ?? 1);
   }
 
   private get isImmuneToControl(): boolean {
@@ -2454,31 +2450,6 @@ export class Enemy implements Combatant {
 }
 
 /**
- * Short ids this file used before the status catalogue existed.
- *
- * `data/statuses.ts` authors sixty-seven effects with durations, stacking,
- * icons and stat modifiers. This file only ever knew four damage-over-times and
- * five crowd controls, under different names — `burn` against the catalogue's
- * `burning`, `stun` against `stunned`. Two vocabularies that never met, so
- * forty-eight authored effects could be applied and would do precisely nothing.
- *
- * The catalogue is the source of truth now. These stay as aliases so anything
- * still speaking the old short form keeps working.
- */
-const LEGACY_ALIASES: Record<string, string> = {
-  burn: 'burning',
-  poison: 'poisoned',
-  bleed: 'bleeding',
-  corrode: 'corroded',
-  stun: 'stunned',
-  freeze: 'frozen',
-  root: 'rooted',
-  chill: 'chilled',
-  slow: 'slowed',
-  web: 'entangled',
-};
-
-/**
  * Each second, a stack of the hero's poison deals this share of the blow
  * that applied it, scaled by the status's own strength (Poisoned is 5, so
  * 4% a second: a stack is worth about a third of the hit over its 8s).
@@ -2497,18 +2468,6 @@ function venomOf(packet: DamagePacket, list: StatusApplication[]): StatusApplica
     out[i] = { ...app, power: packet.amount * VENOM_SHARE * dot.perSecond };
   }
   return out ?? list;
-}
-
-/** Resolves an id through the aliases and into the authored catalogue. */
-function statusDef(id: string): StatusDef | undefined {
-  return getStatus(id) ?? getStatus(LEGACY_ALIASES[id] ?? '');
-}
-
-/** True for anything the catalogue marks as hard crowd control. */
-function isControl(id: string): boolean {
-  const d = statusDef(id);
-  if (!d) return false;
-  return !!d.incapacitates || !!d.immobilises || d.tags.includes('control');
 }
 
 /**

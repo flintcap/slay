@@ -12,7 +12,8 @@ export interface GameEvents {
    * the (possibly slow) `enter`, so the loading card can say where we are going.
    */
   'scene:loading': { from: SceneId; to: SceneId; payload?: unknown };
-  'player:damaged': { amount: number; type: DamageType; life: number; maxLife: number };
+  /** `source`: the id of what dealt it (a monster's, or a status's giver), when known. */
+  'player:damaged': { amount: number; type: DamageType; life: number; maxLife: number; source?: string };
   'player:healed': { amount: number };
   'player:died': { killedBy: string; depth: number };
   /** A hit passed through the hero's dodge. Combat emits; feel may reward it. */

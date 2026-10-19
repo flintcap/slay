@@ -247,6 +247,19 @@ Update this file and push it after every finished step.
   owner. Skipped by the owner: new events; lasting shrines, escort, vigil
   and the unused quests. Class boosts from #118 offered, not taken.
 
+- #120 (Phase 1, owner approved 1-5) one status rule book for the hero and
+  monsters (`src/sim/StatusRules.ts`). The same name finds the same entry
+  (monster short names like poison, chill, root and stun never landed on the
+  hero before; now they do), a second application resolves by the entry's
+  stacking on both, the same stack ceiling and timer, stat changes scale by
+  strength on both. A monster's poison, burn or bleed on the hero now grows
+  with depth on the curve the hero's does on monsters. Holds fade one way:
+  every hold of any kind shortens the next and the fatigue drains (the
+  hero's per-kind halving is gone; gear that shortens holds and the boss
+  hold cap stay). A reapplied hold now keeps a monster held as long as its
+  stun shows. The death screen names the monster whose poison or burn killed
+  you, even after it died. New check: check-status.
+
 ## In progress
 
 (none)

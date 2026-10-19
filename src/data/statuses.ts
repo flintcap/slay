@@ -16,8 +16,9 @@
  *    effect resolves. `strongest` keeps the higher magnitude, `extend` sums the
  *    remaining duration, `refresh` resets the timer, `stack` adds a stack.
  *  - `tags` drive immunity: a monster or player with immunity tag `cold` shrugs
- *    off every effect tagged `cold`. `control` is the hard-CC family that
- *    diminishing returns applies to.
+ *    off every effect tagged `cold`. `control` (with `incapacitates` and
+ *    `immobilises`) marks a hold, which wears off by the rule in
+ *    `sim/StatusRules.ts`.
  */
 
 import type { StatusEffectDef, StatKey, DamageType } from '../types';
@@ -53,8 +54,6 @@ export interface StatusDef extends StatusEffectDef {
   desc: string;
   tags: readonly StatusTag[];
   stacking: StatusStacking;
-  /** Hard crowd control obeys diminishing returns on repeat application. */
-  diminishing?: boolean;
   /** Prevents all action while active (used by AI + player controller). */
   incapacitates?: boolean;
   /** Prevents movement but not attacks. */
@@ -89,7 +88,6 @@ function def(
     desc: o.desc,
     tags: o.tags,
     stacking: o.stacking ?? (o.maxStacks && o.maxStacks > 1 ? 'stack' : 'refresh'),
-    diminishing: o.diminishing,
     incapacitates: o.incapacitates,
     immobilises: o.immobilises,
     hot: o.hot,
@@ -155,7 +153,6 @@ export const STATUSES: StatusDef[] = [
     mods: mods({ enhancedDefense: -40, coldResist: -20 }),
     incapacitates: true,
     immobilises: true,
-    diminishing: true,
     baseDuration: 2.5,
     color: 0xa8ecff,
     icon: 'ice-block',
@@ -305,7 +302,6 @@ export const STATUSES: StatusDef[] = [
     desc: 'Reeling. Cannot act or move.',
     incapacitates: true,
     immobilises: true,
-    diminishing: true,
     baseDuration: 1.6,
     color: 0xffe066,
     icon: 'stars',
@@ -314,7 +310,6 @@ export const STATUSES: StatusDef[] = [
   def('feared', 'Feared', -1, {
     desc: 'Flees blindly from the source of terror and cannot attack.',
     mods: mods({ moveSpeed: 20, enhancedDamage: -50 }),
-    diminishing: true,
     baseDuration: 3,
     color: 0x9a67c9,
     icon: 'skull',
@@ -332,7 +327,6 @@ export const STATUSES: StatusDef[] = [
   def('rooted', 'Rooted', -1, {
     desc: 'Held fast. Cannot move, but may still attack and cast.',
     immobilises: true,
-    diminishing: true,
     baseDuration: 3,
     color: 0x6f8a3a,
     icon: 'vine',
@@ -356,7 +350,6 @@ export const STATUSES: StatusDef[] = [
   }),
   def('silenced', 'Silenced', -1, {
     desc: 'Cannot cast skills that cost mana.',
-    diminishing: true,
     baseDuration: 3,
     color: 0x7a5fa8,
     icon: 'mute',
@@ -375,7 +368,6 @@ export const STATUSES: StatusDef[] = [
     mods: mods({ damageReduction: 40 }),
     incapacitates: true,
     immobilises: true,
-    diminishing: true,
     baseDuration: 3,
     color: 0x9a9284,
     icon: 'stone',
@@ -383,7 +375,6 @@ export const STATUSES: StatusDef[] = [
   }),
   def('confused', 'Confused', -1, {
     desc: 'Attacks the nearest creature, friend or foe.',
-    diminishing: true,
     baseDuration: 4,
     color: 0xc678dd,
     icon: 'swirl',
@@ -393,7 +384,6 @@ export const STATUSES: StatusDef[] = [
     desc: 'Flat on the floor. Cannot act until it stands.',
     incapacitates: true,
     immobilises: true,
-    diminishing: true,
     baseDuration: 1.2,
     color: 0xd8c090,
     icon: 'fallen',
@@ -818,16 +808,9 @@ export function statusesWithTag(tag: StatusTag): StatusDef[] {
   return STATUSES.filter((s) => s.tags.includes(tag));
 }
 
-/** Hard crowd control, for diminishing-returns bookkeeping. */
+/** The statuses tagged as holds. */
 export const CONTROL_STATUSES: readonly string[] = STATUSES.filter((s) => s.tags.includes('control')).map(
   (s) => s.id,
 );
 
 export const DOT_STATUSES: readonly string[] = STATUSES.filter((s) => s.dot).map((s) => s.id);
-
-/**
- * Diminishing returns table for repeated hard CC on the same target inside the
- * DR window. Fourth and later applications are fully resisted.
- */
-export const CC_DIMINISHING: readonly number[] = [1, 0.5, 0.25, 0];
-export const CC_DR_WINDOW = 12;
