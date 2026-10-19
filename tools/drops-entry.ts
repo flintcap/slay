@@ -26,10 +26,10 @@ const CHARM_SIZE_WEIGHT: Record<string, number> = { 'charm.small': 44, 'charm.me
  * Item rolls per kill follow `RANK_PROFILE` in Loot.ts; the rank lifts quality.
  */
 const KILL_MIX: Array<{ share: number; rolls: number; source: DropSource; charm: number }> = [
-  { share: 0.88, rolls: 0.17, source: 'normal', charm: 0.006 },
-  { share: 0.08, rolls: 0.62, source: 'champion', charm: 0.03 },
-  { share: 0.035, rolls: 1.5, source: 'elite', charm: 0.06 },
-  { share: 0.005, rolls: 2.55, source: 'rare', charm: 0.1 },
+  { share: 0.88, rolls: 0.17, source: 'normal', charm: 0.0005 },
+  { share: 0.08, rolls: 0.62, source: 'champion', charm: 0.003 },
+  { share: 0.035, rolls: 1.5, source: 'elite', charm: 0.006 },
+  { share: 0.005, rolls: 2.55, source: 'rare', charm: 0.012 },
 ];
 
 const baseCat = new Map(ITEM_BASES.map((b) => [b.id, b.category]));

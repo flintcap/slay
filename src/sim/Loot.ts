@@ -1072,13 +1072,18 @@ export function rollItem(
 // Charms
 // ---------------------------------------------------------------------------
 
-/** Chance a kill of this rank drops a charm. */
+/**
+ * Chance a kill of this rank drops a charm. A run's floors hold hundreds of
+ * kills, so the old rates (0.6% a normal, 3% a champion) paid about 11
+ * charms a run at depth 22 and 24 at depth 40. These pay about one a run at
+ * depth 22, two at depth 40.
+ */
 const CHARM_DROP_CHANCE: Record<MonsterRank, number> = {
-  normal: 0.006,
-  champion: 0.03,
-  elite: 0.06,
-  rare: 0.1,
-  boss: 0.45,
+  normal: 0.0005,
+  champion: 0.003,
+  elite: 0.006,
+  rare: 0.012,
+  boss: 0.1,
 };
 
 /** How often each size turns up once its level is reached. */
