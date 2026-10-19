@@ -32,26 +32,52 @@ export interface DepthCurve {
   level: number;
 }
 
+/**
+ * The depth ramp: monsters past depth 5 stand harder than the base curve.
+ *
+ * Hero power compounds faster than the base curve (`sim/HeroPower.ts`: life
+ * +17% a level against monster damage +11.8% a depth), and gear adds on top,
+ * so by depth 22 a well-geared hero took almost nothing and by depth 60
+ * monsters barely scratched it. Tuned with `node tools/check-curve.mjs`
+ * against two heroes: one in rares, who must still win everywhere, and one in
+ * uniques, sets, upgrades, gems and charms (`--kit=best`), who must lose real
+ * life. The owner picked the middle of a gentle and a hard curve.
+ *
+ * Life climbs a steady share per depth. Damage climbs faster the deeper you
+ * go, because hero life outruns it more each level. Past `DEEP_FROM` both
+ * climb a little more again, where the hero's levels outrun the depth.
+ */
 /** Depths up to here keep the base curve as it stands. */
 export const RAMP_FROM = 5;
-/** Extra monster life per depth past `RAMP_FROM`. */
-export let LIFE_RAMP = 1;
-/** Extra monster damage per depth past `RAMP_FROM`. */
-export let DAMAGE_RAMP = 1;
+/** Where the deep extra starts. */
+export const DEEP_FROM = 60;
+/** Monster life: e^(LIFE_STEP) more per depth past `RAMP_FROM` (about +3.8%). */
+export let LIFE_STEP = 0.0375;
+/** Monster damage: e^(DAMAGE_STEP) more per depth past `RAMP_FROM`... */
+export let DAMAGE_STEP = 0.029;
+/** ...and a share that grows with the square of the depths past it. */
+export let DAMAGE_CURVE = 0.000275;
+/** Life and damage: e^(DEEP_STEP) more again per depth past `DEEP_FROM` (about +2%). */
+export let DEEP_STEP = 0.0198;
 
 /** For tuning tools only: try other ramps. */
-export function tuneDepthRamp(life: number, damage: number): void {
-  LIFE_RAMP = life;
-  DAMAGE_RAMP = damage;
+export function tuneDepthRamp(life: number, damage: number, curve: number, deep: number): void {
+  LIFE_STEP = life;
+  DAMAGE_STEP = damage;
+  DAMAGE_CURVE = curve;
+  DEEP_STEP = deep;
 }
 
 /**
- * How much harder than the base curve monsters stand at a depth. Never below
- * 1, so no depth gets easier.
+ * How much harder than the base curve monsters stand at a depth: x1 to depth
+ * 5, about x1.9 life and x1.8 damage at 22, x3.7 and x3.9 at 40, x8 and x11
+ * at 60. Never below 1, so no depth gets easier.
  */
 export function depthRamp(depth: number): { life: number; damage: number } {
-  const n = Math.max(0, Math.max(1, depth) - RAMP_FROM);
-  return { life: Math.pow(LIFE_RAMP, n), damage: Math.pow(DAMAGE_RAMP, n) };
+  const d = Math.max(1, depth);
+  const n = Math.max(0, d - RAMP_FROM);
+  const deep = DEEP_STEP * Math.max(0, d - DEEP_FROM);
+  return { life: Math.exp(LIFE_STEP * n + deep), damage: Math.exp(DAMAGE_STEP * n + DAMAGE_CURVE * n * n + deep) };
 }
 
 /**

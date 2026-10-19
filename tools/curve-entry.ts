@@ -32,7 +32,9 @@
  *                             piece upgraded at the anvil, gems in its sockets and a
  *                             pack of charms. It must lose real life too.
  *   --mlife=2 --mdmg=2        scale the monsters outright, to tune `depthCurve`
- *   --ramp=1.03:1.04          try other depth ramps (`depthRamp` in sim/Difficulty.ts)
+ *   --ramp=0.0375:0.029:0.000275:0.0198
+ *                             try other depth ramps (life, damage, damage curve,
+ *                             deep extra: `depthRamp` in sim/Difficulty.ts)
  */
 import * as THREE from 'three';
 import { arena, caseLog, shrug, type Arena } from './combat-arena';
@@ -67,6 +69,7 @@ import { MILESTONE_STEP, milestoneReward } from '../src/sim/Legacy';
 import { RunModifiers } from '../src/scenes/RunModifiers';
 import { tuneHeroPower } from '../src/sim/HeroPower';
 import { tuneDepthRamp } from '../src/sim/Difficulty';
+import { xpForLevel } from '../src/sim/Stats';
 import { Random } from '../src/core/RNG';
 import { events } from '../src/core/Events';
 import type { CharClassId, Character, DamagePacket, DungeonLevel, EquipSlot, Item, SkillDef } from '../src/types';
@@ -114,7 +117,10 @@ if (arg('mlife') || arg('mdmg')) {
   dif.monsterLife *= Number(arg('mlife') ?? 1);
   dif.monsterDamage *= Number(arg('mdmg') ?? 1);
 }
-if (arg('ramp')) tuneDepthRamp(Number(arg('ramp')!.split(':')[0]), Number(arg('ramp')!.split(':')[1]));
+if (arg('ramp')) {
+  const [life, damage, curve, deep] = arg('ramp')!.split(':').map(Number);
+  tuneDepthRamp(life!, damage!, curve!, deep!);
+}
 if (arg('hp')) tuneHeroPower(Number(arg('hp')!.split(':')[0]), Number(arg('hp')!.split(':')[1]));
 // The default five depths keep the check to a couple of minutes; `--wide` walks
 // the whole run, every class at ten depths out to 60 (balance milestone 4).
@@ -243,7 +249,9 @@ function buildHero(classId: CharClassId, depth: number): { c: Character; level: 
   const level = levelAt(classId, depth);
   const c = createCharacter('Curve', classId, new Random(5 + depth));
   // Points come with levels; grant XP straight to the level.
-  while (c.level < level) grantXp(c, xpToNext(c));
+  // Exactly what each level costs: a lump that crosses several levels at
+  // once left deep heroes 3 to 11 levels above the depth's own.
+  while (c.level < level) grantXp(c, xpForLevel(c.level) - c.xp);
   const cls = CLASSES.find((x) => x.id === classId)!;
   const main = (['strength', 'dexterity', 'energy'] as const).reduce((a, b) => (cls.base[b] > cls.base[a] ? b : a));
   const pts = c.statPoints;
@@ -295,11 +303,6 @@ function buildHero(classId: CharClassId, depth: number): { c: Character; level: 
   if (trace) console.error(`  skills: ${JSON.stringify(c.skills)} left ${c.skillPoints}`);
   if (trace) console.error(`  gear: ${Object.entries(c.equipment).map(([k, v]) => `${k}=${v!.name}(${v!.baseId},i${v!.ilvl})`).join(' ')}`);
   return { c, level, tree };
-}
-
-function xpToNext(c: Character): number {
-  // Big enough to always cross one level; grantXp loops levels itself.
-  return 1 + Math.pow(1.2, c.level) * 1000;
 }
 
 // --- the fight ------------------------------------------------------------------
