@@ -34,7 +34,7 @@ import {
   length, max, mix, normalWorldGeometry, positionWorld, pow, property, sin, smoothstep, step,
   texture, uniform, vec2, vec3, vec4,
 } from 'three/tsl';
-import { andMask, asStandard, matColor, matFloat, noise2, setNodeTextures, pixelDither, type F, type V2, type V3, type V4 } from '../core/Tsl';
+import { andMask, asStandard, matColor, matFloat, noise2, setNodeTextures, pixelDither, viewEye, floorDepth, worldLite, type F, type V2, type V3, type V4 } from '../core/Tsl';
 import { resolveSurface } from './SurfaceLibrary';
 import { setMistFloor } from '../core/Air';
 import { setTextures, TEXTURE_SETS, type TextureSetInfo } from './TextureSets';
@@ -128,7 +128,11 @@ export function setWorldRoof(x: number, z: number, radius: number): void {
 const uCut = uniform(worldCutaway.value);
 const uRoof = uniform(worldRoof.value);
 
-/** Kept where the sightline cut does not open the wall. */
+/**
+ * Kept where the sightline cut does not open the wall. Only for the eye of
+ * the frame: in a shadow pass the camera is a light, and a cut there let a
+ * torch shine through the wall between it and the hero.
+ */
 function cutKeep(): THREE.Node<'bool'> {
   const d = uCut.xyz.sub(cameraPosition);
   const len = length(d);
@@ -137,7 +141,7 @@ function cutKeep(): THREE.Node<'bool'> {
   const t = dot(r, n);
   const off = length(r.sub(n.mul(t)));
   const a = max(smoothstep(uCut.w.mul(0.6), uCut.w, off), smoothstep(len.sub(1.4), len.sub(0.7), t));
-  return uCut.w.lessThanEqual(0.0).or(a.greaterThanEqual(pixelDither()));
+  return uCut.w.lessThanEqual(0.0).or(distance(cameraPosition, viewEye).greaterThan(0.05)).or(a.greaterThanEqual(pixelDither()));
 }
 
 /** Kept outside the roof's opening around the hero. */
@@ -251,6 +255,7 @@ function buildNodes(
   const zoneT = zone2 ? (attribute(WORLD_ZONE_ATTRIBUTE, 'float') as F) : null;
 
   const main = Fn(() => {
+    const lite = worldLite.greaterThan(0.5).toVar();
     const P = positionWorld.toVar();
     const Dx = dFdx(positionWorld).toVar();
     const Dy = dFdy(positionWorld).toVar();
@@ -263,7 +268,11 @@ function buildNodes(
       const w0 = pow(abs(Ng), vec3(4.0));
       const w1 = w0.div(max(w0.x.add(w0.y).add(w0.z), 1e-4));
       const w2 = max(w1.sub(0.04), vec3(0.0));
-      W = w2.div(max(w2.x.add(w2.y).add(w2.z), 1e-4)).toVar();
+      const blend = w2.div(max(w2.x.add(w2.y).add(w2.z), 1e-4)).toVar();
+      // The light shader: the plane the face leans into most, alone.
+      const lone = blend.y.greaterThanEqual(max(blend.x, blend.z))
+        .select(vec3(0.0, 1.0, 0.0), blend.x.greaterThanEqual(blend.z).select(vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0)));
+      W = lite.select(lone, blend).toVar();
     }
     const K = noise2(P.xz.mul(0.11).add(P.y.mul(0.07))).toVar();
     // Each projection's uv and gradients are worked out here, once, before
@@ -315,6 +324,36 @@ function buildNodes(
       B.push(float(1.0));
     }
 
+    // Depth from the scans' height (albedo alpha): the low points of a floor
+    // sit `floorDepth` below its tops, so the gaps between stones slide under
+    // their edges as the view moves. Two reads per layer find where the view
+    // ray meets the relief; the taps below then read there. Floors and the
+    // top plane of open ground only: a wall keeps its face.
+    if (!wall) {
+      If(floorDepth.greaterThan(0.0), () => {
+        const p = proj.y;
+        const V = cameraPosition.sub(P).normalize().toVar();
+        const k = V.xz.div(max(V.y, 0.3)).mul(floorDepth).negate();
+        const duv = vec2(k.x, Sg.y.negate().mul(k.y)).mul(W.y).toVar();
+        const od = fk.lessThan(0.5).select(oa, ob).toVar();
+        const height = (uv: V2): F => {
+          const h = float(0.0).toVar();
+          for (let i = 0; i < n; i++) {
+            const s = L[i]!.p.x;
+            const read = (): void => {
+              h.addAssign(texture(L[i]!.albedo, uv.mul(s).add(od)).grad(p.dx.mul(s), p.dy.mul(s)).a.mul(B[i]!));
+            };
+            if (n > 1) If(B[i]!.greaterThan(0.0), read);
+            else read();
+          }
+          return h;
+        };
+        const h0 = height(p.uv);
+        const h1 = height(p.uv.add(duv.mul(h0.oneMinus())));
+        p.uv.addAssign(duv.mul(h0.add(h1).mul(0.5).oneMinus()));
+      });
+    }
+
     const alb = vec3(0.0).toVar();
     const roughV = float(0.0).toVar();
     const metalV = float(0.0).toVar();
@@ -332,18 +371,30 @@ function buildNodes(
         for (const ax of axes) {
           const p = proj[ax];
           const tap = (): void => {
-            const puv = p.uv.mul(s);
-            const pdx = p.dx.mul(s);
-            const pdy = p.dy.mul(s);
+            const puv = p.uv.mul(s).toVar();
+            const pdx = p.dx.mul(s).toVar();
+            const pdy = p.dy.mul(s).toVar();
             let a: V4;
             let nn: V4;
             let tb: F = float(0.0);
             if (detile) {
-              const a0 = texture(Li.albedo, puv.add(oa)).grad(pdx, pdy);
-              const a1 = texture(Li.albedo, puv.add(ob)).grad(pdx, pdy);
-              tb = smoothstep(0.2, 0.8, fk.sub(dot(a0.rgb.sub(a1.rgb), vec3(1.0)).mul(0.1))).toVar();
-              a = mix(a0, a1, tb);
-              nn = mix(texture(Li.normal, puv.add(oa)).grad(pdx, pdy), texture(Li.normal, puv.add(ob)).grad(pdx, pdy), tb);
+              // The light shader keeps the first tap only.
+              const av0 = vec4(0.0).toVar();
+              const nv0 = vec4(0.0).toVar();
+              const tbv = float(0.0).toVar();
+              If(lite, () => {
+                av0.assign(texture(Li.albedo, puv.add(oa)).grad(pdx, pdy));
+                nv0.assign(texture(Li.normal, puv.add(oa)).grad(pdx, pdy));
+              }).Else(() => {
+                const a0 = texture(Li.albedo, puv.add(oa)).grad(pdx, pdy).toVar();
+                const a1 = texture(Li.albedo, puv.add(ob)).grad(pdx, pdy).toVar();
+                tbv.assign(smoothstep(0.2, 0.8, fk.sub(dot(a0.rgb.sub(a1.rgb), vec3(1.0)).mul(0.1))));
+                av0.assign(mix(a0, a1, tbv));
+                nv0.assign(mix(texture(Li.normal, puv.add(oa)).grad(pdx, pdy), texture(Li.normal, puv.add(ob)).grad(pdx, pdy), tbv));
+              });
+              tb = tbv;
+              a = av0;
+              nn = nv0;
             } else {
               a = texture(Li.albedo, puv).grad(pdx, pdy);
               nn = texture(Li.normal, puv).grad(pdx, pdy);
@@ -356,10 +407,16 @@ function buildNodes(
             const tt = vec3(t0.xy.mul(Li.p.y), t0.z);
             ld.addAssign(p.delta(tt).mul(p.w));
             if (Li.glow === 1 && Li.emissive) {
-              const e = detile
-                ? mix(texture(Li.emissive, puv.add(oa)).grad(pdx, pdy).rgb, texture(Li.emissive, puv.add(ob)).grad(pdx, pdy).rgb, tb)
-                : texture(Li.emissive, puv).grad(pdx, pdy).rgb;
-              le.addAssign(e.mul(p.w));
+              const em = Li.emissive;
+              if (detile) {
+                If(lite, () => {
+                  le.addAssign(texture(em, puv.add(oa)).grad(pdx, pdy).rgb.mul(p.w));
+                }).Else(() => {
+                  le.addAssign(mix(texture(em, puv.add(oa)).grad(pdx, pdy).rgb, texture(em, puv.add(ob)).grad(pdx, pdy).rgb, tb).mul(p.w));
+                });
+              } else {
+                le.addAssign(texture(em, puv).grad(pdx, pdy).rgb.mul(p.w));
+              }
             } else if (Li.glow === 2) {
               // No emission map: light pools in the cracks and hollows of the relief.
               const cav = av.a.oneMinus();

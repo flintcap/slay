@@ -99,6 +99,9 @@ function shoot(
   const pitch = opts.pitch ?? 0.08;
   cam.position.set(0, opts.target.y + Math.sin(pitch) * opts.dist, Math.cos(pitch) * opts.dist).add(new THREE.Vector3(opts.target.x, 0, opts.target.z));
   cam.lookAt(opts.target);
+  // Every shot is a frame of its own: skinning updates a skeleton once per
+  // frame, and a sheet draws all its shots inside one browser frame.
+  (r as unknown as { _nodes: { nodeFrame: { update(): void } } })._nodes.nodeFrame.update();
   r.render(scene, cam);
   g.drawImage(r.domElement, opts.x, opts.y);
   holder.remove(obj);

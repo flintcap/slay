@@ -8,7 +8,8 @@ import { eyeGeometry, eyeMaterial, mouthGeometry, mouthMaterial } from './Eyes';
 import type { HeroLook } from './Looks';
 import { fabricMaterial, skinMaterial } from './HeroMaterials';
 import { beltSpec, chestWrapSpec, garment, shortsSpec } from './Garment';
-import { headParts } from './Hair';
+import { hairChains, headParts } from './Hair';
+import { hang } from './Swing';
 
 export interface HeroModel {
   rig: HeroRig;
@@ -43,9 +44,16 @@ export function buildHero(look: HeroLook, name = 'hero', quality: BodyQuality = 
   skinned(garment(body, 'shorts', shortsSpec(body, female)), fabricMaterial('linen', look.linen), rig, `${name}:shorts`);
   skinned(garment(body, 'wrap', chestWrapSpec(body)), fabricMaterial('linen', look.linen), rig, `${name}:wrap`);
   skinned(garment(body, 'belt', beltSpec(body)), fabricMaterial('leather', look.leather, 0.7), rig, `${name}:belt`);
-  for (const p of headParts(body, look)) skinned(p.geo, p.mat, rig, `${name}:${p.name}`);
+  const hair: THREE.SkinnedMesh[] = [];
+  for (const p of headParts(body, look)) {
+    const m = skinned(p.geo, p.mat, rig, `${name}:${p.name}`);
+    if (p.name.startsWith('hair')) hair.push(m);
+  }
   rig.root.userData.heroLook = look;
-  return { rig, root: rig.root, body, look };
+  const hero = { rig, root: rig.root, body, look };
+  // Hanging hair on its own springy bones (`Swing.ts`).
+  hang(hero, hair, hairChains(body, look));
+  return hero;
 }
 
 /**

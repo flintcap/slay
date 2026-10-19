@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { events } from '../../core/Events';
 
 /** Bump when the mesher, decimator, weights or painting change. */
-export const MESH_VERSION = 6;
+export const MESH_VERSION = 7;
 
 const DB = 'slay-hero-meshes';
 const STORE = 'parts';

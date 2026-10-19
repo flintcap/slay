@@ -70,6 +70,7 @@ import { disposeMonsterModels } from '../entities/MonsterModels';
 import { SUMMONED_BY } from '../entities/Abilities';
 import { lookFor } from '../art/creatures/Looks';
 import { corpseStandIns, instanceCreature, releaseCreature } from '../art/creatures/Creature';
+import { PackDraws, packStandIns } from '../art/creatures/Packs';
 import { disposePropLibrary } from '../world/Props';
 import { PropRemains } from '../art/props/Remains';
 import { buildPortal, buildWaypoint, type WayLook } from '../art/props/Ways';
@@ -80,6 +81,10 @@ import { Weather } from '../world/Weather';
 import { markStaticShadows } from '../core/ShadowCache';
 import { peril } from '../core/Peril';
 
+/** Half the hero lantern's cone, radians: from four metres up it lights about twelve metres round. */
+const LANTERN_ANGLE = 1.25;
+/** The lantern's share of the hero's light; the point light above keeps the rest. */
+const LANTERN_SHARE = 0.6;
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
 /** The hero's spot on screen, for the see-through map. */
@@ -111,6 +116,11 @@ const hiddenFar = new WeakSet<THREE.Object3D>();
 const WAY_LIGHT_SLOTS = 3;
 /** Metres from the hero past which a monster in view is posed at half rate. */
 const POSE_FAR = 14;
+/**
+ * Screen height (CSS pixels) under which a monster is drawn from its
+ * lower-detail copy: rats and bats on every preset, most of a pack on Low.
+ */
+const LOW_DETAIL_PX: Record<'low' | 'medium' | 'high' | 'ultra', number> = { low: 150, medium: 90, high: 60, ultra: 45 };
 
 /** True when a light is in `scene` and every node above it is shown. */
 function shownIn(o: THREE.Object3D, scene: THREE.Object3D): boolean {
@@ -300,10 +310,19 @@ export class DungeonScene extends GameScene {
   } | null = null;
   /** Summonable bodies built for the area's warm-up (see `warmSummons`). */
   private summonWarm: THREE.Object3D[] = [];
+  /** Packs of one look drawn as one (`art/creatures/Packs.ts`), and this frame's riders. */
+  private packs: PackDraws | null = null;
+  private packRoots: THREE.Object3D[] = [];
   /** The warm-up's item material stand-ins share this box (see `warmup`). */
   private lootWarmGeo: THREE.BufferGeometry[] = [];
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
+  /**
+   * The near part of the hero's light, a cone straight down from the same
+   * place: it throws the shadows of whatever stands close (High and Ultra;
+   * below that its shadow is faded out, `Renderer.applyShadows`).
+   */
+  private heroLantern: THREE.SpotLight | null = null;
   /** How far the hero's light is guttered by soot (`snuffed`), 0 to 1. */
   private snuff = 0;
   private heroAura: THREE.Mesh | null = null;
@@ -396,7 +415,7 @@ export class DungeonScene extends GameScene {
     }
     // And each body's fallen look, for the first kill of its kind, and a
     // gold coin, for the first pile dropped.
-    const fallen = corpseStandIns(roots);
+    const fallen = [...corpseStandIns(roots), ...packStandIns(roots)];
     const coin = new THREE.Mesh(coinGeometry(), emissiveMaterial(0xffc63a, 0.5));
     coin.frustumCulled = false;
     const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns(), ...this.effects.standIns()];
@@ -685,6 +704,17 @@ export class DungeonScene extends GameScene {
     this.heroLight = new THREE.PointLight(0xffd9a8, 30, 22, 2);
     this.heroLight.castShadow = false;
     this.scene.add(this.heroLight);
+    // Wide enough that its edge lies near where the floor glow ends; the
+    // point light above carries the rest of the reach and fills the shadows
+    // the lantern throws, so they read as shade rather than holes.
+    this.heroLantern = new THREE.SpotLight(0xffd9a8, 0, 22, LANTERN_ANGLE, 0.6, 2);
+    this.heroLantern.castShadow = true;
+    this.heroLantern.shadow.mapSize.set(1024, 1024);
+    this.heroLantern.shadow.camera.near = 0.5;
+    this.heroLantern.shadow.bias = -0.0015;
+    this.heroLantern.shadow.normalBias = 0.03;
+    this.heroLantern.userData.lantern = true;
+    this.scene.add(this.heroLantern, this.heroLantern.target);
     // Parked lights that stand in for ways on an area does not have.
     for (let i = 0; i < WAY_LIGHT_SLOTS; i++) {
       const spare = new THREE.PointLight(0x000000, 0, 1, 2);
@@ -837,11 +867,16 @@ export class DungeonScene extends GameScene {
       this.heroLight.color.setHex(this.lighting.hero.color);
       this.heroLight.distance = this.lighting.hero.distance;
     }
+    if (this.heroLantern) {
+      this.heroLantern.color.setHex(this.lighting.hero.color);
+      this.heroLantern.distance = this.lighting.hero.distance;
+    }
     // The floor glow is a flat sheet: on rolling outdoor ground the slopes cut
     // through it in hard-edged slabs. Outdoors the hero light alone does it.
     if (this.heroAura) this.heroAura.visible = !this.mesh.isOutdoor;
 
-    this.engine.renderer.applyEnvironment(this.scene, 0.4);
+    this.engine.renderer.applyEnvironment(this.scene, 0.4, this.lighting.sky);
+    this.mesh.useBounce();
     // The biome's colour grade (world stream). Reset in dispose().
     this.engine.renderer.setGrade(biomeArt(this.biome.id, this.level?.variant).grade);
     // Fog and the clear colour belong to the light mood (applyBiomeLighting).
@@ -1522,6 +1557,10 @@ export class DungeonScene extends GameScene {
     // out of view (the margin keeps edge bodies and their shadows posed).
     _viewMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
     _view.setFromProjectionMatrix(_viewMat);
+    this.packRoots.length = 0;
+    // Bodies shorter on screen than this draw their lower-detail copies.
+    const pxPerM = window.innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
+    const lowPx = LOW_DETAIL_PX[this.engine.renderer.qualityLevel];
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i]!;
       const dx = e.root.position.x - px;
@@ -1529,6 +1568,9 @@ export class DungeonScene extends GameScene {
       _viewBall.center.copy(e.root.position);
       _viewBall.radius = 4 + 2 * e.sizeScale;
       e.setInView(_view.intersectsSphere(_viewBall));
+      if (e.inView && e.alive) e.setDetailFor(this.camera.position.distanceTo(e.root.position), pxPerM, lowPx);
+      const ride = e.packBody;
+      if (ride) this.packRoots.push(ride);
       // Far from the hero, a body is posed every other frame (its motion
       // reads the same at half rate; the near ones keep every frame).
       e.poseEvery = dx * dx + dz * dz > POSE_FAR * POSE_FAR ? 2 : 1;
@@ -1584,6 +1626,8 @@ export class DungeonScene extends GameScene {
       }
     }
     this.acting = null;
+    // Bodies of one look in view share a draw (after any of them changed its material this frame, it leaves next frame).
+    (this.packs ??= new PackDraws(this.scene)).update(this.packRoots, dt);
     this.aimPos.copy(this.player.position);
 
     try {
@@ -1619,7 +1663,14 @@ export class DungeonScene extends GameScene {
       // Inside a Lampblack monster's soot the flame gutters down.
       const snuffed = this.player.status.has('snuffed') ? 1 : 0;
       this.snuff += (snuffed - this.snuff) * Math.min(1, rawDt * 4);
-      this.heroLight.intensity = this.heroLightBase * (1 + Math.sin(elapsed * 3.1) * 0.07) * (1 - 0.7 * this.snuff);
+      const glow = this.heroLightBase * (1 + Math.sin(elapsed * 3.1) * 0.07) * (1 - 0.7 * this.snuff);
+      this.heroLight.intensity = glow * (1 - LANTERN_SHARE);
+      if (this.heroLantern) {
+        this.heroLantern.position.copy(this.heroLight.position);
+        this.heroLantern.target.position.set(this.player.position.x, this.player.position.y, this.player.position.z);
+        this.heroLantern.target.updateMatrixWorld();
+        this.heroLantern.intensity = glow * LANTERN_SHARE;
+      }
     }
     if (this.heroAura) {
       this.heroAura.position.set(this.player.position.x, this.player.position.y + 0.06, this.player.position.z);
@@ -2659,6 +2710,12 @@ export class DungeonScene extends GameScene {
     this.player?.dispose();
     this.heroLight?.removeFromParent();
     this.heroLight = null;
+    if (this.heroLantern) {
+      this.heroLantern.target.removeFromParent();
+      this.heroLantern.removeFromParent();
+      this.heroLantern.dispose();
+      this.heroLantern = null;
+    }
     if (this.heroAura) {
       this.heroAura.removeFromParent();
       disposeObject(this.heroAura);
@@ -2690,6 +2747,8 @@ export class DungeonScene extends GameScene {
     resetEnemyRuntime();
     disposeAbilityWorld();
     clearDropModels();
+    this.packs?.dispose();
+    this.packs = null;
     disposeMonsterModels();
     disposePropLibrary();
     this.engine.renderer.setLowLife(0);

@@ -12,10 +12,10 @@
  */
 import * as THREE from 'three';
 import { meshField, fieldNormals, rampInflate, type Clip, type Inflate } from './Mesher';
-import { simplify } from './Decimate';
+import { lodGeometry, simplify } from './Decimate';
 import { skinWeights } from './Skinning';
 import { G, GROUP_COUNT, bodyField, type AnatomyOpts, type BodyField } from './Anatomy';
-import { heroJoints, type BodyShape, type JointMap } from './Rig';
+import { HERO_BONES, heroJoints, type BodyShape, type JointMap } from './Rig';
 import { EVALS, type Field } from './Sdf';
 import { meshCached } from './MeshCache';
 
@@ -164,6 +164,41 @@ export function meshBody(shape: BodyShape, opts: AnatomyOpts = {}, q: BodyQualit
   const skin = meshCached(`body|${hash}|${JSON.stringify(q)}`, () => meshSkin(anatomy, opts, q));
   const out: BodyMesh = { skin, anatomy, joints, hash, ms: performance.now() - t0, garmentScale: q.garmentScale ?? 1 };
   cache.set(k, out);
+  return out;
+}
+
+const played = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry>();
+const FINE_BONES = new Set<number>(
+  ['head', 'handL', 'fingersL', 'fingerTipsL', 'thumbL', 'handR', 'fingersR', 'fingerTipsR', 'thumbR'].map((n) => HERO_BONES.indexOf(n as (typeof HERO_BONES)[number])),
+);
+
+/**
+ * The skin with its face and hands thinned to what shows at play distance,
+ * where a head is a few dozen pixels tall: the trunk and limbs keep every
+ * triangle (they carry the silhouette), and so do the cuts where the parts
+ * meet. For the hero in the world; the paperdoll and portraits keep it all.
+ */
+export function playSkin(skin: THREE.BufferGeometry): THREE.BufferGeometry {
+  const hit = played.get(skin);
+  if (hit) return hit;
+  const si = skin.getAttribute('skinIndex');
+  const sw = skin.getAttribute('skinWeight');
+  const index = skin.getIndex();
+  if (!si || !sw || !index) return skin;
+  const n = si.count;
+  const lock = new Uint8Array(n);
+  for (let v = 0; v < n; v++) {
+    let fine = 0;
+    for (let k = 0; k < 4; k++) if (FINE_BONES.has(si.getComponent(v, k))) fine += sw.getComponent(v, k);
+    lock[v] = fine < 0.5 ? 1 : 0;
+  }
+  let thin = 0;
+  for (let f = 0; f < index.count; f += 3) if (!lock[index.getX(f)] && !lock[index.getX(f + 1)] && !lock[index.getX(f + 2)]) thin++;
+  const faces = index.count / 3;
+  // About 45% of the face's and hands' triangles stay.
+  const out = thin ? lodGeometry(skin, 1 - (0.55 * thin) / faces, lock) : skin;
+  out.userData.cached = true;
+  played.set(skin, out);
   return out;
 }
 

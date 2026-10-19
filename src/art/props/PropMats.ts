@@ -29,13 +29,14 @@
  */
 import * as THREE from 'three/webgpu';
 import {
-  attribute, clamp, dot, float, fract, Fn, instanceIndex, mix, modelPosition, negateOnBackSide, normalGeometry, positionGeometry, sin,
-  smoothstep, varying, vec2, vec3,
+  attribute, clamp, dot, float, fract, Fn, hash, instanceIndex, mix, modelPosition, negateOnBackSide, normalGeometry, positionGeometry,
+  positionLocal, sin, smoothstep, varying, vec2, vec3,
 } from 'three/tsl';
-import { asStandard, bindToView, hash2, matColor, matFloat, matTexture, matVec2, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
+import { asStandard, bindToView, coverShare, hash2, matColor, matFloat, matTexture, matVec2, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
 import { loadTexture } from '../../core/Assets';
 import { resolveSurface } from '../SurfaceLibrary';
 import { setTextures, TEXTURE_SETS, type TextureSetName } from '../TextureSets';
+import { swayed } from '../Wind';
 
 // ---------------------------------------------------------------------------
 // The props stream's own photo sets
@@ -177,6 +178,10 @@ export interface PropMatOpts {
   side?: THREE.Side;
   transparent?: boolean;
   opacity?: number;
+  /** Leaves and stems: metres a tip one metre up moves in the wind (`Wind.ts`). */
+  sway?: number;
+  /** Instanced ground cover the quality thins (`coverShare`): copies past its share fold away. */
+  cover?: boolean;
 }
 
 interface Resolved {
@@ -259,6 +264,30 @@ const localPosition = Fn((_: unknown, { geometry }: { geometry: THREE.BufferGeom
   geometry.hasAttribute('slLocal') ? attribute('slLocal', 'vec3') : positionGeometry);
 const localNormal = Fn((_: unknown, { geometry }: { geometry: THREE.BufferGeometry }) =>
   geometry.hasAttribute('slLocalNormal') ? attribute('slLocalNormal', 'vec3') : normalGeometry);
+
+/**
+ * The wind's push on a swaying prop, one graph for all of them: it bends by
+ * the square of the copy's own height, so a stem's foot stays put.
+ */
+let sway: V3 | null = null;
+function swayGraph(): V3 {
+  if (!sway) {
+    const y = (localPosition() as unknown as V3).y.max(0.0);
+    sway = swayed(y.mul(y).mul(matFloat('slSway')));
+  }
+  return sway;
+}
+
+/** Ground cover: the sway (or none), with the copies past the quality's share folded to a point. */
+const covers = new Map<boolean, V3>();
+function coverGraph(sways: boolean): V3 {
+  let g = covers.get(sways);
+  if (!g) {
+    g = hash(instanceIndex).lessThan(coverShare).select(sways ? swayGraph() : positionLocal, vec3(0.0)) as unknown as V3;
+    covers.set(sways, g);
+  }
+  return g;
+}
 
 /** Materials whose copies can be baked into one mesh (see PropBake.ts). */
 const bakeable = new WeakSet<THREE.Material>();
@@ -358,7 +387,7 @@ function cached<T extends THREE.Material>(key: string, make: () => T): T {
  * ships as a broken material.
  */
 export function propMat(key: string, o: PropMatOpts = {}): THREE.MeshStandardMaterial {
-  const ck = `pm|${key}|${o.tint ?? -1}|${o.base ?? -1}|${o.rough ?? 1}|${o.metal ?? -1}|${o.scale ?? 1}|${o.bump ?? 1}|${o.emissive ?? -1}|${o.emissiveIntensity ?? -1}|${o.crackGlow ? 1 : 0}|${o.grime ?? 1}|${o.grimeHeight ?? 0.55}|${o.side ?? 0}|${o.transparent ? 1 : 0}|${o.opacity ?? 1}`;
+  const ck = `pm|${key}|${o.tint ?? -1}|${o.base ?? -1}|${o.rough ?? 1}|${o.metal ?? -1}|${o.scale ?? 1}|${o.bump ?? 1}|${o.emissive ?? -1}|${o.emissiveIntensity ?? -1}|${o.crackGlow ? 1 : 0}|${o.grime ?? 1}|${o.grimeHeight ?? 0.55}|${o.side ?? 0}|${o.transparent ? 1 : 0}|${o.opacity ?? 1}|${o.sway ?? 0}|${o.cover ? 1 : 0}`;
   return cached(ck, () => {
     const r = resolve(key);
     const m = new THREE.MeshStandardNodeMaterial({ name: `prop:${key}`, vertexColors: true });
@@ -389,6 +418,9 @@ export function propMat(key: string, o: PropMatOpts = {}): THREE.MeshStandardMat
       // ground draws it; an asked-for glow covers the surface unless told.
       crack: emissive !== undefined && (o.crackGlow || o.emissive === undefined) ? 1 : 0,
     });
+    if (o.sway) Object.assign(m, { slSway: o.sway });
+    if (o.cover) m.positionNode = coverGraph(!!o.sway);
+    else if (o.sway) m.positionNode = swayGraph();
     return asStandard(m);
   });
 }

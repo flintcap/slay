@@ -5,21 +5,24 @@
  * back as on a nose. Collapsing the edges whose removal changes the shape
  * least puts the triangles where the shape is.
  */
+import * as THREE from 'three';
 
 export interface Simplified {
   pos: Float32Array;
   index: Uint32Array;
+  /** The input vertex each output vertex was: a collapse keeps the survivor's index. */
+  src: Uint32Array;
 }
 
 /**
  * Simplifies a closed triangle mesh to about `target` triangles.
  * `weight` (optional, per vertex) makes some vertices costlier to move,
- * e.g. the face over the back of the head.
+ * e.g. the face over the back of the head. `lock`ed vertices never move.
  */
-export function simplify(posIn: Float32Array, indexIn: Uint32Array, target: number, weight?: Float32Array): Simplified {
+export function simplify(posIn: Float32Array, indexIn: Uint32Array, target: number, weight?: Float32Array, lock?: Uint8Array): Simplified {
   const nv = posIn.length / 3;
   const nf = indexIn.length / 3;
-  if (nf <= target) return { pos: posIn, index: indexIn };
+  if (nf <= target) return { pos: posIn, index: indexIn, src: Uint32Array.from({ length: nv }, (_, i) => i) };
   const pos = Float64Array.from(posIn);
   const tri = Int32Array.from(indexIn);
   const faceAlive = new Uint8Array(nf).fill(1);
@@ -50,6 +53,7 @@ export function simplify(posIn: Float32Array, indexIn: Uint32Array, target: numb
   const heap = new Heap();
   const opt = new Float64Array(3);
   const pushEdge = (a: number, b: number) => {
+    if (lock && (lock[a] || lock[b])) return;
     const cost = collapseCost(Q, pos, a, b, opt);
     heap.push(cost, a, b, version[a], version[b], opt[0], opt[1], opt[2]);
   };
@@ -144,6 +148,7 @@ export function simplify(posIn: Float32Array, indexIn: Uint32Array, target: numb
   const remap = new Int32Array(nv).fill(-1);
   const outPos: number[] = [];
   const outIdx: number[] = [];
+  const outSrc: number[] = [];
   for (let f = 0; f < nf; f++) {
     if (!faceAlive[f]) continue;
     for (let e = 0; e < 3; e++) {
@@ -151,11 +156,79 @@ export function simplify(posIn: Float32Array, indexIn: Uint32Array, target: numb
       if (remap[v] < 0) {
         remap[v] = outPos.length / 3;
         outPos.push(pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]);
+        outSrc.push(v);
       }
       outIdx.push(remap[v]);
     }
   }
-  return { pos: new Float32Array(outPos), index: new Uint32Array(outIdx) };
+  return { pos: new Float32Array(outPos), index: new Uint32Array(outIdx), src: new Uint32Array(outSrc) };
+}
+
+/** Vertices on an open edge (an edge of only one face): a cut that hides under another part, a sheet's rim. */
+export function openEdgeVertices(index: ArrayLike<number>, nv: number): Uint8Array {
+  const uses = new Map<number, number>();
+  for (let f = 0; f + 2 < index.length; f += 3) {
+    for (let e = 0; e < 3; e++) {
+      const a = index[f + e]!;
+      const b = index[f + ((e + 1) % 3)]!;
+      const k = a < b ? a * nv + b : b * nv + a;
+      uses.set(k, (uses.get(k) ?? 0) + 1);
+    }
+  }
+  const out = new Uint8Array(nv);
+  for (const [k, n] of uses) {
+    if (n !== 1) continue;
+    out[Math.floor(k / nv)] = 1;
+    out[k % nv] = 1;
+  }
+  return out;
+}
+
+/**
+ * A lower-detail copy of an indexed mesh with about `keep` of its triangles,
+ * for shadows and small or distant bodies. Open edges stay where they are (a
+ * cut must still meet the part that hides it), `lock`ed vertices too, and
+ * every other attribute (normal, colour, skin) is the surviving vertex's own.
+ * The mesh itself when it cannot be copied (groups, morphs, shared buffers).
+ */
+export function lodGeometry(g: THREE.BufferGeometry, keep: number, lock?: Uint8Array): THREE.BufferGeometry {
+  const P = g.getAttribute('position');
+  const I = g.index;
+  if (!P || !I || g.groups.length > 0 || Object.keys(g.morphAttributes).length > 0) return g;
+  if (g.drawRange.start > 0 || g.drawRange.count < I.count) return g;
+  for (const a of Object.values(g.attributes)) if ((a as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute) return g;
+  const nv = P.count;
+  const pos = new Float32Array(nv * 3);
+  for (let i = 0; i < nv; i++) {
+    pos[i * 3] = P.getX(i);
+    pos[i * 3 + 1] = P.getY(i);
+    pos[i * 3 + 2] = P.getZ(i);
+  }
+  const index = Uint32Array.from(I.array as ArrayLike<number>);
+  const locked = openEdgeVertices(index, nv);
+  if (lock) for (let i = 0; i < nv; i++) locked[i]! |= lock[i]!;
+  const s = simplify(pos, index, Math.max(16, Math.floor((index.length / 3) * keep)), undefined, locked);
+  if (s.index.length >= index.length) return g;
+  const out = new THREE.BufferGeometry();
+  const n = s.src.length;
+  out.setAttribute('position', new THREE.BufferAttribute(s.pos, 3));
+  for (const [name, a] of Object.entries(g.attributes)) {
+    if (name === 'position') continue;
+    const ba = a as THREE.BufferAttribute;
+    const size = ba.itemSize;
+    const arr = new (ba.array.constructor as new (n: number) => THREE.TypedArray)(n * size);
+    const from = ba.array;
+    for (let i = 0; i < n; i++) {
+      const v = s.src[i]!;
+      for (let k = 0; k < size; k++) arr[i * size + k] = from[v * size + k]!;
+    }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, size, ba.normalized));
+  }
+  out.setIndex(new THREE.BufferAttribute(n > 65535 ? s.index : Uint16Array.from(s.index), 1));
+  if (g.boundingSphere) out.boundingSphere = g.boundingSphere.clone();
+  else out.computeBoundingSphere();
+  if (g.boundingBox) out.boundingBox = g.boundingBox.clone();
+  return out;
 }
 
 function faceNormal(p: Float64Array, a: number, b: number, c: number): [number, number, number, number] {

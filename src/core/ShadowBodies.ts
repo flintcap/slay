@@ -16,6 +16,7 @@
  * renderer, a stand-in) draws nothing.
  */
 import * as THREE from 'three';
+import { lodGeometry } from '../art/hero/Decimate';
 
 let mat: THREE.MeshBasicMaterial | null = null;
 const watched = new WeakSet<THREE.LightShadow>();
@@ -75,6 +76,21 @@ export function castsPlainShadow(m: THREE.Mesh): boolean {
   const g = m.geometry;
   if (!g.getAttribute('position') || Object.keys(g.morphAttributes).length > 0) return false;
   return true;
+}
+
+const lods = new WeakMap<THREE.BufferGeometry, Map<number, THREE.BufferGeometry>>();
+
+/**
+ * A part's lower-detail copy for a shadow body (made once per part and
+ * share): a shadow is soft and seen from one side, and a half or less of
+ * the triangles cast the same one.
+ */
+export function shadowLod(g: THREE.BufferGeometry, keep: number): THREE.BufferGeometry {
+  let byKeep = lods.get(g);
+  if (!byKeep) lods.set(g, (byKeep = new Map()));
+  let lo = byKeep.get(keep);
+  if (!lo) byKeep.set(keep, (lo = lodGeometry(g, keep)));
+  return lo;
 }
 
 /**

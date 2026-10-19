@@ -7,7 +7,8 @@
  * darkens toward the middle, and for lava a crust that drifts over a hotter
  * glow underneath. All of it comes from one shared world-scale noise texture
  * sampled at scrolling offsets, so a level's liquid is one material and one
- * program whatever its size.
+ * program whatever its size. Clear water and sludge also show the bed through
+ * the surface and mirror what stands around them (`seeThrough`).
  *
  * Geometry feeds an `aEnv` attribute: 1 on a vertex touching the bank, 0 in
  * open liquid. See `DungeonBuilder`.
@@ -15,9 +16,11 @@
 
 import * as THREE from 'three/webgpu';
 import {
-  attribute, cameraViewMatrix, mix, normalize, normalViewGeometry, positionWorld, sin, smoothstep, texture, uniform, vec2, vec3, vec4,
+  Break, Fn, If, Loop, attribute, cameraFar, cameraNear, cameraProjectionMatrix, cameraProjectionMatrixInverse, cameraViewMatrix, cameraWorldMatrix,
+  exp, float, getViewPosition, max, min, mix, normalize, normalViewGeometry, perspectiveDepthToViewZ, positionView, positionWorld, reflect,
+  screenUV, sin, smoothstep, texture, uniform, vec2, vec3, vec4, viewportDepthTexture, viewportSharedTexture,
 } from 'three/tsl';
-import { asStandard, matColor, matFloat, setNodeTextures } from '../core/Tsl';
+import { asStandard, matColor, matFloat, setNodeTextures, waterRays, type F, type V2, type V3 } from '../core/Tsl';
 import { macroNoiseTexture } from '../fx/UtilityTextures';
 import { WORLD_ENV_ATTRIBUTE } from './WorldMaterial';
 
@@ -47,6 +50,16 @@ interface LiquidTuning {
   metalness: number;
   opacity: number;
   emissiveIntensity: number;
+  /**
+   * See-through: 0 for an opaque body, else how much of the bed shows at
+   * the bank. It fades by `absorb` per metre of depth below the surface,
+   * and the ripples bend it by `refract` (screen units per unit slope).
+   */
+  clear: number;
+  absorb: number;
+  refract: number;
+  /** How strongly it mirrors what stands around it. */
+  mirror: number;
 }
 
 const TUNING: Record<LiquidStyle, LiquidTuning> = {
@@ -67,6 +80,10 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     metalness: 0.1,
     opacity: 0.84,
     emissiveIntensity: 0.6,
+    clear: 0.9,
+    absorb: 1.4,
+    refract: 0.03,
+    mirror: 0.45,
   },
   sludge: {
     // Under an open sky the moon caught every ripple of a glossy, frothy
@@ -82,6 +99,10 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     metalness: 0.05,
     opacity: 0.96,
     emissiveIntensity: 0.6,
+    clear: 0.5,
+    absorb: 4.5,
+    refract: 0.012,
+    mirror: 0.15,
   },
   ice: {
     ripple: 0.22,
@@ -95,6 +116,10 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     metalness: 0.05,
     opacity: 0.88,
     emissiveIntensity: 0.3,
+    clear: 0,
+    absorb: 0,
+    refract: 0,
+    mirror: 0,
   },
   lava: {
     ripple: 0.35,
@@ -110,6 +135,10 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     // 2.8 (peak 5.6 in the seams) blew every pool out to a white sheet that
     // bloomed over the hero in the w10 foundry render.
     emissiveIntensity: 1.25,
+    clear: 0,
+    absorb: 0,
+    refract: 0,
+    mirror: 0,
   },
   voidwater: {
     ripple: 0.4,
@@ -126,6 +155,10 @@ const TUNING: Record<LiquidStyle, LiquidTuning> = {
     // sheet that swamped the walkway, and at 0.6 it was still a loud blue
     // field. The void is mostly dark with faint seams.
     emissiveIntensity: 0.3,
+    clear: 0,
+    absorb: 0,
+    refract: 0,
+    mirror: 0,
   },
 };
 
@@ -140,6 +173,71 @@ class DimReflection extends THREE.PhysicalLightingModel {
     ctx.radiance.mulAssign(this.k);
     super.indirectSpecular(builder);
   }
+}
+
+/** Steps of the reflection trace, each a third longer than the last. */
+const RAY_STEPS = 14;
+
+/**
+ * What the eye meets on a clear liquid: the bed under it, bent by the
+ * ripples and sinking into the body's colour with depth (so the shallows
+ * at the bank are near clear), and the walls, flames and figures around it,
+ * mirrored where a short trace across the screen finds them. Returns the
+ * colour that stands in for the lit body and how much of it does.
+ */
+function seeThrough(t: LiquidTuning, slope: V2, nView: V3, body: V3, rim: F): { color: V3; alpha: F } {
+  const depthTex = viewportDepthTexture();
+  const viewAt = (uv: V2): V3 => getViewPosition(uv, depthTex.sample(uv).x, cameraProjectionMatrixInverse) as V3;
+  const worldY = (v: V3): F => cameraWorldMatrix.mul(vec4(v, 1.0)).y;
+  // Depth over the bed under this pixel, then under the bent ray.
+  const deep0 = positionWorld.y.sub(worldY(viewAt(screenUV))).max(0.0);
+  const uvR = screenUV.add(slope.mul(t.refract).mul(min(deep0, 1.0)));
+  const bedR = viewAt(uvR).toVar();
+  // Something nearer than the surface at the bent spot (a leg, the bank):
+  // look straight through instead, or it would show in the water.
+  const ahead = bedR.z.greaterThan(positionView.z);
+  const uvU = ahead.select(screenUV, uvR);
+  const deep = ahead.select(deep0, positionWorld.y.sub(worldY(bedR)).max(0.0));
+  const fade = exp(deep.mul(-t.absorb));
+  const hue = body.div(max(max(body.r, body.g), max(body.b, 0.02)));
+  const under = viewportSharedTexture(uvU).rgb.mul(mix(hue, vec3(1.0), fade));
+  const seeK = fade.mul(t.clear).mul(rim.oneMinus());
+
+  // The mirror: march the reflected ray in growing steps until it passes
+  // behind something on screen. Branches and loops only build inside a Fn.
+  const trace = Fn(() => {
+    const hitUV = vec2(-1.0).toVar();
+    If(waterRays.greaterThan(0.5), () => {
+      const R = reflect(positionView.normalize(), nView).toVar();
+      const Q = positionView.toVar();
+      const len = float(0.3).toVar();
+      Loop(RAY_STEPS, () => {
+        Q.addAssign(R.mul(len));
+        const clip = cameraProjectionMatrix.mul(vec4(Q, 1.0));
+        const uvq = clip.xy.div(clip.w).mul(vec2(0.5, -0.5)).add(0.5).toVar();
+        If(Q.z.greaterThan(cameraNear.negate()).or(uvq.x.lessThan(0.0)).or(uvq.x.greaterThan(1.0)).or(uvq.y.lessThan(0.0)).or(uvq.y.greaterThan(1.0)), () => {
+          Break();
+        });
+        const gap = perspectiveDepthToViewZ(depthTex.sample(uvq).x, cameraNear, cameraFar).sub(Q.z);
+        If(gap.greaterThan(0.0).and(gap.lessThan(len.mul(1.5).add(0.3))), () => {
+          hitUV.assign(uvq);
+          Break();
+        });
+        len.mulAssign(1.33);
+      });
+    });
+    return hitUV;
+  });
+  const hitUV = (trace() as unknown as V2).toVar();
+  const got = hitUV.x.greaterThanEqual(0.0);
+  const uvH = got.select(hitUV, screenUV);
+  const edge = smoothstep(0.0, 0.1, uvH.x).mul(smoothstep(1.0, 0.9, uvH.x)).mul(smoothstep(0.0, 0.1, uvH.y)).mul(smoothstep(1.0, 0.9, uvH.y));
+  const grazing = float(1.0).sub(max(positionView.normalize().negate().dot(nView), 0.0));
+  const mirK = got.select(edge.mul(mix(0.4, 1.0, grazing.mul(grazing))).mul(t.mirror).mul(rim.oneMinus()), float(0.0));
+  const mirrored = viewportSharedTexture(uvH).rgb;
+  const alpha = min(seeK.add(mirK), 1.0);
+  const color = under.mul(seeK).add(mirrored.mul(mirK)).div(max(alpha, 0.0001));
+  return { color, alpha };
 }
 
 /**
@@ -181,6 +279,9 @@ export function liquidSurface(style: LiquidStyle, color: number, glow: number): 
   // Rim: froth on water, cooled crust on lava, broken up by the noise so the
   // bank line is ragged rather than ruled.
   const rim0 = smoothstep(0.45, 0.95, shore.add(B.b.sub(0.5).mul(0.6))).mul(rimAmt);
+  const lqN = vec3(slope.x.negate(), 0.0, slope.y.negate()).mul(ripple);
+  const nView = normalize(normalViewGeometry.add(cameraViewMatrix.mul(vec4(lqN, 0.0)).xyz)).toVar();
+  mat.normalNode = nView;
   const body = matColor('color');
   const heatGlow = matColor('emissive').mul(matFloat('emissiveIntensity'));
   if (t.molten > 0.5) {
@@ -202,9 +303,15 @@ export function liquidSurface(style: LiquidStyle, color: number, glow: number): 
     // A faint caustic shimmer where the two layers peak together.
     const caustic = smoothstep(0.62, 0.8, A.r.mul(0.5).add(B.g.mul(0.5)));
     mat.emissiveNode = heatGlow.mul(caustic.mul(0.5).add(0.6));
+    if (t.clear > 0) {
+      // The bed and the mirror take the place of the blend: the body is
+      // drawn whole and what shows through comes from the screen.
+      const see = seeThrough(t, slope, nView, body, rim);
+      mat.backdropNode = see.color;
+      mat.backdropAlphaNode = see.alpha;
+      mat.opacityNode = float(1.0);
+    }
   }
-  const lqN = vec3(slope.x.negate(), 0.0, slope.y.negate()).mul(ripple);
-  mat.normalNode = normalize(normalViewGeometry.add(cameraViewMatrix.mul(vec4(lqN, 0.0)).xyz));
   if (style === 'water') {
     // Water at night took the shared pale sky's reflection and read as ice
     // or a tiled floor; it should hold the dark. Only the reflection dims.

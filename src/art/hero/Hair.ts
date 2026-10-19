@@ -15,6 +15,7 @@ import { FieldBuilder, rot } from './Sdf';
 import type { Clip } from './Mesher';
 import type { HeroLook } from './Looks';
 import { fabricMaterial, hairMaterial } from './HeroMaterials';
+import { ramp, type HangSpec } from './Swing';
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
@@ -248,4 +249,43 @@ export function headParts(body: BodyMesh, look: HeroLook): HeroPart[] {
     );
   }
   return out;
+}
+
+/**
+ * The chains hanging hair swings on (`Swing.ts`): long hair from the nape,
+ * a ponytail from the crown, a braid from behind each ear. None for short
+ * cuts or under a hood. Below the nape cut only the hanging hair is left,
+ * so the shares there take nothing from the scalp.
+ */
+export function hairChains(body: BodyMesh, look: HeroLook): HangSpec[] {
+  const h = body.anatomy.h;
+  const H = (x: number, y: number, z: number) => V(x * h, y * h, z * h);
+  if (look.hood) return [];
+  const cut = look.hair.cut;
+  if (cut === 'long') {
+    // Hung from the chest, not the head: the mass on the back stays on the
+    // back when the head turns to look.
+    return [{
+      name: 'hair', kind: 'hair', parent: 'chest', from: H(0, 6.72, -0.38), to: H(0, 5.5, -0.42), bones: 3,
+      share: (_x, y, z) => 0.85 * ramp(6.8 * h, 6.0 * h, y) * ramp(0.02 * h, -0.22 * h, z),
+      key: `long:${h}`,
+    }];
+  }
+  if (cut === 'ponytail') {
+    return [{
+      name: 'hair', kind: 'hair', parent: 'head', from: H(0, 6.95, -0.5), to: H(0, 6.05, -0.52), bones: 3,
+      share: (x, y, z) => 0.9 * ramp(6.85 * h, 6.45 * h, y) * ramp(0.2 * h, 0.1 * h, Math.abs(x)) * ramp(-0.38 * h, -0.46 * h, z),
+      key: `tail:${h}`,
+    }];
+  }
+  if (cut === 'braids') {
+    // They lie on the shoulders: a small share, so they stir without sinking in.
+    return ([1, -1] as const).map((s) => ({
+      name: s > 0 ? 'hairL' : 'hairR', kind: 'hair' as const, parent: 'head' as const,
+      from: H(s * 0.34, 6.7, -0.15), to: H(s * 0.36, 5.81, -0.04), bones: 3,
+      share: (x: number, y: number) => 0.5 * ramp(6.65 * h, 6.3 * h, y) * ramp(0.2 * h, 0.3 * h, s * x),
+      key: `braid${s}:${h}`,
+    }));
+  }
+  return [];
 }

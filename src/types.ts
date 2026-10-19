@@ -610,6 +610,11 @@ export interface GameSettings {
   reduceMotion?: boolean;
   /** Small frame-rate readout in the corner. */
   showFps?: boolean;
+  /**
+   * Share of each side of the screen the 3D scene is drawn at, 0.5..1, on
+   * top of the quality preset's own. 1 = every pixel.
+   */
+  renderScale?: number;
   /** The quest list under the minimap folded down to its header (ui/HUD.ts). */
   trackerHidden?: boolean;
   /** Multiplier on every UI type size (accessibility). 1 = as designed. */

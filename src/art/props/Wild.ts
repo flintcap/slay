@@ -15,7 +15,7 @@ const W = WALL_FACE;
 
 function leafMat(c: BuildCtx, tint = c.pal.leaf) {
   const col = new THREE.Color(tint).multiplyScalar(1.5);
-  return propMat('foliage.pine', { base: col.getHex(), side: THREE.DoubleSide, grime: 0.4, grimeHeight: 0.3 });
+  return propMat('foliage.pine', { base: col.getHex(), side: THREE.DoubleSide, grime: 0.4, grimeHeight: 0.3, sway: 0.1 });
 }
 
 /** A branch and its children, as tubes, into `out`. */

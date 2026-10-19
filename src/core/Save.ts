@@ -104,6 +104,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   titleCards: true,
   reduceMotion: false,
   showFps: false,
+  renderScale: 1,
   textScale: 1,
   colorBlindRarity: false,
   trackerHidden: false,
@@ -558,6 +559,8 @@ function sanitizeSettings(s: Record<string, unknown>, fx: Repairer): GameSetting
   out.screenShake = s.screenShake === undefined ? d.screenShake : fx.num(s.screenShake, d.screenShake, 'settings.screenShake', 0, 2);
   out.cameraDistance =
     s.cameraDistance === undefined ? d.cameraDistance : fx.num(s.cameraDistance, d.cameraDistance, 'settings.cameraDistance', 0.5, 2);
+  out.renderScale =
+    s.renderScale === undefined ? d.renderScale : fx.num(s.renderScale, d.renderScale ?? 1, 'settings.renderScale', 0.5, 1);
   out.textScale =
     s.textScale === undefined ? d.textScale : fx.num(s.textScale, d.textScale ?? 1, 'settings.textScale', TEXT_SCALE_MIN, TEXT_SCALE_MAX);
   out.mapOverlayOpacity =

@@ -157,5 +157,6 @@ export function disposeMonsterModels(): void {
 // ---------------------------------------------------------------------------
 
 // Monster motion lives with the creatures, in `src/art/creatures/Animator.ts`.
+export { creatureDetail } from '../art/creatures/Creature';
 export { RigAnimator } from '../art/creatures/Animator';
 export type { RigAction, RigDriveOpts } from '../art/creatures/Animator';

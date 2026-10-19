@@ -293,7 +293,40 @@ Update this file and push it after every finished step.
 
 ## In progress
 
-- #127 (Phase 2+3, owner approved) torch shadows indoors, hero lantern.
+- Phase 2+3 list (owner approved, blanket). Window, borderless and monitor
+  pick go to Phase 4 (need the desktop app). three.js is pinned only in the
+  release build.
+- #127 done: indoor torch shadows. The nearest torches each keep a shadow
+  cube drawn once from the still layer (walls, baked props) and redrawn only
+  when a light takes a new torch. Hero lantern shadow on High and Ultra,
+  redrawn on the shadow clock. A shadow pass never sees the sightline cut,
+  so a torch no longer shines through the wall the cut opens.
+- #128 done: floor relief from the scans' height (parallax, floors and open
+  ground only); lasting marks (moss, runs, soot over torches, blood, scorch,
+  damp) as one decal box draw per level (`WorldMarks.ts`); grass, reeds and
+  leaves sway in one shared wind (`Wind.ts`) with a cover share per preset;
+  water refracts, fades in the shallows and traces reflections across the
+  screen on High and Ultra; wall recesses, shelves and slots; big rooms and
+  boss rooms stand a storey taller (`Halls.ts`, check-roof follows); outdoor
+  sky dome with drifting clouds whose shadows cross the ground (`Sky.ts`),
+  and a per-biome reflection sky.
+- #129 done: tiled lights (16 x 10 screen tiles, up to 256 lights, a pixel
+  shades only its tile's lights); bounced light baked per level on the
+  tile grid (`Bounce.ts`, `BounceLight.ts`); sun beams through the outdoor
+  fog on High and Ultra (`Shafts.ts`); one shadow body per wall chunk; AgX
+  tone mapping plus a colour lookup grade per biome (`Lut.ts`); a one-tap
+  world shader for Low on the same render setup; render-scale slider with
+  temporal upscaling on High and Ultra.
+- #130 done except GPU cloth: block, parry and dodge moves; creatures take
+  shadows; robes and long hair on spring chains (`Swing.ts`); forearm twist
+  bones; corpses baked to still meshes; far monsters swap to a 40 % copy
+  (`creatureDetail`, size on screen per preset); shadow bodies from thinned
+  copies; the hero's face and hands thinned for play (`playSkin`); same-look
+  monsters share one draw per pack (`Packs.ts`). GPU cloth for capes and
+  banners is "later" in the owner's list: it goes after #136.
+- Fixed on the way: water mirror loop built outside a shader function (the
+  swamp would not load); the particle shader passed 17 values between its
+  stages (limit 16), now packed.
 
 ## Phase 0d log
 

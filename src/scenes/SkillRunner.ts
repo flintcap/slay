@@ -697,6 +697,7 @@ export class SkillRunner {
     if (SKILL_BY_ID[packet.ability ?? '']?.effect?.startsWith('vigil.')) return true;
     if (rollHit(ctx.rng, p.stats.attackRating, t.guard())) return true;
     events.emit('enemy:missed', { id: t.id, x: t.root.position.x, y: t.centerY, z: t.root.position.z });
+    t.evade();
     return false;
   }
 

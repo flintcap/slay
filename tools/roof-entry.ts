@@ -23,6 +23,7 @@
 import { generateRun, TILE, levelExtras, STEP_HEIGHT } from '../src/world/DungeonGen';
 import { biomeArt, biomeForDepth } from '../src/world/Biomes';
 import { streamFor } from '../src/core/RNG';
+import { hallLifts } from '../src/world/Halls';
 import type { DungeonLevel } from '../src/types';
 
 const T_VOID = TILE.void;
@@ -65,6 +66,9 @@ function audit(level: DungeonLevel, biome: string, depth: number, wallH: number)
   let maxStep = 0;
   for (let i = 0; i < heights.length; i++) maxStep = Math.max(maxStep, heights[i]!);
   const roofY = maxStep * STEP_HEIGHT + wallH;
+  // Halls lift the walls around them a storey (Halls.ts); the builder closes
+  // each step a taller wall makes with a face down to its lower neighbour.
+  const lifts = hallLifts(level, ex?.roomOf ?? new Int16Array(W * H).fill(-1), (x, y) => open(level, x, y));
 
   // The cap height each tile emits, or NaN when it emits nothing.
   const cap = new Float32Array(W * H).fill(NaN);
@@ -77,13 +81,14 @@ function audit(level: DungeonLevel, biome: string, depth: number, wallH: number)
       const v = level.tiles[i]!;
       if (v !== T_WALL && v !== T_VOID) continue;
       solidTiles++;
-      cap[i] = roofY;
+      cap[i] = roofY + (v === T_WALL ? lifts.wall[i]! : 0);
       if (Number.isNaN(cap[i]!)) uncapped++;
     }
   }
 
-  // Steps between two capped tiles. Nothing emits a vertical face there: a wall
-  // only faces open space, and a void tile is a lone quad with no sides at all.
+  // Steps between two capped tiles. A wall's own faces only face open space
+  // and a void tile is a lone quad with no sides, so the one face there is
+  // the one a hall's taller wall drops to the rock beside it.
   let openSteps = 0;
   let worstStep = 0;
   for (let y = 0; y < H; y++) {
@@ -97,7 +102,9 @@ function audit(level: DungeonLevel, biome: string, depth: number, wallH: number)
         const j = ny * W + nx;
         if (Number.isNaN(cap[j]!)) continue;
         const gap = Math.abs(cap[i]! - cap[j]!);
-        if (gap > 0.01) {
+        const hi = cap[i]! > cap[j]! ? i : j;
+        const closed = level.tiles[hi] === T_WALL && lifts.wall[hi]! > 0;
+        if (gap > 0.01 && !closed) {
           openSteps++;
           worstStep = Math.max(worstStep, gap);
         }

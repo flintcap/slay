@@ -20,13 +20,19 @@
  */
 
 import * as THREE from 'three';
+import type { MeshStandardNodeMaterial } from 'three/webgpu';
+import { positionGeometry, smoothstep } from 'three/tsl';
 import type { BiomeId, DungeonLevel, Rng } from '../types';
+import { swayed } from '../art/Wind';
 import { Noise, clamp } from '../art/Noise';
 import { worldMaterial, addWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_SPLAT_ATTRIBUTE, WORLD_ZONE_ATTRIBUTE, type WorldLayer } from '../art/WorldMaterial';
 import { surfaceVariant } from '../art/Materials';
+import { propMat } from '../art/props/PropMats';
 import { STEP_HEIGHT, TILE_SIZE } from './DungeonGen';
 import {
   T_VOID,
+  T_FLOOR,
+  T_RUBBLE,
   T_WATER,
   T_LAVA,
   T_CHASM,
@@ -658,7 +664,258 @@ export function buildTerrain(level: DungeonLevel, heights: Int8Array, rng: Rng):
     }
   }
 
+  // --- ground cover ---------------------------------------------------------
+  // Grass thickest where the walk meets the bank and thin down the trodden
+  // middle, reeds along the water, loose stones everywhere. Blocks of
+  // instanced copies like the trees, so the cull skips the far ones.
+  const crng = rng.fork('terrain:cover');
+  const cover: CoverSite[] = [];
+  const count = (e: number): number => Math.floor(e) + (crng.chance(e - Math.floor(e)) ? 1 : 0);
+  const isWater = (v: number): boolean => v === T_WATER || v === T_DEEP_WATER;
+  for (let gy = 0; gy < GH; gy++) {
+    for (let gx = 0; gx < GW; gx++) {
+      const gi = gy * GW + gx;
+      const x = gx - MARGIN;
+      const y = gy - MARGIN;
+      const v = raw(x, y);
+      const z = zoneW[gi]! > 0.5 ? 1 : 0;
+      const look = COVER[zoneBiome[z]!];
+      if (!look) continue;
+      const edge = looks[z]!.edge;
+      const d = dist[gi]!;
+      const walk = v === T_FLOOR || v === T_RUBBLE;
+      // The foot of the bank: low edges only (a cliff face grows nothing).
+      const bank = d >= 1 && d <= 2.6 && (edge === 'trees' || edge === 'deadTrees' || (edge === 'dunes' && d < 1.8));
+      let wet = 0;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) if ((ox || oy) && isWater(raw(x + ox, y + oy))) wet++;
+      const put = (kind: CoverKind, n: number, s: [number, number]): void => {
+        for (let k = 0; k < n; k++) {
+          const wx = (x + crng.range(0.04, 0.96) - halfW) * TILE_SIZE;
+          const wz = (y + crng.range(0.04, 0.96) - halfH) * TILE_SIZE;
+          cover.push({ kind, zone: z, x: wx, y: heightAt(wx, wz), z: wz, s: crng.range(s[0], s[1]), r: crng.range(0, Math.PI * 2) });
+        }
+      };
+      if (walk || bank) {
+        const od = openDist[gi]!;
+        const share = bank ? 1.3 : od <= 1.5 ? 1 : od <= 3 ? 0.5 : 0.18;
+        put('grass', count(look.grass * share), [0.7, 1.25]);
+        put('stones', count(look.stones * (bank ? 2 : 1)), bank ? [0.22, 0.55] : [0.07, 0.18]);
+        if (wet) put('reeds', count(look.reeds * Math.min(1, wet / 3)), [0.75, 1.15]);
+      } else if (v === T_WATER && wet < 8) {
+        // Shallows along a bank: reeds stand in the water.
+        let land = 0;
+        for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) if ((ox || oy) && !isWater(raw(x + ox, y + oy))) land++;
+        if (land) put('reeds', count(look.reeds * 0.8), [0.85, 1.3]);
+      }
+    }
+  }
+  if (cover.length) {
+    const kits = new Map<string, CoverKit>();
+    const blocks = new Map<string, CoverSite[]>();
+    for (const c of cover) {
+      const k = `${Math.floor(c.x / COVER_BLOCK)},${Math.floor(c.z / COVER_BLOCK)},${c.zone},${c.kind}`;
+      let b = blocks.get(k);
+      if (!b) blocks.set(k, (b = []));
+      b.push(c);
+    }
+    for (const [k, sites] of blocks) {
+      const { kind, zone } = sites[0]!;
+      const kk = `${zone},${kind}`;
+      let kit = kits.get(kk);
+      if (!kit) {
+        kit = coverKit(kind, COVER[zoneBiome[zone]!]!, crng.fork(kk));
+        geometries.push(kit.geo);
+        kits.set(kk, kit);
+      }
+      const mesh = plantCover(kit, sites);
+      const box = new THREE.Box3();
+      for (const t of sites) box.expandByPoint(new THREE.Vector3(t.x, t.y, t.z));
+      box.expandByScalar(1);
+      box.max.y += kind === 'reeds' ? 1.6 : 0.6;
+      chunks.push({ mesh, center: box.getCenter(new THREE.Vector3()), radius: box.getSize(new THREE.Vector3()).length() * 0.5 });
+    }
+  }
+
   return { chunks, dressing, geometries, materials, heightAt };
+}
+
+// ---------------------------------------------------------------------------
+// Ground cover
+// ---------------------------------------------------------------------------
+
+type CoverKind = 'grass' | 'reeds' | 'stones';
+
+interface CoverSite {
+  kind: CoverKind;
+  zone: number;
+  x: number;
+  y: number;
+  z: number;
+  s: number;
+  r: number;
+}
+
+/** What grows on an outdoor biome's ground: copies per tile, and colours. */
+interface CoverLook {
+  /** Grass tufts per tile at the edge of the walk. */
+  grass: number;
+  grassBase: number;
+  /** Reed clumps per tile along water. */
+  reeds: number;
+  /** Loose stones per tile, and what they are made of. */
+  stones: number;
+  stone: string;
+  stoneBase: number;
+}
+
+const COVER: Partial<Record<BiomeId, CoverLook>> = {
+  darkForest: { grass: 2.2, grassBase: 0x3c4a28, reeds: 1.2, stones: 0.12, stone: 'stone.cavern', stoneBase: 0x5a564e },
+  swamp: { grass: 1.6, grassBase: 0x4a4e2a, reeds: 2.2, stones: 0.05, stone: 'stone.cavern', stoneBase: 0x4a4a3e },
+  desert: { grass: 0.35, grassBase: 0x8a7848, reeds: 0.6, stones: 0.45, stone: 'stone.temple', stoneBase: 0x9a8466 },
+  tundra: { grass: 0.5, grassBase: 0x6e7460, reeds: 0, stones: 0.3, stone: 'stone.frost', stoneBase: 0x6a707a },
+  ashwaste: { grass: 0.15, grassBase: 0x4a4036, reeds: 0, stones: 0.5, stone: 'stone.ash', stoneBase: 0x3a3632 },
+  hell: { grass: 0, grassBase: 0x3a2a24, reeds: 0, stones: 0.4, stone: 'stone.ash', stoneBase: 0x3a2826 },
+};
+
+/** Side of a square block of ground cover, metres. */
+const COVER_BLOCK = 28;
+
+interface CoverKit {
+  kind: CoverKind;
+  geo: THREE.BufferGeometry;
+  mat: THREE.Material;
+}
+
+function coverKit(kind: CoverKind, look: CoverLook, rng: Rng): CoverKit {
+  switch (kind) {
+    case 'grass':
+      return {
+        kind,
+        geo: blades(rng, { n: 9, h: [0.28, 0.5], spread: 0.16, w: 0.035, lean: 0.45 }),
+        mat: propMat('foliage.pine', { base: look.grassBase, grime: 0.3, grimeHeight: 0.12, sway: 0.5, cover: true }),
+      };
+    case 'reeds':
+      return {
+        kind,
+        geo: blades(rng, { n: 11, h: [0.9, 1.5], spread: 0.22, w: 0.022, lean: 0.18, heads: 3 }),
+        mat: propMat('foliage.pine', { base: 0x54583a, grime: 0.4, grimeHeight: 0.3, sway: 0.08, cover: true }),
+      };
+    case 'stones':
+    default: {
+      const g = lump(new THREE.IcosahedronGeometry(1, 1), rng, 0.32);
+      g.scale(1, 0.55, 0.85);
+      g.computeVertexNormals();
+      g.computeBoundingSphere();
+      return { kind, geo: g, mat: propMat(look.stone, { base: look.stoneBase, grime: 0.6, grimeHeight: 0.25 }) };
+    }
+  }
+}
+
+/**
+ * A clump of blades from one root: tapering two-sided strips leaning out
+ * and bending over, dark at the foot. Each side carries its own up-tilted
+ * normal, so both read lit under the sun. Reeds can carry seed heads.
+ */
+function blades(rng: Rng, o: { n: number; h: [number, number]; spread: number; w: number; lean: number; heads?: number }): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const nor: number[] = [];
+  const col: number[] = [];
+  const idx: number[] = [];
+  const ROWS = [0, 0.55, 1];
+  for (let b = 0; b < o.n; b++) {
+    const a = rng.range(0, Math.PI * 2);
+    const r = Math.sqrt(rng.next()) * o.spread;
+    const ox = Math.cos(a) * r;
+    const oz = Math.sin(a) * r;
+    const lean = a + rng.range(-0.6, 0.6);
+    const dx = Math.cos(lean);
+    const dz = Math.sin(lean);
+    const h = rng.range(o.h[0], o.h[1]);
+    const out = o.lean * h * rng.range(0.4, 1.2);
+    const w = o.w * rng.range(0.8, 1.25);
+    const lit = rng.range(0.82, 1.08);
+    const at = (t: number): [number, number, number] => [ox + dx * out * t * t, h * t, oz + dz * out * t * t];
+    for (const side of [1, -1]) {
+      const base = pos.length / 3;
+      const nx = dx * 0.55 * side;
+      const nz = dz * 0.55 * side;
+      const nl = Math.hypot(nx, 0.85, nz);
+      for (let i = 0; i < ROWS.length; i++) {
+        const t = ROWS[i]!;
+        const [cx, cy, cz] = at(t);
+        const hw = i === ROWS.length - 1 ? 0 : w * (1 - t * 0.7);
+        const shade = (0.42 + 0.58 * t) * lit;
+        for (const s of i === ROWS.length - 1 ? [0] : [-1, 1]) {
+          pos.push(cx - dz * hw * s, cy, cz + dx * hw * s);
+          nor.push(nx / nl, 0.85 / nl, nz / nl);
+          col.push(shade, shade, shade * (0.9 + 0.1 * t));
+        }
+      }
+      // Rows: 0 = (L0, R0), 1 = (L1, R1), tip = T. Wound to face the normal.
+      const [L0, R0, L1, R1, T] = [base, base + 1, base + 2, base + 3, base + 4];
+      const tris = [
+        [L0, L1, R0],
+        [R0, L1, R1],
+        [L1, T, R1],
+      ];
+      for (const [p, q, s] of tris) idx.push(...(side > 0 ? [p!, q!, s!] : [p!, s!, q!]));
+    }
+    if (o.heads && b < o.heads) {
+      // A seed head: a dark brown spindle on the upper blade.
+      const [hx, hy, hz] = at(0.82);
+      const head = new THREE.CylinderGeometry(0.028, 0.022, 0.2, 5, 1);
+      head.translate(hx, hy, hz);
+      const hp = head.getAttribute('position') as THREE.BufferAttribute;
+      const hn = head.getAttribute('normal') as THREE.BufferAttribute;
+      const base = pos.length / 3;
+      for (let i = 0; i < hp.count; i++) {
+        pos.push(hp.getX(i), hp.getY(i), hp.getZ(i));
+        nor.push(hn.getX(i), hn.getY(i), hn.getZ(i));
+        col.push(0.62, 0.4, 0.26);
+      }
+      const hi = head.index!;
+      for (let i = 0; i < hi.count; i++) idx.push(hi.getX(i) + base);
+      head.dispose();
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
+}
+
+/** One block's copies of a cover kit. The quality thins them by a hash of each copy's index (`coverShare`). */
+function plantCover(kit: CoverKit, sites: CoverSite[]): THREE.InstancedMesh {
+  const mesh = new THREE.InstancedMesh(kit.geo, kit.mat, sites.length);
+  mesh.name = `cover:${kit.kind}`;
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3();
+  sites.forEach((t, i) => {
+    if (kit.kind === 'stones') {
+      // Tipped a little and half sunk, so it sits in the ground.
+      e.set(Math.sin(t.r * 3.1) * 0.25, t.r, Math.cos(t.r * 2.3) * 0.25);
+      q.setFromEuler(e);
+      scl.set(t.s, t.s * (0.8 + 0.4 * Math.abs(Math.sin(t.r * 5))), t.s);
+      pos.set(t.x, t.y - t.s * 0.22, t.z);
+    } else {
+      q.setFromAxisAngle(pos.set(0, 1, 0), t.r);
+      scl.set(t.s, t.s * (0.85 + 0.3 * Math.abs(Math.sin(t.r * 7))), t.s);
+      pos.set(t.x, t.y - 0.02, t.z);
+    }
+    m4.compose(pos, q, scl);
+    mesh.setMatrixAt(i, m4);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.computeBoundingSphere();
+  return mesh;
 }
 
 // ---------------------------------------------------------------------------
@@ -723,6 +980,8 @@ function treeKit(
   const VARIANTS = 3;
   const bark = addWorldCutaway(surfaceVariant('wood.bark', { repeat: 2, tint: kind === 'deadTrees' ? 0x8a8478 : 0x9a9088 }));
   const leaf = kind === 'trees' ? addWorldCutaway(surfaceVariant('foliage.pine', { repeat: 2.5, tint: 0x90a274, side: THREE.DoubleSide })) : null;
+  // The crown moves in the wind; the trunk and the crown's base hold.
+  if (leaf) (leaf as unknown as MeshStandardNodeMaterial).positionNode = swayed(smoothstep(1.5, 6.5, positionGeometry.y).mul(0.16));
   materials.push(bark);
   if (leaf) materials.push(leaf);
   const kit: TreeKit = { kind, trunks: [], canopies: [], bark, leaf };

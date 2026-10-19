@@ -219,6 +219,7 @@ export class Player {
     adoptStatuses(character.id, this.status);
 
     this.hero = new DressedHero(character.classId, seed);
+    this.hero.trimForPlay();
     // The hero's shadow in a few draws, not one per part.
     this.hero.useShadowBodies();
     this.root.add(this.hero.root);
@@ -600,6 +601,7 @@ export class Player {
     // Silhouette: a share of blows simply miss you.
     if (this.passives.avoidPct > 0 && packet.amount > 0 && rng.chance(Math.min(1, this.passives.avoidPct / 100))) {
       events.emit('player:evaded', { ability: packet.ability ?? '', source: packet.source });
+      this.animator.guard('slip');
       return 0;
     }
     // Antivenom: poison feeds you instead.
@@ -619,10 +621,11 @@ export class Player {
     if (cut > 0) result.amount *= Math.max(0.1, 1 - cut / 100);
     if (result.blocked) {
       this.lastBlocked = true;
-      // A block takes the whole hit (Combat.BLOCK_LEAK). The body braces
-      // against it: a short jolt, not the hurt flinch of a blow that landed.
+      // A block takes the whole hit (Combat.BLOCK_LEAK). The body meets it:
+      // the shield up, or the blade turning it, not the hurt flinch of a
+      // blow that landed.
       events.emit('sfx', { id: 'block' });
-      this.animator.flinch(0.3);
+      this.animator.guard(this.status.has('parrying') ? 'parry' : 'block');
       return 0;
     }
     // Harder tiers make every hit land heavier, after mitigation.

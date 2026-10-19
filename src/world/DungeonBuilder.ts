@@ -46,10 +46,17 @@ import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from '
 
 import { surface, surfaceVariant } from '../art/Materials';
 import { setFogShape, fogShape } from '../core/Renderer';
+import { STILL_LAYER } from '../core/Lighting';
+import { shadowBodyMaterial } from '../core/ShadowBodies';
+import { WorldMarks, planMarks } from './WorldMarks';
+import { buildSky, cloudShade, skyPaint, type SkyDome, type SkyPaint } from './Sky';
 import { worldMaterial, setWorldCutaway, setWorldRoof, addWorldCutaway, WORLD_ENV_ATTRIBUTE, WORLD_CAP_ENV, type WorldMaterialOpts } from '../art/WorldMaterial';
 import { liquidSurface, type LiquidSurface, type LiquidStyle } from '../art/Liquids';
 import { crackTexture } from '../fx/UtilityTextures';
 import { Drips, type DripSite } from './Ambience';
+import { hallLifts } from './Halls';
+import { bakeBounce } from './Bounce';
+import { setBounce, type BounceFrame } from '../core/BounceLight';
 
 /** One usable thing in the world, and the instance slot that draws it. */
 export interface Interactable {
@@ -77,11 +84,41 @@ const CHUNK = 32;
  * drawing on Ultra.
  */
 const MAX_TORCH_LIGHTS = 4;
+/**
+ * Of those, how many cast a shadow (indoors, where there is no sun). Each
+ * keeps its torch while that torch stays among the nearest, and draws its
+ * shadow once when it takes a new one.
+ */
+const SHADOW_TORCHES = 2;
+/** Pixels on a side of each face of a torch's shadow cube (times the quality's shadow scale). */
+const TORCH_SHADOW_SIZE = 512;
+/** New torch shadows drawn per light pick at most: each is six draws of the walls round it. */
+const TORCH_SHADOWS_PER_PICK = 1;
 const HALF = TILE_SIZE * 0.5;
 /** How far an indoor pool's bed lies below the floor, and its curb's height and width. */
 const POOL_DEPTH = 1.2;
+
 const POOL_CURB = 0.4;
 const POOL_CURB_W = 0.3;
+/** How bright a floor reads to the light it throws back (its albedo, as luminance). */
+const BOUNCE_ALBEDO = 0.3;
+/**
+ * Bounced light reaching a surface, per unit thrown back by the floor below:
+ * about half the floor is in view of a wall face.
+ */
+const BOUNCE_GAIN = 0.55;
+
+/** A recess cut into dressed wall: its width, sill and head above the floor, and how deep it runs. */
+interface Niche {
+  w: number;
+  sill: number;
+  head: number;
+  depth: number;
+}
+/** A shelf at waist height. */
+const NICHE_SHELF: Niche = { w: 0.9, sill: 0.85, head: 1.95, depth: 0.34 };
+/** A tall narrow slot, deeper than it is wide. */
+const NICHE_SLIT: Niche = { w: 0.42, sill: 0.5, head: 2.1, depth: 0.5 };
 /**
  * How much of the lid is cut away around the player, in world units.
  *
@@ -429,6 +466,8 @@ const FLAME_POS = new THREE.Vector3();
 const FLAME_SCL = new THREE.Vector3();
 /** The open-sky key light, while one is live; its shadow tracks the hero. */
 let sun: THREE.DirectionalLight | null = null;
+/** The outdoor level's sky dome, kept centred on the hero (`DungeonMesh.update`). */
+let skyDome: SkyDome | null = null;
 /** Where the sun sits relative to the hero, metres. */
 const sunOffset = new THREE.Vector3(28, 52, 18);
 
@@ -437,6 +476,8 @@ export interface BiomeLighting {
   ambient: THREE.Light;
   /** The light the hero should carry here (`Lighting.ts`). */
   hero: { color: number; intensity: number; distance: number };
+  /** The reflection sky outdoors (`Renderer.applyEnvironment`); null under a roof. */
+  sky: SkyPaint | null;
   dispose(): void;
 }
 
@@ -501,6 +542,19 @@ export function applyBiomeLighting(
   }
   scene.add(key);
 
+  // Open sky: a dome with drifting clouds, whose shadows drift over the
+  // ground with them (the key light dims under a cloud, `Sky.ts`).
+  let dome: SkyDome | null = null;
+  if (open) {
+    const toSun = new THREE.Vector3(dx, dy, dz);
+    dome = buildSky(biome.id, mood, toSun);
+    scene.add(dome.mesh);
+    skyDome = dome;
+    const keyCol = new THREE.Color();
+    const uKey = uniform(keyCol).onRenderUpdate(() => keyCol.copy(key.color).multiplyScalar(key.intensity));
+    Object.assign(key, { colorNode: uKey.mul(cloudShade()) });
+  }
+
   // Light from below. Floors face up and never catch it; walls, bodies and
   // the undersides of things glow with it.
   let under: THREE.DirectionalLight | null = null;
@@ -516,7 +570,13 @@ export function applyBiomeLighting(
     key,
     ambient,
     hero: mood.hero,
+    sky: open ? skyPaint(biome.id, mood, new THREE.Vector3(dx, dy, dz)) : null,
     dispose(): void {
+      if (dome) {
+        scene.remove(dome.mesh);
+        dome.dispose();
+        if (skyDome === dome) skyDome = null;
+      }
       scene.remove(ambient);
       scene.remove(key);
       scene.remove(key.target);
@@ -660,6 +720,8 @@ export class DungeonMesh {
   private readonly lights: THREE.PointLight[] = [];
   private readonly flames: FlameMesh[] = [];
 
+  /** Moss, runs, soot and old stains laid over walls and floors. */
+  private marks: WorldMarks | null = null;
   /** The level's animated liquid, if it has any liquid tiles. */
   private liquid: LiquidSurface | null = null;
   private drips: Drips | null = null;
@@ -746,10 +808,75 @@ export class DungeonMesh {
     yield* this.buildStatic(rng);
     yield* this.buildProps(rng);
     this.buildLightPool();
+    this.buildBounce();
+    this.buildMarks();
     this.buildShafts(rng);
     this.buildStairs(rng);
+    this.markStillCasters();
     yield;
     this.buildColliders();
+  }
+
+  /** The light the level's floors throw back (`Bounce.ts`), baked with the build. Rooms only. */
+  private bounce: { frame: BounceFrame; field: Float32Array } | null = null;
+
+  private buildBounce(): void {
+    if (this.outdoor || this.torches.length === 0) return;
+    const W = this.level.width;
+    const H = this.level.height;
+    const frame: BounceFrame = { width: W, height: H, x0: this.tileX(0), z0: this.tileZ(0), tile: TILE_SIZE };
+    // The floor gives back the biome's own bounce colour, at a stone's share.
+    const albedo = new THREE.Color(this.art.bounceColor);
+    const lum = albedo.r * 0.2126 + albedo.g * 0.7152 + albedo.b * 0.0722;
+    albedo.multiplyScalar(BOUNCE_ALBEDO / Math.max(lum, 0.05));
+    albedo.setRGB(Math.min(albedo.r, 0.6), Math.min(albedo.g, 0.6), Math.min(albedo.b, 0.6));
+    const field = bakeBounce(
+      {
+        ...frame,
+        open: (x, y) => this.open(x, y),
+        floorY: (x, y) => this.floorHeight(x, y),
+        albedo,
+      },
+      this.torches.map((t) => ({
+        x: t.pos.x, y: t.pos.y, z: t.pos.z,
+        r: t.color.r * t.intensity, g: t.color.g * t.intensity, b: t.color.b * t.intensity,
+        reach: t.distance,
+      })),
+    );
+    this.bounce = { frame, field };
+  }
+
+  /** Hands this level's bounced light to every lit surface. The scene calls it on enter. */
+  useBounce(): void {
+    if (this.bounce) setBounce(this.bounce.frame, this.bounce.field, BOUNCE_GAIN);
+    else setBounce(null, null);
+  }
+
+  /** The level's lasting marks (`WorldMarks.ts`): rooms only, open ground wears none. */
+  private buildMarks(): void {
+    if (this.outdoor) return;
+    const plan = planMarks({
+      level: this.level,
+      biome: this.biome.id,
+      heights: this.heights,
+      wallHeight: this.art.wallHeight,
+      rough: this.kit === 'rough',
+      torches: this.torches.filter((t) => t.flameMesh >= 0).map((t) => t.pos),
+    });
+    if (plan.length === 0) return;
+    this.marks = new WorldMarks(plan);
+    this.root.add(this.marks.mesh);
+  }
+
+  /**
+   * Puts every caster the level built on `STILL_LAYER`, which the torch
+   * shadows draw: walls, props and the ways on. Not what holds a flame.
+   */
+  private markStillCasters(): void {
+    this.root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh && m.castShadow && !m.userData.holdsLight) m.layers.enable(STILL_LAYER);
+    });
   }
 
   // --- coordinates --------------------------------------------------------
@@ -814,6 +941,46 @@ export class DungeonMesh {
   }
 
   // --- static geometry ----------------------------------------------------
+
+  /**
+   * One shadow for a chunk's walls, trim and plinths: their triangles,
+   * positions only, as a single shadow body (`ShadowBodies`). Every shadow
+   * view (a torch's six faces, the sun's map) then draws the chunk once
+   * rather than once per material, and the shadow keeps a wall whole where
+   * the wall itself is cut away in front of the hero.
+   */
+  private chunkShadow(parts: readonly THREE.BufferGeometry[]): THREE.Mesh {
+    let verts = 0;
+    let tris = 0;
+    for (const g of parts) {
+      verts += g.getAttribute('position').count;
+      tris += g.index!.count;
+    }
+    const pos = new Float32Array(verts * 3);
+    const idx = verts > 65535 ? new Uint32Array(tris) : new Uint16Array(tris);
+    let v = 0;
+    let k = 0;
+    for (const g of parts) {
+      const p = g.getAttribute('position');
+      pos.set(p.array as Float32Array, v * 3);
+      const src = g.index!.array;
+      for (let j = 0; j < src.length; j++) idx[k++] = src[j]! + v;
+      v += p.count;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    geo.computeBoundingSphere();
+    geo.computeBoundingBox();
+    this.ownedGeo.push(geo);
+    const mesh = new THREE.Mesh(geo, shadowBodyMaterial());
+    mesh.name = 'chunkShadow';
+    mesh.castShadow = true;
+    mesh.receiveShadow = false;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    return mesh;
+  }
 
   /** Yields after each chunk, so a paced build can hand the page back. */
   private *buildStatic(rng: Rng): Generator<void, void, void> {
@@ -1054,6 +1221,12 @@ export class DungeonMesh {
     let maxStep = 0;
     for (let i = 0; i < this.heights.length; i++) maxStep = Math.max(maxStep, this.heights[i]);
     const roofY = maxStep * STEP_HEIGHT + wallH;
+    // Halls stand a storey taller (Halls.ts); outdoors the ground does the walling.
+    const lifts = outdoor
+      ? { wall: new Float32Array(W * H), ceil: new Float32Array(W * H) }
+      : hallLifts(level, this.roomOf, (x, y) => this.open(x, y));
+    /** Top of a solid tile's rock: walls beside a hall stand a storey taller. */
+    const topAt = (x: number, y: number): number => roofY + (this.tile(x, y) === T_WALL ? lifts.wall[y * W + x]! : 0);
 
     for (let cy = 0; cy < chunksY; cy++) {
       for (let cx = 0; cx < chunksX; cx++) {
@@ -1123,7 +1296,21 @@ export class DungeonMesh {
               continue;
             }
             if (v === T_WALL) {
-              this.emitWall(surfs, x, y, wx, wz, hy, roofY, wallMats.length, WALL0, TRIM, BASE, surfs[CAPS]);
+              const top = topAt(x, y);
+              this.emitWall(surfs, x, y, wx, wz, hy, top, wallMats.length, WALL0, TRIM, BASE, surfs[CAPS]);
+              // A hall's taller rock steps down to the rock beside it: close
+              // each step with a face (check-roof).
+              for (let d = 0; d < 4 && top > roofY; d++) {
+                const nx = x + DX4[d];
+                const ny = y + DY4[d];
+                if (this.open(nx, ny)) continue;
+                const nTop = topAt(nx, ny);
+                if (nTop >= top - 0.01) continue;
+                surfs[WALL0]!.wall(
+                  wx + DX4[d] * HALF, nTop, wz + DY4[d] * HALF, DX4[d], DY4[d], TILE_SIZE, top - nTop, 1,
+                  (top - nTop) / TILE_SIZE, 0, nTop / TILE_SIZE, false, nTop - hy, top - hy,
+                );
+              }
               continue;
             }
 
@@ -1194,7 +1381,25 @@ export class DungeonMesh {
 
             // Arches over doorways (dressed stone only).
             if (v === T_DOOR && this.kit === 'masonry') {
-              this.emitArch(surfs[WALL0]!, surfs[CAPS]!, surfs[TRIM]!, x, y, wx, wz, hy, roofY);
+              let archTop = roofY;
+              for (let d = 0; d < 4; d++) archTop = Math.max(archTop, this.tile(x + DX4[d], y + DY4[d]) === T_WALL ? topAt(x + DX4[d], y + DY4[d]) : roofY);
+              this.emitArch(surfs[WALL0]!, surfs[CAPS]!, surfs[TRIM]!, surfs[BASE]!, x, y, wx, wz, hy, archTop);
+            }
+
+            // Dressed rooms square off their inside corners with a pier.
+            if (!outdoor && this.kit === 'masonry' && rid >= 0) {
+              for (let d1 = 0; d1 < 2; d1++) {
+                for (let d2 = 2; d2 < 4; d2++) {
+                  const ax = x + DX4[d1];
+                  const by = y + DY4[d2];
+                  if (this.tile(ax, y) !== T_WALL || this.tile(x, by) !== T_WALL || this.tile(ax, by) !== T_WALL) continue;
+                  if (hashTile(x * 4 + d1 * 2 + d2, y, level.seed ^ 0x7c3) % 5 >= 3) continue;
+                  this.emitCornerPier(
+                    surfs[WALL0]!, surfs[BASE]!, surfs[TRIM]!, wx + DX4[d1] * HALF, wz + DY4[d2] * HALF, d1, d2, hy,
+                    Math.min(topAt(ax, y), topAt(x, by)) - 0.3,
+                  );
+                }
+              }
             }
 
             // Liquid surface.
@@ -1266,7 +1471,24 @@ export class DungeonMesh {
               const hole =
                 art.ceilingHoles > 0 &&
                 this.noise.fbm(x * 0.08 + 77, y * 0.08, 3) * 0.5 + 0.5 > 1 - art.ceilingHoles;
-              if (!hole) surfs[CEIL].flat(wx, hy + ceilY, wz, HALF, false, x % 6, y % 6, 1.4);
+              if (!hole) {
+                const lift = lifts.ceil[y * W + x]!;
+                const cy = hy + ceilY + lift;
+                surfs[CEIL].flat(wx, cy, wz, HALF, false, x % 6, y % 6, 1.4);
+                // A hall's ceiling stands a storey up: close the step down to
+                // the ceiling outside it.
+                for (let d = 0; d < 4 && lift > 0; d++) {
+                  const nx = x + DX4[d];
+                  const ny = y + DY4[d];
+                  if (!this.open(nx, ny) || lifts.ceil[ny * W + nx]! >= lift) continue;
+                  const nc = this.heights[ny * W + nx]! * STEP_HEIGHT + ceilY + lifts.ceil[ny * W + nx]!;
+                  if (nc >= cy - 0.01) continue;
+                  surfs[CEIL].wall(
+                    wx + DX4[d] * HALF, nc, wz + DY4[d] * HALF, DX4[d], DY4[d], TILE_SIZE, cy - nc, 1,
+                    (cy - nc) / TILE_SIZE, 0, nc / TILE_SIZE, false, nc - hy, cy - hy,
+                  );
+                }
+              }
             }
           }
         }
@@ -1275,17 +1497,21 @@ export class DungeonMesh {
         const group = new THREE.Group();
         group.name = `chunk_${cx}_${cy}`;
         let any = false;
+        const casters: THREE.BufferGeometry[] = [];
         for (let i = 0; i < BUCKETS; i++) {
           const s = surfs[i];
           if (s.empty) continue;
           const geo = s.build();
           this.ownedGeo.push(geo);
+          const casts = i >= WALL0 && i < CEIL;
+          if (casts) casters.push(geo);
           const mesh = new THREE.Mesh(geo, mats[i]);
           // Named so probes can find the rock lid without guessing which
           // unnamed slab is filling the frame.
           mesh.name =
             i === BEDROCK ? 'roof' : i === CAPS ? 'wallTops' : i === CEIL ? 'ceiling' : `surface${i}`;
-          mesh.castShadow = i >= WALL0 && i < CEIL;
+          // Its shadow comes from the chunk's shadow body, below.
+          mesh.castShadow = false;
           mesh.receiveShadow = i !== VEIN && i !== LIQ && i !== BEDROCK;
           mesh.matrixAutoUpdate = false;
           mesh.updateMatrix();
@@ -1295,6 +1521,7 @@ export class DungeonMesh {
           any = true;
         }
         if (!any) continue;
+        if (casters.length) group.add(this.chunkShadow(casters));
 
         const centre = new THREE.Vector3(
           this.tileX((x0 + x1) / 2 - 0.5),
@@ -1522,10 +1749,15 @@ export class DungeonMesh {
       const whole = this.wallWhole[wi - WALL0] ?? false;
       const u0 = whole ? 0 : (fx * DY4[d] - fz * DX4[d]) / TILE_SIZE - 0.5;
       const flip = whole && (hashTile(x * 4 + d, y, this.level.seed) & 1) === 1;
-      s.wall(
-        fx, yBottom, fz, DX4[d], DY4[d], TILE_SIZE, h, 1, h / TILE_SIZE,
-        u0, yBottom / TILE_SIZE, flip, yBottom - nh, topY - nh,
-      );
+      const course = this.art.ceiling !== 'open' && wallH > 3.4 ? hy + wallH * 0.66 : topY - 0.3;
+      const niche = ruin ? null : this.nicheAt(x, y, d, course, nh);
+      if (niche) this.emitNiche(s, trim, fx, fz, d, yBottom, topY, nh, u0, flip, niche);
+      else {
+        s.wall(
+          fx, yBottom, fz, DX4[d], DY4[d], TILE_SIZE, h, 1, h / TILE_SIZE,
+          u0, yBottom / TILE_SIZE, flip, yBottom - nh, topY - nh,
+        );
+      }
 
       // Base course: a plinth that steps out from the wall.
       const bh = 0.42;
@@ -1575,6 +1807,92 @@ export class DungeonMesh {
     // top is the cut edge of the room and has to stay standing when the lid
     // opens.
     caps.flat(wx, topY, wz, HALF, true, x % 4, y % 4, 1);
+  }
+
+  /**
+   * The recess cut into face `d` of wall tile (x, y), or null. Only on a
+   * straight run of dressed wall, never two side by side, never behind
+   * anything hung on the wall (a sconce or banner over a hole floats), and
+   * only where the head stays under `course` (the string course or cornice).
+   */
+  private nicheAt(x: number, y: number, d: number, course: number, nh: number): Niche | null {
+    if (((x + y) & 1) !== 0) return null;
+    const h = hashTile(x * 4 + d, y, this.level.seed ^ 0x51c);
+    if (h % 6 !== 0) return null;
+    if (!this.faceContinues(x, y, d, -1) || !this.faceContinues(x, y, d, 1)) return null;
+    if (this.wallBusy().has((y * this.level.width + x) * 4 + d)) return null;
+    const n = (h >>> 4) % 3 === 0 ? NICHE_SLIT : NICHE_SHELF;
+    return nh + n.head + 0.25 < course ? n : null;
+  }
+
+  private busyFaces: Set<number> | null = null;
+  /**
+   * Wall faces something is hung on (sconces, banners, shelves, doors swung
+   * back), as `tile * 4 + side`. Every face round such a prop's tile counts,
+   * which is cheaper than working out which one it leans on.
+   */
+  private wallBusy(): Set<number> {
+    if (this.busyFaces) return this.busyFaces;
+    const out = new Set<number>();
+    const W = this.level.width;
+    for (const p of this.level.props) {
+      if (propDef(p.kind).placement !== 'wall') continue;
+      for (let d = 0; d < 4; d++) out.add(((p.y - DY4[d]) * W + (p.x - DX4[d])) * 4 + d);
+    }
+    this.busyFaces = out;
+    return out;
+  }
+
+  /**
+   * A wall face with a niche cut into it: the face drawn as four strips round
+   * the opening (the texture running on across them as across a whole face),
+   * then the recess's back, sides, sill and head, with a stone lip under the
+   * sill and a lintel over the head.
+   */
+  private emitNiche(
+    s: Surf, trim: Surf, fx: number, fz: number, d: number, yBottom: number, topY: number, nh: number,
+    u0: number, flip: boolean, n: Niche,
+  ): void {
+    const nx = DX4[d];
+    const nz = DY4[d];
+    const rx = nz;
+    const rz = -nx;
+    const hw = n.w * 0.5;
+    const sill = nh + n.sill;
+    const head = nh + n.head;
+    // A piece of the face between `a` and `b` metres from its left edge (0..2).
+    const piece = (a: number, b: number, y0: number, y1: number, back = 0): void => {
+      const c = (a + b) * 0.5 - HALF;
+      const us = (b - a) / TILE_SIZE;
+      s.wall(
+        fx + rx * c - nx * back, y0, fz + rz * c - nz * back, nx, nz, b - a, y1 - y0, us, (y1 - y0) / TILE_SIZE,
+        flip ? u0 + 1 - b / TILE_SIZE : u0 + a / TILE_SIZE, y0 / TILE_SIZE, flip, y0 - nh, y1 - nh,
+      );
+    };
+    const a = HALF - hw;
+    const b = HALF + hw;
+    piece(0, a, yBottom, topY);
+    piece(b, TILE_SIZE, yBottom, topY);
+    piece(a, b, yBottom, sill);
+    piece(a, b, head, topY);
+    // The recess: back, the two sides facing into it, the sill and the head.
+    piece(a, b, sill, head, n.depth);
+    for (const side of [-1, 1] as const) {
+      s.wall(
+        fx + rx * hw * side - nx * n.depth * 0.5, sill, fz + rz * hw * side - nz * n.depth * 0.5, -rx * side, -rz * side,
+        n.depth, head - sill, n.depth / TILE_SIZE, (head - sill) / TILE_SIZE, 0, sill / TILE_SIZE, false, n.sill, n.head,
+      );
+    }
+    s.ledge(fx - nx * n.depth, sill, fz - nz * n.depth, nx, nz, n.w, n.depth, true);
+    s.ledge(fx - nx * n.depth, head, fz - nz * n.depth, nx, nz, n.w, n.depth, false);
+    // The lip under the sill and the lintel over the head, proud of the face.
+    const lip = 0.06;
+    trim.wall(fx + nx * lip, sill - 0.1, fz + nz * lip, nx, nz, n.w + 0.2, 0.1, 1, 0.05);
+    trim.ledge(fx, sill, fz, nx, nz, n.w + 0.2, lip, true);
+    trim.ledge(fx, sill - 0.1, fz, nx, nz, n.w + 0.2, lip, false);
+    trim.wall(fx + nx * lip, head, fz + nz * lip, nx, nz, n.w + 0.3, 0.14, 1, 0.07);
+    trim.ledge(fx, head + 0.14, fz, nx, nz, n.w + 0.3, lip, true);
+    trim.ledge(fx, head, fz, nx, nz, n.w + 0.3, lip, false);
   }
 
   /** Top of a broken ruin wall: knee to head height, ragged along the run. */
@@ -1644,7 +1962,7 @@ export class DungeonMesh {
    * of the door tile, cut by a half-round opening. Only where the door sits
    * between two walls on one axis and opens both ways on the other.
    */
-  private emitArch(s: Surf, caps: Surf, trim: Surf, x: number, y: number, wx: number, wz: number, hy: number, topY: number): void {
+  private emitArch(s: Surf, caps: Surf, trim: Surf, base: Surf, x: number, y: number, wx: number, wz: number, hy: number, topY: number): void {
     let ax: number;
     let az: number;
     if (this.tile(x - 1, y) === T_WALL && this.tile(x + 1, y) === T_WALL && this.open(x, y - 1) && this.open(x, y + 1)) {
@@ -1658,6 +1976,16 @@ export class DungeonMesh {
     const px = az;
     const pz = ax;
     const R = HALF;
+    // A worn threshold slab across the doorway, a finger proud of the floor.
+    {
+      const t = 0.32;
+      const lift = 0.04;
+      const sx = (u: number, w: number): [number, number, number] => [wx + ax * u + px * w, hy + lift, wz + az * u + pz * w];
+      base.quad(sx(-R, -t), sx(R, -t), sx(R, t), sx(-R, t), [0, 1, 0], [0, 0, 0, 0]);
+      for (const side of [-1, 1] as const) {
+        base.wall(wx + px * t * side, hy - 0.02, wz + pz * t * side, px * side, pz * side, TILE_SIZE, lift + 0.02, 1, 0.03, 0, 0, false, 0, lift);
+      }
+    }
     const spring = hy + Math.min(2.25, topY - hy - R - 0.35);
     if (spring < hy + 1.6) return;
     const T = 0.45;
@@ -1688,6 +2016,26 @@ export class DungeonMesh {
     for (const side of [-1, 1] as const) {
       trim.pier(wx + px * side * T, spring + R - 0.12, wz + pz * side * T, px * side, pz * side, 0.34, 0.06, 0.5, 0, 0);
     }
+  }
+
+  /**
+   * A square pier filling an inside corner of a dressed room, on a plinth
+   * and under a capital like the pilasters on a straight run. (cx, cz) is the
+   * corner; the walls stand toward `d1` and `d2`. Half of it is drawn inside
+   * the wall toward `d2`, where nothing sees it.
+   */
+  private emitCornerPier(s: Surf, base: Surf, trim: Surf, cx: number, cz: number, d1: number, d2: number, hy: number, top: number): void {
+    const P = 0.42;
+    if (top < hy + 2.2) return;
+    const nx = -DX4[d1];
+    const nz = -DY4[d1];
+    s.pier(cx, hy - 0.1, cz, nx, nz, P * 2, P, top - hy + 0.1, -0.1, top - hy);
+    base.pier(cx, hy - 0.1, cz, nx, nz, P * 2 + 0.16, P + 0.08, 0.62, 0, 0);
+    base.ledge(cx + nx * P, hy + 0.52, cz + nz * P, nx, nz, P * 2 + 0.16, 0.08, true);
+    trim.pier(cx, top - 0.26, cz, nx, nz, P * 2 + 0.12, P + 0.06, 0.26, 0, 0);
+    trim.ledge(cx, top, cz, nx, nz, P * 2 + 0.12, P + 0.06, true);
+    // Bodies stop at it rather than walking into the stone.
+    this.colliders.push({ x: cx + (nx - DX4[d2]) * P * 0.5, z: cz + (nz - DY4[d2]) * P * 0.5, w: P, d: P });
   }
 
   /** A plank deck over water: the top at walking height and an edge where it meets water. */
@@ -2197,6 +2545,9 @@ export class DungeonMesh {
         inst.name = `prop:${g.kind}:${g.variant}`;
         inst.castShadow = tmpl.castShadow && !layer.ghost;
         inst.receiveShadow = tmpl.receiveShadow && !layer.ghost;
+        // What holds a flame casts no torch shadow: its own bracket round
+        // the light would black out the room.
+        if (tmpl.light) inst.userData.holdsLight = true;
         if (layer.ghost) inst.renderOrder = 3;
         for (let i = 0; i < n; i++) {
           q.setFromAxisAngle(up, rot[i]);
@@ -2365,19 +2716,29 @@ export class DungeonMesh {
   // --- light pool ---------------------------------------------------------
 
   private buildLightPool(): void {
+    const indoor = this.art.ceiling !== 'open';
     for (let i = 0; i < MAX_TORCH_LIGHTS; i++) {
       const l = new THREE.PointLight(0xffffff, 0, 10, 2);
-      // No shadows from the torch pool.
+      // Indoors the two nearest torches cast shadows, drawn once and kept.
       //
-      // A shadow-casting point light renders the scene six times, once per cube
-      // face. These lights re-target the nearest torches several times a second
-      // as the player walks, so every re-target re-rendered the dungeon six
-      // times over. Profiling caught multi-second frames from this alone, with
-      // no enemies on screen at all — it is the walking stutter.
-      //
-      // The atmosphere survives: flames are emissive and bloom, the biome key
-      // light still casts, and the player carries their own aura.
-      l.castShadow = false;
+      // A shadow-casting point light renders the scene six times, once per
+      // cube face. Redrawn every frame as these lights re-target the nearest
+      // torches, that was multi-second frames and the walking stutter. So the
+      // shadow is drawn only when a light takes a new torch, at most one a
+      // pick (`updateLights`), and only from what never moves (`STILL_LAYER`):
+      // walls and props, not the monsters walking past. The rest of the pool
+      // casts nothing.
+      const casts = indoor && i < SHADOW_TORCHES;
+      l.castShadow = casts;
+      if (casts) {
+        l.shadow.autoUpdate = false;
+        l.shadow.mapSize.set(TORCH_SHADOW_SIZE, TORCH_SHADOW_SIZE);
+        l.shadow.camera.near = 0.2;
+        l.shadow.bias = -0.003;
+        l.shadow.normalBias = 0.04;
+        l.shadow.camera.layers.set(STILL_LAYER);
+        l.userData.torchShadow = true;
+      }
       // Stays visible for the renderer's whole life. Toggling a light's
       // `visible` flag changes the scene's light count, and three.js keys the
       // shader program cache on that count, so every material in the scene
@@ -2581,6 +2942,7 @@ export class DungeonMesh {
       sun.target.position.set(fx, 0, fz);
       sun.target.updateMatrixWorld();
     }
+    skyDome?.follow(focus.x, focus.z);
     this.updateLights(dt, elapsed, focus);
     this.updateFlames(elapsed, focus);
     this.liquid?.update(elapsed);
@@ -2635,25 +2997,54 @@ export class DungeonMesh {
           dists[worst] = d;
         }
       }
-      // Stable ordering keeps the two shadow-casting lights on the two closest.
       const order = picks
         .map((idx, k) => ({ idx, d: dists[k] }))
         .sort((a, b) => a.d - b.d);
-      for (let i = 0; i < this.lights.length; i++) {
-        const l = this.lights[i];
-        const pick = order[i];
-        if (!pick) {
+      const rank = (ti: number): number => (ti < 0 ? -1 : order.findIndex((o) => o.idx === ti));
+      const taken = new Set<number>();
+      // Shadow lights first. One keeps its torch while it is among the
+      // nearest few, so walking past a row of sconces does not redraw a
+      // shadow at every step; a free one takes the nearest torch left, within
+      // the redraw allowance, and otherwise keeps what it had while that is
+      // still lit at all.
+      let fresh = 0;
+      for (const l of this.lights) {
+        if (!l.userData.torchShadow) continue;
+        const r = rank((l.userData.torch as number) ?? -1);
+        if (r >= 0 && r <= SHADOW_TORCHES) taken.add(l.userData.torch as number);
+      }
+      for (const l of this.lights) {
+        if (!l.userData.torchShadow) continue;
+        const own = (l.userData.torch as number) ?? -1;
+        if (own >= 0 && taken.has(own)) continue;
+        const pick = order.find((o) => !taken.has(o.idx));
+        if (pick && fresh < TORCH_SHADOWS_PER_PICK) {
+          fresh++;
+          taken.add(pick.idx);
+          this.aimLight(l, pick.idx);
+          l.shadow.camera.far = Math.max(1, l.distance);
+          l.shadow.camera.updateProjectionMatrix();
+          // Faded out at this quality (`Renderer.applyShadows`): not drawn,
+          // and drawn on the torch it holds when the quality turns it on.
+          l.shadow.needsUpdate = l.shadow.intensity > 0;
+        } else if (rank(own) >= 0) {
+          taken.add(own);
+        } else {
           // Park it rather than hide it: see the note where the pool is built.
+          l.intensity = 0;
+          l.userData.torch = -1;
+        }
+      }
+      for (const l of this.lights) {
+        if (l.userData.torchShadow) continue;
+        const pick = order.find((o) => !taken.has(o.idx));
+        if (!pick) {
           l.intensity = 0;
           l.userData.torch = -1;
           continue;
         }
-        const t = this.torches[pick.idx];
-        l.position.copy(t.pos);
-        l.color.copy(t.color);
-        l.distance = t.distance;
-        l.decay = 2;
-        l.userData.torch = pick.idx;
+        taken.add(pick.idx);
+        this.aimLight(l, pick.idx);
       }
     }
 
@@ -2670,6 +3061,16 @@ export class DungeonMesh {
       // A dipping flame burns redder (`flameColour`, warm lights only).
       flameColour(t.color, f, l.color);
     }
+  }
+
+  /** Puts a pool light on torch `idx`. */
+  private aimLight(l: THREE.PointLight, idx: number): void {
+    const t = this.torches[idx]!;
+    l.position.copy(t.pos);
+    l.color.copy(t.color);
+    l.distance = t.distance;
+    l.decay = 2;
+    l.userData.torch = idx;
   }
 
   /**
@@ -2764,6 +3165,8 @@ export class DungeonMesh {
   // --- teardown -----------------------------------------------------------
 
   dispose(): void {
+    if (this.bounce) setBounce(null, null);
+    this.bounce = null;
     this.root.traverse((o) => {
       const im = o as THREE.InstancedMesh;
       if (im.isInstancedMesh || (o as THREE.BatchedMesh).isBatchedMesh) {
@@ -2777,6 +3180,8 @@ export class DungeonMesh {
     this.lights.length = 0;
     this.liquid?.dispose();
     this.liquid = null;
+    this.marks?.dispose();
+    this.marks = null;
     this.drips?.dispose();
     this.drips = null;
     for (const g of this.ownedGeo) g.dispose();

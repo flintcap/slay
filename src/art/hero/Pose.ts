@@ -162,6 +162,12 @@ export const ARM_L: HeroBone[] = ['clavL', 'upperArmL', 'foreArmL', 'handL', 'fi
 export const ARM_R: HeroBone[] = ['clavR', 'upperArmR', 'foreArmR', 'handR', 'fingersR', 'fingerTipsR', 'thumbR'];
 export const TRUNK: HeroBone[] = ['spine', 'chest', 'neck', 'head'];
 
+const SIDES = ['L', 'R'] as const;
+const TWIST = {
+  L: { fore: BONE_INDEX.foreArmL, t0: BONE_INDEX.twist0L, t1: BONE_INDEX.twist1L },
+  R: { fore: BONE_INDEX.foreArmR, t0: BONE_INDEX.twist0R, t1: BONE_INDEX.twist1R },
+};
+
 const _e = new THREE.Euler();
 const _q = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
@@ -334,6 +340,17 @@ export class PoseSolver {
   /** Writes local rotations (and the pelvis position) to the real bones. */
   apply(bones: THREE.Bone[], p: Pose): void {
     for (let i = 0; i < BONE_COUNT; i++) bones[i]!.quaternion.copy(this.local[i]!);
+    // The twist helpers take back the forearm's roll about its own length:
+    // all of it at the elbow, half of it mid-forearm (`Skinning.ts`).
+    for (const side of SIDES) {
+      const f = this.sides[side].fore;
+      const q = this.local[TWIST[side].fore]!;
+      let a = 2 * Math.atan2(q.x * f.x + q.y * f.y + q.z * f.z, q.w);
+      if (a > Math.PI) a -= 2 * Math.PI;
+      else if (a < -Math.PI) a += 2 * Math.PI;
+      bones[TWIST[side].t0]!.quaternion.setFromAxisAngle(f, -a);
+      bones[TWIST[side].t1]!.quaternion.setFromAxisAngle(f, -a / 2);
+    }
     const pel = bones[BONE_INDEX.pelvis]!;
     pel.position.copy(this.offset[BONE_INDEX.pelvis]!);
     pel.position.x += p.c[CH.pelvisX]!;

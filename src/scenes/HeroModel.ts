@@ -4,6 +4,7 @@ import { Random } from '../core/RNG';
 import { buildItemModel } from '../art/ItemModels';
 import { compactModel } from '../art/ModelBudget';
 import { buildHero, setHeroHidden, type HeroModel as HeroBody } from '../art/hero/Hero';
+import { playSkin } from '../art/hero/Body';
 import { HERO_LOOKS } from '../art/hero/Looks';
 import { wearArmour, removeArmour, type WornArmour } from '../art/hero/Armour';
 import { holdItem, weaponGrip } from '../art/hero/Hold';
@@ -16,7 +17,7 @@ import type { BeastForm } from '../art/hero/forms/BeastBody';
 import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import { FIELD_KIT } from './FieldKit';
-import { castsPlainShadow, mergeShadowParts, shadowBodyMaterial } from '../core/ShadowBodies';
+import { castsPlainShadow, mergeShadowParts, shadowBodyMaterial, shadowLod } from '../core/ShadowBodies';
 
 /**
  * The one place the game builds a hero: body, worn armour, held weapons and
@@ -149,6 +150,19 @@ export class DressedHero {
     this.syncShadow();
   }
 
+  /**
+   * Thins the face and hands to what shows at play distance (`playSkin`):
+   * for the hero in the world, not the paperdoll or a portrait.
+   */
+  trimForPlay(): void {
+    for (const o of this.root.children) {
+      const sm = o as THREE.SkinnedMesh;
+      if (sm.isSkinnedMesh && sm.name.endsWith(':skin')) sm.geometry = playSkin(sm.geometry);
+    }
+    this.shadowKey = '';
+    this.syncShadow();
+  }
+
   /** Remakes the shadow bodies when what is shown or worn changed. */
   private syncShadow(): void {
     if (!this.shadowOn) return;
@@ -204,7 +218,8 @@ export class DressedHero {
       }
     };
     if (skin.length > 1) {
-      const geo = mergeShadowParts(skin.map((m) => ({ geo: m.geometry })), true);
+      // Half the triangles: the hero's shadow is the largest on screen (the lantern throws it up the walls).
+      const geo = mergeShadowParts(skin.map((m) => ({ geo: shadowLod(m.geometry, 0.5) })), true);
       let body: THREE.SkinnedMesh | null = null;
       if (geo) {
         body = new THREE.SkinnedMesh(geo, shadowBodyMaterial());

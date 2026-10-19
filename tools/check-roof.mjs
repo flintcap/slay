@@ -54,7 +54,8 @@ const src = readFileSync(path.join(ROOT, 'src/world/DungeonBuilder.ts'), 'utf8')
 const rules = [
   ['one flat rock height per level', /const roofY = maxStep \* STEP_HEIGHT \+ wallH;/],
   ['void tiles cap at it', /surfs\[BEDROCK\]\.flat\(wx, roofY, wz/],
-  ['wall tiles cap at it', /this\.emitWall\(surfs, x, y, wx, wz, hy, roofY,/],
+  ['wall tiles cap at it, or a hall storey above it', /const topAt = \(x: number, y: number\): number => roofY \+ \(this\.tile\(x, y\) === T_WALL \? lifts\.wall\[y \* W \+ x\]! : 0\);[\s\S]*this\.emitWall\(surfs, x, y, wx, wz, hy, top,/],
+  ['a taller wall closes its step', /if \(nTop >= top - 0\.01\) continue;\s*surfs\[WALL0\]!\.wall\(/],
   ['every wall tile is capped', /^\s*caps\.flat\(wx, topY, wz, HALF, true, x % 4, y % 4, 1\);$/m],
   // The rule used to be the opposite of this, and the opposite is what made
   // walls see-through: the lid opens by discarding fragments within 13m of the

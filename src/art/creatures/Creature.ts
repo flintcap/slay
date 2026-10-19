@@ -20,6 +20,7 @@ import type { CreatureInfo } from './Animator';
 import { STYLE_DEFAULT, type MotionStyle } from './Motion';
 import { mergeGeometries } from '../Meshes';
 import { shadowBodyMaterial } from '../../core/ShadowBodies';
+import { lodGeometry } from '../hero/Decimate';
 import { bodyVanishes, ownMaterial } from '../../fx/HitFlash';
 
 /** How much detail a creature gets: triangles per material and field resolution. */
@@ -96,7 +97,7 @@ function quality(rig: CreatureRig, tier: CreatureTier): SculptQuality {
 interface Prototype {
   root: THREE.Group;
   skeleton: THREE.Skeleton;
-  /** Every part in one geometry (position and skin only), for the shadow pass. */
+  /** Every part's lower-detail copy in one geometry (position and skin only), for the shadow pass. */
   shadowGeo: THREE.BufferGeometry | null;
   info: CreatureInfo;
   meshes: Array<{ mat: CMat; geo: THREE.BufferGeometry }>;
@@ -152,6 +153,10 @@ function prototype(look: CreatureLook): Prototype {
   }
   // Hard part geometry is only needed when baking.
   for (const p of s.parts) p.geo.dispose();
+  // Lower-detail copies, stored with the bake: the shadow is cast from them,
+  // and a body small on screen is drawn from them (`creatureDetail`).
+  let lows = bakedCached(`lod${LOD_KEEP}|${key}`, () => meshes.map((m) => lodGeometry(m.geo, LOD_KEEP)));
+  if (lows.length !== meshes.length || lows.some((g, i) => !sameLayout(g, meshes[i]!.geo))) lows = meshes.map((m) => m.geo);
 
   const root = rig.root;
   root.updateMatrixWorld(true);
@@ -169,18 +174,27 @@ function prototype(look: CreatureLook): Prototype {
     style,
     grip: s.grip,
   };
-  const shadowGeo = meshes.length > 1 ? mergeForShadow(meshes.map((m) => m.geo)) : null;
-  for (const m of meshes) {
+  const shadowGeo = mergeForShadow(lows);
+  meshes.forEach((m, i) => {
+    const low = lows[i]!;
+    if (low === m.geo) return;
+    lowOf.set(m.geo, low);
+    fullOf.set(low, m.geo);
+  });
+  for (const [i, m] of meshes.entries()) {
     const def = look.mats[m.mat] ?? look.mats.skin!;
     const mesh = new THREE.SkinnedMesh(m.geo, creatureMaterial(def));
     mesh.name = `creature:${m.mat}`;
     // With a shadow body the parts cast none of their own (`core/ShadowBodies.ts`).
     mesh.castShadow = !shadowGeo;
-    mesh.receiveShadow = false;
+    // Darkened under a wall's shadow, a tree's, the hero's: a monster walking
+    // out of the torchlight into the shade goes dark with the floor.
+    mesh.receiveShadow = true;
     // Poses reach past the bind box (lunges, rears, falls): cull on a generous sphere.
     if (!m.geo.boundingSphere) m.geo.computeBoundingSphere();
     const bs = m.geo.boundingSphere!;
     bs.radius = Math.max(bs.radius * 1.5, rig.height * 0.9, rig.length * 0.8);
+    lows[i]!.boundingSphere = bs.clone();
     mesh.userData.mat = m.mat;
     root.add(mesh);
     mesh.bind(skeleton, new THREE.Matrix4());
@@ -201,6 +215,37 @@ function prototype(look: CreatureLook): Prototype {
   return proto;
 }
 
+
+/** Share of a part's triangles its lower-detail copy keeps. */
+const LOD_KEEP = 0.4;
+/** A part's full bake and its lower-detail copy, each way. */
+const lowOf = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry>();
+const fullOf = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry>();
+
+/** Whether `b` can stand in for `a` under the same material: the same attributes, sizes and types. */
+function sameLayout(a: THREE.BufferGeometry, b: THREE.BufferGeometry): boolean {
+  const names = Object.keys(a.attributes);
+  if (names.length !== Object.keys(b.attributes).length || !a.index !== !b.index) return false;
+  return names.every((n) => {
+    const x = a.attributes[n] as THREE.BufferAttribute;
+    const y = b.attributes[n] as THREE.BufferAttribute | undefined;
+    return !!y && x.itemSize === y.itemSize && x.normalized === y.normalized && x.array.constructor === y.array.constructor;
+  });
+}
+
+/**
+ * Draws a creature's parts from their lower-detail copies (`low`) or from
+ * the full bake. For bodies too small on screen for the difference to show;
+ * the copies share the parts' materials, so swapping builds nothing.
+ */
+export function creatureDetail(root: THREE.Object3D, low: boolean): void {
+  root.traverse((o) => {
+    const sm = o as THREE.SkinnedMesh;
+    if (!sm.isSkinnedMesh || sm.userData.shadowOnly) return;
+    const g = (low ? lowOf : fullOf).get(sm.geometry);
+    if (g) sm.geometry = g;
+  });
+}
 
 /** The parts' positions and skin weights in one indexed geometry, for the shadow body. */
 function mergeForShadow(geos: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
@@ -377,18 +422,78 @@ const CORPSE_CAP = 36;
 
 function dropCorpse(c: THREE.Object3D): void {
   c.removeFromParent();
-  (c.userData.monsterSkeleton as THREE.Skeleton | undefined)?.dispose();
-  c.userData.monsterSkeleton = undefined;
+  for (const g of (c.userData.baked as THREE.BufferGeometry[] | undefined) ?? []) g.dispose();
+  c.userData.baked = undefined;
 }
 
-/**
- * Leaves the fallen body behind: a frozen copy of the creature in its last
- * death pose, placed in the world where it fell, with its rank rim gone and
- * its glow gone cold. The living spawn is hidden, so whatever its owner does
- * next (sink, shrink, remove) is never seen. The copy shares geometry, keeps
- * its own skeleton (no new shaders) and casts no shadow. At most
- * `CORPSE_CAP` stay; the oldest goes first.
- */
+const _m = new THREE.Matrix4();
+const _bind = new THREE.Matrix4();
+const _unbind = new THREE.Matrix4();
+
+/** A skinned part's geometry as its bones hold it now (world matrices current), in its own space: positions and normals moved, the rest shared. */
+function bakePose(sm: THREE.SkinnedMesh): THREE.BufferGeometry {
+  const g = sm.geometry;
+  const skel = sm.skeleton;
+  // Per bone: rig space -> bone -> rig space, as the skinning shader does it.
+  _bind.copy(sm.bindMatrix);
+  // Attached: the mesh's own space now (its stored inverse is only refreshed by a full matrix walk).
+  if (sm.bindMode === 'attached') _unbind.copy(sm.matrixWorld).invert();
+  else _unbind.copy(sm.bindMatrixInverse);
+  const mats = skel.bones.map((b, i) => new THREE.Matrix4().multiplyMatrices(_unbind, _m.multiplyMatrices(b.matrixWorld, skel.boneInverses[i]!)).multiply(_bind).elements);
+  const pos = g.getAttribute('position');
+  const nor = g.getAttribute('normal');
+  const si = g.getAttribute('skinIndex');
+  const sw = g.getAttribute('skinWeight');
+  const n = pos.count;
+  const p = new Float32Array(n * 3);
+  const q = nor ? new Float32Array(n * 3) : null;
+  const e = new Float32Array(16);
+  for (let v = 0; v < n; v++) {
+    e.fill(0);
+    for (let k = 0; k < 4; k++) {
+      const w = sw.getComponent(v, k);
+      if (w === 0) continue;
+      const me = mats[si.getComponent(v, k)];
+      if (!me) continue;
+      for (let c = 0; c < 16; c++) e[c] += me[c]! * w;
+    }
+    const x = pos.getX(v);
+    const y = pos.getY(v);
+    const z = pos.getZ(v);
+    p[v * 3] = e[0]! * x + e[4]! * y + e[8]! * z + e[12]!;
+    p[v * 3 + 1] = e[1]! * x + e[5]! * y + e[9]! * z + e[13]!;
+    p[v * 3 + 2] = e[2]! * x + e[6]! * y + e[10]! * z + e[14]!;
+    if (q && nor) {
+      const a = nor.getX(v);
+      const b = nor.getY(v);
+      const c = nor.getZ(v);
+      const nx = e[0]! * a + e[4]! * b + e[8]! * c;
+      const ny = e[1]! * a + e[5]! * b + e[9]! * c;
+      const nz = e[2]! * a + e[6]! * b + e[10]! * c;
+      const l = Math.hypot(nx, ny, nz) || 1;
+      q[v * 3] = nx / l;
+      q[v * 3 + 1] = ny / l;
+      q[v * 3 + 2] = nz / l;
+    }
+  }
+  const out = stillGeometry(g);
+  out.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  if (q) out.setAttribute('normal', new THREE.BufferAttribute(q, 3));
+  out.computeBoundingSphere();
+  return out;
+}
+
+/** A geometry sharing a skinned one's index, groups and every attribute but the skin weights. */
+function stillGeometry(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const out = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(g.attributes)) {
+    if (name !== 'skinIndex' && name !== 'skinWeight') out.setAttribute(name, a);
+  }
+  out.setIndex(g.index);
+  for (const gr of g.groups) out.addGroup(gr.start, gr.count, gr.materialIndex);
+  return out;
+}
+
 /** What a body wears once it falls: its own look without rim light, its glow banked low. */
 function corpseMaterial(live: THREE.SkinnedMesh): THREE.Material | null {
   const base = baseMats.get(live) ?? (ownMaterial(live) as THREE.Material);
@@ -399,8 +504,9 @@ function corpseMaterial(live: THREE.SkinnedMesh): THREE.Material | null {
 /**
  * One stand-in for each body part's fallen look, for the curtain's warm-up
  * (DungeonScene.warmup). A corpse wears other material values than the
- * living body (no rim, low glow), which three.js builds as a shader of its
- * own: the first kill of each kind of monster built it mid-fight.
+ * living body (no rim, low glow) on a still mesh, which three.js builds as a
+ * shader of its own: the first kill of each kind of monster built it
+ * mid-fight.
  */
 export function corpseStandIns(roots: Iterable<THREE.Object3D>): THREE.Object3D[] {
   const kinds = new Map<string, THREE.Object3D>();
@@ -412,10 +518,9 @@ export function corpseStandIns(roots: Iterable<THREE.Object3D>): THREE.Object3D[
       if (!mat) return;
       const g = sm.geometry;
       const attrs = Object.keys(g.attributes).sort().join(',');
-      const key = `${mat.uuid}|${attrs}|${g.index ? 1 : 0}|${sm.skeleton.bones.length}|${sm.receiveShadow}`;
+      const key = `${mat.uuid}|${attrs}|${g.index ? 1 : 0}|${sm.receiveShadow}`;
       if (kinds.has(key)) return;
-      const k = new THREE.SkinnedMesh(g, mat);
-      k.bind(sm.skeleton, sm.bindMatrix);
+      const k = new THREE.Mesh(stillGeometry(g), mat);
       k.castShadow = false;
       k.receiveShadow = sm.receiveShadow;
       k.frustumCulled = false;
@@ -425,11 +530,19 @@ export function corpseStandIns(roots: Iterable<THREE.Object3D>): THREE.Object3D[
   return [...kinds.values()];
 }
 
+/**
+ * Leaves the fallen body behind: a still copy of the creature in its last
+ * death pose, placed in the world where it fell, with its rank rim gone and
+ * its glow gone cold. The living spawn is hidden, so whatever its owner does
+ * next (sink, shrink, remove) is never seen. Each part is baked to a plain
+ * mesh in that pose (`bakePose`): no skeleton, no skinning, and nothing in it
+ * is touched again until it is cleared. It casts no shadow. At most
+ * `CORPSE_CAP` stay; the oldest goes first.
+ */
 export function leaveCorpse(root: THREE.Object3D): void {
   let world: THREE.Object3D = root;
   while (world.parent) world = world.parent;
-  const src = root.userData.monsterSkeleton as THREE.Skeleton | undefined;
-  if (world === root || !src) return;
+  if (world === root || !root.userData.monsterSkeleton) return;
   // Shattered or unmade: nothing is left to lie there.
   if (bodyVanishes(root)) return;
   root.updateWorldMatrix(true, true);
@@ -439,41 +552,53 @@ export function leaveCorpse(root: THREE.Object3D): void {
   const corpse = root.clone(true);
   root.userData = ud;
   corpse.getObjectByName('flair:miniboss')?.removeFromParent();
-  const bones: Record<string, THREE.Bone> = {};
-  corpse.traverse((o) => {
-    if ((o as THREE.Bone).isBone) bones[o.name] = o as THREE.Bone;
-  });
-  const own = new THREE.Skeleton(src.bones.map((b) => bones[b.name]!), src.boneInverses);
-  const liveMeshes: THREE.SkinnedMesh[] = [];
-  const liveAll: THREE.Mesh[] = [];
+  // The copy walks in step with the live body: same parts, same order.
+  const live: THREE.Mesh[] = [];
+  const copy: THREE.Mesh[] = [];
   root.traverse((o) => {
-    if ((o as THREE.SkinnedMesh).isSkinnedMesh) liveMeshes.push(o as THREE.SkinnedMesh);
-    if ((o as THREE.Mesh).isMesh) liveAll.push(o as THREE.Mesh);
+    if ((o as THREE.Mesh).isMesh) live.push(o as THREE.Mesh);
   });
-  // A body killed mid-flash (every elemental kill wears a death look) was
-  // copied wearing the flash material: hand each copy its own back first.
-  let j = 0;
   corpse.traverse((o) => {
-    if (!(o as THREE.Mesh).isMesh) return;
-    const live = liveAll[j++];
-    if (live) (o as THREE.Mesh).material = ownMaterial(live);
+    if ((o as THREE.Mesh).isMesh) copy.push(o as THREE.Mesh);
   });
-  let i = 0;
-  corpse.traverse((o) => {
-    const sm = o as THREE.SkinnedMesh;
-    if (!sm.isSkinnedMesh) return;
-    const live = liveMeshes[i++];
-    sm.bind(own, sm.bindMatrix);
-    sm.castShadow = false;
-    const mat = corpseMaterial(live ?? sm);
-    if (mat) sm.material = mat;
+  const baked: THREE.BufferGeometry[] = [];
+  copy.forEach((o, n) => {
+    const from = live[n];
+    if (o.userData.shadowOnly) {
+      o.removeFromParent();
+      return;
+    }
+    // A body killed mid-flash (every elemental kill wears a death look) was
+    // copied wearing the flash material: hand each copy its own back first.
+    if (from) o.material = ownMaterial(from);
+    const sm = from as THREE.SkinnedMesh | undefined;
+    if (!(o as THREE.SkinnedMesh).isSkinnedMesh || !sm?.isSkinnedMesh) return;
+    const geo = bakePose(sm);
+    baked.push(geo);
+    const still = new THREE.Mesh(geo, corpseMaterial(sm) ?? o.material);
+    still.name = o.name;
+    still.position.copy(o.position);
+    still.quaternion.copy(o.quaternion);
+    still.scale.copy(o.scale);
+    still.visible = o.visible;
+    still.renderOrder = o.renderOrder;
+    still.castShadow = false;
+    still.receiveShadow = o.receiveShadow;
+    still.add(...o.children);
+    o.parent?.add(still);
+    o.removeFromParent();
   });
   root.matrixWorld.decompose(corpse.position, corpse.quaternion, corpse.scale);
-  corpse.userData = { monsterSkeleton: own, corpse: true };
+  corpse.userData = { baked, corpse: true };
   corpse.name = 'corpse';
   corpse.visible = true;
   world.add(corpse);
   corpse.updateMatrixWorld(true);
+  // Still from here on: the scene's per-frame matrix walk skips it.
+  corpse.traverse((o) => {
+    o.matrixAutoUpdate = false;
+  });
+  corpse.matrixWorldAutoUpdate = false;
   corpses.push(corpse);
   while (corpses.length > CORPSE_CAP) dropCorpse(corpses.shift()!);
   root.visible = false;

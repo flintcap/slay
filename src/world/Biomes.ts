@@ -525,7 +525,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
   crypt: {
     id: 'crypt',
     // Bone and candle: old-bone grey in the dark, tallow yellow in the light.
-    grade: { contrast: 1.1, saturation: 0.86, shadowTint: 0x66665a, highlightTint: 0xffc070, splitTone: 0.44, vignette: 0.52, vignetteTint: 0x4a4034 },
+    grade: { contrast: 1.1, saturation: 0.86, shadowTint: 0x66665a, highlightTint: 0xffc070, splitTone: 0.44, vignette: 0.52, vignetteTint: 0x4a4034, look: { hues: [{ at: 55, width: 40, shift: -6, sat: 0.85 }, { at: 220, width: 50, shift: 8, sat: 0.9 }] } },
     grime: 0x2b2620,
     wetness: 0.22,
     surfaceVariation: 0.8,
@@ -564,7 +564,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   caverns: {
     id: 'caverns',
-    grade: { contrast: 1.08, saturation: 0.9, shadowTint: 0x2e4c4a, highlightTint: 0xe0f4e8, splitTone: 0.38, vignette: 0.52, vignetteTint: 0x24302e, bloomStrength: 0.72, bloomThreshold: 0.86 },
+    grade: { contrast: 1.08, saturation: 0.9, shadowTint: 0x2e4c4a, highlightTint: 0xe0f4e8, splitTone: 0.38, vignette: 0.52, vignetteTint: 0x24302e, bloomStrength: 0.72, bloomThreshold: 0.86, look: { hues: [{ at: 120, width: 50, shift: 20, sat: 0.9 }] } },
     grime: 0x1e2a22,
     // At 0.55 the wet sheen and the teal grade turned the rock walls into
     // glowing green glass (final render). Damp, not glazed.
@@ -608,7 +608,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     id: 'foundry',
     // Cool shadows against the furnace light. Warm on warm (the first grade)
     // turned every surface the same red and the frame lost its depth.
-    grade: { contrast: 1.12, saturation: 0.98, shadowTint: 0x4a5874, highlightTint: 0xffb060, splitTone: 0.42, vignette: 0.52, vignetteTint: 0x6a4030, lift: [0.008, 0.005, 0.006], bloomStrength: 0.75, bloomRadius: 0.6, bloomThreshold: 0.86 },
+    grade: { contrast: 1.12, saturation: 0.98, shadowTint: 0x4a5874, highlightTint: 0xffb060, splitTone: 0.42, vignette: 0.52, vignetteTint: 0x6a4030, lift: [0.008, 0.005, 0.006], bloomStrength: 0.75, bloomRadius: 0.6, bloomThreshold: 0.86, look: { hues: [{ at: 50, width: 30, shift: -10, sat: 1.1 }] } },
     grime: 0x17110d,
     wetness: 0.04,
     surfaceVariation: 1.0,
@@ -650,7 +650,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   sunkenTemple: {
     id: 'sunkenTemple',
-    grade: { contrast: 1.08, saturation: 0.94, shadowTint: 0x2a4c56, highlightTint: 0xffe0a0, splitTone: 0.42, vignette: 0.5, vignetteTint: 0x22343a, bloomStrength: 0.7, bloomThreshold: 0.88 },
+    grade: { contrast: 1.08, saturation: 0.94, shadowTint: 0x2a4c56, highlightTint: 0xffe0a0, splitTone: 0.42, vignette: 0.5, vignetteTint: 0x22343a, bloomStrength: 0.7, bloomThreshold: 0.88, look: { hues: [{ at: 110, width: 50, shift: 25, sat: 0.95 }, { at: 210, width: 40, shift: -8, sat: 1.1 }] } },
     grime: 0x1f3229,
     wetness: 0.65,
     surfaceVariation: 0.85,
@@ -690,7 +690,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   hive: {
     id: 'hive',
-    grade: { contrast: 1.1, saturation: 0.88, shadowTint: 0x5a4a72, highlightTint: 0xffd070, splitTone: 0.45, vignette: 0.55, vignetteTint: 0x3a2a3a, bloomStrength: 0.72 },
+    grade: { contrast: 1.1, saturation: 0.88, shadowTint: 0x5a4a72, highlightTint: 0xffd070, splitTone: 0.45, vignette: 0.55, vignetteTint: 0x3a2a3a, bloomStrength: 0.72, look: { hues: [{ at: 90, width: 50, shift: -18, sat: 0.9 }] } },
     grime: 0x2c1a26,
     wetness: 0.45,
     surfaceVariation: 0.9,
@@ -729,7 +729,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
   frostvault: {
     id: 'frostvault',
     // Cold and blue-grey, never sky blue: the ice is old, the air is dead.
-    grade: { exposure: 0.88, contrast: 1.1, saturation: 0.7, shadowTint: 0x5c6c84, highlightTint: 0xdce6f0, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x3a4656, bloomStrength: 0.55, bloomThreshold: 1.0 },
+    grade: { exposure: 0.88, contrast: 1.1, saturation: 0.7, shadowTint: 0x5c6c84, highlightTint: 0xdce6f0, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x3a4656, bloomStrength: 0.55, bloomThreshold: 1.0, look: { contrast: 1.08, edgeSat: 0.6, hues: [{ at: 190, width: 50, shift: 10, sat: 1.1 }] } },
     grime: 0x34465a,
     wetness: 0.3,
     surfaceVariation: 0.6,
@@ -771,7 +771,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
     id: 'ashwaste',
     // Cool, ashen shadows under a hot sky. Warm on warm rendered the whole
     // frame one red, floor, walls and monsters alike.
-    grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x585a66, highlightTint: 0xffa070, splitTone: 0.42, vignette: 0.5, vignetteTint: 0x4a3a34, lift: [0.01, 0.009, 0.009] },
+    grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x585a66, highlightTint: 0xffa070, splitTone: 0.42, vignette: 0.5, vignetteTint: 0x4a3a34, lift: [0.01, 0.009, 0.009], look: { hues: [{ at: 55, width: 35, shift: -15, sat: 1 }, { at: 210, width: 60, shift: 0, sat: 0.75 }] } },
     grime: 0x2a2420,
     wetness: 0.0,
     surfaceVariation: 0.95,
@@ -810,7 +810,7 @@ const ART: Partial<Record<BiomeId, BiomeArt>> = {
 
   voidspire: {
     id: 'voidspire',
-    grade: { contrast: 1.12, saturation: 0.72, shadowTint: 0x3a3448, highlightTint: 0xe8d4e4, splitTone: 0.45, vignette: 0.56, vignetteTint: 0x2a2038, bloomStrength: 0.72, bloomThreshold: 0.88 },
+    grade: { contrast: 1.12, saturation: 0.72, shadowTint: 0x3a3448, highlightTint: 0xe8d4e4, splitTone: 0.45, vignette: 0.56, vignetteTint: 0x2a2038, bloomStrength: 0.72, bloomThreshold: 0.88, look: { hues: [{ at: 230, width: 50, shift: 25, sat: 1.15 }] } },
     grime: 0x1a1028,
     wetness: 0.12,
     surfaceVariation: 0.7,
@@ -1478,7 +1478,7 @@ ART.darkForest = {
   veinDensity: 0,
   damage: 0.2,
   puddles: 0.15,
-  grade: { contrast: 1.1, saturation: 0.82, shadowTint: 0x2a4a5a, highlightTint: 0xd8e0c8, splitTone: 0.5, vignette: 0.58, vignetteTint: 0x0a1418 },
+  grade: { contrast: 1.1, saturation: 0.82, shadowTint: 0x2a4a5a, highlightTint: 0xd8e0c8, splitTone: 0.5, vignette: 0.58, vignetteTint: 0x0a1418, look: { hues: [{ at: 100, width: 50, shift: 30, sat: 0.85 }] } },
 };
 
 ART.swamp = {
@@ -1509,7 +1509,7 @@ ART.swamp = {
   damage: 0.2,
   puddles: 0.45,
   // Sick green: bile in the shadows, a jaundiced light.
-  grade: { contrast: 1.08, saturation: 0.8, shadowTint: 0x3e4a2c, highlightTint: 0xd0d890, splitTone: 0.55, vignette: 0.6, vignetteTint: 0x10180c },
+  grade: { contrast: 1.08, saturation: 0.8, shadowTint: 0x3e4a2c, highlightTint: 0xd0d890, splitTone: 0.55, vignette: 0.6, vignetteTint: 0x10180c, look: { hues: [{ at: 120, width: 50, shift: -20, sat: 0.9 }] } },
 };
 
 ART.desert = {
@@ -1539,7 +1539,7 @@ ART.desert = {
   veinDensity: 0,
   damage: 0.3,
   puddles: 0,
-  grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x4a4a6a, highlightTint: 0xffdcb0, splitTone: 0.48, vignette: 0.48, vignetteTint: 0x3a2818, haze: 0.8 },
+  grade: { contrast: 1.12, saturation: 0.8, shadowTint: 0x4a4a6a, highlightTint: 0xffdcb0, splitTone: 0.48, vignette: 0.48, vignetteTint: 0x3a2818, haze: 0.8, look: { hues: [{ at: 40, width: 35, shift: -5, sat: 1.1 }] } },
 };
 
 ART.tundra = {
@@ -1565,7 +1565,7 @@ ART.tundra = {
   veinDensity: 0,
   damage: 0.15,
   puddles: 0,
-  grade: { contrast: 1.08, saturation: 0.72, shadowTint: 0x4e5e72, highlightTint: 0xdce6f0, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x1a2a3a },
+  grade: { contrast: 1.08, saturation: 0.72, shadowTint: 0x4e5e72, highlightTint: 0xdce6f0, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x1a2a3a, look: { edgeSat: 0.6, hues: [{ at: 200, width: 60, shift: 8, sat: 1.05 }] } },
 };
 
 ART.hell = {
@@ -1597,7 +1597,7 @@ ART.hell = {
   damage: 0.35,
   puddles: 0,
   // Ember red: the dark glows like a banked fire, the light is hot.
-  grade: { contrast: 1.12, saturation: 0.86, shadowTint: 0x5a2a22, highlightTint: 0xff9a58, splitTone: 0.5, vignette: 0.54, vignetteTint: 0x2a0c08, haze: 0.45 },
+  grade: { contrast: 1.12, saturation: 0.86, shadowTint: 0x5a2a22, highlightTint: 0xff9a58, splitTone: 0.5, vignette: 0.54, vignetteTint: 0x2a0c08, haze: 0.45, look: { hues: [{ at: 55, width: 40, shift: -20, sat: 1.1 }, { at: 120, width: 60, shift: -50, sat: 0.6 }] } },
 };
 
 ART.desertTomb = {
@@ -1623,7 +1623,7 @@ ART.desertTomb = {
   liquid: 'none',
   lightColor: 0xffa050,
   bounceColor: 0x4a3420,
-  grade: { contrast: 1.1, saturation: 0.9, shadowTint: 0x4a3a5a, highlightTint: 0xffc080, splitTone: 0.45, vignette: 0.52, vignetteTint: 0x2a1a10 },
+  grade: { contrast: 1.1, saturation: 0.9, shadowTint: 0x4a3a5a, highlightTint: 0xffc080, splitTone: 0.45, vignette: 0.52, vignetteTint: 0x2a1a10, look: { hues: [{ at: 45, width: 35, shift: -6, sat: 1.05 }] } },
 };
 
 /** A biome's own art, or the crypt's until it has one (maps -> ground contract). */

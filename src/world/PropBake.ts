@@ -47,7 +47,7 @@ export function bakeProps(root: THREE.Object3D, batches: readonly THREE.Instance
   for (const [b, n] of fits) {
     if (n > budget) break;
     budget -= n;
-    const key = `${(b.material as THREE.Material).uuid}|${b.castShadow}|${b.receiveShadow}|${b.renderOrder}|${b.geometry.attributes.color ? b.geometry.attributes.color.itemSize : 0}`;
+    const key = `${(b.material as THREE.Material).uuid}|${b.castShadow}|${b.receiveShadow}|${b.renderOrder}|${b.geometry.attributes.color ? b.geometry.attributes.color.itemSize : 0}|${!!b.userData.holdsLight}`;
     let list = buckets.get(key);
     if (!list) buckets.set(key, (list = []));
     list.push(b);
@@ -158,5 +158,6 @@ function bake(list: readonly THREE.InstancedMesh[]): THREE.Mesh {
   mesh.matrixAutoUpdate = false;
   mesh.updateMatrix();
   mesh.userData.copyBoxes = boxes;
+  if (first.userData.holdsLight) mesh.userData.holdsLight = true;
   return mesh;
 }

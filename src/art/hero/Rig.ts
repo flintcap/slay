@@ -50,6 +50,13 @@ export const HERO_BONES = [
   'shinR',
   'footR',
   'toeR',
+  // Forearm twist helpers: at the elbow, they take back the forearm's roll
+  // (all of it, half of it) so a turned wrist twists the forearm along its
+  // length instead of wringing the elbow. Set by `PoseSolver.apply`.
+  'twist0L',
+  'twist1L',
+  'twist0R',
+  'twist1R',
 ] as const;
 
 export type HeroBone = (typeof HERO_BONES)[number];
@@ -83,6 +90,10 @@ export const HERO_PARENT: Record<HeroBone, HeroBone | null> = {
   shinR: 'thighR',
   footR: 'shinR',
   toeR: 'footR',
+  twist0L: 'foreArmL',
+  twist1L: 'foreArmL',
+  twist0R: 'foreArmR',
+  twist1R: 'foreArmR',
 };
 
 /**
@@ -217,6 +228,8 @@ export function heroJoints(s: BodyShape): JointMap {
     const knee = new THREE.Vector3(hip.x * 0.9, hip.y - LIMB.thigh * h, 0.04 * h);
     const ankle = new THREE.Vector3(hip.x * 0.84, knee.y - LIMB.shin * h, -0.04 * h);
     const toe = new THREE.Vector3(ankle.x * 1.06, 0.1 * h, ankle.z + 0.62 * h);
+    j[L ? 'twist0L' : 'twist0R'] = elbow.clone();
+    j[L ? 'twist1L' : 'twist1R'] = elbow.clone();
     j[L ? 'shinL' : 'shinR'] = knee;
     j[L ? 'footL' : 'footR'] = ankle;
     j[L ? 'toeL' : 'toeR'] = toe;

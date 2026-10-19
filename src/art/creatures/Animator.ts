@@ -185,6 +185,13 @@ export class CreatureAnimator {
   private flinchV = 0;
   flinchSide = 1;
   stagger = 0;
+  /** Sway spring for a blow that missed (`evade`), and the side it sways to. */
+  private slip = 0;
+  private slipV = 0;
+  private slipSide = 1;
+  /** The guard (a boss's raised blade), 0..1, and whether it is being held up now. */
+  private guardW = 0;
+  guardHeld = false;
   /** Death and spawn progress. */
   deathT = 0;
   spawnT = 0;
@@ -386,6 +393,21 @@ export class CreatureAnimator {
     if (kind === 'stagger') this.stagger = 1;
   }
 
+  /** A blow that missed: the body sways off its line and back, never the hurt flinch. */
+  evade(): void {
+    if (this.deathT > 0) return;
+    this.slipSide = this.rng.next() < 0.5 ? 1 : -1;
+    this.slipV += 9;
+  }
+
+  /** A blow turned on the guard: it snaps up at once, and the body gives a little. */
+  parry(): void {
+    if (this.deathT > 0) return;
+    this.guardW = 1;
+    this.slipSide = this.rng.next() < 0.5 ? 1 : -1;
+    this.slipV += 4;
+  }
+
   /** Boss phase changes: posers read `bossPhase` (stance, aggression). */
   setPhase(i: number): void {
     this.bossPhase = i;
@@ -498,6 +520,9 @@ export class CreatureAnimator {
     this.flinchV += (-k * this.flinch - damp * this.flinchV) * step;
     this.flinch += this.flinchV * step;
     this.stagger = Math.max(0, this.stagger - step * 1.6);
+    this.slipV += (-110 * this.slip - 12 * this.slipV) * step;
+    this.slip += this.slipV * step;
+    this.guardW = this.guardHeld ? Math.min(1, this.guardW + step * 6) : Math.max(0, this.guardW - step * 2.4);
 
     this.tickFidget(step);
 
@@ -507,6 +532,7 @@ export class CreatureAnimator {
     this.planFeet(stride);
     const poser = POSERS[this.kind];
     poser(this);
+    this.layGuard();
     this.solve();
     // Once the fall has landed, the body stays where it fell.
     if (o.deathT >= 1 && !this.corpseLeft) {
@@ -515,6 +541,29 @@ export class CreatureAnimator {
       const d = this.style.death;
       const wisp = d === 'scatter' && this.style.idle === 'hover';
       if (d !== 'fade' && !wisp && this.kind !== 'swarm') leaveCorpse(this.root);
+    }
+  }
+
+  /**
+   * The sway and the guard over whatever the poser made: the whole body
+   * shifts and turns (any shape of body), and arms, where there are any,
+   * come up across the front.
+   */
+  private layGuard(): void {
+    const H = this.hipY;
+    const v = this.slip;
+    if (Math.abs(v) > 1e-3) {
+      const s = this.slipSide;
+      this.body(0.2 * H * v * s, -0.05 * H * Math.abs(v), 0, 0, 0.12 * v * s, -0.12 * v * s);
+    }
+    const w = this.guardW;
+    if (w > 1e-3) {
+      const g = w * w * (3 - 2 * w);
+      this.body(0, -0.05 * H * g, -0.06 * H * g, -0.08 * g, 0.22 * g, 0);
+      this.rotS('armR', 'R', -0.9 * g, 0, -0.25 * g);
+      this.rotS('armL', 'L', -0.6 * g, 0, -0.35 * g);
+      this.rot('foreR', -0.5 * g);
+      this.rot('foreL', -0.4 * g);
     }
   }
 

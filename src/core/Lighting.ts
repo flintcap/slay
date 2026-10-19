@@ -11,7 +11,9 @@
  * uniform array and read by one loop, so a shader stays small (about a
  * third) and the count of those lights never changes it. Each frame the loop
  * is handed only the lights that are lit and whose reach touches the view, so
- * a parked light or a torch behind the camera costs a pixel nothing.
+ * a parked light or a torch behind the camera costs a pixel nothing; and the
+ * screen is cut into tiles, each with its own list of the lights that can
+ * reach it, so a pixel loops over its tile's lights alone.
  *
  * Shadow-casting lights, the sun or moon and the sky light keep three's own
  * path: there are few of them and they do not come and go.
@@ -23,10 +25,31 @@
  * twelve per shader.
  */
 import * as THREE from 'three/webgpu';
-import { If, Loop, atan, float, positionView, renderGroup, smoothstep, storage, uniform, vec3 } from 'three/tsl';
+import {
+  If, Loop, atan, clamp, countOneBits, countTrailingZeros, float, floor, int, positionView, renderGroup, screenUV, smoothstep, storage, uint,
+  uniform, vec2, vec3,
+} from 'three/tsl';
+import { BounceLightNode } from './BounceLight';
+
+/**
+ * The layer of casters that never move (walls, baked props). A torch's
+ * shadow is drawn once, when a light takes that torch, from these alone:
+ * anything that moves would leave its shadow behind where it stood.
+ */
+export const STILL_LAYER = 2;
 
 /** Most packed lights drawn at once: the lit ones whose reach touches the view. */
-const MAX = 64;
+const MAX = 256;
+/**
+ * The screen is cut into this many tiles across and down, and each tile
+ * keeps a list of the lights whose reach can touch it (one bit per light).
+ * A pixel loops over its own tile's lights only: in a big fight with dozens
+ * of flashes and torches, a pixel lit by two of them shades two.
+ */
+const TILES_X = 16;
+const TILES_Y = 10;
+/** 32-bit words per tile's light list. */
+const WORDS = MAX / 32;
 /**
  * The size of a flame, metres. Light falls off from a ball this wide rather
  * than from a point: a point light's inverse square ran to eleven times its
@@ -91,6 +114,41 @@ const viewProj = new THREE.Matrix4();
 const sphere = new THREE.Sphere();
 const v = new THREE.Vector3();
 const t = new THREE.Vector3();
+const corner = new THREE.Vector3();
+
+/**
+ * The screen tiles (as uv, 0..1 from the top left) a light's reach can touch,
+ * from its view-space centre and radius: the box round the sphere, projected.
+ * A sphere reaching past the near plane covers the whole screen.
+ */
+function tileRect(c: THREE.Vector3, r: number, cam: THREE.Camera, out: Int32Array): void {
+  const near = (cam as THREE.PerspectiveCamera).near ?? 0.1;
+  if (!(cam as THREE.OrthographicCamera).isOrthographicCamera && c.z + r > -near) {
+    out[0] = 0;
+    out[1] = 0;
+    out[2] = TILES_X - 1;
+    out[3] = TILES_Y - 1;
+    return;
+  }
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let k = 0; k < 8; k++) {
+    corner.set(c.x + (k & 1 ? r : -r), c.y + (k & 2 ? r : -r), c.z + (k & 4 ? r : -r)).applyMatrix4(cam.projectionMatrix);
+    const u = corner.x * 0.5 + 0.5;
+    const w = 0.5 - corner.y * 0.5;
+    if (u < x0) x0 = u;
+    if (u > x1) x1 = u;
+    if (w < y0) y0 = w;
+    if (w > y1) y1 = w;
+  }
+  out[0] = Math.max(0, Math.floor(x0 * TILES_X));
+  out[1] = Math.max(0, Math.floor(y0 * TILES_Y));
+  out[2] = Math.min(TILES_X - 1, Math.floor(x1 * TILES_X));
+  out[3] = Math.min(TILES_Y - 1, Math.floor(y1 * TILES_Y));
+}
+const rect = new Int32Array(4);
 
 /** Every packed light in one array and one loop. */
 class PackedLightsNode extends THREE.Node {
@@ -103,7 +161,14 @@ class PackedLightsNode extends THREE.Node {
    */
   private readonly buf = new THREE.StorageBufferAttribute(new Float32Array(MAX * STRIDE * 4), 4);
   private readonly array = storage(this.buf, 'vec4', MAX * STRIDE).toReadOnly();
-  private readonly count = uniform(0, 'int').setGroup(renderGroup);
+  /** Each screen tile's lights, a bit per light (`TILES_X`, `WORDS`). */
+  private readonly maskBuf = new THREE.StorageBufferAttribute(new Uint32Array(TILES_X * TILES_Y * WORDS), 1);
+  private readonly masks = storage(this.maskBuf, 'uint', TILES_X * TILES_Y * WORDS).toReadOnly();
+  /** Words of each tile's list in use this frame. */
+  private readonly words = uniform(0, 'int').setGroup(renderGroup);
+
+  /** Whether the last update sent any light (the masks must be cleared once after). */
+  private hadLights = false;
 
   constructor() {
     super();
@@ -117,6 +182,8 @@ class PackedLightsNode extends THREE.Node {
     let n = 0;
     scatterPick.length = 0;
     camPos.setFromMatrixPosition(cam.matrixWorld);
+    const masks = this.maskBuf.array as Uint32Array;
+    masks.fill(0);
     for (const l of this.lights) {
       if (n >= MAX) break;
       if (l.intensity <= 0) continue;
@@ -132,6 +199,15 @@ class PackedLightsNode extends THREE.Node {
       put(d, o, l.color.r * l.intensity, l.color.g * l.intensity, l.color.b * l.intensity, l.distance);
       v.applyMatrix4(cam.matrixWorldInverse);
       put(d, o + 4, v.x, v.y, v.z, l.decay);
+      // Into the list of every tile its reach can touch (all of them for a
+      // light with no reach).
+      if (l.distance > 0) tileRect(v, l.distance, cam, rect);
+      else rect.set([0, 0, TILES_X - 1, TILES_Y - 1]);
+      const word = n >> 5;
+      const bit = (1 << (n & 31)) >>> 0;
+      for (let ty = rect[0 + 1]!; ty <= rect[3]!; ty++) {
+        for (let tx = rect[0]!; tx <= rect[2]!; tx++) masks[(ty * TILES_X + tx) * WORDS + word]! |= bit;
+      }
       const s = l as THREE.SpotLight;
       if (s.isSpotLight) {
         v.setFromMatrixPosition(s.matrixWorld);
@@ -146,7 +222,7 @@ class PackedLightsNode extends THREE.Node {
       }
       n++;
     }
-    this.count.value = n;
+    this.words.value = (n + 31) >> 5;
     this.updateScatter(cam);
     // Only the slots the loop reads this time go up.
     if (n > 0) {
@@ -154,6 +230,8 @@ class PackedLightsNode extends THREE.Node {
       this.buf.addUpdateRange(0, n * STRIDE * 4);
       this.buf.needsUpdate = true;
     }
+    if (n > 0 || this.hadLights) this.maskBuf.needsUpdate = true;
+    this.hadLights = n > 0;
     return undefined;
   }
 
@@ -189,7 +267,7 @@ class PackedLightsNode extends THREE.Node {
     const surface = ctx.positionView ?? positionView;
     const diffuse = vec3(0).toVar('packedDiffuse');
     const specular = vec3(0).toVar('packedSpecular');
-    Loop(this.count, ({ i }: { i: THREE.Node<'int'> }) => {
+    const shade = (i: THREE.Node<'int'>): void => {
       const base = i.mul(STRIDE);
       const colorReach = this.array.element(base);
       const posDecay = this.array.element(base.add(1));
@@ -197,8 +275,9 @@ class PackedLightsNode extends THREE.Node {
       const toLight = posDecay.xyz.sub(surface).toVar();
       const reach = colorReach.w;
       // A pixel past a light's reach gets nothing from it: skip the shading
-      // rather than work it out and scale it by zero. Most of the screen is
-      // in reach of only a torch or two.
+      // rather than work it out and scale it by zero. A tile's list holds
+      // every light that touches any of its pixels, so some of each list
+      // misses any one pixel.
       If(reach.equal(0).or(toLight.dot(toLight).lessThan(reach.mul(reach))), () => {
         const lightDirection = toLight.normalize().toVar();
         // 1 / (d² + r²) raised to decay / 2, faded out smoothly to nothing at
@@ -219,6 +298,17 @@ class PackedLightsNode extends THREE.Node {
           builder,
         );
       });
+    };
+    // This pixel's tile, and the lights on its list.
+    const cell = clamp(floor(screenUV.mul(vec2(TILES_X, TILES_Y))), vec2(0, 0), vec2(TILES_X - 1, TILES_Y - 1));
+    const first = int(cell.y.mul(TILES_X).add(cell.x)).mul(WORDS).toVar();
+    Loop(this.words, ({ i: w }: { i: THREE.Node<'int'> }) => {
+      const bits = this.masks.element(first.add(w)).toVar();
+      // Once per set bit: the lowest set bit is the next light, then cleared.
+      Loop(int(countOneBits(bits) as unknown as THREE.Node<'uint'>), () => {
+        shade(w.mul(32).add(int(countTrailingZeros(bits) as unknown as THREE.Node<'uint'>)).toVar());
+        bits.assign(bits.bitAnd(bits.sub(uint(1))));
+      });
     });
     ctx.reflectedLight.directDiffuse.addAssign(diffuse);
     ctx.reflectedLight.directSpecular.addAssign(specular);
@@ -227,6 +317,7 @@ class PackedLightsNode extends THREE.Node {
 }
 
 const ownNodes = new WeakMap<THREE.Light, THREE.Node>();
+const bounce = new BounceLightNode();
 
 class PackedLights extends THREE.LightsNode {
   private readonly packed = new PackedLightsNode();
@@ -260,6 +351,8 @@ class PackedLights extends THREE.LightsNode {
       out.push(node as THREE.LightingNode);
     }
     out.push(this.packed as unknown as THREE.LightingNode);
+    // The level's bounced light, as soft fill (`BounceLight.ts`).
+    out.push(bounce);
     return out;
   }
 

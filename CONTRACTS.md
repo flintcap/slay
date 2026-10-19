@@ -277,6 +277,7 @@ export class DressedHero {
   dress(pieces: Partial<Record<EquipSlot, Piece | null>>): boolean;   // rebuilds only changed slots; true if any changed
   objectFor(slot: EquipSlot): THREE.Object3D | null;
   dispose(): void;   // leaves cached meshes and shared materials alone
+  trimForPlay(): void;   // thins face and hands (`playSkin`): the hero in the world only
 }
 export function buildClassHero(classId: CharClassId): HeroModel;      // in its field kit, for select screens
 export function buildCharacterHero(c: Character): HeroModel;          // in its real gear
@@ -312,9 +313,25 @@ root                          on the floor under the pelvis
   │                                          └ thumbR
   ├ thighL → shinL → footL → toeL
   └ thighR → shinR → footR → toeR
+twist0L, twist1L, twist0R, twist1R   forearm twist helpers, children of
+                                     foreArmL/R at the elbow, listed last
 ```
 
 `h` is one head, `height / 7.5`. L is the character's left (+X).
+
+The twist helpers carry no pose of their own: `PoseSolver.apply` turns them to
+take back the forearm's roll (all of it at `twist0`, half at `twist1`), and the
+skin weights spread a forearm from `twist0` at the elbow to `foreArm` at the
+wrist. Hanging hair and long skirts add their own chains (`hair0`.., `robe0`..,
+`Swing.ts`) on a skeleton of their own: the rig's bones plus the chain.
+
+Fewer triangles (`src/art/hero/Decimate.ts`): `lodGeometry(g, keep, lock?)`
+returns a copy of an indexed geometry with about `keep` of its triangles,
+every attribute (skinning too) carried from the vertex it kept, open edges
+locked so seams stay closed; it returns `g` itself for groups, morphs or
+interleaved data. `playSkin(skin)` (`Body.ts`) is the hero skin with the face
+and hands thinned, cached per skin. `shadowLod(g, keep)`
+(`src/core/ShadowBodies.ts`) is the cached copy shadow bodies are merged from.
 
 **Sockets** (`HERO_SOCKETS`): `Object3D` children of a bone, each with its own
 rotation. Attach a model to a socket at identity (`socket.add(model)`), never
@@ -455,6 +472,7 @@ export function buildMonsterModel(visual: MonsterVisual, rng: Rng, scale: number
   { root: THREE.Group; bones: Record<string, THREE.Bone>; skeleton: THREE.Skeleton | null };
 export function releaseMonsterModel(root: THREE.Object3D): void; // per spawn: its bone texture, private materials
 export function disposeMonsterModels(): void;                    // scene exit: prototypes, bakes, materials, corpses
+export function creatureDetail(root: THREE.Object3D, low: boolean): void; // far copy (about 40 % of the triangles) or full
 export class RigAnimator {                                       // re-exported from src/art/creatures/Animator.ts
   constructor(root: THREE.Object3D, bones: Record<string, THREE.Bone>, archetype: string, rng: Rng);
   update(dt: number, o: { locomotion: number; action: RigAction; actionT: number; time: number; deathT: number }): void;
@@ -473,6 +491,16 @@ When a death reaches `deathT` 1 the animator leaves a frozen copy of the
 body in the scene (the root's top ancestor) and hides the live root, so
 whatever `Enemy` does with the root afterwards is not seen. Ghosts, swarms
 and wisps leave nothing. `disposeMonsterModels` clears the corpses.
+
+**One draw per pack** (`src/art/creatures/Packs.ts`). `new PackDraws(parent)`
+and, once a frame before drawing, `update(roots, dt)` with the bodies that may
+share (alive, in view, not a boss: `Enemy.packBody`). Parts with the same
+geometry, shared material and shadow flags draw as one skinned mesh over a
+768-bone skeleton (slot s reads bones s*B..). A part leaves the moment it
+looks different (hit flash, heat, outline, other detail level, hidden) and
+joins again after 0.4 s plain. `dispose()` gives every part back.
+`packStandIns(roots)` gives the warm-up stand-ins so the shaders compile at
+load. `stats` reports `{ draws, parts }`.
 
 ## Creature rigs — `src/art/creatures/*` — owned by creatures
 
@@ -854,6 +882,10 @@ export class Enemy {
    *  out of view it skips its pose solve and casts no shadow. Default true. */
   inView: boolean;                                  // read it; change it through setInView
   setInView(v: boolean): void;
+  /** The body a pack draw may take (alive, in view), or null. Boss: always null. */
+  readonly packBody: THREE.Object3D | null;
+  /** Far copy when the body stands under `px` pixels tall at `dist` metres. */
+  setDetailFor(dist: number, pxPerM: number, px: number): void;
   update(dt: number, ctx: CombatContext): void;
   takeDamage(packet: DamagePacket, ctx: CombatContext): void;
   dispose(): void;

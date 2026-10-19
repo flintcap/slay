@@ -717,6 +717,11 @@ export class Boss extends Enemy {
 
   // --- room rule hooks -----------------------------------------------------
 
+  /** A boss is one of a kind: it never shares a pack draw. */
+  override get packBody(): THREE.Object3D | null {
+    return null;
+  }
+
   /** Hidden by its room rule: the body fades and the cursor cannot pick it. */
   override get untargetable(): boolean {
     return this.hidden;
@@ -802,6 +807,7 @@ export class Boss extends Enemy {
    */
   private riposte(ctx: CombatContext): void {
     this.unbuff('parry');
+    this.rig?.creature.parry();
     const p = this.root.position;
     ctx.fx.burst('crit', p.x, 1.3 * this.sizeScale, p.z, { count: 24, color: 0xe0f0ff });
     // Hitting into a guard costs time, never life: the blade turns yours aside.
@@ -896,6 +902,8 @@ export class Boss extends Enemy {
     }
     if (this.staggerTimer > 0) this.staggerTimer = Math.max(0, this.staggerTimer - dt);
     this.tickPoise(dt);
+    // The raised blade of a parry stance, held for as long as the guard is up.
+    if (this.rig) this.rig.creature.guardHeld = this.alive && this.hasBuff('parry');
 
     super.update(dt, ctx);
 

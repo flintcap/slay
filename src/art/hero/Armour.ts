@@ -19,13 +19,14 @@ import type { EquipSlot, Item, ItemVisual } from '../../types';
 import { itemLook } from '../ItemLook';
 import type { HeroModel } from './Hero';
 import { buildCape } from './Cape';
+import { hang, robeChain } from './Swing';
 import { Kit, type Anchor } from './ArmourKit';
 import { chest } from './ArmourChest';
 import { helm } from './ArmourHead';
 import { belt, boots, gloves, pants } from './ArmourLimbs';
 import { meshPiece } from './ArmourMesh';
 
-// A worn mesh's own material and a piece's cape bones are kept here, not in
+// A worn mesh's own material and the tops of a piece's cape and skirt chains are kept here, not in
 // `userData`: copying an object (a Shadow Clone's double) copies its userData
 // through JSON, which wrote each material's textures out as a PNG, a stall
 // of up to a second on every cast.
@@ -101,10 +102,27 @@ export function wearArmour(hero: HeroModel, slot: EquipSlot, item: Pick<Item, 'b
       group.add(mesh);
     }
   }
+  const hung: THREE.Bone[] = [];
+  if (slot === 'chest') {
+    // A skirt that reaches down the legs swings on its own chain (`Swing.ts`).
+    const skirts: THREE.SkinnedMesh[] = [];
+    let lowest = Infinity;
+    for (const o of group.children) {
+      const m = o as THREE.SkinnedMesh;
+      if (!m.isSkinnedMesh || m.skeleton !== hero.rig.skeleton) continue;
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      const low = m.geometry.boundingBox!.min.y;
+      lowest = Math.min(lowest, low);
+      if (low < 3.4 * hero.body.anatomy.h) skirts.push(m);
+    }
+    const chain = robeChain(hero, lowest);
+    if (chain) hung.push(...hang(hero, skirts, [chain]));
+  }
   if (slot === 'chest' && k.cape > 0) {
     const cape = buildCape(hero, k.mat('banner'), group, k.cape);
-    CAPE_BONES.set(group, cape.bones);
+    hung.push(cape.bones[0]!);
   }
+  if (hung.length) CAPE_BONES.set(group, hung);
   if (look.glow > 0 && look.hasRunes) group.userData.glow = look.glowColor;
   return { object: group, hides: k.hides };
 }
@@ -129,7 +147,6 @@ export function lightArmour(worn: WornArmour, stage: number, color: number): voi
 
 /** Takes a worn piece off: its meshes, and any bones it hung on the rig. */
 export function removeArmour(worn: WornArmour): void {
-  const bones = CAPE_BONES.get(worn.object);
-  if (bones?.[0]) bones[0].removeFromParent();
+  for (const top of CAPE_BONES.get(worn.object) ?? []) top.removeFromParent();
   worn.object.removeFromParent();
 }

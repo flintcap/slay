@@ -26,7 +26,7 @@ import { STANCES, stanceFor, type Stance, type StanceDef, type StanceBody } from
 import { actionFor, moveKind, type ActionCtx, type ActionDef, type MoveKind } from './Actions';
 export { ACTION_NAMES } from './Actions';
 import { aimQuat, twoBoneIk } from './Ik';
-import { CapeSpring } from './Secondary';
+import { CapeSpring, SWING_FEEL, SwingChain } from './Secondary';
 // Every skill's own gesture registers itself with the action table.
 import './gestures';
 
@@ -40,6 +40,8 @@ export type CarryGrip = 'none' | 'twoHand' | 'staff' | 'bow';
 export type BodyCondition = 'none' | 'stunned' | 'frozen' | 'down' | 'rooted';
 /** What the off hand holds; a dagger is carried low, a longer weapon upright. */
 export type OffHand = 'none' | 'shield' | 'weapon' | 'dagger' | 'focus';
+/** A blow met without being hurt: on the shield, turned on the blade, or swayed out of. */
+export type GuardMove = 'block' | 'parry' | 'slip';
 
 export interface PlayOpts {
   /** Crossfade in seconds. */
@@ -222,6 +224,9 @@ export class HeroAnimator {
   private flinchT = 1;
   private flinchK = 0;
   private flinchSide = 1;
+  private guardT = 1;
+  private guardMove: GuardMove = 'block';
+  private guardSide = 1;
   private combo = 0;
   private lastAttackAt = -9;
   private category: string | undefined;
@@ -232,8 +237,12 @@ export class HeroAnimator {
 
   private listeners = new Map<HeroEvent, Set<(e: HeroEventInfo) => void>>();
   private capes: CapeSpring[] = [];
+  /** Hair and skirt chains (`Swing.ts`), with the index of the rig bone each hangs from. */
+  private chains: Array<{ spring: SwingChain; parent: number }> = [];
   private capeScan = -1;
   private chest: THREE.Bone;
+  /** Where chains hang: the chest (capes, long hair), the head (tails, braids), the pelvis (skirts). */
+  private hangers: THREE.Bone[];
   private lastPelvisY = 0;
   private pelvisVy = 0;
 
@@ -252,6 +261,7 @@ export class HeroAnimator {
     }
     this.solver = new PoseSolver(joints);
     this.chest = bones.chest!;
+    this.hangers = [bones.chest!, bones.head!, bones.pelvis!];
     const h = joints.head.y / 6.62;
     const leg = (s: 'L' | 'R'): LegGeo => {
       const hip = joints[`thigh${s}`];
@@ -678,6 +688,18 @@ export class HeroAnimator {
     this.flinchSide = -this.flinchSide;
   }
 
+  /**
+   * A blow met without being hurt, laid over whatever the body is doing:
+   * the shield comes up and the knees take it, the blade sweeps across and
+   * turns it (a block without a shield is a parry), or the body sways out
+   * of its line. Never the flinch of a blow that landed.
+   */
+  guard(move: GuardMove): void {
+    this.guardMove = move === 'block' && this.offHand !== 'shield' ? 'parry' : move;
+    this.guardT = 0;
+    this.guardSide = -this.guardSide;
+  }
+
   /** What a status is doing to the body; cheap when unchanged. */
   setCondition(c: BodyCondition): void {
     if (c === this.condition) return;
@@ -698,6 +720,7 @@ export class HeroAnimator {
     this.hasLast = false;
     this.condition = 'none';
     this.flinchT = 1;
+    this.guardT = 1;
     this.combo = 0;
     this.lastAttackAt = -9;
     this.lastLegIk = 1;
@@ -1032,6 +1055,51 @@ export class HeroAnimator {
       p.add('foreArmR', 0.3 * kk, 0, 0);
       p.shift(0, -0.02 * b.h * kk, -0.035 * b.h * kk);
     }
+
+    if (this.guardT < 1) this.layGuard(p, dt, b.h);
+  }
+
+  /** The guard move (`guard`): quick in, held a beat, eased out. */
+  private layGuard(p: Pose, dt: number, h: number): void {
+    const move = this.guardMove;
+    const span = move === 'block' ? 0.42 : move === 'parry' ? 0.34 : 0.4;
+    this.guardT = Math.min(1, this.guardT + dt / span);
+    const f = this.guardT;
+    const k = (f < 0.18 ? smooth(f / 0.18) : f < 0.4 ? 1 : 1 - smooth((f - 0.4) / 0.6)) * (this.inAction ? 0.6 : 1);
+    const s = this.guardSide;
+    if (move === 'block') {
+      // Shield up and in, square to the blow; the knees give and the body
+      // is pushed back half a step.
+      p.add('clavL', 0.12 * k, 0, 0);
+      p.add('upperArmL', 0.75 * k, 0.25 * k, -0.2 * k);
+      p.add('foreArmL', 0.7 * k, 0, 0);
+      p.add('handL', 0, 0, 0.25 * k);
+      p.add('spine', -0.08 * k, 0, 0);
+      p.add('chest', -0.06 * k, -0.12 * k, 0);
+      p.add('head', 0.1 * k, 0.06 * k, 0);
+      p.shift(0, -0.035 * h * k, -0.05 * h * k);
+    } else if (move === 'parry') {
+      // The blade swept across the body and the wrist turned: the blow
+      // slides off the edge to the off side.
+      p.add('clavR', 0.1 * k, 0, 0);
+      p.add('upperArmR', 0.55 * k, -0.45 * k, 0.15 * k);
+      p.add('foreArmR', 0.55 * k, 0, 0);
+      p.add('handR', 0, 0, -0.5 * k);
+      p.add('pelvis', 0, 0.1 * k, 0);
+      p.add('chest', -0.05 * k, 0.22 * k, 0);
+      p.add('head', 0.05 * k, -0.18 * k, 0);
+      p.shift(0, -0.02 * h * k, -0.025 * h * k);
+    } else {
+      // A sway off the line: hips out to one side, shoulders the other way,
+      // a dip, back up.
+      p.add('pelvis', 0, 0.08 * k * s, 0.1 * k * s);
+      p.add('spine', 0.04 * k, 0, -0.16 * k * s);
+      p.add('chest', 0.05 * k, -0.08 * k * s, -0.14 * k * s);
+      p.add('head', 0, 0.1 * k * s, 0.12 * k * s);
+      p.add('upperArmL', 0, 0, 0.12 * k);
+      p.add('upperArmR', 0, 0, -0.12 * k);
+      p.shift(0.1 * h * k * s, -0.04 * h * k, -0.02 * h * k);
+    }
   }
 
   /** Channels to bones: FK, pelvis into reach, leg IK, off-hand grip. */
@@ -1159,23 +1227,35 @@ export class HeroAnimator {
   }
 
   private swingCapes(dt: number): void {
-    // Capes hang their bone chain under the chest; look for new ones cheaply.
-    const n = this.chest.children.length;
-    if (n !== this.capeScan) {
-      this.capeScan = n;
+    // Capes and chains hang off a few bones; look for new ones cheaply (a
+    // piece swapped for another in one go keeps the count but not the ids).
+    let key = 0;
+    for (const hb of this.hangers) for (const ch of hb.children) key = (key * 31 + ch.id) | 0;
+    if (key !== this.capeScan) {
+      this.capeScan = key;
       this.capes = [];
-      for (const ch of this.chest.children) {
-        if (ch.name !== 'cape0') continue;
+      this.chains = [];
+      const follow = (top: THREE.Object3D, keep: (o: THREE.Object3D) => boolean): THREE.Bone[] => {
         const chain: THREE.Bone[] = [];
-        let b: THREE.Object3D | undefined = ch;
-        while (b && b.name.startsWith('cape')) {
+        let b: THREE.Object3D | undefined = top;
+        while (b && keep(b)) {
           chain.push(b as THREE.Bone);
-          b = b.children.find((o) => o.name.startsWith('cape'));
+          b = b.children.find(keep);
         }
-        this.capes.push(new CapeSpring(chain));
+        return chain;
+      };
+      for (const hb of this.hangers) {
+        for (const ch of hb.children) {
+          if (ch.name === 'cape0') this.capes.push(new CapeSpring(follow(ch, (o) => o.name.startsWith('cape'))));
+          const kind = ch.userData.swing as 'hair' | 'robe' | undefined;
+          if (kind) {
+            const spring = new SwingChain(follow(ch, (o) => o.userData.swing === kind), SWING_FEEL[kind]);
+            this.chains.push({ spring, parent: BONE_INDEX[hb.name as HeroBone] });
+          }
+        }
       }
     }
-    if (!this.capes.length) return;
+    if (!this.capes.length && !this.chains.length) return;
     const S = this.solver;
     const chestQ = S.world[BONE_INDEX.chest]!;
     const up = _v1.set(0, 1, 0).applyQuaternion(chestQ);
@@ -1192,6 +1272,14 @@ export class HeroAnimator {
     }
     for (const cs of this.capes) {
       cs.update(dt, { fwd, side, accel: this.accel, yawRate: this.yawRate, pitch, roll, legBack, vy: this.pelvisVy });
+    }
+    for (const c of this.chains) {
+      const q = S.world[c.parent]!;
+      const u = _v1.set(0, 1, 0).applyQuaternion(q);
+      c.spring.update(dt, {
+        fwd, side, accel: this.accel, yawRate: this.yawRate,
+        pitch: Math.atan2(u.z, u.y), roll: Math.atan2(-u.x, u.y), legBack, vy: this.pelvisVy,
+      });
     }
   }
 }

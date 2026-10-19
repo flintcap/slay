@@ -70,9 +70,35 @@ function chainWeights(chain: Chain, x: number, y: number, z: number, m: number, 
     }
     const w = (i === 0 ? 1 : prev) - next;
     prev = next;
-    if (w > 1e-4) acc[heroBoneIndex(chain.bones[i])] += w * m;
+    if (w <= 1e-4) continue;
+    const bone = chain.bones[i];
+    const twist = TWIST_OF.get(bone);
+    if (!twist) {
+      acc[heroBoneIndex(bone)] += w * m;
+      continue;
+    }
+    // The forearm hands its weight from the elbow's twist helper to its own
+    // across its length, so a turned wrist rolls the forearm by degrees.
+    const a = lens[i];
+    const b = i + 1 < lens.length ? lens[i + 1] : run;
+    const t = Math.min(1, Math.max(0, (bestL - a) / (b - a || 1)));
+    if (t < 0.5) {
+      const u = t / 0.5;
+      acc[twist[0]] += w * m * (1 - u);
+      acc[twist[1]] += w * m * u;
+    } else {
+      const u = (t - 0.5) / 0.5;
+      acc[twist[1]] += w * m * (1 - u);
+      acc[heroBoneIndex(bone)] += w * m * u;
+    }
   }
 }
+
+/** Each forearm's twist helpers: the elbow's (all its roll taken back) and mid-forearm's (half). */
+const TWIST_OF = new Map<HeroBone, [number, number]>([
+  ['foreArmL', [heroBoneIndex('twist0L'), heroBoneIndex('twist1L')]],
+  ['foreArmR', [heroBoneIndex('twist0R'), heroBoneIndex('twist1R')]],
+]);
 
 export interface SkinOpts {
   /** Softness of the hand-over between body parts, metres. */

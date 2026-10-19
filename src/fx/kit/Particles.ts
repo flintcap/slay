@@ -492,23 +492,32 @@ export class ParticleField {
     const f1 = min(f0.add(1.0), 7.0);
     const base = sprite.sub(100.0);
     const luv = uv();
-    const vUvA = vary(book.select(cellUv(base.add(f0), luv), cellUv(sprite, luv)).uniformFlow().toVar());
-    const vUvB = vary(book.select(cellUv(base.add(f1), luv), cellUv(sprite, luv)).uniformFlow().toVar());
-    const vFrameMix = vary(book.select(fr.sub(f0), float(0.0)).uniformFlow().toVar());
+    // Packed four to a slot: a GPU passes at most sixteen values from the
+    // vertex to the pixel, and the frame's motion and the double-sided face
+    // take some of them.
+    const uvA = book.select(cellUv(base.add(f0), luv), cellUv(sprite, luv)).uniformFlow().toVar();
+    const uvB = book.select(cellUv(base.add(f1), luv), cellUv(sprite, luv)).uniformFlow().toVar();
+    const vUv = vary(vec4(uvA, uvB));
+    const vUvA = vUv.xy;
+    const vUvB = vUv.zw;
     const vCore = vary(unpackRGB(r4.x));
     const vBody = vary(unpackRGB(r4.y));
     const vTail = vary(unpackRGB(r4.z));
-    const vEmit = vary(r4.w);
-    const vHeat = vary(mix(r6.x, r6.y, t));
-    const vOccl = vary(r5.w);
     const fadeIn = smoothstep(0.0, 0.06, t);
     const fadeOut = pow(max(t.oneMinus(), 0.0), r2.x);
-    const vAlpha = vary(fadeIn.mul(fadeOut).mul(alive));
     // How far in front of the world a sprite must be to show in full: about
     // two fifths of its size, so a puff of smoke thins out as it meets a wall
     // instead of being cut by it. Ground sprites (shock rings, sigils) lie on
     // the floor on purpose and keep their edge.
-    const vSoft = vary(stretch.lessThan(-0.001).select(float(0.0), clamp(size.mul(0.4), 0.05, 0.6)).uniformFlow().toVar());
+    const soft0 = stretch.lessThan(-0.001).select(float(0.0), clamp(size.mul(0.4), 0.05, 0.6)).uniformFlow().toVar();
+    const vA = vary(vec4(book.select(fr.sub(f0), float(0.0)).uniformFlow(), r4.w, mix(r6.x, r6.y, t), r5.w));
+    const vB = vary(vec2(fadeIn.mul(fadeOut).mul(alive), soft0));
+    const vFrameMix = vA.x;
+    const vEmit = vA.y;
+    const vHeat = vA.z;
+    const vOccl = vA.w;
+    const vAlpha = vB.x;
+    const vSoft = vB.y;
 
     const atlas = spriteAtlas();
     const tex = mix(texture(atlas, vUvA), texture(atlas, vUvB), vFrameMix).toVar();

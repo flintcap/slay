@@ -296,6 +296,13 @@ export class SettingsPanel {
       }, 'Steps below the quality above when frames run slow, and back up when there is room').root,
     );
     this.content.appendChild(
+      new Slider('Render scale', s.renderScale ?? 1, 0.5, 1, 0.05, (v) => {
+        s.renderScale = v;
+        attempt(() => this.engine.renderer.setRenderScale(v), undefined);
+        this.commit();
+      }, (v) => `${Math.round(v * 100)}%`, 'Draws fewer pixels and fills in the rest. Lower is faster').root,
+    );
+    this.content.appendChild(
       new Slider('Camera distance', s.cameraDistance, 0.6, 1.8, 0.05, (v) => {
         s.cameraDistance = v;
         this.commit();

@@ -31,7 +31,7 @@ import { emptyStats } from '../sim/Stats';
 import { depthCurve } from '../sim/Difficulty';
 import { payoutIlvl } from '../sim/Payout';
 import { rollDamage, mitigate, usualAttackRating } from '../sim/Combat';
-import { buildMonsterModel, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from './MonsterModels';
+import { buildMonsterModel, creatureDetail, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from './MonsterModels';
 import { AIBrain, resetPacks } from './AI';
 import {
   after,
@@ -302,6 +302,30 @@ export class Enemy implements Combatant {
       this.shadowCasters = list;
     }
     for (const m of this.shadowCasters) m.castShadow = v;
+  }
+
+  /** The body, while it may share a pack draw (`art/creatures/Packs.ts`): alive and in view. */
+  get packBody(): THREE.Object3D | null {
+    return this.alive && this.inView ? this.bodyRoot : null;
+  }
+
+  /** Drawn from its parts' lower-detail copies (`creatureDetail`). */
+  private lowDetail = false;
+
+  /**
+   * Draws the body from its lower-detail copies while it stands under `px`
+   * pixels tall on screen, `dist` metres from a camera that shows `pxPerM`
+   * pixels per metre at one metre. A margin each way keeps a body near the
+   * line from flickering between the two.
+   */
+  setDetailFor(dist: number, pxPerM: number, px: number): void {
+    const info = this.bodyRoot.userData.creature as { height: number; length: number } | undefined;
+    if (!info) return;
+    const tall = (Math.max(info.height, 0.7 * info.length) * this.bodyRoot.scale.y * pxPerM) / Math.max(1, dist);
+    const low = tall < px * (this.lowDetail ? 1.15 : 0.87);
+    if (low === this.lowDetail) return;
+    this.lowDetail = low;
+    creatureDetail(this.bodyRoot, low);
   }
   protected readonly baseSpeed: number;
   protected readonly bodyRoot: THREE.Group;
@@ -1309,6 +1333,11 @@ export class Enemy implements Combatant {
    * affixes, defense buffs and breaks all count. The square root keeps a
    * walking fortress hard to hit, never untouchable.
    */
+  /** The hero's blow missed: the body sways out of its line. */
+  evade(): void {
+    this.rig?.creature.evade();
+  }
+
   guard(): number {
     const usual = depthCurve(this.depth).defense;
     const now = this.statusAdjustedStats().defense * this.buffMul('defense');

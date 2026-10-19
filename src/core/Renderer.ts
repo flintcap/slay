@@ -1,13 +1,14 @@
 import * as THREE from 'three/webgpu';
 import {
   Fn, clamp, dot, emissive, float, fract, max, mix, mrt, normalize, output, pass, positionLocal, positionView, positionWorld,
-  pow, reference, renderGroup, renderOutput, screenCoordinate, screenSize, sin, smoothstep, uniform, uv, vec2, vec3, vec4, velocity,
+  pow, reference, renderGroup, renderOutput, rtt, screenCoordinate, screenSize, sin, smoothstep, texture3D, uniform, uv, vec2, vec3, vec4, velocity,
 } from 'three/tsl';
+import { lut3D } from 'three/addons/tsl/display/Lut3DNode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import { sss } from 'three/addons/tsl/display/SSSNode.js';
-import { traa } from 'three/addons/tsl/display/TRAANode.js';
+import { taau } from 'three/addons/tsl/display/TAAUNode.js';
 import './NodeNames';
 import './ShadowNodes';
 import { uploadCanvasesWithoutWaiting } from './CanvasUpload';
@@ -17,9 +18,12 @@ import { Motes } from './Motes';
 import { air } from './Air';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { installShadowCache } from './ShadowCache';
-import { nodeTexturesOf } from './Tsl';
+import { nodeTexturesOf, viewEye, floorDepth, coverShare, waterRays, worldLite } from './Tsl';
 import type { GameSettings } from '../types';
+import type { SkyPaint } from '../world/Sky';
 import { setAssetAnisotropy } from './Assets';
+import { LUT_SIZE, lookOf, lookTable, type Look } from './Lut';
+import { setShaftSun, shaftNode, shaftStrength } from './Shafts';
 import { events } from './Events';
 
 type F = THREE.Node<'float'>;
@@ -180,6 +184,11 @@ export interface GradeProfile {
   bloomStrength: number;
   bloomRadius: number;
   bloomThreshold: number;
+  /**
+   * Changes to the house look, applied to the finished frame after tone
+   * mapping (`Lut.ts`): its S-curve, colour strength and hue nudges.
+   */
+  look?: Partial<Look>;
 }
 
 export const DEFAULT_GRADE: GradeProfile = {
@@ -333,6 +342,18 @@ export interface QualityProfile {
   /** Whether point and spot lights (torches, braziers) cast shadows. */
   pointShadows: boolean;
   /**
+   * Whether the hero's lantern casts shadows: monsters close by throw their
+   * shadow away from the hero across the floor. Redrawn on the shadow clock,
+   * since what it lights moves.
+   */
+  lanternShadow: boolean;
+  /** Metres the relief of floors sinks in the view (`floorDepth`), 0 for flat. */
+  parallax: number;
+  /** Share of the outdoor grass and reeds drawn (`coverShare`). */
+  cover: number;
+  /** Water reflects what stands around it, traced across the screen (`waterRays`). */
+  waterReflect: boolean;
+  /**
    * View distance: multiplier on how far around the hero the sun and moon
    * draw shadows (their shadow camera's extent).
    */
@@ -347,6 +368,9 @@ export interface QualityProfile {
    * Temporal anti-aliasing: the camera shifts by under a pixel each frame and
    * the frames are blended along the scene's motion, so thin edges, railings
    * and the glint on metal hold still instead of crawling. Replaces SMAA.
+   * It also upscales: below full render scale the scene is drawn smaller and
+   * the blend rebuilds the full-size picture from the shifted frames, which
+   * stays far sharper than stretching one small frame.
    */
   taa: boolean;
   /**
@@ -364,6 +388,10 @@ export interface QualityProfile {
   air: number;
   /** Dust drifting in the light around the nearest torches (`Motes`). */
   motes: boolean;
+  /** The sun's beams through the outdoor fog (`Shafts`). */
+  shafts: boolean;
+  /** The light world shader: one tap and one projection per surface (`worldLite`). */
+  liteWorld: boolean;
   pixelRatioCap: number;
   anisotropy: number;
   /** Multiplier on particle budgets and decal counts. */
@@ -389,16 +417,19 @@ export interface QualityProfile {
 // ratio cap and a render scale). High is the intended look. The auto mode
 // (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowScale: 0.5, pointShadows: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, air: 0, motes: false, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
-  medium: { shadowScale: 0.75, pointShadows: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, air: 0, motes: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
-  high: { shadowScale: 1, pointShadows: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, air: 4, motes: true, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
-  ultra: { shadowScale: 2, pointShadows: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, air: 6, motes: true, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
+  low: { shadowScale: 0.5, pointShadows: false, lanternShadow: false, parallax: 0, cover: 0.35, waterReflect: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, air: 0, motes: false, shafts: false, liteWorld: true, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
+  medium: { shadowScale: 0.75, pointShadows: true, lanternShadow: false, parallax: 0.035, cover: 0.65, waterReflect: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, air: 0, motes: false, shafts: false, liteWorld: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
+  high: { shadowScale: 1, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, air: 4, motes: true, shafts: true, liteWorld: false, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
+  ultra: { shadowScale: 2, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, air: 6, motes: true, shafts: true, liteWorld: false, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
 };
 
-/** Pixel ratio for a profile on this screen, times the auto mode's resolution step. */
-function pixelRatioFor(q: QualityProfile, dyn = 1): number {
-  return Math.min(window.devicePixelRatio || 1, q.pixelRatioCap) * q.renderScale * dyn;
+/** The screen's own pixel ratio, up to what a profile allows. */
+function basePixelRatio(q: QualityProfile): number {
+  return Math.min(window.devicePixelRatio || 1, q.pixelRatioCap);
 }
+
+/** The finished frame's colour lookup (`Lut.ts`): the current grade's look. */
+const uLut = texture3D(lookTable(lookOf()));
 
 /** The bloom and AO passes draw at this share of the frame's width and height. */
 const POST_SCALE = 0.5;
@@ -427,13 +458,19 @@ export class NoWebGPUError extends Error {
 
 type BloomNode = ReturnType<typeof bloom>;
 type AONode = ReturnType<typeof ao>;
-type TRAANode = ReturnType<typeof traa>;
+type TAAUNode = ReturnType<typeof taau>;
 type SSSNode = ReturnType<typeof sss>;
 
 /** How dark a contact shadow makes the pixel it falls on (0..1), while a sun is up. */
 const CONTACT_STRENGTH = 0.42;
 /** 0 while the scene has no sun or moon casting shadows: the pass is skipped. */
 const uContact = uniform(0);
+/** The beams' colour: the sun's, times its strength and how the fog throws it toward the eye. */
+const uShaftColor = uniform(new THREE.Color(0, 0, 0));
+/** How bright the beams are against the sun's own light. */
+const SHAFT_GAIN = 0.32;
+const _v1 = new THREE.Vector3();
+const _v2 = new THREE.Vector3();
 
 /**
  * 1 on the meshes of the outlined body (`Renderer.setOutline`), read per
@@ -505,8 +542,9 @@ export class Renderer {
   private scenePass: THREE.PassNode | null = null;
   private aoNode: AONode | null = null;
   private bloomNode: BloomNode | null = null;
-  private traaNode: TRAANode | null = null;
+  private taaNode: TAAUNode | null = null;
   private sssNode: SSSNode | null = null;
+  private shaftPass: ReturnType<typeof rtt> | null = null;
   /**
    * Stands in for the scene's sun or moon in the contact-shadow pass, so the
    * chain is not rebuilt for every new level's light: its matrices are
@@ -537,6 +575,8 @@ export class Renderer {
    * key light, which is exactly what plate armour was doing.
    */
   private envMap: THREE.Texture | null = null;
+  /** Outdoor reflection skies, one per biome, built on first use (`applyEnvironment`). */
+  private readonly skies = new Map<string, THREE.Texture | null>();
 
   /** The grade the current scene asked for, and a scene-level exposure trim. */
   private grade: GradeProfile = { ...DEFAULT_GRADE };
@@ -553,6 +593,7 @@ export class Renderer {
    * turned off, so a heavy moment costs a little sharpness, not the look.
    */
   private dynScale = 1;
+  private userScale = 1;
   private lowLife = 0;
 
   /** Leaves a mesh out of a frame until its shader is built, rather than waiting on it (`ShaderGate`). */
@@ -575,12 +616,13 @@ export class Renderer {
       // GPU time per frame (`gpuMs`), where the device offers timestamps.
       trackTimestamp: true,
     });
-    this.gl.setPixelRatio(pixelRatioFor(this.quality, this.dynScale));
+    this.applyScale();
     this.gl.setSize(window.innerWidth, window.innerHeight);
 
-    // ACES Filmic is the reason this looks like a game and not a tech demo:
-    // it rolls highlights off instead of clipping them to flat white. The
-    // post chain applies it once, after the grade.
+    // The game's frame is tone mapped with AgX in the post chain, after the
+    // grade (`buildChain`). This is the renderer's own, for the pictures
+    // drawn straight to a target (item icons, portraits, the paperdoll),
+    // which were painted for ACES and keep it.
     this.gl.toneMapping = THREE.ACESFilmicToneMapping;
     this.gl.toneMappingExposure = 1.0;
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
@@ -589,6 +631,10 @@ export class Renderer {
     this.gl.shadowMap.type = THREE.PCFShadowMap;
     this.gl.lighting = makeLighting();
     setScatterLimit(this.quality.air);
+    floorDepth.value = this.quality.parallax;
+    coverShare.value = this.quality.cover;
+    waterRays.value = this.quality.waterReflect ? 1 : 0;
+    worldLite.value = this.quality.liteWorld ? 1 : 0;
 
     this.pipeline = new THREE.RenderPipeline(this.gl);
     window.addEventListener('resize', this.onResize);
@@ -619,10 +665,18 @@ export class Renderer {
     this.envMap = skyEnvironment(this.gl);
   }
 
-  /** Applies the reflection environment to a scene. Scenes call this on enter. */
-  applyEnvironment(scene: THREE.Scene, intensity = 0.55): void {
-    if (!this.envMap) return;
-    scene.environment = this.envMap;
+  /**
+   * Applies the reflection environment to a scene. Scenes call this on enter.
+   * An outdoor level passes its own sky, built once per biome and kept.
+   */
+  applyEnvironment(scene: THREE.Scene, intensity = 0.55, sky: SkyPaint | null = null): void {
+    let env = this.envMap;
+    if (sky) {
+      if (!this.skies.has(sky.key)) this.skies.set(sky.key, skyEnvironment(this.gl, sky));
+      env = this.skies.get(sky.key) ?? this.envMap;
+    }
+    if (!env) return;
+    scene.environment = env;
     scene.environmentIntensity = intensity;
   }
 
@@ -637,24 +691,22 @@ export class Renderer {
     const sp = pass(scene, camera);
     this.scenePass = sp;
     let color: THREE.TextureNode = sp.getTextureNode('output');
-    let mask: THREE.TextureNode | null = null;
-    if (q.taa || q.bloom || q.smaa) {
-      // The same outputs on Medium, High and Ultra, whichever of them the
-      // effects read: every shader is built for its outputs, so a step along
-      // the ladder (the auto mode's, mid-fight) that changed them rebuilt
-      // every shader in the scene. Medium's outline reads the motion target.
-      const m = mrt({ output, velocity: sceneVelocity, emission: sceneEmission });
-      m.setBlendMode('velocity', keepUnderGlows);
-      m.setBlendMode('emission', blendAsMaterial);
-      sp.setMRT(m);
-      mask = sp.getTextureNode('velocity');
-    }
-    this.outlines = mask !== null;
+    // The same outputs on every preset, whichever of them the effects read:
+    // every shader is built for its outputs, so a step along the ladder (the
+    // auto mode's, mid-fight) that changed them rebuilt every shader in the
+    // scene. The outline reads the motion target on every preset too.
+    const m = mrt({ output, velocity: sceneVelocity, emission: sceneEmission });
+    m.setBlendMode('velocity', keepUnderGlows);
+    m.setBlendMode('emission', blendAsMaterial);
+    sp.setMRT(m);
+    const mask: THREE.TextureNode = sp.getTextureNode('velocity');
     if (q.taa) {
       // The resolve runs on the lit frame, before AO, bloom and the grade:
       // bloom then glows from a steady picture, and grain stays fresh.
-      const t = traa(color, sp.getTextureNode('depth'), sp.getTextureNode('velocity'), camera);
-      this.traaNode = t;
+      // The scene draws at the render scale; the resolve writes full size.
+      sp.setResolutionScale(this.drawScale());
+      const t = taau(color, sp.getTextureNode('depth'), sp.getTextureNode('velocity'), camera);
+      this.taaNode = t;
       color = (t as unknown as { getTextureNode(): THREE.TextureNode }).getTextureNode();
     }
 
@@ -693,6 +745,17 @@ export class Renderer {
       contactTex = s.getTextureNode();
     }
 
+    let shaftTex: THREE.TextureNode | null = null;
+    if (q.shafts) {
+      // A quarter of the pixels: the beams are soft, and the read below blurs them.
+      const r = rtt(shaftNode(sp.getTextureNode('depth')));
+      r.setResolutionScale(POST_SCALE);
+      const draw = r.updateBefore.bind(r);
+      r.updateBefore = (frame: THREE.NodeFrame) => (shaftStrength.value > 0 ? draw(frame) : undefined);
+      this.shaftPass = r;
+      shaftTex = r;
+    }
+
     let bloomTex: THREE.TextureNode | null = null;
     if (q.bloom) {
       // Glow from what glows (`Emission`), and only where it is bright: a
@@ -715,20 +778,26 @@ export class Renderer {
           .add(t.sample(p.add(vec2(h.x, h.y.negate()))).r).add(t.sample(p.sub(vec2(h.x, h.y.negate()))).r).mul(0.25);
         c = c.mul(mix(float(1.0), lit, uContact));
       }
+      if (shaftTex) {
+        const h = vec2(1.0).div(screenSize).div(POST_SCALE);
+        const t = shaftTex;
+        const lit = t.sample(p.add(h)).r.add(t.sample(p.sub(h)).r)
+          .add(t.sample(p.add(vec2(h.x, h.y.negate()))).r).add(t.sample(p.sub(vec2(h.x, h.y.negate()))).r).mul(0.25);
+        c = c.add(uShaftColor.mul(lit));
+      }
       if (bloomTex) c = c.add(bloomTex.sample(p).rgb);
       return c;
     };
-    const graded = gradeNode(src, mask ? outlineOf(mask) : undefined);
+    const graded = gradeNode(src, outlineOf(mask));
     this.applyGrade();
 
-    if (q.smaa) {
-      // Edge smoothing reads the final picture, so tone mapping and sRGB come first.
-      this.pipeline.outputColorTransform = false;
-      this.pipeline.outputNode = smaa(renderOutput(graded)) as unknown as THREE.Node;
-    } else {
-      this.pipeline.outputColorTransform = true;
-      this.pipeline.outputNode = graded;
-    }
+    // AgX rolls bright light off gently and keeps a hue as it brightens (a
+    // torch's orange stays orange to its core instead of going yellow and
+    // white); the look (`Lut.ts`) puts back the contrast and colour it
+    // gives up, in screen colour. Edge smoothing then reads the final picture.
+    const shown = lut3D(renderOutput(graded, THREE.AgXToneMapping, THREE.SRGBColorSpace), uLut, LUT_SIZE, float(1.0));
+    this.pipeline.outputColorTransform = false;
+    this.pipeline.outputNode = (q.smaa ? smaa(shown) : shown) as unknown as THREE.Node;
     this.pipeline.needsUpdate = true;
     this.chainDirty = false;
   }
@@ -737,13 +806,15 @@ export class Renderer {
     this.scenePass?.dispose();
     this.aoNode?.dispose();
     this.bloomNode?.dispose();
-    this.traaNode?.dispose();
+    this.taaNode?.dispose();
     this.sssNode?.dispose();
     this.sssNode = null;
+    this.shaftPass?.dispose();
+    this.shaftPass = null;
     this.scenePass = null;
     this.aoNode = null;
     this.bloomNode = null;
-    this.traaNode = null;
+    this.taaNode = null;
   }
 
   /**
@@ -759,13 +830,17 @@ export class Renderer {
     this.qualityName = name;
     this.quality = QUALITY[name];
     const q = this.quality;
-    this.gl.setPixelRatio(pixelRatioFor(q, this.dynScale));
+    this.applyScale();
     this.gl.shadowMap.enabled = q.shadows;
     setScatterLimit(q.air);
+    floorDepth.value = q.parallax;
+    coverShare.value = q.cover;
+    waterRays.value = q.waterReflect ? 1 : 0;
+    worldLite.value = q.liteWorld ? 1 : 0;
     if (this.shadowScene) this.applyShadows(this.shadowScene);
     // Every asset texture, the world sets included, now and later.
     if (!step) setAssetAnisotropy(q.anisotropy);
-    if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa || before.taa !== q.taa || before.contactShadows !== q.contactShadows) this.chainDirty = true;
+    if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa || before.taa !== q.taa || before.contactShadows !== q.contactShadows || before.shafts !== q.shafts) this.chainDirty = true;
     this.onResize();
     events.emit('quality:changed', { profile: q });
   }
@@ -784,8 +859,39 @@ export class Renderer {
     k = Math.max(0.5, Math.min(1, k));
     if (k === this.dynScale) return;
     this.dynScale = k;
-    this.gl.setPixelRatio(pixelRatioFor(this.quality, k));
+    this.applyScale();
     this.onResize();
+  }
+
+  /** The player's render scale (Settings), 0.5..1: a share of each side drawn. */
+  setRenderScale(k: number): void {
+    k = Math.max(0.5, Math.min(1, k));
+    if (k === this.userScale) return;
+    this.userScale = k;
+    this.applyScale();
+    this.onResize();
+  }
+
+  /** Share of each side the scene is drawn at: the preset's, the player's and the auto mode's. */
+  private drawScale(): number {
+    return this.quality.renderScale * this.userScale * this.dynScale;
+  }
+
+  /**
+   * Sizes the drawing. With temporal smoothing the canvas keeps the screen's
+   * pixels and only the scene pass shrinks, the blend filling the rest back
+   * in; without it the whole canvas shrinks and the browser stretches it.
+   */
+  private applyScale(): void {
+    const q = this.quality;
+    const k = this.drawScale();
+    if (q.taa) {
+      this.gl.setPixelRatio(basePixelRatio(q));
+      this.scenePass?.setResolutionScale(k);
+    } else {
+      this.gl.setPixelRatio(basePixelRatio(q) * k);
+      this.scenePass?.setResolutionScale(1);
+    }
   }
 
   /** The scene `applyShadows` last fitted, refitted when the quality changes. */
@@ -835,7 +941,7 @@ export class Renderer {
       // every lit shader, and switching it back on reused shaders built
       // around the shadow three had freed when it went off: every frame then
       // failed and the screen went black.
-      const on = !point || q.pointShadows;
+      const on = !point || (l.userData.lantern ? q.lanternShadow : q.pointShadows);
       l.castShadow = base.casts;
       l.shadow.intensity = on ? base.intensity : 0;
       if (l.userData.shadowTicked && on) this.ticked.add(l);
@@ -950,6 +1056,7 @@ export class Renderer {
     G.haze.value = g.haze;
     // The vignette darkens toward its tint: a hue at roughly 63% brightness.
     tintVector(g.vignetteTint, 1, G.vignetteTint.value).multiplyScalar(0.63);
+    uLut.value = lookTable(lookOf(g.look));
     if (this.bloomNode) {
       this.bloomNode.strength.value = g.bloomStrength;
       this.bloomNode.radius.value = g.bloomRadius;
@@ -981,8 +1088,6 @@ export class Renderer {
     this.currentCamera = camera;
   }
 
-  /** True when the chain draws outlines (every preset but Low). */
-  private outlines = false;
   /** The meshes `setOutline` marked. */
   private outlinedMeshes: THREE.Object3D[] = [];
   private outlinedRoot: THREE.Object3D | null = null;
@@ -994,7 +1099,6 @@ export class Renderer {
    * second drawing of anything.
    */
   setOutline(root: THREE.Object3D | null, color: THREE.ColorRepresentation = 0xff5a2a): void {
-    if (!this.outlines) root = null;
     if (root) uOutline.value.set(color).multiplyScalar(OUTLINE_GAIN);
     if (root === this.outlinedRoot) return;
     for (const m of this.outlinedMeshes) delete m.userData.slOutline;
@@ -1057,14 +1161,15 @@ export class Renderer {
    */
   private trackSun(scene: THREE.Scene): void {
     const s = this.sun;
-    let on = !!this.sssNode && !!s && s.castShadow && s.visible && s.intensity > 0;
+    let on = !!s && s.castShadow && s.visible && s.intensity > 0;
     if (on && s) {
       let o: THREE.Object3D | null = s;
       while (o && o !== scene) o = o.parent;
       on = o === scene;
     }
-    uContact.value = on ? CONTACT_STRENGTH : 0;
-    if (!on || !s) return;
+    uContact.value = on && this.sssNode ? CONTACT_STRENGTH : 0;
+    this.trackShafts(on ? s : null, scene);
+    if (!on || !s || !this.sssNode) return;
     const p = this.sunProxy;
     p.matrixAutoUpdate = false;
     p.matrixWorldAutoUpdate = false;
@@ -1072,15 +1177,40 @@ export class Renderer {
     p.target.matrixWorld.copy(s.target.matrixWorld);
   }
 
+  /**
+   * Aims the beams through the fog at the sun, or turns them off. Fog
+   * throws more light forward than back (looking toward the sun the air
+   * glows more), so the strength leans on the angle between the view and the
+   * sun.
+   */
+  private trackShafts(s: THREE.DirectionalLight | null, scene: THREE.Scene): void {
+    const fog = scene.fog as THREE.FogExp2 | null;
+    const density = fog && (fog as THREE.FogExp2).isFogExp2 ? fog.density : 0;
+    setShaftSun(this.shaftPass ? s : null, this.view, fogShape.x, density);
+    if (shaftStrength.value === 0 || !s || !this.view) {
+      uShaftColor.value.setRGB(0, 0, 0);
+      return;
+    }
+    const toSun = _v1.setFromMatrixPosition(s.matrixWorld).sub(_v2.setFromMatrixPosition(s.target.matrixWorld)).normalize();
+    const look = _v2.set(0, 0, -1).transformDirection(this.view.matrixWorld);
+    const g = 0.4;
+    const cos = look.dot(toSun);
+    // Henyey-Greenstein, scaled to 1 side-on.
+    const phase = (1 + g * g) ** 1.5 / (1 + g * g - 2 * g * cos) ** 1.5;
+    uShaftColor.value.copy(s.color).multiplyScalar(s.intensity * SHAFT_GAIN * phase);
+  }
+
   /** Makes the temporal blend start over from the next frame (it starts over when its size changes). */
   private restartHistory(): void {
-    const t = this.traaNode as unknown as { _historyRenderTarget?: THREE.RenderTarget } | null;
+    const t = this.taaNode as unknown as { _historyRenderTarget?: THREE.RenderTarget } | null;
     t?._historyRenderTarget?.setSize(1, 1);
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera, dt: number, elapsed: number): void {
     const sceneChanged = this.currentScene !== scene;
     this.bind(scene, camera);
+    camera.updateMatrixWorld();
+    viewEye.value.setFromMatrixPosition(camera.matrixWorld);
 
     // Hurt decays fast: a long flash reads as a bug, not a hit.
     this.hurt = Math.max(0, this.hurt - dt * 3.2);
@@ -1216,21 +1346,29 @@ export class Renderer {
  * The reflection sky as a prefiltered environment map: cool zenith, warm
  * bounce near the floor, two bright patches. Null if the GPU cannot make it.
  */
-export function skyEnvironment(r: THREE.WebGPURenderer): THREE.Texture | null {
+export function skyEnvironment(r: THREE.WebGPURenderer, paint: SkyPaint | null = null): THREE.Texture | null {
   const scene = new THREE.Scene();
   const mat = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, depthWrite: false });
   mat.fog = false;
+  const lin = (hex: number): V3 => {
+    const c = new THREE.Color(hex);
+    return vec3(c.r, c.g, c.b);
+  };
   mat.colorNode = Fn(() => {
     const dir = positionLocal.normalize();
     const up = dir.y.mul(0.5).add(0.5);
-    const zenith = vec3(0.10, 0.13, 0.20);
-    const horizon = vec3(0.26, 0.23, 0.21);
-    const ground = vec3(0.09, 0.07, 0.06);
+    // A level's own sky when it has one (outdoors), else a neutral dusk.
+    const zenith = paint ? lin(paint.zenith).mul(0.6) : vec3(0.10, 0.13, 0.20);
+    const horizon = paint ? lin(paint.horizon).mul(1.4) : vec3(0.26, 0.23, 0.21);
+    const ground = paint ? lin(paint.ground).mul(0.5) : vec3(0.09, 0.07, 0.06);
     const base = up.greaterThan(0.5).select(mix(horizon, zenith, up.sub(0.5).mul(2.0)), mix(ground, horizon, up.mul(2.0))).uniformFlow().toVar();
-    // Two warm patches so turning metal catches a travelling highlight.
-    const a = max(0.0, dot(dir, normalize(vec3(0.6, 0.5, 0.4))));
+    // Two patches so turning metal catches a travelling highlight: the sun
+    // (or moon) where there is one, and a cool fill opposite.
+    const sunDir = paint ? vec3(...paint.sun) : vec3(0.6, 0.5, 0.4);
+    const sunCol = paint ? lin(paint.sunColor).mul(0.6) : vec3(0.55, 0.40, 0.26);
+    const a = max(0.0, dot(dir, normalize(sunDir)));
     const b = max(0.0, dot(dir, normalize(vec3(-0.5, 0.3, -0.6))));
-    return base.add(vec3(0.55, 0.40, 0.26).mul(pow(a, 26.0))).add(vec3(0.22, 0.30, 0.45).mul(pow(b, 18.0)));
+    return base.add(sunCol.mul(pow(a, 26.0))).add(vec3(0.22, 0.30, 0.45).mul(pow(b, 18.0)));
   })();
   const sky = new THREE.Mesh(new THREE.SphereGeometry(50, 24, 16), mat);
   scene.add(sky);

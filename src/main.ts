@@ -87,6 +87,7 @@ async function main(): Promise<void> {
     setStudioHost(engine.renderer.gl);
   }
   engine.renderer.setQuality(save.settings.quality);
+  engine.renderer.setRenderScale(save.settings.renderScale ?? 1);
   {
     // Steps below the chosen quality when frames run long, back up when
     // there is room (Settings: Auto quality).
