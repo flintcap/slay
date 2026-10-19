@@ -20,6 +20,8 @@ import * as THREE from 'three';
 import type { DamageType } from '../types';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
+import { onScreenRatio, screenRatio } from '../core/Screen';
+import { FONT_TITLE, FONT_UI } from './Fonts';
 
 type Kind = 'hit' | 'crit' | 'hurt' | 'heal' | 'mana' | 'word' | 'level';
 
@@ -178,6 +180,7 @@ export class CombatTextLayer {
   private spare: Sprite[] = [];
   private offs: Array<() => void> = [];
   private dpr = 1;
+  private offRatio: () => void;
   private w = 0;
   private h = 0;
   private dirty = false;
@@ -195,12 +198,13 @@ export class CombatTextLayer {
     (parent ?? document.body).appendChild(this.canvas);
     this.resize();
     window.addEventListener('resize', this.resize);
+    this.offRatio = onScreenRatio(this.resize);
     this.wire();
   }
 
   private resize = (): void => {
-    // Capped: text is the only thing on this canvas and 1.5x is plenty crisp.
-    this.dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    // The screen's own ratio, so numbers stay sharp on a 4K monitor at 200%.
+    this.dpr = screenRatio();
     this.w = window.innerWidth;
     this.h = window.innerHeight;
     this.canvas.width = Math.round(this.w * this.dpr);
@@ -550,7 +554,7 @@ export class CombatTextLayer {
     let below = size * 0.62 + pad;
     const stacked = e.stacks > 2 && (e.kind === 'hit' || e.kind === 'crit');
     const tag = `x${e.stacks}`;
-    const small = `800 ${Math.round(size * 0.5)}px 'Segoe UI', system-ui, sans-serif`;
+    const small = `800 ${Math.round(size * 0.5)}px ${FONT_UI}`;
     if (stacked) {
       x.font = small;
       const sw = x.measureText(tag).width;
@@ -586,10 +590,10 @@ export class CombatTextLayer {
 
   private setFont(ctx: CanvasRenderingContext2D, e: Entry, size: number): void {
     if (e.kind === 'word' || e.kind === 'level') {
-      ctx.font = `700 ${size}px 'Cinzel', 'Trajan Pro', 'Palatino Linotype', Palatino, Georgia, serif`;
+      ctx.font = `700 ${size}px ${FONT_TITLE}`;
       ctx.letterSpacing = e.kind === 'level' ? '6px' : '2px';
     } else {
-      ctx.font = `900 ${size}px 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+      ctx.font = `900 ${size}px ${FONT_UI}`;
       ctx.letterSpacing = '0px';
     }
   }
@@ -658,6 +662,7 @@ export class CombatTextLayer {
     for (const off of this.offs) off();
     this.offs = [];
     window.removeEventListener('resize', this.resize);
+    this.offRatio();
     this.canvas.remove();
     this.entries.length = 0;
   }

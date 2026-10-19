@@ -56,6 +56,8 @@ import { NPCS } from '../data/story/npcs';
 import { carriedContract, chainStep, stepState } from '../sim/Chains';
 import { bountyText, heldBounties } from '../sim/TownServices';
 import { zoneInks, zoneInkAt, newKindInk, wayMarks } from './ZoneInk';
+import { FONT_UI } from './Fonts';
+import { onScreenRatio, screenRatio } from '../core/Screen';
 
 // Tile ids as stored in DungeonLevel.tiles (mirrors world/Layouts TILE_VALUES).
 const T_VOID = 0;
@@ -229,16 +231,13 @@ class Orb {
     this.size = size;
     this.root = div(`orb orb-${kind}`);
     this.canvas = el2('canvas');
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = Math.round(size * dpr);
-    this.canvas.height = Math.round(size * dpr);
     this.canvas.style.width = `${size}px`;
     this.canvas.style.height = `${size}px`;
     // Small and redrawn every frame: painted on the CPU. A GPU canvas drawn
     // every frame can have the browser hold the page each frame until the
     // GPU, busy with the world, has caught up with it.
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
-    this.ctx?.scale(dpr, dpr);
+    this.sharpen(screenRatio());
 
     const glass = div('orb-glass');
     const ring = div('orb-ring');
@@ -250,6 +249,13 @@ class Orb {
     this.curEl = this.label.querySelector<HTMLElement>('.orb-cur');
     this.maxEl = this.label.querySelector<HTMLElement>('.orb-max');
     add(this.root, wing, this.canvas, glass, ring, studs, this.label);
+  }
+
+  /** Sizes the canvas for `dpr` device pixels per CSS pixel. */
+  sharpen(dpr: number): void {
+    this.canvas.width = Math.round(this.size * dpr);
+    this.canvas.height = Math.round(this.size * dpr);
+    this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   set(value: number, max: number): void {
@@ -655,14 +661,11 @@ export class HUD {
     const topRight = div('hud-topright');
     const mapWrap = div('minimap ui-interactive');
     this.minimapCanvas = el2('canvas');
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.minimapCanvas.width = MINIMAP_PX * dpr;
-    this.minimapCanvas.height = MINIMAP_PX * dpr;
     this.minimapCanvas.style.width = `${MINIMAP_PX}px`;
     this.minimapCanvas.style.height = `${MINIMAP_PX}px`;
     // On the CPU, like the orbs: small and redrawn every frame.
     this.minimapCtx = this.minimapCanvas.getContext('2d', { willReadFrequently: true });
-    this.minimapCtx?.scale(dpr, dpr);
+    this.sharpenMinimap(screenRatio());
     this.minimapLabel = div('minimap-label', 'Tier 0');
     const mapFrame = div('minimap-frame');
     const mapBtn = div('minimap-expand');
@@ -739,6 +742,12 @@ export class HUD {
     const bar = div('cmdbar');
     this.lifeOrb = new Orb('life', 124);
     this.manaOrb = new Orb('mana', 124);
+    // Dragged to a monitor of another sharpness: redraw at its pixels.
+    this.offs.push(onScreenRatio((dpr) => {
+      this.lifeOrb.sharpen(dpr);
+      this.manaOrb.sharpen(dpr);
+      this.sharpenMinimap(dpr);
+    }));
 
     const center = div('cmdbar-center');
 
@@ -1131,6 +1140,12 @@ export class HUD {
   dispose(): void {
     for (const off of this.offs) off();
     this.offs = [];
+  }
+
+  private sharpenMinimap(dpr: number): void {
+    this.minimapCanvas.width = Math.round(MINIMAP_PX * dpr);
+    this.minimapCanvas.height = Math.round(MINIMAP_PX * dpr);
+    this.minimapCtx?.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   // -- per-frame -----------------------------------------------------------
@@ -1870,7 +1885,7 @@ export class HUD {
       ctx.fillStyle = 'rgba(10,9,8,0.55)';
       ctx.fillRect(0, 0, S, S);
       ctx.fillStyle = 'rgba(160,140,105,0.35)';
-      ctx.font = '11px system-ui, sans-serif';
+      ctx.font = `11px ${FONT_UI}`;
       ctx.textAlign = 'center';
       ctx.fillText('no map', S / 2, S / 2);
       return;

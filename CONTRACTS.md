@@ -1521,3 +1521,38 @@ building and run of trees via `townPropsSteps` in
 - `dropQueuedLooks()`: a new run lets go of the last run's queued floors.
 - `lookBake(look)` in `art/creatures/Creature.ts` is the pure-data half of
   `prototype` the worker uses: the store key and the baker.
+
+## Screen sharpness and type — `src/core/Screen.ts`, `src/ui/Fonts.ts` — owned by UI
+
+```ts
+// src/core/Screen.ts
+/** Device pixels per CSS pixel, 1 to 3. */
+export function screenRatio(): number;
+/** Calls `fn` with the new ratio when it changes (window moved monitors, page zoom). Returns the off switch. */
+export function onScreenRatio(fn: (ratio: number) => void): () => void;
+
+// src/ui/Fonts.ts
+export const FONT_UI: string;      // 'Inter Variable', …
+export const FONT_DISPLAY: string; // 'Alegreya Variable', …
+export const FONT_NUM: string;     // 'JetBrains Mono Variable', …
+export const FONT_TITLE: string;   // 'Cinzel Variable', …
+/** Resolves once the bundled faces are ready (capped wait). */
+export function loadFonts(wait?: number): Promise<void>;
+
+// src/art/items/IconRender.ts
+/** Times the plain size icons are drawn at for this screen (1 up to 2.4). */
+export function iconScale(): number;
+// src/art/Icons.ts
+/** Drops cached icons if `iconScale` changed since they were drawn. True when it had. */
+export function refreshIconScale(): boolean;
+```
+
+Every UI canvas draws at `screenRatio()` (no lower cap) and re-sizes on
+`onScreenRatio`: combat numbers, minimap, orbs, map panel, map overlay,
+paperdoll, and the main renderer (still capped by its quality profile).
+Canvas text names its face with the `FONT_*` stacks, never a system font, and
+`main.ts` awaits `loadFonts()` before anything draws words. The CSS tokens
+`--font-ui`, `--font-display`, `--font-num` and `--font-title` name the same
+families. Item, skill, status and affix icons are drawn at `iconScale()`
+times their plain size; painting code keeps its plain-screen numbers and
+multiplies fixed sizes (blur, line width, radii) by that factor.

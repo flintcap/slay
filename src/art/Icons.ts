@@ -14,14 +14,14 @@
  */
 import type * as THREE from 'three';
 import type { Item, DamageType, ItemVisual } from '../types';
-import { drawItemIcon as renderItemIcon, drawItemIconLater, iconCanvasSize, iconScansMissing, itemScansReady, warmIconStudio, type IconSpec } from './items/IconRender';
+import { drawItemIcon as renderItemIcon, drawItemIconLater, iconCanvasSize, iconScale, iconScansMissing, itemScansReady, warmIconStudio, type IconSpec } from './items/IconRender';
 import { textureReady } from '../core/Assets';
 import { iconShape } from '../sim/Grid';
 import { paintSkillIcon, paintStatusIcon, paintAffixIcon } from './SkillIconArt';
 import { makeCanvas } from './Paint';
 import { SKILL_BY_ID, TREE_BY_ID, SKILL_TREES } from '../data/skills';
 
-const S = 128; // internal draw resolution
+const S = 128; // draw resolution of skill icons on a plain screen; see `iconScale`
 
 /**
  * One canvas, reused for every synchronous icon.
@@ -321,7 +321,7 @@ function drawItemIcon(item: Item, key: string, form: IconForm): string {
     if (lateScans().length === 0) itemCache.set(key, uri);
     return uri;
   }
-  const { c, x } = scratchCanvas();
+  const { c, x } = scratchCanvas(dim.w);
   renderItemIcon(x, spec);
   const uri = c.toDataURL('image/png');
   if (lateScans().length === 0) itemCache.set(key, uri);
@@ -360,8 +360,13 @@ export function skillIconUri(
   const hit = skillCache.get(key);
   if (hit) return hit;
   const { classId, index } = treeInfo(SKILL_BY_ID[skillId]?.treeId);
-  const { c, x } = scratchCanvas();
+  // Painted in plain-screen units, scaled up to the screen's own pixels.
+  const k = iconScale();
+  const { c, x } = scratchCanvas(Math.round(S * k));
+  x.save();
+  x.scale(k, k);
   paintSkillIcon(x, { skillId, icon: iconKey, effect, damageType, passive, classId, treeIndex: index });
+  x.restore();
   const uri = c.toDataURL('image/png');
   skillCache.set(key, uri);
   return uri;
@@ -383,15 +388,30 @@ export function statusIconUri(icon: string | undefined, color: number, polarity 
   const key = `${icon ?? '-'}|${color}|${polarity < 0 ? 'd' : 'b'}`;
   const hit = statusCache.get(key);
   if (hit) return hit;
-  const { c, x } = scratchCanvas(64);
-  paintStatusIcon(x, icon, color, polarity < 0, 64);
+  const px = Math.round(64 * iconScale());
+  const { c, x } = scratchCanvas(px);
+  paintStatusIcon(x, icon, color, polarity < 0, px);
   const uri = c.toDataURL('image/png');
   statusCache.set(key, uri);
   return uri;
 }
 
+/** The `iconScale` the cached icons were drawn at. */
+let drawnAt = iconScale();
+
+/**
+ * Drops the cached icons if the screen's sharpness has changed since they
+ * were drawn (the window moved to another monitor). True when it had.
+ */
+export function refreshIconScale(): boolean {
+  if (iconScale() === drawnAt) return false;
+  clearIconCaches();
+  return true;
+}
+
 /** Frees cached icons — used when the item database is swapped in tests. */
 export function clearIconCaches(): void {
+  drawnAt = iconScale();
   generation++;
   encoding.clear();
   itemCache.clear();
@@ -415,8 +435,9 @@ export function affixIconUri(behavior: string | undefined, color: number): strin
   const key = `${behavior ?? 'none'}|${color}`;
   const hit = affixCache.get(key);
   if (hit) return hit;
-  const { c, x } = scratchCanvas(64);
-  paintAffixIcon(x, behavior, color, 64);
+  const px = Math.round(64 * iconScale());
+  const { c, x } = scratchCanvas(px);
+  paintAffixIcon(x, behavior, color, px);
   const uri = c.toDataURL('image/png');
   affixCache.set(key, uri);
   return uri;

@@ -30,6 +30,7 @@ import type { Aura } from './Designs';
 import { scansOf } from '../Scans';
 
 import { itemLookStandIns, itemScansReady as scansReady } from './Mats';
+import { screenRatio } from '../../core/Screen';
 
 /** The item scans have decoded and the icon studio is open. */
 export async function itemScansReady(): Promise<void> {
@@ -52,16 +53,34 @@ export interface IconSpec {
   shape?: { w: number; h: number };
 }
 
-/** Output size of an icon, in pixels. */
-export const ICON_SIZE = 128;
-/** Output pixels per cell for a shaped icon. */
-export const ICON_CELL = 80;
+/** Output size of a square icon on a plain screen, in pixels. */
+const ICON_SIZE = 128;
+/** Output pixels per cell for a shaped icon on a plain screen. */
+const ICON_CELL = 80;
 
-/** The canvas size an icon is drawn at. */
-export function iconCanvasSize(spec: IconSpec): { w: number; h: number } {
+/**
+ * How many times the plain size icons are drawn at, so a pack on a 4K monitor
+ * is not a blur of stretched pictures (`core/Screen.ts`). A pack cell is 50
+ * CSS px; 80 px per cell covers a ratio of 1.6, and past that the cell grows
+ * with the ratio in 16 px steps, so a small change keeps the cached icons.
+ */
+export function iconScale(): number {
+  const cell = Math.max(ICON_CELL, Math.round((64 * screenRatio()) / 16) * 16);
+  return cell / ICON_CELL;
+}
+
+/** The canvas size an icon is drawn at on a plain screen. */
+function plainSize(spec: IconSpec): { w: number; h: number } {
   const sh = spec.shape;
   if (!sh || sh.w === sh.h) return { w: ICON_SIZE, h: ICON_SIZE };
   return { w: ICON_CELL * sh.w, h: ICON_CELL * sh.h };
+}
+
+/** The canvas size an icon is drawn at on this screen. */
+export function iconCanvasSize(spec: IconSpec): { w: number; h: number } {
+  const k = iconScale();
+  const p = plainSize(spec);
+  return { w: Math.round(p.w * k), h: Math.round(p.h * k) };
 }
 /** Internal render size: drawn at twice the size, then scaled down for smooth edges. */
 const DRAW = 256;
@@ -316,7 +335,7 @@ function renderModel(spec: IconSpec, read = false): (Shot & { pixels: Promise<Im
  * (embers, sparks, sparkles, drips) sit on top with trails showing which
  * way they drift.
  */
-function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'back' | 'front'): void {
+function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'back' | 'front', k: number): void {
   const st = auraStyle(kind);
   if (!st) return;
   const W = out.canvas.width;
@@ -331,11 +350,11 @@ function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'ba
     const px = (14 + rnd.next() * 100) * (W / ICON_SIZE);
     const py = (12 + rnd.next() * 104) * (H / ICON_SIZE);
     if (big) {
-      const r = 10 + rnd.next() * (st.size >= 60 ? 22 : 12);
+      const r = (10 + rnd.next() * (st.size >= 60 ? 22 : 12)) * k;
       glow(out, px, py, r, color, st.size >= 60 ? 0.28 : 0.4);
       continue;
     }
-    const r = 1 + rnd.next() * 1.3 + st.size * 0.05;
+    const r = (1 + rnd.next() * 1.3 + st.size * 0.05) * k;
     glow(out, px, py, r * 3.2, color, 0.85);
     if (Math.abs(st.rise) > 0.15) {
       // A short streak behind it: up for embers and ash, down for drips.
@@ -353,7 +372,7 @@ function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'ba
     }
     if (st.twinkle >= 0.8) {
       out.strokeStyle = css(0xffffff, 0.7);
-      out.lineWidth = 0.8;
+      out.lineWidth = 0.8 * k;
       const l = r * 2.6;
       out.beginPath();
       out.moveTo(px - l, py);
@@ -373,17 +392,17 @@ function paintAura(out: Ctx, kind: Aura, color: number, seed: string, layer: 'ba
 }
 
 /** The mark drawn when there is no studio: a faceted stone in the rarity colour. */
-function fallback(out: Ctx, rc: number): void {
+function fallback(out: Ctx, rc: number, k: number): void {
   const cx = out.canvas.width / 2;
   const cy = out.canvas.height / 2;
   out.fillStyle = css(rc, 0.85);
   out.strokeStyle = css(0x000000, 0.7);
-  out.lineWidth = 3;
+  out.lineWidth = 3 * k;
   out.beginPath();
-  out.moveTo(cx, cy - 42);
-  out.lineTo(cx + 36, cy);
-  out.lineTo(cx, cy + 42);
-  out.lineTo(cx - 36, cy);
+  out.moveTo(cx, cy - 42 * k);
+  out.lineTo(cx + 36 * k, cy);
+  out.lineTo(cx, cy + 42 * k);
+  out.lineTo(cx - 36 * k, cy);
   out.closePath();
   out.fill();
   out.stroke();
@@ -391,7 +410,7 @@ function fallback(out: Ctx, rc: number): void {
 
 /**
  * Draws the icon for one item onto `out`, a clear canvas context sized by
- * `iconCanvasSize` (128px square unless the item has a shape).
+ * `iconCanvasSize` (128px square on a plain screen unless the item has a shape).
  * Synchronous: builds the model, renders it, composites the rarity look.
  */
 export function drawItemIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean } = {}): void {
@@ -444,6 +463,8 @@ function paintIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean }, shot: Sho
   const cx = W / 2;
   const cy = H / 2;
   const R = Math.max(W, H) / 2;
+  // Fixed sizes below are for a plain screen; a sharper one draws bigger.
+  const k = W / plainSize(spec).w;
   // `bare` draws the model alone, with no rarity light: for comparing pictures.
   const rank = opts.bare ? 0 : RANK[spec.rarity] ?? 0;
   const rc = RARITY_COLOR[spec.rarity] ?? 0xc8c8c8;
@@ -452,7 +473,7 @@ function paintIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean }, shot: Sho
   // Rarity backdrop: a soft pool of the rarity's light behind the object.
   if (rank >= 1) {
     const a = [0, 0.1, 0.14, 0.2, 0.26, 0.32, 0.36][rank]!;
-    const g = out.createRadialGradient(cx, cy, 4, cx, cy, R);
+    const g = out.createRadialGradient(cx, cy, 4 * k, cx, cy, R);
     g.addColorStop(0, css(rc, a));
     g.addColorStop(0.6, css(rc, a * 0.35));
     g.addColorStop(1, css(rc, 0));
@@ -474,8 +495,8 @@ function paintIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean }, shot: Sho
       out.fillStyle = g;
       out.beginPath();
       out.moveTo(0, 0);
-      out.lineTo(-7, -R);
-      out.lineTo(7, -R);
+      out.lineTo(-7 * k, -R);
+      out.lineTo(7 * k, -R);
       out.closePath();
       out.fill();
     }
@@ -483,7 +504,7 @@ function paintIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean }, shot: Sho
   }
 
   if (!shot || !src) {
-    fallback(out, rc);
+    fallback(out, rc, k);
     return;
   }
   const layer = scratch('iconRenderLayer', W, H);
@@ -497,24 +518,24 @@ function paintIcon(out: Ctx, spec: IconSpec, opts: { bare?: boolean }, shot: Sho
   }
   const haloC = rank >= 3 ? glowC : rc;
   const auraSeed = `${spec.baseId}|${spec.rarity}|${spec.uniqueId ?? spec.setId ?? ''}`;
-  paintAura(out, shot.aura, glowC, auraSeed, 'back');
+  paintAura(out, shot.aura, glowC, auraSeed, 'back', k);
   composite(out, layer.c, {
     shadow: 0.75,
-    shadowBlur: 5,
-    dx: 2,
-    dy: 3,
+    shadowBlur: 5 * k,
+    dx: 2 * k,
+    dy: 3 * k,
     halo: [0, 0.35, 0.4, 0.6, 0.75, 0.85, 0.9][rank]!,
     haloColor: haloC,
-    haloBlur: [0, 5, 6, 8, 9, 11, 12][rank]!,
+    haloBlur: [0, 5, 6, 8, 9, 11, 12][rank]! * k,
   });
-  paintAura(out, shot.aura, glowC, auraSeed, 'front');
+  paintAura(out, shot.aura, glowC, auraSeed, 'front', k);
   if (rank >= 5 && shot.aura === 'none') {
     // Motes for mythic, embers for ancient.
     const rnd = new Random(hashString(`${spec.baseId}|${spec.rarity}|${spec.uniqueId ?? spec.setId ?? ''}`));
     for (let i = 0; i < 5; i++) {
       const px = (10 + rnd.next() * 108) * (W / ICON_SIZE);
       const py = (8 + rnd.next() * 112) * (H / ICON_SIZE);
-      const r = 1 + rnd.next() * 1.8;
+      const r = (1 + rnd.next() * 1.8) * k;
       glow(out, px, py, r * 3, glowC, 0.8);
       out.fillStyle = css(0xffffff, 0.85);
       out.beginPath();

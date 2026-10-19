@@ -19,6 +19,7 @@ import type { DungeonLevel } from '../types';
 import { save } from '../core/Save';
 import { runtime, div } from './Widgets';
 import { wayMarks, T_RUIN } from './ZoneInk';
+import { screenRatio } from '../core/Screen';
 
 const T_VOID = 0;
 const T_WALL = 2;
@@ -104,7 +105,7 @@ export class MapOverlay {
   private resize(): void {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = screenRatio();
     if (w === this.w && h === this.h && dpr === this.dpr) return;
     this.w = w;
     this.h = h;

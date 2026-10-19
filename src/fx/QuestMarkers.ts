@@ -11,6 +11,7 @@
  */
 import * as THREE from 'three';
 import type { QuestMarker } from '../sim/QuestMarkers';
+import { FONT_DISPLAY } from '../ui/Fonts';
 
 type Kind = Exclude<QuestMarker, null>;
 
@@ -38,7 +39,7 @@ function glyphTexture(kind: Kind): THREE.CanvasTexture | null {
   const { glyph, fill, glow } = LOOK[kind];
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = `900 ${Math.round(S * 0.86)}px Georgia, 'Times New Roman', serif`;
+  g.font = `900 ${Math.round(S * 0.86)}px ${FONT_DISPLAY}`;
   const x = S / 2;
   const y = S / 2 + S * 0.04;
   // The glow, twice, then a dark rim so it reads on a bright sky or a fire.

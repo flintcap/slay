@@ -12,6 +12,7 @@ import { FXSystem } from '../fx/Particles';
 import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import { buildAtmosphere, type AtmosphereHandle } from './MenuStage';
+import { FONT_DISPLAY } from '../ui/Fonts';
 
 export interface DeathPayload {
   killedBy: string;
@@ -220,7 +221,7 @@ export class DeathScene extends GameScene {
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-    const serif = "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif";
+    const serif = FONT_DISPLAY;
     const carve = (text: string, y: number, size: number, weight = '700'): void => {
       ctx.font = `${weight} ${size}px ${serif}`;
       ctx.textAlign = 'center';

@@ -26,6 +26,7 @@ import { LUT_SIZE, lookOf, lookTable, type Look } from './Lut';
 import { setShaftSun, shaftNode, shaftStrength } from './Shafts';
 import { events } from './Events';
 import { rippleOffset, writeRipples } from './Ripples';
+import { onScreenRatio } from './Screen';
 
 type F = THREE.Node<'float'>;
 type V2 = THREE.Node<'vec2'>;
@@ -646,6 +647,8 @@ export class Renderer {
 
     this.pipeline = new THREE.RenderPipeline(this.gl);
     window.addEventListener('resize', this.onResize);
+    // A move to a monitor of another sharpness need not change the CSS size.
+    this.offRatio = onScreenRatio(this.onResize);
   }
 
   /**
@@ -971,6 +974,8 @@ export class Renderer {
       l.shadow.needsUpdate = on;
     });
   }
+
+  private offRatio: () => void;
 
   private onResize = (): void => {
     const w = window.innerWidth;
@@ -1345,6 +1350,7 @@ export class Renderer {
 
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
+    this.offRatio();
     this.disposeChain();
     this.pipeline.dispose();
     this.gl.dispose();

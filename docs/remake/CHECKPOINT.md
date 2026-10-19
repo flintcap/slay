@@ -372,7 +372,23 @@ Update this file and push it after every finished step.
   breaks, and sends the hero home with everything (`lethalGuard`, after
   cheat death). New checks: two save cases (portal round trip, damaged
   note) and trinket rates, size, spending and the chart in `check-charms`.
-- #133 started: no text under 10 px in either stylesheet.
+- #133 done: sharp text and icons, bundled fonts, text floor, skill board
+  at 800 px. Four OFL fonts ship in the build (`@fontsource-variable`:
+  Inter for UI, Alegreya for names and flavour, Cinzel for titles,
+  JetBrains Mono for stat columns; listed in ASSETS.md "Fonts"). The CSS
+  tokens and every canvas `font` use the stacks in `ui/Fonts.ts`; boot
+  awaits `loadFonts()` before any canvas draws words. `core/Screen.ts`
+  gives the screen's pixel ratio (1 to 3) and calls back when it changes
+  (window moved monitors), which also covers the #136 line "re-read screen
+  sharpness": combat numbers (was capped at 1.5), minimap, orbs, map panel,
+  overlay, paperdoll and the main renderer re-size on it. Item, skill,
+  status and affix icons draw at `iconScale()` (1 on a plain screen, 1.6 at
+  2x, 2.4 at 3x) and redraw on a monitor move. Skill board: the 0.76 zoom
+  at short screens (labels at 7.6 px) is gone; tiers fit the room (104 px
+  down to 84, smaller nodes under 96) and long details scroll in their own
+  box, so board and hotbar strip both fit at 1280x800 and 1280x720 with no
+  panel scroll. UI lab sweep of 19 screens at 1280x800: no visible text
+  under 10 px. Noscript text says WebGPU. The UI lab loads the fonts too.
 
 ## Phase 0d log
 

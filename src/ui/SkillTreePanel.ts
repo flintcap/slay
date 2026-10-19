@@ -50,10 +50,29 @@ import { BURST_POWER, FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } fro
 import { uiSfx } from './Sfx';
 
 const CELL_W = 132;
-const CELL_H = 104;
-const NODE = 58;
 const TIERS = 6;
 const COLS = 3;
+
+/**
+ * Tier height, node size and rank arc. The tier height fits the screen: 104
+ * px where there is room, down to 84 on a short one, so all six tiers show
+ * at full text size instead of the board shrinking as one piece (which took
+ * its labels under 8 px at 1280 by 800). Short tiers take smaller nodes.
+ */
+const TIER_H_MAX = 104;
+const TIER_H_MIN = 84;
+/** What the panel's frame takes above and below the board, before it is laid out. */
+const BOARD_CHROME = 200;
+const geo = { cellH: TIER_H_MAX, node: 58, arcR: 32, arcLen: 2 * Math.PI * 32 };
+
+/** Sizes the board for `room` px of height. */
+function fitBoard(room: number): void {
+  const cellH = Math.max(TIER_H_MIN, Math.min(TIER_H_MAX, Math.floor(room / TIERS)));
+  geo.cellH = cellH;
+  geo.node = cellH >= 96 ? 58 : 52;
+  geo.arcR = geo.node / 2 + 3;
+  geo.arcLen = 2 * Math.PI * geo.arcR;
+}
 
 interface NodeView {
   def: SkillDef;
@@ -65,9 +84,6 @@ interface NodeView {
   y: number;
 }
 
-/** Radius and length of the rank arc round each node. */
-const ARC_R = NODE / 2 + 3;
-const ARC_LEN = 2 * Math.PI * ARC_R;
 
 export class SkillTreePanel {
   readonly panel: Panel;
@@ -145,11 +161,22 @@ export class SkillTreePanel {
     events.on('player:levelUp', () => {
       if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
+    window.addEventListener('resize', () => this.refit());
   }
 
   open(): void {
     this.refresh();
     this.panel.open();
+    // Laid out now: size the board to the room it really has.
+    this.refit();
+  }
+
+  /** Rebuilds the board if the room it has now wants another tier height. */
+  private refit(): void {
+    if (!this.panel.isOpen) return;
+    const was = geo.cellH;
+    fitBoard(this.boardRoom());
+    if (geo.cellH !== was) this.buildBoard();
   }
 
   close(): void {
@@ -263,16 +290,27 @@ export class SkillTreePanel {
     this.pointsEl.appendChild(span('skill-points-l', has ? 'points to spend' : 'no points'));
   }
 
+  /** Height the board can take without the panel scrolling. */
+  private boardRoom(): number {
+    const body = this.panel.body;
+    const box = body.getBoundingClientRect();
+    if (!body.offsetHeight || box.height <= 0) return window.innerHeight - BOARD_CHROME;
+    // The panel may be mid-way through its opening zoom; measure unscaled.
+    const k = box.height / body.offsetHeight;
+    return (box.bottom - this.board.getBoundingClientRect().top) / k - 12;
+  }
+
   private buildBoard(): void {
     const c = save.account.current;
+    fitBoard(this.boardRoom());
     clear(this.board);
     this.nodes.clear();
     this.board.appendChild(this.lines as unknown as Node);
     this.board.style.width = `${COLS * CELL_W}px`;
-    this.board.style.height = `${TIERS * CELL_H}px`;
-    this.lines.setAttribute('viewBox', `0 0 ${COLS * CELL_W} ${TIERS * CELL_H}`);
+    this.board.style.height = `${TIERS * geo.cellH}px`;
+    this.lines.setAttribute('viewBox', `0 0 ${COLS * CELL_W} ${TIERS * geo.cellH}`);
     this.lines.setAttribute('width', String(COLS * CELL_W));
-    this.lines.setAttribute('height', String(TIERS * CELL_H));
+    this.lines.setAttribute('height', String(TIERS * geo.cellH));
     clear(this.lines as unknown as Element);
 
     const tree = treeById(this.activeTree);
@@ -294,8 +332,8 @@ export class SkillTreePanel {
     const spentHere = c ? this.pointsIn(c, this.activeTree) : 0;
     for (let t = 1; t <= TIERS; t++) {
       const rail = div('skill-tierrail');
-      rail.style.top = `${(t - 1) * CELL_H}px`;
-      rail.style.height = `${CELL_H}px`;
+      rail.style.top = `${(t - 1) * geo.cellH}px`;
+      rail.style.height = `${geo.cellH}px`;
       const need = (t - 1) * 5;
       rail.classList.toggle('is-open', spentHere >= need);
       const tag = div('skill-tiertag');
@@ -311,18 +349,18 @@ export class SkillTreePanel {
       const col = Math.max(0, Math.min(COLS - 1, s.column));
       const tier = Math.max(1, Math.min(TIERS, s.tier));
       const x = col * CELL_W + CELL_W / 2;
-      const y = (tier - 1) * CELL_H + CELL_H / 2;
+      const y = (tier - 1) * geo.cellH + geo.cellH / 2;
 
       const node = div('sknode');
-      node.style.left = `${x - NODE / 2}px`;
-      node.style.top = `${y - NODE / 2}px`;
-      node.style.width = `${NODE}px`;
-      node.style.height = `${NODE}px`;
+      node.style.left = `${x - geo.node / 2}px`;
+      node.style.top = `${y - geo.node / 2}px`;
+      node.style.width = `${geo.node}px`;
+      node.style.height = `${geo.node}px`;
       node.style.setProperty('--accent', accent);
       node.dataset.skill = s.id;
 
       const art = div('sknode-art');
-      art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:${NODE - 7}px;height:${NODE - 7}px" draggable="false">`;
+      art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:${geo.node - 7}px;height:${geo.node - 7}px" draggable="false">`;
       const frame = div('sknode-frame');
       const rank = div('sknode-rank');
       const lock = div('sknode-lock');
@@ -331,7 +369,7 @@ export class SkillTreePanel {
       // already bought. Reads from across the board where "3/20" does not.
       const ns = 'http://www.w3.org/2000/svg';
       const ring = document.createElementNS(ns, 'svg');
-      const box = NODE + 12;
+      const box = geo.node + 12;
       ring.setAttribute('class', 'sknode-ring');
       ring.setAttribute('viewBox', `0 0 ${box} ${box}`);
       ring.setAttribute('width', String(box));
@@ -343,9 +381,9 @@ export class SkillTreePanel {
       for (const c0 of [groove, arc]) {
         c0.setAttribute('cx', String(box / 2));
         c0.setAttribute('cy', String(box / 2));
-        c0.setAttribute('r', String(ARC_R));
+        c0.setAttribute('r', String(geo.arcR));
       }
-      arc.setAttribute('stroke-dasharray', `0 ${ARC_LEN}`);
+      arc.setAttribute('stroke-dasharray', `0 ${geo.arcLen}`);
       arc.setAttribute('transform', `rotate(-90 ${box / 2} ${box / 2})`);
       ring.appendChild(groove);
       ring.appendChild(arc);
@@ -379,7 +417,7 @@ export class SkillTreePanel {
       // of it underneath.
       const label = div('sknode-label', s.name);
       label.style.left = `${x - CELL_W / 2}px`;
-      label.style.top = `${y + NODE / 2 + 9}px`;
+      label.style.top = `${y + geo.node / 2 + 9}px`;
       label.style.width = `${CELL_W}px`;
 
       this.board.appendChild(node);
@@ -481,9 +519,9 @@ export class SkillTreePanel {
     // Beside the node, on whichever side has room; nudged up near the bottom.
     const right = view.x < (COLS * CELL_W) / 2 + 1;
     card.classList.toggle('on-left', !right);
-    card.style.left = right ? `${view.x + NODE / 2 + 14}px` : '';
-    card.style.right = right ? '' : `${COLS * CELL_W - view.x + NODE / 2 + 14}px`;
-    card.style.top = `${Math.min(view.y - NODE / 2 - 6, TIERS * CELL_H - 150)}px`;
+    card.style.left = right ? `${view.x + geo.node / 2 + 14}px` : '';
+    card.style.right = right ? '' : `${COLS * CELL_W - view.x + geo.node / 2 + 14}px`;
+    card.style.top = `${Math.min(view.y - geo.node / 2 - 6, TIERS * geo.cellH - 150)}px`;
     this.board.appendChild(card);
     card.classList.remove('is-shown');
     void card.offsetWidth;
@@ -507,8 +545,8 @@ export class SkillTreePanel {
         const midY = (from.y + view.y) / 2;
         // A vertical S-curve reads as a dependency without cluttering the grid.
         const d =
-          `M${from.x} ${from.y + NODE / 2 - 6} ` +
-          `C${from.x} ${midY}, ${view.x} ${midY}, ${view.x} ${view.y - NODE / 2 + 6}`;
+          `M${from.x} ${from.y + geo.node / 2 - 6} ` +
+          `C${from.x} ${midY}, ${view.x} ${midY}, ${view.x} ${view.y - geo.node / 2 + 6}`;
         path.setAttribute('d', d);
         path.setAttribute('class', 'skline');
         path.dataset.to = view.def.id;
@@ -525,7 +563,7 @@ export class SkillTreePanel {
 
         const dot = document.createElementNS(ns, 'circle');
         dot.setAttribute('cx', String(view.x));
-        dot.setAttribute('cy', String(view.y - NODE / 2 + 4));
+        dot.setAttribute('cy', String(view.y - geo.node / 2 + 4));
         dot.setAttribute('r', '2.6');
         dot.setAttribute('class', 'skline-dot');
         dot.dataset.to = view.def.id;
@@ -550,7 +588,7 @@ export class SkillTreePanel {
       view.root.classList.toggle('is-locked', rank === 0 && !check.ok);
       view.rank.textContent = rank > 0 ? `${rank}/${max}` : `0/${max}`;
       const k = max > 0 ? Math.min(1, rank / max) : 0;
-      view.arc.setAttribute('stroke-dasharray', `${(ARC_LEN * k).toFixed(1)} ${ARC_LEN.toFixed(1)}`);
+      view.arc.setAttribute('stroke-dasharray', `${(geo.arcLen * k).toFixed(1)} ${geo.arcLen.toFixed(1)}`);
       view.root.title = check.ok ? '' : check.reason ?? '';
     }
     // Lines light up once their prerequisite is actually taken.

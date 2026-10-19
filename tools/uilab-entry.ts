@@ -29,6 +29,13 @@ import { CombatTextLayer } from '../src/ui/CombatText';
 import { GroundLabelLayer } from '../src/ui/GroundLabels';
 import { NameplateLayer, type PlateTarget } from '../src/ui/Nameplates';
 import { previewLevel } from '../src/world/DungeonGen';
+// The bundled typefaces, as main.ts loads them.
+import '@fontsource-variable/inter/wght.css';
+import '@fontsource-variable/alegreya/wght.css';
+import '@fontsource-variable/alegreya/wght-italic.css';
+import '@fontsource-variable/cinzel/wght.css';
+import '@fontsource-variable/jetbrains-mono/wght.css';
+import { loadFonts } from '../src/ui/Fonts';
 
 setIconBaseResolver((id) => {
   try {
@@ -447,14 +454,15 @@ const scenarios2: Record<string, () => void> = {
 };
 
 const want = new URLSearchParams(location.search).get('s') ?? 'hud';
-setTimeout(() => {
+// Canvas text (combat numbers, map labels) waits for the fonts, as in boot.
+void loadFonts().then(() => setTimeout(() => {
   for (const part of want.split('+')) {
     const all = { ...scenarios, ...scenarios2 };
     if (all[part]) all[part]!();
     else events.emit('ui:open', { panel: part });
   }
   (window as unknown as Record<string, unknown>).LAB_READY = true;
-}, 200);
+}, 200));
 
 // Frame-rate probe: headless Chromium can tick slowly, which matters for
 // anything eased per frame.

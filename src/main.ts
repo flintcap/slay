@@ -13,6 +13,14 @@ import { mountKeyArt } from './art/KeyArt';
 import { bakeStats } from './world/BakePool';
 import { DEV_TOOLS } from './core/DevTools';
 import { warmSpriteAtlas } from './fx/kit/Atlas';
+// The bundled typefaces (ui/Fonts.ts): one variable file per script.
+import '@fontsource-variable/inter/wght.css';
+import '@fontsource-variable/alegreya/wght.css';
+import '@fontsource-variable/alegreya/wght-italic.css';
+import '@fontsource-variable/cinzel/wght.css';
+import '@fontsource-variable/jetbrains-mono/wght.css';
+import { loadFonts } from './ui/Fonts';
+import { onScreenRatio } from './core/Screen';
 
 const bootFill = document.getElementById('boot-fill');
 const bootStatus = document.getElementById('boot-status');
@@ -33,6 +41,9 @@ async function main(): Promise<void> {
   if (!canvas) throw new Error('missing #view canvas');
 
   boot(0.05, 'Reading the ledger of the fallen…');
+  // Canvas text keeps whatever face it was drawn in, so the bundled fonts
+  // are ready before anything draws words (ui/Fonts.ts).
+  const fonts = loadFonts();
   await tick();
   // The key art behind the boot bar (art stream); cosmetic, so never fatal.
   try {
@@ -41,6 +52,7 @@ async function main(): Promise<void> {
     /* the plain boot screen is fine */
   }
   save.load();
+  await fonts;
   // Legacy perks apply to every character; the sim reads the account through this.
   const { bindLegacyAccount, legacyOf } = await import('./sim/Legacy');
   bindLegacyAccount(() => save.account);
@@ -75,6 +87,12 @@ async function main(): Promise<void> {
         void import('./art/Icons').then((m) => m.clearIconCaches());
         events.emit('ui:refresh', {});
       }
+    });
+    // Moved to a monitor of another sharpness: icons are drawn for its pixels.
+    onScreenRatio(() => {
+      void import('./art/Icons').then((m) => {
+        if (m.refreshIconScale()) events.emit('ui:refresh', {});
+      });
     });
   }
 

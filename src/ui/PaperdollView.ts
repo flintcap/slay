@@ -16,6 +16,7 @@ import * as THREE from 'three/webgpu';
 import { makeStudio, type Studio } from '../core/Studio';
 import type { Character } from '../types';
 import { DressedHero, VISUAL_SLOTS } from '../scenes/HeroModel';
+import { onScreenRatio, screenRatio } from '../core/Screen';
 
 /** Panel-sized viewport. */
 const WIDTH = 188;
@@ -48,6 +49,7 @@ export class PaperdollView {
   private running = false;
   private failed = false;
   private disposed = false;
+  private offRatio: () => void = () => {};
   /** `start` was called before the renderer opened. */
   private wantRun = false;
 
@@ -118,13 +120,18 @@ export class PaperdollView {
         r.dispose();
         return;
       }
-      r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      r.setPixelRatio(screenRatio());
       r.setSize(WIDTH, HEIGHT);
       r.toneMappingExposure = 1.15;
       r.setClearColor(0x000000, 0);
       r.domElement.className = 'pd-view-canvas';
       this.root.appendChild(r.domElement);
       this.renderer = r;
+      // Another monitor's sharpness: the same CSS size, more or fewer pixels.
+      this.offRatio = onScreenRatio((dpr) => {
+        r.setPixelRatio(dpr);
+        r.setSize(WIDTH, HEIGHT);
+      });
       const todo = this.onOpen.splice(0);
       for (const fn of todo) fn();
     });
@@ -270,6 +277,7 @@ export class PaperdollView {
 
   dispose(): void {
     this.disposed = true;
+    this.offRatio();
     this.onOpen.length = 0;
     this.stop();
     this.hero?.dispose();

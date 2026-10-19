@@ -10,6 +10,8 @@ import type { DungeonLevel, DungeonRoom } from '../types';
 import { events } from '../core/Events';
 import { runtime, Panel, add, clear, div, span, icon, emptyState } from './Widgets';
 import { zoneInks, zoneInkAt, newKindInk, wayMarks, T_RUIN } from './ZoneInk';
+import { FONT_DISPLAY } from './Fonts';
+import { onScreenRatio, screenRatio } from '../core/Screen';
 
 const T_VOID = 0;
 const T_FLOOR = 1;
@@ -79,6 +81,7 @@ export class MapPanel {
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     this.stage.appendChild(this.canvas);
     new ResizeObserver(() => (this.sizeDirty = true)).observe(this.stage);
+    onScreenRatio(() => (this.sizeDirty = true));
 
     this.headerLabel = div('minimap-label');
     this.headerLabel.style.position = 'absolute';
@@ -201,7 +204,7 @@ export class MapPanel {
     if (w !== this.stageW || h !== this.stageH) this.dirty = true;
     this.stageW = w;
     this.stageH = h;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = screenRatio();
     const want = { w: Math.round(w * dpr), h: Math.round(h * dpr) };
     if (this.canvas.width !== want.w || this.canvas.height !== want.h) {
       this.canvas.width = want.w;
@@ -344,7 +347,7 @@ export class MapPanel {
 
     // Room labels.
     if (s >= 5) {
-      ctx.font = `700 ${Math.round(11 * textScale())}px 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif`;
+      ctx.font = `700 ${Math.round(11 * textScale())}px ${FONT_DISPLAY}`;
       ctx.letterSpacing = '2px';
       ctx.textAlign = 'center';
       for (const room of level.rooms ?? []) {
@@ -365,7 +368,7 @@ export class MapPanel {
 
     // Zone names, once any of the zone is seen, over its middle.
     if ((level.zones?.length ?? 0) > 1 && s >= 4) {
-      ctx.font = `italic 700 ${Math.round(15 * textScale())}px 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif`;
+      ctx.font = `italic 700 ${Math.round(15 * textScale())}px ${FONT_DISPLAY}`;
       ctx.textAlign = 'center';
       for (const z of level.zones!) {
         const cx = z.bounds.x + z.bounds.w / 2;

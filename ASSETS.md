@@ -10,6 +10,21 @@ Layout: `textures/world/<material>/` (ground: floors, walls, terrain),
 are relative to `public/assets/`. Textures are WebP (at most 1024 px), sounds
 and music OGG Vorbis.
 
+## Fonts
+
+The four typefaces ship inside the build, from npm, not under
+`public/assets/`. They are the one exception to CC0: fonts are SIL Open Font
+Licence 1.1, which lets a game bundle and ship them (not sell them on their
+own). Each package carries its licence in `node_modules/<package>/LICENSE`.
+Loaded by `src/main.ts`; the stacks are in `src/ui/Fonts.ts`.
+
+- `@fontsource-variable/inter`: Inter, by Rasmus Andersson. UI text. https://github.com/rsms/inter. SIL OFL 1.1.
+- `@fontsource-variable/alegreya`: Alegreya, by Juan Pablo del Peral (Huerta Tipográfica). Names, headings, flavour lines. https://github.com/huertatipografica/Alegreya. SIL OFL 1.1.
+- `@fontsource-variable/cinzel`: Cinzel, by Natanael Gama. Titles. https://github.com/NDISCOVER/Cinzel. SIL OFL 1.1.
+- `@fontsource-variable/jetbrains-mono`: JetBrains Mono, by JetBrains. Stat columns. https://github.com/JetBrains/JetBrainsMono. SIL OFL 1.1.
+
+## Files
+
 Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 (-0.5 dBFS) and re-encoded at Vorbis q4, since the originals decoded up to
 +13 dBFS and clipped the mix.

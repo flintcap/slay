@@ -10,6 +10,7 @@ import {
   vec3, vec4,
 } from 'three/tsl';
 import { markRange } from './kit/Upload';
+import { FONT_UI } from '../ui/Fonts';
 import { setNodeTextures, vary, type F, type V4 } from '../core/Tsl';
 
 const GLYPHS = '0123456789.,+-!?%*ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -34,7 +35,7 @@ function buildGlyphAtlas(): GlyphAtlas {
   const ctx = cv.getContext('2d', { willReadFrequently: true })!;
   ctx.clearRect(0, 0, cv.width, cv.height);
 
-  const font = `900 ${Math.round(GLYPH_CELL * 0.74)}px "Trebuchet MS", "Segoe UI", system-ui, sans-serif`;
+  const font = `900 ${Math.round(GLYPH_CELL * 0.74)}px ${FONT_UI}`;
   ctx.font = font;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
