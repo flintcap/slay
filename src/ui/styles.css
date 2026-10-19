@@ -3458,7 +3458,7 @@ input.slider::-moz-range-thumb {
   height: 4px;
   background: linear-gradient(180deg, #080603, #1a1408);
   border-radius: 1px;
-  box-shadow: 0 0 0 1px var(--frame-edge), 0 0 0 2px rgba(214, 178, 96, 0.25);
+  box-shadow: 0 0 0 1px var(--frame-edge), 0 0 0 2px rgb(var(--line-rgb) / 0.25);
   overflow: hidden;
 }
 .bosspoise-fill {
@@ -5183,7 +5183,7 @@ input.slider::-moz-range-thumb {
 .build-name {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s2);
   color: var(--ink-2);
   min-width: 0;
   overflow: hidden;
@@ -5201,7 +5201,7 @@ input.slider::-moz-range-thumb {
 }
 .build-sub {
   margin-top: var(--s3);
-  margin-bottom: 4px;
+  margin-bottom: var(--s1);
   font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -5218,7 +5218,7 @@ input.slider::-moz-range-thumb {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 4px 0;
+  padding: var(--s1) 0;
   border-radius: var(--radius);
   background: rgb(var(--shade-rgb) / 0.26);
   box-shadow: var(--hairline);
@@ -5998,7 +5998,7 @@ input.slider::-moz-range-thumb {
   box-shadow: inset 0 0 0 1px rgb(var(--bad-rgb) / 0.4);
 }
 .skdetail-note {
-  margin-bottom: 4px;
+  margin-bottom: var(--s1);
   font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--ink-3);
@@ -6355,7 +6355,7 @@ input.slider::-moz-range-thumb {
 }
 .smith-line-tag {
   flex: none;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-4);

@@ -2640,7 +2640,7 @@ body.reduce-motion .dth * {
 .dth-recap-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--s2);
 }
 .dth-hit {
   display: grid;
@@ -2676,13 +2676,13 @@ body.reduce-motion .dth * {
   color: #ff8a72;
 }
 .dth-hit-what {
-  margin-left: 6px;
+  margin-left: var(--s2);
   color: var(--ink-4);
 }
 .dth-hit-n {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--s1);
   font-family: var(--font-num);
 }
 .dth-hit-life {
@@ -2690,7 +2690,7 @@ body.reduce-motion .dth * {
   height: 3px;
   margin-top: 3px;
   background: rgb(var(--light-rgb) / 0.08);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 .dth-hit-fill {
@@ -2701,8 +2701,8 @@ body.reduce-motion .dth * {
   font-style: italic;
 }
 .dth-hit.is-last {
-  padding: 4px 6px;
-  margin: 2px -6px 0;
+  padding: var(--s1) var(--s2);
+  margin: 2px -var(--s2) 0;
   background: rgb(var(--bad-rgb) / 0.14);
   border-radius: var(--radius-sm);
 }
@@ -2738,7 +2738,7 @@ body.reduce-motion .dth * {
 .rcp-v {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s2);
   font-family: var(--font-num);
   font-size: var(--fs-xl);
   line-height: 1.1;
@@ -2762,7 +2762,7 @@ body.reduce-motion .dth * {
 .rcp-lines {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--s2);
   margin-top: var(--s4);
 }
 .rcp-line {
