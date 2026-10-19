@@ -135,15 +135,17 @@ const INDOOR_UNDER: Partial<Record<BiomeId, { color: number; intensity: number }
 export function lightMood(biome: BiomeDef, art: BiomeArt): LightMood {
   const open = art.ceiling === 'open';
   const out = open ? OUTDOOR[biome.id] : undefined;
-  if (out) return { ...out, background: art.skyColor };
+  // A variant's sky (`BiomeArt.mood`) lays over the biome's own.
+  if (out) return { ...out, ...art.mood, background: art.skyColor };
   if (open) {
     // An open biome without a table entry: its own colours, a little brighter.
     return {
       sky: biome.ambientColor, ground: art.bounceColor, fill: biome.ambientIntensity * 1.3 + 0.2,
       key: biome.keyColor, keyIntensity: biome.keyIntensity * 1.9 + 0.12, elevation: 45, azimuth: 230,
       fog: biome.fogColor, fogDensity: biome.fogDensity,
-      background: art.skyColor,
       hero: { color: 0xffd2a0, intensity: 26, distance: 15 },
+      ...art.mood,
+      background: art.skyColor,
     };
   }
   // Indoors: the biome's own tinted dark, kept low so torch pools carry the

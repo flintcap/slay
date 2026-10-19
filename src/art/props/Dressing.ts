@@ -360,6 +360,77 @@ const VARIANTS: Partial<Record<BiomeId, Record<string, Partial<Dressing>>>> = {
       clutter: P(['brokenColumn', 4], ['runeStone', 3], ['voidShard', 3], ['rubblePile', 3], ['candleCluster', 2]),
     },
   },
+  darkForest: {
+    fogbound: {
+      standLight: P(['lanternPost', 5], ['campfire', 1]),
+      clutter: P(['fern', 5], ['deadTree', 3], ['mushroomCluster', 5], ['stump', 3], ['fallenLog', 3], ['bonepile', 2], ['thornBush', 2]),
+      detail: P(['mossPatch', 7], ['leafLitter', 5], ['twigs', 3], ['sporeTuft', 2]),
+    },
+    bonfire: {
+      standLight: P(['campfire', 6], ['lanternPost', 1]),
+      clutter: P(['fallenLog', 5], ['stump', 4], ['fern', 3], ['boulder', 2], ['bonepile', 2], ['beastSkull', 1]),
+      feature: P(['tent', 4], ['cart', 3], ['cairn', 2], ['wayShrine', 2], ['gibbet', 1]),
+      detail: P(['leafLitter', 5], ['ashDrift', 4], ['scorchMark', 3], ['twigs', 3]),
+    },
+  },
+  swamp: {
+    lanterns: {
+      standLight: P(['lanternPost', 6]),
+      clutter: P(['reeds', 6], ['mangroveRoots', 4], ['bonepile', 3], ['stump', 2], ['mushroomCluster', 2]),
+      feature: P(['gibbet', 4], ['cage', 3], ['deadTree', 2], ['wayShrine', 2]),
+      liquid: P(['lilyPad', 3]),
+    },
+    dryseason: {
+      clutter: P(['bonepile', 4], ['beastSkull', 3], ['deadTree', 3], ['stump', 3], ['rockCluster', 3], ['fallenLog', 2], ['reeds', 1]),
+      detail: P(['pebbles', 5], ['boneChips', 4], ['twigs', 4], ['grassTuft', 2]),
+      liquid: NONE,
+    },
+  },
+  desert: {
+    sandstorm: {
+      clutter: P(['rockCluster', 5], ['brokenColumn', 3], ['bonepile', 2], ['rubblePile', 3]),
+      feature: P(['obelisk', 3], ['ruinWall', 4], ['brokenColumn', 3], ['cairn', 2]),
+      detail: P(['sandDrift', 10], ['pebbles', 3]),
+    },
+    dusk: {
+      standLight: P(['brazier', 4], ['campfire', 2]),
+      clutter: P(['beastSkull', 4], ['bonepile', 4], ['rockCluster', 4], ['brokenColumn', 3], ['spikes', 1]),
+    },
+  },
+  desertTomb: {
+    floodvault: {
+      clutter: P(['rubblePile', 4], ['brokenColumn', 4], ['sarcophagus', 3], ['bonepile', 2], ['coffin', 1]),
+      detail: P(['mossPatch', 4], ['pebbles', 5], ['shellFragment', 3], ['sandDrift', 1]),
+    },
+    treasury: {
+      wallLightSpacing: 4,
+      standLight: P(['brazier', 4], ['candelabra', 2]),
+      clutter: P(['ingotStack', 3], ['candleCluster', 3], ['sarcophagus', 2], ['brokenColumn', 2], ['statue', 1]),
+      feature: P(['idolHead', 4], ['statue', 4], ['sarcophagus', 3], ['altar', 2]),
+      landmark: P(['idolHead', 4], ['statue', 4], ['obelisk', 2]),
+      breakables: P(['urn', 8]),
+    },
+  },
+  tundra: {
+    squall: {
+      clutter: P(['iceShard', 5], ['frozenCorpse', 3], ['rockCluster', 4], ['boulder', 3], ['frozenBanner', 1]),
+      detail: P(['iceCrust', 9], ['pebbles', 2]),
+    },
+    skyfire: {
+      standLight: P(['campfire', 5], ['lanternPost', 1]),
+      feature: P(['tent', 3], ['cairn', 3], ['iceMonolith', 3], ['runeStone', 2]),
+    },
+  },
+  hell: {
+    ashfall: {
+      clutter: P(['rockCluster', 5], ['bonepile', 4], ['boneSpire', 3], ['skullPile', 2], ['lavaRock', 2], ['impaler', 1]),
+      detail: P(['ashDrift', 9], ['scorchMark', 3], ['boneChips', 3]),
+    },
+    crust: {
+      clutter: P(['lavaRock', 6], ['crystalShard', 3], ['boneSpire', 3], ['rockCluster', 3], ['spikes', 2]),
+      detail: P(['slagChunk', 6], ['scorchMark', 4], ['ashDrift', 2]),
+    },
+  },
 };
 
 /** Drops zero-weight entries so a variant can switch a kind off by naming it at 0. */

@@ -55,6 +55,17 @@ export function weatherFor(biome: BiomeId, outdoor: boolean, variant: string | u
   };
   switch (biome) {
     case 'tundra': {
+      if (variant === 'squall') {
+        add('snow', 380);
+        add('fog', 1.2);
+        wind = rng.range(0.85, 1);
+        break;
+      }
+      if (variant === 'skyfire') {
+        add('snow', 40);
+        wind = rng.range(0.05, 0.2);
+        break;
+      }
       const r = rng.next();
       if (r < 0.25) add('snow', 70);
       else if (r < 0.8) add('snow', 170);
@@ -74,10 +85,24 @@ export function weatherFor(biome: BiomeId, outdoor: boolean, variant: string | u
       add('fog', 0.7);
       break;
     case 'swamp':
+      if (variant === 'dryseason') {
+        add('grit', 40);
+        add('fog', 0.4);
+        break;
+      }
       if (rng.chance(0.6)) add('rain', rng.range(240, 360));
-      add('fog', 1.1);
+      add('fog', variant === 'lanterns' ? 1.4 : 1.1);
       break;
     case 'darkForest':
+      if (variant === 'fogbound') {
+        add('fog', 1.6);
+        break;
+      }
+      if (variant === 'bonfire') {
+        add('cinders', 26);
+        if (rng.chance(0.5)) add('fog', 0.5);
+        break;
+      }
       if (rng.chance(0.45)) add('rain', rng.range(180, 280));
       if (rng.chance(0.55)) add('fog', 0.8);
       break;
@@ -86,13 +111,32 @@ export function weatherFor(biome: BiomeId, outdoor: boolean, variant: string | u
       if (variant === 'emberfall') add('cinders', 34);
       break;
     case 'hell':
-      add('ash', 60);
-      add('cinders', 40);
+      if (variant === 'ashfall') {
+        add('ash', 200);
+        add('cinders', 15);
+      } else if (variant === 'crust') {
+        add('ash', 30);
+        add('cinders', 15);
+      } else {
+        add('ash', 60);
+        add('cinders', 40);
+      }
       break;
     case 'desert':
-      if (rng.chance(0.5)) {
+      if (variant === 'sandstorm') {
+        add('grit', 220);
+        wind = rng.range(0.85, 1);
+      } else if (variant === 'dusk') {
+        wind = rng.range(0.05, 0.2);
+      } else if (rng.chance(0.5)) {
         add('grit', rng.range(60, 110));
         wind = rng.range(0.55, 0.9);
+      }
+      break;
+    case 'desertTomb':
+      if (variant === 'floodvault') {
+        add('drip', 8);
+        add('fog', 0.8);
       }
       break;
     case 'crypt':

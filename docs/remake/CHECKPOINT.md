@@ -233,8 +233,10 @@ Update this file and push it after every finished step.
 
 ## In progress
 
-- #118 class boosts for ranger, shapeshifter and knight, list to the owner
-  first.
+- #119 (Phase 1) the 6 thin biomes (owner approved 1-3): 12 new looks
+  (done), a 3-step quest line per biome, checks and screenshots. Skipped by
+  the owner: new events; lasting shrines, escort, vigil and the unused
+  quests. Class boosts from #118 were offered and not taken.
 
 ## Phase 0d log
 

@@ -16,6 +16,8 @@ import type { BiomeArt } from '../src/world/Biomes';
 
 /** Fields a player notices from the game camera without being told to look. */
 const LOUD: Array<keyof BiomeArt> = [
+  // Outdoors the sky's light is the loudest thing on screen.
+  'mood',
   'lightColor',
   'lightIntensity',
   'liquid',
@@ -49,7 +51,7 @@ for (const b of BIOMES) {
     const art = biomeArt(b.id, v.id);
     let changed = 0;
     let loud = 0;
-    for (const k of Object.keys(base) as Array<keyof BiomeArt>) {
+    for (const k of new Set([...Object.keys(base), ...Object.keys(art)]) as Set<keyof BiomeArt>) {
       if (art[k] === base[k]) continue;
       changed++;
       if (LOUD.includes(k)) loud++;

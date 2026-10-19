@@ -15,6 +15,7 @@
 
 import type { BiomeDef, BiomeId, LayoutKind, MonsterFamily, Rng } from '../types';
 import type { GradeProfile } from '../core/Renderer';
+import type { LightMood } from './Lighting';
 
 // ---------------------------------------------------------------------------
 // Extended art configuration
@@ -101,6 +102,11 @@ export interface BiomeArt {
    * grade in `Renderer.DEFAULT_GRADE`.
    */
   grade?: Partial<GradeProfile>;
+  /**
+   * Outdoors only: changes to the sky's light (`Lighting.ts` `OUTDOOR`), so a
+   * variant can move the sun, thicken the fog or turn the night green.
+   */
+  mood?: Partial<Omit<LightMood, 'background'>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -1173,6 +1179,232 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
         veinColor: 0x8fc0ff,
         shaftDensity: 0.7,
         damage: 0.5,
+      },
+    },
+  ],
+
+  // The map remake's biomes. Outdoors the sky does most of the work, so
+  // these lean on `mood` (the sun, moon and fog) as much as on the lamps.
+  darkForest: [
+    PLAIN('The Blackroot Wood', 'Old trees with their roots in older graves.'),
+    {
+      id: 'fogbound',
+      name: 'The Fogbound Wood',
+      blurb: 'The mist came up out of the graves one night and never went back down.',
+      weight: 4,
+      patch: {
+        grade: { contrast: 1.02, saturation: 0.7, shadowTint: 0x4a5a6a, highlightTint: 0xdce4ec, splitTone: 0.45, vignette: 0.62, vignetteTint: 0x2a3440 },
+        lightColor: 0xdce8f0,
+        lightIntensity: 4,
+        lightDistance: 10,
+        bounceColor: 0x2a3440,
+        shaftDensity: 0.55,
+        puddles: 0.3,
+        wetness: 0.5,
+        mood: { sky: 0x4a5a78, fill: 1.8, keyIntensity: 2.6, fog: 0x1a2430, fogDensity: 0.042 },
+      },
+    },
+    {
+      id: 'bonfire',
+      name: 'Bonfire Night',
+      blurb: 'Someone lit the old camps again. The fires are fed, and nobody sits at them.',
+      weight: 3,
+      minDepth: 2,
+      patch: {
+        grade: { contrast: 1.12, saturation: 0.92, shadowTint: 0x2a3a5a, highlightTint: 0xffb878, splitTone: 0.55, vignette: 0.58, vignetteTint: 0x1a1008, bloomStrength: 0.7 },
+        lightColor: 0xff8a3c,
+        lightIntensity: 7.5,
+        lightDistance: 15,
+        bounceColor: 0x4a2410,
+        shaftDensity: 0.1,
+        mood: { sky: 0x2a3450, ground: 0x24160c, keyIntensity: 2.4, fog: 0x120c0a },
+      },
+    },
+  ],
+
+  swamp: [
+    PLAIN('The Gallows Fen', 'Black water to the knee, and the knee is the shallow part.'),
+    {
+      id: 'lanterns',
+      name: 'The Drowned Lanterns',
+      blurb: 'Lights burn under the water where the hanged were sunk. They follow you along the bank.',
+      weight: 4,
+      patch: {
+        grade: { contrast: 1.1, saturation: 0.88, shadowTint: 0x1e4a34, highlightTint: 0xb8ffc8, splitTone: 0.55, vignette: 0.62, vignetteTint: 0x08140c, bloomStrength: 0.7 },
+        liquid: 'water',
+        liquidColor: 0x0c2a22,
+        liquidEmissive: 0x1e6a40,
+        lightColor: 0x7aff9a,
+        lightIntensity: 5,
+        bounceColor: 0x1a4a2a,
+        mood: { sky: 0x2a3a30, ground: 0x10241a, keyIntensity: 2.0, fog: 0x0c1a12 },
+      },
+    },
+    {
+      id: 'dryseason',
+      name: 'The Dry Season',
+      blurb: 'The fen sank back into its bed this year. What it was hiding is still lying in the mud.',
+      weight: 3,
+      minDepth: 3,
+      patch: {
+        grade: { contrast: 1.1, saturation: 0.74, shadowTint: 0x5a4a34, highlightTint: 0xf0d8a0, splitTone: 0.5, vignette: 0.5, vignetteTint: 0x2a2010 },
+        liquid: 'water',
+        liquidColor: 0x2a2414,
+        lightColor: 0xffc070,
+        lightIntensity: 4.5,
+        bounceColor: 0x4a3a20,
+        puddles: 0.1,
+        wetness: 0.25,
+        damage: 0.55,
+        mood: { sky: 0x6a6a4a, ground: 0x3a2e1a, fill: 1.4, key: 0xf0d8a0, keyIntensity: 3.2, fog: 0x2a2414, fogDensity: 0.026 },
+      },
+    },
+  ],
+
+  desert: [
+    PLAIN('The Bleached Reach', 'Sand to the end of sight and walls that used to be a city.'),
+    {
+      id: 'sandstorm',
+      name: 'The Sandstorm',
+      blurb: 'The wind came up at noon and has not stopped. The sun is a coin behind it.',
+      weight: 4,
+      patch: {
+        grade: { contrast: 1.0, saturation: 0.68, shadowTint: 0x6a5a4a, highlightTint: 0xffd8a0, splitTone: 0.45, vignette: 0.62, vignetteTint: 0x6a4a28, haze: 1 },
+        lightColor: 0xffc070,
+        lightIntensity: 6,
+        lightDistance: 10,
+        bounceColor: 0x7a5a30,
+        mood: { sky: 0xa08a68, fill: 1.4, key: 0xffd8a0, keyIntensity: 1.8, elevation: 40, fog: 0x8a6a40, fogDensity: 0.04 },
+      },
+    },
+    {
+      id: 'dusk',
+      name: 'The Red Dusk',
+      blurb: 'The sun sits on the dunes, too tired to set. Everything it touches looks wounded.',
+      weight: 3,
+      minDepth: 4,
+      patch: {
+        grade: { contrast: 1.14, saturation: 0.95, shadowTint: 0x4a2a5a, highlightTint: 0xff9a6a, splitTone: 0.6, vignette: 0.52, vignetteTint: 0x3a1418, haze: 0.6 },
+        lightColor: 0xff8a40,
+        lightIntensity: 6,
+        bounceColor: 0x6a2a18,
+        mood: { sky: 0x6a4a6a, ground: 0x6a3a2a, key: 0xff9a60, keyIntensity: 3.4, elevation: 14, fog: 0x3a1a18 },
+      },
+    },
+  ],
+
+  desertTomb: [
+    PLAIN('The Sand-Kings’ Tombs', 'Corridors cut for kings, and the kings still in them.'),
+    {
+      id: 'floodvault',
+      name: 'The Flooded Vaults',
+      blurb: 'An underground river found the kings. The water is cold, black and knee deep.',
+      weight: 4,
+      patch: {
+        grade: { contrast: 1.08, saturation: 0.9, shadowTint: 0x2a5a62, highlightTint: 0xd8e8d8, splitTone: 0.45, vignette: 0.52, vignetteTint: 0x1a2a2e },
+        liquid: 'water',
+        liquidColor: 0x10262c,
+        puddles: 0.75,
+        wetness: 0.6,
+        lightColor: 0x9fd0c8,
+        lightIntensity: 5,
+        bounceColor: 0x1a3a40,
+        damage: 0.5,
+      },
+    },
+    {
+      id: 'treasury',
+      name: 'The Treasury Wing',
+      blurb: 'The kings took their gold with them. They took it here, and lined the walls with it.',
+      weight: 3,
+      minDepth: 4,
+      patch: {
+        grade: { contrast: 1.1, saturation: 1.02, shadowTint: 0x4a3a5a, highlightTint: 0xffd080, splitTone: 0.5, vignette: 0.5, vignetteTint: 0x2a1a08, bloomStrength: 0.75 },
+        trim: { palette: 'metal.gold', weight: 1 },
+        lightColor: 0xffc060,
+        lightIntensity: 8,
+        lightDistance: 15,
+        bounceColor: 0x6a4a18,
+        veinDensity: 0.12,
+        veinColor: 0xffc040,
+        shaftDensity: 0.3,
+      },
+    },
+  ],
+
+  tundra: [
+    PLAIN('The Frostmarch', 'High ground under a sky the colour of a blade.'),
+    {
+      id: 'squall',
+      name: 'The White Squall',
+      blurb: 'The wind off the high ground drives the snow sideways. You will hear them before you see them.',
+      weight: 4,
+      patch: {
+        grade: { contrast: 0.98, saturation: 0.55, shadowTint: 0x6a7a90, highlightTint: 0xf0f4ff, splitTone: 0.4, vignette: 0.6, vignetteTint: 0x8090a8 },
+        lightColor: 0xdcefff,
+        lightIntensity: 3.5,
+        lightDistance: 9,
+        bounceColor: 0x5a7090,
+        mood: { sky: 0x9ab0cc, fill: 1.4, keyIntensity: 1.4, fog: 0x8a9ab0, fogDensity: 0.045 },
+      },
+    },
+    {
+      id: 'skyfire',
+      name: 'Skyfire Night',
+      blurb: 'Night on the high ground, and the sky burns green from end to end. It gives no warmth at all.',
+      weight: 3,
+      minDepth: 8,
+      patch: {
+        grade: { contrast: 1.1, saturation: 0.9, shadowTint: 0x2a5a5a, highlightTint: 0xb8ffd8, splitTone: 0.55, vignette: 0.56, vignetteTint: 0x06141a, bloomStrength: 0.7 },
+        skyColor: 0x06141a,
+        lightColor: 0xffa860,
+        lightIntensity: 6.5,
+        lightDistance: 14,
+        bounceColor: 0x1a4a3a,
+        mood: {
+          sky: 0x3a8a7a, ground: 0x1a2a3a, fill: 1.5,
+          key: 0x9affd0, keyIntensity: 1.6, elevation: 60,
+          fog: 0x08161a, fogDensity: 0.024,
+          hero: { color: 0xffd0a0, intensity: 36, distance: 17 },
+        },
+      },
+    },
+  ],
+
+  hell: [
+    PLAIN('The Burning Steppe', 'The ground is a crust over fire, and in places it gave up pretending.'),
+    {
+      id: 'ashfall',
+      name: 'The Ashfall',
+      blurb: 'The mountains to the south are emptying their lungs. The ash comes down warm and does not stop.',
+      weight: 4,
+      patch: {
+        grade: { contrast: 1.06, saturation: 0.6, shadowTint: 0x4a3a38, highlightTint: 0xd8a888, splitTone: 0.45, vignette: 0.6, vignetteTint: 0x2a1c18, haze: 0.3 },
+        lightColor: 0xff8a50,
+        lightIntensity: 5,
+        bounceColor: 0x4a3028,
+        veinDensity: 0.06,
+        damage: 0.5,
+        mood: { sky: 0x6a5a58, fill: 1.5, key: 0xd8b8a0, keyIntensity: 2.0, fog: 0x3a302c, fogDensity: 0.034 },
+      },
+    },
+    {
+      id: 'crust',
+      name: 'The Cooled Crust',
+      blurb: 'The fire drew back under the rock and left it black and glassy. It listens for footsteps.',
+      weight: 3,
+      minDepth: 14,
+      patch: {
+        grade: { contrast: 1.18, saturation: 0.8, shadowTint: 0x1a1018, highlightTint: 0xff8a50, splitTone: 0.5, vignette: 0.56, vignetteTint: 0x0c0606 },
+        liquidColor: 0x5a1a08,
+        liquidEmissive: 0x8a2008,
+        lightColor: 0xff5a20,
+        lightIntensity: 4.5,
+        bounceColor: 0x2a0c08,
+        veinDensity: 0.35,
+        veinColor: 0xff6a20,
+        damage: 0.7,
+        mood: { sky: 0x2a2028, fill: 1.3, fog: 0x0c0808, under: { color: 0xff4a18, intensity: 0.25 } },
       },
     },
   ],
