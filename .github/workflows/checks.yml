@@ -1,0 +1,101 @@
+# The automatic checks, on every push: typecheck, the fast checkers, both
+# release builds with the release lock checked, and a smoke test that boots
+# the game on a real GPU (a Mac runner: Chrome draws WebGPU through Metal).
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch replaces the run still going.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fast:
+    name: Typecheck and fast checkers
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.json
+      - name: Fast checkers
+        run: node tools/run-checks.mjs
+      - name: Keep the checkers' output
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: checks-output
+          path: .checks/
+          include-hidden-files: true
+          retention-days: 14
+
+  release:
+    name: Release builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          cache: npm
+      - run: npm ci
+      - name: Release lock
+        run: node tools/check-release.mjs
+      - name: Build the game
+        run: npm run build:release
+      - name: Build the one-page artifact
+        run: node tools/bundle-artifact.mjs --release
+      - name: Keep the builds
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-builds
+          path: |
+            dist-release/
+            dist-single-release/slay.html
+            dist-single-release/files.json
+          retention-days: 14
+
+  smoke:
+    name: Smoke test on a real GPU
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          cache: npm
+      - run: npm ci
+      - name: Newest Chrome
+        run: |
+          sudo mkdir -p /opt/pw-browsers
+          sudo chown "$USER" /opt/pw-browsers
+          node tools/get-chrome.mjs
+      - name: Build (release and test)
+        run: |
+          npm run build:release
+          npm run build
+      - name: Release build boots
+        run: node tools/smoke.mjs --dir=dist-release --gpu=real --out=smoke/release
+      - name: Test build boots, enters town and a tier
+        run: node tools/smoke.mjs --dir=dist --gpu=real --out=smoke/test
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: smoke-screenshots
+          path: smoke/
+          retention-days: 14

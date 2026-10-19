@@ -6,6 +6,9 @@
  *
  *   node tools/get-chrome.mjs                 newest Stable
  *   node tools/get-chrome.mjs --milestone=156 newest build of one milestone
+ *
+ * On a Mac (the automatic checks' real-GPU smoke test, .github/workflows)
+ * it fetches the Mac build and links it at the same path.
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, symlinkSync, lstatSync } from 'node:fs';
@@ -31,12 +34,16 @@ if (args.milestone) {
   version = d.channels.Stable.version;
 }
 
+const mac = process.platform === 'darwin';
+const plat = mac ? (process.arch === 'arm64' ? 'mac-arm64' : 'mac-x64') : 'linux64';
 const dir = path.join(os.homedir(), '.cache', 'slay-chrome', version);
-const bin = path.join(dir, 'chrome-linux64', 'chrome');
+const bin = mac
+  ? path.join(dir, `chrome-${plat}`, 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing')
+  : path.join(dir, 'chrome-linux64', 'chrome');
 if (!existsSync(bin)) {
   mkdirSync(dir, { recursive: true });
   const zip = path.join(dir, 'chrome.zip');
-  const url = `https://storage.googleapis.com/chrome-for-testing-public/${version}/linux64/chrome-linux64.zip`;
+  const url = `https://storage.googleapis.com/chrome-for-testing-public/${version}/${plat}/chrome-${plat}.zip`;
   console.log(`downloading Chrome ${version}`);
   execFileSync('curl', ['-sSfL', '--retry', '3', '-o', zip, url], { stdio: 'inherit' });
   execFileSync('unzip', ['-q', '-o', zip, '-d', dir], { stdio: 'inherit' });

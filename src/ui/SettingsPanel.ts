@@ -22,9 +22,17 @@ import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, moda
 import { uiSfx } from './Sfx';
 import { FieldNav } from './FieldNav';
 import { peril } from '../core/Peril';
+import { BUILT, versionLabel } from '../core/Build';
+import { buildReport } from '../core/Report';
+import { logText, saveTextFile } from '../core/Log';
+
+/** `slay-log-2026-10-19.txt` */
+function logName(): string {
+  return `slay-log-${new Date().toISOString().slice(0, 10)}.txt`;
+}
 
 type QualityId = GameSettings['quality'];
-type TabId = 'video' | 'audio' | 'gameplay' | 'controls' | 'data';
+type TabId = 'video' | 'audio' | 'gameplay' | 'controls' | 'data' | 'about';
 
 const TABS: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'video', label: 'Video', icon: 'eye' },
@@ -32,6 +40,7 @@ const TABS: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'gameplay', label: 'Gameplay', icon: 'strength' },
   { id: 'controls', label: 'Controls', icon: 'info' },
   { id: 'data', label: 'Save Data', icon: 'stash' },
+  { id: 'about', label: 'About', icon: 'scroll' },
 ];
 
 const QUALITY_NOTES: Record<QualityId, string> = {
@@ -153,6 +162,12 @@ export class SettingsPanel {
     this.panel.open();
   }
 
+  /** The tab the next `open` shows (the title's Credits opens About). */
+  showTab(id: string): void {
+    const t = TABS.find((x) => x.id === id);
+    if (t) this.tab = t.id;
+  }
+
   close(): void {
     if (!this.panel.isOpen) return;
     this.panel.close();
@@ -254,6 +269,9 @@ export class SettingsPanel {
         break;
       case 'data':
         this.data();
+        break;
+      case 'about':
+        this.about();
         break;
     }
   }
@@ -418,6 +436,48 @@ export class SettingsPanel {
       }
       this.content.appendChild(list);
     }
+  }
+
+  /** Version, the bug report and the log, then the credits and licences. */
+  private about(): void {
+    this.heading('About', `SLAY ${versionLabel()}${BUILT ? `, built ${BUILT}` : ''}.`);
+    this.content.appendChild(
+      div('stg-note', 'If something goes wrong, copy the report and send it with a line on what you were doing. It holds no names and no save.'),
+    );
+    const row = div('stg-row');
+    row.appendChild(
+      new Button({
+        label: 'Copy report',
+        icon: 'scroll',
+        small: true,
+        onClick: () => {
+          const text = attempt(() => buildReport(this.engine), '');
+          navigator.clipboard.writeText(text).then(
+            () => events.emit('toast', { text: 'Report copied to the clipboard.', kind: 'good' }),
+            () => {
+              saveTextFile(logName(), text);
+              events.emit('toast', { text: 'The clipboard said no, so the report was saved as a file.', kind: 'info' });
+            },
+          );
+        },
+      }).root,
+    );
+    row.appendChild(
+      new Button({
+        label: 'Save log file',
+        icon: 'download',
+        small: true,
+        onClick: () => saveTextFile(logName(), attempt(() => buildReport(this.engine), logText())),
+      }).root,
+    );
+    this.content.appendChild(row);
+    const credits = div('cr');
+    this.content.appendChild(credits);
+    const tab = this.tab;
+    void import('./Credits').then(({ renderCredits }) => {
+      // Still on About: the page could have moved on while this loaded.
+      if (this.tab === tab && credits.isConnected) renderCredits(credits);
+    });
   }
 
   private data(): void {

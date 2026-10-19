@@ -12,6 +12,8 @@ import { audio } from './audio/Audio';
 import { mountKeyArt } from './art/KeyArt';
 import { bakeStats } from './world/BakePool';
 import { DEV_TOOLS } from './core/DevTools';
+import { RELEASE, versionLabel } from './core/Build';
+import { installLog, logInfo } from './core/Log';
 import { warmSpriteAtlas } from './fx/kit/Atlas';
 // The bundled typefaces (ui/Fonts.ts): one variable file per script.
 import '@fontsource-variable/inter/wght.css';
@@ -22,11 +24,16 @@ import '@fontsource-variable/jetbrains-mono/wght.css';
 import { loadFonts } from './ui/Fonts';
 import { onScreenRatio } from './core/Screen';
 
+// The session log (core/Log.ts) before anything else can go wrong.
+installLog();
+logInfo(`SLAY ${versionLabel()}`);
+
 const bootFill = document.getElementById('boot-fill');
 const bootStatus = document.getElementById('boot-status');
 const bootEl = document.getElementById('boot');
 
 function boot(pct: number, msg: string): void {
+  logInfo(`boot ${Math.round(pct * 100)}%: ${msg}`);
   if (bootFill) bootFill.style.width = `${Math.round(pct * 100)}%`;
   if (bootStatus) bootStatus.textContent = msg;
 }
@@ -100,6 +107,11 @@ async function main(): Promise<void> {
   await tick();
   const engine = new Engine(canvas);
   await engine.renderer.init();
+  {
+    const { gpuName } = await import('./core/Report');
+    logInfo(`GPU: ${gpuName(engine) || 'unknown'}, screen ${window.innerWidth}x${window.innerHeight} at ${window.devicePixelRatio}x`);
+  }
+  events.on('scene:change', (p) => logInfo(`scene ${p.from} -> ${p.to}`));
   {
     // Icons, portraits and the paperdoll draw with the game's renderer.
     const { setStudioHost } = await import('./core/Studio');
@@ -258,7 +270,7 @@ async function main(): Promise<void> {
   engine.register('death', () => new DeathScene(engine));
 
   // Art review only: a neutral studio for judging models and materials.
-  if (DEV_TOOLS) {
+  if (!RELEASE && DEV_TOOLS) {
     const { ShowcaseScene } = await import('./scenes/ShowcaseScene');
     engine.register('boot', () => new ShowcaseScene(engine));
   }
@@ -292,7 +304,8 @@ async function main(): Promise<void> {
 
   // Expose for debugging and for the Playwright screenshot harness. Never in
   // a player's game: the cheats in it would make permadeath optional.
-  if (!DEV_TOOLS) return;
+  // `RELEASE` is a constant: a release bundle leaves this code out.
+  if (RELEASE || !DEV_TOOLS) return;
   const { installDebug } = await import('./scenes/debug');
   (window as unknown as Record<string, unknown>).SLAY = {
     engine,

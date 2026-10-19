@@ -1556,3 +1556,42 @@ Canvas text names its face with the `FONT_*` stacks, never a system font, and
 families. Item, skill, status and affix icons are drawn at `iconScale()`
 times their plain size; painting code keeps its plain-screen numbers and
 multiplies fixed sizes (blur, line width, radii) by that factor.
+
+## Builds, the log and the report — src/core/Build.ts, src/core/Log.ts, src/core/Report.ts — owned by Release
+
+```ts
+// src/core/Build.ts (stamped by tools/lib/build-info.mjs through vite's define)
+export const RELEASE: boolean;  // `vite build --mode release`: the locked build
+export const VERSION: string;   // package.json
+export const COMMIT: string;    // short hash, `+` when built from uncommitted files
+export const BUILT: string;     // YYYY-MM-DD
+export const PACKED: boolean;   // the one-page build, whose files ship in packs
+export function versionLabel(): string; // "v1.0.0 (710c14f)", "+ test build" off release
+
+// src/core/Log.ts
+export function installLog(): void;            // first thing in main.ts
+export function logInfo(...parts: unknown[]): void;
+export function logText(): string;             // this session
+export function previousLogText(): string;     // the session before (kept across a crash)
+export function saveTextFile(name: string, body: string): void;
+
+// src/core/Report.ts
+export function gpuName(engine: Engine): string;
+export function buildReport(engine: Engine): string; // version, browser, GPU, screen, settings, errors, both logs
+```
+
+A release build has no developer tools at all: `releaseLock` (build-info.mjs)
+loads `scenes/debug.ts`, `scenes/shifterDebug.ts` and `scenes/ShowcaseScene.ts`
+as empty stubs, makes `DEV_TOOLS` a plain `false`, drops the empty chunks and
+fails the build if code still loads them. `tools/check-release.mjs` builds both
+release flavours and reads every script. Builds without `--mode release`
+(`npm run build`, the dev server, `bundle-artifact.mjs` without `--release`)
+keep the tools for a browser driven by automation, which is how the checkers
+reach `window.SLAY`. Publish with `node tools/bundle-artifact.mjs --release`
+(writes `dist-single-release/`). The log keeps every console warning and error
+plus boot steps and scene changes, 500 lines, in localStorage. Settings,
+About shows the version, "Copy report", "Save log file", the credits and the
+licences (read from ASSETS.md and the npm packages' LICENSE files at build
+time, `ui/Credits.ts`). `.github/workflows/checks.yml` runs on every push:
+typecheck and fast checkers, the release builds and lock, and
+`tools/smoke.mjs` on a Mac runner's real GPU.

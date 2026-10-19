@@ -9,6 +9,7 @@
  * Downloaded art and sound (`public/assets/`) is not inlined: it is far too big
  * for one page. It is published beside the page with the artifact's `files`
  * option instead. This script writes that mapping to `dist-single/files.json`
+ * (`dist-single-release/` with `--release`, the locked build to publish)
  * as `{ "assets/textures/x.webp": "public/assets/textures/x.webp", ... }`
  * (published path, relative to the page -> source path, relative to the repo
  * root), the shape the `files` option takes. The game fetches each one by the
@@ -31,12 +32,20 @@ console.log('building single-file bundle...');
 // `--no-minify` keeps function names readable, for CPU profiles
 // (`tools/check-loadtime.mjs --profile`). Never publish that build.
 const minify = process.argv.includes('--no-minify') ? ['--minify', 'false'] : [];
-execFileSync('npx', ['vite', 'build', '--config', 'vite.config.single.ts', ...minify], {
+// `--release` builds the locked page a player gets (tools/lib/build-info.mjs):
+// no developer tools, no debug handle, no test scenes, even under automation.
+// Publish that one. Without it the page is the checkers' test build, which
+// keeps them for a browser driven by automation.
+const RELEASE = process.argv.includes('--release');
+const OUT = RELEASE ? 'dist-single-release' : 'dist-single';
+console.log(RELEASE ? 'release build (locked)' : 'test build: pass --release for the page to publish');
+const mode = RELEASE ? ['--mode', 'release'] : [];
+execFileSync('npx', ['vite', 'build', '--config', 'vite.config.single.ts', ...mode, ...minify], {
   stdio: ['ignore', 'ignore', 'inherit'],
 });
 
-const css = readFileSync('dist-single/bundle.css', 'utf8');
-let js = readFileSync('dist-single/bundle.js', 'utf8');
+const css = readFileSync(`${OUT}/bundle.css`, 'utf8');
+let js = readFileSync(`${OUT}/bundle.js`, 'utf8');
 
 // Belt and braces: refuse to publish a bundle older than the newest source
 // file, whatever the reason.
@@ -48,7 +57,7 @@ function newestSource(dir) {
   }
   return newest;
 }
-const builtAt = statSync('dist-single/bundle.js').mtimeMs;
+const builtAt = statSync(`${OUT}/bundle.js`).mtimeMs;
 const srcAt = newestSource('src');
 if (builtAt < srcAt) {
   console.error('bundle.js is older than src/ — refusing to publish a stale artifact.');
@@ -93,9 +102,9 @@ ${js}
 </script>
 `;
 
-writeFileSync('dist-single/slay.html', html);
+writeFileSync(`${OUT}/slay.html`, html);
 const mb = (html.length / 1024 / 1024).toFixed(2);
-console.log(`wrote dist-single/slay.html (${mb} MB)`);
+console.log(`wrote ${OUT}/slay.html (${mb} MB)`);
 
 // The asset files to publish beside the page. Run the asset checker first so
 // an unlisted or over-budget file never ships.
@@ -136,8 +145,8 @@ const PACK_MAX = 8 * 1024 * 1024;
 const loose = (rel) => rel.startsWith('music/') || rel.startsWith('sounds/beds/');
 const files = {};
 let assetBytes = 0;
-rmSync('dist-single/packs', { recursive: true, force: true });
-mkdirSync('dist-single/packs', { recursive: true });
+rmSync(`${OUT}/packs`, { recursive: true, force: true });
+mkdirSync(`${OUT}/packs`, { recursive: true });
 const groups = new Map();
 for (const full of assetFiles('public/assets').sort()) {
   const src = full.split(path.sep).join('/');
@@ -161,8 +170,8 @@ for (const [group, list] of groups) {
   const flush = () => {
     if (chunks.length === 0) return;
     const name = `${group}-${n++}${PACK_EXT}`;
-    writeFileSync(`dist-single/packs/${name}`, Buffer.concat(chunks));
-    files[`assets/packs/${name}`] = `dist-single/packs/${name}`;
+    writeFileSync(`${OUT}/packs/${name}`, Buffer.concat(chunks));
+    files[`assets/packs/${name}`] = `${OUT}/packs/${name}`;
     packCount++;
     chunks = [];
     size = 0;
@@ -176,26 +185,26 @@ for (const [group, list] of groups) {
   }
   flush();
 }
-writeFileSync('dist-single/packs.json', JSON.stringify(index));
-files['assets/packs.json'] = 'dist-single/packs.json';
+writeFileSync(`${OUT}/packs.json`, JSON.stringify(index));
+files['assets/packs.json'] = `${OUT}/packs.json`;
 console.log(`packed ${Object.keys(index).length} files into ${packCount} packs`);
 // Worker scripts cannot be inlined: the build emits each one beside the page
 // (`assets/FolkWorker-<hash>.js`, the townsfolk mesher) and the page asks for
 // it by that relative path. Missing, the town meshes its residents itself.
 let workers = 0;
-for (const entry of readdirSync('dist-single/assets', { withFileTypes: true })) {
+for (const entry of readdirSync(`${OUT}/assets`, { withFileTypes: true })) {
   if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
-  const src = `dist-single/assets/${entry.name}`;
+  const src = `${OUT}/assets/${entry.name}`;
   if (!js.includes(`assets/${entry.name}`)) continue;
   files[`assets/${entry.name}`] = src;
   assetBytes += statSync(src).size;
   workers++;
 }
 if (workers === 0) console.log('note: no worker script found beside the bundle');
-writeFileSync('dist-single/files.json', JSON.stringify(files, null, 2) + '\n');
+writeFileSync(`${OUT}/files.json`, JSON.stringify(files, null, 2) + '\n');
 const count = Object.keys(files).length;
 console.log(
-  `wrote dist-single/files.json (${count} asset files, ${(assetBytes / 1024 / 1024).toFixed(1)} MB)` +
+  `wrote ${OUT}/files.json (${count} asset files, ${(assetBytes / 1024 / 1024).toFixed(1)} MB)` +
     (count > 255 ? ' — more than 255 files: publish in several calls to the same url' : '') +
     (count > 511 ? ' — OVER the 511-file limit for one artifact version' : ''),
 );

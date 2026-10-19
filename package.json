@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 4173 --strictPort",
     "shots": "node tools/screenshot.mjs",
-    "build:single": "vite build --config vite.config.single.ts"
+    "build:single": "vite build --config vite.config.single.ts",
+    "build:release": "vite build --mode release"
   },
   "repository": {
     "type": "git",

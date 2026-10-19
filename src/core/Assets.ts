@@ -25,6 +25,7 @@
 
 import * as THREE from 'three';
 import { events } from './Events';
+import { PACKED } from './Build';
 
 const cache = new Map<string, Promise<ArrayBuffer | null>>();
 
@@ -79,9 +80,8 @@ function fetchLoose(rel: string): Promise<ArrayBuffer | null> {
 //
 // The published build folds most files into a few packs (the artifact host
 // caps how many files one page may carry; see `tools/bundle-artifact.mjs`).
-// `assets/packs.json` maps each file to [pack, offset, length]. With no index
-// (the dev server answers with its HTML page, which fails to parse) every file
-// is fetched loose, as before.
+// `assets/packs.json` maps each file to [pack, offset, length]. Only that build
+// has one (`PACKED`); every other build fetches each file loose.
 
 type PackEntry = [pack: string, offset: number, length: number];
 
@@ -91,6 +91,7 @@ const packs = new Map<string, Promise<ArrayBuffer | null>>();
 const packLeft = new Map<string, number>();
 
 function packIndex(): Promise<Record<string, PackEntry> | null> {
+  if (!indexPromise && !PACKED) indexPromise = Promise.resolve(null);
   if (!indexPromise) {
     indexPromise = fetch(assetUrl('packs.json'))
       .then((r) => (r.ok ? (r.json() as Promise<Record<string, PackEntry>>) : null))

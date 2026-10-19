@@ -2784,3 +2784,68 @@ body.reduce-motion .dth * {
   justify-content: flex-end;
   margin-top: var(--s4);
 }
+
+/* -- Version on the title, credits and licences in Settings, About -------- */
+.ttl-ver {
+  position: absolute;
+  right: 0;
+  bottom: calc(-1 * var(--s6));
+  font-family: var(--font-num);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  color: var(--ink-4);
+  opacity: 0.8;
+  user-select: text;
+}
+.cr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  margin-top: var(--s2);
+}
+.cr-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.cr-line {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.cr-row {
+  display: flex;
+  gap: var(--s3);
+  align-items: baseline;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.cr-name {
+  flex: 0 0 38%;
+  color: var(--ink-2);
+  font-family: var(--font-display);
+}
+.cr-by {
+  flex: 1;
+  color: var(--ink-4);
+}
+.cr-lic summary {
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  padding: var(--s1) 0;
+}
+.cr-lic pre {
+  max-height: 240px;
+  overflow: auto;
+  margin: var(--s1) 0 var(--s2);
+  padding: var(--s2) var(--s3);
+  font-family: var(--font-num);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--ink-3);
+  background: #0b0907;
+  border-radius: var(--radius-sm);
+  user-select: text;
+}

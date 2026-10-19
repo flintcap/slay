@@ -389,6 +389,24 @@ Update this file and push it after every finished step.
   box, so board and hotbar strip both fit at 1280x800 and 1280x720 with no
   panel scroll. UI lab sweep of 19 screens at 1280x800: no visible text
   under 10 px. Noscript text says WebGPU. The UI lab loads the fonts too.
+- #134 part 1 done: release lock, version, log, report, credits, automatic
+  checks. `vite build --mode release` (`npm run build:release`, writes
+  `dist-release/`; `bundle-artifact.mjs --release` writes
+  `dist-single-release/`, the page to publish) has no debug handle, no
+  cheats and no studio scene: the dev-only modules load as stubs and
+  `tools/check-release.mjs` reads every shipped script. Other builds keep
+  the tools under automation for the checkers. The title shows
+  `v1.0.0 (commit)` and has a Credits entry; Settings has an About tab:
+  version, Copy report (version, browser, GPU, screen, settings, caught
+  errors, this and the last session's log), Save log file, credits (from
+  ASSETS.md, grouped by author and site) and the three.js MIT, OFL and CC0
+  texts. `core/Log.ts` keeps warnings, errors, boot steps and scene changes
+  (500 lines) in storage so a crashed session can still be reported. Only
+  the one-page build asks for `packs.json` now (no 404 elsewhere).
+  `.github/workflows/checks.yml`: typecheck plus fast checkers, release
+  builds plus lock, and `tools/smoke.mjs` on a Mac runner (real GPU through
+  Metal): the release build reaches the title, the test build reaches town
+  and tier 1, pictures not blank, no page errors. Translation layer next.
 
 ## Phase 0d log
 

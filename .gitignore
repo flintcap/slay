@@ -4,6 +4,8 @@ shots/
 *.log
 .DS_Store
 dist-single/
+dist-release/
+dist-single-release/
 .audit/
 # Every `tools/check-*.mjs` bundles its entry point into a scratch directory
 # like `.roofaudit` and deletes it on the way out. An interrupted run leaves

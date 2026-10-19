@@ -16,6 +16,7 @@ import { events } from '../core/Events';
 import { Panel, div, span, classAccent, classCrestSvg, classById, fmtInt, duration, keycap } from './Widgets';
 import { MenuNav, type MenuItemOpts } from './MenuNav';
 import { DIFFICULTIES } from '../data/difficulties';
+import { versionLabel } from '../core/Build';
 
 /** The SLAY wordmark: bevelled gold with a slow specular sweep. */
 const LOGO_SVG = `
@@ -199,6 +200,11 @@ export class TitlePanel {
         onSelect: () => events.emit('ui:open', { panel: 'memorial' }),
       });
     }
+    items.push({
+      label: 'Credits',
+      hint: 'Who made what, and the licences',
+      onSelect: () => events.emit('ui:open', { panel: 'settings:about' }),
+    });
     this.nav.set(items);
 
     // --- footer -----------------------------------------------------------
@@ -217,6 +223,7 @@ export class TitlePanel {
     keys.append(keycap('↑'), keycap('↓'), span('', 'Choose'), keycap('Enter'), span('', 'Confirm'));
     const motto = div('ttl-motto', 'The vault and the memorial survive. Nothing else does.');
     this.foot.append(stats, motto, keys);
+    this.foot.appendChild(div('ttl-ver', versionLabel()));
   }
 
   private go(scene: 'town' | 'charSelect'): void {

@@ -375,6 +375,12 @@ export function mountUI(engine: Engine): void {
     if (!id || SCENE_OWNED.has(id)) return;
     // `class:<id>` is the CharSelect panel talking to the CharSelect scene.
     if (id.startsWith('class:') || id.startsWith('char:')) return;
+    // `settings:<tab>` opens Settings on that tab (the title's Credits: About).
+    if (id.startsWith('settings:')) {
+      settings.showTab(id.slice('settings:'.length));
+      openPanel('settings');
+      return;
+    }
     openPanel(id);
   });
 
