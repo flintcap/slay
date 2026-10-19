@@ -844,6 +844,48 @@ export function salvage(item: Item): Record<string, number>;
 export function craftingRecipes(): CraftRecipe[];
 ```
 
+## Leaving a map — `src/sim/RunLedger.ts`, `src/sim/Trinkets.ts` — owned by SCENES
+
+A map is left one of four ways. Its last exit and the waypoint keep
+everything. The menu, a closed tab or a crash costs the map's finds and a
+tenth of a level's experience (`Character.run`, settled on the next load). A
+Trinket of Town's portal keeps everything and leaves the map waiting
+(`Character.portal`, an `OpenPortal`). A Trinket of Death in the pack takes a
+death in a map and ends it as its last exit would.
+
+```ts
+// sim/RunLedger.ts
+export function beginRun(c: Character, materials: Record<string, number>, depth: number): void;
+export function endRun(c: Character): void;
+export function forfeitRun(c: Character, materials: Record<string, number>): Forfeit | null;
+export function forfeitText(f: Forfeit): string;
+
+// core/Save.ts (SaveManager)
+beginRun(depth: number): void;               // on the way down, saved now
+endRun(): void;                              // a way out that costs nothing
+forfeitRun(): Forfeit | null;                // the menu leave
+leaveByPortal(portal: OpenPortal): void;     // ends the run note, keeps the map
+closePortal(): void;                         // the map is given up (or taken up again)
+takeForfeit(id: string): Forfeit | null;     // what a leave cost, told once in town
+
+// sim/Trinkets.ts (Save must not import it: Trinkets -> Inventory -> Save)
+export function trinketOf(item: Item | null | undefined): TrinketDef | undefined;
+export function makeTrinket(id: string, rng: Rng): Item | null;
+export function rollTrinket(rng: Rng, source: 'boss' | 'warden'): Item | null;
+export function carriedTrinket(c: Character, use: TrinketUse): Item | null;
+export function spendTrinket(c: Character, use: TrinketUse): Item | null;
+export function packChart(seen: Uint8Array): string;
+export function unpackChart(packed: string | undefined, tiles: number): Uint8Array;
+export function portalPrompt(p: OpenPortal): string;
+```
+
+The pack's right-click on a trinket emits `trinket:use { uid }`; the scene it
+is in decides. The dungeon builds a portal's map again from (depth, seed,
+pacts): each area's build stream is `streamFor(run.seed, 'level:<i>')`, so an
+area comes back the same, and `restoreArea` puts back its kills, spent props,
+floor loot, vault, quest, chart and way home. `Enemy.spawnIndex` is the
+monster's place in `level.spawns` (-1 for anything spawned later).
+
 ## `src/world/DungeonGen.ts` — owned by WORLD
 
 ```ts

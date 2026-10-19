@@ -56,6 +56,7 @@ export function sizeOfBase(base: ItemBase | undefined): Size {
     case 'rune':
     case 'potion':
     case 'material':
+    case 'trinket':
       return ONE;
     case 'charm':
       if (base.id === 'charm.small') return ONE;

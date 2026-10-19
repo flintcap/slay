@@ -746,6 +746,11 @@ export class InventoryPanel {
       events.emit('potion:use', { kind, baseId: item.baseId });
       return;
     }
+    // A trinket is used where it can be: the scene it is clicked in decides.
+    if (base?.category === 'trinket') {
+      events.emit('trinket:use', { uid: item.uid });
+      return;
+    }
 
     const slots = slotsFor(item);
     if (slots.length) {

@@ -34,12 +34,20 @@ export class RunDirector {
   /** Renown multiplier from pacts taken at the gate. */
   private renownMul: number;
 
-  constructor(depth: number, pacts = 0) {
+  /**
+   * `resumedAt` is the area a map is taken up again at, back through a
+   * Trinket of Town's portal: the same descent, not a new one, and the areas
+   * up to there already paid their Renown.
+   */
+  constructor(depth: number, pacts = 0, resumedAt?: number) {
     this.depth = depth;
     this.renownMul = 1 + PACT_RENOWN * pacts;
-    const l = legacyOf(this.account);
-    l.stats.runs++;
-    save.touch();
+    if (resumedAt === undefined) {
+      legacyOf(this.account).stats.runs++;
+      save.touch();
+    } else {
+      for (let i = 1; i <= resumedAt; i++) this.floorsSeen.add(i);
+    }
     this.offs.push(
       events.on('loot:pickedUp', ({ item }) => this.onPickUp(item)),
       events.on('quest:complete', () => this.earn(RENOWN.contract(this.depth), () => legacyOf(this.account).stats.contracts++)),

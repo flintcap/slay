@@ -150,6 +150,7 @@ export type ItemCategory =
   | 'amulet'
   | 'ring'
   | 'charm'
+  | 'trinket'
   | 'gem'
   | 'rune'
   | 'potion'
@@ -440,6 +441,11 @@ export interface Character {
    * back in town as they left it, less some experience.
    */
   run?: RunLedger;
+  /**
+   * A map the hero stepped out of through a Trinket of Town's portal, kept
+   * to go back to (`sim/Trinkets.ts`). While it stands, the Descent is shut.
+   */
+  portal?: OpenPortal;
 }
 
 /** What a hero carried into a map, kept until the map ends (`sim/RunLedger.ts`). */
@@ -453,6 +459,44 @@ export interface RunLedger {
   gold: number;
   /** The account's crafting materials then (they are shared, and found in maps). */
   materials: Record<string, number>;
+}
+
+/**
+ * A map left through a Trinket of Town's portal, and how it was left: enough
+ * to build the same map again and put back what was already done in the
+ * area the portal stands in (`sim/Trinkets.ts`, `scenes/DungeonScene.ts`).
+ */
+export interface OpenPortal {
+  v: 1;
+  /** When the hero stepped through, ms since 1970. */
+  at: number;
+  /** What builds the map again. */
+  depth: number;
+  seed: number;
+  pacts: string[];
+  /** The map's name, for the portal's prompt in town. */
+  name: string;
+  /** The area the portal stands in, and where in it (world x, z). */
+  level: number;
+  x: number;
+  z: number;
+  /** Spawn indices of the area's monsters already dead. */
+  killed: number[];
+  bossDead: boolean;
+  wardenDead: boolean;
+  /** Where the way home stood after the boss fell (world x, z), if it had. */
+  home: { x: number; z: number } | null;
+  /** Tiles of the area's props already opened, used or broken. */
+  used: Array<[number, number]>;
+  /** What lay on the ground: an item, or a gold pile when `item` is null. */
+  loot: Array<{ item: Item | null; gold: number; x: number; z: number }>;
+  vaultOpen: boolean;
+  /** The map's contract, as far as it had got. */
+  quest: QuestInstance;
+  /** Seconds spent in the map so far. */
+  time: number;
+  /** The area's chart as far as it was walked: one bit per tile, base64. */
+  chart?: string;
 }
 
 /** A character's standing with the camp's services. See `sim/TownServices.ts`. */

@@ -20,6 +20,7 @@ import { insertGem } from '../sim/Crafting';
 import { assetStats } from '../core/Assets';
 import { setRunDirector } from '../world/DungeonGen';
 import { shifterDebug } from './shifterDebug';
+import { makeTrinket } from '../sim/Trinkets';
 
 /**
  * Debug surface exposed as `window.SLAY.debug`. The Playwright screenshot
@@ -908,6 +909,27 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         .sort((a, b) => b - a)
         .slice(0, 8)
         .map((n) => +n.toFixed(1));
+    },
+
+    /** A trinket (`data/trinkets.ts`) in the pack; its uid, or null when it does not fit. */
+    giveTrinket(id = 'trinket.town'): string | null {
+      const c = save.account.current;
+      const t = makeTrinket(id, new Random(randomSeed()));
+      if (!c || !t || !addItemToInventory(c, t)) return null;
+      save.touch();
+      events.emit('ui:refresh', {});
+      return t.uid;
+    },
+
+    /** The pack's right-click on a trinket. */
+    useTrinket(uid: string): void {
+      events.emit('trinket:use', { uid });
+    },
+
+    /** The trinket portal's state in a map, and a walk into it (`walk`). */
+    portal(walk = false): Record<string, unknown> | null {
+      const s = engine.currentScene;
+      return s instanceof DungeonScene ? s.debugPortal(walk) : null;
     },
 
     setDepth(n: number): void {

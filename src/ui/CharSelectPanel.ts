@@ -371,6 +371,8 @@ export class CharSelectPanel {
     if (!c || c.difficulty === id) return;
     uiSfx('ui.click');
     c.difficulty = id;
+    // An open trinket portal's map was built on the old tier: it closes.
+    delete c.portal;
     save.touch();
     save.flush();
     this.retireArmed = false;

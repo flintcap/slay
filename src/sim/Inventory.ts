@@ -299,6 +299,7 @@ const CATEGORY_ORDER: ItemCategory[] = [
   'amulet',
   'ring',
   'charm',
+  'trinket',
   'gem',
   'rune',
   'potion',

@@ -41,6 +41,7 @@ export type ItemFamily =
   | 'amulet'
   | 'ring'
   | 'charm'
+  | 'trinket'
   | 'gem'
   | 'rune'
   | 'potion'
@@ -69,6 +70,7 @@ const CATEGORY_FAMILY: Record<string, ItemFamily> = {
   amulet: 'amulet',
   ring: 'ring',
   charm: 'charm',
+  trinket: 'trinket',
   gem: 'gem',
   rune: 'rune',
   potion: 'potion',
@@ -130,6 +132,7 @@ const HINTS: Array<[string, ItemFamily]> = [
   ['amulet', 'amulet'],
   ['ring', 'ring'],
   ['charm', 'charm'],
+  ['trinket', 'trinket'],
   ['gem', 'gem'],
   ['rune', 'rune'],
   ['potion', 'potion'],

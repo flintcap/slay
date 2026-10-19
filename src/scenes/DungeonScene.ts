@@ -9,6 +9,7 @@ import type {
   DamagePacket,
   MonsterRank,
   MonsterFamily,
+  OpenPortal,
   StatusApplication,
 } from '../types';
 import { events, toast } from '../core/Events';
@@ -45,7 +46,8 @@ import { buildDropModel, clearDropModels } from '../art/ItemModels';
 import { emissiveMaterial } from '../art/Materials';
 import { grantXp, settleLevels } from '../sim/Character';
 import { PAYOUT, bossIlvl, findRates, payoutGold, payoutIlvl, sourceFind, type Find, type PayoutDef } from '../sim/Payout';
-import { addItemToInventory } from '../sim/Inventory';
+import { addItemToInventory, removeItemFromInventory } from '../sim/Inventory';
+import { packChart, rollTrinket, spendTrinket, trinketOf, unpackChart } from '../sim/Trinkets';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
 import { SkillRunner, weaponStyle, casterOffHand, MINION_MONSTER } from './SkillRunner';
 import { NameplateLayer, type PlateTarget } from '../ui/Nameplates';
@@ -201,6 +203,11 @@ export interface DungeonPayload {
   seed?: number;
   /** Run modifiers taken by choice at the gate (scenes/DescentPlanner). */
   pacts?: string[];
+  /**
+   * Back through a Trinket of Town's portal: the map in the hero's
+   * `portal` note is built again and its area put back as it was left.
+   */
+  resume?: boolean;
 }
 
 interface GroundLoot {
@@ -321,6 +328,8 @@ export class DungeonScene extends GameScene {
   private packRoots: THREE.Object3D[] = [];
   /** The warm-up's item material stand-ins share this box (see `warmup`). */
   private lootWarmGeo: THREE.BufferGeometry[] = [];
+  /** A portal's look for the warm-up: the way home and a trinket's portal open mid-play. */
+  private portalWarm: WayLook | null = null;
   /** Travels with the player so they are never standing in the dark. */
   private heroLight: THREE.PointLight | null = null;
   /**
@@ -353,6 +362,14 @@ export class DungeonScene extends GameScene {
   private dungeonEvents: RunEvents | null = null;
   /** Run modifiers that act while you play (scenes/RunModifiers). */
   private runMods: RunModifiers | null = null;
+  /** A Trinket of Town's portal, open in this map until the hero steps through. */
+  private homeDoor: { look: WayLook; at: THREE.Vector3; bend: RippleHandle | null } | null = null;
+  /** Tiles of the props used in this area, for a portal's note. */
+  private usedTiles: Array<[number, number]> = [];
+  /** What this map was built from, so a portal's note can build it again. */
+  private made: { depth: number; seed: number; pacts: string[] } = { depth: 1, seed: 0, pacts: [] };
+  /** The portal note an area is being built back from, while it is. */
+  private resumeNote: OpenPortal | null = null;
 
   constructor(engine: Engine) {
     super();
@@ -400,6 +417,9 @@ export class DungeonScene extends GameScene {
     // The last area's stand-ins were kept until now (see `warmupDone`).
     for (const g of this.lootWarmGeo) g.dispose();
     this.lootWarmGeo = [];
+    this.portalWarm?.dispose();
+    this.portalWarm = buildPortal();
+    this.portalWarm.root.getObjectByName('way:light')?.removeFromParent();
     try {
       looks = itemLookStandIns();
     } catch {
@@ -425,7 +445,7 @@ export class DungeonScene extends GameScene {
     const fallen = [...corpseStandIns(roots), ...packStandIns(roots)];
     const coin = new THREE.Mesh(coinGeometry(), emissiveMaterial(0xffc63a, 0.5));
     coin.frustumCulled = false;
-    const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns(), ...this.effects.standIns()];
+    const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, this.portalWarm.root, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns(), ...this.effects.standIns()];
     // A paladin's Vigil ring, for the first one lit.
     if (this.player.character.classId === 'paladin') list.push(vigilStandIn());
     if (!list.length) return null;
@@ -451,6 +471,8 @@ export class DungeonScene extends GameScene {
     this.summonWarm = [];
     for (const g of this.lootWarmGeo) g.dispose();
     this.lootWarmGeo = [];
+    this.portalWarm?.dispose();
+    this.portalWarm = null;
   }
 
   /**
@@ -523,9 +545,15 @@ export class DungeonScene extends GameScene {
     // Loot knows whose it is: class-only uniques, and one chase item per account.
     setLootHero(character.classId, () => chaseHeld(save.account));
 
-    const depth = Math.max(1, p.depth ?? 1);
-    const seed = p.seed ?? randomSeed();
-    this.rng = new Random(seed);
+    // Back through a Trinket of Town's portal: the same map, built again
+    // from its note, and its area put back as the hero left it.
+    const back = p.resume ? character.portal ?? null : null;
+    const depth = Math.max(1, back?.depth ?? p.depth ?? 1);
+    const seed = back?.seed ?? p.seed ?? randomSeed();
+    const pacts = back?.pacts ?? p.pacts ?? [];
+    this.made = { depth, seed, pacts: [...pacts] };
+    // Drops on the way back roll fresh, not the first visit's rolls again.
+    this.rng = new Random(back ? (seed ^ Math.floor(back.at / 1000)) >>> 0 : seed);
     // What the hero carries down is written down, saved now: a map left any
     // way but its exits gives back to this (`sim/RunLedger.ts`).
     save.beginRun(depth);
@@ -540,6 +568,7 @@ export class DungeonScene extends GameScene {
 
     loadStep('map');
     this.run = generateRun(depth, seed, character.classId);
+    if (back) this.run.quest = back.quest;
     // Every floor's monster looks go to the bake workers now, the first
     // floor's first: they bake while the hero and the floor are built here.
     dropQueuedLooks();
@@ -552,7 +581,7 @@ export class DungeonScene extends GameScene {
     this.player = new Player(character, seed);
     // A poison or burn on the hero ticks on this depth's curve, as on a monster.
     this.player.status.depth = depth;
-    this.player.lethalGuard = () => this.tryCheatDeath();
+    this.player.lethalGuard = () => this.tryCheatDeath() || this.tryDeathTrinket();
     this.skills.keeper = this.player;
     this.scene.add(this.player.root);
     this.body.bindHero(this.player, () => this.skills.swingSchool, () => this.skills.releaseSchool);
@@ -591,10 +620,9 @@ export class DungeonScene extends GameScene {
     // Pacts join the run's modifiers; each one makes the descent's Renown richer.
     // A pact was chosen, so it wins: a rolled modifier it clashes with (the
     // same one, or one it excludes, like Gloom and Conflagration) makes way.
-    const pacts = p.pacts ?? [];
     this.run.modifiers = this.run.modifiers.filter((m) => !pacts.some((x) => modifiersClash(m, x)));
     this.run.modifiers.push(...pacts);
-    this.director = new RunDirector(depth, pacts.length);
+    this.director = new RunDirector(depth, pacts.length, back?.level);
     this.dungeonEvents?.dispose();
     this.dungeonEvents = new RunEvents({
       scene: this.scene,
@@ -615,6 +643,7 @@ export class DungeonScene extends GameScene {
       consume: (it) => {
         this.mesh.removeInteractable(it);
         this.nav.setBlocked(it.tileX, it.tileY, false);
+        this.usedTiles.push([it.tileX, it.tileY]);
         this.forgetProp(it);
         this.leaveRemains(it);
       },
@@ -654,6 +683,7 @@ export class DungeonScene extends GameScene {
 
     this.offs.push(
       events.on('potion:use', (p) => this.drink(p.kind, p.baseId)),
+      events.on('trinket:use', ({ uid }) => this.useTrinket(uid)),
     );
 
     // Closing the game mid-map leaves it early: the hero wakes in town as
@@ -746,7 +776,16 @@ export class DungeonScene extends GameScene {
     this.scene.add(this.heroAura);
 
     await breather();
-    await this.loadLevelPaced(0);
+    if (back) {
+      this.resumeNote = back;
+      await this.loadLevelPaced(Math.min(back.level, this.run.levels.length - 1));
+      this.restoreArea(back);
+      this.resumeNote = null;
+      // The portal closes behind the hero: from here the map is played as any other.
+      save.closePortal();
+    } else {
+      await this.loadLevelPaced(0);
+    }
 
     events.emit('ui:open', { panel: 'hud' });
 
@@ -754,7 +793,7 @@ export class DungeonScene extends GameScene {
     // each waiting for the player to try it. They replaced four timed toasts
     // here, two of which named the wrong buttons.
 
-    if (this.run.quest) {
+    if (this.run.quest && !back) {
       setTimeout(() => toast(this.run.quest.name, 'epic'), 800);
     }
     audio.music(this.biome.music, 2.0);
@@ -848,9 +887,15 @@ export class DungeonScene extends GameScene {
     if (this.nearProp) toast('', 'info');
     this.nearProp = null;
     this.vaultOpen = false;
+    this.usedTiles = [];
+    // An open portal home goes with the hero to the next area.
+    const doorOpen = !!this.homeDoor;
+    this.closeHomeDoor();
     this.biome = BIOMES.find((b) => b.id === this.level.biome) ?? BIOMES[0]!;
 
-    const levelRng = this.rng.fork(`level:${index}`) as Random;
+    // Its own stream, not a fork of the run's: a fork depends on how much the
+    // run has drawn, and a portal's way back builds the area again as it was.
+    const levelRng = streamFor(this.run.seed, `level:${index}`);
     loadStep('world');
     yield;
     this.mesh = new DungeonMesh(this.level, this.biome, levelRng, true);
@@ -906,6 +951,10 @@ export class DungeonScene extends GameScene {
     }
     this.nearWaypoint = false;
     if (this.level.waypoint) this.buildWaypoint(this.mesh.tileToWorld(this.level.waypoint.x, this.level.waypoint.y));
+    if (doorOpen) {
+      const spot = this.doorSpot();
+      if (spot) this.openHomeDoor(spot, false);
+    }
     this.findWayLights();
     loadStep('monsters');
     // The paced build waits here for the workers' bakes (`BakePool`).
@@ -957,6 +1006,7 @@ export class DungeonScene extends GameScene {
       // Members of a pack share aggro and tactics. The spawn table always
       // carried the id; nothing copied it across, so every pack fought alone.
       enemy.packId = spawn.packId;
+      enemy.spawnIndex = spawnIndex;
       const wp = this.mesh.tileToWorld(spawn.x, spawn.y);
       enemy.root.position.copy(wp);
       this.scene.add(enemy.root);
@@ -1064,7 +1114,8 @@ export class DungeonScene extends GameScene {
     // carry the map's own name above it.
     const arrival = zoneAt(this.level, this.level.entry.x, this.level.entry.y);
     this.zoneHere = arrival?.id ?? -1;
-    this.dungeonEvents?.onLevel();
+    // A treasure runner does not run twice: an area built back has none.
+    this.dungeonEvents?.onLevel(!!this.resumeNote);
     this.runMods?.onLevel(index);
     this.director?.onFloor(index);
     questTokens.floor(this.run.quest, index, this.run.levels.length);
@@ -1078,7 +1129,7 @@ export class DungeonScene extends GameScene {
       // floor of a run; it used to arrive separately as a toast.
       blurb: index === 0 ? place.blurb : undefined,
       biome: this.biome.id,
-      bossId: this.level.isBossLevel ? this.boss?.bossDef.id : undefined,
+      bossId: this.level.isBossLevel && !this.resumeNote?.bossDead ? this.boss?.bossDef.id : undefined,
     });
   }
 
@@ -1743,6 +1794,11 @@ export class DungeonScene extends GameScene {
     view.squash = Math.sin(this.rig.pitch);
 
     this.portalLook?.update(dt, this.camera);
+    if (this.homeDoor) {
+      this.homeDoor.look.update(dt, this.camera);
+      const d = this.homeDoor.at;
+      if (Math.hypot(this.player.position.x - d.x, this.player.position.z - d.z) < 1.0) this.stepHome();
+    }
     this.waypointLook?.update(dt);
     this.remains?.update(dt);
 
@@ -1915,6 +1971,8 @@ export class DungeonScene extends GameScene {
           this.wardenFell(e.root.position);
           const sig = rollSignature(this.warden!.defId, e.ilvl, this.rng, SIGNATURE_CHANCE.warden);
           if (sig) this.dropItem(sig, e.root.position);
+          const trinket = rollTrinket(this.rng, 'warden');
+          if (trinket) this.dropItem(trinket, e.root.position);
         }
         this.powers?.onKill(e);
         this.dungeonEvents?.onKill(e);
@@ -1938,6 +1996,8 @@ export class DungeonScene extends GameScene {
       // Each boss carries a few uniques of its own, and drops them more than anything else does.
       const sig = rollSignature(b.defId, this.bossIlvl(), this.rng, SIGNATURE_CHANCE.boss, getBoss(b.defId)?.signature);
       if (sig) this.dropItem(sig, b.root.position);
+      const trinket = rollTrinket(this.rng, 'boss');
+      if (trinket) this.dropItem(trinket, b.root.position);
       this.awardQuestIfComplete();
       this.openReturnPortal(b.root.position);
       b.root.removeFromParent();
@@ -2050,6 +2110,7 @@ export class DungeonScene extends GameScene {
 
     this.mesh.removeInteractable(near);
     this.nav.setBlocked(near.tileX, near.tileY, false);
+    this.usedTiles.push([near.tileX, near.tileY]);
     this.nearProp = null;
     toast('', 'info');
     this.leaveRemains(near);
@@ -2075,6 +2136,7 @@ export class DungeonScene extends GameScene {
     if (family !== 'barrel' && family !== 'crate' && family !== 'urn') return;
     this.mesh.removeInteractable(it);
     this.nav.setBlocked(it.tileX, it.tileY, false);
+    this.usedTiles.push([it.tileX, it.tileY]);
     this.forgetProp(it);
     this.leaveRemains(it);
     this.smash(it);
@@ -2091,13 +2153,17 @@ export class DungeonScene extends GameScene {
     toast('', 'info');
   }
 
-  /** What a used prop leaves: its opened, spent or pulled look, or its broken pieces. */
-  private leaveRemains(it: Interactable): void {
+  /**
+   * What a used prop leaves: its opened, spent or pulled look, or its broken
+   * pieces. `quiet` (an area built back) leaves no pieces flying.
+   */
+  private leaveRemains(it: Interactable, quiet = false): void {
     if (!this.remains) return;
     const placed = this.level.props.find((p) => p.x === it.tileX && p.y === it.tileY && p.kind === it.propKind);
     const rotation = placed?.rotation ?? 0;
-    if (PropRemains.breaks(it.propKind)) this.remains.smash(it, rotation, this.player.position);
-    else this.remains.used(it, rotation);
+    if (PropRemains.breaks(it.propKind)) {
+      if (!quiet) this.remains.smash(it, rotation, this.player.position);
+    } else this.remains.used(it, rotation);
   }
 
   /** What the on-screen prompt says, for a `family.tier` payload. */
@@ -2118,6 +2184,7 @@ export class DungeonScene extends GameScene {
   private pullLever(it: Interactable): void {
     this.mesh.removeInteractable(it);
     this.nav.setBlocked(it.tileX, it.tileY, false);
+    this.usedTiles.push([it.tileX, it.tileY]);
     this.nearProp = null;
     this.leaveRemains(it);
     this.vaultOpen = true;
@@ -2227,11 +2294,15 @@ export class DungeonScene extends GameScene {
   }
 
   private dropItem(item: Item, at: THREE.Vector3): void {
-    const model = buildDropModel(item, this.rng);
     // Scatter so a big drop doesn't stack into one unreadable pile.
     const a = this.rng.range(0, Math.PI * 2);
     const d = this.rng.range(0.3, 1.5);
-    const pos = new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d);
+    this.layItem(item, new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d), at);
+  }
+
+  /** Puts `item` on the floor at `pos`, thrown from `from`. */
+  private layItem(item: Item, pos: THREE.Vector3, from: THREE.Vector3): void {
+    const model = buildDropModel(item, this.rng);
     model.position.copy(pos);
     this.scene.add(model);
     // The loot filter hides what you told it to. Hidden drops make no sound
@@ -2242,17 +2313,21 @@ export class DungeonScene extends GameScene {
     this.loot.push(entry);
     // Thrown out of the body rather than appearing on the floor. A filtered
     // drop just lies there quietly.
-    if (!hidden) this.lootFx.launch(entry, this.tmpDir.set(at.x, 0.9, at.z), item.rarity);
+    if (!hidden) this.lootFx.launch(entry, this.tmpDir.set(from.x, 0.9, from.z), item.rarity);
     if (!hidden) events.emit('loot:dropped', { item, x: pos.x, z: pos.z });
   }
 
   /** Scatters a gold pile that the player collects by walking over it. */
   private dropGold(amount: number, at: THREE.Vector3): void {
     if (amount <= 0) return;
+    const a = this.rng.range(0, Math.PI * 2);
+    const d = this.rng.range(0.2, 1.1);
+    this.layGold(amount, new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d), at);
+  }
+
+  /** Puts a pile of `amount` gold on the floor at `pos`, thrown from `from`. */
+  private layGold(amount: number, pos: THREE.Vector3, from: THREE.Vector3): void {
     const rng = this.rng;
-    const a = rng.range(0, Math.PI * 2);
-    const d = rng.range(0.2, 1.1);
-    const pos = new THREE.Vector3(at.x + Math.cos(a) * d, 0, at.z + Math.sin(a) * d);
 
     const group = new THREE.Group();
     const coins = Math.min(7, 2 + Math.floor(Math.log10(Math.max(10, amount))));
@@ -2266,7 +2341,7 @@ export class DungeonScene extends GameScene {
     this.scene.add(group);
     const entry = { item: null, gold: amount, root: group, pos, bornAt: this.runTime };
     this.loot.push(entry);
-    this.lootFx.launch(entry, this.tmpDir.set(at.x, 0.8, at.z), 'gold');
+    this.lootFx.launch(entry, this.tmpDir.set(from.x, 0.8, from.z), 'gold');
   }
 
   /** Picks up a specific ground item, used by the label click handler. */
@@ -2387,7 +2462,11 @@ export class DungeonScene extends GameScene {
     const offset = new THREE.Vector3(near.x - this.player.position.x, 0, near.z - this.player.position.z);
     if (offset.lengthSq() < 0.01) offset.set(0, 0, 1);
     offset.normalize().multiplyScalar(4.5);
-    const at = new THREE.Vector3(near.x + offset.x, 0, near.z + offset.z);
+    this.raiseReturnPortal(new THREE.Vector3(near.x + offset.x, 0, near.z + offset.z), true);
+  }
+
+  /** The way home at `at`; `loud` opens it with its flourish and toast. */
+  private raiseReturnPortal(at: THREE.Vector3, loud: boolean): void {
     at.y = this.mesh.floorY(at.x, at.z);
     this.returnPortalY = at.y;
 
@@ -2403,10 +2482,205 @@ export class DungeonScene extends GameScene {
     this.exitPos.copy(at);
     this.exitOpen = true;
 
-    this.effects.gateway(at.x, at.y, at.z, 0x7ec8ff, 'open');
     this.portalBend = holdRipple('portal', at.x, at.y + 1.3, at.z, 1.1, 0.45);
+    if (!loud) return;
+    this.effects.gateway(at.x, at.y, at.z, 0x7ec8ff, 'open');
     audio.play('portal');
     toast('The way home has opened.', 'epic');
+  }
+
+  // -------------------------------------------------------------------------
+  // Trinkets (`sim/Trinkets.ts`)
+  // -------------------------------------------------------------------------
+
+  /** A trinket right-clicked in the pack. */
+  private useTrinket(uid: string): void {
+    const c = this.player?.character;
+    const item = c?.inventory.find((it) => it?.uid === uid);
+    const def = trinketOf(item);
+    if (!c || !def) return;
+    if (def.use === 'death') {
+      toast('Keep it in your pack. It breaks on its own when you would die.', 'info');
+      return;
+    }
+    if (this.transitioning || !this.player.alive) return;
+    if (this.homeDoor) {
+      toast('Your portal to town is already open.', 'bad');
+      audio.play('ui.error');
+      return;
+    }
+    const spot = this.doorSpot();
+    if (!spot) {
+      toast('There is no room for a portal here.', 'bad');
+      audio.play('ui.error');
+      return;
+    }
+    removeItemFromInventory(c, uid);
+    save.touch();
+    events.emit('ui:refresh', {});
+    this.openHomeDoor(spot, true);
+  }
+
+  /** Open ground a couple of steps from the hero for a portal, if any. */
+  private doorSpot(): THREE.Vector3 | null {
+    const p = this.player.position;
+    const face = this.player.root.rotation.y;
+    for (const r of [2.2, 1.6, 2.8]) {
+      for (let i = 0; i < 12; i++) {
+        // Ahead of the hero first, then round them both ways.
+        const a = face + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI / 6);
+        const x = p.x + Math.sin(a) * r;
+        const z = p.z + Math.cos(a) * r;
+        const t = this.mesh.worldToTile(x, z);
+        if (!this.nav.walkable(t.x, t.y)) continue;
+        return new THREE.Vector3(x, 0, z);
+      }
+    }
+    return null;
+  }
+
+  /** Raises the hero's portal to town at `at`. */
+  private openHomeDoor(at: THREE.Vector3, loud: boolean): void {
+    this.closeHomeDoor();
+    at.y = this.mesh.floorY(at.x, at.z);
+    const look = buildPortal(0xa8f0ff, { width: 1.5, height: 2.4 });
+    // No light of its own: the way-on lights are kept to a fixed count, and
+    // a fourth would relink every lit shader (`balanceLights`).
+    look.root.getObjectByName('way:light')?.removeFromParent();
+    look.root.position.copy(at);
+    this.scene.add(look.root);
+    this.homeDoor = { look, at, bend: holdRipple('portal', at.x, at.y + 1.2, at.z, 0.9, 0.4) };
+    if (!loud) return;
+    this.effects.gateway(at.x, at.y, at.z, 0xa8f0ff, 'open');
+    audio.play('portal');
+    toast('A portal to town opens. Step through to go home.', 'good');
+  }
+
+  private closeHomeDoor(): void {
+    const d = this.homeDoor;
+    if (!d) return;
+    this.homeDoor = null;
+    d.look.root.removeFromParent();
+    d.look.dispose();
+    releaseRipple(d.bend, 0.05);
+  }
+
+  /** Through the portal: home with everything, the map kept to come back to. */
+  private stepHome(): void {
+    const d = this.homeDoor;
+    if (!d || this.transitioning) return;
+    this.transitioning = true;
+    this.player.stop();
+    toast('', 'info');
+    this.effects.gateway(d.at.x, d.at.y, d.at.z, 0xa8f0ff, 'use');
+    audio.play('portal');
+    save.leaveByPortal(this.noteArea());
+    void this.engine.goTo('town');
+  }
+
+  /** The area as the hero leaves it through the portal, to be built back. */
+  private noteArea(): OpenPortal {
+    const p = this.player.position;
+    const alive = new Set<number>();
+    for (const e of this.enemies) if (e.alive && e.spawnIndex >= 0) alive.add(e.spawnIndex);
+    const killed: number[] = [];
+    for (let i = 0; i < this.level.spawns.length; i++) if (!alive.has(i)) killed.push(i);
+    const seen = hudRuntime.explored.get(this.level.seed);
+    return {
+      v: 1,
+      at: Date.now(),
+      depth: this.made.depth,
+      seed: this.made.seed,
+      pacts: [...this.made.pacts],
+      name: this.run.map?.name ?? '',
+      level: this.levelIndex,
+      x: p.x,
+      z: p.z,
+      killed,
+      bossDead: this.level.isBossLevel && !this.boss,
+      wardenDead: !!this.warden && !this.warden.alive,
+      home: this.returnPortal ? { x: this.returnPortal.position.x, z: this.returnPortal.position.z } : null,
+      used: this.usedTiles.map(([x, y]) => [x, y] as [number, number]),
+      loot: this.loot.map((l) => ({ item: l.item ? structuredClone(l.item) : null, gold: l.gold, x: l.pos.x, z: l.pos.z })),
+      vaultOpen: this.vaultOpen,
+      quest: structuredClone(this.run.quest),
+      time: this.runTime,
+      ...(seen ? { chart: packChart(seen) } : {}),
+    };
+  }
+
+  /** Puts a built-back area as the portal's note left it. */
+  private restoreArea(back: OpenPortal): void {
+    const killed = new Set(back.killed);
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const e = this.enemies[i]!;
+      const gone = e === this.warden ? back.wardenDead : e.spawnIndex >= 0 && killed.has(e.spawnIndex);
+      if (!gone) continue;
+      this.enemies.splice(i, 1);
+      e.root.removeFromParent();
+      e.dispose();
+    }
+    if (back.wardenDead) this.warden = null;
+    if (back.bossDead && this.boss) {
+      const b = this.boss;
+      const fell = b.root.position.clone();
+      this.boss = null;
+      b.root.removeFromParent();
+      b.dispose();
+      this.arenaGate = null;
+      if (back.home) this.raiseReturnPortal(new THREE.Vector3(back.home.x, 0, back.home.z), false);
+      else this.openReturnPortal(fell);
+    }
+    for (const [tx, ty] of back.used) {
+      const it = this.mesh.interactables.find((i) => !i.used && i.tileX === tx && i.tileY === ty);
+      if (!it) continue;
+      this.mesh.removeInteractable(it);
+      this.nav.setBlocked(tx, ty, false);
+      this.usedTiles.push([tx, ty]);
+      this.leaveRemains(it, true);
+    }
+    this.findWayLights();
+    this.vaultOpen = back.vaultOpen;
+    this.runTime = Math.max(this.runTime, back.time);
+    for (const l of back.loot) {
+      const pos = new THREE.Vector3(l.x, 0, l.z);
+      if (l.item) this.layItem(l.item, pos, pos);
+      else if (l.gold > 0) this.layGold(l.gold, pos, pos);
+    }
+    const t = this.mesh.worldToTile(back.x, back.z);
+    if (isWalkable(this.level, t.x, t.y)) {
+      this.player.position.set(back.x, this.mesh.floorY(back.x, back.z), back.z);
+      this.player.stop();
+      this.rig.follow(this.player.root);
+      this.rig.snap();
+    }
+    // The chart was wiped when the area was entered (`depth:changed`).
+    if (back.chart) hudRuntime.explored.set(this.level.seed, unpackChart(back.chart, this.level.width * this.level.height));
+    toast('Back through the portal. It closes behind you.', 'info');
+  }
+
+  /**
+   * The hero's last blow in a map, with a Trinket of Death in the pack: it
+   * breaks, and the hero wakes in town with everything found there.
+   */
+  private tryDeathTrinket(): boolean {
+    if (this.transitioning || !spendTrinket(this.player.character, 'death')) return false;
+    this.transitioning = true;
+    this.player.life = this.player.stats.life;
+    this.player.mana = this.player.stats.mana;
+    this.player.grantInvulnerability(10);
+    this.player.stop();
+    const p = this.player.position;
+    this.effects.gateway(p.x, p.y, p.z, 0xff3a3a, 'use');
+    audio.play('portal');
+    // Nothing is lost: the map ends as if walked out of its last way.
+    save.endRun();
+    save.touch();
+    save.flush();
+    events.emit('ui:refresh', {});
+    toast('The Trinket of Death breaks. You wake in town.', 'epic');
+    void this.engine.goTo('town');
+    return true;
   }
 
   /** Walking from one zone of an area into the next raises its banner. */
@@ -2677,6 +2951,22 @@ export class DungeonScene extends GameScene {
     this.rig.snap();
   }
 
+  /** The trinket portal and what an area holds, for the portal check; `walk` puts the hero in the portal. */
+  debugPortal(walk: boolean): Record<string, unknown> {
+    const d = this.homeDoor;
+    if (walk && d) this.player.position.set(d.at.x, d.at.y, d.at.z);
+    return {
+      door: d ? { x: d.at.x, z: d.at.z } : null,
+      level: this.levelIndex,
+      alive: this.enemies.filter((e) => e.alive).length,
+      loot: this.loot.length,
+      used: this.usedTiles.length,
+      hero: { x: this.player.position.x, z: this.player.position.z },
+      life: this.player.life,
+      boss: !!this.boss,
+    };
+  }
+
   debugGodMode(on: boolean): void {
     this.godMode = on;
     this.player.invulnerable = on;
@@ -2719,6 +3009,7 @@ export class DungeonScene extends GameScene {
     this.waypointLook = null;
     this.portalLook?.dispose();
     this.portalLook = null;
+    this.closeHomeDoor();
     releaseRipple(this.portalBend, 0.05);
     this.portalBend = null;
     this.lighting?.dispose();

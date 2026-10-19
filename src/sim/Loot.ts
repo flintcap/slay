@@ -76,6 +76,7 @@ import type { GemBonus } from '../data/gems';
 import { rollPowerAffix, powerWord, powerLines, powerValue } from './ItemPowers';
 import { legacyPriceMultiplier } from './Legacy';
 import { MATERIALS, materialDropPool, materialName } from '../data/materials';
+import { getTrinket } from '../data/trinkets';
 import { NO_FIND, payoutGold, type Find } from './Payout';
 
 // ---------------------------------------------------------------------------
@@ -1485,6 +1486,8 @@ export function vendorPrice(item: Item, buying: boolean): number {
     value = MATERIALS.find((m) => m.id === base.id)?.value ?? 5;
   } else if (base.category === 'potion') {
     value = 20 + base.levelReq * 12;
+  } else if (base.category === 'trinket') {
+    value = getTrinket(base.id)?.value ?? 200;
   } else {
     value = baseValue(base) * (1 + item.upgrade * UPGRADE_BASE_STEP);
     for (const mod of item.mods) {
@@ -1553,6 +1556,7 @@ const CATEGORY_LABEL: Record<ItemCategory, string> = {
   amulet: 'Amulet',
   ring: 'Ring',
   charm: 'Charm',
+  trinket: 'Trinket',
   gem: 'Gem',
   rune: 'Rune',
   potion: 'Potion',
@@ -1737,6 +1741,13 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
   if (base.category === 'charm') {
     push('Works from your pack', COLOR.implicit);
     if (item.uniqueId) push('Only one of these counts at a time', COLOR.dim);
+  }
+  const trinket = base.category === 'trinket' ? getTrinket(base.id) : undefined;
+  if (trinket) {
+    blank();
+    for (const t of trinket.text) push(t, COLOR.implicit);
+    blank();
+    push(trinket.flavor, COLOR.flavor);
   }
 
   // --- base values --------------------------------------------------------

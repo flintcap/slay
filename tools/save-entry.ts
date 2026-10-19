@@ -12,7 +12,7 @@ import { SaveManager, migrateAccount, DEFAULT_SETTINGS, SAVE_KEY, BACKUP_KEY, CO
 import type { SaveStore } from '../src/core/Save';
 import { events } from '../src/core/Events';
 import { Random } from '../src/core/RNG';
-import type { AccountSave, Character, Item, StatKey } from '../src/types';
+import type { AccountSave, Character, Item, OpenPortal, StatKey } from '../src/types';
 import { getUnique } from '../src/data/uniques';
 import { SET_PIECES } from '../src/data/sets';
 import { EXTRA_LINES } from '../src/data/extraLines';
@@ -366,6 +366,48 @@ check('a damaged map note keeps the gear the hero holds now', () => {
   const s = new SaveManager(store);
   const a = s.load();
   return a.current?.equipment.mainHand?.uid === 'a-mh' && !a.current.run && a.current.xp === 600 ? true : 'gear or experience lost to a bad note';
+});
+
+// Through a Trinket of Town's portal the hero goes home with everything,
+// and the map waits for them, through a reload, until the portal closes.
+const portalNote = (): OpenPortal => ({
+  v: 1, at: 1, depth: 5, seed: 1234, pacts: ['pact.x'], name: 'Somewhere', level: 1, x: 2, z: -3,
+  killed: [0, 2], bossDead: false, wardenDead: true, home: null, used: [[4, 5]],
+  loot: [{ item: item('floor'), gold: 0, x: 1, z: 1 }, { item: null, gold: 60, x: 2, z: 2 }],
+  vaultOpen: true, quest: { defId: 'q', name: 'Q', flavor: '', objectives: [], complete: false, turnedIn: false }, time: 90, chart: 'AQ==',
+});
+
+check('a portal home keeps the finds, waits through a reload, then closes', () => {
+  const { store, s } = fresh();
+  s.load();
+  s.setCharacter(hero('a', 8));
+  const xp = s.account.current!.xp;
+  s.beginRun(5);
+  const c = s.account.current!;
+  c.inventory[5] = item('found');
+  c.gold += 400;
+  s.leaveByPortal(portalNote());
+  const s2 = new SaveManager(store);
+  const a = s2.load();
+  const b = a.current;
+  if (!b) return 'the hero is gone';
+  if (b.run || s2.takeForfeit('a')) return 'the portal cost the hero their finds';
+  if (!b.inventory.some((it) => it?.uid === 'found') || b.gold !== 650 || b.xp !== xp) return 'finds or experience lost';
+  const p = b.portal;
+  if (!p || p.seed !== 1234 || p.level !== 1 || p.loot.length !== 2 || p.killed.join() !== '0,2' || p.used[0]?.join() !== '4,5' || !p.wardenDead) return `portal note ${JSON.stringify(p)}`;
+  s2.closePortal();
+  if (s2.account.current?.portal) return 'the portal did not close';
+  return invariants(a).join('; ') || true;
+});
+
+check('a damaged portal note is closed, the gear kept', () => {
+  const store = new MemStore();
+  const h = hero('a', 6);
+  (h as { portal?: unknown }).portal = { ...portalNote(), seed: 'x' };
+  store.setItem(SAVE_KEY, JSON.stringify(account(h, [h])));
+  const s = new SaveManager(store);
+  const a = s.load();
+  return a.current && !a.current.portal && a.current.equipment.mainHand?.uid === 'a-mh' ? true : 'bad portal note kept or gear lost';
 });
 
 check('a full disk does not crash and tells the player once', () => {

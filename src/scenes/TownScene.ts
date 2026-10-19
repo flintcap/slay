@@ -28,6 +28,10 @@ import { planDescent } from './DescentPlanner';
 import { breather, loadStep, yieldIfLong } from '../core/LoadProgress';
 import { meshHero } from '../world/BakePool';
 import { markStaticShadows } from '../core/ShadowCache';
+import { buildPortal, type WayLook } from '../art/props/Ways';
+import { holdRipple, releaseRipple, type RippleHandle } from '../core/Ripples';
+import { portalPrompt, trinketOf } from '../sim/Trinkets';
+import { modal } from '../ui/Widgets';
 
 /** The town hero's seed: the worker dresses the same hero the town builds. */
 const TOWN_HERO_SEED = 12345;
@@ -73,6 +77,8 @@ export class TownScene extends GameScene {
   private markerState: Partial<Record<MarkerSpot, QuestMarker>> = {};
   private markerAccum = Infinity;
   private markerAt = new THREE.Vector3();
+  /** A Trinket of Town's portal, standing open back to the map it was opened in. */
+  private homeDoor: { look: WayLook; at: THREE.Vector3; bend: RippleHandle | null } | null = null;
 
   constructor(engine: Engine) {
     super();
@@ -200,6 +206,7 @@ export class TownScene extends GameScene {
     const stations = this.scene.getObjectByName('townStations');
     if (stations) markStaticShadows(this.scene, stations);
     this.questMarkers = new QuestMarkerLayer(this.scene);
+    this.raiseHomeDoor();
 
     // Equipping has to change the model now, not whenever the stat sheet next
     // happens to be recomputed. `item:equipped` was fired into the void, so new
@@ -215,6 +222,12 @@ export class TownScene extends GameScene {
       }),
       // There is nowhere to put a dropped item in town, so it goes back in the
       // pack rather than vanishing. Better to refuse than to eat it.
+      events.on('trinket:use', ({ uid }) => {
+        const item = save.account.current?.inventory.find((it) => it?.uid === uid);
+        const def = trinketOf(item);
+        if (!def) return;
+        toast(def.use === 'portal' ? 'It opens only in a map.' : 'Keep it in your pack. It breaks on its own when you would die in a map.', 'info');
+      }),
       events.on('loot:discard', ({ item }) => {
         const c = save.account.current;
         if (!c) return;
@@ -236,6 +249,7 @@ export class TownScene extends GameScene {
     this.offs.push(
       events.on('ui:open', (p) => {
         if (p.panel === 'descend') this.descend();
+        else if (p.panel === 'homeDoor') this.goBack();
       })
     );
 
@@ -260,6 +274,12 @@ export class TownScene extends GameScene {
   private descend(): void {
     const character = save.account.current;
     if (!character) return;
+    // One map at a time: the open portal's map is this hero's until it closes.
+    if (character.portal) {
+      toast('Your portal to town is still open. Go back through it, or right-click it to close it first.', 'bad');
+      audio.play('ui.error');
+      return;
+    }
     // Waypoints and pacts, when Legacy has unlocked them (scenes/DescentPlanner).
     planDescent(character, (depth, pacts) => {
       audio.play('portal');
@@ -267,11 +287,78 @@ export class TownScene extends GameScene {
     });
   }
 
+  /**
+   * The portal a Trinket of Town opened, by the path the hero arrives on,
+   * while its map waits (`Character.portal`).
+   */
+  private raiseHomeDoor(): void {
+    const p = save.account.current?.portal;
+    if (!p) return;
+    const spots: Array<[number, number]> = [[3.4, 9.5], [-3.4, 9.5], [3.4, 5.5], [-3.4, 5.5], [0, 12]];
+    const free = spots.find(([x, z]) => !this.town.colliders.some((c) => Math.abs(x - c.x) < c.w / 2 + 1 && Math.abs(z - c.z) < c.d / 2 + 1)) ?? spots[0]!;
+    const at = new THREE.Vector3(free[0], this.town.groundY(free[0], free[1]), free[1]);
+    const look = buildPortal(0xa8f0ff, { width: 1.5, height: 2.4 });
+    // No light: closing it must not change the camp's light count.
+    look.root.getObjectByName('way:light')?.removeFromParent();
+    look.root.position.copy(at);
+    this.scene.add(look.root);
+    this.homeDoor = { look, at, bend: holdRipple('portal', at.x, at.y + 1.2, at.z, 0.9, 0.4) };
+    this.interactables.push({ id: 'homeDoor', label: portalPrompt(p), panel: 'homeDoor', pos: at.clone(), radius: 2.4 });
+  }
+
+  /** Back through the portal to the map it was opened in. */
+  private goBack(): void {
+    const p = save.account.current?.portal;
+    if (!p || !this.homeDoor) return;
+    const at = this.homeDoor.at;
+    audio.play('portal');
+    this.fx.burst('levelup', at.x, at.y + 1, at.z, { count: 30, color: 0xa8f0ff });
+    void this.engine.goTo('dungeon', { depth: p.depth, seed: p.seed, pacts: p.pacts, resume: true });
+  }
+
+  /** Right-click on the portal: close it for good, and its map with it. */
+  private askCloseDoor(): void {
+    const p = save.account.current?.portal;
+    if (!p) return;
+    modal({
+      title: 'Close the portal?',
+      icon: 'exit',
+      tone: 'danger',
+      body: `${p.name || `The tier ${p.depth} map`} ends. You keep everything you brought back, and you can open a new map.`,
+      confirmLabel: 'Close it',
+      onConfirm: () => {
+        save.closePortal();
+        this.dropHomeDoor();
+        audio.play('ui.close');
+        toast('The portal closes.', 'info');
+      },
+    });
+  }
+
+  private dropHomeDoor(): void {
+    const d = this.homeDoor;
+    if (!d) return;
+    this.homeDoor = null;
+    d.look.dispose();
+    releaseRipple(d.bend, 0.05);
+    this.interactables = this.interactables.filter((it) => it.id !== 'homeDoor');
+    if (this.nearby?.id === 'homeDoor') {
+      this.nearby = null;
+      toast('', 'info');
+    }
+  }
+
   override update(dt: number, elapsed: number): void {
     if (!this.player) return;
     const input = this.engine.input;
 
     input.updateWorldPoint(this.camera, 0);
+
+    if (this.homeDoor) {
+      this.homeDoor.look.update(dt, this.camera);
+      const d = this.homeDoor.at;
+      if (input.mouseRightPressed && !input.pointerOverUI && Math.hypot(input.worldPoint.x - d.x, input.worldPoint.z - d.z) < 1.8) this.askCloseDoor();
+    }
 
     // WASD as an alternative to click-to-move; both feel required in a modern ARPG.
     this.keyDir.set(0, 0, 0);
@@ -419,6 +506,7 @@ export class TownScene extends GameScene {
     this.player?.dispose();
     this.questMarkers?.dispose();
     this.questMarkers = null;
+    this.dropHomeDoor();
     this.town?.dispose();
     this.fx.dispose();
     this.decals.dispose();

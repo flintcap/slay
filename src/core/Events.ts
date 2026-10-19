@@ -123,6 +123,8 @@ export interface GameEvents {
   'ui:refresh': Record<string, never>;
   /** Drink a potion. `baseId` picks a specific one; otherwise quick-drink. */
   'potion:use': { kind: 'life' | 'mana'; baseId?: string };
+  /** A trinket right-clicked in the pack (`sim/Trinkets.ts`). */
+  'trinket:use': { uid: string };
   /** A potion was drunk (the request above went through). */
   'potion:drunk': { kind: 'life' | 'mana' };
   'ui:open': { panel: string };

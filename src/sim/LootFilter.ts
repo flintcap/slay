@@ -218,6 +218,7 @@ export function passesFilter(item: Item, f: LootFilterSettings, classId?: CharCl
       return f.showPotions && (t < 0 || t >= f.minPotionTier);
     }
     case 'material':
+    case 'trinket':
       return true;
     default:
       break;

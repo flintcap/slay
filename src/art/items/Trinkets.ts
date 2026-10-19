@@ -747,6 +747,56 @@ export function buildCharm(P: Parts): void {
 }
 
 // ===========================================================================
+// TRINKETS
+// ===========================================================================
+
+/** An arch, bottom edge at y0, sides `w` apart, round top reaching y1. */
+function archOutline(w: number, y0: number, y1: number, n = 14): V2[] {
+  const r = w / 2;
+  return [[-r, y0], [r, y0], ...arc2(0, y1 - r, r, r, 0, PI, n).slice(0, -1), [-r, y1 - r]];
+}
+
+export function buildTrinket(P: Parts): void {
+  const [kind = 'town'] = idParts(P, 'trinket');
+  if (kind === 'death') {
+    // A bone skull no bigger than a thumb, cracked across the brow, with red
+    // light where its eyes were. It hangs from a blackened ring.
+    const s = 0.05;
+    skull(P, 'main', v3(0, -0.004, 0), s);
+    for (const sx of [-1, 1]) P.add('glow', sphere(s * 0.075, 8, 6), { p: [sx * s * 0.17, -0.002, s * 0.43] });
+    const crack: V3[] = [v3(-0.012, 0.022, 0.021), v3(-0.004, 0.017, 0.024), v3(0.002, 0.021, 0.024), v3(0.01, 0.013, 0.021)];
+    P.add('dark', tube(crack, 0.0011, 3));
+    P.add('dark', torus(0.008, 0.0017, 4, 16), { p: [0, 0.031, 0] });
+    P.add('string', tube(curve([v3(0, 0.024, 0), v3(0.002, 0.03, 0.001), v3(0, 0.036, 0)], 6), 0.001, 3));
+    frontAnchors(P, v3(), 0.03);
+    return;
+  }
+  // A bronze door no bigger than a coin, standing open on blue light: a way
+  // home kept in a pocket. A keystone caps the arch and a cord loop holds it.
+  const W = 0.046;
+  const y0 = -0.034;
+  const y1 = 0.034;
+  const inner = archOutline(W - 0.012, y0 + 0.006, y1 - 0.006);
+  P.add('main', slab(archOutline(W, y0, y1), 0.008, { holes: [inner.slice().reverse()] }));
+  P.add('glow', slab(inner, 0.002), { p: [0, 0, -0.0005] });
+  // The door itself, swung half open on its left hinge.
+  const leaf = archOutline(W - 0.014, 0, y1 - y0 - 0.014);
+  P.add('second', slab(leaf, 0.003), { p: [-(W - 0.014) / 2, y0 + 0.007, 0.003], r: [0, -1.05, 0], s: [1, 1, 1] });
+  P.add('trim', box(0.009, 0.008, 0.01, 0.002), { p: [0, y1 - 0.002, 0] });
+  P.add('main', box(W + 0.008, 0.005, 0.012, 0.0015), { p: [0, y0 - 0.002, 0] });
+  // A spiral of colder light deep in the doorway.
+  const sp: V3[] = [];
+  for (let i = 0; i <= 28; i++) {
+    const t = i / 28;
+    const a = t * PI * 4;
+    sp.push(v3(Math.cos(a) * t * 0.013, -0.004 + Math.sin(a) * t * 0.015, 0.0015));
+  }
+  P.add('ghost', tube(sp, 0.0011, 3));
+  P.add('string', torus(0.006, 0.0014, 3, 12), { p: [0, y1 + 0.007, 0], r: [0, PI / 2, 0] });
+  frontAnchors(P, v3(), 0.035);
+}
+
+// ===========================================================================
 // MATERIALS
 // ===========================================================================
 

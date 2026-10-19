@@ -94,7 +94,7 @@ function poseFor(family: ItemFamily, size: THREE.Vector3, tall = false): Pose {
   if (DIAGONAL.has(family)) return { yaw: 0.4, pitch: 0.08, roll: -Math.PI / 4, fill: 0.98 };
   if (family === 'ring') return { yaw: 0.3, pitch: 0.55, roll: 0, fill: 0.72 };
   if (family === 'gem') return { yaw: 0.45, pitch: 0.3, roll: 0, fill: 0.7, ref: 0.1 };
-  if (family === 'rune' || family === 'charm' || family === 'material') return { yaw: 0.45, pitch: 0.3, roll: 0, fill: 0.7 };
+  if (family === 'rune' || family === 'charm' || family === 'trinket' || family === 'material') return { yaw: 0.45, pitch: 0.3, roll: 0, fill: 0.7 };
   if (family === 'amulet' || family === 'potion') return { yaw: 0.35, pitch: 0.15, roll: 0, fill: 0.84 };
   // Circlets and crowns are low rings: look down into them.
   if (family === 'helm' && size.y < size.x * 0.5) return { yaw: 0.2, pitch: 0.7, roll: 0, fill: 0.86 };

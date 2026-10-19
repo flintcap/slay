@@ -1151,6 +1151,11 @@ misc('charm.medium', 'Medium Charm', 'charm', 'none', 8, 'charm.medium', 'crysta
 misc('charm.large', 'Large Charm', 'charm', 'none', 16, 'charm.large', 'crystal.gem', { glow: 0x7f9cff });
 misc('charm.grand', 'Grand Charm', 'charm', 'none', 28, 'charm.grand', 'crystal.gem', { glow: 0x8fa8ff });
 
+// Trinkets are spent, not worn: each does one thing once and breaks
+// (`sim/Trinkets.ts`). They take one cell of the pack, and only bosses drop them.
+misc('trinket.town', 'Trinket of Town', 'trinket', 'none', 1, 'trinket.town', 'metal.bronze', { ornate: 0.5, glow: 0x7ec8ff });
+misc('trinket.death', 'Trinket of Death', 'trinket', 'none', 1, 'trinket.death', 'bone.pale', { ornate: 0.6, glow: 0xff3a3a });
+
 // ===========================================================================
 // CONSUMABLES
 // ===========================================================================

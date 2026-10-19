@@ -267,6 +267,8 @@ export class Enemy implements Combatant {
   motionOverride: MotionOverride | null = null;
   /** Pack id from the spawn table; scenes set this after construction. */
   packId = -1;
+  /** Its place in the level's spawn table, or -1 for anything summoned or called. */
+  spawnIndex = -1;
   /** Set by summons so they can be capped / cleaned up. */
   summonedBy: string | null = null;
 

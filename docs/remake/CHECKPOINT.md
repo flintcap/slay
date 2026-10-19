@@ -356,6 +356,22 @@ Update this file and push it after every finished step.
   a level). A crash is settled on the next load (`Save.settleLeftMaps`)
   and told in town. The feel check's stub learned `delay`. New save cases:
   settle on load, menu leave, a damaged note keeps today's gear.
+- #138 done (owner ask): use trinkets (`data/trinkets.ts`,
+  `sim/Trinkets.ts`). Uniques that take one cell, dropped by a map's boss
+  (7%) or a floor warden (2.5%), Trinket of Town 80 to Trinket of Death 20.
+  Town: right-click in a map opens a portal; stepping through goes home
+  with everything and saves the area (`Character.portal`, `OpenPortal`).
+  In town the portal stands by the arrival path: [E] goes back to the same
+  map, built again from its seed (each area's build is now
+  `streamFor(seed, 'level:i')`), with its kills, spent props, floor loot,
+  vault, quest, chart and way home put back; it closes behind the hero.
+  Right-click it in town to close it and end the map. The Descent refuses
+  while it is open. An open portal follows the hero to the next area. A
+  boss left mid-fight is back at full life; a treasure runner does not
+  come back. Death: carried in the pack, it takes the last blow in a map,
+  breaks, and sends the hero home with everything (`lethalGuard`, after
+  cheat death). New checks: two save cases (portal round trip, damaged
+  note) and trinket rates, size, spending and the chart in `check-charms`.
 - #133 started: no text under 10 px in either stylesheet.
 
 ## Phase 0d log

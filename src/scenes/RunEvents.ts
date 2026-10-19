@@ -100,15 +100,18 @@ export class RunEvents {
     this.host = host;
   }
 
-  /** A new floor was built. Spawns anything the floor's events need up front. */
-  onLevel(): void {
+  /**
+   * A new floor was built. Spawns anything the floor's events need up front;
+   * `builtBack` (an area put back as a portal left it) has no runner again.
+   */
+  onLevel(builtBack = false): void {
     this.trials = [];
     this.runner = null;
     this.eventSpawned.clear();
     this.carriers.clear();
     const level = this.host.level();
     for (const ev of level.events ?? []) {
-      if (ev.kind === 'treasureRunner') this.spawnRunner(ev.x, ev.y);
+      if (ev.kind === 'treasureRunner' && !builtBack) this.spawnRunner(ev.x, ev.y);
     }
   }
 

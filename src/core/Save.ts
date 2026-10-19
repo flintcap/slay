@@ -1,4 +1,4 @@
-import type { AccountSave, Character, GameSettings, Item, PanelPlace } from '../types';
+import type { AccountSave, Character, GameSettings, Item, OpenPortal, PanelPlace } from '../types';
 import { events } from './Events';
 import { bindsAreValid, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from './Access';
 import { UNIQUE_TEXT } from '../data/story/uniqueText';
@@ -385,7 +385,59 @@ class Repairer {
     const invLen = Math.max(INVENTORY_SIZE, Array.isArray(c.inventory) ? Math.min(c.inventory.length, 240) : 0);
     c.inventory = this.slots(c.inventory, invLen, `${at}.inventory`);
     this.runNote(c, at);
+    this.openPortal(c, at);
     return c;
+  }
+
+  /**
+   * A Trinket of Town's portal still standing in town (`sim/Trinkets.ts`).
+   * One that does not read is closed: the hero is in town with everything
+   * already, so all it costs is the rest of that map.
+   */
+  private openPortal(c: Character, at: string): void {
+    const r = (c as { portal?: unknown }).portal;
+    if (r === undefined) return;
+    const q = isObj(r) ? r.quest : undefined;
+    if (!isObj(r) || !finite(r.depth) || !finite(r.seed) || !finite(r.level) || !isObj(q) || !Array.isArray(q.objectives)) {
+      delete c.portal;
+      this.note(`${at}: an unreadable town portal was closed`);
+      return;
+    }
+    const ints = (v: unknown): number[] => (Array.isArray(v) ? v.filter((n): n is number => finite(n) && n >= 0).map(Math.floor) : []);
+    const tiles = Array.isArray(r.used)
+      ? r.used.filter((t): t is [number, number] => Array.isArray(t) && finite(t[0]) && finite(t[1])).map(([x, y]) => [Math.floor(x), Math.floor(y)] as [number, number])
+      : [];
+    const loot: NonNullable<Character['portal']>['loot'] = [];
+    if (Array.isArray(r.loot)) {
+      r.loot.forEach((l, i) => {
+        if (!isObj(l) || !finite(l.x) || !finite(l.z)) return;
+        const item = l.item === null ? null : this.item(l.item, `${at}.portal.loot[${i}]`);
+        const gold = finite(l.gold) && l.gold > 0 ? Math.floor(l.gold) : 0;
+        if (item || gold > 0) loot.push({ item, gold: item ? 0 : gold, x: l.x, z: l.z });
+      });
+    }
+    const home = isObj(r.home) && finite(r.home.x) && finite(r.home.z) ? { x: r.home.x, z: r.home.z } : null;
+    c.portal = {
+      v: 1,
+      at: this.num(r.at, Date.now(), `${at}.portal.at`, 0),
+      depth: this.num(r.depth, 1, `${at}.portal.depth`, 1, 1e6, true),
+      seed: Math.floor(r.seed) >>> 0,
+      pacts: Array.isArray(r.pacts) ? r.pacts.filter(isStr) : [],
+      name: isStr(r.name) ? r.name : '',
+      level: this.num(r.level, 0, `${at}.portal.level`, 0, 64, true),
+      x: this.num(r.x, 0, `${at}.portal.x`),
+      z: this.num(r.z, 0, `${at}.portal.z`),
+      killed: ints(r.killed),
+      bossDead: r.bossDead === true,
+      wardenDead: r.wardenDead === true,
+      home,
+      used: tiles,
+      loot,
+      vaultOpen: r.vaultOpen === true,
+      quest: q as unknown as NonNullable<Character['portal']>['quest'],
+      time: this.num(r.time, 0, `${at}.portal.time`, 0),
+      ...(isStr(r.chart) ? { chart: r.chart } : {}),
+    };
   }
 
   /**
@@ -1041,6 +1093,28 @@ export class SaveManager {
     this.touch();
     this.flush();
     return f;
+  }
+
+  /**
+   * The live hero steps through a Trinket of Town's portal: home with
+   * everything, and the map kept in `portal` to go back to.
+   */
+  leaveByPortal(portal: OpenPortal): void {
+    const c = this.data.current;
+    if (!c) return;
+    endRun(c);
+    c.portal = portal;
+    this.touch();
+    this.flush();
+  }
+
+  /** The live hero's portal closes: they went back through it, or shut it from town. */
+  closePortal(): void {
+    const c = this.data.current;
+    if (!c?.portal) return;
+    delete c.portal;
+    this.touch();
+    this.flush();
   }
 
   /** What the last load's settling took from hero `id`, once. */

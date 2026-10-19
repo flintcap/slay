@@ -9,6 +9,8 @@ import { createCharacter } from '../src/sim/Character';
 import { UNIQUES } from '../src/data/uniques';
 import { getAffix } from '../src/data/affixes';
 import type { Item } from '../src/types';
+import { makeTrinket, packChart, rollTrinket, spendTrinket, unpackChart } from '../src/sim/Trinkets';
+import { TRINKETS } from '../src/data/trinkets';
 
 const problems: string[] = [];
 const fail = (s: string): void => {
@@ -103,4 +105,32 @@ c.inventory[10] = one;
 const st = charmStats(c);
 if (!Object.values(st).some((v) => v > 0)) fail('a grand charm in the pack gave nothing');
 
-console.log(JSON.stringify({ problems, tally, bySize, named, dropped, kills, namedDefs: named0.length }));
+// Trinkets: one cell, unique, rare from bosses, the commoner one far more often.
+const trinkets: Record<string, number> = {};
+const trng = new Random(11);
+for (let i = 0; i < 20000; i++) {
+  const t = rollTrinket(trng, 'boss');
+  if (t) trinkets[t.baseId] = (trinkets[t.baseId] ?? 0) + 1;
+}
+const trinketShare = Object.values(trinkets).reduce((a, b) => a + b, 0) / 20000;
+if (trinketShare < 0.04 || trinketShare > 0.1) fail(`a boss drops a trinket ${(trinketShare * 100).toFixed(1)}% of the time`);
+if ((trinkets['trinket.town'] ?? 0) <= (trinkets['trinket.death'] ?? 0) * 2) fail(`trinket split ${JSON.stringify(trinkets)}`);
+for (const def of TRINKETS) {
+  const t = makeTrinket(def.id, trng);
+  if (!t) {
+    fail(`no trinket ${def.id}`);
+    continue;
+  }
+  const sz = itemSize(t);
+  if (t.rarity !== 'unique' || sz.w !== 1 || sz.h !== 1) fail(`${def.id} is ${t.rarity} ${sz.w}x${sz.h}`);
+}
+c.inventory = new Array(60).fill(null);
+c.inventory[3] = makeTrinket('trinket.death', trng);
+c.inventory[9] = makeTrinket('trinket.death', trng);
+if (!spendTrinket(c, 'death') || c.inventory.filter(Boolean).length !== 1) fail('spending a trinket did not take exactly one');
+if (spendTrinket(c, 'portal')) fail('spent a trinket the hero does not carry');
+const seen = new Uint8Array(77);
+for (const i of [0, 5, 8, 40, 76]) seen[i] = 1;
+if (unpackChart(packChart(seen), 77).join() !== seen.join()) fail('a chart does not survive the portal');
+
+console.log(JSON.stringify({ problems, tally, bySize, named, dropped, kills, namedDefs: named0.length, trinkets }));
