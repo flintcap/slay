@@ -231,12 +231,25 @@ Update this file and push it after every finished step.
   40 and 90, shapeshifter and knight at 40: a class boost list goes to the
   owner first.
 
+- #119 (Phase 1, owner approved 1-3) the 6 thin biomes. Two new looks
+  each (a7bfe28): Blackroot Wood the Fogbound Wood and Bonfire Night; Gallows
+  Fen the Drowned Lanterns and the Dry Season; Bleached Reach the Sandstorm
+  and the Red Dusk; the tomb the Flooded Vaults and the Treasury Wing;
+  Frostmarch the White Squall (not "Whiteout": frostvault has one) and
+  Skyfire Night; hell the Ashfall and the Cooled Crust. A look can now move
+  the outdoor sky (`BiomeArt.mood`, laid over `Lighting.ts` OUTDOOR), and
+  check-variants counts it. A second 3-step story line per biome (9a0f6d9),
+  offered by Renn, Vell, Wenna, Corvane, Kale and the Listener once their
+  first is done: the Treeline, the Fen Cure, Sand Over the Survey, the Kings'
+  Bond, the High Road, the Singing Steppe, each ending on a boss of that
+  biome. The journal lists only the contract a person offers now, and
+  check-story tests the hand-off. A screenshot of every look was sent to the
+  owner. Skipped by the owner: new events; lasting shrines, escort, vigil
+  and the unused quests. Class boosts from #118 offered, not taken.
+
 ## In progress
 
-- #119 (Phase 1) the 6 thin biomes (owner approved 1-3): 12 new looks
-  (done), a 3-step quest line per biome, checks and screenshots. Skipped by
-  the owner: new events; lasting shrines, escort, vigil and the unused
-  quests. Class boosts from #118 were offered and not taken.
+(none)
 
 ## Phase 0d log
 
