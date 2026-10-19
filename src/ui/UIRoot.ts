@@ -36,7 +36,6 @@ import { runStats } from './RunStats';
 import { mountOnboarding } from './Onboarding';
 import { loadUiSkin } from './Skin';
 import { installUiSfx } from './Sfx';
-import { installGamepadNav } from './GamepadNav';
 import {
   Panel,
   add,
@@ -287,7 +286,6 @@ export function mountUI(engine: Engine): void {
   if (!root) throw new Error('mountUI: #ui element is missing from index.html');
   uiRoot = root;
   installUiSfx();
-  installGamepadNav();
   loadUiSkin();
 
   // --- HUD + tooltip ------------------------------------------------------

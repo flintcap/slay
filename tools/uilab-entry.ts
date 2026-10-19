@@ -424,7 +424,6 @@ const scenarios2: Record<string, () => void> = {
     events.emit('ui:open', { panel: 'settings' });
     setTimeout(() => {
       document.querySelectorAll<HTMLElement>('.stg-tab')[2]?.click();
-      document.documentElement.classList.add('pad-nav');
       const press = (code: string): void => {
         (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { code, key: code, bubbles: true, cancelable: true }));
       };

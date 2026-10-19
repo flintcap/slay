@@ -87,16 +87,6 @@ const CONTROLS: Array<{ group: string; rows: Array<[string, string[]]> }> = [
       ['Settings tabs', ['KeyQ', 'KeyE']],
     ],
   },
-  {
-    group: 'Gamepad (menus only)',
-    rows: [
-      ['Choose, change a setting', ['D-pad', 'Left stick']],
-      ['Confirm', ['A']],
-      ['Back', ['B']],
-      ['Settings tabs', ['LB', 'RB']],
-      ['Pause', ['Start']],
-    ],
-  },
 ];
 
 /** A key from the card above, as the player currently has it bound. */
@@ -150,7 +140,7 @@ export class SettingsPanel {
     this.panel.body.appendChild(wrap);
 
     window.addEventListener('keydown', this.onKey, true);
-    // Arrow keys (and a gamepad, through GamepadNav) walk the controls.
+    // Arrow keys walk the controls.
     new FieldNav(this.panel.body, () => this.panel.isOpen);
 
     // Menu-only preferences take effect at boot, not only once the panel opens.

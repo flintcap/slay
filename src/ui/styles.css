@@ -723,24 +723,19 @@ select {
 .seg:focus-visible,
 .toggle:focus-visible,
 .stg-tab:focus-visible,
-.stg-reset:focus-visible,
-/* A gamepad's moves are not keyboard input to the browser (GamepadNav). */
-.pad-nav :is(.btn, .iconbtn, .tab, .seg, .toggle, .stg-tab, .stg-reset, .mn-item):focus {
+.stg-reset:focus-visible {
   outline: 1px solid var(--gold-hi);
   outline-offset: 2px;
 }
 input.slider:focus {
   outline: none;
 }
-input.slider:focus-visible::-webkit-slider-thumb,
-.pad-nav input.slider:focus::-webkit-slider-thumb {
+input.slider:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 2px var(--gold-hi), 0 0 12px rgb(var(--gold-rgb) / 0.7);
 }
 /* The row being changed says so: its name lights up. */
 .field:has(:focus-visible) > .field-label,
-.field:has(:focus-visible) > .field-head > .field-label,
-.pad-nav .field:has(:focus) > .field-label,
-.pad-nav .field:has(:focus) > .field-head > .field-label {
+.field:has(:focus-visible) > .field-head > .field-label {
   color: var(--gold-hi);
 }
 .btn:disabled,

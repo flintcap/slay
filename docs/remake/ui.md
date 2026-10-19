@@ -30,11 +30,12 @@ Run `node tools/get-chrome.mjs` once before the first browser check.
 - [x] 5. Loading screen: progress bar from `'load:progress'` (falls back to
   `'scene:loading'` and `'assets:progress'` until speed adds it), tips and
   biome art. (`ui: loading card with a real progress bar and the place behind it`)
-- [x] 6. Settings clarity, first-run help, text size option, keyboard and
-  gamepad navigation of menus. (`ui: settings walk with arrows and a gamepad, every setting explained`)
+- [x] 6. Settings clarity, first-run help, text size option, keyboard
+  navigation of menus. (`ui: settings walk with arrows and a gamepad, every setting explained`)
   Text size and first-run hints were already in place; added the plain
-  words under every setting, the last raw font sizes onto Text size, arrow
-  keys through settings, and gamepad menus.
+  words under every setting, the last raw font sizes onto Text size and
+  arrow keys through settings. (Gamepad menus were later removed: SLAY has
+  no controller support of any kind.)
 - [x] 7. UI cost: no layout reads in per-frame code, batched HUD writes.
   Handle any requests speed leaves under "Notes for resume".
   (`ui: no second hit test per mouse move, map and HUD stop reading layout`)
@@ -87,12 +88,8 @@ Nothing: every milestone is ticked. See Handover.
   `loading` scenario; `--q=biome:caverns;stairs:1;step:4` passes options.
 - Menu keys: `src/ui/FieldNav.ts` (arrows walk Settings controls; focus is
   the highlight; Left/Right change segmented rows and switches; sliders
-  step natively). `src/ui/GamepadNav.ts` turns pad presses into the same
-  keys (A clicks the focused button or sends Enter, B Escape, LB/RB tabs,
-  Start Escape), only while a panel or dialog is open; polls only while a
-  pad is connected. `html.pad-nav` shows focus rings for pad use.
-  `html[data-key-capture]` is set while a key is being rebound, and both
-  stand aside.
+  step natively). `html[data-key-capture]` is set while a key is being
+  rebound, and FieldNav stands aside.
 - check-uitokens also fails on `font-size: Npx` under 48px (ignores Text
   size). Use `--fs-*` or `calc(Npx * var(--text-scale, 1))`.
 - uilab `settingsnav` scenario (`--q=down:5`).
@@ -146,10 +143,6 @@ Nothing: every milestone is ticked. See Handover.
   through tabs and settings, Left and Right change the one in the ring
   (sliders, switches, Low/Medium/High). Rebinding a key still takes any
   key, arrows included.
-- Plug in a gamepad (Xbox or PlayStation style) on the title or pause
-  menu: D-pad or stick moves, A picks, B goes back, LB/RB change settings
-  tabs, Start opens and closes pause. In the game itself the pad does
-  nothing else (no hero control yet).
 - Settings: every slider and switch has a short line saying what it does.
 - Set Text size to 150%: the quest tracker on the right of the HUD grows
   with everything else.
@@ -173,13 +166,12 @@ What exists now, and where:
   arrows), loot filter glance grid in `src/ui/LootFilterPanel.ts`.
 - Loading card: `src/ui/Transitions.ts` (progress from `'load:progress'`,
   stairs loads, biome skyline and tint).
-- Menus: `src/ui/FieldNav.ts` (arrows in Settings), `src/ui/GamepadNav.ts`
-  (pad drives menus), plain-words hints on every setting.
+- Menus: `src/ui/FieldNav.ts` (arrows in Settings), plain-words hints on
+  every setting.
 - Lab: `tools/uilab.mjs` scenarios `minimap`, `loading`, `settingsnav`,
   plus `--q=` options and `--probe=`.
 
 Left for `finish`:
 
-- A gamepad drives menus only; there is no gamepad control of the hero.
 - Everything under "For the owner to test" was checked in the UI lab or by
   reading code, not in a full game run.

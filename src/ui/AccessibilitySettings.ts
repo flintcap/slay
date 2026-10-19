@@ -86,7 +86,7 @@ export function keybindSection(commit: () => void): HTMLDivElement {
   const stopListening = () => {
     window.removeEventListener('keydown', onKey, true);
     listening = null;
-    // Menu keys (FieldNav, GamepadNav) stand aside while a key is chosen.
+    // Menu keys (FieldNav) stand aside while a key is chosen.
     delete document.documentElement.dataset.keyCapture;
   };
   const onKey = (e: KeyboardEvent) => {
