@@ -13,11 +13,35 @@
  * every "time survived" and "played" figure in the game read zero.
  */
 
-import type { ItemRarity, MonsterRank } from '../types';
+import type { DamageType, ItemRarity, MonsterRank } from '../types';
 import { RARITY_ORDER } from '../types';
 import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
+import { getAbility } from '../entities/Abilities';
+import { statusDef } from '../sim/StatusRules';
+
+/** One blow the hero took, for the death recap. */
+export interface HitRecord {
+  /** Run seconds when it landed (the last tick, for a merged run of ticks). */
+  at: number;
+  amount: number;
+  type: DamageType;
+  /** Who dealt it, when known. */
+  who: string | null;
+  rank: MonsterRank | null;
+  /** The move, or the status that ticked. */
+  what: string | null;
+  /** A status ticking rather than a blow. */
+  overTime: boolean;
+  lifeAfter: number;
+  maxLife: number;
+}
+
+/** Blows kept for the death recap. */
+const HIT_LOG = 40;
+/** Ticks of the same status from the same giver this close fold into one line. */
+const TICK_FOLD = 1.5;
 
 export interface RunSummary {
   /** Seconds spent in the dungeon on this run. */
@@ -36,6 +60,20 @@ export interface RunSummary {
   /** Display name of whatever landed the killing blow, if known. */
   killer: string | null;
   killerRank: MonsterRank | null;
+  /** The last blows taken, oldest first. */
+  hits: HitRecord[];
+  /** Experience earned below, and levels gained. */
+  xp: number;
+  levels: number;
+  potions: number;
+  /** The lowest life fell to, as a share of full life (1 = never hurt). */
+  lowest: number;
+  /** Whatever hurt most on the run, by total damage. */
+  hurtMost: { name: string; amount: number } | null;
+  /** A contract finished on the run. */
+  quest: string | null;
+  /** The map's name, when the run was a map. */
+  mapName: string | null;
 }
 
 function blank(): RunSummary {
@@ -53,7 +91,21 @@ function blank(): RunSummary {
     floors: 0,
     killer: null,
     killerRank: null,
+    hits: [],
+    xp: 0,
+    levels: 0,
+    potions: 0,
+    lowest: 1,
+    hurtMost: null,
+    quest: null,
+    mapName: null,
   };
+}
+
+/** 'phase_shift' to 'Phase shift', for moves with no catalogue name. */
+function plain(id: string): string {
+  const t = id.replace(/[_.-]+/g, ' ').trim();
+  return t ? t[0]!.toUpperCase() + t.slice(1) : '';
 }
 
 interface EnemyLike {
@@ -73,6 +125,8 @@ class RunStats {
    * alive: a poison can finish you after the monster that spat it is dead.
    */
   private hurtBy = new Map<string, { name: string; rank: MonsterRank | null }>();
+  /** Damage taken this run, by the name of what dealt it. */
+  private hurtTotal = new Map<string, number>();
 
   attach(engine: Engine): void {
     if (this.engine) return;
@@ -84,6 +138,7 @@ class RunStats {
       if (p.to === 'dungeon' && p.from !== 'dungeon') {
         this.s = blank();
         this.hurtBy.clear();
+        this.hurtTotal.clear();
         this.active = true;
       } else if (p.to !== 'dungeon' && this.active) {
         this.last = this.s;
@@ -94,6 +149,19 @@ class RunStats {
       if (!this.active || p.depth <= 0) return;
       this.s.deepest = Math.max(this.s.deepest, p.depth);
       this.s.floors++;
+      if (p.mapName) this.s.mapName = p.mapName;
+    });
+    events.on('player:xp', (p) => {
+      if (this.active) this.s.xp += p.gained;
+    });
+    events.on('player:levelUp', () => {
+      if (this.active) this.s.levels++;
+    });
+    events.on('potion:drunk', () => {
+      if (this.active) this.s.potions++;
+    });
+    events.on('quest:complete', (p) => {
+      if (this.active) this.s.quest = p.name;
     });
     events.on('enemy:killed', (p) => {
       if (!this.active) return;
@@ -123,12 +191,56 @@ class RunStats {
         const who = this.resolve(p.source);
         if (who) this.hurtBy.set(p.source, who);
       }
+      if (p.maxLife > 0) this.s.lowest = Math.min(this.s.lowest, Math.max(0, p.life) / p.maxLife);
+      this.logHit(p);
     });
     events.on('player:died', (p) => {
       const found = this.resolve(p.killedBy) ?? this.hurtBy.get(p.killedBy) ?? null;
       this.s.killer = found?.name ?? null;
       this.s.killerRank = found?.rank ?? null;
     });
+  }
+
+  /**
+   * Notes a blow for the recap. A status ticking from the same giver folds
+   * into its last line, so a long poison reads as one line, not thirty.
+   */
+  private logHit(p: { amount: number; type: DamageType; life: number; maxLife: number; source?: string; ability?: string; status?: string }): void {
+    const who = (p.source && this.hurtBy.get(p.source)) || null;
+    const overTime = !!p.status;
+    const what = p.status
+      ? (statusDef(p.status)?.name ?? plain(p.status))
+      : p.ability
+        ? (getAbility(p.ability)?.name ?? plain(p.ability))
+        : null;
+    const name = who?.name ?? null;
+    const key = name ?? (what || 'Unknown');
+    const total = (this.hurtTotal.get(key) ?? 0) + p.amount;
+    this.hurtTotal.set(key, total);
+    if (!this.s.hurtMost || total > this.s.hurtMost.amount) this.s.hurtMost = { name: key, amount: total };
+
+    const at = this.s.seconds;
+    const hits = this.s.hits;
+    const prev = hits[hits.length - 1];
+    if (prev && overTime && prev.overTime && prev.what === what && prev.who === name && at - prev.at <= TICK_FOLD) {
+      prev.amount += p.amount;
+      prev.at = at;
+      prev.lifeAfter = Math.max(0, p.life);
+      prev.maxLife = p.maxLife;
+      return;
+    }
+    hits.push({
+      at,
+      amount: p.amount,
+      type: p.type,
+      who: name,
+      rank: who?.rank ?? null,
+      what,
+      overTime,
+      lifeAfter: Math.max(0, p.life),
+      maxLife: p.maxLife,
+    });
+    if (hits.length > HIT_LOG) hits.splice(0, hits.length - HIT_LOG);
   }
 
   /** Called every UI frame. Advances run time and the character's playtime. */

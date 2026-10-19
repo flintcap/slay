@@ -14,13 +14,21 @@
  * the character taken on `player:died` before the save forgets them.
  */
 
-import type { CharClassId, ItemRarity, MonsterRank } from '../types';
+import type { CharClassId, DamageType, ItemRarity, MonsterRank } from '../types';
+import { DAMAGE_TYPES } from '../types';
 import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
+import { computeStats } from '../sim/Stats';
+import { resistAgainst } from '../sim/Combat';
 import { Panel, div, span, icon, classById, classAccent, duration, fmtInt, keycap } from './Widgets';
 import { MenuNav, type MenuItemOpts } from './MenuNav';
-import { runStats } from './RunStats';
+import { runStats, type HitRecord } from './RunStats';
+
+/** How far back the recap looks from the killing blow, in seconds. */
+const RECAP_WINDOW = 10;
+/** Lines the recap shows at most. */
+const RECAP_LINES = 8;
 
 interface DeathSummary {
   killedBy: string;
@@ -65,7 +73,17 @@ export class DeathPanel {
   private armTimer = 0;
 
   /** Snapshotted the instant the player dies, before the save clears it. */
-  private snapshot: { level?: number; name?: string; classId?: CharClassId | null; gold?: number; depth?: number } = {};
+  private snapshot: {
+    level?: number;
+    name?: string;
+    classId?: CharClassId | null;
+    gold?: number;
+    depth?: number;
+    /** Resistances as worn, for the recap's last line. */
+    resists?: Partial<Record<DamageType, number>>;
+  } = {};
+  /** The last blows, beside the summary. */
+  private recap: HTMLDivElement;
   private bestBefore = 0;
 
   constructor(engine: Engine) {
@@ -84,7 +102,8 @@ export class DeathPanel {
     const wrap = div('dth-wrap');
     wrap.appendChild(div('dth-vignette'));
     this.inner = div('dth-inner');
-    wrap.appendChild(this.inner);
+    this.recap = div('dth-recap');
+    wrap.append(this.inner, this.recap);
     this.panel.body.appendChild(wrap);
     this.nav = new MenuNav('mn-list dth-menu');
 
@@ -92,12 +111,23 @@ export class DeathPanel {
     events.on('player:died', (p) => {
       const c = save.account.current;
       this.bestBefore = save.account.bestDepth;
+      let resists: Partial<Record<DamageType, number>> | undefined;
+      if (c) {
+        try {
+          const st = computeStats(c);
+          resists = {};
+          for (const t of DAMAGE_TYPES) resists[t] = resistAgainst(st, t);
+        } catch {
+          resists = undefined;
+        }
+      }
       this.snapshot = {
         level: c?.level,
         name: c?.name,
         classId: c?.classId ?? null,
         gold: c?.gold,
         depth: p.depth,
+        resists,
       };
     });
   }
@@ -248,6 +278,75 @@ export class DeathPanel {
     const foot = div('dth-foot');
     foot.append(keycap('Enter'), span('', primary));
     this.inner.appendChild(foot);
+
+    this.renderRecap(runStats.latest.hits);
+  }
+
+  /**
+   * The last blows: what hit you in the final seconds, oldest first, each
+   * with where your life stood after it, and the kind of damage that did
+   * most of it set against your resistance to it.
+   */
+  private renderRecap(all: readonly HitRecord[]): void {
+    this.recap.replaceChildren();
+    const last = all[all.length - 1];
+    if (!last) {
+      this.recap.style.display = 'none';
+      return;
+    }
+    this.recap.style.display = '';
+    const hits = all.filter((h) => h.at >= last.at - RECAP_WINDOW).slice(-RECAP_LINES);
+    const first = hits[0]!;
+
+    this.recap.appendChild(div('dth-recap-h', 'The last blows'));
+    const span0 = last.at - first.at;
+    const before = Math.min(1, (first.lifeAfter + first.amount) / Math.max(1, first.maxLife));
+    const from = before >= 0.99 ? 'Full life' : `${Math.round(before * 100)}% life`;
+    this.recap.appendChild(
+      div('dth-recap-sum', span0 < 0.1 ? `${from} to none in one blow.` : `${from} to none in ${span0.toFixed(1)} s.`),
+    );
+
+    const list = div('dth-recap-list');
+    for (const h of hits) {
+      const row = div(`dth-hit${h === last ? ' is-last' : ''}${h.overTime ? ' is-dot' : ''}`);
+      const ago = last.at - h.at;
+      row.appendChild(span('dth-hit-t', h === last ? 'last' : `-${ago.toFixed(1)}s`));
+      const who = span('dth-hit-who');
+      const name = document.createElement('b');
+      name.textContent = h.who ?? (h.overTime ? 'Lingering harm' : 'Unseen');
+      if (h.rank && RANK_LABEL[h.rank]) name.className = `rank-${h.rank}`;
+      who.appendChild(name);
+      if (h.what) who.appendChild(span('dth-hit-what', h.overTime ? `${h.what}, over time` : h.what));
+      row.appendChild(who);
+      const amt = span(`dth-hit-n dmg-${h.type}`);
+      amt.append(icon(h.type, { size: 11 }), span('', fmtInt(Math.round(h.amount))));
+      row.appendChild(amt);
+      const bar = div('dth-hit-life');
+      const fill = div('dth-hit-fill');
+      fill.style.width = `${Math.max(0, Math.min(100, (h.lifeAfter / Math.max(1, h.maxLife)) * 100))}%`;
+      bar.appendChild(fill);
+      row.appendChild(bar);
+      list.appendChild(row);
+    }
+    this.recap.appendChild(list);
+
+    // The kind of damage that did most of it, and what stood against it.
+    const byType = new Map<DamageType, number>();
+    let total = 0;
+    for (const h of hits) {
+      byType.set(h.type, (byType.get(h.type) ?? 0) + h.amount);
+      total += h.amount;
+    }
+    const top = [...byType].sort((a, b) => b[1] - a[1])[0];
+    if (top && total > 0) {
+      const share = Math.round((top[1] / total) * 100);
+      // Armour, not resistance, is what stands against physical blows.
+      const res = top[0] === 'physical' ? undefined : this.snapshot.resists?.[top[0]];
+      const tail = res !== undefined ? ` Your ${top[0]} resistance was ${Math.round(res)}%.` : '';
+      const line = div('dth-recap-note');
+      line.textContent = share >= 99 ? `All of it was ${top[0]}.${tail}` : `Mostly ${top[0]}: ${share}% of it.${tail}`;
+      this.recap.appendChild(line);
+    }
   }
 
   private go(scene: 'charSelect' | 'title'): void {

@@ -138,11 +138,16 @@ export class MapOverlay {
     const xb = Math.min(LW, x0 + bw);
     const yb = Math.min(LH, y0 + bh);
     if (xa >= xb || ya >= yb) return;
-    const walk = (x: number, y: number): boolean => {
+    const pass = (x: number, y: number): boolean => {
       if (x < 0 || y < 0 || x >= LW || y >= LH) return false;
       const t = level.tiles[y * LW + x];
       return t !== T_VOID && t !== T_WALL && t !== T_RUIN;
     };
+    // A lone blocked tile in open ground (a tree, a pillar) is drawn as
+    // ground: outlined, a field of them reads as noise over the room.
+    const walk = (x: number, y: number): boolean =>
+      pass(x, y) ||
+      (x >= 0 && y >= 0 && x < LW && y < LH && level.tiles[y * LW + x] !== T_VOID && pass(x - 1, y) && pass(x + 1, y) && pass(x, y - 1) && pass(x, y + 1));
 
     c.save();
     c.beginPath();

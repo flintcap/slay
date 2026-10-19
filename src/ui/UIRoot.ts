@@ -23,6 +23,7 @@ import { VendorPanel } from './VendorPanel';
 import { BlacksmithPanel } from './BlacksmithPanel';
 import { MapPanel } from './MapPanel';
 import { MapOverlay } from './MapOverlay';
+import { ClearRecap } from './ClearRecap';
 import { QuestLogPanel } from './QuestLog';
 import { PausePanel } from './PausePanel';
 import { SettingsPanel } from './SettingsPanel';
@@ -324,6 +325,7 @@ export function mountUI(engine: Engine): void {
   const settings = new SettingsPanel(engine);
   const charSelect = new CharSelectPanel(engine);
   const death = new DeathPanel(engine);
+  const clearRecap = new ClearRecap();
   const memorial = new MemorialPanel();
   const journalPanel = journal();
   const dialoguePanel = dialogue();
@@ -344,6 +346,7 @@ export function mountUI(engine: Engine): void {
     ['settings', settings as unknown as PanelHandle, settings.panel],
     ['charSelect', charSelect as unknown as PanelHandle, charSelect.panel],
     ['death', death as unknown as PanelHandle, death.panel],
+    ['clearRecap', clearRecap as unknown as PanelHandle, clearRecap.panel],
     ['memorial', memorial, memorial.panel],
     ['journal', journalPanel, journalPanel.panel],
     ['dialogue', dialoguePanel, dialoguePanel.panel],

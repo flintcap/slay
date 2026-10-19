@@ -1827,6 +1827,7 @@ export class DungeonScene extends GameScene {
     });
     audio.play('potion');
     save.touch();
+    events.emit('potion:drunk', { kind });
     events.emit('ui:refresh', {});
   }
 

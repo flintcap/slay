@@ -13,7 +13,11 @@ export interface GameEvents {
    */
   'scene:loading': { from: SceneId; to: SceneId; payload?: unknown };
   /** `source`: the id of what dealt it (a monster's, or a status's giver), when known. */
-  'player:damaged': { amount: number; type: DamageType; life: number; maxLife: number; source?: string };
+  /**
+   * `ability` is the move that landed (an ability id), `status` the status
+   * whose tick it was; the death recap names both.
+   */
+  'player:damaged': { amount: number; type: DamageType; life: number; maxLife: number; source?: string; ability?: string; status?: string };
   'player:healed': { amount: number };
   'player:died': { killedBy: string; depth: number };
   /** A hit passed through the hero's dodge. Combat emits; feel may reward it. */
@@ -119,6 +123,8 @@ export interface GameEvents {
   'ui:refresh': Record<string, never>;
   /** Drink a potion. `baseId` picks a specific one; otherwise quick-drink. */
   'potion:use': { kind: 'life' | 'mana'; baseId?: string };
+  /** A potion was drunk (the request above went through). */
+  'potion:drunk': { kind: 'life' | 'mana' };
   'ui:open': { panel: string };
   'ui:close': { panel: string };
   'settings:changed': Record<string, never>;

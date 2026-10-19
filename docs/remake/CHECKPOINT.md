@@ -278,9 +278,22 @@ Update this file and push it after every finished step.
   tier reached it takes to fall to each damage kind, and plain lines on
   the build's best skill, weak and strong side, life back and crits.
 
+- #125 (Phase 1, owner approved, last of the list) two recaps. Death
+  screen, right side (wide screens only): "The last blows", the hits of
+  the last ten seconds, each with who, what, how much, its damage kind and
+  the life bar after it; a line on how fast full life went, and the kind
+  that did most of it beside the hero's resistance to it. Ticks of one
+  poison or burn fold into one row. Map-clear recap (`ui/ClearRecap.ts`):
+  a card a moment after arriving in camp from a cleared map with time,
+  kills, gold, experience and levels, items, potions, best find, closest
+  call, what hurt most, damage taken and the contract done. Hits now carry
+  the ability and status names (`player:damaged`), and drinking emits
+  `potion:drunk`. The see-through map now counts lone blockers as floor,
+  so it no longer speckles.
+
 ## In progress
 
-- #125 death recap (last hits) and map-clear recap.
+- #127 (Phase 2+3, owner approved) torch shadows indoors, hero lantern.
 
 ## Phase 0d log
 

@@ -646,6 +646,7 @@ export class Player {
       life: Math.max(0, this.life),
       maxLife: this.stats.life,
       source: packet.source,
+      ability: packet.ability,
     });
     this.animator.play('hurt', { fade: 0.04, once: true });
 
@@ -789,6 +790,7 @@ export class Player {
         life: Math.max(0, this.life),
         maxLife: this.stats.life,
         source: d.sourceId,
+        status: d.statusId,
       });
       this.checkDeath(d.sourceId || d.statusId);
     }
