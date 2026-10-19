@@ -120,7 +120,7 @@ const NAME_FUNCS = new Set([
   'require', 'fetch', 'hashString', 'hashStr', 'hash', 'hashId', 'streamFor', 'Symbol', 'RegExp', 'URL', 'Error',
   'TypeError', 'RangeError', 'SyntaxError', 'logInfo', 'matchMedia', 'Random', 'seeded', 'Set', 'Map', 'WeakMap',
   'WeakSet', 'key', 'capLabel', 'Worker', 'Blob', 'File', 'Audio', 'Image', 'FontFace', 'CustomEvent', 'Event',
-  'saveTextFile', 'BroadcastChannel', 'styleTag', 'injectStyle', 'addStyle',
+  'saveTextFile', 'BroadcastChannel', 'styleTag', 'injectStyle', 'addStyle', 'hookSeen',
 ]);
 /** Calls that take a CSS class (or another name) in some positions. */
 const NAME_ARGS = new Map(Object.entries({

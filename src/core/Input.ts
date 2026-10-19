@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { remapKey } from './Access';
+import { isMouseCode, remapKey } from './Access';
 
 export type ActionName =
   | 'move'
@@ -42,6 +42,9 @@ const DEFAULT_BINDS: Record<string, ActionName> = {
   ShiftLeft: 'showItems',
 };
 
+/** `PointerEvent.buttons` bit for each `button` number (left, middle, right, back, forward). */
+const BUTTON_BIT: Record<number, number> = { 0: 1, 1: 4, 2: 2, 3: 8, 4: 16 };
+
 /**
  * Centralised input. Owns keyboard state, mouse position, and the ground-plane
  * raycast every ARPG needs ("where in the world is the cursor?").
@@ -78,6 +81,8 @@ export class Input {
   readonly worldPoint = new THREE.Vector3();
 
   private el: HTMLElement;
+  /** Mouse buttons held down that carry a key's action (Settings, Key bindings). */
+  private buttonsAsKeys = new Set<string>();
 
   constructor(el: HTMLElement) {
     this.el = el;
@@ -91,10 +96,15 @@ export class Input {
     // safe and it is what makes clicking *through* a label possible.
     window.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointerup', this.onPointerUp);
+    // A second button pressed or let go while one is held comes as a move.
+    window.addEventListener('pointermove', this.onPointerChord);
+    // The back and forward buttons can be game buttons: the page never goes back.
+    window.addEventListener('mouseup', this.onMouseUp);
+    window.addEventListener('mousedown', this.onMouseDown);
     // A drag that ends outside the window, or a cancelled pointer, never
     // delivers pointerup on the canvas — without these the button latches down
     // and the player keeps running forever.
-    window.addEventListener('pointercancel', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerLost);
     document.addEventListener('pointerleave', this.onPointerLost);
     el.addEventListener('wheel', this.onWheel, { passive: true });
     // Right-click is the attack button, so the browser menu is never wanted —
@@ -112,19 +122,40 @@ export class Input {
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
     // Player key rebinding (accessibility): the game sees the default code.
     const code = remapKey(e.code);
-    if (!this.down.has(code)) this.pressedThisFrame.add(code);
-    this.down.add(code);
+    this.press(code);
     if (code === 'Space' || code.startsWith('Digit') || e.code === 'Space') e.preventDefault();
   };
 
   private onKeyUp = (e: KeyboardEvent): void => {
-    const code = remapKey(e.code);
-    this.down.delete(code);
-    this.releasedThisFrame.add(code);
+    this.release(remapKey(e.code));
   };
+
+  /** `code` went down, from a key or a mouse button: the two mouse actions, or a key. */
+  private press(code: string): void {
+    if (code === 'Mouse0') {
+      this.mouseLeft = true;
+      this.mouseLeftPressed = true;
+    } else if (code === 'Mouse2') {
+      this.mouseRight = true;
+      this.mouseRightPressed = true;
+    } else {
+      if (!this.down.has(code)) this.pressedThisFrame.add(code);
+      this.down.add(code);
+    }
+  }
+
+  private release(code: string): void {
+    if (code === 'Mouse0') this.mouseLeft = false;
+    else if (code === 'Mouse2') this.mouseRight = false;
+    else {
+      this.down.delete(code);
+      this.releasedThisFrame.add(code);
+    }
+  }
 
   private onBlur = (): void => {
     this.down.clear();
+    this.buttonsAsKeys.clear();
     this.mouseLeft = false;
     this.mouseRight = false;
   };
@@ -135,19 +166,49 @@ export class Input {
   };
 
   private onPointerDown = (e: PointerEvent): void => {
-    if (e.button === 0) {
-      this.mouseLeft = true;
-      this.mouseLeftPressed = true;
-    }
-    if (e.button === 2) {
-      this.mouseRight = true;
-      this.mouseRightPressed = true;
-    }
+    this.button(e.button, true);
   };
 
   private onPointerUp = (e: PointerEvent): void => {
-    if (e.button === 0) this.mouseLeft = false;
-    if (e.button === 2) this.mouseRight = false;
+    this.button(e.button, false);
+  };
+
+  private onPointerChord = (e: PointerEvent): void => {
+    if (e.button < 0) return;
+    this.button(e.button, (e.buttons & BUTTON_BIT[e.button]!) !== 0);
+  };
+
+  /**
+   * A mouse button went down or up. It gives whatever the player has on it:
+   * a mouse action, or a key's action, which goes out as that button's key
+   * press so the panels' hotkeys see it too (they remap it the same way).
+   * Over a menu the left and right buttons belong to the menu.
+   */
+  private button(n: number, down: boolean): void {
+    if (!(n in BUTTON_BIT)) return;
+    const physical = `Mouse${n}`;
+    const code = remapKey(physical);
+    if (isMouseCode(code)) {
+      if (down) this.press(code);
+      else this.release(code);
+      return;
+    }
+    if (down) {
+      if (this.buttonsAsKeys.has(physical) || ((n === 0 || n === 2) && this.pointerOverUI)) return;
+      this.buttonsAsKeys.add(physical);
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: physical }));
+    } else if (this.buttonsAsKeys.delete(physical)) {
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: physical }));
+    }
+  }
+
+  private onMouseDown = (e: MouseEvent): void => {
+    // No scroll-by-dragging on the middle button: it may be a game button.
+    if (e.button === 1) e.preventDefault();
+  };
+
+  private onMouseUp = (e: MouseEvent): void => {
+    if (e.button === 3 || e.button === 4) e.preventDefault();
   };
 
   private onContextMenu = (e: MouseEvent): void => {
@@ -160,6 +221,8 @@ export class Input {
   private onPointerLost = (): void => {
     this.mouseLeft = false;
     this.mouseRight = false;
+    for (const physical of this.buttonsAsKeys) window.dispatchEvent(new KeyboardEvent('keyup', { code: physical }));
+    this.buttonsAsKeys.clear();
   };
 
   private onWheel = (e: WheelEvent): void => {
@@ -217,7 +280,10 @@ export class Input {
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('pointerdown', this.onPointerDown);
     window.removeEventListener('pointerup', this.onPointerUp);
-    window.removeEventListener('pointercancel', this.onPointerUp);
+    window.removeEventListener('pointermove', this.onPointerChord);
+    window.removeEventListener('mouseup', this.onMouseUp);
+    window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('pointercancel', this.onPointerLost);
     document.removeEventListener('pointerleave', this.onPointerLost);
     window.removeEventListener('contextmenu', this.onContextMenu);
     window.removeEventListener('blur', this.onBlur);

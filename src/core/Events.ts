@@ -132,8 +132,10 @@ export interface GameEvents {
   'settings:changed': Record<string, never>;
   /** The game clock stopped or started again (pause menu, a pausing panel, a hidden tab). */
   'game:paused': { paused: boolean };
-  /** The GPU device is gone for good: the game is held and the save written. UI offers a reload. */
+  /** The GPU device is gone: the game is held and the save written. UI offers a Restart. */
   'gpu:lost': { message: string };
+  /** `Engine.restartRenderer` opened a new renderer; whatever holds the old one moves over. */
+  'gpu:restored': Record<string, never>;
   /** The renderer switched quality (Settings or the auto ladder). Effects follow it live. */
   'quality:changed': { profile: QualityProfile };
   /** Asset preloading (`core/Assets.ts`): files landed so far of those requested. */

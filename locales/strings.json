@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9155,
+ "count": 9217,
  "strings": [
   {
    "key": "Beating iron…",
@@ -73,6 +73,12 @@
    "key": "SLAY — {0}",
    "files": [
     "boot.ts"
+   ]
+  },
+  {
+   "key": "Attack skill",
+   "files": [
+    "core/Access.ts"
    ]
   },
   {
@@ -166,6 +172,12 @@
   },
   {
    "key": "Move right",
+   "files": [
+    "core/Access.ts"
+   ]
+  },
+  {
+   "key": "Move to cursor",
    "files": [
     "core/Access.ts"
    ]
@@ -47736,10 +47748,26 @@
    ]
   },
   {
+   "key": "Esc",
+   "files": [
+    "ui/AccessibilitySettings.ts",
+    "ui/CharSelectPanel.ts",
+    "ui/PausePanel.ts",
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Key bindings",
    "files": [
     "ui/AccessibilitySettings.ts"
    ]
+  },
+  {
+   "key": "LMB",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ],
+   "note": "the keycaps after each name are three letters or fewer."
   },
   {
    "key": "Left",
@@ -47754,13 +47782,44 @@
    ]
   },
   {
-   "key": "Left click / right click / Esc",
+   "key": "Left mouse",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ],
+   "note": "the keycaps after each name are three letters or fewer."
+  },
+  {
+   "key": "M4",
    "files": [
     "ui/AccessibilitySettings.ts"
    ]
   },
   {
-   "key": "Move / attack / pause",
+   "key": "M5",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ]
+  },
+  {
+   "key": "MMB",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ]
+  },
+  {
+   "key": "Middle mouse",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ]
+  },
+  {
+   "key": "Mouse back",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ]
+  },
+  {
+   "key": "Mouse forward",
    "files": [
     "ui/AccessibilitySettings.ts"
    ]
@@ -47772,9 +47831,22 @@
    ]
   },
   {
-   "key": "Press a key...",
+   "key": "Pause",
    "files": [
     "ui/AccessibilitySettings.ts"
+   ]
+  },
+  {
+   "key": "Press a key or mouse button...",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ]
+  },
+  {
+   "key": "RMB",
+   "files": [
+    "ui/AccessibilitySettings.ts",
+    "ui/Tooltip.ts"
    ]
   },
   {
@@ -47802,6 +47874,12 @@
    ]
   },
   {
+   "key": "Right mouse",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ]
+  },
+  {
    "key": "Shift",
    "files": [
     "ui/AccessibilitySettings.ts",
@@ -47822,6 +47900,12 @@
   },
   {
    "key": "Text size",
+   "files": [
+    "ui/AccessibilitySettings.ts"
+   ]
+  },
+  {
+   "key": "The left mouse button only moves or attacks, so the menus can always be clicked.",
    "files": [
     "ui/AccessibilitySettings.ts"
    ]
@@ -48457,14 +48541,6 @@
    "key": "Equipped",
    "files": [
     "ui/CharSelectPanel.ts"
-   ]
-  },
-  {
-   "key": "Esc",
-   "files": [
-    "ui/CharSelectPanel.ts",
-    "ui/PausePanel.ts",
-    "ui/SettingsPanel.ts"
    ]
   },
   {
@@ -50280,14 +50356,6 @@
    ]
   },
   {
-   "key": "RMB",
-   "files": [
-    "ui/HUD.ts",
-    "ui/Tooltip.ts"
-   ],
-   "note": "keycap for the right mouse button: three or four letters."
-  },
-  {
    "key": "Right click set to basic attack",
    "files": [
     "ui/HUD.ts"
@@ -51536,7 +51604,8 @@
   {
    "key": "You go back to town with only what you brought down. Everything found on this map is lost, and {0}% of a level's experience.",
    "files": [
-    "ui/PausePanel.ts"
+    "ui/PausePanel.ts",
+    "ui/UIRoot.ts"
    ]
   },
   {
@@ -51662,6 +51731,12 @@
    ]
   },
   {
+   "key": "A fine grain over the picture",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "A small readout in the top-right corner",
    "files": [
     "ui/SettingsPanel.ts"
@@ -51669,6 +51744,18 @@
   },
   {
    "key": "About",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Ambience",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Ambient occlusion",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -51716,7 +51803,13 @@
    ]
   },
   {
-   "key": "Calmer menus: no slow intros or sweeping shines",
+   "key": "Brightness",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Calmer menus, no screen shake, and no warp when you are hit",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -51740,11 +51833,29 @@
    ]
   },
   {
+   "key": "Choose a screen",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Colour fringes at the edges of the screen",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Confirm",
    "files": [
     "ui/SettingsPanel.ts",
     "ui/TitlePanel.ts",
     "ui/Widgets.ts"
+   ]
+  },
+  {
+   "key": "Contact shadows",
+   "files": [
+    "ui/SettingsPanel.ts"
    ]
   },
   {
@@ -51784,7 +51895,19 @@
    ]
   },
   {
+   "key": "Display",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Draws fewer pixels and fills in the rest. Lower is faster",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Edge smoothing",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -51820,6 +51943,12 @@
    ]
   },
   {
+   "key": "Every menu, the HUD and the words on screen",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Everything at once",
    "files": [
     "ui/SettingsPanel.ts"
@@ -51838,13 +51967,67 @@
    ]
   },
   {
+   "key": "Film grain",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Fire, magic and bright light bleed softly into the dark",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Flash reduction",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Floating combat text over enemies",
    "files": [
     "ui/SettingsPanel.ts"
    ]
   },
   {
+   "key": "Frame cap",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Full screen",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Gameplay",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Glow",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Glow in the fog round torches, dust and sunbeams",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "HUD size",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Heat haze and ripples",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -51862,7 +52045,13 @@
    ]
   },
   {
-   "key": "Hits, spells, footsteps and menu clicks",
+   "key": "Hits, spells, footsteps and monsters",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Hold Esc to leave it. A tap of Esc still pauses",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -51916,7 +52105,19 @@
    ]
   },
   {
+   "key": "In a browser, frames always wait for the screen (vsync). Window modes come with the desktop version.",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Interact, open, talk",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Interface",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -51929,6 +52130,18 @@
   },
   {
    "key": "Left click",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Lens fringe",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Light in the air",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -51952,7 +52165,25 @@
    ]
   },
   {
+   "key": "Menu clicks and the chimes for level-ups, quests and crafting",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Menu size",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Menus",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Minimap size",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -51976,6 +52207,12 @@
    ]
   },
   {
+   "key": "Mute in the background",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Muted",
    "files": [
     "ui/SettingsPanel.ts"
@@ -51983,6 +52220,12 @@
   },
   {
    "key": "Not during a fight.",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "One frame for every refresh of the screen",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -52013,6 +52256,12 @@
   },
   {
    "key": "Quality",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Raise it until the darkest corners just show shapes",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -52102,6 +52351,12 @@
    ]
   },
   {
+   "key": "Screen",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Screen shake",
    "files": [
     "ui/SettingsPanel.ts"
@@ -52144,6 +52399,12 @@
    ]
   },
   {
+   "key": "Shockwaves, portals and hot air bend the picture",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Short tips the first time you meet something new",
    "files": [
     "ui/SettingsPanel.ts"
@@ -52168,13 +52429,43 @@
    ]
   },
   {
+   "key": "Silent while another window or tab is in front",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Skills on the bar",
    "files": [
     "ui/SettingsPanel.ts"
    ]
   },
   {
+   "key": "Small sharp shadows where things touch the ground, outdoors",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Soft dark where walls and floor meet",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Soft sun shadows only, no glow, no torch shadows, a third of the particles, 80% resolution. For older laptops.",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Softer red when you are hit, dimmer bursts of light from spells and blows",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Steadies thin edges and shimmer",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -52192,6 +52483,18 @@
    ]
   },
   {
+   "key": "The browser did not allow a list of screens.",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "The browser would not change full screen.",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "The clipboard said no, so the report was saved as a file.",
    "files": [
     "ui/SettingsPanel.ts"
@@ -52204,7 +52507,19 @@
    ]
   },
   {
+   "key": "The map in the top-right corner",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "The name of each place as you arrive",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "The orbs, the skill bar and the minimap, on top of the menu size",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -52216,7 +52531,19 @@
    ]
   },
   {
+   "key": "Torch shadows",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Torch shadows and glow, lighter shadows, no edge smoothing, 60% of the particles, 90% resolution. Integrated graphics.",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Torches, braziers and your lantern cast shadows",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -52240,6 +52567,24 @@
    ]
   },
   {
+   "key": "View",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Voices",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Wind, water, fire and the sound of each place",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Yes, erase",
    "files": [
     "ui/SettingsPanel.ts"
@@ -52252,7 +52597,25 @@
    ]
   },
   {
+   "key": "Your hero's cries and lines, and what the bosses say",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "Your screen shows {0} frames a second. Auto quality aims for {1}.",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "or",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
+   "key": "{0} (main)",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -53673,7 +54036,19 @@
    ]
   },
   {
-   "key": "<p>Your graphics card stopped answering (a driver reset, sleep, or too many tabs). The game is frozen and your hero is saved.</p><p>Reload to keep playing. You start again in town with your gear, gold and levels. Leaving a fight this way does not count as fleeing.</p>",
+   "key": "<p>Restart to keep playing from here.</p>",
+   "files": [
+    "ui/UIRoot.ts"
+   ]
+  },
+  {
+   "key": "<p>Restart to keep playing. {0}</p>",
+   "files": [
+    "ui/UIRoot.ts"
+   ]
+  },
+  {
+   "key": "<p>Your graphics card stopped answering (a driver reset, sleep, or too many tabs). The game is frozen and your hero is saved.</p>",
    "files": [
     "ui/UIRoot.ts"
    ]
@@ -53727,7 +54102,7 @@
    ]
   },
   {
-   "key": "Reload",
+   "key": "Restart",
    "files": [
     "ui/UIRoot.ts"
    ]

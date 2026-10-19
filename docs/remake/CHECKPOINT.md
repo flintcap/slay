@@ -425,7 +425,34 @@ Update this file and push it after every finished step.
   lines, hero names) stays in its first language; built names use one
   pattern each; most counts are not plural-aware (14 are). English
   changes: "0 points" (was "0 point"), crafted magic items show names from
-  their current affixes. Next: #135 Settings.
+  their current affixes.
+- #135 done: Settings. Auto quality reads the screen's refresh rate from
+  frame gaps (`core/FramePace.ts`) and aims for the frame cap or 60, never
+  above the screen; Video, Display has Full screen, Choose a screen (where
+  the browser allows it), Frame cap (Screen, 30, 40, 60, 90, 120, 144, only
+  up to the screen's rate) and Brightness; render scale stays; one switch
+  per effect the preset has. Window modes and vsync wait for the desktop
+  app (Phase 4); the menu says so. Video, Interface: Menu size 80 to 200%
+  (CSS `zoom` on `#ui`, `core/UiScale.ts`), HUD size 70 to 150%, Minimap
+  size 75 to 175%, each applied when the slider is let go; stylesheets use
+  `cqw`/`cqh` and `@container ui`, panels, tooltips, context menus, drag
+  ghosts, name tags and the inventory grid convert screen pixels, canvases
+  sharpen to `uiRatio()`, and `tools/check-uiscale.mjs` holds it. Audio has
+  Ambience, Interface and Voices sliders (own buses) and Mute in the
+  background (on by default). Gameplay: Reduced motion also stops the hurt
+  warp, fringe and haze; Flash reduction softens the hurt red, the light
+  bursts of spells and blows, and the CSS flashes. Controls: mouse buttons
+  rebind like keys (left, middle, right, back, forward); the left button
+  only ever moves or attacks; Journal (J), Loot filter (O) and Legacy (G)
+  are in the list. `check-settings-ui` drives the menu size, a back-button
+  binding and the left-click cancel. Next: #136 Engine safety.
+- #136 E1 done: three.js hooks. Every place the game reaches inside
+  three.js is one entry in `core/ThreeHooks.ts` (16), each hook installs
+  only when what it needs is there, `Renderer.init` runs a self-test into
+  the log and the bug report, three 0.186.1 and @types/three 0.186.0 are
+  pinned exactly, `tools/check-threehooks.mjs` reads node_modules/three for
+  every hook's words, and every browser check fails on a missing hook.
+  Next: E2 GPU loss Restart.
 
 ## Phase 0d log
 

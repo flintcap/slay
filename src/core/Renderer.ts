@@ -18,14 +18,15 @@ import { Motes } from './Motes';
 import { air } from './Air';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { installShadowCache } from './ShadowCache';
+import { hookSeen, selfTest, type HookReport } from './ThreeHooks';
 import { nodeTexturesOf, viewEye, floorDepth, coverShare, waterRays, worldLite } from './Tsl';
-import type { GameSettings } from '../types';
+import type { GameSettings, VideoEffect } from '../types';
 import type { SkyPaint } from '../world/Sky';
 import { setAssetAnisotropy } from './Assets';
 import { LUT_SIZE, lookOf, lookTable, type Look } from './Lut';
 import { setShaftSun, shaftNode, shaftStrength } from './Shafts';
 import { events } from './Events';
-import { rippleOffset, writeRipples } from './Ripples';
+import { rippleOffset, setRippleScale, writeRipples } from './Ripples';
 import { onScreenRatio } from './Screen';
 import { tr } from './I18n';
 
@@ -63,7 +64,48 @@ const G = {
   hurt: uniform(0.0),
   /** 0..1 desaturating low-life pulse. */
   lowLife: uniform(0.0),
+  /** 1, or 0 with reduced motion: how much a hit bends and fringes the frame. */
+  warp: uniform(1.0),
+  /** 1, or less with flash reduction: how red a hit and low life turn the frame. */
+  flash: uniform(1.0),
 };
+
+/** The player's brightness (Settings, Video) as a curve on the finished picture: below 1 lifts the dark. */
+const uDisplayGamma = uniform(1.0);
+
+/** Grain and lens fringe as the grade was authored, before the Effects switches. */
+const GRAIN = 0.028;
+const ABERRATION = 0.0016;
+
+/**
+ * Effects the player can switch off one by one (Settings, Video, Effects).
+ * Each only ever takes something away from the quality in force: an effect
+ * the preset leaves out stays out.
+ */
+type EffectId = VideoEffect;
+
+/** `q` with the effects in `off` taken out. */
+function withoutEffects(q: QualityProfile, off: ReadonlySet<EffectId>): QualityProfile {
+  if (off.size === 0) return q;
+  const out = { ...q };
+  if (off.has('bloom')) out.bloom = false;
+  if (off.has('aa')) {
+    out.taa = false;
+    out.smaa = false;
+  }
+  if (off.has('ao')) out.ao = false;
+  if (off.has('torchShadows')) {
+    out.pointShadows = false;
+    out.lanternShadow = false;
+  }
+  if (off.has('contactShadows')) out.contactShadows = false;
+  if (off.has('airLight')) {
+    out.shafts = false;
+    out.motes = false;
+    out.air = 0;
+  }
+  return out;
+}
 
 /**
  * The grade itself. `src` reads the lit frame (scene, AO and bloom) at a
@@ -100,7 +142,7 @@ function gradeNode(src: (p: V2) => V3, over?: (p: V2) => V3): V4 {
 
     // Barrel-ish stretch that intensifies when hurt: sells impact without
     // moving the camera, so gameplay readability survives.
-    const p0 = center.mul(G.hurt.mul(0.035).mul(r2).add(1.0)).add(0.5);
+    const p0 = center.mul(G.hurt.mul(G.warp).mul(0.035).mul(r2).add(1.0)).add(0.5);
 
     // Heat haze: a slow sideways ripple, strongest at the top of the frame
     // where the ground is farthest away, gone at the hero.
@@ -114,7 +156,7 @@ function gradeNode(src: (p: V2) => V3, over?: (p: V2) => V3): V4 {
     const p = rippleOffset(p0.add(vec2(dx, dy)));
 
     // Chromatic aberration scales with radius: clean centre, fringed edges.
-    const ca = G.aberration.mul(G.hurt.mul(6.0).add(1.0));
+    const ca = G.aberration.mul(G.hurt.mul(G.warp).mul(6.0).add(1.0));
     const dir = normalize(center.add(1e-6)).mul(ca).mul(r2.mul(2.0).add(0.25));
     const raw = vec3(src(p.add(dir)).x, src(p).y, src(p.sub(dir)).z);
 
@@ -139,9 +181,9 @@ function gradeNode(src: (p: V2) => V3, over?: (p: V2) => V3): V4 {
     // Low-life: desaturate and push toward red, pulsing.
     const pulse = sin(G.time.mul(5.0)).mul(0.5).add(0.5);
     const amt = G.lowLife.mul(pulse.mul(0.45).add(0.55));
-    col = mix(col, vec3(luma).mul(vec3(1.5, 0.32, 0.3)), amt.mul(0.6));
+    col = mix(col, vec3(luma).mul(vec3(1.5, 0.32, 0.3)), amt.mul(G.flash).mul(0.6));
 
-    col = mix(col, col.mul(vec3(1.6, 0.35, 0.3)), G.hurt.mul(0.45));
+    col = mix(col, col.mul(vec3(1.6, 0.35, 0.3)), G.hurt.mul(G.flash).mul(0.45));
 
     // Vignette, smooth and slightly cool at the corners.
     const vig = smoothstep(0.9, 0.2, r2.mul(G.vignette).mul(2.6));
@@ -578,6 +620,8 @@ export class Renderer {
 
   quality: QualityProfile = QUALITY.high;
   private qualityName: GameSettings['quality'] = 'high';
+  /** Effects the player switched off (Settings, Video, Effects). */
+  private effectsOff: ReadonlySet<EffectId> = new Set();
 
   /**
    * Prefiltered environment for image-based lighting. Without one, metal has
@@ -608,6 +652,9 @@ export class Renderer {
 
   /** Leaves a mesh out of a frame until its shader is built, rather than waiting on it (`ShaderGate`). */
   private gate: ShaderGate | null = null;
+
+  /** What the startup self-test found of the places the game reaches inside three.js (`ThreeHooks.ts`). */
+  hooks: HookReport | null = null;
 
   /** GPU time per frame (ms), smoothed; 0 until the first reading. */
   private gpuAvg = 0;
@@ -666,6 +713,11 @@ export class Renderer {
     // The sun's shadow of still things is kept between updates (`ShadowCache`).
     installShadowCache(this.gate);
     this.buildEnvironment();
+    // Every place the game reaches inside three.js, looked for once. A missing
+    // one only costs speed or a detail, so the game goes on; the log and the
+    // bug report say which.
+    this.hooks = selfTest(this.gl);
+    if (this.hooks.missing.length > 0) console.error(`three.js hooks missing: ${this.hooks.missing.join('; ')}`);
   }
 
   /**
@@ -807,7 +859,10 @@ export class Renderer {
     // torch's orange stays orange to its core instead of going yellow and
     // white); the look (`Lut.ts`) puts back the contrast and colour it
     // gives up, in screen colour. Edge smoothing then reads the final picture.
-    const shown = lut3D(renderOutput(graded, THREE.AgXToneMapping, THREE.SRGBColorSpace), uLut, LUT_SIZE, float(1.0));
+    const looked = lut3D(renderOutput(graded, THREE.AgXToneMapping, THREE.SRGBColorSpace), uLut, LUT_SIZE, float(1.0)) as unknown as V4;
+    // Brightness bends the finished picture in screen colour: black stays
+    // black and white stays white, the dark between them lifts or sinks.
+    const shown = vec4(pow(max(looked.rgb, vec3(0.0)), vec3(uDisplayGamma)), looked.a);
     this.pipeline.outputColorTransform = false;
     this.pipeline.outputNode = (q.smaa ? smaa(shown) : shown) as unknown as THREE.Node;
     this.pipeline.needsUpdate = true;
@@ -838,9 +893,55 @@ export class Renderer {
    */
   setQuality(name: GameSettings['quality'], step = false): void {
     if (name === this.qualityName) return;
-    const before = this.quality;
     this.qualityName = name;
-    this.quality = QUALITY[name];
+    this.applyProfile(step);
+  }
+
+  /**
+   * Switches effects off one by one, on top of the preset (and back on with
+   * the next list). The texture filtering stays as it is.
+   */
+  setEffectsOff(off: Iterable<EffectId>): void {
+    const next = new Set(off);
+    if (next.size === this.effectsOff.size && [...next].every((e) => this.effectsOff.has(e))) return;
+    this.effectsOff = next;
+    G.grain.value = next.has('grain') ? 0 : GRAIN;
+    G.aberration.value = next.has('fringe') ? 0 : ABERRATION;
+    setRippleScale(next.has('ripples') ? 0 : this.motionRipples);
+    this.applyGrade();
+    this.applyProfile(true);
+  }
+
+  /** The effects switched off now. */
+  get effectsSwitchedOff(): ReadonlySet<EffectId> {
+    return this.effectsOff;
+  }
+
+  /** Brightness, 0.7 to 1.4: above 1 lifts the dark, below 1 deepens it. */
+  setBrightness(b: number): void {
+    uDisplayGamma.value = 1 / Math.max(0.5, Math.min(2, b));
+  }
+
+  /**
+   * Reduced motion and flash reduction: `calm` stops the bend and fringe a hit
+   * puts on the frame and the screen ripples; `flash` (0..1) is how much of
+   * the red hit and low-life tint is left.
+   */
+  setComfort(calm: boolean, flash: number): void {
+    G.warp.value = calm ? 0 : 1;
+    G.flash.value = Math.max(0, Math.min(1, flash));
+    this.motionRipples = calm ? 0 : 1;
+    setRippleScale(this.effectsOff.has('ripples') ? 0 : this.motionRipples);
+    this.applyGrade();
+  }
+
+  /** Screen ripples as reduced motion allows them (1 or 0). */
+  private motionRipples = 1;
+
+  /** Puts the preset in force, less the effects switched off, into every part that reads it. */
+  private applyProfile(step: boolean): void {
+    const before = this.quality;
+    this.quality = withoutEffects(QUALITY[this.qualityName], this.effectsOff);
     const q = this.quality;
     this.applyScale();
     this.gl.shadowMap.enabled = q.shadows;
@@ -1067,7 +1168,8 @@ export class Renderer {
     tintVector(g.shadowTint, g.splitTone, G.shadowTint.value);
     tintVector(g.highlightTint, g.splitTone * 0.6, G.highTint.value);
     G.vignette.value = g.vignette;
-    G.haze.value = g.haze;
+    // Heat shimmer goes with the ripples: the Effects switch and reduced motion.
+    G.haze.value = this.effectsOff.has('ripples') || this.motionRipples === 0 ? 0 : g.haze;
     // The vignette darkens toward its tint: a hue at roughly 63% brightness.
     tintVector(g.vignetteTint, 1, G.vignetteTint.value).multiplyScalar(0.63);
     uLut.value = lookTable(lookOf(g.look));
@@ -1217,7 +1319,7 @@ export class Renderer {
   /** Makes the temporal blend start over from the next frame (it starts over when its size changes). */
   private restartHistory(): void {
     const t = this.taaNode as unknown as { _historyRenderTarget?: THREE.RenderTarget } | null;
-    t?._historyRenderTarget?.setSize(1, 1);
+    if (t && hookSeen('TAAUNode._historyRenderTarget', !!t._historyRenderTarget)) t._historyRenderTarget!.setSize(1, 1);
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera, dt: number, elapsed: number): void {

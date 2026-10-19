@@ -13,6 +13,7 @@ import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { remapKey } from '../core/Access';
+import { LEAVE_XP_SHARE } from '../sim/RunLedger';
 import { HUD } from './HUD';
 import { tooltip } from './Tooltip';
 import { InventoryPanel } from './InventoryPanel';
@@ -219,7 +220,7 @@ class MemorialPanel {
       scrim: true,
     });
     this.list = div('cs-memorial-list');
-    this.list.style.maxHeight = '52vh';
+    this.list.style.maxHeight = '52cqh';
     this.panel.body.appendChild(this.list);
   }
 
@@ -390,19 +391,35 @@ export function mountUI(engine: Engine): void {
     closePanel(p.panel);
   });
 
-  // The GPU is gone: the game is held and saved. Ask once; "Not now" leaves
-  // it held, and a reload from the browser does the same job.
-  events.on('gpu:lost', () => {
+  // The GPU is gone: the game is held and saved. Restart opens a new
+  // renderer and goes on from somewhere safe (`Engine.restartRenderer`); if
+  // no device opens, the page reloads, which does the same from the save.
+  // "Not now" leaves it held, and the next click on the game asks again.
+  const askRestart = (): void => {
+    if (!engine.contextLost) return;
+    const inMap = engine.currentSceneId === 'dungeon';
+    const lost = tr('<p>Your graphics card stopped answering (a driver reset, sleep, or too many tabs). The game is frozen and your hero is saved.</p>');
     modal({
       title: tr('Graphics device lost'),
       icon: 'warn',
       tone: 'danger',
-      body: tr('<p>Your graphics card stopped answering (a driver reset, sleep, or too many tabs). The game is frozen and your hero is saved.</p><p>Reload to keep playing. You start again in town with your gear, gold and levels. Leaving a fight this way does not count as fleeing.</p>'),
-      confirmLabel: tr('Reload'),
+      body: inMap
+        ? lost + tr('<p>Restart to keep playing. {0}</p>', tr('You go back to town with only what you brought down. Everything found on this map is lost, and {0}% of a level\'s experience.', Math.round(LEAVE_XP_SHARE * 100)))
+        : lost + tr('<p>Restart to keep playing from here.</p>'),
+      confirmLabel: tr('Restart'),
       cancelLabel: tr('Not now'),
-      onConfirm: () => location.reload(),
+      onConfirm: () => {
+        void engine.restartRenderer().then(
+          (ok) => {
+            if (!ok) location.reload();
+          },
+          () => location.reload(),
+        );
+      },
+      onCancel: () => engine.renderer.canvas.addEventListener('pointerdown', askRestart, { once: true }),
     });
-  });
+  };
+  events.on('gpu:lost', askRestart);
 
   events.on('scene:change', (p) => {
     closeContextMenu();

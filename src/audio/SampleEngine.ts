@@ -54,7 +54,7 @@ interface Voice {
 /** Beyond this many world units, a sound is not worth a voice. */
 const MAX_AUDIBLE = 40;
 /** Voices per bus. */
-const POOL: Record<Bus, number> = { sfx: 40, ui: 8, amb: 8 };
+const POOL: Record<Bus, number> = { sfx: 40, ui: 8, amb: 8, voice: 4 };
 /** A late sample may still start this long after it was asked for. */
 const LATE_OK = 0.12;
 /** Music level while the game is paused, as a share of its normal level. */
@@ -102,7 +102,12 @@ export class SampleEngine {
   private masterVol = 0.8;
   private sfxVol = 0.85;
   private musicVol = 0.55;
+  private ambVol = 0.85;
+  private uiVol = 0.85;
+  private voiceVol = 0.85;
   private muted = false;
+  /** Silent while the tab is hidden or another window has focus (Settings, Audio). */
+  private backgroundMute = true;
   /** The game is paused: the world goes quiet, the music drops back, menus still click. */
   private gamePaused = false;
   private started = false;
@@ -148,7 +153,13 @@ export class SampleEngine {
       this.unsubs.push(() => window.removeEventListener(ev, kick));
     }
     document.addEventListener('visibilitychange', this.onVisibility);
-    this.unsubs.push(() => document.removeEventListener('visibilitychange', this.onVisibility));
+    window.addEventListener('blur', this.onVisibility);
+    window.addEventListener('focus', this.onVisibility);
+    this.unsubs.push(
+      () => document.removeEventListener('visibilitychange', this.onVisibility),
+      () => window.removeEventListener('blur', this.onVisibility),
+      () => window.removeEventListener('focus', this.onVisibility),
+    );
     this.unsubs.push(
       events.on('sfx', (e) => this.play(e.id, { volume: e.volume, pitch: e.pitch, x: e.x, z: e.z })),
       events.on('music', (e) => this.music(e.track, e.fade)),
@@ -176,7 +187,7 @@ export class SampleEngine {
     limiter.connect(out);
     out.connect(ctx.destination);
     this.master = out;
-    for (const b of ['sfx', 'ui', 'amb', 'music'] as const) {
+    for (const b of ['sfx', 'ui', 'amb', 'music', 'voice'] as const) {
       const g = ctx.createGain();
       g.connect(master);
       this.buses[b] = g;
@@ -280,8 +291,19 @@ export class SampleEngine {
   private onVisibility = (): void => {
     const ctx = this.ctx;
     if (!ctx || !this.master) return;
-    this.master.gain.setTargetAtTime(document.hidden || this.muted ? 0 : this.masterGain(), ctx.currentTime, 0.08);
+    this.master.gain.setTargetAtTime(this.silent() ? 0 : this.masterGain(), ctx.currentTime, 0.08);
   };
+
+  /**
+   * Muted by the pause menu, or the game is in the background: the tab is
+   * hidden or another window has focus. With "Mute in the background" off
+   * it plays on behind other windows.
+   */
+  private silent(): boolean {
+    if (this.muted) return true;
+    if (!this.backgroundMute) return false;
+    return document.hidden || !document.hasFocus();
+  }
 
   // -------------------------------------------------------------------------
   // Samples
@@ -561,16 +583,21 @@ export class SampleEngine {
     this.masterVol = clamp01(settings.masterVolume ?? 0.8);
     this.sfxVol = clamp01(settings.sfxVolume ?? 0.85);
     this.musicVol = clamp01(settings.musicVolume ?? 0.55);
+    this.ambVol = clamp01(settings.ambienceVolume ?? this.sfxVol);
+    this.uiVol = clamp01(settings.uiVolume ?? this.sfxVol);
+    this.voiceVol = clamp01(settings.voiceVolume ?? this.sfxVol);
+    this.backgroundMute = settings.muteInBackground !== false;
     const ctx = this.ctx;
     if (!ctx) return;
     const t = ctx.currentTime;
     // Squared: sliders feel even across their travel.
-    this.master?.gain.setTargetAtTime(document.hidden || this.muted ? 0 : this.masterGain(), t, 0.05);
+    this.master?.gain.setTargetAtTime(this.silent() ? 0 : this.masterGain(), t, 0.05);
     const world = this.gamePaused ? 0 : 1;
     const score = this.gamePaused ? PAUSED_MUSIC : 1;
     this.buses.sfx?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 1.1 * world, t, 0.05);
-    this.buses.ui?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 1.1, t, 0.05);
-    this.buses.amb?.gain.setTargetAtTime(this.sfxVol * this.sfxVol * 0.9 * world, t, 0.1);
+    this.buses.ui?.gain.setTargetAtTime(this.uiVol * this.uiVol * 1.1, t, 0.05);
+    this.buses.amb?.gain.setTargetAtTime(this.ambVol * this.ambVol * 0.9 * world, t, 0.1);
+    this.buses.voice?.gain.setTargetAtTime(this.voiceVol * this.voiceVol * 1.1 * world, t, 0.05);
     this.buses.music?.gain.setTargetAtTime(this.musicVol * this.musicVol * 0.9 * score, t, 0.1);
   }
 
@@ -603,17 +630,18 @@ export class SampleEngine {
     this.muted = v;
     const ctx = this.ctx;
     if (!ctx || !this.master) return;
-    this.master.gain.setTargetAtTime(v || document.hidden ? 0 : this.masterGain(), ctx.currentTime, 0.05);
+    this.master.gain.setTargetAtTime(this.silent() ? 0 : this.masterGain(), ctx.currentTime, 0.05);
   }
 
   /** Exposed for debug overlays. */
-  get diagnostics(): { voices: number; sfx: number; ui: number; amb: number; refused: number; loaded: number; state: string; track: string | null; bed: string | null } {
+  get diagnostics(): { voices: number; sfx: number; ui: number; amb: number; voice: number; refused: number; loaded: number; state: string; track: string | null; bed: string | null } {
     const n = (b: Bus): number => this.voices.filter((v) => v.bus === b).length;
     return {
       voices: this.voices.length,
       sfx: n('sfx'),
       ui: n('ui'),
       amb: n('amb'),
+      voice: n('voice'),
       refused: this.refused,
       loaded: [...this.buffers.values()].filter(Boolean).length,
       state: this.ctx?.state ?? 'none',

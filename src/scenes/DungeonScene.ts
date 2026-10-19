@@ -87,6 +87,7 @@ import { Weather } from '../world/Weather';
 import { markStaticShadows } from '../core/ShadowCache';
 import { peril } from '../core/Peril';
 import { tr } from '../core/I18n';
+import { uiHeight, uiWidth } from '../core/UiScale';
 
 /** Half the hero lantern's cone, radians: from four metres up it lights about twelve metres round. */
 const LANTERN_ANGLE = 1.25;
@@ -1758,8 +1759,8 @@ export class DungeonScene extends GameScene {
         this.camera,
         this.labelScratch,
         this.player.position,
-        window.innerWidth,
-        window.innerHeight,
+        uiWidth(),
+        uiHeight(),
         shift
       );
     }
@@ -1778,8 +1779,8 @@ export class DungeonScene extends GameScene {
         this.camera,
         targets,
         this.player.position,
-        window.innerWidth,
-        window.innerHeight
+        uiWidth(),
+        uiHeight()
       );
     }
 

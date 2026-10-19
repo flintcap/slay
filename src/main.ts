@@ -22,7 +22,7 @@ import '@fontsource-variable/alegreya/wght-italic.css';
 import '@fontsource-variable/cinzel/wght.css';
 import '@fontsource-variable/jetbrains-mono/wght.css';
 import { loadFonts } from './ui/Fonts';
-import { onScreenRatio } from './core/Screen';
+import { onScreenRatio, uiScaleChanged } from './core/Screen';
 import { tr, trn } from './core/I18n';
 
 // The session log (core/Log.ts) before anything else can go wrong.
@@ -85,10 +85,15 @@ async function main(): Promise<void> {
   // rebound keys) before anything draws, and again whenever settings change.
   {
     const { applyAccessibility } = await import('./core/Access');
+    const { applyUiScale } = await import('./core/UiScale');
     applyAccessibility(save.settings);
+    // Icons drawn before this (none, normally) were drawn at the plain size.
+    if (applyUiScale(save.settings)) void import('./art/Icons').then((m) => m.refreshIconScale());
     let palette = save.settings.colorBlindRarity;
     events.on('settings:changed', () => {
       applyAccessibility(save.settings);
+      // Menus, HUD or minimap drawn at another size: canvases and icons sharpen to it.
+      if (applyUiScale(save.settings)) uiScaleChanged();
       if (palette !== save.settings.colorBlindRarity) {
         palette = save.settings.colorBlindRarity;
         // Icons bake the rarity colour in; redraw them in the new palette.
@@ -114,17 +119,34 @@ async function main(): Promise<void> {
   }
   events.on('scene:change', (p) => logInfo(`scene ${p.from} -> ${p.to}`));
   {
-    // Icons, portraits and the paperdoll draw with the game's renderer.
     const { setStudioHost } = await import('./core/Studio');
-    setStudioHost(engine.renderer.gl);
-  }
-  engine.renderer.setQuality(save.settings.quality);
-  engine.renderer.setRenderScale(save.settings.renderScale ?? 1);
-  {
-    // Steps below the chosen quality when frames run long, back up when
-    // there is room (Settings: Auto quality).
+    const { reducedMotion } = await import('./core/Access');
+    const { setFlashReduce } = await import('./fx/kit/Exposure');
     const { AutoQuality } = await import('./core/AutoQuality');
-    engine.autoQuality = new AutoQuality(engine.renderer, () => save.settings);
+    // Effects switched off, brightness, and the comfort settings that live in
+    // the post chain (reduced motion, flash reduction).
+    const applyVideo = (): void => {
+      const s = save.settings;
+      setFlashReduce(!!s.flashReduce);
+      engine.renderer.setEffectsOff(s.effectsOff ?? []);
+      engine.renderer.setBrightness(s.brightness ?? 1);
+      engine.renderer.setComfort(reducedMotion(s), s.flashReduce ? 0.35 : 1);
+    };
+    // Run on the renderer opened here, and again on the one a Restart opens
+    // after a lost GPU (`Engine.restartRenderer`).
+    const setUpRenderer = (): void => {
+      // Icons, portraits and the paperdoll draw with the game's renderer.
+      setStudioHost(engine.renderer.gl);
+      engine.renderer.setQuality(save.settings.quality);
+      engine.renderer.setRenderScale(save.settings.renderScale ?? 1);
+      applyVideo();
+      // Steps below the chosen quality when frames run long, back up when
+      // there is room (Settings: Auto quality).
+      engine.autoQuality = new AutoQuality(engine.renderer, () => save.settings);
+    };
+    setUpRenderer();
+    events.on('settings:changed', applyVideo);
+    events.on('gpu:restored', setUpRenderer);
   }
 
   boot(0.34, tr('Weaving materials…'));

@@ -49,6 +49,7 @@ import { COMBO_WINDOW, canCombo, comboBonusPct, comboForSkill } from '../entitie
 import { BURST_POWER, FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } from '../data/skillPower';
 import { uiSfx } from './Sfx';
 import { tr, trn, numText } from '../core/I18n';
+import { uiHeight } from '../core/UiScale';
 
 const CELL_W = 132;
 const TIERS = 6;
@@ -295,7 +296,7 @@ export class SkillTreePanel {
   private boardRoom(): number {
     const body = this.panel.body;
     const box = body.getBoundingClientRect();
-    if (!body.offsetHeight || box.height <= 0) return window.innerHeight - BOARD_CHROME;
+    if (!body.offsetHeight || box.height <= 0) return uiHeight() - BOARD_CHROME;
     // The panel may be mid-way through its opening zoom; measure unscaled.
     const k = box.height / body.offsetHeight;
     return (box.bottom - this.board.getBoundingClientRect().top) / k - 12;

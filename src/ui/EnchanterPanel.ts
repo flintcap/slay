@@ -89,7 +89,7 @@ export class EnchanterPanel {
     }
 
     const list = div('depth-list');
-    list.style.maxHeight = '22vh';
+    list.style.maxHeight = '22cqh';
     for (const it of items) {
       const card = div(`depth-card${it.uid === this.selected ? ' is-done' : ''}`);
       card.style.cursor = 'var(--cursor-hot)';

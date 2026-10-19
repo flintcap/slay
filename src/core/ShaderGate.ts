@@ -33,6 +33,7 @@
  * portrait studio reads its pictures straight back, so it builds as before.
  */
 import * as THREE from 'three/webgpu';
+import { hookSeen } from './ThreeHooks';
 
 /** The parts of three's render objects and managers the gate reads. */
 interface LightsLike {
@@ -95,11 +96,13 @@ function shareInstancing(o: THREE.Object3D): void {
     generate(this: { name: string; value: unknown }, builder: unknown, output?: unknown): string;
   };
   const generate = proto.generate;
-  proto.generate = function (builder, output) {
-    const v = this.value as THREE.BufferAttribute | undefined;
-    if (!this.name && v?.name === INSTANCES) this.name = ours.has(v) ? 'instanceMatrices' : 'instanceMatricesPrev';
-    return generate.call(this, builder, output);
-  };
+  if (hookSeen('StorageBufferNode.generate', typeof generate === 'function')) {
+    proto.generate = function (builder, output) {
+      const v = this.value as THREE.BufferAttribute | undefined;
+      if (!this.name && v?.name === INSTANCES) this.name = ours.has(v) ? 'instanceMatrices' : 'instanceMatricesPrev';
+      return generate.call(this, builder, output);
+    };
+  }
 }
 
 /** three's `RenderObjectRefreshType.NONE`: nothing to update this frame. */
@@ -127,12 +130,24 @@ export class ShaderGate {
     const pipes = r._pipelines;
     this.nodes = nodes;
     this.state = r;
+    // Only over three's own (`ThreeHooks.ts`): without them, every draw waits
+    // for its shader as three does by itself.
+    const fns = (o: unknown, ...ks: string[]): boolean => ks.every((k) => typeof (o as Record<string, unknown> | undefined)?.[k] === 'function');
+    const found =
+      fns(nodes, 'needsRefresh', 'get', 'getForRender', 'getForRenderCacheKey') &&
+      nodes.nodeBuilderCache instanceof Map &&
+      fns(pipes, 'getForRender', 'isReady') &&
+      '_renderTarget' in r &&
+      '_mrt' in r;
+    if (!found) return;
     const held = (ro: RenderObjectLike): boolean => this.on && ro.object.isQuadMesh !== true;
 
     // First asked for here in a draw: a shader not built yet is queued and
     // the draw reports nothing to update.
     const needsRefresh = nodes.needsRefresh.bind(nodes);
+    let seenState = false;
     nodes.needsRefresh = (ro) => {
+      if (!seenState) seenState = hookSeen('RenderObject._nodeBuilderState', '_nodeBuilderState' in ro);
       if (ro._nodeBuilderState === null) {
         shareInstancing(ro.object);
         if (held(ro) && !this.built(ro)) {

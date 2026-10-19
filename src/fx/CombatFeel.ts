@@ -31,6 +31,7 @@ import { ELEMENTS, type EffectSystem } from './Effects';
 import './Grit';
 import type { CameraRig } from './CameraRig';
 import { HitFlash } from './HitFlash';
+import { FX_COMFORT } from './kit/Exposure';
 
 /** How a blow was delivered. Drives how hard everything below responds. */
 export type HitKind =
@@ -358,7 +359,7 @@ export class CombatFeel {
     if (r.kind !== 'proc' || crit) {
       const strength = killed || crit ? 1 : r.kind === 'heavy' ? 0.8 : 0.5 + frac;
       const dur = killed ? 0.13 : crit ? 0.11 : r.kind === 'minion' ? 0.05 : 0.08;
-      this.flash.flash(target.root, el.core, Math.min(1, strength), dur);
+      this.flash.flash(target.root, el.core, Math.min(1, strength) * FX_COMFORT.hit, dur);
     }
 
     // --- camera ---------------------------------------------------------------

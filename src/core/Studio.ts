@@ -16,6 +16,7 @@
  * blocking (a copy into a buffer the CPU maps when the GPU is done).
  */
 import * as THREE from 'three/webgpu';
+import { hookSeen } from './ThreeHooks';
 
 /** One offscreen view. Its settings never touch the game's own view. */
 export interface Studio {
@@ -31,7 +32,7 @@ export interface Studio {
   /** Draws `width` by `height` and reads the picture back without blocking the page. */
   readonly renderPixels: (scene: THREE.Object3D, camera: THREE.Camera, width: number, height: number) => Promise<ImageData>;
   compileAsync(scene: THREE.Object3D, camera: THREE.Camera): Promise<void>;
-  /** Called if the studio's GPU device is lost; the next ask opens a new one. */
+  /** Called when the game's renderer is replaced after a lost GPU; the next ask opens a new studio. */
   onLost: (() => void) | null;
   dispose(): void;
 }
@@ -40,8 +41,21 @@ let host: THREE.WebGPURenderer | null = null;
 let hostSet: () => void = () => {};
 const hostReady = new Promise<void>((done) => (hostSet = done));
 
-/** Set by the game once its own renderer is open. */
+/** Every studio open on the host, told (`onLost`) when the host is replaced. */
+const live = new Set<SharedStudio>();
+
+/**
+ * Set by the game once its own renderer is open, and again when a Restart
+ * after a lost GPU opens another (`Engine.restartRenderer`). The studios on
+ * the old one cannot draw again: each is told, and the next ask opens one on
+ * the new renderer.
+ */
 export function setStudioHost(renderer: THREE.WebGPURenderer): void {
+  if (host && host !== renderer) {
+    const lost = [...live];
+    live.clear();
+    for (const s of lost) s.onLost?.();
+  }
   host = renderer;
   hostSet();
 }
@@ -62,6 +76,7 @@ class SharedStudio implements Studio {
   ) {
     this.domElement = document.createElement('canvas');
     this.target = new THREE.CanvasTarget(this.domElement);
+    live.add(this);
   }
 
   // Resized with the renderer pointed at it: the renderer hears a resize
@@ -91,16 +106,18 @@ class SharedStudio implements Studio {
     const exposure = r.toneMappingExposure;
     const alpha = r.getClearAlpha();
     const samples = r._samples;
+    // Without it (`ThreeHooks.ts`) a studio draws at the game's own smoothing.
+    const own = hookSeen('Renderer._samples', typeof samples === 'number');
     r.getClearColor(this.saved);
     r.setCanvasTarget(this.target);
     r.setRenderTarget(null);
     r.toneMappingExposure = this.toneMappingExposure;
     r.setClearColor(this.clear, this.clearAlpha);
-    r._samples = this.samples;
+    if (own) r._samples = this.samples;
     try {
       return fn();
     } finally {
-      r._samples = samples;
+      if (own) r._samples = samples;
       r.setClearColor(this.saved, alpha);
       r.toneMappingExposure = exposure;
       r.setRenderTarget(rt);
@@ -147,6 +164,7 @@ class SharedStudio implements Studio {
   }
 
   dispose(): void {
+    live.delete(this);
     // Frees this canvas's own buffers; the renderer is the game's.
     this.target.dispose();
     for (const rt of this.reads.values()) rt.dispose();

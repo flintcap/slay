@@ -57,6 +57,7 @@ import { findFit, firstFreeCell, fitsAt, freeCells, itemSize, INV_COLS, INV_ROWS
 import { uiSfx } from './Sfx';
 import { estimateAttack } from './AttackEstimate';
 import { tr } from '../core/I18n';
+import { cssPx } from '../core/UiScale';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -274,8 +275,11 @@ export class ItemGrid {
     const pl = parseFloat(cs.paddingLeft) || 0;
     const pt = parseFloat(cs.paddingTop) || 0;
     const step = this.size + GRID_GAP;
-    const c = Math.max(0, Math.min(this.opts.cols - 1, Math.floor((x - r.left - pl + GRID_GAP / 2) / step)));
-    const row = Math.max(0, Math.min(this.opts.rows - 1, Math.floor((y - r.top - pt + GRID_GAP / 2) / step)));
+    // The point and the box are in screen pixels, the grid in the UI's own.
+    const gx = cssPx(this.root, x - r.left);
+    const gy = cssPx(this.root, y - r.top);
+    const c = Math.max(0, Math.min(this.opts.cols - 1, Math.floor((gx - pl + GRID_GAP / 2) / step)));
+    const row = Math.max(0, Math.min(this.opts.rows - 1, Math.floor((gy - pt + GRID_GAP / 2) / step)));
     return row * this.opts.cols + c;
   }
 

@@ -7,6 +7,7 @@
  * light. With no level baked the map is black and the gain zero.
  */
 import * as THREE from 'three/webgpu';
+import { hookSeen } from './ThreeHooks';
 import { normalWorld, positionWorld, texture, uniform, vec2 } from 'three/tsl';
 
 /** Where a baked map lies: tiles across and down, tile (0, 0)'s centre and metres per tile. */
@@ -66,6 +67,7 @@ export function setBounce(g: BounceFrame | null, field: Float32Array | null, gai
 export class BounceLightNode extends THREE.LightingNode {
   override setup(builder: THREE.NodeBuilder): null {
     const ctx = builder.context as unknown as { irradiance?: THREE.Node<'vec3'> & { addAssign(n: THREE.Node): void } };
+    hookSeen('lighting context: radiance, irradiance', !!ctx.irradiance);
     if (!ctx.irradiance) return null;
     const N = normalWorld;
     const at = positionWorld.xz.add(N.xz.mul(LOOK_OUT)).sub(vec2(uRect.x, uRect.y)).mul(vec2(uRect.z, uRect.w));

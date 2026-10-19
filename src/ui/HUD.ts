@@ -16,7 +16,7 @@ import { castsOnly } from '../data/itemBases';
 import { events, type GameEvents } from '../core/Events';
 import { save } from '../core/Save';
 import { keyFor, remapKey } from '../core/Access';
-import { keyLabel } from './AccessibilitySettings';
+import { keyCap } from './AccessibilitySettings';
 import { stackCount } from '../sim/Inventory';
 import type { Engine } from '../core/Engine';
 import { computeStats, xpForLevel } from '../sim/Stats';
@@ -57,7 +57,8 @@ import { carriedContract, chainStep, stepState } from '../sim/Chains';
 import { bountyText, heldBounties } from '../sim/TownServices';
 import { zoneInks, zoneInkAt, newKindInk, wayMarks } from './ZoneInk';
 import { FONT_UI } from './Fonts';
-import { onScreenRatio, screenRatio } from '../core/Screen';
+import { onScreenRatio, uiRatio } from '../core/Screen';
+import { cssPx, hudScale, minimapScale } from '../core/UiScale';
 import { tr, numText } from '../core/I18n';
 import { itemDisplayName } from '../sim/Loot';
 
@@ -239,7 +240,7 @@ class Orb {
     // every frame can have the browser hold the page each frame until the
     // GPU, busy with the world, has caught up with it.
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
-    this.sharpen(screenRatio());
+    this.sharpen(uiRatio(hudScale()));
 
     const glass = div('orb-glass');
     const ring = div('orb-ring');
@@ -663,11 +664,9 @@ export class HUD {
     const topRight = div('hud-topright');
     const mapWrap = div('minimap ui-interactive');
     this.minimapCanvas = el2('canvas');
-    this.minimapCanvas.style.width = `${MINIMAP_PX}px`;
-    this.minimapCanvas.style.height = `${MINIMAP_PX}px`;
     // On the CPU, like the orbs: small and redrawn every frame.
     this.minimapCtx = this.minimapCanvas.getContext('2d', { willReadFrequently: true });
-    this.sharpenMinimap(screenRatio());
+    this.sharpenMinimap();
     this.minimapLabel = div('minimap-label', tr('Tier 0'));
     const mapFrame = div('minimap-frame');
     const mapBtn = div('minimap-expand');
@@ -744,11 +743,13 @@ export class HUD {
     const bar = div('cmdbar');
     this.lifeOrb = new Orb('life', 124);
     this.manaOrb = new Orb('mana', 124);
-    // Dragged to a monitor of another sharpness: redraw at its pixels.
-    this.offs.push(onScreenRatio((dpr) => {
-      this.lifeOrb.sharpen(dpr);
-      this.manaOrb.sharpen(dpr);
-      this.sharpenMinimap(dpr);
+    // Dragged to a monitor of another sharpness, or the UI, HUD or minimap
+    // scale changed: redraw at the pixels they now cover.
+    this.offs.push(onScreenRatio(() => {
+      const r = uiRatio(hudScale());
+      this.lifeOrb.sharpen(r);
+      this.manaOrb.sharpen(r);
+      this.sharpenMinimap();
     }));
 
     const center = div('cmdbar-center');
@@ -774,8 +775,8 @@ export class HUD {
     this.rmbSlot = div('hotslot hotslot-rmb ui-interactive');
     this.rmbArt = div('hotslot-art');
     const rmbCd = div('hotslot-cd');
-    // i18n: keycap for the right mouse button: three or four letters.
-    const rmbKey = div('hotslot-key', tr('RMB'));
+    const rmbKey = div('hotslot-key', capLabel('Mouse2')); // i18n-ignore: a key code, not text
+    this.keyCaps.push([rmbKey, 'Mouse2']); // i18n-ignore: a key code, not text
     add(this.rmbSlot, this.rmbArt, rmbCd, div('hotslot-edge'), div('hotslot-cdtext'), div('hotslot-tint'), rmbKey);
     slots.appendChild(this.rmbSlot);
     this.rmbCd = rmbCd;
@@ -1145,10 +1146,19 @@ export class HUD {
     this.offs = [];
   }
 
-  private sharpenMinimap(dpr: number): void {
-    this.minimapCanvas.width = Math.round(MINIMAP_PX * dpr);
-    this.minimapCanvas.height = Math.round(MINIMAP_PX * dpr);
-    this.minimapCtx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+  /**
+   * Sized to the minimap scale and sharp at the HUD's pixels. It still draws
+   * in its designed `MINIMAP_PX` units: a bigger minimap shows the same
+   * ground, larger.
+   */
+  private sharpenMinimap(): void {
+    const m = minimapScale();
+    const k = uiRatio(hudScale()) * m;
+    this.minimapCanvas.style.width = `${MINIMAP_PX * m}px`;
+    this.minimapCanvas.style.height = `${MINIMAP_PX * m}px`;
+    this.minimapCanvas.width = Math.round(MINIMAP_PX * k);
+    this.minimapCanvas.height = Math.round(MINIMAP_PX * k);
+    this.minimapCtx?.setTransform(k, 0, 0, k, 0, 0);
   }
 
   // -- per-frame -----------------------------------------------------------
@@ -2088,8 +2098,8 @@ export class HUD {
   private floatText(text: string, kind: 'good' | 'bad' | 'gold', anchor: HTMLElement): void {
     const r = anchor.getBoundingClientRect();
     const node = div(`floattext ft-${kind}`, text);
-    node.style.left = `${r.left + r.width / 2}px`;
-    node.style.top = `${r.top}px`;
+    node.style.left = `${cssPx(this.floatLayer, r.left + r.width / 2)}px`;
+    node.style.top = `${cssPx(this.floatLayer, r.top)}px`;
     this.floatLayer.appendChild(node);
     setTimeout(() => node.remove(), 1100);
   }
@@ -2288,5 +2298,5 @@ function skillDefFor(id: string) {
 
 /** The key the player has on the action whose default key is `code`. */
 function capLabel(code: string): string {
-  return keyLabel(keyFor(code, save.settings.keybinds));
+  return keyCap(keyFor(code, save.settings.keybinds));
 }

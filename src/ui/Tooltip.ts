@@ -46,6 +46,7 @@ import {
   type ItemHoverContext,
 } from './Widgets';
 import { tr, numText } from '../core/I18n';
+import { cssPx, uiHeight, uiWidth } from '../core/UiScale';
 
 /** Rarities grand enough to wear filigree on their tooltip frame. */
 const RICH = new Set<ItemRarity>(['rare', 'set', 'unique', 'mythic', 'ancient']);
@@ -596,23 +597,28 @@ class TooltipManager {
     this.root.style.top = '0px';
 
     requestAnimationFrame(() => {
+      // All in the UI layer's own pixels: the anchor's box is in screen pixels.
       const w = this.root.offsetWidth;
       const h = this.root.offsetHeight;
+      const W = uiWidth();
+      const H = uiHeight();
+      const at = (px: number): number => cssPx(this.root, px);
       const pad = 12;
       let x: number;
       let y: number;
       if (anchor && anchor.isConnected) {
-        const r = anchor.getBoundingClientRect();
-        const spaceRight = window.innerWidth - r.right;
+        const b = anchor.getBoundingClientRect();
+        const r = { left: at(b.left), right: at(b.right), top: at(b.top), height: at(b.height) };
+        const spaceRight = W - r.right;
         x = spaceRight > w + pad * 2 ? r.right + pad : r.left - w - pad;
-        if (x < pad) x = Math.min(r.right + pad, window.innerWidth - w - pad);
+        if (x < pad) x = Math.min(r.right + pad, W - w - pad);
         y = r.top + r.height / 2 - h / 2;
       } else {
-        x = window.innerWidth / 2 - w / 2;
-        y = window.innerHeight / 2 - h / 2;
+        x = W / 2 - w / 2;
+        y = H / 2 - h / 2;
       }
-      x = Math.max(pad, Math.min(x, window.innerWidth - w - pad));
-      y = Math.max(pad, Math.min(y, window.innerHeight - h - pad));
+      x = Math.max(pad, Math.min(x, W - w - pad));
+      y = Math.max(pad, Math.min(y, H - h - pad));
       this.root.style.left = `${Math.round(x)}px`;
       this.root.style.top = `${Math.round(y)}px`;
     });

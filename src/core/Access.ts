@@ -10,10 +10,16 @@
  *  - **Reduced motion** turns off screen shake and camera punch-ins, and
  *    stops CSS animation and transitions. It is also on whenever the system
  *    asks for reduced motion.
+ *  - **Flash reduction** softens the red edge on a hit, the level-up light
+ *    and the white sweeps in the UI (the `flash-reduce` class), and the
+ *    game's bright bursts (`setFlashReduce`, main.ts).
  *  - **Key rebinding** is a permutation of key codes applied where the key
  *    events come in (`Input` and the UI's panel hotkeys). Every caller keeps
  *    asking for `KeyI` or `Digit1`; the player's chosen key produces it.
  *    Rebinding always swaps, so no action is ever left without a key.
+ *    Mouse buttons are codes too (`Mouse0`..`Mouse4`): `Input` turns a mouse
+ *    button that carries a key's action into that key's press, and a key
+ *    that carries a mouse action into the button.
  *
  * Nothing here touches the DOM at import time, so it is safe under Node.
  */
@@ -49,8 +55,23 @@ export const COLORBLIND_RARITY_COLOR: Readonly<Record<ItemRarity, number>> = {
 // Keys
 // ---------------------------------------------------------------------------
 
+/**
+ * Mouse buttons take part in rebinding as codes of their own, `Mouse` plus
+ * the button number: 0 left, 1 middle, 2 right, 3 back, 4 forward.
+ */
+export const MOUSE_CODES: readonly string[] = ['Mouse0', 'Mouse1', 'Mouse2', 'Mouse3', 'Mouse4']; // i18n-ignore: key codes, not text
+
+export function isMouseCode(code: string): boolean {
+  return MOUSE_CODES.includes(code);
+}
+
+/** The two mouse actions; only these may take the left button (menus need it). */
+export const MOUSE_ACTIONS: ReadonlySet<string> = new Set(['Mouse0', 'Mouse2']);
+
 /** Every action the player can move to another key, by its default code. */
 export const REBINDABLE: ReadonlyArray<{ code: string; label: string }> = [
+  { code: 'Mouse0', label: tr('Move to cursor') },
+  { code: 'Mouse2', label: tr('Attack skill') },
   { code: 'KeyW', label: tr('Move up') },
   { code: 'KeyS', label: tr('Move down') },
   { code: 'KeyA', label: tr('Move left') },
@@ -104,6 +125,8 @@ export function bindsAreValid(binds: unknown): binds is Record<string, string> {
   const to = new Set<string>();
   for (const [k, v] of entries) {
     if (typeof v !== 'string' || !v || RESERVED_KEYS.has(v) || RESERVED_KEYS.has(k)) return false;
+    // The left button stays a mouse action, so the menus can always be clicked.
+    if (v === 'Mouse0' && !MOUSE_ACTIONS.has(k)) return false;
     if (to.has(v)) return false;
     from.add(k);
     to.add(v);
@@ -133,6 +156,9 @@ export function rebind(binds: Record<string, string> | undefined, code: string, 
   phys.set(other, was);
   const out: Record<string, string> = {};
   for (const [l, p] of phys) if (l !== p) out[l] = p;
+  // The left button must keep a mouse action, so the menus can always be clicked.
+  const onLeft = Object.entries(out).find(([, p]) => p === 'Mouse0')?.[0] ?? 'Mouse0'; // i18n-ignore: a key code
+  if (!MOUSE_ACTIONS.has(onLeft)) return { ...(binds ?? {}) };
   return out;
 }
 
@@ -205,6 +231,9 @@ export function applyAccessibility(settings: GameSettings): void {
   }
   // For text sized in raw pixels: `calc(9px * var(--text-scale, 1))`.
   root.style.setProperty('--text-scale', String(scale));
+
+  // Flash reduction: softer screen-edge reds and gold, no white sweeps (styles.css, menus.css).
+  root.classList.toggle('flash-reduce', !!settings.flashReduce);
 
   // Reduced motion: no CSS animation or transition anywhere in the UI.
   const reduce = reducedMotion(settings);

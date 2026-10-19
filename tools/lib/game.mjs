@@ -91,6 +91,13 @@ export async function bootGame({
     await browser.close().catch(() => {});
     killServer();
   };
+  // A three.js hook missing at startup (src/core/ThreeHooks.ts) makes every
+  // result below suspect: fail here, by name.
+  const missing = await page.evaluate(() => window.SLAY?.engine?.renderer?.hooks?.missing ?? null);
+  if (missing === null || missing.length > 0) {
+    await close();
+    throw new Error(missing === null ? 'the three.js hook self-test did not run' : `three.js hooks missing: ${missing.join('; ')}`);
+  }
   return { page, browser, port, pageErrors, consoleErrors, bootMs, close };
 }
 

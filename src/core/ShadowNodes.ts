@@ -17,6 +17,7 @@
  */
 import * as THREE from 'three/webgpu';
 import { Fn, vec4 } from 'three/tsl';
+import { hookSeen } from './ThreeHooks';
 
 interface ShadowNodes {
   version: number;
@@ -59,7 +60,10 @@ function solidShadowNodes(m: Mat): ShadowNodes {
 
 const proto = THREE.Renderer.prototype as unknown as { _getShadowNodes(m: THREE.Material): ShadowNodes };
 const base = proto._getShadowNodes;
-proto._getShadowNodes = function (this: THREE.Renderer, m: THREE.Material): ShadowNodes {
-  const n = m as Mat;
-  return needsColour(n) ? base.call(this, m) : solidShadowNodes(n);
-};
+// Only over three's own (`ThreeHooks.ts`): without it, three's shadow nodes stand.
+if (hookSeen('Renderer._getShadowNodes', typeof base === 'function')) {
+  proto._getShadowNodes = function (this: THREE.Renderer, m: THREE.Material): ShadowNodes {
+    const n = m as Mat;
+    return needsColour(n) ? base.call(this, m) : solidShadowNodes(n);
+  };
+}

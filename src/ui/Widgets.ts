@@ -35,6 +35,7 @@ import * as SkillData from '../data/skills';
 import { uiSfx } from './Sfx';
 import { isUpgrade } from './Compare';
 import { tr, numText, numGrouped } from '../core/I18n';
+import { cssPx, uiHeight, uiScale, uiWidth } from '../core/UiScale';
 
 // ---------------------------------------------------------------------------
 // DOM helpers
@@ -956,7 +957,10 @@ class DragController {
     this.x = x;
     this.y = y;
     if (!this.ghost) return;
-    this.ghost.style.transform = `translate3d(${x - this.hold.x}px, ${y - this.hold.y}px, 0)`;
+    // The ghost is drawn at the menus' scale (`.drag-ghost` zoom), so its
+    // own pixels are screen pixels over that scale.
+    const z = uiScale();
+    this.ghost.style.transform = `translate3d(${x / z - this.hold.x}px, ${y / z - this.hold.y}px, 0)`;
     const swing = Math.max(-14, Math.min(14, (x - this.lastX) * 0.9));
     this.tilt += (swing - this.tilt) * 0.35;
     this.lastX = x;
@@ -1185,7 +1189,7 @@ export class Panel {
     this.header.addEventListener('pointerdown', (e) => {
       if ((e.target as HTMLElement).closest('button')) return;
       dragging = true;
-      const r = this.frame.getBoundingClientRect();
+      const r = this.placeBox();
       if (!this.moved) {
         // Freeze the flex-centred position into explicit coordinates before the
         // first drag so the panel does not jump.
@@ -1195,8 +1199,8 @@ export class Panel {
         this.frame.style.top = `${r.top}px`;
         this.moved = true;
       }
-      sx = e.clientX;
-      sy = e.clientY;
+      sx = cssPx(this.frame, e.clientX);
+      sy = cssPx(this.frame, e.clientY);
       ox = r.left;
       oy = r.top;
       this.header.setPointerCapture(e.pointerId);
@@ -1206,8 +1210,8 @@ export class Panel {
       if (!dragging) return;
       const w = this.frame.offsetWidth;
       const h = this.frame.offsetHeight;
-      const nx = Math.max(-w + 120, Math.min(window.innerWidth - 120, ox + e.clientX - sx));
-      const ny = Math.max(0, Math.min(window.innerHeight - 44, oy + e.clientY - sy));
+      const nx = Math.max(-w + 120, Math.min(uiWidth() - 120, ox + cssPx(this.frame, e.clientX) - sx));
+      const ny = Math.max(0, Math.min(uiHeight() - 44, oy + cssPx(this.frame, e.clientY) - sy));
       this.frame.style.left = `${nx}px`;
       this.frame.style.top = `${ny}px`;
     });
@@ -1226,14 +1230,21 @@ export class Panel {
     this.header.addEventListener('pointercancel', stop);
   }
 
+  /** The frame's box in the UI layer's own pixels, which is what `left`/`top` take. */
+  private placeBox(): { left: number; right: number; top: number; bottom: number; width: number } {
+    const b = this.frame.getBoundingClientRect();
+    const at = (px: number): number => cssPx(this.frame, px);
+    return { left: at(b.left), right: at(b.right), top: at(b.top), bottom: at(b.bottom), width: at(b.width) };
+  }
+
   /**
    * Where it was let go: snapped flush to a screen edge it was dropped near
    * (and docked there, so it stays on that edge when the window changes size),
    * or against the side of another open panel, then remembered for next time.
    */
   private dock(): void {
-    const r = this.frame.getBoundingClientRect();
-    const W = window.innerWidth;
+    const r = this.placeBox();
+    const W = uiWidth();
     let x = r.left;
     let y = r.top;
     let dock: PanelPlace['dock'] = null;
@@ -1248,7 +1259,7 @@ export class Panel {
     if (!dock) {
       for (const other of panelStack) {
         if (other === this || other.opts.fullscreen) continue;
-        const o = other.frame.getBoundingClientRect();
+        const o = other.placeBox();
         if (o.width === 0 || r.bottom < o.top || r.top > o.bottom) continue;
         if (Math.abs(r.left - o.right) < SNAP) x = o.right + DOCK_GAP;
         else if (Math.abs(o.left - r.right) < SNAP) x = o.left - r.width - DOCK_GAP;
@@ -1268,8 +1279,8 @@ export class Panel {
     const place = save.settings.panelPlaces?.[this.id];
     if (!place || this.opts.fullscreen || this.opts.draggable === false) return;
     const w = this.frame.offsetWidth;
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const W = uiWidth();
+    const H = uiHeight();
     let x = place.dock === 'left' ? DOCK_GAP : place.dock === 'right' ? W - w - DOCK_GAP : place.x;
     x = Math.max(-w + 120, Math.min(W - 120, x));
     const y = Math.max(0, Math.min(H - 44, place.y));
@@ -1499,6 +1510,12 @@ export class Slider {
     this.input.value = String(v);
     this.readout.textContent = this.format(v);
     this.input.dispatchEvent(new Event('input'));
+  }
+
+  /** Calls `fn` when the slider is let go (or stepped with the keys), not while it moves. */
+  onRelease(fn: (v: number) => void): this {
+    this.input.addEventListener('change', () => fn(Number(this.input.value)));
+    return this;
   }
 }
 
@@ -1764,11 +1781,13 @@ export class ItemSlot {
       const item = this.item;
       // The ghost is the item at the size it has here, hanging from the
       // pointer at the spot it was picked up.
+      // In CSS pixels: the ghost is drawn at the menus' scale too.
       const rect = this.root.getBoundingClientRect();
-      const gw = Math.round(rect.width) || this.boxW;
-      const gh = Math.round(rect.height) || this.boxH;
-      const hx = Math.max(0, Math.min(gw, sx - rect.left));
-      const hy = Math.max(0, Math.min(gh, sy - rect.top));
+      const at = (px: number): number => cssPx(this.root, px);
+      const gw = Math.round(at(rect.width)) || this.boxW;
+      const gh = Math.round(at(rect.height)) || this.boxH;
+      const hx = Math.max(0, Math.min(gw, at(sx - rect.left)));
+      const hy = Math.max(0, Math.min(gh, at(sy - rect.top)));
       const form = this.opts.shaped ? 'shaped' : 'square';
       const ghost =
         `<div class="islot islot-ghost" data-rarity="${item.rarity}" style="--rc:${rarityHex(item.rarity)};width:${gw}px;height:${gh}px">` +
@@ -1939,10 +1958,10 @@ export function contextMenu(x: number, y: number, entries: MenuEntry[], title?: 
     }
     m.appendChild(b);
   }
-  document.body.appendChild(m);
-  const r = m.getBoundingClientRect();
-  m.style.left = `${Math.min(x, window.innerWidth - r.width - 8)}px`;
-  m.style.top = `${Math.min(y, window.innerHeight - r.height - 8)}px`;
+  // In the UI layer, so it is drawn at the menus' size; x and y are screen pixels.
+  (document.getElementById('ui') ?? document.body).appendChild(m);
+  m.style.left = `${Math.min(cssPx(m, x), uiWidth() - m.offsetWidth - 8)}px`;
+  m.style.top = `${Math.min(cssPx(m, y), uiHeight() - m.offsetHeight - 8)}px`;
   openMenu = m;
   requestAnimationFrame(() => m.classList.add('is-open'));
 

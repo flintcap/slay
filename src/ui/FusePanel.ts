@@ -104,7 +104,7 @@ export class FusePanel {
       this.body.appendChild(div('depth-card-sub', tr('Bring me gems or runes. Three of a kind, and I can do something with them.')));
     }
     const list = div('depth-list');
-    list.style.maxHeight = '52vh';
+    list.style.maxHeight = '52cqh';
     for (const { recipe, have } of rows) {
       const sets = Math.floor(have / recipe.count);
       const affordable = Math.min(sets, Math.floor(c.gold / Math.max(1, recipe.gold)));

@@ -296,6 +296,10 @@ select {
   pointer-events: none;
   font-family: var(--font-ui);
   user-select: none;
+  /* Settings, Video, Interface (core/UiScale.ts). Inside, lengths that follow
+     the window use cqw/cqh and small-window layouts use @container ui. */
+  zoom: var(--ui-scale, 1);
+  container: ui / size;
 }
 
 /* Anything the player can touch opts back in — this is what drives
@@ -351,7 +355,7 @@ select {
   position: relative;
   z-index: 2;
   text-align: center;
-  width: min(560px, 82vw);
+  width: min(560px, 82cqw);
   animation: bootIn 900ms var(--ease) both;
 }
 
@@ -365,7 +369,7 @@ select {
 .boot-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(56px, 11vw, 104px);
+  font-size: clamp(56px, 11cqw, 104px);
   font-weight: 700;
   letter-spacing: 0.24em;
   text-indent: 0.24em;
@@ -1210,8 +1214,8 @@ input.slider::-moz-range-thumb {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 48px);
+  max-width: calc(100cqw - 32px);
+  max-height: calc(100cqh - 48px);
   pointer-events: auto;
   color: var(--ink);
   background:
@@ -1825,6 +1829,8 @@ input.slider::-moz-range-thumb {
   position: fixed;
   left: 0;
   top: 0;
+  /* On the page, not in #ui: drawn at the menus' size all the same. */
+  zoom: var(--ui-scale, 1);
   z-index: var(--z-drag);
   pointer-events: none;
   display: flex;
@@ -1976,7 +1982,7 @@ input.slider::-moz-range-thumb {
 }
 .modal {
   position: relative;
-  width: min(460px, 88vw);
+  width: min(460px, 88cqw);
   background:
     radial-gradient(ellipse 70% 40% at 50% 0%, rgba(150, 110, 50, 0.18), transparent 72%) padding-box,
     var(--skin-leather) padding-box, var(--plate) padding-box, var(--gild) border-box;
@@ -2824,6 +2830,7 @@ input.slider::-moz-range-thumb {
   pointer-events: none;
   opacity: 0;
   transition: opacity var(--dur-3) ease;
+  zoom: var(--hud-scale, 1);
 }
 .hud.is-live {
   opacity: 1;
@@ -2846,6 +2853,19 @@ input.slider::-moz-range-thumb {
 @keyframes hurtPulse {
   0% {
     opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* Flash reduction (Settings, Gameplay): a soft edge, never a red wash. */
+.flash-reduce .hud.hurt::after,
+.flash-reduce .hud.hurt-big::after {
+  animation-name: hurtPulseSoft;
+}
+@keyframes hurtPulseSoft {
+  0% {
+    opacity: 0.3;
   }
   100% {
     opacity: 0;
@@ -2915,6 +2935,8 @@ input.slider::-moz-range-thumb {
   inset: 0;
   display: none;
   pointer-events: none;
+  /* Drawn pixel for pixel over the floor: undo the UI scale. */
+  zoom: calc(1 / var(--ui-scale, 1));
 }
 .map-overlay.on {
   display: block;
@@ -2925,8 +2947,8 @@ input.slider::-moz-range-thumb {
 
 .minimap {
   position: relative;
-  width: 178px;
-  height: 178px;
+  width: calc(178px * var(--minimap-scale, 1));
+  height: calc(178px * var(--minimap-scale, 1));
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: rgba(6, 5, 4, 0.6);
@@ -3162,7 +3184,7 @@ input.slider::-moz-range-thumb {
   position: absolute;
   top: var(--s4);
   left: 50%;
-  width: min(680px, 50vw);
+  width: min(680px, 50cqw);
   transform: translate(-50%, -16px);
   opacity: 0;
   visibility: hidden;
@@ -3965,6 +3987,9 @@ input.slider::-moz-range-thumb {
 .xp-track.is-flare .xp-flare {
   animation: xpFlare 1.1s ease-out;
 }
+.flash-reduce .xp-flare {
+  background-image: linear-gradient(90deg, transparent 0%, rgba(255, 250, 220, 0.35) 50%, transparent 100%);
+}
 .xp-track.is-flare {
   animation: xpGlow 1.6s ease-out;
 }
@@ -4542,6 +4567,8 @@ input.slider::-moz-range-thumb {
   inset: 0;
   z-index: 11;
   pointer-events: none;
+  /* Drawn pixel for pixel over the world: undo the UI scale. */
+  zoom: calc(1 / var(--ui-scale, 1));
 }
 
 /* Level up: a burst of light, the new number in gilt, and what to do next. */
@@ -6378,6 +6405,9 @@ input.slider::-moz-range-thumb {
   animation: forgeFlash 700ms ease-out forwards;
   pointer-events: none;
 }
+.flash-reduce .smith-forge.is-success::after {
+  background: radial-gradient(circle at 50% 60%, rgba(255, 190, 90, 0.2), transparent 65%);
+}
 @keyframes forgeFlash {
   0% {
     opacity: 1;
@@ -6694,7 +6724,7 @@ input.slider::-moz-range-thumb {
    Responsive trims — the game targets 1080p+, this keeps 1366x768 usable.
    -------------------------------------------------------------------------- */
 
-@media (max-height: 820px) {
+@container ui (max-height: 820px) {
   .cmdbar {
     transform: translateX(-50%) scale(0.9);
     transform-origin: bottom center;
@@ -6704,7 +6734,7 @@ input.slider::-moz-range-thumb {
   }
 }
 
-@media (max-width: 1500px) {
+@container ui (max-width: 1500px) {
   .skill-body {
     grid-template-columns: auto 1fr;
     gap: var(--s5);
@@ -7130,7 +7160,7 @@ input.slider::-moz-range-thumb {
 /* Short screens (800 and 720 tall): the flavour line goes, and the board's
    tiers get shorter to fit (SkillTreePanel `fitBoard`). Its text keeps its
    size: scaling the board as one piece took the labels under 8 px. */
-@media (max-height: 820px) {
+@container ui (max-height: 820px) {
   .skill-treeblurb {
     display: none;
   }

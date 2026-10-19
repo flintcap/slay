@@ -1640,3 +1640,106 @@ every line in `locales/strings.json`; `locales/README.md` is the translators'
 guide. The pseudo language (test builds) shows what was missed: plain text
 was not wrapped, cut-off text has no room for longer languages.
 `node tools/uilab.mjs --lang=qps` takes the UI pictures in it.
+
+## Frames, display and comfort — `src/core/FramePace.ts`, `src/core/Display.ts`, `src/fx/kit/Exposure.ts` — owned by Settings
+
+```ts
+// src/core/FramePace.ts
+export const FRAME_CAPS: readonly number[];   // [0, 30, 40, 60, 90, 120, 144]; 0 = every refresh
+export class FramePace {
+  hz: number;                                  // the screen's refresh rate as read (60 until known)
+  get periodMs(): number;
+  sample(gapMs: number, workMs: number, gpuMs: number, drew: boolean): void;
+  allow(now: number, cap: number): boolean;    // false: skip this refresh under the cap
+  aimMs(cap: number): number;                  // auto quality's frame time: the cap or 60, at most hz
+}
+export const framePace: FramePace;
+
+// src/core/Display.ts (must run from a click)
+export function setFullscreen(on: boolean, onScreen?: ScreenChoice): Promise<void>;
+export function canChooseScreen(): boolean;
+export function listScreens(): Promise<{ screens: ScreenChoice[]; current: number }>;
+export function onFullscreenChange(fn: () => void): () => void;
+
+// src/core/Renderer.ts
+setEffectsOff(off: readonly VideoEffect[]): void;  // on top of the quality preset
+setBrightness(b: number): void;                    // 0.7..1.4, a gamma on the finished picture
+setComfort(calm: boolean, flash: number): void;    // calm: no hurt warp, fringe or haze; flash: share of the red tints
+
+// src/fx/kit/Exposure.ts
+export const FX_COMFORT: { light: number; hit: number; ceiling: number };
+export function setFlashReduce(on: boolean): void;
+```
+
+The engine reads the refresh rate from its own `requestAnimationFrame` gaps
+and skips refreshes for the frame cap before it reads the clock. Auto quality
+scales its frame times by `(1000 / 60) / framePace.aimMs(cap)`, so its 60 Hz
+limits hold at any aim. `main.ts` applies the video switches on boot and on
+`settings:changed`. Bright effects go through `EffectSystem.flash` (which
+scales by `FX_COMFORT.light`) and the struck-body flash by `FX_COMFORT.hit`;
+new screen-wide CSS flashes need a softer `.flash-reduce` rule. Window modes
+and vsync belong to the desktop app (Phase 4).
+
+Mouse buttons rebind like keys, as the codes `Mouse0`..`Mouse4` (left,
+middle, right, back, forward). `Input` turns a button that carries a key's
+action into that key's press (a `keydown` with the button's code, which every
+hotkey listener remaps), and a key that carries `Mouse0`/`Mouse2` into the
+move or attack button. The left button only ever moves or attacks, so the
+menus can always be clicked (`rebind` refuses the rest).
+
+## UI scale — `src/core/UiScale.ts` — owned by Settings
+
+```ts
+export const UI_SCALE_MIN = 0.8, UI_SCALE_MAX = 2;          // Menu size
+export const HUD_SCALE_MIN = 0.7, HUD_SCALE_MAX = 1.5;      // HUD size, on top
+export const MINIMAP_SCALE_MIN = 0.75, MINIMAP_SCALE_MAX = 1.75;
+export function uiScale(): number;
+export function hudScale(): number;
+export function minimapScale(): number;
+export function uiWidth(): number;                // the window in #ui's own CSS px
+export function uiHeight(): number;
+export function cssPx(el: Element, px: number): number;   // screen px -> el's CSS px
+export function applyUiScale(settings: GameSettings): boolean;  // true if any changed
+
+// src/core/Screen.ts
+export function uiRatio(extra?: number): number;  // device px per CSS px inside #ui
+export function uiScaleChanged(): void;           // wakes every onScreenRatio listener
+```
+
+`#ui` is drawn with CSS `zoom: var(--ui-scale)` and is the size container
+`ui`; `.hud` adds `--hud-scale` and `.minimap` `--minimap-scale`. Inside the
+layer, a pointer's `clientX`, a `getBoundingClientRect` edge or
+`window.innerWidth` is in screen pixels and `left`/`top` take CSS pixels, so
+code converts with `cssPx` and `uiWidth`/`uiHeight`. Stylesheets use
+`cqw`/`cqh` and `@container ui (...)`, never `vw`/`vh` or a size `@media`.
+Canvases in the layer sharpen to `uiRatio()`. The combat numbers and the
+see-through map cover the screen pixel for pixel and undo the zoom.
+`tools/check-uiscale.mjs` holds all of this.
+
+## three.js hooks — `src/core/ThreeHooks.ts` — owned by Engine safety
+
+```ts
+export const THREE_TESTED: string;                 // the three.js REVISION the hooks were checked on
+export const HOOKS: readonly ThreeHook[];          // id, ours, theirs, needs, check
+export function hookSeen(id: string, found: boolean): boolean;   // a hook reports itself; returns found
+export function selfTest(gl: THREE.WebGPURenderer | null): HookReport;  // { revision, missing, unseen }
+
+// src/core/Renderer.ts
+hooks: HookReport | null;                          // set at the end of init()
+```
+
+Every place the game changes or reads a part of three.js that is not its
+public API is one entry in `HOOKS`: the game file, the three.js file, and the
+exact words in it the hook depends on. A hook installs only when what it needs
+is there (`hookSeen(id, found)` before it patches) and otherwise leaves
+three's own behaviour, so a missing hook costs speed or a detail, never a
+crash. `Renderer.init` runs `selfTest` once; a missing hook goes to the log
+(`console.error`) and the bug report (`Report.ts`). three and @types/three are
+pinned to exact versions in package.json.
+
+`tools/check-threehooks.mjs` (static) fails on a loose pin, a release other
+than `THREE_TESTED`, a hook whose words moved in node_modules/three, a
+`hookSeen` id that is not listed, or an "in use" hook nothing reports.
+`bootGame` (tools/lib/game.mjs) fails every browser check whose startup
+self-test found a hook missing. To update three.js: bump the pin, run the
+checker, mend what it names, then raise `THREE_TESTED`.

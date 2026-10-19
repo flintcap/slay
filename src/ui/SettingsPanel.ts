@@ -11,14 +11,19 @@
  * `core/Input.ts` and the click handling in DungeonScene.
  */
 
-import type { GameSettings } from '../types';
+import type { GameSettings, VideoEffect } from '../types';
+import { VIDEO_EFFECTS } from '../types';
+import { QUALITY } from '../core/Renderer';
+import { FRAME_CAPS, framePace } from '../core/FramePace';
+import { HUD_SCALE_MAX, HUD_SCALE_MIN, MINIMAP_SCALE_MAX, MINIMAP_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_MIN } from '../core/UiScale';
+import { canChooseScreen, isFullscreen, listScreens, onFullscreenChange, setFullscreen } from '../core/Display';
 import type { Engine } from '../core/Engine';
 import { events } from '../core/Events';
 import { save, DEFAULT_SETTINGS } from '../core/Save';
 import { resetHints } from './Onboarding';
 import { accessibilitySection, keybindSection, keyLabel } from './AccessibilitySettings';
 import { keyFor, remapKey } from '../core/Access';
-import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, modal, attempt } from './Widgets';
+import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, modal, attempt, section } from './Widgets';
 import { uiSfx } from './Sfx';
 import { FieldNav } from './FieldNav';
 import { peril } from '../core/Peril';
@@ -113,6 +118,8 @@ export class SettingsPanel {
   private content: HTMLDivElement;
   private tabButtons = new Map<TabId, HTMLButtonElement>();
   private fps: HTMLDivElement | null = null;
+  /** Stops the Full screen switch following the browser (it was redrawn). */
+  private offFullscreen: (() => void) | null = null;
   private fpsTimer = 0;
 
   constructor(engine: Engine) {
@@ -287,6 +294,8 @@ export class SettingsPanel {
     const s = save.settings;
     this.heading(tr('Video'), tr('Changes apply immediately.'));
     const note = div('stg-note', QUALITY_NOTES[s.quality]);
+    // The Effects switches show what the chosen preset has, so they follow it.
+    const effects = div('');
     this.content.appendChild(
       new Segmented<QualityId>(
         tr('Quality'),
@@ -302,6 +311,7 @@ export class SettingsPanel {
           attempt(() => this.engine.renderer.setQuality(v), undefined);
           note.textContent = QUALITY_NOTES[v];
           this.commit();
+          this.effects(effects);
         },
       ).root,
     );
@@ -321,18 +331,162 @@ export class SettingsPanel {
         this.commit();
       }, (v) => `${Math.round(v * 100)}%`, tr('Draws fewer pixels and fills in the rest. Lower is faster')).root,
     );
-    this.content.appendChild(
+    this.display();
+    this.interfaceSize();
+    this.content.appendChild(effects);
+    this.effects(effects);
+    const more = section(tr('View'), 'eye');
+    more.body.appendChild(
       new Slider(tr('Camera distance'), s.cameraDistance, 0.6, 1.8, 0.05, (v) => {
         s.cameraDistance = v;
         this.commit();
       }, (v) => `${numText(v, 2)}x`, tr('How far the camera sits from your hero. Further shows more of the fight')).root,
     );
-    this.content.appendChild(
+    more.body.appendChild(
       new Toggle(tr('Show frame rate'), !!s.showFps, (v) => {
         s.showFps = v;
         this.commit();
       }, tr('A small readout in the top-right corner')).root,
     );
+    this.content.appendChild(more.root);
+  }
+
+  /** Full screen, the screen, the frame cap and brightness. */
+  private display(): void {
+    const s = save.settings;
+    const sec = section(tr('Display'), 'eye');
+    const full = new Toggle(tr('Full screen'), isFullscreen(), (v) => {
+      void setFullscreen(v).catch(() => {
+        full.set(isFullscreen());
+        events.emit('toast', { text: tr('The browser would not change full screen.'), kind: 'bad' });
+      });
+    }, tr('Hold Esc to leave it. A tap of Esc still pauses'));
+    this.offFullscreen?.();
+    this.offFullscreen = onFullscreenChange(() => full.set(isFullscreen()));
+    sec.body.appendChild(full.root);
+    if (canChooseScreen()) {
+      const pick = div('stg-row');
+      const find = new Button({
+        label: tr('Choose a screen'),
+        icon: 'eye',
+        small: true,
+        onClick: () => {
+          void listScreens().then(
+            ({ screens, current }) => {
+              pick.replaceChildren();
+              pick.appendChild(
+                new Segmented<string>(
+                  tr('Screen'),
+                  screens.map((sc, i) => ({ id: String(i), label: sc.primary ? tr('{0} (main)', sc.label) : sc.label, hint: `${sc.width} × ${sc.height}` })),
+                  String(current),
+                  (v) => {
+                    void setFullscreen(true, screens[Number(v)]).then(() => full.set(true), () => undefined);
+                  },
+                ).root,
+              );
+            },
+            () => events.emit('toast', { text: tr('The browser did not allow a list of screens.'), kind: 'bad' }),
+          );
+        },
+      });
+      pick.appendChild(find.root);
+      sec.body.appendChild(pick);
+    }
+    const hz = framePace.hz;
+    const caps = FRAME_CAPS.filter((c) => c === 0 || c <= hz || c === s.frameCap);
+    const capNote = div('stg-note');
+    const showCap = (): void => {
+      const cap = s.frameCap ?? 0;
+      capNote.textContent = tr('Your screen shows {0} frames a second. Auto quality aims for {1}.', hz, Math.round(1000 / framePace.aimMs(cap)));
+    };
+    sec.body.appendChild(
+      new Segmented<string>(
+        tr('Frame cap'),
+        caps.map((c) => ({ id: String(c), label: c === 0 ? tr('Screen') : String(c), hint: c === 0 ? tr('One frame for every refresh of the screen') : undefined })),
+        String(s.frameCap ?? 0),
+        (v) => {
+          s.frameCap = Number(v);
+          this.commit();
+          showCap();
+        },
+      ).root,
+    );
+    showCap();
+    sec.body.appendChild(capNote);
+    sec.body.appendChild(
+      new Slider(tr('Brightness'), s.brightness ?? 1, 0.7, 1.4, 0.05, (v) => {
+        s.brightness = v;
+        this.commit();
+      }, (v) => `${Math.round(v * 100)}%`, tr('Raise it until the darkest corners just show shapes')).root,
+    );
+    sec.body.appendChild(div('stg-note', tr('In a browser, frames always wait for the screen (vsync). Window modes come with the desktop version.')));
+    this.content.appendChild(sec.root);
+  }
+
+  /**
+   * How big the menus, the HUD and the minimap are drawn. Each one changes when
+   * the slider is let go: the panel it sits in grows or shrinks with it.
+   */
+  private interfaceSize(): void {
+    const s = save.settings;
+    const sec = section(tr('Interface'), 'eye');
+    const pct = (v: number): string => `${Math.round(v * 100)}%`;
+    const rows: Array<[string, string, number, number, number, (v: number) => void]> = [
+      [tr('Menu size'), tr('Every menu, the HUD and the words on screen'), s.uiScale ?? 1, UI_SCALE_MIN, UI_SCALE_MAX, (v) => (s.uiScale = v)],
+      [tr('HUD size'), tr('The orbs, the skill bar and the minimap, on top of the menu size'), s.hudScale ?? 1, HUD_SCALE_MIN, HUD_SCALE_MAX, (v) => (s.hudScale = v)],
+      [tr('Minimap size'), tr('The map in the top-right corner'), s.minimapScale ?? 1, MINIMAP_SCALE_MIN, MINIMAP_SCALE_MAX, (v) => (s.minimapScale = v)],
+    ];
+    for (const [label, hint, value, min, max, set] of rows) {
+      sec.body.appendChild(
+        new Slider(label, value, min, max, 0.05, () => undefined, pct, hint).onRelease((v) => {
+          set(v);
+          this.commit();
+        }).root,
+      );
+    }
+    this.content.appendChild(sec.root);
+  }
+
+  /** One switch per effect, for the effects the chosen quality has. */
+  private effects(into: HTMLElement): void {
+    const s = save.settings;
+    const q = QUALITY[s.quality];
+    const has: Record<VideoEffect, boolean> = {
+      bloom: q.bloom,
+      aa: q.taa || q.smaa,
+      ao: q.ao,
+      torchShadows: q.pointShadows,
+      contactShadows: q.contactShadows,
+      airLight: q.shafts || q.motes || q.air > 0,
+      grain: true,
+      fringe: true,
+      ripples: true,
+    };
+    const rows: Array<[VideoEffect, string, string]> = [
+      ['bloom', tr('Glow'), tr('Fire, magic and bright light bleed softly into the dark')],
+      ['aa', tr('Edge smoothing'), tr('Steadies thin edges and shimmer')],
+      ['ao', tr('Ambient occlusion'), tr('Soft dark where walls and floor meet')],
+      ['torchShadows', tr('Torch shadows'), tr('Torches, braziers and your lantern cast shadows')],
+      ['contactShadows', tr('Contact shadows'), tr('Small sharp shadows where things touch the ground, outdoors')],
+      ['airLight', tr('Light in the air'), tr('Glow in the fog round torches, dust and sunbeams')],
+      ['grain', tr('Film grain'), tr('A fine grain over the picture')],
+      ['fringe', tr('Lens fringe'), tr('Colour fringes at the edges of the screen')],
+      ['ripples', tr('Heat haze and ripples'), tr('Shockwaves, portals and hot air bend the picture')],
+    ];
+    const sec = section(tr('Effects'), 'sparkle');
+    for (const [id, label, hint] of rows) {
+      if (!has[id]) continue;
+      sec.body.appendChild(
+        new Toggle(label, !(s.effectsOff ?? []).includes(id), (on) => {
+          const off = new Set(s.effectsOff ?? []);
+          if (on) off.delete(id);
+          else off.add(id);
+          s.effectsOff = VIDEO_EFFECTS.filter((e) => off.has(e));
+          this.commit();
+        }, hint).root,
+      );
+    }
+    into.replaceChildren(sec.root);
   }
 
   private audio(): void {
@@ -349,7 +503,16 @@ export class SettingsPanel {
     };
     this.content.appendChild(slider(tr('Master volume'), s.masterVolume, (v) => (s.masterVolume = v), tr('Everything at once'), true));
     this.content.appendChild(slider(tr('Music'), s.musicVolume, (v) => (s.musicVolume = v), tr('The score in town and below')));
-    this.content.appendChild(slider(tr('Effects'), s.sfxVolume, (v) => (s.sfxVolume = v), tr('Hits, spells, footsteps and menu clicks'), true));
+    this.content.appendChild(slider(tr('Effects'), s.sfxVolume, (v) => (s.sfxVolume = v), tr('Hits, spells, footsteps and monsters')));
+    this.content.appendChild(slider(tr('Ambience'), s.ambienceVolume ?? s.sfxVolume, (v) => (s.ambienceVolume = v), tr('Wind, water, fire and the sound of each place')));
+    this.content.appendChild(slider(tr('Interface'), s.uiVolume ?? s.sfxVolume, (v) => (s.uiVolume = v), tr('Menu clicks and the chimes for level-ups, quests and crafting'), true));
+    this.content.appendChild(slider(tr('Voices'), s.voiceVolume ?? s.sfxVolume, (v) => (s.voiceVolume = v), tr("Your hero's cries and lines, and what the bosses say")));
+    this.content.appendChild(
+      new Toggle(tr('Mute in the background'), s.muteInBackground !== false, (v) => {
+        s.muteInBackground = v;
+        this.commit();
+      }, tr('Silent while another window or tab is in front')).root,
+    );
   }
 
   private gameplay(): void {
@@ -407,7 +570,13 @@ export class SettingsPanel {
       new Toggle(tr('Reduced motion'), !!s.reduceMotion, (v) => {
         s.reduceMotion = v;
         this.commit();
-      }, tr('Calmer menus: no slow intros or sweeping shines')).root,
+      }, tr('Calmer menus, no screen shake, and no warp when you are hit')).root,
+    );
+    this.content.appendChild(
+      new Toggle(tr('Flash reduction'), !!s.flashReduce, (v) => {
+        s.flashReduce = v;
+        this.commit();
+      }, tr('Softer red when you are hit, dimmer bursts of light from spells and blows')).root,
     );
     // Text size and colour-blind item colours (quality stream).
     this.content.appendChild(accessibilitySection(() => this.commit()));

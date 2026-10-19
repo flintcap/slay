@@ -13,6 +13,7 @@
  * format other than 8-bit RGBA) still goes the usual way.
  */
 import type * as THREE from 'three/webgpu';
+import { hookSeen } from './ThreeHooks';
 
 type CopyImage = (
   image: unknown,
@@ -39,6 +40,8 @@ export function uploadCanvasesWithoutWaiting(renderer: THREE.WebGPURenderer): vo
   const backend = renderer.backend as unknown as { device?: GPUDevice; textureUtils?: { _copyImageToTexture?: CopyImage } };
   const utils = backend.textureUtils;
   const device = backend.device;
+  // Without them (`ThreeHooks.ts`) canvases upload the way three does.
+  hookSeen('WebGPUTextureUtils._copyImageToTexture', typeof utils?._copyImageToTexture === 'function' && !!device);
   if (!utils?._copyImageToTexture || !device) return;
   const base = utils._copyImageToTexture.bind(utils);
   utils._copyImageToTexture = (image, textureGPU, descriptor, originDepth, flipY, premultiplyAlpha, mipLevel = 0) => {

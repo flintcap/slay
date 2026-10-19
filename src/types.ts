@@ -649,10 +649,23 @@ export interface LootFilterSettings {
   minRarity?: ItemRarity;
 }
 
+/** An effect the player can switch off on its own (core/Renderer.ts `withoutEffects`). */
+export type VideoEffect = 'bloom' | 'aa' | 'ao' | 'torchShadows' | 'contactShadows' | 'airLight' | 'grain' | 'fringe' | 'ripples';
+export const VIDEO_EFFECTS: readonly VideoEffect[] = ['bloom', 'aa', 'ao', 'torchShadows', 'contactShadows', 'airLight', 'grain', 'fringe', 'ripples'];
+
 export interface GameSettings {
   masterVolume: number;
   musicVolume: number;
+  /** The world's sounds: hits, spells, footsteps, monsters. */
   sfxVolume: number;
+  /** Room beds and the one-off sounds of a place (wind, drips, birds). Absent: as `sfxVolume`. */
+  ambienceVolume?: number;
+  /** Menu clicks, pickups, level-up and quest chimes. Absent: as `sfxVolume`. */
+  uiVolume?: number;
+  /** The hero's cries and lines, the bosses' spoken lines. Absent: as `sfxVolume`. */
+  voiceVolume?: number;
+  /** Silent while the tab is hidden or another window has focus. Default on. */
+  muteInBackground?: boolean;
   quality: 'low' | 'medium' | 'high' | 'ultra';
   /**
    * Auto quality (core/AutoQuality.ts): steps below `quality` when frames run
@@ -675,6 +688,20 @@ export interface GameSettings {
   /** Small frame-rate readout in the corner. */
   showFps?: boolean;
   /**
+   * Most frames drawn a second (core/FramePace.ts); 0 draws one per screen
+   * refresh. Auto quality aims for it.
+   */
+  frameCap?: number;
+  /** Brightness of the finished picture, 0.7 to 1.4. 1 = as graded. */
+  brightness?: number;
+  /** Effects switched off on top of the quality preset (Settings, Video, Effects). */
+  effectsOff?: VideoEffect[];
+  /**
+   * Flash reduction: softer red on hits and low life, no white screen
+   * flashes, gentler bright bursts from spells.
+   */
+  flashReduce?: boolean;
+  /**
    * Share of each side of the screen the 3D scene is drawn at, 0.5..1, on
    * top of the quality preset's own. 1 = every pixel.
    */
@@ -683,6 +710,12 @@ export interface GameSettings {
   trackerHidden?: boolean;
   /** Multiplier on every UI type size (accessibility). 1 = as designed. */
   textScale?: number;
+  /** How big every menu and the HUD are drawn, 0.8 to 2 (core/UiScale.ts). 1 = as designed. */
+  uiScale?: number;
+  /** The HUD's size on top of `uiScale`, 0.7 to 1.5. */
+  hudScale?: number;
+  /** The minimap's size, 0.75 to 1.75: a bigger one shows more of the floor. */
+  minimapScale?: number;
   /** Swap rarity colours for a palette every colour-vision type can tell apart. */
   colorBlindRarity?: boolean;
   /**

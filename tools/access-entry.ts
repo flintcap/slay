@@ -7,6 +7,8 @@
 import {
   REBINDABLE,
   RESERVED_KEYS,
+  MOUSE_ACTIONS,
+  MOUSE_CODES,
   rebind,
   bindsAreValid,
   keyFor,
@@ -28,20 +30,31 @@ const pool = [
   ...REBINDABLE.map((a) => a.code),
   'KeyZ', 'KeyX', 'KeyV', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyP', 'KeyR', 'KeyU', 'KeyY', 'KeyO', 'KeyN',
   'Digit7', 'Digit8', 'Digit9', 'Digit0', 'ArrowUp', 'Numpad1', 'Semicolon', 'Escape', 'ShiftLeft', 'Tab',
+  ...MOUSE_CODES,
 ];
+/** The action `key` gives under `binds`. */
+const actionOn = (binds: Record<string, string>, key: string): string => Object.entries(binds).find(([, p]) => p === key)?.[0] ?? key;
+const onLeft = (binds: Record<string, string>): string => actionOn(binds, 'Mouse0');
 let steps = 0;
 for (let run = 0; run < 300 && problems.length < 10; run++) {
   let binds: Record<string, string> = {};
   for (let i = 0; i < 25; i++) {
     const action = rng.pick(REBINDABLE).code;
     const key = rng.pick(pool);
+    const before = binds;
     binds = rebind(binds, action, key);
     steps++;
     if (!bindsAreValid(binds)) {
       problems.push(`run ${run} step ${i}: ${action} -> ${key} left an invalid map ${JSON.stringify(binds)}`);
       break;
     }
-    if (!RESERVED_KEYS.has(key) && keyFor(action, binds) !== key) {
+    if (!MOUSE_ACTIONS.has(onLeft(binds))) {
+      problems.push(`run ${run}: ${action} -> ${key} put ${onLeft(binds)} on the left mouse button`);
+      break;
+    }
+    // Refused only when it would put a key's action on the left button.
+    const leftWouldLose = (key === 'Mouse0' && !MOUSE_ACTIONS.has(action)) || (keyFor(action, before) === 'Mouse0' && !MOUSE_ACTIONS.has(actionOn(before, key)));
+    if (!RESERVED_KEYS.has(key) && keyFor(action, binds) !== key && !leftWouldLose) {
       problems.push(`run ${run}: ${action} -> ${key} did not take (now ${keyFor(action, binds)})`);
       break;
     }
@@ -79,6 +92,10 @@ const bad = migrateAccount({
 if ((bad.textScale ?? 1) > 1.5) problems.push(`text scale not clamped: ${bad.textScale}`);
 if (bad.colorBlindRarity !== false || bad.reduceMotion !== false) problems.push('non-boolean toggles kept');
 if (Object.keys(bad.keybinds ?? {}).length !== 0) problems.push('a key map with two actions on one key was kept');
+const scales = migrateAccount({ stash: [], settings: { uiScale: 9, hudScale: -1, minimapScale: 'big' } }).data.settings;
+if (scales.uiScale !== 2 || scales.hudScale !== 0.7 || scales.minimapScale !== 1) {
+  problems.push(`UI scales not clamped on load: ${scales.uiScale}, ${scales.hudScale}, ${scales.minimapScale}`);
+}
 const good = migrateAccount({ stash: [], settings: { keybinds: { KeyW: 'KeyZ', KeyZ: 'KeyW' }, textScale: 1.2 } }).data.settings;
 if (good.keybinds?.KeyW !== 'KeyZ' || good.textScale !== 1.2) problems.push('a valid key map or text size was lost on load');
 

@@ -16,6 +16,11 @@
  * or plainer shading would only cost the look. Without GPU time it learns the
  * same thing the slow way, by trying a step and putting it back (`MIN_GAIN`).
  *
+ * Every limit below is written for a 60 a second aim and scales with the aim
+ * in force (core/FramePace.ts): the frame cap, or 60 with none, and never
+ * more than the screen shows. A 30 or 40 Hz screen, or a 30 cap, no longer
+ * reads as a machine too slow for its quality.
+ *
  * It judges a second or so of frames at a time, never one frame: a single
  * long frame (a load, a menu opening) is not a reason to change anything.
  * A step up that turns out too much for the machine makes the next try wait
@@ -26,12 +31,15 @@
  * for.
  */
 import type { GameSettings } from '../types';
+import { framePace } from './FramePace';
 
 type QualityId = GameSettings['quality'];
 const LADDER: readonly QualityId[] = ['low', 'medium', 'high', 'ultra'];
 
 /** Frames judged at a time. */
 const WINDOW = 90;
+/** One frame at 60 a second (ms): the aim the limits below are written for. */
+const AIM_60 = 1000 / 60;
 /** Step down when the middle frame takes longer than this (ms)... */
 const SLOW_MEDIAN = 22;
 /** ...or one frame in ten takes longer than this. */
@@ -136,7 +144,9 @@ export class AutoQuality {
     const elapsedS = this.lastJudged ? (now - this.lastJudged) / 1000 : 1;
     this.lastJudged = now;
 
-    const sorted = [...this.frames].sort((a, b) => a - b);
+    // Frame times as if the aim were 60 a second, so the limits hold for any aim.
+    const k = AIM_60 / framePace.aimMs(s.frameCap ?? 0);
+    const sorted = this.frames.map((f) => f * k).sort((a, b) => a - b);
     const median = sorted[Math.floor(sorted.length * 0.5)]!;
     const p90 = sorted[Math.floor(sorted.length * 0.9)]!;
 
@@ -153,7 +163,7 @@ export class AutoQuality {
     if (slow || median > RES_SLOW_MEDIAN || p90 > RES_SLOW_P90) {
       this.calmS = 0;
       if (now < this.holdUntil) return;
-      const gpu = this.target.gpuMs ?? 0;
+      const gpu = (this.target.gpuMs ?? 0) * k;
       if (gpu > 0 && gpu < median * GPU_BOUND_SHARE) return;
       // Fewer pixels first; the look goes only when that is not enough.
       if (this.res < RES_STEPS.length - 1) {

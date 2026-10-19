@@ -11,8 +11,9 @@ import { events } from '../core/Events';
 import { runtime, Panel, add, clear, div, span, icon, emptyState } from './Widgets';
 import { zoneInks, zoneInkAt, newKindInk, wayMarks, T_RUIN } from './ZoneInk';
 import { FONT_DISPLAY } from './Fonts';
-import { onScreenRatio, screenRatio } from '../core/Screen';
+import { onScreenRatio, uiRatio } from '../core/Screen';
 import { tr } from '../core/I18n';
+import { cssPx } from '../core/UiScale';
 
 const T_VOID = 0;
 const T_FLOOR = 1;
@@ -135,14 +136,14 @@ export class MapPanel {
     let sy = 0;
     this.stage.addEventListener('pointerdown', (e) => {
       dragging = true;
-      sx = e.clientX - this.panX;
-      sy = e.clientY - this.panY;
+      sx = cssPx(this.stage, e.clientX) - this.panX;
+      sy = cssPx(this.stage, e.clientY) - this.panY;
       this.stage.setPointerCapture(e.pointerId);
     });
     this.stage.addEventListener('pointermove', (e) => {
       if (!dragging) return;
-      this.panX = e.clientX - sx;
-      this.panY = e.clientY - sy;
+      this.panX = cssPx(this.stage, e.clientX) - sx;
+      this.panY = cssPx(this.stage, e.clientY) - sy;
       this.dirty = true;
     });
     const stop = (e: PointerEvent): void => {
@@ -205,7 +206,7 @@ export class MapPanel {
     if (w !== this.stageW || h !== this.stageH) this.dirty = true;
     this.stageW = w;
     this.stageH = h;
-    const dpr = screenRatio();
+    const dpr = uiRatio();
     const want = { w: Math.round(w * dpr), h: Math.round(h * dpr) };
     if (this.canvas.width !== want.w || this.canvas.height !== want.h) {
       this.canvas.width = want.w;

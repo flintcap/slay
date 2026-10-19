@@ -23,6 +23,7 @@
  * since three's default depth format cannot be copied.
  */
 import * as THREE from 'three/webgpu';
+import { hookSeen } from './ThreeHooks';
 
 interface Still {
   obj: THREE.Object3D;
@@ -193,6 +194,12 @@ export function installShadowCache(gate: { skipped: number } | null): void {
   if (installed) return;
   installed = true;
   const proto = THREE.ShadowNode.prototype as unknown as ShadowNodeLike;
+  // Only over three's own (`ThreeHooks.ts`): without them, shadows are drawn every time.
+  const found =
+    typeof proto.setupRenderTarget === 'function' &&
+    typeof proto.renderShadow === 'function' &&
+    typeof (THREE.Renderer.prototype as { getRenderObjectFunction?: unknown }).getRenderObjectFunction === 'function';
+  if (!hookSeen('ShadowNode.setupRenderTarget, renderShadow', found)) return;
 
   const setup = proto.setupRenderTarget;
   proto.setupRenderTarget = function (this: ShadowNodeLike, shadow, builder) {

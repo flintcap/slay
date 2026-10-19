@@ -16,7 +16,7 @@ import * as THREE from 'three/webgpu';
 import { makeStudio, type Studio } from '../core/Studio';
 import type { Character } from '../types';
 import { DressedHero, VISUAL_SLOTS } from '../scenes/HeroModel';
-import { onScreenRatio, screenRatio } from '../core/Screen';
+import { onScreenRatio, uiRatio } from '../core/Screen';
 
 /** Panel-sized viewport. */
 const WIDTH = 188;
@@ -120,16 +120,27 @@ export class PaperdollView {
         r.dispose();
         return;
       }
-      r.setPixelRatio(screenRatio());
+      r.setPixelRatio(uiRatio());
       r.setSize(WIDTH, HEIGHT);
       r.toneMappingExposure = 1.15;
       r.setClearColor(0x000000, 0);
       r.domElement.className = 'pd-view-canvas';
       this.root.appendChild(r.domElement);
       this.renderer = r;
+      // The game's renderer was replaced (a Restart after a lost GPU): this
+      // studio cannot draw again, and the next draw opens one on the new one.
+      r.onLost = () => {
+        if (this.renderer !== r) return;
+        const run = this.running;
+        this.stop();
+        this.offRatio();
+        r.domElement.remove();
+        this.renderer = null;
+        if (run) this.start();
+      };
       // Another monitor's sharpness: the same CSS size, more or fewer pixels.
-      this.offRatio = onScreenRatio((dpr) => {
-        r.setPixelRatio(dpr);
+      this.offRatio = onScreenRatio(() => {
+        r.setPixelRatio(uiRatio());
         r.setSize(WIDTH, HEIGHT);
       });
       const todo = this.onOpen.splice(0);

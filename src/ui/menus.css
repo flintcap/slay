@@ -220,7 +220,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  height: 9vh;
+  height: 9cqh;
   background: var(--shade);
   pointer-events: none;
   z-index: 3;
@@ -246,9 +246,9 @@
 
 .ttl-col {
   position: absolute;
-  left: clamp(32px, 6.5vw, 140px);
+  left: clamp(32px, 6.5cqw, 140px);
   top: 50%;
-  width: min(460px, 40vw);
+  width: min(460px, 40cqw);
   transform: translateY(-52%);
   z-index: 4;
 }
@@ -382,9 +382,9 @@
 
 .ttl-foot {
   position: absolute;
-  left: clamp(32px, 6.5vw, 140px);
-  right: clamp(32px, 4vw, 80px);
-  bottom: 5.2vh;
+  left: clamp(32px, 6.5cqw, 140px);
+  right: clamp(32px, 4cqw, 80px);
+  bottom: 5.2cqh;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -464,15 +464,15 @@
   animation-delay: 0ms;
 }
 
-@media (max-width: 1100px) {
+@container ui (max-width: 1100px) {
   .ttl-col {
-    width: min(420px, 60vw);
+    width: min(420px, 60cqw);
   }
   .ttl-motto {
     display: none;
   }
 }
-@media (max-height: 760px) {
+@container ui (max-height: 760px) {
   .mn-item-label {
     font-size: calc(20px * var(--text-scale, 1));
   }
@@ -554,9 +554,9 @@
 /* --- top bar --- */
 .csx-top {
   position: absolute;
-  top: 3.2vh;
-  left: 3vw;
-  right: 3vw;
+  top: 3.2cqh;
+  left: 3cqw;
+  right: 3cqw;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: start;
@@ -600,7 +600,7 @@
 }
 .csx-title {
   font-family: var(--font-display);
-  font-size: calc(clamp(24px, 2.4vw, 34px) * var(--text-scale, 1));
+  font-size: calc(clamp(24px, 2.4cqw, 34px) * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.3em;
   text-indent: 0.3em;
@@ -621,7 +621,7 @@
 /* --- mode tabs --- */
 .csx-tabs {
   position: absolute;
-  top: calc(3.2vh + 74px);
+  top: calc(3.2cqh + 74px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -664,10 +664,10 @@
 /* --- left list --- */
 .csx-list {
   position: absolute;
-  left: 3vw;
-  top: calc(3.2vh + 112px);
-  bottom: 21vh;
-  width: clamp(250px, 21vw, 320px);
+  left: 3cqw;
+  top: calc(3.2cqh + 112px);
+  bottom: 21cqh;
+  width: clamp(250px, 21cqw, 320px);
   overflow-y: auto;
   padding-right: var(--s2);
 }
@@ -774,10 +774,10 @@
 .csx-detail {
   --accent: var(--gold);
   position: absolute;
-  right: 3vw;
-  top: calc(3.2vh + 100px);
-  max-height: calc(100vh - 3.2vh - 100px - 21vh);
-  width: clamp(300px, 25vw, 400px);
+  right: 3cqw;
+  top: calc(3.2cqh + 100px);
+  max-height: calc(100cqh - 3.2cqh - 100px - 21cqh);
+  width: clamp(300px, 25cqw, 400px);
   overflow-y: auto;
   padding: var(--s5) var(--s5) var(--s4);
   background: linear-gradient(180deg, rgba(10, 8, 6, 0.72), rgba(10, 8, 6, 0.55));
@@ -810,7 +810,7 @@
 }
 .csx-name-big {
   font-family: var(--font-display);
-  font-size: calc(clamp(28px, 2.6vw, 40px) * var(--text-scale, 1));
+  font-size: calc(clamp(28px, 2.6cqw, 40px) * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0.08em;
@@ -1039,7 +1039,7 @@
 .csx-drag {
   position: absolute;
   left: 50%;
-  bottom: calc(3vh + 104px);
+  bottom: calc(3cqh + 104px);
   transform: translateX(-50%);
   font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.3em;
@@ -1052,9 +1052,9 @@
 /* --- bottom commit bar --- */
 .csx-bottom {
   position: absolute;
-  left: 3vw;
-  right: 3vw;
-  bottom: 3vh;
+  left: 3cqw;
+  right: 3cqw;
+  bottom: 3cqh;
   display: flex;
   justify-content: center;
   pointer-events: none !important;
@@ -1283,7 +1283,7 @@
   animation: csxShake 380ms ease;
 }
 
-@media (max-width: 1280px), (max-height: 760px) {
+@container ui (max-width: 1280px) or (max-height: 760px) {
   .csx-create {
     gap: var(--s4);
     padding: var(--s3) var(--s4) calc(var(--s3) + 10px);
@@ -1303,12 +1303,12 @@
     display: none;
   }
 }
-@media (max-height: 760px) {
+@container ui (max-height: 760px) {
   .csx-list {
-    bottom: calc(3vh + 110px);
+    bottom: calc(3cqh + 110px);
   }
   .csx-detail {
-    max-height: calc(100vh - 3.2vh - 100px - 3vh - 110px);
+    max-height: calc(100cqh - 3.2cqh - 100px - 3cqh - 110px);
   }
   .csx-quote {
     display: none;
@@ -1331,7 +1331,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: min(620px, 86vw);
+  width: min(620px, 86cqw);
   transform: translate(-50%, -46%);
   text-align: center;
   opacity: 0;
@@ -1380,7 +1380,7 @@
 .ld-title {
   margin: 4px 0 var(--s6);
   font-family: var(--font-display);
-  font-size: calc(clamp(34px, 4.2vw, 58px) * var(--text-scale, 1));
+  font-size: calc(clamp(34px, 4.2cqw, 58px) * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.22em;
   text-indent: 0.22em;
@@ -1434,7 +1434,7 @@
 
 /* The bar: a gilt rail and an ember run. */
 .ld-load {
-  width: min(360px, 70vw);
+  width: min(360px, 70cqw);
   margin: 0 auto var(--s6);
   opacity: 0;
   transition: opacity var(--dur-3) ease;
@@ -1503,7 +1503,7 @@
 
 .bn-rule {
   position: relative;
-  width: min(520px, 70vw);
+  width: min(520px, 70cqw);
   height: 1px;
   margin: 0 auto;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tint) 70%, transparent), transparent);
@@ -1531,9 +1531,9 @@
   --tint: var(--gold);
   position: absolute;
   left: 50%;
-  top: 17vh;
+  top: 17cqh;
   transform: translateX(-50%);
-  width: min(900px, 92vw);
+  width: min(900px, 92cqw);
   padding: var(--s4) 0;
   text-align: center;
   animation: bnDepthLife 4800ms ease both;
@@ -1577,7 +1577,7 @@
 .bn-depth-title {
   margin: 2px 0 var(--s2);
   font-family: var(--font-display);
-  font-size: calc(clamp(36px, 4.6vw, 66px) * var(--text-scale, 1));
+  font-size: calc(clamp(36px, 4.6cqw, 66px) * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1.1;
@@ -1651,11 +1651,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 clamp(32px, 7vw, 150px);
+  padding: 0 clamp(32px, 7cqw, 150px);
   gap: var(--s7);
 }
 .pz-col {
-  width: min(400px, 44vw);
+  width: min(400px, 44cqw);
   animation: pzIn 360ms var(--mn-ease-out) both;
 }
 @keyframes pzIn {
@@ -1666,7 +1666,7 @@
 }
 .pz-title {
   font-family: var(--font-display);
-  font-size: calc(clamp(40px, 4.4vw, 64px) * var(--text-scale, 1));
+  font-size: calc(clamp(40px, 4.4cqw, 64px) * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.22em;
   line-height: 1;
@@ -1716,7 +1716,7 @@
 /* Who you are and how it is going. */
 .pz-card {
   --accent: var(--gold);
-  width: min(360px, 34vw);
+  width: min(360px, 34cqw);
   padding: var(--s5);
   background: linear-gradient(180deg, rgba(14, 11, 8, 0.86), rgba(8, 6, 5, 0.78));
   border: 1px solid var(--mn-hair);
@@ -1819,7 +1819,7 @@
   text-transform: uppercase;
   color: var(--ink-4);
 }
-@media (max-width: 1000px) {
+@container ui (max-width: 1000px) {
   .pz-card {
     display: none !important;
   }
@@ -1835,7 +1835,7 @@
 .stg-wrap {
   display: grid;
   grid-template-columns: 190px 1fr;
-  height: min(560px, calc(100vh - 160px));
+  height: min(560px, calc(100cqh - 160px));
 }
 .stg-rail {
   display: flex;
@@ -2024,7 +2024,7 @@ body.reduce-motion .ld-card * {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 0 clamp(32px, 7vw, 150px);
+  padding: 0 clamp(32px, 7cqw, 150px);
 }
 /* Darken the left for the text, and bleed red in from the edges at first. */
 .dth-vignette {
@@ -2047,7 +2047,7 @@ body.reduce-motion .ld-card * {
 .dth-inner {
   --accent: var(--gold);
   position: relative;
-  width: min(560px, 52vw);
+  width: min(560px, 52cqw);
 }
 .dth-title {
   /* Sized to its text: a gradient clipped to text stops at the box edge, so a
@@ -2055,7 +2055,7 @@ body.reduce-motion .ld-card * {
   width: max-content;
   padding-right: 0.2em;
   font-family: var(--font-display);
-  font-size: clamp(52px, 5.6vw, 92px);
+  font-size: clamp(52px, 5.6cqw, 92px);
   font-weight: 700;
   letter-spacing: 0.16em;
   line-height: 1;
@@ -2258,9 +2258,9 @@ body.reduce-motion .ld-card * {
   animation: ttlFade 600ms ease 2700ms both;
 }
 
-@media (max-width: 1100px) {
+@container ui (max-width: 1100px) {
   .dth-inner {
-    width: min(560px, 86vw);
+    width: min(560px, 86cqw);
   }
   .dth-stats {
     grid-template-columns: repeat(2, 1fr);
@@ -2280,7 +2280,7 @@ body.reduce-motion .dth * {
   position: absolute;
   left: 0;
   right: 0;
-  height: 11vh;
+  height: 11cqh;
   background: var(--shade);
   box-shadow: 0 0 40px rgb(var(--shade-rgb) / 0.9);
 }
@@ -2306,7 +2306,7 @@ body.reduce-motion .dth * {
   position: absolute;
   left: 50%;
   top: 30%;
-  width: min(1100px, 94vw);
+  width: min(1100px, 94cqw);
   transform: translate(-50%, -50%);
   text-align: center;
   animation: bnBossLife 3600ms ease both;
@@ -2327,7 +2327,7 @@ body.reduce-motion .dth * {
 .bn-boss-title {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: calc(clamp(18px, 1.7vw, 28px) * var(--text-scale, 1));
+  font-size: calc(clamp(18px, 1.7cqw, 28px) * var(--text-scale, 1));
   letter-spacing: 0.18em;
   color: #e6a596;
   text-shadow: 0 1px 0 var(--shade), 0 0 14px rgb(var(--shade-rgb) / 0.9);
@@ -2336,7 +2336,7 @@ body.reduce-motion .dth * {
 .bn-boss-name {
   margin-top: var(--s1);
   font-family: var(--font-display);
-  font-size: clamp(44px, 6.4vw, 96px);
+  font-size: clamp(44px, 6.4cqw, 96px);
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0.1em;
@@ -2391,7 +2391,7 @@ body.reduce-motion .dth * {
 .bn-slain-word {
   margin: 2px 0 var(--s3);
   font-family: var(--font-display);
-  font-size: clamp(48px, 6vw, 90px);
+  font-size: clamp(48px, 6cqw, 90px);
   font-weight: 700;
   letter-spacing: 0.2em;
   text-indent: 0.2em;
@@ -2420,6 +2420,14 @@ body.reduce-motion .dth * {
   12% { opacity: 1; }
   100% { opacity: 0; }
 }
+.flash-reduce .bn-level-edge {
+  animation-name: bnLevelEdgeSoft;
+}
+@keyframes bnLevelEdgeSoft {
+  0% { opacity: 0; }
+  30% { opacity: 0.4; }
+  100% { opacity: 0; }
+}
 .bn-level-rays {
   position: absolute;
   inset: 0;
@@ -2446,7 +2454,7 @@ body.reduce-motion .dth * {
   }
   100% {
     opacity: 0;
-    transform: translateY(-30vh) scale(var(--s));
+    transform: translateY(-30cqh) scale(var(--s));
   }
 }
 
@@ -2550,7 +2558,7 @@ body.reduce-motion .dth * {
     opacity: 0.3;
   }
 }
-@media (max-height: 760px) {
+@container ui (max-height: 760px) {
   .ob-card {
     top: 30%;
   }
@@ -2612,9 +2620,9 @@ body.reduce-motion .dth * {
 /* --- death: the last blows --- */
 .dth-recap {
   position: absolute;
-  right: clamp(24px, 5vw, 96px);
+  right: clamp(24px, 5cqw, 96px);
   top: 50%;
-  width: min(380px, 32vw);
+  width: min(380px, 32cqw);
   transform: translateY(-50%);
   padding: var(--s4);
   background: rgb(var(--shade-rgb) / 0.62);
@@ -2716,7 +2724,7 @@ body.reduce-motion .dth * {
   font-size: var(--fs-sm);
   color: var(--ink-3);
 }
-@media (max-width: 1100px) {
+@container ui (max-width: 1100px) {
   .dth-recap {
     display: none;
   }

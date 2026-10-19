@@ -1,4 +1,5 @@
 import type { AccountSave, Character, GameSettings, Item, OpenPortal, PanelPlace } from '../types';
+import { VIDEO_EFFECTS } from '../types';
 import { events } from './Events';
 import { bindsAreValid, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from './Access';
 import { UNIQUE_TEXT } from '../data/story/uniqueText';
@@ -8,6 +9,8 @@ import { INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS, findFit, repairLayout } fro
 import { refreshFixedLines } from '../sim/Loot';
 import { beginRun, endRun, forfeitRun, type Forfeit } from '../sim/RunLedger';
 import { tr } from './I18n';
+import { FRAME_CAPS } from './FramePace';
+import { HUD_SCALE_MAX, HUD_SCALE_MIN, MINIMAP_SCALE_MAX, MINIMAP_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_MIN } from './UiScale';
 
 /**
  * The primary save. The key still says v1 because it predates versioning; the
@@ -97,6 +100,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   masterVolume: 0.8,
   musicVolume: 0.55,
   sfxVolume: 0.85,
+  ambienceVolume: 0.85,
+  uiVolume: 0.85,
+  voiceVolume: 0.85,
+  muteInBackground: true,
   quality: 'high',
   autoQuality: true,
   showDamageNumbers: true,
@@ -106,8 +113,15 @@ export const DEFAULT_SETTINGS: GameSettings = {
   titleCards: true,
   reduceMotion: false,
   showFps: false,
+  frameCap: 0,
+  brightness: 1,
+  effectsOff: [],
+  flashReduce: false,
   renderScale: 1,
   textScale: 1,
+  uiScale: 1,
+  hudScale: 1,
+  minimapScale: 1,
   colorBlindRarity: false,
   trackerHidden: false,
   mapOverlay: false,
@@ -639,6 +653,11 @@ function sanitizeSettings(s: Record<string, unknown>, fx: Repairer): GameSetting
   vol('masterVolume');
   vol('musicVolume');
   vol('sfxVolume');
+  // A save from before these had their own sliders keeps the mix it had:
+  // all three were the effects slider.
+  for (const k of ['ambienceVolume', 'uiVolume', 'voiceVolume'] as const) {
+    out[k] = s[k] === undefined ? out.sfxVolume : fx.num(s[k], out.sfxVolume, `settings.${k}`, 0, 1);
+  }
   out.quality = (['low', 'medium', 'high', 'ultra'] as const).includes(s.quality as GameSettings['quality'])
     ? (s.quality as GameSettings['quality'])
     : d.quality;
@@ -646,10 +665,17 @@ function sanitizeSettings(s: Record<string, unknown>, fx: Repairer): GameSetting
   out.screenShake = s.screenShake === undefined ? d.screenShake : fx.num(s.screenShake, d.screenShake, 'settings.screenShake', 0, 2);
   out.cameraDistance =
     s.cameraDistance === undefined ? d.cameraDistance : fx.num(s.cameraDistance, d.cameraDistance, 'settings.cameraDistance', 0.5, 2);
+  out.frameCap = FRAME_CAPS.includes(Number(s.frameCap)) ? Number(s.frameCap) : d.frameCap;
+  out.brightness = s.brightness === undefined ? d.brightness : fx.num(s.brightness, d.brightness ?? 1, 'settings.brightness', 0.7, 1.4);
+  out.effectsOff = Array.isArray(s.effectsOff) ? VIDEO_EFFECTS.filter((e) => (s.effectsOff as unknown[]).includes(e)) : [];
   out.renderScale =
     s.renderScale === undefined ? d.renderScale : fx.num(s.renderScale, d.renderScale ?? 1, 'settings.renderScale', 0.5, 1);
   out.textScale =
     s.textScale === undefined ? d.textScale : fx.num(s.textScale, d.textScale ?? 1, 'settings.textScale', TEXT_SCALE_MIN, TEXT_SCALE_MAX);
+  out.uiScale = s.uiScale === undefined ? d.uiScale : fx.num(s.uiScale, 1, 'settings.uiScale', UI_SCALE_MIN, UI_SCALE_MAX);
+  out.hudScale = s.hudScale === undefined ? d.hudScale : fx.num(s.hudScale, 1, 'settings.hudScale', HUD_SCALE_MIN, HUD_SCALE_MAX);
+  out.minimapScale =
+    s.minimapScale === undefined ? d.minimapScale : fx.num(s.minimapScale, 1, 'settings.minimapScale', MINIMAP_SCALE_MIN, MINIMAP_SCALE_MAX);
   out.mapOverlayOpacity =
     s.mapOverlayOpacity === undefined ? d.mapOverlayOpacity : fx.num(s.mapOverlayOpacity, d.mapOverlayOpacity ?? 0.7, 'settings.mapOverlayOpacity', 0.2, 1);
   out.mapOverlaySize =

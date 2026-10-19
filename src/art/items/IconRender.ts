@@ -30,7 +30,7 @@ import type { Aura } from './Designs';
 import { scansOf } from '../Scans';
 
 import { itemLookStandIns, itemScansReady as scansReady } from './Mats';
-import { screenRatio } from '../../core/Screen';
+import { uiRatio } from '../../core/Screen';
 
 /** The item scans have decoded and the icon studio is open. */
 export async function itemScansReady(): Promise<void> {
@@ -65,7 +65,7 @@ const ICON_CELL = 80;
  * with the ratio in 16 px steps, so a small change keeps the cached icons.
  */
 export function iconScale(): number {
-  const cell = Math.max(ICON_CELL, Math.round((64 * screenRatio()) / 16) * 16);
+  const cell = Math.max(ICON_CELL, Math.round((64 * uiRatio()) / 16) * 16);
   return cell / ICON_CELL;
 }
 

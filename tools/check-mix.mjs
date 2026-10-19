@@ -97,7 +97,7 @@ try {
     const master = mix.edges.find(([, d]) => d === limiter)?.[0];
     const buses = mix.edges.filter(([s, d]) => d === master && s instanceof GainNode).map(([s]) => s);
     if (!master || buses.length < 4) return `graph not as expected (${buses.length} buses)`;
-    const nodes = { sfx: buses[0], ui: buses[1], amb: buses[2], music: buses[3], master, out: limiter };
+    const nodes = { sfx: buses[0], ui: buses[1], amb: buses[2], music: buses[3], ...(buses[4] ? { voice: buses[4] } : {}), master, out: limiter };
     const taps = {};
     for (const [name, node] of Object.entries(nodes)) {
       const a = ctx.createAnalyser();
@@ -244,7 +244,7 @@ try {
     const st = stats[l];
     if (!st) continue;
     console.log(`  ${l}   limiter pulled at most ${(-(st.limiter ?? 0)).toFixed(1)} dB`);
-    for (const k of ['music', 'amb', 'sfx', 'ui', 'master', 'out']) {
+    for (const k of ['music', 'amb', 'sfx', 'ui', 'voice', 'master', 'out']) {
       const s = st[k];
       if (s) console.log(`    ${k.padEnd(7)} ${f(s.rms)} ${f(s.loud)} ${f(s.peak)}`);
     }
@@ -257,7 +257,7 @@ try {
   for (const id of ids) {
     const st = stats[`id:${id}`];
     if (!st) continue;
-    const bus = ['sfx', 'ui', 'amb'].reduce((a, b) => ((st[b]?.loud ?? 0) > (st[a]?.loud ?? 0) ? b : a), 'sfx');
+    const bus = ['sfx', 'ui', 'amb', 'voice'].reduce((a, b) => ((st[b]?.loud ?? 0) > (st[a]?.loud ?? 0) ? b : a), 'sfx');
     rows.push({ id, group: groupOf(id), bus, loud: st[bus].loud, peak: st[bus].peak, outPeak: st.out?.peak ?? 0, limiter: st.limiter ?? 0 });
   }
   if (rows.length) {

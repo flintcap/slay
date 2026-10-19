@@ -10,8 +10,12 @@
  *     colour-blind colours) and the Key bindings section on Controls
  *  2. moves the text size slider and checks the page text grew
  *  3. turns colour-blind item colours on and checks the setting saved
- *  4. rebinds Inventory to P with the Change button, closes the menu, and
- *     checks P opens the inventory and I no longer does
+ *  4. sets Menu size to 150% on the Video tab and checks the menus, the HUD
+ *     and the minimap are drawn half as big again, then puts it back
+ *  5. rebinds Inventory to P with the Change button, and Character to the
+ *     mouse's back button; a left click while choosing for Map cancels
+ *  6. closes the menu and checks P opens the inventory, I no longer does,
+ *     and the back button opens the character sheet
  *
  * Screenshots of both tabs land in shots/quality/ for a human look.
  */
@@ -90,9 +94,8 @@ try {
   // Text size: drive the slider's input like a drag would.
   const scale = await page.evaluate(async () => {
     const before = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const row = [...document.querySelectorAll('*')].find((e) => e.children.length === 0 && (e.textContent ?? '').trim() === 'Text size');
-    let input = null;
-    for (let p = row; p && !input; p = p.parentElement) input = p.querySelector('input[type=range]');
+    // The label carries a hint span, so find the slider by its own name.
+    const input = document.querySelector('input[type=range][aria-label="Text size"]');
     if (!input) return { error: 'no slider' };
     input.value = input.max;
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -129,6 +132,50 @@ try {
   });
   ok('Colour-blind toggle flips the setting', !cb.error && cb.before !== cb.after, JSON.stringify(cb));
 
+  // --- Video: menu, HUD and minimap size ------------------------------------------
+  ok('Video tab exists', await tab('Video'));
+  const sized = await page.evaluate(async () => {
+    const frameOf = () => document.querySelector('.stg-tab')?.closest('.panel-frame, .panel') ?? null;
+    const minimap = () => document.querySelector('.minimap')?.getBoundingClientRect().width ?? 0;
+    const label = [...document.querySelectorAll('.field-label')].find((e) => (e.firstChild?.textContent ?? '').trim() === 'Menu size');
+    const input = label?.closest('.field')?.querySelector('input[type=range]');
+    if (!input) return { error: 'no Menu size slider' };
+    input.scrollIntoView({ block: 'center' });
+    const wait = async () => {
+      for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(r));
+    };
+    const before = { panel: frameOf()?.getBoundingClientRect().width ?? 0, minimap: minimap() };
+    // A drag moves it without changing anything; letting go applies it.
+    input.value = '1.5';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await wait();
+    const whileDragging = window.SLAY.save.settings.uiScale ?? 1;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await wait();
+    const ui = document.getElementById('ui');
+    const after = { panel: frameOf()?.getBoundingClientRect().width ?? 0, minimap: minimap(), zoom: ui?.currentCSSZoom ?? 0, saved: window.SLAY.save.settings.uiScale };
+    return { before, whileDragging, after };
+  });
+  await shot('settings-video-150');
+  ok('Menu size waits for the slider to be let go', !sized.error && sized.whileDragging === 1, JSON.stringify(sized));
+  ok(
+    'Menu size 150% draws the menus and the HUD half as big again',
+    !sized.error && sized.after.saved === 1.5 && Math.abs(sized.after.zoom - 1.5) < 0.01 &&
+      sized.after.panel > sized.before.panel * 1.2 && Math.abs(sized.after.minimap - sized.before.minimap * 1.5) < 3,
+    JSON.stringify(sized),
+  );
+  const unsized = await page.evaluate(async () => {
+    const label = [...document.querySelectorAll('.field-label')].find((e) => (e.firstChild?.textContent ?? '').trim() === 'Menu size');
+    const input = label?.closest('.field')?.querySelector('input[type=range]');
+    if (!input) return { error: 'no Menu size slider' };
+    input.value = '1';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(r));
+    return { saved: window.SLAY.save.settings.uiScale, zoom: document.getElementById('ui')?.currentCSSZoom ?? 0 };
+  });
+  ok('Menu size goes back to 100%', unsized.saved === 1 && Math.abs(unsized.zoom - 1) < 0.01, JSON.stringify(unsized));
+
   // --- Controls: rebinding ------------------------------------------------------
   ok('Controls tab exists', await tab('Controls'));
   const started = await page.evaluate(() => {
@@ -149,6 +196,45 @@ try {
     return { shown: label?.closest('.statline')?.querySelector('.statline-value')?.textContent ?? '', binds: window.SLAY.save.settings.keybinds };
   });
   ok('Pressing P binds Inventory to P', /^P\b/.test(bound.shown) && bound.binds?.KeyP === 'KeyI', JSON.stringify(bound));
+
+  // A mouse button: Change on Character, then the back button.
+  const change = (name) =>
+    page.evaluate((name) => {
+      const label = [...document.querySelectorAll('.statline-label')].find((e) => (e.textContent ?? '').trim() === name);
+      const row = label?.closest('.statline');
+      const btn = row && [...row.querySelectorAll('button')].find((b) => /change/i.test(b.textContent ?? ''));
+      row?.scrollIntoView({ block: 'center' });
+      btn?.click();
+      return !!btn;
+    }, name);
+  const shown = (name) =>
+    page.evaluate((name) => {
+      const label = [...document.querySelectorAll('.statline-label')].find((e) => (e.textContent ?? '').trim() === name);
+      return label?.closest('.statline')?.querySelector('.statline-value')?.textContent ?? '';
+    }, name);
+  const mouse = (type, button, target = 'body') =>
+    page.evaluate(
+      ({ type, button, target }) => {
+        const bits = { 0: 1, 1: 4, 2: 2, 3: 8, 4: 16 };
+        const el = target === 'canvas' ? document.querySelector('canvas') : document.body;
+        el?.dispatchEvent(new PointerEvent(type, { button, buttons: type === 'pointerdown' ? bits[button] : 0, bubbles: true, cancelable: true, clientX: 640, clientY: 360 }));
+      },
+      { type, button, target },
+    );
+  ok('Character has a Change button', await change('Character'));
+  await frames(page, 2);
+  await mouse('pointerdown', 3);
+  await mouse('pointerup', 3);
+  await frames(page, 4);
+  const back = { shown: await shown('Character'), binds: await page.evaluate(() => window.SLAY.save.settings.keybinds) };
+  ok('The back button binds Character', /Mouse back/.test(back.shown) && back.binds?.KeyC === 'Mouse3', JSON.stringify(back));
+  ok('Map has a Change button', await change('Map'));
+  await frames(page, 2);
+  await mouse('pointerdown', 0);
+  await mouse('pointerup', 0);
+  await frames(page, 4);
+  const map = { shown: await shown('Map'), binds: await page.evaluate(() => window.SLAY.save.settings.keybinds) };
+  ok('A left click while choosing cancels, and Map keeps M', /^M\b/.test(map.shown) && !Object.values(map.binds ?? {}).includes('Mouse0'), JSON.stringify(map));
 
   // Back out to the game: Escape closes Settings, then the pause menu.
   await page.keyboard.press('Escape');
@@ -173,6 +259,17 @@ try {
   await frames(page, 8);
   const iOpens = await page.evaluate(() => window.SLAY.debug.panelOpen('inventory'));
   ok('I no longer opens the inventory', !iOpens);
+  if (iOpens) {
+    await page.keyboard.press('KeyI');
+    await frames(page, 8);
+  }
+
+  await mouse('pointerdown', 3, 'canvas');
+  await frames(page, 2);
+  await mouse('pointerup', 3, 'canvas');
+  await frames(page, 8);
+  const sheet = await page.evaluate(() => window.SLAY.debug.panelOpen('character'));
+  ok('The back button opens the character sheet', sheet);
 
   ok('no page errors', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 } catch (err) {

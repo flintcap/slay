@@ -23,6 +23,7 @@ import {
 import { asStandard, matColor, matFloat, setNodeTextures, waterRays, type F, type V2, type V3 } from '../core/Tsl';
 import { macroNoiseTexture } from '../fx/UtilityTextures';
 import { WORLD_ENV_ATTRIBUTE } from './WorldMaterial';
+import { hookSeen } from '../core/ThreeHooks';
 
 export type LiquidStyle = 'water' | 'lava' | 'sludge' | 'ice' | 'voidwater';
 
@@ -169,8 +170,8 @@ class DimReflection extends THREE.PhysicalLightingModel {
   }
 
   override indirectSpecular(builder: THREE.NodeBuilder): void {
-    const ctx = builder.context as unknown as { radiance: THREE.Node<'vec3'> };
-    ctx.radiance.mulAssign(this.k);
+    const ctx = builder.context as unknown as { radiance?: THREE.Node<'vec3'> };
+    if (hookSeen('lighting context: radiance, irradiance', !!ctx.radiance)) ctx.radiance!.mulAssign(this.k);
     super.indirectSpecular(builder);
   }
 }

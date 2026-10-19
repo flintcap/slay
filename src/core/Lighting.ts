@@ -30,6 +30,7 @@ import {
   uniform, vec2, vec3,
 } from 'three/tsl';
 import { BounceLightNode } from './BounceLight';
+import { hookSeen } from './ThreeHooks';
 
 /**
  * The layer of casters that never move (walls, baked props). A torch's
@@ -333,7 +334,8 @@ class PackedLights extends THREE.LightsNode {
     // The material's own light comes first, as in three's: the sky
     // reflection, its occlusion and any light map. Leaving these out drew
     // every surface without its sky fill.
-    const own = (builder.context as unknown as { materialLightings?: THREE.LightingNode[] }).materialLightings ?? [];
+    const mine = (builder.context as unknown as { materialLightings?: THREE.LightingNode[] }).materialLightings;
+    const own = hookSeen('lighting context: materialLightings', mine !== undefined) ? mine! : [];
     const out: THREE.LightingNode[] = [...own];
     for (const l of [...this.getLights()].sort((a, b) => a.id - b.id)) {
       if (packable(l)) continue;

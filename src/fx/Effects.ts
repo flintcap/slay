@@ -34,7 +34,7 @@ import { LightPool, MAX_FX_LIGHTS, type LightHandle } from './kit/Lights';
 import { SolidPool, type SolidHandle } from './kit/Solids';
 import type { GroundHandle } from './kit/Ground';
 import { floorAt } from './kit/Floor';
-import { FX_EXPOSURE } from './kit/Exposure';
+import { FX_COMFORT, FX_EXPOSURE } from './kit/Exposure';
 import { FieldPool, type FieldOpts } from './Fields';
 import { BOOST, setBoostRank, atRank } from './kit/Boost';
 import { clearRipples, ripple } from '../core/Ripples';
@@ -649,7 +649,7 @@ export class EffectSystem {
   retarget(e: Live, p: THREE.Vector3): void {
     if (e.kind === K.Shield) {
       this.fx.burst('shieldHit', p.x, p.y, p.z, { color: e.color });
-      this.lights.flash(p.x, p.y, p.z, e.look.light, 4, 4, 0.12);
+      this.lights.flash(p.x, p.y, p.z, e.look.light, 4 * FX_COMFORT.light, 4, 0.12);
       e.acc = 0;
       this.sfx('block.magic', p.x, p.z);
       return;
@@ -720,7 +720,7 @@ export class EffectSystem {
   /** A one-shot point light (sRGB colour). */
   flash(x: number, y: number, z: number, color: number, intensity = 8, distance = 9, duration = 0.16): void {
     this.glare += intensity;
-    this.lights.flash(x, y, z, color, intensity * FX_EXPOSURE.value, distance, duration);
+    this.lights.flash(x, y, z, color, intensity * FX_EXPOSURE.value * FX_COMFORT.light, distance, duration);
   }
 
   /** The cast beat: a gathering flare at the caster's hand and a light on their armour. */
@@ -2087,7 +2087,7 @@ export class EffectSystem {
     // instead of going white.
     this.glare *= Math.exp(-dt / GLARE_DECAY);
     this.motifLoad *= Math.exp(-dt / MOTIF_DECAY);
-    const want = Math.max(EXPOSURE_FLOOR, Math.min(1, Math.sqrt(GLARE_FREE / Math.max(GLARE_FREE, this.glare))));
+    const want = Math.min(FX_COMFORT.ceiling, Math.max(EXPOSURE_FLOOR, Math.min(1, Math.sqrt(GLARE_FREE / Math.max(GLARE_FREE, this.glare)))));
     const ex = FX_EXPOSURE.value;
     FX_EXPOSURE.value = ex + (want - ex) * Math.min(1, dt * (want < ex ? 14 : 2.5));
     // Index loop over a list that may grow while we walk it (a delay firing a projectile).
@@ -2178,7 +2178,7 @@ export class EffectSystem {
     this.lights.clear();
     this.liveAuras = 0;
     this.glare = 0;
-    FX_EXPOSURE.value = 1;
+    FX_EXPOSURE.value = FX_COMFORT.ceiling;
     clearRipples();
   }
 

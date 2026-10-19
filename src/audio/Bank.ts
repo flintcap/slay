@@ -14,7 +14,7 @@
 
 import { SAMPLE_COUNTS } from './manifest';
 
-export type Bus = 'sfx' | 'ui' | 'amb';
+export type Bus = 'sfx' | 'ui' | 'amb' | 'voice';
 
 export interface SoundDef {
   /** Linear gain on top of the normalised sample. */
@@ -405,8 +405,14 @@ export function soundDef(id: string): SoundDef {
     base.vol = 0.75;
     base.send = 0.35;
   }
-  return own ? { ...base, ...own } : base;
+  const def = own ? { ...base, ...own } : base;
+  // Spoken lines and cries have their own slider (Settings, Audio, Voices).
+  if (VOICE_IDS.test(id)) def.bus = 'voice';
+  return def;
 }
+
+/** The hero's cries and lines and the bosses' spoken lines: the voice bus. */
+const VOICE_IDS = /^(player\.(hurt|hurtHeavy|death|male\.|female\.)|boss\.voice\.)/;
 
 /** Sample files for a bank id, relative to `public/assets/`. */
 export function soundFiles(id: string): string[] {

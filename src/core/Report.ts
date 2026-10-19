@@ -9,6 +9,7 @@ import type { Engine } from './Engine';
 import { BUILT, RELEASE, versionLabel } from './Build';
 import { logText, previousLogText } from './Log';
 import { save } from './Save';
+import { selfTest } from './ThreeHooks';
 
 interface AdapterInfo {
   vendor?: string;
@@ -33,6 +34,8 @@ export function buildReport(engine: Engine): string {
   lines.push(`Report made ${new Date().toISOString()}`);
   lines.push(`Browser: ${navigator.userAgent}`);
   lines.push(`GPU: ${gpuName(engine) || 'unknown'}`);
+  const hooks = selfTest(engine.renderer.gl);
+  lines.push(`three.js r${hooks.revision}: ${hooks.missing.length === 0 ? 'every hook found' : `missing ${hooks.missing.join('; ')}`}`);
   lines.push(
     `Screen: ${screen.width}x${screen.height} at ${window.devicePixelRatio}x, window ${window.innerWidth}x${window.innerHeight}`,
   );

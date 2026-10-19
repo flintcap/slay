@@ -7,6 +7,7 @@ import { save } from './Save';
 import { sweepAssetTextures, texturesSettled } from './Assets';
 import { beginLoad, endLoad, loadStep } from './LoadProgress';
 import { tr } from './I18n';
+import { framePace } from './FramePace';
 
 /** One distinct error the engine caught, with how often it has happened. */
 export interface CaughtError {
@@ -120,7 +121,8 @@ export function disposeObject(root: THREE.Object3D): void {
  * else hangs off a scene.
  */
 export class Engine {
-  readonly renderer: Renderer;
+  /** Made again by `restartRenderer` after a lost GPU device: read it from here each time. */
+  renderer: Renderer;
   readonly input: Input;
   readonly clock = new THREE.Timer();
 
@@ -164,6 +166,8 @@ export class Engine {
   /** True only for a pause the engine applied itself when the tab went away. */
   private autoPaused = false;
 
+  /** When the last animation frame came, drawn or not (performance.now ms). */
+  private lastTick = 0;
   /** When the last frame was drawn, and at what canvas size (see `loop`). */
   private lastDraw = 0;
   private drawnW = 0;
@@ -183,6 +187,8 @@ export class Engine {
   private recovering = false;
   /** Set while the GPU device or context is lost; nothing is drawn until it returns. */
   contextLost = false;
+  /** `restartRenderer` is running. */
+  private restarting = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new Renderer(canvas);
@@ -199,24 +205,7 @@ export class Engine {
       this.report('promise', e.reason);
     });
 
-    // A lost GPU device (driver reset, too many tabs, laptop sleep) does not
-    // come back: three.js would need every buffer and pipeline made again.
-    // Hold the game for good (nothing may unpause it: a fight going on
-    // unseen kills a hardcore hero), write the save now, and offer a reload,
-    // which picks the save up where it was.
-    this.renderer.gl.onDeviceLost = (info: { message?: string; reason?: string | null }) => {
-      const message = info.message ?? info.reason ?? 'unknown';
-      this.report('render', new Error(`GPU device lost: ${message}`));
-      if (!this.paused) this.setPaused(true);
-      this.autoPaused = false;
-      this.contextLost = true;
-      try {
-        save.flush();
-      } catch (err) {
-        this.report('save', err);
-      }
-      events.emit('gpu:lost', { message });
-    };
+    this.watchDevice();
 
     // Pause when the tab is hidden, and — critically — resume when it comes
     // back. Only ever undo a pause we applied ourselves, so a player who opened
@@ -246,6 +235,74 @@ export class Engine {
         this.setPaused(false);
       }
     });
+  }
+
+  /**
+   * A lost GPU device (driver reset, too many tabs, laptop sleep) does not
+   * come back. Hold the game (nothing may unpause it: a fight going on unseen
+   * kills a hardcore hero), write the save now, and let the UI offer a
+   * Restart (`restartRenderer`).
+   */
+  private watchDevice(): void {
+    const r = this.renderer;
+    r.gl.onDeviceLost = (info: { message?: string; reason?: string | null }) => {
+      // A renderer already replaced says nothing about the one in use.
+      if (r !== this.renderer) return;
+      const message = info.message ?? info.reason ?? 'unknown';
+      this.report('render', new Error(`GPU device lost: ${message}`));
+      if (!this.paused) this.setPaused(true);
+      this.autoPaused = false;
+      this.contextLost = true;
+      try {
+        save.flush();
+      } catch (err) {
+        this.report('save', err);
+      }
+      events.emit('gpu:lost', { message });
+    };
+  }
+
+  /**
+   * After a lost GPU device: a new renderer on the same canvas, and the game
+   * back somewhere safe. Everything the old device held is gone, so the scene
+   * is built again: a map is left as from the menu (`save.forfeitRun`) for
+   * town, any other scene is entered afresh. `gpu:restored` lets the rest of
+   * the game point at the new renderer (main.ts: settings, studios). False if
+   * no device opens; the caller reloads the page instead.
+   */
+  async restartRenderer(): Promise<boolean> {
+    if (!this.contextLost || this.restarting || this.transitioning) return false;
+    this.restarting = true;
+    try {
+      const old = this.renderer;
+      // First, so it lets go of the canvas before the new one takes it.
+      try {
+        old.dispose();
+      } catch {
+        /* its device is gone; what it held goes with it */
+      }
+      const next = new Renderer(old.canvas);
+      try {
+        await next.init();
+      } catch (err) {
+        this.report('render', err);
+        return false;
+      }
+      this.renderer = next;
+      this.watchDevice();
+      this.drawnW = this.drawnH = 0;
+      events.emit('gpu:restored', {});
+
+      const from = this.active?.id ?? 'title';
+      const to: SceneId = from === 'dungeon' ? 'town' : from === 'death' || from === 'boot' ? 'title' : from;
+      if (from === 'dungeon') save.forfeitRun();
+      await this.goTo(to);
+      this.contextLost = false;
+      this.setPaused(false);
+      return true;
+    } finally {
+      this.restarting = false;
+    }
   }
 
   register(id: SceneId, factory: () => GameScene): void {
@@ -534,6 +591,15 @@ export class Engine {
     this.rafId = requestAnimationFrame(this.loop);
 
     const t0 = performance.now();
+    const gap = this.lastTick > 0 ? t0 - this.lastTick : 0;
+    this.lastTick = t0;
+    // The frame cap: a refresh it skips runs and draws nothing, and the
+    // next frame's step covers the time (the clock is read only below).
+    if (!framePace.allow(t0, save.settings.frameCap ?? 0)) {
+      framePace.sample(gap, 0, 0, false);
+      return;
+    }
+    let drew = false;
 
     // Clamp dt so a tab-switch or a long generation pause cannot teleport
     // entities through walls when the loop resumes.
@@ -586,6 +652,7 @@ export class Engine {
           this.report('render', err);
         }
         this.heldDt = 0;
+        drew = true;
         this.lastDraw = tu1;
         this.drawnW = cv.width;
         this.drawnH = cv.height;
@@ -618,6 +685,7 @@ export class Engine {
     }
 
     const t1 = performance.now();
+    framePace.sample(gap, t1 - t0, drew ? this.renderer.gpuMs : 0, drew);
     this.fpsAccum += t1 - t0;
     this.fpsWall += raw;
     this.fpsFrames++;
