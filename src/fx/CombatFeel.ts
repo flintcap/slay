@@ -25,6 +25,7 @@
 import * as THREE from 'three';
 import type { DamagePacket, DamageType, MonsterRank } from '../types';
 import { audio } from '../audio/Audio';
+import { heroBark, heroSound, heroSoundIds } from '../audio/HeroVoice';
 import { events } from '../core/Events';
 import { ELEMENTS, type EffectSystem } from './Effects';
 import './Grit';
@@ -223,6 +224,8 @@ export class CombatFeel {
   /** When the next short element mark may go down under a struck body. */
   private nextMark = 0;
   private nextHeartbeat = 0;
+  /** Life has been back above half since the last near-death cry. */
+  private lowLifeArmed = true;
 
   /** Event subscriptions, dropped in `dispose`. */
   private unsubs: Array<() => void> = [];
@@ -241,7 +244,7 @@ export class CombatFeel {
       events.on('boss:broken', (e) => this.onBreak(e.x, e.y, e.z)),
       events.on('player:evaded', () => this.onEvade()),
       events.on('sfx', (e) => {
-        if (e.id === 'block') this.onBlock();
+        if (e.id === 'block' || e.id === 'parry') this.onBlock();
       }),
     );
   }
@@ -438,12 +441,17 @@ export class CombatFeel {
       const at = look.vanish ?? 0.75;
       this.effects.delay(at, () => this.effects.fx.burst(after, x, 0.5 * scale, z, { scale }));
     }
-    // A big body lands: grit thrown out where it hits the floor.
+    // A big body lands: grit thrown out where it hits the floor, and a thud.
+    // A small one drops with a softer fall; a body that crumbles away (ash,
+    // shards, shadow) never lands at all.
     if (big && !look.vanish) {
       this.effects.delay(0.7, () => {
         if (rich) this.effects.fx.burst('death.thud', x, 0.15, z, { scale });
         this.addTrauma(0.06 + weight * 0.02);
+        audio.play('death.heavy', { x, z, volume: 0.8 + weight * 0.1 });
       });
+    } else if (!look.vanish && !target.isBoss) {
+      this.effects.delay(0.55, () => audio.play('death.normal', { x, z, volume: 0.6 }));
     }
 
     audio.play('kill.confirm', { x, z, volume: 0.9 + weight * 0.1 });
@@ -526,12 +534,12 @@ export class CombatFeel {
       if (h && frac > 0.01) {
         this.effects.fx.burst('blood', h.position.x, 1.15, h.position.z, { count: Math.round(5 + Math.min(10, frac * 60)), scale: 0.7 });
       }
-      audio.play('player.hurt', { volume: Math.min(1.3, 0.55 + frac * 3) });
+      audio.play(heroSound('hurt'), { volume: Math.min(1.3, 0.55 + frac * 3) });
     }
     if (frac > 0.14) {
       // A hit that takes a real chunk gets its own heavier sound, so the
       // player registers *that* one in a flurry of small ones.
-      audio.play('player.hurtHeavy', { volume: Math.min(1.2, 0.6 + frac * 2) });
+      audio.play(heroSound('hurtHeavy'), { volume: Math.min(1.2, 0.6 + frac * 2) });
     }
   }
 
@@ -607,7 +615,14 @@ export class CombatFeel {
     this.kickAmt = 0;
 
     // Low life: the heart starts to be audible, and quickens as it drops.
+    // The hero cries out once on the way down, and again only after
+    // climbing back past half.
+    if (lifeFrac > 0.5) this.lowLifeArmed = true;
     if (alive && lifeFrac > 0 && lifeFrac < 0.3) {
+      if (this.lowLifeArmed) {
+        this.lowLifeArmed = false;
+        heroBark('lowLife');
+      }
       if (this.clock >= this.nextHeartbeat) {
         const urgency = 1 - lifeFrac / 0.3;
         this.nextHeartbeat = this.clock + 1.05 - urgency * 0.45;
@@ -647,8 +662,8 @@ export function feelSoundIds(families: readonly string[]): string[] {
     ...Object.values(WEAPON_SOUND),
     ...Object.values(BODY_SOUND),
     'hit.heavy', 'hit.pierce', 'crit', 'kill.confirm', 'kill.elite', 'kill.multi',
-    'player.hurt', 'player.hurtHeavy', 'heartbeat', 'player.death',
-    'combo', 'player.evade', 'player.stunned',
+    ...heroSoundIds(), 'heartbeat', 'player.death',
+    'combo', 'player.evade', 'player.stunned', 'block', 'parry', 'death.normal', 'death.heavy',
   ]);
   for (const f of families) {
     out.add(`monster.${f}.hurt`);

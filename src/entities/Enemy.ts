@@ -1007,6 +1007,7 @@ export class Enemy implements Combatant {
   private tickMotion(dt: number, ctx: CombatContext): void {
     const m = this.motionOverride;
     if (!m) return;
+    if (m.t === 0 && m.kind === 'leap') events.emit('sfx', { id: 'jump', x: this.root.position.x, z: this.root.position.z });
     m.t += dt;
     const k = clamp(m.t / m.duration, 0, 1);
     const p = this.root.position;
@@ -1026,6 +1027,8 @@ export class Enemy implements Combatant {
       p.y = this.groundY;
       const land = m.onLand;
       this.motionOverride = null;
+      // A body coming down from a leap is heard landing.
+      if (m.kind === 'leap') events.emit('sfx', { id: 'land', x: p.x, z: p.z, pitch: 1 / Math.max(0.7, Math.min(1.6, this.sizeScale)) });
       land?.(this, ctx);
     }
   }

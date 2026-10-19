@@ -13,9 +13,13 @@ import type {
 } from '../types';
 import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
+import { heroBark } from '../audio/HeroVoice';
+import { classSkillSounds } from '../audio/SkillSounds';
 import { save } from '../core/Save';
+import { holdRipple, releaseRipple, type RippleHandle } from '../core/Ripples';
 import { Random, randomSeed, streamFor } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
+import { SOLID_CELLS } from '../fx/kit/Particles';
 import { DecalSystem } from '../fx/Decals';
 import { CameraRig } from '../fx/CameraRig';
 import { LootFX } from '../fx/LootFX';
@@ -292,6 +296,8 @@ export class DungeonScene extends GameScene {
   private readonly spareLights: THREE.PointLight[] = [];
   private wayLights: THREE.Object3D[] = [];
   private portalLook: WayLook | null = null;
+  /** The bend in the air round the way home while it stands open (`core/Ripples.ts`). */
+  private portalBend: RippleHandle | null = null;
   /** Opened chests, spent shrines and smashed pieces left on this floor. */
   private remains: PropRemains | null = null;
   /** Zone id under the hero, for the zone banner. */
@@ -354,6 +360,7 @@ export class DungeonScene extends GameScene {
     this.rig = new CameraRig({ distance: 15.5, pitch: 0.92 });
     this.camera = this.rig.camera;
     this.fx = new FXSystem(this.scene, engine.renderer.quality);
+    this.fx.setView(this.camera);
     this.decals = new DecalSystem(this.scene, engine.renderer.quality);
     this.effects = new EffectSystem(this.scene, this.fx, this.decals, engine.renderer.quality);
     this.effects.setRig(this.rig);
@@ -519,6 +526,9 @@ export class DungeonScene extends GameScene {
     const depth = Math.max(1, p.depth ?? 1);
     const seed = p.seed ?? randomSeed();
     this.rng = new Random(seed);
+    // What the hero carries down is written down, saved now: a map left any
+    // way but its exits gives back to this (`sim/RunLedger.ts`).
+    save.beginRun(depth);
 
     // Must be set before anything generates: world gen and monster stats both
     // read the active tier.
@@ -646,27 +656,21 @@ export class DungeonScene extends GameScene {
       events.on('potion:use', (p) => this.drink(p.kind, p.baseId)),
     );
 
-    // Death is permanent, so leaving is not a way out of a fight
-    // (core/Peril.ts). A blow either way keeps the hero "in a fight", and
-    // closing the game in one is a death: the browser asks first, and if the
-    // page really goes, the hero goes with it. Not after the GPU is lost: the
-    // game is frozen and saved, and the reload it asks for is no escape.
+    // Closing the game mid-map leaves it early: the hero wakes in town as
+    // they went down, less some experience (`sim/RunLedger.ts`, settled on
+    // the next load). The browser asks first. Not after the GPU is lost: the
+    // game is frozen and saved, and the reload it asks for is no one's fault.
     peril.reset();
     let gpuLost = false;
     const onBeforeUnload = (e: BeforeUnloadEvent): void => {
-      if (peril.active && this.player?.alive && !this.transitioning && !gpuLost) e.preventDefault();
-    };
-    const onPageHide = (): void => {
-      if (!gpuLost) this.fledByClosing();
+      if (this.player?.alive && !this.transitioning && !gpuLost) e.preventDefault();
     };
     window.addEventListener('beforeunload', onBeforeUnload);
-    window.addEventListener('pagehide', onPageHide);
     this.offs.push(
       events.on('player:damaged', () => peril.blow()),
       events.on('enemy:damaged', () => peril.blow()),
       events.on('gpu:lost', () => (gpuLost = true)),
       () => window.removeEventListener('beforeunload', onBeforeUnload),
-      () => window.removeEventListener('pagehide', onPageHide),
       () => peril.reset(),
     );
 
@@ -754,6 +758,8 @@ export class DungeonScene extends GameScene {
       setTimeout(() => toast(this.run.quest.name, 'epic'), 800);
     }
     audio.music(this.biome.music, 2.0);
+    // Planks, shallows and ice answer underfoot over the place's own floor.
+    audio.setGround((x, z) => this.mesh.stepSurface(x, z));
     // The pack's icons, drawn behind the curtain rather than in play.
     loadStep('icons');
     const held = save.account.current;
@@ -860,6 +866,9 @@ export class DungeonScene extends GameScene {
     // world zero, which is only the floor on the lowest height band: everywhere
     // else they were buried under the floor or floating over the one below.
     this.decals.setGround((x, z) => this.mesh.floorY(x, z));
+    // Sparks and debris bounce off its walls and props, on a 1 m grid where
+    // the level fits one, else a 2 m one.
+    this.fx.field.setSolids(this.mesh.solidMap(this.level.width * this.level.height * 4 <= SOLID_CELLS ? 1 : 2));
     this.nav = new NavGrid(this.level);
     this.lighting = applyBiomeLighting(this.scene, this.biome, this.level?.variant, this.level?.runTheme);
     this.heroLightBase = this.lighting.hero.intensity;
@@ -1009,6 +1018,11 @@ export class DungeonScene extends GameScene {
 
     this.fx.setAmbient(this.biome.particles ?? null, new THREE.Box3().setFromObject(this.mesh.root));
     this.weather = new Weather(this.fx, this.level, this.biome.fogColor);
+    // Only this floor's monsters and the hero's own skills stay in memory.
+    audio.setLoadout(
+      [...this.enemies.map((e) => e.family), ...(this.boss ? [this.boss.family] : [])],
+      classSkillSounds(this.player.character.classId),
+    );
     loadStep('summons');
     yield;
 
@@ -2266,6 +2280,7 @@ export class DungeonScene extends GameScene {
     }
     if (!l.item || !addItemToInventory(this.player.character, l.item)) {
       toast('Your pack is full.', 'bad');
+      heroBark('bagFull');
       return false;
     }
     this.loot.splice(i, 1);
@@ -2354,6 +2369,7 @@ export class DungeonScene extends GameScene {
       c.depthRecord = Math.max(c.depthRecord, this.run.depth);
       if (this.run.depth > save.account.bestDepth) save.account.bestDepth = this.run.depth;
       this.awardQuestIfComplete();
+      save.endRun();
       save.setCharacter(c);
       this.director?.onRunCleared();
       events.emit('run:cleared', { depth: this.run.depth });
@@ -2376,6 +2392,7 @@ export class DungeonScene extends GameScene {
     this.returnPortalY = at.y;
 
     this.portalLook?.dispose();
+    releaseRipple(this.portalBend);
     this.portalLook = buildPortal(0x7ec8ff);
     const group = this.portalLook.root;
     group.position.copy(at);
@@ -2387,6 +2404,7 @@ export class DungeonScene extends GameScene {
     this.exitOpen = true;
 
     this.effects.gateway(at.x, at.y, at.z, 0x7ec8ff, 'open');
+    this.portalBend = holdRipple('portal', at.x, at.y + 1.3, at.z, 1.1, 0.45);
     audio.play('portal');
     toast('The way home has opened.', 'epic');
   }
@@ -2583,6 +2601,8 @@ export class DungeonScene extends GameScene {
     toast('', 'info');
     audio.play('waypoint', { x: this.waypoint.position.x, z: this.waypoint.position.z });
     this.effects.gateway(this.waypoint.position.x, this.waypoint.position.y, this.waypoint.position.z, 0xffc861, 'use');
+    // Given up at its own ring, a map costs nothing but itself.
+    save.endRun();
     save.touch();
     save.flush();
     void this.engine.goTo('town');
@@ -2600,14 +2620,6 @@ export class DungeonScene extends GameScene {
     // `quest:complete` already went out when the last objective was done
     // (sim/Quests.ts); a second one paid Renown twice and toasted twice.
     audio.play('quest.complete');
-  }
-
-  /** The page is going away mid-fight: that is a death, not an escape. */
-  private fledByClosing(): void {
-    if (!peril.active || !this.player?.alive || this.transitioning) return;
-    this.transitioning = true;
-    this.director?.onDeath();
-    save.killCharacter('fled a fight', this.run.depth);
   }
 
   private handleDeath(): void {
@@ -2671,6 +2683,7 @@ export class DungeonScene extends GameScene {
   }
 
   override dispose(): void {
+    audio.setGround(null);
     this.releaseWarm();
     this.body.clear();
     for (const off of this.offs) off();
@@ -2706,6 +2719,8 @@ export class DungeonScene extends GameScene {
     this.waypointLook = null;
     this.portalLook?.dispose();
     this.portalLook = null;
+    releaseRipple(this.portalBend, 0.05);
+    this.portalBend = null;
     this.lighting?.dispose();
     this.player?.dispose();
     this.heroLight?.removeFromParent();

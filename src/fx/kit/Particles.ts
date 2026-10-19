@@ -20,9 +20,14 @@
  *   flame flipbook is fire, frost-fire or fel-fire depending on the ramp.
  * - **Debris lands.** A particle can carry the floor height under it. It
  *   bounces off it, slides to a stop, and never sinks through, so bone chips,
- *   blood and stones come to rest.
+ *   blood and stones come to rest. Given the level's wall map (`setSolids`),
+ *   the same particles bounce off walls and props and land on top of crates.
  * - **Smoke swirls together.** Turbulence is one flow field shared by every
  *   particle, so neighbours drift as a sheet and curl like real smoke.
+ * - **Smoke is lit.** The few strongest lights near the view (`setLight`)
+ *   light what the particles hide behind them: smoke by a torch glows warm on
+ *   its near side, ash over a frost blast goes blue. Light that a particle
+ *   gives off is untouched.
  * - **The GPU picks what to draw.** After the motion pass, three small
  *   compute passes keep only the particles that are alive and on screen and
  *   write their slots, in ring order, into a draw list. The draw is indirect:
@@ -34,15 +39,16 @@
 
 import * as THREE from 'three/webgpu';
 import {
-  Fn, If, Loop, abs, atomicAdd, cameraFar, cameraNear, cameraWorldMatrix, clamp, cos, cross, exp, float, floor, instanceIndex, length, max,
+  Fn, If, Loop, abs, atomicAdd, int, cameraFar, cameraNear, cameraWorldMatrix, clamp, cos, cross, exp, float, floor, instanceIndex, length, max,
   min, mix, normalize, perspectiveDepthToViewZ, positionGeometry, positionView, pow, sin, smoothstep, step, storage, texture, uint, uniform,
-  uv, vec2, vec3, vec4, viewportDepthTexture,
+  uniformArray, uv, vec2, vec3, vec4, viewportDepthTexture,
 } from 'three/tsl';
 import { markRange, markAll } from './Upload';
 import { spriteAtlas, cellUv, FLIPBOOKS } from './Atlas';
 import { unpackRGB } from './Palette';
 import { FX_EXPOSURE } from './Exposure';
 import { setNodeTextures, vary, type F, type V3, type V4 } from '../../core/Tsl';
+import type { SolidMap } from '../../types';
 
 /**
  * Each spawn is seven vec4s (28 floats) in one storage buffer, read by both
@@ -67,6 +73,21 @@ const TURB_GAIN = 1.8;
 const REST_SPEED = 0.45;
 /** How quickly debris on the floor stops sliding (1/s). */
 const FRICTION = 6;
+/**
+ * Squares the wall map holds: a 1 m grid over 360 by 360 m. A bigger level
+ * is laid on a coarser grid (`setSolids` takes the square size it is given).
+ */
+export const SOLID_CELLS = 1 << 17;
+
+/** Most lights that light the particles at once (`setLight`). */
+export const SMOKE_LIGHTS = 8;
+/**
+ * How much of a light the matter in a particle throws back: a matte
+ * surface's share (1/pi), a little more because smoke scatters light
+ * forward toward the eye as well.
+ */
+const SMOKE_LIT = 0.5;
+
 /**
  * Threads per group in the draw-list passes. Each group's survivors are
  * counted together, and a thread finds its place among them by summing the
@@ -155,6 +176,15 @@ export class ParticleField {
   private uFocal = uniform(new THREE.Vector2(1, 1));
   /** Groups the draw-list passes run this frame. */
   private uGroups = uniform(0, 'uint');
+  /** The wall map: its corner (x, z), square size and width; and its rows (0 = none). */
+  private uSolid = uniform(new THREE.Vector4(0, 0, 1, 0));
+  private uSolidRows = uniform(0);
+  /** Per square of the wall map: the top of what stands there, -999 for none. */
+  private solids: THREE.StorageBufferAttribute;
+  /** Two per light: place and reach, then colour times intensity. */
+  private lightData = Array.from({ length: SMOKE_LIGHTS * 2 }, () => new THREE.Vector4());
+  private uLights = uniformArray<'vec4'>(this.lightData, 'vec4');
+  private uLightCount = uniform(0, 'int');
   private data: Float32Array;
   private records: THREE.StorageBufferAttribute;
   /** Per particle: place (xyz) and the birth time it was started from (w). */
@@ -212,6 +242,8 @@ export class ParticleField {
     geo.setAttribute('slRecords', this.records);
     geo.setAttribute('slPlace', this.place);
     geo.setAttribute('slSpeed', this.speed);
+    this.solids = new THREE.StorageBufferAttribute(new Float32Array(SOLID_CELLS).fill(-999), 1);
+    geo.setAttribute('slSolids', this.solids);
     const groups = Math.ceil(this.capacity / GROUP);
     this.flags = new THREE.StorageBufferAttribute(new Uint32Array(this.capacity), 1);
     this.groupSum = new THREE.StorageBufferAttribute(new Uint32Array(groups), 1);
@@ -252,6 +284,16 @@ export class ParticleField {
     const rec = storage(this.records, 'vec4', this.capacity * VEC4S);
     const place = storage(this.place, 'vec4', this.capacity);
     const speed = storage(this.speed, 'vec4', this.capacity);
+    const solids = storage(this.solids, 'float', SOLID_CELLS).toReadOnly();
+    const sq = this.uSolid;
+    /** The top of what stands at (x, z), -999 for open air or off the map. */
+    const solidAt = (x: F, z: F): F => {
+      const cx = floor(x.sub(sq.x).div(sq.z)).toVar();
+      const cz = floor(z.sub(sq.y).div(sq.z)).toVar();
+      const on = cx.greaterThanEqual(0.0).and(cz.greaterThanEqual(0.0)).and(cx.lessThan(sq.w)).and(cz.lessThan(this.uSolidRows));
+      const at = solids.element(int(clamp(cz.mul(sq.w).add(cx), 0.0, SOLID_CELLS - 1)));
+      return on.select(at, float(-999.0)).uniformFlow() as unknown as F;
+    };
     const fn = Fn(() => {
       const i = this.slot();
       const b = i.mul(VEC4S);
@@ -283,16 +325,37 @@ export class ParticleField {
       const vd1 = vd0.mul(e).toVar();
       const vg1 = vg0.add(g.mul(h)).toVar();
 
-      // The floor: debris bounces, then slides to a stop.
+      // The floor: debris bounces, then slides to a stop. Debris that falls
+      // onto a crate or a wall top lands there, not on the floor under it.
+      const grounded = r3.w.greaterThan(-900.0).toVar();
+      const top = solidAt(p1.x, p1.z).toVar();
+      const floorY = grounded.and(top.greaterThan(r3.w)).and(p0.y.greaterThan(top.sub(0.05))).select(top, r3.w).uniformFlow().toVar();
       const t = clamp(age.div(life), 0.0, 1.0);
-      const minY = r3.w.add(sizeAt(r3, t, this.uScale).mul(0.3)).toVar();
-      const hit = r3.w.greaterThan(-900.0).and(p1.y.lessThan(minY)).toVar();
+      const minY = floorY.add(sizeAt(r3, t, this.uScale).mul(0.3)).toVar();
+      const hit = grounded.and(p1.y.lessThan(minY)).toVar();
       const vy = vd1.y.add(vg1).toVar();
       const up = vy.lessThan(0.0).select(max(vy.negate().mul(r6.z).sub(REST_SPEED), 0.0), vy).uniformFlow().toVar();
       const slide = exp(h.mul(-FRICTION)).toVar();
-      const pOut = vec3(p1.x, hit.select(minY, p1.y).uniformFlow().toVar(), p1.z).toVar();
-      const vOut = hit.select(vec3(vd1.x.mul(slide), up, vd1.z.mul(slide)), vd1).uniformFlow().toVar();
+      const yOut = hit.select(minY, p1.y).uniformFlow().toVar();
+      const vFloor = hit.select(vec3(vd1.x.mul(slide), up, vd1.z.mul(slide)), vd1).uniformFlow().toVar();
       const gOut = hit.select(float(0.0), vg1).uniformFlow().toVar();
+
+      // Walls and props: debris that flies into one comes back off it, keeping
+      // the share of its speed it keeps off the floor (blood keeps none, and
+      // runs down). Each axis is tried on its own, so a spark skims along a
+      // wall it meets at a slant. One born inside a wall's face is let out.
+      const free = grounded.and(solidAt(p0.x, p0.z).lessThanEqual(p0.y)).toVar();
+      const hitX = free.and(solidAt(p1.x, p0.z).greaterThan(yOut)).toVar();
+      const hitZ = free.and(solidAt(p0.x, p1.z).greaterThan(yOut)).toVar();
+      const corner = free.and(hitX.or(hitZ).not()).and(solidAt(p1.x, p1.z).greaterThan(yOut)).toVar();
+      const flipX = hitX.or(corner).toVar();
+      const flipZ = hitZ.or(corner).toVar();
+      const pOut = vec3(flipX.select(p0.x, p1.x), yOut, flipZ.select(p0.z, p1.z)).uniformFlow().toVar();
+      const vOut = vec3(
+        flipX.select(vFloor.x.mul(r6.z).negate(), vFloor.x),
+        vFloor.y,
+        flipZ.select(vFloor.z.mul(r6.z).negate(), vFloor.z),
+      ).uniformFlow().toVar();
 
       If(live, () => {
         place.element(i).assign(vec4(pOut, r0.w));
@@ -463,6 +526,22 @@ export class ParticleField {
     const vel = moved.select(sv.xyz.add(vec3(0.0, sv.w, 0.0)), r1.xyz).uniformFlow().toVar();
     const size = sizeAt(r3, t, this.uScale).mul(alive).toVar();
 
+    // The light reaching this particle from the lights near the view, with
+    // the falloff the world's lights have (inverse square, cut off at reach).
+    const lit = Fn(() => {
+      const sum = vec3(0.0).toVar();
+      Loop(this.uLightCount, ({ i }) => {
+        const a = this.uLights.element(int(i).mul(2)).toVar();
+        const c = this.uLights.element(int(i).mul(2).add(1)).toVar();
+        const d = wpos.sub(a.xyz).toVar();
+        const d2 = d.dot(d).toVar();
+        const k = clamp(d2.div(max(a.w.mul(a.w), 1e-3)), 0.0, 1.0).toVar();
+        const win = k.mul(k).oneMinus().toVar();
+        sum.addAssign(c.xyz.mul(win.mul(win).div(max(d2, 0.5))));
+      });
+      return sum;
+    })().toVar();
+
     const camRight = cameraWorldMatrix.mul(vec4(1.0, 0.0, 0.0, 0.0)).xyz;
     const camUp = cameraWorldMatrix.mul(vec4(0.0, 1.0, 0.0, 0.0)).xyz;
     const camFwd = cameraWorldMatrix.mul(vec4(0.0, 0.0, 1.0, 0.0)).xyz;
@@ -500,9 +579,14 @@ export class ParticleField {
     const vUv = vary(vec4(uvA, uvB));
     const vUvA = vUv.xy;
     const vUvB = vUv.zw;
-    const vCore = vary(unpackRGB(r4.x));
-    const vBody = vary(unpackRGB(r4.y));
-    const vTail = vary(unpackRGB(r4.z));
+    // The light rides in the ramp slots' fourth places: no new values to pass.
+    const vCore4 = vary(vec4(unpackRGB(r4.x), lit.x));
+    const vBody4 = vary(vec4(unpackRGB(r4.y), lit.y));
+    const vTail4 = vary(vec4(unpackRGB(r4.z), lit.z));
+    const vCore = vCore4.xyz;
+    const vBody = vBody4.xyz;
+    const vTail = vTail4.xyz;
+    const vLit = vec3(vCore4.w, vBody4.w, vTail4.w);
     const fadeIn = smoothstep(0.0, 0.06, t);
     const fadeOut = pow(max(t.oneMinus(), 0.0), r2.x);
     // How far in front of the world a sprite must be to show in full: about
@@ -533,7 +617,8 @@ export class ParticleField {
     // Hotter parts shine more; the cool edge stays dim so the shape reads.
     const light = col.mul(vEmit).mul(h.mul(1.1).add(0.18));
     const occl = cov.mul(vOccl).toVar();
-    const rgb = light.mul(cov).toVar();
+    // What it hides, it also lights: matter throws back the light on it.
+    const rgb = light.mul(cov).add(vLit.mul(col).mul(occl).mul(SMOKE_LIT)).toVar();
     const viewZ = positionView.z.negate();
     const fLin = smoothstep(this.uFogNear, this.uFogFar, viewZ);
     const fExp = exp(this.uFogDensity.mul(this.uFogDensity).mul(viewZ).mul(viewZ).negate()).oneMinus();
@@ -606,6 +691,39 @@ export class ParticleField {
     markRange(this.records, lo * STRIDE, n * STRIDE);
     this.lo = Infinity;
     this.hi = -Infinity;
+  }
+
+  /**
+   * Light `i` of the ones that light the particles: a point light at
+   * (x, y, z) reaching `reach` metres, colour times intensity in (r, g, b).
+   */
+  setLight(i: number, x: number, y: number, z: number, reach: number, r: number, g: number, b: number): void {
+    if (i < 0 || i >= SMOKE_LIGHTS) return;
+    this.lightData[i * 2]!.set(x, y, z, reach);
+    this.lightData[i * 2 + 1]!.set(r, g, b, 0);
+  }
+
+  /** How many of the `setLight` slots are in use. */
+  setLightCount(n: number): void {
+    this.uLightCount.value = Math.max(0, Math.min(SMOKE_LIGHTS, n | 0));
+  }
+
+  /**
+   * The level's wall map (`null` for none): debris bounces off what stands
+   * on it. Too big a map for `SOLID_CELLS` is refused; lay it on a coarser grid.
+   */
+  setSolids(map: SolidMap | null): boolean {
+    const n = map ? map.w * map.h : 0;
+    if (!map || n <= 0 || n > SOLID_CELLS || !(map.cell > 0)) {
+      this.uSolidRows.value = 0;
+      return !map;
+    }
+    const a = this.solids.array as Float32Array;
+    a.set(map.heights.subarray(0, n));
+    markRange(this.solids, 0, n);
+    this.uSolid.value.set(map.x0, map.z0, map.cell, map.w);
+    this.uSolidRows.value = map.h;
+    return true;
   }
 
   setFog(fog: THREE.Fog | THREE.FogExp2 | null): void {

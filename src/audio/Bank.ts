@@ -167,13 +167,11 @@ const DEFS: Record<string, Partial<SoundDef>> = {
 
   // --- player skills (which skill plays which: SkillSounds.ts) ----------------
   // Everything else under `skill.` takes soundDef's skill rule.
-  'skill.storm.zap': MINION,
   'skill.bone.slash': MINION,
   'skill.bone.bolt': MINION,
   'skill.clay.slam': MINION,
   'skill.clone.strike': MINION,
   'skill.viper.bite': MINION,
-  'skill.fire.wispShot': MINION,
   'skill.swing.blade': WHOOSH,
   'skill.swing.quick': WHOOSH,
   'skill.swing.heavy': WHOOSH,
@@ -211,12 +209,8 @@ const DEFS: Record<string, Partial<SoundDef>> = {
   'skill.hit.precise': LANDS,
   'skill.hit.tendon': LANDS,
   'skill.hit.ruin': BOOM,
-  'skill.fire.meteor': BOOM,
   'skill.fire.annihilate': BOOM,
-  'skill.fire.sun': BOOM,
-  'skill.supernova': BOOM,
   'skill.storm.strike': BOOM,
-  'skill.storm.skyfall': BOOM,
   'skill.storm.eye': BOOM,
   'skill.quake': BOOM,
   'skill.bone.nova': BOOM,
@@ -225,8 +219,6 @@ const DEFS: Record<string, Partial<SoundDef>> = {
   'skill.storm.orbHit': SPARK,
   'skill.storm.arc': SPARK,
   'skill.storm.chain': SPARK,
-  'skill.storm.discharge': SPARK,
-  'skill.storm.charge': SPARK,
   'skill.shout.battle': SHOUT,
   'skill.shout.rally': SHOUT,
   'skill.shout.fear': SHOUT,
@@ -399,6 +391,14 @@ export function soundDef(id: string): SoundDef {
     base.vol = id.startsWith('nova.') ? 0.9 : 0.75;
     base.max = 3;
     base.send = 0.4;
+  } else if (id.startsWith('boss.voice.')) {
+    // A boss's spoken line (ui/StoryBosses.ts): always heard, never stacked.
+    base.vol = 0.85;
+    base.prio = 2;
+    base.max = 1;
+    base.gap = 0.5;
+    base.jitter = 0.03;
+    base.send = 0.5;
   } else if (id.startsWith('drop.') || id.startsWith('pickup.')) {
     base.prio = 2;
     base.max = 2;

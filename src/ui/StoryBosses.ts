@@ -14,6 +14,7 @@
  * it is kept in the journal's Bosses tab.
  */
 
+import { audio } from '../audio/Audio';
 import { events } from '../core/Events';
 import { BOSSES, getBoss } from '../data/bosses';
 import { BOSS_VOICES } from '../data/story/bossVoices';
@@ -51,6 +52,8 @@ function speak(def: BossDef, text: string, delay = 0, hold?: number): void {
   const len = hold ?? Math.min(9, 2.6 + line.length * 0.045);
   if (fight?.def === def) fight.quietUntil = at + Math.min(len, 3.2);
   say(def.name, line, { tone: 'boss', delay: at - t, hold });
+  // It speaks aloud as the line shows: its kind's voice, slowed and deep.
+  setTimeout(() => audio.play(`boss.voice.${def.family}`, { volume: 0.9 }), Math.max(0, at - t) * 1000);
 }
 
 function narrate(text: string, delay = 0): void {

@@ -1,10 +1,11 @@
 /**
  * SLAY — is the hero in a fight right now?
  *
- * Death is permanent, so walking out must never be the way out of a fight that
- * is going badly. The dungeon scene reports blows and boss fights here, on the
- * run clock (which stops while paused, so waiting in the pause menu does not
- * count down). The pause menu and the tab-close guard read it.
+ * The dungeon scene reports blows and boss fights here, on the run clock
+ * (which stops while paused, so waiting in the pause menu does not count
+ * down). Leaving a map is allowed at any moment, at a price
+ * (`sim/RunLedger.ts`); what this still guards is swapping in another save
+ * mid-fight (the settings' import), which would undo a death.
  */
 
 /** Seconds after the last blow, either way, before the hero may leave. */

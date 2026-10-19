@@ -327,6 +327,36 @@ Update this file and push it after every finished step.
 - Fixed on the way: water mirror loop built outside a shader function (the
   swamp would not load); the particle shader passed 17 values between its
   stages (limit 16), now packed.
+- #131 done: a skill's rank lifts its drawing on every preset (`kit/Boost.ts`:
+  bigger sprites, more particles, brighter cores and lights, kept by bolts,
+  fields and delayed blows); monster bolts have their own look (dark core,
+  red rim); the grade pass bends the screen for shockwaves, heat over fire
+  and portals (`core/Ripples.ts`); the sprite sheet at 128 px cells with
+  new sets (blood, gore, ice, frost, forked bolts, sparks, embers); flash lights per
+  preset (6, 10, 16, 24) that join when they meet; sparks, chips and blood
+  bounce off walls and props and land on crates (`DungeonMesh.solidMap`,
+  `ParticleField.setSolids`); smoke is lit by the strongest lights near the
+  view (8, or 4 on Low and Medium).
+- #132 done: a theme per boss family (8 new CC0 tracks, `Score.ts` `BOSS`);
+  hero voice by body (`audio/HeroVoice.ts`: women's hurt sounds, barks for
+  no mana, a full pack and low life); pack grunts on aggro; a voice under
+  each boss taunt (`boss.voice.<family>`) and a roar on engage; a floor
+  keeps only its monsters' and the hero's skill sounds in memory
+  (`audio.setLoadout`); 45 skill sounds nobody played are gone, and parry,
+  jump, land, unequip, screech, heavy deaths, wood steps and the monster
+  spell sounds (meteor, thunder, chain lightning, volley, whirlwind,
+  shield) are wired.
+- #137 done (owner ask): leaving a map early no longer kills the hero.
+  Going down writes what the hero carries on the character
+  (`sim/RunLedger.ts`, `Character.run`). The last exit and the waypoint
+  throw the note away. The menu's Return to Town and Quit to Title, closing
+  the tab, a refresh or a crash put the hero back in town with what they
+  took down: items and gold found on the map are lost, materials go back
+  to what they were, and 10% of the current level's experience goes (never
+  a level). A crash is settled on the next load (`Save.settleLeftMaps`)
+  and told in town. The feel check's stub learned `delay`. New save cases:
+  settle on load, menu leave, a damaged note keeps today's gear.
+- #133 started: no text under 10 px in either stylesheet.
 
 ## Phase 0d log
 

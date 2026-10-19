@@ -567,11 +567,42 @@ export const audio: {
   /** Position the listener (the hero). Walking plays footsteps for the bed's floor. */
   setListener(x: number, z: number, facing?: number): void;
   setCombatFloor(v: number): void;
+  /**
+   * What stays in memory: only these monster families' voices and the
+   * hero's own skill sounds load ahead (`others` load late, on first use).
+   * A floor calls it with its monsters, the town with none. Core sounds
+   * (`ui.`, `hit.`, `player.` ...) always stay.
+   */
+  setLoadout(families: Iterable<string>, skills: { own: readonly string[]; others: readonly string[] }): void;
+  /** The floor under (x, z) for footsteps (`DungeonBuilder.stepSurface`); null goes back to the bed's. */
+  setGround(fn: ((x: number, z: number) => string | null) | null): void;
   applySettings(settings: GameSettings): void;
   stopAll(): void;
 };
 export function resolvesSound(id: string): boolean;
+/** `src/audio/SkillSounds.ts`: the class's own skill sounds and everyone else's, for `setLoadout`. */
+export function classSkillSounds(classId: CharClassId): { own: string[]; others: string[] };
 ```
+
+The hero's voice (`src/audio/HeroVoice.ts`) follows the class's body
+(`HERO_LOOKS[classId].shape.sex`): `player.hurt` / `player.hurtHeavy` for a
+man, `player.female.*` for a woman, and three barks in each voice,
+`player.<male|female>.<noMana|bagFull|lowLife>`, each with its own wait
+before it may sound again.
+
+```ts
+export type HeroBark = 'noMana' | 'bagFull' | 'lowLife';
+export function setHeroVoice(classId: CharClassId): void; // Player does this when made
+export function heroSound(cry: 'hurt' | 'hurtHeavy' | HeroBark): string;
+export function heroBark(bark: HeroBark, volume?: number): void;
+export function heroSoundIds(): string[];
+```
+
+Bosses: `boss.voice.<family>` plays under each spoken taunt
+(`ui/StoryBosses.ts`); a boss roars on engage (`boss.roar` for beasts,
+demons, aberrations, insects and plants, its family's aggro call for the
+rest, lower for a bigger boss). Each boss family has its own theme
+(`Score.ts` `BOSS`).
 
 Places (`src/audio/Places.ts`): every music key and biome id folds onto one
 of town, crypt, caverns, foundry, temple, hive, frozen, desert, tomb, void,
@@ -606,7 +637,24 @@ export class FXSystem {
   setAmbient(kind: string | null, bounds: THREE.Box3): void;
   /** Floating combat text. */
   damageNumber(text: string, x: number, y: number, z: number, color: number, crit: boolean): void;
+  /** The camera smoke is lit for: the strongest few point and spot lights it looks at light the smoke. */
+  setView(camera: THREE.Camera | null): void;
+  /** The particle field. `field.setSolids(map)` takes the level's wall map. */
+  readonly field: ParticleField;
   dispose(): void;
+}
+
+/** src/fx/kit/Particles.ts */
+export class ParticleField {
+  /**
+   * The level's wall map (`SolidMap` in types.ts; `null` for none). Debris
+   * (any layer with `ground: true`) bounces off walls and props and lands on
+   * crate tops. Up to `SOLID_CELLS` squares; false if the map is too big.
+   */
+  setSolids(map: SolidMap | null): boolean;
+  /** One of `SMOKE_LIGHTS` lights that light the particles (FXSystem fills them). */
+  setLight(i: number, x: number, y: number, z: number, reach: number, r: number, g: number, b: number): void;
+  setLightCount(n: number): void;
 }
 
 /** Screen-space and world decals: scorch marks, blood pools, telegraphs. */
@@ -642,8 +690,39 @@ export class BodyFX {
 bossPhase(x: number, z: number, size: number, school?: School): void;
 /** A portal tearing open, or someone stepping through one. */
 gateway(x: number, y: number, z: number, color: number, kind?: 'open' | 'use'): void;
-/** `carried: true`: the caller flies the shot with `handle.setEndpoint(p)` and ends it with `stop()`. */
-projectile(from, to, opts: ProjectileOpts & { carried?: boolean }): EffectHandle;
+/** `carried: true`: the caller flies the shot with `handle.setEndpoint(p)` and ends it with `stop()`.
+ *  `hostile: true`: a monster's shot, drawn in the enemy look (dark core, red rim). */
+projectile(from, to, opts: ProjectileOpts & { carried?: boolean; hostile?: boolean }): EffectHandle;
+```
+
+Skill rank in the drawing (`src/fx/kit/Boost.ts`):
+
+```ts
+/** Runs `fn` with every particle, core and flash light made meanwhile drawn at `rank`. */
+export function atRank<T>(rank: number, fn: () => T): T;
+/** The rank in force right now (delayed blows and lingering effects keep the rank they were cast at). */
+export function boostRank(): number;
+```
+
+The skill runner casts inside `atRank(skillRank(...))`. Bolts, beams and
+fields remember the rank they were made at and draw every later step at it.
+Monster and world effects run at rank 1.
+
+Flash lights (`src/fx/kit/Lights.ts`): `LightPool(scene, MAX_FX_LIGHTS, limit)`,
+`setLimit(n)`. The limit is `QualityProfile.fxLights` (6, 10, 16, 24 from Low
+to Ultra). A flash near a live one joins it (brighter, capped) instead of
+taking a slot, so a big fight costs no more lights than a small one.
+
+Screen ripples (`src/core/Ripples.ts`), drawn by the grade pass:
+
+```ts
+export function ripple(kind: 'shock' | 'heat' | 'portal', x, y, z, radius: number, duration: number, strength?: number): void;
+export function holdRipple(kind, x, y, z, radius: number, strength?: number): RippleHandle;
+export function moveRipple(h: RippleHandle | null, x, y, z): void;
+export function releaseRipple(h: RippleHandle | null, fade?: number): void;
+export function clearRipples(): void;
+/** 0..1; reduced motion turns it down. */
+export function setRippleScale(s: number): void;
 ```
 
 `src/fx/MonsterFX.ts`: the dungeon scene calls `bindMonsterFX(effects)`, and
@@ -795,6 +874,8 @@ export class DungeonMesh {
   floorY(x: number, z: number): number;
   /** The biome art of the zone a tile is in (maps can join biomes). */
   artAt(tileX: number, tileY: number): BiomeArt;
+  /** What a flying spark meets, on `cell`-metre squares: walls to the sky, props to their drawn tops. */
+  solidMap(cell?: number): SolidMap;
   dispose(): void;
 }
 /**

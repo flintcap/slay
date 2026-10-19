@@ -17,6 +17,7 @@ import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
 import { Shapeshift } from './Shapeshift';
+import { setHeroVoice } from '../audio/HeroVoice';
 
 export interface PlayerContext {
   /** Boxes, or circles where `r` is set (round props: barrels, pillars). `moves` marks one that walks (a resident). */
@@ -219,6 +220,7 @@ export class Player {
     adoptStatuses(character.id, this.status);
 
     this.hero = new DressedHero(character.classId, seed);
+    setHeroVoice(character.classId);
     this.hero.trimForPlay();
     // The hero's shadow in a few draws, not one per part.
     this.hero.useShadowBodies();
@@ -624,8 +626,9 @@ export class Player {
       // A block takes the whole hit (Combat.BLOCK_LEAK). The body meets it:
       // the shield up, or the blade turning it, not the hurt flinch of a
       // blow that landed.
-      events.emit('sfx', { id: 'block' });
-      this.animator.guard(this.status.has('parrying') ? 'parry' : 'block');
+      // A shield thuds; a blade turning it rings (a parry).
+      const move = this.animator.guard(this.status.has('parrying') ? 'parry' : 'block');
+      events.emit('sfx', { id: move === 'parry' ? 'parry' : 'block' });
       return 0;
     }
     // Harder tiers make every hit land heavier, after mitigation.

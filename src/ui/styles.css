@@ -1638,7 +1638,7 @@ input.slider::-moz-range-thumb {
 .islot-ph-label {
   position: absolute;
   bottom: 2px;
-  font-size: calc(8px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgb(var(--ink-3-rgb) / 0.4);
@@ -1662,7 +1662,7 @@ input.slider::-moz-range-thumb {
   top: 2px;
   right: 3px;
   font-family: var(--font-num);
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--gold-hi);
   text-shadow: 0 1px 2px var(--shade);
@@ -1859,7 +1859,7 @@ input.slider::-moz-range-thumb {
 /* Over the open world: the label says what letting go will do. */
 .drag-ghost-hint {
   display: none;
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -2132,7 +2132,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-compare-flag {
   margin: 10px 0 -2px;
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -2263,7 +2263,7 @@ input.slider::-moz-range-thumb {
   line-height: 1.1;
 }
 .tt-bigstat-label {
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -2352,7 +2352,7 @@ input.slider::-moz-range-thumb {
   display: none;
   margin-left: var(--s1);
   font-family: var(--font-num);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--ink-3);
 }
 .tt-wrap.show-detail .tt-tier-num {
@@ -2360,7 +2360,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-modtag {
   flex: none;
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #7fd6c8;
@@ -2390,7 +2390,7 @@ input.slider::-moz-range-thumb {
 .tt-sublabel {
   display: block;
   margin-bottom: 3px;
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -2504,7 +2504,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-set-count {
   font-family: var(--font-num);
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--ink-3);
 }
 .tt-set-piece {
@@ -2535,7 +2535,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1px currentColor;
@@ -2584,7 +2584,7 @@ input.slider::-moz-range-thumb {
   border-top: 1px solid rgb(var(--line-rgb) / 0.12);
 }
 .tt-reqs-label {
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -2649,7 +2649,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-ilvl {
   font-family: var(--font-num);
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
 }
 
 .tt-actions {
@@ -2687,7 +2687,7 @@ input.slider::-moz-range-thumb {
   margin-bottom: 3px;
 }
 .tt-verdict {
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -2725,7 +2725,7 @@ input.slider::-moz-range-thumb {
   font-weight: 700;
 }
 .tt-delta-arrow {
-  font-size: calc(8px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .tt-delta.up .tt-delta-v {
   color: var(--good);
@@ -2740,7 +2740,7 @@ input.slider::-moz-range-thumb {
 }
 .tt-swap-group {
   margin-top: 5px;
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -3987,7 +3987,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.08em;
@@ -4184,7 +4184,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1;
   color: #e9dcbc;
@@ -4199,7 +4199,7 @@ input.slider::-moz-range-thumb {
   bottom: 1px;
   left: 3px;
   font-family: var(--font-num);
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   color: #9cc8ff;
   text-shadow: 0 1px 2px var(--shade), 0 0 3px var(--shade);
@@ -4210,7 +4210,7 @@ input.slider::-moz-range-thumb {
   bottom: 1px;
   right: 3px;
   font-family: var(--font-num);
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--gold-hi);
   text-shadow: 0 1px 2px var(--shade), 0 0 3px var(--shade);
@@ -4250,7 +4250,7 @@ input.slider::-moz-range-thumb {
   background: linear-gradient(180deg, transparent, rgb(var(--line-rgb) / 0.55), transparent);
 }
 .hotslot-rmb .hotslot-key {
-  font-size: calc(8px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.04em;
 }
 .hotslot-rmb.is-basic .hotslot-art {
@@ -4398,7 +4398,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   color: #fff;
   background: #1a120a;
@@ -4411,7 +4411,7 @@ input.slider::-moz-range-thumb {
   left: 50%;
   transform: translateX(-50%);
   font-family: var(--font-num);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--ink-2);
   text-shadow: 0 1px 2px var(--shade), 0 0 3px var(--shade);
@@ -4760,7 +4760,7 @@ input.slider::-moz-range-thumb {
   left: 50%;
   bottom: 4px;
   transform: translateX(-50%);
-  font-size: calc(8px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -4825,7 +4825,7 @@ input.slider::-moz-range-thumb {
   left: 50%;
   bottom: -13px;
   transform: translateX(-50%);
-  font-size: calc(8px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -4963,7 +4963,7 @@ input.slider::-moz-range-thumb {
 }
 .char-level-w {
   display: block;
-  font-size: calc(8px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.2em;
   color: var(--ink-4);
 }
@@ -4987,7 +4987,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   place-items: center;
   font-family: var(--font-num);
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   color: rgba(255, 240, 205, 0.9);
   text-shadow: 0 1px 2px var(--shade);
 }
@@ -5012,7 +5012,7 @@ input.slider::-moz-range-thumb {
   color: var(--ink);
 }
 .char-fact-l {
-  font-size: calc(8.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -5171,7 +5171,7 @@ input.slider::-moz-range-thumb {
 }
 .build-head {
   color: var(--ink-4);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -5202,7 +5202,7 @@ input.slider::-moz-range-thumb {
 .build-sub {
   margin-top: var(--s3);
   margin-bottom: var(--s1);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -5470,7 +5470,7 @@ input.slider::-moz-range-thumb {
 }
 .skill-tierreq {
   font-family: var(--font-num);
-  font-size: calc(8.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 1;
   padding: 1px 3px;
   color: rgb(var(--ink-3-rgb) / 0.42);
@@ -5554,7 +5554,7 @@ input.slider::-moz-range-thumb {
   transform: translateX(-50%);
   padding: 0 5px;
   font-family: var(--font-num);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 13px;
   white-space: nowrap;
@@ -5579,7 +5579,7 @@ input.slider::-moz-range-thumb {
 .sknode-label {
   position: absolute;
   text-align: center;
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.05em;
   color: var(--ink-4);
   pointer-events: none;
@@ -5902,7 +5902,7 @@ input.slider::-moz-range-thumb {
 }
 .skdetail-chip {
   padding: 1px 8px;
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -5938,7 +5938,7 @@ input.slider::-moz-range-thumb {
   background: rgb(var(--gold-rgb) / 0.06);
 }
 .skdetail-trow.is-head {
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -5976,7 +5976,7 @@ input.slider::-moz-range-thumb {
   padding: 3px 0;
 }
 .skdetail-linklabel {
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -6031,7 +6031,7 @@ input.slider::-moz-range-thumb {
   box-shadow: var(--hairline);
 }
 .skill-hotlabel {
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -6058,7 +6058,7 @@ input.slider::-moz-range-thumb {
   top: 1px;
   left: 3px;
   font-family: var(--font-num);
-  font-size: calc(8.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--ink-4);
 }
 
@@ -6176,7 +6176,7 @@ input.slider::-moz-range-thumb {
   right: 0;
   text-align: center;
   font-family: var(--font-num);
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--gold-hi);
   text-shadow: 0 1px 2px var(--shade);
   pointer-events: none;
@@ -6240,7 +6240,7 @@ input.slider::-moz-range-thumb {
   border-radius: var(--radius-sm);
 }
 .diffrow.is-head {
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
@@ -6671,7 +6671,7 @@ input.slider::-moz-range-thumb {
 }
 .fallen-detail {
   display: block;
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--ink-4);
 }
 .fallen-depth {
@@ -6762,7 +6762,7 @@ input.slider::-moz-range-thumb {
   text-shadow: 0 1px 3px var(--shade), 0 0 6px var(--shade);
 }
 .np-level {
-  font-size: calc(9.5px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.3;
   color: #cbb98a;
@@ -6798,7 +6798,7 @@ input.slider::-moz-range-thumb {
   letter-spacing: 0.03em;
 }
 .np-rank {
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--np-color, #d8d8d8);
@@ -6887,7 +6887,7 @@ input.slider::-moz-range-thumb {
   height: 18px;
 }
 .np-more {
-  font-size: calc(9px * var(--text-scale, 1));
+  font-size: calc(10px * var(--text-scale, 1));
   color: #b9a97e;
   text-shadow: 0 1px 2px var(--shade);
 }

@@ -11,6 +11,10 @@
  * an eased pressure throttle thin out crowd layers in a saturated fight, while
  * single-sprite layers (the flash, the ring at the heart of an effect) always
  * play. Nothing is allocated per burst or per frame.
+ *
+ * Smoke is lit by the strongest few lights near the view, picked here each
+ * frame from the scene's point and spot lights (torches, the hero's light,
+ * spell flashes).
  */
 
 import * as THREE from 'three';
@@ -18,9 +22,10 @@ import type { QualityProfile } from '../core/Renderer';
 import { events } from '../core/Events';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
-import { ParticleField } from './kit/Particles';
+import { ParticleField, SMOKE_LIGHTS } from './kit/Particles';
 import { EMITTERS, AMBIENT, emitLayer, emitterIds as kitEmitterIds, ambientIds as kitAmbientIds, type EmitOpts, type Layer } from './kit/Emitters';
-import { spriteAtlas, GRID } from './kit/Atlas';
+import { spriteAtlas, ATLAS_CELLS } from './kit/Atlas';
+import { BOOST } from './kit/Boost';
 import { WorldText } from './WorldText';
 import type { School } from './kit/Palette';
 
@@ -35,6 +40,15 @@ const MAX_BURST_SCALE = 3.5;
 const _v = new THREE.Vector3();
 const _c = new THREE.Color();
 const _w = new THREE.Color();
+const _look = new THREE.Vector3();
+const _fwd = new THREE.Vector3();
+const _lp = new THREE.Vector3();
+/** How far ahead of the camera the lights are picked round (the play distance). */
+const LOOK_AHEAD = 13;
+/** Lights past their reach by more than this from the look point are skipped. */
+const LIGHT_SLACK = 12;
+/** Seconds between looks through the scene for lights. */
+const LIGHT_SCAN = 0.5;
 
 export class FXSystem {
   readonly field: ParticleField;
@@ -61,6 +75,15 @@ export class FXSystem {
   private throttle = 1;
   /** Times a burst was cut short by the per-frame ceiling. */
   clipped = 0;
+
+  /** The scene's point and spot lights, looked up every `LIGHT_SCAN` seconds. */
+  private lights: Array<THREE.PointLight | THREE.SpotLight> = [];
+  private lightScan = 0;
+  /** The camera the lights are picked for (`setView`); none, no lit smoke. */
+  private view: THREE.Camera | null = null;
+  /** The picked lights and their weights, strongest first. */
+  private picked: Array<THREE.PointLight | THREE.SpotLight | null> = new Array(SMOKE_LIGHTS).fill(null);
+  private pickW = new Float32Array(SMOKE_LIGHTS);
 
   private unQuality: () => void;
 
@@ -96,6 +119,12 @@ export class FXSystem {
     let sum = 0;
     for (let i = 0; i < this.recent.length; i++) sum += this.recent[i]!;
     return (sum * 0.75) / Math.max(1, this.capacity);
+  }
+
+  /** The camera smoke is lit for: the lights it looks at light the smoke. */
+  setView(camera: THREE.Camera | null): void {
+    this.view = camera;
+    if (!camera) this.field.setLightCount(0);
   }
 
   /** Ambient emission follows this point (the player) so the budget lands on screen. */
@@ -134,8 +163,9 @@ export class FXSystem {
     const budget = this.frameBudget;
     const room = (core ? budget : budget * 0.8) - this.frameSpawned;
     // The single flash or ring at a burst's heart is drawn once, whatever the
-    // count: stacking them only whitens the frame.
-    let mul = core ? 1 : countMul * this.quality.fxScale * this.throttle;
+    // count: stacking them only whitens the frame. A skill drawn at a high
+    // rank throws more of the rest (`kit/Boost.ts`).
+    let mul = core ? 1 : countMul * this.quality.fxScale * this.throttle * BOOST.density;
     const want = layer.count * mul;
     if (want > room) {
       this.clipped++;
@@ -234,14 +264,72 @@ export class FXSystem {
       this.focus.z = _v.z;
     }
     this.tickAmbient(dt);
+    const view = camera ?? this.view;
+    if (view) this.pickLights(dt, view);
     this.field.setFog(this.scene.fog ?? null);
     this.field.update(dt, this.scale);
     this.text?.flush(elapsed);
   }
 
+  /**
+   * Hands the field the lights that light its smoke: the strongest few near
+   * where the camera looks (half as many on Low and Medium).
+   */
+  private pickLights(dt: number, camera: THREE.Camera): void {
+    this.lightScan -= dt;
+    if (this.lightScan <= 0) {
+      this.lightScan = LIGHT_SCAN;
+      const list = this.lights;
+      list.length = 0;
+      this.scene.traverse((o) => {
+        const l = o as THREE.PointLight | THREE.SpotLight;
+        if ((l as THREE.PointLight).isPointLight || (l as THREE.SpotLight).isSpotLight) list.push(l);
+      });
+    }
+    const max = this.quality.fxScale >= 0.9 ? SMOKE_LIGHTS : SMOKE_LIGHTS >> 1;
+    camera.getWorldPosition(_look);
+    _fwd.setFromMatrixColumn(camera.matrixWorld, 2).negate();
+    _look.addScaledVector(_fwd, LOOK_AHEAD);
+    const picked = this.picked;
+    const w = this.pickW;
+    let n = 0;
+    for (const l of this.lights) {
+      if (!l.visible || !(l.intensity > 0.01) || !l.parent) continue;
+      _lp.setFromMatrixPosition(l.matrixWorld);
+      const reach = l.distance > 0 ? l.distance : 14;
+      const d = _lp.distanceTo(_look);
+      if (d > reach + LIGHT_SLACK) continue;
+      const gap = Math.max(0, d - reach * 0.4);
+      const weight = (l.intensity * reach) / (1 + gap * gap);
+      // Insert by weight, strongest first.
+      let k = Math.min(n, max);
+      if (k === max && weight <= w[max - 1]!) continue;
+      if (k === max) k = max - 1;
+      while (k > 0 && w[k - 1]! < weight) {
+        w[k] = w[k - 1]!;
+        picked[k] = picked[k - 1]!;
+        k--;
+      }
+      w[k] = weight;
+      picked[k] = l;
+      if (n < max) n++;
+    }
+    for (let i = 0; i < n; i++) {
+      const l = picked[i]!;
+      _lp.setFromMatrixPosition(l.matrixWorld);
+      const k = l.intensity;
+      this.field.setLight(i, _lp.x, _lp.y, _lp.z, l.distance > 0 ? l.distance : 14, l.color.r * k, l.color.g * k, l.color.b * k);
+      picked[i] = null;
+    }
+    this.field.setLightCount(n);
+  }
+
   /** Kills everything in flight (scene changes). */
   clear(): void {
     this.field.clear();
+    this.lights.length = 0;
+    this.lightScan = 0;
+    this.field.setLightCount(0);
     this.text?.clear();
   }
 
@@ -263,7 +351,7 @@ export function spriteAtlasTexture(): THREE.Texture {
 }
 
 /** How many cells the sprite sheet holds. */
-export const SPRITE_CELLS = GRID * GRID;
+export const SPRITE_CELLS = ATLAS_CELLS;
 
 /** Every sprite index any emitter layer uses, for the static checks. */
 export function emitterSprites(): Array<{ id: string; sprite: number; variants: number }> {

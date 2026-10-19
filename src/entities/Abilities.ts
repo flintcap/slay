@@ -826,6 +826,7 @@ export function fireProjectile(
       flare: true,
       impact: false,
       trail: undefined,
+      hostile: true,
     });
   }
 }
@@ -3131,6 +3132,8 @@ def({
   cooldown: 5,
   windup: 0.3,
   recovery: 0.4,
+  // A shriek as it drops on you.
+  sfx: 'screech',
   range: 11,
   minRange: 2.5,
   damageMul: 1.1,

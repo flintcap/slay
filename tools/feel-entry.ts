@@ -96,6 +96,7 @@ const check = (ok: boolean, msg: string): void => {
     fx: { burst: () => { bursts++; } },
     flash: () => { lights++; },
     chance: () => false,
+    delay: () => {},
   } as unknown as EffectSystem;
   const feel = new CombatFeel(stub);
 
@@ -171,6 +172,7 @@ const check = (ok: boolean, msg: string): void => {
     fx: { burst: () => { bursts++; } },
     flash: () => { lights++; },
     chance: () => false,
+    delay: () => {},
   } as unknown as EffectSystem;
   const feel = new CombatFeel(stub);
   const hero = { root: new THREE.Group(), incapacitated: false };

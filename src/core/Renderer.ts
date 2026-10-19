@@ -25,6 +25,7 @@ import { setAssetAnisotropy } from './Assets';
 import { LUT_SIZE, lookOf, lookTable, type Look } from './Lut';
 import { setShaftSun, shaftNode, shaftStrength } from './Shafts';
 import { events } from './Events';
+import { rippleOffset, writeRipples } from './Ripples';
 
 type F = THREE.Node<'float'>;
 type V2 = THREE.Node<'vec2'>;
@@ -107,7 +108,8 @@ function gradeNode(src: (p: V2) => V3, over?: (p: V2) => V3): V4 {
       sin(up.mul(140.0).add(G.time.mul(3.7))).add(sin(up.mul(61.0).sub(G.time.mul(2.3)).add(p0.x.mul(9.0))).mul(0.6)),
     );
     const dy = hz.mul(0.0012).mul(sin(p0.x.add(dx).mul(80.0).add(G.time.mul(2.9)))).negate();
-    const p = p0.add(vec2(dx, dy));
+    // Shockwaves, heat over fire and portals bend the frame where they are (`Ripples.ts`).
+    const p = rippleOffset(p0.add(vec2(dx, dy)));
 
     // Chromatic aberration scales with radius: clean centre, fringed edges.
     const ca = G.aberration.mul(G.hurt.mul(6.0).add(1.0));
@@ -397,6 +399,12 @@ export interface QualityProfile {
   /** Multiplier on particle budgets and decal counts. */
   fxScale: number;
   /**
+   * Effect flash lights lit at once (`fx/kit/Lights.ts`). Packed lights cost
+   * no shader change and only the pixels they reach, so a big fight's hits
+   * can each light the floor; nearby flashes join into one.
+   */
+  fxLights: number;
+  /**
    * Shadow-map redraws a second, at most. The shadow pass draws nearly every
    * caster a second time (check-perf: 178 shadow draws beside 199 colour
    * ones), and walls and trees never move, so it is redrawn on a clock rather
@@ -417,10 +425,10 @@ export interface QualityProfile {
 // ratio cap and a render scale). High is the intended look. The auto mode
 // (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowScale: 0.5, pointShadows: false, lanternShadow: false, parallax: 0, cover: 0.35, waterReflect: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, air: 0, motes: false, shafts: false, liteWorld: true, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, shadowHz: 20 },
-  medium: { shadowScale: 0.75, pointShadows: true, lanternShadow: false, parallax: 0.035, cover: 0.65, waterReflect: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, air: 0, motes: false, shafts: false, liteWorld: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, shadowHz: 30 },
-  high: { shadowScale: 1, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, air: 4, motes: true, shafts: true, liteWorld: false, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, shadowHz: 40 },
-  ultra: { shadowScale: 2, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, air: 6, motes: true, shafts: true, liteWorld: false, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, shadowHz: 40 },
+  low: { shadowScale: 0.5, pointShadows: false, lanternShadow: false, parallax: 0, cover: 0.35, waterReflect: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, air: 0, motes: false, shafts: false, liteWorld: true, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, fxLights: 6, shadowHz: 20 },
+  medium: { shadowScale: 0.75, pointShadows: true, lanternShadow: false, parallax: 0.035, cover: 0.65, waterReflect: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, air: 0, motes: false, shafts: false, liteWorld: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, fxLights: 10, shadowHz: 30 },
+  high: { shadowScale: 1, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, air: 4, motes: true, shafts: true, liteWorld: false, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, fxLights: 16, shadowHz: 40 },
+  ultra: { shadowScale: 2, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, air: 6, motes: true, shafts: true, liteWorld: false, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, fxLights: 24, shadowHz: 40 },
 };
 
 /** The screen's own pixel ratio, up to what a profile allows. */
@@ -1217,6 +1225,7 @@ export class Renderer {
     G.hurt.value = this.hurt;
     G.lowLife.value = this.lowLife;
     G.time.value = elapsed;
+    writeRipples(camera, (camera as THREE.PerspectiveCamera).aspect || 16 / 9, dt, elapsed);
     uFog.value.set(fogShape.x, fogShape.y, fogShape.z, fogShape.w);
     // Mist only where the scene asked for height fog (the levels, not the town).
     const fd = (scene.fog as THREE.FogExp2 | null)?.density ?? 0;

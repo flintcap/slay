@@ -17,6 +17,7 @@ import { getUnique } from '../src/data/uniques';
 import { SET_PIECES } from '../src/data/sets';
 import { EXTRA_LINES } from '../src/data/extraLines';
 import { buildSetPiece, refreshFixedLines } from '../src/sim/Loot';
+import { xpForLevel } from '../src/sim/Stats';
 
 class MemStore implements SaveStore {
   map = new Map<string, string>();
@@ -304,6 +305,67 @@ check('export then import is lossless', () => {
   const before = JSON.stringify(s.account);
   if (!s.importSave(s.exportSave())) return 'own export refused';
   return JSON.stringify(s.account) === before ? true : 'round trip changed the account';
+});
+
+// A hero saved mid-map (closed tab, refresh, crash) wakes in town as they
+// went down, less a tenth of a level's experience; never a level, never dead.
+check('a map left by closing the game is settled on the next load', () => {
+  const { store, s } = fresh();
+  s.load();
+  const h = hero('a', 10);
+  s.setCharacter(h);
+  s.account.materials.ore = 5;
+  s.beginRun(4);
+  const c = s.account.current!;
+  c.inventory[5] = item('found1');
+  c.equipment.mainHand = item('found2');
+  c.gold += 900;
+  s.account.materials.ore = 50;
+  s.setCharacter(c);
+  s.flush();
+  const s2 = new SaveManager(store);
+  const a = s2.load();
+  const b = a.current;
+  if (!b) return 'the hero is gone';
+  if (b.run) return 'the note was not settled';
+  if (b.equipment.mainHand?.uid !== 'a-mh') return `worn item is ${b.equipment.mainHand?.uid}, not the one taken down`;
+  if (b.inventory.some((it) => it?.uid === 'found1') || b.gold !== 250) return 'kept what was found on the map';
+  if (a.materials.ore !== 5) return `materials ${a.materials.ore}, expected 5`;
+  if (b.level !== 10 || b.xp !== 1000 - Math.floor(xpForLevel(10) * 0.1)) return `level ${b.level} xp ${b.xp}`;
+  const f = s2.takeForfeit('a');
+  if (!f || f.items !== 2 || f.gold !== 900) return `forfeit ${JSON.stringify(f)}`;
+  if (s2.takeForfeit('a')) return 'told twice';
+  return invariants(a).join('; ') || true;
+});
+
+check('a map that ends well keeps everything, and the menu leave costs', () => {
+  const { s } = fresh();
+  s.load();
+  s.setCharacter(hero('a', 3));
+  s.beginRun(2);
+  s.account.current!.inventory[5] = item('kept');
+  s.endRun();
+  if (s.forfeitRun()) return 'a finished map was settled';
+  if (!s.account.current!.inventory.some((it) => it?.uid === 'kept')) return 'a finished map lost its loot';
+  s.beginRun(3);
+  const c = s.account.current!;
+  c.inventory[6] = item('lost');
+  c.xp = 5;
+  const f = s.forfeitRun();
+  if (!f || f.items !== 1) return `forfeit ${JSON.stringify(f)}`;
+  if (c.xp !== 0 || c.level !== 3) return `xp ${c.xp} level ${c.level}: went below the level's start`;
+  if (!c.inventory.some((it) => it?.uid === 'kept') || c.inventory.some((it) => it?.uid === 'lost')) return 'wrong pack after leaving';
+  return true;
+});
+
+check('a damaged map note keeps the gear the hero holds now', () => {
+  const store = new MemStore();
+  const h = hero('a', 6);
+  (h as { run?: unknown }).run = { v: 1, equipment: 'junk', inventory: 7 };
+  store.setItem(SAVE_KEY, JSON.stringify(account(h, [h])));
+  const s = new SaveManager(store);
+  const a = s.load();
+  return a.current?.equipment.mainHand?.uid === 'a-mh' && !a.current.run && a.current.xp === 600 ? true : 'gear or experience lost to a bad note';
 });
 
 check('a full disk does not crash and tells the player once', () => {

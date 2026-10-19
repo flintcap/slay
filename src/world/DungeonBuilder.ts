@@ -21,7 +21,7 @@
 import * as THREE from 'three/webgpu';
 import { attribute, distance, materialOpacity, positionWorld, smoothstep, texture, uniform, uv, vec4 } from 'three/tsl';
 import { andMask, asBasic, matColor, pixelDither, setNodeTextures } from '../core/Tsl';
-import type { BiomeDef, DungeonLevel, PropPlacement, Rng } from '../types';
+import type { BiomeDef, DungeonLevel, PropPlacement, Rng, SolidMap } from '../types';
 import { Noise, clamp, lerp } from '../art/Noise';
 import { biomeArt, wallKitOf, type BiomeArt, type FloorVariant, type WallKit } from './Biomes';
 import { bakeProps } from './PropBake';
@@ -35,6 +35,7 @@ import {
   T_RUIN,
   T_BRIDGE,
   T_DEEP_WATER,
+  T_ICE,
   drawAsKind,
   isWalkableValue,
 } from './Layouts';
@@ -713,6 +714,8 @@ export class DungeonMesh {
   private readonly biome: BiomeDef;
   private readonly noise: Noise;
   private readonly heights: Int8Array;
+  /** How tall each blocking prop kind stands at scale 1, from its drawn shape (`solidMap`). */
+  private readonly propTall = new Map<string, number>();
   private readonly roomOf: Int16Array;
 
   private readonly chunks: Chunk[] = [];
@@ -912,6 +915,13 @@ export class DungeonMesh {
       return this.terrain.heightAt(wx, wz);
     }
     return this.floorHeight(t.x, t.y);
+  }
+
+  /** What a footstep at a world position lands on, when it is not the place's own floor. */
+  stepSurface(wx: number, wz: number): string | null {
+    const t = this.worldToTile(wx, wz);
+    const v = this.rawTile(t.x, t.y);
+    return v === T_BRIDGE ? 'wood' : v === T_WATER ? 'water' : v === T_ICE ? 'ice' : null;
   }
 
   private tileX(x: number): number {
@@ -2502,6 +2512,14 @@ export class DungeonMesh {
       } catch {
         continue;
       }
+      if (def.blocks) {
+        let tall = this.propTall.get(g.kind) ?? 0;
+        for (const layer of tmpl.layers) {
+          if (!layer.geometry.boundingBox) layer.geometry.computeBoundingBox();
+          tall = Math.max(tall, layer.geometry.boundingBox!.max.y);
+        }
+        this.propTall.set(g.kind, tall);
+      }
       const n = g.list.length;
       if (n === 0) continue;
       // Wall lights already resolve to the biome's light colour (`mood`) and
@@ -2920,6 +2938,51 @@ export class DungeonMesh {
       if (propDef(p.kind).blocks) out.push({ x: p.x, y: p.y });
     }
     return out;
+  }
+
+  /**
+   * What a flying spark meets (`ParticleField.setSolids`): walls and the
+   * void past them stand to the sky, ruins and blocking props to their drawn
+   * tops, on a grid of `cell`-metre squares. Built once, after the props.
+   */
+  solidMap(cell = 1): SolidMap {
+    const per = Math.max(1, Math.round(TILE_SIZE / cell));
+    const sz = TILE_SIZE / per;
+    const W = this.level.width * per;
+    const H = this.level.height * per;
+    const heights = new Float32Array(W * H).fill(-999);
+    const x0 = -this.halfW * TILE_SIZE;
+    const z0 = -this.halfH * TILE_SIZE;
+    const fill = (tx: number, ty: number, top: number): void => {
+      for (let j = 0; j < per; j++) {
+        const row = (ty * per + j) * W + tx * per;
+        for (let i = 0; i < per; i++) if (heights[row + i]! < top) heights[row + i] = top;
+      }
+    };
+    for (let ty = 0; ty < this.level.height; ty++) {
+      for (let tx = 0; tx < this.level.width; tx++) {
+        const v = this.rawTile(tx, ty);
+        if (v === T_RUIN) fill(tx, ty, this.ruinTop(tx, ty));
+        else if (v === T_WALL || v === T_VOID || drawAsKind(v) === T_WALL) fill(tx, ty, 999);
+      }
+    }
+    // Props, at the place and size the player meets them (`buildColliders`).
+    for (const p of this.level.props) {
+      const def = propDef(p.kind);
+      if (!def.blocks || def.radius <= 0) continue;
+      const s = scaleFor(p.kind, p.x, p.y);
+      const half = def.radius * s * (def.placement === 'wall' ? 1 : 0.85);
+      const off = def.placement === 'wall' ? (def.wallOffset ?? 0.7) : 0;
+      const cx = this.tileX(p.x) - Math.sin(p.rotation) * off;
+      const cz = this.tileZ(p.y) - Math.cos(p.rotation) * off;
+      const top = this.floorY(cx, cz) + Math.max(0.4, (this.propTall.get(p.kind) ?? 1) * s);
+      const i0 = Math.max(0, Math.floor((cx - half - x0) / sz));
+      const i1 = Math.min(W - 1, Math.floor((cx + half - x0) / sz));
+      const j0 = Math.max(0, Math.floor((cz - half - z0) / sz));
+      const j1 = Math.min(H - 1, Math.floor((cz + half - z0) / sz));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (heights[j * W + i]! < top) heights[j * W + i] = top;
+    }
+    return { heights, w: W, h: H, x0, z0, cell: sz };
   }
 
   // --- per-frame ----------------------------------------------------------

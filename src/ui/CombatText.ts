@@ -235,7 +235,7 @@ export class CombatTextLayer {
         this.word('DODGE', this.hero.x, 2.9, this.hero.z, '#bfe4ff');
       }),
       events.on('sfx', (e) => {
-        if (show() && e.id === 'block') this.word('BLOCK', this.hero.x, 2.9, this.hero.z, '#f0d79a');
+        if (show() && (e.id === 'block' || e.id === 'parry')) this.word(e.id === 'parry' ? 'PARRY' : 'BLOCK', this.hero.x, 2.9, this.hero.z, '#f0d79a');
       }),
       events.on('player:levelUp', (e) => {
         this.spawn({

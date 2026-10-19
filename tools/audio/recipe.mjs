@@ -73,6 +73,9 @@ const xs = (pack, pattern, nums, o = {}) =>
   nums.map((n) => x(pack, pattern.replace(/#+/, (m) => String(n).padStart(m.length, '0')), o));
 
 const SW = 'sword_-_starninjas_1/sword - StarNinjas/';
+const VM = 'RPG Male Adventurer/';
+const VF = 'RPG Voice Starter Pack/Type 1/';
+const VF2 = 'Free Voice Clips Pack - Mature Female/';
 const SC = 'sword_clash_-_starninjas_0/';
 
 // ---------------------------------------------------------------------------
@@ -209,35 +212,6 @@ export const SKILL_TAKES = {
   'skill.fire.storm': x('farboom', FAR, { t: 2, fadeOut: 0.6, mix: [x('crackle', 'fire-1.ogg', { ss: 1, t: 2, gain: -2 }), x('flame', 'flame.ogg', { gain: -4 })] }),
   'skill.fire.breath': x('fball', FB, { rate: 0.8, mix: [x('flame', 'flame.ogg', { rate: 0.8, gain: -2 })] }),
   'skill.fire.annihilate': x('boom', 'explosion.wav', { rate: 0.75, mix: [x('bang', 'cannon_03.ogg', { lp: 2500, gain: -2 }), x('farboom', FAR, { t: 2, fadeOut: 0.6, gain: -3 })] }),
-  'skill.fire.ignite': x('ignite', 'ignition.flac'),
-  'skill.fire.ash': x('steam', steam(5), { t: 1.2, lp: 2500, fadeOut: 0.4, mix: [x('crackle', 'fire-1.ogg', { t: 1.2, gain: -4 })] }),
-  'skill.fire.wall': x('flame', 'flame.ogg', { mix: [x('ignite', 'ignition.flac', { gain: -2 }), x('crackle', 'fire-1.ogg', { ss: 2, t: 1.2, gain: -4 })] }),
-  'skill.fire.immolate': x('ignite', 'ignition.flac', { rate: 0.8, mix: [x('flame', 'flame.ogg', { rate: 0.7, gain: -2 })] }),
-  'skill.fire.embers': x('crackle', 'fire-1.ogg', { t: 1.3, fadeOut: 0.4, mix: [x('r80', 'spell_fire_05.ogg', { gain: -3 })] }),
-  // A fireball run backwards: the flames drawn in.
-  'skill.fire.consume': x('fball', FB, { t: 1.0, rev: true, fadeIn: 0.2, mix: [x('crackle', 'fire-1.ogg', { t: 1, gain: -5 })] }),
-  'skill.fire.wisp': x('r80', 'spell_fire_06.ogg', { mix: [x('gbreath', 'ghostbreath.flac', { t: 0.8, fadeOut: 0.3, gain: -8 })] }),
-  'skill.fire.wispShot': x('r80', 'spell_fire_02.ogg', { t: 0.6 }),
-  'skill.fire.pyre': x('flame', 'flame.ogg', { rate: 0.85, mix: [x('crackle', 'fire-1.ogg', { t: 1.5, gain: -2 }), x('bonebreak', brk(5), { t: 0.6, gain: -6 })] }),
-  'skill.fire.shroud': x('whoosh', 'whoosh2_0.wav', { t: 1, rate: 0.7, mix: [x('crackle', 'fire-1.ogg', { t: 1, gain: -3 })] }),
-  'skill.fire.longBurn': x('rumble', 'rumble.wav', { t: 1.8, fadeOut: 0.6, mix: [x('crackle', 'fire-1.ogg', { t: 1.8, gain: -2 }), x('ignite', 'ignition.flac', { gain: -4 })] }),
-  'skill.fire.ward': x('flame', 'flame.ogg', { mix: [x('shield', 'impact.8.ogg', { rate: 0.8, gain: -4 })] }),
-  'skill.fire.brand': x('ignite', 'ignition.flac', { t: 0.9, mix: [x('steam', steam(1), { t: 0.7, gain: -5 })] }),
-  'skill.fire.meteorCall': x('whoosh', 'whoosh2_0.wav', { t: 1.1, rate: 0.65, fadeOut: 0.3, mix: [x('fball', FB, { rate: 0.6, t: 1.1, gain: -4 })] }),
-  'skill.fire.meteor': x('bang', 'cannon_01.ogg', { rate: 0.6, mix: [x('bfh', 'bfh1_rock_breaking_01.ogg', { gain: -2 }), x('crackle', 'fire-1.ogg', { t: 1.2, gain: -6 })] }),
-  'skill.fire.anvil': x('anvil', 'forger_0.ogg', { t: 0.8, rate: 0.8, mix: [x('flame', 'flame.ogg', { gain: -3 })] }),
-  'skill.fire.sun': x('fball', FB, { rate: 0.55, mix: [x('rumble', 'rumble.wav', { t: 2, fadeOut: 0.6, gain: -3 }), x('chant', 'chant23.wav', { ss: 0.5, t: 1.8, rate: 0.5, fadeOut: 0.6, gain: -8 })] }),
-  'skill.fire.helios': x('fball', FB, { rate: 0.9, mix: [x('crackle', 'fire-1.ogg', { t: 1.8, gain: -2 }), x('flame', 'flame.ogg', { rate: 1.2, gain: -3 })] }),
-
-  // --- arcane and light: low whooshes and hums, never a chime ------------------
-  'skill.arcane.bolt': x('sand', 'sand-spell.flac', { t: 0.7, rate: 0.85, lp: 3000, fadeOut: 0.2 }),
-  'skill.arcane.hit': x('ki', 'impactSoft_heavy_001.ogg', { rate: 0.7, mix: [x('whoosh', 'whoosh2_0.wav', { rev: true, t: 0.6, gain: -4 })] }),
-  // Owner: "a blink should be a quick air sound". A short air puff, no thump, no drone: about 0.3 s.
-  'skill.blink': x('c100b', 'sfx100v2_air_03.ogg', { hp: 250, mix: [x('swish', 'swish-9.wav', { rate: 0.8, hp: 300, gain: -5 })] }),
-  'skill.light.radiance': x('chant', 'chant23.wav', { ss: 0.5, t: 1.4, rate: 0.7, fadeIn: 0.15, fadeOut: 0.5, mix: [x('wwoosh', WW, { t: 1.4, rate: 0.9, fadeIn: 0.1, fadeOut: 0.5, gain: -4 })] }),
-  'skill.light.form': x('whoosh', 'whoosh2_0.wav', { t: 1.1, rate: 0.85, fadeOut: 0.4, mix: [x('chant', 'chant11.wav', { rate: 0.8, fadeIn: 0.2, fadeOut: 0.4, gain: -5 })] }),
-  'skill.supernova': x('fball', FB, { t: 0.8, rev: true, fadeIn: 0.2, mix: [x('boom', 'explosion.wav', { delay: 700 }), x('chant', 'chant23.wav', { ss: 0.5, t: 1.4, rate: 0.5, delay: 700, fadeOut: 0.5, gain: -6 })] }),
-  'skill.eclipse': x('wwoosh', WW, { t: 1.6, rate: 0.6, fadeIn: 0.2, fadeOut: 0.6, mix: [x('chant', 'chant18.wav', { ss: 3, t: 1.6, rate: 0.5, fadeIn: 0.2, fadeOut: 0.6, gain: -4 })] }),
 
   // --- shadow and poison: hiss, glass and breath --------------------------------
   'skill.throw.dart': x('swish', 'swish-1.wav', { rate: 1.2, hp: 800 }),
@@ -278,31 +252,6 @@ export const SKILL_TAKES = {
   'skill.storm.ionize': x('spark', 'continuousspark.wav', { loops: 5, rate: 0.7, mix: [x('elec', 'crackleelectricityloop.wav', { loops: 3, gain: -1 })] }),
   'skill.storm.eye': x('thunder', 'rain-thunder.ogg', { ss: 25.4, t: 2.6, fadeOut: 0.9, mix: [x('wwoosh', WW, { t: 2.4, rate: 0.8, fadeIn: 0.2, fadeOut: 0.8, gain: -4 })] }),
   'skill.storm.pillar': x('c100b', 'sfx100v2_thunder_01.ogg', { rate: 0.85, t: 2.5, fadeOut: 0.8, mix: [x('elec', 'snaploop.wav', { t: 2, fadeOut: 0.6, gain: -4 })] }),
-  'skill.storm.veil': x('spark', 'continuousspark.wav', { rate: 1.1, mix: [x('c100b', 'sfx100v2_air_01.ogg', { t: 0.8, gain: -5 })] }),
-  'skill.storm.skyfall': x('c100b', 'sfx100v2_air_02.ogg', { mix: [x('c100b', 'sfx100v2_thunder_01.ogg', { delay: 300, t: 1.8, fadeOut: 0.6 })] }),
-  'skill.storm.charge': x('spark', 'spark.wav', { rate: 0.9, mix: [x('kr', 'metalClick.ogg', { gain: -6 }), x('spark', 'continuousspark.wav', { delay: 120, gain: -3 })] }),
-  'skill.storm.static': x('elec', 'crackleelectricityloop.wav', { loops: 3, mix: [x('elec', 'death_1.wav', { t: 0.9, gain: -2 })] }),
-  'skill.storm.discharge': x('elec', 'groundhit.wav', { mix: [x('bang', 'bang_04.ogg', { gain: -3 })] }),
-  'skill.storm.rod': x('ki', 'impactMetal_heavy_000.ogg', { rate: 0.8, mix: [x('spark', 'continuousspark.wav', { delay: 120, gain: -3 })] }),
-  'skill.storm.zap': x('spark', 'spark.wav', { rate: 1.1 }),
-  'skill.storm.polarize': x('elec', 'death_1.wav', { t: 1, rev: true, fadeIn: 0.1, mix: [x('spark', 'spark.wav', { delay: 600 })] }),
-  'skill.storm.overcharge': x('spark', 'continuousspark.wav', { loops: 3, mix: [x('elec', 'groundhit.wav', { delay: 500, gain: -2 })] }),
-  'skill.storm.burst': x('bang', 'bang_04.ogg', { mix: [x('spark', 'continuousspark.wav', { gain: -2 }), x('c100b', 'sfx100v2_thunder_01.ogg', { t: 1, gain: -5 })] }),
-  'skill.storm.shield': x('shield', 'impact.5.ogg', { mix: [x('spark', 'continuousspark.wav', { gain: -3 })] }),
-  'skill.storm.coil': x('ki', 'impactMetal_heavy_001.ogg', { rate: 0.7, mix: [x('elec', 'crackleelectricityloop.wav', { loops: 3, delay: 100, gain: -2 })] }),
-
-  // --- wind: air rushes -----------------------------------------------------------
-  'skill.wind.gust': x('c100b', 'sfx100v2_air_02.ogg', { mix: [x('whoosh', 'whoosh2_0.wav', { t: 0.8, gain: -4 })] }),
-  'skill.wind.step': x('c100b', 'sfx100v2_air_03.ogg', { rate: 0.85, mix: [x('kr', 'cloth2.ogg', { gain: -4 })] }),
-  'skill.wind.cyclone': x('wwoosh', WW, { t: 1.6, rate: 1.2, fadeIn: 0.2, fadeOut: 0.6 }),
-  'skill.wind.updraft': x('c100b', 'sfx100v2_air_02.ogg', { rate: 0.9, mix: [x('wpn', 'boots-leather-jump-03.wav', { gain: -3 }), x('ki', 'impactSoft_heavy_002.ogg', { delay: 300, rate: 0.7, gain: -2 })] }),
-  'skill.wind.dance': x('c100b', 'sfx100v2_air_03.ogg', {
-    mix: [x('c100b', 'sfx100v2_air_03.ogg', { delay: 250, rate: 0.95, gain: -1 }), x('c100b', 'sfx100v2_air_03.ogg', { delay: 500, rate: 0.9, gain: -2 }), x('spark', 'spark.wav', { gain: -8 })],
-  }),
-  'skill.wind.shear': x('swish', 'swish-9.wav', { rate: 0.6, mix: [x('c100b', 'sfx100v2_air_02.ogg', { gain: -2 })] }),
-  'skill.wind.hurricane': x('wwoosh', WW, { t: 2, rate: 0.8, fadeIn: 0.3, fadeOut: 0.7, mix: [x('rsfx', 'Background/Hollow Wind.wav', { t: 2, fadeOut: 0.7, gain: -3 })] }),
-  // Pulled in, then the blast.
-  'skill.wind.maelstrom': x('wwoosh', WW, { t: 1.6, rate: 0.65, fadeIn: 0.4, mix: [x('bang', 'cannon_04.ogg', { delay: 1300, lp: 1500 })] }),
 
   // --- bone and earth -------------------------------------------------------------
   'skill.bone.spear': x('bonebreak', brk(1), { t: 0.5, mix: [x('swish', 'swish-1.wav', { rate: 0.8, gain: -2 })] }),
@@ -619,6 +568,16 @@ export const SFX = {
   'player.hurt': [...xs('yell', '3grunt#.wav', [3, 4, 5]), ...xs('hit5', 'hit#.ogg', [1, 3])],
   'player.hurtHeavy': [...xs('yell', '3grunt#.wav', [1, 2, 6]), x('yell', '1yell6.wav')],
   'player.death': [...xs('hurt', '#.mp3', [4, 16, 5]), x('hit5', 'die1.ogg', { rate: 0.9 })],
+  // A woman hero's hurt sounds: one voice throughout (HeroVoice.ts).
+  'player.female.hurt': xs('vFemale', `${VF}damaged#.wav`, [1, 2, 3]),
+  'player.female.hurtHeavy': [...xs('vFemale', `${VF}damaged#.wav`, [1, 3], { rate: 0.9 }), x('vFemale2', `${VF2}noises/gasp1.wav`)],
+  // The hero's barks: out of mana, pack full, near death.
+  'player.male.noMana': xs('vMale', `${VM}no#.wav`, [0, 1]),
+  'player.male.bagFull': xs('vMale', `${VM}jump#.wav`, [0, 1]),
+  'player.male.lowLife': xs('vMale', `${VM}hurt#.wav`, [5, 1, 2]),
+  'player.female.noMana': [x('vFemale2', `${VF2}noises/annoyed_grumble.wav`), x('vFemale2', `${VF2}noises/sigh1.wav`)],
+  'player.female.bagFull': [x('vFemale2', `${VF2}noises/sigh2.wav`), ...xs('vFemale', `${VF}jump#.wav`, [1, 2])],
+  'player.female.lowLife': [x('vFemale2', `${VF2}noises/gasp1.wav`, { rate: 0.95 }), x('vFemale', `${VF}damaged2.wav`, { rate: 0.85 })],
   'player.evade': [
     x('kr', 'cloth1.ogg', { mix: [x('swish', 'swish-2.wav', { gain: -4 })] }),
     x('kr', 'cloth2.ogg', { mix: [x('swish', 'swish-6.wav', { gain: -4 })] }),
@@ -1036,6 +995,18 @@ export const SFX = {
   'amb.crackle': [x('crackle', 'fire-1.ogg', { slices: 4 }), x('flame', 'flame.ogg')],
 };
 
+// A boss speaking (ui/StoryBosses.ts): its kind's own call, slowed into a
+// voice. The kinds that talk speak over a low chant, so a taunt reads as
+// words in a tongue you do not know rather than a grunt.
+const SPEAKERS = new Set(['undead', 'demon', 'humanoid', 'kept', 'nailborn', 'stayed']);
+for (const f of ['undead', 'demon', 'beast', 'construct', 'insect', 'aberration', 'elemental', 'humanoid', 'plant', 'ooze', 'kept', 'nailborn', 'stayed']) {
+  SFX[`boss.voice.${f}`] = SFX[`monster.${f}.aggro`].slice(0, 2).map((t, i) => ({
+    ...t,
+    rate: (t.rate ?? 1) * 0.72,
+    mix: SPEAKERS.has(f) ? [...(t.mix ?? []), x('chant', i ? 'chant11.wav' : 'chant23.wav', { ss: 0.5, t: 1.3, rate: 0.55, fadeIn: 0.1, fadeOut: 0.5, gain: -7 })] : t.mix,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Ambience beds: folder key -> takes (stereo loops, played with crossfades)
 // ---------------------------------------------------------------------------
@@ -1084,4 +1055,14 @@ export const MUSIC = {
   forest: [x('mForest', 'forest.ogg', cut()), x('mDarkForest', 'GameMusic_ForestTheme_24.mp3')],
   swamp: [x('mRats', 'ratsrats_0.ogg')],
   hell: [x('mProwler', 'S31-Night Prowler.ogg', cut())],
+  // Boss themes by family (Score.ts BOSS): menace for demons, dread choirs for
+  // temples, sorcerers and storms, a frantic pulse for hives.
+  'boss.menace': [x('mMenace', 'Menace.ogg')],
+  'boss.horror': [x('mHorror', 'horror_loop.mp3', cut())],
+  'boss.hymn': [x('mChoir', 'Fantasy Choir 2.wav')],
+  'boss.arcana': [x('mChoir', 'Fantasy Choir 3.wav')],
+  'boss.tempest': [x('mChoir', 'Fantasy Choir 1.wav')],
+  'boss.frenzy': [x('mBleed', 'bleeding_out2_2.ogg')],
+  'boss.mire': [x('mHope', 'at_the_end_of_hope_loop.wav')],
+  'boss.abyss': [x('mDarkIntro', 'Dark Intro_0.ogg')],
 };

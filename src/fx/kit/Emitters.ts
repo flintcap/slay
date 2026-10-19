@@ -19,6 +19,7 @@ import { SPRITE } from './Atlas';
 import { P, type ParticleField } from './Particles';
 import { RAMPS, ramp, packLinear, mixHex, darken, type School } from './Palette';
 import { floorAt } from './Floor';
+import { BOOST } from './Boost';
 
 /** Where a layer's three colours come from. */
 export type RampSource = 'school' | 'smoke' | 'light' | readonly [number, number, number];
@@ -124,9 +125,9 @@ function flash(size: number, life = 0.12, emit = 0.9): Layer {
 
 const HIT: Record<School, Layer[]> = {
   physical: [
-    L({ sprite: SPRITE.spark, count: 24, speed: [4, 10], spread: 0.6, size: [0.05, 0.1], grow: 0.4, life: [0.14, 0.32], heat: [1, 0.45], emit: 1.1, occl: 0, gravity: -14, drag: 4, stretch: 1.5, fade: 1.2 }),
+    L({ sprite: SPRITE.glint, variants: 4, count: 24, speed: [4, 10], spread: 0.6, size: [0.05, 0.1], grow: 0.4, life: [0.14, 0.32], heat: [1, 0.45], emit: 1.1, occl: 0, gravity: -14, drag: 4, stretch: 1.5, fade: 1.2, ground: true, bounce: 0.4 }),
     // A few heavier sparks fall to the floor, skip once or twice and go out.
-    L({ sprite: SPRITE.spark, count: 8, speed: [2.5, 5], spread: 0.8, up: 0.5, size: [0.04, 0.06], grow: 0.6, life: [0.45, 0.8], heat: [1, 0.15], emit: 1.1, occl: 0, gravity: -15, drag: 1.2, stretch: 0.9, fade: 1.4, ground: true, bounce: 0.45 }),
+    L({ sprite: SPRITE.glint, variants: 4, count: 8, speed: [2.5, 5], spread: 0.8, up: 0.5, size: [0.04, 0.06], grow: 0.6, life: [0.45, 0.8], heat: [1, 0.15], emit: 1.1, occl: 0, gravity: -15, drag: 1.2, stretch: 0.9, fade: 1.4, ground: true, bounce: 0.45 }),
     flash(0.65, 0.08, 0.7),
     L({ sprite: SPRITE.slash, count: 1, speed: [0, 0], radius: 0, size: [0.9, 1.0], grow: 1.25, life: [0.09, 0.12], heat: [1, 0.3], emit: 0.8, occl: 0, spin: 0.5, fade: 2 }),
     L({ sprite: SPRITE.smoke, count: 3, ramp: R_DUST, speed: [0.5, 1.6], spread: 0.9, size: [0.2, 0.32], grow: 2.0, life: [0.4, 0.8], heat: [0.2, 0], emit: 0.25, occl: 0.45, gravity: 0.2, drag: 3, turb: 0.2, tint: false }),
@@ -135,17 +136,17 @@ const HIT: Record<School, Layer[]> = {
     flash(1.0, 0.12),
     L({ sprite: SPRITE.fireball, count: 4, speed: [0.4, 1.4], spread: 1, up: 0.6, radius: 0.15, size: [0.55, 0.85], grow: 1.8, life: [0.45, 0.7], heat: [1, 0.1], emit: 0.9, occl: 0.35, gravity: 1.5, drag: 2.5, turb: 0.3, spin: 1 }),
     L({ sprite: SPRITE.flame, count: 9, speed: [1.5, 3.5], spread: 0.8, up: 0.6, size: [0.28, 0.48], grow: 1.2, life: [0.3, 0.5], heat: [1, 0.2], emit: 0.9, occl: 0.25, gravity: 3, drag: 3, turb: 0.4 }),
-    L({ sprite: SPRITE.ember, count: 24, speed: [3, 7], spread: 0.9, up: 0.5, size: [0.035, 0.07], grow: 0.4, life: [0.6, 1.3], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: 1.2, drag: 1.4, turb: 0.6, stretch: 0.4, fade: 1.1 }),
+    L({ sprite: SPRITE.cinder, variants: 4, count: 24, speed: [3, 7], spread: 0.9, up: 0.5, size: [0.035, 0.07], grow: 0.4, life: [0.6, 1.3], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: 1.2, drag: 1.4, turb: 0.6, stretch: 0.4, fade: 1.1 }),
     // Cinders that drop instead of rising: they land, roll a little and cool from white to red.
-    L({ sprite: SPRITE.ember, count: 10, speed: [1.5, 4], spread: 0.9, up: 0.4, size: [0.04, 0.065], grow: 0.8, life: [1.1, 1.9], heat: [1, 0.12], emit: 1.1, occl: 0, gravity: -11, drag: 0.8, fade: 1.6, ground: true, bounce: 0.25 }),
+    L({ sprite: SPRITE.cinder, variants: 4, count: 10, speed: [1.5, 4], spread: 0.9, up: 0.4, size: [0.04, 0.065], grow: 0.8, life: [1.1, 1.9], heat: [1, 0.12], emit: 1.1, occl: 0, gravity: -11, drag: 0.8, fade: 1.6, ground: true, bounce: 0.25 }),
     // Tight licks at the heart that climb before they spread: the fire reads thick, not sprayed.
     L({ sprite: SPRITE.flame, count: 6, speed: [0.3, 1.0], spread: 0.5, up: 1.2, radius: 0.12, size: [0.22, 0.34], grow: 1.4, life: [0.35, 0.6], heat: [1, 0.3], emit: 1.0, occl: 0.2, gravity: 4, drag: 2.5, turb: 0.5, stagger: 0.06 }),
     L({ sprite: SPRITE.smoke, count: 3, ramp: 'smoke', speed: [0.4, 1.0], up: 1, radius: 0.2, size: [0.5, 0.8], grow: 2.2, life: [0.9, 1.5], heat: [0.35, 0], emit: 0.5, occl: 0.55, gravity: 0.9, drag: 1.5, turb: 0.25, stagger: 0.08, tint: false }),
   ],
   cold: [
     flash(0.9, 0.12),
-    L({ sprite: SPRITE.shard, count: 14, speed: [3, 7], spread: 0.8, up: 0.3, size: [0.1, 0.2], grow: 0.8, life: [0.45, 0.85], heat: [0.9, 0.55], emit: 0.8, occl: 0.4, gravity: -12, drag: 1.5, stretch: 0.6, ground: true }),
-    L({ sprite: SPRITE.crystal, count: 4, speed: [0.5, 2], size: [0.22, 0.36], grow: 1.3, life: [0.3, 0.55], heat: [1, 0.35], emit: 0.9, occl: 0.05, spin: 3 }),
+    L({ sprite: SPRITE.ice, variants: 4, count: 14, speed: [3, 7], spread: 0.8, up: 0.3, size: [0.1, 0.2], grow: 0.8, life: [0.45, 0.85], heat: [0.9, 0.55], emit: 0.8, occl: 0.4, gravity: -12, drag: 1.5, stretch: 0.6, ground: true }),
+    L({ sprite: SPRITE.frost, variants: 4, count: 4, speed: [0.5, 2], size: [0.22, 0.36], grow: 1.3, life: [0.3, 0.55], heat: [1, 0.35], emit: 0.9, occl: 0.05, spin: 3 }),
     L({ sprite: SPRITE.smoke, count: 4, ramp: 'school', speed: [0.6, 1.6], radius: 0.2, size: [0.45, 0.75], grow: 2.0, life: [0.8, 1.3], heat: [0.35, 0.05], emit: 0.45, occl: 0.32, gravity: -0.4, drag: 2, turb: 0.2 }),
     L({ sprite: SPRITE.ember, count: 16, ramp: R_SNOW, speed: [0.5, 2.2], size: [0.03, 0.05], grow: 0.6, life: [0.8, 1.4], heat: [1, 0.6], emit: 1.0, occl: 0, gravity: -1.2, drag: 1.5, turb: 0.5, tint: false }),
     // Frost glitter that settles on the floor and winks out.
@@ -153,10 +154,10 @@ const HIT: Record<School, Layer[]> = {
   ],
   lightning: [
     flash(1.2, 0.08, 1.0),
-    L({ sprite: SPRITE.arc, variants: 8, count: 4, speed: [0, 0], radius: 0.2, size: [0.7, 1.1], grow: 1.1, life: [0.06, 0.14], heat: [1, 0.8], emit: 1.0, occl: 0, spin: 0, fade: 1 }),
-    L({ sprite: SPRITE.spark, count: 22, speed: [5, 11], size: [0.035, 0.06], grow: 0.4, life: [0.12, 0.3], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -10, drag: 4, stretch: 1.4, fade: 1.2 }),
+    L({ sprite: SPRITE.fork, variants: 8, count: 4, speed: [0, 0], radius: 0.2, size: [0.7, 1.1], grow: 1.1, life: [0.06, 0.14], heat: [1, 0.8], emit: 1.0, occl: 0, spin: 0, fade: 1 }),
+    L({ sprite: SPRITE.glint, variants: 4, count: 22, speed: [5, 11], size: [0.035, 0.06], grow: 0.4, life: [0.12, 0.3], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -10, drag: 4, stretch: 1.4, fade: 1.2, ground: true, bounce: 0.4 }),
     // Sparks that hit the floor and jump along it.
-    L({ sprite: SPRITE.spark, count: 10, speed: [3, 6], spread: 0.9, up: 0.2, size: [0.03, 0.05], grow: 0.5, life: [0.35, 0.6], heat: [1, 0.35], emit: 1.2, occl: 0, gravity: -18, drag: 1.5, stretch: 1.1, fade: 1.3, ground: true, bounce: 0.6 }),
+    L({ sprite: SPRITE.glint, variants: 4, count: 10, speed: [3, 6], spread: 0.9, up: 0.2, size: [0.03, 0.05], grow: 0.5, life: [0.35, 0.6], heat: [1, 0.35], emit: 1.2, occl: 0, gravity: -18, drag: 1.5, stretch: 1.1, fade: 1.3, ground: true, bounce: 0.6 }),
     L({ sprite: SPRITE.glow, count: 1, speed: [0, 0], radius: 0, size: [0.45, 0.6], grow: 1.2, life: [0.3, 0.45], heat: [0.5, 0.1], emit: 0.6, occl: 0 }),
     L({ sprite: SPRITE.smoke, count: 1, ramp: 'smoke', speed: [0.2, 0.6], up: 1, size: [0.4, 0.6], grow: 2, life: [0.7, 1.0], heat: [0.2, 0], emit: 0.3, occl: 0.35, gravity: 0.6, tint: false }),
   ],
@@ -191,7 +192,7 @@ const CAST: Record<School, Layer[]> = (() => {
   return {
     physical: [gather(6), L({ sprite: SPRITE.smoke, count: 2, ramp: R_DUST, speed: [0.5, 1.2], disc: true, radius: 0.3, size: [0.25, 0.4], grow: 1.8, life: [0.4, 0.7], heat: [0.2, 0], emit: 0.2, occl: 0.4, tint: false })],
     fire: [gather(), flash(0.55, 0.14), L({ sprite: SPRITE.flame, count: 5, speed: [0.6, 1.6], up: 1, radius: 0.12, size: [0.2, 0.32], grow: 1, life: [0.25, 0.4], heat: [1, 0.2], emit: 0.9, occl: 0.2, gravity: 3, drag: 2 })],
-    cold: [gather(), flash(0.5, 0.14), L({ sprite: SPRITE.crystal, count: 3, speed: [0.3, 0.8], size: [0.16, 0.24], grow: 1.3, life: [0.25, 0.4], heat: [1, 0.3], emit: 0.9, occl: 0.05, spin: 4 })],
+    cold: [gather(), flash(0.5, 0.14), L({ sprite: SPRITE.frost, variants: 4, count: 3, speed: [0.3, 0.8], size: [0.16, 0.24], grow: 1.3, life: [0.25, 0.4], heat: [1, 0.3], emit: 0.9, occl: 0.05, spin: 4 })],
     lightning: [gather(8), flash(0.6, 0.08, 1.0), L({ sprite: SPRITE.arc, variants: 8, count: 3, speed: [0, 0], radius: 0.15, size: [0.4, 0.6], grow: 1, life: [0.05, 0.1], heat: [1, 0.8], emit: 1.0, occl: 0, fade: 1 })],
     poison: [gather(), flash(0.45, 0.14, 0.6), L({ sprite: SPRITE.drop, count: 6, speed: [0.8, 2], up: 0.6, size: [0.05, 0.08], life: [0.4, 0.7], heat: [0.8, 0.4], emit: 0.8, occl: 0.4, gravity: -9, ground: true, bounce: 0 })],
     arcane: [gather(12), flash(0.55, 0.14), L({ sprite: SPRITE.rune, variants: 4, count: 1, speed: [0, 0], radius: 0, size: [0.5, 0.5], grow: 1.5, life: [0.3, 0.35], heat: [1, 0.3], emit: 0.9, occl: 0, spin: 3 })],
@@ -204,7 +205,7 @@ const TRAIL: Record<School, Layer[]> = {
   physical: [L({ sprite: SPRITE.mote, count: 2, ramp: R_DUST, speed: [0.1, 0.4], size: [0.06, 0.1], grow: 1.6, life: [0.35, 0.6], heat: [0.3, 0], emit: 0.2, occl: 0.3, tint: false })],
   fire: [
     L({ sprite: SPRITE.flame, count: 3, speed: [0.2, 0.6], up: 0.8, radius: 0.08, size: [0.26, 0.38], grow: 0.6, life: [0.32, 0.5], heat: [1, 0.2], emit: 0.9, occl: 0.25, gravity: 2, drag: 2 }),
-    L({ sprite: SPRITE.ember, count: 4, speed: [0.5, 1.6], up: 0.6, size: [0.03, 0.05], grow: 0.4, life: [0.8, 1.4], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: 1.2, turb: 0.8 }),
+    L({ sprite: SPRITE.cinder, variants: 4, count: 4, speed: [0.5, 1.6], up: 0.6, size: [0.03, 0.05], grow: 0.4, life: [0.8, 1.4], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: 1.2, turb: 0.8 }),
     L({ sprite: SPRITE.smoke, count: 1, ramp: 'smoke', speed: [0.1, 0.4], up: 1, size: [0.3, 0.45], grow: 2.2, life: [1.0, 1.6], heat: [0.3, 0], emit: 0.4, occl: 0.5, gravity: 0.8, turb: 0.2, tint: false }),
   ],
   cold: [
@@ -213,7 +214,7 @@ const TRAIL: Record<School, Layer[]> = {
   ],
   lightning: [
     L({ sprite: SPRITE.arc, variants: 8, count: 1, speed: [0, 0], radius: 0.1, size: [0.35, 0.5], grow: 1, life: [0.04, 0.08], heat: [1, 0.8], emit: 1.0, occl: 0, fade: 1 }),
-    L({ sprite: SPRITE.spark, count: 3, speed: [1.5, 4], size: [0.025, 0.04], life: [0.16, 0.32], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -6, drag: 3, stretch: 1.2 }),
+    L({ sprite: SPRITE.glint, variants: 4, count: 3, speed: [1.5, 4], size: [0.025, 0.04], life: [0.16, 0.32], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -6, drag: 3, stretch: 1.2 }),
   ],
   poison: [
     L({ sprite: SPRITE.drip, count: 1, speed: [0.1, 0.4], size: [0.05, 0.08], life: [0.5, 0.8], heat: [0.8, 0.4], emit: 0.8, occl: 0.5, gravity: -9, stretch: 0.3, ground: true, bounce: 0 }),
@@ -248,7 +249,7 @@ Object.assign(E, {
     keyed: true,
     layers: [
       L({ sprite: SPRITE.flame, count: 3, speed: [0.2, 0.6], up: 1, radius: 0.06, size: [0.34, 0.52], grow: 0.7, life: [0.35, 0.55], heat: [1, 0.15], emit: 1.0, occl: 0.2, gravity: 3, drag: 2, turb: 0.4 }),
-      L({ sprite: SPRITE.ember, count: 4, speed: [0.4, 1.2], up: 1, size: [0.035, 0.06], grow: 0.4, life: [0.6, 1.0], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: 1.5, turb: 0.8 }),
+      L({ sprite: SPRITE.cinder, variants: 4, count: 4, speed: [0.4, 1.2], up: 1, size: [0.035, 0.06], grow: 0.4, life: [0.6, 1.0], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: 1.5, turb: 0.8 }),
       L({ sprite: SPRITE.smoke, count: 1, ramp: 'smoke', speed: [0.2, 0.5], up: 1, size: [0.35, 0.5], grow: 2, life: [0.8, 1.2], heat: [0.3, 0], emit: 0.4, occl: 0.5, gravity: 0.9, turb: 0.2, tint: false }),
     ],
   },
@@ -258,7 +259,7 @@ Object.assign(E, {
     layers: [
       L({ sprite: SPRITE.smoke, count: 1, speed: [0.1, 0.3], size: [0.35, 0.55], grow: 1.8, life: [0.8, 1.2], heat: [0.5, 0.1], emit: 0.6, occl: 0.2, gravity: -0.35, drag: 2 }),
       L({ sprite: SPRITE.ember, count: 2, ramp: R_SNOW, speed: [0.1, 0.4], size: [0.035, 0.06], life: [0.7, 1.1], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -0.8, turb: 0.4, tint: false }),
-      L({ sprite: SPRITE.crystal, count: 1, speed: [0, 0.1], size: [0.12, 0.18], grow: 1.1, life: [0.35, 0.5], heat: [1, 0.4], emit: 0.9, occl: 0.05, spin: 2 }),
+      L({ sprite: SPRITE.frost, variants: 4, count: 1, speed: [0, 0.1], size: [0.12, 0.18], grow: 1.1, life: [0.35, 0.5], heat: [1, 0.4], emit: 0.9, occl: 0.05, spin: 2 }),
     ],
   },
   'status.shock': {
@@ -266,7 +267,7 @@ Object.assign(E, {
     keyed: true,
     layers: [
       L({ sprite: SPRITE.arc, variants: 8, count: 1, speed: [0, 0], radius: 0.05, size: [0.35, 0.5], grow: 1, life: [0.06, 0.1], heat: [1, 0.8], emit: 1.0, occl: 0, fade: 1 }),
-      L({ sprite: SPRITE.spark, count: 2, speed: [1.5, 3.5], size: [0.03, 0.05], life: [0.12, 0.25], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -8, drag: 3, stretch: 1.2 }),
+      L({ sprite: SPRITE.glint, variants: 4, count: 2, speed: [1.5, 3.5], size: [0.03, 0.05], life: [0.12, 0.25], heat: [1, 0.6], emit: 1.1, occl: 0, gravity: -8, drag: 3, stretch: 1.2 }),
     ],
   },
   'status.poison': {
@@ -281,7 +282,7 @@ Object.assign(E, {
   'status.bleed': {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 3, ramp: R_BLOOD, speed: [0.2, 0.8], spread: 0.4, size: [0.05, 0.09], grow: 0.9, life: [0.5, 0.8], heat: [0.6, 0.4], emit: 0.3, occl: 0.95, gravity: -14, drag: 1, stretch: 0.5, ground: true, bounce: 0, fade: 3, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 3, ramp: R_BLOOD, speed: [0.2, 0.8], spread: 0.4, size: [0.05, 0.09], grow: 0.9, life: [0.5, 0.8], heat: [0.6, 0.4], emit: 0.3, occl: 0.95, gravity: -14, drag: 1, stretch: 0.5, ground: true, bounce: 0, fade: 3, tint: false }),
     ],
   },
   'status.curse': {
@@ -306,15 +307,15 @@ Object.assign(E, {
     school: 'physical',
     layers: [
       L({ sprite: SPRITE.rock, count: 7, ramp: R_STONE, speed: [2.5, 6], spread: 0.7, up: 0.4, size: [0.06, 0.12], grow: 1, life: [0.7, 1.1], heat: [0.5, 0.4], emit: 0.3, occl: 1, gravity: -15, drag: 0.8, spin: 8, ground: true, fade: 3, tint: false }),
-      L({ sprite: SPRITE.spark, count: 6, speed: [4, 9], spread: 0.6, size: [0.035, 0.06], grow: 0.4, life: [0.1, 0.25], heat: [1, 0.45], emit: 1.1, occl: 0, gravity: -14, drag: 4, stretch: 1.4, fade: 1.2 }),
+      L({ sprite: SPRITE.glint, variants: 4, count: 6, speed: [4, 9], spread: 0.6, size: [0.035, 0.06], grow: 0.4, life: [0.1, 0.25], heat: [1, 0.45], emit: 1.1, occl: 0, gravity: -14, drag: 4, stretch: 1.4, fade: 1.2, ground: true, bounce: 0.4 }),
       L({ sprite: SPRITE.smoke, count: 2, ramp: R_STONE, speed: [0.4, 1.2], radius: 0.1, size: [0.25, 0.38], grow: 2, life: [0.5, 0.8], heat: [0.2, 0], emit: 0.2, occl: 0.5, gravity: 0.2, drag: 3, tint: false }),
     ],
   },
   ichor: {
     school: 'poison',
     layers: [
-      L({ sprite: SPRITE.drop, count: 12, ramp: R_ICHOR, speed: [2, 5], spread: 0.6, up: 0.35, size: [0.05, 0.1], grow: 0.9, life: [0.5, 0.9], heat: [0.6, 0.4], emit: 0.35, occl: 0.9, gravity: -14, drag: 1, stretch: 0.5, ground: true, bounce: 0, fade: 3, tint: false }),
-      L({ sprite: SPRITE.splat, count: 2, ramp: R_ICHOR, speed: [0.4, 1.2], size: [0.18, 0.28], grow: 1.6, life: [0.18, 0.3], heat: [0.5, 0.3], emit: 0.3, occl: 0.7, drag: 4, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 12, ramp: R_ICHOR, speed: [2, 5], spread: 0.6, up: 0.35, size: [0.05, 0.1], grow: 0.9, life: [0.5, 0.9], heat: [0.6, 0.4], emit: 0.35, occl: 0.9, gravity: -14, drag: 1, stretch: 0.5, ground: true, bounce: 0, fade: 3, tint: false }),
+      L({ sprite: SPRITE.blood, variants: 4, count: 2, ramp: R_ICHOR, speed: [0.4, 1.2], size: [0.18, 0.28], grow: 1.6, life: [0.18, 0.3], heat: [0.5, 0.3], emit: 0.3, occl: 0.7, drag: 4, tint: false }),
     ],
   },
 });
@@ -323,8 +324,8 @@ Object.assign(E, {
   blood: {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 16, ramp: R_BLOOD, speed: [2, 6], spread: 0.6, up: 0.35, size: [0.06, 0.13], grow: 0.9, life: [0.5, 1.0], heat: [0.7, 0.4], emit: 0.45, occl: 0.95, gravity: -14, drag: 1, stretch: 0.5, ground: true, bounce: 0, fade: 3, tint: false }),
-      L({ sprite: SPRITE.splat, count: 3, ramp: R_BLOOD, speed: [0.4, 1.2], size: [0.26, 0.4], grow: 1.6, life: [0.2, 0.32], heat: [0.6, 0.3], emit: 0.4, occl: 0.7, drag: 4, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 16, ramp: R_BLOOD, speed: [2, 6], spread: 0.6, up: 0.35, size: [0.06, 0.13], grow: 0.9, life: [0.5, 1.0], heat: [0.7, 0.4], emit: 0.45, occl: 0.95, gravity: -14, drag: 1, stretch: 0.5, ground: true, bounce: 0, fade: 3, tint: false }),
+      L({ sprite: SPRITE.blood, variants: 4, count: 3, ramp: R_BLOOD, speed: [0.4, 1.2], size: [0.26, 0.4], grow: 1.6, life: [0.2, 0.32], heat: [0.6, 0.3], emit: 0.4, occl: 0.7, drag: 4, tint: false }),
     ],
   },
   gib: {
@@ -336,7 +337,7 @@ Object.assign(E, {
   },
   embers: {
     school: 'fire',
-    layers: [L({ sprite: SPRITE.ember, count: 16, speed: [0.5, 2], up: 1, radius: 0.3, size: [0.03, 0.06], grow: 0.4, life: [0.8, 1.6], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: 1.2, drag: 1, turb: 0.7, stretch: 0.3 })],
+    layers: [L({ sprite: SPRITE.cinder, variants: 4, count: 16, speed: [0.5, 2], up: 1, radius: 0.3, size: [0.03, 0.06], grow: 0.4, life: [0.8, 1.6], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: 1.2, drag: 1, turb: 0.7, stretch: 0.3 })],
   },
   dust: {
     school: 'physical',
@@ -352,7 +353,7 @@ Object.assign(E, {
   },
   sparks: {
     school: 'physical',
-    layers: [L({ sprite: SPRITE.spark, count: 24, speed: [4, 10], size: [0.035, 0.07], grow: 0.4, life: [0.15, 0.35], heat: [1, 0.45], emit: 1.2, occl: 0, gravity: -14, drag: 3.5, stretch: 1.5, fade: 1.2 })],
+    layers: [L({ sprite: SPRITE.glint, variants: 4, count: 24, speed: [4, 10], size: [0.035, 0.07], grow: 0.4, life: [0.15, 0.35], heat: [1, 0.45], emit: 1.2, occl: 0, gravity: -14, drag: 3.5, stretch: 1.5, fade: 1.2, ground: true, bounce: 0.4 })],
   },
   steam: {
     school: 'cold',
@@ -377,7 +378,7 @@ Object.assign(E, {
     school: 'physical',
     layers: [
       L({ sprite: SPRITE.mote, count: 30, ramp: R_GOLD, speed: [0.6, 2.2], spread: 0.25, up: 3, disc: true, radius: 0.7, size: [0.06, 0.12], grow: 0.4, life: [1.0, 1.8], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: 2.2, drag: 1, turb: 0.5 }),
-      L({ sprite: SPRITE.spark, count: 14, ramp: R_GOLD, speed: [6, 11], spread: 0.15, up: 4, size: [0.04, 0.07], life: [0.3, 0.6], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: -6, drag: 2, stretch: 1.6 }),
+      L({ sprite: SPRITE.glint, variants: 4, count: 14, ramp: R_GOLD, speed: [6, 11], spread: 0.15, up: 4, size: [0.04, 0.07], life: [0.3, 0.6], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: -6, drag: 2, stretch: 1.6 }),
       L({ sprite: SPRITE.flare, count: 1, ramp: R_GOLD, speed: [0, 0], radius: 0, size: [1.6, 1.8], grow: 1.4, life: [0.3, 0.35], heat: [1, 0.4], emit: 0.9, occl: 0 }),
       L({ sprite: SPRITE.shock, count: 1, ramp: R_GOLD, speed: [0, 0], radius: 0, size: [0.8, 0.8], grow: 5, life: [0.6, 0.65], heat: [1, 0.2], emit: 0.8, occl: 0, flat: true, fade: 1.2 }),
     ],
@@ -392,14 +393,14 @@ Object.assign(E, {
       L({ sprite: SPRITE.slash, count: 2, ramp: R_WHITE, speed: [0, 0], radius: 0, size: [1.4, 1.6], grow: 1.2, life: [0.07, 0.1], heat: [1, 0.4], emit: 1.0, occl: 0, spin: 0.6, fade: 2.2, rich: true }),
       L({ sprite: SPRITE.shock, count: 1, ramp: R_GOLD, speed: [0, 0], radius: 0, size: [0.5, 0.5], grow: 4, life: [0.2, 0.24], heat: [1, 0.3], emit: 0.8, occl: 0, flat: true, fade: 1.3, rich: true }),
       // Rays: few, fast and very long, so the star has points.
-      L({ sprite: SPRITE.spark, count: 12, ramp: R_GOLD, speed: [14, 22], size: [0.05, 0.08], grow: 0.3, life: [0.07, 0.13], heat: [1, 0.7], emit: 1.4, occl: 0, drag: 6, stretch: 3.2, fade: 1.4, rich: true }),
-      L({ sprite: SPRITE.spark, count: 10, ramp: R_GOLD, speed: [6, 12], size: [0.04, 0.07], life: [0.15, 0.3], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: -10, drag: 4, stretch: 1.8 }),
+      L({ sprite: SPRITE.glint, variants: 4, count: 12, ramp: R_GOLD, speed: [14, 22], size: [0.05, 0.08], grow: 0.3, life: [0.07, 0.13], heat: [1, 0.7], emit: 1.4, occl: 0, drag: 6, stretch: 3.2, fade: 1.4, rich: true }),
+      L({ sprite: SPRITE.glint, variants: 4, count: 10, ramp: R_GOLD, speed: [6, 12], size: [0.04, 0.07], life: [0.15, 0.3], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: -10, drag: 4, stretch: 1.8 }),
     ],
   },
   block: {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.spark, count: 14, ramp: R_GOLD, speed: [4, 9], spread: 0.7, size: [0.035, 0.06], life: [0.15, 0.3], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: -12, drag: 4, stretch: 1.6 }),
+      L({ sprite: SPRITE.glint, variants: 4, count: 14, ramp: R_GOLD, speed: [4, 9], spread: 0.7, size: [0.035, 0.06], life: [0.15, 0.3], heat: [1, 0.5], emit: 1.2, occl: 0, gravity: -12, drag: 4, stretch: 1.6 }),
       L({ sprite: SPRITE.flare, count: 1, ramp: R_WHITE, speed: [0, 0], radius: 0, size: [0.8, 0.9], grow: 1.3, life: [0.1, 0.12], heat: [1, 0.5], emit: 0.8, occl: 0 }),
     ],
   },
@@ -407,7 +408,7 @@ Object.assign(E, {
     school: 'cold',
     layers: [
       L({ sprite: SPRITE.hex, count: 6, speed: [0.6, 1.6], size: [0.25, 0.35], grow: 1.2, life: [0.25, 0.4], heat: [1, 0.3], emit: 0.9, occl: 0, spin: 1.5 }),
-      L({ sprite: SPRITE.spark, count: 10, ramp: R_WHITE, speed: [3, 7], size: [0.03, 0.05], life: [0.12, 0.25], heat: [1, 0.5], emit: 1.1, occl: 0, gravity: -8, drag: 4, stretch: 1.4, tint: false }),
+      L({ sprite: SPRITE.glint, variants: 4, count: 10, ramp: R_WHITE, speed: [3, 7], size: [0.03, 0.05], life: [0.12, 0.25], heat: [1, 0.5], emit: 1.1, occl: 0, gravity: -8, drag: 4, stretch: 1.4, tint: false }),
       flash(0.8, 0.1),
     ],
   },
@@ -441,7 +442,7 @@ Object.assign(E, {
     layers: [
       flash(2.2, 0.12),
       L({ sprite: SPRITE.fireball, count: 9, speed: [1, 3.5], up: 0.7, radius: 0.35, size: [1.0, 1.6], grow: 1.9, life: [0.5, 0.85], heat: [1, 0.05], emit: 0.85, occl: 0.45, gravity: 2.4, drag: 3, turb: 0.5, spin: 1 }),
-      L({ sprite: SPRITE.ember, count: 26, speed: [5, 12], up: 0.4, size: [0.04, 0.08], life: [0.6, 1.4], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: -5, drag: 1.5, stretch: 0.8, ground: true }),
+      L({ sprite: SPRITE.cinder, variants: 4, count: 26, speed: [5, 12], up: 0.4, size: [0.04, 0.08], life: [0.6, 1.4], heat: [1, 0.5], emit: 1.3, occl: 0, gravity: -5, drag: 1.5, stretch: 0.8, ground: true }),
       L({ sprite: SPRITE.smoke, count: 6, ramp: 'smoke', speed: [0.6, 1.8], up: 1, radius: 0.5, size: [0.9, 1.4], grow: 2.2, life: [1.4, 2.2], heat: [0.35, 0], emit: 0.45, occl: 0.6, gravity: 1.0, drag: 1.5, turb: 0.3, stagger: 0.12, tint: false }),
       L({ sprite: SPRITE.shock, count: 1, speed: [0, 0], radius: 0, size: [1.2, 1.2], grow: 4.5, life: [0.3, 0.32], heat: [1, 0.1], emit: 0.4, occl: 0, flat: true, fade: 1.2 }),
     ],
@@ -542,8 +543,8 @@ Object.assign(E, {
   'puff.blood': {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 18, ramp: R_GORE, speed: [3, 7], spread: 0.5, up: 0.6, size: [0.08, 0.16], grow: 0.9, life: [0.5, 0.9], heat: [1, 0.5], emit: 0.7, occl: 0.9, gravity: -12, drag: 1, stretch: 0.6, ground: true, bounce: 0, fade: 3, tint: false }),
-      L({ sprite: SPRITE.splat, count: 3, ramp: R_GORE, speed: [0.6, 1.6], size: [0.35, 0.5], grow: 1.6, life: [0.25, 0.4], heat: [0.9, 0.4], emit: 0.6, occl: 0.6, drag: 4, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 18, ramp: R_GORE, speed: [3, 7], spread: 0.5, up: 0.6, size: [0.08, 0.16], grow: 0.9, life: [0.5, 0.9], heat: [1, 0.5], emit: 0.7, occl: 0.9, gravity: -12, drag: 1, stretch: 0.6, ground: true, bounce: 0, fade: 3, tint: false }),
+      L({ sprite: SPRITE.blood, variants: 4, count: 3, ramp: R_GORE, speed: [0.6, 1.6], size: [0.35, 0.5], grow: 1.6, life: [0.25, 0.4], heat: [0.9, 0.4], emit: 0.6, occl: 0.6, drag: 4, tint: false }),
     ],
   },
 } satisfies Record<string, Emitter>);
@@ -568,7 +569,7 @@ export interface Ambient {
 export const AMBIENT: Readonly<Record<string, Ambient>> = {
   dust: { rate: 7, spread: 14, yMin: 0.2, yMax: 3.5, layer: L({ sprite: SPRITE.mote, ramp: R_DUST, speed: [0.05, 0.25], size: [0.04, 0.08], grow: 1, life: [4, 7], heat: [0.5, 0.3], emit: 0.35, occl: 0.1, drag: 0.2, turb: 0.12, fade: 1, tint: false }) },
   motes: { rate: 6, spread: 14, yMin: 0.4, yMax: 3.5, layer: L({ sprite: SPRITE.mote, ramp: R_WHITE, speed: [0.05, 0.2], size: [0.03, 0.06], grow: 1, life: [4, 7], heat: [0.7, 0.3], emit: 0.5, occl: 0, drag: 0.2, turb: 0.15, fade: 1, tint: false }) },
-  embers: { rate: 9, spread: 13, yMin: 0, yMax: 1.5, layer: L({ sprite: SPRITE.ember, ramp: [RAMPS.fire.core, RAMPS.fire.body, RAMPS.fire.tail], speed: [0.1, 0.4], up: 1, size: [0.025, 0.05], grow: 0.5, life: [3, 5], heat: [1, 0.4], emit: 1.2, occl: 0, gravity: 0.35, drag: 0.4, turb: 0.3, fade: 1, tint: false }) },
+  embers: { rate: 9, spread: 13, yMin: 0, yMax: 1.5, layer: L({ sprite: SPRITE.cinder, variants: 4, ramp: [RAMPS.fire.core, RAMPS.fire.body, RAMPS.fire.tail], speed: [0.1, 0.4], up: 1, size: [0.025, 0.05], grow: 0.5, life: [3, 5], heat: [1, 0.4], emit: 1.2, occl: 0, gravity: 0.35, drag: 0.4, turb: 0.3, fade: 1, tint: false }) },
   snow: { rate: 22, spread: 14, yMin: 4, yMax: 7, layer: L({ sprite: SPRITE.ember, ramp: R_SNOW, speed: [0.05, 0.2], size: [0.035, 0.06], grow: 1, life: [5, 8], heat: [0.8, 0.6], emit: 0.55, occl: 0.25, gravity: -0.18, drag: 0.6, turb: 0.25, fade: 0.8, tint: false }) },
   spores: { rate: 7, spread: 13, yMin: 0.2, yMax: 2.8, layer: L({ sprite: SPRITE.mote, ramp: R_SPORE, speed: [0.05, 0.2], up: 0.4, size: [0.035, 0.07], grow: 1, life: [4, 7], heat: [0.9, 0.4], emit: 0.75, occl: 0, gravity: 0.05, drag: 0.3, turb: 0.25, fade: 1, tint: false }) },
   ash: { rate: 11, spread: 14, yMin: 2.5, yMax: 6, layer: L({ sprite: SPRITE.flake, ramp: R_ASH, speed: [0.05, 0.25], size: [0.04, 0.08], grow: 1, life: [5, 8], heat: [0.4, 0.1], emit: 0.35, occl: 0.5, gravity: -0.15, drag: 0.5, turb: 0.35, spin: 2, fade: 0.8, tint: false }) },
@@ -644,6 +645,10 @@ export function emitLayer(field: ParticleField, rng: Rng, layer: Layer, school: 
   if (n <= 0) return 0;
 
   const scale = o?.scale ?? 1;
+  // A high-rank skill's sprites are bigger and brighter; where they fly (the
+  // spread, the speed) stays the skill's own, so the drawing never claims
+  // ground the skill does not reach.
+  const grown = scale * BOOST.size;
   const spMul = (o?.speed ?? 1) * Math.sqrt(scale);
   const lifeMul = o?.life ?? 1;
 
@@ -689,7 +694,7 @@ export function emitLayer(field: ParticleField, rng: Rng, layer: Layer, school: 
 
   P.fade = layer.fade;
   P.stretch = layer.flat ? -1 : layer.stretch;
-  P.core = core; P.body = body; P.tail = tail; P.emit = emit;
+  P.core = core; P.body = body; P.tail = tail; P.emit = emit * BOOST.glow;
   P.gravity = layer.gravity;
   P.drag = layer.drag;
   P.turb = layer.turb;
@@ -747,7 +752,7 @@ export function emitLayer(field: ParticleField, rng: Rng, layer: Layer, school: 
     const life = rng.range(layer.life[0], layer.life[1]) * lifeMul;
     if (layer.converge) sp = (rad / Math.max(0.05, life)) * 1.1;
 
-    const size0 = rng.range(layer.size[0], layer.size[1]) * scale;
+    const size0 = rng.range(layer.size[0], layer.size[1]) * grown;
     P.x = px; P.y = py; P.z = pz;
     P.vx = vx * sp; P.vy = vy * sp; P.vz = vz * sp;
     P.delay = layer.stagger > 0 ? rng.next() * layer.stagger : 0;

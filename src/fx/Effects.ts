@@ -30,13 +30,14 @@ import { RAMPS, SCHOOLS as KIT_SCHOOLS, ramp, packLinear, mixHex, darken, type S
 import { InstancedPool, type SlotHandle } from './kit/Instanced';
 import { makeCores, makeBeams, makeColumns, makeShells, CORE_STYLE, BEAM_STYLE, COLUMN_STYLE, SHELL_STYLE } from './kit/Shapes';
 import { RibbonBatch, type RibbonHandle, type RibbonKind } from './kit/Ribbons';
-import { LightPool, type LightHandle } from './kit/Lights';
+import { LightPool, MAX_FX_LIGHTS, type LightHandle } from './kit/Lights';
 import { SolidPool, type SolidHandle } from './kit/Solids';
 import type { GroundHandle } from './kit/Ground';
 import { floorAt } from './kit/Floor';
 import { FX_EXPOSURE } from './kit/Exposure';
 import { FieldPool, type FieldOpts } from './Fields';
-import { rankDensity, rankSize } from './SkillLooks';
+import { BOOST, setBoostRank, atRank } from './kit/Boost';
+import { clearRipples, ripple } from '../core/Ripples';
 import { MOTIF_SHAPES, MOTIF_MOTIONS, Path, pieceCap, thin, type MotifDraw, type MotifShape, type MotifMotion, type MotifFrame, type Piece } from './Motifs';
 
 // ---------------------------------------------------------------------------
@@ -206,6 +207,8 @@ export interface ProjectileOpts {
    * their own physics) and `stop` ends it. It never arrives on its own.
    */
   carried?: boolean;
+  /** A monster's shot: a dark heart, a red rim and a red wake, whatever the school. */
+  hostile?: boolean;
 }
 
 export interface BeamOpts {
@@ -298,6 +301,33 @@ function lookOf(school: School, color?: number): Look {
   return l;
 }
 
+/** A monster shot's colours: the rim and wake go red, a little of the school stays in the heart. */
+const HOSTILE_RIM = 0xff3a22;
+const HOSTILE_BODY = 0xc4140c;
+const HOSTILE_TAIL = 0x420404;
+/** The wake a monster's shot leaves. */
+const HOSTILE_WAKE = 0xd01a10;
+const _hostile = new Map<number, Look>();
+
+function hostileLook(school: School, color?: number): Look {
+  const base = lookOf(school, color);
+  const key = base.bodyHex * 16 + KIT_SCHOOLS.indexOf(school);
+  let l = _hostile.get(key);
+  if (!l) {
+    l = {
+      core: packLinear(mixHex(HOSTILE_RIM, base.bodyHex, 0.22)),
+      body: packLinear(HOSTILE_BODY),
+      tail: packLinear(HOSTILE_TAIL),
+      glow: Math.max(1, base.glow),
+      light: mixHex(0xff3020, base.light, 0.25),
+      bodyHex: HOSTILE_BODY,
+    };
+    if (_hostile.size > 256) _hostile.clear();
+    _hostile.set(key, l);
+  }
+  return l;
+}
+
 // ---------------------------------------------------------------------------
 // Live effect records
 // ---------------------------------------------------------------------------
@@ -348,6 +378,8 @@ class Live {
   essential = false;
   /** Started inside `EffectSystem.beginQuiet`: makes no sound, now or when it lands. */
   quiet = false;
+  /** The skill rank it was started at: what it draws as it runs comes out at that rank (`kit/Boost.ts`). */
+  rank = 1;
   stopped = false;
   born = 0;
   t = 0;
@@ -406,6 +438,7 @@ class Live {
   reset(): void {
     this.essential = false;
     this.quiet = false;
+    this.rank = 1;
     this.stopped = false;
     this.t = 0;
     this.dur = 0;
@@ -517,10 +550,11 @@ export class EffectSystem {
     this.columns = makeColumns(24);
     this.shells = makeShells(24);
     this.ribbons = new RibbonBatch(48, 20);
-    // Every lit pixel on screen works through every light in the scene, lit
-    // or parked, so the pool stays small at every quality: the brightest few
-    // flashes take a light, the rest still glow and bloom on their own.
-    this.lights = new LightPool(scene, q >= 0.9 ? 4 : 3);
+    // Packed lights: a parked one costs nothing and a lit one only the
+    // pixels it reaches, so the quality sets how many flashes light the
+    // floor at once (6 on Low up to 24 on Ultra); the rest still glow and
+    // bloom on their own.
+    this.lights = new LightPool(scene, MAX_FX_LIGHTS, quality.fxLights ?? (q >= 0.9 ? 16 : 6));
     this.solids = new SolidPool(scene, 48);
     this.fields = new FieldPool(fx, decals, quality, this.rng);
     this.hazardFields = new FieldPool(fx, decals, quality, this.rng, 24);
@@ -534,6 +568,7 @@ export class EffectSystem {
   /** Follows a quality change live. Pools keep the size they were built with until the next scene. */
   setQuality(q: QualityProfile): void {
     this.quality = q;
+    if (q.fxLights) this.lights.setLimit(q.fxLights);
     this.fields.setQuality(q);
     this.hazardFields.setQuality(q);
   }
@@ -575,6 +610,7 @@ export class EffectSystem {
     e.active = true;
     e.essential = essential;
     e.quiet = this.hush > 0;
+    e.rank = BOOST.rank;
     e.born = this.stamp++;
     this.live.push(e);
     return e;
@@ -665,17 +701,17 @@ export class EffectSystem {
     else events.emit('shake', { amount, duration: 0.3 });
   }
 
-  /** Writes a core instance. */
+  /** Writes a core instance (bigger and brighter at a high skill rank, `kit/Boost.ts`). */
   private putCore(h: SlotHandle | null, x: number, y: number, z: number, size: number, dx: number, dy: number, dz: number, stretch: number, l: Look, emit: number, style: number, fade: number, seed: number): void {
     const p = this.cores;
-    p.set(h, 0, x, y, z, size);
+    p.set(h, 0, x, y, z, size * BOOST.size);
     p.set(h, 1, dx, dy, dz, stretch);
-    p.set(h, 2, l.core, l.body, l.tail, emit * l.glow);
+    p.set(h, 2, l.core, l.body, l.tail, emit * l.glow * BOOST.glow);
     p.set(h, 3, style, fade, seed, 0);
   }
 
   private putLook(pool: InstancedPool, h: SlotHandle | null, l: Look, emit: number, style: number, fade: number): void {
-    pool.set(h, 2, l.core, l.body, l.tail, emit * l.glow);
+    pool.set(h, 2, l.core, l.body, l.tail, emit * l.glow * BOOST.glow);
     pool.set(h, 3, style, fade, this.rng.next(), 0);
   }
 
@@ -804,7 +840,7 @@ export class EffectSystem {
     const e = this.spawn(K.Proj, !!opts.onHit);
     e.school = school;
     e.color = opts.color;
-    e.look = lookOf(school, opts.color);
+    e.look = opts.hostile ? hostileLook(school, opts.color) : lookOf(school, opts.color);
     e.scale = scale;
     e.size = size;
     e.speed = opts.speed ?? 18;
@@ -840,6 +876,7 @@ export class EffectSystem {
       school === 'cold' ? CORE_STYLE.frost :
       school === 'bone' ? CORE_STYLE.bone :
       school === 'physical' ? CORE_STYLE.soft : CORE_STYLE.orb;
+    if (opts.hostile) e.style = CORE_STYLE.hostile;
 
     // Wake.
     const want = opts.trail === null ? null : opts.trail && RIBBON_PRESETS[opts.trail] ? opts.trail : thrown !== null ? 'thrown' : isArrow ? 'arrow' : el.trail;
@@ -849,7 +886,7 @@ export class EffectSystem {
         life: preset.life,
         width: thrown !== null ? Math.max(0.08, size * preset.width) : isArrow ? 0.05 : Math.max(0.06, size * preset.width * 2),
         school,
-        color: opts.color !== undefined && saturated(opts.color) ? opts.color : undefined,
+        color: opts.hostile ? HOSTILE_WAKE : opts.color !== undefined && saturated(opts.color) ? opts.color : undefined,
         emit: preset.emit,
       });
     }
@@ -1065,7 +1102,10 @@ export class EffectSystem {
     // The billowing ball is the burst's fireball sprites; the floor front is
     // the nova below. A big core or a second front read as a glowing plate.
     this.decals.add(el.decal, x, z, r * 0.75);
-    if (school === 'fire') this.decals.glow('firePool', x, z, r * 0.6, 2.6, 'fire', 1.6);
+    if (school === 'fire') {
+      this.decals.glow('firePool', x, z, r * 0.6, 2.6, 'fire', 1.6);
+      ripple('heat', x, y + 1.0, z, r * 0.8, 2.2, 0.8);
+    }
     this.nova(x, z, r, { element: school, color: opts.color, duration: 0.45, particles: false });
     this.trauma(opts.shake ?? Math.min(0.75, 0.32 * scale));
     this.sfx('spell.explosion', x, z);
@@ -1113,6 +1153,9 @@ export class EffectSystem {
     this.take(e, this.shells);
     this.putLook(this.shells, e.slot, l, 0.8, SHELL_STYLE.front, 0);
     if (opts.shake) this.trauma(opts.shake);
+    // The wave bends the frame as it runs out (`core/Ripples.ts`), harder for
+    // a bigger wave and a higher-rank skill.
+    if (radius >= 2) ripple('shock', x, e.a.y + 0.4, z, radius * 1.1, dur * 1.15, Math.min(1.2, (0.35 + radius / 10) * BOOST.size));
     if (opts.mark) {
       this.fx.burst(el.castEmitter, x, e.a.y + 0.4, z, { scale: Math.min(2, radius / 3) });
       this.flash(x, e.a.y + 1.2, z, l.light, 14 * Math.min(1.6, radius / 4), radius * 2.4, 0.22);
@@ -1481,9 +1524,14 @@ export class EffectSystem {
    * shock thrown out along the floor to `radius`. Grows a little with rank.
    */
   selfCast(kind: 'rise' | 'stance' | 'shout' | 'banner', school: School, x: number, z: number, opts: { color?: number; emitter?: string; density?: number; rank?: number; radius?: number } = {}): void {
-    const rank = opts.rank ?? 1;
-    const size = rankSize(rank);
-    const dens = (opts.density ?? 1) * (this.quality.fxScale >= 0.9 ? rankDensity(rank) : 1);
+    // Drawn at the skill's rank: denser, bigger and brighter on every preset.
+    atRank(opts.rank ?? BOOST.rank, () => this.selfCastNow(kind, school, x, z, opts));
+  }
+
+  private selfCastNow(kind: 'rise' | 'stance' | 'shout' | 'banner', school: School, x: number, z: number, opts: { color?: number; emitter?: string; density?: number; radius?: number }): void {
+    // The ring carries the rank's size; particles and light take it on their own.
+    const size = BOOST.size;
+    const dens = opts.density ?? 1;
     const count = Math.round(12 * dens);
     const y = floorAt(x, z);
     const el = element(school);
@@ -1491,21 +1539,21 @@ export class EffectSystem {
     // Low and Medium skip the gathering flare: a self cast there spawns no
     // more than the impact it replaced.
     const rich = this.quality.fxScale >= 0.9;
-    if (rich) this.fx.burst(el.castEmitter, x, y + 1.1, z, { scale: size });
+    if (rich) this.fx.burst(el.castEmitter, x, y + 1.1, z);
     // The skill's own particles, unless they are a hit's: a self cast strikes nothing.
     const own = opts.emitter;
-    if (own && !own.startsWith('hit.') && own !== 'impact') this.fx.burst(own, x, y + 1.0, z, { count: Math.round(8 * dens), scale: 0.8 * size, color: opts.color, school });
+    if (own && !own.startsWith('hit.') && own !== 'impact') this.fx.burst(own, x, y + 1.0, z, { count: Math.round(8 * dens), scale: 0.8, color: opts.color, school });
     if (kind === 'shout') {
-      this.fx.burst('self.roar', x, y + 0.1, z, { scale: size, count, color: opts.color, school });
+      this.fx.burst('self.roar', x, y + 0.1, z, { count, color: opts.color, school });
       this.decals.glow('shockRing', x, z, Math.max(2, Math.min(12, opts.radius ?? 6)), 0.5, opts.color ?? school, 1.5);
       this.trauma(0.1);
     } else {
-      this.fx.burst('self.rise', x, y + 0.1, z, { scale: size, count, color: opts.color, school });
+      this.fx.burst('self.rise', x, y + 0.1, z, { count, color: opts.color, school });
       this.decals.glow('auraRing', x, z, 1.3 * size, 0.7, opts.color ?? school, 1.2);
-      if (kind === 'stance' || kind === 'banner' || school === 'physical' || school === 'bone') this.fx.burst('self.stance', x, y + 0.05, z, { scale: size, count });
-      if (kind === 'banner') this.fx.burst('self.banner', x, y + 0.1, z, { scale: size, count, color: opts.color, school });
+      if (kind === 'stance' || kind === 'banner' || school === 'physical' || school === 'bone') this.fx.burst('self.stance', x, y + 0.05, z, { count });
+      if (kind === 'banner') this.fx.burst('self.banner', x, y + 0.1, z, { count, color: opts.color, school });
     }
-    this.flash(x, y + 1.2, z, l.light, 6 * size, 6, 0.22);
+    this.flash(x, y + 1.2, z, l.light, 6, 6, 0.22);
   }
 
   /** A summoning circle that inscribes itself, with a shaft of the school's light. */
@@ -1649,6 +1697,7 @@ export class EffectSystem {
     this.flash(x, y + 1, z, l.light, 12, 8, 0.22);
     this.decals.glow('runeCircle', x, z, 1.0, 0.8, color, 1.2);
     this.nova(x, z, 1.4, { color, duration: 0.35, particles: false, element: 'arcane' });
+    ripple('portal', x, y + 1.0, z, 1.3, 0.5, 0.8);
     this.sfx('spell.teleportOut', x, z);
   }
 
@@ -1661,6 +1710,7 @@ export class EffectSystem {
     this.flash(x, y + 1, z, l.light, 16, 9, 0.26);
     this.decals.glow('runeCircle', x, z, 1.2, 1.2, color, 1.2);
     this.nova(x, z, 1.8, { color, duration: 0.4, particles: false, element: 'arcane' });
+    ripple('portal', x, y + 1.0, z, 1.5, 0.55, 0.9);
     this.sfx('spell.teleportIn', x, z);
   }
 
@@ -1678,8 +1728,10 @@ export class EffectSystem {
       this.decals.glow('runeCircle', x, z, 2.0, 2.6, color, 1.1, 0, 0.5);
       this.nova(x, z, 3.2, { color, duration: 0.5, particles: false, element: 'arcane', thickness: 0.12 });
       this.flash(x, y + 1.4, z, l.light, 20, 11, 0.5);
+      ripple('portal', x, y + 1.3, z, 2.4, 2.6, 1.0);
       this.trauma(0.12);
     } else {
+      ripple('portal', x, y + 1.0, z, 1.6, 0.7, 1.0);
       this.pulse(Fam.Column, COLUMN_STYLE.light, x, y, z, 0.6, 0.3, 4.2, 0.45, l, 1.1);
       this.decals.glow('shockRing', x, z, 1.8, 0.45, color, 1.2);
       this.flash(x, y + 1.0, z, l.light, 16, 8, 0.35);
@@ -1730,7 +1782,9 @@ export class EffectSystem {
     const school = opts.element ?? 'arcane';
     const l = lookOf(school, opts.color);
     const lead = Math.max(0, opts.delay ?? 0);
-    const size = opts.size ?? 1;
+    // A high-rank skill's pieces are bigger: cores grow where they are
+    // written (`putCore`), the rest here (`kit/Boost.ts`).
+    const size = (opts.size ?? 1) * (draw.k === 'core' ? 1 : BOOST.size);
     // Fewer pieces on the lower quality steps, and fewer again in a busy
     // fight: past three motifs in the air at once, each new one thins (down
     // to two pieces) and skips its flash, so a screen full of spells stays
@@ -2037,6 +2091,7 @@ export class EffectSystem {
     const ex = FX_EXPOSURE.value;
     FX_EXPOSURE.value = ex + (want - ex) * Math.min(1, dt * (want < ex ? 14 : 2.5));
     // Index loop over a list that may grow while we walk it (a delay firing a projectile).
+    const rankWas = BOOST.rank;
     for (let i = 0; i < this.live.length; ) {
       const e = this.live[i]!;
       let alive: boolean;
@@ -2044,6 +2099,8 @@ export class EffectSystem {
       // Read once: the slot can be released and reused while it steps.
       const quiet = e.quiet;
       if (quiet) this.hush++;
+      // Its trail, its landing and anything it starts are drawn at its rank.
+      setBoostRank(e.rank);
       try {
         alive = this.step(e, dt);
       } catch (err) {
@@ -2061,6 +2118,7 @@ export class EffectSystem {
       const last = this.live.pop()!;
       if (last !== e) this.live[i] = last;
     }
+    setBoostRank(rankWas);
     // Budget: past the cap the oldest decoration goes; gameplay never does.
     while (this.live.length > MAX_LIVE_EFFECTS) {
       let oldest = -1;
@@ -2121,6 +2179,7 @@ export class EffectSystem {
     this.liveAuras = 0;
     this.glare = 0;
     FX_EXPOSURE.value = 1;
+    clearRipples();
   }
 
   dispose(): void {

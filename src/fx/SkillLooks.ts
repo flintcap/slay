@@ -287,20 +287,9 @@ export function skillParticles(skillId: string, school: School): ParticleSig {
 // Rank
 // ---------------------------------------------------------------------------
 
-/**
- * How much bigger a skill's drawing is at `rank` than at rank 1: a little per
- * rank, capped, so a maxed skill reads as the same spell grown heavier. The
- * skill's real numbers (radius, length) already size the families; this is
- * on top, for the parts no number sizes (motifs, self casts).
- */
-export function rankSize(rank: number): number {
-  return Math.min(1.45, 1 + Math.max(0, rank - 1) * 0.025);
-}
-
-/** How much denser a skill's particles are at `rank` (callers apply it only where the quality has room). */
-export function rankDensity(rank: number): number {
-  return Math.min(1.6, 1 + Math.max(0, rank - 1) * 0.035);
-}
+// The per-rank lift lives with the effect kit, which applies it to every
+// layer, core and light a skill's drawing makes (`fx/kit/Boost.ts`).
+export { rankSize, rankDensity, rankGlow } from './kit/Boost';
 
 // ---------------------------------------------------------------------------
 // Fields and thrown things

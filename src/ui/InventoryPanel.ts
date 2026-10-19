@@ -523,7 +523,7 @@ export class InventoryPanel {
             this.discard({ kind: 'equipment', item, slot: s });
             return;
           }
-          doUnequip(c, s);
+          if (doUnequip(c, s)) uiSfx('ui.unequip');
         },
       });
       slot.root.classList.add('pd-slot', `pd-${s}`);
@@ -883,6 +883,7 @@ export class InventoryPanel {
 
     if (p.kind === 'equipment' && p.slot) {
       if (!doUnequip(c, p.slot)) return false;
+      uiSfx('ui.unequip');
       // Set it down where the player dropped it if it fits there.
       const at = invIndexOf(c, p.item);
       if (at >= 0 && at !== index && fitsAt(c.inventory, p.item, index, at)) {

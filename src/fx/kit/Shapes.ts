@@ -39,6 +39,8 @@ export const CORE_STYLE = {
   orb: 0, fireball: 1, plasma: 2, flare: 3, glob: 4, frost: 5, void: 6, soft: 7, bone: 8,
   // Glyphs: drawn shapes rather than glows, for skill motifs (`fx/Motifs.ts`).
   skull: 9, rune: 10, crescent: 11, star: 12, ring: 13, eye: 14, petal: 15, smoke: 16, cross: 17, hex: 18, claw: 19, heart: 20,
+  // A monster's shot, whatever its school: a black heart with a red rim.
+  hostile: 21,
 } as const;
 export type CoreStyle = keyof typeof CORE_STYLE;
 
@@ -147,6 +149,22 @@ export function makeCores(capacity: number): InstancedPool {
         heat.assign(pow(max(0.0, r.mul(1.1).oneMinus()), 2.0).mul(1.2).add(n.mul(0.3).mul(smoothstep(1.0, 0.4, r))));
         cov.assign(smoothstep(1.0, 0.35, r.add(n.sub(0.5).mul(0.3))));
         occl.assign(0.25);
+      })
+      .ElseIf(style.greaterThan(20.5), () => {
+        // Hostile bolt: a black heart that hides what is behind it, a red rim
+        // that flickers, and a ragged tail streaming back. Read at a glance
+        // as "theirs" beside the hero's own bright shots.
+        const fl = fxn(vec2(floor(t.mul(20.0)).add(seed), seed.mul(0.37)));
+        const n = fxf(vec2(atan(p.y, p.x).mul(2.0).sub(t.mul(5.0)), r.mul(3.5).add(seed))).toVar();
+        // Swept back like a fireball: the shape widens toward the tail.
+        const q = vec2(p.x.add(0.1), p.y.mul(max(0.0, p.x.negate()).mul(0.3).add(1.0))).toVar();
+        const d = length(vec2(min(q.x, 0.0).mul(0.42).add(max(q.x, 0.0)), q.y)).add(n.sub(0.5).mul(0.5)).toVar();
+        const tail = smoothstep(-3.2, -0.3, p.x);
+        const rim = band(r.sub(0.56).sub(n.sub(0.5).mul(0.18)), 0.17).mul(fl.mul(0.4).add(0.75));
+        const streak = smoothstep(0.55, 0.9, n).mul(smoothstep(0.0, -0.8, p.x)).mul(tail);
+        cov.assign(max(smoothstep(0.95, 0.4, d).mul(tail), rim));
+        heat.assign(rim.mul(1.35).add(streak.mul(0.55)).add(smoothstep(0.25, 0.0, r).mul(0.04)));
+        occl.assign(smoothstep(0.62, 0.2, r).mul(0.8).add(0.18));
       })
       .Else(() => {
         // Glyphs. Upright on screen when still: q.y is up, q.x across.

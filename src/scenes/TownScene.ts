@@ -3,7 +3,9 @@ import { GameScene, type Engine } from '../core/Engine';
 import type { SceneId } from '../types';
 import { events, toast } from '../core/Events';
 import { audio } from '../audio/Audio';
+import { classSkillSounds } from '../audio/SkillSounds';
 import { save } from '../core/Save';
+import { forfeitText } from '../sim/RunLedger';
 import { drawItemIconsNow } from '../art/Icons';
 import { afterCurtain } from '../core/Idle';
 import { addItemToInventory } from '../sim/Inventory';
@@ -79,6 +81,7 @@ export class TownScene extends GameScene {
     this.rig = new CameraRig({ distance: 19.5, pitch: 0.95 });
     this.camera = this.rig.camera;
     this.fx = new FXSystem(this.scene, engine.renderer.quality);
+    this.fx.setView(this.camera);
     this.decals = new DecalSystem(this.scene, engine.renderer.quality);
   }
 
@@ -94,6 +97,12 @@ export class TownScene extends GameScene {
     setActiveDifficulty(character.difficulty as never);
     // Levels already paid for under an older, steeper level curve.
     settleLevels(character);
+    // A map left early (the menu, or the game closed in one) says what it
+    // cost. A note still open here is a map that could not be built: the
+    // engine fell back to town, which costs nothing.
+    const left = save.takeForfeit(character.id);
+    if (left) setTimeout(() => toast(forfeitText(left), 'info'), 900);
+    save.endRun();
     // The boot worker may still be meshing the townsfolk and this hero: wait
     // for it behind the curtain rather than meshing them all again here.
     loadStep('meshing');
@@ -219,6 +228,8 @@ export class TownScene extends GameScene {
     this.rig.follow(this.player.root);
     this.rig.snap();
     audio.music('town', 2.0);
+    // No monsters in town: their voices can go until the next floor.
+    audio.setLoadout([], classSkillSounds(this.player.character.classId));
     events.emit('ui:open', { panel: 'hud' });
     events.emit('depth:changed', { depth: 0, level: 0, of: 0 });
 

@@ -27,17 +27,17 @@ const SCENE: Record<string, string> = {
 const BOSS: Record<string, string> = {
   boss: 'boss.epic',
   'boss.final': 'boss.epic',
-  'boss.demon': 'boss.epic',
-  'boss.void': 'boss.epic',
-  'boss.crypt': 'boss.dread',
-  'boss.arcane': 'boss.dread',
-  'boss.temple': 'boss.dread',
+  'boss.demon': 'boss.menace',
+  'boss.void': 'boss.abyss',
+  'boss.crypt': 'boss.horror',
+  'boss.arcane': 'boss.arcana',
+  'boss.temple': 'boss.hymn',
   'boss.frost': 'boss.dread',
-  'boss.hive': 'boss.war',
+  'boss.hive': 'boss.frenzy',
   'boss.beast': 'boss.war',
-  'boss.ooze': 'boss.war',
+  'boss.ooze': 'boss.mire',
   'boss.foundry': 'boss.metal',
-  'boss.storm': 'boss.metal',
+  'boss.storm': 'boss.tempest',
 };
 
 /** Played through once rather than looped. */

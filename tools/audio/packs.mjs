@@ -75,6 +75,10 @@ export const PACKS = {
   wind: oga('wind', 'IgnasD', ['wind.zip']),
   crow: oga('crow-caw', 'zeroisnotnull', ['crow_caw.wav']),
   yell: oga('male-gruntyelling-sounds', 'HaelDB', ['yelling%20sounds.zip']),
+  // The hero's barks (out of mana, pack full, near death) and a woman's hurt sounds.
+  vMale: oga('voice-clip-pack-male-adventurer-rpg', 'wolfwoot', ['RPG%20Male%20Adventurer.zip']),
+  vFemale: oga('female-rpg-voice-starter-pack', 'cicifyre', ['RPG%20Voice%20Starter%20Pack.zip']),
+  vFemale2: oga('voice-clip-packs-for-visual-novels-and-rpgs', 'cicifyre', ['Free%20Voice%20Clips%20Pack%20-%20Mature%20Female.zip']),
   hurt: oga('hurt-death-sound-effect-for-character', 'Badre-Eddine', ['death%20sound%20effect.zip']),
   gbreath: oga('ghost-breath', 'qubodup', ['ghostbreath.flac']),
   ghost: oga('ghost', 'Ogrebane', ['ghost.wav']),
@@ -136,4 +140,11 @@ export const PACKS = {
   mProwler: oga('night-prowler', 'section31', ['S31-Night%20Prowler.ogg'], 'm-night-prowler'),
   mForestAmb: oga('forest-ambience', 'TinyWorlds', ['Forest_Ambience.mp3'], 'm-forest-ambience'),
   mIcyWind: oga('icy-heights', 'Écrivain', ['wind.ogg'], 'm-icy-heights'),
+  // One theme per boss family (Score.ts BOSS).
+  mMenace: oga('menace', 'yd', ['Menace.ogg'], 'm-menace'),
+  mHorror: oga('horror-loop', 'TinyWorlds', ['horror_music.zip'], 'm-horror-loop'),
+  mChoir: oga('fantasy-choir-3-orchestral-pieces', 'cesisco', ['FantasyChoir24bit.zip'], 'm-choir'),
+  mBleed: oga('bleeding-out', 'HaelDB', ['bleeding_out2_2.ogg'], 'm-bleeding-out'),
+  mHope: oga('at-the-end-of-hope', 'Emma_MA', ['at_the_end_of_hope_loop.wav'], 'm-end-of-hope'),
+  mDarkIntro: oga('dark-intro', 'Nikke', ['Dark%20Intro_0.ogg'], 'm-dark-intro'),
 };

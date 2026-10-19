@@ -18,7 +18,7 @@ import { MenuNav, type MenuItemOpts } from './MenuNav';
 import { runStats } from './RunStats';
 import { keyLabel } from './AccessibilitySettings';
 import { keyFor } from '../core/Access';
-import { peril } from '../core/Peril';
+import { LEAVE_XP_SHARE } from '../sim/RunLedger';
 
 export class PausePanel {
   readonly panel: Panel;
@@ -107,53 +107,44 @@ export class PausePanel {
       { label: 'Journal', hint: key('KeyJ'), onSelect: open('journal') },
       { label: 'Settings', hint: 'Picture, sound, controls', onSelect: () => events.emit('ui:open', { panel: 'settings' }) },
     ];
-    // Death is permanent, so the menu is not a way out of a fight
-    // (core/Peril.ts). The run clock is stopped while paused, so the wait
-    // only runs down back in the world.
-    const fighting = inDungeon && peril.active;
-    const stuck = peril.bossFight ? 'Not while a boss is awake' : `In a fight. Get clear for ${peril.secondsLeft}s more.`;
+    // Leaving a map early, at any moment, costs what was found on it and a
+    // little experience (`sim/RunLedger.ts`); the waypoint ring and the
+    // map's last exit cost nothing. Closing the game counts the same.
+    const cost = `You go back to town with only what you brought down. Everything found on this map is lost, and ${Math.round(LEAVE_XP_SHARE * 100)}% of a level's experience.`;
+    const leave = (to: 'town' | 'title') => (): void => {
+      this.close();
+      if (inDungeon) save.forfeitRun();
+      save.touch();
+      save.flush();
+      void this.engine.goTo(to);
+    };
     if (inDungeon) {
       items.push({
         label: 'Return to Town',
-        hint: fighting ? stuck : 'Keep what you carry. This map is lost.',
-        disabled: fighting,
+        hint: 'Lose what you found here',
         onSelect: () =>
           modal({
-            title: 'Leave the dungeon?',
+            title: 'Leave the map?',
             icon: 'warn',
             tone: 'danger',
-            body:
-              '<p>You walk back to town with everything you are carrying. This map is lost, and anything still on the ground down here goes with it.</p>',
+            body: `<p>${cost}</p><p>The waypoint ring where you came in takes you home with everything.</p>`,
             confirmLabel: 'Return to town',
-            onConfirm: () => {
-              this.close();
-              save.touch();
-              save.flush();
-              void this.engine.goTo('town');
-            },
+            onConfirm: leave('town'),
           }),
       });
     }
     items.push({
       label: 'Quit to Title',
       tone: 'danger',
-      hint: fighting ? stuck : 'Your character is saved',
-      disabled: fighting,
+      hint: inDungeon ? 'Lose what you found here' : 'Your character is saved',
       onSelect: () =>
         modal({
           title: 'Quit to the title screen?',
           icon: 'warn',
           tone: 'danger',
-          body: inDungeon
-            ? '<p>Your character is saved and will be waiting in town. Progress on this map is not.</p>'
-            : '<p>Your character is saved and will be waiting.</p>',
+          body: inDungeon ? `<p>${cost}</p><p>Your character will be waiting in town.</p>` : '<p>Your character is saved and will be waiting.</p>',
           confirmLabel: 'Quit',
-          onConfirm: () => {
-            this.close();
-            save.touch();
-            save.flush();
-            void this.engine.goTo('title');
-          },
+          onConfirm: leave('title'),
         }),
     });
     this.nav.set(items);

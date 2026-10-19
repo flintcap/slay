@@ -21,6 +21,7 @@ import type { MonsterDef, MonsterRole } from '../types';
 import type { CombatContext, AbilityDef } from './Abilities';
 import { angleDelta, angleTo, clamp, dist, dist2, getAbility } from './Abilities';
 import type { Enemy } from './Enemy';
+import { events } from '../core/Events';
 
 export type AIMode =
   | 'dormant'
@@ -360,6 +361,9 @@ export function alertPack(packId: number, elapsed: number): void {
   packAggro.set(packId, elapsed);
 }
 
+/** When the next pack may call out on spotting the hero (one voice, not a choir). */
+let nextGrunt = -1;
+
 export function packIsAlerted(packId: number, elapsed: number): boolean {
   if (packId < 0) return false;
   const t = packAggro.get(packId);
@@ -538,6 +542,11 @@ export class AIBrain {
     alertPack(this.self.packId, ctx.elapsed);
     if (!propagate) return;
     const p = this.self.root.position;
+    // The one who saw you calls the rest: a grunt, a hiss, a rattle, by kind.
+    if (ctx.elapsed >= nextGrunt || ctx.elapsed < nextGrunt - 60) {
+      nextGrunt = ctx.elapsed + 0.8;
+      events.emit('sfx', { id: `monster.${this.self.family}.aggro`, x: p.x, z: p.z, volume: 0.9 });
+    }
     for (const e of ctx.enemies) {
       if (e === this.self || !e.alive) continue;
       const q = e.root.position;

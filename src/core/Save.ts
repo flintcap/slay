@@ -6,6 +6,7 @@ import { LEGACY_RUNE_IDS, RUNES } from '../data/gems';
 import { migrateClassId } from '../data/classes';
 import { INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS, findFit, repairLayout } from '../sim/Grid';
 import { refreshFixedLines } from '../sim/Loot';
+import { beginRun, endRun, forfeitRun, type Forfeit } from '../sim/RunLedger';
 
 /**
  * The primary save. The key still says v1 because it predates versioning; the
@@ -383,7 +384,40 @@ class Repairer {
 
     const invLen = Math.max(INVENTORY_SIZE, Array.isArray(c.inventory) ? Math.min(c.inventory.length, 240) : 0);
     c.inventory = this.slots(c.inventory, invLen, `${at}.inventory`);
+    this.runNote(c, at);
     return c;
+  }
+
+  /**
+   * The note of what a hero took down the map in progress (`sim/RunLedger.ts`).
+   * A damaged one is dropped, which keeps what the hero holds now: losing
+   * the note must never cost the player their gear.
+   */
+  private runNote(c: Character, at: string): void {
+    const r = (c as { run?: unknown }).run;
+    if (r === undefined) return;
+    if (!isObj(r) || !isObj(r.equipment) || !Array.isArray(r.inventory)) {
+      delete c.run;
+      this.note(`${at}: the note of the map in progress was unreadable, dropped`);
+      return;
+    }
+    const eq: Character['equipment'] = {};
+    for (const [slot, raw] of Object.entries(r.equipment)) {
+      if (!EQUIP_SLOTS.includes(slot)) continue;
+      const it = this.item(raw, `${at}.run.equipment.${slot}`);
+      if (it) eq[slot as keyof Character['equipment']] = it;
+    }
+    const materials: Record<string, number> = {};
+    if (isObj(r.materials)) for (const [id, n] of Object.entries(r.materials)) if (finite(n) && n > 0) materials[id] = Math.floor(n);
+    c.run = {
+      v: 1,
+      at: this.num(r.at, Date.now(), `${at}.run.at`, 0),
+      depth: this.num(r.depth, 1, `${at}.run.depth`, 1, 1e6, true),
+      equipment: eq,
+      inventory: this.slots(r.inventory, Math.max(INVENTORY_SIZE, Math.min(r.inventory.length, 240)), `${at}.run.inventory`),
+      gold: this.num(r.gold, 0, `${at}.run.gold`, 0),
+      materials,
+    };
   }
 }
 
@@ -640,6 +674,9 @@ export class SaveManager {
   /** Number of writes that failed (quota, blocked storage). */
   writeFailures = 0;
 
+  /** Heroes whose map the last load settled (`settleLeftMaps`), by id. */
+  private forfeits = new Map<string, Forfeit>();
+
   constructor(store?: SaveStore) {
     this.store = store ?? defaultStore();
   }
@@ -721,6 +758,7 @@ export class SaveManager {
     this.data = data;
     this.loadReport = { ...report, source, primaryDamaged };
     this.keepTheDeadDead();
+    this.settleLeftMaps();
     if (quarantine.length) this.addToQuarantine(quarantine);
     if (report.repairs.length) {
       console.warn(`[save] repaired ${report.repairs.length} problems on load`, report.repairs.slice(0, 20));
@@ -746,6 +784,34 @@ export class SaveManager {
     } catch (err) {
       console.warn('[save] could not record a death', err);
     }
+  }
+
+  /**
+   * A hero saved mid-map left it without ending it: the game closed, the
+   * page reloaded, the browser crashed. They wake in town as they went down,
+   * less a little experience (`sim/RunLedger.ts`), and are told so there.
+   */
+  private settleLeftMaps(): void {
+    this.forfeits.clear();
+    for (const c of new Set([...this.roster, ...(this.data.current ? [this.data.current] : [])])) {
+      if (!c.run) continue;
+      const f = this.settle(c);
+      if (f) this.forfeits.set(c.id, f);
+      this.dirty = true;
+    }
+  }
+
+  /** Puts `c` back as they went down the map, and fits the pack again. */
+  private settle(c: Character): Forfeit | null {
+    const f = forfeitRun(c, this.data.materials);
+    if (!f) return null;
+    for (let i = c.inventory.length; i < INVENTORY_SIZE; i++) c.inventory[i] = null;
+    for (const it of repairLayout(c.inventory)) {
+      const at = findFit(c.inventory, it);
+      if (at >= 0) c.inventory[at] = it;
+      else if (!this.stashItem(it)) this.addToQuarantine([{ where: `${c.name}.run`, item: it }]);
+    }
+    return f;
   }
 
   /** Death is permanent: a loaded account loses any hero who already died. */
@@ -938,6 +1004,50 @@ export class SaveManager {
     if (this.data.current?.id === id) this.data.current = null;
     this.touch();
     this.flush();
+  }
+
+  /** The live hero goes down a map: what they carry is written down first. */
+  beginRun(depth: number): void {
+    const c = this.data.current;
+    if (!c) return;
+    // A note still open is a map that never ended: it is settled first.
+    if (c.run) {
+      const f = this.settle(c);
+      if (f) this.forfeits.set(c.id, f);
+    }
+    beginRun(c, this.data.materials, depth);
+    this.touch();
+    this.flush();
+  }
+
+  /** The map ended well (its last exit, the waypoint): the hero keeps everything. */
+  endRun(): void {
+    const c = this.data.current;
+    if (!c?.run) return;
+    endRun(c);
+    this.touch();
+  }
+
+  /**
+   * The live hero leaves the map early, from the menu: back as they went
+   * down, less some experience. Null if no map was in progress.
+   */
+  forfeitRun(): Forfeit | null {
+    const c = this.data.current;
+    if (!c?.run) return null;
+    const f = this.settle(c);
+    // Told in town, wherever the hero went (`takeForfeit`).
+    if (f) this.forfeits.set(c.id, f);
+    this.touch();
+    this.flush();
+    return f;
+  }
+
+  /** What the last load's settling took from hero `id`, once. */
+  takeForfeit(id: string): Forfeit | null {
+    const f = this.forfeits.get(id) ?? null;
+    this.forfeits.delete(id);
+    return f;
   }
 
   /**

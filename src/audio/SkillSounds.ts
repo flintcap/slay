@@ -20,6 +20,8 @@
  * with its own body and voice.
  */
 
+import type { CharClassId } from '../types';
+import { skillsForClass } from '../data/skills';
 import { SHIFTER_SOUNDS } from './shifterSounds';
 import { PALADIN_SOUNDS } from './PaladinSounds';
 
@@ -193,4 +195,21 @@ const SILENT: SkillSound = { cast: null, hit: null, minion: null };
 /** A skill's sounds; an unknown skill is silent rather than borrowing another's. */
 export function skillSound(skillId: string | undefined): SkillSound {
   return (skillId && SKILL_SOUNDS[skillId]) || SILENT;
+}
+
+const ids = (sounds: Iterable<SkillSound>): string[] => {
+  const out = new Set<string>();
+  for (const s of sounds) for (const id of [s.cast, s.hit, s.minion]) if (id) out.add(id);
+  return [...out];
+};
+
+/**
+ * The skill sounds a class can make (`own`) and every other class's
+ * (`others`), so the sound engine keeps only the hero's in memory
+ * (`SampleEngine.setLoadout`).
+ */
+export function classSkillSounds(classId: CharClassId): { own: string[]; others: string[] } {
+  const own = ids(skillsForClass(classId).map((d) => skillSound(d.id)));
+  const mine = new Set(own);
+  return { own, others: ids(Object.values(SKILL_SOUNDS)).filter((id) => !mine.has(id)) };
 }

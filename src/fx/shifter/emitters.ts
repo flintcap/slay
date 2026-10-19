@@ -33,7 +33,7 @@ const EYE_BEAR = [0xffc890, 0xb05a1a, 0x3a1406] as const;
 /** Hair flying off a body: dark, solid flecks that tumble and fall. */
 function fur(ramp: readonly [number, number, number], count: number, speed: [number, number], up: number, o: Partial<Layer> = {}): Layer {
   return L({
-    sprite: SPRITE.ember, count, ramp, speed, spread: 1, up, radius: 0.35, size: [0.035, 0.075], grow: 0.8,
+    sprite: SPRITE.cinder, variants: 4, count, ramp, speed, spread: 1, up, radius: 0.35, size: [0.035, 0.075], grow: 0.8,
     life: [0.7, 1.3], heat: [0.15, 0], emit: 0.05, occl: 0.95, gravity: -5, drag: 2.4, turb: 1.1, spin: 6,
     stretch: 0.6, fade: 1.2, tint: false, ...o,
   });
@@ -101,7 +101,7 @@ const EM: Record<string, Emitter> = {
   // A spray of blood off claws: the base every claw hit adds to.
   'ss.blood': {
     school: 'physical',
-    layers: [L({ sprite: SPRITE.drop, count: 12, ramp: BLOOD, speed: [3, 7], spread: 0.5, up: 0.35, size: [0.04, 0.08], grow: 0.7, life: [0.35, 0.7], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 1.2, stretch: 1.4, ground: true, bounce: 0, tint: false })],
+    layers: [L({ sprite: SPRITE.gore, variants: 4, count: 12, ramp: BLOOD, speed: [3, 7], spread: 0.5, up: 0.35, size: [0.04, 0.08], grow: 0.7, life: [0.35, 0.7], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 1.2, stretch: 1.4, ground: true, bounce: 0, tint: false })],
   },
 
   // --- Feral -------------------------------------------------------------------
@@ -109,7 +109,7 @@ const EM: Record<string, Emitter> = {
   'ss.rake.hit': {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 16, ramp: BLOOD, speed: [4, 8], spread: 0.35, up: 0.2, size: [0.035, 0.07], grow: 0.6, life: [0.3, 0.6], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -15, drag: 1, stretch: 2, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 16, ramp: BLOOD, speed: [4, 8], spread: 0.35, up: 0.2, size: [0.035, 0.07], grow: 0.6, life: [0.3, 0.6], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -15, drag: 1, stretch: 2, ground: true, bounce: 0, tint: false }),
       fur(CAT_FUR, 6, [1, 2.5], 0.4, { radius: 0.1, life: [0.4, 0.8] }),
     ],
   },
@@ -124,7 +124,7 @@ const EM: Record<string, Emitter> = {
     layers: [
       L({ sprite: SPRITE.smoke, count: 12, ramp: SHADOW, disc: true, radius: 0.3, speed: [3, 5], up: -0.1, size: [0.4, 0.6], grow: 2.2, life: [0.5, 0.8], heat: [0.3, 0], emit: 0.2, occl: 0.6, drag: 2.6, tint: false }),
       L({ sprite: SPRITE.smoke, count: 6, ramp: DUST, disc: true, radius: 0.3, speed: [2, 3.5], up: -0.1, size: [0.35, 0.5], grow: 2.4, life: [0.6, 1.0], heat: [0.2, 0], emit: 0.2, occl: 0.5, drag: 2.4, tint: false }),
-      L({ sprite: SPRITE.drop, count: 10, ramp: BLOOD, speed: [2.5, 5], spread: 0.8, up: 0.8, size: [0.04, 0.08], grow: 0.6, life: [0.4, 0.7], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 1, stretch: 1.4, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 10, ramp: BLOOD, speed: [2.5, 5], spread: 0.8, up: 0.8, size: [0.04, 0.08], grow: 0.6, life: [0.4, 0.7], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 1, stretch: 1.4, ground: true, bounce: 0, tint: false }),
     ],
   },
   // Slink: the dark pooling round the feet, lying flat on the floor.
@@ -144,7 +144,7 @@ const EM: Record<string, Emitter> = {
   'ss.hamstring.hit': {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 14, ramp: BLOOD, disc: true, speed: [3, 6], spread: 0.5, up: 0.05, size: [0.035, 0.07], grow: 0.6, life: [0.3, 0.55], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -10, drag: 1.4, stretch: 2, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 14, ramp: BLOOD, disc: true, speed: [3, 6], spread: 0.5, up: 0.05, size: [0.035, 0.07], grow: 0.6, life: [0.3, 0.55], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -10, drag: 1.4, stretch: 2, ground: true, bounce: 0, tint: false }),
       L({ sprite: SPRITE.smoke, count: 4, ramp: DUST, radius: 0.2, speed: [1, 2], up: -0.2, size: [0.25, 0.4], grow: 2, life: [0.5, 0.8], heat: [0.2, 0], emit: 0.2, occl: 0.45, drag: 2.5, tint: false }),
     ],
   },
@@ -152,8 +152,8 @@ const EM: Record<string, Emitter> = {
   'ss.throat.gush': {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 22, ramp: BLOOD, speed: [3, 7], spread: 0.45, up: 1.1, radius: 0.08, size: [0.045, 0.09], grow: 0.6, life: [0.5, 0.9], heat: [0.3, 0], emit: 0.1, occl: 0.95, gravity: -13, drag: 0.8, stretch: 1.6, ground: true, bounce: 0, tint: false }),
-      L({ sprite: SPRITE.splat, count: 3, ramp: BLOOD, speed: [0.5, 1.5], radius: 0.1, size: [0.25, 0.4], grow: 1.6, life: [0.2, 0.35], heat: [0.4, 0], emit: 0.2, occl: 0.85, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 22, ramp: BLOOD, speed: [3, 7], spread: 0.45, up: 1.1, radius: 0.08, size: [0.045, 0.09], grow: 0.6, life: [0.5, 0.9], heat: [0.3, 0], emit: 0.1, occl: 0.95, gravity: -13, drag: 0.8, stretch: 1.6, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.blood, variants: 4, count: 3, ramp: BLOOD, speed: [0.5, 1.5], radius: 0.1, size: [0.25, 0.4], grow: 1.6, life: [0.2, 0.35], heat: [0.4, 0], emit: 0.2, occl: 0.85, tint: false }),
     ],
   },
   // Killing Dance: the shadow the cat leaves where it just was.
@@ -183,7 +183,7 @@ const EM: Record<string, Emitter> = {
     school: 'physical',
     layers: [
       L({ sprite: SPRITE.flare, count: 2, ramp: [0xffffff, 0xf0e8d8, 0x8a8070], speed: [0, 0.2], radius: 0.05, size: [0.16, 0.22], grow: 0.3, life: [0.08, 0.12], heat: [1, 0.6], emit: 1.4, occl: 0, fade: 2.6, tint: false }),
-      L({ sprite: SPRITE.drop, count: 8, ramp: BLOOD, speed: [2, 4], spread: 0.6, up: 0.4, size: [0.03, 0.06], grow: 0.6, life: [0.3, 0.5], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 1, stretch: 1.2, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 8, ramp: BLOOD, speed: [2, 4], spread: 0.6, up: 0.4, size: [0.03, 0.06], grow: 0.6, life: [0.3, 0.5], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 1, stretch: 1.2, ground: true, bounce: 0, tint: false }),
     ],
   },
   // Hunting Howl: breath thrown straight up into the air.
@@ -204,7 +204,7 @@ const EM: Record<string, Emitter> = {
   // Worry: blood flicked off to one side with each shake.
   'ss.worry.flick': {
     school: 'physical',
-    layers: [L({ sprite: SPRITE.drop, count: 10, ramp: BLOOD, speed: [3.5, 6], spread: 0.25, up: 0.3, size: [0.035, 0.07], grow: 0.6, life: [0.3, 0.55], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 0.9, stretch: 2, ground: true, bounce: 0, tint: false })],
+    layers: [L({ sprite: SPRITE.gore, variants: 4, count: 10, ramp: BLOOD, speed: [3.5, 6], spread: 0.25, up: 0.3, size: [0.035, 0.07], grow: 0.6, life: [0.3, 0.55], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 0.9, stretch: 2, ground: true, bounce: 0, tint: false })],
   },
   // Call the Pack: a dark fog lying on the floor where the wolves come from.
   'ss.pack.fog': {
@@ -223,7 +223,7 @@ const EM: Record<string, Emitter> = {
   'ss.throat.fountain': {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.drop, count: 26, ramp: BLOOD, speed: [4, 8], spread: 0.3, up: 2, radius: 0.06, size: [0.045, 0.09], grow: 0.6, life: [0.6, 1.0], heat: [0.3, 0], emit: 0.1, occl: 0.95, gravity: -14, drag: 0.6, stretch: 1.8, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 26, ramp: BLOOD, speed: [4, 8], spread: 0.3, up: 2, radius: 0.06, size: [0.045, 0.09], grow: 0.6, life: [0.6, 1.0], heat: [0.3, 0], emit: 0.1, occl: 0.95, gravity: -14, drag: 0.6, stretch: 1.8, ground: true, bounce: 0, tint: false }),
       L({ sprite: SPRITE.smoke, count: 5, ramp: DUST, disc: true, radius: 0.3, speed: [1.5, 3], up: -0.1, size: [0.3, 0.45], grow: 2.2, life: [0.5, 0.8], heat: [0.2, 0], emit: 0.2, occl: 0.5, drag: 2.5, tint: false }),
     ],
   },

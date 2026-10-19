@@ -18,7 +18,10 @@
  *
  * Samples load lazily from `public/assets/sounds/`; the common ones are
  * fetched the moment audio starts and the rest in the background. A sound
- * whose file has not arrived yet (or never will) is simply silent.
+ * whose file has not arrived yet (or never will) is simply silent. Each
+ * place says which monsters it holds and whose skills will sound there
+ * (`setLoadout`): only those monsters' voices and the hero's own skills are
+ * kept in memory, and a sound needed after all loads on first use.
  */
 
 import type { GameSettings, Rng } from '../types';
@@ -89,6 +92,12 @@ export class SampleEngine {
   private stepAccum = 0;
   private stepSide = 1;
   private stepPrimed = false;
+  /** What the hero's feet stand on at a point, over the place's own floor (a bridge's planks). */
+  private ground: ((x: number, z: number) => string | null) | null = null;
+  /** The place's monster families and the skill sounds it will not hear; null before a place says. */
+  private loadout: { families: Set<string>; skip: Set<string> } | null = null;
+  /** Bumped by each preload, so a newer one stops the one before. */
+  private preloadGen = 0;
 
   private masterVol = 0.8;
   private sfxVol = 0.85;
@@ -216,18 +225,56 @@ export class SampleEngine {
     this.started = true;
     this.score?.setRunning(true);
     this.beds?.setRunning(true);
-    // The common sounds first, then everything else in the background.
-    const core = coreIds();
-    for (const id of core) this.loadId(id);
-    const rest = bankIds().filter((id) => !core.includes(id));
+    // The common sounds first, then what the place needs in the background.
+    for (const id of coreIds()) this.loadId(id);
+    this.preload(400);
+  }
+
+  /**
+   * The place's monster families and the hero's class skill sounds: those
+   * stay in memory, every other monster's voice and every other class's
+   * skills are let go (a stray one loads again when it plays).
+   */
+  setLoadout(families: Iterable<string>, skills: { own: readonly string[]; others: readonly string[] }): void {
+    const fam = new Set(families);
+    // `monster.*` with no family of its own falls back to the beast's.
+    fam.add('beast');
+    const own = new Set(skills.own);
+    this.loadout = { families: fam, skip: new Set(skills.others.filter((id) => !own.has(id))) };
+    if (!this.started) return;
+    const core = new Set(coreIds());
+    const keep = new Set<string>();
+    for (const id of bankIds()) if (core.has(id) || this.wanted(id)) for (const f of soundFiles(id)) keep.add(f);
+    // A voice still playing holds its own buffer; only the cache lets go.
+    for (const f of [...this.loading.keys()]) {
+      if (keep.has(f)) continue;
+      this.loading.delete(f);
+      this.buffers.delete(f);
+    }
+    this.preload(30);
+  }
+
+  /** True for a sound the place may play: before a place says, no monster and no class skill. */
+  private wanted(id: string): boolean {
+    const l = this.loadout;
+    if (id.startsWith('monster.')) return !!l && l.families.has(id.split('.')[1] ?? '');
+    if (!l) return !id.startsWith('skill.');
+    return !l.skip.has(id);
+  }
+
+  /** Loads every wanted sound not yet in hand, a few at a time, after `delay` ms. */
+  private preload(delay: number): void {
+    const gen = ++this.preloadGen;
+    const core = new Set(coreIds());
+    const rest = bankIds().filter((id) => !core.has(id) && this.wanted(id));
     let i = 0;
     const next = (): void => {
-      if (!this.ctx || i >= rest.length) return;
+      if (!this.ctx || gen !== this.preloadGen || i >= rest.length) return;
       const batch = rest.slice(i, i + 4);
       i += 4;
       void Promise.all(batch.map((id) => this.loadId(id))).then(() => window.setTimeout(next, 30));
     };
-    window.setTimeout(next, 400);
+    window.setTimeout(next, delay);
   }
 
   private onVisibility = (): void => {
@@ -253,7 +300,8 @@ export class SampleEngine {
       .then((bytes) => (bytes ? ctx.decodeAudioData(bytes.slice(0)) : null))
       .catch(() => null)
       .then((buf) => {
-        this.buffers.set(file, buf);
+        // Let go while it loaded (`setLoadout`): not kept.
+        if (this.loading.get(file) === p) this.buffers.set(file, buf);
         return buf;
       });
     this.loading.set(file, p);
@@ -433,6 +481,11 @@ export class SampleEngine {
     return this.beds?.surface ?? 'stone';
   }
 
+  /** A scene's own floor lookup, asked at every step; null answers fall back to the place's floor. */
+  setGround(fn: ((x: number, z: number) => string | null) | null): void {
+    this.ground = fn;
+  }
+
   /** How much fighting is going on right now, 0..1. The room sinks a little under a fight. */
   setCombatFloor(v: number): void {
     this.combat = v;
@@ -482,7 +535,7 @@ export class SampleEngine {
         this.stepSide = -this.stepSide;
         this.lx = x;
         this.lz = z;
-        this.play(`footstep.${this.surface}`, { volume: 1, x: x + this.stepSide * 0.5, z });
+        this.play(`footstep.${this.ground?.(x, z) ?? this.surface}`, { volume: 1, x: x + this.stepSide * 0.5, z });
       }
     }
     this.lx = x;

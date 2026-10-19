@@ -1,12 +1,36 @@
 {
+ "music/boss.abyss/01.ogg": [
+  "mDarkIntro"
+ ],
+ "music/boss.arcana/01.ogg": [
+  "mChoir"
+ ],
  "music/boss.dread/01.ogg": [
   "mGreat"
  ],
  "music/boss.epic/01.ogg": [
   "mEpic"
  ],
+ "music/boss.frenzy/01.ogg": [
+  "mBleed"
+ ],
+ "music/boss.horror/01.ogg": [
+  "mHorror"
+ ],
+ "music/boss.hymn/01.ogg": [
+  "mChoir"
+ ],
+ "music/boss.menace/01.ogg": [
+  "mMenace"
+ ],
  "music/boss.metal/01.ogg": [
   "mMetal"
+ ],
+ "music/boss.mire/01.ogg": [
+  "mHope"
+ ],
+ "music/boss.tempest/01.ogg": [
+  "mChoir"
  ],
  "music/boss.war/01.ogg": [
   "mWar"
@@ -466,6 +490,104 @@
  "sounds/boss.slam/03.ogg": [
   "farboom",
   "c100"
+ ],
+ "sounds/boss.voice.aberration/01.ogg": [
+  "creat"
+ ],
+ "sounds/boss.voice.aberration/02.ogg": [
+  "creat"
+ ],
+ "sounds/boss.voice.beast/01.ogg": [
+  "creat"
+ ],
+ "sounds/boss.voice.beast/02.ogg": [
+  "creat2"
+ ],
+ "sounds/boss.voice.construct/01.ogg": [
+  "c100",
+  "ki"
+ ],
+ "sounds/boss.voice.construct/02.ogg": [
+  "c100"
+ ],
+ "sounds/boss.voice.demon/01.ogg": [
+  "rsp",
+  "chant"
+ ],
+ "sounds/boss.voice.demon/02.ogg": [
+  "rsp",
+  "chant"
+ ],
+ "sounds/boss.voice.elemental/01.ogg": [
+  "r80",
+  "farboom"
+ ],
+ "sounds/boss.voice.elemental/02.ogg": [
+  "bfh"
+ ],
+ "sounds/boss.voice.humanoid/01.ogg": [
+  "gob",
+  "chant"
+ ],
+ "sounds/boss.voice.humanoid/02.ogg": [
+  "gob",
+  "chant"
+ ],
+ "sounds/boss.voice.insect/01.ogg": [
+  "creat"
+ ],
+ "sounds/boss.voice.insect/02.ogg": [
+  "creat"
+ ],
+ "sounds/boss.voice.kept/01.ogg": [
+  "gbreath",
+  "mw",
+  "chant"
+ ],
+ "sounds/boss.voice.kept/02.ogg": [
+  "creat2",
+  "kr",
+  "chant"
+ ],
+ "sounds/boss.voice.nailborn/01.ogg": [
+  "shatter",
+  "creat2",
+  "chant"
+ ],
+ "sounds/boss.voice.nailborn/02.ogg": [
+  "scifi",
+  "ki",
+  "chant"
+ ],
+ "sounds/boss.voice.ooze/01.ogg": [
+  "rsp"
+ ],
+ "sounds/boss.voice.ooze/02.ogg": [
+  "rsp"
+ ],
+ "sounds/boss.voice.plant/01.ogg": [
+  "kr"
+ ],
+ "sounds/boss.voice.plant/02.ogg": [
+  "kr"
+ ],
+ "sounds/boss.voice.stayed/01.ogg": [
+  "yell",
+  "moan",
+  "chant"
+ ],
+ "sounds/boss.voice.stayed/02.ogg": [
+  "yell",
+  "ki",
+  "chant"
+ ],
+ "sounds/boss.voice.undead/01.ogg": [
+  "zomb",
+  "chant"
+ ],
+ "sounds/boss.voice.undead/02.ogg": [
+  "zomb",
+  "chant"
  ],
  "sounds/boss.windup/01.ogg": [
   "troll"
@@ -2038,6 +2160,45 @@
   "kr",
   "swish"
  ],
+ "sounds/player.female.bagFull/01.ogg": [
+  "vFemale2"
+ ],
+ "sounds/player.female.bagFull/02.ogg": [
+  "vFemale"
+ ],
+ "sounds/player.female.bagFull/03.ogg": [
+  "vFemale"
+ ],
+ "sounds/player.female.hurt/01.ogg": [
+  "vFemale"
+ ],
+ "sounds/player.female.hurt/02.ogg": [
+  "vFemale"
+ ],
+ "sounds/player.female.hurt/03.ogg": [
+  "vFemale"
+ ],
+ "sounds/player.female.hurtHeavy/01.ogg": [
+  "vFemale"
+ ],
+ "sounds/player.female.hurtHeavy/02.ogg": [
+  "vFemale"
+ ],
+ "sounds/player.female.hurtHeavy/03.ogg": [
+  "vFemale2"
+ ],
+ "sounds/player.female.lowLife/01.ogg": [
+  "vFemale2"
+ ],
+ "sounds/player.female.lowLife/02.ogg": [
+  "vFemale"
+ ],
+ "sounds/player.female.noMana/01.ogg": [
+  "vFemale2"
+ ],
+ "sounds/player.female.noMana/02.ogg": [
+  "vFemale2"
+ ],
  "sounds/player.hurt/01.ogg": [
   "yell"
  ],
@@ -2064,6 +2225,27 @@
  ],
  "sounds/player.hurtHeavy/04.ogg": [
   "yell"
+ ],
+ "sounds/player.male.bagFull/01.ogg": [
+  "vMale"
+ ],
+ "sounds/player.male.bagFull/02.ogg": [
+  "vMale"
+ ],
+ "sounds/player.male.lowLife/01.ogg": [
+  "vMale"
+ ],
+ "sounds/player.male.lowLife/02.ogg": [
+  "vMale"
+ ],
+ "sounds/player.male.lowLife/03.ogg": [
+  "vMale"
+ ],
+ "sounds/player.male.noMana/01.ogg": [
+  "vMale"
+ ],
+ "sounds/player.male.noMana/02.ogg": [
+  "vMale"
  ],
  "sounds/player.stunned/01.ogg": [
   "ki",
@@ -2143,13 +2325,6 @@
   "c100",
   "chant"
  ],
- "sounds/skill.arcane.bolt/01.ogg": [
-  "sand"
- ],
- "sounds/skill.arcane.hit/01.ogg": [
-  "ki",
-  "whoosh"
- ],
  "sounds/skill.arrow.barb/01.ogg": [
   "kr",
   "ki",
@@ -2209,10 +2384,6 @@
  "sounds/skill.blight.nova/01.ogg": [
   "water",
   "steam"
- ],
- "sounds/skill.blink/01.ogg": [
-  "c100b",
-  "swish"
  ],
  "sounds/skill.blood.nova/01.ogg": [
   "mud",
@@ -2491,22 +2662,10 @@
   "gbreath",
   "wwoosh"
  ],
- "sounds/skill.eclipse/01.ogg": [
-  "wwoosh",
-  "chant"
- ],
  "sounds/skill.fire.annihilate/01.ogg": [
   "boom",
   "bang",
   "farboom"
- ],
- "sounds/skill.fire.anvil/01.ogg": [
-  "anvil",
-  "flame"
- ],
- "sounds/skill.fire.ash/01.ogg": [
-  "steam",
-  "crackle"
  ],
  "sounds/skill.fire.ball/01.ogg": [
   "fball"
@@ -2518,10 +2677,6 @@
  "sounds/skill.fire.bolt/01.ogg": [
   "r80"
  ],
- "sounds/skill.fire.brand/01.ogg": [
-  "ignite",
-  "steam"
- ],
  "sounds/skill.fire.breath/01.ogg": [
   "fball",
   "flame"
@@ -2530,63 +2685,20 @@
   "bang",
   "crackle"
  ],
- "sounds/skill.fire.consume/01.ogg": [
-  "fball",
-  "crackle"
- ],
- "sounds/skill.fire.embers/01.ogg": [
-  "crackle",
-  "r80"
- ],
  "sounds/skill.fire.erupt/01.ogg": [
   "bang",
   "crackle",
   "rumble"
  ],
- "sounds/skill.fire.helios/01.ogg": [
-  "fball",
-  "crackle",
-  "flame"
- ],
  "sounds/skill.fire.hit/01.ogg": [
   "r80"
- ],
- "sounds/skill.fire.ignite/01.ogg": [
-  "ignite"
- ],
- "sounds/skill.fire.immolate/01.ogg": [
-  "ignite",
-  "flame"
  ],
  "sounds/skill.fire.lance/01.ogg": [
   "fball",
   "flame"
  ],
- "sounds/skill.fire.longBurn/01.ogg": [
-  "rumble",
-  "crackle",
-  "ignite"
- ],
- "sounds/skill.fire.meteor/01.ogg": [
-  "bang",
-  "bfh",
-  "crackle"
- ],
- "sounds/skill.fire.meteorCall/01.ogg": [
-  "whoosh",
-  "fball"
- ],
  "sounds/skill.fire.nova/01.ogg": [
   "bang",
-  "crackle"
- ],
- "sounds/skill.fire.pyre/01.ogg": [
-  "flame",
-  "crackle",
-  "bonebreak"
- ],
- "sounds/skill.fire.shroud/01.ogg": [
-  "whoosh",
   "crackle"
  ],
  "sounds/skill.fire.storm/01.ogg": [
@@ -2598,30 +2710,9 @@
   "fball",
   "crackle"
  ],
- "sounds/skill.fire.sun/01.ogg": [
-  "fball",
-  "rumble",
-  "chant"
- ],
- "sounds/skill.fire.wall/01.ogg": [
-  "flame",
-  "ignite",
-  "crackle"
- ],
- "sounds/skill.fire.ward/01.ogg": [
-  "flame",
-  "shield"
- ],
  "sounds/skill.fire.wave/01.ogg": [
   "bang",
   "whoosh"
- ],
- "sounds/skill.fire.wisp/01.ogg": [
-  "r80",
-  "gbreath"
- ],
- "sounds/skill.fire.wispShot/01.ogg": [
-  "r80"
  ],
  "sounds/skill.gorefeast/01.ogg": [
   "creat",
@@ -2721,14 +2812,6 @@
   "wpn",
   "kr",
   "c100b"
- ],
- "sounds/skill.light.form/01.ogg": [
-  "whoosh",
-  "chant"
- ],
- "sounds/skill.light.radiance/01.ogg": [
-  "chant",
-  "wwoosh"
  ],
  "sounds/skill.nightfall/01.ogg": [
   "wwoosh",
@@ -3254,11 +3337,6 @@
   "elec",
   "bang"
  ],
- "sounds/skill.storm.burst/01.ogg": [
-  "bang",
-  "spark",
-  "c100b"
- ],
  "sounds/skill.storm.call/01.ogg": [
   "spark",
   "elec"
@@ -3266,21 +3344,9 @@
  "sounds/skill.storm.chain/01.ogg": [
   "elec"
  ],
- "sounds/skill.storm.charge/01.ogg": [
-  "spark",
-  "kr"
- ],
  "sounds/skill.storm.clap/01.ogg": [
   "bang",
   "c100b"
- ],
- "sounds/skill.storm.coil/01.ogg": [
-  "ki",
-  "elec"
- ],
- "sounds/skill.storm.discharge/01.ogg": [
-  "elec",
-  "bang"
  ],
  "sounds/skill.storm.eye/01.ogg": [
   "thunder",
@@ -3310,28 +3376,9 @@
   "spark",
   "elec"
  ],
- "sounds/skill.storm.overcharge/01.ogg": [
-  "spark",
-  "elec"
- ],
  "sounds/skill.storm.pillar/01.ogg": [
   "c100b",
   "elec"
- ],
- "sounds/skill.storm.polarize/01.ogg": [
-  "elec",
-  "spark"
- ],
- "sounds/skill.storm.rod/01.ogg": [
-  "ki",
-  "spark"
- ],
- "sounds/skill.storm.shield/01.ogg": [
-  "shield",
-  "spark"
- ],
- "sounds/skill.storm.skyfall/01.ogg": [
-  "c100b"
  ],
  "sounds/skill.storm.spark/01.ogg": [
   "spark",
@@ -3341,23 +3388,8 @@
   "elec",
   "spark"
  ],
- "sounds/skill.storm.static/01.ogg": [
-  "elec"
- ],
  "sounds/skill.storm.strike/01.ogg": [
   "c100b"
- ],
- "sounds/skill.storm.veil/01.ogg": [
-  "spark",
-  "c100b"
- ],
- "sounds/skill.storm.zap/01.ogg": [
-  "spark"
- ],
- "sounds/skill.supernova/01.ogg": [
-  "fball",
-  "boom",
-  "chant"
  ],
  "sounds/skill.swing.assassin/01.ogg": [
   "wpn",
@@ -3476,38 +3508,6 @@
  "sounds/skill.whirlwind/01.ogg": [
   "wwoosh",
   "swish"
- ],
- "sounds/skill.wind.cyclone/01.ogg": [
-  "wwoosh"
- ],
- "sounds/skill.wind.dance/01.ogg": [
-  "c100b",
-  "spark"
- ],
- "sounds/skill.wind.gust/01.ogg": [
-  "c100b",
-  "whoosh"
- ],
- "sounds/skill.wind.hurricane/01.ogg": [
-  "wwoosh",
-  "rsfx"
- ],
- "sounds/skill.wind.maelstrom/01.ogg": [
-  "wwoosh",
-  "bang"
- ],
- "sounds/skill.wind.shear/01.ogg": [
-  "swish",
-  "c100b"
- ],
- "sounds/skill.wind.step/01.ogg": [
-  "c100b",
-  "kr"
- ],
- "sounds/skill.wind.updraft/01.ogg": [
-  "c100b",
-  "wpn",
-  "ki"
  ],
  "sounds/skillpoint/01.ogg": [
   "kr",

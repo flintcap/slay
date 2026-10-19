@@ -692,12 +692,14 @@ export class HeroAnimator {
    * A blow met without being hurt, laid over whatever the body is doing:
    * the shield comes up and the knees take it, the blade sweeps across and
    * turns it (a block without a shield is a parry), or the body sways out
-   * of its line. Never the flinch of a blow that landed.
+   * of its line. Never the flinch of a blow that landed. Returns the move
+   * played, so the sound can follow it.
    */
-  guard(move: GuardMove): void {
+  guard(move: GuardMove): GuardMove {
     this.guardMove = move === 'block' && this.offHand !== 'shield' ? 'parry' : move;
     this.guardT = 0;
     this.guardSide = -this.guardSide;
+    return this.guardMove;
   }
 
   /** What a status is doing to the body; cheap when unchanged. */

@@ -27,6 +27,7 @@ import { audio } from './Audio';
 
 /** The slice of an ability this module reads. */
 export interface VoicedAbility {
+  id?: string;
   kind: string;
   windup: number;
   damageType?: DamageType;
@@ -52,6 +53,21 @@ const nextFor = new WeakMap<object, number>();
 let nextAny = 0;
 let nextTelegraph = 0;
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000);
+
+/**
+ * Monster spells with a recording of their own, played as they go off in
+ * place of the element's: a meteor lands, a storm cracks overhead, a volley
+ * hisses down, a ward rings up.
+ */
+const SPELL_SOUND: Record<string, string> = {
+  meteor: 'spell.meteor',
+  lightning_storm: 'spell.thunder',
+  chain_lightning: 'spell.chainLightning',
+  arrow_volley: 'spell.volley',
+  whirlwind: 'spell.whirlwind',
+  shield_self: 'spell.shield',
+  shield_ally: 'spell.shield',
+};
 
 /** Boss moves that land with the boss slam when they come down. */
 const BOSS_SLAM_KINDS = new Set(['melee', 'aoe']);
@@ -87,6 +103,11 @@ export function monsterSoundFor(a: VoicedAbility, phase: string, family: string,
     }
   } else if (phase === 'active') {
     if (boss && tells && BOSS_SLAM_KINDS.has(a.kind)) out.push('boss.slam');
+    const own = a.id ? SPELL_SOUND[a.id] : undefined;
+    if (own) {
+      out.push(own);
+      return out;
+    }
     switch (a.kind) {
       case 'melee':
         out.push('monster.swing');

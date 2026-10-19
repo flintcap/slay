@@ -9,9 +9,10 @@
  * the field is (`FieldLook` in `fx/SkillLooks.ts`); its size and life are
  * the skill's own numbers.
  *
- * Pooled: no allocation per frame. Emission scales with the area, the quality
- * (`fxScale`) and, on High and above, the skill's rank; on Low and Medium a
- * field spawns fewer particles than the summoning circle it replaced.
+ * Pooled: no allocation per frame. Emission scales with the area and the
+ * quality (`fxScale`), and is drawn at the skill's rank on every preset
+ * (`kit/Boost.ts`); on Low and Medium a field spawns fewer particles than
+ * the summoning circle it replaced.
  */
 import * as THREE from 'three';
 import type { QualityProfile } from '../core/Renderer';
@@ -20,7 +21,9 @@ import type { BurstOpts, FXSystem } from './Particles';
 import type { DecalSystem } from './Decals';
 import type { School } from './kit/Palette';
 import type { GroundHandle, GroundKind } from './kit/Ground';
-import { fieldLook, rankDensity, type FieldLook } from './SkillLooks';
+import { fieldLook, type FieldLook } from './SkillLooks';
+import { BOOST, setBoostRank } from './kit/Boost';
+import { ripple } from '../core/Ripples';
 import './Grit';
 
 export interface FieldOpts {
@@ -177,8 +180,10 @@ class Field {
   spec: Spec = SPECS.dust;
   /** Bursts owed per stream. */
   acc = [0, 0, 0];
-  /** Multiplier on every stream's rate (area, quality, rank). */
+  /** Multiplier on every stream's rate (area, quality). */
   rate = 1;
+  /** The skill rank it was laid at: its bursts are drawn at that rank (`kit/Boost.ts`). */
+  rank = 1;
   ground: GroundHandle | null = null;
 }
 
@@ -234,14 +239,17 @@ export class FieldPool {
     const area = Math.max(0.5, Math.min(q >= 0.9 ? 3 : 1, (radius * radius) / 9));
     // Fewer, not just thinner, bursts on the lower qualities.
     const quality = q >= 0.9 ? 1 : q >= 0.5 ? 0.75 : 0.55;
-    const rank = q >= 0.9 ? rankDensity(opts.rank ?? 1) : 1;
-    f.rate = area * quality * rank * (opts.density ?? 1);
+    f.rate = area * quality * (opts.density ?? 1);
+    f.rank = opts.rank ?? BOOST.rank;
     f.ground = spec.glow ? this.decals.glow(spec.glow, x, z, radius, duration, opts.color ?? opts.school, spec.glowEmit) : null;
+    // The air over a burning floor wavers (`core/Ripples.ts`).
+    if (opts.school === 'fire') ripple('heat', x, this.decals.floorY(x, z) + 0.8, z, radius * 0.9, duration, 0.6);
     if (spec.mark) this.decals.add(spec.mark, x, z, radius * 0.8);
     return new Handle(f, f.gen);
   }
 
   update(dt: number): void {
+    const rankWas = BOOST.rank;
     for (const f of this.fields) {
       if (!f.active) continue;
       f.t += dt;
@@ -251,6 +259,7 @@ export class FieldPool {
       }
       // Particles thin out over the last moments, as the glow fades.
       const tail = Math.min(1, (f.dur - f.t) / 0.6);
+      setBoostRank(f.rank);
       const streams = f.spec.streams;
       for (let i = 0; i < streams.length && i < 3; i++) {
         const s = streams[i]!;
@@ -275,6 +284,7 @@ export class FieldPool {
         if (n >= 4) f.acc[i] = 0;
       }
     }
+    setBoostRank(rankWas);
   }
 
   private end(f: Field): void {

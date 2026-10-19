@@ -5,6 +5,7 @@ import { reportError } from '../core/Engine';
 import type { DamagePacket, DamageType, StatusApplication } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
+import { heroBark } from '../audio/HeroVoice';
 import { skillSound } from '../audio/SkillSounds';
 import { SKILLS, SKILL_BY_ID, synergyPct } from '../data/skills';
 import { resistAgainst, rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
@@ -35,7 +36,8 @@ import { releasesAt, skillAction, weaponSwing } from '../art/hero/gestures';
 import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
-import { SKILL_MOTIFS, motifAt, rankSize, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
+import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
+import { atRank, boostRank } from '../fx/kit/Boost';
 
 /**
  * What a summon actually looks like.
@@ -573,7 +575,7 @@ export class SkillRunner {
     this.riteHost = {
       effects,
       land: (t, packet, kind, fromX, fromZ, world) => this.landRite(t, packet, kind, fromX, fromZ, world),
-      later: (seconds, fn) => this.pendingSwings.push({ t: seconds, run: fn }),
+      later: (seconds, fn) => this.pendingSwings.push({ rank: boostRank(), t: seconds, run: fn }),
       sound: (id, x, z) => { if (id) audio.play(id, { x, z }); },
       clear: (from, dir, max, ctx) => this.wallStop(from, dir, max, ctx, 0.5),
     };
@@ -765,6 +767,19 @@ export class SkillRunner {
     enemies: Enemy[],
     boss: Boss | null
   ): boolean {
+    // Everything the skill draws, now and later (its delayed blows, its
+    // bolts in flight, its storms), comes out at its rank (`fx/kit/Boost.ts`).
+    return atRank(skillRank(player.character, skillId), () => this.castNow(skillId, player, target, ctx, enemies, boss));
+  }
+
+  private castNow(
+    skillId: string,
+    player: Player,
+    target: THREE.Vector3,
+    ctx: CombatContext,
+    enemies: Enemy[],
+    boss: Boss | null
+  ): boolean {
     if (player.isBusy || !player.alive) return false;
     this.setCaster(player, enemies, boss);
 
@@ -833,6 +848,7 @@ export class SkillRunner {
       // is exactly how being out of mana was being reported as a bug.
       events.emit('toast', { text: `Not enough mana for ${def.name}.`, kind: 'bad' });
       audio.play('ui.error');
+      heroBark('noMana');
       return false;
     }
     if (shot) this.shots++;
@@ -963,6 +979,7 @@ export class SkillRunner {
     const startStorm = (shockedOnly: boolean): void => {
       this.storms = this.storms.filter((x) => x.skillId !== def.id);
       this.storms.push({
+        rank: boostRank(),
         skillId: def.id, left: num('duration', 30), every: Math.max(0.2, num('interval', 1.4)), accum: 0,
         radius: num('radius', 14), shockedOnly, shocks: num('refreshShock', 0) > 0 ? 1 : 0, packet: () => makePacket(), color,
       });
@@ -1030,7 +1047,7 @@ export class SkillRunner {
             const facing = dir.clone();
             // The left blade swings in what is left of the skill's time.
             const leftTime = Math.max(0.15, skillTime - player.contactIn);
-            this.pendingSwings.push({
+            this.pendingSwings.push({ rank: boostRank(),
               t: player.contactIn,
               run: () => {
                 if (!player.alive) return;
@@ -1041,7 +1058,7 @@ export class SkillRunner {
                 const gesture = own?.startsWith('skill.') ? own : null;
                 const contact = gesture ? Math.min(0.12, leftTime * 0.4) : player.handBlow('L', leftTime);
                 if (gesture) {
-                  this.pendingSwings.push({
+                  this.pendingSwings.push({ rank: boostRank(),
                     t: contact,
                     run: () => {
                       if (player.alive) player.animator.strike(gesture, 'L');
@@ -1049,7 +1066,7 @@ export class SkillRunner {
                   });
                 }
                 if (!split) return;
-                this.pendingSwings.push({
+                this.pendingSwings.push({ rank: boostRank(),
                   t: contact,
                   // Lands even if a new action has started: it is half the skill's damage.
                   run: () => {
@@ -1073,7 +1090,7 @@ export class SkillRunner {
             const gap = Math.min(0.08, (skillTime * 0.8) / hits);
             const facing = dir.clone();
             for (let i = 1; i < hits; i++) {
-              this.pendingSwings.push({
+              this.pendingSwings.push({ rank: boostRank(),
                 t: first + gap * i,
                 run: () => {
                   if (player.actionId !== id || !player.alive) return;
@@ -1439,7 +1456,7 @@ export class SkillRunner {
             const way = dir.clone();
             for (let i = 0; i < bursts; i++) {
               const spot = at.clone().addScaledVector(way, step * i);
-              this.pendingSwings.push({
+              this.pendingSwings.push({ rank: boostRank(),
                 t: gap * i,
                 run: () => {
                   this.effects.explosion(spot.x, 0.8, spot.z, { radius, element: school, color });
@@ -1605,7 +1622,7 @@ export class SkillRunner {
               (t) => this.groundDistance(t.root.position, at) <= radius + t.hitRadius,
             );
             const jump = num('spreadOnKill', 0) > 0;
-            this.pendingSwings.push({
+            this.pendingSwings.push({ rank: boostRank(),
               t: num('delay', 6),
               run: () => {
                 for (const m of marked) {
@@ -1655,7 +1672,7 @@ export class SkillRunner {
             const heal = (num('healShare', 0) || num('healPct', 0) + num('healPerRank', 0) * k) / 100;
             // One beam per skill: casting again moves it.
             this.tethers = this.tethers.filter((q) => q.id !== def.id);
-            this.tethers.push({ id: def.id, t, left: num('duration', 3), every, acc: 0, range: range + 2, hit, heal, school, color });
+            this.tethers.push({ id: def.id, rank: boostRank(), t, left: num('duration', 3), every, acc: 0, range: range + 2, hit, heal, school, color });
             break;
           }
           this.effects.beam(origin, end, {
@@ -1899,7 +1916,7 @@ export class SkillRunner {
         }
       }
       // The skill's own drawing on top of its family's (`fx/SkillLooks.ts`).
-      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, player.contactIn, num('radius', 2.5), rank);
+      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, player.contactIn, num('radius', 2.5));
     } finally {
       this.effects.endQuiet();
       this.casting = false;
@@ -1912,7 +1929,7 @@ export class SkillRunner {
    * Draws a skill's motif: its own shape in its own motion, at the caster,
    * the point aimed at or just in front, landing with the blow or the release.
    */
-  private drawMotif(id: string, family: string, targeting: string | undefined, origin: THREE.Vector3, target: THREE.Vector3, dir: THREE.Vector3, school: School, color: number, contactIn: number, radius: number, rank = 1): void {
+  private drawMotif(id: string, family: string, targeting: string | undefined, origin: THREE.Vector3, target: THREE.Vector3, dir: THREE.Vector3, school: School, color: number, contactIn: number, radius: number): void {
     const motif = SKILL_MOTIFS[id];
     if (!motif) return;
     const at = motifAt(family, targeting, motif);
@@ -1925,7 +1942,7 @@ export class SkillRunner {
     this.effects.motif(motif.shape, motif.motion, {
       x, z, fx, fz, ox: origin.x, oz: origin.z, tx: target.x, tz: target.z,
       radius: Math.max(1.2, Math.min(4, radius)),
-    }, { element: school, color, delay: lead, size: (motif.size ?? 1) * rankSize(rank) });
+    }, { element: school, color, delay: lead, size: motif.size ?? 1 });
   }
 
   /**
@@ -2435,7 +2452,7 @@ export class SkillRunner {
     if (wait > 0.01) {
       const id = player.actionId;
       const dir = facing.clone();
-      this.pendingSwings.push({
+      this.pendingSwings.push({ rank: boostRank(),
         t: wait,
         run: () => {
           if (player.actionId !== id || !player.alive) return;
@@ -2831,7 +2848,7 @@ export class SkillRunner {
    * Weapon swings waiting for their contact frame (`Player.contactIn`, combat):
    * a blow lands when the blade arrives, not on the click.
    */
-  private pendingSwings: Array<{ t: number; run: () => void }> = [];
+  private pendingSwings: Array<{ t: number; run: () => void; rank: number }> = [];
   /** True while `cast` runs, so a skill's swing plays its own sound, not the weapon's. */
   private casting = false;
   private atContact = false;
@@ -3003,6 +3020,8 @@ export class SkillRunner {
    */
   private storms: Array<{
     skillId: string;
+    /** The rank it was cast at, for its drawing. */
+    rank: number;
     left: number;
     every: number;
     accum: number;
@@ -3274,7 +3293,7 @@ export class SkillRunner {
       if (sw.t > 0) continue;
       this.pendingSwings.splice(i, 1);
       try {
-        sw.run();
+        atRank(sw.rank, sw.run);
       } catch (err) {
         reportError('skill.contact', err);
       }
@@ -3612,6 +3631,8 @@ export class SkillRunner {
   /** Siphon Life and Exsanguinate: beams held on one enemy, draining it a tick at a time. */
   private tethers: Array<{
     id: string;
+    /** The rank it was cast at, for its drawing. */
+    rank: number;
     t: Target;
     left: number;
     every: number;
@@ -3644,9 +3665,9 @@ export class SkillRunner {
       while (q.acc >= q.every && q.t.life > 0) {
         q.acc -= q.every;
         const from = p.position.clone().setY(1.05);
-        this.effects.beam(from, at.clone().setY(q.t.centerY), {
+        atRank(q.rank, () => this.effects.beam(from, at.clone().setY(q.t.centerY), {
           element: q.school, color: q.color, width: 0.35, duration: q.every + 0.05, endBurst: false,
-        });
+        }));
         const hp = this.tune(q.hit(), q.t);
         const before = q.t.life;
         if (!this.strike(q.t, hp, ctx, 'proc', p.position.x, p.position.z)) continue;
@@ -3703,7 +3724,7 @@ export class SkillRunner {
       );
       const struck = st.shockedOnly ? near : near.length ? [near[Math.floor(ctx.rng.next() * near.length)]!] : [];
       for (const t of struck) {
-        this.effects.skyBolt(t.root.position.x, t.root.position.z, { radius: 1.2, color: st.color });
+        atRank(st.rank, () => this.effects.skyBolt(t.root.position.x, t.root.position.z, { radius: 1.2, color: st.color }));
         const hp = this.tune(st.packet(), t);
         if (st.shocks > 0) hp.applies = [...(hp.applies ?? []), { id: 'shocked', duration: getStatus('shocked')?.baseDuration ?? 4, magnitude: 1, stacks: st.shocks }];
         if (this.strike(t, hp, ctx, 'proc', t.root.position.x, t.root.position.z)) this.afterHit(hp, t, ctx, enemies, boss);
@@ -4017,7 +4038,7 @@ export class SkillRunner {
       later: (t, run, keep = false) => {
         // The action that is playing when the beat is queued, not when the kit was made.
         const id = player.actionId;
-        this.pendingSwings.push({
+        this.pendingSwings.push({ rank: boostRank(),
           t,
           run: () => {
             if (!player.alive || (!keep && player.actionId !== id)) return;

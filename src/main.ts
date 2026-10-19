@@ -12,6 +12,7 @@ import { audio } from './audio/Audio';
 import { mountKeyArt } from './art/KeyArt';
 import { bakeStats } from './world/BakePool';
 import { DEV_TOOLS } from './core/DevTools';
+import { warmSpriteAtlas } from './fx/kit/Atlas';
 
 const bootFill = document.getElementById('boot-fill');
 const bootStatus = document.getElementById('boot-status');
@@ -249,6 +250,8 @@ async function main(): Promise<void> {
 
   engine.start();
   await engine.goTo('title');
+  // The particle sprite sheet paints itself in idle moments while the title shows.
+  warmSpriteAtlas();
 
   // Tell the player if their save needed rescuing. Said once, after the UI
   // exists to show it.

@@ -68,6 +68,8 @@ function isSignature(a: AbilityDef): boolean {
 }
 
 const TAU = Math.PI * 2;
+/** Boss families whose first cry is the great roar (the rest use their kind's call). */
+const ROARERS = new Set(['beast', 'demon', 'aberration', 'insect', 'plant']);
 
 /** Bosses are already enormous; this keeps a 3.6-scale model from filling the screen. */
 const BOSS_RANK: MonsterRank = 'boss';
@@ -327,6 +329,14 @@ export class Boss extends Enemy {
       mood: this.mood ?? undefined,
     });
     events.emit('music', { track: this.bossDef.music, fade: 1.5 });
+    // Its first cry, deep for its size: the big ones roar, the rest call in their kind's voice.
+    events.emit('sfx', {
+      id: ROARERS.has(this.family) ? 'boss.roar' : `monster.${this.family}.aggro`,
+      x: at.x,
+      z: at.z,
+      volume: 1.2,
+      pitch: Math.max(0.6, Math.min(1, 1.1 - 0.12 * this.sizeScale)),
+    });
     // The intro is narrated as a subtitle by the story layer (ui/StoryBosses.ts);
     // as a toast it clipped long lines.
     this.enterPhase(0, ctx);

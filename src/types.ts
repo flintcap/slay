@@ -433,6 +433,26 @@ export interface Character {
   town?: TownState;
   /** Bosses this character has fought, so a life does not meet one twice too soon. */
   bossesMet?: string[];
+  /**
+   * The map in progress, if any: what the hero carried into it
+   * (`sim/RunLedger.ts`). Cleared when a map ends well. A map left any other
+   * way (the menu, closing the game, a crash) is settled from it: the hero is
+   * back in town as they left it, less some experience.
+   */
+  run?: RunLedger;
+}
+
+/** What a hero carried into a map, kept until the map ends (`sim/RunLedger.ts`). */
+export interface RunLedger {
+  v: 1;
+  /** When the map began, ms since 1970. */
+  at: number;
+  depth: number;
+  equipment: Partial<Record<EquipSlot, Item>>;
+  inventory: (Item | null)[];
+  gold: number;
+  /** The account's crafting materials then (they are shared, and found in maps). */
+  materials: Record<string, number>;
 }
 
 /** A character's standing with the camp's services. See `sim/TownServices.ts`. */
@@ -853,6 +873,22 @@ export interface DungeonRoom {
   /** Room ids this connects to. */
   links: number[];
   center: Vec2;
+}
+
+/**
+ * What a flying spark meets, on a grid of `cell`-metre squares laid over the
+ * level: per square, the world height of the top of whatever stands there (a
+ * wall, a barrel), or -999 for open air. Row-major, `w * h` long, square
+ * (0,0) starting at world (x0, z0). Built by the level mesh, read by the
+ * particle field so sparks and debris bounce off walls and props.
+ */
+export interface SolidMap {
+  heights: Float32Array;
+  w: number;
+  h: number;
+  x0: number;
+  z0: number;
+  cell: number;
 }
 
 export interface DungeonLevel {
