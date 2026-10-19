@@ -402,6 +402,11 @@ setMonsterCatalog({
     const next = offerFor(renn);
     if (!next || next.index !== 1) fail('loop: the next step was not offered');
     if (!holds({ done: 'renn:0' }) || holds({ done: 'renn:1' })) fail('loop: done conditions read the chain wrong');
+    // A second contract waits for the first to finish, then is offered.
+    acct.bestDepth = Math.max(acct.bestDepth, 20);
+    story().chains.renn = { step: offer.chain.steps.length, state: 'idle' };
+    const second = offerFor(renn);
+    if (!second || second.chain.id !== 'treeline' || second.index !== 0) fail('loop: Renn does not offer her second contract once the first is done');
   }
   save.setCharacter(null);
   delete acct.story;

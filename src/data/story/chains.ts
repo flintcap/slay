@@ -1,8 +1,9 @@
 /**
  * SLAY — contracts: the hand-written quest lines.
  *
- * Every person in Stairhead has one piece of business below. Each chain is a
- * short story in three or four contracts. Taking a contract does two things
+ * Every person in Stairhead has one piece of business below, and six of them
+ * a second once the first is done, out in the lands the first lines never
+ * reached. Each chain is a short story in three or four contracts. Taking a contract does two things
  * to your next descent at or past its tier: the stair opens on the biome the
  * contract names, and the run carries the contract instead of a board job.
  * Some contracts also name the floor's boss.
@@ -854,6 +855,501 @@ export const CHAINS: ChainDef[] = [
         ],
         outcome: `Vess's account is closed. Hesk offered you a stool behind the counter, knowing you would not take it.`,
         reward: { gold: 1.6, xp: 1.2, item: 'rare' },
+      },
+    ],
+  },
+
+  // =========================================================================
+  // Second contracts. Each person with one opens up again once the first is
+  // finished, and sends you out past the old walls, to the six lands the
+  // first lines never went: wood, fen, reach, tombs, march and steppe.
+  // =========================================================================
+
+  // =========================================================================
+  // Captain Renn — the treeline
+  // =========================================================================
+  {
+    id: 'treeline',
+    name: 'The Treeline',
+    giver: 'renn',
+    when: { done: 'renn' },
+    blurb: `Renn's watch used to walk the Blackroot Wood every night. Now the lanterns on the path go out one a week, and the patrols come back short.`,
+    steps: [
+      {
+        title: 'The Short Patrol',
+        minDepth: 7,
+        biome: 'darkForest',
+        offer: [
+          `Four went out on the wood road last night. Three came back, and none of the three can say when the fourth stopped walking beside them.`,
+          `Walk the road. Kill what is on it. If you find Dace, bring him home. If you find what is left of him, bring me that.`,
+        ],
+        flavor: `One of Renn's guards went missing on the wood road, between one step and the next.`,
+        brief: `Clear the road through the Blackroot Wood and look for Dace.`,
+        objectives: [
+          { kind: 'slay', filter: 'any', n: 35, desc: `Clear the wood road ({n})` },
+          { kind: 'slayElite', n: 3, desc: `Break the packs that hunt the road ({n})` },
+        ],
+        ready: `The road is quiet for now. Renn will want to hear it from you.`,
+        turnIn: [
+          `No Dace. But you found his lantern, and it was lit. Somebody is keeping it lit.`,
+          `My guards do not leave their lights burning. Something in that wood has learned that a lantern on the path brings people to it.`,
+        ],
+        outcome: `Dace's lantern was still burning on the wood road, and he was nowhere near it.`,
+        reward: { gold: 1.2, xp: 1.2 },
+      },
+      {
+        title: 'Lights Off the Path',
+        minDepth: 9,
+        biome: 'darkForest',
+        offer: [
+          `The lanterns along the road are moving. Each night one of them stands a few steps further into the trees.`,
+          `Light the old wayshrines so the road has true lights again, and cut down whatever is carrying the false ones. Mind the wax.`,
+        ],
+        flavor: `The lanterns on Renn's road are wandering into the trees.`,
+        brief: `Relight the wayshrines in the Blackroot Wood and stop whoever carries the false lights.`,
+        objectives: [
+          { kind: 'cleanse', filter: 'prop:shrine', n: 2, desc: `Relight the old wayshrines ({n})` },
+          { kind: 'slay', filter: 'family:humanoid', n: 14, desc: `Cut down the wax-faced walkers ({n})` },
+        ],
+        ready: `The wayshrines burn true again. The false lights went out with a smell of tallow.`,
+        turnIn: [
+          `Tallow. You smell of it. So did Dace's lantern, now I think of it.`,
+          `Somebody out there is making candles, and he is not using sheep. I want him found.`,
+        ],
+        outcome: `The false lights in the Blackroot Wood were tallow, and somebody out there is making it.`,
+        reward: { gold: 1.4, xp: 1.3, item: 'rare' },
+      },
+      {
+        title: 'The Shepherd',
+        minDepth: 11,
+        biome: 'darkForest',
+        boss: 'tallow_shepherd',
+        offer: [
+          `Hesk sold a cart of crooks and lamp oil to a man who paid in old coin and smelled of fat. He asked the way to the wood.`,
+          `He keeps a flock out there. I do not want to know what it is made of. I want it to stop.`,
+        ],
+        flavor: `A shepherd in the Blackroot Wood keeps a flock that burns.`,
+        brief: `Find the shepherd in the Blackroot Wood and end his flock.`,
+        objectives: [
+          { kind: 'slay', filter: 'any', n: 30, desc: `Scatter the flock ({n})` },
+          { kind: 'boss', filter: 'boss:tallow_shepherd', n: 1, desc: `Put down the Tallow Shepherd` },
+        ],
+        ready: `The Shepherd is down and his flock has run to puddles. Renn will want to see the crook.`,
+        turnIn: [
+          `That is Dace's belt buckle, melted into the crook. I will tell his mother he was brave. I will not tell her the rest.`,
+          `Hang the crook by the gate. Anything that walks up out of the wood should see it first.`,
+          `You have done my watch's work twice now. The roster has no word for what you are. I am going to make one.`,
+        ],
+        outcome: `The Tallow Shepherd is dead, and his crook hangs by Stairhead's gate.`,
+        reward: { gold: 1.8, xp: 1.6, item: 'unique' },
+      },
+    ],
+  },
+
+  // =========================================================================
+  // Sister Vell — the fen cure
+  // =========================================================================
+  {
+    id: 'fencure',
+    name: 'The Fen Cure',
+    giver: 'vell',
+    when: { done: 'vell' },
+    blurb: `The fen sends its sickness up the stair on boots and blades. Sister Vell wants the cure, and she thinks the fen is keeping it.`,
+    steps: [
+      {
+        title: 'Black Water Fever',
+        minDepth: 16,
+        biome: 'swamp',
+        offer: [
+          `Three delvers came up from the Gallows Fen with a fever that turns the whites of the eyes green. I have seen it once before, in the order's oldest book.`,
+          `The book says the cure grows where the sickness does. Bring me the bog's own medicine. You will know it because things will be guarding it.`,
+        ],
+        flavor: `Delvers are coming up from the fen with green in their eyes.`,
+        brief: `Gather the fen's medicine from the Gallows Fen for Sister Vell.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:plant', n: 16, desc: `Cut the fen weed for its roots ({n})` },
+          { kind: 'slay', filter: 'family:ooze', n: 12, desc: `Skim the sickness off the water ({n})` },
+        ],
+        ready: `Your pack smells like a ditch, which Vell will take as good news.`,
+        turnIn: [
+          `Gallowsweed root. Good. And this jelly, whatever it was, has the fever in it, so now I can see what I am fighting.`,
+          `The fever is not a sickness. It is a summons. Something in the fen wants the sick to come back down to it.`,
+        ],
+        outcome: `The fen fever is a summons: the sick are being called back down.`,
+        reward: { gold: 1.2, xp: 1.2 },
+      },
+      {
+        title: 'The Green Lanterns',
+        minDepth: 19,
+        biome: 'swamp',
+        offer: [
+          `The sick walk in their sleep, always toward the stair. When I hold them back, they talk about lanterns. Green ones, low over the water.`,
+          `Find the lanterns and what carries them. Then stay out there long enough to learn the tune they hum. I need to know how the summons is sung.`,
+        ],
+        flavor: `The fevered dream of green lanterns over black water.`,
+        brief: `Find the green lanterns in the Gallows Fen and learn their song.`,
+        objectives: [
+          { kind: 'survive', filter: 'zone:any', n: 120, desc: `Listen to the lantern song ({n}s)` },
+          { kind: 'slayElite', n: 4, desc: `Silence the lantern carriers ({n})` },
+        ],
+        ready: `You have the tune now, and you will be humming it for a week. Vell will need to hear it.`,
+        turnIn: [
+          `Hum it again. Slower. Yes. That is a lullaby, and it is from my order. We sang it to the dying.`,
+          `Somebody down there was one of us. Somebody we buried in that fen, because the ground in town was full.`,
+        ],
+        outcome: `The lantern song is the order's lullaby for the dying. One of Vell's sisters lies in the fen.`,
+        reward: { gold: 1.4, xp: 1.3, item: 'rare' },
+      },
+      {
+        title: 'Unburied',
+        minDepth: 22,
+        biome: 'swamp',
+        boss: 'mirelle_unburied',
+        offer: [
+          `Her name was Mirelle. She nursed the plague wards for eleven years and caught it in the twelfth. We laid her in the fen with a lantern, as the rite says.`,
+          `The rite also says to come back and put the lantern out. Nobody did. I was the one who was meant to.`,
+          `Go and do it for me. Put out the lights around her, then lay her down, gently if she lets you.`,
+        ],
+        flavor: `A sister of Vell's order was laid in the fen, and nobody put her lantern out.`,
+        brief: `Put out Mirelle's lanterns in the Gallows Fen and lay her to rest.`,
+        objectives: [
+          { kind: 'cleanse', filter: 'prop:shrine', n: 2, desc: `Put out the lanterns at her shrines ({n})` },
+          { kind: 'boss', filter: 'boss:mirelle_unburied', n: 1, desc: `Lay Mirelle the Unburied to rest` },
+        ],
+        ready: `Mirelle's court of lanterns has gone dark. Vell will want to know how it ended.`,
+        turnIn: [
+          `She asked you if it was time? Then she remembered. Good. Good.`,
+          `The fever broke this morning, in all three of them at once. They woke up and asked for soup.`,
+          `This was hers. She would want it to go on working. Take it.`,
+        ],
+        outcome: `Mirelle is at rest, her lanterns are out, and the fen fever broke in the night.`,
+        reward: { gold: 1.8, xp: 1.6, item: 'unique' },
+      },
+    ],
+  },
+
+  // =========================================================================
+  // Wenna Torr — the ash survey
+  // =========================================================================
+  {
+    id: 'ashsurvey',
+    name: 'Sand Over the Survey',
+    giver: 'wenna',
+    when: { done: 'wenna' },
+    blurb: `The Bleached Reach was a city once, and the old survey has its streets. Wenna wants to walk them, and the sand keeps moving the city.`,
+    steps: [
+      {
+        title: 'Old Streets',
+        minDepth: 15,
+        biome: 'desert',
+        offer: [
+          `The first survey drew a city in the Bleached Reach. Streets, wells, a market square. The surveyor before the surveyor before me walked it with a chain and a pole.`,
+          `I went out with her map last spring and found dunes where the square should be. Either she lied, or the city moved. Go and stand where the square was, long enough to be sure.`,
+        ],
+        flavor: `The old survey puts a market square where the Bleached Reach has only dunes.`,
+        brief: `Stand where the old market square should be in the Bleached Reach.`,
+        objectives: [
+          { kind: 'survive', filter: 'zone:any', n: 90, desc: `Stand in the old market square ({n}s)` },
+          { kind: 'slay', filter: 'family:beast', n: 16, desc: `Drive off what dens in the ruins ({n})` },
+        ],
+        ready: `You stood where the square should be. The sand under you was warm, and not from the sun.`,
+        turnIn: [
+          `Warm sand at night, in a square that is not there. That is a buried city breathing, or I am a poet, and I am not a poet.`,
+          `It moved. A whole city, moved under the sand, a little every year, like the Spire. The same push, from the same place.`,
+        ],
+        outcome: `The city under the Bleached Reach is moving, pushed from below like the Spire.`,
+        reward: { gold: 1.2, xp: 1.2 },
+      },
+      {
+        title: 'The Wind Has Surveyors Too',
+        minDepth: 17,
+        biome: 'desert',
+        offer: [
+          `Something out there moves my markers. I set pole stones in a line. Next morning they stood in a circle.`,
+          `I would like it to stop. The things that do it are made of sand, wind and very bad temper. Break them, and give me a straight line.`,
+        ],
+        flavor: `Something in the Reach rearranges Wenna's survey markers overnight.`,
+        brief: `Break the sand walkers in the Bleached Reach and set one fixed mark.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:elemental', n: 12, desc: `Break the sand walkers that move the markers ({n})` },
+          { kind: 'cleanse', filter: 'prop:shrine', n: 1, desc: `Set a fixed mark at a shrine ({n})` },
+        ],
+        ready: `The markers stand in a line again. Wenna will want to sight along it herself.`,
+        turnIn: [
+          `A straight line. Do you know how long it has been since anybody gave me a straight line?`,
+          `And the sand walkers were half ash, fine and grey. Not sand at all. Somebody is selling ash out there, and somebody is buying.`,
+        ],
+        outcome: `The sand walkers that moved the markers were half made of ash.`,
+        reward: { gold: 1.4, xp: 1.3, item: 'rare' },
+      },
+      {
+        title: 'Ash for Sale',
+        minDepth: 20,
+        biome: 'desert',
+        boss: 'teodric_ashmonger',
+        offer: [
+          `Gilder says there is a trader in the Reach who sells ash by the sack, and that people buy it, and that nobody can tell him why.`,
+          `Ash is what is left when a thing has burned. If he is selling the city's ash, then the city burned, and the survey is a map of a fire.`,
+          `Find him. Close his stall. I want one honest sack to weigh.`,
+        ],
+        flavor: `A trader in the Bleached Reach sells ash by the sack.`,
+        brief: `Find the ash trader in the Bleached Reach and bring Wenna a sack of his stock.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:humanoid', n: 16, desc: `Scatter his customers ({n})` },
+          { kind: 'boss', filter: 'boss:teodric_ashmonger', n: 1, desc: `Close the Ashmonger's stall` },
+        ],
+        ready: `Teodric is dead and his ash is spilled on the sand. Wenna will want her sack.`,
+        turnIn: [
+          `Bone ash. City ash. It is what the old survey drew. The streets are in it, if you know how to look.`,
+          `The city did not move. It burned, and the deep keeps building it again a little lower each year, out of what is left.`,
+          `You have given me two honest measurements. That is more than the deep has given anybody. Here. And my thanks, which I give out less often than pay.`,
+        ],
+        outcome: `The city under the Reach burned long ago, and the deep keeps rebuilding it, lower each year.`,
+        reward: { gold: 1.8, xp: 1.6, item: 'unique' },
+      },
+    ],
+  },
+
+  // =========================================================================
+  // Corvane — the kings' bond
+  // =========================================================================
+  {
+    id: 'kingsbond',
+    name: 'The Kings’ Bond',
+    giver: 'corvane',
+    when: { done: 'corvane' },
+    blurb: `The Sand-Kings were buried with their treasuries, and with their debts. Corvane holds a bond with one of their seals on it.`,
+    steps: [
+      {
+        title: 'A Bond in Old Gold',
+        minDepth: 17,
+        biome: 'desertTomb',
+        offer: [
+          `A bond came into the vault last week, left by nobody, signed by a king who has been dead nine hundred years. It is drawn on his treasury. It is due.`,
+          `I do not pay bonds I cannot see the money for. Go down into the Tombs and find out if the treasury is still there. Mind the help. They were buried with him.`,
+        ],
+        flavor: `A nine hundred year old bond has come due at Corvane's vault.`,
+        brief: `Find out if the Sand-King's treasury still stands in the Tombs.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:undead', n: 20, desc: `Clear the kings' buried servants ({n})` },
+          { kind: 'slayElite', n: 3, desc: `Break the tomb guards ({n})` },
+        ],
+        ready: `The treasury is there, and it has been counted recently. Corvane will want that detail.`,
+        turnIn: [
+          `Counted. By whom? The dead do not count. That is the one comfort of the dead.`,
+          `Somebody keeps the kings' books down there. A bond drawn on a living treasury is a bond I must pay, and I would rather know who I am paying.`,
+        ],
+        outcome: `The Sand-Kings' treasury is still there, and someone keeps its books.`,
+        reward: { gold: 1.3, xp: 1.1 },
+      },
+      {
+        title: 'The Bookkeepers',
+        minDepth: 20,
+        biome: 'desertTomb',
+        offer: [
+          `The ledger you saw, columns in gold leaf and totals in salt. I know that hand. Every bank in the old cities used it.`,
+          `If the clerks are still at their desks, they are still taking deposits. Close the counting rooms. All of them.`,
+        ],
+        flavor: `Brass clerks still keep the Sand-Kings' ledgers.`,
+        brief: `Stop the clerks in the Tombs and seal their counting rooms.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:construct', n: 14, desc: `Stop the brass clerks at their desks ({n})` },
+          { kind: 'cleanse', filter: 'prop:shrine', n: 2, desc: `Seal the counting rooms ({n})` },
+        ],
+        ready: `The counting rooms are shut and their lamps are out. Corvane will want to know what the last entry said.`,
+        turnIn: [
+          `The last entry was a deposit. One delver, received in good condition, to be held until called for. Dated this year.`,
+          `They are not keeping gold down there. They are keeping us. And every door in the Tombs opens for whoever holds the book.`,
+        ],
+        outcome: `The Tombs' last ledger entry was a delver, received this year and held until called for.`,
+        reward: { gold: 1.5, xp: 1.3, item: 'rare' },
+      },
+      {
+        title: 'Every Door Ajar',
+        minDepth: 24,
+        biome: 'desertTomb',
+        boss: 'queen_of_hinges',
+        offer: [
+          `There is one more name on the bond. Not the king. The witness. She signs as Keeper of Every Door.`,
+          `I do not like debts that can walk through walls. Go and settle this one. I will hold the bond until you come back, and then I will burn it.`,
+        ],
+        flavor: `The bond's witness signs as Keeper of Every Door.`,
+        brief: `Find the witness to the bond in the Tombs and settle the debt.`,
+        objectives: [
+          { kind: 'slay', filter: 'any', n: 35, desc: `Clear the hall of doors ({n})` },
+          { kind: 'boss', filter: 'boss:queen_of_hinges', n: 1, desc: `Shut the Queen of Hinges out` },
+        ],
+        ready: `The Queen of Hinges is dead, and every door in her hall has swung shut. Corvane will want to burn that bond.`,
+        turnIn: [
+          `Done, then. Hand me the lamp.`,
+          `There. A nine hundred year debt, and it burns like any other paper.`,
+          `Whoever she was holding will find their own way up now. Take this. It was in the treasury, and the treasury, I find, has no owner.`,
+        ],
+        outcome: `The Queen of Hinges is dead and the kings' bond is ash in Corvane's grate.`,
+        reward: { gold: 2, xp: 1.6, item: 'unique' },
+      },
+    ],
+  },
+
+  // =========================================================================
+  // Ordrun Kale — the high road
+  // =========================================================================
+  {
+    id: 'highroad',
+    name: 'The High Road',
+    giver: 'kale',
+    when: { done: 'kale' },
+    blurb: `Before the Works went deep, they hauled ore down the high road across the Frostmarch. Kale drove that road once. Something is driving it again.`,
+    steps: [
+      {
+        title: 'The Ore Road',
+        minDepth: 21,
+        biome: 'tundra',
+        offer: [
+          `Before I was a smith I drove ore wagons across the Frostmarch. Long road. Cold road. We lost a wagon a winter and thought that was cheap.`,
+          `A trapper came in yesterday and said he saw a wagon on the high road. Fresh tracks, full load. Nobody has hauled that road in twenty years. Go and look.`,
+        ],
+        flavor: `A trapper saw a loaded wagon on a road nobody has used in twenty years.`,
+        brief: `Watch the high road across the Frostmarch for the wagon.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:beast', n: 18, desc: `Clear the wolves off the high road ({n})` },
+          { kind: 'survive', filter: 'zone:any', n: 100, desc: `Keep watch at the old waystation ({n}s)` },
+        ],
+        ready: `You saw the wagon. Kale will not like what was pulling it.`,
+        turnIn: [
+          `Men. Frozen men, in harness, pulling a full wagon at a walk. I know that wagon. I know the brand on its side.`,
+          `That is my wagon. The one I lost, the winter I gave up driving. I did not lose it. I left it, and the team with it, in a white squall, and I walked home alone.`,
+        ],
+        outcome: `The wagon on the high road is the one Kale left in a squall twenty years ago, still hauling.`,
+        reward: { gold: 1.2, xp: 1.2 },
+      },
+      {
+        title: 'What the Load Was',
+        minDepth: 24,
+        biome: 'tundra',
+        offer: [
+          `I never asked what we carried. The Works paid by the mile, not by the question.`,
+          `Get close to that wagon and see. And whoever is driving it, stop them. The team should have been let stop a long time ago.`,
+        ],
+        flavor: `Kale's old team still hauls its load across the Frostmarch.`,
+        brief: `Free Kale's frozen team on the high road and see what they haul.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:undead', n: 18, desc: `Free the frozen teamsters ({n})` },
+          { kind: 'slayElite', n: 4, desc: `Break the wagon's outriders ({n})` },
+        ],
+        ready: `The teamsters lie still in the snow at last. Kale will want to know about the load.`,
+        turnIn: [
+          `Hearthstones. A wagon of hearthstones, the kind that never go cold. For the Works' furnaces, I always thought.`,
+          `Not for the furnaces. For something up in the Frostmarch that is always cold and wants to be warm. We were feeding it, and it kept the drivers who stopped.`,
+        ],
+        outcome: `The wagons carried hearthstones up to something in the Frostmarch that is always cold.`,
+        reward: { gold: 1.4, xp: 1.3, item: 'rare' },
+      },
+      {
+        title: 'Grandmother’s Hearth',
+        minDepth: 27,
+        biome: 'tundra',
+        boss: 'grandmother_thaw',
+        offer: [
+          `The trappers call her Grandmother. She sits by a hearth our wagons filled, and she asks everyone who passes to sit with her a while.`,
+          `My team sat. I did not. I have been cold every day since, and I think that is the only reason I am alive.`,
+          `Go up there and put her fire out. Do not sit down, whatever she says.`,
+        ],
+        flavor: `Something on the Frostmarch asks travellers to sit by its fire.`,
+        brief: `Put out Grandmother Thaw's hearth on the Frostmarch. Do not sit down.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:elemental', n: 14, desc: `Smash the ice that guards her ({n})` },
+          { kind: 'boss', filter: 'boss:grandmother_thaw', n: 1, desc: `Put out Grandmother Thaw's hearth` },
+        ],
+        ready: `Grandmother Thaw has melted into her own hearth. Kale will want to know you never sat down.`,
+        turnIn: [
+          `You did not sit. Good. That is the whole trick, and nobody ever tells you.`,
+          `The trapper says the high road is empty. No wagon. Just the tracks, going home.`,
+          `I forged this from the last hearthstone. It will never go cold. That seemed right.`,
+        ],
+        outcome: `Grandmother Thaw is gone, the high road is empty, and Kale forged the last hearthstone into a gift.`,
+        reward: { gold: 2, xp: 1.8, item: 'unique' },
+      },
+    ],
+  },
+
+  // =========================================================================
+  // The Listener — the singing steppe
+  // =========================================================================
+  {
+    id: 'steppe',
+    name: 'The Singing Steppe',
+    giver: 'listener',
+    when: { done: 'listener' },
+    blurb: `Since the Tenant moved aside, the Listener can hear further. Out past the fire, on the Burning Steppe, something has started to sing.`,
+    steps: [
+      {
+        title: 'A Note Held Too Long',
+        minDepth: 41,
+        biome: 'hell',
+        offer: [
+          `Since you opened Ghaal, I can hear further. Out past the fire there is a steppe, and on the steppe there is a note. One note. It has been held for nine days.`,
+          `Nothing breathes for nine days. Go out and find where it comes from. Do not sing along. It wants you to.`,
+        ],
+        flavor: `A single note has been held on the Burning Steppe for nine days.`,
+        brief: `Find where the note is loudest on the Burning Steppe.`,
+        objectives: [
+          { kind: 'survive', filter: 'zone:any', n: 120, desc: `Find where the note is loudest ({n}s)` },
+          { kind: 'slay', filter: 'family:demon', n: 20, desc: `Silence the things that dance to it ({n})` },
+        ],
+        ready: `You found the place where the note is loudest. Your teeth still ache with it.`,
+        turnIn: [
+          `Three notes, you said. Not one. High, low, and a hum in the middle.`,
+          `I only heard one because the other two are the same voice, folded. It is a choir, and it is practising.`,
+        ],
+        outcome: `The note on the Burning Steppe is three voices, a choir, practising.`,
+        reward: { gold: 1.4, xp: 1.3 },
+      },
+      {
+        title: 'What It Is Practising For',
+        minDepth: 45,
+        biome: 'hell',
+        offer: [
+          `Choirs practise for an occasion. I want to know what the steppe is getting ready to celebrate.`,
+          `Find their hymn stones. Break them. And listen to the words, if there are words, before they stop.`,
+        ],
+        flavor: `The choir on the Burning Steppe is practising for something.`,
+        brief: `Break the hymn stones on the Burning Steppe and catch the words.`,
+        objectives: [
+          { kind: 'cleanse', filter: 'prop:shrine', n: 2, desc: `Break the hymn stones ({n})` },
+          { kind: 'slayElite', n: 5, desc: `Silence the cantors ({n})` },
+        ],
+        ready: `The hymn stones are broken. You caught the words on the last one.`,
+        turnIn: [
+          `Say them again. Slowly.`,
+          `They are singing to wake something. Not the Tenant. Something the Tenant sits on, the way a stone sits on a lid.`,
+        ],
+        outcome: `The choir is singing to wake whatever lies beneath the Tenant.`,
+        reward: { gold: 1.6, xp: 1.4, item: 'rare' },
+      },
+      {
+        title: 'Last Verse',
+        minDepth: 50,
+        biome: 'hell',
+        boss: 'furnace_choir',
+        offer: [
+          `I know where they stand now. Three furnaces on the steppe, in a row, singing. Fire, slag and smoke.`,
+          `Put them out before the hymn is finished. If they finish it, I will not need to tell you. Everyone will hear.`,
+        ],
+        flavor: `Three furnaces on the Burning Steppe are nearly through their hymn.`,
+        brief: `Silence the Furnace Choir on the Burning Steppe before the hymn ends.`,
+        objectives: [
+          { kind: 'slay', filter: 'family:elemental', n: 18, desc: `Quench the choir's embers ({n})` },
+          { kind: 'boss', filter: 'boss:furnace_choir', n: 1, desc: `Silence the Furnace Choir` },
+        ],
+        ready: `The furnaces are cold and the steppe is quiet. The Listener will already know.`,
+        turnIn: [
+          `I heard it stop. The whole camp heard nothing, which is what I wanted for them.`,
+          `Under the quiet I can hear the thing beneath the Tenant turn over, and settle, and go back to sleep.`,
+          `You have bought us a long silence. Take this, and then go and sleep yourself. You have earned a night without listening.`,
+        ],
+        outcome: `The Furnace Choir is silent, and what sleeps under the Tenant has settled again.`,
+        reward: { gold: 2.4, xp: 2, item: 'unique' },
       },
     ],
   },

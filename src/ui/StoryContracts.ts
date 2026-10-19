@@ -214,7 +214,8 @@ addJournalSection({
       const at = chainStep(c);
       if (at > 0) return true;
       const st = stepState(c, 0);
-      return st !== 'idle' || offerFor(NPCS[c.giver]) !== null;
+      // A person offers one contract at a time: only list the one they offer.
+      return st !== 'idle' || offerFor(NPCS[c.giver])?.chain === c;
     }).map(chainEntry);
     return s.sort((a, b) => GROUP_ORDER.indexOf(a.group ?? '') - GROUP_ORDER.indexOf(b.group ?? ''));
   },
