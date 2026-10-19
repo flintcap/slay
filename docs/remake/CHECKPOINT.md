@@ -199,6 +199,23 @@ Update this file and push it after every finished step.
     d60). Same trend `--wide` found at d40 and d50 before. Left for the
     owner to call.
 
+- #114 (owner ask) controller support removed: GamepadNav.ts, the Gamepad
+  rows in the controls list, the pad-nav focus styles, and every controller
+  idea in ui.md, this file and the plan doc (the Deck's Steam Input layout).
+- #115 (owner ask) Overflowing Ward (Breastplate of the Morning Muster) was a
+  pool only PowerRuntime could see. It is now the `overflowWard` status: a
+  buff chip, soaked after armour in `Player.takeDamage`, a dome when it
+  closes, a flash when it breaks. check-items probes it on a real status.
+- #117 (owner ask) charms drop about ten times less often: about 11 a run at
+  depth 22 before, about 1 now (2 at depth 40).
+- #116 (owner ask, diagnosis) a level 27 rogue at tier 22 on Reaver had
+  19,693 life, 914 defense and 61k DPS; the curve's rogue there (rares plus
+  milestone caches, L26) has 8,156 life and 129 defense, and even it ends
+  most d22 fights above 80% life. Monsters there hit for about 100 to 270.
+  Level is not the cause (L27 vs the curve's L26). Gear is: uniques, a set,
+  temper levels, sockets and about 30 charms in the pack (30 charms add
+  about 10% life and 45% max damage). Waiting on the owner's call.
+
 ## In progress
 
 - Nothing. Next: the next Phase 1 item, with its numbered list first.
