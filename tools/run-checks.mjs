@@ -7,6 +7,7 @@
  *   node tools/run-checks.mjs --only=dupe,loot
  *   node tools/run-checks.mjs --skip=wallhug
  *   node tools/run-checks.mjs --browser --no-build   # reuse the current dist/
+ *   node tools/run-checks.mjs --ci            # the automatic checks: known failures allowed
  *
  * A checker is "browser" if it drives Chromium (itself or through a `*-sheet.mjs`
  * render tool); everything else bundles an
@@ -19,6 +20,10 @@
  * Each checker's full output goes to `.checks/<name>.txt`; the summary table
  * and a JSON line (`{ pass, fail, results }`) go to stdout. Exit code is the
  * number of failures, capped at 1.
+ *
+ * With --ci, a checker listed in `tools/known-failures.json` may fail (it is
+ * shown as "known"); the run fails on any other failure, and on a known one
+ * that now passes, so the list is kept honest.
  */
 import { readdirSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { spawn, execFileSync } from 'node:child_process';
@@ -169,4 +174,14 @@ for (const c of all) {
 const fail = results.filter((r) => r.code !== 0);
 console.log(`\n${results.length - fail.length} passed, ${fail.length} failed${fail.length ? `: ${fail.map((r) => r.name).join(', ')}` : ''}`);
 console.log(JSON.stringify({ pass: results.length - fail.length, fail: fail.length, results }));
+
+if (flag('ci')) {
+  const known = JSON.parse(readFileSync(path.join(TOOLS, 'known-failures.json'), 'utf8'));
+  const fresh = fail.filter((r) => !known[r.name]);
+  const fixed = results.filter((r) => r.code === 0 && known[r.name]);
+  for (const r of fail.filter((r) => known[r.name])) console.log(`known   ${r.name}: ${known[r.name]}`);
+  for (const r of fixed) console.log(`FIXED   ${r.name} passes now: take it off tools/known-failures.json`);
+  for (const r of fresh) console.log(`NEW     ${r.name} fails: ${r.last}`);
+  process.exit(fresh.length || fixed.length ? 1 : 0);
+}
 process.exit(fail.length ? 1 : 0);

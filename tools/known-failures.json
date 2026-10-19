@@ -1,0 +1,8 @@
+{
+  "_about": "Checkers that already fail on the main branch, and why. With --ci, tools/run-checks.mjs lets these fail without failing the run, and fails it when one of them passes (take it off this list) or when anything else fails. Fix the cause, then remove the line.",
+  "beats": "corpseExplosion has no cast visual; pounce never lands a blow",
+  "curve": "shapeshifter at tier 40 beats 0 of 3 bosses (balance: waiting on the owner)",
+  "events": "quest.purge asks for insects on floors that have none (15 problems)",
+  "tactics": "16 big monster windups, 1 lands within 0.2 s of another",
+  "unfinished": "the 'static' and 'rent' statuses are declared but nothing applies them"
+}

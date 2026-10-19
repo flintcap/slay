@@ -8,10 +8,10 @@
  *   node tools/get-chrome.mjs --milestone=156 newest build of one milestone
  *
  * On a Mac (the automatic checks' real-GPU smoke test, .github/workflows)
- * it fetches the Mac build and links it at the same path.
+ * it fetches the Mac build and names it in CHROME_PATH instead.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, symlinkSync, lstatSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, rmSync, symlinkSync, lstatSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -48,6 +48,15 @@ if (!existsSync(bin)) {
   execFileSync('curl', ['-sSfL', '--retry', '3', '-o', zip, url], { stdio: 'inherit' });
   execFileSync('unzip', ['-q', '-o', zip, '-d', dir], { stdio: 'inherit' });
   rmSync(zip);
+}
+
+// A Mac app finds its frameworks next to the real binary, so it cannot be
+// started through a link: the tools take its path from CHROME_PATH instead,
+// and in the automatic checks that is set for the steps after this one.
+if (mac) {
+  if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, `CHROME_PATH=${bin}\n`);
+  console.log(execFileSync(bin, ['--version']).toString().trim(), '->', `CHROME_PATH=${bin}`);
+  process.exit(0);
 }
 
 const link = '/opt/pw-browsers/chromium';
