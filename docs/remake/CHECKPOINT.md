@@ -185,10 +185,23 @@ Update this file and push it after every finished step.
     96), bosssys, roomrules, story, uniques, looks, names, legend, save,
     drops, loot, economy, iconmatch, items pass.
 
+  - #113 Deep D: the checks reach the deep content. check-bosses walks
+    depths to 96, check-bosssys checks the climb past 60, check-curve
+    `--deep` fights every class at d30, 45, 60, 75, 90 and 100. Names,
+    looks, readable, uniques, monster-anim (`--all` too) and bossfights
+    (all six) pass. Curve `--deep` 25/42: nothing is walled, every pack is
+    won 3/3 and every boss at least 2/3 at every depth to 100. The 17
+    misses are all "untouched" (too easy): every class at d45, and most at
+    d75, d90 and d100, where the deep bosses fall in 0-15s with the hero
+    near full life. d30 and d60 are challenged for every class. Cause: the
+    hero's life grows 17% a level, monster damage 11.8% a depth, so past
+    60 the hero pulls away (about 4.5x more life per hit at d100 than at
+    d60). Same trend `--wide` found at d40 and d50 before. Left for the
+    owner to call.
+
 ## In progress
 
-- #113 Deep D: extend the checks (names, readable, bosses, bossfights,
-  uniques, looks, monster-anim, curve to d100).
+- Nothing. Next: the next Phase 1 item, with its numbered list first.
 
 ## Phase 0d log
 
